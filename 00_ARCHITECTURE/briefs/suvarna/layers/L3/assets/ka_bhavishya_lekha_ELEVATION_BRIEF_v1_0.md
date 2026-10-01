@@ -13,14 +13,14 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0
 base_commit: "main 066c58587"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); output changes (FD-2, FD-3) and the D-1 design go to SS (R5)"
-decisions_applied: "none specific to L3 yet; SS rulings of 2026-10-01 for L0 (Q2, Q11, Q13) by analogy, PROVISIONAL until the J1 review"
-track_i_items: [TI-L3-05, TI-L3-06, TI-L3-07, TI-L3-08, TI-L3-10, TI-L3-11, TI-L3-17, TI-L3-19, TI-L3-20]
+decisions_applied: "SS decision-sheet rulings of 2026-10-01 (section 7; (R) items provisional until J1); SS rulings of 2026-10-01 for L0 (Q2, Q11, Q13) by analogy, PROVISIONAL until the J1 review"
+track_i_items: [TI-L3-05, TI-L3-06, TI-L3-07, TI-L3-08, TI-L3-10, TI-L3-11, TI-L3-17, TI-L3-19, TI-L3-20, TI-L3-33]
 ledger_gap_ids: ["ka_bhavishya_lekha-Build.completion", "ka_bhavishya_lekha-Earn.build_record", "ka_bhavishya_lekha-Cost.baseline", "ka_bhavishya_lekha-Count.floor", "ka_bhavishya_lekha-Complete.depth", "ka_bhavishya_lekha-Dens.served", "ka_bhavishya_lekha-Build.history", "ka_bhavishya_lekha-Build.dep_liveness", "ka_bhavishya_lekha-Carr.detector", "new: bhavishya-N1", "new: bhavishya-N2", "new: bhavishya-N3", "new: bhavishya-N4", "new: bhavishya-N5"]
 ---
 
 # ka_bhavishya_lekha — Probabilistic forward projection artifact (top future darshana windows)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. SS ruled the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings that touch this asset are in section 7 and `INDEX.md` section 9; items marked (R) are provisional until the J1 review and anything not listed there remains open. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -120,6 +120,7 @@ Approver under Track A brief §10: **Steward (G16); output changes (FD-2, FD-3) 
 
 ### FD-2 · Domain inference with an explicit precedence (or no inference)
 
+- **SS ruling (2026-10-01) (R):** SS rules (no external acharya): explicit keyword -> domain map, ambiguity -> `general`. TI-L3-06.
 - **Answers:** new bhavishya-N2; CF-30
 - **Change:** replace first-match substring scanning by an explicit mapping from signal type id to domain with a documented precedence and an explicit `general` for ambiguous ids (a signal type id that matches two domains is ambiguous), or drop inference and require `kala_convergence.domain`; keep `kc.domain` preferred as now (`:310`)
 - **Files / declaration / migration:** `ka_bhavishya_lekha.py:471-504`
@@ -132,6 +133,7 @@ Approver under Track A brief §10: **Steward (G16); output changes (FD-2, FD-3) 
 
 ### FD-3 · Derive the falsifier window from the window, or ratify the constant
 
+- **SS ruling (2026-10-01) (R):** the +/-21 days is ratified as a NAMED PRE-REGISTERED window (decision N-57); the derive-from-window option is not taken; see the declaration in section 7. TI-L3-33.
 - **Answers:** new bhavishya-N3; CF-27
 - **Change:** state the evaluation window as a function of the stored window (`window_start`/`window_end`) or record ±21 days as a ratified approximation with a decision id and surface that in `falsifiability` (`evaluation_window_days` already exists); the text then names the actual window
 - **Files / declaration / migration:** `ka_bhavishya_lekha.py:507-536`
@@ -144,6 +146,7 @@ Approver under Track A brief §10: **Steward (G16); output changes (FD-2, FD-3) 
 
 ### FD-4 · Split the anchor-existence guard (back-read design, Track I D-1)
 
+- **SS ruling (2026-10-01):** accepted (Q-L3-08): the guard moves to the L4 side. TI-L3-08.
 - **Answers:** new bhavishya-N4; CF-23
 - **Change:** move the "which bhavishya ids already have anchors" guard to the L4 side (an L4 consumer refuses to orphan), or have `ph_nimitta` stop reading `kala_bhavishya`, so the dependency runs one way; remove the unread `ka_vighnakara` edge (CF-23). Not designed further here: it needs an L4 owner.
 - **Files / declaration / migration:** design only
@@ -199,11 +202,23 @@ Natural key `(signal_id, peak_date)` (the writer's own outcome identity, `:30`);
 
 ## 7 · Decisions applied and open questions
 
-No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
+SS answered the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings for this asset are in the block below. (R) = raises or defines a verdict or changes outputs: provisional until the J1 review. The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
+**SS rulings (2026-10-01) for this asset:**
+
+- **Q-L3-05 (R) — SS rules (no external acharya).** FD-2: an explicit keyword -> domain map; an id that matches more than one domain reads `general`; `kala_convergence.domain` stays preferred. FD-3: the +/-21 days is ratified as a NAMED PRE-REGISTERED evaluation window (decision N-57), on condition that it is declared in this brief (below) and never tuned after outcomes are seen. Track I: TI-L3-06, TI-L3-33.
+- **Q-L3-08 — accepted.** FD-4: the anchor-existence guard moves to the L4 side so the dependency runs L3 -> L4 one way; the unread `ka_vighnakara` edge is removed. Track I: TI-L3-07, TI-L3-08.
+- **Q-L3-01 — accepted** (CF-27 split; tier cuts 0.70 / 0.45 are scale choices under option 1). Track I: TI-L3-17.
+
+### Pre-registered window declaration (decision N-57)
+- **Name:** `bhavishya_falsifier_window_pm21d`. **Value:** `evaluation_window_days = 21`, i.e. the evaluation window is the peak date +/- 21 days (42 days), as written in `falsifiability.evaluation_window_days` and in the `confirm_observable` / `deny_observable` strings (`ka_bhavishya_lekha.py:507-537`).
+- **Status:** ratified by SS on 2026-10-01 as a named pre-registered window under decision N-57 (provisional (R) until the J1 review).
+- **Independent of the stored window:** every stored Abhinandan row has a 896-day `window_start`..`window_end`; the 42-day evaluation window is deliberately tighter, because a window derived from the stored span would make the claim near-unfalsifiable.
+- **Condition (binding):** the window is fixed in advance and is NEVER tuned after outcomes are seen. Any change needs a new decision id, applies only to projections generated after the change, and must not be applied to a row that carries a recorded outcome or is referenced by `phala_anchors` (the writer already refuses to rewrite such rows, `:393`). The decision id is to be surfaced in the row's `falsifiability` JSON (TI-L3-33).
+
+Questions put to Strategic Suvarṇa (all answered 2026-10-01, see the block above; kept for the record; consolidated in `INDEX.md` section 9):
 
 - **Q-L3-05** — FD-2/FD-3: is the keyword precedence a domain ruling for SS or an acharya, and is ±21 days a ratified constant?
 - **Q-L3-08** — FD-4: which side owns the anchor-existence guard (L3 or L4)?
 
-**Track I items arising (see INDEX section 10):** TI-L3-05, TI-L3-06, TI-L3-07, TI-L3-08, TI-L3-10, TI-L3-11, TI-L3-17, TI-L3-19, TI-L3-20.
+**Track I items arising (see INDEX section 10):** TI-L3-05, TI-L3-06, TI-L3-07, TI-L3-08, TI-L3-10, TI-L3-11, TI-L3-17, TI-L3-19, TI-L3-20, TI-L3-33 (added by the SS rulings of 2026-10-01).

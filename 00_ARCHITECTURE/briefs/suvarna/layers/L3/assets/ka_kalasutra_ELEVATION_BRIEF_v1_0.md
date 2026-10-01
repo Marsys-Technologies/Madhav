@@ -13,14 +13,14 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0
 base_commit: "main 066c58587"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); the output changes in CF-27 go to SS (R5)"
-decisions_applied: "none specific to L3 yet; L0 rulings by analogy, PROVISIONAL until the J1 review"
+decisions_applied: "SS decision-sheet rulings of 2026-10-01 (section 7; (R) items provisional until J1); L0 rulings by analogy, PROVISIONAL until the J1 review"
 track_i_items: [TI-L3-01, TI-L3-05, TI-L3-09, TI-L3-10, TI-L3-17, TI-L3-20]
 ledger_gap_ids: ["ka_kalasutra-Build.completion", "ka_kalasutra-Earn.build_record", "ka_kalasutra-Cost.baseline", "ka_kalasutra-Count.floor", "ka_kalasutra-Dens.served", "ka_kalasutra-Build.history", "ka_kalasutra-Build.dep_liveness", "ka_kalasutra-Carr.detector", "new: kalasutra-N1", "new: kalasutra-N2", "new: kalasutra-N3", "new: kalasutra-N4", "new: kalasutra-N5", "new: kalasutra-N6"]
 ---
 
 # ka_kalasutra — Bounded activation windows per activation predicate (dasha-resolved, convergence-refined)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. SS ruled the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings that touch this asset are in section 7 and `INDEX.md` section 9; items marked (R) are provisional until the J1 review and anything not listed there remains open. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -131,6 +131,7 @@ Approver under Track A brief §10: **Steward (G16); the output changes in CF-27 
 
 ### FD-3 · Ratify or null the proximity inputs (CF-27)
 
+- **SS ruling (2026-10-01):** accepted (Q-L3-01): option 2 for the stand-ins of uncomputed terms. TI-L3-17.
 - **Answers:** new kalasutra-N2; CF-27
 - **Change:** per the CF-27 ruling: ratified approximations recorded with decision ids, or NULL where the hook value is absent so `dasha_activation_proximity_score` is NULL rather than 0.5 × 1.0, or computed from the L1 dignity/shadbala facts
 - **Files / declaration / migration:** `services/ka_temporal/date_resolver.py`, `ka_yojaka.py`, the L2 emitters (outside this lane)
@@ -184,9 +185,13 @@ Natural key `(chart_id, signal_id, ayanamsha_id, source_citation)` (the writer's
 
 ## 7 · Decisions applied and open questions
 
-No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
+SS answered the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings for this asset are in the block below. (R) = raises or defines a verdict or changes outputs: provisional until the J1 review. The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
+**SS rulings (2026-10-01) for this asset:**
+
+- **Q-L3-01 — accepted** (CF-27 split; FD-3 proximity inputs: option 2 for the stand-ins of uncomputed terms). Track I: TI-L3-17.
+
+Questions put to Strategic Suvarṇa (all answered 2026-10-01, see the block above; kept for the record; consolidated in `INDEX.md` section 9):
 
 - **Q-L3-01** — CF-27: ratify, null or compute the proximity inputs?
 

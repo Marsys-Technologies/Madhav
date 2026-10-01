@@ -13,14 +13,14 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0
 base_commit: "main 066c58587"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
-decisions_applied: "none specific to L3 yet; L0 rulings by analogy, PROVISIONAL until the J1 review"
-track_i_items: [TI-L3-09, TI-L3-10, TI-L3-13, TI-L3-15, TI-L3-20]
+decisions_applied: "SS decision-sheet rulings of 2026-10-01 (section 7; (R) items provisional until J1); L0 rulings by analogy, PROVISIONAL until the J1 review"
+track_i_items: [TI-L3-09, TI-L3-10, TI-L3-13, TI-L3-15, TI-L3-20, TI-L3-35]
 ledger_gap_ids: ["ka_kota_chakra-Earn.build_record", "ka_kota_chakra-Cost.baseline", "ka_kota_chakra-Count.floor", "ka_kota_chakra-Dens.served", "ka_kota_chakra-Build.history", "ka_kota_chakra-Carr.detector", "new: kota-N1", "new: kota-N2", "new: kota-N3", "new: kota-N4"]
 ---
 
 # ka_kota_chakra — Kota-Chakra fort chart: transiting grahas by ring from the janma nakshatra
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. SS ruled the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings that touch this asset are in section 7 and `INDEX.md` section 9; items marked (R) are provisional until the J1 review and anything not listed there remains open. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -101,6 +101,7 @@ Approver under Track A brief §10: **Steward (G16)**. SS decision: none yet (pro
 
 ### FD-1 · Pin the as-of date and state the rolling floor
 
+- **SS ruling (2026-10-01) (R):** Count.floor N/A by cause `rolling_horizon` with the window declared; a rule only through `NA_RULE_DECISIONS` with SS approval (Q-L3-12). TI-L3-13, TI-L3-35.
 - **Answers:** new kota-N1; CF-28, CF-03
 - **Change:** read `as_of_date` from the run config (default today, recorded in the build note); declare the asset's floor as rolling (N/A by cause, decided with CF-28) rather than refresh 588
 - **Files / declaration / migration:** `services/ka_kota_chakra/writer.py:239`; registry/declarations
@@ -164,10 +165,14 @@ Natural key `(chart_id, ayanamsha_id, graha, window_start)` (DB UNIQUE, `ON CONF
 
 ## 7 · Decisions applied and open questions
 
-No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
+SS answered the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings for this asset are in the block below. (R) = raises or defines a verdict or changes outputs: provisional until the J1 review. The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
+**SS rulings (2026-10-01) for this asset:**
+
+- **Q-L3-12 (R) — accepted.** Count.floor reads N/A by cause `rolling_horizon` with the window declared (60 days back, 400 forward); it becomes a rule only through `NA_RULE_DECISIONS` with SS approval; pin and record `as_of_date` separately (FD-1). Track I: TI-L3-13, TI-L3-35.
+
+Questions put to Strategic Suvarṇa (all answered 2026-10-01, see the block above; kept for the record; consolidated in `INDEX.md` section 9):
 
 - **Q-L3-12** — CF-28: how is a rolling floor declared?
 
-**Track I items arising (see INDEX section 10):** TI-L3-09, TI-L3-10, TI-L3-13, TI-L3-15, TI-L3-20.
+**Track I items arising (see INDEX section 10):** TI-L3-09, TI-L3-10, TI-L3-13, TI-L3-15, TI-L3-20, TI-L3-35 (added by the SS rulings of 2026-10-01).

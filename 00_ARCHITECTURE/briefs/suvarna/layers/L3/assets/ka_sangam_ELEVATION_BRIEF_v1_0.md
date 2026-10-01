@@ -13,7 +13,7 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0
 base_commit: "main 066c58587"
 disposition: "none proposed (evaluation only; family asset: Track F / A.L3f)"
 disposition_proposal_approver: "n/a (no disposition written here; Track A section 6)"
-decisions_applied: "none; this brief states facts and cites decisions, it makes none"
+decisions_applied: "Q-L3-17 (SS 2026-10-01): this evaluation-only brief is kept as an evidence input to A.L3f; it still makes no decision"
 track_i_items: []
 ledger_gap_ids: ["ka_sangam-Build.completion", "ka_sangam-Earn.build_record", "ka_sangam-Cost.baseline", "ka_sangam-Count.floor", "ka_sangam-Dens.served", "ka_sangam-Build.history", "ka_sangam-Build.dep_liveness", "ka_sangam-Carr.detector"]
 ---
@@ -95,3 +95,4 @@ Census used: saved census `00_ARCHITECTURE/briefs/suvarna/layers/census/census_L
 - Owner: Track F (Saṅgam family): design is Suvarṇa's Track F lane (F1.S, F-2, F-6); implementation owner decided by SS at J1.FO. A.L3f evaluates; this lane writes no disposition and no fix design.
 - Not written here: disposition, fix designs, semantic-fingerprint contract, carriage choice (Track F's sealed brief and A.L3f own them).
 - Not touched: no code, no registry row, no database write; no message to Pravāha or a family session (P11).
+- **SS ruling (2026-10-01), Q-L3-17 — accepted.** This evaluation-only brief is kept in the set as an evidence input to A.L3f; the variance (7) of `INDEX.md` section 12 is acknowledged. Nothing else changes: no disposition and no fix design are written here.

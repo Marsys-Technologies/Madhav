@@ -13,14 +13,14 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0
 base_commit: "main 066c58587"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); CF-27 items go to SS (R5). Ownership: a claimed Saṅgam prerequisite (Track A section 6): if the Saṅgam brief claims it, it moves from this set to A.L3f evaluation"
-decisions_applied: "none specific to L3 yet; L0 rulings by analogy, PROVISIONAL until the J1 review"
+decisions_applied: "SS decision-sheet rulings of 2026-10-01 (section 7; (R) items provisional until J1); L0 rulings by analogy, PROVISIONAL until the J1 review"
 track_i_items: [TI-L3-09, TI-L3-10, TI-L3-16, TI-L3-17, TI-L3-19, TI-L3-24]
 ledger_gap_ids: ["ka_yojaka-Earn.build_record", "ka_yojaka-Cost.baseline", "ka_yojaka-Dens.served", "ka_yojaka-Build.history", "ka_yojaka-Build.dep_liveness", "ka_yojaka-Carr.detector", "new: yojaka-N1", "new: yojaka-N2", "new: yojaka-N3", "new: yojaka-N4"]
 ---
 
 # ka_yojaka — Activation-predicate bridge: one dasha/transit/strength predicate per MSR signal
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. SS ruled the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings that touch this asset are in section 7 and `INDEX.md` section 9; items marked (R) are provisional until the J1 review and anything not listed there remains open. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -101,6 +101,7 @@ Approver under Track A brief §10: **Steward (G16); CF-27 items go to SS (R5). O
 
 ### FD-1 · Ratify or null the hook defaults (`non_affliction`, `cgm_centrality_weight`)
 
+- **SS ruling (2026-10-01):** accepted (Q-L3-01): option 2 for these defaults. TI-L3-17.
 - **Answers:** new yojaka-N1; CF-27
 - **Change:** per the CF-27 ruling: store NULL (not an absent key that the resolver defaults to 1.0) when `shadbala_norm` is NULL; rename or document `non_affliction` as a normalised strength fraction; record 0.5 for the missing centrality as a ratified approximation or NULL
 - **Files / declaration / migration:** `ka_yojaka.py:99-101`, `:315`; `services/ka_temporal/date_resolver.py:674`
@@ -178,9 +179,14 @@ Natural key `(chart_id, signal_id, ayanamsha_id)` (DB UNIQUE index `idx_kap_char
 
 ## 7 · Decisions applied and open questions
 
-No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
+SS answered the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings for this asset are in the block below. (R) = raises or defines a verdict or changes outputs: provisional until the J1 review. The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
+**SS rulings (2026-10-01) for this asset:**
+
+- **Q-L3-01 — accepted** (FD-1: the `cgm_centrality_weight` 0.5 and `non_affliction` defaults follow option 2). Track I: TI-L3-17.
+- **Q-L3-15 — accepted.** `ka_yojaka` stays in this (non-family) set; its Saṅgam prerequisite status is a build-order fact, not an ownership transfer.
+
+Questions put to Strategic Suvarṇa (all answered 2026-10-01, see the block above; kept for the record; consolidated in `INDEX.md` section 9):
 
 - **Q-L3-01** — CF-27: ratify, null or compute the hook defaults?
 - **Q-L3-15** — ownership: does the Saṅgam brief claim `ka_yojaka` (moving it to A.L3f evaluation)?

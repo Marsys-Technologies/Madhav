@@ -13,14 +13,14 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0
 base_commit: "main 066c58587"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); the output changes in FD-1, FD-3 go to SS (R5)"
-decisions_applied: "none specific to L3 yet; SS rulings of 2026-10-01 given for L0 (Q2 Dens, Q11 Build.history, Q13 Carr) are applied by analogy where stated and are PROVISIONAL until the J1 review"
+decisions_applied: "SS decision-sheet rulings of 2026-10-01 (section 7; (R) items provisional until J1); SS rulings of 2026-10-01 given for L0 (Q2 Dens, Q11 Build.history, Q13 Carr) are applied by analogy where stated and are PROVISIONAL until the J1 review"
 track_i_items: [TI-L3-10, TI-L3-11, TI-L3-14, TI-L3-15, TI-L3-16]
 ledger_gap_ids: ["ka_avadhi-Build.completion", "ka_avadhi-Earn.build_record", "ka_avadhi-Cost.baseline", "ka_avadhi-Dens.served", "ka_avadhi-Build.history", "ka_avadhi-Build.dep_liveness", "ka_avadhi-Carr.detector", "new: avadhi-N1", "new: avadhi-N2", "new: avadhi-N3", "new: avadhi-N4", "new: avadhi-N5"]
 ---
 
 # ka_avadhi — Period dossiers over the MD and AD levels of the dasha systems
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. SS ruled the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings that touch this asset are in section 7 and `INDEX.md` section 9; items marked (R) are provisional until the J1 review and anything not listed there remains open. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -104,6 +104,7 @@ Approver under Track A brief §10: **Steward (G16); the output changes in FD-1, 
 
 ### FD-1 · Honest provenance for `citations` (Ldgr and Carr)
 
+- **SS ruling (2026-10-01) (R):** accepted (Q-L3-02): `dasha_row_id` plus per-row `attribution_state`; all systems start `unsourced`; `sourced_ocr_unverified` and `sourced` only as the citations rule allows. TI-L3-14.
 - **Answers:** new avadhi-N1; census Ldgr no reading; CF-08, CF-07
 - **Change:** replace the fixed classical string by what each row actually derives from: the period spine is an L1 row, so carry the `chart_dashas.dasha_row_id` of the period (select it in `_FETCH_MD_SQL` / `_FETCH_AD_SQL`, `:73`, `:84`) and the L1 fact ids already cited in `lord_condition_fact_refs`; keep a classical source only per system where one is supplied and verified (no invented citation, B.10); mark rows whose system has no supplied source `unsourced` (the same explicit-state approach as L0 CF-11 / SS Q3, by analogy)
 - **Files / declaration / migration:** `ka_avadhi.py:306` and the two fetch SQLs; no migration if the state lives in the `citations` array / `quality` JSON, a migration only if SS wants a column
@@ -128,6 +129,7 @@ Approver under Track A brief §10: **Steward (G16); the output changes in FD-1, 
 
 ### FD-3 · One authority for the graha → domain map (and a visible truncation order)
 
+- **SS ruling (2026-10-01) (R):** accepted (Q-L3-04): one shared table with values in `CANONICAL_DOMAINS`. TI-L3-15.
 - **Answers:** new avadhi-N2, N5; CF-30
 - **Change:** replace the local table (`:40`) by the single authority SS names (CF-30); order the 10-id cut by grade then `pratijna_id` across domains (`:290`) so the cut keeps the strongest, deterministically
 - **Files / declaration / migration:** `ka_avadhi.py:40-50`, `:283-290`
@@ -182,9 +184,15 @@ Natural key `(chart_id, system_id, level_n, period_start)` (DB UNIQUE; census `V
 
 ## 7 · Decisions applied and open questions
 
-No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
+SS answered the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings for this asset are in the block below. (R) = raises or defines a verdict or changes outputs: provisional until the J1 review. The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
+**SS rulings (2026-10-01) for this asset:**
+
+- **Q-L3-02 (R) — accepted.** Carry the L1 `dasha_row_id` as spine provenance and add a per-row `attribution_state` (L0 Q3 pattern); every system starts `unsourced`; the Track I research item may record a system as `sourced_ocr_unverified` (the BPHS Ch. 46 candidates in the decision sheet are OCR hits) and as `sourced` only after passage-level verification; no citation is invented. Track I: TI-L3-14.
+- **Q-L3-04 (R) — accepted.** FD-3 reads the one shared graha -> domain table (all Rahu rows currently store an empty `activated_pratijna_ids` because its tokens are outside the canonical vocabulary). Track I: TI-L3-15.
+- Citations rule (SS, all layers): an OCR text-search hit not checked against print is `sourced_ocr_unverified` (a distinct attribution state, neither `sourced` nor `unsourced`); a passage not found is `unsourced`; only a citation verified at passage level counts toward a Ldgr PASS.
+
+Questions put to Strategic Suvarṇa (all answered 2026-10-01, see the block above; kept for the record; consolidated in `INDEX.md` section 9):
 
 - **Q-L3-02** — FD-1: is a per-row `attribution_state` (or the L1 `dasha_row_id` as the spine source) acceptable in place of the generic classical string, and who supplies verified per-system sources?
 - **Q-L3-04** — FD-3 / CF-30: which graha → domain table is canonical?

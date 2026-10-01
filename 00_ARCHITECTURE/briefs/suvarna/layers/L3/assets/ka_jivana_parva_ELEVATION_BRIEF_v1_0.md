@@ -13,14 +13,14 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0
 base_commit: "main 066c58587"
 disposition: "qualify (Q)"
 disposition_proposal_approver: "Steward (G16) for qualify; the output changes in FD-2 and FD-3 go to SS (R5)"
-decisions_applied: "none specific to L3 yet; L0 rulings by analogy, PROVISIONAL until the J1 review"
+decisions_applied: "SS decision-sheet rulings of 2026-10-01 (section 7; (R) items provisional until J1); L0 rulings by analogy, PROVISIONAL until the J1 review"
 track_i_items: [TI-L3-01, TI-L3-07, TI-L3-10, TI-L3-11, TI-L3-13, TI-L3-15, TI-L3-17, TI-L3-18, TI-L3-19, TI-L3-20]
 ledger_gap_ids: ["ka_jivana_parva-Earn.build_record", "ka_jivana_parva-Cost.baseline", "ka_jivana_parva-Dens.served", "ka_jivana_parva-Build.history", "ka_jivana_parva-Build.dep_liveness", "ka_jivana_parva-Carr.detector", "new: jivana-N1", "new: jivana-N2", "new: jivana-N3", "new: jivana-N4", "new: jivana-N5", "new: jivana-N6"]
 ---
 
 # ka_jivana_parva — Life-arc chapters (Vimshottari MD + AD + the running PD) with a convergence-density quality label
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. SS ruled the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings that touch this asset are in section 7 and `INDEX.md` section 9; items marked (R) are provisional until the J1 review and anything not listed there remains open. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -115,6 +115,7 @@ Approver under Track A brief §10: **Steward (G16) for qualify; the output chang
 
 ### FD-2 · Narrow the chapter claim to what is derived
 
+- **SS ruling (2026-10-01) (R):** accepted (Q-L3-06). TI-L3-18.
 - **Answers:** new jivana-N2; CF-25
 - **Change:** drop `theme_keywords`/`summary` themes that are not derived from the chart, or derive them from the cited L1 condition of the dasha lord (references, never restated values), and word the summary as what it is: a Vimshottari span with a convergence-density quality; keep the exact span and counts
 - **Files / declaration / migration:** `ka_jivana_parva.py:408-442`
@@ -127,6 +128,7 @@ Approver under Track A brief §10: **Steward (G16) for qualify; the output chang
 
 ### FD-3 · A distinct state for "no evidence" and no falsy coalescing
 
+- **SS ruling (2026-10-01) (R):** accepted (Q-L3-06): `no_convergence_evidence` as a sixth value, with the CHECK-widening migration, after FD-1. TI-L3-18.
 - **Answers:** new jivana-N3, N4; CF-27
 - **Change:** serve a separate `parva_quality` value (for example `no_convergence_evidence`) when `avg_score is None`, keep `transitional` for a real low score, and store `avg_effective_score` as the computed number including 0.0 (`is not None`, not truthiness)
 - **Files / declaration / migration:** `ka_jivana_parva.py:356-405`, `:443`
@@ -181,9 +183,14 @@ Natural key `(chart_id, source_citation, start_year)` (the unique `idx_kala_jiva
 
 ## 7 · Decisions applied and open questions
 
-No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
+SS answered the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings for this asset are in the block below. (R) = raises or defines a verdict or changes outputs: provisional until the J1 review. The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
+**SS rulings (2026-10-01) for this asset:**
+
+- **Q-L3-06 (R) — accepted.** FD-2: drop the planet-generic themes or derive them from the cited L1 condition of the dasha lord; word the summary as a Vimshottari span with a convergence-density quality. FD-3: add `no_convergence_evidence` as a sixth `parva_quality` value (one CHECK-widening migration) and store a computed 0.0 as 0.0; land after FD-1 (refuse a build without convergence input). Track I: TI-L3-18.
+- **Q-L3-08 — accepted.** Remove the unread `ka_dasha_kala` edge (service edge does not mean serve-time dependence). Track I: TI-L3-07.
+
+Questions put to Strategic Suvarṇa (all answered 2026-10-01, see the block above; kept for the record; consolidated in `INDEX.md` section 9):
 
 - **Q-L3-06** — FD-2/FD-3: narrow the narrative claim and add a distinct no-evidence label?
 

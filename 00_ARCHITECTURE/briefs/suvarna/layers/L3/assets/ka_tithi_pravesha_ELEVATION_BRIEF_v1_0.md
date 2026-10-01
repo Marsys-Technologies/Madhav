@@ -13,14 +13,14 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0
 base_commit: "main 066c58587"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); the definition question (Q-L3-14) is an acharya/SS ruling, not a tier clause"
-decisions_applied: "none specific to L3 yet; L0 rulings by analogy, PROVISIONAL until the J1 review"
-track_i_items: [TI-L3-09, TI-L3-10, TI-L3-20, TI-L3-25]
+decisions_applied: "SS decision-sheet rulings of 2026-10-01 (section 7; (R) items provisional until J1); L0 rulings by analogy, PROVISIONAL until the J1 review"
+track_i_items: [TI-L3-09, TI-L3-10, TI-L3-20, TI-L3-25, TI-L3-37]
 ledger_gap_ids: ["ka_tithi_pravesha-Earn.build_record", "ka_tithi_pravesha-Cost.baseline", "ka_tithi_pravesha-Dens.served", "ka_tithi_pravesha-Build.history", "ka_tithi_pravesha-Carr.detector", "new: tithi-N1", "new: tithi-N2"]
 ---
 
 # ka_tithi_pravesha — Tithi-Praveśa annual chart per year of life: lunar-return instant, annual chart and a verification state
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. SS ruled the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings that touch this asset are in section 7 and `INDEX.md` section 9; items marked (R) are provisional until the J1 review and anything not listed there remains open. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -97,6 +97,7 @@ Approver under Track A brief §10: **Steward (G16); the definition question (Q-L
 
 ### FD-1 · Settle the definition and the name
 
+- **SS ruling (2026-10-01):** accepted (Q-L3-14): keep the computation, correct the label; no birth-tithi recompute without a source. TI-L3-25.
 - **Answers:** new tithi-N1
 - **Change:** an acharya or SS ruling on whether the asset should compute the birth-tithi recurrence, keep the lunar-return definition and rename (`lunar_return_annual`), or keep both as separate labelled series; whichever is chosen, the registry description, the served tool text and the module header must say the same thing
 - **Files / declaration / migration:** registry description, `query_tithi_pravesha.ts` descriptor text, `logic.py` header (no code change if only the label moves)
@@ -157,10 +158,16 @@ Natural key `(chart_id, ayanamsha_id, pravesha_year)` (DB UNIQUE). Volatile colu
 
 ## 7 · Decisions applied and open questions
 
-No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
+SS answered the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings for this asset are in the block below. (R) = raises or defines a verdict or changes outputs: provisional until the J1 review. The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
+**SS rulings (2026-10-01) for this asset:**
+
+- **Q-L3-14 — accepted.** Keep the computation and correct the label (annual lunar-return chart: the Moon at its natal longitude); do NOT compute a birth-tithi recurrence until an acharya supplies a definition and the corpus holds a source (citation state `unsourced`); no change to `asset_id` or table name. Track I: TI-L3-25 (rename branch).
+- **Q-L3-13 — accepted.** SS notifies Pravāha before any wave that rebuilds `kala_tithi_pravesha` (`w27_annual_stack.py` reads it). Track I: TI-L3-37.
+- Citations rule (SS, all layers): an OCR text-search hit not checked against print is `sourced_ocr_unverified` (a distinct attribution state, neither `sourced` nor `unsourced`); a passage not found is `unsourced`; only a citation verified at passage level counts toward a Ldgr PASS.
+
+Questions put to Strategic Suvarṇa (all answered 2026-10-01, see the block above; kept for the record; consolidated in `INDEX.md` section 9):
 
 - **Q-L3-14** — FD-1: does the asset compute Tithi-Praveśa (birth-tithi recurrence) or a lunar return; rename, recompute, or both?
 
-**Track I items arising (see INDEX section 10):** TI-L3-09, TI-L3-10, TI-L3-20, TI-L3-25.
+**Track I items arising (see INDEX section 10):** TI-L3-09, TI-L3-10, TI-L3-20, TI-L3-25, TI-L3-37 (added by the SS rulings of 2026-10-01).
