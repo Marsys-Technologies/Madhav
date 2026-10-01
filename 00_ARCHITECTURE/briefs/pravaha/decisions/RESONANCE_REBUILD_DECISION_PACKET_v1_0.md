@@ -1,10 +1,10 @@
 ---
 artifact: RESONANCE_REBUILD_DECISION_PACKET
-version: "1.0"
-status: "READY FOR NATIVE — re-synced 2026-10-01 to the MERGED runbook (#2769 + #2804 on main); steward re-measured the read-only certificates 2026-10-01: unchanged (values below); the native re-runs the §1 certificate as part of the snapshot step"
+version: "1.1"
+status: "READY FOR NATIVE — 2026-10-01 native decision: the §1 snapshot is a CERTIFIED FILE BACKUP (no reachable role can CREATE in schema public); the steward took it read-only (certificates below, unchanged); rollback is the rehearsed §4a file-mode restore (PR pending, B6.0 PART 0). The native's remaining writes: the §2 rebuild enqueue only."
 date: 2026-09-30
 author: Stream B (Śāstra), item B6.0
-decision_needed: "Native authorises and personally executes the production resonance-map rebuild (A5.4 runbook). No agent performs any write."
+decision_needed: "Native authorises and personally executes the production resonance-map rebuild (A5.4 runbook). No agent performs any write. DECIDED 2026-10-01: certified file backup; rebuild execution delegated to the steward's one-command script with the native supplying the write credential."
 ---
 
 # Decision packet — production resonance-map rebuild (R-1..R-6)
@@ -67,7 +67,9 @@ Chart `482012f1-710e-4a25-994a-93821f5871aa`, table `gochara_resonance_map`:
 
 ## The exact commands (governed path, you execute)
 
-Full text: `platform/python-sidecar/scripts/kala_gochara_cutover/resonance_rebuild_R1_R6_runbook.md`
+**Update 2026-10-01 (native decision): §1 is now a CERTIFIED FILE BACKUP, already
+taken read-only — see §"File-mode backup and rollback (v1.1)" below. The §2 rebuild and
+§3 verification are unchanged.** Full text: `platform/python-sidecar/scripts/kala_gochara_cutover/resonance_rebuild_R1_R6_runbook.md`
 (merged on main; 704 lines). In outline:
 
 1. **§0 preconditions (read-only):** migration 1080 columns present (already verified);
@@ -125,3 +127,34 @@ preimage certificate `(765, 3d270ef0a2db00b240a2acb4d45171c0)`, 765 rows all
 certificate as part of the snapshot step, substitute the fresh stamp, and proceed.
 Expected wall time: minutes for the snapshot, one governed build for the writer,
 minutes for §3 verification.
+
+## File-mode backup and rollback (v1.1, 2026-10-01)
+
+**Why:** the §1 snapshot cannot be a table — data-plane hardening leaves no reachable
+role that can CREATE in schema public (even Cloud SQL `postgres` gets `permission denied
+for schema public`). The native chose a **certified file backup**.
+
+**Already taken (read-only, steward):**
+`/Users/Dev/pravaha/run/backups/gochara_resonance_map_482012f1_20261001071822.jsonl`
+(+ `.sha256`), mirrored to `gs://gochara-century-stream/backups/resonance_map/`. 765
+lines, one `row_to_json(t)::text` per row ordered by id; **the md5 of the lines joined
+by `\n` = `3d270ef0a2db00b240a2acb4d45171c0` = the DB preimage certificate exactly** —
+the file and the live partition are comparable byte-for-byte, and the pair above
+re-verified equal to the live §1 certificate on 2026-10-01.
+
+**Rollback (runbook §4a):** `resonance_restore_from_file.py` (B6.0 PART 0) — verifies,
+before any DELETE, the file's sha256 against its sidecar, the line count and joined-md5
+against the recorded pair, and that every row belongs to this chart; then in ONE
+transaction deletes the chart's partition, inserts each row via
+`json_populate_record(NULL::gochara_resonance_map, line)` keeping the exact ids,
+recomputes the live full-row certificate and ROLLS BACK unless it equals the recorded
+pair, and proves every other chart's certificate unchanged. DSN from the environment
+only (`RESONANCE_RESTORE_DATABASE_URL`, the data_plane_builder role); default dry-run
+(full procedure, then deliberate rollback); `--execute` commits. Rehearsed on a
+disposable PG against the migration-derived schema: success reproduces the certificate;
+tampered-file, truncated-file, wrong-chart-line, digest-mismatch and sha-mismatch
+controls each refuse with the live partition provably untouched.
+
+**Consequence for this packet:** the only remaining production writes are the §2 rebuild
+enqueue and the rebuild itself. Execution is delegated to the steward's one-command
+script with the native supplying the write credential (steward note 2026-10-01).
