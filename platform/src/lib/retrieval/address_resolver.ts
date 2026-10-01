@@ -929,6 +929,14 @@ async function evaluate(ctx: ResolveCtx, expr: AddressExpression): Promise<EvalR
       // the old default (parashari_rahu_excluded) disagreed with L1's own pin, and was a label the
       // query never applied. SK (Strikaraka, the 8th karaka) exists only under kn_rao_rahu_included.
       // The query below is pinned to `school`, so the label is the school actually applied.
+      // A school that is not a declared chara-karaka formula would otherwise reach the SQL pin as a
+      // label no row can match and surface as a misleading "could not resolve"; fail by name instead.
+      const validSchools = allFormulasOf('karaka_chara_position')
+      if (expr.school !== undefined && !validSchools.includes(expr.school)) {
+        throw new AddressResolutionError(
+          `Unknown karaka school "${String(expr.school)}". Valid schools: ${validSchools.join(', ')}.`,
+        )
+      }
       const school: KarakaSchool = expr.school ?? (CANONICAL_KARAKA_SCHOOL as KarakaSchool)
       const row = await fetchKarakaRow(ctx, factSubject, school)
       if (!row.graha) {
@@ -946,7 +954,10 @@ async function evaluate(ctx: ResolveCtx, expr: AddressExpression): Promise<EvalR
         school,
         school_is_canonical: school === CANONICAL_KARAKA_SCHOOL,
         other_schools: row.other_schools,
-        fact_ids: row.fact_ids,
+        // GROUNDING (CLAUDE.md N.7 item 1): the chain sentence and `other_schools` quote the OTHER
+        // school's reading, so the facts they restate are cited too, not only the applied school's.
+        // Consumers (significator_condition, judgment, assess) ground from `entity.fact_ids`.
+        fact_ids: [...new Set([...row.fact_ids, ...row.other_schools.flatMap(o => o.fact_ids)])],
       }
       const disagreeing = row.other_schools.filter(o => o.graha !== row.graha)
       return {

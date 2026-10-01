@@ -849,6 +849,24 @@ describe('karaka(...) is pinned to the school it labels (canonical = kn_rao_rahu
     })
   }
 
+  it('an unknown school is a clear error naming the valid schools (not a silent "could not resolve")', async () => {
+    const bad = { type: 'karaka', code: 'DK', school: 'parashar_typo' } as unknown as Parameters<typeof resolveAddress>[1]
+    await expect(resolveAddress(NATIVE_CHART_ID, bad, { ayanamsha_id: AYANAMSHA })).rejects.toThrow(
+      /Unknown karaka school "parashar_typo"\. Valid schools: kn_rao_rahu_included, parashari_rahu_excluded\./,
+    )
+    // the parsed form `karaka('DK','typo')` reaches the same guard
+    const parsed = parseAddressExpression("karaka('DK','not_a_school')")
+    await expect(resolveAddress(NATIVE_CHART_ID, parsed, { ayanamsha_id: AYANAMSHA })).rejects.toThrow(/Unknown karaka school/)
+  })
+
+  it('grounds the OTHER school too: its fact_ids are on the entity because the chain/other_schools quote them', async () => {
+    const k = (await resolveAddress(NATIVE_CHART_ID, { type: 'karaka', code: 'DK' }, { ayanamsha_id: AYANAMSHA })).entities[0] as ResolvedKaraka
+    const otherIds = k.other_schools.flatMap(o => o.fact_ids)
+    expect(otherIds.length).toBeGreaterThan(0)
+    for (const id of otherIds) expect(k.fact_ids).toContain(id)
+    expect(new Set(k.fact_ids).size).toBe(k.fact_ids.length) // no duplicates
+  })
+
   it('the SQL pins formula_id to the declared schools and carries a TOTAL order (fact_key, formula_id, fact_id)', async () => {
     await resolveAddress(NATIVE_CHART_ID, { type: 'karaka', code: 'DK' }, { ayanamsha_id: AYANAMSHA })
     const { sql, params } = karakaSql()
