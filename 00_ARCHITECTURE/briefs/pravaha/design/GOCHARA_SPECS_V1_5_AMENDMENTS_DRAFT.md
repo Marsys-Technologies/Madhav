@@ -1,7 +1,7 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
 version: 0.5
-status: DRAFT — revised per ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_3 (REJECT on AM-5 only; AM-2 CLOSED; 1204 independently ACCEPTED, 2026-10-02); collects the A5.5-gate fold-in list; not a spec version
+status: ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
 supersedes: v0.4 (454881c71) — AM-5 completeness reworked (committed obligation sets + proven-empty disposition, immutable search-input snapshot bound to every interval, independent pre-seal verification, seal-replay branch, complete W1 preimages, adversarial-case matrix with an executable model); AM-2 example A repaired. v0.4 itself superseded v0.3 (340f5a7d9) — AM-2 corrected to SQL-valid 'span:' bytes and 1153's enrichment-vs-correction model; AM-5 completed with an obligation inventory, manifest binding, seal integration and the chart→global-SHARED protocol; the five v1.2 P2s listed as named gate follow-ups
@@ -26,7 +26,7 @@ Per the steward's order only **AM-5 completeness** is reworked, plus three
 small P2 repairs: seal-function replay, AM-2 example A, and W1's complete
 preimage. AM-2's normative text is CLOSED (v1.3) and unchanged apart from the
 example repair; everything else stands as accepted. The five v1.2 P2 follow-ups
-(F-3…F-7) remain named, owned and deferred. Migration discipline unchanged:
+(now F-1…F-6 — renumbered; see the table) remain named, owned and deferred. Migration discipline unchanged:
 migrations 1153–1157 are applied and **never edited**; every schema-side change
 is a NEW migration, and each one touching a live CHECK needs a protected window.
 
@@ -35,7 +35,7 @@ v1.3 ranked crosswalk: rank 1 (P1) → §AM-5 items 2, 5 + `committed_set_mismat
 (P1) → §AM-5 item 0 (immutable search-input snapshot bound to every interval and
 to both digests) · rank 3 (P2) → §AM-5 item 5 replay branch (C16) · rank 4 (P2) →
 §AM-2 example A · rank 5 (P2) → §AM-5 W1 complete preimages. Prior crosswalks:
-v1.2 rank 1 → AM-2, rank 2 → AM-5, ranks 3–7 → F-3…F-7.
+v1.2 rank 1 → AM-2, rank 2 → AM-5, ranks 3–7 → F-1…F-6.
 
 ---
 
@@ -161,7 +161,7 @@ rewritten against the actual SQL, quoted below.
 >   detection depends on. Numeric rendering is: the stored text, produced by
 >   one pinned formatter that preserves full precision, decimal, no exponent;
 >   the quantization/governance question (rounding mode, seam behaviour,
->   method-version consequence) is follow-up **F-4**, not settled here.
+>   method-version consequence) is follow-up **F-3**, not settled here.
 > - **span targets (absolute signs):** `span:1`–`span:12`, explicitly defined
 >   as absolute signs (1 = Meṣa), consistent with S:648–649's `span:<sign>`
 >   and the shipped fixture's `span:7`. No CHECK widening is needed.
@@ -512,7 +512,7 @@ conservative one and the residual trust boundary is named (§"What SQL enforces"
 > ```
 >
 > "Row content" is every column of the L1 row except audit timestamps (exact
-> enumeration is F-4's byte contract); a benign L1 rebuild that rewrites
+> enumeration is F-3's byte contract); a benign L1 rebuild that rewrites
 > identical values still changes the identity — the conservative direction.
 > Binding, all enforced:
 > (a) the snapshot insert trigger **recomputes** `input_digest` from its columns;
@@ -646,8 +646,8 @@ conservative one and the residual trust boundary is named (§"What SQL enforces"
 > **6. Manifest binding.** The generation-5 manifest-digest preimage includes
 > `inventories_digest` (the legacy helper hashes all coverage rows —
 > `gochara_kernel/ledger.py:503–518` — so this is an explicit generation-5
-> implementation shared with AM-4's `moon_on_demand` exclusion: F-7). The four
-> content tables are immutable once sealed, so the read-only
+> implementation shared with AM-4's `moon_on_demand` exclusion: F-6). The six
+> storage tables are immutable once sealed, so the read-only
 > `ka_gochara_search_inventories_digest(chart, generation)` recomputes the same
 > value forever; manifest ↔ ledger ↔ input snapshot is verified by
 > recomputation, and the snapshot's vector equals the manifest's.
@@ -683,7 +683,7 @@ conservative one and the residual trust boundary is named (§"What SQL enforces"
 |---|---|
 | uncovered obligation / zero-ledger obligation / never-inserted obligation **cannot seal** | SQL: `obligation_uncovered`, `committed_set_mismatch` |
 | sealed registry path unaccounted for **cannot seal** (first publication) | SQL: `registry_unaccounted_path` |
-| intervals from different input snapshots cannot coexist; changed inputs change every identity; L1 drift blocks seal | SQL: PK/FK, digest recomputation, `input_snapshot_drift` |
+| intervals from different input snapshots cannot coexist; changed inputs change every completion digest; L1 drift blocks seal | SQL: PK/FK, digest recomputation, `input_snapshot_drift` |
 | `ob_id`, `input_digest`, `inventory_digest` match their bytes; sealed rows immutable | SQL triggers |
 | partition cannot over-claim vs the ledger | SQL: `partition_overclaims` |
 | the inventory / `computed_empty` / exclusion basis is the **right** one | independent re-derivation (O-RP-9) — SQL enforces **presence and digest equality of the verification row only** |
@@ -799,7 +799,7 @@ Nothing in 1153–1157 is edited.
 functions) and one trigger on an existing table. It touches no live CHECK but
 **does** need the protected schema-capability route (no `CREATE` on `public`
 for the ordinary role: `deploy.yml:953–962`, `jataka-schema-capability.ts:54–67`);
-exact wiring is F-3. **Migration acceptance tests (required):** the C1–C17
+exact wiring is F-1. **Migration acceptance tests (required):** the C1–C17
 rows against a disposable database, plus the four-step seal-replay sequence.
 
 ---
@@ -999,21 +999,32 @@ Text unchanged from v0.2:
 | AM-2 | UUIDv8 + O-RX-1a; SQL-valid `span:`/`star:`/`point:` bytes; enrichment-vs-correction per 1153; UUID + post-mask vectors | §6.1 | no | no |
 | AM-3 | Two transaction categories; chart lock BEFORE legacy coverage writes | §10.1 | no | no |
 | AM-4 | Moon/day EPHEMERAL; query receipt storage/identity/manifest exclusion; P6-context deferral | §6.2/§10.1 | no | no |
-| AM-5 | `partition_key=event_class` + **search-input snapshot, committed obligation sets (absent ≠ proven-empty), interval ledger, independent verification, seal trigger with replay branch**, manifest binding, lock protocol, serving states | §10.1 | **yes — one additive migration (6 tables, 4 functions, 1 trigger); protected schema-capability route (F-3)** | no |
+| AM-5 | `partition_key=event_class` + **search-input snapshot, committed obligation sets (absent ≠ proven-empty), interval ledger, independent verification, seal trigger with replay branch**, manifest binding, lock protocol, serving states | §10.1 | **yes — one additive migration (6 tables, 4 functions, 1 trigger); protected schema-capability route (F-1)** | no |
 | AM-6 | `sad_bala_sufficient` v1.0; `null_state='unqualified'`; score-qualification ≠ admission | factor catalogue | no | picked: C |
 | AM-7 | `'av_qualifier'` + P5 contract completed (identity/applicability/lineage/read-back) | relationship_record | 1204 (kept), protected window | no |
 | AM-8 | P6 testimony template; five frame kinds; future designed migration | new (template) | 1205 SPLIT OUT | no |
 | AM-9 | L0 Rāhu/Ketu finding (provenance narrowed) | none | no | L0 owner's ruling |
 
-## A5.5-gate follow-ups (v1.2 ranks 3–7, P2 — named and owned, NOT expanded in this round)
+## A5.5-gate follow-ups — Codex v1.4 ranked list (P2; owed at the A5.5 gate; no P1 blocks)
 
-| ID | v1.2 rank | Follow-up | Owner | Blocks |
+Numbering follows Codex v1.4's ranking (**F-1…F-6**). Old label → new:
+F-3→F-1, (new)→F-2, F-4→F-3, F-5→F-4, F-6→F-5, F-7→F-6. Owner **A** = Stream A
+(build/delivery), **B** = Stream B (spec/oracle/measurement), **S** = steward.
+
+| ID | Codex rank | Required completion | Owner | Blocks |
 |---|---:|---|---|---|
-| F-3 | 3 | Inventory migration (6 tables, 4 functions, seal trigger): correct the "no protected window" claim (done in AM-5 schema impact) and specify the exact schema-capability route and runner wiring (`deploy.yml:953–962`, `jataka-schema-capability.ts:54–67`) | Stream A (migration author) with steward (dispatch) | receipt migration acceptance |
-| F-4 | 4 | Full-precision point formatter pin and the quantization/rounding/seam/method-version question; canonical-byte contracts for physical-object, relationship-record and window IDs (frame args, nulls, ordered versioned prerequisites, source/citation serialization, intervals, generation/input binding); qualified-geometry declaration before phase-one solving and re-solve-vs-re-score reason (AM-5's snapshot, pins and obligations are its input); retain O-RX-1a and invalidation tests (O-RW-1) | Stream B (bytes/spec) + Stream A (identity builder) | A5.5 identity gate |
-| F-5 | 5 | Typed operand storage for AM-6 rūpas and AM-7 bindus/declaration binding; declaration-key bytes and L1 build/convention identity; exact P5a/P5b path IDs and applicability storage; place `null_state` on the versioned `ka_gochara_factor` row (1154:310–334), not the membership row, and name the edition/translator for Phaladīpikā IV.22–23 | Stream B (AM-6/AM-7 text, one-line SQL-location correction still due, per steward scope) + Stream A (storage) | AM-6/AM-7 writer acceptance |
-| F-6 | 6 | Complete synthetic P5 semantic fixtures: numeric bindu mismatch, BAV/SAV selection, independent P5a/P5b missingness, citation-through-declaration via an actual evaluator path (not the test-local `consumeDeclaration`); correct the oracle map's stale 1205 reference (line 133) at its next version; replace B6-F16/F17 sentinels | Stream A (PR #2817 fixtures) + Stream B (oracle map v1.2) | P5/A5.5 acceptance (not vocabulary-only 1204) |
-| F-7 | 7 | Moon query log: table/API name, receipt key, query context, evaluator versions, canonical result rendering excluding self-referential digest/audit fields; generation-5 manifest-digest implementation (also carrying AM-5's `inventories_digest`) with before/after-seal proof; P6 parent-context/containment stays held | Stream B (AM-4 text) + Stream A (implementation) | Moon/day implementation acceptance |
+| F-1 | 1 | Additive storage + seal checks for AM-5 (6 tables, 4 functions, seal trigger, replay branch) as new migration file(s) with protected-runner wiring in the SAME window as 1204; database adversaries on a disposable PG: wrong manifest, post-seal mutation rejection, full replay lifecycle (initial seal → identical replay → registry advance → replay again) | **B** drafts the migration + DB tests (per steward M20261001T201843-f8e5), **S** schedules the protected window | inventory migration acceptance |
+| F-2 | 2 | Bind exclusion `basis` / `ruling_ref` into the verified inventory preimage (or an explicit separate comparison); mutation tests; revised digest vectors (W1 and the model) | **B** | AM-5 verification acceptance |
+| F-3 | 3 | Canonical bytes and storage-domain mapping (the synthetic `self` token vs stored `affected_person='native'`; period-lord role tokens → concrete grahas via the pinned dasha snapshot; frame args, target bytes, timestamp precision, delimiters); full-precision formatter / quantization question; declared class census (an absent class reports `not_searched`); registry-version selection (historical/superseded versions neither vanish nor double-count); candidate replacement/invalidation across verification rows, manifest bindings and derived outputs; qualified-geometry planning and O-RW-1 invalidation; retain O-RX-1a | **B** (bytes/spec) + **A** (identity builder, writer) | A5.5 identity and writer gate |
+| F-4 | 4 | Typed rūpa/bindu operand storage; declaration-key bytes and L1 build/convention identity; P5a/P5b path ids and applicability storage; `null_state` on the versioned `ka_gochara_factor` row (1154:310–334), **not** the membership (draft text at AM-6 still says membership — one-line correction owed); edition/translator for Phaladīpikā IV.22–23 | **B** (AM-6/AM-7 text) + **A** (storage) | AM-6/AM-7 writer acceptance |
+| F-5 | 5 | Actual P5 evaluator fixtures: numeric bindu mismatch, BAV/SAV selection, independent P5a/P5b missingness, citation through declaration (not the test-local `consumeDeclaration`); repair the oracle map's stale 1205 reference (line 133) and the B6-F16/F17 sentinels | **A** (PR #2817 fixtures/evaluators) + **B** (oracle map v1.2) | P5/A5.5 acceptance (not vocabulary-only 1204) |
+| F-6 | 6 | Moon receipts: table/API, key, canonical result rendering excluding self-referential digest/audit fields; generation-5 manifest-digest implementation carrying AM-5's `inventories_digest` and excluding `moon_on_demand`, with before/after-seal evidence; P6 context/containment stays held | **B** (AM-4 text) + **A** (implementation) | Moon/day implementation acceptance |
+
+Also owed from Codex v1.4 (folded in the rows above or already applied): the
+model is a partial abstraction (partition/manifest/lifecycle/replay fidelity,
+no independent derivation) — SQL-level adversaries in F-1 replace it as the
+acceptance evidence; wording scoped so that changed inputs change **completion
+digests**, not the nine-field `ob_id`.
 
 New oracle proposed by AM-5 for the successor oracle file (frozen v1.4 untouched):
 **O-RP-9** — an independent re-derivation of every class's inventory (pins,
