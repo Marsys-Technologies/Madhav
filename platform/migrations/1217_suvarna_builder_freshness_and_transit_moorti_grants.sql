@@ -68,16 +68,18 @@
 --      nirmana_invalidate_registry_receipts() / nirmana_invalidate_chart_receipts()
 --      (migration 596, lines 56-107), which UPDATE asset_freshness as the CALLER. They fire only on
 --      UPDATE OF registry-contract columns of asset_registry or birth/identity columns of
---      charts. The builder's own asset_registry UPDATE touches only service_health /
---      last_invoked_at / last_selftest_at, which are NOT in the trigger column lists, and
+--      charts. The builder's own asset_registry write is a column-level UPDATE only (1070
+--      grants UPDATE on exactly service_health / last_invoked_at / last_selftest_at, no
+--      table-level UPDATE), and those columns are NOT in the trigger column lists, and
 --      it holds no UPDATE on charts — so they do not fire for the builder today. Were
 --      they ever to, UPDATE on asset_freshness is the privilege they would need, which
 --      this migration supplies; no further grant would be required.)
 --   bg_transit_moorti:
 --     INSERT ... ON CONFLICT DO UPDATE   l0_transit.py:1186 (the only DML in non-test
 --                                        source)  -> needs INSERT + UPDATE
---     SELECT                             services/ka_moorti_nirnaya/writer.py:82-85
---                                        -> SELECT, already held (1073)
+--     SELECT                             services/ka_moorti_nirnaya/writer.py:98-101
+--                                        (_FETCH_MOORTI_TABLE_SQL, `FROM bg_transit_moorti`,
+--                                        executed at :256) -> SELECT, already held (1073)
 --     DELETE / TRUNCATE                  none (the writer never deletes moorti rows)
 --   Also verified live, so no further grant is needed or issued:
 --     * neither table has a serial/identity column or owns a sequence (pg_depend: 0 rows)
@@ -156,8 +158,10 @@
 --
 -- IDEMPOTENT: GRANT of an already-held privilege is a no-op in PostgreSQL; the migration
 -- is re-runnable, adds privileges only, and revokes nothing. The DO block is a
--- fail-closed self-check (CLAUDE.md §N.8): it raises if either grant did not take effect,
--- so a silent no-op cannot be recorded as applied.
+-- fail-closed self-check (CLAUDE.md §N.8): it raises if either grant did not take effect
+-- (so a silent no-op cannot be recorded as applied) AND if DELETE, TRUNCATE, REFERENCES or
+-- TRIGGER is effective for the builder on either table (least privilege asserted at apply
+-- time; a pre-existing wider grant fails the migration loudly instead of being blessed).
 --
 -- VERIFY AFTER APPLY (read-only; run as suvarna_reader or any role that can call the
 -- catalog functions). Expected values in the right-hand column:
@@ -193,7 +197,9 @@ GRANT INSERT, UPDATE ON TABLE public.bg_transit_moorti TO data_plane_builder;
 DO $$
 DECLARE
   missing text := '';
+  excess  text := '';
 BEGIN
+  -- Positive post-condition: the four granted privileges are effective.
   IF NOT has_table_privilege('data_plane_builder', 'public.asset_freshness', 'INSERT')
     THEN missing := missing || ' asset_freshness.INSERT'; END IF;
   IF NOT has_table_privilege('data_plane_builder', 'public.asset_freshness', 'UPDATE')
@@ -204,5 +210,28 @@ BEGIN
     THEN missing := missing || ' bg_transit_moorti.UPDATE'; END IF;
   IF missing <> '' THEN
     RAISE EXCEPTION 'migration 1217: data_plane_builder grants did not take effect:%', missing;
+  END IF;
+
+  -- Negative post-condition (least privilege asserted at apply time): nothing beyond
+  -- SELECT/INSERT/UPDATE may be effective for data_plane_builder on either table, from any
+  -- source (direct grant, PUBLIC, or a role membership).
+  IF has_table_privilege('data_plane_builder', 'public.asset_freshness', 'DELETE')
+    THEN excess := excess || ' asset_freshness.DELETE'; END IF;
+  IF has_table_privilege('data_plane_builder', 'public.asset_freshness', 'TRUNCATE')
+    THEN excess := excess || ' asset_freshness.TRUNCATE'; END IF;
+  IF has_table_privilege('data_plane_builder', 'public.asset_freshness', 'REFERENCES')
+    THEN excess := excess || ' asset_freshness.REFERENCES'; END IF;
+  IF has_table_privilege('data_plane_builder', 'public.asset_freshness', 'TRIGGER')
+    THEN excess := excess || ' asset_freshness.TRIGGER'; END IF;
+  IF has_table_privilege('data_plane_builder', 'public.bg_transit_moorti', 'DELETE')
+    THEN excess := excess || ' bg_transit_moorti.DELETE'; END IF;
+  IF has_table_privilege('data_plane_builder', 'public.bg_transit_moorti', 'TRUNCATE')
+    THEN excess := excess || ' bg_transit_moorti.TRUNCATE'; END IF;
+  IF has_table_privilege('data_plane_builder', 'public.bg_transit_moorti', 'REFERENCES')
+    THEN excess := excess || ' bg_transit_moorti.REFERENCES'; END IF;
+  IF has_table_privilege('data_plane_builder', 'public.bg_transit_moorti', 'TRIGGER')
+    THEN excess := excess || ' bg_transit_moorti.TRIGGER'; END IF;
+  IF excess <> '' THEN
+    RAISE EXCEPTION 'migration 1217: data_plane_builder holds privileges beyond INSERT/UPDATE:%', excess;
   END IF;
 END $$;
