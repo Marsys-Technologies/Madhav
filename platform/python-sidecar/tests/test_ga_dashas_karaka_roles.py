@@ -245,6 +245,31 @@ class TestProvenance:
         assert _row("Ketu")["citation_human"] == "Human citation"
 
 
+class TestProvenanceSuffixIsAFixedToken:
+    """The suffix is a fixed provenance token, not narration (E6 `decline` rests on this):
+    it states which school the role labels belong to and nothing about the chart. This golden
+    pins its exact text so it cannot grow into narration unnoticed (SS, 2026-10-02)."""
+
+    SUFFIX = "; karaka_school=kn_rao_rahu_included (ga_sensitive karaka_chara_position)"
+
+    def test_exact_suffix_text(self):
+        from ga_writers.ga_dashas_writer import _karaka_provenance_suffix
+        assert _karaka_provenance_suffix("AK", ["Moon:AK"]) == self.SUFFIX
+        assert _karaka_provenance_suffix(None, ["Moon:AK"]) == self.SUFFIX
+        assert _karaka_provenance_suffix("AK", []) == self.SUFFIX
+
+    def test_empty_when_the_row_claims_no_role(self):
+        from ga_writers.ga_dashas_writer import _karaka_provenance_suffix
+        assert _karaka_provenance_suffix(None, []) == ""
+
+    def test_suffix_is_independent_of_the_role_or_graha(self):
+        from ga_writers.ga_dashas_writer import _karaka_provenance_suffix
+        outs = {_karaka_provenance_suffix(r, k) for r, k in
+                (("AK", ["Moon:AK"]), ("DK", ["Mercury:DK", "Moon:AK"]), ("PK", ["Rahu:PK"]))}
+        assert outs == {self.SUFFIX}  # carries no chart value, no role, no graha name
+        assert len(self.SUFFIX) == 73
+
+
 _MOON_SID_DEG = 325.5
 _BIRTH_JD = swe.julday(1984, 2, 5, 5.21667)
 
