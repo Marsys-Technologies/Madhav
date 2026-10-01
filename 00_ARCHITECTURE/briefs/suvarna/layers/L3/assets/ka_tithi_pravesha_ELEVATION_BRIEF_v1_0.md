@@ -20,11 +20,11 @@ ledger_gap_ids: ["ka_tithi_pravesha-Earn.build_record", "ka_tithi_pravesha-Cost.
 
 # ka_tithi_pravesha — Tithi-Praveśa annual chart per year of life: lunar-return instant, annual chart and a verification state
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in section 7 and in the INDEX. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
-*Line citations: `file:N`; a bare `:N` is a line of the asset's own writer, `platform/python-sidecar/pipeline/orchestrator/writers/ka_tithi_pravesha.py`.*
+*Line citations: `file:N`; a bare `:N` is a line of the asset's own writer, `platform/python-sidecar/services/ka_tithi_pravesha/writer.py`.*
 
 `services/ka_tithi_pravesha/writer.py` (+ `logic.py`): reads the natal Moon's sidereal longitude from L1 (`graha_position`, `longitude_sidereal`; the same fact `ka_moorti_nirnaya` reads), and for each of 120 praveśa years (`DEFAULT_MAX_PRAVESHA_YEAR`, `logic.py:82`) finds by two-stage root-finding the instant the transiting Moon returns to that exact natal longitude nearest the solar-birthday anniversary, casts the annual chart for that instant with the L1 engine (`pyjhora_adapter`, the engine `ga_tajaka` uses for the solar-return chart), and stores the window (this return to the next), the praveśa lagna, the nine-graha positions as a JSON composite, the root-find audit (`ephemeris_audit_jsonb`), `natal_moon_longitude_deg`, `moon_fact_id`, and a verification state. The earned signal is the model for L3: `verification_pass_status = 'two_pass_verified'` exactly when the root-find converged AND the annual chart's own Moon longitude equals natal within `LUNAR_RETURN_TOL_DEG = 0.01` (`:208`), else `divergent_flagged`; the registry integrity contract re-derives the status from the stored audit in both directions (migration 670, conjuncts (b)-(c)). The citation is honest: `classical_source_citation = 'not_in_corpus'` on every row (`:65`). Replace-after-assembly; served by `query_tithi_pravesha.ts:91` and the `now` view.
 
@@ -34,15 +34,15 @@ ledger_gap_ids: ["ka_tithi_pravesha-Earn.build_record", "ka_tithi_pravesha-Cost.
 |---|---|---|
 | kind (declarations 1.6.0) | data | `platform/scripts/governance/asset_declarations.json` |
 | registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2558` | seed (live may differ by migration; see CF-03) |
-| writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/ka_tithi_pravesha.py:6`; registry `has_writer` = True | writers dir / census `Build.registered` |
+| writer / `@register` | `platform/python-sidecar/services/ka_tithi_pravesha/writer.py:234`; registry `has_writer` = True | writers dir / census `Build.registered` |
 | target table(s) | `kala_tithi_pravesha`; count_sql tables: kala_tithi_pravesha | census |
 | live rows / floor | 120 / 120 | census `live_rows` (chart-scoped count_sql); floor from layer instance 1.1 (REG 2026-09-30) |
 | catalog_status | CURRENT | census |
 | registry state read for the rebuild plan (2026-10-01 14:5x) | throughput `lit`; freshness `fresh`; output-digest spec present; service_health n/a (not a service) | `/Users/Dev/suvarna-evidence/Rebuild/reg_state.json` (outside the repo) |
 | depends_on (live, + migration 1210) | `ga_positions` | layer instance 3.4 (REG 2026-09-30); migration 1210 |
 | blast radius | direct 0 / transitive 0 (census blocking_radius, every layer); named (REG 2026-09-30): none | census `blocking_radius`; names from REG |
-| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/tools/kala_views/now.ts`, `registry/layers/L3_kala/query_tithi_pravesha.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): `services/gochara_v3/mechanisms/w27_annual_stack.py` | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
-| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts:91` reads `kala_tithi_pravesha`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, section 1) | declarations 1.6.0; offline Dens scan |
+| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/tools/kala_views/now.ts`, `src/lib/retrieval/registry/knowledge/source_query_availability.ts`, `registry/layers/L3_kala/query_tithi_pravesha.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): `services/gochara_v3/mechanisms/w27_annual_stack.py` | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
+| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts:91` reads `kala_tithi_pravesha`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, `INDEX.md` section 9.1) | declarations 1.6.0; offline Dens scan |
 | Nirmāṇa freeze | frozen under t0, 2026-09-07 | `NIRMANA_SUPERSESSION_RECORD_v1_0.md` §2.3 |
 | role / scoring mode | contribution (CEN `L3.scoring`); not a reference layer | census |
 
@@ -83,7 +83,7 @@ Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry r
 | ka_tithi_pravesha-Cost.baseline | Cost | information | CF-05 |
 | ka_tithi_pravesha-Carr.detector | Carr | detector | D3: re-find a sampled return instant by root-finding on the stored positions; the status re-derivation is the existing check (CF-07) |
 | census: Ldgr (no reading) | Ldgr | detector | `classical_source_citation` not in `CITATION_COLUMNS` (CF-08); its value `not_in_corpus` is an honest absence, which a presence-based cell would misread as populated |
-| new: tithi-N1 | honesty | real or not (acharya question) | definition: the registry item and the module call it Tithi-Praveśa, but the module defines it (`logic.py:7-21`) as the Moon's return to its natal sidereal LONGITUDE nearest the solar birthday — a lunar return — from "established Jyotiṣa doctrine per the CLAUDECODE task brief's explicit framing", with no spec document and no source in the corpus. As the technique is usually described, a tithi return is the recurrence of the birth tithi (Sun–Moon elongation), a different instant. Not verified against a primary source in this lane; the cited honesty (`not_in_corpus`) is exactly the right posture, and the question is whether the name matches the computation |
+| new: tithi-N1 | honesty | real or not (acharya question) | definition: the registry item and the module call it Tithi-Praveśa, but the module defines it (`logic.py:7-20`) as the Moon's return to its natal sidereal LONGITUDE nearest the solar birthday — a lunar return — from "established Jyotiṣa doctrine per the CLAUDECODE task brief's explicit framing" and the glossary entry "Tithi-Praveśa (annual lunar-return chart)" of `KALA_TRANSFORMATION_HANDOFF_v1_0.md`; it states that no spec document beyond the one-line registry item exists. A return to the natal Moon LONGITUDE is a lunar return; by its name a tithi return would be the recurrence of the birth tithi (Sun–Moon elongation), a different instant. That reading is an inference from the name and is not verified against a primary source in this lane; the cited honesty (`not_in_corpus`) is the right posture, and the question is whether the name matches the computation |
 | new: tithi-N2 | Carr | information | the two passes of `two_pass_verified` both call `pyjhora_adapter` (the root-find through `_moon_longitude` and the annual chart through `_annual_chart`, `:25`): an internal-consistency check, not an independent derivation (the registry contract states it as a re-derivation of the status from the audit, which is what it is) |
 | census: Null/Narr | Null, Narr | detector | `prose_fields` null: stores a sign name from `reference_signs`, positions and audit numbers, no composed text; proposed `[]`; CF-06 |
 
@@ -143,6 +143,7 @@ No Track I item touches this asset. It is the smoke-build leaf of the canonical-
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D3 + the existing D2
 - **CF-08** — Ldgr: assets with no recognised citation column, and presence read on build tags. *This asset:* `classical_source_citation`
 - **CF-10** — Build.history PARTIAL/FAIL is a record of past errors; no edit changes it. *This asset:* 3 / 3
+- **CF-31** — integrity_check_sql scope audit (the I-7 class: table-wide checks coupled to other charts). *This asset:* table-wide `integrity_check_sql` (audit; none measured false)
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
@@ -158,7 +159,7 @@ Natural key `(chart_id, ayanamsha_id, pravesha_year)` (DB UNIQUE). Volatile colu
 
 No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 7):
+Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
 
 - **Q-L3-14** — FD-1: does the asset compute Tithi-Praveśa (birth-tithi recurrence) or a lunar return; rename, recompute, or both?
 

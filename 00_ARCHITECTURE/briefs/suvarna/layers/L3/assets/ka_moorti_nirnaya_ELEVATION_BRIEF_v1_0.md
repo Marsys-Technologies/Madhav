@@ -15,34 +15,34 @@ disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); any output change goes to SS (R5) and, because `ka_gochara` reads this table, SS notifies Pravāha before a wave touches it (the L0 route for R9 assets, by analogy)"
 decisions_applied: "none specific to L3 yet; L0 rulings by analogy, PROVISIONAL until the J1 review"
 track_i_items: [TI-L3-09, TI-L3-10, TI-L3-13, TI-L3-20]
-ledger_gap_ids: ["ka_moorti_nirnaya-Build.completion", "ka_moorti_nirnaya-Earn.build_record", "ka_moorti_nirnaya-Cost.baseline", "ka_moorti_nirnaya-Dens.served", "ka_moorti_nirnaya-Build.history", "ka_moorti_nirnaya-Carr.detector", "new: moorti-N1", "new: moorti-N2", "new: moorti-N3"]
+ledger_gap_ids: ["ka_moorti_nirnaya-Build.completion", "ka_moorti_nirnaya-Earn.build_record", "ka_moorti_nirnaya-Cost.baseline", "ka_moorti_nirnaya-Dens.served", "ka_moorti_nirnaya-Build.history", "ka_moorti_nirnaya-Carr.detector", "new: moorti-N4", "new: moorti-N1", "new: moorti-N2", "new: moorti-N3"]
 ---
 
 # ka_moorti_nirnaya — Moorti-nirṇaya: classical gold/silver/copper/iron quality of each transit sign-stay
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in section 7 and in the INDEX. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
-*Line citations: `file:N`; a bare `:N` is a line of the asset's own writer, `platform/python-sidecar/pipeline/orchestrator/writers/ka_moorti_nirnaya.py`.*
+*Line citations: `file:N`; a bare `:N` is a line of the asset's own writer, `platform/python-sidecar/services/ka_moorti_nirnaya/writer.py`.*
 
-`services/ka_moorti_nirnaya/writer.py` (+ `logic.py`): for the eight grahas other than the Moon (`MOORTI_GRAHAS`, a disclosed scope choice) it reads daily tropical positions from `ephemeris_daily` over a horizon of 60 days back to 400 days forward (`:73-74`, `today = date.today()` at `:293`), corrects to sidereal with one ayanamsha offset, detects contiguous sign runs, and for each run grades the stay by the Moon's nakshatra AT THE INGRESS DAY counted from the native's janma nakshatra (the L1 fact, `janma_nakshatra_fact_id`), looking the quality up verbatim in L0 `bg_transit_moorti` (27 rows; Phaladeepika Ch.26, BPHS Ch.28; `:99`). Honesty discipline is built in: a run whose start touches the horizon edge cannot be graded (`moorti_computed = false`, the moorti fields NULL, `source_qualification = 'unsourced'`), a computed row is stamped `algorithmic_approximation` and `corpus_verifiable = false` because the mūrti rule form is not in the served corpus (`logic.py:70-107`), and every row carries an `upstream_fingerprint`. Light writer; served by `query_moorti_nirnaya.ts:107` and the `now` view. **Read by `ka_gochara` (declared) and by Pravāha-owned code**: `services/gochara_v3/mechanisms/w22_moorti_nirnaya.py`, `gochara_v3/context.py:582`, and `services/ka_vedha_gochara/freshness.py:83-102` (a freshness check on this table's `upstream_fingerprint`).
+`services/ka_moorti_nirnaya/writer.py` (+ `logic.py`): for the eight grahas other than the Moon (`MOORTI_GRAHAS`, a disclosed scope choice) it reads daily tropical positions from `ephemeris_daily` over a horizon of 60 days back to 400 days forward (the default window, `:73-74`, from `today = date.today()` at `:293`; the caller can already pin the window through `ctx.config['horizon_start']` / `['horizon_end']`, `:296-301`), corrects to sidereal with one ayanamsha offset, detects contiguous sign runs, and for each run grades the stay by the Moon's nakshatra at the ingress, counted from the native's janma nakshatra (the L1 fact, `janma_nakshatra_fact_id`), There are two grading regimes: with `KERNEL_INSTANT_GRADING = True` (`:82`) each non-truncated run is graded at the true kernel sign-ingress instant and stamped `precision_regime = 'instant_grain'`; if the instant does not solve, that run falls back to the ingress date's daily Moon and is stamped `date_grain`. The quality is then looked up verbatim in L0 `bg_transit_moorti` (27 rows; Phaladeepika Ch.26, BPHS Ch.28; `:99`). Honesty discipline is built in: a run whose start touches the horizon edge cannot be graded (`moorti_computed = false`, the moorti fields NULL, `source_qualification = 'unsourced'`), a computed row is stamped `algorithmic_approximation` and `corpus_verifiable = false` because the mūrti rule form is not in the served corpus (`logic.py:70-107`), and every row carries an `upstream_fingerprint`. Light writer; served by `query_moorti_nirnaya.ts:107` and the `now` view. **Read by `ka_gochara` (declared) and by Pravāha-owned code**: `services/gochara_v3/mechanisms/w22_moorti_nirnaya.py`, `gochara_v3/context.py` (`_fetch_moorti_rows`, `:581`, SQL at `:605`), and `services/ka_vedha_gochara/freshness.py:83-102` (a freshness check on this table's `upstream_fingerprint`).
 
-**Canonical chart: `lit`, fresh, 74 rows.** Registry state: throughput `lit`, freshness `fresh`, spec present; latest run `8d74930c` complete/skip_no_delta 2026-09-07; 3 errors and 3 aborts (latest error 2026-08-08, the `KeyError: 1` fixed in the writer). Live 74 against floor 72 (+2) and a build record of 71 rows: the window moves with the build date (CF-28). One of the five assets the rebuild plan lists as currently `lit` and downstream of the plan (section 1.4): it flips `stale` if a plan asset completes with `output_changed` true, and two of those five would then fail DEP-ASSERT for `ka_gochara`; `ka_moorti_nirnaya` is a dependency of `ka_gochara` (family, Pravāha). Nirmāṇa-frozen under t0 (2026-09-07).
+**Canonical chart: `lit`, fresh, 74 rows.** Registry state: throughput `lit`, freshness `fresh`, spec present; latest run `8d74930c` complete/skip_no_delta 2026-09-07; 3 errors and 3 aborts (latest error 2026-08-08, the `KeyError: 1` fixed in the writer). Live 74 against floor 72 (+2) and a build record of 71 rows: consistent with a window that moves with the build date (CF-28; an inference from the code). The rebuild plan (section 1.4) names two assets at risk of a DEP-ASSERT failure (`bo_sangati` and `ka_vedha_gochara`) and says `ka_moorti_nirnaya` and `ka_gochara_resonance` likewise follow `bg_transit_rules`: this asset goes `stale` if `bg_transit_rules` completes with `output_changed` true, and `ka_moorti_nirnaya` is a dependency of `ka_gochara` (family, Pravāha). Nirmāṇa-frozen under t0 (2026-09-07).
 
 | field | value | source |
 |---|---|---|
 | kind (declarations 1.6.0) | data | `platform/scripts/governance/asset_declarations.json` |
 | registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2585` | seed (live may differ by migration; see CF-03) |
-| writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/ka_moorti_nirnaya.py:6`; registry `has_writer` = True | writers dir / census `Build.registered` |
+| writer / `@register` | `platform/python-sidecar/services/ka_moorti_nirnaya/writer.py:261`; registry `has_writer` = True | writers dir / census `Build.registered` |
 | target table(s) | `kala_moorti_nirnaya`; count_sql tables: kala_moorti_nirnaya | census |
 | live rows / floor | 74 / 72 | census `live_rows` (chart-scoped count_sql); floor from layer instance 1.1 (REG 2026-09-30) |
 | catalog_status | CURRENT | census |
 | registry state read for the rebuild plan (2026-10-01 14:5x) | throughput `lit`; freshness `fresh`; output-digest spec present; service_health n/a (not a service) | `/Users/Dev/suvarna-evidence/Rebuild/reg_state.json` (outside the repo) |
 | depends_on (live, + migration 1210) | `ga_positions`, `bg_ephemeris`, `bg_transit_rules` | layer instance 3.4 (REG 2026-09-30); migration 1210 |
 | blast radius | direct 1 / transitive 27 (census blocking_radius, every layer); named (REG 2026-09-30): L3 `ka_gochara` | census `blocking_radius`; names from REG |
-| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/tools/kala_views/now.ts`, `registry/layers/L3_kala/query_moorti_nirnaya.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): `scripts/kala_gochara_cutover/step04_apply_verify.py`, `services/gochara_v3/context.py`, `services/gochara_v3/mechanisms/w22_moorti_nirnaya.py`, `services/ka_vedha_gochara/freshness.py` | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
-| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts:107` reads `kala_moorti_nirnaya`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, section 1) | declarations 1.6.0; offline Dens scan |
+| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/tools/kala_views/now.ts`, `src/lib/retrieval/registry/knowledge/source_query_availability.ts`, `registry/layers/L3_kala/query_moorti_nirnaya.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): `scripts/kala_gochara_cutover/step04_apply_verify.py`, `services/gochara_v3/context.py`, `services/gochara_v3/mechanisms/w22_moorti_nirnaya.py`, `services/ka_vedha_gochara/freshness.py` | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
+| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts:107` reads `kala_moorti_nirnaya`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, `INDEX.md` section 9.1) | declarations 1.6.0; offline Dens scan |
 | Nirmāṇa freeze | frozen under t0, 2026-09-07 | `NIRMANA_SUPERSESSION_RECORD_v1_0.md` §2.3 |
 | role / scoring mode | contribution (CEN `L3.scoring`); not a reference layer | census |
 
@@ -78,14 +78,15 @@ Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry r
 
 | gap id (ledger `asset_gaps.jsonl` @ 2a78ec64d, census cell, or `new:`) | gate | class | note |
 |---|---|---|---|
-| ka_moorti_nirnaya-Build.completion | Build | real (rolling window) | build record `rows_written = 71` disagrees with live 74 (chart 482012f1): a skip_no_delta run after the window moved; CF-28 |
+| ka_moorti_nirnaya-Build.completion | Build | real (rolling window) | build record `rows_written = 71` disagrees with live 74 (chart 482012f1): consistent with a skip_no_delta run after the window moved (an inference from the code; the cell does not give the cause); CF-28 |
 | ka_moorti_nirnaya-Dens.served | Dens | Dens rev-1 reading | offline rev-7 FAIL: "a tier column is selected without a contract" (`quality_tier`): the case where a contract plus tier gives PASS (CF-04) |
+| new: moorti-N4 | Vocab | information | the state vocabularies are local tuples in `logic.py` (`SOURCE_QUALIFICATIONS`, `PRECISION_REGIMES`, `:90-91`) mirroring a migration-1082 CHECK, while the writer stamps `precision_regime` with the string literals `date_grain` / `instant_grain` (`:380`) rather than importing them; low severity (the CHECK catches a wrong value at insert) |
 | ka_moorti_nirnaya-Build.history | Build | history | 3 errors, 3 aborts; latest 2026-08-08 `KeyError: 1` (fixed); CF-10 |
 | ka_moorti_nirnaya-Earn.build_record | Earn | detector | CF-05 |
 | ka_moorti_nirnaya-Cost.baseline | Cost | information | CF-05 |
 | ka_moorti_nirnaya-Carr.detector | Carr | detector | D3: re-count nakshatra offsets for a sample from the janma nakshatra and the ingress Moon position (CF-07) |
 | census: Ldgr (no reading) | Ldgr | detector | `moorti_classical_citation` not in `CITATION_COLUMNS` (CF-08); the row also carries `source_qualification`/`corpus_verifiable`, the honest state the gate has no field for |
-| new: moorti-N1 | Idem | real | horizon from the build date (CF-28); edge rows (`start_truncated`) change with the as-of by design, and `rows_written` differs from live after a window move |
+| new: moorti-N1 | Idem | real | default horizon from the build date (CF-28; a config pin exists but the build does not pass one); edge rows (`start_truncated`) change with the as-of by design, and `rows_written` differs from live after a window move |
 | new: moorti-N2 | Build.dag | information | downstream coupling is wider than the registry shows: `ka_gochara` is the declared dependent (census radius 1/27), and Pravāha-owned python reads the table and its `upstream_fingerprint` (above); a change here is a change to the Gochara family's inputs |
 | new: moorti-N3 | honesty | information | computed moorti is 'algorithmic_approximation', `corpus_verifiable = false` on every row by doctrine N7: the asset cannot reach a verse-cited state until the rule form is in the corpus (an L0 question: `bg_texts`/`bg_rules`) |
 | census: Null/Narr | Null, Narr | detector | `prose_fields` null: `phala_brief` is copied verbatim from L0 `bg_transit_moorti` (`:421`), not composed; proposed `[]`; CF-06 |
@@ -101,7 +102,7 @@ Approver under Track A brief §10: **Steward (G16); any output change goes to SS
 ### FD-1 · Pin the as-of date and state the rolling floor
 
 - **Answers:** new moorti-N1; CF-28, CF-03
-- **Change:** as for `ka_kota_chakra` FD-1: pinned `as_of_date` recorded in the build note; floor 72 declared rolling (N/A by cause, CF-28) rather than refreshed to a build-date count
+- **Change:** as for `ka_kota_chakra` FD-1, but the writer already accepts `ctx.config` `horizon_start`/`horizon_end`: the fix is to pass those from the build and record them in the build note (no writer change needed for the pin itself); floor 72 declared rolling (N/A by cause, CF-28) rather than refreshed to a build-date count
 - **Files / declaration / migration:** `services/ka_moorti_nirnaya/writer.py:293`
 - **Failing-first test and mutation:** CF-28 shape
 - **Output change:** none for a fixed as-of
@@ -148,10 +149,11 @@ No Track I item touches this asset. The DB9 dict-row fix is already in the write
 - **CF-08** — Ldgr: assets with no recognised citation column, and presence read on build tags. *This asset:* `moorti_classical_citation`
 - **CF-10** — Build.history PARTIAL/FAIL is a record of past errors; no edit changes it. *This asset:* 3 / 3
 - **CF-28** — Rolling-horizon writers: as-of pin, calendar-safe horizon, floors that move with the build date. *This asset:* FD-1
+- **CF-31** — integrity_check_sql scope audit (the I-7 class: table-wide checks coupled to other charts). *This asset:* table-wide `integrity_check_sql` (audit; none measured false)
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
-Natural key `(chart_id, ayanamsha_id, graha, window_start)` (DB UNIQUE). Volatile columns excluded: `id`, `computed_at`. The table already stores an `upstream_fingerprint`; use it as the cross-check, not as the comparison key. Horizon-edge rows (`start_truncated`, `moorti_computed = false`) change with the as-of: fingerprint at a fixed as-of window. Rebuild expectation: same rows for the same as-of, L0 moorti table and ephemeris.
+Natural key `(chart_id, ayanamsha_id, graha, window_start)` (DB UNIQUE). Volatile columns excluded: `id`, `computed_at`. The table already stores an `upstream_fingerprint`; use it as the cross-check, not as the comparison key. Horizon-edge rows (`start_truncated`, `moorti_computed = false`) change with the as-of: fingerprint at a fixed as-of window (pass `horizon_start`/`horizon_end`). `precision_regime` (`instant_grain` / `date_grain`) is part of the comparison: a fallback from instant to date grain changes the grade for that run. Rebuild expectation: same rows for the same as-of, L0 moorti table and ephemeris.
 
 ## 6 · Preserved kernel, carriage check, opportunities
 
@@ -163,7 +165,7 @@ Natural key `(chart_id, ayanamsha_id, graha, window_start)` (DB UNIQUE). Volatil
 
 No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 7):
+Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
 
 - **Q-L3-12** — CF-28: how is a rolling floor declared?
 - **Q-L3-13** — does SS notify Pravāha before any wave that rebuilds `ka_moorti_nirnaya`?

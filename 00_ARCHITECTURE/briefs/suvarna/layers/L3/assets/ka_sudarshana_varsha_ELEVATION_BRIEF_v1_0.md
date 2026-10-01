@@ -20,11 +20,11 @@ ledger_gap_ids: ["ka_sudarshana_varsha-Earn.build_record", "ka_sudarshana_varsha
 
 # ka_sudarshana_varsha — Sudarśana-Chakra year-wheel: the three lagnas progressed one sign per year
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in section 7 and in the INDEX. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
-*Line citations: `file:N`; a bare `:N` is a line of the asset's own writer, `platform/python-sidecar/pipeline/orchestrator/writers/ka_sudarshana_varsha.py`.*
+*Line citations: `file:N`; a bare `:N` is a line of the asset's own writer, `platform/python-sidecar/services/ka_sudarshana_varsha/writer.py`.*
 
 `services/ka_sudarshana_varsha/writer.py` (+ `logic.py`): reads the natal Lagna, Moon and Sun signs from L1 `chart_facts` (`graha_position`, `sign`, `:46`), and for each of 120 varsha years (`DEFAULT_MAX_VARSHA_YEAR`, `logic.py:57`) advances each reference sign by (N−1) signs (house 1 governs ages 1, 13, 25 …), storing the active sign of the Janma, Chandra and Sūrya lagnas, `tri_lagna_convergence` and a calendar-anniversary window from the birth date (`varsha_window`, "NOT a true tropical/anomalistic solar-return instant" by the module's own statement). Pure arithmetic, no ephemeris. The module records a settled naming ruling: a namesake-only collision with `bo_sudarshana` (L2, a static tri-frame house count): same input facts, categorically different computation. The classical 10-year primary + yearly secondary sub-period structure is out of scope by declaration. Replace-after-assembly (`:184`). Served by `query_sudarshana_varsha.ts:89` and the `now` view.
 
@@ -34,15 +34,15 @@ ledger_gap_ids: ["ka_sudarshana_varsha-Earn.build_record", "ka_sudarshana_varsha
 |---|---|---|
 | kind (declarations 1.6.0) | data | `platform/scripts/governance/asset_declarations.json` |
 | registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2526` | seed (live may differ by migration; see CF-03) |
-| writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/ka_sudarshana_varsha.py:12`; registry `has_writer` = True | writers dir / census `Build.registered` |
+| writer / `@register` | `platform/python-sidecar/services/ka_sudarshana_varsha/writer.py:116`; registry `has_writer` = True | writers dir / census `Build.registered` |
 | target table(s) | `kala_sudarshana_varsha`; count_sql tables: kala_sudarshana_varsha | census |
 | live rows / floor | 120 / 120 | census `live_rows` (chart-scoped count_sql); floor from layer instance 1.1 (REG 2026-09-30) |
 | catalog_status | CURRENT | census |
 | registry state read for the rebuild plan (2026-10-01 14:5x) | throughput `lit`; freshness `fresh`; output-digest spec present; service_health n/a (not a service) | `/Users/Dev/suvarna-evidence/Rebuild/reg_state.json` (outside the repo) |
 | depends_on (live, + migration 1210) | `ga_positions` | layer instance 3.4 (REG 2026-09-30); migration 1210 |
 | blast radius | direct 0 / transitive 0 (census blocking_radius, every layer); named (REG 2026-09-30): none | census `blocking_radius`; names from REG |
-| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/tools/kala_views/now.ts`, `registry/layers/L3_kala/query_sudarshana_varsha.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): none | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
-| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_sudarshana_varsha.ts:89` reads `kala_sudarshana_varsha`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, section 1) | declarations 1.6.0; offline Dens scan |
+| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/tools/kala_views/now.ts`, `src/lib/retrieval/registry/knowledge/source_query_availability.ts`, `registry/layers/L3_kala/query_sudarshana_varsha.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): none | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
+| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_sudarshana_varsha.ts:89` reads `kala_sudarshana_varsha`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, `INDEX.md` section 9.1) | declarations 1.6.0; offline Dens scan |
 | Nirmāṇa freeze | frozen under t0, 2026-09-07 | `NIRMANA_SUPERSESSION_RECORD_v1_0.md` §2.3 |
 | role / scoring mode | contribution (CEN `L3.scoring`); not a reference layer | census |
 
@@ -84,7 +84,7 @@ Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry r
 | ka_sudarshana_varsha-Carr.detector | Carr | detector | D3: re-derive a sample year by hand fixture; the three natal signs cite `lagna_fact_id`, `moon_fact_id`, `sun_fact_id` (CF-07) |
 | census: Ldgr (no reading) | Ldgr | detector | no citation column on the table: the carriage is by L1 `fact_id` columns; a `carriage` declaration (CF-08); a classical source for the technique is not carried |
 | new: sudarshana-N1 | Vocab | real | imports `SIGNS` from the L3 service `ka_graha_sancara` (`:34`), a vocabulary constant living inside another asset's package (CF-30) |
-| new: sudarshana-N2 | information | information | the year window is a calendar anniversary, not a solar return, by disclosure; `ka_tithi_pravesha` computes real return instants: two annual-wheel methods with different precision, each honestly labelled |
+| new: sudarshana-N2 | information | information | the year window is a calendar anniversary, not a solar return, by disclosure; true solar-return instants are root-found in L1 (`ga_tajaka_writer._solar_return`, `ga_tajaka_writer.py:237`, a Gaṇita asset) and `ka_tithi_pravesha` root-finds lunar (tithi) returns: three annual-wheel methods with different precision, each labelled |
 | census: Null/Narr | Null, Narr | detector | `prose_fields` null: stores sign names/indices read from L1/the shared `SIGNS` tuple, no composed text; proposed `[]`; CF-06 |
 
 ## 3 · Disposition
@@ -144,6 +144,7 @@ No Track I item touches this asset.
 - **CF-08** — Ldgr: assets with no recognised citation column, and presence read on build tags. *This asset:* carriage by fact id
 - **CF-10** — Build.history PARTIAL/FAIL is a record of past errors; no edit changes it. *This asset:* 0 / 3
 - **CF-30** — Duplicated hand-written reference tables in L3 writers (graha -> domain, natural malefics, combustion orbs, Rikta set). *This asset:* FD-2
+- **CF-31** — integrity_check_sql scope audit (the I-7 class: table-wide checks coupled to other charts). *This asset:* table-wide `integrity_check_sql` (audit; none measured false)
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
@@ -153,7 +154,7 @@ Natural key `(chart_id, ayanamsha_id, varsha_year)` (DB UNIQUE). Volatile column
 
 - **Preserved kernel:** the exact year-wheel progression with L1 fact citations and the recorded namesake ruling.
 - **Carriage check chosen (T4 §4.1; one only):** D3: re-derive the active signs for a stratified sample of years by hand fixture.
-- **Opportunities (never blocking):** the 10-year sub-period structure is a named additive follow-on; a solar-return-instant window would need the ephemeris root-find `ka_tithi_pravesha` already has.
+- **Opportunities (never blocking):** the 10-year sub-period structure is a named additive follow-on; a solar-return-instant window could read the L1 `ga_tajaka` solar-return instants rather than root-finding again.
 
 ## 7 · Decisions applied and open questions
 

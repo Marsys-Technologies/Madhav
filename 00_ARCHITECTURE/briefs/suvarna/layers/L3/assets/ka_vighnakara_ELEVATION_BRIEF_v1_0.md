@@ -12,7 +12,7 @@ template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nika
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
 base_commit: "main 066c58587"
 disposition: "keep (P)"
-disposition_proposal_approver: "Steward (G16); FD-1 to FD-5 are output changes and go to SS (R5); several are classical-definition questions for an acharya"
+disposition_proposal_approver: "Steward (G16); FD-2 to FD-5 are output changes and go to SS (R5); FD-1 and FD-6 are not; several are classical-definition questions for an acharya"
 decisions_applied: "none specific to L3 yet; L0 rulings by analogy, PROVISIONAL until the J1 review"
 track_i_items: [TI-L3-01, TI-L3-02, TI-L3-05, TI-L3-10, TI-L3-11, TI-L3-12, TI-L3-15, TI-L3-16, TI-L3-17, TI-L3-19, TI-L3-20, TI-L3-23]
 ledger_gap_ids: ["ka_vighnakara-Build.completion", "ka_vighnakara-Earn.build_record", "ka_vighnakara-Cost.baseline", "ka_vighnakara-Count.floor", "ka_vighnakara-Dens.served", "ka_vighnakara-Build.history", "ka_vighnakara-Build.dep_liveness", "ka_vighnakara-Carr.detector", "new: vighnakara-N1", "new: vighnakara-N2", "new: vighnakara-N3", "new: vighnakara-N4", "new: vighnakara-N5", "new: vighnakara-N6", "new: vighnakara-N7", "new: vighnakara-N8", "new: vighnakara-N9", "new: vighnakara-N10", "new: vighnakara-N11"]
@@ -20,7 +20,7 @@ ledger_gap_ids: ["ka_vighnakara-Build.completion", "ka_vighnakara-Earn.build_rec
 
 # ka_vighnakara — Obstruction detector: five detectors evaluated at each convergence or dasha-anchored peak
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in section 7 and in the INDEX. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -41,8 +41,8 @@ ledger_gap_ids: ["ka_vighnakara-Build.completion", "ka_vighnakara-Earn.build_rec
 | registry state read for the rebuild plan (2026-10-01 14:5x) | throughput `stale`; freshness no freshness row; output-digest spec ABSENT; service_health n/a (not a service) | `/Users/Dev/suvarna-evidence/Rebuild/reg_state.json` (outside the repo) |
 | depends_on (live, + migration 1210) | `ka_sangam`, `ka_muhurta_seva`, `ka_yojaka`, `ga_positions`, `bg_dignity_reference`, `ga_dashas (migration 1210)` | layer instance 3.4 (REG 2026-09-30); migration 1210 |
 | blast radius | direct 5 / transitive 22 (census blocking_radius, every layer); named (REG 2026-09-30): L3 `ka_bhavishya_lekha`, `ka_kala_darshana`, `ka_tulana`; L4 `ph_muhurta`, `ph_pratikara` | census `blocking_radius`; names from REG |
-| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/tools/retrieval/kala_temporal.ts`, `registry/layers/L3_kala/index.ts`, `registry/layers/L3_kala/query_obstruction_periods.ts`, `registry/layers/L4_phala/salience_order.ts`, `registry/layers/register_d5_fanout.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): `bodha_writers/_idempotency.py`, `brahmagyan/kala/obstruction.py`, `pipeline/orchestrator/kala_derivation_completeness_guard.py`, `pipeline/orchestrator/writers/ka_kala_darshana.py`, `pipeline/orchestrator/writers/ph_muhurta.py`, `pipeline/orchestrator/writers/ph_pratikara.py` | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
-| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:81` reads `kala_obstruction`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, section 1) | declarations 1.6.0; offline Dens scan |
+| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/tools/retrieval/kala_temporal.ts`, `src/lib/retrieval/registry/knowledge/source_query_availability.ts`, `registry/layers/L3_kala/index.ts`, `registry/layers/L3_kala/query_obstruction_periods.ts`, `registry/layers/L4_phala/salience_order.ts`, `registry/layers/register_d5_fanout.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): `bodha_writers/_idempotency.py`, `brahmagyan/kala/obstruction.py`, `pipeline/orchestrator/kala_derivation_completeness_guard.py`, `pipeline/orchestrator/writers/ka_kala_darshana.py`, `pipeline/orchestrator/writers/ph_muhurta.py`, `pipeline/orchestrator/writers/ph_pratikara.py` | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
+| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:81` reads `kala_obstruction`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, `INDEX.md` section 9.1) | declarations 1.6.0; offline Dens scan |
 | Nirmāṇa freeze | not frozen (not in the L3 list of NIRMANA_SUPERSESSION_RECORD §2.3) | `NIRMANA_SUPERSESSION_RECORD_v1_0.md` §2.3 |
 | role / scoring mode | contribution (CEN `L3.scoring`); not a reference layer | census |
 
@@ -106,7 +106,7 @@ Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry r
 
 **keep (P)** — the detectors read real positions and L1 facts with pinned selectors, and the I-2 fix made the adversity tables chart-relative. But this is the asset with the most substantive correctness items (Gandanta degrees, the Rikta set, a day-of-month proxy, swallowed failures), all of which are domain rulings or honesty fixes with output consequences; none argues for retiring or consolidating it (it feeds the darshana, the Phala muhūrta and pratikāra chain). The output changes go to SS (R5).
 
-Approver under Track A brief §10: **Steward (G16); FD-1 to FD-5 are output changes and go to SS (R5); several are classical-definition questions for an acharya**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L3-020).
+Approver under Track A brief §10: **Steward (G16); FD-2 to FD-5 are output changes and go to SS (R5); FD-1 and FD-6 are not; several are classical-definition questions for an acharya**. SS decision: none yet (provisional proposal; the layer instance assigns no disposition, TG-L3-020).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
@@ -198,6 +198,7 @@ Approver under Track A brief §10: **Steward (G16); FD-1 to FD-5 are output chan
 - **CF-10** — Build.history PARTIAL/FAIL is a record of past errors; no edit changes it. *This asset:* 28 / 12
 - **CF-21** — Replace-after-candidate: DELETE runs before the empty-upstream early return (five writers). *This asset:* FD-1
 - **CF-22** — Capped intakes without a total ORDER BY (LIMIT 750 / LIMIT 500). *This asset:* FD-1
+- **CF-23** — depends_on audit: declared edges the writer never reads, and the bhavishya back-read. *This asset:* its declared dependent count falls 5 → 3 (`ka_bhavishya_lekha` and `ka_tulana` do not read it)
 - **CF-24** — L2 -> L3 cascade keys and rebuild order (F-3 / migration 1214): four emptied tables and the dangling predicate set. *This asset:* emptied table; wave 4
 - **CF-25** — Narr fidelity (golden-value) tests per L3 narration writer. *This asset:* FD-6
 - **CF-26** — Service self-test assets: output-digest specs, source_paths and builder grants (I-4 / I-5 and the same class left open). *This asset:* I-4 spec (B-1)
@@ -205,6 +206,7 @@ Approver under Track A brief §10: **Steward (G16); FD-1 to FD-5 are output chan
 - **CF-28** — Rolling-horizon writers: as-of pin, calendar-safe horizon, floors that move with the build date. *This asset:* dasha anchors via the resolver's as-of default
 - **CF-29** — Honest absence versus unavailable: swallowed detector failures, proxy fallbacks and soft reads that degrade to empty. *This asset:* FD-4
 - **CF-30** — Duplicated hand-written reference tables in L3 writers (graha -> domain, natural malefics, combustion orbs, Rikta set). *This asset:* FD-2, FD-3, FD-5
+- **CF-31** — integrity_check_sql scope audit (the I-7 class: table-wide checks coupled to other charts). *This asset:* table-wide `integrity_check_sql` (audit; none measured false)
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
@@ -220,7 +222,7 @@ No stable natural key in the table: `id` is a BIGSERIAL, `convergence_id` is reg
 
 No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 7):
+Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
 
 - **Q-L3-09** — FD-2/FD-3/FD-5: accept the Gandanta and Rikta corrections as written (acharya review), and which node convention is the transit contract?
 - **Q-L3-01** — CF-27: severity constants and single-date judgments

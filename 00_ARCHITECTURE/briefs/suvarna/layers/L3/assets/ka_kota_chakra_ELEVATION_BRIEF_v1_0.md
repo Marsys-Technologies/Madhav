@@ -20,29 +20,29 @@ ledger_gap_ids: ["ka_kota_chakra-Earn.build_record", "ka_kota_chakra-Cost.baseli
 
 # ka_kota_chakra — Kota-Chakra fort chart: transiting grahas by ring from the janma nakshatra
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in section 7 and in the INDEX. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
-*Line citations: `file:N`; a bare `:N` is a line of the asset's own writer, `platform/python-sidecar/pipeline/orchestrator/writers/ka_kota_chakra.py`.*
+*Line citations: `file:N`; a bare `:N` is a line of the asset's own writer, `platform/python-sidecar/services/ka_kota_chakra/writer.py`.*
 
 `services/ka_kota_chakra/writer.py` (+ `logic.py`; shim `pipeline/orchestrator/writers/ka_kota_chakra.py`): from the natal Moon's sidereal longitude (the L1 fact, `:76`) it derives the janma nakshatra, reads the ring partition (stambha, durgantara, prakara, bahya) from L0 `bg_kota_chakra_rings` (`:87`; honest-empty when absent), reads daily tropical positions of the grahas for a horizon of 60 days back to 400 days forward (`:73-74`) from `ephemeris_daily`, corrects to sidereal with one ayanamsha offset at the build date (`:181`), detects contiguous runs of the nakshatra index per graha, and for each run stores the count from janma, the ring, and a posture/severity reading from a hand table (`logic.py:106`) flagged `uncited_extension = true` ("THIS WRITER'S OWN SYNTHESIS"). It refuses with a preserved partition when any graha lacks one row for every horizon day (`:257`) and replaces after assembly. Light writer; served by `query_kota_chakra.ts:110` and the `now` view.
 
-**Canonical chart: `lit`, fresh, 585 rows.** Registry state: throughput `lit`, freshness `fresh`, spec present; latest run `8d74930c` complete/skip_no_delta 2026-09-07; 3 errors and 3 aborts on record, the latest error (2026-08-08) a `KeyError: 1` from positional row indexing against a dict-row connection, fixed in the writer (DB9 comment at `:136`). Live 585 against floor 588 (−3): the window moves with the build date (CF-28). Not part of the 26-asset rebuild plan (its inputs are L0/L1 and it has no dependents); the smoke build of that plan uses the sibling leaf `ka_tithi_pravesha`. Nirmāṇa-frozen under t0 (2026-09-07).
+**Canonical chart: `lit`, fresh, 585 rows.** Registry state: throughput `lit`, freshness `fresh`, spec present; latest run `8d74930c` complete/skip_no_delta 2026-09-07; 3 errors and 3 aborts on record, the latest error (2026-08-08) a `KeyError: 1` from positional row indexing against a dict-row connection, fixed in the writer (DB9 comment at `:136`). Live 585 against floor 588 (−3): consistent with a window that moves with the build date (CF-28; an inference from the code). Not part of the rebuild plan's launch set (its inputs are L0/L1 and it has no dependents); the smoke build of that plan uses the sibling leaf `ka_tithi_pravesha`. Nirmāṇa-frozen under t0 (2026-09-07).
 
 | field | value | source |
 |---|---|---|
 | kind (declarations 1.6.0) | data | `platform/scripts/governance/asset_declarations.json` |
 | registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2500` | seed (live may differ by migration; see CF-03) |
-| writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/ka_kota_chakra.py:6`; registry `has_writer` = True | writers dir / census `Build.registered` |
+| writer / `@register` | `platform/python-sidecar/services/ka_kota_chakra/writer.py:206`; registry `has_writer` = True | writers dir / census `Build.registered` |
 | target table(s) | `kala_kota_chakra`; count_sql tables: kala_kota_chakra | census |
 | live rows / floor | 585 / 588 | census `live_rows` (chart-scoped count_sql); floor from layer instance 1.1 (REG 2026-09-30) |
 | catalog_status | CURRENT | census |
 | registry state read for the rebuild plan (2026-10-01 14:5x) | throughput `lit`; freshness `fresh`; output-digest spec present; service_health n/a (not a service) | `/Users/Dev/suvarna-evidence/Rebuild/reg_state.json` (outside the repo) |
 | depends_on (live, + migration 1210) | `ga_positions`, `bg_ephemeris`, `bg_kota_chakra_rings` | layer instance 3.4 (REG 2026-09-30); migration 1210 |
 | blast radius | direct 0 / transitive 0 (census blocking_radius, every layer); named (REG 2026-09-30): none | census `blocking_radius`; names from REG |
-| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/tools/kala_views/now.ts`, `registry/layers/L3_kala/query_kota_chakra.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): `services/gochara_v3/mechanisms/w25_kota_chakra.py` | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
-| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts:110` reads `kala_kota_chakra`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, section 1) | declarations 1.6.0; offline Dens scan |
+| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/tools/kala_views/now.ts`, `src/lib/retrieval/registry/knowledge/source_query_availability.ts`, `registry/layers/L3_kala/query_kota_chakra.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): `services/gochara_v3/mechanisms/w25_kota_chakra.py` | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
+| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts:110` reads `kala_kota_chakra`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, `INDEX.md` section 9.1) | declarations 1.6.0; offline Dens scan |
 | Nirmāṇa freeze | frozen under t0, 2026-09-07 | `NIRMANA_SUPERSESSION_RECORD_v1_0.md` §2.3 |
 | role / scoring mode | contribution (CEN `L3.scoring`); not a reference layer | census |
 
@@ -78,7 +78,7 @@ Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry r
 
 | gap id (ledger `asset_gaps.jsonl` @ 2a78ec64d, census cell, or `new:`) | gate | class | note |
 |---|---|---|---|
-| ka_kota_chakra-Count.floor | Count | information | live 585 vs floor 588 (−3); rolling window (CF-28) |
+| ka_kota_chakra-Count.floor | Count | information | live 585 vs floor 588 (−3); consistent with the rolling window (CF-28; an inference from the code, the cell does not give the cause) |
 | ka_kota_chakra-Dens.served | Dens | Dens rev-1 reading | offline rev-7 FAIL (2 modules, 2 served selects, no contract); no tier column |
 | ka_kota_chakra-Build.history | Build | history | 3 errors, 3 aborts; latest error 2026-08-08 (`KeyError: 1`, fixed); CF-10 |
 | ka_kota_chakra-Earn.build_record | Earn | detector | CF-05 |
@@ -150,6 +150,7 @@ Approver under Track A brief §10: **Steward (G16)**. SS decision: none yet (pro
 - **CF-10** — Build.history PARTIAL/FAIL is a record of past errors; no edit changes it. *This asset:* 3 / 3
 - **CF-28** — Rolling-horizon writers: as-of pin, calendar-safe horizon, floors that move with the build date. *This asset:* FD-1
 - **CF-30** — Duplicated hand-written reference tables in L3 writers (graha -> domain, natural malefics, combustion orbs, Rikta set). *This asset:* FD-2
+- **CF-31** — integrity_check_sql scope audit (the I-7 class: table-wide checks coupled to other charts). *This asset:* table-wide `integrity_check_sql` (audit; none measured false)
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
@@ -165,7 +166,7 @@ Natural key `(chart_id, ayanamsha_id, graha, window_start)` (DB UNIQUE, `ON CONF
 
 No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 7):
+Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
 
 - **Q-L3-12** — CF-28: how is a rolling floor declared?
 

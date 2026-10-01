@@ -20,7 +20,7 @@ ledger_gap_ids: ["ka_kalasutra-Build.completion", "ka_kalasutra-Earn.build_recor
 
 # ka_kalasutra — Bounded activation windows per activation predicate (dasha-resolved, convergence-refined)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in section 7 and in the INDEX. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -28,7 +28,7 @@ ledger_gap_ids: ["ka_kalasutra-Build.completion", "ka_kalasutra-Earn.build_recor
 
 `ka_kalasutra.py`: for every `kala_activation_predicates` row of the chart (the `ka_yojaka` output, `:45`) it resolves activation windows through the shared deterministic helper `services/ka_temporal` (`resolve_activation_windows`, `:109`): a convergence peak refines a window (half-widths 7/14/5/5 days by signature class); without one, the matched daśā period of the predicate's own ayanamsha timeline, birth-forward, supplies real start/end/peak dates (WP-2.1: "No fabricated dates (B.10): every date traces to a chart_dashas row"). One row per matched in-life period (CR-109, `:147`) goes into `kala_activation` with `dasha_activation_proximity_score`, the predicate's `active_dasha_periods_jsonb` (plus an `always_on` marker when `ka_yojaka` found no discriminating lord) and a convergence cross-reference; `source_citation` carries the signal, source and period index and keys the `ON CONFLICT DO NOTHING` safety net (`:196`). The 335,403-row volume is the largest L3 table after `kala_field`. Served by `query_temporal_activation.ts:287`, the spine bundle (`compute_spine_bundle.ts`), `call_service_wrappers.ts` and the assess/judgment registry modules.
 
-**Canonical chart: `stale`, 0 rows (cascade-shaped).** `kala_activation` has 0 canonical rows while `asset_throughput` reads `stale`, `rows_written` 335,403 (08-13 01:15); Abhinandan holds 336,093, the third chart 1,055 (I-6; 336,093 + 1,055 = 337,148 is the saved census's table-wide denominator). 1 of 3 declared dependencies lit (`ka_yojaka`, `ka_sangam` stale; `ka_sangam`'s `kala_convergence` is empty for the chart, so a build now resolves every window from the dasha timeline alone, not from convergence peaks). The predicate input exists (50,678 rows) but its signal references are dead after the MSR replacement (F-3 measured 79 dangling for the canonical chart; I-6: "signal refs are dead"), so the writer itself is unaffected (it never reads `bodha_msr_signals`) but the served `bodha_msr_signals ⋈ kala_activation` joins (CF-24) would find fewer or no live signals. Wave 4 of the 26-asset plan (with `ka_vighnakara`), after `ka_sangam` and `ka_yojaka`; migration 1210 added `ka_kalasutra → ga_dashas` (the resolver reads `chart_dashas`). Not Nirmāṇa-frozen; output-digest spec present.
+**Canonical chart: `stale`, 0 rows (cascade-shaped).** `kala_activation` has 0 canonical rows while `asset_throughput` reads `stale`, `rows_written` 335,403 (08-13 01:15); Abhinandan holds 336,093, the third chart 1,055 (I-6; 336,093 + 1,055 = 337,148 is the saved census's table-wide denominator). 1 of 3 declared dependencies lit (`ka_yojaka`, `ka_sangam` stale; `ka_sangam`'s `kala_convergence` is empty for the chart, so a build now resolves every window from the dasha timeline alone, not from convergence peaks). The predicate input exists (50,678 rows); I-6 called its signal references dead after the MSR replacement, and F-3's later measurement is narrower: 79 of the canonical chart's predicate references dangle (the 49,730 of 49,875 figure is the third chart's), because signal ids are deterministic uuid-v5 values that an unchanged signal keeps. So the writer itself is unaffected (it never reads `bodha_msr_signals`) but the served `bodha_msr_signals ⋈ kala_activation` joins (CF-24) would find fewer or no live signals. Wave 4 of the rebuild plan (v1.0 numbering, v1.1.1 keeps the order) (with `ka_vighnakara`), after `ka_sangam` and `ka_yojaka`; migration 1210 added `ka_kalasutra → ga_dashas` (the resolver reads `chart_dashas`). Not Nirmāṇa-frozen; output-digest spec present.
 
 | field | value | source |
 |---|---|---|
@@ -41,8 +41,8 @@ ledger_gap_ids: ["ka_kalasutra-Build.completion", "ka_kalasutra-Earn.build_recor
 | registry state read for the rebuild plan (2026-10-01 14:5x) | throughput `stale`; freshness no freshness row; output-digest spec present; service_health n/a (not a service) | `/Users/Dev/suvarna-evidence/Rebuild/reg_state.json` (outside the repo) |
 | depends_on (live, + migration 1210) | `ka_yojaka`, `ka_sangam`, `bo_laksana`, `ga_dashas (migration 1210)` | layer instance 3.4 (REG 2026-09-30); migration 1210 |
 | blast radius | direct 2 / transitive 22 (census blocking_radius, every layer); named (REG 2026-09-30): L3 `ka_kala_darshana`; L4 `ph_muhurta` | census `blocking_radius`; names from REG |
-| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/lib/ahead_autofile.ts`, `platform-mcp/src/tools/kala_views/ahead.ts`, `platform-mcp/src/tools/kala_views/now.ts`, `platform-mcp/src/tools/kala_views/promise_gate.ts`, `platform-mcp/src/tools/register_p1_aliases.ts`, `registry/layers/L3_kala/call_service_wrappers.ts`, `registry/layers/L3_kala/query_temporal_activation.ts`, `registry/layers/register_d8_assess_domain.ts`, `registry/layers/register_d9_judgment.ts`, `registry/layers/register_spine_bundle.ts`, `src/lib/retrieval/spine/compute_spine_bundle.ts`, `src/lib/retrieval/spine/constants.ts`, `src/lib/retrieval/spine/types.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): `bodha_writers/_idempotency.py`, `services/taranga_service.py` | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
-| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:287` reads `kala_activation`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, section 1) | declarations 1.6.0; offline Dens scan |
+| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/lib/ahead_autofile.ts`, `platform-mcp/src/tools/kala_views/ahead.ts`, `platform-mcp/src/tools/kala_views/now.ts`, `platform-mcp/src/tools/kala_views/promise_gate.ts`, `platform-mcp/src/tools/register_p1_aliases.ts`, `src/lib/retrieval/registry/knowledge/editorial.ts`, `src/lib/retrieval/registry/knowledge/source_query_availability.ts`, `registry/layers/L3_kala/call_service_wrappers.ts`, `registry/layers/L3_kala/query_temporal_activation.ts`, `registry/layers/register_d8_assess_domain.ts`, `registry/layers/register_d9_judgment.ts`, `registry/layers/register_spine_bundle.ts`, `src/lib/retrieval/spine/compute_spine_bundle.ts`, `src/lib/retrieval/spine/constants.ts`, `src/lib/retrieval/spine/types.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): `bodha_writers/_idempotency.py`, `services/taranga_service.py` | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
+| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:287` reads `kala_activation`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, `INDEX.md` section 9.1) | declarations 1.6.0; offline Dens scan |
 | Nirmāṇa freeze | not frozen (not in the L3 list of NIRMANA_SUPERSESSION_RECORD §2.3) | `NIRMANA_SUPERSESSION_RECORD_v1_0.md` §2.3 |
 | role / scoring mode | contribution (CEN `L3.scoring`); not a reference layer | census |
 
@@ -91,8 +91,8 @@ Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry r
 | census: Ldgr | Ldgr | information | PASS on `source_citation` populated 337,148/337,148 — table-wide and a build tag; CF-08 |
 | new: kalasutra-N1 | Idem / Build | real | DELETE (`:33`) precedes the "No predicates" return (`:52`): CF-21 |
 | new: kalasutra-N2 | Null / honesty | real + SS question | `dasha_activation_proximity_score` is `dignity × non_affliction` with defaults 0.5 and 1.0 and 0.5 when no peak resolves (`date_resolver.py:674`); for the five L2 satellite emitters both inputs are themselves constants (CF-27), so the score is a flat 0.5 for those signals; the 'peak' on the dasha path is the period midpoint (`date_resolver.py:559`) |
-| new: kalasutra-N3 | Idem | real | the primary-period selection and the truncated `activation_predicted_dates_jsonb` list depend on `as_of_date` defaulting to today (`date_resolver.py:418`); the call does not pass it (CF-28) |
-| new: kalasutra-N4 | Idem | detector | `ON CONFLICT … DO NOTHING` after a chart-wide DELETE is a safety net the comment says "should never actually fire"; it would drop rows silently if it did: the build note reports `rows_actually_inserted/len(rows)` (`:172`), so the loss is visible only in notes, not in a gate |
+| new: kalasutra-N3 | Idem | real | which period rows exist depends on `as_of_date` defaulting to today (`date_resolver.py:418`): the primary period is not stored, but it is moved to the front of the matched list before the cut to `max_windows` (`date_resolver.py:497-500`) and the stored rows come from that list (`period_windows`, `ka_kalasutra.py:147`), so for a predicate matching more than `max_windows` periods the surviving rows and the `active_dasha_periods` listing follow the build date; the call does not pass the date (CF-28) |
+| new: kalasutra-N4 | Idem | detector | `ON CONFLICT … DO NOTHING` after a chart-wide DELETE is a safety net the comment says "should never actually fire"; it would drop rows silently if it did: the build note reports `rows_actually_inserted/len(rows)` (`:210`), so the loss is visible only in notes, not in a gate |
 | new: kalasutra-N5 | Build.dag | real | its declared dependents `ka_kala_darshana` and `ph_muhurta` read `kala_activation` nowhere in python (CF-23); python modules reading the table: none besides this writer (grep) |
 | new: kalasutra-N6 | information | information | legacy convergence-only helpers (`_derive_dasha_periods` … `_compute_activation_end`, `:230-284`) are unreachable from `run()` and keep a second copy of the half-width table (7/14/5/5) "for backward-compat + unit tests" |
 | census: Null/Narr | Null, Narr | detector | `prose_fields` null; the writer composes only machine tokens: the `always_on` marker's `reason` is the `ka_yojaka` token (`:135`) and the `source_citation` tag; proposed `[]`; CF-06 |
@@ -124,7 +124,7 @@ Approver under Track A brief §10: **Steward (G16); the output changes in CF-27 
 - **Files / declaration / migration:** `ka_kalasutra.py:109`
 - **Failing-first test and mutation:** CF-28 test shape: two builds, same as-of → identical; different as-of → only primary selection / predicted-date truncation differ
 - **Output change:** none for a fixed as-of
-- **Blast radius:** primary window and `predicted_dates` of rows with more matched periods than `max_windows`
+- **Blast radius:** which of the matched period rows (and the `active_dasha_periods` listing) survive for predicates with more than `max_windows` matched periods
 - **Rebuild:** none
 - **Gate it moves:** Idem (fingerprint)
 - **Fix class:** writer code; **buildable before J1:** tier-independent
@@ -159,7 +159,6 @@ Approver under Track A brief §10: **Steward (G16); the output changes in CF-27 
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
-- **CF-03** — Registry correction batch (one surgical migration + seed literals). *This asset:* seed carries no `catalog_status` literal (parse found none); live CURRENT
 - **CF-04** — Dens (serving density) on the L3 served modules. *This asset:* offline FAIL
 - **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* instrument absent
 - **CF-06** — prose_fields declarations for the L3 assets that have none (Null and Narr gates). *This asset:* declare `[]`
@@ -171,10 +170,11 @@ Approver under Track A brief §10: **Steward (G16); the output changes in CF-27 
 - **CF-24** — L2 -> L3 cascade keys and rebuild order (F-3 / migration 1214): four emptied tables and the dangling predicate set. *This asset:* emptied table; wave 4
 - **CF-27** — Documented-approximation constants and favourable defaults in the L3 temporal chain (the L2 CF-20 class). *This asset:* FD-3
 - **CF-28** — Rolling-horizon writers: as-of pin, calendar-safe horizon, floors that move with the build date. *This asset:* FD-2
+- **CF-31** — integrity_check_sql scope audit (the I-7 class: table-wide checks coupled to other charts). *This asset:* table-wide `integrity_check_sql` (audit; none measured false)
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
-Natural key `(chart_id, signal_id, ayanamsha_id, source_citation)` (the writer's own unique key; `source_citation` embeds the period index, so it is part of identity, not a free text). Volatile columns excluded: `id`, `computed_at`. Depends on the as-of date (primary selection, truncated predicted dates): fingerprint at a pinned as-of. Rebuild expectation: the row set is a function of the predicate set and the dasha timeline; with a different MSR identity set the signal-keyed rows change.
+Natural key `(chart_id, signal_id, ayanamsha_id, source_citation)` (the writer's own unique key; `source_citation` embeds the period index, so it is part of identity, not a free text). Volatile columns excluded: `id`, `computed_at`. Depends on the as-of date (primary selection, truncated predicted dates): fingerprint at a pinned as-of. Rebuild expectation: a function of the predicate set, the dasha timeline and (for a predicate matching more than `max_windows` periods) the as-of date; with a different MSR identity set the signal-keyed rows change.
 
 ## 6 · Preserved kernel, carriage check, opportunities
 
@@ -186,7 +186,7 @@ Natural key `(chart_id, signal_id, ayanamsha_id, source_citation)` (the writer's
 
 No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 7):
+Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
 
 - **Q-L3-01** — CF-27: ratify, null or compute the proximity inputs?
 

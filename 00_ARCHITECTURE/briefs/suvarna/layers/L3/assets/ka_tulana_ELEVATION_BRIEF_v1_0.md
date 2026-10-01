@@ -15,18 +15,18 @@ disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 decisions_applied: "none specific to L3 yet; L0 rulings by analogy, PROVISIONAL until the J1 review. The I-11 weights are NATIVE-RATIFIED 2026-06-21 (ranker header): a ratified judgment seed (Carr N/A by cause `ratified_judgment`, the L0 Q13 reading by analogy)"
 track_i_items: [TI-L3-07, TI-L3-09, TI-L3-10, TI-L3-12, TI-L3-17, TI-L3-19, TI-L3-21]
-ledger_gap_ids: ["ka_tulana-Idem.pattern", "ka_tulana-Build.count_integrity", "ka_tulana-Earn.build_record", "ka_tulana-Cost.baseline", "ka_tulana-Dens.served", "ka_tulana-Build.history", "ka_tulana-Build.dep_liveness", "ka_tulana-Carr.detector", "new: tulana-N1", "new: tulana-N2", "new: tulana-N3", "new: tulana-N4", "new: tulana-N5"]
+ledger_gap_ids: ["ka_tulana-Idem.pattern", "ka_tulana-Build.count_integrity", "ka_tulana-Earn.build_record", "ka_tulana-Cost.baseline", "ka_tulana-Dens.served", "ka_tulana-Build.history", "ka_tulana-Build.dep_liveness", "ka_tulana-Carr.detector", "new: tulana-N1", "new: tulana-N2", "new: tulana-N3", "new: tulana-N4", "new: tulana-N6", "new: tulana-N5"]
 ---
 
 # ka_tulana — Cross-pattern prioritization service: I-11 composite ranking of windows, and its self-test writer
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in section 7 and in the INDEX. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
-*Line citations: `file:N`; a bare `:N` is a line of the asset's own writer, `platform/python-sidecar/pipeline/orchestrator/writers/ka_tulana.py`.*
+*Line citations: `file:N`; a bare `:N` is a line of the asset's own writer, `platform/python-sidecar/services/ka_tulana/writer.py`.*
 
-Registry: kind service, per-chart, no table. The service (`services/ka_tulana/ranker.py`, `KaTulanaService`) ranks caller-supplied windows (`WindowInput`: convergence score, mode, peak date, confidence label, cycle length in years, domains, dissonance) by an I-11 composite: 0.40 × convergence + 0.25 × rarity (years / 30, capped) + 0.20 × confidence (high 1.0, moderate 0.6, speculative 0.2) + 0.15 × a piecewise proximity factor (`:38`, `:46`, `:198`); it buckets by the 13 canonical domains (`brahmagyan.domain_vocabulary`) and explains each rank in a rationale string (`:240`). It reads nothing itself ("reads only" the data a caller supplies). Served by `call_priority_ranking` in `call_service_wrappers.ts`, `kala_views/priority.ts` and `register_p1_aliases.ts`. The registered writer (`services/ka_tulana/writer.py`) is a self-test over TWO synthetic windows (a rare high-convergence window must outrank a common low one; `:25`), writes `service_health` and `selftest_detail`, and raises on failure.
+Registry: kind service, per-chart, no table. The service (`services/ka_tulana/ranker.py`, `KaTulanaService`) ranks caller-supplied windows (`WindowInput`: convergence score, mode, peak date, confidence label, cycle length in years, domains, dissonance) by an I-11 composite: 0.40 × convergence + 0.25 × rarity (years / 30, capped) + 0.20 × confidence (high 1.0, moderate 0.6, speculative 0.2) + 0.15 × a piecewise proximity factor (`ranker.py:38`, `ranker.py:46`, `ranker.py:198`); it buckets by the 13 canonical domains (`brahmagyan.domain_vocabulary`) and explains each rank in a rationale string (`ranker.py:240`). It reads nothing itself ("reads only" the data a caller supplies). Served by `call_priority_ranking` in `call_service_wrappers.ts`, `kala_views/priority.ts` and `register_p1_aliases.ts`. The registered writer (`services/ka_tulana/writer.py`) is a self-test over TWO synthetic windows (a rare high-convergence window must outrank a common low one; `writer.py:25`), writes `service_health` and `selftest_detail`, and raises on failure.
 
 **Canonical chart: `stale`, `service_health` healthy.** Registry state: throughput `stale`, spec absent; latest run `cbd6ea44` complete 2026-08-13; 27 errors and 12 aborts on record (latest error 2026-08-12 `BLOCKED: upstream dependency(ies) ka_kala_darshana, ka_sangam, ka_vighnakara did not complete`); 0 of 3 declared dependencies lit. The self-test reads none of those three, so the staleness and the blocking are both artefacts of declared edges (CF-23), not of the service. In the rebuild plan's downstream-not-in-plan set (`stale`, section 1.4) and Nirmāṇa-frozen under t2 (2026-09-10), so removing its edges stales that manifest.
 
@@ -34,7 +34,7 @@ Registry: kind service, per-chart, no table. The service (`services/ka_tulana/ra
 |---|---|---|
 | kind (declarations 1.6.0) | service | `platform/scripts/governance/asset_declarations.json` |
 | registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2455` | seed (live may differ by migration; see CF-03) |
-| writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/ka_tulana.py:5`; registry `has_writer` = True | writers dir / census `Build.registered` |
+| writer / `@register` | `platform/python-sidecar/services/ka_tulana/writer.py:87`; registry `has_writer` = True | writers dir / census `Build.registered` |
 | target table(s) | `none (service)`; count_sql tables: none | census |
 | live rows / floor | n/a (service) / 0 (service) | census `live_rows` (chart-scoped count_sql); floor from layer instance 1.1 (REG 2026-09-30) |
 | catalog_status | CURRENT | census |
@@ -93,9 +93,10 @@ Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry r
 | ka_tulana-Carr.detector | Carr | detector | N/A by cause `ratified_judgment` for the weights (SS approval for the rule); D3 for the arithmetic: recompute the composite for a sample (CF-07) |
 | new: tulana-N1 | Build.dag | real | the three declared edges are never read at build time (CF-23); `ranker.py:268` takes caller-supplied windows and the self-test uses synthetic ones |
 | new: tulana-N2 | registry | real | no output-digest spec (same class as 1213, not covered by PR #2826); the builder grant gap applies to `selftest_detail` (CF-26) |
-| new: tulana-N3 | Narr / Vocab | real | `_rationale` prints the weights as literals ("weight 40%", "25%", "20%", "15%", `:240-249`) instead of reading `I11_WEIGHTS`, so a change to a weight (or a ratified revision) leaves the explanation stating the old one; `rarity_years or 'unknown'` prints a computed 0.0 as "unknown" |
-| new: tulana-N4 | Null / honesty | information | a missing `rarity_years` scores a neutral 0.5 (`:192`) and an unknown confidence label scores 0.2 — constants for missing terms (CF-27); inside the ratified composite, but the defaults themselves are not part of the ratification as far as the header says |
-| new: tulana-N5 | Idem | information | ties keep input order (`scored.sort(key=..., reverse=True)` is stable, `:294`), so the ranking of equal composites depends on the order the caller supplies; no secondary key such as `window_id` |
+| new: tulana-N3 | Narr / Vocab | real | `_rationale` prints the weights as literals ("weight 40%", "25%", "20%", "15%", `ranker.py:240-249`) instead of reading `I11_WEIGHTS`, so a change to a weight (or a ratified revision) leaves the explanation stating the old one; `rarity_years or 'unknown'` prints a computed 0.0 as "unknown" |
+| new: tulana-N4 | Null / honesty | information | a missing `rarity_years` scores a neutral 0.5 (`ranker.py:192`) — a constant for a missing term (CF-27); the validator rejects an unknown confidence label (`ranker.py:81`), so the `.get(label, 0.2)` fallbacks (`ranker.py:222`) are unreachable through `rank_windows` and only matter if a caller bypasses validation. The 0.5 is inside the ratified composite, but the default itself is not part of the ratification as far as the header says |
+| new: tulana-N6 | Build.dag / honesty | information | `_validate_window` accepts only `mode` A or B and raises on anything else (`ranker.py:61`), while the Saṅgam table carries more modes and the Kāla Darśana intake of that table is 100% Mode C (`ka_kala_darshana.py` M9 comment): convergence windows passed to the ranker without a mode mapping are rejected rather than ranked. Whether any caller maps the mode was not traced in this lane (the service takes caller-supplied windows); an SS/acharya question on whether Mode C/D windows are in scope for the I-11 ranking |
+| new: tulana-N5 | Idem | information | ties keep input order (`scored.sort(key=..., reverse=True)` is stable, `ranker.py:294`), so the ranking of equal composites depends on the order the caller supplies; no secondary key such as `window_id` |
 | census: Null/Narr | Null, Narr | detector | stored text: none (the self-test writes health only); the SERVED `rationale` string is prose composed from the weights and values — a service-output Narr question for the declarations file (state whether served, unstored text is in scope); proposed `prose_fields: []` with that note; CF-06 |
 
 ## 3 · Disposition
@@ -121,8 +122,8 @@ Approver under Track A brief §10: **Steward (G16)**. SS decision: none yet (pro
 ### FD-2 · Render the rationale from the weights
 
 - **Answers:** new tulana-N3, N5; CF-25
-- **Change:** format the weight text from `I11_WEIGHTS` and print `rarity_years` with `is None` rather than truthiness; add a deterministic tiebreak `(composite desc, peak_date, window_id)` to `rank_windows` (`:294`)
-- **Files / declaration / migration:** `services/ka_tulana/ranker.py:240-249`, `:294`
+- **Change:** format the weight text from `I11_WEIGHTS` and print `rarity_years` with `is None` rather than truthiness; add a deterministic tiebreak `(composite desc, peak_date, window_id)` to `rank_windows` (`ranker.py:294`)
+- **Files / declaration / migration:** `services/ka_tulana/ranker.py:240-249`, `ranker.py:294`
 - **Failing-first test and mutation:** Failing-first: changing a weight changes the rationale text; two input orders of tied windows rank identically; mutation: restore the literals → fails.
 - **Output change:** yes — the served `rationale` text and the order of tied windows → SS (R5, text-only plus tie order)
 - **Blast radius:** served by `call_priority_ranking`, `kala_views/priority.ts`, `register_p1_aliases.ts`; no stored rows
@@ -173,7 +174,7 @@ No table. Stored output: `service_health`/`selftest_detail` on the registry row 
 
 No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 7):
+Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
 
 - **Q-L3-08** — CF-23: may the three unread edges be removed or declared serve-time?
 - **Q-L3-10** — CF-26: digest spec for this service?

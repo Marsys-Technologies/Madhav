@@ -20,7 +20,7 @@ ledger_gap_ids: ["ka_kala_darshana-Build.completion", "ka_kala_darshana-Earn.bui
 
 # ka_kala_darshana — Display-ready temporal view: effective score, net label and narrative per convergence window
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in section 7 and in the INDEX. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -28,7 +28,7 @@ ledger_gap_ids: ["ka_kala_darshana-Build.completion", "ka_kala_darshana-Earn.bui
 
 `ka_kala_darshana.py`: for up to 750 `kala_convergence` windows of the chart (`:31`) it joins the chart's `kala_obstruction` rows by `convergence_id` (`:42`) and stores per window `effective_score = convergence_score × (1 − max override_score)` (`:146`), a `net_label` (`obstructed_severe / obstructed / auspicious_strong / auspicious_moderate / auspicious_speculative / neutral`, cuts 0.70 / 0.45 / 0.20 and a moderate-obstruction cut at 0.4, `:159`), an `obstruction_summary` copy and a three-field `narrative` (`headline`, `context`, `caution`, `:181`). The M9 note records a real fix: a computed convergence score of 0 is no longer rewritten to 0.5 (`:78`). Light writer; read by `ka_bhavishya_lekha` and `ka_jivana_parva`, and served by `query_temporal_view.ts:87` and the `kala_views/now.ts` view.
 
-**Canonical chart: `stale`, 0 rows (cascade-shaped).** `kala_darshana` has 0 canonical rows while `asset_throughput` reads `stale`, `rows_written` 750 (08-13 01:15); Abhinandan holds 750, the third chart 0 (I-6). 0 of 3 declared dependencies lit (`ka_sangam`, `ka_vighnakara`, `ka_kalasutra` stale — and the first two are empty for the chart). Wave 5 of the 26-asset plan, after `ka_vighnakara` (it reads `kala_obstruction`); it feeds `ka_bhavishya_lekha` and `ka_jivana_parva`. Not Nirmāṇa-frozen; output-digest spec present. Cause of the empty table: CF-24.
+**Canonical chart: `stale`, 0 rows (cascade-shaped).** `kala_darshana` has 0 canonical rows while `asset_throughput` reads `stale`, `rows_written` 750 (08-13 01:15); Abhinandan holds 750, the third chart 0 (I-6). 0 of 3 declared dependencies lit (`ka_sangam`, `ka_vighnakara`, `ka_kalasutra` stale — and all three tables are empty for the chart, I-6). Wave 5 of the rebuild plan (v1.0 numbering, v1.1.1 keeps the order), after `ka_vighnakara` (it reads `kala_obstruction`); it feeds `ka_bhavishya_lekha` and `ka_jivana_parva`. Not Nirmāṇa-frozen; output-digest spec present. Cause of the empty table: CF-24.
 
 | field | value | source |
 |---|---|---|
@@ -41,8 +41,8 @@ ledger_gap_ids: ["ka_kala_darshana-Build.completion", "ka_kala_darshana-Earn.bui
 | registry state read for the rebuild plan (2026-10-01 14:5x) | throughput `stale`; freshness no freshness row; output-digest spec present; service_health n/a (not a service) | `/Users/Dev/suvarna-evidence/Rebuild/reg_state.json` (outside the repo) |
 | depends_on (live, + migration 1210) | `ka_sangam`, `ka_vighnakara`, `ka_kalasutra` | layer instance 3.4 (REG 2026-09-30); migration 1210 |
 | blast radius | direct 3 / transitive 21 (census blocking_radius, every layer); named (REG 2026-09-30): L3 `ka_bhavishya_lekha`, `ka_jivana_parva`, `ka_tulana` | census `blocking_radius`; names from REG |
-| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/tools/kala_views/now.ts`, `platform-mcp/src/tools/retrieval/kala_temporal.ts`, `registry/layers/L3_kala/index.ts`, `registry/layers/L3_kala/query_temporal_view.ts`, `registry/layers/register_d5_fanout.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): `bodha_writers/_idempotency.py`, `pipeline/orchestrator/kala_derivation_completeness_guard.py`, `pipeline/orchestrator/writers/ka_bhavishya_lekha.py`, `pipeline/orchestrator/writers/ka_jivana_parva.py`, `services/ka_tulana/__init__.py`, `services/ka_tulana/ranker.py` | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
-| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:87` reads `kala_darshana`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, section 1) | declarations 1.6.0; offline Dens scan |
+| code readers (declared-vs-actual) | serving / TS modules that name the table: `platform-mcp/src/tools/kala_views/now.ts`, `platform-mcp/src/tools/retrieval/kala_temporal.ts`, `src/lib/retrieval/registry/knowledge/source_query_availability.ts`, `registry/layers/L3_kala/index.ts`, `registry/layers/L3_kala/query_temporal_view.ts`, `registry/layers/register_d5_fanout.ts`; python modules that name it other than the asset's own writer (a name hit, not always a read: for example `bodha_writers/_idempotency.py:102` is a comment): `bodha_writers/_idempotency.py`, `pipeline/orchestrator/kala_derivation_completeness_guard.py`, `pipeline/orchestrator/writers/ka_bhavishya_lekha.py`, `pipeline/orchestrator/writers/ka_jivana_parva.py`, `services/ka_tulana/__init__.py`, `services/ka_tulana/ranker.py` | `grep -rlw <table>` over `platform/python-sidecar`, `platform/src`, `platform-mcp/src` (runtime code; census/preflight/seed scaffolding excluded; run 2026-10-01) |
+| served surface | `platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:87` reads `kala_darshana`; `density_contract` declared on 0 of the L3 capability modules (offline rev-7 scan, `INDEX.md` section 9.1) | declarations 1.6.0; offline Dens scan |
 | Nirmāṇa freeze | not frozen (not in the L3 list of NIRMANA_SUPERSESSION_RECORD §2.3) | `NIRMANA_SUPERSESSION_RECORD_v1_0.md` §2.3 |
 | role / scoring mode | contribution (CEN `L3.scoring`); not a reference layer | census |
 
@@ -170,10 +170,11 @@ No Track I I-item touches this asset; it is downstream of the I-2 consumer (`ka_
 - **CF-24** — L2 -> L3 cascade keys and rebuild order (F-3 / migration 1214): four emptied tables and the dangling predicate set. *This asset:* emptied table; wave 5
 - **CF-25** — Narr fidelity (golden-value) tests per L3 narration writer. *This asset:* FD-3, FD-4
 - **CF-27** — Documented-approximation constants and favourable defaults in the L3 temporal chain (the L2 CF-20 class). *This asset:* label cuts; NULL → 0.5 logged
+- **CF-31** — integrity_check_sql scope audit (the I-7 class: table-wide checks coupled to other charts). *This asset:* table-wide `integrity_check_sql` (audit; none measured false)
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
-Natural key `convergence_id` (one darshana row per convergence window; the table has only a surrogate `id` PK, so the semantic key is the writer's `convergence_id`; the registry `natural_key_partition` and the census's declared key disagree, layer instance 5.2). Volatile columns excluded: `id`, `computed_at`. `convergence_id` is a BIGSERIAL of `kala_convergence` regenerated by every `ka_sangam` rebuild (migration 1212 header), so the cross-rebuild comparison key is `(signal_id, peak_date)`. Rebuild expectation: up to 750 rows, a function of the convergence set and the obstruction set.
+Natural key `convergence_id` (one darshana row per convergence window: migration 973 records a live UNIQUE index `idx_kala_darshana_convergence` on `convergence_id` WHERE NOT NULL and sets the registry `natural_key_partition` to `(chart_id, convergence_id)`; the census's declared key reads the surrogate `id`, layer instance 5.2). Volatile columns excluded: `id`, `computed_at`. `convergence_id` is a BIGSERIAL of `kala_convergence` regenerated by every `ka_sangam` rebuild (migration 1212 header), so the cross-rebuild comparison key is `(signal_id, peak_date)`. Rebuild expectation: up to 750 rows, a function of the convergence set and the obstruction set.
 
 ## 6 · Preserved kernel, carriage check, opportunities
 
@@ -185,7 +186,7 @@ Natural key `convergence_id` (one darshana row per convergence window; the table
 
 No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 7):
+Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
 
 - **Q-L3-07** — FD-3: approve the text-only correction of `narrative.context`?
 

@@ -20,7 +20,7 @@ ledger_gap_ids: ["ka_dasha_kala-Idem.pattern", "ka_dasha_kala-Build.count_integr
 
 # ka_dasha_kala — Dasha-eligibility service (7-system tree walk) and its self-test writer
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in section 7 and in the INDEX. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -28,13 +28,13 @@ ledger_gap_ids: ["ka_dasha_kala-Idem.pattern", "ka_dasha_kala-Build.count_integr
 
 Registry: kind service, per-chart, no `target_table`, no `count_sql`. The service (`services/ka_dasha_kala/`: `service.py`, `tree_walk.py`, `eligibility.py`; read-only, "NEVER writes to DB") walks `chart_dashas` lazily across the seven systems (`vimshottari, yogini, ashtottari, chara_karaka, naisargika, mudda, kalachakra`) and returns eligible windows with an eligibility band (exact / related / neutral, scores 0.85 / 0.50 / 0.20 in `eligibility.py`) and a cross-system agreement count; it is served by `call_dasha_eligibility` in `call_service_wrappers.ts`. The registered writer (`services/ka_dasha_kala/writer.py:113`; `pipeline/orchestrator/writers/ka_dasha_kala.py` is a side-effect import) is a SELF-TEST: it asserts that `chart_dashas` holds all seven systems for the canonical chart (`_EXPECTED_SYSTEMS`, `:27`), that a Saturn/Rahu query over 2010-2030 returns non-empty windows with `start_date < end_date`, and writes `service_health`, `last_selftest_at`, `selftest_detail` to its own `asset_registry` row; it raises when degraded so the orchestrator cannot promote it (`:156`, the M11 fix). It declares `source_paths` for its whole package (`:124`).
 
-**Canonical chart: `lit`, freshness `unknown`, `service_health` healthy** (registry state read for the rebuild plan, 2026-10-01). Latest run `8e00f2cd` complete/build 2026-09-10; 6 errors and 7 aborts on record, the latest error (2026-09-10) "post-write integrity check failed: integrity_check_sql → False" on a service that writes no table. No output-digest spec yet (I-5 adds one: PR #2826, migration 1213, NOT merged at base): its receipt carries no `output_digest`, which makes `ka_sangam`'s upstream digest NULL (rebuild plan B-2). Not in the 26-asset plan today (the planner accepts its freshness `unknown` as the writer-self-test shape); a rebuild of `ka_sangam` needs it rebuilt first once 1213 is applied. Nirmāṇa-frozen under t0 (2026-09-07). **None of the five emptied tables is this asset's.**
+**Canonical chart: `lit`, freshness `unknown`, `service_health` healthy** (registry state read for the rebuild plan, 2026-10-01). Latest run `8e00f2cd` complete/build 2026-09-10; 6 errors and 7 aborts on record, the latest error (2026-09-10) "post-write integrity check failed: integrity_check_sql → False" on a service that writes no table. No output-digest spec yet (I-5 adds one: PR #2826, migration 1213, NOT merged at base): its receipt carries no `output_digest`, which makes `ka_sangam`'s upstream digest NULL (rebuild plan B-2). Not in the 26-asset plan of rebuild-plan v1.0 (the planner accepts its freshness `unknown` as the writer-self-test shape); **rebuild-plan v1.1.1 adds it to the launch set (27 assets) in wave 1 / stage S1, strictly before `ka_sangam` and `ka_kshetra` (its section 1.6)**, after migration 1213 is deployed and the `selftest_detail` grant exists. Nirmāṇa-frozen under t0 (2026-09-07). **None of the five emptied tables is this asset's.**
 
 | field | value | source |
 |---|---|---|
 | kind (declarations 1.6.0) | service | `platform/scripts/governance/asset_declarations.json` |
 | registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2272` | seed (live may differ by migration; see CF-03) |
-| writer / `@register` | `platform/python-sidecar/services/ka_dasha_kala/writer.py:4`; registry `has_writer` = True | writers dir / census `Build.registered` |
+| writer / `@register` | `platform/python-sidecar/services/ka_dasha_kala/writer.py:113`; registry `has_writer` = True | writers dir / census `Build.registered` |
 | target table(s) | `none (service)`; count_sql tables: none | census |
 | live rows / floor | n/a (service) / 0 (service) | census `live_rows` (chart-scoped count_sql); floor from layer instance 1.1 (REG 2026-09-30) |
 | catalog_status | CURRENT | census |
@@ -195,7 +195,7 @@ No table. The only stored output is the registry health row: `service_health` an
 
 No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 7):
+Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
 
 - **Q-L3-01** — CF-27: are the band scores 0.85 / 0.50 / 0.20 a ratified approximation?
 - **Q-L3-10** — CF-26: extend digest specs to the same-class services?

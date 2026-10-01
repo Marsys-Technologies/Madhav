@@ -20,11 +20,11 @@ ledger_gap_ids: ["ka_muhurta_seva-Idem.pattern", "ka_muhurta_seva-Build.count_in
 
 # ka_muhurta_seva — Muhūrta scoring service (panchāṅga + tāra bala + knockout) and its FORENSIC self-test writer
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in section 7 and in the INDEX. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
-*Line citations: `file:N`; a bare `:N` is a line of the asset's own writer, `platform/python-sidecar/pipeline/orchestrator/writers/ka_muhurta_seva.py`.*
+*Line citations: `file:N`; a bare `:N` is a line of the asset's own writer, `platform/python-sidecar/services/ka_muhurta_seva/writer.py`.*
 
 Registry: kind service, scope `global`, no table. The service (`services/ka_muhurta_seva/service.py`) reuses the `score_muhurat()` primitive of the existing muhūrta engine (`muhurat/`, `panchang_engine/`) and is served by `call_muhurta_score` in `call_service_wrappers.ts` with a Nirmāṇa health probe (`probe_id muhurta_seva_forensic`). It is imported in code by `ka_sangam` and `ka_vighnakara` (`KaMuhurtaSevaService`). The registered writer (`services/ka_muhurta_seva/writer.py:20`) is a FORENSIC self-test: it recomputes the birth panchāṅga and asserts the five FORENSIC anchors (tithi 3, vara 1, nakshatra 25, yoga 20, karana 5 — CLAUDE.md §B: Shukla Tritiya, Ravivara, Purva Bhadrapada, Shiva, Garaja), a live tāra-bala check and the knockout path, writes `service_health` and `selftest_detail` to its own row, and raises on failure (`:132`, the pattern the M11 fixes in the sibling services copied). If the `muhurat` package fails to import, the module logs a FATAL and the self-test fails by design (`:37`).
 
@@ -34,7 +34,7 @@ Registry: kind service, scope `global`, no table. The service (`services/ka_muhu
 |---|---|---|
 | kind (declarations 1.6.0) | service | `platform/scripts/governance/asset_declarations.json` |
 | registry seed row | `platform/scripts/seed/asset_registry_seed.ts:2288` | seed (live may differ by migration; see CF-03) |
-| writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/ka_muhurta_seva.py:12`; registry `has_writer` = True | writers dir / census `Build.registered` |
+| writer / `@register` | `platform/python-sidecar/services/ka_muhurta_seva/writer.py:72`; registry `has_writer` = True | writers dir / census `Build.registered` |
 | target table(s) | `none (service)`; count_sql tables: none | census |
 | live rows / floor | n/a (service) / none (service) | census `live_rows` (chart-scoped count_sql); floor from layer instance 1.1 (REG 2026-09-30) |
 | catalog_status | CURRENT | census |
@@ -165,7 +165,7 @@ No table. Stored output: `service_health` and `selftest_detail` (the FORENSIC ch
 
 No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 7):
+Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
 
 - **Q-L3-10** — CF-26: land I-5 and plan this service in wave 1 (global, super_admin)?
 

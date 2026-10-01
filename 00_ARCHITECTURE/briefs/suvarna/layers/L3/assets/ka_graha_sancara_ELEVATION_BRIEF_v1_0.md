@@ -20,7 +20,7 @@ ledger_gap_ids: ["ka_graha_sancara-Idem.pattern", "ka_graha_sancara-Build.count_
 
 # ka_graha_sancara — Ephemeris-at-t service (graha positions at an arbitrary time) and its FORENSIC self-test writer
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in section 7 and in the INDEX. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -28,7 +28,7 @@ ledger_gap_ids: ["ka_graha_sancara-Idem.pattern", "ka_graha_sancara-Build.count_
 
 Registry: kind service, scope `global`, no table. The service (`services/ka_graha_sancara/engine.py`; the package is 468 lines, the writer module 268) provides `get_ephemeris` (positions at an arbitrary datetime) and the shared constants `ALL_GRAHAS`, `NAKSHATRAS`, `NAK_SIZE_DEG`, `SIGNS`. It is served by `call_ephemeris_at_t` (`call_service_wrappers.ts`) with a Nirmāṇa health probe (`service_probe`, `probe_id graha_sancara_forensic`). The registered writer (`ka_graha_sancara.py:47`) is a known-answer self-test: for the native's birth instant (`_BIRTH_DT_ISO`, `:40`) it asserts nine grahas with speeds and the Moon in Aquarius (`_FORENSIC_MOON_SIGN`, `:44`), then a stored-ephemeris read check, writes `service_health` and `selftest_detail`, and raises when not healthy (`:94`, the M11 fix: before it, an unhealthy self-test still returned a normal result and the asset was promoted to `lit`).
 
-**Canonical chart: global service, throughput `lit`; recorded `service_health` = `unhealthy`.** Registry state read for the rebuild plan (2026-10-01 14:5x): throughput `lit`, `service_health unhealthy`, no output-digest spec. Latest run `fef77aaf` complete 2026-07-26 (it predates commit `97fd08e1c`, 2026-09-05, #1751, which added the M11 raise and the `KeyError: 0` selftest fix recorded in the writer's comments at `:86`); so the registry says lit and unhealthy at once — the §N.8 mismatch M11 closed for future runs but not for the stored row. A new run would re-measure it. Nirmāṇa-frozen under t0 (2026-09-06). No emptied table is involved.
+**Canonical chart: global service, throughput `lit`; recorded `service_health` = `unhealthy`.** Registry state read for the rebuild plan (2026-10-01 14:5x): throughput `lit`, `service_health unhealthy`, no output-digest spec. Latest run `fef77aaf` complete 2026-07-26 (it predates commit `97fd08e1c`, 2026-09-05, #1751, which added the M11 raise (comment at `:86`) and the `KeyError: 0` selftest fix (M3 note at `:210`)); so the registry says lit and unhealthy at once — the §N.8 mismatch M11 closed for future runs but not for the stored row. A new run would re-measure it. Nirmāṇa-frozen under t0 (2026-09-06). No emptied table is involved.
 
 | field | value | source |
 |---|---|---|
@@ -165,7 +165,7 @@ No table. Stored output: `service_health` and `selftest_detail` on the registry 
 
 No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 7):
+Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
 
 - **Q-L3-10** — CF-26: extend digest specs to `ka_graha_sancara`?
 - **Q-L3-11** — run the self-test as a global-scope dispatch (super_admin)?
