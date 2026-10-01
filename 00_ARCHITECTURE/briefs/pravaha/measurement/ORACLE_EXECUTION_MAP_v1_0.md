@@ -1,13 +1,22 @@
 ---
 artifact: ORACLE_EXECUTION_MAP
-version: 1.0
+version: 1.1
 status: CURRENT
 date: 2026-10-01
-author: Pravāha Stream B (B5.5)
+author: Pravāha Stream B (B5.5; v1.1 B6.0 PART 3)
 branch: pravaha/b5-oracle-tests
 ---
 
-# ORACLE_EXECUTION_MAP v1.0 — the 36 `executable_at_A5.5` oracles, mapped to tests
+# ORACLE_EXECUTION_MAP v1.1 — the 36 `executable_at_A5.5` oracles, mapped to tests
+
+**v1.1 (B6.0 PART 3):** adds the A5.3-seam coverage of PART 2 (PR #2819, branch
+`pravaha/b6-a53-oracle-tests`, base `pravaha/a53-registered-writer` — the modules
+under test live on Stream A's integration branch). New suite:
+`platform/python-sidecar/tests/l3/gochara/test_b6_oracles_a53.py` — 11 REAL + 2
+strict-xfail FINDINGs; 54 passed + 2 xfailed with Stream A's own a53 suites.
+The v1.0 map below is unchanged; where a PART 2 test covers a new leg of an
+already-mapped oracle it is marked *(+ A5.3 leg)* and detailed in §A5.3 after
+the v1.0 tables.
 
 Every `executable_at_A5.5` oracle of `GOCHARA_TEST_ORACLES_v1_4.json` (36 total) is
 executed by a pytest on branch `pravaha/b5-oracle-tests`, under
@@ -99,3 +108,31 @@ condition-independent promise, unrestricted Cartesian enumeration, sign grid
 without 0° seam, minted Moon contact_id, producer-default 90-day trim,
 birth_anchor mapped, scored P9 registered, constant convention_id, neutered
 CoverageRecord invariants, skipped published-refusal.
+
+---
+
+## §A5.3 — PART 2 coverage of the A5.3 seam (B6.0, PR #2819, v1.1)
+
+Modules: `services/gochara_kernel/rule_registry.py` (rule_binding) and
+`services/gochara_kernel/evaluator.py` (window_evaluator), merged on
+`pravaha/a53-registered-writer`. Suite: `tests/l3/gochara/test_b6_oracles_a53.py`.
+Legs asserted here are the **enumeration/binding** legs; the A5.5-trajectory legs
+(admission arithmetic, peak, bit-identical scoring) stay with the v1.0 rows.
+
+| Oracle | Test | Status | What the A5.3 leg adds beyond v1.0 |
+|---|---|---|---|
+| O-CF-N6 | `::test_o_cf_n6_birth_anchor_zero_rows_every_path_and_control_nonempty` | REAL | birth_anchor raises on every implemented path P1–P5 (enumeration refuses); non-empty marriage control |
+| O-RP-5a | `::test_o_rp_5a_saturn_8th_from_moon_scores_for_illness_acute_only` (+ `…_mutation_target_gain_class_attachment_fails`) | REAL | the exact 13-edge RQ-5 plan for `illness_acute` (count written); every gain class's edges justified by the cited favourable table only |
+| O-RP-5b | `::test_o_rp_5b_sade_sati_phase_rows_are_testimony_and_never_on_gain` | REAL | phase rows uncited_extension/testimony/D-PADMIT on adverse classes only; no Sade-Sati edge on any gain class (the zero-score-effect leg stays v1.0 REAL) |
+| O-RP-3 | `::test_o_rp_3_p4_is_one_rule_p3_scored_restricted_to_jupiter_saturn` | REAL | P4 = P3 scored ∩ {jupiter, saturn} exactly; span + point target per agent (agents need not share one target) |
+| O-RP-8 | `::test_o_rp_8_marriage_p3_exact_qualified_row_set` | REAL | the exact 34-edge marriage P3 set with the count arithmetic written out; targets ⊆ qualified set (a Cartesian enumeration fails the count) |
+| O-RR-3 | `::test_o_rr_3_natal_saturn_is_an_occupant_of_the_7th_for_marriage` | REAL | natal Saturn 202.43° an occupant of the 7th span beside the 7L Venus ownership row; no occupancy row on a non-signature sign |
+| O-RP-7 | `::test_o_rp_7_bound_factor_inventory_declared_effects_ranges_and_orderings` | REAL | the rule_binding factor inventory: declared effects, binary direction vocab, ranges ⊆ [0,1], doctrine orderings weakest→strongest; sad_bala_summary excluded (D2) and binding it raises |
+| §2.2/E3 (spec, not an oracle id) | `::test_rule_binding_path_frames_match_spec_2_2`, `::test_rule_binding_store_divergence_raises_reuse_and_insert`, `::test_rule_binding_membership_guard_rejects_dangling_references` | REAL | frames per §2.2 (P1 dasha_lord, P2 moon, P3/P4/P5 lagna); store divergence→loud / identical→reused / absent→inserted; declared membership complete |
+| O-RP-1 | `::test_o_rp_1_union_not_cascade_on_a53_seam` | **B6-F16** (strict-xfail) | no admission-evaluation seam in the A5.3 modules yet (union-not-cascade + evidence_against attribution) |
+| O-P6-TARA | `::test_o_p6_tara_day_tier_enumeration_on_a53_seam` | **B6-F17** (strict-xfail) | P6 day-tier enumeration deferred (D1: day_on_demand; needs the v1.5 'inherited' frame fold — migration 1205, PR #2817, HOLD — A5.5 gate) |
+
+Mutation evidence (applied, run RED, reverted, 2026-10-01): Saturn's 8th
+dropped from the P2 adverse plan → O-RP-5a pair RED; node-aspect skip
+removed → O-RP-8 exact count RED; dignity doctrine ordering reversed →
+O-RP-7 RED.
