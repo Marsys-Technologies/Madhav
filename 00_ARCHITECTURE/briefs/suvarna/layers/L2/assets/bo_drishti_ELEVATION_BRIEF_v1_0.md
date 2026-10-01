@@ -22,7 +22,7 @@ ledger_gap_ids: [bo_drishti-Earn.build_record, bo_drishti-Cost.baseline, bo_dris
 
 ## 0 · Identity — what the asset is
 
-Pre-computes deterministic classical question lenses: a question type maps to the chart-specific structural elements that bear on it, as signal ids (`template_element_ids_jsonb`), a mandatory wildcard graph sweep over `bodha_cgm_edges` so no high-salience far-from-template signal is lost (`wildcard_element_ids_jsonb`) and the ranked union (`all_relevant_ranked_jsonb`, total sort key F-114: salience, template-first, `signal_id`). Two absolute guards in the docstring: a lens POINTS, never pre-answers (`points_only_assertion = True`, `bo_drishti.py:265`) and is ADDITIVE, never subtractive. `@register("bo_drishti")` at `bo_drishti.py:288`, chart-wide delete at `:311`; 60 chart rows (floor 60, delta 0), 180 table-wide, all 15 columns populated; `lens_id` is `stable_semantic_uuid` (deterministic). Served by `query_question_lenses.ts` (declares a contract and selects `verification_pass_status`) and `query_domain_reading.ts`. Dependents `bo_anveshana`, `bo_pramana_mapa`. Frozen under the t1 definition (2026-09-09).
+Pre-computes deterministic classical question lenses: a question type maps to the chart-specific structural elements that bear on it, as signal ids (`template_element_ids_jsonb`), a mandatory wildcard graph sweep over `bodha_cgm_edges` so no high-salience far-from-template signal is lost (`wildcard_element_ids_jsonb`) and the ranked union (`all_relevant_ranked_jsonb`, total sort key F-114: salience, template-first, `signal_id`). Two absolute guards in the docstring: a lens POINTS, never pre-answers (`points_only_assertion = True`, `bo_drishti.py:268`) and is ADDITIVE, never subtractive. `@register("bo_drishti")` at `bo_drishti.py:288`, chart-wide delete at `:311`; 60 chart rows (floor 60, delta 0), 180 table-wide, all 15 columns populated; `lens_id` is `stable_semantic_uuid` (deterministic). Served by `query_question_lenses.ts` (declares a contract and selects `verification_pass_status`) and `query_domain_reading.ts`. Dependents `bo_anveshana`, `bo_pramana_mapa`. Frozen under the t1 definition (2026-09-09).
 
 | field | value | source |
 |---|---|---|
@@ -67,7 +67,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 | gap id (ledger or census cell) | gate | class | note |
 |---|---|---|---|
-| declarations `prose_fields: null` (undeclared) | Null, Narr | detector (declaration) | the writer binds ids, floats, flags, a constant `verification_pass_status = 'documented_approximation'` and an identifier `citation_ref = f"bo_drishti/{question_type}/{aya}"` (`bo_drishti.py:258-275`) and composes no sentence; proposal: declare `[]` with that `file:line` evidence (an identifier string is not narration, per the declarations rule). CF-06. |
+| declarations `prose_fields: null` (undeclared) | Null, Narr | detector (declaration) | the writer binds ids, floats, flags, a constant `verification_pass_status = 'documented_approximation'` and an identifier `citation_ref = f"bo_drishti/{question_type}/{aya}"` (`bo_drishti.py:254-272`) and composes no sentence; proposal: declare `[]` with that `file:line` evidence (an identifier string is not narration, per the declarations rule). CF-06. |
 | `bo_drishti-Build.history` | Build (history) | history | latest run complete; 17 errors and 8 aborts on record (latest error 2026-07-16, `BLOCKED: upstream bo_karanajala, bo_laksana, bo_sangati did not complete`). CF-10. |
 | `bo_drishti-Earn.build_record`, `-Cost.baseline`, `-Carr.detector` | Earn, Carr | detector | instrument absent / no D1-D3 detector; CF-05, CF-07. |
 | census Dens.served † | Dens | information | rev-1 PASS and the offline rev-4 scan reads PASS (`query_question_lenses.ts` declares a contract and selects `verification_pass_status`); no gap. |
@@ -83,7 +83,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 ### FD-1 · Declare `prose_fields = []` with writer evidence
 
 - **Answers:** Null/Narr NO_DETECTOR (undeclared); CF-06
-- **Change:** add `prose_fields: []` and `evidence.prose_fields` citing `bo_drishti.py:258-275` (no composed string bound to a column) to the declarations file; verify by reading the three `*_element_ids_jsonb` builders for any text key before declaring
+- **Change:** add `prose_fields: []` and `evidence.prose_fields` citing `bo_drishti.py:254-272` (no composed string bound to a column) to the declarations file; verify by reading the three `*_element_ids_jsonb` builders for any text key before declaring
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` (Track E)
 - **Failing-first test and mutation:** declarations validation test passes; mutation: add a composed text key to a lens dict → the Narr scan flags the undeclared prose
 - **Output change:** none
