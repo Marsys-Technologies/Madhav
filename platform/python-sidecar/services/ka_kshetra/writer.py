@@ -155,6 +155,36 @@ HORIZON_DAYS = S4.HORIZON_DAYS
 #: §8.1's stage-4 chunk grain: ten decade slices per event class.
 DECADES = 10
 
+#: I-10: stage-5 dhara-WINDOWS grain. Each event class's windows are written by
+#: `WINDOW_PARTS` small substeps (`stage5dhara:{ec}:2:{p}`), each owning the
+#: windows whose `t_start` falls in one half-open slice of the horizon. The
+#: 2026-09-11 build lost its database connection inside the single per-class
+#: windows substep; writers cannot reconnect (`ctx.db_conn` is the orchestrator's,
+#: CLAUDE.md §N.2), so the long unit of work is cut to a fraction instead, and the
+#: orchestrator's per-substep savepoint + commit and this writer's own resume
+#: ledger make a connection loss cost ONE small part. 20 = two parts per stage-4
+#: decade, so every decade boundary is also a part edge.
+WINDOW_PARTS = 20
+
+
+def _window_part_bounds(part: int, parts: int = WINDOW_PARTS) -> tuple[Optional[float], Optional[float]]:
+    """(lo, hi) of part `part`: membership is `lo <= t_start < hi`.
+
+    The OUTER bounds are None (unbounded), not 0 and HORIZON_DAYS, so completeness
+    never depends on where windows happen to sit: every finite `t_start` falls in
+    exactly one part. Interior edges come from ONE expression, `i * H / parts`,
+    used both as part i-1's `hi` and part i's `lo`, so neighbours share bitwise
+    identical edges (no gap, no overlap).
+    """
+    lo = None if part <= 0 else part * HORIZON_DAYS / parts
+    hi = None if part >= parts - 1 else (part + 1) * HORIZON_DAYS / parts
+    return lo, hi
+
+
+def _in_window_part(t_start: float, lo: Optional[float], hi: Optional[float]) -> bool:
+    return (lo is None or t_start >= lo) and (hi is None or t_start < hi)
+
+
 #: Encodes (decade, local ordinal) into the globally-ascending `segment_index`
 #: without needing to know how many segments earlier decades produced. Adaptive
 #: refinement makes those counts unknowable before the slice is built, and a
@@ -180,6 +210,12 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #:       content-bound; v8 checkpoints cannot resume into the corrected field.
 #: v10 — DP-SD-017 W0 preservation: populated slices fail before replacement;
 #:       v9 checkpoints must re-enter the preservation preflight.
+#: I-10 (NO bump, deliberately): stage5dhara windows are emitted as
+#:       `stage5dhara:{ec}:2:{p}` parts instead of one `stage5dhara:{ec}:2`. The rows
+#:       written are identical, so the fingerprint is unchanged and an in-flight
+#:       ledger stays valid; `plan_substeps` treats a recorded legacy
+#:       `stage5dhara:{ec}:2` receipt as "all parts of that class done"
+#:       (`_substep_done`). Bumping would force a full replan of a half-built chart.
 _RESUME_VERSION = 10
 
 
@@ -265,6 +301,21 @@ class _ClassContext:
     baseline_is_synthetic: bool = False
 
 
+@dataclass
+class _DharaWindowState:
+    """Class-wide stage-5 dhara-windows inputs, shared by every part of one class
+    (I-10). Deterministic functions of committed rows, so safe to reuse in-process."""
+    event_class: str
+    snapshot_id: str
+    null_result: Any
+    segments: list
+    windows: list
+    adrishta: Any
+    ayanamsha_ids: set
+    sigma_t: Optional[float]
+    legacy: list
+
+
 @register(ASSET_ID)
 class KaKshetraWriter(WriterBase):
     """ṢAḌ-DARŚANA W2: the ten-stage point-process temporal field."""
@@ -300,6 +351,11 @@ class KaKshetraWriter(WriterBase):
         # doubling a full-table read of `kala_field_provenance` (~1.8M rows for
         # the native chart). Same lazy-init pattern as `_shared_envelopes`.
         self._window_provenance_cache: dict[str, list[dict]] | None = None
+        # I-10: the per-class window inputs (null, segments, full window list,
+        # adrishta, legacy cross-check) are identical for every part of a class, so
+        # the parts of ONE class share one load in-process. Single entry: only the
+        # class being worked on is held. A fresh process (resume) reloads once.
+        self._dhara_windows_state: "_DharaWindowState | None" = None
         self._birth_date, self._birth_time = self._load_birth_instant(conn, self._chart_id)
 
         # §7.5 sub-rule 5: resolve the weights version EXACTLY ONCE, here, and
@@ -380,8 +436,14 @@ class KaKshetraWriter(WriterBase):
                 # chunk:2 reads from DB, not in-memory state from chunk:1.
                 work_steps.append(SubStep(key=f'stage5dhara:{ec}:1',
                                           label=f'dhara null {ec} — {DN.DEFAULT_REPLICATES} replicates → kala_field_null'))
-                work_steps.append(SubStep(key=f'stage5dhara:{ec}:2',
-                                          label=f'dhara windows {ec} — load null → kala_field_windows'))
+                # I-10: windows are split into WINDOW_PARTS small substeps, each
+                # owning one disjoint t_start slice of the class's windows, so a lost
+                # connection costs one part, not the whole class.
+                for part in range(WINDOW_PARTS):
+                    work_steps.append(SubStep(
+                        key=f'stage5dhara:{ec}:2:{part}',
+                        label=f'dhara windows {ec} part {part + 1}/{WINDOW_PARTS} '
+                              '— load null → kala_field_windows'))
             else:
                 for b in range(1, n_blocks + 1):
                     work_steps.append(SubStep(key=f'stage5:{ec}:{b}',
@@ -422,10 +484,26 @@ class KaKshetraWriter(WriterBase):
         # mixture of two snapshots.
         completed = {k for k in completed if not self._is_partial_null_class(k, completed,
                                                                              n_blocks)}
-        remaining = [s for s in steps if s.key not in completed]
+        remaining = [s for s in steps if not self._substep_done(s.key, completed)]
         logger.info('ka_kshetra: RESUMING chart %s — %d/%d substeps committed, %d remaining',
                     self._chart_id, len(steps) - len(remaining), len(steps), len(remaining))
         return remaining
+
+    @staticmethod
+    def _substep_done(key: str, completed: set[str]) -> bool:
+        """Is `key` already committed, per the writer's own resume ledger?
+
+        I-10 compatibility: a ledger written by the pre-split plan holds ONE legacy
+        receipt `stage5dhara:{ec}:2` for a class whose windows were all written. A
+        part key `stage5dhara:{ec}:2:{p}` is therefore also done when its class's
+        legacy receipt is present. (The orchestrator never reads step ids; they are
+        opaque to it, so only this method defines what "done" means.)
+        """
+        if key in completed:
+            return True
+        parts = key.split(':')
+        return (len(parts) == 4 and parts[0] == 'stage5dhara' and parts[2] == '2'
+                and ':'.join(parts[:3]) in completed)
 
     @staticmethod
     def _is_partial_null_class(key: str, completed: set[str], n_blocks: int) -> bool:
@@ -498,11 +576,15 @@ class KaKshetraWriter(WriterBase):
             _, ec, block = step.key.split(':')
             return self._run_stage5_block(conn, ec, int(block), step)
         if kind == 'stage5dhara':
-            # key format: stage5dhara:{ec}:{chunk}  (F2: chunk=1 or 2)
-            _, ec, chunk = step.key.split(':')
+            # key formats: stage5dhara:{ec}:1            null (F2 chunk 1)
+            #              stage5dhara:{ec}:2:{part}     windows part (I-10)
+            #              stage5dhara:{ec}:2            legacy whole-class windows
+            fields = step.key.split(':')
+            ec, chunk = fields[1], fields[2]
             if chunk == '1':
                 return self._run_stage5dhara_null(conn, ec, step)
-            return self._run_stage5dhara_windows(conn, ec, step)
+            part = int(fields[3]) if len(fields) == 4 else None
+            return self._run_stage5dhara_windows(conn, ec, step, part)
         if kind == 'stage5finalize':
             _, ec = step.key.split(':', 1)
             return self._run_stage5_finalize(conn, ec, step)
@@ -848,13 +930,29 @@ class KaKshetraWriter(WriterBase):
                                   f'({DN.DEFAULT_REPLICATES} replicates, '
                                   f'q={null_result.q_threshold!r})')
 
-    def _run_stage5dhara_windows(self, conn, event_class: str, step: SubStep) -> WriterResult:
-        """F2/chunk:2 (SM-R-11) — load committed null, find windows → kala_field_windows.
+    def _run_stage5dhara_windows(self, conn, event_class: str, step: SubStep,
+                                 part: Optional[int] = None) -> WriterResult:
+        """F2/chunk:2 (SM-R-11) + I-10 — write ONE t_start partition of a class's windows.
+
+        `part` is None only for the legacy whole-class key `stage5dhara:{ec}:2`
+        (kept dispatchable; its scope is the entire class). Otherwise the substep
+        owns exactly the windows with `lo <= t_start < hi` for that part.
+
+        The window set is a property of the WHOLE class (a window is maximal, so
+        it can only be found over every segment; `adrishta` is a class-wide
+        total), so each part derives the full list deterministically from the
+        committed segments + null and then writes only its own slice. Parts of
+        one class share that derivation in-process (`_dhara_windows_state`).
 
         Resume-safe: reads the NullResult from committed kala_field_null rows
-        rather than in-memory state from chunk:1. If chunk:1 is committed but
-        the build was interrupted before chunk:2, this chunk can be re-run
-        from a resumed build without re-computing the null distribution.
+        rather than in-memory state from chunk:1.
+
+        Idempotent per part WITHOUT a delete: a part writes only its own slice's
+        windows + provenance, by natural-key upsert (`window_id` encodes
+        t_start/t_end, so slices are disjoint by key; same snapshot => same
+        rows). No computational substep deletes anything — replacement happens
+        once, in `prepare:replace` (the ka_gochara_sweep D-5 RED-C doctrine, and
+        DP-SD-017 W0 holds replacement of any populated slice).
         """
         try:
             cctx = self._class_context(conn, event_class)
@@ -868,6 +966,43 @@ class KaKshetraWriter(WriterBase):
         if self._dry_run:
             return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
                                 notes=f'{event_class}: dry_run (dhara chunk:2)')
+
+        st = self._dhara_windows_for_class(conn, event_class, cctx)
+        lo, hi = ((None, None) if part is None
+                  else _window_part_bounds(part, WINDOW_PARTS))
+        part_windows = [w for w in st.windows if _in_window_part(w.t_start, lo, hi)]
+
+        rows = self._write_windows_batch(conn, cctx.evaluator, event_class, st.segments,
+                                         part_windows, st.null_result, st.adrishta,
+                                         st.ayanamsha_ids, st.sigma_t, st.legacy,
+                                         cctx.temporal_shape,
+                                         baseline_is_synthetic=cctx.baseline_is_synthetic)
+        if part is None or part == WINDOW_PARTS - 1:
+            self._verify_class_windows_complete(conn, event_class, st)
+
+        self._record_substep(conn, step.key, rows)
+        where = 'all' if part is None else f'part {part + 1}/{WINDOW_PARTS}'
+        return WriterResult(asset_id=ASSET_ID, rows_inserted=rows,
+                            notes=f'{event_class}: {len(part_windows)}/{len(st.windows)} '
+                                  f'window(s) ({where}, dhara chunk:2), '
+                                  f'q={st.null_result.q_threshold!r}')
+
+    def _dhara_windows_for_class(self, conn, event_class: str, cctx) -> "_DharaWindowState":
+        """Class-wide inputs shared by every part (loaded once per class per process).
+
+        Known properties (I-10 review): (1) `adrishta` uses `ev.lifetime_count`, read
+        once at class-context build (`_class_context`, `load_class_lifetime_count`);
+        it is not part of the resume fingerprint, so a prior changed mid-build is not
+        detected by resume. (2) Parts are split by TIME (equal t_start slices), not by
+        window count, so they can be unbalanced. (3) `_kinematics_ayanamsha_ids` and
+        `_sigma_t_days` swallow exceptions into an empty set / None (pre-existing
+        behaviour, unchanged here): a transient failure there degrades robustness
+        flags instead of failing the part.
+        """
+        cached = getattr(self, '_dhara_windows_state', None)
+        if (cached is not None and cached.event_class == event_class
+                and cached.snapshot_id == self._snapshot_id):
+            return cached
 
         # ── load committed null from DB (resume-safe) ─────────────────────────
         with conn.cursor() as cur:
@@ -899,9 +1034,7 @@ class KaKshetraWriter(WriterBase):
 
         ev = cctx.evaluator
         # Windows are derived from COMMITTED segments, matching _run_stage5_finalize parity.
-        # Under dry_run, the evaluator's own segments stand in — nothing is written.
-        segments = (ev.build_segments() if self._dry_run
-                    else self._load_segments(conn, event_class))
+        segments = self._load_segments(conn, event_class)
         if not segments:
             raise S4.UpstreamStageIncomplete(
                 f'upstream_stage_incomplete: no kala_field segments for {event_class}'
@@ -912,20 +1045,48 @@ class KaKshetraWriter(WriterBase):
         # P3-a: baseline_rate() now returns (rate, is_synthetic). Unpack the rate.
         adrishta = S5.adrishta_residual(totals, hazard.baseline_rate(ev.lifetime_count)[0],
                                         HORIZON_DAYS)
-        ayanamsha_ids = self._kinematics_ayanamsha_ids(conn)
-        sigma_t = self._sigma_t_days(conn)
-        legacy = S4.load_legacy_crosscheck(conn, self._chart_id, event_class)
+        st = _DharaWindowState(
+            event_class=event_class, snapshot_id=self._snapshot_id,
+            null_result=null_result, segments=segments, windows=windows,
+            adrishta=adrishta,
+            ayanamsha_ids=self._kinematics_ayanamsha_ids(conn),
+            sigma_t=self._sigma_t_days(conn),
+            # READ-ONLY per-class corpus; it is attached to each window as a gate
+            # edge, it does not validate totals, so it needs no whole-class result.
+            legacy=S4.load_legacy_crosscheck(conn, self._chart_id, event_class),
+        )
+        self._dhara_windows_state = st
+        return st
 
-        rows = self._write_windows_batch(conn, ev, event_class, segments, windows, null_result,
-                                         adrishta, ayanamsha_ids, sigma_t, legacy,
-                                         cctx.temporal_shape,
-                                         baseline_is_synthetic=cctx.baseline_is_synthetic)
+    def _verify_class_windows_complete(self, conn, event_class: str, st) -> None:
+        """§N.8 detector for "the parts' union is the class's full window set".
 
-        if not self._dry_run:
-            self._record_substep(conn, step.key, rows)
-        return WriterResult(asset_id=ASSET_ID, rows_inserted=rows,
-                            notes=f'{event_class}: {len(windows)} window(s) '
-                                  f'(dhara chunk:2), q={null_result.q_threshold!r}')
+        Run by the LAST part: counts the distinct committed window ids for this
+        class + snapshot and compares to the distinct ids the full derivation
+        yields. A part that never ran (stale ledger, wrong plan) reads false here.
+
+        LIMIT (documented, not hidden): this detector is NOT self-healing. If the
+        ledger says parts are done but their rows are missing, the last part fails on
+        every resume until a fresh build (prepare:replace) rebuilds the class; the
+        failure is loud, never a silent partial.
+        """
+        expected = len({
+            integrator.window_id(str(self._chart_id), event_class, w.t_start, w.t_end,
+                                 self._weights_version, hazard.X_SCHEMA_VERSION)
+            for w in st.windows})
+        with conn.cursor() as cur:
+            cur.execute(
+                'SELECT COUNT(DISTINCT window_id) AS n FROM kala_field_windows '
+                'WHERE chart_id = %s AND event_class = %s AND field_snapshot_id = %s',
+                (self._chart_id, event_class, self._snapshot_id),
+            )
+            have = int(S4._rows(cur)[0]['n'])
+        if have != expected:
+            raise S4.UpstreamStageIncomplete(
+                f'upstream_stage_incomplete: dhara windows for {event_class} are '
+                f'incomplete after the last part: {have} distinct window(s) committed, '
+                f'{expected} expected from the full derivation'
+            )
 
     def _write_window(self, conn, ev, event_class, segments, w, null_result,
                       adrishta, ayanamsha_ids, sigma_t, legacy,
