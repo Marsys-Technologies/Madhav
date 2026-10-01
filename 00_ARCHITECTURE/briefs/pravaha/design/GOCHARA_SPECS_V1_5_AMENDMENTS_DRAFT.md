@@ -1137,6 +1137,68 @@ against the single kernel implementation (`services/gochara_kernel/dasha_read.py
 
 ---
 
+## AM-11 — Implementation pins for the P1/P2/P3/P6 prerequisite evaluation + the P1 obligation-agent token (steward M20261001T204900-21ac) — NEW
+
+Source: `PREREQUISITE_EVALUATION_ANSWER_v1_0.md` (adopted by the steward). Frozen v1.4 is **silent**
+on the five points below; each is marked as Stream B's recommendation, now pinned as an
+**implementation pin for the A5.5 gate** (not a v1.4 edit). General rule restated: every declared
+prerequisite is **evaluated, never hard-coded and never left `NULL`** where it is decidable
+(F5, 1155:822–832: `NULL` ≡ unknown; "unevaluated" is not "unknown"; CLAUDE.md §N.8).
+
+> **Pin (a) — `natal_bhava_relationship` (P1 #2), testimony kind.** A relation of a *testimony* kind
+> (node-dispositor under D-PADMIT; non-node dispositorship and association — no clause in
+> PG249:C1/PG250:C1) stores prerequisite result **`true`** and the record's
+> `operator_role = 'testimony'`. Role, not result, is what stops it admitting (§0, S:56–62). A scored
+> kind (occupancy, ownership of a signature house) stores `true` with `operator_role='scored'`;
+> `relation = none` stores `false`; H unknown, or the lord's natal position unreadable, stores
+> `unknown`. Evaluated from L1 natal positions + sign lordship + the class H table
+> (`permission.period_lord_relation` is the reference logic).
+>
+> **Pin (b) — natal-fact P1 rows are not admission-bearing.** P1's natal-fact records
+> (`contact_id IS NULL`: occupancy/ownership/dispositorship of the period lord) have no transit
+> contact, F5 still demands every declared prerequisite, and 1155 has no "not applicable". They are
+> therefore **not materialised as admission-bearing records**: prerequisite (2) is carried as the
+> *evaluated predicate on the transit record*, the relation recorded in its `source_fact_ids`. If a
+> natal-fact row is retained as a testimony annotation, its `transit_relation` result is `unknown`.
+> `transit_relation` on a transit record is a **read-back of its own contact row** (true by
+> construction — contact ownership/coverage guards 1155:717–747 — but computed, not asserted).
+>
+> **Pin (c) — `house_from_moon` (P2) polarity.** The predicate tests **h ∈ the agent's cited
+> favourable ∪ adverse house set** (Phaladīpikā XXVI.1–8; adverse 12/8/1 for Saturn/Sun/Mars/Jupiter,
+> D-RQ5). Polarity (the D-RQ5 evidence channel, §3.1) is a **valence** step, not admission. The
+> operand is renamed **`p2:cited_house_set`** (it was `p2:adverse_house_set`,
+> `rule_registry.py:164`). A predicate change is a **new `rule_version` row**, never an edit (1154 /
+> §2.1 amendment 1): if `(house_from_moon, '1.0.0')` has been bound anywhere, bump the version.
+> Nodes without an independently sourced set (AM-9, Ketu-12) → `unknown`; a relative's event cannot
+> carry a Moon-frame record (`kgrr_relative_frame_ck`).
+>
+> **Pin (d) — `admitted_window_exists` (P6) is a read-back.** Evaluated against the parent admitted
+> window of the same chart/generation (1156, sealed generation), not asserted from the emission path.
+> P6 remains outside this batch (AM-8 / AM-4 defer parent-context and containment); the
+> `B6-F17` sentinel stays until that design lands.
+>
+> **Pin (e) — the obligation `agent` for P1's period-role agent is the ROLE token
+> `period_lord:md|ad|pd`** (grammar `period_lord:(md|ad|pd)`); every other path's obligation agent is
+> a concrete graha. (Settles the F-3 sub-point; Stream A may keep "concrete graha + role alongside"
+> on **records**, which store a concrete graha, but the **inventory** uses the role token.) Reasons:
+> (1) *completeness* — an obligation must be coverable over the whole horizon (AM-5 §4); a
+> concrete-graha period obligation is only *applicable* while that graha runs in that role and the
+> ledger has no "not applicable" state, whereas the Vimśottarī rows partition the horizon, so a role
+> token is fully coverable; (2) *stability* — the inventory and its digest must not move with an L1
+> daśā rebuild's boundary shift (AM-10): only `dasha_digest`/`input_digest` do; (3) the registry's
+> agent vocabulary stays concrete (a selector vocabulary, not an inventory unit). **Resolution:**
+> each `searched_*` interval of a role-token obligation is cut at the pinned dasha rows' boundaries
+> (half-open, §4.0) and carries `detail = {"resolved_agent": "<graha>", "dasha_row_id": "<uuid>"}`;
+> records emitted from it carry the concrete graha as `agent`. The independent verifier re-derives the
+> cut points and resolved agents from the snapshot's `consumed_dasha_row_ids` (an O-RP-9 extension);
+> **SQL does not check the resolution — a named residual** like the inventory's doctrinal correctness.
+> Migration 1206 already admits any non-blank agent token; **no schema change.**
+
+**Schema impact:** none. **Owner:** A implements the evaluations; B supplies the reference logic and
+the O-RP-9 extension; both are A5.5-gate items.
+
+---
+
 ## Batch checklist for the A5.5 gate (v0.5)
 
 | # | Item | Spec fold | New migration? | Decision left? |
@@ -1151,6 +1213,7 @@ against the single kernel implementation (`services/gochara_kernel/dasha_read.py
 | AM-8 | P6 testimony template; five frame kinds; future designed migration | new (template) | 1205 SPLIT OUT | no |
 | AM-9 | L0 Rāhu/Ketu finding (provenance narrowed) | none | no | L0 owner's ruling |
 | AM-10 | §4.0 daśā read-contract re-pin rule (conditional on L1-rebuild close; no new pin value) | §4.0 | no (one code PR at re-pin) | steward declares rebuild landed |
+| AM-11 | Prerequisite-evaluation implementation pins (a)–(d) + P1 obligation-agent role token (e) | §2.2 / §10.1 | no | no |
 
 ## A5.5-gate follow-ups — Codex v1.4 ranked list (P2; owed at the A5.5 gate; no P1 blocks)
 
@@ -1162,7 +1225,7 @@ F-3→F-1, (new)→F-2, F-4→F-3, F-5→F-4, F-6→F-5, F-7→F-6. Owner **A** 
 |---|---:|---|---|---|
 | F-1 | 1 | Additive storage + seal checks for AM-5 (6 tables, 17 functions, seal trigger, replay branch) as new migration file(s) with protected-runner wiring in the SAME window as 1204; database adversaries on a disposable PG: wrong manifest, post-seal mutation rejection, full replay lifecycle (initial seal → identical replay → registry advance → replay again). **IMPLEMENTED as migration 1206 + 20-case live suite + static test, PR HOLD (not yet reviewed); see §AM-5 implementation record** | **B** wrote the migration + DB tests (steward M20261001T201843-f8e5), **S** schedules the protected window | inventory migration acceptance |
 | F-2 | 2 | Bind exclusion `basis` / `ruling_ref` into the verified inventory preimage; mutation tests; revised digest vectors. **Spec text, vectors and model mutation cases M1–M6 CLOSED in v0.6 (not yet reviewed)**; remaining: the same mutations as real INSERT/seal attempts in F-1's database suite | **B** | AM-5 verification acceptance |
-| F-3 | 3 | Canonical bytes and storage-domain mapping (the synthetic `self` token vs stored `affected_person='native'`; period-lord role tokens → concrete grahas via the pinned dasha snapshot; frame args, target bytes, timestamp precision, delimiters); full-precision formatter / quantization question; declared class census (an absent class reports `not_searched`); registry-version selection (historical/superseded versions neither vanish nor double-count); candidate replacement/invalidation across verification rows, manifest bindings and derived outputs; qualified-geometry planning and O-RW-1 invalidation; retain O-RX-1a | **B** (bytes/spec) + **A** (identity builder, writer) | A5.5 identity and writer gate |
+| F-3 | 3 | Canonical bytes and storage-domain mapping (the synthetic `self` token vs stored `affected_person='native'`; period-lord role tokens → concrete grahas via the pinned dasha snapshot — **token form SETTLED in AM-11 pin (e)**: role tokens in the inventory; frame args, target bytes, timestamp precision, delimiters); full-precision formatter / quantization question; declared class census (an absent class reports `not_searched`); registry-version selection (historical/superseded versions neither vanish nor double-count); candidate replacement/invalidation across verification rows, manifest bindings and derived outputs; qualified-geometry planning and O-RW-1 invalidation; retain O-RX-1a | **B** (bytes/spec) + **A** (identity builder, writer) | A5.5 identity and writer gate |
 | F-4 | 4 | Typed rūpa/bindu operand storage; declaration-key bytes and L1 build/convention identity; P5a/P5b path ids and applicability storage; `null_state` on the versioned `ka_gochara_factor` row (1154:310–334), **not** the membership (draft text at AM-6 still says membership — one-line correction owed); edition/translator for Phaladīpikā IV.22–23 | **B** (AM-6/AM-7 text) + **A** (storage) | AM-6/AM-7 writer acceptance |
 | F-5 | 5 | Actual P5 evaluator fixtures: numeric bindu mismatch, BAV/SAV selection, independent P5a/P5b missingness, citation through declaration (not the test-local `consumeDeclaration`); repair the oracle map's stale 1205 reference (line 133) and the B6-F16/F17 sentinels | **A** (PR #2817 fixtures/evaluators) + **B** (oracle map v1.2) | P5/A5.5 acceptance (not vocabulary-only 1204) |
 | F-6 | 6 | Moon receipts: table/API, key, canonical result rendering excluding self-referential digest/audit fields; generation-5 manifest-digest implementation carrying AM-5's `inventories_digest` and excluding `moon_on_demand`, with before/after-seal evidence; P6 context/containment stays held | **B** (AM-4 text) + **A** (implementation) | Moon/day implementation acceptance |
