@@ -13,14 +13,14 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0
 base_commit: "main 066c58587"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); FD-2 to FD-5 are output changes and go to SS (R5); FD-1 and FD-6 are not; several are classical-definition questions for an acharya"
-decisions_applied: "none specific to L3 yet; L0 rulings by analogy, PROVISIONAL until the J1 review"
-track_i_items: [TI-L3-01, TI-L3-02, TI-L3-05, TI-L3-10, TI-L3-11, TI-L3-12, TI-L3-15, TI-L3-16, TI-L3-17, TI-L3-19, TI-L3-20, TI-L3-23]
+decisions_applied: "SS decision-sheet rulings of 2026-10-01 (section 7; (R) items provisional until J1); L0 rulings by analogy, PROVISIONAL until the J1 review"
+track_i_items: [TI-L3-01, TI-L3-02, TI-L3-05, TI-L3-10, TI-L3-11, TI-L3-12, TI-L3-15, TI-L3-16, TI-L3-17, TI-L3-19, TI-L3-20, TI-L3-23, TI-L3-26, TI-L3-27, TI-L3-28, TI-L3-29, TI-L3-30]
 ledger_gap_ids: ["ka_vighnakara-Build.completion", "ka_vighnakara-Earn.build_record", "ka_vighnakara-Cost.baseline", "ka_vighnakara-Count.floor", "ka_vighnakara-Dens.served", "ka_vighnakara-Build.history", "ka_vighnakara-Build.dep_liveness", "ka_vighnakara-Carr.detector", "new: vighnakara-N1", "new: vighnakara-N2", "new: vighnakara-N3", "new: vighnakara-N4", "new: vighnakara-N5", "new: vighnakara-N6", "new: vighnakara-N7", "new: vighnakara-N8", "new: vighnakara-N9", "new: vighnakara-N10", "new: vighnakara-N11"]
 ---
 
 # ka_vighnakara — Obstruction detector: five detectors evaluated at each convergence or dasha-anchored peak
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. SS ruled the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings that touch this asset are in section 7 and `INDEX.md` section 9; items marked (R) are provisional until the J1 review and anything not listed there remains open. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -124,6 +124,7 @@ Approver under Track A brief §10: **Steward (G16); FD-2 to FD-5 are output chan
 
 ### FD-2 · Correct the Gandanta degrees
 
+- **SS ruling (2026-10-01) (R):** accepted (A-1). ONE shared L0 Gandanta module read by `ka_vighnakara`; canonical width 3°20' each side; 0°48' only as a named stricter variant, never the default; each width cited or marked `unsourced`. The "acharya decides" part of the change below is superseded. TI-L3-26.
 - **Answers:** new vighnakara-N3; CF-30
 - **Change:** set the windows to the writer's own stated definition — the last 3°20' of Cancer, Scorpio and Pisces (116°40'–120°, 236°40'–240°, 356°40'–360°) — and have the acharya decide whether the first 3°20' of the following fire sign (Leo, Sagittarius, Aries: 120°–123°20', 240°–243°20', 0°–3°20') belongs to the same zone (the code comment says "end → start" but covers one side); correct `junction_sign` and the reason text accordingly
 - **Files / declaration / migration:** `ka_vighnakara.py:92-96`, `:743`
@@ -136,6 +137,7 @@ Approver under Track A brief §10: **Steward (G16); FD-2 to FD-5 are output chan
 
 ### FD-3 · Correct the Rikta set
 
+- **SS ruling (2026-10-01) (R):** accepted (A-2). Read the engine's Rikta set through its accessor. TI-L3-27.
 - **Answers:** new vighnakara-N4; CF-30
 - **Change:** read the Rikta set from the engine's own classification (`panchang_engine/rich_topics.py:36`) or use `{4, 9, 14, 19, 24, 29}` on the 1..30 numbering; drop the 15
 - **Files / declaration / migration:** `ka_vighnakara.py:722`
@@ -148,6 +150,7 @@ Approver under Track A brief §10: **Steward (G16); FD-2 to FD-5 are output chan
 
 ### FD-4 · Remove the day-mod proxy; record detector status
 
+- **SS ruling (2026-10-01) (R):** accepted (X1). Flag only, never score, for an absent detector until ruled otherwise; the root-found obstruction-window design is a separate design REVIEW being written. TI-L3-28.
 - **Answers:** new vighnakara-N5, N6; CF-29
 - **Change:** when the engine fails or is unavailable, emit no panchanga row and record `detector_status.panchanga = unavailable (reason)`; replace the blanket `except Exception` by counted failures in the build note; keep an explicit `obstruction_detail.detector_status` listing which of the five detectors ran for the peak
 - **Files / declaration / migration:** `ka_vighnakara.py:690-740`, `:544-584`
@@ -160,6 +163,7 @@ Approver under Track A brief §10: **Steward (G16); FD-2 to FD-5 are output chan
 
 ### FD-5 · Orbs, scope and node convention
 
+- **SS ruling (2026-10-01) (R):** MEAN node (TRUE a named variant); docstring fixed now; orbs from L0 only; combustion scope per the L1/engine convention, honest null where the engine defines none. TI-L3-29, TI-L3-30.
 - **Answers:** new vighnakara-N7, N8, N9; CF-30
 - **Change:** delete `_COMBUSTION_ORBS_CLASSICAL` and the 8.0 default (raise when `bg_combustion_orbs` is empty); decide the combustion scope (transiting Mars/Saturn only, as coded, or the natal positions the docstring says) and correct the docstring or the code; state the node convention in the row's `source` (`swisseph/lahiri/true_node` or mean) per the SS answer; use the offset at the peak date, not today, for the panchāṅga location
 - **Files / declaration / migration:** `ka_vighnakara.py:101`, `:895`, `:110`, `:391`
@@ -220,11 +224,20 @@ No stable natural key in the table: `id` is a BIGSERIAL, `convergence_id` is reg
 
 ## 7 · Decisions applied and open questions
 
-No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
+SS answered the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings for this asset are in the block below. (R) = raises or defines a verdict or changes outputs: provisional until the J1 review. The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
+**SS rulings (2026-10-01) for this asset:**
+
+- **A-1 (R) — Gandanta window: accepted.** The window is a defect. ONE shared L0 Gandanta module that `ka_vighnakara` reads; canonical width 3°20' each side (one pāda: last 3°20' of Cancer/Scorpio/Pisces AND first 3°20' of Leo/Sagittarius/Aries); the 0°48' width is kept ONLY as a named stricter variant, never the default; each width is cited or marked `unsourced`. Replaces FD-2's "the acharya decides" wording. Track I: TI-L3-26.
+- **A-2 (R) — Rikta set: accepted.** Read the engine set `[4, 9, 14, 19, 24, 29]` (1..30 numbering) through the engine accessor; the writer's `(4, 9, 14, 15)` is wrong (FD-3). Track I: TI-L3-27.
+- **Q-L3-09 (R) — node and combustion.** MEAN node is the L3 transit contract (L1/engine convention; TRUE is a named variant); fix the docstring now. Combustion: orbs from L0 `bg_combustion_orbs` only (no local copy, no 8.0 default); scope per the L1/engine convention; where the engine defines none, emit an honest null (no invented scope). FD-5 is amended accordingly. Track I: TI-L3-29, TI-L3-30.
+- **Q-L3-X1 (R) — day-of-month proxy: accepted.** Remove the proxy, emit no panchāṅga row when the engine fails, record `detector_status` (flag only, never score, until ruled otherwise). The design for root-found obstruction windows plus the fallback removal is a separate design REVIEW already being written (not specified here). Track I: TI-L3-28 (and TI-L3-16).
+- **Q-L3-01 — accepted** (CF-27 split: option 1 for thresholds and weights; option 2, drop and renormalise, for stand-ins of uncomputed terms; option 3 follows the L2 CF-20 ruling). Track I: TI-L3-17.
+- Citations rule (SS, all layers): an OCR text-search hit not checked against print is `sourced_ocr_unverified` (a distinct attribution state, neither `sourced` nor `unsourced`); a passage not found is `unsourced`; only a citation verified at passage level counts toward a Ldgr PASS.
+
+Questions put to Strategic Suvarṇa (all answered 2026-10-01, see the block above; kept for the record; consolidated in `INDEX.md` section 9):
 
 - **Q-L3-09** — FD-2/FD-3/FD-5: accept the Gandanta and Rikta corrections as written (acharya review), and which node convention is the transit contract?
 - **Q-L3-01** — CF-27: severity constants and single-date judgments
 
-**Track I items arising (see INDEX section 10):** TI-L3-01, TI-L3-02, TI-L3-05, TI-L3-10, TI-L3-11, TI-L3-12, TI-L3-15, TI-L3-16, TI-L3-17, TI-L3-19, TI-L3-20, TI-L3-23.
+**Track I items arising (see INDEX section 10):** TI-L3-01, TI-L3-02, TI-L3-05, TI-L3-10, TI-L3-11, TI-L3-12, TI-L3-15, TI-L3-16, TI-L3-17, TI-L3-19, TI-L3-20, TI-L3-23, TI-L3-26, TI-L3-27, TI-L3-28, TI-L3-29, TI-L3-30 (added by the SS rulings of 2026-10-01).

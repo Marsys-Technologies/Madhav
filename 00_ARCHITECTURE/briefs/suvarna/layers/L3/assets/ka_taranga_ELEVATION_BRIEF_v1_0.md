@@ -13,14 +13,14 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0
 base_commit: "main 066c58587"
 disposition: "qualify (Q)"
 disposition_proposal_approver: "Steward (G16) for qualify; retiring the event-class half and the ayanamsha pin are output changes → SS (R5)"
-decisions_applied: "none specific to L3 yet; L0 rulings by analogy, PROVISIONAL until the J1 review. Prior-campaign evidence (Nirmāṇa W2 §3 SPLIT ruling) is quoted from migration 670 as a pointer and was re-checked against main's code"
-track_i_items: [TI-L3-01, TI-L3-04, TI-L3-07, TI-L3-09, TI-L3-10, TI-L3-15, TI-L3-16, TI-L3-17, TI-L3-20]
+decisions_applied: "SS decision-sheet rulings of 2026-10-01 (section 7; (R) items provisional until J1); L0 rulings by analogy, PROVISIONAL until the J1 review. Prior-campaign evidence (Nirmāṇa W2 §3 SPLIT ruling) is quoted from migration 670 as a pointer and was re-checked against main's code"
+track_i_items: [TI-L3-01, TI-L3-04, TI-L3-07, TI-L3-09, TI-L3-10, TI-L3-15, TI-L3-16, TI-L3-17, TI-L3-20, TI-L3-31]
 ledger_gap_ids: ["ka_taranga-Earn.build_record", "ka_taranga-Cost.baseline", "ka_taranga-Dens.served", "ka_taranga-Build.history", "ka_taranga-Build.dep_liveness", "ka_taranga-Carr.detector", "new: taranga-N1", "new: taranga-N2", "new: taranga-N3", "new: taranga-N4", "new: taranga-N7", "new: taranga-N8", "new: taranga-N5", "new: taranga-N6"]
 ---
 
 # ka_taranga — Activation waveform: monthly dasha × transit × promise activation by domain and event class (1950-2100)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. SS ruled the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings that touch this asset are in section 7 and `INDEX.md` section 9; items marked (R) are provisional until the J1 review and anything not listed there remains open. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -105,6 +105,7 @@ Approver under Track A brief §10: **Steward (G16) for qualify; retiring the eve
 
 ### FD-1 · Retire the degenerate event-class half (or fix its two terms)
 
+- **SS ruling (2026-10-01) (R):** option R, retire the batch event-class rows (92,412 -> 43,488 rows per chart); a design REVIEW follows and must state which served surfaces read those rows. TI-L3-31.
 - **Answers:** new taranga-N1; CF-27
 - **Change:** stop writing `scope_kind = 'event_class'` rows (the W2 §3 SPLIT), or make them mean something: a per-event-class dasha term from the lord's relation to the event class's domain, and a transit term from windows whose domain equals the event class's domain; the on-demand service (`taranga_service.py`) and its `record_evidence` write path must follow the same choice
 - **Files / declaration / migration:** `ka_taranga.py:220-227`; of the migration 670 conjuncts, (a), (b), (b2), (c) and the same-lord-per-month check run over both halves, while (d) and (e) assert only the domain half; nothing checks the event-class half for non-degeneracy
@@ -117,6 +118,7 @@ Approver under Track A brief §10: **Steward (G16) for qualify; retiring the eve
 
 ### FD-2 · Pin the Vimshottari read to the canonical ayanamsha
 
+- **SS ruling (2026-10-01):** accepted (Q-L3-03). TI-L3-04.
 - **Answers:** new taranga-N2
 - **Change:** add `AND ayanamsha_id = 'lahiri_chitrapaksha'` to the MD read (the pin `ka_avadhi` and `ka_jivana_parva` carry), so one row per MD period feeds `_lord_for_month`
 - **Files / declaration / migration:** `ka_taranga.py:95`
@@ -183,10 +185,18 @@ Natural key `(chart_id, month, scope_kind, scope_id)`; only a surrogate `taranga
 
 ## 7 · Decisions applied and open questions
 
-No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
+SS answered the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings for this asset are in the block below. (R) = raises or defines a verdict or changes outputs: provisional until the J1 review. The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
+**SS rulings (2026-10-01) for this asset:**
+
+- **A-3 (R) — event-class tautology: option R.** Retire the batch event-class rows (`scope_kind='event_class'`); output change 92,412 -> 43,488 rows per chart (24 x 1,812 domain rows remain). A design REVIEW follows and must state which served surfaces read those rows (the decision sheet found `query_activation_waveform.ts:100`, which filters by scope, and no python reader of batch event-class rows; the live service `taranga_service.py` and `record_evidence` also use `event_class` scope and the batch `DELETE` must not remove the evidence rows). Replaces FD-1's retire-or-fix choice. Track I: TI-L3-31 (supersedes the FD-1 half of TI-L3-04).
+- **Q-L3-03 — accepted.** Pin the Vimshottari read to `lahiri_chitrapaksha` (FD-2); no stored `dasha_lord` changes on any of the three charts. Track I: TI-L3-04 (FD-2 half).
+- **Q-L3-04 (R) — accepted.** One shared graha -> domain table whose values are members of `CANONICAL_DOMAINS`; both local tables are deleted (taranga's 24 domain scopes fall to at most 13). Track I: TI-L3-15.
+- **Q-L3-08 — accepted.** Remove the unread `ka_avadhi` edge (FD-3). Track I: TI-L3-07.
+- **Q-L3-01 — accepted** (CF-27 split; 0.15 / 0.1 floors are scale choices under option 1). Track I: TI-L3-17.
+
+Questions put to Strategic Suvarṇa (all answered 2026-10-01, see the block above; kept for the record; consolidated in `INDEX.md` section 9):
 
 - **Q-L3-03** — FD-1: retire the event-class half (the W2 §3 SPLIT) or fix its two terms; FD-2: pin the ayanamsha?
 
-**Track I items arising (see INDEX section 10):** TI-L3-01, TI-L3-04, TI-L3-07, TI-L3-09, TI-L3-10, TI-L3-15, TI-L3-16, TI-L3-17, TI-L3-20.
+**Track I items arising (see INDEX section 10):** TI-L3-01, TI-L3-04, TI-L3-07, TI-L3-09, TI-L3-10, TI-L3-15, TI-L3-16, TI-L3-17, TI-L3-20, TI-L3-31 (added by the SS rulings of 2026-10-01).

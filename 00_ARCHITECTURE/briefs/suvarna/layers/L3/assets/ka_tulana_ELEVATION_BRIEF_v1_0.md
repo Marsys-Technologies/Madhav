@@ -13,14 +13,14 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L3/L3_LAYER_INSTANCE_v1_0
 base_commit: "main 066c58587"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
-decisions_applied: "none specific to L3 yet; L0 rulings by analogy, PROVISIONAL until the J1 review. The I-11 weights are NATIVE-RATIFIED 2026-06-21 (ranker header): a ratified judgment seed (Carr N/A by cause `ratified_judgment`, the L0 Q13 reading by analogy)"
-track_i_items: [TI-L3-07, TI-L3-09, TI-L3-10, TI-L3-12, TI-L3-17, TI-L3-19, TI-L3-21]
+decisions_applied: "SS decision-sheet rulings of 2026-10-01 (section 7; (R) items provisional until J1); L0 rulings by analogy, PROVISIONAL until the J1 review. The I-11 weights are NATIVE-RATIFIED 2026-06-21 (ranker header): a ratified judgment seed (Carr N/A by cause `ratified_judgment`, the L0 Q13 reading by analogy)"
+track_i_items: [TI-L3-07, TI-L3-09, TI-L3-10, TI-L3-12, TI-L3-17, TI-L3-19, TI-L3-21, TI-L3-32]
 ledger_gap_ids: ["ka_tulana-Idem.pattern", "ka_tulana-Build.count_integrity", "ka_tulana-Earn.build_record", "ka_tulana-Cost.baseline", "ka_tulana-Dens.served", "ka_tulana-Build.history", "ka_tulana-Build.dep_liveness", "ka_tulana-Carr.detector", "new: tulana-N1", "new: tulana-N2", "new: tulana-N3", "new: tulana-N4", "new: tulana-N6", "new: tulana-N5"]
 ---
 
 # ka_tulana — Cross-pattern prioritization service: I-11 composite ranking of windows, and its self-test writer
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. No SS answer exists yet for L3: the open questions are in `INDEX.md` section 9. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository, the saved census and the saved read-only evidence named in the section they appear in (B.10); no figure here was invented. SS ruled the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings that touch this asset are in section 7 and `INDEX.md` section 9; items marked (R) are provisional until the J1 review and anything not listed there remains open. Every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 0 · Identity — what the asset is
 
@@ -109,6 +109,7 @@ Approver under Track A brief §10: **Steward (G16)**. SS decision: none yet (pro
 
 ### FD-1 · Remove the three unread edges (or declare them serve-time)
 
+- **SS ruling (2026-10-01):** accepted (Q-L3-08): remove them; a serve-time dependence is not an edge. TI-L3-07.
 - **Answers:** new tulana-N1; CF-23
 - **Change:** registry migration removing `ka_sangam`, `ka_vighnakara`, `ka_kala_darshana` from `depends_on`, OR an SS ruling that these edges mean "needed at serve time" and a declared edge kind so the dep-liveness gate does not treat them as build-time (no such kind exists today)
 - **Files / declaration / migration:** a registry migration (CF-23 batch)
@@ -133,6 +134,7 @@ Approver under Track A brief §10: **Steward (G16)**. SS decision: none yet (pro
 
 ### FD-3 · Digest spec and N-22 declarations
 
+- **SS ruling (2026-10-01):** accepted (Q-L3-10): after a determinism check; the declaration states the spec proves the self-test only. TI-L3-12.
 - **Answers:** new tulana-N2; CF-26, CF-06
 - **Change:** a spec in the 1213 shape after a determinism check (the self-test detail must be byte-identical across runs); declare `prose_fields: []` with the served-text note and the service N-22 rules as for `ka_dasha_kala` FD-4; Carr N/A by cause `ratified_judgment` for the weights (SS approval for the rule)
 - **Files / declaration / migration:** a spec migration; `asset_declarations.json`
@@ -142,6 +144,19 @@ Approver under Track A brief §10: **Steward (G16)**. SS decision: none yet (pro
 - **Rebuild:** a service run (REVIEW for SS)
 - **Gate it moves:** Earn, Carr, Null, Narr
 - **Fix class:** registry/declaration; **buildable before J1:** tier-independent; the N/A rule is SS-approved only
+
+### FD-4 · Accept every mode `kala_convergence` emits (A, B, C, D) — added after SS ruling A-4
+
+- **Answers:** gap tulana-N6 (SS ruling A-4, 2026-10-01: rejecting modes C and D is a defect)
+- **Change:** validate `mode` against the set the `kala_convergence` CHECK allows (`A, B, C, D`), preferably one shared constant, or drop the check: `mode` is never read in `_composite`; keep `mode` as a pass-through field; add a failing-first test with C and D windows
+- **Files / declaration / migration:** `services/ka_tulana/ranker.py:55-62` (the guard) and `:130` (the stale `# 'A' or 'B'` comment); `tests/l3/test_ka_tulana.py`
+- **Failing-first test and mutation:** Failing-first: a C window and a D window rank; mutation: restore `{"A", "B"}` -> fails.
+- **Output change:** none (no live caller of the ranker was found; the served `call_priority_ranking` ranks by its own SQL); the cross-mode scale difference of `convergence_score` (mean A 0.124, B 0.073, C 0.800, D 0.427 over the two charts that have rows) is recorded, not fixed
+- **Blast radius:** the ranker's code digest only
+- **Rebuild:** none
+- **Gate it moves:** Build.dag honesty (a typed contract that matches the table)
+- **Fix class:** writer/service code; **buildable before J1:** tier-independent
+- **SS ruling (2026-10-01):** accepted; Track I TI-L3-32.
 
 ### Landed or in flight (not designs of this lane)
 
@@ -172,11 +187,18 @@ No table. Stored output: `service_health`/`selftest_detail` on the registry row 
 
 ## 7 · Decisions applied and open questions
 
-No SS answer exists yet for L3 (this is the first set). The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
+SS answered the L3 decision sheet on 2026-10-01 (`DECISION_SHEET_L3_v1_0.md` (PR #2838)); the rulings for this asset are in the block below. (R) = raises or defines a verdict or changes outputs: provisional until the J1 review. The SS rulings of 2026-10-01 given for L0 (Q1 completion by count, Q2 Dens applicability and `uniform_authority`, Q11 Build.history window, Q13 Carr D1/N-A) are named in the sections where they would apply, **by analogy only**; whether they carry to L3 is itself Q-L3-16 in the INDEX. Items marked (R) in those rulings changed a verdict or criterion definition and are PROVISIONAL until the J1 review.
 
-Open questions for Strategic Suvarṇa (consolidated in `INDEX.md` section 9):
+**SS rulings (2026-10-01) for this asset:**
+
+- **A-4 — Mode C/D rejection: accepted.** Accept every mode `kala_convergence` emits (A, B, C, D): validate against the table's CHECK set or drop the check (`mode` is not a scoring input); no live caller was found, so no served output changes; the cross-mode scale difference of `convergence_score` is recorded, not fixed (a mode-aware normalisation would change the native-ratified composite). Evidence E1-E5 is in the decision sheet. Replaces gap `tulana-N6`. See FD-4 below. Track I: TI-L3-32.
+- **Q-L3-08 — accepted.** Remove the three unread edges; a serve-time dependence is not a `depends_on` edge and no edge kind is introduced (FD-1). Track I: TI-L3-07.
+- **Q-L3-10 — accepted.** Digest spec after a determinism check; the declaration says it proves the self-test only until a caller of the ranker exists (FD-3). Track I: TI-L3-12.
+- **Q-L3-16 — accepted** (L0 rulings Q1/Q2/Q11/Q13 carry to L3, provisionally; Carr N/A by cause `ratified_judgment` for the ratified weights).
+
+Questions put to Strategic Suvarṇa (all answered 2026-10-01, see the block above; kept for the record; consolidated in `INDEX.md` section 9):
 
 - **Q-L3-08** — CF-23: may the three unread edges be removed or declared serve-time?
 - **Q-L3-10** — CF-26: digest spec for this service?
 
-**Track I items arising (see INDEX section 10):** TI-L3-07, TI-L3-09, TI-L3-10, TI-L3-12, TI-L3-17, TI-L3-19, TI-L3-21.
+**Track I items arising (see INDEX section 10):** TI-L3-07, TI-L3-09, TI-L3-10, TI-L3-12, TI-L3-17, TI-L3-19, TI-L3-21, TI-L3-32 (added by the SS rulings of 2026-10-01).
