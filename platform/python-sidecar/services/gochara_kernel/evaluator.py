@@ -50,6 +50,11 @@ Deferrals:
   D6. P5e (Sun-month selection, BPHS ch.70): gated — no Sun-month
       selection is computed until a rule row asks for it (recorded choice,
       steward-accepted 2026-09-30, B5.1 gap 2). No P5e edges.
+  D7. P5 object_role 'av_qualifier' is NOT in kgrr_object_role_ck's v1.0
+      vocabulary (migration 1155) — a contract gap of the same kind as
+      P6's frame value (flagged in rule_binding). Enumeration carries the
+      honest name; DB writes need the v1.5 contract fold first (flagged
+      to the steward) — never a mislabelled role to fit the CHECK.
 """
 from __future__ import annotations
 
