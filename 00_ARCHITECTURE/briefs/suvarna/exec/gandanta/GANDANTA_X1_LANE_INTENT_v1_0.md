@@ -9,6 +9,7 @@ plan_item: S-L1 mandatory lane I-22 (decision sheet A-4 + X1; SS rulings N-61/N-
 base: origin/main 925e96a5d
 scope: "one new L0 module, three L1 writer edits, tests, the lane's attribution hook, digest inventory and E6 pins. No migration, no database write, no Kāla production file, no rebuild."
 changelog:
+  - "1.1 (2026-10-02): SS ruling on PR #2892 applied: the ga_structural legacy dosha fallback RAISES on a failed evaluation (section 2a); read-only check against the three charts; L2-batch and wave-2 follow-ups recorded (section 10)."
   - "1.0 (2026-10-02): first version."
 ---
 
@@ -18,7 +19,7 @@ changelog:
 
 1. ONE definition of Gandanta (3°20' each side of the three water|fire junctions) lives in a new L0 module, `platform/python-sidecar/brahmagyan/gandanta.py`, imported by the three L1 writers `ga_sensitive_degree`, `ga_structural` and `ga_nakshatra`.
 2. X1: `ga_nakshatra`'s unqualified `graha_gandanta.is_gandanta` now follows that width. The 0°48' reading it used to store unlabelled is emitted beside it as variant rows with `formula_id = 'strict_0_48'` (junction and side keys kept).
-3. `ga_structural`'s bare `except Exception: fires = False` around the Gandanta import no longer hides a wiring error: the import is at module level, and a raise in the legacy dosha fallback is counted (`DOSHA_FALLBACK_EVAL_ERRORS`) and logged with a traceback.
+3. `ga_structural`'s bare `except Exception: fires = False` around the Gandanta import is gone: the import is at module level, and a failed evaluation in the legacy dosha fallback RAISES a `RuntimeError` naming the dosha, the graha, the chart/ayanamsha and the cause (SS ruling on PR #2892; section 2a). The ordinary no-gandanta result is unchanged.
 4. Nothing is rebuilt here. Stored rows change only when `ga_nakshatra` is rebuilt in S-L1 (section 7).
 
 ## 1. The definitions found (finding F-3) and how far they disagree
@@ -65,7 +66,18 @@ Two further statements I found that the sheet's "four" does not count: (a) L0 `b
 
 **Tier.** Both readings stay `single` (`UNVERIFIED_DEFAULT`): nothing re-derives them independently (N.8; migration 742 conjunct (b) still holds). No bare literal was added; `ga_nakshatra` already took the tier from `verification_vocab`.
 
-**`ga_structural`.** The legacy dosha fallback (only reached when `brahma_dosha_catalog` is unavailable; no stored `dosha_fires` Gandanta row exists on any chart) now uses the module-level shared import; `check_mrityu_bhaga` stays a lazy import from the sensitive-degree writer, so a failure there can no longer take the Gandanta test down with it. On a raise: `logger.error(..., exc_info=True)` and `DOSHA_FALLBACK_EVAL_ERRORS[dosha_name] += 1`; the pass still reports "not fired" rather than regress (the honest-null alternative would change the legacy path's contract; flagged below).
+**`ga_structural` (see 2a).** The legacy dosha fallback uses the module-level shared import; `check_mrityu_bhaga` stays a lazy import from the sensitive-degree writer, so a failure there can no longer take the Gandanta test down with it.
+
+### 2a. The legacy dosha fallback raises (SS ruling on PR #2892, CLAUDE.md N.7 item 6)
+
+My first version counted and logged a failed evaluation and still reported "not fired". SS ruled that this is an invented negative. Now, inside `_build_dosha_rows` (legacy branch, `dosha_catalog is None`), any exception while evaluating `GANDANTA_DOSHA` or `MRITYU_BHAGA_DOSHA` is re-raised as `RuntimeError("ga_structural legacy dosha fallback: <DOSHA> could not be evaluated (graha '<name>', chart <id>, <ayanamsha>): <ExcType>: <message>")`, chained (`__cause__`) to the original. `DOSHA_FALLBACK_EVAL_ERRORS` is removed. Also removed: `float(_g.get("longitude", 0.0))` in that branch, which turned a missing longitude into 0.0, exactly the Meena|Mesha cusp, i.e. a manufactured gandanta; it is now `float(_g["longitude"])`, so a missing or `None` longitude raises. (This also tightens the `MRITYU_BHAGA_DOSHA` branch, which shared the line; other legacy doshas, e.g. `conjunct`, keep their own defaults, untouched.)
+
+**Could this halt a build on data that exists today? No, checked three ways.**
+* *Reachability.* The branch runs only when `_load_dosha_catalog` returns an empty list (DB read failure or empty `brahma_dosha_catalog`): callers at `ga_structural_writer.py` pass `dosha_catalog if dosha_catalog else None`. Production's catalog has 79 rows including `gandanta_dosha` (SELECT-only), and there are 0 stored `dosha_fires` rows, so the fallback has not produced a row in production. The raise therefore changes behaviour only in the already-degraded no-catalog case, where it now fails the build instead of dropping the dosha.
+* *What can throw there.* Missing `longitude` key (`KeyError`), `longitude = None` (`TypeError`), a non-numeric value (`ValueError`), a failed `check_mrityu_bhaga` import (`ImportError`), an error inside the shared function. Missing sign sets cannot occur (module constants). `sign_num` is always `int(lon // 30) % 12`, in range, so no `IndexError`.
+* *Stored data.* `legacy_fallback_stored_check.py` rebuilds, for each of the 3 charts x 5 ayanamshas, the `chart_output` the writer would pass (nine grahas with stored sidereal longitudes, whole-sign houses, ascendant `sign_id` from the stored Lagna) and runs the REAL legacy path end to end with a stub connection: **15 of 15 ran, 0 raised** (it produced `GANDANTA_DOSHA` rows only for Abhinandan, and `MRITYU_BHAGA_DOSHA` rows for Abhinandan and the third chart, which were not stored because the fallback is not the production path). Caveat: longitudes are the stored `graha_position` values, not a live `compute_chart` output.
+
+Tests (in `tests/test_gandanta_shared_module.py`): a failing shared call raises `RuntimeError` naming the dosha, graha and cause with the original as `__cause__` (and the old counter no longer exists); a missing or `None` longitude raises; a failing `check_mrityu_bhaga` import raises for `MRITYU_BHAGA_DOSHA`; the ordinary results (not gandanta at 100°, gandanta at 356.82°, not at 10°) are unchanged.
 
 ## 3. Old-vs-new counts (offline, read-only; `offline_old_vs_new.py`, report `offline_old_vs_new_report.json`)
 
@@ -131,7 +143,7 @@ Users of the Gandanta function: `ga_structural` legacy dosha fallback (no stored
 
 ## 8. Tests
 
-* New `platform/python-sidecar/tests/test_gandanta_shared_module.py` (38 tests): exact boundary values just inside, exactly on and just outside 3°20' on both sides of each of the three junctions (float-exact in sign+degree form; 3°19'/3°21' in longitude form); the Pisces|Aries wrap; 0°48' cases (strict and canonical; canonical only; strict edge); strict is a subset of canonical over 36,000 longitudes; the shared module equals the pre-I-22 `ga_sensitive_degree` function on a dense sign x degree grid plus every edge, and reproduces the pre-I-22 `ga_nakshatra` 0°48' reading over 36,000 longitudes (differences only at the exact cusp tie-break); the three writers call the same function (object identity; patching the one predicate flips `ga_sensitive_degree`, `ga_structural`'s fallback and `ga_nakshatra` together; patching the one width widens all three); non-gandanta rows of `build_sensitive_degree_rows` and `emit_gandanta_flags` unmoved, gandanta `value_jsonb` byte-equal to the old dict; canonical rows keep their old shape and `fact_id` (hash input asserted), variant rows get distinct `fact_id`/`citation_ref`; insert-statement selection; the `ga_structural` error count/log.
+* New `platform/python-sidecar/tests/test_gandanta_shared_module.py` (41 tests): exact boundary values just inside, exactly on and just outside 3°20' on both sides of each of the three junctions (float-exact in sign+degree form; 3°19'/3°21' in longitude form); the Pisces|Aries wrap; 0°48' cases (strict and canonical; canonical only; strict edge); strict is a subset of canonical over 36,000 longitudes; the shared module equals the pre-I-22 `ga_sensitive_degree` function on a dense sign x degree grid plus every edge, and reproduces the pre-I-22 `ga_nakshatra` 0°48' reading over 36,000 longitudes (differences only at the exact cusp tie-break); the three writers call the same function (object identity; patching the one predicate flips `ga_sensitive_degree`, `ga_structural`'s fallback and `ga_nakshatra` together; patching the one width widens all three); non-gandanta rows of `build_sensitive_degree_rows` and `emit_gandanta_flags` unmoved, gandanta `value_jsonb` byte-equal to the old dict; canonical rows keep their old shape and `fact_id` (hash input asserted), variant rows get distinct `fact_id`/`citation_ref`; insert-statement selection; the `ga_structural` fallback raising (section 2a).
 * Full sidecar suite (`cd platform/python-sidecar && PYTHONPATH=. /Users/Dev/Vibe-Coding/Apps/Madhav/.venv/bin/python3 -m pytest -q`, run before the last comment-only edit; the Gandanta-relevant files were re-run after it): 10938 passed, 423 skipped, 21 xfailed, 2 xpassed, **4 failed, all outside this lane**: `scripts/kala_admission/tests/test_w44_weight_fitting.py::...test_all_10_admitted_toggle_keys_are_currently_unwired` (three extra toggle keys w28/w29/w30) and three `tests/l3/gochara/test_wp10_cutover.py` tests (no `kala_gochara_windows` rows for the generation; the cutover precondition). I did not run them on the base commit; none imports a changed module or reads Gandanta.
 * Governance: `PYTHONPATH=platform/python-sidecar python -m pytest platform/scripts/governance/__tests__ -q`: 2249 passed, 87 skipped (6 initially failed on E6 pins; re-pinned). `check_fact_category_pinning.py`: 0 new violations (65 pre-existing, allowlisted). `provenance_inventory --check`: current. `npm run codegen:capability-estate-census:check`: OK after regeneration.
 
@@ -142,5 +154,17 @@ Users of the Gandanta function: `ga_structural` legacy dosha fallback (no stored
 * The `graha_gandanta` `count_sql` / floor, the migration-742 integrity SQL and the `ga_nakshatra` output-digest spec (migration 889: `key_columns [fact_id]`) were read, not executed; none needs a change (distinct `fact_id`, no per-key cardinality conjunct), but a live integrity run after the rebuild is the proof.
 * Citation states: the 3°20' water side is `sourced_ocr_unverified` (BPHS Santhanam, `bphs_pg0111_c01`, from the decision sheet); the fire side and 0°48' are `unsourced`; I did not re-search the corpus.
 * Whether `bo_laksana`'s natural key tolerates two `graha_gandanta` rows per (subject, key) was not traced to the table constraint; variant rows from other formula families already flow through the same fetch.
-* The legacy dosha fallback still reports "not fired" on a raise (counted and logged); whether it should fail the pass instead is a contract question I did not decide.
+* The raising fallback was exercised on stored-longitude reconstructions and unit tests, not on a live build; production does not reach it (catalog present).
 * Not done, by instruction: any Kāla file (`ka_vighnakara`'s own import can move to `brahmagyan.gandanta` in the Kāla lane), `get_nakshatra.ts` `formula_id` select, the L2 0.8° rule, the L0 catalog text.
+
+## 10. Follow-ups recorded (SS ruling on PR #2892; NOT done in this PR)
+
+**L2 batch (S-L2):**
+1. `bodha_writers/nakshatra_semantic_emitter.py` `_gandanta_flag` (its own 0.8° first/last-pāda definition) must import `brahmagyan/gandanta.py`: canonical reading 3°20' (`GANDANTA_ARC` / `locate_gandanta`), the 0°48' reading as the named strict variant (`GANDANTA_STRICT_FORMULA_ID`).
+2. Any L2 reducer of `(graha_gandanta, subject, is_gandanta)`, `bo_laksana` included, must pin `formula_id IS NULL` for the canonical reading and carry `formula_id` on any signal derived from a variant row (the fact-category-pin lint checks only `fact_key`). Before S-L2, run the **"two rows per key" read check on `bo_laksana`**: its fetch (`_FETCH_SQL`) returns every `chart_facts` row of a chart with `formula_id` as a column; confirm no downstream dedupe, natural key or signal-id derivation collapses or collides on `(fact_category, fact_subject, fact_key)` once `graha_gandanta` has two rows per key (canonical + `strict_0_48`).
+
+**Wave 2 (readers):** `get_nakshatra.ts` should select `formula_id` (and order by it) so a served variant row is labelled.
+
+## 11. Update (v1.1): digests, pins, census
+
+Relative to `origin/main` the moved digest set is still exactly the same seven (`ga_nakshatra`, `ga_sensitive_degree`, `ga_structural`, `ga_yoga`, `ga_sensitive`, `ga_ayurdaya`, `ka_vighnakara`); five of the hashes changed again with the `ga_structural` edit. E6 line pins for `ga_structural` re-pinned (-5/-5/-6/-6/-6 against v1.0). The census was regenerated again if its check demanded it (see the commit list in the final report).
