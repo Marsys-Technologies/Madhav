@@ -1160,6 +1160,16 @@ def _skips(node, aliases=()) -> bool:
     return False
 
 
+def _path_loaded(node, loaders):
+    """`loader('x.py')` where `loader` is a module-level helper that loads a module from a file path
+    (spec_from_file_location): the token `<file>:x`, which a cited module of the same stem matches."""
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in loaders and node.args
+            and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str)
+            and node.args[0].value.endswith(".py")):
+        return "<file>:" + node.args[0].value[:-3].replace("/", ".").split(".")[-1]
+    return None
+
+
 def _import_module_arg(node, bound):
     """`importlib.import_module('x')` / `import_module('x')` / an alias of it (`from importlib import import_module as im`):
     the dotted module string, else None."""
@@ -1209,11 +1219,14 @@ def _test_facts(path: Path, text: str):
     # a helper that RETURNS an imported module/name (`def _mod(): from x import m; return m`) binds `w = _mod()`;
     # `w = importlib.import_module('x')` binds w to x
     rets = {}
+    loaders = {f.name for f in tree.body if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))
+               and any(isinstance(c, ast.Call) and ast.unparse(c.func).endswith("spec_from_file_location") for c in ast.walk(f))}
     for fn in ast.walk(tree):
         if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
             for r in ast.walk(fn):
                 if isinstance(r, (ast.Return, ast.Yield)) and r.value is not None:
-                    d = _dotted(r.value, bound) if isinstance(r.value, (ast.Name, ast.Attribute)) else _import_module_arg(r.value, bound)
+                    d = (_dotted(r.value, bound) if isinstance(r.value, (ast.Name, ast.Attribute))
+                         else _import_module_arg(r.value, bound) or _path_loaded(r.value, loaders))
                     if d:
                         rets[fn.name] = d
                         if any("fixture" in ast.unparse(dd) for dd in fn.decorator_list):
@@ -1225,9 +1238,9 @@ def _test_facts(path: Path, text: str):
             if isinstance(f, ast.Name) and f.id in rets:
                 for t in tgt:
                     bound[t] = rets[f.id]
-            elif _import_module_arg(n.value, bound):
+            elif _import_module_arg(n.value, bound) or _path_loaded(n.value, loaders):
                 for t in tgt:
-                    bound[t] = _import_module_arg(n.value, bound)
+                    bound[t] = _import_module_arg(n.value, bound) or _path_loaded(n.value, loaders)
     aliases = {t.id for n in ast.walk(tree) if isinstance(n, ast.Assign) and _SKIP_WORD.search(ast.unparse(n.value))
                for t in n.targets if isinstance(t, ast.Name) and t.id != "pytestmark"}
     mod_skip = any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "pytestmark" for t in n.targets)
@@ -1286,6 +1299,13 @@ def _test_facts(path: Path, text: str):
     return _TEST_FACTS[key]
 
 
+def _calls_module(call: str, mod: str) -> bool:
+    """A dotted call lies in `mod`, or in a module loaded from a file path whose stem is mod's last component."""
+    if call == mod or call.startswith(mod + "."):
+        return True
+    return call.startswith("<file>:") and call[len("<file>:"):].split(".")[0] == mod.rsplit(".", 1)[-1]
+
+
 def _leaf_in(leaf: str, names) -> bool:
     """A declared leaf is referenced when a name contains it (`citation_human` in `_citation_human_position`) or is one of
     its underscore tokens of length >= 5 (`reason` for `verdict_reason`)."""
@@ -1313,7 +1333,7 @@ def narr_fidelity_scan(entries, evidence, tests) -> dict:
         if not f or f[1]:                                  # unparseable, or the module is skipped
             continue
         for fn in f[0]:
-            if fn["skipped"] or not fn["asserts"] or not any(c == m or c.startswith(m + ".") for c in fn["calls"] for m in mods):
+            if fn["skipped"] or not fn["asserts"] or not any(_calls_module(c, m) for c in fn["calls"] for m in mods):
                 continue
             qual.append(Path(path).name)
             beside = any(_leaf_in(lf, fn["leaves"]) for lf in spec_leaves)

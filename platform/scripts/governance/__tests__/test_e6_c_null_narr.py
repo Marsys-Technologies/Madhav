@@ -1414,3 +1414,35 @@ def test_a_string_naming_the_table_and_column_without_a_select_is_not_a_lint_sur
     p.write_text('LABEL = "chart_facts fact_category fact_key"\n')
     r = ac.narr_lint_scan([p], ["citation_human"])
     assert r["v"] == ac.NO_DET and r["applied"] == [], r
+
+
+def test_a_module_loaded_from_a_file_path_by_a_loader_helper_fixture_is_followed():
+    src = (
+        "import importlib.util, pytest\n"
+        "def _load_module(filename):\n"
+        "    spec = importlib.util.spec_from_file_location('k', '/w/' + filename)\n"
+        "    mod = importlib.util.module_from_spec(spec)\n"
+        "    spec.loader.exec_module(mod)\n"
+        "    return mod\n"
+        "@pytest.fixture(scope='module')\n"
+        "def ph_x():\n"
+        "    return _load_module('ph_x.py')\n"
+        "def test_a(ph_x):\n"
+        "    v = ph_x._compute(1)\n"
+        "    assert 'both' in v['reason']\n")
+    r = ac.narr_fidelity_scan(["verdict.$.reason"], CITE, _tests(test_a=src))
+    assert r["v"] == ac.PARTIAL and r["covered"] == ["verdict.$.reason"], r
+
+
+def test_a_loader_helper_for_a_different_file_is_not_credited():
+    src = (
+        "import importlib.util, pytest\n"
+        "def _load_module(filename):\n"
+        "    spec = importlib.util.spec_from_file_location('k', '/w/' + filename)\n"
+        "    return importlib.util.module_from_spec(spec)\n"
+        "@pytest.fixture\n"
+        "def m():\n"
+        "    return _load_module('other.py')\n"
+        "def test_a(m):\n"
+        "    assert m._compute(1)['reason']\n")
+    assert ac.narr_fidelity_scan(["reason"], CITE, _tests(test_a=src))["v"] == ac.FAIL
