@@ -1,5 +1,5 @@
 """
-Migration 1202 (Suvarna Track I): direct `depends_on` edges for reads that were ordered only
+Migration 1210 (Suvarna Track I): direct `depends_on` edges for reads that were ordered only
 transitively (E6 `Build.dag` reads-match, T4).
 
 DB-free. What this proves, and what it does not:
@@ -12,10 +12,10 @@ DB-free. What this proves, and what it does not:
     nor the E6 detector verdicts (the detector lives on the E6 lane; the offline before/after run is
     recorded in the Track I evidence file, not re-run here).
 
-Pre-state graph: tests/fixtures/registry_depends_on_pre_1202.json (frozen reconstruction of the live
+Pre-state graph: tests/fixtures/registry_depends_on_pre_1210.json (frozen reconstruction of the live
 active registry; see its `_provenance`). The seed's depends_on is bootstrap-only (a re-seed never
 rewrites an existing row), so the seed and the pre-state graph legitimately differ on edges owned by
-earlier migrations; this test therefore asserts that the seed CONTAINS every 1202 edge, not that the
+earlier migrations; this test therefore asserts that the seed CONTAINS every 1210 edge, not that the
 two graphs are equal.
 """
 from __future__ import annotations
@@ -27,13 +27,13 @@ from pathlib import Path
 from pipeline.orchestrator import dag_edge_guard as g
 
 _REPO = Path(__file__).resolve().parents[3]
-_MIGRATION = _REPO / "platform" / "migrations" / "1202_asset_registry_direct_edges.sql"
+_MIGRATION = _REPO / "platform" / "migrations" / "1210_asset_registry_direct_edges.sql"
 _SEED = _REPO / "platform" / "scripts" / "seed" / "asset_registry_seed.ts"
-_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "registry_depends_on_pre_1202.json"
+_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "registry_depends_on_pre_1210.json"
 
-# Reads whose direct edge would close a cycle (ruled out of 1202; registry/design findings).
+# Reads whose direct edge would close a cycle (ruled out of 1210; registry/design findings).
 # SS split ruling (2026-10-01): a read-only gate preview showed these producers NOT lit+fresh on the
-# canonical chart, so every edge TO them is held for migration 1203 (branch TI-edges-002).
+# canonical chart, so every edge TO them is held for migration 1211 (branch TI-edges-002).
 _HELD_PRODUCERS = {"bo_pratijna", "ka_yojaka", "mi_bhavisya", "ph_nimitta"}
 _HELD_EDGES = {
     ("ph_nimitta", "bo_pratijna"),
@@ -52,8 +52,8 @@ _BACK_READS = {
 def _migration_edges() -> list[tuple[str, str]]:
     sql = _MIGRATION.read_text()
     # only the INSERT ... VALUES block that fills the temp table
-    m = re.search(r"INSERT INTO _m1202_edges \(asset_id, dep\) VALUES\s*(.*?);", sql, re.S)
-    assert m, "edge VALUES block not found in migration 1202"
+    m = re.search(r"INSERT INTO _m1210_edges \(asset_id, dep\) VALUES\s*(.*?);", sql, re.S)
+    assert m, "edge VALUES block not found in migration 1210"
     return re.findall(r"\(\s*'([a-z0-9_]+)'\s*,\s*'([a-z0-9_]+)'\s*\)", m.group(1))
 
 
@@ -152,13 +152,13 @@ def test_guards_are_scoped_null_safe_and_disclose_consequences():
     # must not fail the deploy for everyone)
     m = re.search(r"IF EXISTS \(SELECT 1 FROM asset_registry r(.*?)\) THEN", code, re.S)
     assert m, "self-dependency guard not found"
-    assert "r.asset_id IN (SELECT asset_id FROM _m1202_edges)" in m.group(1), m.group(1)
+    assert "r.asset_id IN (SELECT asset_id FROM _m1210_edges)" in m.group(1), m.group(1)
     # NULL depends_on is handled everywhere the array is read or extended
     assert "COALESCE(r.depends_on, '{}'::text[]) || n.deps" in code
     assert code.count("<> ALL (COALESCE(") == 2
     assert not re.search(r"<> ALL \((?!COALESCE)", code)
     # the operational consequences stay disclosed in the header
-    for needle in ("1203_asset_registry_direct_edges_held", "5 Nirmana-frozen manifests stale",
+    for needle in ("1211_asset_registry_direct_edges_held", "5 Nirmana-frozen manifests stale",
                    "planned/running/paused", "plan_adaptation_required", "assertManifestMatchesRegistryIdentity",
                    "deps_unsatisfied", "asset_freshness", "nirmana_elevation_monitor_observations"):
         assert needle in sql, f"header no longer discloses: {needle}"
@@ -170,7 +170,7 @@ def test_held_edges_and_gate_blocked_producers_are_absent():
     assert not [e for e in edges if e[1] in _HELD_PRODUCERS], "edge to a gate-blocked producer"
     seed = _seed_graph()
     for a, d in _HELD_EDGES:
-        assert d not in seed[a], f"held edge {a}->{d} must not be in the 1202 seed"
+        assert d not in seed[a], f"held edge {a}->{d} must not be in the 1210 seed"
 
 
 # The table each kept edge is justified by (the read verified at file:line in the evidence file).
@@ -268,7 +268,7 @@ def test_every_edge_id_exists_in_seed_and_pre_state():
 def test_seed_contains_every_migration_edge():
     seed = _seed_graph()
     missing = [(a, d) for a, d in _migration_edges() if d not in seed[a]]
-    assert not missing, f"seed does not carry migration 1202 edges: {missing}"
+    assert not missing, f"seed does not carry migration 1210 edges: {missing}"
 
 
 def test_migration_is_not_a_noop_against_pre_state():

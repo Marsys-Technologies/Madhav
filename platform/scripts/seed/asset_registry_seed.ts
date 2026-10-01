@@ -1644,7 +1644,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_inputs: null,
     volume_explanation: 'Sealed count ≥300 (edges + paths) per L2 build (chart 482012f1). Sub-graphs, motifs, topology rows excluded per migration 326 narrowing.',
     // Migration 356: bo_bimba added — karanajala reads bodha_cgm_nodes (bo_bimba output)
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): ga_vichara.
+    // Migration 1210: direct read edges added (E6 Build.dag reads-match): ga_vichara.
     depends_on: [
       'bo_laksana', 'bo_bimba', 'ga_positions', 'bo_sudarshana',
       'bo_nakshatra_semantic', 'bo_arudha', 'bo_special_lagna',
@@ -1668,7 +1668,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: 'EVENT_CLASSES * AYANAMSHAS',
     expected_volume_inputs: { EVENT_CLASSES: 22, AYANAMSHAS: 5 },
     volume_explanation: '22 event classes (brahma_event_ontology) × 5 canonical ayanamshas = 110 rows per chart.',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): ga_vargas.
+    // Migration 1210: direct read edges added (E6 Build.dag reads-match): ga_vargas.
     depends_on: ['bo_laksana', 'bo_sangati', 'ga_vargas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -1981,7 +1981,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One or more mechanism rows per chart — count depends on CGM motif cardinality.',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bo_bimba.
+    // Migration 1210: direct read edges added (E6 Build.dag reads-match): bo_bimba.
     depends_on: ['bo_karanajala', 'bo_cgm_motifs', 'bo_cgm_paths', 'bo_bimba'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
@@ -2022,7 +2022,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Count of MSR signals that received CGM centrality scores — matches bo_laksana count for a fully-built chart.',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bo_bimba, ga_vichara.
+    // Migration 1210: direct read edges added (E6 Build.dag reads-match): bo_bimba, ga_vichara.
     depends_on: [
       'bo_laksana', 'bo_karanajala', 'bo_sudarshana',
       'bo_nakshatra_semantic', 'bo_arudha', 'bo_special_lagna',
@@ -2316,7 +2316,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per signal × ayanamsha; count grows with number of active MSR signals in kala_activation_predicates',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): ga_dashas.
+    // Migration 1210: direct read edges added (E6 Build.dag reads-match): ga_dashas.
     depends_on: ['ka_yojaka', 'ka_sangam', 'bo_laksana', 'ga_dashas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact',
@@ -2353,7 +2353,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Runtime-derived from transit analysis over sensitive points; count depends on graha configuration',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): ga_dashas.
+    // Migration 1210: direct read edges added (E6 Build.dag reads-match): ga_dashas.
     depends_on: ['ka_sangam', 'ka_gochara', 'ka_muhurta_seva', 'ga_positions', 'ga_dashas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact',
@@ -2392,7 +2392,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One predicate per L2 signal per ayanamsha; total ≈ 66,738 for native chart',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): ga_yoga.
+    // Migration 1210: direct read edges added (E6 Build.dag reads-match): ga_yoga.
     depends_on: ['bo_laksana', 'bg_transit_rules', 'ga_dashas', 'bo_bimba', 'bo_sangati', 'bo_pratijna', 'bg_ghatana', 'ga_yoga'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
@@ -2959,7 +2959,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     volume_explanation: 'Accumulates as eval runs are executed — not a deterministic target',
     // BA Phase 2.5 #9: attribution dimension weights from brahma_formula_constants;
     // L0-bedrock guard-exempted, doc-only addition (CLAUDE.md B.3).
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bo_laksana, mi_jivanaghatana.
+    // Migration 1210: direct read edges added (E6 Build.dag reads-match): bo_laksana, mi_jivanaghatana.
     depends_on: ['mi_pramana', 'mi_kula', 'bg_formula_constants', 'bo_laksana', 'mi_jivanaghatana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -2994,7 +2994,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One insight unit per promoted/supported discovery + calibration stratum + grammar cell with evidence',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bo_laksana, bo_sangati.
+    // Migration 1210: direct read edges added (E6 Build.dag reads-match): bo_laksana, bo_sangati.
     depends_on: ['mi_pramana', 'mi_adhilepa', 'mi_sambandha', 'mi_pariksha', 'mi_gunanaka', 'mi_kula', 'mi_jivanaghatana', 'bo_pratijna', 'bo_laksana', 'bo_sangati'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },

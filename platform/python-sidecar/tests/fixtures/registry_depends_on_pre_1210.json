@@ -1,5 +1,5 @@
 {
- "_provenance": "Active-asset depends_on graph (127 rows) BEFORE migration 1202: seed + migrations 913/1084/730/676 with inactive assets dropped. Reconstructed by E6 (Suvarna lane E6-build-gh); md5 of sorted depends_on of the 127 active rows matched the live registry (045e811d55d6825cf7c7f1fda329bdc4) at the E6 review. Frozen on purpose: this is the pre-state the 1202 test reasons against, not a live mirror.",
+ "_provenance": "Active-asset depends_on graph (127 rows) BEFORE migration 1210: seed + migrations 913/1084/730/676 with inactive assets dropped. Reconstructed by E6 (Suvarna lane E6-build-gh); md5 of sorted depends_on of the 127 active rows matched the live registry (045e811d55d6825cf7c7f1fda329bdc4) at the E6 review. Frozen on purpose: this is the pre-state the 1210 test reasons against, not a live mirror.",
  "edges": {
   "bg_class_lifetime_counts": [
    "bg_ghatana"
