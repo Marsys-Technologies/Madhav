@@ -171,6 +171,12 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=1),
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=2),
     "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module; PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1)
+    "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A candidate, cause no-prose, undecided)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),  # E6 (c): the declaration and the table's columns agree
+    "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5); never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty; a non-NULL DEFAULT on a declared prose column; never PASS alone", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty; blank or placeholder rows standing in for NULL; never PASS alone", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Carr.detector":         dict(gate="Carr",  check="detector",         applicability="always (the generic 'some carriage detector exists' reading)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # ── registered, hand-observed only (detector NONE — D4 finding #5's honest, visible form) ──
@@ -249,6 +255,8 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.exercised": ("never-run-no-writer", "never-executed-no-writer"),
     "Build.history": ("never-run",),
     "Build.dep_liveness": ("no-declared-dependencies",),
+    "Narr.agree": ("no-prose",), "Narr.checkable": ("no-prose",), "Narr.fidelity_test": ("no-prose",), "Narr.lint": ("no-prose",),
+    "Null.schema_default": ("no-prose-declared",), "Null.blank_rows": ("no-prose-declared",),
     "Earn.build_record": ("never-attempted", "healthy-non-execution", "no-registered-writer",
                          "before-completion-write"),
 }
@@ -287,7 +295,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 4     # 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 5     # 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -1222,6 +1230,51 @@ def prose_reverse_leg(written, vocabulary) -> list:
     (principle 8: such a column present while prose_fields is empty reads FAIL). Write-column names only: it does not
     prove 'composes no string' (the AST proofs in test_e6_1_declarations.py do, per asset)."""
     return sorted(f"{t}.{c}" for t, cols in (written or {}).items() for c in cols if c in vocabulary)
+
+
+NARR_CHECKS = ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint")
+NULL_CHECKS = ("Null.schema_default", "Null.blank_rows")
+
+
+def prose_checks(aid: str, decl, ctx: dict) -> dict:
+    """The six Narr/Null records for one asset, from its declaration entry (`prose_fields`, `evidence`) and `ctx`:
+    table, columns, types, defaults, counts (None = not read), paths (writer scope files), tests, vocabulary, written
+    (None = the writer's writes could not be read). null prose_fields = undeclared: every check NO_DETECTOR, never
+    'no prose'. [] = positive declaration: measured N/A candidates (causes no-prose / no-prose-declared; no rule is
+    declared, so the rollup reads them NO_DETECTOR) unless a write hits a column the file treats as narration (agree
+    FAIL, the rest NO_DETECTOR) or the writes are unreadable (NO_DETECTOR)."""
+    allc = NARR_CHECKS + NULL_CHECKS
+    pf = decl.get("prose_fields") if isinstance(decl, dict) else None
+    if pf is None:
+        return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — prose_fields is undeclared for {aid}: never read as 'no prose'")
+                for c in allc}
+    if not pf:
+        if ctx.get("written") is None:
+            return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares prose_fields [] but its writes could not be "
+                                               "read, so the declaration cannot be checked") for c in allc}
+        hits = prose_reverse_leg(ctx["written"], ctx.get("vocabulary") or set())
+        if hits:
+            out = {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares prose_fields [] but Narr.agree failed") for c in allc}
+            out["Narr.agree"] = dict(v=FAIL, measured=f"prose_fields is [] but the writer writes column(s) the declarations "
+                                                      f"treat as narration: {', '.join(hits)}")
+            return out
+        why = ("prose_fields [] declared and no write to a column the declarations treat as narration (write-column "
+               "names only; the composed-string proof is the declaration tests')")
+        return {c: _na(why, "no-prose" if c.startswith("Narr.") else "no-prose-declared") for c in allc}
+    ev = (decl.get("evidence") or {}).get("prose_fields") if isinstance(decl.get("evidence"), dict) else None
+    out = {}
+    for crit, fn in (
+            ("Narr.agree", lambda: grade_narr_agree(pf, ctx.get("table"), ctx.get("columns"), ctx.get("types"))),
+            ("Narr.checkable", lambda: grade_narr_checkable(pf, ctx.get("counts"))),
+            ("Narr.fidelity_test", lambda: narr_fidelity_scan(pf, ev, ctx.get("tests") or ())),
+            ("Narr.lint", lambda: narr_lint_scan(ctx.get("paths") or ())),
+            ("Null.schema_default", lambda: grade_null_schema_default(pf, ctx.get("columns"), ctx.get("defaults"))),
+            ("Null.blank_rows", lambda: grade_null_blank_rows(pf, ctx.get("counts")))):
+        try:
+            out[crit] = fn()
+        except (Unknown, DeclarationsError) as exc:      # R41: one check's failure degrades only that check
+            out[crit] = dict(v=ERRORED, measured=f"check errored: {exc}")
+    return out
 
 
 # R40: the psql subprocess timeout was hardcoded at 180s, which is shorter than a full-table
