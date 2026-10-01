@@ -135,6 +135,14 @@ def _patch_daily_writer_dependencies(monkeypatch, module, daily_by_body):
             lambda *_: {1: {"moorti_name": "gold", "quality_tier": "high", "phala_brief": "fixture", "classical_citation": "fixture"}},
         )
         monkeypatch.setattr(module, "_fetch_daily_sidereal_by_body", lambda *_: daily_by_body)
+        # This fixture is a constant 0.0° series (every body on the Aries seam
+        # every day) — not a motion Swiss can ever bracket. These tests assert
+        # delete/insert ORDERING, not the kernel solver; the writer used to pass
+        # here only because a blanket `except Exception` turned the kernel's
+        # "lost its bracket" error into silently-unrefined roots (A5.4 removed
+        # that swallow). The kernel solver is covered in
+        # test_ka_moorti_nirnaya_writer.py::TestIngressSolverMethodRecorded.
+        monkeypatch.setattr(module, "KERNEL_INSTANT_GRADING", False)
     else:
         monkeypatch.setattr(module, "_fetch_janma_moon", lambda *_: (0, 0, "fact-1"))
         monkeypatch.setattr(
