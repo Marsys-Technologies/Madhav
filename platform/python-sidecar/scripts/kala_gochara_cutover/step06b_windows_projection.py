@@ -1466,6 +1466,14 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
         grid.append(t)
         t += coarse_step_days
     series = sorted(set(grid) | set(breakpoints))
+    # The horizon LIMIT rides the series as a boundary point ONLY (ASTRA
+    # v1.1 A2): without it the last partial interval (final sample → h1) is
+    # unsampled and legitimate final-day truncated activity silently yields
+    # zero components. It is evaluated to close intervals — a window's exit
+    # may EQUAL it — but it is never eligible as a peak or day row (the
+    # excluded end stays excluded).
+    if series and series[-1] < horizon_jd[1]:
+        series.append(horizon_jd[1])
     if not series:
         return [], {"event_class": class_ctx.event_class,
                     **class_ctx.factors_record(),
@@ -1477,11 +1485,18 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
     admitted_total = 0
     retained_total = 0
     refined_outside_era = 0
+    emitted_components = 0
     components = find_components(eval_lambda, series, min_lambda)
     gate_details_seen: dict[str, dict] = {}
 
+    h_limit = horizon_jd[1]
     for enter_jd, exit_jd, i0, i1 in components:
-        era_series = series[i0:i1 + 1]
+        # Peak/day candidates come only from IN-DOMAIN points (< h_limit);
+        # the appended horizon limit closes the interval but never peaks.
+        era_series = [t for t in series[i0:i1 + 1] if t < h_limit]
+        if not era_series:
+            # above threshold only AT the excluded end — nothing in-domain
+            continue
         era_values = [eval_lambda(t) for t in era_series]
         peak_idx = max(range(len(era_series)), key=lambda k: era_values[k])
         era_peak_jd = era_series[peak_idx]
@@ -1503,6 +1518,7 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
         admitted_total += len(admitted)
         retained_total += len(retained)
 
+        emitted_components += 1
         rows.append(_window_row(
             class_ctx, evaluate, window_key=era_key, parent_key=None,
             tier="era", enter_jd=enter_jd, exit_jd=exit_jd,
@@ -1551,11 +1567,11 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
     report = {
         "event_class": class_ctx.event_class,
         **class_ctx.factors_record(),
-        "components": len(components),
+        "components": emitted_components,
         "peaks_admitted": admitted_total,
         "peaks_retained": retained_total,
         "peaks_refined_outside_era": refined_outside_era,
-        "era_windows": len(components),
+        "era_windows": emitted_components,
         "month_windows": retained_total - refined_outside_era,
         "day_windows": retained_total - refined_outside_era,
         "quality_gates_fired": sum(
@@ -1753,7 +1769,8 @@ def fetch_vedha_rows(conn, chart_id: str) -> list[dict]:
         return []
     has_fv = "formula_version" in cols
     sql = ("SELECT window_start, window_end, vedha_kind, graha, detail,"
-           " classical_citation" + (", formula_version" if has_fv else ", NULL")
+           " classical_citation"
+           + (", formula_version" if has_fv else ", NULL AS formula_version")
            + " FROM kala_vedha_gochara WHERE chart_id = %s")
     return [
         {"window_start": str(_cell(r, 0, "window_start")),

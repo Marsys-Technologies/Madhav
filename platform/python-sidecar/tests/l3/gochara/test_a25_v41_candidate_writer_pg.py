@@ -59,8 +59,19 @@ from services.ka_vedha_gochara import freshness as freshness_mod  # noqa: E402
 SIDECAR = Path(__file__).resolve().parents[3]
 MIGRATIONS = SIDECAR.parent / "migrations"
 
-DSN = os.environ.get(
-    "GOCHARA_REMAINDER_DSN", "postgresql://wp6:local@localhost:55434/wp6"
+# Disposable-cluster discipline (ASTRA v1.1 EXTRA BLOCKER): this fixture
+# NEVER runs its destructive setup against a database it did not create.
+# It (a) verifies the destination CLUSTER's system_identifier against the
+# pinned disposable id (same guard as
+# scripts/kala_gochara_cutover/resonance_rebuild_disposable_rehearsal.py),
+# (b) CREATEs its own throwaway database for the test, (c) DROPs it
+# afterwards. Any mismatch or unreachable cluster = NOT_RUN skip, never a
+# fallback to another DSN.
+ADMIN_DSN = os.environ.get(
+    "GOCHARA_A25_ADMIN_DSN", "postgresql://wp6:local@localhost:55434/postgres"
+)
+EXPECTED_CLUSTER_ID = os.environ.get(
+    "GOCHARA_A25_DISPOSABLE_CLUSTER_ID", "7691638507951775319"
 )
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"   # the pinned A2.5 chart
@@ -73,8 +84,65 @@ DROP TABLE IF EXISTS kala_gochara_windows CASCADE;
 CREATE TABLE kala_gochara_windows (
   id BIGSERIAL PRIMARY KEY,
   chart_id UUID NOT NULL,
-  event_class TEXT NOT NULL DEFAULT 'rehearsal',
-  generation TEXT NOT NULL
+  event_class TEXT NOT NULL,
+  temporal_shape TEXT NOT NULL,
+  window_start DATE NOT NULL,
+  window_end DATE NOT NULL,
+  peak_date DATE NOT NULL,
+  milestone_id TEXT,
+  is_irreversibility_milestone BOOLEAN NOT NULL DEFAULT FALSE,
+  signed_intensity NUMERIC NOT NULL,
+  raw_intensity NUMERIC NOT NULL,
+  valence TEXT NOT NULL,
+  is_adverse BOOLEAN NOT NULL,
+  active_sentences JSONB NOT NULL DEFAULT '[]'::jsonb,
+  contributing_systems JSONB NOT NULL DEFAULT '[]'::jsonb,
+  suppression_state JSONB NOT NULL DEFAULT '{}'::jsonb,
+  peak_basis TEXT NOT NULL DEFAULT 'gochara_lambda_e_v1',
+  calibration_state TEXT NOT NULL DEFAULT 'structural_prior',
+  source TEXT NOT NULL DEFAULT 'live',
+  computed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  generation TEXT NOT NULL DEFAULT 'v1',
+  era_slice_key TEXT,
+  parent_window_id BIGINT,
+  resolution TEXT
+);
+DROP TABLE IF EXISTS gochara_resonance_map CASCADE;
+CREATE TABLE gochara_resonance_map (
+  chart_id UUID NOT NULL,
+  event_class TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_ref TEXT NOT NULL,
+  weight DOUBLE PRECISION NOT NULL,
+  target_resolution_state TEXT NOT NULL DEFAULT 'resolved',
+  classical_citation TEXT,
+  uncited_extension BOOLEAN,
+  source_rule_id TEXT
+);
+DROP TABLE IF EXISTS chart_facts CASCADE;
+CREATE TABLE chart_facts (
+  fact_id TEXT PRIMARY KEY,
+  chart_id UUID NOT NULL,
+  ayanamsha_id TEXT NOT NULL,
+  fact_category TEXT NOT NULL,
+  fact_subject TEXT NOT NULL,
+  fact_key TEXT NOT NULL,
+  fact_value_text TEXT,
+  fact_value_num DOUBLE PRECISION
+);
+DROP TABLE IF EXISTS chart_dashas CASCADE;
+CREATE TABLE chart_dashas (
+  dasha_row_id TEXT PRIMARY KEY,
+  chart_id UUID NOT NULL,
+  ayanamsha_id TEXT NOT NULL,
+  system_id TEXT NOT NULL,
+  level_n INT NOT NULL,
+  parent_row_id TEXT,
+  lord_graha TEXT NOT NULL,
+  start_iso TIMESTAMPTZ NOT NULL,
+  end_iso TIMESTAMPTZ NOT NULL,
+  build_id TEXT,
+  verification_pass_status TEXT NOT NULL
 );
 DROP TABLE IF EXISTS bg_transit_rules CASCADE;
 CREATE TABLE bg_transit_rules (
@@ -105,8 +173,14 @@ DROP TABLE IF EXISTS kala_vedha_gochara CASCADE;
 CREATE TABLE kala_vedha_gochara (
   id BIGSERIAL PRIMARY KEY,
   chart_id UUID NOT NULL,
+  window_start DATE,
+  window_end DATE,
   vedha_kind TEXT NOT NULL,
-  detail JSONB NOT NULL DEFAULT '{}'::jsonb
+  graha TEXT,
+  detail JSONB NOT NULL DEFAULT '{}'::jsonb,
+  classical_citation TEXT
+  -- deliberately NO formula_version column: the fallback-schema path
+  -- (ASTRA v1.1 A1 — the optional-column alias) is exercised by this shape
 );
 DROP TABLE IF EXISTS kala_moorti_nirnaya CASCADE;
 CREATE TABLE kala_moorti_nirnaya (
@@ -159,16 +233,47 @@ def _fingerprint_overlays(conn, chart_id: str) -> None:
 
 
 @pytest.fixture()
-def pg():
+def disposable_dsn():
+    """A brand-new throwaway database on the pinned disposable cluster —
+    created for the test, dropped afterwards. Skips (NOT_RUN) unless the
+    cluster IS the pinned disposable one."""
     try:
-        conn = psycopg.connect(DSN, autocommit=True, connect_timeout=3)
+        admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
     except Exception as exc:  # noqa: BLE001
-        pytest.skip(f"NOT_RUN: disposable remainder database unreachable ({exc})")
+        pytest.skip(f"NOT_RUN: disposable cluster unreachable ({exc})")
+    actual = admin.execute(
+        "SELECT system_identifier FROM pg_control_system()").fetchone()[0]
+    if str(actual) != EXPECTED_CLUSTER_ID:
+        admin.close()
+        pytest.skip(
+            "NOT_RUN: cluster system_identifier "
+            f"{actual} is not the pinned disposable cluster — refusing to "
+            "run any setup against an unrecognised cluster (set "
+            "GOCHARA_A25_DISPOSABLE_CLUSTER_ID to the disposable cluster's "
+            "own identifier)")
+    dbname = f"a25pg_{os.getpid()}_{uuid.uuid4().hex[:8]}"
+    admin.execute(f'CREATE DATABASE "{dbname}"')
+    parts = psycopg.conninfo.conninfo_to_dict(ADMIN_DSN)
+    parts["dbname"] = dbname
+    dsn = psycopg.conninfo.make_conninfo(**parts)
+    admin.close()
+    yield dsn
+    admin = psycopg.connect(ADMIN_DSN, autocommit=True)
+    admin.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
+    admin.close()
+
+
+@pytest.fixture()
+def pg(disposable_dsn):
+    conn = psycopg.connect(disposable_dsn, autocommit=True)
     with conn.cursor() as cur:
         cur.execute(STUB_DDL)
     _apply_migration(conn, "1081")
     _apply_migration(conn, "1087")
     _apply_migration(conn, "1071")
+    # 1152: t_exact nullable for N3 truncated contacts (the A2 residence
+    # geometry writes such rows through the real ledger).
+    _apply_migration(conn, "1152")
     with conn.cursor() as cur:
         cur.execute(SEED_SQL)
     _fingerprint_overlays(conn, CHART_ID)
@@ -177,11 +282,11 @@ def pg():
 
 
 @pytest.fixture()
-def pg_dict(pg):
+def pg_dict(pg, disposable_dsn):
     """The same disposable database through the runner's NATIVE connection
     shape: dict_row rows, autocommit off (the test owns commit/rollback —
     exactly the orchestrator's posture)."""
-    conn = psycopg.connect(DSN, row_factory=psycopg.rows.dict_row)
+    conn = psycopg.connect(disposable_dsn, row_factory=psycopg.rows.dict_row)
     yield conn
     conn.rollback()
     conn.close()
@@ -246,6 +351,61 @@ def _seed_manifest(conn, chart, generation="4.1"):
         conn, chart, generation, cid, {"seed": True},
         {"backend": "swieph", "retflag": 258}, "[2020-01-01,2020-02-01)")
     return cid, mid
+
+
+# ── windows-substep inputs (A1/A7 real execution) ───────────────────────────
+
+_NATAL = {
+    "SUN": 291.96, "MOON": 327.06, "MAR": 198.52, "MER": 270.84,
+    "JUP": 148.87, "VEN": 265.39, "SAT": 356.74,
+    "RAH_MEAN": 21.34, "KET_MEAN": 201.34,
+}
+_LAGNA = 12.43
+
+
+def _seed_windows_inputs(conn, chart) -> None:
+    """Everything the REAL windows chain reads outside the ledger tables:
+    one resolved resonance-map row (marriage/karaka/SUN), the chart's L1
+    operands (graha positions + LAGNA + paksha + day_birth), and a
+    tier-pinned Vimśottarī MD/AD/PD chain covering the contact dates."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO gochara_resonance_map (chart_id, event_class,"
+            " target_type, target_ref, weight, target_resolution_state,"
+            " classical_citation, uncited_extension, source_rule_id)"
+            " VALUES (%s, 'marriage', 'karaka', 'SUN', 0.9, 'resolved',"
+            " 'PG249-250 (XX.34-38)', false, 'test-rule')", (chart,))
+        for subj, lon in [*_NATAL.items(), ("LAGNA", _LAGNA)]:
+            cur.execute(
+                "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id,"
+                " fact_category, fact_subject, fact_key, fact_value_num)"
+                " VALUES (%s, %s, 'lahiri_chitrapaksha', 'graha_position',"
+                " %s, 'longitude_sidereal', %s)",
+                (f"fact-{subj.lower()}", chart, subj, lon))
+        cur.execute(
+            "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id,"
+            " fact_category, fact_subject, fact_key, fact_value_text)"
+            " VALUES ('fact-paksha', %s, 'lahiri_chitrapaksha',"
+            " 'panchanga_tithi', 'TITHI', 'paksha', 'Shukla')", (chart,))
+        cur.execute(
+            "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id,"
+            " fact_category, fact_subject, fact_key, fact_value_num)"
+            " VALUES ('fact-daybirth', %s, 'lahiri_chitrapaksha',"
+            " 'saham_position', 'DAYBIRTH', 'day_birth', 1)", (chart,))
+        for row_id, level, parent, lord, start, end in (
+            ("d-md", 1, None, "JUP", "2010-01-01", "2026-01-01"),
+            ("d-ad", 2, "d-md", "SAT", "2019-01-01", "2022-01-01"),
+            ("d-pd", 3, "d-ad", "VEN", "2019-06-01", "2020-06-01"),
+        ):
+            cur.execute(
+                "INSERT INTO chart_dashas (dasha_row_id, chart_id,"
+                " ayanamsha_id, system_id, level_n, parent_row_id,"
+                " lord_graha, start_iso, end_iso, build_id,"
+                " verification_pass_status)"
+                " VALUES (%s, %s, 'lahiri_chitrapaksha', 'vimshottari',"
+                " %s, %s, %s, %s, %s, '1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb', 'two_pass_verified')",
+                (row_id, chart, level, parent, lord, start, end))
+    conn.commit()
 
 
 # ── 1 · manifest substep, native runner types, real freshness gate ───────────
@@ -340,78 +500,168 @@ def _contact_ids(conn, chart, generation, body) -> set:
                 for r in cur.fetchall()}
 
 
-def test_interrupted_substep_and_retry_preserve_siblings(pg, pg_dict):
-    """The retry proof the reviewer asked for: REAL database state, an actual
-    interruption, an actual rerun — siblings counted before and after."""
+def test_interrupted_substep_and_retry_preserve_siblings(
+        pg, pg_dict, disposable_dsn, monkeypatch):
+    """The retry proof the reviewer asked for, driven through the REAL writer
+    substep (never the ledger functions directly): REAL database state, an
+    actual mid-substep crash, an actual rerun — siblings snapshotted before
+    and after. enumerate_core is stubbed (its evidence lives in the
+    enumerate tests); everything downstream — validation, DML, transaction
+    semantics — is the writer's own code against real PostgreSQL."""
     sib = _seed_siblings(pg)
     cid = sib["cid"]
     t1 = datetime(2020, 1, 20, 12, 0, tzinfo=UTC)
     t2 = datetime(2020, 1, 22, 12, 0, tzinfo=UTC)
+    writer = writer_mod.GocharaV41CandidateWriter()
+    step = SubStep(key="body:Mars", label="mars")
+
+    def _payload(episodes):
+        return (episodes, [_coverage("mars")],
+                {"convention_id": cid, "episodes_truncated_no_exact_kept": 0})
+
+    def _sibling_snapshot(conn):
+        return {
+            "venus41": _contact_ids(conn, CHART_ID, "4.1", "Venus"),
+            "mars30": _contact_ids(conn, CHART_ID, "3.0", "Mars"),
+            "mars_other": _contact_ids(conn, OTHER_CHART, "4.1", "Mars"),
+            "coverage": _scalar(conn,
+                                "SELECT count(*) FROM kala_gochara_coverage "
+                                "WHERE chart_id = %s AND generation = '4.1'",
+                                (CHART_ID,)),
+        }
 
     # First Mars substep: two contacts + coverage, committed.
-    writer_mod.ledger.write_contacts(
-        pg_dict, CHART_UUID, "4.1", cid,
-        [_episode("Mars", t1), _episode("Mars", t2, relation="trine")],
-        "a25pg-mars-1", bodies=["Mars"])
-    writer_mod.ledger.write_coverage(
-        pg_dict, CHART_UUID, "4.1", cid, [_coverage("mars")],
-        "a25pg-mars-1", bodies=["Mars"])
+    monkeypatch.setattr(writer_mod.step06_enumerate, "enumerate_core",
+                        lambda *a, **kw: _payload(
+                            [_episode("Mars", t1),
+                             _episode("Mars", t2, relation="trine")]))
+    res = writer.run_substep(_ctx(pg_dict, CHART_UUID), step)
+    assert res.rows_inserted == 3  # 2 contacts + 1 coverage row
     pg_dict.commit()
     mars_v1 = _contact_ids(pg_dict, CHART_ID, "4.1", "Mars")
     assert len(mars_v1) == 2
+    before = _sibling_snapshot(pg_dict)
 
-    # (a) MID-SUBSTEP CRASH: a failing payload AFTER the delete would land —
-    # the whole substep rolls back (the orchestrator's transaction semantics);
-    # the committed v1 Mars rows survive untouched.
-    conn2 = psycopg.connect(DSN, row_factory=psycopg.rows.dict_row)
+    # (a) MID-SUBSTEP CRASH: the write_coverage leg raises AFTER
+    # write_contacts' DML — the whole substep rolls back to the savepoint
+    # (the orchestrator's transaction semantics); committed v1 rows survive.
+    conn2 = psycopg.connect(disposable_dsn,
+                            row_factory=psycopg.rows.dict_row)
     try:
         conn2.execute("SAVEPOINT substep")
         try:
-            # normalization happens before the DELETE, so to fail AFTER DML
-            # we violate a DB constraint at INSERT time (t_exact NULL breaks
-            # the NOT NULL/contact-id path only at the database): craft the
-            # failure as a second statement inside the same transaction.
-            writer_mod.ledger.write_contacts(
-                conn2, CHART_UUID, "4.1", cid,
-                [_episode("Mars", datetime(2020, 1, 25, 12, 0, tzinfo=UTC))],
-                "a25pg-mars-crash", bodies=["Mars"])
-            conn2.execute("SELECT 1/0")  # the crash
+            with monkeypatch.context() as mp:
+                mp.setattr(writer_mod.ledger, "write_coverage",
+                           lambda *a, **kw: (_ for _ in ()).throw(
+                               RuntimeError("simulated mid-substep crash")))
+                writer.run_substep(_ctx(conn2, CHART_UUID), step)
             conn2.commit()
             raise AssertionError("the crash never happened")
-        except Exception:
+        except RuntimeError:
             conn2.execute("ROLLBACK TO SAVEPOINT substep")
             conn2.commit()
     finally:
         conn2.close()
     assert _contact_ids(pg_dict, CHART_ID, "4.1", "Mars") == mars_v1
+    assert _sibling_snapshot(pg_dict) == before
 
     # (b) RETRY: the substep reruns with the corrected payload and replaces
     # EXACTLY its own scope — one Mars row now, never a duplicate of v1.
-    t3 = datetime(2020, 1, 25, 12, 0, tzinfo=UTC)
-    writer_mod.ledger.write_contacts(
-        pg_dict, CHART_UUID, "4.1", cid, [_episode("Mars", t3)],
-        "a25pg-mars-2", bodies=["Mars"])
-    writer_mod.ledger.write_coverage(
-        pg_dict, CHART_UUID, "4.1", cid, [_coverage("mars")],
-        "a25pg-mars-2", bodies=["Mars"])
+    monkeypatch.setattr(writer_mod.step06_enumerate, "enumerate_core",
+                        lambda *a, **kw: _payload(
+                            [_episode("Mars",
+                                      datetime(2020, 1, 25, 12, 0,
+                                               tzinfo=UTC))]))
+    res = writer.run_substep(_ctx(pg_dict, CHART_UUID), step)
+    assert res.rows_inserted == 2  # 1 contact + 1 coverage row
     pg_dict.commit()
 
     mars_v2 = _contact_ids(pg_dict, CHART_ID, "4.1", "Mars")
     assert len(mars_v2) == 1 and mars_v2 != mars_v1
     # every sibling intact, to the row
-    assert _contact_ids(pg_dict, CHART_ID, "4.1", "Venus") == \
-        _contact_ids(pg, CHART_ID, "4.1", "Venus")
-    assert len(_contact_ids(pg_dict, CHART_ID, "4.1", "Venus")) == 1
-    assert len(_contact_ids(pg_dict, CHART_ID, "3.0", "Mars")) == 1
-    assert len(_contact_ids(pg_dict, OTHER_CHART, "4.1", "Mars")) == 1
-    assert _scalar(pg_dict,
-                   "SELECT count(*) FROM kala_gochara_coverage "
-                   "WHERE chart_id = %s AND generation = '4.1'",
-                   (CHART_ID,)) == 2  # mars + venus, no duplicates
+    after = _sibling_snapshot(pg_dict)
+    assert after["venus41"] == before["venus41"]
+    assert after["mars30"] == before["mars30"]
+    assert after["mars_other"] == before["mars_other"]
+    assert after["coverage"] == 2  # mars + venus, no duplicates
     assert _scalar(pg_dict,
                    "SELECT count(*) FROM kala_gochara_contacts "
                    "WHERE chart_id = %s AND generation = '4.1'",
                    (CHART_ID,)) == 2  # 1 mars + 1 venus
+
+
+# ── 2b · windows substep, REAL end-to-end execution (A1/A7) ─────────────────
+
+def _sun_episode(t: datetime, relation: str = "conjunction") -> dict:
+    ep = _episode("Sun", t, relation=relation)
+    ep["target_longitude_deg"] = _NATAL["SUN"]  # karaka SUN = natal Sun
+    return ep
+
+
+def test_windows_substep_real_execution_native_dict_rows(pg, pg_dict):
+    """A1 + A7: the REAL windows entry point, start to finish, with the
+    runner's native types — a uuid.UUID chart_id and NON-EMPTY dict-row
+    results through every fetch (the v1.1 reviewer's crash geometry:
+    'str' object has no attribute 'timestamp' at step06a:329), the fallback
+    overlay schema WITHOUT formula_version (the alias path — the reviewer's
+    KeyError), and the §12.9 gate genuinely green. Nothing is stubbed below
+    the writer: class context, permission, projection, validation and DML
+    all run. Whether any window is EMITTED is the permission systems'
+    honest semantics (union admission at each sample instant); the crash
+    geometry and the honest-completion contract are what this test pins."""
+    cid, _ = _seed_manifest(pg_dict, CHART_UUID)
+    t1 = datetime(2020, 1, 15, 12, 0, tzinfo=UTC)
+    t2 = datetime(2020, 1, 22, 12, 0, tzinfo=UTC)
+    writer_mod.ledger.write_contacts(
+        pg_dict, CHART_UUID, "4.1", cid,
+        [_sun_episode(t1), _sun_episode(t2)], "a25pg-sun", bodies=["Sun"])
+    writer_mod.ledger.write_coverage(
+        pg_dict, CHART_UUID, "4.1", cid, [_coverage("sun")],
+        "a25pg-sun", bodies=["Sun"])
+    pg_dict.commit()
+    _seed_windows_inputs(pg, CHART_ID)
+
+    # The two A1 crash points, directly, over the runner's dict rows:
+    from scripts.kala_gochara_cutover import step06a_class_context as sa
+    from scripts.kala_gochara_cutover import step06b_windows_projection as sb
+    by_class, null_exact = sa.fetch_class_contact_instants(
+        pg_dict, CHART_UUID, "4.1")
+    assert len(by_class["marriage"]) == 2 and null_exact == 0
+    import json as _json
+    vedha_fp = freshness_mod.current_fingerprint(pg)
+    with pg.cursor() as cur:
+        cur.execute(
+            "INSERT INTO kala_vedha_gochara (chart_id, window_start,"
+            " window_end, vedha_kind, graha, detail, classical_citation)"
+            " VALUES (%s, '2020-01-15', '2020-01-16', 'house_vedha',"
+            " 'Saturn', %s::jsonb, 'PG (rehearsal)')",
+            (CHART_ID, _json.dumps({"upstream_fingerprint": vedha_fp})))
+    vedha_rows = sb.fetch_vedha_rows(pg_dict, CHART_UUID)
+    assert vedha_rows  # overlay rows exist (fingerprint + the inserted one)
+    assert all("formula_version" in r for r in vedha_rows)  # the alias —
+    # never '?column?' (the reviewer's KeyError geometry)
+    mine = [r for r in vedha_rows if r["window_start"] == "2020-01-15"]
+    assert len(mine) == 1 and mine[0]["formula_version"] is None
+
+    writer = writer_mod.GocharaV41CandidateWriter()
+    res = writer.run_substep(_ctx(pg_dict, CHART_UUID),
+                             SubStep(key="windows", label="w"))
+    pg_dict.commit()
+    # honest completion: the class was reached and projected (never a crash,
+    # never an omitted-without-cause), the DB agrees with the report, and
+    # every written row honours the pinned horizon
+    assert "windows=" in res.notes and "classes=" in res.notes
+    assert "class_context_omitted=0" in res.notes
+    n = _scalar(pg_dict,
+                "SELECT count(*) FROM kala_gochara_windows "
+                "WHERE chart_id = %s AND generation = '4.1'", (CHART_ID,))
+    assert n == res.rows_inserted
+    bad = _scalar(pg_dict,
+                  "SELECT count(*) FROM kala_gochara_windows "
+                  "WHERE chart_id = %s AND generation = '4.1' AND ("
+                  " window_start < '1998-01-01' OR peak_date < '1998-01-01'"
+                  " OR peak_date >= '2026-04-18')", (CHART_ID,))
+    assert bad == 0
 
 
 # ── 3 · lifecycle refusal on real rows ───────────────────────────────────────
@@ -447,8 +697,15 @@ def test_generation_guard_trigger_real_pg(pg):
     pinned to '4.1')."""
     with pg.cursor() as cur:
         cur.execute(
-            "INSERT INTO kala_gochara_windows (chart_id, generation) "
-            "VALUES (%s, 'v1'), (%s, '4.1')", (CHART_ID, CHART_ID))
+            "INSERT INTO kala_gochara_windows (chart_id, event_class,"
+            " temporal_shape, window_start, window_end, peak_date,"
+            " signed_intensity, raw_intensity, valence, is_adverse,"
+            " generation)"
+            " VALUES (%s, 'marriage', 'interval', '2020-01-01', '2020-02-01',"
+            " '2020-01-15', 1, 1, 'gain', false, 'v1'),"
+            " (%s, 'marriage', 'interval', '2020-01-01', '2020-02-01',"
+            " '2020-01-15', 1, 1, 'gain', false, '4.1')",
+            (CHART_ID, CHART_ID))
     # 1071's row guard raises BUILD-PROTECTED (the 'v1' sweep snapshot);
     # 'GOCHARA GENERATION GUARD' is step03_guard_n6a's '3.0' message — that
     # trigger is executed by the WP10 suite on this same instance.
@@ -470,3 +727,242 @@ def test_generation_guard_trigger_real_pg(pg):
     assert _scalar(pg,
                    "SELECT count(*) FROM kala_gochara_windows "
                    "WHERE generation = '4.1'") == 0
+
+
+# ── 2c · A2 half-open horizon — producer→validator→projection geometry ─────
+#
+# ASTRA v1.1 A2's three reproduced geometries, driven through the REAL
+# producer (gochara_kernel episodes / step06b projection) into the REAL
+# writer validator and the REAL ledger on disposable PostgreSQL — never
+# source-string evidence. Each test fails against the pre-repair code:
+#   (1) the empty "overlap" at the excluded end (t_in == h1) — pre-repair
+#       _clip_to_horizon KEPT it and write_contacts INSERTed it;
+#   (2) residence ingress membership with the old slack + closed end —
+#       pre-repair an ingress 40µs before h0 was stamped as observed exact
+#       (the writer validator then had to refuse the body), and an ingress
+#       exactly at h1 produced a zero-length residence that ABORTED the
+#       body with HorizonViolation;
+#   (3) projection sampling — pre-repair the horizon limit was not a series
+#       point, so legitimate final-day truncated activity closed at the
+#       last in-domain sample instead of the horizon limit.
+
+from datetime import date  # noqa: E402
+
+import swisseph as swe  # noqa: E402
+
+from services.gochara_kernel import arcs as gk_arcs  # noqa: E402
+from services.gochara_kernel import episodes as gk_episodes  # noqa: E402
+from services.gochara_kernel import legacy_semantics as leg  # noqa: E402
+from scripts.kala_gochara_cutover import step06b_windows_projection as sb  # noqa: E402
+
+_H_END = datetime.fromisoformat(writer_mod.HORIZON_END)  # 2026-04-18T00:00Z
+_SYNTH_TOL_ARCSEC = 1e-7
+
+
+def _jd(dt: datetime) -> float:
+    return dt.timestamp() / 86400.0 + 2440587.5
+
+
+def _dt(jd: float) -> datetime:
+    return datetime.fromtimestamp((jd - 2440587.5) * 86400.0, tz=UTC)
+
+
+def _daily_knots(start: date, end: date, curve) -> tuple[list[float], list[float]]:
+    """Daily noon-UT knots of a synthetic curve(jd) — the same fixture shape
+    as test_wp3a_kernel.daily_knots (F-15 abscissa)."""
+    jds, lons = [], []
+    d = start
+    while d <= end:
+        jd = swe.julday(d.year, d.month, d.day, 12.0)
+        jds.append(jd)
+        lons.append(curve(jd) % 360.0)
+        d += timedelta(days=1)
+    return jds, lons
+
+
+# A small horizon at the END of the pinned one — every produced instant is
+# inside the pinned horizon, so the REAL writer validator may run on it.
+_H1 = _jd(_H_END)
+_H0 = _H1 - 30.0
+
+
+def test_a2_clip_to_horizon_truth_table():
+    """The half-open membership predicate itself: [h0, h1), degenerate
+    instantaneous events kept iff h0 <= t < h1, spans overlapping iff
+    t_out > h0 and t_in < h1."""
+    clip = gk_episodes._clip_to_horizon
+    h0, h1 = 100.0, 200.0
+    # degenerate instantaneous events
+    assert clip(100.0, 100.0, (h0, h1)) == (100.0, 100.0, None, True)
+    assert clip(150.0, 150.0, (h0, h1)) == (150.0, 150.0, None, True)
+    assert clip(200.0, 200.0, (h0, h1))[3] is False   # the excluded end
+    assert clip(99.0, 99.0, (h0, h1))[3] is False
+    assert clip(201.0, 201.0, (h0, h1))[3] is False
+    # spans
+    assert clip(200.0, 210.0, (h0, h1))[3] is False  # empty overlap at h1
+    assert clip(90.0, 100.0, (h0, h1))[3] is False   # ends exactly at h0
+    assert clip(90.0, 150.0, (h0, h1)) == (100.0, 150.0, "start", True)
+    assert clip(150.0, 210.0, (h0, h1)) == (150.0, 200.0, "end", True)
+    assert clip(90.0, 210.0, (h0, h1)) == (100.0, 200.0, "both", True)
+    assert clip(120.0, 130.0, (h0, h1)) == (120.0, 130.0, None, True)
+
+
+def test_a2_orb_span_empty_overlap_at_excluded_end_dropped(pg, pg_dict):
+    """The v1.1 reviewer's exact repro: Sun moving 1°/day, target 0°, orb
+    5°, exact centre five days beyond the horizon end → the in-orb interval
+    [h1, h1+10d] touches the half-open horizon only AT the excluded end.
+    Pre-repair this produced an empty t_in == t_out == h1 episode which the
+    writer validator accepted and ledger.write_contacts INSERTed. Now: the
+    producer emits NOTHING and the ledger records NOTHING — while the
+    neighbouring legitimate truncated span (exact 5 days INSIDE the horizon,
+    in-orb through the excluded end) is kept, validated and written."""
+    centre = _H1 + 5.0
+    jds, lons = _daily_knots(date(2026, 3, 1), date(2026, 5, 20),
+                             lambda jd: (jd - centre) * 1.0)
+    idx = gk_arcs.build_arc_index("Sun", jds, lons,
+                                  tolerance_arcsec=_SYNTH_TOL_ARCSEC)
+
+    # (a) the reproduced defect geometry — nothing survives the chain
+    eps = gk_episodes.solve_episodes(idx, "Sun", "conjunction", 0.0,
+                                     (_H0, _H1), "orb_conj_slow",
+                                     refine=False, orb_override_deg=5.0)
+    assert eps == []
+    writer_mod._validate_episodes_within_horizon([])
+    cid, _ = _seed_manifest(pg_dict, CHART_UUID)
+    writer_mod.ledger.write_contacts(pg_dict, CHART_UUID, "4.1", cid, [],
+                                     "a25pg-a2-empty", bodies=["Sun"])
+    pg_dict.commit()
+    assert _scalar(pg_dict,
+                   "SELECT count(*) FROM kala_gochara_contacts "
+                   "WHERE chart_id = %s AND generation = '4.1'",
+                   (CHART_ID,)) == 0
+
+    # (b) control — the legitimate final-day truncated span IS kept: exact
+    # 3 days before the limit (inside), in-orb until h1+2d (t_out clipped
+    # to the exclusive limit, truncated 'end'), validator green, row written.
+    eps2 = gk_episodes.solve_episodes(idx, "Sun", "conjunction", 352.0,
+                                      (_H0, _H1), "orb_conj_slow",
+                                      refine=False, orb_override_deg=5.0)
+    assert len(eps2) == 1
+    ep = eps2[0]
+    assert ep.t_exact == pytest.approx(_H1 - 3.0, abs=1e-6)
+    assert ep.t_out == _H1
+    assert ep.truncated_at_horizon == "end"
+    d = {**_episode("Sun", _dt(ep.t_exact)),
+         "t_in": _dt(ep.t_in), "t_exact": _dt(ep.t_exact),
+         "t_out": _dt(ep.t_out), "truncated_at_horizon": "end",
+         "target_longitude_deg": 352.0}
+    writer_mod._validate_episodes_within_horizon([d])  # must not raise
+    writer_mod.ledger.write_contacts(pg_dict, CHART_UUID, "4.1", cid, [d],
+                                     "a25pg-a2-ctrl", bodies=["Sun"])
+    pg_dict.commit()
+    assert _scalar(pg_dict,
+                   "SELECT count(*) FROM kala_gochara_contacts "
+                   "WHERE chart_id = %s AND generation = '4.1'",
+                   (CHART_ID,)) == 1
+
+
+def test_a2_residence_membership_half_open(pg, pg_dict):
+    """Residence ingress membership is [h0, h1) with NO slack.
+    (a) Ingress ~40µs BEFORE h0 (the reviewer's measured slack geometry):
+        the residence is kept as a truncated span — t_exact NULL (never a
+        fabricated stamp, N3), truncated 'start' — and the writer accepts
+        the row (pre-repair the slack stamped the out-of-domain instant as
+        observed, which the writer's own validator then refused).
+    (b) Ingress exactly AT h1: the residence overlaps only at the excluded
+        end and is EXCLUDED outright — no zero-length residence and no
+        HorizonViolation abort (both pre-repair behaviours)."""
+    slack = 40e-6 / 86400.0  # 40µs in days — the reviewer's measurement
+
+    # (a) ingress just before the start
+    jds, lons = _daily_knots(date(2026, 3, 1), date(2026, 5, 20),
+                             lambda jd: jd - (_H0 - slack))
+    idx = gk_arcs.build_arc_index("Mars", jds, lons,
+                                  tolerance_arcsec=_SYNTH_TOL_ARCSEC)
+    spans = gk_episodes.residence_spans(idx, "Mars", (0.0, 30.0),
+                                        (_H0, _H1), "rashi_sign",
+                                        refine=False)
+    assert len(spans) == 1
+    sp = spans[0]
+    assert sp.t_enter == _H0
+    assert sp.truncated_at_horizon == "start"
+    assert sp.ingress_episode.t_exact is None
+    assert sp.ingress_episode.exact_crossing is False
+    assert sp.ingress_episode.truncated_at_horizon == "start"
+    d = {**_episode("Mars", _dt(sp.t_enter), relation="sign_ingress"),
+         "t_in": _dt(sp.t_enter), "t_exact": None, "t_out": _dt(sp.t_enter),
+         "exact_crossing": False,
+         "truncated_at_horizon": "start", "orb_source": "orb_ingress",
+         "target_type": "rashi_sign", "target_ref": "0-30",
+         "target_longitude_deg": 0.0}
+    writer_mod._validate_episodes_within_horizon([d])  # must not raise
+    cid, _ = _seed_manifest(pg_dict, CHART_UUID)
+    writer_mod.ledger.write_contacts(pg_dict, CHART_UUID, "4.1", cid, [d],
+                                     "a25pg-a2-res", bodies=["Mars"])
+    pg_dict.commit()
+    assert _scalar(pg_dict,
+                   "SELECT count(*) FROM kala_gochara_contacts "
+                   "WHERE chart_id = %s AND generation = '4.1'",
+                   (CHART_ID,)) == 1
+
+    # (b) ingress exactly at the excluded end — excluded, never an abort
+    jds2, lons2 = _daily_knots(date(2026, 3, 1), date(2026, 5, 20),
+                               lambda jd: jd - _H1)
+    idx2 = gk_arcs.build_arc_index("Mars", jds2, lons2,
+                                   tolerance_arcsec=_SYNTH_TOL_ARCSEC)
+    spans2 = gk_episodes.residence_spans(idx2, "Mars", (0.0, 30.0),
+                                         (_H0, _H1), "rashi_sign",
+                                         refine=False)
+    assert spans2 == []
+    writer_mod._validate_episodes_within_horizon([])  # no HorizonViolation
+
+
+def test_a2_boundary_events_at_horizon_edges():
+    """Instantaneous boundary events: a root exactly AT the horizon start is
+    a real crossing and is KEPT (h0 is inside [h0, h1)); a root exactly AT
+    the excluded end belongs to the next domain and is EXCLUDED."""
+    jds, lons = _daily_knots(date(2026, 3, 1), date(2026, 5, 20),
+                             lambda jd: jd - _H0)
+    idx = gk_arcs.build_arc_index("Jupiter", jds, lons,
+                                  tolerance_arcsec=_SYNTH_TOL_ARCSEC)
+    eps = gk_episodes.solve_boundary_episodes(idx, "Jupiter", "sign_ingress",
+                                              (_H0, _H1), refine=False)
+    assert any(e.t_exact == pytest.approx(_H0, abs=1e-9) for e in eps)
+    assert all(e.t_exact < _H1 for e in eps)  # the +30d crossing lands ON h1
+
+    jds2, lons2 = _daily_knots(date(2026, 3, 1), date(2026, 5, 20),
+                               lambda jd: jd - _H1)
+    idx2 = gk_arcs.build_arc_index("Jupiter", jds2, lons2,
+                                   tolerance_arcsec=_SYNTH_TOL_ARCSEC)
+    eps2 = gk_episodes.solve_boundary_episodes(idx2, "Jupiter", "sign_ingress",
+                                               (_H0, _H1), refine=False)
+    assert all(e.t_exact != pytest.approx(_H1, abs=1e-9) for e in eps2)
+
+
+def test_a2_projection_retains_final_day_truncated_activity():
+    """Projection geometry: a contact whose support runs THROUGH the horizon
+    limit is legitimate final-day truncated activity — the era window's exit
+    may EQUAL the exclusive limit (2026-04-18), its peak never does, and the
+    writer's row validator accepts the rows. Pre-repair the horizon limit
+    was not a series point and the window closed at the last in-domain
+    sample instead of the limit."""
+    ctx = sb.ClassContext(
+        "marriage", [0.9],
+        {s: True for s in leg.PERMISSION_SYSTEM_IDS},
+        weight_by_target_ref={"SUN": 0.9})
+    contact = {
+        "contact_id": "c-finalday", "body": "Sun", "relation": "conjunction",
+        "target_type": "karaka", "target_ref": "SUN",
+        "_primitive": "degree_contact",
+        "_t_in_jd": _H1 - 3.0, "_t_exact_jd": _H1 + 1.0, "_t_out_jd": _H1 + 5.0,
+        "_target_lon_deg": 0.0, "_aspect_deg": 0.0, "_orb_deg": 10.0,
+    }
+    rows, report = sb.project_class_windows(
+        ctx, [contact], (_H0, _H1),
+        lambda jd: {"factor_by_body": {}},
+        planet_pos_fn=lambda body, jd: 0.0)
+    assert report["components"] >= 1
+    assert rows, "final-day truncated activity produced NO window rows"
+    assert max(r["window_end"] for r in rows) == date(2026, 4, 18)
+    assert all(r["peak_date"] < date(2026, 4, 18) for r in rows)
+    writer_mod._validate_windows_within_horizon(rows)  # no HorizonViolation

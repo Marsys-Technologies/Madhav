@@ -326,7 +326,10 @@ def fetch_class_contact_instants(conn, chart_id: str, generation: str):
         (chart_id, generation)).fetchall()
     by_class: dict[str, list[float]] = {}
     null_exact = 0
-    for cls, t_exact in rows:
+    for row in rows:
+        # dict/tuple row agnostic (ASTRA v1.1 A1): the runner hands dict rows
+        cls, t_exact = ((row["event_class"], row["t_exact"])
+                        if isinstance(row, dict) else (row[0], row[1]))
         if t_exact is None:
             null_exact += 1
             continue

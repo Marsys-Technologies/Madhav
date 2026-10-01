@@ -1022,12 +1022,40 @@ def test_boundary_membership_is_half_open_and_exact():
 
 
 def test_projection_series_never_samples_the_excluded_end():
-    """A2 production side: the projection's series excludes horizon_jd[1]."""
+    """A2 production side, BEHAVIOURAL (ASTRA v1.1 A7 — replaces the v1.0
+    source-string check, which could not see behaviour): a contact whose
+    support runs THROUGH the horizon limit is legitimate final-day truncated
+    activity. The horizon limit rides the projection series as a boundary
+    point ONLY: it closes the final interval (the era window's exit may
+    EQUAL the exclusive limit) but is never a peak or day row. The
+    writer-side chain assertion (validator + ledger) lives in
+    test_a25_v41_candidate_writer_pg.py::
+    test_a2_projection_retains_final_day_truncated_activity."""
+    from services.gochara_kernel import legacy_semantics as leg
     mod = writer_mod.step06b_windows
-    src = inspect.getsource(mod.project_class_windows)
-    assert "horizon_jd[0] <= b < horizon_jd[1]" in src
-    assert "while t < horizon_jd[1]:" in src
-    assert "<= horizon_jd[1]" not in src
+    h1 = datetime(2026, 4, 18, tzinfo=timezone.utc).timestamp() / 86400.0 \
+        + 2440587.5
+    h0 = h1 - 30.0
+    ctx = mod.ClassContext(
+        "marriage", [0.9],
+        {s: True for s in leg.PERMISSION_SYSTEM_IDS},
+        weight_by_target_ref={"SUN": 0.9})
+    contact = {
+        "contact_id": "c-finalday", "body": "Sun", "relation": "conjunction",
+        "target_type": "karaka", "target_ref": "SUN",
+        "_primitive": "degree_contact",
+        "_t_in_jd": h1 - 3.0, "_t_exact_jd": h1 + 1.0, "_t_out_jd": h1 + 5.0,
+        "_target_lon_deg": 0.0, "_aspect_deg": 0.0, "_orb_deg": 10.0,
+    }
+    rows, report = mod.project_class_windows(
+        ctx, [contact], (h0, h1),
+        lambda jd: {"factor_by_body": {}},
+        planet_pos_fn=lambda body, jd: 0.0)
+    assert report["components"] >= 1
+    assert rows, "final-day truncated activity produced NO window rows"
+    assert max(r["window_end"] for r in rows) == date(2026, 4, 18)
+    assert all(r["peak_date"] < date(2026, 4, 18) for r in rows)
+    writer_mod._validate_windows_within_horizon(rows)  # no HorizonViolation
 
 
 def test_resolve_ephe_path_order(monkeypatch):

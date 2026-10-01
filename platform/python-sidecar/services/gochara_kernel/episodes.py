@@ -210,10 +210,21 @@ def _clip_to_horizon(
     t_out: float,
     horizon: tuple[float, float],
 ) -> tuple[float, float, str | None, bool]:
-    """Clip [t_in, t_out] to the horizon. Returns (t_in, t_out, truncated,
-    overlaps). Episodes with no overlap are dropped by the caller."""
+    """Clip [t_in, t_out] to the half-open horizon [h0, h1). Returns
+    (t_in, t_out, truncated, overlaps). Episodes with no overlap are dropped
+    by the caller.
+
+    Half-open discipline (ASTRA v1.1 A2): a span overlaps iff t_out > h0 and
+    t_in < h1 — an empty "overlap" at the excluded end (t_in == h1) or at the
+    start (t_out == h0) is NOT a legitimate truncated span and is dropped. A
+    degenerate instantaneous event (t_in == t_out == t) is kept iff it lies
+    inside the half-open horizon (h0 <= t < h1): the horizon's own start is
+    inside, its end is not."""
     h0, h1 = horizon
-    if t_out < h0 or t_in > h1:
+    if t_in == t_out:
+        if not (h0 <= t_in < h1):
+            return t_in, t_out, None, False
+    elif t_out <= h0 or t_in >= h1:
         return t_in, t_out, None, False
     truncated: list[str] = []
     if t_in < h0:
@@ -691,10 +702,11 @@ def residence_spans(
             open_end=exit_crossing is None and b >= data_end - 1e-9,
         )
         # The ingress is OBSERVED only when its refined instant lies inside
-        # the horizon; a crossing before h0 is a clipped span (truncated
+        # the half-open horizon [h0, h1) (ASTRA v1.1 A2 — no slack, the end
+        # is excluded); a crossing outside it is a clipped span (truncated
         # start), never a fabricated exact stamp (N3).
         ingress_observed = (
-            entry_exact is not None and h0 - 1e-9 <= entry_exact <= h1 + 1e-9
+            entry_exact is not None and h0 <= entry_exact < h1
         )
         stamps = _episode_stamps(body, "sign_ingress", "orb_ingress")
         if ingress_observed:
