@@ -105,13 +105,30 @@ transaction category (see AM-3). All folded.
 > id. Once a convention id enters physical/contact identities it is immutable;
 > a changed vector is a NEW id, never an edit.
 >
-> **Convention-bridge evolution (v1.1 additional gap, folded):**
-> `ka_gochara_convention_bridge` (1153:1016–1034) gives each legacy
-> `kala_gochara_convention` row exactly one immutable mapping and can never be
-> repointed. A domain/method correction therefore mints a **new** sky
-> convention id **and a new legacy convention row** bridged to it; the old
-> pair stays, preserving the lineage of every coverage row that cites it.
-> Existing mappings are never rewritten.
+> **Convention-bridge evolution (restated per Stream A's disagreement report, steward
+> M20261001T202801-8ee8 item 2).** `ka_gochara_convention_bridge` (1153:1016–1034) gives each
+> legacy `kala_gochara_convention` row exactly one immutable mapping and can never be repointed.
+> The legacy convention vector (`record_store.py:257–268`, `ledger.convention_id_for`) carries
+> **only** `zodiac, ayanamsha, sidereal_method, node_model, node_source, epoch_convention,
+> time_scale, house_system, ephemeris_mode, method_version` — **no grid, no domain, no
+> ephemeris-generation label.** A sky-convention correction that changes only those absent fields
+> therefore leaves the legacy id identical, and the 1:1 bridge would (correctly) refuse a second
+> mapping. The binding rules:
+>
+> 1. **Lockstep through `method_version`.** `method_version` is the one field both vectors carry.
+>    Any correction that changes the sky convention's canonical bytes **must also bump
+>    `method_version`** (in the sky vector *and* the legacy vector), which mints a new sky id and
+>    a new legacy id together; the old pair stays, each mapped once, mappings never rewritten.
+>    The writer **fails loudly before any write** if a changed sky id would resolve to an
+>    unchanged legacy id.
+> 2. **The `13d20m` correction itself** (A5.3 `13.20` → `13d20m`): no row has been written under the
+>    old id, so it is applied **before** the first `'5.0'` write as a correction of the
+>    not-yet-bridged vector — the bridge row is created once, against the corrected sky id; no
+>    second mapping is needed and `method_version` stays `1.0.0`. If any row under the old id
+>    exists at that moment, rule 1 applies instead.
+> 3. Adding a field to the legacy vector (to tie it to the sky convention directly) is **rejected**:
+>    it would change every legacy id (`'4.0'`/`'4.1'` lineage) and `CANONICAL_VECTOR_KEYS` is
+>    frozen at WP1 §1.1.
 
 **Schema impact:** none — data under the existing tables (a correction that
 arrives after rows exist adds rows; it edits none).
@@ -163,7 +180,10 @@ rewritten against the actual SQL, quoted below.
 >   the quantization/governance question (rounding mode, seam behaviour,
 >   method-version consequence) is follow-up **F-3**, not settled here.
 > - **span targets (absolute signs):** `span:1`–`span:12`, explicitly defined
->   as absolute signs (1 = Meṣa), consistent with S:648–649's `span:<sign>`
+>   as absolute signs (1 = Meṣa) — **sign NAMES (`span:virgo`, `span:capricorn`, …) are not
+>   canonical bytes**; Stream A's evaluator and the span literals in the A5.3 oracle tests
+>   (`test_b6_oracles_a53.py`) move to the numerals in one commit (steward
+>   M20261001T202801-8ee8 item 1; Stream B reviews that change when it lands), consistent with S:648–649's `span:<sign>`
 >   and the shipped fixture's `span:7`. No CHECK widening is needed.
 > - **star targets:** the **stored 1-based** index `star:1`–`star:27`; the
 >   tārā oracle's zero-based indices map as `star_zero = star_stored − 1`.
@@ -1039,10 +1059,11 @@ Text unchanged from v0.2:
 `(ayanamsha_id = lahiri_chitrapaksha, system_id = vimshottari, tier =
 two_pass_verified, build_id = 1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb)`. The pin is
 carried as `DASHA_READ_CONTRACT` (`services/gochara_rules/permission.py:27–34`),
-enforced by `select_dasha_read_contract`
-(`scripts/kala_gochara_cutover/step06a_class_context.py:225–260`: for the
-canonical chart, a build set that does not contain the pinned id raises
-`DashaReadConflict` — "a wrong sole build is never accepted"; asserted by
+enforced by `select_dasha_read_contract`, which now has **ONE implementation** in
+`services/gochara_kernel/dasha_read.py` (`scripts/kala_gochara_cutover/step06a_class_context.py`
+delegates to it; the earlier `step06a_class_context.py:225–260` body is superseded): for the
+canonical chart, a build set that does not contain the pinned id raises `DashaReadConflict` —
+"a wrong sole build is never accepted"; asserted by
 `test_canonical_chart_refuses_a_wrong_sole_build_and_null_builds`), and
 literal-checked by the reference rows of §4.0 (MD/AD/PD row ids and
 timestamps; `permission.py` `MD_ROWS`/`AD_ROWS`/`PD_ROWS`; O-PP-1/2/3). Suvarṇa's
@@ -1111,7 +1132,8 @@ count(*), min(start_iso), max(end_iso) FROM chart_dashas WHERE chart_id =
 - old.start_iso)`; run through `pgenv.sh` read-only.
 
 **Schema impact:** none. **Code impact (later, one PR):** the pinned id in
-`permission.py` and the reference rows; the test that the old id is refused.
+`permission.py` (`DASHA_READ_CONTRACT`) and the reference rows; the test that the old id is refused
+against the single kernel implementation (`services/gochara_kernel/dasha_read.py`).
 
 ---
 
