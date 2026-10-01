@@ -1434,6 +1434,19 @@ def find_components(eval_lambda, points: list[float], min_lambda: float):
     return components
 
 
+# The in-domain stand-in for the excluded horizon end (ASTRA v1.2 R1/R2). The horizon is
+# half-open [h0, h1): an instant ON h1 is outside the domain, but activity that is positive
+# in-domain and still rising toward h1 has its supremum AT h1. Such an interval is kept, with
+# its peak represented by the latest instant the bisection that located the interval can
+# resolve inside the domain — h1 minus the bisection tolerance (8.64 s), never h1 itself.
+HORIZON_EDGE_EPS_DAYS = 1e-4  # == the tol_days of _bisect_above/_bisect_below
+
+
+def in_domain_peak_stand_in(h_limit: float, floor_jd: float) -> float:
+    """The latest in-domain instant at or after `floor_jd` (which must itself be < h_limit)."""
+    return max(floor_jd, h_limit - HORIZON_EDGE_EPS_DAYS)
+
+
 def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
                           horizon_jd: tuple[float, float],
                           quality_gate_for_date, *,
@@ -1479,12 +1492,15 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
                     **class_ctx.factors_record(),
                     "components": 0, "peaks_admitted": 0, "peaks_retained": 0,
                     "peaks_refined_outside_era": 0,
+                    "final_edge_components": 0, "peaks_clamped_to_horizon_limit": 0,
                     "era_windows": 0, "month_windows": 0, "day_windows": 0}
 
     rows: list[dict] = []
     admitted_total = 0
     retained_total = 0
     refined_outside_era = 0
+    final_edge_components = 0
+    peaks_clamped_to_horizon_limit = 0
     emitted_components = 0
     components = find_components(eval_lambda, series, min_lambda)
     gate_details_seen: dict[str, dict] = {}
@@ -1494,12 +1510,22 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
         # Peak/day candidates come only from IN-DOMAIN points (< h_limit);
         # the appended horizon limit closes the interval but never peaks.
         era_series = [t for t in series[i0:i1 + 1] if t < h_limit]
-        if not era_series:
-            # above threshold only AT the excluded end — nothing in-domain
-            continue
-        era_values = [eval_lambda(t) for t in era_series]
-        peak_idx = max(range(len(era_series)), key=lambda k: era_values[k])
-        era_peak_jd = era_series[peak_idx]
+        if era_series:
+            era_values = [eval_lambda(t) for t in era_series]
+            peak_idx = max(range(len(era_series)), key=lambda k: era_values[k])
+            era_peak_jd = era_series[peak_idx]
+        else:
+            # The only above-threshold SAMPLE is the horizon limit itself (ASTRA v1.2 R1:
+            # activity begins within the last sampling step before h1). "No in-domain
+            # sample" is not "no in-domain activity": the interval [enter, h1] has positive
+            # in-domain extent whenever enter < h1, and is kept — peak represented by the
+            # latest in-domain instant, never by h1. An interval that opens AT h1 has no
+            # in-domain extent and is honestly dropped.
+            if not enter_jd < h_limit:
+                continue
+            era_values = []
+            era_peak_jd = in_domain_peak_stand_in(h_limit, enter_jd)
+            final_edge_components += 1
         era_peak = evaluate(era_peak_jd)
         era_key = f"era-{_uuid.uuid4()}"
         for gd in (era_peak["quality_gates_detail"],):
@@ -1537,6 +1563,14 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
             if not (enter_jd <= peak_jd_true <= exit_jd):
                 refined_outside_era += 1
                 continue
+            if peak_jd_true >= h_limit:
+                # Refinement reached the EXCLUDED end (ASTRA v1.2 R2): the refined peak is
+                # the horizon limit itself — outside [h0, h1) — while the interval around it
+                # is legitimate in-domain activity. Keep the month/day family with the
+                # in-domain stand-in (and count it) instead of emitting a peak on h1, which
+                # the writer's validator refuses and which would abort the whole substep.
+                peak_jd_true = in_domain_peak_stand_in(h_limit, enter_jd)
+                peaks_clamped_to_horizon_limit += 1
             # calendar-month bounds of the refined peak, clipped to the era
             # (build_resolution_hierarchy, rh:621-632 + R8.6 clip — with the
             # E-020/ADK-0026 correction: bounds are midnight-UTC JDs, the true
@@ -1571,6 +1605,8 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
         "peaks_admitted": admitted_total,
         "peaks_retained": retained_total,
         "peaks_refined_outside_era": refined_outside_era,
+        "final_edge_components": final_edge_components,
+        "peaks_clamped_to_horizon_limit": peaks_clamped_to_horizon_limit,
         "era_windows": emitted_components,
         "month_windows": retained_total - refined_outside_era,
         "day_windows": retained_total - refined_outside_era,

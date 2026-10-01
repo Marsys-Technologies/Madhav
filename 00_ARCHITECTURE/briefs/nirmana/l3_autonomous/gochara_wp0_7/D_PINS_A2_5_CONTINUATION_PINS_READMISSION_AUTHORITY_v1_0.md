@@ -1,7 +1,7 @@
 ---
 artifact: D_PINS_A2_5_CONTINUATION_PINS_READMISSION_AUTHORITY
 version: 1.0
-status: PINS_READMISSION_AUTHORIZED
+status: SUPERSEDED_BY_NATIVE_DECISION_2026-10-01
 date: 2026-10-01
 decision: D-PINS-A2.5-CONTINUATION
 campaign: pravaha
@@ -9,6 +9,13 @@ item: A2.5
 ---
 
 # D-PINS-A2.5-CONTINUATION — pins re-admission authority (PR #2799, ASTRA v1.0 rework successor)
+
+> **SUPERSEDED (2026-10-01) — retained as audit trail only.** The native decision of 2026-10-01
+> (steward M20261001T182032-5d5b) **stops L3 pins admissions**: the gate is retired on main and
+> PR #2799 carries a **zero pins diff** (the pins JSON and receipts tests are byte-identical to
+> `origin/main`; the successor admission described below was **dropped**, not merged). Nothing
+> in this document authorises anything any more. The digest and census regeneration this PR
+> still carries is separate and unaffected.
 
 ## The decision, verbatim
 
