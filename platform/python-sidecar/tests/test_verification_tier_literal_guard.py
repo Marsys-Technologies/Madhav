@@ -29,7 +29,9 @@ from __future__ import annotations
 
 import ast
 import pathlib
+import re
 import sys
+from typing import NamedTuple
 
 import pytest
 
@@ -42,7 +44,14 @@ from brahmagyan import verification_vocab as vocab  # noqa: E402
 _ALIAS = "single_pass"
 
 #: Directories whose modules WRITE rows (the ratchet scope).
-_WRITER_ROOTS = ("ga_writers", "pipeline/orchestrator/writers", "bodha_writers")
+_WRITER_ROOTS = (
+    "ga_writers", "pipeline/orchestrator/writers", "bodha_writers", "services", "brahmagyan",
+)
+
+#: The vocabulary and its symbol layer DEFINE the spellings; they are the one place literals belong.
+_DEFINES_THE_VOCABULARY = frozenset({
+    "brahmagyan/verification_vocab.py", "brahmagyan/verification_tiers.py",
+})
 
 #: Modules exempt from guard 1 because they ARE the vocabulary / its declared readers.
 #: Value = reason. Adding an entry here is a deliberate act.
@@ -99,7 +108,29 @@ _BARE_LITERAL_BASELINE: dict[str, int] = {
     "pipeline/orchestrator/writers/bo_pramana_mapa.py": 6,
     "pipeline/orchestrator/writers/bo_sangati.py": 2,
     "pipeline/orchestrator/writers/bo_upaya.py": 3,
+    "services/ka_tithi_pravesha/writer.py": 3,
+    "brahmagyan/phala/l4_rectification.py": 1,
+    "brahmagyan/signal_register_glossary.py": 1,
 }
+
+#: Baselines are TIGHT (equal to the counts at the Q-L1-16(a) PR). A conversion lane that
+#: removes literals leaves slack below its file's number; tighten the entry in the same PR
+#: (the test only fails on growth, so concurrent lanes do not collide here).
+
+#: Strings assigned to a `*verif*` / `verification_pass_status` target that are NOT vocabulary
+#: members. Key = (file, value); value = why. Deliberately tiny: each is a defect or a label,
+#: not a tier a writer may invent. Stale entries are harmless (a lane that fixes one may delete it).
+_NON_MEMBER_VERIF_ALLOWLIST: dict[tuple[str, str], str] = {
+    ("ga_writers/ga_strength_writer.py", "floored_sarva_mismatch"): (
+        "fixed by the Q03 tier-honesty lane (not a vocabulary member; Q03 removes this entry)"
+    ),
+    ("ga_writers/ga_sensitive_writer.py", "data_error"): (
+        "KP_PARSE_ERROR error-path row stamps a non-vocabulary tier (assert_legal / the chart_facts "
+        "CHECK would reject it); ga_sensitive is the Q03 tier-honesty lane's file -- fix there"
+    ),
+}
+#: Prose descriptions keyed `verification_pass_status` (documentation dicts, not stored tiers).
+_VERIF_PROSE_FILES = frozenset({"ga_writers/_vimshottari_independent_verifier.py"})
 
 #: Words that are check/gate RESULTS on a different field, not tiers.
 _NOT_A_TIER = frozenset(vocab.PROHIBITED_STATUSES)
@@ -143,12 +174,91 @@ def _parse(p: pathlib.Path) -> ast.AST | None:
         return None
 
 
-def _string_constants(tree: ast.AST) -> list[ast.Constant]:
+class _Str(NamedTuple):
+    value: str
+    lineno: int
+
+
+def _fold(node: ast.AST) -> str | None:
+    """Constant-fold a string expression made only of literals joined by `+`."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left, right = _fold(node.left), _fold(node.right)
+        if left is not None and right is not None:
+            return left + right
+    return None
+
+
+def _string_constants(tree: ast.AST) -> list[_Str]:
+    """Every string constant in code (docstrings excluded), PLUS every constant-folded
+    `"a" + "b"` concatenation, so `"single_" + "pass"` cannot hide from the guard."""
     skip = _docstring_ids(tree)
-    return [
-        n for n in ast.walk(tree)
-        if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in skip
-    ]
+    out: list[_Str] = []
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in skip:
+            out.append(_Str(n.value, n.lineno))
+        elif isinstance(n, ast.BinOp):
+            folded = _fold(n)
+            if folded is not None:
+                out.append(_Str(folded, n.lineno))
+    return out
+
+
+def _leaf_strings(node: ast.AST | None) -> list[str]:
+    """String leaves a value expression can evaluate to (literal, folded concat, ternary, or)."""
+    if node is None:
+        return []
+    folded = _fold(node)
+    if folded is not None:
+        return [folded]
+    if isinstance(node, ast.IfExp):
+        return _leaf_strings(node.body) + _leaf_strings(node.orelse)
+    if isinstance(node, ast.BoolOp):
+        return [x for v in node.values for x in _leaf_strings(v)]
+    return []
+
+
+_VERIF_NAME = re.compile(r"(?:^|_)verif(?:_|$)", re.IGNORECASE)
+_VERIF_KEYS = frozenset({"verification_pass_status"})
+
+
+def _is_verif_target(name: str | None) -> bool:
+    return bool(name) and (name in _VERIF_KEYS or _VERIF_NAME.search(name) is not None)
+
+
+def _target_name(t: ast.AST) -> str | None:
+    if isinstance(t, ast.Name):
+        return t.id
+    if isinstance(t, ast.Attribute):
+        return t.attr
+    return None
+
+
+def _verif_assigned_strings(tree: ast.AST) -> list[tuple[int, str, str]]:
+    """(lineno, target, value) for every string assigned to a `*verif*` /
+    `verification_pass_status` name, dict key, subscript, or keyword argument."""
+    out: list[tuple[int, str, str]] = []
+    for n in ast.walk(tree):
+        pairs: list[tuple[str | None, ast.AST | None]] = []
+        if isinstance(n, ast.Assign):
+            for t in n.targets:
+                key = _target_name(t)
+                if key is None and isinstance(t, ast.Subscript) and isinstance(t.slice, ast.Constant):
+                    key = t.slice.value if isinstance(t.slice.value, str) else None
+                pairs.append((key, n.value))
+        elif isinstance(n, ast.AnnAssign):
+            pairs.append((_target_name(n.target), n.value))
+        elif isinstance(n, ast.Dict):
+            for k, v in zip(n.keys, n.values):
+                if isinstance(k, ast.Constant) and isinstance(k.value, str):
+                    pairs.append((k.value, v))
+        elif isinstance(n, ast.keyword):
+            pairs.append((n.arg, n.value))
+        for key, val in pairs:
+            if _is_verif_target(key):
+                out.extend((getattr(val, "lineno", 0), key or "", v) for v in _leaf_strings(val))
+    return out
 
 
 def _alias_references(tree: ast.AST) -> int:
@@ -212,7 +322,7 @@ def test_bare_tier_literals_do_not_grow():
     grew: list[str] = []
     for root in _WRITER_ROOTS:
         for p in sorted((_SIDECAR / root).rglob("*.py")):
-            if _is_test_path(p):
+            if _is_test_path(p) or _rel(p) in _DEFINES_THE_VOCABULARY:
                 continue
             tree = _parse(p)
             if tree is None:
@@ -304,3 +414,37 @@ def test_emit_tier_rejects_the_deprecated_alias_and_prohibited_spellings():
     # Table restriction still enforced through the helper.
     with pytest.raises(ValueError, match="CHECK constraint"):
         tiers.emit_tier(tiers.DOCUMENTED_APPROXIMATION, table="chart_divisionals")
+
+
+# ── guard 2b: strings assigned to a verification target must be vocabulary members ─────
+
+
+def test_strings_assigned_to_verification_targets_are_vocabulary_members():
+    """Closes the 'a made-up tier string never reaches the literal ratchet' blind spot: any
+    string (literal, folded concatenation, ternary branch) assigned to a `*verif*` name,
+    keyword, dict key or subscript, or to `verification_pass_status`, must be a settled
+    vocabulary member (or an explicit allow-list entry above)."""
+    members = vocab.ALL_STATUSES | vocab.PROHIBITED_STATUSES
+    bad: list[str] = []
+    for root in _WRITER_ROOTS:
+        for p in sorted((_SIDECAR / root).rglob("*.py")):
+            rel = _rel(p)
+            if _is_test_path(p) or rel in _DEFINES_THE_VOCABULARY or rel in _VERIF_PROSE_FILES:
+                continue
+            tree = _parse(p)
+            if tree is None:
+                continue
+            for lineno, target, value in _verif_assigned_strings(tree):
+                if value not in members and (rel, value) not in _NON_MEMBER_VERIF_ALLOWLIST:
+                    bad.append(f"{rel}:{lineno} {target}={value!r}")
+    assert bad == [], "non-vocabulary verification tier assigned: " + "; ".join(bad)
+
+
+def test_concatenated_alias_and_made_up_tiers_are_detected():
+    cat = ast.parse('row = {"verification_pass_status": "single_" + "pass"}')
+    assert _alias_references(cat) == 1
+    made_up = ast.parse('bindu_verif = "floored_x"\nverif = "a" if c else "single"')
+    got = {v for _, _, v in _verif_assigned_strings(made_up)}
+    assert got == {"floored_x", "a", "single"}
+    unrelated = ast.parse('verification_window = "2026"\nverified = "yes"\nverify_note = "x"')
+    assert _verif_assigned_strings(unrelated) == []
