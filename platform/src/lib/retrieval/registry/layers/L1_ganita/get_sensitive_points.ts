@@ -28,7 +28,10 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { canonicalFirstOrderSql } from './canonical_formulas'
+import {
+  canonicalFirstOrderSql, canonicalFormulaOf, formulaPolicyFor, formulaRoleOf, labelFormulaRoles,
+  NO_CANONICAL_FORMULA_REASON,
+} from './canonical_formulas'
 
 const SP_CATEGORIES = [
   'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma',
@@ -126,14 +129,14 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
       sql += ` ORDER BY fact_category, ayanamsha_id, fact_key, fact_subject, ${canonicalFirstOrderSql()}, formula_id, fact_id LIMIT $3 OFFSET $4`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = result.rows ?? []
+      const rows = labelFormulaRoles(result.rows ?? [])
 
       // ── Multi-formula disclosure (WP-1.8) ────────────────────────────────────────
       // Group the served rows by (category, subject, ayanamsha, fact_key); any group with >1
       // DISTINCT formula_id is a multi-formula point whose values would collapse under a naive
       // key→value pivot. Surface each such group with every formula's value + provenance so the
       // consumer sees the genuine formula-level divergence instead of one silently-picked winner.
-      const groups = new Map<string, { category: string; subject: unknown; ayanamsha: unknown; fact_key: unknown; variants: Map<string, { formula_id: string; formula_provenance_text: unknown; value: unknown; fact_id: unknown }> }>()
+      const groups = new Map<string, { category: string; subject: unknown; ayanamsha: unknown; fact_key: unknown; variants: Map<string, { formula_id: string; role: string | null; formula_provenance_text: unknown; value: unknown; fact_id: unknown }> }>()
       for (const r of rows) {
         const fid = r['formula_id']
         if (fid == null) continue
@@ -145,6 +148,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
         }
         g.variants.set(String(fid), {
           formula_id: String(fid),
+          role: formulaRoleOf(g.category, String(fid)),
           formula_provenance_text: r['formula_provenance_text'],
           value: r['fact_value_text'] ?? r['fact_value_num'],
           fact_id: r['fact_id'],
@@ -158,8 +162,15 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
           ayanamsha_id: g.ayanamsha,
           fact_key: g.fact_key,
           formula_count: g.variants.size,
+          // Canonical-first (rows arrive in that order); every formula keeps its formula_id.
+          // `canonical_formula_id` is null, with `headline_reason`, when the category has no
+          // canonical formula (Mrityu): there is then no headline value to quote.
+          canonical_formula_id: canonicalFormulaOf(g.category),
+          ...(formulaRoleOf(g.category, [...g.variants.keys()][0]) === NO_CANONICAL_FORMULA_REASON
+            ? { headline_reason: NO_CANONICAL_FORMULA_REASON } : {}),
           formulas: [...g.variants.values()],
         }))
+      const formulaPolicy = formulaPolicyFor(categories)
 
       return {
         content: {
@@ -170,6 +181,7 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
           // WP-1.8: never collapse multi-formula points — both rows are in `rows`; this block
           // names the divergence explicitly so a downstream key→value pivot cannot hide it.
           multi_formula,
+          ...(formulaPolicy ? { formula_policy: formulaPolicy } : {}),
           ...(multi_formula.length > 0 ? {
             multi_formula_note:
               `${multi_formula.length} point(s) here are computed by MORE THAN ONE classical formula ` +
