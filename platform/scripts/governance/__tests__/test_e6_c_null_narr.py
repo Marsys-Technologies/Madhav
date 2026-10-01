@@ -796,3 +796,56 @@ def test_a_table_without_chart_id_or_a_chart_scoped_count_sql_may_pass(monkeypat
     cat = _cat(t_main=(["id", "chart_id", "a"], {}, {}))
     out, sqls = _mp(["a"], cat, ["t_main"], monkeypatch=monkeypatch)
     assert out["Narr.checkable"]["v"] == ac.PASS and out["Narr.checkable"]["scope"] == "chart-scoped by count_sql"
+
+
+# ───────────────────────── review round: F1 (a lint PASS needs an applicable surface) ─────────────────────────
+
+def test_lint_is_not_applicable_when_no_lint_surface_touches_the_asset(tmp_path):
+    p = tmp_path / "w.py"
+    p.write_text("def f(x):\n    return x + 1\n")
+    r = ac.narr_lint_scan([p], ["citation_human"])
+    assert r["v"] == ac.NO_DET and "not applicable" in r["measured"] and r["applied"] == [], r
+
+
+def test_lint_passes_when_the_fact_category_surface_is_in_scope_and_names_it(tmp_path):
+    p = tmp_path / "w.py"
+    p.write_text(GOOD_SQL)
+    r = ac.narr_lint_scan([p], ["citation_human"])
+    assert r["v"] == ac.PASS and r["applied"] == ["fact-category-pin"], r
+
+
+@pytest.mark.parametrize("col", ["signal_headline_text", "signal_text", "x_thesis", "obj_narrative"])
+def test_lint_passes_when_a_declared_column_is_one_the_raw_token_lint_matches(tmp_path, col):
+    p = tmp_path / "w.py"
+    p.write_text("def f(x):\n    return x\n")
+    r = ac.narr_lint_scan([p], [col])
+    assert r["v"] == ac.PASS and r["applied"] == ["raw-token"], r
+
+
+def test_lint_both_surfaces_are_recorded(tmp_path):
+    p = tmp_path / "w.py"
+    p.write_text(GOOD_SQL)
+    assert ac.narr_lint_scan([p], ["signal_headline_text"])["applied"] == ["fact-category-pin", "raw-token"]
+
+
+def test_lint_violation_fails_even_when_the_surface_is_only_inferred_from_the_violation(tmp_path):
+    p = tmp_path / "w.py"
+    p.write_text(BAD_SQL)
+    assert ac.narr_lint_scan([p], ["citation_human"])["v"] == ac.FAIL
+
+
+def test_lint_a_substring_column_name_is_not_a_raw_token_surface(tmp_path):
+    p = tmp_path / "w.py"
+    p.write_text("x = 1\n")
+    assert ac.narr_lint_scan([p], ["signal_textual"])["v"] == ac.NO_DET
+
+
+def test_lint_allowlisted_only_violations_read_partial_through_the_real_lint(tmp_path, monkeypatch):
+    p = tmp_path / "w.py"
+    p.write_text(BAD_SQL)
+    fcp = ac._lint_module("check_fact_category_pinning")
+    monkeypatch.setattr(fcp, "load_allowlist", lambda path: [dict(file=str(p), line=None, pattern="chart_facts")])
+    r = ac.narr_lint_scan([p], ["citation_human"])
+    assert r["v"] == ac.PARTIAL and "allowlisted" in r["measured"] and str(p) in r["measured"], r
+    monkeypatch.setattr(fcp, "load_allowlist", lambda path: [])
+    assert ac.narr_lint_scan([p], ["citation_human"])["v"] == ac.FAIL

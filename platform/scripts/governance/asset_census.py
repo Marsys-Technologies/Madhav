@@ -1223,20 +1223,30 @@ def _lint_module(name: str):
     return _LINTS[name]
 
 
-def narr_lint_scan(paths) -> dict:
+def _raw_token_surface(col: str) -> bool:
+    """A column the raw-token lint's narrative-field pattern covers: signal_headline_text, signal_text, *_thesis, *_narrative."""
+    return col in ("signal_headline_text", "signal_text") or col.endswith(("_thesis", "_narrative"))
+
+
+def narr_lint_scan(paths, columns=()) -> dict:
     """Narr.lint: the existing narration lints (check_fact_category_pinning: the D1 class, N.7 item 2;
     check_no_raw_token_in_narrative) over the writer's resolved scope files, with their own allowlists. FAIL: a
     non-allowlisted violation (file:line). PARTIAL: only allowlisted ones (named; CI accepts them, the census does not
-    call them clean). PASS: files read, no violation. NO_DETECTOR: no file in scope. ERRORED: unreadable file/lint."""
+    call them clean). PASS needs a lint SURFACE that applied: fact_category selection of chart_facts in the scope
+    (fact-category-pin) and/or a declared column the raw-token lint's field pattern covers (raw-token); with neither,
+    the lints say nothing about this asset: NO_DETECTOR 'not applicable' (a clean scan of code a lint cannot see is
+    not a pass). `applied` names the surfaces. NO_DETECTOR: no file in scope. ERRORED: unreadable file/lint."""
     paths = [Path(p) for p in paths]
     if not paths:
-        return dict(v=NO_DET, measured="NO_DETECTOR — no writer file in scope to run the narration lints over")
+        return dict(v=NO_DET, applied=[], measured="NO_DETECTOR — no writer file in scope to run the narration lints over")
     try:
         fcp, rt = _lint_module("check_fact_category_pinning"), _lint_module("check_no_raw_token_in_narrative")
         allow_f, allow_r = fcp.load_allowlist(fcp.ALLOWLIST_PATH), rt.load_allowlist(rt.ALLOWLIST_PATH)
         new, old = [], []
+        fact_surface = False
         for p in paths:
             text = p.read_text(encoding="utf-8")
+            fact_surface = fact_surface or ("chart_facts" in text and "fact_category" in text)
             try:
                 rel = p.resolve().relative_to(ROOT).as_posix()
             except ValueError:
@@ -1249,12 +1259,17 @@ def narr_lint_scan(paths) -> dict:
                 new += [f"{tag} {v.file}:{v.line}" for v in n]
     except (OSError, ValueError, AttributeError, SyntaxError, ImportError) as exc:
         return dict(v=ERRORED, measured=f"check errored: narration lint could not run ({type(exc).__name__}: {exc})")
+    applied = (["fact-category-pin"] if fact_surface else []) + (["raw-token"] if any(_raw_token_surface(c) for c in columns) else [])
     if new:
-        return dict(v=FAIL, measured="narration lint violation(s) in the writer scope: " + "; ".join(new))
+        return dict(v=FAIL, applied=applied, measured="narration lint violation(s) in the writer scope: " + "; ".join(new))
     if old:
-        return dict(v=PARTIAL, measured="only allowlisted narration lint violation(s) in scope: " + "; ".join(old))
-    return dict(v=PASS, measured=f"{len(paths)} writer scope file(s) clean under the fact-category-pin and raw-token "
-                                 "narration lints (their own allowlists applied)")
+        return dict(v=PARTIAL, applied=applied, measured="only allowlisted narration lint violation(s) in scope: " + "; ".join(old))
+    if not applied:
+        return dict(v=NO_DET, applied=[], measured=f"NO_DETECTOR — the narration lints are not applicable to this asset: no "
+                    f"chart_facts fact_category selection in its {len(paths)}-file writer scope and no declared column the "
+                    "raw-token lint covers; a clean scan of code they cannot see is not a pass")
+    return dict(v=PASS, applied=applied, measured=f"{len(paths)} writer scope file(s) clean under the {' and '.join(applied)} "
+                                                  "narration lint(s) that applied (their own allowlists applied)")
 
 
 _QQ = r"(?:ONLY\s+)?(?:public\.)?\"?"
@@ -1345,7 +1360,7 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
             ("Narr.agree", lambda: grade_narr_agree_tables(pf, {t: (v[0], v[1]) for t, v in _own3(ctx).items()})),
             ("Narr.checkable", lambda: grade_narr_checkable(pf, ctx.get("counts"))),
             ("Narr.fidelity_test", lambda: narr_fidelity_scan(pf, ev, ctx.get("tests") or ())),
-            ("Narr.lint", lambda: narr_lint_scan(ctx.get("paths") or ())),
+            ("Narr.lint", lambda: narr_lint_scan(ctx.get("paths") or (), [parse_prose_field(e)[0] for e in pf])),
             ("Null.schema_default", lambda: grade_null_schema_default_tables(pf, _own3(ctx))),
             ("Null.blank_rows", lambda: grade_null_blank_rows(pf, ctx.get("counts")))):
         try:
