@@ -32,7 +32,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from brahmagyan.verification_tiers import SINGLE
+from brahmagyan.verification_tiers import SINGLE, emit_tier
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 from pipeline.orchestrator.birth_params import resolve_birth_params
@@ -143,13 +143,13 @@ def _conn():
 # are deterministic single-pass table lookups derived directly from the
 # already-computed panchang_engine anga objects (tithi/nakshatra/yoga/karana/
 # vara) — a real, single computation, but NOT independently cross-checked by
-# a second method. `_single_pass_verif()` makes that honest: the class-wide
+# a second method. `_single_verif()` makes that honest: the class-wide
 # tier for this file is SINGLE = "single" (formulas.py VERIFICATION_RESCALE 0.85
 # vs 1.00 for two_pass_verified) unless/until a genuine second-pass
 # cross-check is implemented for a given anga (at which point that specific
 # emit function should compute its own real two_pass_verified tier instead
 # of calling this helper).
-def _single_pass_verif() -> str:
+def _single_verif() -> str:
     # Q-L1-16(a): canonical spelling; "single_pass" is a deprecated reader-only alias.
     return SINGLE
 
@@ -650,7 +650,7 @@ def _emit_disha_shul(pi: Any, chart_id: str, build_id: str, computed_at: str) ->
     cat = "panchanga_disha_shul"
     subj = "DISHA_SHUL_BIRTH"
     ay = "INVARIANT"
-    vp = _single_pass_verif()
+    vp = _single_verif()
 
     # DISHA_SHUL_TABLE: vara_id → direction to avoid
     DISHA_SHUL_TABLE = {
@@ -691,7 +691,7 @@ def _emit_tithi_shoonya(pi: Any, chart_id: str, build_id: str, computed_at: str)
     cat = "panchanga_tithi_shoonya_rashi"
     subj = "TITHI_SHOONYA_BIRTH"
     ay = "INVARIANT"
-    vp = _single_pass_verif()
+    vp = _single_verif()
 
     shoonya = pi.shoonya
     if shoonya is None:
@@ -742,7 +742,7 @@ def _emit_nakshatra_shoonya(pi: Any, chart_id: str, build_id: str, computed_at: 
     cat = "panchanga_nakshatra_shoonya_rashi"
     subj = "NAKSHATRA_SHOONYA_BIRTH"
     ay = "INVARIANT"
-    vp = _single_pass_verif()
+    vp = _single_verif()
 
     shoonya = pi.shoonya
     if shoonya is None:
@@ -787,7 +787,7 @@ def _emit_agni_vasa(pi: Any, chart_id: str, build_id: str, computed_at: str) -> 
     cat = "panchanga_agni_vasa"
     subj = "AGNI_VASA_BIRTH"
     ay = "INVARIANT"
-    vp = _single_pass_verif()
+    vp = _single_verif()
 
     vasa = pi.vasa
     if vasa is None:
@@ -861,7 +861,7 @@ def _emit_inauspicious_window(pi: Any, window_name: str, subject: str,
     """Generic inauspicious time window emitter."""
     cat = f"panchanga_{window_name}"
     ay = "INVARIANT"
-    vp = _single_pass_verif()
+    vp = _single_verif()
     rows = []
 
     inauspicious_full = pi.inauspicious_full
@@ -922,7 +922,7 @@ def _emit_auspicious_window(pi: Any, window_name: str, subject: str,
     """Generic auspicious time window emitter."""
     cat = f"panchanga_{window_name}"
     ay = "INVARIANT"
-    vp = _single_pass_verif()
+    vp = _single_verif()
     rows = []
 
     auspicious_full = pi.auspicious_full
@@ -979,7 +979,7 @@ def _emit_bhadra_flag(pi: Any, chart_id: str, build_id: str, computed_at: str,
     cat = "bhadra_flag"
     subj = "BHADRA_FLAG_BIRTH"
     ay = ayanamsha_id
-    vp = _single_pass_verif()
+    vp = _single_verif()
 
     karana = pi.karana
     active = (karana is not None and karana.id == 7)  # Vishti/Bhadra = id 7
@@ -1051,7 +1051,7 @@ def _emit_special_yoga_combinations(pi: Any, chart_id: str, build_id: str,
     """panchanga_special_yoga_combinations (ayanamsha-dependent)."""
     cat = "panchanga_special_yoga_combinations"
     ay = ayanamsha_id
-    vp = _single_pass_verif()
+    vp = _single_verif()
     rows = []
 
     yogas = pi.special_yogas_instant or []
@@ -1093,7 +1093,7 @@ def _emit_panchaka_classification(pi: Any, chart_id: str, build_id: str,
     """panchanga_panchaka_classification (5 panchakas + overall)."""
     cat = "panchanga_panchaka_classification"
     ay = ayanamsha_id
-    vp = _single_pass_verif()
+    vp = _single_verif()
     rows = []
 
     # 5-panchaka types and their nakshatra mapping
@@ -1139,7 +1139,7 @@ def _emit_panchaka_flag(pi: Any, chart_id: str, build_id: str,
     cat = "panchaka_flag"
     subj = "PANCHAKA_FLAG_BIRTH"
     ay = ayanamsha_id
-    vp = _single_pass_verif()
+    vp = _single_verif()
 
     PANCHAKA_NAKSHATRAS = {23, 24, 25, 26, 27}
     nak_id = pi.nakshatra.id if pi.nakshatra else 0
@@ -1165,7 +1165,7 @@ def _emit_eclipse_proximity(pi: Any, chart_id: str, build_id: str,
     """eclipse_proximity_natal — eclipses ±15 days from birth (ayanamsha-dependent for sign/nak)."""
     cat = "eclipse_proximity_natal"
     ay = ayanamsha_id
-    vp = _single_pass_verif()
+    vp = _single_verif()
     rows = []
 
     # Eclipse proximity requires G4 eclipse table lookup — not available in panchanga_engine's
@@ -1269,6 +1269,10 @@ def _emit_chandra_bala_baseline(pi: Any, chart_id: str, build_id: str, computed_
 # ── INSERT ────────────────────────────────────────────────────────────────────
 
 def _insert_chart_facts_rows(conn: Any, rows: list[dict]) -> int:
+    # Q-L1-16(a) choke point: reject a deprecated-alias / out-of-vocabulary tier BEFORE any
+    # delete or insert, however the string was built (literal, concatenation, constant).
+    for _r in rows:
+        emit_tier(_r["verification_pass_status"], table="chart_facts")
     # Idempotency: replace this chart's prior rows for the scope being written so a
     # rebuild under a new build_id replaces instead of accreting.
     replace_prior_chart_facts(conn, rows)

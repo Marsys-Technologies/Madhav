@@ -2036,12 +2036,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-    850,
+    851,
     "f\"{graha_name} required shad"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-    885,
+    886,
     "f\"{graha_name} shadbala rati"
    ]
   ],
@@ -2323,7 +2323,7 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_karanajala", _WR + "bo_karanajala.py", 708, "sign_num"),
             ("bo_upaya", _WR + "bo_upaya.py", 1798, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 571, "verdict.valence"),
-            ("ga_strength", _GW + "ga_strength_writer.py", 885, "ratio"),
+            ("ga_strength", _GW + "ga_strength_writer.py", 886, "ratio"),
             ("ga_panchanga", _GW + "ga_panchanga_writer.py", 370, "tithi_num"),
             ("ga_structural", _GW + "ga_structural_writer.py", 4660, "effective_dignity_score")):
         sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
@@ -2331,8 +2331,8 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
         got = {e for x in ast.walk(ast.parse(sites[0][3], mode="eval")) if isinstance(x, ast.JoinedStr)
                for e, _ in nw.fstring_interpolations(x)}
         assert expr in got, (asset, ln, sorted(got))
-    # numbers shaped into the text by a format spec (ga_structural :4660, ga_strength :885)
-    for path, ln in ((_GW + "ga_structural_writer.py", 4660), (_GW + "ga_strength_writer.py", 885)):
+    # numbers shaped into the text by a format spec (ga_structural :4660, ga_strength :886)
+    for path, ln in ((_GW + "ga_structural_writer.py", 4660), (_GW + "ga_strength_writer.py", 886)):
         site = next(x for x in nw.citation_sites(_ctree(path)) if x[0] == ln)
         specs = [sp for x in ast.walk(ast.parse(site[3], mode="eval")) if isinstance(x, ast.JoinedStr)
                  for _, sp in nw.fstring_interpolations(x)]

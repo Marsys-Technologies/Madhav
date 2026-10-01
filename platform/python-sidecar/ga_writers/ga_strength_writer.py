@@ -53,6 +53,7 @@ from brahmagyan.verification_tiers import (
     DOCUMENTED_APPROXIMATION,
     SINGLE,
     TWO_PASS_VERIFIED,
+    emit_tier,
 )
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
@@ -1744,6 +1745,10 @@ _CHART_FACTS_UPSERT_SQL = """
 
 
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
+    # Q-L1-16(a) choke point: reject a deprecated-alias / out-of-vocabulary tier BEFORE any
+    # delete or insert, however the string was built (literal, concatenation, constant).
+    for _r in rows:
+        emit_tier(_r["verification_pass_status"], table="chart_facts")
     # Idempotency: replace this chart's prior rows for the scope being written so a
     # rebuild under a new build_id replaces instead of accreting.
     replace_prior_chart_facts(conn, rows)

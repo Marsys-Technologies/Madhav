@@ -27,7 +27,12 @@ pinned to 29 already-frozen capsules and went `NIRMANA_L0_ANALYSIS_RECEIPTS_AVAI
 false`), 15 L2 writers (including the FROZEN `bo_laksana`) and 4 L3 writers. The ruling's
 own estimate was "about 24 L1 and L2 writers". Leaving `verification_vocab.py`
 byte-identical and adding this sibling moves ONLY the digests of the writers that adopt it
-(plus their importers) -- the same coverage the S-L1 batch rebuilds anyway.
+plus their importers -- measured at 7: ga_panchanga, ga_strength, ga_structural (adopters);
+ga_ayurdaya, ga_sensitive_degree, ga_yoga (importers of ga_strength / ga_structural); and ONE
+L3 writer, `ka_vighnakara`, which imports `ga_sensitive_degree_writer` -> `ga_structural_writer`.
+So "no L0/L2/L3 digest moves" is NOT claimed: no L0 and no L2 writer moves, but
+`ka_vighnakara` (L3) does -- any edit to `ga_structural_writer` moves it, with or without
+this module. Every other digest, L0/L2 included, is unchanged.
 
 SINGLE vs SINGLE_PASS. `SINGLE` ("single") is the canonical spelling of "no second
 derivation ran". `SINGLE_PASS` ("single_pass") is its DEPRECATED alias: the live
