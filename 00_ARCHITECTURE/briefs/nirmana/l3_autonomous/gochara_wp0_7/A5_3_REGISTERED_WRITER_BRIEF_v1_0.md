@@ -180,3 +180,23 @@ Open bindings (flagged, never silently resolved):
   D4 stands.
 - `period_running_at` operand: the §4.0 dasha-row source table to be confirmed
   against the platform's dasha store before the P1 grain writes.
+
+## v1.5 contract-amendment batch (A5.5 gate) — one list
+
+Per the steward's ruling (M20261001T121451-1a8d item 4, 2026-10-01T12:14:51Z),
+the frozen-spec v1.5 amendment batch at the A5.5 gate is tracked as exactly
+these three items. No CHECK is weakened for any of them; affected DB writes
+hold until the fold lands.
+
+1. **D7 — P5 `object_role='av_qualifier'`** joins the `kgrr_object_role_ck`
+   vocabulary (accepted as proposed in M20261001T113409-04cd). P5 grain DB
+   writes hold until then; enumeration carries the honest name.
+2. **P6 frame value** for the admitting path's objects — `ka_gochara_frame_ok`
+   carries no value for "per the admitting path's objects" (deferred at
+   `rule_binding`; binds with `day_on_demand`).
+3. **`sad_bala_summary` units** — "rupas" violates `kgf_units_ck`; the spec
+   fold names the unit for v1.5 (never a silent re-unit).
+
+Deferred alongside but NOT contract amendments: the P5c donor matrix (D4,
+awaits the native-authorised `ga_strength` rebuild), the P5d/P5e forms
+(D5/D6), and the `period_running_at` dasha-row source confirmation above.
