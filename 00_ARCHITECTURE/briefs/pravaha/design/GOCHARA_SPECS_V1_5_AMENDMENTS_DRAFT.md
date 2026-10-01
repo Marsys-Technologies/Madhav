@@ -991,6 +991,88 @@ Text unchanged from v0.2:
 
 ---
 
+## AM-10 — §4.0 daśā read contract: re-pin on L1 rebuild (steward queue M20261001T201026-9988) — NEW
+
+**Why.** §4.0 pins every daśā read for chart 482012f1 to
+`(ayanamsha_id = lahiri_chitrapaksha, system_id = vimshottari, tier =
+two_pass_verified, build_id = 1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb)`. The pin is
+carried as `DASHA_READ_CONTRACT` (`services/gochara_rules/permission.py:27–34`),
+enforced by `select_dasha_read_contract`
+(`scripts/kala_gochara_cutover/step06a_class_context.py:225–260`: for the
+canonical chart, a build set that does not contain the pinned id raises
+`DashaReadConflict` — "a wrong sole build is never accepted"; asserted by
+`test_canonical_chart_refuses_a_wrong_sole_build_and_null_builds`), and
+literal-checked by the reference rows of §4.0 (MD/AD/PD row ids and
+timestamps; `permission.py` `MD_ROWS`/`AD_ROWS`/`PD_ROWS`; O-PP-1/2/3). Suvarṇa's
+L1 rebuild on the corrected ephemeris backend will mint a **new** daśā build
+(steward-reported, to be re-measured as evidence at re-pin: Vimśottarī period
+starts shift by +6,993 s ≈ 1 h 56 m 33 s; zero class flips; the seven FORENSIC
+anchors hold). Baseline (read-only, 2026-10-01): the canonical chart has exactly
+one Vimśottarī build at `two_pass_verified` — 63 / 515 / 4,576 / 40,510 rows at
+levels 1–4, spanning 1950-01-01 → 2100-12-31 (a measurement, not a contract
+value; the predicate that produced it is in the evidence list below).
+
+**Proposed spec text (amend §4.0; effective only on the steward's declaration
+that the L1 rebuild has landed — until then the v1.4 pin governs unchanged):**
+
+> **The pin is amended by evidence, never loosened. Rules for every future L1
+> rebuild of a pinned read:**
+>
+> 1. **One pin, no auto-follow.** Exactly one `build_id` is pinned per
+>    `(chart, ayanāṃśa, system)`. A newer build — however verified — is
+>    **refused** until a re-pin lands; the contract never resolves "latest",
+>    "any `two_pass_verified` build", a range or an allow-list (CLAUDE.md §N.7
+>    item 2: no category-only selection). The old id is **refused** after the
+>    re-pin — it is not kept as an alternate.
+> 2. **Re-pin only by evidence, in one small PR.** The PR changes the pinned id
+>    and nothing else of substance, and carries read-only evidence: (a) the new
+>    build id and its `two_pass_verified` tier; (b) period row counts per level
+>    against the old build (a count difference needs an explanation); (c)
+>    parent-linkage integrity and zero duplicate/conflict rows under the §4.0
+>    duplicate rules; (d) the **measured boundary shift** per level (min / max /
+>    mean seconds, old vs new, matched by (level, parent, index)); (e) the seven
+>    FORENSIC anchors re-checked against the new build; (f) for every instant
+>    the contract is exercised by the oracles (the three worked-event instants
+>    and every O-PP-1/2/3 instant) the PD/AD/MD lords under old vs new — **any
+>    class flip, lord flip or anchor failure is a stop**, not a re-pin: report
+>    and park (CLAUDE.md §N.5: a disagreement is a halt-worthy finding, never a
+>    stored divergence); (g) a test that the **old id is refused**
+>    (`DashaReadConflict`) and the new id accepted.
+> 3. **Literal reference data moves with the pin.** The §4.0 reference rows are
+>    `[L]` constants keyed to the old build. In the same PR they are re-measured
+>    from the new build into the v1.5 successor files (the frozen v1.4 spec and
+>    oracles stay untouched as history), each row id printed in full; a literal
+>    that cannot be re-measured is marked `[EXTERNAL_COMPUTATION_REQUIRED]`
+>    (B.10), never carried over.
+> 4. **No silent absorption.** A re-pin changes `dasha_digest` and therefore the
+>    AM-5 `input_digest` of any generation built under it: an L1 rebuild can
+>    never be folded into an existing candidate or sealed generation; sealed
+>    generations keep verifying against the build recorded in their own search-
+>    input snapshot, not against the current pin.
+> 5. **Ordering is fail-closed and must be scheduled.** While the pinned build
+>    is absent from `chart_dashas` the contract refuses every canonical-chart
+>    read (correct behaviour). Therefore the re-pin PR must be merge-ready
+>    **before** the L1 rebuild lands, or the old build's rows must be retained
+>    until it merges; the steward schedules both in one window.
+> 6. **Scope.** Rules 1–4 apply identically to every other L1 read pinned by id
+>    in the contract (the AV extract's build/convention key of AM-7, the sky
+>    convention of AM-1, the node convention). Non-canonical charts keep
+>    `select_dasha_read_contract`'s existing single-build rule; AM-10 does not
+>    change it.
+
+**Read-only evidence predicates for the re-pin PR** (publish predicates, not
+numbers — DVA Ruling 16): `SELECT build_id, verification_pass_status, level_n,
+count(*), min(start_iso), max(end_iso) FROM chart_dashas WHERE chart_id =
+'482012f1-710e-4a25-994a-93821f5871aa' AND system_id = 'vimshottari' GROUP BY 1,2,3`
+(counts and spans per build); and, for shift, the self-join of old/new rows on
+`(level_n, parent match, ordinal within parent)` reporting `min/max/avg(new.start_iso
+- old.start_iso)`; run through `pgenv.sh` read-only.
+
+**Schema impact:** none. **Code impact (later, one PR):** the pinned id in
+`permission.py` and the reference rows; the test that the old id is refused.
+
+---
+
 ## Batch checklist for the A5.5 gate (v0.5)
 
 | # | Item | Spec fold | New migration? | Decision left? |
@@ -1004,6 +1086,7 @@ Text unchanged from v0.2:
 | AM-7 | `'av_qualifier'` + P5 contract completed (identity/applicability/lineage/read-back) | relationship_record | 1204 (kept), protected window | no |
 | AM-8 | P6 testimony template; five frame kinds; future designed migration | new (template) | 1205 SPLIT OUT | no |
 | AM-9 | L0 Rāhu/Ketu finding (provenance narrowed) | none | no | L0 owner's ruling |
+| AM-10 | §4.0 daśā read-contract re-pin rule (conditional on L1-rebuild close; no new pin value) | §4.0 | no (one code PR at re-pin) | steward declares rebuild landed |
 
 ## A5.5-gate follow-ups — Codex v1.4 ranked list (P2; owed at the A5.5 gate; no P1 blocks)
 
