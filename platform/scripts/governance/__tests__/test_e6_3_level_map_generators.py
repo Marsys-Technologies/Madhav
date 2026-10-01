@@ -220,6 +220,20 @@ export const COEFFICIENTS = []
         [row("bg_a", [], "brahmagyan"), row("ga_b", ["bg_a"], "ganita", False)])
 
 
+def test_the_seed_parser_reads_the_asset_kind_with_asset_kind_winning_over_asset_type():
+    rows = G.parse_seed_text("""export const ASSETS: AssetDef[] = [
+      { asset_id: 'bg_a', layer: 'brahmagyan', depends_on: [], is_active: true },
+      { asset_id: 'bg_b', layer: 'brahmagyan', depends_on: [], is_active: true, asset_type: 'service' },
+      { asset_id: 'bg_c', layer: 'brahmagyan', depends_on: [], is_active: true, asset_type: 'data', asset_kind: 'artifact' },
+    ]""")
+    assert [r["asset_kind"] for r in rows] == ["data", "service", "artifact"]
+
+
+def test_the_real_seed_has_service_assets_the_tracker_can_see():
+    kinds = {r["asset_id"]: r["asset_kind"] for r in G.parse_seed_text(SEED.read_text(encoding="utf-8"))}
+    assert "service" in kinds.values() and kinds["bg_ontology"] == "data"
+
+
 @pytest.mark.parametrize("body", [
     "{ asset_id: 'bg_a', layer: 'brahmagyan', is_active: true }",                               # no depends_on
     "{ asset_id: 'bg_a', layer: 'brahmagyan', depends_on: [...OTHER], is_active: true }",       # spread

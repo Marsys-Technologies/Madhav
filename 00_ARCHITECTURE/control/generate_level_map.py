@@ -271,13 +271,11 @@ def _ts_str(raw: str, what: str) -> str:
     return m.group(1) if m.group(1) is not None else m.group(2)
 
 
-def load_registry_from_seed(path) -> list[dict]:
-    """Rows [{asset_id, layer, depends_on, active}] parsed read-only from asset_registry_seed.ts's `ASSETS` literal.
-    Strict: an entry whose asset_id/layer/depends_on/is_active is not a plain literal raises."""
-    try:
-        text = Path(path).read_text(encoding="utf-8")
-    except OSError as e:
-        raise LevelMapError(f"cannot read the seed {path}: {e}") from e
+def parse_seed_text(text: str) -> list[dict]:
+    """Rows [{asset_id, layer, depends_on, active, asset_kind}] parsed from asset_registry_seed.ts's `ASSETS` literal
+    (`asset_kind` is the seed's `asset_kind` or `asset_type` when it states one, else 'data'). Strict: an entry whose
+    asset_id/layer/depends_on/is_active/kind is not a plain literal raises LevelMapError. Used by the E6.3 tracker
+    (`elevated_assets`) to know which asset ids the registry holds."""
     code = _ts_code(text)
     m = re.search(r"export const ASSETS:\s*AssetDef\[\]\s*=\s*\[", code)
     if not m:
@@ -305,8 +303,23 @@ def load_registry_from_seed(path) -> list[dict]:
         act = kv["is_active"].strip()
         if act not in ("true", "false"):
             raise LevelMapError(f"{aid}: is_active is not a boolean literal in the seed")
-        rows.append(dict(asset_id=aid, layer=_ts_str(kv["layer"], f"{aid}.layer"), depends_on=deps, active=act == "true"))
-    return validate_registry(rows)
+        kind = "data"
+        for key in ("asset_type", "asset_kind"):                       # asset_kind (migration 242) wins over asset_type
+            if key in kv:
+                kind = _ts_str(kv[key], f"{aid}.{key}")
+        rows.append(dict(asset_id=aid, layer=_ts_str(kv["layer"], f"{aid}.layer"), depends_on=deps,
+                         active=act == "true", asset_kind=kind))
+    return rows
+
+
+def load_registry_from_seed(path) -> list[dict]:
+    """Rows [{asset_id, layer, depends_on, active}] parsed read-only from the repo seed (see `parse_seed_text`)."""
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except OSError as e:
+        raise LevelMapError(f"cannot read the seed {path}: {e}") from e
+    rows = parse_seed_text(text)
+    return validate_registry([{k: v for k, v in r.items() if k != "asset_kind"} for r in rows])
 
 
 # ───────────────────────────── CLI ─────────────────────────────

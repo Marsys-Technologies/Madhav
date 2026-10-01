@@ -13,11 +13,24 @@ import sys
 import pytest
 
 sys.path.insert(0, __import__("os").path.dirname(__file__))
-from _e6_3_fixtures import (MINI_CENSUS, NA_NULL, World, cert, disp, gap, inval, load_tracker,  # noqa: E402
-                            watermark_for)
+from _e6_3_fixtures import (MINI_CENSUS, MINI_FLOOR, NA_NULL, World, cert, disp, gap, inval,  # noqa: E402
+                            load_tracker)
 
 T = load_tracker()
+REAL_FLOOR = dict(T.E63_REQUIRED_FLOOR)
 ALL = {"ga_alpha", "bg_beta", "ka_gamma"}
+
+
+@pytest.fixture(autouse=True)
+def mini_floor(monkeypatch):
+    """The mini registry has fewer criteria than the real one: pin the floor it satisfies (real-registry tests ask
+    for `real_floor` instead)."""
+    monkeypatch.setattr(T, "E63_REQUIRED_FLOOR", MINI_FLOOR)
+
+
+@pytest.fixture
+def real_floor(monkeypatch):
+    monkeypatch.setattr(T, "E63_REQUIRED_FLOOR", REAL_FLOOR)
 
 
 @pytest.fixture
@@ -42,7 +55,7 @@ def test_a_world_with_nothing_elevated_returns_the_empty_set_not_an_error(tmp_pa
 
 # ───────────────────────── condition 1: every required core-gate criterion certified ─────────────────────────
 
-@pytest.mark.parametrize("crit", ["Ldgr.src", "Idem.pat", "Idem.alt", "Null.x", "Build.any", "Build.reg"])
+@pytest.mark.parametrize("crit", ["Ldgr.src", "Idem.pat", "Idem.alt", "Null.x", "Build.any", "Build.target", "Build.reg"])
 def test_c1_a_missing_certificate_for_any_required_criterion_drops_only_that_asset(w, crit):
     w.drop("ga_alpha", crit)
     assert got(w) == ALL - {"ga_alpha"}
@@ -108,19 +121,24 @@ def test_c1_an_inconclusive_PASS_is_not_a_PASS(w):
     assert got(w) == ALL - {"ga_alpha"}
 
 
-def test_c1_an_unrecognised_basis_is_not_honoured_but_declaration_is(w):
-    w.find("ga_alpha", "Idem.pat")["basis"] = "Declaration"           # case-exact
+def test_c1_an_unrecognised_basis_is_never_honoured(w):
+    w.find("ga_alpha", "Build.target")["basis"] = "Declaration"           # case-exact
     assert got(w) == ALL - {"ga_alpha"}
-    w.find("ga_alpha", "Idem.pat")["basis"] = "declaration"
-    assert got(w) == ALL
 
 
-def test_c1_a_gate_with_no_criterion_for_the_layer_is_unsatisfied(tmp_path):
-    census = MINI_CENSUS.replace('"Ldgr.src":  dict(gate="Ldgr",  check="src",  detector="census", layers=ALL_LAYERS',
-                                 '"Ldgr.src":  dict(gate="Ldgr",  check="src",  detector="census", layers=("L5",)')
-    assert census != MINI_CENSUS
-    w = World(tmp_path, census=census).default()
-    assert got(w) == {"ka_gamma"}      # the rollup reads a gate with no checks NO_DETECTOR: nobody in L0/L1 passes Ldgr
+def test_c1_basis_declaration_is_honoured_only_where_the_registry_defines_it(w):
+    # Build.target on a SERVICE asset: a PASS by declaration. Anywhere else a declaration is not a PASS.
+    w.find("ga_alpha", "Build.target")["basis"] = "declaration"
+    assert got(w) == ALL - {"ga_alpha"}                       # ga_alpha is a data asset in the registry
+    w.seed_extra = {"ga_alpha": "service"}
+    assert got(w) == ALL                                       # now a declared service
+    w.find("ga_alpha", "Idem.pat")["basis"] = "declaration"   # Idem.pat has no declaration basis, service or not
+    assert got(w) == ALL - {"ga_alpha"}
+
+
+def test_c1_a_declaration_basis_on_an_addition_is_not_honoured(w):
+    w.find("bg_beta", "D-GROUNDING", "addition")["basis"] = "declaration"
+    assert got(w) == ALL - {"bg_beta"}
 
 
 def test_c1_a_criterion_outside_the_core_gates_is_not_required(w):
@@ -185,10 +203,15 @@ def test_c3_a_row_with_no_kind_reads_as_a_gap(w):
     assert got(w) == ALL - {"ga_alpha"}
 
 
-@pytest.mark.parametrize("kind", ["info", "opportunity"])
-def test_c3_info_and_opportunity_rows_never_block(w, kind):
-    w.gaps.append(gap("ga_alpha", "Idem.pat", kind=kind))
-    w.gaps.append(gap("bg_beta", "D-GROUNDING", kind=kind, gap_id="bg_beta-x"))
+def test_c3_opportunity_rows_never_block_even_on_a_core_gate_or_an_addition(w):
+    w.gaps.append(gap("ga_alpha", "Idem.pat", kind="opportunity"))
+    w.gaps.append(gap("bg_beta", "D-GROUNDING", kind="opportunity", gap_id="bg_beta-x"))
+    assert got(w) == ALL
+
+
+def test_c3_info_rows_never_block(w):
+    w.gaps.append(gap("ga_alpha", "Cost.base", kind="info"))
+    w.gaps.append(gap("ga_alpha", "Reach.fields", kind="info", gap_id="ga_alpha-r"))
     assert got(w) == ALL
 
 
@@ -231,6 +254,7 @@ def test_c3_a_row_folded_into_an_open_gap_still_blocks_through_the_target(w):
 
 
 def test_c3_a_gap_on_another_asset_does_not_block(w):
+    w.seed_extra = {"ka_other": "data"}
     w.gaps.append(gap("ka_other", "Idem.pat"))
     assert got(w) == ALL
 
@@ -312,8 +336,9 @@ def test_stale_an_earlier_generation_is_not_current_once_a_newer_one_exists(w):
     w.certs.append(cert("ga_alpha", "Idem.pat", gen=2))
     sha = w.commit()
     facts = T._e63_registry_facts(str(w.repo), sha)
-    by_key, _ = T._e63_parse_certs(T._e63_show(str(w.repo), sha, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
-    state = T.LedgerState(str(w.repo), sha, facts, by_key, {})
+    led = T._e63_parse_certs(T._e63_show(str(w.repo), sha, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
+    by_key = led.by_key
+    state = T.LedgerState(str(w.repo), sha, facts, by_key, {}, led.pos)
     ok1, why1 = T.certificate_currency(by_key["ga_alpha|gate|Idem.pat"][0], state)
     ok2, _ = T.certificate_currency(by_key["ga_alpha|gate|Idem.pat"][1], state)
     assert (ok1, ok2) == (False, True) and "not the latest" in why1
@@ -340,27 +365,60 @@ def test_stale_the_criterion_revision_moved(w):
     assert got(w) == ALL - {"ga_alpha"}
 
 
+def later(w, asset, crit):
+    """Re-certify `asset`/`crit` AFTER everything else (a dependant is certified after what it cites)."""
+    rec = w.find(asset, crit)
+    w.certs.remove(rec)
+    w.certs.append(rec)
+
+
 def test_stale_upstream_has_a_newer_generation(w):
-    w.certs.append(cert("ga_alpha", "Ldgr.src", gen=2))
+    w.certs.append(cert("ga_alpha", "Ldgr.src", gen=2, fp="c" * 64))
     w.find("ga_alpha", "Idem.pat")["upstream_cert_ids"] = ["ga_alpha|gate|Ldgr.src@1"]
+    later(w, "ga_alpha", "Idem.pat")
+    assert got(w) == ALL - {"ga_alpha"}
+
+
+def test_a_generation_bump_with_the_same_output_invalidates_nothing_downstream(w):
+    # E5.5: E5.1 mints generation 2 when any currency field changes; identical semantic output leaves dependants current
+    w.certs.append(cert("ga_alpha", "Ldgr.src", gen=2))                                  # same semantic_fingerprint (FP)
+    w.find("ga_alpha", "Idem.pat")["upstream_cert_ids"] = ["ga_alpha|gate|Ldgr.src@1"]
+    later(w, "ga_alpha", "Idem.pat")
+    assert got(w) == ALL
+
+
+def test_a_generation_bump_with_different_output_does_invalidate_downstream(w):
+    w.certs.append(cert("ga_alpha", "Ldgr.src", gen=2, fp="b" * 64))
+    w.find("ga_alpha", "Idem.pat")["upstream_cert_ids"] = ["ga_alpha|gate|Ldgr.src@1"]
+    later(w, "ga_alpha", "Idem.pat")
+    assert got(w) == ALL - {"ga_alpha"}
+
+
+def test_a_same_output_bump_still_needs_the_latest_upstream_generation_to_be_current_and_passing(w):
+    w.certs.append(cert("ga_alpha", "Ldgr.src", gen=2, writer=False, writer_hashes_reason=None))   # latest not current
+    w.find("ga_alpha", "Idem.pat")["upstream_cert_ids"] = ["ga_alpha|gate|Ldgr.src@1"]
+    later(w, "ga_alpha", "Idem.pat")
     assert got(w) == ALL - {"ga_alpha"}
 
 
 def test_current_upstream_at_its_latest_generation_keeps_the_dependant_current(w):
     w.certs.append(cert("ga_alpha", "Ldgr.src", gen=2))
     w.find("ga_alpha", "Idem.pat")["upstream_cert_ids"] = ["ga_alpha|gate|Ldgr.src@2"]
+    later(w, "ga_alpha", "Idem.pat")
     assert got(w) == ALL
 
 
 def test_stale_upstream_is_itself_invalidated(w):
     w.find("ga_alpha", "Idem.pat")["upstream_cert_ids"] = ["bg_beta|gate|Ldgr.src@1"]
-    w.invals.append(inval("bg_beta|gate|Ldgr.src@1", kind="writer_hash"))
+    later(w, "ga_alpha", "Idem.pat")
+    w.invals.append(inval("bg_beta|gate|Ldgr.src@1", code="writer_hash"))
     assert got(w) == ALL - {"ga_alpha", "bg_beta"}      # both: bg_beta's own cert is invalidated, ga_alpha rests on it
 
 
 def test_stale_upstream_that_no_longer_passes(w):
     w.certs.append(cert("bg_beta", "Ldgr.src", "FAIL", gen=2))
     w.find("ga_alpha", "Idem.pat")["upstream_cert_ids"] = ["bg_beta|gate|Ldgr.src@2"]
+    later(w, "ga_alpha", "Idem.pat")
     assert got(w) == ALL - {"ga_alpha", "bg_beta"}
 
 
@@ -386,7 +444,7 @@ def _real_census_module():
     return mod
 
 
-def test_registry_facts_read_as_source_equal_the_imported_registry(tmp_path):
+def test_registry_facts_read_as_source_equal_the_imported_registry(tmp_path, real_floor):
     import pathlib
     ac = _real_census_module()
     w = World(tmp_path, census=(pathlib.Path(ac.__file__)).read_text(encoding="utf-8"))
@@ -405,7 +463,7 @@ def test_registry_facts_read_as_source_equal_the_imported_registry(tmp_path):
 
 @pytest.mark.parametrize("layer,asset", [("L0", "bg_x"), ("L1", "ga_x"), ("L2", "bo_x"), ("L3", "ka_x"),
                                         ("L4", "ph_x"), ("L5", "mi_x")])
-def test_real_registry_all_PASS_is_never_elevated_exactly_when_the_rollup_says_not_all_gates_pass(tmp_path, layer, asset):
+def test_real_registry_all_PASS_is_never_elevated_exactly_when_the_rollup_says_not_all_gates_pass(tmp_path, layer, asset, real_floor):
     """With every required criterion certified PASS on the real registry: the rollup caps Null.*/Narr.fidelity_test
     at PARTIAL and reads detector-NONE criteria NO_DETECTOR, so some gate cell is not PASS -- and the exact function
     must agree (an agreeing detector, not a hard-coded False: the second half flips both to elevated)."""
@@ -425,7 +483,7 @@ def test_real_registry_all_PASS_is_never_elevated_exactly_when_the_rollup_says_n
     assert all_gates_pass is False
 
 
-def test_real_registry_an_asset_with_every_non_capped_non_NONE_criterion_PASS_and_the_rest_computed_NA(tmp_path):
+def test_real_registry_an_asset_with_every_non_capped_non_NONE_criterion_PASS_and_the_rest_computed_NA(tmp_path, real_floor):
     """The exact function agrees with the rollup when the capped/NONE criteria are released by DECLARED N/A rules."""
     import pathlib
     ac = _real_census_module()

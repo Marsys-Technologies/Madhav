@@ -306,65 +306,90 @@ def main():
 
 
 # ═══════════════════════ E6.3 — ELEVATED, exact ═══════════════════════════════════════════════════════════
-# `elevated_assets(ref, repo)` is the ONE place an asset may be called ELEVATED (plan 1.1; Track E brief 8). It is
-# a module-level function with no side effects. It reads EVERY input with `git -C <repo> show <sha>:<path>`, where
-# <sha> is `ref` resolved once up front: never the working tree, never a database. It RAISES `ElevatedInputError`
-# on any unreadable ref/path, any malformed JSONL line or record, and `WatermarkOlderThanLedger` when E5.5's
-# invalidation watermark is older than the certification ledger at `ref`; a failure never comes back as an empty
-# set (an empty set is only ever the honest answer "nothing is elevated"). The legacy lifecycle()/scan() above is
-# NOT this function and is not an authority for ELEVATED (E6.3t switches the tracker's own caller to this one).
+# `elevated_assets(ref, repo)` is the ONE place an asset may be called ELEVATED (plan 1.1). It is a module-level
+# function with no side effects. It reads EVERY input with `git -C <repo> show <sha>:<path>`, where <sha> is `ref`
+# resolved once up front: never the working tree, never a database. It RAISES `ElevatedInputError` on any unreadable
+# ref/path, any malformed JSONL line or record, a broken hash chain, a registry source it cannot trust, and
+# `WatermarkOlderThanLedger` when E5.5's watermark does not cover every certificate at the ref; a failure never comes
+# back as an empty set (an empty set is only ever the honest answer "nothing is elevated"). The legacy
+# lifecycle()/scan() above is NOT this function and is not an authority for ELEVATED (E6.3t switches the tracker's
+# own caller to this one).
 #
-# An asset is ELEVATED when all four hold, or when it is TERMINALLY dispositioned (retire/consolidate with a reason):
-#   (1) every criterion of every core gate its layer requires -- asset_census.CRITERION_REGISTRY entries whose gate
-#       is in CELL_GATES and whose `layers` holds the asset's layer, exactly the rows the census rollup counts --
-#       has a CURRENT satisfying certificate: PASS (detector not NONE, not inconclusive, not capped, basis absent
-#       or 'declaration') or an N/A whose `na.rule_id` is declared in NA_RULE_DECISIONS at `ref` with that
-#       `na.decision_id`. A gate with no criterion for the layer is unsatisfied (the rollup reads it NO_DETECTOR);
+# THE RULE. An asset is ELEVATED when it is TERMINALLY dispositioned (retire/consolidate WITH a reason), or when all
+# four hold:
+#   (1) every criterion of every core gate its layer requires -- the asset_census.CRITERION_REGISTRY entries whose
+#       gate is in CELL_GATES and whose `layers` holds the asset's layer, exactly the rows the census rollup counts --
+#       has a CURRENT satisfying certificate: a PASS (detector not NONE, not inconclusive, not capped, `basis` absent,
+#       or `declaration` only where the registry defines it: Build.target on a service asset) or an N/A whose
+#       `na.rule_id` is declared in NA_RULE_DECISIONS at `ref` with that `na.decision_id`. A gate with no criterion for
+#       the layer cannot occur: the pinned registry FLOOR makes the function raise first;
 #   (2) every addition DECLARED for the asset has a current PASS (an addition has no registry rule: no N/A);
-#   (3) no open `gap` row on a core gate or declared addition. kind info/opportunity never blocks; a row on a
-#       non-gate criterion family (the registry gates outside CELL_GATES: Cost, Count, Complete, Reach...) never
-#       blocks (plan D3); an open gap row on ANYTHING ELSE blocks (an unclassifiable row is not proof it is not on
-#       a core gate);
+#   (3) no open `gap` row on a core gate or declared addition: kind info/opportunity never blocks, nor does a row on
+#       a non-gate criterion family (Cost, Count, Complete, Reach...: plan D3); an open gap on ANYTHING ELSE blocks;
 #   (4) a disposition is recorded and is not `unresolved`.
 #
-# ---- INPUT FIELD NAMES (assumed; reconcile with E5.1 nikasha_certify.py / E5.5 on integration) -----------------
-# asset_certs.jsonl (E5.1 arch 12.16; first line {"asset":"_schema"}): asset, layer, kind (gate|addition), gate,
-#   criterion, criterion_version, detector, verdict, basis, na {rule_id, decision_id, ...}, inconclusive?,
-#   evidence {census_run_id}, writer_hashes {repo-relative path: sha256}, writer_hashes_reason, upstream_cert_ids
-#   [cert_id], semantic_fingerprint (sha256 or null), cert_key "<asset>|<kind>|<criterion>", generation (1..n in file
-#   order per cert_key), cert_id "<cert_key>@<generation>". The current record of a cert_key is its highest generation.
-# asset_cert_invalidations.jsonl (E5.5; first line {"asset":"_schema"}): rows of
-#   {"record_type":"invalidation","cert_id":"<key>@<gen>","invalidated_by":{"kind":..., "detail":...}}  (a non-empty
-#     `invalidated_by`; this is how a semantic-fingerprint / upstream / writer change found by E5.5 reaches the ledger)
-#   {"record_type":"watermark","certs_lines":<n>,"certs_sha256":"<sha256>","commit":"<sha>","event_offset":<int>}
-#     certs_lines = how many non-blank lines of asset_certs.jsonl (schema line included) E5.5 had evaluated;
-#     certs_sha256 = sha256 of those lines, each followed by "\n". The LAST watermark row governs; certs_lines must
-#     never decrease. `commit` and `event_offset` are recorded provenance; the decisive comparison is by ledger
-#     position, because a commit hash cannot be compared with the ref that contains the file naming it.
-#     "Watermark at least the ledger ref" means certs_lines >= the line count of the certificate ledger at `ref`.
-# asset_gaps.jsonl (delta ledger; first line {"asset":"_schema"}): asset, gap_id, kind (gap|opportunity|info; absent
-#   reads gap), criterion, state (OPEN|IN_PROGRESS|CLOSED|WITHDRAWN; absent reads OPEN), superseded_by. A gap_id's
-#   state is its LATEST row; a row folded into another gap_id (superseded_by) is carried by its target, which must
-#   exist.
-# asset_dispositions.jsonl (recorded dispositions; first line {"asset":"_schema"}): asset, disposition (keep|
-#   integrate|enrich|qualify|consolidate|historical|retire|unresolved), reason, additions [declared addition ids].
-#   The LATEST row per asset governs. retire/consolidate WITH a non-blank reason is TERMINAL.
-# platform/scripts/governance/asset_census.py at `ref`, read as SOURCE (ast, never imported): LAYERS[*].prefix,
-#   CRITERION_REGISTRY[*].{gate,layers,detector,revision}, CELL_GATES, NA_RULE_DECISIONS.
+# ---- INPUTS (all under `ref`) ----------------------------------------------------------------------------------
+# asset_certs.jsonl is E5.1's ledger AND E5.5's: first line {"asset":"_schema"}, then hash-chained lines (`seq` 1..N
+#   over the non-schema lines, `prev_sha256` = sha256 of the previous line's bytes, the schema line's for the first;
+#   verified here by a small verifier identical to E5.1's `parse_records`, parity-tested against it). A line is either
+#   a CERTIFICATE (cert_key, generation >= 1, cert_id == "<cert_key>@<generation>", verdict: E5.1's `_is_cert_line`) or
+#   an EVENT (a `type` in invalidation|watermark|epoch_reset and none of cert_key/cert_id/generation, no certificate
+#   `kind`/verdict: E5.1's `_is_event_line`); anything else raises.
+#   certificate (kind gate|addition): asset, layer, kind, gate, criterion, criterion_version (int), detector, verdict,
+#                     basis, na{rule_id, decision_id}, inconclusive, cross_checked (must be true on every gate record),
+#                     evidence.census_run_id, writer_hashes{path: sha256}, writer_hashes_reason, upstream_cert_ids,
+#                     semantic_fingerprint, cert_key "<asset>|<kind>|<criterion>", generation (1..n per key). The
+#                     current record of a cert_key is its highest generation.
+#   invalidation      E5.5: asset, layer, invalidates "<cert_id>" (a certificate on an EARLIER line), reason
+#                     [{code,...}], walk >= 1. A repeated invalidation of one certificate is tolerated; the first wins.
+#   watermark         E5.5: asset "_ledger", covers_seq (the seq of the last record the evaluation covered, below the
+#                     line's own seq, never behind the previous watermark), certs_processed and last_cert_id (= the
+#                     certificates with seq <= covers_seq and the last of them: CHECKED), commit. The ledger is covered
+#                     iff a watermark exists and NO certificate has seq > the last watermark's covers_seq; otherwise
+#                     WatermarkOlderThanLedger.
+#   epoch_reset       E5.5: asset "_ledger", layer, decision "N-..": the strategist's re-walk-budget reset (no effect here).
+# asset_gaps.jsonl (delta ledger): asset (must be a KNOWN asset id, so a malformed or look-alike id raises; the layer-wide pseudo-asset
+#   `_layer_all` is skipped), gap_id, kind (gap|
+#   opportunity|info; absent reads gap), criterion, state (OPEN|IN_PROGRESS|CLOSED|WITHDRAWN; absent reads OPEN),
+#   superseded_by. A gap is keyed (asset, gap_id) and its state is its LATEST row; a row folded into another gap_id
+#   (superseded_by, SAME asset, chains resolved, a cycle raises) is carried by the chain's terminal row. A core-gate or
+#   declared-addition criterion re-keyed `kind: info` raises.
+# asset_dispositions.jsonl (storage location provisional: the plan names none): asset (a registry asset), disposition
+#   (keep|integrate|enrich|qualify|consolidate|historical|retire|unresolved), reason, additions (REQUIRED on every
+#   row). The LATEST row governs disposition and reason; the declared additions are the UNION over all of the asset's
+#   rows, so a later row without them cannot un-declare one: removing a declaration is a reviewed edit of the history.
+# platform/scripts/governance/asset_census.py (read as SOURCE with ast, never imported): LAYERS[*].prefix,
+#   CRITERION_REGISTRY[*].{gate,layers,detector,revision}, CELL_GATES, NA_RULE_DECISIONS, and the PARTIAL cap rule in
+#   `_check_contribution`. The WHOLE module is walked: a second assignment of, a mutation of, an alias of or a dynamic
+#   write to any of the four registry names raises (the parser must be able to see the final value).
+# platform/scripts/seed/asset_registry_seed.ts (+ LEVEL_MAP.json when present): the asset ids the registry holds and
+#   the asset kind (non-authoritative stand-in for the live registry, as in generate_level_map.py).
 #
-# "CURRENT" (see certificate_currency): the record is the latest generation of its cert_key; no invalidation row
-# names its cert_id; every recorded writer file still hashes to the recorded sha256 at `ref` (a writer file that is
-# absent at `ref` is stale, not an error); every upstream cert id is the LATEST generation of its key and is itself
-# current and PASS/N/A; a PASS (or measured N/A) carries a semantic fingerprint (the comparison with the live rows is
-# E5.5's, delivered as an invalidation row); a gate record's criterion_version equals the registry revision at `ref`.
-import ast as _ast, dataclasses as _dc, hashlib as _hashlib, re as _re
+# "CURRENT" (see certificate_currency): the record is the latest generation of its cert_key; no invalidation line names
+# its cert_id; every recorded writer file still hashes to the recorded sha256 at `ref` (absent at `ref` = stale); every
+# upstream cert id is on an earlier line and is itself current and PASS/N/A, and is either the LATEST generation of its
+# key or an older generation whose semantic fingerprint equals the latest's (E5.5: a generation bump with identical
+# output invalidates nothing downstream); a
+# PASS (or measured N/A) carries a semantic fingerprint (comparing it with the live rows is E5.5's job, delivered as an
+# invalidation line); a gate record's criterion_version equals the registry revision at `ref`.
+import ast as _ast, dataclasses as _dc, hashlib as _hashlib, re as _re, unicodedata as _unicodedata
 
 E63_CONTROL_DIR = "00_ARCHITECTURE/control"
 E63_CERTS_PATH = E63_CONTROL_DIR + "/asset_certs.jsonl"
 E63_GAPS_PATH = E63_CONTROL_DIR + "/asset_gaps.jsonl"
-E63_INVALIDATIONS_PATH = E63_CONTROL_DIR + "/asset_cert_invalidations.jsonl"
 E63_DISPOSITIONS_PATH = E63_CONTROL_DIR + "/asset_dispositions.jsonl"
+E63_LEVEL_MAP_PATH = E63_CONTROL_DIR + "/LEVEL_MAP.json"
 E63_CENSUS_PATH = "platform/scripts/governance/asset_census.py"
+E63_SEED_PATH = "platform/scripts/seed/asset_registry_seed.ts"
+
+# FLOOR: how many criteria each core gate must have, per layer, in asset_census.CRITERION_REGISTRY. Pinned from the
+# registry at origin/main bf6fe712b (REGISTRY_REVISION 7). A registry edit that REMOVES a core-gate criterion (or a
+# `layers=()`) would make ELEVATED easier to reach, so it makes this function raise instead; changing the floor is a
+# deliberate, reviewed edit of THIS constant (e.g. when E6.1(i) retires Carr.detector, Carr goes 4 -> 3).
+E63_REQUIRED_FLOOR = {"Ldgr": 1, "Idem": 1, "Earn": 2, "Null": 2, "Vocab": 2, "Carr": 4, "Narr": 4, "Dens": 1, "Build": 9}
+# Where the registry defines a PASS BY DECLARATION (mirrors E5.1's nikasha_certify.DECLARATION_BASED; parity-tested):
+# criterion -> the asset kinds it applies to. A `basis: declaration` PASS anywhere else is not a PASS.
+E63_DECLARATION_BASED = {"Build.target": ("service",)}
 
 E63_VERDICTS = frozenset({"PASS", "FAIL", "PARTIAL", "NO_DETECTOR", "ERRORED", "N/A"})
 E63_GAP_KINDS = frozenset({"gap", "opportunity", "info"})
@@ -374,11 +399,23 @@ E63_DISPOSITIONS = frozenset({"keep", "integrate", "enrich", "qualify", "consoli
                               "unresolved"})
 E63_TERMINAL_DISPOSITIONS = frozenset({"retire", "consolidate"})
 E63_BASIS_DECLARATION = "declaration"        # the one recognised `basis` (asset_census._check_contribution)
+# Layer-wide gap rows attach to no asset (the real ledger holds five, e.g. Build.diagnosability): the one pseudo-asset
+# id allowed in the gap ledger besides `_schema`. They never block an asset (no asset carries that id).
+E63_PSEUDO_GAP_ASSETS = frozenset({"_layer_all"})
+E63_MAX_JSON_DEPTH = 64
+E63_EVENT_TYPES = ("invalidation", "watermark", "epoch_reset")     # E5.1's EVENT_TYPES
+E63_EVENT_FORBIDDEN = ("cert_key", "cert_id", "generation")          # certificate-only fields an event may not carry
+E63_CERT_KINDS = ("gate", "addition")
+E63_GUARDED_NAMES = ("CRITERION_REGISTRY", "CELL_GATES", "NA_RULE_DECISIONS", "LAYERS")
+E63_MUTATORS = frozenset({"update", "pop", "popitem", "setdefault", "clear", "append", "extend", "insert", "remove",
+                          "add", "discard", "sort", "reverse", "__setitem__", "__delitem__", "__ior__"})
+E63_DYNAMIC_CALLS = frozenset({"globals", "vars", "setattr", "delattr", "exec", "eval"})
 
 _E63_ASSET = _re.compile(r"[a-z][a-z0-9_]*")
 _E63_ADDITION = _re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
 _E63_SHA256 = _re.compile(r"[0-9a-f]{64}")
 _E63_COMMIT = _re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
+_E63_DECISION = _re.compile(r"N-[0-9]{1,6}[A-Za-z0-9._-]{0,24}")    # E5.5's decision id
 _E63_CERT_ID = _re.compile(r"([a-z][a-z0-9_]*)\|(gate|addition)\|([A-Za-z0-9][A-Za-z0-9_.-]*)@([1-9][0-9]*)")
 
 
@@ -392,8 +429,8 @@ class ElevatedInputError(RuntimeError):
 
 
 class WatermarkOlderThanLedger(ElevatedInputError):
-    """E5.5 has evaluated fewer certificate-ledger lines than the ledger at `ref` holds: the invalidations on file
-    cannot be trusted for the newer lines, so the exact function refuses to answer rather than guess."""
+    """E5.5 has not evaluated every certificate at `ref` (no watermark covers them): the invalidations on file cannot
+    be trusted for the newer lines, so the exact function refuses to answer rather than guess."""
 
 
 def _e63_fail(code, message):
@@ -425,25 +462,81 @@ def _e63_show(repo, sha, path):
     return _e63_git(repo, ["show", f"{sha}:{path}"], f"read {path} at {sha[:12]}")
 
 
-def _e63_jsonl(data, path, require_schema=True):
-    """[(physical line number, raw text, object)] for every non-blank line; the first must be the `_schema` row."""
+def _e63_exists(repo, sha, path):
+    return bool(_e63_git(repo, ["ls-tree", "--name-only", sha, "--", path], f"look for {path} at {sha[:12]}").strip())
+
+
+def _e63_sha(b):
+    return _hashlib.sha256(b).hexdigest()
+
+
+# ---- strict JSON (the same rules as E5.1's strict_json_loads) -----------------------------------------------------
+def _e63_no_dup_keys(pairs):
+    d = {}
+    for k, v in pairs:
+        if k in d:
+            raise ValueError(f"duplicate key {k!r}")
+        d[k] = v
+    return d
+
+
+def _e63_no_constant(name):
+    raise ValueError(f"non-finite constant {name}")
+
+
+def _e63_max_depth(text):
+    depth = best = 0
+    in_str = esc = False
+    for ch in text:
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        elif ch == '"':
+            in_str = True
+        elif ch in "[{":
+            depth += 1
+            best = max(best, depth)
+        elif ch in "]}":
+            depth -= 1
+    return best
+
+
+def _e63_strict_loads(text):
+    """json.loads that refuses duplicate object keys, NaN/Infinity and nesting deeper than E63_MAX_JSON_DEPTH."""
+    if _e63_max_depth(text) > E63_MAX_JSON_DEPTH:
+        raise ValueError(f"nesting deeper than {E63_MAX_JSON_DEPTH}")
     try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError as e:
-        _e63_fail("malformed", f"{path} is not valid UTF-8 ({e.reason})")
+        return json.loads(text, object_pairs_hook=_e63_no_dup_keys, parse_constant=_e63_no_constant)
+    except RecursionError as e:
+        raise ValueError("nesting too deep") from e
+
+
+def _e63_lines(data, path):
+    """[(line number, raw line bytes, object)] for every non-blank line, strictly parsed; the first must be the
+    `_schema` row. A torn or unreadable line, a duplicate key, a non-object line: ElevatedInputError."""
+    if not data:
+        _e63_fail("malformed", f"{path} is empty (no `_schema` row)")
+    parts = data.split(b"\n")
+    tail = parts[-1]
+    raw_lines = parts[:-1] + ([tail] if tail else [])
     rows = []
-    for n, raw in enumerate(text.split("\n"), 1):
-        raw = raw.rstrip("\r")
+    for n, raw in enumerate(raw_lines, 1):
         if not raw.strip():
             continue
         try:
-            obj = json.loads(raw)
-        except json.JSONDecodeError as e:
-            _e63_fail("malformed", f"{path} line {n} is not JSON ({e.msg})")
+            obj = _e63_strict_loads(raw.decode("utf-8"))
+        except UnicodeDecodeError as e:
+            _e63_fail("malformed", f"{path} line {n} is not valid UTF-8 ({e.reason})")
+        except ValueError as e:
+            _e63_fail("malformed", f"{path} line {n} is not strict JSON ({e})")
         if not isinstance(obj, dict):
             _e63_fail("malformed", f"{path} line {n} is not a JSON object")
         rows.append((n, raw, obj))
-    if require_schema and (not rows or rows[0][2].get("asset") != "_schema"):
+    if not rows or rows[0][2].get("asset") != "_schema":
         _e63_fail("malformed", f"{path}: the first line must be the `_schema` row")
     return rows
 
@@ -452,12 +545,26 @@ def _e63_nonblank(v):
     return isinstance(v, str) and bool(v.strip())
 
 
+def _e63_clean(s):
+    """What a human reads: NFKC, format/control/private/unassigned characters dropped, stripped."""
+    s = _unicodedata.normalize("NFKC", s)
+    return "".join(ch for ch in s if _unicodedata.category(ch) not in ("Cf", "Cc", "Co", "Cn")).strip()
+
+
+def _e63_is_none(detector):
+    return isinstance(detector, str) and _e63_clean(detector).upper() == "NONE"
+
+
 def _e63_relpath_ok(p):
     return (isinstance(p, str) and bool(p) and not p.startswith("/") and "\\" not in p
             and ".." not in p.split("/") and "" not in p.split("/"))
 
 
-# ---- the registry, read as source at `ref` ---------------------------------------------------------------------
+def _e63_int(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+# ---- the registry, read as source at `ref` -------------------------------------------------------------------------
 class _E63Unresolved(Exception):
     pass
 
@@ -497,17 +604,98 @@ def _e63_dictcall(node, wanted, env, what):
     return out
 
 
+def _e63_root_name(node):
+    while isinstance(node, (_ast.Attribute, _ast.Subscript)):
+        node = node.value
+    return node.id if isinstance(node, _ast.Name) else None
+
+
+def _e63_guard_registry_names(tree):
+    """Walk the WHOLE module: each guarded registry name is stored exactly once (a module-level assignment) and is
+    never mutated, deleted, aliased or written dynamically anywhere, so the literal the parser reads is the value."""
+    stores = {n: 0 for n in E63_GUARDED_NAMES}
+    for node in _ast.walk(tree):
+        bad = None
+        if isinstance(node, _ast.Name) and node.id in stores and isinstance(node.ctx, (_ast.Store, _ast.Del)):
+            stores[node.id] += 1
+            if isinstance(node.ctx, _ast.Del):
+                bad = f"`del {node.id}`"
+        elif isinstance(node, (_ast.Subscript, _ast.Attribute)) and isinstance(node.ctx, (_ast.Store, _ast.Del)) \
+                and _e63_root_name(node) in stores:
+            bad = f"a store into {_e63_root_name(node)}"
+        elif isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.ClassDef)) and node.name in stores:
+            bad = f"a definition named {node.name}"
+        elif isinstance(node, _ast.alias) and (node.asname or node.name.split(".")[0]) in stores:
+            bad = f"an import binding {node.asname or node.name}"
+        elif isinstance(node, (_ast.Global, _ast.Nonlocal)) and any(n in stores for n in node.names):
+            bad = "a global/nonlocal declaration"
+        elif isinstance(node, _ast.Call):
+            f = node.func
+            if isinstance(f, _ast.Attribute) and f.attr in E63_MUTATORS and _e63_root_name(f.value) in stores:
+                bad = f"{_e63_root_name(f.value)}.{f.attr}(...)"
+            elif isinstance(f, _ast.Name) and f.id in E63_DYNAMIC_CALLS:
+                bad = f"a dynamic {f.id}(...) call that could rewrite a registry name"
+        elif isinstance(node, (_ast.Assign, _ast.AnnAssign, _ast.NamedExpr)) and isinstance(node.value, _ast.Name) \
+                and node.value.id in stores:
+            bad = f"an alias of {node.value.id}"
+        if bad:
+            _e63_fail("registry_unreadable", f"{E63_CENSUS_PATH} contains {bad}: the registry literal the parser reads "
+                                             "may not be the value in force")
+    top = {st.targets[0].id if isinstance(st, _ast.Assign) and len(st.targets) == 1 and isinstance(st.targets[0], _ast.Name)
+           else getattr(getattr(st, "target", None), "id", None) for st in tree.body
+           if isinstance(st, (_ast.Assign, _ast.AnnAssign))}
+    for n, c in stores.items():
+        if c != 1 or n not in top:
+            _e63_fail("registry_unreadable", f"{n} is assigned {c} time(s) in {E63_CENSUS_PATH} (need exactly one "
+                                             "module-level assignment)")
+
+
+def _e63_cap_rule(tree):
+    """(prefixes, exact ids) of the criteria `_check_contribution` caps at PARTIAL, read from the `if` that returns
+    v=PARTIAL: `crit.startswith("<prefix>")` and `crit == "<id>"` terms. Raises if the pattern is not found."""
+    fn = next((n for n in tree.body if isinstance(n, _ast.FunctionDef) and n.name == "_check_contribution"), None)
+    if fn is None:
+        _e63_fail("registry_unreadable", f"{E63_CENSUS_PATH} has no _check_contribution")
+    prefixes, exact = set(), set()
+    for node in _ast.walk(fn):
+        if not isinstance(node, _ast.If):
+            continue
+        returns_partial = any(
+            isinstance(r, _ast.Return) and isinstance(r.value, _ast.Call) and any(
+                k.arg == "v" and isinstance(k.value, _ast.Name) and k.value.id == "PARTIAL" for k in r.value.keywords)
+            for r in node.body)
+        if not returns_partial:
+            continue
+        for t in _ast.walk(node.test):
+            if isinstance(t, _ast.Call) and isinstance(t.func, _ast.Attribute) and t.func.attr == "startswith" \
+                    and isinstance(t.func.value, _ast.Name) and t.func.value.id == "crit" and len(t.args) == 1 \
+                    and isinstance(t.args[0], _ast.Constant) and isinstance(t.args[0].value, str):
+                prefixes.add(t.args[0].value)
+            elif isinstance(t, _ast.Compare) and isinstance(t.left, _ast.Name) and t.left.id == "crit" \
+                    and len(t.ops) == 1 and isinstance(t.ops[0], _ast.Eq) and isinstance(t.comparators[0], _ast.Constant) \
+                    and isinstance(t.comparators[0].value, str):
+                exact.add(t.comparators[0].value)
+    if not prefixes and not exact:
+        _e63_fail("registry_unreadable", f"no PARTIAL cap rule found in _check_contribution of {E63_CENSUS_PATH}")
+    return frozenset(prefixes), frozenset(exact)
+
+
 @_dc.dataclass(frozen=True)
 class RegistryFacts:
     layer_prefix: dict      # "L3" -> "ka_"
     criteria: dict          # "Idem.pattern" -> {gate, layers, detector, revision}
     cell_gates: tuple       # the core gates, in order
     na_rules: dict          # declared N/A rule id -> decision id
+    cap_prefixes: frozenset  # a PASS on crit.startswith(p) reads PARTIAL in the census rollup
+    cap_exact: frozenset     # ... and on these exact ids
 
     def required(self, layer):
         """{gate: [criterion, ...]} for the core gates `layer` requires (the rows the census rollup counts)."""
         return {g: sorted(c for c, e in self.criteria.items() if e["gate"] == g and layer in e["layers"])
                 for g in self.cell_gates}
+
+    def capped(self, crit):
+        return crit in self.cap_exact or any(crit.startswith(p) for p in self.cap_prefixes)
 
     @property
     def info_families(self):
@@ -520,6 +708,7 @@ def _e63_registry_facts(repo, sha):
         tree = _ast.parse(src.decode("utf-8"), filename=E63_CENSUS_PATH)
     except (SyntaxError, UnicodeDecodeError, ValueError) as e:
         _e63_fail("registry_unreadable", f"{E63_CENSUS_PATH} at {sha[:12]} does not parse ({type(e).__name__})")
+    _e63_guard_registry_names(tree)
     env, nodes = {}, {}
     for st in tree.body:
         if isinstance(st, _ast.Assign) and len(st.targets) == 1 and isinstance(st.targets[0], _ast.Name):
@@ -533,9 +722,6 @@ def _e63_registry_facts(repo, sha):
             env[name] = _e63_lit(value, env)
         except _E63Unresolved:
             pass
-    for needed in ("LAYERS", "CRITERION_REGISTRY", "CELL_GATES", "NA_RULE_DECISIONS"):
-        if needed not in nodes:
-            _e63_fail("registry_unreadable", f"{E63_CENSUS_PATH} at {sha[:12]} defines no {needed}")
     for name in ("CELL_GATES", "NA_RULE_DECISIONS"):
         if name not in env:
             _e63_fail("registry_unreadable", f"{name} is not a literal in {E63_CENSUS_PATH}")
@@ -555,14 +741,33 @@ def _e63_registry_facts(repo, sha):
     for k, v in zip(nodes["CRITERION_REGISTRY"].keys, nodes["CRITERION_REGISTRY"].values):
         ck = _e63_lit(k, env)
         e = _e63_dictcall(v, ("gate", "layers", "detector", "revision"), env, f"CRITERION_REGISTRY[{ck!r}]")
-        if (not _e63_nonblank(e["gate"]) or not _e63_nonblank(e["detector"]) or isinstance(e["revision"], bool)
-                or not isinstance(e["revision"], int) or not isinstance(e["layers"], tuple)
-                or not all(isinstance(x, str) for x in e["layers"])):
-            _e63_fail("registry_unreadable", f"CRITERION_REGISTRY[{ck!r}] has an unexpected shape")
+        if (not _e63_nonblank(e["gate"]) or not _e63_nonblank(e["detector"]) or not _e63_int(e["revision"])
+                or not isinstance(e["layers"], tuple) or not e["layers"]
+                or not all(isinstance(x, str) and x in layer_prefix for x in e["layers"])):
+            _e63_fail("registry_unreadable", f"CRITERION_REGISTRY[{ck!r}] has an unexpected shape (layers must be a "
+                                             "non-empty tuple of declared layers)")
         criteria[ck] = e
     if not layer_prefix or not all(_e63_nonblank(p) for p in layer_prefix.values()) or not criteria:
         _e63_fail("registry_unreadable", "LAYERS / CRITERION_REGISTRY are empty or malformed")
-    return RegistryFacts(layer_prefix, criteria, cell_gates, na_rules)
+    cap_prefixes, cap_exact = _e63_cap_rule(tree)
+    facts = RegistryFacts(layer_prefix, criteria, cell_gates, na_rules, cap_prefixes, cap_exact)
+    _e63_check_floor(facts)
+    return facts
+
+
+def _e63_check_floor(facts):
+    floor = E63_REQUIRED_FLOOR
+    stray = sorted(set(floor) - set(facts.cell_gates))
+    if stray:
+        _e63_fail("registry_below_floor", f"the floor names gate(s) {stray} that CELL_GATES no longer holds")
+    for layer in facts.layer_prefix:
+        for gate, crits in facts.required(layer).items():
+            need = floor.get(gate, 1)
+            if len(crits) < need:
+                _e63_fail("registry_below_floor", f"{layer}/{gate} requires {len(crits)} criteria in {E63_CENSUS_PATH}, "
+                                                  f"below the pinned floor of {need}: removing a core-gate criterion "
+                                                  "would make ELEVATED easier, so lowering the floor "
+                                                  "(E63_REQUIRED_FLOOR) is a deliberate, reviewed edit")
 
 
 def _e63_layer_of(asset, facts, where):
@@ -572,109 +777,211 @@ def _e63_layer_of(asset, facts, where):
     return hits[0]
 
 
-# ---- the four ledgers --------------------------------------------------------------------------------------------
-def _e63_parse_certs(data, facts):
-    """(records by cert_key in generation order, nonblank lines). Strict: any record this reader cannot trust raises."""
-    rows = _e63_jsonl(data, E63_CERTS_PATH)
-    by_key = {}
-    for n, _raw, r in rows[1:]:
-        where = f"{E63_CERTS_PATH} line {n}"
-        asset, kind, crit, verdict = r.get("asset"), r.get("kind"), r.get("criterion"), r.get("verdict")
-        gen = r.get("generation")
-        if not (isinstance(asset, str) and _E63_ASSET.fullmatch(asset)):
-            _e63_fail("malformed", f"{where}: bad asset {asset!r}")
-        if kind not in ("gate", "addition") or not _e63_nonblank(crit):
-            _e63_fail("malformed", f"{where}: kind must be gate|addition and criterion non-blank")
-        if verdict not in E63_VERDICTS:
-            _e63_fail("malformed", f"{where}: verdict {verdict!r} is outside {sorted(E63_VERDICTS)}")
-        if isinstance(gen, bool) or not isinstance(gen, int) or gen < 1:
-            _e63_fail("malformed", f"{where}: generation must be an int >= 1")
-        key = f"{asset}|{kind}|{crit}"
-        if r.get("cert_key") != key or r.get("cert_id") != f"{key}@{gen}":
-            _e63_fail("malformed", f"{where}: cert_key/cert_id do not match asset|kind|criterion@generation")
-        layer = r.get("layer")
-        if layer not in facts.layer_prefix or _e63_layer_of(asset, facts, where) != layer:
-            _e63_fail("malformed", f"{where}: layer {layer!r} does not match asset {asset!r}")
-        if not _e63_nonblank(r.get("detector")):
-            _e63_fail("malformed", f"{where}: detector is required (NONE is spelled NONE)")
-        ev = r.get("evidence")
-        if not isinstance(ev, dict) or not _e63_nonblank(ev.get("census_run_id")):
-            _e63_fail("malformed", f"{where}: evidence.census_run_id is required (a record with no run id is not a record)")
-        wh = r.get("writer_hashes", {})
-        if not isinstance(wh, dict) or any(not _e63_relpath_ok(p) or not isinstance(h, str)
-                                           or not _E63_SHA256.fullmatch(h) for p, h in wh.items()):
-            _e63_fail("malformed", f"{where}: writer_hashes must map repo-relative paths to lower-case sha256")
-        ups = r.get("upstream_cert_ids", [])
-        if not isinstance(ups, list) or any(not isinstance(u, str) or not _E63_CERT_ID.fullmatch(u) for u in ups):
-            _e63_fail("malformed", f"{where}: upstream_cert_ids must be a list of cert ids")
-        fp = r.get("semantic_fingerprint")
-        if fp is not None and not (isinstance(fp, str) and _E63_SHA256.fullmatch(fp)):
-            _e63_fail("malformed", f"{where}: semantic_fingerprint must be 64 lower-case hex or null")
-        if r.get("na") is not None and not isinstance(r.get("na"), dict):
-            _e63_fail("malformed", f"{where}: na must be an object or null")
-        if kind == "gate" and crit in facts.criteria and r.get("gate") != facts.criteria[crit]["gate"]:
+_E63_GENERATOR = []
+
+
+def _e63_generator():
+    """The sibling generate_level_map.py (its strict seed parser is the one place the seed is read)."""
+    if not _E63_GENERATOR:
+        import importlib.util
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "generate_level_map.py")
+        spec = importlib.util.spec_from_file_location("generate_level_map_for_tracker", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _E63_GENERATOR.append(mod)
+    return _E63_GENERATOR[0]
+
+
+def _e63_registry_assets(repo, sha):
+    """{asset_id: asset_kind or None} the registry holds at `ref`: the seed's ASSETS, plus LEVEL_MAP.json's levels
+    when that file is committed (the frozen map of the live registry)."""
+    gen = _e63_generator()
+    try:
+        rows = gen.parse_seed_text(_e63_show(repo, sha, E63_SEED_PATH).decode("utf-8"))
+    except (gen.LevelMapError, UnicodeDecodeError) as e:
+        _e63_fail("registry_unreadable", f"{E63_SEED_PATH} at {sha[:12]} cannot be read as the registry seed ({e})")
+    out = {}
+    for r in rows:
+        if not _E63_ASSET.fullmatch(r["asset_id"]) or r["asset_id"] in out:
+            _e63_fail("registry_unreadable", f"{E63_SEED_PATH}: bad or duplicate asset id {r['asset_id']!r}")
+        out[r["asset_id"]] = r["asset_kind"]
+    if _e63_exists(repo, sha, E63_LEVEL_MAP_PATH):
+        try:
+            lm = _e63_strict_loads(_e63_show(repo, sha, E63_LEVEL_MAP_PATH).decode("utf-8"))
+            levels = lm["levels"]
+            assert isinstance(levels, dict) and all(isinstance(k, str) and _E63_ASSET.fullmatch(k) for k in levels)
+        except (ValueError, KeyError, TypeError, AssertionError, UnicodeDecodeError) as e:
+            _e63_fail("malformed", f"{E63_LEVEL_MAP_PATH} at {sha[:12]} is not a level map ({type(e).__name__})")
+        for k in levels:
+            out.setdefault(k, None)
+    if not out:
+        _e63_fail("registry_unreadable", "the registry holds no asset")
+    return out
+
+
+# ---- the certificate ledger (E5.1 records + E5.5 invalidation and watermark lines) ---------------------------------
+@_dc.dataclass
+class _Ledger:
+    by_key: dict            # cert_key -> [certificate records] in generation order
+    pos: dict               # cert_id -> seq of its line
+    invalidated: dict       # invalidated cert_id -> its (first) invalidation event
+    last_covers: int | None  # covers_seq of the LAST watermark (None: no watermark line)
+    unevaluated: int        # certificates with seq > the last watermark's covers_seq
+
+
+def _e63_is_cert_line(r):
+    key, gen = r.get("cert_key"), r.get("generation")
+    return (isinstance(key, str) and _e63_int(gen) and gen >= 1 and r.get("cert_id") == f"{key}@{gen}"
+            and isinstance(r.get("verdict"), str))
+
+
+def _e63_is_event_line(r):
+    t = r.get("type")
+    if not isinstance(t, str) or t not in E63_EVENT_TYPES or t in E63_CERT_KINDS:
+        return False
+    if any(k in r for k in E63_EVENT_FORBIDDEN):
+        return False
+    return not (r.get("kind") in E63_CERT_KINDS or (isinstance(r.get("verdict"), str) and r["verdict"] in E63_VERDICTS))
+
+
+def _e63_check_cert(r, n, facts):
+    where = f"{E63_CERTS_PATH} line {n}"
+    asset, kind, crit, verdict = r.get("asset"), r.get("kind"), r.get("criterion"), r.get("verdict")
+    if kind not in E63_CERT_KINDS:
+        _e63_fail("malformed", f"{where}: a certificate of kind {kind!r}")
+    if not (isinstance(asset, str) and _E63_ASSET.fullmatch(asset)):
+        _e63_fail("malformed", f"{where}: bad asset {asset!r}")
+    if not _e63_nonblank(crit):
+        _e63_fail("malformed", f"{where}: criterion must be non-blank")
+    if verdict not in E63_VERDICTS:
+        _e63_fail("malformed", f"{where}: verdict {verdict!r} is outside {sorted(E63_VERDICTS)}")
+    if r["cert_key"] != f"{asset}|{kind}|{crit}":
+        _e63_fail("malformed", f"{where}: cert_key does not match asset|kind|criterion")
+    layer = r.get("layer")
+    if layer not in facts.layer_prefix or _e63_layer_of(asset, facts, where) != layer:
+        _e63_fail("malformed", f"{where}: layer {layer!r} does not match asset {asset!r}")
+    if not _e63_nonblank(r.get("detector")):
+        _e63_fail("malformed", f"{where}: detector is required (NONE is spelled NONE)")
+    if not _e63_int(r.get("criterion_version")) or r["criterion_version"] < 1:
+        _e63_fail("malformed", f"{where}: criterion_version must be an int >= 1")
+    ev = r.get("evidence")
+    if not isinstance(ev, dict) or not _e63_nonblank(ev.get("census_run_id")):
+        _e63_fail("malformed", f"{where}: evidence.census_run_id is required (a record with no run id is not a record)")
+    wh = r.get("writer_hashes", {})
+    if not isinstance(wh, dict) or any(not _e63_relpath_ok(p) or not isinstance(h, str)
+                                       or not _E63_SHA256.fullmatch(h) for p, h in wh.items()):
+        _e63_fail("malformed", f"{where}: writer_hashes must map repo-relative paths to lower-case sha256")
+    ups = r.get("upstream_cert_ids", [])
+    if not isinstance(ups, list) or any(not isinstance(u, str) or not _E63_CERT_ID.fullmatch(u) for u in ups):
+        _e63_fail("malformed", f"{where}: upstream_cert_ids must be a list of cert ids")
+    fp = r.get("semantic_fingerprint")
+    if fp is not None and not (isinstance(fp, str) and _E63_SHA256.fullmatch(fp)):
+        _e63_fail("malformed", f"{where}: semantic_fingerprint must be 64 lower-case hex or null")
+    if r.get("na") is not None and not isinstance(r.get("na"), dict):
+        _e63_fail("malformed", f"{where}: na must be an object or null")
+    if kind == "gate":
+        if r.get("cross_checked") is not True:
+            _e63_fail("malformed", f"{where}: a gate record must carry cross_checked: true (the writer reads its verdict "
+                                   "from the census; a record without that was not written by it)")
+        if crit in facts.criteria and r.get("gate") != facts.criteria[crit]["gate"]:
             _e63_fail("malformed", f"{where}: {crit} belongs to gate {facts.criteria[crit]['gate']!r}, not {r.get('gate')!r}")
-        by_key.setdefault(key, []).append(r)
-    for key, recs in by_key.items():
-        if [x["generation"] for x in recs] != list(range(1, len(recs) + 1)):
-            _e63_fail("malformed", f"{E63_CERTS_PATH}: {key}: generations are not 1..{len(recs)} in file order")
-    return by_key, [raw for _n, raw, _o in rows]
 
 
-def _e63_parse_invalidations(data):
-    rows = _e63_jsonl(data, E63_INVALIDATIONS_PATH)
-    invalidated, watermark = {}, None
-    for n, _raw, r in rows[1:]:
-        where = f"{E63_INVALIDATIONS_PATH} line {n}"
-        rt = r.get("record_type")
-        if rt == "invalidation":
-            cid, by = r.get("cert_id"), r.get("invalidated_by")
-            if not (isinstance(cid, str) and _E63_CERT_ID.fullmatch(cid)):
-                _e63_fail("malformed", f"{where}: invalidation cert_id {cid!r} is not a cert id")
-            if not (_e63_nonblank(by) or (isinstance(by, dict) and by and _e63_nonblank(by.get("kind")))):
-                _e63_fail("malformed", f"{where}: invalidated_by must be a non-blank string or an object with a `kind`")
-            invalidated[cid] = by
-        elif rt == "watermark":
-            nl, sh, off, cm = r.get("certs_lines"), r.get("certs_sha256"), r.get("event_offset"), r.get("commit")
-            if (isinstance(nl, bool) or not isinstance(nl, int) or nl < 1
-                    or not (isinstance(sh, str) and _E63_SHA256.fullmatch(sh))
-                    or (off is not None and (isinstance(off, bool) or not isinstance(off, int) or off < 0))
-                    or (cm is not None and not (isinstance(cm, str) and _E63_COMMIT.fullmatch(cm)))):
-                _e63_fail("malformed", f"{where}: watermark needs certs_lines >= 1 and certs_sha256 (+ optional commit/event_offset)")
-            if watermark is not None and nl < watermark["certs_lines"]:
-                _e63_fail("malformed", f"{where}: the watermark went backwards ({nl} < {watermark['certs_lines']})")
-            watermark = r
+def _e63_check_invalidation(r, n, cert_pos, facts):
+    where = f"{E63_CERTS_PATH} line {n}"
+    t = r.get("invalidates")
+    if not isinstance(t, str) or t not in cert_pos:
+        _e63_fail("malformed", f"{where}: invalidates {t!r}, which is not a certificate on an earlier line")
+    target = cert_pos[t]
+    reason = r.get("reason")
+    if r.get("asset") != target["asset"] or r.get("layer") != target.get("layer") or r.get("layer") not in facts.layer_prefix:
+        _e63_fail("malformed", f"{where}: the invalidation does not agree with the certificate it invalidates")
+    if (not _e63_int(r.get("walk")) or r["walk"] < 1 or not isinstance(reason, list) or not reason
+            or not all(isinstance(x, dict) and _e63_nonblank(x.get("code")) for x in reason)):
+        _e63_fail("malformed", f"{where}: an invalidation needs walk >= 1 and a non-empty reason list")
+
+
+def _e63_check_epoch_reset(r, n, facts):
+    d = r.get("decision")
+    if (r.get("asset") != "_ledger" or r.get("layer") not in facts.layer_prefix or not isinstance(d, str)
+            or not _E63_DECISION.fullmatch(d)):
+        _e63_fail("malformed", f"{E63_CERTS_PATH} line {n}: malformed epoch_reset (asset _ledger, a layer, a decision id N-xx)")
+
+
+def _e63_check_watermark(r, n, certs, last_covers):
+    where = f"{E63_CERTS_PATH} line {n}"
+    cov, ep, last = r.get("covers_seq"), r.get("certs_processed"), r.get("last_cert_id")
+    if (r.get("asset") != "_ledger" or not _e63_nonblank(r.get("commit")) or not _e63_int(cov) or not _e63_int(ep)):
+        _e63_fail("malformed", f"{where}: malformed watermark line")
+    if cov < 0 or cov >= n or (last_covers is not None and cov < last_covers):
+        _e63_fail("watermark_mismatch", f"{where}: covers_seq {cov} is outside 0..{n - 1} or behind the previous watermark")
+    covered = [c for c in certs if c["seq"] <= cov]
+    want_last = covered[-1]["cert_id"] if covered else None
+    if ep != len(covered) or last != want_last:
+        _e63_fail("watermark_mismatch", f"{where}: the watermark claims {ep} certificate(s) ending {last!r} up to seq "
+                                        f"{cov} but the ledger holds {len(covered)} ending {want_last!r}")
+
+
+def _e63_parse_certs(data, facts):
+    """-> _Ledger. Strict: E5.1's chain (seq 1..N, prev_sha256), certificate-or-event for every line, per-key
+    generations 1..n, E5.5's event shapes and a truthful watermark; anything else raises."""
+    rows = _e63_lines(data, E63_CERTS_PATH)
+    led = _Ledger(by_key={}, pos={}, invalidated={}, last_covers=None, unevaluated=0)
+    prev, nrec, certs, gens, cert_by_id = _e63_sha(rows[0][1]), 0, [], {}, {}
+    for n, raw, r in rows[1:]:
+        where = f"{E63_CERTS_PATH} line {n}"
+        if r.get("asset") == "_schema":
+            _e63_fail("malformed", f"{where}: a second `_schema` row")
+        is_cert = _e63_is_cert_line(r)
+        if not is_cert and not _e63_is_event_line(r):
+            _e63_fail("malformed", f"{where}: not a record this reader can trust (a certificate needs cert_key/"
+                                   "generation/cert_id/verdict; any other line needs a `type` in "
+                                   f"{E63_EVENT_TYPES} and no certificate field)")
+        if not _e63_int(r.get("seq")) or r["seq"] != nrec + 1:
+            _e63_fail("malformed", f"{where}: seq is {r.get('seq')!r}, expected {nrec + 1} (seq runs 1..N over the records)")
+        if r.get("prev_sha256") != prev:
+            _e63_fail("malformed", f"{where}: the hash chain is broken (prev_sha256 is not the sha256 of the previous "
+                                   "line): an earlier line was edited, deleted or reordered")
+        prev, nrec = _e63_sha(raw), nrec + 1
+        if is_cert:
+            key, gen = r["cert_key"], r["generation"]
+            if gens.get(key, 0) + 1 != gen:
+                _e63_fail("malformed", f"{where}: {key} generation {gen} follows generation {gens.get(key, 0)}")
+            gens[key] = gen
+            _e63_check_cert(r, n, facts)
+            led.pos[r["cert_id"]] = r["seq"]
+            cert_by_id[r["cert_id"]] = r
+            led.by_key.setdefault(key, []).append(r)
+            certs.append(r)
+        elif r["type"] == "invalidation":
+            _e63_check_invalidation(r, n, cert_by_id, facts)
+            led.invalidated.setdefault(r["invalidates"], r)
+        elif r["type"] == "watermark":
+            _e63_check_watermark(r, r["seq"], certs, led.last_covers)
+            led.last_covers = r["covers_seq"]
         else:
-            _e63_fail("malformed", f"{where}: record_type must be invalidation|watermark, got {rt!r}")
-    if watermark is None:
-        _e63_fail("watermark_missing", f"{E63_INVALIDATIONS_PATH} carries no watermark row: nothing says up to where "
-                                       "invalidations have been evaluated")
-    return invalidated, watermark
+            _e63_check_epoch_reset(r, n, facts)
+    cov = led.last_covers if led.last_covers is not None else 0
+    led.unevaluated = sum(1 for c in certs if c["seq"] > cov)
+    return led
 
 
-def _e63_check_watermark(watermark, cert_lines):
-    have = len(cert_lines)
-    if watermark["certs_lines"] < have:
-        raise WatermarkOlderThanLedger(
-            "watermark_older", f"the invalidation watermark covers {watermark['certs_lines']} certificate-ledger "
-                               f"lines but the ledger at the ref holds {have}")
-    if watermark["certs_lines"] > have:
-        _e63_fail("watermark_ahead", f"the watermark claims {watermark['certs_lines']} certificate-ledger lines but "
-                                     f"the ledger at the ref holds {have} (truncated or rewritten ledger)")
-    digest = _hashlib.sha256("".join(ln + "\n" for ln in cert_lines[:have]).encode("utf-8")).hexdigest()
-    if digest != watermark["certs_sha256"]:
-        _e63_fail("watermark_mismatch", "the certificate ledger's content no longer matches the watermark's sha256 "
-                                        "(the append-only ledger was rewritten)")
-
-
-def _e63_parse_gaps(data):
-    """The EFFECTIVE gap rows: latest row per gap_id; rows with no gap_id stand alone; folded rows removed."""
-    rows = _e63_jsonl(data, E63_GAPS_PATH)
-    latest, loose, all_ids = {}, [], set()
+# ---- gaps and dispositions -----------------------------------------------------------------------------------------
+def _e63_parse_gaps(data, known):
+    """The EFFECTIVE gap rows. Keyed (asset, gap_id): the latest row wins; a row with no gap_id stands alone; a row
+    folded by `superseded_by` (same asset, chains resolved, a cycle or a dangling target raises) is carried by the
+    chain's terminal row."""
+    rows = _e63_lines(data, E63_GAPS_PATH)
+    latest, loose = {}, []
     for n, _raw, r in rows[1:]:
         where = f"{E63_GAPS_PATH} line {n}"
-        if not _e63_nonblank(r.get("asset")):
-            _e63_fail("malformed", f"{where}: asset is required")
+        asset = r.get("asset")
+        if asset in E63_PSEUDO_GAP_ASSETS:
+            continue
+        if not isinstance(asset, str) or asset not in known:
+            _e63_fail("malformed", f"{where}: asset {asset!r} is not a known asset (certificates, dispositions or the "
+                                   "registry; this also rejects malformed ids and look-alikes of real ones): a gap "
+                                   "on it would be silently ignored")
         kind = r.get("kind", "gap")
         state = str(r.get("state", "OPEN")).upper()
         if kind not in E63_GAP_KINDS:
@@ -687,52 +994,67 @@ def _e63_parse_gaps(data):
         gid, sup = r.get("gap_id"), r.get("superseded_by")
         if (gid is not None and not _e63_nonblank(gid)) or (sup is not None and not _e63_nonblank(sup)):
             _e63_fail("malformed", f"{where}: gap_id / superseded_by must be non-blank text when present")
-        eff = dict(asset=r["asset"], kind=kind, state=state, criterion=crit, gap_id=gid, superseded_by=sup, line=n)
+        eff = dict(asset=asset, kind=kind, state=state, criterion=crit, gap_id=gid, superseded_by=sup, line=n)
         if gid:
-            all_ids.add(gid)
-            latest[gid] = eff
+            latest[(asset, gid)] = eff
         else:
             loose.append(eff)
     out = []
     for g in loose + list(latest.values()):
-        if g["superseded_by"]:
-            if g["superseded_by"] not in all_ids:
-                _e63_fail("malformed", f"{E63_GAPS_PATH} line {g['line']}: superseded_by {g['superseded_by']!r} names no gap_id")
-            continue                      # folded: its identity is carried by the target row
-        out.append(g)
+        if not g["superseded_by"]:
+            out.append(g)
+            continue
+        seen, cur = {(g["asset"], g["gap_id"])}, g
+        while cur["superseded_by"]:
+            nxt = (cur["asset"], cur["superseded_by"])
+            if nxt in seen:
+                _e63_fail("malformed", f"{E63_GAPS_PATH} line {g['line']}: superseded_by forms a cycle at {nxt[1]!r}")
+            if nxt not in latest:
+                _e63_fail("malformed", f"{E63_GAPS_PATH} line {g['line']}: superseded_by {cur['superseded_by']!r} names "
+                                       f"no gap_id of asset {g['asset']}")
+            seen.add(nxt)
+            cur = latest[nxt]
+        # folded: the terminal row (a member of `latest`) is counted on its own
     return out
 
 
-def _e63_parse_dispositions(data, facts):
-    rows = _e63_jsonl(data, E63_DISPOSITIONS_PATH)
-    latest = {}
+def _e63_parse_dispositions(data, facts, registry):
+    rows = _e63_lines(data, E63_DISPOSITIONS_PATH)
+    latest, adds = {}, {}
     for n, _raw, r in rows[1:]:
         where = f"{E63_DISPOSITIONS_PATH} line {n}"
         asset, disp = r.get("asset"), r.get("disposition")
         if not (isinstance(asset, str) and _E63_ASSET.fullmatch(asset)):
             _e63_fail("malformed", f"{where}: bad asset {asset!r}")
         _e63_layer_of(asset, facts, where)
+        if asset not in registry:
+            _e63_fail("malformed", f"{where}: asset {asset!r} is not in the registry")
         if disp not in E63_DISPOSITIONS:
             _e63_fail("malformed", f"{where}: disposition {disp!r} is outside {sorted(E63_DISPOSITIONS)}")
         if r.get("reason") is not None and not isinstance(r.get("reason"), str):
             _e63_fail("malformed", f"{where}: reason must be text")
-        adds = r.get("additions", [])
-        if (not isinstance(adds, list) or any(not isinstance(a, str) or not _E63_ADDITION.fullmatch(a)
-                                              or a in facts.criteria for a in adds)
-                or len(set(adds)) != len(adds)):
+        if "additions" not in r:
+            _e63_fail("malformed", f"{where}: `additions` is required on every row (an empty list is the honest "
+                                   "'none declared'; a missing key could un-declare silently)")
+        a = r["additions"]
+        if (not isinstance(a, list) or any(not isinstance(x, str) or not _E63_ADDITION.fullmatch(x)
+                                           or x in facts.criteria for x in a) or len(set(a)) != len(a)):
             _e63_fail("malformed", f"{where}: additions must be unique addition ids that do not shadow a registered criterion")
-        latest[asset] = dict(disposition=disp, reason=(r.get("reason") or "").strip(), additions=tuple(adds))
-    return latest
+        adds.setdefault(asset, set()).update(a)
+        latest[asset] = dict(disposition=disp, reason=(r.get("reason") or "").strip())
+    return {a: dict(d, additions=tuple(sorted(adds[a]))) for a, d in latest.items()}
 
 
 # ---- currency ----------------------------------------------------------------------------------------------------
 class LedgerState:
     """What `is_current` reads: the certificate ledger at one resolved commit, with E5.5's invalidations."""
 
-    def __init__(self, repo, sha, facts, by_key, invalidated):
+    def __init__(self, repo, sha, facts, by_key, invalidated, pos=None, kinds=None):
         self.repo, self.sha, self.facts = repo, sha, facts
         self.by_key, self.invalidated = by_key, invalidated
-        self._hash_cache, self._cur_cache, self._visiting = {}, {}, []
+        self.pos = pos if pos is not None else {r["cert_id"]: i for i, rs in enumerate(by_key.values()) for r in rs}
+        self.kinds = kinds or {}
+        self._hash_cache, self._cur_cache = {}, {}
 
     def writer_sha256(self, path):
         """sha256 of `path` at the ledger commit, or None when the file is absent there."""
@@ -745,19 +1067,12 @@ class LedgerState:
 
 
 def certificate_currency(rec, state):
-    """(True, None) when `rec` is CURRENT, else (False, why). Raises ElevatedInputError on an upstream cycle."""
+    """(True, None) when `rec` is CURRENT, else (False, why). An upstream must sit on an EARLIER line, so the citation
+    graph is acyclic by construction and the recursion terminates."""
     cid = rec["cert_id"]
-    if cid in state._cur_cache:
-        return state._cur_cache[cid]
-    if cid in state._visiting:
-        _e63_fail("malformed", f"upstream certificate cycle through {cid}")
-    state._visiting.append(cid)
-    try:
-        res = _e63_currency(rec, state)
-    finally:
-        state._visiting.pop()
-    state._cur_cache[cid] = res
-    return res
+    if cid not in state._cur_cache:
+        state._cur_cache[cid] = _e63_currency(rec, state)
+    return state._cur_cache[cid]
 
 
 def is_current(rec, state):
@@ -787,9 +1102,14 @@ def _e63_currency(rec, state):
         urecs = state.by_key.get(ukey)
         if not urecs or ugen > len(urecs):
             _e63_fail("malformed", f"{rec['cert_id']}: upstream {uid} is not in the certificate ledger")
-        if ugen != len(urecs):
-            return False, f"upstream {uid} has a newer generation ({len(urecs)})"
+        if state.pos[uid] >= state.pos[rec["cert_id"]]:
+            _e63_fail("malformed", f"{rec['cert_id']}: upstream {uid} is not on an earlier line")
         up = urecs[-1]
+        if ugen != len(urecs):
+            cited = urecs[ugen - 1]
+            # E5.5: a generation bump with the SAME semantic fingerprint leaves the dependant's premise unchanged
+            if cited.get("semantic_fingerprint") is None or cited.get("semantic_fingerprint") != up.get("semantic_fingerprint"):
+                return False, f"upstream {uid} has a newer generation ({len(urecs)}) with different output"
         ok, why = certificate_currency(up, state)
         if not ok:
             return False, f"upstream {uid} is not current ({why})"
@@ -804,15 +1124,18 @@ def _e63_satisfies(rec, state, addition):
         return False
     if rec.get("inconclusive"):
         return False
-    basis = rec.get("basis")
-    if basis is not None and basis != E63_BASIS_DECLARATION:
-        return False
     v, crit = rec["verdict"], rec["criterion"]
+    basis = rec.get("basis")
+    if basis is not None:
+        kinds = E63_DECLARATION_BASED.get(crit)
+        if (basis != E63_BASIS_DECLARATION or addition or kinds is None
+                or state.kinds.get(rec["asset"]) not in kinds):
+            return False             # an unrecognised basis, or `declaration` where the registry does not define it
     if v == "PASS":
-        if rec["detector"].upper() == "NONE" or (
-                not addition and state.facts.criteria.get(crit, {}).get("detector", "").upper() == "NONE"):
+        if _e63_is_none(rec["detector"]) or (
+                not addition and _e63_is_none(state.facts.criteria.get(crit, {}).get("detector", ""))):
             return False            # detector NONE never reaches PASS (the record's own, or the registry's)
-        if not addition and (crit.startswith("Null.") or crit == "Narr.fidelity_test"):
+        if not addition and state.facts.capped(crit):
             return False            # capped at PARTIAL by the census rollup (Null: never PASS alone)
         return True
     if v == "N/A" and not addition:
@@ -840,9 +1163,7 @@ def _e63_asset_state(asset, state, disp, gaps):
     if d is None or d["disposition"] == "unresolved":                          # (4)
         return False, False
     layer = _e63_layer_of(asset, state.facts, f"asset {asset}")
-    for gate, crits in state.facts.required(layer).items():                    # (1)
-        if not crits:
-            return False, False
+    for gate, crits in state.facts.required(layer).items():                    # (1) (the floor guarantees crits != [])
         for c in crits:
             rec = (state.by_key.get(f"{asset}|gate|{c}") or [None])[-1]
             if rec is None or not _e63_satisfies(rec, state, addition=False):
@@ -856,28 +1177,43 @@ def _e63_asset_state(asset, state, disp, gaps):
     return True, False
 
 
+def _e63_check_info_rekeys(gap_rows, disp, facts):
+    """A core-gate (or declared-addition) gap re-keyed `kind: info` would stop blocking: raise instead."""
+    for g in gap_rows:
+        if g["kind"] != "info":
+            continue
+        adds = disp.get(g["asset"], {}).get("additions", ())
+        if g["criterion"].split(".", 1)[0] in facts.cell_gates or any(
+                g["criterion"] == a or g["criterion"].startswith(a + ".") for a in adds):
+            _e63_fail("malformed", f"{E63_GAPS_PATH} line {g['line']}: {g['criterion']!r} is a core-gate or declared-"
+                                   "addition criterion, which may not be re-keyed to kind: info")
+
+
 def elevated_assets(ref: str, repo: str) -> set:
     """The asset ids ELEVATED (plan 1.1) or terminally dispositioned, as of the ledgers committed at `ref`.
 
     Reads only `git -C repo show <ref>:<path>`; never the working tree or a database; no side effects. Raises
-    ElevatedInputError (WatermarkOlderThanLedger for a stale E5.5 watermark) on any unreadable or malformed input.
+    ElevatedInputError (WatermarkOlderThanLedger when E5.5's watermark does not cover every certificate) on any
+    unreadable or malformed input.
     """
     sha = _e63_resolve_ref(ref, repo)
     facts = _e63_registry_facts(repo, sha)
-    by_key, cert_lines = _e63_parse_certs(_e63_show(repo, sha, E63_CERTS_PATH), facts)
-    invalidated, watermark = _e63_parse_invalidations(_e63_show(repo, sha, E63_INVALIDATIONS_PATH))
-    _e63_check_watermark(watermark, cert_lines)
-    gap_rows = _e63_parse_gaps(_e63_show(repo, sha, E63_GAPS_PATH))
-    disp = _e63_parse_dispositions(_e63_show(repo, sha, E63_DISPOSITIONS_PATH), facts)
-    for cid in invalidated:
-        m = _E63_CERT_ID.fullmatch(cid)
-        if f"{m.group(1)}|{m.group(2)}|{m.group(3)}" not in by_key:
-            _e63_fail("malformed", f"{E63_INVALIDATIONS_PATH}: invalidation names {cid}, which is not in the certificate ledger")
+    registry = _e63_registry_assets(repo, sha)
+    led = _e63_parse_certs(_e63_show(repo, sha, E63_CERTS_PATH), facts)
+    if led.last_covers is None:
+        _e63_fail("watermark_missing", "the certificate ledger carries no watermark line: E5.5 has never evaluated it")
+    if led.unevaluated:
+        raise WatermarkOlderThanLedger("watermark_older", f"{led.unevaluated} certificate record(s) follow the last "
+                                                          "watermark: E5.5 has not evaluated them")
+    disp = _e63_parse_dispositions(_e63_show(repo, sha, E63_DISPOSITIONS_PATH), facts, registry)
+    known = set(registry) | set(disp) | {k.split("|", 1)[0] for k in led.by_key}
+    gap_rows = _e63_parse_gaps(_e63_show(repo, sha, E63_GAPS_PATH), known)
+    _e63_check_info_rekeys(gap_rows, disp, facts)
     gaps = {}
     for g in gap_rows:
         gaps.setdefault(g["asset"], []).append(g)
-    state = LedgerState(repo, sha, facts, by_key, invalidated)
-    population = {k.split("|", 1)[0] for k in by_key} | set(disp)
+    state = LedgerState(repo, sha, facts, led.by_key, led.invalidated, led.pos, registry)
+    population = {k.split("|", 1)[0] for k in led.by_key} | set(disp)
     return {a for a in sorted(population) if _e63_asset_state(a, state, disp, gaps)[0]}
 
 
