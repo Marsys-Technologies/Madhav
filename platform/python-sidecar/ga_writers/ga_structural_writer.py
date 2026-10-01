@@ -53,6 +53,7 @@ CRITICAL RECONCILIATION (GA3 overlap avoidance):
     - graha_effective_dignity_modified_by_aspects (M/Y)
     - argala_natal_matrix (N — 144 atomic rows)
     - virodha_argala_natal_matrix (N — 144 atomic rows)
+    - argala_graha_natal (N2 — graha-level argala, D1 only, SS N-61)
     - pranic_strength_per_graha (O/AJ)
     - jaimini_tri_deva_role_per_graha (O/AK)
     - graha_tri_deva_role_strength (O)
@@ -611,9 +612,33 @@ TRI_DEVA_ROLES = {
     "shiva": ["Mars", "Saturn", "Rahu"],           # Rajasic-tamasic
 }
 
-# Argala positions (1-based offsets from target sign, per Jaimini Sutram)
-ARGALA_OFFSETS: list[int] = [2, 4, 5, 11]    # These positions have argala on the sign
-VIRODHA_OFFSETS: list[int] = [12, 10, 9, 3]  # Counter-argala positions
+# Argala / obstruction (virodha) pairing — the ONE L1 definition (SS N-61, AR-1 / AR-6).
+# (argala offset, the offset whose occupants obstruct it), 1-based from the reference.
+# 2-12, 4-10 and 11-3 are the BPHS (Santhanam) Ch. 31 worked example, `bphs_pg0312_c01`
+# ("Mars in the 4th countered by Saturn in the 10th; Sun-Mercury in the 2nd by Venus in the
+# 12th; Jupiter in the 11th by Moon-Rahu in the 3rd"); 5-9 is `bphs_pg0311_c01` ("The 5th is
+# also an Argala place where the planet in the 9th will counteract such Argala"); Jaimini
+# Su. 7-9 gives the same sets, `bphs_jaimini_pg0023_c01`. sourced_ocr_unverified.
+ARGALA_OBSTRUCTION_PAIRS: tuple[tuple[int, int], ...] = ((2, 12), (4, 10), (5, 9), (11, 3))
+ARGALA_OFFSETS: list[int] = [a for a, _ in ARGALA_OBSTRUCTION_PAIRS]    # [2, 4, 5, 11]
+VIRODHA_OFFSETS: list[int] = [v for _, v in ARGALA_OBSTRUCTION_PAIRS]   # [12, 10, 9, 3]
+# Named filter, never a second definition: the BPHS / Jaimini basic set (exclude the 5th and its 9th).
+ARGALA_BASIC_OFFSETS: frozenset[int] = frozenset({2, 4, 11})
+# AR-2: argala and obstruction are counted in reverse when the REFERENCE is a node (both nodes;
+# Ketu-only is the named stricter variant, not built). bphs_pg0311_c01, bphs_pg0312_c01.
+ARGALA_REVERSED_REFERENCES: frozenset[str] = frozenset({"Rahu", "Ketu"})
+# AR-1 outcome vocabulary (count only; "stronger" has no sourced measure and stays null).
+ARGALA_OUTCOME_PREVAILS = "argala_prevails"
+ARGALA_OUTCOME_OBSTRUCTED = "obstructed"
+ARGALA_OUTCOME_UNDETERMINED = "undetermined"
+# AR-4 / AR-5: provenance. The computation is inline in this module (there is no
+# pyjhora_adapter argala module), so the source names the real writer function.
+ARGALA_CITATION_BLOCK = (
+    "BPHS (Santhanam trans.) Ch. 31 'Argala or Planetary Intervention': bphs_pg0310_c01, "
+    "bphs_pg0311_c01, bphs_pg0311_c02, bphs_pg0312_c01; Jaimini Sutras (Suryanarain Rao trans.) "
+    "Su. 5-10: bphs_jaimini_pg0023_c01, bphs_jaimini_pg0028_c01, bphs_jaimini_pg0028_c02. "
+    "Grade: sourced_ocr_unverified."
+)
 
 # Pranic strength (Nadi tradition — two formula approach)
 PRANIC_BASE_SCORES: dict[str, float] = {
@@ -778,7 +803,8 @@ def _base_row(category: str, subject: str, key: str,
               verif: str = UNVERIFIED_DEFAULT,
               source: str = "pyjhora_adapter.structural",
               citation_human: str = "",
-              constituent_facts_array: list[str] | None = None) -> dict[str, Any]:
+              constituent_facts_array: list[str] | None = None,
+              provenance_text: str | None = None) -> dict[str, Any]:
     row = {
         "fact_id": _fact_id(category, subject, key, chart_id, ayanamsha_id, build_id),
         "chart_id": chart_id,
@@ -800,6 +826,9 @@ def _base_row(category: str, subject: str, key: str,
     }
     if constituent_facts_array is not None:
         row["constituent_facts_array"] = constituent_facts_array
+    if provenance_text is not None:
+        # chart_facts.formula_provenance_text: the classical-source / convention sentence for the row.
+        row["formula_provenance_text"] = provenance_text
     return row
 
 
@@ -4685,6 +4714,13 @@ def _build_argala_rows(
     varga_sign_occupants: pre-built {sign_name: [graha_name, ...]} for non-D1 vargas.
     When None (default), builds from chart_output (D1 natal occupancy).
     Rows are tagged with varga prefix in fact_subject (e.g., D9_SIGN_4).
+
+    SIGN-LEVEL, FORWARD-ONLY (SS N-61, AR-2): this matrix counts forward from every sign and has no
+    graha reference, so it cannot carry the reversed count for Rahu/Ketu as the reference, and
+    stores 0.0 for a forward offset that is not an argala offset. Pairing, obstruction counts, the
+    outcome and the node reversal live in the graha-level family (`_build_argala_graha_rows`).
+    An argala-offset cell whose source sign holds no graha is NULL with fact_value_text
+    'no_occupant' (AR-3), not a score; occupied cells keep the 1.0 / 0.25 project convention.
     """
     rows: list[dict[str, Any]] = []
     varga_prefix = f"{varga}_"
@@ -4717,13 +4753,19 @@ def _build_argala_rows(
             occupants_in_source = sign_occupants.get(source_sign, [])
 
             # ── Argala matrix row (all 12×12 cells; 0.0 for non-argala positions) ──
+            argala_text: str | None = None
             if offset in ARGALA_OFFSETS:
-                # Natural malefics in argala positions produce negative/inauspicious argala
-                net_argala = 1.0
-                for occ in occupants_in_source:
-                    if occ in malefics_set:
-                        net_argala -= 0.25
-                net_argala = round(max(net_argala, -1.0), 4)
+                if occupants_in_source:
+                    # Natural malefics in argala positions produce negative/inauspicious argala
+                    net_argala: float | None = 1.0
+                    for occ in occupants_in_source:
+                        if occ in malefics_set:
+                            net_argala -= 0.25
+                    net_argala = round(max(net_argala, -1.0), 4)
+                else:
+                    # AR-3: an empty source sign makes no argala claim.
+                    net_argala = None
+                    argala_text = "no_occupant"
             else:
                 net_argala = 0.0  # Position not in argala set → no argala
 
@@ -4733,13 +4775,23 @@ def _build_argala_rows(
                 f"from_sign_{source_sign_num}_offset_{offset}",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                 value_num=net_argala,
+                value_text=argala_text,
                 unit="argala_score",
                 verif=UNVERIFIED_DEFAULT,
-                source=f"pyjhora_adapter.argala/{eng_ver}",
+                source=f"ga_structural_writer._build_argala_rows/{eng_ver}",
                 citation_human=(
+                    f"{varga} {target_sign} argala from {source_sign} "
+                    f"(offset {offset}): no occupant in the source sign, no argala claim ({ayanamsha_id})."
+                    if argala_text is not None else
                     f"{varga} {target_sign} argala from {source_sign} "
                     f"(offset {offset}): score {net_argala:.2f} "
                     f"({'argala' if offset in ARGALA_OFFSETS else 'no_argala'}) ({ayanamsha_id})."
+                ),
+                provenance_text=(
+                    f"{ARGALA_CITATION_BLOCK} Score 1.0 less 0.25 per natural malefic (Sun, Saturn, Mars, "
+                    "Rahu, Ketu) in the source sign: unsourced project convention. An argala-offset cell "
+                    "with no occupant in the source sign is NULL (no_occupant). Sign-level and FORWARD-ONLY: "
+                    "no reversed count for a node as the reference, no pairing; see argala_graha_natal."
                 ),
             ))
 
@@ -4757,11 +4809,17 @@ def _build_argala_rows(
                 value_num=virodha_score,
                 unit="virodha_score",
                 verif=UNVERIFIED_DEFAULT,
-                source=f"pyjhora_adapter.virodha_argala/{eng_ver}",
+                source=f"ga_structural_writer._build_argala_rows/{eng_ver}",
                 citation_human=(
                     f"{varga} {target_sign} virodha from {source_sign} "
                     f"(offset {offset}): score {virodha_score:.2f} "
                     f"({'virodha' if offset in VIRODHA_OFFSETS else 'no_virodha'}) ({ayanamsha_id})."
+                ),
+                provenance_text=(
+                    f"{ARGALA_CITATION_BLOCK} Score 1.0 when the obstructing-offset sign holds any graha, "
+                    "else 0.0. Sign-level and FORWARD-ONLY, and not paired to the argala offset it "
+                    "obstructs: the pairing, the counts, the outcome and the node reversal are in "
+                    "argala_graha_natal."
                 ),
             ))
 
@@ -4781,6 +4839,153 @@ def _build_argala_rows(
         )
         raise RuntimeError(f"Virodha count assertion failed: {virodha_count} != 144")
 
+    return rows
+
+
+# ── Group N2: graha-level argala (D1) ─────────────────────────────────────────
+
+def _argala_source_sign_num(ref_sign_num: int, offset: int, reverse: bool) -> int:
+    """1-based sign number `offset` places from `ref_sign_num` (the reference sign is offset 1).
+
+    Counted forward through the zodiac, or backward when `reverse` (AR-2: a node as the
+    reference counts argala and obstruction in reverse, `bphs_pg0311_c01`, `bphs_pg0312_c01`).
+    """
+    step = offset - 1
+    if reverse:
+        return (ref_sign_num - 1 - step) % 12 + 1
+    return (ref_sign_num - 1 + step) % 12 + 1
+
+
+def _argala_outcome(argala_count: int, obstructor_count: int) -> str:
+    """AR-1: outcome by count only. More causing grahas than obstructing grahas = argala_prevails,
+    fewer = obstructed, equal = undetermined. The text's other test ("the causing planet is
+    stronger") has no sourced strength measure here, so it is not applied and stays null."""
+    if argala_count > obstructor_count:
+        return ARGALA_OUTCOME_PREVAILS
+    if argala_count < obstructor_count:
+        return ARGALA_OUTCOME_OBSTRUCTED
+    return ARGALA_OUTCOME_UNDETERMINED
+
+
+def _argala_reading(
+    ref_sign_num: int,
+    reverse: bool,
+    occupants_by_sign_num: dict[int, list[str]],
+) -> list[dict[str, Any]]:
+    """The argala reading from ONE reference sign (pure; no I/O).
+
+    For each (argala offset, obstruction offset) pair of ARGALA_OBSTRUCTION_PAIRS, in pair
+    order: the grahas standing in the argala sign (a pair with none is not an argala and is
+    omitted), the grahas standing in the paired obstruction sign, both counts, and the
+    count-only outcome. Grahas are listed in ALL_GRAHAS order. Obstruction applies to every
+    argala, benefic or malefic (BPHS: an obstructed argala "will go astray").
+    """
+    order = {name: i for i, name in enumerate(ALL_GRAHAS)}
+
+    def _occ(sign_num: int) -> list[str]:
+        return sorted(occupants_by_sign_num.get(sign_num, []), key=lambda g: order.get(g, len(order)))
+
+    out: list[dict[str, Any]] = []
+    for argala_offset, obstruction_offset in ARGALA_OBSTRUCTION_PAIRS:
+        argala_sign = _argala_source_sign_num(ref_sign_num, argala_offset, reverse)
+        obstruction_sign = _argala_source_sign_num(ref_sign_num, obstruction_offset, reverse)
+        argala_grahas = _occ(argala_sign)
+        if not argala_grahas:
+            continue
+        obstructors = _occ(obstruction_sign)
+        out.append({
+            "argala_offset": argala_offset,
+            "obstruction_offset": obstruction_offset,
+            "argala_sign_num": argala_sign,
+            "obstruction_sign_num": obstruction_sign,
+            "argala_grahas": argala_grahas,
+            "argala_count": len(argala_grahas),
+            "obstructor_grahas": obstructors,
+            "obstructor_count": len(obstructors),
+            "outcome": _argala_outcome(len(argala_grahas), len(obstructors)),
+        })
+    return out
+
+
+def _build_argala_graha_rows(
+    varga_state: dict[str, Any],
+    varga: str,
+    chart_id: str, build_id: str, ayanamsha_id: str,
+    computed_at: str, eng_ver: str,
+) -> list[dict[str, Any]]:
+    """Graha-level argala (SS N-61, AR-1/AR-2/AR-6): one row per (target graha, source graha)
+    where the source stands in an argala sign of the target, D1 only.
+
+    The row carries the paired obstruction offset, the obstructing grahas, both counts, the
+    `count_direction` (reverse for a node as the target) and the count-only outcome. No row is
+    written for a pair outside the argala offsets or for an empty argala sign. Classification of a
+    graha as benefic or malefic is deliberately NOT stored (one L0 definition, read by L2).
+    """
+    if varga != "D1":
+        raise ValueError(f"argala_graha_natal is D1 only (AR-6); got varga={varga!r}")
+
+    occupants_by_sign: dict[int, list[str]] = {}
+    sign_of: dict[str, int] = {}
+    for g_name in ALL_GRAHAS:
+        gdata = varga_state.get(g_name)
+        if not gdata or not gdata.get("sign_num"):
+            continue
+        sign_of[g_name] = int(gdata["sign_num"])
+        occupants_by_sign.setdefault(sign_of[g_name], []).append(g_name)
+
+    rows: list[dict[str, Any]] = []
+    for target in ALL_GRAHAS:
+        if target not in sign_of:
+            continue
+        reverse = target in ARGALA_REVERSED_REFERENCES
+        direction = "reverse" if reverse else "forward"
+        t_code = PLANET_TO_SUBJECT.get(target, target.upper())
+        for reading in _argala_reading(sign_of[target], reverse, occupants_by_sign):
+            for source in reading["argala_grahas"]:
+                s_code = PLANET_TO_SUBJECT.get(source, source.upper())
+                offset = reading["argala_offset"]
+                rows.append(_base_row(
+                    "argala_graha_natal",
+                    f"{varga}_{t_code}",
+                    f"from_{s_code}_offset_{offset}",
+                    chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                    value_num=float(reading["argala_count"]),
+                    value_text=reading["outcome"],
+                    value_jsonb={
+                        "varga": varga,
+                        "ayanamsha_id": ayanamsha_id,
+                        "target_graha": target,
+                        "source_graha": source,
+                        "target_sign_num": sign_of[target],
+                        "argala_offset": offset,
+                        "obstruction_offset": reading["obstruction_offset"],
+                        "argala_sign_num": reading["argala_sign_num"],
+                        "obstruction_sign_num": reading["obstruction_sign_num"],
+                        "count_direction": direction,
+                        "argala_grahas": reading["argala_grahas"],
+                        "argala_count": reading["argala_count"],
+                        "obstructor_grahas": reading["obstructor_grahas"],
+                        "obstructor_count": reading["obstructor_count"],
+                        "outcome": reading["outcome"],
+                        "outcome_basis": "count_only",
+                        "strength_comparison": None,
+                        "offset_class": "basic" if offset in ARGALA_BASIC_OFFSETS else "extended",
+                        "pair_rule": "2-12,4-10,11-3,5-9",
+                    },
+                    unit="graha_count",
+                    verif=UNVERIFIED_DEFAULT,
+                    source=f"ga_structural_writer._build_argala_graha_rows/{eng_ver}",
+                    citation_human=(
+                        f"{varga} {target} argala from {source} (offset {offset}, {direction} count): "
+                        f"{reading['argala_count']} causing, {reading['obstructor_count']} obstructing at offset "
+                        f"{reading['obstruction_offset']}: {reading['outcome']} ({ayanamsha_id})."
+                    ),
+                    provenance_text=(
+                        f"{ARGALA_CITATION_BLOCK} Outcome by count only (argala count against obstructor "
+                        "count); the 'stronger' test has no sourced measure and is null. A node as the target "
+                        "counts argala and obstruction in reverse. Single derivation, no second pass."
+                    ),
+                ))
     return rows
 
 
@@ -4874,7 +5079,7 @@ _CF_INSERT_COLS = [
     "fact_value_text", "fact_value_num", "fact_value_jsonb",
     "unit", "citation_ref", "citation_human",
     "source_calculation", "verification_pass_status",
-    "engine_version", "computed_at",
+    "engine_version", "computed_at", "formula_provenance_text",
 ]
 
 _CF_INSERT_SQL = """
@@ -4884,8 +5089,8 @@ _CF_INSERT_SQL = """
        fact_value_text, fact_value_num, fact_value_jsonb,
        unit, citation_ref, citation_human,
        source_calculation, verification_pass_status,
-       engine_version, computed_at)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+       engine_version, computed_at, formula_provenance_text)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, build_id)
     WHERE formula_id IS NULL
     DO UPDATE SET
@@ -4897,7 +5102,8 @@ _CF_INSERT_SQL = """
       citation_human   = EXCLUDED.citation_human,
       verification_pass_status = EXCLUDED.verification_pass_status,
       engine_version   = EXCLUDED.engine_version,
-      computed_at      = EXCLUDED.computed_at
+      computed_at      = EXCLUDED.computed_at,
+      formula_provenance_text = EXCLUDED.formula_provenance_text
 """
 
 
@@ -6824,6 +7030,9 @@ def build_ga_structural(
             all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
             all_rows.extend(_build_varga_aspect_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_argala_graha_rows(
+                _extract_chart_state(chart_output), "D1", chart_id, build_id, canonical_id, computed_at, eng_ver
+            ))
             all_rows.extend(_build_special_point_relationship_rows(
                 ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver
             ))
@@ -7977,6 +8186,7 @@ STRUCTURAL_SUB_BUILDERS: list[tuple[str, Callable[..., list[dict[str, Any]]], st
     ("special_state", _build_special_state_rows, "top_level", None),
     ("esoteric", _build_esoteric_rows, "top_level", None),
     ("varga_aspect", _build_varga_aspect_rows, "top_level", None),
+    ("argala_graha", _build_argala_graha_rows, "top_level", None),
     ("special_point_relationship", _build_special_point_relationship_rows, "top_level", None),
     ("graha_yuddha", _build_graha_yuddha_rows, "top_level", None),
     ("combustion_retrograde_relationship", _build_combustion_retrograde_relationship_rows, "top_level", None),
@@ -8072,6 +8282,10 @@ def build_ga_structural_substep(
         "esoteric": lambda: _build_esoteric_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
         # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
         "varga_aspect": lambda: _build_varga_aspect_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        # graha-level argala (SS N-61): D1 only, from the same D1 state the sign matrix reads
+        "argala_graha": lambda: _build_argala_graha_rows(
+            d1_varga_state, "D1", chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+        ),
         "special_point_relationship": lambda: _build_special_point_relationship_rows(
             conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ),

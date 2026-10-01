@@ -876,9 +876,13 @@ class TestArgalaMatrices:
         )
         argala = [r for r in rows if r["fact_category"] == "argala_natal_matrix"]
         for r in argala:
-            # Must be atomic: value_num present, no large jsonb blob
-            assert r["fact_value_num"] is not None, \
-                f"Argala row {r['fact_subject']}:{r['fact_key']} has no numeric value"
+            # Must be atomic: a numeric value, OR (AR-3, SS N-61) a NULL with the 'no_occupant'
+            # marker when an argala-offset cell's source sign holds no graha; never a jsonb blob.
+            if r["fact_value_num"] is None:
+                assert r["fact_value_text"] == "no_occupant", \
+                    f"Argala row {r['fact_subject']}:{r['fact_key']} is NULL without no_occupant"
+            else:
+                assert r["fact_value_text"] is None
             assert r["fact_value_jsonb"] is None, \
                 f"Argala row should not use fact_value_jsonb (atomic)"
 
