@@ -1445,12 +1445,16 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
     eval_lambda = lambda t: evaluate(t)["lambda_raw"]  # noqa: E731
     tara_annotator = make_tara_annotator(class_ctx.natal_moon_deg, planet_pos_fn)
 
+    # Half-open horizon (ASTRA A2.5 A2): the exclusive end instant is NOT a
+    # series point — a peak or day row ON the excluded end date is outside
+    # the domain. A window's exit may still EQUAL the horizon limit (an
+    # exclusive interval endpoint legitimately equals it).
     breakpoints = sorted({b for c in contacts
                           for b in (c["_t_in_jd"], c["_t_exact_jd"], c["_t_out_jd"])
-                          if b is not None and horizon_jd[0] <= b <= horizon_jd[1]})
+                          if b is not None and horizon_jd[0] <= b < horizon_jd[1]})
     grid = []
     t = horizon_jd[0]
-    while t <= horizon_jd[1]:
+    while t < horizon_jd[1]:
         grid.append(t)
         t += coarse_step_days
     series = sorted(set(grid) | set(breakpoints))

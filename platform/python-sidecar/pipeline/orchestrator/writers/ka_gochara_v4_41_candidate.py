@@ -51,11 +51,16 @@ SUBSTEP DECOMPOSITION (honest, idempotent per sub-span):
                        scoped (chart × '4.1') — the whole windows projection
                        is this substep's sub-span. Re-running replaces the
                        '4.1' window set wholesale and re-stamps the manifest
-                       count. A horizon validator runs BEFORE any DML: any
-                       projected row with window_start < 1998-01-01 or
-                       window_end > 2026-04-18 refuses the substep (the
-                       projection is constructed inside the horizon, so this
-                       is a fail-closed backstop, never a clamp).
+                       count. A horizon validator runs BEFORE any DML: the
+                       horizon is HALF-OPEN [1998-01-01, 2026-04-18) — a row
+                       starting on the excluded end date, ending past it, or
+                       carrying an out-of-domain peak_date refuses the
+                       substep (fail-closed backstop, never a clamp). The
+                       enumerator is half-open and exact at the boundary
+                       (episodes.py), the projection never samples the
+                       excluded end instant (step06b), and the body substep
+                       re-validates every enumerated contact's instants
+                       BEFORE contact DML (_validate_episodes_within_horizon).
 
 CANDIDATE-ONLY GUARANTEE (steward condition 4) — three independent layers,
 none weakened by this writer:
@@ -159,6 +164,26 @@ ledger = _load_module(
 
 DEFAULT_EPHE_PATH = str(SIDECAR.parent.parent / ".run" / "se1")
 
+
+def resolve_ephe_path(ctx: ContextSpec) -> str:
+    """ASTRA A2.5 A5: ephemeris files from the pipeline image's SUPPORTED
+    configuration. Resolution order:
+      1. ctx.config["ephe_path"]   — explicit per-run override;
+      2. $SWE_EPHE_PATH            — the image's own setting (Dockerfile
+         .pipeline installs the files under /app/ephe and sets this);
+      3. the dev-checkout default (.run/se1).
+    The previous code took only (1) and silently fell through to (3), which
+    resolves to a non-existent /app/.run/se1 in the image — the Swiss
+    backend then answered a non-SWIEPH backend at knot sampling."""
+    configured = ctx.config.get("ephe_path")
+    if configured:
+        return configured
+    import os
+    env_path = os.environ.get("SWE_EPHE_PATH")
+    if env_path:
+        return env_path
+    return DEFAULT_EPHE_PATH
+
 MANIFEST_SUBSTEP = "manifest"
 WINDOWS_SUBSTEP = "windows"
 BODY_SUBSTEP_PREFIX = "body:"
@@ -193,20 +218,69 @@ def _require_pinned_chart(chart_id) -> None:
 
 
 def _validate_windows_within_horizon(rows: list[dict]) -> None:
-    """Refuse any projected row outside [1998-01-01, 2026-04-18].
+    """Refuse any projected row outside [1998-01-01, 2026-04-18) — HALF-OPEN
+    (ASTRA A2.5 A2).
+
+    Rules (a violation is a defect in the chain, not data to trim — raise,
+    never clamp):
+      * window_start < 1998-01-01            — before the domain;
+      * window_start >= 2026-04-18           — a window STARTING on the
+        excluded end date is outside the domain (the day row the reviewer
+        produced through the real projection);
+      * window_end   >  2026-04-18           — past the domain (an exclusive
+        interval endpoint may legitimately EQUAL the limit);
+      * peak_date outside [window_start, window_end], before the domain, or
+        ON/AFTER the excluded end date       — a peak on 2026-04-18 is
+        outside the half-open horizon.
 
     Passed to step06b's project_windows_core as row_validator, so it runs
-    after projection and BEFORE write_windows issues a single DML statement.
-    A violation is a defect in the chain, not data to trim — raise, never
-    clamp."""
+    after projection and BEFORE write_windows issues a single DML statement."""
     for r in rows:
         ws, we = r["window_start"], r["window_end"]
-        if ws < HORIZON_MIN_DATE or we > HORIZON_MAX_DATE:
+        if ws < HORIZON_MIN_DATE or ws >= HORIZON_MAX_DATE or we > HORIZON_MAX_DATE:
             raise HorizonViolation(
                 f"{ASSET_ID}: projected {r['event_class']} {r.get('resolution')} "
                 f"row [{ws}, {we}] escapes the pinned '4.1' horizon "
-                f"[{HORIZON_MIN_DATE}, {HORIZON_MAX_DATE}] — refusing the "
+                f"[{HORIZON_MIN_DATE}, {HORIZON_MAX_DATE}) — refusing the "
                 "substep before any DML (fail-closed, never clamped)")
+        peak = r.get("peak_date")
+        if peak is not None and (peak < HORIZON_MIN_DATE
+                                 or peak >= HORIZON_MAX_DATE
+                                 or peak < ws or peak > we):
+            raise HorizonViolation(
+                f"{ASSET_ID}: projected {r['event_class']} {r.get('resolution')} "
+                f"row [{ws}, {we}] carries peak_date {peak} outside the "
+                f"half-open horizon or its own span — refusing the substep "
+                "before any DML (fail-closed, never clamped)")
+
+
+def _validate_episodes_within_horizon(episodes: list[dict]) -> None:
+    """Contact-side backstop (ASTRA A2.5 A2): every enumerated episode's
+    instants honour the half-open horizon BEFORE write_contacts. t_in is
+    clipped to the start at truncation (>= start); t_out may EQUAL the
+    exclusive end; t_exact, when present, must lie strictly inside
+    [start, end). Runs after enumeration and BEFORE any contact DML."""
+    h_start = datetime.fromisoformat(HORIZON_START)
+    h_end = datetime.fromisoformat(HORIZON_END)
+    for ep in episodes:
+        t_in, t_exact, t_out = ep.get("t_in"), ep.get("t_exact"), ep.get("t_out")
+        if t_in is not None and not (h_start <= t_in <= h_end):
+            raise HorizonViolation(
+                f"{ASSET_ID}: enumerated contact t_in {t_in.isoformat()} "
+                "outside the pinned horizon — refusing before contact DML "
+                "(fail-closed, never clamped)")
+        if t_out is not None and not (h_start <= t_out <= h_end):
+            raise HorizonViolation(
+                f"{ASSET_ID}: enumerated contact t_out {t_out.isoformat()} "
+                "outside the pinned horizon — refusing before contact DML "
+                "(fail-closed, never clamped)")
+        if t_exact is not None and not (h_start <= t_exact < h_end):
+            raise HorizonViolation(
+                f"{ASSET_ID}: enumerated contact t_exact "
+                f"{t_exact.isoformat()} violates the half-open horizon "
+                f"[{HORIZON_START},{HORIZON_END}) — an exact instant on the "
+                "excluded end belongs to the next domain; refusing before "
+                "contact DML (fail-closed, never clamped)")
 
 
 @register(ASSET_ID)
@@ -258,7 +332,7 @@ class GocharaV41CandidateWriter(WriterBase):
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
                 notes=f"dry_run: {step.key} not executed, nothing written")
-        ephe_path = ctx.config.get("ephe_path", DEFAULT_EPHE_PATH)
+        ephe_path = resolve_ephe_path(ctx)
         if step.key == MANIFEST_SUBSTEP:
             return self._run_manifest(ctx, chart_id)
         if step.key == WINDOWS_SUBSTEP:
@@ -348,6 +422,7 @@ class GocharaV41CandidateWriter(WriterBase):
             h_start=h_start, h_end=h_end, horizon_text=HORIZON_TEXT,
             orb_deg=ORB_DEG, ephe_path=ephe_path, refine=True,
             bodies=[body], dropped_refs_path=None)
+        _validate_episodes_within_horizon(episodes)
         build_id = f"a25-v41-{ctx.build_id}-{body.lower()}"
         convention_id = report["convention_id"]
         ids = ledger.write_contacts(

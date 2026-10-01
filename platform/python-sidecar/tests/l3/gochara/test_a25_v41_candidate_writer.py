@@ -900,3 +900,157 @@ def test_cli_published_refusal_exit6_baseline_vs_refactored(tmp_path,
     assert results["baseline"][0] == 6, results
     assert "REFUSED" in results["baseline"][1]
     assert results["current"] == results["baseline"], results
+
+
+# ── ASTRA v1.0 PUSH 2: A2 (half-open horizon), A5 (ephemeris resolution) ──────
+
+
+def test_validator_refuses_a_day_row_on_the_excluded_end_date():
+    """A2: the reviewer produced day [2026-04-18, 2026-04-18] through the real
+    projection and the old validator ACCEPTED it."""
+    row = {"event_class": "marriage", "resolution": "day",
+           "window_start": date(2026, 4, 18), "window_end": date(2026, 4, 18),
+           "peak_date": date(2026, 4, 18)}
+    with pytest.raises(writer_mod.HorizonViolation):
+        writer_mod._validate_windows_within_horizon([row])
+
+
+def test_validator_refuses_a_peak_on_the_excluded_end_date():
+    row = {"event_class": "marriage", "resolution": "era",
+           "window_start": date(2026, 4, 8), "window_end": date(2026, 4, 18),
+           "peak_date": date(2026, 4, 18)}
+    with pytest.raises(writer_mod.HorizonViolation):
+        writer_mod._validate_windows_within_horizon([row])
+
+
+def test_validator_admits_a_window_ending_exactly_at_the_limit():
+    """An exclusive interval endpoint legitimately EQUALS the horizon limit."""
+    row = {"event_class": "marriage", "resolution": "era",
+           "window_start": date(2026, 4, 8), "window_end": date(2026, 4, 18),
+           "peak_date": date(2026, 4, 17)}
+    writer_mod._validate_windows_within_horizon([row])
+
+
+def test_validator_refuses_a_peak_outside_its_own_span():
+    row = {"event_class": "marriage", "resolution": "month",
+           "window_start": date(2026, 4, 1), "window_end": date(2026, 4, 17),
+           "peak_date": date(2026, 3, 30)}
+    with pytest.raises(writer_mod.HorizonViolation):
+        writer_mod._validate_windows_within_horizon([row])
+
+
+def test_episode_backstop_half_open():
+    """A2: contact-side validation BEFORE contact DML."""
+    h0 = datetime.fromisoformat(writer_mod.HORIZON_START)
+    h1 = datetime.fromisoformat(writer_mod.HORIZON_END)
+    ok = {"t_in": h0, "t_exact": h0, "t_out": h1}     # exact at start; end==limit
+    writer_mod._validate_episodes_within_horizon([ok])
+    truncated = {"t_in": h0, "t_exact": None, "t_out": h1}  # N3 truncated span
+    writer_mod._validate_episodes_within_horizon([truncated])
+    from datetime import timedelta
+    early = {"t_in": h0, "t_exact": h0 - timedelta(microseconds=40),
+             "t_out": h0 + timedelta(days=1)}
+    with pytest.raises(writer_mod.HorizonViolation):
+        writer_mod._validate_episodes_within_horizon([early])
+    at_end = {"t_in": h1 - timedelta(days=1), "t_exact": h1, "t_out": h1}
+    with pytest.raises(writer_mod.HorizonViolation):
+        writer_mod._validate_episodes_within_horizon([at_end])
+
+
+def _jd(y, m, d):
+    import swisseph as swe
+    return swe.julday(y, m, d, 0.0)
+
+
+def _linear_index(body, jd0, jd1, slope_deg_per_day, offset_deg=0.0):
+    """Daily-knot linear curve — spline-exact crossings with refine=False."""
+    from services.gochara_kernel import arcs as gk_arcs
+    jds, lons = [], []
+    d = jd0
+    while d <= jd1:
+        jds.append(d)
+        lons.append((offset_deg + (d - jd0) * slope_deg_per_day) % 360.0)
+        d += 1.0
+    return gk_arcs.build_arc_index(body, jds, lons, tolerance_arcsec=0.5)
+
+
+def test_boundary_membership_is_half_open_and_exact():
+    """A2 (root cause): solve_boundary_episodes keeps a crossing exactly AT
+    the horizon start, drops one ~40µs before it, and drops one exactly AT
+    the excluded end."""
+    from services.gochara_kernel import episodes as gk_episodes
+    h0, h1 = _jd(2020, 1, 1), _jd(2021, 1, 1)
+
+    # slope 30°/day with a 0° crossing exactly at h0: crossings daily
+    # thereafter; h1 = h0 + 366d (2020 is a leap year) → (366*30)%360 = 30°
+    # crossing exactly at h1.
+    index = _linear_index("Sun", h0 - 10, h1 + 10, 30.0)
+    eps = gk_episodes.solve_boundary_episodes(
+        index, "Sun", "sign_ingress", (h0, h1), refine=False)
+    instants = [e.t_exact for e in eps]
+    assert h0 in instants                      # start-inclusive (R2Q3)
+    assert h1 not in instants                  # excluded end
+    assert all(h0 <= t < h1 for t in instants)
+    assert (h0 - 1.0) not in instants          # before the domain
+
+    # a crossing 40µs before h0 must NOT be retained (the old 1e-9d slack
+    # admitted it)
+    eps_days = 40e-6 / 86400.0
+    index2 = _linear_index("Sun", h0 - 10, h1 + 10, 30.0,
+                           offset_deg=(-( - eps_days) * 30.0) % 360.0)
+    # curve: λ(h0 - eps) = 0 (a crossing 40µs before h0)
+    index2 = None
+    jd0 = h0 - eps_days
+    from services.gochara_kernel import arcs as gk_arcs
+    jds, lons = [], []
+    d = h0 - 10
+    while d <= h1 + 10:
+        jds.append(d)
+        lons.append(((d - jd0) * 30.0) % 360.0)
+        d += 1.0
+    index2 = gk_arcs.build_arc_index("Sun", jds, lons, tolerance_arcsec=0.5)
+    eps2 = gk_episodes.solve_boundary_episodes(
+        index2, "Sun", "sign_ingress", (h0, h1), refine=False)
+    instants2 = [e.t_exact for e in eps2]
+    assert all(h0 <= t < h1 for t in instants2)
+    assert (h0 - eps_days) not in instants2
+
+
+def test_projection_series_never_samples_the_excluded_end():
+    """A2 production side: the projection's series excludes horizon_jd[1]."""
+    mod = writer_mod.step06b_windows
+    src = inspect.getsource(mod.project_class_windows)
+    assert "horizon_jd[0] <= b < horizon_jd[1]" in src
+    assert "while t < horizon_jd[1]:" in src
+    assert "<= horizon_jd[1]" not in src
+
+
+def test_resolve_ephe_path_order(monkeypatch):
+    """A5: explicit config > the image's SWE_EPHE_PATH > the dev default."""
+    import os
+    conn = FakeConn()
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="t",
+                      db_conn=conn,
+                      config={"chart_id": CHART_ID, "ephe_path": "/explicit"})
+    assert writer_mod.resolve_ephe_path(ctx) == "/explicit"
+    ctx2 = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="t",
+                       db_conn=conn, config={"chart_id": CHART_ID})
+    monkeypatch.setenv("SWE_EPHE_PATH", "/app/ephe")
+    assert writer_mod.resolve_ephe_path(ctx2) == "/app/ephe"
+    monkeypatch.delenv("SWE_EPHE_PATH")
+    assert writer_mod.resolve_ephe_path(ctx2) == writer_mod.DEFAULT_EPHE_PATH
+
+
+def test_swieph_backend_through_the_resolved_path():
+    """A5: the resolved ephemeris path feeds the kernel's own sampler, which
+    asserts the SWIEPH backend from the returned retflag on EVERY calc
+    (F-14 — a Moshier fallback raises EphemerisBackendError). Runs against
+    the checksum-pinned local .se1 set; the image gets the same check with
+    SWE_EPHE_PATH=/app/ephe at dispatch."""
+    from tests.l3.gochara import conftest as _c
+    if _c._PROBLEMS:
+        pytest.skip(f"NOT_RUN: .se1 ephemeris files: {_c._PROBLEMS}")
+    from services.gochara_kernel.knots import sample_knots
+    ks = sample_knots("Sun", date(2020, 1, 1), date(2020, 2, 1), _c.EPHE_PATH)
+    assert ks.ephemeris_backend["backend"] == "swieph"
+    assert len(ks.knot_jds) > 0

@@ -383,7 +383,12 @@ def build_episodes(
                     open_end=k == len(inside) - 1 and i1 >= data_end - 1e-9,
                 )
                 h0, h1 = horizon
-                exact_inside = h0 - 1e-9 <= root.exact_jd <= h1 + 1e-9
+                # Half-open [h0, h1) — EXACT (ASTRA A2.5 A2): the 1e-9 slack
+                # admitted genuinely out-of-domain instants (a root ~40µs
+                # before h0, or exactly at the excluded h1, was retained).
+                # A root on the excluded end belongs to the NEXT domain; the
+                # overlapping span stays, clipped, with t_exact=None (N3).
+                exact_inside = h0 <= root.exact_jd < h1
                 dwell_base = prev_t_out if prev_t_out is not None else ci0
                 episodes.append(
                     Episode(
@@ -447,11 +452,15 @@ def solve_boundary_episodes(
     roots: list[ContactRoot] | None = None,
 ) -> list[Episode]:
     """Boundary-exact ingress episodes (WP1 §7 orb_ingress): t_in = t_exact =
-    t_out at the grid edge, no orb, never dropped at the horizon edge when the
-    root falls inside it (closed interval — Codex v1.1 amendment 3 / R2Q3:
-    "the domain start at 0 is a real crossing", so a root exactly AT the
-    horizon start is INCLUDED; the 1e-9 slack absorbs float noise at either
-    edge).
+    t_out at the grid edge, no orb. Horizon membership is HALF-OPEN and EXACT
+    — `h0 <= exact_jd < h1` (ASTRA A2.5 A2): a root exactly AT the horizon
+    start is a real crossing and is INCLUDED (Codex v1.1 amendment 3 / R2Q3:
+    "the domain start at 0 is a real crossing"); a root exactly AT the
+    horizon end belongs to the NEXT domain and is EXCLUDED. The former 1e-9
+    slack admitted genuinely out-of-domain instants (a root ~40µs before h0,
+    or exactly at the excluded h1) — removed; the horizon bounds are exact JD
+    values and the solver tolerance is disclosed on the row, never absorbed
+    into membership.
 
     `roots` (optional): pre-solved boundary roots for (body, relation) — the
     caller's per-body global boundary table (R5). When supplied, no solving
@@ -467,7 +476,7 @@ def solve_boundary_episodes(
     h0, h1 = horizon
     episodes: list[Episode] = []
     for root in roots:
-        if not (h0 - 1e-9 <= root.exact_jd <= h1 + 1e-9):
+        if not (h0 <= root.exact_jd < h1):  # half-open, exact (ASTRA A2.5 A2)
             continue
         branch, station_flag, unresolved = classify_branch(index, root)
         episodes.append(
