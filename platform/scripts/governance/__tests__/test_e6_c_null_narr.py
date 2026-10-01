@@ -1045,3 +1045,100 @@ def test_update_only_a_tuple_assignment_without_self_reference_is_not_accumulati
 def test_update_only_self_referencing_concat_is_named_with_the_type_unread_slug(monkeypatch, tmp_path):
     v, n = _upd(monkeypatch, tmp_path, "UPDATE t_s SET tags = tags || %s WHERE chart_id = %s")
     assert v == ac.PARTIAL and "update-only:self-referencing-concat-type-unread" in n[0], (v, n)
+
+
+# ───────────────────────── review round: mutation gaps ─────────────────────────
+
+def test_every_comparison_in_the_row_count_sql_is_case_insensitive_and_string_typed():
+    sql = ac.prose_row_counts_sql("t", ["a", "n.$.k", "d.$.i[*].r"], "")
+    assert sql.count("lower(btrim(") == sql.count("btrim(") >= 6
+    assert sql.count("jsonb_typeof(x) = 'string'") == 2          # the wildcard form, checkable and blank
+
+
+def test_a_terminal_array_wildcard_entry_builds_the_jsonpath_and_the_fidelity_leaf():
+    sql = ac.prose_row_counts_sql("t", ["d.$.items[*]"], "")
+    assert "'$.\"items\"[*]'" in sql, sql
+    r = ac.narr_fidelity_scan(["d.$.items[*]"], CITE, _tests(test_a=_H + "def test_a():\n    assert build_narration(1)['items']\n"))
+    assert r["covered"] == ["d.$.items[*]"], r
+
+
+@pytest.mark.parametrize("tail", ["UNION VALUES (1)", "LIMIT 1", "ORDER BY id", "GROUP BY id", "HAVING 1 = 1",
+                                  "INTERSECT VALUES (1)", "EXCEPT VALUES (1)", "; DROP TABLE x"])
+def test_scope_tail_refuses_every_banned_keyword(tail):
+    assert ac._count_scope_tail(f"SELECT count(*) FROM t WHERE a = 1 {tail}", "t") is None
+
+
+def test_a_plain_entry_on_the_same_column_as_a_json_path_entry_keeps_the_empty_json_default_a_fail():
+    assert ac.grade_null_schema_default(["n", "n.$.k"], ["n"], {"n": "'{}'::jsonb"})["v"] == ac.FAIL
+    assert ac.grade_null_schema_default(["n.$.k", "n.$.j"], ["n"], {"n": "'{}'::jsonb"})["v"] == ac.PARTIAL
+
+
+def test_update_only_any_keyed_predicate_form_is_named_keyed(monkeypatch, tmp_path):
+    v, n = _upd(monkeypatch, tmp_path, "UPDATE t_s SET v = %s WHERE signal_id = ANY(%s)")
+    assert v == ac.PARTIAL and "update-only:keyed-row-set-unproven" in n[0], (v, n)
+
+
+def test_python_tests_reads_only_test_files_under_tests_or_dunder_tests(tmp_path):
+    for rel in ("tests/test_a.py", "x/__tests__/test_b.py", "other/test_c.py", "tests/helper.py", "src/test_d.py"):
+        f = tmp_path / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text("x = 1\n")
+    assert sorted(p.name for p, _ in ac.python_tests(tmp_path)) == ["test_a.py", "test_b.py"]
+
+
+def test_written_columns_strips_identifier_quotes(monkeypatch, tmp_path):
+    units = _writer_units(monkeypatch, tmp_path, '''
+@register("bo_p")
+class P(WriterBase):
+    def run(self, ctx):
+        ctx.db_conn.execute('INSERT INTO public."t_own" ("citation_human", "score") VALUES (%s, %s)', (1, 2))
+        ctx.db_conn.execute('UPDATE "t_own" SET "valence" = %s WHERE id = %s', (1, 2))
+''')
+    assert ac.written_columns(units, {"t_own"}) == {"t_own": {"citation_human", "score", "valence"}}
+
+
+def test_written_columns_is_none_when_a_write_has_no_column_list_or_an_unresolved_name(monkeypatch, tmp_path):
+    units = _writer_units(monkeypatch, tmp_path, '''
+@register("bo_p")
+class P(WriterBase):
+    def run(self, ctx):
+        ctx.db_conn.execute("INSERT INTO t_own SELECT * FROM t_src")
+''')
+    assert ac.written_columns(units, {"t_own"}) is None
+
+
+def test_a_failing_types_and_defaults_read_leaves_the_columns_and_the_layer_intact(monkeypatch):
+    def psql(sql, sep="\x1f", timeout=None):
+        if "information_schema.tables" in sql:
+            return [["t"]]
+        if "column_default" in sql:
+            raise ac.Unknown("denied")
+        if "information_schema.columns" in sql:
+            return [["t", "a"]]
+        return []
+    monkeypatch.setattr(ac, "psql", psql)
+    cat = ac.catalog(["t"])
+    assert cat["cols"] == {"t": ["a"]} and cat["types"] is None and cat["defaults"] is None
+
+
+def test_measure_asks_the_catalog_for_the_count_sql_tables_too(monkeypatch, tmp_path):
+    reg = {"bg_a": w1._reg_row("bg_a", "t_one", count_sql="SELECT count(*) FROM t_one WHERE chart_id = $1")}
+    w1._stub_layer(monkeypatch, tmp_path, reg, tables={"t_one": (["a"], [])})
+    asked = []
+    monkeypatch.setattr(ac, "catalog", lambda ts: asked.append(list(ts)) or dict(exists={"t_one"}, cols={"t_one": ["a"]}, keys={}))
+    monkeypatch.setattr(ac, "psql", w1._pg_like_psql({"t_one": 3}))
+    monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: {})
+    ac.measure("L0")
+    assert asked and {"t_one"} <= set(asked[0]) and asked[0].count("t_one") == 2, asked      # target + count_sql table
+
+
+def test_a_prose_helper_that_raises_degrades_only_the_six_checks_in_measure(monkeypatch, tmp_path):
+    reg = {"bg_a": w1._reg_row("bg_a", "t_one", count_sql="SELECT count(*) FROM t_one")}
+    w1._stub_layer(monkeypatch, tmp_path, reg, tables={"t_one": (["a"], [])})
+    monkeypatch.setattr(ac, "psql", w1._pg_like_psql({"t_one": 3}))
+    monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: {"bg_a": _decl(["a"])})
+    monkeypatch.setattr(ac, "python_tests", lambda *a, **k: (_ for _ in ()).throw(ac.Unknown("tests unreadable")))
+    c = ac.measure("L0")
+    assert w1._m(c, "bg_a", "Build.target")["v"] == ac.PASS
+    for crit in NARR + NULL:
+        assert w1._m(c, "bg_a", crit)["v"] == ac.ERRORED, crit
