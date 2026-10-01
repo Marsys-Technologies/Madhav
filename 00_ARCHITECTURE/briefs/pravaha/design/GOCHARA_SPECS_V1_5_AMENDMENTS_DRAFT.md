@@ -605,8 +605,10 @@ conservative one and the residual trust boundary is named (§"What SQL enforces"
 > `ka_gochara_search_inventory_verification (chart_id, generation,
 > event_class, verifier_id, verifier_version, rederived_inventory_digest)`.
 > All: chart-context statement trigger (`ka_gochara_substrate_chart_lock`,
-> 1153:560–578); UPDATE refused; DELETE refused once the generation is sealed
-> and otherwise only as the candidate replacement of AM-3; TRUNCATE refused.
+> 1153:560–578); UPDATE refused (**the inventory header's one-shot finalisation excepted**:
+> its digests are NULL until a single UPDATE that must equal the recomputation, after which the
+> class is immutable); DELETE refused once the generation is sealed and otherwise only as the
+> candidate replacement of AM-3; TRUNCATE refused.
 >
 > **`inventory_digest` preimage (pinned; sorted within sections, `\n`-joined):**
 > `convention=<id>` · `horizon=[<lo>,<hi>)` (UTC, `Z`) · `input=<input_digest>` ·
@@ -819,13 +821,28 @@ never-inserted obligation with no consumer). *1153 seal:* the applied guard and
 the replay branch, cannot break the function's `ON CONFLICT DO NOTHING` replay.
 Nothing in 1153–1157 is edited.
 
-**Schema impact:** ONE new additive migration — six tables, four functions
-(`…_violations`, `…_inventories_digest`, the snapshot-digest/seal-trigger
-functions) and one trigger on an existing table. It touches no live CHECK but
-**does** need the protected schema-capability route (no `CREATE` on `public`
-for the ordinary role: `deploy.yml:953–962`, `jataka-schema-capability.ts:54–67`);
-exact wiring is F-1. **Migration acceptance tests (required):** the C1–C17
-rows against a disposable database, plus the four-step seal-replay sequence.
+**Schema impact:** ONE new additive migration — six tables, 17 functions (identity/digest
+helpers, the write guard, the two violation functions, the seal-trigger function) and one trigger
+on an existing table. It touches no live CHECK but **does** need the protected schema-capability
+route (no `CREATE` on `public` for the ordinary role: `deploy.yml:953–962`,
+`jataka-schema-capability.ts:54–67`); exact wiring is F-1.
+
+**Implementation record (F-1) — migration `1206_gochara_search_inventory_completeness.sql`,
+HOLD, same protected window as 1204.** Written as new files only (1153–1157 untouched; a live-DB
+test fingerprints every pre-existing `ka_gochara*` function, constraint and trigger before/after
+and asserts none changed). Deviations from this draft's earlier wording, now folded above and
+disclosed in the migration header: (1) the header's finalisation UPDATE (above); (2) every
+timestamp in a digest preimage is whole-second UTC `…Z` and sub-second bounds are refused by CHECK
+(the preimage would otherwise collide); (3) canonical JSON = sorted keys (codepoint order), no
+spaces, UTF-8 not escaped; (4) `path_id`/`rule_version` appear **lowercased** in preimages and
+obligation bytes while the pin keeps the registry's own case for its FK; (5) the migration grants
+`data_plane_builder` SELECT on `ka_gochara_generation_seal` and `ka_gochara_av_polarity_declaration`
+(1216 deferred both; the new guards read them as the invoking role); (6) the replay branch's
+`manifest_id` equality check is defence in depth — the applied 1153 guard refuses a different
+manifest first, so it is not independently reachable. Evidence: a 20-case live suite on a
+disposable PG 17 runs the adversarial matrix as real INSERT/finalise/seal attempts (C1–C16, M1–M6,
+the full seal lifecycle) and reproduces the Python-model vectors byte-for-byte; **18 mutations of
+the migration (each guard neutered in turn) are each caught by at least one test**.
 
 ---
 
@@ -1106,7 +1123,7 @@ count(*), min(start_iso), max(end_iso) FROM chart_dashas WHERE chart_id =
 | AM-2 | UUIDv8 + O-RX-1a; SQL-valid `span:`/`star:`/`point:` bytes; enrichment-vs-correction per 1153; UUID + post-mask vectors | §6.1 | no | no |
 | AM-3 | Two transaction categories; chart lock BEFORE legacy coverage writes | §10.1 | no | no |
 | AM-4 | Moon/day EPHEMERAL; query receipt storage/identity/manifest exclusion; P6-context deferral | §6.2/§10.1 | no | no |
-| AM-5 | `partition_key=event_class` + **search-input snapshot, committed obligation sets (absent ≠ proven-empty), interval ledger, independent verification, seal trigger with replay branch**, manifest binding, lock protocol, serving states | §10.1 | **yes — one additive migration (6 tables, 4 functions, 1 trigger); protected schema-capability route (F-1)** | no |
+| AM-5 | `partition_key=event_class` + **search-input snapshot, committed obligation sets (absent ≠ proven-empty), interval ledger, independent verification, seal trigger with replay branch**, manifest binding, lock protocol, serving states | §10.1 | **yes — migration 1206 (6 tables, 17 functions, 1 trigger); protected schema-capability route (F-1)** | no |
 | AM-6 | `sad_bala_sufficient` v1.0; `null_state='unqualified'`; score-qualification ≠ admission | factor catalogue | no | picked: C |
 | AM-7 | `'av_qualifier'` + P5 contract completed (identity/applicability/lineage/read-back) | relationship_record | 1204 (kept), protected window | no |
 | AM-8 | P6 testimony template; five frame kinds; future designed migration | new (template) | 1205 SPLIT OUT | no |
@@ -1121,7 +1138,7 @@ F-3→F-1, (new)→F-2, F-4→F-3, F-5→F-4, F-6→F-5, F-7→F-6. Owner **A** 
 
 | ID | Codex rank | Required completion | Owner | Blocks |
 |---|---:|---|---|---|
-| F-1 | 1 | Additive storage + seal checks for AM-5 (6 tables, 4 functions, seal trigger, replay branch) as new migration file(s) with protected-runner wiring in the SAME window as 1204; database adversaries on a disposable PG: wrong manifest, post-seal mutation rejection, full replay lifecycle (initial seal → identical replay → registry advance → replay again) | **B** drafts the migration + DB tests (per steward M20261001T201843-f8e5), **S** schedules the protected window | inventory migration acceptance |
+| F-1 | 1 | Additive storage + seal checks for AM-5 (6 tables, 17 functions, seal trigger, replay branch) as new migration file(s) with protected-runner wiring in the SAME window as 1204; database adversaries on a disposable PG: wrong manifest, post-seal mutation rejection, full replay lifecycle (initial seal → identical replay → registry advance → replay again). **IMPLEMENTED as migration 1206 + 20-case live suite + static test, PR HOLD (not yet reviewed); see §AM-5 implementation record** | **B** wrote the migration + DB tests (steward M20261001T201843-f8e5), **S** schedules the protected window | inventory migration acceptance |
 | F-2 | 2 | Bind exclusion `basis` / `ruling_ref` into the verified inventory preimage; mutation tests; revised digest vectors. **Spec text, vectors and model mutation cases M1–M6 CLOSED in v0.6 (not yet reviewed)**; remaining: the same mutations as real INSERT/seal attempts in F-1's database suite | **B** | AM-5 verification acceptance |
 | F-3 | 3 | Canonical bytes and storage-domain mapping (the synthetic `self` token vs stored `affected_person='native'`; period-lord role tokens → concrete grahas via the pinned dasha snapshot; frame args, target bytes, timestamp precision, delimiters); full-precision formatter / quantization question; declared class census (an absent class reports `not_searched`); registry-version selection (historical/superseded versions neither vanish nor double-count); candidate replacement/invalidation across verification rows, manifest bindings and derived outputs; qualified-geometry planning and O-RW-1 invalidation; retain O-RX-1a | **B** (bytes/spec) + **A** (identity builder, writer) | A5.5 identity and writer gate |
 | F-4 | 4 | Typed rūpa/bindu operand storage; declaration-key bytes and L1 build/convention identity; P5a/P5b path ids and applicability storage; `null_state` on the versioned `ka_gochara_factor` row (1154:310–334), **not** the membership (draft text at AM-6 still says membership — one-line correction owed); edition/translator for Phaladīpikā IV.22–23 | **B** (AM-6/AM-7 text) + **A** (storage) | AM-6/AM-7 writer acceptance |
