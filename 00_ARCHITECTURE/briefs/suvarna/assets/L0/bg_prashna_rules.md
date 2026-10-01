@@ -1,5 +1,5 @@
 ---
-asset_id: bg_ghatana
+asset_id: bg_prashna_rules
 layer: L0 Brahmagyan (bg_*)
 artifact: ASSET_ELEVATION_BRIEF
 version: "1.0-provisional"
@@ -13,28 +13,28 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
-ledger_gap_ids: [bg_ghatana-Idem.pattern, bg_ghatana-Earn.build_record, bg_ghatana-Cost.baseline, bg_ghatana-Carr.detector]
+ledger_gap_ids: [bg_prashna_rules-Idem.pattern, bg_prashna_rules-Earn.build_record, bg_prashna_rules-Cost.baseline, bg_prashna_rules-Carr.detector]
 ---
-# bg_ghatana — Life-event and electional-activity ontology (27 + 12 classes)
+# bg_prashna_rules — Praśna (horary) rule tables (5 tables, 41 rows; multi-table, no single target)
 
 > **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
 
 ## 0 · Identity — what the asset is
 
-Registry description: 'Global life-event + electional-activity ontology — 27 life-event classes (`brahma_event_ontology`) and 12 electional activity classes (`brahma_activity_ontology`), including DR-13 temporal-shape and evidence fields'. ON CONFLICT upserts at `platform/python-sidecar/brahmagyan/l0_ghatana.py:878,923`; 39 rows. `data_disposition = RETAINED_AS_CAPITAL`. This is the L0 vocabulary the life-event switch rests on (T2 §9.2 ON row names 'L0 event vocabulary'): neither table carries a per-subject column. Widely read: declared dependents `bg_class_lifetime_counts`, `ka_avadhi`, `ka_taranga`, `ka_yojaka`, `mi_jivanaghatana`, `mi_pramana` (census direct 6 / transitive 33); modules in L4, L5 and platform-mcp read it. The saved reach record shows 13 of 19 built columns not selected by any module (`adjacency`, `base_rate_by_age`, `citations`, `duration_prior`, `kill_switch_criteria`, `matching_rules`, `signature_model` …): information, not a blocker.
+Static horary rules: Praśna lagna methods, Tājika yogas, significators, fructification rules, special techniques (`bg_prashna_lagna_methods`, `bg_prashna_tajik_yogas`, `bg_prashna_significators`, `bg_prashna_fructification_rules`, `bg_prashna_special_techniques`; 41 rows summed by count_sql). The registry has `target_table = NULL` because the asset is multi-table; the saved census reads `Build.target` PASS under the produced-table rule (count_sql declares the five tables). Seeded by `brahmagyan/l0_prashna.py` (ON CONFLICT upserts at `:807,836,…`); its header states 'all rules carry classical citations; uncited rules are not stored', an abstention convention. Declared dependent `ga_prashna` (census direct 1 / transitive 1); five `query_prashna_*.ts` modules exist in the L0 capability directory, but the saved `Dens.served` reads N/A (no module attributed: the count_sql names five tables and no single target), so a re-measure with main's repaired scanner is expected.
 
 | field | value | source |
 |---|---|---|
 | kind (declarations 1.6.0) | data | `platform/scripts/governance/asset_declarations.json` |
-| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:531` | seed (live may differ by migration) |
-| writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/bg_ghatana.py:21`; registry `has_writer` = True | writers dir, census `Build.registered` |
-| target table(s) | `brahma_event_ontology`; count_sql tables: `brahma_event_ontology`, `brahma_activity_ontology` | census CEN-R |
-| live rows / floor | 39 / 39 (Δ +0) | census `live_rows`; floor from layer instance §1.1 table |
+| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:624` | seed (live may differ by migration) |
+| writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/bg_prashna_rules.py:11`; registry `has_writer` = True | writers dir, census `Build.registered` |
+| target table(s) | `None`; count_sql tables: `bg_prashna_lagna_methods`, `bg_prashna_tajik_yogas`, `bg_prashna_significators`, `bg_prashna_fructification_rules`, `bg_prashna_special_techniques` | census CEN-R |
+| live rows / floor | 41 / 41 (Δ +0) | census `live_rows`; floor from layer instance §1.1 table |
 | catalog_status | CURRENT | census |
 | depends_on (intra-L0, live) | none | layer instance §2.5 (Q-02) |
-| blast radius | declared dependents (live, saved census blocking_radius): direct 6 / transitive 33 (every layer); named: `bg_class_lifetime_counts`, `ka_avadhi`, `ka_taranga`, `ka_yojaka`, `mi_jivanaghatana`, `mi_pramana` | census `blocking_radius`; names from seed + migrations (reconstruction) |
-| code readers (declared-vs-actual) | `brahma_activity_ontology`: 9 non-test py/ts/tsx files reference it (6 outside brahmagyan/ and bg_*.py writers): `ph_muhurta.py`, `engine.py`, `route.ts`, `register_p1_synthesis.ts`, `kala_ritual_resonance.ts` +1; `brahma_event_ontology`: 58 non-test py/ts/tsx files reference it (53 outside brahmagyan/ and bg_*.py writers): `ka_yojaka.py`, `bo_pratijna_karyatva.py`, `ph_nimitta.py`, `mi_pramana.py`, `ka_taranga.py` +48 | `grep -rlw` over platform/python-sidecar, platform/src, platform-mcp/src (py/ts/tsx, paths containing `test` and `/generated/` excluded; run 2026-10-01) |
-| served surface | `query_prospective_ledger.ts`, `lel_intake_checklist.ts`, `prediction_lifecycle_sweep.ts`, `reading_checklist.ts`, `register_gochara_windows.ts`, `ahead_autofile.ts`, `intervention_filing.ts`; `density_contract` declared on 0 of 46 L0 capability modules (layer instance §1.4) | census reach |
+| blast radius | declared dependents (live, saved census blocking_radius): direct 1 / transitive 1 (every layer); named: `ga_prashna` | census `blocking_radius`; names from seed + migrations (reconstruction) |
+| code readers (declared-vs-actual) | `bg_prashna_fructification_rules`: 3 non-test py/ts/tsx files reference it (1 outside brahmagyan/ and bg_*.py writers): `source_query_availability.ts`; `bg_prashna_lagna_methods`: 3 non-test py/ts/tsx files reference it (1 outside brahmagyan/ and bg_*.py writers): `source_query_availability.ts`; `bg_prashna_significators`: 4 non-test py/ts/tsx files reference it (2 outside brahmagyan/ and bg_*.py writers): `ga_prashna_writer.py`, `source_query_availability.ts`; `bg_prashna_special_techniques`: 3 non-test py/ts/tsx files reference it (1 outside brahmagyan/ and bg_*.py writers): `source_query_availability.ts`; `bg_prashna_tajik_yogas`: 3 non-test py/ts/tsx files reference it (1 outside brahmagyan/ and bg_*.py writers): `source_query_availability.ts` | `grep -rlw` over platform/python-sidecar, platform/src, platform-mcp/src (py/ts/tsx, paths containing `test` and `/generated/` excluded; run 2026-10-01) |
+| served surface | none; `density_contract` declared on 0 of 46 L0 capability modules (layer instance §1.4) | census reach |
 | role / scoring mode | neither (supplies what manifestation and time rest on); fidelity (reference layer: never retired for want of a reader) | layer instance §0.2, §4.4 |
 
 ## 1 · Measured state and the nine gates (saved census, per criterion)
@@ -52,7 +52,7 @@ Census used: saved census `00_ARCHITECTURE/briefs/suvarna/layers/census/census_L
 | Cost (information, D3) | Cost.baseline | NO_DETECTOR | NO_DETECTOR — instrument absent (migration 1094), scoped to this run; latest attempt at any chart (global build record): run 440c1ae6 complete/build (2026-09-04) |
 | Null / Narr | not in saved census | NO_DETECTOR (registered at rev 5) | declarations file 1.6.0: `prose_fields` = null (undeclared: Null/Narr read NO_DETECTOR) |
 
-**PASS cells (compact):** Idem.pattern † (INSERT … ON CONFLICT into the asset's own table(s) (upsert): brahma_event_ontology (brahmagyan/l0_ghatana.py:…); Vocab.identity (declared key (event_class_id): 0 duplicate(s)); Build.completion; Build.contract; Build.count_integrity; Build.dag †; Build.exercised (4 executed run(s) of 4 build_run_assets row(s), scope(s): asset_set, layer, last executed 2026-09-04); Build.history; Build.registered (@register in bg_ghatana.py; registry agrees); Build.target †; Count.floor; Complete.depth.
+**PASS cells (compact):** Idem.pattern † (INSERT … ON CONFLICT into the asset's own table(s) (upsert): bg_prashna_lagna_methods (brahmagyan/l0_prashna.…); Build.completion; Build.contract; Build.count_integrity; Build.dag †; Build.exercised (2 executed run(s) of 2 build_run_assets row(s), scope(s): asset_set, last executed 2026-09-04); Build.history; Build.registered (@register in bg_prashna_rules.py; registry agrees); Build.target †; Count.floor.
 
 **Offline rollup** (main's `rollup_asset` rules, registry rev 6, applied to the SAVED measurements; N/A reads NO_DETECTOR because `NA_RULE_DECISIONS` is empty on main; this is not a re-measure and not a certification): Ldgr NO_DETECTOR · Idem PASS · Earn NO_DETECTOR · Null NO_DETECTOR · Vocab NO_DETECTOR · Carr NO_DETECTOR · Narr NO_DETECTOR · Dens NO_DETECTOR · Build NO_DETECTOR.
 
@@ -62,25 +62,37 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 | gap id (ledger `asset_gaps.jsonl` @ 2a78ec64d, or census cell) | gate | class | note |
 |---|---|---|---|
-| bg_ghatana-Idem.pattern | Idem | stale | saved census Idem.pattern reads PASS (ON CONFLICT upsert at `l0_ghatana.py:878,923`) \| ledger: measured: no ON CONFLICT in the writer's own SQL — it likely delegates to a seeder; verify there / required: the Idem gate's claim |
-| bg_ghatana-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
-| bg_ghatana-Cost.baseline | Cost | information | same absent instrument; CF-05 |
-| bg_ghatana-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
+| bg_prashna_rules-Idem.pattern | Idem | stale | saved census Idem.pattern reads PASS (ON CONFLICT upserts over the five tables) \| ledger: measured: no ON CONFLICT in the writer's own SQL — it likely delegates to a seeder; verify there / required: the Idem gate's claim |
+| bg_prashna_rules-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
+| bg_prashna_rules-Cost.baseline | Cost | information | same absent instrument; CF-05 |
+| bg_prashna_rules-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
 | census: Ldgr (no reading) | Ldgr | detector | no recognised citation column on the target table; CF-08 |
 | census: Null/Narr (declarations) | Null, Narr | detector | `prose_fields` undeclared; CF-06 |
 
 ## 3 · Disposition
 
-**keep (P)** — every applicable census cell is PASS; the open items are detectors and declarations. Retained capital with six declared and several actual consumers.
+**keep (P)** — the carried **I** (declare its table set) rested on the registry having no place for a table set; the census now reads `Build.target` PASS for it and no discovery/projection/join repair is identified. A declared table set is a registry declaration, not an integration of the asset. Divergence from the carried I flagged for SS.
 
 Approver under Track A brief §10: **Steward (G16)**. 
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
-### FD-1 · Carr detector — D1 on the `citations` column
+### FD-1 · Declared table set
+
+- **Answers:** layer instance §1.1 finding 2 / TG-L0-010; CF-02
+- **Change:** declare the five produced tables in the declarations (`kind: data`, multi-table) so Build.target, Count and the Dens scanner read them as a set; no registry-column change is proposed here (the schema has a single `target_table`).
+- **Files / declaration / migration:** `asset_declarations.json` (multi-table set) — Track E file
+- **Failing-first test and mutation:** declarations validation; the Dens scanner attributes the five `query_prashna_*.ts` modules on re-measure
+- **Output change:** none
+- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Rebuild:** none
+- **Gate it moves:** Build (target), Dens (attribution)
+- **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T2-05 (one asset, several tables)
+
+### FD-2 · Carr detector — D1 on the cited rules
 
 - **Answers:** census `Carr.detector` NO_DETECTOR; CF-07
-- **Change:** the `citations` column is built but never selected by a module (dark); where a class cites a source, resolve it to the corpus and test anchor terms; classes with no citation are listed as unattributed, not passed.
+- **Change:** every stored rule carries a citation; resolve to the corpus where the text is held and test anchor terms; rules citing texts outside the 15-text corpus are unverifiable, not passed.
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
@@ -89,10 +101,10 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
 
-### FD-2 · Declare `prose_fields` (Null and Narr gates)
+### FD-3 · Declare `prose_fields` (Null and Narr gates)
 
 - **Answers:** census Null/Narr cells NO_DETECTOR (declarations `prose_fields: null`); CF-06
-- **Change:** Read `brahmagyan/l0_ghatana.py` for any composed text column; read `l0_ghatana.py` for composed text (`milestone_template`, `matching_rules`, `evidence_requirements`) and declare `[]` or the list
+- **Change:** Read `brahmagyan/l0_prashna.py` for any composed text column; declare `[]` expected (literal rule text) after reading `l0_prashna.py`
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
 - **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
 - **Output change:** none
@@ -101,10 +113,10 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
 
-### FD-3 · Ldgr: make the source column readable
+### FD-4 · Ldgr: make the source column readable
 
 - **Answers:** census `Ldgr.source_presence` has no reading; CF-08
-- **Change:** declare that the source of each row is carried in `citations` (JSON column; built, dark) so the inspector can read it; if the table has no source column the gap is real and is an output change (added by migration + writer)
+- **Change:** declare that the source of each row is carried in the citation columns of the five tables (named at design time) so the inspector can read it; if the table has no source column the gap is real and is an output change (added by migration + writer)
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` (`carriage`) and, only if no column exists, the writer + a migration
 - **Failing-first test and mutation:** inspector reads PASS/FAIL on the declared column; a blank source must read FAIL
 - **Output change:** none
@@ -116,17 +128,23 @@ Approver under Track A brief §10: **Steward (G16)**.
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
 - **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* Earn.build_record / Cost.baseline NO_DETECTOR (instrument absent); no change to this asset.
+- **CF-02** — Producer attribution: rider ids, multi-table writers and multi-producer tables. *This asset:* multi-table asset, no single target
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D1 above
-- **CF-08** — Ldgr: assets with no recognised citation column (16 "no reading"). *This asset:* `citations`
-- **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration; `milestone_template` is a candidate to read first
-- **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* upsert over two tables, no DELETE found
+- **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
+- **CF-08** — Ldgr: assets with no recognised citation column (16 "no reading"). *This asset:* five tables, citation columns to be named
+- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* N/A in the saved census; attribution expected on re-measure
+- **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* upsert over five tables, no DELETE found
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
-Natural key `event_class_id` (census, 0 duplicates) for `brahma_event_ontology`; the activity table has its own key (to be read at design time). Upsert; fingerprint over all 19 built columns except `created_at` and `version` if surrogate.
+Five tables with their own keys (read at design time); upsert. Fingerprint over the union of `(method_id/…, derivation rule, citation)`; volatile: `created_at`.
 
 ## 6 · Preserved kernel, carriage check, opportunities
 
-- **Preserved kernel:** the 27 + 12 class definitions with their temporal shapes, evidence requirements and kill-switch criteria; the absence of any per-subject column.
-- **Carriage check chosen (T4 §4.1; one only):** D1 on the cited classes only.
+- **Preserved kernel:** the 41 cited rules and the rule that uncited rules are not stored.
+- **Carriage check chosen (T4 §4.1; one only):** D1 (citation correspondence where the source is in the corpus).
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
+
+## 7 · Questions for Strategic Suvarṇa
+
+1. Keep (this brief) or integrate (the carried I) for bg_prashna_rules?

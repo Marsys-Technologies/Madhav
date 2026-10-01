@@ -135,6 +135,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
 - **CF-08** — Ldgr: assets with no recognised citation column (16 "no reading"). *This asset:* `citation` column
 - **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* shared module with bg_class_lifetime_counts
+- **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* upsert, no DELETE found; shares a table with bg_class_lifetime_counts, so any prune must be partition-scoped
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 

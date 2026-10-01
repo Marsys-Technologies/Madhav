@@ -136,6 +136,7 @@ Approver under Track A brief §10: **Steward (G16)**. The divergence from the ca
 - **CF-08** — Ldgr: assets with no recognised citation column (16 "no reading"). *This asset:* source columns `citation` / `source_ref`
 - **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* shares `query_class_priors.ts` with bg_class_priors
 - **CF-10** — Build.history PARTIAL is a record of past errors; no edit changes it. *This asset:* 1 abort on record, latest run complete
+- **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* upsert, no DELETE found; the module is APPEND-ONLY by its own header, so the answer is a declaration, not a prune
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 

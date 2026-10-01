@@ -148,6 +148,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D3 above
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
 - **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* 3 modules
+- **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* rolling-horizon upsert, no DELETE found; accumulation is by design
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 

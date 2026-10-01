@@ -161,6 +161,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
 - **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* 4 modules
 - **CF-08** — Ldgr: assets with no recognised citation column (16 "no reading"). *This asset:* no gap: `source_citation` 825,084/825,084
+- **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* conditional upsert over a fixed grid; orphans would need a shrunk date range (low risk)
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 

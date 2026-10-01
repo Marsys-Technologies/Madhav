@@ -166,6 +166,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
 - **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* 1 module
 - **CF-10** — Build.history PARTIAL is a record of past errors; no edit changes it. *This asset:* 1 abort on record; latest run complete
+- **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* upsert, no DELETE found; 7 further rows are migration-seeded and must not be pruned
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
