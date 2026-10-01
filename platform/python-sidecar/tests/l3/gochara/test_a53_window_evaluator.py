@@ -18,7 +18,10 @@ What this file proves:
   (d) H-unknown classes enumerate ZERO edges (admission unqualified — a
       state, never an omission); birth_anchor raises (O-CF-N6);
   (e) record identity: uuid8 over records.py's canonical natural-key bytes
-      (E7); unimplemented paths refuse loudly (never a silent empty grain).
+      (E7); unknown paths refuse loudly (never a silent empty grain);
+  (f) P5 enumeration (5/N): one scored residence edge per graha×sign
+      (9×12, lagna frame, class-invariant); P5c/P5d/P5e deferred with
+      named reasons (D4/D5/D6), never silently empty.
 """
 from __future__ import annotations
 
@@ -339,11 +342,56 @@ def test_birth_anchor_refused():
 
 
 def test_unimplemented_paths_refuse_loudly():
-    for path in ("P5",):
-        with pytest.raises(NotImplementedError, match=path):
-            ev.enumerate_edges("marriage", path, CHART)
     with pytest.raises(ValueError):
         ev.enumerate_edges("marriage", "P9", CHART)
+
+
+# ── (d2) P5 enumeration (S-05; window_evaluator 5/N) ──────────────────────────
+
+
+def test_p5_enumerates_one_residence_edge_per_graha_sign():
+    edges = ev.enumerate_edges("marriage", "P5", CHART)
+    assert len(edges) == 9 * 12
+    assert {e.agent for e in edges} == {
+        "sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn",
+        "rahu", "ketu"}
+    assert all(e.relation == "residence" and e.object_kind == "house_span"
+               and e.object_role == "av_qualifier" for e in edges)
+    assert all(e.frame_kind == "lagna" and e.affected_person == "native"
+               and e.transit for e in edges)
+    assert all(e.provenance == "verse_cited" and e.operator_role == "scored"
+               and e.ruling_ref is None for e in edges)
+    # E9: the registry carries no P5 page ⇒ the cited locator, never NULL
+    assert all(e.source_page and "PG" in e.source_page for e in edges)
+    # no natural-key collision
+    keys = [(e.agent, e.relation, e.obj.canonical_target) for e in edges]
+    assert len(keys) == len(set(keys))
+
+
+def test_p5_same_edge_set_for_every_scored_class():
+    """P5 qualifies, it does not select classes: the edge set is
+    class-invariant (frame lagna, all 26 scored classes)."""
+    ref = {(e.agent, e.obj.canonical_target)
+           for e in ev.enumerate_edges("marriage", "P5", CHART)}
+    for cls, row in ev.CLASS_BY_NAME.items():
+        if cls == "birth_anchor":
+            continue
+        got = {(e.agent, e.obj.canonical_target)
+               for e in ev.enumerate_edges(cls, "P5", CHART)}
+        assert got == ref, cls
+
+
+def test_p5_deferred_forms_enumerate_no_edges():
+    """D4/D5/D6: P5c (donor matrix pending the ga_strength rebuild), P5d
+    (star target needs the extract BAV marks), P5e (gated by recorded
+    choice) contribute NO enumerated edges — and the ashtakavarga module
+    still reports their states honestly."""
+    from services.gochara_rules import ashtakavarga as av
+    assert av.p5c(None)["state"] == av.DISABLED
+    assert av.p5d(None, None)["state"] == av.UNQUALIFIED
+    assert av.p5e(None)["state"] == av.UNQUALIFIED
+    edges = ev.enumerate_edges("bereavement", "P5", CHART)
+    assert all(e.object_role == "av_qualifier" for e in edges)  # no donor/star/month rows
 
 
 # ── (e) record identity (E7) ──────────────────────────────────────────────────

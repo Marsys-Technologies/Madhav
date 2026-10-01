@@ -37,6 +37,19 @@ Deferrals:
       P1_RELATION_KINDS marks them uncited_extension/testimony WITHOUT a
       ruling_ref ("pending a native ruling"); kgrr_ruling_ck refuses
       uncited_extension without ruling_ref. Not writable until ruled.
+  D4. P5c (kakṣyā donor evaluation, PG301): DISABLED — the donor matrix is
+      pending the native-authorised ga_strength rebuild (#2731). No P5c
+      edges are enumerated; a sign-level fallback would be a coarser P5a
+      qualification, never donor evaluation (#19, S-05.2).
+  D5. P5d target star: the nakṣatra target needs the verse-named house's
+      BAV marks (father: 9th from the Sun's rāśi in the Sun's AV,
+      PG304/PG307); the per-graha BAV lives in the pinned extract
+      (design/L1_ASHTAKAVARGA_EXTRACT_v1_0.json, Stream B), not in-repo —
+      enumerated at materialisation when the operand loads, never with a
+      fabricated star.
+  D6. P5e (Sun-month selection, BPHS ch.70): gated — no Sun-month
+      selection is computed until a rule row asks for it (recorded choice,
+      steward-accepted 2026-09-30, B5.1 gap 2). No P5e edges.
 """
 from __future__ import annotations
 
@@ -61,7 +74,7 @@ from services.gochara_rules.registry import (
 from services.gochara_rules.frames import SIGN_LORDS, Frame
 
 #: Paths whose enumeration machinery has landed in this increment.
-IMPLEMENTED_PATHS = ("P1", "P2", "P3", "P4")
+IMPLEMENTED_PATHS = ("P1", "P2", "P3", "P4", "P5")
 
 #: Frame kinds per class row (P3 truth table; bereavement (father) counts
 #: from the 9th — spec §2.2). Everything else is lagna-frame.
@@ -144,6 +157,10 @@ def _path_citation(path_id: str) -> tuple[str | None, str | None]:
     page = src.get("source_page")
     if page is None and path_id == "P3":
         page = "Yavana Jātaka ch.45-48"   # E9 locator fallback — flagged
+    if page is None and path_id == "P5":
+        # E9 locator fallback — flagged (registry carries source_text, no page)
+        page = ("BPHS ch.66 vv.13-15, ch.70 (PG874-876); "
+                "Phaladīpikā XXIII (PG301), XXIV (PG304, PG307)")
     return text, page
 
 
@@ -455,6 +472,47 @@ def enumerate_p1_edges(event_class: str, chart: dict,
     return edges
 
 
+def enumerate_p5_edges(event_class: str, chart: dict,
+                       convention_id: str | None = None) -> list[RecordEdge]:
+    """P5 (aṣṭakavarga qualifier, S-05; BPHS ch.66 vv.13-15, ch.70;
+    Phaladīpikā XXIII-XXIV): one SCORED residence edge per (graha, sign) —
+    9 grahas × 12 signs, lagna frame, the native's chart only. The edge is
+    the template; the per-form STATES (P5a known-zero detection / P5b SAV
+    bands) evaluate per occurrence at materialisation against the chart's
+    AV operands (qualify_transit), each operand gating exactly its own form
+    (§2.2 missing-input matrix). Nodes are enumerated (registry agent_set);
+    their P5a state is unqualified at evaluation — no BAV exists for the
+    nodes — never dropped here (missing ≠ absent).
+
+    Forms NOT enumerated (deferrals D4/D5/D6 — recorded, never silent):
+    P5c disabled pending the ga_strength rebuild; P5d's star target needs
+    the extract BAV marks; P5e gated until a rule row asks.
+    """
+    from services.gochara_rules.frames import SIGNS
+
+    cid = convention_id or convention_id_for()
+    if event_class == "birth_anchor":
+        raise ValueError("birth_anchor is excluded from enumeration entirely (O-CF-N6)")
+    text, page = _path_citation("P5")
+    edges: list[RecordEdge] = []
+    for agent_title, agent_lc in _AGENTS:
+        for sign in SIGNS:
+            edges.append(RecordEdge(
+                event_class=event_class, affected_person="native",
+                frame_kind="lagna", frame_arg=None,
+                agent=agent_lc, relation="residence",
+                obj=PhysicalObjectId(
+                    body=agent_lc, relation_kind="residence",
+                    canonical_target=_span_target(sign), convention_id=cid),
+                object_kind="house_span", object_role="av_qualifier",
+                path_id="P5", rule_version=RULE_VERSION,
+                provenance="verse_cited", operator_role="scored",
+                ruling_ref=None,
+                source_text=text, source_page=page,
+                transit=True))
+    return edges
+
+
 def enumerate_edges(event_class: str, path_id: str, chart: dict,
                     convention_id: str | None = None) -> list[RecordEdge]:
     """The grain's edge set. Unimplemented paths refuse LOUDLY — a grain is
@@ -470,10 +528,7 @@ def enumerate_edges(event_class: str, path_id: str, chart: dict,
     if path_id == "P4":
         return enumerate_p4_edges(event_class, chart, convention_id)
     if path_id == "P5":
-        raise NotImplementedError(
-            f"{path_id} record enumeration lands in a later window_evaluator "
-            "increment — never a silent empty grain"
-        )
+        return enumerate_p5_edges(event_class, chart, convention_id)
     raise ValueError(f"unknown path {path_id!r}")
 
 
@@ -490,5 +545,6 @@ __all__ = [
     "enumerate_edges",
     "enumerate_p3_edges",
     "enumerate_p4_edges",
+    "enumerate_p5_edges",
     "record_uuid",
 ]
