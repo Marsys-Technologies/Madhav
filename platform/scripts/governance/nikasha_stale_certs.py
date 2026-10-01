@@ -24,8 +24,11 @@ has gone stale, writes that decision into the same append-only ledger, and recor
       raises `RewalkLimitExceeded` carrying the findings, writes nothing (no watermark either), for Strategic Suvarna.
 
 LEDGER LINE SHAPES (both are accepted by E5.1's strict `read_ledger`/`parse_ledger` unchanged: each carries
-`cert_key`, `generation`, `cert_id == cert_key@generation` and a `verdict` string, in a key namespace E5.1 never
-looks up). A reader that does not know `kind` sees a verdict outside the certification vocabulary and fails closed.
+`cert_key`, `generation`, `cert_id == cert_key@generation`, a `verdict` string and, since E5.1's hash chain, a
+`prev_sha256` = sha256 of the previous line's bytes, in a key namespace E5.1 never looks up). A reader that does not
+know `kind` sees a verdict outside the certification vocabulary and fails closed. The chain is verified by E5.1's own
+parser on EVERY read here (a tampered earlier line, or an appended line with a wrong `prev_sha256`, raises
+LedgerShapeError code bad_ledger) and the lines this module appends are chained from the ledger's last line.
 
   invalidation  {"asset": <asset>, "kind": "invalidation", "layer": "L0".."L5",
                  "cert_key": "<asset>|invalidation|<invalidated cert_id>", "generation": 1,
@@ -33,12 +36,14 @@ looks up). A reader that does not know `kind` sees a verdict outside the certifi
                  "reason": [{"code": "writer_hash"|"semantic_fingerprint"|"registry"|"upstream_generation"|
                              "upstream_stale"|"upstream_not_passing", ...detail}],
                  "walk": <int, one per invalidating run>, "epoch": <acceptance epoch id>,
-                 "detected_by": "nikasha_stale_certs.py", "detected_on": <tz-aware ISO>, "record_version": 1}
+                 "detected_by": "nikasha_stale_certs.py", "detected_on": <tz-aware ISO>, "record_version": 1,
+                 "prev_sha256": <sha256 of the previous line>}
   watermark     {"asset": "_ledger", "kind": "watermark", "cert_key": "_ledger|watermark|global",
                  "generation": <n>, "cert_id": "<cert_key>@<n>", "verdict": "WATERMARK",
                  "events_processed": <count of certificate records (kind gate|addition) before this line>,
                  "last_cert_id": <cert_id of the last of them, or null when none>, "commit": <repo commit the
-                 evaluation ran at>, "evaluated_on": <tz-aware ISO>, "record_version": 1}
+                 evaluation ran at>, "evaluated_on": <tz-aware ISO>, "record_version": 1,
+                 "prev_sha256": <sha256 of the previous line>}
 
 The watermark is OK iff the ledger's last watermark line is truthful (its `events_processed`/`last_cert_id` match the
 certificate records actually before it) and NO certificate record follows it. A certificate whose invalidation line
@@ -400,6 +405,7 @@ class Ledger:
     invs: list = field(default_factory=list)
     inv_targets: dict = field(default_factory=dict)      # invalidated cert_id -> invalidation record
     wms: list = field(default_factory=list)
+    tail_sha: str = ""                                    # sha256 of the last non-blank line (E5.1's chain head)
 
     @property
     def cert_count(self) -> int:
@@ -419,14 +425,14 @@ def parse_events(data) -> Ledger:
     watermark's truthfulness. Raises LedgerShapeError."""
     raw = _as_bytes(data)
     try:
-        nc.parse_ledger(raw)
+        _by_key, tail = nc._parse(raw)     # E5.1's strict parse incl. the prev_sha256 chain; `tail` is the chain head
     except nc.CertificationRefused as e:
-        raise LedgerShapeError(e.message) from e
-    lg = Ledger()
-    for n, ln in enumerate(raw.decode("utf-8", errors="replace").split("\n"), 1):
+        raise LedgerShapeError(e.message, e.code) from e
+    lg = Ledger(tail_sha=tail)
+    for n, ln in enumerate(raw.decode("utf-8").split("\n"), 1):
         if not ln.strip():
             continue
-        r = json.loads(ln)
+        r = nc.strict_json_loads(ln)
         if r.get("asset") == "_schema":
             continue
         kind = r.get("kind")
@@ -487,6 +493,27 @@ class Evaluation:
     current: list          # cert_ids of latest, passing, not-invalidated, not-stale certificates
     invalidated: list      # cert_ids of latest certificates that already carry an invalidation line
     not_certificates: list  # cert_ids of latest records that do not pass (FAIL, PARTIAL, ...)
+    flags: dict = field(default_factory=dict)   # cert_id -> [flag] for current certificates that carry a caveat
+
+
+def certificate_flags(rec: dict) -> list[str]:
+    """Caveats a CURRENT certificate carries (never a reason to drop it): the census head carried no registry
+    binding; the writer hashes were typed rather than verified; the record was not census cross-checked; the census
+    cell was transitive_only / inconclusive; the verdict is a PASS by declaration."""
+    out = []
+    if rec.get("registry_binding") == "census_unbound":
+        out.append("registry_unbound")
+    if rec.get("writer_hashes") and rec.get("writer_hashes_verified") is not True:
+        out.append("writer_hashes_unverified")
+    if rec.get("kind") == "gate" and rec.get("cross_checked") is not True:
+        out.append("not_cross_checked")
+    if rec.get("transitive_only") is True:
+        out.append("transitive_only")
+    if rec.get("inconclusive") is True:
+        out.append("inconclusive")
+    if rec.get("basis") == "declaration":
+        out.append("basis_declaration")
+    return out
 
 
 def _observation(observed, asset: str, rec: dict):
@@ -549,8 +576,9 @@ def _evaluate(lg: Ledger, observed, registry=None) -> Evaluation:
         if registry is not None and rec["kind"] == "gate" and (
                 rec.get("registry_revision") != registry["revision"]
                 or rec.get("registry_fingerprint") != registry["fingerprint"]):
-            reasons.append(dict(code="registry", recorded=dict(revision=rec.get("registry_revision"),
-                                                               fingerprint=rec.get("registry_fingerprint")),
+            reasons.append(dict(code="registry", binding=rec.get("registry_binding"),
+                                recorded=dict(revision=rec.get("registry_revision"),
+                                              fingerprint=rec.get("registry_fingerprint")),
                                 observed=dict(revision=registry["revision"], fingerprint=registry["fingerprint"])))
         for u in rec.get("upstream_cert_ids") or []:
             m = nc._CERT_ID.fullmatch(u) if isinstance(u, str) else None
@@ -575,6 +603,9 @@ def _evaluate(lg: Ledger, observed, registry=None) -> Evaluation:
         else:
             status[cid] = "current"
             ev.current.append(cid)
+            fl = certificate_flags(rec)
+            if fl:
+                ev.flags[cid] = fl
     return ev
 
 
@@ -619,16 +650,26 @@ def watermark_ok_at_ref(ref: str, repo, path: str = DEFAULT_LEDGER_IN_REPO) -> b
     return watermark_ok(read_ledger_at_ref(ref, repo, path))
 
 
-def current_certificates(data, require_watermark: bool = True) -> dict:
+class CurrentCertificates(dict):
+    """cert_key -> record, plus `.flags` {cert_key: [caveat, ...]} (see `certificate_flags`): a flagged certificate
+    is still current, never dropped."""
+    flags: dict
+
+
+def current_certificates(data, require_watermark: bool = True) -> CurrentCertificates:
     """cert_key -> the latest record of every key whose latest generation passes and is not invalidated. Raises
-    WatermarkBehind unless the watermark covers every certificate (`require_watermark=False` is for E5.5 itself)."""
+    LedgerShapeError on a ledger whose hash chain does not hold, and WatermarkBehind unless the watermark covers
+    every certificate (`require_watermark=False` is for E5.5 itself). Records are returned as written; caveats are
+    in `.flags`."""
     lg = _as_ledger(data)
     if require_watermark:
         st = watermark_status(lg)
         if not st["ok"]:
             raise WatermarkBehind(st["reason"])
-    return {k: recs[-1] for k, recs in lg.by_key.items()
-            if recs[-1]["verdict"] in PASSING and recs[-1]["cert_id"] not in lg.inv_targets}
+    out = CurrentCertificates((k, recs[-1]) for k, recs in lg.by_key.items()
+                              if recs[-1]["verdict"] in PASSING and recs[-1]["cert_id"] not in lg.inv_targets)
+    out.flags = {k: fl for k, r in out.items() if (fl := certificate_flags(r))}
+    return out
 
 
 # ═══════════════ (4) bounded re-walks ═══════════════
@@ -667,7 +708,13 @@ def invalidate(ledger_path, observed, *, epoch, commit, registry=None, now=None,
     if not path.exists():
         raise UnreadableInput(f"{path} does not exist", "ledger_missing")
     stamp = now or dt.datetime.now().astimezone().isoformat(timespec="seconds")
-    with open(path, "a+b") as f:
+    if os.path.islink(path):
+        raise UnreadableInput(f"{path} is a symlink: the ledger path is never followed", "bad_ledger_path")
+    try:
+        fd = os.open(path, os.O_RDWR | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0))
+    except OSError as e:
+        raise UnreadableInput(f"{path} cannot be opened as a regular file ({e.strerror})", "bad_ledger_path") from e
+    with os.fdopen(fd, "a+b") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         f.seek(0)
         data = f.read()
@@ -694,7 +741,15 @@ def invalidate(ledger_path, observed, *, epoch, commit, registry=None, now=None,
                   cert_id=f"{WATERMARK_KEY}@{len(lg.wms) + 1}", verdict="WATERMARK",
                   events_processed=lg.cert_count, last_cert_id=lg.certs[-1]["cert_id"] if lg.certs else None,
                   commit=commit, evaluated_on=stamp, record_version=RECORD_VERSION)
-        blob = "".join(json.dumps(x, ensure_ascii=False) + "\n" for x in out + [wm]).encode("utf-8")
+        # chain every appended line from the ledger's last line, serialised exactly as E5.1 serialises (E5.1 exposes
+        # no public append helper: this uses its `_sha` and mirrors its json.dumps(...) so its parser verifies us)
+        prev, parts = lg.tail_sha, []
+        for x in out + [wm]:
+            x["prev_sha256"] = prev
+            line = json.dumps(x, ensure_ascii=False, allow_nan=False).encode("utf-8")
+            prev = nc._sha(line)
+            parts.append(line + b"\n")
+        blob = b"".join(parts)
         if data and not data.endswith(b"\n"):
             blob = b"\n" + blob
         f.write(blob)

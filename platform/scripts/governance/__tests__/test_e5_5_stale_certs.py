@@ -23,6 +23,8 @@ import json
 import pathlib
 import subprocess
 import sys
+import types
+import itertools
 import uuid
 
 import pytest
@@ -43,7 +45,29 @@ def H(s: str) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
 
 
+def shab(b: bytes) -> str:
+    return hashlib.sha256(b).hexdigest()
+
+
 # ───────────────────────── harness ─────────────────────────
+
+ENV = types.SimpleNamespace(ctrl=None, repo=None)
+_N = itertools.count()
+
+
+@pytest.fixture(autouse=True)
+def env(tmp_path, monkeypatch):
+    """A tmp control dir (E5.1's trusted census root) and a tmp writer repo; no ambient overrides."""
+    ctrl = tmp_path / "control"
+    ctrl.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.setattr(ac, "CTRL", ctrl)
+    monkeypatch.delenv("NIKASHA_CENSUS_ARCHIVE", raising=False)
+    monkeypatch.delenv("NIKASHA_CERTS_LEDGER", raising=False)
+    ENV.ctrl, ENV.repo = ctrl, repo
+    return ENV
+
 
 @pytest.fixture
 def ledger(tmp_path):
@@ -60,17 +84,48 @@ def fp_of(asset, n=0):
     return H(f"fp:{asset}:{n}")
 
 
+def wpath(asset):
+    return f"w/{asset}.py"
+
+
+def wbytes(asset, n=0):
+    return f"w:{asset}:{n}\n".encode()
+
+
 def wh_of(asset, n=0):
-    return {f"w/{asset}.py": H(f"w:{asset}:{n}")}
+    """The writer hash of `asset`'s file at version n (put_writer(asset, n) writes exactly these bytes)."""
+    return {wpath(asset): shab(wbytes(asset, n))}
 
 
-def cert(ledger, asset, crit="Build.registered", *, fp=None, wh=None, up=(), verdict="PASS", **over):
+def put_writer(asset, n=0):
+    f = ENV.repo / wpath(asset)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_bytes(wbytes(asset, n))
+    return wpath(asset)
+
+
+def census_file(asset, crit, verdict, *, generated=RUN, cell=True, rec=None, head=None):
+    """A census JSON file under the trusted control dir, shaped like asset_census.measure() output."""
+    record = dict(asset_id=asset, layer=layer_of(asset), has_writer=True, writer_files=[wpath(asset)],
+                  asset_kind="data", target_columns=None,
+                  measurements={crit: dict(v=verdict, measured="m")} if cell else {})
+    record.update(rec or {})
+    c = dict(generated=generated, layer=layer_of(asset), assets=[record])
+    c.update(head or {})
+    p = ENV.ctrl / f"census_{next(_N)}.json"
+    p.write_text(json.dumps(c), encoding="utf-8")
+    return p
+
+
+def cert(ledger, asset, crit="Build.registered", *, fp=None, n=0, up=(), verdict="PASS", **over):
+    """Certify through E5.1's real writer: the verdict is read from a census file, writer hashes are computed from a
+    tmp repo file at version n."""
+    wp = put_writer(asset, n)
     d = dict(asset=asset, layer=layer_of(asset), criterion=crit, verdict=verdict,
-             evidence=dict(census_run_id=RUN), verified_by="t", ledger_path=ledger, verified_on=NOW,
-             writer_hashes=wh_of(asset) if wh is None else wh,
-             semantic_fingerprint=fp_of(asset) if fp is None else fp, upstream_cert_ids=list(up))
-    if verdict != "PASS":
-        d.update(writer_hashes=None, semantic_fingerprint=None)
+             evidence=dict(census_run_id=RUN, measured="m"), verified_by="t", ledger_path=ledger, verified_on=NOW,
+             census_path=census_file(asset, crit, verdict), upstream_cert_ids=list(up))
+    if verdict == "PASS":
+        d.update(writer_files=[wp], writer_repo=ENV.repo, semantic_fingerprint=fp_of(asset) if fp is None else fp)
     d.update(over)
     return nc.write_certification(**d).record["cert_id"]
 
@@ -81,6 +136,20 @@ def obs(*assets, **over):
     for a, o in over.items():
         out[a] = dict(out.get(a, {}), **o)
     return out
+
+
+def write_chained(p, rows):
+    """Write `rows` (schema row first) with a CORRECT prev_sha256 chain: for tests that hand-shape a ledger to
+    exercise E5.5's own shape checks past E5.1's chain verification."""
+    out, prev = [], None
+    for i, r in enumerate(rows):
+        r = dict(r)
+        if i:
+            r["prev_sha256"] = prev
+        line = json.dumps(r, ensure_ascii=False, allow_nan=False).encode()
+        prev = shab(line)
+        out.append(line)
+    p.write_bytes(b"\n".join(out) + b"\n")
 
 
 def raw(p):
@@ -490,7 +559,7 @@ def test_a_pass_citing_a_non_passing_upstream_is_stale(ledger):
     a = cert(ledger, "bg_a", verdict="FAIL")
     b = cert(ledger, "bg_b")
     rec = dict(lines(ledger)[-1], upstream_cert_ids=[a])
-    ledger.write_text("\n".join(json.dumps(x) for x in lines(ledger)[:-1] + [rec]) + "\n")
+    write_chained(ledger, lines(ledger)[:-1] + [rec])
     ev = sc.evaluate(raw(ledger), obs("bg_b"))
     assert set(ev.stale) == {b} and ev.stale[b][0]["code"] == "upstream_not_passing"
 
@@ -508,7 +577,7 @@ def test_the_registry_revision_is_compared_only_when_the_caller_supplies_it(ledg
 
 def test_only_the_latest_generation_of_a_key_is_evaluated(ledger):
     a1 = cert(ledger, "bg_a")
-    a2 = cert(ledger, "bg_a", fp=fp_of("bg_a", 1), wh=wh_of("bg_a", 1))
+    a2 = cert(ledger, "bg_a", fp=fp_of("bg_a", 1), n=1)
     ev = sc.evaluate(raw(ledger), obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1), writer_hashes=wh_of("bg_a", 1))))
     assert ev.stale == {} and ev.current == [a2] and a1 not in ev.current
 
@@ -523,8 +592,10 @@ def test_a_computed_n_a_with_no_hashes_or_fingerprint_needs_no_observation_and_i
     rid = "Ldgr.source_presence#columns_any"
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {rid: "N-22.t"})
     n = nc.write_certification(asset="bg_a", layer="L0", criterion="Ldgr.source_presence", verdict="N/A",
-                               facts=dict(columns=["id"]), na_rule_id=rid, evidence=dict(census_run_id=RUN),
-                               verified_by="t", ledger_path=ledger, verified_on=NOW).record["cert_id"]
+                               na_rule_id=rid, evidence=dict(census_run_id=RUN), verified_by="t", ledger_path=ledger,
+                               verified_on=NOW,
+                               census_path=census_file("bg_a", "Ldgr.source_presence", "N/A", cell=False,
+                                                       rec=dict(target_columns=["id"]))).record["cert_id"]
     ev = sc.evaluate(raw(ledger), {})
     assert ev.stale == {} and ev.current == [n]
 
@@ -586,7 +657,7 @@ def test_an_unknown_record_kind_raises(ledger):
     rows = lines(ledger)
     rows.append(dict(asset="bg_a", kind="mystery", cert_key="bg_a|mystery|x", generation=1, cert_id="bg_a|mystery|x@1",
                      verdict="PASS"))
-    ledger.write_text("\n".join(json.dumps(x) for x in rows) + "\n")
+    write_chained(ledger, rows)
     with pytest.raises(sc.LedgerShapeError):
         sc.evaluate(raw(ledger), obs("bg_a"))
 
@@ -596,7 +667,7 @@ def test_a_certificate_invalidated_twice_raises(ledger):
     run(ledger, obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
     rows = lines(ledger)
     inv = next(x for x in rows if x.get("kind") == "invalidation")
-    ledger.write_text("\n".join(json.dumps(x) for x in rows[:-1] + [dict(inv, cert_id=inv["cert_id"], walk=2)] + rows[-1:]) + "\n")
+    write_chained(ledger, rows[:-1] + [dict(inv, cert_id=inv["cert_id"], walk=2)] + rows[-1:])
     with pytest.raises(sc.LedgerShapeError):
         sc.evaluate(raw(ledger), obs("bg_a"))
 
@@ -605,10 +676,10 @@ def test_a_certificate_citing_a_later_line_or_a_missing_cert_raises(ledger):
     a = cert(ledger, "bg_a")
     b = cert(ledger, "bg_b", up=[a])
     rows = lines(ledger)
-    ledger.write_text("\n".join(json.dumps(x) for x in [rows[0], rows[2], rows[1]]) + "\n")         # swap: b before a
+    write_chained(ledger, [rows[0], rows[2], rows[1]])         # swap: b before a
     with pytest.raises(sc.LedgerShapeError):
         sc.evaluate(raw(ledger), obs("bg_a", "bg_b"))
-    ledger.write_text("\n".join(json.dumps(x) for x in [rows[0], rows[2]]) + "\n")                 # a removed
+    write_chained(ledger, [rows[0], rows[2]])                 # a removed
     with pytest.raises(sc.LedgerShapeError):
         sc.evaluate(raw(ledger), obs("bg_b"))
 
@@ -640,10 +711,7 @@ def test_the_ledger_stays_readable_by_e51_and_certifying_again_still_works(ledge
     run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
     by_key = nc.read_ledger(ledger)                                            # E5.1's strict reader accepts E5.5's lines
     assert f"bg_a|invalidation|{a}" in by_key and "_ledger|watermark|global" in by_key
-    r = nc.write_certification(asset="bg_a", layer="L0", criterion="Build.registered", verdict="PASS",
-                               evidence=dict(census_run_id=RUN), verified_by="t", ledger_path=ledger,
-                               writer_hashes=wh_of("bg_a"), semantic_fingerprint=fp_of("bg_a", 1), verified_on=NOW)
-    assert r.record["generation"] == 2
+    assert cert(ledger, "bg_a", fp=fp_of("bg_a", 1)).endswith("@2")                # E5.1 still appends generation 2
 
 
 def test_invalidate_is_idempotent_a_second_identical_run_appends_nothing_and_uses_no_walk(ledger):
@@ -702,6 +770,202 @@ def test_invalidate_waits_for_the_ledger_lock(ledger):
     assert blocked and out == ["appended"]
 
 
+# ───────────────────────── the hash chain (E5.1: prev_sha256 on every record) ─────────────────────────
+
+def raw_lines(p):
+    return [x for x in p.read_bytes().split(b"\n") if x.strip()]
+
+
+def tamper_line(p, idx, **changes):
+    """Edit line `idx` IN PLACE without re-chaining (what an attacker or a bug would do)."""
+    ls = p.read_bytes().split(b"\n")
+    r = json.loads(ls[idx])
+    r.update(changes)
+    ls[idx] = json.dumps(r, ensure_ascii=False).encode()
+    p.write_bytes(b"\n".join(ls))
+
+
+def test_every_line_invalidate_appends_is_chained_from_the_line_before_it(ledger):
+    chain(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    ls = raw_lines(ledger)
+    assert len(ls) == 1 + 4 + 3 + 1                               # schema, 4 certs, 3 invalidations, 1 watermark
+    for i in range(1, len(ls)):
+        assert json.loads(ls[i])["prev_sha256"] == shab(ls[i - 1]), f"line {i} is not chained from line {i - 1}"
+    cert(ledger, "bg_e")                                          # E5.1 appends after E5.5's lines: chain holds on
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", "bg_e"))
+    ls = raw_lines(ledger)
+    assert all(json.loads(ls[i])["prev_sha256"] == shab(ls[i - 1]) for i in range(1, len(ls)))
+    nc.read_ledger(ledger)                                         # and E5.1's own verifier accepts the whole file
+
+
+def test_an_invalidation_line_with_a_wrong_prev_sha256_is_refused_on_read(ledger):
+    a = cert(ledger, "bg_a")
+    run(ledger, obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    ls = raw_lines(ledger)
+    inv_idx = next(i for i, x in enumerate(ls) if json.loads(x).get("kind") == "invalidation")
+    r = json.loads(ls[inv_idx])
+    r["prev_sha256"] = "0" * 64
+    ls[inv_idx] = json.dumps(r, ensure_ascii=False).encode()
+    ledger.write_bytes(b"\n".join(ls) + b"\n")
+    for call in (lambda: sc.evaluate(raw(ledger), obs("bg_a")), lambda: sc.watermark_ok(raw(ledger)),
+                 lambda: sc.current_certificates(raw(ledger)), lambda: sc.rewalk_counts(raw(ledger))):
+        with pytest.raises(sc.LedgerShapeError) as ei:
+            call()
+        assert ei.value.code == "bad_ledger" and "chain" in ei.value.message
+    with pytest.raises(nc.CertificationRefused):                   # E5.1's reader refuses the same ledger
+        nc.read_ledger(ledger)
+
+
+def test_a_hand_appended_unchained_invalidation_or_watermark_line_is_refused(ledger):
+    a = cert(ledger, "bg_a")
+    key = f"bg_a|invalidation|{a}"
+    bad = dict(asset="bg_a", kind="invalidation", layer="L0", cert_key=key, generation=1, cert_id=key + "@1",
+               verdict="INVALIDATED", invalidates=a, reason=[dict(code="writer_hash")], walk=1, epoch="E1",
+               detected_by="x", detected_on=NOW, record_version=1)
+    for extra in ({}, {"prev_sha256": "f" * 64}):
+        ledger.write_bytes(b"\n".join(raw_lines(ledger)[:2]) + b"\n" + json.dumps(dict(bad, **extra)).encode() + b"\n")
+        with pytest.raises(sc.LedgerShapeError):
+            sc.evaluate(raw(ledger), obs("bg_a"))
+
+
+def test_a_tampered_earlier_record_makes_current_certificates_raise(ledger):
+    chain(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    assert len(sc.current_certificates(raw(ledger))) == 4
+    tamper_line(ledger, 1, verdict="PASS", semantic_fingerprint="e" * 64)         # edit an earlier certificate in place
+    with pytest.raises(sc.LedgerShapeError) as ei:
+        sc.current_certificates(raw(ledger))
+    assert ei.value.code == "bad_ledger"
+    with pytest.raises(sc.LedgerShapeError):
+        sc.current_certificates(raw(ledger), require_watermark=False)
+    with pytest.raises(sc.LedgerShapeError):
+        sc.watermark_ok(raw(ledger))
+
+
+def test_a_deleted_or_reordered_line_breaks_the_chain(ledger):
+    chain(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    ls = raw_lines(ledger)
+    ledger.write_bytes(b"\n".join(ls[:2] + ls[3:]) + b"\n")                       # line 2 deleted
+    with pytest.raises(sc.LedgerShapeError):
+        sc.current_certificates(raw(ledger))
+    ledger.write_bytes(b"\n".join([ls[0], ls[2], ls[1]] + ls[3:]) + b"\n")        # lines 1 and 2 swapped
+    with pytest.raises(sc.LedgerShapeError):
+        sc.current_certificates(raw(ledger))
+
+
+def test_invalidate_refuses_a_ledger_whose_chain_is_broken_and_writes_nothing(ledger):
+    chain(ledger)
+    tamper_line(ledger, 1, verified_by="someone-else")
+    before = raw(ledger)
+    with pytest.raises(sc.LedgerShapeError):
+        run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    assert raw(ledger) == before
+
+
+def test_a_torn_last_line_is_refused_with_its_code_and_never_extended(ledger):
+    chain(ledger)
+    ledger.write_bytes(raw(ledger) + b'{"asset": "bg_z", "kind": "gate"')           # a partial write, no newline
+    before = raw(ledger)
+    with pytest.raises(sc.LedgerShapeError) as ei:
+        sc.evaluate(before, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    assert ei.value.code == "torn_ledger"
+    with pytest.raises(sc.LedgerShapeError):
+        run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    assert raw(ledger) == before
+
+
+def test_a_valid_last_line_with_no_newline_is_extended_on_a_new_line_and_still_chains(ledger):
+    chain(ledger)
+    ledger.write_bytes(raw(ledger).rstrip(b"\n"))
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    ls = raw_lines(ledger)
+    assert json.loads(ls[-1])["kind"] == "watermark" and json.loads(ls[-1])["prev_sha256"] == shab(ls[-2])
+    nc.read_ledger(ledger)
+
+
+def test_a_symlinked_ledger_is_refused_and_not_followed(ledger, tmp_path):
+    chain(ledger)
+    link = tmp_path / "link.jsonl"
+    link.symlink_to(ledger)
+    before = raw(ledger)
+    with pytest.raises(sc.UnreadableInput) as ei:
+        run(link, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    assert ei.value.code == "bad_ledger_path" and raw(ledger) == before
+
+
+def test_a_committed_ledger_with_a_broken_chain_raises_at_the_ref(tmp_path):
+    repo = tmp_path / "r"
+    (repo / "ctl").mkdir(parents=True)
+    led = repo / "ctl" / "asset_certs.jsonl"
+    led.write_text(json.dumps({"asset": "_schema", "_doc": "t"}) + "\n")
+    _git(repo, "init", "-q")
+    cert(led, "bg_a")
+    cert(led, "bg_b")
+    run(led, obs("bg_a", "bg_b"))
+    tamper_line(led, 1, verified_by="x")
+    _git(repo, "add", "ctl/asset_certs.jsonl")
+    _git(repo, "commit", "-q", "-m", "tampered")
+    with pytest.raises(sc.LedgerShapeError):
+        sc.watermark_ok_at_ref("HEAD", repo, "ctl/asset_certs.jsonl")
+
+
+# ───────────────────────── E5.1's new record fields: read, never dropped, flagged ─────────────────────────
+
+def test_a_census_unbound_record_is_current_and_flagged_not_dropped(ledger):
+    a = cert(ledger, "bg_a")
+    rec = lines(ledger)[1]
+    assert rec["registry_binding"] == "census_unbound" and rec["cross_checked"] is True       # today's census head
+    run(ledger, obs("bg_a"))
+    cur = sc.current_certificates(raw(ledger))
+    assert list(cur) == ["bg_a|gate|Build.registered"] and cur["bg_a|gate|Build.registered"]["cert_id"] == a
+    assert cur.flags == {"bg_a|gate|Build.registered": ["registry_unbound"]}
+    assert sc.evaluate(raw(ledger), obs("bg_a")).flags == {a: ["registry_unbound"]}
+
+
+def test_a_census_bound_record_carries_no_registry_flag(ledger):
+    head = dict(registry_revision=ac.REGISTRY_REVISION, registry_fingerprint=ac.registry_fingerprint())
+    a = cert(ledger, "bg_a", census_path=census_file("bg_a", "Build.registered", "PASS", head=head))
+    assert lines(ledger)[1]["registry_binding"] == "census_bound"
+    run(ledger, obs("bg_a"))
+    cur = sc.current_certificates(raw(ledger))
+    assert list(cur) == ["bg_a|gate|Build.registered"] and cur.flags == {}
+
+
+def test_every_flag_on_a_hand_shaped_record_is_reported_and_none_drops_the_certificate(ledger):
+    cert(ledger, "bg_a")
+    rows = lines(ledger)
+    rows[1].update(writer_hashes_verified=False, transitive_only=True, cross_checked=False, inconclusive=True,
+                   basis="declaration")
+    write_chained(ledger, rows)
+    run(ledger, obs("bg_a"))
+    cur = sc.current_certificates(raw(ledger))
+    assert len(cur) == 1
+    assert cur.flags["bg_a|gate|Build.registered"] == ["registry_unbound", "writer_hashes_unverified",
+                                                       "not_cross_checked", "transitive_only", "inconclusive",
+                                                       "basis_declaration"]
+
+
+def test_certificate_flags_on_a_clean_record_and_on_an_addition():
+    clean = dict(kind="gate", registry_binding="census_bound", writer_hashes=wh_of("bg_a"), writer_hashes_verified=True,
+                 cross_checked=True, transitive_only=False, inconclusive=False, basis=None)
+    assert sc.certificate_flags(clean) == []
+    add = dict(kind="addition", registry_binding=None, writer_hashes={}, writer_hashes_verified=False,
+               cross_checked=False, transitive_only=False, inconclusive=False, basis=None)
+    assert sc.certificate_flags(add) == []                                   # additions are not census cross-checked
+
+
+def test_staleness_detection_is_unchanged_by_the_new_fields(ledger):
+    # a record whose writer hashes were NOT verified is still compared (and flagged), not exempted
+    a = cert(ledger, "bg_a")
+    rows = lines(ledger)
+    rows[1]["writer_hashes_verified"] = False
+    write_chained(ledger, rows)
+    ev = sc.evaluate(raw(ledger), obs("bg_a", bg_a=dict(writer_hashes=wh_of("bg_a", 1))))
+    assert set(ev.stale) == {a} and ev.stale[a][0]["code"] == "writer_hash"
+
+
 # ───────────────────────── the watermark ─────────────────────────
 
 def test_a_ledger_with_no_watermark_is_not_ok(ledger):
@@ -734,11 +998,11 @@ def test_a_watermark_that_miscounts_the_certificates_before_it_is_a_lie_and_rais
     run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
     rows = lines(ledger)
     rows[-1]["events_processed"] = 99
-    ledger.write_text("\n".join(json.dumps(x) for x in rows) + "\n")
+    write_chained(ledger, rows)
     with pytest.raises(sc.LedgerShapeError):
         sc.watermark_ok(raw(ledger))
     rows[-1].update(events_processed=4, last_cert_id="bg_zzz|gate|Build.registered@1")
-    ledger.write_text("\n".join(json.dumps(x) for x in rows) + "\n")
+    write_chained(ledger, rows)
     with pytest.raises(sc.LedgerShapeError):
         sc.watermark_ok(raw(ledger))
 
@@ -756,12 +1020,12 @@ def test_invalidation_lines_for_unknown_or_later_certs_raise(ledger):
     run(ledger, obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
     rows = lines(ledger)
     bad = [dict(x, invalidates="bg_nobody|gate|Build.registered@1") if x.get("kind") == "invalidation" else x for x in rows]
-    ledger.write_text("\n".join(json.dumps(x) for x in bad) + "\n")
+    write_chained(ledger, bad)
     with pytest.raises(sc.LedgerShapeError):
         sc.evaluate(raw(ledger), obs("bg_a"))
     inv = next(x for x in rows if x.get("kind") == "invalidation")
     reordered = [rows[0], inv] + [x for x in rows[1:] if x is not inv]
-    ledger.write_text("\n".join(json.dumps(x) for x in reordered) + "\n")
+    write_chained(ledger, reordered)
     with pytest.raises(sc.LedgerShapeError):
         sc.evaluate(raw(ledger), obs("bg_a"))
 
@@ -821,7 +1085,7 @@ def test_a_ref_that_cannot_be_read_raises_never_ok(tmp_path):
 
 def churn(ledger, n, asset="bg_a"):
     """Recertify `asset` at fingerprint n-1, then change the world to n: the next walk finds it stale."""
-    return cert(ledger, asset, fp=fp_of(asset, n - 1), wh=wh_of(asset, 0))
+    return cert(ledger, asset, fp=fp_of(asset, n - 1), n=0)
 
 
 def walk_once(ledger, n, asset="bg_a", **kw):
@@ -905,9 +1169,9 @@ def test_the_epoch_and_commit_are_required_text(ledger):
 
 
 def test_a_missing_ledger_is_refused_and_not_created(tmp_path):
-    with pytest.raises(sc.UnreadableInput):
+    with pytest.raises(sc.UnreadableInput) as ei:
         run(tmp_path / "nope.jsonl", {})
-    assert not (tmp_path / "nope.jsonl").exists()
+    assert ei.value.code == "ledger_missing" and not (tmp_path / "nope.jsonl").exists()
 
 
 # ───────────────────────── CLI ─────────────────────────
