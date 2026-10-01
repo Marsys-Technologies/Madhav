@@ -611,15 +611,20 @@ def test_dispatch_single_transaction_committed_end_state_is_inert():
 
     sys.path.insert(0, str(DISPATCH.parent))
     saved = dict(sys.modules)
+    prior_db_url = os.environ.get("DATABASE_URL")
     try:
         sys.modules["psycopg"] = fake_psycopg
         sys.modules["psycopg.rows"] = fake_rows
-        os.environ.setdefault("DATABASE_URL", "postgresql://fake/fake")
+        os.environ["DATABASE_URL"] = "postgresql://fake/fake"
         import importlib
         import dispatch_a25_v41_candidate_job as dispatch
         importlib.reload(dispatch)
         dispatch.main()
     finally:
+        if prior_db_url is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = prior_db_url
         sys.modules.pop("psycopg", None)
         sys.modules.pop("psycopg.rows", None)
         for name in ("dispatch_a25_v41_candidate_job",):
