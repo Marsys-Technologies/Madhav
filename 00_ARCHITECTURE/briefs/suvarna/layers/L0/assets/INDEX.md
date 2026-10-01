@@ -10,12 +10,12 @@ base_commit: "main 0250cbade"
 census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/census/census_L0.json` (generated 2026-09-30T20:21:19+05:30, chart 482012f1, inspector 2a78ec64d on campaign/nikasha-test, pre-REGISTRY_REVISION; criterion revisions then: Build.dag 1, Build.target 1, Idem.pattern 1, Dens.served 1, no Null/Narr). NOT re-measured: main's inspector is at REGISTRY_REVISION 6 and the lane has no DB access."
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1.md (3.1-rev1, PROVISIONAL)"
-briefs: 40 (one per L0 asset, `<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` in this directory, per Track A brief §8)
+briefs: 40 (one per L0 asset, `<asset_id>.md` in this directory)
 ---
 
 # L0 asset briefs — layer index (provisional)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Every figure is from the repository or the saved census (B.10). Nothing in this directory certifies a gate or approves a disposition: dispositions are proposals under Track A brief §10, and every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** SS answered section 7 on 2026-10-01 (recorded below; items marked (R) are PROVISIONAL until the J1 review). Every figure is from the repository or the saved census (B.10). Nothing in this directory certifies a gate: dispositions were ACCEPTED as proposed by SS on 2026-10-01 (Q10), and every fix marked **needs production rebuild** (or dispatch) is a REVIEW item for Strategic Suvarṇa.
 
 ## 1 · What this index rests on, and what is stale
 
@@ -38,7 +38,7 @@ briefs: 40 (one per L0 asset, `<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` in this direc
 
 **Dispositions proposed (40):** enrich 5, integrate 1, keep 32, qualify 2; consolidate 0, historical 0, retire 0, unresolved 0. (Draft v3.1 §3.2: P 30, E 4, Q 2, I 2, C 2 — see §6 for the four changes.)
 
-**Gap rows across the 40 briefs (332 rows; duplicate ledger rows folded under R81 are listed separately in the ledger and counted once per id here):** real 40 · Dens rev-1 reading with applicability open 26 · real-or-SS-question 5 · detector 147 · stale 27 · history 13 · information 55 · opportunity 18 · other 1.
+**Gap rows across the 40 briefs (332 rows; duplicate ledger rows folded under R81 are listed separately in the ledger and counted once per id here):** real 45 · Dens rev-1 reading (Dens applies per SS Q2) 26 · real-with-SS-decision 0 · detector 146 · stale 27 · history 13 · information 56 · opportunity 18 · other 1.
 
 **Saved census cells over the layer (777):** FAIL 42 · PARTIAL 24 · NO_DETECTOR 123 · ERRORED 0 · PASS 440 · N/A 68 · NOT_GENERIC 80. FAIL by criterion: Dens.served 23 · Build.completion 14 · Build.registered 2 · Build.exercised 1 · Count.floor 1 · Vocab.alias 1.
 
@@ -52,52 +52,52 @@ The draft's N/A-aware reading (layer instance Appendix B) differs only because i
 
 ## 3 · Assets × disposition × gaps × fix class × rebuild
 
-Columns: **real** = a shortfall in rows/writer/registry/served surface; **Dens/SSq** = Dens rev-1 FAILs whose applicability is open (CF-04) plus items framed as an SS question; **detector** = NO_DETECTOR or definition-open; **other** = stale + history + information + opportunity; **rebuild** y = a fix needs a production rebuild/dispatch, cond = only under one option, n = none.
+Columns: **real** = a shortfall in rows/writer/registry/served surface; **Dens/SSq** = Dens rev-1 FAILs (Dens applies where a served surface is reached: SS Q2; offline re-measure in section 9.1) plus items that were SS questions and are now decided; **detector** = NO_DETECTOR or definition-open; **other** = stale + history + information + opportunity; **rebuild** y = a fix needs a production rebuild/dispatch, cond = only under one option, n = none.
 
 | asset | disposition | real | Dens/SSq | detector | other | fix class | rebuild | shared fixes |
 |---|---|---:|---:|---:|---:|---|---|---|
 | [bg_class_lifetime_counts](bg_class_lifetime_counts_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 4 | 3 | detector/tooling; registry/declaration; served surface (TS) | n | CF-04, CF-05, CF-06, CF-07, CF-08, CF-10, CF-12 |
 | [bg_class_priors](bg_class_priors_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 4 | 2 | registry/declaration; served surface (TS) | n | CF-04, CF-05, CF-06, CF-07, CF-08, CF-12 |
-| [bg_cohort](bg_cohort_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 3 | 2 | detector/tooling; registry/declaration; writer code | cond | CF-02, CF-05, CF-06, CF-07, CF-10 |
+| [bg_cohort](bg_cohort_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 3 | 2 | detector/tooling; registry/declaration; writer code | n | CF-02, CF-05, CF-06, CF-07, CF-10 |
 | [bg_compendium_index](bg_compendium_index_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 3 | 4 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-04, CF-05, CF-07, CF-08, CF-10 |
 | [bg_concordance](bg_concordance_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 2 | data (output change); detector/tooling; registry/declaration; writer code | n | CF-05, CF-06, CF-07, CF-08 |
 | [bg_dasha_systems](bg_dasha_systems_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 3 | 3 | detector/tooling; registry/declaration; served surface (TS) | n | CF-04, CF-05, CF-06, CF-07, CF-10 |
-| [bg_dignity_reference](bg_dignity_reference_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 3 | 1 | detector/tooling; registry/declaration | n | CF-04, CF-05, CF-06, CF-07, CF-12 |
-| [bg_doshas](bg_doshas_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 1 | 2 | 2 | 3 | data (output change); detector/tooling; served surface (TS); writer code | y | CF-04, CF-05, CF-07, CF-09, CF-10, CF-11 |
-| [bg_ephemeris](bg_ephemeris_ELEVATION_BRIEF_v1_0.md) | keep (P) | 3 | 2 | 5 | 7 | detector/tooling; registry/declaration; served surface (TS); writer code | cond | CF-01, CF-04, CF-05, CF-06, CF-07, CF-08, CF-09, CF-12 |
+| [bg_dignity_reference](bg_dignity_reference_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 3 | 1 | detector/tooling; registry/declaration | y | CF-04, CF-05, CF-06, CF-07, CF-12 |
+| [bg_doshas](bg_doshas_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 2 | 1 | 2 | 3 | data (output change); detector/tooling; served surface (TS); writer code | y | CF-04, CF-05, CF-07, CF-09, CF-10, CF-11 |
+| [bg_ephemeris](bg_ephemeris_ELEVATION_BRIEF_v1_0.md) | keep (P) | 3 | 2 | 5 | 7 | detector/tooling; registry/declaration; served surface (TS) | n | CF-01, CF-04, CF-05, CF-06, CF-07, CF-08, CF-09, CF-12 |
 | [bg_ephemeris_engine](bg_ephemeris_engine_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 5 | 1 | detector/tooling; registry/declaration; served surface (TS) | n | CF-03, CF-04, CF-05, CF-06, CF-07 |
-| [bg_formula_constants](bg_formula_constants_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 4 | 3 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-02, CF-04, CF-05, CF-06, CF-07, CF-08, CF-10, CF-12 |
+| [bg_formula_constants](bg_formula_constants_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 4 | 3 | detector/tooling; registry/declaration; served surface (TS); writer code | y | CF-02, CF-04, CF-05, CF-06, CF-07, CF-08, CF-10, CF-12 |
 | [bg_ghatana](bg_ghatana_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-12 |
 | [bg_gochara_arcs](bg_gochara_arcs_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 3 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-10 |
-| [bg_gochara_citation_resolution](bg_gochara_citation_resolution_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 3 | 1 | detector/tooling; registry/declaration; served surface (TS); writer code | cond | CF-04, CF-05, CF-06, CF-07 |
+| [bg_gochara_citation_resolution](bg_gochara_citation_resolution_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 3 | 1 | detector/tooling; registry/declaration; served surface (TS); writer code | y | CF-04, CF-05, CF-06, CF-07 |
 | [bg_kota_chakra_rings](bg_kota_chakra_rings_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 3 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-12 |
 | [bg_kp_sublord_division](bg_kp_sublord_division_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 3 | 3 | detector/tooling; registry/declaration | n | CF-04, CF-05, CF-06, CF-07, CF-10 |
 | [bg_medical_mappings](bg_medical_mappings_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-02, CF-04, CF-05, CF-06, CF-07, CF-12 |
-| [bg_muhurta_lattice](bg_muhurta_lattice_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 1 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-01, CF-03, CF-04, CF-05, CF-06, CF-07, CF-12 |
-| [bg_nakshatra](bg_nakshatra_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 3 | detector/tooling; registry/declaration | cond | CF-05, CF-06, CF-07, CF-08, CF-09 |
-| [bg_nakshatra_medical](bg_nakshatra_medical_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | y | CF-02, CF-03, CF-04, CF-05, CF-06, CF-07, CF-12 |
+| [bg_muhurta_lattice](bg_muhurta_lattice_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 1 | detector/tooling; registry/declaration; served surface (TS) | n | CF-01, CF-03, CF-04, CF-05, CF-06, CF-07, CF-12 |
+| [bg_nakshatra](bg_nakshatra_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 3 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-09 |
+| [bg_nakshatra_medical](bg_nakshatra_medical_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | n | CF-02, CF-03, CF-04, CF-05, CF-06, CF-07, CF-12 |
 | [bg_ontology](bg_ontology_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 9 | 2 | 4 | 9 | data (output change); detector/tooling; registry/declaration; served surface (TS); writer code | y | CF-01, CF-02, CF-04, CF-05, CF-07, CF-09 |
 | [bg_panchanga](bg_panchanga_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 8 | 4 | detector/tooling; registry/declaration; served surface (TS) | n | CF-03, CF-04, CF-05, CF-06, CF-07 |
 | [bg_parihara_rules](bg_parihara_rules_ELEVATION_BRIEF_v1_0.md) | keep (P) | 2 | 1 | 3 | 3 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-03, CF-04, CF-05, CF-06, CF-07, CF-10, CF-12 |
 | [bg_phaladeepika_latta](bg_phaladeepika_latta_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 3 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-12 |
 | [bg_prashna_rules](bg_prashna_rules_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 2 | detector/tooling; registry/declaration | n | CF-02, CF-04, CF-05, CF-06, CF-07, CF-08, CF-12 |
 | [bg_reference](bg_reference_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 3 | 3 | detector/tooling; registry/declaration; writer code | n | CF-01, CF-04, CF-05, CF-06, CF-07, CF-10, CF-12 |
-| [bg_remedies](bg_remedies_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 2 | 2 | 2 | 3 | data (output change); detector/tooling; served surface (TS); writer code | y | CF-04, CF-05, CF-07, CF-09, CF-10, CF-11 |
-| [bg_rules](bg_rules_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 5 | 2 | 6 | 8 | data (output change); detector/tooling; registry/declaration; served surface (TS); writer code | y | CF-05, CF-06, CF-07, CF-08, CF-09 |
-| [bg_sarvatobhadra_grid](bg_sarvatobhadra_grid_ELEVATION_BRIEF_v1_0.md) | qualify (Q) | 1 | 0 | 7 | 5 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-10 |
-| [bg_sign_medical](bg_sign_medical_ELEVATION_BRIEF_v1_0.md) | keep (P) | 2 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | y | CF-02, CF-04, CF-05, CF-06, CF-07, CF-12 |
-| [bg_sky_calendar](bg_sky_calendar_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 1 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-01, CF-03, CF-04, CF-05, CF-06, CF-07, CF-12 |
+| [bg_remedies](bg_remedies_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 3 | 1 | 2 | 3 | data (output change); detector/tooling; served surface (TS); writer code | y | CF-04, CF-05, CF-07, CF-09, CF-10, CF-11 |
+| [bg_rules](bg_rules_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 7 | 0 | 6 | 8 | data (output change); detector/tooling; registry/declaration; served surface (TS); writer code | y | CF-05, CF-06, CF-07, CF-08, CF-09 |
+| [bg_sarvatobhadra_grid](bg_sarvatobhadra_grid_ELEVATION_BRIEF_v1_0.md) | qualify (Q) | 1 | 0 | 7 | 5 | registry/declaration; writer code | y | CF-05, CF-06, CF-10 |
+| [bg_sign_medical](bg_sign_medical_ELEVATION_BRIEF_v1_0.md) | keep (P) | 2 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | n | CF-02, CF-04, CF-05, CF-06, CF-07, CF-12 |
+| [bg_sky_calendar](bg_sky_calendar_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 1 | detector/tooling; registry/declaration; served surface (TS) | n | CF-01, CF-03, CF-04, CF-05, CF-06, CF-07, CF-12 |
 | [bg_text_index](bg_text_index_ELEVATION_BRIEF_v1_0.md) | integrate (I) | 1 | 1 | 4 | 2 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-01, CF-04, CF-05, CF-06, CF-07, CF-08 |
-| [bg_texts](bg_texts_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-01, CF-04, CF-05, CF-06, CF-07 |
-| [bg_transit_engine](bg_transit_engine_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | y | CF-02, CF-03, CF-04, CF-05, CF-06, CF-07 |
+| [bg_texts](bg_texts_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | n | CF-01, CF-04, CF-05, CF-06, CF-07 |
+| [bg_transit_engine](bg_transit_engine_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | n | CF-02, CF-03, CF-04, CF-05, CF-06, CF-07 |
 | [bg_transit_rules](bg_transit_rules_ELEVATION_BRIEF_v1_0.md) | keep (P) | 2 | 1 | 3 | 2 | data (output change); detector/tooling; registry/declaration; served surface (TS); writer code | y | CF-02, CF-04, CF-05, CF-06, CF-07, CF-11 |
 | [bg_vastu_directions](bg_vastu_directions_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 3 | 3 | detector/tooling; registry/declaration; served surface (TS) | n | CF-04, CF-05, CF-06, CF-07, CF-12 |
 | [bg_vedha_malefic_scale](bg_vedha_malefic_scale_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 3 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-12 |
-| [bg_vidhi_floors](bg_vidhi_floors_ELEVATION_BRIEF_v1_0.md) | qualify (Q) | 0 | 0 | 5 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-10 |
-| [bg_vidhi_primitives](bg_vidhi_primitives_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 4 | 1 | detector/tooling; registry/declaration; writer code | n | CF-01, CF-03, CF-05, CF-06, CF-07, CF-08 |
-| [bg_yogas](bg_yogas_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 0 | 2 | 2 | 5 | data (output change); detector/tooling; registry/declaration; served surface (TS) | y | CF-04, CF-05, CF-07, CF-09, CF-10, CF-11 |
+| [bg_vidhi_floors](bg_vidhi_floors_ELEVATION_BRIEF_v1_0.md) | qualify (Q) | 0 | 0 | 4 | 3 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-10 |
+| [bg_vidhi_primitives](bg_vidhi_primitives_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 4 | 1 | detector/tooling; registry/declaration | n | CF-01, CF-03, CF-05, CF-06, CF-07, CF-08 |
+| [bg_yogas](bg_yogas_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 1 | 1 | 2 | 5 | data (output change); detector/tooling; registry/declaration; served surface (TS) | y | CF-04, CF-05, CF-07, CF-09, CF-10, CF-11 |
 
-**Rebuild needed (y):** 9 — bg_doshas, bg_nakshatra_medical, bg_ontology, bg_remedies, bg_rules, bg_sign_medical, bg_transit_engine, bg_transit_rules, bg_yogas. **Option-dependent (cond):** 4 — bg_cohort, bg_ephemeris, bg_gochara_citation_resolution, bg_nakshatra. All others: none.
+**Rebuild needed (y):** 10 — bg_dignity_reference, bg_doshas, bg_formula_constants, bg_gochara_citation_resolution, bg_ontology, bg_remedies, bg_rules, bg_sarvatobhadra_grid, bg_transit_rules, bg_yogas. **Option-dependent (cond):** 0 — . All others: none.
 
 ## 4 · Cross-asset fixes, ordered by value for J1 (Tracks I and B)
 
@@ -113,7 +113,7 @@ Order rule: assets served × gate movement, then tier-independence and absence o
 - **Blast radius:** Registry rows only. `has_writer = true` makes the two ids dispatchable in a layer-scope L0 plan (they ride sibling writers). No consumer reads `target_floor`.
 - **Rebuild:** none for the floor and the has_writer flags. Clearing the cascade (`Build.exercised`) needs the two ids dispatched in an L0 asset-set/layer run: a production build, so a REVIEW item for SS.
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (the `bg_panchanga` edge: tier-independent but needs its own review).
-- **Question for SS:** May the cascade `Build.exercised` FAIL on the two flipped ids stand until the first L0 dispatch (B.L0.x), or must the flip wait for that run?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch.
 
 ### 2. CF-06 — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates)
 
@@ -131,24 +131,24 @@ Order rule: assets served × gate movement, then tier-independence and absence o
 - **Why this rank:** highest consequence: bg_ontology is the identity root (4 direct / 69 transitive). Splits into rebuild-free served-surface fixes that can land first (list_entities, resolve_entity) and data changes that need the level-0/1 rebuild (B.L0.0/L0.1).
 - **Gate:** Vocab, Ldgr, Build; **assets:** 6 — bg_ontology, bg_doshas, bg_remedies, bg_rules, bg_texts, bg_ephemeris
 - **Evidence:** Census `Vocab.alias` FAIL: `dosha` 79 of 79 alias sets empty (`l0_doshas.py:1989-2002`: `[]  # synonyms — empty for doshas`). Ledger: `bg_ontology-G07/G08/G09`, `bg_ephemeris-G01` (body stored `Jupiter`, ontology `jupiter`), `bg_rules-G08` (2 of 14 rule `text_id`s have no ontology identity), `bg_ontology-G04` (resolve_entity returns two rows for 11 duplicated ids). Layer instance CH-05: 289 of 341 remedy source ids do not resolve exactly; 204 resolve case-insensitively; 85 do not (`classical_tradition` ×80 + 5). The `text` class holds 15 members and the corpus 15, differing by 3 in each direction (`bg_ontology-G09`).
-- **Design:** (a) `brahmagyan/l0_doshas.py` seeds the 79 `dosha` ontology rows with `[]` synonyms: author the closed alias set per doṣa from the catalogue’s own names (no invented names: derive from `brahma_dosha_catalog` fields or the native/classical transliterations already in the repo; unresolvable rows stay explicit). (b) declare the normalisation rule ONCE at the authority (a `release`/normalisation declaration in the ontology; there is no release id today, TGH-T2-12) and make consumers resolve through it (`ephemeris_daily.body`, remedy `source_canonical_id`, `resolve_entity.ts`). (c) reconcile the `text` class with the corpus (derive the class from `classical_text_chunks`, ledger `bg_ontology-O5`). Order: ontology first, then the co-writers (doṣa, daśā systems, yogas), then readers.
+- **Design:** **Decided (SS 2026-10-01, Q4/Q5):** (a) dosha alias sets: `brahmagyan/l0_doshas.py:2002` seeds `[]`; author a closed alias set per doṣa from names the module's own entries carry (convention read from the 15 complete classes; no invented aliases). (b) the normalisation rule lives in the `bg_ontology` writer, the one authority; consumers resolve through it; `ephemeris_daily.body` is declared the same way with NO stored-value change; a vocabulary release id goes in the first wave if cheap. (c) the `text` class is derived from the corpus: add the 3 corpus-only ids, keep an ontology-only id only if it has a consumer (referrer census first), remove the rest. Order: ontology first, then co-writers, then readers.
 - **Failing-first test and mutation:** `count(*) = count(DISTINCT (entity_class, canonical_id))` still holds; 79/79 doṣa alias sets non-empty; remedy unresolved 289 → the number the declared rule predicts (stated before the change); `resolve_entity` on each of the 11 duplicated ids returns one row per requested class. Mutation: blank one alias set → the alias test fails.
 - **Blast radius:** Highest in L0: `bg_ontology` has 4 direct / 69 transitive dependents. An alias addition is an additive class (T2 §4.4 display/alias correction) and must not recompute a chart; a release id or a key change is not (identity-mapping change, real invalidation path).
 - **Rebuild:** needs production rebuild: bg_ontology and bg_doshas (global, idempotent; B.L0.0/L0.1 in the plan), then dependents by level.
 - **Fix class:** data (output change) + writer code + served surface; **buildable before J1:** tier-dependent: the release/normalisation clause (TGH-T2-12) and the Vocab rule wording; the alias sets themselves are tier-independent.
-- **Question for SS:** Which authority holds the normalisation rule (the ontology table, a declared function, or the registry), and is a release id in scope for the first L0 wave?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q4): the normalisation rule lives in the `bg_ontology` writer, the one authority; the vocabulary release id goes in the first wave if it is cheap; for the 11 two-class ids take the recommended option (a, class-aware resolvers) unless it changes served ids (then REVIEW to SS); of bhrigu_samhita, jaimini_sutram, lal_kitab_text keep any with a consumer and remove the rest; Abhijit is a declared exception (classically intercalary) and the 27-id class stays canonical. ANSWERED by SS 2026-10-01 (Q5): authority-side declaration with NO stored-value change: `bg_ephemeris` declares `node: TRUE`; consumers needing MEAN must not read node values from it (a check, Track I item); body-name normalisation is declared the same way. BEFORE any wave touches `bg_ephemeris` or `bg_texts`, SS notifies Pravāha (Exec sends SS an ASK first).
 
-### 4. CF-01 — Build.completion for converged reruns (rows_written = changed rows, not rows present)
+### 4. CF-01 — Build.completion for converged reruns (rows_written = changed rows): option A decided (R)
 
 - **Why this rank:** one ruling clears Build.completion on 8 assets with no rebuild (option A).
 - **Gate:** Build (completion); **assets:** 8 (rows_written = 0 against a populated table) — bg_ephemeris, bg_muhurta_lattice, bg_ontology, bg_reference, bg_sky_calendar, bg_text_index, bg_texts, bg_vidhi_primitives
 - **Evidence:** The L0 convention is a conditional upsert that leaves exact rows untouched, so a converged rerun legitimately reports 0 changed rows: `bg_ephemeris.py:9-12` ("Exact rows are left untouched so rowcount reports only inserted or genuinely repaired rows"); `brahmagyan/l0_ontology.py:1115-1145,1183-1190` (`ON CONFLICT … DO UPDATE … WHERE ROW(…) IS DISTINCT FROM ROW(…)`; returns `inserted = changed + deleted`, `skipped = unchanged`); `asset_runner.py:1210` (`rows_written = rows_inserted + rows_updated`; `rows_skipped` is read nowhere in the orchestrator and persisted in no migration); `asset_runner.py:1229-1247` (a global asset with 0 rows is still marked `lit`). T4 §4.2 check 6 (L277) reads `rows_written = 0` against a populated table as a gap. The cause is established for bg_ontology and stated in the writer docstring for bg_ephemeris; for bg_texts, bg_reference, bg_text_index and bg_vidhi_primitives it is the same convention by pattern, not individually verified.
-- **Design:** Two options; a ruling is needed first. **A (detector/tooling, recommended):** `platform/scripts/governance/asset_census.py` Build.completion reads `rows_written = 0` as complete when the asset’s declaration states the changed-rows convention with a writer `file:line`, the latest run is `complete`, live rows are at or above the floor and the integrity SQL held; the verdict text names the convention. **B (writer code, not recommended):** make each seed return `rows_updated` = rows verified exact; this mislabels the field and inflates `rows_per_second` (`asset_runner.py:737`). A third option (persist `rows_skipped` and compare `rows_written + rows_skipped`) needs an orchestrator change, which is frozen: it would be raised to the Steward as R2, not designed around.
+- **Design:** **Decided (SS 2026-10-01, Q1, R, PROVISIONAL until the J1 review): option A.** `platform/scripts/governance/asset_census.py` Build.completion reads `rows_written = 0` as complete ONLY IF the asset's declaration states the changed-rows convention with a writer `file:line` AND `Build.count_integrity` PASSes on populated rows (live at or above the floor, integrity SQL held); the verdict text names the convention. Completion is proven by the count, not by `rows_written`. Options B (writer mislabels `rows_updated`) and C (persist `rows_skipped`: an orchestrator change, R2) are not taken.
 - **Failing-first test and mutation:** Failing-first: a fixture asset with `rows_written = 0`, live 0 and floor > 0 stays FAIL; the same with live ≥ floor and the declaration present reads PASS; without the declaration it reads FAIL. Mutation: delete the declaration → the verdict must flip back.
 - **Blast radius:** No data and no consumer changes for A (census and ledger only). B would change `asset_throughput.rows_written` for 8 assets and the Cost baseline rate.
 - **Rebuild:** A: none. B: needs production rebuild of the 8 assets (idempotent, no data change) so the new record is written.
 - **Fix class:** detector/tooling (A) or writer code (B); **buildable before J1:** tier-dependent: T4 §4.2 check 6 wording; no harvest item states it (propose a second-round TG; nearest TGH-T3-18, TGH-T4-03).
-- **Question for SS:** Is a converged-rerun `rows_written = 0` on a declared changed-rows writer a Build.completion PASS (option A), or must the writer report rows present (option B)?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q1): CF-01 option A (R, PROVISIONAL until the J1 review): a converged rerun with `rows_written = 0` reads Build.completion PASS ONLY IF the writer declares the changed-rows convention AND count_integrity PASSes on populated rows; completion is proven by the count, not by `rows_written`.
 
 ### 5. CF-02 — Producer attribution: rider ids, multi-table writers and multi-producer tables
 
@@ -160,31 +160,31 @@ Order rule: assets served × gate movement, then tier-independence and absence o
 - **Blast radius:** Registry-only part: cockpit counts for the named assets change (cosmetic); no consumer reads `count_sql`. Writer part: `asset_throughput` records only.
 - **Rebuild:** (1) none. (2) needs production rebuild of the affected assets to refresh the record (idempotent, no data change).
 - **Fix class:** registry/declaration only (1); writer code (2); **buildable before J1:** (1) tier-independent; (2) tier-dependent: TGH-T2-05 (one table, several producers) and TGH-T4-01 (`kind` vocabulary incl. rider).
-- **Question for SS:** For a rider id, does `Build.exercised` count the sibling’s dispatch (T4 `producer_covered`), or must each id be dispatched itself?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch. ANSWERED by SS 2026-10-01 (Q19): scope `count_sql` to the primary table and declare the asset multi-table.
 
 ### 6. CF-07 — Carr (source carriage and reproduction) detectors, one check per asset
 
 - **Why this rank:** the largest gate count (Carr 40) but tooling work for Track E; D1/D2/D3 designs per asset are in the briefs; not a J1 input.
 - **Gate:** Carr; **assets:** 40 of 40 NO_DETECTOR — D1: bg_rules, bg_yogas, bg_doshas, bg_remedies, bg_ontology, bg_dignity_reference, bg_parihara_rules, bg_vidhi_primitives and the static reference tables; D2: bg_concordance; D3: bg_ephemeris, bg_sky_calendar, bg_muhurta_lattice, bg_gochara_arcs, bg_kp_sublord_division, bg_cohort, bg_panchanga, bg_ephemeris_engine
 - **Evidence:** Census `Carr.detector` NO_DETECTOR ×40; ledger rows `Carr.D1` (bg_ontology-G05, bg_rules-G03, …) and `Carr.D3` (bg_ephemeris-G02, bg_panchanga-G02). Layer instance §2.7: a (source correspondence) NO DETECTOR, b (witness carriage) PARTIAL, c (re-derivation) NO DETECTOR at L0. Anchors that already exist: `bg_texts_source_manifest_v1.json` pins 20 source objects with `md5_base64`, `generation`, `size_bytes`; `bg_ephemeris.py:44-45` fails closed on pyswisseph’s analytic fallback; `l0_kp_sublord_division.py` documents the Vimśottarī derivation (R1+R2: 243 + 6 = 249) and a star-lord cross-check.
-- **Design:** Deterministic-first (CLAUDE.md §N.4: no JH-parity oracle; verification is internal consistency + classical-rule re-derivation). **D1:** resolve each row’s citation (`text_id`, `verse_ref`) to a `classical_text_chunks` row and test that the chunk contains the row’s anchor terms; report matched / unmatched / unresolvable counts; PASS only on the matched subset, PARTIAL otherwise (never PASS on a presence reading). Semantic equivalence of prerequisites and exceptions stays a sampled human reading, recorded as such. **D2:** for `classical_attributions` rows that share a claim, assert the disagreement is carried as two rows, not collapsed. **D3:** re-derive a stratified sample a second way and compare within a declared tolerance (ephemeris: a second pyswisseph call with different flags, or the stored daily-motion continuity; sky calendar: re-find a sampled event by root-finding on the stored ephemeris; KP: recompute the 249 divisions from Vimśottarī proportions). Each detector ships a seeded mismatch it must catch.
+- **Design:** Deterministic-first (CLAUDE.md §N.4: no JH-parity oracle; verification is internal consistency + classical-rule re-derivation). **D1:** resolve each row’s citation (`text_id`, `verse_ref`) to a `classical_text_chunks` row and test that the chunk contains the row’s anchor terms; report matched / unmatched / unresolvable counts; PASS only on the matched subset, PARTIAL otherwise (never PASS on a presence reading). Semantic equivalence of prerequisites and exceptions stays a sampled human reading, recorded as such. **D2:** for `classical_attributions` rows that share a claim, assert the disagreement is carried as two rows, not collapsed. **D3:** re-derive a stratified sample a second way and compare within a declared tolerance (ephemeris: a second pyswisseph call with different flags, or the stored daily-motion continuity; sky calendar: re-find a sampled event by root-finding on the stored ephemeris; KP: recompute the 249 divisions from Vimśottarī proportions). Each detector ships a seeded mismatch it must catch. **Decided (SS 2026-10-01, Q13):** the cell reads PASS ONLY if every row matches, else PARTIAL (so a catalogue with any unverifiable row is PARTIAL by construction); semantic equivalence stays sampled. (R, PROVISIONAL) Ratified judgment seeds (e.g. `bg_class_priors`, the non-classical `bg_formula_constants` rows) get check-level Carr N/A by cause `ratified_judgment` from a declared fact; it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
 - **Failing-first test and mutation:** Failing-first per detector: report a non-zero mismatch count on a seeded corrupted copy and zero on the real table. The proof is the seeded case, not the real-data pass.
 - **Blast radius:** none for the asset; the detector is Track E tooling.
 - **Rebuild:** none.
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent for the assignment of D1/D2/D3 per asset (TGH-T3-02: T3 assigns carriage at layer scope only); the detectors themselves need no tier clause.
-- **Question for SS:** Is a D1 anchor-term match acceptable as the L0 carriage detector (PASS on the matched subset), with semantic equivalence a sampled reading?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
 
-### 7. CF-04 — Dens (serving density) on the L0 served modules
+### 7. CF-04 — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R)
 
 - **Why this rank:** applicability ruling first (23 assets); no rebuild; re-measure at rev 4 is needed before the count means anything.
 - **Gate:** Dens; **assets:** 23 FAIL + 1 NO_DETECTOR in the saved census — bg_class_lifetime_counts, bg_class_priors, bg_compendium_index, bg_dasha_systems, bg_doshas, bg_ephemeris, bg_ephemeris_engine, bg_formula_constants, bg_medical_mappings, bg_muhurta_lattice, bg_nakshatra_medical, bg_ontology, bg_panchanga, bg_parihara_rules, bg_remedies, bg_sign_medical, bg_sky_calendar, bg_text_index, bg_texts, bg_transit_engine, bg_transit_rules, bg_vastu_directions, bg_yogas (NO_DETECTOR: bg_dignity_reference)
 - **Evidence:** 0 of 46 L0 capability modules declare a `density_contract` (layer instance §1.4). The saved `Dens.served` is criterion revision 1 (file-level "modules reference the table; declaring density_contract: 0"). Main’s revision 4 (`asset_census.py`, REGISTRY_REVISION 4) passes only when ONE capability entry declares `density_contract` AND its own served read selects a tier column (`DENS_TIER_COLUMN`, `asset_census.py:2638`: `tier | *_tier | verification_pass_status`). Among the populated columns the saved census recorded for the 40 L0 target tables, the only tier-like name is `cost_tier` on `brahma_remedy_corpus` (a cost tier, not a verification tier). So under revision 4 no L0 asset can reach PASS by declaring a contract alone, and some of the 23 may read N/A (no served read) rather than FAIL; the saved figure is a rev-1 reading and a re-measure is expected.
-- **Design:** First the applicability question (below). If Dens applies: add `density_contract` (`platform/src/lib/retrieval/registry/types.ts` `CapabilityDescriptor`) to each L0 module that paginates or facets (`paginated`, `facets`, `empty_reason`), additive to the response; where a catalogue carries a catalog-only/confirmed distinction (the yoga and doṣa catalogues are the CLAUDE.md §N.6 case: `catalog_only_rows_in_page`, `judgment_flags`), serve it through the existing flag fields. If it does not apply to reference vocabularies, it is an N-22 applicability rule with a decision id in `NA_RULE_DECISIONS` (empty on main), not an asset change.
+- **Design:** **Decided (SS 2026-10-01, Q2):** Dens applies wherever an asset reaches a served surface. (R, PROVISIONAL) A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (a Track I detector item); mixed-authority tables need a real tier column. Per module: add `density_contract` (`platform/src/lib/retrieval/registry/types.ts` `CapabilityDescriptor`: `paginated`, `facets`, `empty_reason`) where the module paginates or facets; where a catalogue carries a catalog-only/confirmed distinction (yoga, doṣa: CLAUDE.md N.6) serve it through the existing flag fields. Table by table, decide uniform vs mixed authority at declaration time.
 - **Failing-first test and mutation:** Per module: a response-shape test that the declared `empty_reason` is emitted on an empty page and that a trim keeps the dense layer (the `response_budget.ts` `hardFloor` pattern). Mutation: drop the declaration → the census Dens cell reads FAIL again.
 - **Blast radius:** Additive response fields on the L0 retrieval tools; consumers that parse strictly would see new keys (none identified). No data change.
 - **Rebuild:** none (TypeScript serving surface only).
 - **Fix class:** served surface (TS) + SS ruling; **buildable before J1:** tier-dependent: TGH-T3-26 (who owns a Dens FAIL; serving is [TRANSFERS]) and the N-22 per-gate applicability rules.
-- **Question for SS:** Does Dens apply to L0 reference vocabularies that carry no verification tier, and if so what is the L0 tier column (add one, or accept `density_contract` facets only)?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 ### 8. CF-12 — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion)
 
@@ -196,7 +196,7 @@ Order rule: assets served × gate movement, then tier-independence and absence o
 - **Blast radius:** Detector: none. A prune changes data only when orphans exist (none known after migration 703).
 - **Rebuild:** none for the detector; a prune is exercised by the next rebuild (no separate rebuild).
 - **Fix class:** detector/tooling + writer code (prune, only if orphans are found); **buildable before J1:** tier-dependent: TGH-T3-18 (what Idem means for upsert writers); T4 §6 names L0 upsert as the convention.
-- **Question for SS:** Is "no orphan rows under the writer’s own partition" the Idem claim for L0 upsert writers?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
 
 ### 9. CF-08 — Ldgr: assets with no recognised citation column (16 "no reading")
 
@@ -220,29 +220,29 @@ Order rule: assets served × gate movement, then tier-independence and absence o
 - **Rebuild:** none.
 - **Fix class:** detector/tooling; **buildable before J1:** tier-independent (no tier clause is needed to build the instrument).
 
-### 11. CF-11 — `classical_tradition` provenance made an explicit queryable state (no invented citations)
+### 11. CF-11 — `classical_tradition` is not provenance: explicit attribution state `sourced | unsourced | refuted` (no invented citations)
 
 - **Why this rank:** output change on four assets (explicit attribution state); needs SS’s answer on `classical_tradition` first; rebuild of four small assets after a migration.
 - **Gate:** Ldgr (qualification), Carr; **assets:** 4 (doṣa 53, yoga 1, remedy 80 rows; transit rules 19 refuted + 6 unsourced) — bg_doshas, bg_yogas, bg_remedies, bg_transit_rules
 - **Evidence:** `brahmagyan/l0_doshas.py:18-21`: "Citation policy (native decision per brief §3a): ~40 entries cite 'classical_tradition' (honest provenance for tradition-rooted doshas where no single BPHS verse names them … These are NOT fabricated citations.)". The census `Ldgr.source_presence` reads PASS because the column is populated (presence, not qualification; layer instance §1.2). 53 of 79 doṣa, 1 of 233 yoga (`l0_yogas.py:946`) and 80 remedy rows (`l0_remedy_corpus.py:263,507,526…`) carry the token.
-- **Design:** Do NOT replace the token with a verse (B.10: no invented citation). Add an explicit attribution state (`attribution_state` ∈ `verse_cited | tradition_rooted | unattributed`, derived by the writer from the token) so a reader and the Ldgr gate can tell a tradition-rooted row from a verse-cited one; any replacement of a token by a real verse is a domain decision made row by row from the corpus, not by this design.
-- **Failing-first test and mutation:** Failing-first: the count of `tradition_rooted` rows equals the count of rows carrying the token today (53 / 1 / 80); no row changes its citation; mutation: change a token to a verse → the state flips to `verse_cited`.
+- **Design:** **Decided (SS 2026-10-01, Q3):** B.3 forbids a claim resting on 'per tradition' without a source, so the token is NOT accepted. Add `attribution_state` ∈ `sourced | unsourced | refuted`, derived by the writer: rows citing a verse = `sourced`; `classical_tradition` rows and the Mayamata rows = `unsourced`; the 19 'BPHS Ch.29' transit rows = `refuted`. Neither `unsourced` nor `refuted` is a PASS of Ldgr/Carr. No citation is replaced by this change (B.10); re-sourcing the 19 refuted rows from the `bg_texts` corpus is a Track I research item spot-checked at the milestone review.
+- **Failing-first test and mutation:** Failing-first: counts by state equal the counts the tokens give today (doṣa 53 unsourced, yoga 1, remedy 80, transit 19 refuted + 6 unsourced) and no citation changes; mutation: change a token to a verse → the state flips to `sourced`.
 - **Blast radius:** Additive column; readers of the three catalogues see a new field.
 - **Rebuild:** needs production rebuild: bg_doshas, bg_yogas, bg_remedies (idempotent; column add by migration first).
-- **Fix class:** data (output change); **buildable before J1:** tier-independent for the state; tier-dependent for any claim that replaces the layer instance’s "placeholder" reading (the code says the token is a native decision).
-- **Question for SS:** Is `classical_tradition` an accepted provenance value (the code cites a native decision) so the fix is an explicit state, or does SS want the 53 + 1 + 80 rows re-sourced from the corpus?
+- **Fix class:** data (output change); **buildable before J1:** tier-independent for the state (SS decided); the Ldgr/Carr reading of `unsourced` follows the Carr rule of CF-07.
+- **Decision:** ANSWERED by SS 2026-10-01 (Q3): `classical_tradition` is NOT accepted as provenance (B.3: no claim rests on 'per tradition' without a source). Give it an explicit attribution state `sourced | unsourced | refuted`; neither `unsourced` nor `refuted` is a PASS. The 19 refuted 'BPHS Ch.29' transit citations are marked `refuted`; re-sourcing them from the `bg_texts` corpus is a Track I research item, spot-checked at the milestone review.
 
 ### 12. CF-10 — Build.history PARTIAL is a record of past errors; no edit changes it
 
 - **Why this rank:** a definition question; no edit can change a history record.
 - **Gate:** Build (history); **assets:** 13 — bg_class_lifetime_counts, bg_cohort, bg_compendium_index, bg_dasha_systems, bg_doshas, bg_formula_constants, bg_gochara_arcs, bg_kp_sublord_division, bg_parihara_rules, bg_reference, bg_remedies, bg_vidhi_floors, bg_yogas
 - **Evidence:** Each reads "latest run complete, but N error(s) and M abort(s) on record" (T4 §4.2 check 8: PARTIAL if it has errored before and the latest run completed). Seven carry the identical error `post-write integrity check failed: integrity_check_sql → False` (2026-09-04 … 2026-09-06). The latest runs completed; no repair of the asset can remove the old rows.
-- **Design:** None for the assets. A clean run raises the count of complete runs but never removes an error from history, so this cell stays PARTIAL until the definition says otherwise (a window, or "since the last registry/writer change").
+- **Design:** Decided (SS 2026-10-01, Q11): Build.history counts only runs since the last change to the asset's writer or registry row (a Track I detector item); a repaired error then stops counting. No asset edit.
 - **Failing-first test and mutation:** n/a (definition).
 - **Blast radius:** none.
 - **Rebuild:** none.
 - **Fix class:** detector/tooling (definition); **buildable before J1:** tier-dependent: T4 §4.2 check 8 wording.
-- **Question for SS:** Should Build.history look only at runs since the last change to the asset’s writer or registry row, so that a repaired error stops counting?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q11): yes: Build.history counts only runs since the last change to the writer or the registry row.
 
 ## 5 · Rebuild consequences Track B needs per asset (facts found while reading the writers)
 
@@ -268,53 +268,123 @@ These are not gaps; they are what a level-by-level L0 rebuild (B.L0.0-B.L0.3, gl
 | bg_doshas | E | enrich (narrowed) | alias sets stay; the citation half becomes an explicit attribution state because the code cites a native decision for the token |
 | bg_text_index | I | integrate (narrowed) | declare the grain/unit once; SS routes it |
 
-**Approval under Track A §10:** keep and qualify and enrich (with or without fix designs) go to the Steward (G16); integrate (bg_text_index) goes to SS; **any output change goes to SS (R5)**: the enrich assets (bg_ontology, bg_doshas, bg_remedies, bg_rules, bg_yogas) and the fixes named "data (output change)" (CF-09, CF-11, bg_transit_rules citation state, bg_concordance chunk pointers). Provisional approval before J1 covers only tier-independent designs.
+**Accepted:** SS accepted all dispositions as proposed (2026-10-01, Q10), including the four changes above. Approval of the fixes follows Track A §10: keep/qualify/enrich to the Steward, any output change to SS (R5); the answers in section 7 and the Track I items in section 8 record which output changes SS has already decided.
 
-## 7 · Questions for Strategic Suvarṇa (consolidated)
+## 7 · Questions for Strategic Suvarṇa: ANSWERED 2026-10-01
 
-Curated from the per-asset questions (the full per-asset lists stay in each brief, §4 `Question for SS` and §7). Ordered by how many assets or gates the answer unblocks.
+All 20 questions were ANSWERED by SS on 2026-10-01. The open question is replaced by the answer; (R) marks an answer that changes a verdict or criterion definition and is PROVISIONAL until the J1 review.
 
-1. **CF-01 (8 assets, Build):** is a converged-rerun `rows_written = 0` on a writer that declares the changed-rows convention a Build.completion PASS (option A), or must writers report rows present (option B)? Option C needs an orchestrator change and is R2.
-2. **CF-04 (23 assets, Dens):** does Dens apply to L0 reference vocabularies that carry no verification tier? If yes, what is the L0 tier column (add one, or accept `density_contract` facets only); if no, an N-22 applicability rule with a decision id. Re-measure at registry rev 4 first.
-3. **CF-11 (bg_doshas 53 rows, bg_yogas 1, bg_remedies 80, bg_transit_rules 19 refuted + 6 unsourced):** is `classical_tradition` an accepted provenance value (the code cites a native decision, `l0_doshas.py:18-21`), so the fix is an explicit attribution state, or does SS want re-sourcing? Who re-verifies the 19 refuted "BPHS Ch.29" transit citations?
-4. **CF-09 (bg_ontology and 5 consumers):** where does the normalisation rule live and is a vocabulary release id in the first wave (TGH-T2-12)? Which identity option for the 11 two-class ids (ledger O1 a/b/c)? The three ontology-only text ids (bhrigu_samhita, jaimini_sutram, lal_kitab_text): keep or remove? Abhijit (28th nakshatra in the reference table, absent from the 27-id ontology class): identity or declared exception?
-5. **bg_ephemeris / R9:** the table holds TRUE node while the engine and panchang standard is MEAN_NODE: intended and declared, or must SS rule a convention (a domain decision)? Body-name normalisation by authority-side declaration (recommended, no stored-value change) or rewrite? Which route notifies Pravāha before any wave touches `bg_ephemeris` or `bg_texts` (inputs of the R9 pair)?
-6. **CF-02 / CF-03 (riders):** does a sibling’s dispatch count for a rider id (T4 `producer_covered`) or must each id run? May the recorded R61 cascade (`Build.exercised` FAIL after `has_writer` flips to true on bg_nakshatra_medical and bg_transit_engine) stand until the first L0 dispatch?
-7. **Static migration-seeded assets (bg_gochara_citation_resolution; also bg_sarvatobhadra_grid):** Build gate N/A by an N-22 rule, or a dispatchable writer?
-8. **bg_formula_constants:** where do calibrated values live once L5 tunes them (the upsert would revert them on rebuild)? Scope count_sql to the ten writer rows, or declare two producers?
-9. **bg_rules:** backfill concept ids by migration or change `DO NOTHING` to `DO UPDATE`; drop/rename `confidence` or build a discriminating score; populate or remove `dasha_system_id`.
-10. **Dispositions:** accept keep (not C) for bg_class_priors and bg_class_lifetime_counts; keep (not I) for bg_prashna_rules; integrate (declare the unit) for bg_text_index; enrich for bg_yogas.
-11. **CF-10 (13 assets):** should Build.history count only runs since the last change to the asset’s writer or registry row?
-12. **CF-12 (18 upsert writers):** is "no orphan rows under the writer’s own partition" the Idem claim for L0 upsert writers (TGH-T3-18)?
-13. **CF-07:** is a D1 anchor-term match acceptable as the L0 carriage detector (PASS on the matched subset, semantic equivalence a sampled reading)? For ratified judgment seeds (bg_class_priors, bg_formula_constants non-classical rows) is Carr N/A with a decision id?
-14. **bg_vidhi_floors:** what does `catalog_status = DRAFT` block for certification (TGH-T3-21), and who ratifies `education_deepdive` and `progeny_deepdive`?
-15. **Duplicate authority:** combustion orbs are held in `bg_combustion_orbs` and `brahma_formula_constants`: intended redundancy or a consolidation question?
-16. **bg_panchanga edge:** declare `bg_ephemeris_engine` (the code calls swisseph) or `bg_ephemeris` (the ledger)?
-17. **bg_concordance:** chunk-level pointers on `classical_attributions` in scope for L0 (an output change) or is text-level carriage the contract?
-18. **bg_vastu_directions:** admit Mayamata to the corpus so D1 can run, or record its rows as outside the corpus?
-19. **bg_cohort:** report both tables in `rows_written` or scope count_sql to the primary table?
-20. **bg_yogas:** are the four unpopulated DP05 formation columns in scope for the first L0 wave, and by what source-grounded extraction?
+1. *CF-01: is a converged-rerun `rows_written = 0` a Build.completion PASS (8 assets)?* ANSWERED by SS 2026-10-01 (Q1): CF-01 option A (R, PROVISIONAL until the J1 review): a converged rerun with `rows_written = 0` reads Build.completion PASS ONLY IF the writer declares the changed-rows convention AND count_integrity PASSes on populated rows; completion is proven by the count, not by `rows_written`.
+2. *CF-04: does Dens apply to L0 reference vocabularies without a verification tier (23 assets)?* ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+3. *CF-11: is `classical_tradition` accepted provenance (doṣa 53, yoga 1, remedy 80, transit 19 refuted + 6 unsourced)? who re-verifies the 19 refuted citations?* ANSWERED by SS 2026-10-01 (Q3): `classical_tradition` is NOT accepted as provenance (B.3: no claim rests on 'per tradition' without a source). Give it an explicit attribution state `sourced | unsourced | refuted`; neither `unsourced` nor `refuted` is a PASS. The 19 refuted 'BPHS Ch.29' transit citations are marked `refuted`; re-sourcing them from the `bg_texts` corpus is a Track I research item, spot-checked at the milestone review.
+4. *CF-09: where does the normalisation rule live; release id in the first wave; identity option for the 11 two-class ids; the three ontology-only text ids; Abhijit?* ANSWERED by SS 2026-10-01 (Q4): the normalisation rule lives in the `bg_ontology` writer, the one authority; the vocabulary release id goes in the first wave if it is cheap; for the 11 two-class ids take the recommended option (a, class-aware resolvers) unless it changes served ids (then REVIEW to SS); of bhrigu_samhita, jaimini_sutram, lal_kitab_text keep any with a consumer and remove the rest; Abhijit is a declared exception (classically intercalary) and the 27-id class stays canonical.
+5. *bg_ephemeris: TRUE vs MEAN node; body-name normalisation; the notify-Pravāha route before any wave touches bg_ephemeris/bg_texts (R9)?* ANSWERED by SS 2026-10-01 (Q5): authority-side declaration with NO stored-value change: `bg_ephemeris` declares `node: TRUE`; consumers needing MEAN must not read node values from it (a check, Track I item); body-name normalisation is declared the same way. BEFORE any wave touches `bg_ephemeris` or `bg_texts`, SS notifies Pravāha (Exec sends SS an ASK first).
+6. *CF-02/CF-03 riders: does a sibling’s dispatch count; may the R61 cascade stand until the first L0 dispatch?* ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch.
+7. *Static migration-seeded assets: N/A by rule or a dispatchable writer?* ANSWERED by SS 2026-10-01 (Q7): static migration-seeded assets get a DISPATCHABLE writer that re-seeds from the git source (delete-then-insert), which makes Build measurable and ELEVATED reachable (Track I item; R9 assets wait for SS after notifying Pravāha).
+8. *bg_formula_constants: where do calibrated values live; scope of count_sql?* ANSWERED by SS 2026-10-01 (Q8): L0 holds seeds only; calibrated values belong to L5 storage later and the L0 upsert must never overwrite them; scope `count_sql` to the ten writer rows.
+9. *bg_rules: concept backfill vs `DO UPDATE`; `confidence`; `dasha_system_id`?* ANSWERED by SS 2026-10-01 (Q9): change the writer to `DO UPDATE` so a rebuild reproduces the concept ids and do NOT backfill; `confidence`: no fake score (CLAUDE.md N.7): if it does not discriminate the writer sets it NULL and documents why (dropping the column later is a REVIEW); `dasha_system_id`: populate if a source exists, otherwise NULL (removal later is a REVIEW).
+10. *Dispositions (keep for the two class-prior assets and prashna_rules; integrate for text_index; enrich for yogas)?* ANSWERED by SS 2026-10-01 (Q10): all dispositions accepted as proposed.
+11. *CF-10: Build.history window?* ANSWERED by SS 2026-10-01 (Q11): yes: Build.history counts only runs since the last change to the writer or the registry row.
+12. *CF-12: the Idem claim for L0 upsert writers?* ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
+13. *CF-07: is D1 anchor-term matching an acceptable L0 carriage detector; Carr for ratified judgment seeds?* ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+14. *bg_vidhi_floors: what does DRAFT block; who ratifies the two CANDIDATE floors?* ANSWERED by SS 2026-10-01 (Q14): `catalog_status = DRAFT` blocks certification while DRAFT; SS ratifies the deep-dive floors after the milestone independent review.
+15. *Duplicate authority: combustion orbs in `bg_combustion_orbs` and `brahma_formula_constants`?* ANSWERED by SS 2026-10-01 (Q15): one authority: `bg_combustion_orbs` holds the values and `brahma_formula_constants` references it rather than duplicating it (Track I consolidation item).
+16. *bg_panchanga edge target?* ANSWERED by SS 2026-10-01 (Q16): declare `bg_ephemeris_engine` (what the code actually calls).
+17. *bg_concordance: chunk-level pointers in scope?* ANSWERED by SS 2026-10-01 (Q17): text-level carriage is the contract for now; chunk-level pointers are an opportunity, deferred.
+18. *bg_vastu_directions: Mayamata admitted to the corpus or recorded as outside it?* ANSWERED by SS 2026-10-01 (Q18): record the Mayamata rows as outside the corpus (explicitly `unsourced`) for now; admitting the text is an opportunity.
+19. *bg_cohort: report both tables or scope count_sql?* ANSWERED by SS 2026-10-01 (Q19): scope `count_sql` to the primary table and declare the asset multi-table.
+20. *bg_yogas: the four DP05 columns in the first wave?* ANSWERED by SS 2026-10-01 (Q20): the four DP05 columns are out of the first wave unless a source-grounded extraction already exists; an opportunity otherwise.
 
 
-## 8 · Notes on method and path
+## 8 · Track I items arising (from the SS answers and the shared fixes)
+
+Id, asset(s), fix, class, rebuild needed, source decision. Class set: registry / declaration / writer code / detector / research. `y` items are REVIEW items for SS at their level (production rebuild or dispatch). Items marked (R) change a verdict or criterion definition and are PROVISIONAL until the J1 review. Fix designs remain in the per-asset briefs (§4) and in section 4 here.
+
+| id | asset(s) | fix | class | rebuild | from |
+|---|---|---|---|---|---|
+| TI-L0-01 | bg_ephemeris, bg_muhurta_lattice, bg_ontology, bg_reference, bg_sky_calendar, bg_text_index, bg_texts, bg_vidhi_primitives | declare the changed-rows convention (writer `file:line` evidence) in the declarations file | declaration | n | Q1 (R) |
+| TI-L0-02 | inspector (all layers) | Build.completion rule: `rows_written = 0` is PASS only if the convention is declared AND count_integrity PASSes on populated rows | detector | n | Q1 (R) |
+| TI-L0-03 | every L0 asset that reaches a served surface (offline Dens list, INDEX section 9) | `uniform_authority: true` declaration for uniform-authority vocabularies; decide table by table which are mixed-authority and need a real tier | declaration | n | Q2 (R) |
+| TI-L0-04 | inspector | Dens: PASS on `density_contract` facets without a tier column when `uniform_authority: true` | detector | n | Q2 (R) |
+| TI-L0-05 | the 23 saved-FAIL Dens assets | `density_contract` facets on the L0 capability modules that paginate or facet | writer code (served TS) | n | Q2 |
+| TI-L0-06 | 35 assets with `prose_fields: null` | prose_fields declarations with writer `file:line` evidence (CF-06) | declaration | n | CF-06 |
+| TI-L0-07 | bg_parihara_rules, bg_nakshatra_medical, bg_transit_engine | one surgical registry migration: parihara floor 449→440, `has_writer` true for the two riders (R61 cascade may stand) | registry | n | Q6 |
+| TI-L0-08 | bg_sign_medical, bg_nakshatra_medical, bg_transit_engine | declare the rider relation (`producer_covered`) in the registry so a sibling’s dispatch counts | registry | n | Q6 |
+| TI-L0-09 | bg_doshas, bg_yogas, bg_remedies, bg_transit_rules, bg_vastu_directions | explicit attribution state `sourced \| unsourced \| refuted` (additive column + writers); `classical_tradition` rows and the Mayamata rows read `unsourced`; no state other than `sourced` is a PASS | writer code | y | Q3, Q18 |
+| TI-L0-10 | bg_transit_rules (+ the corpus `bg_texts`) | mark the 19 refuted "BPHS Ch.29" citations `refuted` (in TI-L0-09) and re-source them from the `bg_texts` corpus, row by row with the verified predicate; spot-checked at the milestone review | research | y (after re-sourcing) | Q3 |
+| TI-L0-11 | bg_ontology | normalisation rule in the `bg_ontology` writer (one authority); vocabulary release id in the first wave if cheap | writer code | y | Q4 |
+| TI-L0-12 | bg_doshas, bg_ontology | closed alias sets for the 79 doṣa ontology rows (convention read from the 15 complete classes) | writer code | y | CF-09 |
+| TI-L0-13 | bg_ontology (+ bg_remedies, bg_rules beneficiaries) | reconcile the `text` class with the corpus: derive from the corpus, add the 3 corpus-only ids, keep ontology-only ids that have a consumer (referrer census first) and remove the rest | writer code | y | Q4 |
+| TI-L0-14 | bg_ontology consumers (`resolve_entity.ts`) | class-aware resolution for the 11 two-class ids (option a); REVIEW to SS if it changes served ids | writer code (served TS) | n | Q4 |
+| TI-L0-15 | bg_ontology (`list_entities.ts`) | make `yoga` and `dosha` listable; delete the false UNBACKED branch; update the honesty test | writer code (served TS) | n | CF-09 |
+| TI-L0-16 | bg_nakshatra | declare Abhijit an exception (classically intercalary); the 27-id class stays canonical; no ontology row added | declaration | n | Q4 |
+| TI-L0-17 | bg_ephemeris | declare `node: TRUE` and the body-name normalisation at the authority; no stored-value change | declaration | n | Q5 |
+| TI-L0-18 | consumers of `ephemeris_daily` node columns | check that a consumer needing MEAN node does not read node values from bg_ephemeris | detector | n | Q5 |
+| TI-L0-19 | process: any wave touching bg_ephemeris or bg_texts | Exec sends SS an ASK first; SS notifies Pravāha before the wave | research (process REVIEW) | n | Q5 |
+| TI-L0-20 | bg_gochara_citation_resolution (R9), bg_sarvatobhadra_grid (confirm: empty by ruling) | dispatchable writer re-seeding from the git source (delete-then-insert) so Build is measurable; R9: waits for SS after notifying Pravāha | writer code | y | Q7 |
+| TI-L0-21 | bg_formula_constants | scope `count_sql` to the ten writer rows; seed-once guard so an L0 upsert never overwrites a calibrated value | registry + writer code | n | Q8 |
+| TI-L0-22 | bg_formula_constants, bg_dignity_reference | combustion orbs: `bg_combustion_orbs` is the sole authority; formula constants reference it; repoint `ga_condition`, `ka_vighnakara`, `ph_sodhana` reads | writer code | y | Q15 |
+| TI-L0-23 | bg_rules | writer `DO UPDATE` (no backfill); `confidence` NULL with documentation; `dasha_system_id` from a source else NULL | writer code | y | Q9 |
+| TI-L0-24 | inspector | Build.history counts only runs since the last change to the writer or registry row | detector | n | Q11 |
+| TI-L0-25 | 18 upsert writers (CF-12), bg_parihara_rules first | orphan census (dry-run produced keys vs live keys) and a partition-scoped prune where orphans exist | detector | n | Q12 |
+| TI-L0-26 | inspector | Carr D1 anchor-term detector: PASS only if every row matches, else PARTIAL; semantic equivalence sampled | detector | n | Q13 |
+| TI-L0-27 | bg_class_priors, bg_formula_constants (non-classical rows) | declared fact for ratified judgment seeds → check-level Carr N/A by cause `ratified_judgment` (rule in `NA_RULE_DECISIONS` only via SS approval) | declaration | n | Q13 (R) |
+| TI-L0-28 | bg_vidhi_floors, bg_vidhi_primitives | declare that DRAFT blocks certification; register the existing CI parity gate as the Carr detector | declaration + detector | n | Q14 |
+| TI-L0-29 | bg_panchanga | declare the edge `bg_panchanga → bg_ephemeris_engine` (own review: upstream hash) | registry | n | Q16 |
+| TI-L0-30 | bg_cohort | scope `count_sql` to `bg_synthetic_cohort` and declare the asset multi-table | registry | n | Q19 |
+| TI-L0-31 | bg_yogas | declared null reasons for the four DP05 columns; extraction deferred (opportunity) | declaration | n | Q20 |
+| TI-L0-32 | bg_medical_mappings, bg_transit_rules | writer reports its own partition in `rows_written` (CF-02), including `bg_transit_moorti` as a declared produced table | writer code | y | CF-02 |
+
+**32 items.** By class: declaration 8, detector 6, registry 5, research 2, writer 11. Rebuild y: TI-L0-09, TI-L0-10, TI-L0-11, TI-L0-12, TI-L0-13, TI-L0-20, TI-L0-22, TI-L0-23, TI-L0-32.
+
+## 9 · Decisions applied (one page)
+
+SS accepted every disposition as proposed (Q10), so the disposition counts stand: enrich 5, integrate 1, keep 32, qualify 2. The answers that change a **verdict or a criterion definition** are the three marked (R), PROVISIONAL until the J1 review; route these to the E6 detector work:
+
+| Q | decision | what changes in the inspector | where it lands |
+|---|---|---|---|
+| 1 (R) | CF-01 option A: a converged rerun with `rows_written = 0` reads Build.completion PASS only if the writer declares the changed-rows convention AND count_integrity PASSes on populated rows | Build.completion verdict rule; a new declared fact (changed-rows convention + writer `file:line`) | TI-L0-01, TI-L0-02 |
+| 2 (R) | Dens applies wherever a served surface is reached; `uniform_authority: true` lets a uniform-authority vocabulary PASS on `density_contract` facets without a tier column; mixed-authority tables need a real tier | Dens.served (PASS rule without a tier column when `uniform_authority`); a new declared fact; the N/A reading of "no served surface" is unchanged | TI-L0-03, TI-L0-04, TI-L0-05 |
+| 13 (R) | Carr D1 anchor-term matching is the L0 carriage detector; PASS only if every row matches, else PARTIAL; ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (a rule in `NA_RULE_DECISIONS` only via SS approval) | Carr D1 grading rule (every row); a new N/A cause `ratified_judgment` | TI-L0-26, TI-L0-27 |
+
+Other answers that change a **detector input or the build/registry, not a criterion definition**: Q11 (Build.history window: TI-L0-24; this does change what the cell counts, so route it with the three above), Q12 (CF-12 orphan census as the Idem claim: TI-L0-25), Q3 (attribution state: Ldgr/Carr read `unsourced`/`refuted` as not PASS: TI-L0-09), Q5 (node declaration and check: TI-L0-17, TI-L0-18). All others are registry, declaration or writer work with no criterion change.
+
+### 9.1 Dens re-measured offline with the current scanner (Q2 asked for a re-measure first)
+
+Method: main's `capability_scan` and `_grade_dens` (`asset_census.py`, REGISTRY_REVISION 6; main's inspector is still at 6) were run over the 40 L0 assets with the saved census's populated-column lists standing in for the database column catalog and the saved count-sql tables for the shared-table set. This re-measures the **served-surface attribution** exactly as the current scanner does it; the tier-column part uses the saved populated columns, not information_schema. Output: `/Users/Dev/suvarna-evidence/A_L0/dens_offline_rev6.json`. Not a certifying measurement.
+
+Result: FAIL 18, N/A 3, NO_DETECTOR 14, PARTIAL 5 (the saved rev-1 run read FAIL 23 · NO_DETECTOR 1 · N/A 16). The scanner now also attributes modules in L1, L3, L4 and L5 directories and platform-mcp that read an L0 table, which is why N/A fell from 16 to 3. `PARTIAL` means a referencing capability declares a `density_contract` but its tier carriage is not established (for example `L1_ganita/get_yoga_firings.ts` for `bg_yogas`). NO_DETECTOR means the table is named only outside the scanned serving roots or no served `SELECT … FROM` was found.
+
+| verdict | assets |
+|---|---|
+| FAIL | bg_class_lifetime_counts, bg_compendium_index, bg_dasha_systems, bg_doshas, bg_ephemeris, bg_formula_constants, bg_gochara_citation_resolution, bg_medical_mappings, bg_muhurta_lattice, bg_nakshatra, bg_nakshatra_medical, bg_parihara_rules, bg_prashna_rules, bg_rules, bg_sign_medical, bg_sky_calendar, bg_transit_engine, bg_transit_rules |
+| PARTIAL | bg_dignity_reference, bg_ghatana, bg_remedies, bg_vastu_directions, bg_yogas |
+| NO_DETECTOR | bg_class_priors, bg_cohort, bg_concordance, bg_ephemeris_engine, bg_ontology, bg_panchanga, bg_phaladeepika_latta, bg_reference, bg_sarvatobhadra_grid, bg_text_index, bg_texts, bg_vedha_malefic_scale, bg_vidhi_floors, bg_vidhi_primitives |
+| N/A | bg_gochara_arcs, bg_kota_chakra_rings, bg_kp_sublord_division |
+
+Under Q2 the FAIL and PARTIAL assets are the ones that must declare `density_contract` facets (and `uniform_authority: true` where the table is a uniform vocabulary); NO_DETECTOR assets need a `carriage` declaration with `read_evidence` so the scanner can attribute their served surface; N/A assets stay N/A.
+
+## 10 · Notes on method and path
 
 - **Path:** per Track A brief §8: `00_ARCHITECTURE/briefs/suvarna/layers/<Lx>/assets/<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` (revalidation bumps to v1.1). **Fix designs live inside each brief (§4)**, not in separate `designs/` files; `INDEX.md` sits beside the briefs.
-- **Gap classification** (real / detector / stale / history / information) is this lane’s reading of the saved census and ledger; no tier supplies a rule mapping evidence to a disposition (TGH-T3-03).
-- **Fixes go in the asset or the registry, never in the frozen orchestrator** (T4 §4.2): every design above respects that; the one option that would need an orchestrator change (persisting `rows_skipped`, CF-01) is flagged R2 and not designed.
-- **Facts not established offline** are marked as such in the briefs (for example the unnamed third dependent of `bg_rules`, the cause of 7 extra `bg_transit_rules` rows beyond the writer’s own plus migration 397’s, live column lists for the multi-table assets).
+- **Gap classification** (real / detector / stale / history / information / opportunity) is this lane's reading of the saved census and ledger; no tier supplies a rule mapping evidence to a disposition (TGH-T3-03).
+- **Fixes go in the asset or the registry, never in the frozen orchestrator** (T4 §4.2): every design respects that; the one option that would need an orchestrator change (persisting `rows_skipped`, CF-01 option C) was not taken.
+- **Facts not established offline** are marked in the briefs (the unnamed third dependent of `bg_rules`, live column lists for the multi-table assets).
+- **Answers applied 2026-10-01:** each brief §7 now lists the decisions that apply to it; no brief carries an open question.
 
-## 9 · Format used (reuse for the next layers)
+## 11 · Format used (reuse for the next layers)
 
 Each brief is `<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` with this frontmatter and section list:
 
-- **Frontmatter:** asset_id, layer, artifact, version, status (PROVISIONAL banner), produced_by, produced_on, plan_item, census_revision_used, template_revision, layer_instance, base_commit, disposition, disposition_proposal_approver, ledger_gap_ids.
+- **Frontmatter:** asset_id, layer, artifact, version, status (PROVISIONAL banner), produced_by, produced_on, plan_item, census_revision_used, template_revision, layer_instance, base_commit, disposition, disposition_proposal_approver, decisions_applied, track_i_items, ledger_gap_ids.
 - **§0 Identity:** what the asset is (cited file:line), then a field table (kind, seed row, writer/`@register`, target tables, live rows/floor, catalog_status, intra-layer depends_on, blast radius, code readers declared-vs-actual, served surface, role/scoring mode).
 - **§1 Measured state and the nine gates:** saved-census per-criterion table (non-PASS in full, PASS compact, `†` for criteria whose definition changed), plus the offline rollup line.
 - **§2 Gaps:** table of gap id, gate, class (real / detector / stale / history / information / opportunity), note.
-- **§3 Disposition:** value, reasoning, approver under Track A §10.
-- **§4 Fix designs:** one FD per real gap (answers, change, files/migration, failing-first test and mutation, output change, blast radius, rebuild, gate moved, fix class, buildable before J1, question for SS), then the shared fixes (CF-nn) that apply.
+- **§3 Disposition:** value, reasoning, approver under Track A §10, SS decision.
+- **§4 Fix designs:** one FD per real gap (answers, change, files/migration, failing-first test and mutation, output change, blast radius, rebuild, gate moved, fix class, buildable before J1, decision), then the shared fixes (CF-nn) that apply. **Fix designs live inside each brief (§4).**
 - **§5 Semantic fingerprint contract** (natural key, volatile columns, rebuild expectation).
 - **§6 Preserved kernel, carriage check chosen (one of D1/D2/D3), opportunities.**
-- **§7 Questions for Strategic Suvarṇa.**
+- **§7 Decisions applied** (SS answers that bear on the asset; (R) items provisional) and the Track I items arising.
 
-`INDEX.md` carries: what the index rests on and what is stale, rollup counts, the asset table, shared fixes ordered for J1, rebuild consequences, dispositions that differ from the layer instance, curated SS questions, method notes, and this section.
+`INDEX.md` carries: what the index rests on and what is stale, rollup counts, the asset table, shared fixes ordered for J1 with their decisions, rebuild consequences, dispositions that differ from the layer instance, the SS questions with their answers, the Track I items table, decisions applied, the offline Dens re-measure, method notes, and this section.
+
