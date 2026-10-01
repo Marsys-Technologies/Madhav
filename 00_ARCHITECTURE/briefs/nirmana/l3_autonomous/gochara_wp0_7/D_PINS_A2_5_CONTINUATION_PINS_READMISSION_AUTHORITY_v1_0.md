@@ -100,3 +100,27 @@ predecessor inventory at `89f788c67`. Membership unchanged (23 `ka_`
 writers); no other layer moves. The source commit is the v1.2 rework's
 digest-re-derivation head, whose committed writer inventory is byte-identical
 to the derived inventory (`provenance_inventory --check` green).
+
+### v1.2 scope expansion — six classifications (steward ruling M20261001T180917-6bd5)
+
+The origin/main merge (`c096f834b`) carried #2823 (`066c58587`, Suvarṇa Track
+I-1/I-2), which moved `ka_avadhi` and `ka_vighnakara` on main WITHOUT an L3
+pins readmission (main's active pin `l3:4f4a1993c6ad:1ddd6f117934` predates
+it). The generator therefore derives a SIX-writer delta predecessor→candidate.
+The steward's ruling (EVENTS.jsonl 2026-10-01T18:09:17Z, message
+M20261001T180917-6bd5), operative clause verbatim:
+
+> "PINS RULING: (a) — expand the admission to SIX classifications. ka_avadhi
+> and ka_vighnakara = derived_import_change, reason text: 'moved on main by
+> #2823 (066c58587, Suvarṇa Track I-1/I-2) without an L3 readmission; carried
+> here by the origin/main merge; not changed by this PR'. Your four stay as
+> authorised. … Residual delivery-check lines must still be byte-identical to
+> main's."
+
+Scope of THIS admission is accordingly: exactly ONE append-only L3 successor
+over `l3:89f788c67827:50e2c3392350` (archived whole, never rewritten) with
+exactly the six-writer delta — the four A2.5 writers above plus
+`ka_avadhi` / `ka_vighnakara` (`derived_import_change`, moved on main by
+#2823 without an L3 readmission; carried by the origin/main merge; not
+changed by this PR). Membership unchanged (23 `ka_` writers); no other layer
+moves.
