@@ -10,7 +10,7 @@ base_commit: "main 0250cbade"
 census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/census/census_L0.json` (generated 2026-09-30T20:21:19+05:30, chart 482012f1, inspector 2a78ec64d on campaign/nikasha-test, pre-REGISTRY_REVISION; criterion revisions then: Build.dag 1, Build.target 1, Idem.pattern 1, Dens.served 1, no Null/Narr). NOT re-measured: main's inspector is at REGISTRY_REVISION 6 and the lane has no DB access."
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1.md (3.1-rev1, PROVISIONAL)"
-briefs: 40 (one per L0 asset, `<asset_id>.md` in this directory)
+briefs: 40 (one per L0 asset, `<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` in this directory, per Track A brief §8)
 ---
 
 # L0 asset briefs — layer index (provisional)
@@ -56,46 +56,46 @@ Columns: **real** = a shortfall in rows/writer/registry/served surface; **Dens/S
 
 | asset | disposition | real | Dens/SSq | detector | other | fix class | rebuild | shared fixes |
 |---|---|---:|---:|---:|---:|---|---|---|
-| [bg_class_lifetime_counts](bg_class_lifetime_counts.md) | keep (P) | 0 | 1 | 4 | 3 | detector/tooling; registry/declaration; served surface (TS) | n | CF-04, CF-05, CF-06, CF-07, CF-08, CF-10, CF-12 |
-| [bg_class_priors](bg_class_priors.md) | keep (P) | 0 | 1 | 4 | 2 | registry/declaration; served surface (TS) | n | CF-04, CF-05, CF-06, CF-07, CF-08, CF-12 |
-| [bg_cohort](bg_cohort.md) | keep (P) | 1 | 0 | 3 | 2 | detector/tooling; registry/declaration; writer code | cond | CF-02, CF-05, CF-06, CF-07, CF-10 |
-| [bg_compendium_index](bg_compendium_index.md) | keep (P) | 0 | 1 | 3 | 4 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-04, CF-05, CF-07, CF-08, CF-10 |
-| [bg_concordance](bg_concordance.md) | keep (P) | 0 | 0 | 4 | 2 | data (output change); detector/tooling; registry/declaration; writer code | n | CF-05, CF-06, CF-07, CF-08 |
-| [bg_dasha_systems](bg_dasha_systems.md) | keep (P) | 0 | 1 | 3 | 3 | detector/tooling; registry/declaration; served surface (TS) | n | CF-04, CF-05, CF-06, CF-07, CF-10 |
-| [bg_dignity_reference](bg_dignity_reference.md) | keep (P) | 0 | 1 | 3 | 1 | detector/tooling; registry/declaration | n | CF-04, CF-05, CF-06, CF-07, CF-12 |
-| [bg_doshas](bg_doshas.md) | enrich (E) | 1 | 2 | 2 | 3 | data (output change); detector/tooling; served surface (TS); writer code | y | CF-04, CF-05, CF-07, CF-09, CF-10, CF-11 |
-| [bg_ephemeris](bg_ephemeris.md) | keep (P) | 3 | 2 | 5 | 7 | detector/tooling; registry/declaration; served surface (TS); writer code | cond | CF-01, CF-04, CF-05, CF-06, CF-07, CF-08, CF-09, CF-12 |
-| [bg_ephemeris_engine](bg_ephemeris_engine.md) | keep (P) | 0 | 1 | 5 | 1 | detector/tooling; registry/declaration; served surface (TS) | n | CF-03, CF-04, CF-05, CF-06, CF-07 |
-| [bg_formula_constants](bg_formula_constants.md) | keep (P) | 1 | 1 | 4 | 3 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-02, CF-04, CF-05, CF-06, CF-07, CF-08, CF-10, CF-12 |
-| [bg_ghatana](bg_ghatana.md) | keep (P) | 0 | 0 | 4 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-12 |
-| [bg_gochara_arcs](bg_gochara_arcs.md) | keep (P) | 0 | 0 | 4 | 3 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-10 |
-| [bg_gochara_citation_resolution](bg_gochara_citation_resolution.md) | keep (P) | 1 | 0 | 3 | 1 | detector/tooling; registry/declaration; served surface (TS); writer code | cond | CF-04, CF-05, CF-06, CF-07 |
-| [bg_kota_chakra_rings](bg_kota_chakra_rings.md) | keep (P) | 0 | 0 | 4 | 3 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-12 |
-| [bg_kp_sublord_division](bg_kp_sublord_division.md) | keep (P) | 0 | 0 | 3 | 3 | detector/tooling; registry/declaration | n | CF-04, CF-05, CF-06, CF-07, CF-10 |
-| [bg_medical_mappings](bg_medical_mappings.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-02, CF-04, CF-05, CF-06, CF-07, CF-12 |
-| [bg_muhurta_lattice](bg_muhurta_lattice.md) | keep (P) | 1 | 1 | 3 | 1 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-01, CF-03, CF-04, CF-05, CF-06, CF-07, CF-12 |
-| [bg_nakshatra](bg_nakshatra.md) | keep (P) | 0 | 0 | 4 | 3 | detector/tooling; registry/declaration | cond | CF-05, CF-06, CF-07, CF-08, CF-09 |
-| [bg_nakshatra_medical](bg_nakshatra_medical.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | y | CF-02, CF-03, CF-04, CF-05, CF-06, CF-07, CF-12 |
-| [bg_ontology](bg_ontology.md) | enrich (E) | 9 | 2 | 4 | 9 | data (output change); detector/tooling; registry/declaration; served surface (TS); writer code | y | CF-01, CF-02, CF-04, CF-05, CF-07, CF-09 |
-| [bg_panchanga](bg_panchanga.md) | keep (P) | 1 | 1 | 8 | 4 | detector/tooling; registry/declaration; served surface (TS) | n | CF-03, CF-04, CF-05, CF-06, CF-07 |
-| [bg_parihara_rules](bg_parihara_rules.md) | keep (P) | 2 | 1 | 3 | 3 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-03, CF-04, CF-05, CF-06, CF-07, CF-10, CF-12 |
-| [bg_phaladeepika_latta](bg_phaladeepika_latta.md) | keep (P) | 0 | 0 | 3 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-12 |
-| [bg_prashna_rules](bg_prashna_rules.md) | keep (P) | 0 | 0 | 4 | 2 | detector/tooling; registry/declaration | n | CF-02, CF-04, CF-05, CF-06, CF-07, CF-08, CF-12 |
-| [bg_reference](bg_reference.md) | keep (P) | 1 | 0 | 3 | 3 | detector/tooling; registry/declaration; writer code | n | CF-01, CF-04, CF-05, CF-06, CF-07, CF-10, CF-12 |
-| [bg_remedies](bg_remedies.md) | enrich (E) | 2 | 2 | 2 | 3 | data (output change); detector/tooling; served surface (TS); writer code | y | CF-04, CF-05, CF-07, CF-09, CF-10, CF-11 |
-| [bg_rules](bg_rules.md) | enrich (E) | 5 | 2 | 6 | 8 | data (output change); detector/tooling; registry/declaration; served surface (TS); writer code | y | CF-05, CF-06, CF-07, CF-08, CF-09 |
-| [bg_sarvatobhadra_grid](bg_sarvatobhadra_grid.md) | qualify (Q) | 1 | 0 | 7 | 5 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-10 |
-| [bg_sign_medical](bg_sign_medical.md) | keep (P) | 2 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | y | CF-02, CF-04, CF-05, CF-06, CF-07, CF-12 |
-| [bg_sky_calendar](bg_sky_calendar.md) | keep (P) | 1 | 1 | 3 | 1 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-01, CF-03, CF-04, CF-05, CF-06, CF-07, CF-12 |
-| [bg_text_index](bg_text_index.md) | integrate (I) | 1 | 1 | 4 | 2 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-01, CF-04, CF-05, CF-06, CF-07, CF-08 |
-| [bg_texts](bg_texts.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-01, CF-04, CF-05, CF-06, CF-07 |
-| [bg_transit_engine](bg_transit_engine.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | y | CF-02, CF-03, CF-04, CF-05, CF-06, CF-07 |
-| [bg_transit_rules](bg_transit_rules.md) | keep (P) | 2 | 1 | 3 | 2 | data (output change); detector/tooling; registry/declaration; served surface (TS); writer code | y | CF-02, CF-04, CF-05, CF-06, CF-07, CF-11 |
-| [bg_vastu_directions](bg_vastu_directions.md) | keep (P) | 0 | 1 | 3 | 3 | detector/tooling; registry/declaration; served surface (TS) | n | CF-04, CF-05, CF-06, CF-07, CF-12 |
-| [bg_vedha_malefic_scale](bg_vedha_malefic_scale.md) | keep (P) | 0 | 0 | 3 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-12 |
-| [bg_vidhi_floors](bg_vidhi_floors.md) | qualify (Q) | 0 | 0 | 5 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-10 |
-| [bg_vidhi_primitives](bg_vidhi_primitives.md) | keep (P) | 1 | 0 | 4 | 1 | detector/tooling; registry/declaration; writer code | n | CF-01, CF-03, CF-05, CF-06, CF-07, CF-08 |
-| [bg_yogas](bg_yogas.md) | enrich (E) | 0 | 2 | 2 | 5 | data (output change); detector/tooling; registry/declaration; served surface (TS) | y | CF-04, CF-05, CF-07, CF-09, CF-10, CF-11 |
+| [bg_class_lifetime_counts](bg_class_lifetime_counts_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 4 | 3 | detector/tooling; registry/declaration; served surface (TS) | n | CF-04, CF-05, CF-06, CF-07, CF-08, CF-10, CF-12 |
+| [bg_class_priors](bg_class_priors_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 4 | 2 | registry/declaration; served surface (TS) | n | CF-04, CF-05, CF-06, CF-07, CF-08, CF-12 |
+| [bg_cohort](bg_cohort_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 3 | 2 | detector/tooling; registry/declaration; writer code | cond | CF-02, CF-05, CF-06, CF-07, CF-10 |
+| [bg_compendium_index](bg_compendium_index_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 3 | 4 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-04, CF-05, CF-07, CF-08, CF-10 |
+| [bg_concordance](bg_concordance_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 2 | data (output change); detector/tooling; registry/declaration; writer code | n | CF-05, CF-06, CF-07, CF-08 |
+| [bg_dasha_systems](bg_dasha_systems_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 3 | 3 | detector/tooling; registry/declaration; served surface (TS) | n | CF-04, CF-05, CF-06, CF-07, CF-10 |
+| [bg_dignity_reference](bg_dignity_reference_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 3 | 1 | detector/tooling; registry/declaration | n | CF-04, CF-05, CF-06, CF-07, CF-12 |
+| [bg_doshas](bg_doshas_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 1 | 2 | 2 | 3 | data (output change); detector/tooling; served surface (TS); writer code | y | CF-04, CF-05, CF-07, CF-09, CF-10, CF-11 |
+| [bg_ephemeris](bg_ephemeris_ELEVATION_BRIEF_v1_0.md) | keep (P) | 3 | 2 | 5 | 7 | detector/tooling; registry/declaration; served surface (TS); writer code | cond | CF-01, CF-04, CF-05, CF-06, CF-07, CF-08, CF-09, CF-12 |
+| [bg_ephemeris_engine](bg_ephemeris_engine_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 5 | 1 | detector/tooling; registry/declaration; served surface (TS) | n | CF-03, CF-04, CF-05, CF-06, CF-07 |
+| [bg_formula_constants](bg_formula_constants_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 4 | 3 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-02, CF-04, CF-05, CF-06, CF-07, CF-08, CF-10, CF-12 |
+| [bg_ghatana](bg_ghatana_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-12 |
+| [bg_gochara_arcs](bg_gochara_arcs_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 3 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-10 |
+| [bg_gochara_citation_resolution](bg_gochara_citation_resolution_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 3 | 1 | detector/tooling; registry/declaration; served surface (TS); writer code | cond | CF-04, CF-05, CF-06, CF-07 |
+| [bg_kota_chakra_rings](bg_kota_chakra_rings_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 3 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-12 |
+| [bg_kp_sublord_division](bg_kp_sublord_division_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 3 | 3 | detector/tooling; registry/declaration | n | CF-04, CF-05, CF-06, CF-07, CF-10 |
+| [bg_medical_mappings](bg_medical_mappings_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-02, CF-04, CF-05, CF-06, CF-07, CF-12 |
+| [bg_muhurta_lattice](bg_muhurta_lattice_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 1 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-01, CF-03, CF-04, CF-05, CF-06, CF-07, CF-12 |
+| [bg_nakshatra](bg_nakshatra_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 3 | detector/tooling; registry/declaration | cond | CF-05, CF-06, CF-07, CF-08, CF-09 |
+| [bg_nakshatra_medical](bg_nakshatra_medical_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | y | CF-02, CF-03, CF-04, CF-05, CF-06, CF-07, CF-12 |
+| [bg_ontology](bg_ontology_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 9 | 2 | 4 | 9 | data (output change); detector/tooling; registry/declaration; served surface (TS); writer code | y | CF-01, CF-02, CF-04, CF-05, CF-07, CF-09 |
+| [bg_panchanga](bg_panchanga_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 8 | 4 | detector/tooling; registry/declaration; served surface (TS) | n | CF-03, CF-04, CF-05, CF-06, CF-07 |
+| [bg_parihara_rules](bg_parihara_rules_ELEVATION_BRIEF_v1_0.md) | keep (P) | 2 | 1 | 3 | 3 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-03, CF-04, CF-05, CF-06, CF-07, CF-10, CF-12 |
+| [bg_phaladeepika_latta](bg_phaladeepika_latta_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 3 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-12 |
+| [bg_prashna_rules](bg_prashna_rules_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 4 | 2 | detector/tooling; registry/declaration | n | CF-02, CF-04, CF-05, CF-06, CF-07, CF-08, CF-12 |
+| [bg_reference](bg_reference_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 3 | 3 | detector/tooling; registry/declaration; writer code | n | CF-01, CF-04, CF-05, CF-06, CF-07, CF-10, CF-12 |
+| [bg_remedies](bg_remedies_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 2 | 2 | 2 | 3 | data (output change); detector/tooling; served surface (TS); writer code | y | CF-04, CF-05, CF-07, CF-09, CF-10, CF-11 |
+| [bg_rules](bg_rules_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 5 | 2 | 6 | 8 | data (output change); detector/tooling; registry/declaration; served surface (TS); writer code | y | CF-05, CF-06, CF-07, CF-08, CF-09 |
+| [bg_sarvatobhadra_grid](bg_sarvatobhadra_grid_ELEVATION_BRIEF_v1_0.md) | qualify (Q) | 1 | 0 | 7 | 5 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-10 |
+| [bg_sign_medical](bg_sign_medical_ELEVATION_BRIEF_v1_0.md) | keep (P) | 2 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | y | CF-02, CF-04, CF-05, CF-06, CF-07, CF-12 |
+| [bg_sky_calendar](bg_sky_calendar_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 1 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-01, CF-03, CF-04, CF-05, CF-06, CF-07, CF-12 |
+| [bg_text_index](bg_text_index_ELEVATION_BRIEF_v1_0.md) | integrate (I) | 1 | 1 | 4 | 2 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-01, CF-04, CF-05, CF-06, CF-07, CF-08 |
+| [bg_texts](bg_texts_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS); writer code | n | CF-01, CF-04, CF-05, CF-06, CF-07 |
+| [bg_transit_engine](bg_transit_engine_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 1 | 3 | 2 | detector/tooling; registry/declaration; served surface (TS) | y | CF-02, CF-03, CF-04, CF-05, CF-06, CF-07 |
+| [bg_transit_rules](bg_transit_rules_ELEVATION_BRIEF_v1_0.md) | keep (P) | 2 | 1 | 3 | 2 | data (output change); detector/tooling; registry/declaration; served surface (TS); writer code | y | CF-02, CF-04, CF-05, CF-06, CF-07, CF-11 |
+| [bg_vastu_directions](bg_vastu_directions_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 1 | 3 | 3 | detector/tooling; registry/declaration; served surface (TS) | n | CF-04, CF-05, CF-06, CF-07, CF-12 |
+| [bg_vedha_malefic_scale](bg_vedha_malefic_scale_ELEVATION_BRIEF_v1_0.md) | keep (P) | 0 | 0 | 3 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-12 |
+| [bg_vidhi_floors](bg_vidhi_floors_ELEVATION_BRIEF_v1_0.md) | qualify (Q) | 0 | 0 | 5 | 2 | detector/tooling; registry/declaration | n | CF-05, CF-06, CF-07, CF-08, CF-10 |
+| [bg_vidhi_primitives](bg_vidhi_primitives_ELEVATION_BRIEF_v1_0.md) | keep (P) | 1 | 0 | 4 | 1 | detector/tooling; registry/declaration; writer code | n | CF-01, CF-03, CF-05, CF-06, CF-07, CF-08 |
+| [bg_yogas](bg_yogas_ELEVATION_BRIEF_v1_0.md) | enrich (E) | 0 | 2 | 2 | 5 | data (output change); detector/tooling; registry/declaration; served surface (TS) | y | CF-04, CF-05, CF-07, CF-09, CF-10, CF-11 |
 
 **Rebuild needed (y):** 9 — bg_doshas, bg_nakshatra_medical, bg_ontology, bg_remedies, bg_rules, bg_sign_medical, bg_transit_engine, bg_transit_rules, bg_yogas. **Option-dependent (cond):** 4 — bg_cohort, bg_ephemeris, bg_gochara_citation_resolution, bg_nakshatra. All others: none.
 
@@ -298,7 +298,23 @@ Curated from the per-asset questions (the full per-asset lists stay in each brie
 
 ## 8 · Notes on method and path
 
-- **Path:** the lane instruction placed briefs at `00_ARCHITECTURE/briefs/suvarna/assets/L0/<asset_id>.md`; Track A brief §8 names `layers/<Lx>/assets/<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` and `designs/<ASSET_ID>_FIX_DESIGN_v1_0.md`. Here each brief carries its fix designs in §4; if SS wants the §8 layout the files move by name only.
+- **Path:** per Track A brief §8: `00_ARCHITECTURE/briefs/suvarna/layers/<Lx>/assets/<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` (revalidation bumps to v1.1). **Fix designs live inside each brief (§4)**, not in separate `designs/` files; `INDEX.md` sits beside the briefs.
 - **Gap classification** (real / detector / stale / history / information) is this lane’s reading of the saved census and ledger; no tier supplies a rule mapping evidence to a disposition (TGH-T3-03).
 - **Fixes go in the asset or the registry, never in the frozen orchestrator** (T4 §4.2): every design above respects that; the one option that would need an orchestrator change (persisting `rows_skipped`, CF-01) is flagged R2 and not designed.
 - **Facts not established offline** are marked as such in the briefs (for example the unnamed third dependent of `bg_rules`, the cause of 7 extra `bg_transit_rules` rows beyond the writer’s own plus migration 397’s, live column lists for the multi-table assets).
+
+## 9 · Format used (reuse for the next layers)
+
+Each brief is `<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` with this frontmatter and section list:
+
+- **Frontmatter:** asset_id, layer, artifact, version, status (PROVISIONAL banner), produced_by, produced_on, plan_item, census_revision_used, template_revision, layer_instance, base_commit, disposition, disposition_proposal_approver, ledger_gap_ids.
+- **§0 Identity:** what the asset is (cited file:line), then a field table (kind, seed row, writer/`@register`, target tables, live rows/floor, catalog_status, intra-layer depends_on, blast radius, code readers declared-vs-actual, served surface, role/scoring mode).
+- **§1 Measured state and the nine gates:** saved-census per-criterion table (non-PASS in full, PASS compact, `†` for criteria whose definition changed), plus the offline rollup line.
+- **§2 Gaps:** table of gap id, gate, class (real / detector / stale / history / information / opportunity), note.
+- **§3 Disposition:** value, reasoning, approver under Track A §10.
+- **§4 Fix designs:** one FD per real gap (answers, change, files/migration, failing-first test and mutation, output change, blast radius, rebuild, gate moved, fix class, buildable before J1, question for SS), then the shared fixes (CF-nn) that apply.
+- **§5 Semantic fingerprint contract** (natural key, volatile columns, rebuild expectation).
+- **§6 Preserved kernel, carriage check chosen (one of D1/D2/D3), opportunities.**
+- **§7 Questions for Strategic Suvarṇa.**
+
+`INDEX.md` carries: what the index rests on and what is stale, rollup counts, the asset table, shared fixes ordered for J1, rebuild consequences, dispositions that differ from the layer instance, curated SS questions, method notes, and this section.
