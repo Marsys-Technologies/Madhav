@@ -173,7 +173,11 @@ logger = logging.getLogger(__name__)
 
 # v2.1: M-6 derived target rows (gulika_mandi_distance, yamakantaka_difference,
 # bhava_arudha) added per remainder brief §4.4 — emitted row set changes.
-FORMULA_VERSION = "ka_gochara_resonance_v2.1"
+# v2.2: birth_anchor removed from enumeration (doctrine N6 / O-CF-N6 /
+# GOCHARA_DESIGN_SPECS_v1_4 §2.2 — birth is the natal epoch, not an event
+# class; the evaluation protocol scores it T-cover/T-time/T-FP = no).
+# Emitted row set changes: zero birth_anchor rows.
+FORMULA_VERSION = "ka_gochara_resonance_v2.2"
 _CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
 
 # ── Event-class scope ────────────────────────────────────────────────────────
@@ -189,12 +193,20 @@ _CANONICAL_AYANAMSHA = "lahiri_chitrapaksha"
 # The original 6-class scope (3 legacy + 3 health/adverse) is retained as the
 # leading prefix so an existing chart's substep plan keeps its historical
 # ordering. Order is stable and legacy-first.
+#
+# N6 (FABLE finding; GOCHARA_DESIGN_SPECS_v1_4 §2.2; O-CF-N6): birth_anchor is
+# the natal epoch, not an event class — it is excluded from enumeration
+# ENTIRELY (structural, not a scoring kill-switch). The evaluation protocol's
+# T-cover/T-time/T-FP are all 'no' for it. It remains in brahma_event_ontology
+# (DOMAIN_MAP) as the epoch record, and COVERAGE_QUALITY_NOTES below keeps a
+# tombstone entry documenting the exclusion.
 _ALL_27_EVENT_CLASSES: tuple[str, ...] = (
     # Legacy 3 (richest bg_transit_rules coverage — GOCHARA_RESONANCE_MAP_SPEC.md §4)
     "marriage", "major_gain", "career_advancement",
     # Health/adverse extension (ṢAḌ-DARŚANA item 9, closes DP-4)
     "illness_acute", "chronic_onset", "surgery",
-    # W3.1 extension — remaining 21 canonical classes
+    # W3.1 extension — 20 of the remaining canonical classes (birth_anchor
+    # excluded per N6, see header above)
     "career_entry", "career_change", "career_setback", "business_launch",
     "education_milestone", "exam_outcome",
     "romantic_start", "separation",
@@ -203,7 +215,7 @@ _ALL_27_EVENT_CLASSES: tuple[str, ...] = (
     "relocation", "foreign_settlement",
     "spiritual_turn",
     "achievement_recognition", "financial_deception", "psychological_arc",
-    "birth_anchor", "travel_event",
+    "travel_event",
 )
 TARGET_EVENT_CLASSES: tuple[str, ...] = _ALL_27_EVENT_CLASSES
 
@@ -288,12 +300,13 @@ COVERAGE_QUALITY_NOTES: dict[str, str] = {
         "+ karakas Moon,Mercury,Saturn; BPHS ch.1 inherited — pending dedicated sourcing. "
         "self_report_non_discriminating=true",
     "birth_anchor":
-        "thin_model (provisional, no predecessor): house 1 + lord 1L + karaka Sun only; "
-        "no dasha_rules or transit_triggers in ontology (birth is the chart epoch, not a "
-        "predictable configuration). Emits bhava/lord/karaka rows only; mechanism/sensitive/"
-        "arudha/yoga rows will be minimal. kill_switch epoch_tautology: excluded from lambda_e "
-        "scoring — emitting resonance rows is honest documentation of natal significators, "
-        "not a timing claim",
+        "EXCLUDED FROM ENUMERATION (structural, since formula v2.2 — doctrine N6 / "
+        "O-CF-N6 / GOCHARA_DESIGN_SPECS_v1_4 §2.2): birth is the chart epoch, not an "
+        "event class; the evaluation protocol scores it T-cover/T-time/T-FP = no. "
+        "Previously emitted thin bhava/lord/karaka rows (house 1 + 1L + Sun) under the "
+        "epoch_tautology lambda_e kill-switch; the class is now absent from "
+        "TARGET_EVENT_CLASSES entirely, so zero resonance rows and zero projected "
+        "windows exist for it. Tombstone entry retained for documentation",
     "travel_event":
         "provisional_model (inherited from foreign_settlement): houses 3,9,12 + lords 3L,9L "
         "+ karaka Moon; BPHS ch.12 inherited — pending dedicated sourcing. Lighter-weight "

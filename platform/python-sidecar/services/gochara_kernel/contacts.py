@@ -94,6 +94,17 @@ def _bisect_arc(arc: MonotoneArc, level_unwrapped: float, tol_deg: float) -> flo
         mid = 0.5 * (lo + hi)
         f_mid = arc.unwrapped_longitude_at(mid) - level_unwrapped
         if abs(f_mid) <= tol_deg or (hi - lo) < 1e-9:
+            # Secant close-out on the live bracket (O-SS-2 case 2): returning
+            # the last sampled mid leaves up to tol_deg/|slope| of time error
+            # (≈63 s for a 0.2°/day arc at 1 arcsec tol) whenever the exact
+            # instant is not one of the binary mids — the linear-interpolated
+            # bracket estimate carries second-order error instead and keeps
+            # the direct/retrograde paths symmetric.
+            denom = abs(f_lo) + abs(f_hi)
+            if denom > 0.0:
+                secant = (lo * abs(f_hi) + hi * abs(f_lo)) / denom
+                if lo - 1e-12 <= secant <= hi + 1e-12:
+                    return secant
             return mid
         if f_lo * f_mid <= 0.0:
             hi, f_hi = mid, f_mid

@@ -1,0 +1,204 @@
+{
+  "artifact": "B2_BEFORE_MEASUREMENT",
+  "packet": "B2 — Blocking radius, recorded",
+  "role": "nirmana-engine-diagnostician",
+  "measured_at_utc": "2026-09-26T17:39:44Z",
+  "working_directory": "/Users/Dev/madhav-engine",
+  "branch": "campaign/nirmana-engine",
+  "phase_a_closed_commits": ["f4a6f9541", "8edba0533", "551d5ecad"],
+
+  "db_posture": {
+    "value": {
+      "default_transaction_read_only": "on",
+      "current_database": "amjis",
+      "current_user": "amjis_app"
+    },
+    "population": "session-level GUC + identity on the connection used for every query in this artifact",
+    "query": "source /Users/Dev/madhav-l3/dbenv.sh; export PGPORT=5433; SHOW default_transaction_read_only; SELECT current_database(), current_user, inet_server_addr(), inet_server_port();",
+    "note": "PGPORT overridden to 5433 per assignment instruction (dbenv.sh's own default is 5434; 5433 is a separate live cloud-sql-proxy socket, confirmed listening via lsof, and is the socket that actually answered).",
+    "verified_before_any_query": true,
+    "no_write_issued": true
+  },
+
+  "depends_on_shape": {
+    "column_type": "text[] (Postgres native array), NOT NULL DEFAULT ARRAY[]::text[]",
+    "query": "\\d asset_registry (psql); SELECT asset_id, depends_on, pg_typeof(depends_on) FROM asset_registry LIMIT 10;",
+    "semantics": "depends_on lists the asset's OWN upstream prerequisites (what it depends ON), not its dependents. 'Blocking radius' (dependents) is the REVERSE-transitive-closure of this column.",
+    "integrity_checks": {
+      "total_assets": 129,
+      "layer_breakdown": { "brahmagyan": 40, "ganita": 19, "bodha": 23, "kala": 23, "phala": 9, "mimamsa": 15 },
+      "dangling_deps_referencing_nonexistent_asset_id": 0,
+      "self_referential_deps": 0,
+      "null_depends_on_rows": 0,
+      "queries": [
+        "SELECT layer, count(*), count(*) FILTER (WHERE is_active), count(*) FILTER (WHERE dead_flag), count(*) FILTER (WHERE catalog_status='RETIRED') FROM asset_registry GROUP BY layer;",
+        "WITH d AS (SELECT asset_id, unnest(depends_on) AS dep FROM asset_registry) SELECT d.asset_id, d.dep FROM d LEFT JOIN asset_registry ar ON ar.asset_id = d.dep WHERE ar.asset_id IS NULL;",
+        "SELECT asset_id FROM asset_registry WHERE asset_id = ANY(depends_on);",
+        "SELECT count(*) FROM asset_registry WHERE depends_on IS NULL;"
+      ]
+    }
+  },
+
+  "cycle_check": {
+    "result": "NO CYCLE. The graph is a genuine DAG.",
+    "method": "Recursive CTE forward-reachability from every node, deduped via UNION (not UNION ALL), depth-capped at 60 (>> the 129-node graph's maximum possible path length), testing whether any node can reach itself.",
+    "query": "WITH RECURSIVE edges AS (SELECT asset_id AS dependent, unnest(depends_on) AS upstream FROM asset_registry), reach AS (SELECT dependent AS start_node, upstream AS reached, 1 AS depth FROM edges UNION SELECT r.start_node, e.upstream, r.depth+1 FROM reach r JOIN edges e ON e.dependent = r.reached WHERE r.depth < 60) SELECT start_node, count(*), bool_or(reached=start_node) AS is_cyclic FROM reach GROUP BY start_node HAVING bool_or(reached=start_node);",
+    "rows_returned": 0,
+    "caveat": "A naive path-tracking recursive CTE (storing the full visited-node array per path, cycle-guarded by 'NOT dependent = ANY(path)') blew Postgres's temp_file_limit before finishing — NOT because of a cycle, but because this graph has heavy diamond-shaped convergence (many independent paths reconverge on the same downstream node), so per-path enumeration explodes combinatorially even in an acyclic DAG. The correct construction (used for both the cycle check and the radius computation below) tracks only deduplicated (start,reached) PAIRS via UNION, which collapses reconverging paths automatically and finishes in under a second."
+  },
+
+  "blocking_radius_all_assets": {
+    "definition": "For asset A, blocking_radius(A) = count of DISTINCT assets D (D != A) such that D depends on A directly or transitively — i.e. the size of the reverse-transitive-closure of the depends_on DAG rooted at A.",
+    "recursive_sql": "WITH RECURSIVE edges AS (SELECT asset_id AS dependent, unnest(depends_on) AS upstream FROM asset_registry), closure AS (SELECT dependent, upstream FROM edges UNION SELECT c.dependent, e.upstream FROM closure c JOIN edges e ON e.dependent = c.upstream) SELECT ar.asset_id AS root_asset, ar.layer, count(DISTINCT c.dependent) AS blocking_radius FROM asset_registry ar LEFT JOIN closure c ON c.upstream = ar.asset_id GROUP BY ar.asset_id, ar.layer ORDER BY blocking_radius DESC;",
+    "independent_recomputation": {
+      "method": "Separate Python BFS over the same asset_id|depends_on edge list, exported via psql -At and parsed independently of any SQL recursive-CTE machinery — a genuinely different computation path (reverse adjacency list + iterative frontier expansion) from the SQL closure-via-UNION approach above.",
+      "result": "EXACT MATCH on every asset checked, including the full top-25 set and the three named hub assets (bo_laksana=48, ph_nimitta=17, ka_sangam=25, ga_positions=80, bg_ontology=69). The packet's stated proof bar ('the figure exists per asset and matches an independent recomputation from depends_on') is satisfied for the structural/static definition of blocking radius."
+    },
+    "top_25_by_blocking_radius": [
+      {"asset_id": "ga_positions", "layer": "ganita", "blocking_radius": 80},
+      {"asset_id": "bg_ontology", "layer": "brahmagyan", "blocking_radius": 69},
+      {"asset_id": "bg_reference", "layer": "brahmagyan", "blocking_radius": 62},
+      {"asset_id": "ga_dashas", "layer": "ganita", "blocking_radius": 61},
+      {"asset_id": "ga_vargas", "layer": "ganita", "blocking_radius": 61},
+      {"asset_id": "bg_nakshatra", "layer": "brahmagyan", "blocking_radius": 58},
+      {"asset_id": "bg_texts", "layer": "brahmagyan", "blocking_radius": 58},
+      {"asset_id": "ga_sensitive", "layer": "ganita", "blocking_radius": 58},
+      {"asset_id": "bg_kp_sublord_division", "layer": "brahmagyan", "blocking_radius": 57},
+      {"asset_id": "bg_panchanga", "layer": "brahmagyan", "blocking_radius": 57},
+      {"asset_id": "ga_nakshatra", "layer": "ganita", "blocking_radius": 56},
+      {"asset_id": "ga_panchanga", "layer": "ganita", "blocking_radius": 56},
+      {"asset_id": "ga_strength", "layer": "ganita", "blocking_radius": 56},
+      {"asset_id": "ga_structural", "layer": "ganita", "blocking_radius": 55},
+      {"asset_id": "bg_dasha_systems", "layer": "brahmagyan", "blocking_radius": 52},
+      {"asset_id": "bg_yogas", "layer": "brahmagyan", "blocking_radius": 52},
+      {"asset_id": "bg_rules", "layer": "brahmagyan", "blocking_radius": 51},
+      {"asset_id": "ga_condition", "layer": "ganita", "blocking_radius": 51},
+      {"asset_id": "ga_yoga", "layer": "ganita", "blocking_radius": 51},
+      {"asset_id": "ga_sade_sati", "layer": "ganita", "blocking_radius": 49},
+      {"asset_id": "ga_vichara", "layer": "ganita", "blocking_radius": 49},
+      {"asset_id": "bo_arudha", "layer": "bodha", "blocking_radius": 48},
+      {"asset_id": "bo_laksana", "layer": "bodha", "blocking_radius": 48},
+      {"asset_id": "bo_nakshatra_semantic", "layer": "bodha", "blocking_radius": 48},
+      {"asset_id": "bo_special_lagna", "layer": "bodha", "blocking_radius": 48}
+    ],
+    "distribution": {
+      "query": "same closure CTE, then CASE-bucketed count(*) GROUP BY bucket over the 129-row radii set",
+      "buckets": { "0": 39, "1-5": 18, "6-20": 18, "20+": 54 },
+      "note": "129 assets total (39+18+18+54=129). Nearly half the estate (54/129, 42%) blocks 20+ other assets if it fails — this is the DAG's own evidence for why the packet's prioritization motivation is real, even though (see cross-check below) this specific static figure does not predict the historically observed cascade concentration."
+    },
+    "named_hub_assets_direct_vs_transitive": {
+      "bo_laksana": { "direct_dependents": 22, "transitive_blocking_radius": 48 },
+      "ph_nimitta": { "direct_dependents": 10, "transitive_blocking_radius": 17 },
+      "ka_sangam": { "direct_dependents": 11, "transitive_blocking_radius": 25 },
+      "query_direct": "SELECT dep, count(*) FROM (SELECT asset_id, unnest(depends_on) AS dep FROM asset_registry) x WHERE dep IN (...) GROUP BY dep;"
+    }
+  },
+
+  "cross_check_predict_vs_observed": {
+    "observed_population": {
+      "description": "PHASE_A_GATE_20260926T172713Z.json's b1_c1_sizing.cascade_shape.top_named_upstream_assets — a count, per asset, of how many build_run_assets rows (state IN ('error','aborted'), error ILIKE 'BLOCKED: upstream dependenc%') NAME that asset as one of the (comma-separated) immediate upstream blockers in that row's own error text, summed across the ENTIRE historical record: 717 distinct build runs, spanning 3 charts, from 2026-06-28 through 2026-09-19.",
+      "top_3": { "bo_laksana": 327, "ph_nimitta": 254, "ka_sangam": 233 },
+      "critical_unit_mismatch": "The runner's own _mark_asset_blocked (platform/python-sidecar/pipeline/orchestrator/runner.py:516) records only the asset's IMMEDIATE (direct) upstream blockers in the BLOCKED error text, not the full transitive chain — deeper cascade hops each get their OWN row naming THEIR OWN immediate blocker. So the observed 327/254/233 figures are a cumulative, cross-run tally of DIRECT-dependent citations, not a single-build transitive count. The packet's DAG figure (transitive blocking_radius, a per-run structural ceiling) and the observed figure (cumulative direct-citation count across 717 historical runs) are two different units; comparing them directly is already suspect on the units test alone."
+    },
+    "comparison_table": [
+      {"asset_id": "bo_laksana", "dag_direct_dependents": 22, "dag_transitive_radius": 48, "observed_citations": 327, "ratio_to_direct": 14.9, "ratio_to_transitive": 6.8},
+      {"asset_id": "ph_nimitta", "dag_direct_dependents": 10, "dag_transitive_radius": 17, "observed_citations": 254, "ratio_to_direct": 25.4, "ratio_to_transitive": 14.9},
+      {"asset_id": "ka_sangam", "dag_direct_dependents": 11, "dag_transitive_radius": 25, "observed_citations": 233, "ratio_to_direct": 21.2, "ratio_to_transitive": 9.3},
+      {"asset_id": "bo_sangati", "dag_direct_dependents": 12, "dag_transitive_radius": 39, "observed_citations": 190},
+      {"asset_id": "bo_bimba", "dag_direct_dependents": 8, "dag_transitive_radius": 45, "observed_citations": 136},
+      {"asset_id": "bo_karanajala", "dag_direct_dependents": 10, "dag_transitive_radius": 44, "observed_citations": 134},
+      {"asset_id": "mi_pramana", "dag_direct_dependents": 4, "dag_transitive_radius": 6, "observed_citations": 107},
+      {"asset_id": "ka_vighnakara", "dag_direct_dependents": 5, "dag_transitive_radius": 22, "observed_citations": 106},
+      {"asset_id": "mi_bhavisya", "dag_direct_dependents": 3, "dag_transitive_radius": 8, "observed_citations": 81},
+      {"asset_id": "ga_dashas", "dag_direct_dependents": 14, "dag_transitive_radius": 61, "observed_citations": 78}
+    ],
+    "verdict": "DOES NOT PREDICT. Neither the direct-dependent count nor the transitive blocking_radius reproduces the observed ranking, and the multiplier between DAG figure and observed citation count is not constant (14.9x-25.4x on direct; 6.8x-14.9x on transitive, for the top 3 alone). The clearest falsification is the ga_dashas / ph_nimitta inversion: ga_dashas has the DAG's SECOND-LARGEST transitive radius in this set (61) and the SECOND-LARGEST direct-dependent count (14), yet ranks LAST in observed citations (78) among these ten — while ph_nimitta, with the SMALLEST transitive radius (17) and tied-smallest direct-dependent count (10) in this set, ranks SECOND in observed citations (254). A figure that structurally large but empirically quiet, ranked below a figure that is structurally small but empirically loud, is a direct rank inversion, not noise.",
+    "explanation": "The gap and the inversion are explained by what actually drives the observed number: how often an asset ITSELF failed or was incomplete across 717 historical runs (empirical incident frequency), and how many of its direct dependents were actually in-scope and reached in each of those specific runs — not by the asset's position in the static DAG. PHASE_A_GATE_20260926T172713Z.json's own root_cause_characterization corroborates this directly: bo_laksana and ka_sangam's own failures are dominated by recurring INFRA-class interruptions (orphaned_by_crash, guardian_cleanup, worker_crash) landing repeatedly on these specific assets — an operational/incident-frequency signal, not a structural one. The DAG is static and would give the identical 129 numbers regardless of which chart, which week, or how many times a given asset happened to crash; the observed cascade concentration is a property of the incident history, which the DAG cannot see.",
+    "honesty_verdict_per_packet_framing": "By the packet's own bar ('a radius that does not predict observed cascades is a number, not a measurement'), the DAG-transitive blocking_radius figure is a NUMBER, not a MEASUREMENT of real-world blocking impact. It passes the narrower proof the packet stated (self-consistent, independently reproducible from depends_on) but fails the substantive test this diagnosis was asked to apply. This does not mean the figure is useless — the distribution alone (54/129 assets block 20+ others) is a legitimate static-risk fact — but it should not be marketed as predicting or explaining which failures will actually cascade hardest in practice; that is a separate, empirical, incident-frequency-weighted quantity the DAG does not and cannot contain.",
+    "provenance_note": "00_ARCHITECTURE/briefs/nirmana/BUILD_FAILURE_TRIAGE_2026-09-26_v1_0.md (line 85, this same repo, this same week) already used the phrase 'blocking radius' before packet B2 existed, to describe the OBSERVED/empirical quantity ('the blocking radius of a causal failure, which is why one asset's error becomes 1,281 blocked runs') — i.e. the triage document's own prior usage of this term already meant the historical/empirical figure, not a static DAG closure. Packet B2's proposed structural definition is a different, weaker quantity wearing the same name; this naming collision is itself worth flagging to whoever authorizes B2."
+  },
+
+  "candidate_homes_vs_constraint_2": {
+    "constraint_2_text": "You may add columns to build-state tables and write build-state rows. You never modify an asset's rows, its writer, its count_sql, its integrity_check_sql or its algorithm.",
+    "candidates": [
+      {
+        "home": "new column on asset_registry (e.g. asset_registry.blocking_radius)",
+        "verdict": "LIKELY FORBIDDEN, agree with the packet's own suspicion",
+        "reasoning": "asset_registry rows ARE asset rows per the assignment's own framing, and constraint 2 explicitly says 'you never modify an asset's rows.' Independent corroborating evidence: asset_registry already carries a trigger (nirmana_registry_receipt_invalidation) whose entire purpose is to treat asset_registry as authored/structural data whose changes must be tracked as EVENTS elsewhere (asset_freshness), not accreted onto the row itself. Adding a derived-and-therefore-driftable numeric column onto that same authored row directly contradicts the separation the schema already enforces.",
+        "would_it_reach_a_failure_report": "Yes trivially (already joined everywhere asset_registry is read) — but that ease of reach does not override the constraint.",
+        "can_it_go_stale": "Yes — silently, on every depends_on edit anywhere in the graph (see drift/detector section).",
+        "needs_migration": "Yes (ALTER TABLE asset_registry ADD COLUMN)."
+      },
+      {
+        "home": "new build-state table keyed by asset_id (e.g. asset_blocking_radius or folded into asset_freshness/asset_throughput)",
+        "verdict": "PERMITTED by constraint 2's letter, but still a stored/cacheable value that can drift",
+        "reasoning": "This is explicitly the allowed action ('you may add ... write build-state rows'), and there is direct precedent: asset_freshness, asset_throughput, asset_coefficients are all separate FK-referencing tables keyed by asset_id/asset-pair that store MEASURED/derived state without touching asset_registry rows. asset_coefficients in particular is the closest precedent: it stores a derived upstream/downstream relationship value with measurement_count/history fields, i.e. it is designed from the start to be periodically RE-measured, not written once and trusted forever.",
+        "would_it_reach_a_failure_report": "Yes — it would need to be explicitly read by whatever writes the failure report (nothing currently does this automatically; see consumers section).",
+        "can_it_go_stale": "Yes, and this is the real risk: unlike asset_freshness (which the existing trigger marks stale for the ONE asset_id whose row changed), a stored blocking_radius for asset A can be invalidated by an edit to depends_on on ANY OTHER asset anywhere in A's downstream subtree — a graph-wide invalidation problem the existing single-row trigger does not solve and nothing else in the schema currently solves either (see drift section).",
+        "needs_migration": "Yes (CREATE TABLE)."
+      },
+      {
+        "home": "a database view computing it on demand (nothing stored)",
+        "verdict": "RECOMMENDED",
+        "reasoning": "A view cannot drift because it has nothing to drift from — it recomputes the recursive closure from the live depends_on column on every read. It does not touch asset_registry rows (no ALTER TABLE, no new column, no write to any asset row), satisfying constraint 2 unambiguously rather than arguably. There is direct naming/structural precedent in this schema: 13 existing vw_*/l1_*/l2_* views already follow exactly this on-demand-derivation-from-live-tables pattern (e.g. vw_chart_digest, vw_mimamsa_insight_by_domain), none of which store a cached scalar that could disagree with its source.",
+        "would_it_reach_a_failure_report": "Yes, and more honestly than a cached column: any failure-report code path can `SELECT blocking_radius FROM vw_asset_blocking_radius WHERE asset_id = $1` and get a value that is, by construction, never wrong relative to the current depends_on graph — at the cost of a recursive-CTE query (measured here: sub-second over 129 assets/174 edges, negligible for this graph size and for at-failure-time invocation frequency).",
+        "can_it_go_stale": "No — this is the entire point.",
+        "needs_migration": "Yes, but a much smaller one: CREATE VIEW/CREATE OR REPLACE VIEW, not ALTER TABLE or CREATE TABLE with FKs/indexes/constraints."
+      },
+      {
+        "home": "computed at failure-report time in application code (no DB object at all)",
+        "verdict": "VIABLE ALTERNATIVE, already half-built",
+        "reasoning": "platform/src/lib/build/plan.ts already contains a working, tested transitiveDownstream() function (lines 215-232) that computes exactly this transitive-dependents closure in-memory from the same registry rows, currently used for rebuild-scope planning (transitiveDownstream is called at plan.ts:237/529/555). A failure-report code path could import/reuse this exact function (or a thin count-only wrapper around it) with zero new DB objects and zero migration.",
+        "would_it_reach_a_failure_report": "Only if a report code path is written to call it — nothing currently does (see consumers section).",
+        "can_it_go_stale": "No, for the same reason as the view — it reads depends_on fresh on every call.",
+        "needs_migration": "No."
+      }
+    ],
+    "recommendation": {
+      "choice": "database view (vw_asset_blocking_radius or similar), with the application-code function as a legitimate fallback/duplicate implementation if the report code path is TypeScript-only and a DB round-trip is undesirable",
+      "reasoning": "Constraint 2's hard line is about MODIFYING ASSET ROWS, and both stored-value candidates (asset_registry column, new build-state table) create a cached figure that can silently disagree with the live DAG the moment anyone edits any depends_on array anywhere in the affected subtree — and this codebase currently has NO mechanism that would catch that (the one relevant trigger, nirmana_invalidate_registry_receipts, only marks the single directly-edited asset_id's own freshness row stale, not the graph of ancestors whose derived counts also changed). A view sidesteps the entire question the assignment poses as central: it is unambiguously not an asset-row modification, and per the assignment's own framing, 'a view cannot drift, a table can' — which this diagnosis's drift investigation (below) confirms is not just a theoretical concern but a real gap in the current schema's invalidation coverage."
+    }
+  },
+
+  "consumers": {
+    "searched": [
+      "platform/src/app/api/cockpit/* (plan, registry, runs, stats, watchdog, clear, atlas, refresh)",
+      "platform/src/lib/build/plan.ts and its dispositions test",
+      "platform/scripts (all dispatch_*.py, governance/asset_census.py, ci/*)",
+      "platform/python-sidecar/pipeline/orchestrator/runner.py (the actual BLOCKED-marking code)"
+    ],
+    "existing_related_mechanism": "plan.ts's transitiveDownstream() IS a transitive-dependents computation, but it exists purely to decide REBUILD SCOPE ('what else must rebuild if I rebuild/repair this asset') — its output is a candidate asset-id list consumed internally by resolveBuildPlan, never surfaced as a count to any UI, report, or API response.",
+    "grep_result_for_the_concept_itself": "No occurrence anywhere in platform/src or platform/scripts of 'blocking_radius', 'blockingRadius', 'transitive_dependent', 'transitiveDependent', 'dependent_count', 'dependentCount', 'blocks_count', or 'blast_radius'/'blastRadius'.",
+    "would_be_consumers_if_it_existed": "None currently read depends_on for FAILURE-IMPACT reporting (as opposed to build-scheduling/planning). cockpit/plan, cockpit/registry, and cockpit/runs all read depends_on strictly for ordering/scope decisions, not for annotating a failure with 'N assets affected.' cockpit/watchdog and cockpit/stats (the closest things to a 'failure report' surface, per their route names) do not reference depends_on at all today.",
+    "verdict": "PLAINLY: NOTHING WOULD READ IT TODAY. Writing this figure now — in any of the four candidate homes — would be building an unconsumed number until a specific failure-report/prioritization surface (cockpit/watchdog, cockpit/stats, or the BUILD_FAILURE_TRIAGE-style analysis script) is also changed to read it. The BUILD_FAILURE_TRIAGE_2026-09-26_v1_0.md document is the one place in this codebase that clearly wants this concept ('what the record adds is priority: the blocking radius...') but it is a static markdown report generated by a one-off analysis session, not a live code path that could 'read' a view or column automatically."
+  },
+
+  "n8_drift_detector_question": {
+    "question": "What makes this figure read false? If an asset's radius is computed and stored but its depends_on later changes, what detects the drift?",
+    "finding_stored_column_or_table": "NO DETECTOR EXISTS for the graph-wide case. The only relevant trigger in the schema is nirmana_registry_receipt_invalidation (fires AFTER UPDATE OF depends_on [among other columns] ON asset_registry), and its body (inspected via pg_get_functiondef) does exactly one thing: `UPDATE asset_freshness SET freshness_state='stale', reasons = reasons || '[\"registry_changed\"]' WHERE asset_id = NEW.asset_id` — it marks ONLY the row whose own depends_on just changed. It does not walk ancestors. If asset Y's depends_on is edited (e.g. Y stops depending on X), every asset upstream of X whose stored blocking_radius counted Y (and everything transitively below Y) is now wrong, and this trigger does not touch any of their rows. A stored blocking_radius on asset_registry or on a new build-state table would therefore have exactly the class of silent-false-positive risk CLAUDE.md §N.8 names: 'a status/grade/PASS... asserted by a detector that only checks a proxy, not the claim' — here the claim is 'this number reflects the current DAG' and the only proxy detector that exists checks a different, narrower claim (the edited row's own freshness) that happens to share a table family but not the graph-closure semantics the new figure would need.",
+    "finding_view": "N/A — a view has no detector because it has no stored value to go false. Its correctness claim collapses to 'the query is a correct transitive closure over live depends_on,' which is verified once (as done in this measurement, via independent BFS cross-check) and stays true by construction on every subsequent read.",
+    "recommendation_if_a_stored_form_is_chosen_anyway": "Would need a NEW trigger (not the existing one) that, on any depends_on UPDATE, invalidates every asset whose transitive closure could include the changed edge — i.e. re-walks ancestors of the changed row, not just the row itself. No such trigger exists today in any form; it would be new code, new risk surface, and an unresolved 'how often do we actually re-run the recompute' question. This is the concrete, falsifiable form of 'a table can drift, a view cannot' the assignment asked me to weigh in on."
+  },
+
+  "migration_numbering": {
+    "instruction": "Trust no number from any document; scanned both directories directly at measurement time.",
+    "platform_migrations": {
+      "path": "platform/migrations/",
+      "file_count": 495,
+      "max_number": 1070,
+      "max_file": "1070_data_plane_builder_orchestrator_grants.sql"
+    },
+    "platform_supabase_migrations": {
+      "path": "platform/supabase/migrations/",
+      "file_count": 322,
+      "max_number": 1094,
+      "max_file": "1094_asset_throughput_duration_seconds.sql"
+    },
+    "true_current_max_across_both": 1094,
+    "next_available_number": 1095,
+    "important_caveat": "The two directories are NOT the same migration space by accident — platform/scripts/migrate.ts explicitly reads BOTH 'platform/migrations/*.sql' and 'platform/supabase/migrations/*.sql' into one combined applied-migration ledger (_migrations_applied), and platform/scripts/ci/migration_number_guard.ts + migration_number_legacy_duplicates.json govern a FROZEN (2026-07-30) whitelist of 35 legacy number collisions between the two directories (e.g. both directories have a distinct, unrelated '174_*.sql' file). This means: (a) a genuinely new migration must pick a number higher than 1094 (the true combined max), not just higher than whichever single directory happens to be checked, and (b) which of the two directories a new B2 migration should land in is itself a real decision this diagnosis surfaces but does not resolve — that is a question for whoever authorizes the packet, informed by which directory recent nirmana-campaign migrations (e.g. 1070, 1092-1094) have been landing in.",
+      "query": "ls platform/migrations | grep -oE '^[0-9]+' | sort -n | tail; ls platform/supabase/migrations | grep -oE '^[0-9]+' | sort -n | tail; combined via sort -n over both."
+  },
+
+  "recommendation_summary_for_the_authorizer": "If B2 proceeds, my read of the evidence: (1) the DAG-transitive figure, wherever it lives, satisfies the packet's stated proof (self-consistent, independently reproducible) but does NOT satisfy the stronger, more useful claim implied by the packet's own motivating language ('this is how the asset campaign will prioritise') — it does not predict which failures actually cascade hardest historically, because that is driven by incident frequency, not DAG shape; (2) if the figure is built anyway (it may still be a legitimate static-risk fact worth having), build it as a view, not a stored column or table, specifically because no drift detector exists in this schema for a graph-wide derived quantity and building one would be new, unproven machinery; (3) before authorizing any implementation, name at least one real consumer (a specific route or report) that will read it — none exists today."
+}

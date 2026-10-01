@@ -21,6 +21,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+from brahmagyan.verification_vocab import TWO_PASS_VERIFIED
+
 logger = logging.getLogger(__name__)
 
 DASHA_SYSTEMS = (
@@ -39,7 +41,8 @@ def fetch_dasha_periods(
     """Read `chart_dashas` rows for chart_id across `systems` (defaults to
     ALL 9 known systems -- the DR-14 plurality requirement). Returns [] on
     any DB-shape surprise (honest empty, not a crash), same discipline as
-    `resonance_map.fetch_resonance_targets`."""
+    `resonance_map.fetch_resonance_targets`. MD-only (level_n=1) by default;
+    the multi-level MD/AD/PD read is `fetch_dasha_periods_multilevel`."""
     if conn is None:
         return []
     want_systems = systems or list(DASHA_SYSTEMS)
@@ -60,6 +63,179 @@ def fetch_dasha_periods(
         return []
     keys = ["system_id", "level_n", "lord_graha", "start_iso", "end_iso"]
     return [row if isinstance(row, dict) else dict(zip(keys, row)) for row in rows]
+
+
+# GOCHARA_DESIGN_SPECS_v1_4 §4.0 (the daśā read contract): rows are selected
+# at verification tier `two_pass_verified`; every MD/AD/PD row is the
+# half-open interval [start_iso, end_iso); AD is valid only under its MD and
+# PD only under its AD (linkage by parent row id, never timestamp overlap).
+DEFAULT_LEVELS = (1, 2, 3)  # MD / AD / PD
+READ_CONTRACT_TIER = TWO_PASS_VERIFIED
+
+
+class DashaReadConflict(ValueError):
+    """§4.0 duplicate-row rule: two equally-qualified rows conflict for the
+    same (system, level, parent, start) — reject both and fail loudly, never
+    silently pick one."""
+
+
+_MULTILEVEL_KEYS = [
+    "dasha_row_id", "system_id", "level_n", "parent_row_id", "lord_graha",
+    "start_iso", "end_iso", "build_id", "verification_pass_status",
+]
+
+# §4.0 identity + contract fields: two rows with the same identity key are
+# identical duplicates (collapse) iff every contract field matches; any
+# difference is a conflict.
+_MULTILEVEL_IDENTITY = ("system_id", "level_n", "parent_row_id", "start_iso")
+_MULTILEVEL_CONTRACT_FIELDS = ("lord_graha", "end_iso", "build_id",
+                               "verification_pass_status")
+
+
+def canonicalize_multilevel_rows(rows: list[dict]) -> list[dict]:
+    """The §4.0 duplicate rules as ONE pure pass over already-PINNED rows
+    (GOCHARA_DESIGN_SPECS_v1_4 §4.0; ASTRA_REVIEW_A5_4 v1.1 P1-2). Used by
+    the DB fetch below and by the projection's per-instant selection, so
+    the two never drift:
+
+      1. identical-duplicate collapse — rows equal on every contract field
+         (system, level, parent, lord, start, end, build, tier) collapse to
+         one; the keeper records every source id in `merged_row_ids`;
+      2. parent-alias canonicalization — a child whose parent_row_id names
+         a COLLAPSED duplicate is re-pointed to the keeper (no orphaning of
+         valid children);
+      3. sibling `index` — under each (system, level, parent) the surviving
+         rows are ordered by start_iso and numbered 0..n-1 (the contract's
+         `(level, parent, index)` identity; chart_dashas carries no index
+         column, its natural key being (…, level_n, parent_row_id,
+         lord_graha, start_date) per migration 653);
+      4. `(level, parent, index)` conflict — two surviving siblings whose
+         half-open intervals overlap compete for one identity/instant:
+         reject both, fail loudly (DashaReadConflict), never row-order pick.
+    The pinning (build / ayanāṃśa / tier) MUST happen before this pass —
+    the caller's job; this function does not know the pins.
+    """
+    # 1./2. identical collapse and parent canonicalization, RECURSIVELY by
+    # level (ASTRA v1.2 P1-1): a duplicated MD/AD/PD tree collapses at the
+    # MD level first; its AD children are re-pointed to the keeper and only
+    # THEN collapsed (their identity key now shares the canonical parent),
+    # and so on down — descendants are normalised after their parents and
+    # collapsed after normalisation, never rejected as overlapping siblings.
+    alias: dict[str, str] = {}
+    survivors: list[dict] = []
+    levels = sorted({int(r.get("level_n") or 0) for r in rows})
+    for level in levels:
+        keepers: dict[tuple, dict] = {}
+        for row in rows:
+            if int(row.get("level_n") or 0) != level:
+                continue
+            row = dict(row)
+            parent = row.get("parent_row_id")
+            if parent is not None and str(parent) in alias:
+                row["parent_row_id_original"] = str(parent)
+                row["parent_row_id"] = alias[str(parent)]
+            key = tuple(str(row.get(k)) for k in (
+                "system_id", "level_n", "parent_row_id", "lord_graha", "start_iso",
+                "end_iso", "build_id", "verification_pass_status"))
+            rid = str(row.get("dasha_row_id"))
+            if key not in keepers:
+                row["merged_row_ids"] = sorted(set(map(str, row.get("merged_row_ids") or [])) | {rid})
+                keepers[key] = row
+                continue
+            keeper = keepers[key]
+            keeper["merged_row_ids"] = sorted(set(keeper["merged_row_ids"]) | {rid})
+            alias[rid] = str(keeper.get("dasha_row_id"))
+        survivors.extend(keepers.values())
+    # 3./4. sibling index + overlap conflict
+    groups: dict[tuple, list[dict]] = {}
+    for row in survivors:
+        groups.setdefault((str(row.get("system_id")), int(row.get("level_n") or 0),
+                           None if row.get("parent_row_id") is None else str(row.get("parent_row_id"))),
+                          []).append(row)
+    for (system, level, parent), sib in groups.items():
+        sib.sort(key=lambda r: (str(r.get("start_iso")), str(r.get("end_iso"))))
+        for idx, row in enumerate(sib):
+            row["index"] = idx
+        for a, b in zip(sib, sib[1:]):
+            if str(b.get("start_iso")) < str(a.get("end_iso")):
+                raise DashaReadConflict(
+                    f"chart_dashas §4.0 (level, parent, index) conflict: {system} "
+                    f"level {level} under parent {parent} — rows "
+                    f"{a.get('dasha_row_id')} [{a.get('start_iso')}, {a.get('end_iso')}) and "
+                    f"{b.get('dasha_row_id')} [{b.get('start_iso')}, {b.get('end_iso')}) "
+                    "overlap — both rejected, never silently picked")
+    return survivors
+
+
+def fetch_dasha_periods_multilevel(
+    conn,
+    chart_id: str,
+    ayanamsha_id: str = "lahiri_chitrapaksha",
+    systems: Optional[list[str]] = None,
+    levels: tuple[int, ...] = DEFAULT_LEVELS,
+    tier: str = READ_CONTRACT_TIER,
+    build_id: Optional[str] = None,
+    canonicalize: bool = True,
+) -> list[dict]:
+    """§4.0 multi-level (MD/AD/PD) read of `chart_dashas`, with parent
+    linkage preserved (`parent_row_id`) and the contract's duplicate rules
+    enforced:
+
+      * rows are selected at verification tier `two_pass_verified`;
+      * identical duplicates (equal on every contract field) collapse to one
+        — the surviving row records all source row ids in `merged_row_ids`;
+      * conflicting duplicates (same identity, any contract field differs)
+        raise DashaReadConflict — fail loudly, never silently pick one.
+
+    Returns [] on a DB-shape surprise (honest empty, same discipline as
+    `fetch_dasha_periods`); a CONFLICT is not a DB surprise — it raises.
+    `fetch_dasha_periods` (MD-only) is unchanged for its existing callers.
+
+    Pinning happens IN THE QUERY, before any duplicate handling (ASTRA v1.1
+    P1-2): ayanāṃśa and tier always (a NULL tier never matches the equality
+    predicate), build when `build_id` is given (a NULL build never matches).
+    The duplicate rules are `canonicalize_multilevel_rows` — identical
+    collapse, parent-alias canonicalization, sibling `index`, and the
+    `(level, parent, index)` overlap conflict.
+    """
+    if conn is None:
+        return []
+    want_systems = systems or list(DASHA_SYSTEMS)
+    sql = """
+            SELECT dasha_row_id, system_id, level_n, parent_row_id,
+                   lord_graha, start_iso, end_iso, build_id,
+                   verification_pass_status
+              FROM chart_dashas
+             WHERE chart_id = %s AND ayanamsha_id = %s
+               AND system_id = ANY(%s) AND level_n = ANY(%s)
+               AND verification_pass_status = %s
+    """
+    params: list = [chart_id, ayanamsha_id, want_systems, list(levels), tier]
+    if build_id is not None:
+        sql += "           AND build_id = %s\n"
+        params.append(str(build_id))
+    sql += "             ORDER BY system_id, level_n, start_iso\n"
+    try:
+        cur = conn.execute(sql, params)
+        rows = cur.fetchall()
+    except Exception as exc:  # noqa: BLE001
+        logger.info("[dasha_data] multi-level chart_dashas read failed "
+                    "(table unreachable or unpopulated): %s", exc)
+        return []
+    parsed = [row if isinstance(row, dict) else dict(zip(_MULTILEVEL_KEYS, row))
+              for row in rows]
+    # a row that escaped the pin predicates with a NULL contract field is
+    # rejected (never a silently unpinned read)
+    parsed = [r for r in parsed
+              if r.get("verification_pass_status") is not None
+              and (build_id is None or r.get("build_id") is not None)]
+    if not canonicalize:
+        # RAW pinned rows — for a caller that must SELECT the build pin
+        # first (the §4.0 read contract) and only then canonicalize the
+        # pinned set; canonicalizing across builds would reject a foreign
+        # build's overlapping rows as conflicts (ASTRA v1.2 P1-1).
+        return parsed
+    return canonicalize_multilevel_rows(parsed)
 
 
 def build_fixture_dasha_periods(chart_id: str) -> list[dict]:
@@ -92,4 +268,7 @@ def period_contains(period: dict, dt_iso: str) -> bool:
         return False
 
 
-__all__ = ["DASHA_SYSTEMS", "fetch_dasha_periods", "build_fixture_dasha_periods", "period_contains"]
+__all__ = ["DASHA_SYSTEMS", "fetch_dasha_periods", "fetch_dasha_periods_multilevel",
+           "canonicalize_multilevel_rows",
+           "build_fixture_dasha_periods", "period_contains", "DashaReadConflict",
+           "DEFAULT_LEVELS", "READ_CONTRACT_TIER"]

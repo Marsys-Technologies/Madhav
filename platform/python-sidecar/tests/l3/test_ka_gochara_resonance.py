@@ -452,6 +452,24 @@ def test_writer_inserts_expected_rows_for_fixture_chart():
     assert sink["deletes"][0] == (CHART_ID,)
 
 
+def test_writer_emits_zero_birth_anchor_rows():
+    """N6 / O-CF-N6 (GOCHARA_DESIGN_SPECS_v1_4 §2.2): birth_anchor is the natal
+    epoch, not an event class — a full writer run must emit ZERO resonance rows
+    for it. The fake-conn fixture resolves every enumerated class to the
+    marriage shape, so any inserted row with event_class='birth_anchor' would
+    prove the class is still being enumerated (the pre-repair defect: 27
+    classes enumerated, birth_anchor among them under an epoch_tautology
+    lambda_e kill-switch). Mutation statement: re-adding 'birth_anchor' to
+    _ALL_27_EVENT_CLASSES makes this test fail."""
+    from pipeline.orchestrator.writers.ka_gochara_resonance import KaGocharaResonanceWriter
+
+    sink: dict = {}
+    conn = _FakeConn(_fixture_script(), sink)
+    result = KaGocharaResonanceWriter().run(_Ctx(conn, CHART_ID))
+    assert result.rows_inserted > 0
+    assert all(r["event_class"] != "birth_anchor" for r in sink["inserted"])
+
+
 def test_writer_idempotent_rerun_deletes_before_reinsert():
     """Idempotency (§N.3): a second run issues its own DELETE before
     re-inserting — a rebuild REPLACES, never accretes."""

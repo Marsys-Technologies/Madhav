@@ -368,10 +368,12 @@ class KaMoortiNirnayaWriter(WriterBase):
                     "phala_brief": None,
                     "moorti_classical_citation": None,
                     "upstream_fingerprint": upstream_fp_json,
-                    # WP9 overlay stamps (migration 1082). Verse-cited + corpus-
-                    # verifiable exactly when the moorti restates bg_transit_moorti
-                    # (moorti_computed); unsourced otherwise. precision_regime is
-                    # re-stamped below from the FINAL grading path: instant_grain
+                    # WP9 overlay stamps (migration 1082). N7: the mūrti rule
+                    # form is NOT in the served corpus, so computed rows stamp
+                    # 'algorithmic_approximation' + corpus_verifiable=False —
+                    # never 'verse_cited' (see logic.py header). Uncomputed
+                    # rows stamp 'unsourced'. precision_regime is re-stamped
+                    # below from the FINAL grading path: instant_grain
                     # when the kernel's sign_ingress instant graded the row,
                     # date_grain otherwise (WP9 5.3).
                     "source_qualification": moorti_source_qualification(moorti_computed),

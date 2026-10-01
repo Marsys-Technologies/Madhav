@@ -272,21 +272,30 @@ SELECT
       AND (v.detail->>'malefic_count')::int
           IS DISTINCT FROM jsonb_array_length(v.detail->'malefic_obstructing_grahas')
   )
+  -- T0-8 / D-PG353 (2026-09-30): the PG353 battle-scale grade application is
+  -- REMOVED — every house_vedha row must carry explicit-null grade fields and
+  -- the d_pg353 removal record.
   AND NOT EXISTS (
     SELECT 1 FROM kala_vedha_gochara v
-    LEFT JOIN bg_vedha_malefic_scale s ON s.malefic_count = (v.detail->>'malefic_count')::int
     WHERE v.vedha_kind = 'house_vedha'
-      AND (((v.detail->>'malefic_effect_grade') IS NOT NULL) <> (s.malefic_count IS NOT NULL)
-        OR ((v.detail->>'malefic_effect_grade') IS NOT NULL
-            AND ((v.detail->>'malefic_effect_grade') IS DISTINCT FROM s.effect_grade
-              OR (v.detail->>'malefic_scale_citation') IS DISTINCT FROM s.source_citation)))
+      AND (v.detail->>'malefic_effect_grade' IS NOT NULL
+        OR v.detail->>'malefic_scale_citation' IS NOT NULL
+        OR (v.detail->'d_pg353'->>'applied')::boolean IS NOT FALSE
+        OR v.detail->'d_pg353'->>'ruling_ref' IS DISTINCT FROM 'D-PG353')
   )
+  -- T0-8 / N4: obstruction intervals (half-open [t_in, t_out)) replace the
+  -- first-only obstruction_window_* singulars; every interval lies inside the
+  -- primary residence (t_out may be window_end + 1 day: inclusive-day to
+  -- half-open conversion) and is well-ordered.
   AND NOT EXISTS (
-    SELECT 1 FROM kala_vedha_gochara v
-    WHERE v.detail->>'obstruction_window_start' IS NOT NULL
-      AND ((v.detail->>'obstruction_window_start')::date < v.window_start
-        OR (v.detail->>'obstruction_window_end')::date > v.window_end
-        OR (v.detail->>'obstruction_window_end')::date < (v.detail->>'obstruction_window_start')::date)
+    SELECT 1 FROM kala_vedha_gochara v,
+           LATERAL jsonb_array_elements(v.detail->'vedha_intervals') iv
+    WHERE v.vedha_kind = 'house_vedha'
+      AND ((iv->>'t_in')::date < v.window_start
+        OR (iv->>'t_out')::date > v.window_end + 1
+        OR (iv->>'t_out')::date <= (iv->>'t_in')::date
+        OR iv->>'state' NOT IN ('active', 'cancelled_vipareeta', 'inactive')
+        OR iv->>'exception' NOT IN ('none', 'sun_saturn', 'moon_mercury'))
   )
   AS integrity_passed
 """
@@ -559,6 +568,13 @@ class TestWriterStamps:
             assert r["corpus_verifiable"] is True
 
     def test_moorti_stamp_values(self, wp9_built):
+        """DISCLOSURE (Pravāha A5.4 moorti_flag_honest, doctrine N7): this test
+        previously pinned the defect — it asserted computed moorti rows stamp
+        'verse_cited' + corpus_verifiable=True on computation success alone.
+        The mūrti rule form is NOT in the served corpus, so the stamp now
+        reflects corpus presence: computed rows carry 'algorithmic_approximation'
+        (the migration-1082 CHECK vocabulary for a computed, non-corpus-verifiable
+        rule form) + corpus_verifiable=False, never 'verse_cited'."""
         rows = _fetch_all(WP6_DSN, "kala_moorti_nirnaya")
         assert rows, "expected moorti rows"
         computed = [r for r in rows if r["moorti_computed"]]
@@ -566,12 +582,12 @@ class TestWriterStamps:
         # The Sun sign-2 run (days 100..130) is the one non-truncated run.
         assert computed, "expected at least one moorti-computed row"
         for r in computed:
-            assert r["source_qualification"] == "verse_cited"
+            assert r["source_qualification"] == "algorithmic_approximation"
             # WP9 5.3: non-truncated runs are graded at the true kernel
             # sign-ingress instant -> instant_grain (day-grain only remains
             # on runs the kernel could not solve).
             assert r["precision_regime"] == "instant_grain"
-            assert r["corpus_verifiable"] is True
+            assert r["corpus_verifiable"] is False
         assert uncomputed, "expected moorti-uncomputed rows (truncated horizon runs)"
         for r in uncomputed:
             assert r["source_qualification"] == "unsourced"

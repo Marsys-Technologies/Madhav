@@ -1,0 +1,277 @@
+{
+  "packet": "B1 — Cascade reads as one cause, N blocked",
+  "measured_at_utc": "2026-09-26T17:39:31Z",
+  "measured_by": "nirmana-engine-diagnostician (read-only)",
+  "repo": "/Users/Dev/madhav-engine",
+  "branch": "campaign/nirmana-engine",
+  "head_commits_at_measurement": [
+    "7fc5c8e8b Reconcile the census; raise D-2 for the pins that cannot be reconciled",
+    "551d5ecad A3: a registry change mid-run no longer destroys the run",
+    "8edba0533 A1: the engine times the writer, instead of trusting it to",
+    "f4a6f9541 A2: every path that fails a run-asset now records why",
+    "e9daf4eea Nirmana engine Phase A: three before-measurements, and the claim they corrected"
+  ],
+  "population_note": "Per instructions, the 1,236-row population is NOT re-measured here; it is imported from measurements/PHASE_A_GATE_20260926T172713Z.json. All queries below are scoped to characterize the CODE surface, timestamped independently.",
+
+  "1_db_posture": {
+    "command": "source /Users/Dev/madhav-l3/dbenv.sh; export PGPORT=5433; psql -c \"SHOW default_transaction_read_only;\"",
+    "result": "default_transaction_read_only = on",
+    "connection": "current_database=amjis, current_user=amjis_app"
+  },
+
+  "2_mark_asset_blocked": {
+    "definition": {
+      "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+      "lines": "516-530",
+      "code": "def _mark_asset_blocked(conn, cur, run_id: str, chart_id, asset_id: str, blocking_deps: list[str]) -> None:\n    \"\"\"\n    Mark an asset BLOCKED because an upstream it depends on errored/was blocked.\n\n    Recorded as state='error' (the loud, surfaced state — red in the tracker, counted in\n    the run's error tally) with a 'BLOCKED:' message, rather than silently running the\n    writer on incomplete upstream data and marking it 'complete'. The asset is NOT executed.\n    \"\"\"\n    msg = (\n        \"BLOCKED: upstream dependency(ies) %s did not complete in this run; \"\n        \"skipped to avoid building on incomplete data\"\n        % \", \".join(sorted(blocking_deps))\n    )\n    _mark_asset_error_terminal(conn, cur, run_id, chart_id, asset_id, msg)\n    logger.warning(\"[orchestrator] BLOCKED %s — upstream not complete: %s\", asset_id, blocking_deps)"
+    },
+    "shared_terminal_writer": {
+      "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+      "lines": "477-509",
+      "function": "_mark_asset_error_terminal",
+      "writes": [
+        "asset_throughput: state='error', last_error=<msg>, last_built_at=NOW() (upsert, chart-scoped or NULL-chart)",
+        "build_run_assets: SET state='error', error=<msg[:2000]>, ended_at=NOW() WHERE run_id=... AND asset_id=...",
+        "emits asset.state_change event {from_state:'queued', to_state:'error', error:<msg[:500]>}"
+      ],
+      "commits": true,
+      "note": "Only ONE state is ever written for a blocked asset: 'error'. There is no distinct BLOCKED state in either table."
+    },
+    "callers": {
+      "production_caller": {
+        "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+        "line": 904,
+        "code": "def on_block(a, blocking):\n        _mark_asset_blocked(conn, cur, run_id, eff(a), a, blocking)"
+      },
+      "on_block_invocation_sites_inside_execute_dag": [
+        {
+          "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+          "line": 633,
+          "context": "blocking = [d for d in deps_of.get(a, []) if d in failed]; if blocking: _block(a, blocking)",
+          "meaning": "GENUINE dependency cascade: a direct upstream dep of `a` is already in the `failed` set for this run."
+        },
+        {
+          "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+          "line": 653,
+          "context": "miss = [d for d in deps_of.get(a, []) if d not in completed]; _block(a, miss)  # deadlock branch",
+          "meaning": "Deadlock guard: remaining deps never became ready (missing upstream) — not necessarily a FAILURE of those deps, just unresolved."
+        },
+        {
+          "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+          "line": 673,
+          "context": "_block(a, [f\"timeout:{_budget}s\"])",
+          "meaning": "The asset ITSELF exceeded its writer_timeout_seconds budget. This is NOT an upstream-dependency block — `a` is the root cause, not a dependent — but it is funneled through the exact same _mark_asset_blocked() function and the exact same 'BLOCKED: upstream dependency(ies) ... did not complete' text template, with a synthetic non-asset-id string ('timeout:600s') substituted for a dependency name."
+        }
+      ],
+      "test_caller": {
+        "file": "platform/python-sidecar/tests/test_a3_registry_divergence_narrowing.py",
+        "line": 433
+      }
+    },
+    "root_cause_recorded": "NO STRUCTURED FIELD. _mark_asset_blocked receives only the DIRECT blocking_deps list (immediate upstream, or a synthetic timeout string) and burns it into prose inside the shared `error` text column. Neither asset_throughput nor build_run_assets has any column that stores 'which asset ultimately caused this'.",
+    "recoverable_today": "Partially, and only by an unintended, fragile mechanism — see section 6 (backfill) for the measured multi-hop breakdown."
+  },
+
+  "3_schema_reality": {
+    "build_run_assets": {
+      "state_check": "CHECK (state = ANY (ARRAY['queued','building','complete','skipped','error','aborted']))",
+      "disposition_check": "CHECK (disposition IS NULL OR (disposition = ANY (ARRAY['build','skip_no_delta','deferred_no_writer','withheld_protected','dormant','out_of_domain','blocked_dependency'])))",
+      "no_root_cause_column": true
+    },
+    "asset_throughput": {
+      "state_check": "CHECK (state = ANY (ARRAY['dormant','building','lit','stale','error','incomplete']))",
+      "has_disposition_column": false,
+      "note": "asset_throughput is the long-lived per-asset record (one row per chart+asset); build_run_assets is the per-run audit row. Only build_run_assets has a disposition axis at all."
+    },
+    "disposition_vocabulary_in_use_today": {
+      "query": "SELECT disposition, count(*) FROM build_run_assets GROUP BY disposition ORDER BY 2 DESC;",
+      "result": {"NULL": 6612, "build": 150, "skip_no_delta": 61},
+      "finding": "'blocked_dependency' already exists in the CHECK constraint but has ZERO rows in production and ZERO code references (grep of platform/python-sidecar for 'blocked_dependency' returns nothing outside this constraint). It is a provisioned-but-dormant value — exactly the carrier B1 needs, with no constraint migration required to add it."
+    },
+    "recommendation": {
+      "carrier": "disposition='blocked_dependency' (already provisioned) for the WHY, plus a NEW COLUMN for the root/immediate-cause asset id. Do NOT add a new `state` value.",
+      "reasoning": [
+        "A3's own precedent (runner.py:539-561, _terminalize_diverged_assets docstring, 'F-3 rereview') already ruled on this exact question: a cascade victim is deliberately reported via the SAME state='error' used for a genuine cause — 'reported as a genuine FAILURE ... not a cancellation, which is the stronger and more accurate signal for an operator to act on' — specifically so existing state='error'-keyed monitoring keeps matching. Introducing a new `state` value (e.g. 'blocked') would break that continuity and would ALSO require a CHECK-constraint migration on a column two other subsystems (deriveState.ts, AssetNode.tsx, the watchdog reaper) already pattern-match against by literal value.",
+        "disposition='blocked_dependency' is additive and free: the enum slot already exists, so setting it costs zero migration. It lets every consumer keep treating state='error' as 'this run did not succeed' (unchanged operator semantics) while giving code that wants to differentiate a cause from a cascade a clean boolean-ish signal (disposition = 'blocked_dependency' vs NULL/'build') without touching the state machine.",
+        "A brand-new column (e.g. build_run_assets.blocked_by_asset_id text, nullable) is needed regardless of the disposition choice, because NEITHER table has any structured place for 'which asset id caused this' today — that fact is currently only recoverable (partially) by regex-parsing the `error` prose, which is exactly the fragility this packet exists to fix.",
+        "asset_throughput does not need a matching disposition column: it already stays state='error' (unchanged), and any caller wanting the cause/cascade distinction for the CURRENT state of an asset should join out to that asset's most recent build_run_assets row for the same reason build_run_assets, not asset_throughput, already carries 'skip_no_delta'/'build' disposition today."
+      ]
+    }
+  },
+
+  "4_failure_counting_surfaces": {
+    "methodology": "Enumerated by grepping the whole platform/src (cockpit API + all app/api routes + all cockpit-v2 React components) and platform/scripts/governance for every place build_run_assets.state, asset_throughput.state, or a derived 'error'/'failed' badge is read or aggregated. platform/migrations + platform/supabase/migrations searched for CREATE VIEW referencing either table (none live); pg_views / pg_matviews on the production DB also queried directly (0 rows) — there is currently NO live SQL view or materialized view surface over these two tables.",
+    "surfaces": [
+      {
+        "surface": "cockpit stats badge (per-asset)",
+        "file": "platform/src/app/api/cockpit/stats/deriveState.ts",
+        "lines": "94-97",
+        "code": "if (error) {\n    if (asset.has_substeps && substepsCommitted != null && substepsCommitted > 0) return 'partial'\n    return 'error'\n  }",
+        "counts_blocked_as_failure": true,
+        "note": "Reads asset_throughput.last_error / .state, which _mark_asset_error_terminal sets identically for a blocked asset and a genuinely broken writer. Only escape hatch is has_substeps+committed-substeps>0 -> 'partial', unrelated to blocked/cascade."
+      },
+      {
+        "surface": "cockpit stats route (per-asset fetch/derive orchestration)",
+        "file": "platform/src/app/api/cockpit/stats/route.ts",
+        "lines": "307-322",
+        "counts_blocked_as_failure": true,
+        "note": "Calls deriveState() per asset (line 316) and separately flags build_state_stale using tp?.state === 'error' among other states (line 322) — inherits the same non-distinction."
+      },
+      {
+        "surface": "cockpit run's per-asset frontend badge",
+        "file": "platform/src/components/build_orchestrator/AssetNode.tsx",
+        "lines": "24-58",
+        "function": "mapDbStateToUiState",
+        "code_excerpt": "error: 'failed', ... aborted: 'cancelled',",
+        "counts_blocked_as_failure": true,
+        "note": "Maps DB state literally: 'error' -> UI 'failed' (red X), unconditionally. Never reads build_run_assets.disposition. A blocked cascade asset renders pixel-identical to a genuinely broken writer."
+      },
+      {
+        "surface": "cockpit shell run-level failure count (drives the header banner)",
+        "file": "platform/src/lib/components/cockpit/v2/CockpitShell.tsx",
+        "line": 149,
+        "code": "const errorCount = assetStates.filter(a => a.state === 'error' || a.state === 'service_down').length",
+        "counts_blocked_as_failure": true,
+        "feeds": "platform/src/lib/components/cockpit/v2/CockpitHeader.tsx:196-207 — renders '{errorCount} asset(s) failed' banner text"
+      },
+      {
+        "surface": "cockpit per-layer failure count",
+        "file": "platform/src/lib/components/cockpit/v2/LayerPanel.tsx",
+        "lines": "133-136",
+        "code": "const errorCount = activeAssets.filter(a => {\n    const state = stats.get(a.asset_id)?.state\n    return state === 'error' || state === 'service_down'\n  }).length",
+        "counts_blocked_as_failure": true,
+        "note": "Same predicate as CockpitShell, per-layer; drives the layer badge ('{errorCount} error(s)') and glow styling at line 39-43."
+      },
+      {
+        "surface": "watchdog stuck-run/stuck-asset reaper",
+        "file": "platform/src/app/api/cockpit/watchdog/route.ts",
+        "lines": "132-181, 365-390",
+        "counts_blocked_as_failure": "indirect / different mechanism",
+        "note": "Does not read _mark_asset_blocked's 'BLOCKED:' text. It independently reaps 'building'->error and 'queued'->aborted for runs whose lease looks dead, and probes for rescuable data (classifyStuckCandidate.ts). It shares the same undifferentiated state='error' vocabulary and would not know a BLOCKED row from a crashed writer either, but it is not the primary surface B1 targets — flagged for completeness since the packet asks for 'any monitor, dashboard, or status page'."
+      },
+      {
+        "surface": "governance build-health census",
+        "file": "platform/scripts/governance/asset_census.py",
+        "function": "build_history",
+        "lines": "350-374",
+        "grading_lines": "536-547",
+        "code_excerpt": "d[state] = d.get(state, 0) + 1\n...\nbad = h[\"error\"] + h[\"aborted\"]\nif h[\"last_state\"] in (\"error\", \"aborted\"):\n    m[\"Build.history\"] = dict(v=FAIL, ...)\nelif bad:\n    m[\"Build.history\"] = dict(v=PARTIAL, ...)",
+        "counts_blocked_as_failure": true,
+        "note": "Reads build_run_assets.disposition (line 358, 'coalesce(a.disposition,'')') but only ever checks it for =='skip_no_delta'; it never checks for 'blocked_dependency' (which is dormant anyway, section 3). A chart whose only build-history blemish is upstream cascade blocking is graded FAIL (if the cascade was the MOST RECENT run) or PARTIAL (if an older run also cascaded) in a governance report meant to answer 'is this asset healthy'. This is the deepest and most consequential surface found: it is a per-session governance signal, not just a UI cosmetic."
+      },
+      {
+        "surface": "legacy pyramid layer status (build/pyramid-layers)",
+        "file": "platform/src/app/api/build/pyramid-layers/route.ts",
+        "lines": "57-74",
+        "counts_blocked_as_failure": "moot — dead data",
+        "note": "Reads a DIFFERENT table (pyramid_layers, not build_run_assets/asset_throughput). normalizeStatus() maps 'error'->'failed' just like every other surface, but pyramid_layers is stale (max(updated_at) = 2026-07-27, two months before this measurement) and carries 0 rows with status IN ('error','failed') right now (33 not_started / 4 complete / 1 in_progress). This route is live code but is not currently reflecting any of the 1,236-row BLOCKED population — flagged as a legacy surface that would need the same fix IF it were ever re-fed, not an active part of today's lie."
+      },
+      {
+        "surface": "legacy per-asset inspector gate verdict",
+        "file": "platform/src/app/api/assets/[chart_id]/[asset_key]/route.ts",
+        "line": 62,
+        "code": "if (status === 'failed' || status === 'error') return 'failed'",
+        "counts_blocked_as_failure": "moot — same dead pyramid_layers-derived status source per its own docstring",
+        "note": "Same disposition as pyramid-layers: live code, dormant data source."
+      },
+      {
+        "surface": "legacy data-readiness banner",
+        "file": "platform/src/app/api/build/data-readiness/route.ts",
+        "lines": "91-127",
+        "counts_blocked_as_failure": "moot — dead table",
+        "note": "Reads build_checkpoints (0 rows in production; SELECT count(*) FROM build_checkpoints = 0). hasFailed logic (line 117) would count any 'failed' checkpoint status as a failure, but the table it reads from is currently empty, so this route always returns build_status derived from zero checkpoint rows regardless of what the live orchestrator (build_run_assets) is doing. Confirmed dead-but-present code path."
+      },
+      {
+        "surface": "SQL views / materialized views",
+        "counts_blocked_as_failure": false,
+        "note": "SELECT viewname FROM pg_views WHERE definition ILIKE '%build_run_assets%' OR definition ILIKE '%asset_throughput%' -> 0 rows. SELECT matviewname FROM pg_matviews (same filter) -> 0 rows. The one view found by grepping migration files for these table names (orchestrator_noop_events, migration 499) is unrelated — it reads orchestrator_event_register for noop-completion promotion/rejection events (SATYA-DĪPA topic), not failure counts."
+      },
+      {
+        "surface": "00_ARCHITECTURE/control/nirmana_tracker*",
+        "counts_blocked_as_failure": "NOT ATTRIBUTABLE — file does not exist in this repo/branch",
+        "note": "find . -iname '*nirmana_tracker*' inside /Users/Dev/madhav-engine (branch campaign/nirmana-engine) returns only two planning markdown docs (NIRMANA_TRACKER_V21_REALTIME_PLAN_v1_0.md, NIRMANA_TRACKER_V2_ALIGNMENT_PLAN_v1_0.md) under 00_ARCHITECTURE/briefs/nirmana/ — no nirmana_tracker.py / nirmana_tracker.html / nirmana_tracker_generate.py exists here. That file lives in a different, sibling repository (/Users/Dev/Vibe-Coding/Apps/Madhav, the CLAUDE.md/Marsys-JIS project — a different campaign, 'nirmana-autonomous', per the git-status snapshot supplied to this session) and is out of scope for this repo's B1 packet. The closest analog present in THIS repo, 00_ARCHITECTURE/control/asset_elevation_tracker.py, does not read build_run_assets/asset_throughput at all — it grades registry certification/gap-ledger completeness, an orthogonal concept, and was confirmed via grep to contain no 'error'/'blocked'/'aborted'/state-comparison logic tied to build execution."
+      }
+    ],
+    "surfaces_confirmed_NOT_touching_this_data": [
+      "platform/src/app/api/cockpit/runs/[id]/assets/route.ts and .../runs/active/route.ts and cockpit/sse/route.ts pass through raw per-asset state/error columns without computing any aggregate count server-side — the counting happens client-side in CockpitShell.tsx/LayerPanel.tsx (already listed above).",
+      "Every platform/src/app/api/build/* route except pyramid-layers and data-readiness (both already listed) is either decommissioned (410 Gone: recent, telemetry, start, task, reap all return 'Decommissioned' / 'ENDPOINT_GONE') or does not touch build_run_assets/asset_throughput at all (cascade, cascade-preview, rebuild, rebuild-all, continue, stop — verified by grep, no matches)."
+    ]
+  },
+
+  "5_migration_question": {
+    "current_max_migration_number": {
+      "measured_at": "2026-09-26T17:39:31Z (this session, live filesystem listing, not any document)",
+      "platform_migrations_dir": {
+        "path": "platform/migrations/",
+        "max_numeric": 1070,
+        "file": "1070_data_plane_builder_orchestrator_grants.sql"
+      },
+      "platform_supabase_migrations_dir": {
+        "path": "platform/supabase/migrations/",
+        "max_numeric": 1094,
+        "file": "1094_asset_throughput_duration_seconds.sql"
+      },
+      "note": "The two directories are BOTH live and interleave numbers in a single global sequence (e.g. 1037/1039/1040/1042/1070 in platform/migrations vs 1038/1041/1092/1093/1094 in platform/supabase/migrations, with no observed collisions) — this repo evidently splits migration authorship across two directories rather than one being an archive of the other. The true current max across both, at this moment, is 1094. Any new B1 migration must be numbered above 1094 and its authorship location decided against whichever convention currently routes numbers to each directory (not independently verified in this pass — flagged for whoever authors the migration to confirm via the create-migration skill/tooling rather than assuming)."
+    },
+    "would_a_check_constraint_need_altering": {
+      "build_run_assets_disposition_check": "NO — 'blocked_dependency' already present in the ARRAY literal (section 3). Setting it requires zero DDL.",
+      "build_run_assets_state_check": "NO CHANGE RECOMMENDED — recommendation in section 3 is to NOT add a new state value.",
+      "new_column_for_root_cause": "YES — needs an ALTER TABLE build_run_assets ADD COLUMN (e.g. blocked_by_asset_id text NULL), which is additive/nullable and safe against every existing row (no NOT NULL, no default requiring backfill to satisfy a constraint)."
+    },
+    "rows_that_would_violate_a_new_constraint": "None found. Since the recommended change is (a) an already-legal disposition value and (b) a new NULLable column with no CHECK constraint of its own, no existing row can violate either. If a CHECK constraint were later added to the new column (e.g. requiring it be a valid asset_registry.asset_id when non-NULL), the 88 blocking-dep-text values found in section 6 that do not resolve to any build_run_assets row in their own run — and, unverified, an unknown number that may not resolve to any asset_registry.asset_id at all (the timeout: literal certainly would not) — would need to be excluded from that constraint's scope or handled as an explicit prospective-only column (write on new rows going forward; NULL on historical rows)."
+  },
+
+  "6_backfill_question": {
+    "population_with_BLOCKED_text": {
+      "query": "SELECT state, disposition, count(*) FROM build_run_assets WHERE error LIKE 'BLOCKED:%' GROUP BY state, disposition ORDER BY 3 DESC;",
+      "result": [
+        {"state": "error", "disposition": null, "count": 1236},
+        {"state": "complete", "disposition": null, "count": 7}
+      ]
+    },
+    "breakdown_of_the_1236_by_mechanism": {
+      "query": "SELECT (error LIKE '%timeout:%s%') AS is_timeout_not_dep, count(*) FROM build_run_assets WHERE error LIKE 'BLOCKED:%' AND state='error' GROUP BY 1;",
+      "result": {"genuine_dependency_text": 1183, "timeout_mislabeled_as_dependency": 53},
+      "meaning": "1,183 rows genuinely name one or more real upstream asset_id(s) as the blocker. 53 rows are actually THIS asset's OWN writer_timeout_seconds expiry (execute_dag line 673) forced through the same 'BLOCKED: upstream dependency(ies) <X> did not complete' text template with the synthetic non-asset-id string 'timeout:600s' standing in for a dependency name. These 53 are NOT cascade victims at all — they are themselves root causes wearing cascade-victim prose. Backfilling them as disposition='blocked_dependency' would be actively WRONG (inventing a false cascade attribution the engine never asserted); they should be excluded from any backfill and, prospectively, should never route through _mark_asset_blocked() at all — a distinct code path/message is needed for a self-timeout."
+    },
+    "chain_depth_of_the_1183_genuine_rows": {
+      "methodology": "Parsed each row's error text (regexp to extract the comma-joined dependency id list), exploded it to one row per named blocking asset_id, then LEFT JOINed each named id back into build_run_assets on the SAME run_id to see whether the NAMED blocker is itself a genuine root failure, itself ALSO a cascade victim (another BLOCKED: row), or absent from the run entirely.",
+      "query_summary": "3 buckets over the exploded dependency-edge set (2,856 edges from 1,183 rows, since many rows name more than one blocking dep):",
+      "result": {
+        "named_blocker_is_itself_BLOCKED_multi_hop": 2545,
+        "named_blocker_is_a_genuine_terminal_root_in_this_run": 223,
+        "named_blocker_absent_from_this_runs_build_run_assets_at_all": 88
+      },
+      "meaning": "89% of the blocking-dependency mentions point to ANOTHER blocked (not-root) asset in the same run. The stored text captures only the IMMEDIATE upstream, never the transitive root — exactly the gap this packet exists to close. Recovering a true root_asset_id from history requires a recursive self-join walk per row (mechanically possible within a single run_id, since the text reliably names real asset_ids for the non-timeout rows), but it was never designed or stored as such, and for 88 of the 2,856 edges (3%) the named blocker does not even appear as a row in that run's build_run_assets at all (most plausibly a cross-scope/global asset referenced by the deadlock branch at runner.py:653, whose own state lives only in asset_throughput, not in this run's build_run_assets set) — for those, no root is recoverable from build_run_assets alone under any amount of text-walking."
+    },
+    "can_the_root_be_recovered_from_text_alone": "Only PARTIALLY, and only via a nontrivial, undocumented, multi-hop reconstruction that the engine never performed or stored as a decision — not a straightforward backfill. For the 1,183 genuine rows: a same-run recursive walk resolves ~97% of the individual dependency-edges (223 direct + 2,545 resolvable-by-further-walking) to SOME row in the run, but walking to a true terminal root requires following potentially several hops per BLOCKED row, and 3% of edges dead-end with no corresponding row at all. For the 53 timeout rows: the 'root cause' IS the row itself, not anything in its own blocking_deps text — but the text actively misdescribes it as a dependency block, so a naive backfill parser would misattribute even these 53 as cascade victims of a fictitious upstream named 'timeout:600s'.",
+    "verdict": "B1 should be PROSPECTIVE-ONLY for the new root-cause column. A coarse RECLASSIFICATION of the 1,236 historical rows' disposition (state='error' + error LIKE 'BLOCKED:%' + NOT the timeout pattern -> disposition='blocked_dependency') is honest and defensible, because it restates something already true in the stored text without inventing anything. But populating a single, specific root_asset_id column for those same historical rows would require either (a) an expensive, never-before-run multi-hop graph reconstruction whose result the engine did not originally assert and which fails outright for 3% of edges, or (b) inventing/guessing — both of which the campaign's 'never invent data' constraint and CLAUDE.md §N.7 item 6 ('an honest null beats an invented judgment') rule out as a backfill. The 53 timeout rows must be excluded from ANY blocked_dependency backfill entirely — reclassifying them would assert a false cascade relationship the code never computed."
+  },
+
+  "7_seven_anomalous_rows": {
+    "query": "SELECT run_id, asset_id, state, error FROM build_run_assets WHERE error LIKE 'BLOCKED:%' AND state='complete' ORDER BY asset_id;",
+    "confirmed_at_head": true,
+    "rows": [
+      {"asset_id": "bo_laksana_rerank", "count": 6, "run_ids": ["0dfe35b7-e8e8-414a-9e0d-641c76206c93","ed26e2d3-6dfa-43a4-936e-a815f7fc5309","0faf6c66-8dad-4bcf-8478-fd92f3171b66","51eaa05c-7604-42cc-a3db-e7fa6d9c3f7c","0834d50b-ef43-4231-bbd9-25892fe3db13","9fc3e49d-8c24-4be7-80f0-29c8cff726e8"], "error_text": "BLOCKED: upstream dependency(ies) timeout:600s did not complete in this run; skipped to avoid building on incomplete data"},
+      {"asset_id": "ka_sangam", "count": 1, "run_id": "8d12cde4-a7cc-4384-8ba1-2810db1cda50", "error_text": "BLOCKED: upstream dependency(ies) timeout:600s did not complete in this run; skipped to avoid building on incomplete data"}
+    ],
+    "mechanism": {
+      "finding": "All 7 anomalies carry the TIMEOUT-mislabeled text (section 6), never a genuine dependency-name text. Their (run_id, asset_id) primary-key row was first written to state='error' by _mark_asset_error_terminal (execute_dag's timeout branch, runner.py:673), then LATER overwritten to state='complete' by a subsequent successful write to the SAME (run_id, asset_id) — most plausibly a retry/resume path that reuses the original run_id per asset (asset_runner.py has four distinct 'UPDATE build_run_assets SET state = \\'complete\\' ...' statements: lines 644, 992, 1065, 1370). NONE of these four statements clears the `error` column — each is a bare SET state=... (plus ended_at / disposition in two of them), leaving whatever prose the earlier timeout-block write had stamped there untouched.",
+      "corroborating_asymmetry": "The parallel success-path writes to asset_throughput DO clear the equivalent field: e.g. asset_runner.py:637-641 sets 'last_error = NULL' in the same success block that writes build_run_assets state='complete' at line 644 without clearing build_run_assets.error. This is a real, narrow, pre-existing bug: build_run_assets' own success-path writes forgot the error-clear that asset_throughput's parallel writes remembered.",
+      "why_governance_missed_it": "platform/scripts/governance/ekv_controls.py's F-102 control (lines 358-395) already checks for exactly this defect CLASS ('an earned completion state sitting beside a value that denies it') but only against asset_throughput.state IN ('lit','mature') — it does not check build_run_assets.state='complete', so it does not and cannot catch this specific instance."
+    },
+    "does_B1_make_this_better_worse_or_unaffected": {
+      "verdict": "UNAFFECTED AT BEST, WORSE IF DONE CARELESSLY.",
+      "reasoning": [
+        "B1's stated scope (separate blocked-from-failed at the source; disposition/root-cause carrier; surface fixes) does not touch the four state='complete' UPDATE statements in asset_runner.py that fail to clear `error` — that is a distinct, pre-existing defect (an orphaned success-path write), not the cause/cascade conflation B1 targets. Fixing B1 alone leaves this stale-error-text bug exactly as-is.",
+        "If B1 is implemented CORRECTLY — i.e. it recognizes the timeout branch (runner.py:673) as a distinct mechanism from a genuine dependency block and does NOT tag it disposition='blocked_dependency' (per the section 6 verdict) — these 7 rows are UNAFFECTED: they still show state='complete' with a stale (and still slightly misleading, 'upstream dependency(ies) timeout:600s') error string, exactly as today, but at least B1 introduces no NEW false signal on them.",
+        "If B1 is implemented carelessly — i.e. any future code path pattern-matches on the literal 'BLOCKED:' prefix (live or as part of a backfill) without excluding the timeout branch — it would ALSO stamp disposition='blocked_dependency' onto these 7 already-contradictory rows (state='complete' + would-be disposition='blocked_dependency' is a strictly worse, newly self-contradictory combination than today's state='complete' + stale prose). B1's implementation must explicitly special-case/exclude the timeout branch text from whatever pattern or code path assigns the new disposition/column."
+      ]
+    }
+  },
+
+  "open_items_for_the_native": [
+    "Confirm which of platform/migrations/ vs platform/supabase/migrations/ is the correct authorship location for B1's ALTER TABLE (both are live, current max observed = 1094 in supabase/migrations, 1070 in migrations/ — not independently resolved in this read-only pass).",
+    "Decide the exact new column name/type for the root/immediate-cause asset id on build_run_assets (this report assumes a single nullable text column sufficient for the common 1-blocker case; multiple simultaneous blocking deps do occur in the data — see the 2,856-edges-from-1,183-rows figure in section 6 — so a text[] or a separate one-row-per-edge table may be the more honest shape; not decided here, flagged as a design choice for whoever authors B1's migration)."
+  ]
+}

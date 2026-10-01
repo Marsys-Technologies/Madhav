@@ -1,0 +1,77 @@
+{
+  "packet": "A3",
+  "phase": "after",
+  "taken_by": "independent reviewer, re-derived from the record and from the run's own frozen manifest; carried verbatim by the executor",
+  "taken_at_utc": "2026-09-26T15:38Z",
+  "db_posture": "read-only (transaction_read_only=on, amjis, PGPORT=5433)",
+
+  "honest_framing_declared": {
+    "statement": "A3's before-figure is production; its after-figure is NOT, and is labelled at three distinct strengths rather than presented as one number.",
+    "why": "The packet's first report read '2/10' off its own test's dict while the same execute_run logged 10 failed/blocked, because the fake cursor never answered the reconcile query. The corrected figures below separate what was measured in production, what is counterfactually derivable from a real run's own frozen manifest, and what is only a unit-level reconstruction."
+  },
+
+  "before_production_measured": {
+    "family_total": "18 records / 18 assets / 8 runs",
+    "blast_radius": "all 8 runs lost 100% of their plan",
+    "family_A_this_packet": "11 records / 2 runs",
+    "family_B_not_fixed": "7 records / 6 runs - still aborts in full; there is no manifest to react to",
+    "worst_case_run": {
+      "run_id": "d4a6dae2-684c-4d64-8016-edeb0d2adfd7",
+      "planned": 10,
+      "aborted": 10,
+      "correction": "started_at is NULL on all 10 - not '0 completed' but 0 ever STARTED"
+    }
+  },
+
+  "after_production": {
+    "value": "UNMEASURED",
+    "why": "no real divergence has occurred post-deploy, and manufacturing one would mean running a production build purely to produce a flattering figure",
+    "when_it_becomes_measurable": "on the first genuine registry divergence after this lands"
+  },
+
+  "after_counterfactual_on_the_real_run": {
+    "strength": "strongest available - derived from the real run's own frozen manifest, not from a test",
+    "finding": "no asset in d4a6dae2's plan depends on bg_yogas",
+    "result": "A3 would have narrowed it from 10/10 aborted to 1/10 failed - 9 of 10 writers executing",
+    "other_family_A_run": "ce114909 (mi_kula) had a 1-asset plan: 1/1 -> 1/1, no improvement possible",
+    "family_A_total": "11 aborted records -> 2",
+    "stated_limit": "HEAD raised on the FIRST mismatch, so the record cannot say whether bg_yogas was the only diverged asset. If k diverged the figure is k/10, 1 <= k <= 10. That the number is unknowable is itself the defect Decision 4 fixes."
+  },
+
+  "after_unit_level_reconstruction": {
+    "strength": "weakest - synthetic plan, mocked DB, one modelled dependent; NOT a measurement",
+    "result": "8 of 10 writers dispatch and complete, 2 fail, and the run still correctly reports failed"
+  },
+
+  "scope_correction_carried_into_the_report": {
+    "statement": "A3 fixes 2 of the 8 runs in the headline family, not 8.",
+    "detail": "The '18 records / 8 runs' headline covers two unrelated defects sharing one error prefix. Family B - 6 of the 8 runs - is one-off dispatch scripts inserting build_runs with no plan_manifest at all. A3 cannot touch it; it is carried as A3b."
+  },
+
+  "n8_detector": {
+    "claim": "narrowing suppresses blast radius, never detection",
+    "proof": "a genuinely diverged asset (scope flipped per_chart -> global) still fails: state='error', writer never invoked",
+    "mutation_evidence": "forcing the detector to return {} fails 6 tests; removing seed_failed's exclusion from pending returns the run to 10 failed/blocked; removing the has_cowriters comparison term now fails (it left 32/32 green before F-2)"
+  },
+
+  "opposing_direction_errors_reported_together": {
+    "note": "These two lie in OPPOSITE directions and are reported as a pair so neither reads as an isolated slip.",
+    "under_recording_G1": "the orphan-cleanup UPDATEs at runner.py:1293-1319 sit between the F-1 except (ends 1292) and the main try (starts 1320), guarded by neither. A fault there loses the divergence, exactly as before F-1. NOT charged against A3 - the correction's boundary was specified as ending at the claim, and the implementer built exactly that. Bound to the next packet touching execute_run's pre-dispatch path.",
+    "over_recording_F5": "A3 writes asset_throughput where HEAD wrote nothing, so a transient false positive can downgrade a possibly-lit asset and overwrite last_built_at. F-1 WIDENED this: the write now occurs on 'claim succeeded OR hard fault after detection' rather than 'claim succeeded'. Bounded by a measured self-heal - fault writes error, divergence resolves, retry takes both rows to complete and the run reports completed.",
+    "honest_summary": "F-1 narrowed A3's own loss window and widened its write surface. 'Disjoint, therefore unchanged' would be half the picture."
+  },
+
+  "misattribution_correction_G2": {
+    "note": "The reviewer corrected its OWN earlier wording after checking what follows a lost divergence.",
+    "earlier_claim": "the record is 'lost'",
+    "corrected_claim": "the divergence REASON is lost and the row is MISATTRIBUTED - the watchdog still terminalizes both shapes (sweep 3 for planned/started_at IS NULL after 10 min; the orphan reaper for running after 30 min)",
+    "why_it_is_sharper": "the row is misattributed into 'orphan-watchdog: run never dispatched' - Family B's signature, the exact bucket this packet's before-measurement worked to separate from Family A"
+  },
+
+  "monitoring_consequence_disclosed": {
+    "change": "this family's state class moved from 'aborted' to 'error'",
+    "executor_decision": "keep 'error' - a diverged asset genuinely failed a check rather than being cancelled, and packet B1 formalises exactly this cause-vs-cascade split",
+    "cost": "state='aborted' monitoring will no longer see this family; AssetNode.tsx maps 'aborted' to 'cancelled'",
+    "mitigation": "the 'frozen manifest validation failed:' error-text prefix is preserved, so text-based monitoring still matches"
+  }
+}

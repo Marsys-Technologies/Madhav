@@ -1238,6 +1238,138 @@
           "ka_vighnakara": "7414651029a07701b0ab6e0fed2cf6dd343f8a7986b188793df1fba55920ecc1",
           "ka_yojaka": "11576f295562d9a2e1b0be31da4baf47798f83bf0be470eb67bb6b3a2ff49f22"
         }
+      },
+      {
+        "generation_id": "l3:f4c69a6d0cd4:829354703812",
+        "historical_snapshot_commit": "5d800f9ea2c925bfe52731540e2a78609531e24a",
+        "pin": {
+          "admission": {
+            "authority_commit": "fa0b0a9a003624b8f39e30600e98460a60170bb2",
+            "authority_decision": "D-PINS-A2",
+            "changed_assets": [
+              "ka_gochara_v3_century_materialize",
+              "ka_moorti_nirnaya",
+              "ka_sangam",
+              "ka_vedha_gochara"
+            ],
+            "delta_classifications": {
+              "ka_gochara_v3_century_materialize": "derived_import_change",
+              "ka_moorti_nirnaya": "derived_import_change",
+              "ka_sangam": "derived_import_change",
+              "ka_vedha_gochara": "derived_import_change"
+            },
+            "reason": "D-PINS-A2 (steward on the native's 2026-09-30 standing authority, EVENTS.jsonl 2026-09-30T03:22:56Z): the pravaha/a2-kernel-geometry merge carries the A2.2-accepted Tier 0-G kernel geometry rework (gochara_kernel/*, ka_gochara/service.py); four L3 writers' import closures moved, no own-module edits, membership unchanged. All four changed assets are derived_import_change.",
+            "review_artifacts": [
+              {
+                "commit": "5142109f7f219ea860f859e322646f79d875bee8",
+                "decision_binding": "status: SOURCE_PACKET_ACCEPTED_PROVENANCE_LOCAL",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md",
+                "sha256": "27ba58e10997ae9c35053d75d11d044c66220053c7a0dc4bdc8727bc09bcf781"
+              }
+            ],
+            "schema_version": "nirmana-analysis-layer-successor/v2",
+            "source_commit": "f4c69a6d0cd40c05ea6dc64eba789b7c4efdea24"
+          },
+          "asset_prefix": "ka_",
+          "convergence_commit": "f4c69a6d0cd40c05ea6dc64eba789b7c4efdea24",
+          "generation_id": "l3:f4c69a6d0cd4:829354703812",
+          "non_writer_assets": [
+            "ka_gochara_sweep"
+          ],
+          "receipt_count": 23,
+          "supersedes_generation_id": "l3:333eb7abcac3:d1bf773c4d94",
+          "writer_inventory_sha256": "829354703812b38a8f7cde47795d91db0affd90e37f93ae057f4c9cb3bba44fd"
+        },
+        "superseded_by_generation_id": "l3:61e1aa60b508:9844e89ddd17",
+        "writer_digests": {
+          "ka_avadhi": "2e876a2381014fad924052a98bc387bdb82e90d70b1469c192b45640bb066679",
+          "ka_bhavishya_lekha": "5c84f86134afc84b31ccce7c2620061d01e645a526d48adcbafac501b83d9542",
+          "ka_dasha_kala": "ae89dfb13feb7b96268dc8baeb5904523b8fd0297730ee70adfc872e10408bd7",
+          "ka_gochara": "e57fd24840054d3699de637c3485f682d18f7d51928c809eb4448e1790d6d4b2",
+          "ka_gochara_resonance": "9cd013d9aa0d81e3e548ca6c60a806e6d84f1674629efc72d6dabe9f0e2ec295",
+          "ka_gochara_v3_century_materialize": "9a0373e4d8ecc769a4a7bc68eba4efacfc6b8c43f0430c5f2c228d1a70f9990f",
+          "ka_graha_sancara": "6fbe9a03736635048e115678304d9e7ab9f04d62f3deee9f927a046f5011c65b",
+          "ka_jivana_parva": "bd4e641da119ef1cb2bb7c1c36bfaee78e2eefcd8a505943a5405aa397dedc92",
+          "ka_kala_darshana": "6e47c95756862a684edef5435231cef137cde19821d76a8b79cebf5d15093cb1",
+          "ka_kalasutra": "48b9bd6efaa04c781126b83fa3bdd739ed5a4913f2d0c19339fe2f6e09dde775",
+          "ka_kota_chakra": "599d4b7cc65f855691c4d4399964c3c004c534794287a0159526f1e6191aec77",
+          "ka_kshetra": "84a0eb3c63ff43409d8ddc22462a660bba63eb3a8ed0c205d6ce8bdf91184441",
+          "ka_moorti_nirnaya": "0eda65e252e9df571cd7b4ec8005498c4543ef70e76df52f4c9c8fabce4e8d96",
+          "ka_muhurta_seva": "dc5427036221ee49a9f31ff1d9b15a9ce4ea9a2a78a819b857d2e8feb3d35de8",
+          "ka_sangam": "6a325a122e3505802aa1fe043ed58e8924c2d7a2ea972044c38c474106cb4bce",
+          "ka_sudarshana_varsha": "493203944025a6585aff723553cadb7ae1598bc563c1ec8daed142b7f610bdac",
+          "ka_taranga": "fb2ebba5a53986aa53ac0736df0c094886fda9c217b43ad1ee14abcc0f7bae64",
+          "ka_tithi_pravesha": "adb915f15af469018e4b269fcf76b87a9128fc5b86a090aa8dec52fc048821e5",
+          "ka_tulana": "268742a3c5dd47d3e6578e92b27f7aaea9b260d442a11264c164f0bcac092123",
+          "ka_vedha_gochara": "d29849e088fa5b3df11049c251e753d1f69ff6b48fecc0fd509a7747bef90dd8",
+          "ka_vighnakara": "7414651029a07701b0ab6e0fed2cf6dd343f8a7986b188793df1fba55920ecc1",
+          "ka_yojaka": "11576f295562d9a2e1b0be31da4baf47798f83bf0be470eb67bb6b3a2ff49f22"
+        }
+      },
+      {
+        "generation_id": "l3:61e1aa60b508:9844e89ddd17",
+        "historical_snapshot_commit": "fa687dc8bfeff612f8e100a12a4c92017cd89827",
+        "pin": {
+          "admission": {
+            "authority_commit": "fa0b0a9a003624b8f39e30600e98460a60170bb2",
+            "authority_decision": "D-PINS-A2",
+            "changed_assets": [
+              "ka_gochara_v3_century_materialize",
+              "ka_moorti_nirnaya",
+              "ka_sangam"
+            ],
+            "delta_classifications": {
+              "ka_gochara_v3_century_materialize": "derived_import_change",
+              "ka_moorti_nirnaya": "derived_import_change",
+              "ka_sangam": "derived_import_change"
+            },
+            "reason": "D-PINS-A2 (steward on the native's 2026-09-30 standing authority, EVENTS.jsonl 2026-09-30T03:22:56Z; this admission directed by the steward 2026-09-30, M20260930T220447-289d): #2793 (61e1aa60b, A5.5 kernel F10-F12 truncation-honesty + secant close-out, the A2.1 kernel-geometry changeset's own continuation) moved three L3 writers' import closures through gochara_kernel \u2014 ka_sangam, ka_moorti_nirnaya, ka_gochara_v3_century_materialize; no own-module edits, membership unchanged. All three are derived_import_change. ONE successor over the protected baseline l3:f4c69a6d0cd4:829354703812 (byte-identical to origin/main 729dfe2c4907610754be0a3c1cc244d6f54c9ba4, named as the historical snapshot; the A0.6 precedent). Source = the #2793 merge commit, whose committed writer inventory is byte-identical to this tree.",
+            "review_artifacts": [
+              {
+                "commit": "5142109f7f219ea860f859e322646f79d875bee8",
+                "decision_binding": "status: SOURCE_PACKET_ACCEPTED_PROVENANCE_LOCAL",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md",
+                "sha256": "27ba58e10997ae9c35053d75d11d044c66220053c7a0dc4bdc8727bc09bcf781"
+              }
+            ],
+            "schema_version": "nirmana-analysis-layer-successor/v2",
+            "source_commit": "61e1aa60b5084a144101f4f1a233a6da0edee81c"
+          },
+          "asset_prefix": "ka_",
+          "convergence_commit": "61e1aa60b5084a144101f4f1a233a6da0edee81c",
+          "generation_id": "l3:61e1aa60b508:9844e89ddd17",
+          "non_writer_assets": [
+            "ka_gochara_sweep"
+          ],
+          "receipt_count": 23,
+          "supersedes_generation_id": "l3:f4c69a6d0cd4:829354703812",
+          "writer_inventory_sha256": "9844e89ddd171745094aaf3505dfd31915ed3e8185df263baf2f76274fe7a806"
+        },
+        "superseded_by_generation_id": "l3:4f4a1993c6ad:1ddd6f117934",
+        "writer_digests": {
+          "ka_avadhi": "2e876a2381014fad924052a98bc387bdb82e90d70b1469c192b45640bb066679",
+          "ka_bhavishya_lekha": "5c84f86134afc84b31ccce7c2620061d01e645a526d48adcbafac501b83d9542",
+          "ka_dasha_kala": "ae89dfb13feb7b96268dc8baeb5904523b8fd0297730ee70adfc872e10408bd7",
+          "ka_gochara": "e57fd24840054d3699de637c3485f682d18f7d51928c809eb4448e1790d6d4b2",
+          "ka_gochara_resonance": "9cd013d9aa0d81e3e548ca6c60a806e6d84f1674629efc72d6dabe9f0e2ec295",
+          "ka_gochara_v3_century_materialize": "fcd74226955b190a72d61d936570cd5c6874898851237d59876076c6389c07f2",
+          "ka_graha_sancara": "6fbe9a03736635048e115678304d9e7ab9f04d62f3deee9f927a046f5011c65b",
+          "ka_jivana_parva": "bd4e641da119ef1cb2bb7c1c36bfaee78e2eefcd8a505943a5405aa397dedc92",
+          "ka_kala_darshana": "6e47c95756862a684edef5435231cef137cde19821d76a8b79cebf5d15093cb1",
+          "ka_kalasutra": "48b9bd6efaa04c781126b83fa3bdd739ed5a4913f2d0c19339fe2f6e09dde775",
+          "ka_kota_chakra": "599d4b7cc65f855691c4d4399964c3c004c534794287a0159526f1e6191aec77",
+          "ka_kshetra": "84a0eb3c63ff43409d8ddc22462a660bba63eb3a8ed0c205d6ce8bdf91184441",
+          "ka_moorti_nirnaya": "e0c4775f058da8efac0f15a7e2f1a14de7b5e57e2953bc3df703efb9b98b7667",
+          "ka_muhurta_seva": "dc5427036221ee49a9f31ff1d9b15a9ce4ea9a2a78a819b857d2e8feb3d35de8",
+          "ka_sangam": "495f22b37a0a527ca7b4ec5c3e5240d03d449def86fada33ce925c989bc38ad2",
+          "ka_sudarshana_varsha": "493203944025a6585aff723553cadb7ae1598bc563c1ec8daed142b7f610bdac",
+          "ka_taranga": "fb2ebba5a53986aa53ac0736df0c094886fda9c217b43ad1ee14abcc0f7bae64",
+          "ka_tithi_pravesha": "adb915f15af469018e4b269fcf76b87a9128fc5b86a090aa8dec52fc048821e5",
+          "ka_tulana": "268742a3c5dd47d3e6578e92b27f7aaea9b260d442a11264c164f0bcac092123",
+          "ka_vedha_gochara": "d29849e088fa5b3df11049c251e753d1f69ff6b48fecc0fd509a7747bef90dd8",
+          "ka_vighnakara": "7414651029a07701b0ab6e0fed2cf6dd343f8a7986b188793df1fba55920ecc1",
+          "ka_yojaka": "11576f295562d9a2e1b0be31da4baf47798f83bf0be470eb67bb6b3a2ff49f22"
+        }
       }
     ],
     "L4": [
@@ -1472,21 +1604,23 @@
     },
     "L3": {
       "admission": {
-        "authority_commit": "fa0b0a9a003624b8f39e30600e98460a60170bb2",
-        "authority_decision": "D-PINS-A2",
+        "authority_commit": "e47d0b274ebf234ada8be7cfe82a34d5446384eb",
+        "authority_decision": "D-PINS-A5.4",
         "changed_assets": [
+          "ka_gochara",
+          "ka_gochara_resonance",
           "ka_gochara_v3_century_materialize",
           "ka_moorti_nirnaya",
-          "ka_sangam",
           "ka_vedha_gochara"
         ],
         "delta_classifications": {
-          "ka_gochara_v3_century_materialize": "derived_import_change",
-          "ka_moorti_nirnaya": "derived_import_change",
-          "ka_sangam": "derived_import_change",
-          "ka_vedha_gochara": "derived_import_change"
+          "ka_gochara": "derived_import_change",
+          "ka_gochara_resonance": "approved_intentional_change",
+          "ka_gochara_v3_century_materialize": "approved_intentional_and_derived_import_change",
+          "ka_moorti_nirnaya": "approved_intentional_change",
+          "ka_vedha_gochara": "approved_intentional_and_derived_import_change"
         },
-        "reason": "D-PINS-A2 (steward on the native's 2026-09-30 standing authority, EVENTS.jsonl 2026-09-30T03:22:56Z): the pravaha/a2-kernel-geometry merge carries the A2.2-accepted Tier 0-G kernel geometry rework (gochara_kernel/*, ka_gochara/service.py); four L3 writers' import closures moved, no own-module edits, membership unchanged. All four changed assets are derived_import_change.",
+        "reason": "D-PINS-A5.4 (steward on the native's 2026-09-30 standing authority, EVENTS.jsonl 2026-09-30T13:02:03Z, M20260930T130203-0531; r7 re-admission directed by the steward 2026-09-30, M20260930T225939-d20b): origin/main advanced under the r6 successor \u2014 #2793 (61e1aa60b, gochara_kernel F10-F12) moved ka_sangam, ka_moorti_nirnaya and ka_gochara_v3_century_materialize on main (admitted there by #2800, the D-PINS-A2 continuation), followed by #2765 and #2801. Re-admitted ONE append-only L3 successor over main's new protected baseline l3:61e1aa60b508:9844e89ddd17 from the origin/main merge commit 4f4a1993c6 (provenance_inventory --check green). The A5.4 five-writer delta is unchanged: ka_gochara_resonance and ka_moorti_nirnaya carry own-module edits only; ka_gochara_v3_century_materialize and ka_vedha_gochara carry own-module edits plus import-closure movement via gochara_grammar/*, gochara_v3/*, gochara_kernel/* and brahmagyan/*; ka_gochara moves through its import closure only. Membership unchanged; no writer outside the five.",
         "review_artifacts": [
           {
             "commit": "5142109f7f219ea860f859e322646f79d875bee8",
@@ -1496,17 +1630,17 @@
           }
         ],
         "schema_version": "nirmana-analysis-layer-successor/v2",
-        "source_commit": "f4c69a6d0cd40c05ea6dc64eba789b7c4efdea24"
+        "source_commit": "4f4a1993c6ada24bf8576206b39742497e3099e3"
       },
       "asset_prefix": "ka_",
-      "convergence_commit": "f4c69a6d0cd40c05ea6dc64eba789b7c4efdea24",
-      "generation_id": "l3:f4c69a6d0cd4:829354703812",
+      "convergence_commit": "4f4a1993c6ada24bf8576206b39742497e3099e3",
+      "generation_id": "l3:4f4a1993c6ad:1ddd6f117934",
       "non_writer_assets": [
         "ka_gochara_sweep"
       ],
       "receipt_count": 23,
-      "supersedes_generation_id": "l3:333eb7abcac3:d1bf773c4d94",
-      "writer_inventory_sha256": "829354703812b38a8f7cde47795d91db0affd90e37f93ae057f4c9cb3bba44fd"
+      "supersedes_generation_id": "l3:61e1aa60b508:9844e89ddd17",
+      "writer_inventory_sha256": "1ddd6f11793485cc0ef94d24dda30bbf2dd4ca52a1ca8c15895d081656349fac"
     },
     "L4": {
       "admission": {

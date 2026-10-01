@@ -61,6 +61,11 @@ on:
         type: boolean
         required: false
         default: false
+      gochara_contracts_schema_migration:
+        description: 'Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157 (Pravāha A5.1)'
+        type: boolean
+        required: false
+        default: false
 
 # CI efficiency audit (2026-07-31). Two different behaviours in one workflow:
 #   - pull_request  -> the `build-check` job only, which builds with `push: false`
@@ -939,10 +944,12 @@ jobs:
           DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: cd platform && test "$(npx tsx scripts/data-plane-ownership-status.ts)" = marked
 
-  # JATAKA CCD-019 / AI Console BYOK / Gochara B1: migrations 1071,
-  # 1120-1125, and 1158
-  # alter application-owned tables but also create objects in the protected public
-  # schema (1071: a generation-guard function and two triggers on kala_gochara_windows).
+  # JATAKA CCD-019 / AI Console BYOK / Gochara B1 / Pravāha A5.1: migrations 1071,
+  # 1120-1125, 1153-1157, and 1158 alter application-owned tables but also create
+  # objects in the protected public schema (1071: a generation-guard function and
+  # two triggers on kala_gochara_windows; 1153-1157: the FROZEN Gochara contract
+  # tables, functions and triggers — the routine runner refuses them, migrate.ts
+  # PROTECTED_PUBLIC_SCHEMA_MIGRATIONS).
   # The ordinary migration role intentionally has USAGE without CREATE. This
   # exact-set, manual-only protected job opens the minimum capability window and
   # closes it on every exit; no service may deploy until the close succeeds.
@@ -952,7 +959,7 @@ jobs:
     if: >-
       always() &&
       github.event_name == 'workflow_dispatch' &&
-      (inputs.jataka_schema_migration == true || inputs.ai_console_schema_migration == true || inputs.gochara_schema_migration == true) &&
+      (inputs.jataka_schema_migration == true || inputs.ai_console_schema_migration == true || inputs.gochara_schema_migration == true || inputs.gochara_contracts_schema_migration == true) &&
       needs.changes.result == 'success' &&
       needs.migration-state.result == 'success' &&
       needs.migration-state.outputs.data_plane == 'marked' &&
@@ -1037,6 +1044,7 @@ jobs:
           APPLY_JATAKA_SCHEMA_MIGRATIONS: ${{ inputs.jataka_schema_migration }}
           APPLY_AI_CONSOLE_SCHEMA_MIGRATION: ${{ inputs.ai_console_schema_migration }}
           APPLY_GOCHARA_SCHEMA_MIGRATION: ${{ inputs.gochara_schema_migration }}
+          APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION: ${{ inputs.gochara_contracts_schema_migration }}
         run: |
           migrations=()
           # Ascending order: migrate.ts --only refuses to jump an unapplied predecessor.
@@ -1053,6 +1061,14 @@ jobs:
             migrations+=(1124_ai_console_byok_routing.sql)
             migrations+=(1125_ai_snapshot_shape_operator_precedence.sql)
             migrations+=(1158_ai_console_configuration_types.sql)
+          fi
+          if [ "$APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION" = "true" ]; then
+            # Pravāha A5.1 — exactly 1153-1157, in order, inside the grant/revoke window.
+            migrations+=(1153_gochara_sky_event_substrate.sql)
+            migrations+=(1154_gochara_rule_path_registry.sql)
+            migrations+=(1155_gochara_relationship_record.sql)
+            migrations+=(1156_gochara_eval_window.sql)
+            migrations+=(1157_gochara_av_polarity_declaration.sql)
           fi
           if [ "${#migrations[@]}" -eq 0 ]; then
             echo "::error::No protected public-schema migration was explicitly authorized."

@@ -126,3 +126,46 @@ class TestDetectSignRuns:
         assert len(runs) == 2
         assert runs[0]["sign_idx"] == 11
         assert runs[1]["sign_idx"] == 0
+
+
+class TestMoortiProvenanceStampsN7:
+    """Doctrine N7 (Pravāha A5.4 moorti_flag_honest): the WP9 overlay stamps
+    must reflect corpus presence of the mūrti rule form, NOT computation
+    success. The rule form is absent from the served corpus, so a computed
+    moorti is never stamped 'verse_cited' and never corpus-verifiable.
+
+    Pre-repair defect: moorti_source_qualification(True) returned
+    'verse_cited' and moorti_corpus_verifiable(True) returned True on
+    computation success alone. Mutation statement: restoring those two
+    returns makes every test in this class fail."""
+
+    def test_computed_row_stamps_algorithmic_approximation_not_verse_cited(self):
+        from services.ka_moorti_nirnaya.logic import moorti_source_qualification
+        q = moorti_source_qualification(moorti_computed=True)
+        assert q != "verse_cited"
+        # 'algorithmic_approximation' is the migration-1082 CHECK-compatible
+        # stamp for a computed value whose rule form is not corpus-verifiable
+        # (same vocabulary as ka_vedha_gochara's sarvatobhadra rows, which
+        # carry uncited_extension=true).
+        assert q == "algorithmic_approximation"
+
+    def test_computed_row_is_never_corpus_verifiable(self):
+        from services.ka_moorti_nirnaya.logic import moorti_corpus_verifiable
+        assert moorti_corpus_verifiable(moorti_computed=True) is False
+        assert moorti_corpus_verifiable(moorti_computed=False) is False
+
+    def test_uncomputed_row_stamps_unsourced(self):
+        from services.ka_moorti_nirnaya.logic import (
+            moorti_corpus_verifiable,
+            moorti_source_qualification,
+        )
+        assert moorti_source_qualification(moorti_computed=False) == "unsourced"
+        assert moorti_corpus_verifiable(moorti_computed=False) is False
+
+    def test_stamp_values_stay_within_migration_1082_check_vocabulary(self):
+        from services.ka_moorti_nirnaya.logic import (
+            SOURCE_QUALIFICATIONS,
+            moorti_source_qualification,
+        )
+        for computed in (True, False):
+            assert moorti_source_qualification(computed) in SOURCE_QUALIFICATIONS
