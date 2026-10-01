@@ -177,8 +177,8 @@ def test_the_thirteen_are_exactly_the_audited_set_and_none_keeps_the_ddl_marker(
                  "bo_vargottama_dhana", "mi_bhavisya", "mi_darshana", "ph_muhurta", "ph_pramana", "ph_sankrama", "ph_sodhana"}
     assert THIRTEEN == from_test and len(KEPT) == 11 and len(NULLED) == 2
     decl = _decl()
-    for a in THIRTEEN:
-        assert decl[a].get("evidence_kind") is None, f"{a}: still marked evidence_kind ddl"
+    for a in THIRTEEN:       # writer evidence on the 11 kept, no marker on the 2 undeclared; none is `ddl`
+        assert decl[a].get("evidence_kind") == ("writer" if a in KEPT else None), a
 
 
 @pytest.mark.parametrize("asset", sorted(KEPT))
@@ -543,3 +543,84 @@ def test_resolver_unit_behaviour_on_synthetic_code():
     assert rc.resolve_composed(t, rc.dict_literal_values(t, "k")[0])[0]
     t = rc.parents(ast.parse("def g(a):\n    if a:\n        x = f'{a}'\n    else:\n        x = 'c'\n    return {'k': x}\n"))
     assert rc.resolve_composed(t, rc.dict_literal_values(t, "k")[0])[0]
+
+
+# ───────────────────────── (6) evidence_kind "writer": the cite shape is enforced, not trusted ─────────────────────────
+
+import subprocess  # noqa: E402
+
+_CITE_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./\[\]@-]*\.(?:py|ts|tsx|sql):([1-9][0-9]*)")
+_CITE_TOKEN = re.compile(r"([A-Za-z0-9_][A-Za-z0-9_./\[\]@-]*\.(?:py|ts|tsx|sql)):([1-9][0-9]*)")
+
+
+def _vdoc(ev, kind="writer", pf=("x",)):
+    return dict(version="1.0.0", kind_enum=list(ac.DECLARED_KINDS),
+                assets={"a": dict(prose_fields=list(pf), evidence_kind=kind, evidence=dict(prose_fields=ev))})
+
+
+@pytest.mark.parametrize("ev", ["platform/python-sidecar/x/w.py:3", "layers/q.ts:9 and w.py:2", "a/b.tsx:44"])
+def test_writer_kind_accepts_py_ts_tsx_cites(ev):
+    ac.validate_declarations(_vdoc(ev))
+    ac.validate_declarations(_vdoc(ev, kind=None))       # unmarked legacy declarations get the same cite check
+
+
+@pytest.mark.parametrize("ev", [
+    "migrations/001_baseline.sql:12", "w.py:3 and migrations/001_baseline.sql:12", "tests/foo_test.py:3", "platform/tests/test_x.py:3",
+    "platform/src/lib/__tests__/w.ts:3", "platform/src/lib/x.test.ts:3", "platform/src/lib/x.spec.tsx:3", "w.py:3 and tests/unit/a.py:9",
+    "w.py", "the writer composes it", "w.py:0", "fixtures/census/w.py:3"])
+def test_writer_kind_rejects_sql_test_path_and_shapeless_cites(ev):
+    for kind in ("writer", None):
+        with pytest.raises(ac.DeclarationsError):
+            ac.validate_declarations(_vdoc(ev, kind=kind))
+
+
+def test_ddl_kind_is_unchanged_and_writer_is_an_accepted_kind():
+    assert "writer" in ac.EVIDENCE_KINDS and "ddl" in ac.EVIDENCE_KINDS
+    ac.validate_declarations(_vdoc("TEXT in DDL (325_l2_bodha_enriched_schema.sql)", kind="ddl"))
+    with pytest.raises(ac.DeclarationsError):
+        ac.validate_declarations(_vdoc("w.py:3", kind="ddl"))          # ddl needs the migration file token
+
+
+def _tracked():
+    out = subprocess.run(["git", "ls-files"], cwd=REPO_ROOT, capture_output=True, text=True, check=True).stdout.split("\n")
+    return [f for f in out if f]
+
+
+def _resolve(path, files):
+    if (REPO_ROOT / path).is_file():
+        return path
+    hits = [f for f in files if f == path or f.endswith("/" + path)]
+    return hits[0] if len(hits) == 1 else None
+
+
+def test_every_non_null_declaration_is_writer_kind_with_cites_that_resolve_to_non_test_non_ddl_lines():
+    files = _tracked()
+    bad = []
+    for aid, e in _decl().items():
+        if e["prose_fields"] is None:
+            continue
+        ev = e["evidence"]["prose_fields"]
+        if e.get("evidence_kind") != "writer":
+            bad.append((aid, "evidence_kind", e.get("evidence_kind")))
+            continue
+        cites = _CITE_TOKEN.findall(ev)
+        if not cites:
+            bad.append((aid, "no cite"))
+        for path, line in cites:
+            if path.endswith(".sql"):
+                bad.append((aid, "sql cite", path))
+                continue
+            real = _resolve(path, files)
+            if real is None:
+                bad.append((aid, "does not resolve (missing or ambiguous)", path))
+            elif int(line) > len((REPO_ROOT / real).read_text(encoding="utf-8").splitlines()):
+                bad.append((aid, "line past end of file", path, line))
+            elif re.search(r"(^|/)(__tests__|tests?|fixtures)/|(^|/)test_[^/]*$|_test\.py$|\.(test|spec)\.tsx?$", real):
+                bad.append((aid, "test path", real))
+    assert bad == [], bad
+
+
+def test_the_file_level_description_no_longer_says_the_thirteen_carry_ddl():
+    d = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["description"]
+    assert "13 earlier declarations" not in d and "evidence_kind 'writer'" in d
+    assert not any(e.get("evidence_kind") == "ddl" for e in _decl().values())

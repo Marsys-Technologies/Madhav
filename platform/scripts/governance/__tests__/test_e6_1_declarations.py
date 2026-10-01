@@ -148,7 +148,8 @@ def test_visible_evidence_is_not_blank():
 def test_evidence_shapes_identifier_cap_and_ddl_marker_accepted():
     ok = [dict(prose_fields=["x"], evidence=dict(prose_fields="w.py:1")),
           dict(prose_fields=["x"], evidence=dict(prose_fields="platform/src/lib/a/b.ts:12 and c.tsx:3")),
-          dict(prose_fields=["x"], evidence=dict(prose_fields="migrations/001_baseline.sql:469")),
+          dict(prose_fields=["x"], evidence=dict(prose_fields="migrations/001_baseline.sql (line 469) and w.py:2")),
+          dict(prose_fields=["x"], evidence_kind="writer", evidence=dict(prose_fields="w.py:2")),
           dict(prose_fields=[], evidence=dict(prose_fields="stores source text; generates none; w.py:10")),
           dict(prose_fields=["c" * 128, "d.$." + "k" * 128 + "." + "m" * 128], evidence=PEV),
           dict(prose_fields=["x"], evidence_kind="ddl", evidence=dict(prose_fields="TEXT in DDL (325_l2_bodha_enriched_schema.sql)")),
@@ -286,7 +287,7 @@ def test_the_thirteen_earlier_declarations_no_longer_carry_the_ddl_marker():
     decl = _decl()
     assert {a for a, e in decl.items() if e.get("evidence_kind") == "ddl"} == set()
     for a, e in decl.items():
-        assert e.get("evidence_kind") is None, a
+        assert e.get("evidence_kind") == ("writer" if e["prose_fields"] is not None else None), a
 
 
 def test_every_non_ddl_declared_prose_entry_carries_a_writer_path_line_pointer():
