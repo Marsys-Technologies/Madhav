@@ -85,10 +85,19 @@ def test_a_pinned_criterion_re_layered_to_fewer_layers_raises(tmp_path):
     raises(World(tmp_path, census=src).default(), "registry_below_floor", "Idem.alt")
 
 
-def test_a_pinned_gate_no_longer_in_cell_gates_raises(tmp_path):
+def test_a_pinned_gate_no_longer_in_cell_gates_raises_from_the_pins_alone(tmp_path, monkeypatch):
+    monkeypatch.setattr(T, "E63_REQUIRED_FLOOR", {g: n for g, n in dict(T.E63_REQUIRED_FLOOR).items() if g != "Null"})
     src = MINI_CENSUS.replace('CELL_GATES = ("Ldgr", "Idem", "Null", "Build")', 'CELL_GATES = ("Ldgr", "Idem", "Build")')
     assert src != MINI_CENSUS
-    raises(World(tmp_path, census=src).default(), "registry_below_floor")
+    e = raises(World(tmp_path, census=src).default(), "registry_below_floor", "pinned gate")
+    assert "Null" in str(e)
+
+
+def test_the_count_floor_is_a_second_check_that_fires_when_it_exceeds_the_pins(tmp_path, monkeypatch):
+    # pins name Idem.alt + Idem.pat (all present); a floor of 3 for Idem makes the registry's two criteria too few
+    monkeypatch.setattr(T, "E63_REQUIRED_FLOOR", dict(T.E63_REQUIRED_FLOOR, Idem=3))
+    e = raises(World(tmp_path).default(), "registry_below_floor", "floor of 3")
+    assert "Idem" in str(e)
 
 
 def test_adding_a_criterion_is_fine_and_only_adds_a_requirement(tmp_path):
