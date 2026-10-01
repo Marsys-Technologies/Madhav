@@ -85,6 +85,31 @@ Design and encoding decisions live with the code in
   (27 minus `birth_anchor`, O-CF-N6) × the bound paths P1–P5; the H-unknown eight admit
   `unqualified` (§2.2). This grain lands with `window_evaluator` / `interval_sweep`.
 
+## Step `window_evaluator` (1/N landed 2026-10-01)
+
+Grain (pin 5 phase 2): `record:<event_class>:<path_id>` — the 26 scored classes
+(27 minus `birth_anchor`) × the bound paths. Landed in this increment (pure
+machinery only; **no DB writes** — transit records FK their contact ledger row
+(kgrr_transit_natal_ck), so rows are written only when contacts materialise):
+
+- `services/gochara_kernel/chart_context.py` — L1 chart_facts loader (lagna +
+  nine natal λ + source fact_ids; conflicts/missing NAMED, never defaulted).
+- `services/gochara_kernel/evaluator.py` — P3/P4 edge enumeration (S-03 union;
+  R3-S02 restriction to Jupiter/Saturn; N-14 node aspects absent; māraka
+  testimony rows D-PADMIT; H-unknown classes enumerate zero edges with the
+  grain's admission recorded `unqualified`). Binding decisions E7 (record uuid8
+  over records.py's canonical natural key), E8 (object conventions per the
+  kgpo vocab), E9 (source_page locator fallback) documented in the module.
+  Deferral D3: P1 non-node dispositorship/association rows are unwritable
+  until ruled (uncited_extension without ruling_ref violates kgrr_ruling_ck).
+- Unimplemented paths (P1/P2/P5) refuse LOUDLY — never a silent empty grain.
+
+Remaining increments: P2/P1/P5 enumeration (P1 needs the §4.0 dasha context);
+contact materialisation (physical solves per contract §6 #2, reusing the
+kernel's boundary solver; residence spans from substrate ingress pairs);
+then DB writes per grain (coverage partition FIRST in the same transaction,
+pin 7) and prerequisite `result` evaluation at materialisation.
+
 ## Delivery sequence (steward M20261001T015412-6df0)
 
 1. This brief.
