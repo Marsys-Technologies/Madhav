@@ -89,7 +89,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `brahmagyan/l0_remedy_corpus.py` / the resolver at read time; depends on the ontology change
 - **Failing-first test and mutation:** failing-first: unresolved count 289 → 80 after normalisation + text reconciliation, → 0 only if the 80 are given the explicit state; mutation: break the rule → the count moves
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** a read-time resolution change: no stored row changes; the same readers (listed in the attribution-state fix) see resolved source ids where they used to see unresolved ones.
 - **Rebuild:** needs production rebuild of bg_remedies only if the stored ids are rewritten; a read-time resolver needs none
 - **Gate it moves:** Ldgr (qualification), Vocab (rule 3)
 - **Fix class:** data (output change) or writer code; **buildable before J1:** tier-dependent: TGH-T2-12
@@ -102,7 +102,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** a migration (additive column) + `l0_remedy_corpus.py`
 - **Failing-first test and mutation:** count of `unsourced` rows = 80, citations unchanged
 - **Output change:** one additive column
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** the rebuild deletes and re-inserts the 341 corpus rows (`l0_remedy_corpus.py:3551`, loader `:274`); `remedy_id` is the census key. Readers outside the L0 writers (14 non-test files incl.): L2 `bo_upaya.py`, three API routes, MCP `remedy_tools.ts`, `upaya.ts`, `ritual.ts`, `register_gochara_windows.ts`, `kala_ritual_resonance.ts`, `coverage_matrix.ts`.
 - **Rebuild:** needs production rebuild: bg_remedies (after the migration)
 - **Gate it moves:** Ldgr (qualification), Carr
 - **Fix class:** data (output change); **buildable before J1:** tier-independent for the state
@@ -115,7 +115,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** a test next to the seed module; the writer is unchanged
 - **Failing-first test and mutation:** golden-value test per family; mutation: change the f-string template → the golden fails
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row changes (test or code-side only); declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference.
 - **Rebuild:** none (test only)
 - **Gate it moves:** Narr (fidelity_test), Null
 - **Fix class:** writer code (test only); **buildable before J1:** tier-independent (N.7 item 5)
@@ -127,7 +127,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (detector only)
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
@@ -139,7 +139,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row changes (test or code-side only); declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference.
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
 - **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work

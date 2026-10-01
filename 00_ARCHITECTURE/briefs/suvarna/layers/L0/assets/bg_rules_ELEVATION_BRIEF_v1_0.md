@@ -23,7 +23,7 @@ ledger_gap_ids: [bg_rules-G01, bg_rules-G02, bg_rules-G03, bg_rules-G04, bg_rule
 
 ## 0 · Identity — what the asset is
 
-Regex extraction of classical rules from `classical_text_chunks` into `sutravali_rules`: about 14 pattern families, a deterministic `rule_id` (UUID5 of `text_id|verse_ref|sha256[:16]`), a quality score from five deterministic criteria (≥ 0.6 live), `extracted_by = python_regex_v2`, zero LLM, `ON CONFLICT (rule_id) DO NOTHING` (`platform/python-sidecar/brahmagyan/l0_rules.py:1-20,1608`; the module also deletes at `:1559`). 3,002 rules over 14 of the 15 corpus texts, every rule with a `verse_ref`. Depends on `bg_dasha_systems`, `bg_texts`, `bg_yogas`; declared dependents `bg_concordance`, `mi_kula` and one not identified offline (census direct 3 / transitive 51). Measured by the layer instance (Q-06) and the ledger pilot (`bg_rules-G01…G08`, `O1…O4`): rules per chunk range 2.34 (saravali) to 0.08 (bphs) to 0 (tajaka_neelakanthi, 290 chunks → 0 rules); `confidence` has 3 distinct values and equals `quality_score` on 3,002/3,002 rows; 17 rules carry `yoga_canonical_id`, 0 carry `dasha_system_id`; 2 of 14 rule `text_id`s (bhrigu_nandi_nadi, bphs_jaimini) have no ontology identity; the rules are absent from all 46 L0 registry capability modules and exposed only through `platform-mcp/src/tools/l0_brahmagyan.ts` (`ref_rules_search`).
+Regex extraction of classical rules from `classical_text_chunks` into `sutravali_rules`: about 14 pattern families, a deterministic `rule_id` (UUID5 of `text_id|verse_ref|sha256[:16]`), a quality score from five deterministic criteria (≥ 0.6 live), `extracted_by = python_regex_v2`, zero LLM, `ON CONFLICT (rule_id) DO NOTHING` (`platform/python-sidecar/brahmagyan/l0_rules.py:1-20,1622`). **Before every re-seed the module runs `DELETE FROM sutravali_rules WHERE extracted_by = 'python_regex_v2'` (`:1558-1560`), so the later `ON CONFLICT … DO NOTHING` never conflicts on a rebuild and a rebuild already reproduces every extracted rule, concept ids included** (rows with another `extracted_by` survive). 3,002 rules over 14 of the 15 corpus texts, every rule with a `verse_ref`. Depends on `bg_dasha_systems`, `bg_texts`, `bg_yogas`; declared dependents `bg_concordance`, `mi_kula` and one not identified offline (census direct 3 / transitive 51). Measured by the layer instance (Q-06) and the ledger pilot (`bg_rules-G01…G08`, `O1…O4`): rules per chunk range 2.34 (saravali) to 0.08 (bphs) to 0 (tajaka_neelakanthi, 290 chunks → 0 rules); `confidence` has 3 distinct values and equals `quality_score` on 3,002/3,002 rows; 17 rules carry `yoga_canonical_id`, 0 carry `dasha_system_id`; 2 of 14 rule `text_id`s (bhrigu_nandi_nadi, bphs_jaimini) have no ontology identity; the rules are absent from all 46 L0 registry capability modules and exposed only through `platform-mcp/src/tools/l0_brahmagyan.ts` (`ref_rules_search`).
 
 | field | value | source |
 |---|---|---|
@@ -101,32 +101,32 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 3 / transitive 51 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (detector only)
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
 
-### FD-2 · Rule → concept linkage (seam B)
+### FD-2 · Rule → concept linkage (rebuild reproduces ids; no backfill; Q22 premise corrected)
 
 - **Answers:** ledger `bg_rules-G04` / O3; layer instance §1.3
-- **Change:** populate `yoga_canonical_id` (and, where the rule is daśā-conditioned, `dasha_system_id`) from the pattern family’s own match (the family that extracts a yoga formation already knows the yoga name) and resolve it through the ontology; rows with no determinable concept stay NULL with the reason (honest null). An additive output change. **Decided (SS 2026-10-01, Q9): change the writer to `DO UPDATE` so a rebuild reproduces the concept ids; do NOT backfill by migration. `dasha_system_id`: populate where a source exists, otherwise NULL (removal later is a REVIEW).**
+- **Change:** populate `yoga_canonical_id` (and `dasha_system_id` where a source exists, otherwise NULL) from the pattern family’s own match, resolved through the catalogue (a rule with no determinable concept stays NULL: honest null). **Review finding (2026-10-01):** SS Q9 said to change the writer to `DO UPDATE` so a rebuild reproduces the concept ids. The premise does not hold: `DELETE FROM sutravali_rules WHERE extracted_by = 'python_regex_v2'` runs before every re-seed (`l0_rules.py:1558-1560`), so `ON CONFLICT (rule_id) DO NOTHING` (`:1622`) never conflicts and a rebuild already reproduces the concept ids. No backfill (Q9). Whether `DO UPDATE` is still wanted as a defensive change is OPEN (Q22, premise corrected); default: leave the clause.
 - **Files / declaration / migration:** `brahmagyan/l0_rules.py` (pattern families + INSERT) ; depends on the ontology identity (CF-09)
 - **Failing-first test and mutation:** failing-first: the count of rules with a concept id rises from 17 to the number the pattern families can resolve (stated in advance by a dry run) and every populated id resolves to the ontology (`brahma_yoga_catalog`); mutation: break a family’s name capture → the id count drops
 - **Output change:** concept-id columns populated on a larger subset of rules
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** needs production rebuild: bg_rules with the `DO UPDATE` conflict clause (no separate backfill)
+- **Blast radius:** the rebuild deletes and re-inserts all 3,002 rows in one transaction. `rule_id` is content-based (UUID5 of text_id|verse_ref|sha256 of antecedent+prediction, `l0_rules.py:291-299`), so adding concept columns does not change ids; a changed pattern family would change the ids of the rules it changes. Readers outside the L0 writers (9 non-test files): L2 writers `bo_grounding.py`, `bo_laksana.py`, `bodha_writers/grounding_matcher.py`, `routers/sutravali.py`, `citation_resolver.ts`, `register_d7_channel.ts`, `sutravali_tools.ts`, `sutravali_resource.ts`; declared dependents `bg_concordance` (its `rule_ids` UUID[] is rebuilt at level 3), `mi_kula` and one unidentified. `yoga_canonical_id` is validated in code against `brahma_yoga_catalog` (`l0_rules.py:1596-1600`), so `bg_yogas` (level 1) must be built before `bg_rules` (level 2). No DB foreign key from `sutravali_rules.yoga_canonical_id` was found.
+- **Rebuild:** needs production rebuild: bg_rules (delete-then-insert of all `python_regex_v2` rows); no backfill migration and no conflict-clause change unless SS answers Q22
 - **Gate it moves:** Vocab/Synergy (seam B)
 - **Fix class:** data (output change) + writer code; **buildable before J1:** tier-dependent: TGH-T3-13 (no synergy seams defined) and DP02 clause wording
-- **Decision:** ANSWERED by SS 2026-10-01 (Q9): change the writer to `DO UPDATE` so a rebuild reproduces the concept ids and do NOT backfill; `confidence`: no fake score (CLAUDE.md N.7): if it does not discriminate the writer sets it NULL and documents why (dropping the column later is a REVIEW); `dasha_system_id`: populate if a source exists, otherwise NULL (removal later is a REVIEW).
+- **Decision:** ANSWERED by SS 2026-10-01 (Q9): change the writer to `DO UPDATE` so a rebuild reproduces the concept ids and do NOT backfill; `confidence`: no fake score (CLAUDE.md N.7): if it does not discriminate the writer sets it NULL and documents why (dropping the column later is a REVIEW); `dasha_system_id`: populate if a source exists, otherwise NULL (removal later is a REVIEW). PREMISE CORRECTED (review 2026-10-01): see Q22 above; the delete-then-insert already reproduces the concept ids.
 
 ### FD-3 · Honest confidence: NULL, documented, no fake score
 
 - **Answers:** ledger `bg_rules-G02` / O2; CLAUDE.md §N.7 item 6, §N.8
 - **Change:** decided (SS 2026-10-01, Q9; CLAUDE.md N.7): no fake score. Because `confidence` equals `quality_score` on every row and does not discriminate, the writer sets it NULL and documents why; dropping or renaming the column later is a REVIEW to SS.
 - **Files / declaration / migration:** `brahmagyan/l0_rules.py` (scoring) + consumers of `confidence`
-- **Failing-first test and mutation:** failing-first: `confidence` and `quality_score` are not identical on every row, or the column is declared a tier; mutation: set both equal → test fails
+- **Failing-first test and mutation:** failing-first: `confidence` is NULL on every row after the rebuild and the reason is documented (fails today: 3 distinct values equal to `quality_score` on 3,002 rows); mutation: make the writer copy `quality_score` into `confidence` again → the NULL test fails
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** `confidence` is read by `routers/sutravali.py` (9 mentions), `platform/src/lib/retrieve/sutravali_tools.ts` and `platform-mcp/src/resources/sutravali_resource.ts`; NULL changes any output or ranking that reads it (not traced in detail): check these three before landing, REVIEW to SS if one ranks on it. Rebuild as above.
 - **Rebuild:** needs production rebuild: bg_rules (see the conflict-clause note)
 - **Gate it moves:** Earn
 - **Fix class:** data (output change) + writer code; **buildable before J1:** tier-independent (decided)
@@ -139,7 +139,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` (new `query_sutravali_rules.ts`) + descriptor; the MCP tool is unchanged
 - **Failing-first test and mutation:** a response-shape test and a registry-reconciliation test; mutation: remove the module → reach reads 0
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row changes (test or code-side only); declared dependents direct 3 / transitive 51 and the readers in the §0 row see no difference.
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens/Reach
 - **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: retrieval plane is [TRANSFERS] (T2 §8)
@@ -151,7 +151,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `brahmagyan/l0_rules.py` (families) or the declarations (reason)
 - **Failing-first test and mutation:** a yield table per text with a reason for any zero
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** rewrites or adds data in this asset’s tables (idempotent); declared dependents direct 3 / transitive 51; the readers listed in the §0 row read the same ids and see the changed fields.
 - **Rebuild:** declaration: none; a new family: needs production rebuild of bg_rules
 - **Gate it moves:** Complete (width)
 - **Fix class:** registry/declaration only or data; **buildable before J1:** tier-independent
@@ -163,7 +163,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
 - **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 3 / transitive 51 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration only)
 - **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
@@ -175,7 +175,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` (`carriage`) and, only if no column exists, the writer + a migration
 - **Failing-first test and mutation:** inspector reads PASS/FAIL on the declared column; a blank source must read FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 3 / transitive 51 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration); a data fix would be a separate design
 - **Gate it moves:** Ldgr (no reading → PASS/FAIL)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T3-01 (the Ldgr source is undefined in the gate map)
@@ -198,12 +198,14 @@ Natural key `rule_id` (deterministic UUID5 of `text_id|verse_ref|sha256[:16]`; c
 - **Carriage check chosen (T4 §4.1; one only):** D1 (re-match each rule against its cited verse with its own family).
 - **Opportunities (never blocking):** `bg_rules-O1…O4` (per-text extraction; one honest signal; rule→concept linkage; rate baseline).
 
-## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01); ONE QUESTION IS OPEN (marked OPEN below)
 
 Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
 
-1. ANSWERED by SS 2026-10-01 (Q9): change the writer to `DO UPDATE` so a rebuild reproduces the concept ids and do NOT backfill; `confidence`: no fake score (CLAUDE.md N.7): if it does not discriminate the writer sets it NULL and documents why (dropping the column later is a REVIEW); `dasha_system_id`: populate if a source exists, otherwise NULL (removal later is a REVIEW).
+1. ANSWERED by SS 2026-10-01 (Q9): change the writer to `DO UPDATE` so a rebuild reproduces the concept ids and do NOT backfill; `confidence`: no fake score (CLAUDE.md N.7): if it does not discriminate the writer sets it NULL and documents why (dropping the column later is a REVIEW); `dasha_system_id`: populate if a source exists, otherwise NULL (removal later is a REVIEW). PREMISE CORRECTED (review 2026-10-01): the writer already deletes `python_regex_v2` rows before re-seeding, so the delete-then-insert reproduces the concept ids; whether `DO UPDATE` is still wanted is OPEN (Q22).
 2. CF-09: ANSWERED by SS 2026-10-01 (Q4): the normalisation rule lives in the `bg_ontology` writer, the one authority; the vocabulary release id goes in the first wave if it is cheap; for the 11 two-class ids take the recommended option (a, class-aware resolvers) unless it changes served ids (then REVIEW to SS); of bhrigu_samhita, jaimini_sutram, lal_kitab_text keep any with a consumer and remove the rest; Abhijit is a declared exception (classically intercalary) and the 27-id class stays canonical. ANSWERED by SS 2026-10-01 (Q5): authority-side declaration with NO stored-value change: `bg_ephemeris` declares `node: TRUE`; consumers needing MEAN must not read node values from it (a check, Track I item); body-name normalisation is declared the same way. BEFORE any wave touches `bg_ephemeris` or `bg_texts`, SS notifies Pravāha (Exec sends SS an ASK first).
 3. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+
+**OPEN (premise corrected): SS Q9 said 'change the writer to DO UPDATE so a rebuild reproduces the concept ids'. The premise does not hold: `l0_rules.py:1558-1560` runs `DELETE FROM sutravali_rules WHERE extracted_by = 'python_regex_v2'` before every re-seed, so `ON CONFLICT (rule_id) DO NOTHING` (`:1622`) never conflicts and a rebuild already reproduces every concept id. Is `DO UPDATE` still wanted as a defensive change (it would matter only if the delete were ever removed)? Default if unanswered: leave the clause, no backfill.**
 
 **Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-13, TI-L0-23.

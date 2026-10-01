@@ -102,7 +102,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** a surgical migration setting `integrity_check_sql` (guarded by the old NULL) + seed literal
 - **Failing-first test and mutation:** failing-first: with a seeded row carrying an unknown `school_tag` the check is FALSE; with 0 rows TRUE; mutation: drop the school test → the seeded row passes
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 31 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (registry only)
 - **Gate it moves:** Build (count_integrity), Vocab (future)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent
@@ -114,22 +114,22 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `asset_declarations.json` (null reason) — Track E file
 - **Failing-first test and mutation:** declarations validation; mutation: remove the reason → Null reads NO_DETECTOR
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 31 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none
 - **Gate it moves:** Null, Complete (information)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent
 
-### FD-3 · Dispatchable writer for the static empty asset (confirm)
+### FD-3 · Dispatchable writer for the static empty asset (OPEN: Q21)
 
 - **Answers:** census `Build.exercised` N/A; layer instance §1.1 finding 5; CF-05
-- **Change:** SS 2026-10-01, Q7: static migration-seeded assets get a dispatchable writer that re-seeds from the git source (delete-then-insert). For this asset the source is the empty-by-ruling state (ADJUDICATION-11): the writer asserts 0 rows (delete-then-insert of nothing) and preserves the school-keyed shape, so Build is measurable. Confirm with SS that the empty re-seed is intended before building (the asset’s rows are empty by ruling; no data is seeded).
+- **Change:** Q7 decided that static migration-seeded assets get a dispatchable re-seeding writer. This table is empty BY RULING (ADJUDICATION-11), so whether a writer that asserts 0 rows is wanted was not covered by Q7: OPEN question Q21. If SS says yes: a writer that deletes-then-inserts nothing, preserving the school-keyed shape, so Build is measurable; if no: the Build cells read per the Q1/N-22 rules for an asset with no writer.
 - **Files / declaration / migration:** `pipeline/orchestrator/writers/bg_sarvatobhadra_grid.py` (new) + registry `has_writer = true`
 - **Failing-first test and mutation:** n/a
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** needs production rebuild/dispatch (0 rows): REVIEW item
+- **Blast radius:** no rows exist, so no consumer sees a change; `ka_vedha_gochara` keeps reading the empty table.
+- **Rebuild:** if built: needs production dispatch (0 rows): REVIEW item
 - **Gate it moves:** Earn
-- **Fix class:** writer code; **buildable before J1:** tier-independent (decided, to be confirmed)
+- **Fix class:** writer code; **buildable before J1:** blocked on Q21
 
 ### FD-4 · Declare `prose_fields` (Null and Narr gates)
 
@@ -138,7 +138,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
 - **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 31 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration only)
 - **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
@@ -159,10 +159,12 @@ Natural key `(school_tag, cell_kind, cell_index, table_version)`; the fingerprin
 - **Carriage check chosen (T4 §4.1; one only):** none applies while empty (no restatement and no computation); recorded NO_DETECTOR with the reason (T4 §4.1). A D1 against the school’s passage applies once a grid is seated.
 - **Opportunities (never blocking):** `bg_sarvatobhadra_grid-O1/O2` (seat the grid when a passage exists; hold two school grids).
 
-## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01); ONE QUESTION IS OPEN (marked OPEN below)
 
 Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
 
 1. CF-10: ANSWERED by SS 2026-10-01 (Q11): yes: Build.history counts only runs since the last change to the writer or the registry row.
+
+**OPEN (raised by the review pass; not covered by Q7): `bg_sarvatobhadra_grid` is empty BY RULING (ADJUDICATION-11), not a migration-seeded static table with rows. Q7 decided that static migration-seeded assets get a dispatchable re-seeding writer; does that apply to an asset whose correct content is zero rows (the writer would assert 0 rows by delete-then-insert of nothing)? Until SS answers, TI-L0-20 builds the writer only for `bg_gochara_citation_resolution`.**
 
 **Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-06, TI-L0-20.
