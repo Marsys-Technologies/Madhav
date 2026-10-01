@@ -107,12 +107,12 @@ FAMILY_NAME_PATTERN = re.compile(r"^(ka_gochara|ka_vedha_gochara|gochara_|bg_goc
 
 
 def test_the_copied_name_pattern_equals_e5_3s_when_readable():
-    for cand in (REPO / "platform/scripts/governance/suvarna_level_wave.py",
-                 pathlib.Path("/Users/Dev/suvarna-engine-lane-e5-3/platform/scripts/governance/suvarna_level_wave.py")):
-        if cand.exists():
-            m = re.search(r'^FAMILY_NAME_PATTERN = re\.compile\(r"([^"]+)"\)', cand.read_text(encoding="utf-8"), re.M)
-            assert m and m.group(1) == FAMILY_NAME_PATTERN.pattern
-            return
+    cand = REPO / "platform/scripts/governance/suvarna_level_wave.py"
+    if not cand.exists():
+        import pytest
+        pytest.skip("suvarna_level_wave.py (E5.3) is not part of this checkout yet: pattern parity not checked here")
+    m = re.search(r'^FAMILY_NAME_PATTERN = re\.compile\(r"([^"]+)"\)', cand.read_text(encoding="utf-8"), re.M)
+    assert m and m.group(1) == FAMILY_NAME_PATTERN.pattern
 
 
 def test_every_seed_asset_the_name_pattern_treats_as_family_is_in_the_file():
@@ -124,30 +124,27 @@ def test_every_seed_asset_the_name_pattern_treats_as_family_is_in_the_file():
 
 
 # ---- round trip: the committed file is exactly what the generator makes from the committed input ----------------------
-# The generator (00_ARCHITECTURE/control/generate_level_map.py) lives on suvarna/engine-E6.3 and is NOT in this small PR.
-# The test runs against it where it is readable (this checkout once the E6.3 PR lands, or the sibling worktree) and is
-# SKIPPED with a visible reason where it is not. TODO (E6.3 PR): when the generator lands on main this skip disappears.
+# The generator (00_ARCHITECTURE/control/generate_level_map.py) lives on suvarna/engine-E6.3 (PR #2891), not in this small PR,
+# which carries no machine-local path. Here the round trip runs only where the generator is part of THIS checkout and is
+# otherwise SKIPPED with a visible reason; it is a NON-skipping check in the E6.3 branch (test_e6_3_family_file_roundtrip.py),
+# which compares this very pair byte-for-byte as soon as both files are on its checkout.
 def _generator():
     import importlib.util
-    for cand in (REPO / "00_ARCHITECTURE/control/generate_level_map.py",
-                 pathlib.Path("/Users/Dev/suvarna-engine-lane-e6-3/00_ARCHITECTURE/control/generate_level_map.py")):
-        if cand.exists():
-            spec = importlib.util.spec_from_file_location("generate_level_map_roundtrip", cand)
-            mod = importlib.util.module_from_spec(spec)
-            import sys
-            sys.modules["generate_level_map_roundtrip"] = mod
-            spec.loader.exec_module(mod)
-            if hasattr(mod, "family_inactive_allowed"):         # the version that accepts _notes.inactive
-                return mod
-    return None
+    cand = REPO / "00_ARCHITECTURE/control/generate_level_map.py"
+    if not cand.exists():
+        return None
+    spec = importlib.util.spec_from_file_location("generate_level_map_roundtrip", cand)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod if hasattr(mod, "family_inactive_allowed") else None
 
 
 def test_the_committed_file_is_byte_identical_to_what_the_generator_makes_from_the_committed_input():
     g = _generator()
     if g is None:
         import pytest
-        pytest.skip("generate_level_map.py (suvarna/engine-E6.3, with family_inactive_allowed) is not readable here: "
-                    "round trip not run; TODO on the E6.3 PR")
+        pytest.skip("generate_level_map.py is not part of this checkout (it lands with the E6.3 PR #2891, whose "
+                    "test_e6_3_family_file_roundtrip.py then checks this pair): round trip not run here")
     rows = g.load_registry_from_seed(SEED)
     inp = g.load_family_input(REPO / "00_ARCHITECTURE/control/family_lists_input.json")
     doc = g.build_family_assets(inp, rows, version=DOC["version"], frozen_at=DOC["frozen_at"],
