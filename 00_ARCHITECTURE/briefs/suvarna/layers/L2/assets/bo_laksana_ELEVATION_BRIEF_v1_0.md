@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); FD-1's output change needs SS (R5)"
 nirmana_freeze: "t1, 2026-09-08"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-04, TI-L2-05, TI-L2-09, TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-18, TI-L2-20, TI-L2-21, TI-L2-22, TI-L2-27, TI-L2-28, TI-L2-31, TI-L2-32]
 ledger_gap_ids: [bo_laksana-Idem.pattern, bo_laksana-Earn.build_record, bo_laksana-Cost.baseline, bo_laksana-Count.floor, bo_laksana-Build.history, bo_laksana-Carr.detector]
 ---
 # bo_laksana — MSR signal store: the root writer of `bodha_msr_signals`
@@ -94,6 +96,7 @@ Approver under Track A brief §10: **Steward (G16); FD-1's output change needs S
 
 ### FD-1 · Store NULL, not a literal 2, in `source_corroboration_count_by_text` on the three constant sites
 
+- **SS ruling (N-59, 2026-10-01):** `source_corroboration_count_by_text` is NULL on the three constant sites (`bo_laksana.py:1423`, `:2969`, `bhavat_bhavam_amplifier.py:345`); the hand-set rows are stamped `classification_weight_v1` (the column allows it: no CHECK on `salience_formula_version`); the 14 `yoga_label` rows that read 2 are traced first and treated the same way if uncomputed. The class-weight table is (R) and on the J1 reviewers' list BY NAME. Batched. TI-L2-18, TI-L2-22, TI-L2-28.
 - **Answers:** code observation (Null gate NO_DETECTOR); CLAUDE.md §N.7 item 6 / §N.8
 - **Change:** at `bo_laksana.py:1423`, `:2969` and `bhavat_bhavam_amplifier.py:345` write NULL (the table already accepts it: the satellite emitters store NULL, `arudha_emitter.py:163`). These three sites do not call `salience_formula_v1` (salience is set directly there), so the NULL cannot reach `math.log(1 + count)`; do NOT pass NULL into the formula anywhere (`formulas.py:132` types it `int = 1` and `:162` takes `math.log(1 + count)`, so a None would raise). The alternative is to ratify the 2 as a documented approximation with a decision id (no code change)
 - **Files / declaration / migration:** `platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py`, `platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py`; no migration, no formulas.py change
@@ -107,6 +110,7 @@ Approver under Track A brief §10: **Steward (G16); FD-1's output change needs S
 
 ### FD-2 · Declare the `bo_laksana → ga_yoga` edge
 
+- **SS ruling (N-59, 2026-10-01):** `bo_laksana -> ga_yoga` may ride the held-edges migration (1216, branch TI-edges-002) if still unapplied, else max+1 (not verifiable from the sheet branch: confirm at execution). No rebuild. TI-L2-05.
 - **Answers:** Build.dag rev-2 FAIL (missing edge); CF-15
 - **Change:** append `ga_yoga` to `bo_laksana.depends_on` (the same shape as migration 1210: append-only, idempotent, guarded). `ga_yoga` was previewed lit and fresh as the producer of 1210's `ka_yojaka → ga_yoga` edge (1210 header, SPLIT), and `bo_laksana` already follows it transitively via `ga_vichara`, so the edge is acyclic and adds no wait
 - **Files / declaration / migration:** one surgical migration (number = max+1 across origin heads at execution time) and the seed literal `asset_registry_seed.ts:1609-1622`; verify by production structure
@@ -175,3 +179,15 @@ Frozen manifest: Nirmāṇa froze this asset under definition t1 on 2026-09-08. 
 2. FD-2: may the deferred `bo_laksana → ga_yoga` edge be added?
 3. CF-13: the annotation lists `1c826d5a` only for this asset and W2-3_REVIEW agrees (MF-L2-011 concerns the other five). Is that list final?
 4. CF-03: refresh the 60,000 floor to the achieved count only after a coherent L2 rebuild (recommended), or now?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-02 - accepted.** The producer's served surface is read through the `signal_type_class` facet of `query_signals.ts` (the 18 classes partition exactly by producer on the canonical chart). No rebuild. TI-L2-04.
+- **Q-L2-03 (R) - changed.** `orb_tightness` is Optional; for aspect-class signals read an L1 orb fact if one exists. L1 stores `orb_deg` for conjunctions only (no aspect orb fact found), so aspect classes store None plus one Track I item. The formula version bump is shared with the satellites. Batched. TI-L2-21, TI-L2-27.
+- **Q-L2-04 (R) - accepted with notes.** `source_corroboration_count_by_text` is NULL on the three constant sites (`bo_laksana.py:1423`, `:2969`, `bhavat_bhavam_amplifier.py:345`); the hand-set rows are stamped `classification_weight_v1` (the column allows it: no CHECK on `salience_formula_version`); the 14 `yoga_label` rows that read 2 are traced first and treated the same way if uncomputed. The class-weight table is (R) and on the J1 reviewers' list BY NAME. Batched. TI-L2-18, TI-L2-22, TI-L2-28.
+- **Q-L2-07 - accepted.** `bo_laksana -> ga_yoga` may ride the held-edges migration (1216, branch TI-edges-002) if still unapplied, else max+1 (not verifiable from the sheet branch: confirm at execution). No rebuild. TI-L2-05.
+- **Q-L2-10 - accepted.** The R243 annotation is reworded (no cross-layer cascade remains after 1214 and the owner-path drops; control `msr_dangling_signal_refs.py`); the per-asset chart lists are dropped. Declaration text, no rebuild. TI-L2-09.
+- **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
+- **Q-L2-14 (R) - accepted.** This producer populates the MSR shared-root carrier (`shared_factor_keys_jsonb`, `cross_domain_shared_factor_count`) from the single rule (root = fact subject, plus varga where the subject is a varga sign). Batched. TI-L2-31.
+- **Q-L2-16 (R) - changed.** The MSR set is six producers (the rerank an UPDATE-only dependant). Valence: where a category or keyword rule matched, the value is kept (a matched `neutral` too); where nothing matched and the code falls through to `neutral`, NULL is stored. FIRST every reader of `valence` is traced; if any reader breaks on NULL, SS is asked before coding. Batched after the trace. TI-L2-20, TI-L2-32.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); any output change needs SS (R5)"
 nirmana_freeze: "t1, 2026-09-10"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-04, TI-L2-09, TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-27, TI-L2-31]
 ledger_gap_ids: [bo_arudha-Idem.pattern, bo_arudha-Earn.build_record, bo_arudha-Cost.baseline, bo_arudha-Complete.depth, bo_arudha-Build.history, bo_arudha-Carr.detector]
 ---
 # bo_arudha — Jaimini Āruḍha perception layer (MSR signals)
@@ -144,3 +146,12 @@ Frozen manifest: Nirmāṇa froze this asset under definition t1 on 2026-09-10. 
 1. CF-20: is the neutral-constant salience input set (documented_approximation) accepted for the satellites, or must uncomputed terms be NULL?
 2. CF-13: is the R243 chart list for this asset final (R243 vs W2-3_REVIEW differ for some satellites, MF-L2-011)?
 3. Complete.width: should the MSR class cover āruḍhas other than AL, A2 and A11, given the node writer carries A1..A12?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-02 - accepted.** The producer's served surface is read through the `signal_type_class` facet of `query_signals.ts` (the 18 classes partition exactly by producer on the canonical chart). No rebuild. TI-L2-04.
+- **Q-L2-03 (R) - accepted split, with a change.** This emitter stops supplying neutral stand-ins for terms it does not compute: `orb_tightness`, `shadbala_norm` and `dignity_score` become Optional in `SalienceInputsV2` (ONE formula version bump) and `ashtakavarga_bindus`, `vargottama_amplification`, `neechabhanga_modifier`, `cancellation_modifier` are None where not computed (identity in the product, salience unchanged). `orb_tightness` is NOT ratified as 1.0. Rows whose subject is a graha read shadbala and dignity from L1; Lagna-point rows (`bo_arudha`, `bo_special_lagna`) store None. Batched into the one L2 rebuild. TI-L2-27.
+- **Q-L2-10 - accepted.** The R243 annotation is reworded (no cross-layer cascade remains after 1214 and the owner-path drops; control `msr_dangling_signal_refs.py`); the per-asset chart lists are dropped. Declaration text, no rebuild. TI-L2-09.
+- **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
+- **Q-L2-14 (R) - accepted.** This producer populates the MSR shared-root carrier (`shared_factor_keys_jsonb`, `cross_domain_shared_factor_count`) from the single rule (root = fact subject, plus varga where the subject is a varga sign). Batched. TI-L2-31.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

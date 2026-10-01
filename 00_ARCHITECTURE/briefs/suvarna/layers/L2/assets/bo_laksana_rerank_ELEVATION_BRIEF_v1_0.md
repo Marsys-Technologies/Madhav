@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 nirmana_freeze: "t3, 2026-09-11"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-04, TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-17, TI-L2-20, TI-L2-31, TI-L2-32]
 ledger_gap_ids: [bo_laksana_rerank-Idem.pattern, bo_laksana_rerank-Earn.build_record, bo_laksana_rerank-Cost.baseline, bo_laksana_rerank-Build.history, bo_laksana_rerank-Carr.detector]
 ---
 # bo_laksana_rerank — Post-CGM re-rank pass: UPDATE-only enrichment of `bodha_msr_signals`
@@ -142,3 +144,12 @@ Frozen manifest: Nirmāṇa froze this asset under definition t3 on 2026-09-11. 
 1. Is the keyword-heuristic valence (44,479 of 50,678 chart rows; 34,960 `neutral` in total) an accepted documented approximation, or a Null-gate question (neutral standing for a missing computation)?
 2. CF-19: confirm the rerank's six columns are declared cross-asset writes (and whether `valence` belongs to the producer or to the rerank for E5.5 fingerprint ownership).
 3. Is the arch §12.9 definition of the L2 MSR set (writers whose rebuild replaces rows) to be corrected to six, with the rerank listed as an UPDATE-only dependant (MF-L2-010)?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-14 (R) - accepted.** The rerank's `system_convergence_count` / `cross_system_consensus_count` use the same single rule (root = fact subject, plus varga where the subject is a varga sign). Batched. TI-L2-22, TI-L2-31.
+- **Q-L2-15 - accepted.** The rerank's six columns are declared cross-asset writes; `valence` and `valence_source` of `bo_laksana` rows belong to the rerank in the fingerprint contract (the producer's fingerprint excludes them). TI-L2-17.
+- **Q-L2-16 (R) - changed.** The MSR set is six producers (the rerank an UPDATE-only dependant). Valence: where a category or keyword rule matched, the value is kept (a matched `neutral` too); where nothing matched and the code falls through to `neutral`, NULL is stored. FIRST every reader of `valence` is traced; if any reader breaks on NULL, SS is asked before coding. Batched after the trace. TI-L2-20, TI-L2-32.
+- **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
+- **Q-L2-02 - accepted.** The producer's served surface is read through the `signal_type_class` facet of `query_signals.ts` (the 18 classes partition exactly by producer on the canonical chart). No rebuild. TI-L2-04.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.
