@@ -290,7 +290,7 @@ class KaAvdhiWriter(WriterBase):
                 "activated_pratijna_ids": list(dict.fromkeys(activated_ids))[:10],
                 "sublord_modulation": {
                     "graha": sublord,
-                    "note": f"AD lord {sublord} modulates MD lord {lord}." if sublord else None,
+                    "note": f"AD lord {lord} modulates MD lord {sublord}." if sublord else None,
                 } if sublord else None,
             }
             return {
