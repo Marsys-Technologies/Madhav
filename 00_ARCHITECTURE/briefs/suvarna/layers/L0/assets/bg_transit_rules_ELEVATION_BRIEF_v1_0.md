@@ -23,7 +23,7 @@ ledger_gap_ids: [bg_transit_rules-Idem.pattern, bg_transit_rules-Earn.build_reco
 
 ## 0 · Identity — what the asset is
 
-'76 classical transit rules: 43 favourable, 26 unfavourable, 7 double-transit' (seed description, `platform/scripts/seed/asset_registry_seed.ts:683`). The writer seeds the engine, rule and moorti tables (`BgTransitRulesWriter`, `…/writers/bg_transit_rules.py:11-44`; `brahmagyan/l0_transit.py:964-1215`): 9 engine + 68 writer-owned rules + 27 moorti rows by the module’s own volume line (`:19-20`); the 7 `double_transit` rows are owned by migration 397 and deliberately outside the writer’s retirement filter (`:985-1010`, `_owned_row_filter`). Retirement is ownership-scoped because `bg_transit_rules.id` is SERIAL and `gochara_resonance_map.source_rule_id` references it (migration 459). **Citation state after the 2026-09 L0 repair, stated in the registry row:** 36 favourable-with-vedha rows carry page-anchored Phaladīpikā Adh. XXVI citations; 6 Rahu/Ketu favourable-with-vedha rows are declared UNSOURCED; **19 rows (18 unfavourable + 1 favourable with no vedha pair) still carry the refuted 'BPHS Ch.29'** and were deliberately not re-cited on an unverified basis; the remaining 15 cite Phaladīpikā Ch.26, Sārāvalī or Jātaka Pārijāta. The recorded `rows_written` of 104 spans three tables (CF-02). Declared dependents `ka_gochara`, `ka_gochara_resonance`, `ka_moorti_nirnaya`, `ka_vedha_gochara`, `ka_yojaka` and one not identified offline (census direct 6 / transitive 34); 41 non-test files reference `bg_transit_rules`. Served by `query_transit_engine.ts`, `query_transit_vedha.ts`.
+'76 classical transit rules: 43 favourable, 26 unfavourable, 7 double-transit' (seed description, `platform/scripts/seed/asset_registry_seed.ts:683`). The writer seeds the engine, rule and moorti tables (`BgTransitRulesWriter`, `…/writers/bg_transit_rules.py:11-44`; `brahmagyan/l0_transit.py:964-1215`): the module’s own volume line says 9 engine + 68 writer-owned rules + 7 migration-owned + 27 moorti (`:19-20`), but the rule list imports as 69 rules (43 favourable + 26 unfavourable) which with the 7 migration rows gives the registry’s 76: the docstring’s 68 is off by one against its own list (or one list rule is not writer-owned; not established); the 7 `double_transit` rows are owned by migration 397 and deliberately outside the writer’s retirement filter (`:985-1010`, `_owned_row_filter`). Retirement is ownership-scoped because `bg_transit_rules.id` is SERIAL and `gochara_resonance_map.source_rule_id` references it (migration 459). **Citation state after the 2026-09 L0 repair, stated in the registry row:** 36 favourable-with-vedha rows carry page-anchored Phaladīpikā Adh. XXVI citations; 6 Rahu/Ketu favourable-with-vedha rows are declared UNSOURCED; **19 rows (18 unfavourable + 1 favourable with no vedha pair) still carry the refuted 'BPHS Ch.29'** and were deliberately not re-cited on an unverified basis; the remaining 15 cite Phaladīpikā Ch.26, Sārāvalī or Jātaka Pārijāta. The recorded `rows_written` of 104 spans three tables (CF-02). Declared dependents `ka_gochara`, `ka_gochara_resonance`, `ka_moorti_nirnaya`, `ka_vedha_gochara`, `ka_yojaka` and one not identified offline (census direct 6 / transitive 34); 41 non-test files reference `bg_transit_rules`. Served by `query_transit_engine.ts`, `query_transit_vedha.ts`.
 
 | field | value | source |
 |---|---|---|
@@ -89,7 +89,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `bg_transit_rules.py` (WriterResult) and the registry/declarations
 - **Failing-first test and mutation:** failing-first: `rows_written` equals the changed rows of the writer-owned rules; mutation: revert → mismatch
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** record-only: `rows_written` and the declared produced-table set change; no row changes. The same 41 readers see no difference.
 - **Rebuild:** registry part: none; writer part: needs production rebuild to refresh the record (idempotent; R9-adjacent consumers read the table, so notify via the B.L0 statement)
 - **Gate it moves:** Build (completion), Earn (count_sql scope)
 - **Fix class:** writer code + registry/declaration; **buildable before J1:** tier-independent; vocabulary tier-dependent (TGH-T2-05)
@@ -101,7 +101,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** a migration (additive column) + `l0_transit.py`
 - **Failing-first test and mutation:** counts: 19 `refuted`, 6 `unsourced`, 51 `sourced` (76 − 25) stated in advance; mutation: re-cite one row with verification → its state flips
 - **Output change:** one additive column
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** additive column on `bg_transit_rules`; the writer upserts and retires only owned rows, so the SERIAL `id` (FK-referenced by `gochara_resonance_map.source_rule_id`, migration 459) is stable. Readers (41 non-test files): `ka_sangam.py`, `ka_moorti_nirnaya.py`, `ka_vedha_gochara.py`, the Gochara kernel and resonance rebuild scripts. Gochara consumers are the Pravāha campaign’s: notify via SS (R9-adjacent) before the rebuild.
 - **Rebuild:** needs production rebuild: bg_transit_rules (after the migration; idempotent)
 - **Gate it moves:** Ldgr (qualification), Carr
 - **Fix class:** data (output change); **buildable before J1:** tier-independent for the state
@@ -114,7 +114,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 6 / transitive 34 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (detector only)
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
@@ -126,7 +126,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
 - **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 6 / transitive 34 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration only)
 - **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
@@ -138,7 +138,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row changes (test or code-side only); declared dependents direct 6 / transitive 34 and the readers in the §0 row see no difference.
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
 - **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
