@@ -1,14 +1,14 @@
 ---
-artifact: MIGRATION_1220_EDGES_INTENT
-version: "1.1"
-status: "INTENT ONLY; the migration file is NOT written (owner hold on migrations 1219-1227)"
+artifact: MIGRATION_1226_EDGES_INTENT
+version: "1.2"
+status: "INTENT ONLY; the migration file is NOT written (owner hold on migrations 1219-1228, 1250, 1251)"
 produced_by: Exec Suvarṇa
 produced_on: 2026-10-02
-ruling: "SS 2026-10-02: the ga_vargas -> ga_sensitive edge rides migration 1220 (the held edges migration) together with the two Q-L2-07 edges and the two Q-L1-02 edges; ONE guarded, append-only, acyclic-checked migration; must be applied before S-L1"
+ruling: "SS 2026-10-02: the ga_vargas -> ga_sensitive edge rides migration 1226 (formerly numbered 1220; the pre-S-L1 edges migration) together with the two Q-L2-07 edges and the two Q-L1-02 edges; ONE guarded, append-only, acyclic-checked migration; must be applied before S-L1"
 shape: "same kind as migration 1210 (surgical, append-only, guarded, verified by production structure afterwards)"
 ---
 
-# Migration 1220 (edges): intent (six edges as of v1.1)
+# Migration 1226 (edges; formerly 1220): intent (six edges as of v1.1)
 
 Notation: `A.depends_on += B` means A reads B's output and must be built after B.
 
@@ -38,8 +38,8 @@ After the six edges: `ga_dashas -> {ga_vargas, ga_sensitive}`, `ga_vargas -> ga_
 
 ## Not in this migration
 
-`bo_pratijna` re-point (waits on tracing `chart_fact_identity` and `brahma_reference_planets`), the held `ph_nimitta -> bo_pratijna` edge, argala migrations 1219/1221 (see `MIGRATION_1219_1221_INTENT_v1_0.md`), 1225-1227 (node series).
+`bo_pratijna` re-point (waits on tracing `chart_fact_identity` and `brahma_reference_planets`), the held `ph_nimitta -> bo_pratijna` edge, argala migrations 1219/1221 (see `MIGRATION_1219_1221_INTENT_v1_0.md`), 1227, 1228 and 1250 (node series).
 
-## Numbering note (SS 2026-10-02)
+## Numbering note (SS 2026-10-02, supersedes every earlier allocation)
 
-`1220` was first allocated to the older HELD five-edge set (branch `suvarna/land/TI-edges-002`, local only, head `ee5643a56`, backup bundle `/Users/Dev/suvarna-evidence/TI-edges-002_ee5643a56.bundle`): `ph_nimitta += bo_pratijna`, `ph_nimitta += ka_yojaka`, `mi_gunanaka += mi_bhavisya`, `mi_pariksha += mi_bhavisya`, `mi_pariksha += ph_nimitta`, blocked until their producers are lit and fresh. That older set is RE-ALLOCATED to **1228** (rename the file, its `_m1220_edges` temp table, its test and its seed comments at the owner's line, in one commit) and stays held until after the rebuild stages. The 1228 intent also gains the `bo_pratijna` re-point: remove `bo_laksana` and `bo_sangati`, add `ga_positions`, `ga_structural`, `ga_sensitive` (`ga_vargas` is present; `bg_reference` is bedrock-exempt; `chart_fact_identity` stays an undeclared dependency until the Track I asset `ga_fact_identity` exists).
+Pravāha holds 1220 (their PR #2884) and 1225 (merged, #2879); 1230-1249 is Pravāha's block. Our table: 1219 argala ownership + ga_structural digest-spec revision + Q04 ownership rows + multi-formula declaration; 1221 a29 integrity conjunct (argala); 1222 ga_vargas integrity clause (e); 1223 ga_vargas output-digest spec; 1224 chart_grants SELECT grant; **1226 = this migration (the SIX pre-S-L1 edges, formerly written 1220)**; 1227 node-series unique index; 1228 node-series replacement contract + digest spec; 1250 node-series drop of the old three-column constraint; **1251 = the OLDER held five edges + the bo_pratijna re-point** (branch `suvarna/land/TI-edges-002`, local only, head `ee5643a56`, backup bundle `/Users/Dev/suvarna-evidence/TI-edges-002_ee5643a56.bundle`; its file, temp table `_m1220_edges`, test and seed comments still carry the name 1220: rename to 1251 at the owner's line, in one commit with its test): `ph_nimitta += bo_pratijna`, `ph_nimitta += ka_yojaka`, `mi_gunanaka += mi_bhavisya`, `mi_pariksha += mi_bhavisya`, `mi_pariksha += ph_nimitta`, blocked until their producers are lit and fresh; the 1251 intent also gains the `bo_pratijna` re-point: remove `bo_laksana` and `bo_sangati`, add `ga_positions`, `ga_structural`, `ga_sensitive` (`ga_vargas` is present; `bg_reference` is bedrock-exempt; `chart_fact_identity` stays an undeclared dependency until the Track I asset `ga_fact_identity` exists). Suvarna's block for anything further: 1250-1269, asked per migration. RULE: re-check max+1 across both migration directories on origin/main AND open PR heads immediately before writing any migration file.

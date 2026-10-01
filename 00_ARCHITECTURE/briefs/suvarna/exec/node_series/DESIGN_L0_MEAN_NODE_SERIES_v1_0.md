@@ -53,7 +53,7 @@ record `PostgreSQL 15.18 on x86_64-pc-linux-gnu`). Four steps, in this order (th
 2. Deploy writers whose conflict target is `(date, body, ayanamsha_id, node_mode)` (they work while both keys exist).
 3. At release (step 2 of the rollout in §6): DROP the old constraint, then insert the mean rows.
 4. Old-key writers do not remain: the only `ON CONFLICT (date, body, ayanamsha_id)` targets are `l0_ephemeris.py:547` and `bg_ephemeris.py:133` (census).
-Route: owner-path D6 plan (hash as REVIEW) for the DDL, as for the chart_divisionals incident; the schema-of-record migration (numbers to be allocated by you; 1224 is taken) follows
+Route: owner-path D6 plan (hash as REVIEW) for the DDL, as for the chart_divisionals incident; the schema-of-record migration (numbers: see section 10(c)) follows
 once the owner's migration hold lifts. I will not create migration files before that.
 
 ## 3. Writer change
@@ -158,7 +158,7 @@ because `arc_fingerprint` ignores `node_mode` and `ka_gochara`'s delta-aware ski
 
 - (a) Option B: new `brahmagyan/l0_ephemeris_queries.py` that `ephemeris_routes.py` points at; mean-node logic in the new `l0_ephemeris_mean_node.py`; `l0_ephemeris.py` stays byte-identical; the old query functions stay, deprecated, under the lint ratchet.
 - (b) L0 pin: same-PR transparent re-pin, PR body states exactly "exactly one L0 digest moved (bg_ephemeris), other 39 byte-identical" with the before/after inventory sha; cite decisions N-68/N-70 in `DECISIONS.jsonl` if a test or doc needs a ratification record.
-- (c) Migration numbers: 1225 = new unique index `(date, body, ayanamsha_id, node_mode) NULLS NOT DISTINCT` (step 0; D6 owner path if `amjis_app` is not the owner: the table is owned by `amjis_app`, read 2026-10-02, so the migration path applies once the owner's hold lifts); 1226 = replacement integrity contract + the append-only output-digest spec row; 1227 = drop of the old three-column constraint (step 2, at SS's release only). Files stay unwritten until the owner's line lifts the hold; intent documents meanwhile.
+- (c) Migration numbers (renumbered 2026-10-02 by SS, formerly 1225/1226/1227; Pravāha holds 1220 and 1225): 1227 = new unique index `(date, body, ayanamsha_id, node_mode) NULLS NOT DISTINCT` (step 0; D6 owner path if `amjis_app` is not the owner: the table is owned by `amjis_app`, read 2026-10-02, so the migration path applies once the owner's hold lifts); 1228 = replacement integrity contract + the append-only output-digest spec row; 1250 = drop of the old three-column constraint (step 2, at SS's release only). Files stay unwritten until the owner's line lifts the hold; intent documents meanwhile.
 - (d) Rehearsal on a disposable Postgres with the real .se1 corpus approved (no production access); measure wall time (plan substeps per decade if above about 10 minutes) and non-mean digest equality.
 - Also: the latent NULL-`node_mode` INSERT defect is fixed in the same writer change, with a test; the lint is step 0 with the index; `get_av_transit_gating` free-text planet gets a guard or pin in step 1.
 - Priority: not on the J1 critical path and must not delay S-L1; lane order is the S-L1 mandatory set and the merge-train reviews first.
