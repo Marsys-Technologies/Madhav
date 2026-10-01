@@ -7,115 +7,276 @@
  * `apply_haranas=False` (ga_ayurdaya_writer.py) — they are UNREDUCED BASE FIGURES: the
  * classical reductive haranas are not applied. A bare "98.75 years" served with no caveat reads
  * as a lifespan figure, which the MACRO_PLAN Ethical Framework (probabilistic, calibrated, not
- * fortune-telling; health/longevity disclosure tiers) forbids. The one honest disclosure that
- * already existed (`harana_status`, buried in fact_value_jsonb and promoted to a top-level field
- * by get_ayurdaya) named the deferral but not the consequence for the figure itself.
+ * fortune-telling; health/longevity disclosure tiers) forbids.
  *
  * This module is the SINGLE source of the machine-readable fields + plain-language caveat, shared
- * by every served surface that can emit ayurdaya year figures (get_ayurdaya; chart_facts_query when
- * it serves fact_category='ayurdaya'), so the wording and the detector cannot drift apart.
+ * by every served surface that can emit ayurdaya year figures: get_ayurdaya, chart_facts_query,
+ * query_signals (the L2 `ayurdaya:*` MSR signals), resolve_metric, and — as a safety net for the
+ * generic `categories`-taking tools — a registry-level post-processor (see registry/index.ts).
  *
- * §N.7 item 4 / §N.8 (earned signal): `reductions_applied:false` is derived from the served rows'
- * own `harana_status`, never hardcoded. If a served total_years row carries a harana_status this
- * module does not recognise as "base only" (or none at all), the figure is NOT labelled
- * `unreduced_base`: it is `reduction_status_unverified` with `reductions_applied:null` — an honest
- * null beats an invented judgment (§N.7 item 6). Pages that carry only the per-graha contribution
- * rows / applicable_method row (no total_years row to read a status from) are labelled from the
- * writer's single computation mode (base-only), which is the only mode that has ever produced them.
+ * §N.7 item 4 / §N.8 (earned signal): a row is labelled `unreduced_base` / `reductions_applied:false`
+ * ONLY when a harana_status this module recognises as "base only" was actually read for the figure:
+ *   - a `total_years` row: its OWN harana_status;
+ *   - a `<method>_contribution_years` row: the harana_status of the SAME method's total on the same
+ *     page / ayanamsha (a contribution is a component of that total);
+ *   - the `applicable_method` row (which carries all three raw totals): every method it names must
+ *     have a confirmed total on the page.
+ * Anything else — an unknown/missing status, a contribution-only or applicable_method-only page with
+ * no total to read a status from — is `reduction_status_unverified` with `reductions_applied:null`:
+ * an honest null beats an invented judgment (§N.7 item 6). Statuses are applied PER ROW; the page-level
+ * summary is `unreduced_base` only if every year row is confirmed, `reduction_status_unverified` if
+ * none is, and `mixed_reduction_status` otherwise (see `figure_counts`).
  */
 import { judgmentFlag, type JudgmentFlag } from '../../../envelope'
 
 /** `figure_kind` for figures confirmed to be the unreduced base computation. */
 export const AYURDAYA_FIGURE_KIND_UNREDUCED_BASE = 'unreduced_base' as const
-/** `figure_kind` when a served total's harana (reduction) status could not be confirmed. */
+/** `figure_kind` when a served figure's harana (reduction) status could not be confirmed. */
 export const AYURDAYA_FIGURE_KIND_STATUS_UNVERIFIED = 'reduction_status_unverified' as const
+/** Page-level only: some rows confirmed unreduced, some unconfirmed (see per-row figure_kind). */
+export const AYURDAYA_FIGURE_KIND_MIXED = 'mixed_reduction_status' as const
 
 /** Plain-language caveat served with every unreduced base figure. */
 export const AYURDAYA_UNREDUCED_BASE_CAVEAT =
   'Unreduced base figure from the classical pinda/amsa/nisarga computation; no reductions (harana) are applied; not a prediction of lifespan.'
 
-/** Caveat when the reduction status of a served total could not be confirmed from its own row. */
+/** Caveat when the reduction status of a served figure could not be confirmed from its own data. */
 export const AYURDAYA_STATUS_UNVERIFIED_CAVEAT =
   'Classical pinda/amsa/nisarga figure whose harana (reduction) status could not be confirmed from the served row; do not read it as a reduced or final figure; not a prediction of lifespan.'
+
+/** Caveat for a page whose rows differ in confirmed status. */
+export const AYURDAYA_MIXED_CAVEAT =
+  'Classical pinda/amsa/nisarga figures: some are confirmed unreduced base figures (no reductions (harana) applied) and some have a harana (reduction) status that could not be confirmed; read each row\'s figure_kind; none is a reduced or final figure; not a prediction of lifespan.'
 
 /** harana_status values the writer emits for "base ayus only, reductive haranas not applied". */
 const UNREDUCED_BASE_HARANA_STATUSES: ReadonlySet<string> = new Set(['base_only_haranas_deferred_to_w3'])
 
-export interface AyurdayaFigureDisclosure {
-  figure_kind: typeof AYURDAYA_FIGURE_KIND_UNREDUCED_BASE | typeof AYURDAYA_FIGURE_KIND_STATUS_UNVERIFIED
-  /** false = confirmed unreduced base; null = could not be confirmed (never `true` here). */
-  reductions_applied: false | null
-  caveat: string
-  judgment_flag: JudgmentFlag
-}
+const ALL_METHODS: readonly string[] = ['pindayu', 'amsayu', 'nisargayu']
 
 type Row = Record<string, unknown>
+
+export type AyurdayaRowFigureKind = typeof AYURDAYA_FIGURE_KIND_UNREDUCED_BASE | typeof AYURDAYA_FIGURE_KIND_STATUS_UNVERIFIED
+
+export interface AyurdayaRowFigure {
+  figure_kind: AyurdayaRowFigureKind
+  /** false = confirmed unreduced base; null = could not be confirmed (never `true`). */
+  reductions_applied: false | null
+}
+
+export interface AyurdayaFigureDisclosure {
+  figure_kind: AyurdayaRowFigureKind | typeof AYURDAYA_FIGURE_KIND_MIXED
+  reductions_applied: false | null
+  caveat: string
+  figure_counts: { unreduced_base: number; reduction_status_unverified: number }
+  judgment_flag: JudgmentFlag
+  /** Per-row figure, keyed by the very row object that was passed in. */
+  row_figures: Map<Row, AyurdayaRowFigure>
+}
+
+export interface AyurdayaDeriveOptions {
+  /**
+   * Treat a fact-shaped row with NO fact_category as ayurdaya. get_ayurdaya's SELECT omits
+   * fact_category because its WHERE already pins it; every other surface leaves this false.
+   */
+  assumeAyurdayaCategory?: boolean
+}
+
+// ── Row normalisation (fact-shaped chart_facts rows AND L2 `ayurdaya:*` MSR signal rows) ──────────
+
+interface NormRow {
+  key: 'total_years' | 'applicable_method' | 'contribution'
+  method: string | null
+  ayanamsha: string
+  status: string | null
+  /** applicable_method only: the methods its jsonb totals name (null = unknown → all three). */
+  totalsMethods: string[] | null
+}
+
+/** jsonb may arrive as an object or (driver/transport dependent) as a JSON string. */
+function jsonbObject(v: unknown): Record<string, unknown> | null {
+  if (v && typeof v === 'object' && !Array.isArray(v)) return v as Record<string, unknown>
+  if (typeof v === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(v)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as Record<string, unknown>
+    } catch { /* not JSON → no object */ }
+  }
+  return null
+}
+
+function keyKind(key: string): NormRow['key'] | null {
+  if (key === 'total_years') return 'total_years'
+  if (key === 'applicable_method') return 'applicable_method'
+  if (key.endsWith('_contribution_years')) return 'contribution'
+  return null
+}
+
+function methodOf(key: string, subject: unknown, jsonb: Record<string, unknown> | null): string | null {
+  const fromJsonb = jsonb?.['method']
+  if (typeof fromJsonb === 'string' && fromJsonb) return fromJsonb.toLowerCase()
+  if (key.endsWith('_contribution_years')) return key.slice(0, key.indexOf('_')).toLowerCase()
+  if (key === 'total_years' && typeof subject === 'string' && subject) return subject.toLowerCase()
+  return null
+}
+
+function totalsMethodsOf(jsonb: Record<string, unknown> | null): string[] | null {
+  const totals = jsonb?.['totals']
+  if (totals && typeof totals === 'object' && !Array.isArray(totals)) {
+    const names = Object.keys(totals as Record<string, unknown>).map(k => k.toLowerCase())
+    return names.length > 0 ? names : null
+  }
+  return null
+}
+
+/**
+ * Normalise a fact-shaped or signal-shaped row; null if it is not an ayurdaya year-bearing row.
+ *  - fact shape  : fact_category (when present it MUST be 'ayurdaya'), fact_key, fact_value_jsonb.
+ *  - signal shape: signal_type_id 'ayurdaya:<fact_key>' (configuration_jsonb carries fact_key /
+ *                  harana_status / method), or — for a trimmed projection that dropped those columns —
+ *                  a summary text starting 'category=ayurdaya | key=<fact_key> | ... harana_status=…'.
+ */
+function normalizeAyurdayaRow(row: Row, assumeCategory: boolean): NormRow | null {
+  const ayanamsha = typeof row['ayanamsha_id'] === 'string' ? row['ayanamsha_id'] : ''
+  const category = row['fact_category']
+  const hasCategory = category !== undefined && category !== null
+
+  // fact shape
+  if (hasCategory || (assumeCategory && row['fact_key'] !== undefined)) {
+    if (hasCategory && category !== 'ayurdaya') return null
+    const key = String(row['fact_key'] ?? '')
+    const kind = keyKind(key)
+    if (!kind) return null
+    const jsonb = jsonbObject(row['fact_value_jsonb'])
+    const status = typeof jsonb?.['harana_status'] === 'string' ? jsonb['harana_status'] : null
+    return { key: kind, method: methodOf(key, row['fact_subject'], jsonb), ayanamsha, status, totalsMethods: totalsMethodsOf(jsonb) }
+  }
+
+  // signal shape — signal_type_id is the clean detector
+  const typeId = row['signal_type_id']
+  if (typeof typeId === 'string' && typeId.startsWith('ayurdaya:')) {
+    const key = typeId.slice('ayurdaya:'.length)
+    const kind = keyKind(key)
+    if (!kind) return null
+    const cfg = jsonbObject(row['configuration_jsonb'])
+    const status = typeof cfg?.['harana_status'] === 'string' ? cfg['harana_status'] : null
+    return { key: kind, method: methodOf(key, null, cfg), ayanamsha, status, totalsMethods: totalsMethodsOf(cfg) }
+  }
+
+  // signal shape — text fallback (summary carries `category=ayurdaya | key=… | harana_status=…`)
+  const text = typeof row['signal_summary_text'] === 'string' ? row['signal_summary_text']
+    : typeof row['summary'] === 'string' ? row['summary'] : null
+  if (text && text.startsWith('category=ayurdaya')) {
+    const key = /\bkey=([A-Za-z0-9_]+)/.exec(text)?.[1] ?? ''
+    const kind = keyKind(key)
+    if (!kind) return null
+    const status = /\bharana_status=([A-Za-z0-9_]+)/.exec(text)?.[1] ?? null
+    const method = /\bmethod=([A-Za-z]+)/.exec(text)?.[1]?.toLowerCase() ?? methodOf(key, null, null)
+    return { key: kind, method, ayanamsha, status, totalsMethods: null }
+  }
+  return null
+}
 
 /**
  * True iff `row` carries an Āyurdāya year figure: a method total (`total_years`), a per-graha
  * contribution (`<method>_contribution_years`), or the applicable_method row (whose jsonb carries
- * all three raw totals). When the row names its fact_category it must be 'ayurdaya' — `total_years`
- * exists under other categories (dashas etc.). get_ayurdaya's SELECT omits fact_category (its WHERE
- * already pins it), so an absent category is accepted.
+ * all three raw totals) — in either chart_facts shape or L2 `ayurdaya:*` signal shape.
  */
-export function isAyurdayaYearsRow(row: Row): boolean {
-  const category = row['fact_category']
-  if (category !== undefined && category !== null && category !== 'ayurdaya') return false
-  const key = String(row['fact_key'] ?? '')
-  return key === 'total_years' || key === 'applicable_method' || key.endsWith('_contribution_years')
+export function isAyurdayaYearsRow(row: Row, opts: AyurdayaDeriveOptions = {}): boolean {
+  return normalizeAyurdayaRow(row, opts.assumeAyurdayaCategory === true) !== null
 }
 
-function haranaStatusOf(row: Row): string | null {
-  const jsonb = row['fact_value_jsonb'] as { harana_status?: unknown } | null | undefined
-  return typeof jsonb?.harana_status === 'string' ? jsonb.harana_status : null
+function isConfirmed(status: string | null): boolean {
+  return status !== null && UNREDUCED_BASE_HARANA_STATUSES.has(status)
 }
 
 /**
- * Derive the disclosure for a served page. Returns null when the page carries no Āyurdāya year
+ * Derive the disclosure for a served set of rows. Returns null when the rows carry no Āyurdāya year
  * figure (nothing to caveat; never fabricated for a page that does not carry one).
  */
-export function deriveAyurdayaFigureDisclosure(rows: readonly Row[]): AyurdayaFigureDisclosure | null {
-  const yearRows = rows.filter(isAyurdayaYearsRow)
-  if (yearRows.length === 0) return null
+export function deriveAyurdayaFigureDisclosure(
+  rows: readonly Row[],
+  opts: AyurdayaDeriveOptions = {},
+): AyurdayaFigureDisclosure | null {
+  const norm: Array<[Row, NormRow]> = []
+  for (const r of rows) {
+    const n = normalizeAyurdayaRow(r, opts.assumeAyurdayaCategory === true)
+    if (n) norm.push([r, n])
+  }
+  if (norm.length === 0) return null
 
-  const totalRows = yearRows.filter(r => r['fact_key'] === 'total_years')
-  const unconfirmed = totalRows.some(r => {
-    const status = haranaStatusOf(r)
-    return status === null || !UNREDUCED_BASE_HARANA_STATUSES.has(status)
-  })
+  // Confirmed-ness of each (ayanamsha, method) total — every total row for that key must be confirmed.
+  const totalConfirmed = new Map<string, boolean>()
+  for (const [, n] of norm) {
+    if (n.key !== 'total_years' || !n.method) continue
+    const k = `${n.ayanamsha}|${n.method}`
+    totalConfirmed.set(k, (totalConfirmed.get(k) ?? true) && isConfirmed(n.status))
+  }
 
-  if (unconfirmed) {
+  const rowFigures = new Map<Row, AyurdayaRowFigure>()
+  let unreduced = 0
+  let unverified = 0
+  for (const [row, n] of norm) {
+    let confirmed: boolean
+    if (n.key === 'total_years') {
+      confirmed = isConfirmed(n.status)
+    } else if (n.key === 'contribution') {
+      confirmed = n.method !== null && totalConfirmed.get(`${n.ayanamsha}|${n.method}`) === true
+    } else {
+      const methods = n.totalsMethods ?? ALL_METHODS
+      confirmed = methods.every(m => totalConfirmed.get(`${n.ayanamsha}|${m}`) === true)
+    }
+    rowFigures.set(row, confirmed
+      ? { figure_kind: AYURDAYA_FIGURE_KIND_UNREDUCED_BASE, reductions_applied: false }
+      : { figure_kind: AYURDAYA_FIGURE_KIND_STATUS_UNVERIFIED, reductions_applied: null })
+    if (confirmed) unreduced++; else unverified++
+  }
+
+  const figure_counts = { unreduced_base: unreduced, reduction_status_unverified: unverified }
+  if (unverified === 0) {
     return {
-      figure_kind: AYURDAYA_FIGURE_KIND_STATUS_UNVERIFIED,
-      reductions_applied: null,
-      caveat: AYURDAYA_STATUS_UNVERIFIED_CAVEAT,
-      judgment_flag: judgmentFlag('ayurdaya_unreduced_base_figures', AYURDAYA_STATUS_UNVERIFIED_CAVEAT, 'warning'),
+      figure_kind: AYURDAYA_FIGURE_KIND_UNREDUCED_BASE, reductions_applied: false, caveat: AYURDAYA_UNREDUCED_BASE_CAVEAT,
+      figure_counts, row_figures: rowFigures,
+      judgment_flag: judgmentFlag('ayurdaya_unreduced_base_figures', AYURDAYA_UNREDUCED_BASE_CAVEAT, 'info'),
     }
   }
+  const mixed = unreduced > 0
+  const caveat = mixed ? AYURDAYA_MIXED_CAVEAT : AYURDAYA_STATUS_UNVERIFIED_CAVEAT
   return {
-    figure_kind: AYURDAYA_FIGURE_KIND_UNREDUCED_BASE,
-    reductions_applied: false,
-    caveat: AYURDAYA_UNREDUCED_BASE_CAVEAT,
-    judgment_flag: judgmentFlag('ayurdaya_unreduced_base_figures', AYURDAYA_UNREDUCED_BASE_CAVEAT, 'info'),
+    figure_kind: mixed ? AYURDAYA_FIGURE_KIND_MIXED : AYURDAYA_FIGURE_KIND_STATUS_UNVERIFIED,
+    reductions_applied: null, caveat, figure_counts, row_figures: rowFigures,
+    judgment_flag: judgmentFlag('ayurdaya_unreduced_base_figures', caveat, 'warning'),
   }
 }
 
 /**
- * Annotate (non-mutating) every year-bearing row with `figure_kind` + `reductions_applied`.
- * Only adds keys — every stored value (fact_value_num, fact_value_text, fact_value_jsonb) is
- * passed through untouched. Rows with no year figure (e.g. maraka_grahas) are returned as-is.
+ * Annotate (non-mutating) every year-bearing row with its OWN `figure_kind` + `reductions_applied`.
+ * Only adds keys — every stored value (fact_value_num, fact_value_text, fact_value_jsonb) is passed
+ * through untouched. Rows with no year figure (e.g. maraka_grahas) are returned as-is.
  */
 export function annotateAyurdayaYearRows(rows: readonly Row[], disclosure: AyurdayaFigureDisclosure | null): Row[] {
   if (!disclosure) return [...rows]
-  return rows.map(r => (isAyurdayaYearsRow(r)
-    ? { ...r, figure_kind: disclosure.figure_kind, reductions_applied: disclosure.reductions_applied }
-    : r))
+  return rows.map(r => {
+    const f = disclosure.row_figures.get(r)
+    return f ? { ...r, figure_kind: f.figure_kind, reductions_applied: f.reductions_applied } : r
+  })
+}
+
+/** The nested, machine-readable disclosure object served by the generic (non-flat) surfaces. */
+export function ayurdayaDisclosureObject(disclosure: AyurdayaFigureDisclosure): Record<string, unknown> {
+  return {
+    figure_kind: disclosure.figure_kind,
+    reductions_applied: disclosure.reductions_applied,
+    caveat: disclosure.caveat,
+    figure_counts: disclosure.figure_counts,
+    applies_to: 'ayurdaya rows/signals with fact_key total_years / *_contribution_years / applicable_method; each carries its own figure_kind',
+  }
 }
 
 /**
- * chart_facts_query adapter: when the served rows carry Āyurdāya year figures, add a nested
- * `ayurdaya_figure_disclosure` object and a content-level `judgment_flags` entry. Returns the
- * result unchanged (same reference) otherwise, so every non-ayurdaya response is byte-identical.
+ * chart_facts_query adapter: when the served rows carry Āyurdāya year figures, return a result whose
+ * content starts with a nested `ayurdaya_figure_disclosure` object and a `judgment_flags` entry
+ * (placed FIRST so a tail-clipping bundler cannot drop them). Returns the same reference unchanged
+ * otherwise, so every non-ayurdaya response is byte-identical.
  */
 export function withAyurdayaFigureDisclosure<T extends { content: unknown; is_error: boolean }>(
   result: T,
@@ -123,14 +284,69 @@ export function withAyurdayaFigureDisclosure<T extends { content: unknown; is_er
 ): T {
   const disclosure = deriveAyurdayaFigureDisclosure(servedRows)
   if (!disclosure || !result.content || typeof result.content !== 'object' || Array.isArray(result.content)) return result
-  const content = result.content as Record<string, unknown>
-  const flags = Array.isArray(content['judgment_flags']) ? (content['judgment_flags'] as unknown[]) : []
-  content['judgment_flags'] = [...flags, disclosure.judgment_flag]
-  content['ayurdaya_figure_disclosure'] = {
-    figure_kind: disclosure.figure_kind,
-    reductions_applied: disclosure.reductions_applied,
-    caveat: disclosure.caveat,
-    applies_to: "rows with fact_category='ayurdaya' and fact_key total_years / *_contribution_years / applicable_method",
+  const { judgment_flags: priorFlags, ...rest } = result.content as Record<string, unknown>
+  const flags = Array.isArray(priorFlags) ? priorFlags : []
+  return {
+    ...result,
+    content: {
+      ayurdaya_figure_disclosure: ayurdayaDisclosureObject(disclosure),
+      judgment_flags: [...flags, disclosure.judgment_flag],
+      ...rest,
+    },
   }
-  return result
+}
+
+// ── Registry-level safety net (generic `categories`-taking tools, assess_*, bundles, …) ───────────
+
+const WALK_MAX_DEPTH = 8
+const WALK_MAX_NODES = 250_000
+
+/** Collect every ayurdaya year-bearing object reachable (bounded) inside `content`. */
+function collectAyurdayaRows(content: unknown): Row[] {
+  const found: Row[] = []
+  let nodes = 0
+  const walk = (v: unknown, depth: number): void => {
+    if (!v || typeof v !== 'object' || depth > WALK_MAX_DEPTH || nodes > WALK_MAX_NODES) return
+    nodes++
+    if (Array.isArray(v)) { for (const x of v) walk(x, depth + 1); return }
+    const o = v as Row
+    if (normalizeAyurdayaRow(o, false)) found.push(o)
+    for (const k of Object.keys(o)) walk(o[k], depth + 1)
+  }
+  walk(content, 0)
+  return found
+}
+
+/**
+ * Post-process a capability result: if ANY ayurdaya year row/signal is reachable inside it and the
+ * result does not already carry the disclosure (get_ayurdaya / chart_facts_query / query_signals set
+ * their own), annotate those rows IN PLACE with their own figure_kind/reductions_applied, prepend the
+ * nested disclosure to content, and append the closed-vocabulary flag to the result's judgment_flags.
+ * Never throws; never touches a non-ayurdaya result (same reference returned).
+ */
+export function postProcessAyurdayaDisclosure<T>(result: T): T {
+  try {
+    if (!result || typeof result !== 'object') return result
+    const r = result as unknown as { content?: unknown; is_error?: unknown; judgment_flags?: unknown }
+    if (r.is_error === true) return result
+    const content = r.content
+    if (!content || typeof content !== 'object' || Array.isArray(content)) return result
+    const c = content as Row
+    if (c['ayurdaya_figure_disclosure'] !== undefined || c['figure_kind'] !== undefined) return result
+    const rows = collectAyurdayaRows(c)
+    const disclosure = deriveAyurdayaFigureDisclosure(rows)
+    if (!disclosure) return result
+    for (const row of rows) {
+      const f = disclosure.row_figures.get(row)
+      if (f) { row['figure_kind'] = f.figure_kind; row['reductions_applied'] = f.reductions_applied }
+    }
+    const priorFlags = Array.isArray(r.judgment_flags) ? r.judgment_flags : []
+    return {
+      ...(result as object),
+      content: { ayurdaya_figure_disclosure: ayurdayaDisclosureObject(disclosure), ...c },
+      judgment_flags: [...priorFlags, disclosure.judgment_flag],
+    } as T
+  } catch {
+    return result
+  }
 }

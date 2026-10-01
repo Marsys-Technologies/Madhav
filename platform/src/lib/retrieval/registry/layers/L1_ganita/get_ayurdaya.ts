@@ -108,10 +108,11 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
           if (jsonb?.harana_status) haranaStatuses.add(jsonb.harana_status)
         }
       }
-      const unreduced = deriveAyurdayaFigureDisclosure(rowsRes.rows) // SS N-62 Q10 (see ayurdaya_unreduced_base.ts)
+      const unreduced = deriveAyurdayaFigureDisclosure(rowsRes.rows, { assumeAyurdayaCategory: true }) // SS N-62 Q10 (see ayurdaya_unreduced_base.ts)
       return {
         content: {
           chart_id,
+          ...(unreduced ? { figure_kind: unreduced.figure_kind, reductions_applied: unreduced.reductions_applied, caveat: unreduced.caveat, figure_counts: unreduced.figure_counts } : {}),
           rows: annotateAyurdayaYearRows(rowsRes.rows, unreduced),
           count: rowsRes.rows.length,
           total_matching,
@@ -121,7 +122,6 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
             ? { empty_reason: `No ayurdaya (longevity) facts for chart ${chart_id}${ayanamsha_id ? ` at ayanamsha '${ayanamsha_id}'` : ''}${method ? ` for method '${method}'` : ''}.` }
             : {}),
           ...(haranaStatuses.size > 0 ? { harana_status: haranaStatuses.size === 1 ? [...haranaStatuses][0] : [...haranaStatuses] } : {}),
-          ...(unreduced ? { figure_kind: unreduced.figure_kind, reductions_applied: unreduced.reductions_applied, caveat: unreduced.caveat } : {}),
           disclaimer: 'NOT a death prediction — classical Āyurdāya longevity-band computation only.',
           note: 'fact_value_num = total_years for the method (reduction status: see figure_kind/caveat); fact_value_text = longevity band (alpayu/madhyayu/purnayu). fact_value_jsonb carries method-specific detail (per_graha, lagna_years, maraka significators, applicable-method rule) — see harana_status for the reductive-haranas disclosure.',
           provenance: { tables: ['chart_facts'], fact_category: 'ayurdaya' },
