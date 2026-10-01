@@ -761,3 +761,152 @@ class TestArudhaExceptionM16:
         rows = w._build_arudha_rows(all_longs, "test-chart", "lahiri_chitrapaksha", "test-build", "test-eng")
         a2_sign = next(r for r in rows if r["fact_subject"] == "ARUDHA_A2" and r["fact_key"] == "sign")
         assert a2_sign["fact_value_text"] == "Aquarius"
+
+
+# ── Karaka roles golden (TI-l1-karaka-roles-001) ──────────────────────────────
+# Canonical chart 482012f1, Lahiri: sidereal longitudes of the 8 grahas as stored
+# in L1 (karaka_chara_position.longitude_sidereal). Lagna is not part of the
+# role ordering; any Aries value serves.
+_CANONICAL_LAHIRI_LONGS = {
+    "SUN": 291.962617, "MOON": 327.055230, "MAR": 198.519188, "MER": 270.838754,
+    "JUP": 249.787497, "VEN": 259.172696, "SAT": 202.431986,
+    "RAH_MEAN": 49.033044, "LAGNA": 5.0,
+}
+
+_EXPECTED_KN_RAO_8 = {   # rank -> (subject, graha)
+    1: ("ATMAKARAKA", "Moon"),
+    2: ("AMATYAKARAKA", "Saturn"),
+    3: ("BHRATRIKARAKA", "Sun"),
+    4: ("MATRIKARAKA", "Venus"),
+    5: ("PITRIKARAKA", "Mars"),
+    6: ("PUTRAKARAKA", "Rahu"),
+    7: ("GNATIKARAKA", "Jupiter"),
+    8: ("DARAKARAKA", "Mercury"),
+}
+_EXPECTED_PARASHARI_7 = {
+    1: ("ATMAKARAKA", "Moon"),
+    2: ("AMATYAKARAKA", "Saturn"),
+    3: ("BHRATRIKARAKA", "Sun"),
+    4: ("MATRIKARAKA", "Venus"),
+    5: ("PUTRAKARAKA", "Mars"),
+    6: ("GNATIKARAKA", "Jupiter"),
+    7: ("DARAKARAKA", "Mercury"),
+}
+
+
+def _karaka_rows_by_school(rows: list[dict]) -> dict[str, list[dict]]:
+    out: dict[str, list[dict]] = {}
+    for r in rows:
+        assert r["fact_category"] == "karaka_chara_position"
+        out.setdefault(r["formula_id"], []).append(r)
+    return out
+
+
+class TestKarakaRolesGolden:
+    """Role labels per school, golden from the canonical chart's stored degrees."""
+
+    @pytest.fixture(scope="class")
+    def rows(self):
+        w = _import_writer()
+        return w._build_karaka_rows(
+            _CANONICAL_LAHIRI_LONGS, CANONICAL_CHART_ID, "lahiri_chitrapaksha",
+            BUILD_ID, "test-eng", "HALT.md",
+        )
+
+    @staticmethod
+    def _assignments(school_rows: list[dict]) -> dict[int, tuple[str, str]]:
+        rank_by_subject = {
+            r["fact_subject"]: int(r["fact_value_num"])
+            for r in school_rows if r["fact_key"] == "karaka_rank"
+        }
+        graha_by_subject = {
+            r["fact_subject"]: r["fact_value_text"]
+            for r in school_rows if r["fact_key"] == "assigned_graha"
+        }
+        return {rank: (subj, graha_by_subject[subj]) for subj, rank in rank_by_subject.items()}
+
+    def test_kn_rao_eight_scheme_roles(self, rows):
+        school_rows = _karaka_rows_by_school(rows)["kn_rao_rahu_included"]
+        assert self._assignments(school_rows) == _EXPECTED_KN_RAO_8
+
+    def test_parashari_seven_scheme_roles_unchanged(self, rows):
+        school_rows = _karaka_rows_by_school(rows)["parashari_rahu_excluded"]
+        assert self._assignments(school_rows) == _EXPECTED_PARASHARI_7
+
+    def test_no_strikaraka_subject_and_no_pitri_in_seven_scheme(self, rows):
+        by_school = _karaka_rows_by_school(rows)
+        for school_rows in by_school.values():
+            assert "STRIKARAKA" not in {r["fact_subject"] for r in school_rows}
+        assert "PITRIKARAKA" not in {
+            r["fact_subject"] for r in by_school["parashari_rahu_excluded"]
+        }
+
+    def test_strikaraka_alias_fact_key_on_darakaraka_kn_rao_only(self, rows):
+        by_school = _karaka_rows_by_school(rows)
+        alias_rows = [r for r in rows if r["fact_key"] == "strikaraka_alias"]
+        assert len(alias_rows) == 1
+        alias = alias_rows[0]
+        assert alias["fact_subject"] == "DARAKARAKA"
+        assert alias["formula_id"] == "kn_rao_rahu_included"
+        assert alias["fact_value_text"] == "STRIKARAKA"
+        # Same graha as the Darakaraka it labels: the alias adds no value of its own.
+        dara_graha = next(
+            r["fact_value_text"] for r in by_school["kn_rao_rahu_included"]
+            if r["fact_subject"] == "DARAKARAKA" and r["fact_key"] == "assigned_graha"
+        )
+        assert dara_graha == "Mercury"
+
+    def test_row_counts_and_no_numeric_drift(self, rows):
+        by_school = _karaka_rows_by_school(rows)
+        # 7 subjects x 7 keys (parashari); 8 x 7 + 1 alias (kn_rao)
+        assert len(by_school["parashari_rahu_excluded"]) == 7 * 7
+        assert len(by_school["kn_rao_rahu_included"]) == 8 * 7 + 1
+        # Rahu keeps its raw sidereal longitude and raw degree-in-sign; only the
+        # SORT key uses the reversed reckoning (30 - 19.033044 = 10.966956).
+        rahu = {
+            r["fact_key"]: r for r in by_school["kn_rao_rahu_included"]
+            if r["fact_subject"] == "PUTRAKARAKA"
+        }
+        assert rahu["longitude_sidereal"]["fact_value_num"] == pytest.approx(49.033044)
+        assert rahu["degree_in_sign"]["fact_value_num"] == pytest.approx(19.033044)
+        assert rahu["karaka_rank"]["fact_value_num"] == 6.0
+
+    def test_provenance_text_names_the_right_scheme(self, rows):
+        by_school = _karaka_rows_by_school(rows)
+        for r in by_school["parashari_rahu_excluded"]:
+            assert "7-karaka" in r["formula_provenance_text"]
+            assert "8-karaka" not in r["formula_provenance_text"]
+        for r in by_school["kn_rao_rahu_included"]:
+            assert "8-karaka" in r["formula_provenance_text"]
+
+    def test_ak_unchanged_for_karakamsa(self, rows):
+        """Rank-1 subject is ATMAKARAKA in both schools; karakamsa reads the Parashari AK."""
+        w = _import_writer()
+        km = w._build_karakamsa_rows(_CANONICAL_LAHIRI_LONGS, CANONICAL_CHART_ID,
+                                     "lahiri_chitrapaksha", BUILD_ID, "test-eng")
+        ak = next(r for r in km if r["fact_key"] == "atmakaraka_graha")
+        assert ak["fact_value_text"] == "Moon"
+        for school_rows in _karaka_rows_by_school(rows).values():
+            top = next(
+                r for r in school_rows
+                if r["fact_subject"] == "ATMAKARAKA" and r["fact_key"] == "assigned_graha"
+            )
+            assert top["fact_value_text"] == "Moon"
+
+    def test_schema_lists_emitted_subjects_and_alias_key(self, rows):
+        schema = json.loads(SCHEMA_PATH.read_text())
+        cat = _find_schema_category(schema, "karaka_chara_position")
+        emitted_subjects = {r["fact_subject"] for r in rows}
+        assert emitted_subjects == set(cat["applies_to_subjects"])
+        assert "strikaraka_alias" in cat["allowed_keys"]
+
+
+def _find_schema_category(node, name):
+    if isinstance(node, dict):
+        if name in node and isinstance(node[name], dict) and "allowed_keys" in node[name]:
+            return node[name]
+        for v in node.values():
+            found = _find_schema_category(v, name)
+            if found is not None:
+                return found
+    return None

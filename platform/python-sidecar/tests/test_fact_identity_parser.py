@@ -363,7 +363,9 @@ def test_known_special_points_are_identity_free_not_unparsed(subject):
 
 
 @pytest.mark.parametrize("subject", [
-    "ATMAKARAKA", "AMATYAKARAKA", "BHRATRIKARAKA", "DARAKARAKA", "STRIKARAKA",
+    "ATMAKARAKA", "AMATYAKARAKA", "BHRATRIKARAKA", "MATRIKARAKA", "PITRIKARAKA",
+    "PUTRAKARAKA", "GNATIKARAKA", "DARAKARAKA",
+    "STRIKARAKA",  # legacy subject on pre-rebuild rows; kept recognised during transition
 ])
 def test_karaka_roles_are_identity_free(subject):
     assert parse_fact_identity(subject, "graha", "karaka_chara_position") is None

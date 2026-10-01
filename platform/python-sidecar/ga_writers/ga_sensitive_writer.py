@@ -42,6 +42,15 @@ from pyjhora_adapter.version import ENGINE_VERSION
 from brahmagyan.graha_vocabulary import norm_graha
 from brahmagyan.verification_vocab import TWO_PASS_VERIFIED, UNVERIFIED_DEFAULT
 from ga_writers._idempotency import replace_prior_chart_facts
+from ga_writers._karaka_roles import (
+    KARAKA_ALIAS_FACT_KEY,
+    KARAKA_ALIAS_LABEL,
+    KARAKA_ALIAS_SUBJECT,
+    KARAKA_ROLES_7,
+    KARAKA_ROLES_8,
+    KARAKA_SCHOOL_KN_RAO,
+    KARAKA_SCHOOL_PARASHARI,
+)
 from ga_writers._telemetry import update_asset_throughput
 from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
@@ -1211,8 +1220,20 @@ def _build_karaka_rows(
     halt_log_path: str,
 ) -> list[dict[str, Any]]:
     """
-    Category 17: karaka_chara_position — 8-karaka system
-    Two schools: Parashari (Rahu excluded) + KN Rao (Rahu included, reverse-degree reckoning for Rahu)
+    Category 17: karaka_chara_position — Jaimini chara karakas, two schools.
+
+    * ``parashari_rahu_excluded`` — 7 grahas, ranks 1-7, roles
+      ATMA/AMATYA/BHRATRI/MATRI/PUTRA/GNATI/DARA (Matrikaraka doubles as Pitrikaraka).
+    * ``kn_rao_rahu_included`` — 8 grahas (Rahu reckoned by 30 - long%30), ranks 1-8,
+      roles ATMA/AMATYA/BHRATRI/MATRI/PITRI/PUTRA/GNATI/DARA (BPHS 32.13-17,
+      sourced_ocr_unverified; J1 print-edition check pending). The Strikaraka of
+      the 8-scheme is the Darakaraka under another name: it is emitted as a
+      ``strikaraka_alias`` fact_key on the DARAKARAKA subject (same graha), NOT as a
+      ninth subject row and NOT as a STRIKARAKA subject (SS ruling N-69).
+
+    Role lists live in ``ga_writers/_karaka_roles.py`` (shared with ga_vargas, which
+    READS the kn_rao assignments from here and never recomputes them).
+    The sort logic and every numeric value are unchanged.
     AK divergence → warning (non-fatal); both schools' rows emitted.
     """
     rows = []
@@ -1244,10 +1265,6 @@ def _build_karaka_rows(
         reverse=True,
     )
 
-    # 8 karakas: Atma, Amatya, Bhratri, Matri, Putra, Gnati, Dara, Stri
-    karaka_names = ["ATMAKARAKA","AMATYAKARAKA","BHRATRIKARAKA","MATRIKARAKA",
-                    "PUTRAKARAKA","GNATIKARAKA","DARAKARAKA","STRIKARAKA"]
-
     # AK divergence check — log as warning, do not halt.
     # Divergence between Parashari (Rahu-excluded) and KN Rao (Rahu-included) is
     # valid for charts where Rahu holds the highest degree in a sign; both schools'
@@ -1262,14 +1279,21 @@ def _build_karaka_rows(
         )
         logger.warning("[GA5] %s", msg)
 
-    # Emit both schools for all 8 karakas
-    for school, sorted_list, school_key in [
-        ("parashari_rahu_excluded", parashari_sorted[:8], "parashari_rahu_excluded"),
-        ("kn_rao_rahu_included", knrao_sorted[:8], "kn_rao_rahu_included"),
+    # Emit both schools. Role labels are per-school (the 7- and 8-schemes name the ranks
+    # differently); see ga_writers/_karaka_roles.py.
+    for school, sorted_list, school_key, karaka_names, scheme_text in [
+        (KARAKA_SCHOOL_PARASHARI, parashari_sorted, KARAKA_SCHOOL_PARASHARI, KARAKA_ROLES_7,
+         "Jaimini Sutram 7-karaka system"),
+        (KARAKA_SCHOOL_KN_RAO, knrao_sorted, KARAKA_SCHOOL_KN_RAO, KARAKA_ROLES_8,
+         "Jaimini Sutram 8-karaka system; role order per BPHS 32.13-17 "
+         "(sourced_ocr_unverified, print-edition check pending)"),
     ]:
+        if len(sorted_list) != len(karaka_names):
+            raise ValueError(
+                f"[GA5] karaka scheme/role-list size mismatch for {school_key}: "
+                f"{len(sorted_list)} grahas vs {len(karaka_names)} roles"
+            )
         for rank, (graha_name, graha_long) in enumerate(sorted_list, start=1):
-            if rank > 8:
-                break
             subj = karaka_names[rank - 1]
             deg_in_sign = _deg_in_sign(graha_long)
             sign, _, _ = _long_to_sign_deg(graha_long)
@@ -1284,7 +1308,7 @@ def _build_karaka_rows(
                 near_sign_boundary_flag=near_sign,
                 near_nakshatra_boundary_flag=near_nak,
                 vargottama_flag_at_point=varg,
-                formula_provenance_text=f"Jaimini Sutram 8-karaka system, {school} reckoning",
+                formula_provenance_text=f"{scheme_text}, {school} reckoning",
                 cross_ayanamsha_divergence_arcsec=0.0,
             )
 
@@ -1304,6 +1328,28 @@ def _build_karaka_rows(
                 _make_row("karaka_chara_position", subj, "house_d1",
                           float(house), None, None, chart_id, ayanamsha_id, build_id, eng_ver, **b_kwargs),
             ])
+
+            # STRIKARAKA alias (8-scheme only): the Darakaraka's other name, carried as a
+            # labelled fact_key on the DARAKARAKA subject — same graha, no ninth subject row.
+            # Tier: the alias is a pure label on the row just emitted above and carries
+            # the same default tier (TWO_PASS_VERIFIED via _make_row) as every other row in
+            # this builder; tests/test_ga5_writer.py::test_all_two_pass_verified requires
+            # zero single-pass rows. It adds no value of its own: the graha is the
+            # DARAKARAKA assigned_graha row's value.
+            if school_key == KARAKA_SCHOOL_KN_RAO and subj == KARAKA_ALIAS_SUBJECT:
+                alias_kwargs = {
+                    **b_kwargs,
+                    "formula_provenance_text": (
+                        "Strikaraka is an alias of the Darakaraka in the 8-karaka scheme "
+                        f"(same graha, {school} reckoning); BPHS 32.13-17 "
+                        "(sourced_ocr_unverified, print-edition check pending)"
+                    ),
+                }
+                rows.append(
+                    _make_row("karaka_chara_position", subj, KARAKA_ALIAS_FACT_KEY,
+                              None, KARAKA_ALIAS_LABEL, None,
+                              chart_id, ayanamsha_id, build_id, eng_ver, **alias_kwargs)
+                )
 
     return rows
 
