@@ -52,7 +52,13 @@ export const NIRMANA_ANALYSIS_LAYERS = ['L0', 'L1', 'L2', 'L3', 'L4', 'L5'] as c
  * manifest-vs-registry surface (candidate snapshot, denominator asserts) — one
  * TS definition, not a second copy free to drift from this one.
  */
-export const NIRMANA_SUPPORTING_WRITERS: ReadonlySet<string> = new Set(['bo_grounding'])
+export const NIRMANA_SUPPORTING_WRITERS: ReadonlySet<string> = new Set([
+  'bo_grounding',
+  // Pravāha A2.5 (steward-directed, PR #2799): candidate-only writer,
+  // is_active=false in the seed — never an elevation-denominator identity;
+  // flagged for native ruling in REVIEW_REQUEST_A2_5_V41_CANDIDATE_WRITER_v1_2 §3.
+  'ka_gochara_v4_41_candidate',
+])
 export type NirmanaAnalysisLayer = (typeof NIRMANA_ANALYSIS_LAYERS)[number]
 
 // A durable receipt identifier, not a SQL relation reference.  Keeps existing
