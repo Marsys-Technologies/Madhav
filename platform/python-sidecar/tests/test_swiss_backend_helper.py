@@ -299,21 +299,61 @@ print("RESULT:" + json.dumps(out))
     assert json.loads(_run_script(script, extra_env={})) == "refused"
 
 
-def test_jhora_reassert_is_inside_the_state_lock_with_the_import():
-    """Structural guard: the jhora imports and the re-assert share one
-    ``with SWISS_STATE_LOCK`` block (no window where another serialized caller can
-    observe the wheel directory)."""
+def test_jhora_import_never_takes_the_swiss_lock_and_uses_the_nowait_reassert():
+    """Structural guard against the lock-order deadlock: the module body must not
+    reference SWISS_STATE_LOCK (blocking) nor call ensure_swiss_backend(); it re-asserts
+    through the non-blocking, never-raising helper after the jhora imports."""
     tree = ast.parse((SIDECAR / "pyjhora_adapter" / "_jhora.py").read_text())
-    blocks = [
-        n for n in ast.walk(tree)
-        if isinstance(n, ast.With)
-        and any(isinstance(i.context_expr, ast.Name) and i.context_expr.id == "SWISS_STATE_LOCK"
-                for i in n.items)
-    ]
-    assert len(blocks) == 1
-    inner = ast.dump(blocks[0])
-    assert "'jhora.panchanga'" in inner and "'jhora.horoscope.chart'" in inner
-    assert "ensure_swiss_backend" in inner
+    names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+    assert "SWISS_STATE_LOCK" not in names and "ensure_swiss_backend" not in names
+    body_calls = [n.value.func.id for n in tree.body
+                  if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call)
+                  and isinstance(n.value.func, ast.Name)]
+    assert "reassert_swiss_backend_nowait" in body_calls
+
+
+def test_importing_pyjhora_adapter_with_an_unusable_path_does_not_break_registry_discovery(tmp_path):
+    """SE_EPHE_PATH set but wrong must LOG and continue at import (not take down
+    discover_all() for every writer); the fail-closed raise stays at use."""
+    script = """
+import json
+from pipeline.orchestrator.writers import WRITER_REGISTRY, discover_all
+discover_all()
+import panchang_engine.swiss_backend as ss
+try:
+    ss.ensure_swiss_backend()
+    use = "no-error"
+except ss.SwissBackendError:
+    use = "refused"
+print("RESULT:" + json.dumps([len(WRITER_REGISTRY), use]))
+"""
+    count, use = json.loads(_run_script(script, extra_env={"SE_EPHE_PATH": str(tmp_path / "missing")}))
+    assert count > 100 and use == "refused"
+
+
+def test_first_import_of_pyjhora_adapter_cannot_deadlock_against_the_swiss_lock():
+    """Lock-order inversion repro: thread A holds the Swiss lock and first-imports
+    pyjhora_adapter while thread B is already first-importing it.  A blocking Swiss-lock
+    wait inside the module body deadlocks; the no-wait re-assert must not."""
+    script = """
+import json, threading, time
+from panchang_engine.swiss_state import SWISS_STATE_LOCK
+started = threading.Event()
+def b():
+    started.set()
+    import pyjhora_adapter._jhora   # slow first import (holds the module import lock)
+def a():
+    started.wait()
+    time.sleep(0.3)                  # let B get inside the import first
+    with SWISS_STATE_LOCK:
+        import pyjhora_adapter._jhora
+tb, ta = threading.Thread(target=b), threading.Thread(target=a)
+tb.start(); ta.start()
+tb.join(90); ta.join(90)
+print("RESULT:" + json.dumps(not (tb.is_alive() or ta.is_alive())))
+"""
+    corpus = str(_CORPUS) if _CORPUS else "/nonexistent"
+    assert json.loads(_run_script(script, extra_env={"SE_EPHE_PATH": corpus})) is True
 
 
 # ── 4. threaded run, mixed callers ────────────────────────────────────────────
@@ -428,8 +468,10 @@ def test_ensure_does_not_touch_the_path_while_another_thread_holds_the_state_loc
 # ── 6. writer decorator: probe before, record after, fail closed ──────────────
 
 class _Result:
-    def __init__(self, notes: str = ""):
+    def __init__(self, notes: str = "", rows: int = 1):
         self.notes = notes
+        self.rows_inserted = rows
+        self.rows_updated = 0
 
 
 def test_decorator_refuses_to_run_the_body_when_unconfigured():
@@ -456,10 +498,20 @@ def test_decorator_appends_the_probed_backend_to_notes(hidden_env):
     @records_swiss_backend
     class Heavy:
         def run_substep(self, ctx, step):
-            return _Result("")
+            return _Result("", rows=3)
 
     assert Light().run(object()).notes == "chart_facts=12; ephemeris_backend=swieph"
     assert Heavy().run_substep(object(), "k").notes == "ephemeris_backend=swieph"
+
+
+@needs_corpus
+def test_decorator_does_not_claim_a_backend_on_a_noop_return(hidden_env):
+    @records_swiss_backend
+    class Noop:
+        def run(self, ctx):
+            return _Result("No convergence windows", rows=0)
+
+    assert Noop().run(object()).notes == "No convergence windows"
 
 
 @needs_corpus
@@ -483,11 +535,12 @@ def test_decorator_logs_the_probed_backend_because_notes_are_not_persisted(hidde
         asset_id = "ga_example"
 
         def run(self, ctx):
-            return _Result("")
+            return _Result("", rows=0)
 
     with caplog.at_level(logging.INFO, logger="panchang_engine.swiss_backend"):
         Writer().run(object())
-    assert any("ga_example ephemeris_backend=swieph" in r.getMessage() for r in caplog.records)
+    # logged even for a no-op (the log is the persistent trace; notes are in-memory only)
+    assert any("ga_example ephemeris_backend=swieph rows=0" in r.getMessage() for r in caplog.records)
 
 
 def test_probe_cli_fails_closed_and_reports_when_unconfigured(capsys):
@@ -506,20 +559,138 @@ def test_probe_cli_reports_swieph_and_the_pinned_digests(monkeypatch, capsys):
     assert all(f["pinned"] for f in report["files"].values())
 
 
-_DECORATED_ASSETS = {
-    "ga_positions", "ga_dashas", "ga_vargas", "ga_strength", "ga_structural",
-    "ga_tajaka", "ga_sensitive", "ga_nakshatra", "ga_panchanga", "ga_sade_sati",
-    "ph_muhurta", "ka_vighnakara", "ka_sangam", "ka_kshetra", "ka_tithi_pravesha",
+# Writers that directly import swisseph / panchang_engine / pyjhora_adapter / jhora but are NOT
+# decorated, each with the reason.  The test below DERIVES the importing set from the registry
+# (declared source files + the class's own file) so a future swisseph-computing writer cannot
+# silently escape: it must be decorated or added here with a reason.
+_EXEMPT = {
+    "bg_cohort": "L0: own fail-closed explicit-path backend check",
+    "bg_ephemeris": "L0: own fail-closed explicit-path backend check (verified in-run)",
+    "bg_muhurta_lattice": "L0: own fail-closed explicit-path backend check",
+    "bg_sky_calendar": "L0: own fail-closed explicit-path backend check",
+    "bg_parihara_rules": "reference data: reads panchang_engine.shastra_tables only, no ephemeris",
+    "ga_ayurdaya": "imports jhora const only; positions are read from L1 facts",
+    "ga_sensitive_degree": "imports jhora const only; positions are read from L1 facts",
+    "ga_condition": "imports pyjhora_adapter.version only; derives from stored facts",
+    "ka_gochara": "Pravaha-owned; kernel fails closed and records its backend",
+    "ka_gochara_v3_century_materialize": "Pravaha-owned; kernel fails closed and records its backend",
+    "ka_muhurta_seva": "self-test writer (rows=0, service_health only); its compute_panchang call fails closed",
+    "ph_rectification": "swe.houses ascendant only (no planetary ephemeris); backend-independent",
 }
 
 
-def test_every_swisseph_computing_writer_records_the_backend():
+def _directly_importing_assets() -> set[str]:
+    from pipeline.orchestrator.asset_runner import _writer_source_paths
     from pipeline.orchestrator.writers import WRITER_REGISTRY, discover_all
+    import inspect
 
     discover_all()
-    missing = sorted(a for a in _DECORATED_ASSETS
-                     if not getattr(WRITER_REGISTRY.get(a), "records_swiss_backend", False))
-    assert missing == []
+    roots = {"swisseph", "panchang_engine", "pyjhora_adapter", "jhora"}
+    found: set[str] = set()
+    for asset, cls in WRITER_REGISTRY.items():
+        files: set[Path] = set()
+        for raw in _writer_source_paths(asset):
+            p = Path(raw)
+            p = p if p.is_absolute() else SIDECAR.parents[1] / p
+            if p.is_file():
+                files.add(p)
+            elif p.is_dir():
+                files.update(x for x in p.rglob("*.py") if "tests" not in x.parts)
+        try:
+            files.add(Path(inspect.getfile(cls)))
+        except (TypeError, OSError):
+            pass
+        for f in files:
+            if not f.is_file():
+                continue
+            for node in ast.walk(ast.parse(f.read_text())):
+                if isinstance(node, ast.Import):
+                    mods = [a.name for a in node.names]
+                elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+                    mods = [node.module]
+                else:
+                    mods = []
+                if any(m.split(".")[0] in roots for m in mods):
+                    found.add(asset)
+    return found
+
+
+def test_every_swisseph_computing_writer_records_the_backend():
+    from pipeline.orchestrator.writers import WRITER_REGISTRY
+
+    importing = _directly_importing_assets()
+    assert importing, "derivation found nothing: the scan itself is broken"
+    undecorated = {a for a in importing if not getattr(WRITER_REGISTRY[a], "records_swiss_backend", False)}
+    assert undecorated == set(_EXEMPT), (
+        "swisseph-importing writers must be @records_swiss_backend or listed in _EXEMPT with a reason; "
+        f"unclassified={sorted(undecorated - set(_EXEMPT))} stale_exempt={sorted(set(_EXEMPT) - undecorated)}")
+
+
+# ── 6b. corpus window: never report swieph outside 1800-2400 ──────────────────
+
+JD_1750 = 2360386.0
+JD_2450 = 2616056.0
+
+
+def test_window_error_is_named_and_is_both_a_swiss_backend_and_an_out_of_range_error():
+    from panchang_engine import OutOfRangeError
+
+    assert issubclass(ss.OutOfCorpusRangeError, ss.SwissBackendError)
+    assert issubclass(ss.OutOfCorpusRangeError, OutOfRangeError)
+    assert ss.OutOfCorpusRangeError.code == "out_of_corpus_range"
+
+
+@pytest.mark.parametrize("jd", [JD_1750, JD_2450, 2378496.4, 2597641.6])
+def test_helpers_refuse_a_date_outside_the_window_before_any_configuration_check(jd):
+    # unset SE_EPHE_PATH: the window error still comes first and is the named one
+    with pytest.raises(ss.OutOfCorpusRangeError, match="out_of_corpus_range"):
+        ensure_swiss_backend(jd)
+    with pytest.raises(ss.OutOfCorpusRangeError, match="out_of_corpus_range"):
+        backend_name(jd)
+
+
+@needs_corpus
+def test_window_edges_are_inside_and_the_limit_the_guard_exists_for_is_real(hidden_env):
+    lo, hi = ss.SWIEPH_WINDOW_JD
+    assert ensure_swiss_backend(lo, hi, 2451545.0).name == "swieph"
+    assert backend_name(lo, hi) == "swieph"
+    # Why the guard exists (measured): the J2000 probe passes, yet outside the window the
+    # library computes with Moshier and says so only in the flag.
+    assert backend_name() == "swieph"
+    _x, retflag = swe.calc_ut(JD_1750, swe.MOON, swe.FLG_SWIEPH | swe.FLG_SPEED)
+    assert retflag & swe.FLG_MOSEPH
+
+
+@needs_corpus
+def test_panchang_entry_points_disclose_out_of_corpus_dates(hidden_env):
+    from panchang_engine import compute_panchang, panchanga_instant
+
+    for year in (1750, 2450):
+        with pytest.raises(ss.OutOfCorpusRangeError, match="out_of_corpus_range"):
+            compute_panchang(datetime.date(year, 6, 1), 20.27, 85.84, 330)
+        with pytest.raises(ss.OutOfCorpusRangeError, match="out_of_corpus_range"):
+            panchanga_instant(datetime.datetime(year, 6, 1, 10, 0), 20.27, 85.84, 330)
+
+
+@needs_corpus
+def test_decorator_checks_the_chart_lifetime_before_the_body_and_any_write(hidden_env):
+    ran: list[int] = []
+
+    @records_swiss_backend
+    class W:
+        def run(self, ctx):
+            ran.append(1)
+            return _Result("x")
+
+    class Ctx:
+        def __init__(self, iso):
+            self.config = {"birth_params": {"datetime_iso": iso}}
+
+    assert W().run(Ctx("1984-02-05T10:43:00")).notes.endswith("ephemeris_backend=swieph")
+    for iso in ("1790-01-01T00:00:00", "2290-01-01T00:00:00"):   # before 1800 / lifetime past 2400
+        with pytest.raises(ss.OutOfCorpusRangeError):
+            W().run(Ctx(iso))
+    assert ran == [1]            # the body ran only for the in-window chart
 
 
 # ── 7. no silent default-path reset reintroduced in the routed call sites ─────

@@ -35,6 +35,24 @@ precondition instead of ambient process state.
   set or is wrong, and make the backend recorded, not assumed.
 * Anything other than ``swieph`` raises ``SwissBackendError`` -- never a silent
   fallback.
+* CORPUS WINDOW (SS ruling): the pinned ``*_18.se1`` files cover 1800-01-01 to
+  2400-01-01 only; outside that window the C library silently computes with
+  Moshier even when the files are present (measured: Sun/Moon/Mars flag MOSEPH
+  from 1799-12-31 and from 2450).  The J2000 probe says nothing about other dates,
+  so every entry point that knows its dates passes them in
+  (``ensure_swiss_backend(jd, ...)`` / ``backend_name(jd, ...)``) and a jd outside
+  ``SWIEPH_WINDOW_JD`` raises ``OutOfCorpusRangeError`` (named ``out_of_corpus_range``,
+  a ``SwissBackendError`` AND a ``panchang_engine.OutOfRangeError`` so the existing
+  422 handlers disclose it) -- the helper never reports swieph for such a date.
+  Decorated writers check the chart's lifetime (birth .. birth + 125 years) before
+  their body runs, i.e. before any write.
+* Vocabulary note: ``pipeline/orchestrator/service_probes.py`` (L0 registry health
+  probe) uses the label ``swiss_ephemeris_file``, probes the Sun only and reads
+  ``SWE_EPHE_PATH``; this module uses ``swieph``, Sun + TRUE_NODE and
+  ``SE_EPHE_PATH``.  They are deliberately not merged here (editing
+  ``service_probes.py`` would move the probe digest and every L0/bg_* digest); with
+  ``semo`` missing the probe can pass while writers refuse -- the stricter result is
+  the one that gates writes.
 """
 from __future__ import annotations
 
@@ -47,6 +65,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, NamedTuple
 
+from .exceptions import OutOfRangeError
 from .swiss_state import serialized_swiss_state
 
 _log = logging.getLogger(__name__)
@@ -62,6 +81,10 @@ _PINNED_SHA256 = {
 SE_EPHE_PATH_ENV = "SE_EPHE_PATH"
 BACKEND_SWIEPH = "swieph"
 _PROBE_JD_J2000 = 2451545.0
+# JD of 1800-01-01 00:00 and 2400-01-01 00:00: the span of the pinned *_18.se1 files.
+SWIEPH_WINDOW_JD = (2378496.5, 2597641.5)
+# Writers' chart horizon (dashas 120y, ka_sangam 100y, ka_kshetra 100y, tithi-pravesha 120 rows).
+LIFETIME_HORIZON_YEARS = 125
 
 
 class SwissBackendError(RuntimeError):
@@ -70,6 +93,27 @@ class SwissBackendError(RuntimeError):
     Deliberately NOT a ``PanchangEngineError`` (those map to client errors):
     a missing/unusable ephemeris corpus is a server-side configuration fault.
     """
+
+
+class OutOfCorpusRangeError(SwissBackendError, OutOfRangeError):
+    """A requested date lies outside the pinned corpus window (``out_of_corpus_range``).
+
+    Also an ``OutOfRangeError`` so the routers' existing ``except (ValidationError,
+    OutOfRangeError)`` -> HTTP 422 handlers disclose it to clients.
+    """
+
+    code = "out_of_corpus_range"
+
+
+def _require_in_window(jds: tuple[float, ...]) -> None:
+    lo, hi = SWIEPH_WINDOW_JD
+    for jd in jds:
+        if not (lo <= float(jd) <= hi):
+            raise OutOfCorpusRangeError(
+                f"out_of_corpus_range: JD {float(jd):.1f} is outside the Swiss Ephemeris file "
+                f"window {lo}..{hi} (1800-01-01..2400-01-01); refusing to report swieph for it "
+                "(the library would silently use Moshier there)"
+            )
 
 
 class SwissBackend(NamedTuple):
@@ -105,15 +149,18 @@ def _observed_backend_name(swe: Any) -> str:
 
 
 @serialized_swiss_state
-def ensure_swiss_backend() -> SwissBackend:
+def ensure_swiss_backend(*jds: float) -> SwissBackend:
     """Point swisseph at the configured ``.se1`` corpus and verify it is serving.
 
     Reads ``SE_EPHE_PATH`` (required).  Raises ``SwissBackendError`` when the
-    variable is unset or the probe shows anything other than ``swieph``.
+    variable is unset or the probe shows anything other than ``swieph``, and
+    ``OutOfCorpusRangeError`` when any given Julian day lies outside the corpus
+    window (see the module docstring: the J2000 probe cannot vouch for other dates).
     Idempotent and cheap enough to call at every entry point; it deliberately
     re-sets the path every time because other code (PyJHora at import, legacy
     writers) mutates the same process-global.
     """
+    _require_in_window(jds)
     swe = _import_swisseph()
 
     path = os.environ.get(SE_EPHE_PATH_ENV, "").strip()
@@ -136,13 +183,17 @@ def ensure_swiss_backend() -> SwissBackend:
 
 
 @serialized_swiss_state
-def backend_name() -> str:
-    """Return ``'swieph'`` iff the process is CURRENTLY serving from ``.se1`` files.
+def backend_name(*jds: float) -> str:
+    """Return ``'swieph'`` iff the process is CURRENTLY serving from ``.se1`` files
+    for the given Julian days (none given = the J2000 probe only).
 
     A real probe of live state (it does not set the path), so a writer that
     records this in its notes is reporting what the process was doing, not what
-    it was configured to do.  Raises ``SwissBackendError`` otherwise.
+    it was configured to do.  Raises ``SwissBackendError`` otherwise and
+    ``OutOfCorpusRangeError`` for a date outside the corpus window -- it never
+    reports swieph for a date the library would serve with Moshier.
     """
+    _require_in_window(jds)
     swe = _import_swisseph()
 
     observed = _observed_backend_name(swe)
@@ -153,9 +204,63 @@ def backend_name() -> str:
     return BACKEND_SWIEPH
 
 
-def backend_note() -> str:
+def reassert_swiss_backend_nowait() -> bool:
+    """Best-effort re-assert for use at MODULE IMPORT time (``pyjhora_adapter._jhora``).
+
+    Never blocks and never raises: a module body runs while the interpreter holds the
+    module's import lock, so waiting for ``SWISS_STATE_LOCK`` there can deadlock with a
+    thread that holds the Swiss lock and is waiting to import the same module
+    (lock-order inversion).  If the lock is busy the re-assert is skipped (and logged);
+    that thread's own ``ensure_swiss_backend()`` at use re-pins the path.  Returns True
+    only if the path was re-asserted and probed as swieph.
+    """
+    if not os.environ.get(SE_EPHE_PATH_ENV, "").strip():
+        _log.warning(
+            "%s is not set: PyJHora left swisseph pointed at its .se1-free wheel directory "
+            "(Moshier fallback); writers and endpoints refuse to run until it is set",
+            SE_EPHE_PATH_ENV,
+        )
+        return False
+    from .swiss_state import SWISS_STATE_LOCK
+
+    if not SWISS_STATE_LOCK.acquire(blocking=False):
+        _log.warning("Swiss state lock busy at import time; deferring the .se1 re-assert to first use")
+        return False
+    try:
+        ensure_swiss_backend()
+        return True
+    except SwissBackendError as exc:
+        _log.error(
+            "%s is set but the Swiss file backend is not usable (%s); writers and endpoints "
+            "will refuse to run until it is fixed", SE_EPHE_PATH_ENV, exc,
+        )
+        return False
+    finally:
+        SWISS_STATE_LOCK.release()
+
+
+def backend_note(*jds: float) -> str:
     """Uniform ``WriterResult.notes`` fragment: ``ephemeris_backend=swieph``."""
-    return f"ephemeris_backend={backend_name()}"
+    return f"ephemeris_backend={backend_name(*jds)}"
+
+
+def _chart_lifetime_jds(ctx: Any) -> tuple[float, ...]:
+    """(birth_jd, birth_jd + LIFETIME_HORIZON_YEARS) from ``ctx.config['birth_params']``
+    when present and parseable, else ``()`` (a writer without birth params, or a unit
+    test's stub context, is simply not date-checked here)."""
+    try:
+        from datetime import datetime
+
+        bp = ctx.config.get("birth_params")
+        iso = bp["datetime_iso"] if isinstance(bp, dict) else None
+        if not isinstance(iso, str):
+            return ()
+        dt = datetime.fromisoformat(iso)
+    except Exception:
+        return ()
+    swe = _import_swisseph()
+    birth = swe.julday(dt.year, dt.month, dt.day, 12.0)
+    return (birth, birth + LIFETIME_HORIZON_YEARS * 365.25)
 
 
 def records_swiss_backend(cls):
@@ -173,15 +278,20 @@ def records_swiss_backend(cls):
     def wrap(method: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(method)
         def guarded(self: Any, ctx: Any, *args: Any, **kwargs: Any) -> Any:
-            ensure_swiss_backend()
+            # Before the body, hence before any write: backend + the chart's whole
+            # lifetime must be inside the corpus window.
+            jds = _chart_lifetime_jds(ctx)
+            ensure_swiss_backend(*jds)
             result = method(self, ctx, *args, **kwargs)
-            note = backend_note()
-            result.notes = f"{result.notes}; {note}" if result.notes else note
-            # The orchestrator does not persist WriterResult.notes, so the probed
-            # backend is also LOGGED (INFO, visible in the Cloud Run job logs) -- the
-            # observable trace that a decorated writer ran on swieph.
-            _log.info("%s ephemeris_backend=%s path=%s", getattr(cls, "asset_id", cls.__name__),
-                      BACKEND_SWIEPH, os.environ.get(SE_EPHE_PATH_ENV, ""))
+            note = backend_note(*jds)
+            rows = int(getattr(result, "rows_inserted", 0) or 0) + int(getattr(result, "rows_updated", 0) or 0)
+            # A no-op return (nothing computed or written) does not claim a backend in notes.
+            if rows > 0:
+                result.notes = f"{result.notes}; {note}" if result.notes else note
+            # WriterResult.notes is NOT persisted by the orchestrator (in-memory only), so the
+            # probed backend is also LOGGED at INFO (Cloud Run job logs): the observable trace.
+            _log.info("%s %s rows=%d path=%s", getattr(cls, "asset_id", cls.__name__), note, rows,
+                      os.environ.get(SE_EPHE_PATH_ENV, ""))
             return result
 
         return guarded

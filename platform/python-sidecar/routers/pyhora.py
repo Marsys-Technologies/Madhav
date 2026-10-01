@@ -13,7 +13,7 @@ import logging
 import os
 from typing import Any
 
-from panchang_engine.swiss_backend import ensure_swiss_backend
+from panchang_engine.swiss_backend import OutOfCorpusRangeError, ensure_swiss_backend
 from panchang_engine.swiss_state import serialized_swiss_state
 
 from fastapi import APIRouter, HTTPException
@@ -53,6 +53,13 @@ class PyHoraResponse(BaseModel):
     provenance: dict[str, Any]
 
 
+def _birth_jd(datetime_iso: str) -> float:
+    """Julian day (0h) of the ISO birth datetime's calendar date; ValueError if unparseable."""
+    from datetime import datetime
+
+    return datetime.fromisoformat(datetime_iso).toordinal() + 1721424.5
+
+
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @router.post("/compute", response_model=None)
@@ -71,8 +78,10 @@ async def compute_natal(birth_data: BirthData) -> dict[str, Any]:
         from pyjhora_adapter.compute import compute_chart
         from pyjhora_adapter.version import ENGINE_VERSION
 
-        # After the PyJHora import (which resets the swisseph path).
-        ensure_swiss_backend()
+        # After the PyJHora import (which resets the swisseph path).  The birth day is
+        # passed so a chart outside the corpus window (1800-2400) is a disclosed 422
+        # (out_of_corpus_range), never a silent Moshier chart.
+        ensure_swiss_backend(_birth_jd(birth_data.datetime_iso))
 
         inputs = {
             "datetime_iso": birth_data.datetime_iso,
@@ -108,6 +117,8 @@ async def compute_natal(birth_data: BirthData) -> dict[str, Any]:
             "provenance": provenance,
         }
 
+    except OutOfCorpusRangeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except ImportError as exc:
         logger.error("[pyhora] PyJHora import failed: %s", exc)
         raise HTTPException(

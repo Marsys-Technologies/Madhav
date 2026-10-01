@@ -91,6 +91,25 @@ jobs:
           cd platform/python-sidecar
           pip install -r requirements.txt --quiet
 
+      # SS ruling N-28 / TI-ephemeris-fix-001: ka_kshetra's writer fails closed without the
+      # Swiss .se1 corpus (no silent Moshier), and the W2 dynamic CG-1 proof below runs it.
+      # Same SHA-pinned files as Dockerfile.pipeline; exported to later steps via GITHUB_ENV.
+      - name: Swiss Ephemeris corpus (SHA-pinned)
+        run: |
+          se1_dir="$RUNNER_TEMP/se1"
+          mkdir -p "$se1_dir"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --max-time 120 --retry 3 --retry-delay 5 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" \
+              --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          echo "SE_EPHE_PATH=$se1_dir" >> "$GITHUB_ENV"
+
       - name: Run the Circularity Guard — static census (defense in depth, DB-free)
         run: |
           cd platform/python-sidecar

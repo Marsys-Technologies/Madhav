@@ -19,7 +19,9 @@ from .exceptions import (
     PanchangEngineError, AyanamshaError, OutOfRangeError, ValidationError,
 )
 from .swiss_state import SWISS_STATE_LOCK, serialized_swiss_state, swiss_state_scope
-from .swiss_backend import SwissBackendError, backend_name, ensure_swiss_backend
+from .swiss_backend import (
+    OutOfCorpusRangeError, SwissBackendError, backend_name, ensure_swiss_backend,
+)
 
 
 @serialized_swiss_state
@@ -69,8 +71,9 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
 
     # Pin the Swiss .se1 backend (fail-closed, probed) and Lahiri under one
     # critical section so a prior request's path cannot leak into this
-    # computation and Moshier can never substitute silently.
-    ensure_swiss_backend()
+    # computation and Moshier can never substitute silently.  The date is passed so a
+    # day outside the corpus window raises out_of_corpus_range (disclosed 422).
+    ensure_swiss_backend(swe.julday(date.year, date.month, date.day, 12.0))
     set_ayanamsha("lahiri")
 
     # Sunrise / sunset
@@ -250,8 +253,9 @@ def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "Panch
 
     # Pin the Swiss .se1 backend (fail-closed, probed) and Lahiri under one
     # critical section so a prior request's path cannot leak into this
-    # computation and Moshier can never substitute silently.
-    ensure_swiss_backend()
+    # computation and Moshier can never substitute silently.  The instant is passed so a
+    # moment outside the corpus window raises out_of_corpus_range (disclosed 422).
+    ensure_swiss_backend(swe.julday(instant.year, instant.month, instant.day, 12.0))
     set_ayanamsha("lahiri")
 
     # Convert local instant to UTC
