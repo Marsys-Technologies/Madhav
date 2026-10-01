@@ -189,21 +189,19 @@ function isConfirmed(status: string | null): boolean {
   return status !== null && UNREDUCED_BASE_HARANA_STATUSES.has(status)
 }
 
-/**
- * Derive the disclosure for a served set of rows. Returns null when the rows carry no Āyurdāya year
- * figure (nothing to caveat; never fabricated for a page that does not carry one).
- */
-export function deriveAyurdayaFigureDisclosure(
-  rows: readonly Row[],
-  opts: AyurdayaDeriveOptions = {},
-): AyurdayaFigureDisclosure | null {
+function figureFor(confirmed: boolean): AyurdayaRowFigure {
+  return confirmed
+    ? { figure_kind: AYURDAYA_FIGURE_KIND_UNREDUCED_BASE, reductions_applied: false }
+    : { figure_kind: AYURDAYA_FIGURE_KIND_STATUS_UNVERIFIED, reductions_applied: null }
+}
+
+/** Classify every ayurdaya year row in `rows` (per row; see the module header for the rules). */
+function classifyRows(rows: readonly Row[], assumeCategory: boolean): Map<Row, AyurdayaRowFigure> {
   const norm: Array<[Row, NormRow]> = []
   for (const r of rows) {
-    const n = normalizeAyurdayaRow(r, opts.assumeAyurdayaCategory === true)
+    const n = normalizeAyurdayaRow(r, assumeCategory)
     if (n) norm.push([r, n])
   }
-  if (norm.length === 0) return null
-
   // Confirmed-ness of each (ayanamsha, method) total — every total row for that key must be confirmed.
   const totalConfirmed = new Map<string, boolean>()
   for (const [, n] of norm) {
@@ -211,10 +209,7 @@ export function deriveAyurdayaFigureDisclosure(
     const k = `${n.ayanamsha}|${n.method}`
     totalConfirmed.set(k, (totalConfirmed.get(k) ?? true) && isConfirmed(n.status))
   }
-
-  const rowFigures = new Map<Row, AyurdayaRowFigure>()
-  let unreduced = 0
-  let unverified = 0
+  const out = new Map<Row, AyurdayaRowFigure>()
   for (const [row, n] of norm) {
     let confirmed: boolean
     if (n.key === 'total_years') {
@@ -225,12 +220,19 @@ export function deriveAyurdayaFigureDisclosure(
       const methods = n.totalsMethods ?? ALL_METHODS
       confirmed = methods.every(m => totalConfirmed.get(`${n.ayanamsha}|${m}`) === true)
     }
-    rowFigures.set(row, confirmed
-      ? { figure_kind: AYURDAYA_FIGURE_KIND_UNREDUCED_BASE, reductions_applied: false }
-      : { figure_kind: AYURDAYA_FIGURE_KIND_STATUS_UNVERIFIED, reductions_applied: null })
-    if (confirmed) unreduced++; else unverified++
+    out.set(row, figureFor(confirmed))
   }
+  return out
+}
 
+/** Page-level summary of a per-row figure map (null when empty). */
+function summarize(rowFigures: Map<Row, AyurdayaRowFigure>): AyurdayaFigureDisclosure | null {
+  if (rowFigures.size === 0) return null
+  let unreduced = 0
+  let unverified = 0
+  for (const f of rowFigures.values()) {
+    if (f.figure_kind === AYURDAYA_FIGURE_KIND_UNREDUCED_BASE) unreduced++; else unverified++
+  }
   const figure_counts = { unreduced_base: unreduced, reduction_status_unverified: unverified }
   if (unverified === 0) {
     return {
@@ -246,6 +248,17 @@ export function deriveAyurdayaFigureDisclosure(
     reductions_applied: null, caveat, figure_counts, row_figures: rowFigures,
     judgment_flag: judgmentFlag('ayurdaya_unreduced_base_figures', caveat, 'warning'),
   }
+}
+
+/**
+ * Derive the disclosure for a served set of rows. Returns null when the rows carry no Āyurdāya year
+ * figure (nothing to caveat; never fabricated for a page that does not carry one).
+ */
+export function deriveAyurdayaFigureDisclosure(
+  rows: readonly Row[],
+  opts: AyurdayaDeriveOptions = {},
+): AyurdayaFigureDisclosure | null {
+  return summarize(classifyRows(rows, opts.assumeAyurdayaCategory === true))
 }
 
 /**
@@ -298,31 +311,93 @@ export function withAyurdayaFigureDisclosure<T extends { content: unknown; is_er
 
 // ── Registry-level safety net (generic `categories`-taking tools, assess_*, bundles, …) ───────────
 
-const WALK_MAX_DEPTH = 8
-const WALK_MAX_NODES = 250_000
+/** Walk bounds (exported so tests can assert the documented behaviour at the edge). */
+export const WALK_MAX_DEPTH = 8
+export const WALK_MAX_NODES = 250_000
+export const WALK_MAX_KEYS_PER_OBJECT = 5_000
+
+const warned = new Set<string>()
+/** Log a loss-of-disclosure condition once per distinct message so it is visible, never silent. */
+function warnOnce(message: string): void {
+  if (warned.has(message)) return
+  warned.add(message)
+  try { console.warn(`[ayurdaya_unreduced_base] ${message}`) } catch { /* logging must never throw */ }
+}
+/** Test hook: forget which warnings were already emitted. */
+export function __resetAyurdayaWarningsForTests(): void { warned.clear() }
+
+interface WalkResult { rows: Row[]; boundHit: boolean }
+
+/** True for objects the walk must not descend into (typed arrays / DataView / ArrayBuffer). */
+function isOpaqueBinary(v: object): boolean {
+  return ArrayBuffer.isView(v) || v instanceof ArrayBuffer
+}
 
 /** Collect every ayurdaya year-bearing object reachable (bounded) inside `content`. */
-function collectAyurdayaRows(content: unknown): Row[] {
-  const found: Row[] = []
+function collectAyurdayaRows(content: unknown): WalkResult {
+  const rows: Row[] = []
   let nodes = 0
+  let boundHit = false
   const walk = (v: unknown, depth: number): void => {
-    if (!v || typeof v !== 'object' || depth > WALK_MAX_DEPTH || nodes > WALK_MAX_NODES) return
+    if (!v || typeof v !== 'object' || isOpaqueBinary(v)) return
+    if (depth > WALK_MAX_DEPTH || nodes >= WALK_MAX_NODES) { boundHit = true; return }
     nodes++
     if (Array.isArray(v)) { for (const x of v) walk(x, depth + 1); return }
     const o = v as Row
-    if (normalizeAyurdayaRow(o, false)) found.push(o)
-    for (const k of Object.keys(o)) walk(o[k], depth + 1)
+    if (normalizeAyurdayaRow(o, false)) rows.push(o)
+    const keys = Object.keys(o)
+    if (keys.length > WALK_MAX_KEYS_PER_OBJECT) { boundHit = true; return }
+    for (const k of keys) walk(o[k], depth + 1)
   }
   walk(content, 0)
-  return found
+  return { rows, boundHit }
+}
+
+/**
+ * Copy-on-write rewrite: returns `v` itself when nothing beneath it changed, otherwise a shallow copy
+ * along the changed path. Never mutates (so frozen / shared / cached objects are safe).
+ */
+function rewrite(v: unknown, replace: ReadonlyMap<Row, Row>): unknown {
+  let nodes = 0
+  const go = (x: unknown, depth: number): unknown => {
+    if (!x || typeof x !== 'object' || isOpaqueBinary(x)) return x
+    if (depth > WALK_MAX_DEPTH || nodes >= WALK_MAX_NODES) return x
+    nodes++
+    if (Array.isArray(x)) {
+      let copy: unknown[] | null = null
+      for (let i = 0; i < x.length; i++) {
+        const nv = go(x[i], depth + 1)
+        if (nv !== x[i]) { copy ??= x.slice(); copy[i] = nv }
+      }
+      return copy ?? x
+    }
+    const o = x as Row
+    const replacement = replace.get(o)
+    const keys = Object.keys(o)
+    if (keys.length > WALK_MAX_KEYS_PER_OBJECT) return replacement ?? x
+    let copy: Row | null = replacement ? { ...replacement } : null
+    for (const k of keys) {
+      const nv = go(o[k], depth + 1)
+      if (nv !== o[k]) { copy ??= { ...o }; copy[k] = nv }
+    }
+    return copy ?? x
+  }
+  return go(v, 0)
 }
 
 /**
  * Post-process a capability result: if ANY ayurdaya year row/signal is reachable inside it and the
  * result does not already carry the disclosure (get_ayurdaya / chart_facts_query / query_signals set
- * their own), annotate those rows IN PLACE with their own figure_kind/reductions_applied, prepend the
- * nested disclosure to content, and append the closed-vocabulary flag to the result's judgment_flags.
- * Never throws; never touches a non-ayurdaya result (same reference returned).
+ * their own), annotate COPIES of those rows with their own figure_kind/reductions_applied (never
+ * mutating the handler's — possibly cached or frozen — objects), prepend the nested disclosure to
+ * content, and add the closed-vocabulary flag at BOTH `content.judgment_flags` (what MCP-bridged tools
+ * read) and `result.judgment_flags`.
+ *
+ * - Rows that already carry `figure_kind` (a composed/inner tool tagged them) are never recomputed or
+ *   overwritten; they are counted from their existing value.
+ * - It never throws. If the row rewrite fails, the page-level disclosure + flag are still attached
+ *   (they cannot throw) and a warning is logged once. A walk-bound hit is warned too.
+ * - A result with no ayurdaya figure is returned by reference unchanged.
  */
 export function postProcessAyurdayaDisclosure<T>(result: T): T {
   try {
@@ -330,23 +405,57 @@ export function postProcessAyurdayaDisclosure<T>(result: T): T {
     const r = result as unknown as { content?: unknown; is_error?: unknown; judgment_flags?: unknown }
     if (r.is_error === true) return result
     const content = r.content
-    if (!content || typeof content !== 'object' || Array.isArray(content)) return result
+    if (!content || typeof content !== 'object' || Array.isArray(content) || isOpaqueBinary(content)) return result
     const c = content as Row
     if (c['ayurdaya_figure_disclosure'] !== undefined || c['figure_kind'] !== undefined) return result
-    const rows = collectAyurdayaRows(c)
-    const disclosure = deriveAyurdayaFigureDisclosure(rows)
-    if (!disclosure) return result
+
+    const { rows, boundHit } = collectAyurdayaRows(c)
+    if (boundHit) warnOnce(`result walk hit its bound (depth ${WALK_MAX_DEPTH} / ${WALK_MAX_NODES} objects / ${WALK_MAX_KEYS_PER_OBJECT} keys); ayurdaya rows beyond it, if any, were not disclosed`)
+    if (rows.length === 0) return result
+
+    // Per-row figures from the full row set (context for contribution/applicable_method rows), except
+    // rows an inner tool already tagged: those keep their existing value and are never recomputed.
+    const computed = classifyRows(rows, false)
+    const finalFigures = new Map<Row, AyurdayaRowFigure>()
+    const fresh = new Map<Row, Row>()
     for (const row of rows) {
-      const f = disclosure.row_figures.get(row)
-      if (f) { row['figure_kind'] = f.figure_kind; row['reductions_applied'] = f.reductions_applied }
+      const existing = row['figure_kind']
+      if (typeof existing === 'string') {
+        finalFigures.set(row, figureFor(existing === AYURDAYA_FIGURE_KIND_UNREDUCED_BASE))
+        continue
+      }
+      const f = computed.get(row)
+      if (!f) continue
+      finalFigures.set(row, f)
+      fresh.set(row, { ...row, figure_kind: f.figure_kind, reductions_applied: f.reductions_applied })
     }
-    const priorFlags = Array.isArray(r.judgment_flags) ? r.judgment_flags : []
+    const disclosure = summarize(finalFigures)
+    if (!disclosure) return result
+
+    let body: unknown = c
+    try {
+      body = rewrite(c, fresh)
+    } catch (err) {
+      warnOnce(`row annotation failed (${err instanceof Error ? err.message : String(err)}); page-level disclosure attached without per-row tags`)
+    }
+    const bodyObj = (body && typeof body === 'object' && !Array.isArray(body) ? body : c) as Row
+    const { judgment_flags: contentFlags, ...bodyRest } = bodyObj
+    // content.judgment_flags is what MCP-bridged tools read; keep any non-array value untouched.
+    const contentFlagsOut = contentFlags !== undefined && !Array.isArray(contentFlags)
+      ? contentFlags
+      : [...(Array.isArray(contentFlags) ? contentFlags : []), disclosure.judgment_flag]
+    const priorResultFlags = Array.isArray(r.judgment_flags) ? r.judgment_flags : []
     return {
       ...(result as object),
-      content: { ayurdaya_figure_disclosure: ayurdayaDisclosureObject(disclosure), ...c },
-      judgment_flags: [...priorFlags, disclosure.judgment_flag],
+      content: {
+        ayurdaya_figure_disclosure: ayurdayaDisclosureObject(disclosure),
+        judgment_flags: contentFlagsOut,
+        ...bodyRest,
+      },
+      judgment_flags: [...priorResultFlags, disclosure.judgment_flag],
     } as T
-  } catch {
+  } catch (err) {
+    warnOnce(`post-processor failed (${err instanceof Error ? err.message : String(err)}); result returned without ayurdaya disclosure`)
     return result
   }
 }

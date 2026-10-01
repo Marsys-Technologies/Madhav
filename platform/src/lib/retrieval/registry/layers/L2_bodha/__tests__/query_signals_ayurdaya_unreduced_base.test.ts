@@ -63,6 +63,8 @@ describe('query_signals — ayurdaya unreduced-base disclosure (SS N-62 Q10)', (
     expect(r.content['ayurdaya_figure_disclosure']).toMatchObject({ figure_kind: 'unreduced_base', reductions_applied: false, caveat: CAVEAT })
     expect(r.judgment_flags).toEqual([{ code: 'ayurdaya_unreduced_base_figures', detail: CAVEAT, severity: 'info' }])
     expect(isJudgmentFlagCode(r.judgment_flags![0]!['code'])).toBe(true)
+    // MCP-bridged tools (get_signals) read only `content` — the flag must live there too
+    expect(r.content['judgment_flags']).toEqual(r.judgment_flags)
   })
 
   it('puts the disclosure before the signals in content (tail-clipping bundlers keep it)', async () => {

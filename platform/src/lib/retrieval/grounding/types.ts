@@ -126,7 +126,7 @@ export interface ResolvedMetric {
   /** Human-readable citation for the metric value */
   citation: string
   /** Āyurdāya year figures only (SS N-62 Q10): 'unreduced_base' | 'reduction_status_unverified'. */
-  figure_kind?: string
+  figure_kind?: 'unreduced_base' | 'reduction_status_unverified'
   /** Āyurdāya year figures only: false = confirmed unreduced base; null = status not confirmed. */
   reductions_applied?: false | null
   /** Āyurdāya year figures only: plain-language caveat that must travel with the number. */

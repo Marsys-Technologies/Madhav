@@ -2,7 +2,7 @@
  * ayurdaya_unreduced_base.test.ts — direct unit tests for the shared Āyurdāya disclosure helper
  * (SS N-62 Q10, display-side). Pure functions; no DB.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   AYURDAYA_FIGURE_KIND_MIXED,
   AYURDAYA_MIXED_CAVEAT,
@@ -13,6 +13,10 @@ import {
   isAyurdayaYearsRow,
   postProcessAyurdayaDisclosure,
   withAyurdayaFigureDisclosure,
+  WALK_MAX_DEPTH,
+  WALK_MAX_KEYS_PER_OBJECT,
+  WALK_MAX_NODES,
+  __resetAyurdayaWarningsForTests,
 } from '../ayurdaya_unreduced_base'
 
 const BASE = 'base_only_haranas_deferred_to_w3'
@@ -258,16 +262,45 @@ describe('withAyurdayaFigureDisclosure (chart_facts_query adapter)', () => {
 })
 
 describe('postProcessAyurdayaDisclosure (registry safety net)', () => {
-  it('annotates nested ayurdaya rows in place, prepends the disclosure and appends the flag', () => {
+  type Out = { content: Row; judgment_flags: Array<Row> }
+  const run = (result: unknown): Out => postProcessAyurdayaDisclosure(result) as unknown as Out
+
+  it('annotates COPIES of nested rows, prepends the disclosure and adds the flag at content AND result level', () => {
     const t = total('PINDAYU', BASE)
     const result = { content: { chart_id: 'c', categories: ['ayurdaya'], rows: [t] }, is_error: false }
-    const out = postProcessAyurdayaDisclosure(result) as unknown as { content: Row; judgment_flags: Array<Row> }
+    const out = run(result)
     expect(Object.keys(out.content)[0]).toBe('ayurdaya_figure_disclosure')
     expect((out.content['ayurdaya_figure_disclosure'] as Row)['figure_kind']).toBe('unreduced_base')
-    expect(t['figure_kind']).toBe('unreduced_base')
-    expect(t['fact_value_num']).toBe(98.7521)
+    const servedRow = (out.content['rows'] as Row[])[0]!
+    expect(servedRow).toMatchObject({ figure_kind: 'unreduced_base', reductions_applied: false, fact_value_num: 98.7521 })
+    // the handler's own object is untouched (it may be cached/shared)
+    expect(t['figure_kind']).toBeUndefined()
+    expect(servedRow).not.toBe(t)
+    // closed-vocabulary flag at BOTH places MCP-bridged tools / HTTP callers read
     expect(out.judgment_flags.map(f => f['code'])).toEqual(['ayurdaya_unreduced_base_figures'])
+    expect((out.content['judgment_flags'] as Row[]).map(f => f['code'])).toEqual(['ayurdaya_unreduced_base_figures'])
   })
+
+  it('appends to (never replaces) pre-existing content and result flags', () => {
+    const t = total('PINDAYU', BASE)
+    const prior = { code: 'zero_rows_returned' }
+    const out = run({ content: { rows: [t], judgment_flags: [prior] }, is_error: false, judgment_flags: [prior] })
+    expect((out.content['judgment_flags'] as Row[]).map(f => f['code'])).toEqual(['zero_rows_returned', 'ayurdaya_unreduced_base_figures'])
+    expect(out.judgment_flags.map(f => f['code'])).toEqual(['zero_rows_returned', 'ayurdaya_unreduced_base_figures'])
+  })
+
+  it('leaves a non-array content.judgment_flags untouched', () => {
+    const out = run({ content: { rows: [total('PINDAYU', BASE)], judgment_flags: 'legacy-string' }, is_error: false })
+    expect(out.content['judgment_flags']).toBe('legacy-string')
+    expect(out.judgment_flags).toHaveLength(1)
+  })
+
+  it('shares every untouched subtree by reference (copy-on-write only along the changed path)', () => {
+    const other = { big: [1, 2, 3] }
+    const result = { content: { other, rows: [total('PINDAYU', BASE)] }, is_error: false }
+    expect((run(result).content['other'])).toBe(other)
+  })
+
   it('returns non-ayurdaya, error, already-disclosed and primitive results by reference', () => {
     const plain = { content: { rows: [{ fact_category: 'graha_position', fact_key: 'sign' }] }, is_error: false }
     expect(postProcessAyurdayaDisclosure(plain)).toBe(plain)
@@ -280,9 +313,141 @@ describe('postProcessAyurdayaDisclosure (registry safety net)', () => {
     expect(postProcessAyurdayaDisclosure('text')).toBe('text')
     expect(postProcessAyurdayaDisclosure(null)).toBeNull()
   })
-  it('does not throw on frozen rows (returns the original result)', () => {
-    const t = Object.freeze(total('PINDAYU', BASE))
-    const result = { content: { rows: [t] }, is_error: false }
-    expect(() => postProcessAyurdayaDisclosure(result)).not.toThrow()
+
+  describe('frozen / cached rows (no silent loss)', () => {
+    const deepFreeze = <T>(o: T): T => {
+      if (o && typeof o === 'object') { Object.values(o as object).forEach(deepFreeze); Object.freeze(o) }
+      return o
+    }
+    it('a deep-frozen result still gets the per-row tags (on copies) AND the page-level disclosure + flags', () => {
+      const t = total('PINDAYU', BASE)
+      const result = deepFreeze({ content: { rows: [t] }, is_error: false })
+      let out: Out | undefined
+      expect(() => { out = run(result) }).not.toThrow()
+      expect(out!.content['ayurdaya_figure_disclosure']).toMatchObject({ figure_kind: 'unreduced_base', reductions_applied: false })
+      expect((out!.content['rows'] as Row[])[0]).toMatchObject({ figure_kind: 'unreduced_base' })
+      expect(Object.isFrozen(t)).toBe(true)
+      expect(t['figure_kind']).toBeUndefined()
+      expect(out!.judgment_flags).toHaveLength(1)
+      expect(out!.content['judgment_flags']).toHaveLength(1)
+    })
+
+    it('if the row rewrite itself fails, the page-level disclosure + flags STILL attach and a warning is logged', () => {
+      __resetAyurdayaWarningsForTests()
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      let reads = 0
+      const bomb: Row = {}
+      Object.defineProperty(bomb, 'x', { enumerable: true, get() { if (++reads > 1) throw new Error('boom'); return 5 } })
+      const t = total('PINDAYU', BASE)
+      const out = run({ content: { rows: [t], bomb }, is_error: false })
+      expect(out.content['ayurdaya_figure_disclosure']).toMatchObject({ figure_kind: 'unreduced_base' })
+      expect(out.judgment_flags.map(f => f['code'])).toEqual(['ayurdaya_unreduced_base_figures'])
+      expect((out.content['judgment_flags'] as Row[])).toHaveLength(1)
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(String(warn.mock.calls[0]![0])).toMatch(/row annotation failed/)
+      warn.mockRestore()
+    })
+
+    it('warns only once per distinct loss message', () => {
+      __resetAyurdayaWarningsForTests()
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const mk = () => {
+        let reads = 0
+        const bomb: Row = {}
+        Object.defineProperty(bomb, 'x', { enumerable: true, get() { if (++reads > 1) throw new Error('boom'); return 5 } })
+        return { content: { rows: [total('PINDAYU', BASE)], bomb }, is_error: false }
+      }
+      run(mk()); run(mk())
+      expect(warn).toHaveBeenCalledTimes(1)
+      warn.mockRestore()
+    })
+  })
+
+  describe('composed tools (an inner tool already tagged the rows)', () => {
+    it('never recomputes or overwrites an existing figure_kind, and counts it from its existing value', () => {
+      // outer returns a SUBSET of the inner page: only a contribution row the inner page confirmed
+      // against its total. Recomputed on the subset alone it would read "unverified" — it must not.
+      const inner = run({ content: { rows: [total('PINDAYU', BASE), contrib('pindayu')] }, is_error: false })
+      const taggedContribution = (inner.content['rows'] as Row[])[1]!
+      expect(taggedContribution['figure_kind']).toBe('unreduced_base')
+      const outer = run({ content: { composed: { rows: [taggedContribution] } }, is_error: false })
+      // already tagged + no disclosure on the outer content → processed, but the tag is preserved
+      const served = ((outer.content['composed'] as Row)['rows'] as Row[])[0]!
+      expect(served['figure_kind']).toBe('unreduced_base')
+      expect(served['reductions_applied']).toBe(false)
+      expect((outer.content['ayurdaya_figure_disclosure'] as Row)['figure_kind']).toBe('unreduced_base')
+      expect((outer.content['ayurdaya_figure_disclosure'] as Row)['figure_counts']).toEqual({ unreduced_base: 1, reduction_status_unverified: 0 })
+    })
+
+    it('keeps an inner "unverified" tag even if an outer page would now confirm it', () => {
+      const tagged = { ...contrib('pindayu'), figure_kind: 'reduction_status_unverified', reductions_applied: null }
+      const out = run({ content: { rows: [tagged, total('PINDAYU', BASE)] }, is_error: false })
+      const rows = out.content['rows'] as Row[]
+      expect(rows[0]!['figure_kind']).toBe('reduction_status_unverified')
+      expect(rows[0]!['reductions_applied']).toBeNull()
+      expect(rows[1]!['figure_kind']).toBe('unreduced_base')
+      expect((out.content['ayurdaya_figure_disclosure'] as Row)['figure_kind']).toBe(AYURDAYA_FIGURE_KIND_MIXED)
+    })
+  })
+
+  describe('walk bounds', () => {
+    const nest = (row: Row, levels: number): Row => {
+      let o: Row = { row }
+      for (let i = 1; i < levels; i++) o = { child: o }
+      return o
+    }
+    it('exposes the documented bounds', () => {
+      expect(WALK_MAX_DEPTH).toBe(8)
+      expect(WALK_MAX_NODES).toBe(250_000)
+      expect(WALK_MAX_KEYS_PER_OBJECT).toBe(5_000)
+    })
+
+    it('discloses a row at exactly the depth bound', () => {
+      // content depth 0; row object sits at depth WALK_MAX_DEPTH
+      const content = nest(total('PINDAYU', BASE), WALK_MAX_DEPTH)
+      const out = run({ content, is_error: false })
+      expect(out.content['ayurdaya_figure_disclosure']).toBeDefined()
+    })
+
+    it('a row one level too deep is not disclosed and the loss is warned, not silent', () => {
+      __resetAyurdayaWarningsForTests()
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const result = { content: nest(total('PINDAYU', BASE), WALK_MAX_DEPTH + 1), is_error: false }
+      expect(postProcessAyurdayaDisclosure(result)).toBe(result)
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(String(warn.mock.calls[0]![0])).toMatch(/hit its bound/)
+      warn.mockRestore()
+    })
+
+    it('stops at the object-count bound (rows past it are not found) and warns', () => {
+      __resetAyurdayaWarningsForTests()
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const filler = Array.from({ length: WALK_MAX_NODES + 10 }, () => ({}))
+      const result = { content: { filler, tail: [total('PINDAYU', BASE)] }, is_error: false }
+      expect(postProcessAyurdayaDisclosure(result)).toBe(result)
+      expect(warn).toHaveBeenCalledTimes(1)
+      warn.mockRestore()
+    })
+
+    it('does not descend into an object with more than the key cap, and warns', () => {
+      __resetAyurdayaWarningsForTests()
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const wide: Row = {}
+      for (let i = 0; i <= WALK_MAX_KEYS_PER_OBJECT; i++) wide[`k${i}`] = i
+      wide['rows'] = [total('PINDAYU', BASE)]
+      const result = { content: { wide }, is_error: false }
+      expect(postProcessAyurdayaDisclosure(result)).toBe(result)
+      expect(warn).toHaveBeenCalledTimes(1)
+      warn.mockRestore()
+    })
+
+    it('skips typed arrays / ArrayBuffers (no descent, no node cost) and passes them through by reference', () => {
+      const blob = new Uint8Array(1_000_000)
+      const buf = new ArrayBuffer(16)
+      const out = run({ content: { blob, buf, rows: [total('PINDAYU', BASE)] }, is_error: false })
+      expect(out.content['blob']).toBe(blob)
+      expect(out.content['buf']).toBe(buf)
+      expect(out.content['ayurdaya_figure_disclosure']).toBeDefined()
+    })
   })
 })

@@ -111,6 +111,16 @@ describe('getAyurdayaCapability — unreduced-base disclosure (SS N-62 Q10)', ()
     expect(isJudgmentFlagCode('ayurdaya_unreduced_base_figures')).toBe(true)
   })
 
+  it('also carries the flag at content.judgment_flags (what MCP-bridged tools read) and puts the disclosure before rows', async () => {
+    const result = await serve(baseRows())
+    expect(result.content['judgment_flags']).toEqual([{ code: 'ayurdaya_unreduced_base_figures', detail: CAVEAT, severity: 'info' }])
+    const keys = Object.keys(result.content)
+    for (const k of ['figure_kind', 'reductions_applied', 'caveat', 'figure_counts', 'judgment_flags']) {
+      expect(keys.indexOf(k)).toBeGreaterThanOrEqual(0)
+      expect(keys.indexOf(k)).toBeLessThan(keys.indexOf('rows'))
+    }
+  })
+
   it('annotates every year-bearing row and leaves non-year rows untouched', async () => {
     const result = await serve(baseRows())
     const rows = result.content['rows'] as Array<Record<string, unknown>>

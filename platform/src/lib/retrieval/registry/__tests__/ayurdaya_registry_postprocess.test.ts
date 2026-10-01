@@ -56,6 +56,47 @@ describe('registerCapability — ayurdaya post-processor', () => {
     expect(res.judgment_flags).toHaveLength(1)
   })
 
+  it('re-registering leaves the registered handler identity unchanged (no second wrap)', () => {
+    const cap = fakeTool('marsys://tool/L1/fake_generic_reader_e', 'fake_generic_reader_e', () => ayuRows())
+    registerCapability(cap)
+    const h1 = cap.handler
+    expect(getCapability(cap.uri)!.handler).toBe(h1)
+    registerCapability(cap)
+    expect(cap.handler).toBe(h1)
+    expect(getCapability(cap.uri)!.handler).toBe(h1)
+  })
+
+  it('does not mutate the handler-owned (possibly cached/shared) rows; flag present at content level too', async () => {
+    const shared = { content: { rows: ayuRows() }, is_error: false }
+    const cap = fakeTool('marsys://tool/L1/fake_generic_reader_f', 'fake_generic_reader_f', () => [], { handler: async () => shared })
+    registerCapability(cap)
+    const res = await getCapability(cap.uri)!.handler({}) as unknown as { content: Record<string, unknown> }
+    expect(shared.content.rows.every(r => !('figure_kind' in r))).toBe(true)
+    expect(Object.keys(shared.content)).toEqual(['rows'])
+    expect((res.content['judgment_flags'] as Array<Record<string, unknown>>).map(f => f['code'])).toEqual(['ayurdaya_unreduced_base_figures'])
+    // second call on the same shared object yields the same result (no accumulating state)
+    const again = await getCapability(cap.uri)!.handler({}) as unknown as { content: Record<string, unknown> }
+    expect(again.content['judgment_flags']).toHaveLength(1)
+  })
+
+  it('composed tools: an outer tool returning a subset of an inner tool\'s rows keeps the inner tags', async () => {
+    const innerCap = fakeTool('marsys://tool/L1/fake_inner_reader', 'fake_inner_reader', () => ayuRows())
+    registerCapability(innerCap)
+    const outerCap = fakeTool('marsys://tool/L1/fake_outer_reader', 'fake_outer_reader', () => [], {
+      handler: async () => {
+        const inner = await getCapability(innerCap.uri)!.handler({}) as { content: { rows: Array<Record<string, unknown>> } }
+        // outer keeps ONLY the contribution row (no total on its own page) and drops the inner disclosure
+        return { content: { composed: { rows: [inner.content.rows[1]] } }, is_error: false }
+      },
+    })
+    registerCapability(outerCap)
+    const res = await getCapability(outerCap.uri)!.handler({}) as unknown as { content: Record<string, unknown> }
+    const row = ((res.content['composed'] as Record<string, unknown>)['rows'] as Array<Record<string, unknown>>)[0]!
+    expect(row['figure_kind']).toBe('unreduced_base') // inner confirmed it against its total; not recomputed to "unverified"
+    expect(row['reductions_applied']).toBe(false)
+    expect(res.content['ayurdaya_figure_disclosure']).toMatchObject({ figure_kind: 'unreduced_base', figure_counts: { unreduced_base: 1, reduction_status_unverified: 0 } })
+  })
+
   it('calls the original handler with the descriptor as `this` and forwards args/ctx', async () => {
     let seen: { self: unknown; args: unknown; ctx: unknown } | null = null
     const cap = fakeTool('marsys://tool/L1/fake_generic_reader_d', 'fake_generic_reader_d', () => [], {

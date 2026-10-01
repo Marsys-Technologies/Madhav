@@ -710,7 +710,7 @@ export const querySignalsCapability: CapabilityDescriptor = {
         frame,
         ...(frameContext ? { frame_context: frameContext } : {}),
         ayanamsha_id,
-        ...(ayuDisclosure ? { ayurdaya_figure_disclosure: ayurdayaDisclosureObject(ayuDisclosure) } : {}),
+        ...(ayuDisclosure ? { ayurdaya_figure_disclosure: ayurdayaDisclosureObject(ayuDisclosure), judgment_flags: [ayuDisclosure.judgment_flag] } : {}),
         signals,
         returned_count: signals.length,
         total_matching_filters,

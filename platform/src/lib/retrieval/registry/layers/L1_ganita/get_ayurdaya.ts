@@ -112,7 +112,7 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
-          ...(unreduced ? { figure_kind: unreduced.figure_kind, reductions_applied: unreduced.reductions_applied, caveat: unreduced.caveat, figure_counts: unreduced.figure_counts } : {}),
+          ...(unreduced ? { figure_kind: unreduced.figure_kind, reductions_applied: unreduced.reductions_applied, caveat: unreduced.caveat, figure_counts: unreduced.figure_counts, judgment_flags: [unreduced.judgment_flag] } : {}),
           rows: annotateAyurdayaYearRows(rowsRes.rows, unreduced),
           count: rowsRes.rows.length,
           total_matching,

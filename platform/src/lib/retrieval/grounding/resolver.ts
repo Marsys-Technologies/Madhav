@@ -406,9 +406,10 @@ export async function resolveMetric(
       // Derived from the fact's OWN row (a lone contribution row has no total to confirm against →
       // reduction_status_unverified, honestly). Non-ayurdaya facts are returned exactly as before.
       const ayu = row.fact_category === 'ayurdaya' ? deriveAyurdayaFigureDisclosure([row]) : null
-      if (ayu) {
-        resolved.figure_kind = ayu.figure_kind
-        resolved.reductions_applied = ayu.reductions_applied
+      const ayuRow = ayu?.row_figures.get(row)
+      if (ayu && ayuRow) {
+        resolved.figure_kind = ayuRow.figure_kind
+        resolved.reductions_applied = ayuRow.reductions_applied
         resolved.caveat = ayu.caveat
       }
       return { ok: true, metric: resolved }
