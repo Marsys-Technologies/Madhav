@@ -36,8 +36,6 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from services.w2g.node_series import NODE_SERIES_PREDICATE
-
 from ._db import QueryFn, table_exists
 from .types import FAIL, INDETERMINATE, PASS, ValidationResult
 
@@ -83,7 +81,6 @@ def _shortest_arc_sum_sql() -> str:
             SELECT body, date, tropical_longitude,
                    LAG(tropical_longitude) OVER (PARTITION BY body ORDER BY date) AS prev_lon
             FROM {EPHEMERIS_TABLE} WHERE ayanamsha_id = %s
-              AND {NODE_SERIES_PREDICATE}
               AND date BETWEEN %s AND %s
         ) s
         WHERE prev_lon IS NOT NULL
@@ -103,7 +100,6 @@ def _global_transition_sql() -> str:
                    LAG(nakshatra_number) OVER (PARTITION BY body ORDER BY date) AS prev_nak,
                    LAG(speed_dps)        OVER (PARTITION BY body ORDER BY date) AS prev_speed
             FROM {EPHEMERIS_TABLE} WHERE ayanamsha_id = %s
-              AND {NODE_SERIES_PREDICATE}
               AND date BETWEEN %s AND %s
         ) s
         WHERE prev_sign IS NOT NULL

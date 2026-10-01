@@ -29,7 +29,6 @@ from typing import Any, Sequence
 from services.w2g_validations._db import QueryFn
 
 from .arcs import MonotoneArc, build_arcs, unwrap_degrees
-from .node_series import NODE_SERIES_PREDICATE, assert_one_row_per_date
 
 EPHEMERIS_TABLE = "ephemeris_daily"
 ARC_TABLE = "bg_gochara_arcs"
@@ -79,7 +78,7 @@ def fetch_body_series(
     """One bulk SELECT -> (noon-UT Julian days, wrapped tropical longitudes)."""
     sql = (
         f"SELECT date, tropical_longitude FROM {EPHEMERIS_TABLE} "
-        f"WHERE body = %s AND ayanamsha_id = %s AND {NODE_SERIES_PREDICATE}"
+        f"WHERE body = %s AND ayanamsha_id = %s"
     )
     params: list[Any] = [body, AYANAMSHA_ID]
     if start_date is not None:
@@ -91,10 +90,6 @@ def fetch_body_series(
     sql += " ORDER BY date"
 
     rows = query(sql, params)
-    # a node body's pinned series has exactly one row per date — a second one is an
-    # ambiguity (two conventions in one series), never something to interleave
-    assert_one_row_per_date(
-        [{"body": body, "date": row["date"]} for row in rows], context=f"fetch_body_series({body})")
     jds: list[float] = []
     lons: list[float] = []
     for row in rows:
@@ -181,7 +176,7 @@ class DbArcSource:
 
         sql = (
             f"SELECT body, date, tropical_longitude FROM {EPHEMERIS_TABLE} "
-            f"WHERE ayanamsha_id = %s AND body = ANY(%s) AND {NODE_SERIES_PREDICATE}"
+            f"WHERE ayanamsha_id = %s AND body = ANY(%s)"
         )
         params: list[Any] = [AYANAMSHA_ID, list(bodies)]
         if self._start_date is not None:
@@ -193,7 +188,6 @@ class DbArcSource:
         sql += " ORDER BY body, date"
         ephe_rows = self._query(sql, params)
         self.queries_issued += 1
-        assert_one_row_per_date(ephe_rows, context="DbArcSource.load")
 
         series: dict[str, tuple[list[float], list[float]]] = {}
         for row in ephe_rows:

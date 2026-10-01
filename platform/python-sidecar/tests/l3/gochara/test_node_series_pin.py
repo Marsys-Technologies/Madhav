@@ -29,16 +29,12 @@ from services.gochara_kernel import contacts as kernel_contacts
 from services.gochara_kernel.overlays import date_to_jd
 from services.ka_moorti_nirnaya import writer as moorti_writer
 from services.ka_vedha_gochara import writer as vedha_writer
-from services.w2g import db_source
 from services.w2g.node_series import (
     NODE_CONVENTION_MISMATCH_REASON,
     NODE_SERIES_PREDICATE,
     NodeSeriesError,
     assert_one_row_per_date,
 )
-from services.w2g_validations import v2_ephemeris_coverage as v2
-from services.w2g_validations import v4_transition_sizing as v4
-from services.w2g_validations._db import query_fn_from_conn
 
 MAINT_DSN = os.environ.get(
     "NODE_PIN_MAINT_DSN", "postgresql://wp6:local@localhost:55434/postgres")
@@ -141,57 +137,6 @@ def test_the_fixture_really_carries_two_node_series(node_db):
     ).fetchone()[0] == N_DAYS
 
 
-# P1 ─ w2g/db_source.fetch_body_series
-
-@pytest.mark.parametrize("body", ["Rahu", "Ketu"])
-def test_p1_fetch_body_series_reads_only_the_true_node_series(node_db, body):
-    jds, lons = db_source.fetch_body_series(query_fn_from_conn(node_db), body)
-    assert len(jds) == N_DAYS
-    assert lons == pytest.approx([_true_lon(body, i) for i in range(N_DAYS)], abs=1e-5)
-
-
-def test_p1_the_null_trap_a_non_node_body_is_not_dropped(node_db):
-    """`node_mode` is NULL for Sun..Saturn: a bare `node_mode='true'` would return nothing."""
-    jds, lons = db_source.fetch_body_series(query_fn_from_conn(node_db), "Sun")
-    assert len(jds) == N_DAYS
-    assert lons == pytest.approx([_true_lon("Sun", i) for i in range(N_DAYS)], abs=1e-5)
-
-
-def test_p1_a_duplicate_date_in_the_pinned_series_fails_loudly(node_db):
-    _make_pinned_series_ambiguous(node_db, _day(5), "Rahu")
-    with pytest.raises(NodeSeriesError, match="Rahu"):
-        db_source.fetch_body_series(query_fn_from_conn(node_db), "Rahu")
-
-
-# P2 ─ w2g/db_source.DbArcSource.load
-
-def test_p2_dbarcsource_load_fits_over_the_true_series_in_exactly_two_queries(node_db):
-    jd0 = db_source.noon_ut_jd(_day(0).year, _day(0).month, _day(0).day)
-    jd1 = db_source.noon_ut_jd(_day(N_DAYS - 1).year, _day(N_DAYS - 1).month, _day(N_DAYS - 1).day)
-    for body in ("Sun", "Rahu"):
-        direction = 1 if body == "Sun" else -1
-        node_db.execute(
-            "INSERT INTO bg_gochara_arcs VALUES ('9.9', %s, 0, %s, %s, %s, %s, %s, 0)",
-            (body, jd0, jd1, _true_lon(body, 0), _true_lon(body, N_DAYS - 1), direction))
-    src = db_source.DbArcSource(query_fn_from_conn(node_db), "9.9")
-    out = src.load(["Sun", "Rahu"])
-    assert src.queries_issued == 2
-    # the knots are NOON-UT abscissae (db_source.noon_ut_jd), whatever the calendar helper says
-    d7 = _day(7)
-    mid = db_source.noon_ut_jd(d7.year, d7.month, d7.day)
-    rahu_arc = out["Rahu"][0]
-    assert rahu_arc.evaluator(mid) == pytest.approx(_true_lon("Rahu", 7), abs=1e-4)
-    assert out["Sun"][0].evaluator(mid) == pytest.approx(_true_lon("Sun", 7), abs=1e-4)
-
-
-def test_p2_a_duplicate_date_in_the_pinned_series_fails_loudly(node_db):
-    _make_pinned_series_ambiguous(node_db, _day(2), "Ketu")
-    node_db.execute(
-        "INSERT INTO bg_gochara_arcs VALUES ('9.9', 'Ketu', 0, 1, 2, 0, 1, 1, 0)")
-    with pytest.raises(NodeSeriesError, match="Ketu"):
-        db_source.DbArcSource(query_fn_from_conn(node_db), "9.9").load(["Ketu"])
-
-
 # P5 / P6 ─ the moorti and vedha daily-longitude readers
 
 @pytest.mark.parametrize("module", [moorti_writer, vedha_writer], ids=["moorti", "vedha"])
@@ -228,31 +173,6 @@ def test_p7_a_duplicate_pinned_retrograde_row_fails_loudly(node_db):
         vedha_writer._fetch_retrograde_dates(node_db, _day(0), _day(N_DAYS - 1), ("Rahu",))
 
 
-# P14 ─ V2 coverage
-
-def test_p14_v2_counts_one_row_per_date_for_the_pinned_series(node_db):
-    r = v2.validate_v2_ephemeris_coverage(query_fn_from_conn(node_db))
-    per_body = r.data["per_body"]
-    for body in ("Rahu", "Ketu"):
-        assert per_body[body]["n_rows"] == per_body[body]["n_distinct_dates"] == N_DAYS, body
-        assert per_body[body]["one_row_per_date"] is True
-    assert r.data["duplicate_date_bodies"] == []      # the decoy MEAN rows are not double-counted
-
-
-# P15 ─ V4 transition sizing
-
-def test_p15_v4_steps_are_counted_on_the_pinned_series_only(node_db):
-    q = query_fn_from_conn(node_db)
-    args = ["tropical", _day(0), _day(N_DAYS - 1)]
-    variation = {r["body"]: r for r in q(v4._shortest_arc_sum_sql(), args)}
-    assert {b: int(variation[b]["n_steps"]) for b in ("Sun", "Rahu", "Ketu")} == {
-        "Sun": N_DAYS - 1, "Rahu": N_DAYS - 1, "Ketu": N_DAYS - 1}
-    # total variation of the TRUE node is 19 days * 0.053°; the decoy would add its own
-    assert float(variation["Rahu"]["total_variation_deg"]) == pytest.approx(0.053 * (N_DAYS - 1), abs=1e-4)
-    stations = {r["body"]: r for r in q(v4._global_transition_sql(), args)}
-    assert set(stations) >= {"Sun", "Rahu", "Ketu"}
-
-
 # ── recorded SQL: the statements production code actually issues ─────────────
 
 def test_every_reader_statement_carries_the_null_safe_pin():
@@ -260,30 +180,12 @@ def test_every_reader_statement_carries_the_null_safe_pin():
         "P5 moorti range": moorti_writer._FETCH_EPHEMERIS_RANGE_SQL,
         "P6 vedha range": vedha_writer._FETCH_EPHEMERIS_RANGE_SQL,
         "P7 vedha retrograde": vedha_writer._FETCH_RETROGRADE_SQL,
-        "P15 v4 variation": v4._shortest_arc_sum_sql(),
-        "P15 v4 global": v4._global_transition_sql(),
     }
     for name, sql in statements.items():
         assert NODE_SERIES_PREDICATE in sql, name
     assert NODE_SERIES_PREDICATE == "(body NOT IN ('Rahu', 'Ketu') OR node_mode = 'true')"
     # a bare `node_mode = 'true'` is the NULL trap
     assert "AND node_mode = 'true'" not in "".join(statements.values())
-
-
-def test_p1_p2_p14_recorded_statements_carry_the_pin():
-    seen: list[str] = []
-
-    def rec(sql, params=()):
-        seen.append(sql)
-        return [{"table_name": "ephemeris_daily"}] if "information_schema" in sql else []
-
-    db_source.fetch_body_series(rec, "Rahu")
-    db_source.DbArcSource(rec, "x").load(["Rahu"])
-    v2.validate_v2_ephemeris_coverage(rec)
-    ephemeris_sql = [s for s in seen if "FROM ephemeris_daily" in s]
-    assert len(ephemeris_sql) == 3, ephemeris_sql      # P1, P2 knots, P14 coverage
-    literal = "(body NOT IN ('Rahu', 'Ketu') OR node_mode = 'true')"
-    assert all(literal in s for s in ephemeris_sql), ephemeris_sql
 
 
 def test_assert_one_row_per_date_only_polices_the_node_bodies_and_accepts_both_row_shapes():

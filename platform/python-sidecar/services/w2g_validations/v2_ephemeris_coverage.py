@@ -29,8 +29,6 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any
 
-from services.w2g.node_series import NODE_SERIES_PREDICATE
-
 from ._db import QueryFn, table_exists
 from .types import FAIL, INDETERMINATE, PASS, ValidationResult
 
@@ -86,8 +84,7 @@ def validate_v2_ephemeris_coverage(
     per_body = query(
         f"SELECT body, MIN(date) AS first_date, MAX(date) AS last_date, "
         f"COUNT(*) AS n_rows, COUNT(DISTINCT date) AS n_dates "
-        f"FROM {TABLE} WHERE ayanamsha_id = %s AND {NODE_SERIES_PREDICATE} "
-        f"GROUP BY body ORDER BY body",
+        f"FROM {TABLE} WHERE ayanamsha_id = %s GROUP BY body ORDER BY body",
         [AYANAMSHA_ID],
     )
 
@@ -245,7 +242,7 @@ def _sample_gaps(query: QueryFn, body: str, limit: int = 20) -> list[dict[str, A
         SELECT prev_date, date AS next_date, (date - prev_date) AS gap_days
         FROM (
             SELECT date, LAG(date) OVER (ORDER BY date) AS prev_date
-            FROM {TABLE} WHERE body = %s AND ayanamsha_id = %s AND {NODE_SERIES_PREDICATE}
+            FROM {TABLE} WHERE body = %s AND ayanamsha_id = %s
         ) s
         WHERE prev_date IS NOT NULL AND (date - prev_date) <> 1
         ORDER BY prev_date
