@@ -130,8 +130,8 @@ SELECT count(*) FROM asset_throughput WHERE last_built_at >= (SELECT started_at 
 
 GO only when all hold at the moment of launch: (1) P0.3 check 1 passes and the smoke build passed all six criteria within the
 last 24 h and no deploy has changed the job image since (re-run the smoke after any deploy); (2) P0.3 check 2 passes for every
-target table of the stages being launched (S0-S4 of section 8 need none of the phala_/mimamsa_ grants; S5-S6 do); (3) no `planned/running/paused` run exists;
-(4) the section 5 pre-flight list is green. If (2) fails for the Phala/Mimāṃsā tables the wave can still be launched for
+target table of the stages being launched (**v1.1 correction:** v1.0 said S0-S4 need none of the phala_/mimamsa_ grants; BUILDER_GRANT_PLAN v1.3 shows S1 needs `asset_registry.selftest_detail` UPDATE for `ka_muhurta_seva` and `ka_dasha_kala`, and S4 needs `phala_anchors` SELECT for `ka_bhavishya_lekha`; the per-stage list is P0c.2; S5-S6 need the full phala/mimamsa set); (3) no `planned/running/paused` run exists;
+(4) the section 5 pre-flight list is green; (5) **v1.1:** P0b holds for any stage it gates (P0b.2: `ga_vargas`, `bo_pratijna` and everything after it) and the P0c migration/grant gates of each stage hold. If (2) fails for the Phala/Mimāṃsā tables the wave can still be launched for
 S0-S4 only (Bodha and Kāla assets, waves 1-6), with `ph_*` and `mi_bhavisya` deferred; that split is SS's call (Q9).
 
 
@@ -250,7 +250,7 @@ The grant plan's own verification and rollback are its; this plan only consumes 
    set under the rule the planner and the runner both enforce (every declared dependency of a planned asset must be
    lit and fresh, or be planned earlier in the same run) gives a **26-asset minimal plan: 24 per-chart assets plus two
    global assets, `bg_transit_rules` (L0) and `ka_muhurta_seva` (L3 service)** (section 1, Evidence E4). The minimal plan is computed, not guessed; it is the
-   smallest set for which the planner accepts the run (simulation of the planner's preflight on all 26: no out-of-plan blocker remains).
+   smallest set for which the planner accepts the run (simulation of the planner's preflight on all 26: no out-of-plan blocker remains). **v1.1:** the launch set is these 26 plus `ka_dasha_kala` (27: 25 per-chart, 2 global), section 1.6; every later reference to "the 26" means the v1.0 computed set. `ga_vargas` is not added (P0b.4); `ka_kshetra` is a separate last stage (section 8.2).
 2. **Two structural blockers stop `gate_ok` for the four 1211 producers. Both are code-derived, not yet observed.**
    - **B-1 `ka_vighnakara` can never be 'proven'.** It has no output-digest spec (`asset_output_digest_specs` has no row;
      migration 1034's header calls it an explicit blocked contract: `kala_obstruction` has no stable non-null unique key).
@@ -264,7 +264,7 @@ The grant plan's own verification and rollback are its; this plan only consumes 
      path has never been exercised in production.
    - Consequence (code-derived): on today's code a full run lands the Bodha assets, `ka_gochara`, `ka_yojaka`, `ka_avadhi` and
      `ka_sangam` (lit, receipt 'unknown'); then `ka_kalasutra`, `ka_vighnakara`, `ka_kala_darshana`, `ka_bhavishya_lekha`, all 8 `ph_*` and
-     `mi_bhavisya` end as `blocked_dependency` errors (their old rows untouched). No 1211 producer reaches gate_ok. The 1211 gate cannot be met until B-1 and B-2 are decided (section 9, Q1-Q2). Only a spec (B-1) or a
+     `mi_bhavisya` end as `blocked_dependency` errors (their old rows untouched). No 1211 producer reaches gate_ok. The 1211 gate cannot be met until B-1 and B-2 are decided (section 9, Q1-Q2). **v1.1 update:** PR #2826 (migrations 1212, 1213) is the proposed fix for B-1 and B-2 (a digest spec for `ka_vighnakara`; digest specs for the services `ka_dasha_kala` and `ka_muhurta_seva`); it is open and not applied (Evidence E8), so both blockers stand until it is deployed, verified (P0c.1) and the two services have rebuilt (S1). B-1 and B-2 stay code-derived, not observed. Only a spec (B-1) or a
      contract change to the service receipts (B-2) fixes it; running with `ORCHESTRATOR_DEP_ASSERT=warn` would run the
      consumers but still leave their receipts 'unknown' (not gate_ok), so it does not meet the 1211 gate either.
 3. **The active-run slot was occupied minutes before this review.** `build_runs` 8684032d (asset_set `ka_gochara_resonance`,
