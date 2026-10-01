@@ -22,13 +22,20 @@ REFUSE-UNLESS-VERIFIED, before any DELETE (every check, never a subset):
      nonempty partition never digests to 'empty').
 
 Then ONE transaction:
+  - the sequence guard, BEFORE any DELETE: `last_value` of
+    `gochara_resonance_map_id_seq` must be >= the greatest restored id.
+    Restored ids were originally issued by this sequence and sequences
+    never go backwards, so a conforming backup can never collide with a
+    later writer insert; the check refuses a foreign hand-crafted file
+    whose ids outrun the sequence. (The restore deliberately does NOT
+    setval: the restore role has USAGE on the sequence, never UPDATE —
+    steward-verified on production 2026-10-01, and no re-anchoring is
+    needed under the never-backwards invariant.);
   - every OTHER chart's full-row certificate is taken (the untouched
     proof baseline);
   - DELETE the chart's partition; INSERT each file row via
     `json_populate_record(NULL::gochara_resonance_map, line)` — the exact
     preimage, ids and computed_at included;
-  - the id sequence is re-anchored at max(id) so later writer inserts
-    cannot collide with restored ids;
   - the live full-row certificate is recomputed: unless it equals the
     recorded pair the transaction ROLLS BACK (any RAISE leaves the
     partition untouched);
@@ -194,6 +201,26 @@ def restore(conn, chart_id: str, lines: list[str],
     n, digest = _check_recorded_pair(expect_count, expect_md5)
     with conn.transaction():
         cur = conn.cursor()
+        # The sequence guard, BEFORE any DELETE: sequences never go
+        # backwards, so the backup's greatest id must not outrun the
+        # sequence. USAGE on the sequence (the restore role's exact grant)
+        # suffices to read last_value; no setval is needed or possible.
+        max_restored_id = max(json.loads(line)["id"] for line in lines)
+        # pg_sequences (not a direct sequence read): SELECT on the sequence
+        # itself is NOT among the restore role's grants — USAGE is, and
+        # pg_sequences exposes last_value under USAGE. NULL = never read ⇒ 0.
+        cur.execute(
+            "SELECT COALESCE(last_value, 0) FROM pg_sequences\n"
+            " WHERE schemaname = 'public' AND sequencename = 'gochara_resonance_map_id_seq';")
+        row = cur.fetchone()
+        if row is None:
+            raise Refusal("RESTORE REFUSED: gochara_resonance_map_id_seq is absent")
+        last_value = int(row[0])
+        if last_value < max_restored_id:
+            raise Refusal(
+                f"RESTORE REFUSED: the backup's greatest id {max_restored_id} outruns "
+                f"gochara_resonance_map_id_seq last_value {last_value} — a foreign "
+                "hand-crafted file is never a restore anchor")
         before_others = other_chart_certificates(cur, cid)
         cur.execute("DELETE FROM gochara_resonance_map WHERE chart_id = %s;", (cid,))
         for line in lines:
@@ -201,11 +228,6 @@ def restore(conn, chart_id: str, lines: list[str],
                 "INSERT INTO gochara_resonance_map\n"
                 "SELECT * FROM json_populate_record(NULL::gochara_resonance_map, %s::json);",
                 (line,))
-        # Re-anchor the id sequence past every restored id (data_plane_builder
-        # has sequence USAGE); a later writer insert must never collide.
-        cur.execute(
-            "SELECT setval(pg_get_serial_sequence('gochara_resonance_map', 'id'),\n"
-            "              COALESCE((SELECT MAX(id) FROM gochara_resonance_map), 1));")
         live_count, live_digest = certificate(cur, cid)
         if live_count != n or live_digest != digest:
             raise Refusal(

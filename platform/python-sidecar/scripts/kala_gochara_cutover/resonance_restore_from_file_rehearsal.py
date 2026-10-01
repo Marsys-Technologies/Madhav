@@ -22,7 +22,7 @@ hand-copied):
            sidecar); then a simulated "rebuild" drifts the live partition
   control 1  SUCCESS: the restore reproduces the recorded certificate
            (count + full-row md5) and the foreign partition's certificate
-           is byte-identical before/after
+           is byte-identical before/after — run UNDER THE RESTRICTED ROLE
   control 2  TAMPERED file (one byte changed, sidecar honest) → REFUSED
            (sha256), live partition untouched
   control 3  TRUNCATED file (last rows dropped, sidecar re-taken for the
@@ -33,6 +33,13 @@ hand-copied):
   control 5  DIGEST mismatch (correct file, wrong recorded md5) →
            REFUSED, live untouched
   control 6  SHA mismatch (corrupt sidecar) → REFUSED, live untouched
+  control 6b SEQUENCE guard: the file's greatest id outruns the sequence →
+           REFUSED before any DELETE (restricted role), live untouched
+  control 6c a setval-style call FAILS under the restore role — the
+           rehearsal can no longer mask privilege gaps (the restore runs
+           as a NON-superuser role holding EXACTLY data_plane_builder's
+           grants: SELECT/INSERT/DELETE on the table, USAGE on the
+           sequence; no CREATE, no sequence UPDATE)
   control 7  the steward's REAL certified backup
            (/Users/Dev/pravaha/run/backups/gochara_resonance_map_
            482012f1_20261001071822.jsonl) verifies against the recorded
@@ -63,6 +70,7 @@ import resonance_rebuild_disposable_rehearsal as R  # noqa: E402
 import resonance_restore_from_file as RESTORE  # noqa: E402
 
 import psycopg  # noqa: E402
+from urllib.parse import urlparse, urlunparse  # noqa: E402
 
 CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 FOREIGN = "00000000-0000-4000-8000-0000000000aa"
@@ -191,6 +199,17 @@ def main(argv=None) -> int:
         cur = conn.cursor()
         report["schema"] = apply_map_schema(cur)
         seed(cur)
+        # The restore runs as a NON-superuser role holding EXACTLY
+        # data_plane_builder's grants (steward-verified on production
+        # 2026-10-01): SELECT/INSERT/DELETE on the table, USAGE on the
+        # sequence; no CREATE, no sequence UPDATE. A rehearsal that runs as
+        # a superuser masks privilege gaps (the setval blocker).
+        cur.execute("DROP ROLE IF EXISTS b6_restore")
+        cur.execute("CREATE ROLE b6_restore LOGIN PASSWORD 'b6_restore_pw'")
+        cur.execute("GRANT SELECT, INSERT, DELETE ON gochara_resonance_map TO b6_restore")
+        cur.execute("GRANT USAGE ON SEQUENCE gochara_resonance_map_id_seq TO b6_restore")
+        parsed = urlparse(dsn)
+        restricted_dsn = urlunparse(parsed._replace(netloc=f"b6_restore:b6_restore_pw@{parsed.hostname}:{parsed.port}"))
 
         backup, count, joined_md5 = take_file_backup(cur, workdir)
         recorded = {"count": count, "md5": joined_md5}
@@ -202,8 +221,8 @@ def main(argv=None) -> int:
         report["setup"] = {"backup": str(backup), "recorded": recorded,
                            "foreign_before": foreign_before, "drifted": drifted}
 
-        # ── control 1: SUCCESS reproduces the certificate ──────────────────
-        with psycopg.connect(dsn, autocommit=False, connect_timeout=5) as c:
+        # ── control 1: SUCCESS reproduces the certificate (RESTRICTED role) ──
+        with psycopg.connect(restricted_dsn, autocommit=False, connect_timeout=5) as c:
             result = RESTORE.restore(c, CHART,
                                      RESTORE.load_and_verify_file(str(backup), CHART, count, joined_md5),
                                      count, joined_md5, execute=True)
@@ -308,8 +327,42 @@ def main(argv=None) -> int:
         else:
             report["controls"]["steward_backup"] = {"verified": None, "skipped": "file absent"}
 
+        # ── control 6b: the sequence guard — a file whose max id outruns the
+        # sequence is refused BEFORE any DELETE (restricted role) ───────────
+        pre = drift_again()
+        cur.execute("SELECT setval('gochara_resonance_map_id_seq', 5)")  # superuser, below the file's max id
+        ok = False
+        msg = ""
+        try:
+            with psycopg.connect(restricted_dsn, autocommit=False, connect_timeout=5) as c:
+                RESTORE.restore(c, CHART,
+                                RESTORE.load_and_verify_file(str(backup), CHART, count, joined_md5),
+                                count, joined_md5, execute=True)
+        except RESTORE.Refusal as exc:
+            ok, msg = "outruns" in str(exc), str(exc)
+        cur.execute("SELECT setval('gochara_resonance_map_id_seq', 200)")
+        untouched = live_certificate(cur, CHART) == pre
+        report["controls"]["sequence_guard"] = {"refused": ok, "message": msg, "live_untouched": untouched}
+        if not (ok and untouched):
+            failures.append(f"control 6b (sequence guard): refused={ok} untouched={untouched} ({msg})")
+
+        # ── control 6c: a setval-style call FAILS under the restore role ───
+        # (the rehearsal can no longer mask privilege gaps: had the restore
+        # kept its setval, THIS is the control that would have caught it)
+        setval_refused = False
+        try:
+            with psycopg.connect(restricted_dsn, autocommit=True, connect_timeout=5) as c:
+                c.execute("SELECT setval('gochara_resonance_map_id_seq', 1)")
+        except Exception as exc:  # insufficient_privilege
+            setval_refused = "permission denied" in str(exc) or "insufficient" in str(exc)
+        report["controls"]["setval_refused_under_role"] = {"refused": setval_refused}
+        if not setval_refused:
+            failures.append("control 6c (setval under the restore role): NOT refused — "
+                            "the role's grants drifted beyond data_plane_builder's")
+
         # restore once more so the disposable DB ends in the pre-drift state
-        with psycopg.connect(dsn, autocommit=False, connect_timeout=5) as c:
+        # (restricted role — the exact production path)
+        with psycopg.connect(restricted_dsn, autocommit=False, connect_timeout=5) as c:
             RESTORE.restore(c, CHART,
                             RESTORE.load_and_verify_file(str(backup), CHART, count, joined_md5),
                             count, joined_md5, execute=True)

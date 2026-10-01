@@ -734,11 +734,16 @@ Python and in one transaction:
   the lines joined by `\n` equals the recorded full-row digest; every line
   is one JSON object with a unique integer id whose `chart_id` IS the
   chart being restored;
-- **one transaction** — every other chart's full-row certificate is taken
+- **one transaction** — BEFORE any DELETE, the sequence guard: the
+  backup's greatest id must not outrun `gochara_resonance_map_id_seq`'s
+  `last_value` (restored ids were issued by this sequence and sequences
+  never go backwards, so no collision is possible and no `setval` is
+  needed — the restore role has USAGE on the sequence, never UPDATE); then
+  every other chart's full-row certificate is taken
   (the untouched baseline); DELETE the chart's partition; INSERT each file
   row via `json_populate_record(NULL::gochara_resonance_map, line)` (the
-  exact preimage, ids and computed_at included); re-anchor the id sequence
-  at max(id); recompute the live full-row certificate and ROLL BACK unless
+  exact preimage, ids and computed_at included); recompute the live
+  full-row certificate and ROLL BACK unless
   it equals the recorded pair; re-take every other chart's certificate and
   require it unchanged.
 
