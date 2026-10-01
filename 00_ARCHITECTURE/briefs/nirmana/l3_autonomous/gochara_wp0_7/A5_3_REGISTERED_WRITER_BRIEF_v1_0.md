@@ -215,8 +215,14 @@ Open bindings (flagged, never silently resolved):
   P5 grain DB writes hold until then. Enumeration carries the honest name.
 - P5c donor matrix: pending the native-authorised ga_strength rebuild (#2731);
   D4 stands.
-- `period_running_at` operand: the §4.0 dasha-row source table to be confirmed
-  against the platform's dasha store before the P1 grain writes.
+- `period_running_at` operand — CONFIRMED 2026-10-01 (3/N): the source is
+  `public.chart_dashas` (`chart_id`, `ayanamsha_id`, `system_id`,
+  `level_n ∈ {1,2,3}` = MD/AD/PD per spec §2.1, `lord_graha`, `start_iso`,
+  `end_iso`), read through the platform's existing defensive reader
+  `services/gochara_grammar/dasha_data.fetch_dasha_periods_multilevel`
+  (9 live systems in store; P1 evaluates `vimshottari` per the operand
+  selector `l1:dasha_periods`). The evaluation itself lands with the
+  prerequisite `result` evaluation (item 5), 3/N scope.
 
 ## v1.5 contract-amendment batch (A5.5 gate) — one list
 
@@ -235,5 +241,5 @@ hold until the fold lands.
    fold names the unit for v1.5 (never a silent re-unit).
 
 Deferred alongside but NOT contract amendments: the P5c donor matrix (D4,
-awaits the native-authorised `ga_strength` rebuild), the P5d/P5e forms
-(D5/D6), and the `period_running_at` dasha-row source confirmation above.
+awaits the native-authorised `ga_strength` rebuild) and the P5d/P5e forms
+(D5/D6). The `period_running_at` dasha-row source is CONFIRMED (above).
