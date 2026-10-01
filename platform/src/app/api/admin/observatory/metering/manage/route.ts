@@ -30,7 +30,11 @@ export async function GET() {
 export async function POST(request:Request) {
  const auth=await guard();if(auth instanceof NextResponse)return auth
  const origin=request.headers.get('origin')
- if(origin && origin!==new URL(request.url).origin)return NextResponse.json({error:'forbidden_origin'},{status:403})
+ // Cloud Run exposes an internal request URL behind the public custom domain.
+ // Accept only the production public origin or the direct service origin.
+ const publicOrigin='https://madhav.marsys.in'
+ if(origin && origin!==new URL(request.url).origin && origin!==publicOrigin)
+  return NextResponse.json({error:'forbidden_origin'},{status:403})
  if(request.headers.get('sec-fetch-site')==='cross-site')return NextResponse.json({error:'forbidden_origin'},{status:403})
  if(!checkRpm(`metering-manage:${auth.user.uid}`,3).allowed)return NextResponse.json({error:'rate_limited'},{status:429})
  let input

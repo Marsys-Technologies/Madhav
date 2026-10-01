@@ -16,7 +16,18 @@ describe('administration boundary',()=>{
  })
  it('rejects cross-origin operations',async()=>{
   expect((await POST(request({action:'recover'},{Origin:'https://attacker.invalid'}))).status).toBe(403)
+  expect((await POST(request({action:'recover'},{Origin:'https://madhav.marsys.in','Sec-Fetch-Site':'cross-site'}))).status).toBe(403)
   expect(mocks.recover).not.toHaveBeenCalled()
+ })
+ it('accepts the production public origin behind a Cloud Run service URL',async()=>{
+  mocks.recover.mockResolvedValue({recovered:2,failed:0})
+  const proxied=new Request('https://amjis-web-example.a.run.app/api/admin/observatory/metering/manage',{
+   method:'POST',headers:{Origin:'https://madhav.marsys.in','Content-Type':'application/json','Sec-Fetch-Site':'same-origin'},
+   body:JSON.stringify({action:'recover'})})
+  const response=await POST(proxied)
+  expect(response.status).toBe(200)
+  expect(await response.json()).toEqual({recovered:2,failed:0})
+  expect(mocks.recover).toHaveBeenCalledOnce()
  })
  it('requires acknowledgement and derives the payer from the authenticated account',async()=>{
   const payload={action:'test',connectionId:'11111111-1111-4111-8111-111111111111',modelId:'model'}
