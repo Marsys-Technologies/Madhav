@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); FD-1 and FD-2 are output changes: SS (R5)"
 nirmana_freeze: "t2, 2026-09-10"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-25, TI-L2-29]
 ledger_gap_ids: [bo_anveshana-Earn.build_record, bo_anveshana-Cost.baseline, bo_anveshana-Complete.depth, bo_anveshana-Build.history, bo_anveshana-Build.dep_liveness, bo_anveshana-Carr.detector]
 ---
 # bo_anveshana — Discovery Engine: ranked non-obvious discoveries and anomalies
@@ -93,6 +95,7 @@ Approver under Track A brief §10: **Steward (G16); FD-1 and FD-2 are output cha
 
 ### FD-1 · Earn or null the stored confidence, fragility and falsifier
 
+- **SS ruling (N-59, 2026-10-01):** `confidence`, `ayanamsha_fragility` and `falsifier` are NULL now; the acharya-attention claim in `why_an_acharya_misses_it` is dropped or defined (numbers kept). Computing fragility (does the discovery hold in all five ayanamshas) is a post-J1 improvement item. Batched. TI-L2-25, TI-L2-29.
 - **Answers:** the Null/Narr observation on `epistemic_jsonb` and `falsifier_jsonb`; T1 §13; CLAUDE.md §N.8
 - **Change:** either (a) store NULL (or omit the keys) for `confidence`/`ayanamsha_fragility` until a detector exists, and let the served layer say "not computed"; or (b) compute them from something measured (for `ayanamsha_fragility`, the discovery's presence across the five ayanamshas, `corroboration_count`, which the writer already holds; for the confidence, a documented monotone function with its decision id, never `consequence + 0.1`); give each discovery class its own falsifier text naming the L3/L4 outcome class it would be compared to, or NULL
 - **Files / declaration / migration:** `platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py` (`:416-430`)
@@ -106,6 +109,7 @@ Approver under Track A brief §10: **Steward (G16); FD-1 and FD-2 are output cha
 
 ### FD-2 · State only what the cited numbers support in `why_an_acharya_misses_it`
 
+- **SS ruling (N-59, 2026-10-01):** `confidence`, `ayanamsha_fragility` and `falsifier` are NULL now; the acharya-attention claim in `why_an_acharya_misses_it` is dropped or defined (numbers kept). Computing fragility (does the discovery hold in all five ayanamshas) is a post-J1 improvement item. Batched. TI-L2-25, TI-L2-29.
 - **Answers:** the Narr observation on the four template sites
 - **Change:** keep the numeric restatement (surface salience, consequence, distance, σ, subsystem count, edge count) and replace the claim about acharya attention by a defined, stated criterion (for example the salience percentile below which a signal counts as low-salience, named in the string) or drop the clause; the broker string (`:732`) already states counts and a property of the graph, which is derivable
 - **Files / declaration / migration:** `bo_anveshana.py` (`:509`, `:585`, `:648`)
@@ -170,3 +174,9 @@ Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-10 (
 
 1. FD-1: null the stored confidence/fragility/falsifier until earned, or define them with a measured function and decision id?
 2. FD-2: may a templated sentence claim what an acharya would miss, or must the claim be defined or dropped?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-05 (R) - accepted.** `confidence`, `ayanamsha_fragility` and `falsifier` are NULL now; the acharya-attention claim in `why_an_acharya_misses_it` is dropped or defined (numbers kept). Computing fragility (does the discovery hold in all five ayanamshas) is a post-J1 improvement item. Batched. TI-L2-25, TI-L2-29.
+- **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

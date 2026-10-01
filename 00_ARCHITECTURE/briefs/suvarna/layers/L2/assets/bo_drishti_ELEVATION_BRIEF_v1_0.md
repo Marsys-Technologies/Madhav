@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 nirmana_freeze: "t1, 2026-09-09"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-13, TI-L2-14]
 ledger_gap_ids: [bo_drishti-Earn.build_record, bo_drishti-Cost.baseline, bo_drishti-Build.history, bo_drishti-Carr.detector]
 ---
 # bo_drishti — Question lenses (pointer-only lens table, one row per question type × ayanamsha)
@@ -130,3 +132,7 @@ Frozen manifest: Nirmāṇa froze this asset under definition t1 on 2026-09-09 (
 ## 8 · Questions for Strategic Suvarṇa
 
 1. CF-06: confirm `[]` after the read of the jsonb builders (no text key).
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

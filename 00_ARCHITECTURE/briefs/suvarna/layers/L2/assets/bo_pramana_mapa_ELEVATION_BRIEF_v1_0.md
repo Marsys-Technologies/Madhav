@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 nirmana_freeze: "t2, 2026-09-10"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-03, TI-L2-13, TI-L2-14, TI-L2-24]
 ledger_gap_ids: [bo_pramana_mapa-Idem.pattern, bo_pramana_mapa-Earn.build_record, bo_pramana_mapa-Cost.baseline, bo_pramana_mapa-Dens.served, bo_pramana_mapa-Build.history, bo_pramana_mapa-Build.dep_liveness, bo_pramana_mapa-Carr.detector]
 ---
 # bo_pramana_mapa — Synthesis quality scorecard (terminal Bodha writer)
@@ -142,3 +144,9 @@ Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-10 (
 ## 8 · Questions for Strategic Suvarṇa
 
 1. Is the open detector backlog (`no_pre_answer_pass`, `ledger_independence_pass`, `discovery_not_fabricated_pass`) in scope for the first L2 wave, or do the flags stay NULL?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-02 - accepted.** The module's `density_contract` is declared as what the handler does (`paginated: false`, the true `empty_reason`; precedent `query_cdlm_summary.ts:144`, `query_chart_gestalt.ts:64`). No rebuild. TI-L2-03.
+- **Q-L2-20 - accepted.** The three pass-flags (`no_pre_answer_pass`, `ledger_independence_pass`, `discovery_not_fabricated_pass`) already have detector code (`bo_pramana_mapa.py:511-620`, #2607); they are read after the one rebuild (`bo_sangati` before `bo_pramana_mapa` inside it). TI-L2-24.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "qualify (Q)"
 disposition_proposal_approver: "Steward (G16) for qualify; any consolidation or retirement is SS (R5)"
 nirmana_freeze: "t2, 2026-09-11"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-08, TI-L2-10, TI-L2-13, TI-L2-14]
 ledger_gap_ids: [bo_samvada-Idem.pattern, bo_samvada-Build.completion, bo_samvada-Earn.build_record, bo_samvada-Cost.baseline, bo_samvada-Dens.served, bo_samvada-Build.history, bo_samvada-Build.dep_liveness, bo_samvada-Carr.detector]
 ---
 # bo_samvada — Unified Chart Digest (UCD) view: a passive compatibility boundary
@@ -145,3 +147,10 @@ Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-11 (
 
 1. FD-1: confirm qualify (view kind, count_sql real, N/A rules by N-22) and decide whether to consolidate the view into a versioned projection later.
 2. The saved record says `rows_written=1` (the view object) and the code now returns 0: which is the intended build record for a passive boundary?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-09 - accepted.** Qualify confirmed: chart-scoped `count_sql` over the view (reads 5), floor 5, `natural_key_partition`, build record 0 under the changed-rows convention (L0 Q1); docstring (`bo_samvada.py:31-40`) and `cr_status.ts` comment corrected; no consolidation now. No rebuild. TI-L2-08.
+- **Q-L2-07 - accepted.** The five view-lineage edges are kept.
+- **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

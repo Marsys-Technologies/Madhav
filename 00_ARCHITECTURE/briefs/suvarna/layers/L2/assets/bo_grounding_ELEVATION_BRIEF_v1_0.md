@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "integrate (I)"
 disposition_proposal_approver: "Strategic Suvarṇa (integrate is parked to SS, Track A §10)"
 nirmana_freeze: "none (not in the frozen 22)"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-07, TI-L2-13, TI-L2-14, TI-L2-26]
 ledger_gap_ids: [bo_grounding-Idem.pattern, bo_grounding-Earn.build_record, bo_grounding-Cost.baseline, bo_grounding-Build.history, bo_grounding-Carr.detector]
 ---
 # bo_grounding — Grounding tier matches (śruti / yukti / pratyakṣa) per fired yoga and MSR signal
@@ -87,6 +89,8 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 Approver under Track A brief §10: **Strategic Suvarṇa (integrate is parked to SS, Track A §10)**.
 
+**SS ruling (N-59, 2026-10-01): the proposed `integrate (I)` is NOT applied now.** `bo_grounding` stays a declared substrate (outside the denominator per D-NATIVE-11, no consumer, reason stated in the declaration); integration is a post-J1 item (Q-L2-08; TI-L2-07, TI-L2-26).
+
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
 ### FD-1 · Connect the grounding tier to a consumer, then promote the status
@@ -141,3 +145,8 @@ Not in Nirmāṇa's frozen manifest, so no manifest staleness. **A production re
 
 1. Integrate (connect to the grounding spine and the attribution catalogue), keep as a substrate (then `unresolved` until a consumer exists), or retire (would discard D-NATIVE-09)?
 2. Is adjudication #1726 (the `sruti` tier definition) still open?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-08 - changed.** `bo_grounding` stays a declared SUBSTRATE for now: outside the denominator per D-NATIVE-11, no consumer, reason stated in the declaration; no retire; no new served surface before J1; integration is a post-J1 item. Adjudication #1726 is not ours to close: recorded 'satisfied in practice'. The proposed disposition 'integrate (I)' is therefore deferred, not applied. TI-L2-07, TI-L2-26.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.

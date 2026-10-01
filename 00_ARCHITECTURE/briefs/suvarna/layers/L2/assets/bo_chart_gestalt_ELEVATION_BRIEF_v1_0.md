@@ -14,6 +14,8 @@ base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 nirmana_freeze: "t2, 2026-09-10"
+decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
+track_i_items: [TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-15, TI-L2-24]
 ledger_gap_ids: [bo_chart_gestalt-Earn.build_record, bo_chart_gestalt-Cost.baseline, bo_chart_gestalt-Build.history, bo_chart_gestalt-Build.dep_liveness, bo_chart_gestalt-Carr.detector]
 ---
 # bo_chart_gestalt — Chart gestalt (pointers-only synthesis of the earlier Bodha assets)
@@ -152,3 +154,9 @@ Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-10 (
 ## 8 · Questions for Strategic Suvarṇa
 
 1. FD-2: is `pivot_ids` to be declared NULL-by-design (owner: CDLM §C3) or removed from the contract?
+
+**SS rulings (N-59, 2026-10-01; decision sheet `DECISION_SHEET_L2_v1_0.md` (PR #2841); (R) = provisional until the J1 review). The questions above are kept for the record.**
+
+- **Q-L2-20 - accepted.** `pivot_ids` is declared NULL-by-design with the named owner (CDLM section C3, L4 Phala) and 'not computed' in the served field text; the column is kept. TI-L2-15.
+- **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
+- **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.
