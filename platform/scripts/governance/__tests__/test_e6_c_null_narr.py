@@ -1407,3 +1407,10 @@ def test_each_generic_leaf_is_covered_only_in_an_assert_or_beside_a_specific_key
     assert ac.narr_fidelity_scan([leaf], CITE, _tests(test_a=inp))["covered"] == []
     asr = _H + f"def test_a():\n    out = build_narration(1)\n    assert out['{leaf}']\n"
     assert ac.narr_fidelity_scan([leaf], CITE, _tests(test_a=asr))["covered"] == [leaf]
+
+
+def test_a_string_naming_the_table_and_column_without_a_select_is_not_a_lint_surface(tmp_path):
+    p = tmp_path / "w.py"
+    p.write_text('LABEL = "chart_facts fact_category fact_key"\n')
+    r = ac.narr_lint_scan([p], ["citation_human"])
+    assert r["v"] == ac.NO_DET and r["applied"] == [], r

@@ -996,7 +996,7 @@ def _in_list() -> str:
 
 # whitespace class for "blank": the POSIX space class (space, tab, LF, VT, FF, CR) plus NBSP, zero-width space,
 # U+2000-200A (en/em/thin... spaces) and the BOM; the same class text is valid in a PostgreSQL ARE and in Python re
-_WS = r"[\s ​ - ﻿]"
+_WS = r"[\s\u00A0\u200B\u2000-\u200A\uFEFF]"
 _WS_TRIM_PY = f"^{_WS}+|{_WS}+$"
 _WS_TRIM = f"'{_WS_TRIM_PY}', '', 'g'"
 
