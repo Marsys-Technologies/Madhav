@@ -7,12 +7,14 @@ status: "PROVISIONAL — until J1; may register gaps, may not certify"
 produced_by: exec-suvarna
 produced_on: 2026-10-01
 plan_item: A.L1 (briefs, dispositions, designs)
-census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/census/census_L1.json` (generated 2026-09-30T20:22:28+05:30, chart 482012f1, inspector 2a78ec64d on campaign/nikasha-test, pre-REGISTRY_REVISION; criterion revisions then: Build.dag 1, Build.target 1, Idem.pattern 1, Dens.served 1, no Null/Narr), with the `ga_prashna` cells read from the post-grant rerun `census/after_reader_grant/census_L1.json` (generated 2026-09-30T20:30:02+05:30; every other cell identical). NOT re-measured: main's inspector is at REGISTRY_REVISION 6 and the lane has no DB access."
+census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/census/census_L1.json` (generated 2026-09-30T20:22:28+05:30, chart 482012f1, inspector 2a78ec64d on campaign/nikasha-test, pre-REGISTRY_REVISION; criterion revisions then: Build.dag 1, Build.target 1, Idem.pattern 1, Dens.served 1, no Null/Narr), with the `ga_prashna` cells read from the post-grant rerun `census/after_reader_grant/census_L1.json` (generated 2026-09-30T20:30:02+05:30; every other cell identical). NOT re-measured: main's inspector is at REGISTRY_REVISION 6 at the base commit (7 on origin/main 066c58587: the revision note names a NA_CAUSES addition for Carr; the criterion bodies were not diffed beyond that) and the lane has no DB access."
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_LAYER_INSTANCE_v1_0.md (1.0-rev1, PROVISIONAL)"
 base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); moving the daridra-cancellation pass (FD-1) is an output change for SS"
+decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS"
+track_i_items: [I-11, I-13]
 ledger_gap_ids: [ga_structural-Idem.pattern, ga_structural-Build.completion, ga_structural-Earn.build_record, ga_structural-Cost.baseline, ga_structural-Build.history, ga_structural-Carr.detector]
 ---
 # ga_structural — Structural enumeration (64 categories: aspects, conjunctions, dignity per varga, avasthā, yoga/doṣa labelling, argala, dispositors)
@@ -32,7 +34,7 @@ Structural enumeration v2.0 (`ga_writers/ga_structural_writer.py:1-50`, 8,144 li
 | live rows / floor | 102,037 / 98,446 (Δ +3,591); `asset_throughput` lit / **106,707** (4,670 more than the census count); seed floor literal 98446 | census `live_rows`; floor and throughput from the layer instance §1.1 (live registry read 2026-09-30) |
 | catalog_status | CURRENT | census |
 | depends_on (live, 2026-09-30) | `ga_dashas`, `ga_nakshatra`, `ga_panchanga`, `ga_positions`, `ga_sensitive`, `ga_strength`, `ga_vargas` (live and seed; the writer-class comment `ga_structural.py:21` lists only `ga_nakshatra` and defers to the registry, `:19`); the writer also reads two L0 catalogues (`brahma_dosha_catalog`, `brahma_yoga_catalog`, MF-L1-006; exempt) | layer instance §2.5 |
-| blast radius | census (pre-1210): direct 7 / transitive 55; seed + migration 1210 reconstruction names 4 direct dependent(s): `bo_laksana`, `bo_upaya`, `ga_sade_sati`, `ga_yoga` | census `blocking_radius`; names reconstructed from `asset_registry_seed.ts` + `platform/migrations/1210_asset_registry_direct_edges.sql` (other migrations also edit `depends_on`, so the reconstruction can differ from the live registry in either direction) |
+| blast radius | live registry incl. migration 1210 (applied; verified live 2026-10-01 14:37Z per the independent review): direct 7; census (2026-09-30, pre-1210): direct 7 / transitive 55; seed + 1210 reconstruction names 6 direct dependent(s): `bo_arudha`, `bo_laksana`, `bo_upaya`, `ga_sade_sati`, `ga_vichara`, `ga_yoga` (1 further live edge(s) unnamed: set by other migrations) | census `blocking_radius`; live count from the independent review; names reconstructed from `asset_registry_seed.ts` + `platform/migrations/1210_asset_registry_direct_edges.sql` (other migrations also edit `depends_on`, so the reconstruction can differ from the live registry) |
 | code readers / served surface | `get_structural_signals.ts:138` (declarations `read_evidence`), `get_vichara.ts`, `reading_checklist.ts` (+59 modules reach `chart_facts` by table); census: 2 modules attributed, 1 declaring `density_contract` | census `reach.modules`; layer instance §1.2 |
 | role / scoring mode | the structural spine: relations, conditions, divisions and firings L2 constructs on; 7 direct / 55 transitive dependents (census) | layer instance §0.2, §4.4 (contribution layer; Computational correctness, T1 §11) |
 
@@ -55,13 +57,15 @@ Census used: as the frontmatter `census_revision_used` (not repeated here).
 
 Information (never blockers, D3): Reach.fields NOT_GENERIC — no target_table declared: no table to census at field level; Complete.width NOT_GENERIC — no declared universe for this asset — declaring one is the first width gap.
 
-**Offline rollup** (main's `rollup_asset` rules, registry rev 6, applied to the SAVED measurements; `NA_RULE_DECISIONS` is empty on main, so a measured N/A reads NO_DETECTOR; mixes old measurements with new rules; not a re-measure and not a certification; `/Users/Dev/suvarna-evidence/A_L1/rollup_saved_L1.json`): Ldgr NO_DETECTOR · Idem PASS · Earn NO_DETECTOR · Null NO_DETECTOR · Vocab NO_DETECTOR · Carr NO_DETECTOR · Narr NO_DETECTOR · Dens PASS · Build FAIL.
 
-**Offline re-scan of two criteria the saved census predates** (main's own code over this tree and the saved record, no database; indicative): Dens.served rev 4 reads **NO_DETECTOR** — NO_DETECTOR — 1 serving-root file(s) naming ga_structural lose the string scanner's sync (an unbalanced quote, a nested template literal, or a regex literal holding a quote desynced it): platform-mcp/src/tools/register_p1_ganita.ts; its served select and density_contract cannot be read — never FAIL… (the saved rev-1 reading was PASS); Null/Narr graders over the declarations file 1.6.0 plus DDL-derived columns (`/Users/Dev/suvarna-evidence/A_L1/narr_null_offline_L1.json`; `*` = INCONCLUSIVE because no row data was read): agree PASS; checkable NO_DETECTOR*; fidelity_test PARTIAL; lint PASS; schema_default PARTIAL; blank_rows NO_DETECTOR*.
+
+**Offline rollup** (main's `rollup_asset` rules, registry rev 6, applied to the SAVED measurements; `NA_RULE_DECISIONS` is empty on main, so a measured N/A reads NO_DETECTOR; mixes old measurements with new rules; not a re-measure and not a certification; `_evidence/rollup_saved_L1.json` beside this file): Ldgr NO_DETECTOR · Idem PASS · Earn NO_DETECTOR · Null NO_DETECTOR · Vocab NO_DETECTOR · Carr NO_DETECTOR · Narr NO_DETECTOR · Dens PASS · Build FAIL.
+
+**Offline re-scan of two criteria the saved census predates** (main's own code over this tree and the saved record, no database; indicative): Dens.served rev 4 reads **NO_DETECTOR** — NO_DETECTOR — 1 serving-root file(s) naming ga_structural lose the string scanner's sync (an unbalanced quote, a nested template literal, or a regex literal holding a quote desynced it): platform-mcp/src/tools/register_p1_ganita.ts; its served select and density_contract cannot be read — never FAIL… (the saved rev-1 reading was PASS); Null/Narr graders over the declarations file 1.6.0 plus DDL-derived columns (`_evidence/narr_null_offline_L1.json`; `*` = INCONCLUSIVE because no row data was read): agree PASS; checkable NO_DETECTOR*; fidelity_test PARTIAL; lint PASS; schema_default PARTIAL; blank_rows NO_DETECTOR*.
 
 ## 2 · Gaps — which are real, which are detector gaps
 
-Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry row or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row written by an earlier inspector run that the saved census now reads PASS/N/A; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3); **SS question** = real or not depends on a ruling.
+Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry row or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row written by an earlier inspector run that the saved census now reads PASS/N/A; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3); **SS question** = real or not depends on a ruling; **artefact** = a saved census cell that reads a measurement the inspector's role could not make (pending a read by a role that can). A row naming several classes counts under its leading label.
 
 | gap id (ledger `asset_gaps.jsonl` @ 2a78ec64d, or census cell, or this brief) | gate | class | note |
 |---|---|---|---|
@@ -90,7 +94,7 @@ Approver under Track A brief §10: **Steward (G16); moving the daridra-cancellat
 - **Files / declaration / migration:** `ga_writers/ga_structural_writer.py:2761-2870` (remove the two reads, keep the finding); `ga_writers/ga_vichara_writer.py` (new family and test); `fact_category_ownership`/registry text for the moved rows
 - **Failing-first test and mutation:** failing-first: on a freshly built chart (no prior generation) the cancellation outcome equals the outcome after a second build (today it can differ); mutation: reintroduce the back-read and the order-independence test fails
 - **Output change:** yes: the cancelled/uncancelled state of the daridra finding is emitted by a different asset and may change on a fresh build (it can only differ where the previous-generation read returned nothing); SS (R5)
-- **Blast radius:** 7 direct / 55 transitive dependents read `ga_structural` rows; `ga_vichara` gains a family (its readers `bo_laksana`, `bo_karanajala`, `bo_laksana_rerank`)
+- **Blast radius:** 7 direct / 55 transitive dependents read `ga_structural` rows; `ga_vichara` gains a family (its readers `bo_laksana`, `bo_karanajala`, `bo_laksana_rerank`); moving the family changes the row counts of both assets, so their floors (`ga_structural` 98,446, `ga_vichara` 8,249) are re-declared from the next build (floors equal the achieved count after a build)
 - **Rebuild:** **needs production rebuild** of `ga_structural` (106,707 rows) and `ga_vichara` after the code lands, in DAG order: a REVIEW item for SS
 - **Gate it moves:** Build (dag), Idem (reproducible rebuild), Earn
 - **Fix class:** writer code + data (output change); **buildable before J1:** tier-dependent: which asset owns a cancellation (TGH-T2 §3.3 judged structure)
@@ -99,7 +103,7 @@ Approver under Track A brief §10: **Steward (G16); moving the daridra-cancellat
 ### FD-2 · Reconcile the 4,670 rows and complete `fact_category_ownership`
 
 - **Answers:** census Build.completion FAIL; CF-02
-- **Change:** read-only first: list the categories the last build wrote (by `fact_category`, for the build_id of the last complete run) and join to `fact_category_ownership` to see which are unowned; then add the missing rows by the migration-842 pattern (idempotent `ON CONFLICT DO NOTHING`) or scope the writer's reported count to owned categories. Longer term: a CI parity test between the categories each L1 writer emits (a constant per writer) and the ownership table
+- **Change:** read-only first: list the categories the last build wrote (by `fact_category`, for the build_id of the last complete run) and join to `fact_category_ownership` to see which are unowned; then add the missing rows by the migration-842 pattern (idempotent `ON CONFLICT DO NOTHING`) or scope the writer's reported count to owned categories. Longer term: a CI parity test between the categories each L1 writer emits (a constant per writer) and the ownership table. Completing ownership raises the counted rows toward the written 106,707; scoping `count_sql` to the primary table (SS Q19) would lower it; either way the floor 98,446 is re-declared from the next build
 - **Files / declaration / migration:** a registry migration (number = max+1 at execution time); optionally a per-writer category constant and a parity test
 - **Failing-first test and mutation:** failing-first: `rows_written` of a rerun equals the asset-owned count on a stated basis (today 106,707 vs 102,037); mutation: delete one owned category row and the parity test fails
 - **Output change:** none
@@ -145,7 +149,7 @@ Approver under Track A brief §10: **Steward (G16); moving the daridra-cancellat
 - **CF-12** — Idem: an orphan census for delete-then-insert writers whose delete scope is built from the rows about to be written. *This asset:* delete scope: categories present in rows (owner-receipt gated); the historical collision with `ga_condition` on two categories (migrations 416/419) is the case a category-scoped delete cannot see
 - **CF-14** — Legacy `ga_writers/_telemetry.py` `update_asset_throughput` call sites (eight L1 writers, R34 residual). *This asset:* one of eight: `:8143` under `owns_conn` (`:6895`)
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset (D3 dominates in L1). *This asset:* D3: recompute a sample of relations
-- **CF-16** — `ga_vargas` restore and downstream re-earn: `chart_divisionals` empty for the canonical chart under a `lit` record. *This asset:* reads `chart_divisionals`: rebuild after the restore (`_load_varga_positions`, `:960-972`)
+- **CF-16** — `chart_divisionals` reads 0 rows for every login role since the migration-1035 ownership change (RLS deny-all): an access incident, data probably intact, UNVERIFIED until read as owner or builder (Track I I-11). *This asset:* reads `chart_divisionals`: rebuild only after the CF-16 access fix (`_load_varga_positions`, `:960-972`)
 - **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* instrument absent: no change
 - **CF-06** — `prose_fields` declarations for the L1 assets that have none or an incomplete one (Null and Narr gates). *This asset:* declared: `["citation_human"]`
 
@@ -155,7 +159,7 @@ natural key `(chart_id, ayanamsha_id, fact_category, fact_subject, fact_key)` (t
 
 ## 6 · Preserved kernel, carriage check, opportunities
 
-- **Preserved kernel:** the 64-category structural catalogue, the constituent `fact_id` references to real `chart_facts` rows (L1 authority), the catalog-driven yoga/doṣa labelling and the 144-row argala matrices.
+- **Preserved kernel:** the 64-category structural catalogue, the constituent `fact_id` references to real `chart_facts` rows (L1 authority), the catalog-driven yoga/doṣa labelling and the 144-row argala matrices.; L1 is the authority for argala: by CLAUDE.md §N.5 and the SS argala answer logged in Track I items, L2 (`bo_karanajala`) REFERENCES L1's computed argala ({2,4,5,11}, Jaimini) and never recomputes it; a BPHS {2,4,11} variant would be a separately named, cited convention, never a silent second definition
 - **Carriage check chosen (T4 §4.1; one only):** D3 — recompute a stratified sample of aspects, conjunctions and dispositor chains from stored positions by an independent routine and compare; D1 for catalog-driven yoga/doṣa labels is the L0 catalogue's own check.
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 

@@ -1,0 +1,610 @@
+{
+ "ga_ayurdaya": {
+  "Narr.agree": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_ayurdaya: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_ayurdaya: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.fidelity_test": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_ayurdaya: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_ayurdaya: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_ayurdaya: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_ayurdaya: never read as 'no prose'",
+   "inconclusive": false
+  }
+ },
+ "ga_condition": {
+  "Narr.agree": {
+   "v": "PARTIAL",
+   "measured": "all 1 declared prose entry resolve to column(s) of ga_condition_composite, chart_facts (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here); reverse leg unavailable: the writer's writes could not be read, so a prose-vocabulary column it writes without declaring is unchecked",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no row data was read for the declared prose entries (scope unsupported or not measured); no PASS is possible",
+   "inconclusive": true
+  },
+  "Narr.fidelity_test": {
+   "v": "PARTIAL",
+   "measured": "7 test file(s) call the builder and assert (test_a1_producer_graha_subject_convergence.py, test_bo_pratijna_v4_engine.py, test_ga_condition.py, test_ga_condition_enrichment.py): tests call the builder but none names a declared field (direct or indirect); declared: citation_human; structural only, never PASS",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "PASS",
+   "measured": "7 writer scope file(s) clean under the fact-category-pin narration lint(s) that applied (their own allowlists applied)",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "PARTIAL",
+   "measured": "no schema default on the declared prose column(s) citation_human; writer literal fallbacks and constant columns are not measured here, so this is never PASS",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no checkable prose rows were read for the declared entries",
+   "inconclusive": true
+  }
+ },
+ "ga_dashas": {
+  "Narr.agree": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_dashas: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_dashas: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.fidelity_test": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_dashas: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_dashas: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_dashas: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_dashas: never read as 'no prose'",
+   "inconclusive": false
+  }
+ },
+ "ga_medical": {
+  "Narr.agree": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_medical: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_medical: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.fidelity_test": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_medical: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_medical: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_medical: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_medical: never read as 'no prose'",
+   "inconclusive": false
+  }
+ },
+ "ga_nakshatra": {
+  "Narr.agree": {
+   "v": "PASS",
+   "measured": "all 1 declared prose entry resolve to column(s) of chart_facts (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no row data was read for the declared prose entries (scope unsupported or not measured); no PASS is possible",
+   "inconclusive": true
+  },
+  "Narr.fidelity_test": {
+   "v": "PARTIAL",
+   "measured": "2 test file(s) call the builder and assert (test_ga_nakshatra.py, test_verification_vocab.py): tests call the builder but none names a declared field (direct or indirect); declared: citation_human; structural only, never PASS",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "PASS",
+   "measured": "40 writer scope file(s) clean under the fact-category-pin narration lint(s) that applied (their own allowlists applied)",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "PARTIAL",
+   "measured": "no schema default on the declared prose column(s) citation_human; writer literal fallbacks and constant columns are not measured here, so this is never PASS",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no checkable prose rows were read for the declared entries",
+   "inconclusive": true
+  }
+ },
+ "ga_panchanga": {
+  "Narr.agree": {
+   "v": "PASS",
+   "measured": "all 1 declared prose entry resolve to column(s) of chart_facts (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no row data was read for the declared prose entries (scope unsupported or not measured); no PASS is possible",
+   "inconclusive": true
+  },
+  "Narr.fidelity_test": {
+   "v": "PARTIAL",
+   "measured": "structural only: 1 test file(s) call the builder and assert in the same test function (test_ga4_writer.py); declared field(s) referenced: citation_human; whether the assertion grades the sentence is not read, so this never reads PASS",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 the narration lints are not applicable to this asset: no chart_facts fact_category selection in its 7-file writer scope and no declared column the raw-token lint covers; a clean scan of code they cannot see is not a pass",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "PARTIAL",
+   "measured": "no schema default on the declared prose column(s) citation_human; writer literal fallbacks and constant columns are not measured here, so this is never PASS",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no checkable prose rows were read for the declared entries",
+   "inconclusive": true
+  }
+ },
+ "ga_positions": {
+  "Narr.agree": {
+   "v": "PASS",
+   "measured": "all 1 declared prose entry resolve to column(s) of chart_facts (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no row data was read for the declared prose entries (scope unsupported or not measured); no PASS is possible",
+   "inconclusive": true
+  },
+  "Narr.fidelity_test": {
+   "v": "PARTIAL",
+   "measured": "structural only: 3 test file(s) call the builder and assert in the same test function (test_bhava_chalit.py, test_ga3_writers.py, test_ga_orchestrator_conformance.py); declared field(s) referenced: citation_human; whether the assertion grades the sentence is not read, so this never reads PASS",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 the narration lints are not applicable to this asset: no chart_facts fact_category selection in its 8-file writer scope and no declared column the raw-token lint covers; a clean scan of code they cannot see is not a pass",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "PARTIAL",
+   "measured": "no schema default on the declared prose column(s) citation_human; writer literal fallbacks and constant columns are not measured here, so this is never PASS",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no checkable prose rows were read for the declared entries",
+   "inconclusive": true
+  }
+ },
+ "ga_prashna": {
+  "Narr.agree": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_prashna: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_prashna: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.fidelity_test": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_prashna: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_prashna: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_prashna: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_prashna: never read as 'no prose'",
+   "inconclusive": false
+  }
+ },
+ "ga_sade_sati": {
+  "Narr.agree": {
+   "v": "PASS",
+   "measured": "all 1 declared prose entry resolve to column(s) of chart_facts (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no row data was read for the declared prose entries (scope unsupported or not measured); no PASS is possible",
+   "inconclusive": true
+  },
+  "Narr.fidelity_test": {
+   "v": "PARTIAL",
+   "measured": "structural only: 3 test file(s) call the builder and assert in the same test function (test_ga9_sade_sati_enrichment.py, test_ga9_writer.py, test_nar_ga_sade_sati_concurrent_dasha_label.py); declared field(s) referenced: citation_human; whether the assertion grades the sentence is not read, so this never reads PASS",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "PARTIAL",
+   "measured": "only allowlisted narration lint violation(s) in scope: fact-category-pin platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1449; fact-category-pin platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1483; fact-category-pin platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1636",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "PARTIAL",
+   "measured": "no schema default on the declared prose column(s) citation_human; writer literal fallbacks and constant columns are not measured here, so this is never PASS",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no checkable prose rows were read for the declared entries",
+   "inconclusive": true
+  }
+ },
+ "ga_sensitive": {
+  "Narr.agree": {
+   "v": "PASS",
+   "measured": "all 1 declared prose entry resolve to column(s) of chart_facts (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no row data was read for the declared prose entries (scope unsupported or not measured); no PASS is possible",
+   "inconclusive": true
+  },
+  "Narr.fidelity_test": {
+   "v": "PARTIAL",
+   "measured": "structural only: 8 test file(s) call the builder and assert in the same test function (test_beta_d_house_convention.py, test_bhava_chalit.py, test_d1_5b_b5_completions.py, test_ga5_writer.py\u2026); declared field(s) referenced: citation_human; whether the assertion grades the sentence is not read, so this never reads PASS",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 the narration lints are not applicable to this asset: no chart_facts fact_category selection in its 11-file writer scope and no declared column the raw-token lint covers; a clean scan of code they cannot see is not a pass",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "PARTIAL",
+   "measured": "no schema default on the declared prose column(s) citation_human; writer literal fallbacks and constant columns are not measured here, so this is never PASS",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no checkable prose rows were read for the declared entries",
+   "inconclusive": true
+  }
+ },
+ "ga_sensitive_degree": {
+  "Narr.agree": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_sensitive_degree: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_sensitive_degree: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.fidelity_test": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_sensitive_degree: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_sensitive_degree: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_sensitive_degree: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_sensitive_degree: never read as 'no prose'",
+   "inconclusive": false
+  }
+ },
+ "ga_strength": {
+  "Narr.agree": {
+   "v": "PASS",
+   "measured": "all 1 declared prose entry resolve to column(s) of chart_facts (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no row data was read for the declared prose entries (scope unsupported or not measured); no PASS is possible",
+   "inconclusive": true
+  },
+  "Narr.fidelity_test": {
+   "v": "PARTIAL",
+   "measured": "structural only: 5 test file(s) call the builder and assert in the same test function (test_g10_contributor_matrix.py, test_ga3_writers.py, test_ga_strength_enrichment.py, test_l1_strength.py\u2026); declared field(s) referenced: citation_human; whether the assertion grades the sentence is not read, so this never reads PASS",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 the narration lints are not applicable to this asset: no chart_facts fact_category selection in its 19-file writer scope and no declared column the raw-token lint covers; a clean scan of code they cannot see is not a pass",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "PARTIAL",
+   "measured": "no schema default on the declared prose column(s) citation_human; writer literal fallbacks and constant columns are not measured here, so this is never PASS",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no checkable prose rows were read for the declared entries",
+   "inconclusive": true
+  }
+ },
+ "ga_structural": {
+  "Narr.agree": {
+   "v": "PASS",
+   "measured": "all 1 declared prose entry resolve to column(s) of chart_facts, fact_category_ownership (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no row data was read for the declared prose entries (scope unsupported or not measured); no PASS is possible",
+   "inconclusive": true
+  },
+  "Narr.fidelity_test": {
+   "v": "PARTIAL",
+   "measured": "structural only: 11 test file(s) call the builder and assert in the same test function (test_beta_d_house_convention.py, test_el18_manglik_bhanga.py, test_f157_parivartana_self_exchange.py, test_ga8_writer.py\u2026); declared field(s) referenced: citation_human; whether the assertion grades the sentence is not read, so this never reads PASS",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "PASS",
+   "measured": "16 writer scope file(s) clean under the fact-category-pin narration lint(s) that applied (their own allowlists applied)",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "PARTIAL",
+   "measured": "no schema default on the declared prose column(s) citation_human; writer literal fallbacks and constant columns are not measured here, so this is never PASS",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no checkable prose rows were read for the declared entries",
+   "inconclusive": true
+  }
+ },
+ "ga_tajaka": {
+  "Narr.agree": {
+   "v": "PARTIAL",
+   "measured": "all 1 declared prose entry resolve to column(s) of l1_tajik_varsha_year_lords (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here); reverse leg unavailable: the writer's writes could not be read, so a prose-vocabulary column it writes without declaring is unchecked",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no row data was read for the declared prose entries (scope unsupported or not measured); no PASS is possible",
+   "inconclusive": true
+  },
+  "Narr.fidelity_test": {
+   "v": "PARTIAL",
+   "measured": "4 test file(s) call the builder and assert (test_ga_tajaka_f_e16_reference_year.py, test_ga_tajaka_f_e19_trirashipathi_order.py, test_ga_tajaka_solar_return_resilience.py, test_ga_tajaka_varshesha_orb.py): tests call the builder but none names a declared field (direct or indirect); declared: citation_human; structural only, never PASS",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "PASS",
+   "measured": "9 writer scope file(s) clean under the fact-category-pin narration lint(s) that applied (their own allowlists applied)",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "PARTIAL",
+   "measured": "no schema default on the declared prose column(s) citation_human; writer literal fallbacks and constant columns are not measured here, so this is never PASS",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no checkable prose rows were read for the declared entries",
+   "inconclusive": true
+  }
+ },
+ "ga_transit_anchors": {
+  "Narr.agree": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_transit_anchors: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_transit_anchors: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.fidelity_test": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_transit_anchors: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_transit_anchors: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_transit_anchors: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_transit_anchors: never read as 'no prose'",
+   "inconclusive": false
+  }
+ },
+ "ga_vargas": {
+  "Narr.agree": {
+   "v": "PASS",
+   "measured": "all 1 declared prose entry resolve to column(s) of chart_divisionals (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no row data was read for the declared prose entries (scope unsupported or not measured); no PASS is possible",
+   "inconclusive": true
+  },
+  "Narr.fidelity_test": {
+   "v": "PARTIAL",
+   "measured": "structural only: 8 test file(s) call the builder and assert in the same test function (test_a1_producer_graha_subject_convergence.py, test_beta_d_house_convention.py, test_f62_moolatrikona_downstream_vocabulary.py, test_ga6_writer.py\u2026); declared field(s) referenced: citation_human; whether the assertion grades the sentence is not read, so this never reads PASS",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 the narration lints are not applicable to this asset: no chart_facts fact_category selection in its 14-file writer scope and no declared column the raw-token lint covers; a clean scan of code they cannot see is not a pass",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "PARTIAL",
+   "measured": "no schema default on the declared prose column(s) citation_human; writer literal fallbacks and constant columns are not measured here, so this is never PASS",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no checkable prose rows were read for the declared entries",
+   "inconclusive": true
+  }
+ },
+ "ga_vastu": {
+  "Narr.agree": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_vastu: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_vastu: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.fidelity_test": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_vastu: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_vastu: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_vastu: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_vastu: never read as 'no prose'",
+   "inconclusive": false
+  }
+ },
+ "ga_vichara": {
+  "Narr.agree": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_vichara: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_vichara: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.fidelity_test": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_vichara: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_vichara: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_vichara: never read as 'no prose'",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ga_vichara: never read as 'no prose'",
+   "inconclusive": false
+  }
+ },
+ "ga_yoga": {
+  "Narr.agree": {
+   "v": "PARTIAL",
+   "measured": "all 1 declared prose entry resolve to column(s) of ga_yoga_firings (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here); but the writer also writes prose-vocabulary column(s) it does not declare (undeclared): ga_yoga_firings.derivation",
+   "inconclusive": false
+  },
+  "Narr.checkable": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no row data was read for the declared prose entries (scope unsupported or not measured); no PASS is possible",
+   "inconclusive": true
+  },
+  "Narr.fidelity_test": {
+   "v": "PARTIAL",
+   "measured": "structural only: 9 test file(s) call the builder and assert in the same test function (test_aspects.py, test_cr130_karakamsha_yogas.py, test_ga_yoga.py, test_ga_yoga_b03_predicate.py\u2026); declared field(s) referenced: citation_human; whether the assertion grades the sentence is not read, so this never reads PASS",
+   "inconclusive": false
+  },
+  "Narr.lint": {
+   "v": "PASS",
+   "measured": "8 writer scope file(s) clean under the fact-category-pin narration lint(s) that applied (their own allowlists applied)",
+   "inconclusive": false
+  },
+  "Null.schema_default": {
+   "v": "PARTIAL",
+   "measured": "no schema default on the declared prose column(s) citation_human; writer literal fallbacks and constant columns are not measured here, so this is never PASS",
+   "inconclusive": false
+  },
+  "Null.blank_rows": {
+   "v": "NO_DETECTOR",
+   "measured": "INCONCLUSIVE: no checkable prose rows were read for the declared entries",
+   "inconclusive": true
+  }
+ }
+}

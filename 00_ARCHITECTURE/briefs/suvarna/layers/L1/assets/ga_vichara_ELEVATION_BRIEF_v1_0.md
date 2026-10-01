@@ -7,12 +7,14 @@ status: "PROVISIONAL — until J1; may register gaps, may not certify"
 produced_by: exec-suvarna
 produced_on: 2026-10-01
 plan_item: A.L1 (briefs, dispositions, designs)
-census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/census/census_L1.json` (generated 2026-09-30T20:22:28+05:30, chart 482012f1, inspector 2a78ec64d on campaign/nikasha-test, pre-REGISTRY_REVISION; criterion revisions then: Build.dag 1, Build.target 1, Idem.pattern 1, Dens.served 1, no Null/Narr), with the `ga_prashna` cells read from the post-grant rerun `census/after_reader_grant/census_L1.json` (generated 2026-09-30T20:30:02+05:30; every other cell identical). NOT re-measured: main's inspector is at REGISTRY_REVISION 6 and the lane has no DB access."
+census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/census/census_L1.json` (generated 2026-09-30T20:22:28+05:30, chart 482012f1, inspector 2a78ec64d on campaign/nikasha-test, pre-REGISTRY_REVISION; criterion revisions then: Build.dag 1, Build.target 1, Idem.pattern 1, Dens.served 1, no Null/Narr), with the `ga_prashna` cells read from the post-grant rerun `census/after_reader_grant/census_L1.json` (generated 2026-09-30T20:30:02+05:30; every other cell identical). NOT re-measured: main's inspector is at REGISTRY_REVISION 6 at the base commit (7 on origin/main 066c58587: the revision note names a NA_CAUSES addition for Carr; the criterion bodies were not diffed beyond that) and the lane has no DB access."
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_LAYER_INSTANCE_v1_0.md (1.0-rev1, PROVISIONAL)"
 base_commit: "main 3311b0a06"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11: yes, runs since the last writer/registry change), Dens applicability (L0 Q2: wherever a served surface is reached; mixed-authority tables need a real tier), count_sql scope (L0 Q19: primary table, multi-table declared), the argala authority answer (L1 is the authority, L2 references); I-11 diagnosis (RLS) from the independent review; dispositions proposed, not yet answered by SS"
+track_i_items: []
 ledger_gap_ids: [ga_vichara-Idem.pattern, ga_vichara-Earn.build_record, ga_vichara-Cost.baseline, ga_vichara-Build.history, ga_vichara-Carr.detector]
 ---
 # ga_vichara — Vicāra (judged structure): valence, varga ratification, varga consistency, leverage index
@@ -32,7 +34,7 @@ A new L1 sibling to `ga_structural` for judgment (`ga_writers/ga_vichara_writer.
 | live rows / floor | 8,524 / 8,249 (Δ +275); `asset_throughput` lit / 8,524; seed floor literal 8240 (live floor 8,249); `catalog_status` CURRENT (W2 recorded DRAFT; corrected) | census `live_rows`; floor and throughput from the layer instance §1.1 (live registry read 2026-09-30) |
 | catalog_status | CURRENT | census |
 | depends_on (live, 2026-09-30) | `ga_structural`, `ga_strength`, `ga_dashas`, `ga_yoga` (live and seed; the wrapper comment names the same four); the writer reads constants from the L0 table `brahma_vichara_constants` (never Python literals, `:30-33`; exempt) | layer instance §2.5 |
-| blast radius | census (pre-1210): direct 1 / transitive 49; seed + migration 1210 reconstruction names 3 direct dependent(s): `bo_karanajala`, `bo_laksana`, `bo_laksana_rerank` | census `blocking_radius`; names reconstructed from `asset_registry_seed.ts` + `platform/migrations/1210_asset_registry_direct_edges.sql` (other migrations also edit `depends_on`, so the reconstruction can differ from the live registry in either direction) |
+| blast radius | live registry incl. migration 1210 (applied; verified live 2026-10-01 14:37Z per the independent review): direct 3; census (2026-09-30, pre-1210): direct 1 / transitive 49; seed + 1210 reconstruction names 3 direct dependent(s): `bo_karanajala`, `bo_laksana`, `bo_laksana_rerank` | census `blocking_radius`; live count from the independent review; names reconstructed from `asset_registry_seed.ts` + `platform/migrations/1210_asset_registry_direct_edges.sql` (other migrations also edit `depends_on`, so the reconstruction can differ from the live registry) |
 | code readers / served surface | `get_vichara.ts:187` (declarations `read_evidence`), `get_dasha_lord_capability.ts`, `query_remedies.ts` (L2), `register_d9_judgment.ts`, `reading_checklist.ts` (census: 2 modules, 2 declaring `density_contract`); `bo_laksana` (1 direct, census) plus `bo_karanajala` and `bo_laksana_rerank` (migration 1210); read back by `ga_structural` (see gaps) | census `reach.modules`; layer instance §1.2 |
 | role / scoring mode | "judged structure" (T2 §3.3): L1 includes judged structure, but being in L1 "does not make every field an equally verified numerical fact"; epistemic typing of each output is TG-L1-020 | layer instance §0.2, §4.4 (contribution layer; Computational correctness, T1 §11) |
 
@@ -54,13 +56,15 @@ Census used: as the frontmatter `census_revision_used` (not repeated here).
 
 Information (never blockers, D3): Reach.fields NOT_GENERIC — reported, not graded — width 16/20 built column(s) (80.0%) selected by 4 capability module(s); dark: ['actor', 'constituent_facts_array', 'target', 'varga']; depth 100.0% (a capability query reads it with no literal row pin (upper bound)); Complete.width NOT_GENERIC — no declared universe for this asset — declaring one is the first width gap.
 
-**Offline rollup** (main's `rollup_asset` rules, registry rev 6, applied to the SAVED measurements; `NA_RULE_DECISIONS` is empty on main, so a measured N/A reads NO_DETECTOR; mixes old measurements with new rules; not a re-measure and not a certification; `/Users/Dev/suvarna-evidence/A_L1/rollup_saved_L1.json`): Ldgr PASS · Idem PASS · Earn NO_DETECTOR · Null NO_DETECTOR · Vocab NO_DETECTOR · Carr NO_DETECTOR · Narr NO_DETECTOR · Dens PASS · Build PARTIAL.
 
-**Offline re-scan of two criteria the saved census predates** (main's own code over this tree and the saved record, no database; indicative): Dens.served rev 4 reads **PARTIAL** — STRUCTURAL: 8 module(s) reach it by code: L0_brahmagyan/query_vichara_constants.ts, L1_ganita/get_dasha_lord_capability.ts, L1_ganita/get_vichara.ts, L2_bodha/query_remedies.ts, reading_checklist.ts, register_d9_judgment.ts (+2 more); a referencing capability declares density_contract but L1_ganita… (the saved rev-1 reading was PASS); Null/Narr graders over the declarations file 1.6.0 plus DDL-derived columns (`/Users/Dev/suvarna-evidence/A_L1/narr_null_offline_L1.json`; `*` = INCONCLUSIVE because no row data was read): agree NO_DETECTOR; checkable NO_DETECTOR; fidelity_test NO_DETECTOR; lint NO_DETECTOR; schema_default NO_DETECTOR; blank_rows NO_DETECTOR.
+
+**Offline rollup** (main's `rollup_asset` rules, registry rev 6, applied to the SAVED measurements; `NA_RULE_DECISIONS` is empty on main, so a measured N/A reads NO_DETECTOR; mixes old measurements with new rules; not a re-measure and not a certification; `_evidence/rollup_saved_L1.json` beside this file): Ldgr PASS · Idem PASS · Earn NO_DETECTOR · Null NO_DETECTOR · Vocab NO_DETECTOR · Carr NO_DETECTOR · Narr NO_DETECTOR · Dens PASS · Build PARTIAL.
+
+**Offline re-scan of two criteria the saved census predates** (main's own code over this tree and the saved record, no database; indicative): Dens.served rev 4 reads **PARTIAL** — STRUCTURAL: 8 module(s) reach it by code: L0_brahmagyan/query_vichara_constants.ts, L1_ganita/get_dasha_lord_capability.ts, L1_ganita/get_vichara.ts, L2_bodha/query_remedies.ts, reading_checklist.ts, register_d9_judgment.ts (+2 more); a referencing capability declares density_contract but L1_ganita… (the saved rev-1 reading was PASS); Null/Narr graders over the declarations file 1.6.0 plus DDL-derived columns (`_evidence/narr_null_offline_L1.json`; `*` = INCONCLUSIVE because no row data was read): agree NO_DETECTOR; checkable NO_DETECTOR; fidelity_test NO_DETECTOR; lint NO_DETECTOR; schema_default NO_DETECTOR; blank_rows NO_DETECTOR.
 
 ## 2 · Gaps — which are real, which are detector gaps
 
-Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry row or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row written by an earlier inspector run that the saved census now reads PASS/N/A; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3); **SS question** = real or not depends on a ruling.
+Class vocabulary: **real** = a shortfall in the asset's rows, writer, registry row or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row written by an earlier inspector run that the saved census now reads PASS/N/A; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3); **SS question** = real or not depends on a ruling; **artefact** = a saved census cell that reads a measurement the inspector's role could not make (pending a read by a role that can). A row naming several classes counts under its leading label.
 
 | gap id (ledger `asset_gaps.jsonl` @ 2a78ec64d, or census cell, or this brief) | gate | class | note |
 |---|---|---|---|
@@ -102,7 +106,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Files / declaration / migration:** `ga_vichara_writer.py` (new family), `chart_vichara` unchanged (additive rows)
 - **Failing-first test and mutation:** see `ga_structural` FD-1
 - **Output change:** yes (additive rows; SS R5)
-- **Blast radius:** `bo_laksana`, `bo_karanajala`, `bo_laksana_rerank` read the table
+- **Blast radius:** `bo_laksana`, `bo_karanajala`, `bo_laksana_rerank` read the table; its floor 8,249 is re-declared from the next build
 - **Rebuild:** **needs production rebuild**: REVIEW
 - **Gate it moves:** Build (dag)
 - **Fix class:** writer code + data (output change); **buildable before J1:** tier-dependent: which asset owns a cancellation
@@ -131,7 +135,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* instrument absent: no change
 - **CF-14** — Legacy `ga_writers/_telemetry.py` `update_asset_throughput` call sites (eight L1 writers, R34 residual). *This asset:* not among the eight: none
 - **CF-17** — Verification-tier string literals in L1 writers (CLAUDE.md §N.4: named constants from `verification_vocab.py`). *This asset:* literals: none found (no tier string in the module)
-- **CF-16** — `ga_vargas` restore and downstream re-earn: `chart_divisionals` empty for the canonical chart under a `lit` record. *This asset:* indirect: reads `ga_structural`/`ga_yoga` rows that read `chart_divisionals`
+- **CF-16** — `chart_divisionals` reads 0 rows for every login role since the migration-1035 ownership change (RLS deny-all): an access incident, data probably intact, UNVERIFIED until read as owner or builder (Track I I-11). *This asset:* indirect: reads `ga_structural`/`ga_yoga` rows that read `chart_divisionals`
 
 ## 5 · Semantic fingerprint contract (for E5.5)
 
