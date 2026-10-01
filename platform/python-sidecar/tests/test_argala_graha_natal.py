@@ -78,10 +78,17 @@ def _assert_bphs_golden() -> None:
         ["Sun", "Mercury"], 12, ["Venus"])
     assert (by_off[11]["argala_grahas"], by_off[11]["obstruction_offset"], by_off[11]["obstructor_grahas"]) == (
         ["Jupiter"], 3, ["Moon", "Rahu"])
-    # BOTH named readings are asserted (SS N-61, change 1). CANONICAL outcome_by_count (the explicit rule):
+    # CANONICAL outcome_by_count (SS, disjunctive rule: BPHS says prevails if stronger OR more numerous, so by
+    # count alone only "more numerous" is certain; defeat needs the strength comparison, which is null):
     assert by_off[4]["outcome_by_count"] == "undetermined"          # Mars 1 against Saturn 1
     assert by_off[2]["outcome_by_count"] == "argala_prevails"       # Sun-Mercury 2 against Venus 1
-    assert by_off[11]["outcome_by_count"] == "obstructed"           # Jupiter 1 against Moon-Rahu 2
+    assert by_off[11]["outcome_by_count"] == "undetermined"         # Jupiter 1 against Moon-Rahu 2 (NOT "obstructed")
+    assert by_off[4]["count_relation"] == "obstructors_equal"
+    assert by_off[2]["count_relation"] == "obstructors_fewer"
+    assert by_off[11]["count_relation"] == "obstructors_more"
+    assert all(by_off[o]["vipareeta_condition"] is False for o in (4, 2, 11))   # Moon-Rahu are not 3 natural malefics
+    # `obstructed` is never emitted by the canonical field
+    assert all(r["outcome_by_count"] != "obstructed" for r in by_off.values())
     # NAMED VARIANT outcome_any_obstructor: the text's "countered" for all three, and obstruction_present
     for off in (4, 2, 11):
         assert by_off[off]["obstruction_present"] is True
@@ -98,6 +105,9 @@ def _assert_bphs_golden() -> None:
     assert rahu[2]["argala_sign_num"] == 2 and rahu[2]["obstruction_sign_num"] == 4
     assert rahu[2]["outcome_by_count"] == "argala_prevails"         # Sun-Mercury 2 against Mars 1
     assert rahu[2]["outcome_any_obstructor"] == "obstructed"        # "however, obstructed by Mars"
+    # Rahu's other reversed argalas have no obstructor: unobstructed (4th reverse: Venus; 5th reverse: Jupiter)
+    assert (rahu[4]["argala_grahas"], rahu[4]["outcome_by_count"], rahu[4]["obstruction_present"]) == (["Venus"], "unobstructed", False)
+    assert (rahu[5]["argala_grahas"], rahu[5]["outcome_by_count"], rahu[5]["outcome_any_obstructor"]) == (["Jupiter"], "unobstructed", "unobstructed")
 
     # (3) the same through the row builder: target Rahu, source Sun and Mercury, reverse count
     rows = {(r["fact_subject"], r["fact_key"]): r for r in _rows(BPHS_EXAMPLE)}
@@ -130,21 +140,106 @@ def test_golden_fails_under_forward_only_node_counting(monkeypatch):
 def test_golden_fails_if_the_canonical_field_carries_the_any_obstructor_reading(monkeypatch):
     """Mutant 3: one field must not carry the contested judgment: if outcome_by_count were computed
     as 'any obstructor' the golden test (which asserts both readings) must fail."""
-    monkeypatch.setattr(sut, "_argala_outcome", lambda a, o: "obstructed" if o else "argala_prevails")
+    monkeypatch.setattr(sut, "_argala_outcome", lambda a, o, v=False: (("obstructed" if o else "unobstructed"), "x"))
     with pytest.raises(AssertionError):
         _assert_bphs_golden()
+
+
+def test_golden_fails_if_the_canonical_field_emits_obstructed(monkeypatch):
+    """Mutant 4 (the pre-SS rule): fewer causers read as `obstructed`: Jupiter against Moon-Rahu must stay undetermined."""
+    def old_rule(a, o, v=False):
+        if o == 0:
+            return "unobstructed", "x"
+        return ("argala_prevails" if a > o else "obstructed" if a < o else "undetermined"), "x"
+    monkeypatch.setattr(sut, "_argala_outcome", old_rule)
+    with pytest.raises(AssertionError):
+        _assert_bphs_golden()
+
+
+def test_golden_fails_if_unobstructed_and_undetermined_are_swapped(monkeypatch):
+    """Mutant 5: no obstructor must read unobstructed, and an equal count must read undetermined."""
+    def swapped(a, o, v=False):
+        if o == 0:
+            return "undetermined", "x"
+        return ("argala_prevails", "x") if a > o else ("unobstructed", "x")
+    monkeypatch.setattr(sut, "_argala_outcome", swapped)
+    with pytest.raises(AssertionError):
+        _assert_bphs_golden()
+
+
+def test_golden_fails_if_an_obstructor_free_argala_reads_prevails(monkeypatch):
+    """Mutant 6: argala_prevails requires an obstructor to outnumber (certain half); zero obstructors is unobstructed."""
+    monkeypatch.setattr(sut, "_argala_outcome", lambda a, o, v=False: (("argala_prevails" if a > o else "undetermined"), "x"))
+    with pytest.raises(AssertionError):
+        _assert_bphs_golden()
+
+
+# ── vipareeta: flagged, not modelled (SS) ────────────────────────────────────────────────────────────────────
+
+VIPAREETA_CHART = {"Jupiter": 11, "Sun": 3, "Mars": 3, "Saturn": 3, "Moon": 7, "Mercury": 6, "Venus": 6, "Rahu": 8, "Ketu": 2}
+
+
+def test_vipareeta_condition_is_flagged_and_never_read_as_obstruction():
+    # Reference = Aries (sign 1): Jupiter in the 11th, Sun + Mars + Saturn in the 3rd. A target in Aries is needed;
+    # use the reading directly for the ascendant, then the builder for a graha standing in Aries.
+    occ = _occupants(VIPAREETA_CHART)
+    reading = {r["argala_offset"]: r for r in sut._argala_reading(ARIES, False, occ)}
+    r = reading[11]
+    assert (r["argala_grahas"], r["obstruction_offset"], r["obstructor_grahas"]) == (["Jupiter"], 3, ["Sun", "Mars", "Saturn"])
+    assert r["count_relation"] == "obstructors_more"
+    assert r["vipareeta_condition"] is True
+    assert r["outcome_by_count"] == "undetermined" and r["outcome_reason"] == "vipareeta_condition"
+    assert r["outcome_any_obstructor"] == "obstructed"          # the named variant is unchanged
+    # the same through the row builder: put Venus in Aries so the ascendant-equivalent target exists
+    chart = {**VIPAREETA_CHART, "Venus": 1}
+    row = next(x for x in _rows(chart) if x["fact_subject"] == "D1_VEN" and x["fact_key"] == "from_JUP_offset_11")
+    j = row["fact_value_jsonb"]
+    assert row["fact_value_text"] == "undetermined" and j["vipareeta_condition"] is True
+    assert j["outcome_reason"] == "vipareeta_condition" and j["count_relation"] == "obstructors_more"
+    assert "vipareeta_condition" in row["formula_provenance_text"] and "post-J1" in row["formula_provenance_text"]
+
+
+def test_two_natural_malefics_in_the_third_are_not_vipareeta_and_nodes_are_not_counted():
+    two = {"Jupiter": 11, "Sun": 3, "Mars": 3, "Saturn": 6, "Moon": 7, "Mercury": 6, "Venus": 6, "Rahu": 8, "Ketu": 2}
+    r = {x["argala_offset"]: x for x in sut._argala_reading(ARIES, False, _occupants(two))}[11]
+    assert r["vipareeta_condition"] is False and r["outcome_by_count"] == "undetermined"
+    assert r["outcome_reason"] == "obstructors_not_fewer_strength_not_compared"
+    nodes = {"Jupiter": 11, "Sun": 3, "Mars": 3, "Rahu": 3, "Saturn": 6, "Moon": 7, "Mercury": 6, "Venus": 6, "Ketu": 9}
+    r2 = {x["argala_offset"]: x for x in sut._argala_reading(ARIES, False, _occupants(nodes))}[11]
+    assert r2["vipareeta_condition"] is False                      # Sun + Mars + Rahu: only two NATURAL malefics
+
+
+def test_vipareeta_only_applies_to_the_third_house_pair():
+    # three natural malefics in the 12th (the 2nd's obstruction place) are not the vipareeta condition
+    chart = {"Moon": 2, "Sun": 12, "Mars": 12, "Saturn": 12, "Jupiter": 6, "Mercury": 6, "Venus": 6, "Rahu": 8, "Ketu": 9}
+    r = {x["argala_offset"]: x for x in sut._argala_reading(ARIES, False, _occupants(chart))}[2]
+    assert r["vipareeta_condition"] is False and r["outcome_by_count"] == "undetermined"
+
+
+def test_golden_vipareeta_ignored_mutant_is_killed(monkeypatch):
+    """Mutant 7: a vipareeta detector that never fires must fail the vipareeta test."""
+    monkeypatch.setattr(sut, "_argala_vipareeta_condition", lambda off, obs: False)
+    with pytest.raises(AssertionError):
+        test_vipareeta_condition_is_flagged_and_never_read_as_obstruction()
 
 
 def test_both_readings_are_stored_and_the_provenance_states_which_is_canonical():
     for r in _rows(BPHS_EXAMPLE):
         j = r["fact_value_jsonb"]
-        assert r["fact_value_text"] == j["outcome_by_count"]            # the canonical reading
+        assert r["fact_value_text"] == j["outcome_by_count"] in {"unobstructed", "argala_prevails", "undetermined"}
         assert j["obstruction_present"] is bool(j["obstructor_count"])
         assert j["outcome_any_obstructor"] == ("obstructed" if j["obstruction_present"] else "unobstructed")
+        assert j["count_relation"] in {"obstructors_more", "obstructors_equal", "obstructors_fewer"}
+        assert j["outcome_reason"] and isinstance(j["vipareeta_condition"], bool)
+        assert j["strength_comparison"] is None and j["canonical_outcome"] == "outcome_by_count"
         assert "outcome" not in j                                      # no single ambiguous 'outcome' field
+        if j["obstructor_count"] == 0:
+            assert j["outcome_by_count"] == "unobstructed" and j["outcome_reason"] == "no_obstructor"
         text = r["formula_provenance_text"]
         assert "Canonical outcome (fact_value_text) is outcome_by_count" in text
-        assert "outranks an illustrative word" in text and "outcome_any_obstructor" in text
+        assert "disjunctive" in text and "stronger OR more numerous" in text
+        assert "asserts a defeat never" in text and "outcome_any_obstructor" in text
+        assert "explicit rule both texts state" not in text            # the overclaim is gone
 
 
 def test_the_malefic_set_is_read_from_the_l0_constant_not_a_local_set():
@@ -162,7 +257,7 @@ def test_the_malefic_set_is_read_from_the_l0_constant_not_a_local_set():
     assert 'natural_malefics = {"Sun"' not in src and src.count("NATURAL_MALEFIC_PLANET_IDS") >= 4
     rows = sut._build_argala_rows(_mock_chart_output(), CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
     cell = next(r for r in rows if r["fact_category"] == "argala_natal_matrix" and r["fact_value_num"] not in (None, 0.0))
-    assert nm.NATURAL_MALEFIC_CITATION in cell["formula_provenance_text"]
+    assert "natural_malefics.py" in cell["formula_provenance_text"]
 
 
 def test_l0_reference_does_not_import_the_constant_so_no_l0_digest_moves():
@@ -239,19 +334,31 @@ def test_sign_matrix_provenance_names_the_real_function_is_forward_only_and_cite
         assert "bphs_pg0311_c01" in text and "bphs_jaimini_pg0023_c01" in text and "sourced_ocr_unverified" in text
         assert "FORWARD-ONLY" in text and "argala_graha_natal" in text
         assert "Ch. 28" not in text
+        assert len(text) < 400, "the sign matrix carries a short pointer, not the full citation block (43,200 rows per chart)"
     argala_text = next(r["formula_provenance_text"] for r in rows if r["fact_category"] == "argala_natal_matrix")
     assert "unsourced project convention" in argala_text
 
 
-# ── AR-1: count-only outcomes, equal = undetermined, 'stronger' null ────────────────────────────
+# ── AR-1 (SS, disjunctive rule): by count only "more causers" is certain; defeat needs the null strength basis ──
 
-@pytest.mark.parametrize("argala,obstr,outcome", [
-    (1, 0, "argala_prevails"), (2, 1, "argala_prevails"),
-    (1, 2, "obstructed"), (1, 3, "obstructed"),
-    (1, 1, "undetermined"), (2, 2, "undetermined"),
+@pytest.mark.parametrize("argala,obstr,outcome,reason,relation", [
+    (1, 0, "unobstructed", "no_obstructor", "obstructors_fewer"),
+    (2, 1, "argala_prevails", "argala_outnumbers_obstructors", "obstructors_fewer"),
+    (3, 1, "argala_prevails", "argala_outnumbers_obstructors", "obstructors_fewer"),
+    (1, 2, "undetermined", "obstructors_not_fewer_strength_not_compared", "obstructors_more"),
+    (1, 3, "undetermined", "obstructors_not_fewer_strength_not_compared", "obstructors_more"),
+    (1, 1, "undetermined", "obstructors_not_fewer_strength_not_compared", "obstructors_equal"),
+    (2, 2, "undetermined", "obstructors_not_fewer_strength_not_compared", "obstructors_equal"),
 ])
-def test_outcome_is_by_count_only(argala, obstr, outcome):
-    assert sut._argala_outcome(argala, obstr) == outcome
+def test_outcome_by_count_reason_and_relation(argala, obstr, outcome, reason, relation):
+    assert sut._argala_outcome(argala, obstr) == (outcome, reason)
+    assert sut._argala_count_relation(argala, obstr) == relation
+    assert sut._argala_outcome(argala, obstr)[0] != "obstructed"          # never emitted by the canonical field
+
+
+def test_a_vipareeta_condition_forces_undetermined_whatever_the_counts():
+    for argala, obstr in ((1, 3), (3, 3), (5, 3)):
+        assert sut._argala_outcome(argala, obstr, True) == ("undetermined", "vipareeta_condition")
 
 
 def test_equal_counts_are_undetermined_in_rows_and_strength_comparison_stays_null():
@@ -271,14 +378,19 @@ def test_obstruction_applies_to_benefic_argala_too():
     # Moon (a benefic) causes argala on Mercury and is obstructed: obstruction is not malefic-only.
     signs = {"Mercury": 1, "Moon": 2, "Jupiter": 12, "Venus": 12, "Sun": 6, "Mars": 6, "Saturn": 6, "Rahu": 7, "Ketu": 1}
     row = next(r for r in _rows(signs) if r["fact_subject"] == "D1_MER" and r["fact_key"] == "from_MOON_offset_2")
-    assert row["fact_value_text"] == "obstructed"
+    j = row["fact_value_jsonb"]
+    # Jupiter + Venus (2) obstruct the single Moon (1): present, more obstructors; the canonical field does not call it defeat
+    assert j["obstruction_present"] is True and j["count_relation"] == "obstructors_more"
+    assert row["fact_value_text"] == "undetermined" and j["outcome_any_obstructor"] == "obstructed"
 
 
-def test_empty_obstruction_side_is_prevails_with_zero_obstructors():
+def test_empty_obstruction_side_is_unobstructed_with_zero_obstructors():
     signs = {"Mars": 1, "Sun": 2, "Moon": 6, "Mercury": 6, "Jupiter": 6, "Venus": 6, "Saturn": 6, "Rahu": 6, "Ketu": 7}
     row = next(r for r in _rows(signs) if r["fact_subject"] == "D1_MAR" and r["fact_key"] == "from_SUN_offset_2")
     j = row["fact_value_jsonb"]
-    assert row["fact_value_text"] == "argala_prevails" and j["obstructor_count"] == 0 and j["obstructor_grahas"] == []
+    assert row["fact_value_text"] == "unobstructed" and j["obstructor_count"] == 0 and j["obstructor_grahas"] == []
+    assert j["outcome_reason"] == "no_obstructor" and j["obstruction_present"] is False
+    assert j["outcome_any_obstructor"] == "unobstructed"
 
 
 # ── Row shape and keys ──────────────────────────────────────────────────────────────────────────
@@ -296,7 +408,7 @@ def test_row_shape_keys_tier_and_provenance():
         assert r["fact_key"].startswith("from_") and "_offset_" in r["fact_key"]
         assert r["verification_pass_status"] == "single"
         assert r["source_calculation"] == f"ga_structural_writer._build_argala_graha_rows/{ENG_VER}"
-        assert r["fact_value_text"] in {"argala_prevails", "obstructed", "undetermined"}
+        assert r["fact_value_text"] in {"unobstructed", "argala_prevails", "undetermined"}
         assert r["fact_value_num"] == r["fact_value_jsonb"]["argala_count"]
         assert r["unit"] == "graha_count"
         j = r["fact_value_jsonb"]
@@ -402,14 +514,25 @@ def _tally(rows):
 def test_canonical_chart_reproduces_the_offline_design_note_numbers():
     lahiri = _rows(CANONICAL_SIGNS["lahiri_chitrapaksha"])
     assert len(lahiri) == 32
-    assert _tally(lahiri) == {"argala_prevails": 27, "undetermined": 3, "obstructed": 2}
+    # canonical field under the SS disjunctive rule: 19 unobstructed, 8 argala_prevails, 5 undetermined, no `obstructed`
+    assert _tally(lahiri) == {"unobstructed": 19, "argala_prevails": 8, "undetermined": 5}
+    # the named variant: 13 obstructed (any obstructor), 19 unobstructed
+    variant: dict[str, int] = {}
+    for r in lahiri:
+        v = r["fact_value_jsonb"]["outcome_any_obstructor"]
+        variant[v] = variant.get(v, 0) + 1
+    assert variant == {"obstructed": 13, "unobstructed": 19}
+    assert sum(1 for r in lahiri if r["fact_value_jsonb"]["vipareeta_condition"]) == 0
     assert sum(1 for r in lahiri if r["fact_value_jsonb"]["argala_offset"] == 5) == 6
     assert sum(1 for r in lahiri if r["fact_value_jsonb"]["count_direction"] == "reverse") == 7
-    obstructed = {(r["fact_subject"], r["fact_key"]) for r in lahiri if r["fact_value_text"] == "obstructed"}
-    assert obstructed == {("D1_MER", "from_MOON_offset_2"), ("D1_SUN", "from_MOON_offset_2")}
+    # Moon's argala on Mercury and on the Sun: Jupiter-Venus obstruct (2 against 1): present, more obstructors, undetermined
+    for subj in ("D1_MER", "D1_SUN"):
+        row = next(r for r in lahiri if r["fact_subject"] == subj and r["fact_key"] == "from_MOON_offset_2")
+        assert row["fact_value_text"] == "undetermined"
+        assert row["fact_value_jsonb"]["count_relation"] == "obstructors_more"
     # a node as the TARGET reads the reverse count: Ketu (sign 8) has its 2nd at sign 7 (Mars, Saturn)
     ketu = {r["fact_key"]: r for r in lahiri if r["fact_subject"] == "D1_KET_MEAN"}
     assert ketu["from_MAR_offset_2"]["fact_value_jsonb"]["count_direction"] == "reverse"
     assert ketu["from_MAR_offset_2"]["fact_value_jsonb"]["obstructor_grahas"] == ["Jupiter", "Venus"]
     sid = _rows(CANONICAL_SIGNS["surya_siddhanta_classical"], "surya_siddhanta_classical")
-    assert len(sid) == 28
+    assert len(sid) == 28 and _tally(sid) == {"unobstructed": 18, "argala_prevails": 6, "undetermined": 4}

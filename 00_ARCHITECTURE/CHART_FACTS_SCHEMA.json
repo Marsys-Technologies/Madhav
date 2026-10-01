@@ -8075,18 +8075,18 @@
         "D1_KET_MEAN"
       ],
       "subject_note": "Target graha as 'D1_<code>' (D1 only). One row per (target graha, source graha) where the source stands in an argala sign of the target; no row for an empty argala sign.",
-      "atomicity": "One row per (target graha, source graha) pair at an argala offset (2, 4, 5, 11 counted from the target; counted in reverse when the target is Rahu or Ketu). fact_value_jsonb carries the paired obstruction offset, obstruction_present, argala_count, obstructor_count and both named outcomes.",
+      "atomicity": "One row per (target graha, source graha) pair at an argala offset (2, 4, 5, 11 counted from the target; counted in reverse when the target is Rahu or Ketu). fact_value_jsonb carries the paired obstruction offset, obstruction_present, argala_count, obstructor_count, count_relation, vipareeta_condition, outcome_reason and both named outcomes.",
       "allowed_keys": {
         "from_<S>_offset_<K>": {
           "value_type": "text_enum",
           "enum": [
+            "unobstructed",
             "argala_prevails",
-            "obstructed",
             "undetermined"
           ],
           "unit": "graha_count",
           "verification_min": "single",
-          "note": "fact_value_text = outcome_by_count (canonical: argala count against obstructor count; equal = undetermined). fact_value_num = argala_count. outcome_any_obstructor (obstructed / unobstructed) is the named variant, in fact_value_jsonb only."
+          "note": "fact_value_text = outcome_by_count (canonical). BPHS states the test as disjunctive (the argala prevails if stronger OR more numerous), so by count only 'more causers' is certain: unobstructed (no obstructor), argala_prevails (more causers than obstructors), else undetermined (the strength comparison is null); 'obstructed' is not emitted. fact_value_num = argala_count. count_relation, vipareeta_condition, outcome_reason and outcome_any_obstructor (obstructed / unobstructed, the named variant) are in fact_value_jsonb."
         }
       },
       "since_engine_version": "pyjhora/1.0.0",

@@ -102,7 +102,7 @@ from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT, assert_legal
 from brahmagyan.dignity_oracle import classify_dignity
-from brahmagyan.natural_malefics import NATURAL_MALEFIC_CITATION, NATURAL_MALEFIC_PLANET_IDS, NODE_PLANET_IDS
+from brahmagyan.natural_malefics import NATURAL_MALEFIC_PLANET_IDS, NODE_PLANET_IDS
 from brahmagyan.aspects import get_graha_aspects
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
@@ -628,18 +628,38 @@ ARGALA_BASIC_OFFSETS: frozenset[int] = frozenset({2, 4, 11})
 # AR-2: argala and obstruction are counted in reverse when the REFERENCE is a node (both nodes;
 # Ketu-only is the named stricter variant, not built). bphs_pg0311_c01, bphs_pg0312_c01.
 ARGALA_REVERSED_REFERENCES: frozenset[str] = frozenset({"Rahu", "Ketu"})
-# AR-1 outcome vocabulary. TWO named readings are stored, neither hidden inside the other:
-#   outcome_by_count (CANONICAL, carried by fact_value_text): argala count against obstructor
-#     count: more = argala_prevails, fewer = obstructed, equal = undetermined. This is the explicit
-#     rule both texts state (bphs_pg0311_c01; Jaimini Su. 8), and an explicit rule outranks an
-#     illustrative word. "Stronger" has no sourced measure and stays null.
-#   outcome_any_obstructor (named variant): obstructed whenever any obstructor stands in the paired
-#     sign, else unobstructed: the reading of the worked example's "countered" (bphs_pg0312_c01) and
+# AR-1 outcome vocabulary. BPHS and Jaimini state the test as DISJUNCTIVE: the argala prevails if its
+# planets are stronger OR more numerous than the obstructors (bphs_pg0311_c01; Jaimini Su. 8). Only the
+# numeric half is computable here ("stronger" has no sourced measure and stays null), so by count alone
+# exactly ONE outcome is certain. TWO named readings are stored, neither hidden inside the other:
+#   outcome_by_count (CANONICAL, carried by fact_value_text):
+#     unobstructed     no obstructor stands in the paired sign;
+#     argala_prevails  more causing grahas than obstructors (certain: the "more numerous" half holds);
+#     undetermined     obstructors are not fewer: a defeat needs the strength comparison, which is null.
+#     `obstructed` is NOT emitted by this field while strength_comparison is null.
+#   outcome_any_obstructor (named variant): `obstructed` whenever any obstructor stands in the paired
+#     sign, else `unobstructed`: the reading of the worked example's "countered" (bphs_pg0312_c01) and
 #     of today's L1 virodha score.
-ARGALA_OUTCOME_PREVAILS = "argala_prevails"
-ARGALA_OUTCOME_OBSTRUCTED = "obstructed"
-ARGALA_OUTCOME_UNDETERMINED = "undetermined"
 ARGALA_OUTCOME_UNOBSTRUCTED = "unobstructed"
+ARGALA_OUTCOME_PREVAILS = "argala_prevails"
+ARGALA_OUTCOME_UNDETERMINED = "undetermined"
+ARGALA_OUTCOME_OBSTRUCTED = "obstructed"     # the VARIANT field only, never the canonical one
+# `count_relation`: the plain count fact (obstructors against causing grahas).
+ARGALA_COUNT_MORE = "obstructors_more"
+ARGALA_COUNT_EQUAL = "obstructors_equal"
+ARGALA_COUNT_FEWER = "obstructors_fewer"
+# `outcome_reason`: why the canonical field reads as it does.
+ARGALA_REASON_NO_OBSTRUCTOR = "no_obstructor"
+ARGALA_REASON_OUTNUMBERED = "argala_outnumbers_obstructors"
+ARGALA_REASON_STRENGTH_NOT_COMPARED = "obstructors_not_fewer_strength_not_compared"
+ARGALA_REASON_VIPAREETA = "vipareeta_condition"
+# VIPAREETA (bphs_pg0311_c01: "If there are 3 or more malefics in the 3rd, they will cause vipareeta
+# Argala ... harmless and very favourable"; Jaimini Su. 6): when three or more natural malefics (the L0
+# constant: Sun, Mars, Saturn; the nodes are stated separately and are not counted) stand in the 3rd from
+# the reference, the 11th/3rd pair is never read as obstruction. Flagged, not modelled: full vipareeta
+# modelling is post-J1.
+ARGALA_VIPAREETA_OBSTRUCTION_OFFSET = 3
+ARGALA_VIPAREETA_MALEFIC_MIN = 3
 # AR-4 / AR-5: provenance. The computation is inline in this module (there is no
 # pyjhora_adapter argala module), so the source names the real writer function.
 ARGALA_CITATION_BLOCK = (
@@ -4799,11 +4819,10 @@ def _build_argala_rows(
                     f"({'argala' if offset in ARGALA_OFFSETS else 'no_argala'}) ({ayanamsha_id})."
                 ),
                 provenance_text=(
-                    f"{ARGALA_CITATION_BLOCK} Score 1.0 less 0.25 per occupant in the L0 natural-malefic set "
-                    f"(natural malefics plus the nodes; {NATURAL_MALEFIC_CITATION}): the 1.0 / 0.25 formula is an "
-                    "unsourced project convention. An argala-offset cell with no occupant in the source sign is "
-                    "NULL (no_occupant). Sign-level and FORWARD-ONLY: no reversed count for a node as the "
-                    "reference, no pairing; see argala_graha_natal."
+                    "BPHS Ch. 31 bphs_pg0311_c01, bphs_pg0312_c01; Jaimini Su. 5-10 bphs_jaimini_pg0023_c01; "
+                    "sourced_ocr_unverified. Score 1.0 less 0.25 per occupant in the L0 natural-malefic set "
+                    "(natural_malefics.py, plus the nodes): unsourced project convention. NULL = no_occupant. "
+                    "Sign-level, FORWARD-ONLY; see argala_graha_natal."
                 ),
             ))
 
@@ -4828,10 +4847,9 @@ def _build_argala_rows(
                     f"({'virodha' if offset in VIRODHA_OFFSETS else 'no_virodha'}) ({ayanamsha_id})."
                 ),
                 provenance_text=(
-                    f"{ARGALA_CITATION_BLOCK} Score 1.0 when the obstructing-offset sign holds any graha, "
-                    "else 0.0. Sign-level and FORWARD-ONLY, and not paired to the argala offset it "
-                    "obstructs: the pairing, the counts, the outcome and the node reversal are in "
-                    "argala_graha_natal."
+                    "BPHS Ch. 31 bphs_pg0311_c01, bphs_pg0312_c01; Jaimini Su. 5-10 bphs_jaimini_pg0023_c01; "
+                    "sourced_ocr_unverified. Score 1.0 if the obstructing-offset sign holds any graha, else 0.0. "
+                    "Sign-level, FORWARD-ONLY, unpaired; pairing and outcome in argala_graha_natal."
                 ),
             ))
 
@@ -4868,15 +4886,36 @@ def _argala_source_sign_num(ref_sign_num: int, offset: int, reverse: bool) -> in
     return (ref_sign_num - 1 + step) % 12 + 1
 
 
-def _argala_outcome(argala_count: int, obstructor_count: int) -> str:
-    """AR-1: outcome by count only. More causing grahas than obstructing grahas = argala_prevails,
-    fewer = obstructed, equal = undetermined. The text's other test ("the causing planet is
-    stronger") has no sourced strength measure here, so it is not applied and stays null."""
+def _argala_count_relation(argala_count: int, obstructor_count: int) -> str:
+    """The plain count fact: are the obstructors more, equal or fewer than the causing grahas."""
+    if obstructor_count > argala_count:
+        return ARGALA_COUNT_MORE
+    if obstructor_count == argala_count:
+        return ARGALA_COUNT_EQUAL
+    return ARGALA_COUNT_FEWER
+
+
+def _argala_vipareeta_condition(obstruction_offset: int, obstructors: list[str]) -> bool:
+    """Three or more natural malefics (Sun, Mars, Saturn from the L0 constant; nodes not counted) in the
+    3rd from the reference: the 11th/3rd pair is then not read as obstruction. Flagged, not modelled."""
+    if obstruction_offset != ARGALA_VIPAREETA_OBSTRUCTION_OFFSET:
+        return False
+    return sum(1 for g in obstructors if g.lower() in NATURAL_MALEFIC_PLANET_IDS) >= ARGALA_VIPAREETA_MALEFIC_MIN
+
+
+def _argala_outcome(argala_count: int, obstructor_count: int, vipareeta_condition: bool = False) -> tuple[str, str]:
+    """AR-1 (SS, disjunctive rule): the canonical outcome by count, and its reason.
+
+    unobstructed (no obstructor); argala_prevails only when the causing grahas outnumber the obstructors
+    (certain); otherwise undetermined, because a defeat needs the strength comparison, which is null.
+    `obstructed` is never returned. A vipareeta condition forces undetermined (reason vipareeta_condition)."""
+    if vipareeta_condition:
+        return ARGALA_OUTCOME_UNDETERMINED, ARGALA_REASON_VIPAREETA
+    if obstructor_count == 0:
+        return ARGALA_OUTCOME_UNOBSTRUCTED, ARGALA_REASON_NO_OBSTRUCTOR
     if argala_count > obstructor_count:
-        return ARGALA_OUTCOME_PREVAILS
-    if argala_count < obstructor_count:
-        return ARGALA_OUTCOME_OBSTRUCTED
-    return ARGALA_OUTCOME_UNDETERMINED
+        return ARGALA_OUTCOME_PREVAILS, ARGALA_REASON_OUTNUMBERED
+    return ARGALA_OUTCOME_UNDETERMINED, ARGALA_REASON_STRENGTH_NOT_COMPARED
 
 
 def _argala_outcome_any_obstructor(obstruction_present: bool) -> str:
@@ -4895,7 +4934,8 @@ def _argala_reading(
     For each (argala offset, obstruction offset) pair of ARGALA_OBSTRUCTION_PAIRS, in pair
     order: the grahas standing in the argala sign (a pair with none is not an argala and is
     omitted), the grahas standing in the paired obstruction sign, both counts, `obstruction_present`,
-    and BOTH named outcomes (`outcome_by_count`, canonical; `outcome_any_obstructor`, variant). Grahas are listed in ALL_GRAHAS order. Obstruction applies to every
+    `count_relation`, `vipareeta_condition`, and BOTH named outcomes (`outcome_by_count` with its
+    `outcome_reason`, canonical; `outcome_any_obstructor`, variant). Grahas are listed in ALL_GRAHAS order. Obstruction applies to every
     argala, benefic or malefic (BPHS: an obstructed argala "will go astray").
     """
     order = {name: i for i, name in enumerate(ALL_GRAHAS)}
@@ -4911,6 +4951,8 @@ def _argala_reading(
         if not argala_grahas:
             continue
         obstructors = _occ(obstruction_sign)
+        vipareeta = _argala_vipareeta_condition(obstruction_offset, obstructors)
+        outcome, reason = _argala_outcome(len(argala_grahas), len(obstructors), vipareeta)
         out.append({
             "argala_offset": argala_offset,
             "obstruction_offset": obstruction_offset,
@@ -4921,7 +4963,10 @@ def _argala_reading(
             "obstructor_grahas": obstructors,
             "obstructor_count": len(obstructors),
             "obstruction_present": bool(obstructors),
-            "outcome_by_count": _argala_outcome(len(argala_grahas), len(obstructors)),
+            "count_relation": _argala_count_relation(len(argala_grahas), len(obstructors)),
+            "vipareeta_condition": vipareeta,
+            "outcome_by_count": outcome,
+            "outcome_reason": reason,
             "outcome_any_obstructor": _argala_outcome_any_obstructor(bool(obstructors)),
         })
     return out
@@ -4987,7 +5032,10 @@ def _build_argala_graha_rows(
                         "obstructor_grahas": reading["obstructor_grahas"],
                         "obstructor_count": reading["obstructor_count"],
                         "obstruction_present": reading["obstruction_present"],
+                        "count_relation": reading["count_relation"],
+                        "vipareeta_condition": reading["vipareeta_condition"],
                         "outcome_by_count": reading["outcome_by_count"],
+                        "outcome_reason": reading["outcome_reason"],
                         "outcome_any_obstructor": reading["outcome_any_obstructor"],
                         "canonical_outcome": "outcome_by_count",
                         "strength_comparison": None,
@@ -5003,13 +5051,18 @@ def _build_argala_graha_rows(
                         f"{reading['obstruction_offset']}: {reading['outcome_by_count']} ({ayanamsha_id})."
                     ),
                     provenance_text=(
-                        f"{ARGALA_CITATION_BLOCK} Canonical outcome (fact_value_text) is outcome_by_count: "
-                        "argala count against obstructor count, the explicit rule both texts state "
-                        "(bphs_pg0311_c01; Jaimini Su. 8); an explicit rule outranks an illustrative word. "
-                        "outcome_any_obstructor (obstructed whenever obstruction_present, else unobstructed) is the "
-                        "named variant matching the worked example's 'countered' (bphs_pg0312_c01) and L1's virodha "
-                        "score. The 'stronger' test has no sourced measure and is null. A node as the target counts "
-                        "argala and obstruction in reverse. Single derivation, no second pass."
+                        f"{ARGALA_CITATION_BLOCK} Canonical outcome (fact_value_text) is outcome_by_count. BPHS and "
+                        "Jaimini state the test as disjunctive: the argala prevails if its planets are stronger OR more "
+                        "numerous than the obstructors (bphs_pg0311_c01; Jaimini Su. 8). Only the numeric half is "
+                        "computable here, so the canonical field asserts a defeat never: unobstructed (no obstructor), "
+                        "argala_prevails (more causing grahas than obstructors, certain), otherwise undetermined "
+                        "(obstructors not fewer: a defeat needs the strength comparison, which is null, no sourced "
+                        "measure). count_relation is the plain count fact. vipareeta_condition (three or more natural "
+                        "malefics in the 3rd from the reference, bphs_pg0311_c01, Su. 6) forces undetermined; full "
+                        "vipareeta modelling is post-J1. outcome_any_obstructor (obstructed whenever obstruction_present, "
+                        "else unobstructed) is the named variant matching the worked example's 'countered' "
+                        "(bphs_pg0312_c01) and L1's virodha score. A node as the target counts argala and obstruction in "
+                        "reverse. Single derivation, no second pass."
                     ),
                 ))
     return rows
