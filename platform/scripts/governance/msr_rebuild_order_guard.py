@@ -15,6 +15,9 @@ exactly the writers under pipeline/orchestrator/writers that INSERT INTO bodha_m
 Modes
   --manifest FILE   plan to check: a build_runs.plan_manifest JSON object with `waves` (list of lists of
                     asset ids) or a bare list of lists. Exit 1 on any violation.
+  --require-nonvacuous  exit 1 when the plan orders nothing (no MSR writer or no dependent in it).
+  --verify-map      DATABASE_URL: re-derive the signal-bearing columns from the live catalog; fail if the
+                    dependents map (msr_signal_bearing_tables.json) is missing one.
   --self-test       DB-free fixtures.
   --chart-id UUID   with DATABASE_URL, run the read-only SQL checks. PRE-wave: PF-1 (no in-flight run for the
                     chart) fails the run; PF-2 (dependents built before the last MSR regeneration) is reported
@@ -35,16 +38,35 @@ MSR_PRODUCERS = frozenset({
     "bo_laksana", "bo_arudha", "bo_special_lagna", "bo_sudarshana", "bo_vargottama_dhana",
     "bo_nakshatra_semantic",
 })
-# Direct referencers of bodha_msr_signals.signal_id (the five keys migration 1214 drops).
-DIRECT_DEPENDENTS = frozenset({
-    "ka_sangam", "ka_kalasutra", "ka_vighnakara", "ka_kala_darshana", "ka_bhavishya_lekha",
-})
-# Rows reached through kala_convergence's own CASCADE / SET NULL keys (phala_anchors and its children).
-TRANSITIVE_DEPENDENTS = frozenset({
-    "ph_nimitta", "ph_pratikara", "ph_muhurta", "ph_pramana", "ph_sankrama", "ph_sodhana",
-    "ph_suddha_sodhana",
-})
-DEPENDENTS = DIRECT_DEPENDENTS | TRANSITIVE_DEPENDENTS
+# Dependents are DERIVED, not hand-listed: msr_signal_bearing_tables.json maps every table that holds
+# bodha_msr_signals.signal_id values (live catalog, 2026-10-01) to the assets that write it; tests re-derive
+# both halves from the migrations and the writers, and --verify-map re-reads the live catalog.
+_MAP = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "msr_signal_bearing_tables.json")))
+# Assets of the five tables whose foreign keys migration 1214 drops.
+DIRECT_DEPENDENTS = frozenset(a for t in _MAP["tables"] if t["keyed"] == "fk_dropped" for a in t["assets"])
+# Every asset whose target table carries MSR signal ids (the five above, ka_yojaka, ph_nimitta, the L2
+# consumers that store ids or id arrays).
+SIGNAL_BEARING_DEPENDENTS = frozenset(a for t in _MAP["tables"] for a in t["assets"])
+# Rows reached through kala_convergence's / phala_anchors' own CASCADE / SET NULL keys.
+TRANSITIVE_DEPENDENTS = frozenset(a for _t, a in _MAP["transitive_cascade"]["tables"])
+DEPENDENTS = SIGNAL_BEARING_DEPENDENTS | TRANSITIVE_DEPENDENTS
+
+DERIVE_SQL = (
+    "SELECT c.relname || '.' || a.attname FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid "
+    "JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r','p') "
+    "AND a.attnum > 0 AND NOT a.attisdropped AND a.attname ~ 'signal' "
+    "AND format_type(a.atttypid, a.atttypmod) IN ('uuid','uuid[]') AND c.relname !~ '__ssv_' "
+    "AND c.relname <> 'bodha_msr_signals' ORDER BY 1")
+
+
+def mapped_columns() -> set[str]:
+    return {f"{t['table']}.{c}" for t in _MAP["tables"] for c in t["columns"]}
+
+
+def unmapped_columns(live: set[str]) -> list[str]:
+    """Live signal-bearing columns the dependents map does not know (each is an unlisted dependent)."""
+    return sorted(live - mapped_columns())
 
 
 @dataclass(frozen=True)
@@ -58,6 +80,17 @@ class Violation:
     def __str__(self) -> str:
         return (f"{self.code}: MSR writer {self.msr_producer} (wave {self.msr_wave}) is not strictly before "
                 f"dependent {self.dependent} (wave {self.dependent_wave})")
+
+
+def plan_vacuity(waves: Sequence[Sequence[str]]) -> list[str]:
+    """Why the order check proves nothing for this plan ([] = it orders something)."""
+    present = {a for w in waves for a in w}
+    why = []
+    if not MSR_PRODUCERS & present:
+        why.append("no MSR writer in the plan")
+    if not DEPENDENTS & present:
+        why.append("no MSR-dependent asset in the plan")
+    return why
 
 
 def parse_waves(doc) -> list[list[str]]:
@@ -132,12 +165,31 @@ def _preflight(chart_id: str, post_wave: bool) -> int:
     return 1 if active or (post_wave and stale) else 0
 
 
+def _verify_map() -> int:
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        print("[msr-order] DATABASE_URL not set", file=sys.stderr)
+        return 2
+    import psycopg
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.read_only = True
+        live = {r[0] for r in conn.execute(DERIVE_SQL).fetchall()}
+    missing = unmapped_columns(live)
+    print(f"[msr-order] verify-map: {len(live)} live signal-bearing columns; not in the map: {missing}")
+    return 1 if missing else 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--manifest")
     ap.add_argument("--self-test", action="store_true")
     ap.add_argument("--chart-id")
     ap.add_argument("--post-wave", action="store_true")
+    ap.add_argument("--require-nonvacuous", action="store_true",
+                    help="exit 1 when the plan orders nothing (no MSR writer, or no dependent, in it)")
+    ap.add_argument("--verify-map", action="store_true",
+                    help="DATABASE_URL: re-derive the signal-bearing columns from the live catalog and "
+                         "fail if one is missing from msr_signal_bearing_tables.json")
     a = ap.parse_args(argv)
     if a.self_test:
         return _run_self_test()
@@ -147,18 +199,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             waves = parse_waves(json.load(open(a.manifest)))
             viol = check_plan_order(waves)
             planned = sorted(MSR_PRODUCERS & {x for w in waves for x in w})
+            why = plan_vacuity(waves)
         except (OSError, ValueError, KeyError) as exc:
             print(f"[msr-order] ERROR: {exc}", file=sys.stderr)
             return 2
         for v in viol:
             print(f"[msr-order] {v}", file=sys.stderr)
-        note = "" if planned else " VACUOUS: the plan contains no MSR writer"
+        note = f" VACUOUS ({'; '.join(why)}): this check ordered nothing." if why else ""
         print(f"[msr-order] plan order: {'FAIL' if viol else 'PASS'} ({len(viol)} violation(s));"
               f" MSR writers in plan: {planned}.{note}")
-        rc = 1 if viol else 0
+        rc = 1 if viol or (why and a.require_nonvacuous) else 0
     if a.chart_id:
         rc = max(rc, _preflight(a.chart_id, a.post_wave))
-    if not a.manifest and not a.chart_id:
+    if a.verify_map:
+        rc = max(rc, _verify_map())
+    if not a.manifest and not a.chart_id and not a.verify_map:
         ap.print_usage(sys.stderr)
         return 2
     return rc

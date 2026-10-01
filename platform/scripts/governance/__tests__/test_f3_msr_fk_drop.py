@@ -122,8 +122,6 @@ def test_failing_results_tiering_and_vacuity():
     assert not det.failing_results([mk(det.UNCONSTRAINED, 9)], strict=False)
     assert det.failing_results([mk(det.UNCONSTRAINED, 9)], strict=True)
     assert not det.failing_results([mk(det.FK_DROPPED, 0)], strict=True)
-    assert det.is_vacuous([]) and det.is_vacuous([det.SiteResult("t", "c", det.FK_DROPPED, "c1", 0, 0, 0)])
-    assert not det.is_vacuous([mk(det.FK_DROPPED, 0)])
 
 
 def test_sql_builders_filter_null_refs_and_only_accept_declared_sites():
@@ -139,18 +137,53 @@ def test_sql_builders_filter_null_refs_and_only_accept_declared_sites():
 
 
 def test_main_exit_codes_failing_unreadable_clean_and_vacuous(monkeypatch, capsys):
-    ok = det.SiteResult("kala_activation", "signal_id", det.FK_DROPPED, "c1", 3, 0, 0)
-    bad = det.SiteResult("kala_activation", "signal_id", det.FK_DROPPED, "c1", 3, 1, 0)
-    empty = det.SiteResult("kala_activation", "signal_id", det.FK_DROPPED, "c1", 0, 0, 0)
-    cases = [(([ok], []), 0), (([bad], []), 1), (([ok], ["t.c: InsufficientPrivilege"]), 2),
-             (([bad], ["t.c: InsufficientPrivilege"]), 1), (([empty], []), 0)]
-    for scan, code in cases:
-        monkeypatch.setattr(det, "_scan_live", lambda *_a, _s=scan, **_k: _s)
-        assert det.main([]) == code, scan
+    site = det.REF_SITES[1]  # kala_activation
+    ok = det.SiteResult(site.table, site.column, det.FK_DROPPED, "c1", 3, 0, 0)
+    bad = det.SiteResult(site.table, site.column, det.FK_DROPPED, "c1", 3, 1, 0)
+    unat = det.SiteResult(site.table, site.column, det.FK_DROPPED, "c1", 3, 0, 0, 1)
+    scanned = [site]
+    err = ["t.c: InsufficientPrivilege"]
+    cases = [  # (results, unreadable, scanned, argv, exit)
+        ([ok], [], scanned, [], 0), ([bad], [], scanned, [], 1), ([unat], [], scanned, [], 1),
+        ([ok], err, scanned, [], 2), ([bad], err, scanned, [], 1),
+        ([], [], scanned, [], 3), ([], [], scanned, ["--require-nonvacuous"], 1),
+        ([], [], scanned, ["--allow-vacuous"], 0), ([ok], [], scanned, ["--require-nonvacuous"], 0),
+        # PER SITE: one populated site must not vouch for an empty one
+        ([ok], [], scanned + [det.REF_SITES[0]], [], 3),
+        ([ok], [], scanned + [det.REF_SITES[0]], ["--require-nonvacuous"], 1),
+    ]
+    for results, unreadable, sc, argv, code in cases:
+        monkeypatch.setattr(det, "_scan_live", lambda *_a, _r=(results, unreadable, sc), **_k: _r)
+        assert det.main(argv) == code, (results, unreadable, argv)
         out = capsys.readouterr().out
-        assert ("VACUOUS" in out) == (scan[0] == [empty])
+        assert ("VACUOUS" in out) == bool(det.vacuous_sites(results, sc)), out
     monkeypatch.setattr(det, "_scan_live", lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("no db")))
     assert det.main([]) == 2
+
+
+def test_unknown_tier_is_an_error_not_an_empty_scan(monkeypatch, capsys):
+    called = []
+    monkeypatch.setattr(det, "_scan_live", lambda *a, **k: called.append(a) or ([], [], []))
+    for bad in ("bogus", "", "fk_dropped,bogus", "fk_dropped,,l2_internal"):
+        assert det.main(["--tiers", bad]) == 2, bad
+    assert called == []                                   # refused before any scan
+    assert det.parse_tiers(None) is None and det.parse_tiers("fk_dropped, l2_internal") == ("fk_dropped", "l2_internal")
+
+
+def test_vacuity_is_judged_per_site_and_unattributable_rows_are_reported():
+    a, b = det.REF_SITES[0], det.REF_SITES[1]
+    res = [det.SiteResult(a.table, a.column, a.tier, "c1", 4, 0, 0)]
+    assert det.vacuous_sites(res, [a, b]) == [b]
+    assert det.vacuous_sites(res, [a]) == []
+    assert det.vacuous_sites([det.SiteResult(a.table, a.column, a.tier, "c1", 0, 0, 0)], [a]) == [a]
+    idx = {"s1": "c1"}
+    assert det.classify_reference("s1", None, idx) == "unattributable"
+    assert det.classify_reference("gone", None, idx) == "dangling"
+    r = det.scan_references(a, [("s1", None), ("s1", "c1")], idx)
+    by = {x.chart_id: x for x in r}
+    assert by[det.NULL_CHART].unattributable == 1 and by[det.NULL_CHART].broken == 1 and by["c1"].broken == 0
+    assert "IS DISTINCT FROM" in det.dangling_sql(a, chart_scoped=False)
+    assert "k.chart_id IS NULL AND s.chart_id = %s" in det.dangling_sql(a, chart_scoped=True)
 
 
 def test_detector_self_test_passes():
@@ -401,8 +434,9 @@ def _dangling(conn, chart, tiers=(det.FK_DROPPED,)):
     res = []
     for site in det.REF_SITES:
         if site.tier in tiers:
-            for cid, ref, dang, cross in conn.execute(det.dangling_sql(site, chart_scoped=True), [chart]).fetchall():
-                res.append(det.SiteResult(site.table, site.column, site.tier, str(cid), ref, dang, cross))
+            for cid, ref, dang, cross, unat in conn.execute(
+                    det.dangling_sql(site, chart_scoped=True), [chart, chart]).fetchall():
+                res.append(det.SiteResult(site.table, site.column, site.tier, str(cid), ref, dang, cross, unat))
     return res
 
 
@@ -546,3 +580,78 @@ def test_db_blocked_migration_fails_loudly_within_lock_timeout_and_changes_nothi
     _log(f"blocked migration (reader holds bodha_msr_signals): LockNotAvailable after {waited:.1f}s; keys all still present")
     assert 4.5 < waited < 9
     assert _fk_names(admin) >= set(EXPECTED_FKS.values())
+
+
+def test_db_null_chart_row_vacuous_site_and_deleted_row_limits(make_db):
+    admin = make_db(apply_migration=True)
+    # NULL chart_id referencing a live signal of the chart: reported unattributable (scoped and global)
+    admin.execute("ALTER TABLE kala_darshana ALTER COLUMN chart_id DROP NOT NULL")
+    sid = next(iter(_ids(admin, CHART).values()))
+    admin.execute("INSERT INTO kala_darshana (chart_id, signal_id) VALUES (NULL, %s::uuid)", [sid])
+    scoped = [r for r in _dangling(admin, CHART) if r.table == "kala_darshana"]
+    assert sum(r.unattributable for r in scoped) == 1 and det.failing_results(scoped, strict=False)
+    site = next(s for s in det.REF_SITES if s.table == "kala_darshana")
+    glob = admin.execute(det.dangling_sql(site, chart_scoped=False)).fetchall()
+    assert [(g[0], g[4]) for g in glob if g[0] is None] == [(None, 1)]
+    admin.execute("DELETE FROM kala_darshana WHERE chart_id IS NULL")
+    # a site with zero referencing rows is vacuous even though other sites are populated
+    admin.execute("DELETE FROM kala_bhavishya")
+    res = _dangling(admin, CHART)
+    assert [v.table for v in det.vacuous_sites(res, [s for s in det.REF_SITES if s.tier == det.FK_DROPPED])] == ["kala_bhavishya"]
+    # a DELETED referencing row leaves no trace in the table: the detector cannot see it (that is PF-2)
+    admin.execute("DELETE FROM kala_activation WHERE id = (SELECT min(id) FROM kala_activation WHERE chart_id=%s::uuid)", [CHART])
+    ka = [r for r in _dangling(admin, CHART) if r.table == "kala_activation"]
+    assert ka[0].referencing == 3 and ka[0].broken == 0
+    _log("detector: NULL-chart row unattributable; per-site vacuity; a deleted row is invisible (needs PF-2 before-state counts)")
+
+
+# ---- PREREQUISITE for the owner-path drop of the three L2 keys (reviewer caveat; F3 doc section 5) ----------
+
+sys.path.insert(0, str(PLATFORM / "python-sidecar"))
+
+
+class _PlainConn:
+    """Not a psycopg-module object, so _assert_msr_delete_safe is skipped: this isolates the CHILD-DELETE SCOPE."""
+
+    def __init__(self, c):
+        self._c = c
+
+    def execute(self, sql, params=None):
+        return self._c.execute(sql, params)
+
+
+def _l2_dangling(conn, chart) -> int:
+    return conn.execute(
+        "SELECT (SELECT count(*) FROM bodha_signal_embeddings e LEFT JOIN bodha_msr_signals s USING (signal_id) "
+        " WHERE e.chart_id=%s::uuid AND s.signal_id IS NULL) + "
+        "(SELECT count(*) FROM bodha_contradictions c LEFT JOIN bodha_msr_signals a ON a.signal_id=c.signal_a_id "
+        " WHERE c.chart_id=%s::uuid AND a.signal_id IS NULL)", [chart, chart]).fetchone()[0]
+
+
+@pytest.mark.parametrize("keys_dropped,snapshot,expected_dangling", [
+    (False, "empty", 0),      # today: the FK cascade removes the L2 children
+    (True, "empty", 5),       # keys dropped, snapshot empty (an L1-only vector, as bo_laksana binds): children DANGLE
+    (True, "live", 0),        # keys dropped, snapshot == live delete scope: explicit child deletes suffice
+])
+def test_db_l2_key_drop_is_safe_only_if_the_child_delete_snapshot_equals_the_live_scope(
+        make_db, keys_dropped, snapshot, expected_dangling):
+    from bodha_writers._idempotency import replace_prior_msr_signals
+    url = _url()
+    admin = make_db(apply_migration=True)
+    if keys_dropped:   # emulate the owner-path drop (as superuser on the disposable DB)
+        admin.execute("ALTER TABLE bodha_contradictions DROP CONSTRAINT bodha_contradictions_signal_a_id_fkey, "
+                      "DROP CONSTRAINT bodha_contradictions_signal_b_id_fkey")
+        admin.execute("ALTER TABLE bodha_signal_embeddings DROP CONSTRAINT bodha_signal_embeddings_signal_id_fkey")
+    import psycopg
+    with psycopg.connect(url) as c:
+        # the writer's `pg_temp.bodha_msr_signals` is the bound-input snapshot (bind_l2_exact_inputs), not the live table
+        if snapshot == "empty":
+            c.execute("CREATE TEMP TABLE bodha_msr_signals ON COMMIT DROP AS SELECT * FROM public.bodha_msr_signals WHERE false")
+        else:
+            c.execute("CREATE TEMP TABLE bodha_msr_signals ON COMMIT DROP AS SELECT * FROM public.bodha_msr_signals")
+        rows = [{"chart_id": CHART, "ayanamsha_id": "lahiri", "signal_type_id": t} for t, _v, _c in SPECS]
+        replace_prior_msr_signals(_PlainConn(c), rows)
+        c.commit()
+    d = _l2_dangling(admin, CHART)
+    _log(f"L2-key prerequisite (keys_dropped={keys_dropped}, snapshot={snapshot}): dangling L2 children after MSR delete = {d}")
+    assert d == expected_dangling

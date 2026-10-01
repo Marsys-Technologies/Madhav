@@ -26,8 +26,16 @@ Modes
   (default)            live read-only scan of every chart.
   --strict             also fail on l2_internal / unconstrained sites.
   --json               machine-readable output.
-Exit: 0 clean (a clean result over zero referencing rows is reported as VACUOUS, not as proof),
-      1 dangling/cross-chart references (or self-test failure), 2 invocation/environment error.
+Exit: 0 PASS (no broken row and no vacuous site), 1 broken references (or --require-nonvacuous with a
+      vacuous site, or self-test failure), 2 invocation/environment error (unknown --tiers value, an
+      unreadable site, no DATABASE_URL), 3 INCONCLUSIVE (clean, but a scanned site has zero referencing
+      rows, so nothing was proven for it; --allow-vacuous turns that into 0).
+
+Limits stated so the check cannot overclaim: it sees a row that EXISTS and points at nothing. A referencing
+row that was DELETED (what the old CASCADE did) leaves no trace in the table; that is caught by the
+before-state row counts / digests (PF-2 in the rebuild plan), not by this detector. A row with a NULL
+chart_id that references a live signal is reported as unattributable. Array-valued references (the L2
+bodha_* *_signal_ids_array columns) are not scanned.
 """
 from __future__ import annotations
 
@@ -42,6 +50,7 @@ from typing import Iterable, Mapping, Sequence
 FK_DROPPED = "fk_dropped"
 L2_INTERNAL = "l2_internal"
 UNCONSTRAINED = "unconstrained"
+ALL_TIERS = frozenset({FK_DROPPED, L2_INTERNAL, UNCONSTRAINED})
 
 
 @dataclass(frozen=True)
@@ -64,6 +73,7 @@ REF_SITES: tuple[RefSite, ...] = (
     RefSite("phala_anchors", "signal_id", UNCONSTRAINED),
 )
 
+NULL_CHART = "<NULL chart_id>"
 _IDENT = re.compile(r"^[a-z_][a-z0-9_]*$")
 
 
@@ -80,13 +90,21 @@ def _site_idents(site: RefSite) -> tuple[str, str]:
 
 def dangling_sql(site: RefSite, *, chart_scoped: bool) -> str:
     """Per-chart counts: referencing rows, dangling (signal absent), cross_chart (signal of
-    another chart). A NULL reference is not a reference (the nullable kala columns)."""
+    another chart), unattributable (the row's own chart_id is NULL but it references a live
+    signal, so no chart can be held to account). A NULL reference is not a reference (the
+    nullable kala columns). Chart-scoped mode takes two params (chart_id twice) and also sees
+    NULL-chart rows that reference a signal of that chart; a NULL-chart row whose signal is
+    absent is visible only in the global scan. A DELETED referencing row is invisible to any
+    query over the table itself: that is the before-state count/digest comparison (PF-2)."""
     table, col = _site_idents(site)
-    scope = "AND k.chart_id = %s" if chart_scoped else ""
+    scope = ("AND (k.chart_id = %s OR (k.chart_id IS NULL AND s.chart_id = %s))"
+             if chart_scoped else "")
     return (
         f"SELECT k.chart_id, count(*) AS referencing, "
         f"count(*) FILTER (WHERE s.signal_id IS NULL) AS dangling, "
-        f"count(*) FILTER (WHERE s.signal_id IS NOT NULL AND s.chart_id <> k.chart_id) AS cross_chart "
+        f"count(*) FILTER (WHERE s.signal_id IS NOT NULL AND k.chart_id IS NOT NULL "
+        f"AND s.chart_id IS DISTINCT FROM k.chart_id) AS cross_chart, "
+        f"count(*) FILTER (WHERE s.signal_id IS NOT NULL AND k.chart_id IS NULL) AS unattributable "
         f"FROM {table} k LEFT JOIN bodha_msr_signals s ON s.signal_id = k.{col} "
         f"WHERE k.{col} IS NOT NULL {scope} GROUP BY k.chart_id ORDER BY k.chart_id"
     )
@@ -110,13 +128,16 @@ def would_orphan_sql(site: RefSite) -> str:
 # Pure core (DB-free, unit-testable, mutation-provable)
 # ---------------------------------------------------------------------------
 
-def classify_reference(signal_id: str | None, chart_id: str, msr_index: Mapping[str, str]) -> str:
-    """'null_ref' | 'ok' | 'dangling' | 'cross_chart' for one referencing row."""
+def classify_reference(signal_id: str | None, chart_id: str | None,
+                       msr_index: Mapping[str, str]) -> str:
+    """'null_ref' | 'ok' | 'dangling' | 'cross_chart' | 'unattributable' for one referencing row."""
     if signal_id is None:
         return "null_ref"
     owner_chart = msr_index.get(str(signal_id))
     if owner_chart is None:
         return "dangling"
+    if chart_id is None:
+        return "unattributable"
     if str(owner_chart) != str(chart_id):
         return "cross_chart"
     return "ok"
@@ -131,26 +152,29 @@ class SiteResult:
     referencing: int
     dangling: int
     cross_chart: int
+    unattributable: int = 0
 
     @property
     def broken(self) -> int:
-        return self.dangling + self.cross_chart
+        return self.dangling + self.cross_chart + self.unattributable
 
 
-def scan_references(site: RefSite, refs: Iterable[tuple[str | None, str]],
+def scan_references(site: RefSite, refs: Iterable[tuple[str | None, str | None]],
                     msr_index: Mapping[str, str]) -> list[SiteResult]:
     """Pure equivalent of dangling_sql over in-memory rows [(signal_id, chart_id)]."""
-    per_chart: dict[str, list[int]] = {}
+    per_chart: dict[str, list[int]] = {}  # chart label -> [referencing, dangling, cross, unattrib]
     for signal_id, chart_id in refs:
         verdict = classify_reference(signal_id, chart_id, msr_index)
         if verdict == "null_ref":
             continue
-        row = per_chart.setdefault(str(chart_id), [0, 0, 0])
+        row = per_chart.setdefault(NULL_CHART if chart_id is None else str(chart_id), [0, 0, 0, 0])
         row[0] += 1
         if verdict == "dangling":
             row[1] += 1
         elif verdict == "cross_chart":
             row[2] += 1
+        elif verdict == "unattributable":
+            row[3] += 1
     return [SiteResult(site.table, site.column, site.tier, c, *per_chart[c])
             for c in sorted(per_chart)]
 
@@ -180,9 +204,41 @@ def failing_results(results: Sequence[SiteResult], *, strict: bool) -> list[Site
             if r.broken > 0 and (strict or r.tier == FK_DROPPED)]
 
 
-def is_vacuous(results: Sequence[SiteResult]) -> bool:
-    """A clean verdict over zero referencing rows proves nothing (CLAUDE.md N.8)."""
-    return sum(r.referencing for r in results) == 0
+def vacuous_sites(results: Sequence[SiteResult], scanned: Sequence[RefSite]) -> list[RefSite]:
+    """Scanned sites with ZERO referencing rows: for those the check proved nothing (CLAUDE.md N.8).
+    Judged PER SITE: a clean total over one populated site must not vouch for an empty one."""
+    populated = {(r.table, r.column) for r in results if r.referencing > 0}
+    return [s for s in scanned if (s.table, s.column) not in populated]
+
+
+def parse_tiers(raw: str | None) -> tuple[str, ...] | None:
+    """None -> every tier. An unknown or empty tier name is an error, never 'scan nothing'."""
+    if raw is None:
+        return None
+    names = tuple(t.strip() for t in raw.split(","))
+    unknown = [t for t in names if t not in ALL_TIERS]
+    if not names or unknown:
+        raise ValueError(f"unknown tier(s) {unknown or ['<empty>']}; valid: {sorted(ALL_TIERS)}")
+    return names
+
+
+EXIT_PASS, EXIT_FAIL, EXIT_ERROR, EXIT_INCONCLUSIVE = 0, 1, 2, 3
+
+
+def decide(results: Sequence[SiteResult], scanned: Sequence[RefSite], unreadable: Sequence[str], *,
+           strict: bool, require_nonvacuous: bool, allow_vacuous: bool) -> tuple[str, int]:
+    """(label, exit code). Broken rows fail; an unreadable site is an error; a vacuous site is
+    INCONCLUSIVE (exit 3) unless --require-nonvacuous (exit 1) or --allow-vacuous (pass)."""
+    if failing_results(results, strict=strict):
+        return "FAIL", EXIT_FAIL
+    if unreadable:
+        return "ERROR", EXIT_ERROR
+    if vacuous_sites(results, scanned):
+        if require_nonvacuous:
+            return "FAIL (vacuous site, --require-nonvacuous)", EXIT_FAIL
+        return ("PASS (vacuous sites allowed)", EXIT_PASS) if allow_vacuous \
+            else ("INCONCLUSIVE", EXIT_INCONCLUSIVE)
+    return "PASS", EXIT_PASS
 
 
 # ---------------------------------------------------------------------------
@@ -197,7 +253,7 @@ def _fixture(*, mutate: bool) -> tuple[list[tuple[str | None, str]], dict[str, s
     msr = {"s1": _C1, "s2": _C1, "s3": _C2}
     refs: list[tuple[str | None, str]] = [("s1", _C1), ("s2", _C1), (None, _C1), ("s3", _C2)]
     if mutate:
-        refs += [("gone", _C1), ("s3", _C1)]  # one dangling, one cross-chart
+        refs += [("gone", _C1), ("s3", _C1), ("s1", None)]  # dangling, cross-chart, unattributable
     return refs, msr
 
 
@@ -209,12 +265,12 @@ def _run_self_test() -> int:
         return 1
     refs, msr = _fixture(mutate=True)
     res = scan_references(_SITE, refs, msr)
-    if sum(r.dangling for r in res) != 1 or sum(r.cross_chart for r in res) != 1 \
-            or not failing_results(res, strict=False):
+    if (sum(r.dangling for r in res), sum(r.cross_chart for r in res),
+            sum(r.unattributable for r in res)) != (1, 1, 1) or not failing_results(res, strict=False):
         print("[msr-dangling] SELF-TEST FAIL: mutated fixture not caught", file=sys.stderr)
         return 1
-    print("[msr-dangling] SELF-TEST PASS: clean fixture clean; one dangling and one "
-          "cross-chart reference caught.")
+    print("[msr-dangling] SELF-TEST PASS: clean fixture clean; dangling, one "
+          "cross-chart and one unattributable reference caught.")
     return 0
 
 
@@ -223,7 +279,7 @@ def _run_self_test() -> int:
 # ---------------------------------------------------------------------------
 
 def _scan_live(chart_id: str | None, tiers: Sequence[str] | None = None
-               ) -> tuple[list[SiteResult], list[str]]:
+               ) -> tuple[list[SiteResult], list[str], list[RefSite]]:
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
         raise RuntimeError("DATABASE_URL not set (use --self-test for the DB-free gate)")
@@ -233,22 +289,25 @@ def _scan_live(chart_id: str | None, tiers: Sequence[str] | None = None
         raise RuntimeError("psycopg not available") from exc
     out: list[SiteResult] = []
     unreadable: list[str] = []
+    scanned: list[RefSite] = []
     with psycopg.connect(dsn, autocommit=True) as conn:
         conn.read_only = True
         for site in REF_SITES:
             if tiers and site.tier not in tiers:
                 continue
-            params = (chart_id,) if chart_id else ()
+            scanned.append(site)
+            params = (chart_id, chart_id) if chart_id else ()
             try:
                 rows = conn.execute(
                     dangling_sql(site, chart_scoped=bool(chart_id)), params).fetchall()
             except psycopg.Error as exc:  # an unreadable site is NOT a clean site
                 unreadable.append(f"{site.table}.{site.column}: {type(exc).__name__}")
                 continue
-            for cid, referencing, dangling, cross in rows:
-                out.append(SiteResult(site.table, site.column, site.tier, str(cid),
-                                      int(referencing), int(dangling), int(cross)))
-    return out, unreadable
+            for cid, referencing, dangling, cross, unattrib in rows:
+                out.append(SiteResult(site.table, site.column, site.tier,
+                                      NULL_CHART if cid is None else str(cid),
+                                      int(referencing), int(dangling), int(cross), int(unattrib)))
+    return out, unreadable, scanned
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -259,34 +318,39 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--strict", action="store_true")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--tiers", default=None,
-                    help="comma list of tiers to scan (default: all); a site the role cannot "
-                         "read is reported and makes the run exit 2, never a silent pass")
+                    help="comma list of tiers to scan (default: all); an unknown tier is an error "
+                         "(exit 2); a site the role cannot read makes the run exit 2")
+    vac = ap.add_mutually_exclusive_group()
+    vac.add_argument("--require-nonvacuous", action="store_true",
+                     help="exit 1 when ANY scanned site has zero referencing rows (post-wave use)")
+    vac.add_argument("--allow-vacuous", action="store_true",
+                     help="treat vacuous sites as a pass (default: INCONCLUSIVE, exit 3)")
     args = ap.parse_args(argv)
     if args.self_test:
         return _run_self_test()
     try:
-        results, unreadable = _scan_live(
-            args.chart_id, args.tiers.split(",") if args.tiers else None)
-    except Exception as exc:  # environment error, not a verdict
+        tiers = parse_tiers(args.tiers)
+        results, unreadable, scanned = _scan_live(args.chart_id, tiers)
+    except Exception as exc:  # environment/invocation error, not a verdict
         print(f"[msr-dangling] ERROR: {exc}", file=sys.stderr)
-        return 2
+        return EXIT_ERROR
     for u in unreadable:
         print(f"[msr-dangling] UNREADABLE {u}", file=sys.stderr)
-    failing = failing_results(results, strict=args.strict)
-    vacuous = is_vacuous(results)
+    label, code = decide(results, scanned, unreadable, strict=args.strict,
+                         require_nonvacuous=args.require_nonvacuous, allow_vacuous=args.allow_vacuous)
+    vac_sites = [f"{v.table}.{v.column}" for v in vacuous_sites(results, scanned)]
     if args.json:
         print(json.dumps({"results": [asdict(r) | {"broken": r.broken} for r in results],
-                          "failing": len(failing), "vacuous": vacuous}, indent=1))
+                          "verdict": label, "exit": code, "vacuous_sites": vac_sites,
+                          "unreadable": list(unreadable)}, indent=1))
     else:
         for r in results:
-            print(f"{r.tier:13} {r.table}.{r.column} chart={r.chart_id} "
-                  f"referencing={r.referencing} dangling={r.dangling} cross_chart={r.cross_chart}")
-        print(f"[msr-dangling] {'FAIL' if failing else 'PASS'}"
-              f"{' (VACUOUS: zero referencing rows)' if vacuous and not failing else ''}: "
-              f"{len(failing)} failing site-chart pair(s)")
-    if failing:
-        return 1
-    return 2 if unreadable else 0
+            print(f"{r.tier:13} {r.table}.{r.column} chart={r.chart_id} referencing={r.referencing} "
+                  f"dangling={r.dangling} cross_chart={r.cross_chart} unattributable={r.unattributable}")
+        for v in vac_sites:
+            print(f"VACUOUS       {v}: zero referencing rows, nothing was proven for this site")
+        print(f"[msr-dangling] {label}")
+    return code
 
 
 if __name__ == "__main__":

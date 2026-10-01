@@ -25,9 +25,19 @@
 --  * A changed or removed signal is DETECTED, not prevented, by
 --    platform/scripts/governance/msr_dangling_signal_refs.py (read-only dangling-reference check).
 --
--- Locking. DROP CONSTRAINT takes ACCESS EXCLUSIVE on the child table and also locks the referenced
--- bodha_msr_signals (its RI triggers are removed). lock_timeout makes a blocked attempt fail loudly
--- instead of queueing behind, and then stalling, readers of bodha_msr_signals. Re-run when idle.
+-- LOCK-WAIT RISK (read before merging). DROP CONSTRAINT takes ACCESS EXCLUSIVE on the child table and also
+-- locks the referenced bodha_msr_signals (its RI triggers are removed). lock_timeout makes a blocked attempt
+-- fail loudly instead of queueing behind, and then stalling, every reader of bodha_msr_signals. But a plain
+-- open SELECT on bodha_msr_signals held for more than 5 s makes this migration fail with LockNotAvailable
+-- (proved on a disposable Postgres), and scripts/migrate.ts has no retry: that deploy fails for EVERY
+-- workstream until the migration is re-run. MERGE ONLY WITH: no build_runs in planned/running/paused (pre-merge
+-- gate PF-1), an idle deploy window, and no long reads on bodha_msr_signals.
+--
+-- AFTER THIS MIGRATION, rebuild ORDERING is the only control. assert_l2_msr_delete_safe (1036) no longer
+-- refuses on Kala dependants (it refuses only on keys that exist), so an MSR regeneration that changes ids
+-- succeeds and leaves Kala rows pointing at ids that no longer exist; nothing errors. Do not regenerate MSR for a
+-- chart whose live signal ids are not yet deterministic (1c826d5a, cb73cd3d: all uuid v4 today) until its Kala
+-- rows are re-keyed or the owner-path decision is made. See 00_ARCHITECTURE/briefs/suvarna/exec/F3_MSR_FK_DROP_v1_0.md.
 
 SET LOCAL lock_timeout = '5s';
 
