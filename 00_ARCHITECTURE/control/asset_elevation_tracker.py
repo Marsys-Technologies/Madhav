@@ -388,7 +388,9 @@ E63_SEED_PATH = "platform/scripts/seed/asset_registry_seed.ts"
 # FLOOR: how many criteria each core gate must have, per layer, in asset_census.CRITERION_REGISTRY. Pinned from the
 # registry at origin/main bf6fe712b (REGISTRY_REVISION 7). A registry edit that REMOVES a core-gate criterion (or a
 # `layers=()`) would make ELEVATED easier to reach, so it makes this function raise instead; changing the floor is a
-# deliberate, reviewed edit of THIS constant (e.g. when E6.1(i) retires Carr.detector, Carr goes 4 -> 3).
+# deliberate, reviewed edit of THIS constant. Carr is pinned as D1/D2/D3 (floor 3) so that the retirement of Carr.detector
+# (E6 item (i), REGISTRY_REVISION 8) does not make the function raise; a still-registered Carr.detector is just one more
+# required criterion.
 E63_PINNED_LAYERS = ("L0", "L1", "L2", "L3", "L4", "L5")
 # PINNED CRITERION IDS: every id below must stay a registry criterion of that gate that applies in every pinned layer.
 # Captured from the registry at origin/main (REGISTRY_REVISION 7). A count floor alone is not enough (delete one
@@ -401,13 +403,13 @@ E63_REQUIRED_CRITERIA = {
     "Earn": ("Earn.build_record", "Earn.service_state"),
     "Null": ("Null.blank_rows", "Null.schema_default"),
     "Vocab": ("Vocab.alias", "Vocab.identity"),
-    "Carr": ("Carr.D1", "Carr.D2", "Carr.D3", "Carr.detector"),
+    "Carr": ("Carr.D1", "Carr.D2", "Carr.D3"),                      # Carr.detector is retired by #2856: an extra only adds a requirement
     "Narr": ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint"),
     "Dens": ("Dens.served",),
     "Build": ("Build.completion", "Build.contract", "Build.count_integrity", "Build.dag", "Build.dep_liveness",
               "Build.exercised", "Build.history", "Build.registered", "Build.target"),
 }
-E63_REQUIRED_FLOOR = {"Ldgr": 1, "Idem": 1, "Earn": 2, "Null": 2, "Vocab": 2, "Carr": 4, "Narr": 4, "Dens": 1, "Build": 9}
+E63_REQUIRED_FLOOR = {"Ldgr": 1, "Idem": 1, "Earn": 2, "Null": 2, "Vocab": 2, "Carr": 3, "Narr": 4, "Dens": 1, "Build": 9}
 # Where the registry defines a PASS BY DECLARATION (mirrors E5.1's nikasha_certify.DECLARATION_BASED; parity-tested):
 # criterion -> the asset kinds it applies to. A `basis: declaration` PASS anywhere else is not a PASS.
 E63_DECLARATION_BASED = {"Build.target": ("service",)}

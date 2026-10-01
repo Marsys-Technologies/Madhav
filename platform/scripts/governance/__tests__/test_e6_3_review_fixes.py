@@ -207,9 +207,9 @@ def test_3_the_floor_names_a_gate_the_registry_no_longer_has_raises(tmp_path, mo
     raises(World(tmp_path).default(), "registry_below_floor")
 
 
-def test_3_the_pinned_floor_equals_the_real_registry_today(real_floor):
-    """The floor is derived from the real registry at origin/main: every (layer, gate) count equals it. When E6.1
-    retires Carr.detector this test fails until the floor is deliberately edited."""
+def test_3_the_pinned_floor_is_met_by_the_real_registry_and_equals_it_but_for_the_listed_extras(real_floor):
+    """The floor is derived from the real registry at origin/main, less the criteria a pending PR retires (Carr.detector,
+    #2856): every (layer, gate) count is >= the floor, and exceeds it only by the listed extras."""
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
     import importlib.util, pathlib
     path = pathlib.Path(__file__).resolve().parents[1] / "asset_census.py"
@@ -217,10 +217,11 @@ def test_3_the_pinned_floor_equals_the_real_registry_today(real_floor):
     ac = importlib.util.module_from_spec(spec)
     sys.modules["asset_census_for_floor"] = ac
     spec.loader.exec_module(ac)
+    extras = {"Carr": 1}
     for layer in ac.LAYERS:
         counts = {g: sum(1 for e in ac.CRITERION_REGISTRY.values() if e["gate"] == g and layer in e["layers"])
                   for g in ac.CELL_GATES}
-        assert counts == REAL_FLOOR, (layer, counts)
+        assert counts == {g: n + extras.get(g, 0) for g, n in REAL_FLOOR.items()}, (layer, counts)
 
 
 def test_3_the_real_registry_passes_the_floor_and_the_whole_module_walk(tmp_path, real_floor):

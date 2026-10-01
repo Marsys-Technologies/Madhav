@@ -110,16 +110,52 @@ def test_adding_a_criterion_is_fine_and_only_adds_a_requirement(tmp_path):
     assert got(w) == ALL
 
 
-def test_the_pins_equal_the_real_registrys_core_gate_ids_today(real_pins):
+ALLOWED_EXTRAS = {"Carr": ("Carr.detector",)}      # real core-gate ids that are deliberately NOT pinned (retired by #2856)
+
+
+def _real_ac():
     import importlib.util, pathlib
     path = pathlib.Path(__file__).resolve().parents[1] / "asset_census.py"
     spec = importlib.util.spec_from_file_location("asset_census_for_pins", path)
     ac = importlib.util.module_from_spec(spec)
     sys.modules["asset_census_for_pins"] = ac
     spec.loader.exec_module(ac)
-    today = {g: tuple(sorted(c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == g)) for g in ac.CELL_GATES}
-    assert {g: tuple(sorted(v)) for g, v in REAL_PINS.items()} == today
+    return ac
+
+
+def test_the_pins_are_a_subset_of_the_real_core_gate_ids_and_every_unpinned_id_is_a_listed_extra(real_pins):
+    ac = _real_ac()
+    today = {g: set(c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == g) for g in ac.CELL_GATES}
+    for g, ids in REAL_PINS.items():
+        assert set(ids) <= today[g], g
+        assert set(today[g]) - set(ids) == set(ALLOWED_EXTRAS.get(g, ())), g
     assert all(set(e["layers"]) == set(T.E63_PINNED_LAYERS) for e in ac.CRITERION_REGISTRY.values() if e["gate"] in ac.CELL_GATES)
+    assert REAL_PINS["Carr"] == ("Carr.D1", "Carr.D2", "Carr.D3") and REAL_FLOOR["Carr"] == 3
+
+
+E6_CARR = "/Users/Dev/suvarna-engine-lane-e6-carr/platform/scripts/governance/asset_census.py"
+
+
+def test_the_real_pins_hold_on_the_registry_with_carr_detector_retired_2856(tmp_path, real_pins):
+    """suvarna/engine-E6-carr (#2856) retires Carr.detector (REGISTRY_REVISION 8+): the function must not raise on it."""
+    if not os.path.exists(E6_CARR):
+        pytest.skip("the engine-E6-carr worktree is not on this machine")
+    src = open(E6_CARR, encoding="utf-8").read()
+    assert '    "Carr.detector": dict(\n        retired_in_revision=' in src           # it really is the retired form
+    w = World(tmp_path, census=src).default()
+    w.commit()
+    facts = T._e63_registry_facts(str(w.repo), w.last)
+    assert "Carr.detector" not in facts.criteria and {"Carr.D1", "Carr.D2", "Carr.D3"} <= set(facts.criteria)
+
+
+def test_a_registry_that_still_has_carr_detector_just_requires_one_more_criterion(tmp_path, real_pins):
+    ac = _real_ac()
+    import pathlib
+    src = (pathlib.Path(ac.__file__)).read_text(encoding="utf-8")
+    w = World(tmp_path, census=src).default()
+    w.commit()
+    facts = T._e63_registry_facts(str(w.repo), w.last)
+    assert "Carr.detector" in facts.required("L1")["Carr"] and len(facts.required("L1")["Carr"]) == 4
 
 
 def test_real_registry_replacing_carr_d1_by_carr_d9_raises_although_the_count_is_unchanged(tmp_path, real_pins):
