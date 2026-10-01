@@ -1,0 +1,45 @@
+baseline: []
+C1 W2 as written: [('marriage', 'committed_set_mismatch', ('p5a', '1.0'), ['b817eebc-627b-84c1-9d96-7371de7e0430', 'cfd4db84-9845-81fa-a678-2298e35628c8'])]
+C1b included pin with empty commitment: REFUSED AT INSERT -> pin CHECK: included needs >=1 committed ob_id
+C2 absent pin: [('marriage', 'registry_unaccounted_path', ('p5a', '1.0'))]
+C3 false computed_empty: [('marriage', 'verification_missing_or_mismatch', '')]
+C3b no verification row: [('marriage', 'verification_missing_or_mismatch', '')]
+C5 genuine computed_empty, verifier agrees: []
+C4 obligation without intervals: [('marriage', 'obligation_uncovered', 'cfd4db84')]
+C7 uncommitted obligation: REFUSED AT INSERT -> obligation ob_id not in pin.committed_ob_ids
+C8a interval bound to different input_digest: REFUSED AT INSERT -> interval FK (chart,gen,input_digest) -> snapshot/inventory
+C8b second snapshot in same generation: REFUSED AT INSERT -> PK(chart,generation): one snapshot per generation
+C9 L1 drift before seal: [('*', 'input_snapshot_drift', 'l1')]
+C9b manifest input vector changed: [('*', 'input_vector_mismatch', '')]
+C11 overlapping interval: REFUSED AT INSERT -> overlap trigger
+C12 interval outside horizon: REFUSED AT INSERT -> interval outside horizon / not [lo,hi)
+C14 missing_inputs interval: [('marriage', 'obligation_uncovered', 'b817eebc'), ('marriage', 'missing_inputs_present', 'b817eebc')]
+C15 same targets/paths/convention, different L1: input digests differ: 800d572c7db3 791096106058
+   inventory_digest: d952163615c9bca8 vs 893619b785daf5df
+C16 initial seal violations: []
+   registry advance, FIRST-seal predicate (what v0.4 trigger would apply to a replay): [('marriage', 'registry_unaccounted_path', ('p7', '1.0'))]
+   replay branch (already sealed -> integrity only): []
+---- INPUT PREIMAGE
+av_declarations=1157:lahiri_av_v1:f6493ca574a3
+convention_id=sha256:eac922d4c3b0deb700112f2260cd250a0388ab159f4a1c4bca9451281a48e7a3
+dasha_digest=a244291a2514cca194fa335fa2aac9fa9e2661be5959866518fe55dba423d448
+input_generation_vector={"bg_transit_av_gates":"d2","bg_transit_rules":"d1"}
+l1_facts_digest=f1bd785eb72ddd67c93664e53d18eb8434e38297ebc37017fde64372b3f5cd11
+input_digest=800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
+---- INVENTORY PREIMAGE
+convention=sha256:eac922d4c3b0deb700112f2260cd250a0388ab159f4a1c4bca9451281a48e7a3
+horizon=[2025-01-01T00:00:00Z,2025-03-01T00:00:00Z)
+input=800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
+pin=p1|1.0|included||60b22060-4b9c-892b-9d19-f05eb3b2f70b,b08c2264-6ddc-8323-8476-8d8fcb71c463
+pin=p6|1.0|excluded|on_demand_tier|
+ob=marriage|p1|1.0|jupiter|residence|lord|lord_of:7|dasha_lord|self
+ob=marriage|p1|1.0|jupiter|residence|occupant|occupant_of:7|dasha_lord|self
+inventory_digest=494d59f3dbeba2e8424ec65b34e5fe9e370e9b687ad5e3a7d4e251ee7d174146
+---- LEDGER PREIMAGE H1
+60b22060-4b9c-892b-9d19-f05eb3b2f70b|2025-02-01T00:00:00Z|2025-03-01T00:00:00Z|searched_complete|800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
+b08c2264-6ddc-8323-8476-8d8fcb71c463|2025-01-01T00:00:00Z|2025-02-01T00:00:00Z|searched_complete|800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
+ledger_digest=ddbd5a44d0745682d402b5c1118439e9f4fca95b90bf4676984e818e6bc5bd82
+---- LEDGER PREIMAGE H2
+60b22060-4b9c-892b-9d19-f05eb3b2f70b|2025-01-01T00:00:00Z|2025-03-01T00:00:00Z|searched_complete|800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
+b08c2264-6ddc-8323-8476-8d8fcb71c463|2025-01-01T00:00:00Z|2025-03-01T00:00:00Z|searched_complete|800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
+ledger_digest=62c4224ee2a0eb23416769c3aa8cc3ccab4a6452bedb09f893d0368df6d2f1a7

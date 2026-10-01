@@ -1,12 +1,15 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.4
-status: DRAFT — revised per ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_2 (REJECT, closer; 1204 independently ACCEPTED, 2026-10-02); collects the A5.5-gate fold-in list; not a spec version
+version: 0.5
+status: DRAFT — revised per ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_3 (REJECT on AM-5 only; AM-2 CLOSED; 1204 independently ACCEPTED, 2026-10-02); collects the A5.5-gate fold-in list; not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
-supersedes: v0.3 (340f5a7d9) — AM-2 corrected to SQL-valid 'span:' bytes and 1153's enrichment-vs-correction model; AM-5 completed with an obligation inventory, manifest binding, seal integration and the chart→global-SHARED protocol; the five v1.2 P2s listed as named gate follow-ups
+supersedes: v0.4 (454881c71) — AM-5 completeness reworked (committed obligation sets + proven-empty disposition, immutable search-input snapshot bound to every interval, independent pre-seal verification, seal-replay branch, complete W1 preimages, adversarial-case matrix with an executable model); AM-2 example A repaired. v0.4 itself superseded v0.3 (340f5a7d9) — AM-2 corrected to SQL-valid 'span:' bytes and 1153's enrichment-vs-correction model; AM-5 completed with an obligation inventory, manifest binding, seal integration and the chart→global-SHARED protocol; the five v1.2 P2s listed as named gate follow-ups
 sources: >
-  ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_2 (Codex gpt-6-astra, verdict REJECT;
+  ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_3 (Codex gpt-6-astra, REJECT on AM-5; AM-2
+  CLOSED, example repair; five ranked items); steward revision order
+  M20261001T195233-7184 (round 5: AM-5 completeness ONLY plus three small P2
+  repairs; adversarial cases written by the author). Retained: ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_2 (Codex gpt-6-astra, verdict REJECT;
   ACCEPTED: AM-1, AM-3, 1204-as-vocabulary-only, rank-2 bootstrap, rank-4
   detector; two P1s remained); steward revision order M20261001T183729-5c91
   (round 4: ONLY the two P1s, each with a worked example and an explicit
@@ -16,20 +19,23 @@ sources: >
   stream-B reports M20261001T172813-94e5, M20261001T180938-eac8.
 ---
 
-# GOCHARA_DESIGN_SPECS v1.5 — AMENDMENT LIST (draft v0.4)
+# GOCHARA_DESIGN_SPECS v1.5 — AMENDMENT LIST (draft v0.5)
 
-Revision disposition against ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_2. Per the
-steward's round-4 order, **only the two P1s are reworked** (§AM-2, §AM-5),
-each with a worked example and an explicit check against migration 1153's
-applied SQL; the five P2s are listed as named gate follow-ups with owners
-(§"A5.5-gate follow-ups"), not expanded. Everything else stands as accepted
-in v1.2. Migration discipline unchanged: migrations 1153–1157 are applied and
-**never edited**; every schema-side change is a NEW migration, and each one
-touching a live CHECK constraint needs a protected window.
+Revision disposition against ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_3 (round 5).
+Per the steward's order only **AM-5 completeness** is reworked, plus three
+small P2 repairs: seal-function replay, AM-2 example A, and W1's complete
+preimage. AM-2's normative text is CLOSED (v1.3) and unchanged apart from the
+example repair; everything else stands as accepted. The five v1.2 P2 follow-ups
+(F-3…F-7) remain named, owned and deferred. Migration discipline unchanged:
+migrations 1153–1157 are applied and **never edited**; every schema-side change
+is a NEW migration, and each one touching a live CHECK needs a protected window.
 
-v1.2 ranked crosswalk: rank 1 (P1) → §AM-2 (identity/correction vs 1153) ·
-rank 2 (P1) → §AM-5 (obligation inventory, manifest, seal, lock protocol) ·
-ranks 3–7 (P2) → §"A5.5-gate follow-ups" (named, owned, deferred).
+v1.3 ranked crosswalk: rank 1 (P1) → §AM-5 items 2, 5 + `committed_set_mismatch`
+(finalized obligation sets; absent vs proven-empty; W2 replayed as C1) · rank 2
+(P1) → §AM-5 item 0 (immutable search-input snapshot bound to every interval and
+to both digests) · rank 3 (P2) → §AM-5 item 5 replay branch (C16) · rank 4 (P2) →
+§AM-2 example A · rank 5 (P2) → §AM-5 W1 complete preimages. Prior crosswalks:
+v1.2 rank 1 → AM-2, rank 2 → AM-5, ranks 3–7 → F-3…F-7.
 
 ---
 
@@ -167,8 +173,9 @@ rewritten against the actual SQL, quoted below.
 > `body | relation | target | convention_id | occurrence_ordinal`.
 >
 > **Enrichment vs correction — checked against the applied triggers.**
-> Migration 1153 enforces, and this amendment adopts verbatim, the following
-> model (v0.3's "a time-only correction amends mutable enrichment, identity
+> Migration 1153 enforces, and this amendment adopts, the following model
+> (the SQL block below **paraphrases** the cited lines; the lines govern;
+> v0.3's "a time-only correction amends mutable enrichment, identity
 > untouched" is RETRACTED — it is exactly what the SQL rejects):
 >
 > ```sql
@@ -191,14 +198,17 @@ rewritten against the actual SQL, quoted below.
 > -- 1153:1081-1093 (row CHECKs): t_exact IS NULL <=> coverage.truncated;
 > --   coverage.truncated <=> solver_method='clipped_truncated'; an exact row
 > --   needs delta_lambda, delta_t and precision_regime NOT NULL
-> -- 1153:773-788: the identical rules for ka_gochara_sky_event
+> -- 1153:761-788: the identical rules for ka_gochara_sky_event (its flip
+> --   predicate is at 761-766; N6 compares only the solved t_exact/delta_lambda/
+> --   delta_t/precision_regime/solver_method fields — NOT t_in/t_out)
 > -- 1153:813-826 (ka_gochara_contact_identity): contact_id PK,
 > --   UNIQUE(physical_object_id, occurrence_ordinal), kgci_no_self_supersede_ck,
 > --   kgci_supersedes_uq (a chain, never a tree); 1153:839-870 supersede guard:
 > --   predecessor must exist, SAME body AND relation_kind, not already
 > --   superseded; 1153:881-884: UPDATE/DELETE refused (insert-only)
-> -- 1153:619-635 (ka_gochara_physical_object): the natural key INCLUDES
-> --   convention_id — a new convention or a new target IS a new physical object
+> -- 1153:619-637 (ka_gochara_physical_object): the natural key
+> --   ka_gochara_physical_object_natural_uq (636-637) INCLUDES convention_id —
+> --   a new convention or a new target IS a new physical object
 > ```
 >
 > The two cases, and only these two:
@@ -232,17 +242,33 @@ rewritten against the actual SQL, quoted below.
 >
 > **Worked example A — enrichment (acceptance shape for O-RX-1a):**
 > contact `mars|conjunction|point:198.52|c0|1` →
-> `23276d7c-c127-8f4c-9ad5-6b7c8da8020f`, inserted truncated:
-> `t_exact` NULL, `coverage={"truncated":true}`,
-> `solver_method='clipped_truncated'`, `t_out` NULL allowed
-> (kgc_t_out_unless_truncated_ck). The solver refines it with ONE UPDATE:
-> `t_exact='2025-03-10T00:00Z'`, `delta_lambda`, `delta_t`,
-> `precision_regime` set, `coverage={"truncated":false}`,
-> `solver_method='swiss_refined'`. Every row CHECK holds and the flip
-> predicate is TRUE → accepted, **same UUID**, no supersedes edge. The same
-> UPDATE with `t_in` changed, or with `t_exact` filled while
-> `solver_method` stays `clipped_truncated`, raises (1153:1147–1153 /
-> 1155–1156) — and kgc_t_exact_iff_truncated_ck would refuse it independently.
+> `23276d7c-c127-8f4c-9ad5-6b7c8da8020f`, inserted truncated with
+> `t_in='2025-03-09T00:00:00Z'`, `t_exact` NULL, `t_out` NULL (allowed only
+> while truncated: kgc_t_out_unless_truncated_ck, 1153:1089–1090),
+> `coverage={"truncated":true}`, `solver_method='clipped_truncated'`.
+> The solver refines it with ONE UPDATE that sets
+> `t_exact='2025-03-10T00:00:00Z'`, **`t_out='2025-03-11T00:00:00Z'`**
+> (NULL→value is permitted, 1153:1148), `delta_lambda`, `delta_t`,
+> `precision_regime`, `coverage={"truncated":false}`,
+> `solver_method='swiss_refined'`, leaving `t_in` unchanged. The flip
+> predicate (1153:1131–1136) is TRUE; kgc_t_exact_iff_truncated_ck
+> (1085–1086), kgc_truncated_method_ck (1087–1088),
+> kgc_t_out_unless_truncated_ck (1089–1090), kgc_exact_precision_ck
+> (1091–1093) and kgc_time_order_ck (`t_in ≤ t_exact ≤ t_out`, 1098–1100)
+> all hold → accepted, **same UUID**, no supersedes edge. Each negative arm,
+> with its true refuser:
+> (a) `t_in` changed → **UPDATE guard**, 1153:1147–1153;
+> (b) `coverage.truncated=false` but `solver_method` left
+> `clipped_truncated` → **UPDATE guard** 1153:1158–1159 (coverage may change
+> only in the flip), with **kgc_truncated_method_ck** (1087–1088) as the
+> independent backstop;
+> (c) `t_exact` filled while `coverage.truncated` stays `true` and
+> `solver_method` unchanged → the guard passes (nothing non-NULL changed) and
+> **kgc_t_exact_iff_truncated_ck** (1085–1086) refuses — this is the arm
+> that CHECK actually owns;
+> (d) the flip with `t_out` left NULL →
+> **kgc_t_out_unless_truncated_ck** (1089–1090);
+> (e) any change to a non-NULL `t_exact` → UPDATE guard, 1153:1149.
 >
 > **Worked example B — correction (the same contact, later):** the reading
 > is now non-NULL (`t_exact='2025-03-10T00:00Z'`). The corrected ephemeris
@@ -445,257 +471,336 @@ coverage, manifest-digest treatment, and replay. Folded.
 
 ---
 
-## AM-5 — Coverage-partition ownership and **explicit completeness** (REWORKED per v1.2 rank 2 (P1))
+## AM-5 — Coverage-partition ownership and **explicit completeness** (REWORKED per v1.3 ranks 1–3, 5)
 
-Codex v1.2: v0.3's receipt fixed cross-path interval conflation but kept
-flattening *within* a path — target counts are not a target inventory, and
-relations were not bound to targets or intervals; publication integration, the
-frozen applicability inventory and receipt protection were incomplete. The v0.3
-`ka_gochara_path_search_receipt` (one multirange + one relation list + three
-counts per path) is **WITHDRAWN** and replaced by the obligation inventory and
-interval ledger below.
-
-**What is and is not claimed.** No *general* proof that the evaluator searched
-"everything the doctrine implies" is claimed — the database cannot know the
-doctrine. What is specified is the **conservative completeness rule**: a class
-is *complete* over an interval only when **every obligation of an immutable,
-digest-bound inventory is recorded searched over that whole interval in the
-SAME sealed generation**; otherwise the state is *partial* (or weaker) and
-serving refuses "complete-empty". The split between what SQL enforces and what
-remains a writer/oracle obligation is stated explicitly (table below), so no
-flag claims more than a detector measures (CLAUDE.md §N.8).
+Codex v1.3: the per-obligation interval ledger, seal integration, lock order
+and serving states stand, **conditional on a correctly finalized, input-bound
+inventory**. Two P1s remained: (1) v0.4's SQL could not detect an included
+path whose obligations were never inserted (W2 as written was refused only by
+accident of how the example was phrased); (2) v0.3's explicit search-input
+identity had been dropped, so changed L1/declaration inputs could preserve a
+completion identity and partial searches from different snapshots could
+accumulate. Both are closed below; two P2s (seal replay, W1 preimage) are
+folded. **No general completeness proof is claimed** — the rule is the
+conservative one and the residual trust boundary is named (§"What SQL enforces").
 
 **Proposed spec text (amend §10.1):**
 
 > The `ka_gochara_v5` writer owns the `'5.0'` coverage partitions in
-> `kala_gochara_coverage`: it inserts/extends its own partitions with
-> `partition_kind = 'event_class'` and **`partition_key = <event_class>`**
-> (the only key both applied guards admit, 1155:706–709 / 1156:402–405),
-> `completed_horizon` within the governed domain, `relations_searched` exact —
-> in the same chart-serving transaction, after the chart lock and before the
-> records/windows that FK them (AM-3). **The partition is only the
-> guard-facing summary; completeness authority is the inventory + ledger.**
+> `kala_gochara_coverage` with `partition_kind = 'event_class'` and
+> **`partition_key = <event_class>`** (the only key both applied guards admit,
+> 1155:706–709 / 1156:402–405), `completed_horizon` within the governed
+> domain, `relations_searched` exact — in the chart-serving transaction, after
+> the chart lock and before the records/windows that FK them (AM-3). **The
+> partition is only the guard-facing summary; completeness authority is the
+> snapshot + inventory + ledger below.**
 >
-> **1. Obligation — the atomic unit of search.** An obligation is the 9-tuple
+> **0. Search-input snapshot (declared FIRST, one per chart × generation).**
+> `ka_gochara_search_input_snapshot (chart_id, generation)` PK, with
+> `convention_id`, `input_generation_vector jsonb`, `consumed_fact_ids text[]`,
+> `l1_facts_digest`, `dasha_digest`, `av_declarations text[]` (each
+> `<1157 declaration key>:<row sha256>`), and
+> `input_digest = sha256` over the canonical preimage (sorted `key=value`
+> lines, UTF-8, single `\n`):
+>
+> ```
+> av_declarations=<comma-joined, sorted>
+> convention_id=<the AM-1 sky convention id>
+> dasha_digest=<sha256 over the sorted L1 dasha rows used for period-lord resolution>
+> input_generation_vector=<the manifest's vector, canonical JSON: sorted keys, no spaces>
+> l1_facts_digest=<sha256 over sorted "fact_id|sha256(row content)" lines of consumed_fact_ids>
+> ```
+>
+> "Row content" is every column of the L1 row except audit timestamps (exact
+> enumeration is F-4's byte contract); a benign L1 rebuild that rewrites
+> identical values still changes the identity — the conservative direction.
+> Binding, all enforced:
+> (a) the snapshot insert trigger **recomputes** `input_digest` from its columns;
+> (b) its `input_generation_vector` must **equal** the generation's manifest row
+> (`kala_gochara_publication.input_generation_vector`, 1081:109) — the existing
+> vector is frozen and checked here, not re-invented;
+> (c) the inventory header and **every ledger interval** carry
+> `input_digest` and FK `(chart_id, generation, input_digest)` to the snapshot;
+> (d) a generation has exactly ONE snapshot (PK), so intervals evaluated under
+> two snapshots can never coexist in one generation: a different snapshot is a
+> different generation, or — on a candidate — a dependency-ordered delete of
+> every dependent row (intervals → obligations → pins → inventory → snapshot)
+> followed by a full re-search;
+> (e) `input_digest` is an input to both `inventory_digest` and `ledger_digest`,
+> so a changed L1 / declaration / dasha input changes every completion identity
+> even when targets, path versions and sky convention are identical (C15).
+> At seal the check **recomputes** the L1/dasha/AV digests from the live rows and
+> refuses on drift (`input_snapshot_drift`), and re-compares the vector to the
+> manifest (`input_vector_mismatch`).
+>
+> **1. Obligation — the atomic unit of search.** The 9-tuple
 > `(event_class, path_id, rule_version, agent, relation, object_role, target,
-> frame, person)`: exactly the qualified `(agent, relation, object_role)` that a
-> sealed `(path_id, rule_version)` row's `object_selector` names (S:228,
-> O-RP-8), instantiated to a concrete natal `target` of the class's target
-> inventory (S:215–231), with its `frame` (`moon`/`lagna`/`dasha_lord`/…) and
-> `person` (`self` or the relative of a bhāvāt-bhāvam frame). Period-lord
-> agents are role tokens (`period_lord:md|ad|pd`), the concrete graha being
-> resolved per interval from L1. It enumerates exactly the qualified
-> obligations — never an unrestricted Cartesian product.
+> frame, person)`: the qualified `(agent, relation, object_role)` a sealed rule
+> version's `object_selector` names (S:228, O-RP-8), instantiated to a concrete
+> natal `target` of the class's target inventory (S:215–231), with its `frame`
+> and `person`. Period-lord agents are role tokens (`period_lord:md|ad|pd`).
+> **Identity bytes:** the nine fields in that order, lowercase stored form,
+> single `|`, absent field = empty string (arity 9), UTF-8, no trailing
+> whitespace; `ob_id` = the AM-2 UUIDv8 over those bytes, **recomputed by the
+> insert trigger**.
 >
-> **Obligation identity (pinned bytes).** `canonical_bytes` = the nine fields
-> in that order, lowercase stored form, single `|`, absent field = empty string
-> (arity always 9), UTF-8, no trailing whitespace; `ob_id` = the AM-2 UUIDv8
-> construction over those bytes. The insert trigger **recomputes** `ob_id` from
-> the columns (`sha256()` + the version/variant bit mask) and refuses a mismatch.
+> **2. Path pins with an obligation-set COMMITMENT.** Per
+> `(chart, generation, event_class)` the writer declares, before any
+> obligation or search, a *total partition of the registry's sealed rule
+> versions* (every sealed `(path_id, rule_version)` exactly once), each pin
+> carrying **`committed_ob_ids uuid[]`** — the finalized obligation set, sorted
+> and unique — and a disposition:
 >
-> **2. Path pins — the frozen applicability inventory.** Per
-> `(chart, generation, event_class)` the writer declares, **before** any search
-> (this also gives geometry planning its qualified-target input), a *total
-> partition of the registry's sealed rule versions*: every sealed
-> `(path_id, rule_version)` in `ka_gochara_rule_path_seal` appears exactly once
-> as `included` or `excluded`. An exclusion carries a closed `reason` and a
-> non-blank `basis` (spec section or ruling):
+> | disposition | `committed_ob_ids` | insert-time CHECK | meaning |
+> |---|---|---|---|
+> | `included` | ≥ 1 ids | cardinality ≥ 1 | the path's qualified obligations are exactly these |
+> | `computed_empty` | `{}` | cardinality = 0 | the path was derived and **proven to have an empty qualified set** — a stated disposition, never an absence |
+> | `excluded` | `{}` | cardinality = 0, closed `reason`, non-blank `basis`, `ruling_ref` where required | path deliberately outside this class's build |
 >
 > | exclusion reason | degrades "complete-empty"? |
 > |---|---|
 > | `not_applicable_to_class` | no |
 > | `on_demand_tier` (P6 testimony; never admits a window) | no |
-> | `disabled_form` (e.g. a P5 form not enabled; requires `ruling_ref`) | **yes** |
-> | `inputs_unavailable` (e.g. no AV declaration; requires `ruling_ref`) | **yes** |
-> | `tier_withheld_by_ruling` | **yes** |
+> | `disabled_form` / `inputs_unavailable` / `tier_withheld_by_ruling` (each requires `ruling_ref`) | **yes** |
 >
-> Silence is never an exclusion, and "applicable sealed versions" is **copied
-> into the pins at declaration** — it can never mean whatever registry rows
-> happen to exist at serving time. P6 therefore cannot make a build depend on
-> future day queries (it is a recorded `on_demand_tier` exclusion), and a
-> disabled or input-starved path cannot silently vanish from the inventory.
+> **Absent obligations vs a proven empty set are therefore different rows:**
+> "never inserted" is `committed_ob_ids ≠ stored obligations` (a seal
+> violation, below); "proven empty" is the explicit `computed_empty` disposition,
+> which is bound to the input snapshot, hashed into `inventory_digest`, named in
+> every answer that relies on it, and — like every pin — **re-derived by the
+> independent verifier before sealing (item 4)**. An obligation insert is
+> refused unless its pin is `included` **and** its `ob_id` is in that pin's
+> committed set; it also runs `ka_gochara_require_sealed_rule_path()`
+> (1154:481–492; takes `ka_gochara_lock_global_shared()` first).
 >
-> **3. Storage (one additive migration, chart-scoped, all under the chart lock):**
+> **3. Storage (one additive migration; all rows chart-scoped under the chart
+> lock):** `ka_gochara_search_input_snapshot`, `ka_gochara_search_inventory`
+> `(chart_id, generation, event_class)` PK with `horizon`, `input_digest`,
+> `inventory_digest`; `ka_gochara_search_path_pin`; `ka_gochara_search_obligation`;
+> `ka_gochara_search_interval (chart_id, generation, event_class, ob_id,
+> search_range, state, detail, input_digest)` with
+> `lower_inc(search_range) AND NOT upper_inc(search_range)`, finite, inside the
+> inventory horizon, ranges **disjoint** per `ob_id` (trigger; race-free under
+> the chart EXCLUSIVE key), state ∈ {`searched_complete`,
+> `searched_unqualified`, `missing_inputs`}; and
+> `ka_gochara_search_inventory_verification (chart_id, generation,
+> event_class, verifier_id, verifier_version, rederived_inventory_digest)`.
+> All: chart-context statement trigger (`ka_gochara_substrate_chart_lock`,
+> 1153:560–578); UPDATE refused; DELETE refused once the generation is sealed
+> and otherwise only as the candidate replacement of AM-3; TRUNCATE refused.
 >
-> ```
-> ka_gochara_search_inventory (chart_id, generation, event_class)   -- PK
->   horizon tstzrange NOT NULL        -- governed horizon, finite, inside the AM-1 domain
->   convention_id text NOT NULL       -- the AM-1 sky convention
->   inventory_digest text NOT NULL    -- sha256(sorted pin rows ‖ sorted obligation bytes ‖ horizon ‖ convention)
-> ka_gochara_search_path_pin (chart_id, generation, event_class, path_id, rule_version)  -- PK
->   disposition text ('included'|'excluded'), exclusion_reason text, basis text, ruling_ref text
->   FK (path_id, rule_version) -> ka_gochara_rule_path_seal
-> ka_gochara_search_obligation (chart_id, generation, event_class, ob_id)  -- PK
->   path_id, rule_version, agent, relation, object_role, target, frame, person, canonical_bytes
->   FK to an 'included' pin (trigger); ob_id recomputed (trigger)
-> ka_gochara_search_interval (chart_id, generation, ob_id, search_range tstzrange)
->   state text ('searched_complete'|'searched_unqualified'|'missing_inputs'), detail jsonb
->   -- half-open, finite, inside inventory.horizon; per-ob_id ranges are DISJOINT
->   --   (trigger check, race-free because every writer holds the chart EXCLUSIVE key)
-> ```
+> **`inventory_digest` preimage (pinned; sorted within sections, `\n`-joined):**
+> `convention=<id>` · `horizon=[<lo>,<hi>)` (UTC, `Z`) · `input=<input_digest>` ·
+> one `pin=<path>|<rule_version>|<disposition>|<reason>|<committed ids, comma-joined>`
+> per pin · one `ob=<canonical bytes>` per stored obligation.
+> `ledger_digest` preimage: `<ob_id>|<lower>|<upper>|<state>|<input_digest>` rows,
+> sorted. `inventories_digest` = sha256 over sorted
+> `(event_class, inventory_digest, ledger_digest)` triples.
 >
-> Writes to all four: BEFORE-statement chart-context trigger
-> (`ka_gochara_substrate_chart_lock`, 1153:560–578), UPDATE refused always,
-> DELETE refused once the generation is sealed (`ka_gochara_generation_is_sealed`)
-> and permitted on a candidate generation only as the dependency-ordered
-> candidate replacement of AM-3 (intervals → obligations → pins → inventory),
-> TRUNCATE refused. Obligation insert additionally runs
-> `ka_gochara_require_sealed_rule_path()` (1154:481–492; it already takes
-> `ka_gochara_lock_global_shared()` before reading the rule seal), so no
-> obligation can name an unsealed rule version.
+> **4. Mandatory independent verification before publication.** Before
+> `ka_gochara_seal_generation`, a **separate derivation path** (verifier code
+> that shares no function with the writer's inventory builder — O-RP-9)
+> re-derives each class's inventory from the sealed rule versions + the
+> snapshot's L1 facts and inserts a verification row carrying its
+> `rederived_inventory_digest`. The seal requires, per class, a row whose
+> digest equals the stored `inventory_digest`. This is the detector for "the
+> inventory contains the right obligations" (pin dispositions, exclusion
+> bases, `computed_empty`, committed-set contents); SQL enforces its presence
+> and equality, the verifier's independence is a process property (named
+> residual below).
 >
-> **4. The completion rule (universal over the inventory).** For class C and
-> interval I, with `Inv(C)` the stored obligations:
-> `complete(C, I) ⇔ ∀ ob ∈ Inv(C): I ⊆ ⋃ { r.search_range : r.state = 'searched_complete' }`.
-> Counts and relation lists may *summarize* the inventory; they never replace it.
->
-> **5. Publication / seal integration.** A new `BEFORE INSERT` trigger
+> **5. Publication / seal integration.** An additive `BEFORE INSERT` trigger
 > `ka_gochara_generation_seal_z_search_complete` on `ka_gochara_generation_seal`
-> (additive: the applied `ka_gochara_generation_seal_guard`, 1153:918–955, is
-> **not** replaced; the new trigger takes the chart key itself, then
-> `ka_gochara_lock_global_shared()`, so firing order is irrelevant) calls the
-> new `ka_gochara_search_completeness_violations(chart, generation)` and refuses
-> the seal if any row returns:
+> (the applied guard, 1153:918–955, is not replaced; the new trigger takes the
+> chart key itself, then `ka_gochara_lock_global_shared()`) has **two branches**:
 >
-> | violation | meaning |
-> |---|---|
-> | `partition_without_inventory` | an `event_class` partition exists with no inventory (class claimed, never inventoried) |
-> | `inventory_without_partition` | inventory for a class with no partition |
-> | `registry_unaccounted_path` | a sealed registry path is neither pinned `included` nor `excluded` for the class (covers a path added after declaration) |
-> | `inventory_digest_mismatch` | stored digest ≠ recomputation from the stored pins/obligations |
-> | `obligation_uncovered` | `inventory.horizon ⊄ ⋃ searched_complete ∪ searched_unqualified` for an obligation — **including an obligation with zero ledger rows** (a wholly missing path, which 1156's consumer-based drift function cannot see) |
-> | `missing_inputs_present` | any ledger interval in state `missing_inputs` (the path must instead be re-declared as an `inputs_unavailable` exclusion with a ruling, in a new candidate inventory) |
-> | `partition_overclaims` | partition `completed_horizon ≠ inventory.horizon`, or a relation in `relations_searched` that no included obligation names, or an included obligation's relation absent from `relations_searched` |
+> * **First publication** (no seal row for `(chart, generation)`): runs
+>   `ka_gochara_search_completeness_violations(chart, generation)` and refuses on
+>   any row:
 >
-> `searched_unqualified` seals (it is evaluated-but-unknown, not rejection). The
-> check reads the tables directly — it does not depend on records or windows
-> existing, so a receipt-only complete-empty class is sealed or refused on its
-> own evidence.
+>   | violation | meaning |
+>   |---|---|
+>   | `partition_without_inventory` / `inventory_without_partition` | class claimed without inventory / inventory without class partition |
+>   | `registry_unaccounted_path` | a sealed registry path is neither pinned nor excluded for the class |
+>   | `committed_set_mismatch` | for any pin, `committed_ob_ids` ≠ the stored obligation ids (**includes obligations absent / never inserted**, and uncommitted extras) |
+>   | `inventory_digest_mismatch` | stored digest ≠ recomputation from stored pins/obligations |
+>   | `obligation_uncovered` | `inventory.horizon ⊄ ⋃ (searched_complete ∪ searched_unqualified)` for a stored obligation (incl. zero ledger rows) |
+>   | `missing_inputs_present` | any `missing_inputs` interval (re-declare the path as an `inputs_unavailable` exclusion with a ruling in a new candidate) |
+>   | `partition_overclaims` | partition horizon ≠ inventory horizon, or `relations_searched` ≠ the included obligations' relations |
+>   | `input_snapshot_mismatch` / `input_snapshot_drift` / `input_vector_mismatch` | inventory not bound to the snapshot; live L1/dasha/AV rows no longer match it; snapshot vector ≠ manifest vector |
+>   | `horizon_manifest_mismatch` | inventory horizon ≠ `kala_gochara_publication.horizon` |
+>   | `verification_missing_or_mismatch` | no verification row, or its digest ≠ the stored `inventory_digest` |
 >
-> **6. Manifest binding.** `inventories_digest := sha256` over the sorted
-> `(event_class, inventory_digest, ledger_digest)` triples of the generation,
-> where `ledger_digest` is sha256 over the class's canonical
-> `ob_id|lower|upper|state` rows, sorted. The generation-5 manifest-digest
-> preimage **includes** `inventories_digest` (the existing legacy helper hashes
-> all coverage rows — `gochara_kernel/ledger.py:503–518` — so this is an
-> explicit generation-5 implementation shared with AM-4's `moon_on_demand`
-> exclusion: follow-up F-7). Because the four tables are immutable once the
-> generation is sealed, a read-only `ka_gochara_search_inventories_digest(chart,
-> generation)` recomputes the identical value forever; manifest ↔ ledger is
-> verifiable by recomputation, not by trust.
+>   `searched_unqualified` seals (evaluated-but-unknown, not rejection).
+> * **Replay of an already-sealed generation** (`ka_gochara_seal_generation`
+>   inserts with `ON CONFLICT DO NOTHING`, 1153:990–992, and a BEFORE-INSERT
+>   trigger fires before conflict handling): the trigger enters a **replay
+>   branch** that requires (i) `NEW.manifest_id` = the existing seal's
+>   `manifest_id` (else raise), (ii) every stored inventory still recomputes to
+>   its `inventory_digest` and `ka_gochara_search_inventories_digest` is
+>   unchanged, (iii) verification rows still present — and does **not** apply
+>   `registry_unaccounted_path`, `input_snapshot_drift` or partition checks,
+>   which are first-publication predicates. Historical inventories never have
+>   to adopt later registry versions.
 >
-> **7. Chart → global-SHARED lock protocol.** Every transaction that writes
-> inventory, pins, obligations, intervals or seals — **including a receipt-only
-> transaction that emits no record or window** — takes
-> `ka_gochara_lock_chart(chart)` (chart EXCLUSIVE) **first**, then
+> **6. Manifest binding.** The generation-5 manifest-digest preimage includes
+> `inventories_digest` (the legacy helper hashes all coverage rows —
+> `gochara_kernel/ledger.py:503–518` — so this is an explicit generation-5
+> implementation shared with AM-4's `moon_on_demand` exclusion: F-7). The four
+> content tables are immutable once sealed, so the read-only
+> `ka_gochara_search_inventories_digest(chart, generation)` recomputes the same
+> value forever; manifest ↔ ledger ↔ input snapshot is verified by
+> recomputation, and the snapshot's vector equals the manifest's.
+>
+> **7. Chart → global-SHARED lock protocol.** Every transaction that writes the
+> snapshot, inventory, pins, obligations, intervals, verification rows or a
+> seal — **including a receipt-only transaction emitting no record/window** —
+> takes `ka_gochara_lock_chart(chart)` (chart EXCLUSIVE) first, then
 > `ka_gochara_lock_global_shared()` before reading any rule seal or the
-> registry's sealed set (the same discipline as 1154:479–490). The seal trigger
-> repeats the sequence, so a sealing transaction cannot interleave with a
-> registry mutation (which holds global EXCLUSIVE and is refused if a chart key
-> is held, 1153:467–470). No receipt-only path relies on record/window triggers
-> to reach these locks.
+> registry's sealed set (1154:479–490). A registry mutation holds global
+> EXCLUSIVE and is refused if a chart key is held (1153:467–470), so the sealed
+> set cannot change under a sealing transaction.
 >
-> **8. Immutability and replay.** Inserts into a sealed generation are refused.
-> Identical replay (same `ob_id`, equal payload) is a no-op; a changed-input
-> retry on a candidate deletes and re-inserts in dependency order and changes
-> `inventory_digest`; an extension of search after seal is a **new generation**.
+> **8. Replay and extension.** Identical replay (same ids, equal payload) is a
+> no-op; a changed-input retry on a candidate replaces the whole dependent
+> chain and changes `input_digest` and therefore every digest; extending a
+> search after seal is a **new generation**.
 >
-> **9. Serving rule.** For (class C, interval I) of a sealed generation, compute
-> per obligation the status of I from the ledger and report the **weakest**
-> present state, in this order (weakest → strongest): `not_searched`
-> (no inventory/partition for C) · `partial` (some part of I covered by no
-> interval, listing each `(ob_id, gap)`) · `unqualified` (all covered, some
-> only by `searched_unqualified`) · `searched`. An empty admitted set is
-> reported as **"searched, none admitted"** only when the status is `searched`
-> **and** no degrading exclusion (table above) applies; with a degrading
-> exclusion the answer is `searched_scoped`: "none admitted among the searched
-> paths; excluded: <path, reason>". Every answer carries the per-obligation
-> detail. `not_searched`, `partial`, `unqualified` and `searched_scoped` are
-> never reported as rejection or as complete-empty.
+> **9. Serving rule.** Only a **sealed** generation can yield `searched`; an
+> unsealed candidate is reported `candidate` (no completeness claim). For
+> (class C, interval I) of a sealed generation report the **weakest** present
+> state (weakest → strongest): `not_searched` · `partial` (each uncovered
+> `(ob_id, gap)` listed) · `unqualified` · `searched`. "Searched, none
+> admitted" requires `searched` **and** no degrading exclusion; with one, the
+> answer is `searched_scoped` ("none admitted among the searched paths;
+> excluded: <path, reason>"). Any `computed_empty` path is **named** in the
+> answer. Every answer carries the snapshot's `input_digest` and the
+> per-obligation detail.
 
-**What SQL enforces vs what stays a writer/oracle obligation (stated, not implied):**
+**What SQL enforces vs the named residual (§N.8 — each claim has a detector):**
 
 | Claim | Enforced by |
 |---|---|
-| ledger gaps / uncovered obligation / missing path **cannot seal** | SQL (seal trigger, §5) |
-| `ob_id` matches its bytes; digests match stored rows; sealed rows immutable | SQL (triggers, recomputation) |
-| every sealed registry path accounted for per class | SQL (`registry_unaccounted_path`) |
-| partition cannot over-claim vs the ledger | SQL (`partition_overclaims`) |
-| the inventory contains **the right obligations** for the class | writer derivation + new oracle **O-RP-9** (deterministic re-derivation of `Inv(C)` from the sealed rules + L1 facts; recomputation must reproduce `inventory_digest`), with O-RP-8 qualification — **not** SQL |
-| an exclusion's `basis` is true | review / O-RP-9 — SQL checks only non-blank + closed reason + ruling presence |
+| uncovered obligation / zero-ledger obligation / never-inserted obligation **cannot seal** | SQL: `obligation_uncovered`, `committed_set_mismatch` |
+| sealed registry path unaccounted for **cannot seal** (first publication) | SQL: `registry_unaccounted_path` |
+| intervals from different input snapshots cannot coexist; changed inputs change every identity; L1 drift blocks seal | SQL: PK/FK, digest recomputation, `input_snapshot_drift` |
+| `ob_id`, `input_digest`, `inventory_digest` match their bytes; sealed rows immutable | SQL triggers |
+| partition cannot over-claim vs the ledger | SQL: `partition_overclaims` |
+| the inventory / `computed_empty` / exclusion basis is the **right** one | independent re-derivation (O-RP-9) — SQL enforces **presence and digest equality of the verification row only** |
+| **named residual:** writer and verifier derive the same wrong inventory (shared bug/misreading of the doctrine) | not detectable in SQL; mitigated by verifier code independence, O-RP-8/O-RP-9 oracle cases and review; a `computed_empty` or non-degrading exclusion is always surfaced in answers |
 
-**Worked example W1 — the reviewer's within-path case (illustrative tokens, not
-doctrine; the arithmetic is what is shown).** Class `marriage`, path `p1`
-v`1.0`, two obligations (`ob_id` = UUIDv8 over the bytes):
+**Adversarial cases** (every "can never be read as complete" claim, the concrete
+row set that would break it, and the guard that stops it). Cases below were
+executed against a scratch executable model of the stated predicates —
+`design/evidence/am5_model.py`, `am5_cases.py`, output `am5_cases_output.txt`
+(**not Postgres; it checks the logic of the specified predicates, not the SQL**).
+Cases marked "not modelled" are by inspection of the predicate; every other refusal appears under its stated guard:
+
+| # | Row set that tries to break the claim | Guard | Result |
+|---|---|---|---|
+| C1 | **Codex's W2, exactly:** registry {P1,P5a}; pins P1 & P5a `included` (P5a with its committed ids); obligations stored for P1 only; intervals cover every *stored* obligation across the horizon; partition same horizon; `inventory_digest` correctly recomputed from the stored rows; no records/windows; a verifier that merely re-hashes stored rows | `committed_set_mismatch` (P5a: both committed ids have no obligation) | **REFUSED** |
+| C1b | P5a `included` with an empty commitment (to dodge C1) | pin CHECK: included ⇒ cardinality ≥ 1 | refused at insert |
+| C2 | Absent pin: registry has P5a, no pin for it | `registry_unaccounted_path` | **REFUSED** |
+| C3 | P5a pin `computed_empty` though the true qualified set is non-empty; stored rows self-consistent | independent re-derivation digest ≠ stored → `verification_missing_or_mismatch` | **REFUSED** |
+| C3b | Same, with no verification row at all | `verification_missing_or_mismatch` | **REFUSED** |
+| C3c | Writer commits a strictly smaller `included` set (omits P5B) | same mechanism as C3 (verifier digest differs) | REFUSED (by C3's mechanism; not separately modelled) |
+| C4 | Obligations present, one with no ledger rows | `obligation_uncovered` | **REFUSED** |
+| C5 | *(positive control)* genuinely empty qualified target set: P5a `computed_empty`, verifier agrees | no violation; serving names P5a as `computed_empty` | seals |
+| C7 | Obligation inserted but not in its pin's committed set | insert trigger | refused at insert |
+| C8a | An interval stamped with a different `input_digest` | FK `(chart,generation,input_digest)` | refused at insert |
+| C8b | A second snapshot for the same generation | PK `(chart_id, generation)` | refused at insert |
+| C9 | L1 rebuilt after the search, before the seal | `input_snapshot_drift` | **REFUSED** |
+| C9b | Manifest `input_generation_vector` changed after the snapshot | `input_vector_mismatch` | **REFUSED** |
+| C11 | Overlapping intervals for one obligation (mixed states) | disjointness trigger | refused at insert |
+| C12 | Interval outside the horizon / not `[lo,hi)` | interval CHECKs/trigger | refused at insert |
+| C14 | A `missing_inputs` interval | `obligation_uncovered` + `missing_inputs_present` | **REFUSED** |
+| C15 | Same targets/paths/convention, different L1 snapshot: does the completion identity survive? | `input_digest` ∈ both digests | **No**: input digests `800d572c…` vs `79109610…`; inventory digests `d9521636…` vs `893619b7…` |
+| C16 | Seal replay after registry advance (initial seal → identical replay → registry advance → replay again) | replay branch (item 5) | initial: pass; replay: no-op; after P7 sealed: **replay passes**, while a **first** seal under the same state is refused (`registry_unaccounted_path` P7); different `manifest_id` on replay → raise (specified; not modelled) |
+| C17 | Exclusion falsely declared `not_applicable_to_class` | verifier re-derivation (same mechanism as C3) | REFUSED if the verifier derives the path as applicable; **otherwise the named residual** |
+
+**Worked example W1 — the reviewer's within-path case, with the COMPLETE
+preimages (illustrative synthetic tokens and input components — not doctrine,
+no chart values).** Class `marriage`, path `p1` v`1.0` (`p6` v`1.0` excluded
+`on_demand_tier`), horizon `[2025-01-01, 2025-03-01)`. Obligations:
 `A = marriage|p1|1.0|jupiter|residence|lord|lord_of:7|dasha_lord|self` →
 `b08c2264-6ddc-8323-8476-8d8fcb71c463`;
 `B = marriage|p1|1.0|jupiter|residence|occupant|occupant_of:7|dasha_lord|self` →
-`60b22060-4b9c-892b-9d19-f05eb3b2f70b`. Governed horizon
-`[2025-01-01, 2025-03-01)`; `inventory_digest` prefix `b4e36531d8b1d400` (sorted
-bytes).
-- **History H1:** A searched January only, B searched February only → ledger
-  `(A,[01-01,02-01),complete)`, `(B,[02-01,03-01),complete)`; `ledger_digest`
-  prefix `329b06390ffa28da`.
-- **History H2:** both searched January–February → `(A,[01-01,03-01),complete)`,
-  `(B,[01-01,03-01),complete)`; `ledger_digest` prefix `40663c778b623cfe`.
-- Under **v0.3** both histories were the *same row*: relations `{residence}`,
-  2 targets required/2 resolved, interval union `[01-01,03-01)`. Under the
-  ledger they are distinct, and: serving a Jan–Feb query with zero windows →
-  H1: `partial` — A uncovered `[02-01,03-01)`, B uncovered `[01-01,02-01)`; the
-  seal trigger returns two `obligation_uncovered` rows and **refuses**; H2:
-  `searched` → "searched, none admitted", seal accepted. Two same-path partial
-  searches are therefore never readable as complete-empty: completeness is
-  `∀ ob` coverage, and H1 fails it for A and B individually. A later append of
-  `(A,[02-01,03-01))` and `(B,[01-01,02-01))` to the *candidate* turns H1 into H2
-  (new `ledger_digest`); the same append after sealing is refused (new
-  generation).
+`60b22060-4b9c-892b-9d19-f05eb3b2f70b`.
 
-**Worked example W2 — a wholly missing path.** Class `marriage` pins `p1` and
-`p5a` both `included`; the writer inserts obligations and ledger rows for `p1`
-only. No record or window references `p5a`, so 1156's drift function returns
-no violation. The seal trigger's `obligation_uncovered` check finds `p5a`
-obligations with zero ledger rows → refused. If instead `p5a` was never pinned
-and the registry holds its sealed row → `registry_unaccounted_path` → refused.
-If `p5a` is declared `excluded / inputs_unavailable` with a ruling, the class
-seals and serves `searched_scoped`.
+```
+-- input preimage -> input_digest = 800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
+av_declarations=1157:lahiri_av_v1:f6493ca574a3
+convention_id=sha256:eac922d4c3b0deb700112f2260cd250a0388ab159f4a1c4bca9451281a48e7a3
+dasha_digest=a244291a2514cca194fa335fa2aac9fa9e2661be5959866518fe55dba423d448
+input_generation_vector={"bg_transit_av_gates":"d2","bg_transit_rules":"d1"}
+l1_facts_digest=f1bd785eb72ddd67c93664e53d18eb8434e38297ebc37017fde64372b3f5cd11
+
+-- inventory preimage -> inventory_digest = 494d59f3dbeba2e8424ec65b34e5fe9e370e9b687ad5e3a7d4e251ee7d174146
+convention=sha256:eac922d4c3b0deb700112f2260cd250a0388ab159f4a1c4bca9451281a48e7a3
+horizon=[2025-01-01T00:00:00Z,2025-03-01T00:00:00Z)
+input=800d572c7db35d0e05f2c41bec3c6c9420b72b42619aaa4602de9596c7a2a0da
+pin=p1|1.0|included||60b22060-4b9c-892b-9d19-f05eb3b2f70b,b08c2264-6ddc-8323-8476-8d8fcb71c463
+pin=p6|1.0|excluded|on_demand_tier|
+ob=marriage|p1|1.0|jupiter|residence|lord|lord_of:7|dasha_lord|self
+ob=marriage|p1|1.0|jupiter|residence|occupant|occupant_of:7|dasha_lord|self
+```
+
+* **H1** (A searched January only, B February only) — ledger preimage → `ledger_digest = ddbd5a44d0745682d402b5c1118439e9f4fca95b90bf4676984e818e6bc5bd82`:
+  `60b22060-…|2025-02-01T00:00:00Z|2025-03-01T00:00:00Z|searched_complete|800d572c…` and
+  `b08c2264-…|2025-01-01T00:00:00Z|2025-02-01T00:00:00Z|searched_complete|800d572c…`.
+* **H2** (both January–February) → `ledger_digest = 62c4224ee2a0eb23416769c3aa8cc3ccab4a6452bedb09f893d0368df6d2f1a7`
+  (full rows in `am5_cases_output.txt`).
+* Under v0.3 the two histories were one row (same relations, counts, interval
+  union); here they differ. Serving a January–February query with zero windows:
+  H1 → `partial` (A uncovered `[02-01,03-01)`, B uncovered `[01-01,02-01)`), the
+  seal returns two `obligation_uncovered` rows and **refuses**; H2 → `searched`
+  → "searched, none admitted", seal accepted. (Earlier, input-less digests
+  `b4e36531…`/`329b0639…`/`40663c77…` described only parts of the preimage and
+  are withdrawn.)
+
+**Worked example W2 — Codex's W2 row set, replayed exactly** is **C1** above:
+every stored obligation is covered, the partition and recomputed digest agree,
+no consumer exists — and the seal is refused by `committed_set_mismatch`,
+because P5a's committed ids (`b817eebc-…`, `cfd4db84-…`) have no stored
+obligation. Separately tested (as v1.3 requires): absent pin = C2; pin present
+with obligations absent = C1; obligations present with intervals absent = C4;
+genuinely empty qualified set = C5 (and its false twin C3).
 
 **Worked example W3 — receipt-only complete-empty transaction.**
 ```
 BEGIN (READ COMMITTED);
-SELECT ka_gochara_lock_chart('482012f1-…');          -- chart EXCLUSIVE first
-SELECT ka_gochara_lock_global_shared();               -- then global SHARED, before any rule-seal read
-INSERT … ka_gochara_search_inventory / path_pin / obligation / interval …;
-  -- obligation insert re-runs ka_gochara_require_sealed_rule_path()
-UPSERT kala_gochara_coverage (event_class, <class>) partition;   -- chart key already held
+SELECT ka_gochara_lock_chart('482012f1-…');           -- chart EXCLUSIVE first
+SELECT ka_gochara_lock_global_shared();                -- then global SHARED, before any rule-seal read
+INSERT snapshot (manifest vector must match) → inventory → pins (with committed ids)
+       → obligations (each in its pin's commitment; require_sealed_rule_path) → intervals;
+INSERT verification rows (independent verifier, same chart lock);
+UPSERT kala_gochara_coverage (event_class, <class>);   -- chart key already held
 UPDATE kala_gochara_publication SET status='published';
-SELECT ka_gochara_seal_generation(chart, '5.0');      -- seal trigger re-takes both keys, checks §5
+SELECT ka_gochara_seal_generation(chart, '5.0');       -- seal trigger: first-publication branch
 COMMIT;
 ```
-No record or window is written; the transaction is still serialized against
-registry mutation and against every other chart writer, and the seal either
-records a ledger-proved complete-empty class or refuses.
+No record or window is written; the seal records a ledger-proved,
+input-bound complete-empty class, or refuses.
 
-**Check against the applied guards.** *1155 record guard:* the partition shape
-is unchanged (`partition_kind='event_class'`, `partition_key=<class>`, finite
-horizon, `coverage_facts` = current facts, relation ∈ `relations_searched`,
-bridged convention, `t_in` ∈ horizon — 1155:696–748) because the inventory only
-*tightens* what the writer may put in the partition (`partition_overclaims`);
-no record that passed before is rejected for a reason the inventory adds, and
-the added seal-time `relations_searched` equality is satisfied by construction.
-*1156 drift:* `ka_gochara_coverage_drift` (1156:499–546) still classifies
-records/windows against the partition; the horizon-`extended` allowance is
-preserved, and the added seal check closes the one thing it cannot see (an
-unsearched obligation with no consumer). *1153 seal:* the applied guard and
-`ka_gochara_seal_generation` are untouched; the new trigger is purely
-additive. Nothing in 1153–1157 is edited.
+**Check against the applied guards.** *1155 record guard:* partition shape
+unchanged (`event_class`, `partition_key=<class>`, finite horizon,
+`coverage_facts` = current facts, relation ∈ `relations_searched`, bridged
+convention, `t_in` ∈ horizon — 1155:696–748); the inventory only tightens what
+may be put in the partition. *1156 drift:* `ka_gochara_coverage_drift`
+(1156:499–546) still classifies records/windows and keeps its `extended`
+allowance; the seal check adds what it cannot see (an unsearched or
+never-inserted obligation with no consumer). *1153 seal:* the applied guard and
+`ka_gochara_seal_generation` are untouched; the trigger is additive and, via
+the replay branch, cannot break the function's `ON CONFLICT DO NOTHING` replay.
+Nothing in 1153–1157 is edited.
 
-**Schema impact (corrected, again):** ONE new additive migration — four
-tables, three functions (`…_violations`, `…_inventories_digest`, the seal
-trigger function) and one trigger on an existing table. It touches no live
-CHECK, but it **does** need the protected schema-capability route (the
-ordinary role has no `CREATE` on `public`: `deploy.yml:953–962`,
-`jataka-schema-capability.ts:54–67`) — v0.3's "no protected window" claim is
-withdrawn; exact wiring is follow-up F-3.
+**Schema impact:** ONE new additive migration — six tables, four functions
+(`…_violations`, `…_inventories_digest`, the snapshot-digest/seal-trigger
+functions) and one trigger on an existing table. It touches no live CHECK but
+**does** need the protected schema-capability route (no `CREATE` on `public`
+for the ordinary role: `deploy.yml:953–962`, `jataka-schema-capability.ts:54–67`);
+exact wiring is F-3. **Migration acceptance tests (required):** the C1–C17
+rows against a disposable database, plus the four-step seal-replay sequence.
 
 ---
 
@@ -886,7 +991,7 @@ Text unchanged from v0.2:
 
 ---
 
-## Batch checklist for the A5.5 gate (v0.4)
+## Batch checklist for the A5.5 gate (v0.5)
 
 | # | Item | Spec fold | New migration? | Decision left? |
 |---|------|-----------|----------------|------------------|
@@ -894,7 +999,7 @@ Text unchanged from v0.2:
 | AM-2 | UUIDv8 + O-RX-1a; SQL-valid `span:`/`star:`/`point:` bytes; enrichment-vs-correction per 1153; UUID + post-mask vectors | §6.1 | no | no |
 | AM-3 | Two transaction categories; chart lock BEFORE legacy coverage writes | §10.1 | no | no |
 | AM-4 | Moon/day EPHEMERAL; query receipt storage/identity/manifest exclusion; P6-context deferral | §6.2/§10.1 | no | no |
-| AM-5 | `partition_key=event_class` + **obligation inventory + interval ledger**, seal trigger, manifest binding, lock protocol, serving states | §10.1 | **yes — one additive migration (4 tables, 3 functions, 1 trigger); protected schema-capability route (F-3)** | no |
+| AM-5 | `partition_key=event_class` + **search-input snapshot, committed obligation sets (absent ≠ proven-empty), interval ledger, independent verification, seal trigger with replay branch**, manifest binding, lock protocol, serving states | §10.1 | **yes — one additive migration (6 tables, 4 functions, 1 trigger); protected schema-capability route (F-3)** | no |
 | AM-6 | `sad_bala_sufficient` v1.0; `null_state='unqualified'`; score-qualification ≠ admission | factor catalogue | no | picked: C |
 | AM-7 | `'av_qualifier'` + P5 contract completed (identity/applicability/lineage/read-back) | relationship_record | 1204 (kept), protected window | no |
 | AM-8 | P6 testimony template; five frame kinds; future designed migration | new (template) | 1205 SPLIT OUT | no |
@@ -904,17 +1009,23 @@ Text unchanged from v0.2:
 
 | ID | v1.2 rank | Follow-up | Owner | Blocks |
 |---|---:|---|---|---|
-| F-3 | 3 | Receipt/inventory migration: correct the "no protected window" claim (done in AM-5 schema impact) and specify the exact schema-capability route and runner wiring (`deploy.yml:953–962`, `jataka-schema-capability.ts:54–67`) | Stream A (migration author) with steward (dispatch) | receipt migration acceptance |
-| F-4 | 4 | Full-precision point formatter pin and the quantization/rounding/seam/method-version question; canonical-byte contracts for physical-object, relationship-record and window IDs (frame args, nulls, ordered versioned prerequisites, source/citation serialization, intervals, generation/input binding); qualified-geometry declaration before phase-one solving and re-solve-vs-re-score reason (AM-5's pins/obligations are its input); retain O-RX-1a and invalidation tests (O-RW-1) | Stream B (bytes/spec) + Stream A (identity builder) | A5.5 identity gate |
-| F-5 | 5 | Typed operand storage for AM-6 rūpas and AM-7 bindus/declaration binding; declaration-key bytes and L1 build/convention identity; exact P5a/P5b path IDs and applicability storage; place `null_state` on the versioned `ka_gochara_factor` row (1154:310–334), not the membership row, and name the edition/translator for Phaladīpikā IV.22–23 | Stream B (AM-6/AM-7 text, one-line SQL-location correction due in v0.5) + Stream A (storage) | AM-6/AM-7 writer acceptance |
+| F-3 | 3 | Inventory migration (6 tables, 4 functions, seal trigger): correct the "no protected window" claim (done in AM-5 schema impact) and specify the exact schema-capability route and runner wiring (`deploy.yml:953–962`, `jataka-schema-capability.ts:54–67`) | Stream A (migration author) with steward (dispatch) | receipt migration acceptance |
+| F-4 | 4 | Full-precision point formatter pin and the quantization/rounding/seam/method-version question; canonical-byte contracts for physical-object, relationship-record and window IDs (frame args, nulls, ordered versioned prerequisites, source/citation serialization, intervals, generation/input binding); qualified-geometry declaration before phase-one solving and re-solve-vs-re-score reason (AM-5's snapshot, pins and obligations are its input); retain O-RX-1a and invalidation tests (O-RW-1) | Stream B (bytes/spec) + Stream A (identity builder) | A5.5 identity gate |
+| F-5 | 5 | Typed operand storage for AM-6 rūpas and AM-7 bindus/declaration binding; declaration-key bytes and L1 build/convention identity; exact P5a/P5b path IDs and applicability storage; place `null_state` on the versioned `ka_gochara_factor` row (1154:310–334), not the membership row, and name the edition/translator for Phaladīpikā IV.22–23 | Stream B (AM-6/AM-7 text, one-line SQL-location correction still due, per steward scope) + Stream A (storage) | AM-6/AM-7 writer acceptance |
 | F-6 | 6 | Complete synthetic P5 semantic fixtures: numeric bindu mismatch, BAV/SAV selection, independent P5a/P5b missingness, citation-through-declaration via an actual evaluator path (not the test-local `consumeDeclaration`); correct the oracle map's stale 1205 reference (line 133) at its next version; replace B6-F16/F17 sentinels | Stream A (PR #2817 fixtures) + Stream B (oracle map v1.2) | P5/A5.5 acceptance (not vocabulary-only 1204) |
 | F-7 | 7 | Moon query log: table/API name, receipt key, query context, evaluator versions, canonical result rendering excluding self-referential digest/audit fields; generation-5 manifest-digest implementation (also carrying AM-5's `inventories_digest`) with before/after-seal proof; P6 parent-context/containment stays held | Stream B (AM-4 text) + Stream A (implementation) | Moon/day implementation acceptance |
 
 New oracle proposed by AM-5 for the successor oracle file (frozen v1.4 untouched):
-**O-RP-9** — deterministic re-derivation of `Inv(C)` from the sealed rule
-versions + L1 facts reproduces `inventory_digest`; plus negative arms for the
-W1/W2 histories (partial → refused seal, `partial` serving; missing path →
-refused; exclusion without ruling → refused).
+**O-RP-9** — an independent re-derivation of every class's inventory (pins,
+dispositions, committed sets, `computed_empty`, exclusion bases) from the sealed
+rule versions + the snapshot's L1 facts reproduces the stored
+`inventory_digest`; plus the negative arms C1–C17 of AM-5's adversarial matrix
+(absent pin, absent obligations, absent intervals, false `computed_empty`,
+changed input snapshot, mixed-snapshot intervals, L1 drift, `missing_inputs`,
+exclusion without ruling) and the four-step seal-replay sequence (initial seal →
+identical replay → registry advance → replay again). The executable model in
+`design/evidence/` is a logic check of the predicates, **not** the oracle and not
+a substitute for the disposable-database test.
 
 ## Stale-statement corrections folded in v0.3 (v1.1: "correct alongside")
 
