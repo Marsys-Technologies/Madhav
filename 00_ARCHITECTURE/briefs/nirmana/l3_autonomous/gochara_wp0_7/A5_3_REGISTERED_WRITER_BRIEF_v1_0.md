@@ -244,6 +244,19 @@ Deferred alongside but NOT contract amendments: the P5c donor matrix (D4,
 awaits the native-authorised `ga_strength` rebuild) and the P5d/P5e forms
 (D5/D6). The `period_running_at` dasha-row source is CONFIRMED (above).
 
+**OPEN ITEM — AM-1 ephemeris provenance (steward M20261001T182032-5d5b,
+2026-10-01):** Suvarṇa's EPHEMERIS finding (PR #2840) shows production L1
+chart_facts/panchanga_daily were computed on MOSHIER (image sets only
+SWE_EPHE_PATH, which the C library ignores; SE_EPHE_PATH unset), while
+gochara contact/convention rows are on swieph (~1 arcsec Moon, ~25 arcsec
+TRUE_NODE divergence). The '5.0' convention row's node/ephemeris provenance
+must therefore name the backend ACTUALLY USED BY L1 for each cited fact —
+never a blanket "swieph". Bind at convention-row materialisation
+(`geometry_store`/`rule_binding` write path) once Suvarṇa's shared locked
+path helper lands on main; adopt that helper for the kernel's ephe
+resolution at the same time. The gochara kernel itself already fails closed
+on any non-swieph backend (`knots._check_retflag` raises) — unchanged.
+
 ### Design v1.2 (2026-10-01, 3/N part 2 — point solves landed)
 
 `conjunction`/`aspect` transit edges on `point:<λ>` targets now solve:
