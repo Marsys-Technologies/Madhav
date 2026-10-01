@@ -33,7 +33,7 @@ const DATA = `WITH evidence AS (
  NULL::text AS legacy_cost_usd
  FROM ai_metering_attempts a LEFT JOIN ai_metering_receipts r USING(attempt_id)
  UNION ALL
- SELECT e.id::text,e.user_id,e.conversation_id::text,e.prompt_id::text,e.prompt_id::text,e.parent_prompt_id::text,
+ SELECT e.event_id::text,e.user_id,e.conversation_id::text,e.prompt_id::text,e.prompt_id::text,e.parent_prompt_id::text,
  CASE WHEN e.channel IN ('web','mcp') THEN e.channel ELSE 'unknown' END,'legacy','unknown',e.provider,e.model,e.pipeline_stage,
  NULL,NULL,NULL,'legacy_aggregate',e.started_at,e.finished_at,e.status,
  jsonb_build_object('input',CASE WHEN e.status='success' THEN e.input_tokens END,
