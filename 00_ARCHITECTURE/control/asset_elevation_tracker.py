@@ -354,8 +354,9 @@ def main():
 #   opportunity|info; absent reads gap), criterion, state (OPEN|IN_PROGRESS|CLOSED|WITHDRAWN; absent reads OPEN),
 #   superseded_by. A gap is keyed (asset, gap_id) and its state is its LATEST row; a row folded into another gap_id
 #   (superseded_by, SAME asset, chains resolved, a cycle raises) is carried by the chain's terminal row.
-#   A gap's kind and criterion are FIXED at first write (a later row may change only its state); a row that can block may
-#   only be folded into a kind=gap row of the same gate family (non-gate rows fold freely among themselves). A core-gate or
+#   A gap's kind and criterion are FIXED at first write (a later row may change only its state); a row that can block (a
+#   core-gate row, or a declared addition's) may only be folded into a kind=gap row of a REGISTERED criterion of the same
+#   gate (or the same declared addition), and never from OPEN into a CLOSED/WITHDRAWN row; non-gate rows fold freely. A core-gate or
 #   declared-addition criterion re-keyed `kind: info` raises.
 # asset_dispositions.jsonl (storage location provisional: the plan names none): asset (a registry asset), disposition
 #   (keep|integrate|enrich|qualify|consolidate|historical|retire|unresolved), reason, additions (REQUIRED on every
@@ -1017,7 +1018,7 @@ def _e63_parse_certs(data, facts):
 
 
 # ---- gaps and dispositions -----------------------------------------------------------------------------------------
-def _e63_parse_gaps(data, known, info_families):
+def _e63_parse_gaps(data, known, facts, additions):
     """The EFFECTIVE gap rows. Keyed (asset, gap_id): the latest row wins; a row with no gap_id stands alone; a row
     folded by `superseded_by` (same asset, chains resolved, a cycle or a dangling target raises) is carried by the
     chain's terminal row."""
@@ -1071,16 +1072,29 @@ def _e63_parse_gaps(data, known, info_families):
                                        f"no gap_id of asset {g['asset']}")
             seen.add(nxt)
             tgt = latest[nxt]
-            origin_can_block = cur["criterion"].split(".", 1)[0] not in info_families
-            if origin_can_block and (tgt["criterion"].split(".", 1)[0] != cur["criterion"].split(".", 1)[0]
-                                     or tgt["kind"] != "gap" or cur["kind"] != "gap"):
+            adds = additions.get(cur["asset"], ())
+            origin_can_block = (cur["criterion"].split(".", 1)[0] not in facts.info_families
+                                or any(cur["criterion"] == a or cur["criterion"].startswith(a + ".") for a in adds))
+            if origin_can_block:
+                same_family = tgt["criterion"].split(".", 1)[0] == cur["criterion"].split(".", 1)[0]
+                same_addition = any(cur["criterion"] == a or cur["criterion"].startswith(a + ".") for a in adds) and any(
+                    tgt["criterion"] == a or tgt["criterion"].startswith(a + ".") for a in adds)
+                registered = tgt["criterion"] in facts.criteria
                 # the real ledger folds a renamed criterion within ONE gate (Vocab.rule1.alias -> Vocab.alias, R79) and
-                # non-gate rows among themselves (Complete.depth -> Completeness.*); a fold of a row that CAN block into
-                # another gate/family or a non-gap row would move an open gap out from under its gate
-                _e63_fail("malformed", f"{E63_GAPS_PATH} line {cur['line']}: a gap may only be folded into a kind=gap row "
-                                       f"of the SAME gate family ({cur['criterion']!r} -> {tgt['criterion']!r}, "
-                                       f"{cur['kind']} -> {tgt['kind']})")
+                # non-gate rows among themselves (Complete.depth -> Completeness.*); a fold of a row that CAN block (a
+                # core-gate row or a declared addition's) must land on a kind=gap row of a REGISTERED criterion of the
+                # same gate (or the same declared addition), never another gate, an opportunity or an unregistered id
+                if (tgt["kind"] != "gap" or cur["kind"] != "gap" or not ((same_family and registered) or same_addition)):
+                    _e63_fail("malformed", f"{E63_GAPS_PATH} line {cur['line']}: a gap that can block may only be folded "
+                                           f"into a kind=gap row of a registered criterion of the same gate or of the "
+                                           f"same declared addition ({cur['criterion']!r} -> {tgt['criterion']!r}, "
+                                           f"{cur['kind']} -> {tgt['kind']})")
             cur = tgt
+        if g["state"] not in E63_CLOSED_GAP_STATES and cur["state"] in E63_CLOSED_GAP_STATES and (
+                g["criterion"].split(".", 1)[0] not in facts.info_families
+                or any(g["criterion"] == a or g["criterion"].startswith(a + ".") for a in additions.get(g["asset"], ()))):
+            _e63_fail("malformed", f"{E63_GAPS_PATH} line {g['line']}: an OPEN gap that can block was folded into a "
+                                   f"{cur['state']} row ({cur['gap_id']!r}): its open state must not vanish by folding")
         # folded: the terminal row (a member of `latest`) is counted on its own
     return out
 
@@ -1274,7 +1288,7 @@ def elevated_assets(ref: str, repo: str) -> set:
                                                           "watermark: E5.5 has not evaluated them")
     disp = _e63_parse_dispositions(_e63_show(repo, sha, E63_DISPOSITIONS_PATH), facts, registry)
     known = set(registry) | set(disp) | {k.split("|", 1)[0] for k in led.by_key}
-    gap_rows = _e63_parse_gaps(_e63_show(repo, sha, E63_GAPS_PATH), known, facts.info_families)
+    gap_rows = _e63_parse_gaps(_e63_show(repo, sha, E63_GAPS_PATH), known, facts, {a: d["additions"] for a, d in disp.items()})
     _e63_check_info_rekeys(gap_rows, disp, facts)
     gaps = {}
     for g in gap_rows:

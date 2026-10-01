@@ -213,7 +213,7 @@ def test_the_real_gap_ledgers_folds_and_duplicate_ids_still_parse(real_pins):
     sha = T._e63_resolve_ref("HEAD", repo)
     known = set(T._e63_registry_assets(repo, sha))
     facts = T._e63_registry_facts(repo, sha)
-    assert len(T._e63_parse_gaps(r.stdout, known, facts.info_families)) > 700
+    assert len(T._e63_parse_gaps(r.stdout, known, facts, {})) > 700
 
 
 # ═══════════════ LOW ═══════════════
@@ -252,3 +252,79 @@ def test_the_committed_generator_not_the_working_trees_reads_the_seed(w):
     w.raw[GENERATOR] = src.replace("    return rows\n\n\ndef load_registry_from_seed", "    return []\n\n\ndef load_registry_from_seed")
     assert w.raw[GENERATOR] != src
     raises(w)
+
+
+# ═══════════════ final delta: a fold cannot hide an OPEN gap ═══════════════
+
+@pytest.mark.parametrize("target_crit,target_state", [
+    ("Idem.alt", "CLOSED"), ("Idem.alt", "WITHDRAWN"),       # an open gap vanishing into a closed registered row
+    ("Idem.zzz", "WITHDRAWN"), ("Idem.zzz", "OPEN"),          # an unregistered id of the same gate family
+])
+def test_folding_an_open_core_gate_gap_into_a_closed_or_unregistered_row_of_the_same_gate_raises(w, target_crit, target_state):
+    w.gaps += [gap("ga_alpha", "Idem.pat", gap_id="G1", superseded_by="G2"),
+               gap("ga_alpha", target_crit, gap_id="G2", state=target_state)]
+    raises(w, "malformed")
+
+
+def test_a_closed_origin_may_fold_into_a_closed_row_and_an_open_fold_into_an_open_registered_row_still_blocks(w):
+    w.gaps += [gap("ga_alpha", "Idem.pat", gap_id="G1", superseded_by="G2", state="CLOSED"),
+               gap("ga_alpha", "Idem.alt", gap_id="G2", state="CLOSED")]
+    assert got(w) == ALL
+    w.gaps += [gap("ga_alpha", "Idem.pat", gap_id="H1", superseded_by="H2"), gap("ga_alpha", "Idem.alt", gap_id="H2")]
+    assert got(w) == ALL - {"ga_alpha"}
+
+
+def test_a_chain_whose_terminal_row_is_closed_cannot_hide_an_open_origin(w):
+    w.gaps += [gap("ga_alpha", "Idem.pat", gap_id="A", superseded_by="B"), gap("ga_alpha", "Idem.alt", gap_id="B", superseded_by="C"),
+               gap("ga_alpha", "Idem.alt", gap_id="C", state="CLOSED")]
+    raises(w, "malformed")
+
+
+def _with_addition(w, name="Reach.new"):
+    w.disps.append(disp("ga_alpha", "keep", additions=[name]))
+    w.certs.append(cert("ga_alpha", name, kind="addition"))
+
+
+def test_an_open_gap_on_an_addition_in_an_info_family_blocks(w):
+    _with_addition(w)
+    w.gaps.append(gap("ga_alpha", "Reach.new"))
+    assert got(w) == ALL - {"ga_alpha"}
+
+
+@pytest.mark.parametrize("target", [dict(criterion="Cost.base", kind="gap", state="CLOSED"),
+                                    dict(criterion="Cost.base", kind="opportunity", state="OPEN"),
+                                    dict(criterion="Reach.other", kind="gap", state="CLOSED"),
+                                    dict(criterion="Reach.new", kind="opportunity", state="OPEN")])
+def test_folding_an_open_gap_on_a_declared_info_family_addition_into_a_row_that_cannot_block_raises(w, target):
+    _with_addition(w)
+    w.gaps += [gap("ga_alpha", "Reach.new", gap_id="G1", superseded_by="G2"),
+               gap("ga_alpha", target["criterion"], gap_id="G2", kind=target["kind"], state=target["state"])]
+    raises(w, "malformed")
+
+
+def test_an_addition_gap_may_fold_into_another_open_row_of_the_same_addition(w):
+    _with_addition(w)
+    w.gaps += [gap("ga_alpha", "Reach.new", gap_id="G1", superseded_by="G2"), gap("ga_alpha", "Reach.new.sub", gap_id="G2")]
+    assert got(w) == ALL - {"ga_alpha"}
+
+
+def test_a_non_gate_family_gap_with_no_such_addition_folds_freely(w):
+    w.gaps += [gap("ga_alpha", "Reach.new", gap_id="G1", superseded_by="G2"), gap("ga_alpha", "Cost.base", gap_id="G2", state="CLOSED")]
+    assert got(w) == ALL                                       # Reach.new is NOT a declared addition here: informational
+
+
+E6_CARR_CENSUS = "/Users/Dev/suvarna-engine-lane-e6-carr/platform/scripts/governance/asset_census.py"
+
+
+def test_the_real_gap_ledger_also_parses_against_the_registry_with_carr_detector_retired(tmp_path, real_pins):
+    import subprocess
+    repo = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
+    r = subprocess.run(["git", "-C", repo, "show", "origin/campaign/nikasha-test:00_ARCHITECTURE/control/asset_gaps.jsonl"],
+                       capture_output=True)
+    if r.returncode != 0 or not os.path.exists(E6_CARR_CENSUS):
+        pytest.skip("origin/campaign/nikasha-test or the engine-E6-carr worktree is not available here")
+    w = World(tmp_path, census=open(E6_CARR_CENSUS, encoding="utf-8").read()).default()
+    w.commit()
+    facts = T._e63_registry_facts(str(w.repo), w.last)
+    known = set(T._e63_registry_assets(repo, T._e63_resolve_ref("HEAD", repo)))        # the real seed's asset ids
+    assert len(T._e63_parse_gaps(r.stdout, known, facts, {})) > 700
