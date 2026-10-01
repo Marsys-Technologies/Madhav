@@ -485,6 +485,53 @@ def test_value_invariants_check_each_retained_value_against_its_source():
     assert sql.rstrip().endswith("ORDER BY m.event_class, m.target_type, m.target_ref;")
 
 
+def test_mechanism_node_state_is_checked_against_the_writers_resolved_contract():
+    """ASTRA_REVIEW_A5_4_TIER0S_v1_5 P2 (b): the writer's contract
+    (writer.py _stamp_target_resolution) explicitly preserves mechanism
+    resolution as 'resolved' — the operand wiring IS the cited live rule.
+    The values query previously checked mechanism weight / ref / eligibility /
+    citation but no state, so an otherwise-valid mechanism_node row flipped
+    'resolved' → 'unavailable' produced 0 violations (the reviewer's replay).
+    Now a state other than 'resolved' is a 'state:mechanism_resolved'
+    violation."""
+    sql = B.value_invariants_sql(CH)
+    assert "'state:mechanism_resolved'" in sql
+    assert ("m.target_type = 'mechanism_node' AND m.target_resolution_state "
+            "IS DISTINCT FROM 'resolved'") in sql
+
+
+def test_m6_state_is_rederived_from_operand_presence_as_the_writer_derives_it():
+    """ASTRA_REVIEW_A5_4_TIER0S_v1_5 P2 (c): the M-6 state check was enum
+    membership only, so a Māndi-dependent M-6 row with Māndi MISSING from
+    chart_facts and a forged stored state 'resolved' produced 0 violations.
+    The writer (writer.py ~1150 _build_m6_derived_rows) derives the state
+    from its operands — a missing Māndi/Yamakaṇṭaka sign or 5th-star-lord
+    operand yields 'unavailable', an incomplete sign-lord table yields
+    'unqualified'. The query now re-derives that state from the same
+    operands; the formula roles and the Vimśottari table mirror the grammar
+    module, never a hand copy."""
+    from services.gochara_grammar.derived_points import (
+        VIMSHOTTARI_NAKSHATRA_LORDS, YAMAKANTAKA_FORMULAS)
+    sql = B.value_invariants_sql(CH)
+    assert "'state:m6_operands'" in sql
+    # the operand tables the writer reads
+    assert "fact_category = 'sensitive_point_gulika_mandi'" in sql
+    assert "'MANDI'" in sql and "'YAMAKANTAKA'" in sql
+    assert "fact_category = 'panchanga_nakshatra_moon'" in sql and "NAKSHATRA_MOON_BIRTH" in sql
+    # the per-formula operand roles, from the grammar constants
+    assert "('mandi_sign_distance_from_8L', 'eighth_lord', 'mandi')" in sql
+    for f in YAMAKANTAKA_FORMULAS:
+        assert f"('{f['ref']}', '{f['minuend']}', '{f['subtrahend']}')" in sql, f["ref"]
+    # the 5th-star lord: natal counts as 1, so the 5th is natal+4, Vimśottari lord
+    assert "(((SELECT n FROM moon_nak) - 1 + 4) % 27) % 9" in sql
+    for i, lord in enumerate(VIMSHOTTARI_NAKSHATRA_LORDS):
+        assert f"({i}, '{lord}')" in sql, lord
+    # the writer's _state combination: unqualified wins, then unavailable, else resolved
+    assert "WHEN 'unqualified' IN (o.minuend_state, o.subtrahend_state) THEN 'unqualified'" in sql
+    assert "WHEN 'unavailable' IN (o.minuend_state, o.subtrahend_state) THEN 'unavailable'" in sql
+    assert "WHEN NOT (SELECT ok FROM lords_complete) THEN 'unqualified'" in sql
+
+
 def test_refusal_probe_is_certified_by_two_recorded_certificates_not_a_tautology():
     """ASTRA v1.2 P2-b: the rehearsal source records the FULL certificate
     before the refusal probe and again after it, and the foreign partition
