@@ -300,8 +300,8 @@ NARR_CITES = {
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
                  (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
     "ka_vighnakara": [(_WR + "ka_vighnakara.py", 639, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 691, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 748, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 821, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 900, "'reason': ("), (_WR + "ka_vighnakara.py", 956, "'reason': f\"{planet_str} combust"),
+                      (_WR + "ka_vighnakara.py", 748, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 825, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 904, "'reason': ("), (_WR + "ka_vighnakara.py", 960, "'reason': f\"{planet_str} combust"),
                       (_WR + "ka_vighnakara.py", 288, "json.dumps(obs['detail'])"),
                       (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
     "ka_avadhi": [(_WR + "ka_avadhi.py", 293, '"note": f"AD lord {lord} modulates MD lord {sublord}."'),
@@ -618,7 +618,7 @@ def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant
     roots = [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
              if isinstance(k, ast.Constant) and k.value == "detail"]
     composed, constant = _composed_lines(nw.composed_report(tree, roots, ("reason",)))
-    assert composed == [639, 691, 748, 821, 900, 956] and constant == [786, 857]
+    assert composed == [639, 691, 748, 825, 904, 960] and constant == [786, 861]
 
 
 def test_ka_avadhi_sublord_note_is_bound_into_the_dossier_json_and_composed():

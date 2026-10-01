@@ -803,7 +803,11 @@ def _check_gandanta(peak_date, jd=None, swe=None, muhurta_service=None,
 
     moon_sign = gd['sign']
     zone = gd['gandanta_zone']  # 'end_of_<water sign>' | 'start_of_<fire sign>'
-    side = "end" if zone.startswith('end_of_') else "start"
+    at_end = zone.startswith('end_of_')
+    side = "end" if at_end else "start"
+    # The junction's water sign: the Moon's own sign at the end-of-water-sign arc, the sign
+    # before it (the water sign that precedes the fire sign) at the start-of-fire-sign arc.
+    water_sign = moon_sign if at_end else _SIGN_NAMES[(_SIGN_NAMES.index(moon_sign) - 1) % 12]
     severity_score = 0.55
     return {
         'obstruction_type': 'gandanta',
@@ -812,9 +816,9 @@ def _check_gandanta(peak_date, jd=None, swe=None, muhurta_service=None,
         'override_score': 0.22,
         'detail': {
             'moon_longitude': round(moon_lon, 3),
-            # The sign the Moon occupies (a water sign at the end-junction, a fire sign at the
-            # start-junction); kept under the legacy key for stored-row/consumer continuity.
-            'junction_sign': moon_sign,
+            'moon_sign': moon_sign,
+            # Legacy key, same meaning as before: the WATER sign of the water-fire junction.
+            'junction_sign': water_sign,
             'gandanta_zone': zone,
             'distance_to_junction_deg': gd['distance_to_junction_deg'],
             'gandanta_arc_deg': gd['gandanta_arc_deg'],
