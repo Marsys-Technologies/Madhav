@@ -35,7 +35,14 @@ DAY = timedelta(days=1)
 HORIZON = (T0, T0 + 400 * DAY)
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 SKY_CID = "sha256:" + "ab" * 32
-PREREQS = [["p4_double_transit", "1.0.0"]]
+PATH_PREREQS = {
+    "P1": [["period_running_at", "1.0.0"], ["natal_bhava_relationship", "1.0.0"],
+           ["transit_relation", "1.0.0"]],
+    "P2": [["house_from_moon", "1.0.0"]],
+    "P3": [["p3_contact_house_or_lord", "1.0.0"]],
+    "P4": [["p4_double_transit", "1.0.0"]],
+}
+PREREQS = PATH_PREREQS["P3"]
 
 CHART = {
     "lagna_deg": 12.43,
@@ -123,6 +130,14 @@ class FakeStore:
     def insert_record(self, **kw):
         self.calls.append(("insert_record", kw))
 
+    def stored_contact_keys(self, *, chart_id, generation):
+        keys = set()
+        for kind, kw in self.calls:
+            if kind in ("insert_contact", "insert_point_contact"):
+                poid = kw["poid"]
+                keys.add((poid.body, poid.relation_kind, str(poid.uuid)))
+        return keys
+
     def delete_record_grain(self, **kw):
         self.calls.append(("delete_record_grain", kw))
         return {"windows": 0, "records": 0, "contacts": 0}
@@ -134,8 +149,9 @@ def _run(store, edges, **over):
               position_at=_probe([(10, 200)]),
               house_for=_house_from_lagna(CHART["lagna_deg"]),
               sky_convention_id=SKY_CID,
-              source_fact_ids=["fact-1"], prerequisites=PREREQS)
+              source_fact_ids=["fact-1"], chart=CHART)
     kw.update(over)
+    kw.setdefault("prerequisites", PATH_PREREQS[kw["path_id"]])
     return rs.materialise_record_grain(store, **kw)
 
 
@@ -196,7 +212,9 @@ def test_grain_binds_the_stored_class_partition():
     assert "write_coverage" not in kinds  # the coverage substep owns that row
     assert "stored_coverage_facts_json" in kinds
     assert counts == {"contacts": 1, "records": 1, "natal_records": 0,
-                      "truncated_contacts": 0, "prereq_evaluated": 0}
+                      "truncated_contacts": 0, "prereq_evaluated": 1,
+                      "skipped_natal_p1": 0, "unwritable_testimony": 0,
+                      "p3_enumeration_defects": 0}
     rec = [kw for k, kw in store.calls if k == "insert_record"][0]
     assert rec["coverage_key"] == "marriage"  # the frozen F7 key convention
 
@@ -400,7 +418,9 @@ def test_grain_end_to_end_on_disposable_pg(pg):
         conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         counts = rs.materialise_record_grain(store, **_grain_kwargs(store, sky_cid))
     assert counts == {"contacts": 1, "records": 1, "natal_records": 0,
-                      "truncated_contacts": 0, "prereq_evaluated": 0}
+                      "truncated_contacts": 0, "prereq_evaluated": 1,
+                      "skipped_natal_p1": 0, "unwritable_testimony": 0,
+                      "p3_enumeration_defects": 0}
     row = conn.execute(
         "SELECT temporal_support_state, temporal_support_grain,"
         " house_from_frame, admission_state, outcome_valence_for_native"
@@ -701,8 +721,13 @@ def _p1_kwargs(store, edges, rows_by_agent):
                 position_at=_probe([(10, 200)]),
                 house_for=_house_from_lagna(CHART["lagna_deg"]),
                 sky_convention_id=SKY_CID, source_fact_ids=["fact-1"],
-                prerequisites=P1_PREREQS,
+                prerequisites=P1_PREREQS, chart=CHART,
                 dasha_rows_for=lambda agent: rows_by_agent.get(agent, []))
+
+
+def _results(store, predicate):
+    return [c["result"] for k, c in store.calls
+            if k == "set_prerequisite_result" and c["predicate_id"] == predicate]
 
 
 def test_p1_period_running_at_true_false_unknown():
@@ -715,15 +740,13 @@ def test_p1_period_running_at_true_false_unknown():
         {"saturn": [{"start_iso": T0, "end_iso": T0 + 300 * DAY}],      # running at the ingress
          "jupiter": [{"start_iso": T0 + 500 * DAY, "end_iso": T0 + 600 * DAY}],  # not running
          "venus": []}))                                                 # no L1 rows → unknown
-    assert counts["records"] == 3 and counts["prereq_evaluated"] == 3
+    assert counts["records"] == 3 and counts["prereq_evaluated"] == 9   # 3 predicates × 3
     calls = [kw for k, kw in store.calls if k == "set_prerequisite_result"]
-    assert len(calls) == 3
-    by_predicate = {c["predicate_id"] for c in calls}
-    assert by_predicate == {"period_running_at"}  # the named scope only
-    results = sorted(c["result"] for c in calls)
-    assert results == ["false", "true", "unknown"]
-    # ordinal 1 = period_running_at in the declared membership
-    assert all(c["ordinal"] == 1 for c in calls)
+    assert {c["predicate_id"] for c in calls} == {
+        "period_running_at", "natal_bhava_relationship", "transit_relation"}
+    assert sorted(_results(store, "period_running_at")) == ["false", "true", "unknown"]
+    # ordinals follow the declared membership: 1 = period_running_at
+    assert all(c["ordinal"] == 1 for c in calls if c["predicate_id"] == "period_running_at")
 
 
 def test_p1_period_running_at_domain_start_truncated_uses_observed_span_start():
@@ -741,8 +764,7 @@ def test_p1_period_running_at_domain_start_truncated_uses_observed_span_start():
         kw = _p1_kwargs(store, [edge], {"saturn": [row]})
         kw["position_at"] = _probe([(domain_start_rel_days - 1, 200)])
         counts = rs.materialise_record_grain(store, **kw)
-        calls = [c for k, c in store.calls if k == "set_prerequisite_result"]
-        return counts, [c["result"] for c in calls]
+        return counts, _results(store, "period_running_at")
 
     covers = {"start_iso": rs.SUBSTRATE_DOMAIN_START - 10 * DAY,
               "end_iso": rs.SUBSTRATE_DOMAIN_START + 10 * DAY}
@@ -768,17 +790,18 @@ def test_p1_period_running_at_ingress_before_horizon_uses_the_exact_ingress():
     kw["position_at"] = _probe([(-500, 200)])
     counts = rs.materialise_record_grain(store, **kw)
     assert counts["records"] == 1 and counts["truncated_contacts"] == 0
-    calls = [c for k, c in store.calls if k == "set_prerequisite_result"]
-    assert [c["result"] for c in calls] == ["false"]
+    assert _results(store, "period_running_at") == ["false"]
 
 
-def test_p1_no_dasha_reader_no_evaluation():
+def test_p1_no_dasha_reader_is_an_explicit_unknown_never_a_silent_null():
+    """'Unevaluated' is not 'unknown' (§N.8): with no L1 dasha reader the result is
+    STORED as 'unknown', not left NULL."""
     store = FakeStore({"saturn": [_crossing(10, 180.0), _crossing(200, 210.0)]})
     kw = _p1_kwargs(store, [_p1_libra_edge("saturn")], {})
     kw["dasha_rows_for"] = None
     counts = rs.materialise_record_grain(store, **kw)
-    assert counts["records"] == 1 and counts["prereq_evaluated"] == 0
-    assert not any(k == "set_prerequisite_result" for k, _ in store.calls)
+    assert counts["records"] == 1 and counts["prereq_evaluated"] == 3
+    assert _results(store, "period_running_at") == ["unknown"]
 
 
 def test_p4_double_transit_overlap_true_and_false():
@@ -823,18 +846,18 @@ def test_p4_double_transit_overlap_true_and_false():
 PG_GEN = "5.1"
 
 
-def _pg_p1_run(conn, dasha_rows):
-    """Seed + coverage + ONE committed P1 grain (Saturn through Libra, ingress
-    day 10) with the given L1 dasha rows. Returns (counts, committed_records)."""
+def _pg_p1_run(conn, dasha_rows, agent="venus"):
+    """Seed + coverage + ONE committed P1 grain (`agent` through Libra, ingress day 10)
+    with the given L1 dasha rows and the chart. Returns (counts, committed rows)."""
     from services.gochara_kernel.rule_registry import RuleRegistryStore
     RuleRegistryStore(conn).seed()
     with conn.transaction():
         conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         sky_cid = _sky_convention_id(conn)
-        _seed_saturn_crossings(conn, sky_cid)
+        _seed_libra_crossings(conn, sky_cid, agent.title())
     store = rs.RecordStore(conn)
     kala_cid = store.ensure_kala_convention()
-    edge = _p1_libra_edge("saturn")
+    edge = _p1_libra_edge(agent)
     probe = _probe([(10, 200)])
     with conn.transaction():
         conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
@@ -850,34 +873,40 @@ def _pg_p1_run(conn, dasha_rows):
             store, chart_id=CHART_ID, generation=PG_GEN, event_class="marriage",
             path_id="P1", edges=[edge], horizon=HORIZON, position_at=probe,
             house_for=_house_from_lagna(CHART["lagna_deg"]),
-            sky_convention_id=sky_cid, source_fact_ids=["fact-1"],
-            dasha_rows_for=lambda agent: dasha_rows.get(agent, []))
+            sky_convention_id=sky_cid, source_fact_ids=["fact-1"], chart=CHART,
+            dasha_rows_for=lambda a: dasha_rows.get(a, []))
     rows = conn.execute(
         "SELECT r.admission_state, p.predicate_id, p.result"
         " FROM public.ka_gochara_relationship_record r"
         " JOIN public.ka_gochara_record_prerequisite p USING (record_id)"
-        " WHERE r.generation = %s AND r.path_id = 'P1' ORDER BY p.ordinal",
-        (PG_GEN,)).fetchall()
+        " WHERE r.generation = %s AND r.path_id = 'P1' AND r.agent = %s ORDER BY p.ordinal",
+        (PG_GEN, agent)).fetchall()
     return counts, rows
 
 
-@pytest.mark.parametrize("dasha_rows,expect_state,expect_result", [
+@pytest.mark.parametrize("agent,dasha_rows,expect_state,expect_period", [
+    # Venus OWNS Libra (a scored natal relation) and its contact is stored: the three
+    # prerequisites are true ⇒ ADMITTED through the real F5 finalisation
+    ("venus", {"venus": [{"start_iso": T0, "end_iso": T0 + 300 * DAY}]}, "admitted", "true"),
     # period not running at the ingress (day 10) ⇒ a false prerequisite ⇒ not_admitted
-    ({"saturn": [{"start_iso": T0 + 500 * DAY, "end_iso": T0 + 600 * DAY}]},
+    ("venus", {"venus": [{"start_iso": T0 + 500 * DAY, "end_iso": T0 + 600 * DAY}]},
      "not_admitted", "false"),
-    # running ⇒ true, but the other declared prerequisites stay unevaluated ⇒ unqualified
-    ({"saturn": [{"start_iso": T0, "end_iso": T0 + 300 * DAY}]},
-     "unqualified", "true"),
-    # no L1 rows ⇒ unknown, never false ⇒ unqualified
-    ({}, "unqualified", "unknown"),
+    # no L1 dasha rows ⇒ an explicit unknown, never false ⇒ unqualified
+    ("venus", {}, "unqualified", "unknown"),
+    # Saturn has NO natal relation to marriage (relation 'none') ⇒ a real false
+    ("saturn", {"saturn": [{"start_iso": T0, "end_iso": T0 + 300 * DAY}]},
+     "not_admitted", "true"),
 ])
 def test_p1_prerequisite_results_survive_the_real_f5_finalisation(
-        pg, dasha_rows, expect_state, expect_result):
-    counts, rows = _pg_p1_run(pg, dasha_rows)    # raises at COMMIT if F5 disagrees
-    assert counts["records"] == 1 and counts["prereq_evaluated"] == 1
+        pg, agent, dasha_rows, expect_state, expect_period):
+    counts, rows = _pg_p1_run(pg, dasha_rows, agent)   # raises at COMMIT if F5 disagrees
+    assert counts["records"] == 1 and counts["prereq_evaluated"] == 3
     assert {r[0] for r in rows} == {expect_state}
     by_pred = {r[1]: r[2] for r in rows}
-    assert by_pred["period_running_at"] == expect_result
+    assert by_pred["period_running_at"] == expect_period
+    assert by_pred["transit_relation"] == "true"       # read back from the stored contact
+    assert by_pred["natal_bhava_relationship"] == ("true" if agent == "venus" else "false")
+    assert "NULL" not in {str(r[2]) for r in rows} and None not in {r[2] for r in rows}
 
 
 PG_GEN_P4 = "5.2"
@@ -1138,3 +1167,177 @@ def test_a_contact_another_path_still_references_survives_a_grain_replace(pg):
         "SELECT path_id FROM public.ka_gochara_relationship_record"
         " WHERE generation = %s ORDER BY path_id", (gen,)).fetchall()]
     assert paths == ["P3", "P4"]
+
+
+# ── steward rulings 2026-10-02 (B's PREREQUISITE_EVALUATION_ANSWER / AM-11) ────
+# every declared prerequisite is EVALUATED — by Stream B's rule logic, read back from
+# stored rows where the predicate is a declaration — never hard-coded, never left NULL.
+
+def _moon_house_for(chart):
+    moon_idx = int(chart["natal"]["Moon"] // 30)
+
+    def house_for(edge, sign):
+        return (SIGNS.index(sign.lower()) - moon_idx) % 12 + 1
+    return house_for
+
+
+def _p2_edge(agent, sign_name):
+    edges = [e for e in ev.enumerate_edges("marriage", "P2", CHART)
+             if e.transit and e.agent == agent
+             and e.obj.canonical_target == f"span:{SIGN_NUM[sign_name]}"]
+    assert len(edges) == 1, (agent, sign_name, len(edges))
+    return edges[0]
+
+
+SIGN_NUM = {n: i + 1 for i, n in enumerate(SIGNS)}
+
+
+def _p2_run(agent, sign_name, **over):
+    edge = _p2_edge(agent, sign_name)
+    lvl = float(SIGNS.index(sign_name) * 30)
+    store = FakeStore({agent: [_crossing(10, lvl), _crossing(200, lvl + 30.0)]})
+    probe = lambda b, t: lvl + 15.0 if 10 <= (t - T0) / DAY < 200 else (lvl + 195.0) % 360  # noqa: E731
+    kw = dict(chart_id=CHART_ID, generation="5.0", event_class="marriage", path_id="P2",
+              edges=[edge], horizon=HORIZON, position_at=probe,
+              house_for=_moon_house_for(CHART), sky_convention_id=SKY_CID,
+              source_fact_ids=["fact-1"], chart=CHART,
+              prerequisites=PATH_PREREQS["P2"])
+    kw.update(over)
+    counts = rs.materialise_record_grain(store, **kw)
+    return store, counts
+
+
+def test_p2_house_from_moon_is_true_inside_the_cited_set_via_b_favourable_houses():
+    # Saturn's cited favourable houses from the Moon are {3, 6, 11}; the Aquarius Moon
+    # makes Aries the 3rd (the oracle's written-out count)
+    store, counts = _p2_run("saturn", "aries")
+    assert counts["records"] == 1 and counts["prereq_evaluated"] == 1
+    assert _results(store, "house_from_moon") == ["true"]
+
+
+def test_p2_house_from_moon_is_false_outside_every_cited_set():
+    """P2 only ENUMERATES cited houses, so the false branch is proven by handing an
+    enumerated edge a house outside Saturn's cited favourable ∪ adverse set
+    ({3, 6, 11} ∪ {12, 8, 1}): the 5th — read back, not asserted."""
+    store, counts = _p2_run("saturn", "aries", house_for=lambda e, s: 5)
+    assert counts["records"] == 1
+    assert _results(store, "house_from_moon") == ["false"]
+
+
+def test_p2_adverse_houses_are_inside_the_set_for_the_four_cited_malefics():
+    store, _ = _p2_run("saturn", "aries", house_for=lambda e, s: 8)     # adverse residence
+    assert _results(store, "house_from_moon") == ["true"]
+    store, _ = _p2_run("saturn", "aries", house_for=lambda e, s: 9)     # in neither set
+    assert _results(store, "house_from_moon") == ["false"]
+
+
+def test_p2_house_from_moon_is_unknown_without_the_natal_moon_never_false():
+    store, _ = _p2_run("saturn", "aries", chart=None)
+    assert _results(store, "house_from_moon") == ["unknown"]
+    broken = {**CHART, "natal": {k: v for k, v in CHART["natal"].items() if k != "Moon"}}
+    store, _ = _p2_run("saturn", "aries", chart=broken)
+    assert _results(store, "house_from_moon") == ["unknown"]
+
+
+def test_p3_membership_is_read_back_against_the_truth_table_and_true_for_enumerated_edges():
+    sat = [e for e in ev.enumerate_edges("marriage", "P3", CHART)
+           if e.transit and e.relation == "residence" and e.agent == "saturn"
+           and e.obj.canonical_target == "span:7"]
+    store = FakeStore({"saturn": [_crossing(10, 180.0), _crossing(200, 210.0)]})
+    counts = _run(store, sat)
+    assert counts["records"] == 1 and counts["p3_enumeration_defects"] == 0
+    assert _results(store, "p3_contact_house_or_lord") == ["true"]
+
+
+def test_p3_a_record_outside_h_union_l_is_a_loudly_reported_enumeration_defect(caplog):
+    sat = [e for e in ev.enumerate_edges("marriage", "P3", CHART)
+           if e.transit and e.relation == "residence" and e.agent == "saturn"
+           and e.obj.canonical_target == "span:7"][0]
+    from dataclasses import replace
+    bad = replace(sat, object_role="lord")          # a house span claiming the lord role
+    store = FakeStore({"saturn": [_crossing(10, 180.0), _crossing(200, 210.0)]})
+    with caplog.at_level("ERROR"):
+        counts = _run(store, [bad])
+    assert _results(store, "p3_contact_house_or_lord") == ["false"]
+    assert counts["p3_enumeration_defects"] == 1
+    assert any("enumeration defect" in r.message for r in caplog.records)
+
+
+def test_p3_unknown_h_class_is_unknown_never_false():
+    store = FakeStore({"saturn": [_crossing(10, 180.0), _crossing(200, 210.0)]})
+    e = [x for x in ev.enumerate_edges("marriage", "P3", CHART)
+         if x.transit and x.relation == "residence" and x.agent == "saturn"
+         and x.obj.canonical_target == "span:7"][0]
+    counts = _run(store, [e], event_class="spiritual_turn")      # H unknown (S:307-312)
+    assert counts["records"] == 1
+    assert _results(store, "p3_contact_house_or_lord") == ["unknown"]
+
+
+def test_p3_natal_maraka_testimony_row_has_no_contact_so_the_result_is_an_explicit_unknown():
+    mar = [e for e in ev.enumerate_edges("marriage", "P3", CHART) if not e.transit]
+    assert mar, "marriage enumerates māraka testimony rows"
+    store = FakeStore({})
+    counts = _run(store, mar)
+    assert counts["natal_records"] == len(mar)
+    assert set(_results(store, "p3_contact_house_or_lord")) == {"unknown"}
+
+
+def test_transit_relation_is_a_read_back_not_a_literal_true():
+    """Remove the stored contact from the read-back and the SAME record flips to false:
+    the result is computed from stored rows, not asserted by the minting loop."""
+    store = FakeStore({"venus": [_crossing(10, 180.0), _crossing(200, 210.0)]})
+    store.stored_contact_keys = lambda **kw: set()       # the contact is not stored
+    counts = rs.materialise_record_grain(store, **_p1_kwargs(
+        store, [_p1_libra_edge("venus")],
+        {"venus": [{"start_iso": T0, "end_iso": T0 + 300 * DAY}]}))
+    assert counts["records"] == 1
+    assert _results(store, "transit_relation") == ["false"]
+
+
+def test_p1_natal_bhava_relationship_scored_none_and_unknown():
+    for agent, want in (("venus", "true"), ("saturn", "false")):
+        store = FakeStore({agent: [_crossing(10, 180.0), _crossing(200, 210.0)]})
+        rs.materialise_record_grain(store, **_p1_kwargs(
+            store, [_p1_libra_edge(agent)], {}))
+        assert _results(store, "natal_bhava_relationship") == [want], agent
+    # H unknown ⇒ the relation is unknown (never false)
+    store = FakeStore({"venus": [_crossing(10, 180.0), _crossing(200, 210.0)]})
+    kw = _p1_kwargs(store, [_p1_libra_edge("venus")], {})
+    kw["event_class"] = "spiritual_turn"
+    rs.materialise_record_grain(store, **kw)
+    assert _results(store, "natal_bhava_relationship") == ["unknown"]
+    # no chart at all ⇒ unknown
+    store = FakeStore({"venus": [_crossing(10, 180.0), _crossing(200, 210.0)]})
+    kw = _p1_kwargs(store, [_p1_libra_edge("venus")], {})
+    kw["chart"] = None
+    rs.materialise_record_grain(store, **kw)
+    assert _results(store, "natal_bhava_relationship") == ["unknown"]
+
+
+def test_p1_testimony_licence_lords_are_not_minted_and_the_count_names_them():
+    """A lord whose only natal relation is a testimony kind (non-node dispositorship —
+    no clause, no ruling_ref: D3) cannot be written (kgrr_ruling_ck): not minted,
+    counted, never silently dropped. Jupiter natal in Taurus ⇒ its dispositor Venus owns
+    Libra ∈ H."""
+    chart = {**CHART, "natal": {**CHART["natal"], "Jupiter": 45.0}}
+    jup = _p1_libra_edge("jupiter")
+    store = FakeStore({"jupiter": [_crossing(10, 180.0), _crossing(200, 210.0)]})
+    kw = _p1_kwargs(store, [jup], {})
+    kw["chart"] = chart
+    counts = rs.materialise_record_grain(store, **kw)
+    assert counts["records"] == 0 and counts["contacts"] == 0
+    assert counts["unwritable_testimony"] == 1
+
+
+def test_p1_natal_fact_rows_are_not_admission_bearing_records():
+    """AM-11 pin (b): P1's natal-fact rows (no contact) are NOT materialised; the count
+    names them."""
+    natal = [e for e in ev.enumerate_edges("marriage", "P1", CHART) if not e.transit]
+    assert natal
+    store = FakeStore({"venus": [_crossing(10, 180.0), _crossing(200, 210.0)]})
+    kw = _p1_kwargs(store, natal + [_p1_libra_edge("venus")], {})
+    counts = rs.materialise_record_grain(store, **kw)
+    assert counts["natal_records"] == 0 and counts["skipped_natal_p1"] == len(natal)
+    assert counts["records"] == 1
+    assert not any(k == "insert_record" and kw_["contact_id"] is None
+                   for k, kw_ in store.calls)

@@ -163,7 +163,11 @@ PREDICATES: dict[str, tuple[str, dict]] = {
     ),
     "house_from_moon": (
         "house_from",
-        {"house": "eval:house_from_janma_rashi", "set": ["p2:adverse_house_set"]},
+        # AM-11 pin (c): the operand is the agent's CITED house set (Phaladīpikā XXVI.1-8
+        # favourable ∪ the D-RQ5 adverse 12/8/1) — polarity is a valence step, not
+        # admission. Renamed from `p2:adverse_house_set`; no '5.0' row exists under the
+        # old operand (read-only production check, steward 2026-10-02), so no version bump.
+        {"house": "eval:house_from_janma_rashi", "set": ["p2:cited_house_set"]},
     ),
     "p3_contact_house_or_lord": (
         "declaration_exists",
