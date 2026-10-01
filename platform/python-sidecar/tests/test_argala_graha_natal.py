@@ -147,15 +147,28 @@ def test_both_readings_are_stored_and_the_provenance_states_which_is_canonical()
         assert "outranks an illustrative word" in text and "outcome_any_obstructor" in text
 
 
-def test_the_malefic_set_is_read_from_l0_not_a_local_set():
+def test_the_malefic_set_is_read_from_the_l0_constant_not_a_local_set():
+    import brahmagyan.natural_malefics as nm
     import brahmagyan.l0_reference as l0
-    assert l0.NATURAL_MALEFIC_PLANET_IDS == ("sun", "mars", "saturn") and l0.NODE_PLANET_IDS == ("rahu", "ketu")
-    assert "bphs_pg0343_c01" in l0.NATURAL_MALEFIC_CITATION and "sourced_ocr_unverified" in l0.NATURAL_MALEFIC_CITATION
+    assert nm.NATURAL_MALEFIC_PLANET_IDS == ("sun", "mars", "saturn") and nm.NODE_PLANET_IDS == ("rahu", "ketu")
+    assert "bphs_pg0343_c01" in nm.NATURAL_MALEFIC_CITATION and "sourced_ocr_unverified" in nm.NATURAL_MALEFIC_CITATION
+    # consistent with the L0 table column (checked here, not at import, so l0_reference stays untouched)
+    benefic = {p["planet_id"]: p["natural_benefic"] for p in l0.PLANETS}
+    assert all(not benefic[pid] for pid in nm.NATURAL_MALEFIC_PLANET_IDS + nm.NODE_PLANET_IDS)
+    # every malefic set in the writer is built from the constant (values unchanged: Sun/Mars/Saturn, plus nodes)
+    assert sut._NATURAL_MALEFICS == {"Sun", "Mars", "Saturn", "Rahu", "Ketu"}
     src = open(sut.__file__, encoding="utf-8").read()
-    assert 'malefics_set = {"Saturn"' not in src and "NATURAL_MALEFIC_PLANET_IDS" in src
+    assert 'malefics_set = {"Saturn"' not in src and '_NATURAL_MALEFICS = {"Saturn"' not in src
+    assert 'natural_malefics = {"Sun"' not in src and src.count("NATURAL_MALEFIC_PLANET_IDS") >= 4
     rows = sut._build_argala_rows(_mock_chart_output(), CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
     cell = next(r for r in rows if r["fact_category"] == "argala_natal_matrix" and r["fact_value_num"] not in (None, 0.0))
-    assert l0.NATURAL_MALEFIC_CITATION in cell["formula_provenance_text"]
+    assert nm.NATURAL_MALEFIC_CITATION in cell["formula_provenance_text"]
+
+
+def test_l0_reference_does_not_import_the_constant_so_no_l0_digest_moves():
+    import brahmagyan.l0_reference as l0
+    src = open(l0.__file__, encoding="utf-8").read()
+    assert "natural_malefics" not in src and "NATURAL_MALEFIC" not in src
 
 
 def test_golden_fails_if_only_ketu_reverses(monkeypatch):

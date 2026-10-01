@@ -102,7 +102,7 @@ from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT, assert_legal
 from brahmagyan.dignity_oracle import classify_dignity
-from brahmagyan.l0_reference import NATURAL_MALEFIC_CITATION, NATURAL_MALEFIC_PLANET_IDS, NODE_PLANET_IDS
+from brahmagyan.natural_malefics import NATURAL_MALEFIC_CITATION, NATURAL_MALEFIC_PLANET_IDS, NODE_PLANET_IDS
 from brahmagyan.aspects import get_graha_aspects
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
@@ -535,7 +535,7 @@ def _get_functional_class_dynamic(planet: str, lagna_sign: str) -> str:
     trikona         = {1, 5, 9}
     dusthana        = {6, 8, 12}
     upachaya        = {3, 11}
-    natural_malefics = {"Sun", "Mars", "Saturn"}
+    natural_malefics = {pid.capitalize() for pid in NATURAL_MALEFIC_PLANET_IDS}   # L0, BPHS Ch. 3 (no nodes here)
 
     is_kendra   = bool(houses & kendra)
     is_trikona  = bool(houses & trikona)
@@ -572,7 +572,7 @@ MAHAPURUSHA_STRENGTH_BONUS: dict[str, float] = {
 _BENEFIC_FUNCTIONAL_CLASSES = {"functional_benefic", "yogakaraka", "temporal_benefic"}
 _MALEFIC_FUNCTIONAL_CLASSES = {"temporal_malefic", "functional_malefic"}
 _NATURAL_BENEFICS = {"Jupiter", "Venus", "Mercury", "Moon"}
-_NATURAL_MALEFICS = {"Saturn", "Mars", "Sun", "Rahu", "Ketu"}
+_NATURAL_MALEFICS = {pid.capitalize() for pid in NATURAL_MALEFIC_PLANET_IDS + NODE_PLANET_IDS}   # L0 constant
 
 
 def _graha_aspects_house(aspector: str, source_h: int, target_h: int) -> float:

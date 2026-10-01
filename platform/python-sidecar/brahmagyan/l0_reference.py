@@ -204,28 +204,6 @@ PLANETS = [
     },
 ]
 
-# ── Natural malefics: the ONE cited constant (SS N-61 / AR-6) ──────────────────
-# BPHS (Santhanam trans.) Ch. 3 "Natural benefics and malefics": "Malefics are the Sun, Saturn and
-# Mars"; the nodes are not in that sentence and are stated separately here. Read by L1 (the
-# argala score convention in ga_structural) and by L2 (bo_karanajala, later) instead of any
-# local set. Moon and Mercury are conditional (not listed as malefic). Chunk ids in the corpus:
-# bphs_pg0343_c01 (the sentence), bphs_pg0343_c02 (the note). Grade: sourced_ocr_unverified.
-# `reference_planets.natural_benefic` below is a different, boolean statement (Moon and Mercury
-# true; Sun, Mars, Saturn and both nodes false); unifying the four classification definitions
-# (this one, that column, valence_doctrine._NATURAL_NATURE, L2's local set) and a `natural_class`
-# column are a post-J1 L0 item, deliberately not built here.
-NATURAL_MALEFIC_PLANET_IDS: tuple[str, ...] = ("sun", "mars", "saturn")
-NODE_PLANET_IDS: tuple[str, ...] = ("rahu", "ketu")
-NATURAL_MALEFIC_CITATION = (
-    "BPHS (Santhanam trans.) Ch. 3 'Natural benefics and malefics', bphs_pg0343_c01, bphs_pg0343_c02: "
-    "malefics are the Sun, Saturn and Mars; the nodes are stated separately. sourced_ocr_unverified."
-)
-
-# Consistency with the L0 rows above: a natural malefic is never recorded natural_benefic.
-assert all(
-    not p["natural_benefic"] for p in PLANETS if p["planet_id"] in NATURAL_MALEFIC_PLANET_IDS + NODE_PLANET_IDS
-), "L0 natural_benefic disagrees with NATURAL_MALEFIC_PLANET_IDS"
-
 # ── Nakshatra data ─────────────────────────────────────────────────────────────
 
 NAKSHATRAS = [
