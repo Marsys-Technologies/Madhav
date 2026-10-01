@@ -1130,6 +1130,55 @@ def narr_fidelity_scan(entries, evidence, tests) -> dict:
         + "; whether the assertion grades the sentence is not read, so this never reads PASS"))
 
 
+_LINTS: dict = {}
+
+
+def _lint_module(name: str):
+    """A sibling governance lint, loaded by path once (registered in sys.modules: its dataclasses need it)."""
+    if name not in _LINTS:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(f"_census_{name}", Path(__file__).resolve().parent / f"{name}.py")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = mod
+        spec.loader.exec_module(mod)
+        _LINTS[name] = mod
+    return _LINTS[name]
+
+
+def narr_lint_scan(paths) -> dict:
+    """Narr.lint: the existing narration lints (check_fact_category_pinning: the D1 class, N.7 item 2;
+    check_no_raw_token_in_narrative) over the writer's resolved scope files, with their own allowlists. FAIL: a
+    non-allowlisted violation (file:line). PARTIAL: only allowlisted ones (named; CI accepts them, the census does not
+    call them clean). PASS: files read, no violation. NO_DETECTOR: no file in scope. ERRORED: unreadable file/lint."""
+    paths = [Path(p) for p in paths]
+    if not paths:
+        return dict(v=NO_DET, measured="NO_DETECTOR — no writer file in scope to run the narration lints over")
+    try:
+        fcp, rt = _lint_module("check_fact_category_pinning"), _lint_module("check_no_raw_token_in_narrative")
+        allow_f, allow_r = fcp.load_allowlist(fcp.ALLOWLIST_PATH), rt.load_allowlist(rt.ALLOWLIST_PATH)
+        new, old = [], []
+        for p in paths:
+            text = p.read_text(encoding="utf-8")
+            try:
+                rel = p.resolve().relative_to(ROOT).as_posix()
+            except ValueError:
+                rel = str(p)
+            vf = [fcp.Violation(rel, ln, "python", "sql_select", sn, "") for ln, sn in fcp.scan_python_text(text)]
+            vr = [rt.Violation(rel, ln, kind, sn, "") for ln, kind, sn in rt.scan_py_file(text)]
+            for tag, vs, allow, mod in (("fact-category-pin", vf, allow_f, fcp), ("raw-token", vr, allow_r, rt)):
+                a, n = mod.partition_allowlisted(vs, allow)
+                old += [f"{tag} {v.file}:{v.line}" for v in a]
+                new += [f"{tag} {v.file}:{v.line}" for v in n]
+    except (OSError, ValueError, AttributeError, SyntaxError, ImportError) as exc:
+        return dict(v=ERRORED, measured=f"check errored: narration lint could not run ({type(exc).__name__}: {exc})")
+    if new:
+        return dict(v=FAIL, measured="narration lint violation(s) in the writer scope: " + "; ".join(new))
+    if old:
+        return dict(v=PARTIAL, measured="only allowlisted narration lint violation(s) in scope: " + "; ".join(old))
+    return dict(v=PASS, measured=f"{len(paths)} writer scope file(s) clean under the fact-category-pin and raw-token "
+                                 "narration lints (their own allowlists applied)")
+
+
 # R40: the psql subprocess timeout was hardcoded at 180s, which is shorter than a full-table
 # duplicate scan on the estate's largest table (kala_field, 10.3M rows) can take — making the L3
 # and `--layer all` census unrunnable on production. Configurable via env so an operator pointed
