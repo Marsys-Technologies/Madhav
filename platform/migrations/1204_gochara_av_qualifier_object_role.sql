@@ -19,9 +19,17 @@
 -- (see the 1153 header). Gate: pinned schema → preflight gate (byte-identical
 -- to preflight_1204_av_qualifier_object_role.sql; requires 1155 recorded) →
 -- constraint swap → presence checks. Deploy route: the protected
--- public-schema window (deploy.yml `gochara_contracts_schema_migration`) —
--- the CHECK is swapped on the live table the writer family writes to, so the
--- window guarantees no '5.0' write races the swap (AM-7).
+-- public-schema window (deploy.yml `gochara_contracts_schema_migration`).
+--
+-- RACE CLAIM, corrected per ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_0 (rank 7):
+-- the transactional ALTER TABLE takes the requisite table lock, so there is
+-- no committed unconstrained interval — but the protected environment and the
+-- deployment's concurrency controls do NOT demonstrate that existing writers
+-- are paused. A concurrent '5.0' (or any) write against this table can block
+-- on the lock or trip the 5s lock_timeout below; constraint validation can
+-- hold the lock while scanning. Writer quiescence during the window is an
+-- OPERATIONAL PRECONDITION to be verified at dispatch time (no '5.0' writer
+-- run in flight), not a property this migration or the window asserts.
 --
 -- The swap: DROP + ADD of kgrr_object_role_ck inside this one transaction.
 -- The new vocabulary is the v1.0 set

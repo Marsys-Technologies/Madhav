@@ -142,7 +142,6 @@ export const PROTECTED_PUBLIC_SCHEMA_MIGRATIONS = new Set([
   '1156_gochara_eval_window.sql',
   '1157_gochara_av_polarity_declaration.sql',
   '1204_gochara_av_qualifier_object_role.sql',
-  '1205_gochara_inherited_frame_kind.sql',
 ])
 
 const AI_METERING_PROTECTED_PUBLIC_SCHEMA_MIGRATION = '1202_ai_metering_ledger.sql'
@@ -152,7 +151,7 @@ export function assertGeneralRunnerMayApplyPublicSchema(filename: string, viaOnl
     || filename === AI_METERING_PROTECTED_PUBLIC_SCHEMA_MIGRATION)) {
     const window = filename === AI_METERING_PROTECTED_PUBLIC_SCHEMA_MIGRATION
       ? 'ai_metering_schema_migration=true to apply exactly migration 1202'
-      : 'gochara_contracts_schema_migration=true so the protected window applies exactly 1153-1157, 1204-1205 in order'
+      : 'gochara_contracts_schema_migration=true so the protected window applies exactly 1153-1157, 1204 in order'
     throw new Error(
       `Protected public-schema migration "${filename}" is pending. ` +
       'The routine runner cannot create objects in schema public; dispatch deploy.yml with ' +

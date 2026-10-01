@@ -67,7 +67,7 @@ on:
         required: false
         default: false
       gochara_contracts_schema_migration:
-        description: 'Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157, 1204-1205 (Pravāha A5.1 + B6.0 v1.5 amendments AM-7/AM-8)'
+        description: 'Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157, 1204 (Pravāha A5.1 + B6.0 v1.5 amendment AM-7)'
         type: boolean
         required: false
         default: false
@@ -951,11 +951,11 @@ jobs:
         run: cd platform && test "$(npx tsx scripts/data-plane-ownership-status.ts)" = marked
 
   # JATAKA CCD-019 / AI Console BYOK / Gochara B1 / Pravāha A5.1+B6.0: migrations 1071,
-  # 1120-1125, 1153-1157, 1158, 1202, and 1204-1205 alter application-owned tables but also create
+  # 1120-1125, 1153-1157, 1158, 1202, and 1204 alter application-owned tables but also create
   # objects in the protected public schema (1071: a generation-guard function and
   # two triggers on kala_gochara_windows; 1153-1157: the FROZEN Gochara contract
-  # tables, functions and triggers; 1204-1205: the v1.5 contract amendments
-  # AM-7/AM-8 — the routine runner refuses them, migrate.ts
+  # tables, functions and triggers; 1204: the v1.5 contract amendment
+  # AM-7 — the routine runner refuses them, migrate.ts
   # PROTECTED_PUBLIC_SCHEMA_MIGRATIONS).
   # The ordinary migration role intentionally has USAGE without CREATE. This
   # exact-set, manual-only protected job opens the minimum capability window and
@@ -1077,9 +1077,12 @@ jobs:
             migrations+=(1155_gochara_relationship_record.sql)
             migrations+=(1156_gochara_eval_window.sql)
             migrations+=(1157_gochara_av_polarity_declaration.sql)
-            # Pravāha B6.0 v1.5 amendments AM-7/AM-8 — 1204-1205, in order, same window.
+            # Pravāha B6.0 v1.5 amendment AM-7 — 1204, in order, same window.
+            # (AM-8's 1205 was SPLIT OUT after ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_0:
+            # the shared-validator arm would have admitted unresolved 'inherited'
+            # frames on arbitrary paths incl. scored rows; the P6 testimony
+            # template returns as its own designed migration with day_on_demand.)
             migrations+=(1204_gochara_av_qualifier_object_role.sql)
-            migrations+=(1205_gochara_inherited_frame_kind.sql)
           fi
           if [ "$APPLY_AI_METERING_SCHEMA_MIGRATION" = "true" ]; then
             migrations+=(1202_ai_metering_ledger.sql)
