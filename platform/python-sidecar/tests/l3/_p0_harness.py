@@ -30,8 +30,10 @@ reachable, every test in these modules SKIPS — it never silently passes
 from __future__ import annotations
 
 import os
+import re
 import sys
 import uuid
+from urllib.parse import parse_qsl, unquote, urlsplit
 
 import pytest
 
@@ -48,6 +50,75 @@ HARNESS_DSN = os.environ.get(
 )
 
 
+
+# ── destructive-test database guard (Track I-8, SS ruling) ──────────────────────
+# The P0 DB tests DELETE the canonical chart's rows from four Kala tables in `_reset`. They must
+# only ever run against a disposable database. Same rule as the B2 test's `isSafeTestDbUrl`
+# (platform/tests/integration/downstream_dependents.db.test.ts): PARSE the connection target (a bare
+# substring match over the whole DSN is how the original guard was bypassed), require a LOCAL host
+# (loopback, or a unix-socket directory) AND a disposable database name; refuse otherwise.
+_SAFE_DB_NAME = re.compile(r"^(kala_harness|kala_p0_harness|[a-z0-9]+(_[a-z0-9]+)*_(test|harness|disposable|scratch))$")
+_PROD_TOKEN = re.compile(r"(^|_)(prod|production|live|amjis)(_|$)")
+_LOOPBACK = {"127.0.0.1", "localhost", "[::1]", "::1"}
+
+
+class HarnessSafetyError(RuntimeError):
+    """The P0 harness was pointed at something that is not a disposable database."""
+
+
+def _conninfo(dsn: str) -> dict[str, str]:
+    """libpq conninfo as a dict, from a postgresql:// URL or a `key=value` string. Never raises."""
+    dsn = (dsn or "").strip()
+    out: dict[str, str] = {}
+    if re.match(r"^postgres(ql)?://", dsn):
+        try:
+            u = urlsplit(dsn)
+            u.hostname, u.port  # noqa: B018 - force the lazy parse errors here
+        except ValueError:
+            return {"dbname": "/unparseable"}
+        if u.hostname:
+            out["host"] = u.hostname if ":" not in u.hostname else f"[{u.hostname}]"
+        out["dbname"] = unquote(u.path.lstrip("/")) if u.path.count("/") <= 1 else "/bad-path"
+        out.update({k: v for k, v in parse_qsl(u.query)})  # query `host=`/`dbname=` override
+        return out
+    for m in re.finditer(r"(\w+)\s*=\s*('(?:[^'\\]|\\.)*'|\S+)", dsn):
+        out[m.group(1)] = m.group(2).strip("'")
+    return out
+
+
+def is_safe_harness_dsn(dsn: str) -> bool:
+    """True only for a local host AND a disposable, non-production-looking database name."""
+    info = _conninfo(dsn)
+    name = info.get("dbname", "")
+    if not _SAFE_DB_NAME.match(name) or _PROD_TOKEN.search(name):
+        return False
+    for key in ("host", "hostaddr"):
+        for h in (info.get(key) or "").split(","):
+            if h and not (h in _LOOPBACK or h.startswith("/")):
+                return False
+    return True
+
+
+def assert_safe_harness_dsn(dsn: str = None) -> None:
+    dsn = HARNESS_DSN if dsn is None else dsn
+    if not is_safe_harness_dsn(dsn):
+        raise HarnessSafetyError(
+            "refusing to run destructive P0 tests: KALA_P0_HARNESS_DSN must be a LOCAL database with a "
+            "disposable name (kala_harness, or *_test/_harness/_disposable/_scratch), got "
+            f"{_conninfo(dsn).get('dbname')!r} on {_conninfo(dsn).get('host')!r}"
+        )
+
+
+def assert_disposable_connection(conn) -> None:
+    """Runtime twin of the DSN check: the server's own `current_database()` must be disposable."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT current_database() AS d")
+        row = cur.fetchone()
+    name = row["d"] if isinstance(row, dict) else row[0]
+    if not _SAFE_DB_NAME.match(name) or _PROD_TOKEN.search(name):
+        raise HarnessSafetyError(f"refusing to run: connected database {name!r} is not disposable")
+
+
 def connect():
     """A harness connection shaped exactly like the orchestrator's own.
 
@@ -57,6 +128,7 @@ def connect():
     rows by column name, so a harness connection without `dict_row` would fail
     for a reason that has nothing to do with the hazard under test.
     """
+    assert_safe_harness_dsn(HARNESS_DSN)  # refuse (raise), never skip, a non-disposable target
     try:
         import psycopg
         import psycopg.rows
@@ -75,6 +147,11 @@ def connect():
     finally:
         os.environ.update(saved)
     conn.autocommit = False
+    try:
+        assert_disposable_connection(conn)  # the server's own current_database(), not just the DSN text
+    except HarnessSafetyError:
+        conn.close()
+        raise
     with conn.cursor() as cur:
         cur.execute("SET statement_timeout = 0")
     return conn
