@@ -1,30 +1,27 @@
-"""Pravāha A5.3 — ka_gochara_v5 INERT writer skeleton (writerbase_conformance,
-partial; steward ruling M20261001T014547-357e pins 1-2).
+"""Pravāha A5.3 — ka_gochara_v5 writer: registration, chart-scope, and the
+phase-1 geometry_store substeps (steward pins 1-7, 2026-10-01).
 
 What this file proves:
 
   (a) registration + frozen-contract shape: the writer is discoverable via
       get_writer('ka_gochara_v5'), subclasses WriterBase, pins asset_id, and
-      registers without conflicting with any existing writer;
+      ships the substep shape (has_substeps, own plan_substeps/run_substep,
+      run inherited from WriterBase to aggregate);
   (b) hard chart refusal: any chart_id ≠ the pinned A5.3 candidate chart
-      raises ChartRefusal on BOTH the planning path (plan_substeps) and the
-      execution path (run, and the inherited run_substep which delegates to
-      run) — before any other behaviour;
-  (c) pending gate: for the pinned chart, every execution path raises
-      NotImplementedError("A5.3: geometry/solver pending steward pins 3-7") —
-      no astrology is implemented and none may land before steward pins 3-7;
-  (d) inertness: the seed row ships is_active=false with depends_on=[] (the
-      executable planner-predicate version is
-      platform/scripts/__tests__/a53_gochara_v5_inert.test.ts; this static
-      guard keeps the pytest suite honest without a TS runner), and the
-      writer module source carries no connection-lifecycle call and never
-      writes asset_throughput;
-  (e) dry_run: the skeleton has no write path, so dry_run=True changes
-      nothing — the pending gate still raises (mirrors the PR #2799
-      template, which carries no dry_run branch).
+      raises ChartRefusal on BOTH the planning path and the execution path —
+      before any other behaviour;
+  (c) phase-1 plan (pin 5): 'convention' → 'body:<Body>' ×8, Moon absent;
+  (d) substep behaviour: the chart family key precedes every write (steward
+      ruling B / N13), the convention substep registers the convention row,
+      each body substep drives SkyEventStore.build_boundary_substrate for
+      exactly its body, and dry_run suppresses both solve and write;
+  (e) inertness: the seed row ships is_active=false with depends_on=[], and
+      the writer module source carries no connection-lifecycle call and never
+      writes asset_throughput.
 
-No live DB: the only ctx.db_conn used is a recording fake that must observe
-ZERO calls of any kind.
+No live DB: ctx.db_conn is a recording fake; the store is monkeypatched with a
+recording double so no Swiss solve runs here (the store's own tests cover the
+solve path with a synthetic index).
 """
 from __future__ import annotations
 
@@ -43,6 +40,7 @@ from pipeline.orchestrator.writers import (  # noqa: E402
     WriterBase,
     get_writer,
 )
+from services.gochara_kernel.substrate import SUBSTRATE_BODIES  # noqa: E402
 
 SIDECAR = Path(__file__).resolve().parents[3]
 PLATFORM = SIDECAR.parent
@@ -52,20 +50,65 @@ CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 OTHER_CHART_ID = "11111111-2222-4333-8444-555555555555"
 
 
-class _ExplodingConn:
-    """Any touch at all is a test failure — the skeleton never goes near the
-    DB, not even to open a cursor."""
+class _RecordingConn:
+    """Records every executed statement; any lifecycle call is a failure."""
 
-    def __getattr__(self, name):
-        raise AssertionError(
-            f"ka_gochara_v5 skeleton touched ctx.db_conn.{name} — the inert "
-            "skeleton must never read/write/commit/rollback/close the "
-            "caller-owned connection")
+    def __init__(self):
+        self.statements: list[tuple[str, tuple]] = []
+
+    def execute(self, sql, params=()):
+        self.statements.append((sql, params))
+
+        class _R:
+            def fetchone(self):
+                return None
+
+            def fetchall(self):
+                return []
+
+        return _R()
+
+    def commit(self):
+        raise AssertionError("writer committed ctx.db_conn")
+
+    def rollback(self):
+        raise AssertionError("writer rolled back ctx.db_conn")
+
+    def close(self):
+        raise AssertionError("writer closed ctx.db_conn")
 
 
-def _ctx(chart_id: str = CHART_ID, dry_run: bool = False) -> ContextSpec:
+class _FakeStore:
+    """Recording double for SkyEventStore (no Swiss solve, no DB)."""
+
+    instances: list["_FakeStore"] = []
+
+    def __init__(self, conn):
+        self.conn = conn
+        self.conventions_registered = 0
+        self.bodies_built: list[str] = []
+        _FakeStore.instances.append(self)
+
+    def register_convention(self, vector=None):
+        self.conventions_registered += 1
+        return "sha256:" + "0" * 64
+
+    def build_boundary_substrate(self, body, **kwargs):
+        self.bodies_built.append(body)
+        return {"objects": 135, "events": 135, "stations": 0}
+
+
+@pytest.fixture(autouse=True)
+def _fake_store(monkeypatch):
+    _FakeStore.instances = []
+    monkeypatch.setattr(writer_mod, "SkyEventStore", _FakeStore)
+    yield
+
+
+def _ctx(chart_id: str = CHART_ID, dry_run: bool = False,
+         conn: _RecordingConn | None = None) -> ContextSpec:
     return ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="test-build",
-                       db_conn=_ExplodingConn(),
+                       db_conn=conn if conn is not None else _RecordingConn(),
                        config={"chart_id": chart_id}, dry_run=dry_run)
 
 
@@ -80,16 +123,13 @@ def test_writer_is_registered_and_discoverable():
 
 
 def test_writer_shape_conforms_to_frozen_contract():
-    """WriterBase subclass with the light-writer shape: run(ctx) implemented,
-    run_substep inherited (delegates to run), plan_substeps overridden only
-    for the chart-scope refusal. register() itself hard-fails on a
-    non-WriterBase subclass, so reaching here already proves the subclass
-    predicate."""
+    """Substep writer: own plan_substeps/run_substep, run inherited (the base
+    aggregates plan_substeps over run_substep)."""
     w = writer_mod.GocharaV5Writer()
-    assert type(w).run is not WriterBase.run
-    assert type(w).run_substep is WriterBase.run_substep
+    assert type(w).run is WriterBase.run
+    assert type(w).run_substep is not WriterBase.run_substep
     assert type(w).plan_substeps is not WriterBase.plan_substeps
-    assert w.has_substeps is False
+    assert w.has_substeps is True
 
 
 def test_pinned_chart_id_is_the_a25_candidate_chart():
@@ -117,58 +157,71 @@ def test_run_substep_refuses_any_other_chart_before_delegation():
         w.run_substep(_ctx(OTHER_CHART_ID), SubStep(key=writer_mod.ASSET_ID))
 
 
-def test_chart_refusal_precedes_the_pending_gate():
-    """A foreign chart must get ChartRefusal, never the NotImplementedError —
-    the refusal is the outermost gate."""
+# ── (c) phase-1 plan (pin 5) ──────────────────────────────────────────────────
+
+
+def test_plan_is_convention_then_eight_bodies_moon_excluded():
     w = writer_mod.GocharaV5Writer()
-    for call in (lambda: w.plan_substeps(_ctx(OTHER_CHART_ID)),
-                 lambda: w.run(_ctx(OTHER_CHART_ID))):
-        with pytest.raises(writer_mod.ChartRefusal) as exc:
-            call()
-        assert writer_mod.PENDING_MESSAGE not in str(exc.value)
+    steps = w.plan_substeps(_ctx())
+    keys = [s.key for s in steps]
+    assert keys[0] == writer_mod.CONVENTION_SUBSTEP
+    assert keys[1:] == [f"body:{b}" for b in SUBSTRATE_BODIES]
+    assert "Moon" not in SUBSTRATE_BODIES
+    assert not any("moon" in k.lower() for k in keys)
 
 
-# ── (c) pending gate — every execution path raises NotImplementedError ───────
+# ── (d) substep behaviour ─────────────────────────────────────────────────────
 
 
-def test_plan_substeps_raises_pending_for_pinned_chart():
+def test_chart_lock_precedes_every_write():
+    conn = _RecordingConn()
     w = writer_mod.GocharaV5Writer()
-    with pytest.raises(NotImplementedError, match="A5.3: geometry/solver "
-                                                  "pending steward pins 3-7"):
-        w.plan_substeps(_ctx())
+    w.run_substep(_ctx(conn=conn), SubStep(key=writer_mod.CONVENTION_SUBSTEP))
+    locks = [s for s in conn.statements if "ka_gochara_lock_chart" in s[0]]
+    assert len(locks) == 1
+    assert locks[0][1] == (CHART_ID,)
 
 
-def test_run_raises_pending_for_pinned_chart():
+def test_convention_substep_registers_the_convention_row():
     w = writer_mod.GocharaV5Writer()
-    with pytest.raises(NotImplementedError) as exc:
-        w.run(_ctx())
-    assert str(exc.value) == writer_mod.PENDING_MESSAGE
+    result = w.run_substep(_ctx(), SubStep(key=writer_mod.CONVENTION_SUBSTEP))
+    store = _FakeStore.instances[-1]
+    assert store.conventions_registered == 1
+    assert store.bodies_built == []
+    assert "convention" in result.notes
 
 
-def test_run_substep_raises_pending_via_run_delegation():
+def test_body_substep_builds_exactly_its_body():
     w = writer_mod.GocharaV5Writer()
-    with pytest.raises(NotImplementedError) as exc:
-        w.run_substep(_ctx(), SubStep(key=writer_mod.ASSET_ID))
-    assert str(exc.value) == writer_mod.PENDING_MESSAGE
+    result = w.run_substep(_ctx(), SubStep(key="body:Saturn"))
+    store = _FakeStore.instances[-1]
+    assert store.bodies_built == ["Saturn"]
+    assert result.rows_inserted == 135
+    assert "Saturn" in result.notes
 
 
-# ── (e) dry_run — no write path exists, so dry_run changes nothing ───────────
-
-
-def test_dry_run_still_refuses_foreign_charts():
+def test_unknown_substeps_answer_honestly_without_a_build():
     w = writer_mod.GocharaV5Writer()
-    with pytest.raises(writer_mod.ChartRefusal):
-        w.run(_ctx(OTHER_CHART_ID, dry_run=True))
+    result = w.run_substep(_ctx(), SubStep(key="body:Pluto"))
+    assert result.rows_inserted == 0
+    assert "unknown body substep" in result.notes
+    result = w.run_substep(_ctx(), SubStep(key="windows"))
+    assert result.rows_inserted == 0
+    assert "unknown substep" in result.notes
+    assert _FakeStore.instances == [] or _FakeStore.instances[-1].bodies_built == []
 
 
-def test_dry_run_still_raises_pending_for_pinned_chart():
+def test_dry_run_suppresses_solve_and_write_and_takes_no_lock():
+    conn = _RecordingConn()
     w = writer_mod.GocharaV5Writer()
-    with pytest.raises(NotImplementedError) as exc:
-        w.run(_ctx(dry_run=True))
-    assert str(exc.value) == writer_mod.PENDING_MESSAGE
+    result = w.run_substep(_ctx(dry_run=True, conn=conn), SubStep(key="body:Sun"))
+    assert result.rows_inserted == 0
+    assert "dry_run" in result.notes
+    assert conn.statements == []
+    assert _FakeStore.instances == []
 
 
-# ── (d) inertness ─────────────────────────────────────────────────────────────
+# ── (e) inertness ─────────────────────────────────────────────────────────────
 
 
 def test_seed_row_is_inactive_and_cites_both_planner_predicates():
@@ -194,6 +247,6 @@ def test_writer_module_source_has_no_connection_lifecycle_or_throughput():
     for forbidden in (".commit(", ".rollback(", ".close(", "connect(",
                       "psycopg", "asset_throughput"):
         assert forbidden not in src, (
-            f"writer module must not contain {forbidden!r} — the inert "
-            "skeleton never touches the connection, opens none, and never "
-            "writes build state")
+            f"writer module must not contain {forbidden!r} — it never commits, "
+            "rolls back or closes the caller-owned connection, opens none, and "
+            "never writes build state")

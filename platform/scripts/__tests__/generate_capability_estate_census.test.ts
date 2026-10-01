@@ -45,16 +45,16 @@ describe('capability estate census', () => {
     expect(census.denominators.producer_assets).toMatchObject({
       // Pravāha A5.3 (steward ruling M20261001T014547-357e, pins 1-2):
       // ka_gochara_v5 ships in the seed is_active: false — inert to all
-      // planners — so it counts as retired (inactive), never active. Unlike
-      // PR #2799's candidate, its writer digest is NOT yet admitted to
-      // src/generated/nirmana-writer-digests.json (pins admission is a
-      // separate governed step), so the census counts it as a NON-writer
-      // identity until that admission lands.
+      // planners — so it counts as retired (inactive), never active. Its
+      // writer digest IS admitted to src/generated/nirmana-writer-digests.json
+      // (regenerated at the geometry_store step, 2026-10-01), so the census
+      // counts it as a WRITER identity; the analysis-layer pins admission is
+      // a separate governed step and does not change this count.
       total: 130,
       active: 128,
       retired: 2,
-      writer_identities: 123,
-      non_writer_identities: 7,
+      writer_identities: 124,
+      non_writer_identities: 6,
     })
     expect(
       census.denominators.producer_assets.active + census.denominators.producer_assets.retired,
