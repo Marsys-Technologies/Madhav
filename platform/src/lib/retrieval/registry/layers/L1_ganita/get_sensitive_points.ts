@@ -28,11 +28,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import {
-  canonicalFirstOrderSql, canonicalFormulaOf, formulaPolicyFor, formulaRoleOf, labelFormulaRoles,
-  NO_CANONICAL_FORMULA_REASON,
-} from './canonical_formulas'
-
+import { canonicalFirstOrderSql, canonicalFormulaOf, formulaPolicyFor, formulaRoleOf, labelFormulaRoles, NO_CANONICAL_FORMULA_REASON } from './canonical_formulas'
 const SP_CATEGORIES = [
   'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma',
   'esoteric_point_chatushphuta', 'esoteric_point_mrityu', 'esoteric_point_panchasphuta',
