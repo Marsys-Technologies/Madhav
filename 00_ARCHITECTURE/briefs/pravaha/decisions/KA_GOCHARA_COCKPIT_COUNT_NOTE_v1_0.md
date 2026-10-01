@@ -1,7 +1,7 @@
 ---
 artifact: KA_GOCHARA_COCKPIT_COUNT_NOTE
 version: "1.0"
-status: CURRENT
+status: "SUPERSEDED 2026-10-02 — steward reversed the ruling on Stream A's evidence (M20261001T231844-fc32): the registered ka_gochara writer writes windows_v2 '2.0'; the integrity check is vacuously true over an empty '4.0' scope; Clear never touches the writer's rows. Remedy: revert the 1091 registry pin by a new migration, re-apply it with the writer switch at D-FLIP. Do not rely on this note's conclusion."
 date: 2026-10-01
 author: Stream B (Śāstra), item B6.0 (steward M20261001T165421-141b; Suvarṇa's cockpit finding)
 writes: "NONE — every production read below is read-only"
