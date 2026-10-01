@@ -7,7 +7,7 @@ lane: suvarna/land/TI-r25-reaper-001
 decision: R-25 (build-pipeline "15-minute reaper" versus slow L2 writers)
 mode: READ-ONLY investigation. No code, config, infra, build or DB write. DB reads as `suvarna_reader` only (measured 2026-10-01 ~18:35Z); code read at origin/main ee12eab8c.
 changelog:
-  - "1.1 (2026-10-02): added section 7 Decision (SS ruling R-25: options 1 + 3 taken, migration 1218 for bo_grounding and bo_laksana_rerank; options 2, 4, 5 and the keep-alive freeze exception not taken; S-L2 stop rule and reporting). No change to sections 0-6 or the appendix."
+  - "1.1 (2026-10-02): added section 7 Decision (SS ruling R-25: options 1 + 3 taken, migration 1218 sets bo_grounding and bo_laksana_rerank to 1800 (first-form 10800 superseded); options 2, 4, 5 and the keep-alive freeze exception not taken; S-L2 stop rule, lit-flip artefact rule and reporting). No change to sections 0-6 or the appendix."
   - "1.0 (2026-10-01): first cut. Four independent liveness/timeout mechanisms mapped with file:line; L2 writer shape and registry budgets; measured per-asset durations; option matrix; verdict on whether the frozen orchestrator must change (it need not)."
 ---
 
@@ -149,12 +149,20 @@ The dispatch width is `ORCHESTRATOR_WORKER_LIMIT` (code default 4, `runner.py:10
 5. Who cancelled `bo_grounding`'s integrity statement on 2026-09-11 23:36:07 ("canceling statement due to user request"), and why that run ended 23:55:06, 19 min later.
 6. No watchdog hit on a bo_* asset before 2026-08-22 (audit table start) or before Packet A2 (~2026-09-26) can be excluded.
 
-## 7. Decision (SS, R-25, ruling of 2026-10-01; recorded 2026-10-02)
+## 7. Decision (SS, R-25, ruling of 2026-10-01; value revised and recorded 2026-10-02)
 
 **Taken**
 
 - **Option 1 (no change to the orchestrator, the watchdog or the writers now).** The cold-chart re-measure idea stays as a measurement, not a gate on code.
-- **Option 3 (registry `writer_timeout_seconds` edit), for `bo_grounding` and `bo_laksana_rerank` ONLY**, 600 -> 10800 (the value the other 15 bodha assets already carry). Reason: the in-process per-writer timeout (`runner.py:679` `_timeout_for`, `:726` deadline check) is the one mechanism that can actually fail an asset and block its dependents for the run, and the N-59 L2 fixes add work to the rerank. Authored as migration **1218** (`platform/migrations/1218_suvarna_bodha_writer_timeouts.sql`, branch `suvarna/land/TI-timeouts-1218-001`, draft, not applied). It is guarded (`WHERE ... writer_timeout_seconds = 600`), idempotent, and verifies in-transaction against a snapshot that exactly those two rows changed. Option 3 fixes only the in-process budget; it does not change the 15-minute watchdog (section 1, W2), which never reads the registry. The other six bodha assets still at 600 (`bo_arudha`, `bo_nakshatra_semantic`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana`, `bo_yantra_mechanism`) are not part of this ruling and are untouched.
+- **Option 3 (registry `writer_timeout_seconds` edit), for `bo_grounding` and `bo_laksana_rerank` ONLY**, 600 -> **1800** (30 min). Reason: the in-process per-writer timeout (`runner.py:679` `_timeout_for`, `:726` deadline check) is the one mechanism that can actually fail an asset and block its dependents for the run, and the N-59 L2 fixes add work to the rerank. Why 1800: it covers the worst recorded runs with margin (`bo_laksana_rerank` 1233 s, `bo_grounding` 1157 s, section 2); it bounds a real hang at 30 minutes instead of 3 hours, and `bo_sangati` sits directly behind `bo_laksana_rerank` (blocked until the rerank finishes or times out); and it matches the 30-minute idle-in-transaction cap the orchestrator sets (`pipeline/orchestrator/db.py:49-76`, which also sets `statement_timeout = 0`). Authored as migration **1218** (`platform/migrations/1218_suvarna_bodha_writer_timeouts.sql`, branch `suvarna/land/TI-timeouts-1218-001`, PR #2846, draft, not applied). It is guarded (`WHERE ... writer_timeout_seconds = 600`), idempotent, never overwrites a different value (a target at any other value is left alone with a NOTICE and the migration still succeeds, so the post-apply check that both rows read 1800 must be run), and verifies in-transaction against a snapshot that exactly those two rows changed.
+- **Superseded:** the first form of this ruling was 10800 (the value the other 15 bodha assets carry). SS replaced it with 1800 the same day, before anything was applied; 10800 is not what 1218 sets.
+
+**What 1800 does and does not fix (honest trade-offs)**
+
+- It fixes only the in-process budget (P1). It does not change the 15-minute watchdog (section 1, W2; `route.ts:216-394`), which never reads the registry. Any run of either asset longer than 15 minutes remains exposed to W2, and a light writer re-running over existing data can be falsely flipped to `lit` while its worker is still running (section 1.2).
+- A larger budget lengthens hang detection for these two assets from 10 minutes to up to 30 minutes.
+- Neither asset has substeps (both are light writers), so substep-progress monitoring cannot observe them; their wall time must be watched directly.
+- The other six bodha assets still at 600 (`bo_arudha`, `bo_nakshatra_semantic`, `bo_special_lagna`, `bo_sudarshana`, `bo_vargottama_dhana`, `bo_yantra_mechanism`) are not part of this ruling and are untouched.
 
 **NOT taken, but available if a real reap or timeout is ever observed**
 
@@ -165,11 +173,12 @@ The dispatch width is `ORCHESTRATOR_WORKER_LIMIT` (code default 4, `runner.py:10
 
 **Operating rules for S-L2**
 
-- **Stop rule:** if any asset goes more than 12 minutes without substep progress, stop dispatching further waves and look. Never kill a live worker.
+- **Stop rule:** if any asset goes more than 12 minutes without substep progress, stop dispatching further waves and look. Never kill a live worker. For `bo_grounding` and `bo_laksana_rerank`, which have no substeps, watch wall time directly (12 minutes from dispatch) instead of substep progress.
 - A watchdog reap during the run is not itself a failure. Judge by final state (section 1.2: a live worker self-heals), and list every reap that occurred.
+- Treat any state flip to `lit` while that asset's worker is still running as a watchdog artefact (the rescue path in section 1.2): record it, and verify the final state after the worker ends.
 - After S-L2, report per-asset wall times, so section 2's table can be refreshed from the same run.
 
-**Note on the `mi_bhara` precedent.** The 600 -> 10800 change for `mi_bhara` has no migration file in the repository (searched `platform/migrations` and `platform/supabase/migrations`; consistent with item 5 of section 0, "applied directly to the registry"). Migration 1218 is therefore the first checked-in migration that sets a bodha `writer_timeout_seconds` to 10800.
+**Note on the `mi_bhara` precedent.** The 600 -> 10800 change for `mi_bhara` has no migration file in the repository (searched `platform/migrations` and `platform/supabase/migrations`; consistent with item 5 of section 0, "applied directly to the registry"). Migration 1218 is therefore the first checked-in migration that sets a bodha `writer_timeout_seconds` since 420/462, and it deliberately uses a different value (1800) from `mi_bhara`'s.
 
 ## Appendix: queries (all read-only, `suvarna_reader`, wrapper sources `~/.config/suvarna/pgenv.sh`, `default_transaction_read_only=on`)
 
