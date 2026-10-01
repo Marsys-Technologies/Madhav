@@ -1,8 +1,8 @@
 ---
 artifact: DECISION_SHEET_L3
 layer: L3 Kāla (ka_*)
-version: "1.0"
-status: DRAFT-FOR-RULING
+version: "1.1"
+status: "RULED (SS 2026-10-01); items marked (R) are provisional until the J1 independent review"
 produced_by: exec-suvarna
 produced_on: 2026-10-01
 plan_item: A.L3 (decision sheet over the briefs; one pass for Strategic Suvarṇa)
@@ -10,6 +10,9 @@ source_branch: "suvarna/land/A-L3-briefs-001 (PR #2835) at 0945da3f3; this sheet
 source_files: "00_ARCHITECTURE/briefs/suvarna/layers/L3/assets/INDEX.md (section 9, Q-L3-01..17) and the 18 per-asset briefs in the same directory"
 scope: "docs only; no code, registry, migration or database write"
 provisional: "every ruling taken from this sheet is provisional until the J1 independent review"
+ruled_on: 2026-10-01
+ruled_head: "eed194785 (PR #2838) at the time of the ruling"
+changelog: "1.1 (2026-10-01): SS rulings recorded (section Rulings, a ruling line per item, summary column); citations relabelled under the SS citations rule; Track I list added at the end. 1.0: DRAFT-FOR-RULING."
 ---
 
 # L3 Kāla decision sheet (for one ruling pass by Strategic Suvarṇa)
@@ -20,7 +23,7 @@ provisional: "every ruling taken from this sheet is provisional until the J1 ind
 
 **Rules SS gave for rulings (applied throughout).** (1) A classical fact needs a `bg_texts` corpus citation (B.3). (2) Where traditions differ, the project's existing L1/engine convention is the authority (CLAUDE.md §N.5) and the alternative is recorded as a named variant. (3) Every ruling is provisional until the J1 independent review.
 
-**Evidence tags.** `[code]` = read in the repository at 0945da3f3 (file:line given). `[db]` = read-only `SELECT` as `suvarna_reader` on 2026-10-01 (queries in the appendix; no write, no credential shown). `[corpus]` = text search of `classical_text_chunks` (the chunk table of the `bg_texts` corpus); the chunk id is given so the passage can be re-found; the corpus is OCR text and a passage cited here was read by me but is not checked against the printed book. `[brief]` = quoted from a brief or INDEX and NOT re-verified here. Where I looked for a citation and did not find one the sheet says `citation: not found in repo, needs bg_texts lookup`.
+**Evidence tags.** `[code]` = read in the repository at 0945da3f3 (file:line given). `[db]` = read-only `SELECT` as `suvarna_reader` on 2026-10-01 (queries in the appendix; no write, no credential shown). `[corpus]` = text search of `classical_text_chunks` (the chunk table of the `bg_texts` corpus); the chunk id is given so the passage can be re-found; the corpus is OCR text and a passage cited here was read by me but is not checked against the printed book. Under the SS citations rule (section Rulings) every such hit is labelled `sourced_ocr_unverified` and every passage not found is `unsourced`. `[brief]` = quoted from a brief or INDEX and NOT re-verified here. Where I looked for a citation and did not find one the sheet says `citation: not found in repo, needs bg_texts lookup`, which under the SS citations rule is the state `unsourced`.
 
 **Charts.** Canonical = `482012f1` (native). Abhinandan = `1c826d5a`. Third chart = `cb73cd3d`.
 
@@ -31,9 +34,33 @@ provisional: "every ruling taken from this sheet is provisional until the J1 ind
 
 ---
 
+## Rulings (SS, 2026-10-01)
+
+SS ruled this sheet on 2026-10-01 (PR #2838, HEAD `eed194785` at the time). **All recommendations are accepted as written except as modified below.** An item that raises or defines a verdict, or changes outputs, is marked **(R)** and is provisional until the J1 independent review. Each item below carries its own "SS ruling" line directly under its heading, and the summary table has a ruling column.
+
+**Modifications to the recommendations.**
+
+| item | what SS ruled beyond or against the recommendation |
+|---|---|
+| A-1 (R) | Accepted. ONE shared L0 Gandanta module that `ka_vighnakara` reads; canonical width 3°20' each side (one pāda); the 0°48' width is kept ONLY as a named stricter variant, never the default; each width is cited or marked `unsourced`. |
+| A-3 (R) | Option R: retire the batch event-class rows. A design REVIEW follows; output change 92,412 -> 43,488 rows per chart; the REVIEW must state which served surfaces read those rows. A Track I item is added (TI-L3-31). |
+| Q-L3-05 (R) | SS rules (no external acharya): explicit keyword -> domain map, ambiguity -> `general`. The +/-21 days is ratified as a NAMED PRE-REGISTERED window (decision N-57), on condition that it is declared in the `ka_bhavishya_lekha` brief (done) and never tuned after outcomes are seen. |
+| Q-L3-09 (R) | MEAN node (L1/engine convention; TRUE is a named variant); fix the docstring now. Combustion: orbs from L0 only; scope per the L1/engine convention; where the engine defines none, emit an honest null (no invented scope). |
+| Q-L3-11 | Yes in principle; the global dispatch comes to SS as a REVIEW when the time comes (not authorised now). |
+| Q-L3-12 (R) | N/A by cause `rolling_horizon` with the window declared; it becomes a rule only through `NA_RULE_DECISIONS` with SS approval. |
+| Accepted as written | A-2, A-4, Q-L3-01, 02, 03, 04, 06, 07, 08, 10, 13, 14, 15, 16, 17, X1. |
+
+**Citations rule (SS, all layers).** An OCR text-search hit not checked against print is `sourced_ocr_unverified` (a distinct attribution state, neither `sourced` nor `unsourced`). A passage not found is `unsourced`. Only a citation verified at passage level counts toward a PASS on Ldgr. *Applied in this version:* every `[corpus]` passage in this sheet (BPHS, Yavana Jataka, Brihat Samhita, Phaladeepika, Uttara Kalamrita, Hora Sara) is relabelled `sourced_ocr_unverified`; every "not found" item is relabelled `unsourced` (the fire-side Gandanta width, the 0°48' width, the degree conversion of two ghatikas, Rahu and Ketu significations, Mudda / Naisargika / chara_karaka sources, BPHS Ch. 11 house significations, Tithi-Praveśa, the writer's "Muhurta-Chintamani Rikta" and "Phaladeepika ch.2" pointers, and the `reference_karakas` "BPHS Ch.27" label); nothing in this sheet is `sourced`. The relabelled lines carry the state in the "Citation" paragraph of each item and in "What I could not verify".
+
+**Where the rulings are recorded elsewhere.** In the per-asset briefs (section 7, FD-level ruling lines) and in `INDEX.md` (sections 9, 10, 11) on the briefs branch (PR #2835); Track I items TI-L3-26 to TI-L3-37 are listed at the end of this sheet.
+
+---
+
 ## GROUP A · Already ruled by SS (recorded; do not re-ask)
 
 ### A-1 · `ka_vighnakara` Gandanta window is a defect
+
+**SS ruling (2026-10-01):** (R) Accepted. ONE shared L0 Gandanta module that `ka_vighnakara` reads; canonical width 3°20' each side (one pāda); the 0°48' width is kept ONLY as a named stricter variant, never the default; each width is cited or marked `unsourced` (states in the Citation paragraph). Track I: TI-L3-26.
 
 **Ruling (SS).** The Gandanta window is a defect. The junction is water-to-fire: the last 3°20' of Cancer, Scorpio and Pisces AND the first 3°20' of Leo, Sagittarius and Aries. The writer must read one engine/L0 definition; if none exists, create it with a corpus citation. (Brief gap `vighnakara-N3`, FD-2; INDEX CF-30(c); part of Q-L3-09.)
 
@@ -42,7 +69,7 @@ provisional: "every ruling taken from this sheet is provisional until the J1 ind
 - Stored rows: `kala_obstruction` holds NO `gandanta` row on any chart (Abhinandan 741 rows: combustion 339, malefic_transit 272, panchanga_obstruction 130; third chart 6 rows: combustion 3, malefic_transit 3; canonical 0 rows) `[db]`. So no stored row is wrong today; the defect is in what a rebuild would produce.
 - Definition search: no Gandanta definition in `panchang_engine/` and no L0 table; L0 holds only the term and a descriptive dosha entry (`brahmagyan/l0_ontology.py:819`, `l0_reference.py:1028`, `l0_doshas.py:747-766`) `[code]`. The only numeric definition of the rāśi-sandhi zone is L1's: `ga_writers/ga_sensitive_degree_writer.py:194-224` — `GANDANTA_ARC = 30.0 / 9.0` (3°20'), water signs {Cancer, Scorpio, Pisces}, fire signs {Leo, Sagittarius, Aries}, `check_gandanta(sign_num, degree_in_sign)` firing on the last arc of a water sign OR the first arc of a fire sign, with `GANDANTA_CITATION` naming "BPHS / Sarvartha Chintamani" (no chunk or verse); tested at `ga_writers/__tests__/test_ga_sensitive_degree.py:100-106` `[code]`. It is a private function inside an L1 writer, not an engine/L0 definition.
 - Other widths already in the repo (named variants): `ga_writers/ga_nakshatra_compute.py:20-21,74-108` — junctions 0°/120°/240°, orb 48' (0°48'), used by `ga_nakshatra_emitters.emit_gandanta_flags`; `bodha_writers/nakshatra_semantic_emitter.py:68-103` — 0.8° on pada 4 / pada 1 `[code]`. So L1/L2 already disagree among themselves on the width; the ruling picks the 3°20' L1 definition for L3.
-- Writer's stored citation says "Phaladeepika ch.2" (`:788`); the corpus index of Phaladeepika lists GANDANTA at "XII (4)" (chunk `phaladeepika_pg0422_c01`), not chapter 2; the body passage was not found by text search `[corpus]`.
+- Writer's stored citation says "Phaladeepika ch.2" (`:788`); the corpus index of Phaladeepika lists GANDANTA at "XII (4)" (chunk `phaladeepika_pg0422_c01`), not chapter 2; the body passage was not found by text search `[corpus]`. State: `unsourced` (not corroborated).
 
 **What the ruling requires.** (1) Move `GANDANTA_ARC`, the two sign sets and `check_gandanta` to one shared home with a corpus citation (below). Recommended home: a small L0 vocabulary-style module under `platform/python-sidecar/brahmagyan/` (precedent: `domain_vocabulary.py`, `graha_vocabulary.py`, `verification_vocab.py`), imported by both `ga_sensitive_degree_writer.py` and `ka_vighnakara.py`; an engine home in `panchang_engine/` would also satisfy the ruling, SS's call. (2) `ka_vighnakara._check_gandanta` derives `sign_num = int(lon // 30)` and `deg = lon % 30` from the Moon's sidereal longitude and calls it; the `reason` text is built from the returned `gandanta_zone` (`end_of_Cancer` / `start_of_Leo`), never from a literal. (3) Failing-first tests (from the brief): Moon at 118.0° fires; 91.0° does not; 358.0° fires; 1.0° fires; mutation restoring the old ranges fails.
 
@@ -52,11 +79,13 @@ provisional: "every ruling taken from this sheet is provisional until the J1 ind
 - Side effect: moving the function out of `ga_sensitive_degree_writer.py` changes that L1 writer's source, so its code digest changes once (a delta-skip re-run, no output change) `[brief: the same mechanism is named for graha_sancara FD-2]`. Flag to the L1 owner.
 - Rows that used a gandanta override (0.22) in `kala_darshana.effective_score` follow the rebuild.
 
-**Citation (for the shared module).** `[corpus]` BPHS (Santhanam trans.) chunk `bphs_pg0111_c01`, translator's note on the premature-death yogas: "The last Navamsas of Cancer, of Scorpio and of Pisces are called as Gandanta" (water-sign side, one navamsa = 3°20'). BPHS Ch. 92 "Remedies from birth in Gandanta" (`bphs_pg1018_c01`, `bphs_pg1019_c01`): three kinds — Tithi, Nakshatra (last two ghatikas of Revati / Ashlesha / Jyeshtha and first two of Ashwini / Magha / Moola) and Lagna Gandanta (last half ghatika of Pisces / Cancer / Scorpio and first half ghatika of Aries / Leo / Sagittarius); the text measures in ghatikas, not degrees. Uttara Kalamrita (`uttara_kalamrita_pg0176_c02`, `uttara_kalamrita_pg0177_c01`): "The last degrees of Aslesha, Jyeshtha and Revati, and the first degrees of Magha, Mula and Asvini are called gandanta"; they sit at the junction of two signs. The first-navamsa-of-the-fire-sign half is the symmetric reading and is supported by BPHS Ch. 92 (first ghatikas of Aries/Leo/Sagittarius, Ashwini/Magha/Moola); the exact width 3°20' on the fire side is a convention, not stated by these passages. Named variants to record: 0°48' (`ga_nakshatra_compute.py`), two ghatikas of a nakshatra (about 0°27' by arithmetic on 13°20'/60, my derivation, not stated by the text). The writer's "Sarvartha Chintamani" pointer is not corroborated by a text hit; `hora_sara_pg0057_c02` points to "Sarvartha Chintamani, Ch. 10, s. 26-27" as a secondary reference.
+**Citation (for the shared module).** `[corpus]` BPHS (Santhanam trans.) chunk `bphs_pg0111_c01`, translator's note on the premature-death yogas: "The last Navamsas of Cancer, of Scorpio and of Pisces are called as Gandanta" (water-sign side, one navamsa = 3°20'). BPHS Ch. 92 "Remedies from birth in Gandanta" (`bphs_pg1018_c01`, `bphs_pg1019_c01`): three kinds — Tithi, Nakshatra (last two ghatikas of Revati / Ashlesha / Jyeshtha and first two of Ashwini / Magha / Moola) and Lagna Gandanta (last half ghatika of Pisces / Cancer / Scorpio and first half ghatika of Aries / Leo / Sagittarius); the text measures in ghatikas, not degrees. Uttara Kalamrita (`uttara_kalamrita_pg0176_c02`, `uttara_kalamrita_pg0177_c01`): "The last degrees of Aslesha, Jyeshtha and Revati, and the first degrees of Magha, Mula and Asvini are called gandanta"; they sit at the junction of two signs. The first-navamsa-of-the-fire-sign half is the symmetric reading and is supported by BPHS Ch. 92 (first ghatikas of Aries/Leo/Sagittarius, Ashwini/Magha/Moola); the exact width 3°20' on the fire side is a convention, not stated by these passages. Named variants to record: 0°48' (`ga_nakshatra_compute.py`), two ghatikas of a nakshatra (about 0°27' by arithmetic on 13°20'/60, my derivation, not stated by the text). The writer's "Sarvartha Chintamani" pointer is not corroborated by a text hit; `hora_sara_pg0057_c02` points to "Sarvartha Chintamani, Ch. 10, s. 26-27" as a secondary reference. **Citation states (SS rule):** every passage above is an OCR text-search hit not checked against print: `sourced_ocr_unverified`. By width: 3°20' water side (last navamsa) `sourced_ocr_unverified` (`bphs_pg0111_c01`); 3°20' fire side `unsourced` (a symmetric convention; BPHS Ch. 92 gives ghatikas, not degrees); 0°48' `unsourced` (no citation in the code or in the corpus search); the two-ghatika reading `sourced_ocr_unverified` as text, its conversion to about 0°27' `unsourced` (my arithmetic); the writer's "Sarvartha Chintamani" and "Phaladeepika ch.2" pointers `unsourced`.
 
 ---
 
 ### A-2 · Rikta tithis: engine set is correct, writer's set is wrong
+
+**SS ruling (2026-10-01):** (R) Accepted as written. Track I: TI-L3-27.
 
 **Ruling (SS).** The engine's `[4, 9, 14, 19, 24, 29]` is correct; the writer's `(4, 9, 14, 15)` is wrong; the writer must reference the engine set. (Brief gap `vighnakara-N4`, FD-3; INDEX CF-30(b); part of Q-L3-09.)
 
@@ -73,11 +102,13 @@ provisional: "every ruling taken from this sheet is provisional until the J1 ind
 - Rebuild: same single `ka_vighnakara` rebuild and dependents as A-1. No registry or migration change.
 - Consumers ignore unknown keys; no key is added by this ruling.
 
-**Citation.** `[corpus]` Yavana Jataka (Pingree, Harvard Oriental Series), chunk `yavana_jataka_pg0926_c02`, commentary on 25-26: "the fifteen tithis of each paksa are divided into … Nanda 1, 6, 11; Bhadra 2, 7, 12; Jaya 3, 8, 13; Rikta (empty) 4, 9, 14; Purna 5, 10, 15" — per paksha, so on the 1..30 numbering Rikta = 4, 9, 14, 19, 24, 29 and 15 and 30 are Purna. Corroboration: Brihat Samhita (V. Subrahmanya Sastri trans.) `brihat_samhita_pg0764_c01` "Rikta Tithis (4th, 9th, 14th)"; Phaladeepika `phaladeepika_pg0346_c01`/`pg0347_c01` (the five tithi groups). The writer's own cited source (Muhurta-Chintamani) gave no Rikta hit in the corpus text search; that citation is not corroborated by this lane.
+**Citation.** `[corpus]` Yavana Jataka (Pingree, Harvard Oriental Series), chunk `yavana_jataka_pg0926_c02`, commentary on 25-26: "the fifteen tithis of each paksa are divided into … Nanda 1, 6, 11; Bhadra 2, 7, 12; Jaya 3, 8, 13; Rikta (empty) 4, 9, 14; Purna 5, 10, 15" — per paksha, so on the 1..30 numbering Rikta = 4, 9, 14, 19, 24, 29 and 15 and 30 are Purna. Corroboration: Brihat Samhita (V. Subrahmanya Sastri trans.) `brihat_samhita_pg0764_c01` "Rikta Tithis (4th, 9th, 14th)"; Phaladeepika `phaladeepika_pg0346_c01`/`pg0347_c01` (the five tithi groups). The writer's own cited source (Muhurta-Chintamani) gave no Rikta hit in the corpus text search; that citation is not corroborated by this lane. **Citation states (SS rule):** the Yavana Jataka, Brihat Samhita and Phaladeepika passages `sourced_ocr_unverified`; the writer's "Muhurta-Chintamani Rikta" pointer `unsourced`.
 
 ---
 
 ### A-3 · `ka_taranga` event-class tautology is a defect (fix design goes to SS as REVIEW)
+
+**SS ruling (2026-10-01):** (R) Option R: retire the batch event-class rows. A design REVIEW follows; output change 92,412 -> 43,488 rows per chart; the REVIEW must state which served surfaces read those rows (this sheet found `query_activation_waveform.ts:100`, which filters by scope; no python reader of the batch rows; the live service and `record_evidence` also use `event_class` scope). Track I: TI-L3-31.
 
 **Ruling (SS).** The event-class tautology is a defect. The fix design is returned to SS as a REVIEW item: the event-class term must vary by class, or be removed and the score documented class-independent. (Brief gap `taranga-N1`, FD-1; part of Q-L3-03.)
 
@@ -106,6 +137,8 @@ provisional: "every ruling taken from this sheet is provisional until the J1 ind
 ---
 
 ### A-4 · `ka_tulana` rejecting Mode C/D windows is a defect (EVIDENCE section requested by SS)
+
+**SS ruling (2026-10-01):** Accepted as written. Track I: TI-L3-32.
 
 **Ruling (SS).** Rejecting modes C and D is a defect by default: accept every mode `kala_convergence` emits unless the code or a ruling documents why one is excluded. (Brief gap `tulana-N6`; not in INDEX section 9.)
 
@@ -142,6 +175,8 @@ Under the current validator the ranker would accept 2,735 of 17,957 (15.2%) Abhi
 
 ### Q-L3-01 — CF-27: constants and favourable defaults in the temporal chain
 
+**SS ruling (2026-10-01):** (R) Accepted as written (option 1 for thresholds and weights; option 2 for stand-ins of uncomputed terms; option 3 follows L2 CF-20). Track I: TI-L3-17.
+
 **Question.** Should the constants and neutral or favourable defaults in the L3 temporal chain be ratified as documented approximations (option 1), replaced by NULL so the consumer's formula defines the neutral input (option 2), or computed from L1 facts (option 3)?
 
 **Facts.**
@@ -163,6 +198,8 @@ Under the current validator the ranker would accept 2,735 of 17,957 (15.2%) Abhi
 
 ### Q-L3-02 — `ka_avadhi` FD-1: honest provenance for `citations`
 
+**SS ruling (2026-10-01):** (R) Accepted as written; the attribution states follow the citations rule (every system starts `unsourced`; `sourced_ocr_unverified` for a recorded OCR hit; `sourced` only at passage-level verification). Track I: TI-L3-14, TI-L3-34.
+
 **Question.** Is a per-row attribution state plus the L1 `dasha_row_id` acceptable in place of the one generic classical `citations` string, and who supplies verified per-system sources?
 
 **Facts.**
@@ -177,11 +214,13 @@ Under the current validator the ranker would accept 2,735 of 17,957 (15.2%) Abhi
 - (b) Decline (keep the generic string): no change; 90% of rows keep a citation that names a system they do not belong to (B.3 gap stays recorded as open).
 - (c) Add a dedicated column instead of using the array: as (a) plus a surgical migration.
 
-**Citation (candidates only, not verified as definitional for each period rule).** `[corpus]` BPHS Ch. 46 "Dasas": `bphs_pg0499_c01` (opening of Ch. 46, Vimsottari), `bphs_pg0505_c01` (Ashtottari), `bphs_pg0521_c01` and `bphs_pg0545_c01` (Kalachakra dasa), `bphs_pg0564_c01` ("Yogini Dasa … 8 Yoginis"). Mudda, Naisargika and chara_karaka: citation not found in repo, needs bg_texts lookup (a search for Mudda in the Jyotish texts returned no hit; Naisargika has hits in several texts that were not examined).
+**Citation (candidates only, not verified as definitional for each period rule).** `[corpus]` BPHS Ch. 46 "Dasas": `bphs_pg0499_c01` (opening of Ch. 46, Vimsottari), `bphs_pg0505_c01` (Ashtottari), `bphs_pg0521_c01` and `bphs_pg0545_c01` (Kalachakra dasa), `bphs_pg0564_c01` ("Yogini Dasa … 8 Yoginis"). Mudda, Naisargika and chara_karaka: citation not found in repo, needs bg_texts lookup (a search for Mudda in the Jyotish texts returned no hit; Naisargika has hits in several texts that were not examined). **Citation states (SS rule):** the BPHS Ch. 46 chunks are OCR hits, `sourced_ocr_unverified` candidates (a system is recorded `sourced` only after passage-level verification); Mudda, Naisargika and chara_karaka `unsourced`.
 
 ---
 
 ### Q-L3-03 — `ka_taranga` FD-1/FD-2 (residual: pin the Vimshottari read to the canonical ayanamsha)
+
+**SS ruling (2026-10-01):** Accepted as written (the pin). The FD-1 half is ruled at A-3 (option R, (R)). Track I: TI-L3-04, TI-L3-31.
 
 The FD-1 half (event-class tautology) is ruled and recorded at A-3. What remains is FD-2.
 
@@ -202,13 +241,15 @@ The FD-1 half (event-class tautology) is ruled and recorded at A-3. What remains
 
 ### Q-L3-04 — CF-30: which graha → domain table is canonical?
 
+**SS ruling (2026-10-01):** (R) Accepted as written (one shared table whose values are in `CANONICAL_DOMAINS`; Rahu and Ketu `unsourced` until a passage is found). Track I: TI-L3-15.
+
 **Question.** `ka_avadhi` and `ka_taranga` each hand-write a graha → domain table and they disagree; which table (or which new single source) is canonical?
 
 **Facts.**
 - `ka_avadhi._GRAHA_DOMAINS` (`ka_avadhi.py:40-50`: Sun [dharma, career, authority, health] … Ketu [moksha, spirituality, loss, liberation]) versus `services/taranga_kernel/kernel.py:32-42` (Sun [dharma, career] … Ketu [moksha, spirituality]); a third keyword table in `ka_jivana_parva.py:408-418` and a fourth substring table in `ka_bhavishya_lekha.py:471-490` `[code]`.
 - The canonical domain vocabulary already exists in L0: `brahmagyan/domain_vocabulary.py` — `CANONICAL_DOMAINS` (13: career, wealth, relationship, progeny, health, education, family, residence, travel, spirituality, character, transition, general), `DOMAIN_SYNONYMS` (e.g. dharma → spirituality, moksha → spirituality, mind → character, children → progeny, creativity → progeny, property → residence, foreign → travel) and `canonical_domain()` `[code]`. It is mirrored on the serve side and tested for agreement.
 - Both writers use tokens outside that vocabulary: karma, longevity, technology, commerce, authority, home, disputes, luxury, loss, unusual, liberation, communication have no synonym entry. Measured consequences `[db]`: (i) `kala_taranga` has 24 domain scopes per chart; 11 of them (children, commerce, creativity, dharma, foreign, karma, longevity, mind, moksha, property, technology) are outside the canonical 13 and carry `transit_contribution = 0` and `promise_contribution = 0` in all 1,812 months — their activation is the dasha term alone; that is 19,932 of 43,488 domain rows per chart. (ii) `kala_avadhi`: all 87 Rahu-lord rows on the canonical chart store an EMPTY `activated_pratijna_ids` (Rahu's tokens karma/foreign/technology/unusual match no `bodha_pratijna` domain, whose values in `brahma_event_ontology` are exactly the canonical 13); Ketu matches only through `spirituality`.
-- An existing reference table holds a seven-graha significator list: `reference_karakas` (77 rows; `karaka_sun` … `karaka_saturn`, cited "BPHS Ch.27"); no Rahu/Ketu rows `[db]`. Its citation was not checked against the corpus.
+- An existing reference table holds a seven-graha significator list: `reference_karakas` (77 rows; `karaka_sun` … `karaka_saturn`, cited "BPHS Ch.27"); no Rahu/Ketu rows `[db]`. Its citation was not checked against the corpus. State of the "BPHS Ch.27" label: `unsourced`.
 - No engine/L1 table of graha → domain exists (the INDEX statement holds; search not exhaustive).
 - SS rule (2): where no L1/engine convention exists there is no authority to defer to, so a source must be created and cited.
 
@@ -220,11 +261,13 @@ The FD-1 half (event-class tautology) is ruled and recorded at A-3. What remains
 - (c) Adopt `ka_taranga`'s kernel table as is: same vocabulary defect.
 - (d) Declare each writer's table L3-local with decision ids and keep both: the disagreement and the dead scopes persist; no rebuild.
 
-**Citation.** `[corpus]` BPHS (Santhanam trans.) chunk `bphs_pg0873_c01` (the chunk's own heading reads "Chapter 70 Effects of the Ashtakavarga"): "The matters to be considered from the Sun and other planets are as follows — the Sun: the soul, nature, physical strength, joys and sorrows, father; the Moon: mind, wisdom, joy; Mars: co-borns, strength, qualities, land; Mercury: business dealings, livelihood, friends; Jupiter: nourishment of the body, learning, children, wealth, property; Venus: marriage, enjoyments, conveyance, sexual intercourse with women; Saturn: longevity, source of maintenance, sorrows, danger, losses, death" — seven grahas only. Rahu and Ketu: citation not found in repo, needs bg_texts lookup. (The `reference_karakas` "BPHS Ch.27" label is not corroborated here.)
+**Citation.** `[corpus]` BPHS (Santhanam trans.) chunk `bphs_pg0873_c01` (the chunk's own heading reads "Chapter 70 Effects of the Ashtakavarga"): "The matters to be considered from the Sun and other planets are as follows — the Sun: the soul, nature, physical strength, joys and sorrows, father; the Moon: mind, wisdom, joy; Mars: co-borns, strength, qualities, land; Mercury: business dealings, livelihood, friends; Jupiter: nourishment of the body, learning, children, wealth, property; Venus: marriage, enjoyments, conveyance, sexual intercourse with women; Saturn: longevity, source of maintenance, sorrows, danger, losses, death" — seven grahas only. Rahu and Ketu: citation not found in repo, needs bg_texts lookup. (The `reference_karakas` "BPHS Ch.27" label is not corroborated here.) **Citation states (SS rule):** the seven-graha passage `sourced_ocr_unverified`; Rahu and Ketu `unsourced`; the `reference_karakas` "BPHS Ch.27" label `unsourced`.
 
 ---
 
 ### Q-L3-05 — `ka_bhavishya_lekha` FD-2/FD-3: keyword precedence and ±21 days
+
+**SS ruling (2026-10-01):** (R) SS rules (no external acharya), modifying the recommendation: explicit keyword -> domain map, ambiguity -> `general`; the +/-21 days is ratified as a NAMED PRE-REGISTERED window (decision N-57), on condition that it is declared in the `ka_bhavishya_lekha` brief (done, section 7) and never tuned after outcomes are seen. Track I: TI-L3-06, TI-L3-33.
 
 **Question.** Is the domain keyword precedence a domain ruling for an acharya, and is ±21 days a ratified constant?
 
@@ -240,11 +283,13 @@ The FD-1 half (event-class tautology) is ruled and recorded at A-3. What remains
 - Precedence (a) explicit map + `general` for ambiguity: `domain` of affected rows changes; needs production rebuild (REVIEW); must land BEFORE `ph_nimitta` rebuilds and anchors reference the new ids, because a changed row that carries an outcome or an anchor makes the writer refuse. (b) keep first-match: no change; the ordering stays an undocumented rule.
 - ±21 (a) ratify: `falsifiability` JSON gains a decision id and clearer text; same refusal caveat for referenced rows; no scoring change. (b) derive from the stored window: `evaluation_window_days` and both strings change on every row; auto-filed predictions (`ahead_autofile.ts`) evaluate against a different window; rebuild; the refusal caveat applies.
 
-**Citation.** Multi-signification of houses: `[corpus]` BPHS (Santhanam trans.) `bphs_pg0102_c01` lists the house names (Bandhu = relatives, Putra = progeny, Ari, Yuvati = wife, Randhra = longevity, Dharma = religion, Karma = acts/livelihood, Laabha = gains, Vyaya = expenditure) and says "Ch. 11 deals with the houses in this context"; the Ch. 11 passage assigning several significations to the fourth/fifth/twelfth houses: citation not found in repo, needs bg_texts lookup. The ±21-day window is a project choice: citation: n/a.
+**Citation.** Multi-signification of houses: `[corpus]` BPHS (Santhanam trans.) `bphs_pg0102_c01` lists the house names (Bandhu = relatives, Putra = progeny, Ari, Yuvati = wife, Randhra = longevity, Dharma = religion, Karma = acts/livelihood, Laabha = gains, Vyaya = expenditure) and says "Ch. 11 deals with the houses in this context"; the Ch. 11 passage assigning several significations to the fourth/fifth/twelfth houses: citation not found in repo, needs bg_texts lookup. The ±21-day window is a project choice: citation: n/a. **Citation states (SS rule):** the house-name chunk `sourced_ocr_unverified`; the BPHS Ch. 11 multi-signification passage `unsourced`.
 
 ---
 
 ### Q-L3-06 — `ka_jivana_parva` FD-2/FD-3: narrow the chapter claim; a distinct no-evidence quality
+
+**SS ruling (2026-10-01):** (R) Accepted as written. Track I: TI-L3-18.
 
 **Question.** Narrow the life-arc chapter claim to what is derived, and add a distinct "no evidence" quality value? (Qualify goes to the Steward; the label changes are SS.)
 
@@ -258,11 +303,13 @@ The FD-1 half (event-class tautology) is ruled and recorded at A-3. What remains
 
 **Effect.** (a) Both: `theme_keywords`, `narrative.summary`, `parva_quality` vocabulary and the 0.0 key change; one CHECK-widening migration; needs production rebuild (REVIEW); consumers `query_life_arc.ts:158`, `kala_views/story.ts`, `ahead.ts` (consumers that switch on five values would see a sixth; not traced). (b) Narrow the claim only, no new quality: text changes, no migration; `transitional` stays ambiguous. (c) Neither: no change; the planet-generic sentence keeps asserting condition-free themes.
 
-**Citation.** Graha significations as a classical source for any theme list: see Q-L3-04 (`bphs_pg0873_c01`, seven grahas). Per-dasha effect text ("this daśā is marked by …"): citation not found in repo, needs bg_texts lookup.
+**Citation.** Graha significations as a classical source for any theme list: see Q-L3-04 (`bphs_pg0873_c01`, seven grahas). Per-dasha effect text ("this daśā is marked by …"): citation not found in repo, needs bg_texts lookup. **Citation states (SS rule):** `bphs_pg0873_c01` `sourced_ocr_unverified`; per-dasha effect text `unsourced`.
 
 ---
 
 ### Q-L3-07 — `ka_kala_darshana` FD-3: text-only correction of `narrative.context`
+
+**SS ruling (2026-10-01):** (R) Accepted as written. Track I: TI-L3-03.
 
 **Question.** Approve the text-only correction of `narrative.context`?
 
@@ -279,6 +326,8 @@ The FD-1 half (event-class tautology) is ruled and recorded at A-3. What remains
 ---
 
 ### Q-L3-08 — CF-23 and `ka_bhavishya_lekha` FD-4: unread declared edges; serve-time edges; owner of the anchor guard
+
+**SS ruling (2026-10-01):** Accepted as written. Track I: TI-L3-07, TI-L3-08.
 
 **Question.** May a provably unread declared `depends_on` edge be removed? May a service edge mean "needed at serve time"? Which side (L3 or L4) owns the anchor-existence guard?
 
@@ -299,6 +348,8 @@ The FD-1 half (event-class tautology) is ruled and recorded at A-3. What remains
 
 ### Q-L3-09 — `ka_vighnakara` FD-2/FD-3/FD-5 (residual: node convention, combustion scope)
 
+**SS ruling (2026-10-01):** (R) Modified: MEAN node (L1/engine convention; TRUE a named variant); fix the docstring now. Combustion: orbs from L0 only; scope per the L1/engine convention; where the engine defines none, emit an honest null (no invented scope); the acharya referral in the recommendation is not taken. Track I: TI-L3-29, TI-L3-30.
+
 Gandanta and Rikta are ruled and recorded at A-1 and A-2. What remains: which node convention is the L3 transit contract, and the combustion scope.
 
 **Question.** (a) Is Rahu's transit position MEAN or TRUE node for L3? (b) Which grahas' combustion at the peak date counts as an obstruction?
@@ -311,11 +362,13 @@ Gandanta and Rikta are ruled and recorded at A-1 and A-2. What remains: which no
 
 **Effect.** (a) MEAN: Rahu-based `malefic_transit` and `papakartari` rows change only where the true and mean node fall in different signs at a peak date, i.e. near sign boundaries; the true/mean node offset is of the order of 1-2° in standard ephemeris behaviour (general astronomy, not measured here); not countable offline; rides the single `ka_vighnakara` rebuild of A-1/A-2. TRUE: no change; `ka_vighnakara` stays inconsistent with L1 and the engine. (b) Docstring fix: none; widening to other grahas would add combustion rows (output change; rebuild); orbs-authority fix: none on a populated table.
 
-**Citation.** (a) A classical node doctrine is not at issue; the convention is the project's: citation: n/a (project convention, `panchang_engine/planets.py`). (b) `[corpus]` BPHS (Santhanam commentary) `bphs_pg0099_c01`: table of combustion degrees "Moon, Mars, Mercury, Jupiter, Venus, Saturn 12°, 17°, 14°, 11°, 10°, 15°" (direct) and "Rahu and Ketu should not be treated as combust although they may be longitudinally close to the Sun" (contradicts the Rahu/Ketu 9° rows in `bg_combustion_orbs` and the writer's fallback; the L0 table notes the disagreement); `bphs_pg0420_c01`: Astangata harana "does not affect Venus and Saturn in combustion" (a classical position that Saturn and Venus are exempt in that calculation).
+**Citation.** (a) A classical node doctrine is not at issue; the convention is the project's: citation: n/a (project convention, `panchang_engine/planets.py`). (b) `[corpus]` BPHS (Santhanam commentary) `bphs_pg0099_c01`: table of combustion degrees "Moon, Mars, Mercury, Jupiter, Venus, Saturn 12°, 17°, 14°, 11°, 10°, 15°" (direct) and "Rahu and Ketu should not be treated as combust although they may be longitudinally close to the Sun" (contradicts the Rahu/Ketu 9° rows in `bg_combustion_orbs` and the writer's fallback; the L0 table notes the disagreement); `bphs_pg0420_c01`: Astangata harana "does not affect Venus and Saturn in combustion" (a classical position that Saturn and Venus are exempt in that calculation). **Citation states (SS rule):** both BPHS passages in (b) are `sourced_ocr_unverified`.
 
 ---
 
 ### Q-L3-10 — CF-26: output-digest specs and the service dispatch plan
+
+**SS ruling (2026-10-01):** Accepted as written. Track I: TI-L3-12.
 
 **Question.** Land I-4/I-5 (digest specs for `ka_vighnakara`, `ka_dasha_kala`, `ka_muhurta_seva`) and extend the same to `ka_graha_sancara` and `ka_tulana` (and `bg_panchanga`, outside L3)? Plan `ka_muhurta_seva` in wave 1 (global, `super_admin`)?
 
@@ -335,6 +388,8 @@ Gandanta and Rikta are ruled and recorded at A-1 and A-2. What remains: which no
 
 ### Q-L3-11 — `ka_graha_sancara` FD-1: authorise a global-scope dispatch
 
+**SS ruling (2026-10-01):** Modified: yes in principle; the global dispatch comes to SS as a REVIEW when the time comes (not authorised now). Track I: TI-L3-36.
+
 **Question.** Authorise a global-scope dispatch of the self-test to re-measure the recorded `unhealthy` / `lit` row?
 
 **Facts.** Live registry row: `service_health = unhealthy`, `last_selftest_at = 2026-08-02`, `selftest_detail = {"checks":[{"check":"ephemeris_computes","error":"0","passed":false}],"errors":["ephemeris computation failed: 0"]}` `[db]`. The error text "0" is the `KeyError: 0` symptom fixed by commit `97fd08e1c` (2026-09-05, #1751), which also made the writer raise on an unhealthy result (`ka_graha_sancara.py:86-94`, per the brief); the recorded row predates it (`97fd08e1c` confirmed in `git log`; the raise lines `[brief]`). Scope is global (`super_admin` required); the writer only writes the asset's own health row; builder role lacks the `selftest_detail` grant `[brief]`.
@@ -348,6 +403,8 @@ Gandanta and Rikta are ruled and recorded at A-1 and A-2. What remains: which no
 ---
 
 ### Q-L3-12 — CF-28: floors for rolling-horizon assets
+
+**SS ruling (2026-10-01):** (R) Accepted: N/A by cause `rolling_horizon` with the window declared; it becomes a rule only through `NA_RULE_DECISIONS` with SS approval. Track I: TI-L3-13, TI-L3-35.
 
 **Question.** How is a floor declared for a rolling-horizon asset: N/A by cause, or restated at a pinned as-of?
 
@@ -363,6 +420,8 @@ Gandanta and Rikta are ruled and recorded at A-1 and A-2. What remains: which no
 
 ### Q-L3-13 — `ka_moorti_nirnaya` / `kala_tithi_pravesha`: notify Pravāha before a rebuild?
 
+**SS ruling (2026-10-01):** Accepted as written. Track I: TI-L3-37.
+
 **Question.** Does SS notify Pravāha before any wave that rebuilds `ka_moorti_nirnaya` (Pravāha-owned python reads its rows and `upstream_fingerprint`)? Same for `kala_tithi_pravesha`?
 
 **Facts.** Pravāha-owned readers `[code]`: `services/gochara_v3/mechanisms/w22_moorti_nirnaya.py`, `gochara_v3/context.py:582-605` (`kala_moorti_nirnaya` rows), `services/ka_vedha_gochara/freshness.py:83-102` (a freshness check on the table's `upstream_fingerprint`); `kala_tithi_pravesha` by `gochara_v3/mechanisms/w27_annual_stack.py`. `ka_moorti_nirnaya` is `lit`/fresh, not in the rebuild plan's launch set, and flips `stale` if `bg_transit_rules` completes with output changed `[brief]`. Precedent: SS L0 Q5 — before any wave touching `bg_ephemeris` or `bg_texts`, SS notifies Pravāha `[brief]`.
@@ -377,6 +436,8 @@ Gandanta and Rikta are ruled and recorded at A-1 and A-2. What remains: which no
 
 ### Q-L3-14 — `ka_tithi_pravesha` FD-1: what is the technique, and what is it called?
 
+**SS ruling (2026-10-01):** Accepted as written (keep the computation, correct the label; no birth-tithi recompute without a source). Track I: TI-L3-25.
+
 **Question.** Does the asset compute Tithi-Praveśa (birth-tithi recurrence) or a lunar return; rename, recompute, or serve both?
 
 **Facts.** The module defines the technique as the Moon's return to its natal sidereal LONGITUDE nearest each solar birthday (`services/ka_tithi_pravesha/logic.py:1-20`), taken from "established Jyotiṣa doctrine per the CLAUDECODE task brief's explicit framing" and a glossary line "Tithi-Praveśa (annual lunar-return chart)"; it states that no spec beyond a one-line registry item exists `[code]`. A lunar return to a longitude is not a recurrence of the birth tithi (a Sun-Moon elongation); that reading is an inference from the name. The rows are honest: `classical_source_citation = 'not_in_corpus'` on every row and `verification_pass_status` is earned `[code][brief]`. Reader: Pravāha's `w27_annual_stack.py` reads the table by name `[code]`. Corpus search of `classical_text_chunks` for tithi-pravesha / pravesa / lunar return / birth-tithi returned only a Muhurta Chintamani line on shunning the birth-tithi (`muhurta_chintamani_pg0026_c01`), not a definition `[corpus]`.
@@ -385,11 +446,13 @@ Gandanta and Rikta are ruled and recorded at A-1 and A-2. What remains: which no
 
 **Effect.** (a) Rename the label only: text only; no rebuild; descriptor text, registry description, module header change. (b) Recompute as birth-tithi recurrence: all 120 windows change; needs production rebuild (REVIEW); needs a source first. (c) Serve both as separate labelled series: new asset or table, new floor, Pravāha impact; not recommended without a source. (d) Leave as is: the name and the computation keep disagreeing.
 
-**Citation.** citation: not found in repo, needs bg_texts lookup (for both Tithi-Praveśa and any lunar-return doctrine).
+**Citation.** citation: not found in repo, needs bg_texts lookup (for both Tithi-Praveśa and any lunar-return doctrine). **Citation state (SS rule):** `unsourced`.
 
 ---
 
 ### Q-L3-15 — `ka_yojaka` ownership (and `ka_moorti_nirnaya`)
+
+**SS ruling (2026-10-01):** Accepted as written.
 
 **Question.** Does the Saṅgam brief claim `ka_yojaka`, which would move it from this set to A.L3f evaluation? Is `ka_moorti_nirnaya` (read by `ka_gochara`) treated as non-family?
 
@@ -405,6 +468,8 @@ Gandanta and Rikta are ruled and recorded at A-1 and A-2. What remains: which no
 
 ### Q-L3-16 — do the L0 rulings carry to L3?
 
+**SS ruling (2026-10-01):** (R) Accepted as written (provisional until J1).
+
 **Question.** Do SS's L0 rulings Q1 (completion by count), Q2 (Dens applicability and `uniform_authority`), Q11 (Build.history window) and Q13 (Carr D1 / N/A for ratified judgment seeds) carry to L3? Several L3 cells depend on them.
 
 **Facts.** The rulings, as recorded in the L0 INDEX §9 `[brief]`: Q1 (R) a converged rerun with `rows_written = 0` reads Build.completion PASS only if the writer declares the changed-rows convention AND count_integrity passes on populated rows; Q2 (R) Dens applies wherever a served surface is reached, `uniform_authority: true` lets a uniform vocabulary pass on facets without a tier, mixed-authority tables need a real tier, "no served surface" stays N/A; Q11 Build.history counts only runs since the last change to the writer or the registry row; Q13 (R) Carr D1 reads PASS only if every row matches, ratified judgment seeds get check-level N/A by cause `ratified_judgment`. In L3: the four services have no served select (Dens NO_DETECTOR) and no table; 13 non-family assets' latest recorded error is a cascade `BLOCKED` or a since-fixed `KeyError` (Build.history); `ka_tulana`'s native-ratified composite weights are a ratified judgment (`ranker.py:4`) `[brief][code]`. The L3 Build.completion FAILs are cascade-shaped (stored count 0 beside `rows_written > 0`), which Q1's count-based rule already reads correctly `[brief]`.
@@ -418,6 +483,8 @@ Gandanta and Rikta are ruled and recorded at A-1 and A-2. What remains: which no
 ---
 
 ### Q-L3-17 — evaluation-only briefs for `ka_sangam` and `ka_kshetra`
+
+**SS ruling (2026-10-01):** Accepted as written (variance (7) acknowledged).
 
 **Question.** Keep the two evaluation-only briefs for the family-owned assets in this set, or leave them to A.L3f?
 
@@ -433,6 +500,8 @@ Gandanta and Rikta are ruled and recorded at A-1 and A-2. What remains: which no
 
 ### Q-L3-X1 — `ka_vighnakara` FD-4 / CF-29: remove the day-of-month proxy and record detector status (routed to SS by INDEX §8, no Q id)
 
+**SS ruling (2026-10-01):** (R) Accepted as written. The design for root-found obstruction windows plus the fallback removal is a separate design REVIEW already being written. Track I: TI-L3-28.
+
 **Question.** When the panchāṅga engine is unavailable or raises, should the detector emit nothing and record `detector_status`, instead of computing a tithi from the day of the month?
 
 **Facts.** `tithi = (peak_date.day % 15) or 15` (`ka_vighnakara.py:717-719`, comment "less accurate but better than nothing") is a calendar-arithmetic value with no astronomical basis; the stored `source` is `'panchang_engine' if muhurta_service else 'day_mod_proxy'` (`:732`), so a proxy tithi computed after an engine exception is stamped as engine-sourced; the docstring promises "real tithi, not day-mod arithmetic" (`:9`); each of the five detectors runs inside `except Exception: logger.debug` (`:544-584`), so a crashed detector equals a clean negative `[code]`. Stored: all 130 Abhinandan panchanga rows carry `source = panchang_engine`, so no stored row came from the proxy `[db]`. CLAUDE.md B.10 (no fabricated computation), §N.7 items 4 and 6.
@@ -447,30 +516,30 @@ Gandanta and Rikta are ruled and recorded at A-1 and A-2. What remains: which no
 
 ## SUMMARY TABLE (one page)
 
-| id | short question | recommendation |
-|---|---|---|
-| A-1 (ruled) | Gandanta window (last 3°20' of water signs + first 3°20' of fire signs) | Record. Promote the L1 `check_gandanta` (3°20' both sides) to one shared L0 module with BPHS chunk citations; `ka_vighnakara` reads it. One rebuild with A-2. |
-| A-2 (ruled) | Rikta set | Record. Read the engine set via `compute_tithi_attrs(...).anga_type == "Rikta"`; citation Yavana Jataka `yavana_jataka_pg0926_c02`. |
-| A-3 (ruled, REVIEW design) | `ka_taranga` event-class tautology | Option R: retire batch event-class rows (92,412 → 43,488 per chart); F and T as alternatives. |
-| A-4 (ruled) | `ka_tulana` rejects Mode C/D | Accept A/B/C/D; `mode` is not a scoring input; no live caller, so no served change. Evidence E1-E5 recorded. |
-| Q-L3-01 | CF-27 constants and defaults | Split: option 1 for thresholds/weights; option 2 (drop and renormalise) for stand-ins of uncomputed terms; option 3 follows the L2 CF-20 ruling. |
-| Q-L3-02 | `ka_avadhi` honest `citations` | Yes: `dasha_row_id` + `attribution_state` (L0 Q3 pattern), all `unsourced` until Track I checks BPHS Ch. 46 candidates. |
-| Q-L3-03 | `ka_taranga` ayanamsha pin (residual of FD-1/FD-2) | Yes, pin `lahiri_chitrapaksha`; zero stored changes on all 3 charts. |
-| Q-L3-04 | Canonical graha → domain table | One shared L0 table whose values are in `CANONICAL_DOMAINS`; delete both local tables; Rahu/Ketu `unsourced`. |
-| Q-L3-05 | Bhavishya keyword precedence; ±21 days | Acharya-ruled explicit map, ambiguity → `general`; ratify ±21 days as a named pre-registered window with a decision id. |
-| Q-L3-06 | `ka_jivana_parva` claim and no-evidence quality | Yes to both (drop generic themes; add `no_convergence_evidence`; one CHECK migration); after FD-1. |
-| Q-L3-07 | `ka_kala_darshana` context text fix | Approve; latent, 0 of 750 stored rows change. |
-| Q-L3-08 | Remove unread edges; serve-time edges; anchor guard owner | Remove 7 unread edges; serve-time is not an edge; guard on the L4 side. |
-| Q-L3-09 (residual) | Node convention; combustion scope | MEAN node (L1/engine convention; TRUE as named variant); fix docstring now, scope to the acharya; orbs from L0 only. |
-| Q-L3-10 | Digest specs for the services | Yes to I-4/I-5, and to `ka_graha_sancara` and `ka_tulana` after a determinism check; `ka_muhurta_seva` in wave 1. |
-| Q-L3-11 | Dispatch `ka_graha_sancara` self-test | Yes (global, `super_admin` or after grant); stored `unhealthy` predates the 2026-09-05 fix. |
-| Q-L3-12 | Floor for rolling-horizon assets | N/A by cause `rolling_horizon`, window declared; pin and record as-of separately. |
-| Q-L3-13 | Notify Pravāha before moorti/tithi rebuilds | Yes (L0 Q5 precedent). |
-| Q-L3-14 | Tithi-Praveśa vs lunar return | Keep the computation, correct the label; no birth-tithi recompute without a source. |
-| Q-L3-15 | `ka_yojaka` / `ka_moorti_nirnaya` ownership | Both stay non-family; Saṅgam dependency is a build-order fact. |
-| Q-L3-16 | Do L0 rulings Q1/Q2/Q11/Q13 carry to L3 | Yes, provisionally, with the service-specific readings stated. |
-| Q-L3-17 | Keep the sangam/kshetra evaluation-only briefs | Keep as evidence inputs to A.L3f; acknowledge variance (7). |
-| Q-L3-X1 | Remove the day-of-month tithi proxy; record detector status | Yes; flag-only semantics for an absent detector until ruled. |
+| id | short question | recommendation | SS ruling (2026-10-01) |
+|---|---|---|---|
+| A-1 (ruled) | Gandanta window (last 3°20' of water signs + first 3°20' of fire signs) | Record. Promote the L1 `check_gandanta` (3°20' both sides) to one shared L0 module with BPHS chunk citations; `ka_vighnakara` reads it. One rebuild with A-2. | Accepted (R); 0°48' only a named stricter variant |
+| A-2 (ruled) | Rikta set | Record. Read the engine set via `compute_tithi_attrs(...).anga_type == "Rikta"`; citation Yavana Jataka `yavana_jataka_pg0926_c02`. | Accepted (R) |
+| A-3 (ruled, REVIEW design) | `ka_taranga` event-class tautology | Option R: retire batch event-class rows (92,412 → 43,488 per chart); F and T as alternatives. | Option R (R); design REVIEW |
+| A-4 (ruled) | `ka_tulana` rejects Mode C/D | Accept A/B/C/D; `mode` is not a scoring input; no live caller, so no served change. Evidence E1-E5 recorded. | Accepted |
+| Q-L3-01 | CF-27 constants and defaults | Split: option 1 for thresholds/weights; option 2 (drop and renormalise) for stand-ins of uncomputed terms; option 3 follows the L2 CF-20 ruling. | Accepted (R) |
+| Q-L3-02 | `ka_avadhi` honest `citations` | Yes: `dasha_row_id` + `attribution_state` (L0 Q3 pattern), all `unsourced` until Track I checks BPHS Ch. 46 candidates. | Accepted (R) |
+| Q-L3-03 | `ka_taranga` ayanamsha pin (residual of FD-1/FD-2) | Yes, pin `lahiri_chitrapaksha`; zero stored changes on all 3 charts. | Accepted |
+| Q-L3-04 | Canonical graha → domain table | One shared L0 table whose values are in `CANONICAL_DOMAINS`; delete both local tables; Rahu/Ketu `unsourced`. | Accepted (R) |
+| Q-L3-05 | Bhavishya keyword precedence; ±21 days | Acharya-ruled explicit map, ambiguity → `general`; ratify ±21 days as a named pre-registered window with a decision id. | Modified (R): SS rules; N-57 window |
+| Q-L3-06 | `ka_jivana_parva` claim and no-evidence quality | Yes to both (drop generic themes; add `no_convergence_evidence`; one CHECK migration); after FD-1. | Accepted (R) |
+| Q-L3-07 | `ka_kala_darshana` context text fix | Approve; latent, 0 of 750 stored rows change. | Accepted (R) |
+| Q-L3-08 | Remove unread edges; serve-time edges; anchor guard owner | Remove 7 unread edges; serve-time is not an edge; guard on the L4 side. | Accepted |
+| Q-L3-09 (residual) | Node convention; combustion scope | MEAN node (L1/engine convention; TRUE as named variant); fix docstring now, scope to the acharya; orbs from L0 only. | Modified (R): MEAN; L0 orbs; honest null |
+| Q-L3-10 | Digest specs for the services | Yes to I-4/I-5, and to `ka_graha_sancara` and `ka_tulana` after a determinism check; `ka_muhurta_seva` in wave 1. | Accepted |
+| Q-L3-11 | Dispatch `ka_graha_sancara` self-test | Yes (global, `super_admin` or after grant); stored `unhealthy` predates the 2026-09-05 fix. | Yes in principle; dispatch returns as REVIEW |
+| Q-L3-12 | Floor for rolling-horizon assets | N/A by cause `rolling_horizon`, window declared; pin and record as-of separately. | Accepted (R); rule only via NA_RULE_DECISIONS |
+| Q-L3-13 | Notify Pravāha before moorti/tithi rebuilds | Yes (L0 Q5 precedent). | Accepted |
+| Q-L3-14 | Tithi-Praveśa vs lunar return | Keep the computation, correct the label; no birth-tithi recompute without a source. | Accepted |
+| Q-L3-15 | `ka_yojaka` / `ka_moorti_nirnaya` ownership | Both stay non-family; Saṅgam dependency is a build-order fact. | Accepted |
+| Q-L3-16 | Do L0 rulings Q1/Q2/Q11/Q13 carry to L3 | Yes, provisionally, with the service-specific readings stated. | Accepted (R) |
+| Q-L3-17 | Keep the sangam/kshetra evaluation-only briefs | Keep as evidence inputs to A.L3f; acknowledge variance (7). | Accepted |
+| Q-L3-X1 | Remove the day-of-month tithi proxy; record detector status | Yes; flag-only semantics for an absent detector until ruled. | Accepted (R) |
 
 ---
 
@@ -480,7 +549,7 @@ Gandanta and Rikta are ruled and recorded at A-1 and A-2. What remains: which no
 - **Documents outside the repository:** `SUVARNA_L3_FOCUS_FAMILIES_v1_0.md`, Track A brief §6/§10, the rebuild plan, `reg_state.json`, `/Users/Dev/suvarna-evidence/*`. Statements that rest on them are tagged `[brief]`.
 - **L2 CF-20 ruling status** (Q-L3-01): not visible in this branch.
 - **Counts that need a re-run of code, not a read:** how many Rikta rows (19/24/29) a corrected set would add, how many Gandanta rows would fire, how many Rahu-based rows change under MEAN node. Only arithmetic bounds or none are given.
-- **Corpus citations** are text-search hits in OCR text, read by me, not checked against the printed books; a passage for the fire-sign half of Gandanta in degrees, for Rahu/Ketu significations, for Mudda/Naisargika/chara_karaka periods, for house multi-signification (BPHS Ch. 11), for Tithi-Praveśa and for the writer's own cited "Muhurta-Chintamani Rikta" and "Phaladeepika ch.2" were not found. The `reference_karakas` "BPHS Ch.27" label is uncorroborated.
+- **Corpus citations** are text-search hits in OCR text, read by me, not checked against the printed books; a passage for the fire-sign half of Gandanta in degrees, for Rahu/Ketu significations, for Mudda/Naisargika/chara_karaka periods, for house multi-signification (BPHS Ch. 11), for Tithi-Praveśa and for the writer's own cited "Muhurta-Chintamani Rikta" and "Phaladeepika ch.2" were not found. The `reference_karakas` "BPHS Ch.27" label is uncorroborated. Under the SS citations rule: the hits are `sourced_ocr_unverified`; every passage listed above as not found is `unsourced`.
 - **The "no live caller" finding** for the I-11 ranker rests on a repository grep; external callers cannot be excluded.
 - **The Q-L3-12 and Q-L3-08 details** on `ka_kota_chakra` / `ka_moorti_nirnaya` blast radius, Nirmāṇa manifests and detector rules are quoted from the briefs.
 - **Whether Abhinandan's `kala_bhavishya` rows are referenced by `phala_anchors`** (Q-L3-05 refusal caveat): not measured.
@@ -530,3 +599,25 @@ select asset_id from asset_output_digest_specs where asset_id like 'ka_%';
 select asset_id, service_health, last_selftest_at, selftest_detail from asset_registry where asset_id in ('ka_graha_sancara','ka_tulana');
 -- corpus (all citations): classical_text_chunks(text_id, chunk_id, content_en) searched with ~* patterns
 ```
+
+
+## Track I items arising from the rulings (continuing the numbering of INDEX section 10)
+
+Original items TI-L3-01 to TI-L3-25 keep their ids; their status after the rulings is in `INDEX.md` section 10. New items start at TI-L3-26. Class set as in the INDEX: registry / declaration / writer code / detector / research. All are provisional until J1; (R) marks an output-changing or verdict-defining ruling.
+
+| id | asset(s) | item | class | rebuild | from |
+|---|---|---|---|---|---|
+| TI-L3-26 | ka_vighnakara (+ import in the L1 writer `ga_sensitive_degree_writer.py`) | ONE shared L0 Gandanta module: canonical width 3°20' each side (one pāda); 0°48' only as a named stricter variant, never the default; each width cited or `unsourced`; `ka_vighnakara` reads it; `reason` text built from the returned zone | writer code (+ L0 module) | y | A-1 (R); replaces the Gandanta part of TI-L3-23 |
+| TI-L3-27 | ka_vighnakara | Rikta set from the engine accessor (`compute_tithi_attrs(...).anga_type == "Rikta"`, `[4, 9, 14, 19, 24, 29]`); drop tithi 15; fix docstrings and the stored citation | writer code (output) | y | A-2 (R); replaces the Rikta part of TI-L3-23 |
+| TI-L3-28 | ka_vighnakara | root-found obstruction windows plus removal of the day-of-month proxy and an additive `detector_status` (flag only, never score, for an absent detector); design REVIEW already being written | writer code (design REVIEW) | y | X1 (R); overlaps TI-L3-16 |
+| TI-L3-29 | ka_vighnakara | MEAN node (`swe.MEAN_NODE`) as the L3 transit contract, TRUE a named variant, node stated in the row `source`; docstring fixed now | writer code (output) | y | Q-L3-09 (R) |
+| TI-L3-30 | ka_vighnakara | combustion: orbs from L0 `bg_combustion_orbs` only (delete the local copy and the 8.0 default; raise when empty); scope per the L1/engine convention; honest null where the engine defines none | writer code | cond | Q-L3-09 |
+| TI-L3-31 | ka_taranga | design REVIEW to retire the batch event-class rows (92,412 -> 43,488 rows per chart): state which served surfaces read them, scope the batch `DELETE` so `record_evidence` rows survive, change the kernel branch, restate the floor | writer code (design REVIEW) | y | A-3 (R); supersedes the FD-1 half of TI-L3-04 |
+| TI-L3-32 | ka_tulana | accept modes A, B, C, D in `_validate_window` (the table's CHECK set); failing-first test with C and D | service code | n | A-4 |
+| TI-L3-33 | ka_bhavishya_lekha | the +/-21 days declared as a NAMED PRE-REGISTERED window (decision N-57) in the brief (done) and its decision id surfaced in `falsifiability`; never tuned after outcomes | writer code + declaration | y | Q-L3-05 (R) |
+| TI-L3-34 | all L3 assets with a citation column | apply the citations rule: states `sourced` (passage-verified) / `sourced_ocr_unverified` / `unsourced` (and `refuted` where used); only passage-verified `sourced` counts toward a Ldgr PASS; relabel existing citations | declaration / detector | n | citations rule |
+| TI-L3-35 | ka_kota_chakra, ka_moorti_nirnaya | submit the `rolling_horizon` N/A rule through `NA_RULE_DECISIONS` for SS approval; window declared in the registry; as-of pin recorded | declaration + detector | n | Q-L3-12 (R) |
+| TI-L3-36 | ka_graha_sancara | REVIEW packet for SS for the global-scope self-test dispatch | research (process REVIEW) | dispatch | Q-L3-11 |
+| TI-L3-37 | ka_moorti_nirnaya, ka_tithi_pravesha | SS notifies Pravāha before any wave that rebuilds these assets | research (process REVIEW) | n | Q-L3-13 |
+
+**Existing items accepted as designed or amended by the rulings:** TI-L3-03 (Q-L3-07, (R)), TI-L3-04 (FD-2 pin accepted; FD-1 half superseded by TI-L3-31), TI-L3-06 (Q-L3-05: SS rules the map), TI-L3-07 and TI-L3-08 (Q-L3-08), TI-L3-12 (Q-L3-10), TI-L3-13 (Q-L3-12, with TI-L3-35), TI-L3-14 (Q-L3-02, (R)), TI-L3-15 (Q-L3-04, (R)), TI-L3-16 (Q-L3-X1, see TI-L3-28), TI-L3-17 (Q-L3-01), TI-L3-18 (Q-L3-06, (R)), TI-L3-23 (superseded by TI-L3-26 to TI-L3-30), TI-L3-25 (Q-L3-14, rename branch).
