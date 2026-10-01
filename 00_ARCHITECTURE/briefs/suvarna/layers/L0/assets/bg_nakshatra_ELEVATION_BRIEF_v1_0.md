@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-16]
 ledger_gap_ids: [bg_nakshatra-Idem.pattern, bg_nakshatra-Earn.build_record, bg_nakshatra-Cost.baseline, bg_nakshatra-Complete.depth, bg_nakshatra-Carr.detector]
 ---
 # bg_nakshatra — Nakshatra reference (28 nakshatras incl. Abhijit, 108 padas, compatibility matrices; 2,857 rows)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -73,24 +75,24 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 ## 3 · Disposition
 
-**keep (P)** — no failing cell; the identity observation is a Vocab question (rule 1/2: every reference identity resolves through the set), raised below rather than registered because no detector measures it.
+**keep (P)** — no failing cell; the identity observation is a Vocab question (rule 1/2: every reference identity resolves through the set), decided by SS (Q4) as a declared exception; not registered as a gap because no detector measures it.
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
-### FD-1 · Identity: Abhijit between the reference table and the ontology
+### FD-1 · Abhijit: declared exception (27-id class stays canonical)
 
 - **Answers:** no census cell and no ledger row (no detector exists); read from the seed description (28) against layer instance §2.6 (nakshatra 27); CF-09
-- **Change:** first confirm by a read-only join census whether the 28th reference row (Abhijit) has an ontology identity. If it has none, either add the `nakshatra` ontology row (an identity-mapping change: a new id, not an alias) or declare Abhijit a muhūrta-only identity held outside the 27-set, so a consumer joining on `canonical_id` does not drop or invent it. This is a domain-flavoured declaration (Abhijit’s status), so the choice is SS’s.
+- **Change:** decided (SS 2026-10-01, Q4): Abhijit (the 28th reference row) is a declared exception (classically intercalary); the 27-id `nakshatra` ontology class stays canonical and no ontology row is added. Record the exception in the declarations so a consumer joining on `canonical_id` does not drop or invent it; a read-only join census confirms exactly one reference id (Abhijit) outside the 27.
 - **Files / declaration / migration:** a read-only census query (tier-independent) then, if chosen, `brahmagyan/l0_ontology.py` (ENTITIES) + `l0_nakshatra.py`
 - **Failing-first test and mutation:** failing-first: the join census reports the reference ids with no ontology row (1 expected: Abhijit); after the fix it reports 0 or the declared exception; mutation: add an unknown id → reported
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** census only: none. Adding an ontology row: needs production rebuild of bg_ontology (identity-mapping class, real invalidation path)
+- **Rebuild:** none (declaration)
 - **Gate it moves:** Vocab (rules 1-2)
-- **Fix class:** registry/declaration only (census) / data (if a row is added); **buildable before J1:** tier-dependent: Vocab rules 1-2 wording and TGH-T2-12
-- **Question for SS:** Abhijit: an ontology identity (27 → 28) or a declared exception?
+- **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (decided)
+- **Decision:** ANSWERED by SS 2026-10-01 (Q4): the normalisation rule lives in the `bg_ontology` writer, the one authority; the vocabulary release id goes in the first wave if it is cheap; for the 11 two-class ids take the recommended option (a, class-aware resolvers) unless it changes served ids (then REVIEW to SS); of bhrigu_samhita, jaimini_sutram, lal_kitab_text keep any with a consumer and remove the rest; Abhijit is a declared exception (classically intercalary) and the 27-id class stays canonical.
 
 ### FD-2 · Carr detector — D3 on the compatibility matrix
 
@@ -146,6 +148,12 @@ Natural key `nakshatra_id` for `reference_nakshatra` (census, 0 duplicates); the
 - **Carriage check chosen (T4 §4.1; one only):** D3 (recompute sampled compatibility scores) and D1 for the base tables.
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Abhijit: ontology identity or declared exception?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q4): the normalisation rule lives in the `bg_ontology` writer, the one authority; the vocabulary release id goes in the first wave if it is cheap; for the 11 two-class ids take the recommended option (a, class-aware resolvers) unless it changes served ids (then REVIEW to SS); of bhrigu_samhita, jaimini_sutram, lal_kitab_text keep any with a consumer and remove the rest; Abhijit is a declared exception (classically intercalary) and the 27-id class stays canonical.
+2. CF-09: ANSWERED by SS 2026-10-01 (Q4): the normalisation rule lives in the `bg_ontology` writer, the one authority; the vocabulary release id goes in the first wave if it is cheap; for the 11 two-class ids take the recommended option (a, class-aware resolvers) unless it changes served ids (then REVIEW to SS); of bhrigu_samhita, jaimini_sutram, lal_kitab_text keep any with a consumer and remove the rest; Abhijit is a declared exception (classically intercalary) and the 27-id class stays canonical. ANSWERED by SS 2026-10-01 (Q5): authority-side declaration with NO stored-value change: `bg_ephemeris` declares `node: TRUE`; consumers needing MEAN must not read node values from it (a check, Track I item); body-name normalisation is declared the same way. BEFORE any wave touches `bg_ephemeris` or `bg_texts`, SS notifies Pravāha (Exec sends SS an ASK first).
+3. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-16.

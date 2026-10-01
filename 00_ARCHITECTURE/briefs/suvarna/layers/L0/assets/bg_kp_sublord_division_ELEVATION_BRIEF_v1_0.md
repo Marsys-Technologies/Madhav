@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-06]
 ledger_gap_ids: [bg_kp_sublord_division-Idem.pattern, bg_kp_sublord_division-Earn.build_record, bg_kp_sublord_division-Cost.baseline, bg_kp_sublord_division-Carr.detector, bg_kp_sublord_division-Build.history]
 ---
 # bg_kp_sublord_division — KP sub-lord division of the sidereal zodiac (249 rows)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -73,7 +75,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — the table is a derivation with its own documented cross-check, all applicable census cells PASS except the history record; it is the best candidate in L0 for a deterministic D3.
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
@@ -118,7 +120,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* Earn.build_record / Cost.baseline NO_DETECTOR (instrument absent); no change to this asset.
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D3 above
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* N/A by absence of a served surface
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* N/A by absence of a served surface
 - **CF-10** — Build.history PARTIAL is a record of past errors; no edit changes it. *This asset:* 1 abort on record; latest run complete
 
 ## 5 · Semantic fingerprint contract (for E5.5)
@@ -130,3 +132,13 @@ Natural key `(table_version, division_index)` (census, 0 duplicates). Upsert; th
 - **Preserved kernel:** the 249-fold geometry (243 + 6), its ayanāṃśa-invariant sidereal storage and the disclosed sub-sub/pāda scope limit.
 - **Carriage check chosen (T4 §4.1; one only):** D3 (re-derivation from the Vimśottarī proportions).
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
+
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
+
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+2. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+3. CF-10: ANSWERED by SS 2026-10-01 (Q11): yes: Build.history counts only runs since the last change to the writer or the registry row.
+
+**Track I items arising (see INDEX section 8):** TI-L0-06.

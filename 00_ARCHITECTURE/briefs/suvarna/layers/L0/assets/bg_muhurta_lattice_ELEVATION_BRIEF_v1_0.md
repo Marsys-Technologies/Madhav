@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-01, TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-25]
 ledger_gap_ids: [bg_muhurta_lattice-Build.completion, bg_muhurta_lattice-Earn.build_record, bg_muhurta_lattice-Cost.baseline, bg_muhurta_lattice-Dens.served, bg_muhurta_lattice-Carr.detector]
 ---
 # bg_muhurta_lattice — Muhūrta boundary/factor lattice (173,219 rows; rolling ~5-year horizon)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -66,7 +68,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | bg_muhurta_lattice-Build.completion | Build | real (T4 §4.2 check 6) | see the fix design \| ledger: measured: build record says rows_written=0 against live=173219 / required: the Build gate's claim |
 | bg_muhurta_lattice-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
 | bg_muhurta_lattice-Cost.baseline | Cost | information | same absent instrument; CF-05 |
-| bg_muhurta_lattice-Dens.served | Dens | real as measured at rev 1; applicability and re-measure pending | CF-04 \| ledger: measured: 3 module(s): index.ts, query_muhurta_lattice.ts, query_sky_calendar.ts; declaring density_contract: 0 / required: the Dens gate's claim |
+| bg_muhurta_lattice-Dens.served | Dens | real as measured at rev 1 (Dens applies per SS Q2; offline re-measure in INDEX section 9.1) | CF-04 \| ledger: measured: 3 module(s): index.ts, query_muhurta_lattice.ts, query_sky_calendar.ts; declaring density_contract: 0 / required: the Dens gate's claim |
 | bg_muhurta_lattice-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
 | census: Null/Narr (declarations) | Null, Narr | detector | `prose_fields` undeclared; CF-06 |
 
@@ -74,22 +76,21 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — every applicable cell PASS except the changed-rows `rows_written = 0` reading (CF-01) and the Dens question. The wall-clock dependence of the content is a fingerprint design point, not a defect.
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
-### FD-1 · Build.completion: converged rerun reports 0 changed rows
+### FD-1 · Build.completion: declare the changed-rows convention (CF-01 option A, R)
 
 - **Answers:** census `Build.completion` FAIL ("rows_written=0 against live=…"); CF-01
-- **Change:** apply CF-01 option A (or B after the ruling): the writer states the `ON CONFLICT … DO UPDATE` convention at `:115`; declaration + detector rule
-- **Files / declaration / migration:** `platform/scripts/governance/asset_census.py` (Build.completion) + the asset’s declarations entry; option B instead edits the seed function’s returned counts
+- **Change:** decided (SS 2026-10-01, Q1, R, PROVISIONAL until the J1 review): declare the changed-rows convention for this writer (the writer states the `ON CONFLICT … DO UPDATE` convention at `:115`; declaration + detector rule); Build.completion then reads PASS only if the convention is declared AND count_integrity PASSes on populated rows; completion is proven by the count, not by `rows_written`.
+- **Files / declaration / migration:** `asset_declarations.json` entry (convention + writer `file:line`); the verdict rule is `platform/scripts/governance/asset_census.py` (E6 detector work); no writer change
 - **Failing-first test and mutation:** see CF-01
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** none (option A, recommended); option B would write a new record by rebuilding this asset (idempotent, no data change)
+- **Rebuild:** none (declaration + detector rule; no rebuild)
 - **Gate it moves:** Build (completion)
-- **Fix class:** detector/tooling (A) or writer code (B); **buildable before J1:** tier-dependent: T4 §4.2 check 6 wording
-- **Question for SS:** CF-01: is a converged-rerun `rows_written = 0` on a declared changed-rows writer a PASS?
+- **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (decided; the criterion change is provisional until the J1 review)
 
 ### FD-2 · Fingerprint contract for a rolling horizon
 
@@ -130,24 +131,24 @@ Approver under Track A brief §10: **Steward (G16)**.
 ### FD-5 · Dens: declare density on the served module(s)
 
 - **Answers:** census `Dens.served` FAIL (saved, rev 1): 3 modules: `index.ts`, `query_muhurta_lattice.ts`, `query_sky_calendar.ts`; CF-04
-- **Change:** per CF-04: declare `density_contract` where the module paginates or facets, after the applicability ruling
+- **Change:** decided (SS 2026-10-01, Q2): Dens applies because this asset reaches a served surface. Declare `density_contract` facets (`paginated`, `facets`, `empty_reason`) on the module(s); if the table is a uniform-authority vocabulary also declare `uniform_authority: true` in the declarations (R, PROVISIONAL until the J1 review); a mixed-authority table needs a real tier column.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
-- **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 + N-22 applicability
-- **Question for SS:** Does Dens apply to this reference table at all (it carries no verification tier)?
+- **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
+- **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
 - **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* Earn.build_record / Cost.baseline NO_DETECTOR (instrument absent); no change to this asset.
-- **CF-01** — Build.completion for converged reruns (rows_written = changed rows, not rows present). *This asset:* rows_written = 0 on a converged rerun
+- **CF-01** — Build.completion for converged reruns (rows_written = changed rows): option A decided (R). *This asset:* rows_written = 0 on a converged rerun
 - **CF-03** — Registry correction batch (one surgical migration + seed literals). *This asset:* floor 164,575 vs live 173,219 (optional refresh; information only)
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D3 above
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* 3 modules
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* 3 modules
 - **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* rolling-horizon upsert, no DELETE found; accumulation is by design
 
 ## 5 · Semantic fingerprint contract (for E5.5)
@@ -160,6 +161,15 @@ Natural key `(factor_family, factor_key, start_utc)` (census, 0 duplicates). Sem
 - **Carriage check chosen (T4 §4.1; one only):** D3 (a second route for sampled span edges; same-engine reruns labelled as reproduction).
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Does the lattice's floor follow the achieved count (a refresh) or stay a historical figure? (information only)
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. Not in the SS answer list (an information-only or design-step point): no decision needed; it stays as written, not escalated.
+2. CF-01: ANSWERED by SS 2026-10-01 (Q1): CF-01 option A (R, PROVISIONAL until the J1 review): a converged rerun with `rows_written = 0` reads Build.completion PASS ONLY IF the writer declares the changed-rows convention AND count_integrity PASSes on populated rows; completion is proven by the count, not by `rows_written`.
+3. CF-03: ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch.
+4. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+5. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+6. CF-12: ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
+
+**Track I items arising (see INDEX section 8):** TI-L0-01, TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-25.
