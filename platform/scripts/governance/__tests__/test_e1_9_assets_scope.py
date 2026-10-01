@@ -303,8 +303,9 @@ def test_rollup_of_a_scoped_census_skips_the_whole_registry_id_check(monkeypatch
     seen = {}
     monkeypatch.setattr(ac, "load_asset_declarations", lambda registry_ids=None: seen.setdefault("ids", registry_ids) or {})
     census = {k: ac.measure(k, assets=["bg_a"]) for k in ac.LAYERS}
+    seen.clear()                      # measure() itself reads the declarations file; only the rollup's call is under test
     ac.build_rollup_output(census)
-    assert seen["ids"] is None
+    assert seen == {"ids": None}
 
 
 def test_load_full_census_refuses_every_scoped_shape(tmp_path):
@@ -510,3 +511,43 @@ def test_cli_at_file_form(monkeypatch, tmp_path):
     f.write_text("bg_b\nbg_d\n", encoding="utf-8")
     rc, out = _run_main(monkeypatch, tmp_path, ["--assets", f"@{f}"])
     assert out["scope"]["assets"] == ["bg_b", "bg_d"]
+
+
+# ═════════════════════ mutation-found gaps (each test kills a mutant of the scoping logic) ═════════════════════
+
+def test_emit_assets_narrows_a_scoped_census_to_the_intersection(tmp_path, monkeypatch):
+    """A census labelled for {bg_a, bg_b} emitted with assets=[bg_a] writes bg_a only (intersection, never union)."""
+    monkeypatch.setattr(ac, "CTRL", tmp_path)
+    census = _census("L0", [("bg_a", "Build.dag", "FAIL"), ("bg_b", "Build.dag", "FAIL")], scope=["bg_a", "bg_b"])
+    ac.emit_gaps(census, assets=["bg_a"])
+    assert [json.loads(x)["asset"] for x in _raw(tmp_path).decode().splitlines()] == ["bg_a"]
+
+
+def test_scoped_asset_with_an_out_of_scope_dependency_measures_like_a_full_run(monkeypatch, tmp_path):
+    """Build.dag resolves a declared dependency against the WHOLE layer's ids: scoping bg_a must not make its
+    dependency on bg_b look unresolvable."""
+    reg = {a: _reg_row(a) for a in ("bg_a", "bg_b", "bg_c")}
+    reg["bg_a"] = dict(reg["bg_a"], depends_on=["bg_b"])
+    _stub(monkeypatch, tmp_path, {k: reg for k in ac.LAYERS})
+
+    def no_graph():
+        raise ac.Unknown("registry-wide dependency read unavailable")
+    monkeypatch.setattr(ac, "dependency_graph", no_graph)     # exists-clause then rests on the layer's `known` ids alone
+    full = next(a for a in ac.measure("L0")["assets"] if a["asset_id"] == "bg_a")
+    scoped = ac.measure("L0", assets=["bg_a"])["assets"][0]
+    assert scoped["measurements"]["Build.dag"] == full["measurements"]["Build.dag"]
+    assert "unknown or inactive" not in scoped["measurements"]["Build.dag"]["measured"]
+    assert scoped == full
+
+
+@pytest.mark.parametrize("sc", [dict(assets=[], partial=True), dict(assets=["a", ""], partial=True),
+                                dict(assets=["a", 3], partial=True), dict(assets=["a"], partial=False),
+                                dict(assets=["a"]), "a", None, ["a"]])
+def test_census_scope_rejects_every_malformed_label(sc):
+    with pytest.raises(ac.ScopeError):
+        ac.census_scope({"scope": sc})
+
+
+def test_census_scope_none_without_label_and_returns_a_valid_one():
+    assert ac.census_scope({"layer": "L0"}) is None
+    assert ac.census_scope({"scope": dict(assets=["a"], partial=True)}) == dict(assets=["a"], partial=True)
