@@ -103,6 +103,19 @@ Permanent CI lint (ŚUDDHA-VĀCA C.7) flagging any `chart_facts` selection reduc
 `--self-test` runs the bundled `fact_category_pin_fixtures/`; default scans the live repo tree
 against `fact_category_pin_allowlist.json`. Wired into `ci.yml` (static, no network).
 
+**Multi-formula rule** (formula-pins lane, `INVESTIGATION_L1_DUPLICATE_KEYS_v1_0.md`; SS decision
+2026-10-01; hardened per the PR #2866 review): `ga_sensitive` writes one row per `formula_id` for seven
+categories, so `fact_category` + `fact_key` is not enough. The seven are declared ONCE in
+`platform/python-sidecar/brahmagyan/canonical_formulas.py` (loaded by path; the TS mirror
+`.../L1_ganita/canonical_formulas.ts` is parity-tested). Every `SELECT ... FROM|JOIN [public.]chart_facts`
+statement naming one of them (literal or `LIKE 'esoteric_point_%'` prefix) must pin `formula_id` with
+`=` / `IN` in its own WHERE, or disclose all variants (`formula_id` selected AND in `ORDER BY`).
+`IS NOT NULL`, `<>`, a pin only inside a subselect, or a `CASE WHEN formula_id = ...` in ORDER BY are
+not pins. Each UNION branch and subselect is judged separately. `LIMIT 0` probes and aggregate `COUNT`
+are exempt. Readers whose category set is dynamic are listed in `multi_formula_readers.json` (`readers`:
+enforced, with select markers and required ORDER BY tokens; `known_open_readers`: verified gaps, not
+enforced). Tests: `__tests__/test_fact_category_pin_formula_rule.py` (incl. mutants of the real readers).
+
 ### `check_reconciliation_cadence.py` ← **PARIŚODHANA Phase C2**
 The standing reconciliation cadence recommended by `POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md`'s
 "ships-but-register-never-flips" standing note: cross-references `cr_status.ts`'s
