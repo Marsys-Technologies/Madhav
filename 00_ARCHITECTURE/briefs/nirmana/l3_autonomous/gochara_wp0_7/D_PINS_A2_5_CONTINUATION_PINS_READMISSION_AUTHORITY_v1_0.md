@@ -124,3 +124,22 @@ exactly the six-writer delta — the four A2.5 writers above plus
 #2823 without an L3 readmission; carried by the origin/main merge; not
 changed by this PR). Membership unchanged (23 `ka_` writers); no other layer
 moves.
+
+### v1.3 supersession — native decision 2026-10-01 (steward M20261001T182032-5d5b)
+
+> "NATIVE DECISION 2026-10-01: Pravāha STOPS L3 pins admissions (the gate is retired
+> on main; Suvarṇa no longer admits either). Supersedes my six-classification ruling
+> and D-PINS-A2.5-continuation: for #2799 and every later PR — regenerate writer
+> digests + capability census (CI checks those), do NOT re-admit the pins JSON, drop
+> the staged pins.py/pins.json edits. If any REQUIRED CI check fails solely because
+> the pins file is not re-admitted, report the check name instead of admitting."
+
+Effect on this document: the v1.2 six-classification admission performed under the
+scopes above (commit `90aebd18e`, successor `l3:16957ec30b97:390497542a8a`) and its
+receipts-test re-base (`59f46ebf1`) were REVERTED on the branch (`751d46805`,
+`c0624b87c`) — the pins JSON and generator stand at the v1.1-admission state, which
+is also main's state. The v1.2 writer digest re-derivation (`16957ec30`) and the
+capability census refreshes REMAIN (CI checks those). The authority granted by
+D-PINS-A2.5-CONTINUATION is closed by supersession, not by exhaustion; no further
+L3 admissions will be sought or performed for #2799 or any later Pravāha PR unless
+the native reinstates the gate.
