@@ -113,7 +113,8 @@ Per (chart, ayanamsha), after rebuilding ga_sensitive, ga_vargas, ga_structural:
 
 All commands from `platform/python-sidecar` with `PYTHONPATH=.` and the repo venv unless stated.
 
-- `python -m pytest tests/test_ga5_writer.py tests/test_ga6_writer.py tests/test_fact_identity_parser.py` and the wider related set (see final report for counts).
+- `python -m pytest tests/test_ga5_writer.py tests/test_ga6_writer.py tests/test_fact_identity_parser.py` and the wider related set (ga_writers/__tests__, test_l1_sensitive_points, test_chart_reader_v4, test_ga8/9, conformance and vocabulary tests): 1017 passed, 21 skipped.
+- The CI python command from `.github/workflows/ci.yml` (plus `ga_writers/__tests__` and `pipeline/orchestrator/writers/__tests__`): 8825 passed, 198 skipped, 21 xfailed, **3 failed**, all three in `tests/l3/gochara/test_wp10_cutover.py` (`test_step07_flip_gates`, `test_step08_flip_and_reverse`, `test_clear_windows_on_reversal_refusals`: Kāla cutover rehearsal against a disposable localhost:55434 database that happened to be reachable on this machine; CI has no such database and these skip there). Nothing in this branch touches Kāla files or those scripts; whether the three also fail on `origin/main` was not established. Those tests write to that disposable local database, not to production (no DATABASE_URL/PG* was set; the test refuses non-loopback DSNs).
 - `python platform/scripts/governance/check_fact_category_pinning.py` (0 new violations; 65 pre-existing allowlisted) and `--self-test`; `check_fact_subject_wellformedness.py`.
 - `python -m pytest platform/scripts/governance/__tests__` (repo root): 2249 passed, 87 skipped after the line-pin update (2 failures before it, both the pins).
 - `python -m pipeline.orchestrator.provenance_inventory --check`: OK after regeneration (moved: `ga_sensitive`, `ga_vargas`).
