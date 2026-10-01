@@ -219,6 +219,16 @@ COARSE_STEP_DAYS_DEFAULT = 1.0
 # jd-sorted emission) are load-bearing here.
 WRITE_TIME_MIN_PEAK_SEPARATION_DAYS = 0.0
 PEAK_BASIS = "gochara_lambda_v3:m1_linear_no_box:step06b"
+# ASTRA v1.3 (amendment 1): a peak chosen by the horizon stand-in is a HORIZON-LIMITED SAMPLE, not a
+# located extremum — the activity's supremum is at the excluded end h1, outside [h0, h1). Such a row
+# is qualified in PERSISTED, consumer-visible fields, never left looking like an ordinary peak:
+#   * `peak_basis` carries the distinct suffix below (no CHECK constrains the column; migration 460
+#     only requires provenance on every served peak), and
+#   * `suppression_state.horizon_limited_sample` carries the selected instant, the excluded horizon
+#     end, the substitution rule and the reason (the table has no dedicated column; migrations are
+#     out of scope — the three-field valence rides the same JSON the same way).
+HORIZON_LIMITED_SAMPLE = "horizon_limited_sample"
+PEAK_BASIS_HORIZON_LIMITED = f"{PEAK_BASIS}:{HORIZON_LIMITED_SAMPLE}"
 SOURCE_LIVE = "live"
 SOURCE_REHEARSAL = "fixture"  # migration 460 CHECK: 'live' | 'fixture'
 
@@ -1437,14 +1447,50 @@ def find_components(eval_lambda, points: list[float], min_lambda: float):
 # The in-domain stand-in for the excluded horizon end (ASTRA v1.2 R1/R2). The horizon is
 # half-open [h0, h1): an instant ON h1 is outside the domain, but activity that is positive
 # in-domain and still rising toward h1 has its supremum AT h1. Such an interval is kept, with
-# its peak represented by the latest instant the bisection that located the interval can
-# resolve inside the domain — h1 minus the bisection tolerance (8.64 s), never h1 itself.
+# its peak represented by a BOUNDARY-LIMITED SAMPLE: the evaluation at h1 minus the bisection
+# tolerance (8.64 s) — or at the interval start if that is later — never at h1 itself. It is a
+# chosen sample, NOT a located extremum (see HORIZON_LIMITED_RULE; the rows carrying it are
+# qualified in persisted fields).
 HORIZON_EDGE_EPS_DAYS = 1e-4  # == the tol_days of _bisect_above/_bisect_below
 
 
 def in_domain_peak_stand_in(h_limit: float, floor_jd: float) -> float:
-    """The latest in-domain instant at or after `floor_jd` (which must itself be < h_limit)."""
+    """The horizon stand-in sample instant: `h_limit` minus the bisection tolerance, or `floor_jd`
+    if that is later (`floor_jd` must itself be < h_limit). A chosen sample inside [h0, h1) — not a
+    located extremum, and not the "latest in-domain instant" (that has no maximum on a half-open
+    interval)."""
     return max(floor_jd, h_limit - HORIZON_EDGE_EPS_DAYS)
+
+
+HORIZON_LIMITED_RULE = (
+    "max(interval_start, h1 - 1e-4 d): a chosen sample 8.64 s (the bisection tolerance) inside the "
+    "half-open horizon [h0, h1), or the interval start if that is later; a boundary-limited SAMPLE "
+    "evaluated there, never a located extremum (the supremum lies at the excluded end h1)")
+HORIZON_LIMITED_REASONS = {
+    "only_above_threshold_sample_is_the_horizon_limit":
+        "R1: the interval's only above-threshold sample is the appended horizon limit",
+    "refined_peak_reached_the_excluded_end":
+        "R2: the refined peak is the horizon limit itself (outside [h0, h1))",
+}
+
+
+def horizon_limited_qualification(*, selected_jd: float, h_limit: float, reason: str) -> dict:
+    """The persisted qualification block for a stand-in peak (ASTRA v1.3 amendment 1)."""
+    assert reason in HORIZON_LIMITED_REASONS, reason
+    return {
+        "kind": HORIZON_LIMITED_SAMPLE,
+        "attained_extremum": False,
+        "reason": reason,
+        "reason_text": HORIZON_LIMITED_REASONS[reason],
+        "selected_instant_utc": datetime.fromtimestamp(
+            (selected_jd - JD_UNIX_EPOCH) * 86400.0, tz=UTC).isoformat(),
+        "selected_jd": selected_jd,
+        "excluded_horizon_end_utc": datetime.fromtimestamp(
+            (h_limit - JD_UNIX_EPOCH) * 86400.0, tz=UTC).isoformat(),
+        "excluded_horizon_end_jd": h_limit,
+        "offset_from_excluded_end_seconds": round((h_limit - selected_jd) * 86400.0, 3),
+        "substitution_rule": HORIZON_LIMITED_RULE,
+    }
 
 
 def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
@@ -1493,6 +1539,7 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
                     "components": 0, "peaks_admitted": 0, "peaks_retained": 0,
                     "peaks_refined_outside_era": 0,
                     "final_edge_components": 0, "peaks_clamped_to_horizon_limit": 0,
+                    "horizon_limited_rows": 0,
                     "era_windows": 0, "month_windows": 0, "day_windows": 0}
 
     rows: list[dict] = []
@@ -1501,6 +1548,7 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
     refined_outside_era = 0
     final_edge_components = 0
     peaks_clamped_to_horizon_limit = 0
+    horizon_limited_rows = 0
     emitted_components = 0
     components = find_components(eval_lambda, series, min_lambda)
     gate_details_seen: dict[str, dict] = {}
@@ -1510,6 +1558,7 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
         # Peak/day candidates come only from IN-DOMAIN points (< h_limit);
         # the appended horizon limit closes the interval but never peaks.
         era_series = [t for t in series[i0:i1 + 1] if t < h_limit]
+        era_limited = None          # set only when the era peak is the horizon stand-in (R1)
         if era_series:
             era_values = [eval_lambda(t) for t in era_series]
             peak_idx = max(range(len(era_series)), key=lambda k: era_values[k])
@@ -1518,14 +1567,17 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
             # The only above-threshold SAMPLE is the horizon limit itself (ASTRA v1.2 R1:
             # activity begins within the last sampling step before h1). "No in-domain
             # sample" is not "no in-domain activity": the interval [enter, h1] has positive
-            # in-domain extent whenever enter < h1, and is kept — peak represented by the
-            # latest in-domain instant, never by h1. An interval that opens AT h1 has no
+            # in-domain extent whenever enter < h1, and is kept — its peak represented by the
+            # boundary-limited sample (and QUALIFIED as such), never by h1. An interval that opens AT h1 has no
             # in-domain extent and is honestly dropped.
             if not enter_jd < h_limit:
                 continue
             era_values = []
             era_peak_jd = in_domain_peak_stand_in(h_limit, enter_jd)
             final_edge_components += 1
+            era_limited = horizon_limited_qualification(
+                selected_jd=era_peak_jd, h_limit=h_limit,
+                reason="only_above_threshold_sample_is_the_horizon_limit")
         era_peak = evaluate(era_peak_jd)
         era_key = f"era-{_uuid.uuid4()}"
         for gd in (era_peak["quality_gates_detail"],):
@@ -1545,10 +1597,11 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
         retained_total += len(retained)
 
         emitted_components += 1
+        horizon_limited_rows += 1 if era_limited else 0
         rows.append(_window_row(
             class_ctx, evaluate, window_key=era_key, parent_key=None,
             tier="era", enter_jd=enter_jd, exit_jd=exit_jd,
-            peak_jd=era_peak_jd))
+            peak_jd=era_peak_jd, horizon_limited=era_limited))
 
         for cand in retained:
             peak_jd_true, _lam = leg.refine_peak_to_day(eval_lambda, cand.jd)
@@ -1571,6 +1624,11 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
                 # the writer's validator refuses and which would abort the whole substep.
                 peak_jd_true = in_domain_peak_stand_in(h_limit, enter_jd)
                 peaks_clamped_to_horizon_limit += 1
+                peak_limited = horizon_limited_qualification(
+                    selected_jd=peak_jd_true, h_limit=h_limit,
+                    reason="refined_peak_reached_the_excluded_end")
+            else:
+                peak_limited = None
             # calendar-month bounds of the refined peak, clipped to the era
             # (build_resolution_hierarchy, rh:621-632 + R8.6 clip — with the
             # E-020/ADK-0026 correction: bounds are midnight-UTC JDs, the true
@@ -1591,12 +1649,14 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
                 tier="month",
                 enter_jd=max(_jd_of_date(month_start), enter_jd),
                 exit_jd=min(_jd_of_date(month_end), exit_jd),
-                peak_jd=peak_jd_true))
+                peak_jd=peak_jd_true, horizon_limited=peak_limited))
             rows.append(_window_row(
                 class_ctx, evaluate, window_key=f"day-{_uuid.uuid4()}",
                 parent_key=month_key, tier="day",
                 enter_jd=peak_jd_true, exit_jd=peak_jd_true,
-                peak_jd=peak_jd_true, tara_annotator=tara_annotator))
+                peak_jd=peak_jd_true, tara_annotator=tara_annotator,
+                horizon_limited=peak_limited))
+            horizon_limited_rows += 2 if peak_limited else 0
 
     report = {
         "event_class": class_ctx.event_class,
@@ -1607,6 +1667,7 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
         "peaks_refined_outside_era": refined_outside_era,
         "final_edge_components": final_edge_components,
         "peaks_clamped_to_horizon_limit": peaks_clamped_to_horizon_limit,
+        "horizon_limited_rows": horizon_limited_rows,
         "era_windows": emitted_components,
         "month_windows": retained_total - refined_outside_era,
         "day_windows": retained_total - refined_outside_era,
@@ -1618,7 +1679,8 @@ def project_class_windows(class_ctx: ClassContext, contacts: list[dict],
 
 def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
                 parent_key: str | None, tier: str, enter_jd: float,
-                exit_jd: float, peak_jd: float, tara_annotator=None) -> dict:
+                exit_jd: float, peak_jd: float, tara_annotator=None,
+                horizon_limited: dict | None = None) -> dict:
     peak = evaluate(peak_jd)
     # P6 tārā testimony: DAY rows only (P6 is the sole day-resolution
     # source, §2.3 inv 6); era/month rows carry the not-applicable record.
@@ -1706,8 +1768,11 @@ def _window_row(class_ctx: ClassContext, evaluate, *, window_key: str,
             # T0-7: full derivation disclosure (fields + breakdown, incl.
             # every named unresolved operand).
             "three_field_valence": tv,
+            # ASTRA v1.3 amendment 1: a stand-in peak is DISCLOSED here (and by the
+            # distinct peak_basis below) — absent for an ordinary located peak.
+            **({HORIZON_LIMITED_SAMPLE: horizon_limited} if horizon_limited else {}),
         },
-        "peak_basis": PEAK_BASIS,
+        "peak_basis": PEAK_BASIS_HORIZON_LIMITED if horizon_limited else PEAK_BASIS,
         "calibration_state": "structural_prior",
         "resolution": tier,
     }
@@ -1934,7 +1999,11 @@ def write_windows(conn, chart_id: str, generation: str,
 
     # parents (era) first, then month, then day — the insert order resolves
     # the documentary parent linkage (migration 567).
-    ordered = sorted(rows, key=lambda r: {"era": 0, "month": 1, "day": 2}[r["resolution"]])
+    # (within a tier a horizon-limited row is inserted FIRST, so if it collides with an ordinary row
+    # on the natural key the qualification — not the unqualified duplicate — is what survives)
+    ordered = sorted(rows, key=lambda r: (
+        {"era": 0, "month": 1, "day": 2}[r["resolution"]],
+        0 if r["peak_basis"] == PEAK_BASIS_HORIZON_LIMITED else 1))
     # Adjacent components can each retain a peak whose refine_peak_to_day
     # lands on the same calendar day (and, clipped to era bounds, the same
     # month), producing rows identical under uq_kala_gochara_windows_natural_key
@@ -2320,6 +2389,18 @@ def project_windows_core(conn, *, chart_id: str, generation: str,
         "windows_by_tier": {
             tier: sum(1 for r in all_rows if r["resolution"] == tier)
             for tier in ("era", "month", "day")},
+        # ASTRA v1.3 amendment 1: the stand-in disclosure, aggregated for the governed writer's
+        # notes/log (the per-row qualification itself is persisted on each affected row).
+        "horizon_limited": {
+            "rows_projected": sum(1 for r in all_rows if r["peak_basis"] == PEAK_BASIS_HORIZON_LIMITED),
+            "rows_basis": "pre-dedupe projection count, like windows_by_tier",
+            "final_edge_components": sum(r.get("final_edge_components", 0) for r in class_reports),
+            "peaks_clamped_to_horizon_limit": sum(
+                r.get("peaks_clamped_to_horizon_limit", 0) for r in class_reports),
+            "event_classes": sorted({
+                r["event_class"] for r in all_rows if r["peak_basis"] == PEAK_BASIS_HORIZON_LIMITED}),
+            "peak_basis": PEAK_BASIS_HORIZON_LIMITED,
+        },
         "windows_by_tier_basis": "pre-dedupe projection counts; "
             "windows_written is post-dedupe, so "
             "sum(windows_by_tier) = windows_written + windows_collapsed_dupes",

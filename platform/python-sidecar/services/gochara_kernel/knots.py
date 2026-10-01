@@ -123,8 +123,13 @@ def _check_retflag(body: str, retflag: int) -> str:
 # (contents or a symlink target can change under an unchanged stamp). The probe is a single
 # TRUE_NODE calc at the call's own instant — the file that serves the Moon at that jd is the
 # file proven — so it runs on EVERY Moon calc. Cost, measured on the real checksum-pinned
-# files over the 4.1 scored horizon (10,334 daily Moon knots): sample_knots 1.07 s → 1.27 s
-# (+0.20 s, ≈19 %); 6.3 µs per probe vs 2.8 µs per Moon calc. Cheap and trivially correct.
+# files over the 4.1 scored horizon (10,334 daily Moon knots), against TWO different baselines:
+#   (a) the Moon sampler with vs without the probe: sample_knots 1.07 s → 1.27 s (+0.20 s, ≈19 %);
+#       per call a probe is 6.3 µs against 2.8 µs for the bare Moon calc;
+#   (b) the full `calc_sidereal_lon` wrapper path (SWISS_STATE_LOCK + ephemeris path + sid-mode,
+#       ≈40 µs per call): the probe adds ≈4.6 µs (≈11 %), and a whole-horizon Moon sampling run
+#       takes 0.44 s against 0.38 s for the Sun through the same wrapper.
+# The figures are not comparable across baselines; the conclusion is the same: cheap, trivially correct.
 
 
 @serialized_swiss_state

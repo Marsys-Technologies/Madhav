@@ -142,6 +142,17 @@ def test_r1_the_v11_final_day_counterexample_yields_windows_not_zero():
     assert era[0]["window_end"] == H1_DATE            # an exclusive endpoint may equal the limit
     assert era[0]["peak_date"] == date(2026, 4, 17)   # the peak is never ON the excluded end
     writer_mod._validate_windows_within_horizon(rows)  # the writer's own validator
+    # ASTRA v1.3: the stand-in is DISCLOSED on the row — a distinct basis + a qualification block
+    # — never left looking like an ordinary located peak
+    assert era[0]["peak_basis"] == sb.PEAK_BASIS_HORIZON_LIMITED
+    q = era[0]["suppression_state"]["horizon_limited_sample"]
+    assert q["kind"] == "horizon_limited_sample" and q["attained_extremum"] is False
+    assert q["reason"] == "only_above_threshold_sample_is_the_horizon_limit"
+    assert q["selected_instant_utc"] < q["excluded_horizon_end_utc"]
+    assert q["excluded_horizon_end_utc"] == "2026-04-18T00:00:00+00:00"
+    assert q["offset_from_excluded_end_seconds"] == pytest.approx(8.64, abs=0.01)
+    assert "never a located extremum" in q["substitution_rule"]
+    assert report["horizon_limited_rows"] == 1
 
 
 def test_r1_an_interval_that_opens_exactly_at_the_excluded_end_is_still_dropped():
@@ -162,6 +173,10 @@ def test_r1_legitimate_final_day_activity_with_in_domain_samples_is_unchanged():
     assert rows and report["final_edge_components"] == 0 and report["peaks_clamped_to_horizon_limit"] == 0
     assert max(r["window_end"] for r in rows) == H1_DATE
     writer_mod._validate_windows_within_horizon(rows)
+    # an ordinary located peak is NOT qualified: ordinary basis, no qualification block
+    assert report["horizon_limited_rows"] == 0
+    assert {r["peak_basis"] for r in rows} == {sb.PEAK_BASIS}
+    assert all("horizon_limited_sample" not in r["suppression_state"] for r in rows)
 
 
 # ── R2: refined peaks stay strictly inside the horizon ───────────────────────
@@ -181,6 +196,17 @@ def test_r2_a_sun_contact_centred_exactly_on_the_excluded_end_does_not_abort():
             assert r["window_start"] < H1_DATE, (r["resolution"], r["window_start"])
     assert report["peaks_clamped_to_horizon_limit"] >= 1     # recorded, never implied
     writer_mod._validate_windows_within_horizon(rows)         # no HorizonViolation
+    # ASTRA v1.3: the clamped month/day rows are qualified; the era row (its peak is a real sample) is not
+    by_tier = {t: [r for r in rows if r["resolution"] == t] for t in ("era", "month", "day")}
+    assert all(r["peak_basis"] == sb.PEAK_BASIS for r in by_tier["era"])
+    assert all("horizon_limited_sample" not in r["suppression_state"] for r in by_tier["era"])
+    for r in by_tier["month"] + by_tier["day"]:
+        assert r["peak_basis"] == sb.PEAK_BASIS_HORIZON_LIMITED
+        q = r["suppression_state"]["horizon_limited_sample"]
+        assert q["reason"] == "refined_peak_reached_the_excluded_end"
+        assert q["attained_extremum"] is False
+        assert q["selected_instant_utc"] < q["excluded_horizon_end_utc"]
+    assert report["horizon_limited_rows"] == len(by_tier["month"]) + len(by_tier["day"])
 
 
 # ── R1 and R2 together (they pull against each other) ────────────────────────
@@ -229,3 +255,115 @@ def test_r1_through_the_real_ledger_and_fetch_on_a_disposable_pg(pg, pg_dict):
         _class_ctx(), contacts, (_H0, _H1), lambda jd: {"factor_by_body": {}}, planet_pos_fn=pos)
     assert rows and report["final_edge_components"] == 1
     writer_mod._validate_windows_within_horizon(rows)
+
+
+# ── ASTRA v1.3 amendment 1: the stand-in is disclosed in PERSISTED rows and in the governed
+#    writer's own audit output (not only in the projection's class report) ─────────────────
+
+from pipeline.orchestrator.writers import SubStep  # noqa: E402
+
+from .test_a25_v41_candidate_writer_pg import _ctx, _seed_windows_inputs  # noqa: E402,F401
+
+
+def _patch_writer_seams(monkeypatch, pos_fn):
+    """Only two seams are replaced, both documented: the per-class PERMISSION context (so the
+    synthetic Sun is licensed — whether the real permission systems admit a synthetic geometry is
+    not what is under test) and the planet-position accessor. Everything else is the real chain:
+    ledger rows → fetch_contacts → project_windows_core → write_windows → the writer's notes."""
+    step06a, step06b = writer_mod.step06a_context, writer_mod.step06b_windows
+    monkeypatch.setattr(step06a, "build_all_class_contexts",
+                        lambda swe, conn, chart, generation: ({"marriage": {"stub": True}}, [], 0))
+    monkeypatch.setattr(
+        step06b, "build_projection_class_context",
+        lambda conn, chart, cls_name, ctx_dict, all_contexts, **kw: step06b.ClassContext(
+            "marriage", [0.9], {s: True for s in leg.PERMISSION_SYSTEM_IDS},
+            weight_by_target_ref={"SUN": 0.9}))
+    monkeypatch.setattr(step06b, "_default_planet_pos_fn", lambda: pos_fn)
+
+
+def _write_contact(pg_dict, ep):
+    d = {**_episode("Sun", _dt(ep.t_in)),
+         "t_in": _dt(ep.t_in), "t_exact": _dt(ep.t_exact) if ep.t_exact is not None else None,
+         "t_out": _dt(ep.t_out), "exact_crossing": ep.t_exact is not None,
+         "truncated_at_horizon": ep.truncated_at_horizon,
+         "target_longitude_deg": TARGET_DEG, "orb_max_deg": ORB_DEG, "orb_source": "orb_conj_slow"}
+    writer_mod._validate_episodes_within_horizon([d])
+    cid, _ = _seed_manifest(pg_dict, CHART_UUID)
+    writer_mod.ledger.write_contacts(pg_dict, CHART_UUID, "4.1", cid, [d], "a25pg-disclosure", bodies=["Sun"])
+    pg_dict.commit()
+
+
+def _persisted_windows(pg_dict):
+    return pg_dict.execute(
+        "SELECT resolution, peak_basis, peak_date, suppression_state -> 'horizon_limited_sample' AS limited"
+        " FROM kala_gochara_windows WHERE chart_id = %s AND generation = '4.1' ORDER BY resolution",
+        (CHART_ID,)).fetchall()
+
+
+def test_r1_stand_in_is_disclosed_in_the_persisted_row_and_the_governed_writers_notes(pg, pg_dict, monkeypatch):
+    eps, pos = _produce(speed=0.5, centre_offset_days=9.5)
+    _write_contact(pg_dict, eps[0])
+    _seed_windows_inputs(pg, CHART_ID)
+    _patch_writer_seams(monkeypatch, pos)
+    res = writer_mod.GocharaV41CandidateWriter().run_substep(
+        _ctx(pg_dict, CHART_UUID), SubStep(key="windows", label="w"))
+    pg_dict.commit()
+
+    rows = _persisted_windows(pg_dict)
+    assert [r["resolution"] for r in rows] == ["era"], rows
+    (row,) = rows
+    assert row["peak_basis"] == sb.PEAK_BASIS_HORIZON_LIMITED
+    assert row["peak_date"] == date(2026, 4, 17)
+    q = row["limited"]                                      # jsonb -> dict, read back from PostgreSQL
+    assert q["kind"] == "horizon_limited_sample" and q["attained_extremum"] is False
+    assert q["reason"] == "only_above_threshold_sample_is_the_horizon_limit"
+    assert q["excluded_horizon_end_utc"] == "2026-04-18T00:00:00+00:00"
+    assert q["selected_instant_utc"] < q["excluded_horizon_end_utc"]
+    assert q["offset_from_excluded_end_seconds"] == pytest.approx(8.64, abs=0.01)
+    assert q["substitution_rule"] and "supremum lies at the excluded end" in q["substitution_rule"]
+    # the governed writer's own audit output carries the counters the class report used to drop
+    assert "horizon_limited_rows=1" in res.notes
+    assert "final_edge_components=1" in res.notes
+    assert "peaks_clamped_to_horizon_limit=0" in res.notes
+    assert f"horizon_limited_basis={sb.PEAK_BASIS_HORIZON_LIMITED}" in res.notes
+    # a consumer can select exactly the qualified rows by the distinct basis alone
+    assert pg_dict.execute(
+        "SELECT count(*) AS n FROM kala_gochara_windows WHERE chart_id = %s AND generation = '4.1'"
+        " AND peak_basis LIKE '%%:horizon_limited_sample'", (CHART_ID,)).fetchone()["n"] == 1
+
+
+def test_r2_clamped_month_and_day_rows_are_disclosed_the_era_row_is_not(pg, pg_dict, monkeypatch, caplog):
+    eps, pos = _produce(speed=1.0, centre_offset_days=0.0)
+    _write_contact(pg_dict, eps[0])
+    _seed_windows_inputs(pg, CHART_ID)
+    _patch_writer_seams(monkeypatch, pos)
+    with caplog.at_level("INFO"):
+        res = writer_mod.GocharaV41CandidateWriter().run_substep(
+            _ctx(pg_dict, CHART_UUID), SubStep(key="windows", label="w"))
+    pg_dict.commit()
+
+    by_tier = {r["resolution"]: r for r in _persisted_windows(pg_dict)}
+    assert set(by_tier) == {"era", "month", "day"}
+    assert by_tier["era"]["peak_basis"] == sb.PEAK_BASIS and by_tier["era"]["limited"] is None
+    for tier in ("month", "day"):
+        assert by_tier[tier]["peak_basis"] == sb.PEAK_BASIS_HORIZON_LIMITED
+        assert by_tier[tier]["limited"]["reason"] == "refined_peak_reached_the_excluded_end"
+        assert by_tier[tier]["peak_date"] < H1_DATE
+    assert "horizon_limited_rows=2" in res.notes and "peaks_clamped_to_horizon_limit=1" in res.notes
+    # …and in the writer's log line
+    assert any("horizon_limited_rows=2" in r.getMessage() and "peaks_clamped_to_horizon_limit=1" in r.getMessage()
+               for r in caplog.records)
+
+
+def test_an_ordinary_interior_peak_is_persisted_unqualified(pg, pg_dict, monkeypatch):
+    eps, pos = _produce(speed=1.0, centre_offset_days=-3.0)
+    _write_contact(pg_dict, eps[0])
+    _seed_windows_inputs(pg, CHART_ID)
+    _patch_writer_seams(monkeypatch, pos)
+    res = writer_mod.GocharaV41CandidateWriter().run_substep(
+        _ctx(pg_dict, CHART_UUID), SubStep(key="windows", label="w"))
+    pg_dict.commit()
+    rows = _persisted_windows(pg_dict)
+    assert rows and {r["peak_basis"] for r in rows} == {sb.PEAK_BASIS}
+    assert all(r["limited"] is None for r in rows)
+    assert "horizon_limited_rows=0" in res.notes

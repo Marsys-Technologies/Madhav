@@ -491,10 +491,16 @@ class GocharaV41CandidateWriter(WriterBase):
             row_validator=_validate_windows_within_horizon)
         report = out["report"]
         elapsed = _time.time() - t0
+        # ASTRA v1.3 amendment 1: the horizon stand-in is DISCLOSED here, not only in the
+        # projection's class report — rows whose peak is a boundary-limited sample (not a
+        # located extremum) are counted in the audit output as well as qualified per row.
+        limited = report["horizon_limited"]
         logger.info(
-            "[%s] windows substep chart=%s windows=%d classes=%d wall_clock_s=%.3f",
+            "[%s] windows substep chart=%s windows=%d classes=%d wall_clock_s=%.3f "
+            "horizon_limited_rows=%d final_edge_components=%d peaks_clamped_to_horizon_limit=%d",
             ASSET_ID, chart_id, report["windows_written"],
-            report["classes_projected"], elapsed)
+            report["classes_projected"], elapsed, limited["rows_projected"],
+            limited["final_edge_components"], limited["peaks_clamped_to_horizon_limit"])
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=report["windows_written"], duration_seconds=elapsed,
@@ -503,4 +509,8 @@ class GocharaV41CandidateWriter(WriterBase):
                    f"class_context_omitted={len(omitted)} "
                    f"null_t_exact_excluded={null_exact} "
                    f"unmapped={report['contacts_unmapped_no_class']}/"
-                   f"{report['contacts_unmapped_relation']}"))
+                   f"{report['contacts_unmapped_relation']} "
+                   f"horizon_limited_rows={limited['rows_projected']} "
+                   f"final_edge_components={limited['final_edge_components']} "
+                   f"peaks_clamped_to_horizon_limit={limited['peaks_clamped_to_horizon_limit']} "
+                   f"horizon_limited_basis={limited['peak_basis']}"))
