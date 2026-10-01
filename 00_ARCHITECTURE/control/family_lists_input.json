@@ -1,9 +1,51 @@
 {
-  "_provenance": "DRAFT INPUT for generate_level_map.py, not the frozen FAMILY_ASSETS.json. Every member is named in SUVARNA_L3_FOCUS_FAMILIES_v1_0.md section 6 (the 16 measured readers) or SUVARNA_AUTONOMY_CHARTER R8 / execution architecture 6.1 (ka_gochara, ka_gochara_resonance, ka_vedha_gochara, ka_sangam, ka_kshetra); nothing was added from the registry. Strategic Suvarna freezes the final lists at J1. OPEN: (a) whether ka_sangam and ka_kshetra stay in the R8 set (J1.FO: only if a family session has claimed them); (b) R8's 'tables and claimed prerequisites' name no asset id, e.g. ka_yojaka (a stale Sangam prerequisite) and ka_gochara_v3_century_materialize (Gochara's century writer, to be retired by Pravaha A6.2) are NOT listed here because no document puts them in the set; (c) the FOCUS_FAMILIES '16 readers' include the three family assets themselves, which are listed under their family key, so the reader lists below hold the 13 other readers.",
-  "family_gochara": ["ka_gochara", "ka_gochara_resonance", "ka_vedha_gochara"],
-  "family_sangam": ["ka_sangam"],
-  "family_kshetra": ["ka_kshetra"],
-  "family_readers_L3": ["ka_bhavishya_lekha", "ka_jivana_parva", "ka_kala_darshana", "ka_kalasutra", "ka_taranga", "ka_tulana", "ka_vighnakara"],
-  "family_readers_L4": ["ph_muhurta", "ph_nimitta", "ph_pratikara"],
-  "family_readers_L5": ["mi_adhilepa", "mi_bhara", "mi_sankalpa"]
+  "_provenance": "DRAFT INPUT for generate_level_map.py (E6.3 branch), not the J1 freeze. Lists = SUVARNA_L3_FOCUS_FAMILIES_v1_0.md section 6 (16 measured readers) + charter R8 / execution architecture 6.1 (ka_gochara, ka_gochara_resonance, ka_vedha_gochara, ka_sangam, ka_kshetra), plus the strategist's rulings of 2026-10-02 recorded in _why. Strategic Suvarna freezes the final lists at J1.",
+  "family_gochara": [
+    "ka_gochara",
+    "ka_gochara_resonance",
+    "ka_gochara_v3_century_materialize",
+    "ka_moorti_nirnaya",
+    "ka_vedha_gochara"
+  ],
+  "family_sangam": [
+    "ka_sangam",
+    "ka_yojaka"
+  ],
+  "family_kshetra": [
+    "ka_kshetra"
+  ],
+  "family_readers_L3": [
+    "ka_bhavishya_lekha",
+    "ka_jivana_parva",
+    "ka_kala_darshana",
+    "ka_kalasutra",
+    "ka_taranga",
+    "ka_tulana",
+    "ka_vighnakara"
+  ],
+  "family_readers_L4": [
+    "ph_muhurta",
+    "ph_nimitta",
+    "ph_pratikara"
+  ],
+  "family_readers_L5": [
+    "mi_adhilepa",
+    "mi_bhara",
+    "mi_sankalpa"
+  ],
+  "_why": {
+    "ka_gochara_v3_century_materialize": "Strategist ruling Q2: Gochara's century writer (generation 3.0 of kala_gochara_windows; writer imports services.gochara_v3, platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py:329-357); Pravaha retires it in A6.2. Adding to a refusal list is the safe direction.",
+    "ka_yojaka": "Strategist ruling Q2: the stale prerequisite of Sangam (FOCUS_FAMILIES: 79 canonical predicates point at signals that no longer exist; must be rebuilt first). A claimed R8 prerequisite; added to the refusal set.",
+    "ka_moorti_nirnaya": "Strategist required addition: Pravaha's gochara family writer (platform/python-sidecar/pipeline/orchestrator/writers/ka_moorti_nirnaya.py:23, services/ka_moorti_nirnaya); no name pattern covers it. ka_kota_chakra is deliberately NOT in the set (that reader is ours by agreement)."
+  },
+  "_notes": {
+    "inactive": [],
+    "seed": "Every member is an active asset in platform/scripts/seed/asset_registry_seed.ts at origin/main; if a member is later retired it may stay in the refusal set but must be listed in _notes.inactive with its reason."
+  },
+  "_semantics": "The family set is what the WAVE tool refuses. Family assets and their readers are rebuilt and certified ONE AT A TIME by the production session with the single-asset dispatcher, each under a stage the strategist approves (Pravaha's own assets only by Pravaha). The wave tool is for level waves of non-family assets (first use: the 23 bo_* assets).",
+  "_resolved_questions": [
+    "Q1 (ruled): ka_sangam and ka_kshetra stay in the set.",
+    "Q2 (ruled): ka_yojaka and ka_gochara_v3_century_materialize are added.",
+    "Q3 (ruled): the split (family assets under their family keys; 13 other readers in the reader lists) is right."
+  ]
 }
