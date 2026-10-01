@@ -28,6 +28,12 @@ describe.skipIf(!enabled)('disposable PostgreSQL ledger',()=>{
   const sql=await readFile('supabase/migrations/1202_ai_metering_ledger.sql','utf8')
   await client.query('BEGIN');await client.query(sql);await client.query('COMMIT')
   await client.query('BEGIN');await client.query(sql);await client.query('COMMIT')
+  // Production's referenced table is owned by the app role, not postgres.
+  // The FK's FOR KEY SHARE therefore needs the owner's key-column privilege.
+  await client.query('ALTER TABLE ai_metering_attempts OWNER TO amjis_app')
+  const repair=await readFile('supabase/migrations/1203_ai_metering_receipt_fk_permission.sql','utf8')
+  await client.query('BEGIN');await client.query(repair);await client.query('COMMIT')
+  await client.query('BEGIN');await client.query(repair);await client.query('COMMIT')
  },30000)
  afterAll(async()=>{await client.end()})
  it('applies idempotently and gates browser roles with RLS',async()=>{
@@ -35,6 +41,16 @@ describe.skipIf(!enabled)('disposable PostgreSQL ledger',()=>{
   await expect(client.query('SELECT * FROM ai_metering_attempts')).rejects.toThrow(/permission denied/)
   await client.query('RESET ROLE')
   await client.query('SET ROLE amjis_app');expect((await client.query('SELECT count(*) FROM ai_metering_attempts')).rows[0].count).toBe('0');await client.query('RESET ROLE')
+ })
+ it('persists terminal receipts as the production app role while evidence stays immutable',async()=>{
+  const start=attempt('fk-test-owner'),done=receipt(start)
+  await client.query('SET ROLE amjis_app')
+  try {
+   await insertAttempt(start,db)
+   await insertReceipt(start,done,db)
+   expect((await client.query('SELECT count(*) FROM ai_metering_receipts WHERE attempt_id=$1',[start.attemptId])).rows[0].count).toBe('1')
+   await expect(client.query('UPDATE ai_metering_attempts SET attempt_id=attempt_id WHERE attempt_id=$1',[start.attemptId])).rejects.toThrow(/append-only/)
+  } finally {await client.query('RESET ROLE')}
  })
  it('records disjoint quantities, freezes decimal cost and deduplicates deliveries',async()=>{
   await importRateCard(rate(),db)
