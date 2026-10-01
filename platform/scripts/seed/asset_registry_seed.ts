@@ -2111,7 +2111,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // RENAMED to ka_gochara in the same migration. This seed entry now reflects
     // the renamed per-chart materializer — NOT the old service.
     //
-    // REGISTRY ROW = THE REGISTERED WRITER'S SURFACE (migration 1226, reverting the
+    // REGISTRY ROW = THE REGISTERED WRITER'S SURFACE (migration 1230, reverting the
     // target/count/integrity/clear half of migration 1091's WP10 re-pin).
     //
     // 1091 (applied 2026-09-24, native-authorised) re-pinned this row to the '4.0'
@@ -2124,7 +2124,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // contract read TRUE over an empty '4.0' scope, and a Clear never touched the
     // writer's own rows (CLAUDE.md N.4: count_sql must count what the writer writes;
     // N.8: a signal that cannot read false about the rows it names is null).
-    // Migration 1226 restores target_table / count_sql / integrity_check_sql /
+    // Migration 1230 restores target_table / count_sql / integrity_check_sql /
     // clear_tables from kala_gochara_cutover_step05_snapshot, and this literal follows
     // it. The 1091 pin is re-applied TOGETHER WITH the writer switch at D-FLIP.
     //
@@ -2145,7 +2145,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Gochara Puraḥ-Sañcalana Cakra (4.0, satyapana)',
     english_name: 'Gochara V3 Per-Chart Materializer',
-    english_description: 'Primary per-chart gochara window materializer (GOCHARA-UTKARSA). Renamed from ka_gochara_v2_materialize at W6.4 cutover (UTK-R2, migration 563). Joins bg_gochara_arcs against gochara_resonance_map and scores via gochara_intensity grammar. Writes kala_gochara_windows_v2 at generation=\'2.0\' (writers/ka_gochara.py TABLE / GENERATION_V2); the registry row counts, checks and clears exactly that surface (migration 1226 reverted 1091\'s \'4.0\' re-pin of this row; the 1091 pin returns with the writer switch at D-FLIP). The \'4.0\' windows/contacts/coverage come from the WP10 cutover scripts, kala_gochara_windows generation=\'3.0\' from ka_gochara_v3_century_materialize, and \'4.1\' / \'5.0\' are separate assets.',
+    english_description: 'Primary per-chart gochara window materializer (GOCHARA-UTKARSA). Renamed from ka_gochara_v2_materialize at W6.4 cutover (UTK-R2, migration 563). Joins bg_gochara_arcs against gochara_resonance_map and scores via gochara_intensity grammar. Writes kala_gochara_windows_v2 at generation=\'2.0\' (writers/ka_gochara.py TABLE / GENERATION_V2); the registry row counts, checks and clears exactly that surface (migration 1230 reverted 1091\'s \'4.0\' re-pin of this row; the 1091 pin returns with the writer switch at D-FLIP). The \'4.0\' windows/contacts/coverage come from the WP10 cutover scripts, kala_gochara_windows generation=\'3.0\' from ka_gochara_v3_century_materialize, and \'4.1\' / \'5.0\' are separate assets.',
     storage_type: 'postgres_table',
     target_table: 'kala_gochara_windows_v2',
     count_sql: "SELECT COUNT(*) FROM kala_gochara_windows_v2 WHERE chart_id=$1 AND generation='2.0'",
@@ -2153,7 +2153,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     target_floor: 0,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'Per-chart gochara windows written by this asset\'s writer: kala_gochara_windows_v2 at generation=\'2.0\' (migration 1226). The protected generation=v1 rows in kala_gochara_windows belong to the retired ka_gochara_sweep, generation=3.0 to ka_gochara_v3_century_materialize, and the WP10 \'4.0\' production surface is the cutover scripts\' output — none of them is counted here.',
+    volume_explanation: 'Per-chart gochara windows written by this asset\'s writer: kala_gochara_windows_v2 at generation=\'2.0\' (migration 1230). The protected generation=v1 rows in kala_gochara_windows belong to the retired ka_gochara_sweep, generation=3.0 to ka_gochara_v3_century_materialize, and the WP10 \'4.0\' production surface is the cutover scripts\' output — none of them is counted here.',
     depends_on: ['bg_ephemeris', 'bg_transit_rules', 'ka_gochara_resonance', 'ka_vedha_gochara', 'ka_moorti_nirnaya', 'ga_positions', 'ga_dashas', 'ga_yoga'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',

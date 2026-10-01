@@ -8,7 +8,7 @@ import { ASSETS } from '../seed/asset_registry_seed'
 
 /**
  * ka_gochara registry identity parity — the row describes what its REGISTERED WRITER writes
- * (migration 1226, reverting the target/count/integrity/clear half of migration 1091's WP10 re-pin).
+ * (migration 1230, reverting the target/count/integrity/clear half of migration 1091's WP10 re-pin).
  *
  * `asset_registry.ka_gochara.target_table` is the CATALOG declaration of the surface this asset is
  * counted and cleared against, and the seed file owns it: the upsert's `ON CONFLICT` clause sets
@@ -18,7 +18,7 @@ import { ASSETS } from '../seed/asset_registry_seed'
  * silently reverted by the next `runSeed()` — the seed literal must carry the same identity the live
  * registry carries.
  *
- * The live identity is now migration 1226's: target_table = the writer's TABLE, count_sql scoped to
+ * The live identity is now migration 1230's: target_table = the writer's TABLE, count_sql scoped to
  * the writer's GENERATION_V2, restored from kala_gochara_cutover_step05_snapshot. 1091 had pointed the
  * row at the '4.0' surface the cutover scripts write; the registered writer never moved there, so the
  * cockpit counted 0 against rows the writer really wrote, the integrity contract read TRUE over an
@@ -62,7 +62,7 @@ function countSqlRelation(countSql: string): string {
   return m[1]
 }
 
-describe('ka_gochara registry identity parity (the row = the registered writer\'s surface, migration 1226)', () => {
+describe('ka_gochara registry identity parity (the row = the registered writer\'s surface, migration 1230)', () => {
   it('the writer MODULE writes kala_gochara_windows_v2 at generation 2.0 (the surface the row must name)', () => {
     expect(writerConstant('TABLE')).toBe('kala_gochara_windows_v2')
     expect(writerConstant('GENERATION_V2')).toBe('2.0')

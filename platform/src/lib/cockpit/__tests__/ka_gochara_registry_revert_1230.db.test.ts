@@ -1,5 +1,5 @@
 /**
- * Migration 1226 — ka_gochara's registry row describes what its REGISTERED WRITER writes.
+ * Migration 1230 — ka_gochara's registry row describes what its REGISTERED WRITER writes.
  * Disposable-database evidence (no mocks below the SQL):
  *
  *   1. The migration FILE itself is applied (never re-implemented): the row becomes the restored
@@ -16,15 +16,15 @@
  *      rows in the same relation, another chart's writer rows, the protected v1 / '3.0' windows,
  *      and the '4.0' ledger / authority rows all survive.
  *
- * SKIPPED unless `E1226_DB_TEST=1` AND `E1226_DATABASE_URL` is set — this DROPs and CREATEs tables
+ * SKIPPED unless `E1230_DB_TEST=1` AND `E1230_DATABASE_URL` is set — this DROPs and CREATEs tables
  * named like production's, so it must run against a THROWAWAY database and never the shared one:
  *
- *   createdb e1226_scratch
- *   E1226_DB_TEST=1 E1226_DATABASE_URL=postgres://postgres@127.0.0.1:5599/e1226_scratch \
- *     npx vitest run src/lib/cockpit/__tests__/ka_gochara_registry_revert_1226.db.test.ts
+ *   createdb e1230_scratch
+ *   E1230_DB_TEST=1 E1230_DATABASE_URL=postgres://postgres@127.0.0.1:5599/e1230_scratch \
+ *     npx vitest run src/lib/cockpit/__tests__/ka_gochara_registry_revert_1230.db.test.ts
  *
  * Talks to `pg` directly (not `@/lib/db/client`) so it cannot inherit a DATABASE_URL that points at
- * anything real. THIS IS NOT AN APPLY: nothing here, or in migration 1226, runs against production.
+ * anything real. THIS IS NOT AN APPLY: nothing here, or in migration 1230, runs against production.
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -34,10 +34,10 @@ import { Pool } from 'pg'
 
 import { EXPLICIT_CLEAR_OPS } from '../assetClearSpec'
 
-const DB_URL = process.env.E1226_DATABASE_URL
-const ENABLED = process.env.E1226_DB_TEST === '1' && !!DB_URL
+const DB_URL = process.env.E1230_DATABASE_URL
+const ENABLED = process.env.E1230_DB_TEST === '1' && !!DB_URL
 
-const MIGRATION = path.resolve(__dirname, '../../../../migrations/1226_ka_gochara_registry_revert_1091_pin.sql')
+const MIGRATION = path.resolve(__dirname, '../../../../migrations/1230_ka_gochara_registry_revert_1091_pin.sql')
 const WRITER = path.resolve(__dirname, '../../../../python-sidecar/pipeline/orchestrator/writers/ka_gochara.py')
 const MATERIALIZE = path.resolve(__dirname, '../../../../python-sidecar/services/w2g/materialize.py')
 
@@ -136,7 +136,7 @@ async function registry() {
   )).rows[0]
 }
 
-describe.skipIf(!ENABLED)('migration 1226 — ka_gochara registry row = the registered writer\'s surface (disposable PG)', () => {
+describe.skipIf(!ENABLED)('migration 1230 — ka_gochara registry row = the registered writer\'s surface (disposable PG)', () => {
   beforeAll(async () => {
     pool = new Pool({ connectionString: DB_URL, max: 2 })
     await q(DDL)
@@ -172,7 +172,7 @@ describe.skipIf(!ENABLED)('migration 1226 — ka_gochara registry row = the regi
 
     it('raises on an unexpected prior state and changes nothing', async () => {
       await q(`UPDATE asset_registry SET count_sql = 'SELECT 1' WHERE asset_id = 'ka_gochara'`)
-      await expect(applyMigration()).rejects.toThrow(/1226: unexpected prior state/)
+      await expect(applyMigration()).rejects.toThrow(/1230: unexpected prior state/)
       expect((await registry()).count_sql).toBe('SELECT 1')
     })
 

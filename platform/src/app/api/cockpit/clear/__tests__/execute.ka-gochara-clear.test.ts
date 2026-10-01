@@ -1,5 +1,5 @@
 /**
- * ka_gochara Clear at the execute route (POST /api/cockpit/clear/execute) — migration 1226.
+ * ka_gochara Clear at the execute route (POST /api/cockpit/clear/execute) — migration 1230.
  *
  * ka_gochara's registry row counts, checks and clears what its REGISTERED WRITER writes:
  * kala_gochara_windows_v2 at generation '2.0' plus the writer's delta-aware bookkeeping
@@ -16,7 +16,7 @@
  *       it cannot reach either.
  *
  * What executes the DELETEs against real rows (and proves they remove exactly the writer's
- * rows) is `src/lib/cockpit/__tests__/ka_gochara_registry_revert_1226.db.test.ts`.
+ * rows) is `src/lib/cockpit/__tests__/ka_gochara_registry_revert_1230.db.test.ts`.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
@@ -97,7 +97,7 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('POST /api/cockpit/clear/execute — ka_gochara clears the registered writer\'s own rows (migration 1226)', () => {
+describe('POST /api/cockpit/clear/execute — ka_gochara clears the registered writer\'s own rows (migration 1230)', () => {
   const WRITER_DELETES = [
     "DELETE FROM kala_gochara_windows_v2 WHERE chart_id = $1 AND generation = '2.0'",
     "DELETE FROM kala_gochara_v2_build_state WHERE chart_id = $1 AND generation = '2.0'",

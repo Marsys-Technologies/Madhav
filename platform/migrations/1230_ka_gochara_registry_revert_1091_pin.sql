@@ -1,11 +1,11 @@
--- Migration 1226: revert migration 1091's registry re-pin of asset_id='ka_gochara' —
+-- Migration 1230: revert migration 1091's registry re-pin of asset_id='ka_gochara' —
 --                 the row must describe what its REGISTERED WRITER writes.
 -- Pravāha A5.4 (steward M20261001T231926-f994, 2026-10-01; analysis M20261001T223507 / A5.4-cockpit-count).
 -- Created: 2026-10-02. Author: pravaha stream A.
 --
--- Numbering: 1226 is the lowest free number above main's highest (1225) by the E-009-discipline scan of
--- every origin/* head and both migration directories at authoring time (claimed: 1210-1220, 1222, 1223
--- [closed PR #2873], 1225, 1300; 1224 is held by Suvarna).
+-- Numbering: 1230 is the first number of Pravāha's reserved block 1230-1249 (steward
+-- M20261001T231948-c543: Suvarna holds 1219, 1221-1224, 1226-1228, and "lowest free" had collided with
+-- them); lowest free in that block across every origin head, checked with guard:migration-numbers.
 --
 -- WHY THIS EXISTS
 -- ===============
@@ -63,7 +63,7 @@
 -- UPDATE of the same table). No BEGIN/COMMIT here: platform/scripts/migrate.ts owns the transaction.
 -- NOT applied by this change.
 
-DO $mig_1226$
+DO $mig_1230$
 DECLARE
   v_target      CONSTANT text := 'kala_gochara_windows_v2';
   v_count_sql   CONSTANT text := $ka_count_670$SELECT COUNT(*) FROM kala_gochara_windows_v2 WHERE chart_id=$1 AND generation='2.0'$ka_count_670$;
@@ -194,7 +194,7 @@ BEGIN
    WHERE asset_id = 'ka_gochara'
    FOR UPDATE;
   IF NOT FOUND THEN
-    RAISE EXCEPTION '1226: asset_registry has no ka_gochara row — nothing to revert (refusing to guess)';
+    RAISE EXCEPTION '1230: asset_registry has no ka_gochara row — nothing to revert (refusing to guess)';
   END IF;
 
   -- idempotent replay
@@ -202,7 +202,7 @@ BEGIN
      AND v_cur.count_sql = v_count_sql
      AND v_cur.integrity_check_sql = v_integrity
      AND v_cur.clear_tables IS NULL THEN
-    RAISE NOTICE '1226: ka_gochara already holds the restored writer-surface registry values — no-op';
+    RAISE NOTICE '1230: ka_gochara already holds the restored writer-surface registry values — no-op';
     RETURN;
   END IF;
 
@@ -212,7 +212,7 @@ BEGIN
      OR v_cur.clear_tables IS DISTINCT FROM v_prior_clear
      OR v_cur.integrity_check_sql IS NULL
      OR position(v_prior_marker IN v_cur.integrity_check_sql) = 0 THEN
-    RAISE EXCEPTION '1226: unexpected prior state for ka_gochara (target_table=%, count_sql=%, clear_tables=%) — only the exact state 1091 left may be reverted; refusing to overwrite',
+    RAISE EXCEPTION '1230: unexpected prior state for ka_gochara (target_table=%, count_sql=%, clear_tables=%) — only the exact state 1091 left may be reverted; refusing to overwrite',
                     v_cur.target_table, v_cur.count_sql, v_cur.clear_tables;
   END IF;
 
@@ -223,12 +223,12 @@ BEGIN
                FROM public.kala_gochara_cutover_step05_snapshot WHERE asset_id = ''ka_gochara'''
        INTO v_snap;
     IF v_snap IS NULL THEN
-      RAISE EXCEPTION '1226: kala_gochara_cutover_step05_snapshot exists but has no ka_gochara row';
+      RAISE EXCEPTION '1230: kala_gochara_cutover_step05_snapshot exists but has no ka_gochara row';
     END IF;
     IF v_snap.count_md5 IS DISTINCT FROM md5(v_count_sql)
        OR v_snap.integrity_md5 IS DISTINCT FROM md5(v_integrity)
        OR v_snap.clear_is_null IS DISTINCT FROM true THEN
-      RAISE EXCEPTION '1226: the snapshot does not equal the values this migration would write (count_sql md5 %, integrity md5 %, clear_tables NULL %) — refusing to restore',
+      RAISE EXCEPTION '1230: the snapshot does not equal the values this migration would write (count_sql md5 %, integrity md5 %, clear_tables NULL %) — refusing to restore',
                       v_snap.count_md5, v_snap.integrity_md5, v_snap.clear_is_null;
     END IF;
   END IF;
@@ -241,7 +241,7 @@ BEGIN
    WHERE asset_id = 'ka_gochara';
   GET DIAGNOSTICS v_n = ROW_COUNT;
   IF v_n <> 1 THEN
-    RAISE EXCEPTION '1226: expected to update exactly one ka_gochara row, updated %', v_n;
+    RAISE EXCEPTION '1230: expected to update exactly one ka_gochara row, updated %', v_n;
   END IF;
 
   -- post-state, re-read
@@ -250,7 +250,7 @@ BEGIN
      AND target_table = v_target AND count_sql = v_count_sql
      AND integrity_check_sql = v_integrity AND clear_tables IS NULL;
   IF NOT FOUND THEN
-    RAISE EXCEPTION '1226: post-update read of ka_gochara does not equal the intended values';
+    RAISE EXCEPTION '1230: post-update read of ka_gochara does not equal the intended values';
   END IF;
 END
-$mig_1226$;
+$mig_1230$;

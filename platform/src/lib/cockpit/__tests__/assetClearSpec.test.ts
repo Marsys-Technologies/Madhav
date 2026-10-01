@@ -117,7 +117,7 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
     // Because the explicit spec is null, that derived DELETE is never executed.
   })
 
-  it("ka_gochara clears the registered writer's own rows: windows_v2 '2.0' then its build-state, chart + generation scoped, no JOIN (migration 1226)", () => {
+  it("ka_gochara clears the registered writer's own rows: windows_v2 '2.0' then its build-state, chart + generation scoped, no JOIN (migration 1230)", () => {
     // The registry row counts kala_gochara_windows_v2 at generation '2.0' (what writers/ka_gochara.py
     // writes). The Clear must remove exactly that surface AND the writer's delta-aware bookkeeping —
     // a windows-only Clear would leave class_fingerprint rows that make a rebuild a no-op.

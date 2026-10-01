@@ -261,7 +261,7 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // LEL rows are only ever mutated by the intake API, never by the asset build path.
   lel_events: null,
 
-  // ── L3 Kāla Gochara — the registered writer's own output (migration 1226) ──────
+  // ── L3 Kāla Gochara — the registered writer's own output (migration 1230) ──────
   // ka_gochara's registry row counts, checks and clears exactly what its REGISTERED
   // WRITER writes: kala_gochara_windows_v2 at generation '2.0' (writers/ka_gochara.py
   // TABLE / GENERATION_V2) and that writer's delta-aware bookkeeping,
@@ -276,7 +276,7 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   //
   // This replaces WP7 packet C-1's entry, which cleared the '4.0' ledger (coverage →
   // contacts → windows) behind an authoritative-generation refusal guard: it was tied to
-  // migration 1091's '4.0' re-pin of count_sql, which migration 1226 reverts (1091's pin
+  // migration 1091's '4.0' re-pin of count_sql, which migration 1230 reverts (1091's pin
   // returns together with the writer switch at D-FLIP — and so does that entry). A '4.0'
   // authority can no longer be reached from a ka_gochara Clear, so the guard has nothing
   // left to refuse.
