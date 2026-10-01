@@ -187,9 +187,105 @@ def test_plan_is_rules_then_convention_then_eight_bodies_moon_excluded():
     keys = [s.key for s in steps]
     assert keys[0] == writer_mod.RULES_SUBSTEP
     assert keys[1] == writer_mod.CONVENTION_SUBSTEP
-    assert keys[2:] == [f"body:{b}" for b in SUBSTRATE_BODIES]
+    assert keys[2:10] == [f"body:{b}" for b in SUBSTRATE_BODIES]
     assert "Moon" not in SUBSTRATE_BODIES
     assert not any("moon" in k.lower() for k in keys)
+
+
+def test_plan_then_interleaves_class_coverage_and_p1_p4_record_grains():
+    """interval_sweep plan extension (design v1.1): per class, coverage
+    before its record grains; P5 held (D7) — never planned."""
+    w = writer_mod.GocharaV5Writer()
+    keys = [s.key for s in w.plan_substeps(_ctx())][10:]
+    classes = writer_mod.SCORED_CLASSES
+    assert len(keys) == len(classes) * (1 + len(writer_mod.RECORD_PATHS))
+    for i, event_class in enumerate(classes):
+        block = keys[i * 5:(i + 1) * 5]
+        assert block[0] == f"coverage:{event_class}"
+        assert block[1:] == [f"record:{event_class}:{pid}"
+                             for pid in ("P1", "P2", "P3", "P4")]
+    assert not any(":P5" in k for k in keys)
+
+
+# ── (d2) interval_sweep substep behaviour ────────────────────────────────────
+
+_CHART_CONTEXT = {
+    "lagna_deg": 12.43,
+    "natal": {
+        "Sun": 291.96, "Moon": 327.06, "Mars": 198.52, "Mercury": 270.84,
+        "Jupiter": 148.87, "Venus": 265.39, "Saturn": 356.74,
+        "Rahu": 21.34, "Ketu": 201.34,
+    },
+    "source_fact_ids": ["fact-1"],
+    "operands_missing": [],
+}
+
+
+@pytest.fixture()
+def _record_phase_fakes(monkeypatch):
+    calls: dict[str, list] = {"coverage": [], "grain": []}
+    monkeypatch.setattr(writer_mod, "fetch_chart_context",
+                        lambda conn, cid: dict(_CHART_CONTEXT))
+    class _FakeRecordStore:
+        def __init__(self, conn):
+            self.conn = conn
+
+        def ensure_kala_convention(self, vector=None, probe=None):
+            return "sha256:kala"
+
+    monkeypatch.setattr(writer_mod, "RecordStore", _FakeRecordStore)
+    monkeypatch.setattr(
+        writer_mod, "write_class_coverage",
+        lambda store, **kw: calls["coverage"].append(kw))
+    monkeypatch.setattr(
+        writer_mod, "materialise_record_grain",
+        lambda store, **kw: calls["grain"].append(kw)
+        or {"contacts": 2, "records": 2, "natal_records": 1,
+            "truncated_contacts": 1})
+    return calls
+
+
+def test_coverage_substep_writes_the_class_partition_after_the_chart_lock(
+        _record_phase_fakes):
+    conn = _RecordingConn()
+    w = writer_mod.GocharaV5Writer()
+    result = w.run_substep(_ctx(conn=conn), SubStep(key="coverage:marriage", label=""))
+    assert result.rows_inserted == 1
+    (kw,) = _record_phase_fakes["coverage"]
+    assert kw["event_class"] == "marriage" and kw["generation"] == "5.0"
+    assert kw["build_id"] == "test-build"
+    # the class enumeration spans P1–P4 only (P5 held — D7)
+    assert {e.path_id for e in kw["class_edges"]} <= {"P1", "P2", "P3", "P4"}
+    lock_idx = next(i for i, (sql, _) in enumerate(conn.statements)
+                    if "ka_gochara_lock_chart" in sql)
+    assert lock_idx == 0  # the lock precedes every record-phase write
+
+
+def test_record_grain_dispatches_with_context_and_reports_counts(
+        _record_phase_fakes):
+    w = writer_mod.GocharaV5Writer()
+    result = w.run_substep(_ctx(), SubStep(key="record:marriage:P3", label=""))
+    (kw,) = _record_phase_fakes["grain"]
+    assert (kw["event_class"], kw["path_id"], kw["generation"]) == (
+        "marriage", "P3", "5.0")
+    assert kw["source_fact_ids"] == ["fact-1"]
+    assert kw["edges"] and all(e.path_id == "P3" for e in kw["edges"])
+    # the injected house resolver: libra is the 7th from the fixture's aries
+    # lagna; dasha_lord frames resolve to None (open dasha-row binding)
+    edge = next(e for e in kw["edges"] if e.frame_kind == "lagna")
+    assert kw["house_for"](edge, "libra") == 7
+    assert "2 transit records" in result.notes
+    assert "1 natal facts" in result.notes
+
+
+def test_p5_and_unknown_grains_are_refused_by_name(_record_phase_fakes):
+    w = writer_mod.GocharaV5Writer()
+    assert "unknown record grain" in w.run_substep(
+        _ctx(), SubStep(key="record:marriage:P5", label="")).notes
+    assert "unknown coverage class" in w.run_substep(
+        _ctx(), SubStep(key="coverage:not_a_class", label="")).notes
+    assert _record_phase_fakes["grain"] == []
+    assert _record_phase_fakes["coverage"] == []
 
 
 # ── (d) substep behaviour ─────────────────────────────────────────────────────

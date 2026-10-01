@@ -414,7 +414,7 @@ def write_class_coverage(
     event_class: str,
     class_edges: Sequence[RecordEdge],
     horizon: tuple[datetime, datetime],
-    position_at: Callable[[datetime], float] | None,
+    position_at: Callable[[str, datetime], float] | None,
     sky_convention_id: str,
     kala_convention_id: str,
     build_id: str,
@@ -486,7 +486,7 @@ def materialise_record_grain(
     path_id: str,
     edges: Sequence[RecordEdge],
     horizon: tuple[datetime, datetime],
-    position_at: Callable[[datetime], float] | None,
+    position_at: Callable[[str, datetime], float] | None,
     house_for: Callable[[RecordEdge, str], int | None],
     sky_convention_id: str,
     source_fact_ids: list[str],
@@ -497,10 +497,11 @@ def materialise_record_grain(
     (pin 7 — the coverage substep runs first; a grain without it refuses
     via stored_coverage_facts_json, never orphans a record).
 
-    `position_at` probes sidereal longitudes for span derivation (one probe
-    per interval; injected — this module never touches an ephemeris).
-    Without it no transit span is derived: nothing is minted (the class
-    coverage named the probe's absence), never fabricated.
+    `position_at(body, t)` probes sidereal longitudes for span
+    derivation (one probe per interval; injected — this module never
+    touches an ephemeris). Without it no transit span is derived: nothing
+    is minted (the class coverage named the probe's absence), never
+    fabricated.
     """
     residence_edges = [e for e in edges if e.transit and e.relation == "residence"]
     natal_edges = [e for e in edges if not e.transit]
@@ -520,7 +521,7 @@ def materialise_record_grain(
             spans_by_body[body] = residence_spans(
                 [BoundaryCrossing(t=c.t, level_deg=c.level_deg) for c in infos],
                 horizon=(SUBSTRATE_DOMAIN_START, SUBSTRATE_DOMAIN_END),
-                position_at=position_at,
+                position_at=lambda t, b=body: position_at(b, t),
             )
 
     # Work list (pass 1, no writes): the in-horizon minted occurrences with

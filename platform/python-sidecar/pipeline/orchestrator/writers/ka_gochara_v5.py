@@ -43,6 +43,7 @@ FROZEN ORCHESTRATOR CONTRACT (§N.2)
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from pipeline.orchestrator.writers import (
     ContextSpec,
@@ -51,6 +52,13 @@ from pipeline.orchestrator.writers import (
     WriterResult,
     register,
 )
+from services.gochara_kernel import evaluator as gk_evaluator
+from services.gochara_kernel.chart_context import (fetch_chart_context,
+                                                   require_complete)
+from services.gochara_kernel.knots import calc_sidereal_lon
+from services.gochara_kernel.record_store import (RecordStore,
+                                                  materialise_record_grain,
+                                                  write_class_coverage)
 from services.gochara_kernel.rule_registry import BOUND_PATHS, RuleRegistryStore
 from services.gochara_kernel.substrate import SUBSTRATE_BODIES, SkyEventStore
 
@@ -61,6 +69,23 @@ ASSET_ID = "ka_gochara_v5"
 RULES_SUBSTEP = "rules"
 CONVENTION_SUBSTEP = "convention"
 BODY_SUBSTEP_PREFIX = "body:"
+COVERAGE_SUBSTEP_PREFIX = "coverage:"
+RECORD_SUBSTEP_PREFIX = "record:"
+
+GENERATION = "5.0"
+# interval_sweep record grains: P1–P4 only. P5 record grains HOLD (D7 —
+# 'av_qualifier' joins the kgrr vocabulary only at the v1.5 contract fold;
+# brief §interval_sweep + the batch list). The hold is a plan-level absence,
+# never a silent skip: the substep labels say so.
+RECORD_PATHS = tuple(p for p in BOUND_PATHS if p != "P5")
+SCORED_CLASSES = tuple(sorted(gk_evaluator.ROW_MEMBERSHIP))
+# The campaign's scored horizon (the A2.5 narrowing: LEL-scored window);
+# overridable in config for rehearsals.
+DEFAULT_HORIZON = (datetime(1998, 1, 1, tzinfo=timezone.utc),
+                   datetime(2026, 4, 17, tzinfo=timezone.utc))
+_SIGNS = ("aries", "taurus", "gemini", "cancer", "leo", "virgo", "libra",
+          "scorpio", "sagittarius", "capricorn", "aquarius", "pisces")
+_JD_UNIX_EPOCH = 2440587.5
 
 # Pravāha A5.3 inherits the A2.5 one-chart discipline (steward dispatch
 # CHART_ID): a candidate-generation writer must never be plannable for an
@@ -81,6 +106,30 @@ def _require_pinned_chart(chart_id: str) -> None:
             f"candidate chart {PINNED_CHART_ID} — refusing (fail-closed; "
             "this asset is inert to all planners and admits no execution "
             "surface until steward pins 3-7 land)")
+
+
+def _house_resolver(context: dict):
+    """house_for(edge, sign) from the chart context, whole-sign from the
+    edge's frame anchor: lagna → lagna sign; moon → natal Moon sign;
+    bhavat_bhavam:<H> → the H-th house's sign from lagna. `dasha_lord`
+    returns None — its anchor needs the §4.0 dasha rows, an open binding
+    (brief §interval_sweep); an unresolvable anchor means the occurrence is
+    NOT minted (kgrr_evaluated_has_house_ck — a state, never an omission)."""
+    lagna_idx = int(context["lagna_deg"] // 30)
+    moon_idx = int(context["natal"]["Moon"] // 30)
+
+    def house_for(edge, sign: str) -> int | None:
+        s = _SIGNS.index(sign.lower())
+        if edge.frame_kind == "lagna":
+            anchor = lagna_idx
+        elif edge.frame_kind == "moon":
+            anchor = moon_idx
+        elif edge.frame_kind == "bhavat_bhavam" and edge.frame_arg:
+            anchor = (lagna_idx + int(edge.frame_arg) - 1) % 12
+        else:
+            return None
+        return (s - anchor) % 12 + 1
+    return house_for
 
 
 @register(ASSET_ID)
@@ -118,6 +167,19 @@ class GocharaV5Writer(WriterBase):
                     label=f"phase-1 boundary substrate + stations: {body}")
             for body in SUBSTRATE_BODIES
         )
+        # interval_sweep (design v1.1): per class, the coverage partition
+        # first (pin 7), then its record grains over P1–P4 (P5 held — D7).
+        for event_class in SCORED_CLASSES:
+            steps.append(SubStep(
+                key=f"{COVERAGE_SUBSTEP_PREFIX}{event_class}",
+                label=f"class coverage partition (P1–P4 searched; P5 held — D7): "
+                      f"{event_class}"))
+            steps.extend(
+                SubStep(key=f"{RECORD_SUBSTEP_PREFIX}{event_class}:{pid}",
+                        label=f"contact materialisation {event_class}/{pid} "
+                              "(residence + natal facts; point solves 3/N)")
+                for pid in RECORD_PATHS
+            )
         return steps
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
@@ -133,7 +195,10 @@ class GocharaV5Writer(WriterBase):
         chart_id = ctx.config["chart_id"]
         _require_pinned_chart(chart_id)
         known = (RULES_SUBSTEP, CONVENTION_SUBSTEP)
-        if step.key not in known and not step.key.startswith(BODY_SUBSTEP_PREFIX):
+        if (step.key not in known
+                and not step.key.startswith(BODY_SUBSTEP_PREFIX)
+                and not step.key.startswith(COVERAGE_SUBSTEP_PREFIX)
+                and not step.key.startswith(RECORD_SUBSTEP_PREFIX)):
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"unknown substep {step.key!r}")
         if ctx.dry_run:
@@ -161,6 +226,8 @@ class GocharaV5Writer(WriterBase):
             cid = store.register_convention()
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"convention {cid[:24]}… registered (idempotent)")
+        if step.key.startswith((COVERAGE_SUBSTEP_PREFIX, RECORD_SUBSTEP_PREFIX)):
+            return self._run_record_phase(ctx, step, chart_id)
         body = step.key[len(BODY_SUBSTEP_PREFIX):]
         if body not in SUBSTRATE_BODIES:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
@@ -174,6 +241,77 @@ class GocharaV5Writer(WriterBase):
             notes=(f"{body}: {counts['events']} boundary events + "
                    f"{counts['stations']} stations over {counts['objects']} "
                    "physical objects (idempotent insert-if-absent)"))
+
+    # ------------------------------------------------------------------
+
+    def _run_record_phase(self, ctx: ContextSpec, step: SubStep,
+                          chart_id: str) -> WriterResult:
+        """interval_sweep substeps (the chart lock is already taken by the
+        caller — substrate order, N13): `coverage:<class>` writes the class
+        partition (pin 7), `record:<class>:<path>` materialises the grain.
+        The chart context comes from L1 chart_facts — conflicts/missing are
+        NAMED by require_complete, never defaulted."""
+        context = fetch_chart_context(ctx.db_conn, chart_id)
+        require_complete(context)
+        horizon = ctx.config.get("horizon", DEFAULT_HORIZON)
+        ephe_path = ctx.config.get("ephe_path")
+        chart = {"lagna_deg": context["lagna_deg"], "natal": context["natal"]}
+        store = RecordStore(ctx.db_conn)
+        sky_cid = SkyEventStore(ctx.db_conn).register_convention()
+
+        def position_at(body: str, t: datetime) -> float:
+            jd = t.timestamp() / 86400.0 + _JD_UNIX_EPOCH
+            lon, retflag = calc_sidereal_lon(body.title(), jd, ephe_path)
+            if not (retflag & 2):
+                raise RuntimeError(
+                    f"position probe {body} @ {t.isoformat()}: retflag "
+                    f"{retflag} lacks the Swiss bit (F-14 — a Moshier "
+                    "fallback is a named failure, never a silent probe)")
+            return lon
+
+        house_for = _house_resolver(context)
+
+        if step.key.startswith(COVERAGE_SUBSTEP_PREFIX):
+            event_class = step.key[len(COVERAGE_SUBSTEP_PREFIX):]
+            if event_class not in SCORED_CLASSES:
+                return WriterResult(asset_id=self.asset_id, rows_inserted=0,
+                                    notes=f"unknown coverage class {event_class!r}")
+            class_edges = [
+                edge
+                for pid in RECORD_PATHS
+                for edge in gk_evaluator.enumerate_edges(event_class, pid, chart)
+            ]
+            kala_cid = store.ensure_kala_convention()
+            write_class_coverage(
+                store, chart_id=chart_id, generation=GENERATION,
+                event_class=event_class, class_edges=class_edges,
+                horizon=horizon, position_at=position_at,
+                sky_convention_id=sky_cid, kala_convention_id=kala_cid,
+                build_id=ctx.build_id)
+            return WriterResult(
+                asset_id=self.asset_id, rows_inserted=1,
+                notes=(f"coverage partition {event_class} written "
+                       f"(idempotent; {len(class_edges)} declared edges over "
+                       f"P1–P4, P5 held — D7)"))
+
+        event_class, path_id = step.key[len(RECORD_SUBSTEP_PREFIX):].split(":", 1)
+        if event_class not in SCORED_CLASSES or path_id not in RECORD_PATHS:
+            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
+                                notes=f"unknown record grain {step.key!r}")
+        edges = gk_evaluator.enumerate_edges(event_class, path_id, chart)
+        counts = materialise_record_grain(
+            store, chart_id=chart_id, generation=GENERATION,
+            event_class=event_class, path_id=path_id, edges=edges,
+            horizon=horizon, position_at=position_at, house_for=house_for,
+            sky_convention_id=sky_cid,
+            source_fact_ids=context["source_fact_ids"])
+        inserted = counts["contacts"] + counts["records"] + counts["natal_records"]
+        return WriterResult(
+            asset_id=self.asset_id, rows_inserted=inserted,
+            notes=(f"{event_class}/{path_id}: {counts['records']} transit "
+                   f"records ({counts['contacts']} contacts, "
+                   f"{counts['truncated_contacts']} truncated kept), "
+                   f"{counts['natal_records']} natal facts"))
 
     # ------------------------------------------------------------------
 

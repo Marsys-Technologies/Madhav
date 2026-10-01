@@ -75,9 +75,10 @@ def _crossing(day: float, level: float) -> rs.CrossingInfo:
 
 
 def _probe(ranges: list[tuple[float, float]]):
-    """position_at: LIBRA_MID inside the (day) ranges, NOT_LIBRA_MID outside
-    — consistent with the fixture crossings (into libra at 180°, out at 210°)."""
-    def position_at(t: datetime) -> float:
+    """position_at(body, t): LIBRA_MID inside the (day) ranges, NOT_LIBRA_MID
+    outside — consistent with the fixture crossings (into libra at 180°, out
+    at 210°)."""
+    def position_at(body: str, t: datetime) -> float:
         d = (t - T0) / DAY
         return LIBRA_MID if any(a <= d < b for a, b in ranges) else NOT_LIBRA_MID
     return position_at
