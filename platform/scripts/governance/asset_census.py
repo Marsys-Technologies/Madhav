@@ -403,7 +403,7 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
         # E6 packet (c): the rollup does not trust a record's own verdict where the claim cannot be established
         # (INCONCLUSIVE is a state: nothing was measured), and the two capped checks cannot read PASS (SS: Null "never
         # PASS alone"; Narr.fidelity_test structural only)
-        infl = meas.get("inconclusive") is True
+        infl = bool(meas.get("inconclusive"))
         if infl and v in (PASS, PARTIAL):
             return dict(criterion=crit, v=NO_DET, state="MEASURED", inconclusive=True,
                         reason="INCONCLUSIVE record: nothing was established, so it cannot read PASS or PARTIAL")
@@ -1524,6 +1524,9 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
             out[crit] = fn()
         except (Unknown, DeclarationsError) as exc:      # R41: one check's failure degrades only that check
             out[crit] = dict(v=ERRORED, measured=f"check errored: {exc}")
+    if out.get("Narr.agree", {}).get("v") == PASS and ctx.get("written") is None:
+        out["Narr.agree"] = dict(v=PARTIAL, measured=out["Narr.agree"]["measured"] + "; reverse leg unavailable: the writer's "
+                                 "writes could not be read, so a prose-vocabulary column it writes without declaring is unchecked")
     if out.get("Narr.agree", {}).get("v") == PASS and ctx.get("written") is not None:
         # two-way: a column the declarations treat as narration that this writer writes but does not declare
         declared_cols = {parse_prose_field(e)[0] for e in pf}

@@ -405,7 +405,7 @@ def test_the_vocabulary_is_every_declared_prose_column_and_path_column():
 def _ctx(**kw):
     base = dict(table="t", columns=["id", "statement"], types={"statement": "text"}, defaults={},
                 counts={"statement": GOOD}, units=[], paths=[], tests=_tests(test_a=T_FULL), vocabulary={"statement"},
-                written=None)
+                written={})
     base.update(kw)
     return base
 
@@ -764,7 +764,7 @@ def test_a_count_that_raises_degrades_only_the_two_row_checks_to_errored(monkeyp
     cat = _cat(t_main=(["id", "chart_id", "a"], {}, {}))
     out, _ = _mp(["a"], cat, ["t_main"], psql_rows=ac.Unknown("boom"), monkeypatch=monkeypatch)
     assert out["Narr.checkable"]["v"] == ac.ERRORED and out["Null.blank_rows"]["v"] == ac.ERRORED
-    assert out["Narr.agree"]["v"] == ac.PASS
+    assert out["Narr.agree"]["v"] == ac.PARTIAL and "reverse leg unavailable" in out["Narr.agree"]["measured"]
 
 
 def test_schema_default_reads_the_default_of_the_owned_table_that_holds_the_column():
@@ -909,7 +909,7 @@ def test_agree_stays_pass_when_every_written_vocabulary_column_is_declared_or_th
     ok = ac.prose_checks("a", _decl(["statement"]), _ctx(written={"t": {"statement", "valence"}}, vocabulary={"statement"}))
     assert ok["Narr.agree"]["v"] == ac.PASS
     unread = ac.prose_checks("a", _decl(["statement"]), _ctx(written=None, vocabulary={"statement", "citation_human"}))
-    assert unread["Narr.agree"]["v"] == ac.PASS
+    assert unread["Narr.agree"]["v"] == ac.PARTIAL      # reverse leg unavailable (final review item 10)
 
 
 def test_a_declared_json_path_column_counts_as_declared_for_the_two_way_check():
@@ -1354,3 +1354,30 @@ def test_a_reset_of_the_same_column_name_on_a_different_own_table_does_not_excus
     other = "UPDATE t_x SET hits = 0 WHERE chart_id = %s"
     assert _fn_two(monkeypatch, tmp_path, other, ACC, targets=("t_s", "t_x"))[0] == ac.FAIL
     assert _fn_two(monkeypatch, tmp_path, RESET, ACC, targets=("t_s", "t_x"))[0] == ac.PARTIAL
+
+
+# ───────────────────────── final review: item 10 (agree PASS says whether the reverse leg ran; truthy inconclusive) ─────────────────────────
+
+def test_agree_is_partial_when_the_reverse_leg_could_not_run_and_says_why():
+    got = ac.prose_checks("a", _decl(["statement"]), _ctx(written=None))
+    a = got["Narr.agree"]
+    assert a["v"] == ac.PARTIAL and "reverse leg unavailable" in a["measured"] and "could not be read" in a["measured"], a
+
+
+def test_agree_with_a_readable_empty_write_set_stays_pass():
+    assert ac.prose_checks("a", _decl(["statement"]), _ctx(written={}))["Narr.agree"]["v"] == ac.PASS
+
+
+def test_agree_fail_and_no_detector_are_not_softened_by_the_missing_reverse_leg():
+    assert ac.prose_checks("a", _decl(["ghost"]), _ctx(written=None))["Narr.agree"]["v"] == ac.FAIL
+
+
+@pytest.mark.parametrize("flag", [1, "yes", [0]])
+def test_the_rollup_reads_the_inconclusive_flag_by_truthiness(flag):
+    c, _ = _chk("Narr.checkable", v=ac.PASS, inconclusive=flag)
+    assert c["v"] == ac.NO_DET and c["inconclusive"] is True, c
+
+
+def test_a_falsy_inconclusive_flag_is_not_an_inconclusive_record():
+    c, _ = _chk("Narr.agree", v=ac.PASS, inconclusive=0)
+    assert c["v"] == ac.PASS and "inconclusive" not in c
