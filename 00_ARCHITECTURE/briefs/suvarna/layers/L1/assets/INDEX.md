@@ -2,7 +2,7 @@
 artifact: ASSET_ELEVATION_BRIEF_INDEX
 layer: L1 Gaṇita (ga_*)
 version: "1.0-provisional"
-status: "PROVISIONAL — until J1; may register gaps, may not certify"
+status: "PROVISIONAL — until J1; may register gaps, may not certify; SS ruling N-61 (2026-10-02) on the argala block of the L1 decision sheet recorded in sections 7 and 9 and in the ga_structural brief (FD-5, section 8), (R) items provisional until J1"
 produced_by: exec-suvarna
 produced_on: 2026-10-01
 plan_item: A.L1 (briefs, dispositions, designs)
@@ -11,8 +11,8 @@ census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/censu
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L1/L1_LAYER_INSTANCE_v1_0.md (1.0-rev1, PROVISIONAL)"
 briefs: 19 (one per L1 asset, `<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` in this directory, per Track A brief §8)
-decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11), Dens applicability (L0 Q2), count_sql scope (L0 Q19), the argala authority answer, the lean-format variance approval; Track I I-11 (RLS diagnosis), I-12, I-13; dispositions proposed, not yet answered by SS"
-track_i_items: [I-11, I-12, I-13]
+decisions_applied: "SS answers logged 2026-10-01 and applied: Build.history window (L0 Q11), Dens applicability (L0 Q2), count_sql scope (L0 Q19), the argala authority answer, the lean-format variance approval; Track I I-11 (RLS diagnosis), I-12, I-13; dispositions proposed, not yet answered by SS; the argala block (AR-1..AR-6) ANSWERED by SS 2026-10-02 (decision N-61), see sections 7 and 9"
+track_i_items: [I-11, I-12, I-13, I-14, I-15, I-16, I-17, I-18, I-19, I-20]
 revision: "1.0-rev1 (2026-10-01): corrections after the independent review of f9448c509 (CF-16 reframed as an access incident, rebuild-plan context, live blast radius incl. 1210, stale premises, floors in CF-02, answered L0 questions, S7 precision, evidence scripts committed)"
 ---
 
@@ -338,6 +338,8 @@ Curated from the per-asset questions (the full lists stay in each brief, §4 `Qu
 16. **CF-17 / CF-14 / CF-20:** named constants for the other vocabulary members in the shared L0 module (changes ~24 writers' source hashes) or `entry_for()` lookups; remove or keep the eight legacy `_telemetry` sites; where do the `condition_score` cut points live?
 17. **Dispositions:** accept keep for 16, enrich for `ga_ayurdaya` and `ga_yoga`, qualify for `ga_prashna`.
 
+**Argala block (decision sheet `DECISION_SHEET_L1_v1_0.md`, group B-0, AR-1 to AR-6) — ANSWERED by SS on 2026-10-02 (decision N-61); all recommendations accepted, (R) items provisional until J1.** AR-1 (R): L1 owns the argala pairing 2-12, 4-10, 11-3, 5-9; obstruction applies to benefic and malefic argala; outcome by count only (argala count > obstructor count = `argala_prevails`, fewer = `obstructed`, equal = `undetermined`; "stronger" stays null, unsourced); `virodha` means the obstruction in every layer, L2's "argala by a malefic" gets a different name; the `get_argala.ts` offsets text is fixed now (pre-approved). AR-2 (R): both nodes reversed when the node is the reference, in the L1 graha-level rows (`count_direction`); Ketu-only is a named stricter variant; the sign matrix stays forward-only. AR-3 (R): an empty source sign is NULL with `no_occupant`; the 1.0 / 0.25 formula stays as a project convention (`unsourced`); the BPHS count grading is post-J1. AR-4: keep `single`, correct the provenance string. AR-5: citation chunk ids, `sourced_ocr_unverified`. AR-6 (R): L1 {2, 4, 5, 11} / {12, 10, 9, 3} canonical, {2, 4, 11} a named filter; L1 adds a graha-level family (D1 only); L2 builds its edges from those rows, cites their `fact_id`s and deletes its offset constants, pairing and own malefic set; one cited benefic/malefic definition in the L0 graha vocabulary (Sun, Saturn, Mars; nodes stated separately) if a label is needed; the vipareeta / 3rd-house evil argala is recorded, not built. **Binding sequence:** ONE `ga_structural` rebuild carrying the argala change AND the ephemeris fix, after G-EPH and G-FLIP, as part of S-L1; then `bo_karanajala` inside the single S-L2 batch; no argala-only L1 rebuild. Migration 1219 is allocated for the `fact_category_ownership` row (and the `count_sql` / floor touch). **J1 reviewers' list, by name:** the argala pairing and the node reversal.
+
 ## 8 · Notes on method and path
 
 - **Path:** per Track A brief §8: `00_ARCHITECTURE/briefs/suvarna/layers/L1/assets/<ASSET_ID>_ELEVATION_BRIEF_v1_0.md` (revalidation bumps to v1.1). Fix designs live inside each brief (§4), not in separate `designs/` files; `INDEX.md` sits beside the briefs.
@@ -354,6 +356,20 @@ Curated from the per-asset questions (the full lists stay in each brief, §4 `Qu
 **Track I items arising:** I-11 (`chart_divisionals` access incident: owner/app-role read, then the RLS access fix, an integrity non-empty conjunct and a cutover-gate RLS check; touches `ga_vargas`, `ga_dashas`, `ga_condition`, `ga_strength`, `ga_structural`, `ga_sade_sati`, `ga_yoga`); I-12 (`ga_sensitive` earned tier, CF-19); I-13 (41,042 unowned `chart_facts` rows, CF-02); plus the tier-independent designs in CF-03, CF-06, CF-13(a), CF-14, CF-15, CF-17.
 
 **Variance from Track A §5/§8: APPROVED by SS (2026-10-01) for L1–L5 ("the briefs' own format is fine under the lean model; no restructuring; the same format is used for L1-L5", recorded at L0).** The six variances: (1) own section numbering (§0–§7) instead of the T4 template's §0–§9; (2) no separate "obligations specialised" section (T4 §3); (3) no explicit thirteen-row inherited table (T4 §0.1); (4) no `L1_DISPOSITIONS_v1_0.md` (Track A §8): dispositions are in each brief §3 and in this INDEX §2, §3 and §6; (5) fix designs inside each brief (§4) instead of `designs/<ASSET_ID>_FIX_DESIGN_v1_0.md`; (6) the gate table is per criterion with a rollup line, not the nine-row T4 §4 table with a detector column.
+
+**Track I items arising from the argala ruling (continuing this index's numbering after I-13; SS decision N-61, 2026-10-02).** All provisional until J1; (R) marks an output-changing or verdict-defining ruling.
+
+| id | asset(s) | item | class | rebuild | from |
+|---|---|---|---|---|---|
+| I-14 | ga_structural | graha-level argala family (working name `argala_graha_natal`, D1 only): pairing 2-12, 4-10, 11-3, 5-9 stored on the matrix rows and as obstruction facts (benefic and malefic); outcome by count (`argala_prevails` / `obstructed` / `undetermined`, strength null); `count_direction` reversal for BOTH nodes when the node is the reference (Ketu-only a named stricter variant); sign matrix stays forward-only and says so | writer code (output) (R) | y (S-L1) | AR-1, AR-2, AR-6 |
+| I-15 | ga_structural | empty source sign: `fact_value_num = NULL`, `fact_value_text = 'no_occupant'` (3,444 of 7,200 argala-offset cells per canonical chart); the 1.0 / 0.25 formula kept as a project convention, `unsourced`; BPHS count grading post-J1 | writer code (output) (R) | y (S-L1) | AR-3 |
+| I-16 | ga_structural | keep `single`; `source_calculation` corrected from `pyjhora_adapter.argala` / `.virodha_argala` to the writer function; citation block (BPHS Ch. 31 chunk ids, Jaimini Su. 5-10) in `formula_provenance_text`, `sourced_ocr_unverified` | writer code (string) | rides S-L1 | AR-4, AR-5 |
+| I-17 | ga_structural (served) | `get_argala.ts:62-65` description: obstruction offsets 12th/10th/9th/3rd (not "3rd/12th/10th/3rd"); say the sign matrix is forward-only and that empty-cell semantics follow I-15; pre-approved, buildable now | served surface (TS) | n | AR-1 |
+| I-18 | L0 (graha vocabulary) | ONE cited benefic/malefic definition (Sun, Saturn, Mars; nodes stated separately) read by both layers, only if an argala edge needs a label; check which writers import the module before editing | L0 module | cond | AR-6 |
+| I-19 | bo_karanajala (L2 set) | build argala edges from the I-14 rows, cite their `fact_id`s, delete the offset constants, the pairing and the local malefic set; rename the "argala by a malefic" class (name proposed in the L2 design note) | writer code (output) (R) | y (S-L2 batch) | AR-1, AR-6 |
+| I-20 | ga_structural, bo_karanajala | binding sequence: ONE `ga_structural` rebuild carrying I-14 to I-16 AND the ephemeris fix, after G-EPH and G-FLIP, as part of S-L1; `bo_karanajala` inside the single S-L2 batch; no argala-only L1 rebuild; migration 1219 (allocated) for the `fact_category_ownership` row and the `count_sql` / floor touch | registry + process | n/a | AR-6 |
+
+**J1 reviewers' list, by name:** the argala pairing (I-14) and the node reversal (I-14).
 
 **Evidence scripts:** `_evidence/` beside this file holds the offline re-runs (`offline_rollup_L1.py`, `offline_narr_null_L1.py`, `ddl_c.py` and their outputs `rollup_saved_L1.json`, `narr_null_offline_L1.json`); see `_evidence/README.md`.
 
