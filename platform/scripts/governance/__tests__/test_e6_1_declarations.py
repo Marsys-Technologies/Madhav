@@ -2207,7 +2207,11 @@ CITATION_DECISIONS = json.loads(r"""
 """)
 # python files that set a citation_human but belong to no asset's decision: a verifier's constant text, and the constant-literal
 # Upapada rule corpus (brahmagyan/l0_upapada_maitri_rules.py) that ga_structural reads into its rows (ga_structural is decided on its own sites)
-CITATION_UNOWNED_FILES = {_SC + "ga_writers/_vimshottari_independent_verifier.py", _SC + "brahmagyan/l0_upapada_maitri_rules.py"}
+# and Pravāha's kala_gochara cutover rehearsal script (scripts/kala_gochara_cutover/resonance_rebuild_disposable_rehearsal.py), whose
+# only citation_human mentions are SQL column lists of INSERT … SELECT row copies (lines ~802, ~822, ~1007): it composes no text and is
+# not an asset writer
+CITATION_UNOWNED_FILES = {_SC + "ga_writers/_vimshottari_independent_verifier.py", _SC + "brahmagyan/l0_upapada_maitri_rules.py",
+                          _SC + "scripts/kala_gochara_cutover/resonance_rebuild_disposable_rehearsal.py"}
 CITATION_NO_SITE_ASSETS = ("ga_medical", "ga_prashna", "ga_vastu", "ga_vichara", "ga_transit_anchors")   # writers set no citation_human
 _GW = _SC + "ga_writers/"
 
