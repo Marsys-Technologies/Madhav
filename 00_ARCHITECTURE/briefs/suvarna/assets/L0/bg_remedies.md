@@ -96,7 +96,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 ### FD-2 · Explicit attribution state for the 80 `classical_tradition` rows
 
 - **Answers:** layer instance Q-05; CF-11
-- **Change:** add `attribution_state` derived from the token (`tradition_rooted`), no citation replaced; the 80 rows are the largest instance of the policy documented in `l0_doshas.py:15-20`.
+- **Change:** add `attribution_state` derived from the token (`tradition_rooted`), no citation replaced; the 80 rows are the largest instance of the policy documented in `l0_doshas.py:18-21`.
 - **Files / declaration / migration:** a migration (additive column) + `l0_remedy_corpus.py`
 - **Failing-first test and mutation:** count of `tradition_rooted` rows = 80, citations unchanged
 - **Output change:** one additive column

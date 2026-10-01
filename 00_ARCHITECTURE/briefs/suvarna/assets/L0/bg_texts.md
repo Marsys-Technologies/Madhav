@@ -88,7 +88,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Failing-first test and mutation:** see CF-01
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** A: none. B: needs production rebuild of this asset (idempotent, no data change)
+- **Rebuild:** none (option A, recommended); option B would write a new record by rebuilding this asset (idempotent, no data change)
 - **Gate it moves:** Build (completion)
 - **Fix class:** detector/tooling (A) or writer code (B); **buildable before J1:** tier-dependent: T4 §4.2 check 6 wording
 - **Question for SS:** CF-01: is a converged-rerun `rows_written = 0` on a declared changed-rows writer a PASS?

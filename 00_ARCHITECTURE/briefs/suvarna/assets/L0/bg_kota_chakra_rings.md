@@ -111,7 +111,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Failing-first test and mutation:** inspector reads PASS/FAIL on the declared column; a blank source must read FAIL
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** none (declaration) / needs production rebuild only if a column is added
+- **Rebuild:** none (declaration); a data fix would be a separate design
 - **Gate it moves:** Ldgr (no reading → PASS/FAIL)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T3-01 (the Ldgr source is undefined in the gate map)
 

@@ -21,7 +21,7 @@ ledger_gap_ids: [bg_reference-Idem.pattern, bg_reference-Build.completion, bg_re
 
 ## 0 · Identity — what the asset is
 
-Registry description: 'Structured properties owned by `bg_reference` across 11 current typed tables; yoga, dosha and dasha reference rows belong to their dedicated assets'. The tables: `reference_planets` (11), `reference_signs`, `reference_houses`, `reference_aspects`, `reference_karakas`, `reference_vargas`, `reference_upagrahas`, `reference_strength_systems`, `reference_constants`, `reference_glossary`, `reference_topic_tags` (1,242 rows in total; the conventions in force that T2's DP01 asks L0 to hold). The writer delegates to `brahmagyan/l0_reference.py:seed_reference` (ON CONFLICT upserts, e.g. `:1315,1362`) and pins `tuple_row` around the call because `l0_reference.py:1418` indexes a fetched row numerically while the orchestrator connection uses `dict_row`; the writer's comment records the `KeyError: 0` that put the asset in error in the 2026-08-02 L0 global build (`platform/python-sidecar/pipeline/orchestrator/writers/bg_reference.py:26-45`). Depends on `bg_ontology` (FK validation of ontology ids); declared dependents `bg_compendium_index`, `bg_concordance`, `bg_text_index`, `ga_sensitive` (census direct 4 / transitive 62). `source_citation` populated 11/11 on `reference_planets`.
+Registry description: 'Structured properties owned by `bg_reference` across 11 current typed tables; yoga, dosha and dasha reference rows belong to their dedicated assets'. The tables: `reference_planets` (11), `reference_signs`, `reference_houses`, `reference_aspects`, `reference_karakas`, `reference_vargas`, `reference_upagrahas`, `reference_strength_systems`, `reference_constants`, `reference_glossary`, `reference_topic_tags` (1,242 rows in total; the conventions in force that T2's DP01 asks L0 to hold). The writer delegates to `brahmagyan/l0_reference.py:seed_reference` (ON CONFLICT upserts, e.g. `:1315,1362`) and pins `tuple_row` around the call because `l0_reference.py:1418` indexes a fetched row numerically while the orchestrator connection uses `dict_row`; the writer's comment records the `KeyError: 0` that put the asset in error in the 2026-08-02 L0 global build (`platform/python-sidecar/pipeline/orchestrator/writers/bg_reference.py:26-38`). Depends on `bg_ontology` (FK validation of ontology ids); declared dependents `bg_compendium_index`, `bg_concordance`, `bg_text_index`, `ga_sensitive` (census direct 4 / transitive 62). `source_citation` populated 11/11 on `reference_planets`.
 
 | field | value | source |
 |---|---|---|
@@ -87,14 +87,14 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Failing-first test and mutation:** see CF-01
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** A: none. B: needs production rebuild of this asset (idempotent, no data change)
+- **Rebuild:** none (option A, recommended); option B would write a new record by rebuilding this asset (idempotent, no data change)
 - **Gate it moves:** Build (completion)
 - **Fix class:** detector/tooling (A) or writer code (B); **buildable before J1:** tier-dependent: T4 §4.2 check 6 wording
 - **Question for SS:** CF-01: is a converged-rerun `rows_written = 0` on a declared changed-rows writer a PASS?
 
 ### FD-2 · Remove the root cause of the row-factory workaround
 
-- **Answers:** writer comment `bg_reference.py:26-45`; no census cell (the workaround holds)
+- **Answers:** writer comment `bg_reference.py:26-38`; no census cell (the workaround holds)
 - **Change:** make `l0_reference.py:1418` read the fetched row by key or by a helper that accepts both row factories, so the `tuple_row` pin becomes unnecessary; keep the pin until the shared-module test passes under `dict_row`. `l0_reference.py` is a shared brahmagyan module, so the change is made in one reviewed lane.
 - **Files / declaration / migration:** `platform/python-sidecar/brahmagyan/l0_reference.py:1418`; test under `platform/python-sidecar/tests/`
 - **Failing-first test and mutation:** failing-first: run `seed_reference` against a `dict_row` connection (fails today without the pin); mutation: reintroduce `r[0]` → fails

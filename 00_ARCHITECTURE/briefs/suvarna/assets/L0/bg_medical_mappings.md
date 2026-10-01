@@ -87,7 +87,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Failing-first test and mutation:** failing-first: `rows_written` equals the asset’s own count_sql scope after a first build; a seeded row in a sibling table does not move it; mutation: revert → mismatch returns
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** needs production rebuild of the three medical assets (small tables, idempotent) to refresh the records; or detector-side per CF-01/CF-02 with no rebuild
+- **Rebuild:** none for a detector-side reading (CF-01/CF-02); the writer option, if chosen, needs a production rebuild of the three medical assets (small tables, idempotent) to refresh the records
 - **Gate it moves:** Build (completion)
 - **Fix class:** writer code; **buildable before J1:** tier-independent for the writer; the rider semantics (`producer_covered`) are tier-dependent (TGH-T4-01)
 - **Question for SS:** May the rider ids be dispatched through this writer and each recorded on its own count?

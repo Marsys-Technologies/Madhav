@@ -21,7 +21,7 @@ ledger_gap_ids: [bg_doshas-Idem.pattern, bg_doshas-Earn.build_record, bg_doshas-
 
 ## 0 · Identity — what the asset is
 
-Registry description: 'Classical dosha definitions — formation rules, effects, severity, cancellation conditions'. `seed_doshas` replaces `reference_doshas`, `brahma_dosha_catalog` (79) and the 79 `dosha` rows of `brahma_ontology` by delete-then-insert (`platform/python-sidecar/brahmagyan/l0_doshas.py:1942-1944`), binding a hand-authored inline corpus verbatim (the declarations record: stores source text, composes none). **Citation policy, stated in the module and attributed to a native decision (`:15-20`):** about 40 entries cite `'classical_tradition'` as honest provenance where no single BPHS verse names the doṣa, 'NOT fabricated citations'; live 53 of 79 carry the token (layer instance Q-04). The header's '50 definitions / floor ≥ 50' is stale against the live 79. **The 79 ontology rows are written with `[]` synonyms** (`:1989-2002`, comment 'empty for doshas'), which is the census `Vocab.alias` FAIL (`dosha` 79/79 empty) recorded on `bg_ontology`. Depends on `bg_ontology`; declared dependent `bg_parihara_rules`.
+Registry description: 'Classical dosha definitions — formation rules, effects, severity, cancellation conditions'. `seed_doshas` replaces `reference_doshas`, `brahma_dosha_catalog` (79) and the 79 `dosha` rows of `brahma_ontology` by delete-then-insert (`platform/python-sidecar/brahmagyan/l0_doshas.py:1942-1944`), binding a hand-authored inline corpus verbatim (the declarations record: stores source text, composes none). **Citation policy, stated in the module and attributed to a native decision (`:18-21`):** about 40 entries cite `'classical_tradition'` as honest provenance where no single BPHS verse names the doṣa, 'NOT fabricated citations'; live 53 of 79 carry the token (layer instance Q-04). The header's '50 definitions / floor ≥ 50' is stale against the live 79. **The 79 ontology rows are written with `[]` synonyms** (`:1989-2002`, comment 'empty for doshas'), which is the census `Vocab.alias` FAIL (`dosha` 79/79 empty) recorded on `bg_ontology`. Depends on `bg_ontology`; declared dependent `bg_parihara_rules`.
 
 | field | value | source |
 |---|---|---|
@@ -94,7 +94,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 
 ### FD-2 · Explicit attribution state for tradition-rooted rows
 
-- **Answers:** layer instance Q-04 (53 of 79); `l0_doshas.py:15-20`; CF-11
+- **Answers:** layer instance Q-04 (53 of 79); `l0_doshas.py:18-21`; CF-11
 - **Change:** add `attribution_state` (`verse_cited` | `tradition_rooted`) derived from the existing token; do NOT replace the token with a verse (B.10). Any row-by-row re-sourcing is a domain decision outside this design.
 - **Files / declaration / migration:** a migration adding the column to `brahma_dosha_catalog` + `l0_doshas.py` (derive from `classical_citations`)
 - **Failing-first test and mutation:** count of `tradition_rooted` rows = 53, citations unchanged; mutation: change a token to a verse → state flips

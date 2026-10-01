@@ -73,7 +73,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 ## 3 · Disposition
 
-**keep (P)** — the census shows no real blocking gap beyond detectors and the Dens applicability question. The layer instance carried **C** (consolidate with `bg_class_priors`: one table, two partitions). The sources read here do not show shared authority: this partition is governed by ADJUDICATION-2 source tiers, `bg_class_priors` by the judgment seed package (`l0_class_priors.py:10`), and the count_sql already scopes each asset to its own rows (seed L580-608). T2 §10.1 C requires tracing callers and semantics before a successor is chosen; nothing found justifies one (smallest sufficient change).
+**keep (P)** — the census shows no real blocking gap beyond detectors and the Dens applicability question. The layer instance carried **C** (consolidate with `bg_class_priors`: one table, two partitions). The sources read here do not show shared authority: this partition is governed by ADJUDICATION-2 source tiers, `bg_class_priors` by the judgment seed package (`l0_class_priors.py:11`), and the count_sql already scopes each asset to its own rows (seed L580-608). T2 §10.1 C requires tracing callers and semantics before a successor is chosen; nothing found justifies one (smallest sufficient change).
 
 Approver under Track A brief §10: **Steward (G16)**. The divergence from the carried C is a proposal flagged to SS in §7 (a consolidation would be an SS decision under Track A §10).
 
@@ -111,7 +111,7 @@ Approver under Track A brief §10: **Steward (G16)**. The divergence from the ca
 - **Failing-first test and mutation:** inspector reads PASS/FAIL on the declared column; a blank source must read FAIL
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** none (declaration) / needs production rebuild only if a column is added
+- **Rebuild:** none (declaration); a data fix would be a separate design
 - **Gate it moves:** Ldgr (no reading → PASS/FAIL)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T3-01 (the Ldgr source is undefined in the gate map)
 
