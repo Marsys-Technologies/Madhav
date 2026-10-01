@@ -34,7 +34,7 @@
 | **Bhratrukaraka (BK)** | Sun | Capricorn | 21°57′35″ | Siblings / guru / resources |
 | **Matrukaraka (MK)** | Venus | Sagittarius | 19°10′12″ | Mother / heart / home |
 
-**Scheme note:** the table above is the 7-karaka variant (Rahu excluded; Matrukaraka also serves as Pitrikaraka). The headline 8-karaka scheme (Rahu included, reckoned by 30° minus its degree in sign) reads AK Moon, AmK Saturn, BK Sun, MK Venus, PiK Mars, PK Rahu, GK Jupiter, DK Mercury (L1 `karaka_chara_position`, `kn_rao_rahu_included`); the 7-karaka variant is always shown and labelled alongside it.
+**Scheme note:** the table above shows the 7-karaka variant (Rahu excluded; Matrukaraka also serves as Pitrikaraka). The headline scheme is the 8-karaka scheme (Rahu included, reckoned by 30° minus its degree in sign); both schemes are shown and labelled in the served karaka data.
 
 **Key D9 note:** Mercury is vargottama (Capricorn in both D1 and D9) — the Darakaraka is chart-position-stable across the soul-level divisional. Venus debilitated in D9 Virgo with neecha-bhanga active (Mercury in D9 kendra as dispositor).
 
