@@ -44,6 +44,7 @@ from pyjhora_adapter._jhora import drik, utils
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.positions import compute_positions
 
+from brahmagyan.verification_tiers import CLASSICAL_MATCH, DIVERGENT_FLAGGED
 from ga_writers._idempotency import replace_prior_tajik_varsha
 from ga_writers._telemetry import update_asset_throughput  # legacy CLI path only; orchestrator never calls this
 from ga_writers.data_plane_contracts import stable_uuid
@@ -484,6 +485,19 @@ def _read_trirashipathi(conn: Any, chart_id: str, canonical_aya: str) -> str | N
 
 # ── Core per-varsha computation ───────────────────────────────────────────────
 
+def _varsha_verification(muntha_ok: bool, year_lord_ok: bool, sr_ok: bool) -> str:
+    """Tier for a varsha row from its three checks (Q03 / SS N-62).
+
+    `classical_match`, NOT `two_pass_verified` (audit AUDIT_L1_TIERS_PER_EMITTER_v1_0.md §3): the
+    three checks are not an independent re-derivation of the year lord. `muntha_ok` repeats the
+    same +1-per-year sign arithmetic the primary used, `year_lord_ok` only tests that two
+    winners are non-empty, and `sr_ok` is the solar-return root-finder's own residual. They catch
+    a broken loop, an empty winner or an unconverged root-find (all of which divert to
+    `divergent_flagged`), which is a real but relay-grade check.
+    """
+    return CLASSICAL_MATCH if (muntha_ok and year_lord_ok and sr_ok) else DIVERGENT_FLAGGED
+
+
 def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
                  varsha_year: int, natal_chart: dict, natal_sun_long: float,
                  build_id: str, birth: dict | None = None) -> dict[str, Any]:
@@ -591,9 +605,7 @@ def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
 
     # ── Verification (two-pass) ──────────────────────────────────────────────
     year_lord_ok = bool(tc_winner) and bool(pv_winner)
-    verification = ("two_pass_verified"
-                    if (muntha_ok and year_lord_ok and sr_ok)
-                    else "divergent_flagged")
+    verification = _varsha_verification(muntha_ok, year_lord_ok, sr_ok)
 
     muntha_jsonb = {
         "sign": SIGNS[muntha_sign0],
@@ -811,7 +823,7 @@ def build_ga_tajaka(chart_id: str,
                             f"{v} ({canonical_aya}): got {fc['sign']}/{fc['house']}H/"
                             f"{fc['lord']}, expected {FORENSIC_MUNTHA_SIGN}/"
                             f"{FORENSIC_MUNTHA_HOUSE}H/{FORENSIC_MUNTHA_LORD}.")
-                if row["verification_pass_status"] == "divergent_flagged":
+                if row["verification_pass_status"] == DIVERGENT_FLAGGED:
                     divergent.append({"varsha_year": v, "ayanamsha": canonical_aya,
                                       "audit": row["ephemeris_audit_jsonb"]})
                 aya_rows.append(row)
