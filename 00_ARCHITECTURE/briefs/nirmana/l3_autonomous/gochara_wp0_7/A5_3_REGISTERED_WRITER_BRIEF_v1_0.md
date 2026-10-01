@@ -344,3 +344,57 @@ and what is waiting:
   is `house_from` — each can be evaluated by READ-BACK against the stored rows (not by the minting
   loop); `natal_bhava_relationship` needs the chart's natal relation of the class period lord.
 
+### Design v1.4 (2026-10-02) — the AM-5 inventory writer + independent verifier, against migration 1206 (PR #2867, HOLD)
+
+Shapes read from `1206_gochara_search_inventory_completeness.sql` (Stream B; under Codex review —
+NOT frozen). Code lands on a branch STACKED on #2867, not on the A5.3 branch.
+
+**Grants.** 1206 §7 already grants `data_plane_builder` exactly what this writer needs:
+SELECT/INSERT/DELETE on the six `ka_gochara_search_*` tables, `UPDATE (inventory_digest,
+ledger_digest, finalized_at)` on the inventory header, and SELECT on `ka_gochara_generation_seal`
+and `ka_gochara_av_polarity_declaration` (1216 deferred them). The writer additionally READS (all
+already held): `chart_facts`, `chart_dashas` (the digest functions run as the invoker),
+`kala_gochara_publication`, `ka_gochara_rule_path_seal`. No new grant is needed beyond 1206 §7 —
+it ships in the same protected window as 1204.
+
+**Plan (per generation, chart lock then global SHARED — AM-5 item 7).**
+`manifest` (publish_candidate: the snapshot's vector is bound to the manifest row) → `snapshot`
+(ONE per chart × generation; first deletes the whole inventory chain, dependency order) → per class
+`inventory:<class>` (delete the class chain → header → pins (a TOTAL partition of the sealed
+registry) → obligations (each in its pin's committed set) → interval ledger → one-shot FINALISATION
+UPDATE, digests read from the DB's own functions) → `coverage:<class>` (the partition now READS the
+stored inventory: horizon = inventory horizon, relations_searched = the obligations' distinct
+relations — `partition_overclaims` is a seal violation) → `record:<class>:<path>` grains →
+`verify:<class>` (independent verifier row). Sealing stays outside the writer (A6).
+
+**Obligations** = the enumerated edges of each included path, 9-tuple
+`class|path|ver|agent|relation|object_role|target|frame|person`, lowercase, `ob_id` = the AM-2
+UUIDv8 (identical to `substrate._uuid8_of`; the DB recomputes and refuses a mismatch). Targets are
+the AM-2 grammar (`span:7`, `point:λ`).
+
+**Path pins.** P1–P4: `included` (committed set = its obligation ids) or `computed_empty` where the
+derivation proves an empty qualified set; P5: `excluded / tier_withheld_by_ruling` (degrading — needs
+a `ruling_ref`; the existing hold is steward M20261001T121451-1a8d); P6 is not in the sealed
+registry (D1) so no pin. H-unknown classes (8 of 26: achievement_recognition, business_launch,
+financial_deception, foreign_settlement, parental_event, property_acquisition, psychological_arc,
+spiritual_turn) cannot be `computed_empty` (not a proven empty set — C3's false twin); they need a
+degrading `excluded / inputs_unavailable` pin WITH a ruling_ref the writer does not own — the build
+REFUSES them by name until a ruling id exists.
+
+**Intervals.** One `searched_complete` row spanning the class horizon per obligation whose search
+ran (residence with a probe; point relations with an arc index); an obligation whose input is absent
+gets `missing_inputs` — a seal refusal by design (never silently scored). Natal-fact obligations are
+atemporal: a full-horizon row records that the L1 fact was evaluated.
+
+**Independent verifier** (`services/gochara_kernel/inventory_verifier.py`): derives each class's
+inventory from the sealed rule rows and the snapshot's L1 facts WITHOUT importing the builder,
+the evaluator or any function the builder uses; computes the preimage/digest in Python itself; writes
+the verification row. SQL checks presence + equality only — whether writer and verifier share a
+misreading remains the named residual (O-RP-9, review).
+
+**Open (steward):** (1) a `ruling_ref` for P5 and for H-unknown classes; (2) `natal_fact` relation
+label — my coverage uses `natal_fact`, but `kgso_relation_ck` and `partition_overclaims` require the
+real relations (occupancy/ownership/…); coverage is realigned to the real relations; (3) P1 agents —
+AM-5 wants period-lord role tokens (`period_lord:md|ad|pd`) while the enumerator yields concrete
+grahas; F-3 (B + A) owns the mapping, so concrete grahas are used and flagged until it lands.
+
