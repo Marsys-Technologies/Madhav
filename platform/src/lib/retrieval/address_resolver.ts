@@ -59,6 +59,7 @@
  */
 
 import { query } from '@/lib/db/client'
+import { allFormulasOf, CANONICAL_KARAKA_SCHOOL } from './registry/layers/L1_ganita/canonical_formulas'
 import { DEFAULT_AYANAMSHA } from './registry/constants'
 // F-159 (PARIŚEṢA-V4): the existing cross-ayanamsha agreement primitive (EL-27/EL-56) — reused
 // verbatim, never re-derived, for the `chandra` frame's own sign-disagreement disclosure. See
@@ -233,7 +234,14 @@ export interface ResolvedKaraka {
   graha: string
   house: number | null
   sign: string | null
+  /** The chara-karaka school this answer was ACTUALLY read under (the SQL pins `formula_id` to it). */
   school: KarakaSchool
+  /** True when `school` is the canonical school (canonical_formulas.ts: kn_rao_rahu_included). */
+  school_is_canonical: boolean
+  /** The same karaka as the OTHER declared school(s) read it (labelled by formula_id), or [] when
+   *  that school has no row for this karaka (e.g. STRIKARAKA exists only under kn_rao). The schools
+   *  genuinely disagree on some karakas (e.g. native Darakaraka Jupiter vs Mercury). */
+  other_schools: Array<{ school: KarakaSchool; graha: string; house: number | null; sign: string | null; fact_ids: string[] }>
   fact_ids: string[]
 }
 
@@ -576,33 +584,67 @@ async function fetchVargaOccupantsOfHouse(
 async function fetchKarakaRow(
   ctx: ResolveCtx,
   factSubject: string,
-): Promise<{ graha: string | null; house: number | null; sign: string | null; fact_ids: string[] }> {
-  // karaka_chara_position value-rows in chart_facts do not carry a per-row school tag
-  // (only 'karaka_school' rows do, with no shared row id to join on). Both canonical charts
-  // were verified to have the parashari/kn_rao schools agree on assigned_graha/house/sign for
-  // every karaka the two schemes share (only STRIKARAKA, the 8th karaka, is kn_rao-only) — so
-  // reading the value rows directly is safe regardless of which school the caller asked for.
-  // Documented here rather than silently assumed; a future chart where the schools diverge
-  // would need a real per-row school column upstream (the `school` param on the `karaka`
-  // AddressExpression is preserved on the RESULT for the caller's audit trail either way).
-  const res = await query<{ fact_id: string; fact_key: string; fact_value_text: string | null; fact_value_num: string | null }>(
-    `SELECT fact_id, fact_key, fact_value_text, fact_value_num
+  school: KarakaSchool,
+): Promise<{
+  graha: string | null
+  house: number | null
+  sign: string | null
+  fact_ids: string[]
+  other_schools: Array<{ school: KarakaSchool; graha: string; house: number | null; sign: string | null; fact_ids: string[] }>
+}> {
+  // karaka_chara_position is written once PER chara-karaka school (`formula_id`:
+  // kn_rao_rahu_included = 8-karaka scheme, parashari_rahu_excluded = 7-karaka scheme;
+  // canonical_formulas.ts, INVESTIGATION_L1_DUPLICATE_KEYS_v1_0.md). The two schools DO
+  // disagree on production (native lahiri: Darakaraka Jupiter vs Mercury, Gnatikaraka Rahu vs
+  // Jupiter; Atmakaraka Moon in both), so the previous comment ("both canonical charts verified to
+  // agree ... reading the value rows directly is safe") was false, and the unpinned, un-ordered
+  // first-wins read returned a physical-order-dependent school's value under a label it never applied.
+  //
+  // Now: the query reads every DECLARED school's rows (formula_id = ANY(declared schools)), with a
+  // TOTAL order (fact_key, formula_id, fact_id), and the value is taken from the school the caller
+  // ACTUALLY asked for; the other school's reading is disclosed, labelled, in `other_schools`.
+  const schools = allFormulasOf('karaka_chara_position') as KarakaSchool[]
+  const res = await query<{
+    fact_id: string
+    fact_key: string
+    formula_id: string | null
+    fact_value_text: string | null
+    fact_value_num: string | null
+  }>(
+    `SELECT fact_id, fact_key, formula_id, fact_value_text, fact_value_num
      FROM chart_facts
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'karaka_chara_position'
-       AND fact_subject = $3 AND fact_key IN ('assigned_graha', 'house_d1', 'sign')${factBuildFence(ctx, 4)}`,
-    withBuildParam(ctx, [ctx.chart_id, ctx.ayanamsha_id, factSubject]),
+       AND fact_subject = $3 AND fact_key IN ('assigned_graha', 'house_d1', 'sign')
+       AND formula_id = ANY($4::text[])${factBuildFence(ctx, 5)}
+     ORDER BY fact_key, formula_id, fact_id`,
+    withBuildParam(ctx, [ctx.chart_id, ctx.ayanamsha_id, factSubject, schools]),
   )
-  let graha: string | null = null
-  let house: number | null = null
-  let sign: string | null = null
-  const fact_ids: string[] = []
+  const bySchool = new Map<string, { graha: string | null; house: number | null; sign: string | null; fact_ids: string[] }>()
   for (const r of res.rows) {
-    fact_ids.push(r.fact_id)
-    if (r.fact_key === 'assigned_graha' && graha === null) graha = r.fact_value_text
-    if (r.fact_key === 'house_d1' && house === null) house = r.fact_value_num !== null ? Number(r.fact_value_num) : null
-    if (r.fact_key === 'sign' && sign === null) sign = r.fact_value_text
+    if (r.formula_id == null) continue
+    let rec = bySchool.get(r.formula_id)
+    if (!rec) { rec = { graha: null, house: null, sign: null, fact_ids: [] }; bySchool.set(r.formula_id, rec) }
+    rec.fact_ids.push(r.fact_id)
+    if (r.fact_key === 'assigned_graha' && rec.graha === null) rec.graha = r.fact_value_text
+    if (r.fact_key === 'house_d1' && rec.house === null) rec.house = r.fact_value_num !== null ? Number(r.fact_value_num) : null
+    if (r.fact_key === 'sign' && rec.sign === null) rec.sign = r.fact_value_text
   }
-  return { graha, house, sign, fact_ids: [...new Set(fact_ids)] }
+  const applied = bySchool.get(school)
+  const other_schools = schools
+    .filter(sc => sc !== school)
+    .flatMap(sc => {
+      const rec = bySchool.get(sc)
+      return rec && rec.graha
+        ? [{ school: sc, graha: rec.graha, house: rec.house, sign: rec.sign, fact_ids: [...new Set(rec.fact_ids)] }]
+        : []
+    })
+  return {
+    graha: applied?.graha ?? null,
+    house: applied?.house ?? null,
+    sign: applied?.sign ?? null,
+    fact_ids: [...new Set(applied?.fact_ids ?? [])],
+    other_schools,
+  }
 }
 
 /** kp paradigm — cusp_kp_lords value-rows for one whole-sign house-as-cusp (design §27.4
@@ -882,11 +924,13 @@ async function evaluate(ctx: ResolveCtx, expr: AddressExpression): Promise<EvalR
           `Unknown karaka code "${expr.code}". Supported: ${Object.keys(KARAKA_CODE_TO_SUBJECT).join(', ')}.`,
         )
       }
-      // SK (Strikaraka, the 8th karaka) exists only under the kn_rao_rahu_included 8-karaka
-      // scheme; the classical 7-karaka Parashari scheme has no SK row. Default the school
-      // accordingly unless the caller overrides.
-      const school: KarakaSchool = expr.school ?? (factSubject === 'STRIKARAKA' ? 'kn_rao_rahu_included' : 'parashari_rahu_excluded')
-      const row = await fetchKarakaRow(ctx, factSubject)
+      // The default school is the CANONICAL one (canonical_formulas.ts: kn_rao_rahu_included, the
+      // L1 convention ga_structural pins; (R) provisional until J1) for EVERY karaka, not only SK:
+      // the old default (parashari_rahu_excluded) disagreed with L1's own pin, and was a label the
+      // query never applied. SK (Strikaraka, the 8th karaka) exists only under kn_rao_rahu_included.
+      // The query below is pinned to `school`, so the label is the school actually applied.
+      const school: KarakaSchool = expr.school ?? (CANONICAL_KARAKA_SCHOOL as KarakaSchool)
+      const row = await fetchKarakaRow(ctx, factSubject, school)
       if (!row.graha) {
         throw new AddressResolutionError(
           `Could not resolve karaka "${expr.code}" (${factSubject}) under school "${school}" for chart ${ctx.chart_id}.`,
@@ -900,13 +944,19 @@ async function evaluate(ctx: ResolveCtx, expr: AddressExpression): Promise<EvalR
         house: row.house,
         sign: row.sign,
         school,
+        school_is_canonical: school === CANONICAL_KARAKA_SCHOOL,
+        other_schools: row.other_schools,
         fact_ids: row.fact_ids,
       }
+      const disagreeing = row.other_schools.filter(o => o.graha !== row.graha)
       return {
         entities: [entity],
         chain: [
           `${factSubject} (${school}) = ${row.graha}` +
-            (row.house !== null ? `, placed in house ${row.house}${row.sign ? ` (${row.sign})` : ''}.` : '.'),
+            (row.house !== null ? `, placed in house ${row.house}${row.sign ? ` (${row.sign})` : ''}.` : '.') +
+            (disagreeing.length > 0
+              ? ` The ${disagreeing.map(o => `${o.school} school reads ${factSubject} = ${o.graha}`).join('; ')} (schools disagree; canonical is ${CANONICAL_KARAKA_SCHOOL}, provisional until J1).`
+              : ''),
         ],
       }
     }

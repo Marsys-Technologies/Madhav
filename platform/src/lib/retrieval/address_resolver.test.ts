@@ -136,6 +136,32 @@ const MOON_SIGN_BY_AYANAMSHA: Record<string, Record<string, string>> = {
   },
 }
 
+// karaka_chara_position is written once per chara-karaka school (`formula_id`). Transcribed from
+// production (native, lahiri_chitrapaksha, read as suvarna_reader 2026-10-02; INVESTIGATION_L1_
+// DUPLICATE_KEYS_v1_0.md section 3.3): the two schools AGREE on Atmakaraka and DISAGREE on
+// Darakaraka (Jupiter vs Mercury) and Gnatikaraka (Rahu vs Jupiter); Strikaraka exists only under
+// kn_rao_rahu_included. A chart without an entry here reads the same value under both schools.
+const KN = 'kn_rao_rahu_included'
+const PA = 'parashari_rahu_excluded'
+type KarakaRec = { assigned_graha: string; house_d1: number; sign: string }
+const KARAKA_BY_SCHOOL: Record<string, Record<string, Record<string, KarakaRec>>> = {
+  [NATIVE_CHART_ID]: {
+    [KN]: {
+      ATMAKARAKA: { assigned_graha: 'Moon', house_d1: 11, sign: 'Aquarius' },
+      DARAKARAKA: { assigned_graha: 'Jupiter', house_d1: 9, sign: 'Sagittarius' },
+      GNATIKARAKA: { assigned_graha: 'Rahu', house_d1: 2, sign: 'Taurus' },
+      STRIKARAKA: { assigned_graha: 'Mercury', house_d1: 10, sign: 'Capricorn' },
+    },
+    [PA]: {
+      ATMAKARAKA: { assigned_graha: 'Moon', house_d1: 11, sign: 'Aquarius' },
+      DARAKARAKA: { assigned_graha: 'Mercury', house_d1: 10, sign: 'Capricorn' },
+      GNATIKARAKA: { assigned_graha: 'Jupiter', house_d1: 9, sign: 'Sagittarius' },
+    },
+  },
+}
+// Adversarial arrival order for the karaka rows: the resolver must not depend on it.
+let karakaArrival: 'forward' | 'reverse' = 'forward'
+
 let idCounter = 0
 function fid(): string {
   return `fact-${idCounter++}`
@@ -202,18 +228,24 @@ vi.mock('@/lib/db/client', () => ({
       }
       return { rows }
     }
-    // ── karaka_chara_position ──
+    // ── karaka_chara_position (one row-set per chara-karaka school / formula_id) ──
     if (sql.includes('karaka_chara_position')) {
       const [chart_id, , subject] = params as [string, string, string]
-      const rec = FACTS[chart_id]?.karaka_chara_position?.[subject]
-      if (!rec) return { rows: [] }
-      return {
-        rows: [
-          { fact_id: fid(), fact_key: 'assigned_graha', fact_value_text: rec.assigned_graha, fact_value_num: null },
-          { fact_id: fid(), fact_key: 'house_d1', fact_value_text: null, fact_value_num: String(rec.house_d1) },
-          { fact_id: fid(), fact_key: 'sign', fact_value_text: rec.sign, fact_value_num: null },
-        ],
+      // An unpinned reader (the pre-fix code) sends no schools param and so receives BOTH schools' rows.
+      const schools = (params[3] as string[] | undefined) ?? [KN, PA]
+      const bySchool = KARAKA_BY_SCHOOL[chart_id]
+      const order = karakaArrival === 'reverse' ? [...schools].reverse() : [...schools]
+      const rows: Record<string, unknown>[] = []
+      for (const school of order) {
+        const rec = bySchool ? bySchool[school]?.[subject] : FACTS[chart_id]?.karaka_chara_position?.[subject]
+        if (!rec) continue
+        rows.push(
+          { fact_id: fid(), fact_key: 'assigned_graha', formula_id: school, fact_value_text: rec.assigned_graha, fact_value_num: null },
+          { fact_id: fid(), fact_key: 'house_d1', formula_id: school, fact_value_text: null, fact_value_num: String(rec.house_d1) },
+          { fact_id: fid(), fact_key: 'sign', formula_id: school, fact_value_text: rec.sign, fact_value_num: null },
+        )
       }
+      return { rows }
     }
     // ── cusp_kp_lords (kp paradigm) ──
     if (sql.includes('cusp_kp_lords')) {
@@ -266,6 +298,7 @@ import { query } from '@/lib/db/client'
 
 beforeEach(() => {
   idCounter = 0
+  karakaArrival = 'forward'
   vi.mocked(query).mockClear()
 })
 
@@ -745,5 +778,90 @@ describe('resolveAddress — F-159 ayanamsha_frame_sensitivity (chandra frame on
     )
     const s = result.entities[0] as ResolvedSign
     expect(s.ayanamsha_frame_sensitivity?.frame_sensitivity_class).toBe('ayanamsha_sensitive')
+  })
+})
+
+// ── Karaka school pin (INVESTIGATION_L1_DUPLICATE_KEYS_v1_0.md; canonical_formulas.ts) ──────────
+// The old fetchKarakaRow read unpinned, un-ordered, first-wins, labelled the result with a school it
+// never applied, and carried a comment ("the schools agree") that is FALSE on production. These
+// tests fail on that code (the mock returns BOTH schools' rows, in either arrival order).
+
+function karakaSql(): { sql: string; params: unknown[] } {
+  const call = vi.mocked(query).mock.calls.find(([sql]) => String(sql).includes("fact_category = 'karaka_chara_position'"))
+  expect(call).toBeDefined()
+  return { sql: String(call![0]), params: (call![1] ?? []) as unknown[] }
+}
+
+describe('karaka(...) is pinned to the school it labels (canonical = kn_rao_rahu_included)', () => {
+  for (const arrival of ['forward', 'reverse'] as const) {
+    describe(`rows arrive ${arrival}`, () => {
+      beforeEach(() => { karakaArrival = arrival })
+
+      it('default school is the canonical kn_rao_rahu_included, and the value is that school\'s', async () => {
+        const r = await resolveAddress(NATIVE_CHART_ID, { type: 'karaka', code: 'DK' }, { ayanamsha_id: AYANAMSHA })
+        const k = r.entities[0] as ResolvedKaraka
+        expect(k.school).toBe('kn_rao_rahu_included')
+        expect(k.school_is_canonical).toBe(true)
+        expect(k.graha).toBe('Jupiter') // kn_rao Darakaraka; the parashari school reads Mercury
+        expect(k.house).toBe(9)
+        expect(k.sign).toBe('Sagittarius')
+      })
+
+      it('an explicit parashari school reads the parashari row and is labelled parashari', async () => {
+        const r = await resolveAddress(NATIVE_CHART_ID, { type: 'karaka', code: 'DK', school: 'parashari_rahu_excluded' }, { ayanamsha_id: AYANAMSHA })
+        const k = r.entities[0] as ResolvedKaraka
+        expect(k.school).toBe('parashari_rahu_excluded')
+        expect(k.school_is_canonical).toBe(false)
+        expect(k.graha).toBe('Mercury')
+        expect(k.house).toBe(10)
+        expect(r.chain[0]).toContain('DARAKARAKA (parashari_rahu_excluded) = Mercury')
+      })
+
+      it('discloses the OTHER school, labelled by formula_id, when the schools disagree (Darakaraka, Gnatikaraka)', async () => {
+        const dk = (await resolveAddress(NATIVE_CHART_ID, { type: 'karaka', code: 'DK' }, { ayanamsha_id: AYANAMSHA })).entities[0] as ResolvedKaraka
+        expect(dk.other_schools).toHaveLength(1)
+        expect(dk.other_schools[0]).toMatchObject({ school: 'parashari_rahu_excluded', graha: 'Mercury', house: 10 })
+        const gk = await resolveAddress(NATIVE_CHART_ID, { type: 'karaka', code: 'GK' }, { ayanamsha_id: AYANAMSHA })
+        expect((gk.entities[0] as ResolvedKaraka).graha).toBe('Rahu')
+        expect((gk.entities[0] as ResolvedKaraka).other_schools[0]).toMatchObject({ school: 'parashari_rahu_excluded', graha: 'Jupiter' })
+        expect(gk.chain[0]).toContain('schools disagree')
+        expect(gk.chain[0]).toContain('parashari_rahu_excluded school reads GNATIKARAKA = Jupiter')
+      })
+
+      it('says nothing about disagreement where the schools agree (Atmakaraka Moon in both)', async () => {
+        const r = await resolveAddress(NATIVE_CHART_ID, { type: 'karaka', code: 'AK' }, { ayanamsha_id: AYANAMSHA })
+        const k = r.entities[0] as ResolvedKaraka
+        expect(k.graha).toBe('Moon')
+        expect(k.other_schools).toHaveLength(1)
+        expect(k.other_schools[0]!.graha).toBe('Moon')
+        expect(r.chain[0]).not.toContain('schools disagree')
+      })
+
+      it('Strikaraka exists only under kn_rao: default resolves, an explicit parashari school is an honest error', async () => {
+        const ok = (await resolveAddress(NATIVE_CHART_ID, { type: 'karaka', code: 'SK' }, { ayanamsha_id: AYANAMSHA })).entities[0] as ResolvedKaraka
+        expect(ok.graha).toBe('Mercury')
+        expect(ok.school).toBe('kn_rao_rahu_included')
+        expect(ok.other_schools).toEqual([])
+        await expect(
+          resolveAddress(NATIVE_CHART_ID, { type: 'karaka', code: 'SK', school: 'parashari_rahu_excluded' }, { ayanamsha_id: AYANAMSHA }),
+        ).rejects.toThrow(/under school "parashari_rahu_excluded"/)
+      })
+    })
+  }
+
+  it('the SQL pins formula_id to the declared schools and carries a TOTAL order (fact_key, formula_id, fact_id)', async () => {
+    await resolveAddress(NATIVE_CHART_ID, { type: 'karaka', code: 'DK' }, { ayanamsha_id: AYANAMSHA })
+    const { sql, params } = karakaSql()
+    expect(sql).toMatch(/formula_id\s*=\s*ANY\(\$4::text\[\]\)/)
+    expect(sql).toMatch(/ORDER BY\s+fact_key,\s*formula_id,\s*fact_id/)
+    expect(sql).toMatch(/SELECT[^;]*\bformula_id\b[^;]*FROM chart_facts/)
+    // canonical school first, then the named variant
+    expect(params[3]).toEqual(['kn_rao_rahu_included', 'parashari_rahu_excluded'])
+  })
+
+  it('a chart whose schools agree still resolves under the canonical label (Abhinandan Atmakaraka Mercury)', async () => {
+    const k = (await resolveAddress(ABHINANDAN_CHART_ID, { type: 'karaka', code: 'AK' }, { ayanamsha_id: AYANAMSHA })).entities[0] as ResolvedKaraka
+    expect(k.graha).toBe('Mercury')
+    expect(k.school).toBe('kn_rao_rahu_included')
   })
 })
