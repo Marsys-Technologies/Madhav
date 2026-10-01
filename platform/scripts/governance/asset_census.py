@@ -994,11 +994,16 @@ def _in_list() -> str:
     return ", ".join("'" + p + "'" for p in PROSE_PLACEHOLDERS)
 
 
-def prose_row_counts_sql(table: str, entries, where_tail: str) -> str:
-    """One read-only count query: per declared entry, `count(*) FILTER` rows whose text is checkable (non-NULL, not
-    blank, not a placeholder) and rows holding a blank/placeholder string instead of NULL. A plain column reads
-    `"c"::text`; a JSON path `("c"::jsonb #>> '{k,k}')`; an array path (`[*]`) an EXISTS over jsonb_path_query.
-    Identifiers come from parse_prose_field (regex-validated): ValueError otherwise."""
+_BT = r"E' \t\r\n'"          # btrim characters: space, tab, CR, LF
+
+
+def prose_row_counts_sql(table: str, entries, where_tail: str, types=None) -> str:
+    """One read-only count query: per declared entry, `count(*) FILTER` rows whose text is checkable (non-NULL, a TEXT
+    value, not blank, not a placeholder) and rows holding a blank/placeholder string instead of NULL. A plain column
+    reads `"c"::text` (a json/jsonb column must hold a JSON string, an array column is never text: `types` = column ->
+    data_type); a JSON path `("c"::jsonb #>> '{k,k}')` only where the leaf is a JSON string; an array path (`[*]`) an
+    EXISTS over jsonb_path_query. Trimming covers space, tab, CR and LF. Identifiers come from parse_prose_field
+    (regex-validated): ValueError otherwise."""
     if not _IDENT.fullmatch(table or "") or not entries:
         raise ValueError("prose_row_counts_sql needs a table identifier and at least one declared entry")
     items = []
@@ -1008,19 +1013,31 @@ def prose_row_counts_sql(table: str, entries, where_tail: str) -> str:
             jp = "$"
             for seg in path:
                 jp += "[*]" if seg == PROSE_WILDCARD else f'."{seg}"'
-            src = f"EXISTS (SELECT 1 FROM jsonb_path_query(\"{col}\"::jsonb, '{jp}') AS e(x) WHERE jsonb_typeof(x) = 'string' AND lower(btrim(x #>> '{{}}')) "
+            src = (f"EXISTS (SELECT 1 FROM jsonb_path_query(\"{col}\"::jsonb, '{jp}') AS e(x) WHERE jsonb_typeof(x) = 'string' "
+                   f"AND lower(btrim(x #>> '{{}}', {_BT})) ")
             checkable, blank = src + f"NOT IN ({_in_list()}))", src + f"IN ({_in_list()}))"
         else:
-            v = f'"{col}"::text' if path is None else f"(\"{col}\"::jsonb #>> '{{{','.join(path)}}}')"
-            checkable = f"{v} IS NOT NULL AND lower(btrim({v})) NOT IN ({_in_list()})"
-            blank = f"{v} IS NOT NULL AND lower(btrim({v})) IN ({_in_list()})"
+            ty = ((types or {}).get(col) or "").lower()
+            if path is not None:
+                keys = ",".join(path)
+                v = f"(\"{col}\"::jsonb #>> '{{{keys}}}')"
+                guard = f"jsonb_typeof(\"{col}\"::jsonb #> '{{{keys}}}') = 'string' AND "
+            elif ty in ("json", "jsonb"):
+                v, guard = f'"{col}"::text', f'jsonb_typeof("{col}"::jsonb) = \'string\' AND '
+            elif ty == "array" or ty.endswith("[]") or ty.startswith("_"):
+                v, guard = f'"{col}"::text', "FALSE AND "
+            else:
+                v, guard = f'"{col}"::text', ""
+            tr = f"lower(btrim({v}, {_BT}))"
+            checkable = ("(FALSE)" if guard == "FALSE AND " else f"{guard}{v} IS NOT NULL AND {tr} NOT IN ({_in_list()})")
+            blank = ("(FALSE)" if guard == "FALSE AND " else f"{guard}{v} IS NOT NULL AND {tr} IN ({_in_list()})")
         items += [f"count(*) FILTER (WHERE {checkable})::text", f"count(*) FILTER (WHERE {blank})::text"]
     return f"SELECT {', '.join(items)} FROM {table}{where_tail}"
 
 
-def prose_row_counts(table: str, entries, where_tail: str) -> dict:
+def prose_row_counts(table: str, entries, where_tail: str, types=None) -> dict:
     """entry -> dict(checkable=int, blank=int), from one read-only query. A malformed answer raises Unknown."""
-    row = (psql(prose_row_counts_sql(table, entries, where_tail)) or [[]])[0]
+    row = (psql(prose_row_counts_sql(table, entries, where_tail, types)) or [[]])[0]
     if len(row) != 2 * len(entries):
         raise Unknown(f"prose row-count query answered {len(row)} value(s) for {len(entries)} declared entr(ies)")
     try:
@@ -4222,7 +4239,7 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
                 else:
                     tail = ""
                     scope = (UPPER_BOUND if "chart_id" in (own[t][0] or ()) else "whole-table (table has no chart_id column)")
-                got = prose_row_counts(t, es, _bind_chart(tail, CHART_ID))
+                got = prose_row_counts(t, es, _bind_chart(tail, CHART_ID), own[t][1])
                 for e in es:
                     counts[e] = dict(got[e], scope=scope)
             ctx["counts"] = counts if any(v is not None for v in counts.values()) else None

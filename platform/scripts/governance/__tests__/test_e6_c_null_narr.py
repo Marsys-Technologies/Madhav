@@ -961,3 +961,31 @@ def test_a_fidelity_pass_record_is_capped_at_partial_in_the_rollup():
 def test_a_plain_measured_record_has_no_inconclusive_key():
     c, _ = _chk("Narr.agree", v=ac.PASS)
     assert c["v"] == ac.PASS and "inconclusive" not in c
+
+
+# ───────────────────────── review round: F8 (blank trim covers tabs/newlines; non-string JSON leaves are not text) ─────────────────────────
+
+def test_blank_detection_trims_tabs_newlines_and_carriage_returns():
+    sql = ac.prose_row_counts_sql("t", ["a", "n.$.k", "d.$.i[*].r"], "")
+    assert sql.count("btrim(") >= 6
+    assert sql.count("btrim(") == sql.count("E' \\t\\r\\n')"), sql
+
+
+def test_a_json_path_scalar_must_be_a_json_string_to_count_as_text():
+    sql = ac.prose_row_counts_sql("t", ["narrative.$.headline"], "")
+    assert "jsonb_typeof(\"narrative\"::jsonb #> '{headline}') = 'string'" in sql, sql
+    assert sql.count("jsonb_typeof(\"narrative\"::jsonb #> '{headline}') = 'string'") == 2     # checkable and blank
+
+
+def test_a_plain_json_column_must_hold_a_json_string_and_an_array_column_is_never_text():
+    sql = ac.prose_row_counts_sql("t", ["j", "arr", "plain"], "", types={"j": "jsonb", "arr": "ARRAY", "plain": "text"})
+    assert "jsonb_typeof(\"j\"::jsonb) = 'string'" in sql
+    assert "(FALSE)" in sql and "\"arr\"::text" not in sql
+    assert "\"plain\"::text" in sql
+
+
+def test_prose_row_counts_passes_the_column_types_through(monkeypatch):
+    seen = []
+    monkeypatch.setattr(ac, "psql", lambda sql, *a, **k: seen.append(sql) or [["1", "0"]])
+    ac.prose_row_counts("t", ["arr"], "", types={"arr": "ARRAY"})
+    assert "(FALSE)" in seen[0]
