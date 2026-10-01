@@ -269,7 +269,7 @@ def test_fidelity_never_reaches_pass_even_with_a_test_that_names_the_field_calls
 
 def test_fidelity_fails_when_a_test_exercises_the_module_but_references_no_declared_field():
     r = ac.narr_fidelity_scan(["statement"], CITE, _tests(test_a=T_NO_FIELD))
-    assert r["v"] == ac.FAIL and r["covered"] == [] and "names a declared field" in r["measured"], r
+    assert r["v"] == ac.PARTIAL and r["covered"] == [] and "none names a declared field (direct or indirect)" in r["measured"], r
 
 
 def test_fidelity_names_the_uncovered_entries_when_only_some_are_covered():
@@ -327,7 +327,7 @@ def test_a():
     with pytest.raises(ValueError):
         build_narration({"statement": 1})
 '''
-    assert ac.narr_fidelity_scan(["statement"], CITE, _tests(test_a=s2))["v"] == ac.FAIL   # generic leaf only in the INPUT
+    assert ac.narr_fidelity_scan(["statement"], CITE, _tests(test_a=s2))["covered"] == []   # generic leaf only in the INPUT
 
 
 def test_fidelity_is_no_detector_when_the_evidence_cites_no_readable_builder_module():
@@ -861,14 +861,12 @@ def _fid(src, entries=("statement",)):
 
 @pytest.mark.parametrize("src", [
     _H + "def test_a():\n    out = build_narration(1)\n\ndef test_b():\n    assert {'statement': 1}['statement']\n",
-    _H + "def _run():\n    return build_narration(1)['statement']\n\ndef test_a():\n    assert _run()\n",
     _H + "def check_it():\n    assert build_narration(1)['statement']\n",
     _H + "import pytest\n@pytest.mark.skip\ndef test_a():\n    assert build_narration(1)['statement']\n",
     _H + "import pytest\n@pytest.mark.skipif(True, reason='x')\ndef test_a():\n    assert build_narration(1)['statement']\n",
     _H + "import pytest\npytestmark = pytest.mark.skip\ndef test_a():\n    assert build_narration(1)['statement']\n",
     _H + "import pytest\ndef test_a():\n    pytest.skip('x')\n    assert build_narration(1)['statement']\n",
     _H + "def test_a():\n    build_narration(1)['statement']\n    assert True\n",
-    _H + "def test_a():\n    out = build_narration({'statement': 1})\n    assert out is not None\n",
 ])
 def test_fidelity_gives_no_credit_for_the_false_positive_shapes(src):
     assert _fid(src)["v"] == ac.FAIL, src
@@ -884,7 +882,7 @@ def test_a_generic_leaf_is_covered_only_in_an_assert_or_beside_a_specific_declar
     r = _fid(src, ("statement", "citation_human"))
     assert r["v"] == ac.PARTIAL and r["covered"] == ["statement", "citation_human"], r      # beside a specific key
     only = _H + "def test_a():\n    out = build_narration({'statement': 1})\n    assert out\n"
-    assert _fid(only)["v"] == ac.FAIL
+    assert _fid(only)["v"] == ac.PARTIAL and _fid(only)["covered"] == []
 
 
 def test_importlib_import_module_of_the_cited_module_counts_as_an_import():
@@ -1150,3 +1148,53 @@ def test_an_unknown_entry_keeps_checkable_partial_and_is_named_unknown():
     assert ac.grade_narr_checkable(["a", "b"], {"b": None})["v"] == ac.NO_DET        # nothing known: INCONCLUSIVE
     n = ac.grade_null_blank_rows(["a", "b"], {"a": GOOD, "b": None})
     assert n["v"] == ac.PARTIAL and "unknown for b" in n["measured"], n
+
+
+# ───────────────────────── final review: item 2 (false FAILs in the fidelity scan) ─────────────────────────
+
+def test_a_declared_leaf_matches_as_a_substring_of_the_names_a_test_uses():
+    src = ("from pipeline.orchestrator.writers.ph_x import _citation_human_position\n"
+           "def test_a():\n    assert _citation_human_position(1).endswith('.')\n")
+    r = ac.narr_fidelity_scan(["citation_human"], CITE, _tests(test_a=src))
+    assert r["v"] == ac.PARTIAL and r["covered"] == ["citation_human"], r
+
+
+def test_a_test_name_that_is_a_token_of_the_declared_leaf_covers_it():
+    src = _H + "def test_a():\n    v = build_narration(1)\n    assert v['reason']\n"
+    assert ac.narr_fidelity_scan(["verdict_reason"], CITE, _tests(test_a=src))["covered"] == ["verdict_reason"]
+
+
+def test_one_level_of_module_helper_is_followed_for_the_call_and_the_leaves():
+    src = (_H + "def _run(x):\n    return build_narration(x)\n\n"
+           "def test_a():\n    out = _run(1)\n    assert out['citation_human']\n")
+    r = ac.narr_fidelity_scan(["citation_human"], CITE, _tests(test_a=src))
+    assert r["v"] == ac.PARTIAL and r["covered"] == ["citation_human"], r
+    helper_leaf = (_H + "def _run(x):\n    return build_narration({'citation_human': x})\n\n"
+                   "def test_a():\n    assert _run(1)\n")
+    assert ac.narr_fidelity_scan(["citation_human"], CITE, _tests(test_a=helper_leaf))["covered"] == ["citation_human"]
+
+
+def test_a_helper_two_levels_down_is_not_followed():
+    src = (_H + "def _a(x):\n    return build_narration(x)\n\ndef _b(x):\n    return _a(x)\n\n"
+           "def test_a():\n    assert _b(1)['citation_human']\n")
+    assert ac.narr_fidelity_scan(["citation_human"], CITE, _tests(test_a=src))["v"] == ac.FAIL
+
+
+def test_an_importlib_fixture_that_binds_the_module_is_followed():
+    src = ("import importlib, pytest\n@pytest.fixture\ndef mod():\n"
+           "    return importlib.import_module('pipeline.orchestrator.writers.ph_x')\n"
+           "def test_a(mod):\n    assert mod.build_narration(1)['citation_human']\n")
+    r = ac.narr_fidelity_scan(["citation_human"], CITE, _tests(test_a=src))
+    assert r["v"] == ac.PARTIAL and r["covered"] == ["citation_human"], r
+
+
+def test_from_importlib_import_module_aliases_are_resolved():
+    src = ("from importlib import import_module as im\ndef test_a():\n"
+           "    w = im('pipeline.orchestrator.writers.ph_x')\n    assert w.build_narration(1)['citation_human']\n")
+    assert ac.narr_fidelity_scan(["citation_human"], CITE, _tests(test_a=src))["v"] == ac.PARTIAL
+
+
+def test_qualifying_tests_that_name_no_declared_field_read_partial_with_the_stated_text_not_fail():
+    r = ac.narr_fidelity_scan(["citation_human"], CITE, _tests(test_a=T_NO_FIELD))
+    assert r["v"] == ac.PARTIAL and r["covered"] == [] and "tests call the builder but none names a declared field (direct or indirect)" in r["measured"]
+    assert ac.narr_fidelity_scan(["citation_human"], CITE, _tests(test_a=T_NO_ASSERT))["v"] == ac.FAIL   # no qualifying test

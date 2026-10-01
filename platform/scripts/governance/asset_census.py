@@ -1141,6 +1141,19 @@ def _skips(node) -> bool:
     return any(re.search(r"\bskip", ast.unparse(d), re.I) for d in getattr(node, "decorator_list", []))
 
 
+def _import_module_arg(node, bound):
+    """`importlib.import_module('x')` / `import_module('x')` / an alias of it (`from importlib import import_module as im`):
+    the dotted module string, else None."""
+    if not (isinstance(node, ast.Call) and node.args and isinstance(node.args[0], ast.Constant)
+            and isinstance(node.args[0].value, str)):
+        return None
+    f = node.func
+    name = _dotted(f, bound) if isinstance(f, (ast.Name, ast.Attribute)) else None
+    if ast.unparse(f).endswith("import_module") or (name or "").endswith("import_module"):
+        return node.args[0].value
+    return None
+
+
 def _test_facts(path: Path, text: str):
     """(functions, module_skipped) for a test file — cached; None if unparseable. One record per `test*` function:
     the dotted names it CALLS, whether it has a real assert, the leaf names it references (`leaves`; `assert_leaves`
@@ -1180,10 +1193,12 @@ def _test_facts(path: Path, text: str):
     for fn in ast.walk(tree):
         if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
             for r in ast.walk(fn):
-                if isinstance(r, ast.Return) and r.value is not None:
-                    d = _dotted(r.value, bound) if isinstance(r.value, (ast.Name, ast.Attribute)) else None
+                if isinstance(r, (ast.Return, ast.Yield)) and r.value is not None:
+                    d = _dotted(r.value, bound) if isinstance(r.value, (ast.Name, ast.Attribute)) else _import_module_arg(r.value, bound)
                     if d:
                         rets[fn.name] = d
+                        if any("fixture" in ast.unparse(dd) for dd in fn.decorator_list):
+                            bound[fn.name] = d          # a test parameter named like the fixture is that module
     for n in ast.walk(tree):
         if isinstance(n, ast.Assign) and isinstance(n.value, ast.Call):
             f = n.value.func
@@ -1191,10 +1206,9 @@ def _test_facts(path: Path, text: str):
             if isinstance(f, ast.Name) and f.id in rets:
                 for t in tgt:
                     bound[t] = rets[f.id]
-            elif ast.unparse(f).endswith("import_module") and n.value.args and isinstance(n.value.args[0], ast.Constant) \
-                    and isinstance(n.value.args[0].value, str):
+            elif _import_module_arg(n.value, bound):
                 for t in tgt:
-                    bound[t] = n.value.args[0].value
+                    bound[t] = _import_module_arg(n.value, bound)
     mod_skip = any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "pytestmark" for t in n.targets)
                    and re.search(r"\bskip", ast.unparse(n.value), re.I) for n in tree.body)
     cls_skip = {id(c): _skips(k) for k in ast.walk(tree) if isinstance(k, ast.ClassDef)
@@ -1210,11 +1224,8 @@ def _test_facts(path: Path, text: str):
                 acc.add(n.id)
             elif isinstance(n, ast.keyword) and n.arg:
                 acc.add(n.arg)
-    funcs = []
-    for fn in ast.walk(tree):
-        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)) or not fn.name.startswith("test"):
-            continue
-        calls, leaves, aleaves, asserts = set(), set(), set(), False
+    def facts_of(fn):
+        calls, leaves, aleaves, asserts, called = set(), set(), set(), False, set()
         skipped = _skips(fn) or cls_skip.get(id(fn), False)
         leaves_of(fn, leaves)
         for n in ast.walk(fn):
@@ -1222,6 +1233,8 @@ def _test_facts(path: Path, text: str):
                 d = _dotted(n.func, bound)
                 if d:
                     calls.add(d)
+                if isinstance(n.func, ast.Name):
+                    called.add(n.func.id)
                 nm = ast.unparse(n.func)
                 if nm in ("pytest.skip", "skip"):
                     skipped = True
@@ -1233,9 +1246,30 @@ def _test_facts(path: Path, text: str):
                 if not (isinstance(n.test, ast.Constant) and n.test.value):      # `assert True` / `assert 1` prove nothing
                     asserts = True
                     leaves_of(n.test, aleaves)
-        funcs.append(dict(name=fn.name, calls=calls, asserts=asserts, leaves=leaves, assert_leaves=aleaves, skipped=skipped))
+        return dict(name=fn.name, calls=calls, asserts=asserts, leaves=leaves, assert_leaves=aleaves, skipped=skipped,
+                    called=called)
+    helpers = {n.name: facts_of(n) for n in tree.body
+               if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("test")}
+    funcs = []
+    for fn in ast.walk(tree):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)) or not fn.name.startswith("test"):
+            continue
+        f = facts_of(fn)
+        for h in f["called"]:                       # ONE level of module-level helper: its calls, asserts and leaves
+            if h in helpers:
+                f["calls"] |= helpers[h]["calls"]
+                f["leaves"] |= helpers[h]["leaves"]
+                f["asserts"] = f["asserts"] or helpers[h]["asserts"]
+        funcs.append(f)
     _TEST_FACTS[key] = (funcs, mod_skip)
     return _TEST_FACTS[key]
+
+
+def _leaf_in(leaf: str, names) -> bool:
+    """A declared leaf is referenced when a name contains it (`citation_human` in `_citation_human_position`) or is one of
+    its underscore tokens of length >= 5 (`reason` for `verdict_reason`)."""
+    toks = {t for t in leaf.split("_") if len(t) >= 5}
+    return any(leaf in n or n in toks for n in names)
 
 
 def narr_fidelity_scan(entries, evidence, tests) -> dict:
@@ -1261,9 +1295,10 @@ def narr_fidelity_scan(entries, evidence, tests) -> dict:
             if fn["skipped"] or not fn["asserts"] or not any(c == m or c.startswith(m + ".") for c in fn["calls"] for m in mods):
                 continue
             qual.append(Path(path).name)
-            beside = bool(spec_leaves & fn["leaves"])
+            beside = any(_leaf_in(lf, fn["leaves"]) for lf in spec_leaves)
             covered |= {e for e, lf in leaves.items()
-                        if (lf in fn["leaves"] if lf not in _GENERIC_LEAVES else (lf in fn["assert_leaves"] or (lf in fn["leaves"] and beside)))}
+                        if (_leaf_in(lf, fn["leaves"]) if lf not in _GENERIC_LEAVES
+                            else (lf in fn["assert_leaves"] or (lf in fn["leaves"] and beside)))}
     if not qual:
         return dict(v=FAIL, covered=[], tests=[], measured=f"no (unskipped) test function calls the builder module(s) "
                     f"{', '.join(mods)} and asserts in the same function — N.7 item 5 (a fidelity test for the narration) "
@@ -1272,9 +1307,9 @@ def narr_fidelity_scan(entries, evidence, tests) -> dict:
     unc = [e for e in entries if e not in covered]
     names = sorted(set(qual))
     if not cov:
-        return dict(v=FAIL, covered=[], tests=names, measured=f"{len(names)} test file(s) call the builder and assert "
-                    f"({', '.join(names[:4])}), but no test names a declared field ({', '.join(entries)}) — N.7 item 5 has no "
-                    "evidence the declared prose is checked")
+        return dict(v=PARTIAL, covered=[], tests=names, measured=f"{len(names)} test file(s) call the builder and assert "
+                    f"({', '.join(names[:4])}): tests call the builder but none names a declared field (direct or indirect); "
+                    f"declared: {', '.join(entries)}; structural only, never PASS")
     return dict(v=PARTIAL, covered=cov, tests=names, measured=(
         f"structural only: {len(names)} test file(s) call the builder and assert in the same test function "
         f"({', '.join(names[:4])}{'…' if len(names) > 4 else ''}); declared field(s) referenced: {', '.join(cov)}"
