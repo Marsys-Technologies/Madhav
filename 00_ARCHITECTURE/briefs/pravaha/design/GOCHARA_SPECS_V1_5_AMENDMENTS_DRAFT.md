@@ -121,8 +121,8 @@ transaction category (see AM-3). All folded.
 >    a new legacy id together; the old pair stays, each mapped once, mappings never rewritten.
 >    The writer **fails loudly before any write** if a changed sky id would resolve to an
 >    unchanged legacy id.
-> 2. **The `13d20m` correction itself** (A5.3 `13.20` → `13d20m`): no row has been written under the
->    old id, so it is applied **before** the first `'5.0'` write as a correction of the
+> 2. **The `13d20m` correction itself** (A5.3 `13.20` → `13d20m`): **provided no row has been written under the old
+>    id (Stream A to confirm — I have not verified production)**, it is applied **before** the first `'5.0'` write as a correction of the
 >    not-yet-bridged vector — the bridge row is created once, against the corrected sky id; no
 >    second mapping is needed and `method_version` stays `1.0.0`. If any row under the old id
 >    exists at that moment, rule 1 applies instead.
