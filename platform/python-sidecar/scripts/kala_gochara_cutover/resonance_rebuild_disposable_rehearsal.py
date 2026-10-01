@@ -459,12 +459,16 @@ REQUIRED_DETECTOR_CONTROLS: tuple[str, ...] = (
     "qualifier_transferred", "resolution_state_flipped", "provenance_flipped",
     "lord_token_wrong", "lord_token_missing", "birth_anchor_row_injected",
     "mechanism_weight_sign_flipped", "fact_ref_missing", "fact_ref_foreign_chart",
+    "mechanism_state_forged", "m6_operand_missing", "m6_state_forged",
 )
 _DETECTOR_META_KEYS = ("clean", "restored_after_controls")
 # ASTRA v1.4 P2: the clean baseline is a MEASUREMENT with contents — every identity
 # pair [0, 0], zero value violations, zero dangling refs — not merely a present key.
 CLEAN_BASELINE_PAIRS: tuple[str, ...] = ("r1", "r2", "r3", "r4", "r5", "mech")
-CLEAN_BASELINE_ZERO_COUNTS: tuple[str, ...] = ("value_violations", "dangling")
+# the two v1.5 violation kinds are counted by name so the clean baseline can be
+# proven 0 of each and each forged-state control can be proven EXACTLY 1
+CLEAN_BASELINE_ZERO_COUNTS: tuple[str, ...] = (
+    "value_violations", "dangling", "state:mechanism_resolved", "state:m6_operands")
 
 
 def verify_acceptance(ver: dict) -> list[str]:
@@ -908,7 +912,14 @@ def _detector_controls(cur, fixture: dict) -> dict:
         return row[0] if row else None
 
     def measure():
-        out = {"value_violations": len(cur.execute(B.value_invariants_sql(CHART_ID)).fetchall()),
+        rows = cur.execute(B.value_invariants_sql(CHART_ID)).fetchall()
+        by_kind: dict = {}
+        for r in rows:
+            kind = r[3] if len(r) > 3 else r[-1]
+            by_kind[kind] = by_kind.get(kind, 0) + 1
+        out = {"value_violations": len(rows),
+               "state:mechanism_resolved": by_kind.get("state:mechanism_resolved", 0),
+               "state:m6_operands": by_kind.get("state:m6_operands", 0),
                "dangling": cur.execute(B.dangling_fact_refs_sql(CHART_ID)).fetchone()[0]}
         for nm, fn in (("r1", B.r1_identity_sql), ("r2", B.r2_identity_sql), ("r3", B.r3_identity_sql),
                        ("r4", B.r4_lord_identity_sql), ("mech", B.mechanism_identity_sql)):
@@ -1013,6 +1024,32 @@ def _detector_controls(cur, fixture: dict) -> dict:
                              (foreign_id, CHART_ID, "marriage", "sensitive_degree",
                               first_ref("marriage", "sensitive_degree")))),
         lambda m: m["dangling"] >= 1)
+    # ASTRA v1.5 rework (steward M20261001T050204-7c6f): the two state checks added
+    # in v1.5 get live positive controls, not string-presence tests
+    # (1) a valid mechanism_node row's stored state forged resolved → 'unavailable':
+    #     weight/ref/eligibility stay valid, so the FIRST failing check is
+    #     'state:mechanism_resolved' — EXACTLY 1 violation
+    controls["mechanism_state_forged"] = (
+        lambda: cur.execute(upd.format("target_resolution_state='unavailable'"),
+                            (CHART_ID, "marriage", "mechanism_node", "venus:favourable:h7")),
+        lambda m: m["state:mechanism_resolved"] == 1)
+    # (2) the MANDI sensitive_point_gulika_mandi sign row DELETED, stored M-6 states
+    #     left 'resolved': both 'mandi'-operand formulas (mandi_sign_distance_from_8L,
+    #     yamakantaka_minus_mandi) re-derive 'unavailable' for both M-6 classes —
+    #     ≥1 'state:m6_operands' violations (the map itself is untouched)
+    controls["m6_operand_missing"] = (
+        lambda: cur.execute(
+            "DELETE FROM chart_facts WHERE chart_id=%s AND ayanamsha_id=%s"
+            " AND fact_category='sensitive_point_gulika_mandi' AND fact_subject='MANDI'"
+            " AND fact_key='sign'", (CHART_ID, AYANAMSHA)),
+        lambda m: m["state:m6_operands"] >= 1)
+    # (3) operands all present, one stored M-6 state forged to 'unavailable' while
+    #     the operand-presence re-derivation says 'resolved' — EXACTLY 1 violation
+    controls["m6_state_forged"] = (
+        lambda: cur.execute(upd.format("target_resolution_state='unavailable'"),
+                            (CHART_ID, "bereavement", "gulika_mandi_distance",
+                             "mandi_sign_distance_from_8L")),
+        lambda m: m["state:m6_operands"] == 1)
     # controls whose mutation necessarily changes a count (a deletion / an insertion) or
     # the global id set (a re-pointed reference): the validity criterion is that the
     # mutation was APPLIED, and that the quantity it must not touch stays preserved

@@ -85,14 +85,16 @@ def _passing_ver() -> dict:
         "r5_identity_sql": {"qualified_not_in_ontology": 0, "ontology_not_qualified": 0},
         "detector_controls": {
             "clean": {"r1": [0, 0], "r2": [0, 0], "r3": [0, 0], "r4": [0, 0], "r5": [0, 0],
-                      "mech": [0, 0], "value_violations": 0, "dangling": 0},
+                      "mech": [0, 0], "value_violations": 0, "dangling": 0,
+                      "state:mechanism_resolved": 0, "state:m6_operands": 0},
             **{name: {"count_preservation_expected": True, "id_set_preservation_expected": True,
                       "counts_preserved": True, "global_id_sets_preserved": True,
                       "mutation_applied": True, "detected": True}
                for name in ("sensitive_class_swap", "arudha_class_swap", "yoga_class_swap",
                             "weight_changed", "qualifier_transferred",
                             "resolution_state_flipped", "provenance_flipped", "lord_token_wrong",
-                            "mechanism_weight_sign_flipped")},
+                            "mechanism_weight_sign_flipped", "mechanism_state_forged",
+                            "m6_operand_missing", "m6_state_forged")},
             **{name: {"count_preservation_expected": False, "id_set_preservation_expected": True,
                       "counts_preserved": False, "global_id_sets_preserved": True,
                       "mutation_applied": True, "detected": True}
@@ -351,10 +353,11 @@ def test_all_named_detector_controls_must_be_present_the_reviewers_bypass():
     v["detector_controls"] = {"clean": v["detector_controls"]["clean"], "restored_after_controls": True}
     failures = R.verify_acceptance(v)
     missing = [f for f in failures if "missing detector control record" in f]
-    assert len(missing) == len(R.REQUIRED_DETECTOR_CONTROLS) == 13, failures
+    assert len(missing) == len(R.REQUIRED_DETECTOR_CONTROLS) == 16, failures
     assert set(R.REQUIRED_DETECTOR_CONTROLS) >= {
         "sensitive_class_swap", "arudha_class_swap", "yoga_class_swap", "weight_changed",
-        "qualifier_transferred", "resolution_state_flipped", "provenance_flipped"}
+        "qualifier_transferred", "resolution_state_flipped", "provenance_flipped",
+        "mechanism_state_forged", "m6_operand_missing", "m6_state_forged"}
     # the passing report carries exactly the required names
     names = set(_passing_ver()["detector_controls"]) - {"clean", "restored_after_controls"}
     assert names == set(R.REQUIRED_DETECTOR_CONTROLS)
@@ -366,12 +369,15 @@ def test_clean_baseline_contents_and_every_controls_application_are_validated():
     key; every control record must carry mutation_applied=True."""
     v = copy.deepcopy(_passing_ver())
     v["detector_controls"]["clean"] = {"r1": [9, 9], "r2": [0, 0], "r3": [0, 0], "r4": [0, 0],
-                                       "r5": [0, 0], "mech": [0, 0], "value_violations": 99, "dangling": 0}
+                                       "r5": [0, 0], "mech": [0, 0], "value_violations": 99,
+                                       "dangling": 0, "state:mechanism_resolved": 0,
+                                       "state:m6_operands": 0}
     failures = R.verify_acceptance(v)
     assert any("clean baseline r1 = [9, 9]" in f for f in failures), failures
     assert any("clean baseline value_violations = 99" in f for f in failures), failures
     assert set(R.CLEAN_BASELINE_PAIRS) == {"r1", "r2", "r3", "r4", "r5", "mech"}
-    assert set(R.CLEAN_BASELINE_ZERO_COUNTS) == {"value_violations", "dangling"}
+    assert set(R.CLEAN_BASELINE_ZERO_COUNTS) == {
+        "value_violations", "dangling", "state:mechanism_resolved", "state:m6_operands"}
     v2 = copy.deepcopy(_passing_ver())
     for name in R.REQUIRED_DETECTOR_CONTROLS:
         v2["detector_controls"][name]["mutation_applied"] = False
