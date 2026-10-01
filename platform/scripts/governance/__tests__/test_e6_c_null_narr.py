@@ -1142,3 +1142,11 @@ def test_a_prose_helper_that_raises_degrades_only_the_six_checks_in_measure(monk
     assert w1._m(c, "bg_a", "Build.target")["v"] == ac.PASS
     for crit in NARR + NULL:
         assert w1._m(c, "bg_a", crit)["v"] == ac.ERRORED, crit
+
+
+def test_an_unknown_entry_keeps_checkable_partial_and_is_named_unknown():
+    r = ac.grade_narr_checkable(["a", "b"], {"a": {"checkable": 5, "blank": 0, "scope": "chart-scoped by count_sql"}, "b": None})
+    assert r["v"] == ac.PARTIAL and "b=unknown" in r["measured"] and r["checkable"] == {"a": 5, "b": None}, r
+    assert ac.grade_narr_checkable(["a", "b"], {"b": None})["v"] == ac.NO_DET        # nothing known: INCONCLUSIVE
+    n = ac.grade_null_blank_rows(["a", "b"], {"a": GOOD, "b": None})
+    assert n["v"] == ac.PARTIAL and "unknown for b" in n["measured"], n
