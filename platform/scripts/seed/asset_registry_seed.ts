@@ -1668,8 +1668,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: 'EVENT_CLASSES * AYANAMSHAS',
     expected_volume_inputs: { EVENT_CLASSES: 22, AYANAMSHAS: 5 },
     volume_explanation: '22 event classes (brahma_event_ontology) × 5 canonical ayanamshas = 110 rows per chart.',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bg_reference, ga_positions, ga_vargas.
-    depends_on: ['bo_laksana', 'bo_sangati', 'bg_reference', 'ga_positions', 'ga_vargas'],
+    // Migration 1202: direct read edges added (E6 Build.dag reads-match): ga_vargas.
+    depends_on: ['bo_laksana', 'bo_sangati', 'ga_vargas'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1690,11 +1690,9 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: 'ACTUAL(bo_laksana)',
     expected_volume_inputs: null,
     volume_explanation: 'One node per signal — exact 1:1 with Lakṣaṇa count; sealed at 140 per L2 build (chart 482012f1).',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): ga_positions.
     depends_on: [
       'bo_laksana', 'bo_sudarshana', 'bo_nakshatra_semantic',
       'bo_arudha', 'bo_special_lagna', 'bo_vargottama_dhana',
-      'ga_positions',
     ],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
@@ -1983,8 +1981,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One or more mechanism rows per chart — count depends on CGM motif cardinality.',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bo_bimba, ga_positions.
-    depends_on: ['bo_karanajala', 'bo_cgm_motifs', 'bo_cgm_paths', 'bo_bimba', 'ga_positions'],
+    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bo_bimba.
+    depends_on: ['bo_karanajala', 'bo_cgm_motifs', 'bo_cgm_paths', 'bo_bimba'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
@@ -2098,12 +2096,10 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: 'FIRED_YOGA_FIRINGS + MSR_SIGNALS',
     expected_volume_inputs: null,
     volume_explanation: 'One grounding row per fired ga_yoga_firings row plus one per bodha_msr_signals row (v1 target_kinds); both sources are already per-(chart, ayanamsha), so expected volume is their live per-chart sum at build time.',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bg_rules.
     depends_on: [
       'ga_yoga', 'bo_laksana', 'bo_sudarshana',
       'bo_nakshatra_semantic', 'bo_arudha', 'bo_special_lagna',
       'bo_vargottama_dhana',
-      'bg_rules',
     ],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
@@ -2379,8 +2375,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     volume_explanation: 'One dossier row per chart_dashas period (MD+AD, all systems) — count is chart/dasha-system dependent. Live-measured 0 for chart 482012f1, 2026-07-05 — not yet rebuilt since this asset was registered; floors are aspirational per §N.4.',
     // Migration 406 corrects depends_on: drops phantom 'ka_yojaka' edge (writer
     // never reads kala_activation_predicates), adds real 'ga_dashas' + 'bg_ghatana'.
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): ga_positions.
-    depends_on: ['ga_dashas', 'bo_pratijna', 'bg_ghatana', 'ga_positions'],
+    depends_on: ['ga_dashas', 'bo_pratijna', 'bg_ghatana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -2397,8 +2392,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One predicate per L2 signal per ayanamsha; total ≈ 66,738 for native chart',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): ga_structural, ga_yoga.
-    depends_on: ['bo_laksana', 'bg_transit_rules', 'ga_dashas', 'bo_bimba', 'bo_sangati', 'bo_pratijna', 'bg_ghatana', 'ga_structural', 'ga_yoga'],
+    // Migration 1202: direct read edges added (E6 Build.dag reads-match): ga_yoga.
+    depends_on: ['bo_laksana', 'bg_transit_rules', 'ga_dashas', 'bo_bimba', 'bo_sangati', 'bo_pratijna', 'bg_ghatana', 'ga_yoga'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2652,8 +2647,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per predictive anchor; count depends on convergence density and multi-axis derivation',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bg_ghatana.
-    depends_on: ['ka_sangam', 'ka_bhavishya_lekha', 'bo_bimba', 'bo_samskara', 'bo_karanajala', 'bo_sangati', 'bo_anveshana', 'bo_cgm_paths', 'bo_laksana', 'bg_ghatana'],
+    depends_on: ['ka_sangam', 'ka_bhavishya_lekha', 'bo_bimba', 'bo_samskara', 'bo_karanajala', 'bo_sangati', 'bo_anveshana', 'bo_cgm_paths', 'bo_laksana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2671,8 +2665,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per scored muhurta candidate window in query range',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bg_ghatana.
-    depends_on: ['ph_nimitta', 'ka_kalasutra', 'ga_panchanga', 'ka_vighnakara', 'ga_condition', 'ka_gochara', 'ga_positions', 'ka_sangam', 'bg_ghatana'],
+    depends_on: ['ph_nimitta', 'ka_kalasutra', 'ga_panchanga', 'ka_vighnakara', 'ga_condition', 'ka_gochara', 'ga_positions', 'ka_sangam'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -3001,8 +2994,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One insight unit per promoted/supported discovery + calibration stratum + grammar cell with evidence',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bg_ghatana, bo_laksana, bo_sangati.
-    depends_on: ['mi_pramana', 'mi_adhilepa', 'mi_sambandha', 'mi_pariksha', 'mi_gunanaka', 'mi_kula', 'mi_jivanaghatana', 'bo_pratijna', 'bg_ghatana', 'bo_laksana', 'bo_sangati'],
+    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bo_laksana, bo_sangati.
+    depends_on: ['mi_pramana', 'mi_adhilepa', 'mi_sambandha', 'mi_pariksha', 'mi_gunanaka', 'mi_kula', 'mi_jivanaghatana', 'bo_pratijna', 'bo_laksana', 'bo_sangati'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {

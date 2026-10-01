@@ -3,7 +3,7 @@ Migration 1202 (Suvarna Track I): direct `depends_on` edges for reads that were 
 transitively (E6 `Build.dag` reads-match, T4).
 
 DB-free. What this proves, and what it does not:
-  * PROVES: the migration and the TypeScript seed carry the same 22 edges; every id exists; the
+  * PROVES: the migration and the TypeScript seed carry the same 12 edges; every id exists; the
     full 127-asset registry graph stays acyclic; every added edge was already implied by an existing
     path (so no build ordering changes); the 3 known BACK-READ edges (which would create cycles) are
     absent; every producer and consumer has a registered writer class.
@@ -130,9 +130,9 @@ def _registered_writers() -> set[str]:
 def test_migration_shape_and_count():
     sql = _MIGRATION.read_text()
     edges = _migration_edges()
-    assert len(edges) == 22 and len(set(edges)) == 22, "22 distinct edges expected"
-    assert len({a for a, _ in edges}) == 14, "14 consumer assets expected"
-    assert len({d for _, d in edges}) == 13, "13 distinct producers expected"
+    assert len(edges) == 12 and len(set(edges)) == 12, "12 distinct edges expected"
+    assert len({a for a, _ in edges}) == 9, "9 consumer assets expected"
+    assert len({d for _, d in edges}) == 8, "8 distinct producers expected"
     assert "SET LOCAL lock_timeout = '5s';" in sql
     # migrate.ts owns BEGIN/COMMIT; a nested BEGIN/COMMIT would end its transaction early
     code = "\n".join(l for l in sql.splitlines() if not l.lstrip().startswith("--"))
@@ -158,7 +158,7 @@ def test_guards_are_scoped_null_safe_and_disclose_consequences():
     assert code.count("<> ALL (COALESCE(") == 2
     assert not re.search(r"<> ALL \((?!COALESCE)", code)
     # the operational consequences stay disclosed in the header
-    for needle in ("1203_asset_registry_direct_edges_held", "6 Nirmana-frozen manifests stale",
+    for needle in ("1203_asset_registry_direct_edges_held", "5 Nirmana-frozen manifests stale",
                    "planned/running/paused", "plan_adaptation_required", "assertManifestMatchesRegistryIdentity",
                    "deps_unsatisfied", "asset_freshness", "nirmana_elevation_monitor_observations"):
         assert needle in sql, f"header no longer discloses: {needle}"
@@ -171,6 +171,81 @@ def test_held_edges_and_gate_blocked_producers_are_absent():
     seed = _seed_graph()
     for a, d in _HELD_EDGES:
         assert d not in seed[a], f"held edge {a}->{d} must not be in the 1202 seed"
+
+
+# The table each kept edge is justified by (the read verified at file:line in the evidence file).
+_EDGE_READ_TABLE = {
+    ("bo_karanajala", "ga_vichara"): "chart_vichara",
+    ("bo_laksana_rerank", "bo_bimba"): "bodha_cgm_nodes",
+    ("bo_laksana_rerank", "ga_vichara"): "chart_vichara",
+    ("bo_pratijna", "ga_vargas"): "chart_divisionals",
+    ("bo_yantra_mechanism", "bo_bimba"): "bodha_cgm_nodes",
+    ("ka_kalasutra", "ga_dashas"): "chart_dashas",
+    ("ka_vighnakara", "ga_dashas"): "chart_dashas",
+    ("ka_yojaka", "ga_yoga"): "ga_yoga_firings",
+    ("mi_darshana", "bo_laksana"): "bodha_msr_signals",
+    ("mi_darshana", "bo_sangati"): "bodha_triangulation",
+    ("mi_pariksha", "bo_laksana"): "bodha_msr_signals",
+    ("mi_pariksha", "mi_jivanaghatana"): "mimamsa_event_provenance",
+}
+
+
+def _seed_owned_tables() -> dict[str, set[str]]:
+    """asset -> tables it owns per the seed (target_table + tables named in count_sql)."""
+    src = _SEED.read_text()
+    out: dict[str, set[str]] = {}
+    for m in re.finditer(r"asset_id:\s*'([a-z0-9_]+)'", src):
+        nxt = re.search(r"asset_id:\s*'", src[m.end():])
+        block = src[m.end(): m.end() + nxt.start()] if nxt else src[m.end():]
+        tabs: set[str] = set()
+        t = re.search(r"target_table:\s*'([a-z0-9_]+)'", block)
+        if t:
+            tabs.add(t.group(1))
+        c = re.search(r"count_sql:\s*(.*?),\n\s+size_sql", block, re.S)
+        if c:
+            tabs.update(x.lower() for x in g._FROM_IN_SQL_RE.findall(c.group(1)))
+        out.setdefault(m.group(1), set()).update(tabs)
+    return out
+
+
+def _writer_insert_tables(asset_id: str) -> set[str]:
+    """Tables the asset's own registered writer file INSERTs into (the live count_sql may name tables the seed's
+    bootstrap count_sql does not; count_sql is migration-governed once a row exists)."""
+    out: set[str] = set()
+    for root in g._WRITER_ROOTS:
+        for f in root.rglob("*.py"):
+            if "tests" in f.parts or "__tests__" in f.parts:
+                continue
+            txt = f.read_text(errors="ignore")
+            if re.search(r"@register\(\s*['\"]%s['\"]" % re.escape(asset_id), txt):
+                out.update(t.lower() for t in re.findall(r"INSERT\s+INTO\s+(?:public\.)?([a-z_][a-z0-9_]*)", txt, re.I))
+    return out
+
+
+def is_exempt_table(tbl: str) -> bool:
+    """Same exemption source as dag_edge_guard: L0 bedrock, external ingest, shared chart_facts."""
+    return (tbl.startswith(g._UNGATED_PREFIXES) or tbl in g._UNGATED_EXACT
+            or tbl in g._EXTERNAL_TABLES or tbl in g._SHARED_SOFT_TABLES)
+
+
+def test_no_kept_edge_is_justified_by_a_bedrock_or_chart_facts_read():
+    """SS rulings Q2/Q3: no L0 bedrock edge, no chart_facts-only edge. Each kept edge names the table it is
+    justified by; that table must be non-exempt under dag_edge_guard's own tiers and owned by the producer."""
+    edges = _migration_edges()
+    assert set(edges) == set(_EDGE_READ_TABLE), set(edges) ^ set(_EDGE_READ_TABLE)
+    owned = _seed_owned_tables()
+    for (a, d), tbl in _EDGE_READ_TABLE.items():
+        assert not is_exempt_table(tbl), f"{a}->{d}: justified by exempt table {tbl}"
+        assert not d.startswith("bg_"), f"{a}->{d}: producer is an L0 bedrock asset"
+        assert tbl in owned.get(d, set()) or tbl in _writer_insert_tables(d), (
+            f"{a}->{d}: {d} owns {tbl} neither in the seed ({owned.get(d)}) nor via an INSERT in its writer")
+
+
+def test_exemption_predicate_has_teeth():
+    for tbl in ("brahma_event_ontology", "sutravali_rules", "reference_planets", "bg_gochara_arcs",
+                "chart_facts", "life_events", "ephemeris_daily"):
+        assert is_exempt_table(tbl), tbl
+    assert not is_exempt_table("chart_vichara")
 
 
 def test_back_reads_are_not_added_anywhere():
