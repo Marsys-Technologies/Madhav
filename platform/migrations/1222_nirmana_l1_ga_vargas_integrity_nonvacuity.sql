@@ -1,29 +1,26 @@
--- DRAFT_f_a2_key_widening.sql  (PLACEHOLDER NAME: SS allocates the migration number; do NOT number or apply)
+-- 1222_nirmana_l1_ga_vargas_integrity_nonvacuity.sql
 --
--- STATUS: DRAFT. Not in platform/migrations on purpose: the deploy-time runner applies every file there.
--- Author: S-L1 mandatory item Q01 writer lane. Nothing here has been applied to any database.
+-- S-L1 mandatory item Q01 (L1 decision sheet Q-L1-01, SS-ruled N-62; SS direction on F-A2, #2858): the
+-- ga_vargas integrity_check_sql gains a NON-VACUITY conjunct. Transaction ownership belongs to
+-- platform/scripts/migrate.ts. Data-only: one UPDATE of one asset_registry row (amjis_app-owned, read from the
+-- catalog 2026-10-02); no table is altered; no owner path. NOT applied by this change.
 --
--- WHAT THIS IS. The registry-only half of Q-L1-01 (SS-ruled, N-62): the ga_vargas integrity_check_sql gains
---   (e) a non-vacuity clause (zero or too few varga_position rows for any declared ayanamsha x varga FAILS), and
---   (f) a key-grain clause (the families the six-column key collapsed must exist at their intended grain).
--- asset_registry is owned by amjis_app (read from the catalog, 2026-10-02), so this is an ordinary migration:
--- no owner path. Pattern: migration 884 (UPDATE asset_registry, one row) with the I-8 / 1215 guards (lock_timeout,
--- a DO $pre$ that proves the text being replaced is the text we read, a DO $post$ that proves the new text took).
+-- WHY. The four existing conjuncts (a)-(d) are all NOT EXISTS, so a chart_divisionals the builder cannot read
+-- (row-level security with no policy, the 2026-10-01 incident) or an emptied table passes every one of them
+-- (CLAUDE.md N.8; incident review F1). Conjunct (e) FAILS when any declared (ayanamsha, varga) of the canonical
+-- chart has fewer than the nine graha varga_position/sign rows: zero rows is the extreme case, too few the partial one.
+-- It is scoped to the canonical chart by literal, the disclosed 882/884/902/1019/1022/1215 tradeoff: other charts'
+-- builds are not measured here.
 --
--- WHAT THIS IS NOT. The unique-index widening, the capture-trigger widening and the capture-function hunk live on
--- the OWNER path (chart_divisionals, its index and the L1 attestation tables are owned by data_plane_l1_owner):
--- see F_A2_KEY_WIDENING_D6_PLAN_v1_0.md and d6_f_a2_key_widening_DRAFT.py in this directory.
---
--- ORDER (see the plan, section 6): D6 owner-path change -> this migration -> S-L1 ga_vargas rebuild. Conjunct (f) is
--- RED on the data in production today (24,392 rows on the canonical chart, widened grain absent) and turns green only
--- after the rebuild; (e) is green today (measured: the nine position rows exist for every ayanamsha x varga, 5 x 30).
--- If SS prefers (f) to land only after the rebuild, drop the (f) blocks from this file and apply them as a second
--- migration; (e) alone has no ordering constraint.
+-- ORDERING. (e) is TRUE on production today (evaluated read-only as suvarna_reader inside a READ ONLY transaction,
+-- 2026-10-02: the nine rows exist for all 150 pairs), so this migration may apply in the normal pipeline before
+-- S-L1 and does not depend on the F-A2 key widening. The key-grain numbers (12 house_lord / 96 ashtakavarga per
+-- ayanamsha x varga, 60 D30 per ayanamsha, canonical total 38,596) are deliberately NOT in this check: SS ruled them
+-- S-L1 acceptance criteria (bare count pins), checked by f_a2_key_widening/s_l1_ga_vargas_acceptance_check.sql.
 --
 -- BASE TEXT. The live ga_vargas integrity_check_sql was read as suvarna_reader on 2026-10-02: 4,216 chars, md5
--- 255af7c5194553e19f7009c1e8774d8a, byte-identical to migration 884's body. The pre-check below refuses to run on any other text.
-
-BEGIN;
+-- 255af7c5194553e19f7009c1e8774d8a, byte-identical to migration 884's body. The pre-check refuses to run on any other text, and the
+-- post-check proves the new text took.
 
 SET LOCAL lock_timeout = '5s';
 
@@ -32,10 +29,10 @@ DECLARE v_md5 text; v_n int;
 BEGIN
   SELECT count(*), max(md5(integrity_check_sql)) INTO v_n, v_md5 FROM asset_registry WHERE asset_id = 'ga_vargas';
   IF v_n <> 1 THEN
-    RAISE EXCEPTION 'F-A2 integrity: expected exactly one ga_vargas registry row, found %', v_n;
+    RAISE EXCEPTION '1222: expected exactly one ga_vargas registry row, found %', v_n;
   END IF;
   IF v_md5 IS DISTINCT FROM '255af7c5194553e19f7009c1e8774d8a' THEN
-    RAISE EXCEPTION 'F-A2 integrity: ga_vargas integrity_check_sql is not the text this migration was written against (md5 %)', v_md5;
+    RAISE EXCEPTION '1222: ga_vargas integrity_check_sql is not the text this migration was written against (md5 %)', v_md5;
   END IF;
 END
 $pre$;
@@ -46,7 +43,7 @@ SET integrity_check_sql = $ck$
 -- D-CND-03: chart-partitioned / row-wise, attribution-preserving. No bare count pin (C12).
 -- chart_divisionals_unique_idx (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key, fact_subject)
 -- (widened by F-A2) is ALREADY a DB UNIQUE, so no distinctness conjunct appears here (D-CND-03 rule 4).
--- Conjuncts (e) and (f) (F-A2 / Q-L1-01) are the presence-and-grain detectors; every other
+-- Conjunct (e) (F-A2 / Q-L1-01, migration 1222) is the presence detector; every other
 -- conjunct is NOT EXISTS-shaped and passes on an empty or unreadable table (CLAUDE.md N.8).
 -- Conjunct (c) SCOPED to the canonical chart (migration 884): performance-and-coverage
 -- tradeoff, disclosed in that migration's header -- same precedent as ga_dashas' own
@@ -127,45 +124,16 @@ SELECT
               AND cd.fact_category = 'varga_position' AND cd.fact_key = 'sign'
               AND cd.graha = ANY (ARRAY['Sun','Moon','Mars','Mercury','Jupiter','Venus','Saturn','Rahu','Ketu'])) < 9
   )
-  -- (f) KEY-GRAIN COMPLETENESS (F-A2). The three row families the six-column key silently collapsed
-  -- must exist at their intended grain: 12 house-lord rows per (ayanamsha, varga) (a lord ruling two
-  -- houses kept one), 96 ashtakavarga rows per (ayanamsha, varga) (12 signs x 7 grahas + SARVA; only
-  -- the Aries row survived), and 60 D30 lord rows per ayanamsha (5 lords x 12 signs; 10 survived).
-  -- These are per-scope structural cardinalities of the writer's own tables (houses, signs, D30
-  -- regions), not a volume pin of the table (C12). RED on pre-F-A2 data BY DESIGN until the S-L1
-  -- ga_vargas rebuild lands the widened rows (the migration 654 precedent).
-  AND NOT EXISTS (
-    SELECT 1
-    FROM unnest(ARRAY['lahiri_chitrapaksha','true_chitra','krishnamurti','raman','surya_siddhanta_classical']) AS ay(ayanamsha_id)
-    CROSS JOIN unnest(ARRAY['D1','D2','D3','D4','D5','D6','D7','D8','D9','D10','D11','D12','D14','D15','D16','D20','D21','D24','D27','D30','D32','D33','D40','D45','D50','D54','D60','D108','D150','D2700']) AS vg(varga)
-    WHERE (SELECT count(*) FROM chart_divisionals cd
-            WHERE cd.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND cd.ayanamsha_id = ay.ayanamsha_id AND cd.varga = vg.varga
-              AND cd.fact_category = 'varga_house_lord') <> 12
-       OR (SELECT count(*) FROM chart_divisionals cd
-            WHERE cd.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND cd.ayanamsha_id = ay.ayanamsha_id AND cd.varga = vg.varga
-              AND cd.fact_category = 'varga_ashtakavarga') <> 96
-  )
-  AND NOT EXISTS (
-    SELECT 1
-    FROM unnest(ARRAY['lahiri_chitrapaksha','true_chitra','krishnamurti','raman','surya_siddhanta_classical']) AS ay(ayanamsha_id)
-    WHERE (SELECT count(*) FROM chart_divisionals cd
-            WHERE cd.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND cd.ayanamsha_id = ay.ayanamsha_id
-              AND cd.fact_category = 'varga_d30_lord_per_amsa') <> 60
-  )
   AS integrity_passed
 $ck$
 WHERE asset_id = 'ga_vargas';
 
 DO $post$
-DECLARE v_sql text; v_md5 text;
+DECLARE v_md5 text;
 BEGIN
-  SELECT integrity_check_sql, md5(integrity_check_sql) INTO v_sql, v_md5 FROM asset_registry WHERE asset_id = 'ga_vargas';
-  IF v_md5 IS DISTINCT FROM 'c0070b06735d8ed4035b1634c4f9599c'
-     OR position('(e) NON-VACUITY' in v_sql) = 0
-     OR position('(f) KEY-GRAIN COMPLETENESS' in v_sql) = 0 THEN
-    RAISE EXCEPTION 'F-A2 integrity: the new integrity_check_sql did not take (md5 %)', v_md5;
+  SELECT md5(integrity_check_sql) INTO v_md5 FROM asset_registry WHERE asset_id = 'ga_vargas';
+  IF v_md5 IS DISTINCT FROM 'd2f897535c8c6237f464c81f11624701' THEN
+    RAISE EXCEPTION '1222: the new ga_vargas integrity_check_sql did not take (md5 %)', v_md5;
   END IF;
 END
 $post$;
-
-COMMIT;

@@ -193,13 +193,19 @@ def test_house_lord_and_ashtakavarga_rows_all_land() -> None:
 # a full ayanamsha sub-step, end to end (real builders, real SQL, fake database)
 # --------------------------------------------------------------------------
 
+# bg_shashtiamsha_deities as read from production (suvarna_reader, 2026-10-02): 60 amsas, quality only,
+# every deity_name NULL ("canonical-or-floor NULL"). k = kroora, s = soumya.
+_REAL_D60_QUALITY = "kkssssskkkkksskkssssssssssssskkkkkksssskskkksssksskkssssssks"
+
+
+def real_deity_cache() -> dict:
+    return {i + 1: {"quality": "kroora" if c == "k" else "soumya", "deity_name": None}
+            for i, c in enumerate(_REAL_D60_QUALITY)}
+
+
 @pytest.fixture()
 def _deities(monkeypatch: pytest.MonkeyPatch) -> None:
-    w = _w()
-    monkeypatch.setattr(
-        w, "_SHASHTIAMSHA_CACHE",
-        {i: {"quality": "soumya", "deity_name": f"D{i}"} for i in range(1, 61)},
-    )
+    monkeypatch.setattr(_w(), "_SHASHTIAMSHA_CACHE", real_deity_cache())
 
 
 BIRTH = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961,
@@ -214,6 +220,9 @@ def test_full_substep_stores_every_row_it_builds(_deities: None) -> None:
     assert s["status"] == "PASS"
     assert s["rows_collided"] == 0 and s["rows_db_skipped"] == 0 and s["rows_failed"] == 0
     assert s["rows_attempted"] == s["rows_landed"] == s["total_rows_written"] == len(db.rows)
+    # the S-L1 acceptance numbers, per ayanamsha: 7,718 stored + 6 sentinels (7,724 attempted)
+    assert s["rows_attempted"] == 7724
+    assert sum(1 for r in db.rows.values() if r["ayanamsha_id"] != "INVARIANT") == 7718
     # the three collapsed families, at their intended grain
     assert db.count("varga_d30_lord_per_amsa", "lahiri_chitrapaksha") == 60
     assert db.count("varga_house_lord", "lahiri_chitrapaksha") == 12 * 30
