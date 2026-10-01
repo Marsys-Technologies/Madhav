@@ -1,96 +1,124 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.2
-status: DRAFT — revised per ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_0 (REJECT as submitted, 2026-10-01); collects the A5.5-gate fold-in list; not a spec version
+version: 0.3
+status: DRAFT — revised per ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_1 (REJECT, narrowed, 2026-10-01); collects the A5.5-gate fold-in list; not a spec version
 date: 2026-10-01
 author: stream-B (spec lane; docs only — no code, no migration file)
-supersedes: v0.1 (f870999c1) — AM-3/AM-5/AM-8 rewritten after Codex rejection; AM-1/AM-2/AM-4/AM-6/AM-7/AM-9 amended per the same review
+supersedes: v0.2 (55a6ea8a2) — AM-5 completeness rewritten as an explicit receipt representation; AM-1/AM-3 bootstrap transactions re-categorised; identity bytes pinned (successor oracle, digest, normalisation, UUID vectors); AM-4 receipt storage; AM-6 null policy; AM-7 P5 contract completed; stale statements corrected
 sources: >
-  ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_0 (Codex gpt-6-astra, verdict REJECT with
-  per-amendment dispositions and seven ranked required amendments); steward
-  revision order M20261001T171150-5c70. v0.1 sources retained: steward
-  M20261001T015412-6df0 (pins 3–7), M20261001T121504-90d5; stream-B cited lookup
-  M20261001T015350-644c; stream-A reports M20261001T080615-a232,
+  ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_1 (Codex gpt-6-astra, verdict REJECT with
+  seven ranked required amendments; CLOSED: AM-8/1205 withdrawal, AM-9, AM-6's five
+  qualifications; 1204 judged consistent and minimal); steward revision order
+  M20261001T174917-3007. v0.2 sources retained: ASTRA_REVIEW v1_0; steward
+  M20261001T171150-5c70, M20261001T015412-6df0, M20261001T121504-90d5; stream-B
+  cited lookup M20261001T015350-644c; stream-A reports M20261001T080615-a232,
   M20261001T113409-04cd; steward acceptance M20261001T121451-1a8d; stream-B
-  report M20261001T084457-5ceb.
+  reports M20261001T084457-5ceb, M20261001T172813-94e5.
 ---
 
-# GOCHARA_DESIGN_SPECS v1.5 — AMENDMENT LIST (draft v0.2)
+# GOCHARA_DESIGN_SPECS v1.5 — AMENDMENT LIST (draft v0.3)
 
-Revision disposition against ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_0, item by
-item. **Accepted findings are folded into the proposed spec text below; where
+Revision disposition against ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_1, rank by
+rank. **Accepted findings are folded into the proposed spec text below; where
 this draft disagrees with the reviewer it says so with evidence.** Migration
-discipline unchanged: migrations 1153/1154/1155/1156 are applied and **never
-edited**; every schema-side change is a NEW migration, and each one touching a
-live CHECK constraint needs a protected window.
+discipline unchanged: migrations 1153/1154/1155/1156/1157 are applied and
+**never edited**; every schema-side change is a NEW migration, and each one
+touching a live CHECK constraint needs a protected window.
 
-Ranked-review crosswalk: rank 1 → AM-8/1205 (split; §AM-8) · rank 2 → AM-5 ·
-rank 3 → AM-3 · rank 4 → AM-1/AM-2 · rank 5 → AM-6 · rank 6 → AM-7 ·
-rank 7 → evidence corrections (folded into #2817's 1204 header and §AM-7/§AM-8).
+v1.1 ranked crosswalk: rank 1 (P1) → §AM-5 (completeness representation) ·
+rank 2 (P1) → §AM-1/§AM-3 (bootstrap transaction categories) · rank 3 (P2) →
+§AM-1/§AM-2 (convention vector + identity bytes) · rank 4 (P2) → PR #2817
+detector + fixture (code, separate commit) · rank 5 (P2) → §AM-7 ·
+rank 6 (P2) → §AM-6 · rank 7 (P2) → §AM-4 (+ deferral note for P6).
 
 ---
 
-## AM-1 — Convention row for generation `'5.0'` (pin 3) — ACCEPTED WITH AMENDMENTS, folded
+## AM-1 — Convention row for generation `'5.0'` (pin 3) — REWORKED per v1.1 rank 2/3
 
-Codex required: exact serialized values; convention identity ≠ generation; L1
-node provenance deterministic and cited; the 1153 self-test is an admissible
-example domain, not the runtime domain's authority; reconcile the literal
-convention-id `'5.0'` with the A5.3 implementation's digest-based id.
+Codex v1.1: the convention vector is still not byte-pinned (v0.2 gave
+components without one complete serialized string, delegated the domain to an
+unnamed ruling, and differed from the A5.3 implementation's compound ephemeris
+label and `nakshatra:13.20`); convention bootstrap was assigned to the wrong
+transaction category (see AM-3). All folded.
 
 **Proposed spec text (new §6.0):**
 
-> The writer bootstrap registers the `ka_gochara_sky_convention` row for the
-> `'5.0'` family in a **separate registry-bootstrap transaction** (see AM-3;
-> 1153:430–485 forbids mixing the global registry lock with chart mutations),
-> insert-if-absent with an equality check over **all convention-defining fields,
-> excluding audit metadata** (`created_at` and any updated-at/by columns): a row
-> already present with any different defining field is a loud build failure, not
-> an `ON CONFLICT DO NOTHING` skip.
+> **The pinned convention vector.** Exactly one convention row serves the
+> `'5.0'` family. Its canonical serialization is the sorted-key `key=value`
+> list joined by single `|`, UTF-8, no trailing whitespace, and its
+> `convention_id` is `sha256:<hex>` over those exact bytes:
 >
-> **Convention identity ≠ generation identity.** `convention_id` names the
-> *method vector* (ephemeris build, ayanāṃśa, node convention, grid, method
-> version, domain); `generation` (`'5.0'`) names a *run* under that convention.
-> The A5.3 implementation derives `convention_id` as `sha256:<digest>` over the
-> convention vector (`services/gochara_kernel/substrate.py:153–171`, inspected
-> at 694d16e9c by the reviewer); the literal `'5.0'` is a *generation label*,
-> never the convention id. Once a convention id enters physical/contact
-> identities it is immutable; a changed vector is a NEW id, never an edit.
+> ```
+> ayanamsha=lahiri_chitrapaksha|domain_end=2085-01-01T00:00:00Z|domain_start=1998-01-01T00:00:00Z|ephemeris_generation=pyswisseph:20230604/swisseph:2.10.03|grid=sign:30/nakshatra:13d20m/kakshya:3.75/seam:0|method_version=1.0.0|node_convention=mean
+> ```
 >
-> Exact serialized values (byte-exact; a runtime mismatch on any of them fails
-> the build before any write):
+> **Expected digest (independently computed, sha256 over the string above):**
+> `sha256:eac922d4c3b0deb700112f2260cd250a0388ab159f4a1c4bca9451281a48e7a3`.
 >
-> - `ephemeris_generation` — the exact pyswisseph build string
->   `swe.__version__` at write time (`gochara_kernel/knots.py:169`); on the
->   governed runtime today `20230604` (`swe.version = 2.10.03`). The recorded
->   value is whatever the governed runtime reports; a runtime reporting a
->   different string than the row being reused = failure.
+> Field authority, field by field:
+>
+> - `ephemeris_generation` — the **compound label** of the governed runtime:
+>   pyswisseph build `20230604` (`swe.__version__`,
+>   `gochara_kernel/knots.py:169`) and Swiss Ephemeris `2.10.03`
+>   (`swe.version`). This adopts the A5.3 implementation's label
+>   (`substrate.py:153–171` at 694d16e9c) verbatim; v0.2's bare-build label is
+>   withdrawn. A runtime reporting any other pair = build failure before any
+>   write.
 > - `ayanamsha = 'lahiri_chitrapaksha'` (`step06_candidate_build.py:73`).
 > - `node_convention = 'mean'` — **deterministically** selected: the L1 node
 >   convention for chart 482012f1 as recorded in `chart_facts`, cited by
->   fact_id (subjects `RAH_MEAN`/`KET_MEAN`, e.g. fact_id `c520713087b97470`),
+>   fact_id (subjects `RAH_MEAN`/`KET_MEAN`, fact_id `c520713087b97470`),
 >   never "the latest fact" and never picked (`step06_candidate_build.py:77`
 >   `node_model: "mean"` agrees). If the chart's L1 facts ever carry both node
 >   conventions the selection rule is: the convention the L1 build itself
 >   consumed, by its own attestation — absence of that attestation is a stop,
 >   not a default.
-> - `grid` — serialized exactly: sign `30`, nakṣatra `13+1/3` (13°20′ — **never
->   the decimal `13.20`**), kakṣya `3.75`, including the 0°/360° seam
->   (`gochara_kernel/contacts.py:13-15`, `convention.py:78`).
+> - `grid` — `sign:30/nakshatra:13d20m/kakshya:3.75/seam:0`. The nakṣatra span
+>   is 13°20′ = 13⅓°, rendered `13d20m` — **never** the decimal `13.20`
+>   (13.20° ≠ 13°20′; v0.2 said this but left the implementation's `13.20`
+>   unreconciled). **This is a deliberate correction of the A5.3 vector at
+>   694d16e9c** (`grid: sign:30/nakshatra:13.20/…`): it changes the canonical
+>   bytes, therefore the digest, therefore the convention_id — it is NOT
+>   interchangeable with the old bytes and must land before any row is written
+>   under the new id. (`gochara_kernel/contacts.py:13-15`,
+>   `convention.py:78` agree on the 13°20′ span.)
 > - `method_version = '1.0.0'` (`step06_candidate_build.py:84`).
-> - `domain` — half-open UTC `[start, end)`; the *governed* domain is set by
->   the campaign's scored-horizon ruling for the generation being built (the
->   1153 self-test's `1998-01-01 → 2085-01-01` demonstrates an admissible
->   domain shape; it is not the authority for any runtime domain).
+> - `domain` — half-open UTC `[1998-01-01T00:00:00Z, 2085-01-01T00:00:00Z)`.
+>   **Domain authority:** the full-domain ordinal boundaries are pinned *in
+>   the convention identity itself* (O-RX-1's extension rule operates INSIDE
+>   this fixed domain; changing the domain is a new convention, never an edit).
+>   The *searched partition* within the domain is set per generation by the
+>   campaign's scored-horizon ruling (the `'5.0'` build's governed horizon) and
+>   is a coverage fact, never a convention fact. The 1153 self-test's
+>   1998→2085 demonstrated this domain shape; the runtime domain is pinned
+>   here, in the vector, and nowhere else.
+>
+> **Convention identity ≠ generation identity.** `convention_id` names the
+> *method vector* above; `generation` (`'5.0'`) names a *run* under that
+> convention. The literal `'5.0'` is a generation label, never a convention
+> id. Once a convention id enters physical/contact identities it is immutable;
+> a changed vector is a NEW id, never an edit.
+>
+> **Convention-bridge evolution (v1.1 additional gap, folded):**
+> `ka_gochara_convention_bridge` (1153:1016–1034) gives each legacy
+> `kala_gochara_convention` row exactly one immutable mapping and can never be
+> repointed. A domain/method correction therefore mints a **new** sky
+> convention id **and a new legacy convention row** bridged to it; the old
+> pair stays, preserving the lineage of every coverage row that cites it.
+> Existing mappings are never rewritten.
 
-**Schema impact:** none — data under the existing table.
+**Schema impact:** none — data under the existing tables (a correction that
+arrives after rows exist adds rows; it edits none).
 
 ---
 
-## AM-2 — §6.1 identity hash: sha256 → UUIDv8 (pin 4) — ACCEPTED WITH AMENDMENTS, folded
+## AM-2 — §6.1 identity hash: sha256 → UUIDv8 (pin 4) — REWORKED per v1.1 rank 3
 
-Codex required: reconcile `hash(physical_object_id, ordinal)` with the
-§6.1/O-RX-1 flattened bytes; explicit canonicalisation; collision taxonomy;
-expected UUID vectors; forced-collision tests; correction identity.
+Codex v1.1: the UUIDv8-from-SHA-256 construction is sound (122 retained digest
+bits, birthday bound ≈ 2⁶¹; RFC 9562 §5.8); the collision taxonomy is
+approved; but lowercase canonicalisation contradicts O-RX-1's uppercase
+canonical bytes, numeric/sign/star normalisation is unfinished, and expected
+UUID literals were claimed but not pinned. All folded.
 
 **Proposed spec text (amend §6.1):**
 
@@ -100,18 +128,44 @@ expected UUID vectors; forced-collision tests; correction identity.
 > the birthday bound ≈ 2^61 identities — ample for this dataset, and **not** a
 > substitute for collision handling (below). No SHA-1, no UUIDv5.
 >
-> **Canonical bytes, pinned:** UTF-8; body/relation tokens in the **stored
-> lowercase form** (1153 persists lowercase body tokens — the hash is over what
-> is stored, never over caller casing, so one natural tuple has exactly one
-> ID); single-`|` delimiters; numerics at full precision with no exponent form
-> and no trailing zeros added or stripped beyond the stored rendering; sign and
-> star normalisation per §6.1; **no trailing whitespace or newline**. The
-> O-RX-1 printed serialization (`GOCHARA_TEST_ORACLES_v1_4.json:64`) IS the
-> canonical byte string; §6.1's shorthand `hash(physical_object_id, ordinal)`
-> means sha256 over **the concatenation of the physical object's canonical
-> bytes, the delimiter, and the ordinal's canonical rendering** — one flat
-> byte string, not a nested hash. (A nested `hash(hash(A),B)` construction is
-> NOT used; v0.1's shorthand was ambiguous and is corrected here.)
+> **Canonical bytes, pinned (this resolves the lowercase contradiction):**
+> body/relation tokens are the **stored lowercase form** (1153 persists
+> lowercase body tokens — the hash is over what is stored, never over caller
+> casing, so one natural tuple has exactly one ID). Because the frozen
+> O-RX-1's printed serialization begins with uppercase `Mars`, **O-RX-1's
+> byte example is amended by a reviewed successor oracle O-RX-1a** whose
+> canonical bytes are `mars|conjunction|point:198.52|c0|1`; the frozen v1.4
+> oracle file is preserved untouched, and O-RX-1a is the only serialization
+> authority for identity bytes. Remaining pins:
+>
+> - delimiters: single `|`; **no trailing whitespace or newline**; one flat
+>   byte string (a nested `hash(hash(A),B)` construction is NOT used).
+> - **numeric rendering:** decimal, no exponent form, produced at write time
+>   by one pinned formatter: render with up to 6 fractional digits, **strip
+>   trailing zeros and a trailing dot**, integers render with no dot. The
+>   stored text IS the canonical text: `198.520` and `198.52` normalize to the
+>   same stored rendering `point:198.52` before hashing, so the two inputs
+>   cannot mint two IDs for one longitude (1153:632–635 accepts either
+>   string; the formatter runs first).
+> - **sign encoding:** absolute sign index `sign:1`–`sign:12` (1 = Meṣa),
+>   the stored form.
+> - **star encoding:** the **stored 1-based** index `star:1`–`star:27`
+>   (SQL's accepted range); the tārā oracle's zero-based indices map as
+>   `star_zero_based = star_stored − 1`. Zero-based values never appear in
+>   canonical bytes.
+> - identity tuple components, exhaustive and ordered:
+>   `body | relation | target | convention_id | occurrence_ordinal`.
+>
+> **Correction identity — the component that changes is named:** the tuple
+> above has no time component, so a **time-only correction** (a refined
+> t_exact for the same crossing) never mints a new UUID: it amends the
+> contact's mutable enrichment under the versioned correction rule (S:641–646)
+> with its `supersedes` linkage, identity untouched. A **method/convention
+> correction** changes the `convention_id` component — a coherent route that
+> mints new identities under the new convention and retains the supersedes
+> chain to the old. No other component may change on a correction; a change
+> of body, relation, target or ordinal is a different physical claim, not a
+> correction.
 >
 > **Collision taxonomy, all decided BEFORE any UUID-keyed deduplication**
 > (`ON CONFLICT DO NOTHING` alone is insufficient and forbidden as the only
@@ -122,79 +176,121 @@ expected UUID vectors; forced-collision tests; correction identity.
 > 3. same canonical tuple, different ID — serialization/version divergence;
 >    loud build failure.
 >
-> **Correction identity:** changing a published non-null time must never mint
-> a different ID from an unchanged tuple and ordinal. A correction changes an
-> **explicitly versioned identity component** (S:641–646) and retains its
-> `supersedes` linkage; the deterministic ID of the uncorrected tuple is
-> untouched.
+> Comparison happens on the **canonical tuple**, never on the UUID alone:
+> the UUID masks overwrite 6 digest bits, so two genuinely different digests
+> can share one UUID (worked vector below).
 >
-> **Test obligations (fold into the oracle suite):** expected-UUID vectors
-> (independently computed — the reviewer computed
-> `Mars|conjunction|point:198.52|c0|1 → 87b023cc-c9f3-8979-9b37-96701f285356`
-> and the lowercase-variant divergence; such vectors are pinned in the oracle
-> file); forced-collision tests **including collisions after the UUID
-> bit-masks** (two digests differing only in masked bits); the O-RX-1
-> direct/retrograde/direct, truncated-centre enrichment and forward-extension
-> cases; replay under all three taxonomy arms.
+> **Pinned UUIDv8 vectors (independently recomputed by stream-B, matching the
+> reviewer's table):**
+>
+> | Canonical bytes | UUIDv8 |
+> |---|---|
+> | `mars\|conjunction\|point:198.52\|c0\|1` | `23276d7c-c127-8f4c-9ad5-6b7c8da8020f` |
+> | `mars\|conjunction\|point:198.52\|c0\|2` | `b6cd1a15-4820-859f-b6e4-d7e144e59416` |
+> | `mars\|conjunction\|point:198.52\|c0\|3` | `c523b443-fcc4-8665-8bfc-52b6e3e831d9` |
+> | `mars\|conjunction\|point:198.52\|c0\|4` | `8e423fdf-6ab5-842a-ab1f-b31d4720d319` |
+> | `Mars\|conjunction\|point:198.52\|c0\|1` (uppercase — MUST NOT occur under O-RX-1a) | `87b023cc-c9f3-8979-9b37-96701f285356` |
+>
+> **Post-mask collision control vector:** sha256 of tuple 1 begins
+> `23276d7cc1279f4cdad56b7c8da8020f…`; the fabricated digest
+> `23276d7cc1276f4c1ad56b7c8da8020f…` differs ONLY in the 6 bits the UUID
+> masks overwrite, and both map to `23276d7c-c127-8f4c-9ad5-6b7c8da8020f`
+> (verified). The forced-collision test suite must include this class —
+> differences confined to masked bits — alongside different-tuple/same-UUID
+> and same-tuple/different-UUID arms.
+>
+> **O-RX-1a acceptance:** one physical object, ordinals 1–3, truncated-centre
+> enrichment without identity change, ordinal 4 appended on in-domain
+> partition extension without renumbering; the uppercase variant rejected as
+> non-canonical input.
 
 **Schema impact:** none — PK columns are already plain UUIDs.
 
 ---
 
-## AM-3 — Writer phase grain: **per-table persistence by publication state** (REWRITTEN — v0.1 REJECTED)
+## AM-3 — Writer phase grain and **transaction categories** (REWORKED per v1.1 rank 2)
 
-Codex rejected v0.1's blanket "each substep delete-then-insert, chart ×
-generation": conventions, physical objects and contact identities are global
-and insert-only; sky-event deletion is refused (1153:758–759, 813–887);
-candidate contact replacement conflicts with surviving relationship FKs
-(1155:413–459). The computational ordering (contacts before evaluation)
-survives; the persistence sentence is rewritten by table and publication
-state.
+Codex v1.1: v0.2's per-table persistence rules stand (global insert-only,
+sky-event enrichment/correction only, candidate replacement in dependency
+order, sealed never reopened), but the combined "registry/convention
+bootstrap" transaction is incompatible with the applied lock guards:
+1153:560–578 makes substrate writes require chart context, 1153:604–607 makes
+sky-convention inserts invoke that guard, 1153:450–469 forbids chart-family
+and global-exclusive keys in one transaction, and 1154:407–410 routes
+rule-path insertion through the global-exclusive guard. **Sky conventions are
+not 1154 registry rows.** Folded.
 
 **Proposed spec text (amend §10.1):**
 
 > The writer runs in **two phases**. Phase 1: per-body boundary substrate +
 > contacts. Phase 2: per `(event_class × path_id, rule_version)` evaluation
 > emitting relationship records and windows. Persistence is **per table, by
-> publication state**:
+> publication state** (unchanged from v0.2, restated for the gate):
 >
-> - **Global conventions, physical objects, contact identities** (chartless,
->   shared across charts and generations): **insert-if-absent with equality
->   checks** (AM-1/AM-2); never updated, never deleted by a build.
-> - **Sky events:** only the **permitted enrichment/correction operations**
->   (1153's enrichment path and the versioned correction identity of AM-2);
+> - **Global physical objects and contact identities** (chartless, shared
+>   across charts and generations): **insert-if-absent with equality checks**
+>   (AM-1/AM-2); never updated, never deleted by a build.
+> - **Sky events:** only the **permitted enrichment/correction operations**;
 >   deletion is refused by the substrate contract (1153:758–759, 813–887).
 > - **Candidate (unpublished) chart × generation records and windows:**
->   replacement **in dependency order** (children before parents on delete,
->   parents before children on insert), at a **precisely owned grain** — the
->   grain is `(chart_id, generation, event_class, path_id, rule_version)` for
->   Phase-2 output and `(chart_id, generation, body-scope)` for Phase-1
->   candidate contacts — and a replacement must never target rows a surviving
->   relationship record still references (1155:413–459): the delete set is
->   computed from the grain and the FK closure, and a conflict is a loud
->   failure, not a cascade.
-> - **Published / sealed data:** the existing refusal and enrichment rules
->   apply unchanged; **re-evaluation must not reopen a sealed generation** —
->   a re-run under an existing sealed generation is a refusal, and new
->   evaluation runs under a new generation label.
+>   replacement **in dependency order** at the owned grain
+>   `(chart_id, generation, event_class, path_id, rule_version)` for Phase-2
+>   output and `(chart_id, generation, body-scope)` for Phase-1 candidate
+>   contacts; the delete set is computed from the grain and the FK closure,
+>   and a conflict with a surviving relationship reference (1155:413–459) is
+>   a loud failure, not a cascade. Candidate replay preserves this rule: it
+>   never deletes a shared contact another path still references.
+> - **Published / sealed data:** refusal and enrichment rules unchanged; a
+>   re-run under an existing sealed generation is a refusal; new evaluation
+>   runs under a new generation label.
 >
-> **Transaction ownership:** the registry/convention bootstrap runs in its
-> **own transaction**, separate from any chart-data mutation (1153:430–485
->   enforces READ COMMITTED and forbids mixing the global-exclusive registry
->   lock with chart mutations). "Two phases" never implies one transaction
->   that binds registries and then writes chart data. Transaction ownership
->   otherwise remains with the orchestrator.
+> **Transaction categories (corrected):** exactly two, never mixed.
+>
+> 1. **Registry transaction** (orchestrator-owned; takes the
+>    `gochara5:global` family key EXCLUSIVE via `ka_gochara_lock_global`,
+>    1154:407–410 route): predicates, factors, rule paths, memberships, rule
+>    seals. No chart-scoped row — including no sky convention — is written in
+>    this transaction.
+> 2. **Chart-serving transaction** (orchestrator-owned; takes the chart
+>    family key via `ka_gochara_lock_chart` FIRST, before any write): sky
+>    conventions (insert-if-absent with the AM-1 equality check), the
+>    convention bridge, AV declarations where required, substrate/contacts,
+>    candidate records/windows, receipts (AM-5), and **every legacy
+>    `kala_gochara_coverage` mutation — the chart lock is acquired BEFORE the
+>    first legacy coverage write**, not only before the record/window inserts
+>    that FK it (the legacy table carries no Gochara-family trigger; the
+>    ordering is the writer's obligation, stated here as contract).
+>
+> **Worked example (required bootstrap sequence for the `'5.0'` build):**
+>
+> ```
+> txn R (registry):   SELECT ka_gochara_lock_global();
+>                     insert predicates, factors, rule paths P1–P6, memberships; seal rule versions.
+>                     -- any ka_gochara_sky_convention insert here FAILS (1153:604–607 chart guard)
+> txn C (chart):      SELECT ka_gochara_lock_chart('482012f1-…');
+>                     insert-if-absent ka_gochara_sky_convention (AM-1 vector, equality-checked);
+>                     insert convention bridge (kala_convention_id → sky id);
+>                     upsert legacy kala_gochara_coverage partitions (event_class keys);
+>                     insert path-search receipts (AM-5), contacts, records, windows.
+> ```
+>
+> Reversing the categories fails loudly in both directions: convention insert
+> inside txn R trips the substrate chart guard (1153:560–578); a registry
+> insert inside txn C trips the N13 lock-order refusal (1153:450–469). The
+> PR's own fixture already separates the two correctly
+> (`gochara_b6_v15_migrations.db.test.ts:292–305`: convention under
+> `chartCtx`, rules in a separate global transaction).
 
 **Schema impact:** none.
 
 ---
 
-## AM-4 — Moon / day tier is EPHEMERAL (pin 6) — ACCEPTED WITH AMENDMENTS, folded
+## AM-4 — Moon / day tier is EPHEMERAL (pin 6) — REWORKED per v1.1 rank 7
 
-Codex accepted with two corrections: (a) v0.1's A:127 claim is wrong — contact
-`body='moon'` identifies the **transiting** Moon (a transit-by-Moon contact),
-not "natal-Moon contacts"; (b) define the lifetime and coverage of on-demand
-responses, particularly after generation sealing.
+Codex v1.1: the transiting-Moon correction and ephemeral-response policy are
+closed; what remains open is the persistent query-receipt contract — where
+receipts live, their key, how query coverage stays distinct from sealed build
+coverage, manifest-digest treatment, and replay. Folded.
 
 **Proposed spec text (amend §6.2 / §10.1):**
 
@@ -202,71 +298,144 @@ responses, particularly after generation sealing.
 > substrate (`kgse_body_domain_ck` excludes `'moon'`, 1153:684–685). The
 > contact table's `kgc_body_domain_ck` *including* `'moon'` (1153:1072–1073)
 > covers contacts where the **transiting body is the Moon** (a transit-Moon
-> contact against a natal target) — it is not a natal-Moon-target licence, and
-> v0.1's contrary gloss is retracted.
+> contact against a natal target) — it is not a natal-Moon-target licence.
 >
-> **On-demand lifetime:** a Moon search writes its own `moon_on_demand`
-> coverage record (1155:729–732 — Moon-agent coverage follows the same guard
-> shape as every other agent's). The response itself is ephemeral: no
-> relationship/window membership rows are written for it. After a generation
-> is **sealed**, a Moon query against that generation still runs: what
-> persists is the coverage record and the query receipt (query parameters,
-> coverage snapshot, result digest); what never happens is a membership write
-> or any mutation of the sealed generation. A post-publication P6/Moon answer
-> attaches its provenance by referencing the sealed generation's manifest and
-> its own coverage record — it never reopens the generation.
+> **Coverage identity:** a Moon/day query writes its own `moon_on_demand`
+> coverage partition in `kala_gochara_coverage`, keyed
+> `moon:interval:<start>/<end>` (1081's key shape; 1155:729–732 applies the
+> same guard shape to the Moon agent). That row is the query's durable
+> coverage identity — written under the chart lock like any coverage row
+> (AM-3), and **distinct from build coverage by `partition_kind`**: the
+> sealed generation's published manifest digest is computed over the build
+> partitions (`event_class`, `body_target`) only; `moon_on_demand` rows are
+> excluded from it, whether written before or after sealing, so a post-seal
+> Moon query never changes the sealed manifest.
+>
+> **Query receipt (post-seal behaviour pinned):** the answer carries a
+> receipt object binding five things: (1) the sealed generation's **manifest
+> id and digest**; (2) the **coverage partition key and the `coverage_facts`
+> snapshot** it answered under; (3) the **query interval**; (4) the **input
+> identity** (sky convention id + the natal-target fact ids consumed); (5) a
+> **result digest** (sha256 over the canonical answer rendering). The receipt
+> is returned with the response and recorded in the ordinary application
+> answer log; **no row is written to any ka_gochara family table for it, no
+> membership row is written, and nothing in the sealed generation mutates.**
+> Replay: re-issuing the same query interval against the same coverage facts
+> re-derives the receipt; equality of the result digest is the replay check.
+> A Moon query against a sealed generation is therefore fully served by: the
+> moon_on_demand coverage row (durable), the ephemeral answer, and the
+> logged receipt — never by reopening the generation.
+>
+> **Deferred (v1.1 rank 7, second half):** the P6 parent-context and
+> temporal-containment rules (1156:247–265 carries no frame/person fields on
+> the window; context must resolve from specified admitting objects/records
+> with an unambiguous rule when members differ; annotation support restricted
+> to the admitted parent interval) are **deferred to before any P6
+> implementation lands** and are tracked with AM-8's future template
+> migration. They are not part of this batch.
 
 **Schema impact:** none.
 
 ---
 
-## AM-5 — Coverage-partition ownership (pin 7) — REWRITTEN (v0.1 REJECTED)
+## AM-5 — Coverage-partition ownership and **explicit completeness** (REWORKED per v1.1 rank 1)
 
-Codex rejected v0.1's `partition_kind='event_class', partition_key=path`: BOTH
-applied guards — 1155:706–709 and 1156:402–405 — require
-`partition_key = event_class`. Writer ownership and same-transaction linkage
-were accepted. Also required: an explicit cross-path completeness rule, and
-the convention-bridge/`coverage_facts` snapshot bound in the same transaction.
+Codex v1.1: `partition_key = event_class`, writer ownership and the
+same-transaction bridge/snapshot binding are closed. What is rejected is the
+completeness story: applied coverage treats "paths" and "relations" as
+different concepts (1155:733 checks the contact's relation against
+`relations_searched`; 1155:361–380 snapshots only convention, horizon and
+relations; 1156:499–545 classifies extension by horizon + relation-set
+containment), and "naming paths in the relation set" cannot represent *which
+path version searched which relations/targets over which intervals*. A flat
+path list plus a flat relation list plus one horizon falsely implies the
+unperformed Cartesian product. Folded: the path-in-relation-set idea is
+replaced by an explicit, versioned **path-search receipt** representation.
 
 **Proposed spec text (amend §10.1):**
 
 > The `ka_gochara_v5` writer owns the `'5.0'` coverage partitions in
 > `kala_gochara_coverage`: it inserts/extends its own partitions with
 > `partition_kind = 'event_class'` and **`partition_key = <event_class>`**
-> (the only key both applied guards admit), `completed_horizon` within the
-> governed domain, `relations_searched` exact — **in the same transaction,
-> before** the records/windows that FK them, with the required **convention
-> bridge and the `coverage_facts` snapshot bound in that same transaction**.
+> (the only key both applied guards admit, 1155:706–709 / 1156:402–405),
+> `completed_horizon` within the governed domain, `relations_searched` exact
+> — **in the same chart-serving transaction, after the chart lock and before**
+> the records/windows that FK them, with the convention bridge and the
+> `coverage_facts` snapshot bound in that same transaction (AM-3).
 >
-> **Cross-path completeness:** a class partition covers exactly the paths the
-> writer has evaluated for that class, named in the partition's relation set.
-> Completing one path's transaction must NOT mark the class partition complete
-> for paths not yet evaluated: the partition carries the evaluated path set
-> explicitly, and a class-level "complete" signal exists only when every path
-> the rule version declares applicable to that class appears in it. Extending
-> a horizon and a relation set must never imply the unperformed Cartesian
-> product of the two — each (path × horizon-interval) actually searched is
-> recorded; nothing else is claimed. A no-window answer for class C reads the
-> partition: "searched, none admitted" (evaluated path set complete) is a
-> different answer from "not (yet) searched" (set incomplete), and the two are
-> never collapsed.
+> **Completeness representation — the path-search receipt.** Completeness is
+> carried by an explicit per-path receipt, never inferred from the
+> partition's flat fields. Receipt identity and content:
 >
-> Coverage is written by the same registered writer that writes the records.
+> ```
+> ka_gochara_path_search_receipt
+>   (chart_id, generation, event_class, path_id, rule_version)   -- PK
+>   searched_intervals    tstzmultirange   -- the intervals ACTUALLY searched
+>   relations_searched    text[]           -- this path's relation inventory
+>   targets_required      int              -- the path's declared target inventory
+>   targets_resolved      int
+>   targets_unresolved    int
+>   input_identity        jsonb            -- {convention_id, declaration refs, operand fact_ids}
+>   completion_state      text             -- 'completed' | 'completed_unqualified' | 'missing_inputs'
+>   completion_detail     jsonb            -- unavailable inputs / unqualified reason / NULL
+>   coverage_partition    (partition_kind, partition_key)        -- the owning partition
+>   computed_at           timestamptz
+> ```
+>
+> Chart-scoped, insert-only, written under the chart lock in the same
+> transaction as the partition it belongs to; one row per
+> (class × path × rule version); a re-search under the same version amends
+> nothing — it runs under a new rule_version or a new generation.
+>
+> **The three states are never collapsed.** For (class C, path P, interval I):
+> a `completed` receipt covering I with an empty admitted set means
+> **"searched, none admitted"**; `completed_unqualified` means evaluation ran
+> but prerequisites stayed unknown (distinct from rejection); `missing_inputs`
+> records exactly which inputs were unavailable; and **no receipt means "not
+> searched"** — an unknown result is never equivalent to a qualified
+> "none admitted".
+>
+> **Publication rule:** a generation's class C may seal only when the receipt
+> set for C equals the applicable-path inventory of the sealed rule versions
+> for C, every receipt is `completed` or `completed_unqualified`, and the
+> union of `searched_intervals` per path covers that path's governed horizon.
+> (The existing seal checks validate consumers and membership; the receipt
+> inventory is what proves every required path was executed.)
+>
+> **Serving rule:** an answer for (class C, interval I) reads the receipts:
+> every applicable path with a `completed` receipt whose
+> `searched_intervals` contain I → "searched"; any applicable path missing a
+> receipt, or whose intervals do not contain I → the answer is qualified
+> **"partially searched: <paths/intervals missing>"**. A partial search can
+> never read as complete-empty, and receipts can never imply unsearched
+> (path × interval) combinations, because every claim is a stored row, not an
+> inference from a shared horizon and a merged relation list.
+>
+> **Worked example (the reviewer's case):** class `marriage`; P1 searched
+> January, P5 searched February. Receipts:
+> `(P1, v1.0, searched=[01-01,02-01), completed)` and
+> `(P5, v1.0, searched=[02-01,03-01), completed)`. A query for January–February
+> answers: **"partially searched — P1 not searched February; P5 not searched
+> January"**; a query for January alone answers "searched" for P1 and
+> "not searched" for P5. Under v0.2's flat representation the partition would
+> have carried paths {P1,P5}, one horizon Jan–Feb and merged relations —
+> reading falsely as "P1 and P5 both searched Jan–Feb". Under the receipt
+> representation that reading is unrepresentable.
 
-**Schema impact:** none (the guards already require this shape; v0.1's text
-would have failed them).
+**Schema impact:** ONE new additive migration (`ka_gochara_path_search_receipt`,
+chart-context trigger + insert-only guard, no live CHECK touched — no
+protected window). v0.2's "schema impact: none" is corrected: the guards
+admit the partition shape, but the completeness representation is new
+storage, and saying the partition "carries" it does not make it free.
 
 ---
 
-## AM-6 — D2: `sad_bala_summary` — **OPTION C, as qualified by Codex** (the gate's pick is recorded)
+## AM-6 — D2: `sad_bala_sufficient` v1.0 — **OPTION C (closed); null policy + admission boundary pinned per v1.1 rank 6**
 
-Codex picked **Option C** with five qualifications, all folded here. Option A
-was shown incompatible as written (1154:311–338 requires non-null finite
-bounds within [0,1] — adding `'rupas'` to the enum does not permit `[0,+∞)`
-and widening those constraints alters the factor algebra, not merely the
-vocabulary). Option B introduces an uncited numerical scale and clamping makes
-"exactly sufficient" indistinguishable from "above sufficient" unless the raw
-value is retained anyway.
+Codex v1.1 CLOSED the five substantive qualifications (Option C, thresholds,
+bhāvabala distinction, unsupported nodes, typed raw evidence, versioning,
+zero-score/admission separation). One clarification remained and is folded:
+missing soft-factor evidence must not corrupt SQL `admission_state`.
 
 **Proposed spec text (factor catalogue entry, versioned):**
 
@@ -280,129 +449,142 @@ value is retained anyway.
 >   Saturn 5 rūpas. Output `1` when the operand's total ṣaḍbala **≥** its
 >   graha threshold (equality IS sufficient — the boundary is stated
 >   explicitly), else `0`. `units='unitless'`, `range=[0,1]` — the range is an
->   **output** range; it never bounds the raw input (v0.1 conflated the two).
-> - **IV.24 (`PG80:C1`) is bhāvabala composition.** It does not establish the
->   seven graha thresholds as a bhāvabala sufficiency test; bhāvabala and
->   ṣaḍbala are never silently combined.
-> - **No thresholds for Rāhu/Ketu exist in the citation.** A node operand —
->   or any missing, incompatible or unsupported operand — is explicitly
->   **unqualified**: the factor does not fire, and the path record carries
->   `unqualified`, never an invented value.
-> - **Raw evidence retained, unscored:** the operand's raw rūpa magnitude
->   rides as **typed operand evidence** (value, unit `'rupas'`, and L1
->   provenance: fact_id, subject, build, ayanāṃśa, verification tier),
->   outside the factor's output range, never a second scored factor forced
->   into the bounded catalogue. It exists to explain the classification and
->   to diagnose unit/provenance errors.
-> - **Zero semantics (S:129–130, S:401–402 vs S:209–213, reconciled):** this
->   is a **soft** factor. A `0` output floors the path's score contribution to
->   zero **for ranking only**; it never removes an admitted interval and never
->   becomes an undeclared necessary predicate. Admission is decided by the
->   path's hard predicates; the score orders admitted windows. (The
->   multiplication of S:209–213 applies to the score; S:129–130/S:401–402
->   govern admission — the factor's zero touches the first, never the second.)
-> - **Versioning:** the factor and its consuming path membership are versioned
->   together; the legacy `sad_bala_summary` name is retired rather than
->   silently re-typed (a silent change of the raw measurement's unit or of the
->   output's meaning is forbidden — fix the data, not the detector).
+>   **output** range; it never bounds the raw input. IV.24 (`PG80:C1`) is
+>   bhāvabala composition, cited only for that separate statement; bhāvabala
+>   and ṣaḍbala are never silently combined. No thresholds for Rāhu/Ketu
+>   exist in the citation and none are manufactured.
+> - **Null policy (pinned):** the factor's membership declares
+>   **`null_state = 'unqualified'`**. A node operand, or any missing,
+>   incompatible or unsupported operand, leaves the factor **unqualified**:
+>   it does not fire, and the score contribution is unknown, never an
+>   invented value. **Score qualification is not admission.** Migration
+>   1155:822–832 derives `admission_state` from the path's **necessary
+>   predicates only** (any false ⇒ `not_admitted`; else any
+>   unknown/unevaluated ⇒ `unqualified`; else `admitted`). Because
+>   `sad_bala_sufficient` is a **soft factor**, its missing evidence can
+>   never set the record's `admission_state` to `unqualified`, and its `0`
+>   output can never revoke an admitted interval: admission is decided by the
+>   hard predicates; the score orders admitted windows. (S:209–213's
+>   multiplication applies to the score; S:129–130/S:401–402 govern
+>   admission — the factor touches the first, never the second.)
+> - **Evidence binding (pinned):** the operand's raw rūpa magnitude rides as
+>   **typed operand evidence** — value, unit `'rupas'`, and full L1
+>   provenance (fact_id, subject, build, ayanāṃśa, verification tier), with
+>   any unit conversion documented rather than inferred from a field name —
+>   outside the factor's output range, never a second scored factor. The
+>   authored entry cites the actual L1 operand (fact/category, subject,
+>   build, value, unit, tier) and the versioned path membership with its
+>   adopted ranking policy; the threshold citation does not establish a
+>   calibrated event probability.
+> - **Versioning:** the factor and its consuming path membership are
+>   versioned together; the legacy `sad_bala_summary` name is retired rather
+>   than silently re-typed.
 
-**Schema impact:** none (Option C needs no migration — its compatibility with
-`kgf_units_ck` and `kgf_range_unit_interval_ck` unchanged is precisely why
-Codex picked it).
+**Schema impact:** none.
 
 ---
 
-## AM-7 — D7: `object_role = 'av_qualifier'` — ACCEPTED WITH AMENDMENTS (1204 survives; contract completion specified)
+## AM-7 — D7: `object_role = 'av_qualifier'` + the P5 contract (COMPLETED per v1.1 rank 5)
 
-Codex verified 1204's minimality (removing the added token restores both old
-validator bodies byte-for-byte) and accepted the selector widening as
-necessary under S:215–230 (enumeration selects by `(agent, relation,
-object_role)` — a contract that admits the role in records but refuses it in
-selectors cannot select its own records). The widening extends the allowed
-interpretive vocabulary; it does not establish P5 semantics and removes no
-contact/coverage/prerequisite/sealing/provenance/membership constraint.
+Codex v1.1: 1204 is consistent and minimal; real residence evidence, shared
+physical roots, separate P5 forms and no universal multiplier are accepted.
+What remained requirements-not-contracts — form identity, applicability,
+typed operand lineage, exact declaration consumption/read-back — are pinned
+here. (1157's own header records the declaration-consumption gate as
+deliberately deferred to the writer/evaluator contract; this is that
+contract.)
 
-**Proposed spec text (amend the `relationship_record` section's role vocabulary):**
+**Proposed spec text (amend the `relationship_record` section's role vocabulary + P5 contract):**
 
 > `object_role` admits `'av_qualifier'`: the aṣṭakavarga qualifier — the
-> house-span whose BAV/SAV bindu strength qualifies a P5 window (P5a AV-quality
-> / P5b SARVA-floor). Contract for its use:
+> house-span whose BAV/SAV bindu strength qualifies a P5 window. Contract:
 >
 > - **Form identity:** an `av_qualifier` relationship record represents a
 >   **real transit interval** (the transiting agent's residence in the
->   qualified house-span) and carries the qualification's lineage (the AV
->   declaration consumed, the bindu figures, the convention). It **shares the
->   physical contact/root** with other interpretations of that same transit
->   and obeys S:194–207's within-path root reduction — the record is an
->   interpretation edge on existing physical evidence, never a duplicate of
->   it. A static BAV/SAV measurement alone is **operand evidence**; it never
->   mints a physical record of its own.
-> - **The record never manufactures admission.** Its existence is not evidence
->   that any event occurred; admission still runs the path's full predicate
->   chain. Event-class and affected-person applicability must be declared per
->   path: an AV declaration's existence cannot establish occurrence of every
->   event class.
-> - **P5a vs P5b stay distinct:** their outcomes and their missingness are
->   recorded separately (no accidental merging or double counting); P5a's
->   known-zero adverse result is reported against its (unresolved) nonzero
->   comparator honestly; P5b's cited bands are used as cited, never converted
->   into a universal multiplier.
-> - **AV-build convention:** the exact AV build convention and declaration
->   consumed are named per record. Migration 1157:39–47 explicitly leaves the
->   declaration-consumption/citation gate to the writer/evaluator and the
->   meaning of its convention key unresolved; 1204 does not close that gap —
->   the writer/evaluator contract above is what closes it, and P5 DB writes
->   hold until the gate confirms it (steward M20261001T121451-1a8d stands).
+>   qualified house-span), resolved to an **absolute physical sign** before
+>   identity creation, and **shares the physical contact/root** with other
+>   interpretations of that same transit, obeying S:194–207's within-path
+>   root reduction — an interpretation edge on existing physical evidence,
+>   never a duplicate of it. A static BAV/SAV measurement alone is **operand
+>   evidence**; it never mints a physical record of its own.
+> - **P5a / P5b identity:** the two forms are **separate rule paths with
+>   separate (path_id, rule_version) memberships**; their records are
+>   identified by that membership, never merged and never double counted.
+>   P5a's known-zero adverse result is reported against its (unresolved)
+>   nonzero comparator honestly; P5b's cited bands are used as cited, never
+>   converted into a universal multiplier. Distinct outcomes survive
+>   reduction because reduction never crosses paths.
+> - **Applicability:** event-class and affected-person applicability are
+>   declared per path; an AV declaration's existence cannot establish
+>   occurrence of every event class, and the record's class/person binding
+>   must match its path's declaration.
+> - **Typed operand lineage:** each record binds (a) the consumed
+>   **AV declaration key** — the declaration table's PK `convention`
+>   (1157's `ka_gochara_av_polarity_declaration`; its deliberately
+>   unresolved key meaning is resolved HERE: the key names the **L1 AV-build
+>   convention** the bindu figures were computed under, and the record
+>   carries it verbatim); (b) the **bindu figures** as typed operand
+>   evidence (value, unit 'bindus', L1 provenance: fact_id, build, tier),
+>   competing BAV/SAV operands both recorded when both inform the outcome;
+>   (c) the sky convention id of the residence contact.
+> - **Declaration consumption / read-back (O-BP-3 made executable):** the
+>   writer **reads back the declaration row at insert time**. The insert is
+>   rejected loudly when: the named declaration key is **absent**; the
+>   operand's fact category is **not in** the declaration's
+>   `applies_to_fact_categories`; or the recorded bindu figures **disagree**
+>   with the L1 AV extract the declaration governs. A P5 record with a
+>   missing or mismatched consumed declaration cannot be written — O-BP-3
+>   fails exactly there. P5 **missingness** (no declaration, unavailable AV
+>   inputs) is recorded separately per form via the AM-5 receipt's
+>   `missing_inputs` state — never silently scored.
+> - **The record never manufactures admission.** Its existence is not
+>   evidence that any event occurred; admission still runs the path's full
+>   predicate chain. The role widening extends interpretive vocabulary; it
+>   does not enforce P5-only usage, residence-only records, or
+>   declaration-first ordering in SQL — those are THIS named
+>   writer/evaluator gate, and P5 DB writes hold until the gate confirms it
+>   (steward M20261001T121451-1a8d stands).
 >
 > **Test obligation:** real residence-qualification acceptance against
-> 1153–1157 **plus** 1204 (the review found the PR's AV fixture used a
-> conjunction rather than the proposed house-span residence — the replacement
-> test must exercise an actual span residence), and the v1.0 role vocabulary
-> probed **in full**, not only `karaka`.
+> 1153–1157 **plus** 1204 exercising an actual span residence with AV
+> declaration consumption (declaration present/absent/mismatched arms), and
+> the v1.0 role vocabulary probed in full with valid coverage/contact
+> fixtures (the PR-side detector repair ships with this batch).
 
 **Schema impact:** migration 1204 (in PR #2817, kept) — `kgrr_object_role_ck`
 and `ka_gochara_object_selector_ok` each widened by the single value.
 
 ---
 
-## AM-8 — D1: P6 frame — **REWORKED: no shared-validator arm; a context-specific P6 testimony template** (v0.1 REJECTED; 1205 SPLIT OUT of #2817)
+## AM-8 — D1: P6 frame — CLOSED for this batch (1205 SPLIT OUT of #2817; v1.1 ACCEPT)
 
-Codex rejected the `ka_gochara_frame_ok` arm: it would permit unresolved
-`'inherited'` frames on arbitrary paths and on relationship records **including
-scored rows** (the PR's own positive test inserted `path_id=P6,
-frame_kind=inherited, operator_role=scored, score_rule=within_path_product`
-and expected success — contradicting S:385–393, which makes every P6 operator
-testimony), and it evades 1155:527–528's exclusion of the native Moon frame
-for relatives (`frame_kind <> 'moon'` — an unresolved `'inherited'` whose
-effective frame IS Moon bypasses the check). It also provided no annotation
-linkage: 1156:334–363 requires a window and its member record to share path
-and version, so a P6 record cannot simply join a P1–P5 window.
+Codex v1.1 ACCEPTED the withdrawal: no 1205 migration or preflight remains in
+#2817; no frame-validator widening ships; the unsafe scored/inherited route
+is removed. One evidence correction folded: the retained
+`ka_gochara_frame_ok` validator has **five** kinds — `moon`, `lagna`,
+`dasha_lord`, `graha`, `bhavat_bhavam` — not the four v0.2 stated.
 
-**Disposition:** migration **1205 is split out of #2817** (the steward's
-permitted alternative, M20261001T171150-5c70). No frame-validator change ships
-now. The contract below is what a future migration must implement, landing
-with the `day_on_demand` step:
+**Disposition (unchanged):** the future P6 contract lands with the
+`day_on_demand` step as a **context-specific testimony template**, not a
+shared-validator arm:
 
-> P6 day-resolution rows are **testimony templates**, represented in a
-> **context-specific structure** (not the shared frame validator):
->
-> - inheritance is admitted **only** on P6 testimony rows; every non-P6 use,
->   and every P6 use with `operator_role='scored'` (or any score_rule), fails;
-> - an annotation is **evaluated with the parent window's concrete frame,
->   frame argument and affected person**, resolved at annotation time — the
->   stored template references its parent; the *effective* frame is computed,
->   and an effective frame the contract forbids (e.g. the native Moon frame
->   for a relative, 1155:527–528) fails loudly, exactly as if it had been
->   written literally;
-> - **parent linkage is mandatory**: an absent parent fails; the parent must
->   be an admitted window of the same chart and generation;
+> - inheritance admitted **only** on P6 testimony rows; every non-P6 use, and
+>   every P6 use with `operator_role='scored'` (or any score_rule), fails;
+> - an annotation is evaluated with the parent window's concrete frame, frame
+>   argument and affected person, resolved at annotation time; a forbidden
+>   effective frame (e.g. the native Moon frame for a relative, 1155:527–528)
+>   fails loudly, exactly as if written literally;
+> - **parent linkage mandatory**: an absent parent fails; the parent must be
+>   an admitted window of the same chart and generation; context resolution
+>   when parent members differ follows the AM-4 deferred rule (resolved
+>   before P6 lands);
 > - **sealed-generation behaviour**: annotating against a sealed generation
 >   writes no membership and mutates nothing sealed — the annotation is an
->   ephemeral response object or a separate annotation relationship with its
->   own table, never a member of the parent's window (1156:334–363's
->   same-path-and-version rule is not weakened);
-> - the validator vocabulary of `ka_gochara_frame_ok` stays exactly the v1.0
->   four kinds until such a designed migration lands.
+>   ephemeral response object or a separate annotation table, never a member
+>   of the parent's window (1156:334–363's same-path-and-version rule is not
+>   weakened);
+> - `ka_gochara_frame_ok`'s vocabulary stays exactly the v1.0 **five** kinds
+>   until such a designed migration lands.
 >
 > **Test obligations (for that migration):** non-P6 inheritance rejected;
 > scored P6 rejected; absent parent rejected; forbidden effective relative
@@ -415,72 +597,53 @@ protected-window if it touches any live CHECK.
 
 ---
 
-## AM-9 — FINDING for the L0 owner: Rāhu/Ketu favourable-house discrepancy — ACCEPTED WITH AMENDMENTS (provenance narrowed per Codex)
+## AM-9 — FINDING for the L0 owner: Rāhu/Ketu favourable-house discrepancy — CLOSED (v1.1 ACCEPT)
 
-Codex confirmed the reading (`CORPUS_READS_v1_0.md:130–137` supports {3,6,10,11}
-from the Moon: the Sun's placements, the universal eleventh, the nodes'
-similarity to the Sun; the L0 seed omits both 10s and adds Ketu-12) and
-narrowed the owner finding in two ways, both folded:
-
-**The finding (as narrowed):**
+Codex v1.1 ACCEPTED the narrowed finding in full: placement/vedha/phala
+provenances separated; the `BPHS_CH29` affliction gloss retracted; Ketu-12
+referred for sourcing/reclassification; no nodal dṛṣṭi; no repair authorized.
+Text unchanged from v0.2:
 
 - Phaladīpikā XXVI.2 (PG321:C1) supports the **favourable placements** {3, 6,
   10, 11} from janma-rāśi for both nodes. The L0 seed's node rows combine
   three claims under one citation — the favourable placement, a
-  `vedha_house`, and detailed phala. **XXVI.2 sources only the first.** The
-  owner finding must keep the three provenances separate: repairing the
-  favourable set (add Rāhu-10, Ketu-10) does NOT thereby source the node
-  house-vedha pairs or every detailed outcome, and no compound row's citation
-  is replaced wholesale.
-- **Ketu-12:** its current citation `BPHS_CH29` is, on the inspected evidence,
-  a **generic transit-results label**, and the file's own header records that
-  attribution as unresolved in the served corpus. (v0.1's stronger claim —
-  that BPHS_CH29 specifically denotes a node-over-Moon affliction passage — is
-  **retracted**: it is not established by the inspected evidence.) Ketu-12
-  needs a precise supporting source or an honest reclassification, preserving
-  the historical lineage of the row.
-- **No nodal dṛṣṭi follows from this finding.** No production repair is
-  authorized by the review or by this draft; disposition belongs to the L0
-  owner (repair the two 10s with the XXVI.2 citation; source or reclassify
-  Ketu-12; keep vedha/phala provenance separate).
-
-**Disposition unchanged in kind:** a finding for the **L0 owner**; no change
-to the v1.5 specs or the P2 registry — `favourable_houses.py` follows the text
-and stays as merged. Per the review, this correction need not hold unrelated
-P1–P5 implementation work once the blocking contracts (AM-3/AM-5/AM-8) are
-repaired.
+  `vedha_house`, and detailed phala. **XXVI.2 sources only the first.**
+- **Ketu-12** needs a precise supporting source or an honest
+  reclassification, preserving the historical lineage of the row.
+- **Disposition:** a finding for the **L0 owner**; no change to the v1.5
+  specs or the P2 registry; `favourable_houses.py` follows the text and stays
+  as merged. This correction does not hold unrelated P1–P5 implementation
+  work.
 
 ---
 
-## Batch checklist for the A5.5 gate (v0.2)
+## Batch checklist for the A5.5 gate (v0.3)
 
 | # | Item | Spec fold | New migration? | Decision left? |
 |---|------|-----------|----------------|------------------|
-| AM-1 | Convention row, exact serialization; convention-id ≠ generation | §6.0 (new) | no (data row, own bootstrap txn) | no |
-| AM-2 | sha256→UUIDv8, canonical bytes, collision taxonomy, vectors | §6.1 | no | no |
-| AM-3 | Two phases + **per-table persistence by publication state**; separate registry txn | §10.1 | no | no |
-| AM-4 | Moon/day tier EPHEMERAL; transiting-Moon correction; post-seal lifetime | §6.2/§10.1 | no | no |
-| AM-5 | Coverage ownership: `partition_key=event_class` + cross-path completeness | §10.1 | no | no |
-| AM-6 | **`sad_bala_sufficient` v1.0 — Option C as qualified** | factor catalogue | **no** | **picked: C** |
-| AM-7 | `'av_qualifier'` + P5 contract (identity/applicability/lineage; no manufactured admission) | relationship_record | **1204 (kept), protected window** | no |
-| AM-8 | P6 testimony template with concrete resolved frame | new (template), lands with day_on_demand | **1205 SPLIT OUT — future designed migration** | no |
-| AM-9 | L0 Rāhu/Ketu finding, provenance narrowed | none | no | L0 owner's ruling |
+| AM-1 | Convention vector byte-pinned + digest; domain authority; bridge evolution | §6.0 (new) | no (data row, chart-serving txn) | no |
+| AM-2 | UUIDv8 + lowercase successor oracle O-RX-1a; numeric/sign/star pins; UUID + post-mask vectors | §6.1 | no | no |
+| AM-3 | Two transaction categories; chart lock BEFORE legacy coverage writes | §10.1 | no | no |
+| AM-4 | Moon/day EPHEMERAL; query receipt storage/identity/manifest exclusion; P6-context deferral | §6.2/§10.1 | no | no |
+| AM-5 | `partition_key=event_class` + **path-search receipt completeness** + publication/serving rules | §10.1 | **yes — one additive receipt table** | no |
+| AM-6 | `sad_bala_sufficient` v1.0; `null_state='unqualified'`; score-qualification ≠ admission | factor catalogue | no | picked: C |
+| AM-7 | `'av_qualifier'` + P5 contract completed (identity/applicability/lineage/read-back) | relationship_record | 1204 (kept), protected window | no |
+| AM-8 | P6 testimony template; five frame kinds; future designed migration | new (template) | 1205 SPLIT OUT | no |
+| AM-9 | L0 Rāhu/Ketu finding (provenance narrowed) | none | no | L0 owner's ruling |
 
-## Evidence corrections folded outside the items (Codex rank 7)
+## Stale-statement corrections folded in v0.3 (v1.1: "correct alongside")
 
-- **1204's header** overstated the race claim: the protected environment and
-  deployment concurrency do NOT demonstrate existing writers are paused. The
-  corrected claim (in the reworked #2817): the transactional `ALTER TABLE`
-  takes the requisite table lock with no committed unconstrained interval;
-  concurrent writes can block or trip the lock timeout, and the window's
-  quiescence is an operational precondition to be verified at dispatch, not a
-  property the migration asserts.
-- The oracle map v1.1's partial coverage stands as reported (11 REAL + 2
-  strict-xfail sentinels); it is **not** behavioural closure — B6-F16's
-  replacement must assert union admission, channel attribution and
-  unknown-state behaviour; B6-F17's the actual tārā class, admitted-parent
-  binding, coverage and zero scoring effect. The v1.5 batch by itself closes
-  neither.
-- The migration integration suite's `CONTRACT_FILES` omits 1156/1157 and its
-  AV fixture is a conjunction, not a span residence — recorded as test debt
-  against AM-7's obligation above.
+- **Oracle map v1.1 line 133** still referred to 1205 in PR #2817 — stale
+  since the 1205 split; the oracle map's partial-coverage report (11 REAL + 2
+  strict-xfail sentinels) stands, and its 1205 reference is corrected to name
+  the future template migration when the map next versions.
+- **v0.2's evidence note** describing the migration suite's omitted
+  1156/1157 chain and conjunction AV fixture is stale as of the PR rework:
+  `CONTRACT_FILES` covers 1153–1157 and the fixture is a real span residence;
+  the *remaining* test debt is the detector/fixture repair tracked under
+  v1.1 rank 4 (PR-side, shipping with this batch).
+- **AM-8's "four kinds"** corrected to five (above).
+- B6-F16/B6-F17 replacements must assert actual union admission, channel
+  attribution and unknown-state behaviour (F16) and the actual tārā class,
+  admitted-parent binding, coverage and zero scoring effect (F17) — the v1.5
+  batch by itself closes neither.
