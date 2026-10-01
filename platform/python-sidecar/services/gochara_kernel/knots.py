@@ -21,6 +21,15 @@ calc_ut call — `swieph` iff retflag & 2, `moshier` iff retflag & 4 — never
 from the requested flag. A Moshier fallback raises EphemerisBackendError; a
 gate run on Moshier is Moshier-vs-Moshier and cannot fail, so callers must
 treat it as NOT_RUN, never a pass.
+
+The Moon's flag is NOT proof (SS N-28, measured on pyswisseph 2.10.3.2): with the
+Moon file `semo_*.se1` missing, `calc_ut(MOON)` silently computes the Moshier Moon
+but STILL returns the SWIEPH flag. TRUE_NODE is computed from the Moon file and its
+flag does not lie, so every Moon calc is gated by a file-level TRUE_NODE probe at
+the same instant (see `_assert_moon_file_backend`) — uncached, so each call proves its own
+instant. The other bodies' flags are
+honest (planets come from `sepl_*.se1`; the mean node is analytic and is never
+read for the backend).
 """
 from __future__ import annotations
 
@@ -53,10 +62,16 @@ NINE_GRAHAS = tuple(GRAHA_TO_SWE)
 
 class EphemerisBackendError(RuntimeError):
     """A calc_ut fell back to Moshier (retflag & 4) or otherwise failed the
-    SWIEPH gate. Gate-grade comparisons must report NOT_RUN, never pass."""
+    SWIEPH gate. Gate-grade comparisons must report NOT_RUN, never pass.
 
-    def __init__(self, body: str, retflag: int):
+    `detail` (optional) names a gate other than the per-call flag — the Moon's
+    file-level probe — so the message says what actually failed; `retflag` is
+    always the flag of the call that proved the backend is not SWIEPH."""
+
+    def __init__(self, body: str, retflag: int, detail: str | None = None):
         super().__init__(
+            f"{body}: {detail} Comparison is NOT_RUN, not PASS (F-14)."
+            if detail else
             f"{body}: retflag {retflag} — ephemeris backend is not SWIEPH "
             f"(retflag & 2 failed). Comparison is NOT_RUN, not PASS (F-14)."
         )
@@ -101,6 +116,44 @@ def _check_retflag(body: str, retflag: int) -> str:
     return "swieph"
 
 
+# ── Moon file-level backend probe (SS N-28) ─────────────────────────────────
+# NO CACHE (ASTRA A2.5 v1.2 R3). A success cache keyed on a calendar-year block and a
+# directory stamp cannot be made sound: Swiss file coverage is not the calendar block
+# (semo_18.se1 ends in January 2400, measured), and directory metadata is not file identity
+# (contents or a symlink target can change under an unchanged stamp). The probe is a single
+# TRUE_NODE calc at the call's own instant — the file that serves the Moon at that jd is the
+# file proven — so it runs on EVERY Moon calc. Cost, measured on the real checksum-pinned
+# files over the 4.1 scored horizon (10,334 daily Moon knots), against TWO different baselines:
+#   (a) the Moon sampler with vs without the probe: sample_knots 1.07 s → 1.27 s (+0.20 s, ≈19 %);
+#       per call a probe is 6.3 µs against 2.8 µs for the bare Moon calc;
+#   (b) the full `calc_sidereal_lon` wrapper path (SWISS_STATE_LOCK + ephemeris path + sid-mode,
+#       ≈40 µs per call): the probe adds ≈4.6 µs (≈11 %), and a whole-horizon Moon sampling run
+#       takes 0.44 s against 0.38 s for the Sun through the same wrapper.
+# The figures are not comparable across baselines; the conclusion is the same: cheap, trivially correct.
+
+
+@serialized_swiss_state
+def _assert_moon_file_backend(jd_ut: float, ephe_path: str | None) -> None:
+    """Fail closed unless the Moon at `jd_ut` is served from the .se1 files.
+
+    A serialized Swiss-state owner in its own right (re-entrant: its only caller,
+    calc_sidereal_lon, already holds SWISS_STATE_LOCK with the ephemeris path
+    set — the DP-SD-010 inventory requires every direct calc_ut to be owned).
+    TRUE_NODE at the same instant needs the same `semo_*.se1`, and — unlike the
+    Moon's — its returned flag reports the substitution (SS N-28 measurement).
+    Nothing is remembered between calls: every call proves its own instant."""
+    _xx, retflag = swe.calc_ut(jd_ut, swe.TRUE_NODE, swe.FLG_SWIEPH | swe.FLG_SPEED)
+    if (retflag & 4) or not (retflag & 2):
+        raise EphemerisBackendError(
+            "Moon", int(retflag),
+            detail=(
+                f"file-level probe failed (TRUE_NODE at jd {jd_ut}: retflag {int(retflag)}, "
+                f"needs semo_*.se1) — the Moon's own flag cannot prove the Swiss "
+                f"backend (SS N-28)."
+            ),
+        )
+
+
 @serialized_swiss_state
 def calc_sidereal_lon(body: str, jd_ut: float, ephe_path: str | None) -> tuple[float, int]:
     """One sidereal longitude probe. Returns (longitude_deg, retflag).
@@ -119,6 +172,8 @@ def calc_sidereal_lon(body: str, jd_ut: float, ephe_path: str | None) -> tuple[f
             f"{body}: swe id {swe_id} is not MEAN_NODE — node_model='mean' "
             f"is the only admitted model (N-4a(b″)); refusing the calc."
         )
+    if body == "Moon":
+        _assert_moon_file_backend(jd_ut, ephe_path)
     out, retflag = swe.calc_ut(jd_ut, swe_id, EPHE_FLAGS)
     lon = float(out[0])
     if body == "Ketu":

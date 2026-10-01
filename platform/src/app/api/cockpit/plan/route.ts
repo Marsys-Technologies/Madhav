@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       query<RegistryEntry>(
         `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds
          FROM asset_registry
-         WHERE has_writer = true
+         WHERE (has_writer = true AND is_active = true)
             OR (
               asset_id = ANY($1::text[])
               AND scope = 'global'
