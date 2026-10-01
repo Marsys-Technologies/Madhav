@@ -79,9 +79,27 @@ def validate_registry(rows) -> list[dict]:
     return out
 
 
+def _no_dup_keys(pairs):
+    d = {}
+    for k, v in pairs:
+        if k in d:
+            raise ValueError(f"duplicate key {k!r}")
+        d[k] = v
+    return d
+
+
+def _no_constant(name):
+    raise ValueError(f"non-finite constant {name}")
+
+
+def strict_json_loads(text: str):
+    """json.loads that refuses duplicate object keys and NaN/Infinity (a registry or family file must be unambiguous)."""
+    return json.loads(text, object_pairs_hook=_no_dup_keys, parse_constant=_no_constant)
+
+
 def load_registry_json(path) -> list[dict]:
     try:
-        rows = json.loads(Path(path).read_text(encoding="utf-8"))
+        rows = strict_json_loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError) as e:
         raise LevelMapError(f"cannot read the registry input {path}: {type(e).__name__}: {e}") from e
     return validate_registry(rows)
@@ -158,16 +176,23 @@ def build_level_map(rows, *, version, frozen_at, registry_revision) -> dict:
 
 def load_family_input(path) -> dict:
     try:
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        data = strict_json_loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError) as e:
         raise LevelMapError(f"cannot read the family input {path}: {type(e).__name__}: {e}") from e
-    return validate_family_input(data)
+    validate_family_input(data)
+    return data
+
+
+FAMILY_META_KEYS = ("version", "frozen_at", "registry_revision", "family_set")   # present when the input is a past OUTPUT
 
 
 def validate_family_input(data) -> dict:
+    """The six lists (each sorted, unique asset ids). `_`-prefixed keys are notes. The input may also be a previous
+    FAMILY_ASSETS.json: its version/frozen_at/registry_revision are ignored (they are regenerated) and its family_set
+    must equal the union of the six lists. Anything else raises."""
     if not isinstance(data, dict):
         raise LevelMapError("the family input must be a JSON object")
-    keys = {k for k in data if not str(k).startswith("_")}          # `_`-prefixed keys are provenance notes
+    keys = {k for k in data if not str(k).startswith("_") and k not in FAMILY_META_KEYS}
     if keys != set(FAMILY_LIST_KEYS):
         raise LevelMapError(f"the family input must carry exactly {list(FAMILY_LIST_KEYS)}; "
                             f"missing {sorted(set(FAMILY_LIST_KEYS) - keys)}, unexpected {sorted(keys - set(FAMILY_LIST_KEYS))}")
@@ -179,25 +204,54 @@ def validate_family_input(data) -> dict:
         if len(set(v)) != len(v):
             raise LevelMapError(f"{k} lists an asset twice")
         out[k] = sorted(v)
+    if "family_set" in data and data["family_set"] != sorted(set().union(*[set(out[k]) for k in FAMILY_LIST_KEYS])):
+        raise LevelMapError("family_set is not the union of the six lists")
     return out
 
 
+def family_inactive_allowed(data) -> set:
+    """Assets the input records, with a reason, as inactive in the registry (`_notes.inactive`: [{asset, reason}]). They
+    may stay in the refusal set although the registry no longer marks them active."""
+    notes = data.get("_notes") if isinstance(data, dict) else None
+    items = notes.get("inactive", []) if isinstance(notes, dict) else []
+    if not isinstance(items, list) or any(
+            not (isinstance(x, dict) and isinstance(x.get("asset"), str) and isinstance(x.get("reason"), str)
+                 and x["reason"].strip()) for x in items):
+        raise LevelMapError("_notes.inactive must be a list of {asset, reason} with a non-blank reason")
+    return {x["asset"] for x in items}
+
+
 def build_family_assets(lists, rows, *, version, frozen_at, registry_revision) -> dict:
+    """`lists` is the family input document (or just the six lists). Every member must be an active registry asset, or be
+    recorded in the input's `_notes.inactive` WITH a reason and really be inactive in the registry. `_`-prefixed notes of
+    the input are carried into the output."""
     _check_meta(version, frozen_at, registry_revision)
-    lists = validate_family_input(lists)
+    raw = lists
+    lists = validate_family_input(raw)
+    allowed = family_inactive_allowed(raw)
     rows = validate_registry(list(rows))
-    active = {r["asset_id"]: r for r in rows if r["active"]}
+    by_id = {r["asset_id"]: r for r in rows}
+    members = set().union(*[set(lists[k]) for k in FAMILY_LIST_KEYS])
+    for a in sorted(allowed):
+        if a not in members:
+            raise LevelMapError(f"_notes.inactive names {a}, which is not a family member")
+        if a not in by_id or by_id[a]["active"]:
+            raise LevelMapError(f"_notes.inactive names {a}, which is not an inactive registry asset")
     for k in FAMILY_LIST_KEYS:
         for a in lists[k]:
-            if a not in active:
+            if a not in by_id or not (by_id[a]["active"] or a in allowed):
                 raise LevelMapError(f"{k}: {a} is not an active registry asset")
             want = READER_LAYER.get(k)
-            if want is not None and active[a]["layer"] != want:
-                raise LevelMapError(f"{k}: {a} is in layer {active[a]['layer']!r}, not {want!r}")
+            if want is not None and by_id[a]["layer"] != want:
+                raise LevelMapError(f"{k}: {a} is in layer {by_id[a]['layer']!r}, not {want!r}")
     doc = {"version": version, "frozen_at": frozen_at, "registry_revision": registry_revision}
     for k in FAMILY_LIST_KEYS:
         doc[k] = lists[k]
-    doc["family_set"] = sorted(set().union(*[set(lists[k]) for k in FAMILY_LIST_KEYS]))
+    doc["family_set"] = sorted(members)
+    if isinstance(raw, dict):
+        for k, v in raw.items():
+            if str(k).startswith("_"):
+                doc[k] = v
     return doc
 
 

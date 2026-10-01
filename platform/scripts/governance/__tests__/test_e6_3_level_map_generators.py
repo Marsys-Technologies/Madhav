@@ -160,9 +160,71 @@ def test_an_empty_list_is_allowed_when_it_is_present_but_a_missing_or_extra_key_
         G.build_family_assets(dict(LISTS, family_extra=["ka_reader"]), REG, version="1.0", frozen_at=FRESH, registry_revision=7)
 
 
-def test_provenance_notes_prefixed_with_underscore_are_ignored():
+def test_underscore_notes_are_not_lists_and_are_carried_into_the_output():
     fa = G.build_family_assets(dict(LISTS, _provenance="note"), REG, version="1.0", frozen_at=FRESH, registry_revision=7)
-    assert "_provenance" not in fa
+    assert fa["_provenance"] == "note" and "_provenance" not in G.FAMILY_LIST_KEYS
+
+
+def test_the_generator_accepts_its_own_output_as_input_and_reproduces_it():
+    doc = dict(LISTS, _why={"ka_gochara": "x"})
+    out1 = G.build_family_assets(doc, REG, version="1.0", frozen_at=FRESH, registry_revision=7)
+    out2 = G.build_family_assets(out1, REG, version="1.0", frozen_at=FRESH, registry_revision=7)     # round trip
+    assert out2 == out1
+    # the meta keys of a past output are regenerated, not trusted
+    out3 = G.build_family_assets(out1, REG, version="2.0", frozen_at=FRESH, registry_revision=9)
+    assert (out3["version"], out3["registry_revision"]) == ("2.0", 9) and out3["family_set"] == out1["family_set"]
+
+
+def test_an_input_whose_family_set_is_not_the_union_is_refused():
+    out = G.build_family_assets(LISTS, REG, version="1.0", frozen_at=FRESH, registry_revision=7)
+    with pytest.raises(G.LevelMapError, match="union"):
+        G.validate_family_input(dict(out, family_set=out["family_set"][1:]))
+
+
+def _reg_with_inactive():
+    return REG + [row("ka_retired", layer="kala", active=False)]
+
+
+def _inactive_doc(reason="retired sweep writer"):
+    return dict(LISTS, family_gochara=LISTS["family_gochara"] + ["ka_retired"], _notes={"inactive": [{"asset": "ka_retired", "reason": reason}]})
+
+
+def test_a_recorded_inactive_member_is_allowed_and_an_unrecorded_one_is_refused():
+    out = G.build_family_assets(_inactive_doc(), _reg_with_inactive(), version="1.0", frozen_at=FRESH, registry_revision=7)
+    assert "ka_retired" in out["family_set"]
+    with pytest.raises(G.LevelMapError, match="not an active"):
+        G.build_family_assets(dict(_inactive_doc(), _notes={"inactive": []}), _reg_with_inactive(), version="1.0",
+                              frozen_at=FRESH, registry_revision=7)
+
+
+@pytest.mark.parametrize("notes", [
+    {"inactive": [{"asset": "ka_retired", "reason": " "}]}, {"inactive": [{"asset": "ka_retired"}]},
+    {"inactive": "ka_retired"}, {"inactive": [{"asset": "ka_sangam", "reason": "x"}]},       # an ACTIVE asset
+    {"inactive": [{"asset": "ka_gochara_resonance", "reason": "x"}, {"asset": "ka_retired", "reason": "x"}]},
+])
+def test_a_wrong_inactive_note_is_refused(notes):
+    with pytest.raises(G.LevelMapError):
+        G.build_family_assets(dict(_inactive_doc(), _notes=notes), _reg_with_inactive(), version="1.0", frozen_at=FRESH,
+                              registry_revision=7)
+
+
+def test_an_inactive_note_naming_a_non_member_is_refused():
+    doc = dict(LISTS, _notes={"inactive": [{"asset": "ka_retired", "reason": "x"}]})
+    with pytest.raises(G.LevelMapError, match="not a family member"):
+        G.build_family_assets(doc, _reg_with_inactive(), version="1.0", frozen_at=FRESH, registry_revision=7)
+
+
+@pytest.mark.parametrize("text", ['[{"asset_id": "bg_a", "layer": "x", "depends_on": [], "active": true, "active": true}]',
+                                  '[{"asset_id": "bg_a", "layer": "x", "depends_on": [], "active": NaN}]'])
+def test_registry_and_family_json_are_read_strictly(tmp_path, text):
+    f = tmp_path / "r.json"
+    f.write_text(text, encoding="utf-8")
+    with pytest.raises(G.LevelMapError):
+        G.load_registry_json(f)
+    fam = tmp_path / "f.json"
+    fam.write_text('{"family_gochara": [], "family_gochara": []}', encoding="utf-8")
+    with pytest.raises(G.LevelMapError):
+        G.load_family_input(fam)
 
 
 @pytest.mark.parametrize("patch,why", [
