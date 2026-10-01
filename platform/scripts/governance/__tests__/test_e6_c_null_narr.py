@@ -109,7 +109,7 @@ def test_a_default_on_a_non_declared_column_is_not_read():
 
 
 def test_a_json_path_entry_checks_the_default_of_its_column():
-    assert ac.grade_null_schema_default(["n.$.k"], ["n"], {"n": "'{}'::jsonb"})["v"] == ac.FAIL
+    assert ac.grade_null_schema_default(["n.$.k"], ["n"], {"n": "'{\"k\": 1}'::jsonb"})["v"] == ac.FAIL
 
 
 # ───────────────────────── row counts: scope + SQL ─────────────────────────
@@ -630,3 +630,60 @@ def test_the_two_real_update_only_writers_stay_partial_with_a_named_reading():
     assert v == ac.PARTIAL and "update-only:" in n[0] and "guarded-row-set-unproven" in n[0], (v, n)
     v, n = ac.idem_scan("bo_laksana_rerank", ["bo_laksana.py"], "delete_then_insert", ["bodha_msr_signals"])
     assert v == ac.PARTIAL and "update-only:" in n[0], (v, n)
+
+
+# ───────────────────────── refinements found by the saved-census regression ─────────────────────────
+
+def test_agree_resolves_a_declared_column_against_every_table_the_asset_owns():
+    own = {"t_main": (["id"], {"id": "int"}), "t_facts": (["citation_human"], {"citation_human": "text"})}
+    assert ac.grade_narr_agree_tables(["citation_human"], own)["v"] == ac.PASS
+
+
+def test_agree_fails_only_when_every_owned_table_is_known_and_none_has_the_column():
+    own = {"a": (["id"], {}), "b": (["x"], {})}
+    r = ac.grade_narr_agree_tables(["nope"], own)
+    assert r["v"] == ac.FAIL and "nope" in r["measured"] and "a, b" in r["measured"], r
+
+
+def test_agree_is_no_detector_when_a_missing_column_could_sit_in_a_table_whose_columns_are_unknown():
+    own = {"a": (["id"], {}), "b": (None, None)}
+    assert ac.grade_narr_agree_tables(["nope"], own)["v"] == ac.NO_DET
+
+
+def test_agree_json_path_needs_a_json_column_in_the_table_that_holds_it():
+    own = {"a": (["n"], {"n": "text"}), "b": (["n"], {"n": "jsonb"})}
+    assert ac.grade_narr_agree_tables(["n.$.k"], own)["v"] == ac.PASS
+    assert ac.grade_narr_agree_tables(["n.$.k"], {"a": (["n"], {"n": "text"})})["v"] == ac.FAIL
+
+
+@pytest.mark.parametrize("dflt", ["'{}'::jsonb", "'{}'", "'[]'::jsonb", "'{}'::json"])
+def test_an_empty_json_container_default_is_not_a_prose_stand_in_for_a_json_path_entry(dflt):
+    r = ac.grade_null_schema_default(["narrative.$.headline"], ["narrative"], {"narrative": dflt})
+    assert r["v"] == ac.PARTIAL, r
+
+
+def test_a_non_empty_json_default_or_any_default_on_a_plain_prose_column_still_fails():
+    assert ac.grade_null_schema_default(["n.$.k"], ["n"], {"n": "'{\"k\": \"none\"}'::jsonb"})["v"] == ac.FAIL
+    assert ac.grade_null_schema_default(["statement"], ["statement"], {"statement": "'{}'"})["v"] == ac.FAIL
+    assert ac.grade_null_schema_default(["statement"], ["statement"], {"statement": "''::text"})["v"] == ac.FAIL
+
+
+def test_fidelity_follows_a_module_returned_by_a_test_helper():
+    s = '''
+def _mod():
+    from pipeline.orchestrator.writers import ph_x
+    return ph_x
+
+def test_a():
+    w = _mod()
+    out = w.build_narration({})
+    assert out["statement"]
+'''
+    r = ac.narr_fidelity_scan(["statement"], CITE, _tests(test_a=s))
+    assert r["v"] == ac.PARTIAL and r["covered"] == ["statement"], r
+
+
+def test_prose_checks_uses_the_owned_tables_when_supplied():
+    own = {"t": (["id"], {}), "u": (["statement"], {"statement": "text"})}
+    got = ac.prose_checks("a", _decl(["statement"]), _ctx(own=own))
+    assert got["Narr.agree"]["v"] == ac.PASS

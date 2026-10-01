@@ -860,44 +860,57 @@ def build_rollup_output(census_by_layer: dict, declarations: dict | None = None)
 # harness and the unit tests run exactly what measure() runs. INCONCLUSIVE is a measured STATE (`inconclusive: true`
 # on a NO_DETECTOR record), never a verdict and never a PASS. Null can never read PASS ("never PASS alone", Track E E6.1).
 PROSE_JSON_TYPES = ("json", "jsonb")
+_EMPTY_JSON_DEFAULT = re.compile(r"\s*'\s*(?:\{\s*\}|\[\s*\])\s*'\s*(?:::\s*jsonb?)?\s*", re.I)
+
 
 
 def _json_entry(entry: str) -> bool:
     return parse_prose_field(entry)[1] is not None
 
 
-def grade_narr_agree(entries, table, columns, types) -> dict:
-    """Narr.agree (N-22 principle 8): the declared prose entries and the table's columns agree. FAIL: a declared
-    column is not a column of `table`, or a JSON-path entry sits on a column the catalog types as non-JSON.
-    PASS: every entry resolves (and every JSON-path column is json/jsonb). PARTIAL: names resolve but a JSON-path
-    column's type was not read. NO_DETECTOR: no table / no catalog columns (unknown is never 'zero columns')."""
-    if not table:
+def grade_narr_agree_tables(entries, own) -> dict:
+    """Narr.agree over every table the asset owns (`own`: table -> (columns | None, types | None)): a declared prose
+    entry must resolve to a column of at least one owned table (a multi-table asset keeps its narration column in a
+    table other than the registry's target_table). FAIL: a column found in no owned table while every owned table's
+    columns are known, or a JSON-path entry whose column is typed non-JSON everywhere it is found. PASS: all resolve
+    (JSON types verified). PARTIAL: names resolve but a JSON-path column's type was not read. NO_DETECTOR: no owned
+    table, or a missing column could sit in a table whose columns are unknown (never 'zero columns')."""
+    if not own:
         return dict(v=NO_DET, measured="NO_DETECTOR — no target table to read the declared prose columns against")
-    if not isinstance(columns, (list, tuple, set)) or not columns:
-        return dict(v=NO_DET, measured=f"NO_DETECTOR — the columns of {table} are unknown (not in the catalog); "
-                                       "an unknown column list is never 'zero columns'")
-    have = set(columns)
+    known = {t: set(c) for t, (c, _ty) in own.items() if isinstance(c, (list, tuple, set)) and c}
+    unknown = sorted(t for t in own if t not in known)
+    names = ", ".join(own)
     parsed = [(e, *parse_prose_field(e)) for e in entries]
-    missing = [e for e, col, _ in parsed if col not in have]
+    missing = [e for e, col, _ in parsed if not any(col in cs for cs in known.values())]
     if missing:
-        return dict(v=FAIL, measured=f"declared prose column(s) not among {table}'s columns: {', '.join(missing)}")
+        if unknown:
+            return dict(v=NO_DET, measured=f"NO_DETECTOR — {', '.join(missing)} not found in the known columns of {names}, and "
+                                           f"the columns of {', '.join(unknown)} are unknown (never 'zero columns')")
+        return dict(v=FAIL, measured=f"declared prose column(s) not among the columns of {names}: {', '.join(missing)}")
     wrong, unread = [], []
     for e, col, path in parsed:
         if path is None:
             continue
-        t = (types or {}).get(col) if isinstance(types, dict) else None
-        if t is None:
+        kinds = [(own[t][1] or {}).get(col) for t in known if col in known[t]]
+        if any(k and k.lower() in PROSE_JSON_TYPES for k in kinds):
+            continue
+        if any(k is None for k in kinds):
             unread.append(col)
-        elif t.lower() not in PROSE_JSON_TYPES:
-            wrong.append(f"{col} ({t})")
+        else:
+            wrong.append(f"{col} ({', '.join(sorted(set(kinds)))})")
     if wrong:
-        return dict(v=FAIL, measured=f"JSON-path entries on non-JSON column(s) of {table}: {', '.join(wrong)}")
+        return dict(v=FAIL, measured=f"JSON-path entries on non-JSON column(s) of {names}: {', '.join(wrong)}")
     if unread:
-        return dict(v=PARTIAL, measured=f"every declared column exists in {table}; the type of JSON-path column(s) "
+        return dict(v=PARTIAL, measured=f"every declared column exists in {names}; the type of JSON-path column(s) "
                                         f"{', '.join(sorted(set(unread)))} was not read")
     return dict(v=PASS, measured=f"all {len(parsed)} declared prose entr{'y' if len(parsed) == 1 else 'ies'} resolve to "
-                                 f"column(s) of {table} (names, and JSON types for path entries; the writer binding is "
+                                 f"column(s) of {names} (names, and JSON types for path entries; the writer binding is "
                                  "the declaration tests' claim, not read here)")
+
+
+def grade_narr_agree(entries, table, columns, types) -> dict:
+    """Single-table form of grade_narr_agree_tables (table, its columns, its column types)."""
+    return grade_narr_agree_tables(entries, {table: (columns, types)} if table else {})
 
 
 def grade_null_schema_default(entries, columns, defaults) -> dict:
@@ -906,8 +919,18 @@ def grade_null_schema_default(entries, columns, defaults) -> dict:
     constant columns are not measured here). NO_DETECTOR when the columns or defaults were not read."""
     if not isinstance(columns, (list, tuple, set)) or not columns or not isinstance(defaults, dict):
         return dict(v=NO_DET, measured="NO_DETECTOR — the target table's columns or column defaults were not read")
-    cols = sorted({parse_prose_field(e)[0] for e in entries})
-    hit = [f"{c} DEFAULT {defaults[c]}" for c in cols if defaults.get(c) not in (None, "")]
+    parsed = [parse_prose_field(e) for e in entries]
+    cols = sorted({c for c, _ in parsed})
+    # an empty JSON container default ('{}', '[]') on a column read only through JSON paths leaves every path NULL: it
+    # is structure, not a stand-in for the prose (a path value is still honestly absent)
+    hit = []
+    for c in cols:
+        d = defaults.get(c)
+        if d in (None, ""):
+            continue
+        if all(path is not None for col, path in parsed if col == c) and _EMPTY_JSON_DEFAULT.fullmatch(d):
+            continue
+        hit.append(f"{c} DEFAULT {d}")
     if hit:
         return dict(v=FAIL, measured="declared prose column(s) carry a non-NULL schema default: " + "; ".join(hit))
     return dict(v=PARTIAL, measured=f"no schema default on the declared prose column(s) {', '.join(cols)}; writer "
@@ -1082,6 +1105,21 @@ def _test_facts(path: Path, text: str):
                 mod = n.module or ""
             for a in n.names:
                 bound[a.asname or a.name] = f"{mod}.{a.name}" if mod else a.name
+    # a helper that RETURNS an imported module/name (`def _mod(): from x import m; return m`) binds `w = _mod()`
+    rets = {}
+    for fn in ast.walk(tree):
+        if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for r in ast.walk(fn):
+                if isinstance(r, ast.Return) and r.value is not None:
+                    d = _dotted(r.value, bound) if isinstance(r.value, (ast.Name, ast.Attribute)) else None
+                    if d:
+                        rets[fn.name] = d
+    for n in ast.walk(tree):
+        if (isinstance(n, ast.Assign) and isinstance(n.value, ast.Call) and isinstance(n.value.func, ast.Name)
+                and n.value.func.id in rets):
+            for tg in n.targets:
+                if isinstance(tg, ast.Name):
+                    bound[tg.id] = rets[n.value.func.id]
     calls, leaves, asserts = set(), set(), False
     for n in ast.walk(tree):
         if isinstance(n, ast.Call):
@@ -1264,7 +1302,9 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
     ev = (decl.get("evidence") or {}).get("prose_fields") if isinstance(decl.get("evidence"), dict) else None
     out = {}
     for crit, fn in (
-            ("Narr.agree", lambda: grade_narr_agree(pf, ctx.get("table"), ctx.get("columns"), ctx.get("types"))),
+            ("Narr.agree", lambda: grade_narr_agree_tables(pf, ctx["own"] if ctx.get("own") is not None else
+                                                          ({ctx["table"]: (ctx.get("columns"), ctx.get("types"))}
+                                                           if ctx.get("table") else {}))),
             ("Narr.checkable", lambda: grade_narr_checkable(pf, ctx.get("counts"))),
             ("Narr.fidelity_test", lambda: narr_fidelity_scan(pf, ev, ctx.get("tests") or ())),
             ("Narr.lint", lambda: narr_lint_scan(ctx.get("paths") or ())),
@@ -4034,6 +4074,13 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
                types=(cat.get("types") or {}).get(tbl) if cat.get("types") is not None else None,
                defaults=((cat.get("defaults") or {}).get(tbl, {}) if tbl else {}) if cat.get("defaults") is not None else None,
                counts=None, paths=[], written=None)
+    # the asset's own tables: the registry target plus every table its count_sql reads (a multi-table asset keeps its
+    # narration column outside the target_table); a table the catalog lacks is unknown, never 'zero columns'
+    own = {}
+    for t in dict.fromkeys([x for x in [tbl] + list(ctables) if x]):
+        own[t] = (_target_columns_fact(t, cat),
+                  (cat.get("types") or {}).get(t) if cat.get("types") is not None else None)
+    ctx["own"] = own
     if files and pf is not None:
         try:
             units, _beyond = _delegation_scope(aid, files)
@@ -4069,7 +4116,8 @@ def measure(layer_key: str) -> dict:
     `instrument unreachable` — D6 item 1.)"""
     cfg = LAYERS[layer_key]
     reg, population = _layer_read("registry", registry, layer_key)
-    cat = _layer_read("catalog", catalog, [r["target_table"] for r in reg.values()])
+    cat = _layer_read("catalog", catalog, [r["target_table"] for r in reg.values()]
+                      + [t for r in reg.values() for t in _count_tables(r["count_sql"])])
     regd = _layer_read("registered_ids", registered_ids, cfg["prefix"])
     # R46 (L2 handverify): a view asset whose registry count_sql is a constant (bo_samvada: `SELECT 0`
     # over vw_chart_digest, which returns 15 rows) is counted by the VIEW — chart-scoped where the view
