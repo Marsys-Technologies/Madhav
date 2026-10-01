@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""suvarna_level_wave.py -- Suvarna Track E level-wave tooling (pure module, no CLI, no database of its own).
+"""suvarna_level_wave.py -- Suvarna Track E level-wave tooling.
 
 SECTIONS (each item owns one section; add yours below the marker, do not edit another item's section)
-  1. E5.9  transitive write/delete footprint from the pg_constraint closure        (this file, below)
-  2. E5.3  level-wave dispatcher and its gates                                      (RESERVED -- not written)
+  1. E5.9  transitive write/delete footprint from the pg_constraint closure   (pure: no CLI, no database of its own)
+  2. E5.3  multi-asset level-wave dispatcher, its refusals, stop hook and wall-time report
+           (CLI; the database is reached only through an injected connection factory; see README_level_wave.md)
 
 ================================================================================================
 SECTION 1 -- E5.9 transitive write/delete footprint (N-32; Astra F13)
@@ -73,8 +74,18 @@ SET / BEGIN / COMMIT / ROLLBACK and never commit, roll back or close the caller'
 """
 from __future__ import annotations
 
+import argparse
+import hashlib
+import importlib.util
 import json
+import os
 import re
+import subprocess
+import sys
+import time
+import uuid
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 SCHEMA = "suvarna.e5_9.transitive_footprint/2"
@@ -728,5 +739,911 @@ def impact_statement_footprint_section(footprint: Mapping[str, Any]) -> list[str
 
 
 # ================================================================================================
-# SECTION 2 -- E5.3 level-wave dispatcher (RESERVED: written by item E5.3, not by E5.9)
+# SECTION 2 -- E5.3 level-wave dispatcher (multi-asset manifest builder, refusals, stop hook, wall-time report)
 # ================================================================================================
+# Builds ONE frozen run manifest (`nirmana-run-manifest/v1`) for an explicit asset list, the same way
+# platform/scripts/dispatch_frozen_rebuild.py does for one asset: same canonical-JSON digest, same registry-row and
+# nirmana-writer-digests.json inputs, same INSERT shape. What is new: WAVES derived from depends_on, the refusals
+# below, a stop hook between waves, and a per-asset wall-time report.
+#
+# STATUS: NEVER EXECUTED IN PRODUCTION above 17 assets / 1 wave (the largest run on record, 2026-09-04, L0). A
+# 23-asset or multi-wave run has never run. See platform/scripts/governance/README_level_wave.md. Exec Suvarna runs it;
+# the tests below use fakes and fixtures only.
+#
+# WHAT THE RUNNER DOES (read, not touched: pipeline/orchestrator/runner.py, asset_runner.py -- FROZEN):
+#   * validate_frozen_run_manifest: digest, version, chart, scope/scope_target/action == the build_runs row,
+#     flatten(waves) == plan exactly, one asset entry per plan id in plan order, 64-hex expected_code_digest.
+#   * _verify_sidecar_code_matches_manifest: expected_code_digest == the DEPLOYED job image's writer hash (image skew).
+#   * _verify_registry_still_matches_manifest: scope, sorted depends_on, natural_key_partition, has_cowriters.
+#   * asset_runner.deps_unsatisfied (DEP-ASSERT): every DECLARED dependency lit AND fresh (service deps: lit only).
+#   * scheduling comes from each asset's depends_on in the manifest, NOT from wave boundaries. One run executes every
+#     wave; the runner has NO hook between waves.
+# THEREFORE the stop hook is implemented here, outside the runner, as `--mode wave-by-wave`: one run per wave, each
+# manifest holding only that wave (the earlier waves are then ordinary out-of-set dependencies, which DEP-ASSERT and
+# this script require to be lit+fresh), with an operator pause between runs. `--mode single-run` submits one manifest
+# with all waves and has no pause: a documented limitation, not a bug.
+
+MANIFEST_VERSION = "nirmana-run-manifest/v1"
+TRIGGERED_BY = "suvarna-e5-3-level-wave"
+LEVEL_WAVE_SCHEMA = "suvarna.e5_3.level_wave/1"
+NEVER_EXECUTED_NOTE = (
+    "NEVER EXECUTED IN PRODUCTION above 17 assets / 1 wave. A multi-wave or 23-asset manifest has never run; the "
+    "runner supports N assets and waves structurally (read, not executed). Dry-run first, read the receipt."
+)
+REPO_ROOT = Path(__file__).resolve().parents[3]
+WRITER_DIGESTS_REL = "platform/src/generated/nirmana-writer-digests.json"
+FAMILY_FILE_REL = "00_ARCHITECTURE/control/FAMILY_ASSETS.json"
+FAMILY_LIST_KEYS = ("family_gochara", "family_sangam", "family_kshetra",
+                    "family_readers_L3", "family_readers_L4", "family_readers_L5")
+# The Pravaha gochara family by NAME, enforced even when FAMILY_ASSETS.json is absent or unreadable.
+FAMILY_NAME_PATTERN = re.compile(r"^(ka_gochara|gochara_|kala_gochara_)")
+TERMINAL_RUN_STATES = ("completed", "stopped", "failed")
+_HEX64 = re.compile(r"[0-9a-f]{64}")
+
+REFUSAL_EXIT_CODE = 4
+
+
+class LevelWaveError(Exception):
+    """Bad input or an internal inconsistency; nothing was dispatched."""
+
+
+class LevelWaveRefusal(LevelWaveError):
+    """A gate refused. `.refusals` is a list of {code, ...} dicts; nothing was inserted or dispatched."""
+
+    def __init__(self, refusals: Sequence[Mapping[str, Any]]):
+        self.refusals = [dict(r) for r in refusals]
+        super().__init__("; ".join(f"{r['code']}: {r.get('detail', '')}" for r in self.refusals))
+
+
+def canonical_json(value: object) -> str:
+    """Same bytes as dispatch_frozen_rebuild._canonical_json and runner._canonical_manifest_digest."""
+    return json.dumps(value, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+
+
+def manifest_digest(manifest: Mapping[str, Any]) -> str:
+    return hashlib.sha256(canonical_json(manifest).encode("utf-8")).hexdigest()
+
+
+# ---------------------------------------------------------------------------------------------
+# Scope: explicit asset list
+# ---------------------------------------------------------------------------------------------
+
+def parse_asset_scope(values: Sequence[str]) -> list[str]:
+    """`--assets` forms (comma list, repeated flag, `@file`) with asset_census.parse_assets_arg semantics: empty,
+    duplicate, malformed or miscased ids are errors, never silently normalised. Order is the caller's."""
+    here = str(Path(__file__).resolve().parent)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import asset_census  # noqa: PLC0415  (heavy module; imported only when a scope is parsed)
+    try:
+        return asset_census.parse_assets_arg(list(values))
+    except asset_census.ScopeError as exc:
+        raise LevelWaveError(f"asset scope refused: {exc}") from exc
+
+
+# ---------------------------------------------------------------------------------------------
+# Family refusals (Pravaha gochara family; never fail open)
+# ---------------------------------------------------------------------------------------------
+
+def _git(repo: str, args: Sequence[str]) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True, check=False)
+
+
+def load_family_info(repo: str, ref: str = "origin/main", *, git=_git) -> dict:
+    """Read FAMILY_ASSETS.json at `ref` (committed content, never the working tree).
+
+    Returns {"state": "absent"} when the ref is readable and the file is not in it, or
+    {"state": "present", "family_set": frozenset, "families": {name: frozenset}}.
+    Raises LevelWaveRefusal(FAMILY_FILE_UNREADABLE) for everything else: an unreadable ref, a failing `git show`,
+    invalid JSON, a missing or mistyped key, or a family_set that is not the union of the six lists.
+    """
+    def unreadable(why: str) -> LevelWaveRefusal:
+        return LevelWaveRefusal([{"code": "FAMILY_FILE_UNREADABLE", "detail": f"{FAMILY_FILE_REL} at {ref}: {why}"}])
+
+    head = git(repo, ["rev-parse", "--verify", f"{ref}^{{commit}}"])
+    if head.returncode != 0:
+        raise unreadable(f"ref not resolvable ({(head.stderr or '').strip()[:200]})")
+    listed = git(repo, ["ls-tree", "--name-only", ref, "--", FAMILY_FILE_REL])
+    if listed.returncode != 0:
+        raise unreadable(f"git ls-tree failed ({(listed.stderr or '').strip()[:200]})")
+    if not (listed.stdout or "").strip():
+        return {"state": "absent"}
+    shown = git(repo, ["show", f"{ref}:{FAMILY_FILE_REL}"])
+    if shown.returncode != 0:
+        raise unreadable(f"git show failed ({(shown.stderr or '').strip()[:200]})")
+    try:
+        doc = json.loads(shown.stdout)
+    except (TypeError, ValueError) as exc:
+        raise unreadable(f"not valid JSON ({exc})") from exc
+    if not isinstance(doc, dict):
+        raise unreadable("top level is not an object")
+    lists: dict[str, frozenset] = {}
+    for key in (*FAMILY_LIST_KEYS, "family_set"):
+        val = doc.get(key)
+        if not isinstance(val, list) or not all(isinstance(x, str) and x for x in val):
+            raise unreadable(f"{key!r} is missing or not a list of asset ids")
+        lists[key] = frozenset(val)
+    union = frozenset().union(*(lists[k] for k in FAMILY_LIST_KEYS))
+    if union != lists["family_set"]:
+        raise unreadable("family_set is not the union of the six family lists")
+    return {"state": "present", "family_set": lists["family_set"],
+            "families": {k: lists[k] for k in FAMILY_LIST_KEYS}}
+
+
+def family_refusals(assets: Sequence[str], family: Mapping[str, Any], *, committing: bool) -> list[dict]:
+    """Every family problem in the request, all reported together. Empty list = clear."""
+    req = set(assets)
+    out: list[dict] = []
+    for a in sorted(req):
+        if FAMILY_NAME_PATTERN.match(a):
+            out.append({"code": "FAMILY_ASSET", "asset": a, "via": "name_pattern",
+                        "detail": f"{a} matches the Pravaha gochara family name pattern (ka_gochara*, gochara_*, kala_gochara_*)"})
+    state = family.get("state")
+    if state == "present":
+        for a in sorted(req & family["family_set"]):
+            if not FAMILY_NAME_PATTERN.match(a):
+                out.append({"code": "FAMILY_ASSET", "asset": a, "via": "family_set",
+                            "detail": f"{a} is in FAMILY_ASSETS.json family_set"})
+        for name, members in sorted(family["families"].items()):
+            have, missing = req & members, members - req
+            if have and missing:
+                out.append({"code": "SPLITS_FAMILY", "family": name, "requested": sorted(have),
+                            "missing": sorted(missing),
+                            "detail": f"{name}: asks for {sorted(have)} without {sorted(missing)}"})
+    elif state == "absent":
+        if committing:
+            out.append({"code": "FAMILY_FILE_MISSING",
+                        "detail": f"{FAMILY_FILE_REL} is not on the family ref: a real dispatch needs it; only the "
+                                  "name-pattern check could run"})
+    else:
+        raise LevelWaveError(f"unknown family state {state!r}")
+    return out
+
+
+# ---------------------------------------------------------------------------------------------
+# Waves: longest path inside the requested set
+# ---------------------------------------------------------------------------------------------
+
+def derive_waves(assets: Sequence[str], depends_on: Mapping[str, Sequence[str]]) -> list[list[str]]:
+    """wave(a) = 0 if a has no dependency inside the set, else 1 + max(wave(d)) over its in-set dependencies.
+
+    Dependencies outside the set do not move an asset (they must already be lit+fresh: check_external_dependencies).
+    Ids inside a wave are sorted, so the plan (flattened waves) is deterministic. A cycle (self-dependency included)
+    raises; an empty wave can not occur. Input order is irrelevant.
+    """
+    members = sorted(set(assets))
+    if len(members) != len(list(assets)):
+        raise LevelWaveError("asset list has duplicates")
+    inside = {a: sorted({d for d in (depends_on.get(a) or ()) if d in set(members)}) for a in members}
+    wave: dict[str, int] = {}
+    remaining = set(members)
+    while remaining:
+        ready = sorted(a for a in remaining if all(d in wave for d in inside[a]))
+        if not ready:
+            raise LevelWaveError("dependency cycle inside the requested set: " + ", ".join(sorted(remaining)))
+        for a in ready:
+            wave[a] = 1 + max((wave[d] for d in inside[a]), default=-1)
+        remaining -= set(ready)
+    out: list[list[str]] = [[] for _ in range(max(wave.values()) + 1)]
+    for a in members:
+        out[wave[a]].append(a)
+    return out
+
+
+def external_dependencies(assets: Sequence[str], depends_on: Mapping[str, Sequence[str]]) -> dict[str, list[str]]:
+    """{asset: sorted declared dependencies that are NOT in the requested set} (only assets that have any)."""
+    inset = set(assets)
+    out = {}
+    for a in sorted(inset):
+        ext = sorted({d for d in (depends_on.get(a) or ()) if d not in inset})
+        if ext:
+            out[a] = ext
+    return out
+
+
+# ---------------------------------------------------------------------------------------------
+# Registry rows, manifest, digests
+# ---------------------------------------------------------------------------------------------
+
+CANDIDATES_SQL = """
+SELECT ar.asset_id, ar.layer, ar.scope, ar.asset_kind, ar.is_active, ar.has_writer,
+       ar.target_table, ar.writer_timeout_seconds, ar.estimated_seconds,
+       COALESCE(ar.depends_on, '{}') AS depends_on,
+       ar.natural_key_partition,
+       EXISTS (
+         SELECT 1 FROM asset_registry peer
+          WHERE peer.target_table = ar.target_table
+            AND ar.target_table IS NOT NULL
+            AND peer.asset_id <> ar.asset_id
+            AND peer.is_active = true AND peer.has_writer = true
+       ) AS has_cowriters
+  FROM asset_registry ar
+ WHERE ar.asset_id = ANY(%s)
+ ORDER BY ar.asset_id
+"""
+
+DEPS_SQL = """
+SELECT dep.asset_id, reg.asset_kind, t.state, f.freshness_state
+FROM unnest(%s::text[]) AS dep(asset_id)
+LEFT JOIN asset_registry reg ON reg.asset_id = dep.asset_id
+LEFT JOIN LATERAL (
+    SELECT state FROM asset_throughput at
+    WHERE at.asset_id = dep.asset_id
+      AND (at.chart_id IS NOT DISTINCT FROM %s OR at.chart_id IS NULL)
+    ORDER BY (at.chart_id IS NOT DISTINCT FROM %s) DESC, at.last_built_at DESC NULLS LAST
+    LIMIT 1
+) t ON true
+LEFT JOIN LATERAL (
+    SELECT freshness_state FROM asset_freshness af
+    WHERE af.asset_id = dep.asset_id
+      AND (af.chart_id IS NOT DISTINCT FROM %s OR af.chart_id IS NULL)
+    ORDER BY (af.chart_id IS NOT DISTINCT FROM %s) DESC, af.observed_at DESC
+    LIMIT 1
+) f ON true
+"""
+
+
+def registry_row_digest(row: Mapping[str, Any]) -> str:
+    """Digest of every registry field this dispatch depends on (manifest fields plus buildability). Unordered
+    depends_on, matching the runner's own unordered comparison. A change between the build and the insert moves it."""
+    return hashlib.sha256(canonical_json({
+        "asset_id": row["asset_id"], "layer": row.get("layer"), "scope": row["scope"],
+        "asset_kind": row.get("asset_kind"), "depends_on": sorted(row.get("depends_on") or []),
+        "natural_key_partition": row.get("natural_key_partition"), "has_cowriters": bool(row.get("has_cowriters")),
+        "is_active": bool(row.get("is_active")), "has_writer": bool(row.get("has_writer")),
+    }).encode("utf-8")).hexdigest()
+
+
+def load_local_writer_digests(repo: str | Path = REPO_ROOT) -> dict[str, str]:
+    path = Path(repo) / WRITER_DIGESTS_REL
+    try:
+        inventory = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise LevelWaveError(f"writer digest inventory unreadable at {path}: {exc}") from exc
+    writers = inventory.get("writers")
+    if not isinstance(writers, dict):
+        raise LevelWaveError("writer digest inventory has no `writers` object")
+    return writers
+
+
+def load_deployed_writer_digests(*, repo: str | Path, sha: str | None = None, file: str | Path | None = None,
+                                 git=_git) -> dict[str, str]:
+    """The DEPLOYED job image's writer digests, from exactly one source: the committed inventory at the job's sha
+    (`git show <sha>:...`, the sha read by the operator from the running job) or a file holding that inventory.
+    No source, an unreadable one, or one without a `writers` object refuses: image skew can not be ruled out."""
+    if (sha is None) == (file is None):
+        raise LevelWaveRefusal([{"code": "DEPLOYED_DIGESTS_UNAVAILABLE",
+                                 "detail": "exactly one of --deployed-sha / --deployed-digests-file is required"}])
+    try:
+        if sha is not None:
+            shown = git(str(repo), ["show", f"{sha}:{WRITER_DIGESTS_REL}"])
+            if shown.returncode != 0:
+                raise ValueError((shown.stderr or "git show failed").strip()[:200])
+            text = shown.stdout
+        else:
+            text = Path(file).read_text(encoding="utf-8")
+        writers = json.loads(text).get("writers")
+        if not isinstance(writers, dict):
+            raise ValueError("no `writers` object")
+    except (OSError, ValueError, AttributeError) as exc:
+        raise LevelWaveRefusal([{"code": "DEPLOYED_DIGESTS_UNAVAILABLE",
+                                 "detail": f"deployed image digests unreadable: {exc}"}]) from exc
+    return writers
+
+
+def check_image_skew(assets: Sequence[str], local: Mapping[str, str], deployed: Mapping[str, str]) -> None:
+    """Refuse unless every asset has a valid local digest equal to the deployed image's (R2, checked before the
+    runner can refuse the whole run). A missing digest on either side refuses; it is never skipped."""
+    bad = []
+    for a in assets:
+        mine, theirs = local.get(a), deployed.get(a)
+        if not isinstance(mine, str) or not _HEX64.fullmatch(mine):
+            bad.append({"code": "CODE_DIGEST_UNAVAILABLE", "asset": a,
+                        "detail": f"no valid writer digest for {a} in the checkout's inventory"})
+        elif theirs is None:
+            bad.append({"code": "IMAGE_SKEW", "asset": a, "detail": f"{a} has no digest in the deployed image's inventory"})
+        elif mine != theirs:
+            bad.append({"code": "IMAGE_SKEW", "asset": a, "checkout": mine, "deployed": theirs,
+                        "detail": f"{a}: checkout digest differs from the deployed image's"})
+    if bad:
+        raise LevelWaveRefusal(bad)
+
+
+def accept_candidates(assets: Sequence[str], rows: Sequence[Mapping[str, Any]]) -> dict[str, dict]:
+    """Registry rows keyed by asset id; refuses (all at once) any requested asset that is missing, inactive, has no
+    writer, is a service, or appears twice."""
+    by_id: dict[str, dict] = {}
+    bad = []
+    for r in rows:
+        if r["asset_id"] in by_id:
+            bad.append({"code": "REGISTRY_ROW_INVALID", "asset": r["asset_id"], "detail": "duplicate registry rows"})
+        by_id[r["asset_id"]] = dict(r)
+    for a in assets:
+        r = by_id.get(a)
+        if r is None:
+            bad.append({"code": "REGISTRY_ROW_INVALID", "asset": a, "detail": f"no registry row for {a}"})
+        elif not (r.get("is_active") is True and r.get("has_writer") is True):
+            bad.append({"code": "REGISTRY_ROW_INVALID", "asset": a, "detail": f"{a} is not an active writer asset"})
+        elif r.get("asset_kind") == "service":
+            bad.append({"code": "REGISTRY_ROW_INVALID", "asset": a, "detail": f"{a} is a service asset (nothing to build)"})
+    if bad:
+        raise LevelWaveRefusal(bad)
+    return by_id
+
+
+def build_level_manifest(*, chart_id: str, plan_waves: Sequence[Sequence[str]], rows: Mapping[str, Mapping[str, Any]],
+                         writer_digests: Mapping[str, str]) -> tuple[dict[str, Any], str]:
+    """The `nirmana-run-manifest/v1` for `plan_waves`, byte-identical in shape to dispatch_frozen_rebuild.build_manifest
+    (a one-asset, one-wave input yields the same manifest and digest)."""
+    plan = [a for wave in plan_waves for a in wave]
+    if not plan or any(not wave for wave in plan_waves) or len(set(plan)) != len(plan):
+        raise LevelWaveError("waves must be non-empty, non-empty each, and free of duplicates")
+    assets = []
+    for a in plan:
+        row = rows[a]
+        digest = writer_digests.get(a)
+        if not isinstance(digest, str) or not _HEX64.fullmatch(digest):
+            raise LevelWaveError(f"writer digest missing or invalid for {a}")
+        assets.append({
+            "asset_id": a, "scope": row["scope"], "depends_on": list(row.get("depends_on") or []),
+            "natural_key_partition": row.get("natural_key_partition"),
+            "has_cowriters": bool(row.get("has_cowriters")), "expected_code_digest": digest,
+        })
+    manifest: dict[str, Any] = {
+        "version": MANIFEST_VERSION, "chart_id": chart_id, "scope": "asset_set", "scope_target": ",".join(plan),
+        "action": "rebuild", "waves": [list(w) for w in plan_waves], "assets": assets,
+    }
+    return manifest, manifest_digest(manifest)
+
+
+def expected_confirmation(digest: str, n_assets: int) -> str:
+    """`--confirm` token: the existing `<SUBJECT>_FROZEN_REBUILD` convention with the subject bound to the manifest, so a
+    token from one dry run can not confirm a different manifest (a registry change moves the digest and the token)."""
+    return f"{n_assets}ASSETS_{digest[:12].upper()}_FROZEN_REBUILD"
+
+
+# ---------------------------------------------------------------------------------------------
+# Plan (read phase) and dispatch (insert phase)
+# ---------------------------------------------------------------------------------------------
+
+def check_external_dependencies(cur, chart_id: str, ext: Mapping[str, Sequence[str]]) -> None:
+    """Every declared dependency OUTSIDE the set must be lit (throughput) and fresh (latest receipt), the same test
+    asset_runner.deps_unsatisfied applies (service deps need only be service_ok). Refuses with every offender."""
+    wanted = sorted({d for deps in ext.values() for d in deps})
+    if not wanted:
+        return
+    cur.execute(DEPS_SQL, (wanted, chart_id, chart_id, chart_id, chart_id))
+    seen = {}
+    for d in cur.fetchall():
+        seen[d["asset_id"]] = d
+    bad = []
+    for dep in wanted:
+        d = seen.get(dep)
+        state = d["state"] if d else None
+        freshness = d["freshness_state"] if d else None
+        if state not in ("lit", "service_ok"):
+            why = f"{dep}({state or 'absent'})"
+        elif d and d.get("asset_kind") == "service":
+            continue
+        elif freshness != "fresh":
+            why = f"{dep}(receipt:{freshness or 'absent'})"
+        else:
+            continue
+        needed_by = sorted(a for a, deps in ext.items() if dep in deps)
+        bad.append({"code": "DEPENDENCY_NOT_READY", "dependency": dep, "needed_by": needed_by,
+                    "detail": f"declared dependency {why} is not lit+fresh; needed by {', '.join(needed_by)}"})
+    if bad:
+        raise LevelWaveRefusal(bad)
+
+
+def check_registry_unchanged(built: Mapping[str, str], rows_now: Sequence[Mapping[str, Any]]) -> None:
+    """Refuse when any asset's registry-row digest now differs from the one the manifest was built from."""
+    now = {r["asset_id"]: registry_row_digest(r) for r in rows_now}
+    bad = []
+    for a, digest in sorted(built.items()):
+        if a not in now:
+            bad.append({"code": "REGISTRY_ROW_CHANGED", "asset": a, "detail": f"{a} no longer has a registry row"})
+        elif now[a] != digest:
+            bad.append({"code": "REGISTRY_ROW_CHANGED", "asset": a,
+                        "detail": f"asset_registry row for {a} changed since the manifest was built"})
+    if bad:
+        raise LevelWaveRefusal(bad)
+
+
+def make_plan(*, chart_id: str, assets: Sequence[str], rows: Sequence[Mapping[str, Any]],
+              writer_digests: Mapping[str, str], deployed_digests: Mapping[str, str]) -> dict:
+    """Pure: from registry rows to the waves, per-wave manifests and the single-run manifest. Raises on image skew."""
+    by_id = accept_candidates(assets, rows)
+    check_image_skew(assets, writer_digests, deployed_digests)
+    deps = {a: by_id[a].get("depends_on") or [] for a in assets}
+    waves = derive_waves(assets, deps)
+    manifest, digest = build_level_manifest(chart_id=chart_id, plan_waves=waves, rows=by_id, writer_digests=writer_digests)
+    per_wave = []
+    for i, wave in enumerate(waves):
+        wm, wd = build_level_manifest(chart_id=chart_id, plan_waves=[wave], rows=by_id, writer_digests=writer_digests)
+        per_wave.append({"wave": i, "assets": list(wave), "manifest": wm, "manifest_digest": wd})
+    return {
+        "chart_id": chart_id, "waves": waves, "plan": [a for w in waves for a in w],
+        "manifest": manifest, "manifest_digest": digest, "per_wave": per_wave,
+        "row_digests": {a: registry_row_digest(by_id[a]) for a in assets},
+        "external_dependencies": external_dependencies(assets, deps),
+        "rows": by_id,
+    }
+
+
+def estimate_runtime(waves: Sequence[Sequence[str]], rows: Mapping[str, Mapping[str, Any]]) -> dict:
+    """Runtime bounds from the registry; None where nothing was ever measured (never an invented number).
+
+    parallel_upper_bound_seconds: sum over waves of the largest writer_timeout_seconds in the wave (assets in a wave run
+    in parallel, up to the runner's concurrency cap); serial_upper_bound_seconds: the sum of all timeouts.
+    measured_seconds: sum over waves of the largest estimated_seconds, only when every asset has one."""
+    def col(a, k):
+        v = rows[a].get(k)
+        return v if isinstance(v, (int, float)) and v > 0 else None
+    par, ser, est, measured = 0, 0, 0, True
+    unknown_timeout = []
+    for wave in waves:
+        t = [col(a, "writer_timeout_seconds") for a in wave]
+        unknown_timeout += [a for a, x in zip(wave, t) if x is None]
+        par += max((x for x in t if x is not None), default=0)
+        ser += sum(x for x in t if x is not None)
+        e = [col(a, "estimated_seconds") for a in wave]
+        if any(x is None for x in e):
+            measured = False
+        else:
+            est += max(e)
+    return {"parallel_upper_bound_seconds": par, "serial_upper_bound_seconds": ser,
+            "measured_seconds": est if measured else None, "assets_without_timeout": sorted(unknown_timeout),
+            "note": "upper bounds are writer timeouts, not predictions; measured_seconds is None unless every asset "
+                    "has a registry estimated_seconds"}
+
+
+def _lock_key(chart_id: str) -> str:
+    return f"suvarna-level-wave:{chart_id}"
+
+
+def insert_run(connect, *, chart_id: str, manifest: Mapping[str, Any], digest: str, row_digests: Mapping[str, str],
+               external: Mapping[str, Sequence[str]], confirm: str | None, commit: bool,
+               footprint: bool = False) -> dict:
+    """One transaction: advisory lock, active-run refusal, registry-row re-read and compare, external dependencies
+    lit+fresh, INSERT build_runs + build_run_assets, then ROLLBACK (dry run) or COMMIT (only with the exact token).
+
+    The re-read happens in THIS transaction, after the manifest was built from an earlier, separate read, so a registry
+    change in between is visible (a repeated read inside one SERIALIZABLE snapshot could not show it)."""
+    plan = [a for wave in manifest["waves"] for a in wave]
+    token = expected_confirmation(digest, len(plan))
+    if commit and confirm != token:
+        raise LevelWaveRefusal([{"code": "CONFIRM_TOKEN_MISMATCH",
+                                 "detail": f"--commit requires --confirm {token}", "expected": token}])
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (_lock_key(chart_id),))
+        cur.execute("""SELECT id, chart_id, state FROM build_runs
+                        WHERE chart_id=%s AND state IN ('planned','running','paused')""", (chart_id,))
+        active = cur.fetchall()
+        if active:
+            raise LevelWaveRefusal([{"code": "ACTIVE_RUN", "detail": f"active build run(s) exist for this chart: {active}"}])
+        cur.execute(CANDIDATES_SQL, (plan,))
+        rows_now = [dict(r) for r in cur.fetchall()]
+        check_registry_unchanged(row_digests, rows_now)
+        check_external_dependencies(cur, chart_id, external)
+        footprint_report = _footprint_report(conn, rows_now) if footprint else None
+        run_id = str(uuid.uuid4())
+        cur.execute(
+            """
+            INSERT INTO build_runs
+              (id, chart_id, scope, scope_target, action, state, plan,
+               plan_manifest, plan_manifest_digest, triggered_by)
+            VALUES (%s, %s, 'asset_set', %s, 'rebuild', 'planned', %s::jsonb,
+                    %s::jsonb, %s, %s)
+            """,
+            (run_id, chart_id, manifest["scope_target"], json.dumps(plan), json.dumps(manifest), digest, TRIGGERED_BY),
+        )
+        for position, asset_id in enumerate(plan):
+            cur.execute(
+                """INSERT INTO build_run_assets (run_id, asset_id, position, state)
+                   VALUES (%s, %s, %s, 'queued')""",
+                (run_id, asset_id, position),
+            )
+        if commit:
+            conn.commit()
+        else:
+            conn.rollback()
+        receipt = {"run_id": run_id, "chart_id": chart_id, "assets": plan, "waves": manifest["waves"],
+                   "manifest_digest": digest, "committed": bool(commit), "confirm_token": token}
+        if footprint_report is not None:
+            receipt["footprint"] = footprint_report
+        return receipt
+    except BaseException:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def _footprint_report(conn, rows_now: Sequence[Mapping[str, Any]]) -> dict:
+    """E5.9 footprint of the wave's write tables (registry target_table); the loaders run SELECTs only."""
+    edges = fk_edges_from_catalog(conn)
+    tables = tables_from_catalog(conn)
+    writes = sorted({r["target_table"] for r in rows_now if r.get("target_table")})
+    if not writes:
+        return {"status": "NO_TARGET_TABLES", "detail": "no asset in the set declares a target_table"}
+    fp = transitive_footprint(writes, edges, known_tables=tables)
+    return {"footprint": fp, "impact_lines": impact_statement_footprint_section(fp)}
+
+
+def read_rows(connect, assets: Sequence[str]) -> list[dict]:
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(CANDIDATES_SQL, (list(assets),))
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.rollback()
+        return rows
+    finally:
+        conn.close()
+
+
+def _load_frozen_dispatcher():
+    """dispatch_frozen_rebuild.py (stdlib at import time), loaded by path so its gcloud dispatch and terminalise
+    helpers are reused as they are, not copied."""
+    path = Path(__file__).resolve().parents[1] / "dispatch_frozen_rebuild.py"
+    spec = importlib.util.spec_from_file_location("dispatch_frozen_rebuild", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# ---------------------------------------------------------------------------------------------
+# Stop hook (between waves) and wave-by-wave driver
+# ---------------------------------------------------------------------------------------------
+
+def continue_token(next_wave: int, next_manifest_digest: str) -> str:
+    return f"CONTINUE_WAVE_{next_wave}_{next_manifest_digest[:12].upper()}"
+
+
+def file_stop_hook(pause_dir: str | Path, *, poll_seconds: float = 5.0, timeout_seconds: float = 6 * 3600.0,
+                   sleep=time.sleep, monotonic=time.monotonic):
+    """A hook(wave_done, summary, next_info) -> bool. It writes <dir>/after-wave-<k>.pending.json (what finished, the
+    wall times, the next wave and its token) and waits for <dir>/after-wave-<k>.continue whose text is exactly the
+    token; <dir>/after-wave-<k>.stop, a wrong token or the timeout all STOP (False). Nothing continues by default."""
+    root = Path(pause_dir)
+
+    def hook(wave_done: int, summary: Mapping[str, Any], next_info: Mapping[str, Any]) -> bool:
+        root.mkdir(parents=True, exist_ok=True)
+        token = continue_token(next_info["wave"], next_info["manifest_digest"])
+        stem = root / f"after-wave-{wave_done}"
+        stem.with_suffix(".pending.json").write_text(
+            json.dumps({"wave_done": wave_done, "summary": summary, "next": dict(next_info), "continue_token": token,
+                        "to_continue": f"write the token into {stem.with_suffix('.continue')}",
+                        "to_stop": f"create {stem.with_suffix('.stop')}"}, sort_keys=True, default=str, indent=1),
+            encoding="utf-8")
+        deadline = monotonic() + timeout_seconds
+        while True:
+            if stem.with_suffix(".stop").exists():
+                return False
+            go = stem.with_suffix(".continue")
+            if go.exists():
+                return go.read_text(encoding="utf-8").strip() == token
+            if monotonic() >= deadline:
+                return False
+            sleep(poll_seconds)
+    return hook
+
+
+def wait_for_terminal_run(connect, run_id: str, *, poll_seconds: float, timeout_seconds: float,
+                          sleep=time.sleep, monotonic=time.monotonic) -> dict:
+    """Poll build_runs until completed/stopped/failed. A timeout returns state 'timeout' (the run is left alone)."""
+    deadline = monotonic() + timeout_seconds
+    while True:
+        conn = connect()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT state, last_error FROM build_runs WHERE id=%s", (run_id,))
+            row = cur.fetchone()
+            conn.rollback()
+        finally:
+            conn.close()
+        state = row["state"] if row else "missing"
+        if state in TERMINAL_RUN_STATES or state == "missing":
+            return {"state": state, "last_error": (row or {}).get("last_error")}
+        if monotonic() >= deadline:
+            return {"state": "timeout", "last_error": None}
+        sleep(poll_seconds)
+
+
+def run_wave_by_wave(plan: Mapping[str, Any], *, dispatch_wave, wait_terminal, wave_report, hook) -> dict:
+    """Drive the waves one run at a time. `dispatch_wave(i)` inserts+dispatches wave i (it re-checks dependencies lit+fresh
+    in its own transaction, so wave i+1 only starts once wave i's assets are lit+fresh), `wait_terminal(run_id)` blocks,
+    `wave_report(run_id)` returns the wall-time report, `hook(done, summary, next)` is the operator pause.
+    Stops at the first wave whose run is not `completed`, whose dispatch refuses, or whose hook says stop."""
+    results = []
+    per_wave = plan["per_wave"]
+    for i, wave in enumerate(per_wave):
+        try:
+            receipt = dispatch_wave(i)
+        except LevelWaveRefusal as exc:
+            results.append({"wave": i, "status": "REFUSED", "refusals": exc.refusals})
+            return {"status": "STOPPED_REFUSED", "waves": results}
+        terminal = wait_terminal(receipt["run_id"])
+        report = wave_report(receipt["run_id"])
+        entry = {"wave": i, "assets": wave["assets"], "run_id": receipt["run_id"], "run_state": terminal["state"],
+                 "last_error": terminal.get("last_error"), "wall_time": report}
+        results.append(entry)
+        if terminal["state"] != "completed":
+            entry["status"] = "RUN_NOT_COMPLETED"
+            return {"status": "STOPPED_RUN_NOT_COMPLETED", "waves": results}
+        # Every asset of the wave must be reported complete/skipped. An asset with no report row, or no report at all, is
+        # NOT complete: a missing reading never passes as a good one.
+        got = {a["asset_id"]: a.get("state") for a in report.get("assets", [])}
+        bad = [a for a in wave["assets"] if got.get(a) not in ("complete", "skipped")]
+        if bad:
+            entry["status"] = "ASSETS_NOT_COMPLETE"
+            entry["assets_not_complete"] = bad
+            return {"status": "STOPPED_ASSETS_NOT_COMPLETE", "waves": results}
+        entry["status"] = "COMPLETED"
+        if i + 1 < len(per_wave):
+            nxt = per_wave[i + 1]
+            ok = hook(i, report, {"wave": i + 1, "assets": nxt["assets"], "manifest_digest": nxt["manifest_digest"]})
+            if not ok:
+                entry["hook"] = "STOP"
+                return {"status": "STOPPED_BY_OPERATOR", "waves": results}
+            entry["hook"] = "CONTINUE"
+    return {"status": "ALL_WAVES_COMPLETED", "waves": results}
+
+
+# ---------------------------------------------------------------------------------------------
+# Per-asset wall-time report (after a run)
+# ---------------------------------------------------------------------------------------------
+
+RUN_ASSETS_SQL = """
+SELECT bra.asset_id, bra.position, bra.state, bra.started_at, bra.ended_at, bra.error,
+       t.state AS throughput_state, t.last_built_at
+  FROM build_run_assets bra
+  JOIN build_runs br ON br.id = bra.run_id
+  LEFT JOIN LATERAL (
+        SELECT state, last_built_at FROM asset_throughput at
+         WHERE at.asset_id = bra.asset_id AND (at.chart_id IS NOT DISTINCT FROM br.chart_id OR at.chart_id IS NULL)
+         ORDER BY (at.chart_id IS NOT DISTINCT FROM br.chart_id) DESC, at.last_built_at DESC NULLS LAST
+         LIMIT 1) t ON true
+ WHERE bra.run_id = %s
+ ORDER BY bra.position
+"""
+
+
+def _as_dt(v):
+    if v is None or isinstance(v, datetime):
+        return v
+    return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+
+
+def asset_wall_time_report(rows: Sequence[Mapping[str, Any]], waves: Sequence[Sequence[str]] | None = None) -> dict:
+    """Per-asset wall time from build_run_assets (started_at/ended_at) plus the asset_throughput state, with per-wave and
+    whole-run spans. An asset with a missing or inverted timestamp is `unmeasured` (wall_seconds None), never 0."""
+    wave_of = {a: i for i, w in enumerate(waves or ()) for a in w}
+    assets, unmeasured = [], []
+    for r in sorted(rows, key=lambda x: (x.get("position") is None, x.get("position"), x["asset_id"])):
+        s, e = _as_dt(r.get("started_at")), _as_dt(r.get("ended_at"))
+        wall = (e - s).total_seconds() if s is not None and e is not None and e >= s else None
+        entry = {"asset_id": r["asset_id"], "position": r.get("position"), "wave": wave_of.get(r["asset_id"]),
+                 "state": r.get("state"), "started_at": s.isoformat() if s else None,
+                 "ended_at": e.isoformat() if e else None, "wall_seconds": wall, "error": r.get("error"),
+                 "throughput_state": r.get("throughput_state")}
+        assets.append(entry)
+        if wall is None:
+            unmeasured.append(r["asset_id"])
+    per_wave = {}
+    for i, w in enumerate(waves or ()):
+        span = [(_as_dt(r.get("started_at")), _as_dt(r.get("ended_at"))) for r in rows if r["asset_id"] in set(w)]
+        starts = [s for s, _ in span if s]
+        ends = [e for _, e in span if e]
+        full = len(starts) == len(w) and len(ends) == len(w)
+        per_wave[str(i)] = {"assets": len(w), "wall_seconds": (max(ends) - min(starts)).total_seconds() if full else None}
+    starts = [_as_dt(r.get("started_at")) for r in rows if r.get("started_at")]
+    ends = [_as_dt(r.get("ended_at")) for r in rows if r.get("ended_at")]
+    measured = [a["wall_seconds"] for a in assets if a["wall_seconds"] is not None]
+    return {
+        "schema": LEVEL_WAVE_SCHEMA + "/wall_time",
+        "assets": assets, "unmeasured": sorted(unmeasured), "per_wave": per_wave,
+        "run_wall_seconds": (max(ends) - min(starts)).total_seconds() if starts and ends and len(starts) == len(rows) == len(ends) else None,
+        "sum_asset_seconds": sum(measured) if measured else None,
+        "slowest": [a["asset_id"] for a in sorted((a for a in assets if a["wall_seconds"] is not None),
+                                                  key=lambda a: (-a["wall_seconds"], a["asset_id"]))[:5]],
+    }
+
+
+def read_wall_time_report(connect, run_id: str, waves: Sequence[Sequence[str]] | None = None) -> dict:
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute(RUN_ASSETS_SQL, (run_id,))
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.rollback()
+    finally:
+        conn.close()
+    if not rows:
+        raise LevelWaveError(f"no build_run_assets rows for run {run_id}")
+    return asset_wall_time_report(rows, waves)
+
+
+# ---------------------------------------------------------------------------------------------
+# Command line
+# ---------------------------------------------------------------------------------------------
+
+HELP_EPILOG = (
+    "WARNING: " + NEVER_EXECUTED_NOTE + "\n\n"
+    "Default is a DRY RUN: the INSERT runs, then ROLLBACK. --commit needs --confirm <token> (printed by the dry run, bound "
+    "to the manifest digest) and --mode. single-run submits all waves in ONE run (the runner has no hook between waves); "
+    "wave-by-wave submits one run per wave and pauses for the operator between waves (--pause-dir). Refuses: image skew, "
+    "a dependency outside the set that is not lit+fresh, a registry row changed since the manifest was built, any "
+    "Pravaha gochara-family asset, a split family, an unreadable family file, an active run on the chart."
+)
+
+
+def _psycopg_connect_factory(database_url: str):
+    def connect():
+        import psycopg  # noqa: PLC0415
+        import psycopg.rows  # noqa: PLC0415
+        conn = psycopg.connect(database_url, row_factory=psycopg.rows.dict_row)
+        conn.autocommit = False
+        conn.isolation_level = psycopg.IsolationLevel.SERIALIZABLE
+        return conn
+    return connect
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="suvarna_level_wave.py", description="Multi-asset level-wave manifest builder and dispatcher "
+                                "(E5.3). Reads DATABASE_URL from the environment; never reads credential files.",
+                                epilog=HELP_EPILOG, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--chart-id", required=True)
+    p.add_argument("--assets", action="append", required=True, metavar="LIST|@FILE",
+                   help="explicit asset ids: comma list, repeated flag, or @file (asset_census.parse_assets_arg semantics)")
+    p.add_argument("--mode", choices=("single-run", "wave-by-wave"), help="required with --commit")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--deployed-sha", help="git sha of the running job image; its committed writer digests are the deployed digests")
+    g.add_argument("--deployed-digests-file", help="a nirmana-writer-digests.json copied from the deployed image")
+    p.add_argument("--repo", default=str(REPO_ROOT))
+    p.add_argument("--family-ref", default="origin/main")
+    p.add_argument("--commit", action="store_true", help="commit the run(s); omission is a rollback-only dry run")
+    p.add_argument("--confirm", help="required with --commit: the token the dry run printed")
+    p.add_argument("--with-footprint", action="store_true", help="include the E5.9 transitive footprint (catalog SELECTs only)")
+    p.add_argument("--pause-dir", help="wave-by-wave: directory for the stop-hook files")
+    p.add_argument("--poll-seconds", type=float, default=15.0)
+    p.add_argument("--wave-timeout-seconds", type=float, default=4 * 3600.0)
+    p.add_argument("--hook-timeout-seconds", type=float, default=6 * 3600.0)
+    p.add_argument("--project", default="madhav-astrology")
+    p.add_argument("--region", default="asia-south1")
+    p.add_argument("--job", default="brahma-build-pipeline-job")
+    return p
+
+
+def run_cli(args: argparse.Namespace, *, connect, git=_git, out=None, sleep=time.sleep, monotonic=time.monotonic,
+            dispatch=None, hook=None) -> int:
+    """The whole command, with every outside contact injected (database, git, gcloud, the operator hook)."""
+    out = out or sys.stdout
+    try:
+        assets = parse_asset_scope(args.assets)
+        family = load_family_info(args.repo, args.family_ref, git=git)
+        refusals = family_refusals(assets, family, committing=args.commit)
+        if refusals:
+            raise LevelWaveRefusal(refusals)
+        if args.commit and not args.mode:
+            raise LevelWaveError("--commit requires --mode single-run|wave-by-wave")
+        if args.mode == "wave-by-wave" and args.commit and not (args.pause_dir or hook):
+            raise LevelWaveError("--mode wave-by-wave --commit requires --pause-dir (the stop hook)")
+        local = load_local_writer_digests(args.repo)
+        deployed = load_deployed_writer_digests(repo=args.repo, sha=args.deployed_sha, file=args.deployed_digests_file, git=git)
+        rows = read_rows(connect, assets)
+        plan = make_plan(chart_id=args.chart_id, assets=assets, rows=rows, writer_digests=local, deployed_digests=deployed)
+        estimate = estimate_runtime(plan["waves"], plan["rows"])
+        summary = {
+            "schema": LEVEL_WAVE_SCHEMA, "never_executed_note": NEVER_EXECUTED_NOTE, "chart_id": args.chart_id,
+            "family_enforcement": "name_patterns_and_family_set" if family["state"] == "present" else "name_patterns_only",
+            "asset_count": len(plan["plan"]), "waves": plan["waves"], "manifest_digest": plan["manifest_digest"],
+            "confirm_token_single_run": expected_confirmation(plan["manifest_digest"], len(plan["plan"])),
+            "per_wave": [{"wave": w["wave"], "assets": w["assets"], "manifest_digest": w["manifest_digest"],
+                          "confirm_token": expected_confirmation(w["manifest_digest"], len(w["assets"]))}
+                         for w in plan["per_wave"]],
+            "external_dependencies": plan["external_dependencies"], "runtime_estimate": estimate,
+            "committed": False,
+        }
+        if args.commit and args.confirm != summary["confirm_token_single_run"]:
+            raise LevelWaveRefusal([{"code": "CONFIRM_TOKEN_MISMATCH", "expected": summary["confirm_token_single_run"],
+                                     "detail": f"--commit requires --confirm {summary['confirm_token_single_run']} "
+                                               "(the full-plan token the dry run printed)"}])
+        frozen = None
+        if not args.commit or args.mode == "single-run":
+            # Dry run (either mode) or a single-run commit. A wave-by-wave dry run exercises wave 0 only: later waves
+            # depend on earlier waves being lit+fresh, which is checked at their own dispatch.
+            target = plan["per_wave"][0] if args.mode == "wave-by-wave" else {
+                "assets": plan["plan"], "manifest": plan["manifest"], "manifest_digest": plan["manifest_digest"]}
+            tgt_assets = target["assets"]
+            ext = external_dependencies(tgt_assets, {a: plan["rows"][a].get("depends_on") or [] for a in tgt_assets})
+            receipt = insert_run(connect, chart_id=args.chart_id, manifest=target["manifest"], digest=target["manifest_digest"],
+                                 row_digests={a: plan["row_digests"][a] for a in tgt_assets}, external=ext,
+                                 confirm=expected_confirmation(target["manifest_digest"], len(tgt_assets)) if args.commit else None,
+                                 commit=args.commit, footprint=args.with_footprint)
+            summary["insert"] = receipt
+            summary["committed"] = receipt["committed"]
+            if args.commit:
+                frozen = _load_frozen_dispatcher()
+                send = dispatch or (lambda run_id: frozen.dispatch_run(run_id=run_id, project=args.project, region=args.region, job=args.job))
+                try:
+                    summary["execution_name"] = send(receipt["run_id"])
+                except Exception as exc:  # noqa: BLE001 -- terminalise the planned run, then report
+                    _terminalise(connect, receipt["run_id"], str(exc))
+                    summary["dispatch_error"] = str(exc)
+                    print(json.dumps(summary, sort_keys=True, default=str), file=out)
+                    return 3
+        else:
+            frozen = _load_frozen_dispatcher()
+            send = dispatch or (lambda run_id: frozen.dispatch_run(run_id=run_id, project=args.project, region=args.region, job=args.job))
+            the_hook = hook or file_stop_hook(args.pause_dir, poll_seconds=args.poll_seconds,
+                                              timeout_seconds=args.hook_timeout_seconds, sleep=sleep, monotonic=monotonic)
+
+            def dispatch_wave(i):
+                w = plan["per_wave"][i]
+                ext = external_dependencies(w["assets"], {a: plan["rows"][a].get("depends_on") or [] for a in w["assets"]})
+                receipt = insert_run(connect, chart_id=args.chart_id, manifest=w["manifest"], digest=w["manifest_digest"],
+                                     row_digests={a: plan["row_digests"][a] for a in w["assets"]}, external=ext,
+                                     confirm=expected_confirmation(w["manifest_digest"], len(w["assets"])),
+                                     commit=True, footprint=False)
+                try:
+                    receipt["execution_name"] = send(receipt["run_id"])
+                except Exception as exc:  # noqa: BLE001
+                    _terminalise(connect, receipt["run_id"], str(exc))
+                    raise LevelWaveRefusal([{"code": "DISPATCH_FAILED", "detail": str(exc)}]) from exc
+                return receipt
+
+            result = run_wave_by_wave(
+                plan, dispatch_wave=dispatch_wave,
+                wait_terminal=lambda rid: wait_for_terminal_run(connect, rid, poll_seconds=args.poll_seconds,
+                                                                timeout_seconds=args.wave_timeout_seconds, sleep=sleep, monotonic=monotonic),
+                wave_report=lambda rid: _safe_wall_time_report(connect, rid, plan["waves"]),
+                hook=the_hook)
+            summary["wave_by_wave"] = result
+            summary["committed"] = any(w.get("run_id") for w in result["waves"])
+            print(json.dumps(summary, sort_keys=True, default=str), file=out)
+            return 0 if result["status"] == "ALL_WAVES_COMPLETED" else 5
+        print(json.dumps(summary, sort_keys=True, default=str), file=out)
+        return 0
+    except LevelWaveRefusal as exc:
+        print(json.dumps({"schema": LEVEL_WAVE_SCHEMA, "refused": True, "refusals": exc.refusals,
+                          "never_executed_note": NEVER_EXECUTED_NOTE}, sort_keys=True, default=str), file=out)
+        return REFUSAL_EXIT_CODE
+    except LevelWaveError as exc:
+        print(json.dumps({"schema": LEVEL_WAVE_SCHEMA, "error": str(exc)}, sort_keys=True), file=out)
+        return 2
+
+
+def _safe_wall_time_report(connect, run_id: str, waves) -> dict:
+    """The wall-time report, or an empty one carrying the error (the wave driver then stops: no reading is not a pass)."""
+    try:
+        return read_wall_time_report(connect, run_id, waves)
+    except LevelWaveError as exc:
+        return {"assets": [], "error": str(exc)}
+
+
+def _terminalise(connect, run_id: str, error: str) -> None:
+    """Take a planned-but-undispatched run out of the active set (dispatch_frozen_rebuild's own statement)."""
+    frozen = _load_frozen_dispatcher()
+    conn = connect()
+    try:
+        frozen.terminalize_dispatch_failure(conn.cursor(), run_id=run_id, error=error)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        print("ERROR: DATABASE_URL required", file=sys.stderr)
+        return 1
+    return run_cli(args, connect=_psycopg_connect_factory(database_url))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
