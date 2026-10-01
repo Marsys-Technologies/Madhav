@@ -3324,7 +3324,20 @@ def catalog(tables: list[str]) -> dict:
     # R46: which targets are VIEWS (or materialized views) — a view is counted by the view itself.
     views = {r[0] for r in psql("SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
                                 f"WHERE n.nspname='public' AND c.relkind IN ('v','m') AND c.relname IN ({lit})")}
-    return dict(exists=exists | views, cols=cols, keys=keys, views=views)
+    # E6 packet (c): column data types and non-NULL defaults (Narr.agree / Null.schema_default). `cols` is unchanged;
+    # a failed read leaves them None (unknown), it never aborts the layer.
+    types: dict | None = {}
+    defaults: dict | None = {}
+    try:
+        for tn, cn, dt_, dflt in psql("SELECT table_name, column_name, data_type, coalesce(replace(column_default, E'\\n', ' '), '') "
+                                      f"FROM information_schema.columns WHERE table_schema='public' AND table_name IN ({lit}) "
+                                      "ORDER BY table_name, ordinal_position"):
+            types.setdefault(tn, {})[cn] = dt_
+            if dflt:
+                defaults.setdefault(tn, {})[cn] = dflt
+    except Unknown:
+        types = defaults = None
+    return dict(exists=exists | views, cols=cols, keys=keys, views=views, types=types, defaults=defaults)
 
 
 def build_history(prefix: str, ids=None) -> dict:
