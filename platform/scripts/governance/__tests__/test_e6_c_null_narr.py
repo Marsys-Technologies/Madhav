@@ -963,10 +963,22 @@ def test_a_plain_measured_record_has_no_inconclusive_key():
 
 # ───────────────────────── review round: F8 (blank trim covers tabs/newlines; non-string JSON leaves are not text) ─────────────────────────
 
-def test_blank_detection_trims_tabs_newlines_and_carriage_returns():
+def test_blank_detection_trims_unicode_and_control_whitespace_in_every_form():
     sql = ac.prose_row_counts_sql("t", ["a", "n.$.k", "d.$.i[*].r"], "")
-    assert sql.count("btrim(") >= 6
-    assert sql.count("btrim(") == sql.count("E' \\t\\r\\n')"), sql
+    assert sql.count("regexp_replace(") >= 6 and "btrim(" not in sql, sql
+    assert sql.count(ac._WS_TRIM) == sql.count("regexp_replace("), sql
+
+
+@pytest.mark.parametrize("ch", ["\u00a0", "\u200b", "\u2000", "\u2003", "\u200a", "\u000c", "\u000b", "\ufeff", "\t", "\r", "\n", " "])
+def test_the_trim_class_covers_each_blank_character(ch):
+    import re as _re
+    assert _re.sub(ac._WS_TRIM_PY, "", f"{ch}{ch}n/a{ch}") == "n/a"
+    assert _re.sub(ac._WS_TRIM_PY, "", ch * 3) == ""
+
+
+def test_the_trim_class_leaves_visible_text_alone():
+    import re as _re
+    assert _re.sub(ac._WS_TRIM_PY, "", " a b ") == "a b"
 
 
 def test_a_json_path_scalar_must_be_a_json_string_to_count_as_text():
@@ -1049,7 +1061,7 @@ def test_update_only_self_referencing_concat_is_named_with_the_type_unread_slug(
 
 def test_every_comparison_in_the_row_count_sql_is_case_insensitive_and_string_typed():
     sql = ac.prose_row_counts_sql("t", ["a", "n.$.k", "d.$.i[*].r"], "")
-    assert sql.count("lower(btrim(") == sql.count("btrim(") >= 6
+    assert sql.count("lower(regexp_replace(") == sql.count("regexp_replace(") >= 6
     assert sql.count("jsonb_typeof(x) = 'string'") == 2          # the wildcard form, checkable and blank
 
 
@@ -1242,3 +1254,12 @@ def test_a_chart_scoped_blank_row_still_fails_beside_an_upper_bound_entry():
     c = {"a": {"checkable": 3, "blank": 2, "scope": "whole-table upper bound"}, "b": {"checkable": 3, "blank": 1, "scope": "chart-scoped by count_sql"}}
     r = ac.grade_null_blank_rows(["a", "b"], c)
     assert r["v"] == ac.FAIL and "column(s): b=1" in r["measured"] and "not counted: a=2" in r["measured"], r
+
+
+# ───────────────────────── final review: item 5 (a json column is read as its JSON string value) ─────────────────────────
+
+def test_a_plain_json_column_is_cast_through_the_json_string_value_not_its_text_form():
+    sql = ac.prose_row_counts_sql("t", ["j"], "", types={"j": "jsonb"})
+    assert "(\"j\"::jsonb #>> '{}')" in sql and "\"j\"::text" not in sql, sql
+    assert "jsonb_typeof(\"j\"::jsonb) = 'string'" in sql
+    assert "\"p\"::text" in ac.prose_row_counts_sql("t", ["p"], "", types={"p": "text"})

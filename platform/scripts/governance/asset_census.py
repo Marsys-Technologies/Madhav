@@ -994,7 +994,11 @@ def _in_list() -> str:
     return ", ".join("'" + p + "'" for p in PROSE_PLACEHOLDERS)
 
 
-_BT = r"E' \t\r\n'"          # btrim characters: space, tab, CR, LF
+# whitespace class for "blank": the POSIX space class (space, tab, LF, VT, FF, CR) plus NBSP, zero-width space,
+# U+2000-200A (en/em/thin... spaces) and the BOM; the same class text is valid in a PostgreSQL ARE and in Python re
+_WS = r"[\s ​ - ﻿]"
+_WS_TRIM_PY = f"^{_WS}+|{_WS}+$"
+_WS_TRIM = f"'{_WS_TRIM_PY}', '', 'g'"
 
 
 def prose_row_counts_sql(table: str, entries, where_tail: str, types=None) -> str:
@@ -1014,7 +1018,7 @@ def prose_row_counts_sql(table: str, entries, where_tail: str, types=None) -> st
             for seg in path:
                 jp += "[*]" if seg == PROSE_WILDCARD else f'."{seg}"'
             src = (f"EXISTS (SELECT 1 FROM jsonb_path_query(\"{col}\"::jsonb, '{jp}') AS e(x) WHERE jsonb_typeof(x) = 'string' "
-                   f"AND lower(btrim(x #>> '{{}}', {_BT})) ")
+                   f"AND lower(regexp_replace(x #>> '{{}}', {_WS_TRIM})) ")
             checkable, blank = src + f"NOT IN ({_in_list()}))", src + f"IN ({_in_list()}))"
         else:
             ty = ((types or {}).get(col) or "").lower()
@@ -1023,12 +1027,12 @@ def prose_row_counts_sql(table: str, entries, where_tail: str, types=None) -> st
                 v = f"(\"{col}\"::jsonb #>> '{{{keys}}}')"
                 guard = f"jsonb_typeof(\"{col}\"::jsonb #> '{{{keys}}}') = 'string' AND "
             elif ty in ("json", "jsonb"):
-                v, guard = f'"{col}"::text', f'jsonb_typeof("{col}"::jsonb) = \'string\' AND '
+                v, guard = f'("{col}"::jsonb #>> \'{{}}\')', f'jsonb_typeof("{col}"::jsonb) = \'string\' AND '
             elif ty == "array" or ty.endswith("[]") or ty.startswith("_"):
                 v, guard = f'"{col}"::text', "FALSE AND "
             else:
                 v, guard = f'"{col}"::text', ""
-            tr = f"lower(btrim({v}, {_BT}))"
+            tr = f"lower(regexp_replace({v}, {_WS_TRIM}))"
             checkable = ("(FALSE)" if guard == "FALSE AND " else f"{guard}{v} IS NOT NULL AND {tr} NOT IN ({_in_list()})")
             blank = ("(FALSE)" if guard == "FALSE AND " else f"{guard}{v} IS NOT NULL AND {tr} IN ({_in_list()})")
         items += [f"count(*) FILTER (WHERE {checkable})::text", f"count(*) FILTER (WHERE {blank})::text"]
