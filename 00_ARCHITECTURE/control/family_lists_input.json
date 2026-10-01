@@ -1,0 +1,9 @@
+{
+  "_provenance": "DRAFT INPUT for generate_level_map.py, not the frozen FAMILY_ASSETS.json. Every member is named in SUVARNA_L3_FOCUS_FAMILIES_v1_0.md section 6 (the 16 measured readers) or SUVARNA_AUTONOMY_CHARTER R8 / execution architecture 6.1 (ka_gochara, ka_gochara_resonance, ka_vedha_gochara, ka_sangam, ka_kshetra); nothing was added from the registry. Strategic Suvarna freezes the final lists at J1. OPEN: (a) whether ka_sangam and ka_kshetra stay in the R8 set (J1.FO: only if a family session has claimed them); (b) R8's 'tables and claimed prerequisites' name no asset id, e.g. ka_yojaka (a stale Sangam prerequisite) and ka_gochara_v3_century_materialize (Gochara's century writer, to be retired by Pravaha A6.2) are NOT listed here because no document puts them in the set; (c) the FOCUS_FAMILIES '16 readers' include the three family assets themselves, which are listed under their family key, so the reader lists below hold the 13 other readers.",
+  "family_gochara": ["ka_gochara", "ka_gochara_resonance", "ka_vedha_gochara"],
+  "family_sangam": ["ka_sangam"],
+  "family_kshetra": ["ka_kshetra"],
+  "family_readers_L3": ["ka_bhavishya_lekha", "ka_jivana_parva", "ka_kala_darshana", "ka_kalasutra", "ka_taranga", "ka_tulana", "ka_vighnakara"],
+  "family_readers_L4": ["ph_muhurta", "ph_nimitta", "ph_pratikara"],
+  "family_readers_L5": ["mi_adhilepa", "mi_bhara", "mi_sankalpa"]
+}
