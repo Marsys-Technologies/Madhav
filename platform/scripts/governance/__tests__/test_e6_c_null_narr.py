@@ -267,9 +267,9 @@ def test_fidelity_never_reaches_pass_even_with_a_test_that_names_the_field_calls
     assert r["covered"] == ["statement"]
 
 
-def test_fidelity_is_partial_when_a_test_exercises_the_module_but_references_no_declared_field():
+def test_fidelity_fails_when_a_test_exercises_the_module_but_references_no_declared_field():
     r = ac.narr_fidelity_scan(["statement"], CITE, _tests(test_a=T_NO_FIELD))
-    assert r["v"] == ac.PARTIAL and r["covered"] == [], r
+    assert r["v"] == ac.FAIL and r["covered"] == [] and "names a declared field" in r["measured"], r
 
 
 def test_fidelity_names_the_uncovered_entries_when_only_some_are_covered():
@@ -327,7 +327,7 @@ def test_a():
     with pytest.raises(ValueError):
         build_narration({"statement": 1})
 '''
-    assert ac.narr_fidelity_scan(["statement"], CITE, _tests(test_a=s2))["v"] == ac.PARTIAL
+    assert ac.narr_fidelity_scan(["statement"], CITE, _tests(test_a=s2))["v"] == ac.FAIL   # generic leaf only in the INPUT
 
 
 def test_fidelity_is_no_detector_when_the_evidence_cites_no_readable_builder_module():
@@ -849,3 +849,50 @@ def test_lint_allowlisted_only_violations_read_partial_through_the_real_lint(tmp
     assert r["v"] == ac.PARTIAL and "allowlisted" in r["measured"] and str(p) in r["measured"], r
     monkeypatch.setattr(fcp, "load_allowlist", lambda path: [])
     assert ac.narr_lint_scan([p], ["citation_human"])["v"] == ac.FAIL
+
+
+# ───────────────────────── review round: F4 (no false credit for fidelity tests) ─────────────────────────
+_H = "from pipeline.orchestrator.writers.ph_x import build_narration\n"
+
+
+def _fid(src, entries=("statement",)):
+    return ac.narr_fidelity_scan(list(entries), CITE, _tests(test_a=src))
+
+
+@pytest.mark.parametrize("src", [
+    _H + "def test_a():\n    out = build_narration(1)\n\ndef test_b():\n    assert {'statement': 1}['statement']\n",
+    _H + "def _run():\n    return build_narration(1)['statement']\n\ndef test_a():\n    assert _run()\n",
+    _H + "def check_it():\n    assert build_narration(1)['statement']\n",
+    _H + "import pytest\n@pytest.mark.skip\ndef test_a():\n    assert build_narration(1)['statement']\n",
+    _H + "import pytest\n@pytest.mark.skipif(True, reason='x')\ndef test_a():\n    assert build_narration(1)['statement']\n",
+    _H + "import pytest\npytestmark = pytest.mark.skip\ndef test_a():\n    assert build_narration(1)['statement']\n",
+    _H + "import pytest\ndef test_a():\n    pytest.skip('x')\n    assert build_narration(1)['statement']\n",
+    _H + "def test_a():\n    build_narration(1)['statement']\n    assert True\n",
+    _H + "def test_a():\n    out = build_narration({'statement': 1})\n    assert out is not None\n",
+])
+def test_fidelity_gives_no_credit_for_the_false_positive_shapes(src):
+    assert _fid(src)["v"] == ac.FAIL, src
+
+
+def test_fidelity_credits_a_method_of_a_test_class_and_an_assert_on_the_builders_result():
+    src = _H + "class TestX:\n    def test_a(self):\n        assert build_narration(1)['statement']\n"
+    assert _fid(src)["v"] == ac.PARTIAL
+
+
+def test_a_generic_leaf_is_covered_only_in_an_assert_or_beside_a_specific_declared_key():
+    src = _H + "def test_a():\n    out = build_narration({'statement': 1})\n    assert out['citation_human']\n"
+    r = _fid(src, ("statement", "citation_human"))
+    assert r["v"] == ac.PARTIAL and r["covered"] == ["statement", "citation_human"], r      # beside a specific key
+    only = _H + "def test_a():\n    out = build_narration({'statement': 1})\n    assert out\n"
+    assert _fid(only)["v"] == ac.FAIL
+
+
+def test_importlib_import_module_of_the_cited_module_counts_as_an_import():
+    src = ("import importlib\ndef test_a():\n    w = importlib.import_module('pipeline.orchestrator.writers.ph_x')\n"
+           "    assert w.build_narration(1)['statement']\n")
+    assert _fid(src)["v"] == ac.PARTIAL
+
+
+def test_a_specific_leaf_in_the_input_only_still_needs_the_assert_to_exist():
+    src = _H + "def test_a():\n    build_narration({'citation_human': 1})\n"
+    assert _fid(src, ("citation_human",))["v"] == ac.FAIL
