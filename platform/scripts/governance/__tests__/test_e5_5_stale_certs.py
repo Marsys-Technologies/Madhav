@@ -2,13 +2,13 @@
 
 The certification currency contract (Track E brief 7, arch 12.16), each clause with its own tests:
   (1) the SEMANTIC ROW FINGERPRINT: rows in natural-key order, canonical JSON of the declared semantic columns,
-      volatile columns excluded as declared per asset, embeddings compared under a declared rounding policy;
+      volatile columns excluded as declared per asset, embeddings NOT hashed (their source columns + model id are);
       an idempotent rebuild leaves it unchanged; any unreadable input raises (never "not stale");
   (2) certificate generation ids: an upstream whose latest generation is not the one cited, that is itself stale,
       invalidated or not passing, makes the dependent stale — transitively, and ONLY what changed;
   (3) the invalidation WATERMARK: invalidation lines appended to the ledger in a shape E5.1's reader accepts,
       and `watermark_ok` / `current_certificates` refusing a ledger that holds certificates E5.5 has not evaluated;
-  (4) bounded RE-WALKS: at most two invalidating walks per (layer, acceptance epoch); the third raises with the
+  (4) bounded RE-WALKS: at most two invalidating walks per layer over the whole ledger; the third raises with the
       findings for Strategic Suvarna and writes nothing.
 
 Offline: tmp ledgers, a fake DB-API cursor, a tmp git repo. No database, no network.
@@ -114,32 +114,41 @@ def fp_of(asset, n=0):
     return H(f"fp:{asset}:{n}")
 
 
-def wpath(asset):
-    return f"{WRITERS_REL}/{asset}.py"
+def wnames(asset, files=1):
+    """The writer file names of `asset`: the asset itself, then `<asset>_2`, `<asset>_3`, ..."""
+    return [asset] + [f"{asset}_{i}" for i in range(2, files + 1)]
 
 
-def wbytes(asset, n=0):
-    return f"# writer {asset} v{n}\n".encode()
+def wpath(name):
+    return f"{WRITERS_REL}/{name}.py"
 
 
-def wh_of(asset, n=0):
-    """The writer hash of `asset`'s file at version n (put_writer(asset, n) commits exactly these bytes)."""
-    return {wpath(asset): shab(wbytes(asset, n))}
+def wbytes(name, n=0):
+    return f"# writer {name} v{n}\n".encode()
 
 
-def put_writer(asset, n=0):
-    """Commit the writer file of `asset` at version n (before RUN) unless it already is that version."""
-    f = ENV.repo / wpath(asset)
-    if not (f.exists() and f.read_bytes() == wbytes(asset, n)):
-        f.write_bytes(wbytes(asset, n))
-        git(ENV.repo, "add", "--", wpath(asset))
-        git(ENV.repo, "commit", "-q", "-m", f"{asset} v{n}", date=COMMIT_DATE)
-    return wpath(asset)
+def wh_of(asset, n=0, files=1):
+    """The writer hashes of `asset`'s files at version n (put_writer(asset, n, files) commits exactly these bytes)."""
+    return {wpath(nm): shab(wbytes(nm, n)) for nm in wnames(asset, files)}
 
 
-def census_file(asset, crit, verdict, *, generated=RUN, cell=True, rec=None, head=None):
+def put_writer(asset, n=0, files=1):
+    """Commit the writer files of `asset` at version n (before RUN) unless they already are that version."""
+    out = []
+    for nm in wnames(asset, files):
+        f = ENV.repo / wpath(nm)
+        if not (f.exists() and f.read_bytes() == wbytes(nm, n)):
+            f.write_bytes(wbytes(nm, n))
+            git(ENV.repo, "add", "--", wpath(nm))
+            git(ENV.repo, "commit", "-q", "-m", f"{nm} v{n}", date=COMMIT_DATE)
+        out.append(wpath(nm))
+    return out
+
+
+def census_file(asset, crit, verdict, *, generated=RUN, cell=True, rec=None, head=None, files=1):
     """A stamped census JSON file under the trusted census root, `git add`ed (state: staged)."""
-    record = dict(asset_id=asset, layer=layer_of(asset), has_writer=True, writer_files=[f"{asset}.py"],
+    record = dict(asset_id=asset, layer=layer_of(asset), has_writer=True,
+                  writer_files=[f"{nm}.py" for nm in wnames(asset, files)],
                   asset_kind="data", target_columns=None,
                   measurements={crit: dict(v=verdict, measured="m")} if cell else {})
     record.update(rec or {})
@@ -152,21 +161,21 @@ def census_file(asset, crit, verdict, *, generated=RUN, cell=True, rec=None, hea
     return p
 
 
-def cert(ledger, asset, crit="Build.registered", *, fp=None, n=0, up=(), verdict="PASS", **over):
+def cert(ledger, asset, crit="Build.registered", *, fp=None, n=0, up=(), verdict="PASS", files=1, **over):
     """Certify through E5.1's real writer."""
-    wp = put_writer(asset, n)
+    wps = put_writer(asset, n, files)
     d = dict(asset=asset, layer=layer_of(asset), criterion=crit, verdict=verdict,
              evidence=dict(census_run_id=RUN, measured="m"), verified_by="t", ledger_path=ledger, verified_on=NOW,
-             census_path=census_file(asset, crit, verdict), upstream_cert_ids=list(up))
+             census_path=census_file(asset, crit, verdict, files=files), upstream_cert_ids=list(up))
     if verdict == "PASS":
-        d.update(writer_files=[wp], writer_repo=ENV.repo, semantic_fingerprint=fp_of(asset) if fp is None else fp)
+        d.update(writer_files=wps, writer_repo=ENV.repo, semantic_fingerprint=fp_of(asset) if fp is None else fp)
     d.update(over)
     return nc.write_certification(**d).record["cert_id"]
 
 
 def obs(*assets, **over):
     """What the world looks like now: every asset unchanged unless `over[asset]` replaces a field."""
-    out = {a: dict(writer_hashes=wh_of(a), semantic_fingerprint=fp_of(a)) for a in assets}
+    out = {a: dict(writer_hashes=wh_of(a), writer_paths=list(wh_of(a)), semantic_fingerprint=fp_of(a)) for a in assets}
     for a, o in over.items():
         out[a] = dict(out.get(a, {}), **o)
     return out
@@ -195,7 +204,6 @@ def lines(p):
 
 
 def run(ledger, observed, **kw):
-    kw.setdefault("epoch", "E1")
     kw.setdefault("commit", COMMIT)
     kw.setdefault("now", NOW)
     return sc.invalidate(ledger, observed, **kw)
@@ -280,24 +288,94 @@ def test_an_empty_table_has_a_fingerprint_distinct_from_a_populated_one():
     assert fpr([]) != fpr(ROWS) and len(fpr([])) == 64
 
 
-def test_embeddings_are_compared_under_the_declared_rounding_policy_never_byte_equal():
-    decl = dict(DECL_S, semantic_columns=["label", "emb"], embedding_policy={"emb": {"decimals": 4}})
-    a = [dict(nimitta_id="n1", label="x", emb=[0.123456, -0.5, 0.0])]
-    near = [dict(nimitta_id="n1", label="x", emb=[0.123461, -0.50001, -0.0])]      # inside 4 decimals' equivalence
-    far = [dict(nimitta_id="n1", label="x", emb=[0.123956, -0.5, 0.0])]            # visible at 4 decimals
-    assert fpr(near, decl) == fpr(a, decl)
-    assert fpr(far, decl) != fpr(a, decl)
-    assert json.dumps(a[0]["emb"]) != json.dumps(near[0]["emb"])                   # bytes differ, fingerprint does not
+EMB_V = dict(column="emb", source_columns=["label"], model_id="text-embedding-3-small@2026-01")
+DECL_E = dict(DECL_S, embedding=EMB_V)                                   # semantic mode: label, weight + emb (excluded)
+DECL_EV = dict(DECL_V, volatile_columns=["id", "created_at", "build_id"], embedding=EMB_V)
 
 
-def test_a_pgvector_text_value_and_a_list_are_the_same_embedding():
-    decl = dict(DECL_S, semantic_columns=["emb"], embedding_policy={"emb": {"decimals": 3}})
-    assert fpr([dict(nimitta_id="n1", emb="[0.1,0.2,0.3]")], decl) == fpr([dict(nimitta_id="n1", emb=[0.1, 0.2, 0.3])], decl)
+def noisy(vec, scale=1e-7, seed=0):
+    import random
+    r = random.Random(seed)
+    return [x + r.uniform(-scale, scale) for x in vec]
 
 
-def test_without_an_embedding_policy_a_vector_column_is_compared_exactly():
-    decl = dict(DECL_S, semantic_columns=["emb"])
-    assert (fpr([dict(nimitta_id="n1", emb=[0.1234561])], decl) != fpr([dict(nimitta_id="n1", emb=[0.1234562])], decl))
+def test_embeddings_are_never_hashed_noise_in_a_vector_changes_nothing():
+    import random
+    r = random.Random(7)
+    base = [dict(nimitta_id=f"n{i}", label=f"l{i}", weight=i, emb=[r.uniform(-1, 1) for _ in range(64)]) for i in range(50)]
+    ref = fpr(base, DECL_E)
+    for seed in range(5):
+        jittered = [dict(x, emb=noisy(x["emb"], 1e-7, seed)) for x in base]       # float32-ish noise on every row
+        assert fpr(jittered, DECL_E) == ref
+    assert fpr([dict(x, emb=None) for x in base], DECL_E) == ref                  # a NULL embedding is allowed, too
+    assert fpr([dict(x, emb="[0.1,0.2]") for x in base], DECL_E) == ref
+    assert fpr([dict(x, emb=[float("nan")]) for x in base], DECL_E) == ref        # not read, so not judged
+
+
+def test_the_embedding_column_is_not_in_the_payload_in_volatile_mode_either():
+    rows = [dict(r, emb=[0.1, 0.2]) for r in ROWS]
+    noisy_rows = [dict(r, emb=[0.1000001, 0.2]) for r in ROWS]
+    null_rows = [dict(r, emb=None) for r in ROWS]
+    assert fpr(rows, DECL_EV) == fpr(noisy_rows, DECL_EV) == fpr(null_rows, DECL_EV)
+    # without the declaration the column IS content (and a change in it is a material change)
+    assert fpr(rows, DECL_V) != fpr(noisy_rows, DECL_V)
+
+
+def test_an_embedding_is_covered_through_its_source_columns_and_model_id():
+    base = [dict(nimitta_id="n1", label="x", weight=1, emb=None)]
+    ref = fpr(base, DECL_E)
+    assert fpr([dict(base[0], label="CHANGED")], DECL_E) != ref                    # the source text changed
+    other_model = dict(DECL_E, embedding=dict(EMB_V, model_id="another-model@2"))
+    assert fpr(base, other_model) != ref                                            # the model changed: re-embedded
+    assert fpr([], DECL_E) != fpr([], other_model)                                  # ...even for an empty table
+    two_src = dict(DECL_E, embedding=dict(EMB_V, source_columns=["label", "weight"]))
+    assert fpr([], two_src) != fpr([], DECL_E)
+
+
+def test_the_embedding_selection_never_reads_the_vector_column():
+    assert sc.build_select(sc.validate_declaration(DECL_E)) == \
+        'SELECT "nimitta_id", "label", "weight" FROM "ph_nimitta" WHERE "chart_id" = %s'
+
+
+@pytest.mark.parametrize("patch,why", [
+    (dict(embedding=dict(EMB_V, model_id="")), "blank model id"),
+    (dict(embedding=dict(EMB_V, model_id="  m ")), "model id with edge whitespace"),
+    (dict(embedding=dict(EMB_V, model_id="m" * 201)), "model id too long"),
+    (dict(embedding=dict(EMB_V, model_id="a\nb")), "control character"),
+    (dict(embedding=dict(EMB_V, model_id=None)), "no model id"),
+    (dict(embedding=dict(EMB_V, source_columns=[])), "no source columns"),
+    (dict(embedding=dict(EMB_V, source_columns=["nope"])), "source column not semantic"),
+    (dict(embedding=dict(EMB_V, column="Emb Col")), "bad column identifier"),
+    (dict(embedding=dict(EMB_V, column="nimitta_id")), "column is the key"),
+    (dict(embedding=dict(EMB_V, column="label")), "column listed as semantic"),
+    (dict(embedding={"column": "emb", "source_columns": ["label"]}), "model_id missing"),
+    (dict(embedding=dict(EMB_V, tolerance=0.1)), "unknown embedding key"),
+    (dict(embedding=[EMB_V, EMB_V]), "the same column twice"),
+    (dict(embedding=[EMB_V, dict(EMB_V, column="emb2", source_columns=["emb"])]), "source is an embedding"),
+    (dict(embedding_policy={"emb": {"decimals": 4}}), "the old rounding policy is gone"),
+])
+def test_bad_embedding_declarations_are_refused(patch, why):
+    with pytest.raises(sc.BadDeclaration):
+        sc.validate_declaration(dict(DECL_S, **patch))
+
+
+def test_a_volatile_source_column_or_a_key_embedding_is_refused_in_volatile_mode():
+    with pytest.raises(sc.BadDeclaration):
+        sc.validate_declaration(dict(DECL_V, embedding=dict(EMB_V, source_columns=["id"])))
+    with pytest.raises(sc.BadDeclaration):
+        sc.validate_declaration(dict(DECL_V, embedding=dict(EMB_V, column="nimitta_id")))
+
+
+def test_two_embeddings_are_supported_and_both_excluded():
+    decl = dict(DECL_S, embedding=[EMB_V, dict(column="emb2", source_columns=["weight"], model_id="m2")])
+    a = [dict(nimitta_id="n1", label="x", weight=1, emb=[1.0], emb2=[2.0])]
+    b = [dict(nimitta_id="n1", label="x", weight=1, emb=[9.0], emb2=None)]
+    assert fpr(a, decl) == fpr(b, decl)
+
+
+def test_volatile_mode_needs_the_embedding_source_columns_in_the_rows():
+    with pytest.raises(sc.UnreadableInput):
+        fpr([dict(id=1, nimitta_id="n1", emb=[1.0])], dict(DECL_V, embedding=dict(EMB_V, source_columns=["label"])))
 
 
 def test_database_native_value_types_are_canonicalised():
@@ -343,13 +421,6 @@ def test_in_volatile_mode_rows_must_share_one_column_set():
         fpr([dict(ROWS[0]), dict(ROWS[1], extra=1)])
 
 
-def test_a_non_finite_or_malformed_embedding_raises():
-    decl = dict(DECL_S, semantic_columns=["emb"], embedding_policy={"emb": {"decimals": 3}})
-    for bad in ([float("nan")], "not a vector", [1, "x"], 5, None):
-        with pytest.raises(sc.UnreadableInput):
-            fpr([dict(nimitta_id="n1", emb=bad)], decl)
-
-
 @pytest.mark.parametrize("patch,why", [
     (dict(natural_key=[]), "empty natural key"),
     (dict(natural_key="nimitta_id"), "natural key not a list"),
@@ -363,11 +434,8 @@ def test_a_non_finite_or_malformed_embedding_raises():
     (dict(volatile_columns=["id", 'c"d']), "bad volatile identifier"),
     (dict(scope="everywhere"), "bad scope"),
     (dict(scope="chart", scope_column="chart id"), "bad scope column"),
-    (dict(embedding_policy={"emb": {"decimals": 99}}), "decimals out of range"),
-    (dict(embedding_policy={"emb": {"decimals": -1}}), "negative decimals"),
-    (dict(embedding_policy={"emb": {"decimals": "3"}}), "decimals not an int"),
-    (dict(embedding_policy={"id": {"decimals": 3}}), "embedding column is volatile"),
-    (dict(embedding_policy={"emb": {"tolerance": 0.1}}), "unknown policy key"),
+    (dict(naive_utc_columns=["a b"]), "bad naive column"),
+    (dict(naive_utc_columns="created_at"), "naive columns not a list"),
     (dict(surprise=1), "unknown declaration key"),
 ])
 def test_bad_declarations_are_refused(patch, why):
@@ -375,11 +443,6 @@ def test_bad_declarations_are_refused(patch, why):
     d.update(patch)
     with pytest.raises(sc.BadDeclaration):
         sc.validate_declaration(d)
-
-
-def test_semantic_mode_embedding_column_must_be_declared_semantic():
-    with pytest.raises(sc.BadDeclaration):
-        sc.validate_declaration(dict(DECL_S, embedding_policy={"emb": {"decimals": 3}}))
 
 
 def test_declarations_document_validates_every_asset_and_names_the_bad_one():
@@ -391,6 +454,131 @@ def test_declarations_document_validates_every_asset_and_names_the_bad_one():
         sc.validate_declarations({"Bad Asset": dict(DECL_V)})
     with pytest.raises(sc.BadDeclaration):
         sc.validate_declarations([])
+
+
+# ───────────────────────── canonical form of timestamps, zeros, decimals, jsonb, text ─────────────────────────
+
+DECL_T = dict(table="t", scope="chart", natural_key=["k"], semantic_columns=["v"])
+
+
+def one(v, decl=DECL_T):
+    return sc.fingerprint_rows([dict(k=1, v=v)], sc.validate_declaration(decl))
+
+
+def test_the_same_instant_in_any_zone_is_the_same_value():
+    utc = dt.datetime(2026, 1, 1, 12, 0, tzinfo=dt.timezone.utc)
+    ist = utc.astimezone(dt.timezone(dt.timedelta(hours=5, minutes=30)))
+    est = utc.astimezone(dt.timezone(dt.timedelta(hours=-5)))
+    assert ist.isoformat() != utc.isoformat()
+    assert one(utc) == one(ist) == one(est)
+    assert one(utc) != one(utc + dt.timedelta(microseconds=1))               # a different instant is a different value
+
+
+def test_a_naive_datetime_is_refused_unless_the_column_is_declared_naive_utc():
+    naive = dt.datetime(2026, 1, 1, 12, 0)
+    with pytest.raises(sc.UnreadableInput):
+        one(naive)
+    declared = dict(DECL_T, naive_utc_columns=["v"])
+    assert one(naive, declared) == one(dt.datetime(2026, 1, 1, 12, 0, tzinfo=dt.timezone.utc), declared)
+    assert one(naive, declared) == one(dt.datetime(2026, 1, 1, 17, 30, tzinfo=dt.timezone(dt.timedelta(hours=5, minutes=30))), declared)
+
+
+def test_the_naive_declaration_is_per_column_and_covers_key_columns_too():
+    naive = dt.datetime(2026, 1, 1, 12, 0)
+    decl = dict(table="t", scope="chart", natural_key=["at"], semantic_columns=["v"], naive_utc_columns=["at"])
+    assert sc.fingerprint_rows([dict(at=naive, v=1)], sc.validate_declaration(decl))
+    with pytest.raises(sc.UnreadableInput):
+        sc.fingerprint_rows([dict(at=naive, v=dt.datetime(2026, 1, 1))], sc.validate_declaration(decl))   # v is not declared
+    with pytest.raises(sc.UnreadableInput):
+        sc.fingerprint_rows([dict(at=naive, v=1)], sc.validate_declaration(dict(decl, naive_utc_columns=[])))
+
+
+def test_a_time_of_day_needs_the_naive_declaration_and_a_zoned_time_is_refused():
+    with pytest.raises(sc.UnreadableInput):
+        one(dt.time(1, 2, 3))
+    assert one(dt.time(1, 2, 3), dict(DECL_T, naive_utc_columns=["v"]))
+    with pytest.raises(sc.UnreadableInput):
+        one(dt.time(1, 2, 3, tzinfo=dt.timezone.utc), dict(DECL_T, naive_utc_columns=["v"]))
+    assert one(dt.date(2026, 1, 2)) != one(dt.date(2026, 1, 3))
+
+
+def test_negative_zero_is_zero_for_floats_and_decimals():
+    assert one(0.0) == one(-0.0)
+    assert one(decimal.Decimal("0")) == one(decimal.Decimal("-0")) == one(decimal.Decimal("0.000"))
+    assert one([0.0, {"a": -0.0}]) == one([-0.0, {"a": 0.0}])
+    assert one(0.0) != one(1.0) and one(decimal.Decimal("0")) != one(decimal.Decimal("1"))
+
+
+def test_decimals_are_exact_beyond_28_digits():
+    a, b = decimal.Decimal("1.0000000000000000000000000001"), decimal.Decimal("1.0000000000000000000000000002")
+    big1, big2 = decimal.Decimal("12345678901234567890123456789012"), decimal.Decimal("12345678901234567890123456789013")
+    assert one(a) != one(b) and one(big1) != one(big2)
+    assert one(decimal.Decimal("1.50")) == one(decimal.Decimal("1.5")) == one(decimal.Decimal("15E-1"))
+    assert one(decimal.Decimal("100")) == one(decimal.Decimal("1E+2")) != one(decimal.Decimal("10"))
+    assert one(decimal.Decimal("-1.5")) != one(decimal.Decimal("1.5"))
+    huge = decimal.Decimal("9" * 200 + "." + "1" * 200)
+    assert one(huge) == one(decimal.Decimal(str(huge))) and one(huge) != one(decimal.Decimal("9" * 200 + "." + "1" * 199 + "2"))
+
+
+def test_a_jsonb_object_that_looks_like_our_decimal_marker_cannot_collide():
+    assert one(decimal.Decimal("1")) != one({"$decimal": "1E0"})
+    assert one({"$decimal": "1E0"}) != one({"$obj": {"$decimal": "1E0"}})
+    assert one({"$x": 1}) != one({"$obj": {"$x": 1}})
+    assert one({"$obj": {"a": 1}}) != one({"a": 1})
+    assert one({"a": 1, "b": 2}) == one({"b": 2, "a": 1})
+
+
+def test_text_with_an_unpaired_surrogate_is_a_refusal_not_a_crash():
+    for bad in ("\ud800", "ok\udfff", ["x", "\ud800"], {"k\ud800": 1}, {"k": "\ud800"}):
+        with pytest.raises(sc.UnreadableInput):
+            one(bad)
+    assert one("héllo \U0001f600") != one("hello")
+
+
+def test_integers_booleans_and_floats_stay_distinct():
+    assert one(True) != one(1) and one(1) != one(1.0) and one(None) != one(0)
+
+
+# ───────────────────────── the header hashes the declaration ─────────────────────────
+
+BASE_H = dict(table="ph_x", scope="chart", natural_key=["a", "b"], semantic_columns=["c", "d"])
+
+
+def hdr(**over):
+    return sc.fingerprint_rows([], sc.validate_declaration(dict(BASE_H, **over)))
+
+
+@pytest.mark.parametrize("over,why", [
+    (dict(table="ph_y"), "table"),
+    (dict(scope="global"), "scope"),
+    (dict(scope_column="subject_chart"), "scope column"),
+    (dict(natural_key=["b", "a"]), "natural key ORDER"),
+    (dict(natural_key=["a"], semantic_columns=["b", "c", "d"]), "key vs semantic split"),
+    (dict(semantic_columns=["c"]), "semantic columns"),
+    (dict(semantic_columns=None, volatile_columns=["c", "d"]), "mode, same listed columns"),
+    (dict(naive_utc_columns=["c"]), "naive columns"),
+    (dict(embedding=dict(column="e", source_columns=["c"], model_id="m1")), "embedding declared"),
+])
+def test_every_part_of_the_declaration_is_in_the_header_even_for_an_empty_table(over, why):
+    assert hdr(**over) != hdr(), why
+
+
+def test_two_embedding_declarations_that_differ_only_in_model_or_sources_differ():
+    e1 = dict(column="e", source_columns=["c"], model_id="m1")
+    assert hdr(embedding=e1) != hdr(embedding=dict(e1, model_id="m2"))
+    assert hdr(embedding=e1) != hdr(embedding=dict(e1, source_columns=["c", "d"]))
+    assert hdr(embedding=e1) != hdr(embedding=dict(e1, column="e2"))
+
+
+def test_a_global_asset_does_not_hash_a_scope_column():
+    assert hdr(scope="global") == hdr(scope="global", scope_column="whatever")
+
+
+def test_the_header_is_not_a_prefix_of_row_data(tmp_path):
+    # a declaration change must not be maskable by row content: same rows, different table => different fingerprint
+    rows = [dict(a=1, b=2, c=3, d=4)]
+    assert (sc.fingerprint_rows(rows, sc.validate_declaration(BASE_H))
+            != sc.fingerprint_rows(rows, sc.validate_declaration(dict(BASE_H, table="ph_y"))))
 
 
 # ───────────────────────── the read-only loader ─────────────────────────
@@ -417,13 +605,17 @@ class FakeCursor:
 
 class FakeConn:
     def __init__(self, cur):
-        self.cur, self.committed = cur, False
+        self.cur, self.committed, self.rolled_back, self.cursor_name = cur, False, False, None
 
-    def cursor(self):
+    def cursor(self, name=None):
+        self.cursor_name = name
         return self.cur
 
     def commit(self):
         self.committed = True
+
+    def rollback(self):
+        self.rolled_back = True
 
 
 def test_the_select_is_one_of_three_fixed_shapes_with_quoted_validated_identifiers():
@@ -462,6 +654,39 @@ def test_scope_and_chart_id_must_agree():
     assert cur.executed == []
 
 
+def test_load_rows_never_commits_nor_rolls_back_and_closes_only_its_cursor():
+    cols = ["nimitta_id", "label", "weight"]
+    ok = FakeConn(FakeCursor(cols, [("n1", "x", 1)]))
+    sc.load_rows(ok, sc.validate_declaration(DECL_S), chart_id="c")
+    assert not ok.committed and not ok.rolled_back and ok.cur.closed
+    bad = FakeConn(FakeCursor([], [], fail=RuntimeError("boom")))
+    with pytest.raises(sc.UnreadableInput):
+        sc.load_rows(bad, sc.validate_declaration(DECL_S), chart_id="c")
+    assert not bad.committed and not bad.rolled_back and bad.cur.closed         # the caller owns the transaction
+
+
+def test_load_rows_refuses_a_table_larger_than_the_guard_and_names_the_streaming_option():
+    cols = ["nimitta_id", "label", "weight"]
+    rows = [(f"n{i}", "x", i) for i in range(11)]
+    with pytest.raises(sc.UnreadableInput, match="max_rows"):
+        sc.load_rows(FakeConn(FakeCursor(cols, rows, chunk=4)), sc.validate_declaration(DECL_S), chart_id="c", max_rows=10)
+    assert len(sc.load_rows(FakeConn(FakeCursor(cols, rows, chunk=4)), sc.validate_declaration(DECL_S), chart_id="c",
+                            max_rows=11)) == 11
+    for bad in (0, -1, True, "5", None):
+        with pytest.raises(sc.UnreadableInput):
+            sc.load_rows(FakeConn(FakeCursor(cols, rows)), sc.validate_declaration(DECL_S), chart_id="c", max_rows=bad)
+
+
+def test_a_named_server_side_cursor_is_used_when_asked():
+    cols = ["nimitta_id", "label", "weight"]
+    c = FakeConn(FakeCursor(cols, [("n1", "x", 1)]))
+    sc.load_rows(c, sc.validate_declaration(DECL_S), chart_id="c", cursor_name="fp_stream")
+    assert c.cursor_name == "fp_stream"
+    c2 = FakeConn(FakeCursor(cols, [("n1", "x", 1)]))
+    sc.table_fingerprint(c2, sc.validate_declaration(DECL_S), chart_id="c", cursor_name="s2")
+    assert c2.cursor_name == "s2"
+
+
 def test_load_rows_reads_every_chunk():
     cols = ["nimitta_id", "label", "weight"]
     rows = [(f"n{i}", "x", i) for i in range(7)]
@@ -489,6 +714,16 @@ def test_table_fingerprint_equals_fingerprint_rows_of_the_same_rows():
     cur = FakeCursor(cols, [tuple(r[k] for k in cols) for r in ROWS])
     decl = sc.validate_declaration(DECL_V)
     assert sc.table_fingerprint(FakeConn(cur), decl, chart_id="c") == sc.fingerprint_rows(ROWS, decl)
+
+
+# ───────────────────────── parity with E5.1's private grammar (copied here, pinned here) ─────────────────────────
+
+def test_the_cert_id_grammar_and_relpath_check_are_copies_of_e51s():
+    assert sc._CERT_ID.pattern == nc._CERT_ID.pattern
+    for p in ("a/b.py", "", "/abs", "a//b", "a/../b", "..", "a\\b", "a/./b", "x" * 300, "ok.py", None, 5, "a/b/"):
+        assert sc._check_relpath(p) == nc._check_relpath(p), p
+    for u in ("bg_a|gate|Build.registered@1", "bg_a|addition|D-TIME@12", "bg_a|gate|x@0", "bg_A|gate|x@1", "a|b|c@1", ""):
+        assert bool(sc._CERT_ID.fullmatch(u)) == bool(nc._CERT_ID.fullmatch(u)), u
 
 
 # ═══════════════ (2) detection: three comparisons, transitivity, only what changed ═══════════════
@@ -598,15 +833,43 @@ def test_a_pass_citing_a_non_passing_upstream_is_stale(ledger):
     assert set(ev.stale) == {b} and ev.stale[b][0]["code"] == "upstream_not_passing"
 
 
-def test_the_registry_revision_is_compared_only_when_the_caller_supplies_it(ledger):
-    a = cert(ledger, "bg_a")
-    same = dict(revision=ac.REGISTRY_REVISION, fingerprint=ac.registry_fingerprint())
-    assert sc.evaluate(raw(ledger), obs("bg_a"), registry=same).stale == {}
-    assert sc.evaluate(raw(ledger), obs("bg_a")).stale == {}
-    ev = sc.evaluate(raw(ledger), obs("bg_a"), registry=dict(same, revision=ac.REGISTRY_REVISION + 1))
-    assert ev.stale[a][0]["code"] == "registry"
-    ev = sc.evaluate(raw(ledger), obs("bg_a"), registry=dict(same, fingerprint="f" * 64))
-    assert ev.stale[a][0]["code"] == "registry"
+def reg(assets, **over):
+    return dict(dict(revision=ac.REGISTRY_REVISION, fingerprint=ac.registry_fingerprint(), assets=list(assets)), **over)
+
+
+def test_the_registry_check_applies_only_to_the_assets_the_caller_names(ledger):
+    a, b = cert(ledger, "bg_a"), cert(ledger, "bg_b")
+    o = obs("bg_a", "bg_b")
+    bumped = dict(revision=ac.REGISTRY_REVISION + 1)
+    assert sc.evaluate(raw(ledger), o, registry=reg(["bg_a"])).stale == {}
+    assert sc.evaluate(raw(ledger), o).stale == {}
+    ev = sc.evaluate(raw(ledger), o, registry=reg(["bg_a"], **bumped))
+    assert set(ev.stale) == {a} and ev.stale[a][0]["code"] == "registry"          # b is NOT invalidated by a bump
+    ev = sc.evaluate(raw(ledger), o, registry=reg(["bg_a", "bg_b"], fingerprint="f" * 64))
+    assert set(ev.stale) == {a, b}
+    assert sc.evaluate(raw(ledger), o, registry=reg(["bg_zzz"], **bumped)).stale == {}     # names no certified asset
+
+
+def test_a_registry_observation_without_assets_is_refused_not_applied_to_everything(ledger):
+    cert(ledger, "bg_a")
+    for bad in (dict(revision=1, fingerprint="f" * 64), dict(revision=1, fingerprint="f" * 64, assets=[]),
+                dict(revision=1, fingerprint="f" * 64, assets="bg_a"), dict(revision=1, fingerprint="f" * 64, assets=["Bg A"]),
+                dict(revision=True, fingerprint="f" * 64, assets=["bg_a"]), dict(revision=1, assets=["bg_a"]), "x", []):
+        with pytest.raises(sc.UnreadableInput):
+            sc.evaluate(raw(ledger), obs("bg_a"), registry=bad)
+    before = raw(ledger)
+    with pytest.raises(sc.UnreadableInput):
+        run(ledger, obs("bg_a"), registry=dict(revision=1, fingerprint="f" * 64))
+    assert raw(ledger) == before
+
+
+def test_the_registry_check_never_applies_to_additions(ledger):
+    add = nc.write_certification(asset="bg_a", layer="L0", kind="addition", criterion="D-GROUNDING", criterion_version=1,
+                                 detector="grounding_probe.py", verdict="PASS", evidence=dict(census_run_id=RUN),
+                                 verified_by="t", ledger_path=ledger, verified_on=NOW, writer_files=put_writer("bg_a"),
+                                 writer_repo=ENV.repo, semantic_fingerprint=fp_of("bg_a")).record["cert_id"]
+    ev = sc.evaluate(raw(ledger), obs("bg_a"), registry=reg(["bg_a"], revision=ac.REGISTRY_REVISION + 7))
+    assert ev.stale == {} and ev.current == [add]
 
 
 def test_only_the_latest_generation_of_a_key_is_evaluated(ledger):
@@ -632,6 +895,140 @@ def test_a_computed_n_a_with_no_hashes_or_fingerprint_needs_no_observation_and_i
                                                        rec=dict(target_columns=["id"]))).record["cert_id"]
     ev = sc.evaluate(raw(ledger), {})
     assert ev.stale == {} and ev.current == [n]
+
+
+# ───────────────────────── writer files: changed, added, removed (two files) ─────────────────────────
+
+def test_a_change_in_the_second_of_two_writer_files_makes_the_asset_stale(ledger):
+    a = cert(ledger, "bg_a", files=2)
+    assert len(lines(ledger)[1]["writer_hashes"]) == 2
+    o = obs("bg_a")
+    o["bg_a"] = dict(writer_hashes=wh_of("bg_a", 0, 2), writer_paths=list(wh_of("bg_a", 0, 2)),
+                     semantic_fingerprint=fp_of("bg_a"))
+    assert sc.evaluate(raw(ledger), o).stale == {}
+    second = wpath("bg_a_2")
+    o["bg_a"]["writer_hashes"] = dict(o["bg_a"]["writer_hashes"], **{second: H("changed")})
+    ev = sc.evaluate(raw(ledger), o)
+    assert set(ev.stale) == {a} and [(r["code"], r["path"]) for r in ev.stale[a]] == [("writer_hash", second)]
+    first = wpath("bg_a")                                                       # and the first, symmetrically
+    o2 = dict(bg_a=dict(o["bg_a"], writer_hashes=dict(wh_of("bg_a", 0, 2), **{first: H("changed")})))
+    assert [(r["code"], r["path"]) for r in sc.evaluate(raw(ledger), o2).stale[a]] == [("writer_hash", first)]
+
+
+def test_a_writer_file_added_to_the_asset_since_is_stale(ledger):
+    a = cert(ledger, "bg_a")
+    added = wpath("bg_a_new")
+    o = obs("bg_a")
+    o["bg_a"]["writer_paths"] = list(wh_of("bg_a")) + [added]                      # the registry now lists a second file
+    ev = sc.evaluate(raw(ledger), o)
+    assert set(ev.stale) == {a} and ev.stale[a] == [dict(code="writer_file_added", path=added)]
+
+
+def test_a_writer_file_removed_from_the_asset_since_is_stale_and_needs_no_hash_for_it(ledger):
+    a = cert(ledger, "bg_a", files=2)
+    o = {"bg_a": dict(writer_hashes={wpath("bg_a"): wh_of("bg_a")[wpath("bg_a")]}, writer_paths=[wpath("bg_a")],
+                      semantic_fingerprint=fp_of("bg_a"))}
+    ev = sc.evaluate(raw(ledger), o)
+    assert set(ev.stale) == {a} and ev.stale[a] == [dict(code="writer_file_removed", path=wpath("bg_a_2"))]
+
+
+def test_a_writer_set_renamed_in_place_is_added_and_removed(ledger):
+    a = cert(ledger, "bg_a")
+    o = {"bg_a": dict(writer_hashes={wpath("bg_other"): H("x")}, writer_paths=[wpath("bg_other")],
+                      semantic_fingerprint=fp_of("bg_a"))}
+    ev = sc.evaluate(raw(ledger), o)
+    assert [r["code"] for r in ev.stale[a]] == ["writer_file_added", "writer_file_removed"]
+
+
+def test_the_full_writer_path_set_must_be_observed_and_well_formed(ledger):
+    cert(ledger, "bg_a")
+    with pytest.raises(sc.MissingObservation):
+        sc.evaluate(raw(ledger), {"bg_a": dict(writer_hashes=wh_of("bg_a"), semantic_fingerprint=fp_of("bg_a"))})
+    for bad in ("x", None, [wpath("bg_a"), wpath("bg_a")], ["/abs.py"], ["a/../b.py"], [5], {"a": 1}):
+        with pytest.raises(sc.UnreadableInput):
+            sc.evaluate(raw(ledger), obs("bg_a", bg_a=dict(writer_paths=bad)))
+
+
+def test_a_certificate_that_recorded_no_writer_hashes_still_sees_an_added_writer_file(ledger):
+    a = cert(ledger, "bg_a")
+    rows = lines(ledger)
+    rows[1].update(writer_hashes={}, writer_hashes_reason="service_no_writer")
+    write_chained(ledger, rows)
+    o = {"bg_a": dict(semantic_fingerprint=fp_of("bg_a"), writer_paths=[])}
+    assert sc.evaluate(raw(ledger), o).stale == {}
+    o["bg_a"]["writer_paths"] = [wpath("bg_a")]                                       # the asset has a writer file now
+    assert sc.evaluate(raw(ledger), o).stale[a] == [dict(code="writer_file_added", path=wpath("bg_a"))]
+
+
+# ───────────────────────── an upstream generation bump with identical output invalidates nothing ─────────────────────────
+
+def test_an_upstream_recertified_with_the_same_semantic_fingerprint_does_not_stale_its_dependents(ledger):
+    a1 = cert(ledger, "bg_a")
+    b = cert(ledger, "bg_b", up=[a1])
+    a2 = cert(ledger, "bg_a", n=1)                         # writer file changed: E5.1 mints generation 2, same output
+    assert a2.endswith("@2") and lines(ledger)[-1]["semantic_fingerprint"] == fp_of("bg_a")
+    o = obs("bg_a", "bg_b", bg_a=dict(writer_hashes=wh_of("bg_a", 1), writer_paths=list(wh_of("bg_a", 1))))
+    ev = sc.evaluate(raw(ledger), o)
+    assert ev.stale == {} and sorted(ev.current) == sorted([a2, b])
+
+
+def test_an_upstream_generation_bump_with_a_different_fingerprint_still_stales_dependents(ledger):
+    a1 = cert(ledger, "bg_a")
+    b = cert(ledger, "bg_b", up=[a1])
+    cert(ledger, "bg_a", fp=fp_of("bg_a", 1))
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))
+    assert set(ev.stale) == {b} and ev.stale[b][0]["code"] == "upstream_generation"
+    assert (ev.stale[b][0]["cited"], ev.stale[b][0]["latest"]) == (1, 2)
+
+
+def test_a_same_output_bump_whose_latest_generation_is_itself_stale_stales_the_dependents(ledger):
+    a1 = cert(ledger, "bg_a")
+    b = cert(ledger, "bg_b", up=[a1])
+    a2 = cert(ledger, "bg_a", n=1)
+    o = obs("bg_a", "bg_b", bg_a=dict(writer_hashes=wh_of("bg_a", 1), writer_paths=list(wh_of("bg_a", 1)),
+                                     semantic_fingerprint=fp_of("bg_a", 9)))        # the rows changed since
+    ev = sc.evaluate(raw(ledger), o)
+    assert set(ev.stale) == {a2, b}
+    assert ev.stale[b] == [dict(code="upstream_stale", upstream=a2, why="stale", cited=a1,
+                                via="generation_bump_same_output")]
+
+
+def test_a_same_output_bump_whose_latest_generation_is_invalidated_stales_the_dependents(ledger):
+    a1 = cert(ledger, "bg_a")
+    b = cert(ledger, "bg_b", up=[a1])
+    a2 = cert(ledger, "bg_a", n=1)
+    run(ledger, obs("bg_a", "bg_b", bg_a=dict(writer_hashes=wh_of("bg_a", 1), writer_paths=list(wh_of("bg_a", 1)),
+                                              semantic_fingerprint=fp_of("bg_a", 9))))        # invalidates a2 (and b)
+    cert(ledger, "bg_c", up=[a2])
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", "bg_c", bg_a=dict(writer_hashes=wh_of("bg_a", 1),
+                                                                         writer_paths=list(wh_of("bg_a", 1)))))
+    assert b in ev.invalidated and a2 in ev.invalidated and [x for x in ev.stale] == ["bg_c|gate|Build.registered@1"]
+
+
+def test_a_same_output_bump_to_a_non_passing_latest_generation_stales_the_dependents(ledger):
+    a1 = cert(ledger, "bg_a")
+    b = cert(ledger, "bg_b", up=[a1])
+    cert(ledger, "bg_a", verdict="FAIL")                    # generation 2 FAILS: no fingerprint to equal
+    ev = sc.evaluate(raw(ledger), obs("bg_b"))
+    assert set(ev.stale) == {b} and ev.stale[b][0]["code"] == "upstream_generation"
+    rows = lines(ledger)                                    # even with a (hand-shaped) equal fingerprint on the FAIL
+    rows[-1]["semantic_fingerprint"] = fp_of("bg_a")
+    write_chained(ledger, rows)
+    ev = sc.evaluate(raw(ledger), obs("bg_b"))
+    assert ev.stale[b][0]["code"] == "upstream_not_passing" and ev.stale[b][0]["via"] == "generation_bump_same_output"
+
+
+def test_a_chain_through_a_same_output_bump_is_followed_all_the_way(ledger):
+    a1 = cert(ledger, "bg_a")
+    b1 = cert(ledger, "bg_b", up=[a1])
+    c = cert(ledger, "bg_c", up=[b1])
+    cert(ledger, "bg_a", n=1)
+    cert(ledger, "bg_b", n=1, up=[f"bg_a|gate|Build.registered@2"])                   # b re-certified on the bumped a
+    o = obs("bg_a", "bg_b", "bg_c", bg_a=dict(writer_hashes=wh_of("bg_a", 1), writer_paths=list(wh_of("bg_a", 1))),
+            bg_b=dict(writer_hashes=wh_of("bg_b", 1), writer_paths=list(wh_of("bg_b", 1))))
+    assert sc.evaluate(raw(ledger), o).stale == {}                                    # c still cites b@1: same output
+    o["bg_b"]["semantic_fingerprint"] = fp_of("bg_b", 5)
+    assert c in sc.evaluate(raw(ledger), o).stale
 
 
 # ───────────────────────── honest nulls: unreadable input never reads "not stale" ─────────────────────────
@@ -710,7 +1107,7 @@ def test_a_repeated_invalidation_of_one_certificate_is_tolerated_and_counted_onc
     write_chained(ledger, rows[:-1] + [dict(inv)] + rows[-1:])
     lg = sc.parse_events(raw(ledger))
     assert len(lg.invs) == 2 and list(lg.inv_targets) == [a]
-    assert sc.rewalk_counts(raw(ledger)) == {("L0", "E1"): 1}
+    assert sc.rewalk_counts(raw(ledger)) == {"L0": 1}
     assert sc.evaluate(raw(ledger), obs("bg_a")).invalidated == [a]
 
 
@@ -737,7 +1134,7 @@ def test_invalidate_appends_one_line_per_stale_cert_then_a_watermark_in_the_docu
     x = inv[0]
     assert x["type"] == "invalidation" and x["asset"] == "bg_a" and x["layer"] == "L0"
     assert "cert_key" not in x and "generation" not in x and "verdict" not in x          # an EVENT, not a certificate
-    assert x["walk"] == 1 and x["epoch"] == "E1"
+    assert x["walk"] == 1 and "epoch" not in x
     assert x["reason"][0]["code"] == "semantic_fingerprint" and x["detected_on"] == NOW
     assert x["detected_by"] == "nikasha_stale_certs.py" and x["record_version"] == 1
     assert [y["seq"] for y in inv] == [5, 6, 7] and wm["seq"] == 8            # E5.1's numbering continues
@@ -765,7 +1162,7 @@ def test_invalidate_is_idempotent_a_second_identical_run_appends_nothing_and_use
     snap = raw(ledger)
     r = run(ledger, o)
     assert r.status == "unchanged" and r.invalidated == [] and raw(ledger) == snap
-    assert sc.rewalk_counts(raw(ledger)) == {("L0", "E1"): 1}
+    assert sc.rewalk_counts(raw(ledger)) == {"L0": 1}
 
 
 def test_a_clean_ledger_gets_a_watermark_once_and_nothing_after(ledger):
@@ -865,7 +1262,7 @@ def test_an_invalidation_line_with_a_wrong_prev_sha256_is_refused_on_read(ledger
 def test_a_hand_appended_unchained_invalidation_line_is_refused(ledger):
     a = cert(ledger, "bg_a")
     bad = dict(type="invalidation", asset="bg_a", layer="L0", invalidates=a, reason=[dict(code="writer_hash")], walk=1,
-               epoch="E1", detected_by="x", detected_on=NOW, record_version=1)
+               detected_by="x", detected_on=NOW, record_version=1)
     head = b"\n".join(raw_lines(ledger)[:2]) + b"\n"
     good_seq = json.loads(raw_lines(ledger)[1])["seq"] + 1
     for extra in ({}, {"seq": good_seq}, {"seq": good_seq, "prev_sha256": "f" * 64}, {"prev_sha256": shab(raw_lines(ledger)[1])},
@@ -1163,7 +1560,7 @@ def test_a_ref_that_cannot_be_read_raises_never_ok(tmp_path):
         sc.watermark_ok_at_ref("HEAD", repo, "../x")
 
 
-# ═══════════════ (4) bounded re-walks ═══════════════
+# ═══════════════ (4) bounded re-walks: counted per layer over the whole ledger ═══════════════
 
 def churn(ledger, n, asset="bg_a"):
     """Recertify `asset` at fingerprint n-1, then change the world to n: the next walk finds it stale."""
@@ -1174,45 +1571,56 @@ def walk_once(ledger, n, asset="bg_a", **kw):
     return run(ledger, obs(asset, **{asset: dict(semantic_fingerprint=fp_of(asset, n))}), **kw)
 
 
-def test_two_invalidating_walks_per_layer_are_allowed_and_the_third_is_refused_with_nothing_written(ledger):
+def three_walks_setup(ledger):
     cert(ledger, "bg_a")
     assert walk_once(ledger, 1).walk == 1
     churn(ledger, 2)
     assert walk_once(ledger, 2).walk == 2
     churn(ledger, 3)
+
+
+def test_two_invalidating_walks_per_layer_are_allowed_and_the_third_is_refused_with_nothing_written(ledger):
+    three_walks_setup(ledger)
     before = raw(ledger)
     with pytest.raises(sc.RewalkLimitExceeded) as ei:
         walk_once(ledger, 3)
     e = ei.value
-    assert e.code == "rewalk_limit" and e.layer == "L0" and e.epoch == "E1" and e.walks == 2
+    assert e.code == "rewalk_limit" and e.layer == "L0" and e.walks == 2 and e.limit == 2
     assert [x[0] for x in e.stale.items()] == ["bg_a|gate|Build.registered@3"]
+    assert "new-epoch" in e.message
     assert raw(ledger) == before, "a refused third walk must not write an invalidation OR a watermark"
     assert sc.watermark_ok(raw(ledger)) is False                     # the ledger stays unserviceable until SS reviews
 
 
-def test_a_new_acceptance_epoch_resets_the_count(ledger):
+def test_there_is_no_free_argument_that_raises_or_resets_the_limit(ledger):
+    three_walks_setup(ledger)
+    before = raw(ledger)
+    for kw_ in (dict(epoch="E2"), dict(max_rewalks=99), dict(epoch="E2", max_rewalks=3)):
+        with pytest.raises(TypeError):
+            walk_once(ledger, 3, **kw_)
+    assert sc.MAX_REWALKS == 2
+    with pytest.raises(sc.RewalkLimitExceeded):
+        walk_once(ledger, 3)
+    assert raw(ledger) == before
+    import inspect
+    assert set(inspect.signature(sc.invalidate).parameters) == {"ledger_path", "observed", "commit", "registry", "now",
+                                                                "observed_at_seq"}
+
+
+def test_counts_are_per_layer_over_the_whole_ledger(ledger):
     cert(ledger, "bg_a")
     walk_once(ledger, 1)
     churn(ledger, 2)
     walk_once(ledger, 2)
-    churn(ledger, 3)
-    r = walk_once(ledger, 3, epoch="E2")
-    assert r.walk == 3 and sc.rewalk_counts(raw(ledger)) == {("L0", "E1"): 2, ("L0", "E2"): 1}
-
-
-def test_the_limit_is_per_layer(ledger):
-    cert(ledger, "bg_a")
-    walk_once(ledger, 1)
-    churn(ledger, 2)
-    walk_once(ledger, 2)
-    cert(ledger, "bo_x")                                              # a different layer in the same epoch
-    r = run(ledger, obs("bg_a", "bo_x", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 2)), bo_x=dict(semantic_fingerprint=fp_of("bo_x", 1))))
-    assert [x for x in r.invalidated] == ["bo_x|gate|Build.registered@1"] and r.walk == 3
-    assert sc.rewalk_counts(raw(ledger)) == {("L0", "E1"): 2, ("L2", "E1"): 1}
+    cert(ledger, "bo_x")                                              # a different layer is not capped by L0's walks
+    r = run(ledger, obs("bg_a", "bo_x", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 2)),
+                        bo_x=dict(semantic_fingerprint=fp_of("bo_x", 1))))
+    assert r.invalidated == ["bo_x|gate|Build.registered@1"] and r.walk == 3
+    assert sc.rewalk_counts(raw(ledger)) == {"L0": 2, "L2": 1}
 
 
 def test_a_walk_that_touches_a_capped_layer_through_propagation_is_also_refused(ledger):
-    a = cert(ledger, "bg_a")
+    cert(ledger, "bg_a")
     walk_once(ledger, 1)
     churn(ledger, 2)
     walk_once(ledger, 2)
@@ -1230,21 +1638,19 @@ def test_a_walk_that_invalidates_nothing_does_not_count(ledger):
     assert sc.rewalk_counts(raw(ledger)) == {}
 
 
-def test_max_rewalks_is_a_parameter_defaulting_to_two(ledger):
-    assert sc.MAX_REWALKS == 2
-    cert(ledger, "bg_a")
-    walk_once(ledger, 1)
-    churn(ledger, 2)
-    with pytest.raises(sc.RewalkLimitExceeded):
-        walk_once(ledger, 2, max_rewalks=1)
-    assert walk_once(ledger, 2, max_rewalks=3).walk == 2
+def test_walk_ids_run_over_the_whole_ledger_not_over_the_number_of_lines(ledger):
+    chain(ledger)
+    r1 = run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))   # 3 lines
+    assert r1.walk == 1 and len(r1.invalidated) == 3
+    cert(ledger, "bg_d", fp=fp_of("bg_d", 0), n=1)
+    r2 = run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", bg_d=dict(writer_hashes=wh_of("bg_d", 2),
+                                                                    writer_paths=list(wh_of("bg_d", 2)))))
+    assert r2.walk == 2 and sc.rewalk_counts(raw(ledger)) == {"L0": 2}
 
 
-def test_the_epoch_and_commit_are_required_text(ledger):
+def test_commit_is_required_text(ledger):
     cert(ledger, "bg_a")
     for bad in ("", "  ", None, 3):
-        with pytest.raises(sc.StaleCertsError):
-            run(ledger, obs("bg_a"), epoch=bad)
         with pytest.raises(sc.StaleCertsError):
             run(ledger, obs("bg_a"), commit=bad)
     assert len(lines(ledger)) == 2
@@ -1254,6 +1660,139 @@ def test_a_missing_ledger_is_refused_and_not_created(tmp_path):
     with pytest.raises(sc.UnreadableInput) as ei:
         run(tmp_path / "nope.jsonl", {})
     assert ei.value.code == "ledger_missing" and not (tmp_path / "nope.jsonl").exists()
+
+
+# ───────────────────────── new-epoch: the only reset, an explicit event ─────────────────────────
+
+def test_new_epoch_appends_an_epoch_reset_event_and_restarts_only_that_layer(ledger):
+    three_walks_setup(ledger)
+    cert(ledger, "bo_x")
+    run(ledger, obs("bg_a", "bo_x", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 2)),
+                    bo_x=dict(semantic_fingerprint=fp_of("bo_x", 1))))
+    assert sc.rewalk_counts(raw(ledger)) == {"L0": 2, "L2": 1}
+    ev = sc.new_epoch(ledger, "L0", "N-28", now=NOW)
+    assert ev == dict(type="epoch_reset", asset="_ledger", layer="L0", decision="N-28", reset_on=NOW, record_version=1)
+    last = lines(ledger)[-1]
+    assert last["type"] == "epoch_reset" and "cert_key" not in last and last["seq"] == len(lines(ledger)) - 1
+    assert sc.rewalk_counts(raw(ledger)) == {"L2": 1}                          # L0 restarted, L2 untouched
+    nc.read_ledger(ledger)                                                      # E5.1's strict reader accepts it
+    r = walk_once(ledger, 3)                                                    # the third walk now goes through
+    assert r.invalidated == ["bg_a|gate|Build.registered@3"] and sc.rewalk_counts(raw(ledger)) == {"L0": 1, "L2": 1}
+
+
+def test_after_a_reset_the_limit_applies_again_to_the_new_count(ledger):
+    three_walks_setup(ledger)
+    sc.new_epoch(ledger, "L0", "N-28")
+    walk_once(ledger, 3)
+    churn(ledger, 4)
+    walk_once(ledger, 4)
+    churn(ledger, 5)
+    before = raw(ledger)
+    with pytest.raises(sc.RewalkLimitExceeded):
+        walk_once(ledger, 5)
+    assert raw(ledger) == before and sc.rewalk_counts(raw(ledger)) == {"L0": 2}
+
+
+def test_a_reset_for_one_layer_never_resets_another(ledger):
+    three_walks_setup(ledger)
+    sc.new_epoch(ledger, "L2", "N-28")
+    with pytest.raises(sc.RewalkLimitExceeded):
+        walk_once(ledger, 3)
+
+
+def test_a_reset_only_restarts_walks_before_it_not_after(ledger):
+    three_walks_setup(ledger)
+    sc.new_epoch(ledger, "L0", "N-28")
+    walk_once(ledger, 3)
+    sc.new_epoch(ledger, "L2", "N-29")                                           # a later reset of ANOTHER layer
+    assert sc.rewalk_counts(raw(ledger)) == {"L0": 1}
+
+
+@pytest.mark.parametrize("layer,decision", [("L9", "N-28"), ("l0", "N-28"), ("", "N-28"), (None, "N-28"), ("L0", ""),
+                                            ("L0", "28"), ("L0", "N-"), ("L0", "n-28"), ("L0", None), ("L0", "N-28 x"),
+                                            ("L0", "N-28\n{}"), ("L0", "N-" + "9" * 40)])
+def test_new_epoch_refuses_a_bad_layer_or_decision_id_and_writes_nothing(ledger, layer, decision):
+    cert(ledger, "bg_a")
+    before = raw(ledger)
+    with pytest.raises(sc.StaleCertsError):
+        sc.new_epoch(ledger, layer, decision)
+    assert raw(ledger) == before
+
+
+def test_new_epoch_on_a_missing_ledger_is_refused(tmp_path):
+    with pytest.raises(sc.UnreadableInput):
+        sc.new_epoch(tmp_path / "nope.jsonl", "L0", "N-28")
+    assert not (tmp_path / "nope.jsonl").exists()
+
+
+def test_a_malformed_epoch_reset_in_the_ledger_is_refused_on_read(ledger):
+    cert(ledger, "bg_a")
+    rows = lines(ledger)
+    for bad in (dict(type="epoch_reset", asset="_ledger", layer="L9", decision="N-28"),
+                dict(type="epoch_reset", asset="_ledger", layer="L0", decision="whatever"),
+                dict(type="epoch_reset", asset="bg_a", layer="L0", decision="N-28"),
+                dict(type="epoch_reset", asset="_ledger", decision="N-28")):
+        write_chained(ledger, rows + [bad])
+        with pytest.raises(sc.LedgerShapeError):
+            sc.rewalk_counts(raw(ledger))
+
+
+# ───────────────────────── observed_at_seq: what one run claims to have covered ─────────────────────────
+
+def test_observed_at_seq_caps_what_is_evaluated_and_what_the_watermark_covers(ledger):
+    cert(ledger, "bg_a")
+    head, _ = nc.chain_head(raw(ledger))
+    cert(ledger, "bg_b")                                    # certified AFTER the observations were taken
+    r = run(ledger, obs("bg_a"), observed_at_seq=head)       # bg_b is not observed: it must not be judged, nor required
+    assert r.status == "appended" and r.watermark["covers_seq"] == head and r.watermark["certs_processed"] == 1
+    st = sc.watermark_status(raw(ledger))
+    assert st["ok"] is False and st["unevaluated"] == 1       # bg_b reads as behind, not as evaluated
+    with pytest.raises(sc.WatermarkBehind):
+        sc.current_certificates(raw(ledger))
+
+
+def test_without_observed_at_seq_the_head_as_read_is_used(ledger):
+    chain(ledger)
+    head, _ = nc.chain_head(raw(ledger))
+    r = run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    assert r.watermark["covers_seq"] == head
+
+
+@pytest.mark.parametrize("bad", [-1, 99, True, "3", 1.5])
+def test_observed_at_seq_outside_the_ledger_is_refused_and_writes_nothing(ledger, bad):
+    chain(ledger)
+    before = raw(ledger)
+    with pytest.raises(sc.StaleCertsError) as ei:
+        run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"), observed_at_seq=bad)
+    assert ei.value.code == "bad_observed_at_seq" and raw(ledger) == before
+
+
+def test_observed_at_seq_behind_the_existing_watermark_is_refused(ledger):
+    chain(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    before = raw(ledger)
+    with pytest.raises(sc.StaleCertsError) as ei:
+        run(ledger, obs("bg_a"), observed_at_seq=1)
+    assert ei.value.code == "bad_observed_at_seq" and raw(ledger) == before
+
+
+def test_a_capped_run_does_not_judge_certificates_written_after_the_cap(ledger):
+    cert(ledger, "bg_a")
+    head, _ = nc.chain_head(raw(ledger))
+    cert(ledger, "bg_b", fp=fp_of("bg_b", 3))               # its premises do not match the (older) observations
+    r = run(ledger, obs("bg_a"), observed_at_seq=head)       # nothing about bg_b can be concluded from them
+    assert r.invalidated == [] and [x for x in lines(ledger) if x.get("type") == "invalidation"] == []
+    run(ledger, obs("bg_a", "bg_b", bg_b=dict(semantic_fingerprint=fp_of("bg_b", 3))))
+    assert sc.watermark_ok(raw(ledger)) is True
+
+
+def test_a_capped_run_is_unchanged_when_the_watermark_already_covers_the_cap(ledger):
+    chain(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    head, _ = nc.chain_head(raw(ledger))
+    snap = raw(ledger)
+    assert run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"), observed_at_seq=head).status == "unchanged"
+    assert raw(ledger) == snap
 
 
 # ───────────────────────── CLI ─────────────────────────
@@ -1271,14 +1810,25 @@ def test_cli_invalidate_then_watermark_ok(ledger, tmp_path):
     of.write_text(json.dumps(dict(assets=obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1))))))
     p = cli("watermark-ok", "--ledger", str(ledger))
     assert p.returncode == 2
-    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--epoch", "E1", "--commit", COMMIT)
+    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--commit", COMMIT)
     assert p.returncode == 0, p.stderr
     out = json.loads(p.stdout)
     assert out["status"] == "appended" and out["invalidated"] == [a] and out["walk"] == 1
     assert cli("watermark-ok", "--ledger", str(ledger)).returncode == 0
 
 
-def test_cli_rewalk_limit_exits_3_and_names_the_layer(ledger, tmp_path):
+def test_cli_has_no_epoch_or_max_rewalks_flag(ledger, tmp_path):
+    cert(ledger, "bg_a")
+    of = tmp_path / "obs.json"
+    of.write_text(json.dumps(dict(assets=obs("bg_a"))))
+    before = raw(ledger)
+    for flag in (("--epoch", "E2"), ("--max-rewalks", "99")):
+        p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--commit", COMMIT, *flag)
+        assert p.returncode == 2 and "unrecognized arguments" in p.stderr
+    assert raw(ledger) == before
+
+
+def test_cli_rewalk_limit_exits_3_names_the_layer_and_new_epoch_is_the_way_out(ledger, tmp_path):
     cert(ledger, "bg_a")
     for n in (1, 2):
         walk_once(ledger, n)
@@ -1286,9 +1836,23 @@ def test_cli_rewalk_limit_exits_3_and_names_the_layer(ledger, tmp_path):
     of = tmp_path / "obs.json"
     of.write_text(json.dumps(dict(assets=obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 3))))))
     before = raw(ledger)
-    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--epoch", "E1", "--commit", COMMIT)
-    assert p.returncode == 3 and "rewalk_limit" in p.stderr and "L0" in p.stderr
+    args = ("invalidate", "--ledger", str(ledger), "--observed", str(of), "--commit", COMMIT)
+    p = cli(*args)
+    assert p.returncode == 3 and "rewalk_limit" in p.stderr and "L0" in p.stderr and "new-epoch" in p.stderr
     assert raw(ledger) == before
+    q = cli("new-epoch", "--ledger", str(ledger), "--layer", "L0", "--decision", "N-28")
+    assert q.returncode == 0, q.stderr
+    assert json.loads(q.stdout) == dict(status="appended", layer="L0", decision="N-28")
+    assert cli(*args).returncode == 0
+
+
+def test_cli_new_epoch_refuses_a_bad_decision(ledger):
+    cert(ledger, "bg_a")
+    before = raw(ledger)
+    p = cli("new-epoch", "--ledger", str(ledger), "--layer", "L0", "--decision", "because")
+    assert p.returncode == 2 and "bad_decision" in p.stderr and raw(ledger) == before
+    p = cli("new-epoch", "--ledger", str(ledger), "--layer", "L8", "--decision", "N-28")
+    assert p.returncode == 2 and "bad_layer" in p.stderr and raw(ledger) == before
 
 
 def test_cli_missing_observation_exits_2_and_writes_nothing(ledger, tmp_path):
@@ -1296,13 +1860,69 @@ def test_cli_missing_observation_exits_2_and_writes_nothing(ledger, tmp_path):
     of = tmp_path / "obs.json"
     of.write_text(json.dumps(dict(assets={})))
     before = raw(ledger)
-    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--epoch", "E1", "--commit", COMMIT)
+    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--commit", COMMIT)
     assert p.returncode == 2 and "missing_observation" in p.stderr and raw(ledger) == before
 
 
+def test_cli_registry_needs_registry_assets(ledger, tmp_path):
+    a = cert(ledger, "bg_a")
+    of = tmp_path / "obs.json"
+    of.write_text(json.dumps(dict(assets=obs("bg_a"), registry=dict(revision=ac.REGISTRY_REVISION + 1,
+                                                                     fingerprint=ac.registry_fingerprint()))))
+    before = raw(ledger)
+    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--commit", COMMIT)
+    assert p.returncode == 2 and "unreadable_input" in p.stderr and raw(ledger) == before
+    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--commit", COMMIT, "--registry-assets", "bg_a")
+    assert p.returncode == 0, p.stderr
+    assert json.loads(p.stdout)["invalidated"] == [a]
+    # --registry-assets without a registry in the file is refused
+    of.write_text(json.dumps(dict(assets=obs("bg_a"))))
+    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--commit", COMMIT, "--registry-assets", "bg_a")
+    assert p.returncode == 2 and "bad_registry" in p.stderr
+
+
+def test_cli_observed_at_seq_is_honoured(ledger, tmp_path):
+    cert(ledger, "bg_a")
+    head, _ = nc.chain_head(raw(ledger))
+    cert(ledger, "bg_b")
+    of = tmp_path / "obs.json"
+    of.write_text(json.dumps(dict(assets=obs("bg_a"))))
+    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--commit", COMMIT,
+            "--observed-at-seq", str(head))
+    assert p.returncode == 0, p.stderr
+    assert lines(ledger)[-1]["covers_seq"] == head
+
+
+def test_cli_watermark_ok_reads_through_the_e51_shared_lock_reader(ledger, monkeypatch):
+    # the CLI path must not do a plain read: prove main() goes through nc.read_records
+    calls = []
+    real = nc.read_records
+    monkeypatch.setattr(nc, "read_records", lambda p: calls.append(p) or real(p))
+    chain(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    calls.clear()
+    assert sc.main(["watermark-ok", "--ledger", str(ledger)]) == 0
+    assert calls == [ledger]
+
+
+def test_cli_watermark_ok_waits_for_an_exclusive_lock_holder(ledger):
+    import fcntl, threading, time
+    chain(ledger)
+    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
+    out = []
+    with open(ledger, "rb") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        t = threading.Thread(target=lambda: out.append(sc.main(["watermark-ok", "--ledger", str(ledger)])))
+        t.start()
+        time.sleep(0.4)
+        blocked = t.is_alive() and not out
+        fcntl.flock(held, fcntl.LOCK_UN)
+    t.join(5)
+    assert blocked and out == [0]
+
+
 def test_cli_script_error_exits_5(ledger, tmp_path):
-    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(tmp_path / "absent.json"), "--epoch", "E1",
-            "--commit", COMMIT)
+    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(tmp_path / "absent.json"), "--commit", COMMIT)
     assert p.returncode == 5
 
 
