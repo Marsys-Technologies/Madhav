@@ -1,0 +1,15 @@
+{
+  "lane": "karaka_web_order",
+  "ruling": "karaka web order-dependence (SS ruling, S-L1 mandatory)",
+  "pr": "branch suvarna/land/TI-l1-karaka-web-order-001",
+  "description": "ga_structural._build_karaka_web_rows (karaka_web_per_varga). The old builder read the kn_rao karaka assigned_graha rows with no ORDER BY and tested the Parashari aspect only from the earlier planet to the later one in that arbitrary order, so whether an aspect row existed, and on which planet's subject, depended on read order. Fix: total ORDER BY on the read; planets visited in the fixed nine-graha order; every ORDERED pair is evaluated, so a row on subject X with key aspect_Y means X aspects Y and the Y-to-X aspect is its own independent fact; conjunction (symmetric) is emitted on BOTH subjects. The planet set, signs, houses and the aspect geometry are unchanged: the new output is exactly the UNION of every row the old builder could emit under any read order. Only row EXISTENCE changes, and only by additions; the old stored rows are all retained. value_jsonb gains a 'direction' field and citation_human is restated as 'X aspects Y' / 'X conjunct Y' (neither is compared by the detector).",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["karaka_web_per_varga"],
+      "change_types": ["appeared"],
+      "expected_direction": "Rows only APPEAR; none disappear and no value changes (value_text is the relationship, fixed by the key prefix). Offline OLD-vs-NEW on the canonical chart's stored chart_divisionals + kn_rao karaka rows, per ayanamsha (stored today -> new, added, removed 0, unchanged = stored): lahiri_chitrapaksha 219 -> 440 (+221: 80 conjunction, 141 aspect); krishnamurti 221 -> 429 (+208); raman 226 -> 425 (+199); surya_siddhanta_classical 206 -> 424 (+218); true_chitra 228 -> 456 (+228); total +1074 across the five ayanamshas. The 80 added conjunction rows on Lahiri are the second subject's mirror of each existing conjunction (80 stored, 160 new); the 141 added aspect rows are the reverse-direction aspects the old one-way test never evaluated. A DISAPPEARED row or a changed value on this category from THIS lane would be a bug; a disappearance may legitimately arrive from another lane that moves varga signs (fa2_ga_vargas / ephemeris) and is attributed by that lane's own hook.",
+      "note": "No expected_count: the +1074 is a prediction on today's stored varga positions, but other S-L1 lanes (F-A2 ga_vargas, ephemeris) may move varga signs and therefore this category's row set in the same rebuild, so an exact bound here would turn a legitimate cross-lane change into a false EXPECTATION MISMATCH. Old-builder output varied with read order: across 300 random read orders on the Lahiri inputs it emitted 299 distinct row sets of 173 to 263 rows each; the stored 219 rows are exactly what the old builder emits when the karaka rows arrive role-alphabetical (1 of the 8! = 40,320 planet orders reproduces the stored set exactly)."
+    }
+  ]
+}
