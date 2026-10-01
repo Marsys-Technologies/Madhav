@@ -60,4 +60,4 @@ steward's D-PINS-A2.5 wording "new writer" names this category).
 ## Authority identity
 
 The immutable approval identity of this authority is the commit that first
-introduced this document: `AUTHORITY_COMMIT_PLACEHOLDER`.
+introduced this document: `2292ee6b0cebceedc6fdaa80f0fd428e04231c65`.
