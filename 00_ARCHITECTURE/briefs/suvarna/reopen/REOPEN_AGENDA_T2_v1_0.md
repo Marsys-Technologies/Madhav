@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_REOPEN_AGENDA_T2
 canonical_id: SUVARNA_REOPEN_AGENDA_T2
-version: "1.0"
+version: "1.1"
 status: DRAFT-HELD-FOR-J1
 produced_on: 2026-10-02
 produced_in: "Exec Suvarna Engine, Track E lane E2 (queue id E2.1-design-002); drafted by a Sonnet drafter"
@@ -17,6 +17,7 @@ sources:
   - "NIKASHA_CHANGE_REGISTER_v2_0.md (v2.8), the eleven rows"
   - "the tier-2 document, the tier-3 and tier-4 templates and the L0 instance at origin/campaign/nikasha-test @ 2a78ec64d"
 changelog:
+  - "1.1 (2026-10-02): independent-review changes. R89 owner/supplier split; D-7.1 consistency (DP02 use, one DP05 producer, DP10/DP16/DP17, no 'mechanical' claim, DP13 removed from L5); R88 L1 row aligned with the detector; D3 citations relabelled."
   - "1.0 (2026-10-02): first issue. Eleven rows; drafted replacement text; no tier document edited. R85 is not a row (withdrawn from the T2 agenda by D2 rev. 2.1; CLOSED in the register); R109's registry columns are P9 data work, not a reopen."
 ---
 
@@ -236,7 +237,7 @@ D2 says "§9.2 per-layer switch behaviour". The register gives the L1 content an
 | Layer | Switch ON — what it may do (as the table above states it) | Switch OFF — what the layer emits | Detector |
 |---|---|---|---|
 | L0 | event vocabulary | The same vocabulary: a vocabulary is not an event store and is not derived from life events (§6.1). | Named by the layer instance (T3 §2.1: for each rule, the detector). |
-| L1 | separate event-time context | Computes identically under both states. The switch binds consumers (L2 and above), not the fact layer; event-time context is a separate overlay that OFF deselects. | Birth-fact immutability per (chart_id, input revision): the L1 fact rows for a (chart_id, input revision) are identical with the switch ON and OFF. |
+| L1 | separate event-time context | Its fact rows are identical under both states: the switch binds consumers (L2 and above), not the fact layer. Event-time context, where authorised, is a separate overlay outside the fact rows, and OFF deselects it. | Birth-fact immutability per (chart_id, input revision): the L1 fact rows for a (chart_id, input revision) are identical with the switch ON and OFF; the event-time overlay is not among the fact rows compared. |
 | L2 | structural alternatives compared against reported history | Its event-free products only; the ON overlay named in the previous column is deselected, never recomputed. | Named by the layer instance (T3 §2.1: for each rule, the detector). |
 | L3 | alignment of reported intervals against independently established mechanisms, and inspection of unmatched windows | Its event-free products only; the ON overlay named in the previous column is deselected, never recomputed. | Named by the layer instance (T3 §2.1: for each rule, the detector). |
 | L4 | manifestation distinctions | Its event-free products only; the ON overlay named in the previous column is deselected, never recomputed. | Named by the layer instance (T3 §2.1: for each rule, the detector). |
@@ -285,21 +286,21 @@ D2 says "§9.2 per-layer switch behaviour". The register gives the L1 content an
 > R89 (§3.4 carried-by-layer column)
 > — D2 :123
 
-**Drafted replacement text.** The §3.4 table gains a third column; the first two columns are unchanged:
+**Drafted replacement text.** The §3.4 table gains a third column with an explicit owner and, where a row has inputs from other layers, a supplier; the first two columns are unchanged:
 
 ~~~~
-| What the acharya presentation renders | Which contract must carry it | Carried by layer |
+| What the acharya presentation renders | Which contract must carry it | Carried by layer (owner; supplier) |
 |---|---|---|
-| The method and school a finding rests on, and where authorities disagree | DP02 rule qualification, amended to carry school/tradition and unresolved alternatives | L0 (DP02 is produced by L0, §7.1) |
-| The prerequisites actually tested and the exceptions actually checked, including those that passed silently | DP02 (the clause set that must be tested), DP05 (each clause's actual result — passed, partial, failed) | L0 for the clause set (DP02); L2 for each clause's result (DP05, the configuration hydrated before timing) |
-| Conventions in force - ayanamsha, node, house system, varga construction | DP01 identity/release, DP03 chart facts | L1 (via DP01 identity/release and DP03 chart facts) |
-| Intermediate quantities, not only the graded result | DP03, DP04 condition decomposition | L1 (via DP03, DP04) |
-| Dignity, strength and condition components **separately**, with their units and their disagreements | DP04 | L1 (via DP04) |
-| The competing readings and which classical authority each rests on | DP06 structural relationship (variants and ancestry), DP02 (the source witness each variant rests on) | L2 (DP06 variants and ancestry), with the source witness each variant rests on from L0 (DP02) |
-| The chain of influence with its typed relations, not a summarized verdict | DP06 | L2 (DP06) |
-| The clock geometry, the activation rule, the named nearest-versus-better-supported criterion, and the manifestation bridge or its falsifier | DP07 clocks/contacts, DP08 temporal mechanism, DP09 manifestation | L3 for clocks, contacts and the activation rule (DP07, DP08); L4 for the manifestation bridge or its falsifier (DP09); clock primitives from L0 and L1 (DP07) |
+| The method and school a finding rests on, and where authorities disagree | DP02 rule qualification, amended to carry school/tradition and unresolved alternatives | Owner: L0 (DP02, §7.1). |
+| The prerequisites actually tested and the exceptions actually checked, including those that passed silently | DP02 (the clause set that must be tested), DP05 (each clause's actual result — passed, partial, failed) | Owner: L0 for the clause set (DP02); L2 for each clause's result (DP05). |
+| Conventions in force - ayanamsha, node, house system, varga construction | DP01 identity/release, DP03 chart facts | Owner: L1 (DP01 identity/release and DP03 chart facts). |
+| Intermediate quantities, not only the graded result | DP03, DP04 condition decomposition | Owner: L1 (DP03, DP04). |
+| Dignity, strength and condition components **separately**, with their units and their disagreements | DP04 | Owner: L1 (DP04). |
+| The competing readings and which classical authority each rests on | DP06 structural relationship (variants and ancestry), DP02 (the source witness each variant rests on) | Owner: L2 (DP06 variants and ancestry). Supplied by: L0 (the source witness each variant rests on, DP02). |
+| The chain of influence with its typed relations, not a summarized verdict | DP06 | Owner: L2 (DP06). |
+| The clock geometry, the activation rule, the named nearest-versus-better-supported criterion, and the manifestation bridge or its falsifier | DP07 clocks/contacts, DP08 temporal mechanism, DP09 manifestation | Owner: L3 (clock geometry, activation rule and the named criterion: DP07, DP08); L4 (the manifestation bridge or its falsifier: DP09). Supplied by: L0 and L1 (clock primitives, DP07). |
 
-A layer owns a §3.4 row when it appears in that row's third column. A layer carries and hands onward the fields of the rows it owns; the producer-field carriage test (§12.2; see R119 (d)) and T3 §2.2 read this column.
+A layer owns a §3.4 row when the third column names it after "Owner:". A layer named after "Supplied by:" supplies inputs and does not own the row. An owner carries and hands onward the fields of the rows it owns; the producer-field carriage test (§12.2; see R119 (d)) and T3 §2.2 read this column.
 ~~~~
 
 Basis for each cell: the register's own assignments ("conventions → L1 via DP01/DP03; intermediate quantities → L1 via DP03/DP04; dignity components → L1 via DP04; method/school, passed clauses, competing readings, typed chains, clock rows → L0/L2/L3 as named") for rows 3–5 and the layer set; the "as named" layers for rows 1, 2, 6, 7, 8 are read from §7.1's Producer → consumer column (DP02 L0 :421; DP05 "L0+L1 → L2 → L3" :424; DP06 L2 :425; DP07 "L0/L1/L3 primitives" :426; DP08 "L2+qualified clocks → L3" :427; DP09 "L3+… → L4" :428).
@@ -312,7 +313,7 @@ Basis for each cell: the register's own assignments ("conventions → L1 via DP0
 
 **Open questions.**
 1. Row 2: DP05's producer cell reads "L0+L1 → L2 → L3" (:424), which does not say which layer *produces* the clause results. The draft assigns the result to L2 (the configuration layer, §6.3) and the clause set to L0 (DP02, which says "each clause's *result* for a chart is DP05", :421). Owner to confirm.
-2. Row 8: DP09's cell reads "L3+qualified structural/rule evidence → L4" (:428); the draft treats the manifestation bridge and falsifier as carried by L4 (§6.5). The register assigns "clock rows" to L3 and says nothing of L4. Owner to confirm.
+2. Rows 6 and 8, owners and suppliers. A column that simply listed every layer in a cell would make L0 and L1 owners of the clock rows, which the register assigns only to L3; the draft therefore separates owner from supplier. Whether the supplier layers owe any carriage test of their own (rather than being tested through the owner) is not stated by any source. Row 8, DP09: DP09's cell reads "L3+qualified structural/rule evidence → L4" (:428); the draft treats the manifestation bridge and falsifier as carried by L4 (§6.5). The register assigns "clock rows" to L3 and says nothing of L4. Owner to confirm.
 3. Conventions (row 3): DP01 is an L0 contract, but the *conventions in force for a chart* are carried in L1's chart facts; the draft follows the register ("→ L1 via DP01/DP03").
 
 ## R90 — Per-layer enumeration of the coverage obligations (so width is measurable)
@@ -499,7 +500,7 @@ The DP rows a layer plan reads for those obligations carry no tag:
 >   on the instance for the transferred part alone. This does not discharge product acceptance. Where
 >   the owner can run the test, its result is linked, never inherited as the layer's own acceptance:
 >   the existence of a built plane is not an ownership assignment.
-> — D2 :172–177
+> — D2 :172–177 (D3 ruling, in the D2 file)
 
 **Drafted replacement text.**
 
@@ -524,7 +525,7 @@ DP11: append  **[TRANSFERS]** (retrieval and conversation planes, §8).
 DP12: append  **[TRANSFERS]** (conversation plane, §8).
 ~~~~
 
-(d) **Optional, outside D2's literal list — SS to keep or strike.** D3 makes the producer-field proof "binding" ("every §3.4 field the layer owns is present in its produced contracts, by contract test", D2 :169–171) and T3's new test 4 and §2.2 `measured_by` name a "producer-field carriage test", but T2 §12.2 has no row for it: the only parity row (:614) is tagged [TRANSFERS] and folds the producer half ("the acharya rendering exposes every §3.4 field its layer owns") into the end-to-end test. A row that is not [TRANSFERS] closes that:
+(d) **Optional, outside D2's literal list — SS to keep or strike.** D3 makes the producer-field proof "binding" ("every §3.4 field the layer owns is present in its produced contracts, by contract test", D3 in the D2 file :169–171) and T3's new test 4 and §2.2 `measured_by` name a "producer-field carriage test", but T2 §12.2 has no row for it: the only parity row (:614) is tagged [TRANSFERS] and folds the producer half ("the acharya rendering exposes every §3.4 field its layer owns") into the end-to-end test. A row that is not [TRANSFERS] closes that:
 
 ~~~~
 | Presentation fields carried | Every §3.4 field this layer owns (third column of §3.4) is present in its produced contracts — a contract test run in the layer, not transferred. |
@@ -562,7 +563,7 @@ Three register rows ask for three parts of one change to T2 §7.1. They are draf
 | Contract | Edge type (§3.2) | Declared use (consumer) | Basis (row's own words — agenda only) |
 |---|---|---|---|
 | DP01 | Definition | calculation; navigation | units and released definitions · qualified aliases |
-| DP02 | Definition | applicability; interpretation | executable scope · unresolved alternatives |
+| DP02 | Definition | calculation; applicability; interpretation | calculation, interpretation and investigator · executable scope · unresolved alternatives |
 | DP03 | Computational | calculation | grain/value/unit |
 | DP04 | Computational | calculation; uncertainty | constituents and reasons · Retain zeros as zeros and unavailable as unavailable |
 | DP05 | Computational | applicability; counter-evidence | passed, partial, failed · and cancellation |
@@ -582,21 +583,22 @@ Three register rows ask for three parts of one change to T2 §7.1. They are draf
 
 Paste form: two columns appended to each §7.1 row, headed `Edge type (§3.2)` and `Declared use`, holding the second and third columns above.
 
-**Part B — per-layer produced / consumed index**, a new §7.1a after the table, derived mechanically from the Producer → consumer column (layer names as that column writes them; where it names a kind of consumer, not a layer, the cell says so):
+**Part B — per-layer produced / consumed index**, a new §7.1a after the table. It is the drafter's reading of the Producer → consumer column, not a mechanical derivation: DP05, DP07 and the L4/L5 cells needed judgement, listed in the open questions. DP10 reads "All producers → registry/investigator/build consumers" (T2 :429), so every layer produces it; DP11–DP17 name kinds of producer and consumer rather than layers, which the last row says:
 
 ~~~~
 ### 7.1a Per-layer index of the contracts
 
 | Layer | Produces (producer side of §7.1) | Consumes (consumer side of §7.1) |
 |---|---|---|
-| L0 | DP01, DP02; DP05 (with L1); DP07 primitives (with L1, L3) | — |
-| L1 | DP03, DP04; DP05 (with L0); DP07 primitives (with L0, L3) | DP01 (all adapters and writers); DP02 (calculation) |
-| L2 | DP05 (the L0+L1 → L2 hop); DP06; DP08 (with qualified clocks) | DP01; DP02 (interpretation); DP03, DP04 |
-| L3 | DP07 primitives (with L0, L1); DP09 (with qualified structural/rule evidence) | DP01; DP02; DP03, DP04; DP05; DP06; DP07 (primitives from L0, L1); DP08 |
-| L4 | none named in §7.1 | DP01; DP02; DP03, DP04; DP09 |
-| L5 | none named in §7.1 | DP13 (observation owner); DP14; DP15a, DP15b |
+| L0 | DP01, DP02; DP10 (capability metadata) | — |
+| L1 | DP03, DP04; DP10 | DP01 (all adapters and writers); DP02 (calculation) |
+| L2 | DP05 (configuration and every clause's result); DP06; DP08 (with qualified clocks); DP10 | DP01; DP02 (interpretation); DP03, DP04 |
+| L3 | DP09 (with qualified structural/rule evidence); DP10 | DP01; DP02; DP03, DP04; DP05; DP06; DP07 (primitives, from L0, L1, L3); DP08 |
+| L4 | DP10; no other contract named in §7.1 | DP01; DP02; DP03, DP04; DP09 |
+| L5 | DP10; no other contract named in §7.1 | DP15b ("protected L5") |
+| Not layer-specific | DP11, DP12, DP13, DP14, DP15a, DP16, DP17: §7.1 names kinds of producer and consumer (capabilities, findings, intake, comparison, claims, changed inputs), not layers; DP14 consumes independent L1–L4 context; DP07 primitives are produced by L0, L1 and L3 | |
 
-The index is read from §7.1's Producer → consumer column. A layer plan lists its produced and consumed contracts (§13.3 item 6) and is checked against this table; the registry columns `produces_contracts` and `consumes_contracts` will carry the same index as data.
+The index is the drafter's reading of §7.1's Producer → consumer column, with the judgement calls listed under "open questions" in the agenda. A layer plan lists its produced and consumed contracts (§13.3 item 6) and is checked against this table; the registry columns `produces_contracts` and `consumes_contracts` will carry the same index as data.
 ~~~~
 
 **Part C — the fallback for R198.** If SS prefers not to hand-author an index that R109 will generate, §13.3 item 6 can instead name where the index lives: append "; the per-layer produced and consumed index is the registry's `produces_contracts` / `consumes_contracts` columns, and until they exist the layer plan states it from §7.1's Producer → consumer column". This answers R198's own alternative ("or §13.3 item 6 names where that index lives") and nothing else.
@@ -608,8 +610,9 @@ The index is read from §7.1's Producer → consumer column. A layer plan lists 
 
 **Open questions (shared).**
 1. The edge-type and declared-use values are proposals; they have a basis in the row text but are judgements. A domain owner should confirm all 18 rows, or SS can defer the column to R109's registry data and seal only the structure.
-2. L4 and L5 "produces" are not named in §7.1 at all: L4 (manifestation) hands onward to L5 and to the served reading, and L5's outputs are claims and evaluations. This is exactly the gap R181 reports for L4 ("Which DP contracts L4 produces (vs consumes)"). It cannot be closed by transcription; a contract row (or an explicit statement that L4 produces DP09 and L5 produces DP15a/b) is a content decision.
-3. DP05's chain "L0+L1 → L2 → L3" is read as L2 producing the configuration; owner to confirm (same question as R89 open question 1).
+2. Beyond DP10 (capability metadata, which every producer owes), L4 and L5 "produces" are not named in §7.1 at all: L4 (manifestation) hands onward to L5 and to the served reading, and L5's outputs are claims and evaluations. This is exactly the gap R181 reports for L4 ("Which DP contracts L4 produces (vs consumes)"). It cannot be closed by transcription; a contract row (or an explicit statement that L4 produces DP09 and L5 produces DP15a/b) is a content decision.
+3. DP05's chain "L0+L1 → L2 → L3" has two readings: (i) L2 produces the configuration and each clause's result, with L0 and L1 as inputs (used in Part B and in R89); (ii) L0 and L1 each produce part of DP05 (the clause set from L0, facts from L1) and L2 assembles it. The draft takes (i) so that Part B and R89 agree; if SS prefers (ii), Part B's L0 and L1 rows gain DP05 and R89 row 2 changes. Owner to confirm.
+4. DP07's producers are written "L0/L1/L3 primitives" (T2 :426); Part B lists them in the last row, not under each of the three layers, because the cell does not say which primitives each produces.
 
 ## R181 — Which DP contracts each layer produces versus consumes, and the edge type of each (L4 case)
 

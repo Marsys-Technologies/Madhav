@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_REOPEN_AGENDA_T3
 canonical_id: SUVARNA_REOPEN_AGENDA_T3
-version: "1.0"
+version: "1.1"
 status: DRAFT-HELD-FOR-J1
 produced_on: 2026-10-02
 produced_in: "Exec Suvarna Engine, Track E lane E2 (queue id E2.1-design-003); drafted by a Sonnet drafter"
@@ -12,7 +12,7 @@ row_ids: [R08, R09, R10, R65, R67, R68, R71, R74, R93, R120, R201, R221, R94, R1
 agenda_rows: 12
 closing_rows: 5
 deferred_not_rows: [R131, R210, R214]
-verdict_changing_rows: [R10, R71, R221, R94, R140, R185]
+verdict_changing_rows: [R10, R65, R71, R221, R94, R140, R185]
 decision: "N-4.T3, Strategic Suvarṇa (plan §4.2 J1 rows 4 and 7), decided together with the T1 and T2 agendas; closes E2.2 (R71) with the T3 re-seal"
 sources:
   - "TRACK_E_BRIEF_v1_0.md §6 (the spec); SUVARNA_CAMPAIGN_PLAN_v1_5.md §4.2 (J1 rows 4 and 7), §5.1 (E2)"
@@ -20,12 +20,13 @@ sources:
   - "NIKASHA_CHANGE_REGISTER_v2_0.md (v2.8), the seventeen rows"
   - "the tier-3 document, the tier-1/2/4 documents and the L0 instance at origin/campaign/nikasha-test @ 2a78ec64d"
 changelog:
+  - "1.1 (2026-10-02): independent-review changes. R65 re-tagged VERDICT-CHANGING with Option B and the dependency on unsealed T4; R93 rule 2 quotes the register example; R221 open question 3 rewritten (catalog_provenance.py is on main, identical blob); R120 role placed in 3.2/3.3; R74 wording labelled; D3 citations relabelled; tracker line cited."
   - "1.0 (2026-10-02): first issue. Twelve agenda rows plus five rows that close with them; R131, R210, R214 listed as deferred, not rows. Drafted replacement text; no tier document edited."
 ---
 
 # Reopen agenda — Tier 3 (layer definition and strategy template) — v1.0 DRAFT, held for J1
 
-**Purpose.** The D2 ruling of 2026-09-27 authorised one reopen per sealed founding document on a reviewed row-to-clause agenda. This is the agenda for Tier 3, `LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md`. It holds **12 agenda rows** (R08, R09, R10, R65, R67, R68, R71, R74, R93, R120, R201, R221) and **5 rows that close with them** (R94, R140, R185 with R71; R192, R208 with R120) = 17 sections. R71, the last freeze-blocking contradiction (J1 row 4, plan item E2.2), is here, with D3's replacement text copied verbatim. **Six sections are VERDICT-CHANGING** (R10, R71, R221 and R71's closers R94, R140, R185); read those first. T3 re-seals last, after T1 and T2, because its §0.1, §2.2, §2.3, §2.4 and §2.6 inherit from clauses T2 changes (D2 rule 3). The agenda is closed once opened (D2 rule 1).
+**Purpose.** The D2 ruling of 2026-09-27 authorised one reopen per sealed founding document on a reviewed row-to-clause agenda. This is the agenda for Tier 3, `LAYER_DEFINITION_AND_STRATEGY_TEMPLATE_v1_0.md`. It holds **12 agenda rows** (R08, R09, R10, R65, R67, R68, R71, R74, R93, R120, R201, R221) and **5 rows that close with them** (R94, R140, R185 with R71; R192, R208 with R120) = 17 sections. R71, the last freeze-blocking contradiction (J1 row 4, plan item E2.2), is here, with D3's replacement text copied verbatim. **Seven sections are VERDICT-CHANGING** (R10, R65, R71, R221 and R71's closers R94, R140, R185); read those first. T3 re-seals last, after T1 and T2, because its §0.1, §2.2, §2.3, §2.4 and §2.6 inherit from clauses T2 changes (D2 rule 3). The agenda is closed once opened (D2 rule 1).
 
 Line numbers are those of the blobs at `origin/campaign/nikasha-test` @ `2a78ec64d`; every quotation was copied from its source by script and verified against it. Row-count reconciliation (31 against 32) is in Appendix A of the T1 agenda.
 
@@ -51,7 +52,7 @@ Line numbers are those of the blobs at `origin/campaign/nikasha-test` @ `2a78ec6
 | R08 | T3 §5.2 :585 cites "§7"; §2.5 :365 sits after §2.7 :330 | Define a Part 6 "Corrections with gates" and cite it; move the §2.5 block before §2.6 (no renumbering) | structural |
 | R09 | T3 §2.7 :358–359 (layer scope only) | Per-asset carriage table in §2.7 (D1/D2/D3 or `NO_DETECTOR` with reason; never N/A) | structural |
 | R10 | T3 §1.1 :169–172 | Shared-table sentence: list once, name every producer, scope counts per producer (with R06) | **VERDICT-CHANGING** |
-| R65 | T3 §5.2 Build row :539; changelog :37 ("six static checks") | Align on nine (T4 §4.2 and the tracker already say nine) | wording-only |
+| R65 | T3 §5.2 Build row :539; changelog :37 ("six static checks") | Option A: align on nine (T4 §4.2 and the tracker say nine; makes sealed T3 depend on unsealed T4). Option B: record the six-plus-three split | **VERDICT-CHANGING** |
 | R67 | T3 §5.4 test 5 :629 ("eight-row map") | "nine-row map" | wording-only |
 | R68 | T3 :359 and :520 (`NO DETECTOR`) | `NO_DETECTOR` (the closed-set spelling) | wording-only |
 | R71 | T3 §5.4 test 4 :628 and §2.2 `measured_by` :278 | D3's two replacement texts, verbatim | **VERDICT-CHANGING** |
@@ -234,7 +235,7 @@ One check per asset: the one that fits what the asset actually does (§5.2). An 
 
 ## R65 — Build check count: T3 says six static checks, T4 lists nine
 
-**Risk class:** wording-only (verify the census's Build check count is nine before sealing; the sentence describes a gate definition).
+**Risk class: VERDICT-CHANGING.** Option A makes the sealed Build gate itself include the run-record checks 7–9 of T4 §4.2; check 8 (`history`) FAILs when the latest run errored or aborted, so an asset can lose a Build PASS because of T3's wording. The nine checks are defined in T4 §4.2, which is still DRAFT_PENDING_REVIEW.
 **Register row.**
 
 > Build check-count disagreement: T3 §5.2/changelog and the tracker GATES comment say "six static checks"; T4 §4.2 lists nine. Align on nine, or explicitly record "T3 names the six static checks; T4 adds three run-record checks"
@@ -253,25 +254,37 @@ One check per asset: the one that fits what the asset actually does (§5.2). An 
 > All nine checks run read-only, and all nine can return false:
 > — T4 :268
 
-> | 9 | **dependency liveness** | every declared dependency can actually reach `lit` before this asset runs. A dependency that no writer can ever light is a permanent `DEP-ASSERT` trap; a dependency merely not lit *yet* is an ordering fault. Both are orchestrator-integration failures and both are this asset's gap, not the orchestrator's |
-> — T4 :280
+> | 8 | **history** | its recorded outcomes: `state ∈ complete / error / aborted / queued` and `disposition`. FAIL if the most recent run errored or aborted; PARTIAL if it has errored before and the latest run completed; N/A if never run (check 7 owns that). Measured: **13 of 40 L0 assets have errored or aborted**, 7 of them with the *identical* error — `post-write integrity check failed: integrity_check_sql → False` — which is one systemic finding, not seven |
+> — T4 :279
+
+T4's status, which matters for Option A:
+
+> status: DRAFT_PENDING_REVIEW
+> — T4 :5
 
 **Remedy chosen by D2.**
 
 > R65's T3 half (§5.2/changelog check count — "align on nine" or "record the six-plus-three split", chosen on the agenda)
 > — D2 :129–130
 
-**Chosen here: align on nine.** The tier that defines the checks (T4 §4.2: "All nine checks run read-only, and all nine can return false"), T4's gate table (:232, "the nine checks of §4.2") and, per the register's own closure of the tracker half, the tracker comment ("nine static checks … aligned on nine per T4 §4.2") already say nine; the "six-plus-three" wording would leave T3 as the only document counting six. The `ctx.dry_run` runtime state is separate in T4 (:286–290) and stays.
+**Two options; SS chooses.** **Option A, align on nine** (drafted below): the tier that defines the checks (T4 §4.2: "All nine checks run read-only, and all nine can return false"), T4's gate table (:232) and the tracker already say nine; the tracker's Build comment (`00_ARCHITECTURE/control/asset_elevation_tracker.py` :73 on `campaign/nikasha-test`) reads "nine static checks, all read-only (R65: aligned on nine per T4 §4.2; D2 reopen carries the T3 §5.2/changelog half)". Cost: sealed T3 then depends on an unsealed document (T4 is DRAFT_PENDING_REVIEW), and the sealed Build gate includes check 8, which FAILs on an errored latest run. Do not seal T3 under Option A before T4 §4.2 is accepted. **Option B, record the six-plus-three split** (the register's alternative): T3 keeps naming the six static checks and says that tier-4 §4.2 adds three run-record checks (exercised, history, dependency liveness) that it, not T3, defines; the sealed gate text does not change what Build PASS requires, but T3 and T4 then count differently by design and say so. The `ctx.dry_run` runtime state is separate in T4 (:286–290) under both options.
 
 **Drafted replacement text.**
-(a) §5.2 Build row (:539), inside the cell:
+Option A, (a) §5.2 Build row (:539), inside the cell:
 
 ~~~~
 old: six static checks (registered · contract · dispatchable target · DAG resolvable · count/integrity · completion honesty) plus a runtime state
 new: the nine read-only checks of the tier-4 template §4.2 (registered · contract · dispatchable target · DAG resolvable · count/integrity · completion honesty · exercised · history · dependency liveness) plus a runtime state
 ~~~~
 
-(b) Changelog :37 is history; annotate, do not rewrite (T2 precedent, T2 :45):
+Option B, §5.2 Build row (:539), inside the cell:
+
+~~~~
+old: six static checks (registered · contract · dispatchable target · DAG resolvable · count/integrity · completion honesty) plus a runtime state
+new: six read-only static checks (registered · contract · dispatchable target · DAG resolvable · count/integrity · completion honesty), which this template names, plus three run-record checks (exercised · history · dependency liveness) that the tier-4 template §4.2 adds and defines, plus a runtime state
+~~~~
+
+(b) Under Option A, changelog :37 is history; annotate, do not rewrite (T2 precedent, T2 :45):
 
 ~~~~
 old: six read-only static checks plus a runtime state that `ctx.dry_run` establishes without any production write
@@ -280,7 +293,7 @@ new: six read-only static checks [CORRECTED on the T3 reopen: nine read-only che
 
 **Cross-tier re-render hazards.** T4 :34 (changelog) and T4 :245 (`measured_by: six static checks …`) still say six: that is register row R252 (OPEN, not sealed, not on this agenda); fix it in the same pass or T3 and T4 will disagree again. T3 :518–521 and T4 :13, :232 say "nine gates"/"nine checks": consistent. Grep "six static" across tiers, instances and the tracker.
 
-**Open questions.** None beyond the sequencing with R252.
+**Open questions.** 1. A or B (SS). 2. Under A, the seal order: T4 §4.2 accepted first (J1 row 8 accepts Tier 4 at J1.4). 3. The sequencing with R252.
 
 ## R67 — §5.4 test 5 says "eight-row map"; the map has nine rows
 
@@ -407,7 +420,7 @@ new (:520): claim with a detector that could return false; a gate without one is
 >   on the instance for the transferred part alone. This does not discharge product acceptance. Where
 >   the owner can run the test, its result is linked, never inherited as the layer's own acceptance:
 >   the existence of a built plane is not an ownership assignment.
-> — D2 :169–177
+> — D2 :169–177 (D3 ruling, in the D2 file)
 
 > T3 §5.4 test 4 → "4. **Presentation fields carried.** Every §3.4 field this layer owns (§2.2) is
 > present in its produced contracts — a contract test, run here. End-to-end Presentation parity and
@@ -419,14 +432,14 @@ new (:520): claim with a detector that could return false; a gate without one is
 > T3 §2.2 `measured_by:` → "producer-field carriage test — each §3.4 field this layer owns is present in
 > its produced contracts; the presentation-parity test itself (Data plane §12.2) is [TRANSFERS] and is
 > linked when its owner runs it, never run as this layer's own acceptance".
-> — D2 :181–190
+> — D2 :181–190 (D3 replacement texts, in the D2 file)
 
 > The same tag is applied at every inheritance point R119 names (T2 §13.3 items 1 and 6; T4 §1.2), so
 > the class is fixed, not one row. R94, R119, R140 and R185 close with R71.
 >
-> — D2 :192–194
+> — D2 :192–194 (D3, in the D2 file)
 
-**Drafted replacement text.** Both replacements are D3's, character for character (extracted by script from D2 :181–190):
+**Drafted replacement text.** Both replacements are D3's, character for character (extracted by script from the D3 text in the D2 file, :181–190):
 
 (a) §5.4 test 4 (:628):
 
@@ -489,10 +502,10 @@ measured_by: producer-field carriage test — each §3.4 field this layer owns i
 > R74 (§5.1 ruling-11 clause)
 > — D2 :132
 
-**Drafted replacement text** — appended to the paragraph ending at :506, using the wording T3 already has at §3.1:
+**Drafted replacement text** — appended to the paragraph ending at :506, built on T3 §3.1's sentence (:392–394); the phrases "the product's §14 table carries eleven rows", "discharged above the data plane" and "scored on no data-plane layer" are new wording (taken from T1 :587 and T2 :666), and §3.1's closing sentence is kept:
 
 ~~~~
-**Ten, not the parent's eleven, and deliberately:** the product's §14 table carries eleven rows; `Domain correctness` is discharged above the data plane (native ruling, 2026-09-25; data plane §13.3 item 1) and is scored on no data-plane layer. Do not "correct" this count upward.
+**Ten, not the parent's eleven, and deliberately:** the product's §14 table carries eleven rows; `Domain correctness` is discharged above the data plane (native ruling, 2026-09-25; data plane §13.3 item 1) and is scored on no data-plane layer. Do not "correct" this count upward. What a layer does owe is §2.7's carriage and reproduction.
 ~~~~
 **Cross-tier re-render hazards.** None to change: §3.1 (:392–394) and T2 :666 already say it; T4 :91 already says "ten, not eleven". Grep "eleven" for consistency.
 **Open questions.** None.
@@ -542,8 +555,8 @@ measured_by: producer-field carriage test — each §3.4 field this layer owns i
 ~~~~
 **Evidence → disposition.** The disposition follows from the Part 1 evidence, and the instance cites, for every asset, the evidence rows it rests on. Apply in order; the first rule that matches governs; none is a quota.
 
-1. **U** when the evidence is incomplete — for example, exercised, with no rows and no module reading it, pending 0.1. Lack of a caller in a bounded search is not redundancy.
-2. **E** when the asset is exercised and served and a gate or build-record check on its content reports FAIL — for example, exercised, served, history FAIL.
+1. **U** when the evidence is incomplete — exercised + 0 rows + 0 modules ⇒ U pending 0.1. Lack of a caller in a bounded search is not redundancy.
+2. **E** when the asset is exercised, served and a recorded check fails — exercised + served + history FAIL ⇒ E.
 3. **I** when its individual term is large and its synergistic term absent (1.5).
 4. **R** or **H** only as candidates when the asset is about zero on all three terms (1.5); **R** only on the data plane's conditions (§10.1 item 7: identified successor, caller/runtime/audit/history analysis, compatibility, provenance transfer, reversible migration), and never for a reference layer for lack of a reader.
 5. **P**, **Q**, **C** as the data plane defines them (§10.1); where rules 1–4 do not decide, the instance states the evidence it used. There is no default disposition.
@@ -557,7 +570,7 @@ measured_by: producer-field carriage test — each §3.4 field this layer owns i
 **Cross-tier re-render hazards.** §4.4 (:477) and T4 §0.1 row 12 ("the preserved kernel … from layer §3.2", T4 :101) now have a source; T4 row 8 (disposition) too. T2 §10.1 is unchanged and is the definitions' authority.
 
 **Open questions.**
-1. Rules 1 and 2 are the register's two examples generalised; "a gate or build-record check on its content reports FAIL" (rule 2) is the least certain wording. The register gives no examples for P, Q, C or H, and the draft invents none (B.10). SS or a domain owner may want those rules supplied before the freeze or deferred to round two.
+1. Rules 1 and 2 are the register's two examples, reproduced as written ("exercised + served + history FAIL ⇒ E; exercised + 0 rows + 0 modules ⇒ U pending §0.1"). Note that T4 check 8, `history`, is about run outcomes (T4 :279), not about content, so rule 2 as the register words it is a build-history rule; whether content failures also give E is not stated by any source. The register gives no examples for P, Q, C or H, and the draft invents none (B.10). SS or a domain owner may want those rules supplied before the freeze or deferred to round two.
 2. Rule order matters (U before E): confirm.
 
 ## R120 — The `role` value has no per-asset source
@@ -586,13 +599,13 @@ measured_by: producer-field carriage test — each §3.4 field this layer owns i
 > R120 (§4.4 role row; R192/R208 close with it)
 > — D2 :133
 
-**Chosen here: reword the existing bullet, add no new one.** T3 §4.4 has twelve bullets, not thirteen; the bullet at :476 already names the role but offers two values, assigns it nowhere and gives the brief no source. T4 counts "thirteen inherited items" (T4 :64, :86) by splitting some of §4.4's bullets, so adding a bullet to T3 would change T4's count in three places; rewording changes none.
+**Chosen here: reword the existing bullet, add no new one.** T3 §4.4 has twelve bullets, not thirteen; the bullet at :476 already names the role but offers two values, assigns it nowhere and gives the brief no source. T4 counts "thirteen inherited items" (T4 :64, :86) by splitting some of §4.4's bullets, so adding a bullet to T3 would change T4's count in three places; rewording changes none. The role is per-asset content, so the draft places the assignment in §3.2/§3.3 (the per-asset sections), not in §3.4 (the intra-layer interplay matrix).
 
 **Drafted replacement text** (:476):
 
 ~~~~
 old: - its manifestation or temporal role
-new: - its role — `manifestation`, `temporal` or `neither` (supplies what both rest on) — assigned per asset by this instance (in 3.4, with a one-line reason); the brief copies it and does not choose it
+new: - its role — `manifestation`, `temporal` or `neither` (supplies what both rest on) — assigned per asset by this instance (in 3.2, beside the disposition, with a one-line reason); the brief copies it and does not choose it
 ~~~~
 
 **Cross-tier re-render hazards.** T4 :76 (`role: … # from layer §4.4`) becomes true as written; T4 :64/:86/:105 ("thirteen") unchanged. T1 §16 and T2 §13.3 ("its manifestation or temporal role", T2 :686) say the brief states the role: unchanged.
@@ -705,7 +718,7 @@ An asset outside the closure is first a catalog-provenance finding; only once ev
 **Open questions.**
 1. **The echo set decides the size of this row.** :467 (4.4 bullet 1) needs a consequential edit or the asset-brief derivation loses its first row; the draft does not rewrite it because D2 names §0.1 only. SS to widen or accept the consequence.
 2. R218 and R85 closed on a snapshot (17/24 P-needs PASS; 111 of 127 assets in the closure, per R85's closure note); the template cites the instrument, not the figures.
-3. `catalog_provenance.py` lives on `campaign/nikasha-test` and reaches `main` with E4.1; the draft's `inherits`/`measured_by` lines name it, so T3 must not re-seal before it is on `main`.
+3. The instrument is already on `main`: `platform/scripts/governance/catalog_provenance.py` has the same git blob (`8ef86fba5d96`) on `origin/main` and on `origin/campaign/nikasha-test` (checked 2026-10-02 with `git rev-parse <ref>:<path>`), so the re-seal precondition on the script is met. What differs is the data: `CLOSURE_REPORT.md` and `producer_provenance.derived.json` are on the nikasha-test branch only, and `main` carries `capability_knowledge.snapshot.json`; the closure figures must be re-run at a named revision, which the draft's `measured_by` already requires.
 
 ## R94 — Presentation-parity ownership seen from L1
 
@@ -717,7 +730,7 @@ An asset outside the closure is first a catalog-provenance finding; only once ev
 > **State in register:** OPEN — closes with R71 per D3 ruling 2026-09-27 (T3 reopen)
 > — REG R94 :266 (severity BLOCKS_LAYER)
 
-**Clause and remedy.** T3 §5.4 test 4 (:628) as quoted under R71. The register's own remedy for R94 is the v1.0 wording ("run where the surface exists; where the owning plane is not built, record [TRANSFERS]-pending — never a pass, never a block"). D3 supersedes it: it removes "run where the surface exists" because "the existence of a built plane is not an ownership assignment" (D2 :176–177). R94 closes with R71 on D3's text, not on its own.
+**Clause and remedy.** T3 §5.4 test 4 (:628) as quoted under R71. The register's own remedy for R94 is the v1.0 wording ("run where the surface exists; where the owning plane is not built, record [TRANSFERS]-pending — never a pass, never a block"). D3 supersedes it: it removes "run where the surface exists" because "the existence of a built plane is not an ownership assignment" (D3, D2 file :176–177). R94 closes with R71 on D3's text, not on its own.
 
 **Drafted replacement text.** None of its own: R71 (a) and (b).
 **Cross-tier hazards and open questions.** As under R71.
@@ -732,7 +745,7 @@ An asset outside the closure is first a catalog-provenance finding; only once ev
 > **State in register:** OPEN — closes with R71 per D3 ruling 2026-09-27 (T3 reopen)
 > — REG R140 :322 (severity BLOCKS_LAYER)
 
-**Clause and remedy.** T3 §5.4 test 4 (:628). R140's two remedies were "holds, where the layer is the owner" or removing [TRANSFERS] from T2 §12.2. D3 takes neither: test 4 is reworded to "Presentation fields carried" and T2's tag stays (D2 :172–173). Closes with R71.
+**Clause and remedy.** T3 §5.4 test 4 (:628). R140's two remedies were "holds, where the layer is the owner" or removing [TRANSFERS] from T2 §12.2. D3 takes neither: test 4 is reworded to "Presentation fields carried" and T2's tag stays (D3, D2 file :172–173). Closes with R71.
 
 **Drafted replacement text.** None of its own: R71 (a) and (b).
 **Cross-tier hazards and open questions.** As under R71.
