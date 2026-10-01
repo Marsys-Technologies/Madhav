@@ -247,9 +247,13 @@ def test_workload_census_pinned():
     # Drishti levels all lie outside the traveled bands: an honest zero,
     # searched and recorded — not a dropped search.
     assert sat_dri == [] and jup_dri == []
-    # The first Saturn episode's orb entry predates the horizon: the kernel
-    # says so explicitly (padded arc build makes the truncation real).
-    assert sat_conj[0].truncated_at_horizon == "start"
+    # The first Saturn episode's orb entry falls EXACTLY at the horizon start
+    # (saturn_curve(T0) = 280.0 = 281.0 − orb 1.0 exactly, rising at 8°/yr, so
+    # the body is outside the band for t < T0): the contact is fully observed
+    # from its entry onward — NOT truncated. (Pre-secant-close-out, bisection
+    # tolerance luck placed the entry a hair before T0 and this pin read
+    # 'start'; the exact computation is None — Pravāha A5.5 F10-F12 evidence.)
+    assert sat_conj[0].truncated_at_horizon is None
     assert sat_conj[1].truncated_at_horizon is None
     assert jup_conj[0].truncated_at_horizon is None
     # No unresolved-station contacts on this workload.

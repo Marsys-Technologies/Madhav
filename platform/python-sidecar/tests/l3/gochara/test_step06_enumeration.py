@@ -522,9 +522,17 @@ def test_truncated_both_preserved_and_jd_round_trip():
         BACKEND, ephe_path=None, refine=False, generation="4.1")[0]
     by_rel = {r["relation"]: r for r in rows}
     # one row for the span (the target attachment), carrying 'both' — the
-    # ingress is not a separate boundary row (A2.2 amendment 4)
-    assert set(by_rel) == {"residence"}
+    # ingress is not a separate boundary row (A2.2 amendment 4). PLUS one
+    # kakshya sky event: the curve crosses the 15.0° kakshya boundary at
+    # EXACTLY h0 (15.0 + 0.001·(jd−h0)), and per the R2Q3/Codex v1.1-amendment-3
+    # contract a seam crossing at the domain start is a real crossing,
+    # emitted once as a sky_event row. (Pre-secant-close-out, bisection
+    # tolerance luck placed that root ~63 s before h0 and the row was absent;
+    # the exact computation includes it — Pravāha A5.5 F10-F12 evidence.)
+    assert set(by_rel) == {"residence", "kakshya_cell_crossing"}
     assert by_rel["residence"]["truncated_at_horizon"] == "both"
+    assert by_rel["kakshya_cell_crossing"]["t_exact"] == datetime(2026, 1, 1, tzinfo=UTC)
+    assert by_rel["kakshya_cell_crossing"]["target_type"] == "sky_event"
 
 
 def test_coverage_rows_shape_and_invariants():

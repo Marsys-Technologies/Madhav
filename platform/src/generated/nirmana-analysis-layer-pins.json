@@ -1241,7 +1241,7 @@
       },
       {
         "generation_id": "l3:f4c69a6d0cd4:829354703812",
-        "historical_snapshot_commit": "729dfe2c4907610754be0a3c1cc244d6f54c9ba4",
+        "historical_snapshot_commit": "5d800f9ea2c925bfe52731540e2a78609531e24a",
         "pin": {
           "admission": {
             "authority_commit": "fa0b0a9a003624b8f39e30600e98460a60170bb2",
@@ -1280,7 +1280,7 @@
           "supersedes_generation_id": "l3:333eb7abcac3:d1bf773c4d94",
           "writer_inventory_sha256": "829354703812b38a8f7cde47795d91db0affd90e37f93ae057f4c9cb3bba44fd"
         },
-        "superseded_by_generation_id": "l3:a7fa8c25e1db:5d43541d2fa6",
+        "superseded_by_generation_id": "l3:61e1aa60b508:9844e89ddd17",
         "writer_digests": {
           "ka_avadhi": "2e876a2381014fad924052a98bc387bdb82e90d70b1469c192b45640bb066679",
           "ka_bhavishya_lekha": "5c84f86134afc84b31ccce7c2620061d01e645a526d48adcbafac501b83d9542",
@@ -1539,23 +1539,19 @@
     },
     "L3": {
       "admission": {
-        "authority_commit": "e47d0b274ebf234ada8be7cfe82a34d5446384eb",
-        "authority_decision": "D-PINS-A5.4",
+        "authority_commit": "fa0b0a9a003624b8f39e30600e98460a60170bb2",
+        "authority_decision": "D-PINS-A2",
         "changed_assets": [
-          "ka_gochara",
-          "ka_gochara_resonance",
           "ka_gochara_v3_century_materialize",
           "ka_moorti_nirnaya",
-          "ka_vedha_gochara"
+          "ka_sangam"
         ],
         "delta_classifications": {
-          "ka_gochara": "derived_import_change",
-          "ka_gochara_resonance": "approved_intentional_change",
           "ka_gochara_v3_century_materialize": "derived_import_change",
-          "ka_moorti_nirnaya": "approved_intentional_change",
-          "ka_vedha_gochara": "approved_intentional_and_derived_import_change"
+          "ka_moorti_nirnaya": "derived_import_change",
+          "ka_sangam": "derived_import_change"
         },
-        "reason": "D-PINS-A5.4 (steward on the native's 2026-09-30 standing authority, EVENTS.jsonl 2026-09-30T13:02:03Z, M20260930T130203-0531): PR #2769 carries the Pravaha A5.4 Tier 0-S repairs plus the ASTRA_REVIEW_A5_4 v1.0\u2013v1.4 closure reworks; five L3 writers' provenance closures moved, membership unchanged. ka_gochara_resonance and ka_moorti_nirnaya carry own-module edits only (approved_intentional_change); ka_vedha_gochara carries own-module edits (logic/writer, plus gate.py with its identity helpers) and import-closure movement via gochara_grammar/* (approved_intentional_and_derived_import_change); ka_gochara and ka_gochara_v3_century_materialize moved only through their import closures \u2014 gochara_grammar/{dasha_data,primitives}.py, gochara_v3/{context,engine,mechanisms/w23_tara_bala}.py, ka_vedha_gochara/{gate,logic}.py, and the materializer's persisted vedha state \u2014 with no own-module edits (derived_import_change). ONE successor directly over main's protected baseline l3:f4c69a6d0cd4:829354703812 (byte-identical to origin/main 729dfe2c4907610754be0a3c1cc244d6f54c9ba4, named as the historical snapshot; the A0.6 precedent \u2014 lane-local snapshots cannot survive squash delivery). Round 6: NO writer digest moved (the r6 delta is cutover scripts and tests only); this is the same successor re-based over the advanced baseline from the unchanged r5 writer-digest regeneration commit.",
+        "reason": "D-PINS-A2 (steward on the native's 2026-09-30 standing authority, EVENTS.jsonl 2026-09-30T03:22:56Z; this admission directed by the steward 2026-09-30, M20260930T220447-289d): #2793 (61e1aa60b, A5.5 kernel F10-F12 truncation-honesty + secant close-out, the A2.1 kernel-geometry changeset's own continuation) moved three L3 writers' import closures through gochara_kernel — ka_sangam, ka_moorti_nirnaya, ka_gochara_v3_century_materialize; no own-module edits, membership unchanged. All three are derived_import_change. ONE successor over the protected baseline l3:f4c69a6d0cd4:829354703812 (byte-identical to origin/main 729dfe2c4907610754be0a3c1cc244d6f54c9ba4, named as the historical snapshot; the A0.6 precedent). Source = the #2793 merge commit, whose committed writer inventory is byte-identical to this tree.",
         "review_artifacts": [
           {
             "commit": "5142109f7f219ea860f859e322646f79d875bee8",
@@ -1565,17 +1561,17 @@
           }
         ],
         "schema_version": "nirmana-analysis-layer-successor/v2",
-        "source_commit": "a7fa8c25e1db78f01c2d33036b1a020501555704"
+        "source_commit": "61e1aa60b5084a144101f4f1a233a6da0edee81c"
       },
       "asset_prefix": "ka_",
-      "convergence_commit": "a7fa8c25e1db78f01c2d33036b1a020501555704",
-      "generation_id": "l3:a7fa8c25e1db:5d43541d2fa6",
+      "convergence_commit": "61e1aa60b5084a144101f4f1a233a6da0edee81c",
+      "generation_id": "l3:61e1aa60b508:9844e89ddd17",
       "non_writer_assets": [
         "ka_gochara_sweep"
       ],
       "receipt_count": 23,
       "supersedes_generation_id": "l3:f4c69a6d0cd4:829354703812",
-      "writer_inventory_sha256": "5d43541d2fa6aec2b29ca3d99cd0bdad1cefef73c0c9032b685ec2e1617bfca1"
+      "writer_inventory_sha256": "9844e89ddd171745094aaf3505dfd31915ed3e8185df263baf2f76274fe7a806"
     },
     "L4": {
       "admission": {

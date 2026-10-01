@@ -50,18 +50,18 @@ def replace_layer_writers(
 #      layers L1, L3;
 #   3. the D-PINS-A2 merge pins re-admission successor (pravaha/a2-kernel-geometry,
 #      Pravaha A2.3) on layer L3 only;
-#   4. the D-PINS-A5.4 merge pins re-admission successor (pravaha/a5-tier0s-repairs,
-#      PR #2769, Pravaha A5.4) on layer L3 only.
+#   4. the D-PINS-A2 continuation successor (pravaha/pins-admit-2793, Pravaha A5.5
+#      follow-up admission for #2793) on layer L3 only.
 # Most tests below assert facts about THAT delivered chain, so CURRENT_* is the
 # delivered chain: the live document with all successor generations rewound, and
 # the inventory replaced by the archived predecessor slices. POST_A2MERGE_* is the
-# first intermediate generation (D-PINS-A5.4 rewound, D-PINS-A2 still live),
-# POST_READMISSION_* the next (D-PINS-A2 rewound, D-E022 still live), POST_REPAIR_*
-# the next (D-E022 rewound, L0-repair still live). The tests at the end of the
-# file assert the repair, readmission, A2-merge and A5.4-merge successors
-# themselves against POST_REPAIR_*, POST_READMISSION_*, POST_A2MERGE_* and LIVE_*
-# respectively. This follows the file's own convention (see PRE_KSHETRA_PINS):
-# rewind, do not weaken.
+# first intermediate generation (the D-PINS-A2 continuation rewound, D-PINS-A2
+# still live), POST_READMISSION_* the next (D-PINS-A2 rewound, D-E022 still live),
+# POST_REPAIR_* the next (D-E022 rewound, L0-repair still live). The tests at the
+# end of the file assert the repair, readmission, A2-merge and A2-continuation
+# successors themselves against POST_REPAIR_*, POST_READMISSION_*,
+# POST_A2MERGE_* and LIVE_* respectively. This follows the file's own convention
+# (see PRE_KSHETRA_PINS): rewind, do not weaken.
 #
 # CAUTION - a rewound document is only a valid `check()` input against a protected
 # baseline that PREDATES the repair. Once the repair is on main, every baseline
@@ -81,12 +81,13 @@ REPAIR_LAYERS = ("L0", "L2", "L3")
 READMISSION_REWINDS = ("L1", "L3")
 # L3 carries ONE D-PINS-A2 successor (the pravaha/a2-kernel-geometry merge).
 A2_MERGE_REWINDS = ("L3",)
-# L3 carries ONE D-PINS-A5.4 successor (the pravaha/a5-tier0s-repairs merge,
-# PR #2769) on top of the D-PINS-A2 successor.
-A54_MERGE_REWINDS = ("L3",)
+# L3 carries ONE D-PINS-A2 continuation successor (pravaha/pins-admit-2793,
+# the #2793 digest movement admitted post-merge) on top of the D-PINS-A2
+# successor.
+A2C_MERGE_REWINDS = ("L3",)
 POST_A2MERGE_PINS = LIVE_PINS
 POST_A2MERGE_INVENTORY = LIVE_INVENTORY
-for _layer in A54_MERGE_REWINDS:
+for _layer in A2C_MERGE_REWINDS:
     POST_A2MERGE_INVENTORY = replace_layer_writers(
         POST_A2MERGE_INVENTORY, _layer, POST_A2MERGE_PINS["history"][_layer][-1]["writer_digests"]
     )
@@ -1721,7 +1722,9 @@ def test_a2_merge_leaves_every_other_layer_and_the_definitions_untouched() -> No
 def test_a2_merge_only_l3_is_authorised_for_the_decision() -> None:
     authorised = pins_module.AUTHORIZED_SOURCE_COMMITS[A2_MERGE_DECISION]
     assert set(authorised) == {"L3"}
-    assert authorised["L3"] == frozenset({A2_MERGE["L3"]["source"]})
+    assert authorised["L3"] == frozenset(
+        {A2_MERGE["L3"]["source"], A2C_MERGE["L3"]["source"]}
+    )
     for layer in ("L0", "L1", "L2", "L4", "L5"):
         with pytest.raises(SystemExit, match="is not authorized by"):
             pins_module.validate_authorized_source(
@@ -1739,104 +1742,59 @@ def test_a2_merge_authority_chain_binds_the_recorded_decision_document() -> None
         pins_module.validate_authority_binding(A2_MERGE_DECISION, "0" * 40)
 
 
-# --- D-PINS-A5.4 merge pins re-admission (pravaha/a5-tier0s-repairs, PR #2769,
-# Pravaha A5.4)
-# The A5.4 Tier 0-S repairs edited three writers' own modules
-# (ka_gochara_resonance/writer.py, ka_moorti_nirnaya/{logic,writer}.py,
-# ka_vedha_gochara/{logic,writer}.py) and the shared gochara_grammar/* /
-# gochara_v3/* surfaces, moving five L3 writers' provenance closures
-# (membership unchanged). The steward authorised re-admission on the native's
-# 2026-09-30 standing authority (D-PINS-A5.4, EVENTS.jsonl 2026-09-30T13:02:03Z,
-# message M20260930T130203-0531); the authority evidence document is
-# 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/
-# D_PINS_A5_4_PINS_READMISSION_AUTHORITY_v1_0.md.
-A54_MERGE_DECISION = "D-PINS-A5.4"
-# The authority identity (first commit of the evidence document) and the pinned
-# source commit are DIFFERENT commits, on purpose (same pattern as the L0
-# repair, D-E022 and D-PINS-A2): the source is the branch's writer-digest
-# regeneration commit, whose committed writer inventory is byte-identical to
-# the branch tree's derived inventory (provenance_inventory --check green).
-A54_MERGE_AUTHORITY = "e47d0b274ebf234ada8be7cfe82a34d5446384eb"
-# The branch's first, lane-local A5.4 source (454dab04) admitted a successor
-# whose archived baseline named 16e3725ce as its snapshot; main moved to
-# e2352f881 and squash delivery cannot resolve a lane-only snapshot, so the
-# ASTRA_REVIEW_A5_4 closure rework rewound that successor (the A0.6 precedent)
-# and re-admitted ONE successor over the protected baseline from the rework's
-# own writer-digest regeneration commit. Both sources stay authorised
-# (append-only registry); only the later one is the live pin's source.
-A54_LANE_LOCAL_SOURCE = "454dab04134d81ae420676210c9700e2d4496c6b"
-# The round-1 rework's source (92c07a90) admitted the successor over
-# origin/main 1010659db; the round-2 rework (ASTRA v1.1 closure) moved the
-# same three writers again and re-admitted ONE successor over the then-current
-# baseline 297c09c79 from its own digest regeneration commit. All three
-# sources stay authorised (append-only); only the latest is the live source.
-A54_R1_SOURCE = "92c07a9051abad73815933e3a5b98ffde37fa848"
-# The round-2 rework's source (aa6a67fb) admitted the successor over
-# origin/main 297c09c79; the round-3 rework (ASTRA v1.2 closure) moved the
-# same three writers again (P1-2: vedha state/identity through the persisted
-# output) and re-admitted ONE successor over the then-current baseline
-# d4feada9b from its own digest regeneration commit. All four sources stay
-# authorised (append-only); only the latest is the live source.
-A54_R2_SOURCE = "aa6a67fb715248fa2b2eccffaf5327692319194a"
-# The round-3 rework's source (de0749433) admitted the successor over
-# origin/main d4feada9b; the round-5 rework (ASTRA v1.3 closure) moved
-# ka_gochara_v3_century_materialize again (amendment 2 via ka_vedha_gochara/
-# gate.py) and re-admitted ONE successor over the then-current baseline
-# 678ca1776 from its own digest regeneration commit. All five sources stay
-# authorised (append-only); only the latest is the live source.
-A54_R3_SOURCE = "de07494333a770192dd8d8a47cc2aae91f31be79"
-A54_MERGE = {
+# --- D-PINS-A2 continuation (pravaha/pins-admit-2793, Pravaha A5.5 follow-up)
+# #2793 (61e1aa60b, A5.5 kernel F10-F12 truncation-honesty + secant close-out,
+# the A2.1 kernel-geometry changeset's own continuation) merged a digest move
+# WITHOUT a pins admission (steward review miss): ka_sangam,
+# ka_moorti_nirnaya and ka_gochara_v3_century_materialize moved through their
+# gochara_kernel import closures; no own-module edits, membership unchanged.
+# The steward directed this post-merge admission on the native's 2026-09-30
+# standing authority (D-PINS-A2 continuation, M20260930T220447-289d; residual
+# delivery-topology lines disclosed-accepted per M20260930T221252-d612 — the
+# pins gate runs on no main workflow, so those lines are evidence, not a
+# merge gate).
+A2C_MERGE_DECISION = "D-PINS-A2"
+A2C_MERGE_AUTHORITY = "fa0b0a9a003624b8f39e30600e98460a60170bb2"
+A2C_MERGE = {
     "L3": {
-        "source": "a7fa8c25e1db78f01c2d33036b1a020501555704",
+        "source": "61e1aa60b5084a144101f4f1a233a6da0edee81c",
         "supersedes": "l3:f4c69a6d0cd4:829354703812",
         "changed": [
-            "ka_gochara", "ka_gochara_resonance",
             "ka_gochara_v3_century_materialize", "ka_moorti_nirnaya",
-            "ka_vedha_gochara",
+            "ka_sangam",
         ],
-        # per-asset classification from the closure analysis recorded in the
-        # evidence document (asset_runner._writer_source_files vs origin/main)
-        "intentional": {"ka_gochara_resonance", "ka_moorti_nirnaya"},
-        "both": {"ka_vedha_gochara"},
     },
 }
 
 
-def test_a54_merge_successor_records_the_approved_decision_and_source() -> None:
-    expected = A54_MERGE["L3"]
+def test_a2c_merge_successor_records_the_approved_decision_and_source() -> None:
+    expected = A2C_MERGE["L3"]
     admission = LIVE_PINS["layers"]["L3"]["admission"]
-    assert admission["authority_decision"] == A54_MERGE_DECISION
-    assert admission["authority_commit"] == A54_MERGE_AUTHORITY
+    assert admission["authority_decision"] == A2C_MERGE_DECISION
+    assert admission["authority_commit"] == A2C_MERGE_AUTHORITY
     assert admission["source_commit"] == expected["source"]
-    assert A54_MERGE_AUTHORITY != expected["source"]
+    assert A2C_MERGE_AUTHORITY != expected["source"]
     assert LIVE_PINS["layers"]["L3"]["convergence_commit"] == expected["source"]
     assert LIVE_PINS["layers"]["L3"]["supersedes_generation_id"] == expected["supersedes"]
     assert admission["review_artifacts"] == pins_module.EXPECTED_REVIEW_ARTIFACTS["L3"]
     assert "source_acceptance" not in admission
-    assert expected["source"] in pins_module.AUTHORIZED_SOURCE_COMMITS[A54_MERGE_DECISION]["L3"]
+    assert expected["source"] in pins_module.AUTHORIZED_SOURCE_COMMITS[A2C_MERGE_DECISION]["L3"]
 
 
-def test_a54_merge_classifications_equal_the_actual_digest_delta() -> None:
-    expected = A54_MERGE["L3"]
+def test_a2c_merge_classifications_equal_the_actual_digest_delta() -> None:
     prefix = pins_module.LAYER_PREFIX["L3"]
     before = LIVE_PINS["history"]["L3"][-1]["writer_digests"]
     after = pins_module.layer_writer_slice(LIVE_INVENTORY, prefix)
     exact_delta = sorted(a for a in set(before) | set(after) if before.get(a) != after.get(a))
     admission = LIVE_PINS["layers"]["L3"]["admission"]
-    assert admission["changed_assets"] == exact_delta == expected["changed"]
+    assert admission["changed_assets"] == exact_delta == A2C_MERGE["L3"]["changed"]
     assert exact_delta, "a successor with no delta must not have been admitted"
-    for asset_id, classification in admission["delta_classifications"].items():
-        if asset_id in expected["both"]:
-            expected_class = "approved_intentional_and_derived_import_change"
-        elif asset_id in expected["intentional"]:
-            expected_class = "approved_intentional_change"
-        else:
-            expected_class = "derived_import_change"
-        assert classification == expected_class, asset_id
-    assert "unapproved_foreign_source" not in admission["delta_classifications"].values()
+    # every changed asset moved only through its import closure (no own-module
+    # edit — #2793 touched gochara_kernel/* only)
+    assert set(admission["delta_classifications"].values()) == {"derived_import_change"}
 
 
-def test_a54_merge_successor_is_append_only_and_names_its_exact_predecessor() -> None:
+def test_a2c_merge_successor_is_append_only_and_names_its_exact_predecessor() -> None:
     predecessor_document = rewind_layer(LIVE_PINS, "L3")
     delivered_active = predecessor_document["layers"]["L3"]
     live_active = LIVE_PINS["layers"]["L3"]
@@ -1849,10 +1807,7 @@ def test_a54_merge_successor_is_append_only_and_names_its_exact_predecessor() ->
     assert archived["generation_id"] == delivered_active["generation_id"]
     assert live_active["supersedes_generation_id"] == archived["generation_id"]
     assert archived["superseded_by_generation_id"] == live_active["generation_id"]
-    # the archived predecessor is main's protected baseline (the D-PINS-A2
-    # successor), byte-identical to origin/main, and names the protected
-    # baseline commit as its historical snapshot
-    assert archived["generation_id"] == A54_MERGE["L3"]["supersedes"]
+    assert archived["generation_id"] == A2C_MERGE["L3"]["supersedes"]
     baseline = os.environ.get("NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT")
     if baseline:
         assert pins_module._commit_is_ancestor_of_commit(
@@ -1860,35 +1815,11 @@ def test_a54_merge_successor_is_append_only_and_names_its_exact_predecessor() ->
         ) or archived["historical_snapshot_commit"] == baseline
 
 
-def test_a54_merge_leaves_every_other_layer_and_the_definitions_untouched() -> None:
+def test_a2c_merge_leaves_every_other_layer_and_the_definitions_untouched() -> None:
     for layer in pins_module.LAYER_PREFIX:
-        if layer in A54_MERGE_REWINDS:
+        if layer in A2C_MERGE_REWINDS:
             continue
         assert LIVE_PINS["layers"][layer] == POST_A2MERGE_PINS["layers"][layer]
         assert LIVE_PINS["history"][layer] == POST_A2MERGE_PINS["history"][layer]
     assert LIVE_PINS["definition_bindings"] == POST_A2MERGE_PINS["definition_bindings"]
     assert LIVE_PINS["version"] == POST_A2MERGE_PINS["version"]
-
-
-def test_a54_merge_only_l3_is_authorised_for_the_decision() -> None:
-    authorised = pins_module.AUTHORIZED_SOURCE_COMMITS[A54_MERGE_DECISION]
-    assert set(authorised) == {"L3"}
-    assert authorised["L3"] == frozenset({A54_MERGE["L3"]["source"], A54_LANE_LOCAL_SOURCE,
-                                          A54_R1_SOURCE, A54_R2_SOURCE, A54_R3_SOURCE})
-    assert len({A54_LANE_LOCAL_SOURCE, A54_R1_SOURCE, A54_R2_SOURCE, A54_R3_SOURCE,
-                A54_MERGE["L3"]["source"]}) == 5
-    for layer in ("L0", "L1", "L2", "L4", "L5"):
-        with pytest.raises(SystemExit, match="is not authorized by"):
-            pins_module.validate_authorized_source(
-                A54_MERGE_DECISION, layer, A54_MERGE["L3"]["source"]
-            )
-
-
-def test_a54_merge_authority_chain_binds_the_recorded_decision_document() -> None:
-    binding = pins_module.AUTHORITY_BINDINGS[A54_MERGE_DECISION]
-    assert binding["authority_commit"] == A54_MERGE_AUTHORITY
-    assert binding["authority_identity_binding"] == f"`{A54_MERGE_AUTHORITY}`"
-    assert binding["decision_binding"] == "status: PINS_READMISSION_AUTHORIZED"
-    pins_module.validate_authority_binding(A54_MERGE_DECISION, A54_MERGE_AUTHORITY)
-    with pytest.raises(SystemExit, match="is not bound to"):
-        pins_module.validate_authority_binding(A54_MERGE_DECISION, "0" * 40)

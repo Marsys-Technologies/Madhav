@@ -48,6 +48,18 @@ vi.mock('pg', () => ({
 }))
 
 const { setJatakaSchemaCapability } = await import('../../scripts/jataka-schema-capability')
+const {
+  PROTECTED_PUBLIC_SCHEMA_MIGRATIONS,
+  assertGeneralRunnerMayApplyPublicSchema,
+} = await import('../../scripts/migrate')
+
+const GOCHARA_CONTRACT_MIGRATIONS = [
+  '1153_gochara_sky_event_substrate.sql',
+  '1154_gochara_rule_path_registry.sql',
+  '1155_gochara_relationship_record.sql',
+  '1156_gochara_eval_window.sql',
+  '1157_gochara_av_polarity_declaration.sql',
+]
 
 describe('Protected public-schema temporary capability', () => {
   beforeEach(() => {
@@ -110,12 +122,35 @@ describe('Protected public-schema migration workflow contract', () => {
     expect(workflow.on.workflow_dispatch.inputs.jataka_schema_migration).toBeTruthy()
     expect(workflow.on.workflow_dispatch.inputs.ai_console_schema_migration).toBeTruthy()
     expect(workflow.on.workflow_dispatch.inputs.gochara_schema_migration).toBeTruthy()
+    expect(workflow.on.workflow_dispatch.inputs.gochara_contracts_schema_migration).toBeTruthy()
     const job = workflow.jobs['jataka-protected-migrations']
     expect(job.environment).toBe('data-plane-production-cutover')
     expect(job.if).toContain("github.event_name == 'workflow_dispatch'")
     expect(job.if).toContain('inputs.jataka_schema_migration == true')
     expect(job.if).toContain('inputs.ai_console_schema_migration == true')
     expect(job.if).toContain('inputs.gochara_schema_migration == true')
+    expect(job.if).toContain('inputs.gochara_contracts_schema_migration == true')
+  })
+
+  it('Pravāha A5.1: the Gochara contract migrations 1153-1157 apply ONLY through the window, in order', () => {
+    const steps = workflow.jobs['jataka-protected-migrations'].steps ?? []
+    const apply = steps.find((step) => step.name === 'Apply exact protected public-schema migrations')
+    expect(apply?.env?.APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION).toContain('gochara_contracts_schema_migration')
+    let previous = apply?.run?.indexOf('1125_ai_snapshot_shape_operator_precedence.sql') ?? -1
+    expect(previous).toBeGreaterThan(-1)
+    for (const migration of GOCHARA_CONTRACT_MIGRATIONS) {
+      const at = apply?.run?.indexOf(migration) ?? -1
+      expect(at, `${migration} must be listed after its predecessor`).toBeGreaterThan(previous)
+      previous = at
+    }
+    // the runner's own refusal: routine path refuses each file; the --only window may apply it
+    expect([...PROTECTED_PUBLIC_SCHEMA_MIGRATIONS].sort()).toEqual([...GOCHARA_CONTRACT_MIGRATIONS].sort())
+    for (const migration of GOCHARA_CONTRACT_MIGRATIONS) {
+      expect(() => assertGeneralRunnerMayApplyPublicSchema(migration, false))
+        .toThrow(/gochara_contracts_schema_migration=true/)
+      expect(() => assertGeneralRunnerMayApplyPublicSchema(migration, true)).not.toThrow()
+    }
+    expect(() => assertGeneralRunnerMayApplyPublicSchema('1152_kala_gochara_contacts_t_exact_nullable_truncated.sql', false)).not.toThrow()
   })
 
   it('pins the exact migration set between a grant and an always-run revoke', () => {
