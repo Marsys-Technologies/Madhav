@@ -66,10 +66,16 @@ class _ClassContext:
 
 
 def _ctx_with_moon(moon_lon_deg: float) -> _ClassContext:
-    """Build a fixture context with Moon at the given longitude."""
+    """Build a fixture context with Moon at the given longitude.
+
+    DISCLOSURE (Pravāha A5.4 tara_key, #5): pre-repair this fixture keyed the
+    Moon as 'Moon' (title case) — matching the mechanism's own buggy lookup, so
+    these tests passed while the production path (chart_facts fact_subject
+    codes, canonical system-A: 'MOON') silently never fired. Keys are now the
+    canonical norm_graha codes the context actually carries."""
     nf = _NatalFacts(
-        graha_longitudes={"Moon": moon_lon_deg},
-        graha_signs={"Moon": "Aquarius"},
+        graha_longitudes={"MOON": moon_lon_deg},
+        graha_signs={"MOON": "Aquarius"},
     )
     return _ClassContext(chart_id="test-chart", event_class="career", natal_facts=nf)
 
@@ -77,7 +83,7 @@ def _ctx_with_moon(moon_lon_deg: float) -> _ClassContext:
 def _ctx_no_moon() -> _ClassContext:
     """Build a fixture context with natal_facts present but no Moon longitude."""
     nf = _NatalFacts(
-        graha_longitudes={"Sun": 45.0},
+        graha_longitudes={"SUN": 45.0},
         graha_signs={},
     )
     return _ClassContext(chart_id="test-chart", event_class="career", natal_facts=nf)
@@ -270,6 +276,43 @@ def test_all_modifiers_positive():
     """TARA_MODIFIERS: every value > 0.0 (no zero suppression, no negative)."""
     for tara_name, mod in TARA_MODIFIERS.items():
         assert mod > 0.0, f"Modifier for {tara_name!r} is non-positive: {mod}"
+
+
+# ---------------------------------------------------------------------------
+# Key-canonicality regression (#5): production natal_facts keys are system-A
+# codes, not title case
+# ---------------------------------------------------------------------------
+
+def test_fires_with_canonical_subject_key():
+    """The mechanism must FIRE (modifier != 1.0, skipped=False) when the natal
+    Moon longitude is keyed by the canonical chart-facts subject code 'MOON'.
+
+    Natal Moon at 5° → nakshatra index 1 (Ashwini); transit at 85° → index 7
+    (Punarvasu) → position ((7-1)%27)%9+1 = 7 → naidhana → modifier 0.70."""
+    ctx = _ctx_with_moon(moon_lon_deg=5.0)
+    assert ctx.natal_facts.graha_longitudes == {"MOON": 5.0}
+    result = compute(ctx, t_jd=2451545.0, enabled=True, transit_body_longitude_deg=85.0)
+    assert result.skipped is False
+    assert result.modifier != 1.0
+    assert result.tara_name == "naidhana"
+    assert result.tara_position == 7
+    assert result.modifier == 0.70
+
+
+def test_title_case_key_no_longer_satisfies_the_lookup():
+    """Mutation statement for the #5 defect: the pre-repair code read
+    graha_longitudes.get('Moon'), so a context keyed ONLY by the canonical
+    'MOON' (exactly what production supplies) silently honest-skipped with
+    modifier 1.0 — tārā never fired. This test pins both directions: a
+    title-case-only context now honestly skips (the key is wrong data), while
+    the canonical-key context above fires. Reverting w23 to .get('Moon')
+    inverts both outcomes and fails test_fires_with_canonical_subject_key."""
+    nf = _NatalFacts(graha_longitudes={"Moon": 5.0}, graha_signs={})
+    ctx = _ClassContext(chart_id="test-chart", event_class="career", natal_facts=nf)
+    result = compute(ctx, t_jd=2451545.0, enabled=True, transit_body_longitude_deg=85.0)
+    assert result.skipped is True
+    assert result.modifier == 1.0
+    assert "Moon" in (result.skip_reason or "")
 
 
 # ---------------------------------------------------------------------------

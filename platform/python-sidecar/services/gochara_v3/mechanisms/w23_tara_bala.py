@@ -1,7 +1,13 @@
 """
 W2.3 — Tara bala: 9-cycle nakshatra quality modifier for gochara transits vs natal Moon.
 
-CANDIDATE mechanism — NOT wired into engine.py. Togglable dormant module.
+Wired into engine.py (evaluate_lambda_vector, _w23.compute at the per-JD
+evaluation site); toggled by TOGGLE_KEY / W23_TARA_BALA_ENABLED. The engine
+consumes the result as P6 TESTIMONY (S-04, D-PADMIT, O-P6-TARA): the
+nine-fold class and this module's would-be modifier are recorded as a
+non-scoring annotation (term_breakdown.tara_annotation); the λ product
+receives 1.0. This module still computes the classical modifier table so the
+annotation can carry it — it is never applied.
 
 Background
 ----------
@@ -55,6 +61,8 @@ import logging
 import math
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
+
+from brahmagyan.graha_vocabulary import norm_graha
 
 if TYPE_CHECKING:
     from services.gochara_v3.context import ClassContext
@@ -171,7 +179,8 @@ def compute(
     Parameters
     ----------
     context:
-        The pre-fetched ClassContext. natal_facts.graha_longitudes["Moon"]
+        The pre-fetched ClassContext. natal_facts.graha_longitudes["MOON"]
+        (canonical system-A fact_subject code; norm_graha("Moon"))
         supplies the natal Moon sidereal longitude used to derive the Moon's
         natal nakshatra index.
     t_jd:
@@ -210,7 +219,12 @@ def compute(
             skip_reason="natal_facts not available in context",
         )
 
-    moon_lon = natal_facts.graha_longitudes.get("Moon")
+    moon_lon = natal_facts.graha_longitudes.get(norm_graha("Moon"))
+    # Key discipline (#5 repair): chart-fact subjects are canonical system-A
+    # codes (norm_graha output — 'MOON', not 'Moon'); context.py populates
+    # graha_longitudes straight from chart_facts.fact_subject. The pre-repair
+    # title-case lookup 'Moon' always missed, so tārā silently never fired
+    # (honest-skip modifier 1.0 on every call).
     if moon_lon is None:
         logger.debug(
             "[w23_tara_bala] chart_id=%s: Moon longitude absent from natal_facts; skipping.",
