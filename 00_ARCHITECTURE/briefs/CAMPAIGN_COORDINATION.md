@@ -8475,3 +8475,13 @@ Resume condition for everything downstream: a successful protected deploy with 1
 - Outcome: the approved Cockpit summary and three-tab Observatory are implemented only in `/Users/Dev/.codex/worktrees/observatory-metering/Madhav`. The worktree remains uncommitted for owner review.
 - Local evidence: TypeScript, focused lint, product build with placeholder Firebase config, focused suites, 13 disposable PostgreSQL ledger tests, and three Observatory UI state tests passed. Existing optional Google Cloud `retry-request` build warning remained non-fatal.
 - Accuracy limits: no paid successful provider call or authenticated production UI verification was performed; hidden SDK retries and pre-provider failures are not claimed as provider-token evidence. No deploy, rate import, migration, production data write, or credential change occurred under this lease.
+
+---
+
+## 2026-10-01 — Observatory simplification release lease
+
+- Lease ID: L-OBSERVATORY-SIMPLIFICATION-RELEASE-20261001; holder: Codex; started 2026-10-01 23:13 IST; expires 2026-10-02 03:30 IST.
+- Worktree: `/Users/Dev/.codex/worktrees/observatory-metering/Madhav`; source branch `codex/observatory-catalog-skip-invalid`. A fresh branch/worktree may be used to rebase the exact application patch on protected `main` without changing the shared checkout.
+- Scope: owner-authorized commit, push, review PR, protected merge and web deployment of the approved Cockpit summary and Observatory Overview, Analytics and Consumption simplification; local/CI and authenticated read-only live verification. No migration, direct production SQL, chart or corpus rebuild, credentials, model-route changes, or paid provider prompt.
+- Authority: the native explicitly approved the release after reviewing the four-screen plan and Marsys font correction. This exact scope overrides the uncommitted-review convention in GIP §P.4. The lease does not authorize unrelated application changes.
+- Status: ACTIVE. Remote lease and competing lease state must be rechecked immediately before protected merge and deployment.
