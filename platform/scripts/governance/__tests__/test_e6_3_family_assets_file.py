@@ -9,6 +9,7 @@ import re
 REPO = pathlib.Path(__file__).resolve().parents[4]
 FILE = REPO / "00_ARCHITECTURE/control/FAMILY_ASSETS.json"
 SEED = REPO / "platform/scripts/seed/asset_registry_seed.ts"
+DIGESTS = REPO / "platform/src/generated/nirmana-writer-digests.json"
 LISTS = ("family_gochara", "family_sangam", "family_kshetra", "family_readers_L3", "family_readers_L4", "family_readers_L5")
 DOC = json.loads(FILE.read_text(encoding="utf-8"))
 
@@ -27,29 +28,70 @@ def test_each_list_is_sorted_unique_asset_ids_and_family_set_is_their_union():
         v = DOC[k]
         assert v == sorted(set(v)) and all(re.fullmatch(r"[a-z][a-z0-9_]*", a) for a in v), k
         union |= set(v)
-    assert DOC["family_set"] == sorted(union) and len(DOC["family_set"]) == 18
+    assert DOC["family_set"] == sorted(union) and len(DOC["family_set"]) == 21
 
 
 def test_the_lists_are_exactly_what_the_focus_families_doc_names():
-    assert DOC["family_gochara"] == ["ka_gochara", "ka_gochara_resonance", "ka_vedha_gochara"]
-    assert DOC["family_sangam"] == ["ka_sangam"] and DOC["family_kshetra"] == ["ka_kshetra"]
+    # the doc's lists plus the strategist's rulings (Q2: ka_yojaka, ka_gochara_v3_century_materialize; ka_moorti_nirnaya)
+    assert DOC["family_gochara"] == ["ka_gochara", "ka_gochara_resonance", "ka_gochara_v3_century_materialize",
+                                     "ka_moorti_nirnaya", "ka_vedha_gochara"]
+    assert DOC["family_sangam"] == ["ka_sangam", "ka_yojaka"] and DOC["family_kshetra"] == ["ka_kshetra"]
     assert DOC["family_readers_L3"] == ["ka_bhavishya_lekha", "ka_jivana_parva", "ka_kala_darshana", "ka_kalasutra",
                                         "ka_taranga", "ka_tulana", "ka_vighnakara"]
     assert DOC["family_readers_L4"] == ["ph_muhurta", "ph_nimitta", "ph_pratikara"]
     assert DOC["family_readers_L5"] == ["mi_adhilepa", "mi_bhara", "mi_sankalpa"]
 
 
-def test_every_member_is_an_asset_of_the_registry_seed_in_its_layer():
-    seed = SEED.read_text(encoding="utf-8")
+def _seed_entries():
+    """{asset_id: (layer, is_active)} read from the seed text, entry by entry."""
+    out = {}
+    text = SEED.read_text(encoding="utf-8")
+    region = text[text.index("export const ASSETS"):text.index("export const COEFFICIENTS")]
+    for chunk in region.split("asset_id: '")[1:]:
+        aid = chunk.split("'", 1)[0]
+        layer = re.search(r"layer:\s*'(\w+)'", chunk)
+        active = re.search(r"is_active:\s*(true|false)", chunk)
+        out[aid] = (layer.group(1), active.group(1) == "true")
+    return out
+
+
+def test_every_member_is_in_the_seed_active_or_carries_a_recorded_inactive_reason():
+    seed = _seed_entries()
+    inactive = DOC["_notes"]["inactive"]
     for a in DOC["family_set"]:
-        m = re.search(r"asset_id:\s*'%s',\s*layer:\s*'(\w+)'" % a, seed)
-        assert m, a
+        assert a in seed, a
+        if not seed[a][1]:
+            assert any(x.get("asset") == a and x.get("reason") for x in inactive), a
+    for x in inactive:
+        assert x["asset"] in DOC["family_set"] and x.get("reason")
+
+
+def test_reader_lists_are_in_their_layer():
+    seed = _seed_entries()
     layer = {"L3": "kala", "L4": "phala", "L5": "mimamsa"}
     for k in ("family_readers_L3", "family_readers_L4", "family_readers_L5"):
         for a in DOC[k]:
-            assert re.search(r"asset_id:\s*'%s',\s*layer:\s*'%s'" % (a, layer[k[-2:]]), seed), (k, a)
+            assert seed[a][0] == layer[k[-2:]], (k, a)
 
 
-def test_the_open_membership_questions_are_recorded_in_the_file():
-    qs = DOC["_open_questions"]
-    assert len(qs) == 3 and all(isinstance(q, str) and q.startswith(f"Q{i + 1}:") for i, q in enumerate(qs))
+def test_the_strategist_added_members_say_why_and_ka_kota_chakra_is_not_in_the_set():
+    for a in ("ka_yojaka", "ka_gochara_v3_century_materialize", "ka_moorti_nirnaya"):
+        assert a in DOC["family_set"] and DOC["_why"][a], a
+    assert "ka_kota_chakra" not in DOC["family_set"]
+
+
+def test_the_semantics_are_stated_in_the_file():
+    assert DOC["_semantics"].startswith("The family set is what the WAVE tool refuses.")
+    assert "ONE AT A TIME" in DOC["_semantics"] and "23 bo_*" in DOC["_semantics"]
+
+
+def test_none_of_the_23_bo_writers_is_in_the_family_set():
+    writers = json.loads(DIGESTS.read_text(encoding="utf-8"))["writers"]
+    bo = sorted(k for k in writers if k.startswith("bo_"))
+    assert len(bo) == 23
+    assert not set(bo) & set(DOC["family_set"])
+
+
+def test_the_resolved_questions_are_recorded_in_the_file():
+    qs = DOC["_resolved_questions"]
+    assert len(qs) == 3 and all(isinstance(q, str) and q.startswith(f"Q{i + 1} (ruled):") for i, q in enumerate(qs))
