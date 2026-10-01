@@ -257,6 +257,26 @@ path helper lands on main; adopt that helper for the kernel's ephe
 resolution at the same time. The gochara kernel itself already fails closed
 on any non-swieph backend (`knots._check_retflag` raises) — unchanged.
 
+**OPEN ITEM — build ordering: the L1 rebuild comes first (steward
+M20261001T194030-8c0f, 2026-10-01):** Suvarṇa's `.se1` boundary-flip report for
+482012f1: zero class flips, all seven birth anchors hold, largest input move
+0.665 arcsec (Moon), and **Vimshottari period starts shift +6,993 s**. After the
+L1 rebuild the daśā build that `period_running_at` / `p4_double_transit` read
+(`public.chart_dashas` via `fetch_dasha_periods_multilevel`) is a NEW build id
+with slightly different boundaries. Every `'5.0'` row that depends on the daśā
+build — and the A2.5 `'4.1'` candidate — must be built AFTER that rebuild,
+never straddling it. Rehearsals on the scratch DB before then are shape-proofs
+only, never evidence of boundary values. (A2.5 record:
+`A2_5_BUILD_ORDERING_NOTE_v1_0.md`, PR #2799.)
+
+**NOTE — kernel Moon backend gate (same message, PR #2799):** the Moon's own
+returned flag cannot prove the Swiss backend (semo missing ⇒ Moshier Moon, SWIEPH
+flag still set). `knots.calc_sidereal_lon` now probes TRUE_NODE at the same
+instant for every Moon calc and raises `EphemerisBackendError` otherwise; the
+`'5.0'` writer inherits this through the kernel once #2799 is on main — nothing
+to add here except that the AM-1 sentence above ("already fails closed") is now
+true for the Moon too.
+
 ### Design v1.2 (2026-10-01, 3/N part 2 — point solves landed)
 
 `conjunction`/`aspect` transit edges on `point:<λ>` targets now solve:
