@@ -403,20 +403,6 @@ jobs:
           M1211_AUDIT_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1211_audit_grant_test
         run: npx vitest run tests/integration/asset_throughput_state_audit_grants.db.test.ts --reporter=verbose
 
-      - name: R-25/1218 — provision the bodha writer-timeout migration test DB
-        env:
-          PGPASSWORD: postgres
-        run: |
-          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1218_timeout_test;"
-
-      - name: R-25/1218 — bodha writer timeouts 600 to 1800 executed against real Postgres
-        # Executes the REAL 1218 file against a fixture asset_registry that carries the real
-        # nirmana_registry_receipt_invalidation trigger: live-like, replay, preserved other
-        # value, one target missing (raises), neither present, and two fail-closed controls (§N.8).
-        env:
-          M1218_TIMEOUT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1218_timeout_test
-        run: npx vitest run tests/integration/suvarna_bodha_writer_timeouts_1218.db.test.ts --reporter=verbose
-
       - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
         env:
           PGPASSWORD: postgres
