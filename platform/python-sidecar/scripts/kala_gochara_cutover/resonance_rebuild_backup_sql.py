@@ -46,7 +46,7 @@ from services.ka_gochara_resonance.writer import (  # noqa: E402
     TARGET_EVENT_CLASSES, _MECHANISM_WEIGHTS)
 from services.gochara_grammar.derived_points import (  # noqa: E402
     M6_EVENT_CLASSES, MANDI_DISTANCE_AGENT, MANDI_DISTANCE_CITATION, MANDI_DISTANCE_REF,
-    YAMAKANTAKA_FORMULAS)
+    VIMSHOTTARI_NAKSHATRA_LORDS, YAMAKANTAKA_FORMULAS)
 
 ELIGIBLE_EVENT_CLASSES: tuple[str, ...] = tuple(TARGET_EVENT_CLASSES)
 
@@ -301,6 +301,58 @@ M6_CONSTANT_ROWS: tuple[tuple[str, str, str, str], ...] = tuple(
     [("gulika_mandi_distance", MANDI_DISTANCE_REF, MANDI_DISTANCE_CITATION, f"agent:{MANDI_DISTANCE_AGENT}")]
     + [("yamakantaka_difference", f["ref"], f["citation"], f"agent:{f['agent']}") for f in YAMAKANTAKA_FORMULAS])
 
+# M-6 operand chain (ASTRA_REVIEW_A5_4_TIER0S_v1_5 P2): each M-6 row's ref
+# names a formula whose two operand ROLES the writer resolves to sign numbers
+# (writer._build_m6_derived_rows) — the roles come from the grammar module,
+# never a hand copy. 'eighth_lord' is the PG220:C1 śl.26 8th-lord operand
+# (the writer's _house_lord_occupied_sign_num(8)).
+M6_OPERAND_FORMULAS: tuple[tuple[str, str, str], ...] = tuple(
+    [(MANDI_DISTANCE_REF, "eighth_lord", "mandi")]
+    + [(f["ref"], f["minuend"], f["subtrahend"]) for f in YAMAKANTAKA_FORMULAS])
+_M6_HOUSE_LORD_OFFSETS = {"lagna_lord": 0, "eighth_lord": 7}
+
+
+def _m6_role_state_sql(role: str) -> str:
+    """One operand role's state EXACTLY as writer._operand_sign_num derives
+    it: a house-lord operand is 'unavailable' without LAGNA, 'unqualified'
+    with an incomplete sign-lord table, 'unavailable' when the lord's own
+    graha_sign_attributes sign_num row is absent; a Māndi / Yamakaṇṭaka
+    operand needs its sensitive_point_gulika_mandi sign row naming one of
+    the 12 signs; fifth_star_lord needs the natal Moon nakṣatra and the
+    (natal+4) Vimśottari lord's sign row; a plain graha role needs its own
+    sign row."""
+    if role in _M6_HOUSE_LORD_OFFSETS:
+        offset = _M6_HOUSE_LORD_OFFSETS[role]
+        return (f"CASE WHEN (SELECT n FROM lagna) IS NULL THEN 'unavailable'"
+                f" WHEN NOT (SELECT ok FROM lords_complete) THEN 'unqualified'"
+                f" WHEN NOT EXISTS (SELECT 1 FROM reference_signs rs JOIN graha g ON g.name = rs.lord"
+                f"                    JOIN graha_signs gs ON gs.fact_subject = g.subject"
+                f"                   WHERE rs.sign_id = (((SELECT n FROM lagna) - 1) + {offset}) % 12 + 1)"
+                f"      THEN 'unavailable' ELSE 'resolved' END")
+    if role in ("mandi", "yamakantaka"):
+        return (f"CASE WHEN EXISTS (SELECT 1 FROM gm_signs gm"
+                f"                 WHERE gm.fact_subject = {_sql_str(role.upper())})"
+                f"      THEN 'resolved' ELSE 'unavailable' END")
+    if role == "fifth_star_lord":
+        # natal nakṣatra counts as the 1st, so the 5th is natal+4; the lord
+        # is Vimśottari[(5th - 1) % 9] — derived_points.nakshatra_lord.
+        return (f"CASE WHEN (SELECT n FROM moon_nak) IS NULL THEN 'unavailable'"
+                f" WHEN NOT EXISTS (SELECT 1 FROM vim_lords v JOIN graha g ON g.name = v.lord"
+                f"                    JOIN graha_signs gs ON gs.fact_subject = g.subject"
+                f"                   WHERE v.idx = (((SELECT n FROM moon_nak) - 1 + 4) % 27) % 9)"
+                f"      THEN 'unavailable' ELSE 'resolved' END")
+    return (f"CASE WHEN EXISTS (SELECT 1 FROM graha g JOIN graha_signs gs ON gs.fact_subject = g.subject"
+            f"             WHERE g.name = {_sql_str(role)}) THEN 'resolved' ELSE 'unavailable' END")
+
+
+def _m6_role_case_sql(column: str) -> str:
+    """Per-row operand-state dispatch over the formula's role column; an
+    unrecognised role is honestly 'unavailable', never silently resolved."""
+    roles = sorted({role for _, mi, su in M6_OPERAND_FORMULAS for role in (mi, su)})
+    return ("CASE f." + column + " "
+            + " ".join(f"WHEN {_sql_str(role)} THEN {_m6_role_state_sql(role)}" for role in roles)
+            + " ELSE 'unavailable' END")
+
 
 def _sql_str(v: str) -> str:
     return "'" + str(v).replace("'", "''") + "'"
@@ -453,12 +505,22 @@ def value_invariants_sql(chart_id: str) -> str:
                       arudha: the cited fact names one of the 12 signs;
                       bhava_arudha: the class-house ARUDHA_A{h} sign fact
                       exists and names a sign; yoga_constituent: resolved;
-                      gulika_mandi_distance / yamakantaka_difference: the
-                      stored state is accepted within the closed enum (their
-                      operand chain is derived_points arithmetic the runbook
-                      does NOT re-derive — an explicit limit, not a silent
-                      fall-through); their ref / citation / qualifier /
-                      provenance and M6 class scope ARE checked;
+                      mechanism_node: 'resolved' — the writer's explicit
+                      contract (_stamp_target_resolution leaves mechanism
+                      rows 'resolved': the row names a live bg_transit_rules
+                      row, the operand wiring itself); gulika_mandi_distance
+                      / yamakantaka_difference: the state the writer derives
+                      from operand PRESENCE (M6_OPERAND_FORMULAS roles from
+                      the grammar constants): LAGNA / reference_signs /
+                      the operand's graha_sign_attributes sign_num row /
+                      the sensitive_point_gulika_mandi Māndi & Yamakaṇṭaka
+                      sign rows / the natal Moon nakṣatra → 5th-star lord —
+                      a missing Māndi yields 'unavailable', never a forged
+                      'resolved'; their ref / citation / qualifier /
+                      provenance and M6 class scope ARE checked. The M-6
+                      operand VALUES (derived_points arithmetic) are NOT
+                      re-derived — an explicit limit, not a silent
+                      fall-through;
       mechanism     — weight = the cited rule's rule_type through the
                       writer's contract (MECHANISM_WEIGHTS), target_ref =
                       graha:rule_type:h<house> of that rule, and the rule is
@@ -475,6 +537,10 @@ def value_invariants_sql(chart_id: str) -> str:
     m6_values = ", ".join(f"({_sql_str(t)}, {_sql_str(r)}, {_sql_str(c)}, {_sql_str(q)})"
                           for t, r, c, q in M6_CONSTANT_ROWS)
     m6_classes = "ARRAY[" + ", ".join(f"'{c}'" for c in M6_EVENT_CLASSES) + "]::text[]"
+    vim_values = ", ".join(f"({i}, {_sql_str(lord)})"
+                           for i, lord in enumerate(VIMSHOTTARI_NAKSHATRA_LORDS))
+    m6_formula_values = ", ".join(f"({_sql_str(ref)}, {_sql_str(mi)}, {_sql_str(su)})"
+                                 for ref, mi, su in M6_OPERAND_FORMULAS)
     return (f"WITH {_class_houses_cte(cid)},\n"
             f"lagna AS (SELECT (fact_value_num)::int AS n FROM chart_facts\n"
             f"  WHERE chart_id = '{cid}' AND ayanamsha_id = '{CANONICAL_AYANAMSHA}'\n"
@@ -492,10 +558,27 @@ def value_invariants_sql(chart_id: str) -> str:
             f"  CASE WHEN o.citations IS NULL OR cardinality(o.citations) = 0 THEN NULL\n"
             f"       ELSE array_to_string(o.citations, '; ') END AS citation\n"
             f"  FROM brahma_event_ontology o),\n"
-            f"signs AS (SELECT unnest(ARRAY['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio',\n"
-            f"  'Sagittarius','Capricorn','Aquarius','Pisces']) AS name),\n"
+            f"signs AS (SELECT name, ord AS num FROM unnest(ARRAY['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio',\n"
+            f"  'Sagittarius','Capricorn','Aquarius','Pisces']) WITH ORDINALITY AS u(name, ord)),\n"
             f"mechanism_weights AS (SELECT * FROM (VALUES {mech_values}) AS mw(rule_type, weight)),\n"
-            f"m6_constants AS (SELECT * FROM (VALUES {m6_values}) AS x(target_type, ref, citation, qualifier))\n"
+            f"m6_constants AS (SELECT * FROM (VALUES {m6_values}) AS x(target_type, ref, citation, qualifier)),\n"
+            # the writer's M-6 operand sources (_fetch_m6_context): graha sign
+            # numbers, the Māndi/Gulika/Yamakaṇṭaka sign rows (valid sign names
+            # only — sign_num_of returns None for anything else), the natal
+            # Moon nakṣatra, the Vimśottari table and the formula roles
+            f"graha_signs AS (SELECT f.fact_subject, (f.fact_value_num)::int AS sign_num FROM chart_facts f\n"
+            f"  WHERE f.chart_id = '{cid}' AND f.ayanamsha_id = '{CANONICAL_AYANAMSHA}'\n"
+            f"    AND f.fact_category = 'graha_sign_attributes' AND f.fact_key = 'sign_num'),\n"
+            f"gm_signs AS (SELECT f.fact_subject, s.num AS sign_num FROM chart_facts f\n"
+            f"  JOIN signs s ON s.name = btrim(f.fact_value_text)\n"
+            f"  WHERE f.chart_id = '{cid}' AND f.ayanamsha_id = '{CANONICAL_AYANAMSHA}'\n"
+            f"    AND f.fact_category = 'sensitive_point_gulika_mandi' AND f.fact_key = 'sign'),\n"
+            f"moon_nak AS (SELECT (fact_value_num)::int AS n FROM chart_facts\n"
+            f"  WHERE chart_id = '{cid}' AND ayanamsha_id = '{CANONICAL_AYANAMSHA}'\n"
+            f"    AND fact_category = 'panchanga_nakshatra_moon' AND fact_subject = 'NAKSHATRA_MOON_BIRTH'\n"
+            f"    AND fact_key = 'number'),\n"
+            f"vim_lords AS (SELECT * FROM (VALUES {vim_values}) AS v(idx, lord)),\n"
+            f"m6_formulas AS (SELECT * FROM (VALUES {m6_formula_values}) AS f(ref, minuend_role, subtrahend_role))\n"
             f"SELECT m.event_class, m.target_type, m.target_ref, v.violation\n"
             f"  FROM gochara_resonance_map m\n"
             f"  CROSS JOIN LATERAL (SELECT CASE\n"
@@ -512,6 +595,8 @@ def value_invariants_sql(chart_id: str) -> str:
             f"           JOIN class_karakas ck ON ck.event_class = m.event_class AND ck.karaka_lower = lower(btrim(r.graha))\n"
             f"           JOIN class_houses ch ON ch.event_class = m.event_class AND ch.house = r.primary_house\n"
             f"          WHERE r.id = m.source_rule_id) THEN 'eligibility:mechanism_rule'\n"
+            f"    WHEN m.target_type = 'mechanism_node' AND m.target_resolution_state IS DISTINCT FROM 'resolved'\n"
+            f"         THEN 'state:mechanism_resolved'\n"
             f"    WHEN m.target_type <> 'mechanism_node' AND m.weight <> (CASE m.target_type {cases} END) THEN 'weight'\n"
             f"    WHEN m.target_type IN ('gulika_mandi_distance','yamakantaka_difference')\n"
             f"         AND m.event_class <> ALL({m6_classes}) THEN 'class:m6_scope'\n"
@@ -520,6 +605,15 @@ def value_invariants_sql(chart_id: str) -> str:
             f"              WHERE x.target_type = m.target_type AND x.ref = m.target_ref\n"
             f"                AND x.citation = m.classical_citation AND x.qualifier = m.target_qualifier))\n"
             f"         THEN 'provenance:m6_constant'\n"
+            f"    WHEN m.target_type IN ('gulika_mandi_distance','yamakantaka_difference')\n"
+            f"         AND m.target_resolution_state IS DISTINCT FROM (\n"
+            f"         SELECT CASE WHEN 'unqualified' IN (o.minuend_state, o.subtrahend_state) THEN 'unqualified'\n"
+            f"                     WHEN 'unavailable' IN (o.minuend_state, o.subtrahend_state) THEN 'unavailable'\n"
+            f"                     ELSE 'resolved' END\n"
+            f"           FROM (SELECT {_m6_role_case_sql('minuend_role')} AS minuend_state,\n"
+            f"                        {_m6_role_case_sql('subtrahend_role')} AS subtrahend_state\n"
+            f"                   FROM m6_formulas f WHERE f.ref = m.target_ref) o)\n"
+            f"         THEN 'state:m6_operands'\n"
             f"    WHEN m.target_type IN ('bhava','lord','karaka') AND (m.uncited_extension IS TRUE\n"
             f"         OR m.classical_citation IS DISTINCT FROM (SELECT citation FROM ontology_cite oc\n"
             f"                                                     WHERE oc.event_class_id = m.event_class))\n"
