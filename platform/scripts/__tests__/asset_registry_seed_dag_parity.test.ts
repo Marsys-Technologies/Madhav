@@ -123,7 +123,13 @@ const L0_CONTRACT_DEPENDENCIES: Record<string, string[]> = {
 // elevation-denominator assets — the 128-identity below deliberately excludes
 // them and stays exactly 128. Adding a name here requires its own native
 // ruling; adding a seed row without listing it here still fails the identity.
-const SUPPORTING_WRITER_IDS = ['bo_grounding'] as const
+// Pravāha A5.3 (steward ruling M20261001T014547-357e, pins 1-2):
+// ka_gochara_v5 is a registered INERT writer skeleton, is_active: false in
+// the seed (inert to all planners — runPreparation.ts:183 /
+// recalibrationEnqueue.ts:141 never select it) and NOT an
+// elevation-denominator identity; it ships so registration conformance can be
+// proven while the geometry/solver stays blocked pending steward pins 3-7.
+const SUPPORTING_WRITER_IDS = ['bo_grounding', 'ka_gochara_v5'] as const
 
 const SHARED_MSR_DAG_MIGRATION = readFileSync(
   new URL('../../migrations/1030_nirmana_l2_shared_msr_consumer_dependencies.sql', import.meta.url),

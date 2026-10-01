@@ -205,6 +205,13 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # into kala_gochara_windows_v2 ONLY. Seed row added to asset_registry
     # via migration 560 with has_writer=true, has_substeps=true.
     "ka_gochara_v3_century_materialize",
+    # ── PRAVĀHA A5.3 — no migration by design (mirrors the PR #2799 seed
+    # mechanism); the has_writer=true registry row ships in
+    # platform/scripts/seed/asset_registry_seed.ts with is_active=false —
+    # the registered skeleton is inert to all planners and every execution
+    # path raises NotImplementedError pending steward pins 3-7 (ruling
+    # M20261001T014547-357e, pins 1-2).
+    "ka_gochara_v5",
     # ── L4 Phala — migration 342 ─────────────────────────────────────────────
     "ph_muhurta",
     "ph_nimitta",

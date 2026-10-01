@@ -2244,6 +2244,43 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
+  // ── PRAVĀHA A5.3 — ka_gochara_v5 INERT writer skeleton (no migration;    ──
+  //    the registry row ships here in the seed, exactly as PR #2799 did for  ──
+  //    ka_gochara_v4_41_candidate)                                            ──
+  {
+    // depends_on: [] and NOTHING depends on it, so no existing DAG build
+    // ever schedules it — and, unlike the A2.5 candidate, there is no
+    // steward dispatch surface yet: the writer module is a registered
+    // skeleton whose every execution path raises
+    // NotImplementedError("A5.3: geometry/solver pending steward pins 3-7")
+    // (steward ruling M20261001T014547-357e, pins 1-2; geometry blocked
+    // pending pins 3-7). A full-chart build must never pick it up.
+    asset_id: 'ka_gochara_v5',
+    layer: 'kala', sort_order: 141,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Gocara-Pratijñā 5.0',
+    english_name: "Gochara '5.0' Writer Skeleton (Pravāha A5.3, INERT)",
+    english_description: "PRAVĀHA A5.3 INERT skeleton: registered WriterBase writer ka_gochara_v5 (@register, asset_id pinned, light shape) with a hard chart-scope refusal (only chart 482012f1-710e-4a25-994a-93821f5871aa admitted) and every execution path raising NotImplementedError pending steward pins 3-7 (ruling M20261001T014547-357e pins 1-2). Never commits/rolls back/closes ctx.db_conn, opens no connection, writes no asset_throughput — no DB touch at all. Registration + inertness ONLY; the geometry/solver is a separate governed step.",
+    storage_type: 'postgres_table',
+    target_table: 'kala_gochara_windows',
+    count_sql: "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='5.0'",
+    size_sql: "SELECT pg_total_relation_size('kala_gochara_windows')",
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: "Placeholder surface for the pending '5.0' generation — the skeleton writes NOTHING (every path raises NotImplementedError), so the count stays 0 until steward pins 3-7 land and the geometry/solver is implemented under a later governed step.",
+    depends_on: [],
+    // Pravāha A5.3: INERT to all planners. is_active=false keeps this row out
+    // of runPreparation's planning set (src/lib/build/runPreparation.ts:183,
+    // WHERE is_active = true) and recalibrationEnqueue's writer sweep
+    // (src/lib/build/recalibrationEnqueue.ts:141, is_active = true AND
+    // has_writer = true). Unlike A2.5 there is not even a dispatch script —
+    // activation is a future steward-governed step after pins 3-7. The writer
+    // itself hard-refuses any chart other than the pinned candidate chart.
+    scope: 'per_chart', is_active: false, estimated_seconds: null,
+    has_writer: true, has_substeps: false,
+    asset_kind: 'data',
+  },
   // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──
   {
     asset_id: 'ka_graha_sancara',

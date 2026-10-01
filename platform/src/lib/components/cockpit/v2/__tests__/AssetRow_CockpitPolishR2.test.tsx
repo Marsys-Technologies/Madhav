@@ -462,7 +462,7 @@ describe('CF.L3.8 — StatusDot: DRAFT catalog_status does not override healthy 
 
 // ── Seed governance: Kāla layer count after hard-removal of ka_transit_almanac ──
 describe('Asset seed governance — Kāla layer', () => {
-  it('has exactly 23 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered; ka_kota_chakra + ka_sudarshana_varsha + ka_moorti_nirnaya + ka_vedha_gochara + ka_tithi_pravesha added (SHAD-DARSHANA W3 items 16/17/4/5/13); ka_gochara_sweep + ka_gochara_resonance + ka_gochara_v2_materialize added (GOCHARA-UTKARSA W0.1); ka_gochara_v3_century_materialize added (GOCHARA-UTKARSA W3.4); MR-06 deleted ka_gochara_v2_materialize — renamed to ka_gochara (24 -> 23))', () => {
+  it('has exactly 24 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered; ka_kota_chakra + ka_sudarshana_varsha + ka_moorti_nirnaya + ka_vedha_gochara + ka_tithi_pravesha added (SHAD-DARSHANA W3 items 16/17/4/5/13); ka_gochara_sweep + ka_gochara_resonance + ka_gochara_v2_materialize added (GOCHARA-UTKARSA W0.1); ka_gochara_v3_century_materialize added (GOCHARA-UTKARSA W3.4); MR-06 deleted ka_gochara_v2_materialize — renamed to ka_gochara (24 -> 23); ka_gochara_v5 added inert (PRAVĀHA A5.3, 23 -> 24))', () => {
     const seedContent: string = readFileSync(resolve(process.cwd(), 'scripts/seed/asset_registry_seed.ts'), 'utf8')
     const kalaMatches = seedContent.match(/layer:\s*'kala'/g) ?? []
     // BA Phase 2.5: ka_avadhi and ka_taranga are real, already-registered
@@ -509,7 +509,13 @@ describe('Asset seed governance — Kāla layer', () => {
     // deleted — the asset was RENAMED to `ka_gochara` by migration 563
     // (W6.4 UTK-R2). The `ka_gochara` entry now carries the post-cutover
     // identity (per-chart materializer, not the old global service). 24 → 23.
-    expect(kalaMatches).toHaveLength(23)
+    //
+    // PRAVĀHA A5.3 (2026-10-01, steward ruling M20261001T014547-357e pins
+    // 1-2): `ka_gochara_v5` seed entry added — the '5.0' gochara writer
+    // SKELETON, is_active: false by design (inert to every planner; every
+    // execution path raises NotImplementedError pending steward pins 3-7,
+    // so no DAG build or dispatch can ever run it). 23 → 24.
+    expect(kalaMatches).toHaveLength(24)
   })
 
   it('contains no ka_transit_almanac entry in the seed', () => {
