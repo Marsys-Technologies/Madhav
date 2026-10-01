@@ -544,3 +544,28 @@ def test_F1_a_scoped_run_then_the_unscoped_run_closes_the_remainder_once(ctrl):
     assert ac.emit_gaps(_scoped(["bg_in"], "bg_in")) == (0, 0, 0, 0)               # idempotent under the same scope
     assert ac.emit_gaps(_census("bg_in")) == (0, 0, 1, 0)                           # the out-of-scope row was still OPEN
     assert {r["gap_id"] for r in _read(ctrl) if r["state"] == "CLOSED"} == {"bg_in-Carr.detector", "bg_other-Carr.detector"}
+
+
+# ───────────────────────── review LOW fixes: tolerant reads of hand-edited rows, wrong-asset id ─────────────────────────
+
+def test_a_lower_case_hand_edited_state_is_still_a_live_row_and_is_closed(ctrl):
+    _write(ctrl, [_row("bg_a", "open"), _row("bg_b", "In_Progress")])
+    assert ac.emit_gaps(_census()) == (0, 0, 2, 0)
+    assert {r["gap_id"] for r in _read(ctrl) if r["state"] == "CLOSED"} == {"bg_a-Carr.detector", "bg_b-Carr.detector"}
+
+
+def test_a_row_without_a_kind_field_is_read_as_a_gap_and_closed(ctrl):
+    r = _row("bg_a")
+    del r["kind"]
+    _write(ctrl, [r])
+    assert ac.emit_gaps_summary(_census()) == dict(added=0, skipped=0, closed=1, reopened=0, retired_opportunity_rows_left=0)
+    new = _read(ctrl)[-1]
+    assert new["state"] == "CLOSED" and new["kind"] == "gap" and new["gap_id"] == "bg_a-Carr.detector"
+
+
+def test_a_row_whose_gap_id_names_another_asset_is_not_closed_under_the_wrong_asset(ctrl):
+    wrong = _row("bg_a", gap_id="bg_b-Carr.detector")      # asset says bg_a, the deterministic id says bg_b
+    _write(ctrl, [wrong])
+    before = _raw(ctrl)
+    assert ac.emit_gaps(_census()) == (0, 0, 0, 0)
+    assert _raw(ctrl) == before
