@@ -36,12 +36,14 @@ import psycopg  # noqa: E402
 from tests.l3.gochara.test_wp9_stamp_columns import (  # noqa: E402
     BASE_DDL,
     BPHS_CH29,
+    EPHEMERIS_INSERT_SQL,
     HORIZON_BACK_DAYS,
     HORIZON_FORWARD_DAYS,
     JANMA_FACT_ID,
     JANMA_MOON_LON,
     MIGRATION_1082,
     SCALE_CIT,
+    ephemeris_rows,
     WP6_DSN,
     _wp6_reachable,
 )
@@ -136,16 +138,7 @@ def _run_scenario(wp9_m8_schema, *, chart_id: str, lon_fn, rules, retro_fn=None)
             "effect_description, source_citation) VALUES (%s,%s,%s,%s)",
             [(n, f"grade-{n}", f"{n} malefic(s) obstructing", SCALE_CIT) for n in range(1, 6)],
         )
-        cur.executemany(
-            "INSERT INTO ephemeris_daily (date, body, ayanamsha_id, tropical_longitude, "
-            "speed_dps, is_retrograde) VALUES (%s,%s,%s,%s,%s,%s)",
-            [
-                (horizon_start + timedelta(days=off), body, "tropical",
-                 lon_fn(body, off), 1.0, bool(retro_fn and retro_fn(body, off)))
-                for off in range(days)
-                for body in BODIES
-            ],
-        )
+        cur.executemany(EPHEMERIS_INSERT_SQL, ephemeris_rows(horizon_start, days, lon_fn, retro_fn))
     conn.close()
 
     run_conn = psycopg.connect(WP6_DSN)

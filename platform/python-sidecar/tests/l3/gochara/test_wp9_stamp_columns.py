@@ -196,7 +196,10 @@ CREATE TABLE ephemeris_daily (
   tropical_longitude DOUBLE PRECISION NOT NULL,
   speed_dps DOUBLE PRECISION,
   is_retrograde BOOLEAN NOT NULL DEFAULT FALSE,
-  PRIMARY KEY (date, body, ayanamsha_id)
+  -- NULL for the seven non-node bodies, 'true'/'mean' for Rahu/Ketu (migration 1076). The key
+  -- mirrors the planned L0 step-2 shape, so a MEAN row set can sit beside the TRUE one.
+  node_mode TEXT,
+  UNIQUE NULLS NOT DISTINCT (date, body, ayanamsha_id, node_mode)
 );
 """
 
@@ -346,6 +349,31 @@ def _body_lon(body: str, day_offset: int) -> float:
 
 
 BODIES = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu")
+NODE_BODIES = ("Rahu", "Ketu")
+EPHEMERIS_INSERT_SQL = (
+    "INSERT INTO ephemeris_daily (date, body, ayanamsha_id, tropical_longitude, "
+    "speed_dps, is_retrograde, node_mode) VALUES (%s,%s,%s,%s,%s,%s,%s)"
+)
+# the decoy MEAN node series differs from the TRUE one on EVERY date, and is retrograde on
+# every date — a reader that fails to pin node_mode='true' reads the wrong longitude, or a
+# retrograde day the TRUE series never had, and the existing end-to-end assertions break
+DECOY_MEAN_OFFSET_DEG = 97.0
+
+
+def ephemeris_rows(horizon_start, days, lon_fn, retro_fn):
+    """The `ephemeris_daily` fixture rows: the TRUE series (node_mode 'true' on Rahu/Ketu,
+    NULL on the seven other bodies) PLUS a decoy MEAN series for Rahu/Ketu."""
+    rows = []
+    for off in range(days):
+        for body in BODIES:
+            lon = lon_fn(body, off)
+            retro = bool(retro_fn and retro_fn(body, off))
+            rows.append((horizon_start + timedelta(days=off), body, "tropical", lon, 1.0, retro,
+                         "true" if body in NODE_BODIES else None))
+            if body in NODE_BODIES:
+                rows.append((horizon_start + timedelta(days=off), body, "tropical",
+                             (lon + DECOY_MEAN_OFFSET_DEG) % 360.0, -0.05, True, "mean"))
+    return rows
 
 
 def _seed(conn: psycopg.Connection) -> None:
@@ -391,14 +419,8 @@ def _seed(conn: psycopg.Connection) -> None:
         )
         days = (HORIZON_BACK_DAYS + HORIZON_FORWARD_DAYS) + 1
         cur.executemany(
-            "INSERT INTO ephemeris_daily (date, body, ayanamsha_id, tropical_longitude, "
-            "speed_dps, is_retrograde) VALUES (%s,%s,%s,%s,%s,%s)",
-            [
-                (horizon_start + timedelta(days=off), body, "tropical",
-                 _body_lon(body, off), 1.0, False)
-                for off in range(days)
-                for body in BODIES
-            ],
+            EPHEMERIS_INSERT_SQL,
+            ephemeris_rows(horizon_start, days, _body_lon, None),
         )
 
 
