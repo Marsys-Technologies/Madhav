@@ -1342,6 +1342,33 @@ def _lint_module(name: str):
     return _LINTS[name]
 
 
+def _flat_str(node):
+    """The text of a string expression made of constants, f-string constant parts and `+` concatenation; None otherwise."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.JoinedStr):
+        return "".join(v.value if isinstance(v, ast.Constant) and isinstance(v.value, str) else " " for v in node.values)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        a, b = _flat_str(node.left), _flat_str(node.right)
+        return None if a is None or b is None else a + b
+    return None
+
+
+def _fact_category_surface(text: str) -> bool:
+    """Real code that SELECTs chart_facts by fact_category: a non-docstring string expression (constant, f-string,
+    `+` concatenation) holding SELECT, chart_facts and fact_category. A comment, a docstring or two unrelated strings
+    each mentioning one word are not a surface. Raises SyntaxError for unparseable source."""
+    tree = ast.parse(text)
+    docs = _docstring_ids(tree)
+    for n in ast.walk(tree):
+        if id(n) in docs or not isinstance(n, (ast.Constant, ast.JoinedStr, ast.BinOp)):
+            continue
+        t = _flat_str(n)
+        if t and re.search(r"\bSELECT\b", t, re.I) and "chart_facts" in t and "fact_category" in t:
+            return True
+    return False
+
+
 def _raw_token_surface(col: str) -> bool:
     """A column the raw-token lint's narrative-field pattern covers: signal_headline_text, signal_text, *_thesis, *_narrative."""
     return col in ("signal_headline_text", "signal_text") or col.endswith(("_thesis", "_narrative"))
@@ -1365,7 +1392,7 @@ def narr_lint_scan(paths, columns=()) -> dict:
         fact_surface = False
         for p in paths:
             text = p.read_text(encoding="utf-8")
-            fact_surface = fact_surface or ("chart_facts" in text and "fact_category" in text)
+            fact_surface = fact_surface or _fact_category_surface(text)
             try:
                 rel = p.resolve().relative_to(ROOT).as_posix()
             except ValueError:

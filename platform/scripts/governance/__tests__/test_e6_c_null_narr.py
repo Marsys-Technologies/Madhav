@@ -1263,3 +1263,35 @@ def test_a_plain_json_column_is_cast_through_the_json_string_value_not_its_text_
     assert "(\"j\"::jsonb #>> '{}')" in sql and "\"j\"::text" not in sql, sql
     assert "jsonb_typeof(\"j\"::jsonb) = 'string'" in sql
     assert "\"p\"::text" in ac.prose_row_counts_sql("t", ["p"], "", types={"p": "text"})
+
+
+# ───────────────────────── final review: item 7 (the fact_category surface must be real code) ─────────────────────────
+
+SQL_STR = 'Q = "SELECT fact_value_num FROM chart_facts WHERE fact_category = %s AND fact_key = %s"\n'
+
+
+@pytest.mark.parametrize("src", [
+    "# SELECT x FROM chart_facts WHERE fact_category = 'a' AND fact_key = 'b'\nx = 1\n",
+    '"""Reads chart_facts by fact_category (SELECT ...)."""\nx = 1\n',
+    'def f():\n    """SELECT from chart_facts where fact_category = x and fact_key = y"""\n    return 1\n',
+    "x = 'chart_facts only'\ny = 'fact_category only'\n",
+])
+def test_a_comment_docstring_or_split_mention_is_not_a_lint_surface(tmp_path, src):
+    p = tmp_path / "w.py"
+    p.write_text(src)
+    r = ac.narr_lint_scan([p], ["citation_human"])
+    assert r["v"] == ac.NO_DET and r["applied"] == [], (src, r)
+
+
+@pytest.mark.parametrize("src", [
+    SQL_STR,
+    'def f(cur):\n    cur.execute("SELECT v FROM chart_facts WHERE fact_category = %s AND fact_key = %s", (1, 2))\n',
+    'def f(cur, c):\n    cur.execute(f"SELECT v FROM chart_facts WHERE fact_category = {c} AND fact_key = 1")\n',
+    'Q = ("SELECT v FROM chart_facts "\n     "WHERE fact_category = %s AND fact_key = %s")\n',
+    'Q = "SELECT v FROM chart_facts " + "WHERE fact_category = %s AND fact_key = %s"\n',
+])
+def test_a_real_sql_string_selecting_chart_facts_by_category_is_a_lint_surface(tmp_path, src):
+    p = tmp_path / "w.py"
+    p.write_text(src)
+    r = ac.narr_lint_scan([p], ["citation_human"])
+    assert r["v"] == ac.PASS and r["applied"] == ["fact-category-pin"], (src, r)
