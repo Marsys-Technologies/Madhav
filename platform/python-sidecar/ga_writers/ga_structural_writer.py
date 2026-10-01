@@ -102,6 +102,7 @@ from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT, assert_legal
 from brahmagyan.dignity_oracle import classify_dignity
+from brahmagyan.l0_reference import NATURAL_MALEFIC_CITATION, NATURAL_MALEFIC_PLANET_IDS, NODE_PLANET_IDS
 from brahmagyan.aspects import get_graha_aspects
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
@@ -627,10 +628,18 @@ ARGALA_BASIC_OFFSETS: frozenset[int] = frozenset({2, 4, 11})
 # AR-2: argala and obstruction are counted in reverse when the REFERENCE is a node (both nodes;
 # Ketu-only is the named stricter variant, not built). bphs_pg0311_c01, bphs_pg0312_c01.
 ARGALA_REVERSED_REFERENCES: frozenset[str] = frozenset({"Rahu", "Ketu"})
-# AR-1 outcome vocabulary (count only; "stronger" has no sourced measure and stays null).
+# AR-1 outcome vocabulary. TWO named readings are stored, neither hidden inside the other:
+#   outcome_by_count (CANONICAL, carried by fact_value_text): argala count against obstructor
+#     count: more = argala_prevails, fewer = obstructed, equal = undetermined. This is the explicit
+#     rule both texts state (bphs_pg0311_c01; Jaimini Su. 8), and an explicit rule outranks an
+#     illustrative word. "Stronger" has no sourced measure and stays null.
+#   outcome_any_obstructor (named variant): obstructed whenever any obstructor stands in the paired
+#     sign, else unobstructed: the reading of the worked example's "countered" (bphs_pg0312_c01) and
+#     of today's L1 virodha score.
 ARGALA_OUTCOME_PREVAILS = "argala_prevails"
 ARGALA_OUTCOME_OBSTRUCTED = "obstructed"
 ARGALA_OUTCOME_UNDETERMINED = "undetermined"
+ARGALA_OUTCOME_UNOBSTRUCTED = "unobstructed"
 # AR-4 / AR-5: provenance. The computation is inline in this module (there is no
 # pyjhora_adapter argala module), so the source names the real writer function.
 ARGALA_CITATION_BLOCK = (
@@ -4737,7 +4746,9 @@ def _build_argala_rows(
                 sign_occupants[g_sign].append(g["name"])
 
     # Use module-level ARGALA_OFFSETS and VIRODHA_OFFSETS constants
-    malefics_set = {"Saturn", "Mars", "Sun", "Rahu", "Ketu"}
+    # The score convention's malefic set is READ from L0 (natural malefics Sun, Saturn, Mars per BPHS
+    # Ch. 3, plus the nodes, which L0 states separately), never a local set (SS N-61).
+    malefics_set = {pid.capitalize() for pid in NATURAL_MALEFIC_PLANET_IDS + NODE_PLANET_IDS}
 
     # Full 12×12 matrix: every (target_sign, source_sign) pair gets ONE atomic row per category.
     # Argala score = 0.0 for non-argala positions; non-zero only when offset is in ARGALA_OFFSETS.
@@ -4788,10 +4799,11 @@ def _build_argala_rows(
                     f"({'argala' if offset in ARGALA_OFFSETS else 'no_argala'}) ({ayanamsha_id})."
                 ),
                 provenance_text=(
-                    f"{ARGALA_CITATION_BLOCK} Score 1.0 less 0.25 per natural malefic (Sun, Saturn, Mars, "
-                    "Rahu, Ketu) in the source sign: unsourced project convention. An argala-offset cell "
-                    "with no occupant in the source sign is NULL (no_occupant). Sign-level and FORWARD-ONLY: "
-                    "no reversed count for a node as the reference, no pairing; see argala_graha_natal."
+                    f"{ARGALA_CITATION_BLOCK} Score 1.0 less 0.25 per occupant in the L0 natural-malefic set "
+                    f"(natural malefics plus the nodes; {NATURAL_MALEFIC_CITATION}): the 1.0 / 0.25 formula is an "
+                    "unsourced project convention. An argala-offset cell with no occupant in the source sign is "
+                    "NULL (no_occupant). Sign-level and FORWARD-ONLY: no reversed count for a node as the "
+                    "reference, no pairing; see argala_graha_natal."
                 ),
             ))
 
@@ -4867,6 +4879,12 @@ def _argala_outcome(argala_count: int, obstructor_count: int) -> str:
     return ARGALA_OUTCOME_UNDETERMINED
 
 
+def _argala_outcome_any_obstructor(obstruction_present: bool) -> str:
+    """The named variant: obstructed whenever any obstructor stands in the paired sign, else
+    unobstructed (the worked example's "countered"; today's L1 virodha score). Not the canonical reading."""
+    return ARGALA_OUTCOME_OBSTRUCTED if obstruction_present else ARGALA_OUTCOME_UNOBSTRUCTED
+
+
 def _argala_reading(
     ref_sign_num: int,
     reverse: bool,
@@ -4876,8 +4894,8 @@ def _argala_reading(
 
     For each (argala offset, obstruction offset) pair of ARGALA_OBSTRUCTION_PAIRS, in pair
     order: the grahas standing in the argala sign (a pair with none is not an argala and is
-    omitted), the grahas standing in the paired obstruction sign, both counts, and the
-    count-only outcome. Grahas are listed in ALL_GRAHAS order. Obstruction applies to every
+    omitted), the grahas standing in the paired obstruction sign, both counts, `obstruction_present`,
+    and BOTH named outcomes (`outcome_by_count`, canonical; `outcome_any_obstructor`, variant). Grahas are listed in ALL_GRAHAS order. Obstruction applies to every
     argala, benefic or malefic (BPHS: an obstructed argala "will go astray").
     """
     order = {name: i for i, name in enumerate(ALL_GRAHAS)}
@@ -4902,7 +4920,9 @@ def _argala_reading(
             "argala_count": len(argala_grahas),
             "obstructor_grahas": obstructors,
             "obstructor_count": len(obstructors),
-            "outcome": _argala_outcome(len(argala_grahas), len(obstructors)),
+            "obstruction_present": bool(obstructors),
+            "outcome_by_count": _argala_outcome(len(argala_grahas), len(obstructors)),
+            "outcome_any_obstructor": _argala_outcome_any_obstructor(bool(obstructors)),
         })
     return out
 
@@ -4950,7 +4970,7 @@ def _build_argala_graha_rows(
                     f"from_{s_code}_offset_{offset}",
                     chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                     value_num=float(reading["argala_count"]),
-                    value_text=reading["outcome"],
+                    value_text=reading["outcome_by_count"],       # the canonical reading
                     value_jsonb={
                         "varga": varga,
                         "ayanamsha_id": ayanamsha_id,
@@ -4966,8 +4986,10 @@ def _build_argala_graha_rows(
                         "argala_count": reading["argala_count"],
                         "obstructor_grahas": reading["obstructor_grahas"],
                         "obstructor_count": reading["obstructor_count"],
-                        "outcome": reading["outcome"],
-                        "outcome_basis": "count_only",
+                        "obstruction_present": reading["obstruction_present"],
+                        "outcome_by_count": reading["outcome_by_count"],
+                        "outcome_any_obstructor": reading["outcome_any_obstructor"],
+                        "canonical_outcome": "outcome_by_count",
                         "strength_comparison": None,
                         "offset_class": "basic" if offset in ARGALA_BASIC_OFFSETS else "extended",
                         "pair_rule": "2-12,4-10,11-3,5-9",
@@ -4978,12 +5000,16 @@ def _build_argala_graha_rows(
                     citation_human=(
                         f"{varga} {target} argala from {source} (offset {offset}, {direction} count): "
                         f"{reading['argala_count']} causing, {reading['obstructor_count']} obstructing at offset "
-                        f"{reading['obstruction_offset']}: {reading['outcome']} ({ayanamsha_id})."
+                        f"{reading['obstruction_offset']}: {reading['outcome_by_count']} ({ayanamsha_id})."
                     ),
                     provenance_text=(
-                        f"{ARGALA_CITATION_BLOCK} Outcome by count only (argala count against obstructor "
-                        "count); the 'stronger' test has no sourced measure and is null. A node as the target "
-                        "counts argala and obstruction in reverse. Single derivation, no second pass."
+                        f"{ARGALA_CITATION_BLOCK} Canonical outcome (fact_value_text) is outcome_by_count: "
+                        "argala count against obstructor count, the explicit rule both texts state "
+                        "(bphs_pg0311_c01; Jaimini Su. 8); an explicit rule outranks an illustrative word. "
+                        "outcome_any_obstructor (obstructed whenever obstruction_present, else unobstructed) is the "
+                        "named variant matching the worked example's 'countered' (bphs_pg0312_c01) and L1's virodha "
+                        "score. The 'stronger' test has no sourced measure and is null. A node as the target counts "
+                        "argala and obstruction in reverse. Single derivation, no second pass."
                     ),
                 ))
     return rows

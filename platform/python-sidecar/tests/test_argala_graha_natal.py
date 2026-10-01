@@ -78,11 +78,14 @@ def _assert_bphs_golden() -> None:
         ["Sun", "Mercury"], 12, ["Venus"])
     assert (by_off[11]["argala_grahas"], by_off[11]["obstruction_offset"], by_off[11]["obstructor_grahas"]) == (
         ["Jupiter"], 3, ["Moon", "Rahu"])
-    # outcomes as the RULED count-only rule gives them (the text calls all three "countered";
-    # the count rule gives undetermined / prevails / obstructed: see the design note, section 0)
-    assert by_off[4]["outcome"] == "undetermined"          # Mars 1 against Saturn 1
-    assert by_off[2]["outcome"] == "argala_prevails"       # Sun-Mercury 2 against Venus 1
-    assert by_off[11]["outcome"] == "obstructed"           # Jupiter 1 against Moon-Rahu 2
+    # BOTH named readings are asserted (SS N-61, change 1). CANONICAL outcome_by_count (the explicit rule):
+    assert by_off[4]["outcome_by_count"] == "undetermined"          # Mars 1 against Saturn 1
+    assert by_off[2]["outcome_by_count"] == "argala_prevails"       # Sun-Mercury 2 against Venus 1
+    assert by_off[11]["outcome_by_count"] == "obstructed"           # Jupiter 1 against Moon-Rahu 2
+    # NAMED VARIANT outcome_any_obstructor: the text's "countered" for all three, and obstruction_present
+    for off in (4, 2, 11):
+        assert by_off[off]["obstruction_present"] is True
+        assert by_off[off]["outcome_any_obstructor"] == "obstructed"
 
     # (2) Rahu as the reference counts in reverse: its 2nd is Taurus (Sun-Mercury), obstructed by
     #     Mars in "the 12th from Rahu (counted in reverse manner)".
@@ -93,6 +96,8 @@ def _assert_bphs_golden() -> None:
     assert rahu[2]["obstruction_offset"] == 12
     assert rahu[2]["obstructor_grahas"] == ["Mars"]
     assert rahu[2]["argala_sign_num"] == 2 and rahu[2]["obstruction_sign_num"] == 4
+    assert rahu[2]["outcome_by_count"] == "argala_prevails"         # Sun-Mercury 2 against Mars 1
+    assert rahu[2]["outcome_any_obstructor"] == "obstructed"        # "however, obstructed by Mars"
 
     # (3) the same through the row builder: target Rahu, source Sun and Mercury, reverse count
     rows = {(r["fact_subject"], r["fact_key"]): r for r in _rows(BPHS_EXAMPLE)}
@@ -120,6 +125,37 @@ def test_golden_fails_under_forward_only_node_counting(monkeypatch):
     monkeypatch.setattr(sut, "ARGALA_REVERSED_REFERENCES", frozenset())
     with pytest.raises(AssertionError):
         _assert_bphs_golden()
+
+
+def test_golden_fails_if_the_canonical_field_carries_the_any_obstructor_reading(monkeypatch):
+    """Mutant 3: one field must not carry the contested judgment: if outcome_by_count were computed
+    as 'any obstructor' the golden test (which asserts both readings) must fail."""
+    monkeypatch.setattr(sut, "_argala_outcome", lambda a, o: "obstructed" if o else "argala_prevails")
+    with pytest.raises(AssertionError):
+        _assert_bphs_golden()
+
+
+def test_both_readings_are_stored_and_the_provenance_states_which_is_canonical():
+    for r in _rows(BPHS_EXAMPLE):
+        j = r["fact_value_jsonb"]
+        assert r["fact_value_text"] == j["outcome_by_count"]            # the canonical reading
+        assert j["obstruction_present"] is bool(j["obstructor_count"])
+        assert j["outcome_any_obstructor"] == ("obstructed" if j["obstruction_present"] else "unobstructed")
+        assert "outcome" not in j                                      # no single ambiguous 'outcome' field
+        text = r["formula_provenance_text"]
+        assert "Canonical outcome (fact_value_text) is outcome_by_count" in text
+        assert "outranks an illustrative word" in text and "outcome_any_obstructor" in text
+
+
+def test_the_malefic_set_is_read_from_l0_not_a_local_set():
+    import brahmagyan.l0_reference as l0
+    assert l0.NATURAL_MALEFIC_PLANET_IDS == ("sun", "mars", "saturn") and l0.NODE_PLANET_IDS == ("rahu", "ketu")
+    assert "bphs_pg0343_c01" in l0.NATURAL_MALEFIC_CITATION and "sourced_ocr_unverified" in l0.NATURAL_MALEFIC_CITATION
+    src = open(sut.__file__, encoding="utf-8").read()
+    assert 'malefics_set = {"Saturn"' not in src and "NATURAL_MALEFIC_PLANET_IDS" in src
+    rows = sut._build_argala_rows(_mock_chart_output(), CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+    cell = next(r for r in rows if r["fact_category"] == "argala_natal_matrix" and r["fact_value_num"] not in (None, 0.0))
+    assert l0.NATURAL_MALEFIC_CITATION in cell["formula_provenance_text"]
 
 
 def test_golden_fails_if_only_ketu_reverses(monkeypatch):
@@ -215,7 +251,7 @@ def test_equal_counts_are_undetermined_in_rows_and_strength_comparison_stays_nul
         assert r["fact_value_jsonb"]["argala_count"] == r["fact_value_jsonb"]["obstructor_count"] == 2
     for r in _rows(signs):
         assert r["fact_value_jsonb"]["strength_comparison"] is None
-        assert r["fact_value_jsonb"]["outcome_basis"] == "count_only"
+        assert r["fact_value_jsonb"]["canonical_outcome"] == "outcome_by_count"
 
 
 def test_obstruction_applies_to_benefic_argala_too():
