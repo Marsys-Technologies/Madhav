@@ -1,0 +1,568 @@
+{
+ "_provenance": "Active-asset depends_on graph (127 rows) BEFORE migration 1202: seed + migrations 913/1084/730/676 with inactive assets dropped. Reconstructed by E6 (Suvarna lane E6-build-gh); md5 of sorted depends_on of the 127 active rows matched the live registry (045e811d55d6825cf7c7f1fda329bdc4) at the E6 review. Frozen on purpose: this is the pre-state the 1202 test reasons against, not a live mirror.",
+ "edges": {
+  "bg_class_lifetime_counts": [
+   "bg_ghatana"
+  ],
+  "bg_class_priors": [],
+  "bg_cohort": [
+   "bg_ephemeris_engine"
+  ],
+  "bg_compendium_index": [
+   "bg_reference",
+   "bg_texts"
+  ],
+  "bg_concordance": [
+   "bg_reference",
+   "bg_rules",
+   "bg_text_index",
+   "bg_texts"
+  ],
+  "bg_dasha_systems": [
+   "bg_ontology"
+  ],
+  "bg_dignity_reference": [],
+  "bg_doshas": [
+   "bg_ontology"
+  ],
+  "bg_ephemeris": [],
+  "bg_ephemeris_engine": [],
+  "bg_formula_constants": [],
+  "bg_ghatana": [],
+  "bg_gochara_arcs": [
+   "bg_ephemeris"
+  ],
+  "bg_gochara_citation_resolution": [
+   "bg_texts"
+  ],
+  "bg_kota_chakra_rings": [],
+  "bg_kp_sublord_division": [
+   "bg_nakshatra"
+  ],
+  "bg_medical_mappings": [],
+  "bg_muhurta_lattice": [],
+  "bg_nakshatra": [],
+  "bg_nakshatra_medical": [],
+  "bg_ontology": [],
+  "bg_panchanga": [],
+  "bg_parihara_rules": [
+   "bg_doshas",
+   "bg_texts"
+  ],
+  "bg_phaladeepika_latta": [],
+  "bg_prashna_rules": [],
+  "bg_reference": [
+   "bg_ontology"
+  ],
+  "bg_remedies": [
+   "bg_texts"
+  ],
+  "bg_rules": [
+   "bg_dasha_systems",
+   "bg_texts",
+   "bg_yogas"
+  ],
+  "bg_sarvatobhadra_grid": [],
+  "bg_sign_medical": [],
+  "bg_sky_calendar": [],
+  "bg_text_index": [
+   "bg_reference",
+   "bg_texts"
+  ],
+  "bg_texts": [],
+  "bg_transit_engine": [],
+  "bg_transit_rules": [],
+  "bg_vastu_directions": [],
+  "bg_vedha_malefic_scale": [],
+  "bg_vidhi_floors": [
+   "bg_vidhi_primitives"
+  ],
+  "bg_vidhi_primitives": [],
+  "bg_yogas": [
+   "bg_ontology",
+   "bg_texts"
+  ],
+  "bo_anveshana": [
+   "bo_bimba",
+   "bo_drishti",
+   "bo_karanajala",
+   "bo_laksana",
+   "bo_samskara",
+   "bo_sangati"
+  ],
+  "bo_arudha": [
+   "ga_positions",
+   "ga_structural"
+  ],
+  "bo_bimba": [
+   "bo_arudha",
+   "bo_laksana",
+   "bo_nakshatra_semantic",
+   "bo_special_lagna",
+   "bo_sudarshana",
+   "bo_vargottama_dhana"
+  ],
+  "bo_cdlm_summary": [
+   "bo_sangati"
+  ],
+  "bo_cgm_motifs": [
+   "bo_bimba",
+   "bo_karanajala"
+  ],
+  "bo_cgm_paths": [
+   "bo_bimba",
+   "bo_karanajala"
+  ],
+  "bo_chart_gestalt": [
+   "bo_anveshana",
+   "bo_bimba",
+   "bo_cgm_paths",
+   "bo_laksana",
+   "bo_sangati"
+  ],
+  "bo_drishti": [
+   "bo_karanajala",
+   "bo_laksana",
+   "bo_sangati"
+  ],
+  "bo_grounding": [
+   "bo_arudha",
+   "bo_laksana",
+   "bo_nakshatra_semantic",
+   "bo_special_lagna",
+   "bo_sudarshana",
+   "bo_vargottama_dhana",
+   "ga_yoga"
+  ],
+  "bo_karanajala": [
+   "bo_arudha",
+   "bo_bimba",
+   "bo_laksana",
+   "bo_nakshatra_semantic",
+   "bo_special_lagna",
+   "bo_sudarshana",
+   "bo_vargottama_dhana",
+   "ga_positions"
+  ],
+  "bo_laksana": [
+   "bg_rules",
+   "ga_condition",
+   "ga_nakshatra",
+   "ga_panchanga",
+   "ga_positions",
+   "ga_sade_sati",
+   "ga_sensitive",
+   "ga_strength",
+   "ga_structural",
+   "ga_vargas",
+   "ga_vichara"
+  ],
+  "bo_laksana_rerank": [
+   "bo_arudha",
+   "bo_karanajala",
+   "bo_laksana",
+   "bo_nakshatra_semantic",
+   "bo_special_lagna",
+   "bo_sudarshana",
+   "bo_vargottama_dhana"
+  ],
+  "bo_nakshatra_semantic": [
+   "ga_nakshatra",
+   "ga_positions",
+   "ga_structural"
+  ],
+  "bo_pramana_mapa": [
+   "bo_anveshana",
+   "bo_bimba",
+   "bo_drishti",
+   "bo_karanajala",
+   "bo_laksana",
+   "bo_samskara",
+   "bo_sangati",
+   "bo_upaya"
+  ],
+  "bo_pratijna": [
+   "bo_laksana",
+   "bo_sangati"
+  ],
+  "bo_samskara": [
+   "bo_arudha",
+   "bo_laksana",
+   "bo_nakshatra_semantic",
+   "bo_special_lagna",
+   "bo_sudarshana",
+   "bo_vargottama_dhana"
+  ],
+  "bo_samvada": [
+   "bo_karanajala",
+   "bo_laksana",
+   "bo_pramana_mapa",
+   "bo_sangati",
+   "bo_upaya"
+  ],
+  "bo_sangati": [
+   "bo_arudha",
+   "bo_karanajala",
+   "bo_laksana",
+   "bo_laksana_rerank",
+   "bo_nakshatra_semantic",
+   "bo_special_lagna",
+   "bo_sudarshana",
+   "bo_vargottama_dhana"
+  ],
+  "bo_special_lagna": [
+   "ga_sensitive"
+  ],
+  "bo_sudarshana": [
+   "ga_positions"
+  ],
+  "bo_upaya": [
+   "bo_cgm_motifs",
+   "bo_laksana",
+   "bo_sangati",
+   "ga_dashas",
+   "ga_structural"
+  ],
+  "bo_vargottama_dhana": [
+   "ga_positions",
+   "ga_vargas"
+  ],
+  "bo_yantra_mechanism": [
+   "bo_cgm_motifs",
+   "bo_cgm_paths",
+   "bo_karanajala"
+  ],
+  "ga_ayurdaya": [
+   "ga_positions"
+  ],
+  "ga_condition": [
+   "ga_dashas",
+   "ga_positions",
+   "ga_vargas"
+  ],
+  "ga_dashas": [
+   "ga_positions"
+  ],
+  "ga_medical": [
+   "ga_condition",
+   "ga_positions"
+  ],
+  "ga_nakshatra": [
+   "bg_kp_sublord_division",
+   "bg_nakshatra",
+   "ga_positions"
+  ],
+  "ga_panchanga": [
+   "bg_panchanga",
+   "ga_positions"
+  ],
+  "ga_positions": [],
+  "ga_prashna": [
+   "bg_prashna_rules",
+   "ga_positions"
+  ],
+  "ga_sade_sati": [
+   "ga_dashas",
+   "ga_nakshatra",
+   "ga_panchanga",
+   "ga_positions",
+   "ga_strength",
+   "ga_structural",
+   "ga_vargas"
+  ],
+  "ga_sensitive": [
+   "bg_reference",
+   "ga_positions"
+  ],
+  "ga_sensitive_degree": [
+   "ga_positions"
+  ],
+  "ga_strength": [
+   "ga_positions",
+   "ga_vargas"
+  ],
+  "ga_structural": [
+   "ga_dashas",
+   "ga_nakshatra",
+   "ga_panchanga",
+   "ga_positions",
+   "ga_sensitive",
+   "ga_strength",
+   "ga_vargas"
+  ],
+  "ga_tajaka": [
+   "ga_dashas",
+   "ga_positions",
+   "ga_sensitive"
+  ],
+  "ga_transit_anchors": [
+   "ga_positions"
+  ],
+  "ga_vargas": [
+   "ga_positions"
+  ],
+  "ga_vastu": [
+   "ga_condition"
+  ],
+  "ga_vichara": [
+   "ga_dashas",
+   "ga_strength",
+   "ga_structural",
+   "ga_yoga"
+  ],
+  "ga_yoga": [
+   "ga_dashas",
+   "ga_structural"
+  ],
+  "ka_avadhi": [
+   "bg_ghatana",
+   "bo_pratijna",
+   "ga_dashas"
+  ],
+  "ka_bhavishya_lekha": [
+   "bo_laksana",
+   "ka_kala_darshana",
+   "ka_sangam",
+   "ka_vighnakara"
+  ],
+  "ka_dasha_kala": [
+   "ga_dashas"
+  ],
+  "ka_gochara": [
+   "bg_ephemeris",
+   "bg_transit_rules",
+   "ga_dashas",
+   "ga_positions",
+   "ga_yoga",
+   "ka_gochara_resonance",
+   "ka_moorti_nirnaya",
+   "ka_vedha_gochara"
+  ],
+  "ka_gochara_resonance": [
+   "bg_transit_rules"
+  ],
+  "ka_graha_sancara": [
+   "bg_ephemeris"
+  ],
+  "ka_jivana_parva": [
+   "ga_dashas",
+   "ka_dasha_kala",
+   "ka_kala_darshana",
+   "ka_sangam",
+   "ka_yojaka"
+  ],
+  "ka_kala_darshana": [
+   "ka_kalasutra",
+   "ka_sangam",
+   "ka_vighnakara"
+  ],
+  "ka_kalasutra": [
+   "bo_laksana",
+   "ka_sangam",
+   "ka_yojaka"
+  ],
+  "ka_kota_chakra": [
+   "bg_ephemeris",
+   "bg_kota_chakra_rings",
+   "ga_positions"
+  ],
+  "ka_kshetra": [
+   "bg_class_lifetime_counts",
+   "bg_cohort",
+   "bo_pratijna",
+   "bo_sangati",
+   "bo_upaya",
+   "ga_panchanga",
+   "ka_dasha_kala",
+   "ka_gochara_resonance",
+   "ka_vedha_gochara"
+  ],
+  "ka_moorti_nirnaya": [
+   "bg_ephemeris",
+   "bg_transit_rules",
+   "ga_positions"
+  ],
+  "ka_muhurta_seva": [],
+  "ka_sangam": [
+   "bg_transit_rules",
+   "bo_laksana",
+   "ga_dashas",
+   "ga_positions",
+   "ga_strength",
+   "ga_tajaka",
+   "ka_dasha_kala",
+   "ka_gochara",
+   "ka_muhurta_seva",
+   "ka_vedha_gochara",
+   "ka_yojaka"
+  ],
+  "ka_sudarshana_varsha": [
+   "ga_positions"
+  ],
+  "ka_taranga": [
+   "bg_ghatana",
+   "bo_pratijna",
+   "ga_dashas",
+   "ka_avadhi",
+   "ka_sangam"
+  ],
+  "ka_tithi_pravesha": [
+   "ga_positions"
+  ],
+  "ka_tulana": [
+   "ka_kala_darshana",
+   "ka_sangam",
+   "ka_vighnakara"
+  ],
+  "ka_vedha_gochara": [
+   "bg_ephemeris",
+   "bg_phaladeepika_latta",
+   "bg_sarvatobhadra_grid",
+   "bg_transit_rules",
+   "bg_vedha_malefic_scale",
+   "ga_positions"
+  ],
+  "ka_vighnakara": [
+   "bg_dignity_reference",
+   "ga_positions",
+   "ka_muhurta_seva",
+   "ka_sangam",
+   "ka_yojaka"
+  ],
+  "ka_yojaka": [
+   "bg_ghatana",
+   "bg_transit_rules",
+   "bo_bimba",
+   "bo_laksana",
+   "bo_pratijna",
+   "bo_sangati",
+   "ga_dashas"
+  ],
+  "lel_events": [],
+  "mi_abhilekha": [
+   "mi_bhavisya"
+  ],
+  "mi_adhilepa": [
+   "bo_laksana",
+   "ga_positions",
+   "ka_sangam",
+   "mi_gunanaka",
+   "ph_nimitta"
+  ],
+  "mi_bhara": [
+   "ka_kshetra"
+  ],
+  "mi_bhavisya": [
+   "bo_laksana",
+   "mi_jivanaghatana",
+   "mi_kula",
+   "ph_nimitta",
+   "ph_phaladesa",
+   "ph_pramana"
+  ],
+  "mi_darshana": [
+   "bo_pratijna",
+   "mi_adhilepa",
+   "mi_gunanaka",
+   "mi_jivanaghatana",
+   "mi_kula",
+   "mi_pariksha",
+   "mi_pramana",
+   "mi_sambandha"
+  ],
+  "mi_gunanaka": [
+   "bg_formula_constants",
+   "mi_kula",
+   "mi_pramana"
+  ],
+  "mi_jivanaghatana": [
+   "bg_ghatana"
+  ],
+  "mi_kula": [
+   "bg_class_priors",
+   "bg_rules"
+  ],
+  "mi_pariksha": [
+   "bg_formula_constants",
+   "mi_kula",
+   "mi_pramana"
+  ],
+  "mi_pramana": [
+   "bg_formula_constants",
+   "bg_ghatana",
+   "mi_bhavisya",
+   "mi_jivanaghatana"
+  ],
+  "mi_sambandha": [
+   "mi_bhavisya",
+   "mi_pariksha",
+   "mi_pramana"
+  ],
+  "mi_sankalpa": [
+   "ka_kshetra"
+  ],
+  "mi_seva": [
+   "mi_adhilepa"
+  ],
+  "mi_vistara": [],
+  "ph_muhurta": [
+   "ga_condition",
+   "ga_panchanga",
+   "ga_positions",
+   "ka_gochara",
+   "ka_kalasutra",
+   "ka_sangam",
+   "ka_vighnakara",
+   "ph_nimitta"
+  ],
+  "ph_nimitta": [
+   "bo_anveshana",
+   "bo_bimba",
+   "bo_cgm_paths",
+   "bo_karanajala",
+   "bo_laksana",
+   "bo_samskara",
+   "bo_sangati",
+   "ka_bhavishya_lekha",
+   "ka_sangam"
+  ],
+  "ph_phaladesa": [
+   "bo_laksana",
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_pramana",
+   "ph_pratikara",
+   "ph_sankrama",
+   "ph_suddha_sodhana"
+  ],
+  "ph_pramana": [
+   "ph_muhurta",
+   "ph_nimitta",
+   "ph_pratikara",
+   "ph_sankrama",
+   "ph_sodhana",
+   "ph_suddha_sodhana"
+  ],
+  "ph_pratikara": [
+   "bo_upaya",
+   "ka_sangam",
+   "ka_vighnakara",
+   "ph_nimitta"
+  ],
+  "ph_rectification": [
+   "ph_nimitta"
+  ],
+  "ph_sankrama": [
+   "bo_sangati",
+   "ph_nimitta"
+  ],
+  "ph_sodhana": [
+   "bo_laksana",
+   "ph_nimitta"
+  ],
+  "ph_suddha_sodhana": [
+   "ph_nimitta",
+   "ph_sodhana"
+  ]
+ }
+}
