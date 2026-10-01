@@ -65,7 +65,7 @@ from . import ledger as gk_ledger
 from . import targets
 from .contacts import find_roots
 from .convention import ORB_TABLE
-from .evaluator import RecordEdge, record_uuid
+from .evaluator import RULE_VERSION, RecordEdge, record_uuid
 from .materialise import (BoundaryCrossing, ResidenceSpan, mint_natal_record,
                           mint_transit_records, residence_spans)
 from .substrate import (DB_BODY, SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START,
@@ -292,6 +292,12 @@ class MissingCoverageError(RuntimeError):
     """pin 7: a record grain ran before its class coverage partition."""
 
 
+class SealedGenerationError(RuntimeError):
+    """AM-3: a candidate rebuild (delete-then-insert) was attempted against a
+    SEALED generation. A sealed generation is never reopened — a re-run under an
+    existing sealed generation is a refusal; new evaluation is a new generation."""
+
+
 class RecordStore:
     """Persistence for one record grain (pin 5) over 1081/1153/1155.
 
@@ -381,6 +387,90 @@ class RecordStore:
 
     # ── coverage FIRST (pin 7) ────────────────────────────────────────────
 
+    # ── candidate replacement in dependency order (AM-3; §N.3) ───────────
+    #
+    # The chart × generation tables are rebuilt by delete-then-insert at the
+    # OWNED grain, never by insert-if-absent: a rebuild REPLACES, it never
+    # accretes and never raises on a legitimate input change. Dependency order
+    # (FK closure of 1081/1153/1155/1156): window membership → windows →
+    # records (prerequisites cascade) → the contacts those records alone
+    # referenced → the class coverage partition. A contact another path's records
+    # still reference is NEVER deleted (P3/P4 share one contact). The global
+    # tables (physical objects, contact identities, sky events) are untouched —
+    # they stay insert-if-absent. A sealed generation is refused up front (the
+    # DB's own DELETE guards would refuse it too; this names it).
+
+    def _refuse_if_sealed(self, chart_id: str, generation: str, what: str) -> None:
+        row = self.conn.execute(
+            "SELECT public.ka_gochara_generation_is_sealed(%s::uuid, %s)",
+            (chart_id, generation)).fetchone()
+        if row and row[0]:
+            raise SealedGenerationError(
+                f"{what}: (chart {chart_id}, generation {generation}) is SEALED — a "
+                "sealed generation is never rebuilt in place; evaluate under a new "
+                "generation label")
+
+    def _delete_orphaned_contacts(self, chart_id: str, generation: str,
+                                  contact_ids: list) -> int:
+        if not contact_ids:
+            return 0
+        cur = self.conn.execute(
+            "DELETE FROM public.ka_gochara_contact c"
+            " WHERE c.chart_id = %s AND c.generation = %s"
+            "   AND c.contact_id = ANY(%s::uuid[])"
+            "   AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_relationship_record r"
+            "                    WHERE r.chart_id = c.chart_id"
+            "                      AND r.generation = c.generation"
+            "                      AND r.contact_id = c.contact_id)",
+            (chart_id, generation, [str(c) for c in contact_ids]))
+        return cur.rowcount
+
+    def delete_record_grain(self, *, chart_id: str, generation: str,
+                            event_class: str, path_id: str,
+                            rule_version: str) -> dict[str, int]:
+        """Replace-prelude of one `record:` grain: the grain's windows, its
+        records (and their prerequisites), then the contacts only they used."""
+        self._refuse_if_sealed(chart_id, generation,
+                               f"record grain {event_class}/{path_id}")
+        grain = (chart_id, generation, event_class, path_id, rule_version)
+        where = (" WHERE chart_id = %s AND generation = %s AND event_class = %s"
+                 " AND path_id = %s AND rule_version = %s")
+        windows = self.conn.execute(
+            "DELETE FROM public.ka_gochara_eval_window" + where, grain).rowcount
+        contact_ids = [r[0] for r in self.conn.execute(
+            "SELECT DISTINCT contact_id FROM public.ka_gochara_relationship_record"
+            + where + " AND contact_id IS NOT NULL", grain).fetchall()]
+        records = self.conn.execute(
+            "DELETE FROM public.ka_gochara_relationship_record" + where,
+            grain).rowcount
+        contacts = self._delete_orphaned_contacts(chart_id, generation, contact_ids)
+        return {"windows": windows, "records": records, "contacts": contacts}
+
+    def delete_class_chain(self, *, chart_id: str, generation: str,
+                           event_class: str) -> dict[str, int]:
+        """Replace-prelude of one CLASS: every path's windows and records of the
+        class, the contacts only they used, then the class coverage partition
+        itself (records/windows FK it, so it goes last)."""
+        self._refuse_if_sealed(chart_id, generation, f"class {event_class}")
+        key = (chart_id, generation, event_class)
+        where = (" WHERE chart_id = %s AND generation = %s AND event_class = %s")
+        windows = self.conn.execute(
+            "DELETE FROM public.ka_gochara_eval_window" + where, key).rowcount
+        contact_ids = [r[0] for r in self.conn.execute(
+            "SELECT DISTINCT contact_id FROM public.ka_gochara_relationship_record"
+            + where + " AND contact_id IS NOT NULL", key).fetchall()]
+        records = self.conn.execute(
+            "DELETE FROM public.ka_gochara_relationship_record" + where,
+            key).rowcount
+        contacts = self._delete_orphaned_contacts(chart_id, generation, contact_ids)
+        coverage = self.conn.execute(
+            "DELETE FROM public.kala_gochara_coverage"
+            " WHERE chart_id = %s AND generation = %s"
+            " AND partition_kind = 'event_class' AND partition_key = %s",
+            key).rowcount
+        return {"windows": windows, "records": records, "contacts": contacts,
+                "coverage": coverage}
+
     def write_coverage(self, *, chart_id: str, generation: str,
                        event_class: str,
                        convention_id: str,
@@ -396,7 +486,10 @@ class RecordStore:
         (chart, generation, class), written by the coverage substep before
         any record grain of the class runs (coverage FIRST — pin 7 is
         existence-before-records; an earlier committed substep satisfies
-        it). Insert-if-absent with a full byte check (pin 4)."""
+        it). A candidate REBUILD replaces the class's whole dependent chain
+        (AM-3/§N.3) and writes the partition afresh — it never accretes and a
+        changed input (new build, new horizon, new relations) never raises; a
+        sealed generation is refused."""
         key = event_class
         rng = f"[{horizon[0].isoformat()},{horizon[1].isoformat()})"
         payload = (chart_id, generation, "event_class", key, convention_id,
@@ -405,6 +498,8 @@ class RecordStore:
                    targets_requested - targets_resolved,
                    _json.dumps(state_counts), _json.dumps(unavailable_inputs),
                    unsearched_reason, build_id)
+        self.delete_class_chain(chart_id=chart_id, generation=generation,
+                                event_class=event_class)
         self.conn.execute(
             "INSERT INTO public.kala_gochara_coverage ("
             " chart_id, generation, partition_kind, partition_key, convention_id,"
@@ -412,25 +507,9 @@ class RecordStore:
             " targets_requested, targets_resolved, targets_unresolved,"
             " target_resolution_state_counts, unavailable_inputs,"
             " unsearched_reason, build_id)"
-            " VALUES (%s,%s,%s,%s,%s,%s::tstzrange,%s::tstzrange,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-            " ON CONFLICT (chart_id, generation, partition_kind, partition_key)"
-            " DO NOTHING",
+            " VALUES (%s,%s,%s,%s,%s,%s::tstzrange,%s::tstzrange,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
             payload,
         )
-        row = self.conn.execute(
-            "SELECT convention_id, requested_horizon::text, relations_searched,"
-            " targets_requested, targets_resolved, build_id"
-            " FROM public.kala_gochara_coverage"
-            " WHERE chart_id = %s AND generation = %s"
-            " AND partition_kind = 'event_class' AND partition_key = %s",
-            (chart_id, generation, key),
-        ).fetchone()
-        if row is None or row[0] != convention_id or row[3:] != (
-                targets_requested, targets_resolved, build_id):
-            raise IdentityCollisionError(
-                f"coverage {key}: stored row {row} diverges from the grain's "
-                f"own facts (convention {convention_id}, targets "
-                f"{targets_requested}/{targets_resolved}, build {build_id})")
 
     def stored_coverage_facts_json(self, *, chart_id: str, generation: str,
                                    event_class: str) -> str:
@@ -878,6 +957,16 @@ def materialise_record_grain(
 
     coverage_facts = store.stored_coverage_facts_json(
         chart_id=chart_id, generation=generation, event_class=event_class)
+    # AM-3/§N.3: a candidate rebuild REPLACES the grain — its windows, records
+    # and the contacts only they used are deleted (dependency order) and the
+    # derived rows inserted afresh. Coverage presence is checked FIRST (above),
+    # so a grain without its partition refuses with no side effect; a sealed
+    # generation is refused by the store; a contact another path still
+    # references survives.
+    store.delete_record_grain(
+        chart_id=chart_id, generation=generation, event_class=event_class,
+        path_id=path_id,
+        rule_version=edges[0].rule_version if edges else RULE_VERSION)
     counts = {"contacts": 0, "records": 0, "natal_records": 0,
               "truncated_contacts": 0, "prereq_evaluated": 0}
     # Per-record evaluation context for the prerequisite result pass below
@@ -1034,6 +1123,7 @@ __all__ = [
     "DEFERRAL_POINT_SOLVE",
     "KALA_CONVENTION_VECTOR",
     "MissingCoverageError",
+    "SealedGenerationError",
     "POINT_KERNEL_RELATION",
     "POINT_ORB_SOURCE",
     "POINT_SOLVE_INDEX_TOLERANCE_ARCSEC",

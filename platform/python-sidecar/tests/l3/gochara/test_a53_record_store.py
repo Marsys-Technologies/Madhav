@@ -123,6 +123,10 @@ class FakeStore:
     def insert_record(self, **kw):
         self.calls.append(("insert_record", kw))
 
+    def delete_record_grain(self, **kw):
+        self.calls.append(("delete_record_grain", kw))
+        return {"windows": 0, "records": 0, "contacts": 0}
+
 
 def _run(store, edges, **over):
     kw = dict(chart_id=CHART_ID, generation="5.0", event_class="marriage",
@@ -931,3 +935,206 @@ def test_p4_other_planet_not_searched_is_unknown_and_unqualified(pg):
     counts, rows = _pg_p4_run(pg, ["saturn"])        # Jupiter's edge not in the grain
     assert counts["records"] == 1
     assert [(r[1], r[3]) for r in rows if r[0] == "saturn"] == [("unqualified", "unknown")]
+
+
+# ── AM-3 / §N.3: candidate REPLACEMENT in dependency order ──────────────────
+
+def test_grain_replaces_after_the_coverage_check_and_before_any_insert():
+    store = FakeStore({"saturn": [_crossing(10, 180.0), _crossing(200, 210.0)]})
+    _run(store, [_libra_edge()])
+    kinds = [k for k, _ in store.calls]
+    assert kinds.index("stored_coverage_facts_json") < kinds.index("delete_record_grain")
+    assert kinds.index("delete_record_grain") < kinds.index("insert_contact")
+    assert kinds.index("delete_record_grain") < kinds.index("insert_record")
+    (_, kw), = [c for c in store.calls if c[0] == "delete_record_grain"]
+    assert (kw["event_class"], kw["path_id"], kw["rule_version"], kw["generation"]) == (
+        "marriage", "P3", "1.0.0", "5.0")
+
+
+def test_grain_with_no_edges_still_replaces_its_stale_rows():
+    """An empty grain (e.g. H-unknown class) must still clear what an earlier
+    run wrote — a rebuild never leaves the previous generation of rows behind."""
+    store = FakeStore({})
+    counts = _run(store, [])
+    assert counts["records"] == 0
+    assert any(k == "delete_record_grain" for k, _ in store.calls)
+
+
+def test_grain_without_coverage_refuses_with_no_delete():
+    store = FakeStore({"saturn": [_crossing(10, 180.0)]}, coverage_present=False)
+    with pytest.raises(rs.MissingCoverageError):
+        _run(store, [_libra_edge()])
+    assert not any(k == "delete_record_grain" for k, _ in store.calls)
+
+
+class _RecordingConn:
+    """Records every statement; answers the sealed-generation probe and the
+    contact-id SELECT; reports a rowcount for DELETEs."""
+
+    def __init__(self, sealed=False, contact_ids=("c1", "c2")):
+        self.sealed, self.contact_ids = sealed, list(contact_ids)
+        self.statements: list[str] = []
+
+    def execute(self, sql, params=None):
+        self.statements.append(" ".join(sql.split()))
+        conn = self
+
+        class _R:
+            rowcount = 1
+
+            def fetchone(self_inner):
+                return (conn.sealed,)
+
+            def fetchall(self_inner):
+                return [(c,) for c in conn.contact_ids]
+        return _R()
+
+
+def _tables_deleted(conn):
+    out = []
+    for st in conn.statements:
+        if st.startswith("DELETE FROM public."):
+            out.append(st.split()[2].removeprefix("public."))
+    return out
+
+
+def test_record_grain_delete_runs_in_fk_dependency_order():
+    conn = _RecordingConn()
+    rs.RecordStore(conn).delete_record_grain(
+        chart_id=CHART_ID, generation="5.0", event_class="marriage",
+        path_id="P3", rule_version="1.0.0")
+    assert _tables_deleted(conn) == [
+        "ka_gochara_eval_window",            # membership cascades with it
+        "ka_gochara_relationship_record",    # prerequisites cascade with it
+        "ka_gochara_contact"]                # only the contacts no record still uses
+    contact_delete = [st for st in conn.statements
+                      if st.startswith("DELETE FROM public.ka_gochara_contact")][0]
+    assert "NOT EXISTS" in contact_delete and "ka_gochara_relationship_record" in contact_delete
+
+
+def test_class_chain_delete_ends_with_the_coverage_partition():
+    conn = _RecordingConn()
+    rs.RecordStore(conn).delete_class_chain(
+        chart_id=CHART_ID, generation="5.0", event_class="marriage")
+    assert _tables_deleted(conn) == [
+        "ka_gochara_eval_window", "ka_gochara_relationship_record",
+        "ka_gochara_contact", "kala_gochara_coverage"]
+
+
+def test_a_sealed_generation_is_refused_before_any_delete():
+    for fn, kw in ((rs.RecordStore.delete_record_grain,
+                    dict(event_class="marriage", path_id="P3", rule_version="1.0.0")),
+                   (rs.RecordStore.delete_class_chain, dict(event_class="marriage"))):
+        conn = _RecordingConn(sealed=True)
+        with pytest.raises(rs.SealedGenerationError, match="SEALED"):
+            fn(rs.RecordStore(conn), chart_id=CHART_ID, generation="5.0", **kw)
+        assert _tables_deleted(conn) == []
+
+
+def test_no_contacts_to_orphan_means_no_contact_delete():
+    conn = _RecordingConn(contact_ids=())
+    rs.RecordStore(conn).delete_record_grain(
+        chart_id=CHART_ID, generation="5.0", event_class="marriage",
+        path_id="P3", rule_version="1.0.0")
+    assert "ka_gochara_contact" not in _tables_deleted(conn)
+
+
+# real DB: the rebuild really replaces (own generations 5.3 / 5.4)
+
+def _pg_p3_run(conn, generation, build_id):
+    from services.gochara_kernel.rule_registry import RuleRegistryStore
+    RuleRegistryStore(conn).seed()
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        sky_cid = _sky_convention_id(conn)
+        _seed_libra_crossings(conn, sky_cid, "Saturn")
+    store = rs.RecordStore(conn)
+    kala_cid = store.ensure_kala_convention()
+    probe = _probe([(10, 200)])
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        rs.write_class_coverage(
+            store, chart_id=CHART_ID, generation=generation, event_class="marriage",
+            class_edges=ev.enumerate_edges("marriage", "P3", CHART),
+            horizon=HORIZON, position_at=probe, sky_convention_id=sky_cid,
+            kala_convention_id=kala_cid, build_id=build_id,
+            arc_index_available=False)
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        return rs.materialise_record_grain(
+            store, chart_id=CHART_ID, generation=generation, event_class="marriage",
+            path_id="P3", edges=[_libra_edge()], horizon=HORIZON, position_at=probe,
+            house_for=_house_from_lagna(CHART["lagna_deg"]),
+            sky_convention_id=sky_cid, source_fact_ids=["fact-1"])
+
+
+def _row_counts(conn, generation):
+    q = lambda t: conn.execute(  # noqa: E731
+        f"SELECT count(*) FROM public.{t} WHERE generation = %s",
+        (generation,)).fetchone()[0]
+    return (q("kala_gochara_coverage"), q("ka_gochara_contact"),
+            q("ka_gochara_relationship_record"))
+
+
+def test_a_rebuild_with_a_new_build_id_replaces_and_never_accretes_or_raises(pg):
+    """The previous insert-if-absent coverage byte-check compared build_id, so
+    the SECOND orchestrated build (a new build id) died with an
+    IdentityCollisionError. A rebuild now replaces the class chain."""
+    first = _pg_p3_run(pg, "5.3", build_id="build-one")
+    assert _row_counts(pg, "5.3") == (1, 1, 1)
+    second = _pg_p3_run(pg, "5.3", build_id="build-two")        # raised before
+    assert first == second
+    assert _row_counts(pg, "5.3") == (1, 1, 1)                  # replaced, not accreted
+    assert pg.execute(
+        "SELECT build_id FROM public.kala_gochara_coverage WHERE generation = '5.3'"
+    ).fetchone()[0] == "build-two"
+
+
+def test_a_contact_another_path_still_references_survives_a_grain_replace(pg):
+    """P3 and P4 share one physical contact (once geometrically, once per path
+    interpretively): replacing the P3 grain must never delete it."""
+    from services.gochara_kernel.rule_registry import RuleRegistryStore
+    RuleRegistryStore(pg).seed()
+    with pg.transaction():
+        pg.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        sky_cid = _sky_convention_id(pg)
+        for a in ("Saturn", "Jupiter"):
+            _seed_libra_crossings(pg, sky_cid, a)
+    store = rs.RecordStore(pg)
+    kala_cid = store.ensure_kala_convention()
+    probe = _probe([(10, 200)])
+    gen = "5.4"
+    class_edges = (ev.enumerate_edges("marriage", "P3", CHART)
+                   + ev.enumerate_edges("marriage", "P4", CHART))
+    with pg.transaction():
+        pg.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        rs.write_class_coverage(
+            store, chart_id=CHART_ID, generation=gen, event_class="marriage",
+            class_edges=class_edges, horizon=HORIZON, position_at=probe,
+            sky_convention_id=sky_cid, kala_convention_id=kala_cid,
+            build_id="b", arc_index_available=False)
+
+    def grain(path, edges):
+        with pg.transaction():
+            pg.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            return rs.materialise_record_grain(
+                store, chart_id=CHART_ID, generation=gen, event_class="marriage",
+                path_id=path, edges=edges, horizon=HORIZON, position_at=probe,
+                house_for=_house_from_lagna(CHART["lagna_deg"]),
+                sky_convention_id=sky_cid, source_fact_ids=["fact-1"])
+
+    sat = [e for e in ev.enumerate_edges("marriage", "P3", CHART)
+           if e.transit and e.relation == "residence" and e.agent == "saturn"
+           and e.obj.canonical_target == "span:7"]
+    sat4 = [e for e in ev.enumerate_edges("marriage", "P4", CHART)
+            if e.transit and e.relation == "residence" and e.agent == "saturn"
+            and e.obj.canonical_target == "span:7"]
+    grain("P3", sat)
+    grain("P4", sat4)
+    assert _row_counts(pg, gen)[1:] == (1, 2)      # ONE shared contact, two records
+    grain("P3", sat)                                # replace P3 only
+    assert _row_counts(pg, gen)[1:] == (1, 2)      # the shared contact survived
+    paths = [r[0] for r in pg.execute(
+        "SELECT path_id FROM public.ka_gochara_relationship_record"
+        " WHERE generation = %s ORDER BY path_id", (gen,)).fetchall()]
+    assert paths == ["P3", "P4"]
