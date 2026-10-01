@@ -15,7 +15,7 @@ disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); FD-2's output change needs SS (R5)"
 nirmana_freeze: "t3, 2026-09-11"
 decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
-track_i_items: [TI-L2-02, TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-16, TI-L2-17, TI-L2-19, TI-L2-30, TI-L2-33]
+track_i_items: [TI-L2-36, TI-L2-02, TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-16, TI-L2-17, TI-L2-19, TI-L2-30, TI-L2-33]
 ledger_gap_ids: [bo_karanajala-Idem.pattern, bo_karanajala-Build.completion, bo_karanajala-Earn.build_record, bo_karanajala-Cost.baseline, bo_karanajala-Dens.served, bo_karanajala-Build.history, bo_karanajala-Carr.detector]
 ---
 # bo_karanajala — CGM edges and contradictions (Kāraṇajāla)
@@ -186,3 +186,4 @@ Frozen manifest: Nirmāṇa froze this asset under definition t3 on 2026-09-11 (
 - **Q-L2-21 / A-1 (R) - accepted.** No separate BPHS {2,4,11} class. The virodha pairing, the Rahu/Ketu reversal and the empty-source-sign score of 1.0 go to the L1 sheet as L1 items (L1 owns the pairing); this asset's argala fix lands after the L1 ruling; a graha edge is created only where an occupant exists; 'BPHS Ch. 28' is replaced by the chunk ids and marked `sourced_ocr_unverified`. Batched, gated on the L1 ruling. TI-L2-16, TI-L2-33.
 - **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
 - **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.
+- **TI-L2-36 (SS, 2026-10-02) - added to the batch.** The five `single_pass` literals (`bo_karanajala.py:706`, `:783`, `:1022`, `:1670`, `:1730`) switch to the `single` constant of `brahmagyan/verification_vocab.py` (grandfathered in the AST guard). Tier respelling: L1 writers now emit `single`, never `single_pass` (PR #2854); the F-10 tier-inversion count is not read between S-L1 and S-L2 (INDEX 12.4). One rebuild, no asset rebuilt twice.

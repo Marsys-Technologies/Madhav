@@ -15,7 +15,7 @@ disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16); FD-1's output change needs SS (R5)"
 nirmana_freeze: "t3, 2026-09-11"
 decisions_applied: "SS decision N-59 (2026-10-01) on DECISION_SHEET_L2_v1_0.md (PR #2841); items marked (R) provisional until J1; section 8 lists the rulings for this asset"
-track_i_items: [TI-L2-02, TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-17, TI-L2-19, TI-L2-30]
+track_i_items: [TI-L2-36, TI-L2-02, TI-L2-10, TI-L2-13, TI-L2-14, TI-L2-17, TI-L2-19, TI-L2-30]
 ledger_gap_ids: [bo_bimba-Idem.pattern, bo_bimba-Build.completion, bo_bimba-Earn.build_record, bo_bimba-Cost.baseline, bo_bimba-Complete.depth, bo_bimba-Dens.served, bo_bimba-Build.history, bo_bimba-Carr.detector]
 ---
 # bo_bimba — CGM nodes: one `bodha_cgm_nodes` row per chart entity
@@ -168,3 +168,4 @@ Frozen manifest: Nirmāṇa froze this asset under definition t3 on 2026-09-11 (
 - **Q-L2-15 - accepted.** `bo_bimba` receives the arudha/special_lagna node builder (node ids are deterministic; its build record becomes the 385 of the table) in the same change as Q-L2-06. TI-L2-30.
 - **Q-L2-12 - accepted.** This asset is in the CF-03 batch: the registry migration and the seed alignment (seed TO live) are pre-approved now; its floor is restated to the achieved count AFTER the one rebuild. TI-L2-10, TI-L2-24.
 - **Layer-wide (Q-L2-18, Q-L2-19, sequencing).** Build.history counts only runs since the last writer or registry change (L0 Q11 carried; TI-L2-13) and Carr uses a D3 stratified sample with the section N.5 resolver, PASS only if every sampled row re-derives (L0 Q13 grading; TI-L2-14); both are read after the one coherent L2 rebuild on main's code, in which no asset is rebuilt twice.
+- **TI-L2-36 (SS, 2026-10-02) - added to the batch.** The four `single_pass` literals (stamp sites `bo_bimba.py:349`, `:404`, `:454` and the default `:494`) switch to the `single` constant of `brahmagyan/verification_vocab.py` (grandfathered in the AST guard). Tier respelling: L1 writers now emit `single`, never `single_pass` (PR #2854); the F-10 tier-inversion count is not read between S-L1 and S-L2 (INDEX 12.4). One rebuild, no asset rebuilt twice.
