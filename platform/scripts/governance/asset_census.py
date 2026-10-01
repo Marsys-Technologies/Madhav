@@ -1003,6 +1003,133 @@ def grade_null_blank_rows(entries, counts) -> dict:
                 measured="INCONCLUSIVE: no checkable prose rows were read for the declared entries")
 
 
+_SIDECAR_PREFIX = "platform/python-sidecar/"
+_TEST_FACTS: dict = {}
+
+
+def python_tests(sidecar=None) -> list:
+    """Every `test_*.py` under a `tests/` or `__tests__/` directory of the python sidecar, as (Path, text)."""
+    root = Path(sidecar) if sidecar is not None else SIDECAR
+    out = []
+    for f in sorted(root.rglob("test_*.py")):
+        if {"tests", "__tests__"} & set(f.relative_to(root).parts[:-1]):
+            try:
+                out.append((f, f.read_text(encoding="utf-8", errors="replace")))
+            except OSError:
+                continue
+    return out
+
+
+def _cited_modules(evidence) -> list:
+    """The dotted sidecar modules the declaration's evidence cites (`platform/python-sidecar/x/y.py:LINE`)."""
+    out = []
+    for c in _EVIDENCE_ANY_CITE_RE.findall(evidence or ""):
+        if c.startswith(_SIDECAR_PREFIX) and c.endswith(".py"):
+            d = c[len(_SIDECAR_PREFIX):-3].replace("/", ".")
+            d = d[:-len(".__init__")] if d.endswith(".__init__") else d
+            if d not in out:
+                out.append(d)
+    return out
+
+
+def _dotted(node, bound):
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast.Call):
+        return None
+    if not isinstance(node, ast.Name) or node.id not in bound:
+        return None
+    return ".".join([bound[node.id]] + parts[::-1])
+
+
+def _test_facts(path: Path, text: str):
+    """(dotted names the test CALLS, has-an-assert, leaf names it references) — cached; None if unparseable."""
+    key = (str(path), text)
+    if key in _TEST_FACTS:
+        return _TEST_FACTS[key]
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        _TEST_FACTS[key] = None
+        return None
+    try:
+        pkg = list(path.relative_to(SIDECAR).parts[:-1])
+    except ValueError:
+        pkg = []
+    bound: dict = {}
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Import):
+            for a in n.names:
+                if a.asname:
+                    bound[a.asname] = a.name
+                else:
+                    bound[a.name.split(".")[0]] = a.name.split(".")[0]
+        elif isinstance(n, ast.ImportFrom):
+            if n.level:
+                base = pkg[:len(pkg) - (n.level - 1)] if n.level - 1 <= len(pkg) else []
+                mod = ".".join(base + ([n.module] if n.module else []))
+            else:
+                mod = n.module or ""
+            for a in n.names:
+                bound[a.asname or a.name] = f"{mod}.{a.name}" if mod else a.name
+    calls, leaves, asserts = set(), set(), False
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Call):
+            d = _dotted(n.func, bound)
+            if d:
+                calls.add(d)
+            if isinstance(n.func, ast.Attribute) and (n.func.attr.startswith("assert") or n.func.attr == "raises"):
+                asserts = True
+            for k in n.keywords:
+                if k.arg:
+                    leaves.add(k.arg)
+        elif isinstance(n, ast.Assert):
+            asserts = True
+        elif isinstance(n, ast.Constant) and isinstance(n.value, str):
+            leaves.add(n.value)
+        elif isinstance(n, ast.Attribute):
+            leaves.add(n.attr)
+        elif isinstance(n, ast.Name):
+            leaves.add(n.id)
+    _TEST_FACTS[key] = (calls, asserts, leaves)
+    return _TEST_FACTS[key]
+
+
+def narr_fidelity_scan(entries, evidence, tests) -> dict:
+    """Narr.fidelity_test (CLAUDE.md N.7 item 5): a test exists that exercises the narration builder. Builder modules
+    = the .py files the declaration's evidence cites. A test QUALIFIES when it calls a name imported from a builder
+    module and contains an assert; it COVERS an entry when it also references the entry's leaf (column or last key).
+    FAIL: no qualifying test. PARTIAL: >= 1 qualifying test. PASS is NOT reachable (SS decision: structural coverage
+    does not prove a test grades the sentence). NO_DETECTOR: no readable builder module cited."""
+    mods = _cited_modules(evidence)
+    if not mods:
+        return dict(v=NO_DET, measured="NO_DETECTOR — the declaration's evidence cites no readable sidecar writer module "
+                                       "to look for tests of")
+    leaves = {e: (lambda c, p: [k for k in (p or ()) if k != PROSE_WILDCARD][-1] if p else c)(*parse_prose_field(e))
+              for e in entries}
+    qual, covered = [], set()
+    for path, text in tests:
+        f = _test_facts(Path(path), text)
+        if not f or not f[1]:
+            continue
+        calls, _, refs = f
+        if any(c == m or c.startswith(m + ".") for c in calls for m in mods):
+            qual.append(Path(path).name)
+            covered |= {e for e, lf in leaves.items() if lf in refs}
+    if not qual:
+        return dict(v=FAIL, covered=[], tests=[], measured=f"no test imports, calls and asserts against the builder module(s) "
+                    f"{', '.join(mods)} — N.7 item 5 (a fidelity test for the narration) has no evidence in the repo")
+    cov = [e for e in entries if e in covered]
+    unc = [e for e in entries if e not in covered]
+    return dict(v=PARTIAL, covered=cov, tests=sorted(set(qual)), measured=(
+        f"structural only: {len(set(qual))} test file(s) call the builder and assert ({', '.join(sorted(set(qual))[:4])}"
+        f"{'…' if len(set(qual)) > 4 else ''}); declared field(s) referenced: {', '.join(cov) or 'none'}"
+        + (f"; no qualifying test names: {', '.join(unc)}" if unc else "")
+        + "; whether the assertion grades the sentence is not read, so this never reads PASS"))
+
+
 # R40: the psql subprocess timeout was hardcoded at 180s, which is shorter than a full-table
 # duplicate scan on the estate's largest table (kala_field, 10.3M rows) can take — making the L3
 # and `--layer all` census unrunnable on production. Configurable via env so an operator pointed

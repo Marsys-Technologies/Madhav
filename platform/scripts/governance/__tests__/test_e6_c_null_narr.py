@@ -295,11 +295,11 @@ def test_fidelity_fails_with_no_tests_at_all():
 def test_fidelity_resolves_package_init_relative_imports_and_module_aliases():
     cite = "platform/python-sidecar/pipeline/orchestrator/writers/ph_r/__init__.py:3"
     rel = '''
-from . import ph_r
+from .. import ph_r
 def test_a():
     assert ph_r.build()["statement"]
 '''
-    tests = [(SC / "pipeline" / "orchestrator" / "writers" / "ph_r" / "tests" / "test_r.py", rel)]
+    tests = [(SC / "pipeline" / "orchestrator" / "writers" / "tests" / "test_r.py", rel)]
     assert ac.narr_fidelity_scan(["statement"], cite, tests)["v"] == ac.PARTIAL
     mod = '''
 import pipeline.orchestrator.writers.ph_r as w
