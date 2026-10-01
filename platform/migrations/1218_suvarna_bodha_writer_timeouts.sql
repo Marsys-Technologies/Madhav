@@ -82,7 +82,8 @@
 --
 -- Tests: platform/tests/unit/migrations/suvarna_bodha_writer_timeouts_1218.test.ts (static) and
 -- platform/tests/integration/suvarna_bodha_writer_timeouts_1218.db.test.ts (executes this file on a
--- throwaway Postgres with the real trigger; env-gated, wired into CI db-integration-tests).
+-- throwaway Postgres with the real trigger; env-gated, skips cleanly when M1218_TIMEOUT_TEST_DATABASE_URL is unset;
+-- CI provisioning is a follow-up PR after #2845 merges).
 --
 -- Post-apply verification (CLAUDE.md N.4): expect 2 rows, both 1800.
 --   SELECT asset_id, writer_timeout_seconds FROM asset_registry

@@ -21,8 +21,9 @@
  *   M1218_TIMEOUT_TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/m1218_timeout_test \
  *     npx vitest run tests/integration/suvarna_bodha_writer_timeouts_1218.db.test.ts
  *
- * Wired into CI (db-integration-tests, .github/workflows/ci.yml) next to the 1211
- * grant test, using the same additive provision-DB-then-run pattern.
+ * Not yet wired into CI: the provision-DB-then-run steps (same pattern as the 1211 grant
+ * test) return as a follow-up PR after #2845 merges. Until then it skips cleanly when the
+ * env var is unset and is run by hand against a throwaway database.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest'
 import { Pool } from 'pg'
