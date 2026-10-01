@@ -1,25 +1,26 @@
 ---
 artifact: BUILDER_GRANT_PLAN
-version: "1.2"
+version: "1.3"
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna
 date: 2026-10-01
 base_commit: origin/main 3311b0a06b424bef1e48c026408321fb59a88eed for the v1.0 analysis; re-checked against 79dc7e07b (writers, services, gate scripts and deploy.yml unchanged between the two)
-related: N-46 (SS), CANONICAL_CHART_REBUILD_PLAN_v1_0.md (P0.2, P0.5 check 2, S3-S6), F3_MSR_FK_DROP_v1_0.md section 5 (branch F3-msr-fk-drop-001, read-only), reader_grants.py (D6 pattern, branch suvarna/exec), migrations 1070, 1073, 404
+related: N-46 (SS; INSERT guard added in v1.3), CANONICAL_CHART_REBUILD_PLAN_v1_0.md (P0.2, P0.5 check 2, S3-S6), F3_MSR_FK_DROP_v1_0.md section 5 (branch F3-msr-fk-drop-001, read-only), reader_grants.py (D6 pattern, branch suvarna/exec), migrations 1070, 1073, 404
 execution: NONE against any real system. Analysis only: no grant, FK drop, trigger, admin action, production DB write, push, PR, migration or workflow change was made. The SQL and the script are drafts. The only thing ever executed is the draft script against a LOCAL disposable PostgreSQL 15 cluster (loopback, throwaway, deleted afterwards, built to mimic the production roles) to test the guard; production was touched only by read-only catalog queries as suvarna_reader.
-db_access: read-only, as suvarna_reader (SELECT, has_*_privilege, catalog reads). Evidence and queries in /Users/Dev/suvarna-evidence/Grants/ (verify.sql, verify_before.txt, verify_v11_extra.sql, verify_v11_before.txt, verify_v11_recheck.txt, verify_v12_recheck.txt, builder_grants_v1_2_DRAFT.py, guard_sandbox_proof.txt, progress.md).
+db_access: read-only, as suvarna_reader (SELECT, has_*_privilege, catalog reads). Evidence and queries in /Users/Dev/suvarna-evidence/Grants/ (verify.sql, verify_before.txt, verify_v11_extra.sql, verify_v11_before.txt, verify_v11_recheck.txt, verify_v12_recheck.txt, verify_v13_extra.sql, verify_v13_before.txt, builder_grants_v1_3_DRAFT.py, sandbox_setup.sql, guard_sandbox_proof.txt, guard_sandbox_proof_v1_3.txt, hashed_text_*_v1_3.txt, progress.md).
 changelog:
+  - "1.3 (2026-10-01, SS answers to v1.2): (1) the guard is now ONE trigger BEFORE INSERT OR DELETE FOR EACH ROW, renamed mimamsa_predictions_builder_guard (function and trigger): for the builder, INSERT allowed only when NEW.lifecycle_status IN ('pending','due') (NULL and everything else refused, SQLSTATE 42501) and DELETE as before; TG_OP branch returns NEW/OLD correctly; new cases V26-V28 (builder insert refused for confirmed/denied/partial/expired/unknown/NULL, allowed for pending/due; non-builder insert unaffected); three weakened-guard mutants (delete blacklist, insert unguarded, insert blacklist) are all caught by the self-test; sandbox proof re-run (dry-run, apply, rollback) on a throwaway local PG15. (2) in-transaction schema CREATE grant-and-revoke ACCEPTED, commit refused unless schema ACL and memberships end unchanged. (3) deploy-idle check is runbook step 0 with exact commands, executed immediately before the apply. (4) follow-ups section: any later UPDATE grant on mimamsa_predictions ships with a BEFORE UPDATE guard. FINAL hashes recomputed (23 apply / 21 rollback statements)."
   - "1.2 (2026-10-01, SS N-46): REQUIRED ADDITION. mimamsa_predictions is a MIXED table (confirmed/denied/partial outcomes are people-entered and not regenerable), so the builder's table-wide DELETE now comes with an owner-created BEFORE DELETE FOR EACH ROW guard (Part A2): whitelist ('pending','due'), everything else refused, for data_plane_builder only; no UPDATE exists to guard (the builder has none). Created inside the same transaction; amjis_app has no CREATE on schema public (gate-enforced), so CREATE is granted and revoked in-transaction by the schema owner. Verification V19-V25; SS answers folded in (bg_combustion_orbs yes; selftest_detail for all four services; gochara-kernel tables are Pravaha's; defaults accepted). 23 statements, new hashes. The whole script (apply, dry-run, rollback, a negative control) was exercised against a LOCAL disposable PostgreSQL 15 cluster that mimics the production roles (never production); that run also found and fixed a bug in the v1.1 draft script (tgenabled concatenation). Gate trigger-check verdict: not pinned."
   - "1.1 (2026-10-01, SS ruling): ONE REVIEW now covers (A) the three data_plane_l2_owner-owned foreign keys into bodha_msr_signals (owner-path drop), (B) the phala_*/mimamsa_* builder grants of v1.0 plus three additions found in this pass (asset_registry.selftest_detail column UPDATE, bg_combustion_orbs SELECT; the L3 audit of every kala_* privilege), and (C) the pre-check/audit of the Kala wave. One consolidated plan hash (19 statements), one executor, one verification and rollback. The deploy-gate pin check was extended to constraints and asset_registry column ACLs: neither is pinned, so the gate amendment part stays empty. v1.0 phala/mimamsa facts re-verified live (unchanged)."
   - "1.0 (2026-10-01): first draft for SS review. Covers the second grant gap only (phala_* and mimamsa_* target tables for data_plane_builder). The asset_throughput_state_audit grant is Pravaha's and is NOT covered here."
 ---
 
-# Builder grant plan v1.2: L2 foreign-key drops + mimamsa_predictions delete guard + builder grants (REVIEW document for SS)
+# Builder grant plan v1.3: L2 foreign-key drops + mimamsa_predictions insert/delete guard + builder grants (REVIEW document for SS)
 
 One consolidated change set, run by the D6 in-process executor after SS's `APPROVED <plan hash>`:
 
 - **Part A**: drop three foreign keys into `bodha_msr_signals` that `data_plane_l2_owner` owns (owner-path; F-3 section 5).
-- **Part A2 (new in v1.2, N-46)**: an owner-created `BEFORE DELETE FOR EACH ROW` guard on `mimamsa_predictions` so the builder's table-wide DELETE cannot remove people-entered outcome rows.
+- **Part A2 (N-46; INSERT added in v1.3)**: an owner-created `BEFORE INSERT OR DELETE FOR EACH ROW` guard on `mimamsa_predictions` so the builder can neither delete people-entered outcome rows nor fabricate rows carrying an outcome status.
 - **Part B**: grant `data_plane_builder` what the S3-S6 writers need: the `phala_*`/`mimamsa_*` tables (v1.0), `asset_registry.selftest_detail`, two reference reads, and EXECUTE on two functions.
 - **Audit (C)**: the builder's privileges on every `kala_*` table and on the tables the Kala writers read were re-measured; the additional grants it found are in Part B, and what was found but deliberately not granted is listed in section 3.2.
 
@@ -29,15 +30,15 @@ Evidence labels used throughout: **observed** (read live as `suvarna_reader`, 20
 
 ## 0. What SS needs to see first
 
-1. **Guard design (N-46), verified against the real DDL.** The status column is `lifecycle_status text NOT NULL` (observed); the table has no CHECK on it (app-enforced vocabulary: DDL comment `347_mimamsa_bhavisya.sql:19` `'pending'|'due'|'confirmed'|'denied'|'partial'`; the lifecycle sweep also writes `'expired'`, `prediction_lifecycle_sweep.ts:348`; live today: 195 rows, all `pending`). The guard is a **whitelist**: the builder may delete only `'pending'` and `'due'`; every other value, including values not invented yet and NULL (impossible today, `NOT NULL`, but refused by construction), raises SQLSTATE 42501 with a clear message. It keys on `current_user` **or** `session_user` = `data_plane_builder`, is `SECURITY INVOKER` with `SET search_path = pg_catalog, pg_temp`, schema-qualified, named `mimamsa_predictions_builder_delete_guard` (function and trigger). It touches no other role, adds no RLS, changes no ACL. **No UPDATE guard is added because the builder gets no UPDATE on this table** (Part B grants SELECT, INSERT, DELETE; `has_table_privilege(...,'UPDATE')` stays false, V1/V23).
+1. **Guard design (N-46), verified against the real DDL.** The status column is `lifecycle_status text NOT NULL` (observed); no CHECK on it (app-enforced vocabulary: DDL comment `347_mimamsa_bhavisya.sql:19` `'pending'|'due'|'confirmed'|'denied'|'partial'`; the lifecycle sweep also writes `'expired'`, `prediction_lifecycle_sweep.ts:348`; live today: 195 rows, all `pending`). **One trigger, `mimamsa_predictions_builder_guard`, `BEFORE INSERT OR DELETE FOR EACH ROW`, one function of the same name.** It is a **whitelist** on both operations: for `data_plane_builder`, an INSERT is allowed only when `NEW.lifecycle_status IN ('pending','due')` (inserting an outcome status would fabricate people-entered data) and a DELETE only when `OLD.lifecycle_status IN ('pending','due')`; every other value, unknown future values and NULL, raises SQLSTATE 42501 with a clear message (NULL is refused on INSERT too: the BEFORE trigger fires before the NOT NULL check). A `TG_OP` branch returns `OLD` for DELETE and `NEW` for INSERT. It keys on `current_user` **or** `session_user` = `data_plane_builder`, is `SECURITY INVOKER` with `SET search_path = pg_catalog, pg_temp`, schema-qualified; no RLS, no ACL change, no effect on any other role. **No UPDATE guard is added because the builder gets no UPDATE on this table** (Part B grants SELECT, INSERT, DELETE; `has_table_privilege(...,'UPDATE')` stays false, V1/V23); the follow-up rule is in section 7.
 2. **Gate trigger-check verdict: it does not trip.** No ownership or attestation check lists `mimamsa_predictions` or pins trigger names or counts for any table outside the L1/L2 protected sets (section 2.3, file:line). Evidence beyond the code: two non-internal triggers already exist on `amjis_app`-owned unprotected tables (`phala_anchors_identity_biu`, `nirmana_registry_receipt_invalidation`) and the gate passes. **No gate amendment; Part H stays empty.**
 3. **A constraint found while designing it:** `amjis_app` (the table owner) does **not** hold CREATE on schema `public` (`has_schema_privilege` false, observed), and the gate requires that to stay false (`data-plane-ownership-status.ts:560`), so the owner cannot create the guard function by itself. The plan grants `CREATE ON SCHEMA public TO amjis_app` and revokes it again inside the same transaction, as `data_plane_schema_owner` (the pattern `data-plane-ownership-preflight.ts:303-310` uses for the protected owners); the committed schema ACL is unchanged, and the script refuses to commit unless it is (`ns` diff empty). The function and trigger end up owned by `amjis_app`.
-4. **Consolidated plan: 23 statements** (3 FK drops as `data_plane_l2_owner`; 4 as the guard group: `GRANT CREATE` and `REVOKE CREATE` as `data_plane_schema_owner`, `CREATE FUNCTION` and `CREATE TRIGGER` as `amjis_app`; 16 `GRANT` as `amjis_app`), in this order inside one transaction: **FK drops, guard, grants**. Rollback is 21 statements. Draft hashes: apply `ca7fdfe98349fd562344a0bc1dd44a9d4d378f0447053905aa8f500e6e521af3`, rollback `9406aa77ed636d46ba14bf45f587afcb15a80ca3081e3363b2a0516c96582a4e` (exact hashed text in Part C).
-5. **The guard was exercised, not only designed.** The whole script (dry-run, apply, rollback, a re-apply refusal and a negative control) ran against a **local disposable PostgreSQL 15 cluster** (loopback, throwaway, deleted afterwards) built to mimic production roles (non-superuser admin with CREATEROLE, `amjis_app` without schema CREATE, schema owned by `data_plane_schema_owner`). Result: all guard cases behaved as specified, the diff was exactly as planned and rolled back cleanly, and a deliberately weakened guard (a blacklist) was caught by the self-test. Transcript: `/Users/Dev/suvarna-evidence/Grants/guard_sandbox_proof.txt`. Nothing was run against the production database except read-only catalog queries.
+4. **Consolidated plan: 23 statements** (3 FK drops as `data_plane_l2_owner`; 4 as the guard group: `GRANT CREATE` and `REVOKE CREATE` as `data_plane_schema_owner`, `CREATE FUNCTION` and `CREATE TRIGGER` as `amjis_app`; 16 `GRANT` as `amjis_app`), in this order inside one transaction: **FK drops, guard, grants**. Rollback is 21 statements. **FINAL hashes:** apply `77194d492503770fdeb51b26d86393d80786f2c6b2c12cf0dd4ab4302fce5ef1`, rollback `735276caf6ad815e4bdd2953ef9897a336db39529e097b912bf84d3953d9782b` (exact hashed text in Part C and in `hashed_text_{apply,rollback}_v1_3.txt`).
+5. **The guard was exercised, not only designed.** The whole script (dry-run, apply, rollback, a re-apply refusal, three negative controls) ran against a **local disposable PostgreSQL 15 cluster** (loopback, throwaway, built from `sandbox_setup.sql`, deleted afterwards) that mimics production roles (non-superuser admin with CREATEROLE and no table privileges, `amjis_app` without schema CREATE, schema owned by `data_plane_schema_owner`). Result: all 17 guard cases behaved as specified, the diff was exactly as planned, the committed schema ACL and memberships were unchanged, rollback restored the pre-state, and each of three weakened guards (delete blacklist, insert unguarded, insert blacklist) was caught by the self-test. Transcript: `/Users/Dev/suvarna-evidence/Grants/guard_sandbox_proof_v1_3.txt`. Nothing was run against the production database except read-only catalog queries.
 6. **No deploy-gate amendment is needed for any part** (sections 2, 2.1, 2.2, 2.3).
 7. **Extra grants (all in Part B), SS answers folded in:** `GRANT UPDATE (selftest_detail) ON public.asset_registry` for **all four** services (`ka_dasha_kala`, `ka_muhurta_seva`, `ka_tulana`, `ka_graha_sancara`), `SELECT` on `bg_combustion_orbs` (yes), plus the v1.0 set: `life_events` (5 columns), `brahma_activity_ontology`, EXECUTE on `phala_anchor_identity` and `phala_anchor_identity_namespace`. Defaults accepted: `phala_rectification(_best)` held; `mi_abhilekha` and the other `mimamsa_*` tables out of scope; table-level UPDATE on `phala_suddha_sodhana` and `phala_phaladesa`. The gochara-kernel tables are Pravāha's and are not granted.
 8. **Consequence of Part A (unchanged):** after the three keys drop, MSR deletes no longer cascade to `bodha_signal_embeddings` and `bodha_contradictions`; the writers already delete those explicitly (`_idempotency.py:120,123,196,201`); SS's MSR-first invariant stays until 1214 and Part A are both deployed. `ka_bhavishya_lekha` (S4) needs `phala_anchors` SELECT on any re-run (`ka_bhavishya_lekha.py:249-280`).
-9. **Pre-flight state at 16:5xZ (observed read-only):** no active build run (0); migration 1214 **not applied** (`_migrations_applied` max id 904, none like `1214%`); **deploy NOT idle**: `gh run list --workflow deploy.yml` shows one `in_progress` and one `pending` run (head `066c585`/`c56e58e`). The apply must wait for an idle deploy.
+9. **Pre-flight state (observed read-only, 2026-10-01 about 16:04Z):** no active build run (0); migration 1214 **not applied** (`_migrations_applied` max id 904, none like `1214%`); **deploy NOT idle**: `gh run list --workflow deploy.yml` shows four `in_progress` and one `pending` run. The apply must wait for an idle deploy; the check is runbook **step 0** (Part D), executed by the executor immediately before the apply.
 10. **Recommended executor:** the holder of the Secret Manager administrator secret (D6: the native). No swarm lane.
 
 ## 1. Facts, read-only
@@ -155,7 +156,7 @@ The question asked: constraint lists, FK counts, `pg_constraint` comparisons, th
 
 Read at the base commit (`platform/scripts/data-plane-ownership-status.ts`, `data-plane-ownership-preflight.ts`):
 
-- **Trigger count:** `:265-276` counts `l1_data_plane_capture` and `l2_data_plane_capture` triggers (`:270-272`) on the arguments `L1_ACTIVE_TABLES` minus `chart_dashas` and `L2_ACTIVE_TABLES` (`:273`). `mimamsa_predictions` is in neither list (`data-plane-ownership-preflight.ts:9-22`); the name `mimamsa_predictions_builder_delete_guard` is not matched.
+- **Trigger count:** `:265-276` counts `l1_data_plane_capture` and `l2_data_plane_capture` triggers (`:270-272`) on the arguments `L1_ACTIVE_TABLES` minus `chart_dashas` and `L2_ACTIVE_TABLES` (`:273`). `mimamsa_predictions` is in neither list (`data-plane-ownership-preflight.ts:9-22`); the name `mimamsa_predictions_builder_guard` is not matched.
 - **Trigger shape:** `:278-295` constrains only triggers named `l1_/l2_data_plane_mutation_guard` and `..._capture`, on `c.relname=ANY($1)` with the protected tables (`:282,291,294`).
 - **Trigger surface/attestation:** `:297-318` full-joins actual non-internal triggers on `[...L1_ACTIVE_TABLES, ...L2_ACTIVE_TABLES]` (`:307,317`) against `l1_/l2_data_plane_trigger_attestations`. A trigger on any other table is never read. All three queries filter `NOT t.tgisinternal`.
 - **Function digests and ACLs:** `:320-351` full-joins attested functions and, in its second branch, scans only functions owned by `data_plane_l1_owner`/`data_plane_l2_owner` named `l1_data_plane_%`, `l2_data_plane_%` or in the lifecycle list; the guard is owned by `amjis_app` and named `mimamsa_*`. `:513-557` covers only attested functions. The lifecycle-hardening count (`:256-263`) names 14 functions.
@@ -163,7 +164,7 @@ Read at the base commit (`platform/scripts/data-plane-ownership-status.ts`, `dat
 - **Other gates:** the Nirmāṇa status reads one `_migrations_applied` marker (`nirmana-evidence-ownership-status.ts`), the Pūrṇa status reads Pūrṇa tables, and no script under `platform/scripts/data-plane-*.ts`, `nirmana-evidence-*.ts` or `purna-*.ts` names `mimamsa_predictions`; the only other script mentioning the table is the schema pin above (no triggers).
 - **Empirical check:** `pg_trigger` shows non-internal triggers already live on unprotected `amjis_app` tables (`phala_anchors_identity_biu`; `nirmana_registry_receipt_invalidation` on `asset_registry`), 107 non-internal triggers on tables outside the l1_/l2_/chart_/bodha_/ga_ families, no event trigger, and the gate passes in production (D6 recorded `marked`).
 
-**Verdict: no gate amendment; ordering is unchanged.** The post-apply proof is the same gate run under the reader (V18), which must still print `marked`.
+**Re-verified for v1.3 (INSERT added to the same trigger):** the three trigger queries filter by table list and by the l1_/l2_ trigger names only (`:270-273`, `:282-294`, `:307,317`), so a trigger on `mimamsa_predictions` is invisible to them whatever its events (`tgtype` is compared only for the four protected names, `:284-287`); `status.ts`, `data-plane-ownership-preflight.ts`, `deploy.yml` and `mi_bhavisya.py` are byte-identical between the v1.2 base and current `origin/main` (`git diff --stat` empty). **Verdict: no gate amendment; ordering is unchanged.** The post-apply proof is the same gate run under the reader (V18), which must still print `marked`.
 
 ## 3. What the builder actually does to each object (writer code)
 
@@ -234,42 +235,54 @@ ALTER TABLE public.bodha_signal_embeddings DROP CONSTRAINT bodha_signal_embeddin
 
 No `IF EXISTS`: the pre-state is known (V9, 3 rows), so a missing constraint should fail the plan, not pass it. Each DROP takes ACCESS EXCLUSIVE on its table and a lock on `bodha_msr_signals`; F-3's proof showed a reader holding a lock on `bodha_msr_signals` makes the drop fail after exactly 5 s with `LockNotAvailable`, which rolls everything back (so it fails loudly instead of queueing). Run it when no MSR writer or long reader is active (Part D).
 
-### Part A2. `mimamsa_predictions` builder delete guard (N-46; executed as the owner, in one transaction with A and B)
+### Part A2. `mimamsa_predictions` builder guard (N-46; executed as the owner, in one transaction with A and B)
 
 ```sql
 -- via SET LOCAL ROLE data_plane_schema_owner (amjis_app has no CREATE on public; the gate requires that to stay so, status.ts:560)
 GRANT CREATE ON SCHEMA public TO amjis_app;
 -- via SET LOCAL ROLE amjis_app (table owner; the function and trigger end up owned by amjis_app)
-CREATE FUNCTION public.mimamsa_predictions_builder_delete_guard()
+CREATE FUNCTION public.mimamsa_predictions_builder_guard()
  RETURNS trigger
  LANGUAGE plpgsql
  SECURITY INVOKER
  SET search_path = pg_catalog, pg_temp
 AS $guard$
 BEGIN
-  IF (current_user = 'data_plane_builder' OR session_user = 'data_plane_builder')
-     AND (OLD.lifecycle_status IS NULL OR OLD.lifecycle_status NOT IN ('pending', 'due')) THEN
-    RAISE EXCEPTION 'mimamsa_predictions: data_plane_builder may delete only pending/due (regenerable) predictions; refusing chart_id=%, prediction_id=%, lifecycle_status=%',
-      OLD.chart_id, OLD.prediction_id, COALESCE(OLD.lifecycle_status, '<NULL>')
-      USING ERRCODE = '42501';
+  IF current_user = 'data_plane_builder' OR session_user = 'data_plane_builder' THEN
+    IF TG_OP = 'INSERT' THEN
+      IF NEW.lifecycle_status IS NULL OR NEW.lifecycle_status NOT IN ('pending', 'due') THEN
+        RAISE EXCEPTION 'mimamsa_predictions_builder_guard: data_plane_builder may insert only pending/due (regenerable) predictions; refusing chart_id=%, prediction_id=%, lifecycle_status=%',
+          NEW.chart_id, NEW.prediction_id, COALESCE(NEW.lifecycle_status, '<NULL>')
+          USING ERRCODE = '42501';
+      END IF;
+    ELSIF TG_OP = 'DELETE' THEN
+      IF OLD.lifecycle_status IS NULL OR OLD.lifecycle_status NOT IN ('pending', 'due') THEN
+        RAISE EXCEPTION 'mimamsa_predictions_builder_guard: data_plane_builder may delete only pending/due (regenerable) predictions; refusing chart_id=%, prediction_id=%, lifecycle_status=%',
+          OLD.chart_id, OLD.prediction_id, COALESCE(OLD.lifecycle_status, '<NULL>')
+          USING ERRCODE = '42501';
+      END IF;
+    END IF;
   END IF;
-  RETURN OLD;
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  END IF;
+  RETURN NEW;
 END
 $guard$;
-CREATE TRIGGER mimamsa_predictions_builder_delete_guard BEFORE DELETE ON public.mimamsa_predictions
-  FOR EACH ROW EXECUTE FUNCTION public.mimamsa_predictions_builder_delete_guard();
+CREATE TRIGGER mimamsa_predictions_builder_guard BEFORE INSERT OR DELETE ON public.mimamsa_predictions
+  FOR EACH ROW EXECUTE FUNCTION public.mimamsa_predictions_builder_guard();
 -- via SET LOCAL ROLE data_plane_schema_owner
 REVOKE CREATE ON SCHEMA public FROM amjis_app;
 ```
 
-Properties, each checked in the sandbox run (guard_sandbox_proof.txt) or by the script's in-transaction diff:
+Properties, each checked in the sandbox run (`guard_sandbox_proof_v1_3.txt`) or by the script's in-transaction diff:
 
-- **Whitelist, not blacklist:** only `'pending'` and `'due'` may be deleted by the builder. `'confirmed'`, `'denied'`, `'partial'`, `'expired'`, any unknown or future value, and NULL are refused. (A blacklist `IN ('confirmed','denied','partial')` would let `'expired'` and any new status through; the negative control proves the self-test catches exactly that.) The builder's own DELETE in `mi_bhavisya.py:230` already restricts to `('pending','due')`, so the writer is unaffected.
-- **Builder only:** `current_user = 'data_plane_builder'` (also true under `SET ROLE`, which is how the self-test runs) **or** `session_user = 'data_plane_builder'` (so a SECURITY DEFINER function owned by someone else, called by the builder, cannot launder the delete). Any other role, including the owner, `role_orchestrator`, `role_ledger_write`, is untouched (V22). No RLS, no policy, no ACL change.
-- **Narrow and safe:** `SECURITY INVOKER` (no privilege elevation), fixed `search_path = pg_catalog, pg_temp` (no search-path hijack), schema-qualified, BEFORE DELETE row-level only (TRUNCATE is not covered because the builder has no TRUNCATE privilege; no trigger fires on it). The builder has no TRIGGER privilege or ownership, so it cannot disable the trigger. `RETURN OLD` leaves permitted deletes untouched.
-- **UPDATE:** the builder gets **no** UPDATE on `mimamsa_predictions`, so an UPDATE guard is not added (an `UPDATE` by the builder fails with `permission denied` before any trigger). If SS later grants UPDATE (the `mi_abhilekha` case, Q3), a matching BEFORE UPDATE guard on `lifecycle_status` must be added in the same change.
-- **INSERT is not guarded:** the builder can insert rows with any `lifecycle_status` (the writer inserts `'pending'`); a forged outcome row would be a different attack than deleting a real one and is outside N-46. Stated so it is a decision, not an omission (Q11).
-- **Why a transient schema CREATE:** the function must live in `public` and `amjis_app` lacks CREATE there; the pattern of granting schema CREATE inside a transaction and relying on the final state being the gate-pinned one is the cutover's own (`data-plane-ownership-preflight.ts:303-310`, `:560`). The alternative, creating the function as `data_plane_schema_owner`, would put an unattested function under a protected owner and require a separate EXECUTE grant for `amjis_app`; not recommended (Q12).
+- **Whitelist, not blacklist, on both operations.** The builder may insert or delete only `'pending'` and `'due'`. `'confirmed'`, `'denied'`, `'partial'`, `'expired'`, any unknown or future value, and NULL are refused. Three mutants (delete as a blacklist, insert branch disabled, insert as a blacklist) are each caught by the self-test. The writer is unaffected: `mi_bhavisya` inserts `'pending'` rows and its DELETE already filters `('pending','due')` (`mi_bhavisya.py:230`).
+- **Builder only:** `current_user = 'data_plane_builder'` (also true under `SET ROLE`, which is how the self-test runs) **or** `session_user = 'data_plane_builder'` (a SECURITY DEFINER function owned by someone else, called by the builder, cannot launder the operation). Any other role, including the owner, `role_orchestrator`, `role_ledger_write`, `role_jobs`, is untouched (V22, V28). No RLS, no policy, no ACL change.
+- **Correct return values:** `RETURN OLD` for DELETE, `RETURN NEW` for INSERT (so a permitted insert is stored unchanged); an unknown `TG_OP` cannot occur for a `BEFORE INSERT OR DELETE` trigger.
+- **Narrow and safe:** `SECURITY INVOKER`, fixed `search_path = pg_catalog, pg_temp`, schema-qualified, row-level BEFORE only. TRUNCATE is not covered because the builder has no TRUNCATE privilege (V23). The builder has no TRIGGER privilege or ownership, so it cannot disable the trigger. `INSERT ... ON CONFLICT DO NOTHING` also fires the BEFORE INSERT trigger; `ON CONFLICT DO UPDATE` would need UPDATE, which the builder lacks.
+- **UPDATE:** the builder gets **no** UPDATE on `mimamsa_predictions`, so an UPDATE guard is not added (an `UPDATE` by the builder fails with `permission denied` before any trigger). If UPDATE is ever granted (the `mi_abhilekha` case), a matching BEFORE UPDATE guard on `lifecycle_status` ships in the same change (section 7).
+- **Why a transient schema CREATE (accepted by SS):** the function must live in `public` and `amjis_app` lacks CREATE there; granting schema CREATE inside the transaction and relying on the final state being the gate-pinned one follows the cutover's own pattern (`data-plane-ownership-preflight.ts:303-310`, `:560`). The commit is refused unless the schema ACL and memberships end unchanged.
 
 ### Part B. Grants (executed as `amjis_app`, the owner of every object below)
 
@@ -301,22 +314,41 @@ Explicitly NOT granted: any sequence privilege (none exist on the ten); TRUNCATE
 ### Part C. Executor, hash, approval (D6 in-process pattern), ordering
 
 - **Executor:** the holder of the Cloud SQL administrator secret `cloudsql-postgres-admin-password` through the local proxy on `127.0.0.1:5433` (in D6 and the cutover: the native). No swarm lane has that secret.
-- **One transaction, one script** (draft `/Users/Dev/suvarna-evidence/Grants/builder_grants_v1_2_DRAFT.py`, Appendix A; not in the repo): password fetched in-process, never printed; `SET LOCAL search_path = pg_catalog, pg_temp`; `SET LOCAL lock_timeout = '5s'`; before-snapshot of relation, column, function, sequence and **schema** ACLs, all `public` constraints, non-internal triggers, function definitions (owner, SECURITY DEFINER flag, config) and role memberships; transient `GRANT <role> TO postgres` for `data_plane_l2_owner`, `amjis_app`, `data_plane_schema_owner` and (only to run the guard self-test as the builder) `data_plane_builder`, each only if `pg_has_role` says missing (precedent: `data-plane-ownership-preflight.ts:278`, reversed at `:358`); reads and the run guard (refuse unless no `planned/running/paused` build run) run `AS` an owner because the administrator login has no table privileges of its own; **Part A, then Part A2, then Part B**; the guard self-test (Part E, V19-V22); the transient memberships removed; after-snapshot. **Commit only if**: the ACL diff is exactly the 43 planned entries (42 grants + the new function's owner EXECUTE entry), nothing removed; the constraint diff is exactly the three removed keys; the trigger diff is exactly the one new trigger; the function diff is exactly the one new function (owner `amjis_app`, `secdef=false`, `search_path=pg_catalog, pg_temp`); the **schema ACL diff and the membership diff are empty**; the guard self-test has zero failures; and `--expect-plan` equals the hash. `--dry-run` rolls back (the self-test runs there too). `--rollback` has its own hash and its own diff check.
+- **One transaction, one script** (draft `/Users/Dev/suvarna-evidence/Grants/builder_grants_v1_3_DRAFT.py`, Appendix A; not in the repo): password fetched in-process, never printed; `SET LOCAL search_path = pg_catalog, pg_temp`; `SET LOCAL lock_timeout = '5s'`; before-snapshot of relation, column, function, sequence and **schema** ACLs, all `public` constraints, non-internal triggers, function definitions (owner, SECURITY DEFINER flag, config) and role memberships; transient `GRANT <role> TO postgres` for `data_plane_l2_owner`, `amjis_app`, `data_plane_schema_owner` and (only to run the guard self-test as the builder) `data_plane_builder`, each only if `pg_has_role` says missing (precedent: `data-plane-ownership-preflight.ts:278`, reversed at `:358`); reads and the run guard (refuse unless no `planned/running/paused` build run) run `AS` an owner because the administrator login has no table privileges of its own; **Part A, then Part A2, then Part B**; the guard self-test (Part E, V19-V22 and V26-V28); the transient memberships removed; after-snapshot. **Commit only if**: the ACL diff is exactly the 43 planned entries (42 grants + the new function's owner EXECUTE entry), nothing removed; the constraint diff is exactly the three removed keys; the trigger diff is exactly the one new trigger; the function diff is exactly the one new function (owner `amjis_app`, `secdef=false`, `search_path=pg_catalog, pg_temp`); the **schema ACL diff and the membership diff are empty**; the guard self-test has zero failures; and `--expect-plan` equals the hash. `--dry-run` rolls back (the self-test runs there too). `--rollback` has its own hash and its own diff check.
 - **Statement count:** apply **23** = 3 (Part A) + 4 (Part A2: `GRANT CREATE`, `CREATE FUNCTION`, `CREATE TRIGGER`, `REVOKE CREATE`) + 16 (Part B); rollback **21** = 16 `REVOKE` + 2 (`DROP TRIGGER`, `DROP FUNCTION`) + 3 (`ADD CONSTRAINT`).
-- **Draft plan hashes (sha256), recomputed with a stubbed-driver import, no database:**
-  - apply `ca7fdfe98349fd562344a0bc1dd44a9d4d378f0447053905aa8f500e6e521af3`
-  - rollback `9406aa77ed636d46ba14bf45f587afcb15a80ca3081e3363b2a0516c96582a4e`
-  - **Exact text hashed** (UTF-8, pieces joined by `"\n"`, in this order): (1) `plan_text(mode)`: the header comments, then for apply Part A, Part A2 (each statement as `-- [role] statement`), Part B, and a one-line summary of the guard self-test cases (for rollback the order is Part B, Part A2, Part A); (2) `json.dumps(expected_acl_diff())`; (3) `json.dumps(expected_con_diff())`; (4) `json.dumps(expected_trg_diff())`; (5) `json.dumps(expected_fn_diff())`; (6) the full `CREATE FUNCTION` text; (7) the full `CREATE TRIGGER` text; (8) `json.dumps(GUARD_CASES)`; (9) the mode word (`apply` or `rollback`). The two files that reproduce the hashes byte for byte are saved as `/Users/Dev/suvarna-evidence/Grants/hashed_text_apply_v1_2.txt` (8,505 bytes) and `hashed_text_rollback_v1_2.txt` (7,158 bytes); `shasum -a 256` of each equals the hash above. A dry run prints the live script's own hash; SS's `APPROVED <plan hash>` must quote that value, and it must equal the one above if the script is unchanged.
+- **FINAL plan hashes (sha256), recomputed with a stubbed-driver import, no database:**
+  - apply `77194d492503770fdeb51b26d86393d80786f2c6b2c12cf0dd4ab4302fce5ef1` (23 statements)
+  - rollback `735276caf6ad815e4bdd2953ef9897a336db39529e097b912bf84d3953d9782b` (21 statements)
+  - **Exact text hashed** (UTF-8, pieces joined by `"\n"`, in this order): (1) `plan_text(mode)`: the header comments, then for apply Part A, Part A2 (each statement as `-- [role] statement`), Part B, and a one-line summary of the 17 guard self-test cases (for rollback the order is Part B, Part A2, Part A); (2) `json.dumps(expected_acl_diff())` (43 entries); (3) `json.dumps(expected_con_diff())`; (4) `json.dumps(expected_trg_diff())`; (5) `json.dumps(expected_fn_diff())`; (6) the full `CREATE FUNCTION` text (Part A2); (7) the full `CREATE TRIGGER` text; (8) `json.dumps(GUARD_CASES)`; (9) the mode word (`apply` or `rollback`). The files that reproduce the hashes byte for byte are `/Users/Dev/suvarna-evidence/Grants/hashed_text_apply_v1_3.txt` (11,583 bytes) and `hashed_text_rollback_v1_3.txt` (8,680 bytes); `shasum -a 256` of each equals the hash above. A dry run prints the live script's own hash; SS's `APPROVED <plan hash>` must quote that value, and it must equal the one above if the script is unchanged.
 - **Ordering:** (1) gate amendment: none (sections 2 to 2.3); (2) Part A; (3) Part A2; (4) Part B; all in one transaction, so no half-applied state. The guard precedes the DELETE grant, so there is no instant at which the builder can delete an outcome row. Relative to other work: Pravāha's audit grant any order (Part G); 1214 any order, MSR-first invariant until both are deployed; Part B before S4 on any re-run and before S5/S6.
 - **Alternative (not recommended):** a migration as `amjis_app` cannot do Part A (it cannot drop the L2-owned keys) and, for Part A2, `amjis_app` has no schema CREATE; so the D6 owner-path is the only route for the whole set.
 
-### Part D. Pre-checks (read-only; immediately before the dry run and again before apply)
+### Part D. Runbook: step 0 and pre-checks (read-only; before the dry run and again immediately before apply)
 
-1. **Deploy idle.** No `deploy.yml` run in progress for `main` and none queued (`gh run list --workflow deploy.yml --limit 5`); D6's standing rule "never during a deploy or migration". **Observed 2026-10-01 about 16:55Z: NOT idle** (one `in_progress`, one `pending`); re-check at apply time. (A catalog change is instantaneous and not gate-pinned, so this is a rule, not a technical need.)
-2. **No in-flight build:** `SELECT id, state FROM build_runs WHERE state IN ('planned','running','paused')` returns 0 rows (observed 0). The script enforces this itself (as `amjis_app`).
+**Step 0, idle check, executed by the executor IMMEDIATELY before `--apply` (and before the dry run). Abort if either command shows anything busy.** Deploy workflow runs and the CI runs that trigger a deploy (`deploy.yml` is a `workflow_run` of "CI — Ganga Quality Gate" on `main`, `deploy.yml:7-8`):
+
+```bash
+# 0a. deploy and CI idle: this must print NOTHING (any line = busy = ABORT)
+gh run list --workflow deploy.yml --limit 30 --json status,createdAt,headSha \
+  --jq '.[] | select(.status != "completed") | "deploy \(.status) \(.createdAt) \(.headSha[0:7])"'
+gh run list --workflow ci.yml --branch main --limit 30 --json status,createdAt,headSha \
+  --jq '.[] | select(.status != "completed") | "ci-main \(.status) \(.createdAt) \(.headSha[0:7])"'
+```
+
+```sql
+-- 0b. no build in flight (read-only; as the reader, or as the owner): this must return 0 (anything else = ABORT)
+SELECT count(*) FROM public.build_runs WHERE state IN ('planned','running','paused');
+```
+
+If 0a prints a line or 0b is not 0, **do not run the dry run or the apply**; wait and repeat step 0. Run the dry run and the apply back to back after a clean step 0 (the script re-checks `build_runs` itself, inside the transaction, as `amjis_app`; it cannot see the workflow runs, so 0a is the only deploy-idle check). Observed at 16:04Z today: 0a prints four lines (busy; the command was run read-only to validate it), 0b returns 0.
+
+The remaining pre-checks:
+
+1. **Deploy idle** is step 0a above (D6's standing rule "never during a deploy or migration"). **Observed 2026-10-01 about 16:04Z: NOT idle**; re-check at apply time. (A catalog change is instantaneous and not gate-pinned, so this is a rule, not a technical need.)
+2. **No in-flight build:** `SELECT id, state FROM build_runs WHERE state IN ('planned','running','paused')` returns 0 rows (observed 0). The script enforces this itself (as `amjis_app`); it is step 0b.
 3. **No MSR writer or long reader active** on `bodha_msr_signals`, `bodha_contradictions`, `bodha_signal_embeddings` (Part A's 5 s lock fails loudly otherwise; run again later); no concurrent writer on `mimamsa_predictions` (the guard's CREATE TRIGGER takes SHARE ROW EXCLUSIVE; same 5 s lock_timeout).
 4. **Migration 1214 status recorded:** `SELECT filename FROM _migrations_applied WHERE filename LIKE '1214%'`. **Observed: not applied** (no row; max id 904). Record the answer; it fixes the expected post-state of V10 (5 kala keys remain if 1214 is not applied; 0 if it is).
-5. **Baselines captured:** V1-V25 (files `verify.sql`, `verify_v11_extra.sql`, `verify_v12_extra.sql`; pre-state in `verify_before.txt`, `verify_v11_before.txt`, `verify_v12_before.txt`); the V7 and V11 md5s change with other workstreams, so re-capture within minutes of the apply. Re-run at 16:5xZ for v1.2: V1-V17 identical to the v1.1 baselines (`verify_v12_recheck.txt`, `verify_v12_extra_recheck.txt`); V7 `a15ebe2724202646dc9570e21c374bca`; V11 `e0b1296a26f56d24178cf626faffb696` over 1,553 constraints; `mimamsa_predictions` 195 rows, all `pending`.
+5. **Baselines captured:** V1-V18 and V21, V23-V25, V29 (files `verify.sql`, `verify_v11_extra.sql`, `verify_v13_extra.sql`; pre-state in `verify_before.txt`, `verify_v11_before.txt`, `verify_v13_before.txt`; V19-V20, V22 and V26-V28 are the executor's in-transaction self-test); the V7 and V11 md5s change with other workstreams, so re-capture within minutes of the apply. Re-run at 16:5xZ for v1.2: V1-V17 identical to the v1.1 baselines (`verify_v12_recheck.txt`, `verify_v12_extra_recheck.txt`); V7 `a15ebe2724202646dc9570e21c374bca`; V11 `e0b1296a26f56d24178cf626faffb696` over 1,553 constraints; `mimamsa_predictions` 195 rows, all `pending`.
 6. **Owner and shape re-check:** the ten tables, `life_events`, `bg_combustion_orbs`, `brahma_activity_ontology`, `asset_registry` owned by `amjis_app`; the three keys' tables by `data_plane_l2_owner`; `public` owned by `data_plane_schema_owner` with `amjis_app` holding USAGE only (V24); if any differs, STOP.
 7. **Gate baseline:** `data-plane-ownership-status.ts` under the reader prints `marked` (D6 runbook `:314`).
 8. **Orphan check for the rollback path** (V17; the executor also runs the `bodha_contradictions` form): 0 orphans.
@@ -348,36 +380,38 @@ SELECT c.relname, count(*) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid 
 
 (The full text of V13-V17 is in `verify_v11_extra.sql`.) Post-apply expectations also include: **V18 (gate)**: `data-plane-ownership-status.ts` under the reader prints `marked` (if it prints a drift error instead: roll back and re-read section 2.1/2.2). The total public constraint count goes from 1,556 to 1,553; V11's md5 over the other 1,553 constraints is identical.
 
-**Guard verification, V19+ (new in v1.2).** Run by the script inside the dry-run (and again, as a pre-commit gate, inside apply) as the builder via `SET LOCAL ROLE data_plane_builder`, against **fixture rows only** (synthetic `chart_id` `00000000-0000-0000-0000-00000000f19e`, `prediction_id` `guard_fixture_<status>`): each fixture is inserted as the owner **inside its own SAVEPOINT**, the delete case runs, and the savepoint is rolled back, so no fixture can persist and no real row is read for deletion or deleted (the 195 real `pending` rows are never touched; the script also compares the real-row count before and after and requires zero fixtures left).
+**Guard verification, V19-V28.** Run by the script inside the dry-run (and again, as a pre-commit gate, inside apply) as the builder via `SET LOCAL ROLE data_plane_builder`, against **synthetic fixture rows only** (`chart_id` `00000000-0000-0000-0000-00000000f19e`, `prediction_id` `guard_fixture_<status>`). Every case runs inside its own SAVEPOINT that is rolled back: delete cases first insert their fixture as the owner, insert cases insert the synthetic row as the acting role; nothing can persist and no real row is read for deletion or deleted (the 195 real `pending` rows are never touched; the script compares the real-row count before and after and requires zero fixtures left).
 
-| Case | Role | Fixture status | Expected |
-|---|---|---|---|
-| V19a | builder | `confirmed` | refused: SQLSTATE 42501, message names `mimamsa_predictions_builder_delete_guard` |
-| V19b | builder | `denied` | refused |
-| V19c | builder | `partial` | refused |
-| V19d | builder | `expired` | refused |
-| V19e | builder | `some_future_status` (whitelist proof) | refused |
-| V20a | builder | `pending` | deleted (rowcount 1) |
-| V20b | builder | `due` | deleted (rowcount 1) |
-| V22 | owner `amjis_app` | `confirmed` | deleted (non-builder role unaffected) |
-| V19f | (not constructible) | NULL | `lifecycle_status` is `NOT NULL`; the guard refuses NULL by construction (`IS NULL OR NOT IN`), so no fixture exists to test it |
+| Case | Operation | Role | Fixture / row status | Expected |
+|---|---|---|---|---|
+| V19a-e | DELETE | builder | `confirmed`, `denied`, `partial`, `expired`, `some_future_status` | refused: SQLSTATE 42501, message names `mimamsa_predictions_builder_guard` |
+| V20a, V20b | DELETE | builder | `pending`, `due` | allowed (rowcount 1) |
+| V22 | DELETE | owner `amjis_app` | `confirmed` | allowed (non-builder unaffected) |
+| V26a-e | INSERT | builder | `confirmed`, `denied`, `partial`, `expired`, `some_future_status` | refused (42501) |
+| V26f | INSERT | builder | NULL (the BEFORE trigger fires before the NOT NULL check, so the guard refuses it with the clear message) | refused (42501) |
+| V27a, V27b | INSERT | builder | `pending`, `due` | allowed (rowcount 1) |
+| V28 | INSERT | owner `amjis_app` | `confirmed` | allowed (non-builder unaffected) |
 
-Read-only checks on the committed state (reader, run before and after; the `after` rows are what the apply must produce):
+17 cases in all (`GUARD_CASES`, part of the hashed text). A DELETE-NULL fixture cannot be built (`NOT NULL`); the delete branch refuses NULL by the same `IS NULL OR NOT IN` construction. **Mutation controls (§N.8, a check must be able to read false):** the self-test must fail for each of three weakened guards, and it did on the sandbox: delete as a blacklist (`expired` and unknown deletes get through), the INSERT branch disabled (all six refused inserts get through), INSERT as a blacklist (`expired`, unknown and NULL get through).
+
+Read-only checks on the committed state (reader; run before and after; the `after` rows are what the apply must produce):
 
 ```sql
--- V21 the guard exists once, enabled, with the right shape (before: 0 rows; after: 1 row, tgtype 11 = row-level BEFORE DELETE)
+-- V21 the guard exists once (before: 0 rows; after: 1 row, tgtype 15 = row-level BEFORE INSERT OR DELETE, enabled O, owner amjis_app, secdef f, search_path pinned)
 SELECT t.tgname, t.tgenabled, t.tgtype, p.proname, pg_get_userbyid(p.proowner) owner, p.prosecdef, p.proconfig::text
 FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid WHERE t.tgrelid='public.mimamsa_predictions'::regclass AND NOT t.tgisinternal;
--- V23 builder has NO UPDATE/TRUNCATE/TRIGGER on the table (S, I, D only): after the grant S=t I=t D=t U=f TRUNCATE=f TRIGGER=f
+-- V23 builder privileges on mimamsa_predictions (after: s=t i=t d=t must_be_false=f)
 SELECT has_table_privilege('data_plane_builder','public.mimamsa_predictions','SELECT') s, has_table_privilege('data_plane_builder','public.mimamsa_predictions','INSERT') i,
        has_table_privilege('data_plane_builder','public.mimamsa_predictions','DELETE') d, has_table_privilege('data_plane_builder','public.mimamsa_predictions','UPDATE,TRUNCATE,TRIGGER') must_be_false;
 -- V24 schema ACL unchanged: amjis_app has no CREATE on public, before and after
 SELECT has_schema_privilege('amjis_app','public','CREATE') AS must_be_false, (SELECT nspacl::text FROM pg_namespace WHERE nspname='public') AS nspacl;
 -- V25 status vocabulary and counts (today: pending 195 only)
 SELECT lifecycle_status, count(*) FROM public.mimamsa_predictions GROUP BY 1 ORDER BY 1;
+-- V29 the guard function name is absent before and present once after (after: 1)
+SELECT count(*) AS guard_fn_exists FROM pg_proc WHERE proname='mimamsa_predictions_builder_guard';
 ```
 
-V19-V22 cannot be run by the reader (they insert and delete, even though they are rolled back), which is why they live in the executor's transaction; the same behaviour was demonstrated on the disposable local cluster (`guard_sandbox_proof.txt`), including the builder login refusing a real `confirmed` row, deleting a `pending` row and being denied UPDATE.
+V19-V22 and V26-V28 cannot be run by the reader (they insert and delete, even though they are rolled back), which is why they live in the executor's transaction; the same behaviour was demonstrated on the disposable local cluster (`guard_sandbox_proof_v1_3.txt`), including the real builder login being refused on a `confirmed` delete and on `confirmed`, NULL and unknown inserts, allowed to insert `pending`/`due` and delete `pending`, and denied UPDATE.
 
 What the grant and the drop cannot prove: that the job connects as `data_plane_builder` (the smoke build, rebuild plan P0.4, covers it), that EXECUTE on the two functions suffices (the first `ph_nimitta` run), and that the writers then complete. A privilege error in `build_run_assets.error` is a clean failure with no data change. The `ph_muhurta` and `ka_vighnakara` outputs must be compared against their pre-rebuild digests to surface any silent fallback.
 
@@ -397,8 +431,8 @@ REVOKE UPDATE (selftest_detail) ON TABLE public.asset_registry FROM data_plane_b
 REVOKE EXECUTE ON FUNCTION public.phala_anchor_identity(uuid,text,text,text,text,text,date,date,date,text) FROM data_plane_builder;
 REVOKE EXECUTE ON FUNCTION public.phala_anchor_identity_namespace() FROM data_plane_builder;
 -- still as amjis_app (owner): remove the guard (dropping needs ownership only, no schema CREATE)
-DROP TRIGGER IF EXISTS mimamsa_predictions_builder_delete_guard ON public.mimamsa_predictions;
-DROP FUNCTION IF EXISTS public.mimamsa_predictions_builder_delete_guard();
+DROP TRIGGER IF EXISTS mimamsa_predictions_builder_guard ON public.mimamsa_predictions;
+DROP FUNCTION IF EXISTS public.mimamsa_predictions_builder_guard();
 -- as data_plane_l2_owner: re-add the exact keys (text read from pg_get_constraintdef 2026-10-01; section 1.3)
 ALTER TABLE public.bodha_contradictions    ADD CONSTRAINT bodha_contradictions_signal_a_id_fkey
   FOREIGN KEY (signal_a_id) REFERENCES public.bodha_msr_signals(signal_id) ON DELETE CASCADE;
@@ -414,7 +448,7 @@ The script's rollback diff requires exactly the 43 ACL entries removed (includin
 
 - **Pravāha's `asset_throughput_state_audit` grant:** independent objects; no duplication; either order. The wave needs it for the smoke and every stage; S5/S6 and the Kāla stages that use Part B need both.
 - **Migration 1214 (F-3 branch, five `amjis_app` kala keys):** independent of Part A; either order. Part A is the half of F-3 that only an owner-path can do (F-3 sections 1 and 5); the MSR-first rebuild-order invariant lasts until both are deployed.
-- **Guard vs the L5 writers:** `mi_bhavisya`'s own DELETE already filters `lifecycle_status IN ('pending','due')` (`mi_bhavisya.py:230`), so the guard changes nothing for it; `mi_abhilekha` and the lifecycle sweep write as other roles and are unaffected (the guard names only the builder).
+- **Guard vs the L5 writers:** `mi_bhavisya` inserts `'pending'` rows (`mi_bhavisya.py:243`) and deletes only `('pending','due')` (`:230`), so the guard changes nothing for it; `mi_abhilekha` and the lifecycle sweep write as other roles and are unaffected (the guard names only the builder).
 - **`assert_l2_msr_delete_safe`:** untouched (SS declined to remove the re-arm). After 1214 and Part A it has no cross-layer key to refuse on; it re-arms if one is ever re-added.
 - **Rebuild plan:** P0.5 check 2 should list the additions of v1.1 (`selftest_detail`, `bg_combustion_orbs`, `life_events`, `brahma_activity_ontology`, EXECUTE on `phala_anchor_identity*`) and S4's dependency on `phala_anchors` SELECT.
 
@@ -427,39 +461,44 @@ None required (sections 2, 2.1, 2.2, 2.3). Nothing to land first.
 1. **Part A removes a database-enforced referential guarantee between three L2 tables and the MSR.** Afterwards only the writers' explicit deletes (`_idempotency.py:120,123,196,201`) and the F-3 detector (`msr_dangling_signal_refs.py`, tier `l2_internal`, post-wave) keep embeddings and contradictions from outliving their signal. SS accepted this in the F-3 decisions.
 2. **Part A locks.** ACCESS EXCLUSIVE on `bodha_contradictions` and `bodha_signal_embeddings` and a lock on `bodha_msr_signals`; CREATE TRIGGER takes SHARE ROW EXCLUSIVE on `mimamsa_predictions`; `lock_timeout 5s`; sub-second once acquired. A concurrent writer makes the run fail loudly and roll back everything; retry when quiet.
 3. **One transaction, three owners plus a transient builder membership.** A failure in any part rolls back all of it. `postgres` is briefly a member of `data_plane_l2_owner`, `data_plane_schema_owner` (both protected owner roles), `amjis_app` and `data_plane_builder` inside the transaction; uncommitted, never visible to the gate (it reads committed state), the script refuses to commit unless memberships and the schema ACL are unchanged. The `data_plane_builder` membership exists only so the self-test can `SET LOCAL ROLE` to it.
-4. **`mimamsa_predictions` blast radius, now mitigated (N-46).** Table-wide DELETE remains, but the guard refuses every row not `pending`/`due` for the builder (whitelist; unknown future statuses and NULL are refused). Remaining holes, stated: (a) the **owner, a superuser or a role holding TRIGGER** can drop or disable the trigger; the builder has none of those and the plan grants none; (b) the builder can still **INSERT** a row with any status (a forgery, not a deletion; Q11); (c) a **TRUNCATE** would bypass a row trigger, but the builder has no TRUNCATE (V23); (d) if SS later grants the builder UPDATE (the `mi_abhilekha` case) a matching BEFORE UPDATE guard is required in the same change; (e) the guard only protects what `lifecycle_status` encodes: if outcome data are ever stored in other columns of a `pending` row, the whitelist does not see them (today `lifecycle_status` is the only outcome column; the stale-context columns are re-attachment metadata).
-5. **The transient schema CREATE.** Granting then revoking `CREATE ON SCHEMA public` for `amjis_app` inside the transaction is the one step that touches a gate-pinned privilege (`status.ts:560`, `:485-511`). It is never committed and the script's `ns` diff must be empty to commit; if a gate run happens mid-transaction it reads the committed state and passes. If the script were killed mid-transaction, PostgreSQL rolls the transaction back and no privilege persists.
+4. **`mimamsa_predictions` blast radius, mitigated (N-46).** The builder keeps table-wide DELETE and INSERT, but the guard refuses, for the builder only, any DELETE of a row and any INSERT of a row whose status is not `pending`/`due` (whitelist; unknown future statuses and NULL refused). Remaining holes, stated: (a) the **owner, a superuser or a role holding TRIGGER** can drop or disable the trigger; the builder has none of those and the plan grants none; (b) a **TRUNCATE** would bypass a row trigger, but the builder has no TRUNCATE (V23); (c) if the builder is ever granted UPDATE (the `mi_abhilekha` case) a matching BEFORE UPDATE guard is required in the same change (section 7); (d) the guard protects what `lifecycle_status` encodes: if outcome data are ever stored in other columns of a `pending` row, the whitelist does not see them (today `lifecycle_status` is the only outcome column; the stale-context columns are re-attachment metadata); (e) a builder that inserts `pending`/`due` rows with false `outcome_claim` text is a different problem from fabricating outcomes and is outside N-46.
+5. **The transient schema CREATE (accepted by SS).** Granting then revoking `CREATE ON SCHEMA public` for `amjis_app` inside the transaction is the one step that touches a gate-pinned privilege (`status.ts:560`, `:485-511`). It is never committed and the script refuses to commit unless the schema ACL and the memberships end unchanged (`ns` and `mem` diffs empty); a gate run mid-transaction reads the committed state and passes. If the script were killed mid-transaction, PostgreSQL rolls the transaction back and no privilege persists.
 6. **Builder credential isolation.** The grants widen what the builder credential can do inside the DB but change no IAM binding, secret, service account or Cloud Run surface (`data-plane-secret-isolation-preflight.ts:477,481`).
 7. **Personal data.** `life_events` (63 rows): column-level SELECT on five columns (V2).
 8. **Silent degradation and its detectors.** `ph_muhurta` and `ka_vighnakara` swallow a read failure; the grants remove the cause; output-digest comparison is the detector.
 9. **`selftest_detail` is a cockpit-visible JSON field**; UPDATE on that one column lets the builder identity write arbitrary text into the four services' self-test blobs; the same writers wrote it as the app login before the 2026-09-18 cutover (inferred, not re-verified).
 10. **Latent RLS** on `mimamsa_predictions` (two inert policies that exclude the builder): if RLS were enabled, `mi_bhavisya` would fail on INSERT. No policy is added.
 11. **The trigger-function assumption** for `phala_anchors_set_identity()` (not ACL-checked at fire time) fails closed, no data change.
-12. **The guard error is an error, not a skip.** If a build ever tries to delete a non-pending row as the builder, the whole `mi_bhavisya` run fails with the guard message; that is the intended fail-closed behaviour (the writer's own filter prevents it in normal operation).
+12. **The guard error is an error, not a skip.** If a build ever tries to insert or delete a non-pending/due row as the builder, the whole `mi_bhavisya` run fails with the guard message; that is the intended fail-closed behaviour (the writer's own statements prevent it in normal operation).
 13. **Static-scan limits of the Kāla audit** (section 3.2): SQL built from variables could hide another read; the staged runs would reveal it as a clean permission error.
 14. **The sandbox is not production.** The local cluster mimics roles and ACL shape, not Cloud SQL internals (for example, whether `postgres` can `GRANT amjis_app TO postgres` and `GRANT data_plane_schema_owner TO postgres` on that instance; precedent says yes, `data-plane-ownership-preflight.ts:278`, and the production `--dry-run` proves it before anything commits).
 
 ## 6. Questions for SS
 
-SS answers already folded in: `bg_combustion_orbs` SELECT yes; `selftest_detail` UPDATE for all four services; gochara-kernel tables are Pravāha's (not granted); `phala_rectification(_best)` held; `mi_abhilekha` and the other `mimamsa_*` tables out of scope; table-level UPDATE on `phala_suddha_sodhana` and `phala_phaladesa`; Q1 (contract reading) answered in substance by the approval.
+All earlier questions are answered and folded in: Q1 contract reading (approved in substance); Q2 `phala_rectification(_best)` held; Q3 `mi_abhilekha` and the other `mimamsa_*` tables out of scope; Q4 table-level UPDATE on `phala_suddha_sodhana`/`phala_phaladesa`; Q7 `life_events` and `brahma_activity_ontology` reads included; Q8 `bg_combustion_orbs` SELECT yes; Q9 gochara-kernel tables are Pravāha's; Q10 `selftest_detail` for all four services; Q11 INSERT guard: **yes, added in v1.3**; Q12 transient schema CREATE: **accepted**, commit refused unless schema ACL and memberships end unchanged; Q13 deploy-idle: **runbook step 0**; Q14 UPDATE needs a BEFORE UPDATE guard: **confirmed**, section 7.
 
-- **Q6.** Who runs the apply, and may `APPROVED <hash>` quote the hash printed by the executor's dry run of the approved script (it should equal `ca7fdfe9…` unless the script changes)?
-- **Q11.** The guard covers DELETE only. Should an INSERT guard (builder may insert only `pending`/`due`) be added now, or accepted as outside N-46?
-- **Q12.** The guard function is created as `amjis_app` using a transient, in-transaction `CREATE` on schema `public` granted by `data_plane_schema_owner`. Accept this, or prefer creating the function as `data_plane_schema_owner` and granting `amjis_app` EXECUTE (an unattested function under a protected owner; not recommended)?
-- **Q13.** The pre-flight shows deploy not idle right now. Is the apply scheduled for an idle window, and who confirms idle?
-- **Q14.** When the builder is later granted UPDATE on `mimamsa_predictions` (if `mi_abhilekha` joins a wave), the BEFORE UPDATE guard on `lifecycle_status` goes in the same change: confirm.
+Open items (for the executor, not SS decisions):
+
+- **Q6.** Who runs the apply (the holder of the Secret Manager administrator secret), and the approval quotes the hash printed by that executor's dry run of the approved script (it must equal `77194d49…` unless the script changes).
+- The pre-flight shows deploy not idle right now; the apply waits for a clean step 0.
+
+## 7. Follow-ups (not part of this change set)
+
+1. **UPDATE on `mimamsa_predictions`.** The builder has no UPDATE. If it is ever granted (for example `UPDATE (lifecycle_status)` for `mi_abhilekha`), the same change must add a `BEFORE UPDATE` row trigger (it may extend `mimamsa_predictions_builder_guard` to `BEFORE INSERT OR UPDATE OR DELETE`) that, for the builder, refuses any UPDATE that changes `lifecycle_status` away from or between non-`pending`/`due` values, or any UPDATE of a row whose OLD status is not `pending`/`due` (SS confirmed 2026-10-01). The guard's whitelist, self-test cases (V30+ would mirror V19-V28) and mutation controls extend accordingly; the hash changes.
+2. **Rebuild plan P0.2 and P0.5 check 2** list the additions of v1.1 and the guard (section "Notes").
+3. **Gochara-kernel tables** are Pravāha's grants, tracked outside this plan.
 
 ## Notes for SS to relay
 
 - To Pravāha: the line "Exec Suvarṇa is handling the phala_*/mimamsa_* grants; your audit-table grant stays yours" was already relayed. Add: "the gochara-kernel tables `kala_gochara_contacts/_coverage/_publication/_convention`, `kala_gochara_cutover_step05_snapshot` and `bg_transit_av_gates` have no `data_plane_builder` privilege; they are yours (not in the Exec Suvarṇa grant plan) unless SS folds them in (Q9)."
 - To the rebuild plan owner: P0.2 and P0.5 check 2 should list `asset_registry.selftest_detail`, `life_events`, `brahma_activity_ontology`, `bg_combustion_orbs` and EXECUTE on `phala_anchor_identity*` alongside the ten tables; stage S4 needs `phala_anchors` SELECT on any re-run; keep the output-digest comparison for `ph_muhurta` and `ka_vighnakara`.
 - To F-3: the owner-path half is in `BUILDER_GRANT_PLAN` Part A (v1.1, unchanged in v1.2), with the exact rollback text; no gate amendment.
-- To the L5 owners (N-46): `mimamsa_predictions` gets a builder-only BEFORE DELETE guard (whitelist `pending`/`due`); if `mi_abhilekha` is ever dispatched through the builder, UPDATE on that table needs its own BEFORE UPDATE guard in the same change (Q14); the INSERT question is Q11.
-- To the executor: run the dry run first; the apply is refused unless the printed hash equals the approved one; the pre-flight currently shows deploy NOT idle.
+- To the L5 owners (N-46): `mimamsa_predictions` gets a builder-only `BEFORE INSERT OR DELETE` guard (`mimamsa_predictions_builder_guard`, whitelist `pending`/`due` for both operations); if `mi_abhilekha` is ever dispatched through the builder, UPDATE on that table needs its own BEFORE UPDATE guard in the same change (section 7).
+- To the executor: run the dry run first; the apply is refused unless the printed hash equals the approved one; run step 0 (Part D) immediately before; the pre-flight currently shows deploy NOT idle.
 
 ## Appendix A. Draft script (not applied; not in the repo)
 
-Saved as `/Users/Dev/suvarna-evidence/Grants/builder_grants_v1_2_DRAFT.py` (about 390 lines; one transaction per run; never prints a traceback or the secret). The plan, expected diffs and hashes are pure functions (`plan_text`, `expected_acl_diff`, `expected_con_diff`, `expected_trg_diff`, `expected_fn_diff`, `plan_hash`) that need no database. Changes from the v1.1 draft: the guard (`GUARD_FN_SQL`, `GUARD_TRG_SQL`, `GUARD_DROP_SQL`, `guard_statements`); the guard self-test (`GUARD_CASES`, `run_guard_self_test`, savepoint per case, fixture rows only); reads run `AS` an owner (`query_as`); schema-ACL, function-definition and trigger snapshots; the transient memberships for `data_plane_schema_owner` and `data_plane_builder`; a `connect()` function so a harness can point the same code at a disposable cluster; and a fix to the trigger snapshot (`t.tgenabled::text`: under `search_path = pg_catalog, pg_temp` the v1.1 draft's `text || "char"` concatenation was ambiguous, found by the sandbox run; the v1.1 draft had never been run). Key excerpts:
+Saved as `/Users/Dev/suvarna-evidence/Grants/builder_grants_v1_3_DRAFT.py` (about 420 lines; one transaction per run; never prints a traceback or the secret). The plan, expected diffs and hashes are pure functions (`plan_text`, `expected_acl_diff`, `expected_con_diff`, `expected_trg_diff`, `expected_fn_diff`, `plan_hash`) that need no database. Changes from the v1.1 draft: the guard (`GUARD_FN_SQL`, `GUARD_TRG_SQL`, `GUARD_DROP_SQL`, `guard_statements`; v1.3: one `BEFORE INSERT OR DELETE` trigger with a `TG_OP` branch); the guard self-test (`GUARD_CASES`, 17 delete and insert cases, `run_guard_self_test`, savepoint per case, fixture rows only); reads run `AS` an owner (`query_as`); schema-ACL, function-definition and trigger snapshots; the transient memberships for `data_plane_schema_owner` and `data_plane_builder`; a `connect()` function so a harness can point the same code at a disposable cluster; and a fix to the trigger snapshot (`t.tgenabled::text`: under `search_path = pg_catalog, pg_temp` the v1.1 draft's `text || "char"` concatenation was ambiguous, found by the sandbox run; the v1.1 draft had never been run). Key excerpts:
 
 ```python
 GRANTEE, L2_OWNER, APP_OWNER, SCHEMA_OWNER = "data_plane_builder", "data_plane_l2_owner", "amjis_app", "data_plane_schema_owner"
@@ -479,7 +518,7 @@ def guard_statements(mode):
 # rollback: REVOKEs, DROP guard, orphan guard, re-add the three keys; inverse diff check.
 ```
 
-**Sandbox proof** (`guard_sandbox_proof.txt`): a throwaway PostgreSQL 15 cluster on loopback, roles built to mimic production (`postgres` non-superuser CREATEROLE, `amjis_app` with no schema CREATE, schema owned by `data_plane_schema_owner`, owner default function ACL revoking PUBLIC EXECUTE), the real `mimamsa_predictions` columns, the three keys, and stand-ins for the other objects. Results: dry-run passed (diff exactly as planned, schema ACL and memberships empty diff, zero self-test failures) and rolled back; apply committed; a builder login was refused on `confirmed` and `denied` rows with the guard message, deleted a `pending` row, and was denied UPDATE; the owner deleted a `confirmed` row; a second apply failed (constraint already gone, nothing changes); rollback restored the pre-state exactly (guard, function and ACL entries gone, the three keys back, builder DELETE false); a weakened guard (blacklist) was caught by the self-test (`expired` and an unknown status deleted). The cluster was deleted afterwards.
+**Sandbox proof** (`guard_sandbox_proof_v1_3.txt`; the v1.2 run is kept as `guard_sandbox_proof.txt`): a throwaway PostgreSQL 15 cluster on loopback built from `sandbox_setup.sql`, roles built to mimic production (`postgres` non-superuser CREATEROLE with no table privileges, `amjis_app` with no schema CREATE, schema owned by `data_plane_schema_owner`, owner default function ACL revoking PUBLIC EXECUTE), the real `mimamsa_predictions` columns, the three keys, and stand-ins for the other objects. Results: dry-run passed (17 cases, zero failures; diff exactly as planned; schema ACL and memberships empty diff; one trigger with `tgtype` 15 and one function added) and rolled back; apply committed; a real builder login was refused on a `confirmed` delete and on `confirmed`, NULL and `whatever` inserts (guard message, SQLSTATE 42501), deleted a `pending` row, inserted `pending` and `due` rows, and was denied UPDATE; the owner inserted and deleted `confirmed` rows; a second apply failed (constraint already gone, nothing changes); rollback restored the pre-state exactly (no trigger, no function, the three keys back, builder DELETE false); and the three weakened guards (delete blacklist, INSERT branch disabled, INSERT blacklist) were each caught by the self-test. The cluster was deleted afterwards.
 
 ## Appendix B. Evidence index
 
@@ -489,8 +528,9 @@ def guard_statements(mode):
 | Builder privilege matrix and V1-V8 baseline and re-check | `/Users/Dev/suvarna-evidence/Grants/verify_before.txt`, `verify_v11_recheck.txt`; queries in `verify.sql` |
 | V9-V17 baseline (FKs, constraints md5, RI triggers, asset_registry columns, holds) | `verify_v11_before.txt`; queries in `verify_v11_extra.sql` |
 | V21, V23-V25 baseline (guard absent, builder privileges, schema ACL, status vocabulary) | `verify_v12_before.txt`; queries in `verify_v12_extra.sql`; re-check of V1-V17 `verify_v12_recheck.txt`, `verify_v12_extra_recheck.txt` |
-| Exact hashed text (reproduces both hashes byte for byte) | `hashed_text_apply_v1_2.txt`, `hashed_text_rollback_v1_2.txt` |
-| Guard sandbox proof (local disposable cluster, not production) | `guard_sandbox_proof.txt` |
+| Exact hashed text (reproduces both hashes byte for byte) | `hashed_text_apply_v1_3.txt`, `hashed_text_rollback_v1_3.txt` |
+| Guard sandbox proof (local disposable cluster, not production) | `guard_sandbox_proof_v1_3.txt` (final; INSERT and DELETE), `guard_sandbox_proof.txt` (v1.2, DELETE only), `sandbox_setup.sql` |
+| V21, V23-V25, V29 baseline for v1.3 | `verify_v13_before.txt`; queries in `verify_v13_extra.sql` |
 | mimamsa_predictions DDL and status vocabulary | `platform/migrations/347_mimamsa_bhavisya.sql:19`; `prediction_lifecycle_sweep.ts:348,361`; `mi_bhavisya.py:230`; `mi_abhilekha.py:70-72`; live DDL read from `pg_attribute`/`pg_constraint` |
 | Gate trigger checks | `data-plane-ownership-status.ts:265-318` (`:270-273`, `:282,291`, `:307,317`), `:320-351`, `:485-511`, `:513-557`, `:559-570`; `data-plane-ownership-preflight.ts:9-22,303-310`; `schema_pin_mimamsa_predictions.py`; `.github/workflows/ci.yml:1372-1379` |
 | Kāla audit scan and matrix | `/private/tmp/claude-504/g/kala_scan.txt`, `kala_scan2.txt`, `kala_priv.sql` (session scratch; the result is summarised in section 3.2) |
