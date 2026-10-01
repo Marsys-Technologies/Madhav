@@ -2652,8 +2652,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'One row per predictive anchor; count depends on convergence density and multi-axis derivation',
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bg_ghatana, bo_pratijna, ka_yojaka.
-    depends_on: ['ka_sangam', 'ka_bhavishya_lekha', 'bo_bimba', 'bo_samskara', 'bo_karanajala', 'bo_sangati', 'bo_anveshana', 'bo_cgm_paths', 'bo_laksana', 'bg_ghatana', 'bo_pratijna', 'ka_yojaka'],
+    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bg_ghatana.
+    depends_on: ['ka_sangam', 'ka_bhavishya_lekha', 'bo_bimba', 'bo_samskara', 'bo_karanajala', 'bo_sangati', 'bo_anveshana', 'bo_cgm_paths', 'bo_laksana', 'bg_ghatana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'artifact', catalog_status: 'DRAFT',
   },
@@ -2930,8 +2930,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // dependency. BA Phase 2.5 #9 additionally adds bg_formula_constants
     // (shrinkage_k/divergence_cap) — L0-bedrock guard-exempted, doc-only
     // (CLAUDE.md B.3).
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): mi_bhavisya.
-    depends_on: ['mi_pramana', 'mi_kula', 'bg_formula_constants', 'mi_bhavisya'],
+    depends_on: ['mi_pramana', 'mi_kula', 'bg_formula_constants'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -2967,8 +2966,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     volume_explanation: 'Accumulates as eval runs are executed — not a deterministic target',
     // BA Phase 2.5 #9: attribution dimension weights from brahma_formula_constants;
     // L0-bedrock guard-exempted, doc-only addition (CLAUDE.md B.3).
-    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bo_laksana, mi_bhavisya, mi_jivanaghatana, ph_nimitta.
-    depends_on: ['mi_pramana', 'mi_kula', 'bg_formula_constants', 'bo_laksana', 'mi_bhavisya', 'mi_jivanaghatana', 'ph_nimitta'],
+    // Migration 1202: direct read edges added (E6 Build.dag reads-match): bo_laksana, mi_jivanaghatana.
+    depends_on: ['mi_pramana', 'mi_kula', 'bg_formula_constants', 'bo_laksana', 'mi_jivanaghatana'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {

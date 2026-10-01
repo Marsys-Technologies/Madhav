@@ -1,9 +1,22 @@
 -- 1202_asset_registry_direct_edges.sql
 --
 -- Suvarna Track I (ruling 2026-10-01): declare the DIRECT `depends_on` edges for reads that are
--- today ordered only TRANSITIVELY. 27 edges across 15 assets (14 of which the E6 `Build.dag`
--- reads-match detector turns from FAIL to PASS; bo_laksana_rerank keeps one residual finding,
--- see "NOT in this migration" below).
+-- today ordered only TRANSITIVELY. 22 edges across 14 assets, 13 distinct producers (11 consumers
+-- go FAIL -> PASS on the pinned E6 `Build.dag` reads-match detector, 6c6fea57f; ph_nimitta,
+-- mi_pariksha and bo_laksana_rerank shrink but keep a residual finding, see below).
+--
+-- SPLIT (SS ruling 2026-10-01). The original 27-edge set was split on a read-only gate preview on the
+-- canonical chart: four producers are NOT lit+fresh (bo_pratijna stale, ka_yojaka stale, ph_nimitta
+-- stale, mi_bhavisya throughput 'error' = a cascade skip), and a direct edge to a producer that is not
+-- gate-ready would BLOCK its consumer (see CONSEQUENCES 2). This file keeps only the 22 edges whose
+-- producer is lit, fresh and proven. The 5 held edges are in a separate, BLOCKED migration
+-- 1203_asset_registry_direct_edges_held.sql (branch suvarna/land/TI-edges-002): ph_nimitta ->
+-- bo_pratijna, ph_nimitta -> ka_yojaka, mi_gunanaka -> mi_bhavisya, mi_pariksha -> mi_bhavisya,
+-- mi_pariksha -> ph_nimitta. 1203 must not be applied until those four producers are each lit and
+-- fresh (gate_ok true) and 1202 is applied.
+--
+-- PR-body line: makes 6 Nirmana-frozen manifests stale against the registry fingerprint; Nirmana is
+-- superseded (NIRMANA-SUPERSESSION).
 --
 -- WHY. E6 (T4: declared edges must match what a writer actually reads) found writers that read
 -- another asset's table where the producer is reachable through an intermediate asset but the
@@ -25,11 +38,12 @@
 -- is already upstream through the existing path.
 --
 -- ACYCLIC. The full 127-asset registry graph (seed + migrations 913/1084/730/676, md5 of sorted
--- depends_on = live as of the E6 review) plus these 27 edges was topologically sorted: 127/127
+-- depends_on = live as of the E6 review) plus these 22 edges was topologically sorted: 127/127
 -- ordered, no cycle. Every producer is an active asset with a writer. This migration re-checks
 -- both properties inside the transaction and RAISEs rather than leave a dependency trap.
 --
 -- NOT in this migration (reported separately to the owner):
+--   * the 5 edges held for 1203 (producer not gate-ready; see SPLIT above).
 --   * 3 BACK-READS whose edge would create a cycle: ka_bhavishya_lekha -> ph_nimitta,
 --     ga_structural -> ga_vichara, ga_structural -> ga_yoga.
 --   * bo_pramana_mapa and bo_laksana_rerank chart_facts reads: polymorphic (a join over whatever
@@ -44,17 +58,18 @@
 --
 -- APPLY ONLY WHEN no build_runs row is in state planned/running/paused. runner.py
 -- `_verify_registry_still_matches_manifest` compares each planned asset's live depends_on against the
--- run's frozen manifest; any run planned/running across the deploy has its diverged assets (the 15
+-- run's frozen manifest; any run planned/running across the deploy has its diverged assets (the 14
 -- consumers) terminalized by `_terminalize_diverged_assets`, and their dependents blocked.
 --
 -- CONSEQUENCES (verified in code; read-only checks are in the evidence verify SQL):
 --  1. Nirmana frozen-definition contract. `registryContractFingerprintInput`
 --     (src/lib/nirmana-elevation/definitions.ts) includes depends_on, and
 --     `assertManifestMatchesRegistryIdentity` throws on ANY depends_on change vs the frozen manifest.
---     6 of the 15 consumers are Nirmana-frozen (NIRMANA_SUPERSESSION_RECORD s2.3): bo_bimba (t3),
+--     6 of the 14 consumers are Nirmana-frozen (NIRMANA_SUPERSESSION_RECORD s2.3): bo_bimba (t3),
 --     bo_karanajala (t3), bo_laksana_rerank (t3), bo_pratijna (t1), bo_yantra_mechanism (t1),
---     ka_yojaka (t2) = 11 of the 27 edges. Effects: (a) their `asset_analysis_accepted` evidence is
---     bound to a registry fingerprint that no longer matches (snapshot.ts stale-accepted logic);
+--     ka_yojaka (t2) = 11 of the 22 edges (the 1203 consumers ph_nimitta, mi_gunanaka, mi_pariksha
+--     are not frozen). Effects: (a) their `asset_analysis_accepted` evidence is bound to a registry
+--     fingerprint that no longer matches (snapshot.ts stale-accepted logic);
 --     (b) snapshot.ts `validManifest` returns null (the assert is caught), and the monitor
 --     (monitor.ts) reports `plan_adaptation_required`; (c) scripts/dispatch_nirmana_campaign_wave.py
 --     raises "live registry contract changed for <asset>: depends_on" and refuses the whole wave.
@@ -66,7 +81,9 @@
 --     be asset_throughput.state 'lit' (or 'service_ok') AND its latest asset_freshness 'fresh'. A new
 --     direct producer whose state is not lit, or whose freshness is stale/unknown/absent, now BLOCKS
 --     its consumer even though the old transitive path did not check that producer's freshness
---     directly. Verify SQL Q4 lists state + freshness + receipt per new producer.
+--     directly. Read-only gate preview on the canonical chart: all 13 producers of THIS migration are
+--     lit, fresh and proven; the four that were not are the producers of the 5 edges held in 1203.
+--     Verify SQL Q4 (limited to the 13 producers) re-checks this right before apply.
 --  3. Upstream hash. `compute_upstream_hash` hashes DECLARED deps: each consumer's next dispatch sees
 --     a changed upstream set (one-time rebuild signal). A producer whose latest receipt is missing or
 --     not 'proven' makes that consumer's upstream_digest NULL for that build.
@@ -101,15 +118,10 @@ INSERT INTO _m1202_edges (asset_id, dep) VALUES
   ('mi_darshana', 'bg_ghatana'),
   ('mi_darshana', 'bo_laksana'),
   ('mi_darshana', 'bo_sangati'),
-  ('mi_gunanaka', 'mi_bhavisya'),
   ('mi_pariksha', 'bo_laksana'),
-  ('mi_pariksha', 'mi_bhavisya'),
   ('mi_pariksha', 'mi_jivanaghatana'),
-  ('mi_pariksha', 'ph_nimitta'),
   ('ph_muhurta', 'bg_ghatana'),
-  ('ph_nimitta', 'bg_ghatana'),
-  ('ph_nimitta', 'bo_pratijna'),
-  ('ph_nimitta', 'ka_yojaka');
+  ('ph_nimitta', 'bg_ghatana');
 
 -- Guard 1: every producer of an edge whose consumer row exists must be an ACTIVE asset.
 DO $$
@@ -164,6 +176,6 @@ END $$;
 -- DOWN (ops reference, not executed by migrate.ts): remove exactly these edges.
 --   UPDATE asset_registry r SET depends_on = ARRAY(
 --       SELECT x FROM unnest(r.depends_on) x
---        WHERE x NOT IN (SELECT e.dep FROM (VALUES <the 27 (asset_id, dep) pairs above>) e(asset_id, dep)
+--        WHERE x NOT IN (SELECT e.dep FROM (VALUES <the 22 (asset_id, dep) pairs above>) e(asset_id, dep)
 --                         WHERE e.asset_id = r.asset_id))
---    WHERE r.asset_id IN (<the 15 consumer asset_ids above>);
+--    WHERE r.asset_id IN (<the 14 consumer asset_ids above>);

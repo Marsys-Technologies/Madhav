@@ -3,7 +3,7 @@ Migration 1202 (Suvarna Track I): direct `depends_on` edges for reads that were 
 transitively (E6 `Build.dag` reads-match, T4).
 
 DB-free. What this proves, and what it does not:
-  * PROVES: the migration and the TypeScript seed carry the same 27 edges; every id exists; the
+  * PROVES: the migration and the TypeScript seed carry the same 22 edges; every id exists; the
     full 127-asset registry graph stays acyclic; every added edge was already implied by an existing
     path (so no build ordering changes); the 3 known BACK-READ edges (which would create cycles) are
     absent; every producer and consumer has a registered writer class.
@@ -32,6 +32,16 @@ _SEED = _REPO / "platform" / "scripts" / "seed" / "asset_registry_seed.ts"
 _FIXTURE = Path(__file__).resolve().parent / "fixtures" / "registry_depends_on_pre_1202.json"
 
 # Reads whose direct edge would close a cycle (ruled out of 1202; registry/design findings).
+# SS split ruling (2026-10-01): a read-only gate preview showed these producers NOT lit+fresh on the
+# canonical chart, so every edge TO them is held for migration 1203 (branch TI-edges-002).
+_HELD_PRODUCERS = {"bo_pratijna", "ka_yojaka", "mi_bhavisya", "ph_nimitta"}
+_HELD_EDGES = {
+    ("ph_nimitta", "bo_pratijna"),
+    ("ph_nimitta", "ka_yojaka"),
+    ("mi_gunanaka", "mi_bhavisya"),
+    ("mi_pariksha", "mi_bhavisya"),
+    ("mi_pariksha", "ph_nimitta"),
+}
 _BACK_READS = {
     ("ka_bhavishya_lekha", "ph_nimitta"),
     ("ga_structural", "ga_vichara"),
@@ -120,8 +130,9 @@ def _registered_writers() -> set[str]:
 def test_migration_shape_and_count():
     sql = _MIGRATION.read_text()
     edges = _migration_edges()
-    assert len(edges) == 27 and len(set(edges)) == 27, "27 distinct edges expected"
-    assert len({a for a, _ in edges}) == 15, "15 consumer assets expected"
+    assert len(edges) == 22 and len(set(edges)) == 22, "22 distinct edges expected"
+    assert len({a for a, _ in edges}) == 14, "14 consumer assets expected"
+    assert len({d for _, d in edges}) == 13, "13 distinct producers expected"
     assert "SET LOCAL lock_timeout = '5s';" in sql
     # migrate.ts owns BEGIN/COMMIT; a nested BEGIN/COMMIT would end its transaction early
     code = "\n".join(l for l in sql.splitlines() if not l.lstrip().startswith("--"))
@@ -147,9 +158,19 @@ def test_guards_are_scoped_null_safe_and_disclose_consequences():
     assert code.count("<> ALL (COALESCE(") == 2
     assert not re.search(r"<> ALL \((?!COALESCE)", code)
     # the operational consequences stay disclosed in the header
-    for needle in ("planned/running/paused", "plan_adaptation_required", "assertManifestMatchesRegistryIdentity",
+    for needle in ("1203_asset_registry_direct_edges_held", "6 Nirmana-frozen manifests stale",
+                   "planned/running/paused", "plan_adaptation_required", "assertManifestMatchesRegistryIdentity",
                    "deps_unsatisfied", "asset_freshness", "nirmana_elevation_monitor_observations"):
         assert needle in sql, f"header no longer discloses: {needle}"
+
+
+def test_held_edges_and_gate_blocked_producers_are_absent():
+    edges = _migration_edges()
+    assert not (set(edges) & _HELD_EDGES), set(edges) & _HELD_EDGES
+    assert not [e for e in edges if e[1] in _HELD_PRODUCERS], "edge to a gate-blocked producer"
+    seed = _seed_graph()
+    for a, d in _HELD_EDGES:
+        assert d not in seed[a], f"held edge {a}->{d} must not be in the 1202 seed"
 
 
 def test_back_reads_are_not_added_anywhere():
