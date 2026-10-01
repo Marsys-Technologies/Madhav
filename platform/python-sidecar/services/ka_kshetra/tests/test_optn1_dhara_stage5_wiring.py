@@ -102,9 +102,13 @@ class TestPlanSubstepsAnalyticEmitsStage5Dhara:
         assert 'stage5dhara:CAREER:1' in keys, (
             f'Expected stage5dhara:CAREER:1 in substep keys, got: {keys}'
         )
-        assert 'stage5dhara:CAREER:2' in keys, (
-            f'Expected stage5dhara:CAREER:2 in substep keys, got: {keys}'
-        )
+        # I-10: the windows chunk is split into WINDOW_PARTS small parts
+        # (stage5dhara:{ec}:2:{p}); the old single :2 key is no longer planned.
+        from services.ka_kshetra.writer import WINDOW_PARTS
+        assert [k for k in keys if k.startswith('stage5dhara:CAREER:2')] == [
+            f'stage5dhara:CAREER:2:{p}' for p in range(WINDOW_PARTS)
+        ], f'Expected the windows parts in order, got: {keys}'
+        assert 'stage5dhara:CAREER:2' not in keys
 
     def test_analytic_does_not_emit_stage5_block_keys(self):
         steps = self._call_plan_substeps('analytic', event_classes=['CAREER'])
@@ -123,7 +127,7 @@ class TestPlanSubstepsAnalyticEmitsStage5Dhara:
         )
 
     def test_analytic_emits_two_dhara_substeps_per_event_class(self):
-        """F2 (SM-R-11): two substeps (chunk:1 + chunk:2) per event class."""
+        """F2 (SM-R-11) + I-10: chunk:1 (null) and chunk:2 (windows, in parts) per event class."""
         ecs = ['CAREER', 'HEALTH', 'WEALTH']
         steps = self._call_plan_substeps('analytic', event_classes=ecs)
         keys = [s.key for s in steps]
@@ -131,8 +135,8 @@ class TestPlanSubstepsAnalyticEmitsStage5Dhara:
             assert f'stage5dhara:{ec}:1' in keys, (
                 f'Expected stage5dhara:{ec}:1 in keys: {keys}'
             )
-            assert f'stage5dhara:{ec}:2' in keys, (
-                f'Expected stage5dhara:{ec}:2 in keys: {keys}'
+            assert f'stage5dhara:{ec}:2:0' in keys, (
+                f'Expected stage5dhara:{ec}:2:0 (first windows part) in keys: {keys}'
             )
 
     def test_analytic_dhara_substep_has_meaningful_label(self):
@@ -268,7 +272,7 @@ class TestRunStage5DharaRouting:
         assert result.rows_inserted == 4
 
     def test_run_substep_dispatches_stage5dhara_chunk2(self):
-        """run_substep('stage5dhara:CAREER:2') calls _run_stage5dhara_windows."""
+        """run_substep('stage5dhara:CAREER:2:4') calls _run_stage5dhara_windows(part=4)."""
         writer = _make_writer_instance()
         writer._plugin_stages = []
 
@@ -276,13 +280,14 @@ class TestRunStage5DharaRouting:
         ctx.db_conn = MagicMock()
 
         from pipeline.orchestrator.writers import SubStep
-        step = SubStep(key='stage5dhara:CAREER:2', label='dhara windows CAREER')
+        step = SubStep(key='stage5dhara:CAREER:2:4', label='dhara windows CAREER part 5')
 
         called_with = {}
 
-        def fake_run_windows(conn, ec, step_arg):
+        def fake_run_windows(conn, ec, step_arg, part=None):
             called_with['method'] = 'windows'
             called_with['ec'] = ec
+            called_with['part'] = part
             from pipeline.orchestrator.writers import WriterResult
             return WriterResult(asset_id='ka_kshetra', rows_inserted=7)
 
@@ -291,6 +296,7 @@ class TestRunStage5DharaRouting:
 
         assert called_with.get('method') == 'windows'
         assert called_with.get('ec') == 'CAREER'
+        assert called_with.get('part') == 4
         assert result.rows_inserted == 7
 
 
@@ -403,7 +409,7 @@ class TestRunStage5DharaCallsDharaComputeNull:
         mock_window.duration_days = 100.0
 
         from pipeline.orchestrator.writers import SubStep
-        step = SubStep(key='stage5dhara:CAREER:2', label='dhara windows CAREER')
+        step = SubStep(key='stage5dhara:CAREER:2:0', label='dhara windows CAREER part 1')
 
         # Fake committed kala_field_null rows that chunk:2 reads from DB.
         fake_null_rows = [
@@ -429,7 +435,9 @@ class TestRunStage5DharaCallsDharaComputeNull:
                    return_value=[]), \
              patch.object(writer, '_record_substep'), \
              patch.object(writer, '_write_windows_batch', return_value=5):
-            result = writer._run_stage5dhara_windows(conn, 'CAREER', step)
+            # I-10: part 0 = t_start < 36525/20 (outer bound open); the mocked
+            # window starts at t=100.0 so it belongs to part 0.
+            result = writer._run_stage5dhara_windows(conn, 'CAREER', step, 0)
 
         from pipeline.orchestrator.writers import WriterResult
         assert isinstance(result, WriterResult)

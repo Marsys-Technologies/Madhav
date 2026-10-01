@@ -275,6 +275,13 @@ class FakeCursor:
             self._rows = [{'n': sum(1 for r in t.get('kala_field', [])
                                     if r['event_class'] == params[1])}]
             return
+        if ('COUNT(DISTINCT window_id) AS n FROM kala_field_windows' in s):
+            chart, ec, snap = params[0], params[1], params[2]
+            self._rows = [{'n': len({r['window_id'] for r in t.get('kala_field_windows', [])
+                                     if str(r.get('chart_id')) == str(chart)
+                                     and r.get('event_class') == ec
+                                     and r.get('field_snapshot_id') == snap})}]
+            return
         if 'FROM kala_field_windows' in s:
             self._rows = [dict(r) for r in t.get('kala_field_windows', [])]
             return
