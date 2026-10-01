@@ -1,6 +1,6 @@
 ---
 artifact: BOUNDARY_FLIP_REPORT
-version: 1.0
+version: 1.1
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna
 date: 2026-10-02
@@ -8,8 +8,10 @@ lane: suvarna/land/TI-ephemeris-flip-report-001
 base: origin/main 57bcef8c9
 mode: OFFLINE, READ-ONLY. DB reads only (suvarna_reader, through a wrapper that only sources ~/.config/suvarna/pgenv.sh and runs psql). No DB write, no repo code change, no push.
 precondition_for: any L1 / panchanga_daily rebuild after the ephemeris-backend fix (INVESTIGATION_EPHEMERIS_BACKEND_v1_0.md, branch suvarna/land/TI-ephemeris-backend-001)
+gate: G-FLIP CLEARED for the canonical chart (SS decision N-64, recorded in section 0A)
 evidence_dir: /Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/ (not in the repo; README.md there lists every script and output)
 changelog:
+  - "1.1 (2026-10-02): SS N-64 rulings recorded (section 0A): dasha shift = accuracy refinement; Mahadasha day-crossing verified; S-L1 acceptance criterion; detector packaged (--snapshot / --compare); pre-rebuild snapshot of 482012f1 taken (path and sha256 below); G-EPH Linux check recorded; S-L1b hand-offs."
   - "1.0 (2026-10-02): first full comparison of production-state Moshier vs pinned Swiss .se1 for the three charts and the stored panchanga_daily window."
 ---
 
@@ -24,6 +26,61 @@ changelog:
 3. **Continuous values move by at most 0.665 arcsec for a graha** (Moon, native), at most 17.9 arcsec for an amplified derived point (Sree Lagna = 27 x Moon fraction).
 4. **Fragility is real but thin:** 10 / 13 / 18 facts (native / chart 2 / chart 3) sit within 2 arcsec of a class boundary (several are clusters hanging on one longitude, most are deep vargas or KP prana lords). One is a genuine razor edge: chart 3, Saturn under Raman is 0.52 arcsec from a pada / navamsa boundary, and chart 3's Moon under Lahiri is 0.03 arcsec from a KP prana-lord boundary under .se1 (section 5).
 5. **The Moshier run reproduces production** for every family that is current code (facts bit-exact to 1e-9 deg, all but one of 1.46 million dasha starts exact to the second, 544/544 daily rows). Two stored families do not reproduce for charts 2 and 3: their `chart_divisionals` rows predate two later fixes (section 6.2). That is independent of the backend question, and a rebuild will change them either way.
+
+## 0A. Rulings (SS N-64)
+
+SS decision N-64: **G-FLIP is CLEARED for the canonical chart `482012f1`.** The rulings below are recorded as given; verification I ran for them is stated next to each.
+
+### (1) The dasha shift is an accuracy refinement, not a flip
+
+Ruling: every dasha-start change is the arithmetic consequence of the Moon moving 0.665 arcsec (0.665 / 48,000 of a 16-year Vimshottari period = 1.385e-5 x 504,921,600 s = about 6,994 s; observed +6,993 s), far inside birth-time uncertainty. Recorded per-system shifts (Swiss minus Moshier, details in 3.2):
+
+| system | native | chart 2 | chart 3 |
+|---|---|---|---|
+| Vimshottari (uniform) | +6,993 s | -1,795 s | +5,910 s |
+| Kalachakra | mode +1.68 d | mode -0.38 d | mode +1.14 d (0.4 to 1.7 days across charts) |
+| Mudda | <= 43 s | <= 43 s | <= 43 s |
+| Yogini, Ashtottari, Chara, Naisargika, Narayana | none | none | none |
+
+**Mahadasha day-crossing check (native, Vimshottari; paired Moshier / .se1 rows, `out/md_daycross_native.json`):**
+- **Lahiri (canonical ayanamsha): no Mahadasha start crosses a UTC or an IST calendar day.** All nine lords' starts of one 120-year cycle are covered: Jupiter 1975-08-18, Saturn 1991, Mercury 2010, Ketu 2027, Venus 2034, Sun 2054, Moon 2060, Mars 2070, Rahu 2077 (each +6,993 s, all within the same UTC and IST day; the table in 3.2 lists the times); the window holds 12 shifted MD starts in all (Jupiter 2095 closes the cycle), all clear. The clipped window-start row (1950-01-01) does not move.
+- True Chitra and Surya Siddhanta: also none (13 and 12 MD rows, 0 UTC / 0 IST crossings).
+- **The statement does not hold for two non-canonical ayanamshas, and the ruling should know it:** Krishnamurti, 1 of 13 MD starts crosses an IST day (Moon 2060-07-06 17:01:51 -> 18:58:23 UTC) and 2 cross a UTC day (Rahu 1957 and 2077, 23:01:51 -> 00:58:23 UTC); Raman, 4 of 12 cross an IST day (Mercury 2008, Venus 2032, Sun 2052, Mars 2068: 17:54:25 -> 19:50:57 UTC on a 22 Nov) and 4 cross a UTC day (Jupiter 1973 and 2093, Saturn 1989, Ketu 2025: 23:54:25 -> 01:50:57 UTC).
+- **Antardasha day-crossing rate (native, IST day):** Lahiri 3 of 104 (2.9%; UTC 0), True Chitra 10 of 104 (9.6%; UTC 7), Krishnamurti 12 of 104 (11.5%; UTC 14), Raman 9 of 102 (8.8%; UTC 9), Surya Siddhanta 1 of 101 (1.0%; UTC 12). Lahiri Pratyantardasha 79 of 923 (8.6%), Sukshma 661 of 8,148 (8.1%).
+
+**Consumers of dasha start timestamps (grep survey over `platform/` and `platform-mcp/`, not a line-by-line audit; I ran none of them):**
+- Day-resolution consumers read the DATE columns (`start_date`/`end_date`, a UTC date) and change only when a start crosses a UTC day, i.e. at the rates above (Lahiri MD: never): TS `kala_dasha_sandhi_get` (`platform-mcp/src/tools/kala_views/dasha_sandhi.ts`, serves period start/end dates "verbatim" from `get_dashas`), and the Python `ka_dasha_kala` (service, tree_walk), `ka_avadhi`, `ka_jivana_parva`, `ka_taranga`, `ka_temporal/date_resolver`, `ph_rectification`.
+- Timestamp-resolution consumers read `start_iso`: `now.ts` sandhi bands (band width = max(1 day, 3% of the period), so a 2 h shift sits inside the band), `kala_uncertainty.ts` (Sukshma boundary served as +/- half the period's own duration), `gochara_grammar/dasha_data`, `ka_kshetra/stage3_clocks`, `ka_sangam`.
+- Conclusion, matching the ruling with one qualification: a ~2 h shift is visible by itself only to sandhi-hour questions (a question that asks whether an instant lies within hours of a boundary). Everything else sees it only on a day crossing, and the writers that persist date-derived rows (the day-resolution list above) will change those rows when a boundary crosses a day, which is exactly what the post-run compare in (2) catches and attributes. The `kala_dasha_sandhi_get` test anchors (Jupiter MD 2019-02-07 etc.) are served-verbatim fixtures; none of the three charts has a Jupiter MD start on that date.
+
+### (2) S-L1 acceptance criterion (added)
+
+After the S-L1 run, re-run the same class-flip detector on the ACTUAL rebuilt canonical output versus the pre-rebuild snapshot. Expected: **zero class flips from the backend**; every other difference attributed to a named ruled change (argala, tiers, Gandanta, F-A2, Daridra, band table). **Any unattributed class change: stop the wave and go to SS. A changed FORENSIC anchor = ALERT.**
+
+Detector packaged as a documented entry point: `/Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/flip_detector.py` (read-only as `suvarna_reader`; usage in its docstring and in the evidence README):
+- `--snapshot native|<chart uuid>`: captures the current production class-level state (every `chart_facts` row with its verification tier, every `chart_divisionals` row, every `chart_dashas` row as (ayanamsha, system, level, lord path, start, end), and `panchanga_daily`) into a gzip JSON plus a `.sha256`.
+- `--compare <snapshot>`: reads production again and prints every class change (value change, key appeared / disappeared, occurrence-count change for keys the writers emit twice) with attribution by fact category via `attribution_hooks.json`; continuous values, timestamps and verification-tier changes are reported separately; dasha starts are checked against the ruled backend shift table (`expected_dasha_shifts_native.json`, e.g. Lahiri Vimshottari +6,993 s; use `--no-expected-shift` for a pre-rebuild self-test). Exit 0 = clean; **2 = unattributed class change (stop, go to SS)**; **3 = FORENSIC anchor changed (ALERT; wins over 2)**.
+- Hooks: `argala` (argala_natal_matrix, virodha_argala_natal_matrix, net_argala_per_varga) and `gandanta` (graha_gandanta) are grounded in the stored categories. **F-A2, Daridra, the band table and tiers have no category list yet; the S-L1 brief must fill `attribution_hooks.json` in before the run**, otherwise their changes will (correctly) show as UNATTRIBUTED.
+- Self-tests: `flip_detector_selftest.py` (offline mutation test: identical -> 0 changes; injected argala/Gandanta changes are attributed, injected pada and Lagna-sign changes are UNATTRIBUTED, tier and continuous changes are separated, the Lagna mutation raises the anchor ALERT) passes; a live `--compare` of the fresh snapshot against production reports 0 class changes, 0 continuous changes, 0 tier changes, 0 dasha rows added or removed, anchors 7 of 7 OK (so production was unchanged between snapshot and compare).
+
+**Pre-rebuild snapshot of the canonical chart `482012f1` (taken now, read-only):**
+- path: `/Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/snapshots/pre_rebuild_482012f1_2026-10-01.json.gz`
+- sha256: `0a92f79249f53103afbb1edac6986e417aaa2368d58336b96aa93451128dc455`
+- taken 2026-10-01T19:50:18Z (2026-10-02 01:20 IST) as `suvarna_reader`; contents: 143,299 `chart_facts` rows, 24,392 `chart_divisionals` rows, 483,869 `chart_dashas` rows (scope-cap sentinel excluded), 544 `panchanga_daily` rows. These are the Moshier-state values that section 6 shows the offline Moshier run reproduces.
+
+### (3) Families not compared
+
+Strength, structural, tajaka, sade sati, yoga, condition and the other vargas families (section 8) are covered by the post-run compare, not by more offline work now: `--compare` diffs all 219 stored `chart_facts` categories of the canonical chart, plus divisionals, dashas and the daily table.
+
+### (4) G-EPH is still open
+
+The report ran on macOS arm64 (section 7.1). **G-EPH must still be verified on the deployed Linux image**: that the Linux image really resolves `.se1` after the backend fix (probe flag = `SWIEPH` for Sun..Saturn, all planetary calls `SWIEPH`), using the same flag probe and call recorder as `backend_ctl.py`. This report does not establish it.
+
+### (5) Charts 2 and 3: hand-offs to the S-L1b brief
+
+- Stale varga rows of charts 2 and 3 (5.5 h planet offset and the Krishnamurti / Surya Siddhanta -> Lahiri ayanamsha fallback, section 6.2): S-L1b brief.
+- Razor-edge facts (section 5): chart 3 Saturn under Raman 0.52 arcsec from a pada / navamsa boundary; chart 3 Moon KP prana lord under Lahiri 0.03 arcsec (Mars 0.02, Ketu under Raman 0.03): S-L1b brief.
+- **S-L1b gets its own flip report from actual output, and SS informs the owner before it runs.** The same detector applies: take `--snapshot 1c826d5a` and `--snapshot cb73cd3d` immediately before S-L1b (not taken now). Note that the chart 2 and 3 varga rows will change for the 6.2 reasons regardless of the backend, so their hooks need a "6.2 stale rows" entry.
 
 ## 1. Summary table
 
@@ -240,7 +297,7 @@ Each chart's stored `chart_facts` holds 460 natural keys with more than one row;
 
 - **Not compared:** `ga_strength`, `ga_structural`, `ga_tajaka`, `ga_sade_sati`, `ga_yoga`, `ga_condition`, `ga_medical`, `ga_prashna`, `ga_vichara`, `ga_ayurdaya`, `ga_vastu`, `ga_transit_anchors`, the other `ga_vargas` row families (dignity, vimsopaka, ashtakavarga, saptavargaja, karakas), and every Bodha/Kala/Phala/Mimamsa asset. Facts purely derived from compared class facts cannot flip when no upstream class flips; facts that embed a transit or return TIME (Tajaka varsha pravesha, Sade Sati phase dates, Kala gochara, Saturn/Sun ingress dates) were not recomputed. Expected size: Saturn ingress times move by minutes (Saturn delta 0.006 to 0.15 arcsec at ~120 arcsec/day), Sun return times by seconds; a date flips only if it lands within that distance of midnight. Not quantified.
 - **Cusp KP lords** (`cusp_kp_lords`, from Placidus cusps) were not recomputed; cusps move at most 0.0055 arcsec but their distance to KP boundaries was not measured.
-- **Platform:** macOS arm64, not the Linux job image. Bit-exact agreement with production-stored Moshier values supports platform-independence of the Moshier side; the .se1 side was not run on Linux.
+- **Platform:** macOS arm64, not the Linux job image (G-EPH open, section 0A (4)). Bit-exact agreement with production-stored Moshier values supports platform-independence of the Moshier side; the .se1 side was not run on Linux.
 - **Dasha pairing for Kalachakra** is imperfect (see 3.2); its counts are upper-bound style, not 33,915 independent facts. Rows "existing in only one backend" mix real sub-day-row removals with Kalachakra pairing ambiguity.
 - **Only Lahiri** panchanga_daily at the one stored observer; other observers and dates outside the stored 544-day window were not examined (the daily closest approaches suggest per-day flip odds of roughly 1e-4 or less, but that is an extrapolation).
 - **TRUE_NODE** is not used on the L1 paths examined (mean node everywhere); the investigation's ~25 arcsec TRUE_NODE difference was not re-measured here.
