@@ -113,8 +113,9 @@ not identity). Needs a ruling before the window writer lands.
   `not_searched`. A seal does not require all 26.
 * **Registry-version selection:** the inventory pins *every* sealed `(path_id, rule_version)`; per path **exactly one**
   version may be `included` for a class and any earlier/later version is `excluded` — so nothing disappears and nothing
-  double-counts interpretively. **Needs two additions to migration 1206 (not applied until Codex returns):** a new
-  non-degrading closed reason **`superseded_by_version`** and a seal check **`multiple_included_versions`**.
+  double-counts interpretively. **Both additions now exist in migration 1206 v1.2 (in place; applied nowhere; Codex re-review owed):** the
+  non-degrading closed reason **`superseded_by_version`**, the seal check **`multiple_included_versions`**, and — added by the
+  same pass because a reason needs a detector — **`superseded_without_included_version`**.
 * **Obligation tokens (AM-5 §1) made normative:** `agent` = lowercase graha or `period_lord:md|ad|pd`; `relation` =
   record vocabulary; `object_role` = the 10-value vocabulary; `target` = the natal object's **canonical_target**
   (`span:7`, `point:<λ>`, `star:<n>`) — the illustrative `lord_of:7` / `occupant_of:7` are **withdrawn**; `frame` as §1;
@@ -165,4 +166,4 @@ Point strings: `point_target(198.52) = point:198.52`, `(360.0) = point:0.0`, `(1
 * Stream A: `PhysicalObjectId.__post_init__` refuses non-lowercase `body`/`relation_kind`; add the §3 round-trip guard
   to `point_target`; mint only `evaluator.record_uuid` (never the `sha256:` property).
 * Stream B: `p6.nakshatra_index` (§5); successor oracle O-RX-1a vectors (§10).
-* Migration 1206 (after Codex): `superseded_by_version` reason + `multiple_included_versions` check; W1 vector update.
+* Migration 1206 v1.2 DONE (`superseded_by_version`, `multiple_included_versions`, `superseded_without_included_version`); the W1 `self`→`native` vector update still waits for the Codex re-review.

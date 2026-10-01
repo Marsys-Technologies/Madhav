@@ -1,6 +1,6 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.7
+version: 0.8
 status: v0.5 ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); v0.6 adds AM-10 and the F-2 exclusion-evidence binding (not yet reviewed); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
@@ -859,6 +859,27 @@ Stricter than stated earlier: the seal requires EVERY verification row of a clas
 disagreeing row vetoes sealing until a candidate deletes it). A class absent from both coverage and inventory is not a
 violation — serving must report it `not_searched`.
 
+**v0.8 — steward M20261001T224443-bfc4 (R6 + version scope; migration 1206 v1.2 in place, still applied nowhere).**
+(R6, **function EXECUTE**) In production every function `amjis_app` creates has PUBLIC EXECUTE revoked by default
+(`platform/scripts/nirmana-evidence-ownership-preflight.ts:259`), and verified read-only the builder can execute **none**
+of the 42 `ka_gochara_*` functions of 1153–1157. A table grant alone therefore leaves every guard uncallable. 1206 §7 now
+grants `data_plane_builder` **explicit EXECUTE on exactly 17 functions** — its own 12 helpers plus the 5 contract
+functions its guards call (`lock_chart`, `lock_global_shared`, `generation_is_sealed`, `generation_governed`,
+`horizon_finite_ok`; repeated from the separate 1220 so 1206 is correct in either landing order) — and **not** the
+seal-side functions or the two trigger functions (a trigger function needs no EXECUTE to fire). The set was derived by
+running the builder's construct-and-finalise flow under a role mirror (objects owned by a role named `amjis_app`, PUBLIC
+revoked) and adding one EXECUTE per `permission denied for function X` until it converged, then **re-proved in the live
+suite: each of the 17 is individually necessary** (revoke any one → the flow fails naming that function). The sealing
+principal's 20 EXECUTE grants are not in any migration (D-FLIP is the native's to authorise); they are the suite's
+`SEALER_FUNCTIONS`, and every seal in the suite now runs as that principal. The builder's refusal at the seal is now
+two walls — no EXECUTE on `ka_gochara_seal_generation`, and no INSERT on the seal table.
+(**Version scope**, F-3) per class and path **at most one version is `included`**; every other version is `excluded`.
+New non-degrading closed reason **`superseded_by_version`** (no `ruling_ref`, basis required) and two seal checks:
+**`multiple_included_versions`** (two included versions of one path in one class — a double-count) and
+**`superseded_without_included_version`** (a supersession claim whose superseder is not included — a coverage hole
+wearing a non-degrading reason; added because a reason without a detector is a null, CLAUDE.md §N.8). The reason sits
+inside the verified inventory preimage already (the `exclusion_reason` field), so no vector changes.
+
 **Implementation record (F-1) — migration `1206_gochara_search_inventory_completeness.sql`,
 HOLD, same protected window as 1204.** Written as new files only (1153–1157 untouched; a live-DB
 test fingerprints every pre-existing `ka_gochara*` function, constraint and trigger before/after
@@ -1211,6 +1232,22 @@ the O-RP-9 extension; both are A5.5-gate items.
 
 ---
 
+## AM-12 — CANDIDATE (not yet a pin): carry `sad_bala_sufficient` as a P1 soft factor — NEW (v0.8)
+
+**Status: proposal for the A5.5 gate; no code or registry change made.** Stream B's F-4 landed the factor
+`sad_bala_sufficient` v1.0 (Phaladīpikā IV.22–23, corroborated by BPHS ch.27 śl.32–33) with a typed rūpa operand and
+`null_state='unqualified'`, but **no rule path lists it as a soft factor** — it exists in the catalogue and in the
+evaluator and nothing consumes it. Doing so is a *new P1 `rule_version`* (a sealed version is never edited): P1@next
+adds the factor to its soft-factor set; per AM-5 the older P1 version then becomes `superseded_by_version` in each
+class inventory (the new reason above) — which is exactly the case that reason exists for. Because the factor
+orders admitted windows and never admits (1155:822–832), adopting it cannot change which windows exist, only their
+order. Open for the native/A5.5 gate: whether P1 alone, or also the other graha-keyed paths, carry it; and the
+**L1 data finding** referred earlier (chart_facts Sun total/required rupa 5.0 contradicts Phaladīpikā IV.22 and
+BPHS ch.27 śl.32–33 = 6.5; six others agree) must be resolved by the L1 owner BEFORE any serving use, since the factor
+reads that fact.
+
+---
+
 ## Batch checklist for the A5.5 gate (v0.5)
 
 | # | Item | Spec fold | New migration? | Decision left? |
@@ -1226,6 +1263,7 @@ the O-RP-9 extension; both are A5.5-gate items.
 | AM-9 | L0 Rāhu/Ketu finding (provenance narrowed) | none | no | L0 owner's ruling |
 | AM-10 | §4.0 daśā read-contract re-pin rule (conditional on L1-rebuild close; no new pin value) | §4.0 | no (one code PR at re-pin) | steward declares rebuild landed |
 | AM-11 | Prerequisite-evaluation implementation pins (a)–(d) + P1 obligation-agent role token (e) | §2.2 / §10.1 | no | no |
+| AM-12 | CANDIDATE: `sad_bala_sufficient` as a soft factor of a new P1 rule_version (older P1 → `superseded_by_version`) | factor catalogue / rule_path | no (data rows, new rule_version) | A5.5 gate + L1 owner (Sun rūpa finding) |
 
 ## A5.5-gate follow-ups — Codex v1.4 ranked list (P2; owed at the A5.5 gate; no P1 blocks)
 
@@ -1235,7 +1273,7 @@ F-3→F-1, (new)→F-2, F-4→F-3, F-5→F-4, F-6→F-5, F-7→F-6. Owner **A** 
 
 | ID | Codex rank | Required completion | Owner | Blocks |
 |---|---:|---|---|---|
-| F-1 | 1 | Additive storage + seal checks for AM-5 (6 tables, 17 functions, seal trigger, replay branch) as new migration file(s) with protected-runner wiring in the SAME window as 1204; database adversaries on a disposable PG: wrong manifest, post-seal mutation rejection, full replay lifecycle (initial seal → identical replay → registry advance → replay again). **IMPLEMENTED as migration 1206 + 20-case live suite + static test, PR HOLD (not yet reviewed); see §AM-5 implementation record** | **B** wrote the migration + DB tests (steward M20261001T201843-f8e5), **S** schedules the protected window | inventory migration acceptance |
+| F-1 | 1 | Additive storage + seal checks for AM-5 (6 tables, 17 functions, seal trigger, replay branch) as new migration file(s) with protected-runner wiring in the SAME window as 1204; database adversaries on a disposable PG: wrong manifest, post-seal mutation rejection, full replay lifecycle (initial seal → identical replay → registry advance → replay again). **IMPLEMENTED as migration 1206 (v1.2: explicit EXECUTE grants, `superseded_by_version`, version-scope seal checks) + live suite + static test, PR #2867 HOLD (Codex re-review owed); see §AM-5 implementation record** | **B** wrote the migration + DB tests (steward M20261001T201843-f8e5), **S** schedules the protected window | inventory migration acceptance |
 | F-2 | 2 | Bind exclusion `basis` / `ruling_ref` into the verified inventory preimage; mutation tests; revised digest vectors. **Spec text, vectors and model mutation cases M1–M6 CLOSED in v0.6 (not yet reviewed)**; remaining: the same mutations as real INSERT/seal attempts in F-1's database suite | **B** | AM-5 verification acceptance |
 | F-3 | 3 | Canonical bytes and storage-domain mapping (the synthetic `self` token vs stored `affected_person='native'`; period-lord role tokens → concrete grahas via the pinned dasha snapshot — **token form SETTLED in AM-11 pin (e)**: role tokens in the inventory; frame args, target bytes, timestamp precision, delimiters); full-precision formatter / quantization question; declared class census (an absent class reports `not_searched`); registry-version selection (historical/superseded versions neither vanish nor double-count); candidate replacement/invalidation across verification rows, manifest bindings and derived outputs; qualified-geometry planning and O-RW-1 invalidation; retain O-RX-1a | **B** (bytes/spec) + **A** (identity builder, writer) | A5.5 identity and writer gate |
 | F-4 | 4 | Typed rūpa/bindu operand storage; declaration-key bytes and L1 build/convention identity; P5a/P5b path ids and applicability storage; `null_state` on the versioned `ka_gochara_factor` row (1154:310–334), **not** the membership (draft text at AM-6 still says membership — one-line correction owed); edition/translator for Phaladīpikā IV.22–23 | **B** (AM-6/AM-7 text) + **A** (storage) | AM-6/AM-7 writer acceptance |
