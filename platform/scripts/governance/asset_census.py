@@ -1414,6 +1414,13 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
             out[crit] = fn()
         except (Unknown, DeclarationsError) as exc:      # R41: one check's failure degrades only that check
             out[crit] = dict(v=ERRORED, measured=f"check errored: {exc}")
+    if out.get("Narr.agree", {}).get("v") == PASS and ctx.get("written") is not None:
+        # two-way: a column the declarations treat as narration that this writer writes but does not declare
+        declared_cols = {parse_prose_field(e)[0] for e in pf}
+        und = [h for h in prose_reverse_leg(ctx["written"], ctx.get("vocabulary") or set()) if h.split(".", 1)[1] not in declared_cols]
+        if und:
+            out["Narr.agree"] = dict(v=PARTIAL, measured=out["Narr.agree"]["measured"] + "; but the writer also writes "
+                                     f"prose-vocabulary column(s) it does not declare (undeclared): {', '.join(und)}")
     return out
 
 

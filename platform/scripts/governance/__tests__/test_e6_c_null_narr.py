@@ -896,3 +896,30 @@ def test_importlib_import_module_of_the_cited_module_counts_as_an_import():
 def test_a_specific_leaf_in_the_input_only_still_needs_the_assert_to_exist():
     src = _H + "def test_a():\n    build_narration({'citation_human': 1})\n"
     assert _fid(src, ("citation_human",))["v"] == ac.FAIL
+
+
+# ───────────────────────── review round: F5 (agree is two-way: undeclared written vocabulary columns) ─────────────────────────
+
+def test_agree_is_partial_when_the_writer_writes_a_prose_vocabulary_column_it_does_not_declare():
+    got = ac.prose_checks("a", _decl(["statement"]), _ctx(written={"t": {"statement", "citation_human"}},
+                                                          vocabulary={"statement", "citation_human"}))
+    assert got["Narr.agree"]["v"] == ac.PARTIAL and "t.citation_human" in got["Narr.agree"]["measured"], got["Narr.agree"]
+    assert "undeclared" in got["Narr.agree"]["measured"]
+
+
+def test_agree_stays_pass_when_every_written_vocabulary_column_is_declared_or_the_writes_are_unread():
+    ok = ac.prose_checks("a", _decl(["statement"]), _ctx(written={"t": {"statement", "valence"}}, vocabulary={"statement"}))
+    assert ok["Narr.agree"]["v"] == ac.PASS
+    unread = ac.prose_checks("a", _decl(["statement"]), _ctx(written=None, vocabulary={"statement", "citation_human"}))
+    assert unread["Narr.agree"]["v"] == ac.PASS
+
+
+def test_a_declared_json_path_column_counts_as_declared_for_the_two_way_check():
+    own = {"t": (["n"], {"n": "jsonb"})}
+    got = ac.prose_checks("a", _decl(["n.$.k"]), _ctx(own=own, written={"t": {"n"}}, vocabulary={"n"}, counts=None))
+    assert got["Narr.agree"]["v"] == ac.PASS
+
+
+def test_a_declared_but_absent_column_still_fails_whatever_is_written():
+    got = ac.prose_checks("a", _decl(["ghost"]), _ctx(written={"t": {"citation_human"}}, vocabulary={"citation_human"}))
+    assert got["Narr.agree"]["v"] == ac.FAIL
