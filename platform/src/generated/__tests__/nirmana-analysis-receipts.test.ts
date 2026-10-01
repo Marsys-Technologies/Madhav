@@ -146,7 +146,7 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
       // are live after it, so the repair successor is the archived entry at
       // -7. Every assertion is unchanged, only rebased onto that entry.
       const pin = layer === 'L3'
-        ? layerPinRecord.history.L3.at(-7)!.pin
+        ? layerPinRecord.history.L3.at(-8)!.pin
         : layerPinRecord.layers[layer]
       const want = expected[layer]
       expect(pin.generation_id).toBe(want.generation)
@@ -160,11 +160,11 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
       expect(Object.values(pin.admission?.delta_classifications ?? {})).not.toContain('unapproved_foreign_source')
       // the predecessor is archived whole, and named by the successor
       const archived = layer === 'L3'
-        ? layerPinRecord.history.L3.at(-8)!
+        ? layerPinRecord.history.L3.at(-9)!
         : layerPinRecord.history[layer].at(-1)!
       expect(archived.generation_id).toBe(want.supersedes)
       expect(archived.superseded_by_generation_id).toBe(want.generation)
-      expect(layerPinRecord.history[layer]).toHaveLength(layer === 'L3' ? 11 : want.history)
+      expect(layerPinRecord.history[layer]).toHaveLength(layer === 'L3' ? 12 : want.history)
     }
     // L4 is untouched by both the L0 repair and the D-E022 readmission. L1 and
     // L3 now carry the later D-E022 merge readmission successors (asserted in
@@ -233,7 +233,7 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
       path: '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_KSHETRA_GATE_ACCEPTANCE_v1_0.md',
       sha256: '687eed0309e906730364a394fb674ebac17ce58220309308bfcf071ac972175d',
     }])
-    expect(layerPinRecord.history.L3).toHaveLength(11)
+    expect(layerPinRecord.history.L3).toHaveLength(12)
     expect(layerPinRecord.layers.L4.admission.delta_classifications).toEqual({
       ph_muhurta: 'derived_import_change',
       ph_rectification: 'derived_import_change',
@@ -404,7 +404,7 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
       // at -6 and its own predecessor sits at -7. On L1 the D-E022 successor
       // is still the live pin. Assertions unchanged, only rebased.
       const pin = layer === 'L3'
-        ? layerPinRecord.history.L3.at(-6)!.pin
+        ? layerPinRecord.history.L3.at(-7)!.pin
         : layerPinRecord.layers[layer]
       const want = expected[layer]
       expect(pin.generation_id).toBe(want.generation)
@@ -417,11 +417,11 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
       expect(Object.keys(pin.admission?.delta_classifications ?? {})).toEqual(pin.admission?.changed_assets)
       expect(Object.values(pin.admission?.delta_classifications ?? {})).not.toContain('unapproved_foreign_source')
       const archived = layer === 'L3'
-        ? layerPinRecord.history.L3.at(-7)!
+        ? layerPinRecord.history.L3.at(-8)!
         : layerPinRecord.history[layer].at(-1)!
       expect(archived.generation_id).toBe(want.supersedes)
       expect(archived.superseded_by_generation_id).toBe(want.generation)
-      expect(layerPinRecord.history[layer]).toHaveLength(layer === 'L3' ? 11 : want.history)
+      expect(layerPinRecord.history[layer]).toHaveLength(layer === 'L3' ? 12 : want.history)
     }
     // every other layer is untouched by the readmission
     expect(layerPinRecord.layers.L0.generation_id).toBe('l0:7d40f8c70640:64b8859fe692')
@@ -442,7 +442,7 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
     // archived at -6 since the D-PINS-A2 (A2.3), its #2800 continuation, the
     // D-PINS-A5.4 (A5.4), D-PINS-A2.5 (A2.5) and D-PINS-A2.5-CONTINUATION
     // successors became the live L3 pins after it
-    expect(layerPinRecord.history.L3.at(-6)!.pin.admission?.delta_classifications).toEqual({
+    expect(layerPinRecord.history.L3.at(-7)!.pin.admission?.delta_classifications).toEqual({
       ka_gochara: 'derived_import_change',
       ka_gochara_resonance: 'approved_intentional_and_derived_import_change',
       ka_gochara_v3_century_materialize: 'approved_intentional_and_derived_import_change',
@@ -472,7 +472,7 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
     // it now, so it is the archived entry
     // at -5 and its own predecessor sits at -6. Every assertion is unchanged,
     // only rebased.
-    const pin = layerPinRecord.history.L3.at(-5)!.pin
+    const pin = layerPinRecord.history.L3.at(-6)!.pin
     expect(pin.generation_id).toBe('l3:f4c69a6d0cd4:829354703812')
     expect(pin.supersedes_generation_id).toBe('l3:333eb7abcac3:d1bf773c4d94')
     expect(pin.convergence_commit).toBe(source)
@@ -488,10 +488,10 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
     expect(Object.values(pin.admission?.delta_classifications ?? {}))
       .toEqual(Array(4).fill('derived_import_change'))
     // the D-E022 predecessor is archived whole and named by the successor
-    const archived = layerPinRecord.history.L3.at(-6)!
+    const archived = layerPinRecord.history.L3.at(-7)!
     expect(archived.generation_id).toBe('l3:333eb7abcac3:d1bf773c4d94')
     expect(archived.superseded_by_generation_id).toBe(pin.generation_id)
-    expect(layerPinRecord.history.L3).toHaveLength(11)
+    expect(layerPinRecord.history.L3).toHaveLength(12)
     // every other layer is untouched by the A2.3 readmission
     expect(layerPinRecord.layers.L0.generation_id).toBe('l0:7d40f8c70640:64b8859fe692')
     expect(layerPinRecord.layers.L1.generation_id).toBe('l1:333eb7abcac3:b3674dfbfa91')
@@ -531,7 +531,7 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
     // and its own predecessor sits at -4. Every assertion is unchanged, only
     // rebased.
     const source = '4f4a1993c6ada24bf8576206b39742497e3099e3'
-    const pin = layerPinRecord.history.L3.at(-3)!.pin
+    const pin = layerPinRecord.history.L3.at(-4)!.pin
     expect(pin.generation_id).toBe('l3:4f4a1993c6ad:1ddd6f117934')
     expect(pin.supersedes_generation_id).toBe('l3:61e1aa60b508:9844e89ddd17')
     expect(pin.convergence_commit).toBe(source)
@@ -554,10 +554,10 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
     })
     // the protected baseline (the D-PINS-A2 continuation successor, admitted
     // on main by #2800) is archived whole and named by the successor
-    const archived = layerPinRecord.history.L3.at(-4)!
+    const archived = layerPinRecord.history.L3.at(-5)!
     expect(archived.generation_id).toBe('l3:61e1aa60b508:9844e89ddd17')
     expect(archived.superseded_by_generation_id).toBe(pin.generation_id)
-    expect(layerPinRecord.history.L3).toHaveLength(11)
+    expect(layerPinRecord.history.L3).toHaveLength(12)
     // every other layer is untouched by the A5.4 readmission
     expect(layerPinRecord.layers.L0.generation_id).toBe('l0:7d40f8c70640:64b8859fe692')
     expect(layerPinRecord.layers.L1.generation_id).toBe('l1:333eb7abcac3:b3674dfbfa91')
@@ -584,10 +584,10 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
     const source = '639eece63be38a27fb9840ee778beb4c6c1459fd'
     // the D-PINS-A2.5 pin was the live L3 pin when this test was written; the
     // D-PINS-A2.5-CONTINUATION successor (same branch, ASTRA v1.0 rework) and
-    // its v1.1 successor are live after it now, so it is the archived entry
-    // at -2 and its own predecessor sits at -3. Every assertion is unchanged,
-    // only rebased.
-    const pin = layerPinRecord.history.L3.at(-2)!.pin
+    // its v1.1/v1.2 successors are live after it now, so it is the archived
+    // entry at -3 and its own predecessor sits at -4. Every assertion is
+    // unchanged, only rebased.
+    const pin = layerPinRecord.history.L3.at(-3)!.pin
     expect(pin.generation_id).toBe('l3:639eece63be3:df2b966b1d97')
     expect(pin.supersedes_generation_id).toBe('l3:4f4a1993c6ad:1ddd6f117934')
     expect(pin.convergence_commit).toBe(source)
@@ -600,10 +600,10 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
     })
     // the protected baseline (the D-PINS-A5.4 r7 successor, delivered by
     // #2769) is archived whole and named by the successor
-    const archived = layerPinRecord.history.L3.at(-3)!
+    const archived = layerPinRecord.history.L3.at(-4)!
     expect(archived.generation_id).toBe('l3:4f4a1993c6ad:1ddd6f117934')
     expect(archived.superseded_by_generation_id).toBe(pin.generation_id)
-    expect(layerPinRecord.history.L3).toHaveLength(11)
+    expect(layerPinRecord.history.L3).toHaveLength(12)
     // every other layer is untouched by the A2.5 readmission
     expect(layerPinRecord.layers.L0.generation_id).toBe('l0:7d40f8c70640:64b8859fe692')
     expect(layerPinRecord.layers.L1.generation_id).toBe('l1:333eb7abcac3:b3674dfbfa91')
@@ -630,10 +630,11 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
     const decision = 'D-PINS-A2.5-CONTINUATION'
     const authority = '53a3d1f85abaa581ff5c1441eb7e29584a82d120'
     const source = 'f6cb3914e7f1fd5c6170f874dd0cf094eaa35c98'
-    // the v1.1 successor (ASTRA v1.1 closure rework, same decision) is live
-    // after it now, so the v1.0 pin is the archived entry at -1 and its own
-    // predecessor sits at -2. Every assertion is unchanged, only rebased.
-    const pin = layerPinRecord.history.L3.at(-1)!.pin
+    // the v1.1 and v1.2 successors (ASTRA v1.1 closure rework and the
+    // in_orb_intervals multi-revolution fix, same decision) are live after
+    // it now, so the v1.0 pin is the archived entry at -2 and its own
+    // predecessor sits at -3. Every assertion is unchanged, only rebased.
+    const pin = layerPinRecord.history.L3.at(-2)!.pin
     expect(pin.generation_id).toBe('l3:f6cb3914e7f1:bf1dba54ee01')
     expect(pin.supersedes_generation_id).toBe('l3:639eece63be3:df2b966b1d97')
     expect(pin.convergence_commit).toBe(source)
@@ -651,10 +652,10 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
       ka_sangam: 'derived_import_change',
     })
     // the D-PINS-A2.5 successor is archived whole and named by the successor
-    const archived = layerPinRecord.history.L3.at(-2)!
+    const archived = layerPinRecord.history.L3.at(-3)!
     expect(archived.generation_id).toBe('l3:639eece63be3:df2b966b1d97')
     expect(archived.superseded_by_generation_id).toBe(pin.generation_id)
-    expect(layerPinRecord.history.L3).toHaveLength(11)
+    expect(layerPinRecord.history.L3).toHaveLength(12)
     // every other layer is untouched by the continuation readmission
     expect(layerPinRecord.layers.L0.generation_id).toBe('l0:7d40f8c70640:64b8859fe692')
     expect(layerPinRecord.layers.L1.generation_id).toBe('l1:333eb7abcac3:b3674dfbfa91')
@@ -666,27 +667,71 @@ describe.skip('L0 preservation and versioned supersession (DP-SD-018)', () => {
 
 // ACTIVE (ASTRA v1.1 A7 — the pins assertion must be executed, never parked
 // inside describe.skip): the live L3 successor admitted under
-// D-PINS-A2.5-CONTINUATION v1.1. Pin fields only — no DB, no receipt bases —
-// so this runs green offline and in CI. The supersession skip rationale (pins
-// fail on any writer change) is exactly why this assertion exists: it fails
-// loudly if the live L3 pin drifts from the admitted successor.
-describe('D-PINS-A2.5-CONTINUATION v1.1 — the live L3 successor (active)', () => {
-  it('pins the ASTRA v1.1 closure successor for exactly L3, append-only', () => {
-    // pravaha/a25-v41-candidate-writer / PR #2799 / Pravaha A2.5 (ASTRA v1.1
-    // closure rework): A1 dict/tuple row access, A2 half-open horizon in
-    // episodes.py, A7 evidence, disposable-DB fixture — exactly four L3 writer
-    // digests moved: ka_gochara_v4_41_candidate (approved_intentional_change,
-    // declared source closure) and ka_gochara_v3_century_materialize /
-    // ka_moorti_nirnaya / ka_sangam (derived_import_change via
-    // services/gochara_kernel/episodes.py only). Membership unchanged.
-    // Re-admission under the steward's standing continuation authority
-    // (EVENTS.jsonl 2026-10-01T14:04:14Z, M20261001T140414-f44d — "refresh
-    // digests/pins/census (continuation authority stands)"), evidence doc
-    // v1.1 addendum: 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A2_5_CONTINUATION_PINS_READMISSION_AUTHORITY_v1_0.md
+// D-PINS-A2.5-CONTINUATION v1.2, with the v1.1 successor asserted whole from
+// the archive. Pin fields only — no DB, no receipt bases — so this runs green
+// offline and in CI. The supersession skip rationale (pins fail on any writer
+// change) is exactly why this assertion exists: it fails loudly if the live
+// L3 pin drifts from the admitted successor.
+describe('D-PINS-A2.5-CONTINUATION v1.2 — the live L3 successor (active)', () => {
+  it('pins the in_orb_intervals multi-revolution successor for exactly L3, append-only', () => {
+    // pravaha/a25-v41-candidate-writer / PR #2799 / Pravaha A2.5 (steward
+    // ruling M20261001T172824-ebbd): the in_orb_intervals multi-revolution
+    // fix moved exactly four L3 writer digests — ka_gochara_v4_41_candidate
+    // (approved_intentional_change, declared source closure) and
+    // ka_gochara_v3_century_materialize / ka_moorti_nirnaya / ka_sangam
+    // (derived_import_change via services/gochara_kernel/episodes.py only) —
+    // plus ka_avadhi / ka_vighnakara (derived_import_change): moved on main
+    // by #2823 (066c58587, Track I-1/I-2) without an L3 readmission, carried
+    // here by the origin/main merge, not changed by this PR (six
+    // classifications per steward ruling M20261001T180917-6bd5). Membership
+    // unchanged. Re-admission under the steward's standing continuation
+    // authority, evidence doc v1.2 addendum:
+    // 00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A2_5_CONTINUATION_PINS_READMISSION_AUTHORITY_v1_0.md
+    const decision = 'D-PINS-A2.5-CONTINUATION'
+    const authority = '53a3d1f85abaa581ff5c1441eb7e29584a82d120'
+    const source = '16957ec30b97c88e403628cfad5e6a4b869327e1'
+    const pin = layerPinRecord.layers.L3
+    expect(pin.generation_id).toBe('l3:16957ec30b97:390497542a8a')
+    expect(pin.supersedes_generation_id).toBe('l3:89f788c67827:50e2c3392350')
+    expect(pin.convergence_commit).toBe(source)
+    expect(pin.admission?.authority_decision).toBe(decision)
+    expect(pin.admission?.authority_commit).toBe(authority)
+    expect(pin.admission?.source_commit).toBe(source)
+    expect(pin.admission?.changed_assets).toEqual([
+      'ka_avadhi', 'ka_gochara_v3_century_materialize',
+      'ka_gochara_v4_41_candidate', 'ka_moorti_nirnaya',
+      'ka_sangam', 'ka_vighnakara',
+    ])
+    expect(pin.admission?.delta_classifications).toEqual({
+      ka_avadhi: 'derived_import_change',
+      ka_gochara_v3_century_materialize: 'derived_import_change',
+      ka_gochara_v4_41_candidate: 'approved_intentional_change',
+      ka_moorti_nirnaya: 'derived_import_change',
+      ka_sangam: 'derived_import_change',
+      ka_vighnakara: 'derived_import_change',
+    })
+    // the v1.1 continuation successor is archived whole and named by the
+    // successor
+    const archived = layerPinRecord.history.L3.at(-1)!
+    expect(archived.generation_id).toBe('l3:89f788c67827:50e2c3392350')
+    expect(archived.superseded_by_generation_id).toBe(pin.generation_id)
+    expect(layerPinRecord.history.L3).toHaveLength(12)
+    // every other layer is untouched by the v1.2 readmission
+    expect(layerPinRecord.layers.L0.generation_id).toBe('l0:7d40f8c70640:64b8859fe692')
+    expect(layerPinRecord.layers.L1.generation_id).toBe('l1:333eb7abcac3:b3674dfbfa91')
+    expect(layerPinRecord.layers.L2.generation_id).toBe('l2:7d40f8c70640:dbbbb24c09cb')
+    expect(layerPinRecord.layers.L4.generation_id).toBe('l4:d2369b888e76:e73988c0dd03')
+    expect(layerPinRecord.layers.L5.generation_id).toBe('l5:ed5ad601c5e5:9d222087056d')
+  })
+
+  it('keeps the v1.1 successor archived whole at -1, pin fields unchanged', () => {
+    // The ASTRA v1.1 closure successor (l3:89f788c67827:50e2c3392350) —
+    // asserted live before the v1.2 admission; the same pin fields now hold
+    // on the archived entry, never rewritten.
     const decision = 'D-PINS-A2.5-CONTINUATION'
     const authority = '53a3d1f85abaa581ff5c1441eb7e29584a82d120'
     const source = '89f788c67827db3a5dc762f47ae4624f0efdb8f6'
-    const pin = layerPinRecord.layers.L3
+    const pin = layerPinRecord.history.L3.at(-1)!.pin
     expect(pin.generation_id).toBe('l3:89f788c67827:50e2c3392350')
     expect(pin.supersedes_generation_id).toBe('l3:f6cb3914e7f1:bf1dba54ee01')
     expect(pin.convergence_commit).toBe(source)
@@ -704,16 +749,10 @@ describe('D-PINS-A2.5-CONTINUATION v1.1 — the live L3 successor (active)', () 
       ka_sangam: 'derived_import_change',
     })
     // the v1.0 continuation successor is archived whole and named by the
-    // successor
-    const archived = layerPinRecord.history.L3.at(-1)!
+    // v1.1 successor
+    const archived = layerPinRecord.history.L3.at(-2)!
     expect(archived.generation_id).toBe('l3:f6cb3914e7f1:bf1dba54ee01')
     expect(archived.superseded_by_generation_id).toBe(pin.generation_id)
-    expect(layerPinRecord.history.L3).toHaveLength(11)
-    // every other layer is untouched by the v1.1 readmission
-    expect(layerPinRecord.layers.L0.generation_id).toBe('l0:7d40f8c70640:64b8859fe692')
-    expect(layerPinRecord.layers.L1.generation_id).toBe('l1:333eb7abcac3:b3674dfbfa91')
-    expect(layerPinRecord.layers.L2.generation_id).toBe('l2:7d40f8c70640:dbbbb24c09cb')
-    expect(layerPinRecord.layers.L4.generation_id).toBe('l4:d2369b888e76:e73988c0dd03')
-    expect(layerPinRecord.layers.L5.generation_id).toBe('l5:ed5ad601c5e5:9d222087056d')
+    expect(layerPinRecord.history.L3).toHaveLength(12)
   })
 })
