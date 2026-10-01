@@ -386,6 +386,23 @@ jobs:
           F152_AUDIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/f152_audit_test
         run: npx vitest run tests/integration/asset_throughput_state_audit.db.test.ts --reporter=verbose
 
+      - name: B6.0/1211 — provision the asset_throughput_state_audit grants test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1211_audit_grant_test;"
+
+      - name: B6.0/1211 — data_plane_builder grant fix fails-before/succeeds-after against real Postgres
+        # The production-outage proof for migration 1211: a role with EXACTLY
+        # data_plane_builder's grants (UPDATE on asset_throughput, nothing on
+        # the audit table) hits 'permission denied for table
+        # asset_throughput_state_audit' on the first state change before the
+        # migration, and succeeds with its audit row after the REAL 1211 file is
+        # applied — plus idempotency and no-widening controls (§N.8).
+        env:
+          M1211_AUDIT_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1211_audit_grant_test
+        run: npx vitest run tests/integration/asset_throughput_state_audit_grants.db.test.ts --reporter=verbose
+
       - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
         env:
           PGPASSWORD: postgres
