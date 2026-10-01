@@ -58,16 +58,73 @@
 --   * the migration grants data_plane_builder SELECT on ka_gochara_generation_seal and
 --     ka_gochara_av_polarity_declaration (1216 deferred them: no write path then) —
 --     the new guards read seal state and declaration rows as the invoking role;
---   * F-3 (open): every sealed registry (path_id, rule_version) must be accounted for
---     per class; historical/superseded version selection is not yet specified.
+--   * F-3: every sealed registry (path_id, rule_version) must be accounted for per class; per path
+--     exactly one version may be `included`, the others `excluded` as `superseded_by_version` (or
+--     another closed reason) — see v1.2 below.
+--   * v1.1 (Codex review R1–R5, in place — 1206 is applied nowhere): commitment equality on the
+--     FULL (chart, generation, class, path, version) key (R1); the snapshot's sky convention is
+--     bound to the publication's AND every event_class partition's legacy convention through
+--     the immutable bridge (R2); excluded pins need a non-NULL reason, CHECKs written as total
+--     booleans (R3); live-input digests pin TimeZone/extra_float_digits and exclude the ACTUAL
+--     audit column `computed_at`, rows keyed by chart, dasha ids as uuid[] (R4);
+--     ledger_digest preimage now starts with `input=<input_digest>` so an EMPTY ledger is
+--     input-bound too (W1 ledger vectors change; inventory vectors do not);
+--     the seal requires EVERY verification row of a class to equal the stored digest (stricter
+--     than "at least one": a stale disagreeing row vetoes sealing until a candidate deletes it);
+--     every function pins search_path.
+--   * v1.2 (steward M20261001T224443-bfc4, in place — 1206 is still applied nowhere): R6 explicit builder
+--     EXECUTE grants (§7); closed exclusion reason `superseded_by_version` (non-degrading: no
+--     ruling_ref) and two seal checks — `multiple_included_versions` (per class and path at most one
+--     version is `included`) and `superseded_without_included_version` (a supersession claim needs an
+--     included superseder — its own detector, §N.8). F-3 (open) above is thereby closed.
 --
--- Transaction ownership: NO BEGIN/COMMIT — migrate.ts owns ONE transaction. Gate →
--- DDL → presence checks. Deploy route: the protected public-schema window (deploy.yml
+-- Transaction ownership: NO BEGIN/COMMIT — migrate.ts owns ONE transaction PER MIGRATION. The
+-- protected window is NOT one atomic transaction across 1204 + 1206: the runner commits each
+-- file separately, so a failed 1206 can leave 1204 committed while 1206 itself rolls back.
+-- Gate → DDL → presence checks. Deploy route: the protected public-schema window (deploy.yml
 -- gochara_contracts_schema_migration), the SAME window as 1204, in order after it.
--- ROLLBACK (dependents first): DROP TRIGGER ka_gochara_generation_seal_z_search_complete
--- ON ka_gochara_generation_seal; DROP the six tables in reverse dependency order
--- (verification, interval, obligation, path_pin, inventory, input_snapshot); DROP the
--- functions named below.
+--
+-- IDEMPOTENCE, stated precisely (Codex v1.0):
+--   * migration-RUNNER replay — supported: the applied-migration ledger + hash check skip it;
+--   * executing this FILE a second time directly (e.g. psql) — deliberately REJECTED by the
+--     gate (migration_already_applied / object_already_exists); it is not freely repeatable;
+--   * sealed-GENERATION replay — the new trigger's replay branch accepts it (integrity checks
+--     only); the applied 1153 seal guard still runs first, so replay stays subject to its
+--     published-manifest and consumer checks.
+--
+-- PRIVILEGES / PRINCIPALS (Codex §4; nothing widened silently):
+--   * the migration principal (amjis_app, with the temporary public-schema capability) OWNS the
+--     new objects; data_plane_builder is a GRANTEE only. All 17 functions are invoker-security
+--     (no SECURITY DEFINER) and pin search_path. EXECUTE is NOT the PostgreSQL default in
+--     production: the governed bootstrap revokes PUBLIC EXECUTE on everything amjis_app creates
+--     (nirmana-evidence-ownership-preflight.ts:259), so §7 grants the builder EXPLICIT EXECUTE on
+--     exactly the 12 helpers it reaches + the 5 contract functions its guards call (R6, v1.2);
+--     the sealing principal's EXECUTE needs are listed below and granted by whoever authorises it.
+--   * the builder gets SELECT/INSERT/DELETE on the six tables, column UPDATE for finalisation,
+--     and read-only SELECT on ka_gochara_generation_seal / ka_gochara_av_polarity_declaration
+--     (the guards read them as the INVOKING role). It does NOT get INSERT on the seal table:
+--     1216 withholds it. SEALING therefore needs a SEPARATELY AUTHORISED principal that holds
+--     INSERT on ka_gochara_generation_seal, UPDATE on kala_gochara_publication, SELECT on the six
+--     tables, on chart_facts / chart_dashas / kala_gochara_coverage / ka_gochara_rule_path_seal /
+--     ka_gochara_convention_bridge / ka_gochara_av_polarity_declaration, AND EXECUTE on the 20
+--     functions the seal path reaches (ka_gochara_seal_generation, _search_completeness_violations,
+--     _membership_violation(s), _coverage_drift, _coverage_facts, _facts_horizon, _horizon_finite_ok,
+--     _generation_governed, _lock_chart, _lock_global_shared and the digest helpers — the exact list is
+--     SEALER_FUNCTIONS in the live-DB suite, derived the same way as the builder's and proven
+--     sufficient by it) — see the live-DB suite's builder/sealer role tests. The independent VERIFIER's runtime principal is NOT defined here
+--     (its independence is a process property, not established by a table name).
+--
+-- ROLLBACK (forward correction is preferred once any generation has been sealed under this
+-- layer — removing it removes that generation's future enforcement):
+--   unused installation (no seal row was written with the layer in force):
+--     DROP TRIGGER ka_gochara_generation_seal_z_search_complete ON ka_gochara_generation_seal;
+--     DROP the six tables in reverse dependency order (verification, interval, obligation,
+--     path_pin, inventory, input_snapshot) and the 17 functions named in this file;
+--     REVOKE the EXECUTE grants of §7 and the SELECT grants on ka_gochara_generation_seal /
+--     ka_gochara_av_polarity_declaration
+--     from data_plane_builder (if no other consumer needs them);
+--     DELETE the _migrations_applied row for this file so the runner can re-apply it.
+--   used installation: do NOT drop; correct forward with a new migration.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 SET LOCAL search_path = public, pg_catalog;   -- pinned schema resolution (F9)
@@ -139,14 +196,14 @@ $$;
 -- ── 1. Pure helpers (identity + digest bytes — AM-2 / AM-5) ────────────────────
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_sha256_hex(t text)
-RETURNS text LANGUAGE sql IMMUTABLE STRICT AS $$
+RETURNS text LANGUAGE sql IMMUTABLE STRICT SET search_path = pg_catalog, public AS $$
   SELECT encode(sha256(convert_to(t, 'UTF8')), 'hex');
 $$;
 
 -- UUIDv8 from SHA-256 (RFC 9562 §5.8): first 16 digest bytes, version nibble 8,
 -- variant bits 10 — exactly the AM-2 construction (122 digest bits remain).
 CREATE OR REPLACE FUNCTION public.ka_gochara_uuidv8(t text)
-RETURNS uuid LANGUAGE sql IMMUTABLE STRICT AS $$
+RETURNS uuid LANGUAGE sql IMMUTABLE STRICT SET search_path = pg_catalog, public AS $$
   SELECT encode(set_byte(set_byte(s.b, 6, (get_byte(s.b, 6) & 15) | 128),
                          8, (get_byte(s.b, 8) & 63) | 128), 'hex')::uuid
   FROM (SELECT substring(sha256(convert_to(t, 'UTF8')) from 1 for 16) AS b) s;
@@ -171,13 +228,13 @@ $$;
 
 -- Whole-second UTC rendering used in every digest preimage.
 CREATE OR REPLACE FUNCTION public.ka_gochara_utc_ts(t timestamptz)
-RETURNS text LANGUAGE sql IMMUTABLE STRICT SET timezone = 'UTC' AS $$
+RETURNS text LANGUAGE sql IMMUTABLE STRICT SET search_path = pg_catalog, public SET timezone = 'UTC' AS $$
   SELECT to_char(t AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
 $$;
 
 -- A uuid[] that is non-NULL-element, sorted ascending and duplicate-free.
 CREATE OR REPLACE FUNCTION public.ka_gochara_uuid_set_ok(a uuid[])
-RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
+RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = pg_catalog, public AS $$
   SELECT a IS NOT NULL
      AND array_position(a, NULL) IS NULL
      AND a = COALESCE((SELECT array_agg(DISTINCT x ORDER BY x) FROM unnest(a) x), ARRAY[]::uuid[]);
@@ -186,7 +243,7 @@ $$;
 -- input_digest: sha256 over the five sorted key=value lines (draft §AM-5 item 0).
 CREATE OR REPLACE FUNCTION public.ka_gochara_search_input_digest(
   conv text, vec jsonb, l1_digest text, dasha_digest text, av text[])
-RETURNS text LANGUAGE sql IMMUTABLE AS $$
+RETURNS text LANGUAGE sql IMMUTABLE SET search_path = pg_catalog, public AS $$
   SELECT public.ka_gochara_sha256_hex(
     'av_declarations=' || COALESCE((SELECT string_agg(x, ',' ORDER BY x COLLATE "C") FROM unnest(av) x), '') || E'\n' ||
     'convention_id=' || conv || E'\n' ||
@@ -195,41 +252,48 @@ RETURNS text LANGUAGE sql IMMUTABLE AS $$
     'l1_facts_digest=' || l1_digest);
 $$;
 
--- Live recomputation of the consumed L1 rows (row content = every column except
--- audit timestamps; a missing id contributes MISSING so a deletion changes the digest).
-CREATE OR REPLACE FUNCTION public.ka_gochara_search_l1_facts_digest(ids text[])
-RETURNS text LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public AS $$
+-- Live recomputation of the consumed L1 rows. Row content = every column of the L1 row
+-- EXCEPT its audit column `computed_at` (the ACTUAL audit column of both chart_facts and
+-- chart_dashas; Codex R4). Rendering is independent of the caller's session: the functions
+-- pin TimeZone=UTC and extra_float_digits so to_jsonb renders timestamptz/float columns
+-- identically in every session. A missing id contributes MISSING so a deletion changes the
+-- digest. Rows are keyed by (chart, id): chart_facts.fact_id is the table's primary key,
+-- chart_dashas.dasha_row_id is a uuid primary key joined WITHOUT a text cast (index use).
+CREATE OR REPLACE FUNCTION public.ka_gochara_search_l1_facts_digest(p_chart uuid, ids text[])
+RETURNS text LANGUAGE plpgsql STABLE
+SET search_path = pg_catalog, public SET timezone = 'UTC' SET extra_float_digits = 1 AS $$
 DECLARE d text;
 BEGIN
   SELECT public.ka_gochara_sha256_hex(COALESCE(string_agg(
            i.id || '|' || COALESCE(public.ka_gochara_sha256_hex(
-             public.ka_gochara_canonical_json(to_jsonb(f) - 'created_at')), 'MISSING'),
+             public.ka_gochara_canonical_json(to_jsonb(f) - 'computed_at')), 'MISSING'),
            E'\n' ORDER BY i.id COLLATE "C"), ''))
     INTO d
   FROM unnest(ids) AS i(id)
-  LEFT JOIN public.chart_facts f ON f.fact_id = i.id;
+  LEFT JOIN public.chart_facts f ON f.fact_id = i.id AND f.chart_id = p_chart;
   RETURN d;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.ka_gochara_search_dasha_digest(ids text[])
-RETURNS text LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public AS $$
+CREATE OR REPLACE FUNCTION public.ka_gochara_search_dasha_digest(p_chart uuid, ids uuid[])
+RETURNS text LANGUAGE plpgsql STABLE
+SET search_path = pg_catalog, public SET timezone = 'UTC' SET extra_float_digits = 1 AS $$
 DECLARE d text;
 BEGIN
   SELECT public.ka_gochara_sha256_hex(COALESCE(string_agg(
-           i.id || '|' || COALESCE(public.ka_gochara_sha256_hex(
+           i.id::text || '|' || COALESCE(public.ka_gochara_sha256_hex(
              public.ka_gochara_canonical_json(to_jsonb(r) - 'computed_at')), 'MISSING'),
-           E'\n' ORDER BY i.id COLLATE "C"), ''))
+           E'\n' ORDER BY i.id::text COLLATE "C"), ''))
     INTO d
   FROM unnest(ids) AS i(id)
-  LEFT JOIN public.chart_dashas r ON r.dasha_row_id::text = i.id;
+  LEFT JOIN public.chart_dashas r ON r.dasha_row_id = i.id AND r.chart_id = p_chart;
   RETURN d;
 END;
 $$;
 
 -- One AV-declaration entry '<key>:<sha256 of the row>' (key may itself contain ':').
 CREATE OR REPLACE FUNCTION public.ka_gochara_search_av_entry(key text)
-RETURNS text LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public AS $$
+RETURNS text LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public SET timezone = 'UTC' AS $$
 DECLARE h text;
 BEGIN
   SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(to_jsonb(a) - 'created_at'))
@@ -246,7 +310,7 @@ CREATE TABLE public.ka_gochara_search_input_snapshot (
   convention_id           text NOT NULL REFERENCES public.ka_gochara_sky_convention(convention_id),
   input_generation_vector jsonb NOT NULL,
   consumed_fact_ids       text[] NOT NULL,
-  consumed_dasha_row_ids  text[] NOT NULL,
+  consumed_dasha_row_ids  uuid[] NOT NULL,
   av_declarations         text[] NOT NULL,
   l1_facts_digest         text NOT NULL,
   dasha_digest            text NOT NULL,
@@ -334,14 +398,21 @@ CREATE TABLE public.ka_gochara_search_path_pin (
     CHECK (disposition = 'included' OR basis IS NOT NULL),
   CONSTRAINT kgspp_computed_empty_bare_ck
     CHECK (disposition <> 'computed_empty' OR (exclusion_reason IS NULL AND ruling_ref IS NULL)),
+  -- R3: an excluded pin MUST carry a reason from the closed set; every other disposition carries
+  -- none. Written as TOTAL booleans (COALESCE / IS NOT NULL) — a NULL-propagating predicate is
+  -- accepted by a CHECK, which is exactly how a NULL exclusion_reason used to slip through.
   CONSTRAINT kgspp_reason_closed_ck
-    CHECK (disposition <> 'excluded'
-           OR exclusion_reason IN ('not_applicable_to_class','on_demand_tier','disabled_form',
-                                   'inputs_unavailable','tier_withheld_by_ruling')),
+    CHECK ((disposition = 'excluded'
+            AND exclusion_reason IS NOT NULL
+            AND COALESCE(exclusion_reason IN ('not_applicable_to_class','on_demand_tier','disabled_form',
+                                              'inputs_unavailable','tier_withheld_by_ruling','superseded_by_version'), false))
+           OR (disposition <> 'excluded' AND exclusion_reason IS NULL)),
   -- ruling_ref is present IFF the exclusion reason is one of the three degrading reasons
+  -- (superseded_by_version is NON-degrading: an older/other version of a path whose included
+  -- version carries the search is not a loss of coverage — it needs no ruling)
   CONSTRAINT kgspp_ruling_iff_degrading_ck
     CHECK ((disposition = 'excluded'
-            AND exclusion_reason IN ('disabled_form','inputs_unavailable','tier_withheld_by_ruling'))
+            AND COALESCE(exclusion_reason IN ('disabled_form','inputs_unavailable','tier_withheld_by_ruling'), false))
            = (ruling_ref IS NOT NULL)),
   CONSTRAINT kgspp_basis_grammar_ck
     CHECK (basis IS NULL OR basis ~ '^(spec:[A-Za-z0-9_.-]+@[0-9][0-9A-Za-z.]*#[^|\n\r%]+|ruling:[A-Za-z0-9._-]+|oracle:[A-Za-z0-9._-]+)$'),
@@ -464,18 +535,25 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_search_inventory_digest(
   p_chart uuid, p_generation text, p_class text)
-RETURNS text LANGUAGE sql STABLE AS $$
+RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
   SELECT public.ka_gochara_sha256_hex(public.ka_gochara_search_inventory_preimage(p_chart, p_generation, p_class));
 $$;
 
+-- ledger_digest preimage: `input=<input_digest>` then the sorted
+-- `<ob_id>|<lower>|<upper>|<state>|<input_digest>` rows. The header line makes an EMPTY ledger
+-- input-bound too (Codex v1.0 follow-up): both completion digests change with the snapshot.
 CREATE OR REPLACE FUNCTION public.ka_gochara_search_ledger_digest(
   p_chart uuid, p_generation text, p_class text)
 RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
-  SELECT public.ka_gochara_sha256_hex(COALESCE(string_agg(r.row, E'\n' ORDER BY r.row COLLATE "C"), ''))
-  FROM (SELECT v.ob_id::text || '|' || public.ka_gochara_utc_ts(lower(v.search_range)) || '|' ||
-               public.ka_gochara_utc_ts(upper(v.search_range)) || '|' || v.state || '|' || v.input_digest AS row
-        FROM public.ka_gochara_search_interval v
-        WHERE v.chart_id = p_chart AND v.generation = p_generation AND v.event_class = p_class) r;
+  SELECT public.ka_gochara_sha256_hex(
+           'input=' || i.input_digest ||
+           COALESCE(E'\n' || (SELECT string_agg(r.row, E'\n' ORDER BY r.row COLLATE "C")
+                              FROM (SELECT v.ob_id::text || '|' || public.ka_gochara_utc_ts(lower(v.search_range)) || '|' ||
+                                           public.ka_gochara_utc_ts(upper(v.search_range)) || '|' || v.state || '|' || v.input_digest AS row
+                                    FROM public.ka_gochara_search_interval v
+                                    WHERE v.chart_id = p_chart AND v.generation = p_generation AND v.event_class = p_class) r), ''))
+  FROM public.ka_gochara_search_inventory i
+  WHERE i.chart_id = p_chart AND i.generation = p_generation AND i.event_class = p_class;
 $$;
 
 -- sha256 over the sorted 'event_class|inventory_digest|ledger_digest' lines of the
@@ -496,7 +574,7 @@ CREATE OR REPLACE FUNCTION public.ka_gochara_search_write_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 DECLARE
   r jsonb; ch uuid; gen text; cls text; tbl text := TG_TABLE_NAME;
-  hdr record; snap record; pin record; pub record; want text;
+  hdr record; snap record; pin record; pub record; want text; bridged text;
 BEGIN
   IF TG_OP = 'UPDATE' AND tbl <> 'ka_gochara_search_inventory' THEN
     RAISE EXCEPTION '% is insert-only (AM-5): UPDATE refused — a changed search is a new candidate generation', tbl;
@@ -516,7 +594,7 @@ BEGIN
          NEW.convention_id, NEW.input_generation_vector, NEW.l1_facts_digest, NEW.dasha_digest, NEW.av_declarations) THEN
       RAISE EXCEPTION 'ka_gochara_search_input_snapshot.input_digest does not recompute from its components (AM-5 item 0)';
     END IF;
-    SELECT p.input_generation_vector INTO pub
+    SELECT p.input_generation_vector, p.convention_id INTO pub
     FROM public.kala_gochara_publication p WHERE p.chart_id = NEW.chart_id AND p.generation = NEW.generation;
     IF NOT FOUND THEN
       RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused: no kala_gochara_publication manifest row for (chart %, generation %) — the snapshot''s vector is bound to the manifest', NEW.chart_id, NEW.generation;
@@ -524,6 +602,17 @@ BEGIN
     IF pub.input_generation_vector IS DISTINCT FROM NEW.input_generation_vector THEN
       RAISE EXCEPTION 'ka_gochara_search_input_snapshot.input_generation_vector % differs from the manifest''s % (AM-5 item 0b)',
         NEW.input_generation_vector, pub.input_generation_vector;
+    END IF;
+    -- R2: the snapshot's sky convention must be the one the publication's legacy convention is
+    -- bridged to (immutable 1:1 bridge, 1153:1016-1034); a missing bridge is refused too
+    SELECT b.sky_convention_id INTO bridged
+    FROM public.ka_gochara_convention_bridge b WHERE b.kala_convention_id = pub.convention_id;
+    IF bridged IS NULL THEN
+      RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (R2): the publication''s legacy convention % has no ka_gochara_convention_bridge row', pub.convention_id;
+    END IF;
+    IF bridged IS DISTINCT FROM NEW.convention_id THEN
+      RAISE EXCEPTION 'ka_gochara_search_input_snapshot refused (R2): snapshot sky convention % is not the one the publication''s legacy convention % is bridged to (%)',
+        NEW.convention_id, pub.convention_id, bridged;
     END IF;
     RETURN NEW;
   END IF;
@@ -639,7 +728,7 @@ RETURNS TABLE (event_class text, violation text, detail text)
 LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public AS $$
 DECLARE pub record; snap record; live_l1 text; live_dasha text; e text;
 BEGIN
-  SELECT p.horizon, p.input_generation_vector INTO pub
+  SELECT p.horizon, p.input_generation_vector, p.convention_id INTO pub
   FROM public.kala_gochara_publication p
   WHERE p.chart_id = p_chart AND p.generation = p_generation AND p.status = 'published';
 
@@ -662,8 +751,8 @@ BEGIN
   SELECT s.* INTO snap FROM public.ka_gochara_search_input_snapshot s
   WHERE s.chart_id = p_chart AND s.generation = p_generation;
   IF FOUND THEN
-    live_l1 := public.ka_gochara_search_l1_facts_digest(snap.consumed_fact_ids);
-    live_dasha := public.ka_gochara_search_dasha_digest(snap.consumed_dasha_row_ids);
+    live_l1 := public.ka_gochara_search_l1_facts_digest(p_chart, snap.consumed_fact_ids);
+    live_dasha := public.ka_gochara_search_dasha_digest(p_chart, snap.consumed_dasha_row_ids);
     IF live_l1 IS DISTINCT FROM snap.l1_facts_digest THEN
       RETURN QUERY SELECT '*'::text, 'input_snapshot_drift'::text, 'consumed L1 fact rows no longer match the snapshot digest'::text;
     END IF;
@@ -678,6 +767,30 @@ BEGIN
     IF pub.input_generation_vector IS DISTINCT FROM snap.input_generation_vector THEN
       RETURN QUERY SELECT '*'::text, 'input_vector_mismatch'::text, 'snapshot vector differs from the published manifest vector'::text;
     END IF;
+    -- R2: the snapshot's sky convention is bound to BOTH the publication's and every claimed
+    -- event_class partition's legacy convention through the immutable bridge
+    RETURN QUERY
+    SELECT '*'::text, 'convention_bridge_missing'::text, ('publication legacy convention ' || COALESCE(pub.convention_id, 'NULL'))::text
+    WHERE NOT EXISTS (SELECT 1 FROM public.ka_gochara_convention_bridge b WHERE b.kala_convention_id = pub.convention_id);
+    RETURN QUERY
+    SELECT '*'::text, 'convention_mismatch'::text,
+           ('publication legacy convention ' || pub.convention_id || ' is bridged to ' || b.sky_convention_id ||
+            ' but the snapshot is bound to ' || snap.convention_id)::text
+    FROM public.ka_gochara_convention_bridge b
+    WHERE b.kala_convention_id = pub.convention_id AND b.sky_convention_id IS DISTINCT FROM snap.convention_id;
+    RETURN QUERY
+    SELECT c.partition_key, 'convention_bridge_missing'::text, ('partition legacy convention ' || c.convention_id)::text
+    FROM public.kala_gochara_coverage c
+    WHERE c.chart_id = p_chart AND c.generation = p_generation AND c.partition_kind = 'event_class'
+      AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_convention_bridge b WHERE b.kala_convention_id = c.convention_id);
+    RETURN QUERY
+    SELECT c.partition_key, 'convention_mismatch'::text,
+           ('partition legacy convention ' || c.convention_id || ' is bridged to ' || b.sky_convention_id ||
+            ' but the snapshot is bound to ' || snap.convention_id)::text
+    FROM public.kala_gochara_coverage c
+    JOIN public.ka_gochara_convention_bridge b ON b.kala_convention_id = c.convention_id
+    WHERE c.chart_id = p_chart AND c.generation = p_generation AND c.partition_kind = 'event_class'
+      AND b.sky_convention_id IS DISTINCT FROM snap.convention_id;
   END IF;
 
   -- registry accounting: every sealed (path, version) pinned or excluded, per class
@@ -689,6 +802,29 @@ BEGIN
     AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_search_path_pin p
                     WHERE (p.chart_id, p.generation, p.event_class, p.path_id, p.rule_version)
                         = (i.chart_id, i.generation, i.event_class, rs.path_id, rs.rule_version));
+
+  -- version scope (F-3): per class and path AT MOST ONE version is 'included' — nothing may be
+  -- searched twice under two versions of the same rule path and silently double-counted.
+  RETURN QUERY
+  SELECT p.event_class, 'multiple_included_versions'::text,
+         (lower(p.path_id) || '@' || string_agg(p.rule_version, ',' ORDER BY p.rule_version))::text
+  FROM public.ka_gochara_search_path_pin p
+  WHERE p.chart_id = p_chart AND p.generation = p_generation AND p.disposition = 'included'
+  GROUP BY p.event_class, lower(p.path_id)
+  HAVING count(DISTINCT p.rule_version) > 1;
+  -- 'superseded_by_version' asserts that ANOTHER version of the same path carries the search: a
+  -- supersession claim with no included superseder is a coverage hole wearing a non-degrading
+  -- reason (no ruling_ref), so it needs its own detector (CLAUDE.md §N.8).
+  RETURN QUERY
+  SELECT p.event_class, 'superseded_without_included_version'::text,
+         (lower(p.path_id) || '@' || p.rule_version)::text
+  FROM public.ka_gochara_search_path_pin p
+  WHERE p.chart_id = p_chart AND p.generation = p_generation
+    AND p.disposition = 'excluded' AND p.exclusion_reason = 'superseded_by_version'
+    AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_search_path_pin q
+                    WHERE q.chart_id = p.chart_id AND q.generation = p.generation
+                      AND q.event_class = p.event_class AND lower(q.path_id) = lower(p.path_id)
+                      AND q.rule_version <> p.rule_version AND q.disposition = 'included');
 
   -- finalisation, digests, horizon, snapshot binding
   RETURN QUERY
@@ -711,14 +847,20 @@ BEGIN
   WHERE i.chart_id = p_chart AND i.generation = p_generation
     AND (snap.input_digest IS NULL OR i.input_digest IS DISTINCT FROM snap.input_digest);
 
-  -- committed obligation set == stored obligations, per pin (never-inserted ⇒ refusal)
+  -- committed obligation set == stored obligations, per pin, on the FULL key
+  -- (chart, generation, class, path, rule_version): another path's — or another version's —
+  -- obligations can never satisfy this pin's commitment (Codex R1). The detail names, for each
+  -- committed id that is not stored under THIS pin, whether it is stored under a DIFFERENT pin.
   RETURN QUERY
   SELECT p.event_class, 'committed_set_mismatch'::text,
          (p.path_id || '@' || p.rule_version || ' committed-not-stored=' ||
-          COALESCE((SELECT string_agg(c::text, ',' ORDER BY c::text) FROM unnest(p.committed_ob_ids) c
+          COALESCE((SELECT string_agg(c::text || COALESCE('(stored-under-' || fo.path_id || '@' || fo.rule_version || ')', ''), ',' ORDER BY c::text)
+                    FROM unnest(p.committed_ob_ids) c
+                    LEFT JOIN public.ka_gochara_search_obligation fo
+                      ON (fo.chart_id, fo.generation, fo.event_class, fo.ob_id) = (p.chart_id, p.generation, p.event_class, c)
                     WHERE NOT EXISTS (SELECT 1 FROM public.ka_gochara_search_obligation o
-                                      WHERE (o.chart_id, o.generation, o.event_class, o.ob_id)
-                                          = (p.chart_id, p.generation, p.event_class, c))), '') ||
+                                      WHERE (o.chart_id, o.generation, o.event_class, o.path_id, o.rule_version, o.ob_id)
+                                          = (p.chart_id, p.generation, p.event_class, p.path_id, p.rule_version, c))), '') ||
           ' stored-not-committed=' ||
           COALESCE((SELECT string_agg(o.ob_id::text, ',' ORDER BY o.ob_id::text) FROM public.ka_gochara_search_obligation o
                     WHERE (o.chart_id, o.generation, o.event_class, o.path_id, o.rule_version)
@@ -728,8 +870,8 @@ BEGIN
   WHERE p.chart_id = p_chart AND p.generation = p_generation
     AND ( EXISTS (SELECT 1 FROM unnest(p.committed_ob_ids) c
                   WHERE NOT EXISTS (SELECT 1 FROM public.ka_gochara_search_obligation o
-                                    WHERE (o.chart_id, o.generation, o.event_class, o.ob_id)
-                                        = (p.chart_id, p.generation, p.event_class, c)))
+                                    WHERE (o.chart_id, o.generation, o.event_class, o.path_id, o.rule_version, o.ob_id)
+                                        = (p.chart_id, p.generation, p.event_class, p.path_id, p.rule_version, c)))
        OR EXISTS (SELECT 1 FROM public.ka_gochara_search_obligation o
                   WHERE (o.chart_id, o.generation, o.event_class, o.path_id, o.rule_version)
                       = (p.chart_id, p.generation, p.event_class, p.path_id, p.rule_version)
@@ -856,6 +998,41 @@ BEGIN
     GRANT UPDATE (inventory_digest, ledger_digest, finalized_at)
       ON public.ka_gochara_search_inventory TO data_plane_builder;
     GRANT SELECT ON public.ka_gochara_generation_seal, public.ka_gochara_av_polarity_declaration
+      TO data_plane_builder;
+
+    -- R6 (steward M20261001T224443-bfc4): EXECUTE. In production every function amjis_app creates
+    -- has PUBLIC EXECUTE revoked by default (platform/scripts/nirmana-evidence-ownership-preflight.ts:259),
+    -- so TABLE grants alone leave the builder unable to run a single guard. EXPLICIT grants, derived
+    -- by running the builder's construct-and-finalise flow under a deployment-faithful role mirror and
+    -- adding one EXECUTE per 'permission denied for function X' until it converged (the live suite
+    -- re-proves it and is the detector). Exactly what the builder reaches — and NOT the seal-side
+    -- functions (completeness/replay violations, inventories_digest) or the two trigger functions
+    -- (a trigger function needs no EXECUTE to fire).
+    -- (a) this migration's own helpers, called by the write-guard triggers and the finalisation
+    --     UPDATE as the INVOKING role:
+    GRANT EXECUTE ON FUNCTION
+      public.ka_gochara_sha256_hex(text),
+      public.ka_gochara_uuidv8(text),
+      public.ka_gochara_canonical_json(jsonb),
+      public.ka_gochara_utc_ts(timestamptz),
+      public.ka_gochara_uuid_set_ok(uuid[]),
+      public.ka_gochara_search_input_digest(text, jsonb, text, text, text[]),
+      public.ka_gochara_search_l1_facts_digest(uuid, text[]),
+      public.ka_gochara_search_dasha_digest(uuid, uuid[]),
+      public.ka_gochara_search_av_entry(text),
+      public.ka_gochara_search_inventory_preimage(uuid, text, text),
+      public.ka_gochara_search_inventory_digest(uuid, text, text),
+      public.ka_gochara_search_ledger_digest(uuid, text, text)
+      TO data_plane_builder;
+    -- (b) the five 1153–1157 contract functions these guards call (also granted, with the rest of
+    --     the contract set, by 1220 — repeated here so 1206 is correct whatever order the two land;
+    --     GRANT of a held privilege is a no-op):
+    GRANT EXECUTE ON FUNCTION
+      public.ka_gochara_lock_chart(uuid),
+      public.ka_gochara_lock_global_shared(),
+      public.ka_gochara_generation_is_sealed(uuid, text),
+      public.ka_gochara_generation_governed(text),
+      public.ka_gochara_horizon_finite_ok(tstzrange)
       TO data_plane_builder;
   END IF;
 END;
