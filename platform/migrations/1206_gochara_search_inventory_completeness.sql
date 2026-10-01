@@ -58,8 +58,9 @@
 --   * the migration grants data_plane_builder SELECT on ka_gochara_generation_seal and
 --     ka_gochara_av_polarity_declaration (1216 deferred them: no write path then) —
 --     the new guards read seal state and declaration rows as the invoking role;
---   * F-3 (open): every sealed registry (path_id, rule_version) must be accounted for
---     per class; historical/superseded version selection is not yet specified.
+--   * F-3: every sealed registry (path_id, rule_version) must be accounted for per class; per path
+--     exactly one version may be `included`, the others `excluded` as `superseded_by_version` (or
+--     another closed reason) — see v1.2 below.
 --   * v1.1 (Codex review R1–R5, in place — 1206 is applied nowhere): commitment equality on the
 --     FULL (chart, generation, class, path, version) key (R1); the snapshot's sky convention is
 --     bound to the publication's AND every event_class partition's legacy convention through
@@ -71,6 +72,11 @@
 --     the seal requires EVERY verification row of a class to equal the stored digest (stricter
 --     than "at least one": a stale disagreeing row vetoes sealing until a candidate deletes it);
 --     every function pins search_path.
+--   * v1.2 (steward M20261001T224443-bfc4, in place — 1206 is still applied nowhere): R6 explicit builder
+--     EXECUTE grants (§7); closed exclusion reason `superseded_by_version` (non-degrading: no
+--     ruling_ref) and two seal checks — `multiple_included_versions` (per class and path at most one
+--     version is `included`) and `superseded_without_included_version` (a supersession claim needs an
+--     included superseder — its own detector, §N.8). F-3 (open) above is thereby closed.
 --
 -- Transaction ownership: NO BEGIN/COMMIT — migrate.ts owns ONE transaction PER MIGRATION. The
 -- protected window is NOT one atomic transaction across 1204 + 1206: the runner commits each
@@ -89,15 +95,23 @@
 -- PRIVILEGES / PRINCIPALS (Codex §4; nothing widened silently):
 --   * the migration principal (amjis_app, with the temporary public-schema capability) OWNS the
 --     new objects; data_plane_builder is a GRANTEE only. All 17 functions are invoker-security
---     (no SECURITY DEFINER) and pin search_path; EXECUTE is the PostgreSQL default (PUBLIC).
+--     (no SECURITY DEFINER) and pin search_path. EXECUTE is NOT the PostgreSQL default in
+--     production: the governed bootstrap revokes PUBLIC EXECUTE on everything amjis_app creates
+--     (nirmana-evidence-ownership-preflight.ts:259), so §7 grants the builder EXPLICIT EXECUTE on
+--     exactly the 12 helpers it reaches + the 5 contract functions its guards call (R6, v1.2);
+--     the sealing principal's EXECUTE needs are listed below and granted by whoever authorises it.
 --   * the builder gets SELECT/INSERT/DELETE on the six tables, column UPDATE for finalisation,
 --     and read-only SELECT on ka_gochara_generation_seal / ka_gochara_av_polarity_declaration
 --     (the guards read them as the INVOKING role). It does NOT get INSERT on the seal table:
 --     1216 withholds it. SEALING therefore needs a SEPARATELY AUTHORISED principal that holds
 --     INSERT on ka_gochara_generation_seal, UPDATE on kala_gochara_publication, SELECT on the six
 --     tables, on chart_facts / chart_dashas / kala_gochara_coverage / ka_gochara_rule_path_seal /
---     ka_gochara_convention_bridge / ka_gochara_av_polarity_declaration — see the live-DB suite's
---     builder/sealer role tests. The independent VERIFIER's runtime principal is NOT defined here
+--     ka_gochara_convention_bridge / ka_gochara_av_polarity_declaration, AND EXECUTE on the 20
+--     functions the seal path reaches (ka_gochara_seal_generation, _search_completeness_violations,
+--     _membership_violation(s), _coverage_drift, _coverage_facts, _facts_horizon, _horizon_finite_ok,
+--     _generation_governed, _lock_chart, _lock_global_shared and the digest helpers — the exact list is
+--     SEALER_FUNCTIONS in the live-DB suite, derived the same way as the builder's and proven
+--     sufficient by it) — see the live-DB suite's builder/sealer role tests. The independent VERIFIER's runtime principal is NOT defined here
 --     (its independence is a process property, not established by a table name).
 --
 -- ROLLBACK (forward correction is preferred once any generation has been sealed under this
@@ -106,7 +120,8 @@
 --     DROP TRIGGER ka_gochara_generation_seal_z_search_complete ON ka_gochara_generation_seal;
 --     DROP the six tables in reverse dependency order (verification, interval, obligation,
 --     path_pin, inventory, input_snapshot) and the 17 functions named in this file;
---     REVOKE the SELECT grants on ka_gochara_generation_seal / ka_gochara_av_polarity_declaration
+--     REVOKE the EXECUTE grants of §7 and the SELECT grants on ka_gochara_generation_seal /
+--     ka_gochara_av_polarity_declaration
 --     from data_plane_builder (if no other consumer needs them);
 --     DELETE the _migrations_applied row for this file so the runner can re-apply it.
 --   used installation: do NOT drop; correct forward with a new migration.
@@ -390,9 +405,11 @@ CREATE TABLE public.ka_gochara_search_path_pin (
     CHECK ((disposition = 'excluded'
             AND exclusion_reason IS NOT NULL
             AND COALESCE(exclusion_reason IN ('not_applicable_to_class','on_demand_tier','disabled_form',
-                                              'inputs_unavailable','tier_withheld_by_ruling'), false))
+                                              'inputs_unavailable','tier_withheld_by_ruling','superseded_by_version'), false))
            OR (disposition <> 'excluded' AND exclusion_reason IS NULL)),
   -- ruling_ref is present IFF the exclusion reason is one of the three degrading reasons
+  -- (superseded_by_version is NON-degrading: an older/other version of a path whose included
+  -- version carries the search is not a loss of coverage — it needs no ruling)
   CONSTRAINT kgspp_ruling_iff_degrading_ck
     CHECK ((disposition = 'excluded'
             AND COALESCE(exclusion_reason IN ('disabled_form','inputs_unavailable','tier_withheld_by_ruling'), false))
@@ -786,6 +803,29 @@ BEGIN
                     WHERE (p.chart_id, p.generation, p.event_class, p.path_id, p.rule_version)
                         = (i.chart_id, i.generation, i.event_class, rs.path_id, rs.rule_version));
 
+  -- version scope (F-3): per class and path AT MOST ONE version is 'included' — nothing may be
+  -- searched twice under two versions of the same rule path and silently double-counted.
+  RETURN QUERY
+  SELECT p.event_class, 'multiple_included_versions'::text,
+         (lower(p.path_id) || '@' || string_agg(p.rule_version, ',' ORDER BY p.rule_version))::text
+  FROM public.ka_gochara_search_path_pin p
+  WHERE p.chart_id = p_chart AND p.generation = p_generation AND p.disposition = 'included'
+  GROUP BY p.event_class, lower(p.path_id)
+  HAVING count(DISTINCT p.rule_version) > 1;
+  -- 'superseded_by_version' asserts that ANOTHER version of the same path carries the search: a
+  -- supersession claim with no included superseder is a coverage hole wearing a non-degrading
+  -- reason (no ruling_ref), so it needs its own detector (CLAUDE.md §N.8).
+  RETURN QUERY
+  SELECT p.event_class, 'superseded_without_included_version'::text,
+         (lower(p.path_id) || '@' || p.rule_version)::text
+  FROM public.ka_gochara_search_path_pin p
+  WHERE p.chart_id = p_chart AND p.generation = p_generation
+    AND p.disposition = 'excluded' AND p.exclusion_reason = 'superseded_by_version'
+    AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_search_path_pin q
+                    WHERE q.chart_id = p.chart_id AND q.generation = p.generation
+                      AND q.event_class = p.event_class AND lower(q.path_id) = lower(p.path_id)
+                      AND q.rule_version <> p.rule_version AND q.disposition = 'included');
+
   -- finalisation, digests, horizon, snapshot binding
   RETURN QUERY
   SELECT i.event_class, 'inventory_not_finalised'::text, 'inventory header is not FINALISED'::text
@@ -958,6 +998,41 @@ BEGIN
     GRANT UPDATE (inventory_digest, ledger_digest, finalized_at)
       ON public.ka_gochara_search_inventory TO data_plane_builder;
     GRANT SELECT ON public.ka_gochara_generation_seal, public.ka_gochara_av_polarity_declaration
+      TO data_plane_builder;
+
+    -- R6 (steward M20261001T224443-bfc4): EXECUTE. In production every function amjis_app creates
+    -- has PUBLIC EXECUTE revoked by default (platform/scripts/nirmana-evidence-ownership-preflight.ts:259),
+    -- so TABLE grants alone leave the builder unable to run a single guard. EXPLICIT grants, derived
+    -- by running the builder's construct-and-finalise flow under a deployment-faithful role mirror and
+    -- adding one EXECUTE per 'permission denied for function X' until it converged (the live suite
+    -- re-proves it and is the detector). Exactly what the builder reaches — and NOT the seal-side
+    -- functions (completeness/replay violations, inventories_digest) or the two trigger functions
+    -- (a trigger function needs no EXECUTE to fire).
+    -- (a) this migration's own helpers, called by the write-guard triggers and the finalisation
+    --     UPDATE as the INVOKING role:
+    GRANT EXECUTE ON FUNCTION
+      public.ka_gochara_sha256_hex(text),
+      public.ka_gochara_uuidv8(text),
+      public.ka_gochara_canonical_json(jsonb),
+      public.ka_gochara_utc_ts(timestamptz),
+      public.ka_gochara_uuid_set_ok(uuid[]),
+      public.ka_gochara_search_input_digest(text, jsonb, text, text, text[]),
+      public.ka_gochara_search_l1_facts_digest(uuid, text[]),
+      public.ka_gochara_search_dasha_digest(uuid, uuid[]),
+      public.ka_gochara_search_av_entry(text),
+      public.ka_gochara_search_inventory_preimage(uuid, text, text),
+      public.ka_gochara_search_inventory_digest(uuid, text, text),
+      public.ka_gochara_search_ledger_digest(uuid, text, text)
+      TO data_plane_builder;
+    -- (b) the five 1153–1157 contract functions these guards call (also granted, with the rest of
+    --     the contract set, by 1220 — repeated here so 1206 is correct whatever order the two land;
+    --     GRANT of a held privilege is a no-op):
+    GRANT EXECUTE ON FUNCTION
+      public.ka_gochara_lock_chart(uuid),
+      public.ka_gochara_lock_global_shared(),
+      public.ka_gochara_generation_is_sealed(uuid, text),
+      public.ka_gochara_generation_governed(text),
+      public.ka_gochara_horizon_finite_ok(tstzrange)
       TO data_plane_builder;
   END IF;
 END;

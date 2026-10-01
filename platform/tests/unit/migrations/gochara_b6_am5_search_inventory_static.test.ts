@@ -162,6 +162,28 @@ describe('B6.0 F-1 migration 1206 (AM-5 search completeness) — static contract
     }
   })
 
+  it('R6: the builder gets EXPLICIT, signature-qualified EXECUTE on exactly 17 functions — never PUBLIC, never a seal-side function', () => {
+    const grants = [...exec.matchAll(/GRANT EXECUTE ON FUNCTION([^;]+);/g)].map(m => m[1]!)
+    expect(grants).toHaveLength(2)
+    for (const g of grants) expect(g).toMatch(/TO data_plane_builder$/)
+    const sigs = grants.flatMap(g => [...g.matchAll(/public\.(ka_gochara_\w+)\(([^)]*)\)/g)].map(m => m[1]!))
+    expect(sigs).toHaveLength(17)
+    expect(new Set(sigs).size).toBe(17)
+    for (const forbidden of ['ka_gochara_seal_generation', 'ka_gochara_search_completeness_violations', 'ka_gochara_search_replay_violations',
+      'ka_gochara_search_inventories_digest', 'ka_gochara_search_write_guard', 'ka_gochara_generation_seal_search_guard'])
+      expect(sigs).not.toContain(forbidden)
+    expect(exec).not.toMatch(/GRANT [^;]*\bTO PUBLIC\b/i)
+  })
+
+  it('v1.2: superseded_by_version is a closed, NON-degrading reason, and both version-scope seal checks exist', () => {
+    const closed = exec.slice(exec.indexOf('CONSTRAINT kgspp_reason_closed_ck'), exec.indexOf('CONSTRAINT kgspp_ruling_iff_degrading_ck'))
+    expect(closed).toContain("'superseded_by_version'")
+    const degrading = exec.slice(exec.indexOf('CONSTRAINT kgspp_ruling_iff_degrading_ck'), exec.indexOf('CONSTRAINT kgspp_basis_grammar_ck'))
+    expect(degrading).not.toContain('superseded_by_version')
+    expect(exec).toContain("'multiple_included_versions'")
+    expect(exec).toContain("'superseded_without_included_version'")
+  })
+
   it('migrate.ts: 1206 is protected; the routine runner refuses it, --only admits it; deploy.yml applies it AFTER 1204', () => {
     expect(PROTECTED_PUBLIC_SCHEMA_MIGRATIONS.has(M1206)).toBe(true)
     expect(() => assertGeneralRunnerMayApplyPublicSchema(M1206, false)).toThrow(/gochara_contracts_schema_migration=true/)

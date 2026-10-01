@@ -58,6 +58,34 @@ const WINDOW_FILES = [...CONTRACT_FILES, M1204, M1206, M1216] as const
 
 const BUILDER = 'data_plane_builder'
 const SEALER = 'gochara_sealer'
+// What migration 1206 §7 grants the builder EXECUTE on (12 own helpers + 5 contract functions its guards call).
+const BUILDER_OWN_FUNCTIONS = [
+  'ka_gochara_sha256_hex(text)', 'ka_gochara_uuidv8(text)', 'ka_gochara_canonical_json(jsonb)',
+  'ka_gochara_utc_ts(timestamptz)', 'ka_gochara_uuid_set_ok(uuid[])',
+  'ka_gochara_search_input_digest(text, jsonb, text, text, text[])', 'ka_gochara_search_l1_facts_digest(uuid, text[])',
+  'ka_gochara_search_dasha_digest(uuid, uuid[])', 'ka_gochara_search_av_entry(text)',
+  'ka_gochara_search_inventory_preimage(uuid, text, text)', 'ka_gochara_search_inventory_digest(uuid, text, text)',
+  'ka_gochara_search_ledger_digest(uuid, text, text)',
+] as const
+const BUILDER_CONTRACT_FUNCTIONS = [
+  'ka_gochara_lock_chart(uuid)', 'ka_gochara_lock_global_shared()', 'ka_gochara_generation_is_sealed(uuid, text)',
+  'ka_gochara_generation_governed(text)', 'ka_gochara_horizon_finite_ok(tstzrange)',
+] as const
+// The seal principal's functions (names; unique in the schema).
+const SEALER_FUNCTIONS = [
+  'ka_gochara_lock_chart', 'ka_gochara_seal_generation', 'ka_gochara_generation_governed', 'ka_gochara_coverage_drift',
+  'ka_gochara_horizon_finite_ok', 'ka_gochara_coverage_facts', 'ka_gochara_facts_horizon',
+  'ka_gochara_membership_violations', 'ka_gochara_membership_violation', 'ka_gochara_lock_global_shared',
+  'ka_gochara_search_completeness_violations', 'ka_gochara_search_l1_facts_digest', 'ka_gochara_sha256_hex',
+  'ka_gochara_canonical_json', 'ka_gochara_search_dasha_digest', 'ka_gochara_search_av_entry',
+  'ka_gochara_search_inventory_digest', 'ka_gochara_search_ledger_digest', 'ka_gochara_search_inventory_preimage',
+  'ka_gochara_utc_ts',
+] as const
+// The routine/protected migration principal: in production it OWNS every table and function, and the
+// governed bootstrap revokes PUBLIC EXECUTE on whatever it creates (platform/scripts/
+// nirmana-evidence-ownership-preflight.ts:259). The suite builds the same world so a missing
+// function grant fails here, not in production (steward M20261001T224443-bfc4 R6).
+const OWNER = 'amjis_app'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const CONV = 'sha256:eac922d4c3b0deb700112f2260cd250a0388ab159f4a1c4bca9451281a48e7a3'   // AM-1 vector digest
@@ -143,11 +171,15 @@ async function withTempDir<T>(files: readonly string[], fn: (dir: string) => Pro
   try { for (const f of files) copyFileSync(join(MIGRATIONS_DIR, f), join(dir, f)); return await fn(dir) }
   finally { rmSync(dir, { recursive: true, force: true }) }
 }
+/** Run `fn` on one connection AS the migration principal (production: amjis_app owns everything). */
+async function asOwner<T>(fn: (c: PoolClient) => Promise<T>): Promise<T> {
+  const c = await pool.connect()
+  try { await c.query(`SET ROLE ${OWNER}`); return await fn(c) }
+  finally { await c.query('RESET ROLE').catch(() => undefined); c.release() }
+}
 async function window(files: readonly string[]): Promise<void> {
   await withTempDir(WINDOW_FILES, async dir => {
-    const c = await pool.connect()
-    try { await runMigrations(c, [dir], { only: new Set(files), disclosures: new Map(), renumberDisclosures: new Map() }) }
-    finally { c.release() }
+    await asOwner(c => runMigrations(c, [dir], { only: new Set(files), disclosures: new Map(), renumberDisclosures: new Map() }))
   })
 }
 // The REAL production column sets of the two L1 tables the input digests read (information_schema,
@@ -177,22 +209,32 @@ const L1_STANDINS = `
     lord_natal_shadbala_total numeric, next_dasha_start_iso timestamptz, concurrent_system_lords_jsonb jsonb,
     anchored_solar_return_iso timestamptz, karakas_active_during_period text[]);`
 async function resetSchema(): Promise<void> {
-  await pool.query(`
-    DROP SCHEMA public CASCADE;
-    CREATE SCHEMA public;
-    CREATE TABLE charts (id UUID PRIMARY KEY DEFAULT gen_random_uuid());
-    ${L1_STANDINS}`)
-  for (const f of PARENT_FILES) await pool.query(mig(f))
+  await ensureRoles()
+  await pool.query(`DROP SCHEMA public CASCADE; CREATE SCHEMA public AUTHORIZATION ${OWNER};`)
+  await asOwner(async c => {
+    await c.query(`CREATE TABLE charts (id UUID PRIMARY KEY DEFAULT gen_random_uuid());
+                   ${L1_STANDINS}`)
+    for (const f of PARENT_FILES) await c.query(mig(f))
+    await c.query(TRACKER_DDL)
+    await c.query(TRACKER_IDENTITY_DDL)
+  })
   await pool.query(`INSERT INTO charts (id) VALUES ($1)`, [CHART])
-  await pool.query(TRACKER_DDL)
-  await pool.query(TRACKER_IDENTITY_DDL)
 }
+/** Roles are cluster-global: create each only if absent, and install the production default-privilege
+ *  revocation (per database, idempotent). */
 async function ensureRoles(): Promise<void> {
-  for (const r of [BUILDER, SEALER])
+  for (const r of [OWNER, BUILDER, SEALER])
     await pool.query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${r}') THEN CREATE ROLE ${r} NOLOGIN; END IF; END $$`)
+  await pool.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${OWNER} REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`)
 }
+/** Leave a plain superuser-owned schema, then clear this database's role dependencies and drop what no
+ *  other database on the cluster still needs. */
 async function dropRoles(): Promise<void> {
-  for (const r of [BUILDER, SEALER]) await pool.query(`DROP ROLE IF EXISTS ${r}`).catch(() => undefined)
+  await pool.query(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`)
+  for (const r of [BUILDER, SEALER, OWNER]) {
+    await pool.query(`DROP OWNED BY ${r} CASCADE`).catch(() => undefined)
+    await pool.query(`DROP ROLE IF EXISTS ${r}`).catch(() => undefined)
+  }
 }
 const chartCtx = (c: Q) => c.query(`SELECT ka_gochara_lock_chart($1)`, [CHART])
 
@@ -335,6 +377,7 @@ async function verify(c: Q, gen: string, digest: string, who = 'verifier-a', cls
     [CHART, gen, cls, who, digest])
 }
 async function publishAndSeal(gen: string, opts: { role?: string; tz?: string } = {}): Promise<void> {
+  if (!opts.role) opts = { ...opts, role: SEALER }   // every seal runs as the separately authorised principal
   await tx(async c => {
     await chartCtx(c)
     await c.query(`UPDATE kala_gochara_publication SET status='published', published_at=now() WHERE chart_id=$1 AND generation=$2`, [CHART, gen])
@@ -398,9 +441,7 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
 
   beforeAll(async () => {
     pool = new Pool({ ...resolveDisposableA51Config(TEST_DB_URL), max: 8 })
-    await dropRoles()
     await resetSchema()
-    await ensureRoles()
     await window([...CONTRACT_FILES, M1204])
     defsBefore = await defs()
     await window([M1206])
@@ -416,11 +457,15 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
         ka_gochara_eval_window_record, ka_gochara_search_input_snapshot, ka_gochara_search_inventory,
         ka_gochara_search_path_pin, ka_gochara_search_obligation, ka_gochara_search_interval,
         ka_gochara_search_inventory_verification TO ${SEALER}`)
+    // The seal principal's EXECUTE: not granted by any migration (the sealing principal is the native's to
+    // authorise — D-FLIP); this is the exact set the seal path reaches, derived by adding one EXECUTE per
+    // 'permission denied for function X' until publishAndSeal-as-sealer converged, and proven sufficient by
+    // every seal in this suite running as SEALER (publishAndSeal defaults to it).
+    await pool.query(`GRANT EXECUTE ON FUNCTION ${SEALER_FUNCTIONS.map(f => `public.${f}`).join(', ')} TO ${SEALER}`)
   }, 180_000)
 
   afterAll(async () => {
     if (!pool) return
-    await resetSchema()
     await dropRoles()
     await pool.end()
   })
@@ -570,7 +615,11 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
   it('R5 principals: the builder constructs and finalises the inventory under its REAL grants but CANNOT seal; a separate seal principal can', async () => {
     const gen = nextGen()
     await goodBuild(gen, { role: BUILDER })
-    await refused(publishAndSeal(gen, { role: BUILDER }), /permission denied for table ka_gochara_generation_seal/)
+    // Two independent walls: the builder holds no EXECUTE on the seal function, and no write on the seal table.
+    await refused(publishAndSeal(gen, { role: BUILDER }), /permission denied for function ka_gochara_seal_generation/)
+    await refused(tx(async c => {
+      await c.query(`INSERT INTO ka_gochara_generation_seal (chart_id, generation, manifest_id) VALUES ($1, $2, gen_random_uuid())`, [CHART, gen])
+    }, { role: BUILDER }), /permission denied for table ka_gochara_generation_seal/)
     await refused(tx(async c => { await c.query('CREATE TABLE public.x_builder_probe (a int)') }, { role: BUILDER }), /permission denied for schema public/)
     await refused(tx(async c => { await c.query('TRUNCATE ka_gochara_search_interval') }, { role: BUILDER }), /permission denied/)
     await publishAndSeal(gen, { role: SEALER })
@@ -758,6 +807,88 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
   })
 
   // ── R3: excluded pins need a non-NULL reason; total booleans ──────────────────
+  it('F-3 version scope: superseded_by_version lets an older version yield to the included one; two included versions of one path and a supersession with no included superseder are refused at the seal', async () => {
+    // the build skeleton: header + the caller's pins + obligations/intervals for the included ones
+    const scoped = (gen: string, pins: PinRef[], covered: Array<{ ver: string; o: Ob }>) => tx(async c => {
+      await chartCtx(c); await publication(c, gen)
+      const snap = await snapshotLive(c, gen); await header(c, gen, snap.digest)
+      for (const pn of pins) await pin(c, gen, pn)
+      for (const { ver, o } of covered) { const id = await ob(c, gen, 'p1', o, CLS, ver); await iv(c, gen, id, LO, HI, snap.digest) }
+      const d = await finalize(c, gen); await partition(c, gen); await verify(c, gen, d.inv)
+    })
+    const rest = (handled: Array<[string, string]>): PinRef[] => REGISTRY
+      .filter(([pa, ve]) => !handled.some(([hp, hv]) => hp === pa && hv === ve))
+      .map(([pa, ve]) => pa === 'p6'
+        ? { path: pa, ver: ve, disp: 'excluded' as const, reason: 'on_demand_tier', basis: B_P6, ids: [] }
+        : { path: pa, ver: ve, disp: 'excluded' as const, reason: 'not_applicable_to_class', basis: B_NA, ids: [] })
+    // (1) p1@1.1 included, p1@1.0 superseded_by_version (NON-degrading: no ruling_ref) → seals
+    const ok = nextGen()
+    await scoped(ok, [
+      { path: 'p1', ver: '1.1', disp: 'included', ids: [obId('p1', '1.1', P1A)] },
+      { path: 'p1', ver: '1.0', disp: 'excluded', reason: 'superseded_by_version', basis: B_NA, ids: [] },
+      ...rest([['p1', '1.0'], ['p1', '1.1']])], [{ ver: '1.1', o: P1A }])
+    await publishAndSeal(ok)
+    // (2) two included versions of ONE path in one class → multiple_included_versions (names the path and both versions)
+    const two = nextGen()
+    await scoped(two, [
+      { path: 'p1', ver: '1.0', disp: 'included', ids: [obId('p1', '1.0', P1A)] },
+      { path: 'p1', ver: '1.1', disp: 'included', ids: [obId('p1', '1.1', P1A)] },
+      ...rest([['p1', '1.0'], ['p1', '1.1']])], [{ ver: '1.0', o: P1A }, { ver: '1.1', o: P1A }])
+    await refused(publishAndSeal(two), /multiple_included_versions[\s\S]*p1@1\.0,1\.1/)
+    // (3) a supersession claim whose superseder is not included → superseded_without_included_version
+    const hole = nextGen()
+    await scoped(hole, [
+      { path: 'p1', ver: '1.0', disp: 'excluded', reason: 'superseded_by_version', basis: B_NA, ids: [] },
+      { path: 'p1', ver: '1.1', disp: 'excluded', reason: 'not_applicable_to_class', basis: B_NA, ids: [] },
+      ...rest([['p1', '1.0'], ['p1', '1.1']])], [])
+    await refused(publishAndSeal(hole), /superseded_without_included_version[\s\S]*p1@1\.0/)
+    // (4) superseded_by_version is non-degrading: a ruling_ref on it is refused by the pin CHECK, and it needs a basis
+    const bad = (ruling: string | null, basis: string | null) => tx(async c => {
+      const g = nextGen()
+      await chartCtx(c); await publication(c, g)
+      const snap = await snapshotLive(c, g); await header(c, g, snap.digest)
+      await c.query(`INSERT INTO ka_gochara_search_path_pin
+        (chart_id, generation, event_class, path_id, rule_version, disposition, exclusion_reason, ruling_ref, basis, committed_ob_ids)
+        VALUES ($1,$2,$3,'p1','1.0','excluded','superseded_by_version',$4,$5,'{}')`, [CHART, g, CLS, ruling, basis])
+    })
+    await refused(bad('R-9', B_NA), /kgspp_ruling_iff_degrading_ck/)
+    await refused(bad(null, null), /kgspp_basis_required_ck/)
+  })
+
+  it('R6: with PUBLIC execute revoked (deployment mirror) the builder holds EXECUTE on exactly the 12 own helpers + 5 contract functions, and nothing seal-side', async () => {
+    const r = await pool.query<{ sig: string; owner: string; builder: boolean; pub: boolean }>(
+      `SELECT p.oid::regprocedure::text AS sig, pg_get_userbyid(p.proowner) AS owner,
+              has_function_privilege('${BUILDER}', p.oid, 'EXECUTE') AS builder, has_function_privilege('public', p.oid, 'EXECUTE') AS pub
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.proname LIKE 'ka\\_gochara\\_%'`)
+    expect(r.rows.filter(x => x.owner !== OWNER)).toEqual([])      // control: the mirror is faithful
+    expect(r.rows.filter(x => x.pub)).toEqual([])                  // control: PUBLIC executes none
+    const got = r.rows.filter(x => x.builder).map(x => x.sig).sort()
+    // expected signatures normalised through the catalog itself (regprocedure spelling), not by string-munging
+    const want = (await Promise.all([...BUILDER_OWN_FUNCTIONS, ...BUILDER_CONTRACT_FUNCTIONS].map(async sg => {
+      const q = await pool.query<{ t: string | null }>(`SELECT to_regprocedure($1)::text AS t`, [`public.${sg}`])
+      expect(q.rows[0]!.t, sg).not.toBeNull()
+      return q.rows[0]!.t!
+    }))).sort()
+    expect(got).toEqual(want)
+    for (const name of ['ka_gochara_seal_generation', 'ka_gochara_search_completeness_violations', 'ka_gochara_search_replay_violations',
+      'ka_gochara_search_inventories_digest', 'ka_gochara_search_write_guard', 'ka_gochara_generation_seal_search_guard'])
+      expect(r.rows.filter(x => x.sig.startsWith(name + '(') || x.sig.startsWith('public.' + name + '(')).every(x => !x.builder), name).toBe(true)
+  })
+
+  it('R6: each of the 17 builder EXECUTE grants is necessary — revoking any one breaks construct-and-finalise, naming that function', async () => {
+    for (const sig of [...BUILDER_OWN_FUNCTIONS, ...BUILDER_CONTRACT_FUNCTIONS]) {
+      const name = sig.slice(0, sig.indexOf('('))
+      await asOwner(c => c.query(`REVOKE EXECUTE ON FUNCTION public.${sig} FROM ${BUILDER}`))
+      try {
+        await refused(goodBuild(nextGen(), { role: BUILDER }), new RegExp(`permission denied for function ${name}\\b`))
+      } finally {
+        await asOwner(c => c.query(`GRANT EXECUTE ON FUNCTION public.${sig} TO ${BUILDER}`))
+      }
+    }
+    await goodBuild(nextGen(), { role: BUILDER })   // restored: the builder works again
+  })
+
   it('R3: an excluded pin with a NULL reason is refused in BOTH variants (with and without a ruling_ref); other dispositions carry no reason', async () => {
     const raw = (gen: string, disp: string, reason: string | null, ruling: string | null) => tx(async c => {
       await chartCtx(c); await publication(c, gen)
@@ -1122,27 +1253,25 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
 // The runner-route checks reset the schema, so they run last in their own describe.
 describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — deploy route', () => {
   beforeAll(async () => { pool = new Pool({ ...resolveDisposableA51Config(TEST_DB_URL), max: 4 }) })
-  afterAll(async () => { if (pool) { await resetSchema(); await pool.end() } })
+  afterAll(async () => { if (pool) { await dropRoles(); await pool.end() } })
 
   it('the routine runner REFUSES 1206 and names the protected window; replay of the applied file is BLOCKED by its gate', async () => {
     await resetSchema()
     await withTempDir(WINDOW_FILES, async dir => {
-      const c = await pool.connect()
-      try {
+      await asOwner(async c => {
         await runMigrations(c, [dir], { only: new Set([...CONTRACT_FILES, M1204]), disclosures: new Map(), renumberDisclosures: new Map() })
         await expect(runMigrations(c, [dir], { disclosures: new Map(), renumberDisclosures: new Map() }))
           .rejects.toThrow(/gochara_contracts_schema_migration=true/)
         await runMigrations(c, [dir], { only: new Set([M1206]), disclosures: new Map(), renumberDisclosures: new Map() })
-      } finally { c.release() }
+      })
     })
     await expect(pool.query(mig(M1206))).rejects.toThrow(/preflight 1206 BLOCKED/)
     await resetSchema()
     await withTempDir(WINDOW_FILES, async dir => {
-      const c = await pool.connect()
-      try {
+      await asOwner(async c => {
         await expect(runMigrations(c, [dir], { only: new Set([M1206]), disclosures: new Map(), renumberDisclosures: new Map() }))
           .rejects.toThrow()
-      } finally { c.release() }
+      })
     })
   })
 })
