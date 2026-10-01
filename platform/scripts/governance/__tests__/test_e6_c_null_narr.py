@@ -1295,3 +1295,25 @@ def test_a_real_sql_string_selecting_chart_facts_by_category_is_a_lint_surface(t
     p.write_text(src)
     r = ac.narr_lint_scan([p], ["citation_human"])
     assert r["v"] == ac.PASS and r["applied"] == ["fact-category-pin"], (src, r)
+
+
+# ───────────────────────── final review: item 8 (skip markers, aliased or xfail) ─────────────────────────
+
+@pytest.mark.parametrize("src", [
+    "import pytest\nsk = pytest.mark.skip\n" + _H + "@sk\ndef test_a():\n    assert build_narration(1)['statement']\n",
+    "import pytest\nsk = pytest.mark.skipif(True, reason='x')\n" + _H + "@sk\ndef test_a():\n    assert build_narration(1)['statement']\n",
+    "import pytest\n" + _H + "@pytest.mark.xfail\ndef test_a():\n    assert build_narration(1)['statement']\n",
+    "import pytest\n" + _H + "@pytest.mark.xfail(reason='x')\ndef test_a():\n    assert build_narration(1)['statement']\n",
+    "import pytest\n" + _H + "@pytest.mark.skip\nclass TestX:\n    def test_a(self):\n        assert build_narration(1)['statement']\n",
+    "import unittest\n" + _H + "@unittest.skip('x')\nclass TestX:\n    def test_a(self):\n        assert build_narration(1)['statement']\n",
+    "import pytest\n" + _H + "def test_a():\n    pytest.xfail('x')\n    assert build_narration(1)['statement']\n",
+    "import pytest\n" + _H + "pytestmark = [pytest.mark.xfail]\ndef test_a():\n    assert build_narration(1)['statement']\n",
+    "import pytest\nxf = pytest.mark.xfail\n" + _H + "@xf\nclass TestX:\n    def test_a(self):\n        assert build_narration(1)['statement']\n",
+])
+def test_skipped_or_xfail_tests_get_no_credit_even_through_an_alias_or_a_class(src):
+    assert _fid(src)["v"] == ac.FAIL, src
+
+
+def test_an_unrelated_decorator_and_a_non_skip_alias_do_not_disable_a_test():
+    src = ("import pytest\nmk = pytest.mark.slow\n" + _H + "@mk\ndef test_a():\n    assert build_narration(1)['statement']\n")
+    assert _fid(src)["v"] == ac.PARTIAL

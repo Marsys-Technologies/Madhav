@@ -1147,8 +1147,17 @@ def _dotted(node, bound):
 _GENERIC_LEAVES = ("statement", "reason", "text", "summary", "description", "note")
 
 
-def _skips(node) -> bool:
-    return any(re.search(r"\bskip", ast.unparse(d), re.I) for d in getattr(node, "decorator_list", []))
+_SKIP_WORD = re.compile(r"\b(?:skip\w*|xfail)\b", re.I)
+
+
+def _skips(node, aliases=()) -> bool:
+    """A skip/xfail decorator (`pytest.mark.skip[if]`, `unittest.skip*`, `xfail`), directly or through an alias name
+    (`sk = pytest.mark.skip` ... `@sk`)."""
+    for d in getattr(node, "decorator_list", []):
+        u = ast.unparse(d)
+        if _SKIP_WORD.search(u) or any(re.search(rf"\b{re.escape(a)}\b", u) for a in aliases):
+            return True
+    return False
 
 
 def _import_module_arg(node, bound):
@@ -1219,9 +1228,11 @@ def _test_facts(path: Path, text: str):
             elif _import_module_arg(n.value, bound):
                 for t in tgt:
                     bound[t] = _import_module_arg(n.value, bound)
+    aliases = {t.id for n in ast.walk(tree) if isinstance(n, ast.Assign) and _SKIP_WORD.search(ast.unparse(n.value))
+               for t in n.targets if isinstance(t, ast.Name) and t.id != "pytestmark"}
     mod_skip = any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "pytestmark" for t in n.targets)
-                   and re.search(r"\bskip", ast.unparse(n.value), re.I) for n in tree.body)
-    cls_skip = {id(c): _skips(k) for k in ast.walk(tree) if isinstance(k, ast.ClassDef)
+                   and _SKIP_WORD.search(ast.unparse(n.value)) for n in tree.body)
+    cls_skip = {id(c): _skips(k, aliases) for k in ast.walk(tree) if isinstance(k, ast.ClassDef)
                 for c in k.body if isinstance(c, (ast.FunctionDef, ast.AsyncFunctionDef))}
 
     def leaves_of(root, acc):
@@ -1236,7 +1247,7 @@ def _test_facts(path: Path, text: str):
                 acc.add(n.arg)
     def facts_of(fn):
         calls, leaves, aleaves, asserts, called = set(), set(), set(), False, set()
-        skipped = _skips(fn) or cls_skip.get(id(fn), False)
+        skipped = _skips(fn, aliases) or cls_skip.get(id(fn), False)
         leaves_of(fn, leaves)
         for n in ast.walk(fn):
             if isinstance(n, ast.Call):
@@ -1246,7 +1257,7 @@ def _test_facts(path: Path, text: str):
                 if isinstance(n.func, ast.Name):
                     called.add(n.func.id)
                 nm = ast.unparse(n.func)
-                if nm in ("pytest.skip", "skip"):
+                if nm in ("pytest.skip", "skip", "pytest.xfail", "xfail"):
                     skipped = True
                 if isinstance(n.func, ast.Attribute) and (n.func.attr.startswith("assert") or n.func.attr == "raises"):
                     asserts = True
