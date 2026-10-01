@@ -66,7 +66,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from .arcs import ArcIndex, MonotoneArc, _refine_boundary
+from .arcs import ArcIndex, _refine_boundary
 from .contacts import (
     BOUNDARY_RELATIONS,
     ContactRoot,
@@ -124,15 +124,6 @@ class ResidenceSpan:
 
 # ── in-orb intervals ─────────────────────────────────────────────────────────
 
-def _segment_band_level(segment: MonotoneArc, level_wrapped: float) -> float:
-    """The unwrapped representative of `level_wrapped` nearest the segment's
-    longitude range — so a level of 0° tests as 360° inside a segment that
-    peaks at 359.9° (the wrap-tangency geometry)."""
-    mid = 0.5 * (segment.start_lon_unwrapped + segment.end_lon_unwrapped)
-    k = round((mid - float(level_wrapped)) / 360.0)
-    return float(level_wrapped) + 360.0 * k
-
-
 def in_orb_intervals(
     index: ArcIndex,
     level_wrapped_deg: float,
@@ -143,37 +134,49 @@ def in_orb_intervals(
     Solved per station-bounded monotone segment (the spline is only trusted
     inside its fitted span), so a turnaround INSIDE the orb closes the
     interval at the station rather than leaking through it (E8-2).
-    """
+
+    Every revolution band [level+360k−orb, level+360k+orb] intersecting a
+    segment is enumerated (the R3-class rule residence_spans already obeys):
+    a stationless body's segment spans the whole domain — many revolutions —
+    and choosing ONE unwrapped representative (the pre-fix midpoint choice)
+    silently dropped every other revolution's in-orb span: whole occurrences
+    of a Sun contact absent with no truncation mark (N3-class absence)."""
     if orb_deg <= 0.0:
         return []
     tol_deg = max(index.tolerance_arcsec / 3600.0, 1e-9)
+    level_w = float(level_wrapped_deg) % 360.0
     intervals: list[tuple[float, float]] = []
     for seg in index.segments:
-        level_u = _segment_band_level(seg, level_wrapped_deg)
-        lo = level_u - orb_deg
-        hi = level_u + orb_deg
         span_lo = min(seg.start_lon_unwrapped, seg.end_lon_unwrapped)
         span_hi = max(seg.start_lon_unwrapped, seg.end_lon_unwrapped)
-        if span_hi < lo - 1e-12 or span_lo > hi + 1e-12:
-            continue
-        # Entry/exit edges depend on direction: a RISING segment enters at the
-        # band's lower edge and leaves at the upper; a FALLING segment enters
-        # at the upper edge and leaves at the lower (a retrograde body crosses
-        # the orb top first). Missing the direction assigns the whole segment
-        # to the wrong side of the band.
-        a = seg.start_jd
-        b = seg.end_jd
-        if seg.direction == 1:
-            if span_lo < lo - 1e-12:
-                a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo, tol_deg)
-            if span_hi > hi + 1e-12:
-                b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi, tol_deg)
-        else:
-            if span_hi > hi + 1e-12:
-                a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi, tol_deg)
-            if span_lo < lo - 1e-12:
-                b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo, tol_deg)
-        intervals.append((a, b))
+        # All revolution indices k whose band [level+360k−orb, level+360k+orb]
+        # can meet the segment's unwrapped span.
+        k_min = math.ceil((span_lo - (level_w + orb_deg)) / 360.0 - 1e-9)
+        k_max = math.floor((span_hi - (level_w - orb_deg)) / 360.0 + 1e-9)
+        for k in range(k_min, k_max + 1):
+            level_u = level_w + 360.0 * k
+            lo = level_u - orb_deg
+            hi = level_u + orb_deg
+            if span_hi < lo - 1e-12 or span_lo > hi + 1e-12:
+                continue
+            # Entry/exit edges depend on direction: a RISING segment enters at
+            # the band's lower edge and leaves at the upper; a FALLING segment
+            # enters at the upper edge and leaves at the lower (a retrograde
+            # body crosses the orb top first). Missing the direction assigns
+            # the whole segment to the wrong side of the band.
+            a = seg.start_jd
+            b = seg.end_jd
+            if seg.direction == 1:
+                if span_lo < lo - 1e-12:
+                    a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo, tol_deg)
+                if span_hi > hi + 1e-12:
+                    b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi, tol_deg)
+            else:
+                if span_hi > hi + 1e-12:
+                    a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi, tol_deg)
+                if span_lo < lo - 1e-12:
+                    b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo, tol_deg)
+            intervals.append((a, b))
     intervals.sort()
     merged: list[tuple[float, float]] = []
     for a, b in intervals:
