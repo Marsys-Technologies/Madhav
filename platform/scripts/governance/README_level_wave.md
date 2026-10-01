@@ -9,8 +9,32 @@ and dispatches it through the existing runner path. It replaces the single-asset
 
 The largest run on record is 17 assets in one wave (L0, 2026-09-04). No multi-wave manifest and no 23-asset run has ever
 executed; the only 2-wave manifest in history failed the image-skew check. The runner supports N assets and waves
-structurally (read, not executed). Everything below is proven offline with fakes and fixtures only: no database, no
-gcloud, no production contact. Exec Suvarna runs it. Read the dry-run receipt before `--commit`.
+structurally (read, not executed). The logic is proven offline with fakes and fixtures. The SQL the script mirrors
+(candidate, closure, dependency, run-asset, E5.9 catalog) was exercised once against a real schema, the local rehearsal
+cluster, in dry-run form (see "Rehearsal exercise"). Nothing has touched production. Exec Suvarna runs it.
+
+## MANDATORY before the first --commit: the LIVE dry run
+
+The LIVE dry run (INSERT then ROLLBACK against the real database, run by the operator session) is MANDATORY before the
+first --commit. It prints the live wave list, the live manifest digest, the outside dependencies and the confirm token. Any
+wave list in this README is indicative only (it is computed from fixture rows), never a plan to copy.
+
+Indicative `bo_*` list (23 assets, 9 waves; from the registry seed and the 16 rehearsal-registry rows that carry a
+`depends_on`; the live registry decides): w0 bo_arudha bo_laksana bo_nakshatra_semantic bo_special_lagna bo_sudarshana
+bo_vargottama_dhana; w1 bo_bimba bo_grounding bo_samskara; w2 bo_karanajala; w3 bo_cgm_motifs bo_cgm_paths
+bo_laksana_rerank; w4 bo_sangati bo_yantra_mechanism; w5 bo_cdlm_summary bo_drishti bo_pratijna bo_upaya; w6 bo_anveshana;
+w7 bo_chart_gestalt bo_pramana_mapa; w8 bo_samvada.
+
+## Manual step before every campaign: the deployed job sha
+
+Compare the committed inventory's job sha with the deployed job image sha before every campaign. The inventory the digests
+come from is read at `--deployed-sha`; `--deployed-job-sha` is the LIVE deployed job image sha, read by the operator at
+launch (Exec's LC-1 gate). Use the image / `DEPLOY_SHA`, never a deploy run's `head_sha`: Trap 103, the deploy run's
+`head_sha` metadata can disagree with the real `DEPLOY_SHA`. The script resolves both to full commits and refuses
+(`JOB_SHA_MISMATCH`) unless they are the same commit, and prints the sha on every receipt. For wave-by-wave it re-reads
+`--job-sha-file` (a file the operator's gate keeps holding the live job sha; the script never calls gcloud) before every wave
+and refuses (`JOB_SHA_CHANGED`) if the deployed image changed mid-campaign. A `--deployed-digests-file` has no provenance to
+check, so it works for a dry run only.
 
 ## Use
 
@@ -18,50 +42,64 @@ gcloud, no production contact. Exec Suvarna runs it. Read the dry-run receipt be
 DATABASE_URL=... python3 platform/scripts/governance/suvarna_level_wave.py \
     --chart-id 482012f1-710e-4a25-994a-93821f5871aa \
     --assets bo_laksana,bo_bimba,...          # or @file, or repeated --assets; an explicit list, never a level
-    --deployed-sha <sha of the running brahma-build-pipeline-job image>   # or --deployed-digests-file
+    --deployed-sha <commit whose inventory = the deployed image's> --deployed-job-sha <live job image sha>
     [--mode single-run|wave-by-wave] [--with-footprint]                   # dry run (default)
 ```
 
 The dry run runs the whole transaction (advisory lock, active-run check, registry re-read, dependency check, both
-INSERTs) and then ROLLBACKs. It prints the waves, the manifest digest, a per-wave manifest digest, the external
-dependencies, a runtime bound, and the `--confirm` token. A real run adds `--commit --confirm <token> --mode ...`.
+INSERTs) and then ROLLBACKs. A real run adds `--commit --confirm <token> --mode ...` (and `--pause-dir` + `--job-sha-file`
+for wave-by-wave). The token is the existing `<SUBJECT>_FROZEN_REBUILD` convention with the subject bound to the manifest:
+`<N>ASSETS_<first 12 hex of the digest, upper>_FROZEN_REBUILD`; a registry change moves the digest and so the token.
 
-The token is the existing `<SUBJECT>_FROZEN_REBUILD` convention with the subject bound to the manifest:
-`<N>ASSETS_<first 12 hex of the digest, upper>_FROZEN_REBUILD`. A registry change moves the digest and so the token:
-a token from an old dry run cannot confirm a different manifest. `--commit` without `--mode`, or with a wrong token,
-refuses before anything is written.
+Output is JSON lines, flushed per event: `run_committed` (with the run_id, the moment the COMMIT succeeds),
+`run_dispatched`, `wave_dispatched`, `wave_ended`, `hook_*`, `dispatch_failed`, then a final `summary` / `refused` / `error`
+line that also lists every run committed so far. A database error or any exception ends in that JSON line, never a
+traceback, so the operator can always find a running run by its run_id.
+
+## Exit codes
+
+| code | meaning |
+|---|---|
+| 0 | dry run done, or every wave completed |
+| 1 | `DATABASE_URL` missing |
+| 2 | bad input, or an internal inconsistency (nothing dispatched) |
+| 3 | dispatch failed after the run was committed (it is terminalised, or the summary carries a chart-blocking warning) |
+| 4 | a gate refused (JSON `refusals`) |
+| 5 | wave-by-wave campaign stopped (refusal, operator stop, run or asset not complete) |
+| 6 | unexpected exception or database error (`committed_runs` lists every run committed so far) |
 
 ## What it builds
 
 * Manifest: byte-identical in shape to `dispatch_frozen_rebuild.build_manifest` (a one-asset input gives the same
-  manifest and digest, golden-tested). `scope='asset_set'`, `scope_target` = the plan joined by commas (the campaign
-  dispatcher's convention), `waves` = the derived levels, one `assets` entry per plan id in plan order with
-  `scope`, `depends_on` (registry order), `natural_key_partition`, `has_cowriters`, and `expected_code_digest` from
-  `platform/src/generated/nirmana-writer-digests.json`. The digest is the sha256 of the canonical JSON
-  (sorted keys, `(",",":")`, ASCII), the same as `runner._canonical_manifest_digest`.
-* Waves: wave(a) = 0 when a has no dependency inside the requested set, else 1 + the largest wave of its in-set
-  dependencies (the longest path). Dependencies outside the set never move an asset. A cycle is an error. Ids inside a
-  wave are sorted; the plan is the flattened waves.
+  manifest and digest, golden-tested). `scope='asset_set'`, `scope_target` = the plan joined by commas, `waves` = the
+  derived levels, one `assets` entry per plan id in plan order, `expected_code_digest` from
+  `platform/src/generated/nirmana-writer-digests.json`. Digest = sha256 of the canonical JSON, the runner's own.
+* Waves: wave(a) = 0 when a has no ordering dependency inside the requested set, else 1 + the largest wave of its in-set
+  ordering dependencies (the longest path). An in-set ancestor reached THROUGH an out-of-set asset also orders (A depends
+  on E outside the set, E depends on B inside it: A comes after B); the upstream closure is read from the registry for
+  that. A cycle, through outside assets too, is an error. Ids inside a wave are sorted.
+* Only `per_chart` assets: a global asset is refused (`NON_PER_CHART_SCOPE`).
 
-## Refusals (exit 4, JSON on stdout, nothing inserted)
+## Refusals (exit 4, JSON, nothing inserted)
 
 | code | when |
 |---|---|
-| `IMAGE_SKEW` / `CODE_DIGEST_UNAVAILABLE` | image skew: an asset's writer digest in the checkout differs from, or is absent in, the DEPLOYED image's inventory (the runner would refuse the whole run) |
-| `DEPLOYED_DIGESTS_UNAVAILABLE` | no `--deployed-sha` / `--deployed-digests-file`, or it can not be read. Never skipped |
-| `DEPENDENCY_NOT_READY` | a declared dependency OUTSIDE the set is not lit, or has no fresh receipt (service dependencies need only `service_ok`). Every asset's external dependencies are checked, not only wave 0 |
-| `REGISTRY_ROW_CHANGED` | an asset's registry-row digest at the insert differs from the one the manifest was built from (re-read in the insert transaction) |
-| `REGISTRY_ROW_INVALID` | missing, inactive, no writer, or a service asset |
+| `IMAGE_SKEW` / `CODE_DIGEST_UNAVAILABLE` | image skew: an asset's writer digest in the checkout differs from, or is absent in, the deployed image's inventory |
+| `DEPLOYED_DIGESTS_UNAVAILABLE` | no `--deployed-sha` / `--deployed-digests-file`, or it can not be read |
+| `DEPLOYED_JOB_SHA_REQUIRED` / `JOB_SHA_MISMATCH` / `JOB_SHA_UNRESOLVABLE` | the live job sha is missing, unresolvable, or not the commit the inventory comes from |
+| `JOB_SHA_FILE_UNREADABLE` / `JOB_SHA_CHANGED` | the job-sha file is unreadable, or names another commit than the pinned one (checked at start and before every wave) |
+| `DEPLOYED_BINDING_UNVERIFIED` | `--commit` with a digests file instead of `--deployed-sha` |
+| `DEPENDENCY_NOT_READY` | a declared dependency OUTSIDE the set is not lit, or has no fresh receipt (services need only `service_ok`). The outside dependencies of every wave are checked, in the dry run too and before wave 0 is inserted in wave-by-wave mode |
+| `REGISTRY_ROW_CHANGED` | a registry-row digest at the insert differs from the one the manifest was built from (re-read in the insert transaction) |
+| `REGISTRY_ROW_INVALID` / `NON_PER_CHART_SCOPE` | missing, inactive, no writer, service, or not per_chart |
 | `ACTIVE_RUN` | a planned/running/paused run exists for the chart |
-| `FAMILY_ASSET` | `ka_gochara*`, `gochara_*`, `kala_gochara_*` (always), or any member of `FAMILY_ASSETS.json` `family_set` |
+| `FAMILY_ASSET` | `ka_gochara*`, `ka_vedha_gochara*`, `gochara_*`, `bg_gochara_*`, `kala_gochara_*` (always), or any member of `FAMILY_ASSETS.json` `family_set` |
 | `SPLITS_FAMILY` | part of a declared family list without the rest |
-| `FAMILY_FILE_UNREADABLE` | the file at `--family-ref` (default `origin/main`) exists but is unreadable, not JSON, missing a key, or `family_set` is not the union of the six lists. Never fails open |
-| `FAMILY_FILE_MISSING` | the file is not on the ref and the run is a `--commit` (a dry run proceeds on name patterns only, and says so) |
+| `FAMILY_FILE_UNREADABLE` | the file at `--family-ref` exists but is unreadable or malformed. Never fails open |
+| `FAMILY_FILE_MISSING` | the file is not on the ref and the run is a `--commit` (stays refused until `FAMILY_ASSETS.json` is on origin/main) |
+| `FAMILY_REF_STALE` / `FAMILY_REF_UNVERIFIED` | the local `origin/main` is not the remote tip (`git ls-remote`, read-only); for a commit the ref must be verified fresh. The ref sha used is printed |
+| `STALE_HOOK_FILES` | the pause directory already holds `after-wave-*` files; nothing is deleted |
 | `CONFIRM_TOKEN_MISMATCH` | `--commit` without the exact token |
-
-The family file is read with `git show <ref>:00_ARCHITECTURE/control/FAMILY_ASSETS.json`, the committed content, never the
-working tree. It is lane 2's file and may not exist yet: while absent, only the name patterns protect a dry run, and
-a real dispatch is refused.
 
 ## Stop hook between waves
 
@@ -69,34 +107,38 @@ The runner executes every wave of one manifest as one run and has **no hook betw
 asset's `depends_on`, and wave boundaries are informational. The frozen runner is not touched, so the hook lives here:
 
 * `--mode single-run`: one manifest with all waves, one run. **No pause is possible.** A documented limitation.
-* `--mode wave-by-wave`: one run per wave. Each wave's manifest holds only that wave; the earlier waves are ordinary
-  out-of-set dependencies, so the dependency check (and the runner's own DEP-ASSERT) require them lit+fresh before the
-  next wave can be inserted. Between waves the dispatcher stops and waits for the operator (`--pause-dir`): it writes
-  `after-wave-<k>.pending.json` (what finished, the per-asset wall times, the next wave and its token) and continues only
-  when `after-wave-<k>.continue` holds exactly `CONTINUE_WAVE_<k+1>_<12 hex>`; `after-wave-<k>.stop`, a wrong token or
-  the hook timeout stop. A run that does not end `completed`, or an asset not `complete`/`skipped`, stops before the pause.
-  `--commit --confirm` takes the full-plan token once; each wave's insert then uses its own computed token.
-
-A wave-by-wave dry run exercises wave 0 only: later waves' dependencies are earlier waves, which are not built yet.
+* `--mode wave-by-wave`: one run per wave, each manifest holding only that wave (earlier waves are ordinary outside
+  dependencies, required lit+fresh by the dependency check and the runner's DEP-ASSERT). After each wave the dispatcher
+  writes `after-wave-<k>.pending.json` (what finished, the wall times, the next wave) and continues only when
+  `after-wave-<k>.continue` holds exactly the token in that file. The token is bound to the finished run: its run_id and
+  its assets' end times, which exist only once the wave has ended, so no token in the dry-run output, the manifest or a
+  file written beforehand can release a wave. A `.continue` or `.stop` that already exists when the wave is reported
+  finished, or any `after-wave-*` file in the pause directory at launch, is REFUSED (never deleted: remove it and
+  relaunch). `.stop`, a wrong token or the timeout stop. A run that does not end `completed`, or an asset not `complete`,
+  stops the campaign before the pause. `skipped` is not success unless the asset is named in `--declared-skips`; skipped
+  assets are always reported.
 
 ## Wall-time report
 
 `asset_wall_time_report` / `read_wall_time_report(connect, run_id, waves)`: per-asset `wall_seconds` from
 `build_run_assets.started_at/ended_at`, the asset's `asset_throughput` state, per-wave and whole-run spans. A missing or
-inverted timestamp is `unmeasured` (None), never 0. In wave-by-wave mode it is read after every wave and shown in the
-pause file. Runtime before a run: `runtime_estimate` gives upper bounds from `writer_timeout_seconds` (parallel inside a
-wave, serial total) and `measured_seconds` only when every asset has a registry `estimated_seconds` (none do today).
+inverted timestamp is `unmeasured` (None), never 0. Runtime before a run: `runtime_estimate` gives upper bounds from
+`writer_timeout_seconds` and `measured_seconds` only when every asset has a registry `estimated_seconds` (none do today).
+
+## Rehearsal exercise (real schema, local only)
+
+A dry run of a four-asset `bo_*` subset against the rehearsal cluster (127.0.0.1:55432/rehearsal, through the E5.6 guard):
+the candidate, closure, dependency, advisory-lock, active-run SELECTs and both INSERTs executed, the E5.9 catalog SELECTs
+read 192 FK edges, and the transaction rolled back (0 charts, 0 build_runs left). The rehearsal cluster has no `charts`
+row, so the harness inserted one inside the rolled-back transaction. Output and harness:
+`scratchpad/e5_3/rehearsal_harness.py`, `rehearsal_harness_output.txt`.
 
 ## Offline proof and its limits
 
-`__tests__/test_e5_3_level_wave.py`: fake connection that records every statement (INSERT then ROLLBACK, COMMIT only with the
-token), fake git, fake dispatch and hook, mutation-checked refusals, golden digest equality with the existing dispatcher, the
-manifest accepted by the real `runner.validate_frozen_run_manifest` (read-only import), and the 23 `bo_*` manifest.
-The 23-asset dependency rows are indicative: the list is the registry seed / digest inventory, `depends_on` comes from the
-seed overridden by the 16 rehearsal-registry rows that carry one (the rehearsal registry has 93 of ~128 rows). The live
-registry decides; the dry run recomputes it.
+`__tests__/test_e5_3_level_wave.py`: fake connection that records every statement, fake git, fake dispatch and hook,
+mutation-checked refusals, golden digest equality with the existing dispatcher, the manifest accepted by the real
+`runner.validate_frozen_run_manifest` (read-only import), the 23 `bo_*` manifest from fixture rows.
 
-NOT verified without production: that one run of 23 assets / 9 waves completes; the wall time of any L2 writer at
-scale; the deployed image's real digests; the live `asset_freshness` state of every dependency; the SQL against the real
-schema (the candidate, dependency and run-asset queries mirror `dispatch_frozen_rebuild.py` and `asset_runner.deps_unsatisfied`
-by reading; they were not executed); the E5.9 footprint SQL (also unexecuted).
+NOT verified without production: that one run of 23 assets / 9 waves completes; the wall time of any L2 writer at scale;
+the deployed image's real digests; the live `asset_freshness` state of every dependency; the live `depends_on` of the
+seven `bo_*` assets the rehearsal registry lacks; Cloud Run dispatch (`gcloud`) itself.

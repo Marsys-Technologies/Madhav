@@ -86,14 +86,21 @@ class FakeConn:
     def close(self):
         self.closed = True
         self.db.log.append(("close",))
+        if self.db.close_raises_after_commit and ("commit",) in self.db.log:
+            raise RuntimeError("fake close failure after commit")
 
 
 class FakeDB:
     """candidates: a list of row-lists, one per candidate SELECT in order (the last repeats). deps: {asset: (state,
     freshness, kind)} for the dependency query. runs: {run_id: state or [states]} for the terminal poll."""
 
-    def __init__(self, candidates, deps=None, active=(), run_states=None, run_assets=None, fk_rows=None, table_rows=None):
+    def __init__(self, candidates, deps=None, active=(), run_states=None, run_assets=None, fk_rows=None, table_rows=None,
+                 closure=None, fail_on=None, close_raises_after_commit=False):
         self.log, self.cand, self.deps, self.active = [], list(candidates), deps or {}, list(active)
+        self.closure = closure or {}
+        self.fail_on = dict(fail_on or {})          # {sql substring: nth occurrence (1-based) that raises}
+        self.fail_seen = {}
+        self.close_raises_after_commit = close_raises_after_commit
         self.cand_calls = 0
         self.run_states = run_states or {}
         self.run_assets = run_assets or {}
@@ -105,6 +112,13 @@ class FakeDB:
         return FakeConn(self)
 
     def respond(self, sql, params):
+        for needle, nth in self.fail_on.items():
+            if needle in sql:
+                self.fail_seen[needle] = self.fail_seen.get(needle, 0) + 1
+                if self.fail_seen[needle] == nth:
+                    raise RuntimeError(f"fake database failure on {needle!r}")
+        if sql.startswith("SELECT ar.asset_id, COALESCE(ar.depends_on"):
+            return [{"asset_id": d, "depends_on": self.closure[d]} for d in params[0] if d in self.closure]
         if "FROM asset_registry ar WHERE ar.asset_id = ANY" in sql:
             i = min(self.cand_calls, len(self.cand) - 1)
             self.cand_calls += 1
@@ -153,16 +167,23 @@ class FakeDB:
 class FakeGit:
     """Answers the four git calls load_family_info / load_deployed_writer_digests make."""
 
-    def __init__(self, *, family_text=None, family_listed=True, ref_ok=True, deployed=None, show_fails=False):
+    def __init__(self, *, family_text=None, family_listed=True, ref_ok=True, deployed=None, show_fails=False,
+                 rev_map=None, remote_sha=None, remote_fails=False):
         self.family_text, self.family_listed, self.ref_ok = family_text, family_listed, ref_ok
         self.deployed, self.show_fails = deployed, show_fails
+        self.rev_map, self.remote_sha, self.remote_fails = dict(rev_map or {}), remote_sha, remote_fails
         self.calls = []
 
     def __call__(self, repo, args):
         self.calls.append(list(args))
         cp = lambda rc=0, out="", err="": subprocess.CompletedProcess(args, rc, out, err)  # noqa: E731
         if args[0] == "rev-parse":
-            return cp(0 if self.ref_ok else 128, "abc\n", "" if self.ref_ok else "bad ref")
+            ref = args[2][: -len("^{commit}")] if args[2].endswith("^{commit}") else args[2]
+            return cp(0 if self.ref_ok else 128, (self.rev_map.get(ref) or sha_of(ref)) + "\n", "" if self.ref_ok else "bad ref")
+        if args[0] == "ls-remote":
+            if self.remote_fails:
+                return cp(128, "", "could not read from remote")
+            return cp(0, f"{self.remote_sha or sha_of('origin/main')}\t{args[2]}\n")
         if args[0] == "ls-tree":
             return cp(0, slw.FAMILY_FILE_REL + "\n" if self.family_listed else "")
         if args[0] == "show":
@@ -172,6 +193,11 @@ class FakeGit:
             if spec.endswith(slw.WRITER_DIGESTS_REL):
                 return cp(0, json.dumps({"writers": self.deployed})) if self.deployed is not None else cp(128, "", "no such sha")
         raise AssertionError(f"unexpected git call {args}")
+
+
+def sha_of(ref: str) -> str:
+    """A stable fake 40-hex commit for a ref spelling."""
+    return hashlib.sha1(ref.encode()).hexdigest()
 
 
 def family_doc(**lists):
@@ -188,17 +214,38 @@ def make_repo(tmp_path, digests):
     return str(tmp_path)
 
 
-def args_for(repo, assets, *extra, mode=None, deployed_sha="deadbeef"):
-    argv = ["--chart-id", CHART, "--assets", assets, "--repo", repo, "--deployed-sha", deployed_sha]
+def args_for(repo, assets, *extra, mode=None, deployed_sha="deadbeef", job_sha="deadbeef"):
+    argv = ["--chart-id", CHART, "--assets", assets, "--repo", repo, "--deployed-sha", deployed_sha,
+            "--deployed-job-sha", job_sha]
     if mode:
         argv += ["--mode", mode]
     return slw.build_parser().parse_args(argv + list(extra))
 
 
+class FlushStream(io.StringIO):
+    def __init__(self):
+        super().__init__()
+        self.flushes = 0
+
+    def flush(self):
+        self.flushes += 1
+        super().flush()
+
+
+def lines(out):
+    return [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+
+
 def run(args, db, git, **kw):
-    out = io.StringIO()
+    out = FlushStream()
     code = slw.run_cli(args, connect=db.connect, git=git, out=out, **kw)
-    return code, json.loads(out.getvalue())
+    return code, lines(out)[-1]
+
+
+def run_all(args, db, git, **kw):
+    out = FlushStream()
+    code = slw.run_cli(args, connect=db.connect, git=git, out=out, **kw)
+    return code, lines(out), out
 
 
 SMALL = [row("a_one", ["ext_one"]), row("a_two", ["a_one"]), row("a_three", ["a_one", "ext_two"])]
@@ -373,7 +420,7 @@ def test_unreadable_deployed_digest_source_refuses(env):
 
 def test_no_deployed_digest_source_at_all_refuses(env):
     repo, git = env
-    a = slw.build_parser().parse_args(["--chart-id", CHART, "--assets", "a_one", "--repo", repo])
+    a = slw.build_parser().parse_args(["--chart-id", CHART, "--assets", "a_one", "--repo", repo, "--deployed-job-sha", "deadbeef"])
     code, out = run(a, FakeDB([SMALL], READY), git)
     assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "DEPLOYED_DIGESTS_UNAVAILABLE"
 
@@ -382,7 +429,8 @@ def test_deployed_digests_file_is_an_accepted_source(env, tmp_path):
     repo, git = env
     f = tmp_path / "deployed.json"
     f.write_text(json.dumps({"writers": SMALL_DIGESTS}))
-    a = slw.build_parser().parse_args(["--chart-id", CHART, "--assets", "a_one", "--repo", repo, "--deployed-digests-file", str(f)])
+    a = slw.build_parser().parse_args(["--chart-id", CHART, "--assets", "a_one", "--repo", repo, "--deployed-digests-file", str(f),
+                                         "--deployed-job-sha", "deadbeef"])
     code, out = run(a, FakeDB([SMALL], READY), git)
     assert code == 0 and out["committed"] is False
 
@@ -473,7 +521,7 @@ def test_the_re_read_happens_after_the_lock_and_before_the_insert(env):
     run(args_for(repo, "a_one,a_two,a_three"), db, git)
     sql = [e[1] for e in db.statements()]
     i_lock = next(i for i, s in enumerate(sql) if "pg_advisory_xact_lock" in s)
-    reads = [i for i, s in enumerate(sql) if "FROM asset_registry ar WHERE ar.asset_id = ANY" in s]
+    reads = [i for i, s in enumerate(sql) if s.startswith("SELECT ar.asset_id, ar.layer") and "ANY(%s)" in s]
     i_insert = next(i for i, s in enumerate(sql) if s.startswith("INSERT INTO build_runs"))
     assert len(reads) == 2 and reads[0] < i_lock < reads[1] < i_insert
 
@@ -542,7 +590,7 @@ def test_a_whole_family_is_still_refused_as_family_assets(tmp_path):
     (dict(family_text=json.dumps({**json.loads(family_doc()), "family_set": ["zzz"]})), "union"),
     (dict(family_text=json.dumps({**json.loads(family_doc()), "family_gochara": "oops"})), "not a list"),
     (dict(family_text=family_doc(), show_fails=True), "git show failed"),
-    (dict(family_text=family_doc(), ref_ok=False), "not resolvable"),
+    (dict(family_text=family_doc(), ref_ok=False), "does not resolve"),
 ])
 def test_an_unreadable_or_malformed_family_file_refuses_and_never_fails_open(tmp_path, git_kwargs, why):
     repo = make_repo(tmp_path, SMALL_DIGESTS)
@@ -716,12 +764,13 @@ class Clock:
         self.t += s
 
 
-NEXT = {"wave": 1, "assets": ["a_two"], "manifest_digest": "c" * 64}
+NEXT = {"wave": 1, "assets": ["a_two"], "manifest_digest": "c" * 64, "continue_token": "CONTINUE_WAVE_1_ABCDEF012345",
+        "after_run_id": "run-0"}
 
 
 def test_stop_hook_writes_the_pending_file_and_waits_for_the_exact_token(tmp_path):
     clock = Clock()
-    token = slw.continue_token(1, "c" * 64)
+    token = NEXT["continue_token"]
 
     def sleeper(s):                        # the operator writes the token while the hook is waiting
         clock.sleep(s)
@@ -735,14 +784,20 @@ def test_stop_hook_writes_the_pending_file_and_waits_for_the_exact_token(tmp_pat
 @pytest.mark.parametrize("answer", ["WRONG", "", "CONTINUE_WAVE_1_000000000000"])
 def test_a_wrong_token_stops(tmp_path, answer):
     clock = Clock()
-    (tmp_path / "after-wave-0.continue").write_text(answer)
-    assert slw.file_stop_hook(tmp_path, sleep=clock.sleep, monotonic=clock.mono)(0, {}, NEXT) is False
+
+    def sleeper(s):                                    # written AFTER the pending file exists: not stale
+        clock.sleep(s)
+        (tmp_path / "after-wave-0.continue").write_text(answer)
+    assert slw.file_stop_hook(tmp_path, sleep=sleeper, monotonic=clock.mono)(0, {}, NEXT) is False
 
 
 def test_a_stop_file_stops_and_so_does_the_timeout(tmp_path):
     clock = Clock()
-    (tmp_path / "after-wave-0.stop").write_text("")
-    assert slw.file_stop_hook(tmp_path, sleep=clock.sleep, monotonic=clock.mono)(0, {}, NEXT) is False
+
+    def sleeper(s):
+        clock.sleep(s)
+        (tmp_path / "after-wave-0.stop").write_text("")
+    assert slw.file_stop_hook(tmp_path, sleep=sleeper, monotonic=clock.mono)(0, {}, NEXT) is False
     clock2 = Clock()
     hook = slw.file_stop_hook(tmp_path / "other", poll_seconds=10, timeout_seconds=35, sleep=clock2.sleep, monotonic=clock2.mono)
     assert hook(0, {}, NEXT) is False and clock2.t >= 35          # nothing continues by default
@@ -786,7 +841,7 @@ def test_wave_by_wave_runs_all_waves_when_the_operator_continues_each_time():
     seen = []
     res = slw.run_wave_by_wave(plan, dispatch_wave=lambda i: seen.append(i) or {"run_id": f"r{i}"},
                                wait_terminal=lambda r: {"state": "completed"},
-                               wave_report=lambda r: ok_report(r, state="skipped"),
+                               wave_report=lambda r: ok_report(r),
                                hook=lambda *a: True)
     assert res["status"] == "ALL_WAVES_COMPLETED" and seen == [0, 1, 2]
 
@@ -835,7 +890,7 @@ def test_cli_wave_by_wave_dispatches_one_run_per_wave_with_its_own_manifest(env,
     db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")})
     sent = []
     code, out = run(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"],
-                             "--pause-dir", str(tmp_path / "pause"), mode="wave-by-wave"), db, git,
+                             "--pause-dir", str(tmp_path / "pause"), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git,
                     dispatch=lambda rid: sent.append(rid) or "exec",
                     hook=lambda done, summary, nxt: True,
                     sleep=lambda s: None)
@@ -849,12 +904,19 @@ def test_cli_wave_by_wave_dispatches_one_run_per_wave_with_its_own_manifest(env,
     assert {a["asset_id"]: a["depends_on"] for a in second["assets"]}["a_two"] == ["a_one"]
 
 
-def test_cli_wave_by_wave_needs_a_confirm_for_the_whole_plan_and_a_pause_dir(env):
+def jobfile(tmp_path, text="deadbeef", name="job_sha.txt"):
+    f = tmp_path / name
+    f.write_text(text + "\n")
+    return str(f)
+
+
+def test_cli_wave_by_wave_needs_a_confirm_for_the_whole_plan_and_a_pause_dir(env, tmp_path):
     repo, git = env
     code, out = run(args_for(repo, "a_one,a_two", "--commit", "--confirm", "x", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
     assert code == 2 and "--pause-dir" in out["error"]
     db = FakeDB([SMALL], READY)
-    code, out = run(args_for(repo, "a_one,a_two", "--commit", "--confirm", "x", "--pause-dir", "/tmp/x", mode="wave-by-wave"), db, git,
+    code, out = run(args_for(repo, "a_one,a_two", "--commit", "--confirm", "x", "--pause-dir", str(tmp_path / "px"),
+                             "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git,
                     dispatch=lambda r: pytest.fail("dispatched"))
     assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "CONFIRM_TOKEN_MISMATCH"
     assert "commit" not in db.kinds()
@@ -1044,3 +1106,475 @@ def test_the_module_never_reads_credential_files_or_runs_git_writes():
         assert needle not in src, needle
     assert not _re.search(r"\.env\b|dotenv|open\([^)]*secret", src)
     assert 'os.environ.get("DATABASE_URL")' in src
+
+
+# ═════════════════════════ security review follow-up (H1, M1-M4, L2-L7, strategist additions) ═════════════════════════
+
+def _full_wbw(env, tmp_path, *, db=None, hook=None, extra=(), dispatch=None, sleep=lambda s: None, job_file=None):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two,a_three", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
+    db = db or FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")})
+    argv = ["--commit", "--confirm", dry["confirm_token_single_run"], "--pause-dir", str(tmp_path / "pause"),
+            "--job-sha-file", job_file or jobfile(tmp_path), *extra]
+    code, lines_, out = run_all(args_for(repo, "a_one,a_two,a_three", *argv, mode="wave-by-wave"), db, git,
+                                dispatch=dispatch or (lambda rid: "exec/" + rid[:8]), hook=hook, sleep=sleep)
+    return code, lines_, out, db
+
+
+# ── H1: the stop hook can not be released without the operator ──
+
+def test_continue_token_is_bound_to_the_run_and_to_end_times_that_exist_only_after_the_wave():
+    rep = {"assets": [{"asset_id": "x", "ended_at": "2026-10-03T06:00:05+00:00"}]}
+    tok = slw.continue_token(1, "run-A", rep)
+    assert tok == slw.continue_token(1, "run-A", rep) and tok.startswith("CONTINUE_WAVE_1_")
+    assert tok != slw.continue_token(1, "run-B", rep)
+    assert tok != slw.continue_token(1, "run-A", {"assets": [{"asset_id": "x", "ended_at": "2026-10-03T06:00:06+00:00"}]})
+    assert tok != slw.continue_token(2, "run-A", rep)
+
+
+def test_the_token_is_not_derivable_from_the_manifest_or_the_dry_run_output(tmp_path):
+    plan, _ = _wbw_plan()
+    seen = []
+
+    def hook(done, summary, info):
+        seen.append(info)
+        return False
+    slw.run_wave_by_wave(plan, dispatch_wave=lambda i: {"run_id": f"run{i}"}, wait_terminal=lambda r: {"state": "completed"},
+                         wave_report=lambda r: ok_report(r), hook=hook)
+    old_style = "CONTINUE_WAVE_1_" + plan["per_wave"][1]["manifest_digest"][:12].upper()
+    assert seen[0]["continue_token"] != old_style and seen[0]["after_run_id"] == "run0"
+
+
+@pytest.mark.parametrize("name", ["after-wave-0.continue", "after-wave-0.stop"])
+def test_hook_refuses_a_preexisting_continue_or_stop_file_and_deletes_nothing(tmp_path, name):
+    f = tmp_path / name
+    f.write_text("CONTINUE_WAVE_1_ABCDEF012345")
+    clock = Clock()
+    with pytest.raises(slw.LevelWaveRefusal) as exc:
+        slw.file_stop_hook(tmp_path, sleep=clock.sleep, monotonic=clock.mono)(0, {}, NEXT)
+    assert exc.value.refusals[0]["code"] == "STALE_HOOK_FILES" and name in exc.value.refusals[0]["files"]
+    assert f.exists() and not (tmp_path / "after-wave-0.pending.json").exists()
+
+
+def test_a_stale_file_for_a_later_wave_is_refused_when_that_wave_finishes_and_stops_the_campaign(tmp_path):
+    plan, _ = _wbw_plan()
+    (tmp_path / "after-wave-1.stop").write_text("")            # written in advance for the second pause
+    clock = Clock()
+
+    def sleeper(s):                                              # the operator answers the first pause correctly
+        clock.sleep(s)
+        pending = json.loads((tmp_path / "after-wave-0.pending.json").read_text())
+        (tmp_path / "after-wave-0.continue").write_text(pending["continue_token"])
+    res = slw.run_wave_by_wave(plan, dispatch_wave=lambda i: {"run_id": f"run{i}"}, wait_terminal=lambda r: {"state": "completed"},
+                               wave_report=lambda r: ok_report(r),
+                               hook=slw.file_stop_hook(tmp_path, sleep=sleeper, monotonic=clock.mono))
+    assert res["status"] == "STOPPED_HOOK_REFUSED" and res["waves"][1]["refusals"][0]["code"] == "STALE_HOOK_FILES"
+
+
+def test_a_pause_dir_holding_hook_files_is_refused_at_campaign_start(env, tmp_path):
+    repo, git = env
+    pd = tmp_path / "pause"
+    pd.mkdir()
+    (pd / "after-wave-0.continue").write_text("CONTINUE_WAVE_1_AAAAAAAAAAAA")
+    (pd / "after-wave-3.pending.json").write_text("{}")
+    (pd / "after-wave-5.stop").write_text("")
+    _, dry = run(args_for(repo, "a_one,a_two,a_three", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"],
+                             "--pause-dir", str(pd), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "STALE_HOOK_FILES"
+    assert out["refusals"][0]["files"] == ["after-wave-0.continue", "after-wave-3.pending.json", "after-wave-5.stop"]
+    assert db.log == [] and (pd / "after-wave-0.continue").exists()              # nothing touched, nothing deleted
+
+
+def test_a_token_pre_written_from_the_dry_run_output_never_releases_a_wave(env, tmp_path):
+    """The operator-less path: take everything the dry run printed, write it as the .continue token."""
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two,a_three", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
+    guesses = [dry["confirm_token_single_run"], dry["per_wave"][1]["confirm_token"],
+               "CONTINUE_WAVE_1_" + dry["per_wave"][1]["manifest_digest"][:12].upper(),
+               "CONTINUE_WAVE_1_" + dry["manifest_digest"][:12].upper()]
+    for n, guess in enumerate(guesses):
+        pd = tmp_path / f"pause{n}"
+        clock = Clock()
+
+        def sleeper(s, guess=guess, pd=pd):
+            clock.sleep(s)
+            (pd / "after-wave-0.continue").write_text(guess)
+        db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")})
+        sent = []
+        code, out = run(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"],
+                                 "--pause-dir", str(pd), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git,
+                        dispatch=lambda rid: sent.append(rid) or "x", sleep=sleeper, monotonic=clock.mono)
+        assert code == slw.EXIT_CAMPAIGN_STOPPED and out["wave_by_wave"]["status"] == "STOPPED_BY_OPERATOR"
+        assert len(sent) == 1                                        # wave 1 was never dispatched
+
+
+def test_the_exact_token_from_the_pending_file_after_the_wave_does_release_it(env, tmp_path):
+    pd = tmp_path / "pause"
+    clock = Clock()
+
+    def sleeper(s):
+        clock.sleep(s)
+        pending = json.loads((pd / "after-wave-0.pending.json").read_text())
+        (pd / "after-wave-0.continue").write_text(pending["continue_token"] + "\n")
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two,a_three", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
+    db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")})
+    code, out = run(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"],
+                             "--pause-dir", str(pd), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git,
+                    dispatch=lambda rid: "x", sleep=sleeper, monotonic=clock.mono)
+    assert code == 0 and out["wave_by_wave"]["status"] == "ALL_WAVES_COMPLETED"
+    assert json.loads((pd / "after-wave-0.pending.json").read_text())["next"]["after_run_id"] == out["committed_runs"][0]["run_id"]
+
+
+# ── M1: every wave's outside dependencies, before anything is inserted ──
+
+def test_wave_by_wave_dry_run_checks_the_whole_plans_outside_dependencies(env):
+    repo, git = env
+    stale_later = {"ext_one": ("lit", "fresh", "data"), "ext_two": ("lit", "stale", "data")}   # ext_two: a_three, wave 1
+    db = FakeDB([SMALL], stale_later)
+    code, out = run(args_for(repo, "a_one,a_two,a_three", mode="wave-by-wave"), db, git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["dependency"] == "ext_two"
+    assert out["refusals"][0]["needed_by"] == ["a_three"]
+    assert db.inserts("build_runs") == [] and "commit" not in db.kinds()
+
+
+def test_wave_by_wave_commit_refuses_before_wave_zero_is_inserted(env, tmp_path):
+    stale_later = {"ext_one": ("lit", "fresh", "data"), "ext_two": ("error", "fresh", "data"), "a_one": ("lit", "fresh", "data")}
+    code, lines_, out, db = _full_wbw(env, tmp_path, db=FakeDB([SMALL], stale_later))
+    assert code == slw.REFUSAL_EXIT_CODE and lines_[-1]["refusals"][0]["dependency"] == "ext_two"
+    assert db.inserts("build_runs") == [] and "commit" not in db.kinds() and lines_[-1]["committed_runs"] == []
+
+
+def test_the_readme_no_longer_says_later_waves_are_checked_only_at_their_own_dispatch():
+    flat = " ".join((HERE.parent / "README_level_wave.md").read_text().split())
+    assert "later waves' dependencies are earlier waves, which are not built yet" not in flat
+    assert "outside dependencies of every wave" in flat
+
+
+# ── M2: incremental output, and no escaped traceback ──
+
+def test_every_commit_dispatch_and_wave_end_is_printed_and_flushed_before_the_summary(env, tmp_path):
+    code, lines_, out, db = _full_wbw(env, tmp_path, hook=lambda *a: True)
+    events = [l["event"] for l in lines_]
+    assert code == 0 and events[-1] == "summary"
+    assert events.count("run_committed") == 2 and events.count("run_dispatched") == 2
+    assert events.count("wave_dispatched") == 2 and events.count("wave_ended") == 2 and events.count("hook_continue") == 1
+    assert events.index("run_committed") < events.index("run_dispatched") < events.index("wave_ended") < events.index("hook_continue")
+    first = next(l for l in lines_ if l["event"] == "run_committed")
+    assert first["run_id"] and first["deployed_job_sha"] == sha_of("deadbeef") and first["wave"] == 0
+    assert out.flushes >= len(lines_)
+
+
+def test_a_database_error_mid_campaign_still_prints_a_summary_with_the_committed_runs(env, tmp_path):
+    db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")}, fail_on={"pg_advisory_xact_lock": 2})
+    code, lines_, out, db = _full_wbw(env, tmp_path, db=db, hook=lambda *a: True)
+    summ = lines_[-1]
+    assert code == slw.EXIT_UNEXPECTED and summ["event"] == "summary"
+    assert summ["wave_by_wave"]["status"] == "STOPPED_ERROR" and "fake database failure" in summ["wave_by_wave"]["waves"][1]["error"]
+    assert [r["wave"] for r in summ["committed_runs"]] == [0] and summ["committed_runs"][0]["run_id"]
+    assert any(l["event"] == "run_committed" for l in lines_[:-1])       # printed before the failure, not reconstructed after
+
+
+def test_an_error_while_waiting_names_the_run_that_may_still_be_running(env, tmp_path):
+    db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")}, fail_on={"SELECT state, last_error FROM build_runs WHERE id": 1})
+    code, lines_, _, _ = _full_wbw(env, tmp_path, db=db, hook=lambda *a: True)
+    w0 = lines_[-1]["wave_by_wave"]["waves"][0]
+    assert code == slw.EXIT_UNEXPECTED and w0["status"] == "ERROR" and w0["run_id"] in w0["note"]
+
+
+def test_an_error_reading_the_wall_time_report_stops_with_the_run_id(env, tmp_path):
+    db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")}, fail_on={"FROM build_run_assets bra": 1})
+    code, lines_, _, _ = _full_wbw(env, tmp_path, db=db, hook=lambda *a: True)
+    w0 = lines_[-1]["wave_by_wave"]["waves"][0]
+    assert code == slw.EXIT_UNEXPECTED and w0["status"] == "ERROR" and w0["run_id"]
+
+
+def test_an_unexpected_error_before_any_commit_is_json_not_a_traceback(env):
+    repo, git = env
+    db = FakeDB([SMALL], READY, fail_on={"SELECT ar.asset_id, ar.layer": 1})
+    code, out = run(args_for(repo, "a_one"), db, git)
+    assert code == slw.EXIT_UNEXPECTED and out["unexpected"] is True and out["committed_runs"] == []
+    assert out["warning"] == "no run was committed" and "fake database failure" in out["error"]
+
+
+def test_a_failure_right_after_the_commit_still_reports_the_run(env):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two,a_three"), FakeDB([SMALL], READY), git)
+    db = FakeDB([SMALL], READY, close_raises_after_commit=True)
+    code, lines_, _ = run_all(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"],
+                                       mode="single-run"), db, git, dispatch=lambda r: "x")
+    assert code == slw.EXIT_UNEXPECTED and lines_[-1]["unexpected"] is True
+    assert len(lines_[-1]["committed_runs"]) == 1 and lines_[-1]["committed_runs"][0]["run_id"]
+    assert "find them by run_id" in lines_[-1]["warning"]
+
+
+# ── M3: the deployed job sha ──
+
+def test_a_job_sha_that_is_not_the_inventorys_commit_is_refused_before_any_database_contact(env):
+    repo, git = env
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one", job_sha="cafebabe"), db, git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "JOB_SHA_MISMATCH"
+    assert out["refusals"][0]["inventory_sha"] == sha_of("deadbeef") and out["refusals"][0]["deployed_job_sha"] == sha_of("cafebabe")
+    assert db.log == []
+
+
+def test_the_deployed_job_sha_is_required_everywhere(env):
+    repo, git = env
+    a = slw.build_parser().parse_args(["--chart-id", CHART, "--assets", "a_one", "--repo", repo, "--deployed-sha", "deadbeef"])
+    code, out = run(a, FakeDB([SMALL], READY), git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "DEPLOYED_JOB_SHA_REQUIRED"
+
+
+def test_the_same_commit_under_a_different_spelling_is_accepted(tmp_path):
+    repo = make_repo(tmp_path, SMALL_DIGESTS)
+    full = "a" * 40
+    git = FakeGit(family_text=family_doc(), deployed=SMALL_DIGESTS, rev_map={"deadbeef": full, "deadbeef0123456789": full})
+    code, out = run(args_for(repo, "a_one", job_sha="deadbeef0123456789"), FakeDB([SMALL], READY), git)
+    assert code == 0 and out["deployed_job_sha"] == full and out["inventory_sha"] == full and out["job_sha_binding"] == "verified"
+
+
+def test_an_unresolvable_job_sha_is_refused(env):
+    repo, git = env
+    git2 = FakeGit(family_text=family_doc(), deployed=SMALL_DIGESTS, ref_ok=False)
+    code, out = run(args_for(repo, "a_one"), FakeDB([SMALL], READY), git2)
+    assert code == slw.REFUSAL_EXIT_CODE
+
+
+def test_the_deployed_job_sha_is_printed_on_every_receipt(env, tmp_path):
+    code, lines_, _, _ = _full_wbw(env, tmp_path, hook=lambda *a: True)
+    sha = sha_of("deadbeef")
+    summ = lines_[-1]
+    assert summ["deployed_job_sha"] == sha and summ["inventory_sha"] == sha
+    assert all(r["deployed_job_sha"] == sha for r in summ["committed_runs"])
+    assert all(l["deployed_job_sha"] == sha for l in lines_ if l["event"] in ("run_committed", "run_dispatched"))
+    repo, git = env
+    _, single = run(args_for(repo, "a_one,a_two"), FakeDB([SMALL], READY), git)
+    assert single["insert"]["deployed_job_sha"] == sha
+
+
+def test_the_job_sha_file_is_re_read_before_every_wave_and_a_redeploy_stops_the_campaign(env, tmp_path):
+    jf = jobfile(tmp_path)
+
+    def redeploy(done, summary, info):                   # the live job image changes while the operator is paused
+        pathlib.Path(jf).write_text("cafebabe\n")
+        return True
+    code, lines_, _, db = _full_wbw(env, tmp_path, hook=redeploy, job_file=jf)
+    summ = lines_[-1]
+    assert code == slw.EXIT_CAMPAIGN_STOPPED and summ["wave_by_wave"]["status"] == "STOPPED_REFUSED"
+    assert summ["wave_by_wave"]["waves"][1]["refusals"][0]["code"] == "JOB_SHA_CHANGED"
+    assert len(db.inserts("build_runs")) == 1 and len(summ["committed_runs"]) == 1
+
+
+def test_a_missing_or_empty_job_sha_file_refuses(env, tmp_path):
+    repo, git = env
+    for path in (str(tmp_path / "nope.txt"), jobfile(tmp_path, text="", name="empty.txt")):
+        a = args_for(repo, "a_one", "--job-sha-file", path)
+        code, out = run(a, FakeDB([SMALL], READY), git)
+        assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "JOB_SHA_FILE_UNREADABLE"
+
+
+def test_a_job_sha_file_naming_another_commit_refuses_at_start(env, tmp_path):
+    repo, git = env
+    code, out = run(args_for(repo, "a_one", "--job-sha-file", jobfile(tmp_path, text="cafebabe")), FakeDB([SMALL], READY), git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "JOB_SHA_CHANGED"
+
+
+def test_wave_by_wave_commit_requires_a_job_sha_file(env, tmp_path):
+    repo, git = env
+    code, out = run(args_for(repo, "a_one,a_two", "--commit", "--confirm", "x", "--pause-dir", str(tmp_path / "p"), mode="wave-by-wave"),
+                    FakeDB([SMALL], READY), git)
+    assert code == 2 and "--job-sha-file" in out["error"]
+
+
+def test_a_digests_file_can_not_back_a_real_dispatch(env, tmp_path):
+    repo, git = env
+    f = tmp_path / "deployed.json"
+    f.write_text(json.dumps({"writers": SMALL_DIGESTS}))
+    a = slw.build_parser().parse_args(["--chart-id", CHART, "--assets", "a_one", "--repo", repo, "--deployed-digests-file", str(f),
+                                       "--deployed-job-sha", "deadbeef", "--commit", "--confirm", "x", "--mode", "single-run"])
+    db = FakeDB([SMALL], READY)
+    code, out = run(a, db, git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "DEPLOYED_BINDING_UNVERIFIED" and db.log == []
+
+
+# ── M4: the post-COMMIT window ──
+
+def test_the_dispatcher_module_is_loaded_before_the_first_insert(env, monkeypatch):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two,a_three"), FakeDB([SMALL], READY), git)
+    monkeypatch.setattr(slw, "_load_frozen_dispatcher", lambda: (_ for _ in ()).throw(RuntimeError("cannot load dispatcher")))
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"], mode="single-run"), db, git)
+    assert code == slw.EXIT_UNEXPECTED and "cannot load dispatcher" in out["error"]
+    assert db.log == [] and out["committed_runs"] == []
+
+
+def test_a_terminalise_failure_after_commit_reports_the_run_id_and_the_chart_blocking_warning(env):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two,a_three"), FakeDB([SMALL], READY), git)
+    db = FakeDB([SMALL], READY, fail_on={"UPDATE build_runs SET state='failed'": 1})
+
+    def boom(run_id):
+        raise RuntimeError("gcloud down")
+    code, lines_, _ = run_all(args_for(repo, "a_one,a_two,a_three", "--commit", "--confirm", dry["confirm_token_single_run"],
+                                       mode="single-run"), db, git, dispatch=boom)
+    summ = lines_[-1]
+    run_id = summ["insert"]["run_id"]
+    assert code == slw.EXIT_DISPATCH_FAILED and "gcloud down" in summ["dispatch_error"]
+    assert run_id in summ["terminalise_warning"] and "BLOCKS chart" in summ["terminalise_warning"] and CHART in summ["terminalise_warning"]
+    ev = next(l for l in lines_ if l["event"] == "dispatch_failed")
+    assert ev["run_id"] == run_id and "BLOCKS chart" in ev["warning"]
+
+
+def test_a_successful_terminalise_leaves_no_warning(env):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one,a_two"), FakeDB([SMALL], READY), git)
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one,a_two", "--commit", "--confirm", dry["confirm_token_single_run"], mode="single-run"), db, git,
+                    dispatch=lambda r: (_ for _ in ()).throw(RuntimeError("x")))
+    assert code == slw.EXIT_DISPATCH_FAILED and out["terminalise_warning"] is None
+
+
+def test_wave_by_wave_dispatch_failure_carries_the_run_id_and_the_warning(env, tmp_path):
+    db = FakeDB([SMALL], {**READY, "a_one": ("lit", "fresh", "data")}, fail_on={"UPDATE build_runs SET state='failed'": 1})
+    code, lines_, _, _ = _full_wbw(env, tmp_path, db=db, dispatch=lambda r: (_ for _ in ()).throw(RuntimeError("gcloud down")))
+    ref = lines_[-1]["wave_by_wave"]["waves"][0]["refusals"][0]
+    assert code == slw.EXIT_CAMPAIGN_STOPPED and ref["code"] == "DISPATCH_FAILED" and ref["run_id"] in ref["terminalise_warning"]
+    assert "BLOCKS chart" in ref["terminalise_warning"]
+
+
+# ── L2: ordering through out-of-set assets ──
+
+def test_waves_see_ordering_paths_through_out_of_set_assets():
+    deps = {"A": ["E"], "E": ["B"], "B": []}
+    assert slw.derive_waves(["A", "B"], deps) == [["B"], ["A"]]                       # A after B, via the outside E
+    assert slw.derive_waves(["A", "B"], {"A": ["E1"], "E1": ["E2"], "E2": ["B"], "B": []}) == [["B"], ["A"]]
+    assert slw.derive_waves(["A", "B"], {"A": ["E"], "B": []}) == [["A", "B"]]        # no information about E: no edge
+    # an in-set ancestor reached only through another in-set asset is that asset's business, not a second edge
+    assert slw.derive_waves(["A", "B", "C"], {"A": ["B"], "B": ["E"], "E": ["C"], "C": []}) == [["C"], ["B"], ["A"]]
+
+
+def test_a_loop_through_an_outside_asset_is_a_cycle():
+    with pytest.raises(slw.LevelWaveError, match="cycle"):
+        slw.derive_waves(["A", "B"], {"A": ["E"], "E": ["A"], "B": []})
+
+
+def test_the_dependency_closure_is_read_in_rounds_and_bounded():
+    db = FakeDB([[]], closure={"e1": ["e2"], "e2": ["e3", "a_in"], "e3": []})
+    rows = [row("a_in", ["e1"])]
+    assert slw.read_dependency_closure(db.connect, ["a_in"], rows) == {"e1": ["e2"], "e2": ["e3", "a_in"], "e3": []}
+    assert all(e[1].lstrip().startswith("SELECT") for e in db.statements())
+    with pytest.raises(slw.LevelWaveError, match="converge"):
+        slw.read_dependency_closure(db.connect, ["a_in"], rows, max_rounds=2)
+    assert slw.read_dependency_closure(db.connect, ["a_in"], [row("a_in", ["unknown_id"])]) == {"unknown_id": []}
+
+
+def test_the_cli_orders_an_asset_after_an_in_set_ancestor_reached_through_an_outside_asset(tmp_path):
+    rows = [row("x_a", ["ext_mid"]), row("x_b", [])]
+    digests = {r["asset_id"]: _hexdigest(r["asset_id"]) for r in rows}
+    repo = make_repo(tmp_path, digests)
+    git = FakeGit(family_text=family_doc(), deployed=digests)
+    db = FakeDB([rows], {"ext_mid": ("lit", "fresh", "data")}, closure={"ext_mid": ["x_b"]})
+    code, out = run(args_for(repo, "x_a,x_b"), db, git)
+    assert code == 0 and out["waves"] == [["x_b"], ["x_a"]]
+    assert out["external_dependencies"] == {"x_a": ["ext_mid"]}
+
+
+# ── L3 / L5 ──
+
+def test_a_non_per_chart_asset_is_refused(env):
+    repo, git = env
+    code, out = run(args_for(repo, "a_one"), FakeDB([[row("a_one", scope="global")]], READY), git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "NON_PER_CHART_SCOPE"
+
+
+def test_skipped_is_not_success_unless_declared_and_is_always_reported():
+    plan, _ = _wbw_plan()
+    res = slw.run_wave_by_wave(plan, dispatch_wave=lambda i: {"run_id": f"run{i}"}, wait_terminal=lambda r: {"state": "completed"},
+                               wave_report=lambda r: ok_report(r, state="skipped"), hook=lambda *a: pytest.fail("no pause"))
+    assert res["status"] == "STOPPED_ASSETS_NOT_COMPLETE"
+    assert res["waves"][0]["assets_skipped"] == ["w0a", "w0b"] and res["waves"][0]["assets_not_complete"] == ["w0a", "w0b"]
+    partial = slw.run_wave_by_wave(plan, dispatch_wave=lambda i: {"run_id": f"run{i}"}, wait_terminal=lambda r: {"state": "completed"},
+                                   wave_report=lambda r: ok_report(r, state="skipped"), hook=lambda *a: pytest.fail("no pause"),
+                                   declared_skips=["w0a"])
+    assert partial["waves"][0]["assets_not_complete"] == ["w0b"]
+    ok = slw.run_wave_by_wave(plan, dispatch_wave=lambda i: {"run_id": f"run{i}"}, wait_terminal=lambda r: {"state": "completed"},
+                              wave_report=lambda r: ok_report(r, state="skipped"), hook=lambda *a: True,
+                              declared_skips=["w0a", "w0b", "w1", "w2"])
+    assert ok["status"] == "ALL_WAVES_COMPLETED" and ok["waves"][0]["assets_skipped"] == ["w0a", "w0b"]
+
+
+# ── L6: family names and the freshness of the family ref ──
+
+@pytest.mark.parametrize("asset", ["ka_vedha_gochara", "ka_vedha_gochara_x", "bg_gochara_y"])
+def test_more_gochara_family_name_patterns_are_refused(tmp_path, asset):
+    repo = make_repo(tmp_path, {asset: _hexdigest(asset)})
+    git = FakeGit(family_text=family_doc(), deployed={asset: _hexdigest(asset)})
+    code, out = run(args_for(repo, asset), FakeDB([[row(asset)]], READY), git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "FAMILY_ASSET"
+
+
+def test_the_family_ref_sha_is_printed_and_a_stale_ref_is_refused(tmp_path):
+    repo = make_repo(tmp_path, SMALL_DIGESTS)
+    fresh = FakeGit(family_text=family_doc(), deployed=SMALL_DIGESTS)
+    _, out = run(args_for(repo, "a_one"), FakeDB([SMALL], READY), fresh)
+    assert out["family_ref"] == {"ref": "origin/main", "sha": sha_of("origin/main"), "remote_sha": sha_of("origin/main"), "freshness": "fresh"}
+    stale = FakeGit(family_text=family_doc(), deployed=SMALL_DIGESTS, remote_sha="f" * 40)
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one"), db, stale)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "FAMILY_REF_STALE" and db.log == []
+
+
+def test_an_unverifiable_family_ref_is_reported_in_a_dry_run_and_refused_for_a_commit(tmp_path):
+    repo = make_repo(tmp_path, SMALL_DIGESTS)
+    git = FakeGit(family_text=family_doc(), deployed=SMALL_DIGESTS, remote_fails=True)
+    code, out = run(args_for(repo, "a_one"), FakeDB([SMALL], READY), git)
+    assert code == 0 and out["family_ref"]["freshness"] == "unverified"
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one", "--commit", "--confirm", "x", mode="single-run"), db, git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "FAMILY_REF_UNVERIFIED" and db.log == []
+
+
+def test_a_non_remote_family_ref_can_not_back_a_commit(tmp_path):
+    repo = make_repo(tmp_path, SMALL_DIGESTS)
+    git = FakeGit(family_text=family_doc(), deployed=SMALL_DIGESTS)
+    code, out = run(args_for(repo, "a_one", "--family-ref", "HEAD", "--commit", "--confirm", "x", mode="single-run"), FakeDB([SMALL], READY), git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "FAMILY_REF_UNVERIFIED"
+    code, out = run(args_for(repo, "a_one", "--family-ref", "HEAD"), FakeDB([SMALL], READY), git)
+    assert code == 0 and out["family_ref"]["freshness"] == "not_a_remote_ref"
+
+
+# ── L7 and the strategist's additions ──
+
+def test_exit_codes_are_distinct_and_documented(monkeypatch, capsys):
+    codes = [slw.EXIT_NO_DATABASE_URL, slw.EXIT_BAD_INPUT, slw.EXIT_DISPATCH_FAILED, slw.REFUSAL_EXIT_CODE,
+             slw.EXIT_CAMPAIGN_STOPPED, slw.EXIT_UNEXPECTED]
+    assert codes == [1, 2, 3, 4, 5, 6]
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert slw.main(["--chart-id", CHART, "--assets", "a_one"]) == slw.EXIT_NO_DATABASE_URL
+    flat = " ".join(slw.build_parser().format_help().split())
+    for needle in ("Exit codes:", "1 DATABASE_URL missing", "6 unexpected exception or database error"):
+        assert needle in flat
+    readme = " ".join((HERE.parent / "README_level_wave.md").read_text().split())
+    assert "| 6 |" in readme and "| 1 |" in readme
+
+
+def test_help_and_readme_make_the_live_dry_run_mandatory_and_the_wave_list_indicative():
+    flat_help = " ".join(slw.build_parser().format_help().split())
+    flat_readme = " ".join((HERE.parent / "README_level_wave.md").read_text().split())
+    for flat in (flat_help, flat_readme):
+        assert "LIVE dry run" in flat and "MANDATORY before the first --commit" in flat
+        assert "live wave list" in flat.lower() and "indicative" in flat
+    assert "compare the committed inventory's job sha with the deployed job image sha before every campaign" in flat_readme.lower()
+    assert "Trap 103" in flat_readme and "head_sha" in flat_readme
+
+
+def test_commit_stays_refused_until_the_family_file_is_on_the_ref(tmp_path):
+    repo = make_repo(tmp_path, SMALL_DIGESTS)
+    git = FakeGit(family_listed=False, deployed=SMALL_DIGESTS)
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one", "--commit", "--confirm", "x", mode="single-run"), db, git)
+    assert code == slw.REFUSAL_EXIT_CODE and "FAMILY_FILE_MISSING" in [r["code"] for r in out["refusals"]] and db.log == []

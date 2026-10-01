@@ -776,11 +776,20 @@ FAMILY_FILE_REL = "00_ARCHITECTURE/control/FAMILY_ASSETS.json"
 FAMILY_LIST_KEYS = ("family_gochara", "family_sangam", "family_kshetra",
                     "family_readers_L3", "family_readers_L4", "family_readers_L5")
 # The Pravaha gochara family by NAME, enforced even when FAMILY_ASSETS.json is absent or unreadable.
-FAMILY_NAME_PATTERN = re.compile(r"^(ka_gochara|gochara_|kala_gochara_)")
+FAMILY_NAME_PATTERN = re.compile(r"^(ka_gochara|ka_vedha_gochara|gochara_|bg_gochara_|kala_gochara_)")
 TERMINAL_RUN_STATES = ("completed", "stopped", "failed")
 _HEX64 = re.compile(r"[0-9a-f]{64}")
 
+# Exit codes (documented in --help and the README): 0 ok / dry run done, 1 DATABASE_URL missing, 2 bad input or internal
+# inconsistency (nothing dispatched), 3 dispatch failed after the run was committed (planned run terminalised, or a
+# chart-blocking WARNING is printed), 4 a gate refused, 5 wave-by-wave campaign stopped (refusal, operator, run or asset
+# not complete), 6 unexpected exception or database error (the JSON summary lists every run committed so far).
+EXIT_NO_DATABASE_URL = 1
+EXIT_BAD_INPUT = 2
+EXIT_DISPATCH_FAILED = 3
 REFUSAL_EXIT_CODE = 4
+EXIT_CAMPAIGN_STOPPED = 5
+EXIT_UNEXPECTED = 6
 
 
 class LevelWaveError(Exception):
@@ -877,7 +886,7 @@ def family_refusals(assets: Sequence[str], family: Mapping[str, Any], *, committ
     for a in sorted(req):
         if FAMILY_NAME_PATTERN.match(a):
             out.append({"code": "FAMILY_ASSET", "asset": a, "via": "name_pattern",
-                        "detail": f"{a} matches the Pravaha gochara family name pattern (ka_gochara*, gochara_*, kala_gochara_*)"})
+                        "detail": f"{a} matches the Pravaha gochara family name pattern (ka_gochara*, ka_vedha_gochara*, gochara_*, bg_gochara_*, kala_gochara_*)"})
     state = family.get("state")
     if state == "present":
         for a in sorted(req & family["family_set"]):
@@ -904,17 +913,41 @@ def family_refusals(assets: Sequence[str], family: Mapping[str, Any], *, committ
 # Waves: longest path inside the requested set
 # ---------------------------------------------------------------------------------------------
 
-def derive_waves(assets: Sequence[str], depends_on: Mapping[str, Sequence[str]]) -> list[list[str]]:
-    """wave(a) = 0 if a has no dependency inside the set, else 1 + max(wave(d)) over its in-set dependencies.
+def _effective_inset_deps(members: Sequence[str], depends_on: Mapping[str, Sequence[str]]) -> dict[str, list[str]]:
+    """For each member, the IN-SET assets it must come after: its direct in-set dependencies plus every in-set ancestor
+    reached THROUGH out-of-set assets (A depends on E outside the set, E depends on B inside it => A after B).
+    The walk looks through out-of-set assets only; an in-set asset is a stop (its own ordering is its own). A path
+    that leads back to the member itself is kept as a self-edge so it is reported as a cycle."""
+    inset = set(members)
+    out: dict[str, list[str]] = {}
+    for a in sorted(inset):
+        found: set[str] = set()
+        seen: set[str] = set()
+        stack = list(depends_on.get(a) or ())
+        while stack:
+            d = stack.pop()
+            if d == a:
+                found.add(a)
+            elif d in inset:
+                found.add(d)
+            elif d not in seen:
+                seen.add(d)
+                stack.extend(depends_on.get(d) or ())
+        out[a] = sorted(found)
+    return out
 
-    Dependencies outside the set do not move an asset (they must already be lit+fresh: check_external_dependencies).
-    Ids inside a wave are sorted, so the plan (flattened waves) is deterministic. A cycle (self-dependency included)
-    raises; an empty wave can not occur. Input order is irrelevant.
-    """
+
+def derive_waves(assets: Sequence[str], depends_on: Mapping[str, Sequence[str]]) -> list[list[str]]:
+    """wave(a) = 0 if a has no ordering dependency inside the requested set, else 1 + max(wave(d)) over them (the longest
+    path). Ordering dependencies are the direct in-set dependencies PLUS in-set ancestors reached through out-of-set
+    assets, when `depends_on` carries the out-of-set assets' own dependencies (read_dependency_closure supplies them).
+    Dependencies outside the set otherwise do not move an asset (they must already be lit+fresh:
+    check_external_dependencies). Ids inside a wave are sorted, so the plan (flattened waves) is deterministic.
+    A cycle (self-dependency or a loop through out-of-set assets included) raises. Input order is irrelevant."""
     members = sorted(set(assets))
     if len(members) != len(list(assets)):
         raise LevelWaveError("asset list has duplicates")
-    inside = {a: sorted({d for d in (depends_on.get(a) or ()) if d in set(members)}) for a in members}
+    inside = _effective_inset_deps(members, depends_on)
     wave: dict[str, int] = {}
     remaining = set(members)
     while remaining:
@@ -1031,6 +1064,73 @@ def load_deployed_writer_digests(*, repo: str | Path, sha: str | None = None, fi
     return writers
 
 
+def resolve_commit(repo: str, ref: str, *, git=_git, code: str = "JOB_SHA_UNRESOLVABLE") -> str:
+    """The full 40-hex commit `ref` names in `repo`, or a refusal."""
+    cp = git(str(repo), ["rev-parse", "--verify", f"{ref}^{{commit}}"])
+    full = (cp.stdout or "").strip()
+    if cp.returncode != 0 or not re.fullmatch(r"[0-9a-f]{40}", full):
+        raise LevelWaveRefusal([{"code": code, "detail": f"{ref!r} does not resolve to a commit in {repo}"}])
+    return full
+
+
+def read_job_sha_file(path: str | Path) -> str:
+    """The live deployed JOB image sha an operator tool (Exec's LC-1 gate) keeps in a file: its first non-blank line.
+    Unreadable or empty refuses (fail closed)."""
+    try:
+        for line in Path(path).read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                return line.strip()
+    except (OSError, ValueError) as exc:
+        raise LevelWaveRefusal([{"code": "JOB_SHA_FILE_UNREADABLE", "detail": f"{path}: {exc}"}]) from exc
+    raise LevelWaveRefusal([{"code": "JOB_SHA_FILE_UNREADABLE", "detail": f"{path} holds no sha"}])
+
+
+def check_job_sha_binding(repo: str, *, inventory_sha: str, job_sha: str, git=_git) -> dict:
+    """The operator-supplied LIVE deployed job image sha must be the same commit as the one whose committed inventory
+    supplied the deployed digests. (Trap 103: use the image / DEPLOY_SHA, never a deploy run's head_sha, which can
+    disagree with it.) Returns {"inventory_sha", "deployed_job_sha"} resolved to 40-hex, or refuses."""
+    inv = resolve_commit(repo, inventory_sha, git=git, code="JOB_SHA_UNRESOLVABLE")
+    job = resolve_commit(repo, job_sha, git=git, code="JOB_SHA_UNRESOLVABLE")
+    if inv != job:
+        raise LevelWaveRefusal([{"code": "JOB_SHA_MISMATCH", "inventory_sha": inv, "deployed_job_sha": job,
+                                 "detail": f"the inventory used for the digests is {inv}, the deployed job image is {job}: "
+                                           "the digests are not the deployed image's"}])
+    return {"inventory_sha": inv, "deployed_job_sha": job}
+
+
+def recheck_job_sha(repo: str, *, pinned_job_sha: str, job_sha_file: str | Path, git=_git) -> None:
+    """Re-read the job-sha file and refuse unless it still names the pinned commit (a redeploy mid-campaign)."""
+    now = resolve_commit(repo, read_job_sha_file(job_sha_file), git=git)
+    if now != pinned_job_sha:
+        raise LevelWaveRefusal([{"code": "JOB_SHA_CHANGED", "pinned": pinned_job_sha, "now": now,
+                                 "detail": f"the deployed job image changed from {pinned_job_sha} to {now} during the campaign"}])
+
+
+def family_ref_status(repo: str, ref: str, *, git=_git) -> dict:
+    """The sha of the family ref read, and whether it is the remote's tip (`git ls-remote`, read-only). For a ref that is
+    not `<remote>/<branch>`, or when the remote can not be asked, freshness is not_a_remote_ref / unverified."""
+    sha = resolve_commit(repo, ref, git=git, code="FAMILY_FILE_UNREADABLE")
+    m = re.fullmatch(r"([A-Za-z0-9_.-]+)/(.+)", ref)
+    if not m:
+        return {"ref": ref, "sha": sha, "freshness": "not_a_remote_ref"}
+    cp = git(str(repo), ["ls-remote", m.group(1), f"refs/heads/{m.group(2)}"])
+    parts = (cp.stdout or "").split()
+    if cp.returncode != 0 or not parts:
+        return {"ref": ref, "sha": sha, "freshness": "unverified",
+                "detail": f"git ls-remote {m.group(1)} failed ({(cp.stderr or '').strip()[:160]})"}
+    return {"ref": ref, "sha": sha, "remote_sha": parts[0], "freshness": "fresh" if parts[0] == sha else "stale"}
+
+
+def family_ref_refusals(status: Mapping[str, Any], *, committing: bool) -> list[dict]:
+    if status["freshness"] == "stale":
+        return [{"code": "FAMILY_REF_STALE", "detail": f"{status['ref']} is {status['sha']} but the remote tip is "
+                 f"{status['remote_sha']}: `git fetch` first, so the family file read is current"}]
+    if committing and status["freshness"] != "fresh":
+        return [{"code": "FAMILY_REF_UNVERIFIED", "detail": f"a real dispatch needs the family ref verified fresh against the "
+                 f"remote; {status['ref']} is {status['freshness']}"}]
+    return []
+
+
 def check_image_skew(assets: Sequence[str], local: Mapping[str, str], deployed: Mapping[str, str]) -> None:
     """Refuse unless every asset has a valid local digest equal to the deployed image's (R2, checked before the
     runner can refuse the whole run). A missing digest on either side refuses; it is never skipped."""
@@ -1066,6 +1166,10 @@ def accept_candidates(assets: Sequence[str], rows: Sequence[Mapping[str, Any]]) 
             bad.append({"code": "REGISTRY_ROW_INVALID", "asset": a, "detail": f"{a} is not an active writer asset"})
         elif r.get("asset_kind") == "service":
             bad.append({"code": "REGISTRY_ROW_INVALID", "asset": a, "detail": f"{a} is a service asset (nothing to build)"})
+        elif r.get("scope") != "per_chart":
+            bad.append({"code": "NON_PER_CHART_SCOPE", "asset": a,
+                        "detail": f"{a} has scope {r.get('scope')!r}: a chart-scoped level wave builds per_chart assets only "
+                                  "(global assets rebuild for every chart; they are not this tool's)"})
     if bad:
         raise LevelWaveRefusal(bad)
     return by_id
@@ -1151,12 +1255,14 @@ def check_registry_unchanged(built: Mapping[str, str], rows_now: Sequence[Mappin
 
 
 def make_plan(*, chart_id: str, assets: Sequence[str], rows: Sequence[Mapping[str, Any]],
-              writer_digests: Mapping[str, str], deployed_digests: Mapping[str, str]) -> dict:
-    """Pure: from registry rows to the waves, per-wave manifests and the single-run manifest. Raises on image skew."""
+              writer_digests: Mapping[str, str], deployed_digests: Mapping[str, str],
+              outside_deps: Mapping[str, Sequence[str]] | None = None) -> dict:
+    """Pure: from registry rows to the waves, per-wave manifests and the single-run manifest. Raises on image skew.
+    `outside_deps` = {out-of-set asset: its depends_on} (read_dependency_closure) so ordering sees through them."""
     by_id = accept_candidates(assets, rows)
     check_image_skew(assets, writer_digests, deployed_digests)
     deps = {a: by_id[a].get("depends_on") or [] for a in assets}
-    waves = derive_waves(assets, deps)
+    waves = derive_waves(assets, {**dict(outside_deps or {}), **deps})
     manifest, digest = build_level_manifest(chart_id=chart_id, plan_waves=waves, rows=by_id, writer_digests=writer_digests)
     per_wave = []
     for i, wave in enumerate(waves):
@@ -1204,12 +1310,14 @@ def _lock_key(chart_id: str) -> str:
 
 def insert_run(connect, *, chart_id: str, manifest: Mapping[str, Any], digest: str, row_digests: Mapping[str, str],
                external: Mapping[str, Sequence[str]], confirm: str | None, commit: bool,
-               footprint: bool = False) -> dict:
+               footprint: bool = False, on_commit=None, meta: Mapping[str, Any] | None = None) -> dict:
     """One transaction: advisory lock, active-run refusal, registry-row re-read and compare, external dependencies
     lit+fresh, INSERT build_runs + build_run_assets, then ROLLBACK (dry run) or COMMIT (only with the exact token).
 
     The re-read happens in THIS transaction, after the manifest was built from an earlier, separate read, so a registry
-    change in between is visible (a repeated read inside one SERIALIZABLE snapshot could not show it)."""
+    change in between is visible (a repeated read inside one SERIALIZABLE snapshot could not show it).
+    `on_commit(receipt)` is called the instant the COMMIT succeeds, before anything else can fail, so the caller always
+    knows a run exists. `meta` is merged into the receipt (the deployed job sha is printed on every receipt)."""
     plan = [a for wave in manifest["waves"] for a in wave]
     token = expected_confirmation(digest, len(plan))
     if commit and confirm != token:
@@ -1246,14 +1354,17 @@ def insert_run(connect, *, chart_id: str, manifest: Mapping[str, Any], digest: s
                    VALUES (%s, %s, %s, 'queued')""",
                 (run_id, asset_id, position),
             )
-        if commit:
-            conn.commit()
-        else:
-            conn.rollback()
         receipt = {"run_id": run_id, "chart_id": chart_id, "assets": plan, "waves": manifest["waves"],
                    "manifest_digest": digest, "committed": bool(commit), "confirm_token": token}
+        receipt.update(dict(meta or {}))
         if footprint_report is not None:
             receipt["footprint"] = footprint_report
+        if commit:
+            conn.commit()
+            if on_commit is not None:
+                on_commit(receipt)
+        else:
+            conn.rollback()
         return receipt
     except BaseException:
         conn.rollback()
@@ -1285,9 +1396,42 @@ def read_rows(connect, assets: Sequence[str]) -> list[dict]:
         conn.close()
 
 
+CLOSURE_SQL = """
+SELECT ar.asset_id, COALESCE(ar.depends_on, '{}') AS depends_on
+  FROM asset_registry ar
+ WHERE ar.asset_id = ANY(%s)
+ ORDER BY ar.asset_id
+"""
+
+
+def read_dependency_closure(connect, assets: Sequence[str], rows: Sequence[Mapping[str, Any]], *, max_rounds: int = 12) -> dict:
+    """{out-of-set asset: its declared depends_on} for the upstream closure of the requested set, so the wave derivation
+    can see ordering paths that run through assets outside the set. Read-only; ids the registry does not know map to []."""
+    inset = set(assets)
+    frontier = sorted({d for r in rows for d in (r.get("depends_on") or [])} - inset)
+    outside: dict[str, list[str]] = {}
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        rounds = 0
+        while frontier:
+            rounds += 1
+            if rounds > max_rounds:
+                raise LevelWaveError("dependency closure did not converge (cycle outside the set?)")
+            cur.execute(CLOSURE_SQL, (frontier,))
+            got = {r["asset_id"]: list(r["depends_on"] or []) for r in cur.fetchall()}
+            for d in frontier:
+                outside[d] = got.get(d, [])
+            frontier = sorted({d for deps in got.values() for d in deps} - inset - set(outside))
+        conn.rollback()
+    finally:
+        conn.close()
+    return outside
+
+
 def _load_frozen_dispatcher():
     """dispatch_frozen_rebuild.py (stdlib at import time), loaded by path so its gcloud dispatch and terminalise
-    helpers are reused as they are, not copied."""
+    helpers are reused as they are, not copied. Loaded BEFORE any insert so a load failure can not strand a run."""
     path = Path(__file__).resolve().parents[1] / "dispatch_frozen_rebuild.py"
     spec = importlib.util.spec_from_file_location("dispatch_frozen_rebuild", path)
     mod = importlib.util.module_from_spec(spec)
@@ -1299,21 +1443,52 @@ def _load_frozen_dispatcher():
 # Stop hook (between waves) and wave-by-wave driver
 # ---------------------------------------------------------------------------------------------
 
-def continue_token(next_wave: int, next_manifest_digest: str) -> str:
-    return f"CONTINUE_WAVE_{next_wave}_{next_manifest_digest[:12].upper()}"
+STALE_HOOK_GLOBS = ("after-wave-*.continue", "after-wave-*.stop", "after-wave-*.pending.json")
+
+
+def continue_token(next_wave: int, run_id: str, report: Mapping[str, Any] | None = None) -> str:
+    """The operator's continue token, bound to the run that just finished: its run_id (a fresh uuid per insert) and the
+    ended_at of its assets, which exist only once the wave has ended. It can not be computed from a dry-run summary or
+    from the manifest, so a token written in advance is wrong."""
+    ended = sorted(str(a.get("ended_at")) for a in (report or {}).get("assets", []))
+    nonce = hashlib.sha256(canonical_json({"run_id": run_id, "ended_at": ended}).encode("utf-8")).hexdigest()[:12].upper()
+    return f"CONTINUE_WAVE_{next_wave}_{nonce}"
+
+
+def stale_hook_files(pause_dir: str | Path) -> list[str]:
+    root = Path(pause_dir)
+    if not root.is_dir():
+        return []
+    return sorted({p.name for g in STALE_HOOK_GLOBS for p in root.glob(g)})
+
+
+def check_pause_dir_clean(pause_dir: str | Path) -> None:
+    """Refuse (do not delete) when the pause directory already holds hook files: a leftover .continue or .stop could
+    release or stop a wave without the operator having seen it finish."""
+    stale = stale_hook_files(pause_dir)
+    if stale:
+        raise LevelWaveRefusal([{"code": "STALE_HOOK_FILES", "files": stale, "pause_dir": str(pause_dir),
+                                 "detail": f"{pause_dir} already holds {stale}. Nothing was deleted: remove them yourself "
+                                           "(or use a fresh --pause-dir) and relaunch."}])
 
 
 def file_stop_hook(pause_dir: str | Path, *, poll_seconds: float = 5.0, timeout_seconds: float = 6 * 3600.0,
                    sleep=time.sleep, monotonic=time.monotonic):
-    """A hook(wave_done, summary, next_info) -> bool. It writes <dir>/after-wave-<k>.pending.json (what finished, the
-    wall times, the next wave and its token) and waits for <dir>/after-wave-<k>.continue whose text is exactly the
-    token; <dir>/after-wave-<k>.stop, a wrong token or the timeout all STOP (False). Nothing continues by default."""
+    """A hook(wave_done, summary, next_info) -> bool. It first REFUSES if this wave's .continue / .stop already exist
+    (stale, or written before the wave finished); then writes <dir>/after-wave-<k>.pending.json (what finished, the wall
+    times, the next wave and its run-bound token) and waits for <dir>/after-wave-<k>.continue whose text is exactly
+    next_info["continue_token"]; .stop, a wrong token or the timeout all STOP (False). Nothing continues by default."""
     root = Path(pause_dir)
 
     def hook(wave_done: int, summary: Mapping[str, Any], next_info: Mapping[str, Any]) -> bool:
         root.mkdir(parents=True, exist_ok=True)
-        token = continue_token(next_info["wave"], next_info["manifest_digest"])
         stem = root / f"after-wave-{wave_done}"
+        pre = [p.name for p in (stem.with_suffix(".continue"), stem.with_suffix(".stop")) if p.exists()]
+        if pre:
+            raise LevelWaveRefusal([{"code": "STALE_HOOK_FILES", "files": pre, "pause_dir": str(root),
+                                     "detail": f"{pre} existed before wave {wave_done} was reported finished: refused. "
+                                               "Remove them and relaunch; the campaign stops here."}])
+        token = next_info["continue_token"]
         stem.with_suffix(".pending.json").write_text(
             json.dumps({"wave_done": wave_done, "summary": summary, "next": dict(next_info), "continue_token": token,
                         "to_continue": f"write the token into {stem.with_suffix('.continue')}",
@@ -1353,44 +1528,87 @@ def wait_for_terminal_run(connect, run_id: str, *, poll_seconds: float, timeout_
         sleep(poll_seconds)
 
 
-def run_wave_by_wave(plan: Mapping[str, Any], *, dispatch_wave, wait_terminal, wave_report, hook) -> dict:
+def run_wave_by_wave(plan: Mapping[str, Any], *, dispatch_wave, wait_terminal, wave_report, hook,
+                     declared_skips: Iterable[str] = (), emit=None) -> dict:
     """Drive the waves one run at a time. `dispatch_wave(i)` inserts+dispatches wave i (it re-checks dependencies lit+fresh
     in its own transaction, so wave i+1 only starts once wave i's assets are lit+fresh), `wait_terminal(run_id)` blocks,
     `wave_report(run_id)` returns the wall-time report, `hook(done, summary, next)` is the operator pause.
-    Stops at the first wave whose run is not `completed`, whose dispatch refuses, or whose hook says stop."""
-    results = []
+    Stops at the first wave whose run is not `completed`, whose dispatch refuses or errors, whose assets are not all
+    `complete`, or whose hook says stop. `skipped` is NOT success unless the asset is in `declared_skips`; every skipped
+    asset is reported either way. Any exception (a database error included) stops the campaign with STOPPED_ERROR and the
+    run id, never an escaped traceback. `emit(event, **fields)` is called at every dispatch and wave end."""
+    emit = emit or (lambda event, **fields: None)
+    declared = set(declared_skips)
+    results: list[dict] = []
     per_wave = plan["per_wave"]
+
+    def stop(status: str) -> dict:
+        return {"status": status, "waves": results}
+
     for i, wave in enumerate(per_wave):
+        entry: dict[str, Any] = {"wave": i, "assets": wave["assets"]}
+        results.append(entry)
         try:
             receipt = dispatch_wave(i)
         except LevelWaveRefusal as exc:
-            results.append({"wave": i, "status": "REFUSED", "refusals": exc.refusals})
-            return {"status": "STOPPED_REFUSED", "waves": results}
-        terminal = wait_terminal(receipt["run_id"])
-        report = wave_report(receipt["run_id"])
-        entry = {"wave": i, "assets": wave["assets"], "run_id": receipt["run_id"], "run_state": terminal["state"],
-                 "last_error": terminal.get("last_error"), "wall_time": report}
-        results.append(entry)
+            entry.update(status="REFUSED", refusals=exc.refusals)
+            emit("wave_refused", wave=i, refusals=exc.refusals)
+            return stop("STOPPED_REFUSED")
+        except Exception as exc:  # noqa: BLE001 -- a database error must still end in a JSON summary
+            entry.update(status="ERROR", error=f"{type(exc).__name__}: {exc}")
+            emit("wave_error", wave=i, error=entry["error"], stage="dispatch")
+            return stop("STOPPED_ERROR")
+        run_id = receipt["run_id"]
+        entry["run_id"] = run_id
+        emit("wave_dispatched", wave=i, run_id=run_id, execution_name=receipt.get("execution_name"),
+             manifest_digest=receipt.get("manifest_digest"))
+        try:
+            terminal = wait_terminal(run_id)
+            report = wave_report(run_id)
+        except Exception as exc:  # noqa: BLE001
+            entry.update(status="ERROR", error=f"{type(exc).__name__}: {exc}",
+                         note=f"run {run_id} is committed and may still be running: find it by run_id")
+            emit("wave_error", wave=i, run_id=run_id, error=entry["error"], stage="wait_or_report")
+            return stop("STOPPED_ERROR")
+        entry.update(run_state=terminal["state"], last_error=terminal.get("last_error"), wall_time=report)
+        emit("wave_ended", wave=i, run_id=run_id, run_state=terminal["state"], last_error=terminal.get("last_error"),
+             unmeasured=report.get("unmeasured"), run_wall_seconds=report.get("run_wall_seconds"))
         if terminal["state"] != "completed":
             entry["status"] = "RUN_NOT_COMPLETED"
-            return {"status": "STOPPED_RUN_NOT_COMPLETED", "waves": results}
-        # Every asset of the wave must be reported complete/skipped. An asset with no report row, or no report at all, is
-        # NOT complete: a missing reading never passes as a good one.
+            return stop("STOPPED_RUN_NOT_COMPLETED")
+        # Every asset of the wave must be reported `complete`. An asset with no report row, or no report at all, is NOT
+        # complete: a missing reading never passes as a good one. `skipped` passes only when declared.
         got = {a["asset_id"]: a.get("state") for a in report.get("assets", [])}
-        bad = [a for a in wave["assets"] if got.get(a) not in ("complete", "skipped")]
+        skipped = sorted(a for a in wave["assets"] if got.get(a) == "skipped")
+        if skipped:
+            entry["assets_skipped"] = skipped
+        bad = [a for a in wave["assets"] if not (got.get(a) == "complete" or (got.get(a) == "skipped" and a in declared))]
         if bad:
             entry["status"] = "ASSETS_NOT_COMPLETE"
             entry["assets_not_complete"] = bad
-            return {"status": "STOPPED_ASSETS_NOT_COMPLETE", "waves": results}
+            return stop("STOPPED_ASSETS_NOT_COMPLETE")
         entry["status"] = "COMPLETED"
         if i + 1 < len(per_wave):
             nxt = per_wave[i + 1]
-            ok = hook(i, report, {"wave": i + 1, "assets": nxt["assets"], "manifest_digest": nxt["manifest_digest"]})
+            info = {"wave": i + 1, "assets": nxt["assets"], "manifest_digest": nxt["manifest_digest"],
+                    "after_run_id": run_id, "continue_token": continue_token(i + 1, run_id, report)}
+            try:
+                ok = hook(i, report, info)
+            except LevelWaveRefusal as exc:
+                entry.update(hook="REFUSED", refusals=exc.refusals)
+                emit("hook_refused", wave=i, refusals=exc.refusals)
+                return stop("STOPPED_HOOK_REFUSED")
+            except Exception as exc:  # noqa: BLE001
+                entry.update(hook="ERROR", error=f"{type(exc).__name__}: {exc}")
+                emit("wave_error", wave=i, run_id=run_id, error=entry["error"], stage="hook")
+                return stop("STOPPED_ERROR")
             if not ok:
                 entry["hook"] = "STOP"
-                return {"status": "STOPPED_BY_OPERATOR", "waves": results}
+                emit("hook_stop", wave=i)
+                return stop("STOPPED_BY_OPERATOR")
             entry["hook"] = "CONTINUE"
-    return {"status": "ALL_WAVES_COMPLETED", "waves": results}
+            emit("hook_continue", wave=i, next_wave=i + 1)
+    return stop("ALL_WAVES_COMPLETED")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1473,11 +1691,18 @@ def read_wall_time_report(connect, run_id: str, waves: Sequence[Sequence[str]] |
 
 HELP_EPILOG = (
     "WARNING: " + NEVER_EXECUTED_NOTE + "\n\n"
-    "Default is a DRY RUN: the INSERT runs, then ROLLBACK. --commit needs --confirm <token> (printed by the dry run, bound "
-    "to the manifest digest) and --mode. single-run submits all waves in ONE run (the runner has no hook between waves); "
-    "wave-by-wave submits one run per wave and pauses for the operator between waves (--pause-dir). Refuses: image skew, "
-    "a dependency outside the set that is not lit+fresh, a registry row changed since the manifest was built, any "
-    "Pravaha gochara-family asset, a split family, an unreadable family file, an active run on the chart."
+    "The LIVE dry run (INSERT then ROLLBACK, run by the operator session against the real database) is MANDATORY before the "
+    "first --commit: it prints the LIVE wave list. Any wave list in the README is indicative only.\n\n"
+    "Default is a DRY RUN. --commit needs --confirm <token> (printed by the dry run, bound to the manifest digest), --mode, "
+    "--deployed-sha AND --deployed-job-sha (the live deployed job image sha read at launch; it must be the same commit as the "
+    "inventory the digests come from), and FAMILY_ASSETS.json on a fresh origin/main. single-run submits all waves in ONE run "
+    "(the runner has no hook between waves); wave-by-wave submits one run per wave and pauses for the operator between waves "
+    "(--pause-dir, --job-sha-file re-read before every wave). Refuses: image skew, a job sha mismatch, any dependency outside "
+    "the set not lit+fresh (whole plan), a registry row changed since the manifest was built, any Pravaha gochara-family asset, "
+    "a split family, an unreadable or stale family file, a non-per_chart asset, an active run on the chart, stale hook files.\n\n"
+    "Output is JSON lines, flushed per event; the last line is the summary. Exit codes: 0 ok / dry run done; 1 DATABASE_URL "
+    "missing; 2 bad input; 3 dispatch failed after commit (see the warning in the summary); 4 a gate refused; 5 wave-by-wave "
+    "campaign stopped; 6 unexpected exception or database error (the summary lists every run committed so far)."
 )
 
 
@@ -1501,14 +1726,20 @@ def build_parser() -> argparse.ArgumentParser:
                    help="explicit asset ids: comma list, repeated flag, or @file (asset_census.parse_assets_arg semantics)")
     p.add_argument("--mode", choices=("single-run", "wave-by-wave"), help="required with --commit")
     g = p.add_mutually_exclusive_group()
-    g.add_argument("--deployed-sha", help="git sha of the running job image; its committed writer digests are the deployed digests")
-    g.add_argument("--deployed-digests-file", help="a nirmana-writer-digests.json copied from the deployed image")
+    g.add_argument("--deployed-sha", help="commit whose committed writer digests are taken as the deployed image's")
+    g.add_argument("--deployed-digests-file", help="a nirmana-writer-digests.json copied from the deployed image "
+                   "(dry run only: its provenance can not be bound to a job sha)")
+    p.add_argument("--deployed-job-sha", help="the LIVE deployed job image sha (DEPLOY_SHA / image, never a deploy run's "
+                   "head_sha), read by the operator at launch; must equal --deployed-sha")
+    p.add_argument("--job-sha-file", help="a file the operator's gate keeps holding the live deployed job sha; re-read before "
+                   "every wave (required for wave-by-wave --commit)")
+    p.add_argument("--declared-skips", default="", help="comma list of assets whose `skipped` state counts as success")
     p.add_argument("--repo", default=str(REPO_ROOT))
     p.add_argument("--family-ref", default="origin/main")
     p.add_argument("--commit", action="store_true", help="commit the run(s); omission is a rollback-only dry run")
     p.add_argument("--confirm", help="required with --commit: the token the dry run printed")
     p.add_argument("--with-footprint", action="store_true", help="include the E5.9 transitive footprint (catalog SELECTs only)")
-    p.add_argument("--pause-dir", help="wave-by-wave: directory for the stop-hook files")
+    p.add_argument("--pause-dir", help="wave-by-wave: directory for the stop-hook files (must hold none already)")
     p.add_argument("--poll-seconds", type=float, default=15.0)
     p.add_argument("--wave-timeout-seconds", type=float, default=4 * 3600.0)
     p.add_argument("--hook-timeout-seconds", type=float, default=6 * 3600.0)
@@ -1518,103 +1749,44 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def run_cli(args: argparse.Namespace, *, connect, git=_git, out=None, sleep=time.sleep, monotonic=time.monotonic,
-            dispatch=None, hook=None) -> int:
-    """The whole command, with every outside contact injected (database, git, gcloud, the operator hook)."""
-    out = out or sys.stdout
+def _emit(out, event: str, **fields) -> None:
+    out.write(json.dumps({"schema": LEVEL_WAVE_SCHEMA, "event": event, **fields}, sort_keys=True, default=str) + "\n")
+    flush = getattr(out, "flush", None)
+    if flush is not None:
+        flush()
+
+
+def precheck_external(connect, chart_id: str, external: Mapping[str, Sequence[str]]) -> None:
+    """Read-only check of the WHOLE plan's outside dependencies (every wave), before anything is inserted."""
+    conn = connect()
     try:
-        assets = parse_asset_scope(args.assets)
-        family = load_family_info(args.repo, args.family_ref, git=git)
-        refusals = family_refusals(assets, family, committing=args.commit)
-        if refusals:
-            raise LevelWaveRefusal(refusals)
-        if args.commit and not args.mode:
-            raise LevelWaveError("--commit requires --mode single-run|wave-by-wave")
-        if args.mode == "wave-by-wave" and args.commit and not (args.pause_dir or hook):
-            raise LevelWaveError("--mode wave-by-wave --commit requires --pause-dir (the stop hook)")
-        local = load_local_writer_digests(args.repo)
-        deployed = load_deployed_writer_digests(repo=args.repo, sha=args.deployed_sha, file=args.deployed_digests_file, git=git)
-        rows = read_rows(connect, assets)
-        plan = make_plan(chart_id=args.chart_id, assets=assets, rows=rows, writer_digests=local, deployed_digests=deployed)
-        estimate = estimate_runtime(plan["waves"], plan["rows"])
-        summary = {
-            "schema": LEVEL_WAVE_SCHEMA, "never_executed_note": NEVER_EXECUTED_NOTE, "chart_id": args.chart_id,
-            "family_enforcement": "name_patterns_and_family_set" if family["state"] == "present" else "name_patterns_only",
-            "asset_count": len(plan["plan"]), "waves": plan["waves"], "manifest_digest": plan["manifest_digest"],
-            "confirm_token_single_run": expected_confirmation(plan["manifest_digest"], len(plan["plan"])),
-            "per_wave": [{"wave": w["wave"], "assets": w["assets"], "manifest_digest": w["manifest_digest"],
-                          "confirm_token": expected_confirmation(w["manifest_digest"], len(w["assets"]))}
-                         for w in plan["per_wave"]],
-            "external_dependencies": plan["external_dependencies"], "runtime_estimate": estimate,
-            "committed": False,
-        }
-        if args.commit and args.confirm != summary["confirm_token_single_run"]:
-            raise LevelWaveRefusal([{"code": "CONFIRM_TOKEN_MISMATCH", "expected": summary["confirm_token_single_run"],
-                                     "detail": f"--commit requires --confirm {summary['confirm_token_single_run']} "
-                                               "(the full-plan token the dry run printed)"}])
-        frozen = None
-        if not args.commit or args.mode == "single-run":
-            # Dry run (either mode) or a single-run commit. A wave-by-wave dry run exercises wave 0 only: later waves
-            # depend on earlier waves being lit+fresh, which is checked at their own dispatch.
-            target = plan["per_wave"][0] if args.mode == "wave-by-wave" else {
-                "assets": plan["plan"], "manifest": plan["manifest"], "manifest_digest": plan["manifest_digest"]}
-            tgt_assets = target["assets"]
-            ext = external_dependencies(tgt_assets, {a: plan["rows"][a].get("depends_on") or [] for a in tgt_assets})
-            receipt = insert_run(connect, chart_id=args.chart_id, manifest=target["manifest"], digest=target["manifest_digest"],
-                                 row_digests={a: plan["row_digests"][a] for a in tgt_assets}, external=ext,
-                                 confirm=expected_confirmation(target["manifest_digest"], len(tgt_assets)) if args.commit else None,
-                                 commit=args.commit, footprint=args.with_footprint)
-            summary["insert"] = receipt
-            summary["committed"] = receipt["committed"]
-            if args.commit:
-                frozen = _load_frozen_dispatcher()
-                send = dispatch or (lambda run_id: frozen.dispatch_run(run_id=run_id, project=args.project, region=args.region, job=args.job))
-                try:
-                    summary["execution_name"] = send(receipt["run_id"])
-                except Exception as exc:  # noqa: BLE001 -- terminalise the planned run, then report
-                    _terminalise(connect, receipt["run_id"], str(exc))
-                    summary["dispatch_error"] = str(exc)
-                    print(json.dumps(summary, sort_keys=True, default=str), file=out)
-                    return 3
-        else:
-            frozen = _load_frozen_dispatcher()
-            send = dispatch or (lambda run_id: frozen.dispatch_run(run_id=run_id, project=args.project, region=args.region, job=args.job))
-            the_hook = hook or file_stop_hook(args.pause_dir, poll_seconds=args.poll_seconds,
-                                              timeout_seconds=args.hook_timeout_seconds, sleep=sleep, monotonic=monotonic)
+        check_external_dependencies(conn.cursor(), chart_id, external)
+        conn.rollback()
+    finally:
+        conn.close()
 
-            def dispatch_wave(i):
-                w = plan["per_wave"][i]
-                ext = external_dependencies(w["assets"], {a: plan["rows"][a].get("depends_on") or [] for a in w["assets"]})
-                receipt = insert_run(connect, chart_id=args.chart_id, manifest=w["manifest"], digest=w["manifest_digest"],
-                                     row_digests={a: plan["row_digests"][a] for a in w["assets"]}, external=ext,
-                                     confirm=expected_confirmation(w["manifest_digest"], len(w["assets"])),
-                                     commit=True, footprint=False)
-                try:
-                    receipt["execution_name"] = send(receipt["run_id"])
-                except Exception as exc:  # noqa: BLE001
-                    _terminalise(connect, receipt["run_id"], str(exc))
-                    raise LevelWaveRefusal([{"code": "DISPATCH_FAILED", "detail": str(exc)}]) from exc
-                return receipt
 
-            result = run_wave_by_wave(
-                plan, dispatch_wave=dispatch_wave,
-                wait_terminal=lambda rid: wait_for_terminal_run(connect, rid, poll_seconds=args.poll_seconds,
-                                                                timeout_seconds=args.wave_timeout_seconds, sleep=sleep, monotonic=monotonic),
-                wave_report=lambda rid: _safe_wall_time_report(connect, rid, plan["waves"]),
-                hook=the_hook)
-            summary["wave_by_wave"] = result
-            summary["committed"] = any(w.get("run_id") for w in result["waves"])
-            print(json.dumps(summary, sort_keys=True, default=str), file=out)
-            return 0 if result["status"] == "ALL_WAVES_COMPLETED" else 5
-        print(json.dumps(summary, sort_keys=True, default=str), file=out)
-        return 0
-    except LevelWaveRefusal as exc:
-        print(json.dumps({"schema": LEVEL_WAVE_SCHEMA, "refused": True, "refusals": exc.refusals,
-                          "never_executed_note": NEVER_EXECUTED_NOTE}, sort_keys=True, default=str), file=out)
-        return REFUSAL_EXIT_CODE
-    except LevelWaveError as exc:
-        print(json.dumps({"schema": LEVEL_WAVE_SCHEMA, "error": str(exc)}, sort_keys=True), file=out)
-        return 2
+def _terminalise(connect, run_id: str, error: str, frozen=None) -> None:
+    """Take a planned-but-undispatched run out of the active set (dispatch_frozen_rebuild's own statement)."""
+    frozen = frozen or _load_frozen_dispatcher()
+    conn = connect()
+    try:
+        frozen.terminalize_dispatch_failure(conn.cursor(), run_id=run_id, error=error)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _terminalise_or_warn(connect, run_id: str, chart_id: str, error: str, frozen) -> str | None:
+    """Terminalise; if that fails, return the chart-blocking warning instead of raising (the run id must be reported)."""
+    try:
+        _terminalise(connect, run_id, error, frozen)
+        return None
+    except Exception as exc:  # noqa: BLE001
+        return (f"run {run_id} is COMMITTED in state 'planned' and BLOCKS chart {chart_id} until it is terminalised "
+                f"(terminalise failed: {type(exc).__name__}: {exc}). Terminalise it by hand: "
+                f"UPDATE build_runs SET state='failed', ended_at=NOW(), last_error='dispatch failed' WHERE id='{run_id}' "
+                "AND state='planned'; and abort its queued build_run_assets rows.")
 
 
 def _safe_wall_time_report(connect, run_id: str, waves) -> dict:
@@ -1625,15 +1797,174 @@ def _safe_wall_time_report(connect, run_id: str, waves) -> dict:
         return {"assets": [], "error": str(exc)}
 
 
-def _terminalise(connect, run_id: str, error: str) -> None:
-    """Take a planned-but-undispatched run out of the active set (dispatch_frozen_rebuild's own statement)."""
-    frozen = _load_frozen_dispatcher()
-    conn = connect()
+def run_cli(args: argparse.Namespace, *, connect, git=_git, out=None, sleep=time.sleep, monotonic=time.monotonic,
+            dispatch=None, hook=None) -> int:
+    """The whole command, with every outside contact injected (database, git, gcloud, the operator hook). Output is JSON
+    lines flushed per event; the last line is the summary (or the refusal / error)."""
+    out = out or sys.stdout
+    committed: list[dict] = []        # every run committed so far: found by run_id if anything later fails
     try:
-        frozen.terminalize_dispatch_failure(conn.cursor(), run_id=run_id, error=error)
-        conn.commit()
-    finally:
-        conn.close()
+        return _run_cli(args, connect=connect, git=git, out=out, sleep=sleep, monotonic=monotonic, dispatch=dispatch,
+                        hook=hook, committed=committed)
+    except LevelWaveRefusal as exc:
+        _emit(out, "refused", refused=True, refusals=exc.refusals, committed_runs=committed,
+              never_executed_note=NEVER_EXECUTED_NOTE)
+        return REFUSAL_EXIT_CODE
+    except LevelWaveError as exc:
+        _emit(out, "error", error=str(exc), committed_runs=committed)
+        return EXIT_BAD_INPUT
+    except Exception as exc:  # noqa: BLE001 -- never an escaped traceback: the operator must see the run ids
+        _emit(out, "error", unexpected=True, error=f"{type(exc).__name__}: {exc}", committed_runs=committed,
+              warning=("runs listed in committed_runs exist and may be planned/running: find them by run_id before any "
+                       "relaunch" if committed else "no run was committed"))
+        return EXIT_UNEXPECTED
+
+
+def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, committed) -> int:
+    emit = lambda event, **f: _emit(out, event, **f)  # noqa: E731
+    assets = parse_asset_scope(args.assets)
+    ref_status = family_ref_status(args.repo, args.family_ref, git=git)
+    family = load_family_info(args.repo, args.family_ref, git=git)
+    refusals = family_ref_refusals(ref_status, committing=args.commit) + family_refusals(assets, family, committing=args.commit)
+    if refusals:
+        raise LevelWaveRefusal(refusals)
+    if args.commit and not args.mode:
+        raise LevelWaveError("--commit requires --mode single-run|wave-by-wave")
+    wave_by_wave = args.mode == "wave-by-wave"
+    if wave_by_wave and args.commit and not (args.pause_dir or hook):
+        raise LevelWaveError("--mode wave-by-wave --commit requires --pause-dir (the stop hook)")
+    if wave_by_wave and args.commit and not args.job_sha_file:
+        raise LevelWaveError("--mode wave-by-wave --commit requires --job-sha-file (re-read before every wave)")
+    if wave_by_wave and args.commit and args.pause_dir:
+        check_pause_dir_clean(args.pause_dir)
+
+    # The live deployed job sha: asserted by the operator, bound to the inventory the digests come from.
+    if not args.deployed_job_sha:
+        raise LevelWaveRefusal([{"code": "DEPLOYED_JOB_SHA_REQUIRED",
+                                 "detail": "--deployed-job-sha (the live deployed job image sha read at launch) is required"}])
+    if args.deployed_sha:
+        binding = check_job_sha_binding(args.repo, inventory_sha=args.deployed_sha, job_sha=args.deployed_job_sha, git=git)
+        binding["binding"] = "verified"
+    else:
+        if args.commit:
+            raise LevelWaveRefusal([{"code": "DEPLOYED_BINDING_UNVERIFIED",
+                                     "detail": "a digests file has no provenance a job sha can be checked against: use "
+                                               "--deployed-sha for a real dispatch"}])
+        binding = {"inventory_sha": None, "deployed_job_sha": resolve_commit(args.repo, args.deployed_job_sha, git=git),
+                   "binding": "unverified_file_source"}
+    pinned = binding["deployed_job_sha"]
+    if args.job_sha_file:
+        recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)
+    meta = {"deployed_job_sha": pinned, "inventory_sha": binding["inventory_sha"]}
+
+    local = load_local_writer_digests(args.repo)
+    deployed = load_deployed_writer_digests(repo=args.repo, sha=args.deployed_sha, file=args.deployed_digests_file, git=git)
+    frozen = _load_frozen_dispatcher() if args.commit else None      # before any insert: a load failure strands nothing
+    rows = read_rows(connect, assets)
+    outside = read_dependency_closure(connect, assets, rows)
+    plan = make_plan(chart_id=args.chart_id, assets=assets, rows=rows, writer_digests=local, deployed_digests=deployed,
+                     outside_deps={k: v for k, v in outside.items()})
+    if wave_by_wave:
+        precheck_external(connect, args.chart_id, plan["external_dependencies"])      # every wave's outside dependencies
+    estimate = estimate_runtime(plan["waves"], plan["rows"])
+    token_full = expected_confirmation(plan["manifest_digest"], len(plan["plan"]))
+    summary = {
+        "schema": LEVEL_WAVE_SCHEMA, "never_executed_note": NEVER_EXECUTED_NOTE, "chart_id": args.chart_id, **meta,
+        "job_sha_binding": binding["binding"], "family_ref": ref_status,
+        "family_enforcement": "name_patterns_and_family_set" if family["state"] == "present" else "name_patterns_only",
+        "live_dry_run_note": "the LIVE dry run is mandatory before the first --commit; the waves above are the live waves for "
+                             "this registry, any README list is indicative",
+        "asset_count": len(plan["plan"]), "waves": plan["waves"], "manifest_digest": plan["manifest_digest"],
+        "confirm_token_single_run": token_full,
+        "per_wave": [{"wave": w["wave"], "assets": w["assets"], "manifest_digest": w["manifest_digest"],
+                      "confirm_token": expected_confirmation(w["manifest_digest"], len(w["assets"]))}
+                     for w in plan["per_wave"]],
+        "external_dependencies": plan["external_dependencies"], "runtime_estimate": estimate, "committed": False,
+        "committed_runs": committed,
+    }
+    if args.commit and args.confirm != token_full:
+        raise LevelWaveRefusal([{"code": "CONFIRM_TOKEN_MISMATCH", "expected": token_full,
+                                 "detail": f"--commit requires --confirm {token_full} (the full-plan token the dry run printed)"}])
+
+    def on_commit(wave_index):
+        def cb(receipt):
+            rec = {"run_id": receipt["run_id"], "wave": wave_index, "assets": receipt["assets"],
+                   "manifest_digest": receipt["manifest_digest"], "chart_id": receipt["chart_id"], **meta}
+            committed.append(rec)
+            emit("run_committed", **rec)
+        return cb
+
+    send = None
+    if args.commit:
+        send = dispatch or (lambda run_id: frozen.dispatch_run(run_id=run_id, project=args.project, region=args.region, job=args.job))
+
+    def send_or_terminalise(receipt) -> str | None:
+        """Dispatch a committed run; on failure terminalise it (or return the chart-blocking warning). Returns the warning
+        text on failure, None on success (execution_name is set on the receipt)."""
+        try:
+            receipt["execution_name"] = send(receipt["run_id"])
+            emit("run_dispatched", run_id=receipt["run_id"], execution_name=receipt["execution_name"], **meta)
+            return None
+        except Exception as exc:  # noqa: BLE001
+            warn = _terminalise_or_warn(connect, receipt["run_id"], args.chart_id, f"dispatch failed: {exc}", frozen)
+            receipt["dispatch_error"] = str(exc)
+            receipt["terminalise_warning"] = warn
+            emit("dispatch_failed", run_id=receipt["run_id"], error=str(exc), warning=warn, **meta)
+            return warn or "terminalised"
+
+    if not args.commit or not wave_by_wave:
+        # Dry run (either mode) or a single-run commit. A wave-by-wave dry run exercises wave 0 only (the whole plan's
+        # outside dependencies were already checked above).
+        target = plan["per_wave"][0] if wave_by_wave else {
+            "assets": plan["plan"], "manifest": plan["manifest"], "manifest_digest": plan["manifest_digest"]}
+        tgt = target["assets"]
+        ext = external_dependencies(tgt, {a: plan["rows"][a].get("depends_on") or [] for a in tgt})
+        receipt = insert_run(connect, chart_id=args.chart_id, manifest=target["manifest"], digest=target["manifest_digest"],
+                             row_digests={a: plan["row_digests"][a] for a in tgt}, external=ext,
+                             confirm=expected_confirmation(target["manifest_digest"], len(tgt)) if args.commit else None,
+                             commit=args.commit, footprint=args.with_footprint, on_commit=on_commit(0), meta=meta)
+        summary["insert"] = receipt
+        summary["committed"] = receipt["committed"]
+        if args.commit and send_or_terminalise(receipt) is not None:
+            summary["dispatch_error"] = receipt["dispatch_error"]
+            summary["terminalise_warning"] = receipt["terminalise_warning"]
+            _emit(out, "summary", **summary)
+            return EXIT_DISPATCH_FAILED
+        if args.commit:
+            summary["execution_name"] = receipt.get("execution_name")
+        _emit(out, "summary", **summary)
+        return 0
+
+    the_hook = hook or file_stop_hook(args.pause_dir, poll_seconds=args.poll_seconds, timeout_seconds=args.hook_timeout_seconds,
+                                      sleep=sleep, monotonic=monotonic)
+
+    def dispatch_wave(i):
+        recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)   # before EVERY wave
+        w = plan["per_wave"][i]
+        ext = external_dependencies(w["assets"], {a: plan["rows"][a].get("depends_on") or [] for a in w["assets"]})
+        receipt = insert_run(connect, chart_id=args.chart_id, manifest=w["manifest"], digest=w["manifest_digest"],
+                             row_digests={a: plan["row_digests"][a] for a in w["assets"]}, external=ext,
+                             confirm=expected_confirmation(w["manifest_digest"], len(w["assets"])),
+                             commit=True, footprint=False, on_commit=on_commit(i), meta=meta)
+        failure = send_or_terminalise(receipt)
+        if failure is not None:
+            raise LevelWaveRefusal([{"code": "DISPATCH_FAILED", "run_id": receipt["run_id"],
+                                     "detail": receipt["dispatch_error"], "terminalise_warning": receipt["terminalise_warning"]}])
+        return receipt
+
+    result = run_wave_by_wave(
+        plan, dispatch_wave=dispatch_wave,
+        wait_terminal=lambda rid: wait_for_terminal_run(connect, rid, poll_seconds=args.poll_seconds,
+                                                        timeout_seconds=args.wave_timeout_seconds, sleep=sleep, monotonic=monotonic),
+        wave_report=lambda rid: _safe_wall_time_report(connect, rid, plan["waves"]),
+        hook=the_hook, emit=emit,
+        declared_skips=[x for x in (args.declared_skips or "").split(",") if x])
+    summary["wave_by_wave"] = result
+    summary["committed"] = bool(committed)
+    _emit(out, "summary", **summary)
+    if result["status"] == "ALL_WAVES_COMPLETED":
+        return 0
+    return EXIT_UNEXPECTED if result["status"] == "STOPPED_ERROR" else EXIT_CAMPAIGN_STOPPED
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -1641,7 +1972,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         print("ERROR: DATABASE_URL required", file=sys.stderr)
-        return 1
+        return EXIT_NO_DATABASE_URL
     return run_cli(args, connect=_psycopg_connect_factory(database_url))
 
 
