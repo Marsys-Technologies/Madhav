@@ -1,6 +1,6 @@
 {
- "version": "1.5.1",
- "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'; an empty list [] is a positive declaration (this asset's writer composes no prose, e.g. a reference corpus that stores source text as loaded) and, like every declared prose_fields, needs an evidence.prose_fields pointer to the writer code read (file:line); a JSONB narrative is declared as 'column.$.key' paths (Narr concerns GENERATED prose, CLAUDE.md N.7; SS ruling 2026-10-01). evidence.prose_fields must cite writer code as path:line (py/ts/tsx; a .sql line or a test path is rejected) and every non-null prose_fields declaration carries evidence_kind 'writer' (the 13 earlier DDL-evidence declarations were re-audited against writer code: 11 now carry writer evidence, 2 are null; none carries 'ddl'); an orphan evidence pointer on a null prose_fields is rejected. carriage.served_surface: true ONLY with read_evidence (repo-relative path:line of a real non-test SQL FROM/JOIN read of the asset's own table, in a served capability/tool; for a shared table the served query must filter that asset's rows) + read_table; a comment, label, allow-list entry or stub is not a read, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown).",
+ "version": "1.6.0",
+ "description": "Per-asset declared FACTS for the asset census (N-22 ruling; SS decisions 2026-09-30). A kind is a fact, never a rule: it never makes a gate N/A by itself. null = UNKNOWN, never a value; prose_fields null = undeclared (Null/Narr read NO_DETECTOR), never 'no prose'; an empty list [] is a positive declaration (this asset's writer composes no prose, e.g. a reference corpus that stores source text as loaded) and, like every declared prose_fields, needs an evidence.prose_fields pointer to the writer code read (file:line); a JSONB narrative is declared as 'column.$.key' paths, where a key may carry one [*] for every element of an array ('column.$.items[*].reason'; file 1.6.0; no index numbers, no [*][*]) (Narr concerns GENERATED prose, CLAUDE.md N.7; SS ruling 2026-10-01). evidence.prose_fields must cite writer code as path:line (py/ts/tsx; a .sql line or a test path is rejected) and every non-null prose_fields declaration carries evidence_kind 'writer' (the 13 earlier DDL-evidence declarations were re-audited against writer code: 11 now carry writer evidence, 2 are null; none carries 'ddl'); an orphan evidence pointer on a null prose_fields is rejected. carriage.served_surface: true ONLY with read_evidence (repo-relative path:line of a real non-test SQL FROM/JOIN read of the asset's own table, in a served capability/tool; for a shared table the served query must filter that asset's rows) + read_table; a comment, label, allow-list entry or stub is not a read, null where the only evidence is a negative scan, a comment, a provenance label or an unavailable stub (a negative scan is not proof; CLAUDE.md N.8/N.7.6); never false without proof. dag_dependents is NOT declared (measured: census blocking_radius). terminal_by_construction (a string pointer; none declared yet) is the only basis for a downstream-carriage False. cross_asset_writes: list of 'table.column' an asset writes outside its own table ([] = declared none; null = unknown). Narr rule for L1 fact rows (SS 2026-10-01): fact_value_text is the datum; citation_human is the sentence; verbalising an L1 fact value states a computed value, so a writer that composes citation_human from a fact value is declared (per writer, with the composed sites cited); the shared fact_value_text / formula_provenance_text columns stay undeclared (their strings are mixed values and labels). A citation that is only an identity (an entity name, a period lord-chain/level/ayanamsha, a fixed ordinal) is not narration.",
  "kind_enum": [
   "data",
   "service",
@@ -82,7 +82,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_compendium_index; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: bra",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:79 reads `brahma_compendium_index` (`FROM brahma_compendium_index`). Dens.served=FAIL.",
-    "prose_fields": "writers/bg_compendium_index.py composes the `significance` TEXT column (migrations/001_baseline.sql (line 469)) per row by f-string from the computed passage count: f\"{text_id} chapter {chapter_num}: {len(rows)} passage(s)\" (bg_compendium_index.py:97) and f\"{text_id} covers {topic_id} in {len(rows)} passage(s)\" (bg_compendium_index.py:109). summary_text is NOT declared: it is verbatim source slices (first 300 chars of up to 3 chunks) joined with ' … ' and cut at 1000 (bg_compendium_index.py:40), not composed narration. Zero LLM (bg_compendium_index.py:5)."
+    "prose_fields": "writers/bg_compendium_index.py composes the `significance` TEXT column (migrations/001_baseline.sql (line 469)) per row by f-string from the computed passage count: f\"{text_id} chapter {chapter_num}: {len(rows)} passage(s)\" (platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:97) and f\"{text_id} covers {topic_id} in {len(rows)} passage(s)\" (platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:109). summary_text is NOT declared: it is verbatim source slices (first 300 chars of up to 3 chunks) joined with ' … ' and cut at 1000 (platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:40), not composed narration. Zero LLM (platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py:5)."
    },
    "evidence_kind": "writer"
   },
@@ -151,7 +151,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_dosha_catalog; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: ref",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75 reads `brahma_dosha_catalog` (`const pageSql = `SELECT * FROM brahma_dosha_catalog ${whereClause} ` +`). Dens.served=FAIL.",
-    "prose_fields": "stores source text; generates none. bg_doshas writer (writers/bg_doshas.py) delegates to brahmagyan/l0_doshas.py seed_doshas, which binds the hand-authored inline DOSHAS corpus verbatim (l0_doshas.py:1972 formation_text, l0_doshas.py:1973 effects_text); no f-string, template, join or LLM composes a column. The only derived text is brahma_ontology.description = effects_text[:200] (l0_doshas.py:2003), a prefix slice of stored source text, not composition. Reference corpus per SS ruling 2026-10-01 (a)."
+    "prose_fields": "stores source text; generates none. bg_doshas writer (writers/bg_doshas.py) delegates to brahmagyan/l0_doshas.py seed_doshas, which binds the hand-authored inline DOSHAS corpus verbatim (platform/python-sidecar/brahmagyan/l0_doshas.py:1972 formation_text, platform/python-sidecar/brahmagyan/l0_doshas.py:1973 effects_text); no f-string, template, join or LLM composes a column. The only derived text is brahma_ontology.description = effects_text[:200] (platform/python-sidecar/brahmagyan/l0_doshas.py:2003), a prefix slice of stored source text, not composition. Reference corpus per SS ruling 2026-10-01 (a)."
    },
    "evidence_kind": "writer"
   },
@@ -364,7 +364,7 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts:138",
@@ -373,8 +373,9 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_ontology; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts:138 reads `brahma_ontology` (`FROM brahma_ontology``). Dens.served=FAIL.",
-    "prose_fields": null
-   }
+    "prose_fields": "[] = no generated narration under the SS definition of 2026-10-01. Writer bg_ontology.py delegates to brahmagyan/l0_ontology.py seed_ontology. The only composed description strings are the ordinal labels `Nakshatra {n}/27` (platform/python-sidecar/brahmagyan/l0_ontology.py:147) and `Sign {n}/12` (platform/python-sidecar/brahmagyan/l0_ontology.py:171), where n is the 1-based position in the fixed literal NAK_DATA / SIGN_DATA lists and the denominator is that list's length; every other description is a literal in a data tuple. The other composed strings are identifiers and synonym lists (platform/python-sidecar/brahmagyan/l0_ontology.py:145 nak_ id, platform/python-sidecar/brahmagyan/l0_ontology.py:215 to platform/python-sidecar/brahmagyan/l0_ontology.py:219 house ids and synonyms, platform/python-sidecar/brahmagyan/l0_ontology.py:977 to platform/python-sidecar/brahmagyan/l0_ontology.py:981 varga codes) and are not narration. The INSERT parameters (platform/python-sidecar/brahmagyan/l0_ontology.py:1152) only read values. Test guard: every text-building expression in l0_ontology.py is inventoried by AST and only the two ordinal descriptions, identifiers, synonym lists, the INSERT/delete SQL text and counters are accepted. Served: platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts:65 (description)."
+   },
+   "evidence_kind": "writer"
   },
   "bg_panchanga": {
    "kind": "service",
@@ -478,7 +479,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_remedy_corpus; census Idem.pattern PASS: INSERT … ON CONFLICT into the asset's own table(s) (upsert):",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts:101 reads `brahma_remedy_corpus` (`const sql = `SELECT ${selectCols} FROM brahma_remedy_corpus WHERE ${whereClause} ` +`). Dens.served=FAIL.",
-    "prose_fields": "brahmagyan/l0_remedy_corpus.py gen_planet_matrix composes prescription_text for 108 rows by f-string from PLANET_REMEDY_DATA (l0_remedy_corpus.py:247 mantra, :270 gemstone, :297 charity, :319 vrata, :340 puja, :362 yantra, :383 homa, :404 behavioral, :424 japa) and charity_action = f\"Donate {item} on {d['day']}.\" (l0_remedy_corpus.py:309); _gen_nakshatra_mantra_rows composes 27 more prescription_text values by f-string (l0_remedy_corpus.py:2236). The other buckets are literals (DOSHA_REMEDIES, LEGACY_REMEDIES, STOTRA/DANA/YANTRA), the sweep stores a <=400-char slice of the source chunk (sweep_classical_text_chunks), and the tantric loader binds YAML text verbatim (l0_remedy_loader.py insert_to_corpus): those are not composition. contraindications is a constant string, not declared."
+    "prose_fields": "brahmagyan/l0_remedy_corpus.py gen_planet_matrix composes prescription_text for 108 rows by f-string from PLANET_REMEDY_DATA (platform/python-sidecar/brahmagyan/l0_remedy_corpus.py:247 mantra, :270 gemstone, :297 charity, :319 vrata, :340 puja, :362 yantra, :383 homa, :404 behavioral, :424 japa) and charity_action = f\"Donate {item} on {d['day']}.\" (platform/python-sidecar/brahmagyan/l0_remedy_corpus.py:309); _gen_nakshatra_mantra_rows composes 27 more prescription_text values by f-string (platform/python-sidecar/brahmagyan/l0_remedy_corpus.py:2236). The other buckets are literals (DOSHA_REMEDIES, LEGACY_REMEDIES, STOTRA/DANA/YANTRA), the sweep stores a <=400-char slice of the source chunk (sweep_classical_text_chunks), and the tantric loader binds YAML text verbatim (l0_remedy_loader.py insert_to_corpus): those are not composition. contraindications is a constant string, not declared."
    },
    "evidence_kind": "writer"
   },
@@ -691,7 +692,7 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57",
@@ -700,8 +701,9 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) brahma_yoga_catalog; census Idem.pattern PASS: the asset's own table(s) replaced by delete-then-insert: bra",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57 reads `brahma_yoga_catalog` (`const pageSql  = `SELECT * FROM brahma_yoga_catalog ${whereClause} ORDER BY school, name_e`). Dens.served=FAIL.",
-    "prose_fields": null
-   }
+    "prose_fields": "[] = no generated narration under the SS definition of 2026-10-01 (a composed string that states or grades a computed value; provenance pointers, ordinals and structural labels are not narration). Writer bg_yogas.py delegates to brahmagyan/l0_yogas.py seed_yogas. formation_text is a verbatim source clause or, when none exists, the provenance pointer f-string at platform/python-sidecar/brahmagyan/l0_yogas.py:2140 (interpolates only name_en, verse_ref, text_id and chapter of the source chunk: no count, score, dignity or grade); source_citation is the provenance f-string at platform/python-sidecar/brahmagyan/l0_yogas.py:2156; name_en is the label base_name + ' Yoga' (platform/python-sidecar/brahmagyan/l0_yogas.py:2057); significations_text is a regex slice or raw_clause[:200] and the ontology description a [:150] slice of it (platform/python-sidecar/brahmagyan/l0_yogas.py:2310); the inline corpora YOGAS_CORE, DETECTOR_YOGAS and SARAVALI_YOGA_LOOKUP build no text; the catalog INSERT parameters (platform/python-sidecar/brahmagyan/l0_yogas.py:2272) only read values. Test guard: every text-building expression in l0_yogas.py (outside seed_yoga_families, which the writer never calls) is inventoried by AST and only the four bound provenance/label strings, regex patterns, raised error text and arithmetic are accepted, so a new composed string fails. Served whole: platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57 (SELECT *)."
+   },
+   "evidence_kind": "writer"
   },
   "bo_anveshana": {
    "kind": "data",
@@ -722,7 +724,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_discoveries; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:202 reads `bodha_discoveries` (`FROM bodha_discoveries`). Dens.served=PASS.",
-    "prose_fields": "bo_anveshana.py:54 INSERTs into bodha_discoveries binding %(why_an_acharya_misses_it)s (bo_anveshana.py:67) and %(surface_reading)s/%(depth_reading)s/%(surface_depth_delta)s (bo_anveshana.py:70), batch-executed (bo_anveshana.py:829). _make_discovery puts its `why_misses`/`surface`/`depth`/`delta` parameters into the row (bo_anveshana.py:414, bo_anveshana.py:423, bo_anveshana.py:424, bo_anveshana.py:425); the four call sites compose them by f-string: latent insight (bo_anveshana.py:509, bo_anveshana.py:511, bo_anveshana.py:512, bo_anveshana.py:513), embedding outlier (bo_anveshana.py:585, bo_anveshana.py:587, bo_anveshana.py:588, bo_anveshana.py:589), distributional anomaly (bo_anveshana.py:648, bo_anveshana.py:650, bo_anveshana.py:651, bo_anveshana.py:652), broker (bo_anveshana.py:732, bo_anveshana.py:734, bo_anveshana.py:735, bo_anveshana.py:736). AST-checked. Computed placeholders: format-spec'd scores (sal_norm, consequence_score, non_obviousness_score, surface_salience, dist, sigma, mean_salience) and int(subsystem_div)/int(edge_count): depth_reading, surface_depth_delta and why_an_acharya_misses_it state a computed value at all four sites. MIXED column surface_reading: only the latent-insight site states a computed value (surface_salience, bo_anveshana.py:511); bo_anveshana.py:587, bo_anveshana.py:650 and bo_anveshana.py:734 interpolate only an identifier/class (signal_type_id, signal_type_class, subject) into fixed text, so those rows state nothing computed (discriminator discovery_class='latent_insight'). hypothesis_text is NOT declared: all four sites (bo_anveshana.py:426 dict) interpolate only identifier/class/domain labels into fixed text. Served: query_discoveries.ts:122 selects surface_reading, depth_reading and surface_depth_delta, query_discoveries.ts:123 why_an_acharya_misses_it, FROM bodha_discoveries (query_discoveries.ts:126); the read_evidence pointer (query_contradictions.ts:202) serves hypothesis_text only."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:54 INSERTs into bodha_discoveries binding %(why_an_acharya_misses_it)s (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:67) and %(surface_reading)s/%(depth_reading)s/%(surface_depth_delta)s (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:70), batch-executed (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:829). _make_discovery puts its `why_misses`/`surface`/`depth`/`delta` parameters into the row (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:414, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:423, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:424, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:425); the four call sites compose them by f-string: latent insight (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:509, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:511, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:512, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:513), embedding outlier (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:585, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:587, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:588, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:589), distributional anomaly (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:648, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:650, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:651, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:652), broker (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:732, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:734, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:735, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:736). AST-checked. Computed placeholders: format-spec'd scores (sal_norm, consequence_score, non_obviousness_score, surface_salience, dist, sigma, mean_salience) and int(subsystem_div)/int(edge_count): depth_reading, surface_depth_delta and why_an_acharya_misses_it state a computed value at all four sites. MIXED column surface_reading: only the latent-insight site states a computed value (surface_salience, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:511); platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:587, platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:650 and platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:734 interpolate only an identifier/class (signal_type_id, signal_type_class, subject) into fixed text, so those rows state nothing computed (discriminator discovery_class='latent_insight'). hypothesis_text is NOT declared: all four sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py:426 dict) interpolate only identifier/class/domain labels into fixed text. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:122 selects surface_reading, depth_reading and surface_depth_delta, platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:123 why_an_acharya_misses_it, FROM bodha_discoveries (platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts:126); the read_evidence pointer (platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:202) serves hypothesis_text only."
    },
    "evidence_kind": "writer"
   },
@@ -733,7 +735,8 @@
    },
    "prose_fields": [
     "signal_headline_text",
-    "signal_summary_text"
+    "signal_summary_text",
+    "citation_human"
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
@@ -743,7 +746,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'arudha' rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "bo_arudha.py:189 INSERTs into bodha_msr_signals binding %(signal_headline_text)s/%(signal_summary_text)s (bo_arudha.py:222) from row dicts built by arudha_emitter.build_signal_rows (bo_arudha.py:163) and executed unchanged (bo_arudha.py:182). The dict takes `summary`/`headline` (arudha_emitter.py:139, arudha_emitter.py:140) from _make_row, whose three call sites compose both by f-string from computed L1 values and a grade: AL house/sign/classical category (arudha_emitter.py:242, arudha_emitter.py:243), graha conjunct AL with benefic/malefic tenor (arudha_emitter.py:265, arudha_emitter.py:266), A2/A11 pada house/sign/occupants/valence (arudha_emitter.py:306, arudha_emitter.py:308). AST-checked (INSERT binds the columns; every call-site value is string-composed). Served: query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_arudha' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (query_signals.ts:449; query_signals.ts:140 in the default projection) = 'arudha'. Computed placeholders: al_house, al_sign, al_category, tenor, pada_house, pada_sign, occupants, tenancy_valence, ', '.join(occupants); identifier-only (not computed): graha_display, pada_label. Every call site interpolates at least one computed value."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:189 INSERTs into bodha_msr_signals binding %(signal_headline_text)s/%(signal_summary_text)s (platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:222) from row dicts built by arudha_emitter.build_signal_rows (platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:163) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:182). The dict takes `summary`/`headline` (platform/python-sidecar/bodha_writers/arudha_emitter.py:139, platform/python-sidecar/bodha_writers/arudha_emitter.py:140) from _make_row, whose three call sites compose both by f-string from computed L1 values and a grade: AL house/sign/classical category (platform/python-sidecar/bodha_writers/arudha_emitter.py:242, platform/python-sidecar/bodha_writers/arudha_emitter.py:243), graha conjunct AL with benefic/malefic tenor (platform/python-sidecar/bodha_writers/arudha_emitter.py:265, platform/python-sidecar/bodha_writers/arudha_emitter.py:266), A2/A11 pada house/sign/occupants/valence (platform/python-sidecar/bodha_writers/arudha_emitter.py:306, platform/python-sidecar/bodha_writers/arudha_emitter.py:308). AST-checked (INSERT binds the columns; every call-site value is string-composed). Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_arudha' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:449; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:140 in the default projection) = 'arudha'. Computed placeholders: al_house, al_sign, al_category, tenor, pada_house, pada_sign, occupants, tenancy_valence, ', '.join(occupants); identifier-only (not computed): graha_display, pada_label. Every call site interpolates at least one computed value. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human is f'Arudha: {headline}' and the headline states the Arudha Lagna house, sign and classical category (a verbalized computed placement). Composed at platform/python-sidecar/bodha_writers/arudha_emitter.py:214, platform/python-sidecar/bodha_writers/arudha_emitter.py:243. AST census of the writer's citation_human sites (platform/python-sidecar/bodha_writers/arudha_emitter.py): 1 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py:188 (INSERT INTO bodha_msr_signals); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:119."
    },
    "evidence_kind": "writer"
   },
@@ -752,7 +755,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:610",
@@ -761,15 +766,18 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_nodes; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:610 reads `bodha_cgm_nodes` (`FROM bodha_cgm_nodes n`). Dens.served=FAIL.",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): the yoga/dosha node citation is f'{Class} node: {name}' and name comes from _yoga_config_name, which falls back to configuration_jsonb.fact_value_text: on the native chart bodha_cgm_nodes.citation_human holds 'Dosha node: afflicted', 'Yoga node: true', 'Yoga node: 1984-02-05T19:29:13+00:00', a computed status; the graha, fixed bhava ordinal and domain strings (:351 :406 :456) are structural labels and are not counted. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:523, platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:252. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py): 4 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py:67 (INSERT INTO bodha_cgm_nodes); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
+   },
+   "evidence_kind": "writer"
   },
   "bo_cdlm_summary": {
    "kind": "data",
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:36",
@@ -778,15 +786,19 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cdlm_chart_summary; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:36 reads `bodha_cdlm_chart_summary` (`chart_summary:       'bodha_cdlm_chart_summary',`). Dens.served=PASS. Dynamic table map: line 36 maps tier chart_summary -> bodha_cdlm_chart_summary and the same file selects `FROM ${table}` (line 180); the default tier serves it.",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): the pattern-cluster citation embeds the cell count (len(agg['cells'])); the domain-rollup string is a pointer and the chart-summary string a constant. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py:391. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py): 2 composed, 1 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py:52 (INSERT INTO bodha_cdlm_chart_summary); platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py:87 (INSERT INTO bodha_cdlm_domain_rollups); platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py:105 (INSERT INTO bodha_cdlm_pattern_clusters); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:52."
+   },
+   "evidence_kind": "writer"
   },
   "bo_cgm_motifs": {
    "kind": "data",
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human",
+    "motif_name"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:74",
@@ -795,8 +807,9 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_motifs; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:74 reads `bodha_cgm_motifs` (`FROM bodha_cgm_motifs`). Dens.served=FAIL.",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): motif citations embed node, edge, component and diameter counts, constituent counts and stellium sizes; motif_name is composed and served (platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:71): 'Stellium in House {house_key}: ...' (:342) states the computed stellium house and 'Parivartana Chain (length {depth}): ...' (:400) the chain length; bo_yantra_mechanism forwards motif_name as mechanism_name (platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:229). Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:777, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:232, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:348, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:342, platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:400. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py): 7 composed, 2 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:86 (INSERT INTO bodha_cgm_motifs); platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:107 (INSERT INTO bodha_cgm_sub_graphs); platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py:125 (INSERT INTO bodha_cgm_chart_topology_summary); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:73."
+   },
+   "evidence_kind": "writer"
   },
   "bo_cgm_paths": {
    "kind": "data",
@@ -871,7 +884,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:586",
@@ -880,8 +895,9 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_edges; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:586 reads `bodha_cgm_edges` (`JOIN bodha_cgm_edges e`). Dens.served=FAIL.",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): edge and node citations restate computed placements and relations (graha house/sign numbers at :708 :785 :1672 :1732, argala offset and cancellation at :625, the contradiction citation naming the shared domains at :1360); pure endpoint labels (:1024 :1147 :1199 :1269) are not counted; BORDERLINE rule: a placement stated as the assertion counts as a computed value. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:625, platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:708, platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:785, platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1360, platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1732. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py): 10 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:58 (INSERT INTO bodha_cgm_edges); platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:92 (INSERT INTO bodha_contradictions); platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1539 (INSERT INTO bodha_cgm_nodes); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
+   },
+   "evidence_kind": "writer"
   },
   "bo_laksana": {
    "kind": "data",
@@ -890,7 +906,8 @@
    },
    "prose_fields": [
     "signal_headline_text",
-    "signal_summary_text"
+    "signal_summary_text",
+    "citation_human"
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
@@ -900,7 +917,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so its 15 signal_type_class values (yoga, dosha, sade_sati, panchanga, ...) rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "bo_laksana.py:3067 INSERTs into bodha_msr_signals binding the two columns (bo_laksana.py:3107), executed by _batch_insert (bo_laksana.py:3264, bo_laksana.py:3601). Three emit sites carry both columns. (1) The fact path: _build_signal_row assigns signal_summary_text = _build_summary_text(...) (bo_laksana.py:2414) whose body joins category/key/value_text/value_num and every config key (bo_laksana.py:743), and signal_headline_text = _build_headline_text(...) (bo_laksana.py:2425) whose returns f-string subject/house/varga/key = value (bo_laksana.py:771, bo_laksana.py:772); dict at bo_laksana.py:2478, bo_laksana.py:2479. (2) The D9 cross-check: headline and summary f-strings state D1/D9 dignity, classification and valence (bo_laksana.py:2920, bo_laksana.py:2924; dict bo_laksana.py:2951, bo_laksana.py:2952). (3) The varga-ratification divergence signals: summary f-string (bo_laksana.py:1394) and headline `value_text or f\"{subj}: divergent varga ratification in {dom}\"` (bo_laksana.py:1398; verbatim-first, composed fallback). Most rows are a key=value restatement of the L1 fact rather than graded prose; the grading (valence, classification) sits in the D9 cross-check. AST-checked (every dict site resolves to composed text). Served: query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_laksana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (query_signals.ts:449; query_signals.ts:140 in the default projection) = 'yoga', 'dosha', 'sade_sati', 'panchanga', 'karaka_alignment', 'tradition_specific', 'parivartana', 'configuration', 'varga_pattern', 'annual', 'medical', 'vastu', 'composite_state', 'varga_ratification_divergence', 'bhavat_bhavam_amplifier'. Computed placeholders: body, loc (the fact value, house and varga restated; value_num/value_text formatted), classification, d1_text, d9_text, valence, value_num, value_text; identifier-only: graha, subj, dom, source_l1_asset, str(fact_subject).upper(). MIXED column caveat: the divergence headline (bo_laksana.py:1398) is verbatim-first (`value_text or f\"...\"`, its fallback interpolates only identifiers), so it states no computed value of its own; row discriminator signal_type_class='varga_ratification_divergence'. Also: bhavat_bhavam_amplifier.to_msr_row composes class-'bhavat_bhavam_amplifier' text but has no caller, so no such row exists to check."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3067 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3107), executed by _batch_insert (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3264, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3601). Three emit sites carry both columns. (1) The fact path: _build_signal_row assigns signal_summary_text = _build_summary_text(...) (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2414) whose body joins category/key/value_text/value_num and every config key (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:743), and signal_headline_text = _build_headline_text(...) (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2425) whose returns f-string subject/house/varga/key = value (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:771, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:772); dict at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2478, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2479. (2) The D9 cross-check: headline and summary f-strings state D1/D9 dignity, classification and valence (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2920, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2924; dict platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2951, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:2952). (3) The varga-ratification divergence signals: summary f-string (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1394) and headline `value_text or f\"{subj}: divergent varga ratification in {dom}\"` (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1398; verbatim-first, composed fallback). Most rows are a key=value restatement of the L1 fact rather than graded prose; the grading (valence, classification) sits in the D9 cross-check. AST-checked (every dict site resolves to composed text). Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_laksana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:449; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:140 in the default projection) = 'yoga', 'dosha', 'sade_sati', 'panchanga', 'karaka_alignment', 'tradition_specific', 'parivartana', 'configuration', 'varga_pattern', 'annual', 'medical', 'vastu', 'composite_state', 'varga_ratification_divergence', 'bhavat_bhavam_amplifier'. Computed placeholders: body, loc (the fact value, house and varga restated; value_num/value_text formatted), classification, d1_text, d9_text, valence, value_num, value_text; identifier-only: graha, subj, dom, source_l1_asset, str(fact_subject).upper(). MIXED column caveat: the divergence headline (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:1398) is verbatim-first (`value_text or f\"...\"`, its fallback interpolates only identifiers), so it states no computed value of its own; row discriminator signal_type_class='varga_ratification_divergence'. Also: bhavat_bhavam_amplifier.to_msr_row composes class-'bhavat_bhavam_amplifier' text but has no caller, so no such row exists to check. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human states the D1 and D9 readings and their cross-check classification (bo_laksana.py), and the derived bhava numbers of the bhavat-bhavam amplifier. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3046, platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py:391. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py, platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py): 5 composed, 0 constant, 0 forwarded, 2 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3066 (INSERT INTO bodha_msr_signals); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:119."
    },
    "evidence_kind": "writer"
   },
@@ -909,7 +926,7 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507",
@@ -918,8 +935,9 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PARTIAL: the asset's own table(s) are only UPDATEd in place: bodha_ms",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: the asset's output is the column graph_node_strength_contribution_jsonb, which query_signals.ts serves only through its projection whitelist (:112, on request), not in the default projection; weakest of the msr reads.",
-    "prose_fields": null
-   }
+    "prose_fields": "[] = the writer composes no string bound to a column (SS ruling 2026-10-01). bo_laksana_rerank is UPDATE-only (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3823 BoLaksanaRerankWriter) and writes six non-text columns: graph_node_strength_contribution_jsonb (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3872 payload of floats, the graha title looked up from _SHORT_TO_LONG, the constant formula_version and the timestamp; UPDATE platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3887), valence and valence_source (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3949, only when new_source == 'ga_vichara_v1'; valence is an enum value mapped through the constant dict _VICHARA_TO_MSR_VALENCE at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:388), and the SQL-computed counts and array system_convergence_count, cross_system_consensus_count, contradicts_signals_array (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3726, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3756, platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3764). The only text-building expressions in the class and its helpers are the WriterResult notes f-string (platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:3960, not stored in a column), numeric arithmetic in _structural_role_from_centrality, and the lookup-key f-string at platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py:433 used only as a vichara_lookup.get key. Test guard: AST inventory of those expressions, the payload dict has no composed value, the UPDATE SET columns are exactly the six, and the SQL contains no ||, concat, format, string_agg or replace. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507."
+   },
+   "evidence_kind": "writer"
   },
   "bo_nakshatra_semantic": {
    "kind": "data",
@@ -938,7 +956,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'nakshatra_semantic' rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "bo_nakshatra_semantic.py:175 INSERTs into bodha_msr_signals binding the two columns (bo_nakshatra_semantic.py:208) from rows built by nakshatra_semantic_emitter.build_signal_row (bo_nakshatra_semantic.py:141) and executed unchanged (bo_nakshatra_semantic.py:168). nakshatra_semantic_emitter.py:251 builds headline bits by f-string from the computed nakshatra/pada/lord, dispositor chain, tara and gandanta flag and joins them (nakshatra_semantic_emitter.py:258); the summary is an f-string template of the same values (nakshatra_semantic_emitter.py:260); both go into the row (nakshatra_semantic_emitter.py:281, nakshatra_semantic_emitter.py:282). AST-checked. Served: query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_nakshatra_semantic' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (query_signals.ts:449; query_signals.ts:140 in the default projection) = 'nakshatra_semantic'. Computed placeholders: chain_length, gandanta_zone, is_gandanta, nakshatra, nakshatra_lord, pada, tara_favorable, tara_name, tara_position (the headline bits also interpolate derived expressions); identifier-only: graha_display."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:175 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:208) from rows built by nakshatra_semantic_emitter.build_signal_row (platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:141) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py:168). platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:251 builds headline bits by f-string from the computed nakshatra/pada/lord, dispositor chain, tara and gandanta flag and joins them (platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:258); the summary is an f-string template of the same values (platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:260); both go into the row (platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:281, platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py:282). AST-checked. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_nakshatra_semantic' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:449; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:140 in the default projection) = 'nakshatra_semantic'. Computed placeholders: chain_length, gandanta_zone, is_gandanta, nakshatra, nakshatra_lord, pada, tara_favorable, tara_name, tara_position (the headline bits also interpolate derived expressions); identifier-only: graha_display."
    },
    "evidence_kind": "writer"
   },
@@ -964,7 +982,11 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "derivation.$.factor_ledger[*].detail",
+    "derivation.$.denials[*].reason",
+    "derivation.$.factor_ledger[*].connections[*].reason"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:161",
@@ -973,8 +995,9 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_pratijna; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:161 reads `bodha_pratijna` (`FROM bodha_pratijna`). Dens.served=PASS.",
-    "prose_fields": null
-   }
+    "prose_fields": "Writer code in writers/bo_pratijna_v4_engine.py composes every ledger string by f-string or concatenation from computed L1 values. factor_ledger[*].detail is DignityResult.detail: platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:310 (sign=N matches exaltation_sign), platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:410 and platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:425 (naisargika/tatkalika relation with house numbers), platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:945 (divisional DATA GAP); the details at platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:318, :348, :894, :972 are constant stubs. denials[*].reason is DenialResult.reason: platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:574 (house_lord=<state>, karaka=<state>), platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:624 (core lord house N), platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:655 (debilitated-in-dusthana verdict), platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:679 and platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:696 (papakartari house numbers); platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:568 and :618 are constant. factor_ledger[*].connections[*].reason is DusthanaConnection.reason: platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:738 to platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:753 (f-strings naming lords and houses). Bound: ClassScore(factor_ledger=, denials=) at platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:1033 is stored as score.factor_ledger (platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:407) and score.denials (platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:408) and json.dumps'd into the derivation INSERT row (platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:428). Served whole: platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts:159 selects `derivation`. NOT declared (fixed strings): condition_ledger[*].reason (platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py:774), status_mapping_rule (platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:401), the no_evidence reason (platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py:378)."
+   },
+   "evidence_kind": "writer"
   },
   "bo_samskara": {
    "kind": "data",
@@ -1015,7 +1038,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:821",
@@ -1024,8 +1049,9 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cdlm_cells; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:821 reads `bodha_cdlm_cells` (`FROM bodha_cdlm_cells`). Dens.served=FAIL. Served domain-reading capability (per-cell rows with cell_remedy_priority_rank).",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human embeds the shared-signal count (len(shared_ids)) and the signal count (len(sigs)). Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:365, platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:440. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py): 2 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:55 (INSERT INTO bodha_cdlm_cells); platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py:100 (INSERT INTO bodha_convergence); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
+   },
+   "evidence_kind": "writer"
   },
   "bo_special_lagna": {
    "kind": "data",
@@ -1044,7 +1070,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'special_lagna' rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "bo_special_lagna.py:162 INSERTs into bodha_msr_signals binding the two columns (bo_special_lagna.py:195) from rows built by special_lagna_emitter.build_signal_row (bo_special_lagna.py:134) and executed unchanged (bo_special_lagna.py:155). special_lagna_emitter.py:135 composes the summary and special_lagna_emitter.py:139 the headline by f-string from the computed lagna house/sign/lord/nakshatra/domains; both go into the row (special_lagna_emitter.py:154, special_lagna_emitter.py:155). AST-checked. Served: query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_special_lagna' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (query_signals.ts:449; query_signals.ts:140 in the default projection) = 'special_lagna'. Computed placeholders: house_d1, sign, sign_lord, nakshatra, domains, '/'.join(domains); identifier-only: display (the lagna name)."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:162 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:195) from rows built by special_lagna_emitter.build_signal_row (platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:134) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py:155). platform/python-sidecar/bodha_writers/special_lagna_emitter.py:135 composes the summary and platform/python-sidecar/bodha_writers/special_lagna_emitter.py:139 the headline by f-string from the computed lagna house/sign/lord/nakshatra/domains; both go into the row (platform/python-sidecar/bodha_writers/special_lagna_emitter.py:154, platform/python-sidecar/bodha_writers/special_lagna_emitter.py:155). AST-checked. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_special_lagna' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:449; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:140 in the default projection) = 'special_lagna'. Computed placeholders: house_d1, sign, sign_lord, nakshatra, domains, '/'.join(domains); identifier-only: display (the lagna name)."
    },
    "evidence_kind": "writer"
   },
@@ -1065,7 +1091,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'sudarshana_agreement' rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "bo_sudarshana.py:265 INSERTs into bodha_msr_signals binding the two columns (bo_sudarshana.py:298) from rows built by sudarshana_emitter.build_signal_row (bo_sudarshana.py:220) and executed unchanged (bo_sudarshana.py:258). sudarshana_emitter.py builds the headline in three agreement branches (sudarshana_emitter.py:261 confirmed_3frame, sudarshana_emitter.py:267 partial_2frame, sudarshana_emitter.py:274 contradicted), each an f-string of the tri-frame houses/classes and the matching_class grade, and the summary (sudarshana_emitter.py:281) as an f-string of the same values; both go into the row (sudarshana_emitter.py:307, sudarshana_emitter.py:308). AST-checked (all three headline branches compose). Served: query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_sudarshana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (query_signals.ts:449; query_signals.ts:140 in the default projection) = 'sudarshana_agreement'. Computed placeholders: tri_frame['house_from_lagna'], tri_frame['house_from_moon'], tri_frame['house_from_sun'], tri_frame['class_from_lagna'], tri_frame['class_from_moon'], tri_frame['class_from_sun'], tri_frame['matching_class'], agreement; identifier-only: graha_display."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:265 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:298) from rows built by sudarshana_emitter.build_signal_row (platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:220) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py:258). sudarshana_emitter.py builds the headline in three agreement branches (platform/python-sidecar/bodha_writers/sudarshana_emitter.py:261 confirmed_3frame, platform/python-sidecar/bodha_writers/sudarshana_emitter.py:267 partial_2frame, platform/python-sidecar/bodha_writers/sudarshana_emitter.py:274 contradicted), each an f-string of the tri-frame houses/classes and the matching_class grade, and the summary (platform/python-sidecar/bodha_writers/sudarshana_emitter.py:281) as an f-string of the same values; both go into the row (platform/python-sidecar/bodha_writers/sudarshana_emitter.py:307, platform/python-sidecar/bodha_writers/sudarshana_emitter.py:308). AST-checked (all three headline branches compose). Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_sudarshana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:449; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:140 in the default projection) = 'sudarshana_agreement'. Computed placeholders: tri_frame['house_from_lagna'], tri_frame['house_from_moon'], tri_frame['house_from_sun'], tri_frame['class_from_lagna'], tri_frame['class_from_moon'], tri_frame['class_from_sun'], tri_frame['matching_class'], agreement; identifier-only: graha_display."
    },
    "evidence_kind": "writer"
   },
@@ -1075,7 +1101,8 @@
     "served_surface": true
    },
    "prose_fields": [
-    "prescription_detail_jsonb.$.maraka_contraindication_verdict.reason"
+    "prescription_detail_jsonb.$.maraka_contraindication_verdict.reason",
+    "citation_human"
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
@@ -1085,7 +1112,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_rm_resonances; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:362 reads `bodha_rm_resonances` (`FROM bodha_rm_resonances`). Dens.served=FAIL.",
-    "prose_fields": "writers/bo_upaya.py _compute_gemstone_maraka_verdict composes verdict['reason'] by f-string in both the contraindicated and the no-contraindication branches (bo_upaya.py:1008; the fact-missing branch at :989 is a constant); the verdict is bound as prescription_detail_jsonb['maraka_contraindication_verdict'] (bo_upaya.py:1690) into bodha_rm_remedy_prescriptions. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:404 selects the column and query_remedies.ts:564 surfaces the verdict via marakaVerdictFrom. The other keys of prescription_detail_jsonb (prescription_text, mantra_text, gemstone, charity_action, deity) are copied from brahma_remedy_corpus (composed upstream by bg_remedies), not declared here."
+    "prose_fields": "writers/bo_upaya.py _compute_gemstone_maraka_verdict composes verdict['reason'] by f-string in both the contraindicated and the no-contraindication branches (platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1008; the fact-missing branch at :989 is a constant); the verdict is bound as prescription_detail_jsonb['maraka_contraindication_verdict'] (platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1690) into bodha_rm_remedy_prescriptions. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:404 selects the column and platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:564 surfaces the verdict via marakaVerdictFrom. The other keys of prescription_detail_jsonb (prescription_text, mantra_text, gemstone, charity_action, deity) are copied from brahma_remedy_corpus (composed upstream by bg_remedies), not declared here. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): resonance citation embeds the normalized shadbala and dosha count; summaries embed resonance and prescription counts. Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1549, platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1798, platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:1842. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py): 5 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:57 (INSERT INTO bodha_rm_resonances); platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:77 (INSERT INTO bodha_rm_remedy_prescriptions); platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:124 (INSERT INTO bodha_rm_chart_summary); platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:142 (INSERT INTO bodha_rm_dosha_remedy_bundles); platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py:157 (INSERT INTO bodha_rm_pattern_remedies); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts:78."
    },
    "evidence_kind": "writer"
   },
@@ -1096,7 +1123,8 @@
    },
    "prose_fields": [
     "signal_headline_text",
-    "signal_summary_text"
+    "signal_summary_text",
+    "citation_human"
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
@@ -1106,7 +1134,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so classes 'vargottama_amplification' / 'dhana_axis' rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "bo_vargottama_dhana.py:173 INSERTs into bodha_msr_signals binding the two columns (bo_vargottama_dhana.py:206) from rows built by build_vargottama_rows (bo_vargottama_dhana.py:144) + build_dhana_axis_rows (bo_vargottama_dhana.py:147) and executed unchanged (bo_vargottama_dhana.py:166). vargottama_dhana_emitter.py:162 and vargottama_dhana_emitter.py:163 put `summary`/`headline` from _make_row, whose call sites compose both by f-string: vargottama rows (vargottama_dhana_emitter.py:284, vargottama_dhana_emitter.py:286: D1=D9 sign, graded valence) and dhana-axis rows (vargottama_dhana_emitter.py:381, vargottama_dhana_emitter.py:386: house sign/lord/occupants/valence). AST-checked. Served: query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_vargottama_dhana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (query_signals.ts:449; query_signals.ts:140 in the default projection) = 'vargottama_amplification', 'dhana_axis'. Computed placeholders: sign, house_d1, house_sign, house_lord, lord_house_d1, tenancy_valence, vg_verdict.valence, occupants, ', '.join(occupants), house_num; identifier-only: graha_display, label."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:173 INSERTs into bodha_msr_signals binding the two columns (platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:206) from rows built by build_vargottama_rows (platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:144) + build_dhana_axis_rows (platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:147) and executed unchanged (platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:166). platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:162 and platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:163 put `summary`/`headline` from _make_row, whose call sites compose both by f-string: vargottama rows (platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:284, platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:286: D1=D9 sign, graded valence) and dhana-axis rows (platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:381, platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:386: house sign/lord/occupants/valence). AST-checked. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_vargottama_dhana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:449; platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:140 in the default projection) = 'vargottama_amplification', 'dhana_axis'. Computed placeholders: sign, house_d1, house_sign, house_lord, lord_house_d1, tenancy_valence, vg_verdict.valence, occupants, ', '.join(occupants), house_num; identifier-only: graha_display, label. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human is the headline itself, an f-string stating the D1=D9 sign and the vargottama valence. Composed at platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:237, platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py:286. AST census of the writer's citation_human sites (platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py): 0 composed, 0 constant, 1 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py:172 (INSERT INTO bodha_msr_signals); served by platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:119."
    },
    "evidence_kind": "writer"
   },
@@ -1115,7 +1143,10 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human",
+    "mechanism_name"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:446",
@@ -1124,8 +1155,9 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_mechanisms; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:446 reads `bodha_mechanisms` (`FROM bodha_mechanisms d`). Dens.served=PASS.",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human embeds the converging-graha count (:397) and valence, net score, natural score and dignity modifier (:571); mechanism_name embeds the valence (:565); the labels at :344 :352 :388 :472 :480 name MEMBERS of a computed dispositor / house-lordship cycle: the cycle membership is itself computed, but the strings state no value of it, so no declaration change; :237 forwards motif_name (declared on bo_cgm_motifs). Composed at platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:397, platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:571, platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:565. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py): 10 composed, 0 constant, 1 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py:77 (INSERT INTO bodha_mechanisms); served by platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1489."
+   },
+   "evidence_kind": "writer"
   },
   "ga_ayurdaya": {
    "kind": "data",
@@ -1149,7 +1181,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:91",
@@ -1158,8 +1192,9 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_condition_composite; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:91 reads `ga_condition_composite` (`FROM ga_condition_composite`). Dens.served=PASS.",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the computed avastha values (baladi, deeptaadi, lajjitadi, sayanadi with deg_in_sign). Composed at platform/python-sidecar/ga_writers/ga_condition_writer.py:1117, platform/python-sidecar/ga_writers/ga_condition_writer.py:1391. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_condition_writer.py): 5 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_condition_writer.py:1201 (column list); served by platform/src/lib/ganita/facts_store.ts:447."
+   },
+   "evidence_kind": "writer"
   },
   "ga_dashas": {
    "kind": "data",
@@ -1200,7 +1235,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:91",
@@ -1209,15 +1246,18 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:91 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(NAKSHATRA_CATEGORIES), 15 of the asset's 16 count_sql categories (nakshatra_lord_placement is not in the file).",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human restates each fact: '{subject} {key}: {value} [{category}]'. Composed at platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:191, platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:193. AST census of the writer's citation_human sites (platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py): 4 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:356 (INSERT INTO chart_facts); platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py:497 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+   },
+   "evidence_kind": "writer"
   },
   "ga_panchanga": {
    "kind": "data",
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:103",
@@ -1226,15 +1266,18 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:103 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(PANCHANGA_CATEGORIES) (panchanga_* categories, this asset's LIKE 'panchanga%' set).",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the computed tithi, vara, yoga, karana numbers and names, end times and solar arc. Composed at platform/python-sidecar/ga_writers/ga_panchanga_writer.py:368, platform/python-sidecar/ga_writers/ga_panchanga_writer.py:534. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_panchanga_writer.py): 148 composed, 0 constant, 1 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_panchanga_writer.py:1276 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+   },
+   "evidence_kind": "writer"
   },
   "ga_positions": {
    "kind": "data",
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193",
@@ -1243,8 +1286,9 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY($2) whose default includes graha_position (this asset's category; bhava_cusps/graha_sign_attributes are not in the file, so a subset is served).",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state longitudes, signs, pada and house numbers (helper _citation_human_position and the chalit rows). Composed at platform/python-sidecar/ga_writers/ga_positions_writer.py:132, platform/python-sidecar/ga_writers/ga_positions_writer.py:469, platform/python-sidecar/ga_writers/ga_positions_writer.py:487. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_positions_writer.py): 10 composed, 0 constant, 1 forwarded, 2 other. Column bound at platform/python-sidecar/ga_writers/ga_positions_writer.py:537 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+   },
+   "evidence_kind": "writer"
   },
   "ga_prashna": {
    "kind": "data",
@@ -1268,7 +1312,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:100",
@@ -1277,15 +1323,18 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:100 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(SS_CATEGORIES), all 15 of the asset's count_sql categories.",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state cycle dates, durations, Saturn signs and dignities, rule counts. Composed at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:892, platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1239. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sade_sati_writer.py): 136 composed, 0 constant, 3 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_sade_sati_writer.py:1838 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+   },
+   "evidence_kind": "writer"
   },
   "ga_sensitive": {
    "kind": "data",
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114",
@@ -1294,8 +1343,9 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(categories) of which 7 of the asset's 20 count_sql categories appear in the file (upagraha/saham/saturn_derived/lal_kitab/maharsi...): a subset is served.",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): helper _citation_human renders '{category}.{subject}.{key} = {value} (ayanamsha).' from the computed value; the other composed strings are honest-gap/error text. Composed at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:246. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_sensitive_writer.py): 4 composed, 0 constant, 0 forwarded, 1 other. Column bound at platform/python-sidecar/ga_writers/ga_sensitive_writer.py:2963 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+   },
+   "evidence_kind": "writer"
   },
   "ga_sensitive_degree": {
    "kind": "data",
@@ -1319,7 +1369,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:189",
@@ -1328,15 +1380,18 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:189 reads `chart_facts` (`FROM chart_facts`). Dens.served=NO_DETECTOR. Shared table chart_facts: the query filters fact_category = ANY(STRENGTH_CATEGORIES) (graha_shadbala_*, graha_vimsopaka_*, ishta/kashta phala...: the asset's categories).",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state shadbala rupa values, ratios against the classical minimum, bindu and pinda counts. Composed at platform/python-sidecar/ga_writers/ga_strength_writer.py:845, platform/python-sidecar/ga_writers/ga_strength_writer.py:880. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_strength_writer.py): 21 composed, 0 constant, 0 forwarded, 1 other. Column bound at platform/python-sidecar/ga_writers/ga_strength_writer.py:1713 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+   },
+   "evidence_kind": "writer"
   },
   "ga_structural": {
    "kind": "data",
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:138",
@@ -1345,15 +1400,18 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts,fact_category_ownership; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:138 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(STRUCTURAL_SIGNAL_CATEGORIES) (19 categories) which get_structural_signals.ts:1-12 documents as ga_structural's residual categories; the fact_category_ownership table was not checked offline.",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state aspect counts, classifications with totals, dignity scores, house and sign placements. Composed at platform/python-sidecar/ga_writers/ga_structural_writer.py:1303, platform/python-sidecar/ga_writers/ga_structural_writer.py:1702, platform/python-sidecar/ga_writers/ga_structural_writer.py:4659. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_structural_writer.py): 189 composed, 5 constant, 0 forwarded, 6 other. Column bound at platform/python-sidecar/ga_writers/ga_structural_writer.py:4871 (column list); platform/python-sidecar/ga_writers/ga_structural_writer.py:4880 (INSERT INTO chart_facts); served by platform/src/lib/ganita/facts_store.ts:447."
+   },
+   "evidence_kind": "writer"
   },
   "ga_tajaka": {
    "kind": "data",
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:215",
@@ -1362,8 +1420,9 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) l1_tajik_varsha_year_lords; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): l",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:215 reads `l1_tajik_varsha_year_lords` (`let vSql = `SELECT * FROM l1_tajik_varsha_year_lords WHERE chart_id = $1``). Dens.served=PASS.",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation states the varsha window, Muntha sign, house from Lagna and lords. Composed at platform/python-sidecar/ga_writers/ga_tajaka_writer.py:621. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_tajaka_writer.py): 2 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_tajaka_writer.py:661 (column list); served by platform/src/lib/retrieval/registry/layers/reading_checklist.ts:902."
+   },
+   "evidence_kind": "writer"
   },
   "ga_transit_anchors": {
    "kind": "data",
@@ -1387,7 +1446,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:90",
@@ -1396,8 +1457,9 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_divisionals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:90 reads `chart_divisionals` (`let sql = `SELECT * FROM chart_divisionals WHERE chart_id = $1``). Dens.served=PASS.",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state varga signs, dignities, house placements, contributions and scores (also helper _citation_human). Composed at platform/python-sidecar/ga_writers/ga_vargas_writer.py:1202, platform/python-sidecar/ga_writers/ga_vargas_writer.py:1651. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_vargas_writer.py): 26 composed, 1 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_vargas_writer.py:2609 (INSERT INTO chart_divisionals); platform/python-sidecar/ga_writers/ga_vargas_writer.py:2638 (INSERT INTO chart_divisionals); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
+   },
+   "evidence_kind": "writer"
   },
   "ga_vastu": {
    "kind": "data",
@@ -1438,7 +1500,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:213",
@@ -1447,8 +1511,9 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_yoga_firings; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:213 reads `ga_yoga_firings` (`FROM ga_yoga_firings f`). Dens.served=PASS.",
-    "prose_fields": null
-   }
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the constituent grahas of the strength mean, the strength value and the cancelling ground. Composed at platform/python-sidecar/ga_writers/ga_yoga_writer.py:269, platform/python-sidecar/ga_writers/ga_yoga_writer.py:2232. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_yoga_writer.py): 10 composed, 16 constant, 0 forwarded, 7 other. Column bound at platform/python-sidecar/ga_writers/ga_yoga_writer.py:2519 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2723 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:2912 (INSERT INTO ga_yoga_firings); platform/python-sidecar/ga_writers/ga_yoga_writer.py:3008 (INSERT INTO ga_yoga_firings); served by platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:200."
+   },
+   "evidence_kind": "writer"
   },
   "ka_avadhi": {
    "kind": "data",
@@ -1466,7 +1531,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) kala_avadhi; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:93 reads `kala_avadhi` (`FROM kala_avadhi`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_avadhi.py _build_row composes dossier['sublord_modulation']['note'] by f-string (ka_avadhi.py:293) for antardasha rows; the dossier is bound as json.dumps(dossier) (ka_avadhi.py:303) into kala_avadhi.dossier. Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:92 selects dossier. Defect (not fixed): the note reads 'AD lord {sublord} modulates MD lord {lord}' but `sublord` is the parent (MD) lord and `lord` the AD lord, so the labels are swapped. lord_condition_fact_refs and activated_pratijna_ids are ids, not prose."
+    "prose_fields": "writers/ka_avadhi.py _build_row composes dossier['sublord_modulation']['note'] by f-string (platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:293) for antardasha rows; the dossier is bound as json.dumps(dossier) (platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py:303) into kala_avadhi.dossier. Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts:92 selects dossier. Defect (not fixed): the note reads 'AD lord {sublord} modulates MD lord {lord}' but `sublord` is the parent (MD) lord and `lord` the AD lord, so the labels are swapped. lord_condition_fact_refs and activated_pratijna_ids are ids, not prose."
    },
    "evidence_kind": "writer"
   },
@@ -1491,7 +1556,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_bhavishya; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:251 reads `kala_bhavishya` (`FROM kala_bhavishya`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_bhavishya_lekha.py composes two JSONB prose surfaces by f-string: narrative {headline, probability_statement, domain_context, caveat} from _build_projection_narrative (ka_bhavishya_lekha.py:323, function at :562) and falsifiability.confirm_observable / deny_observable from _build_falsifiability (ka_bhavishya_lekha.py:317; f-strings at ka_bhavishya_lekha.py:528 and ka_bhavishya_lekha.py:529); evaluation_date and evaluation_window_days are values, not declared. Both are selected by platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:248."
+    "prose_fields": "writers/ka_bhavishya_lekha.py composes two JSONB prose surfaces by f-string: narrative {headline, probability_statement, domain_context, caveat} from _build_projection_narrative (platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:323, function at :562) and falsifiability.confirm_observable / deny_observable from _build_falsifiability (platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:317; f-strings at platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:528 and platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:529); evaluation_date and evaluation_window_days are values, not declared. Both are selected by platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts:248."
    },
    "evidence_kind": "writer"
   },
@@ -1579,7 +1644,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_jivana_parva; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:158 reads `kala_jivana_parva` (`FROM kala_jivana_parva`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_jivana_parva.py _build_parva_narrative composes narrative.summary by f-string (ka_jivana_parva.py:432; called at ka_jivana_parva.py:185 MD, :245 AD, :321 PD; inserted to kala_jivana_parva.narrative at :348); the other keys of the returned dict (dasha_planet, span, quality, high_convergence_count, avg_effective_score) are values, not prose. Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:152."
+    "prose_fields": "writers/ka_jivana_parva.py _build_parva_narrative composes narrative.summary by f-string (platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py:432; called at platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py:185 MD, :245 AD, :321 PD; inserted to kala_jivana_parva.narrative at :348); the other keys of the returned dict (dasha_planet, span, quality, high_convergence_count, avg_effective_score) are values, not prose. Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:152."
    },
    "evidence_kind": "writer"
   },
@@ -1601,7 +1666,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_darshana; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:87 reads `kala_darshana` (`FROM kala_darshana`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_kala_darshana.py _build_narrative composes the JSONB narrative by f-string from effective score, net label, peak date, confidence, orb and obstructions and returns {headline, context, caution} (ka_kala_darshana.py:234, built at ka_kala_darshana.py:107, inserted to kala_darshana.narrative at ka_kala_darshana.py:138); a served capability reads it (platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:86). obstruction_summary is a list of {type, severity, override_score} values: structured data, not declared."
+    "prose_fields": "writers/ka_kala_darshana.py _build_narrative composes the JSONB narrative by f-string from effective score, net label, peak date, confidence, orb and obstructions and returns {headline, context, caution} (platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py:234, built at platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py:107, inserted to kala_darshana.narrative at platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py:138); a served capability reads it (platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts:86). obstruction_summary is a list of {type, severity, override_score} values: structured data, not declared."
    },
    "evidence_kind": "writer"
   },
@@ -1808,7 +1873,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_obstruction; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:81 reads `kala_obstruction` (`FROM kala_obstruction`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_vighnakara.py detector functions put a composed `reason` in every obstruction detail dict: f-strings at ka_vighnakara.py:553 (test-only proxy), ka_vighnakara.py:589, ka_vighnakara.py:644, ka_vighnakara.py:695, ka_vighnakara.py:773, ka_vighnakara.py:829 (constant stubs at :674 and :730 return a fixed string); the detail dict is bound to kala_obstruction.obstruction_detail as json.dumps(obs['detail']) (ka_vighnakara.py:241, and json.dumps(detail) in the dasha-anchored builder, INSERT at :285). Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:80 selects obstruction_detail. Defect (not fixed): ka_vighnakara.py:589-592 hard-codes 'lagna (Aries) / moon (Aquarius)' in the reason for every chart."
+    "prose_fields": "writers/ka_vighnakara.py detector functions put a composed `reason` in every obstruction detail dict: f-strings at platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:553 (test-only proxy), platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:589, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:644, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:695, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:773, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:829 (constant stubs at :674 and :730 return a fixed string); the detail dict is bound to kala_obstruction.obstruction_detail as json.dumps(obs['detail']) (platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:241, and json.dumps(detail) in the dasha-anchored builder, INSERT at :285). Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:80 selects obstruction_detail. Defect (not fixed): platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:589-592 hard-codes 'lagna (Aries) / moon (Aquarius)' in the reason for every chart."
    },
    "evidence_kind": "writer"
   },
@@ -1933,7 +1998,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_insight_units; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts:225 reads `mimamsa_insight_units` (`FROM mimamsa_insight_units`). Dens.served=PASS. Served insights capability (row-level serve of mimamsa_insight_units ordered by rank_consequence).",
-    "prose_fields": "mi_darshana.py:692 INSERTs into mimamsa_insight_units with `statement` at column position 7 of 17, fed by rows.append tuples and executemany (mi_darshana.py:708). Composed by f-string from computed values at five of six append sites: calibrated-outlook observed rate/n/grade (mi_darshana.py:230), manifestation-grammar propensity/scored counts in three evidence-grade branches (mi_darshana.py:296, mi_darshana.py:303, mi_darshana.py:308), load-bearing sensitivity (mi_darshana.py:400), verdict-object grade and verdict_note (mi_darshana.py:649) and its no-evidence variant (mi_darshana.py:526). The sixth site copies the emergent-law statement verbatim from mimamsa_discoveries (mi_darshana.py:370; composed upstream by mi_pariksha, declared there). AST-checked (5 composed + 1 verbatim pinned). Served: query_insights.ts:221 selects statement, FROM mimamsa_insight_units (query_insights.ts:225). Computed placeholders: n (count) and the format-spec'd observed rate, propensity, scored count, sensitivity and grade; identifier-only: the no-evidence variant (mi_darshana.py:526 interpolates only the event-class name). MIXED column caveats: mi_darshana.py:370 is a verbatim copy; row discriminator insight_type ('calibrated_outlook', 'manifestation_grammar', 'load_bearing', 'verdict_object' compose; the emergent-class rows copy). Verdict-object no_evidence rows are identifier-only."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:692 INSERTs into mimamsa_insight_units with `statement` at column position 7 of 17, fed by rows.append tuples and executemany (platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:708). Composed by f-string from computed values at five of six append sites: calibrated-outlook observed rate/n/grade (platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:230), manifestation-grammar propensity/scored counts in three evidence-grade branches (platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:296, platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:303, platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:308), load-bearing sensitivity (platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:400), verdict-object grade and verdict_note (platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:649) and its no-evidence variant (platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:526). The sixth site copies the emergent-law statement verbatim from mimamsa_discoveries (platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:370; composed upstream by mi_pariksha, declared there). AST-checked (5 composed + 1 verbatim pinned). Served: platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts:221 selects statement, FROM mimamsa_insight_units (platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts:225). Computed placeholders: n (count) and the format-spec'd observed rate, propensity, scored count, sensitivity and grade; identifier-only: the no-evidence variant (platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:526 interpolates only the event-class name). MIXED column caveats: platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py:370 is a verbatim copy; row discriminator insight_type ('calibrated_outlook', 'manifestation_grammar', 'load_bearing', 'verdict_object' compose; the emergent-class rows copy). Verdict-object no_evidence rows are identifier-only."
    },
    "evidence_kind": "writer"
   },
@@ -2004,7 +2069,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) mimamsa_qa_eval; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): m",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:192 reads `mimamsa_qa_eval` (`FROM mimamsa_qa_eval`). Dens.served=PASS.",
-    "prose_fields": "writers/mi_pariksha.py composes mimamsa_discoveries.statement by f-string in two substeps: the retrodiction statement (mi_pariksha.py:251) and the emergent-law statement (mi_pariksha.py:729); both bound through the same INSERT (mi_pariksha.py:273 and :773). Served: platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_mimamsa_discoveries.ts:86 selects statement."
+    "prose_fields": "writers/mi_pariksha.py composes mimamsa_discoveries.statement by f-string in two substeps: the retrodiction statement (platform/python-sidecar/pipeline/orchestrator/writers/mi_pariksha.py:251) and the emergent-law statement (platform/python-sidecar/pipeline/orchestrator/writers/mi_pariksha.py:729); both bound through the same INSERT (platform/python-sidecar/pipeline/orchestrator/writers/mi_pariksha.py:273 and :773). Served: platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_mimamsa_discoveries.ts:86 selects statement."
    },
    "evidence_kind": "writer"
   },
@@ -2110,7 +2175,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_muhurta; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:99 reads `phala_muhurta` (`FROM phala_muhurta`). Dens.served=FAIL.",
-    "prose_fields": "ph_muhurta.py:183 INSERTs into phala_muhurta with verdict_reason bound to rec.verdict_reason (ph_muhurta.py:217), rec = derive_muhurta_record (ph_muhurta.py:179). platform/python-sidecar/services/ph_muhurta/engine.py:218 takes (verdict, reason) from classify_verdict and passes reason to MuhurtaRecord (platform/python-sidecar/services/ph_muhurta/engine.py:290). classify_verdict composes the reason by f-string from the computed composite quality vs the genuine threshold only in the 'mediocre' branch (platform/python-sidecar/services/ph_muhurta/engine.py:134, returned at platform/python-sidecar/services/ph_muhurta/engine.py:138), reachable when tarabala/chandrabala are a live lookup; the placeholder state returns a constant 'Not graded' text (platform/python-sidecar/services/ph_muhurta/engine.py:122) and 'none_genuine' a constant (two other returns are None). AST-checked (1 composed + 4 non-composed pinned). Served: query_phala_calibration.ts:97 selects verdict_reason, FROM phala_muhurta (query_phala_calibration.ts:99). Computed placeholders: composite_quality (format-spec'd :.2f) and _GENUINE_THRESHOLD. MIXED column caveat: only the 'mediocre' branch composes; the placeholder state returns a constant 'Not graded' text, 'none_genuine' a constant, 'strong'/'adequate' None; row discriminator window_quality_verdict='mediocre'."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py:183 INSERTs into phala_muhurta with verdict_reason bound to rec.verdict_reason (platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py:217), rec = derive_muhurta_record (platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py:179). platform/python-sidecar/services/ph_muhurta/engine.py:218 takes (verdict, reason) from classify_verdict and passes reason to MuhurtaRecord (platform/python-sidecar/services/ph_muhurta/engine.py:290). classify_verdict composes the reason by f-string from the computed composite quality vs the genuine threshold only in the 'mediocre' branch (platform/python-sidecar/services/ph_muhurta/engine.py:134, returned at platform/python-sidecar/services/ph_muhurta/engine.py:138), reachable when tarabala/chandrabala are a live lookup; the placeholder state returns a constant 'Not graded' text (platform/python-sidecar/services/ph_muhurta/engine.py:122) and 'none_genuine' a constant (two other returns are None). AST-checked (1 composed + 4 non-composed pinned). Served: platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:97 selects verdict_reason, FROM phala_muhurta (platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:99). Computed placeholders: composite_quality (format-spec'd :.2f) and _GENUINE_THRESHOLD. MIXED column caveat: only the 'mediocre' branch composes; the placeholder state returns a constant 'Not graded' text, 'none_genuine' a constant, 'strong'/'adequate' None; row discriminator window_quality_verdict='mediocre'."
    },
    "evidence_kind": "writer"
   },
@@ -2130,7 +2195,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_anchors; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts:139 reads `phala_anchors` (`FROM phala_anchors`). Dens.served=FAIL. Served predictive-anchors capability (row-level serve: falsifier, source_citation, posterior, lift_vector).",
-    "prose_fields": "services/ph_nimitta/engine.py StructuredFalsifier.as_text composes the refutation/confirmation sentence by f-string (platform/python-sidecar/services/ph_nimitta/engine.py:237) and the anchor is built with falsifier=sf.as_text() (platform/python-sidecar/services/ph_nimitta/engine.py:552); the writer binds a.falsifier to phala_anchors.falsifier (ph_nimitta.py:279). Served: platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts:137 selects falsifier. structured_falsifier_jsonb (not served), magnitude_basis and karmic_note are not declared."
+    "prose_fields": "services/ph_nimitta/engine.py StructuredFalsifier.as_text composes the refutation/confirmation sentence by f-string (platform/python-sidecar/services/ph_nimitta/engine.py:237) and the anchor is built with falsifier=sf.as_text() (platform/python-sidecar/services/ph_nimitta/engine.py:552); the writer binds a.falsifier to phala_anchors.falsifier (platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py:279). Served: platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts:137 selects falsifier. structured_falsifier_jsonb (not served), magnitude_basis and karmic_note are not declared."
    },
    "evidence_kind": "writer"
   },
@@ -2139,7 +2204,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "narration_jsonb.$.text"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts:94",
@@ -2148,8 +2215,9 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_phaladesa; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts:94 reads `phala_phaladesa` (`FROM phala_phaladesa`). Dens.served=FAIL.",
-    "prose_fields": null
-   }
+    "prose_fields": "Writer ph_phaladesa.py builds a template narration from computed phaladesa fields (_build_deterministic_narration, platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:94): the f-strings at platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:103, platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:107, platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:110, platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:113, platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:115, platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:117, platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:121, platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:132, platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:136, platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:142 state the anchor and clean-anchor counts, magnitude, window dates, peak date, confidence band, malleability, spillover count, falsifiability status and contradiction count, joined into the text at platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:146 (\"text\": \" \".join(parts)); the dict is bound to narration_jsonb by json.dumps(narration) in the INSERT (platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:204 builds it, platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:208 INSERT, platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py:280 binds). Declared although no served surface selects narration_jsonb (platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts:92 selects narration_status only): Narr applies when the asset emits prose (SS ruling 2026-10-01). The other keys of the dict (language, method, model, prompt_hash, generated_at) are constants or a date."
+   },
+   "evidence_kind": "writer"
   },
   "ph_pramana": {
    "kind": "data",
@@ -2202,7 +2270,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_rectification; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:613 reads `phala_rectification` (`FROM phala_rectification`). Dens.served=FAIL.",
-    "prose_fields": "writers/ph_rectification/__init__.py composes judgment_flags['load_bearing_note'] by f-string when load_bearing is forced false (platform/python-sidecar/pipeline/orchestrator/writers/ph_rectification/__init__.py:74) and persists leakage_firewall_note = f\"[basis={basis}] {best.leakage_firewall_note}\" (platform/python-sidecar/pipeline/orchestrator/writers/ph_rectification/__init__.py:392) where the engine composes the note (platform/python-sidecar/services/ph_rectification/engine.py:555); both bind into phala_rectification_best (INSERT platform/python-sidecar/pipeline/orchestrator/writers/ph_rectification/__init__.py:373). Served: platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:644 selects judgment_flags and query_phala_calibration.ts:646 leakage_firewall_note."
+    "prose_fields": "writers/ph_rectification/__init__.py composes judgment_flags['load_bearing_note'] by f-string when load_bearing is forced false (platform/python-sidecar/pipeline/orchestrator/writers/ph_rectification/__init__.py:74) and persists leakage_firewall_note = f\"[basis={basis}] {best.leakage_firewall_note}\" (platform/python-sidecar/pipeline/orchestrator/writers/ph_rectification/__init__.py:392) where the engine composes the note (platform/python-sidecar/services/ph_rectification/engine.py:555); both bind into phala_rectification_best (INSERT platform/python-sidecar/pipeline/orchestrator/writers/ph_rectification/__init__.py:373). Served: platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:644 selects judgment_flags and platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:646 leakage_firewall_note."
    },
    "evidence_kind": "writer"
   },
@@ -2222,7 +2290,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_sankrama; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:181 reads `phala_sankrama` (`FROM phala_sankrama`). Dens.served=FAIL.",
-    "prose_fields": "ph_sankrama.py:155 INSERTs into phala_sankrama with mechanism_text bound to s.mechanism_text (ph_sankrama.py:178), s iterating derive_spillover (ph_sankrama.py:146, ph_sankrama.py:148). platform/python-sidecar/services/ph_sankrama/engine.py:237 composes mechanism_text by f-string from the source/target domain and the CDLM bridge seed's mediating planet and house (two branches: seeded bridge, or the CDLM cell fallback), and passes it to SankramaRecord (platform/python-sidecar/services/ph_sankrama/engine.py:280). AST-checked (both branches compose). Served: query_phala_calibration.ts:176 selects mechanism_text, FROM phala_sankrama (query_phala_calibration.ts:181). Computed placeholders: bridge_seeds[0].get('mediating_planet', '?'), bridge_seeds[0].get('house', '?'). MIXED column caveat: the fallback branch (platform/python-sidecar/services/ph_sankrama/engine.py:241, the CDLM-cell f-string) interpolates only source_domain, target_domain and cell.cell_id (a label plus a cell-id pointer) and states no computed value; only the seeded-bridge branch does."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/ph_sankrama.py:155 INSERTs into phala_sankrama with mechanism_text bound to s.mechanism_text (platform/python-sidecar/pipeline/orchestrator/writers/ph_sankrama.py:178), s iterating derive_spillover (platform/python-sidecar/pipeline/orchestrator/writers/ph_sankrama.py:146, platform/python-sidecar/pipeline/orchestrator/writers/ph_sankrama.py:148). platform/python-sidecar/services/ph_sankrama/engine.py:237 composes mechanism_text by f-string from the source/target domain and the CDLM bridge seed's mediating planet and house (two branches: seeded bridge, or the CDLM cell fallback), and passes it to SankramaRecord (platform/python-sidecar/services/ph_sankrama/engine.py:280). AST-checked (both branches compose). Served: platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:176 selects mechanism_text, FROM phala_sankrama (platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:181). Computed placeholders: bridge_seeds[0].get('mediating_planet', '?'), bridge_seeds[0].get('house', '?'). MIXED column caveat: the fallback branch (platform/python-sidecar/services/ph_sankrama/engine.py:241, the CDLM-cell f-string) interpolates only source_domain, target_domain and cell.cell_id (a label plus a cell-id pointer) and states no computed value; only the seeded-bridge branch does."
    },
    "evidence_kind": "writer"
   },
@@ -2242,7 +2310,7 @@
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table phala_sodhana; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): p",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:323 reads `phala_sodhana` (`FROM phala_sodhana`). Dens.served=FAIL.",
-    "prose_fields": "ph_sodhana.py:70 INSERTs into phala_sodhana with recommendation_text bound to rec.recommendation_text (ph_sodhana.py:91), rec iterating derive_sodhana_flags (ph_sodhana.py:61, ph_sodhana.py:67). engine.py builds it at seven detectors: composed by f-string from computed values at three (confidence_inflation: G-LADDER ceiling and inputs, platform/python-sidecar/services/ph_sodhana/engine.py:156; magnitude_drift: confidence_high vs threshold, platform/python-sidecar/services/ph_sodhana/engine.py:205; ledger_gap: missing keys, platform/python-sidecar/services/ph_sodhana/engine.py:254) and constant text at four (falsifier_absent platform/python-sidecar/services/ph_sodhana/engine.py:231, layer_leakage platform/python-sidecar/services/ph_sodhana/engine.py:288, confidence_degenerate platform/python-sidecar/services/ph_sodhana/engine.py:336, ceiling_inputs_degenerate platform/python-sidecar/services/ph_sodhana/engine.py:394). AST-checked (3 composed + 4 constant pinned). Served: query_phala_calibration.ts:322 selects recommendation_text, FROM phala_sodhana (query_phala_calibration.ts:323). Computed placeholders: format-spec'd ceiling/confidence_high/threshold and sorted(missing); MIXED column caveat: four of seven detectors emit constant text with no interpolation (falsifier_absent, layer_leakage, confidence_degenerate, ceiling_inputs_degenerate); row discriminator anomaly_type ('confidence_inflation', 'magnitude_drift', 'ledger_gap' compose)."
+    "prose_fields": "platform/python-sidecar/pipeline/orchestrator/writers/ph_sodhana.py:70 INSERTs into phala_sodhana with recommendation_text bound to rec.recommendation_text (platform/python-sidecar/pipeline/orchestrator/writers/ph_sodhana.py:91), rec iterating derive_sodhana_flags (platform/python-sidecar/pipeline/orchestrator/writers/ph_sodhana.py:61, platform/python-sidecar/pipeline/orchestrator/writers/ph_sodhana.py:67). engine.py builds it at seven detectors: composed by f-string from computed values at three (confidence_inflation: G-LADDER ceiling and inputs, platform/python-sidecar/services/ph_sodhana/engine.py:156; magnitude_drift: confidence_high vs threshold, platform/python-sidecar/services/ph_sodhana/engine.py:205; ledger_gap: missing keys, platform/python-sidecar/services/ph_sodhana/engine.py:254) and constant text at four (falsifier_absent platform/python-sidecar/services/ph_sodhana/engine.py:231, layer_leakage platform/python-sidecar/services/ph_sodhana/engine.py:288, confidence_degenerate platform/python-sidecar/services/ph_sodhana/engine.py:336, ceiling_inputs_degenerate platform/python-sidecar/services/ph_sodhana/engine.py:394). AST-checked (3 composed + 4 constant pinned). Served: platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:322 selects recommendation_text, FROM phala_sodhana (platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:323). Computed placeholders: format-spec'd ceiling/confidence_high/threshold and sorted(missing); MIXED column caveat: four of seven detectors emit constant text with no interpolation (falsifier_absent, layer_leakage, confidence_degenerate, ceiling_inputs_degenerate); row discriminator anomaly_type ('confidence_inflation', 'magnitude_drift', 'ledger_gap' compose)."
    },
    "evidence_kind": "writer"
   },

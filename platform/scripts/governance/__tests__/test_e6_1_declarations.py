@@ -8,7 +8,9 @@ field is UNKNOWN. Offline: no database.
 """
 from __future__ import annotations
 
+import ast
 import copy
+import functools
 import hashlib
 import json
 import pathlib
@@ -113,6 +115,62 @@ def test_parse_prose_field_rejects_malformed_entries(bad):
         ac.parse_prose_field(bad)
 
 
+def test_parse_prose_field_accepts_an_array_element_segment_after_an_identifier_key():
+    # grammar 1.6.0 (SS ruling 2026-10-01): `key[*]` = every element of the array at `key`; the path tuple carries the
+    # wildcard as the token "[*]" (never a valid identifier, so it cannot collide with a JSON key)
+    assert ac.parse_prose_field("d.$.a[*].b") == ("d", ("a", "[*]", "b"))
+    assert ac.parse_prose_field("derivation.$.factor_ledger[*].connections[*].reason") == (
+        "derivation", ("factor_ledger", "[*]", "connections", "[*]", "reason"))
+    assert ac.parse_prose_field("d.$.a.b[*].c") == ("d", ("a", "b", "[*]", "c"))
+    assert ac.parse_prose_field("d.$.items[*]") == ("d", ("items", "[*]"))         # an array of strings
+    assert ac.parse_prose_field("d.$.a[*].b[*]") == ("d", ("a", "[*]", "b", "[*]"))
+    assert ac.parse_prose_field("d.$.a.b") == ("d", ("a", "b"))                    # unchanged
+
+
+@pytest.mark.parametrize("bad", [
+    "d[*]", "d[*].$.a", "d.$[*].a", "d.$.[*]", "d.$.a[*][*]", "d.$.a[*][*].b", "d.$.a[0]", "d.$.a[0].b", "d.$.a[1]",
+    "d.$.a[-1].b", "d.$.a[ * ].b", "d.$.a[**].b", "d.$.a[*.b", "d.$.a*].b", "d.$.a[].b", "d.$.a[*]b", "d.$.a[*]x.b",
+    "d.$.a[*]..b", "d.$.a[*].", "d.$.a[*]\n", "d.$.a[*].b\n", "d.$.a.[*].b", "d.$.[*].b", "d.$.a[*] .b", "d.$.a [*].b",
+    "d.$.a[\uff0a].b", "d.$.a[*]\u200b.b", "d.$.a[*].b[*", "d.$.a[n].b", "d.$.a['x'].b", "d.$.a[*:].b", "d.$.a[?(@.x)].b",
+    "d.$.*.b", "d.$.a[*].*", "d.$.a[*].1b", "d.$.a[*]$.b", "d.$..a[*]", "d.$.a[*],d.$.b"])
+def test_parse_prose_field_rejects_malformed_wildcards(bad):
+    with pytest.raises(ac.DeclarationsError):
+        ac.parse_prose_field(bad)
+
+
+def test_wildcard_identifiers_keep_the_128_character_cap():
+    ok = "c" * 128 + ".$." + "k" * 128 + "[*]." + "m" * 128
+    assert ac.parse_prose_field(ok) == ("c" * 128, ("k" * 128, "[*]", "m" * 128))
+    for bad in ("c.$." + "k" * 129 + "[*].m", "c.$.k[*]." + "m" * 129):
+        with pytest.raises(ac.DeclarationsError):
+            ac.parse_prose_field(bad)
+
+
+def test_a_wildcard_path_overlaps_its_non_wildcard_parent_and_its_own_prefixes(tmp_path):
+    for a, b in (("d.$.x", "d.$.x[*].y"), ("d.$.x[*]", "d.$.x[*].y"), ("d.$.x", "d.$.x[*]"), ("d.$.x[*].y", "d.$.x[*].y"),
+                 ("d.$.x[*].y", "d.$.x"), ("d", "d.$.x[*].y"), ("D.$.X[*].y", "d.$.x"), ("d.$.x[*].y[*]", "d.$.x[*].y")):
+        with pytest.raises(ac.DeclarationsError, match="overlap"):
+            ac.validate_declarations(_doc(a=dict(prose_fields=[a, b], evidence=PEV)))
+    # siblings under one array, different arrays, and an array vs an object of the same key are NOT overlaps
+    ac.validate_declarations(_doc(a=dict(prose_fields=["d.$.x[*].y", "d.$.x[*].z", "d.$.w[*].y", "d.$.x.y", "d.$.xy[*].y",
+                                                      "e.$.x[*].y"], evidence=PEV)))
+    ac.validate_declarations(_doc(a=dict(prose_fields=["d.$.x[*].y", "d.$.x[*].y2"], evidence=PEV)))
+
+
+def test_a_wildcard_entry_round_trips_through_the_loader_and_the_fact(tmp_path):
+    doc = _doc(w=dict(prose_fields=["d.$.a[*].b", "d.$.a[*].c[*].e"], evidence=PEV))
+    decl = ac.load_asset_declarations(_write(tmp_path, doc))
+    assert decl["w"]["prose_fields"] == ["d.$.a[*].b", "d.$.a[*].c[*].e"]
+    assert ac.facts_for_asset(dict(asset_id="w"), decl)["declared_prose_fields"] == ["d.$.a[*].b", "d.$.a[*].c[*].e"]
+    for bad in ("d.$.a[0].b", "d.$.a[*][*].b"):
+        with pytest.raises(ac.DeclarationsError, match="prose_fields"):
+            ac.validate_declarations(_doc(w=dict(prose_fields=[bad], evidence=PEV)))
+
+
+def test_the_file_version_is_1_6_0():
+    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.6.0"
+
+
 def test_empty_prose_list_is_a_valid_positive_declaration_distinct_from_null(tmp_path):
     doc = _doc(none=dict(prose_fields=None),
                empty=dict(prose_fields=[], evidence=dict(prose_fields="stores source text; generates none (w.py:10)")),
@@ -189,15 +247,32 @@ NARR_DECLARED = {
     "ka_jivana_parva": ["narrative.$.summary"],
     "ka_bhavishya_lekha": ["narrative.$.headline", "narrative.$.probability_statement", "narrative.$.domain_context",
                            "narrative.$.caveat", "falsifiability.$.confirm_observable", "falsifiability.$.deny_observable"],
-    "bo_upaya": ["prescription_detail_jsonb.$.maraka_contraindication_verdict.reason"],
+    "bo_upaya": ["prescription_detail_jsonb.$.maraka_contraindication_verdict.reason", "citation_human"],
     "ka_vighnakara": ["obstruction_detail.$.reason"],
     "ka_avadhi": ["dossier.$.sublord_modulation.note"],
     "ph_nimitta": ["falsifier"],
     "ph_rectification": ["judgment_flags.$.load_bearing_note", "leakage_firewall_note"],
     "mi_pariksha": ["statement"],
+    "bo_pratijna": ["derivation.$.factor_ledger[*].detail", "derivation.$.denials[*].reason",
+                    "derivation.$.factor_ledger[*].connections[*].reason"],
+    "bg_yogas": [],
+    "bg_ontology": [],
+    "bo_laksana_rerank": [],
+    "ph_phaladesa": ["narration_jsonb.$.text"],
 }
-# Undeclared (null) pending an SS ruling: the composed text is a provenance pointer / ordinal label, see the evidence file.
-NARR_PENDING_SS = ("bg_yogas", "bg_ontology")
+# citation_human sweep (SS ruling 2026-10-01, definition: a composed string is narration if it states or grades a computed
+# value, counts included; provenance pointers, ordinals and structural labels are not): assets newly declared, and prior
+# (ddl-evidence) declarations that gained the column. The full decision table, with the AST census, is CITATION_DECISIONS.
+CITATION_NEW = {"bo_sangati": ["citation_human"], "bo_cdlm_summary": ["citation_human"], "bo_bimba": ["citation_human"],
+                "bo_cgm_motifs": ["citation_human", "motif_name"],
+                "bo_karanajala": ["citation_human"], "bo_yantra_mechanism": ["citation_human", "mechanism_name"],
+                **{a: ["citation_human"] for a in ("ga_nakshatra", "ga_condition", "ga_panchanga", "ga_positions",
+                                                   "ga_sade_sati", "ga_sensitive", "ga_strength", "ga_structural", "ga_tajaka",
+                                                   "ga_vargas", "ga_yoga")}}
+CITATION_EXTENDED_PRIOR = {"bo_arudha": ["citation_human"], "bo_laksana": ["citation_human"], "bo_vargottama_dhana": ["citation_human"]}
+# declared `[]` (writer composes no NARRATION; the evidence carries the AST-backed reason). SS ruling 2026-10-01: a composed
+# string is narration only if it states or grades a computed value; provenance pointers, ordinals, labels are not.
+NARR_EMPTY = ("bg_doshas", "bg_yogas", "bg_ontology", "bo_laksana_rerank")
 # the 13 earlier declarations were re-audited against writer code (test_e6_1_narr_reaudit.py): 11 kept with writer evidence
 # (no `ddl` marker), 2 removed (null). The marker is gone from all 13.
 PRIOR_REAUDIT_NULLED = {"mi_bhavisya", "ph_pramana"}
@@ -239,6 +314,49 @@ NARR_CITES = {
                          (_WR + "ph_rectification/__init__.py", 392, "[basis={basis}] {best.leakage_firewall_note}"),
                          (_L + "L4_phala/query_phala_calibration.ts", 644, "judgment_flags"),
                          (_L + "L4_phala/query_phala_calibration.ts", 646, "leakage_firewall_note")],
+    "bo_pratijna": [(_WR + "bo_pratijna_v4_engine.py", 310, 'f"sign={sign_number} matches exaltation_sign"'),
+                    (_WR + "bo_pratijna_v4_engine.py", 410, "naisargika-only (tatkalika unavailable)"),
+                    (_WR + "bo_pratijna_v4_engine.py", 425, "naisargika({graha}->{need.sign_lord})"),
+                    (_WR + "bo_pratijna_v4_engine.py", 945, '"detail": f"DATA GAP: {exc}'),
+                    (_WR + "bo_pratijna_v4_engine.py", 574, "house_lord={house_lord_dig.state}"),
+                    (_WR + "bo_pratijna_v4_engine.py", 624, "core lord ({core_lord_graha}) D1 house="),
+                    (_WR + "bo_pratijna_v4_engine.py", 655, "core lord ({core_lord_graha}) debilitated in its own cited dusthana house"),
+                    (_WR + "bo_pratijna_v4_engine.py", 679, "malefic-occupied={before_malefic}"),
+                    (_WR + "bo_pratijna_v4_engine.py", 696, "adjoining core house {core_house}"),
+                    (_WR + "bo_pratijna_v4_engine.py", 738, "(core lord) placed in house"),
+                    (_WR + "bo_pratijna_v4_engine.py", 753, "no lord-in-house/full-contact/parivartana connection"),
+                    (_WR + "bo_pratijna_v4_engine.py", 774, '"reason": "no D1 house data"'),
+                    (_WR + "bo_pratijna_v4_engine.py", 1033, "return ClassScore("),
+                    (_WR + "bo_pratijna.py", 407, '"factor_ledger": score.factor_ledger'),
+                    (_WR + "bo_pratijna.py", 408, '"denials": score.denials'),
+                    (_WR + "bo_pratijna.py", 428, '"derivation": json.dumps(derivation)'),
+                    (_WR + "bo_pratijna.py", 401, '"status_mapping_rule": ('),
+                    (_WR + "bo_pratijna.py", 378, '"reason": "no KaryatvaMap registered'),
+                    (_L + "L2_bodha/query_pratijna.ts", 159, "derivation, formula_version")],
+    "bg_yogas": [(_BG + "l0_yogas.py", 2057, 'name_en = base_name + " Yoga"'), (_BG + "l0_yogas.py", 2140, 'f"{name_en}: formation per {verse_ref}'),
+                 (_BG + "l0_yogas.py", 2156, '"source_citation": f"{text_id.upper()} Ch.{chapter} ({verse_ref})"'),
+                 (_BG + "l0_yogas.py", 2272, 'y["formation_text"]'), (_BG + "l0_yogas.py", 2310, 'y["significations_text"][:150]'),
+                 (_L + "L0_brahmagyan/query_yoga_catalog.ts", 57, "SELECT * FROM brahma_yoga_catalog")],
+    "bg_ontology": [(_BG + "l0_ontology.py", 145, 'f"nak_{nak_id:02d}_'), (_BG + "l0_ontology.py", 147, 'f"Nakshatra {nak_id}/27"'),
+                    (_BG + "l0_ontology.py", 171, 'f"Sign {sign_id}/12"'), (_BG + "l0_ontology.py", 215, 'f"HOUSE_{house_num:02d}"'),
+                    (_BG + "l0_ontology.py", 219, 'f"house_{house_num:02d}"'), (_BG + "l0_ontology.py", 977, 'code = f"D{n}"'),
+                    (_BG + "l0_ontology.py", 981, 'f"d{n}"'), (_BG + "l0_ontology.py", 1152, 'e.get("description")'),
+                    (_L + "L0_brahmagyan/resolve_entity.ts", 65, "synonyms, description, source_citation")],
+    "bo_laksana_rerank": [(_WR + "bo_laksana.py", 388, "_VICHARA_TO_MSR_VALENCE: dict"), (_WR + "bo_laksana.py", 433, 'target_key = f"{varga}_HOUSE_{house_num}"'),
+                          (_WR + "bo_laksana.py", 3726, "_SYNTHESIS_ROLLUP_SQL"), (_WR + "bo_laksana.py", 3756, "_CLEAR_CONTRADICTS_SQL"),
+                          (_WR + "bo_laksana.py", 3764, "_CONTRADICTS_SQL"), (_WR + "bo_laksana.py", 3823, "class BoLaksanaRerankWriter"),
+                          (_WR + "bo_laksana.py", 3872, "payload = {"), (_WR + "bo_laksana.py", 3887, "SET graph_node_strength_contribution_jsonb"),
+                          (_WR + "bo_laksana.py", 3949, "SET valence = %s, valence_source = %s"), (_WR + "bo_laksana.py", 3960, "notes=("),
+                          (_L + "L2_bodha/query_signals.ts", 507, "bodha_msr_signals")],
+    "ph_phaladesa": [(_WR + "ph_phaladesa.py", 94, "def _build_deterministic_narration"), (_WR + "ph_phaladesa.py", 103, "domain rests on {rec.anchor_count}"),
+                     (_WR + "ph_phaladesa.py", 107, "No predictive anchors were derived"), (_WR + "ph_phaladesa.py", 110, "assessed magnitude of effect"),
+                     (_WR + "ph_phaladesa.py", 113, "win = f"), (_WR + "ph_phaladesa.py", 115, "peaking around {rec.peak_date}"),
+                     (_WR + "ph_phaladesa.py", 117, "active window runs {win}."), (_WR + "ph_phaladesa.py", 121, "Confidence band spans"),
+                     (_WR + "ph_phaladesa.py", 132, "cross-domain spillover(s)"), (_WR + "ph_phaladesa.py", 136, "Falsifiability status"),
+                     (_WR + "ph_phaladesa.py", 142, "contradiction signal(s)"), (_WR + "ph_phaladesa.py", 146, '"text": " ".join(parts)'),
+                     (_WR + "ph_phaladesa.py", 204, "narration = _build_deterministic_narration(rec)"),
+                     (_WR + "ph_phaladesa.py", 208, "INSERT INTO phala_phaladesa"), (_WR + "ph_phaladesa.py", 280, "json.dumps(narration, cls=_UUIDEncoder)"),
+                     (_L + "L4_phala/query_domain_result.ts", 92, "narration_status")],
     "mi_pariksha": [(_WR + "mi_pariksha.py", 251, 'f"Retrodiction probe for {event_id}'), (_WR + "mi_pariksha.py", 729, "statement = ("),
                     (_L + "L5_mimamsa/query_mimamsa_discoveries.ts", 86, "statement")],
 }
@@ -274,13 +392,16 @@ def _read(path):
 def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_thirteen_prior_ones():
     decl = _decl()
     got = {a: e["prose_fields"] for a, e in decl.items() if e["prose_fields"] is not None}
-    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED)
     for a, v in NARR_DECLARED.items():
         assert got[a] == v, a
-    for a in NARR_PENDING_SS:
-        assert decl[a]["prose_fields"] is None and decl[a]["evidence"]["prose_fields"] is None, a
-    assert [a for a, v in got.items() if v == []] == ["bg_doshas"]      # the only reference corpus that composes nothing
-    assert len(got) == 23 and sum(e["prose_fields"] is None for e in decl.values()) == 127 - 23
+    assert sorted(a for a, v in got.items() if v == []) == sorted(NARR_EMPTY)
+    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW)
+    for a in CITATION_NEW:
+        assert got[a] == CITATION_NEW[a], a
+    for a, extra in CITATION_EXTENDED_PRIOR.items():                  # prior (ddl) declarations extended with citation_human
+        assert got[a][-len(extra):] == extra and len(got[a]) == len(extra) + 2, a
+    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW)
+    assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 127 - n
 
 
 def test_the_thirteen_earlier_declarations_no_longer_carry_the_ddl_marker():
@@ -548,6 +669,1805 @@ def test_mi_pariksha_statement_is_composed_in_both_substeps_and_bound_to_the_dis
     problems, vals = nw.bound_values(src, "mimamsa_discoveries", "statement", expect_statements=2)
     assert problems == [] and len(vals) == 2
     assert all(nw.is_composed(tree, v) for v in vals)
+
+
+# ── bo_pratijna `derivation` `[*]` paths (grammar 1.6.0): the engine composes the ledger strings, the writer binds them ──
+
+_PJ_W, _PJ_E = _WR + "bo_pratijna.py", _WR + "bo_pratijna_v4_engine.py"
+# path -> (engine class whose constructor argument is the string, composed line set, constant line set), all in _PJ_E
+PRATIJNA_COMPOSED = {
+    "derivation.$.factor_ledger[*].detail": ("DignityResult", "detail",
+                                              [310, 313, 334, 337, 340, 410, 417, 425, 945], [318, 348, 894, 972]),
+    "derivation.$.denials[*].reason": ("DenialResult", "reason",
+                                        [574, 588, 595, 624, 634, 640, 647, 655, 679, 690, 696], [568, 618]),
+    "derivation.$.factor_ledger[*].connections[*].reason": ("DusthanaConnection", "reason", [738, 743, 745, 751, 753], []),
+}
+
+
+def _pj():
+    import ast
+    w, e = _read(_PJ_W), _read(_PJ_E)
+    wt, et = ast.parse(w), ast.parse(e)
+    problems, vals = nw.named_bound_values(w, "bodha_pratijna", "derivation")
+    assert problems == [] and len(vals) == 2
+    roots = [nw.json_dumps_argument(v) for v in vals]
+    assert all(r is not None for r in roots)
+    scored = [d for r in roots if isinstance(r, ast.Name) for d in nw.dict_nodes(wt, r)]
+    assert len(scored) == 1
+    score_class = next(n for n in ast.walk(et) if isinstance(n, ast.FunctionDef) and n.name == "score_class")
+    return wt, et, scored, score_class
+
+
+def _ledger_dicts(et, scored, key, scope):
+    """the element dict literals of the ledger `derivation[key]` ends up as: the writer stores `score.<key>`, the engine
+    binds ClassScore(<key>=...) (a list/comprehension literal or a Name filled by `.append({...})`)"""
+    import ast
+    vals = nw.dict_key_values(scored, key)
+    assert [ast.unparse(v) for v in vals] == [f"score.{key}"], key
+    ctor = [v for _, v in nw.constructor_values(et, "ClassScore", key) if v is not None]
+    assert len(ctor) == 1, key
+    out = nw.list_element_dicts(et, ctor[0], scope)
+    assert out, key
+    return out
+
+
+def _pratijna_leaf_report(path):
+    import ast
+    wt, et, scored, sc = _pj()
+    cls, field, _, _ = PRATIJNA_COMPOSED[path]
+    col, segs = ac.parse_prose_field(path)
+    assert col == "derivation" and segs[1] == "[*]" and segs[-1] == field
+    dicts = _ledger_dicts(et, scored, segs[0], sc)
+    if len(segs) == 5:                       # factor_ledger[*].connections[*].reason
+        assert segs[2] == "connections" and segs[3] == "[*]"
+        inner = nw.dict_key_values(dicts, "connections")
+        assert len(inner) == 1
+        dicts = nw.list_element_dicts(et, inner[0], sc)
+    else:
+        assert len(segs) == 3
+    leaves = nw.dict_key_values(dicts, field)
+    assert leaves
+    return nw.terminal_strings(et, leaves, {field: cls})
+
+
+@pytest.mark.parametrize("path", sorted(PRATIJNA_COMPOSED))
+def test_bo_pratijna_ledger_strings_are_composed_by_the_engine_and_bound_into_derivation(path):
+    rep = _pratijna_leaf_report(path)
+    _, _, composed, constant = PRATIJNA_COMPOSED[path]
+    assert all(c is not None for _, c in rep), rep                   # every constructor binds the field
+    assert [ln for ln, c in rep if c] == composed and [ln for ln, c in rep if not c] == constant, rep
+
+
+def test_bo_pratijna_ledger_dict_keys_are_all_decided_and_only_the_declared_leaves_are_prose():
+    import ast
+    wt, et, scored, sc = _pj()
+    fl = _ledger_dicts(et, scored, "factor_ledger", sc)
+    den = _ledger_dicts(et, scored, "denials", sc)
+    conn = nw.list_element_dicts(et, nw.dict_key_values(fl, "connections")[0], sc)
+    keys = lambda ds: {k.value for d in ds for k in d.keys if isinstance(k, ast.Constant)}
+    assert keys(fl) == {"slot", "house", "lord", "graha", "varga", "varga_sign", "keywords", "dignity_state", "band",
+                        "weight", "contribution", "detail", "connections"}
+    assert keys(den) == {"config_id", "fired", "deduction", "reason"}
+    assert keys(conn) == {"house", "connected", "reason"}
+    # nothing else in a ledger element is built by string composition (a new composed key must be decided)
+    for ds in (fl, den, conn):
+        assert nw.composed_keys(et, ds) <= {"detail"}, nw.composed_keys(et, ds)
+
+
+def test_bo_pratijna_the_static_strings_stay_undeclared_because_they_are_constants():
+    import ast
+    wt, et, scored, sc = _pj()
+    # condition_ledger[*].reason (engine :774) is one fixed string; so are status_mapping_rule and the no_evidence reason
+    assert '"reason": "no D1 house data"' in _read(_PJ_E).splitlines()[773]
+    cond = [d for d in ast.walk(et) if isinstance(d, ast.Dict)
+            and any(isinstance(k, ast.Constant) and k.value == "malefic" for k in d.keys)]
+    reasons = nw.dict_key_values(cond, "reason")
+    assert reasons and all(isinstance(v, ast.Constant) and isinstance(v.value, str) for v in reasons)
+    _, vals = nw.named_bound_values(_read(_PJ_W), "bodha_pratijna", "derivation")
+    every = [d for v in vals for d in nw.dict_nodes(wt, nw.json_dumps_argument(v))]
+    assert len(every) == 2
+    for key, n in (("status_mapping_rule", 1), ("reason", 1)):
+        got = nw.dict_key_values(every, key)
+        assert len(got) == n and all(isinstance(v, ast.Constant) and isinstance(v.value, str) for v in got), key
+    assert not any(f.startswith("derivation.$.") and f.split("$.")[1].split("[")[0] in ("condition_ledger", "status_mapping_rule", "reason")
+                   for f in (_decl()["bo_pratijna"]["prose_fields"] or []))
+
+
+def test_bo_pratijna_declared_paths_are_exactly_the_ones_the_engine_checks_cover():
+    assert sorted(_decl()["bo_pratijna"]["prose_fields"]) == sorted(PRATIJNA_COMPOSED)
+    assert sorted(NARR_DECLARED["bo_pratijna"]) == sorted(PRATIJNA_COMPOSED)
+
+
+_ARRAY_SYNTH = """
+from dataclasses import dataclass
+@dataclass(frozen=True)
+class Res:
+    a: int
+    b: str
+    c: str
+@dataclass
+class Out:
+    ledger: list
+    note: list
+def build(x):
+    ledger = []
+    r = Res(1, f"b{x}", "const")
+    ledger.append({"k": r.b, "n": 1, "plain": "x" + str(x)})
+    ledger.append({"k": "fixed"})
+    return Out(ledger=ledger, note=[{"t": q.c} for q in [r]])
+def other():
+    return Res(a=2, c="c2", b=str(3))
+def star(z):
+    return Res(*z), Res(1)
+"""
+
+
+def test_array_leaf_helpers_follow_constructors_lists_appends_and_comprehensions():
+    import ast
+    t = ast.parse(_ARRAY_SYNTH)
+    u = lambda v: None if v is None else ast.unparse(v)
+    assert nw.dataclass_fields(t, "Res") == ["a", "b", "c"] and nw.dataclass_fields(t, "Nope") is None
+    assert nw.dataclass_fields(ast.parse("class A: pass\nclass A: pass"), "A") is None             # ambiguous
+    # keyword and positional binding; a call that does not bind the field (star-arg first / too few args) is (lineno, None)
+    assert [(ln, u(v)) for ln, v in nw.constructor_values(t, "Res", "b")] == [(14, "f'b{x}'"), (19, "str(3)"), (21, None), (21, None)]
+    assert [(ln, u(v)) for ln, v in nw.constructor_values(t, "Res", "c")] == [(14, "'const'"), (19, "'c2'"), (21, None), (21, None)]
+    assert [(ln, u(v)) for ln, v in nw.constructor_values(t, "Res", "a")] == [(14, "1"), (19, "2"), (21, None), (21, "1")]
+    assert nw.constructor_values(t, "Res", "zz") == [] and nw.constructor_values(t, "Nope", "b") == []
+    fn = {n.name: n for n in ast.walk(t) if isinstance(n, ast.FunctionDef)}
+    led = nw.constructor_values(t, "Out", "ledger")[0][1]
+    dicts = nw.list_element_dicts(t, led, fn["build"])
+    assert len(dicts) == 2 and {k.value for d in dicts for k in d.keys} == {"k", "n", "plain"}     # the two .append({...}) dicts
+    note = nw.constructor_values(t, "Out", "note")[0][1]
+    assert len(nw.list_element_dicts(t, note, fn["build"])) == 1                                   # comprehension element
+    lit = ast.parse("[{'a': 1}, 2, {'b': 3}]").body[0].value
+    assert len(nw.list_element_dicts(t, lit)) == 2                                                 # non-dict elements skipped
+    assert nw.list_element_dicts(t, ast.parse("foo()").body[0].value) == []
+    assert nw.list_element_dicts(t, led, fn["other"]) == []                                        # scope is honoured
+    # terminal strings: an attribute read is followed to every constructor call (deduplicated), other exprs report themselves
+    attr = ast.parse("r.b").body[0].value
+    rep = nw.terminal_strings(t, [attr, attr], {"b": "Res"})
+    assert rep == [(14, True), (19, False), (21, None)], rep
+    assert nw.terminal_strings(t, [ast.parse("v.b").body[0].value], {"zz": "Res"}) == [(1, False)]   # attr not mapped -> itself
+    assert nw.terminal_strings(t, nw.dict_key_values(dicts, "plain"), {"b": "Res"}) == [(15, True)]
+    assert nw.composed_keys(t, dicts) == {"k", "plain"}           # "k": r.b follows `r` to its f-string; "n" and the constant do not
+
+
+# ── bg_yogas / bg_ontology `[]` (SS ruling 2026-10-01: provenance pointers, ordinals and labels are not narration) ──
+
+_YOGAS = _BG + "l0_yogas.py"
+_ONTO = _BG + "l0_ontology.py"
+# the text-building expressions of l0_yogas.py whose value is STORED in a bound column: a label, a provenance pointer
+YOGAS_BOUND_TEXT = {
+    "base_name + ' Yoga'": "name_en label (base name + the word Yoga)",
+    "lex_name + ' Yoga'": "detected-name label from the lexicon",
+    "f'{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})'": "formation_text fallback: provenance pointer",
+    "f'{text_id.upper()} Ch.{chapter} ({verse_ref})'": "source_citation: provenance",
+}
+YOGAS_ERROR_PREFIXES = ("bg_yogas ", "invalid yoga source chunk identifier")
+
+
+def _ancestors(node):
+    while node is not None:
+        node = getattr(node, "_parent", None)
+        if node is not None:
+            yield node
+
+
+def _has_str_const(n):
+    return any(isinstance(x, (ast.Constant, ast.JoinedStr)) and (isinstance(x, ast.JoinedStr) or isinstance(x.value, str))
+               for x in ast.walk(n))
+
+
+def test_bg_yogas_every_text_building_expression_is_a_bound_label_or_pointer_or_not_stored():
+    tree = nw._parents(ast.parse(_read(_YOGAS)))
+    fam = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "seed_yoga_families")
+    seed = _read(_WR + "bg_yogas.py")
+    assert "seed_yoga_families" not in seed and "seed_yogas(" in seed                # the writer never reaches the families seeder
+    assert "seed_yoga_families" not in ast.unparse(next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "seed_yogas"))
+    bound, unexplained = set(), []
+    specs = {id(v.format_spec) for v in ast.walk(tree) if isinstance(v, ast.FormattedValue) and v.format_spec is not None}
+    for n in ast.walk(tree):
+        if fam.lineno <= getattr(n, "lineno", 0) <= fam.end_lineno:
+            continue
+        kind = ("fstr" if isinstance(n, ast.JoinedStr) and id(n) not in specs else
+                "binop" if isinstance(n, ast.BinOp) and isinstance(n.op, (ast.Add, ast.Mod)) else
+                n.func.attr if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("format", "join") else None)
+        if kind is None:
+            continue
+        u = ast.unparse(n)
+        if u in YOGAS_BOUND_TEXT:
+            bound.add(u)
+        elif "re.escape" in u or u.startswith("name + ' '"):
+            pass                                                                    # regex pattern / matching-only text, never stored
+        elif kind == "fstr" and any(isinstance(a, ast.Raise) for a in _ancestors(n)) and any(
+                isinstance(v, ast.Constant) and v.value.startswith(YOGAS_ERROR_PREFIXES) for v in n.values[:1]):
+            pass                                                                    # raised error text
+        elif kind == "binop" and not _has_str_const(n):
+            pass                                                                    # arithmetic / list concatenation
+        else:
+            unexplained.append((n.lineno, u))
+    assert unexplained == []
+    assert bound == set(YOGAS_BOUND_TEXT)
+
+
+def test_bg_yogas_bound_fstrings_interpolate_only_pointer_names_read_from_the_chunk_row():
+    tree = ast.parse(_read(_YOGAS))
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "extract_yogas_from_corpus")
+    fstrs = {ast.unparse(n): n for n in ast.walk(fn) if isinstance(n, ast.JoinedStr)}
+    fmt = fstrs["f'{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})'"]
+    assert nw.fstring_interpolations(fmt) == [("name_en", False), ("verse_ref", False), ("text_id", False), ("chapter", False)]
+    cit = fstrs["f'{text_id.upper()} Ch.{chapter} ({verse_ref})'"]
+    assert nw.fstring_interpolations(cit) == [("text_id.upper()", False), ("chapter", False), ("verse_ref", False)]   # no spec/conversion
+    for name, col in (("text_id", "text_id"), ("chapter", "chapter"), ("verse_ref", "verse_ref")):
+        assert [ast.unparse(v) for v in nw._assign_values(fn, name)] == [f"row['{col}']"], name      # read verbatim from classical_text_chunks
+    assert {ast.unparse(v) for v in nw._assign_values(fn, "name_en")} == {
+        "base_name + ' Yoga' if not raw_name.lower().endswith('yoga') else raw_name", "name_en.strip()"}
+    ft = [a for a in nw._assign_values(fn, "formation_text")]
+    assert len(ft) == 1 and isinstance(ft[0], ast.IfExp) and ast.unparse(ft[0].orelse) in fstrs     # the f-string is only the fallback
+    assert ast.unparse(ft[0].body) == "raw_clause"
+    sig = {ast.unparse(v) for v in nw._assign_values(fn, "sig_text")}
+    assert sig == {"''", "rm.group(0).strip()[:300]", "raw_clause[:200] if raw_clause else name_en"}
+
+
+def test_bg_yogas_insert_params_only_read_values_and_the_corpora_build_no_text():
+    src = _read(_YOGAS)
+    assert nw.no_string_building_in_bound_params(src, "seed_yogas", extra_calls=("_yoga_synonyms", "_yoga_citation")) == []
+    tree = ast.parse(src)
+    for name in ("_yoga_synonyms", "_yoga_citation", "_snake", "_first_sentence"):
+        fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
+        inv = nw.composed_inventory(fn)
+        assert [u for _, _, u in inv if "m.start()" not in u] == [], (name, inv)       # _first_sentence: an index +1 only
+    for corpus in ("YOGAS_CORE", "DETECTOR_YOGAS", "SARAVALI_YOGA_LOOKUP"):
+        assert nw.module_level_composition(src, corpus) == [], corpus
+
+
+def test_bg_yogas_checker_kills_a_narration_mutant_in_the_bound_text_and_the_insert():
+    src = _read(_YOGAS)
+    mutant = src.replace('f"{name_en}: formation per {verse_ref} ({text_id} Ch.{chapter})"',
+                         'f"{name_en}: formation per {verse_ref}, strength {len(raw_clause) / 10:.1f}"')
+    assert mutant != src
+    fn = next(n for n in ast.parse(mutant).body if isinstance(n, ast.FunctionDef) and n.name == "extract_yogas_from_corpus")
+    assert ("len(raw_clause) / 10", True) in [i for n in ast.walk(fn) if isinstance(n, ast.JoinedStr)
+                                              for i in nw.fstring_interpolations(n)]
+    old = '                    y["significations_text"][:150],\n'
+    assert src.count(old) == 1
+    assert nw.no_string_building_in_bound_params(
+        src.replace(old, '                    f"{y[\'significations_text\'][:150]} (score {len(y)})",\n'), "seed_yogas",
+        extra_calls=("_yoga_synonyms", "_yoga_citation"))
+
+
+_ONTO_EXPLAINED = {
+    "f\"nak_{nak_id:02d}_{name_en.lower().replace(' ', '_')}\"": "nakshatra canonical_id (identifier)",
+    "f'HOUSE_{house_num:02d}'": "house storage-code synonym", "f'HOUSE_{house_num}'": "house storage-code synonym",
+    "f'H{house_num}'": "house storage-code synonym", "f'house_{house_num:02d}'": "house canonical_id (identifier)",
+    "synonyms + [c for c in storage_codes if c not in synonyms]": "synonym list concatenation",
+    "f'D{n}'": "varga code", "[code] + extra_synonyms": "synonym list concatenation", "f'd{n}'": "varga canonical_id (identifier)",
+    "by_class.get(e['entity_class'], 0) + 1": "counter", "changed + deleted": "counter",
+}
+_ONTO_DESCRIPTIONS = {"f'Nakshatra {nak_id}/27'": ("nak_id", "NAK_DATA", 27), "f'Sign {sign_id}/12'": ("sign_id", "SIGN_DATA", 12)}
+
+
+def test_bg_ontology_every_text_building_expression_is_an_identifier_synonym_counter_sql_or_ordinal_description():
+    tree = ast.parse(_read(_ONTO))
+    rest = []
+    for ln, kind, u in nw.composed_inventory(tree):
+        if u in _ONTO_EXPLAINED or u in _ONTO_DESCRIPTIONS:
+            continue
+        rest.append((ln, kind, u))
+    # what remains is exactly the INSERT statement's f-string (its constant parts are SQL; only the constant conflict clause is
+    # interpolated) and the DELETE-scoping key f-string (a comprehension feeding `owned_canonical_keys`, never stored)
+    assert [k for _, k, _ in rest] == ["fstr", "fstr"], rest
+    sql_fs, key_fs = rest
+    assert "INSERT INTO brahma_ontology" in sql_fs[2] and "{conflict_clause}" in sql_fs[2]
+    assert key_fs[2].startswith("f\"{e['entity_class']}")
+    assert {u for _, _, u in nw.composed_inventory(tree)} >= set(_ONTO_DESCRIPTIONS) | set(_ONTO_EXPLAINED)    # none of the pins is stale
+
+
+def test_bg_ontology_the_only_composed_descriptions_are_ordinal_labels_of_fixed_lists():
+    tree = ast.parse(_read(_ONTO))
+    calls = [c for c in ast.walk(tree) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id == "_e"]
+    composed = []
+    for c in calls:
+        desc = c.args[5] if len(c.args) > 5 else next((k.value for k in c.keywords if k.arg == "description"), None)
+        if desc is not None and nw.is_composed(tree, desc):
+            composed.append(desc)
+    assert sorted(ast.unparse(d) for d in composed) == sorted(_ONTO_DESCRIPTIONS)
+    for d in composed:
+        var, data, n = _ONTO_DESCRIPTIONS[ast.unparse(d)]
+        assert nw.fstring_interpolations(d) == [(var, False)]                          # a bare loop index, no value shaping
+        (lst,) = nw._assign_values(tree, data)
+        firsts = [e.elts[0].value for e in lst.elts]
+        assert firsts == list(range(1, n + 1)) and len(lst.elts) == n                  # ordinals 1..N of a fixed literal list
+        loops = [f for f in ast.walk(tree) if isinstance(f, ast.For) and isinstance(f.iter, ast.Name) and f.iter.id == data]
+        assert len(loops) == 1 and var in {t.id for t in ast.walk(loops[0].target) if isinstance(t, ast.Name)}
+    # _e_varga passes its description parameter straight through and every caller tuple carries a literal string there
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_e_varga")
+    assert [ast.unparse(v) for v in nw.dict_key_values(nw.dict_nodes(tree, fn.body[-1].value), "description")] == ["description"]
+    (vd,) = nw._assign_values(tree, "VARGA_DATA")
+    assert all(isinstance(t.elts[4], ast.Constant) and isinstance(t.elts[4].value, str) for t in vd.elts)
+
+
+def test_bg_ontology_insert_params_only_read_values():
+    assert nw.no_string_building_in_bound_params(_read(_ONTO), "seed_ontology") == []
+    old = '                e["synonyms"], e.get("description"),\n'
+    src = _read(_ONTO)
+    assert src.count(old) == 1
+    assert nw.no_string_building_in_bound_params(src.replace(old, '                e["synonyms"], f"{e.get(\'description\')}!",\n'), "seed_ontology")
+
+
+# ── bo_laksana_rerank `[]` and ph_phaladesa `narration_jsonb.$.text` ──
+
+_LK = _WR + "bo_laksana.py"
+LAKSANA_RERANK_FUNCS = ("BoLaksanaRerankWriter", "_extract_primary_graha_for_rerank", "_structural_role_from_centrality",
+                        "_fetch_graha_centrality", "_populate_synthesis_rollups")
+LAKSANA_RERANK_COLUMNS = {"graph_node_strength_contribution_jsonb", "valence", "valence_source", "system_convergence_count",
+                          "cross_system_consensus_count", "contradicts_signals_array"}
+_SQL_TEXT_OPS = re.compile(r"\|\||concat|format\s*\(|string_agg|replace\s*\(|to_char|lpad|rpad|substr|initcap|upper\s*\(|lower\s*\(|trim\s*\(", re.I)
+
+
+def _laksana():
+    tree = nw._parents(ast.parse(_read(_LK)))
+    fns = {n.name: n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef))}
+    sqls = {t.targets[0].id: t.value.value for t in tree.body if isinstance(t, ast.Assign) and isinstance(t.targets[0], ast.Name)
+            and t.targets[0].id in ("_SYNTHESIS_ROLLUP_SQL", "_CLEAR_CONTRADICTS_SQL", "_CONTRADICTS_SQL")}
+    return tree, fns, sqls
+
+
+def _update_set_columns(sql):
+    seg = re.split(r"\bSET\b", sql, maxsplit=1, flags=re.I)[1]
+    seg = re.split(r"\bWHERE\b|\bFROM\b", seg, maxsplit=1, flags=re.I)[0]
+    return set(re.findall(r"(?:^|,)\s*([a-z_]+)\s*=", seg, re.I | re.M))
+
+
+def test_bo_laksana_rerank_is_update_only_and_writes_exactly_six_non_text_columns():
+    tree, fns, sqls = _laksana()
+    assert set(sqls) == {"_SYNTHESIS_ROLLUP_SQL", "_CLEAR_CONTRADICTS_SQL", "_CONTRADICTS_SQL"}
+    cls = fns["BoLaksanaRerankWriter"]
+    inline = [n.value for n in ast.walk(cls) if isinstance(n, ast.Constant) and isinstance(n.value, str) and re.match(r"\s*UPDATE\b", n.value)]
+    assert len(inline) == 2
+    texts = list(sqls.values()) + inline
+    cols = set().union(*(_update_set_columns(t) for t in texts))
+    assert cols == LAKSANA_RERANK_COLUMNS, cols
+    assert not any(re.search(r"\bINSERT\b|\bDELETE\b", t, re.I) for t in texts)
+    for fname in LAKSANA_RERANK_FUNCS:
+        assert not any(isinstance(n, ast.Constant) and isinstance(n.value, str) and re.search(r"\bINSERT\s+INTO\b", n.value, re.I)
+                       for n in ast.walk(fns[fname])), fname
+    for t in texts:
+        assert _SQL_TEXT_OPS.search(t) is None, t
+
+
+def test_bo_laksana_rerank_has_no_text_building_expression_that_reaches_a_column():
+    tree, fns, _ = _laksana()
+    found = {}
+    for fname in LAKSANA_RERANK_FUNCS:
+        found[fname] = nw.composed_inventory(fns[fname])
+    # the only f-string in the class is the WriterResult notes (a return note, bound to no column)
+    cls_inv = found["BoLaksanaRerankWriter"]
+    assert [(k, u.startswith("f'structural_role_updated=")) for _, k, u in cls_inv] == [("fstr", True)]
+    fs = next(n for n in ast.walk(fns["BoLaksanaRerankWriter"]) if isinstance(n, ast.JoinedStr))
+    assert isinstance(fs._parent, ast.keyword) and fs._parent.arg == "notes" and nw._called_name(fs._parent._parent) == "WriterResult"
+    # the helpers hold numeric arithmetic only (no string operand), and nothing else
+    for fname in LAKSANA_RERANK_FUNCS[1:]:
+        for n in ast.walk(fns[fname]):
+            if isinstance(n, ast.JoinedStr) or (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("format", "join")):
+                raise AssertionError((fname, ast.unparse(n)))
+            if isinstance(n, ast.BinOp) and isinstance(n.op, (ast.Add, ast.Mod)):
+                assert not _has_str_const(n), (fname, ast.unparse(n))
+    # _resolve_valence is the one other function whose output is stored (valence): its only f-string is a lookup key
+    rv = fns["_resolve_valence"]
+    keyf = [u for _, _, u in nw.composed_inventory(rv)]
+    assert keyf == ["f'{varga}_HOUSE_{house_num}'"]
+    loads = [n for n in ast.walk(rv) if isinstance(n, ast.Name) and n.id == "target_key" and isinstance(n.ctx, ast.Load)]
+    assert len(loads) == 1 and any(isinstance(a, ast.Call) and isinstance(a.func, ast.Attribute) and a.func.attr == "get"
+                                   and a.func.value.id == "vichara_lookup" for a in _ancestors(loads[0]))
+    (vmap,) = [a.value for a in tree.body if isinstance(a, ast.AnnAssign) and isinstance(a.target, ast.Name)
+               and a.target.id == "_VICHARA_TO_MSR_VALENCE"]
+    assert all(isinstance(v, ast.Constant) and isinstance(v.value, str) for v in vmap.values)
+    rets = [r for r in ast.walk(rv) if isinstance(r, ast.Return)]
+    gav = [r for r in rets if isinstance(r.value, ast.Tuple) and ast.unparse(r.value.elts[1]) == "'ga_vichara_v1'"]
+    assert len(gav) == 1 and ast.unparse(gav[0].value.elts[0]) == "mapped"
+    assert [ast.unparse(v) for v in nw._assign_values(rv, "mapped")] == ["_VICHARA_TO_MSR_VALENCE.get(value_text, 'neutral')"]
+
+
+def test_bo_laksana_rerank_update_parameters_carry_no_composed_value():
+    tree, fns, _ = _laksana()
+    cls = fns["BoLaksanaRerankWriter"]
+    execs = [c for c in ast.walk(cls) if isinstance(c, ast.Call) and isinstance(c.func, ast.Attribute) and c.func.attr == "execute"
+             and len(c.args) >= 2 and isinstance(c.args[0], ast.Constant) and re.match(r"\s*UPDATE\b", c.args[0].value)]
+    assert sorted(ast.unparse(c.args[1]) for c in execs) == ["[json.dumps(payload), sig['signal_id']]",
+                                                          "[new_valence, new_source, row['signal_id']]"]
+    (payload,) = nw._assign_values(cls, "payload")
+    assert isinstance(payload, ast.Dict)
+    assert {k.value for k in payload.keys} == {"structural_role_score", "primary_graha", "pagerank_score", "eigenvector_centrality",
+                                              "betweenness_centrality", "harmonic_centrality", "formula_version", "computed_at"}
+    assert nw.composed_keys(cls, [payload]) == set()                 # names resolved inside the writer class only
+    valence_update = next(c for c in execs if "SET valence" in c.args[0].value)
+    guard = [a for a in _ancestors(valence_update) if isinstance(a, ast.If)]
+    assert any(ast.unparse(g.test) == "new_source == 'ga_vichara_v1'" for g in guard)       # only the L1-valence_pass rows are updated
+
+
+_PHAL = _WR + "ph_phaladesa.py"
+PHALADESA_INTERPOLATIONS = ["domain_label", "mag", "mall", "n", "rec.anchor_count", "rec.clean_anchor_count", "rec.confidence_high",
+                            "rec.confidence_low", "rec.incoming_spillover_count", "rec.peak_date", "rec.pramana_window_status",
+                            "rec.prediction_window_end", "rec.prediction_window_start", "win"]
+
+
+def test_ph_phaladesa_narration_text_is_a_template_over_computed_fields_bound_to_narration_jsonb():
+    src = _read(_PHAL)
+    tree = ast.parse(src)
+    assert nw.check_tuple_json_from_builder(src, "phala_phaladesa", "narration_jsonb", "_build_deterministic_narration") == []
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_build_deterministic_narration")
+    roots = [r.value for r in ast.walk(fn) if isinstance(r, ast.Return)]
+    mod = ast.Module(body=[fn], type_ignores=[])
+    assert nw.composed_report(mod, roots, ("text",)) == [(146, True)]
+    (ret,) = roots
+    keys = {k.value for k in ret.keys}
+    assert keys == {"language", "text", "method", "model", "prompt_hash", "generated_at"}
+    assert nw.composed_keys(mod, [ret]) == {"text"}                                           # every other key is a constant or a date
+    # what the template states: computed counts, window dates, confidence band, status (no format spec/conversion anywhere)
+    inter = sorted({e for n in ast.walk(fn) if isinstance(n, ast.JoinedStr) for e, _ in nw.fstring_interpolations(n)})
+    assert inter == PHALADESA_INTERPOLATIONS
+    assert [spec for n in ast.walk(fn) if isinstance(n, ast.JoinedStr) for _, spec in nw.fstring_interpolations(n)] == [False] * sum(
+        len(nw.fstring_interpolations(n)) for n in ast.walk(fn) if isinstance(n, ast.JoinedStr))
+    assert any("anchor_count" in e or "confidence" in e for e in inter)
+
+
+def test_ph_phaladesa_checker_kills_the_constant_text_mutant():
+    src = _read(_PHAL)
+    assert nw.check_tuple_json_from_builder(src.replace('"text": " ".join(parts),', '"text": "pending",'), "phala_phaladesa",
+                                            "narration_jsonb", "_build_deterministic_narration") == []     # binding is intact ...
+    fn = next(n for n in ast.parse(src.replace('"text": " ".join(parts),', '"text": "pending",')).body
+              if isinstance(n, ast.FunctionDef) and n.name == "_build_deterministic_narration")
+    roots = [r.value for r in ast.walk(fn) if isinstance(r, ast.Return)]
+    assert nw.composed_report(ast.Module(body=[fn], type_ignores=[]), roots, ("text",)) == [(146, False)]    # ... but the leaf is no longer composed
+    assert nw.check_tuple_json_from_builder(src.replace("json.dumps(narration, cls=_UUIDEncoder)", "json.dumps({}, cls=_UUIDEncoder)"),
+                                            "phala_phaladesa", "narration_jsonb", "_build_deterministic_narration")
+
+
+def test_no_served_surface_reads_ph_phaladesa_narration_jsonb_so_the_declaration_rests_on_the_writer():
+    import os
+    hits = []
+    for root, dirs, files in os.walk(REPO_ROOT / "platform" / "src"):
+        dirs[:] = [d for d in dirs if d not in ("node_modules", "__tests__", "generated")]
+        for f in files:
+            if f.endswith((".ts", ".tsx")) and not re.search(r"\.(test|spec)\.", f):
+                if "narration_jsonb" in (pathlib.Path(root) / f).read_text(encoding="utf-8", errors="replace"):
+                    hits.append(f)
+    assert hits == []         # when one appears, add its read to the evidence and drop this guard
+
+
+# ── citation_human sweep: every asset whose writer sets a citation_human value, with the decision, the AST census, the INSERT
+# that binds it and the served read. The table is generated from the code (census / interpolation / INSERT scans); the decision
+# (declare / decline) and the cites are the reviewed part. Decisions per SS ruling 2026-10-01: a composed string is narration if
+# it states or grades a computed value (counts, numbers, dignities, valences, placements stated as the assertion);
+# provenance pointers, ordinals and structural labels (an entity name, a fixed 1..12 index) are not. ──
+
+CITATION_DECISIONS = json.loads(r"""
+{
+ "bo_arudha": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/bodha_writers/arudha_emitter.py": [
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py",
+   [
+    "bodha_msr_signals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/bodha_writers/arudha_emitter.py",
+    214,
+    "\"citation_human\": f\"Arudha: "
+   ],
+   [
+    "platform/python-sidecar/bodha_writers/arudha_emitter.py",
+    243,
+    "headline=f\"Arudha Lagna (AL)"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
+   119,
+   "'verification_pass_status', "
+  ],
+  "fields": [
+   "signal_headline_text",
+   "signal_summary_text",
+   "citation_human"
+  ]
+ },
+ "bo_vargottama_dhana": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py": [
+    0,
+    0,
+    1,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py",
+   [
+    "bodha_msr_signals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py",
+    237,
+    "\"citation_human\": headline,"
+   ],
+   [
+    "platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py",
+    286,
+    "headline=f\"{graha_display} i"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
+   119,
+   "'verification_pass_status', "
+  ],
+  "fields": [
+   "signal_headline_text",
+   "signal_summary_text",
+   "citation_human"
+  ]
+ },
+ "bo_laksana": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py": [
+    4,
+    0,
+    0,
+    2
+   ],
+   "platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py": [
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
+   [
+    "bodha_msr_signals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
+    3046,
+    "f\"Navamsha D9 cross-check: {"
+   ],
+   [
+    "platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py",
+    391,
+    "f\"Bhavat Bhavam (house of th"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
+   119,
+   "'verification_pass_status', "
+  ],
+  "fields": [
+   "signal_headline_text",
+   "signal_summary_text",
+   "citation_human"
+  ]
+ },
+ "bo_nakshatra_semantic": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py": [
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py",
+   [
+    "bodha_msr_signals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py",
+    358,
+    "\"citation_human\": f\"Nakshatr"
+   ]
+  ],
+  "served": null,
+  "fields": null,
+  "labels": [
+   "graha_display"
+  ]
+ },
+ "bo_special_lagna": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/bodha_writers/special_lagna_emitter.py": [
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py",
+   [
+    "bodha_msr_signals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/bodha_writers/special_lagna_emitter.py",
+    228,
+    "\"citation_human\": f\"Special "
+   ]
+  ],
+  "served": null,
+  "fields": null,
+  "labels": [
+   "display"
+  ]
+ },
+ "bo_sudarshana": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/bodha_writers/sudarshana_emitter.py": [
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py",
+   [
+    "bodha_msr_signals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/bodha_writers/sudarshana_emitter.py",
+    382,
+    "\"citation_human\": f\"Sudarsha"
+   ]
+  ],
+  "served": null,
+  "fields": null,
+  "labels": [
+   "graha_display"
+  ]
+ },
+ "bo_sangati": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py": [
+    2,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py",
+   [
+    "bodha_cdlm_cells",
+    "bodha_convergence"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py",
+    365,
+    "\"citation_human\": f\"CDLM cel"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py",
+    440,
+    "\"citation_human\": f\"Converge"
+   ]
+  ],
+  "served": null,
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "bo_bimba": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py": [
+    4,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
+   [
+    "bodha_cgm_nodes"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
+    523,
+    "\"citation_human\": f\"{sig_cla"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
+    252,
+    "def _yoga_config_name(cfg: d"
+   ]
+  ],
+  "served": null,
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "bo_cdlm_summary": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py": [
+    2,
+    1,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py",
+   [
+    "bodha_cdlm_chart_summary",
+    "bodha_cdlm_domain_rollups",
+    "bodha_cdlm_pattern_clusters"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py",
+    391,
+    "\"citation_human\": f\"CDLM pat"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts",
+   52,
+   "citation_ref, citation_human"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "bo_cgm_motifs": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py": [
+    7,
+    2,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+   [
+    "bodha_cgm_motifs",
+    "bodha_cgm_sub_graphs",
+    "bodha_cgm_chart_topology_summary"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+    777,
+    "f\"CGM topology summary: {n_t"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+    232,
+    "f\"Yoga cluster: configuratio"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+    348,
+    "f\"Stellium: {len(nodes)} gra"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+    342,
+    "\"motif_name\": f\"Stellium in "
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+    400,
+    "\"motif_name\": f\"Parivartana "
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
+   73,
+   "classical_citation_id, verif"
+  ],
+  "fields": [
+   "citation_human",
+   "motif_name"
+  ]
+ },
+ "bo_cgm_paths": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py": [
+    0,
+    1,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py",
+   [
+    "bodha_cgm_paths"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py",
+    350,
+    "\"citation_human\": \"CGM dispo"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
+   75,
+   "verification_pass_status, ci"
+  ],
+  "fields": null,
+  "labels": []
+ },
+ "bo_karanajala": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py": [
+    10,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+   [
+    "bodha_cgm_edges",
+    "bodha_contradictions",
+    "bodha_cgm_nodes"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+    625,
+    "f\"Argala: {graha_b} in {hous"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+    708,
+    "\"citation_human\":           "
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+    785,
+    "\"citation_human\":           "
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+    1360,
+    "\"citation_human\": ("
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+    1732,
+    "\"citation_human\": f\"{node_su"
+   ]
+  ],
+  "served": null,
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "bo_upaya": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py": [
+    5,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
+   [
+    "bodha_rm_resonances",
+    "bodha_rm_remedy_prescriptions",
+    "bodha_rm_chart_summary",
+    "bodha_rm_dosha_remedy_bundles",
+    "bodha_rm_pattern_remedies"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
+    1549,
+    "f\"Resonance: {graha} | \""
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
+    1798,
+    "\"citation_human\": f\"RM chart"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
+    1842,
+    "\"citation_human\": f\"Dosha re"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts",
+   78,
+   "verification_pass_status, ci"
+  ],
+  "fields": [
+   "prescription_detail_jsonb.$.maraka_contraindication_verdict.reason",
+   "citation_human"
+  ]
+ },
+ "bo_yantra_mechanism": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py": [
+    10,
+    0,
+    1,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
+   [
+    "bodha_mechanisms"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
+    397,
+    "f\"CR-24 disposition (verifie"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
+    571,
+    "citation_human=(f\"{display} "
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
+    565,
+    "mechanism_name=f\"{display} o"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
+   1489,
+   "`SELECT mechanism_name, mech"
+  ],
+  "fields": [
+   "citation_human",
+   "mechanism_name"
+  ]
+ },
+ "ga_nakshatra": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py": [
+    4,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
+   [
+    "chart_facts",
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
+    191,
+    "chum = f\"{subject} {key}: {v"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
+    193,
+    "chum = f\"{subject} {key}: {v"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_ayurdaya": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py": [
+    2,
+    2,
+    1,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py",
+    233,
+    "f\"{method.capitalize()} long"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": null,
+  "labels": [
+   "HARANA_NOTE",
+   "method.capitalize()"
+  ]
+ },
+ "ga_condition": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_condition_writer.py": [
+    5,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_condition_writer.py",
+   [
+    "<columns>"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_condition_writer.py",
+    1117,
+    "\"citation_human\":          f"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_condition_writer.py",
+    1391,
+    "f\"{graha} lajjitadi avastha "
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_dashas": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_dashas_writer.py": [
+    29,
+    2,
+    1,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+   [
+    "<columns>",
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+    1160,
+    "human = f\"Vimshottari {' > '"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/pariprashna/pipeline/citation_resolver.ts",
+   384,
+   "`SELECT dasha_row_id::text A"
+  ],
+  "fields": null,
+  "labels": [
+   "' > '.join(lord_chain)",
+   "' > '.join(lords)",
+   "ayanamsha_id.title()",
+   "chain",
+   "clipped_e",
+   "clipped_s",
+   "level",
+   "lord_name",
+   "md_lord",
+   "sub2_lord",
+   "sub_lord",
+   "varsha_end_d",
+   "varsha_lord",
+   "varsha_num",
+   "varsha_start_d"
+  ]
+ },
+ "ga_panchanga": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_panchanga_writer.py": [
+    148,
+    0,
+    1,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
+    368,
+    "citation_human=f\"Tithi numbe"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
+    534,
+    "citation_human=f\"Sun's arc i"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_positions": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_positions_writer.py": [
+    10,
+    0,
+    1,
+    2
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_positions_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_positions_writer.py",
+    132,
+    "return (f\"{graha} whole-sign"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_positions_writer.py",
+    469,
+    "f\"Bhāva {hnum} {system.title"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_positions_writer.py",
+    487,
+    "f\"{gname} Sripati bhāva-chal"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_sade_sati": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py": [
+    136,
+    0,
+    3,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
+    892,
+    "citation_human=f\"Sade Sati {"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
+    1239,
+    "citation_human=f\"Sade Sati {"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_sensitive_degree": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py": [
+    0,
+    23,
+    1,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
+    677,
+    "\"citation_human\": citation,"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": null,
+  "labels": []
+ },
+ "ga_sensitive": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_sensitive_writer.py": [
+    4,
+    0,
+    0,
+    1
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
+    246,
+    "return f\"{category}.{subject"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_strength": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_strength_writer.py": [
+    21,
+    0,
+    0,
+    1
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_strength_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_strength_writer.py",
+    845,
+    "f\"{graha_name} required shad"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_strength_writer.py",
+    880,
+    "f\"{graha_name} shadbala rati"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_structural": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_structural_writer.py": [
+    189,
+    5,
+    0,
+    6
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+   [
+    "<columns>",
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+    1303,
+    "citation_human=f\"House {h} r"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+    1702,
+    "f\"House {h} strength classif"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+    4659,
+    "f\"{g_name} effective dignity"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_tajaka": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_tajaka_writer.py": [
+    2,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_tajaka_writer.py",
+   [
+    "<columns>"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_tajaka_writer.py",
+    621,
+    "citation_human = ("
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
+   902,
+   "applicable_tajik_yogas_array"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_vargas": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_vargas_writer.py": [
+    26,
+    1,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
+   [
+    "chart_divisionals",
+    "chart_divisionals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
+    1202,
+    "\"citation_human\": f\"{body} v"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
+    1651,
+    "\"citation_human\": (f\"{body} "
+   ]
+  ],
+  "served": null,
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_yoga": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_yoga_writer.py": [
+    10,
+    16,
+    0,
+    7
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_yoga_writer.py",
+   [
+    "ga_yoga_firings",
+    "ga_yoga_firings",
+    "ga_yoga_firings",
+    "ga_yoga_firings"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_yoga_writer.py",
+    269,
+    "citation_human = ("
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_yoga_writer.py",
+    2232,
+    "\"citation_human\": f\"A consti"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
+   200,
+   "f.activation_dasha_periods, "
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ }
+}
+""")
+# python files that set a citation_human but belong to no asset's decision: a verifier's constant text, and the constant-literal
+# Upapada rule corpus (brahmagyan/l0_upapada_maitri_rules.py) that ga_structural reads into its rows (ga_structural is decided on its own sites)
+# and Pravāha's kala_gochara cutover rehearsal script (scripts/kala_gochara_cutover/resonance_rebuild_disposable_rehearsal.py), whose
+# only citation_human mentions are SQL column lists of INSERT … SELECT row copies (lines ~802, ~822, ~1007): it composes no text and is
+# not an asset writer
+CITATION_UNOWNED_FILES = {_SC + "ga_writers/_vimshottari_independent_verifier.py", _SC + "brahmagyan/l0_upapada_maitri_rules.py",
+                          _SC + "scripts/kala_gochara_cutover/resonance_rebuild_disposable_rehearsal.py"}
+CITATION_NO_SITE_ASSETS = ("ga_medical", "ga_prashna", "ga_vastu", "ga_vichara", "ga_transit_anchors")   # writers set no citation_human
+_GW = _SC + "ga_writers/"
+
+
+@functools.lru_cache(maxsize=None)
+def _ctree(path):
+    return nw._parents(ast.parse(_read(path)))
+
+
+def _census(path):
+    import collections
+    c = collections.Counter(k for _, _, k, _ in nw.citation_sites(_ctree(path)))
+    return [c.get(k, 0) for k in ("composed", "const", "passthrough", "other")]
+
+
+def test_citation_sweep_covers_every_writer_file_that_sets_a_citation_human():
+    import os
+    owned = {f for d in CITATION_DECISIONS.values() for f in list(d["sites"]) + [d["insert"][0]]} | CITATION_UNOWNED_FILES
+    found = set()
+    for dirpath, dirs, files in os.walk(REPO_ROOT / _SC):          # the whole sidecar, not only the writer directories
+        dirs[:] = [d for d in dirs if d not in ("tests", "__tests__", "node_modules", "__pycache__")]
+        for f in sorted(files):
+            if not f.endswith(".py") or f.startswith("test_"):
+                continue
+            rel = str((pathlib.Path(dirpath) / f).relative_to(REPO_ROOT))
+            if "itation" not in _read(rel).lower() and "ITATION" not in _read(rel):
+                continue
+            t = _ctree(rel)
+            # a file counts when it names a citation_human key/attribute/INSERT column; a bare `citation=` parameter (a source
+            # citation helper: l0_reference, ka_gochara_resonance, ...) is not the column
+            if any(x[1] != "arg" for x in nw.citation_sites(t)) or any(tb != "<columns>" for _, tb in nw.citation_inserts(t)):
+                found.add(rel)
+    assert found == owned, (sorted(found - owned), sorted(owned - found))
+    assert len(CITATION_DECISIONS) == 28
+    assert sorted(a for a, d in CITATION_DECISIONS.items() if d["decision"] == "declare") == sorted(
+        set(CITATION_NEW) | set(CITATION_EXTENDED_PRIOR) | {"bo_upaya"})
+    assert sorted(a for a, d in CITATION_DECISIONS.items() if d["decision"] == "decline") == [
+        "bo_cgm_paths", "bo_nakshatra_semantic", "bo_special_lagna", "bo_sudarshana", "ga_ayurdaya", "ga_dashas", "ga_sensitive_degree"]
+    decl = _decl()
+    for a in CITATION_NO_SITE_ASSETS:
+        assert decl[a]["prose_fields"] is None, a
+
+
+@pytest.mark.parametrize("asset", sorted(CITATION_DECISIONS))
+def test_citation_decision_matches_the_committed_declaration(asset):
+    d, pf = CITATION_DECISIONS[asset], _decl()[asset]["prose_fields"]
+    if d["decision"] == "declare":
+        assert pf is not None and "citation_human" in pf and all(f in pf for f in d["fields"]), asset
+    else:
+        assert pf is None or "citation_human" not in pf, asset
+
+
+@pytest.mark.parametrize("asset", sorted(CITATION_DECISIONS))
+def test_citation_site_census_and_insert_are_pinned(asset):
+    d = CITATION_DECISIONS[asset]
+    for f, expect in d["sites"].items():
+        assert _census(f) == expect, (asset, f)
+    f, tables = d["insert"]
+    assert [t for _, t in nw.citation_inserts(_ctree(f))] == tables, (asset, f)
+    assert tables, asset                      # the column is really in an INSERT (or a column-name list) of the writer
+    if d["decision"] == "declare":
+        assert sum(c[0] for c in d["sites"].values()) >= 1 or asset == "bo_vargottama_dhana"
+
+
+@pytest.mark.parametrize("asset", sorted(CITATION_DECISIONS))
+def test_citation_cites_and_served_reads_are_real_lines_and_cited_in_the_evidence(asset):
+    d = CITATION_DECISIONS[asset]
+    ev = _decl()[asset]["evidence"]["prose_fields"] or ""
+    for path, line, needle in d["cites"] + ([d["served"]] if d["served"] else []):
+        lines = _read(path).splitlines()
+        assert line <= len(lines) and needle in lines[line - 1], (asset, path, line, lines[line - 1])
+        if d["decision"] == "declare":
+            assert f"{path}:{line}" in ev, (asset, path, line)          # the full repo path, not a basename
+    if d["decision"] == "declare":
+        assert _decl()[asset].get("evidence_kind") == "writer", asset
+        assert "SS ruling 2026-10-01" in ev and ev.count("AST census of the writer's citation_human sites") == 1
+
+
+@pytest.mark.parametrize("asset", sorted(a for a, d in CITATION_DECISIONS.items() if d["decision"] == "decline"))
+def test_declined_citation_assets_compose_only_labels_or_nothing(asset):
+    d = CITATION_DECISIONS[asset]
+    inter = sorted(set(x for f in d["sites"] for x in nw.site_interpolations(_ctree(f))))
+    assert inter == d["labels"], (asset, inter)
+    # every interpolated expression is an entity/label name, a loop ordinal or a provenance constant: no number formatting,
+    # no arithmetic, no call but .capitalize()
+    for f in d["sites"]:
+        for ln, how, kind, u in nw.citation_sites(_ctree(f)):
+            if kind != "composed":
+                continue
+            for x in ast.walk(ast.parse(u, mode="eval")):
+                if isinstance(x, ast.FormattedValue):
+                    assert x.format_spec is None and x.conversion == -1, (asset, ln)
+                    for y in ast.walk(x.value):
+                        assert not isinstance(y, (ast.BinOp, ast.Compare)), (asset, ln, u)
+                        if isinstance(y, ast.Call):
+                            assert isinstance(y.func, ast.Attribute) and y.func.attr in ("capitalize", "title", "join"), (asset, ln, u)
+    # and no interpolated name depends on a fact DATUM (fact_value_text / fact_value_num / fact_value_jsonb / configuration_jsonb):
+    # a variable called `name` or `display` is followed to where its value comes from, never trusted by its name
+    for f in d["sites"]:
+        flags = nw.interpolation_datum_flags(_ctree(f))
+        assert not any(flags.values()), (asset, {k: v for k, v in flags.items() if v})
+
+
+def test_citation_composed_values_are_really_stated_in_the_declared_assets():
+    for asset, path, ln, expr in (
+            ("bo_sangati", _WR + "bo_sangati.py", 365, "len(shared_ids)"), ("bo_sangati", _WR + "bo_sangati.py", 440, "len(sigs)"),
+            ("bo_cdlm_summary", _WR + "bo_cdlm_summary.py", 391, "len(agg['cells'])"),
+            ("bo_cgm_motifs", _WR + "bo_cgm_motifs.py", 777, "len(all_edges)"),
+            ("bo_karanajala", _WR + "bo_karanajala.py", 708, "sign_num"),
+            ("bo_upaya", _WR + "bo_upaya.py", 1798, "len(resonances)"),
+            ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 571, "verdict.valence"),
+            ("ga_strength", _GW + "ga_strength_writer.py", 880, "ratio"),
+            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 368, "tithi_num"),
+            ("ga_structural", _GW + "ga_structural_writer.py", 4659, "effective_dignity_score")):
+        sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
+        assert sites, (asset, path, ln)
+        got = {e for x in ast.walk(ast.parse(sites[0][3], mode="eval")) if isinstance(x, ast.JoinedStr)
+               for e, _ in nw.fstring_interpolations(x)}
+        assert expr in got, (asset, ln, sorted(got))
+    # numbers shaped into the text by a format spec (ga_structural :4659, ga_strength :880)
+    for path, ln in ((_GW + "ga_structural_writer.py", 4659), (_GW + "ga_strength_writer.py", 880)):
+        site = next(x for x in nw.citation_sites(_ctree(path)) if x[0] == ln)
+        specs = [sp for x in ast.walk(ast.parse(site[3], mode="eval")) if isinstance(x, ast.JoinedStr)
+                 for _, sp in nw.fstring_interpolations(x)]
+        assert any(specs), (path, ln)
+
+
+def test_bo_bimba_node_citation_name_depends_on_a_fact_datum_so_the_column_is_declared():
+    t = _ctree(_WR + "bo_bimba.py")
+    flags = nw.interpolation_datum_flags(t)
+    assert flags["name"] is True and flags["sig_class.capitalize()"] is True       # followed through _yoga_config_name to fact_value_text
+    fn = next(n for n in t.body if isinstance(n, ast.FunctionDef) and n.name == "_yoga_config_name")
+    assert "fact_value_text" in [c.value for c in ast.walk(fn) if isinstance(c, ast.Constant)]
+    assert [s[0] for s in nw.citation_sites(t) if s[3] == "f'{sig_class.capitalize()} node: {name}'"] == [523]
+    # the tracer is not fooled by the variable name: the same shape over a constant is not a datum, over a renamed read it is
+    syn = ("K = ('a',)\ndef nm(cfg, d):\n    for k in ('fact_value_text', 'x'):\n        v = cfg.get(k)\n        if v: return v\n    return d\n"
+           "def run(cfg):\n    label = nm(cfg, 'z')\n    fixed = K[0]\n    r = {'citation_human': f'{label} {fixed}'}\n")
+    st = ast.parse(syn)
+    assert nw.interpolation_datum_flags(st) == {"label": True, "fixed": False}
+    # a datum that arrives through a parameter the caller binds (a helper called with a fact read), and tuple-unpack bindings
+    syn2 = ("def show(label, other):\n    return {'citation_human': f'x {label} {other}'}\n"
+            "def run(cfg):\n    show(cfg['fact_value_text'], 'k')\n    a, b = cfg['configuration_jsonb'], 1\n"
+            "    return {'citation_human': f'{a} {b}'}\n")
+    assert nw.interpolation_datum_flags(ast.parse(syn2)) == {"label": True, "other": False, "a": True, "b": True}
+    assert nw.reads_datum(st, ast.parse("K[0]", mode="eval").body) is False
+    assert nw.reads_datum(st, ast.parse("cfg['configuration_jsonb']", mode="eval").body) is True
+
+
+def test_citation_forwarded_headline_and_mechanism_name_are_composed_by_their_callers():
+    em = _ctree(_SC + "bodha_writers/vargottama_dhana_emitter.py")
+    fwd = [s for s in nw.citation_sites(em) if s[2] == "passthrough"]
+    assert len(fwd) == 1 and fwd[0][3] == "headline"
+    fn = next(n for n in ast.walk(em) if isinstance(n, ast.FunctionDef) and any(a.arg == "headline" for a in n.args.args + n.args.kwonlyargs)
+              and "citation_human" in ast.unparse(n))
+    calls = [c for c in ast.walk(em) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id == fn.name]
+    heads = [k.value for c in calls for k in c.keywords if k.arg == "headline"]
+    assert len(heads) == 2 and all(nw._text_composed(h) or (isinstance(h, ast.Name) and any(
+        nw._text_composed(v) for v in nw._assign_values(em, h.id))) for h in heads)       # an f-string, or a name assigned from one
+    ym = _ctree(_WR + "bo_yantra_mechanism.py")
+    names = [k for c in ast.walk(ym) if isinstance(c, ast.Call) and nw._called_name(c) == "_make_mechanism"
+             for k in c.keywords if k.arg == "mechanism_name"]
+    composed = {k.value.lineno: [e for e, _ in nw.fstring_interpolations(k.value)] for k in names if isinstance(k.value, ast.JoinedStr)}
+    assert composed[565] == ["display", "label", "verdict.valence"]               # the only mechanism_name that grades a value
+    assert set(composed) == {344, 388, 472, 565}
+    assert all("valence" not in "".join(v) for ln, v in composed.items() if ln != 565)
+    # :229 forwards bo_cgm_motifs' motif_name, which is itself composed and served: it is declared there, not a label
+    fwd = [k.value for k in names if not isinstance(k.value, ast.JoinedStr)]
+    assert [v.lineno for v in fwd] == [229] and ast.unparse(fwd[0]) == "m['motif_name']"
+    assert "motif_name" in _decl()["bo_cgm_motifs"]["prose_fields"]
+    mm = _ctree(_WR + "bo_cgm_motifs.py")
+    names_m = {}
+    for d in (n for n in ast.walk(mm) if isinstance(n, ast.Dict)):
+        for k, v in zip(d.keys, d.values):
+            if isinstance(k, ast.Constant) and k.value == "motif_name" and isinstance(v, ast.JoinedStr):
+                names_m[v.lineno] = [e for e, _ in nw.fstring_interpolations(v)]
+    assert names_m[342] == ["house_key", "', '.join(labels)"] and names_m[400] == ["depth", "cycle_label"]     # stellium house, chain length
+
+
+def test_the_citation_sites_of_bo_laksana_py_are_outside_the_rerank_class_that_declares_empty():
+    tree = _ctree(_WR + "bo_laksana.py")
+    cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "BoLaksanaRerankWriter")
+    assert [s for s in nw.citation_sites(tree) if cls.lineno <= s[0] <= cls.end_lineno] == []
+
+
+_CITE_SYNTH = """
+def helper(a, citation_human):
+    return {"citation_human": citation_human}
+def fmt(x):
+    return f"v={x}"
+CONST = "fixed"
+def run(x, rule):
+    cite = f"n={x}"
+    helper(1, cite)
+    helper(2, "lit")
+    helper(3, CONST)
+    helper(4, citation_human=f"{x:.2f}")
+    chum = fmt(x)
+    row = {"citation_human": rule["c"], "other": 1}
+    kw = dict(citation_human="a" + x)
+    row["citation_human"] = x.get("c")
+    return {"citation_human": CONST}
+"""
+
+
+_CITE_SYNTH2 = """
+KEY = "citation_human"
+UP = "CITATION_HUMAN"
+OTHER = "citation_ref"
+SQL = "INSERT INTO t (a, citation_human) VALUES (%s, %s)"
+def run(x, row, d, cur):
+    row.citation_human = f"a{x}"
+    row.Citation_Human = "plain"
+    row.other = f"zz{x}"
+    d.setdefault("citation_human", f"b{x}")
+    d.setdefault("citation_ref", f"no{x}")
+    d[KEY] = f"c{x}"
+    d[OTHER] = f"no{x}"
+    e = {KEY: f"d{x}", OTHER: f"no{x}"}
+    f = {"CITATION_HUMAN": f"e{x}"}
+    g = {UP: f"f{x}"}
+    cur.execute(SQL, (1, f"g{x}"))
+    cur.execute("INSERT INTO u (citation_human, b) VALUES (%s, %s)", (f"h{x}", 2))
+    cur.execute("INSERT INTO v (a, b) VALUES (%s, %s)", (1, f"no{x}"))
+"""
+
+
+def test_citation_sites_scanner_sees_attribute_setdefault_variable_uppercase_keys_and_positional_tuples():
+    got = [(h, k, u) for _, h, k, u in nw.citation_sites(nw._parents(ast.parse(_CITE_SYNTH2)))]
+    assert got == [("attr", "composed", "f'a{x}'"), ("attr", "const", "'plain'"), ("setdefault", "composed", "f'b{x}'"),
+                   ("subkey", "composed", "f'c{x}'"), ("dict", "composed", "f'd{x}'"), ("dict", "composed", "f'e{x}'"),
+                   ("dict", "composed", "f'f{x}'"), ("tuple", "composed", "f'g{x}'"), ("tuple", "composed", "f'h{x}'")], got
+
+
+def test_the_declarations_file_states_the_fact_row_narr_rule_and_the_version():
+    doc = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))
+    assert doc["version"] == "1.6.0"
+    d = doc["description"]
+    for phrase in ("fact_value_text is the datum", "citation_human is the sentence", "verbalising an L1 fact value states a computed value",
+                   "fact_value_text / formula_provenance_text columns stay undeclared", "[*]"):
+        assert phrase in d, phrase
+    assert all(a not in _decl() or _decl()[a]["prose_fields"] is None or "fact_value_text" not in _decl()[a]["prose_fields"]
+               for a in _decl()), "the shared fact_value_text column is never declared"
+    assert not any("formula_provenance_text" in (e["prose_fields"] or []) for e in _decl().values())
+
+
+def test_citation_sites_scanner_classifies_dicts_keywords_helpers_names_and_calls():
+    got = [(h, k) for _, h, k, _ in nw.citation_sites(nw._parents(ast.parse(_CITE_SYNTH)))]
+    # a keyword to a citation-named helper parameter is seen twice (as the helper argument and as the keyword): the census pins that
+    assert got == [("dict", "passthrough"), ("arg", "composed"), ("arg", "const"), ("arg", "const"), ("arg", "composed"),
+                   ("kw", "composed"), ("var", "composed"), ("dict", "other"), ("kw", "composed"), ("subkey", "other"),
+                   ("dict", "const")], got
+    assert nw.site_interpolations(ast.parse(_CITE_SYNTH)) == ["x"]
+    sql = ("INSERT INTO t (a, citation_human, b) VALUES (%s,%s,%s)", "INSERT INTO u (a) VALUES (%s)")
+    src = f"S = {sql[0]!r}\nU = {sql[1]!r}\nC = ['a', 'citation_human']\nV = f'INSERT INTO w (citation_human) VALUES ({{x}})'\n"
+    assert sorted(t for _, t in nw.citation_inserts(ast.parse(src))) == ["<columns>", "t", "w"]
+    assert nw.citation_inserts(ast.parse("S = 'INSERT INTO t (a) VALUES (%s)'  # citation_human\n")) == []
 
 
 NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division
