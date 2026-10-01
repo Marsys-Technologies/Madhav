@@ -499,13 +499,48 @@ _factor("sad_bala_sufficient",
         thresholds_rupa={"Sun": 6.5, "Moon": 6.0, "Mars": 5.0, "Mercury": 7.0,
                          "Jupiter": 6.5, "Venus": 5.5, "Saturn": 5.0},
         threshold_reading={
-            "Sun": {"state": "ocr_degraded_fraction_glyph", "ocr_glyph": "6J-"},
+            "Sun": {"state": "ocr_degraded_fraction_glyph", "ocr_glyph": "6J-",
+                    "fraction_confirmed_by": "BPHS ch.27 śl.32-33 (PG286:C1)"},
             "Moon": {"state": "explicit"},
             "Mars": {"state": "explicit"},
             "Mercury": {"state": "explicit"},
-            "Jupiter": {"state": "ocr_degraded_fraction_glyph", "ocr_glyph": "6j"},
-            "Venus": {"state": "ocr_degraded_fraction_glyph", "ocr_glyph": "5*"},
+            "Jupiter": {"state": "ocr_degraded_fraction_glyph", "ocr_glyph": "6j",
+                        "fraction_confirmed_by": "BPHS ch.27 śl.32-33 (PG286:C1)"},
+            "Venus": {"state": "ocr_degraded_fraction_glyph", "ocr_glyph": "5*",
+                      "fraction_confirmed_by": "BPHS ch.27 śl.32-33 (PG286:C1)"},
             "Saturn": {"state": "explicit"},
+        },
+        # Second, INDEPENDENT served source (steward M20261001T210607-03ec): BPHS
+        # ch.27 śl.32-33 states the minimum ṣaḍbala requirement in virūpas, and the
+        # translator's note below it states the same in rūpas. Both read from the
+        # served corpus (chunk bphs_pg0286_c01, read-only, 2026-10-02). Per figure:
+        # the virūpa figure and the translator's rūpa note agree with the
+        # Phaladīpikā threshold above; the Sun/Jupiter/Venus HALF-rūpa fractions
+        # are therefore CONFIRMED by a source whose figures (390, 390, 330 virūpas)
+        # and rūpa notes (6.5, 6.5, 5.5) are explicit. One residual OCR blemish is
+        # recorded, not smoothed: Mercury's virūpa figure prints "42C" in the verse
+        # (a degraded 0); its rūpa note ("7'0") is explicit, so Mercury is
+        # corroborated by the note, not by the degraded verse digit.
+        corroboration={
+            "work": "Bṛhat Pārāśara Horā Śāstra", "chapter": 27, "verses": "32-33",
+            "corpus_locator": "bphs:PG286:C1", "chunk_id": "bphs_pg0286_c01",
+            "chunk_content_sha256": "3c616170d786ffb58d36cdd6e58f1b70e9e43565c64781ef9404abc6ce3b30d6",
+            "translator": "R. Santhanam", "edition": "Trans. R. Santhanam, Ranjan Publications, New Delhi (2 vols)",
+            "text_id": "bphs",
+            "statement": "SHADBALA REQUIREMENTS: 390, 360, 300, 420, 390, 330 and 300 "
+                         "virūpas are the Ṣaḍbala piṇḍas needed for the Sun etc. (up to "
+                         "Saturn) to be considered strong; if the strength exceeds, the "
+                         "planet is very strong",
+            "virupas": {"Sun": 390, "Moon": 360, "Mars": 300, "Mercury": 420,
+                        "Jupiter": 390, "Venus": 330, "Saturn": 300},
+            "translator_note_rupas": {"Sun": 6.5, "Moon": 6.0, "Mars": 5.0,
+                                      "Mercury": 7.0, "Jupiter": 6.5, "Venus": 5.5,
+                                      "Saturn": 5.0},
+            "ocr_blemishes": {"Mercury": {"field": "virupa", "printed": "42C",
+                                          "read": 420,
+                                          "note": "the rūpa note (7'0) is explicit"}},
+            "agreement": "every graha: translator_note_rupas == thresholds_rupa; "
+                         "virūpas / 60 == thresholds_rupa",
         },
         unsupported_agents=["Rahu", "Ketu"],
         unsupported_reason="the citation supplies no threshold for the nodes; "
@@ -550,9 +585,10 @@ _factor("sad_bala_sufficient",
                               "(classical_match). This factor does NOT read it: the "
                               "threshold is the CITED rule parameter above. RECORDED "
                               "DISCREPANCY (2026-10-02, canonical chart, ayanamsha_id "
-                              "INVARIANT): L1's Sun required_rupa differs from the "
-                              "Phaladīpikā IV.22 reading; the other six agree. Not "
-                              "resolved here — referred to the L1 owner "
+                              "INVARIANT): L1's Sun required_rupa differs from BOTH served "
+                              "sources — Phaladīpikā IV.22 and BPHS ch.27 śl.32-33 "
+                              "(PG286:C1, 390 virūpas = 6.5 rūpas); the other six agree. "
+                              "Not resolved here — referred to the L1 owner "
                               "(predicate: SELECT fact_subject, fact_value_num FROM "
                               "chart_facts WHERE fact_category='graha_shadbala_total' "
                               "AND fact_key='required_rupa' AND chart_id=<482012f1…>).",

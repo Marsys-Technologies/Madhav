@@ -81,6 +81,28 @@ def test_citation_identifies_the_edition_translator_and_chunks():
     assert "ONLY" in b["use"]       # bhāvabala is a separate statement, never combined
 
 
+def test_the_half_rupa_fractions_are_confirmed_by_a_second_explicit_served_source():
+    row = registry.FACTORS[REF]
+    c = row["corroboration"]
+    assert c["corpus_locator"] == "bphs:PG286:C1" and (c["chapter"], c["verses"]) == (27, "32-33")
+    assert c["chunk_id"] == "bphs_pg0286_c01" and len(c["chunk_content_sha256"]) == 64
+    assert c["translator"] == "R. Santhanam"
+    # every threshold agrees with BOTH the BPHS virūpa figure (60 virūpas = 1 rūpa) and the translator's rūpa note
+    assert set(c["virupas"]) == set(CITED) == set(c["translator_note_rupas"])
+    for g, rupas in CITED.items():
+        assert c["translator_note_rupas"][g] == rupas
+        assert c["virupas"][g] / 60 == rupas
+    # the three OCR-degraded Phaladīpikā fractions each name the confirming source
+    for g in ("Sun", "Jupiter", "Venus"):
+        assert "PG286:C1" in row["threshold_reading"][g]["fraction_confirmed_by"]
+    for g in ("Moon", "Mars", "Mercury", "Saturn"):
+        assert "fraction_confirmed_by" not in row["threshold_reading"][g]
+    # the one residual OCR blemish in the corroborating verse is recorded, not smoothed
+    assert c["ocr_blemishes"]["Mercury"]["printed"] == "42C" and c["ocr_blemishes"]["Mercury"]["read"] == 420
+    # the L1 discrepancy now names both served sources
+    assert "BPHS ch.27" in row["l1_required_rupa_note"] and "Phaladīpikā IV.22" in row["l1_required_rupa_note"]
+
+
 def test_deferred_sad_bala_summary_is_retired_by_supersession_not_edited():
     old = registry.FACTORS[("sad_bala_summary", registry.RULE_VERSION)]
     # byte-for-byte as authored: the defect that deferred it is still visible, not erased
