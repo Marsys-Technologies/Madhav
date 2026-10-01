@@ -290,9 +290,10 @@ ROLLUP_ORDER = ("FAIL", "ERRORED", "NO_DETECTOR", "PARTIAL", "PASS")
 # pattern) and "<criterion>#measured:<cause>" (the census itself measured N/A, and the inspector named the CAUSE:
 # N-22 ruling principle 2). The uncaused "<criterion>#measured" form is RETIRED: one id per criterion released
 # every measured N/A of that criterion, whatever condition produced it. Until a rule id is declared here, an N/A reads
-# NO_DETECTOR. REGISTRY_REVISION 9 declares exactly the three approved, already-emitting rules below (SS N-65, from the
-# N-22 / N-22a ruling table, proposal v1.2.3): nothing else may be added without its own ruling, revision bump and pin.
-# Each value is the decision text the rule cites. Source of record for N-22, N-22a and N-65: /Users/Dev/suvarna/run/DECISIONS.jsonl. NOT declared (held by ruling): Null rules (N-22 row 33), Earn rows,
+# NO_DETECTOR. REGISTRY_REVISION 9 declared the three approved, already-emitting rules (SS N-65, from the N-22 / N-22a ruling
+# table, proposal v1.2.3), REVISION 10 adds the two N-72 rules (dep_liveness S4, Earn.service_state not-a-service): nothing else
+# may be added without its own ruling, revision bump and pin.
+# Each value is the decision text the rule cites. Source of record for N-22, N-22a, N-65 and N-72: /Users/Dev/suvarna/run/DECISIONS.jsonl. NOT declared (held by ruling): Null rules (N-22 row 33), Earn.build_record rows,
 # Carr no-carriage, rolling_horizon, and the kind-keyed rules (user_data, write-nothing-by-design, ga_prashna cause).
 NA_RULE_DECISIONS: dict[str, str] = {
     # R01, N-22 row 20 APPROVED (principles 2, 3): never run is Build.exercised's / Build.registered's finding
@@ -305,6 +306,14 @@ NA_RULE_DECISIONS: dict[str, str] = {
         "python-side readers of these three L0 tables do not make them served.",
     # R03, N-22 row 17 AMENDED (principle 8): the assets that declare prose_fields [] (bg_doshas, bg_ontology, bg_yogas,
     # bo_laksana_rerank; SS: bg_yogas and bg_ontology final); the reverse leg still FAILs a narration column
+    # S4, N-22 row 23 re-proposed (the general form was refused for want of a reads-match detector; Build.dag's reads-match
+    # clause, E6 (h), is that detector and gates the emission): the asset's declared dependency list is empty AND Build.dag PASS
+    "Build.dep_liveness#measured:no-declared-dependencies":
+        "N-22/N-22a row 23 (re-proposed: reads-match detector landed in revision 6, principle 3); N-72 (S4)",
+    # Earn.service_state, N-22 row 9 AMENDED (principles 2, 3, 5): keyed on the DECLARED kind (not `service`); services and
+    # undeclared kinds keep reading NO_DETECTOR
+    "Earn.service_state#measured:not-a-service":
+        "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)",
     "Narr.agree#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
     "Narr.checkable#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
     "Narr.fidelity_test#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
@@ -324,6 +333,7 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Count.floor": ("target-floor-zero",),
     "Dens.served": ("no-served-surface",),
     "Carr.D1": ("no-carriage",), "Carr.D2": ("no-carriage",), "Carr.D3": ("no-carriage",),
+    "Earn.service_state": ("not-a-service",),
     "Build.exercised": ("never-run-no-writer", "never-executed-no-writer"),
     "Build.history": ("never-run",),
     "Build.dep_liveness": ("no-declared-dependencies",),
@@ -367,7 +377,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 9     # 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 10     # 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -5213,6 +5223,36 @@ def _declared_kind(declarations, asset_id: str):
     return k if isinstance(k, str) and k in DECLARED_KINDS else None
 
 
+def _grade_dep_liveness_none(dag) -> dict:
+    """Build.dep_liveness for an asset with an EMPTY declared dependency list (SS N-72, S4; N-22 row 23 re-proposed).
+
+    N/A (cause no-declared-dependencies) ONLY when the reads-match detector is demonstrably present AND clean: this asset's
+    own Build.dag record reads PASS (exists, cycle and reads-match: the writer's SQL reads no other asset's table without a
+    declared edge, an L0 bedrock read being the ruled `bedrock_exempt`, and the scan was COMPLETE). Anything else (the dag
+    check missing, FAIL on an undeclared read or a cycle, PARTIAL/NO_DETECTOR/ERRORED because the scan was incomplete or
+    unavailable) is NO_DETECTOR, never N/A: with no declared dependency "nothing to be live" is a claim only a clean
+    reads-match scan can make (CLAUDE.md N.8; the F5 pattern of `never-run`)."""
+    v = (dag or {}).get("v")
+    if v == PASS and not (dag or {}).get("missing_edges"):
+        ex = len((dag or {}).get("bedrock_exempt") or ())
+        return _na("no declared dependencies, and the reads-match detector (Build.dag) found no undeclared read of another "
+                   "asset's table" + (f" ({ex} ruled bedrock_exempt L0 read(s))" if ex else ""), "no-declared-dependencies")
+    why = "Build.dag was not measured" if v is None else f"Build.dag reads {v}"
+    return dict(v=NO_DET, measured=f"NO_DETECTOR — no declared dependencies, but the reads-match detector did not establish "
+                                   f"that the asset reads nothing undeclared ({why}), so 'nothing to be live' is not claimed")
+
+
+def _service_state_na(declared_kind, registry_kind):
+    """Earn.service_state N/A candidate, keyed on the DECLARED kind (SS N-72; N-22 row 9 AMENDED): N/A, cause `not-a-service`,
+    only when the asset-declarations file declares a kind that is not `service` AND the registry (`asset_kind`) does not
+    say `service` either. An undeclared/null kind, a declared service, or a registry service is never N/A: the census does
+    not guess a kind, and the services' own detector is a later design (they keep reading NO_DETECTOR)."""
+    if declared_kind is None or declared_kind == "service" or registry_kind == "service":
+        return None
+    return _na(f"declared kind {declared_kind!r} is not `service`; Earn.service_state is the service-state check "
+               "(a service's rows_written cannot tell healthy-and-idle from broken)", "not-a-service")
+
+
 def _measure_target(r: dict, owners, declared_kind) -> dict:
     """Build.target (T4:274: "a `target_table` set, or service / multi-table declared explicitly").
 
@@ -5971,6 +6011,10 @@ def measure(layer_key: str, assets=None) -> dict:
             None if attempts is None else attempts.get(aid, {}), t, rec_scope.split(";")[0], CHART_ID,
             instrument_present, r["has_writer"], era)
 
+        _ss = _service_state_na(_declared_kind(declarations, aid), r.get("asset_kind"))
+        if _ss is not None:
+            m["Earn.service_state"] = _ss
+
         cf = _grade_count_floor(r, live, count_errors.get(aid), ctables)
         if cf is not None:
             m["Count.floor"] = cf
@@ -6154,7 +6198,7 @@ def measure(layer_key: str, assets=None) -> dict:
             m["Build.history"] = _grade_build_history(h)
 
         m["Build.dep_liveness"] = (_grade_dep_liveness(r["depends_on"], deprec, CHART_ID) if r["depends_on"]
-                                   else _na("no declared dependencies", "no-declared-dependencies"))
+                                   else _grade_dep_liveness_none(m.get("Build.dag")))
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
         # E6 item (f): Carr.D1-D3 `no-carriage` candidates, only for an asset that DECLARES terminal_by_construction

@@ -67,6 +67,9 @@ def _restore_pre_retirement(monkeypatch):
     monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
     monkeypatch.setattr(ac, "RETIRED_CRITERIA", {}, raising=False)
     reg["Narr.agree"] = dict(reg["Narr.agree"], applicability=NARR_AGREE_REV7)    # its text said "undecided" until revision 9
+    causes = dict(ac.NA_CAUSES)
+    causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
+    monkeypatch.setattr(ac, "NA_CAUSES", causes)
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})      # revision 7 declared no rule (revision 9 declares three: they are fingerprinted)
 
 
