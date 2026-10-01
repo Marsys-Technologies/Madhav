@@ -19,6 +19,7 @@ const MIGRATIONS_DIR = path.resolve(process.cwd(), 'migrations')
 const SUPABASE_MIGRATIONS_DIR = path.resolve(process.cwd(), 'supabase/migrations')
 const PREFLIGHT_DIR = path.resolve(process.cwd(), '../platform/python-sidecar/scripts/kala_gochara_cutover')
 const DEPLOY_YML = path.resolve(process.cwd(), '../.github/workflows/deploy.yml')
+const CI_YML = path.resolve(process.cwd(), '../.github/workflows/ci.yml')
 
 const M1206 = '1206_gochara_search_inventory_completeness.sql'
 const P1206 = 'preflight_1206_search_inventory_completeness.sql'
@@ -171,4 +172,51 @@ describe('B6.0 F-1 migration 1206 (AM-5 search completeness) — static contract
     expect(at1204).toBeGreaterThan(-1)
     expect(at1206, '1206 listed in the same window after 1204').toBeGreaterThan(at1204)
   })
+
+  it('Codex v1.0 R1–R5 are pinned in the source: full-key commitment equality, bridge binding, total pin CHECKs, session-independent L1 digests, pinned search_path', () => {
+    // R1: the committed-but-not-stored branch carries the owning path/version (6-column key)
+    const first = exec.slice(exec.indexOf('FUNCTION public.ka_gochara_search_completeness_violations'),
+                             exec.indexOf('FUNCTION public.ka_gochara_search_replay_violations'))
+    expect(first).toContain('(o.chart_id, o.generation, o.event_class, o.path_id, o.rule_version, o.ob_id)')
+    expect(first).not.toMatch(/\(o\.chart_id, o\.generation, o\.event_class, o\.ob_id\)\s*=\s*\(p\.chart_id, p\.generation, p\.event_class, c\)\)\)\s*OR EXISTS/)
+    // R2: both the publication and the partitions are resolved through the immutable bridge
+    for (const k of ['convention_bridge_missing', 'convention_mismatch']) expect(first).toContain(`'${k}'`)
+    expect(exec).toContain('ka_gochara_convention_bridge b WHERE b.kala_convention_id = pub.convention_id')
+    // R3: the excluded-pin reason CHECK is a TOTAL boolean (no nullable escape path)
+    const r3 = exec.slice(exec.indexOf('CONSTRAINT kgspp_reason_closed_ck'), exec.indexOf('CONSTRAINT kgspp_ruling_iff_degrading_ck'))
+    expect(r3).toContain('exclusion_reason IS NOT NULL')
+    expect(r3).toContain('COALESCE(exclusion_reason IN')
+    // R4: the ACTUAL audit column is excluded, never the non-existent created_at; the session is pinned
+    const l1 = exec.slice(exec.indexOf('FUNCTION public.ka_gochara_search_l1_facts_digest'), exec.indexOf('FUNCTION public.ka_gochara_search_av_entry'))
+    expect(l1).toContain("to_jsonb(f) - 'computed_at'")
+    expect(l1).not.toContain("'created_at'")
+    expect(l1).toContain("SET timezone = 'UTC'")
+    expect(l1).toContain('SET extra_float_digits = 1')
+    expect(l1).toContain('f.chart_id = p_chart')
+    expect(l1).toContain("to_jsonb(r) - 'computed_at'")
+    expect(exec).toContain('consumed_dasha_row_ids  uuid[] NOT NULL')
+    expect(exec).toContain('r.dasha_row_id = i.id AND r.chart_id = p_chart')          // uuid join, no text cast
+    // every function pins search_path
+    const blocks = exec.split(/CREATE OR REPLACE FUNCTION /).slice(1)
+    expect(blocks.length).toBeGreaterThanOrEqual(17)
+    for (const b of blocks) {
+      const head = b.slice(0, b.indexOf('$$'))
+      expect(head, `search_path pinned: ${head.split('(')[0]}`).toContain('SET search_path = pg_catalog, public')
+    }
+    // the empty ledger is input-bound
+    expect(exec).toContain("'input=' || i.input_digest")
+  })
+
+  it('CI runs the live-DB suite as REQUIRED (no silent skip) plus the reproducible mutation harness', () => {
+    const ci = fs.readFileSync(CI_YML, 'utf8')
+    expect(ci).toContain('GOCHARA_REQUIRE_DB')
+    expect(ci).toContain('gochara_b6_am5_search_inventory.db.test.ts')
+    expect(ci).toContain('CREATE DATABASE gochara_a51_test')
+    expect(ci).toContain('scripts/gochara/mutation_check_1206.py')
+    const db = fs.readFileSync(path.resolve(process.cwd(), 'tests/integration/gochara_b6_am5_search_inventory.db.test.ts'), 'utf8')
+    expect(db).toContain("process.env.GOCHARA_REQUIRE_DB === '1'")
+    expect(db).toContain('data_plane_builder')
+    expect(fs.existsSync(path.resolve(process.cwd(), 'scripts/gochara/mutation_check_1206.py'))).toBe(true)
+  })
 })
+
