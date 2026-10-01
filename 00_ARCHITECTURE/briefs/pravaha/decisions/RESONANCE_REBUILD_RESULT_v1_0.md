@@ -1,6 +1,6 @@
 ---
 artifact: RESONANCE_REBUILD_RESULT
-version: "1.0"
+version: "1.1"
 status: "CLOSED — production resonance map rebuilt 2026-10-01 (steward run 82f8802c, 23:12Z); finding #9 re-measured read-only and CLOSED"
 date: 2026-10-02
 author: Stream B (Śāstra), item B6.0 — read-only re-measurement (steward M20261001T231248-60b0)
@@ -53,21 +53,28 @@ by this document**: the rebuild it was waiting on has landed and verified. The v
 partition's current full-row digest is `(623, 718de7e471e4a02ffdf0f6141b35299f)`
 (md5 of `string_agg(row_to_json(m)::text, '' ORDER BY id)` — same construction as the packet's certificate).
 
-## L1 gap, for the L1 owner (Ganita) — not a rebuild defect
+## L1 gap — explained by the L1 owner (stale data, not a defect)
 
-The 8 `yamakantaka_difference` rows are honestly `unavailable` because **L1 holds no
-`sensitive_point_gulika_mandi` fact for YAMAKANTAKA**. For the same category L1 carries GULIKA (35 facts) and
-MANDI (35 facts; keys `sign`, `longitude_sidereal`, `nakshatra`, `nakshatra_lord`, `pada`, `sign_lord`,
-`house_d1`), and none for YAMAKANTAKA (count 0). What L1 does have for Yamakantaka is a **day-part window**
-(`panchanga_yamakantaka` / `YAMAKANTAKA_BIRTH_DAY`: `start_iso` 1984-02-05T05:05:55.5Z, `end_iso`
-1984-02-05T06:30:44Z, `duration_minutes` present with a NULL value text) — a time interval, not a longitude
-or sign, so the writer correctly does not treat it as an operand for a sign/longitude difference.
-**Ask of the L1 owner:** if the doctrine behind `yamakantaka_difference` requires a Yamakantaka longitude/sign
-(it is a computed sensitive point in the classical corpus; this file does not cite the verse and makes no
-classical claim), add a `sensitive_point_gulika_mandi` row set for YAMAKANTAKA with the same keys as MANDI;
-otherwise the rows should stay `unavailable` and the 8 rows are a standing honest-gap marker. Until then
-nothing downstream may read those 8 rows as resolved. (Stream B did not derive any value; B.10 — no
-fabricated computation.)
+The 8 `yamakantaka_difference` rows are honestly `unavailable` because the canonical chart's L1 holds **no
+`sensitive_point_gulika_mandi` fact for YAMAKANTAKA** (measured read-only: count 0; the same category carries
+GULIKA 35 and MANDI 35 facts). **Explanation from the L1 owner (relayed by the steward, M20261001T231512-c75e;
+Stream B has not re-read the writer):** this is **not a naming mismatch and not missing code.**
+`ga_sensitive_writer.py:2446-2466` (merged with #2731) emits `sensitive_point_gulika_mandi` / `YAMAKANTAKA`
+(keys `house_d1`, `longitude_sidereal`, `nakshatra`, `nakshatra_lord`, `pada`, `sign`, `sign_lord`) from
+PyJHora's upagraha computation (Phaladīpikā XXV.1-3 — cited by the L1 owner; not re-verified here). The
+canonical chart's L1 rows were **built 2026-09-07, before that code merged**, so the stored data is stale and
+**no YAMAKANTAKA row exists on any chart yet**.
+
+**Disposition:** the 8 rows stay honestly `unavailable` until the L1 rebuild (Suvarṇa's S-L1); **a resonance
+re-run is then required** (Suvarṇa lists it as a dependency and will say when). Until then nothing downstream
+may read those 8 rows as resolved.
+
+**Do NOT substitute the similarly named points** — each is a different thing:
+`sun_derived_upagraha | YAMAGHANTAKA` (Sun + 240°); `saturn_derived_point | YAMAGANDA_SPHUTA` (Saturn + 240°,
+computed_extension); `panchanga_yamakantaka | YAMAKANTAKA_BIRTH_DAY` (a **time window** — start 1984-02-05
+05:05:55.5Z, end 06:30:44Z — not a longitude, so it is not an operand for a sign/longitude difference).
+(Stream B derived no value and made no classical claim of its own; B.10.)
 
 ## Changelog
 * 1.0 (2026-10-02) — first issue; read-only before/after for finding #9; packet closed; Yamakantaka L1 gap recorded.
+* 1.1 (2026-10-02) — Yamakantaka gap re-explained per the L1 owner (stale L1 build of 2026-09-07 pre-dating the merged emitter; resolves at S-L1 + a resonance re-run); the three similarly named points are not substitutes.
