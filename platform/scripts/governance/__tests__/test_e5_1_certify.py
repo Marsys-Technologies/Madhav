@@ -324,6 +324,10 @@ def test_r1_a_caller_supplied_detector_cannot_override_the_registry(ledger):
     dict(census_run_id=["x"]),
     dict(census_run_id="yesterday"),                      # not an ISO timestamp
     dict(census_run_id="2026-10-01T10:00:00"),            # naive: the census's `generated` always carries an offset
+    dict(census_run_id="2026-10-01 10:00:00+05:30"),      # fromisoformat takes any single separator: only `T` is the shape
+    dict(census_run_id="2026-10-01/10:00:00+05:30"),
+    dict(census_run_id="2026-10-01\x0010:00:00+05:30"),
+    dict(census_run_id="2026-10-01T10:00:00+05:30\n"),
 ])
 def test_r2_pass_without_a_usable_census_run_id_is_refused(ledger, ev):
     refused(ledger, "no_census_run_id", evidence=ev)
@@ -959,6 +963,16 @@ def test_a_cited_census_path_regenerated_with_other_bytes_is_refused_census_path
     assert ledger.read_bytes() == before
 
 
+def test_census_path_reused_looks_at_certificates_not_event_lines(ledger):
+    p = write_census_file({"Build.registered": dict(v="PASS", measured="m")})
+    nc.write_certification(**kw(ledger, census_path=p, asset="bg_ontology"))
+    q = write_census_file({"Build.registered": dict(v="PASS", measured="m")}, asset="bg_panchanga")
+    rel = f"{CENSUS_DIR_REL}/{q.name}"
+    nc.append_records(ledger, [dict(type="invalidation", evidence=dict(census_file=rel, census_sha256="0" * 64))])
+    r = nc.write_certification(**kw(ledger, census_path=q, asset="bg_panchanga"))            # not refused by the event
+    assert r.status == "appended" and r.record["evidence"]["census_file"] == rel
+
+
 def test_re_certifying_against_the_same_unchanged_census_is_still_unchanged_and_a_new_name_is_fine(ledger):
     p = write_census_file({"Build.registered": dict(v="PASS", measured="m")})
     nc.write_certification(**kw(ledger, census_path=p))
@@ -1002,6 +1016,131 @@ def test_archive_census_refuses_a_bad_generated_or_a_file_that_is_not_that_censu
             nc.archive_census(src, fresh_repo, RUN)
         assert ei.value.code == "bad_census"
     assert not list((fresh_repo / CENSUS_DIR_REL).glob("asset_census_*"))
+
+
+def _src(tmp_path):
+    src = tmp_path / "asset_census.json"
+    src.write_text(write_census_file({}).read_text())
+    return src
+
+
+@pytest.mark.parametrize("gen", ["2026-10-01 10:00:00+05:30", "2026-10-01/10:00:00+05:30", "2026-10-01\x0010:00:00+05:30",
+                                 "2026-10-01T10:00:00+05:30\n", "2026-10-01T10:00:00+0530", "../2026-10-01T10:00:00+05:30",
+                                 "2026-10-01T10:00:00+05:30/../x", "2026-10-01"])
+def test_archive_census_validates_generated_by_shape_before_building_the_name(fresh_repo, tmp_path, gen):
+    src = tmp_path / "c.json"
+    src.write_text(json.dumps(dict(generated=gen, layer="L0", assets=[])))                   # the file even says so
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.archive_census(src, fresh_repo, gen)
+    assert ei.value.code == "bad_census"
+    assert not list((fresh_repo / CENSUS_DIR_REL).glob("asset_census_*"))
+
+
+def test_a_stray_value_error_in_the_cli_archive_path_is_a_refusal_not_exit_5(fresh_repo, tmp_path, monkeypatch, capsys):
+    def boom(*a, **k):
+        raise ValueError("embedded null byte")
+    monkeypatch.setattr(nc, "archive_census", boom)
+    rc = nc.main(["--archive-census", str(_src(tmp_path)), "--repo", str(fresh_repo), "--generated", RUN])
+    assert rc == 2 and "REFUSED bad_request" in capsys.readouterr().err
+
+
+def test_cli_archive_census_refuses_a_bad_generated_instead_of_crashing(fresh_repo, tmp_path):
+    src = _src(tmp_path)
+    for gen in ("2026-10-01 10:00:00+05:30", "2026-10-01/10:00:00+05:30", ""):
+        q = cli(["--archive-census", str(src), "--repo", str(fresh_repo), "--generated", gen], cwd=str(fresh_repo))
+        assert q.returncode == 2 and "REFUSED" in q.stderr, (gen, q.returncode, q.stderr)
+    missing = cli(["--archive-census", str(src), "--repo", str(fresh_repo)], cwd=str(fresh_repo))
+    assert missing.returncode == 2
+
+
+def test_archive_census_crash_mid_write_leaves_nothing_at_the_final_name_and_the_retry_succeeds(fresh_repo, tmp_path, monkeypatch):
+    src = _src(tmp_path)
+    real_fsync = os.fsync
+
+    def enospc(fd):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(os, "fsync", enospc)
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.archive_census(src, fresh_repo, RUN)
+    assert ei.value.code == "bad_census"
+    cdir = fresh_repo / CENSUS_DIR_REL
+    assert not list(cdir.glob("asset_census_*")) and not list(cdir.glob(".archive_*"))        # no partial, no leftover temp
+    monkeypatch.setattr(os, "fsync", real_fsync)
+    rel = nc.archive_census(src, fresh_repo, RUN)                                              # the retry is not dead-ended
+    assert (fresh_repo / rel).read_bytes() == src.read_bytes()
+
+
+def test_archive_census_a_failure_after_the_link_still_cleans_the_temp_file(fresh_repo, tmp_path, monkeypatch):
+    src = _src(tmp_path)
+    nc.archive_census(src, fresh_repo, RUN)
+    assert not list((fresh_repo / CENSUS_DIR_REL).glob(".archive_*"))
+
+
+def test_two_concurrent_archivers_of_the_same_census_both_get_the_same_complete_file(fresh_repo, tmp_path):
+    import threading
+    src = _src(tmp_path)
+    out, errs = [], []
+    gate = threading.Barrier(8)
+
+    def go():
+        try:
+            gate.wait()
+            out.append(nc.archive_census(src, fresh_repo, RUN))
+        except Exception as e:                                                                  # noqa: BLE001
+            errs.append(e)
+
+    ts = [threading.Thread(target=go) for _ in range(8)]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    assert not errs, errs
+    assert len(set(out)) == 1 and (fresh_repo / out[0]).read_bytes() == src.read_bytes()
+    assert not list((fresh_repo / CENSUS_DIR_REL).glob(".archive_*"))
+
+
+def test_concurrent_archivers_of_different_bytes_one_wins_the_rest_are_refused_never_overwrite(fresh_repo, tmp_path):
+    import threading
+    a, b = _src(tmp_path), tmp_path / "b.json"
+    b.write_bytes(a.read_bytes() + b"\n")
+    res = []
+    gate = threading.Barrier(6)
+
+    def go(src):
+        gate.wait()
+        try:
+            res.append(("ok", nc.archive_census(src, fresh_repo, RUN)))
+        except nc.CertificationRefused as e:
+            res.append((e.code, None))
+
+    ts = [threading.Thread(target=go, args=(a if i % 2 else b,)) for i in range(6)]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    final = (fresh_repo / "00_ARCHITECTURE/control/census/asset_census_2026-10-01T100000+0530.json").read_bytes()
+    assert final in (a.read_bytes(), b.read_bytes())
+    assert {c for c, _ in res} <= {"ok", "census_archive_exists"} and any(c == "ok" for c, _ in res)
+
+
+def test_archive_census_never_follows_a_symlink_at_the_destination(fresh_repo, tmp_path):
+    src = _src(tmp_path)
+    target = tmp_path / "victim.json"
+    target.write_text("victim")
+    dest = fresh_repo / CENSUS_DIR_REL / "asset_census_2026-10-01T100000+0530.json"
+    dest.symlink_to(target)
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.archive_census(src, fresh_repo, RUN)
+    assert ei.value.code == "census_archive_exists" and target.read_text() == "victim"
+    dest.unlink()
+    twin = tmp_path / "twin.json"
+    twin.write_bytes(src.read_bytes())                                                         # identical bytes via a link
+    dest.symlink_to(twin)
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.archive_census(src, fresh_repo, RUN)
+    assert ei.value.code == "census_archive_exists"
+    dest.unlink()
+    dest.symlink_to(tmp_path / "dangling.json")
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.archive_census(src, fresh_repo, RUN)
+    assert ei.value.code == "census_archive_exists" and not (tmp_path / "dangling.json").exists()
 
 
 def test_an_archived_census_can_be_cited_once_added_and_is_recorded_under_its_unique_name(ledger, fresh_repo, tmp_path):
@@ -1885,15 +2024,80 @@ def test_append_records_refuses_certificates_they_go_only_through_write_certific
     assert ledger.read_bytes() == before
 
 
-def test_events_may_name_themselves_by_kind_invalidation_or_watermark(ledger):
+def test_event_types_are_exactly_what_the_e55_reader_dispatches_on(ledger):
+    assert nc.EVENT_TYPES == ("invalidation", "watermark", "epoch_reset")
     nc.write_certification(**kw(ledger))
-    assert nc.append_records(ledger, [dict(kind="invalidation", target="x"), dict(kind="watermark", value=3)]) == 2
-    recs = nc.read_records(ledger)
-    assert [r.get("kind") for r in recs] == ["gate", "invalidation", "watermark"]
+    assert nc.append_records(ledger, [ev("invalidation"), ev("watermark"), ev("epoch_reset")]) == 3
+    assert [r.get("type") for r in nc.read_records(ledger)] == [None, "invalidation", "watermark", "epoch_reset"]
     assert len(nc.read_ledger(ledger)) == 1
-    for bad in (dict(kind="Bad Kind"), dict(kind=5), dict(note="neither type nor kind")):
-        with pytest.raises(nc.CertificationRefused):
+
+
+def test_a_line_type_the_reader_does_not_know_is_refused_so_it_cannot_brick_the_ledger(ledger):
+    nc.write_certification(**kw(ledger))
+    before = ledger.read_bytes()
+    for bad in (dict(kind="invalidation", target="x"), dict(kind="watermark", value=3), dict(type="x"),
+                dict(type="note"), dict(type="cert"), dict(type="Invalidation"), dict(type=None), dict(type=["invalidation"]),
+                dict(type="gate"), dict(type="addition"), dict(note="neither type nor kind"), dict(kind="x", type="y")):
+        with pytest.raises(nc.CertificationRefused) as ei:
             nc.append_records(ledger, [bad])
+        assert ei.value.code == "bad_record", bad
+        assert ledger.read_bytes() == before
+
+
+def test_events_may_not_carry_certificate_only_fields(ledger):
+    nc.write_certification(**kw(ledger))
+    before = ledger.read_bytes()
+    for bad in (dict(type="gate", verdict="PASS", generation=1),                              # the review's probe
+                dict(type="invalidation", verdict="PASS"), dict(type="watermark", verdict="N/A"),
+                dict(type="invalidation", generation=1), dict(type="invalidation", cert_key="a|gate|b"),
+                dict(type="invalidation", cert_id="a|gate|b@1"), dict(type="invalidation", kind="gate"),
+                dict(type="invalidation", kind="addition")):
+        with pytest.raises(nc.CertificationRefused) as ei:
+            nc.append_records(ledger, [bad])
+        assert ei.value.code == "bad_record", bad
+        assert ledger.read_bytes() == before
+    for pointer in (dict(type="invalidation", generation=1), dict(type="invalidation", cert_key="a|gate|b"),
+                    dict(type="invalidation", cert_id="a|gate|b@1"), dict(type="gate", verdict="PASS", generation=1)):
+        with pytest.raises(nc.CertificationRefused) as ei:                                   # says where certificates go
+            nc.append_records(ledger, [pointer])
+        assert "write_certification" in str(ei.value), pointer
+    assert nc.append_records(ledger, [dict(type="invalidation", verdict="stale-ok", kind="drift")]) == 1   # not cert vocab
+
+
+def test_allowed_types_can_narrow_but_never_widen_beyond_event_types(ledger):
+    nc.write_certification(**kw(ledger))
+    before = ledger.read_bytes()
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.append_records(ledger, [ev("watermark")], allowed_types=("invalidation",))
+    assert ei.value.code == "bad_record" and ledger.read_bytes() == before
+    for widen in (("invalidation", "note"), ("x",), (), ("gate",)):
+        with pytest.raises(nc.CertificationRefused) as ei:
+            nc.append_records(ledger, [ev("invalidation")], allowed_types=widen)
+        assert ei.value.code == "bad_record" and ledger.read_bytes() == before
+    assert nc.append_records(ledger, [ev("watermark")], allowed_types=("watermark",)) == 1
+
+
+@pytest.mark.parametrize("extra", [dict(cert_key="a|gate|b"), dict(cert_id="a|gate|b@1"), dict(generation=1),
+                                   dict(verdict="PASS"), dict(kind="gate"), dict(kind="addition")])
+def test_the_reader_also_refuses_an_event_line_carrying_certificate_only_fields(ledger, extra):
+    nc.write_certification(**kw(ledger))
+    raw = ledger.read_bytes().split(b"\n")
+    line = dict(type="invalidation", seq=2, prev_sha256=sha(raw[1]), **extra)
+    ledger.write_bytes(ledger.read_bytes() + json.dumps(line).encode() + b"\n")
+    for reader in (nc.read_records, nc.read_ledger):
+        with pytest.raises(nc.CertificationRefused) as ei:
+            reader(ledger)
+        assert ei.value.code == "bad_ledger"
+
+
+def test_a_ledger_holding_a_line_the_reader_does_not_know_is_refused_on_read(ledger):
+    nc.write_certification(**kw(ledger))
+    raw = ledger.read_bytes().split(b"\n")
+    stray = dict(type="note", seq=2, prev_sha256=sha(raw[1]))
+    ledger.write_bytes(ledger.read_bytes() + json.dumps(stray).encode() + b"\n")
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.read_records(ledger)
+    assert ei.value.code == "bad_ledger"
 
 
 def test_append_records_refuses_a_missing_torn_or_linked_ledger_and_init_creates_one(tmp_path):
@@ -2197,6 +2401,20 @@ def test_verify_reports_unmeasured_addition_pass_records_as_information_not_fail
     res = nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
     assert res["status"] == "PASS" and res["unmeasured_addition"] == 1
     assert res["unmeasured_addition_cert_ids"] == ["bg_ontology|addition|D-GROUNDING@1"]
+
+
+def test_unmeasured_addition_counts_only_the_latest_generation_of_each_addition_key(fresh_repo):
+    cert_in_repo(fresh_repo)
+    led = fresh_repo / nc.LEDGER_RELPATH
+    nc.write_certification(**kw(led, **add_kw(None)))                                          # D-GROUNDING@1 PASS
+    nc.write_certification(**kw(led, **add_kw(None, semantic_fingerprint=FP2)))                # @2 PASS (latest)
+    nc.write_certification(**kw(led, **add_kw(None, criterion="D-B")))                         # D-B@1 PASS
+    nc.write_certification(**kw(led, **add_kw(None, criterion="D-B", verdict="FAIL", semantic_fingerprint=None,
+                                              writer_files=...)))                              # D-B@2 FAIL: no longer PASS
+    commit_all(fresh_repo)
+    res = nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
+    assert res["unmeasured_addition"] == 1
+    assert res["unmeasured_addition_cert_ids"] == ["bg_ontology|addition|D-GROUNDING@2"]
 
 
 def test_verify_reports_zero_unmeasured_additions_when_there_are_none_and_on_no_detector(fresh_repo):

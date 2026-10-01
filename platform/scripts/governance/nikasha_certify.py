@@ -48,7 +48,7 @@ PUBLIC API for sibling writers (E5.5 appends invalidation / watermark lines to t
 records) -> int` (the one write path: exclusive lock, whole-ledger verification, `seq`/`prev_sha256` filled, canonical
 serialisation, one append, never an edit; `write_certification` uses it too), `chain_head(data) -> (last_seq,
 last_line_sha)`, `parse_ledger(data)` (cert index), `parse_records(data)` / `read_records(path)` (every line, events
-included), `read_ledger(path)`. A non-certificate line is an event: it carries a `type` (not "cert") and no cert_key.
+included), `read_ledger(path)`. A non-certificate line is an event: a `type` in EVENT_TYPES (invalidation, watermark, epoch_reset) and no certificate-only field.
 
 CENSUS LIFECYCLE (read this before citing a census): asset_census.py main() OVERWRITES `control/asset_census.json` on every
 run, so that path is not a citable file. Copy the census to a UNIQUE name under TRUSTED_CENSUS_ROOT, e.g. with
@@ -95,6 +95,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
@@ -143,7 +144,7 @@ SCHEMA_DOC = (
     "sha256}, writer_hashes_verified, writer_hashes_reason, upstream_cert_ids, semantic_fingerprint, cert_key, "
     "generation, cert_id, seq, prev_sha256, verified_by, verified_on, record_version. The current record of a cert_key "
     "is its highest generation; whether it is still CURRENT (writer hashes, upstream generations, semantic "
-    "fingerprint, registry revision) is E5.5's decision. A line without cert_key carries a `type` (an event, "
+    "fingerprint, registry revision) is E5.5's decision. A line without cert_key carries a `type` in EVENT_TYPES (an event, "
     "e.g. E5.5's invalidation); it is chained and sequenced like every line."
 )
 
@@ -243,7 +244,10 @@ def cert_key_of(asset: str, kind: str, criterion: str) -> str:
     return f"{asset}|{kind}|{criterion}"
 
 
-_EVENT_TYPE = re.compile(r"[a-z][a-z0-9_]*")
+# The line types E5.5's reader dispatches on. A reader that meets any other line raises, and the ledger is append-only,
+# so one stray line would brick every later run: adding a type here is a DELIBERATE edit made together with the reader.
+EVENT_TYPES = ("invalidation", "watermark", "epoch_reset")
+_EVENT_ONLY_FORBIDDEN = ("cert_key", "cert_id", "generation")      # certificate-only fields an event may not carry
 
 
 def _is_cert_line(r: dict) -> bool:
@@ -252,16 +256,19 @@ def _is_cert_line(r: dict) -> bool:
             and r.get("cert_id") == f"{key}@{gen}" and isinstance(r.get("verdict"), str))
 
 
-def _is_event_line(r: dict) -> bool:
-    """A non-certification record (E5.5's invalidation / watermark lines): no cert_key, and it names what it is either
-    by `type` (not "cert") or by a `kind` that is not gate/addition (e.g. `invalidation`, `watermark`). It is chained
-    and sequenced like every line, but is not a certificate and is not in the cert index."""
-    if "cert_key" in r:
+def _is_event_line(r: dict, allowed=EVENT_TYPES) -> bool:
+    """A non-certification record (E5.5's invalidation / watermark / epoch_reset lines): it MUST name a `type` that is in
+    `allowed` (a subset of EVENT_TYPES) and must carry no certificate-only field: no cert_key / cert_id / generation, no
+    `verdict` that is a certificate verdict, no `kind` of a certificate (gate/addition). It is chained and sequenced
+    like every line, but is not a certificate and is not in the cert index."""
+    t = r.get("type")
+    if not isinstance(t, str) or t not in allowed:
         return False
-    t, k = r.get("type"), r.get("kind")
-    if isinstance(t, str) and t != "cert" and _EVENT_TYPE.fullmatch(t):
-        return k is None or (isinstance(k, str) and k not in KINDS)
-    return isinstance(k, str) and k not in KINDS and bool(_EVENT_TYPE.fullmatch(k)) and t is None
+    if any(k in r for k in _EVENT_ONLY_FORBIDDEN):
+        return False
+    if r.get("kind") in KINDS or (isinstance(r.get("verdict"), str) and r["verdict"] in VERDICTS):
+        return False
+    return True
 
 
 @dataclass(frozen=True)
@@ -388,13 +395,19 @@ def _nonblank(v) -> bool:
     return isinstance(v, str) and bool(v.strip())
 
 
+_RUN_ID = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+(Z|[+-][0-9]{2}:[0-9]{2})")
+
+
 def _valid_run_id(v) -> bool:
-    if not isinstance(v, str) or not v or v != v.strip():
+    """A tz-aware ISO timestamp in the one shape the census writes (`T` separator, explicit offset): fromisoformat alone
+    accepts any single separator character (NUL, `/`, a space)."""
+    if not isinstance(v, str) or not _RUN_ID.fullmatch(v):
         return False
     try:
-        return dt.datetime.fromisoformat(v).tzinfo is not None
+        dt.datetime.fromisoformat(v)          # a real date/time; the regex above guarantees the explicit offset
     except ValueError:
         return False
+    return True
 
 
 def _check_relpath(p) -> bool:
@@ -1056,7 +1069,7 @@ def _locked_append(path: Path, init: bool, precheck, build):
         raise
 
 
-def _appendable(r) -> None:
+def _appendable(r, allowed) -> None:
     """Structural check of one record offered to `append_records` (nothing about certification semantics)."""
     if not isinstance(r, dict):
         _refuse("bad_record", "a ledger record must be a JSON object")
@@ -1064,27 +1077,34 @@ def _appendable(r) -> None:
         _refuse("bad_record", "the `_schema` row is written once, by the writer")
     if "seq" in r or "prev_sha256" in r:
         _refuse("bad_record", "seq and prev_sha256 are filled in by the writer, never given")
-    if r.get("kind") in KINDS or "cert_key" in r or "cert_id" in r:
-        _refuse("bad_record", "certificates (kind gate/addition, anything with a cert_key) go only through "
-                              "write_certification, which makes every check; append_records takes events only")
-    if not _is_event_line(r):
-        _refuse("bad_record", "a record is an event: no cert_key, and a `type` (not \"cert\") or a `kind` (not "
-                              "gate/addition) such as `invalidation` or `watermark`")
+    if r.get("kind") in KINDS or r.get("type") in KINDS or any(k in r for k in _EVENT_ONLY_FORBIDDEN):
+        _refuse("bad_record", "certificates (kind/type gate or addition, anything with a cert_key / cert_id / generation) "
+                              "go only through write_certification, which makes every check; append_records takes "
+                              "events only")
+    if not _is_event_line(r, allowed):
+        _refuse("bad_record", f"a record is an event: a `type` in {tuple(allowed)}, and no certificate-only field "
+                              "(cert_key, cert_id, generation, a certificate verdict or kind)")
 
 
-def append_records(ledger_path, records, *, init: bool = False) -> int:
+def append_records(ledger_path, records, allowed_types=EVENT_TYPES, *, init: bool = False) -> int:
     """PUBLIC. Append `records` (a list of dicts) to the ledger as the next lines and return how many were written.
     Takes the exclusive lock, verifies the whole ledger first (chain, seq, generations; a torn ledger is refused
     `torn_ledger`; a symlink or directory at the path `bad_ledger_path`; a missing ledger `ledger_missing` unless
     `init`), fills `seq` and `prev_sha256` for each record (giving either is refused), serialises with the one canonical
-    serialisation, appends all of them in a single write, and never edits an existing line. A record is an EVENT (no
-    cert_key; a `type` other than "cert" or a `kind` other than gate/addition: E5.5's invalidation / watermark lines).
-    Certificates (kind gate/addition, anything carrying a cert_key / cert_id) are REFUSED here: they go only through
-    `write_certification`, which does every certification check. All-or-nothing: if any record is refused nothing is written. An empty
-    list writes nothing and returns 0 without touching the ledger. `write_certification` uses the same path."""
+    serialisation, appends all of them in a single write, and never edits an existing line. A record is an EVENT: it
+    must carry a `type` in `allowed_types` (default and maximum: EVENT_TYPES = invalidation, watermark, epoch_reset, the
+    only types E5.5's reader dispatches on; a type outside EVENT_TYPES is refused even if the caller allows it) and no
+    certificate-only field (cert_key, cert_id, generation, a certificate verdict, kind gate/addition). Certificates are
+    REFUSED here: they go only through `write_certification`, which does every certification check. All-or-nothing: if
+    any record is refused nothing is written. An empty list writes nothing and returns 0 without touching the ledger.
+    `write_certification` uses the same path."""
+    allowed = tuple(allowed_types)
+    if not allowed or any(t not in EVENT_TYPES for t in allowed):
+        _refuse("bad_record", f"allowed_types must be a non-empty subset of EVENT_TYPES {EVENT_TYPES}: a line type the "
+                              "reader does not know would brick the append-only ledger")
     recs = list(records)
     for r in recs:
-        _appendable(r)
+        _appendable(r, allowed)
     if not recs:
         return 0
 
@@ -1111,7 +1131,7 @@ def write_certification(*, ledger_path=None, init: bool = False, **fields) -> Ce
         _check_upstream(rec, parsed.by_key)
         cf, csha = rec["evidence"].get("census_file"), rec["evidence"].get("census_sha256")
         if cf is not None:
-            for old in parsed.records:
+            for old in (c for recs in parsed.by_key.values() for c in recs):
                 oe = old.get("evidence") if isinstance(old.get("evidence"), dict) else {}
                 if oe.get("census_file") == cf and oe.get("census_sha256") != csha:
                     _refuse("census_path_reused", f"{old.get('cert_id')} already cites {cf} with sha256 "
@@ -1177,8 +1197,8 @@ def verify_ledger_census_hashes(repo, ref, ledger_relpath=None) -> dict:
     (`census_citation_missing`), an unreadable ledger (`bad_ledger`) or an unknown ref (`bad_ref`). Returns
     {status: "PASS", ...} only when at least one record was verified; when the ledger does not exist yet at `ref`, or
     holds no gate record, it returns {status: "NO_DETECTOR", reason: ...}: nothing was verified, so nothing is reported
-    clean. The result always says how many certificates are caller-asserted: `unmeasured_addition` counts addition PASS
-    records (information, not a failure)."""
+    clean. The result always says how many certificates are caller-asserted: `unmeasured_addition` counts the addition
+    keys whose LATEST generation reads PASS (information, not a failure)."""
     rel = ledger_relpath or LEDGER_RELPATH
     ok_ref = _git(repo, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
     if ok_ref is None or ok_ref.returncode != 0:
@@ -1193,7 +1213,7 @@ def verify_ledger_census_hashes(repo, ref, ledger_relpath=None) -> dict:
     failures, checked, additions = [], 0, []
     for key in sorted(by_key):
         for rec in by_key[key]:
-            if rec.get("kind") == "addition" and rec.get("verdict") == "PASS":
+            if rec.get("kind") == "addition" and rec is by_key[key][-1] and rec.get("verdict") == "PASS":
                 additions.append(rec["cert_id"])
             if rec.get("kind") != "gate":
                 continue
@@ -1234,7 +1254,10 @@ def archive_census(src, repo, generated) -> str:
     under `repo` and return that repo-relative path (the caller `git add`s / commits it, then cites it). asset_census.py
     main() overwrites `control/asset_census.json` on every run, so a cited file must be a copy under a UNIQUE name that
     is never edited again. `generated` must be the `generated` of a layer object in `src`. Never overwrites: a different
-    file already at that name is `census_archive_exists`; an identical one is returned as is."""
+    file (or a symlink) already at that name is `census_archive_exists`; an identical one is returned as is. The copy is
+    atomic: the bytes are written and fsynced to a temp file in the same directory and `os.link`ed to the final name
+    (which fails if it exists), then the temp is removed, so a crash leaves no partial file at the final name and
+    concurrent archivers of the same census cannot trip each other."""
     if not _valid_run_id(generated):
         _refuse("bad_census", f"generated {generated!r} is not a tz-aware ISO timestamp")
     try:
@@ -1250,19 +1273,30 @@ def archive_census(src, repo, generated) -> str:
     dest_dir = root / _trusted_root_rel()
     name = "asset_census_" + generated.replace(":", "") + ".json"
     dest = dest_dir / name
+    rel = f"{_trusted_root_rel()}{name}"
+    tmp = None
     try:
         dest_dir.mkdir(parents=True, exist_ok=True)
-        with open(dest, "xb") as f:
+        fd, tmp = tempfile.mkstemp(prefix=".archive_", suffix=".tmp", dir=dest_dir)   # same directory: same filesystem
+        with os.fdopen(fd, "wb") as f:
             f.write(blob)
             f.flush()
             os.fsync(f.fileno())
-    except FileExistsError:
-        if dest.read_bytes() != blob:
-            _refuse("census_archive_exists", f"{dest} already exists with different bytes: a cited census is never "
-                                             "overwritten")
+        try:
+            os.link(tmp, dest)          # atomic, and fails if dest exists: dest is either absent or complete, never partial
+        except FileExistsError:
+            if os.path.islink(dest) or not dest.is_file() or dest.read_bytes() != blob:
+                _refuse("census_archive_exists", f"{dest} already exists with different bytes (or is not a regular "
+                                                 "file): a cited census is never overwritten")
     except OSError as e:
         _refuse("bad_census", f"{dest} cannot be written ({e})")
-    return f"{_trusted_root_rel()}{name}"
+    finally:
+        if tmp is not None:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+    return rel
 
 
 def repair_torn_tail(ledger_path, out=None) -> dict:
@@ -1356,6 +1390,9 @@ def _special_main(argv):
         return 0
     except CertificationRefused as e:
         print(f"REFUSED {e.code}: {e.message}", file=sys.stderr)
+        return 2
+    except ValueError as e:
+        print(f"REFUSED bad_request: {e}", file=sys.stderr)
         return 2
 
 
