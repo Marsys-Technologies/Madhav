@@ -193,9 +193,60 @@ def test_p2_sade_sati_phase_rows_are_testimony_only():
     assert len(keys) == len(set(keys))
 
 
-def test_p2_never_attaches_to_gain_classes():
-    assert ev.enumerate_edges("childbirth", "P2", CHART) == []
-    assert ev.enumerate_edges("marriage", "P2", CHART) == []
+def test_p2_adverse_residence_never_attaches_to_gain_classes():
+    """O-RP-5a holds after the favourable binding: no gain-class edge is a
+    member of the adverse plan (Sun/Mars/Jupiter 12/8/1, Saturn 8th) and no
+    Sade-Sati testimony row attaches to a gain class."""
+    adverse_plan = {("sun", h) for h in (12, 8, 1)} | {("mars", h) for h in (12, 8, 1)} \
+        | {("jupiter", h) for h in (12, 8, 1)} | {("saturn", 8)}
+    from services.gochara_rules.frames import Frame, nth_sign_from
+    moon = Frame("moon")
+    adverse_targets = {(a, nth_sign_from(moon, h, CHART).lower()) for a, h in adverse_plan}
+    for cls in ("childbirth", "marriage"):
+        for e in ev.enumerate_edges(cls, "P2", CHART):
+            assert e.operator_role == "scored"
+            assert e.provenance == "verse_cited"
+            assert (e.agent, e.obj.canonical_target) not in {
+                (a, f"span:sign:{s}") for a, s in adverse_targets}
+
+
+def test_p2_gain_classes_enumerate_the_cited_favourable_table():
+    """PG321–323 governs: every gain-class P2 edge is a verse_cited, scored
+    residence on a favourable house from janma-rāśi — the #2812
+    favourable_houses table, never a fabricated set. Aquarius Moon: the
+    Sun's 3rd from the Moon is Aries (the oracle's written-out count)."""
+    from services.gochara_rules.favourable_houses import (
+        FAVOURABLE_HOUSES_FROM_MOON, favourable_houses)
+    from services.gochara_rules.frames import Frame, nth_sign_from
+    moon = Frame("moon")
+    edges = ev.enumerate_edges("marriage", "P2", CHART)
+    expected = set()
+    for agent, row in FAVOURABLE_HOUSES_FROM_MOON.items():
+        for h in sorted(favourable_houses(agent)):
+            expected.add((agent.lower(),
+                          f"span:sign:{nth_sign_from(moon, h, CHART).lower()}"))
+    got = {(e.agent, e.obj.canonical_target) for e in edges}
+    assert got == expected
+    assert ("sun", "span:sign:aries") in got            # 3rd from Aquarius
+    assert ("rahu", "span:sign:aries") in got           # śl.2: Rāhu = Sun
+    assert ("ketu", "span:sign:scorpio") in got         # śl.2: Ketu = Sun, 10th
+    # the 10th for the nodes is the very row brahmagyan/l0_transit.py omits —
+    # the recorded L0 deviation the steward named (M20261001T084530-9b65)
+    assert ("rahu", "span:sign:scorpio") in got
+    assert all(e.source_page and "PG32" in e.source_page for e in edges)  # E9
+    # no natural-key collision
+    keys = [(e.agent, e.relation, e.obj.canonical_target) for e in edges]
+    assert len(keys) == len(set(keys))
+
+
+def test_p2_gain_classes_all_covered_non_adverse_empty():
+    for cls, row in ev.CLASS_BY_NAME.items():
+        if cls == "birth_anchor":
+            continue
+        if row["polarity"] == "gain":
+            assert ev.enumerate_edges(cls, "P2", CHART), cls
+        elif row["polarity"] not in ("adverse", "anchor"):
+            assert ev.enumerate_edges(cls, "P2", CHART) == []
 
 
 def test_p2_adverse_classes_all_covered():

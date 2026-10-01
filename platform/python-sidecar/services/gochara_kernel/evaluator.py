@@ -263,30 +263,58 @@ def enumerate_p4_edges(event_class: str, chart: dict,
 
 def enumerate_p2_edges(event_class: str, chart: dict,
                        convention_id: str | None = None) -> list[RecordEdge]:
-    """P2 (Moon-frame gochara-phala): the PINNED edge set, per O-RP-5a/5b
-    and the RQ-5 phase split:
+    """P2 (Moon-frame gochara-phala): the PINNED edge set, per O-RP-5a/5b,
+    the RQ-5 phase split, and the corpus-cited favourable-house table:
 
       * SCORED adverse residence (D-RQ5 shape): Sun/Mars/Jupiter in 12/8/1
         from janma-rāśi, and Saturn in the 8th — evidence FOR the adverse
         classes, never attached to gain classes (O-RP-5a);
       * TESTIMONY Sade-Sati phase rows (S-04/R2-S05): Saturn in 12/1/2 from
         the Moon — operator_role testimony, ZERO score effect (O-RP-5b;
-        scoring with vs without is bit-identical).
+        scoring with vs without is bit-identical);
+      * SCORED favourable residence for GAIN classes: the per-planet
+        favourable houses from janma-rāśi, verbatim from
+        services/gochara_rules/favourable_houses.py (Phaladīpikā XXVI.1–8,
+        PG321:C1–PG323:C1, landed by Stream B in #2812 — Rāhu and Ketu take
+        the Sun's set by the śl.2 equivalence clause). polarity 'gain' only:
+        psychological_arc (non-adverse, non-gain) enumerates empty — P2
+        licenses fortune for or against, not a neutral arc.
 
-    The per-planet FAVOURABLE-house tables (Phaladīpikā XXVI.1–8, PG321-323)
-    are Stream B registry content not yet landed — a named gap, reported to
-    the steward; P2 grains for gain classes enumerate empty until then
-    (never a fabricated house set). Frame: moon; affected_person: native
-    (P2 licenses the native's fortune only)."""
+    Frame: moon; affected_person: native (P2 licenses the native's fortune
+    only)."""
     from services.gochara_rules.frames import Frame, nth_sign_from
+    from services.gochara_rules.favourable_houses import (
+        FAVOURABLE_HOUSES_FROM_MOON, favourable_houses)
 
     cid = convention_id or convention_id_for()
     if event_class == "birth_anchor":
         raise ValueError("birth_anchor is excluded from enumeration entirely (O-CF-N6)")
-    if CLASS_BY_NAME[event_class]["polarity"] != "adverse":
-        return []
+    polarity = CLASS_BY_NAME[event_class]["polarity"]
     text, page = _path_citation("P2")
     moon_frame = Frame("moon")
+    if polarity == "gain":
+        edges: list[RecordEdge] = []
+        for agent, row in FAVOURABLE_HOUSES_FROM_MOON.items():
+            agent_lc = agent.lower()
+            locator = " + ".join(row["citations"])
+            for house in sorted(favourable_houses(agent)):
+                sign = nth_sign_from(moon_frame, house, chart)
+                edges.append(RecordEdge(
+                    event_class=event_class, affected_person="native",
+                    frame_kind="moon", frame_arg=None,
+                    agent=agent_lc, relation="residence",
+                    obj=PhysicalObjectId(
+                        body=agent_lc, relation_kind="residence",
+                        canonical_target=_span_target(sign), convention_id=cid),
+                    object_kind="house_span", object_role="signature_house",
+                    path_id="P2", rule_version=RULE_VERSION,
+                    provenance="verse_cited", operator_role="scored",
+                    ruling_ref=None,
+                    source_text=text, source_page=locator,
+                    transit=True))
+        return edges
+    if polarity != "adverse":
+        return []
     # (agent, house, testimony?) — the RQ-5 split.
     plan = [("Sun", h, False) for h in (12, 8, 1)]
     plan += [("Mars", h, False) for h in (12, 8, 1)]
