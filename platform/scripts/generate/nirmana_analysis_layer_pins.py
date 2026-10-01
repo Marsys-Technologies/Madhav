@@ -169,6 +169,23 @@ AUTHORITY_BINDINGS = {
         "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
         "authority_identity_binding": "`fa0b0a9a003624b8f39e30600e98460a60170bb2`",
     },
+    "D-PINS-A5.4": {
+        # Pins re-admission for the pravaha/a5-tier0s-repairs merge (PR #2769,
+        # Pravaha A5.4 Tier 0-S repairs). The steward's decision (on the
+        # native's 2026-09-30 standing authority, EVENTS.jsonl
+        # 2026-09-30T13:02:03Z, message M20260930T130203-0531) is recorded
+        # verbatim in the evidence document; the authority identity is the
+        # commit that first introduced that document. Scope: exactly one L3
+        # successor admission over the A5.4 repairs changeset, on top of main's
+        # protected baseline l3:f4c69a6d0cd4:829354703812 (the D-PINS-A2
+        # successor, never rewritten). No other layer; no membership change.
+        "authority_commit": "e47d0b274ebf234ada8be7cfe82a34d5446384eb",
+        "evidence_commit": "69382f6860f79c36ddb70b677ed42e234b4fb099",
+        "path": "00_ARCHITECTURE/briefs/nirmana/l3_autonomous/gochara_wp0_7/D_PINS_A5_4_PINS_READMISSION_AUTHORITY_v1_0.md",
+        "sha256": "d50a9d8e19fe2ddec33ce55f9c61f2c2770eb0d7cbe88ae6732d28e7c9bf0765",
+        "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
+        "authority_identity_binding": "`e47d0b274ebf234ada8be7cfe82a34d5446384eb`",
+    },
 }
 
 # These source identities were accepted on an earlier lane branch.  They stay
@@ -308,6 +325,69 @@ AUTHORIZED_SOURCE_COMMITS = {
             # never a rewrite. Source = the #2793 merge commit (its committed
             # writer inventory is byte-identical to this tree).
             "61e1aa60b5084a144101f4f1a233a6da0edee81c",
+        }),
+    },
+    # D-PINS-A5.4 (Pravaha A5.4, PR #2769): exactly one source commit, for
+    # exactly the one layer (L3) whose writer digests moved on
+    # pravaha/a5-tier0s-repairs after the origin/main merge (16e3725cee36).
+    # The source commit is the branch's writer-digest regeneration commit: its
+    # committed writer inventory is byte-identical to the branch tree's
+    # derived inventory (provenance_inventory --check green). L0, L1, L2, L4,
+    # L5 verify clean in delivery topology on this branch and are deliberately
+    # absent.
+    "D-PINS-A5.4": {
+        "L3": frozenset({
+            "454dab04134d81ae420676210c9700e2d4496c6b",
+            # A5.4 rework (ASTRA_REVIEW_A5_4 closure, 2026-09-30): the
+            # reviewer's eight P1 amendments moved three of the same five
+            # writers' import closures again (ka_gochara,
+            # ka_gochara_v3_century_materialize, ka_vedha_gochara — all via
+            # gochara_grammar/primitives.py and gochara_v3/*; no own-module
+            # edit). Same decision, same authority identity, same five-writer
+            # scope; a SECOND append-only successor over the branch's own
+            # A5.4 successor, never a rewrite of it or of the baseline. Source
+            # = the rework's writer-digest regeneration commit.
+            "92c07a9051abad73815933e3a5b98ffde37fa848",
+            # A5.4 rework r2 (ASTRA_REVIEW_A5_4 v1.1 closure, 2026-09-30): the
+            # seven round-2 P1 amendments moved the same three writers'
+            # import closures again (gochara_grammar/{dasha_data,primitives}.py,
+            # gochara_v3/{context,engine}.py, the new ka_vedha_gochara/gate.py);
+            # no own-module writer edit. Same decision, same authority, same
+            # five-writer scope; ONE successor over the then-current protected
+            # baseline. Source = the r2 writer-digest regeneration commit.
+            "aa6a67fb715248fa2b2eccffaf5327692319194a",
+            # A5.4 rework r3 (ASTRA_REVIEW_A5_4 v1.2 closure, 2026-09-30): the
+            # round-3 P1-2 amendment (vedha state and identity through the
+            # persisted output) moved the same three writers' import closures
+            # again (ka_vedha_gochara/gate.py, gochara_v3/engine.py, the
+            # materializer's _build_suppression_state); no writer outside the
+            # five. Same decision, same authority, same five-writer scope; ONE
+            # successor over the then-current protected baseline (d4feada9b).
+            # Source = the r3 writer-digest regeneration commit.
+            "de07494333a770192dd8d8a47cc2aae91f31be79",
+            # A5.4 rework r5 (ASTRA_REVIEW_A5_4 v1.3 closure, 2026-10-01): the
+            # round-4 amendment 2 (truthful primary-contact identity; testimony
+            # evidence through serialisation — ka_vedha_gochara/gate.py) moved
+            # ka_gochara_v3_century_materialize's import closure; no writer
+            # outside the five. Same decision, same authority, same five-writer
+            # scope; ONE successor over the then-current protected baseline.
+            # Source = the r5 writer-digest regeneration commit.
+            "a7fa8c25e1db78f01c2d33036b1a020501555704",
+            # A5.4 rework r7 (D-PINS-A5.4, 2026-10-01): origin/main advanced
+            # under the r6 successor — #2793 (61e1aa60b, gochara_kernel
+            # F10-F12 geometry) moved ka_moorti_nirnaya and
+            # ka_gochara_v3_century_materialize through their gochara_kernel
+            # import closures and ka_sangam on main itself (admitted on main
+            # by #2800, the D-PINS-A2 continuation), and #2765 (A5.1
+            # migrations) and #2801 followed; main's own movement, admitted
+            # into the branch by the origin/main merge. The A5.4 delta is
+            # unchanged (same decision, same authority, same five-writer
+            # scope); ONE successor over main's new protected baseline
+            # (l3:61e1aa60b508:9844e89ddd17, the #2800 successor). Source =
+            # the origin/main merge commit carrying the regenerated writer
+            # inventory (provenance_inventory --check green on the merged
+            # tree).
+            "4f4a1993c6ada24bf8576206b39742497e3099e3",
         }),
     },
 }

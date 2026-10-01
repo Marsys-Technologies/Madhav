@@ -192,14 +192,24 @@ _W23_TARA_BALA_ENABLED: bool = True
 # `kakshya_bindu_interim` (input generation vector; mechanism_register.yaml
 # "PLANNED INPUT-VECTOR FLAGS"), default OFF.
 #
-# When True, a kakṣyā crossing whose transiting graha has no resolvable bindu
-# in the transited sign (chart_facts `ashtakavarga_bindu_sign`, graha × sign —
-# count 0 or row absent) contributes NO activity and carries
-# detail['completeness_state']='unqualified' with a failure_detail
-# ({primitive, error_class, message, row_identity}, per the WP2 honesty
-# pinning). A crossing with a resolvable count >= 1 is qualified by it and
-# declared at the coarser grain: detail['qualification_grain']='sign' (the
-# sign-level BAV, interim for the kakṣyā-grain qualification M-7 requires).
+# When True, a kakṣyā crossing is qualified by the P5c DONOR key first
+# (FABLE #19 / T0-10): the crossed cell's lord's contribution to the
+# transiting graha's BAV in the transited sign
+# (chart_facts `ashtakavarga_bindu_contributor`, writer key
+# '{GRAHA}-CONTRIBUTOR_{DONOR}-SIGN_{N}'). A resolvable donor mark of 1
+# qualifies at detail['qualification_grain']='kakshya'; a mark of 0 is
+# 'unqualified' (error_class 'donor_mark_zero'). When the donor matrix is
+# absent (production, pending the native-authorised ga_strength rebuild),
+# the donor operand is stamped 'unavailable' (never a fabricated 0/1) and the
+# sign-grain interim applies: a kakṣyā crossing whose transiting graha has
+# no resolvable bindu in the transited sign (chart_facts
+# `ashtakavarga_bindu_sign`, graha × sign — count 0 or row absent)
+# contributes NO activity and carries detail['completeness_state']=
+# 'unqualified' with a failure_detail ({primitive, error_class, message,
+# row_identity}, per the WP2 honesty pinning). A crossing with a resolvable
+# count >= 1 is qualified by it and declared at the coarser grain:
+# detail['qualification_grain']='sign' (the sign-level BAV, a labelled P5a
+# coarser qualification — never donor evaluation).
 # When False the kakṣyā path is byte-identical to the pre-interim engine:
 # no detail keys are added and _compute_activity_v3's skip never fires.
 # ---------------------------------------------------------------------------
@@ -461,146 +471,46 @@ def _compute_quality_gates_from_context(
     context: ClassContext,
     window_start_iso: str,
     window_end_iso: str,
+    *,
+    instant_date_iso: str | None = None,
 ) -> tuple[float, dict]:
-    """W1.3: compute quality_gates suppression from pre-fetched vedha rows.
+    """The §5 vedha interval gate on the SHARED v3 path (ASTRA v1.1 P1-3).
 
-    Finds all kala_vedha_gochara rows whose [window_start, window_end] overlaps
-    [window_start_iso, window_end_iso] (the evaluation window). For each
-    overlapping vedha, reads malefic_count from the detail JSONB and looks up
-    the suppression factor from the bg_vedha_malefic_scale grading schedule.
-    Multiple concurrent vedhā are combined by multiplication (noisy-OR product
-    of suppression factors — same pattern as activity).
-
-    Returns:
-        quality_gates  float in (0, 1]  (1.0 when no vedha overlaps — AC1)
-        detail         dict carrying which vedhā fired, per-vedha suppression,
-                       combined factor, and calibration_state (AC6)
-
-    Graceful degrades:
-        - Empty context.vedha_rows (CI / no prod DB) → quality_gates = 1.0 (AC1)
-        - Empty context.malefic_scale (table absent) → uses _VEDHA_NO_SCALE_ROW_FACTOR
-        - malefic_count = 0 in detail → uses _VEDHA_ZERO_MALEFIC_FACTOR (mild)
+    Delegates to services.ka_vedha_gochara.gate — the ONE evaluator of the
+    writer's T0-8 payload, shared with the '4.0' projection — at the
+    evaluation INSTANT's date (`instant_date_iso`; the legacy DATE-grain
+    window overlap [window_start_iso, window_end_iso] is kept only as
+    disclosure). The retired legacy behaviour (a whole-row multiplier from
+    the PG353 malefic-count grade applied to every overlapping row: 0.85 for
+    a clean row, 0.70 on April 1 for an obstruction ending March 1, 0.49 for
+    duplicate roots) is gone: interval states, cancellation segments,
+    coverage (union of per-row horizons), independence groups, testimony
+    and primary-contact / rule identity are honoured, and no generalised
+    PG353 number is applied (D-PG353). The returned float is the value the
+    λ PRODUCT receives — always 1.0 here, because the qualifier's
+    null_state is `omit` and any CITED factor is applied per primary
+    sentence by the caller (apply_scoped_factors), never class-wide.
     """
-    # Build a fast-lookup dict from the pre-fetched malefic_scale rows.
-    # Keys are malefic_count integers; values are MaleficScaleRow.
-    scale_by_count: dict[int, MaleficScaleRow] = {
-        r.malefic_count: r for r in context.malefic_scale
-    }
-
-    fired_vedha: list[dict] = []
-    product = 1.0  # noisy-OR product of (1 - suppression) inverted: start at 1.0
-                   # We accumulate product of suppression factors directly
-                   # (multiplicative: f1 * f2 * … gives the combined gate).
-
-    for vrow in context.vedha_rows:
-        # Date-string overlap check: [vrow.window_start, vrow.window_end]
-        # overlaps [window_start_iso, window_end_iso] iff:
-        #   vrow.window_start <= window_end_iso AND vrow.window_end >= window_start_iso
-        # Dates are ISO YYYY-MM-DD strings; lexicographic comparison is correct.
-        if vrow.window_start > window_end_iso:
-            continue
-        if vrow.window_end < window_start_iso:
-            continue
-
-        # This vedha overlaps the evaluation window.
-        detail = vrow.detail
-
-        # --- B3: Lattā-specific grade path ---
-        # Lattā (Phaladeepika PG338-339, Slokas 42-44): a janma-nakṣatra hit.
-        # All kala_vedha_gochara rows with vedha_kind='latta' are janma-nakṣatra hits
-        # (the ka_vedha_gochara writer only stores rows when latta_nak==janma_nak).
-        # Ketu: not defined in Phaladeepika — graha='Ketu'/'Rahu' rows do not appear
-        # in kala_vedha_gochara by construction (Ketu absent, disclosed).
-        # Severity: "Ruin of every business" / "A great loss" → effective_malefic_count=3
-        # (killing grade) as structural prior; refines via L5 calibration.
-        if vrow.vedha_kind == "latta":
-            if scale_by_count:
-                scale_row = scale_by_count.get(
-                    _LATTA_EFFECTIVE_MALEFIC_COUNT,
-                    scale_by_count.get(max(scale_by_count)),
-                )
-                effect_grade = scale_row.effect_grade if scale_row else "unknown"
-                suppression_factor = _suppression_factor_for_grade(effect_grade)
-                scale_citation = scale_row.source_citation if scale_row else None
-            else:
-                suppression_factor = _VEDHA_NO_SCALE_ROW_FACTOR
-                effect_grade = "unknown_no_scale_table"
-                scale_citation = None
-            product *= suppression_factor
-            fired_vedha.append({
-                "vedha_kind": vrow.vedha_kind,
-                "graha": vrow.graha,
-                "window_start": vrow.window_start,
-                "window_end": vrow.window_end,
-                "malefic_count": _LATTA_EFFECTIVE_MALEFIC_COUNT,
-                "malefic_obstructing_grahas": [],
-                "effect_grade": effect_grade,
-                "suppression_factor": round(suppression_factor, 6),
-                "classical_citation": vrow.classical_citation,
-                "scale_citation": scale_citation,
-            })
-            continue  # skip the regular malefic_count path below
-        # --- end B3 Lattā path ---
-
-        malefic_count = detail.get("malefic_count", 0)
-        try:
-            malefic_count = int(malefic_count)
-        except (TypeError, ValueError):
-            malefic_count = 0
-
-        # Determine suppression factor.
-        if malefic_count == 0:
-            # Obstruction from benefics only — mildest suppression.
-            suppression_factor = _VEDHA_ZERO_MALEFIC_FACTOR
-            effect_grade = "no_grade"
-            scale_citation = None
-        elif malefic_count > 0 and scale_by_count:
-            # Look up the PG353 scale row; fall back to the worst factor if
-            # the count exceeds the table's maximum (>5 in practice).
-            scale_row = scale_by_count.get(malefic_count)
-            if scale_row is None:
-                # Count out of table range (e.g. 6+) — use worst grade
-                scale_row = scale_by_count.get(max(scale_by_count))
-            effect_grade = scale_row.effect_grade if scale_row else "unknown"
-            suppression_factor = _suppression_factor_for_grade(effect_grade)
-            scale_citation = scale_row.source_citation if scale_row else None
-        else:
-            # malefic_count > 0 but malefic_scale table was empty (CI / absent)
-            suppression_factor = _VEDHA_NO_SCALE_ROW_FACTOR
-            effect_grade = "unknown_no_scale_table"
-            scale_citation = None
-
-        product *= suppression_factor
-
-        fired_vedha.append({
-            "vedha_kind": vrow.vedha_kind,
-            "graha": vrow.graha,
-            "window_start": vrow.window_start,
-            "window_end": vrow.window_end,
-            "malefic_count": malefic_count,
-            "malefic_obstructing_grahas": detail.get("malefic_obstructing_grahas", []),
-            "effect_grade": effect_grade,
-            "suppression_factor": round(suppression_factor, 6),
-            "classical_citation": vrow.classical_citation,
-            "scale_citation": scale_citation,
-        })
-
-    quality_gates = product  # product of suppression factors; 1.0 when no vedha fired
-
+    from services.ka_vedha_gochara import gate as VG
+    from datetime import date as _date
+    d = _date.fromisoformat(str(instant_date_iso or window_start_iso)[:10])
+    g = VG.make_gate(list(context.vedha_rows))(d)
     detail_out = {
-        "quality_gates": round(quality_gates, 8),
-        "vedha_fired_count": len(fired_vedha),
-        "vedha_rows_total": len(context.vedha_rows),
-        "aggregation": "multiplicative",
-        "fired_vedha": fired_vedha,
+        **g,
+        "quality_gates": 1.0,
+        "vedha_fired_count": len(g.get("fired") or []),
+        "fired_vedha": g.get("fired") or [],
+        "aggregation": "scoped per primary graha (§5.2 inv 1); class multiplier retired",
         "calibration_state": "structural_prior",
+        "legacy_window": [window_start_iso, window_end_iso],
         "note": (
-            "W1.3 quality_gates: multiplicative product of per-vedha suppression "
-            "factors (each factor in (0,1]); 1.0 when no kala_vedha_gochara rows "
-            "overlap the evaluation window."
+            "§5 interval gate via services.ka_vedha_gochara.gate: active segments "
+            "only; coverage = union of row horizons (gap ⇒ unavailable); one root "
+            "once; no generalised PG353 attenuation (D-PG353) — obstruction is "
+            "structure with factor None (null_state omit); Moon rows testimony."
         ),
     }
-    return quality_gates, detail_out
+    return 1.0, detail_out
 
 
 def evaluate_lambda_vector(
@@ -795,6 +705,26 @@ def _evaluate_single_from_context(
     #     This saturates at 1.0 (multiple strong contacts can't exceed 1.0),
     #     is monotonically non-decreasing in sentence count, and preserves the
     #     qualitative ordering: tighter-orb contacts count for more.
+    # 4a-pre. §5 vedha interval gate at THIS instant (ASTRA v1.1 P1-3): the
+    #     shared ka_vedha_gochara.gate evaluator; a CITED per-root factor (none
+    #     exists under D-PG353) scopes to the primary graha's OWN sentences
+    #     before activity; the λ product's quality_gates term is 1.0.
+    eval_start_iso = _jd_to_date_iso(swe, start_jd)
+    eval_end_iso = _jd_to_date_iso(swe, end_jd)
+    quality_gates, quality_gates_detail = _compute_quality_gates_from_context(
+        context, eval_start_iso, eval_end_iso,
+        instant_date_iso=_jd_to_date_iso(swe, t_jd),
+    )
+    from services.ka_vedha_gochara.gate import (
+        apply_scoped_factors as _vg_apply, persistable_summary as _vg_summary)
+    sentences, _vedha_applied = _vg_apply(
+        sentences, quality_gates_detail.get("factor_by_body") or {})
+    quality_gates_detail["scoped_application"] = _vedha_applied
+    # the persisted row must keep the three evaluator states apart (ASTRA
+    # v1.2 P1-2): the summary rides in term_breakdown, which every
+    # materialised row (interval AND chain) carries verbatim
+    _vedha_gate_summary = _vg_summary(quality_gates_detail)
+
     instantaneous_orbs: dict[int, float] | None = None
     if activity_shape == "linear_no_box":
         # M-1 (flag activity_shape): separation of each sentence's transit
@@ -844,17 +774,24 @@ def _evaluate_single_from_context(
         enabled=_W23_TARA_BALA_ENABLED,
         transit_body_longitude_deg=_tara_moon_lon,
     )
-    tara_modifier = _tara_result.modifier
+    # S-04 / O-P6-TARA (GOCHARA_DESIGN_SPECS_v1_4 §0, §2.2 P6; sealed
+    # FABLE v3.0 §2.4 "testimony only"): every P6 Moon-channel operator —
+    # tārā included — is `operator_role = testimony`: it annotates, it never
+    # weights, gates or admits. The mechanism's would-be modifier (0.70–1.20)
+    # is therefore recorded as a labelled NON-SCORING annotation
+    # (term_breakdown.tara_annotation, below) and the product receives 1.0.
+    # The variable name `tara_modifier` is deliberately KEPT in the product
+    # line so the N-16 wiring detector's AST trace continues to see the
+    # wiring (the same discipline as w30 under N-14). ASTRA_REVIEW_A5_4 P1-6:
+    # the #5 key repair had activated this multiplier on every evaluation.
+    tara_annotation_value = _tara_result.modifier
+    tara_modifier = 1.0
 
     # 4d. quality_gates: W1.3 vedha-based multiplicative suppression gate.
     #     Looks up kala_vedha_gochara rows (pre-fetched in context) that
     #     overlap the evaluation window and multiplies their suppression factors.
     #     Falls back to 1.0 when no vedha rows overlap (AC1).
-    eval_start_iso = _jd_to_date_iso(swe, start_jd)
-    eval_end_iso = _jd_to_date_iso(swe, end_jd)
-    quality_gates, quality_gates_detail = _compute_quality_gates_from_context(
-        context, eval_start_iso, eval_end_iso,
-    )
+    # (computed above, before the activity term — see 4a-pre)
 
     # 4e. W3.0 nodal drishti: Rahu/Ketu 5/7/9 aspect modifier (later tradition —
     #     not in original BPHS; attested in later Parashari commentaries).
@@ -906,6 +843,10 @@ def _evaluate_single_from_context(
             "skipped": _tara_result.skipped,
             "skip_reason": _tara_result.skip_reason,
             "mechanism_id": _tara_result.mechanism_id,
+            "operator_role": "testimony",
+            "ruling_ref": "D-PADMIT",
+            "would_be_modifier": round(tara_annotation_value, 8),
+            "scoring": False,
         },
         "quality_gates": quality_gates,
         "quality_gates_detail": quality_gates_detail,
@@ -1035,6 +976,25 @@ def _evaluate_single_from_context(
         "lambda_v3": round(raw_lambda, 8),
         "activity_terms": x_t_detail_compat.get("contributions", []),
         "formula": TERM_BREAKDOWN_FORMULA,
+        # §5 vedha gate at this instant — state / nullable factor / coverage /
+        # identities / testimony (the product term above is always 1.0; the
+        # STATE is the served fact — ASTRA v1.2 P1-2)
+        "vedha_gate": _vedha_gate_summary,
+    }
+    # S-04: tārā is P6 testimony — the annotation carries the nine-fold
+    # class and the value the mechanism would have contributed, explicitly
+    # outside the product (never a factor; O-P6-TARA / O-RR-7).
+    w15_term_breakdown["tara_annotation"] = {
+        "label": ("S-04 / O-P6-TARA: tārā is a P6 Moon-channel operator — "
+                  "testimony; annotates, never weights"),
+        "scoring": False,
+        "operator_role": "testimony",
+        "ruling_ref": "D-PADMIT",
+        "tara_name": _tara_result.tara_name,
+        "tara_position": _tara_result.tara_position,
+        "skipped": _tara_result.skipped,
+        "skip_reason": _tara_result.skip_reason,
+        "would_be_modifier": round(tara_annotation_value, 8),
     }
     if nodal_drishti == "removed":
         # N-14 (flag nodal_drishti): the removed w30 term is kept one
@@ -1443,6 +1403,11 @@ def _bindu_interim_detail(
     the pre-fetched L1 rows. A resolvable count >= 1 qualifies the crossing at
     the coarser sign grain; a count of 0 or an absent row leaves it
     'unqualified' with a failure_detail in the WP2-honesty pinned shape.
+
+    This is the SIGN-grain (P5a-coarser) key. The kakṣyā-grain P5c donor key
+    (_bindu_donor_detail) takes precedence whenever the per-contributor BAV
+    matrix resolves; this interim is the labelled fallback, never donor
+    evaluation (sealed FABLE #19 / T0-10).
     """
     graha_code = norm_graha(planet)
     row_key = (graha_code, sign_number)
@@ -1479,6 +1444,72 @@ def _bindu_interim_detail(
     }
 
 
+def _bindu_donor_detail(
+    context: ClassContext,
+    contributor_lookup: dict[tuple[str, str, int], Optional[float]],
+    planet: str,
+    sign_number: int,
+    kakshya_index: int,
+) -> Optional[dict]:
+    """P5c (GOCHARA_DESIGN_SPECS_v1_4 §2.2, sealed FABLE #19 / T0-10):
+    kakṣyā-grain bindu qualification by the mark-DONOR key.
+
+    The fruit of a kakṣyā crossing is delivered in the cell owned by the
+    mark-donor (Phaladīpikā XXIII, PG301): the crossed cell's lord —
+    P.kakshya_lord_for_index(kakshya_index), division order Saturn → Lagna —
+    donates (or withholds) the mark in the transiting graha's BAV for the
+    transited sign. The join key is ga_strength_writer.py's actual
+    contributor-matrix scheme,
+    '{GRAHA}-CONTRIBUTOR_{DONOR}-SIGN_{N}' (ashtakavarga_bindu_contributor) —
+    NOT the transiting graha's own sign-level BAV count (that wrong key is
+    the N-22/N-13 sign-grain interim in _bindu_interim_detail, retained below
+    as the labelled coarser fallback).
+
+    Returns None when the donor operand is unavailable (contributor matrix
+    absent — the production state pending the native-authorised ga_strength
+    rebuild — or this row missing/unreadable): the caller then falls back to
+    the sign-grain interim and stamps the donor keys 'unavailable'. Never
+    fabricates a 0 or 1.
+    """
+    lord = P.kakshya_lord_for_index(kakshya_index)
+    if lord is None or not contributor_lookup:
+        return None
+    graha_code = norm_graha(planet)
+    donor_code = norm_graha(lord)
+    row_key = f"{graha_code}-CONTRIBUTOR_{donor_code}-SIGN_{sign_number}"
+    mark = contributor_lookup.get((graha_code, donor_code, sign_number))
+    if mark is None:
+        return None
+    mark_int = int(mark)
+    base = {
+        "kakshya_lord": lord,
+        "donor_bindu": mark_int,
+        "donor_bindu_state": "resolved",
+        "donor_row_key": row_key,
+    }
+    if mark_int >= 1:
+        return {
+            **base,
+            "completeness_state": "applied",
+            "qualification_grain": "kakshya",
+            "bindu_count": mark_int,
+            "bindu_source": "chart_facts.ashtakavarga_bindu_contributor",
+        }
+    return {
+        **base,
+        "completeness_state": "unqualified",
+        "failure_detail": {
+            "primitive": "kakshya_cell_crossing",
+            "error_class": "donor_mark_zero",
+            "message": (
+                f"donor {donor_code} contributes 0 marks to {graha_code}'s "
+                f"BAV in sign {sign_number} (ashtakavarga_bindu_contributor)"
+            ),
+            "row_identity": f"{context.chart_id}:{row_key}",
+        },
+    }
+
+
 def _kakshya_cell_crossing_from_context(
     swe,
     context: ClassContext,
@@ -1504,6 +1535,7 @@ def _kakshya_cell_crossing_from_context(
         return []
 
     sign_start = P._sign_index(target.target_sign) * 30.0
+    sign_number_abs = P._sign_index(target.target_sign) + 1
     sentences: list[ConfigurationSentence] = []
 
     # N-22/N-13 interim (flag kakshya_bindu_interim, default off): pre-resolve
@@ -1511,12 +1543,20 @@ def _kakshya_cell_crossing_from_context(
     # ashtakavarga_bindu_sign subject convention) and the bindu lookup once
     # per call. Empty lookup when the flag is off — nothing is stamped then.
     bindu_lookup: dict[tuple[str, int], Optional[float]] = {}
+    contributor_lookup: dict[tuple[str, str, int], Optional[float]] = {}
     sign_number = 0
     if _KAKSHYA_BINDU_INTERIM_ENABLED:
         sign_number = P._sign_index(target.target_sign) + 1
         bindu_lookup = {
             (r.graha, r.sign_number): r.bindus
             for r in context.bindu_sign_rows
+        }
+        # P5c donor matrix (per-contributor BAV). Empty on production pending
+        # the native-authorised ga_strength rebuild — the donor path then
+        # reports 'unavailable' and the sign-grain interim applies.
+        contributor_lookup = {
+            (r.graha, r.contributor, r.sign_number): r.bindus
+            for r in context.bindu_contributor_rows
         }
 
     # Build a fast lookup: planet -> list of KakshyaBoundaryRow
@@ -1525,28 +1565,66 @@ def _kakshya_cell_crossing_from_context(
         by_planet.setdefault(row.planet, []).append(row)
 
     for planet in (planets or P.ALL_GRAHAS):
-        l1_rows = by_planet.get(planet, [])
+        # L1 producer rows are planet-independent (planet='*', sign-relative
+        # offsets; ASTRA P1-5); legacy per-planet fixture rows are absolute.
+        l1_rows = by_planet.get(planet) or by_planet.get("*", [])
         if l1_rows:
-            boundary_degs = sorted(
-                {float(r.start_deg) for r in l1_rows if r.start_deg is not None}
-            )
+            # cell IDENTITY = the row's own kakshya_index, never a list
+            # position: a dropped conflicting row leaves a gap (ASTRA v1.1 P1-4)
+            boundary_cells = sorted({
+                (int(r.kakshya_index),
+                 ((sign_start + float(r.start_deg)) % 360.0
+                  if getattr(r, "sign_relative", False) else float(r.start_deg)))
+                for r in l1_rows if r.start_deg is not None
+            })
             citation = P.C.KAKSHYA_BPHS_66 if hasattr(P, "C") else None
             uncited = False
             source = "chart_facts.ashtakavarga_kakshya_boundary"
         else:
-            boundary_degs = [sign_start + i * (30.0 / 8.0) for i in range(8)]
+            boundary_cells = [(i, sign_start + i * (30.0 / 8.0)) for i in range(8)]
             citation = None
             uncited = True
             source = "equal_eighths_fixture_approximation"
 
-        for i, b in enumerate(boundary_degs):
+        for i, b in boundary_cells:
             events = find_aspect_events(swe, planet, b, [0], orb_deg, start_jd, end_jd)
             for ev in events:
-                detail = {"boundary_deg": b, "kakshya_index": i, "source": source}
+                # Correct cell selection (ASTRA P1-5): direct crossing enters
+                # cell i; retrograde enters cell i−1 (boundary 0 ⇒ cell 7 of
+                # the previous sign); unknown direction ⇒ direct, disclosed.
+                direction, entered_idx, entered_sign = P.kakshya_cell_entered(
+                    getattr(ev, "speed_at_event_dps", None), i, sign_number_abs)
+                detail = {"boundary_deg": b, "kakshya_index": i, "source": source,
+                          "direction": direction,
+                          "kakshya_index_entered": entered_idx,
+                          "entered_sign_number": entered_sign,
+                          "kakshya_lord": P.kakshya_lord_for_index(entered_idx)}
                 if _KAKSHYA_BINDU_INTERIM_ENABLED:
-                    detail.update(
-                        _bindu_interim_detail(context, bindu_lookup, planet, sign_number)
+                    # P5c donor key takes precedence when the contributor
+                    # matrix resolves; otherwise the N-22/N-13 sign-grain
+                    # interim applies, labelled as the coarser P5a
+                    # qualification, with the donor operand honestly
+                    # 'unavailable' (never a fabricated 0/1). The donor cell
+                    # and sign are the ENTERED ones.
+                    donor_sign = entered_sign if sign_number else sign_number
+                    donor_detail = _bindu_donor_detail(
+                        context, contributor_lookup, planet, donor_sign, entered_idx
                     )
+                    if donor_detail is not None:
+                        detail.update(donor_detail)
+                    else:
+                        detail.update(
+                            _bindu_interim_detail(context, bindu_lookup, planet, donor_sign)
+                        )
+                        lord = P.kakshya_lord_for_index(entered_idx)
+                        detail["kakshya_lord"] = lord
+                        detail["donor_bindu"] = None
+                        detail["donor_bindu_state"] = "unavailable"
+                        detail["donor_row_key"] = (
+                            f"{norm_graha(planet)}-CONTRIBUTOR_{norm_graha(lord)}"
+                            f"-SIGN_{donor_sign}"
+                            if lord is not None else None
+                        )
                 sentences.append(ConfigurationSentence(
                     primitive="kakshya_cell_crossing",
                     chart_id=context.chart_id,

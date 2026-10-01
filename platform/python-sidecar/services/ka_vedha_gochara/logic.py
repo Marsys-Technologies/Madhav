@@ -200,11 +200,24 @@ Supplemental ruling issued after PR #1009's disclosure
    approximation — three tiers, tried in that order, every tier already
    wired so a future populated table activates with zero code change.
 3. **`vedha_kind='latta'`** rows (Phaladeepika PG338-339, REAL, cited,
-   `uncited_extension=False`) and a **malefic-count grading** on `house_vedha`
-   rows (Phaladeepika PG353, REAL, cited scale — see writer.py for the
-   `uncited_extension` disclosure on the specific field that APPLIES the
-   scale outside its literal battle-muhurta verse context).
-"""
+   `uncited_extension=False`). The PG353 malefic-count grading formerly applied
+   on `house_vedha` rows is REMOVED per D-PG353 (native, 2026-09-29 — the PG353
+   scale is a battle-muhurta verse, not a general grade source); the removal is
+   recorded on each row under `detail.d_pg353` (see D_PG353_REMOVAL).
+
+── T0-8 VEDHA_INTERVAL_RELATION (Pravāha A5.4; GOCHARA_DESIGN_SPECS_v1_4 §5) ──
+The pre-repair writer collapsed temporal structure (FABLE v3.0 N4): every
+obstructor overlapping ANY part of a residence was counted as simultaneous,
+first obstruction and first cancellation only. The interval machinery below
+(`build_obstruction_intervals` / `carve_vipareeta` / `attenuation_at` /
+`exception_for_pair`) models obstruction as per-(primary, obstructor) INTERVAL
+relations on the half-open convention [t_in, t_out) (O-VI-2), vipareeta as a
+carved cancelled_vipareeta sub-interval (O-VI-4), exception pairs as no
+interval at all (O-VI-3), attenuation gated on state='active' at t (#17), and
+absent overlay coverage as 'unavailable' with a coverage object, never 1.0
+(#25). The §5.1 schema's dedicated `vedha_interval` TABLE is a separate,
+schema-owning campaign item — the intervals are served in the house_vedha
+row's jsonb detail (see writer.py's dated note)."""
 from __future__ import annotations
 
 from datetime import date
@@ -288,6 +301,196 @@ def is_mutual_exclusion(graha_a: str, graha_b: str) -> bool:
     obstruction; when it is the ONLY occupancy, no house_vedha row is emitted
     at all (the exception is recorded in coverage instead)."""
     return frozenset({graha_a, graha_b}) in MUTUAL_EXCLUSION_PAIRS
+
+
+# ── T0-8 vedha_interval_relation (Pravāha A5.4; GOCHARA_DESIGN_SPECS_v1_4 §5) ──
+# Obstruction as INTERVALS, not flags (N4). Each (primary transit, obstructor)
+# overlap is its own interval relation with t_in/t_out on the HALF-OPEN
+# convention [t_in, t_out) (O-VI-2: the boundary day belongs to the CLEAN
+# interval); vipareeta CARVES a sub-interval (state cancelled_vipareeta over
+# [cancel_start, cancel_end), active outside it) instead of flag-cancelling the
+# whole obstruction (O-VI-4); the two exception pairs never obstruct each other
+# (M-8 — exceptions evaluated FIRST, then vipareeta); attenuation requires
+# state='active' at t (#17); absent overlay coverage reads as 'unavailable'
+# with a coverage object, never as 1.0 (#25 / O-VI-5).
+STATE_ACTIVE = "active"
+STATE_CANCELLED_VIPAREETA = "cancelled_vipareeta"
+STATE_INACTIVE = "inactive"
+VEDHA_INTERVAL_STATES: tuple[str, ...] = (
+    STATE_ACTIVE, STATE_CANCELLED_VIPAREETA, STATE_INACTIVE)
+
+EXCEPTION_NONE = "none"
+EXCEPTION_SUN_SATURN = "sun_saturn"
+EXCEPTION_MOON_MERCURY = "moon_mercury"
+VEDHA_EXCEPTIONS: tuple[str, ...] = (
+    EXCEPTION_NONE, EXCEPTION_SUN_SATURN, EXCEPTION_MOON_MERCURY)
+
+# D-PG353 (native, 2026-09-29): the Phaladīpikā PG353 malefic-count scale is a
+# BATTLE-muhurta verse, not a general transit-vedha grade source. The
+# generalised application (previously disclosed as malefic_grade_uncited_extension)
+# is REMOVED as of 2026-09-30; this record is the honest disclosure trail in
+# reverse — it documents the removal, it does not grant any factor.
+D_PG353_REMOVAL: dict = {
+    "applied": False,
+    "ruling_ref": "D-PG353",
+    "decided": "2026-09-29",
+    "removed_at": "2026-09-30",
+    "note": (
+        "PG353 battle scale is not a general grade source; the malefic-count "
+        "grade application to ordinary transit vedha is removed. The scale "
+        "table (bg_vedha_malefic_scale) remains fingerprinted upstream so a "
+        "future cited rule re-activating it is detectable."
+    ),
+}
+
+
+def exception_for_pair(graha_a: str, graha_b: str) -> str:
+    """The §5 exception token for a (primary, occupant) pair: the two ruled
+    pairs never obstruct each other (Phaladīpikā PG322:C1 / PG323:C1)."""
+    pair = frozenset({graha_a, graha_b})
+    if pair == frozenset({"Sun", "Saturn"}):
+        return EXCEPTION_SUN_SATURN
+    if pair == frozenset({"Moon", "Mercury"}):
+        return EXCEPTION_MOON_MERCURY
+    return EXCEPTION_NONE
+
+
+def half_open_overlap(a_start, a_end, b_start, b_end):
+    """The [max(starts), min(ends)) overlap of two HALF-OPEN intervals, or None
+    when empty (start >= end). Distinct from overlap_window (closed, inclusive
+    day ranges) — the §5 boundary convention is half-open: the boundary day
+    belongs to the CLEAN interval (O-VI-2). Works on any orderable (date,
+    datetime, jd)."""
+    start = max(a_start, b_start)
+    end = min(a_end, b_end)
+    if start >= end:
+        return None
+    return (start, end)
+
+
+def build_obstruction_intervals(primary_start, primary_end, occupants):
+    """One obstruction-interval relation per overlapping occupant (N4: the
+    second obstructor yields a SECOND interval relation, never dropped, never
+    merged into 'simultaneous').
+
+    `primary_start`/`primary_end` are the primary residence as a HALF-OPEN
+    interval; `occupants` is an iterable of (body, occ_start, occ_end)
+    half-open occupancy windows (already exception-filtered — exception pairs
+    produce NO interval at all, O-VI-3). Each returned relation is clipped to
+    the residence, starts as a single 'active' segment, and is ordered by
+    (t_in, body) for determinism.
+    """
+    intervals = []
+    for body, occ_start, occ_end in occupants:
+        ov = half_open_overlap(primary_start, primary_end, occ_start, occ_end)
+        if ov is None:
+            continue
+        intervals.append({
+            "obstructor_body": body,
+            "t_in": ov[0],
+            "t_out": ov[1],
+            "exception": EXCEPTION_NONE,
+            "segments": [{"start": ov[0], "end": ov[1], "state": STATE_ACTIVE}],
+            "state": STATE_ACTIVE,
+        })
+    intervals.sort(key=lambda iv: (iv["t_in"], iv["obstructor_body"]))
+    return intervals
+
+
+def _interval_state(segments) -> str:
+    if any(s["state"] == STATE_ACTIVE for s in segments):
+        return STATE_ACTIVE
+    if any(s["state"] == STATE_CANCELLED_VIPAREETA for s in segments):
+        return STATE_CANCELLED_VIPAREETA
+    return STATE_INACTIVE
+
+
+def carve_vipareeta(interval: dict, companion_windows) -> list:
+    """Vipareeta vedha as a SUB-INTERVAL carve (O-VI-4), not a flag flip: every
+    companion window (graha, start, end; half-open) that overlaps the interval
+    carves a cancelled_vipareeta segment out of it, leaving the remainder
+    active. ALL companions carve (N4: not first-cancellation-only). Returns the
+    sorted list of companion grahas that actually carved; mutates `interval`'s
+    segments/state."""
+    carved: list[tuple] = []
+    companions: set[str] = set()
+    for graha, c_start, c_end in companion_windows:
+        ov = half_open_overlap(interval["t_in"], interval["t_out"], c_start, c_end)
+        if ov is None:
+            continue
+        carved.append(ov)
+        companions.add(graha)
+    if not carved:
+        return []
+    # Merge overlapping/adjacent carve windows (half-open: [a,b) and [b,c) merge).
+    carved.sort()
+    merged: list[list] = [list(carved[0])]
+    for s, e in carved[1:]:
+        if s <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], e)
+        else:
+            merged.append([s, e])
+    # Rebuild segments: active outside the carve union, cancelled inside.
+    segments = []
+    cursor = interval["t_in"]
+    for s, e in merged:
+        if cursor < s:
+            segments.append({"start": cursor, "end": s, "state": STATE_ACTIVE})
+        segments.append({"start": s, "end": e, "state": STATE_CANCELLED_VIPAREETA})
+        cursor = e
+    if cursor < interval["t_out"]:
+        segments.append({"start": cursor, "end": interval["t_out"], "state": STATE_ACTIVE})
+    interval["segments"] = segments
+    interval["state"] = _interval_state(segments)
+    return sorted(companions)
+
+
+def attenuation_at(t, intervals, *, coverage=None, scale=None) -> dict:
+    """The §5 qualifier read at instant t.
+
+    - `coverage=None` (or a coverage object whose [start, end) does not contain
+      t) → state 'unavailable' with the coverage object echoed, factor None —
+      NEVER 1.0 (#25 / O-VI-5). coverage, when given, is {"start", "end",
+      ...anything else}, echoed verbatim.
+    - Otherwise only segments with state='active' covering t attenuate (#17 /
+      O-VI-1): none covering → state 'clear', factor 1.0; some covering →
+      state 'obstructed'. With no cited suppression scale (D-PG353 removed the
+      PG353 generalisation) factor is None — obstruction is reported as
+      structure, not as an uncited number. A caller holding a CITED scale may
+      pass scale(interval)->float; the factor is then the product over
+      DISTINCT independence groups (one root attenuates once; duplicates never
+      multiply — §5 independence_group).
+    """
+    if coverage is None or not (coverage.get("start") <= t < coverage.get("end")):
+        return {"state": "unavailable", "factor": None, "coverage": coverage}
+    active = [
+        iv for iv in intervals
+        if iv.get("state") == STATE_ACTIVE
+        and any(s["state"] == STATE_ACTIVE and s["start"] <= t < s["end"]
+                for s in iv["segments"])
+    ]
+    if not active:
+        return {"state": "clear", "factor": 1.0, "coverage": coverage,
+                "fired": []}
+    fired = [
+        {"obstructor_body": iv["obstructor_body"],
+         "independence_group": iv.get("independence_group"),
+         "t_in": iv["t_in"], "t_out": iv["t_out"]}
+        for iv in active
+    ]
+    if scale is None:
+        return {"state": "obstructed", "factor": None, "coverage": coverage,
+                "fired": fired,
+                "note": "no cited suppression scale served (D-PG353)"}
+    by_group: dict = {}
+    for iv in active:
+        group = iv.get("independence_group") or iv["obstructor_body"]
+        by_group[group] = min(by_group.get(group, 1.0), float(scale(iv)))
+    factor = 1.0
+    for f in by_group.values():
+        factor *= f
+    return {"state": "obstructed", "factor": factor, "coverage": coverage,
+            "fired": fired}
 
 
 def vipareeta_cancellation(
@@ -496,13 +699,17 @@ def latta_nakshatra_idx(graha_nak_idx: int, count_from_graha: int, direction: st
 def malefic_count_grade(
     malefic_count: int, scale: dict[int, dict[str, str]],
 ) -> Optional[dict[str, str]]:
-    """Looks up the PG353 malefic-count -> effect-grade scale
+    """Pure key lookup into the PG353 malefic-count -> effect-grade scale
     (bg_vedha_malefic_scale, via `scale` = {malefic_count: {effect_grade,
-    effect_description}}) for `malefic_count` simultaneously-obstructing
-    natural malefics. Returns None (honest gap, never guessed) if
-    `malefic_count` is 0 (no scale entry — the scale only covers 1-5) or
-    exceeds 5 (only 5 of the 9 grahas are natural malefics, so this cannot
-    occur in practice, but the lookup stays honest rather than clamping)."""
+    effect_description}}). The grade→key mapping is DATA — this dict keyed by
+    the served table's own malefic_count primary key, exact-match, never prose
+    (#16). Returns None (honest gap, never guessed) if `malefic_count` is 0
+    (no scale entry — the scale only covers 1-5) or exceeds 5.
+
+    NOT APPLIED to ordinary transit vedha: D-PG353 (native, 2026-09-29) ruled
+    the PG353 battle scale is not a general grade source — see
+    D_PG353_REMOVAL. This lookup survives only as the served table's key map,
+    available to a future cited rule."""
     return scale.get(malefic_count)
 
 
@@ -531,6 +738,20 @@ __all__ = [
     "MUTUAL_EXCLUSION_PAIRS",
     "is_mutual_exclusion",
     "vipareeta_cancellation",
+    "STATE_ACTIVE",
+    "STATE_CANCELLED_VIPAREETA",
+    "STATE_INACTIVE",
+    "VEDHA_INTERVAL_STATES",
+    "EXCEPTION_NONE",
+    "EXCEPTION_SUN_SATURN",
+    "EXCEPTION_MOON_MERCURY",
+    "VEDHA_EXCEPTIONS",
+    "D_PG353_REMOVAL",
+    "exception_for_pair",
+    "half_open_overlap",
+    "build_obstruction_intervals",
+    "carve_vipareeta",
+    "attenuation_at",
     "source_qualification_for",
     "corpus_verifiable_for",
 ]

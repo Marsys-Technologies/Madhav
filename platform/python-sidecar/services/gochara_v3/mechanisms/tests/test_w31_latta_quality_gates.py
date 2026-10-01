@@ -1,12 +1,23 @@
 """
-test_w31_latta_quality_gates.py — TDD red-phase: all tests fail before B3 effect.
+test_w31_latta_quality_gates.py — Lattā on the v3 quality gate (reconciled).
 
-Acceptance criteria for B3 (Lattā → quality_gates):
-  AC-E1: latta vedha row gets suppression stronger than _VEDHA_ZERO_MALEFIC_FACTOR (0.85)
-          i.e., NOT treated as malefic_count=0
-  AC-E2: non-latta vedha row (house_vedha) is unaffected by B3 change (regression guard)
-  AC-E3: _LATTA_EFFECTIVE_MALEFIC_COUNT constant exists and is an int >= 1
-  AC-E4: latta row with empty malefic_scale still degrades gracefully (no crash)
+RECONCILED with the sealed contract (ASTRA_REVIEW_A5_4 v1.2 P2-a; GOCHARA_
+DESIGN_SPECS_v1_4 §5; D-PG353). The original B3 criteria made a lattā row a
+suppression MULTIPLIER (`_LATTA_EFFECTIVE_MALEFIC_COUNT` → grade → 0.55; 0.70
+with no scale row). That path is retired on the shared v3 gate and is NOT
+restored. The contract pinned here:
+
+  AC-E1'. A lattā row carries no interval relation and no cited suppression
+          scale: it is an ANNOTATION on the gate output (kind, graha, window,
+          citation, note) — never a factor; the λ product receives 1.0.
+  AC-E2'. A LEGACY house_vedha row (malefic_count, no vedha_intervals/coverage)
+          is ignored, never a 0.65 grade_2 multiplier; a T0-8 house_vedha row
+          with an active interval is `obstructed` with factor None (no cited
+          scale), and a lattā row beside it stays an annotation.
+  AC-E3.  `_LATTA_EFFECTIVE_MALEFIC_COUNT` still exists (retained, UNWIRED on
+          the production path) — the import guard is kept as-is.
+  AC-E4'. A lattā row with an empty scale table is the same annotation — no
+          crash, no `_VEDHA_NO_SCALE_ROW_FACTOR` fallback number.
 """
 from __future__ import annotations
 
@@ -17,6 +28,8 @@ import os
 _SIDECAR_ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..")
 if _SIDECAR_ROOT not in sys.path:
     sys.path.insert(0, os.path.abspath(_SIDECAR_ROOT))
+
+import json
 
 import pytest
 from dataclasses import dataclass, field
@@ -122,6 +135,29 @@ def _house_vedha_row() -> VedhaRow:
     )
 
 
+def _t08_house_vedha_row() -> VedhaRow:
+    """A T0-8-shaped house_vedha row (the §5 payload): Saturn's residence over
+    Jan–Mar 2026 with one active Mars obstruction covering the window."""
+    return VedhaRow(
+        vedha_kind="house_vedha", graha="Saturn",
+        window_start="2026-01-01", window_end="2026-03-31",
+        classical_citation="Phaladipika Adh. XXVI (fixture)",
+        detail={
+            "vedha_intervals": [{
+                "obstructor_body": "Mars", "t_in": "2026-01-10", "t_out": "2026-02-20",
+                "half_open": True, "state": "active", "exception": "none",
+                "independence_group": "ig:Mars:2026-01-10",
+                "segments": [{"start": "2026-01-10", "end": "2026-02-20", "state": "active"}],
+                "operator_role": "scored", "provenance": "verse_cited"}],
+            "coverage": {"state": "computed", "grain": "date",
+                         "horizon_start": "2026-01-01", "horizon_end": "2026-03-31"},
+            "operator_role": "scored", "provenance": "verse_cited",
+            "primary_house": 3, "vedha_house": 9, "phala": "gain",
+            "primary_sign_idx": 9, "primary_sign_name": "Capricorn",
+        },
+    )
+
+
 # ---------------------------------------------------------------------------
 # Evaluation window — overlaps all test rows above
 # ---------------------------------------------------------------------------
@@ -147,82 +183,93 @@ def test_ac_e3_latta_effective_malefic_count_constant():
 # AC-E1: latta row gets suppression STRONGER than _VEDHA_ZERO_MALEFIC_FACTOR
 # ---------------------------------------------------------------------------
 
-def test_ac_e1_latta_vedha_suppression_stronger_than_zero_malefic():
-    """AC-E1: a latta row (no malefic_count in detail) must NOT be treated as
-    malefic_count=0 — it must receive a suppression factor < 0.85."""
+def test_ac_e1_latta_is_annotation_only_never_a_multiplier():
+    """AC-E1': a lattā row is an ANNOTATION (kind, graha, window, citation,
+    note) on the gate output — never a suppression factor; the λ product
+    receives 1.0. A lattā-only overlay computes no house-vedha horizon, so
+    the gate is honestly `unavailable` (not a clean number)."""
     ctx = _MinimalClassContext(
         vedha_rows=[_latta_vedha_row("Sun")],
         malefic_scale=_make_malefic_scale(),
     )
     quality_gates, detail = _compute_quality_gates_from_context(ctx, WIN_START, WIN_END)
 
-    assert len(detail["fired_vedha"]) == 1, "Expected exactly one fired vedha"
-    fired = detail["fired_vedha"][0]
-
-    assert fired["vedha_kind"] == "latta", f"Expected vedha_kind='latta', got {fired['vedha_kind']}"
-
-    suppression_factor = fired["suppression_factor"]
-    assert suppression_factor < _VEDHA_ZERO_MALEFIC_FACTOR, (
-        f"Lattā suppression_factor {suppression_factor} must be < "
-        f"_VEDHA_ZERO_MALEFIC_FACTOR ({_VEDHA_ZERO_MALEFIC_FACTOR}). "
-        f"Lattā is a serious affliction (Phaladeepika 'Ruin / Great Loss'), "
-        f"not a mild benefic obstruction."
-    )
-
-    # Also verify quality_gates itself is < 0.85 (end-to-end)
-    assert quality_gates < _VEDHA_ZERO_MALEFIC_FACTOR, (
-        f"quality_gates {quality_gates} must be < {_VEDHA_ZERO_MALEFIC_FACTOR} for a latta row"
-    )
+    assert quality_gates == 1.0
+    assert detail["fired_vedha"] == [] and detail["vedha_fired_count"] == 0
+    assert len(detail["annotations"]) == 1
+    ann = detail["annotations"][0]
+    assert ann["vedha_kind"] == "latta" and ann["graha"] == "Sun"
+    assert ann["window_start"] == "2026-01-01" and ann["window_end"] == "2026-03-31"
+    assert ann["classical_citation"] == "Phaladeepika PG338-339 Slokas 42-44"
+    assert "annotation only" in ann["note"]
+    assert "suppression_factor" not in json.dumps(detail)
+    assert detail["state"] == "unavailable" and detail["factor"] is None
+    assert detail["legacy_shape_rows_ignored"] == 0
+    # the retired grade number exists only in the unwired constant
+    assert _VEDHA_ZERO_MALEFIC_FACTOR == 0.85 and quality_gates != _VEDHA_ZERO_MALEFIC_FACTOR
 
 
 # ---------------------------------------------------------------------------
 # AC-E2: non-latta row (house_vedha) is UNAFFECTED by the B3 change
 # ---------------------------------------------------------------------------
 
-def test_ac_e2_non_latta_vedha_regression_guard():
-    """AC-E2: a house_vedha row with malefic_count=2 still follows the regular
-    malefic_scale lookup path — B3 must not break existing vedha types."""
+def test_ac_e2_house_vedha_rows_follow_the_interval_contract():
+    """AC-E2': a LEGACY house_vedha row (malefic_count=2 in detail, no
+    vedha_intervals / coverage) is not a T0-8 overlay row — ignored, never
+    the 0.65 grade_2 multiplier. A T0-8 house_vedha row with an active
+    interval over the window is `obstructed` with factor None (no cited
+    scale), and the lattā row beside it stays an annotation."""
     ctx = _MinimalClassContext(
         vedha_rows=[_house_vedha_row()],
         malefic_scale=_make_malefic_scale(),
     )
     quality_gates, detail = _compute_quality_gates_from_context(ctx, WIN_START, WIN_END)
+    assert quality_gates == 1.0
+    assert detail["legacy_shape_rows_ignored"] == 1 and detail["fired_vedha"] == []
+    assert detail["state"] == "unavailable" and detail["factor"] is None
+    assert "suppression_factor" not in json.dumps(detail)
 
-    assert len(detail["fired_vedha"]) == 1
-    fired = detail["fired_vedha"][0]
-
-    assert fired["vedha_kind"] == "house_vedha"
-    # malefic_count=2 → grade_2 → suppression_factor=0.65
-    assert fired["malefic_count"] == 2, f"Expected malefic_count=2, got {fired['malefic_count']}"
-    assert fired["effect_grade"] == "grade_2", (
-        f"Expected effect_grade='grade_2', got {fired['effect_grade']}"
+    ctx2 = _MinimalClassContext(
+        vedha_rows=[_t08_house_vedha_row(), _latta_vedha_row("Sun")],
+        malefic_scale=_make_malefic_scale(),
     )
-    assert abs(fired["suppression_factor"] - 0.65) < 1e-6, (
-        f"Expected suppression_factor=0.65 for grade_2, got {fired['suppression_factor']}"
-    )
+    qg2, d2 = _compute_quality_gates_from_context(ctx2, WIN_START, WIN_END)
+    assert qg2 == 1.0 and d2["state"] == "obstructed" and d2["factor"] is None
+    assert d2["null_state"] == "omit"
+    fired = d2["fired_vedha"]
+    assert len(fired) == 1 and fired[0]["vedha_kind"] == "house_vedha"
+    assert fired[0]["primary_graha"] == "Saturn"
+    assert fired[0]["fired"][0]["obstructor_body"] == "Mars"
+    assert fired[0]["factor"] is None
+    assert [a["vedha_kind"] for a in d2["annotations"]] == ["latta"]
+    assert "suppression_factor" not in json.dumps(d2)
 
 
 # ---------------------------------------------------------------------------
 # AC-E4: latta row with empty malefic_scale degrades gracefully (no crash)
 # ---------------------------------------------------------------------------
 
-def test_ac_e4_latta_graceful_fallback_empty_scale():
-    """AC-E4: when malefic_scale is empty (CI / absent table), a latta row must
-    NOT crash — it falls back to _VEDHA_NO_SCALE_ROW_FACTOR."""
+def test_ac_e4_latta_with_empty_scale_is_the_same_annotation_no_fallback_number():
+    """AC-E4': with an empty malefic_scale (CI / absent table) a lattā row
+    must not crash and is the SAME annotation as with a populated scale —
+    the scale is irrelevant to an annotation; no `_VEDHA_NO_SCALE_ROW_FACTOR`
+    fallback number is produced."""
     ctx = _MinimalClassContext(
         vedha_rows=[_latta_vedha_row("Moon")],
         malefic_scale=[],  # empty scale table — simulates CI / absent table
     )
-    # Must not raise
     quality_gates, detail = _compute_quality_gates_from_context(ctx, WIN_START, WIN_END)
 
-    assert len(detail["fired_vedha"]) == 1
-    fired = detail["fired_vedha"][0]
+    assert quality_gates == 1.0 and detail["fired_vedha"] == []
+    assert detail["annotations"][0]["vedha_kind"] == "latta"
+    assert detail["annotations"][0]["graha"] == "Moon"
+    assert "suppression_factor" not in json.dumps(detail)
+    assert _VEDHA_NO_SCALE_ROW_FACTOR == 0.70 and quality_gates != _VEDHA_NO_SCALE_ROW_FACTOR
 
-    assert fired["vedha_kind"] == "latta"
-    # With no scale table, should fall back to _VEDHA_NO_SCALE_ROW_FACTOR (0.70)
-    assert abs(fired["suppression_factor"] - _VEDHA_NO_SCALE_ROW_FACTOR) < 1e-6, (
-        f"Expected fallback suppression_factor={_VEDHA_NO_SCALE_ROW_FACTOR} "
-        f"(empty scale table), got {fired['suppression_factor']}"
+    ctx2 = _MinimalClassContext(
+        vedha_rows=[_latta_vedha_row("Moon")],
+        malefic_scale=_make_malefic_scale(),
     )
-    assert quality_gates < 1.0, "quality_gates must be < 1.0 when a latta row fires"
+    _, d2 = _compute_quality_gates_from_context(ctx2, WIN_START, WIN_END)
+    assert d2["annotations"] == detail["annotations"]
+    assert d2["state"] == detail["state"] == "unavailable"

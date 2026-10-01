@@ -174,10 +174,12 @@ EPISODES = [
     # marriage: Venus karaka contact, t_exact inside the vimshottari-Venus
     # fixture period (2020..2030)
     _episode("2026-02-05T12:00:00+00:00", "2026-02-15T12:00:00+00:00",
-             "2026-02-25T12:00:00+00:00", body="Saturn", target_ref="Venus"),
+             "2026-02-25T12:00:00+00:00", body="Saturn", target_ref="Venus",
+             target_longitude_deg=335.9409455670717),
     # career: Mars karaka contact; no fixture dasha lord matches Mars
     _episode("2026-03-01T12:00:00+00:00", "2026-03-10T12:00:00+00:00",
-             "2026-03-20T12:00:00+00:00", body="Jupiter", target_ref="Mars"),
+             "2026-03-20T12:00:00+00:00", body="Jupiter", target_ref="Mars",
+             target_longitude_deg=80.86329614023882),
 ]
 
 # The litigation contact (Saturn karaka, t_exact NULL — excluded from sampling

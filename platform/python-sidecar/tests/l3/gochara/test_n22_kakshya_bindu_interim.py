@@ -120,7 +120,11 @@ class TestN22FlagOffByteIdentical:
             assert "qualification_grain" not in s.detail
             assert "bindu_count" not in s.detail
             assert "failure_detail" not in s.detail
-            assert set(s.detail) == {"boundary_deg", "kakshya_index", "source"}
+            assert set(s.detail) == {
+                "boundary_deg", "kakshya_index", "source",
+                # ASTRA P1-5: cell-selection geometry, always present
+                "direction", "kakshya_index_entered", "entered_sign_number",
+                "kakshya_lord"}
 
     def test_activity_identical_regardless_of_bindu_rows(self):
         ctx_with = _make_context(

@@ -1575,6 +1575,24 @@ def _build_suppression_state(
                     "kartari_pincer mechanisms remain v1-parity-mode-only and are not consulted "
                     "on this (v3 production) path.",
         }
+        # ASTRA v1.2 P1-2: the §5 vedha gate's STATE is the served fact —
+        # `value` (the product term) is 1.0 for unavailable, clear AND
+        # obstructed instants alike, so the persisted object carries the
+        # gate summary (state, nullable factor, null_state, coverage,
+        # fired primary-contact/rule identities, testimony annotations,
+        # scoped application) verbatim from term_breakdown.vedha_gate.
+        gate = term_breakdown.get("vedha_gate")
+        if isinstance(gate, dict):
+            state["vedha"] = gate
+            state["state"] = gate.get("state")
+            state["factor"] = gate.get("factor")
+            state["null_state"] = gate.get("null_state")
+        else:
+            state["vedha"] = {"state": "not_recorded",
+                              "note": "term_breakdown carries no vedha_gate (pre-§5 "
+                                      "evaluation) — state unknown, not clean"}
+            state["state"] = "not_recorded"
+            state["factor"] = None
     if coverage_quality is not None:
         state["coverage_quality"] = coverage_quality
     return state
