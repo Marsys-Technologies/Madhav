@@ -310,6 +310,39 @@ export function withAyurdayaFigureDisclosure<T extends { content: unknown; is_er
 }
 
 // ── Registry-level safety net (generic `categories`-taking tools, assess_*, bundles, …) ───────────
+//
+// WHAT THIS SAFETY NET DOES NOT COVER (coverage limits — read before relying on it; each is a place a
+// served Āyurdāya figure can still go out WITHOUT a per-row figure_kind / page-level disclosure):
+//
+//  1. Rows without a recognisable shape are not disclosed. A fact-shaped row is recognised only if it
+//     carries `fact_category` === 'ayurdaya' (+ a year-bearing `fact_key`); a signal-shaped row only
+//     via `signal_type_id` 'ayurdaya:<key>' or a `summary` / `signal_summary_text` that STARTS with
+//     'category=ayurdaya'. A projection that drops `fact_category` (without `assumeAyurdayaCategory`,
+//     which only get_ayurdaya passes) is invisible here.
+//  2. Objects nested deeper than WALK_MAX_DEPTH (8) below `content` — or beyond WALK_MAX_NODES /
+//     WALK_MAX_KEYS_PER_OBJECT — are not disclosed. A bound hit is warned once (visible), not silent,
+//     but the figures beyond it are served without disclosure.
+//  3. Prose-only mentions are not disclosed. A number embedded in free text (a narrated sentence, a
+//     `reading` / `note` string that does not start with 'category=ayurdaya') is never detected; only
+//     structured rows are. The caveat for such a sentence must come from whoever wrote the sentence.
+//  4. Per-row rewrite inside COMPOSED tools (assess_*, domain readings, bundles, any tool that
+//     re-projects rows) is only as good as what the composed tool leaves in its output: if it drops the
+//     rows, or projects away `fact_category` / `signal_type_id` / the `category=ayurdaya` summary prefix,
+//     nothing remains to recognise — the rows (or figures) then ship with no disclosure at all. The
+//     composed-tool test (register_d8_assess_domain.ayurdaya_composition.test.ts) pins the one projection
+//     assess_* uses today (summary text survives). `dossier` is a platform-mcp-native tool with no registry
+//     descriptor: it is never wrapped by this post-processor; it serves concept-slice handles
+//     (`serving_tool` + `serving_args`), not rows, so each drilled call is wrapped on its own.
+//  5. The wrapper declines (returns the result by reference, unannotated) when: `is_error` is true; `content`
+//     is not a plain object (an array / string / null content is never walked); `content` already carries
+//     a top-level `ayurdaya_figure_disclosure` OR `figure_kind` (chart_facts_query, get_ayurdaya,
+//     query_signals own their disclosure — chart_facts_query gets the page-level disclosure and
+//     `figure_counts` only, NOT a per-row annotation); or the handler is not `type: 'tool'`.
+//  6. A pre-existing non-array `content.judgment_flags` is left untouched (the flag is then present only at
+//     `result.judgment_flags`).
+//  7. A row an inner tool already tagged (`figure_kind` string present) keeps that tag — it is counted,
+//     never recomputed (an inner tool's confirmation against its own total is not re-litigated on a page
+//     that may have lost the total).
 
 /** Walk bounds (exported so tests can assert the documented behaviour at the edge). */
 export const WALK_MAX_DEPTH = 8
