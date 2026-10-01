@@ -85,8 +85,9 @@ describe('AI Console', () => {
     await userEvent.click(within(card).getByRole('button', { name: 'Set up four roles' }))
     const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
     expect(within(dialog).getByLabelText('Configuration name')).toHaveValue('Personal OpenAI roles')
-    const source = within(dialog).getByLabelText(/source for synthesizer/i) as HTMLSelectElement
-    expect([...source.options].map(option => option.textContent)).toEqual(['Choose source', 'Personal OpenAI · OpenAI'])
+    expect(within(dialog).queryByLabelText(/source for synthesizer/i)).toBeNull()
+    expect(within(dialog).getByLabelText(/model for synthesizer/i)).toHaveValue('gpt-safe')
+    expect(within(dialog).getByLabelText(/effort for synthesizer/i)).toBeDisabled()
     expect(within(dialog).queryByText('Claude Code')).toBeNull()
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save configuration' }))
     await waitFor(() => expect(calls.some(([url, init]) => String(url) === '/api/ai-console/configurations'
@@ -94,6 +95,25 @@ describe('AI Console', () => {
     const saved = calls.find(([url, init]) => String(url) === '/api/ai-console/configurations' && init?.method === 'POST')!
     expect(JSON.parse(String(saved[1]?.body))).toMatchObject({ configurationKind: 'provider_preset',
       ownerConnectionId: CONNECTION_ID, ownerCliId: null })
+  })
+
+  it('saves a supported effort for all four provider roles', async () => {
+    const { calls } = setup({ models: [{ ...state.models[0], modelId: 'gpt-5.5', displayName: 'GPT 5.5' }],
+      configurations: [] })
+    const card = (await screen.findByText('Personal OpenAI')).closest('article')!
+    await userEvent.click(within(card).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    await userEvent.selectOptions(within(dialog).getByLabelText(/effort for synthesizer/i), 'high')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Use this model for every role' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save configuration' }))
+    await waitFor(() => expect(calls.some(([url, init]) => String(url) === '/api/ai-console/configurations'
+      && init?.method === 'POST')).toBe(true))
+    const saved = calls.find(([url, init]) => String(url) === '/api/ai-console/configurations'
+      && init?.method === 'POST')!
+    const roles = JSON.parse(String(saved[1]?.body)).roles
+    for (const role of ['synthesizer', 'planner', 'deep_planner', 'worker']) {
+      expect(roles[role]).toMatchObject({ kind: 'provider_model', modelId: 'gpt-5.5', effort: 'high' })
+    }
   })
 
   it('offers card-level defaults only for complete provider and CLI role setups', async () => {
@@ -136,6 +156,8 @@ describe('AI Console', () => {
     await screen.findByText('Personal OpenAI')
     expect(screen.queryByText('Catalog 149')).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: /manage models/i }))
+    expect(screen.getByText(/showing 1 of 1 matching models/i)).toBeTruthy()
+    await userEvent.selectOptions(screen.getByLabelText('View'), 'catalog')
     expect(screen.getByText(/showing 30 of 151 matching models/i)).toBeTruthy()
     const search = screen.getByRole('searchbox', { name: 'Find a model' })
     await userEvent.type(search, 'Catalog 149')
@@ -169,7 +191,45 @@ describe('AI Console', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
     expect(within(dialog).getByLabelText('Configuration name')).toHaveValue('Claude Code roles')
     expect(within(dialog).getByLabelText(/model for synthesizer/i)).toHaveValue('__builtin__')
-    expect(within(dialog).getByLabelText(/source for synthesizer/i).querySelectorAll('option')).toHaveLength(2)
+    expect(within(dialog).queryByLabelText(/source for synthesizer/i)).toBeNull()
+    expect(within(dialog).getByLabelText(/effort for synthesizer/i)).toBeDisabled()
+    expect(within(dialog).getByRole('textbox', { name: 'Add a model to the role lists' })).toBeTruthy()
+  })
+
+  it('saves a tested Claude CLI model and effort without offering another CLI family', async () => {
+    const { calls } = setup(undefined, { cliResponse: { clis: cliState.clis.map(cli => cli.cliId === 'claude_code'
+      ? { ...cli, models: [...cli.models, { modelId: 'claude-sonnet-4-6', displayName: 'Sonnet 4.6',
+        compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: true,
+        supportsStructuredOutput: true, isBuiltinDefault: false }] } : cli) } })
+    await screen.findByText('Claude Code')
+    await userEvent.click(within(screen.getByText('Claude Code').closest('article')!).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    const model = within(dialog).getByLabelText(/model for synthesizer/i) as HTMLSelectElement
+    expect([...model.options].map(option => option.value)).toEqual(['', '__builtin__', 'claude-sonnet-4-6'])
+    await userEvent.selectOptions(model, 'claude-sonnet-4-6')
+    await userEvent.selectOptions(within(dialog).getByLabelText(/effort for synthesizer/i), 'medium')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Use this model for every role' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save configuration' }))
+    await waitFor(() => expect(calls.some(([url, init]) => String(url) === '/api/ai-console/configurations'
+      && init?.method === 'POST')).toBe(true))
+    const call = calls.find(([url, init]) => String(url) === '/api/ai-console/configurations' && init?.method === 'POST')!
+    const saved = JSON.parse(String(call[1]?.body))
+    expect(saved.configurationKind).toBe('cli_preset')
+    for (const role of ['synthesizer', 'planner', 'deep_planner', 'worker']) {
+      expect(saved.roles[role]).toMatchObject({ kind: 'local_cli', cliId: 'claude_code',
+        modelId: 'claude-sonnet-4-6', effort: 'medium' })
+    }
+  })
+
+  it('tests a CLI model without leaving the role setup dialog', async () => {
+    const { calls } = setup()
+    await screen.findByText('Claude Code')
+    await userEvent.click(within(screen.getByText('Claude Code').closest('article')!).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Add a model to the role lists' }), 'claude-sonnet-4-6')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Test through CLI and add' }))
+    await waitFor(() => expect(calls.some(([url, init]) => String(url) === '/api/ai-console/clis/claude_code/models'
+      && init?.method === 'POST' && JSON.parse(String(init.body)).modelId === 'claude-sonnet-4-6')).toBe(true))
   })
 
   it('submits one exact CLI model ID for a local subscription test', async () => {
@@ -503,10 +563,10 @@ describe('AI Console', () => {
     const dialog = await screen.findByRole('dialog')
     const synthesizerModel = dialog.querySelector('#aic-synthesizer-model') as HTMLSelectElement
     expect(synthesizerModel.value).toBe('gpt-safe')
-    expect(within(synthesizerModel).getByRole('option', { name: /saved model.*no longer available/i })).toBeDisabled()
+    expect(within(synthesizerModel).getByRole('option', { name: /saved model.*needs a current test or role check/i })).toBeDisabled()
     expect(synthesizerModel).toHaveAttribute('aria-invalid', 'true')
     expect(synthesizerModel).toHaveAttribute('aria-describedby', 'aic-model-repair')
-    expect(within(dialog).getByText(/saved model choices are no longer available or compatible/i)).toBeTruthy()
+    expect(within(dialog).getByText(/saved models need a current generation test/i)).toBeTruthy()
     expect(within(dialog).getByRole('button', { name: 'Save configuration' })).toBeDisabled()
   })
 
@@ -524,7 +584,7 @@ describe('AI Console', () => {
     const dialog = await screen.findByRole('dialog')
     const synthesizerModel = dialog.querySelector('#aic-synthesizer-model') as HTMLSelectElement
     expect(synthesizerModel.value).toBe('__builtin__')
-    expect(within(synthesizerModel).getByRole('option', { name: /built-in default.*no longer available/i })).toBeDisabled()
+    expect(within(synthesizerModel).getByRole('option', { name: /built-in default.*needs a current test or role check/i })).toBeDisabled()
     expect(dialog).not.toHaveTextContent('__builtin__')
     expect(synthesizerModel).toHaveAttribute('aria-invalid', 'true')
     expect(synthesizerModel).toHaveAttribute('aria-describedby', 'aic-model-repair')
