@@ -846,6 +846,66 @@ def build_rollup_output(census_by_layer: dict, declarations: dict | None = None)
                 rollup_excluded=excluded)
 
 
+# ─────────────────────────── E6 packet (c): the Null and Narr checks ───────────────────────────
+# Design: /Users/Dev/suvarna-evidence/E6.1/packet_c_design.md. Each check is a pure grader over inputs the census
+# reads (declarations, catalog, writer code, tests on disk); measure() calls `prose_checks`, so the saved-census
+# harness and the unit tests run exactly what measure() runs. INCONCLUSIVE is a measured STATE (`inconclusive: true`
+# on a NO_DETECTOR record), never a verdict and never a PASS. Null can never read PASS ("never PASS alone", Track E E6.1).
+PROSE_JSON_TYPES = ("json", "jsonb")
+
+
+def _json_entry(entry: str) -> bool:
+    return parse_prose_field(entry)[1] is not None
+
+
+def grade_narr_agree(entries, table, columns, types) -> dict:
+    """Narr.agree (N-22 principle 8): the declared prose entries and the table's columns agree. FAIL: a declared
+    column is not a column of `table`, or a JSON-path entry sits on a column the catalog types as non-JSON.
+    PASS: every entry resolves (and every JSON-path column is json/jsonb). PARTIAL: names resolve but a JSON-path
+    column's type was not read. NO_DETECTOR: no table / no catalog columns (unknown is never 'zero columns')."""
+    if not table:
+        return dict(v=NO_DET, measured="NO_DETECTOR — no target table to read the declared prose columns against")
+    if not isinstance(columns, (list, tuple, set)) or not columns:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — the columns of {table} are unknown (not in the catalog); "
+                                       "an unknown column list is never 'zero columns'")
+    have = set(columns)
+    parsed = [(e, *parse_prose_field(e)) for e in entries]
+    missing = [e for e, col, _ in parsed if col not in have]
+    if missing:
+        return dict(v=FAIL, measured=f"declared prose column(s) not among {table}'s columns: {', '.join(missing)}")
+    wrong, unread = [], []
+    for e, col, path in parsed:
+        if path is None:
+            continue
+        t = (types or {}).get(col) if isinstance(types, dict) else None
+        if t is None:
+            unread.append(col)
+        elif t.lower() not in PROSE_JSON_TYPES:
+            wrong.append(f"{col} ({t})")
+    if wrong:
+        return dict(v=FAIL, measured=f"JSON-path entries on non-JSON column(s) of {table}: {', '.join(wrong)}")
+    if unread:
+        return dict(v=PARTIAL, measured=f"every declared column exists in {table}; the type of JSON-path column(s) "
+                                        f"{', '.join(sorted(set(unread)))} was not read")
+    return dict(v=PASS, measured=f"all {len(parsed)} declared prose entr{'y' if len(parsed) == 1 else 'ies'} resolve to "
+                                 f"column(s) of {table} (names, and JSON types for path entries; the writer binding is "
+                                 "the declaration tests' claim, not read here)")
+
+
+def grade_null_schema_default(entries, columns, defaults) -> dict:
+    """Null.schema_default: a plausible default can stand in for an underivable prose value when a declared prose
+    column carries a non-NULL DEFAULT. FAIL names it; otherwise PARTIAL, never PASS (writer literal fallbacks and
+    constant columns are not measured here). NO_DETECTOR when the columns or defaults were not read."""
+    if not isinstance(columns, (list, tuple, set)) or not columns or not isinstance(defaults, dict):
+        return dict(v=NO_DET, measured="NO_DETECTOR — the target table's columns or column defaults were not read")
+    cols = sorted({parse_prose_field(e)[0] for e in entries})
+    hit = [f"{c} DEFAULT {defaults[c]}" for c in cols if defaults.get(c) not in (None, "")]
+    if hit:
+        return dict(v=FAIL, measured="declared prose column(s) carry a non-NULL schema default: " + "; ".join(hit))
+    return dict(v=PARTIAL, measured=f"no schema default on the declared prose column(s) {', '.join(cols)}; writer "
+                                    "literal fallbacks and constant columns are not measured here, so this is never PASS")
+
+
 # R40: the psql subprocess timeout was hardcoded at 180s, which is shorter than a full-table
 # duplicate scan on the estate's largest table (kala_field, 10.3M rows) can take — making the L3
 # and `--layer all` census unrunnable on production. Configurable via env so an operator pointed
