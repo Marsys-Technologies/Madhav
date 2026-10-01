@@ -1,0 +1,173 @@
+---
+asset_id: bo_karanajala
+layer: L2 Bodha (bo_*)
+artifact: ASSET_ELEVATION_BRIEF
+version: "1.0-provisional"
+status: "PROVISIONAL — until J1; may register gaps, may not certify"
+produced_by: exec-suvarna
+produced_on: 2026-10-01
+plan_item: A.L2 (briefs, dispositions, designs)
+census_revision_used: "after-grant census `00_ARCHITECTURE/briefs/suvarna/layers/census/after_reader_grant/census_L2.json` (generated 2026-09-30T20:30:56+05:30, chart 482012f1, inspector 2a78ec64d on campaign/nikasha-test, pre-REGISTRY_REVISION; criterion revisions then: Build.dag 1, Build.target 1, Idem.pattern 1, Dens.served 1, no Null/Narr). It differs from the first run (`census/census_L2.json`, 20:23:30) in exactly six cells (bo_anveshana, bo_sangati, bo_upaya: Build.completion and Count.floor, ERRORED then). NOT re-measured: main's inspector is at REGISTRY_REVISION 6 and the lane has no DB access."
+template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
+layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L2/L2_LAYER_INSTANCE_v1_0.md (1.1, PROVISIONAL)"
+base_commit: "main 3311b0a06"
+disposition: "keep (P)"
+disposition_proposal_approver: "Steward (G16); FD-2's output change needs SS (R5)"
+nirmana_freeze: "t3, 2026-09-11"
+ledger_gap_ids: [bo_karanajala-Idem.pattern, bo_karanajala-Build.completion, bo_karanajala-Earn.build_record, bo_karanajala-Cost.baseline, bo_karanajala-Dens.served, bo_karanajala-Build.history, bo_karanajala-Carr.detector]
+---
+# bo_karanajala — CGM edges and contradictions (Kāraṇajāla)
+
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question. Dispositions are proposals under Track A brief §10; every fix marked **needs production rebuild** is a REVIEW item for Strategic Suvarṇa.
+
+## 0 · Identity — what the asset is
+
+Builds the Causal Graph Model's directed, valenced edges over `bodha_cgm_nodes` and the contradictions register: it reads `bodha_msr_signals` and `bodha_cgm_nodes` and writes `bodha_cgm_edges` (849 chart rows: aspect 360, argala 119, bhava_aspect 95, arudha_house 95, lordship 60, occupancy 45, dispositor 40, special_lagna_house 35; layer instance §2.2 [Q3b]) and `bodha_contradictions` (not readable by the census login). `@register("bo_karanajala")` at `bo_karanajala.py:1739` (a 1,922-line writer), replacement through `replace_prior_cgm_edges` and `replace_prior_contradictions` (`:1909-1910`). Two cross-asset behaviours are in the file: it INSERTs the `arudha` and `special_lagna` nodes into `bodha_cgm_nodes` through `ON CONFLICT (node_id)` (`:1532-1650`; 130 live rows) and it UPDATEs centrality columns on `bo_bimba`'s nodes (`:1878`). Build record 864 against 849 live: `rows_inserted = total_e + total_c` (`:1921`) counts the contradictions the registry `count_sql` does not. Census direct 10 / transitive 44. Migration 1210 added its `ga_vichara` edge (E6 reads-match); frozen under the t3 definition (2026-09-11).
+
+| field | value | source |
+|---|---|---|
+| kind (declarations 1.6.0) | data | `platform/scripts/governance/asset_declarations.json` |
+| registry seed row | `platform/scripts/seed/asset_registry_seed.ts:1627` | seed (live may differ by migration) |
+| writer / `@register` | `platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py:1739`; registry `has_writer` = True | writers dir, census `Build.registered` |
+| target table(s) | `bodha_cgm_edges`; count_sql tables: `bodha_cgm_edges` | census CEN-R |
+| live rows / floor | 849 / 300 (chart 482012f1, count_sql scope) — count_sql counts `bodha_cgm_edges` only; the writer also writes contradictions and 130 nodes | census `live_rows`, `Count.floor` |
+| catalog_status | CURRENT | census |
+| depends_on (declared, seed incl. migration 1210) | `bo_laksana`, `bo_bimba`, `ga_positions`, `bo_sudarshana`, `bo_nakshatra_semantic`, `bo_arudha`, `bo_special_lagna`, `bo_vargottama_dhana`, `ga_vichara` | seed `asset_registry_seed.ts` (live may differ by migrations 913/1084/730/676) |
+| blast radius | census (saved, pre-1210): direct 10 / transitive 44; seed-derived closure (post-1210): direct 10 / transitive 44; direct dependents: `bo_anveshana`, `bo_cgm_motifs`, `bo_cgm_paths`, `bo_drishti`, `bo_laksana_rerank`, `bo_pramana_mapa`, `bo_samvada`, `bo_sangati`, `bo_yantra_mechanism`, `ph_nimitta` | census `blocking_radius`; seed + migration 1210 closure (`/Users/Dev/suvarna-evidence/A_L2/closure_L2.json`) |
+| code readers | `bodha_cgm_edges`: 17 non-test py/ts/tsx files reference it (9 outside bodha_writers/, brahmagyan/ and bo_*.py writers): `ph_phaladesa.py`, `stage2_promise.py`, `assetClearSpec.ts`, `address_resolver.ts`, `graha_portrait.ts`, `traverse_chart_graph.ts` +3 | `grep -rlw` over platform/python-sidecar, platform/src, platform-mcp/src (py/ts/tsx; paths containing `test` and `/generated/` excluded; run 2026-10-01) |
+| served surface | 1 capability module(s): `L2_bodha/traverse_chart_graph.ts`; `density_contract` declared on 0 (saved rev-1 reading) | census reach |
+| Nirmāṇa freeze | frozen by Nirmāṇa (t3, 2026-09-11; NIRMANA_SUPERSESSION_RECORD §2.3) | NIRMANA_SUPERSESSION_RECORD §2.3 |
+| role / scoring mode | neither (supplies what manifestation and time rest on); contribution scoring (chart-product layer) | layer instance §2.5 (TG-L2-019), census `L2.scoring` |
+
+## 1 · Measured state and the nine gates (saved census, per criterion)
+
+Census used: the after-grant saved census named in the frontmatter (inspector 2a78ec64d, pre-REGISTRY_REVISION; criterion revisions then: Build.dag 1, Build.target 1, Idem.pattern 1, Dens.served 1, no Null/Narr). NOT re-measured: main's inspector is at REGISTRY_REVISION 6 and the lane has no DB access.
+
+`†` marks a criterion whose definition changed on main since the saved run (a later re-measure is expected for it): Build.dag rev 1 -> 2 (reads-match clause, any-layer unknown dep, cycle); Build.target rev 1 -> 2 (declared service with no target_table reads PASS by declaration); Idem.pattern rev 1 -> 2 (relative imports resolve; update-only reading); Dens.served rev 1 -> 4 (needs a density_contract AND a tier column in the served select; comment-only mentions no longer count).
+
+| gate | criterion | saved verdict | measured (saved census text) |
+|---|---|---|---|
+| Earn | Earn.build_record | NO_DETECTOR | NO_DETECTOR — instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run 5d4d8d71 complete/skip_no_delta (2026-09-11) |
+| Idem | Idem.pattern† | PASS | DELETE FROM the asset's own table(s) (delete-then-insert): bodha_cgm_edges (bodha_writers/_idempotency.py:358 via bo_karanajala.py → bodha_writers/_idempotency.py:replace_prior_cgm_edges), bodha_cgm_edges (bodha_writers/_idempotency.py:363 via bo_karanajala.py → bodha_writers/_idempotency.py:replace_prior_cgm_edges) |
+| Carr | Carr.detector | NO_DETECTOR | no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics |
+| Dens | Dens.served† | FAIL | 2 module(s): query_contradictions.ts, traverse_chart_graph.ts; declaring density_contract: 0 |
+| Build | Build.completion | FAIL | build record rows_written=864 disagrees with live=849 (count_sql over the target table; chart 482012f1) |
+| Build | Build.history | PARTIAL | latest run complete, but 26 error(s) and 7 abort(s) on record (0 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-09-09): UniqueViolation: duplicate key value violates unique constraint "bodha_cgm_nodes_pkey" DETAIL:  Key (node_id)=(fa521b87-6dcc-5b75-84a9-e61c67bc353c) already exists. Traceback (most recent call last):  |
+| Cost (information, D3) | Cost.baseline | NO_DETECTOR | NO_DETECTOR — instrument absent (migration 1094), scoped to this run; latest attempt at chart 482012f1: run 5d4d8d71 complete/skip_no_delta (2026-09-11) |
+| Complete (information) | Complete.depth | PARTIAL | 2517 rows, 43 cols; fully populated 34; NEVER populated ['intrinsic_strength', 'directionality', 'weight_varga_source', 'cross_subsystem_mapping_ref', 'cancelled_by_jsonb', 'cross_ayanamsha_edge_stability_score', 'edge_betweenness', 'in_shortest_path_count'] |
+| Complete (information) | Complete.width | NOT_GENERIC | no declared universe for this asset — declaring one is the first width gap |
+| Reach (information) | Reach.fields | NOT_GENERIC | reported, not graded — width ≥ 15/35 built column(s) (42.9%), a lower bound: L2_bodha/traverse_chart_graph.ts select(s) a run-time column list selected by 1 capability module(s); dark: ['active_dasha_periods_jsonb', 'act… |
+
+**PASS cells (compact):** Ldgr.source_presence (citation_ref populated on 2517/2517 rows); Vocab.identity (declared key (chart_id, ayanamsha_id, build_id, snapshot_type, edge_type, from_node_id, to_node_id): 0 duplica…); Build.registered; Build.contract; Build.target†; Build.dag†; Build.count_integrity; Build.exercised (49 executed run(s) of 121 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-09-1…); Build.dep_liveness; Count.floor (live=849, floor=300, delta=+549).
+
+**Offline rollup** (main's `rollup_asset` rules, registry rev 6, applied to the SAVED measurements; N/A reads NO_DETECTOR because `NA_RULE_DECISIONS` is empty on main; not a re-measure, not a certification): Ldgr PASS · Idem PASS · Earn NO_DETECTOR · Null NO_DETECTOR · Vocab NO_DETECTOR · Carr NO_DETECTOR · Narr NO_DETECTOR · Dens FAIL · Build FAIL.
+
+**Offline static re-scans on main's code** (indicative, not a census; method in `INDEX.md` §1): Dens.served rev 4 reads **NO_DETECTOR** — 1 serving-root file(s) naming bodha_cgm_edges lose the string scanner's sync (an unbalanced quote, a nested template literal, or a regex literal holding a quote desynced it): platform-mcp/src/tools/registry_bridge.ts; its served select and density_contract cannot be read — never FAIL,; Idem.pattern rev 2 reads **PASS**.
+
+## 2 · Gaps — which are real, which are detector gaps
+
+Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry row, declaration or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row from the 2026-09-27 run (`asset_gaps.jsonl` @ 2a78ec64d, not on main) that the saved 2026-09-30 census no longer reads as written; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3); **real-or-SS-question** = read in code, not measured by the census, whose verdict needs a ruling.
+
+| gap id (ledger or census cell) | gate | class | note |
+|---|---|---|---|
+| `bo_karanajala-Build.completion` | Build (completion) | real (attribution; cause read in code, not measured) | build record 864 vs live 849: the writer returns edges + contradictions (`:1921`) and `count_sql` counts edges only, so 15 is consistent with the contradiction rows (table unreadable to the census login: MF-L2-002). CF-02. |
+| code: `bo_karanajala.py:1532-1650`, `:1878`; declarations `cross_asset_writes: null` | Idem / Build | real (declaration + Idem scope) | the asset upserts 130 nodes into `bo_bimba`'s table and updates its centrality columns, but declares no cross-asset write; `replace_prior_cgm_nodes` (bimba's) deletes only bimba's five node types and the node insert is `ON CONFLICT (node_id)`, so arudha/special_lagna nodes are never deleted by either writer: if an L1 arudha or special-lagna fact disappears its node would remain (upsert-only, the L0 CF-12 class). The census Idem PASS covers `bodha_cgm_edges` only. The 2026-09-09 history error (`UniqueViolation … bodha_cgm_nodes_pkey`) is on this path (fixed since, migrations 714/950 per the code comment). CF-19, CF-12. |
+| code: `bo_karanajala.py:386-391` vs `ga_writers/ga_structural_writer.py:615-616` | Carr / Vocab | real-or-SS-question | L2 builds argala edges from house offsets it computes itself, `ARGALA_POSITIONS = {2, 4, 11}` with virodha `{12, 3, 10}` (BPHS Ch.28, `_build_argala_edges` `:495`), while L1 already stores `argala_natal_matrix` / `virodha_argala_natal_matrix` (144 atomic rows each, `ga_structural_writer.py:54-55`) from offsets `[2, 4, 5, 11]` / `[12, 10, 9, 3]` (Jaimini, `:615-616`). Two conventions and a re-derivation where an L1 authority exists: the CLAUDE.md §N.5 / MSR_COMPUTED_VALUE_DRIFT_HANDOFF trap. The two are not the same granularity (L1: sign-level matrix; L2: graha-to-graha edges), so the ruling is which convention the L2 edge should state and whether it reads L1. FD-2. |
+| code: `bo_karanajala.py` docstring `:7-18` vs layer instance §2.2 [Q3b] | Complete (information) | information | edge types named in the docstring with 0 live rows on the chart: `conjunction`, `yoga_domain`, `dosha_domain`, `sade_sati` (the eight live types are listed above). Whether yoga/dosha nodes should be joined to domain nodes is a modelling question; `Complete.width` (no declared universe) cannot say. |
+| `bo_karanajala-Dens.served` / census cell Dens.served † | Dens | real as measured at rev 1; offline rev 4 NO_DETECTOR | saved rev-1 FAIL (2 modules, 0 contracts); offline rev-4 scan unreadable (scanner desync in `registry_bridge.ts`). The served edges expose 15 of 35 built columns; `citation_ref`, `citation_human`, `constituent_fact_ids_array`, `cross_system_consensus_count` and `verification_pass_status` are dark (Reach, information). CF-04. |
+| `bo_karanajala-Idem.pattern` | Idem | stale | ledger row (`ON CONFLICT where the layer convention is delete-then-insert`) is from 2026-09-27; saved census PASS for the edges, offline rev-2 PASS. |
+| `bo_karanajala-Complete.depth` (census) | Complete (information) | information | NEVER populated (table-wide, 2,517 rows): `intrinsic_strength`, `directionality`, `weight_varga_source`, `cross_subsystem_mapping_ref`, `cancelled_by_jsonb`, `cross_ayanamsha_edge_stability_score`, `edge_betweenness`, `in_shortest_path_count`. `cancelled_by_jsonb` empty while `cancelled_flag` is non-null on all 849 chart rows (T2 §6.3 requires cancelled support and inhibitor to keep opposite polarity; not measured). CF-17. |
+| `bo_karanajala-Build.history` | Build (history) | history | latest run complete; 26 errors and 7 aborts on record (latest error 2026-09-09 `UniqueViolation … bodha_cgm_nodes_pkey`). CF-10. |
+| `bo_karanajala-Earn.build_record`, `-Cost.baseline`, `-Carr.detector` | Earn, Carr | detector | instrument absent (migration 1094) / no D1-D3 detector; CF-05, CF-07. |
+| census: registry `natural_key_partition` | Idem | real (registry) | blank for this asset (MF-L2-009), though it owns edges, contradictions and 130 nodes. CF-03. |
+
+## 3 · Disposition
+
+**keep (P)** — the asset builds and its census cells are clean apart from the attribution mismatch; its real findings are two declaration/scope gaps and one cross-layer convention question (argala), none a measured failure. If SS rules the argala edge must read L1, FD-2 is an output change; the disposition stays keep.
+
+Approver under Track A brief §10: **Steward (G16); FD-2's output change needs SS (R5)**.
+
+## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
+
+### FD-1 · Declare and scope the cross-asset node writes
+
+- **Answers:** CF-19, CF-12; the Idem/Build declaration gap above
+- **Change:** declare `bodha_cgm_nodes.*` (arudha, special_lagna rows) and the centrality UPDATE as this asset's cross-asset writes; extend the Idem reading (or its orphan census) to the node upsert: run the node builder in `ctx.dry_run`, compare the produced `(node_type, node_subject)` set with the live arudha/special_lagna nodes and report orphans; if orphans can occur, add a prune scoped to `node_type IN ('arudha','special_lagna')` in `replace_prior` (never table-wide); record the shared table as two producers in the registry attribution
+- **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json`; `bo_karanajala.py` / `bodha_writers/_idempotency.py` (scoped prune, only if orphans are found); registry `natural_key_partition` and `count_sql` via CF-03
+- **Failing-first test and mutation:** failing-first: a fixture where an L1 arudha fact is removed leaves a stale node (census FAIL naming it) and the prune removes only that node; mutation: widen the prune to all node types → the shared-table test (bimba's nodes survive) fails
+- **Output change:** none
+- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Rebuild:** the prune is exercised by the next rebuild; a prune that deletes nothing is not a rebuild trigger (REVIEW item for SS if it does)
+- **Gate it moves:** Idem, Build (completion attribution)
+- **Fix class:** registry/declaration + writer code (prune, only if orphans exist); **buildable before J1:** tier-dependent: what Idem means for upsert writers (TGH-T3-18) and the `kind`/producer vocabulary (TGH-T4-01)
+
+### FD-2 · Argala: state one convention and read the L1 authority
+
+- **Answers:** the Carr/Vocab argala observation; CLAUDE.md §N.5
+- **Change:** after the ruling, build the argala edges from L1's `argala_natal_matrix` / `virodha_argala_natal_matrix` facts (referencing their `fact_id`s in `constituent_fact_ids_array`) instead of recomputing `ARGALA_POSITIONS` from sign numbers (`_build_argala_edges` `:495`); if SS rules the BPHS Ch.28 set {2, 4, 11} is the L2 convention, instead document the divergence from L1's {2, 4, 5, 11} in the edge's `relationship_class`/provenance so a reader can tell the two apart
+- **Files / declaration / migration:** `platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py` (`:386-391`, `:495-560`); possibly `ga_structural` (no change proposed: L1 is the authority)
+- **Failing-first test and mutation:** failing-first: the stored argala edges equal the L1 matrix rows (same source/target/position set) or carry the declared divergence; mutation: change an offset in the writer → the test fails; `test_bo_karanajala_*` exists for other edge types
+- **Output change:** yes if the edge set changes (the 5th-house argala edges would appear): SS (R5)
+- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Rebuild:** needs production rebuild of `bo_karanajala` and its dependents (`bo_cgm_motifs`, `bo_cgm_paths`, `bo_yantra_mechanism`, `bo_laksana_rerank`, `bo_sangati`, `bo_drishti`, `bo_anveshana`, `bo_pramana_mapa`, `bo_samvada`, plus `ph_nimitta`): REVIEW item for SS
+- **Gate it moves:** Carr, Vocab
+- **Fix class:** writer code (+ SS ruling); **buildable before J1:** tier-dependent: the L1/L2 convention rule (a domain decision) and the Carr assignment
+- **Question for SS:** Is the L2 argala convention BPHS {2,4,11} or L1's Jaimini {2,4,5,11}, and must the edge read the L1 matrix?
+
+### FD-3 · Narr golden-value test for the declared prose columns
+
+- **Answers:** Narr gate (NO_DETECTOR); CF-14; Track A §5 (per-asset Narr golden tests)
+- **Change:** a golden fixture over the six `citation_human` sites (`:625` argala offset and cancellation, `:708`, `:785`, `:1672`, `:1732` placements, `:1360` contradiction naming shared domains): the string must state the same house/sign numbers and the same cancelled/uncancelled state as the cited L1 fact and the edge's own `cancelled_flag`; pure endpoint labels (`:1024 :1147 :1199 :1269`) are excluded by the declaration
+- **Files / declaration / migration:** a new test beside `platform/python-sidecar/tests/l2/` (one file per writer), registered in the declaration `evidence.prose_fields` so `Narr.fidelity_test` can find it; no asset or registry change
+- **Failing-first test and mutation:** failing-first: the test fails on a writer whose narrated value differs from the cited fact; mutation: change one composed value (a house number, a count) in the writer → the test fails
+- **Output change:** none
+- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Rebuild:** none
+- **Gate it moves:** Narr (NO_DETECTOR → measured)
+- **Fix class:** detector/tooling (test); **buildable before J1:** tier-independent (SS ruling 2026-10-01 defines narration; declarations 1.6.0 exists)
+
+### FD-4 · Carr detector
+
+- **Answers:** Carr.detector NO_DETECTOR; CF-07
+- **Change:** D3 (re-derivation): recompute each edge's existence and class from L1 facts it cites (aspect/house relation from `graha_position`, lordship from the canonical sign-lord table, arudha_house and special_lagna_house from the cited L1 fact) and compare; argala edges are checked against L1's matrix once FD-2 is ruled. The §N.5 resolver covers the MSR side only; a twin for `constituent_fact_ids_array` is part of this design.
+- **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
+- **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
+- **Output change:** none
+- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Rebuild:** none
+- **Gate it moves:** Carr (NO_DETECTOR → measured)
+- **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no tier clause
+
+### Shared fixes that apply to this asset (full design in `INDEX.md`)
+
+- **CF-02** — Producer attribution: multi-table writers, rider rows and shared tables (count scope). *This asset:* build record counts contradictions the `count_sql` omits (864 vs 849)
+- **CF-19** — cross_asset_writes declarations (writes into rows another asset owns). *This asset:* cross-asset node writes (FD-1)
+- **CF-12** — Idem: an orphan census for upsert-only writes (a PASS on the delete does not test accretion elsewhere). *This asset:* the node upsert is upsert-only (orphans possible); the same orphan census as L0's CF-12
+- **CF-03** — Registry correction batch (one surgical migration + seed literals). *This asset:* blank `natural_key_partition`; count scope
+- **CF-04** — Dens (serving density) on the L2 served modules. *This asset:* Dens FAIL on two modules; 20 of 35 built columns dark
+- **CF-14** — Narr fidelity (golden-value) tests per L2 narration writer. *This asset:* declared `citation_human` (six composed sites)
+- **CF-15** — depends_on audit: declared edges versus what each writer reads. *This asset:* 1210 added `ga_vichara`; declared edges versus reads re-audit
+- **CF-17** — Complete.depth: never-populated columns (declare, populate or drop). *This asset:* never-populated columns
+- **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* carriage D3 (§6)
+- **CF-10** — Build.history PARTIAL is a record of past errors; no edit changes it. *This asset:* history PARTIAL
+- **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* Earn/Cost instrument
+
+## 5 · Semantic fingerprint contract (for E5.5)
+
+Natural key `(chart_id, ayanamsha_id, snapshot_type, from_node_id, to_node_id, edge_type, …)` is not declared in the registry (blank `natural_key_partition`); the table's unique key is the one `Vocab.identity` read for `bodha_cgm_edges` (not stated in the census text for this asset: read it from the catalog before E5.5). Fingerprint over edge endpoints (resolved to node natural keys, not `node_id`), `edge_type`, `relationship_class`, `valence`, `computed_strength`, `cancelled_flag`, `constituent_fact_ids_array`, `underlying_msr_signal_ids_array` (sorted; ids resolved to signal natural keys) and the contradiction pairs. **Volatile:** `edge_id`, `node_id` endpoints as raw ids, `build_id`, `computed_at`, `engine_version`; centrality columns on nodes belong to the nodes' fingerprint. Expected: 849 edges, plus the contradiction rows, unchanged by an idempotent rebuild.
+
+## 6 · Preserved kernel, carriage check, opportunities
+
+- **Preserved kernel:** the eight live edge types with L1-resolving `constituent_fact_ids_array` (non-empty on 330 of 849 chart rows, a partial carrier; instance §2.2), the contradiction register, the arudha/special-lagna nodes.
+- **Carriage check chosen (T4 §4.1; one only):** D3 (re-derivation) (design in FD-4)
+- **Opportunities (never blocking):** the four documented edge types with no rows; `cancelled_by_jsonb`; serve `constituent_fact_ids_array` and `citation_human` on edges (Reach).
+
+## 7 · Rebuild and frozen-manifest consequences
+
+Frozen manifest: Nirmāṇa froze this asset under definition t3 on 2026-09-11 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 (applied; Track I) added this row's direct edge(s) `ga_vichara`, so its frozen manifest is stale against the registry fingerprint (1210 header, CONSEQUENCES 1: `assertManifestMatchesRegistryIdentity` throws on any `depends_on` change; its `asset_analysis_accepted` evidence no longer matches). The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (`bo_anveshana`, `bo_cgm_motifs`, `bo_cgm_paths`, `bo_drishti`, `bo_laksana_rerank`, `bo_pramana_mapa`, `bo_samvada`, `bo_sangati`, `bo_yantra_mechanism`, `ph_nimitta`) re-run after it in DAG order; seed-derived transitive closure 44 assets. Rebuilding this asset rewrites 130 nodes it does not own and the contradictions that cascade from MSR replacement; `bo_laksana_rerank` reads its output, so the DAG order is karanajala (level 8) then rerank (9) then `bo_sangati` (10).
+
+## 8 · Questions for Strategic Suvarṇa
+
+1. FD-2: which argala convention does the L2 edge state, and must it read L1's matrix (an output change)?
+2. FD-1 / CF-12: is node ownership of `arudha`/`special_lagna` to stay with `bo_karanajala` (declared cross-asset write) or move to `bo_bimba`'s node builder (the in-code comment says it was placed here because bimba was outside the lane's scope)?
+3. Edge types in the docstring with no live rows (`yoga_domain`, `dosha_domain`, `conjunction`, `sade_sati`): intended for this chart, or unwired?
