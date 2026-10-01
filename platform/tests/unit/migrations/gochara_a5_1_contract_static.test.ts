@@ -429,7 +429,10 @@ describe('A5.1 migrations 1153–1157 — static contract (round 7, corrected lo
 
   // ── Ruling 4: the deploy route ───────────────────────────────────────────
   it('ruling 4 (N3): the routine runner refuses 1153–1157; the --only window may apply them', () => {
-    expect([...PROTECTED_PUBLIC_SCHEMA_MIGRATIONS].sort()).toEqual(Object.values(MIGRATIONS).sort())
+    // B6.0 PART 1: the protected set grew by the v1.5 contract amendments
+    // 1204/1205 (AM-7/AM-8); 1153-1157 remain protected exactly as frozen.
+    const V15_AMENDMENTS = ['1204_gochara_av_qualifier_object_role.sql', '1205_gochara_inherited_frame_kind.sql']
+    expect([...PROTECTED_PUBLIC_SCHEMA_MIGRATIONS].sort()).toEqual([...Object.values(MIGRATIONS), ...V15_AMENDMENTS].sort())
     for (const f of Object.values(MIGRATIONS)) {
       expect(() => assertGeneralRunnerMayApplyPublicSchema(f, false)).toThrow(/gochara_contracts_schema_migration=true/)
       expect(() => assertGeneralRunnerMayApplyPublicSchema(f, true)).not.toThrow()
