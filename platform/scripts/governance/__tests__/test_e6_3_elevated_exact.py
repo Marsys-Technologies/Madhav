@@ -13,11 +13,12 @@ import sys
 import pytest
 
 sys.path.insert(0, __import__("os").path.dirname(__file__))
-from _e6_3_fixtures import (MINI_CENSUS, MINI_FLOOR, NA_NULL, World, cert, disp, gap, inval,  # noqa: E402
+from _e6_3_fixtures import (MINI_CENSUS, MINI_FLOOR, mini_patch, NA_NULL, World, cert, disp, gap, inval,  # noqa: E402
                             load_tracker)
 
 T = load_tracker()
 REAL_FLOOR = dict(T.E63_REQUIRED_FLOOR)
+REAL_PINS = dict(T.E63_REQUIRED_CRITERIA)
 ALL = {"ga_alpha", "bg_beta", "ka_gamma"}
 
 
@@ -25,12 +26,13 @@ ALL = {"ga_alpha", "bg_beta", "ka_gamma"}
 def mini_floor(monkeypatch):
     """The mini registry has fewer criteria than the real one: pin the floor it satisfies (real-registry tests ask
     for `real_floor` instead)."""
-    monkeypatch.setattr(T, "E63_REQUIRED_FLOOR", MINI_FLOOR)
+    mini_patch(monkeypatch, T)
 
 
 @pytest.fixture
 def real_floor(monkeypatch):
     monkeypatch.setattr(T, "E63_REQUIRED_FLOOR", REAL_FLOOR)
+    monkeypatch.setattr(T, "E63_REQUIRED_CRITERIA", REAL_PINS)
 
 
 @pytest.fixture

@@ -343,16 +343,19 @@ def main():
 #   invalidation      E5.5: asset, layer, invalidates "<cert_id>" (a certificate on an EARLIER line), reason
 #                     [{code,...}], walk >= 1. A repeated invalidation of one certificate is tolerated; the first wins.
 #   watermark         E5.5: asset "_ledger", covers_seq (the seq of the last record the evaluation covered, below the
-#                     line's own seq, never behind the previous watermark), certs_processed and last_cert_id (= the
-#                     certificates with seq <= covers_seq and the last of them: CHECKED), commit. The ledger is covered
-#                     iff a watermark exists and NO certificate has seq > the last watermark's covers_seq; otherwise
+#                     line's own seq), certs_processed and last_cert_id (= the certificates with seq <= covers_seq and
+#                     the last of them: each line is CHECKED for truth), commit. The ledger is covered iff a watermark
+#                     exists and NO certificate has seq > the LARGEST covers_seq over all watermark lines (E5.5's
+#                     rule: a late, smaller, truthful watermark neither helps nor hurts); otherwise
 #                     WatermarkOlderThanLedger.
 #   epoch_reset       E5.5: asset "_ledger", layer, decision "N-..": the strategist's re-walk-budget reset (no effect here).
 # asset_gaps.jsonl (delta ledger): asset (must be a KNOWN asset id, so a malformed or look-alike id raises; the layer-wide pseudo-asset
 #   `_layer_all` is skipped), gap_id, kind (gap|
 #   opportunity|info; absent reads gap), criterion, state (OPEN|IN_PROGRESS|CLOSED|WITHDRAWN; absent reads OPEN),
 #   superseded_by. A gap is keyed (asset, gap_id) and its state is its LATEST row; a row folded into another gap_id
-#   (superseded_by, SAME asset, chains resolved, a cycle raises) is carried by the chain's terminal row. A core-gate or
+#   (superseded_by, SAME asset, chains resolved, a cycle raises) is carried by the chain's terminal row.
+#   A gap's kind and criterion are FIXED at first write (a later row may change only its state); a row that can block may
+#   only be folded into a kind=gap row of the same gate family (non-gate rows fold freely among themselves). A core-gate or
 #   declared-addition criterion re-keyed `kind: info` raises.
 # asset_dispositions.jsonl (storage location provisional: the plan names none): asset (a registry asset), disposition
 #   (keep|integrate|enrich|qualify|consolidate|historical|retire|unresolved), reason, additions (REQUIRED on every
@@ -362,7 +365,7 @@ def main():
 #   CRITERION_REGISTRY[*].{gate,layers,detector,revision}, CELL_GATES, NA_RULE_DECISIONS, and the PARTIAL cap rule in
 #   `_check_contribution`. The WHOLE module is walked: a second assignment of, a mutation of, an alias of or a dynamic
 #   write to any of the four registry names raises (the parser must be able to see the final value).
-# platform/scripts/seed/asset_registry_seed.ts (+ LEVEL_MAP.json when present): the asset ids the registry holds and
+# platform/scripts/seed/asset_registry_seed.ts (+ LEVEL_MAP.json when present; parsed by generate_level_map.py AS COMMITTED AT `ref`): the asset ids the registry holds and
 #   the asset kind (non-authoritative stand-in for the live registry, as in generate_level_map.py).
 #
 # "CURRENT" (see certificate_currency): the record is the latest generation of its cert_key; no invalidation line names
@@ -386,6 +389,24 @@ E63_SEED_PATH = "platform/scripts/seed/asset_registry_seed.ts"
 # registry at origin/main bf6fe712b (REGISTRY_REVISION 7). A registry edit that REMOVES a core-gate criterion (or a
 # `layers=()`) would make ELEVATED easier to reach, so it makes this function raise instead; changing the floor is a
 # deliberate, reviewed edit of THIS constant (e.g. when E6.1(i) retires Carr.detector, Carr goes 4 -> 3).
+E63_PINNED_LAYERS = ("L0", "L1", "L2", "L3", "L4", "L5")
+# PINNED CRITERION IDS: every id below must stay a registry criterion of that gate that applies in every pinned layer.
+# Captured from the registry at origin/main (REGISTRY_REVISION 7). A count floor alone is not enough (delete one
+# criterion, add another: the count holds and a required cert silently disappears), so a removed, renamed, re-gated or
+# re-layered pinned id makes the function raise naming it. ADDING a criterion needs no edit (it only adds a requirement);
+# changing a pin is a deliberate, reviewed edit of THIS constant. The count floor below stays as a second check.
+E63_REQUIRED_CRITERIA = {
+    "Ldgr": ("Ldgr.source_presence",),
+    "Idem": ("Idem.pattern",),
+    "Earn": ("Earn.build_record", "Earn.service_state"),
+    "Null": ("Null.blank_rows", "Null.schema_default"),
+    "Vocab": ("Vocab.alias", "Vocab.identity"),
+    "Carr": ("Carr.D1", "Carr.D2", "Carr.D3", "Carr.detector"),
+    "Narr": ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint"),
+    "Dens": ("Dens.served",),
+    "Build": ("Build.completion", "Build.contract", "Build.count_integrity", "Build.dag", "Build.dep_liveness",
+              "Build.exercised", "Build.history", "Build.registered", "Build.target"),
+}
 E63_REQUIRED_FLOOR = {"Ldgr": 1, "Idem": 1, "Earn": 2, "Null": 2, "Vocab": 2, "Carr": 4, "Narr": 4, "Dens": 1, "Build": 9}
 # Where the registry defines a PASS BY DECLARATION (mirrors E5.1's nikasha_certify.DECLARATION_BASED; parity-tested):
 # criterion -> the asset kinds it applies to. A `basis: declaration` PASS anywhere else is not a PASS.
@@ -755,7 +776,25 @@ def _e63_registry_facts(repo, sha):
     return facts
 
 
+def _e63_check_pins(facts):
+    for gate, ids in E63_REQUIRED_CRITERIA.items():
+        if gate not in facts.cell_gates:
+            _e63_fail("registry_below_floor", f"the pinned gate {gate!r} is no longer in CELL_GATES")
+        for crit in ids:
+            e = facts.criteria.get(crit)
+            if e is None:
+                _e63_fail("registry_below_floor", f"pinned criterion {crit!r} (gate {gate}) is gone from {E63_CENSUS_PATH}: "
+                                                  "removing or renaming a required criterion would make ELEVATED easier; "
+                                                  "changing E63_REQUIRED_CRITERIA is a deliberate, reviewed edit")
+            if e["gate"] != gate:
+                _e63_fail("registry_below_floor", f"pinned criterion {crit!r} moved from gate {gate} to {e['gate']}")
+            lost = [L for L in E63_PINNED_LAYERS if L not in e["layers"]]
+            if lost:
+                _e63_fail("registry_below_floor", f"pinned criterion {crit!r} no longer applies in {lost}")
+
+
 def _e63_check_floor(facts):
+    _e63_check_pins(facts)
     floor = E63_REQUIRED_FLOOR
     stray = sorted(set(floor) - set(facts.cell_gates))
     if stray:
@@ -777,25 +816,32 @@ def _e63_layer_of(asset, facts, where):
     return hits[0]
 
 
-_E63_GENERATOR = []
+_E63_GENERATORS = {}
+E63_GENERATOR_PATH = E63_CONTROL_DIR + "/generate_level_map.py"
 
 
-def _e63_generator():
-    """The sibling generate_level_map.py (its strict seed parser is the one place the seed is read)."""
-    if not _E63_GENERATOR:
-        import importlib.util
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "generate_level_map.py")
-        spec = importlib.util.spec_from_file_location("generate_level_map_for_tracker", path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        _E63_GENERATOR.append(mod)
-    return _E63_GENERATOR[0]
+def _e63_generator(repo, sha):
+    """generate_level_map.py AS COMMITTED at `ref` (its strict seed parser is the one place the seed is read): the
+    parser is read from the ref like every other input, never from the working tree. It is the repository's own tool
+    at the commit being judged; a ref without it raises."""
+    key = (str(repo), sha)
+    if key not in _E63_GENERATORS:
+        import types
+        src = _e63_show(repo, sha, E63_GENERATOR_PATH)
+        mod = types.ModuleType("generate_level_map_at_ref")
+        mod.__file__ = str(os.path.join(str(repo), E63_GENERATOR_PATH))     # only its CLI default reads this
+        try:
+            exec(compile(src, f"{E63_GENERATOR_PATH}@{sha[:12]}", "exec"), mod.__dict__)
+        except Exception as e:                       # noqa: BLE001 - any failure to load the ref's tool is unreadable
+            _e63_fail("registry_unreadable", f"{E63_GENERATOR_PATH} at {sha[:12]} cannot be loaded ({type(e).__name__}: {e})")
+        _E63_GENERATORS[key] = mod
+    return _E63_GENERATORS[key]
 
 
 def _e63_registry_assets(repo, sha):
     """{asset_id: asset_kind or None} the registry holds at `ref`: the seed's ASSETS, plus LEVEL_MAP.json's levels
     when that file is committed (the frozen map of the live registry)."""
-    gen = _e63_generator()
+    gen = _e63_generator(repo, sha)
     try:
         rows = gen.parse_seed_text(_e63_show(repo, sha, E63_SEED_PATH).decode("utf-8"))
     except (gen.LevelMapError, UnicodeDecodeError) as e:
@@ -825,7 +871,7 @@ class _Ledger:
     by_key: dict            # cert_key -> [certificate records] in generation order
     pos: dict               # cert_id -> seq of its line
     invalidated: dict       # invalidated cert_id -> its (first) invalidation event
-    last_covers: int | None  # covers_seq of the LAST watermark (None: no watermark line)
+    last_covers: int | None  # the largest covers_seq over all watermark lines (None: no watermark line)
     unevaluated: int        # certificates with seq > the last watermark's covers_seq
 
 
@@ -908,13 +954,13 @@ def _e63_check_epoch_reset(r, n, facts):
         _e63_fail("malformed", f"{E63_CERTS_PATH} line {n}: malformed epoch_reset (asset _ledger, a layer, a decision id N-xx)")
 
 
-def _e63_check_watermark(r, n, certs, last_covers):
+def _e63_check_watermark(r, n, certs):
     where = f"{E63_CERTS_PATH} line {n}"
     cov, ep, last = r.get("covers_seq"), r.get("certs_processed"), r.get("last_cert_id")
     if (r.get("asset") != "_ledger" or not _e63_nonblank(r.get("commit")) or not _e63_int(cov) or not _e63_int(ep)):
         _e63_fail("malformed", f"{where}: malformed watermark line")
-    if cov < 0 or cov >= n or (last_covers is not None and cov < last_covers):
-        _e63_fail("watermark_mismatch", f"{where}: covers_seq {cov} is outside 0..{n - 1} or behind the previous watermark")
+    if cov < 0 or cov >= n:
+        _e63_fail("watermark_mismatch", f"{where}: covers_seq {cov} is outside 0..{n - 1}")
     covered = [c for c in certs if c["seq"] <= cov]
     want_last = covered[-1]["cert_id"] if covered else None
     if ep != len(covered) or last != want_last:
@@ -932,7 +978,7 @@ def _e63_parse_certs(data, facts):
         where = f"{E63_CERTS_PATH} line {n}"
         if r.get("asset") == "_schema":
             _e63_fail("malformed", f"{where}: a second `_schema` row")
-        is_cert = _e63_is_cert_line(r)
+        is_cert = "type" not in r and _e63_is_cert_line(r)       # a line that names a `type` is an event or invalid
         if not is_cert and not _e63_is_event_line(r):
             _e63_fail("malformed", f"{where}: not a record this reader can trust (a certificate needs cert_key/"
                                    "generation/cert_id/verdict; any other line needs a `type` in "
@@ -957,8 +1003,8 @@ def _e63_parse_certs(data, facts):
             _e63_check_invalidation(r, n, cert_by_id, facts)
             led.invalidated.setdefault(r["invalidates"], r)
         elif r["type"] == "watermark":
-            _e63_check_watermark(r, r["seq"], certs, led.last_covers)
-            led.last_covers = r["covers_seq"]
+            _e63_check_watermark(r, r["seq"], certs)
+            led.last_covers = max(led.last_covers or 0, r["covers_seq"])      # E5.5: the furthest evaluation counts
         elif r["type"] == "epoch_reset":
             _e63_check_epoch_reset(r, n, facts)
         else:
@@ -969,16 +1015,16 @@ def _e63_parse_certs(data, facts):
 
 
 # ---- gaps and dispositions -----------------------------------------------------------------------------------------
-def _e63_parse_gaps(data, known):
+def _e63_parse_gaps(data, known, info_families):
     """The EFFECTIVE gap rows. Keyed (asset, gap_id): the latest row wins; a row with no gap_id stands alone; a row
     folded by `superseded_by` (same asset, chains resolved, a cycle or a dangling target raises) is carried by the
     chain's terminal row."""
     rows = _e63_lines(data, E63_GAPS_PATH)
-    latest, loose = {}, []
+    latest, loose, first = {}, [], {}
     for n, _raw, r in rows[1:]:
         where = f"{E63_GAPS_PATH} line {n}"
         asset = r.get("asset")
-        if asset in E63_PSEUDO_GAP_ASSETS:
+        if isinstance(asset, str) and asset in E63_PSEUDO_GAP_ASSETS:
             continue
         if not isinstance(asset, str) or asset not in known:
             _e63_fail("malformed", f"{where}: asset {asset!r} is not a known asset (certificates, dispositions or the "
@@ -998,6 +1044,13 @@ def _e63_parse_gaps(data, known):
             _e63_fail("malformed", f"{where}: gap_id / superseded_by must be non-blank text when present")
         eff = dict(asset=asset, kind=kind, state=state, criterion=crit, gap_id=gid, superseded_by=sup, line=n)
         if gid:
+            # a gap's identity is (asset, gap_id, criterion, kind) as FIRST written: a later row may change its state,
+            # never what it is about or whether it blocks (re-keying an open core-gate gap to `opportunity` or to a
+            # non-gate family would make it vanish)
+            f = first.setdefault((asset, gid), (kind, crit, n))
+            if (kind, crit) != f[:2]:
+                _e63_fail("malformed", f"{where}: gap {gid!r} of {asset} was first written as kind {f[0]!r}, criterion "
+                                       f"{f[1]!r} (line {f[2]}) and may not change to kind {kind!r}, criterion {crit!r}")
             latest[(asset, gid)] = eff
         else:
             loose.append(eff)
@@ -1015,7 +1068,17 @@ def _e63_parse_gaps(data, known):
                 _e63_fail("malformed", f"{E63_GAPS_PATH} line {g['line']}: superseded_by {cur['superseded_by']!r} names "
                                        f"no gap_id of asset {g['asset']}")
             seen.add(nxt)
-            cur = latest[nxt]
+            tgt = latest[nxt]
+            origin_can_block = cur["criterion"].split(".", 1)[0] not in info_families
+            if origin_can_block and (tgt["criterion"].split(".", 1)[0] != cur["criterion"].split(".", 1)[0]
+                                     or tgt["kind"] != "gap" or cur["kind"] != "gap"):
+                # the real ledger folds a renamed criterion within ONE gate (Vocab.rule1.alias -> Vocab.alias, R79) and
+                # non-gate rows among themselves (Complete.depth -> Completeness.*); a fold of a row that CAN block into
+                # another gate/family or a non-gap row would move an open gap out from under its gate
+                _e63_fail("malformed", f"{E63_GAPS_PATH} line {cur['line']}: a gap may only be folded into a kind=gap row "
+                                       f"of the SAME gate family ({cur['criterion']!r} -> {tgt['criterion']!r}, "
+                                       f"{cur['kind']} -> {tgt['kind']})")
+            cur = tgt
         # folded: the terminal row (a member of `latest`) is counted on its own
     return out
 
@@ -1043,7 +1106,7 @@ def _e63_parse_dispositions(data, facts, registry):
                                            or x in facts.criteria for x in a) or len(set(a)) != len(a)):
             _e63_fail("malformed", f"{where}: additions must be unique addition ids that do not shadow a registered criterion")
         adds.setdefault(asset, set()).update(a)
-        latest[asset] = dict(disposition=disp, reason=(r.get("reason") or "").strip())
+        latest[asset] = dict(disposition=disp, reason=_e63_clean(r.get("reason") or ""))
     return {a: dict(d, additions=tuple(sorted(adds[a]))) for a, d in latest.items()}
 
 
@@ -1209,7 +1272,7 @@ def elevated_assets(ref: str, repo: str) -> set:
                                                           "watermark: E5.5 has not evaluated them")
     disp = _e63_parse_dispositions(_e63_show(repo, sha, E63_DISPOSITIONS_PATH), facts, registry)
     known = set(registry) | set(disp) | {k.split("|", 1)[0] for k in led.by_key}
-    gap_rows = _e63_parse_gaps(_e63_show(repo, sha, E63_GAPS_PATH), known)
+    gap_rows = _e63_parse_gaps(_e63_show(repo, sha, E63_GAPS_PATH), known, facts.info_families)
     _e63_check_info_rekeys(gap_rows, disp, facts)
     gaps = {}
     for g in gap_rows:

@@ -22,7 +22,7 @@ import tempfile
 import pytest
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _e6_3_fixtures import (CERTS, MINI_FLOOR, World, chained, cert, disp, load_tracker, sha,  # noqa: E402
+from _e6_3_fixtures import (CERTS, MINI_FLOOR, mini_patch, World, chained, cert, disp, load_tracker, sha,  # noqa: E402
                             writer_path)
 
 T = load_tracker()
@@ -32,7 +32,7 @@ GOV = pathlib.Path(__file__).resolve().parents[1]
 
 @pytest.fixture(autouse=True)
 def mini_floor(monkeypatch):
-    monkeypatch.setattr(T, "E63_REQUIRED_FLOOR", MINI_FLOOR)
+    mini_patch(monkeypatch, T)
 
 
 def golden_world(tmp_path, name):
@@ -194,6 +194,10 @@ def _variants():
         out[i] = json.dumps(r)
         return ("\n".join(out) + "\n").encode()
 
+    wm = json.loads(lines[-1])
+    small = dict(wm, covers_seq=3, certs_processed=3, last_cert_id=json.loads(lines[3])["cert_id"], seq=wm["seq"] + 1,
+                 prev_sha256=sha(lines[-1].encode()))
+    late_smaller = (clean.decode() + json.dumps(small) + "\n").encode()
     dele = list(lines)
     del dele[4]
     swap = list(lines)
@@ -205,6 +209,7 @@ def _variants():
         "deleted_line": ("\n".join(dele) + "\n").encode(), "reordered": ("\n".join(swap) + "\n").encode(),
         "duplicate_key": ("\n".join(lines[:-1] + [lines[-1][:-1] + ', "asset": "z"}']) + "\n").encode(),
         "torn_tail": clean.rstrip(b"\n")[:-9], "second_schema": ("\n".join(lines[:3] + [lines[0]] + lines[3:]) + "\n").encode(),
+        "late_smaller_watermark": late_smaller,
         "extra_blank_lines": ("\n".join(lines[:4] + ["", ""] + lines[4:]) + "\n").encode(),
     }
 
@@ -234,7 +239,7 @@ def _e55_or_skip(probe_dir, data):
     return theirs
 
 
-@pytest.mark.parametrize("name", ["clean", "after_invalidation"])
+@pytest.mark.parametrize("name", ["clean", "after_invalidation", "late_smaller_watermark"])
 def test_parity_current_certificates_and_watermark_match_e5_5(probe_dir, tmp_path, name):
     data = _variants()[name]
     theirs = _e55_or_skip(probe_dir, data)

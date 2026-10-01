@@ -14,7 +14,7 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _e6_3_fixtures import (CENSUS, CERTS, DISP, GAPS, MINI_CENSUS, MINI_FLOOR, SEED, World, cert, disp,  # noqa: E402
+from _e6_3_fixtures import (CENSUS, CERTS, DISP, GAPS, MINI_CENSUS, MINI_FLOOR, mini_patch, SEED, World, cert, disp,  # noqa: E402
                             gap, git, inval, jsonl, load_tracker, watermark)
 
 T = load_tracker()
@@ -23,7 +23,7 @@ ALL = {"ga_alpha", "bg_beta", "ka_gamma"}
 
 @pytest.fixture(autouse=True)
 def mini_floor(monkeypatch):
-    monkeypatch.setattr(T, "E63_REQUIRED_FLOOR", MINI_FLOOR)
+    mini_patch(monkeypatch, T)
 
 
 @pytest.fixture
@@ -447,16 +447,27 @@ def test_a_watermark_that_miscounts_misnames_or_overreaches_raises(w, over):
     assert e.value.code == "watermark_mismatch"
 
 
-def test_a_watermark_whose_covers_seq_goes_backwards_raises(w):
+def test_a_late_smaller_truthful_watermark_is_accepted_and_the_largest_covers_seq_governs(w):
+    # E5.5's rule (watermark_status uses the furthest evaluation): a smaller truthful watermark appended later is fine
     from _e6_3_fixtures import chained
     rows = list(w.certs)
     rows.append(watermark(rows))
     rows.append(dict(watermark(rows[:3]), covers_seq=2, certs_processed=2, last_cert_id=rows[1]["cert_id"]))
     w.raw[CERTS] = chained(rows)
     w.commit()
-    with pytest.raises(T.ElevatedInputError) as e:
+    assert w.elevated(T) == ALL
+
+
+def test_a_late_smaller_watermark_does_not_cover_certificates_the_largest_one_does_not(w):
+    from _e6_3_fixtures import chained
+    rows = list(w.certs[:5])
+    rows.append(watermark(rows))                                  # covers the first 5
+    rows += w.certs[5:]                                           # certificates after it
+    rows.append(dict(watermark(rows[:3]), covers_seq=2, certs_processed=2, last_cert_id=rows[1]["cert_id"]))
+    w.raw[CERTS] = chained(rows)
+    w.commit()
+    with pytest.raises(T.WatermarkOlderThanLedger):
         w.elevated(T)
-    assert e.value.code == "watermark_mismatch"
 
 
 @pytest.mark.parametrize("over", [dict(asset="ga_alpha"), dict(covers_seq="9"), dict(covers_seq=True),

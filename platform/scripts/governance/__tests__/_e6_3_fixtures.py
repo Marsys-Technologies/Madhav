@@ -28,6 +28,7 @@ TRACKER_PATH = pathlib.Path(os.environ.get("E6_3_TRACKER_UNDER_TEST")
 CTRL = "00_ARCHITECTURE/control"
 CERTS, GAPS, DISP = f"{CTRL}/asset_certs.jsonl", f"{CTRL}/asset_gaps.jsonl", f"{CTRL}/asset_dispositions.jsonl"
 SEED = "platform/scripts/seed/asset_registry_seed.ts"
+GENERATOR = "00_ARCHITECTURE/control/generate_level_map.py"      # the registry-seed parser is read from the ref
 LEVEL_MAP = f"{CTRL}/LEVEL_MAP.json"
 CENSUS = "platform/scripts/governance/asset_census.py"
 WRITER_DIR = "platform/python-sidecar/pipeline/orchestrator/writers"
@@ -82,6 +83,15 @@ LAYER_OF = {"bg": "L0", "ga": "L1", "bo": "L2", "ka": "L3", "ph": "L4", "mi": "L
 LAYER_NAME = {"L0": "brahmagyan", "L1": "ganita", "L2": "bodha", "L3": "kala", "L4": "phala", "L5": "mimamsa"}
 # the floor the mini registry satisfies in every layer (tests that exercise the real floor patch it back)
 MINI_FLOOR = {"Ldgr": 1, "Idem": 2, "Null": 1, "Build": 1}
+# the pinned criterion ids the mini registry satisfies in every layer (Build.reg is L1/L2 only, so it is not pinned)
+MINI_PINNED = {"Ldgr": ("Ldgr.src",), "Idem": ("Idem.alt", "Idem.pat"), "Null": ("Null.x",),
+               "Build": ("Build.any", "Build.target")}
+
+
+def mini_patch(monkeypatch, tracker):
+    """Pin the floor AND the criterion ids the mini registry satisfies (the real ones name the real registry)."""
+    monkeypatch.setattr(tracker, "E63_REQUIRED_FLOOR", MINI_FLOOR)
+    monkeypatch.setattr(tracker, "E63_REQUIRED_CRITERIA", MINI_PINNED)
 
 
 def sha(b: bytes) -> str:
@@ -274,7 +284,7 @@ class World:
 
     def render(self):
         files = {CERTS: self.certs_text(), GAPS: jsonl(self.gaps), DISP: jsonl(self.disps), CENSUS: self.census,
-                 SEED: seed_text(self.seed_assets())}
+                 SEED: seed_text(self.seed_assets()), GENERATOR: (REPO / GENERATOR).read_text(encoding="utf-8")}
         if self.level_map is not None:
             files[LEVEL_MAP] = self.level_map
         files.update(self.raw)
