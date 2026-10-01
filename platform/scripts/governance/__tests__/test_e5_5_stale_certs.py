@@ -1466,18 +1466,60 @@ def test_a_watermark_that_miscounts_the_certificates_it_covers_is_a_lie_and_rais
     assert sc.watermark_ok(raw(ledger)) is True
 
 
-def test_a_watermark_cannot_move_backwards(ledger):
-    chain(ledger)
-    run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))
-    cert(ledger, "bg_e")
+def test_two_racing_runs_cannot_brick_the_ledger_a_late_smaller_watermark_is_harmless(ledger):
+    # run A reads at head 3; a certificate lands (seq 4); run B reads at head 4 and appends a watermark covering 4;
+    # run A then appends ITS watermark, which covers only 3. E5.1 accepts that line; this module must too.
+    a, b, c = cert(ledger, "bg_a"), cert(ledger, "bg_b"), cert(ledger, "bg_c")
+    head_a, _ = nc.chain_head(raw(ledger))
+    assert head_a == 3
+    d = cert(ledger, "bg_d")                                                        # lands after A's read
+    rb = run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d"))                           # B: covers seq 4 (watermark seq 5)
+    assert rb.watermark["covers_seq"] == 4
+    late = dict(type="watermark", asset="_ledger", covers_seq=head_a, certs_processed=3, last_cert_id=c, commit=COMMIT,
+                evaluated_on=NOW, record_version=1)
+    assert nc.append_records(ledger, [late]) == 1                                   # A's append (E5.1 accepts it)
+    ws = [x for x in lines(ledger) if x.get("type") == "watermark"]
+    assert [w["covers_seq"] for w in ws] == [4, 3]
+    # the ledger is still fully readable and the watermark reads as what it is: 4 certificates covered
+    assert sc.watermark_ok(raw(ledger)) is True
+    st = sc.watermark_status(raw(ledger))
+    assert st["ok"] is True and st["watermark"]["covers_seq"] == 4 and st["unevaluated"] == 0
+    assert sorted(v["cert_id"] for v in sc.current_certificates(raw(ledger)).values()) == sorted([a, b, c, d])
+    snap = raw(ledger)
+    assert run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d")).status == "unchanged" and raw(ledger) == snap
+    assert sc.read_ledger_file(ledger).last_seq == 6
+    # and later work goes on normally
+    e = cert(ledger, "bg_e")
+    assert sc.watermark_ok(raw(ledger)) is False
     run(ledger, obs("bg_a", "bg_b", "bg_c", "bg_d", "bg_e"))
-    rows = lines(ledger)
-    wms = [i for i, x in enumerate(rows) if x.get("type") == "watermark"]
-    # a second watermark that claims a smaller covered range than the first but whose counts are internally truthful
-    rows[wms[1]].update(covers_seq=0, certs_processed=0, last_cert_id=None)
-    write_chained(ledger, rows)
-    with pytest.raises(sc.LedgerShapeError):
-        sc.watermark_ok(raw(ledger))
+    assert sc.watermark_ok(raw(ledger)) is True and e in [x["cert_id"] for x in sc.current_certificates(raw(ledger)).values()]
+
+
+def test_a_late_smaller_watermark_never_takes_coverage_away(ledger):
+    cert(ledger, "bg_a")
+    cert(ledger, "bg_b")
+    run(ledger, obs("bg_a", "bg_b"))                                                # covers 2
+    first = lines(ledger)[-1]
+    nc.append_records(ledger, [dict(type="watermark", asset="_ledger", covers_seq=1, certs_processed=1,
+                                    last_cert_id=lines(ledger)[1]["cert_id"], commit=COMMIT, evaluated_on=NOW,
+                                    record_version=1)])
+    assert sc.watermark_status(raw(ledger))["ok"] is True
+    assert sc.watermark_status(raw(ledger))["watermark"]["seq"] == first["seq"]
+
+
+def test_every_watermark_is_still_judged_on_its_own_truth_even_when_late(ledger):
+    cert(ledger, "bg_a")
+    cert(ledger, "bg_b")
+    run(ledger, obs("bg_a", "bg_b"))
+    for bad in (dict(covers_seq=1, certs_processed=2, last_cert_id=lines(ledger)[2]["cert_id"]),     # miscounts its own range
+                dict(covers_seq=1, certs_processed=1, last_cert_id="bg_zzz|gate|Build.registered@1"),
+                dict(covers_seq=999, certs_processed=2, last_cert_id=lines(ledger)[2]["cert_id"])):
+        rows = lines(ledger) + [dict(type="watermark", asset="_ledger", commit=COMMIT, evaluated_on=NOW, record_version=1,
+                                     **bad)]
+        write_chained(ledger, [dict(r) for r in rows])
+        with pytest.raises(sc.LedgerShapeError):
+            sc.watermark_ok(raw(ledger))
+        write_chained(ledger, lines(ledger)[:-1])
 
 
 def test_a_certificate_appended_between_the_read_and_the_append_reads_as_behind_never_as_evaluated(ledger):

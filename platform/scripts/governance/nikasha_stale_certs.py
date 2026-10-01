@@ -55,8 +55,8 @@ certificate index, so it can neither shadow nor be mistaken for a certificate.
                  "reset_on": <tz-aware ISO>, "record_version": 1, "seq": .., "prev_sha256": ..}
 
 The watermark is OK iff the ledger's last watermark line is truthful (`certs_processed` / `last_cert_id` match the
-certificates with seq <= `covers_seq`, `covers_seq` is below the line's own seq and not behind the previous
-watermark) and NO certificate has seq > `covers_seq`. A certificate appended between this module's read and its
+certificates with seq <= `covers_seq`, `covers_seq` is below the line's own seq; the largest covers_seq over all
+watermarks counts, since racing runs may append them out of order) and NO certificate has seq > `covers_seq`. A certificate appended between this module's read and its
 append is therefore "behind", never a lie. An invalidated certificate is not current until a new generation is
 certified (E5.1). Events are outputs: they never make the watermark behind. A repeated invalidation of one
 certificate (two racing runs) is tolerated and counted once; the first wins.
@@ -581,8 +581,10 @@ def _check_watermark_line(r: dict, lg: Ledger, n: int) -> None:
         raise LedgerShapeError(f"seq {n}: malformed watermark line")
     covered = [c for c in lg.certs if c["seq"] <= cov]
     want_last = covered[-1]["cert_id"] if covered else None
-    if cov < 0 or cov >= n or (lg.wms and cov < lg.wms[-1]["covers_seq"]):
-        raise LedgerShapeError(f"seq {n}: watermark covers_seq {cov} is outside 0..{n - 1} or behind the previous watermark")
+    # No monotonicity clause: two racing runs may append watermarks out of order (the later-appended one covering less);
+    # each line is judged on its own truth (below), and readers take the MAX covers_seq over all watermarks.
+    if cov < 0 or cov >= n:
+        raise LedgerShapeError(f"seq {n}: watermark covers_seq {cov} is outside 0..{n - 1}")
     if ep != len(covered) or last != want_last:
         raise LedgerShapeError(f"seq {n}: the watermark claims {ep} certificate(s) ending {last!r} up to seq {cov} but "
                                f"the ledger holds {len(covered)} ending {want_last!r}: a watermark that miscounts is a lie")
@@ -776,9 +778,15 @@ def evaluate(data, observed, registry=None) -> Evaluation:
 
 # ═══════════════ (3) watermark ═══════════════
 
+def covered_seq(lg: Ledger) -> int:
+    """The greatest covers_seq over every watermark (0 if none): racing runs can append watermarks out of order, and
+    a watermark that covers less than an earlier one takes nothing away from it."""
+    return max((w["covers_seq"] for w in lg.wms), default=0)
+
+
 def watermark_status(data) -> dict:
     lg = _as_ledger(data)
-    wm = lg.wms[-1] if lg.wms else None
+    wm = max(lg.wms, key=lambda w: (w["covers_seq"], w["seq"])) if lg.wms else None
     cov = wm["covers_seq"] if wm else 0
     unevaluated = sum(1 for c in lg.certs if c["seq"] > cov)
     return dict(ok=wm is not None and unevaluated == 0, watermark=wm, unevaluated=unevaluated,
@@ -881,8 +889,8 @@ def invalidate(ledger_path, observed, *, commit, registry=None, now=None, observ
     if isinstance(cap, bool) or not isinstance(cap, int) or not 0 <= cap <= full.last_seq:
         raise StaleCertsError(f"observed_at_seq {observed_at_seq!r} is not within 0..{full.last_seq} (the ledger head)",
                               "bad_observed_at_seq")
-    if full.wms and cap < full.wms[-1]["covers_seq"]:
-        raise StaleCertsError(f"observed_at_seq {cap} is behind the existing watermark ({full.wms[-1]['covers_seq']})",
+    if full.wms and cap < covered_seq(full):
+        raise StaleCertsError(f"observed_at_seq {cap} is behind the existing watermark ({covered_seq(full)})",
                               "bad_observed_at_seq")
     lg = _ledger_from_records([r for r in records if r["seq"] <= cap])
     lg.inv_targets = dict(full.inv_targets)                      # an invalidation another run appended still counts
@@ -894,7 +902,7 @@ def invalidate(ledger_path, observed, *, commit, registry=None, now=None, observ
     for layer in sorted(layers):
         if counts.get(layer, 0) >= MAX_REWALKS:
             raise RewalkLimitExceeded(layer, counts[layer], ev.stale)
-    if not ev.stale and full.wms and all(c["seq"] <= full.wms[-1]["covers_seq"] for c in lg.certs):
+    if not ev.stale and full.wms and all(c["seq"] <= covered_seq(full) for c in lg.certs):
         return InvalidateResult("unchanged", [], None, None, path)
     walk = (max((r["walk"] for r in full.invs), default=0) + 1) if ev.stale else None
     out = []
