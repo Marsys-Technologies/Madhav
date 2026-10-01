@@ -432,12 +432,6 @@ class TestORX1OccurrenceOrdinalIdentity:
             == "Mars|conjunction|point:198.52|c0|4"
         )
 
-    test_occurrence_ordinals_under_one_physical_object = pytest.mark.xfail(
-        reason="A5.2 substrate not built: services.gochara_kernel.substrate "
-        "(physical_object_id / assign_occurrence_ordinals / contact_identity_bytes)",
-        strict=False,
-    )(test_occurrence_ordinals_under_one_physical_object)
-
 
 # ── O-SM-3 (§7): every station event swiss_refined ───────────────────────────
 
