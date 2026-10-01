@@ -1,8 +1,9 @@
 ---
 artifact: SCORING_RUN_4_1_PLAN
-version: "1.0"
-status: PREPARED (awaits A2.5; nothing on this page has been executed)
+version: "1.1"
+status: PREPARED (awaits A2.5; the dry-run of this plan against '3.0' data is B4_7_DRY_RUN_v1_0.md — every command below that can run before '4.1' exists has run green)
 date: 2026-09-30
+amended: 2026-10-01 (v1.1 — column names corrected to the production schema after the B4.7 dry-run found the v1.0 SQL named the adapter aliases, not the table columns; no threshold, horizon, or procedure change)
 author: Stream B (Śāstra), item B4.7
 declared_before: "any '4.1' scoring — this plan is written before generation '4.1' exists"
 ---
@@ -54,23 +55,30 @@ Mirror of `baseline_3_0_extract_v1_0.json`, generation substituted:
   at extract time that no dumped window falls outside it, and stop on violation:
 
 ```sql
+-- v1.1: production column names (window_start/window_end are DATE columns;
+-- the v1.0 text named the adapter aliases ws/we — corrected after the B4.7 dry-run).
 SELECT COUNT(*) AS outside_horizon
   FROM kala_gochara_windows
  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
    AND generation = '4.1'
-   AND ((we at time zone 'Asia/Kolkata')::date < DATE '1998-01-01'
-        OR (ws at time zone 'Asia/Kolkata')::date >= DATE '2026-04-18');
+   AND (((window_end at time zone 'Asia/Kolkata')::date) < DATE '1998-01-01'
+        OR ((window_start at time zone 'Asia/Kolkata')::date) >= DATE '2026-04-18');
 -- MUST BE 0 (horizon 1998-01-01 → 2026-04-18, end-exclusive); anything else ⇒ INPUT_REJECTED
+-- Dry-run 2026-10-01: query executes against production read-only; returns 0 ('4.1' absent).
 ```
 
 Dump (read-only role, governed path):
 
 ```sql
+-- v1.1: production column names, adapter aliases kept on the SELECT list so the
+-- output rows match the extract-file contract exactly (B4.7 dry-run verified:
+-- the same query shape against generation='3.0' reproduces the pinned 914-row
+-- extract, server-side md5 007aae8994b43b6291312f4719d1f949 == client-side).
 SELECT event_class,
-       (ws at time zone 'Asia/Kolkata')::date AS ws,
-       (we at time zone 'Asia/Kolkata')::date AS we,
-       (pk at time zone 'Asia/Kolkata')::date AS pk,
-       si, valence, adv, resolution, temporal_shape
+       (window_start at time zone 'Asia/Kolkata')::date AS ws,
+       (window_end   at time zone 'Asia/Kolkata')::date AS we,
+       (peak_date    at time zone 'Asia/Kolkata')::date AS pk,
+       signed_intensity AS si, valence, is_adverse AS adv, resolution, temporal_shape
   FROM kala_gochara_windows
  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
    AND generation = '4.1'
