@@ -63,6 +63,8 @@ Census used: the after-grant saved census named in the frontmatter (inspector 2a
 
 **Offline static re-scans on main's code** (indicative, not a census; method in `INDEX.md` §1): Dens.served rev 4 reads **NO_DETECTOR** — 1 module(s) reach it by code: L2_bodha/query_cdlm_summary.ts, but no served `SELECT ... FROM` its table was found (no served select): whether it is served cannot be told by code; Idem.pattern rev 2 reads **PASS**.
 
+**Build.dag rev 2 (E6 g+h; recompute over the saved registry BEFORE migration 1210, `/Users/Dev/suvarna-evidence/E6gh/recompute_result.json`, reads-match clause):** PASS (not in the recompute's L2 gate-diff list; no change from the saved rev-1 PASS) The saved census cell Build.dag PASS † above is the rev-1 reading.
+
 ## 2 · Gaps — which are real, which are detector gaps
 
 Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry row, declaration or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row from the 2026-09-27 run (`asset_gaps.jsonl` @ 2a78ec64d, not on main) that the saved 2026-09-30 census no longer reads as written; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3); **real-or-SS-question** = read in code, not measured by the census, whose verdict needs a ruling.
@@ -88,14 +90,14 @@ Approver under Track A brief §10: **Steward (G16)**.
 ### FD-1 · Record the produced-table set so completion compares like with like
 
 - **Answers:** Build.completion FAIL; CF-02
-- **Change:** declare the three produced tables (`bodha_cdlm_chart_summary`, `bodha_cdlm_domain_rollups`, `bodha_cdlm_pattern_clusters`) as this asset's produced set and have the completion check compare `rows_written` against the chart-scoped count over that set (option A of CF-02); the narrowed `count_sql` (migration 326, a deliberate cockpit choice) is left alone
-- **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` (produced-table set) + `asset_census.py` Build.completion (Track E)
+- **Change:** declare the three produced tables (`bodha_cdlm_chart_summary`, `bodha_cdlm_domain_rollups`, `bodha_cdlm_pattern_clusters`) as this asset's produced set and have the completion check compare `rows_written` against the chart-scoped count over that set (option A of CF-02); `count_sql` is left as it is (it names the one summary table; migration 326 does not mention this asset)
+- **Files / declaration / migration:** `asset_declarations.json` needs a SCHEMA EXTENSION first: version 1.6.0 has no produced-tables field (unlike `cross_asset_writes`, which exists), so a new field (for example `produced_tables`) plus its validator in `asset_census.py`/`test_e6_1_declarations.py` must land before the declaration can be made; then `asset_census.py` Build.completion reads it (Track E)
 - **Failing-first test and mutation:** failing-first: `rows_written` (70) equals the count over the declared set on a fixture and differs when one rollup row is deleted; mutation: remove the declaration → FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** declarations file and detector only; no asset, registry row or consumer changes (this asset has no registry dependents: 0 direct / 0 transitive)
 - **Rebuild:** none
 - **Gate it moves:** Build (completion)
-- **Fix class:** registry/declaration + detector/tooling; **buildable before J1:** tier-dependent: T4 §4.2 check 6 wording and the produced-set vocabulary (TGH-T2-05)
+- **Fix class:** declarations schema + detector/tooling; **buildable before J1:** tier-dependent: needs the declarations-schema extension, T4 §4.2 check 6 wording and the produced-set vocabulary (TGH-T2-05)
 
 ### FD-2 · Narr golden-value test for the declared prose columns
 
@@ -104,7 +106,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Files / declaration / migration:** a new test beside `platform/python-sidecar/tests/l2/` (one file per writer), registered in the declaration `evidence.prose_fields` so `Narr.fidelity_test` can find it; no asset or registry change
 - **Failing-first test and mutation:** failing-first: the test fails on a writer whose narrated value differs from the cited fact; mutation: change one composed value (a house number, a count) in the writer → the test fails
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** no stored value changes, so none of this asset's registry dependents is affected by it (direct 0: none; transitive 0); the touched surface is a new test beside `platform/python-sidecar/tests/l2/` (one file per writer), registered in the declaration `evidence.prose_fields` so `Narr.fidelity_test` can f
 - **Rebuild:** none
 - **Gate it moves:** Narr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling (test); **buildable before J1:** tier-independent (SS ruling 2026-10-01 defines narration; declarations 1.6.0 exists)
@@ -116,7 +118,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** no stored value changes, so none of this asset's registry dependents is affected by it (direct 0: none; transitive 0); the touched surface is a new check in the Nikaṣa inspector tooling (Track E) registered for this asset
 - **Rebuild:** none
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no tier clause
@@ -143,9 +145,9 @@ Natural key `(chart_id, ayanamsha_id)` (registry partition; the census `Vocab.id
 
 ## 7 · Rebuild and frozen-manifest consequences
 
-Frozen manifest: Nirmāṇa froze this asset under definition t1 on 2026-09-09 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 added no edge to this row; any registry edit proposed in §4 (`count_sql`, `natural_key_partition`, `catalog_status`, `depends_on`, `integrity_check_sql`) enters `registryContractFingerprintInput` and would stale the manifest. The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (none) re-run after it in DAG order; seed-derived transitive closure 0 assets. Idempotent per-chart delete-then-insert of three tables; no dependents.
+Frozen manifest: Nirmāṇa froze this asset under definition t1 on 2026-09-09 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 added no edge to this row. Manifest staleness has two severities (`src/lib/nirmana-elevation/definitions.ts:379-396`, `monitor.ts:374-393`): a `depends_on`, layer or membership change makes `assertManifestMatchesRegistryIdentity` throw (the monitor reports `plan_adaptation_required`; `dispatch_nirmana_campaign_wave.py` refuses the wave); a change to `count_sql`, `natural_key_partition`, `catalog_status`, `target_table` or `integrity_check_sql` only trips `assertManifestMatchesRegistry` (`evidence_refresh_required`: accepted evidence must be refreshed). The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (none) re-run after it in DAG order; seed-derived transitive closure 0 assets. **F-3 invariant (this asset carries or derives from MSR signal ids):** it must be rebuilt strictly after every MSR producer and not before a later MSR regeneration in the same window (`msr_rebuild_order_guard.py`, F3 `plan_invariant.md`); I-6: an unguarded MSR replace took the `kala_*` tables from 4 rows to 0 and erased the canonical chart's five Kāla tables on 2026-09-08; charts 1c826d5a and cb73cd3d (all-v4 ids) make the guard mandatory; see INDEX §7. Idempotent per-chart delete-then-insert of three tables; no dependents.
 
 ## 8 · Questions for Strategic Suvarṇa
 
-1. CF-02: option A (declared produced set, detector change) or widen `count_sql` (reverses the migration-326 narrowing)?
+1. CF-02: option A (declared produced set, detector change) or widen `count_sql` to the unnamed tables (precedent: migration 661 PART 3 widened `bo_sangati`'s `count_sql` to include `bodha_triangulation`)?
 2. CF-04: should the Dens/Reach detectors learn the `table_map` read pattern, or is the declaration the settled statement for this asset?

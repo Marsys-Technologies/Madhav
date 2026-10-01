@@ -65,6 +65,8 @@ Census emits **no cell** (absent, not N/A) for: Ldgr.source_presence (MF-L2-003,
 
 **Offline static re-scans on main's code** (indicative, not a census; method in `INDEX.md` §1): Dens.served rev 4 reads **PARTIAL** — 4 module(s) reach it by code: L2_bodha/query_contradictions.ts, L2_bodha/query_discoveries.ts, L5_mimamsa/query_mimamsa_discoveries.ts, register_d8_assess_domain.ts; a referencing capability declares density_contract but L2_bodha/query_discoveries.ts: tier carriage not established (a run; Idem.pattern rev 2 reads **PASS**.
 
+**Build.dag rev 2 (E6 g+h; recompute over the saved registry BEFORE migration 1210, `/Users/Dev/suvarna-evidence/E6gh/recompute_result.json`, reads-match clause):** PASS (not in the recompute's L2 gate-diff list; no change from the saved rev-1 PASS) The saved census cell Build.dag PASS † above is the rev-1 reading.
+
 ## 2 · Gaps — which are real, which are detector gaps
 
 Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry row, declaration or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row from the 2026-09-27 run (`asset_gaps.jsonl` @ 2a78ec64d, not on main) that the saved 2026-09-30 census no longer reads as written; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3); **real-or-SS-question** = read in code, not measured by the census, whose verdict needs a ruling.
@@ -96,7 +98,7 @@ Approver under Track A brief §10: **Steward (G16); FD-1 and FD-2 are output cha
 - **Files / declaration / migration:** `platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py` (`:416-430`)
 - **Failing-first test and mutation:** failing-first: no stored `ayanamsha_fragility` literal equals `low` on a discovery present in one ayanamsha only; the confidence is NULL or equals the documented function; mutation: restore the constants → the test fails
 - **Output change:** yes: `epistemic_jsonb`, `falsifier_jsonb` values change on every discovery row: SS (R5)
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** output change: this asset's registry dependents see new values after the rebuild (direct 3: `bo_chart_gestalt`, `bo_pramana_mapa`, `ph_nimitta`; transitive 21)
 - **Rebuild:** needs production rebuild of `bo_anveshana` (idempotent per-chart delete-then-insert) and then `bo_chart_gestalt` and `bo_pramana_mapa`, which read it: REVIEW item for SS
 - **Gate it moves:** Null (NO_DETECTOR → measured)
 - **Fix class:** writer code (+ SS ruling); **buildable before J1:** tier-dependent: the Null rule for a derived confidence (SS 2026-10-01) and the ruling
@@ -109,7 +111,7 @@ Approver under Track A brief §10: **Steward (G16); FD-1 and FD-2 are output cha
 - **Files / declaration / migration:** `bo_anveshana.py` (`:509`, `:585`, `:648`)
 - **Failing-first test and mutation:** golden-value test (CF-14): each template's expected string for a fixture row is written by hand and contains only values from the row; mutation: reintroduce "acharya's attentional threshold" → the lint flags an ungrounded claim
 - **Output change:** yes: the text of `why_an_acharya_misses_it` changes: SS (R5)
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** output change: this asset's registry dependents see new values after the rebuild (direct 3: `bo_chart_gestalt`, `bo_pramana_mapa`, `ph_nimitta`; transitive 21)
 - **Rebuild:** needs production rebuild of `bo_anveshana` and its readers (REVIEW item for SS)
 - **Gate it moves:** Narr
 - **Fix class:** writer code (+ SS ruling); **buildable before J1:** tier-dependent: the Narr verdict on an ungrounded claim
@@ -122,7 +124,7 @@ Approver under Track A brief §10: **Steward (G16); FD-1 and FD-2 are output cha
 - **Files / declaration / migration:** a new test beside `platform/python-sidecar/tests/l2/` (one file per writer), registered in the declaration `evidence.prose_fields` so `Narr.fidelity_test` can find it; no asset or registry change
 - **Failing-first test and mutation:** failing-first: the test fails on a writer whose narrated value differs from the cited fact; mutation: change one composed value (a house number, a count) in the writer → the test fails
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** no stored value changes, so none of this asset's registry dependents is affected by it (direct 3: `bo_chart_gestalt`, `bo_pramana_mapa`, `ph_nimitta`; transitive 21); the touched surface is a new test beside `platform/python-sidecar/tests/l2/` (one file per writer), registered in the declaration `evidence.prose_fields` so `Narr.fidelity_test` can f
 - **Rebuild:** none
 - **Gate it moves:** Narr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling (test); **buildable before J1:** tier-independent (SS ruling 2026-10-01 defines narration; declarations 1.6.0 exists)
@@ -134,7 +136,7 @@ Approver under Track A brief §10: **Steward (G16); FD-1 and FD-2 are output cha
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** no stored value changes, so none of this asset's registry dependents is affected by it (direct 3: `bo_chart_gestalt`, `bo_pramana_mapa`, `ph_nimitta`; transitive 21); the touched surface is a new check in the Nikaṣa inspector tooling (Track E) registered for this asset
 - **Rebuild:** none
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no tier clause
@@ -162,7 +164,7 @@ Natural key `discovery_id` (the census identity key; the registry partition is b
 
 ## 7 · Rebuild and frozen-manifest consequences
 
-Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-10 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 added no edge to this row; any registry edit proposed in §4 (`count_sql`, `natural_key_partition`, `catalog_status`, `depends_on`, `integrity_check_sql`) enters `registryContractFingerprintInput` and would stale the manifest. The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (`bo_chart_gestalt`, `bo_pramana_mapa`, `ph_nimitta`) re-run after it in DAG order; seed-derived transitive closure 21 assets. Idempotent per-chart delete-then-insert of two tables. It reads `bodha_signal_embeddings`, so it follows `bo_samskara`.
+Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-10 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 added no edge to this row. Manifest staleness has two severities (`src/lib/nirmana-elevation/definitions.ts:379-396`, `monitor.ts:374-393`): a `depends_on`, layer or membership change makes `assertManifestMatchesRegistryIdentity` throw (the monitor reports `plan_adaptation_required`; `dispatch_nirmana_campaign_wave.py` refuses the wave); a change to `count_sql`, `natural_key_partition`, `catalog_status`, `target_table` or `integrity_check_sql` only trips `assertManifestMatchesRegistry` (`evidence_refresh_required`: accepted evidence must be refreshed). The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (`bo_chart_gestalt`, `bo_pramana_mapa`, `ph_nimitta`) re-run after it in DAG order; seed-derived transitive closure 21 assets. Idempotent per-chart delete-then-insert of two tables. It reads `bodha_signal_embeddings`, so it follows `bo_samskara`.
 
 ## 8 · Questions for Strategic Suvarṇa
 

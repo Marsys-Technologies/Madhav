@@ -66,6 +66,8 @@ Census emits **no cell** (absent, not N/A) for: Ldgr.source_presence (MF-L2-003,
 
 **Offline static re-scans on main's code** (indicative, not a census; method in `INDEX.md` §1): Dens.served rev 4 reads **FAIL** — 2 module(s) reach it by code: L1_ganita/coverage_matrix.ts, L2_bodha/query_quality_scorecard.ts; 1 served select(s) of its table; no referencing capability that serves it declares density_contract; also a served select outside the scanned serving roots (not graded): platform/src/lib/admi; Idem.pattern rev 2 reads **PASS**.
 
+**Build.dag rev 2 (E6 g+h; recompute over the saved registry BEFORE migration 1210, `/Users/Dev/suvarna-evidence/E6gh/recompute_result.json`, reads-match clause):** PARTIAL — 10 resolved reads are covered, but the parse is incomplete: a table is named dynamically at `bo_pramana_mapa.py:100` and `execute()` is given SQL not traced to a literal at `:79`. Unchanged by 1210 (it adds no edge here); a detector-limit PARTIAL, not a missing edge. The saved census cell Build.dag PASS † above is the rev-1 reading.
+
 ## 2 · Gaps — which are real, which are detector gaps
 
 Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry row, declaration or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row from the 2026-09-27 run (`asset_gaps.jsonl` @ 2a78ec64d, not on main) that the saved 2026-09-30 census no longer reads as written; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3); **real-or-SS-question** = read in code, not measured by the census, whose verdict needs a ruling.
@@ -73,6 +75,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | gap id (ledger or census cell) | gate | class | note |
 |---|---|---|---|
 | `bo_pramana_mapa-Dens.served` / census cell Dens.served † | Dens | real (rev 1 and offline rev 4) | 1 module `query_quality_scorecard.ts` (plus an admin read outside the serving roots, not graded) and no `density_contract`; the offline rev-4 scan reads FAIL. 14 of 30 built columns served; the detector flags (`lel_zero_leak_pass`, `pillars_meet_reachability_pass`, `msr_no_threshold_drop_flag`, `notes`) are dark by default. FD-1; CF-04. |
+| `bo_pramana_mapa` Build.dag rev 2 (E6gh recompute) | Build (dag) | detector | PARTIAL: the reads-match parse is incomplete (a dynamically named table at `bo_pramana_mapa.py:100`, `execute()` given untraced SQL at `:79`); the 10 resolved reads are covered. A detector limit, not a missing edge; unchanged by 1210. |
 | `bo_pramana_mapa-Build.dep_liveness` | Build (dep_liveness) | history/ordering | 5 of 8 declared dependencies lit; `bo_upaya`, `bo_drishti`, `bo_anveshana` stale (built, upstream moved since). CF-10 / §7. |
 | `bo_pramana_mapa-Build.history` | Build (history) | history | latest run complete; 26 errors and 12 aborts on record (latest error 2026-09-10, `post-write integrity check failed: integrity_check_sql error: there is no parameter $1`, an integrity-SQL defect in a past run; the latest run completed). CF-10. |
 | census: no `Ldgr.source_presence` cell (MF-L2-003) | Ldgr | detector | the scorecard carries counts and flags, not citations; the carrying columns (`notes`, per-asset counts) need a declaration. CF-08. |
@@ -95,7 +98,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts`
 - **Failing-first test and mutation:** response-shape test: an empty chart returns the declared `empty_reason`; a NULL flag is returned as NULL (not false); mutation: drop the declaration → FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** consumers of the `query_quality_scorecard` tool: `registry/mcp_capability_bridge.ts`, the fan-out umbrella `register_d5_fanout.ts`, `platform-mcp/src/tools/registry_bridge.ts` and knowledge metadata; selecting the flags adds response fields (NULL stays NULL); no value changes
 - **Rebuild:** none
 - **Gate it moves:** Dens
 - **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 and N-22
@@ -107,7 +110,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** no stored value changes, so none of this asset's registry dependents is affected by it (direct 1: `bo_samvada`; transitive 1); the touched surface is a new check in the Nikaṣa inspector tooling (Track E) registered for this asset
 - **Rebuild:** none
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no tier clause
@@ -134,7 +137,7 @@ Natural key `(chart_id)` per scorecard (the table is keyed `(chart_id, build_id)
 
 ## 7 · Rebuild and frozen-manifest consequences
 
-Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-10 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 added no edge to this row; any registry edit proposed in §4 (`count_sql`, `natural_key_partition`, `catalog_status`, `depends_on`, `integrity_check_sql`) enters `registryContractFingerprintInput` and would stale the manifest. The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (`bo_samvada`) re-run after it in DAG order; seed-derived transitive closure 1 assets. It reads all other Bodha tables, so it is the last to run after any L2 rebuild; its row is single-per-chart and deleted by `replace_prior_scorecard`.
+Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-10 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 added no edge to this row. Manifest staleness has two severities (`src/lib/nirmana-elevation/definitions.ts:379-396`, `monitor.ts:374-393`): a `depends_on`, layer or membership change makes `assertManifestMatchesRegistryIdentity` throw (the monitor reports `plan_adaptation_required`; `dispatch_nirmana_campaign_wave.py` refuses the wave); a change to `count_sql`, `natural_key_partition`, `catalog_status`, `target_table` or `integrity_check_sql` only trips `assertManifestMatchesRegistry` (`evidence_refresh_required`: accepted evidence must be refreshed). The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (`bo_samvada`) re-run after it in DAG order; seed-derived transitive closure 1 assets. It reads all other Bodha tables, so it is the last to run after any L2 rebuild; its row is single-per-chart and deleted by `replace_prior_scorecard`.
 
 ## 8 · Questions for Strategic Suvarṇa
 

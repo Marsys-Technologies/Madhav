@@ -65,6 +65,8 @@ Census emits **no cell** (absent, not N/A) for: Ldgr.source_presence (MF-L2-003,
 
 **Offline static re-scans on main's code** (indicative, not a census; method in `INDEX.md` §1): Dens.served rev 4 reads **NO_DETECTOR** — no module in the serving roots references bodha_grounding_matches, but it is named outside the scanned serving roots where a served select cannot be ruled out (R51): platform/src/lib/nirmana-elevation/definitions.ts (a comment names it), platform/src/lib/nirmana-elevation/monitor.ts (a; Idem.pattern rev 2 reads **PASS**.
 
+**Build.dag rev 2 (E6 g+h; recompute over the saved registry BEFORE migration 1210, `/Users/Dev/suvarna-evidence/E6gh/recompute_result.json`, reads-match clause):** PASS (not in the recompute's L2 gate-diff list; no change from the saved rev-1 PASS) The saved census cell Build.dag PASS † above is the rev-1 reading.
+
 ## 2 · Gaps — which are real, which are detector gaps
 
 Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry row, declaration or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row from the 2026-09-27 run (`asset_gaps.jsonl` @ 2a78ec64d, not on main) that the saved 2026-09-30 census no longer reads as written; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3); **real-or-SS-question** = read in code, not measured by the census, whose verdict needs a ruling.
@@ -94,7 +96,7 @@ Approver under Track A brief §10: **Strategic Suvarṇa (integrate is parked to
 - **Files / declaration / migration:** `platform/src/lib/retrieval/**/resolver.ts` (grounding spine), a new `L2_bodha/query_grounding.ts` or a facet on `query_signals.ts`, registry `catalog_status` via CF-03
 - **Failing-first test and mutation:** a grounded signal in the spine carries its tier and granularity; an empty-citation `pratyaksa` row is not flagged; mutation: drop the field from the SELECT → the spine test fails
 - **Output change:** yes (new served fields): SS (R5)
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** output change: this asset's registry dependents see new values after the rebuild (direct 0: none; transitive 0)
 - **Rebuild:** none for the table; the registry status edit stales no manifest (the asset is not frozen)
 - **Gate it moves:** Dens, Reach (and Earn once consumed)
 - **Fix class:** served surface (TS) + registry; **buildable before J1:** tier-dependent: how `grounding_tier` relates to the epistemic tiers (TGH row for the grounding doctrine) and TGH-T3-26
@@ -107,7 +109,7 @@ Approver under Track A brief §10: **Strategic Suvarṇa (integrate is parked to
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** no stored value changes, so none of this asset's registry dependents is affected by it (direct 0: none; transitive 0); the touched surface is a new check in the Nikaṣa inspector tooling (Track E) registered for this asset
 - **Rebuild:** none
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no tier clause

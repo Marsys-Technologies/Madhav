@@ -62,6 +62,8 @@ Census used: the after-grant saved census named in the frontmatter (inspector 2a
 
 **Offline static re-scans on main's code** (indicative, not a census; method in `INDEX.md` §1): Dens.served rev 4 reads **PARTIAL** — 4 module(s) reach it by code: L2_bodha/query_mechanisms.ts, reading_checklist.ts, register_d9_judgment.ts, platform-mcp/src/tools/register_p1_aliases.ts; a referencing capability declares density_contract but L2_bodha/query_mechanisms.ts: tier carriage not established (a run-time select; Idem.pattern rev 2 reads **PASS**.
 
+**Build.dag rev 2 (E6 g+h; recompute over the saved registry BEFORE migration 1210, `/Users/Dev/suvarna-evidence/E6gh/recompute_result.json`, reads-match clause):** FAIL — missing edge `bo_yantra_mechanism → bo_bimba` (reads `bodha_cgm_nodes` at `bo_yantra_mechanism.py:309`). **Migration 1210 added it; PASS afterwards (1210 header).** The saved census cell Build.dag PASS † above is the rev-1 reading.
+
 ## 2 · Gaps — which are real, which are detector gaps
 
 Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry row, declaration or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row from the 2026-09-27 run (`asset_gaps.jsonl` @ 2a78ec64d, not on main) that the saved 2026-09-30 census no longer reads as written; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3); **real-or-SS-question** = read in code, not measured by the census, whose verdict needs a ruling.
@@ -69,6 +71,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | gap id (ledger or census cell) | gate | class | note |
 |---|---|---|---|
 | census cell Dens.served † | Dens | detector (rev 4 PARTIAL) | saved rev-1 PASS (1 module declaring a contract); the offline rev-4 scan reads PARTIAL: `query_mechanisms.ts` declares `density_contract` (`:295`) but "tier carriage not established (a run-time select)" because the select column list is built at run time. A static select (or a declared tier column) would let the detector read PASS. FD-1; CF-04. |
+| `bo_yantra_mechanism` Build.dag rev 2 (E6gh recompute) | Build (dag) | information | the pre-1210 recompute read FAIL for the missing edge `bo_yantra_mechanism → bo_bimba` (`bodha_cgm_nodes` read at `bo_yantra_mechanism.py:309`); migration 1210 added it and the rev-2 detector reads PASS afterwards (1210 header). Resolved by 1210; kept here so the frozen-manifest consequence is visible (§7). |
 | `bo_yantra_mechanism-Build.dep_liveness` | Build (dep_liveness) | history/ordering | 1 of 3 declared dependencies lit at the census; `bo_cgm_motifs` and `bo_cgm_paths` stale (built, upstream moved since). After 1210 it declares four (`bo_bimba` added). An ordering fact for the next L2 rebuild, not an asset defect. CF-10 / §7. |
 | `bo_yantra_mechanism-Build.history` | Build (history) | history | latest run complete; 1 error and 3 aborts on record (latest error 2026-07-16, `BLOCKED: upstream bo_cgm_motifs, bo_cgm_paths, bo_karanajala did not complete`). CF-10. |
 | `bo_yantra_mechanism-Earn.build_record`, `-Cost.baseline`, `-Carr.detector` | Earn, Carr | detector | instrument absent / no D1-D3 detector; CF-05, CF-07. |
@@ -90,7 +93,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts`
 - **Failing-first test and mutation:** the rev-4 Dens scan reads PASS for the asset; mutation: remove the column from the select → PARTIAL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** consumers of the `query_mechanisms` tool: `retrieval/registry/layers/reading_checklist.ts`, `register_d9_judgment.ts` (the judgment tool), `pipeline/compiled_floor_adapter.ts`, `platform-mcp/src/server.ts` and `platform-mcp/src/tools/registry_bridge.ts`; selecting one more column adds a response field; the judgment path reads mechanisms, so its output gains the tier value only
 - **Rebuild:** none
 - **Gate it moves:** Dens
 - **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: Dens rule (T3 §26) and N-22
@@ -102,7 +105,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Files / declaration / migration:** a new test beside `platform/python-sidecar/tests/l2/` (one file per writer), registered in the declaration `evidence.prose_fields` so `Narr.fidelity_test` can find it; no asset or registry change
 - **Failing-first test and mutation:** failing-first: the test fails on a writer whose narrated value differs from the cited fact; mutation: change one composed value (a house number, a count) in the writer → the test fails
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** no stored value changes, so none of this asset's registry dependents is affected by it (direct 0: none; transitive 0); the touched surface is a new test beside `platform/python-sidecar/tests/l2/` (one file per writer), registered in the declaration `evidence.prose_fields` so `Narr.fidelity_test` can f
 - **Rebuild:** none
 - **Gate it moves:** Narr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling (test); **buildable before J1:** tier-independent (SS ruling 2026-10-01 defines narration; declarations 1.6.0 exists)
@@ -114,7 +117,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** no stored value changes, so none of this asset's registry dependents is affected by it (direct 0: none; transitive 0); the touched surface is a new check in the Nikaṣa inspector tooling (Track E) registered for this asset
 - **Rebuild:** none
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no tier clause
@@ -140,7 +143,7 @@ Natural key `(chart_id, ayanamsha_id, mechanism_class, fingerprint_hash)` (regis
 
 ## 7 · Rebuild and frozen-manifest consequences
 
-Frozen manifest: Nirmāṇa froze this asset under definition t1 on 2026-09-09 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 (applied; Track I) added this row's direct edge(s) `bo_bimba`, so its frozen manifest is stale against the registry fingerprint (1210 header, CONSEQUENCES 1: `assertManifestMatchesRegistryIdentity` throws on any `depends_on` change; its `asset_analysis_accepted` evidence no longer matches). The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (none) re-run after it in DAG order; seed-derived transitive closure 0 assets. It has no dependents of its own, so a rebuild is local, but it must run after `bo_cgm_motifs` and `bo_cgm_paths` (both stale upstream at the census).
+Frozen manifest: Nirmāṇa froze this asset under definition t1 on 2026-09-09 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 (applied; verified live 2026-10-01 14:37Z per the coordinator) added this row's direct edge(s) `bo_bimba`, so its frozen manifest is stale against the registry fingerprint (1210 header, CONSEQUENCES 1: the identity check throws on any `depends_on` change, so the monitor reads `plan_adaptation_required`). Manifest staleness has two severities (`src/lib/nirmana-elevation/definitions.ts:379-396`, `monitor.ts:374-393`): a `depends_on`, layer or membership change makes `assertManifestMatchesRegistryIdentity` throw (the monitor reports `plan_adaptation_required`; `dispatch_nirmana_campaign_wave.py` refuses the wave); a change to `count_sql`, `natural_key_partition`, `catalog_status`, `target_table` or `integrity_check_sql` only trips `assertManifestMatchesRegistry` (`evidence_refresh_required`: accepted evidence must be refreshed). The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (none) re-run after it in DAG order; seed-derived transitive closure 0 assets. It has no dependents of its own, so a rebuild is local, but it must run after `bo_cgm_motifs` and `bo_cgm_paths` (both stale upstream at the census).
 
 ## 8 · Questions for Strategic Suvarṇa
 

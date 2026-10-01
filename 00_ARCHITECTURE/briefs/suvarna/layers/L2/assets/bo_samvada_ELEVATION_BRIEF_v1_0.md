@@ -67,6 +67,8 @@ Census emits **no cell** (absent, not N/A) for: Ldgr.source_presence, Vocab.iden
 
 **Offline static re-scans on main's code** (indicative, not a census; method in `INDEX.md` §1): Dens.served rev 4 reads **NO_DETECTOR** — 1 serving-root file(s) naming vw_chart_digest lose the string scanner's sync (an unbalanced quote, a nested template literal, or a regex literal holding a quote desynced it): platform-mcp/src/tools/registry_bridge.ts; its served select and density_contract cannot be read — never FAIL,; Idem.pattern rev 2 reads **PARTIAL**.
 
+**Build.dag rev 2 (E6 g+h; recompute over the saved registry BEFORE migration 1210, `/Users/Dev/suvarna-evidence/E6gh/recompute_result.json`, reads-match clause):** PASS (not in the recompute's L2 gate-diff list; no change from the saved rev-1 PASS) The saved census cell Build.dag PASS † above is the rev-1 reading.
+
 ## 2 · Gaps — which are real, which are detector gaps
 
 Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry row, declaration or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row from the 2026-09-27 run (`asset_gaps.jsonl` @ 2a78ec64d, not on main) that the saved 2026-09-30 census no longer reads as written; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3); **real-or-SS-question** = read in code, not measured by the census, whose verdict needs a ruling.
@@ -76,8 +78,8 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | census cells Idem.pattern (PARTIAL), Build.completion (NO_DETECTOR); no Vocab/Ldgr cells | Idem, Build, Vocab, Ldgr | detector (applicability) | a view target: Idem reads PARTIAL ("no write to the asset's own table … nothing to replace; not graded N/A, since a static scan cannot prove a write's absence"), Build.completion NO_DETECTOR (the saved record `rows_written=1` counts the view object; the writer now returns `rows_inserted=0`), no Vocab or Ldgr cell. These are applicability facts for a view, not defects: they need N-22 rules (`NA_RULE_DECISIONS` is empty on main), not asset changes. CF-03 (declare kind). |
 | census: registry `count_sql` / seed / docstring (MF-L2-007) | Earn / Build | real (registry) | three statements disagree: live `count_sql` is the constant `SELECT 0 AS count`, the seed and the docstring say a chart-scoped `count(*)` over the view. A constant count cannot read false on writer failure (the earlier B8 finding, prior campaign). CF-03. |
 | declarations `kind: view` vs registry `asset_kind = data` | Build | real (registry/declaration) | the declarations file and the seed `storage_type: postgres_view` agree; the registry `asset_kind` reads `data` (declarations evidence). A kind is a fact, never a rule (declarations description), so the disagreement is listed, not resolved here. CF-03. |
-| `bo_samvada-Dens.served` / census cell Dens.served † | Dens | real as measured at rev 1; offline rev 4 NO_DETECTOR | saved rev-1 FAIL (1 module `query_ucd.ts`, 0 contracts); the offline rev-4 scan could not read the served surface (scanner desync in `registry_bridge.ts`). CF-04. |
-| `bo_samvada-Build.dep_liveness` | Build (dep_liveness) | history/ordering | 3 of 5 declared dependencies lit; `bo_upaya`, `bo_pramana_mapa` stale. The writer reads none of them any more, so the five declared edges only order a no-op behind them. CF-15. |
+| `bo_samvada-Dens.served` / census cell Dens.served † | Dens | detector (rev 1 FAIL; rev 4 NO_DETECTOR) | saved rev-1 FAIL (1 module `query_ucd.ts`, 0 contracts); the offline rev-4 scan could not read the served surface (scanner desync in `registry_bridge.ts`). CF-04. |
+| `bo_samvada-Build.dep_liveness` and the five declared edges | Build (dep_liveness, dag) | history/ordering + question | 3 of 5 declared dependencies lit; `bo_upaya`, `bo_pramana_mapa` stale. The writer (a no-op) reads none of them, but the VIEW it fronts aggregates exactly those assets' tables (layer instance §3.4: `bodha_contradictions`, `bodha_convergence`, `bodha_msr_signals`, `bodha_rm_resonances`, `synthesis_quality_scorecard`), so the five edges are the lineage and freshness gating of the view's inputs, not dead weight. Removing them would drop that gating: a trade-off, not a provable over-declaration. Recommendation: keep them unless the view is consolidated into a versioned projection that owns its own dependencies. CF-15 (kept, with this caveat). |
 | census: registry `natural_key_partition` | Idem | real (registry) | blank (MF-L2-009); the asset has no rows to partition. CF-03. |
 | `bo_samvada-Build.history` | Build (history) | history | latest run complete; 23 errors and 11 aborts on record (latest error 2026-08-12, `BLOCKED: upstream bo_pramana_mapa did not complete`). CF-10. |
 | `bo_samvada-Earn.build_record`, `-Cost.baseline`, `-Carr.detector` | Earn, Carr | detector | instrument absent / no D1-D3 detector; CF-05, CF-07. |
@@ -93,7 +95,7 @@ Approver under Track A brief §10: **Steward (G16) for qualify; any consolidatio
 ### FD-1 · Make the registry state what the asset is
 
 - **Answers:** the count_sql, kind and applicability gaps; CF-03
-- **Change:** (1) replace the constant `count_sql` with the chart-scoped read of the view (`SELECT count(*) FROM vw_chart_digest WHERE chart_id = $1`), the one the seed and the docstring already state; (2) align `asset_kind` with the declared `view`; (3) declare, via N-22 rules with decision ids, that Idem.pattern, Build.completion, Vocab and Ldgr are N/A for a view target
+- **Change:** (1) replace the constant `count_sql` with the chart-scoped read of the view (`SELECT count(*) FROM vw_chart_digest WHERE chart_id = $1`), the one the seed and the docstring already state, and set `target_floor` to 5 with it (the seed already says 5; live is 0 only because the constant count could never exceed it: with a real count the achieved value on the chart is 5, §N.4); (2) align `asset_kind` with the declared `view`; (3) declare, via N-22 rules with decision ids, that Idem.pattern, Build.completion, Vocab and Ldgr are N/A for a view target
 - **Files / declaration / migration:** one surgical migration + `asset_registry_seed.ts:1832-1850` literals; `asset_declarations.json` kind; `NA_RULE_DECISIONS` (Track E) for the N/A rules
 - **Failing-first test and mutation:** failing-first: `count_sql` returns 5 on the canonical chart and 0 on a chart with no signal rows (so it can read false); mutation: restore the constant → the count test fails
 - **Output change:** none
@@ -110,7 +112,7 @@ Approver under Track A brief §10: **Steward (G16) for qualify; any consolidatio
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** no stored value changes, so none of this asset's registry dependents is affected by it (direct 0: none; transitive 0); the touched surface is a new check in the Nikaṣa inspector tooling (Track E) registered for this asset
 - **Rebuild:** none
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no tier clause
@@ -119,7 +121,7 @@ Approver under Track A brief §10: **Steward (G16) for qualify; any consolidatio
 
 - **CF-03** — Registry correction batch (one surgical migration + seed literals). *This asset:* FD-1
 - **CF-04** — Dens (serving density) on the L2 served modules. *This asset:* Dens FAIL (rev 1)
-- **CF-15** — depends_on audit: declared edges versus what each writer reads. *This asset:* declared edges order a writer that reads nothing
+- **CF-15** — depends_on audit: declared edges versus what each writer reads. *This asset:* the five declared edges are the view's lineage/freshness gating: keep (trade-off recorded), not an over-declaration to remove
 - **CF-06** — prose_fields declarations for the L2 assets that have none (Null and Narr gates). *This asset:* declarations `prose_fields` null: a view with no composed text; declare `[]` with the view definition as evidence (DDL evidence is rejected by the validator: cite writer code, which composes nothing)
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* carriage: not applicable to a no-op writer; the view's own definition is the check (§6)
 - **CF-10** — Build.history PARTIAL is a record of past errors; no edit changes it. *This asset:* history PARTIAL
@@ -137,7 +139,7 @@ No rows are produced by the asset. The view's output is fingerprinted by its def
 
 ## 7 · Rebuild and frozen-manifest consequences
 
-Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-11 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 added no edge to this row; any registry edit proposed in §4 (`count_sql`, `natural_key_partition`, `catalog_status`, `depends_on`, `integrity_check_sql`) enters `registryContractFingerprintInput` and would stale the manifest. The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (none) re-run after it in DAG order; seed-derived transitive closure 0 assets. The writer is a no-op, so a rebuild changes nothing; the build record now reads `rows_inserted=0`. The registry edits in FD-1 stale the frozen manifest.
+Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-11 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 added no edge to this row. Manifest staleness has two severities (`src/lib/nirmana-elevation/definitions.ts:379-396`, `monitor.ts:374-393`): a `depends_on`, layer or membership change makes `assertManifestMatchesRegistryIdentity` throw (the monitor reports `plan_adaptation_required`; `dispatch_nirmana_campaign_wave.py` refuses the wave); a change to `count_sql`, `natural_key_partition`, `catalog_status`, `target_table` or `integrity_check_sql` only trips `assertManifestMatchesRegistry` (`evidence_refresh_required`: accepted evidence must be refreshed). The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (none) re-run after it in DAG order; seed-derived transitive closure 0 assets. The writer is a no-op, so a rebuild changes nothing; the build record now reads `rows_inserted=0`. The registry edits in FD-1 stale the frozen manifest.
 
 ## 8 · Questions for Strategic Suvarṇa
 

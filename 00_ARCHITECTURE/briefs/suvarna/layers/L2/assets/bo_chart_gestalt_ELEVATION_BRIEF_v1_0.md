@@ -65,6 +65,8 @@ Census emits **no cell** (absent, not N/A) for: Ldgr.source_presence (MF-L2-003,
 
 **Offline static re-scans on main's code** (indicative, not a census; method in `INDEX.md` §1): Dens.served rev 4 reads **PARTIAL** — 1 module(s) reach it by code: L2_bodha/query_chart_gestalt.ts; a referencing capability declares density_contract but L2_bodha/query_chart_gestalt.ts: no tier column in its served select; Idem.pattern rev 2 reads **PASS**.
 
+**Build.dag rev 2 (E6 g+h; recompute over the saved registry BEFORE migration 1210, `/Users/Dev/suvarna-evidence/E6gh/recompute_result.json`, reads-match clause):** PASS (not in the recompute's L2 gate-diff list; no change from the saved rev-1 PASS) The saved census cell Build.dag PASS † above is the rev-1 reading.
+
 ## 2 · Gaps — which are real, which are detector gaps
 
 Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry row, declaration or served surface; **detector** = the instrument for the claim is absent or its definition is the open point; **stale** = a ledger row from the 2026-09-27 run (`asset_gaps.jsonl` @ 2a78ec64d, not on main) that the saved 2026-09-30 census no longer reads as written; **history** = a recorded past run outcome that no edit can change; **information** = Cost/Count/Complete/Reach, never a blocker (D3); **real-or-SS-question** = read in code, not measured by the census, whose verdict needs a ruling.
@@ -94,7 +96,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts`
 - **Failing-first test and mutation:** the rev-4 scan reads PASS; mutation: remove the column → PARTIAL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** consumers of the `query_chart_gestalt` tool: `vidhi/inquiry/compiler.ts` and its acceptance corpus `beyond_acarya_acceptance.corpus.ts`, `retrieval/synthesis/instrument.ts`, `synthesis/surface_gateway.ts`, `registry/tool_name_bridge.ts`; one more selected column, no value changes
 - **Rebuild:** none
 - **Gate it moves:** Dens
 - **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 and N-22
@@ -106,7 +108,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Files / declaration / migration:** a column comment (migration) or the declarations file; no writer change
 - **Failing-first test and mutation:** `Complete.depth` reads PASS or the column is declared; mutation: write `[]` into `pivot_ids` → the Null test flags a neutral default
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** no stored value changes, so none of this asset's registry dependents is affected by it (direct 0: none; transitive 0); the touched surface is a column comment (migration) or the declarations file
 - **Rebuild:** none
 - **Gate it moves:** Complete (information), Null
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent
@@ -118,7 +120,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents); the change is local to this asset’s record or declaration unless the output change says otherwise
+- **Blast radius:** no stored value changes, so none of this asset's registry dependents is affected by it (direct 0: none; transitive 0); the touched surface is a new check in the Nikaṣa inspector tooling (Track E) registered for this asset
 - **Rebuild:** none
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no tier clause
@@ -145,7 +147,7 @@ Natural key `(chart_id, ayanamsha_id)` (registry partition). Fingerprint: the po
 
 ## 7 · Rebuild and frozen-manifest consequences
 
-Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-10 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 added no edge to this row; any registry edit proposed in §4 (`count_sql`, `natural_key_partition`, `catalog_status`, `depends_on`, `integrity_check_sql`) enters `registryContractFingerprintInput` and would stale the manifest. The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (none) re-run after it in DAG order; seed-derived transitive closure 0 assets. Idempotent per-chart delete-then-insert; terminal asset (no dependents). It must run after `bo_anveshana` and `bo_cgm_paths`, both stale at the census.
+Frozen manifest: Nirmāṇa froze this asset under definition t2 on 2026-09-10 (NIRMANA_SUPERSESSION_RECORD §2.3). Migration 1210 added no edge to this row. Manifest staleness has two severities (`src/lib/nirmana-elevation/definitions.ts:379-396`, `monitor.ts:374-393`): a `depends_on`, layer or membership change makes `assertManifestMatchesRegistryIdentity` throw (the monitor reports `plan_adaptation_required`; `dispatch_nirmana_campaign_wave.py` refuses the wave); a change to `count_sql`, `natural_key_partition`, `catalog_status`, `target_table` or `integrity_check_sql` only trips `assertManifestMatchesRegistry` (`evidence_refresh_required`: accepted evidence must be refreshed). The Nirmāṇa campaign is OFF (NIRMANA_SUPERSESSION_RECORD §1, §3), so the staleness has no running consumer, but the frozen-definition DB row still reads `frozen`. **A production rebuild (SS REVIEW):** its direct dependents (none) re-run after it in DAG order; seed-derived transitive closure 0 assets. Idempotent per-chart delete-then-insert; terminal asset (no dependents). It must run after `bo_anveshana` and `bo_cgm_paths`, both stale at the census.
 
 ## 8 · Questions for Strategic Suvarṇa
 
