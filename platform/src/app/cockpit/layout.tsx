@@ -27,14 +27,15 @@ export default async function CockpitLayout({ children }: { children: React.Reac
       profile={ctx.profile}
       breadcrumb={[{ label: 'Cockpit', current: true }]}
     >
-      {/* BuildHeader nav strip sits below the AppShell breadcrumb — two-row header */}
-      <BuildHeader showAiConsole={getFlag('AI_CONSOLE_BYOK')} />
-      {children}
-      {generatedAt && (
-        <footer className="border-t border-border px-4 py-2 flex justify-end">
-          <FreshnessIndicator generatedAt={generatedAt} />
-        </footer>
-      )}
+      <div className="min-h-full bg-[#0a0806]">
+        <BuildHeader showAiConsole={getFlag('AI_CONSOLE_BYOK')} />
+        {children}
+        {generatedAt && (
+          <footer className="flex justify-end border-t border-[#382b18] px-4 py-2">
+            <FreshnessIndicator generatedAt={generatedAt} />
+          </footer>
+        )}
+      </div>
     </AppShell>
   )
 }

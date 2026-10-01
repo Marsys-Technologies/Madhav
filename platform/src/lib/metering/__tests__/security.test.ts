@@ -25,6 +25,16 @@ describe('scoped usage API',()=>{
   mocks.auth.mockResolvedValue({user:{uid:'alice'},profile:{status:'active'}});mocks.query.mockRejectedValue(new Error('password private'))
   const response=await GET(new Request('http://localhost/api/usage'));expect(response.status).toBe(503);expect(await response.text()).not.toContain('private')
  })
+ it('allows an owner to list only their scoped conversations',async()=>{
+  mocks.auth.mockResolvedValue({user:{uid:'alice'},profile:{status:'active'}})
+  mocks.query.mockResolvedValue({rows:[]})
+  const response=await GET(new Request('http://localhost/api/usage?view=conversations'))
+  expect(response.status).toBe(200)
+  expect(mocks.query.mock.calls[0][0]).toContain('c.user_id=g.user_id')
+  expect(mocks.query.mock.calls[0][1]).toContain('alice')
+  expect(mocks.query.mock.calls[0][1]).toContain(true)
+  expect((await GET(new Request('http://localhost/api/usage?view=conversations&userId=bob'))).status).toBe(400)
+ })
  it('bounds periods, dimensions and cursors',()=>{
   const scope={ownerId:'alice'}
   for(const query of ['from=2020-01-01T00:00:00Z','groupBy=user','groupBy=model;DROP TABLE profiles','limit=1001','view=trace','secret=x'])

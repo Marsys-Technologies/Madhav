@@ -2,7 +2,7 @@ import { afterAll,beforeAll,describe,expect,it } from 'vitest'
 import { Client } from 'pg'
 import { readFile } from 'node:fs/promises'
 import { insertAttempt,insertReceipt,importRateCard,importRateCards,type MeteringDb } from '../repository'
-import { parseUsageFilter,usageEvents,usageSummary,usageBreakdown,usageCsv } from '../queries'
+import { parseUsageFilter,usageEvents,usageSummary,usageBreakdown,usageConversations,usageCsv } from '../queries'
 import { normalizeSdkUsage } from '../usage'
 import { recoverReceipts } from '../service'
 import type { AttemptStart,AttemptReceipt } from '../types'
@@ -21,10 +21,15 @@ const rate=(effectiveFrom='2026-09-01T00:00:00.000Z',inputPerMillion='2')=>({id:
 describe.skipIf(!enabled)('disposable PostgreSQL ledger',()=>{
  beforeAll(async()=>{
   await client.connect()
-  await client.query(`CREATE ROLE amjis_app;CREATE ROLE browser_reader;
+  await client.query(`DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='amjis_app') THEN CREATE ROLE amjis_app; END IF;
+    IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='browser_reader') THEN CREATE ROLE browser_reader; END IF; END $$;
    CREATE TABLE llm_usage_events(event_id uuid PRIMARY KEY, user_id text,conversation_id text,prompt_id text,parent_prompt_id text,channel text,
    provider text,model text,pipeline_stage text,started_at timestamptz,finished_at timestamptz,status text,parameters jsonb,
    input_tokens bigint,output_tokens bigint,cache_read_tokens bigint,cache_write_tokens bigint,reasoning_tokens bigint,provider_request_id text,computed_cost_usd numeric)`)
+  await client.query(`CREATE TABLE conversations(id uuid PRIMARY KEY,user_id text NOT NULL,title text);
+    CREATE TABLE conversation_messages(id uuid PRIMARY KEY,conversation_id uuid NOT NULL,role text NOT NULL,
+      created_at timestamptz NOT NULL,parts_json jsonb NOT NULL DEFAULT '[]'::jsonb);
+    CREATE TABLE message_parts(message_id uuid NOT NULL,seq int NOT NULL,kind text NOT NULL,body jsonb NOT NULL)`)
   const sql=await readFile('supabase/migrations/1202_ai_metering_ledger.sql','utf8')
   await client.query('BEGIN');await client.query(sql);await client.query('COMMIT')
   await client.query('BEGIN');await client.query(sql);await client.query('COMMIT')
@@ -80,6 +85,32 @@ describe.skipIf(!enabled)('disposable PostgreSQL ledger',()=>{
   const detail=await usageEvents(filter('view=trace&turnId=turn'),{ownerId:'alice'},db);expect(detail.events).toHaveLength(3)
   expect((await usageSummary({...filter(),model:'absent'},{ownerId:'alice'},db)).known_cost_usd).toBeNull()
   const grouped=await usageBreakdown(filter('groupBy=channel'),{ownerId:'alice'},db);expect(grouped.groups[0].name).toBe('web')
+ })
+ it('groups transport leaves once, scopes snippets, and pages tied portal conversations',async()=>{
+  const conversationId=crypto.randomUUID()
+  await client.query('INSERT INTO conversations(id,user_id,title) VALUES($1,$2,$3)',[conversationId,'alice','A real conversation title'])
+  const messageId=crypto.randomUUID()
+  await client.query(`INSERT INTO conversation_messages(id,conversation_id,role,created_at,parts_json)
+    VALUES($1,$2,'user','2026-09-29T10:00:00Z',$3)`, [messageId,conversationId,JSON.stringify([{type:'text',text:'private first question'}])])
+  await client.query('INSERT INTO message_parts(message_id,seq,kind,body) VALUES($1,0,$2,$3)',
+    [messageId,'text',JSON.stringify({text:'The canonical first question'})])
+  const first=attempt('alice',{conversationId,turnId:'question-1',model:'conversation-model'})
+  const second=attempt('alice',{conversationId,turnId:'question-2',model:'conversation-model',channel:'mcp'})
+  const other=attempt('bob',{conversationId,turnId:'question-3',model:'conversation-model'})
+  for(const start of [first,second,other]) {await insertAttempt(start,db);await insertReceipt(start,receipt(start),db)}
+  const own=await usageConversations(filter('model=conversation-model&view=conversations'),{ownerId:'alice'},db)
+  expect(own.conversations).toHaveLength(1)
+  expect(own.conversations[0]).toMatchObject({attempts:2,turns:2,input_tokens:'200',output_tokens:'20',snippet:'The canonical first question',channel:'mixed'})
+  const adminFilter=parseUsageFilter(new URL('http://localhost/?view=conversations&from=2026-09-29T00:00:00Z&to=2026-09-30T00:00:00Z&model=conversation-model&limit=1'),{ownerId:null})
+  const portal=await usageConversations(adminFilter,{ownerId:null},db)
+  expect(portal.conversations).toHaveLength(1)
+  expect(portal.conversations[0].snippet).toBeNull()
+  expect(portal.nextCursor).toBeTruthy()
+  const next=await usageConversations({...adminFilter,cursor:portal.nextCursor!},{ownerId:null},db)
+  expect(next.conversations).toHaveLength(1)
+  expect(next.conversations[0].user_id).not.toBe(portal.conversations[0].user_id)
+  const selected=await usageConversations({...adminFilter,userId:'alice',limit:10},{ownerId:null},db)
+  expect(selected.conversations[0].snippet).toBe('The canonical first question')
  })
  it('does not duplicate a compatibility aggregate and labels historical usage',async()=>{
   const start=attempt();await insertAttempt(start,db)
