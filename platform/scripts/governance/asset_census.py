@@ -913,28 +913,49 @@ def grade_narr_agree(entries, table, columns, types) -> dict:
     return grade_narr_agree_tables(entries, {table: (columns, types)} if table else {})
 
 
-def grade_null_schema_default(entries, columns, defaults) -> dict:
-    """Null.schema_default: a plausible default can stand in for an underivable prose value when a declared prose
-    column carries a non-NULL DEFAULT. FAIL names it; otherwise PARTIAL, never PASS (writer literal fallbacks and
-    constant columns are not measured here). NO_DETECTOR when the columns or defaults were not read."""
-    if not isinstance(columns, (list, tuple, set)) or not columns or not isinstance(defaults, dict):
-        return dict(v=NO_DET, measured="NO_DETECTOR — the target table's columns or column defaults were not read")
+def _holders(col, own):
+    """The owned tables whose KNOWN columns include `col`."""
+    return [t for t, v in own.items() if isinstance(v[0], (list, tuple, set)) and v[0] and col in v[0]]
+
+
+def grade_null_schema_default_tables(entries, own) -> dict:
+    """Null.schema_default over the asset's owned tables (`own`: table -> (columns, types, defaults)): each declared
+    entry is read against the default of the owned table(s) that HOLD its column (a same-named column elsewhere is not
+    read). FAIL names a non-NULL default (an empty JSON container on a path-only column is structure, not a stand-in).
+    PARTIAL (never PASS) when none; NO_DETECTOR when an entry's column is held by no owned table or its table's
+    defaults were not read."""
     parsed = [parse_prose_field(e) for e in entries]
-    cols = sorted({c for c, _ in parsed})
-    # an empty JSON container default ('{}', '[]') on a column read only through JSON paths leaves every path NULL: it
-    # is structure, not a stand-in for the prose (a path value is still honestly absent)
-    hit = []
-    for c in cols:
-        d = defaults.get(c)
-        if d in (None, ""):
+    hit, unread = [], []
+    for col in sorted({c for c, _ in parsed}):
+        held = _holders(col, own)
+        if not held:
+            unread.append(f"{col} (no owned table holds it)")
             continue
-        if all(path is not None for col, path in parsed if col == c) and _EMPTY_JSON_DEFAULT.fullmatch(d):
-            continue
-        hit.append(f"{c} DEFAULT {d}")
+        for t in held:
+            dflts = own[t][2] if len(own[t]) > 2 else None
+            if not isinstance(dflts, dict):
+                unread.append(f"{col} (defaults of {t} not read)")
+                continue
+            d = dflts.get(col)
+            if d in (None, ""):
+                continue
+            if all(path is not None for c2, path in parsed if c2 == col) and _EMPTY_JSON_DEFAULT.fullmatch(d):
+                continue
+            hit.append(f"{t}.{col} DEFAULT {d}")
     if hit:
         return dict(v=FAIL, measured="declared prose column(s) carry a non-NULL schema default: " + "; ".join(hit))
+    if unread:
+        return dict(v=NO_DET, measured="NO_DETECTOR — the column default could not be read for: " + "; ".join(unread))
+    cols = sorted({c for c, _ in parsed})
     return dict(v=PARTIAL, measured=f"no schema default on the declared prose column(s) {', '.join(cols)}; writer "
                                     "literal fallbacks and constant columns are not measured here, so this is never PASS")
+
+
+def grade_null_schema_default(entries, columns, defaults) -> dict:
+    """Single-table form of grade_null_schema_default_tables (the target table's columns and defaults)."""
+    if not isinstance(columns, (list, tuple, set)) or not columns or not isinstance(defaults, dict):
+        return dict(v=NO_DET, measured="NO_DETECTOR — the target table's columns or column defaults were not read")
+    return grade_null_schema_default_tables(entries, {"(table)": (list(columns), None, defaults)})
 
 
 # Placeholder literals that stand in for NULL in prose (closed, lowercase; compared trimmed and lowercased).
@@ -998,38 +1019,49 @@ def prose_row_counts(table: str, entries, where_tail: str) -> dict:
         raise Unknown(f"prose row-count query returned a non-integer: {exc}") from exc
 
 
+UPPER_BOUND = "whole-table upper bound"
+
+
 def grade_narr_checkable(entries, counts) -> dict:
-    """Narr.checkable (SS 2026-10-01): rows actually CHECKABLE per declared entry. PASS: every entry has >= 1.
-    PARTIAL: some have none (named). Zero everywhere, or no row data: INCONCLUSIVE (NO_DETECTOR + inconclusive),
-    never PASS."""
+    """Narr.checkable (SS 2026-10-01): rows actually CHECKABLE per declared entry (`counts[entry]` = dict(checkable,
+    blank, scope), or None = unknown for that entry). PASS: every entry has >= 1 checkable row in a chart-scoped (or
+    chart-free) count; PARTIAL: some have none / are unknown, or the count is a whole-table upper bound (the scope is
+    named). Zero everywhere, unknown everywhere, or no row data: INCONCLUSIVE (NO_DETECTOR + inconclusive), never PASS."""
     if not isinstance(counts, dict):
         return dict(v=NO_DET, inconclusive=True, measured="INCONCLUSIVE: no row data was read for the declared prose "
                                                           "entries (scope unsupported or not measured); no PASS is possible")
-    n = {e: int((counts.get(e) or {}).get("checkable", 0)) for e in entries}
-    text = ", ".join(f"{e}={k}" for e, k in n.items())
+    n = {e: (None if counts.get(e) is None else int(counts[e].get("checkable", 0))) for e in entries}
+    scopes = sorted({counts[e]["scope"] for e in entries if counts.get(e) and counts[e].get("scope")})
+    extra = dict(scope="; ".join(scopes)) if scopes else {}
+    text = ", ".join(f"{e}={'unknown' if k is None else k}" for e, k in n.items())
     if not any(n.values()):
-        return dict(v=NO_DET, inconclusive=True, checkable=n,
+        return dict(v=NO_DET, inconclusive=True, checkable=n, **extra,
                     measured=f"INCONCLUSIVE: 0 checkable rows on every declared entry ({text})")
-    zero = [e for e, k in n.items() if not k]
-    if zero:
-        return dict(v=PARTIAL, checkable=n, measured=f"checkable rows per declared entry: {text}; none on {', '.join(zero)}")
-    return dict(v=PASS, checkable=n, measured=f"checkable rows per declared entry: {text}")
+    bad = [e for e, k in n.items() if not k]
+    if bad:
+        return dict(v=PARTIAL, checkable=n, **extra,
+                    measured=f"checkable rows per declared entry: {text}; none or unknown on {', '.join(bad)}")
+    if UPPER_BOUND in scopes:
+        return dict(v=PARTIAL, checkable=n, **extra, measured=f"checkable rows per declared entry: {text}; the count is a "
+                    f"{UPPER_BOUND} (count_sql unparseable, unshared table that carries chart_id): rows of other charts may count")
+    return dict(v=PASS, checkable=n, **extra, measured=f"checkable rows per declared entry: {text} ({'; '.join(scopes) or 'scope n/a'})")
 
 
 def grade_null_blank_rows(entries, counts) -> dict:
     """Null.blank_rows: declared prose rows holding a blank string or a placeholder literal instead of NULL. FAIL on
     any. PARTIAL (never PASS) when none in >= 1 checkable row; INCONCLUSIVE without row data or checkable rows."""
     if isinstance(counts, dict):
-        bad = {e: int((counts.get(e) or {}).get("blank", 0)) for e in entries}
+        bad = {e: (None if counts.get(e) is None else int(counts[e].get("blank", 0))) for e in entries}
         hit = [f"{e}={k}" for e, k in bad.items() if k]
         if hit:
             return dict(v=FAIL, blank=bad, measured="blank or placeholder rows standing in for NULL in declared prose "
                                                     "column(s): " + ", ".join(hit))
         if any((counts.get(e) or {}).get("checkable", 0) for e in entries):
-            return dict(v=PARTIAL, blank=bad, measured="no blank or placeholder row among the checkable prose rows; "
-                                                       "schema defaults are read by Null.schema_default and writer "
-                                                       "literal fallbacks and constant columns are not measured, so "
-                                                       "this is never PASS")
+            unk = [e for e, k in bad.items() if k is None]
+            return dict(v=PARTIAL, blank=bad, measured="no blank or placeholder row among the checkable prose rows"
+                        + (f" (unknown for {', '.join(unk)})" if unk else "") + "; schema defaults are read by "
+                        "Null.schema_default and writer literal fallbacks and constant columns are not measured, so "
+                        "this is never PASS")
     return dict(v=NO_DET, inconclusive=True,
                 measured="INCONCLUSIVE: no checkable prose rows were read for the declared entries")
 
@@ -1274,6 +1306,14 @@ NARR_CHECKS = ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint"
 NULL_CHECKS = ("Null.schema_default", "Null.blank_rows")
 
 
+def _own3(ctx: dict) -> dict:
+    """ctx -> {table: (columns, types, defaults)}: the owned tables when supplied (a 2-tuple has unread defaults),
+    else the single target table with ctx's columns/types/defaults."""
+    if ctx.get("own") is not None:
+        return {t: (v[0], v[1], v[2] if len(v) > 2 else None) for t, v in ctx["own"].items()}
+    return {ctx["table"]: (ctx.get("columns"), ctx.get("types"), ctx.get("defaults"))} if ctx.get("table") else {}
+
+
 def prose_checks(aid: str, decl, ctx: dict) -> dict:
     """The six Narr/Null records for one asset, from its declaration entry (`prose_fields`, `evidence`) and `ctx`:
     table, columns, types, defaults, counts (None = not read), paths (writer scope files), tests, vocabulary, written
@@ -1302,13 +1342,11 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
     ev = (decl.get("evidence") or {}).get("prose_fields") if isinstance(decl.get("evidence"), dict) else None
     out = {}
     for crit, fn in (
-            ("Narr.agree", lambda: grade_narr_agree_tables(pf, ctx["own"] if ctx.get("own") is not None else
-                                                          ({ctx["table"]: (ctx.get("columns"), ctx.get("types"))}
-                                                           if ctx.get("table") else {}))),
+            ("Narr.agree", lambda: grade_narr_agree_tables(pf, {t: (v[0], v[1]) for t, v in _own3(ctx).items()})),
             ("Narr.checkable", lambda: grade_narr_checkable(pf, ctx.get("counts"))),
             ("Narr.fidelity_test", lambda: narr_fidelity_scan(pf, ev, ctx.get("tests") or ())),
             ("Narr.lint", lambda: narr_lint_scan(ctx.get("paths") or ())),
-            ("Null.schema_default", lambda: grade_null_schema_default(pf, ctx.get("columns"), ctx.get("defaults"))),
+            ("Null.schema_default", lambda: grade_null_schema_default_tables(pf, _own3(ctx))),
             ("Null.blank_rows", lambda: grade_null_blank_rows(pf, ctx.get("counts")))):
         try:
             out[crit] = fn()
@@ -4070,17 +4108,14 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
     row counts from its own count_sql scope, the writer scope, tests) and calls prose_checks. Fault-isolated (R41)."""
     tbl = r["target_table"]
     pf = decl.get("prose_fields") if isinstance(decl, dict) else None
-    ctx = dict(table=tbl, columns=_target_columns_fact(tbl, cat), tests=ptests, vocabulary=vocab,
-               types=(cat.get("types") or {}).get(tbl) if cat.get("types") is not None else None,
-               defaults=((cat.get("defaults") or {}).get(tbl, {}) if tbl else {}) if cat.get("defaults") is not None else None,
-               counts=None, paths=[], written=None)
-    # the asset's own tables: the registry target plus every table its count_sql reads (a multi-table asset keeps its
-    # narration column outside the target_table); a table the catalog lacks is unknown, never 'zero columns'
     own = {}
     for t in dict.fromkeys([x for x in [tbl] + list(ctables) if x]):
         own[t] = (_target_columns_fact(t, cat),
-                  (cat.get("types") or {}).get(t) if cat.get("types") is not None else None)
-    ctx["own"] = own
+                  (cat.get("types") or {}).get(t) if cat.get("types") is not None else None,
+                  (cat.get("defaults") or {}).get(t, {}) if cat.get("defaults") is not None else None)
+    # the asset's own tables: the registry target plus every table its count_sql reads (a multi-table asset keeps its
+    # narration column outside the target_table); a table the catalog lacks is unknown, never 'zero columns'
+    ctx = dict(table=tbl, own=own, tests=ptests, vocabulary=vocab, counts=None, paths=[], written=None)
     if files and pf is not None:
         try:
             units, _beyond = _delegation_scope(aid, files)
@@ -4089,15 +4124,31 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
         except Unknown:
             pass
     errored = {}
-    if pf and tbl and tbl in cat["exists"]:
-        tail = _count_scope_tail(r["count_sql"], tbl)
-        if tail is None and tbl not in shared:
-            tail = ""
-        if tail is not None:
-            try:
-                ctx["counts"] = prose_row_counts(tbl, pf, _bind_chart(tail, CHART_ID))
-            except Unknown as exc:
-                errored = {c: dict(v=ERRORED, measured=f"check errored: {exc}") for c in ("Narr.checkable", "Null.blank_rows")}
+    if pf:
+        # each entry is counted in the owned table that HOLDS its column; an entry no owned table holds, or a table
+        # whose scope cannot be established (shared + unparseable count_sql), is unknown for that entry
+        counts: dict = {e: None for e in pf}
+        groups: dict = {}
+        for e in pf:
+            held = _holders(parse_prose_field(e)[0], own)
+            if held and held[0] in cat["exists"]:
+                groups.setdefault(held[0], []).append(e)
+        try:
+            for t, es in groups.items():
+                tail = _count_scope_tail(r["count_sql"], t)
+                if tail is not None:
+                    scope = "chart-scoped by count_sql" if _PARAM_1.search(tail) else "count_sql predicate (not chart-scoped)"
+                elif t in shared:
+                    continue
+                else:
+                    tail = ""
+                    scope = (UPPER_BOUND if "chart_id" in (own[t][0] or ()) else "whole-table (table has no chart_id column)")
+                got = prose_row_counts(t, es, _bind_chart(tail, CHART_ID))
+                for e in es:
+                    counts[e] = dict(got[e], scope=scope)
+            ctx["counts"] = counts if any(v is not None for v in counts.values()) else None
+        except Unknown as exc:
+            errored = {c: dict(v=ERRORED, measured=f"check errored: {exc}") for c in ("Narr.checkable", "Null.blank_rows")}
     out = prose_checks(aid, decl, ctx)
     out.update(errored)
     return out

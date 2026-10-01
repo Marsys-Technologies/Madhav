@@ -712,5 +712,87 @@ def test_measure_scopes_a_shared_table_only_by_its_count_sql_and_reads_an_unshar
     for a in ("bo_p", "bo_q"):
         m = w1._m(c, a, "Narr.checkable")
         assert m["v"] == ac.NO_DET and m["inconclusive"] is True, (a, m)
-    assert w1._m(c, "bo_r", "Narr.checkable")["v"] == ac.PASS
+    r = w1._m(c, "bo_r", "Narr.checkable")
+    assert r["v"] == ac.PARTIAL and r["scope"] == "whole-table upper bound", r      # F7: all-charts count is an upper bound
     assert len(seen) == 1 and seen[0].endswith(" FROM t_solo") and "t_own" not in seen[0], seen
+
+
+# ───────────────────────── review round: F2 / F3 / F7 (owned-table resolution, scope) ─────────────────────────
+
+def _cat(**tables):
+    """table -> (columns, types, defaults)"""
+    return dict(exists=set(tables), cols={t: v[0] for t, v in tables.items()}, keys={}, views=set(),
+                types={t: v[1] for t, v in tables.items()}, defaults={t: v[2] for t, v in tables.items()})
+
+
+def _mp(decl_fields, cat, ctables, shared=frozenset(), psql_rows=None, monkeypatch=None, csql=None):
+    sqls = []
+
+    def psql(sql, *a, **k):
+        sqls.append(sql)
+        if isinstance(psql_rows, Exception):
+            raise psql_rows
+        return psql_rows if psql_rows is not None else [["3", "0"] * len(decl_fields)][:1] and [["3", "0"] * len(decl_fields)]
+    monkeypatch.setattr(ac, "psql", psql)
+    r = dict(target_table="t_main", count_sql=csql or "SELECT count(*) FROM t_main WHERE chart_id = $1")
+    out = ac._measure_prose("a", _decl(decl_fields, "platform/python-sidecar/x.py:1"), r, [], cat, ctables, shared, [], set())
+    return out, sqls
+
+
+def test_the_count_query_runs_against_the_owned_table_that_holds_the_declared_column(monkeypatch):
+    cat = _cat(t_main=(["id", "chart_id"], {}, {}), t_facts=(["id", "citation_human"], {"citation_human": "text"}, {}))
+    out, sqls = _mp(["citation_human"], cat, ["t_main", "t_facts"], monkeypatch=monkeypatch)
+    assert len(sqls) == 1 and " FROM t_facts" in sqls[0] and "t_main" not in sqls[0], sqls
+    assert out["Narr.checkable"]["v"] != ac.ERRORED and out["Narr.checkable"]["checkable"] == {"citation_human": 3}
+
+
+def test_an_entry_no_owned_table_holds_is_unknown_for_that_entry_never_errored(monkeypatch):
+    cat = _cat(t_main=(["id", "chart_id"], {}, {}))
+    out, sqls = _mp(["ghost"], cat, ["t_main"], monkeypatch=monkeypatch)
+    assert sqls == [] and out["Narr.checkable"]["v"] == ac.NO_DET and out["Narr.checkable"]["inconclusive"] is True
+    assert out["Narr.agree"]["v"] == ac.FAIL
+    assert out["Null.schema_default"]["v"] == ac.NO_DET and out["Null.blank_rows"]["v"] == ac.NO_DET
+
+
+def test_entries_in_two_owned_tables_are_counted_per_table_and_merged(monkeypatch):
+    cat = _cat(t_main=(["id", "chart_id", "a"], {}, {}), t_facts=(["id", "b"], {}, {}))
+    out, sqls = _mp(["a", "b"], cat, ["t_main", "t_facts"], psql_rows=[["2", "0"]], monkeypatch=monkeypatch)
+    assert len(sqls) == 2 and out["Narr.checkable"]["checkable"] == {"a": 2, "b": 2}, (sqls, out["Narr.checkable"])
+
+
+def test_a_count_that_raises_degrades_only_the_two_row_checks_to_errored(monkeypatch):
+    cat = _cat(t_main=(["id", "chart_id", "a"], {}, {}))
+    out, _ = _mp(["a"], cat, ["t_main"], psql_rows=ac.Unknown("boom"), monkeypatch=monkeypatch)
+    assert out["Narr.checkable"]["v"] == ac.ERRORED and out["Null.blank_rows"]["v"] == ac.ERRORED
+    assert out["Narr.agree"]["v"] == ac.PASS
+
+
+def test_schema_default_reads_the_default_of_the_owned_table_that_holds_the_column():
+    own = {"t_main": (["id"], {}, {"id": "0"}), "t_facts": (["citation_human"], {}, {"citation_human": "'none'::text"})}
+    assert ac.grade_null_schema_default_tables(["citation_human"], own)["v"] == ac.FAIL
+    own["t_facts"] = (["citation_human"], {}, {})
+    assert ac.grade_null_schema_default_tables(["citation_human"], own)["v"] == ac.PARTIAL
+    assert ac.grade_null_schema_default_tables(["ghost"], own)["v"] == ac.NO_DET
+    assert ac.grade_null_schema_default_tables(["citation_human"], {"t": (["citation_human"], {}, None)})["v"] == ac.NO_DET
+
+
+def test_a_default_on_a_same_named_column_of_another_table_is_not_read():
+    own = {"t_main": (["id", "statement"], {}, {"statement": "'x'"}), "t_facts": (["citation_human"], {}, {})}
+    assert ac.grade_null_schema_default_tables(["citation_human"], own)["v"] == ac.PARTIAL
+
+
+def test_whole_table_count_on_a_chart_table_is_an_upper_bound_partial_with_the_scope_recorded(monkeypatch):
+    cat = _cat(t_solo=(["id", "chart_id", "a"], {}, {}))
+    odd = "SELECT count(*) FROM t_solo WHERE chart_id = $1 AND id IN (SELECT id FROM t_solo)"
+    out, sqls = _mp(["a"], cat, ["t_solo"], monkeypatch=monkeypatch, csql=odd)
+    assert sqls and out["Narr.checkable"]["v"] == ac.PARTIAL
+    assert out["Narr.checkable"]["scope"] == "whole-table upper bound" and "upper bound" in out["Narr.checkable"]["measured"]
+
+
+def test_a_table_without_chart_id_or_a_chart_scoped_count_sql_may_pass(monkeypatch):
+    cat = _cat(t_solo=(["id", "a"], {}, {}))
+    out, _ = _mp(["a"], cat, ["t_solo"], monkeypatch=monkeypatch, csql="SELECT count(*) FROM t_solo WHERE id IN (SELECT 1)")
+    assert out["Narr.checkable"]["v"] == ac.PASS and "no chart_id" in out["Narr.checkable"]["scope"]
+    cat = _cat(t_main=(["id", "chart_id", "a"], {}, {}))
+    out, sqls = _mp(["a"], cat, ["t_main"], monkeypatch=monkeypatch)
+    assert out["Narr.checkable"]["v"] == ac.PASS and out["Narr.checkable"]["scope"] == "chart-scoped by count_sql"
