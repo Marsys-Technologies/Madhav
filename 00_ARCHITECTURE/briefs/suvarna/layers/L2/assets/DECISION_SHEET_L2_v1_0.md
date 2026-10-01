@@ -1,7 +1,7 @@
 ---
 artifact: DECISION_SHEET_L2
 layer: L2 Bodha (bo_*)
-version: "1.1"
+version: "1.2"
 status: "RULED (SS decision N-59, 2026-10-01); items marked (R) provisional until the J1 independent review"
 produced_by: exec-suvarna
 produced_on: 2026-10-01
@@ -738,6 +738,22 @@ Other (R) rulings, provisional until J1: A-1 and Q-L2-21 (argala from L1), Q-L2-
 1. **The tier-inversion count (F-10) is NOT to be read between S-L1 and S-L2.** `count_divergent_signals` term b (`_TIER_INVERSION_SQL`, `bo_pramana_mapa.py:440-490`) compares each signal's `verification_pass_status` rank with the rank of the L1 facts it cites. L1 rows respell to `single` while L2 signals stay `single_pass` until the L2 batch rebuild, and the rank table ranks `single_pass` 2 above `single` 1, so every such signal over a respelled fact counts as an inversion: the count reads inflated until TI-L2-36 and the rebuild land. (Live canonical state today: `bo_laksana` rows carry both spellings, `single` 40,318 and `single_pass` 3,186; `bo_bimba` and `bo_karanajala` rows stamp `single_pass` at the nine sites.)
 2. **The S-L2 REVIEW must report the salience-weight effect of the tier demotions (1.00 to 0.85 / 0.90)**, after tracing how L2 `bodha_msr_signals` inherit the L1 tier. The audit is `AUDIT_L1_TIERS_PER_EMITTER_v1_0.md` (v1.1, branch `suvarna/land/TI-l1-tier-audit-001`, PR #2852). Facts for that trace, read while recording: `VERIFICATION_RESCALE` in `bodha_writers/formulas.py` weighs `two_pass_verified` 1.00, `classical_match` 0.90, `single` 0.85, with `single_pass` resolving to `single` through `canonical()`, so the respelling alone changes no weight; a weight changes only where an L1 demotion (`two_pass_verified` to `classical_match` or `single`) reaches an L2 signal. Live `bo_laksana` rows on the canonical chart by stamp: `two_pass_verified` 4,216; `classical_match` 60; `single` 40,318; `single_pass` 3,186; `computed_extension` 1,517; `documented_approximation` 821; `floored` 345. Whether an L2 signal's stamp is inherited from its cited facts or assigned by the emitter was not traced here: that is the first step of the REVIEW.
 
+### Record: Q-L2-01 measurements after the reader grant (exec-suvarna, SS, 2026-10-02)
+
+Read as `suvarna_reader` on the canonical chart `482012f1…` after the L2 reader grant; writer INSERT targets read at `origin/main` (`platform/python-sidecar/pipeline/orchestrator/writers/`). Each set below is the declared produced-table set (N-59 option A); `count_sql` is NOT widened. Evidence pointer = the writer's INSERT target.
+
+| asset | produced set (INSERT target; chart-scoped rows) | sum | live `rows_written` | registry `count_sql` |
+|---|---|---|---|---|
+| bo_sangati | `bodha_cdlm_cells` (`bo_sangati.py:56`) 280; `bodha_convergence` (`:101`) 60; `bodha_triangulation` (`:122`) 195 | 535 | 535 | cells + triangulation = 475 (gap 60 = `bodha_convergence`) |
+| bo_karanajala | `bodha_cgm_edges` (`bo_karanajala.py:59`) 849; `bodha_contradictions` (`:93`) 15 | 864 | 864 | edges = 849 (gap 15 = `bodha_contradictions`) |
+| bo_cdlm_summary | `bodha_cdlm_chart_summary` (`bo_cdlm_summary.py:53`) 5; `bodha_cdlm_domain_rollups` (`:88`) 60; `bodha_cdlm_pattern_clusters` (`:106`) 5 | 70 | 70 | chart_summary = 5 (gap 65 = 60 + 5) |
+| bo_upaya | `bodha_rm_resonances` (`bo_upaya.py:58`) 45; `bodha_rm_remedy_prescriptions` (`:78`) 135; `bodha_rm_chart_summary` (`:125`) 5; `bodha_rm_dosha_remedy_bundles` (`:143`) 5; `bodha_rm_pattern_remedies` (`:158`) 45 | 235 on current code | 240 | resonances + prescriptions = 180 |
+
+- **bo_upaya, the unexplained 5.** The current writer's `rows_inserted` is 235 (`bo_upaya.py:1979`); the recorded 240 is from an older writer version, unproven. `bodha_rm_dasha_windowed_prescriptions` (5 rows for this chart) is a legacy preserved table the writer does not touch (notes at `:1984`); it is outside the produced set. It resolves when `bo_upaya` is rebuilt in S-L2 (expected `rows_written` 235; report if it reads otherwise).
+- **bo_karanajala nodes (partition declaration).** The writer also INSERTs 130 `arudha` (95) and `special_lagna` (35) nodes into `bodha_cgm_nodes` (`bo_karanajala.py:1540`), which are not in its `rows_inserted` (`total_e + total_c`, `:1921`). `bodha_cgm_nodes` is shared with `bo_bimba` (`bo_bimba.py:68`; 385 nodes = 255 bimba + 130), so the declaration partitions it by `node_type`. The detector therefore raises a 130-row under-report (994 over the set vs 864) until Q-L2-15 (2) moves the nodes to `bo_bimba`; the fix is that move, not a `rows_inserted` patch.
+- **Unproduced table.** `bodha_cdlm_evolution_gradients` has 0 rows for the canonical chart and no writer INSERT target was found in the L2 writers read; recorded as an unproduced table, no action now.
+- **Rebuild acceptance for the L2 batch (SS, 2026-10-02).** After the Q-L2-15 (2) node move: `bo_bimba` `rows_written` must equal the chart-scoped count of its seven node types (graha, bhava, domain, yoga, dosha, arudha, special_lagna); `bo_karanajala` `rows_written` must equal edges + contradictions (set = `bodha_cgm_edges` + `bodha_contradictions`, no node partition).
+
 ### Effects on other sheets
 
 - **L3 sheet, Q-L3-01 option 3** (compute from L1 where an authority exists) followed the L2 CF-20 ruling: the Q-L2-03 ruling is the L2 answer. For L3 the same principle applies (Optional terms, None where no detector ran, L1 where an L1 fact exists); L3's own stand-ins are not changed by this record.
@@ -749,7 +765,7 @@ Other (R) rulings, provisional until J1: A-1 and Q-L2-21 (argala from L1), Q-L2-
 
 - **Branch tip.** Code was read at 29b2268a8 (PR #2831 head); `origin/main` is at 4eb40bec1 and carries migrations 1211 and 1214 and the F-3 scripts, which are not on the branch (read via `git show origin/main:`). Whether PR #2831 or the L3 decisions branch has merged since was not re-checked after the first fetch.
 - **Documents outside the repository:** "arch §12.9", `F3_MSR_FK_DROP_v1_0.md`, the grant plan v1.3 (A-2 rests on the database structure, not on that document), `W2-3_REVIEW`, register R243/R244/R247, `reg_state.json`, the Track I edge evidence, adjudication #1726 and #2258 as records (only their repository echoes were read).
-- **The 10 unreadable tables:** the gaps 65 / 15 / 60 / 60 (Q-L2-01), R244's "5 referencing rows" (Q-L2-11) and the contents of `bodha_convergence`, `bodha_contradictions` and the rollup tables remain unmeasured. Only the three CF-16/pramana detector SQLs that read readable tables were run.
+- **The 10 formerly unreadable tables:** MEASURED 2026-10-02 after the reader grant (record above; the 65 / 15 / 60 / 60 gaps are confirmed as omitted ancillary tables, the `bo_upaya` 5 is unexplained). Still unmeasured: R244's "5 referencing rows" (Q-L2-11). At first writing only the three CF-16/pramana detector SQLs that read readable tables had been run.
 - **Counts that need a code run, not a read:** how many argala edges the L1-referenced build would produce (only the Lahiri pair arithmetic: 24 vs 28), how many nodes an identity change would add (upper bound 100 on the canonical chart), what a rebuild with main's code produces for the CDLM carrier or the salience of the satellites.
 - **Subject type of each satellite row** (Q-L2-03): the 45 + 45 counts equal 9 grahas x 5 ayanamshas but the per-row subject was not read; the L1 sources for `chart_fact_identity` and `brahma_reference_planets` (Q-L2-07) were not traced.
 - **Scanner behaviour** on `registry_bridge.ts` and `register_p1_synthesis.ts` and every NO_DETECTOR count: quoted from the briefs.
