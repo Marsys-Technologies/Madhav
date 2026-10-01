@@ -99,7 +99,10 @@ def test_the_real_writers_of_the_four_declared_no_prose_assets_emit_the_four_na_
     L = {"bo_laksana_rerank": "L2"}.get(aid, "L0")
     reg = ac.registered_ids("")
     units, _ = ac._delegation_scope(aid, reg[aid])
-    tables = {"bg_doshas": ["bg_doshas"], "bg_ontology": ["brahma_ontology"], "bg_yogas": ["bg_yogas"], "bo_laksana_rerank": ["bodha_msr_signals"]}[aid]
+    # the registry's own tables per asset (target table first, then every table its count_sql reads)
+    tables = {"bg_doshas": ["brahma_dosha_catalog", "brahma_ontology", "reference_doshas"], "bg_ontology": ["brahma_ontology"],
+              "bg_yogas": ["brahma_yoga_catalog", "brahma_ontology", "reference_yogas", "brahma_yoga_source_chunks"],
+              "bo_laksana_rerank": ["bodha_msr_signals"]}[aid]
     ctx = dict(table=tables[0], own={}, tests=(), vocabulary=ac.prose_vocabulary(decl), counts=None,
                paths=[u["path"] for u in units], written=ac.written_columns(units, tables))
     ms = ac.prose_checks(aid, decl[aid], ctx)
@@ -321,3 +324,80 @@ def test_saved_censuses_only_the_seven_listed_gate_cells_move_and_all_of_them_no
         by.setdefault(crit.split(".")[0], set()).add(aid)
     assert by == {"Build": set(R01_ASSETS), "Dens": set(R02_ASSETS), "Narr": set(R03_ASSETS)}, by
     assert len(released_checks) == 6 + 3 + 16
+
+
+# ───────────────────────── F1: an empty write scan is not evidence of "no narration write" ─────────────────────────
+
+def test_F1_a_no_prose_asset_whose_dml_the_scan_cannot_see_reads_no_detector_never_na():
+    assert ac.written_columns([], ["t"]) == {}                      # what the scan returns when it sees no INSERT/UPDATE at all
+    ctx = dict(table="t", own={}, tests=(), vocabulary={"citation_human"}, counts=None, paths=[], written={})
+    ms = ac.prose_checks("bg_yogas", {"prose_fields": []}, ctx)
+    assert all(r["v"] == NO_DET for r in ms.values()), ms
+    cells = ac.rollup_asset("L0", ms)
+    assert cells["Narr"]["v"] == NO_DET and cells["Null"]["v"] == NO_DET
+    assert all(c["v"] != NA for g in ("Narr", "Null") for c in cells[g]["checks"])
+    # unreadable (None) reads the same, and a readable write set that holds no narration column is still the N/A candidate
+    assert all(r["v"] == NO_DET for r in ac.prose_checks("bg_yogas", {"prose_fields": []}, dict(ctx, written=None)).values())
+    assert ac.prose_checks("bg_yogas", {"prose_fields": []}, dict(ctx, written={"t": {"id"}}))["Narr.agree"]["v"] == NA
+
+
+# ───────────────────────── F3: the exact Dens N/A set, always on (no saved-census directory needed) ─────────────────────────
+
+def test_F3_the_real_dens_scan_reads_na_on_exactly_the_three_approved_assets_over_all_127(monkeypatch):
+    """The inputs of the 127 assets' scans are a committed fixture (verdict-free); the scan is the REAL one over the current
+    source tree. A fourth N/A (a new unreferenced table, or a served read removed) fails here and needs a ruling, not a widening;
+    a served read added to one of the three also fails here (the rule no longer fits it). File reads are cached for speed."""
+    fx = json.loads((HERE / "fixtures" / "dens_scan_inputs_2026-10-02.json").read_text(encoding="utf-8"))
+    real, cache = pathlib.Path.read_text, {}
+
+    def cached(self, *a, **k):
+        key = (str(self), a, tuple(sorted(k.items())))
+        if key not in cache:
+            cache[key] = real(self, *a, **k)
+        return cache[key]
+    monkeypatch.setattr(pathlib.Path, "read_text", cached)
+    na, n = [], 0
+    for L, d in fx["layers"].items():
+        for r in d["assets"]:
+            n += 1
+            g = ac._grade_dens(ac.capability_scan(ac.CAPS_ROOTS, r["tokens"], shared=frozenset(d["shared"]), columns=d["columns"],
+                                                  outside_roots=ac.DENS_OUTSIDE_ROOTS), r["target_table"] or r["asset_id"])
+            if g["v"] == NA:
+                assert g["cause"] == "no-served-surface", (r["asset_id"], g)
+                na.append(r["asset_id"])
+    assert n == 127
+    assert sorted(na) == sorted(R02_ASSETS), na
+
+
+# ───────────────────────── F5: `never-run` needs the build-history source demonstrably present ─────────────────────────
+
+import test_e6_a_na_causes as na_causes  # noqa: E402
+
+
+def _measure_history(monkeypatch, tmp_path, reg, hist):
+    ms = na_causes._m(monkeypatch, tmp_path, reg, hist=hist)
+    return {a: m["Build.history"] for a, m in ms.items()}
+
+
+def test_F5_a_wiped_or_absent_history_yields_no_na_and_closes_no_ledger_row(monkeypatch, tmp_path):
+    reg = {"x": na_causes._reg_row("x"), "y": na_causes._reg_row("y")}
+    got = _measure_history(monkeypatch, tmp_path, reg, {})                  # build_run_assets empty for the whole census scope
+    for aid, rec in got.items():
+        assert rec["v"] == NO_DET and rec.get("cause") is None and "absent" in rec["measured"], (aid, rec)
+        assert ac.rollup_asset("L0", {"Build.history": rec})["Build"]["checks"][-1]["v"] != NA
+    # and it closes nothing: an OPEN Build.history row stays OPEN when the history is wiped
+    monkeypatch.setattr(ac, "CTRL", tmp_path)
+    (tmp_path / "asset_gaps.jsonl").write_text(json.dumps(_row("x", "Build.history", "OPEN")) + "\n", encoding="utf-8")
+    ac.emit_gaps(_census(x={"Build.history": got["x"]}))
+    assert _closed(tmp_path) == []
+
+
+def test_F5_one_asset_with_no_row_among_assets_that_do_have_rows_still_reads_never_run(monkeypatch, tmp_path):
+    reg = {"x": na_causes._reg_row("x"), "y": na_causes._reg_row("y")}
+    got = _measure_history(monkeypatch, tmp_path, reg, {"y": na_causes._h_unstarted()})
+    assert got["x"]["v"] == NA and got["x"]["cause"] == "never-run"
+    assert got["y"]["v"] != NA
+    monkeypatch.setattr(ac, "CTRL", tmp_path)
+    (tmp_path / "asset_gaps.jsonl").write_text(json.dumps(_row("x", "Build.history", "OPEN")) + "\n", encoding="utf-8")
+    ac.emit_gaps(_census(x={"Build.history": got["x"]}))
+    assert _closed(tmp_path) == ["x-Build.history"]

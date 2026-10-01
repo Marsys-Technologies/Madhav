@@ -3099,7 +3099,7 @@ def test_terminal_by_construction_against_a_measured_dependent_is_reported():
 
 # ───────────────────────── (6) declarations are facts only: no verdict moves ─────────────────────────
 
-def test_no_na_rule_is_declared_and_no_criterion_reads_a_declared_key():
+def test_the_declared_rule_set_is_exactly_the_approved_one_and_no_criterion_reads_a_declared_key():
     import test_e6_na_r01_03 as r13   # REGISTRY_REVISION 9 declares exactly the three approved rules (SS N-65)
     assert set(ac.NA_RULE_DECISIONS) == r13.DECLARED_IDS
     facts = dict(asset_kind="service", declared_kind="static", declared_carriage=dict(served_surface=False),

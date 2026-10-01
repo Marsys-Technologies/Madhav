@@ -44,6 +44,8 @@ CEILING = ("bg_concordance", "bg_gochara_arcs", "bg_vidhi_floors", "bo_grounding
 D_CHECKS = ("Carr.D1", "Carr.D2", "Carr.D3")
 # the pinned revision-7 fingerprint (test_e6_1_p1_registry_rollup.PINNED_FINGERPRINTS[7]): the real predecessor
 REV7_FINGERPRINT = p1.PINNED_FINGERPRINTS[7]
+NARR_AGREE_REV7 = ("prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A candidate, "
+                   "cause no-prose, undecided)")
 NO_DET_RECORD = dict(v="NO_DETECTOR", measured="no D1/D2/D3 detector exists for this asset; which check applies is per-asset semantics")
 
 # The registry entry exactly as it stood at REGISTRY_REVISION 7 (origin/main bf6fe712b): used ONLY to rebuild the
@@ -64,6 +66,7 @@ def _restore_pre_retirement(monkeypatch):
     reg["Carr.detector"] = dict(OLD_CARR_DETECTOR)
     monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
     monkeypatch.setattr(ac, "RETIRED_CRITERIA", {}, raising=False)
+    reg["Narr.agree"] = dict(reg["Narr.agree"], applicability=NARR_AGREE_REV7)    # its text said "undecided" until revision 9
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})      # revision 7 declared no rule (revision 9 declares three: they are fingerprinted)
 
 
@@ -99,8 +102,8 @@ def test_the_retirement_is_recorded_with_its_reason_and_decision_and_never_overl
     assert all(v["retired_in_revision"] <= ac.REGISTRY_REVISION for v in ac.RETIRED_CRITERIA.values())
 
 
-def test_registry_revision_is_at_least_8_and_its_fingerprint_is_not_the_revision_7_one():
-    assert ac.REGISTRY_REVISION >= 8
+def test_registry_revision_is_the_latest_pinned_one_and_its_fingerprint_is_not_the_revision_7_one():
+    assert ac.REGISTRY_REVISION == max(p1.PINNED_FINGERPRINTS) >= 8       # the retirement is revision 8; the current one is pinned
     assert ac.registry_fingerprint() != REV7_FINGERPRINT
 
 

@@ -45,7 +45,7 @@ PINNED_FINGERPRINTS = {
     8: "0479f0cdaaa56c5838f2e1a4ce5ab3a59606b856ba0acd201d3f67725bed0842",
     # 9 (SS N-65): NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and
     # R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (the registry and NA_CAUSES are unchanged; the rules are fingerprinted)
-    9: "caad838a50a9fc8bf80c94c3852d3db2692d2dc6be70fc6dedd1492cf5e4101b",
+    9: "9bfe15eccdd096e0a8def9199a6794a99a241e9ebd8fb1c5aadafa61a526e499",
 }
 
 

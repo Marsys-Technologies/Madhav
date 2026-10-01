@@ -113,8 +113,9 @@ SITES = [
      {"x": _reg_row("x")}, {}),
     ("exercised-never-executed", "Build.exercised", "never-executed-no-writer",
      {"x": _reg_row("x")}, dict(hist={"x": _h_unstarted()})),
+    # F5 (SS N-65): `never-run` needs the history source demonstrably present: another asset of the census has rows
     ("history-never-run", "Build.history", "never-run",
-     {"x": _reg_row("x")}, {}),
+     {"x": _reg_row("x"), "y": _reg_row("y")}, dict(hist={"y": _h_unstarted()})),
     ("dep-liveness-none", "Build.dep_liveness", "no-declared-dependencies",
      {"x": _reg_row("x")}, {}),
 ]
@@ -249,7 +250,7 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         assert rec["v"] == NA, rec
         observed.add(("Earn.build_record", rec["cause"]))
     for crit, rec in ac.prose_checks("x", {"prose_fields": [], "evidence": {"prose_fields": "w.py:1"}},
-                                     dict(written={}, vocabulary=set())).items():
+                                     dict(written={"t": set()}, vocabulary=set())).items():
         assert rec["v"] == NA, rec           # E6 packet (c): the declared-no-prose measured N/A candidates
         observed.add((crit, rec["cause"]))
     for crit, rec in ac.carr_checks(dict(declared_terminal_by_construction="writer x.py:1 writes nothing read",
