@@ -33,6 +33,12 @@ PINNED_FINGERPRINTS = {
     3: "7f30f61e123b473702eb37236b4c22628a5251ef7fd85a31cfb482ca304c6c5e",
     # 4 (E6.1 d): Dens.served revision 4 (contract AND a tier column in the served select; structural; cause no-served-surface)
     4: "5d96f986f927d9c4cb6f46edbc03e9762ba1889d0d71054bd8476b6807d583fc",
+    # 5 (E6 packet c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains
+    # no-prose / no-prose-declared (later branches re-pin on rebase: the pins are content-bound)
+    5: "b44523131a5e9032f507f4df701af44e096f1b664852e8460a69723094bc5522",
+    # 6 (E6 items g+h on top of packet c): Build.target rev 2 (declared service, PASS by declaration), Build.dag rev 2 (any-layer
+    # unknown dep, cycle, reads-match aligned with dag_edge_guard), Idem.pattern rev 2 (one relative-import resolver)
+    6: "62f08ad67334705860cf9bd4652a89efc4787f5e4eb3f1d0bab4fcad2ac0b8ce",
 }
 
 
@@ -236,12 +242,16 @@ def _m(v, measured="x"):
     return dict(v=v, measured=measured)
 
 
-def test_gate_with_no_registered_check_is_no_detector():
+def test_gate_with_no_measurement_is_no_detector():
+    """Null and Narr gained their checks in E6 packet (c): with nothing measured every registered check is an
+    unmeasured NO_DETECTOR contribution, so the cell still reads NO_DETECTOR (a gate with no checks does too)."""
     cells = ac.rollup_asset("L2", {})
     assert set(cells) == set(ac.CELL_GATES)
     for g in ("Null", "Narr"):
         assert cells[g]["v"] == "NO_DETECTOR"
-        assert cells[g]["checks"] == []
+        assert {c["criterion"] for c in cells[g]["checks"]} == {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == g}
+        assert all(c["v"] == "NO_DETECTOR" for c in cells[g]["checks"])
+    assert ac.rollup_verdicts([]) == "NO_DETECTOR"
 
 
 def test_all_pass_measurements_do_not_make_a_gate_pass_while_an_applicable_check_is_unmeasured():
@@ -407,7 +417,7 @@ def test_rollup_over_all_127_assets_is_total_versioned_and_never_better_than_the
                 # a FAIL measured in the gate is a FAIL cell (worst wins)
                 if "FAIL" in worst:
                     assert c["v"] == "FAIL", (aid, g)
-                # Null and Narr have no registered check: NO_DETECTOR for every asset
+                # the fixture holds no Null/Narr measurement: every such check is unmeasured, the cell NO_DETECTOR
                 if g in ("Null", "Narr"):
                     assert c["v"] == "NO_DETECTOR"
     assert n == 127

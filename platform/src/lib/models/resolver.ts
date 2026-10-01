@@ -1,4 +1,5 @@
 import 'server-only'
+import { meterSharedModel } from '@/lib/metering/context'
 import { anthropic } from '@ai-sdk/anthropic'
 import { google } from '@ai-sdk/google'
 import { deepseek } from '@ai-sdk/deepseek'
@@ -29,6 +30,14 @@ const R1_REASONING_MIDDLEWARE = extractReasoningMiddleware({ tagName: 'think' })
  * which expects a QueryRequest).
  */
 export function resolveModel(id: string): LanguageModel {
+  const meta = getModelMeta(id)
+  if (!meta) throw new Error(`Unknown model id: ${id}`)
+  const model = resolveUnmeteredModel(id)
+  if (typeof model === 'string' || model.specificationVersion !== 'v3') throw new Error('Unsupported model transport')
+  return meterSharedModel(model, meta.provider, id, 'synthesis')
+}
+
+function resolveUnmeteredModel(id: string): LanguageModel {
   const meta = getModelMeta(id)
   if (!meta) throw new Error(`Unknown model id: ${id}`)
   switch (meta.provider) {

@@ -1,4 +1,6 @@
 import 'server-only'
+import { meterModel } from '@/lib/metering/model'
+import type { MeteringContext } from '@/lib/metering/types'
 import { inspect } from 'node:util'
 import Ajv from 'ajv'
 import type { LanguageModelV3 } from '@ai-sdk/provider'
@@ -23,6 +25,8 @@ export interface SafeCliExecutorDescriptor {
 export type SafeRoleExecutorDescriptor = SafeProviderExecutorDescriptor | SafeCliExecutorDescriptor
 
 export interface RoleExecutionRequest {
+  /** Internal attribution supplied by the authenticated tracker, never a client payload. */
+  meteringContext?: MeteringContext
   systemPrompt: string
   messages: QueryRequest['messages']
   tools?: ToolDefinition[]
@@ -163,7 +167,7 @@ function stream(execution: ResolvedRoleExecution, descriptor: SafeProviderExecut
     }
     assertExactBinding(binding.providerId, binding.connectionId, binding.modelId, descriptor)
     const runtimeDescriptor = adapterDescriptor(descriptor)
-    const runtimeBinding = adapterBinding(binding.model, runtimeDescriptor)
+    const runtimeBinding = adapterBinding(request.meteringContext ? meterModel(binding.model, request.meteringContext) : binding.model, runtimeDescriptor)
     const abortSignal = request.abortSignal
       ? AbortSignal.any([request.abortSignal, localAbort.signal]) : localAbort.signal
     const raw = streamAdapterRaw({

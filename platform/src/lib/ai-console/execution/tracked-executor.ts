@@ -1,4 +1,7 @@
 import 'server-only'
+import { meteringEnabled, type AttemptStart, type MeteringContext, type MeteringPurpose } from '@/lib/metering/types'
+import { startAttempt, finishAttempt } from '@/lib/metering/service'
+import { normalizeSdkUsage } from '@/lib/metering/usage'
 
 import { AiConsoleError, normalizeAiError } from '../errors'
 import { insertRoleInvocationReceipt } from '../repository'
@@ -6,6 +9,7 @@ import type {
   RoleExecutionEvent,
   RoleExecutionRequest,
   RoleExecutionResult,
+  NormalizedUsage,
   RoleExecutor,
 } from './provider-executor'
 import { isStructuredOutputValidationError } from './structured-output-error'
@@ -15,6 +19,8 @@ import { observeRoleInvocation, type RoleObservationContext } from '../observabi
 export interface InvocationReceiptContext {
   readonly userId: string
   readonly snapshotId: string
+  readonly purpose?: MeteringPurpose
+  readonly testRunId?: string
   readonly observation?: Omit<RoleObservationContext, 'snapshotId'>
 }
 
@@ -77,19 +83,43 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
     // the durable terminal receipt is the request-path boundary.
     void observe(input)
   }
+  const attribution = (invocationId: string): MeteringContext | undefined => {
+    if (!meteringEnabled()) return undefined
+    const snapshot = context.observation?.snapshot
+    const provider = 'providerId' in executor.descriptor
+    return { userId: context.userId, conversationId: snapshot?.conversationId ?? null,
+      turnId: context.observation?.fallback?.fromCorrelationId ?? snapshot?.correlationId ?? context.testRunId ?? invocationId, operationId: invocationId,
+      parentOperationId: null,
+      channel: snapshot?.source === 'mcp' ? 'mcp' : snapshot?.source === 'pariprashna' ? 'web' : 'backend',
+      purpose: context.purpose ?? 'customer', payer: provider ? 'user' : 'subscription',
+      provider: provider ? executor.descriptor.providerId : 'cli',
+      model: executor.descriptor.modelId ?? 'builtin-default', role: executor.descriptor.role,
+      connectionId: provider ? executor.descriptor.connectionId : null,
+      snapshotId: context.snapshotId, testRunId: context.testRunId ?? null,
+      aggregation: provider ? 'transport' : 'cli_aggregate' }
+  }
+  const settleCli = async (start: AttemptStart | undefined, status: 'success' | 'error' | 'timeout' | 'cancelled', usage: NormalizedUsage | null) => {
+    if (!start) return
+    await finishAttempt(start, { attemptId: start.attemptId, finishedAt: new Date().toISOString(), status,
+      usage: normalizeSdkUsage(usage, 'client_reported'), providerRequestId: null, finishReason: null,
+      firstTokenAt: null, providerCostUsd: null })
+  }
   return Object.freeze({
     descriptor: executor.descriptor,
     async generate(request: RoleExecutionRequest): Promise<RoleExecutionResult> {
       const invocationId = crypto.randomUUID()
       await startReceipt(executor, context, invocationId)
       const startedAt = new Date()
+      const meteringContext = attribution(invocationId)
+      const cliStart = meteringContext?.aggregation === 'cli_aggregate' ? await startAttempt(meteringContext) : undefined
       let result: RoleExecutionResult
       try {
-        result = await executor.generate(request)
+        result = await executor.generate({ ...request, meteringContext })
       } catch (cause) {
         const retryCount = safeExecutionFailureFacts(cause)?.retryCount ?? null
         const failure = publicFailure(executor, cause)
         const cancelled = request.abortSignal?.aborted === true
+        if (cliStart) await settleCli(cliStart, cancelled ? 'cancelled' : failure.code === 'AI_CLI_TIMEOUT' ? 'timeout' : 'error', null)
         await terminalReceipt(executor, context, invocationId, cancelled ? 'cancelled' : 'failed', failure.code)
         scheduleObservation({ invocationId, status: cancelled ? 'cancelled'
           : failure.code === 'AI_CLI_TIMEOUT' ? 'timeout' : 'error', startedAt, finishedAt: new Date(),
@@ -99,6 +129,7 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
       }
       // A receipt-commit failure is not an executor failure and must never be
       // rewritten as a second, contradictory terminal row for this invocation.
+      if (cliStart) await settleCli(cliStart, 'success', result.usage)
       await terminalReceipt(executor, context, invocationId, 'succeeded')
       scheduleObservation({ invocationId, status: 'success', startedAt, finishedAt: new Date(),
         usage: result.usage, retryCount: result.retryCount, errorCode: null })
@@ -112,6 +143,7 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
       let cancelRequested = false
       let pulling: Promise<void> | undefined
       let beginning: Promise<boolean> | undefined
+      let cliStart: AttemptStart | undefined
       let terminalCommit: Promise<void> | undefined
       let startedAt: Date | undefined
       let terminalUsage: RoleExecutionResult['usage'] | null = null
@@ -121,7 +153,10 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
         retryCount: number | null = terminalRetryCount) => {
         if (terminalCommit) return terminalCommit
         if (!started) return
-        terminalCommit = terminalReceipt(executor, context, invocationId, status, errorCode)
+        terminalCommit = cliStart ? Promise.all([
+          settleCli(cliStart, status === 'succeeded' ? 'success' : status === 'cancelled' ? 'cancelled' : errorCode === 'AI_CLI_TIMEOUT' ? 'timeout' : 'error', status === 'succeeded' ? terminalUsage : null),
+          terminalReceipt(executor, context, invocationId, status, errorCode),
+        ]).then(() => undefined) : terminalReceipt(executor, context, invocationId, status, errorCode)
         await terminalCommit
         scheduleObservation({ invocationId,
           status: status === 'succeeded' ? 'success' : status === 'cancelled' ? 'cancelled'
@@ -143,7 +178,9 @@ export function trackRoleExecutor(executor: RoleExecutor, context: InvocationRec
             await finish('cancelled', 'AI_EXECUTION_FAILED', 0)
             return false
           }
-          delegateStream = executor.stream(request)
+          const meteringContext = attribution(invocationId)
+          cliStart = meteringContext?.aggregation === 'cli_aggregate' ? await startAttempt(meteringContext) : undefined
+          delegateStream = executor.stream({ ...request, meteringContext })
           reader = delegateStream.getReader()
           return true
         })()

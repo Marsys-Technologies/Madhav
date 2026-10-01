@@ -1,3 +1,4 @@
+import { meteringRequest, setMeteringAttribution } from '@/lib/metering/context'
 /**
  * /api/mcp/prashna_ask — internal, service-to-service-only engine route for the
  * prashna_ask MCP tool.
@@ -195,6 +196,10 @@ const MCP_TURN_PERSISTENCE_CALLER_REQUIRED = {
 }
 
 export async function POST(request: Request) {
+  return meteringRequest(() => executeMeteredRequest(request))
+}
+
+async function executeMeteredRequest(request: Request) {
   // ── Layer 1: audience/SA-bound OIDC plus the shared service token ──────────
   if (!(await validateMcpServiceRequest(request))) {
     return NextResponse.json(
@@ -409,6 +414,7 @@ export async function POST(request: Request) {
   }
 
   let byokRuntime: PreparedMcpByokRuntime | null = null
+  setMeteringAttribution({ userId:userUid,conversationId:null,turnId:queryId,channel:'mcp',purpose:'customer',payer:'platform' })
   if (byokEnabled) {
     try {
       byokRuntime = await prepareMcpByokRuntime({

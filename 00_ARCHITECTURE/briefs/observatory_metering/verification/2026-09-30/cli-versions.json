@@ -1,0 +1,34 @@
+[
+  {
+    "cli": "codex",
+    "installed": true,
+    "installed_version": "codex-cli 0.155.1",
+    "pinned_version": "0.158.0",
+    "version_matches": false,
+    "realpath": "/opt/homebrew/Caskroom/codex/0.155.1/bin/codex"
+  },
+  {
+    "cli": "claude_code",
+    "installed": true,
+    "installed_version": "2.1.239 (Claude Code)",
+    "pinned_version": "2.1.284",
+    "version_matches": false,
+    "realpath": "/Users/Dev/.local/share/claude/versions/2.1.239"
+  },
+  {
+    "cli": "gemini_antigravity",
+    "installed": true,
+    "installed_version": "1.2.13",
+    "pinned_version": "1.2.13",
+    "version_matches": true,
+    "realpath": "/Users/Dev/.local/bin/agy"
+  },
+  {
+    "cli": "kimi_code",
+    "installed": true,
+    "installed_version": "2.0.2",
+    "pinned_version": "2.1.1",
+    "version_matches": false,
+    "realpath": "/Users/Dev/.kimi-code/bin/kimi"
+  }
+]

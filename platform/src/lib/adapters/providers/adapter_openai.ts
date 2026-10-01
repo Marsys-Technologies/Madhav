@@ -1,4 +1,5 @@
 import 'server-only'
+import { meterSharedModel } from '@/lib/metering/context'
 import { streamText, stepCountIs, smoothStream, jsonSchema } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import type { Adapter, StreamTextOptions } from './base'
@@ -39,7 +40,7 @@ export const adapterOpenai: Adapter = {
     // TODO: Future o-series models may have reasoning_via: 'native' — extend here when added to registry.
 
     return {
-      model: injectedModel ?? openai(meta.id),
+      model: injectedModel ?? meterSharedModel(openai(meta.id), meta.provider, meta.id, req.callType, req),
       system: req.systemPrompt,
       messages: req.messages,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,0 +1,41 @@
+{
+  "schema": "madhav.observatory.local-acceptance.v1",
+  "date_ist": "2026-09-30",
+  "credential_environment": "allowlisted_test_variables_only",
+  "stages": {
+    "enabled_focused": {
+      "exit_code": 0,
+      "duration_seconds": 4.28,
+      "log": "/Users/Dev/.codex/worktrees/observatory-metering/Madhav/00_ARCHITECTURE/briefs/observatory_metering/verification/2026-09-30/enabled_focused.log"
+    },
+    "disposable_postgres": {
+      "exit_code": 0,
+      "duration_seconds": 1.6,
+      "log": "/Users/Dev/.codex/worktrees/observatory-metering/Madhav/00_ARCHITECTURE/briefs/observatory_metering/verification/2026-09-30/disposable_postgres.log"
+    },
+    "full_default_off": {
+      "exit_code": 0,
+      "duration_seconds": 43.49,
+      "log": "/Users/Dev/.codex/worktrees/observatory-metering/Madhav/00_ARCHITECTURE/briefs/observatory_metering/verification/2026-09-30/full_default_off.log"
+    },
+    "lint": {
+      "exit_code": 0,
+      "duration_seconds": 30.16,
+      "log": "/Users/Dev/.codex/worktrees/observatory-metering/Madhav/00_ARCHITECTURE/briefs/observatory_metering/verification/2026-09-30/lint.log"
+    },
+    "typescript": {
+      "exit_code": 0,
+      "duration_seconds": 23.67,
+      "log": "/Users/Dev/.codex/worktrees/observatory-metering/Madhav/00_ARCHITECTURE/briefs/observatory_metering/verification/2026-09-30/typescript.log"
+    },
+    "build": {
+      "exit_code": 0,
+      "duration_seconds": 74.15,
+      "log": "/Users/Dev/.codex/worktrees/observatory-metering/Madhav/00_ARCHITECTURE/briefs/observatory_metering/verification/2026-09-30/build.log"
+    },
+    "http_smoke": {
+      "exit_code": 0,
+      "log": "/Users/Dev/.codex/worktrees/observatory-metering/Madhav/00_ARCHITECTURE/briefs/observatory_metering/verification/2026-09-30/http-smoke.json"
+    }
+  }
+}

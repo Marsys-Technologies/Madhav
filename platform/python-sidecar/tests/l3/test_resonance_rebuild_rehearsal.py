@@ -85,14 +85,16 @@ def _passing_ver() -> dict:
         "r5_identity_sql": {"qualified_not_in_ontology": 0, "ontology_not_qualified": 0},
         "detector_controls": {
             "clean": {"r1": [0, 0], "r2": [0, 0], "r3": [0, 0], "r4": [0, 0], "r5": [0, 0],
-                      "mech": [0, 0], "value_violations": 0, "dangling": 0},
+                      "mech": [0, 0], "value_violations": 0, "dangling": 0,
+                      "state:mechanism_resolved": 0, "state:m6_operands": 0},
             **{name: {"count_preservation_expected": True, "id_set_preservation_expected": True,
                       "counts_preserved": True, "global_id_sets_preserved": True,
                       "mutation_applied": True, "detected": True}
                for name in ("sensitive_class_swap", "arudha_class_swap", "yoga_class_swap",
                             "weight_changed", "qualifier_transferred",
                             "resolution_state_flipped", "provenance_flipped", "lord_token_wrong",
-                            "mechanism_weight_sign_flipped")},
+                            "mechanism_weight_sign_flipped", "mechanism_state_forged",
+                            "m6_operand_missing", "m6_state_forged")},
             **{name: {"count_preservation_expected": False, "id_set_preservation_expected": True,
                       "counts_preserved": False, "global_id_sets_preserved": True,
                       "mutation_applied": True, "detected": True}
@@ -351,10 +353,11 @@ def test_all_named_detector_controls_must_be_present_the_reviewers_bypass():
     v["detector_controls"] = {"clean": v["detector_controls"]["clean"], "restored_after_controls": True}
     failures = R.verify_acceptance(v)
     missing = [f for f in failures if "missing detector control record" in f]
-    assert len(missing) == len(R.REQUIRED_DETECTOR_CONTROLS) == 13, failures
+    assert len(missing) == len(R.REQUIRED_DETECTOR_CONTROLS) == 16, failures
     assert set(R.REQUIRED_DETECTOR_CONTROLS) >= {
         "sensitive_class_swap", "arudha_class_swap", "yoga_class_swap", "weight_changed",
-        "qualifier_transferred", "resolution_state_flipped", "provenance_flipped"}
+        "qualifier_transferred", "resolution_state_flipped", "provenance_flipped",
+        "mechanism_state_forged", "m6_operand_missing", "m6_state_forged"}
     # the passing report carries exactly the required names
     names = set(_passing_ver()["detector_controls"]) - {"clean", "restored_after_controls"}
     assert names == set(R.REQUIRED_DETECTOR_CONTROLS)
@@ -366,12 +369,15 @@ def test_clean_baseline_contents_and_every_controls_application_are_validated():
     key; every control record must carry mutation_applied=True."""
     v = copy.deepcopy(_passing_ver())
     v["detector_controls"]["clean"] = {"r1": [9, 9], "r2": [0, 0], "r3": [0, 0], "r4": [0, 0],
-                                       "r5": [0, 0], "mech": [0, 0], "value_violations": 99, "dangling": 0}
+                                       "r5": [0, 0], "mech": [0, 0], "value_violations": 99,
+                                       "dangling": 0, "state:mechanism_resolved": 0,
+                                       "state:m6_operands": 0}
     failures = R.verify_acceptance(v)
     assert any("clean baseline r1 = [9, 9]" in f for f in failures), failures
     assert any("clean baseline value_violations = 99" in f for f in failures), failures
     assert set(R.CLEAN_BASELINE_PAIRS) == {"r1", "r2", "r3", "r4", "r5", "mech"}
-    assert set(R.CLEAN_BASELINE_ZERO_COUNTS) == {"value_violations", "dangling"}
+    assert set(R.CLEAN_BASELINE_ZERO_COUNTS) == {
+        "value_violations", "dangling", "state:mechanism_resolved", "state:m6_operands"}
     v2 = copy.deepcopy(_passing_ver())
     for name in R.REQUIRED_DETECTOR_CONTROLS:
         v2["detector_controls"][name]["mutation_applied"] = False
@@ -483,6 +489,53 @@ def test_value_invariants_check_each_retained_value_against_its_source():
     for t, w in B.EXPECTED_WEIGHTS.items():
         assert f"WHEN '{t}' THEN {w}" in sql
     assert sql.rstrip().endswith("ORDER BY m.event_class, m.target_type, m.target_ref;")
+
+
+def test_mechanism_node_state_is_checked_against_the_writers_resolved_contract():
+    """ASTRA_REVIEW_A5_4_TIER0S_v1_5 P2 (b): the writer's contract
+    (writer.py _stamp_target_resolution) explicitly preserves mechanism
+    resolution as 'resolved' — the operand wiring IS the cited live rule.
+    The values query previously checked mechanism weight / ref / eligibility /
+    citation but no state, so an otherwise-valid mechanism_node row flipped
+    'resolved' → 'unavailable' produced 0 violations (the reviewer's replay).
+    Now a state other than 'resolved' is a 'state:mechanism_resolved'
+    violation."""
+    sql = B.value_invariants_sql(CH)
+    assert "'state:mechanism_resolved'" in sql
+    assert ("m.target_type = 'mechanism_node' AND m.target_resolution_state "
+            "IS DISTINCT FROM 'resolved'") in sql
+
+
+def test_m6_state_is_rederived_from_operand_presence_as_the_writer_derives_it():
+    """ASTRA_REVIEW_A5_4_TIER0S_v1_5 P2 (c): the M-6 state check was enum
+    membership only, so a Māndi-dependent M-6 row with Māndi MISSING from
+    chart_facts and a forged stored state 'resolved' produced 0 violations.
+    The writer (writer.py ~1150 _build_m6_derived_rows) derives the state
+    from its operands — a missing Māndi/Yamakaṇṭaka sign or 5th-star-lord
+    operand yields 'unavailable', an incomplete sign-lord table yields
+    'unqualified'. The query now re-derives that state from the same
+    operands; the formula roles and the Vimśottari table mirror the grammar
+    module, never a hand copy."""
+    from services.gochara_grammar.derived_points import (
+        VIMSHOTTARI_NAKSHATRA_LORDS, YAMAKANTAKA_FORMULAS)
+    sql = B.value_invariants_sql(CH)
+    assert "'state:m6_operands'" in sql
+    # the operand tables the writer reads
+    assert "fact_category = 'sensitive_point_gulika_mandi'" in sql
+    assert "'MANDI'" in sql and "'YAMAKANTAKA'" in sql
+    assert "fact_category = 'panchanga_nakshatra_moon'" in sql and "NAKSHATRA_MOON_BIRTH" in sql
+    # the per-formula operand roles, from the grammar constants
+    assert "('mandi_sign_distance_from_8L', 'eighth_lord', 'mandi')" in sql
+    for f in YAMAKANTAKA_FORMULAS:
+        assert f"('{f['ref']}', '{f['minuend']}', '{f['subtrahend']}')" in sql, f["ref"]
+    # the 5th-star lord: natal counts as 1, so the 5th is natal+4, Vimśottari lord
+    assert "(((SELECT n FROM moon_nak) - 1 + 4) % 27) % 9" in sql
+    for i, lord in enumerate(VIMSHOTTARI_NAKSHATRA_LORDS):
+        assert f"({i}, '{lord}')" in sql, lord
+    # the writer's _state combination: unqualified wins, then unavailable, else resolved
+    assert "WHEN 'unqualified' IN (o.minuend_state, o.subtrahend_state) THEN 'unqualified'" in sql
+    assert "WHEN 'unavailable' IN (o.minuend_state, o.subtrahend_state) THEN 'unavailable'" in sql
+    assert "WHEN NOT (SELECT ok FROM lords_complete) THEN 'unqualified'" in sql
 
 
 def test_refusal_probe_is_certified_by_two_recorded_certificates_not_a_tautology():

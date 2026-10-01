@@ -54,6 +54,7 @@ const NAV_ICONS: Record<string, LucideIcon | React.ComponentType<{ className?: s
   panchang: MoonCrescentIcon,
   cockpit: Gauge,
   'ai-console': SlidersHorizontal,
+  'usage': SlidersHorizontal,
   audit: FileSearch,
   performance: ChartColumn,
   admin: Settings2,
@@ -75,6 +76,7 @@ export function MobileNavSheet({ user, profile }: MobileNavSheetProps) {
 
   const effectiveRole = normalizeRole(profile.role)
   const visibleItems = visibleNavItems(effectiveRole, {
+    aiMetering: process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_METERING_ENABLED === 'true',
     aiConsoleByok: process.env.NEXT_PUBLIC_MARSYS_FLAG_AI_CONSOLE_BYOK === 'true',
   })
   const informationItems = visibleInformationNavItems(effectiveRole)

@@ -143,12 +143,18 @@ export const PROTECTED_PUBLIC_SCHEMA_MIGRATIONS = new Set([
   '1157_gochara_av_polarity_declaration.sql',
 ])
 
+const AI_METERING_PROTECTED_PUBLIC_SCHEMA_MIGRATION = '1202_ai_metering_ledger.sql'
+
 export function assertGeneralRunnerMayApplyPublicSchema(filename: string, viaOnly: boolean): void {
-  if (!viaOnly && PROTECTED_PUBLIC_SCHEMA_MIGRATIONS.has(filename)) {
+  if (!viaOnly && (PROTECTED_PUBLIC_SCHEMA_MIGRATIONS.has(filename)
+    || filename === AI_METERING_PROTECTED_PUBLIC_SCHEMA_MIGRATION)) {
+    const window = filename === AI_METERING_PROTECTED_PUBLIC_SCHEMA_MIGRATION
+      ? 'ai_metering_schema_migration=true to apply exactly migration 1202'
+      : 'gochara_contracts_schema_migration=true so the protected window applies exactly 1153-1157 in order'
     throw new Error(
       `Protected public-schema migration "${filename}" is pending. ` +
       'The routine runner cannot create objects in schema public; dispatch deploy.yml with ' +
-      'gochara_contracts_schema_migration=true so the protected window applies exactly 1153-1157 in order.'
+      `${window}.`
     )
   }
 }
