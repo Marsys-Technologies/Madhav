@@ -5532,6 +5532,30 @@ def _write_atomic(path, text: str) -> None:
         raise
 
 
+_GIT_SHA = re.compile(r"[0-9a-f]{40}")
+
+
+def census_stamp() -> dict:
+    """Strategist ruling N-44 A: the provenance a layer census carries in its head, so a certificate can never be written
+    from a census measured under a different registry revision or a different tool. Keys: `registry_revision`
+    (REGISTRY_REVISION), `registry_fingerprint` (registry_fingerprint()), `tool_commit` (`git rev-parse HEAD` of the
+    checkout this module runs from) and, only when that is not available, `tool_commit: null` plus
+    `tool_commit_unavailable` (the reason). Verdict-neutral by construction: it is read-only, touches no measurement, and
+    the rollup reads only a layer's `layer` and `assets`, never its other head keys. A null tool_commit is never guessed."""
+    out = dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint())
+    try:
+        p = subprocess.run(["git", "-C", str(Path(__file__).resolve().parent), "rev-parse", "HEAD"],
+                           capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError) as exc:      # no git binary, unreadable dir, timeout
+        return dict(out, tool_commit=None, tool_commit_unavailable=f"git rev-parse HEAD could not run: {type(exc).__name__}")
+    sha = p.stdout.strip()
+    if p.returncode != 0 or not _GIT_SHA.fullmatch(sha):
+        why = (p.stderr or "").strip().splitlines()[-1:] or ["no output"]
+        return dict(out, tool_commit=None, tool_commit_unavailable=f"not a git checkout (git rev-parse HEAD exit "
+                                                                    f"{p.returncode}): {why[0][:160]}")
+    return dict(out, tool_commit=sha)
+
+
 def census_scope(obj) -> dict | None:
     """The scope label of a layer census, or None (a full census carries none). Fail-closed on a malformed label."""
     if not isinstance(obj, dict) or "scope" not in obj:
@@ -6353,6 +6377,7 @@ def main() -> int:
             print("  R41 isolates per-asset checks only; a failed layer-wide read leaves this whole layer "
                   f"unmeasured{' and stops every layer after it (no census file written)' if len(keys) > 1 else ''}.")
             return 4
+        c.update(census_stamp())     # N-44 A: registry revision + fingerprint + tool commit in every layer head
         out[k] = c
         if by_layer is not None:
             print(f"{k} SCOPED RUN — partial census, not a layer census: {c['n_assets']} of "
