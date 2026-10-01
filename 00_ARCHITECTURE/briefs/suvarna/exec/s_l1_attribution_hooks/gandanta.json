@@ -1,0 +1,15 @@
+{
+  "lane": "gandanta",
+  "ruling": "Gandanta",
+  "pr": "to be set by the Gandanta fix PR",
+  "description": "SS-ruled Gandanta change. Seed entry grounded in the stored category graha_gandanta (50 rows for the canonical chart: key is_gandanta per graha per ayanamsha). The Gandanta fix PR must refine this file (fact_keys, expected_direction, expected_count) in the same PR.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["graha_gandanta"],
+      "fact_keys": ["is_gandanta"],
+      "change_types": ["value", "appeared", "disappeared", "occurrence_count", "tier"],
+      "note": "no direction or count claimed yet: not known at seeding time"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "lane": "argala",
+  "ruling": "argala",
+  "pr": "to be set by the argala fix PR",
+  "description": "SS-ruled argala change. Seed entry grounded in the categories stored for the canonical chart today (argala_natal_matrix 21,600 rows, virodha_argala_natal_matrix 21,600, net_argala_per_varga 1,800). The argala fix PR must refine this file (fact_keys, expected_direction, expected_count) in the same PR.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["argala_natal_matrix", "virodha_argala_natal_matrix", "net_argala_per_varga"],
+      "change_types": ["value", "appeared", "disappeared", "occurrence_count", "tier"],
+      "note": "no direction or count claimed yet: not known at seeding time"
+    }
+  ]
+}
