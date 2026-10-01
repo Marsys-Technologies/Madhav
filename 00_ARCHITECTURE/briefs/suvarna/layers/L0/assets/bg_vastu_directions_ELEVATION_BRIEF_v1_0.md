@@ -14,7 +14,7 @@ base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
 decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
-track_i_items: [TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-09, TI-L0-25]
+track_i_items: [TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-25, TI-L0-33]
 ledger_gap_ids: [bg_vastu_directions-Idem.pattern, bg_vastu_directions-Earn.build_record, bg_vastu_directions-Cost.baseline, bg_vastu_directions-Complete.depth, bg_vastu_directions-Dens.served, bg_vastu_directions-Carr.detector]
 ---
 # bg_vastu_directions — Vāstu direction–graha reference (8 directions + remedials; 32 rows)
@@ -88,7 +88,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (detector only)
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
@@ -100,7 +100,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
 - **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration only)
 - **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
@@ -112,11 +112,23 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row changes (test or code-side only); declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference.
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
 - **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
 - **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+
+### FD-4 · Record the Mayamata rows as explicitly `unsourced` (declaration only)
+
+- **Answers:** SS Q18; TI-L0-33
+- **Change:** declare in the declarations file that all 32 rows’ source (Mayamata Ch.6) is outside the corpus and therefore `unsourced`; no row, column or citation changes and no rebuild (the additive `attribution_state` column of TI-L0-09 is NOT applied to this asset in this wave).
+- **Files / declaration / migration:** `asset_declarations.json` (`carriage`/source note) — Track E file
+- **Failing-first test and mutation:** declarations validation; the D1 detector reads all 32 rows `unverifiable: source outside corpus`; mutation: remove the declaration → the Ldgr/Carr reading loses its explanation
+- **Output change:** none
+- **Blast radius:** no row changes; readers (`query_vastu_directions.ts`, `get_vastu_directions.ts`, editorial-review modules) see no change.
+- **Rebuild:** none (declaration only)
+- **Gate it moves:** Ldgr (qualification), Carr
+- **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (decided)
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
@@ -145,4 +157,4 @@ Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until t
 3. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 4. CF-12: ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
 
-**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-09, TI-L0-25.
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-25, TI-L0-33.

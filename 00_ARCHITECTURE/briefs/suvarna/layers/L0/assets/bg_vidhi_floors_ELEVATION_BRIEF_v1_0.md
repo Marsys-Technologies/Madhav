@@ -23,7 +23,7 @@ ledger_gap_ids: [bg_vidhi_floors-Earn.build_record, bg_vidhi_floors-Cost.baselin
 
 ## 0 · Identity — what the asset is
 
-'Per-intent-class acharya floor + machine band header + ordered floor items: the compiled scope_tuple → contract input (D-2 Lane V-1)'. Targets `vidhi_intent_floors` (14) and `vidhi_floor_items` (409); the writer (`platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py`, ON CONFLICT upsert at `:555`, DELETE statements at `:550,569`) mirrors the canonical TS registry `platform/src/lib/vidhi/registry_data.ts`, held in lockstep by a CI drift gate (`platform/scripts/census/check_vidhi_registry_parity.mjs`, run at `.github/workflows/ci.yml:1538`). **`catalog_status = DRAFT` is intentional** (migration 642, applied 2026-09-04): 12 of 14 intent floors are writer-tagged MANDATORY while `education_deepdive` and `progeny_deepdive` remain CANDIDATE (VIDHI-PŪRṆATĀ P-2, not ratified); the registry description says flipping to CURRENT 'would be fabricating settledness two floors don't have'. Depends on `bg_vidhi_primitives`; no declared dependents (census 0/0) though `platform/src/lib/vidhi/{types,registry_data}.ts` and `platform-mcp/src/resources/vidhi/` read the tables. Header comments in the TS file (52 primitives, 11 floors) are stale against the 60 / 14 the writer holds.
+'Per-intent-class acharya floor + machine band header + ordered floor items: the compiled scope_tuple → contract input (D-2 Lane V-1)'. Targets `vidhi_intent_floors` (14) and `vidhi_floor_items` (409); the writer (`platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py`, ON CONFLICT (intent) upsert at `:558`, DELETE statements at `:550,569`) mirrors the canonical TS registry `platform/src/lib/vidhi/registry_data.ts`, held in lockstep by a CI drift gate (`platform/scripts/census/check_vidhi_registry_parity.mjs`, run at `.github/workflows/ci.yml:1538`). **`catalog_status = DRAFT` is intentional** (migration 642, applied 2026-09-04): 12 of 14 intent floors are writer-tagged MANDATORY while `education_deepdive` and `progeny_deepdive` remain CANDIDATE (VIDHI-PŪRṆATĀ P-2, not ratified); the registry description says flipping to CURRENT 'would be fabricating settledness two floors don't have'. Depends on `bg_vidhi_primitives`; no declared dependents (census 0/0) though `platform/src/lib/vidhi/{types,registry_data}.ts` and `platform-mcp/src/resources/vidhi/` read the tables. Header comments in the TS file (52 primitives, 11 floors) are stale against the 60 / 14 the writer holds.
 
 | field | value | source |
 |---|---|---|
@@ -87,7 +87,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** the inspector registry entry (Track E) pointing at `platform/scripts/census/check_vidhi_registry_parity.mjs`; no asset file changes
 - **Failing-first test and mutation:** the gate’s own test: a seeded one-field drift must fail it (confirm it does before registering); mutation: edit one floor item in the TS file only → the gate fails
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02
@@ -99,7 +99,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** none beyond reading the existing tag; a declarations note
 - **Failing-first test and mutation:** a query returns 12 MANDATORY and 2 CANDIDATE floors; mutation: flip a tag → the count moves
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none
 - **Gate it moves:** Null/Earn (a declared authority limit)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (decided)
@@ -112,7 +112,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
 - **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration only)
 - **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
@@ -124,7 +124,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` (`carriage`) and, only if no column exists, the writer + a migration
 - **Failing-first test and mutation:** inspector reads PASS/FAIL on the declared column; a blank source must read FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 0 / transitive 0 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration); a data fix would be a separate design
 - **Gate it moves:** Ldgr (no reading → PASS/FAIL)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T3-01 (the Ldgr source is undefined in the gate map)

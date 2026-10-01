@@ -11,7 +11,7 @@ census_revision_used: "saved census `00_ARCHITECTURE/briefs/suvarna/layers/censu
 template_revision: "ASSET_ELEVATION_TEMPLATE_v2_0.md at 2289778be (campaign/nikasha-test; DRAFT_PENDING_REVIEW)"
 layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1.md (3.1-rev1, PROVISIONAL)"
 base_commit: "main 0250cbade"
-disposition: "enrich (E)"
+disposition: "enrich (narrowed after Q20; pending)"
 disposition_proposal_approver: "Steward (G16) for the disposition; the output changes it names need SS (Track A §10, R5)"
 decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
 track_i_items: [TI-L0-03, TI-L0-05, TI-L0-09, TI-L0-31]
@@ -77,7 +77,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 ## 3 · Disposition
 
-**enrich (E)** — the carried P is moved to E (the layer instance listed bg_yogas under preserve yet carried a must-add for its citation): one row needs an explicit attribution state, and four formation columns that DP05 needs are empty. Populating them is a source-grounded extraction (SS decision); the design below does not invent values.
+**enrich (narrowed after Q20; pending)** — SS accepted the disposition (Q10) and then deferred the four DP05 columns (Q20), so the original justification is gone. What remains: an explicit `attribution_state` column on all 233 catalogue rows (one `unsourced`; an added qualified field, T2 E) and declared null reasons for the four empty columns. That is a modest enrichment; if SS reads it as too thin for E, the honest alternative is keep with the same two fixes. Recorded as "enrich pending" for that reason; no change to the fixes either way.
 
 Approver under Track A brief §10: **Steward (G16) for the disposition; the output changes it names need SS (Track A §10, R5)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
@@ -90,7 +90,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** a migration (additive column on `brahma_yoga_catalog`) + `l0_yogas.py`
 - **Failing-first test and mutation:** count of `unsourced` rows = 1, the other 232 `sourced`
 - **Output change:** one additive column
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** the rebuild deletes and re-inserts `brahma_yoga_source_chunks`, `reference_yogas`, `brahma_yoga_catalog` (233) and the 233 `yoga` rows of `brahma_ontology` in one transaction (`l0_yogas.py:2243-2249`). DB cascades: only `reference_yogas` and `brahma_yoga_source_chunks` reference the catalogue (ON DELETE CASCADE, migrations 178 and 630), both wholly owned by bg_yogas. Readers of the catalogue outside the L0 writers: L1 `ga_yoga.py`, `ga_yoga_writer.py`, `ga_structural_writer.py`, L2 `bo_laksana.py`, `routers/yoga_formation_band.py`, L1 modules `get_yoga_firings.ts`, `coverage_matrix.ts`, `workspaceSummary.ts` (edges undeclared, `bedrock_exempt`). Readers of the ontology rows: `resolve_entity.ts`, `list_entities.ts`. An additive state column leaves canonical ids unchanged, so downstream fact ids citing yoga ids still resolve; `bg_rules` need not be rebuilt for it.
 - **Rebuild:** needs production rebuild: bg_yogas (after the migration; global delete-then-insert of four tables)
 - **Gate it moves:** Ldgr (qualification), Carr
 - **Fix class:** data (output change); **buildable before J1:** tier-independent for the state
@@ -103,7 +103,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `asset_declarations.json` (null reasons)
 - **Failing-first test and mutation:** declarations validation; mutation: remove a reason → Null reads NO_DETECTOR
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** declaration only: no row, id or served field changes; readers of the catalogue (listed above) see no change.
 - **Rebuild:** none (declaration only)
 - **Gate it moves:** Null; Complete (information)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (decided)
@@ -116,7 +116,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 1 / transitive 52 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (detector only)
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
@@ -128,7 +128,7 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row changes (test or code-side only); declared dependents direct 1 / transitive 52 and the readers in the §0 row see no difference.
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
 - **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
