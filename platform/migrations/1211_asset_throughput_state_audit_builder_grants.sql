@@ -1,0 +1,60 @@
+-- Migration 1211: grant data_plane_builder INSERT on asset_throughput_state_audit
+-- and USAGE on its identity sequence.
+-- Pravāha B6.0 (steward M20261001T160205-5005, native-approved 2026-10-01).
+-- Created: 2026-10-01. Author: pravaha stream B.
+--
+-- WHY THIS EXISTS
+-- ═══════════════
+-- Migration 586 (platform/supabase/migrations/586_f152_asset_throughput_state_audit.sql)
+-- attached an AFTER UPDATE OF state trigger on asset_throughput whose function
+-- _record_asset_throughput_state_change() INSERTs into asset_throughput_state_audit.
+-- The trigger is NOT SECURITY DEFINER, so the insert runs with the privileges of
+-- the role that issued the UPDATE. The build pipeline (brahma-build-pipeline-job)
+-- runs as data_plane_builder, which holds UPDATE on asset_throughput but held NO
+-- privilege on the audit table and no USAGE on its identity sequence. Every
+-- pipeline build therefore failed at the first asset state change with
+-- 'permission denied for table asset_throughput_state_audit' (production finding
+-- 2026-10-01, build_run 8684032d-a687-4943-939b-bbc51c53917c, 15:01Z; last
+-- completed build_run in production 2026-09-12 — the day the ownership
+-- tightening landed). Verified read-only against production before authoring:
+--   has_table_privilege('data_plane_builder',
+--     'public.asset_throughput_state_audit','INSERT') = false
+--   has_sequence_privilege('data_plane_builder',
+--     'public.asset_throughput_state_audit_id_seq','USAGE') = false
+--   has_table_privilege('data_plane_builder','public.asset_throughput','UPDATE') = true
+--
+-- DEPLOY-GATE SAFETY (allowlist drift)
+-- ════════════════════════════════════
+-- asset_throughput_state_audit is NOT in the protected relation set: it appears in
+-- neither L1_ACTIVE_TABLES nor L2_ACTIVE_TABLES
+-- (platform/scripts/data-plane-ownership-preflight.ts:9-31), so none of the ACL
+-- allowlist checks in platform/scripts/data-plane-ownership-status.ts see it —
+-- the protected sequence ACL check (L230-254), the protected table ACL check
+-- (~L420-447), the history/view ACL check (~L455-483) and the DP-SD-018
+-- write-privilege check (~L558-570) are all scoped to L1/L2 active tables only.
+-- Granting INSERT on this table and USAGE on its sequence therefore cannot trip
+-- any allowlist-drift gate. The sequence is likewise not a protected sequence
+-- (the protected-sequence set is derived from L1/L2 active tables' owned
+-- sequences). data_plane_builder gains no CREATE on schema public and no
+-- TRUNCATE/TRIGGER/REFERENCES anywhere.
+--
+-- RUNNER AUTHORITY
+-- ════════════════
+-- The routine migration runner connects as amjis_app (PROD_DATABASE_URL —
+-- platform/scripts/validate-migration-database-routes.ts:12), and amjis_app OWNS
+-- both the table and (through the identity column) its sequence (verified
+-- read-only: pg_tables.tableowner = 'amjis_app' for both asset_throughput and
+-- asset_throughput_state_audit), so the GRANTs below are issued by the owner.
+-- This is deliberately NOT a protected public-schema migration: it creates no
+-- object, only grants on an existing unprotected one.
+--
+-- SCOPE — exactly two grants, nothing else (steward instruction, native-approved):
+-- no SECURITY DEFINER change (the trigger staying caller-privileged is the audit
+-- design of 586: db_user records the real caller), no grant of SELECT (the
+-- builder writes audit rows; it has no legitimate read of them), no grant of
+-- UPDATE/DELETE/TRUNCATE (the audit table is append-only by design).
+--
+-- Idempotent: GRANT of an already-held privilege is a no-op in PostgreSQL.
+
+GRANT INSERT ON public.asset_throughput_state_audit TO data_plane_builder;
+GRANT USAGE ON SEQUENCE public.asset_throughput_state_audit_id_seq TO data_plane_builder;

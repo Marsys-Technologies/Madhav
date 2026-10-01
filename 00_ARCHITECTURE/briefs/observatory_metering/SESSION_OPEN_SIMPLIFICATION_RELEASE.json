@@ -1,0 +1,145 @@
+{
+  "session_open": {
+    "session_id": "OBSERVATORY-SIMPLIFICATION-RELEASE-20261001",
+    "cowork_thread_name": "Madhav — Observatory simplification release",
+    "agent_name": "Codex",
+    "agent_version": "GPT-6",
+    "tool": "Codex",
+    "tool_profile": "madhav-parity",
+    "worktree_path": "/Users/Dev/.codex/worktrees/observatory-metering/Madhav",
+    "step_number_or_layer": "Observatory approved UI release and live acceptance",
+    "predecessor_session": "OBSERVATORY-SIMPLIFICATION-IMPLEMENTATION-20261001",
+    "coordination": {
+      "coordination_ref": "origin/campaign-coordination",
+      "lease_id": "L-OBSERVATORY-SIMPLIFICATION-RELEASE-20261001",
+      "lease_status_verified": true,
+      "lease_verified_at": "2026-10-01T17:44:52.889178+00:00",
+      "work_order_surface": "00_ARCHITECTURE/briefs/observatory_metering/IMPLEMENTATION_PLAN_v1_0.md",
+      "remote_commit": "c79b0639c"
+    },
+    "cross_tool_state_read": {
+      "cross_cutting_decision_register": true,
+      "consumed_decisions": [
+        "CCD-001",
+        "CCD-020"
+      ],
+      "stale_surfaces_disregarded": [
+        ".conductor-state.json",
+        ".gemini/project_state.md",
+        "CLAUDECODE_BRIEF.md"
+      ]
+    },
+    "mandatory_reading_confirmation": [
+      {
+        "file": "CLAUDE.md",
+        "fingerprint_sha256": "a364863fc3efcf416ca16773093dda72ea7b632d6d63cd1c13a387889121e12e",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      },
+      {
+        "file": "00_ARCHITECTURE/CAPABILITY_MANIFEST.json",
+        "fingerprint_sha256": "fc50e50417fe49469f561229f6e051fe2a4ebd18db13d54d4565680fdacd9863",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      },
+      {
+        "file": "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md",
+        "fingerprint_sha256": "61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      },
+      {
+        "file": "00_ARCHITECTURE/MACRO_PLAN_v2_0.md",
+        "fingerprint_sha256": "8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      },
+      {
+        "file": "00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md",
+        "fingerprint_sha256": "a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      },
+      {
+        "file": "00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md",
+        "fingerprint_sha256": "414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      },
+      {
+        "file": "00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md",
+        "fingerprint_sha256": "45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      },
+      {
+        "file": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+        "fingerprint_sha256": "f34a729c9b197511ec249f39c386fa5fac376105ae58db80592f8127aecdbc7b",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      },
+      {
+        "file": "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+        "fingerprint_sha256": "18e1e9912bd5494b647ff60035f4c03d7fecfa7d2241cdd54e11d4be359d79d1",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      },
+      {
+        "file": "00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md",
+        "fingerprint_sha256": "8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      },
+      {
+        "file": "00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md",
+        "fingerprint_sha256": "8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      },
+      {
+        "file": "00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md",
+        "fingerprint_sha256": "ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      },
+      {
+        "file": "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md",
+        "fingerprint_sha256": "8fb6a302355cd5e729a45a86b25f8258226d0f1ba5647e72de2329b9b67323d7",
+        "read_at": "2026-10-01T17:44:52.889178+00:00"
+      }
+    ],
+    "canonical_artifact_fingerprint_check": [
+      {
+        "canonical_id": "MACRO_PLAN",
+        "declared_fingerprint": "8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e",
+        "observed_fingerprint": "8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e",
+        "match": true
+      },
+      {
+        "canonical_id": "CROSS_CUTTING_DECISION_REGISTER",
+        "declared_fingerprint": "18e1e9912bd5494b647ff60035f4c03d7fecfa7d2241cdd54e11d4be359d79d1",
+        "observed_fingerprint": "18e1e9912bd5494b647ff60035f4c03d7fecfa7d2241cdd54e11d4be359d79d1",
+        "match": true
+      }
+    ],
+    "declared_scope": {
+      "may_touch": [
+        "00_ARCHITECTURE/briefs/observatory_metering/SESSION_OPEN_SIMPLIFICATION_RELEASE.json",
+        "00_ARCHITECTURE/briefs/observatory_metering/RELEASE_SIMPLIFICATION_v1_0.md",
+        "platform/src/app/(super-admin)/observatory/**",
+        "platform/src/app/cockpit/**",
+        "platform/src/app/usage/**",
+        "platform/src/components/observatory/**",
+        "platform/src/components/build/BuildHeader.tsx",
+        "platform/src/components/build/RefreshButton.tsx",
+        "platform/src/components/nav/**",
+        "platform/src/components/shared/AppShellRail.tsx",
+        "platform/src/components/shared/MobileNavSheet.tsx",
+        "platform/src/lib/metering/**",
+        "platform/src/lib/providers/dispatcher.ts"
+      ],
+      "must_not_touch": [
+        "platform/supabase/migrations/**",
+        "platform/python-sidecar/**",
+        "platform-mcp/**",
+        "01_FACTS_LAYER/**",
+        "025_HOLISTIC_SYNTHESIS/**",
+        "00_ARCHITECTURE/MACRO_PLAN_v2_0.md",
+        "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md",
+        "CLAUDE.md"
+      ]
+    },
+    "mirror_pair_freshness_check": [],
+    "native_directive_obligations": [],
+    "red_team_due": false,
+    "notes": "Native approved release after four-screen preview and font correction. Desktop Codex uses parity-capable managed runtime. Production scope is the exact approved UI and metering read-path patch; no paid provider prompt, migration, or production data mutation."
+  }
+}

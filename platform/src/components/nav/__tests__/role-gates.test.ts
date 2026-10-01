@@ -25,6 +25,13 @@ describe('AI Console shared navigation descriptor', () => {
     expect(isNavItemActive('cockpit', '/cockpit', '/audit')).toBe(false)
   })
 
+  it('gives guests one Observatory destination and no duplicate My Usage item', () => {
+    const items = visibleNavItems('guest', { aiMetering: true })
+    expect(items.filter(item => item.href === '/observatory').map(item => item.label)).toEqual(['Observatory'])
+    expect(items.some(item => item.href === '/usage')).toBe(false)
+    expect(visibleNavItems('super_admin', { aiMetering: true }).some(item => item.href === '/usage')).toBe(false)
+  })
+
   it('is the shared source consumed by both rail and mobile navigation', () => {
     for (const file of ['AppShellRail.tsx', 'MobileNavSheet.tsx']) {
       const source = readFileSync(resolve(process.cwd(), `src/components/shared/${file}`), 'utf8')

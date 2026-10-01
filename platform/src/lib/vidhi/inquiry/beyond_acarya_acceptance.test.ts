@@ -80,6 +80,13 @@ const historicalV11 = {
   report_hash: 'sha256:773dd150de295ed561b42402fc4209228574ed8c07653bc414368606a48af8bc',
   artifact_hash: 'sha256:5c840cf8efacbbf06eb83de5973f3f984ffe3e3e742749755a987e4098555081',
 } as const
+// The WP10 migration-1091 registry-identity reconciliation successor of v11. Immutable since the
+// Suvarna Track I-4 census flip (v13) superseded it.
+const historicalV12 = {
+  capability_content_hash: 'sha256:9b47461d6716337149dd636cc2d6bed3a7506d86bc15aea51c727d9ba1955f58',
+  report_hash: 'sha256:fe396729f26232dcfd950da18619c79283d46c6408e767ca8428d4a387fc9cde',
+  artifact_hash: 'sha256:cb9895cf6847a0e5f73669d28d4d57b783e35417bc72b9cb3a5045d4022edcf6',
+} as const
 
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
@@ -130,7 +137,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // byte-for-byte with v10 — the census-visible catalog identity returned to the production
     // relation and no SCU, edge, proof kind or availability disposition changed (see the
     // metrics assertions above and the v12 pin test below; identical to v7-v11's own metrics).
-    expect(report.report_hash).toBe('sha256:fe396729f26232dcfd950da18619c79283d46c6408e767ca8428d4a387fc9cde')
+    // Suvarna Track I-4 census flip (v13): migration 1212 gives ka_vighnakara its first reviewed
+    // output-digest spec, so the census (static replay of spec INSERTs) no longer lists it as a
+    // blocked contract. This moved capability_content_hash/producer_contract_fingerprint and, with
+    // them, report_hash; no SCU, edge, proof kind or availability disposition changed (the metric
+    // assertions above are unchanged). Only this pinned hash was re-pinned.
+    expect(report.report_hash).toBe('sha256:c0322d170afc3c8138f7ada1173476956b58b709a55f9c042a2f1899f24ad862')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -450,9 +462,31 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v12 source-successor artifact to the current executable report without claiming live acceptance (WP10 migration-1091 registry identity reconciliation)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v12 source-successor artifact immutable after the Suvarna Track I-4 census-flip advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v12.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV12.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v12',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v11.json',
+        capability_content_hash: historicalV11.capability_content_hash,
+        report_hash: historicalV11.report_hash,
+      },
+      capability_content_hash: historicalV12.capability_content_hash,
+      report_hash: historicalV12.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+      evaluated_source_revision: 'a35eff5449080b0bf271514a28b1dc57d10d9591',
+    })
+  })
+
+  it('pins the v13 source-successor artifact to the current executable report without claiming live acceptance (Suvarna Track I-4 census flip)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v13.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -460,12 +494,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v12',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v13',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v11.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v12.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV11.capability_content_hash,
-        report_hash: historicalV11.report_hash,
+        capability_content_hash: historicalV12.capability_content_hash,
+        report_hash: historicalV12.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -508,11 +542,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // The WP10 migration-1091 registry-identity reconciliation commit (steward review of
-      // Pravaha A0.3/A0.4, blocking item 2): seed literal mirrors the applied, native-authorised
-      // 1091 row (kala_gochara_windows/'4.0'), moving the producer-contract fingerprint;
-      // the snapshot regeneration is part of the same commit.
-      evaluated_source_revision: 'a35eff5449080b0bf271514a28b1dc57d10d9591',
+      // Suvarna Track I-4 (PR #2826): migration 1212 adds ka_vighnakara's output-digest spec; the
+      // census replays it, the snapshot is regenerated (producer_contract_fingerprint moved).
+      evaluated_source_revision: '749e8467581665e84282743e6eba6f5df7400f01',
     })
   })
 })

@@ -134,11 +134,12 @@ def test_panchanga_rikta_tithi_day14():
     assert result['obstruction_type'] == 'panchanga_obstruction'
 
 
-def test_panchanga_rikta_tithi_day15():
-    # day=15, day_mod = 15 % 15 = 0 → hit (catches day=15)
-    result = _check_panchanga_obstruction(date(2024, 6, 15))
-    assert result is not None
-    assert result['obstruction_type'] == 'panchanga_obstruction'
+def test_panchanga_tithi15_is_purna_not_rikta():
+    # day=15 -> proxy tithi 15 (Purnima). The engine classes 15 and 30 as Poorna, NOT Rikta,
+    # so it must not fire (the writer's old (4, 9, 14, 15) set wrongly included 15).
+    # Day 19 -> proxy tithi 4 (19 % 15) -> still Rikta in the proxy path.
+    assert _check_panchanga_obstruction(date(2024, 6, 15)) is None
+    assert _check_panchanga_obstruction(date(2024, 6, 19)) is not None
 
 
 def test_panchanga_clear_day():

@@ -1,0 +1,236 @@
+{
+ "_comment": "Every asset whose target table carries a column that holds bodha_msr_signals.signal_id values. Derived 2026-10-01 from the live catalog (pg_attribute: uuid / uuid[] columns named like signal, excluding bodha_msr_signals itself and __ssv_ shadow tables) and resolved to assets from the writers' INSERT statements (pipeline/orchestrator/writers/*.py; a test re-checks both). `keyed`: fk_dropped = key dropped by migration 1214; l2_fk = still keyed (owner-path drop pending); none = never keyed; array = array of ids, cannot be keyed.",
+ "tables": [
+  {
+   "table": "kala_convergence",
+   "columns": [
+    "signal_id"
+   ],
+   "assets": [
+    "ka_sangam"
+   ],
+   "layer": "L3",
+   "keyed": "fk_dropped"
+  },
+  {
+   "table": "kala_activation",
+   "columns": [
+    "signal_id"
+   ],
+   "assets": [
+    "ka_kalasutra"
+   ],
+   "layer": "L3",
+   "keyed": "fk_dropped"
+  },
+  {
+   "table": "kala_obstruction",
+   "columns": [
+    "signal_id"
+   ],
+   "assets": [
+    "ka_vighnakara"
+   ],
+   "layer": "L3",
+   "keyed": "fk_dropped"
+  },
+  {
+   "table": "kala_darshana",
+   "columns": [
+    "signal_id"
+   ],
+   "assets": [
+    "ka_kala_darshana"
+   ],
+   "layer": "L3",
+   "keyed": "fk_dropped"
+  },
+  {
+   "table": "kala_bhavishya",
+   "columns": [
+    "signal_id"
+   ],
+   "assets": [
+    "ka_bhavishya_lekha"
+   ],
+   "layer": "L3",
+   "keyed": "fk_dropped"
+  },
+  {
+   "table": "kala_activation_predicates",
+   "columns": [
+    "signal_id"
+   ],
+   "assets": [
+    "ka_yojaka"
+   ],
+   "layer": "L3",
+   "keyed": "none"
+  },
+  {
+   "table": "phala_anchors",
+   "columns": [
+    "signal_id"
+   ],
+   "assets": [
+    "ph_nimitta"
+   ],
+   "layer": "L4",
+   "keyed": "none"
+  },
+  {
+   "table": "bodha_contradictions",
+   "columns": [
+    "signal_a_id",
+    "signal_b_id"
+   ],
+   "assets": [
+    "bo_karanajala"
+   ],
+   "layer": "L2",
+   "keyed": "l2_fk"
+  },
+  {
+   "table": "bodha_signal_embeddings",
+   "columns": [
+    "signal_id"
+   ],
+   "assets": [
+    "bo_samskara"
+   ],
+   "layer": "L2",
+   "keyed": "l2_fk"
+  },
+  {
+   "table": "bodha_cgm_nodes",
+   "columns": [
+    "msr_signal_id"
+   ],
+   "assets": [
+    "bo_karanajala",
+    "bo_bimba"
+   ],
+   "layer": "L2",
+   "keyed": "none"
+  },
+  {
+   "table": "bodha_cgm_edges",
+   "columns": [
+    "underlying_msr_signal_ids_array"
+   ],
+   "assets": [
+    "bo_karanajala"
+   ],
+   "layer": "L2",
+   "keyed": "array"
+  },
+  {
+   "table": "bodha_cdlm_cells",
+   "columns": [
+    "shared_signal_ids_array"
+   ],
+   "assets": [
+    "bo_sangati"
+   ],
+   "layer": "L2",
+   "keyed": "array"
+  },
+  {
+   "table": "bodha_convergence",
+   "columns": [
+    "top_signal_ids_array"
+   ],
+   "assets": [
+    "bo_sangati"
+   ],
+   "layer": "L2",
+   "keyed": "array"
+  },
+  {
+   "table": "bodha_triangulation",
+   "columns": [
+    "signal_ids"
+   ],
+   "assets": [
+    "bo_sangati"
+   ],
+   "layer": "L2",
+   "keyed": "array"
+  },
+  {
+   "table": "bodha_cdlm_pattern_clusters",
+   "columns": [
+    "involved_signals_array"
+   ],
+   "assets": [
+    "bo_cdlm_summary"
+   ],
+   "layer": "L2",
+   "keyed": "array"
+  },
+  {
+   "table": "bodha_pratijna",
+   "columns": [
+    "supporting_signal_ids",
+    "contradicting_signal_ids"
+   ],
+   "assets": [
+    "bo_pratijna"
+   ],
+   "layer": "L2",
+   "keyed": "array"
+  }
+ ],
+ "transitive_cascade": {
+  "via": "kala_convergence / phala_anchors CASCADE and SET NULL keys (pg_constraint closure, Track E 4a)",
+  "tables": [
+   [
+    "phala_pramana",
+    "ph_pramana"
+   ],
+   [
+    "phala_sankrama",
+    "ph_sankrama"
+   ],
+   [
+    "phala_sodhana",
+    "ph_sodhana"
+   ],
+   [
+    "phala_suddha_sodhana",
+    "ph_suddha_sodhana"
+   ],
+   [
+    "phala_mitigation",
+    "ph_pratikara"
+   ],
+   [
+    "phala_muhurta",
+    "ph_muhurta"
+   ]
+  ]
+ },
+ "catalog_snapshot": [
+  "bodha_cdlm_cells.shared_signal_ids_array",
+  "bodha_cdlm_pattern_clusters.involved_signals_array",
+  "bodha_cgm_edges.underlying_msr_signal_ids_array",
+  "bodha_cgm_nodes.msr_signal_id",
+  "bodha_contradictions.signal_a_id",
+  "bodha_contradictions.signal_b_id",
+  "bodha_convergence.top_signal_ids_array",
+  "bodha_msr_signals.constituent_signals_array",
+  "bodha_msr_signals.contradicts_signals_array",
+  "bodha_msr_signals.signal_id",
+  "bodha_pratijna.contradicting_signal_ids",
+  "bodha_pratijna.supporting_signal_ids",
+  "bodha_signal_embeddings.signal_id",
+  "bodha_triangulation.signal_ids",
+  "kala_activation.signal_id",
+  "kala_activation_predicates.signal_id",
+  "kala_bhavishya.signal_id",
+  "kala_convergence.signal_id",
+  "kala_darshana.signal_id",
+  "kala_obstruction.signal_id",
+  "phala_anchors.signal_id"
+ ]
+}

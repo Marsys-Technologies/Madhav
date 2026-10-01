@@ -1,0 +1,321 @@
+"""
+Migration 1210 (Suvarna Track I): direct `depends_on` edges for reads that were ordered only
+transitively (E6 `Build.dag` reads-match, T4).
+
+DB-free. What this proves, and what it does not:
+  * PROVES: the migration and the TypeScript seed carry the same 12 edges; every id exists; the
+    full 127-asset registry graph stays acyclic; every added edge was already implied by an existing
+    path (so no build ordering changes); the 3 known BACK-READ edges (which would create cycles) are
+    absent; every producer and consumer has a registered writer class.
+  * HAS TEETH: the cycle checker is shown to flag a real back-read edge (see the mutation test).
+  * DOES NOT PROVE the live registry state (that is the read-only verification SQL run after deploy),
+    nor the E6 detector verdicts (the detector lives on the E6 lane; the offline before/after run is
+    recorded in the Track I evidence file, not re-run here).
+
+Pre-state graph: tests/fixtures/registry_depends_on_pre_1210.json (frozen reconstruction of the live
+active registry; see its `_provenance`). The seed's depends_on is bootstrap-only (a re-seed never
+rewrites an existing row), so the seed and the pre-state graph legitimately differ on edges owned by
+earlier migrations; this test therefore asserts that the seed CONTAINS every 1210 edge, not that the
+two graphs are equal.
+"""
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+
+from pipeline.orchestrator import dag_edge_guard as g
+
+_REPO = Path(__file__).resolve().parents[3]
+_MIGRATION = _REPO / "platform" / "migrations" / "1210_asset_registry_direct_edges.sql"
+_SEED = _REPO / "platform" / "scripts" / "seed" / "asset_registry_seed.ts"
+_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "registry_depends_on_pre_1210.json"
+
+# Reads whose direct edge would close a cycle (ruled out of 1210; registry/design findings).
+# SS split ruling (2026-10-01): a read-only gate preview showed these producers NOT lit+fresh on the
+# canonical chart, so every edge TO them is held for migration 1211 (branch TI-edges-002).
+_HELD_PRODUCERS = {"bo_pratijna", "ka_yojaka", "mi_bhavisya", "ph_nimitta"}
+_HELD_EDGES = {
+    ("ph_nimitta", "bo_pratijna"),
+    ("ph_nimitta", "ka_yojaka"),
+    ("mi_gunanaka", "mi_bhavisya"),
+    ("mi_pariksha", "mi_bhavisya"),
+    ("mi_pariksha", "ph_nimitta"),
+}
+_BACK_READS = {
+    ("ka_bhavishya_lekha", "ph_nimitta"),
+    ("ga_structural", "ga_vichara"),
+    ("ga_structural", "ga_yoga"),
+}
+
+
+def _migration_edges() -> list[tuple[str, str]]:
+    sql = _MIGRATION.read_text()
+    # only the INSERT ... VALUES block that fills the temp table
+    m = re.search(r"INSERT INTO _m1210_edges \(asset_id, dep\) VALUES\s*(.*?);", sql, re.S)
+    assert m, "edge VALUES block not found in migration 1210"
+    return re.findall(r"\(\s*'([a-z0-9_]+)'\s*,\s*'([a-z0-9_]+)'\s*\)", m.group(1))
+
+
+def _seed_graph() -> dict[str, list[str]]:
+    src = _SEED.read_text()
+    out: dict[str, list[str]] = {}
+    for m in re.finditer(r"asset_id:\s*'([a-z0-9_]+)'", src):
+        nxt = re.search(r"asset_id:\s*'", src[m.end():])
+        block = src[m.end(): m.end() + nxt.start()] if nxt else src[m.end():]
+        d = re.search(r"^[ \t]+depends_on:\s*\[(.*?)\]", block, re.S | re.M)
+        if d:
+            out[m.group(1)] = re.findall(r"'([a-z0-9_]+)'", d.group(1))
+    return out
+
+
+def _pre_graph() -> dict[str, list[str]]:
+    return json.loads(_FIXTURE.read_text())["edges"]
+
+
+def _find_cycle(graph: dict[str, set[str]]) -> list[str] | None:
+    """Return one cycle (list of ids) or None. Iterative DFS, white/grey/black."""
+    colour: dict[str, int] = {}
+    for root in graph:
+        if colour.get(root):
+            continue
+        stack = [(root, iter(sorted(graph.get(root, ()))))]
+        colour[root] = 1
+        path = [root]
+        while stack:
+            node, it = stack[-1]
+            for nxt in it:
+                if nxt not in graph:
+                    continue
+                c = colour.get(nxt, 0)
+                if c == 1:
+                    return path[path.index(nxt):] + [nxt]
+                if c == 0:
+                    colour[nxt] = 1
+                    path.append(nxt)
+                    stack.append((nxt, iter(sorted(graph[nxt]))))
+                    break
+            else:
+                colour[node] = 2
+                path.pop()
+                stack.pop()
+    return None
+
+
+def _reaches(graph: dict[str, list[str]], src: str, dst: str) -> bool:
+    seen, todo = set(), [src]
+    while todo:
+        x = todo.pop()
+        for y in graph.get(x, ()):
+            if y == dst:
+                return True
+            if y not in seen:
+                seen.add(y)
+                todo.append(y)
+    return False
+
+
+def _registered_writers() -> set[str]:
+    ids: set[str] = set()
+    for root in g._WRITER_ROOTS:
+        for f in root.rglob("*.py"):
+            if "tests" in f.parts or "__tests__" in f.parts:
+                continue
+            ids.update(g._REGISTER_RE.findall(f.read_text(errors="ignore")))
+    return ids
+
+
+# ── migration shape ──────────────────────────────────────────────────────────
+
+def test_migration_shape_and_count():
+    sql = _MIGRATION.read_text()
+    edges = _migration_edges()
+    assert len(edges) == 12 and len(set(edges)) == 12, "12 distinct edges expected"
+    assert len({a for a, _ in edges}) == 9, "9 consumer assets expected"
+    assert len({d for _, d in edges}) == 8, "8 distinct producers expected"
+    assert "SET LOCAL lock_timeout = '5s';" in sql
+    # migrate.ts owns BEGIN/COMMIT; a nested BEGIN/COMMIT would end its transaction early
+    code = "\n".join(l for l in sql.splitlines() if not l.lstrip().startswith("--"))
+    assert not re.search(r"\b(BEGIN|COMMIT)\b\s*;", code), "migration must not open/close its own transaction"
+    # `ON COMMIT DROP` on the temp table is the only DROP allowed
+    assert not re.search(r"(?<!COMMIT\s)\b(DROP|TRUNCATE|DELETE\s+FROM|INSERT\s+INTO\s+asset_registry)\b", code, re.I)
+    # the only column written on asset_registry is depends_on (SET LOCAL has no `=` after SET)
+    sets = re.findall(r"\bSET\s+([a-z_]+)\s*=", code, re.I)
+    assert sets == ["depends_on"], sets
+    assert not any(a == b for a, b in edges), "self-edge"
+
+
+def test_guards_are_scoped_null_safe_and_disclose_consequences():
+    sql = _MIGRATION.read_text()
+    code = "\n".join(l for l in sql.splitlines() if not l.lstrip().startswith("--"))
+    # self-dependency guard must be scoped to the edited assets (a pre-existing self-edge elsewhere
+    # must not fail the deploy for everyone)
+    m = re.search(r"IF EXISTS \(SELECT 1 FROM asset_registry r(.*?)\) THEN", code, re.S)
+    assert m, "self-dependency guard not found"
+    assert "r.asset_id IN (SELECT asset_id FROM _m1210_edges)" in m.group(1), m.group(1)
+    # NULL depends_on is handled everywhere the array is read or extended
+    assert "COALESCE(r.depends_on, '{}'::text[]) || n.deps" in code
+    assert code.count("<> ALL (COALESCE(") == 2
+    assert not re.search(r"<> ALL \((?!COALESCE)", code)
+    # the operational consequences stay disclosed in the header
+    for needle in ("1211_asset_registry_direct_edges_held", "5 Nirmana-frozen manifests stale",
+                   "planned/running/paused", "plan_adaptation_required", "assertManifestMatchesRegistryIdentity",
+                   "deps_unsatisfied", "asset_freshness", "nirmana_elevation_monitor_observations"):
+        assert needle in sql, f"header no longer discloses: {needle}"
+
+
+def test_held_edges_and_gate_blocked_producers_are_absent():
+    edges = _migration_edges()
+    assert not (set(edges) & _HELD_EDGES), set(edges) & _HELD_EDGES
+    assert not [e for e in edges if e[1] in _HELD_PRODUCERS], "edge to a gate-blocked producer"
+    seed = _seed_graph()
+    for a, d in _HELD_EDGES:
+        assert d not in seed[a], f"held edge {a}->{d} must not be in the 1210 seed"
+
+
+# The table each kept edge is justified by (the read verified at file:line in the evidence file).
+_EDGE_READ_TABLE = {
+    ("bo_karanajala", "ga_vichara"): "chart_vichara",
+    ("bo_laksana_rerank", "bo_bimba"): "bodha_cgm_nodes",
+    ("bo_laksana_rerank", "ga_vichara"): "chart_vichara",
+    ("bo_pratijna", "ga_vargas"): "chart_divisionals",
+    ("bo_yantra_mechanism", "bo_bimba"): "bodha_cgm_nodes",
+    ("ka_kalasutra", "ga_dashas"): "chart_dashas",
+    ("ka_vighnakara", "ga_dashas"): "chart_dashas",
+    ("ka_yojaka", "ga_yoga"): "ga_yoga_firings",
+    ("mi_darshana", "bo_laksana"): "bodha_msr_signals",
+    ("mi_darshana", "bo_sangati"): "bodha_triangulation",
+    ("mi_pariksha", "bo_laksana"): "bodha_msr_signals",
+    ("mi_pariksha", "mi_jivanaghatana"): "mimamsa_event_provenance",
+}
+
+
+def _seed_owned_tables() -> dict[str, set[str]]:
+    """asset -> tables it owns per the seed (target_table + tables named in count_sql)."""
+    src = _SEED.read_text()
+    out: dict[str, set[str]] = {}
+    for m in re.finditer(r"asset_id:\s*'([a-z0-9_]+)'", src):
+        nxt = re.search(r"asset_id:\s*'", src[m.end():])
+        block = src[m.end(): m.end() + nxt.start()] if nxt else src[m.end():]
+        tabs: set[str] = set()
+        t = re.search(r"target_table:\s*'([a-z0-9_]+)'", block)
+        if t:
+            tabs.add(t.group(1))
+        c = re.search(r"count_sql:\s*(.*?),\n\s+size_sql", block, re.S)
+        if c:
+            tabs.update(x.lower() for x in g._FROM_IN_SQL_RE.findall(c.group(1)))
+        out.setdefault(m.group(1), set()).update(tabs)
+    return out
+
+
+def _writer_insert_tables(asset_id: str) -> set[str]:
+    """Tables the asset's own registered writer file INSERTs into (the live count_sql may name tables the seed's
+    bootstrap count_sql does not; count_sql is migration-governed once a row exists)."""
+    out: set[str] = set()
+    for root in g._WRITER_ROOTS:
+        for f in root.rglob("*.py"):
+            if "tests" in f.parts or "__tests__" in f.parts:
+                continue
+            txt = f.read_text(errors="ignore")
+            if re.search(r"@register\(\s*['\"]%s['\"]" % re.escape(asset_id), txt):
+                out.update(t.lower() for t in re.findall(r"INSERT\s+INTO\s+(?:public\.)?([a-z_][a-z0-9_]*)", txt, re.I))
+    return out
+
+
+def is_exempt_table(tbl: str) -> bool:
+    """Same exemption source as dag_edge_guard: L0 bedrock, external ingest, shared chart_facts."""
+    return (tbl.startswith(g._UNGATED_PREFIXES) or tbl in g._UNGATED_EXACT
+            or tbl in g._EXTERNAL_TABLES or tbl in g._SHARED_SOFT_TABLES)
+
+
+def test_no_kept_edge_is_justified_by_a_bedrock_or_chart_facts_read():
+    """SS rulings Q2/Q3: no L0 bedrock edge, no chart_facts-only edge. Each kept edge names the table it is
+    justified by; that table must be non-exempt under dag_edge_guard's own tiers and owned by the producer."""
+    edges = _migration_edges()
+    assert set(edges) == set(_EDGE_READ_TABLE), set(edges) ^ set(_EDGE_READ_TABLE)
+    owned = _seed_owned_tables()
+    for (a, d), tbl in _EDGE_READ_TABLE.items():
+        assert not is_exempt_table(tbl), f"{a}->{d}: justified by exempt table {tbl}"
+        assert not d.startswith("bg_"), f"{a}->{d}: producer is an L0 bedrock asset"
+        assert tbl in owned.get(d, set()) or tbl in _writer_insert_tables(d), (
+            f"{a}->{d}: {d} owns {tbl} neither in the seed ({owned.get(d)}) nor via an INSERT in its writer")
+
+
+def test_exemption_predicate_has_teeth():
+    for tbl in ("brahma_event_ontology", "sutravali_rules", "reference_planets", "bg_gochara_arcs",
+                "chart_facts", "life_events", "ephemeris_daily"):
+        assert is_exempt_table(tbl), tbl
+    assert not is_exempt_table("chart_vichara")
+
+
+def test_back_reads_are_not_added_anywhere():
+    edges = set(_migration_edges())
+    assert not (edges & _BACK_READS), edges & _BACK_READS
+    seed = _seed_graph()
+    for a, d in _BACK_READS:
+        assert d not in seed.get(a, []), (a, d)
+
+
+# ── ids exist; seed and migration agree ──────────────────────────────────────
+
+def test_every_edge_id_exists_in_seed_and_pre_state():
+    seed, pre = _seed_graph(), _pre_graph()
+    for a, d in _migration_edges():
+        assert a in seed and d in seed, (a, d, "missing from seed")
+        assert a in pre and d in pre, (a, d, "missing from active registry (inactive/absent asset)")
+
+
+def test_seed_contains_every_migration_edge():
+    seed = _seed_graph()
+    missing = [(a, d) for a, d in _migration_edges() if d not in seed[a]]
+    assert not missing, f"seed does not carry migration 1210 edges: {missing}"
+
+
+def test_migration_is_not_a_noop_against_pre_state():
+    pre = _pre_graph()
+    already = [(a, d) for a, d in _migration_edges() if d in pre[a]]
+    assert not already, f"edges already present in the pre-state registry: {already}"
+
+
+# ── graph properties ─────────────────────────────────────────────────────────
+
+def test_registry_graph_acyclic_after_edges():
+    pre = {a: set(v) for a, v in _pre_graph().items()}
+    assert _find_cycle(pre) is None, "pre-state fixture itself has a cycle"
+    post = {a: set(v) for a, v in pre.items()}
+    for a, d in _migration_edges():
+        post[a].add(d)
+    assert _find_cycle(post) is None
+
+
+def test_seed_graph_acyclic():
+    """The seed runs its own cycle check at runSeed(); mirror it so a bad seed edit fails in CI,
+    not at the next deploy-time reseed."""
+    seed = {a: set(v) for a, v in _seed_graph().items()}
+    assert len(seed) >= 125
+    assert _find_cycle(seed) is None
+
+
+def test_every_added_edge_was_already_implied_transitively():
+    """Ordering cannot change: each new direct edge A->P duplicates an existing path A ~> P."""
+    pre = _pre_graph()
+    novel = [(a, d) for a, d in _migration_edges() if not _reaches(pre, a, d)]
+    assert not novel, f"edges that introduce a NEW ordering constraint: {novel}"
+
+
+def test_producers_and_consumers_have_registered_writers():
+    writers = _registered_writers()
+    ids = {x for e in _migration_edges() for x in e}
+    missing = sorted(i for i in ids if i not in writers)
+    assert not missing, f"asset(s) with no @register writer (nothing builds them): {missing}"
+
+
+# ── the checker can fail (teeth) ─────────────────────────────────────────────
+
+def test_cycle_checker_flags_a_known_back_read():
+    pre = {a: set(v) for a, v in _pre_graph().items()}
+    for a, d in _BACK_READS:
+        mutated = {k: set(v) for k, v in pre.items()}
+        mutated[a].add(d)
+        cyc = _find_cycle(mutated)
+        assert cyc is not None and a in cyc and d in cyc, (a, d, cyc)

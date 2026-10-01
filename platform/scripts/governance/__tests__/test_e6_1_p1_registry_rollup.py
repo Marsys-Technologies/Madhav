@@ -39,6 +39,8 @@ PINNED_FINGERPRINTS = {
     # 6 (E6 items g+h on top of packet c): Build.target rev 2 (declared service, PASS by declaration), Build.dag rev 2 (any-layer
     # unknown dep, cycle, reads-match aligned with dag_edge_guard), Idem.pattern rev 2 (one relative-import resolver)
     6: "62f08ad67334705860cf9bd4652a89efc4787f5e4eb3f1d0bab4fcad2ac0b8ce",
+    # 7 (E6 item f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (the registry is unchanged; NA_CAUSES is fingerprinted)
+    7: "118c3154f9fc136fb83a33f4568e49688f8cf639336cae346643127e101d52f9",
 }
 
 

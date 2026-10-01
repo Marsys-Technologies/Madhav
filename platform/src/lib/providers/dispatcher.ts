@@ -27,7 +27,7 @@ import { CapabilityUnsupportedError } from './adapter';
 import type { ProviderCapabilities } from './capabilities';
 // TODO(ws-2): capability_path_events dropped WS-0; restore emitCapabilityPath once Observatory
 // capability telemetry table is recreated in Brahma schema.
-const emitCapabilityPath = (_opts: unknown): void => { /* no-op */ }
+const emitCapabilityPath = (_opts: unknown): void => { void _opts }
 import { AnthropicAdapter } from './anthropic/adapter';
 import { ANTHROPIC_MANIFEST } from './anthropic/manifest';
 import { GoogleAdapter } from './google/adapter';
@@ -38,6 +38,9 @@ import { DeepSeekAdapter } from './deepseek/adapter';
 import { DEEPSEEK_MANIFEST } from './deepseek/manifest';
 import { NVIDIAAdapter } from './nvidia/adapter';
 import { NVIDIA_MANIFEST } from './nvidia/manifest';
+import { meteringEnabled } from '@/lib/metering/types';
+import { currentMeteringAttribution } from '@/lib/metering/context';
+import { meterCapabilityChat } from '@/lib/metering/capability-chat';
 
 // ---------------------------------------------------------------------------
 // Stack ID type — matches the runtime_config.ts ModelStack values
@@ -115,7 +118,21 @@ export function getAdapter(stackId: StackId): CapabilityAdapter {
       `[dispatcher] Unknown stack ID "${stackId}". Valid IDs: ${VALID_STACK_IDS.join(', ')}`,
     );
   }
-  return entry.adapter;
+  if (!meteringEnabled() || (stackId !== 'openai' && stackId !== 'deepseek' && stackId !== 'nvidia')) return entry.adapter;
+  // These three OpenAI-compatible adapters use raw SDK streams. Anthropic and Google
+  // already wrap their AI SDK models with meterSharedModel at the transport boundary.
+  return new Proxy(entry.adapter, {
+    get(target, property, receiver) {
+      if (property === 'chat') return (request: Parameters<CapabilityAdapter['chat']>[0]) => {
+        const attribution = currentMeteringAttribution();
+        if (!attribution) throw new Error('Metering attribution required: route backend tests through the metered admin endpoint');
+        return meterCapabilityChat(target.chat(request), { ...attribution, operationId: crypto.randomUUID(),
+          provider: stackId, model: request.model, role: 'synthesis', aggregation: 'transport' });
+      };
+      const value = Reflect.get(target, property, receiver) as unknown;
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
 }
 
 /**
@@ -168,7 +185,6 @@ export async function dispatch<K extends keyof CapabilityAdapter>(
   const manifestSupport = getManifest(stackId)[capability as keyof ProviderCapabilities] ?? null;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = (method as (req: typeof request) => unknown).call(adapter, request);
     // Await if the result is a Promise
     let resolved: Awaited<ReturnType<Extract<CapabilityAdapter[K], (...args: unknown[]) => unknown>>>;

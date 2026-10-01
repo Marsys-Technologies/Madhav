@@ -50,10 +50,19 @@ Usage:
   asset_census.py --layer L0                 measure and print; writes the census JSON
   asset_census.py --layer L0 --emit-gaps     also append ledger rows for failures
   asset_census.py --layer all                every layer
+  asset_census.py --layer L2 --assets bo_a,bo_b [--emit-gaps] [--rollup]
+                                             E1.9: measure (and emit for) ONLY those assets — comma list, repeated flag
+                                             or @file; validated against the layer's active registry. The output is
+                                             labelled SCOPED (`scope: {assets, partial: true}` in the file, layer and
+                                             rollup headers), goes to asset_census_scoped.json unless --out names
+                                             another file (never the full census file), and is refused by anything that
+                                             needs the whole population (`require_full_census` / `load_full_census`).
   asset_census.py --layer L0 --rollup        also write the nine-gate cells per asset (key `rollup`) and the
                                              non-nine gates as information (`rollup_excluded`) into the census JSON
 Exit: 0 clean · 2 failures measured · 3 only NOT_GENERIC/undeclared items · 4 unknown · 5 script error, or
       --rollup failed (census still written, without it; the measured exit is named on stderr, never lost).
+      6 bad --assets scope (empty / duplicate / miscased / unknown / wrong layer / retired id, or --out naming the
+      full census file) — nothing measured, nothing written.
 """
 
 from __future__ import annotations
@@ -61,12 +70,14 @@ from __future__ import annotations
 import argparse
 import ast
 import bisect
+import collections
 import datetime as dt
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import unicodedata
 from pathlib import Path
 
@@ -254,6 +265,7 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.completion": ("no-writer-no-count-sql", "service-no-target-table-no-count-sql"),
     "Count.floor": ("target-floor-zero",),
     "Dens.served": ("no-served-surface",),
+    "Carr.D1": ("no-carriage",), "Carr.D2": ("no-carriage",), "Carr.D3": ("no-carriage",),
     "Build.exercised": ("never-run-no-writer", "never-executed-no-writer"),
     "Build.history": ("never-run",),
     "Build.dep_liveness": ("no-declared-dependencies",),
@@ -297,7 +309,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 6     # 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 7     # 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -697,7 +709,7 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                 raise DeclarationsError(f"{where}.evidence_kind is set but prose_fields is null (undeclared)")
         tbc = e.get("terminal_by_construction")
         if tbc is not None:
-            if not isinstance(tbc, str) or not tbc.strip() or tbc != tbc.strip():
+            if not isinstance(tbc, str) or _blank_text(tbc) or tbc != tbc.strip():
                 raise DeclarationsError(f"{where}.terminal_by_construction must be null or a non-blank pointer string "
                                         f"(why the asset has no downstream consumer BY CONSTRUCTION)")
             if isinstance(car, dict) and car.get("served_surface") is True:
@@ -806,7 +818,7 @@ def declared_facts(declarations, asset_id, registry_kind=None, measured_dependen
         elif served is True and measured_served == NA:
             disagree.append(dict(field="carriage.served_surface", declared=True, measured=measured_served))
     tbc = e.get("terminal_by_construction")
-    if isinstance(tbc, str) and tbc.strip():
+    if isinstance(tbc, str) and not _blank_text(tbc):
         facts["declared_terminal_by_construction"] = tbc
         if served is not True:
             facts["declared_carries_downstream"] = False
@@ -869,16 +881,128 @@ def build_rollup_output(census_by_layer: dict, declarations: dict | None = None)
     asset's emitted facts) and, as information, the measured criteria of the non-nine gates. Read-only; the
     census dicts are not modified (emit_gaps never sees this)."""
     layers, excluded = {}, {}
+    scopes = {k: census_scope(c) for k, c in census_by_layer.items()}
+    scoped = [k for k, v in scopes.items() if v is not None]
+    if scoped and len(scoped) != len(census_by_layer):
+        raise ScopeError(f"layer(s) {', '.join(scoped)} are scoped and the rest are full: one rollup cannot be both")
     if declarations is None:
-        full = set(census_by_layer) == set(ALL_LAYERS)   # the id check needs the whole registry set, never a partial run
+        # the id check needs the whole registry set, never a partial run — and a scoped run is a partial run even
+        # when it reaches every layer (E1.9)
+        full = set(census_by_layer) == set(ALL_LAYERS) and not scoped
         ids = [a["asset_id"] for c in census_by_layer.values() for a in c["assets"]] if full else None
         declarations = load_asset_declarations(registry_ids=ids)
     for k, c in census_by_layer.items():
         layers[k] = rollup_census(c, {a["asset_id"]: facts_for_asset(a, declarations) for a in c["assets"]})
         excluded[k] = {a["asset_id"]: rollup_excluded(c["layer"], a["measurements"]) for a in c["assets"]}
-    return dict(rollup=dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(),
-                            layers=layers),
+    head = dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint())
+    if scoped:   # E1.9: the rollup header says it is partial, next to the registry revision it was computed under
+        head["scope"] = dict(assets=sorted(x for v in scopes.values() for x in v["assets"]), partial=True,
+                             layers=list(scoped), registry_revision=REGISTRY_REVISION)
+    return dict(rollup=dict(**head, layers=layers),
                 rollup_excluded=excluded)
+
+
+# ─────────────────────────── E6 item (f): Carr `no-carriage` on D1, D2, D3 ───────────────────────────
+# N-22 ruling principle 7 (provisional until the J1 review): "where no D-check fits because the asset carries nothing
+# downstream by construction (a declared fact), that is check-level N/A by cause `no-carriage`. Where a check should
+# fit but none exists, it is NO_DETECTOR (T4:329)." SS strict definition (2026-09-30): the asset has NO DAG dependents
+# AND does not reach a served surface; being served IS downstream carriage. The cause is a CANDIDATE only: it releases
+# nothing until NA_RULE_DECISIONS declares `Carr.D<n>#measured:no-carriage` (empty today, and no asset declares
+# `terminal_by_construction` today, so no census cell changes). An absence is never the evidence (CLAUDE.md N.8): zero
+# measured dependents and a null served_surface are NOT proof of anything; only the positive declared pointer is.
+CARR_D_CHECKS = ("Carr.D1", "Carr.D2", "Carr.D3")
+_CARR_NEVER = "never read as no-carriage"
+
+
+def _count(v):
+    """A measured non-negative integer count, else None (a bool, float, str or negative is not a measurement)."""
+    return v if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else None
+
+
+def grade_carr_no_carriage(record_facts) -> dict:
+    """The Carr.D1/D2/D3 `no-carriage` reading of one asset, from `record_facts` (pure; no I/O):
+      declared_terminal_by_construction  the positive declared pointer (a str with at least one visible character), else undeclared
+      declared_carriage                  {'served_surface': bool | None}  (absent/None = unknown; any other form is malformed)
+      blocking_radius                    the census radius {'direct': int, 'transitive': int} (absent/None/malformed = unmeasured)
+      measured_served                    the Dens.served verdict of this census run
+    N/A (cause `no-carriage`, a CANDIDATE) ONLY when ALL hold: the pointer is declared; measured direct AND transitive
+    dependents are both 0; `served_surface` is None or False (true contradicts; a non-bool is malformed); and the
+    measured Dens.served verdict is EXACTLY 'N/A' (the only verdict meaning "scanned, no reference"). Every other
+    Dens.served value (NO_DETECTOR, ERRORED, absent, a case variant) means "possibly served" (the scan did not run, a module
+    names the table but no served select was found, comment-only, outside the scanned roots, unparsed, shared-only), which
+    is not evidence of no carriage: NO_DETECTOR. A declaration that a measured fact contradicts is NO_DETECTOR with a
+    `declaration_disagreements` entry (reported, never resolved); an unmeasured radius or no declaration is NO_DETECTOR.
+    `served_surface` None does not block: the declared pointer is then the evidence, and the verdict text says so.
+
+    LIMIT (N-22 principle 3): no detector exists that still catches a mis-declared terminal asset. D1-D3 are detector NONE,
+    and the contradiction checks here are blind to undeclared edges: the blocking radius counts only DECLARED depends_on
+    edges, so it under-reports an undeclared reader (bg_gochara_arcs is read by ka_gochara.py:412 with no depends_on edge;
+    an L0 reader never adds an edge because Build.dag exempts bedrock reads; 14 of the 40 zero-dependent assets are L0),
+    and to Dens scanner gaps. The `no-carriage` N/A RULE must stay UNDECLARED (NA_RULE_DECISIONS empty) until an
+    inverse-readers detector exists: one that scans the registered writers' reads, bedrock included, for readers of the
+    asset's tables, and gates the candidate on none found."""
+    f = record_facts if isinstance(record_facts, dict) else {}
+    tbc = f.get("declared_terminal_by_construction")
+    if not (isinstance(tbc, str) and not _blank_text(tbc)):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — no terminal_by_construction declared: carriage is unknown, {_CARR_NEVER}")
+    car = f.get("declared_carriage")
+    if car is not None and not isinstance(car, dict):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — the declared carriage is malformed ({car!r}: not an object); the "
+                                       f"declared pointer ({tbc!r}) cannot be relied on, {_CARR_NEVER}")
+    served = car.get("served_surface") if isinstance(car, dict) else None
+    if served is not None and not isinstance(served, bool):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — carriage.served_surface is malformed ({served!r}: only null, true or "
+                                       f"false are forms); the declared pointer ({tbc!r}) cannot be relied on, {_CARR_NEVER}")
+    br = f.get("blocking_radius")
+    direct = _count(br.get("direct")) if isinstance(br, dict) else None
+    trans = _count(br.get("transitive")) if isinstance(br, dict) else None
+    ms = f.get("measured_served")
+    bad = []
+    if served is True:
+        bad.append(dict(field="carriage.served_surface", declared=True, terminal_by_construction=tbc))
+    if direct is not None and trans is not None and (direct > 0 or trans > 0):
+        bad.append(dict(field="terminal_by_construction", declared=tbc,
+                        measured_dependents=dict(direct=direct, transitive=trans)))
+    if ms in (PASS, FAIL, PARTIAL):
+        bad.append(dict(field="terminal_by_construction", declared=tbc, measured_served=ms))
+    if bad:
+        what = []
+        if served is True:
+            what.append("carriage.served_surface is declared true (reaches a served surface)")
+        if direct is not None and trans is not None and (direct > 0 or trans > 0):
+            what.append(f"measured dependents are direct {direct}, transitive {trans}")
+        if ms in (PASS, FAIL, PARTIAL):
+            what.append(f"Dens.served measured {ms} (a served read was found)")
+        return dict(v=NO_DET, declaration_disagreements=bad,
+                    measured=f"NO_DETECTOR — the declared terminal_by_construction pointer ({tbc!r}) is contradicted: "
+                             f"{'; '.join(what)}; {_CARR_NEVER}")
+    if direct is None or trans is None:
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — dependents unmeasured (the blocking radius is absent or not a count); "
+                                       f"the declared pointer ({tbc!r}) cannot be checked against the DAG, {_CARR_NEVER}")
+    if not (isinstance(ms, str) and ms == NA):
+        return dict(v=NO_DET, measured=f"NO_DETECTOR — Dens.served is {ms!r}, not 'N/A' (scanned, no reference): the asset is "
+                                       f"possibly served (scan not run, a served select not found or not attributable), so the "
+                                       f"declared pointer ({tbc!r}) is not corroborated; {_CARR_NEVER}")
+    sv = ("served_surface declared false" if served is False else
+          "served_surface not declared (null: the declared pointer is the evidence)")
+    return _na(f"declared terminal_by_construction ({tbc!r}); measured dependents direct {direct}, transitive {trans}; "
+               f"Dens.served N/A (scanned, no reference); {sv}; the declared pointer is the evidence (a candidate, not a "
+               "rule: released only by a declared rule, which must stay undeclared until an inverse-readers detector exists)",
+               "no-carriage")
+
+
+def carr_checks(record_facts) -> dict:
+    """measure()'s Carr.D1/D2/D3 records for one asset: {} unless the asset DECLARES a terminal_by_construction pointer
+    (an undeclared asset emits nothing, so its cell reads the rollup's own `not measured` NO_DETECTOR exactly as before;
+    an explicit NO_DETECTOR record per check would change every cell's check text for no new information). A declared
+    asset gets one independent record per check (the same grading: the declared fact covers D1, D2 and D3 alike)."""
+    f = record_facts if isinstance(record_facts, dict) else {}
+    tbc = f.get("declared_terminal_by_construction")
+    if not (isinstance(tbc, str) and not _blank_text(tbc)):
+        return {}
+    r = grade_carr_no_carriage(f)
+    return {c: dict(r, **({"declaration_disagreements": list(r["declaration_disagreements"])}
+                          if "declaration_disagreements" in r else {})) for c in CARR_D_CHECKS}
 
 
 # ─────────────────────────── E6 packet (c): the Null and Narr checks ───────────────────────────
@@ -3789,6 +3913,24 @@ def build_history(prefix: str, ids=None) -> dict:
     return dict(per=per, global_runs=glob, global_with_layer=glob_l0)
 
 
+def _cascade_skip_note(rec_state: str, h: dict | None) -> str:
+    """Suvarna Track I-3: when an asset's `asset_throughput` record reads 'error' only because the frozen
+    runner's `_mark_asset_blocked` wrote a cascade skip there (it records `state='error'` for a consumer
+    whose upstream did not complete), say so in Build.completion's measured text. The verdict is NOT
+    changed here — a skipped consumer genuinely has no completed build record — only mis-attribution is
+    removed: the test for "cascade" is the structural `disposition='blocked_dependency'` on the latest
+    build_run_assets attempt (build_history's last_*), never the BLOCKED message text. Empty for a
+    genuine error, a non-'error' record, or no history. Note: build_history is not chart-scoped, so this
+    reads the latest attempt on any chart, said so in the note."""
+    if rec_state != "error" or not h:
+        return ""
+    if h.get("last_state") == "error" and h.get("last_disposition") == "blocked_dependency":
+        return ("; the throughput 'error' may be a cascade skip, not this asset's own failure: its latest recorded "
+                f"build_run_assets attempt ({h.get('last_when') or 'undated'}, any chart) is blocked_dependency — an "
+                "upstream did not complete, so the writer never ran on that attempt")
+    return ""
+
+
 def latest_attempts(ids) -> tuple[dict[str, dict[str, dict]], float | None]:
     """D6 item 2 (R55, with R44/R45/R49): the latest STARTED build_run_assets attempt per
     (asset, run chart) — `{asset_id: {chart_id: attempt}}` — plus the start of the disposition era.
@@ -5203,8 +5345,181 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
     return out
 
 
-def measure(layer_key: str) -> dict:
-    """Measure one layer.
+# ─────────────────────────── E1.9: `--assets` scope ───────────────────────────
+# A level wave measures and emits ONLY its assets. A scoped census is a PARTIAL census: it is labelled
+# (`scope: {assets: [...], partial: true}`) in every header it writes and anything that expects the whole
+# population refuses it (`require_full_census`). An unscoped run writes no `scope` key at all, so its output is
+# byte-identical to what it was before this flag existed.
+EXIT_SCOPE = 6
+_ASSET_ID = re.compile(r"[a-z][a-z0-9_]*")
+
+
+class ScopeError(Exception):
+    """A scope that cannot be honoured exactly (unknown / wrong-layer / empty / duplicate / malformed id), or a scoped
+    census handed to something that needs the whole population. Never degraded to 'measure everything'."""
+
+
+def parse_assets_arg(values) -> list[str]:
+    """The `--assets` forms: a comma list, a repeated flag, or `@file` (ids separated by commas and/or newlines;
+    blank lines and `#` comments ignored). Entries are whitespace-trimmed; ids are NOT case-normalized (a miscased id
+    is a typo, reported as one); an empty list, an empty entry, a duplicate or whitespace inside an id is an error."""
+    if not values:
+        raise ScopeError("--assets was given no value: an empty scope is not 'everything' (omit the flag for a full run)")
+    out: list[str] = []
+    for raw in values:
+        if raw.strip().startswith("@"):
+            path = raw.strip()[1:]
+            try:
+                text = Path(path).read_text(encoding="utf-8-sig")      # a UTF-8 BOM is accepted
+            except UnicodeDecodeError as exc:
+                raise ScopeError(f"--assets @{path}: not valid UTF-8 text (a UTF-16 or binary file?) — save the list "
+                                 "as UTF-8, one id per line or comma-separated") from exc
+            except (OSError, ValueError) as exc:
+                raise ScopeError(f"--assets @{path}: cannot read the file ({exc.__class__.__name__})") from exc
+            entries = []
+            for ln in text.splitlines():
+                ln = ln.split("#", 1)[0]
+                entries += [e for e in (x.strip() for x in ln.split(",")) if e]
+            if not entries:
+                raise ScopeError(f"--assets @{path}: the file names no asset")
+            if any(e.startswith("@") for e in entries):
+                raise ScopeError(f"--assets @{path}: nested @file references are not supported")
+        else:
+            entries = [x.strip() for x in raw.split(",")]
+            if any(not e for e in entries):
+                raise ScopeError(f"--assets {raw!r}: empty entry (blank value or stray comma)")
+        out += entries
+    for e in out:
+        if re.search(r"\s", e):
+            raise ScopeError(f"--assets: whitespace inside the id {e!r} (separate ids with commas)")
+        if not _ASSET_ID.fullmatch(e):
+            hint = f" — ids are lowercase (did you mean {e.lower()!r}?)" if e != e.lower() and _ASSET_ID.fullmatch(e.lower()) else ""
+            raise ScopeError(f"--assets: malformed asset id {e!r}{hint}")
+    dup = sorted(e for e, n in collections.Counter(out).items() if n > 1)
+    if dup:
+        raise ScopeError(f"--assets: duplicate id(s): {', '.join(dup)}")
+    return out
+
+
+def validate_scope(ids: list[str], layer_keys: list[str]) -> dict[str, list[str]]:
+    """Every id must be an ACTIVE registry asset of one of `layer_keys`. Returns {layer: sorted ids}. Reports every bad
+    id at once: unknown (in no registry), wrong layer (a registry asset of a layer not selected) or retired/inactive."""
+    if not ids:
+        raise ScopeError("empty scope")
+    by_layer: dict[str, list[str]] = {}
+    retired: dict[str, str] = {}
+    active: dict[str, str] = {}
+    for k in layer_keys:
+        reg, pop = _layer_read("registry", registry, k)
+        for aid in reg:
+            active.setdefault(aid, k)
+        for x in pop.get("excluded_inactive", ()):
+            retired.setdefault(x["asset_id"] if isinstance(x, dict) else str(x), k)
+    problems = []
+    for aid in ids:
+        if aid in active:
+            by_layer.setdefault(active[aid], []).append(aid)
+            continue
+        if aid in retired:
+            problems.append(f"{aid}: retired/inactive in {retired[aid]} (the census measures the active population only)")
+            continue
+        other = None
+        for k in ALL_LAYERS:
+            if k in layer_keys:
+                continue
+            try:
+                if aid in registry(k)[0]:
+                    other = k
+                    break
+            except Unknown:
+                continue
+        problems.append(f"{aid}: belongs to {other}, not in the selected layer(s) {', '.join(layer_keys)}" if other
+                        else f"{aid}: unknown asset (not in the registry of {', '.join(layer_keys)})")
+    if problems:
+        raise ScopeError("; ".join(problems))
+    return {k: sorted(v) for k, v in by_layer.items()}
+
+
+def _is_full_census_path(target, full_out) -> bool:
+    """Is `target` the full census file by ANY route: the same path, a case variant (case-insensitive filesystems), a
+    hardlink or a symlink? An existing target is compared by inode (`os.path.samefile`); a not-yet-existing one by its
+    resolved, normcased, case-folded path (conservative: on a case-sensitive filesystem a case variant is refused too)."""
+    t, f = Path(target), Path(full_out)
+    try:
+        if t.exists() and f.exists() and os.path.samefile(t, f):
+            return True
+    except OSError:
+        pass
+    norm = lambda p: os.path.normcase(str(p.resolve())).casefold()      # noqa: E731
+    return norm(t) == norm(f)
+
+
+def _write_atomic(path, text: str) -> None:
+    """Write `text` to `path` via a temp file in the same directory and `os.replace` — readers and concurrent writers
+    see the old file or the whole new one, never a torn one. The temp file is removed on any failure."""
+    d = os.path.dirname(os.path.abspath(path))
+    fd, tmp = tempfile.mkstemp(prefix=".asset_census_", suffix=".tmp", dir=d)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
+        um = os.umask(0)
+        os.umask(um)
+        os.chmod(tmp, 0o666 & ~um)          # mkstemp's 0600 is not the mode a plain write_text would have given the file
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def census_scope(obj) -> dict | None:
+    """The scope label of a layer census, or None (a full census carries none). Fail-closed on a malformed label."""
+    if not isinstance(obj, dict) or "scope" not in obj:
+        return None
+    sc = obj["scope"]
+    if not (isinstance(sc, dict) and sc.get("partial") is True and isinstance(sc.get("assets"), list)
+            and sc["assets"] and all(isinstance(x, str) and x for x in sc["assets"])):
+        raise ScopeError(f"malformed census scope label {sc!r}: expected {{assets: [non-empty ids], partial: true}}")
+    return sc
+
+
+def require_full_census(obj, who: str) -> None:
+    """Refuse a SCOPED census (a layer census, a census file, or a file's rollup) — for anything that needs all assets."""
+    labels = [("census", obj)]
+    if isinstance(obj, dict):
+        labels += [(k, v) for k, v in obj.items() if isinstance(v, dict) and k != "scope"]
+        if isinstance(obj.get("rollup"), dict):
+            labels.append(("rollup", obj["rollup"]))
+    for where, o in labels:
+        if census_scope(o) is not None:
+            raise ScopeError(f"{who}: refuses a SCOPED census ({where} carries scope.partial=true) — it needs the full "
+                             "population; re-run without --assets")
+        n, pop = (o.get("n_assets"), o.get("population_active")) if isinstance(o, dict) else (None, None)
+        if isinstance(n, int) and isinstance(pop, int) and not isinstance(n, bool) and n < pop:
+            raise ScopeError(f"{who}: refuses a census whose n_assets ({n}) is below the layer's population_active ({pop}) "
+                             f"({where}): a partial census with its scope label stripped — it needs the full population")
+
+
+def load_full_census(path) -> dict:
+    """Read a census JSON for a consumer that expects every asset; a scoped file is refused."""
+    obj = json.loads(Path(path).read_text(encoding="utf-8"))
+    require_full_census(obj, f"census file {path}")
+    return obj
+
+
+def measure(layer_key: str, assets=None) -> dict:
+    """Measure one layer — or, with `assets` (E1.9), ONLY those assets of it.
+
+    SCOPE (E1.9). `assets` is validated against the layer's active registry BEFORE anything is measured (ScopeError:
+    empty, duplicate, miscased, unknown or not in this layer). The per-asset reads (live counts, build record, build
+    history, latest attempts, dependency records, catalog) are made for the selected assets only; the checks that read
+    the WHOLE layer (Build.dag's known ids, the shared-table set, the blocking radius, the layer facts) still read the
+    whole registry, so a scoped asset measures to exactly what it measures to in a full run. The result carries
+    `scope={assets, partial: true}`; a full run carries no `scope` key.
 
     R41 SCOPE LIMIT (F12, A_REVIEW.md — disclosed, not fixed). R41 isolates PER-ASSET checks: one
     asset's failing check degrades only that criterion to ERRORED. The LAYER-WIDE reads below —
@@ -5215,7 +5530,17 @@ def measure(layer_key: str) -> dict:
     (`live_counts` isolates per asset itself — F2; `duration_instrument_present` degrades to
     `instrument unreachable` — D6 item 1.)"""
     cfg = LAYERS[layer_key]
-    reg, population = _layer_read("registry", registry, layer_key)
+    reg_all, population = _layer_read("registry", registry, layer_key)
+    reg, assets_sel = reg_all, None                       # E1.9: `assets_sel` is the scope label (None: a full run)
+    if assets is not None:
+        sel = list(assets)
+        if not sel or len(set(sel)) != len(sel) or any(not isinstance(x, str) or not _ASSET_ID.fullmatch(x) for x in sel):
+            raise ScopeError(f"layer {layer_key}: the scope must be a non-empty list of distinct lowercase asset ids, got {sel!r}")
+        missing = sorted(set(sel) - set(reg_all))
+        if missing:
+            raise ScopeError(f"layer {layer_key}: not active registry assets of this layer: {', '.join(missing)}")
+        reg = {aid: r for aid, r in reg_all.items() if aid in set(sel)}     # registry order, like a full run
+        assets_sel = sorted(sel)
     cat = _layer_read("catalog", catalog, [r["target_table"] for r in reg.values()]
                       + [t for r in reg.values() for t in _count_tables(r["count_sql"])])
     regd = _layer_read("registered_ids", registered_ids, cfg["prefix"])
@@ -5264,11 +5589,11 @@ def measure(layer_key: str) -> dict:
     except Unknown as exc:
         caps_sql, caps_note = None, str(exc)
 
-    known = set(reg)
+    known = set(reg_all)
     # E6.1 (d): a table (target or count_sql) that MORE THAN ONE active asset of this layer declares is shared.
     # Disclosed limit: only this layer's registry is read here; every share in the estate today sits inside one layer.
     _decl: dict[str, set[str]] = {}
-    for _aid, _r in reg.items():
+    for _aid, _r in reg_all.items():
         for _t in ([_r["target_table"]] if _r["target_table"] else []) + _count_tables(_r["count_sql"]):
             _decl.setdefault(_t, set()).add(_aid)
     dens_shared = frozenset(t for t, who in _decl.items() if len(who) > 1)
@@ -5404,7 +5729,8 @@ def measure(layer_key: str) -> dict:
         elif t.get("state") not in COMPLETED_STATES:
             m["Build.completion"] = dict(v=FAIL, measured=f"build record state='{t.get('state')}' is not a completed "
                                                          f"build (rows_written={rw}, live={live}, {rec_scope}) — see "
-                                                         "Build.history")
+                                                         "Build.history"
+                                                         + _cascade_skip_note(t.get("state"), hist["per"].get(aid)))
         elif int(rw) == 0 and live > 0:
             m["Build.completion"] = dict(v=FAIL, measured=f"build record says rows_written=0 against live={live} ({rec_scope})")
         elif int(rw) != live:
@@ -5627,6 +5953,9 @@ def measure(layer_key: str) -> dict:
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
         m["Carr.detector"] = _run_carriage_detector(aid)
+        # E6 item (f): Carr.D1-D3 `no-carriage` candidates, only for an asset that DECLARES terminal_by_construction
+        m.update(carr_checks(dict(declared_facts(declarations, aid), blocking_radius=radius.get(aid),
+                                  measured_served=m["Dens.served"]["v"])))
         if "Reach.fields" not in m:
             m["Reach.fields"] = dict(v=NOT_GENERIC, measured=("no target table in production to census at field level"
                                                               if tbl else "no target_table declared: no table to census "
@@ -5666,11 +5995,15 @@ def measure(layer_key: str) -> dict:
                 population_excluded_inactive=population["excluded_inactive"],
                 # R231: the chart every `$1` count_sql was bound to, and how many were.
                 chart_scope=CHART_ID,
-                chart_scoped_count_sql=sum(1 for r in reg.values() if _chart_scoped(r["count_sql"])),
-                global_runs=hist["global_runs"], global_runs_touching_layer=hist["global_with_layer"],
+                chart_scoped_count_sql=sum(1 for r in reg_all.values() if _chart_scoped(r["count_sql"])),
+                # E1.9/F4: a scoped run's build history covers the scoped ids only, so its layer-wide run counts would
+                # describe the scope, not the layer — omitted there (the unscoped key order and values are unchanged).
+                **({} if assets_sel is not None else dict(global_runs=hist["global_runs"],
+                                                          global_runs_touching_layer=hist["global_with_layer"])),
                 never_exercised_with_writer=never,
-                registered_ids=len(regd), registry_has_writer=sum(1 for r in reg.values() if r["has_writer"]),
-                phantom_registered=extra, local_map_candidates=lmaps, assets=assets)
+                registered_ids=len(regd), registry_has_writer=sum(1 for r in reg_all.values() if r["has_writer"]),
+                phantom_registered=extra, local_map_candidates=lmaps, assets=assets,
+                **({} if assets_sel is None else dict(scope=dict(assets=assets_sel, partial=True))))
 
 
 # D4 ruling (DECISIONS_RECOMMENDATIONS_v2_0.md): the verdict a check can return keeps growing
@@ -5704,7 +6037,31 @@ def _na_released(crit: str, rec: dict) -> bool:
     return cause in NA_CAUSES.get(crit, ()) and f"{crit}#measured:{cause}" in NA_RULE_DECISIONS
 
 
-def emit_gaps(census: dict) -> tuple[int, int, int, int]:
+def _emit_scope(census: dict, assets) -> frozenset | None:
+    """The set of asset ids emit_gaps may write rows for, or None (every asset of the census: an unscoped run).
+    Raises ScopeError — before the ledger is touched — on a malformed label, a census that contradicts its own
+    label, an empty / duplicate / non-string `assets`, or an `assets` entry the census did not measure."""
+    label = census_scope(census)
+    present = {a["asset_id"] for a in census["assets"]}
+    scope = None
+    if label is not None:
+        scope = frozenset(label["assets"])
+        stray = sorted(present - scope)
+        if stray:
+            raise ScopeError(f"the census is labelled scoped to {sorted(scope)} but holds measurements for "
+                             f"{', '.join(stray)}: refusing to emit (nothing written)")
+    if assets is not None:
+        want = list(assets)
+        if not want or len(set(want)) != len(want) or any(not isinstance(x, str) or not x for x in want):
+            raise ScopeError(f"emit scope must be a non-empty list of distinct asset ids, got {want!r}")
+        unmeasured = sorted(set(want) - present)
+        if unmeasured:
+            raise ScopeError(f"emit scope names asset(s) this census did not measure: {', '.join(unmeasured)}")
+        scope = frozenset(want) if scope is None else scope & frozenset(want)
+    return scope
+
+
+def emit_gaps(census: dict, assets=None) -> tuple[int, int, int, int]:
     """Append-only ledger with deterministic ids (`<asset>-<criterion>`), closing by measurement.
 
     D4 ruling (R57 amended), each an acceptance case with its own test in
@@ -5743,7 +6100,14 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
     newer OPEN for the same gap_id and be read as current. Neither this function nor the tracker
     detects that; re-running the census after such a merge re-measures and appends the correct
     transition.
+
+    SCOPE (E1.9). A census carrying `scope` (a scoped measure()), and/or `assets=[...]`, restricts the emit to those
+    assets: no row of any other asset is read for a decision, appended, closed, withdrawn or reopened, and the file
+    is only ever APPENDED to, so every pre-existing row stays byte-identical and in order. The scope is checked
+    before the ledger is opened: a census whose assets contradict its own scope label, an `assets` entry the census
+    never measured, an empty list or a malformed label raises ScopeError and writes nothing.
     """
+    scope = _emit_scope(census, assets)
     validate_na_rule_decisions()
     path = CTRL / "asset_gaps.jsonl"
     latest: dict[str, dict] = {}
@@ -5769,6 +6133,8 @@ def emit_gaps(census: dict) -> tuple[int, int, int, int]:
     added = skipped = closed = reopened = 0
     with path.open("a", encoding="utf-8") as f:
         for a in census["assets"]:
+            if scope is not None and a["asset_id"] not in scope:
+                continue  # E1.9: an asset outside the scope is never decided about, never written
             for crit, res in a["measurements"].items():
                 v = res["v"]
                 if v not in FAILING and v not in CLOSABLE:
@@ -5839,17 +6205,44 @@ def main() -> int:
     ap.add_argument("--rollup", action="store_true",
                     help="also write the nine-gate cells per asset (key `rollup`) and the non-nine gates as "
                          "information (key `rollup_excluded`) into --out; --emit-gaps neither reads nor changes it")
-    ap.add_argument("--out", default=str(CTRL / "asset_census.json"))
+    ap.add_argument("--assets", action="append", default=None, metavar="ID[,ID...]|@FILE",
+                    help="E1.9: measure (and, with --emit-gaps, emit for) ONLY these assets — a comma list, a repeated "
+                         "flag, or @file. Every id must be an active registry asset of the selected layer(s). The census "
+                         "is labelled SCOPED/partial (`scope`), is written to asset_census_scoped.json unless --out names "
+                         "another file, and never replaces the full census file. Exit 6 on a bad scope; nothing is written.")
+    ap.add_argument("--out", default=None, help="default: <control>/asset_census.json (scoped: asset_census_scoped.json)")
     a = ap.parse_args()
     keys = list(LAYERS) if a.layer.lower() == "all" else [k.strip().upper() for k in a.layer.split(",")]
     for k in keys:
         if k not in LAYERS:
             sys.exit(f"unknown layer {k}; expected one of {list(LAYERS)} or 'all'")
 
+    full_out = CTRL / "asset_census.json"
+    by_layer = None
+    if a.assets is not None:
+        try:
+            by_layer = validate_scope(parse_assets_arg(a.assets), keys)
+        except ScopeError as exc:
+            print(f"asset_census: scope error — {exc}", file=sys.stderr)
+            return EXIT_SCOPE
+        except Unknown as exc:
+            print(f"asset_census: UNKNOWN — cannot validate --assets against the registry: {exc}")
+            return 4
+        keys = [k for k in keys if k in by_layer]
+    out_path = a.out if a.out is not None else str(CTRL / "asset_census_scoped.json" if by_layer is not None else full_out)
+    if by_layer is not None and _is_full_census_path(out_path, full_out):
+        print(f"asset_census: scope error — the scoped output path {out_path} is the full census file (same file, "
+              "case variant, hardlink or symlink): a scoped (partial) census never replaces the full census — name "
+              "another --out", file=sys.stderr)
+        return EXIT_SCOPE
+
     out, worst = {}, 0
     for k in keys:
         try:
-            c = measure(k)
+            c = measure(k) if by_layer is None else measure(k, assets=by_layer[k])
+        except ScopeError as exc:
+            print(f"asset_census: scope error — {exc}", file=sys.stderr)
+            return EXIT_SCOPE
         except Unknown as exc:
             print(f"asset_census: UNKNOWN — layer {k}: {exc}")
             print("  Nothing is reported clean: an unreachable instrument is not a passing result.")
@@ -5857,6 +6250,9 @@ def main() -> int:
                   f"unmeasured{' and stops every layer after it (no census file written)' if len(keys) > 1 else ''}.")
             return 4
         out[k] = c
+        if by_layer is not None:
+            print(f"{k} SCOPED RUN — partial census, not a layer census: {c['n_assets']} of "
+                  f"{c['population_active']} active assets ({', '.join(c['scope']['assets'])})")
         fails = sum(1 for x in c["assets"] for r in x["measurements"].values() if r["v"] == FAIL)
         parts = sum(1 for x in c["assets"] for r in x["measurements"].values() if r["v"] in (PARTIAL, NO_DET))
         errored = sum(1 for x in c["assets"] for r in x["measurements"].values() if r["v"] == ERRORED)
@@ -5868,8 +6264,9 @@ def main() -> int:
                   f"{', '.join(x['asset_id'] for x in c['population_excluded_inactive'])}")
         if c.get("chart_scoped_count_sql"):
             print(f"  chart scope: {c['chart_scoped_count_sql']} chart-scoped count_sql bound to chart {c['chart_scope']}")
-        print(f"  build scope: {c['global_runs']} global run(s), of which {c['global_runs_touching_layer']} "
-              f"touched this layer" + ("  ← the global path never exercises it" if c['global_runs_touching_layer'] == 0 else ""))
+        if "global_runs" in c:   # absent in a scoped census (F4): never stated about the layer from scoped-only data
+            print(f"  build scope: {c['global_runs']} global run(s), of which {c['global_runs_touching_layer']} "
+                  f"touched this layer" + ("  ← the global path never exercises it" if c['global_runs_touching_layer'] == 0 else ""))
         if c["never_exercised_with_writer"]:
             print(f"  !! registered with a writer and NEVER run by the orchestrator: {c['never_exercised_with_writer']}")
         if c["phantom_registered"]:
@@ -5903,8 +6300,14 @@ def main() -> int:
             rollup_error = f"{type(exc).__name__}: {exc}"
             print(f"asset_census: rollup failed — {rollup_error} (census written without a rollup; measured exit "
                   f"{worst} overridden by 5)", file=sys.stderr)
-    Path(a.out).write_text(json.dumps(out, indent=1, default=str) + "\n", encoding="utf-8")
-    print(f"census written: {os.path.relpath(a.out, ROOT)}")
+    if by_layer is not None:    # E1.9: the file header says it is partial, before any layer is read
+        out = {"scope": dict(assets=sorted(x for k in keys for x in by_layer[k]), partial=True, layers=list(keys)), **out}
+    text = json.dumps(out, indent=1, default=str) + "\n"
+    if by_layer is not None:
+        _write_atomic(out_path, text)       # E1.9: a scoped file is never torn by a crash or a concurrent scoped run
+    else:
+        Path(out_path).write_text(text, encoding="utf-8")
+    print(f"census written: {os.path.relpath(out_path, ROOT)}" + (" (SCOPED: partial census)" if by_layer is not None else ""))
     if rollup_error:
         return 5
     return worst

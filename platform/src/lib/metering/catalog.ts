@@ -3,14 +3,20 @@ import { z } from 'zod'
 import { usdUnits,formatUsd, type RateCard } from './pricing'
 import { importRateCards,meteringDb,type MeteringDb } from './repository'
 const Price = z.string().max(30).regex(/^\d{1,12}(\.\d{1,12})?$/)
-const Catalog = z.object({ data:z.array(z.object({ id:z.string().min(1).max(256),
+const CatalogModel = z.object({ id:z.string().min(1).max(256),
   pricing:z.object({ prompt:Price,completion:Price,input_cache_read:Price.optional(),input_cache_write:Price.optional() }).catchall(z.unknown())
-}).passthrough()).max(5000) }).passthrough()
+}).passthrough()
+const Catalog = z.object({ data:z.array(z.unknown()).max(5000) }).passthrough()
 const URL = 'https://openrouter.ai/api/v1/models'
 const tokenRate = (value:string) => formatUsd(usdUnits(value)*BigInt(1_000_000))
 export function catalogCards(input:unknown,now=new Date()): { cards:RateCard[];skipped:number } {
   const catalog = Catalog.parse(input); const cards:RateCard[]=[]; let skipped=0
-  for (const model of catalog.data) {
+  for (const item of catalog.data) {
+    // A catalog may contain routers with sentinel prices or rates beyond our
+    // exact decimal precision. Keep usable models without inventing a price.
+    const parsed=CatalogModel.safeParse(item)
+    if (!parsed.success) { skipped++;continue }
+    const model=parsed.data
     const p=model.pricing
     const known=new Set(['prompt','completion','input_cache_read','input_cache_write'])
     // Never pretend token-only pricing covers paid requests, tools, modalities or tier modifiers.

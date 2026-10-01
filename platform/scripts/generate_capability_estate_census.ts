@@ -783,7 +783,6 @@ export async function buildCapabilityEstateCensus(options: {
         }
       }
       const blockers: Record<string, string> = {
-        ka_vighnakara: 'kala_obstruction lacks one stable non-null natural key across convergence and dasha anchors',
         ka_gochara_v3_century_materialize: 'digest v1 cannot hash stable parent hierarchy identity without hashing unstable parent_window_id',
       }
       const blocker = blockers[asset.asset_id]

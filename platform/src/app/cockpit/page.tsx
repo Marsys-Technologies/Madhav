@@ -1,52 +1,37 @@
+import Link from 'next/link'
 import { fetchBuildState } from '@/lib/build/dataSource'
-import { CockpitGrid } from '@/components/build/CockpitGrid'
-import { stalenessLabel } from '@/lib/build/format'
+import { parseUsageFilter, usageSummary } from '@/lib/metering/queries'
+import { meteringEnabled } from '@/lib/metering/types'
+import { getFlag } from '@/lib/config'
 
 export const dynamic = 'force-dynamic'
 
 export default async function BuildCockpitPage() {
-  let state = null
-  try {
-    state = await fetchBuildState()
-  } catch {
-    // GCS bucket unavailable — render page in degraded mode
+  const now = new Date()
+  let activity: Awaited<ReturnType<typeof usageSummary>> | null = null
+  let feed: 'current' | 'delayed' = 'delayed'
+  if (meteringEnabled()) {
+    try {
+      const filter = parseUsageFilter(new URL('https://local.invalid/?view=summary&from=' + encodeURIComponent(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString()) + '&to=' + encodeURIComponent(now.toISOString())), { ownerId: null })
+      activity = await usageSummary(filter, { ownerId: null })
+    } catch { /* A failed data source is not a zero. */ }
   }
-
-  const stale = state ? stalenessLabel(state.staleness_seconds_since_last_close) : null
-
-  // Health summary: any non-zero exit, overdue red-team, overdue quarterly = amber.
-  const lastDrift = state?.governance.scripts_trend.drift_detector.at(-1)?.exit_code ?? 0
-  const lastSchema = state?.governance.scripts_trend.schema_validator.at(-1)?.exit_code ?? 0
-  const lastMirror = state?.governance.scripts_trend.mirror_enforcer.at(-1)?.exit_code ?? 0
-  const healthy = lastDrift === 0 && lastSchema === 0 && lastMirror === 0
-  const healthLabel = healthy ? 'System health ✓' : 'System health · attention'
-  const healthClass = healthy ? 'text-muted-foreground' : 'text-amber-600 dark:text-amber-400'
-
-  return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
-      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="bt-display">Build Cockpit</h1>
-        <div className="flex items-baseline gap-4">
-          {stale && (
-            <span className="bt-body text-muted-foreground">
-              Last close · {stale}
-            </span>
-          )}
-          {state && (
-            <span className={`bt-body ${healthClass}`}>
-              {healthLabel}
-            </span>
-          )}
-        </div>
-      </div>
-      {state ? (
-        <CockpitGrid state={state} />
-      ) : (
-        <div className="rounded-md border border-border bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
-          Build tracker data unavailable — GCS bucket unreachable.
-          Check <code className="font-mono text-xs">BUILD_STATE_GCS_BASE</code> env var.
-        </div>
-      )}
-    </main>
-  )
+  try { await fetchBuildState(); feed = 'current' } catch { /* The main Cockpit remains available. */ }
+  const calls = activity ? Number(activity.transport_attempts) : null
+  const complete = activity && calls ? Math.round(Number(activity.complete_usage) / calls * 100) : null
+  const failures = activity ? Number(activity.transport_failed) : null
+  const validationCalls = activity ? Number(activity.validation_attempts) : null
+  return <main className="mx-auto max-w-6xl space-y-8 px-4 py-8 text-[#e8dfc9] sm:px-8" style={{ fontFamily: 'var(--font-sans), sans-serif' }}>
+    <div><p className="text-xs uppercase tracking-[0.17em] text-[#ac8a48]">AI operations</p><h1 className="mt-1 text-5xl text-[#d2a23c]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif', fontVariant: 'small-caps', letterSpacing: '.05em' }}>Cockpit</h1><p className="mt-2 text-sm text-[#a99c82]">A starting point for model configuration and observed activity.</p></div>
+    <div className="grid gap-4 md:grid-cols-2">
+      {getFlag('AI_CONSOLE_BYOK') && <Link href="/ai-console" className="rounded-xl border border-[#57401c] bg-[#14110b] p-6 transition-colors hover:border-[#d2a23c]"><p className="text-xs uppercase tracking-[0.17em] text-[#ac8a48]">Configuration</p><h2 className="mt-2 text-3xl text-[#ecc56a]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>AI Console</h2><p className="mt-3 text-sm text-[#b8aa8d]">Models, access, routing, and provider checks.</p><p className="mt-6 text-sm text-[#d2a23c]">Open AI Console →</p></Link>}
+      <Link href="/observatory" className="rounded-xl border border-[#57401c] bg-[#14110b] p-6 transition-colors hover:border-[#d2a23c]"><p className="text-xs uppercase tracking-[0.17em] text-[#ac8a48]">Activity</p><h2 className="mt-2 text-3xl text-[#ecc56a]" style={{ fontFamily: 'var(--font-cormorant), Georgia, serif' }}>Observatory</h2><p className="mt-3 text-sm text-[#b8aa8d]">Overview, analytics, and conversation-level consumption.</p><p className="mt-6 text-sm text-[#d2a23c]">Open Observatory →</p></Link>
+    </div>
+    <section aria-label="Today at a glance" className="grid gap-3 sm:grid-cols-3">
+      <Link href="/observatory" className="rounded-xl border border-[#382b18] bg-[#14110b] p-5"><p className="text-xs uppercase tracking-widest text-[#ac8a48]">Calls today · UTC</p><p className="mt-2 text-3xl text-[#ecc56a] tabular-nums">{calls == null ? 'Not reported' : calls.toLocaleString('en-IN')}</p>{validationCalls !== null && validationCalls > 0 && <p className="mt-2 text-xs text-[#a99c82]">Includes {validationCalls.toLocaleString('en-IN')} automated {validationCalls === 1 ? 'check' : 'checks'}</p>}</Link>
+      <Link href="/observatory/analytics" className="rounded-xl border border-[#382b18] bg-[#14110b] p-5"><p className="text-xs uppercase tracking-widest text-[#ac8a48]">Call health</p><p className="mt-2 text-3xl text-[#ecc56a] tabular-nums">{failures == null ? 'Not reported' : failures === 0 ? 'No failed calls' : `${failures} failed`}</p></Link>
+      <Link href="/observatory/consumption" className="rounded-xl border border-[#382b18] bg-[#14110b] p-5"><p className="text-xs uppercase tracking-widest text-[#ac8a48]">Usage evidence</p><p className="mt-2 text-3xl text-[#ecc56a] tabular-nums">{calls === 0 ? 'No calls' : complete == null ? 'Not reported' : `${complete}% complete`}</p></Link>
+    </section>
+    {feed === 'delayed' && <p className="text-xs text-[#a99c82]">Build status feed delayed. The AI Console and Observatory remain available.</p>}
+  </main>
 }

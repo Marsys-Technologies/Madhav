@@ -53,7 +53,7 @@ export const NAV_ITEMS: readonly NavItemDescriptor[] = [
   // Super Admin reaches AI Console through Cockpit's section menu. Guests keep
   // this direct entry because Cockpit itself is an admin-only surface.
   { key: 'ai-console',  href: '/ai-console',  label: 'AI Console',  roles: ['guest'], feature: 'aiConsoleByok' },
-  { key: 'usage', href: '/usage', label: 'My AI usage', roles: ['super_admin','guest'], feature: 'aiMetering' },
+  { key: 'observatory', href: '/observatory', label: 'Observatory', roles: ['guest'], feature: 'aiMetering' },
   { key: 'audit',       href: '/audit',       label: 'Audit',       roles: ['super_admin'], admin: true },
   { key: 'performance', href: '/performance', label: 'Performance', roles: ['super_admin'], admin: true },
   { key: 'admin',       href: '/admin',       label: 'Admin',       roles: ['super_admin'], admin: true },

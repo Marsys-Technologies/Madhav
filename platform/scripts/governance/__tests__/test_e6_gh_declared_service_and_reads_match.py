@@ -535,4 +535,4 @@ def test_the_criteria_whose_behaviour_changed_carry_a_bumped_revision():
     assert ac.CRITERION_REGISTRY["Build.target"]["revision"] == 2
     assert ac.CRITERION_REGISTRY["Build.dag"]["revision"] == 2
     assert ac.CRITERION_REGISTRY["Idem.pattern"]["revision"] == 2
-    assert ac.REGISTRY_REVISION == 6 and not ac.NA_RULE_DECISIONS
+    assert ac.REGISTRY_REVISION >= 6 and not ac.NA_RULE_DECISIONS     # 7: E6 item (f) bumped it (NA_CAUSES only)

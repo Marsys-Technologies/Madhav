@@ -386,6 +386,42 @@ jobs:
           F152_AUDIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/f152_audit_test
         run: npx vitest run tests/integration/asset_throughput_state_audit.db.test.ts --reporter=verbose
 
+      - name: B6.0/1211 — provision the asset_throughput_state_audit grants test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1211_audit_grant_test;"
+
+      - name: B6.0/1211 — data_plane_builder grant fix fails-before/succeeds-after against real Postgres
+        # The production-outage proof for migration 1211: a role with EXACTLY
+        # data_plane_builder's grants (UPDATE on asset_throughput, nothing on
+        # the audit table) hits 'permission denied for table
+        # asset_throughput_state_audit' on the first state change before the
+        # migration, and succeeds with its audit row after the REAL 1211 file is
+        # applied — plus idempotency and no-widening controls (§N.8).
+        env:
+          M1211_AUDIT_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1211_audit_grant_test
+        run: npx vitest run tests/integration/asset_throughput_state_audit_grants.db.test.ts --reporter=verbose
+
+      - name: A2.5/1216 — provision the gochara contract grants test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1216_gochara_grant_test;"
+
+      - name: A2.5/1216 — gochara contract builder grants fails-before/succeeds-after against real Postgres
+        # The governed-gochara proof for migration 1216: a role with EXACTLY
+        # data_plane_builder's pre-1216 grants (USAGE on schema public, nothing
+        # on the 1153–1157 contract tables or the 1081 kala ledger) hits
+        # 'permission denied for table …' on the first governed write before the
+        # migration, and succeeds after the REAL 1216 file is applied — plus
+        # idempotency, forbidden-mutation refusals and DEFERRED-table controls.
+        # The contract-table DDL is applied from the REAL 1081/1153–1157 files
+        # (§N.8); only charts(id) is stubbed, as in the 1211 suite.
+        env:
+          M1216_GOCHARA_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1216_gochara_grant_test
+        run: npx vitest run tests/integration/gochara_contract_builder_grants.db.test.ts --reporter=verbose
+
       - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
         env:
           PGPASSWORD: postgres
