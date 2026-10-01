@@ -95,7 +95,6 @@ _BARE_LITERAL_BASELINE: dict[str, int] = {
     "ga_writers/ga_positions_writer.py": 3,
     "ga_writers/ga_sade_sati_writer.py": 7,
     "ga_writers/ga_sensitive_degree_writer.py": 10,
-    "ga_writers/ga_sensitive_writer.py": 19,
     "ga_writers/ga_strength_writer.py": 11,
     "ga_writers/ga_structural_writer.py": 10,
     "ga_writers/ga_tajaka_writer.py": 7,

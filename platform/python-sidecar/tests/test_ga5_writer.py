@@ -19,7 +19,8 @@ All tests are unit tests (no DB required):
   15. Section-B enrichment: near_nakshatra_boundary_flag is bool
   16. Section-B enrichment: vargottama_flag_at_point is bool
   17. Section-B enrichment: formula_provenance_text non-empty
-  18. Verification pass: all rows = 'two_pass_verified' (zero single)
+  18. Verification pass: tiers are honest (Q03): single by default, two_pass_verified only for
+      the five solar upagraha subjects (see ga_writers/__tests__/test_ga_sensitive_tier_honesty.py)
   19. Verification pass: zero 'divergent_flagged' rows
   20. Atomic grain: upagraha_position — 6 subjects × ≥ 5 keys = ≥ 30 rows
   21. Atomic grain: saham_position — ≥ 70 subjects (one per Saham)
@@ -176,10 +177,10 @@ def _build_test_rows_for_one_ayanamsha() -> list[dict[str, Any]]:
             "yama": {"longitude_deg": 60.0, "sign": "Gemini", "sign_id": 3, "degree_in_sign": 0.0},
             "gulika": {"longitude_deg": 74.89, "sign": "Gemini", "sign_id": 3, "degree_in_sign": 14.89},
             "maandi": {"longitude_deg": 84.26, "sign": "Gemini", "sign_id": 3, "degree_in_sign": 24.26},
-            "dhuma": {"longitude_deg": 53.33, "sign": "Taurus", "sign_id": 2, "degree_in_sign": 23.33},
-            "vyatipaata": {"longitude_deg": 306.67, "sign": "Capricorn", "sign_id": 10, "degree_in_sign": 6.67},
-            "parivesha": {"longitude_deg": 126.67, "sign": "Leo", "sign_id": 5, "degree_in_sign": 6.67},
-            "indrachaapa": {"longitude_deg": 233.33, "sign": "Scorpio", "sign_id": 8, "degree_in_sign": 23.33},
+            "dhuma": {"longitude_deg": 53.333333333333314, "sign": "Taurus", "sign_id": 2, "degree_in_sign": 23.33},
+            "vyatipaata": {"longitude_deg": 306.66666666666669, "sign": "Capricorn", "sign_id": 10, "degree_in_sign": 6.67},
+            "parivesha": {"longitude_deg": 126.66666666666669, "sign": "Leo", "sign_id": 5, "degree_in_sign": 6.67},
+            "indrachaapa": {"longitude_deg": 233.33333333333331, "sign": "Scorpio", "sign_id": 8, "degree_in_sign": 23.33},
             "upaketu": {"longitude_deg": 250.0, "sign": "Sagittarius", "sign_id": 9, "degree_in_sign": 10.0},
         },
         "midheaven": {"longitude_deg": 272.98, "sign": "Capricorn", "sign_id": 10, "degree_in_sign": 2.98},
@@ -397,10 +398,16 @@ class TestSectionBEnrichment:
 # ── 18–19: Verification pass ─────────────────────────────────────────────────
 
 class TestVerificationPass:
-    def test_all_two_pass_verified(self, all_rows):
-        """Zero rows may have verification_pass_status = 'single'."""
-        single = [r for r in all_rows if r.get("verification_pass_status") == "single"]
-        assert single == [], f"{len(single)} single-pass rows detected; zero allowed"
+    def test_two_pass_verified_only_where_earned(self, all_rows):
+        """Q03 / SS N-62: `two_pass_verified` is stamped ONLY on the five solar upagrahas (a real
+        PyJHora-vs-BPHS comparison); no other category may carry it. `single` is the honest
+        default for everything else (CLAUDE.md §N.4)."""
+        tpv = [r for r in all_rows if r.get("verification_pass_status") == "two_pass_verified"]
+        assert tpv, "the upagraha two-pass check must earn the tier on the agreeing fixture"
+        assert {(r["fact_category"], r["fact_subject"]) for r in tpv} == {
+            ("upagraha_position", s)
+            for s in ("DHUMA", "VYATIPATA", "PARIVESHA", "INDRACHAPA", "UPAKETU")
+        }
 
     def test_zero_divergent_flagged(self, all_rows):
         """Zero rows may have verification_pass_status = 'divergent_flagged'."""

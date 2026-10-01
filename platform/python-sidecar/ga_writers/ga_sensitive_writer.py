@@ -6,7 +6,11 @@ Writes all 30 A5 sensitive-point categories to `chart_facts`.
 Per A5_SENSITIVE_POINTS_SPEC_v1_0.md + GA5 brief §4–§8:
   - 30 categories (esoteric/Tajik/KP/Nadi/Lal Kitab sensitive points)
   - ~2,600 rows per ayanamsha × 5 ayanamshas = ~13,000 rows per chart
-  - Every row two-pass verified (zero single, zero divergent_flagged)
+  - Honest tiers (Q03 / SS N-62): a row is `two_pass_verified` ONLY where an independent
+    re-derivation was compared through `two_pass_verdict` (today: the five solar upagrahas,
+    PyJHora native vs the BPHS Ch.3 algebra). Everything else is the `_make_row` default
+    `single` (no second derivation ran), `computed_extension` (YAMAGANDA_SPHUTA), or
+    `floored` (valueless rows). Zero divergent_flagged (a divergence halts the build).
   - Universal Section-B enrichment on every row:
       tolerance_arcsec, near_sign_boundary_flag, near_nakshatra_boundary_flag,
       vargottama_flag_at_point, formula_provenance_text,
@@ -20,12 +24,15 @@ FORENSIC anchors (natal: 1984-02-05 10:43 IST, lat 20.27, lon 85.84):
   - Moon nakshatra: Purva Bhadrapada
   - Lagna: Aries (NOT Scorpio)
 
-Two-pass verification:
-  - upagraha: swisseph derivation vs BPHS-formula re-derivation ≤10″
-  - karaka_chara: Rahu-excluded vs Rahu-included; AK divergence → halt
-  - kp_ruling_planets / kp_cuspal_significators: exact match
-  - Variant-family (Yogi/Mrityu/Panchasphuta): both/all emitted as separate formula_id rows
-  - All others: primary vs independent algebraic re-derivation within stated tolerance
+Verification (what actually runs; see AUDIT_L1_TIERS_PER_EMITTER_v1_0.md §2.1):
+  - upagraha (DHUMA/VYATIPATA/PARIVESHA/INDRACHAPA/UPAKETU): PyJHora native vs BPHS Ch.3
+    algebra over the exported Sun longitude, compared through `two_pass_verdict` -> the ONLY
+    `two_pass_verified` rows in this writer. KALA has no second path -> `single`.
+  - karaka_chara: Parashari vs KN Rao are two schools; AK divergence warns/halts, but the
+    rows are `single` (no independent re-derivation of either school's value).
+  - Variant-family (Yogi/Mrityu/Panchasphuta): alternatives emitted as separate formula_id
+    rows, not cross-checked -> `single`.
+  - All others: `single`.
 """
 from __future__ import annotations
 
@@ -40,7 +47,15 @@ from typing import Any
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from brahmagyan.graha_vocabulary import norm_graha
-from brahmagyan.verification_vocab import TWO_PASS_VERIFIED, UNVERIFIED_DEFAULT
+from brahmagyan.verification_vocab import two_pass_verdict
+from brahmagyan.verification_tiers import (
+    COMPUTED_EXTENSION,
+    DIVERGENT_FLAGGED,
+    EXTERNAL_COMPUTATION_REQUIRED,
+    FLOORED,
+    SKIPPED_MALFORMED_SOURCE,
+    UNVERIFIED_DEFAULT,
+)
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 from ga_writers.ga_positions_writer import (
@@ -346,6 +361,19 @@ def _midpoint(long1: float, long2: float) -> float:
     return (long1 + diff / 2.0) % 360.0
 
 
+#: Agreement bound for the upagraha two-pass check (PyJHora native vs BPHS Ch.3 algebra).
+#: The two paths are structurally 0.0012" apart (the BPHS constant is written 133.333333, i.e.
+#: 0.0012" short of 133 deg 20'; read live across all 5 ayanamshas), so 0.01" is 8x that residual
+#: while a 1" perturbation (let alone a V-6-class formula error) still diverges.
+UPAGRAHA_TWO_PASS_TOLERANCE_ARCSEC = 0.01
+
+
+def _circular_diff_arcsec(a_deg: float, b_deg: float) -> float:
+    """Smallest angular separation of two ecliptic longitudes, in arcseconds."""
+    d = abs(a_deg - b_deg) % 360.0
+    return min(d, 360.0 - d) * 3600.0
+
+
 def _check_linter(value_text: str) -> list[str]:
     """Return list of violations if value_text contains forbidden narration patterns."""
     if value_text is None:
@@ -370,7 +398,7 @@ def _make_row(
     *,
     formula_id: str = "",
     source_calculation: str | None = None,
-    verification_pass_status: str = TWO_PASS_VERIFIED,
+    verification_pass_status: str = UNVERIFIED_DEFAULT,
     tolerance_arcsec: float = 0.0,
     near_sign_boundary_flag: bool = False,
     near_nakshatra_boundary_flag: bool = False,
@@ -444,10 +472,10 @@ def _long_rows(
     Emits: longitude_sidereal, sign, sign_lord, nakshatra, nakshatra_lord, pada, house_d1
     + Section-B enrichment on every row.
 
-    verification_pass_status: M-22 fix — callers with a KNOWN non-classical
-    or fabricated derivation (M-9/M-10/M-11) pass an honest demoted tier
-    explicitly; None (default) leaves _make_row's own default in force for
-    genuinely correct BPHS-derived points.
+    verification_pass_status: callers pass an explicit tier when one is earned or known
+    (`two_pass_verdict(...)` for an independent re-derivation, `FLOORED` /
+    `COMPUTED_EXTENSION` for those cases); None (default) leaves _make_row's own default
+    (`UNVERIFIED_DEFAULT` = `single`, no second derivation ran) in force.
     """
     sign, sign_idx, deg_in_sign = _long_to_sign_deg(longitude_sidereal)
     nak_name, nak_lord, pada = _long_to_nakshatra_pada(longitude_sidereal)
@@ -617,17 +645,34 @@ def _build_upagraha_rows(
         if native_val is not None:
             long_val = float(native_val)
             if formula_val is not None:
-                diff_arcsec = min(abs(long_val - formula_val), 360.0 - abs(long_val - formula_val)) * 3600.0
+                diff_arcsec = _circular_diff_arcsec(long_val, formula_val)
                 tolerance_arcsec = diff_arcsec
+                # Q03 / SS N-62: the tier is EARNED here and only here. PyJHora's native value and
+                # the BPHS Ch.3 algebra over the exported Sun longitude are different code paths;
+                # a wrong constant or sign in either shows up as a diff (V-6 was exactly that).
+                # `two_pass_verdict` is identity-compare, so the circular difference is reduced to
+                # an agree/disagree boolean at THIS call site (a bare round()-then-compare would
+                # flip on a rounding boundary: the BPHS constant 133.333333 is 0.0012" short of
+                # 133 deg 20', so 6-dp rounding disagrees for ~1 chart in 3).
+                upagraha_agree = diff_arcsec <= UPAGRAHA_TWO_PASS_TOLERANCE_ARCSEC
+                verdict = two_pass_verdict(True, upagraha_agree)
+                if verdict == DIVERGENT_FLAGGED:
+                    logger.warning(
+                        "[ga_sensitive] upagraha %s: PyJHora native %.9f vs BPHS re-derivation "
+                        "%.9f differ by %.6f arcsec (> %.3f) -> %s",
+                        subj, long_val, formula_val, diff_arcsec,
+                        UPAGRAHA_TWO_PASS_TOLERANCE_ARCSEC, verdict,
+                    )
+                status_kwargs = {"verification_pass_status": verdict}
             else:
                 tolerance_arcsec = 0.0
-            status_kwargs = {}
+                status_kwargs = {}  # KALA: PyJHora-only, no second path -> default `single`
         else:
             # PyJHora native unavailable (adapter error) — floor rather than serve
             # a fabricated/unverified constant.
             long_val = None
             tolerance_arcsec = 0.0
-            status_kwargs = {"verification_pass_status": "floored"}
+            status_kwargs = {"verification_pass_status": FLOORED}
 
         if long_val is None:
             rows.append(_make_row(
@@ -647,6 +692,7 @@ def _build_upagraha_rows(
             chart_id, ayanamsha_id, build_id, eng_ver, lagna_long,
             formula_provenance_text=provenance_map[subj],
             tolerance_arcsec=tolerance_arcsec,
+            **status_kwargs,
         ))
     return rows
 
@@ -700,7 +746,7 @@ def _build_saturn_derived_rows(
         rows_out.append(_make_row(
             "saturn_derived_point", "GULIKA_LAHIRI", "longitude_sidereal",
             None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
-            verification_pass_status="floored",
+            verification_pass_status=FLOORED,
             formula_provenance_text="[EXTERNAL_COMPUTATION_REQUIRED] PyJHora native Gulika computation unavailable this build",
         ))
 
@@ -709,7 +755,7 @@ def _build_saturn_derived_rows(
     rows_out.append(_make_row(
         "saturn_derived_point", "GULIKA_HINDU", "longitude_sidereal",
         None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
-        verification_pass_status="floored",
+        verification_pass_status=FLOORED,
         formula_provenance_text=(
             "[EXTERNAL_COMPUTATION_REQUIRED] Prior value (Gulika + 30°) was an "
             "invented constant with no classical citation (register M-11) — "
@@ -743,7 +789,7 @@ def _build_saturn_derived_rows(
             rows_out.append(_make_row(
                 "saturn_derived_point", subj, "longitude_sidereal",
                 None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
-                verification_pass_status="floored",
+                verification_pass_status=FLOORED,
                 formula_provenance_text="[EXTERNAL_COMPUTATION_REQUIRED] PyJHora native Maandi computation unavailable this build",
             ))
 
@@ -763,6 +809,7 @@ def _build_saturn_derived_rows(
             "— retained as a labeled non-classical construction, not attributed to BPHS."
         ),
         tolerance_arcsec=0.0,
+        verification_pass_status=COMPUTED_EXTENSION,
     ))
 
     rows.extend(rows_out)
@@ -984,7 +1031,7 @@ def _build_pranapada_rows(
         return [_make_row(
             "esoteric_point_pranapada_sphuta", "PRANAPADA_SPHUTA", "longitude_sidereal",
             None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
-            verification_pass_status="floored",
+            verification_pass_status=FLOORED,
             formula_provenance_text=(
                 "[EXTERNAL_COMPUTATION_REQUIRED] PyJHora native Pranapada computation "
                 "(drik.pranapada_lagna) unavailable this build. Prior served value "
@@ -1026,7 +1073,7 @@ def _build_trikona_dasha_rows(
     return [_make_row(
         "esoteric_point_trikona_dasha_sphuta", "TRIKONA_DASHA_SPHUTA", "longitude_sidereal",
         None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
-        verification_pass_status="floored",
+        verification_pass_status=FLOORED,
         formula_provenance_text=(
             "[EXTERNAL_COMPUTATION_REQUIRED] Prior value (Moon + Jupiter + Lagna, "
             "cited 'Jaimini Sutram') was fabricated — no 'Trikona Dasha Sphuta' "
@@ -1057,7 +1104,7 @@ def _build_sri_yantra_rows(
         rows.append(_make_row(
             "esoteric_point_sri_yantra_position", subj, "longitude_sidereal",
             None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
-            verification_pass_status="floored",
+            verification_pass_status=FLOORED,
             formula_provenance_text=(
                 "[EXTERNAL_COMPUTATION_REQUIRED] Prior value (natal longitude x 9/10) "
                 "was an invented tantric mapping with no citable classical/tantric-textual "
@@ -1728,7 +1775,7 @@ def _build_midpoint_rows(
             rows.append(_make_row(
                 "midpoint", subj, "longitude_sidereal",
                 None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
-                verification_pass_status="floored",
+                verification_pass_status=FLOORED,
                 formula_provenance_text=(
                     "[EXTERNAL_COMPUTATION_REQUIRED] real ephemeris MC unavailable "
                     "this build; no Lagna+270° fallback served (D-9)"
@@ -1864,7 +1911,7 @@ def _build_kp_cuspal_rows(
                 "citation_ref": f"kp_cuspal:{subj}:external_required",
                 "citation_human": f"KP cusp {cusp_num}: real Placidus cusp not available; "
                                   "no fabricated cusp emitted (B.10).",
-                "verification_pass_status": "external_computation_required",
+                "verification_pass_status": EXTERNAL_COMPUTATION_REQUIRED,
                 "tolerance_arcsec": 0.0,
                 "near_sign_boundary_flag": False,
                 "near_nakshatra_boundary_flag": False,
@@ -1941,7 +1988,7 @@ def _build_kp_cuspal_rows(
                 "computed_at": datetime.now(timezone.utc).isoformat(),
                 "citation_ref": f"kp_cuspal:{subj}:error",
                 "citation_human": f"KP_PARSE_ERROR: cusp {cusp_num} skipped — {exc}",
-                "verification_pass_status": "skipped_malformed_source",
+                "verification_pass_status": SKIPPED_MALFORMED_SOURCE,
                 "tolerance_arcsec": 0.0,
                 "near_sign_boundary_flag": False,
                 "near_nakshatra_boundary_flag": False,
@@ -2009,7 +2056,7 @@ def _build_aprakasha_rows(
         rows.append(_make_row(
             "aprakasha_position", "PIDAA", "longitude_sidereal",
             None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
-            verification_pass_status="floored",
+            verification_pass_status=FLOORED,
             formula_provenance_text=(
                 "[EXTERNAL_COMPUTATION_REQUIRED] PyJHora native Gulika "
                 "computation unavailable this build; Pidaa (= Gulika "
@@ -2030,7 +2077,7 @@ def _build_aprakasha_rows(
         rows.append(_make_row(
             "aprakasha_position", "VIGHNI", "longitude_sidereal",
             None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
-            verification_pass_status="floored",
+            verification_pass_status=FLOORED,
             formula_provenance_text=(
                 "[EXTERNAL_COMPUTATION_REQUIRED] PyJHora native Maandi "
                 "computation unavailable this build; Vighni (= Mandi + 20°, "
@@ -2173,6 +2220,7 @@ def _build_lal_kitab_floored_rows(
         rows.extend([
             _make_row("lal_kitab_special_point", subj, "house",
                       None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      verification_pass_status=FLOORED,
                       formula_provenance_text="G41 Lal Kitab corpus: prerequisite absent — floored to null",
                       tolerance_arcsec=0.0,
                       near_sign_boundary_flag=False,
@@ -2206,6 +2254,7 @@ def _build_maharsi_floored_rows(
         rows.extend([
             _make_row("maharsi_specific_point", subj, "longitude_sidereal",
                       None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
+                      verification_pass_status=FLOORED,
                       formula_provenance_text="G44 Nadi-rishi attribution table: prerequisite absent — floored to null",
                       tolerance_arcsec=0.0,
                       near_sign_boundary_flag=False,
@@ -2537,7 +2586,7 @@ def _build_special_lagnas_rows(
         return _make_row(
             "special_lagna", subj, "longitude_sidereal",
             None, None, None, chart_id, ayanamsha_id, build_id, eng_ver,
-            verification_pass_status="floored",
+            verification_pass_status=FLOORED,
             formula_provenance_text=f"[EXTERNAL_COMPUTATION_REQUIRED] {reason}",
         )
 
@@ -2654,18 +2703,15 @@ def _build_yogi_system_completion_rows(
         _make_row("esoteric_point_yogi_system", "YOGI_GRAHA", "assigned_graha",
                   None, yogi_graha, None,
                   chart_id, ayanamsha_id, build_id, eng_ver,
-                  verification_pass_status="two_pass_verified",
-                  formula_provenance_text="BPHS Ch.20: Yogi Graha = nakshatra lord of Yogi Sphuta (Sun+Moon+93 deg 20')"),
+                                    formula_provenance_text="BPHS Ch.20: Yogi Graha = nakshatra lord of Yogi Sphuta (Sun+Moon+93 deg 20')"),
         _make_row("esoteric_point_yogi_system", "YOGI_GRAHA", "nakshatra",
                   None, nak_name, None,
                   chart_id, ayanamsha_id, build_id, eng_ver,
-                  verification_pass_status="two_pass_verified",
-                  formula_provenance_text="BPHS Ch.20: Yogi Graha nakshatra"),
+                                    formula_provenance_text="BPHS Ch.20: Yogi Graha nakshatra"),
         _make_row("esoteric_point_yogi_system", "YOGI_GRAHA", "yogi_point_longitude",
                   yogi_long, None, None,
                   chart_id, ayanamsha_id, build_id, eng_ver,
-                  verification_pass_status="two_pass_verified",
-                  formula_provenance_text="BPHS Ch.20: Yogi Sphuta (source) = Sun + Moon + 93 deg 20'"),
+                                    formula_provenance_text="BPHS Ch.20: Yogi Sphuta (source) = Sun + Moon + 93 deg 20'"),
     ])
 
     dagdha_signs = DAGDHA_RASHI_BY_VARA.get(vara, [])
@@ -2675,8 +2721,7 @@ def _build_yogi_system_completion_rows(
             "esoteric_point_yogi_system", subj, "sign",
             None, sign, None,
             chart_id, ayanamsha_id, build_id, eng_ver,
-            verification_pass_status="two_pass_verified",
-            formula_provenance_text=(
+                        formula_provenance_text=(
                 f"Muhurta Chintamani: Dagdha Rashi {i} for vara={vara} (Sunday=0): {sign}"
             ),
         ))
@@ -2948,7 +2993,7 @@ def _insert_rows(conn: Any, rows: list[dict[str, Any]], *, commit: bool = True) 
                 error_row["fact_value_jsonb"] = None
                 error_row["fact_value_text"] = "KP_PARSE_ERROR"
                 error_row["fact_value_num"] = None
-                error_row["verification_pass_status"] = "data_error"
+                error_row["verification_pass_status"] = SKIPPED_MALFORMED_SOURCE
                 error_row["citation_human"] = (
                     f"KP parse failed for {subject}: malformed JSONB in source data."
                 )
@@ -3076,7 +3121,7 @@ def build_ga_sensitive_for_ayanamsha(
         prereqs=prereqs,
         halt_log_path="CONDUCTOR_HALT_LOG.md",
     )
-    divergent = [r for r in rows if r.get("verification_pass_status") == "divergent_flagged"]
+    divergent = [r for r in rows if r.get("verification_pass_status") == DIVERGENT_FLAGGED]
     if divergent:
         raise ValueError(f"GA5: {len(divergent)} divergent_flagged rows in {ayanamsha_id}")
     single = [r for r in rows if r.get("verification_pass_status") == UNVERIFIED_DEFAULT]
@@ -3203,7 +3248,7 @@ def build_ga_sensitive(
             return summary
 
     # ── Verify no divergent_flagged rows ─────────────────────────────────────
-    divergent = [r for r in all_rows if r.get("verification_pass_status") == "divergent_flagged"]
+    divergent = [r for r in all_rows if r.get("verification_pass_status") == DIVERGENT_FLAGGED]
     if divergent:
         msg = f"GA5 HALT: {len(divergent)} divergent_flagged rows detected"
         logger.error("[ga_sensitive] %s", msg)
