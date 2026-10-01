@@ -272,74 +272,29 @@ These are not gaps; they are what a level-by-level L0 rebuild (B.L0.0-B.L0.3, gl
 
 ## 7 · Questions for Strategic Suvarṇa (consolidated)
 
-1. Does Dens apply to this reference table at all (it carries no verification tier)? *(assets: bg_class_lifetime_counts, bg_class_priors, bg_compendium_index, bg_dasha_systems, bg_doshas, bg_ephemeris, bg_ephemeris_engine, bg_formula_constants, bg_gochara_citation_resolution, bg_medical_mappings, bg_muhurta_lattice, bg_nakshatra_medical, bg_ontology, bg_panchanga, bg_parihara_rules, bg_remedies, bg_sign_medical, bg_sky_calendar, bg_text_index, bg_texts, bg_transit_engine, bg_transit_rules, bg_vastu_directions, bg_yogas)*
-2. CF-01: is a converged-rerun `rows_written = 0` on a declared changed-rows writer a PASS? *(assets: bg_ephemeris, bg_muhurta_lattice, bg_ontology, bg_reference, bg_sky_calendar, bg_texts, bg_vidhi_primitives)*
-3. Has_writer flip: cascade accepted until first dispatch? *(assets: bg_nakshatra_medical, bg_transit_engine)*
-4. Does the sibling’s dispatch count for a rider? *(assets: bg_nakshatra_medical, bg_transit_engine)*
-5. Keep both `bg_class_priors` and `bg_class_lifetime_counts` as separate assets (this brief) or hold the carried C open until the caller trace names a successor? *(assets: bg_class_lifetime_counts)*
-6. Carr for judgment seeds: N/A with a decision id, or a package-correspondence D1? *(assets: bg_class_priors)*
-7. Is Carr N/A (with a decision id) for a ratified judgment seed, or does SS want the package-to-literals D1? *(assets: bg_class_priors)*
-8. Which side of the cohort count mismatch does SS want fixed (writer report or count_sql scope)? *(assets: bg_cohort)*
-9. Which side (writer reports both tables, or count_sql scoped to the primary table) does SS prefer? Both close the gate. *(assets: bg_cohort)*
-10. Chunk-level carriage on `classical_attributions`: in scope for L0 or not? *(assets: bg_concordance)*
-11. Does SS want chunk-level carriage on the attributions (an output change), or is text-level carriage the L0 contract? *(assets: bg_concordance)*
-12. Combustion orbs held in two L0 assets: redundancy or consolidation candidate? *(assets: bg_dignity_reference)*
-13. Is the second copy of the combustion orbs (formula_constants vs bg_combustion_orbs) intended redundancy, or a consolidation question (T2 §10.1 C)? *(assets: bg_dignity_reference)*
-14. Does Dens apply to this reference table at all (CF-04)? *(assets: bg_dignity_reference)*
-15. Accept `classical_tradition` as a provenance value (add an explicit state), or re-source the 53 rows from the corpus? *(assets: bg_doshas)*
-16. Which alias convention does SS accept for doṣa (derive from the 15 complete classes)? *(assets: bg_doshas)*
-17. Is `classical_tradition` an accepted provenance value (native decision cited in the module)? *(assets: bg_doshas)*
-18. Node convention: the table holds TRUE node while the engine/panchang standard is MEAN_NODE. Is the split intended and declared, or must SS rule one convention for consumers (a domain decision, not made here)? *(assets: bg_ephemeris)*
-19. Body-name normalisation: authority-side declaration or stored-value rewrite (R9: Pravāha reads the arcs built from this table)? *(assets: bg_ephemeris)*
-20. CF-01: is a converged-rerun `rows_written = 0` a Build.completion PASS? *(assets: bg_ephemeris)*
-21. Normalise at the authority (no stored-value change) or rewrite stored `body` values (output change, R9)? *(assets: bg_ephemeris)*
-22. Node convention: this service mandates MEAN_NODE; `ephemeris_daily` holds TRUE node (see bg_ephemeris question 1). *(assets: bg_ephemeris_engine)*
-23. Where do calibrated values live once L5 tunes them (guard needed in this table, or a separate store)? *(assets: bg_formula_constants)*
-24. Scope count_sql to the ten, or declare two producers for the table? *(assets: bg_formula_constants)*
-25. Where do calibrated constant values live once L5 tunes them: in this table (then the guard is needed) or elsewhere? *(assets: bg_formula_constants)*
-26. R9: confirm the notify-Pravāha path before any wave touches `bg_ephemeris` (its input) — SS routes it. *(assets: bg_gochara_arcs)*
-27. Notification: has Pravāha been told that any change to this asset’s inputs (bg_ephemeris, bg_texts) reaches it? (R9 is SS’s to route.) *(assets: bg_gochara_arcs)*
-28. Static asset: N/A by rule or a dispatchable writer? (R9 asset: any writer/rebuild waits for SS after notifying Pravāha.) *(assets: bg_gochara_citation_resolution)*
-29. Static migration-seeded asset: N/A by rule (a) or a dispatchable writer (b)? *(assets: bg_gochara_citation_resolution)*
-30. May the rider ids be dispatched through this writer and each recorded on its own count? *(assets: bg_medical_mappings)*
-31. Does the lattice's floor follow the achieved count (a refresh) or stay a historical figure? (information only) *(assets: bg_muhurta_lattice)*
-32. Abhijit: ontology identity or declared exception? *(assets: bg_nakshatra)*
-33. Abhijit: an ontology identity (27 → 28) or a declared exception? *(assets: bg_nakshatra)*
-34. May the cascade stand until the first L0 dispatch, or does SS want the flip held until then? *(assets: bg_nakshatra_medical)*
-35. Ledger O1: which identity option (a class-aware resolvers, b rename 11, c global_id)? *(assets: bg_ontology)*
-36. Where does the normalisation rule and a vocabulary release live, and is a release in the first wave? *(assets: bg_ontology)*
-37. The three ontology-only text ids: keep or remove? *(assets: bg_ontology)*
-38. CF-01: a converged-rerun `rows_written = 0` is a Build.completion PASS? *(assets: bg_ontology)*
-39. Ledger O1: (a) class-aware resolvers, (b) rename 11 ids, or (c) add `global_id`? *(assets: bg_ontology)*
-40. Where does the normalisation rule live (ontology table, a declared function or the registry), and is a release id in scope for the first L0 wave? *(assets: bg_ontology)*
-41. For the three ontology-only texts: keep as declared-not-ingested or remove? *(assets: bg_ontology)*
-42. Edge target: `bg_ephemeris_engine` or `bg_ephemeris`? *(assets: bg_panchanga)*
-43. Which asset should `bg_panchanga` depend on: `bg_ephemeris_engine` (code shows swisseph) or `bg_ephemeris` (ledger)? *(assets: bg_panchanga)*
-44. Keep (this brief) or integrate (the carried I) for bg_prashna_rules? *(assets: bg_prashna_rules)*
-45. Source ids: read-time resolution or rewrite the stored values? *(assets: bg_remedies)*
-46. Is `classical_tradition` an accepted provenance value (explicit state) or are the 80 rows to be re-sourced? *(assets: bg_remedies)*
-47. Resolve at read time (no stored change) or rewrite the stored ids? *(assets: bg_remedies)*
-48. Is `classical_tradition` an accepted provenance value? *(assets: bg_remedies)*
-49. Concept backfill: migration or `DO UPDATE`? *(assets: bg_rules)*
-50. `confidence`: drop/rename or a discriminating score? *(assets: bg_rules)*
-51. `dasha_system_id`: populate or remove the column? *(assets: bg_rules)*
-52. Backfill by migration or change the conflict clause to `DO UPDATE`? *(assets: bg_rules)*
-53. Drop/rename `confidence`, or build a discriminating score? *(assets: bg_rules)*
-54. Rider: sibling dispatch counts, or must the id run itself? *(assets: bg_sign_medical)*
-55. Does the sibling’s dispatch count for a rider (T4 `producer_covered`), or must each id run? *(assets: bg_sign_medical)*
-56. Does the rolling-horizon floor follow the achieved count (information only)? *(assets: bg_sky_calendar)*
-57. Keep as a distinct asset with a declared unit, or integrate with bg_texts (the carried I)? *(assets: bg_text_index)*
-58. Keep `bg_text_index` as a separate asset with its own unit (declared), or fold the metric into bg_texts (integrate)? *(assets: bg_text_index)*
-59. Cascade accepted until first dispatch? *(assets: bg_transit_engine)*
-60. Who re-verifies the 19 refuted 'BPHS Ch.29' citations and when (domain act; R9-adjacent Gochara consumers)? *(assets: bg_transit_rules)*
-61. Add the explicit state now, and who re-verifies the 19 refuted citations (SS/native decision)? *(assets: bg_transit_rules)*
-62. Should Mayamata be admitted to the corpus so D1 can run, or does the gate record the source as outside the corpus? *(assets: bg_vastu_directions)*
-63. What does DRAFT block for certification, and who ratifies `education_deepdive` and `progeny_deepdive`? *(assets: bg_vidhi_floors)*
-64. What does DRAFT block for certification (TGH-T3-21), and who ratifies the two CANDIDATE floors? *(assets: bg_vidhi_floors)*
-65. The one tradition-rooted row: explicit state or re-source? *(assets: bg_yogas)*
-66. DP05 columns: in scope for the first wave? *(assets: bg_yogas)*
-67. Accept `classical_tradition` for this row (explicit state) or re-source it? *(assets: bg_yogas)*
-68. Is populating the four DP05 columns in scope for the first L0 wave, and by what extraction? *(assets: bg_yogas)*
+Curated from the per-asset questions (the full per-asset lists stay in each brief, §4 `Question for SS` and §7). Ordered by how many assets or gates the answer unblocks.
+
+1. **CF-01 (8 assets, Build):** is a converged-rerun `rows_written = 0` on a writer that declares the changed-rows convention a Build.completion PASS (option A), or must writers report rows present (option B)? Option C needs an orchestrator change and is R2.
+2. **CF-04 (23 assets, Dens):** does Dens apply to L0 reference vocabularies that carry no verification tier? If yes, what is the L0 tier column (add one, or accept `density_contract` facets only); if no, an N-22 applicability rule with a decision id. Re-measure at registry rev 4 first.
+3. **CF-11 (bg_doshas 53 rows, bg_yogas 1, bg_remedies 80, bg_transit_rules 19 refuted + 6 unsourced):** is `classical_tradition` an accepted provenance value (the code cites a native decision, `l0_doshas.py:18-21`), so the fix is an explicit attribution state, or does SS want re-sourcing? Who re-verifies the 19 refuted "BPHS Ch.29" transit citations?
+4. **CF-09 (bg_ontology and 5 consumers):** where does the normalisation rule live and is a vocabulary release id in the first wave (TGH-T2-12)? Which identity option for the 11 two-class ids (ledger O1 a/b/c)? The three ontology-only text ids (bhrigu_samhita, jaimini_sutram, lal_kitab_text): keep or remove? Abhijit (28th nakshatra in the reference table, absent from the 27-id ontology class): identity or declared exception?
+5. **bg_ephemeris / R9:** the table holds TRUE node while the engine and panchang standard is MEAN_NODE: intended and declared, or must SS rule a convention (a domain decision)? Body-name normalisation by authority-side declaration (recommended, no stored-value change) or rewrite? Which route notifies Pravāha before any wave touches `bg_ephemeris` or `bg_texts` (inputs of the R9 pair)?
+6. **CF-02 / CF-03 (riders):** does a sibling’s dispatch count for a rider id (T4 `producer_covered`) or must each id run? May the recorded R61 cascade (`Build.exercised` FAIL after `has_writer` flips to true on bg_nakshatra_medical and bg_transit_engine) stand until the first L0 dispatch?
+7. **Static migration-seeded assets (bg_gochara_citation_resolution; also bg_sarvatobhadra_grid):** Build gate N/A by an N-22 rule, or a dispatchable writer?
+8. **bg_formula_constants:** where do calibrated values live once L5 tunes them (the upsert would revert them on rebuild)? Scope count_sql to the ten writer rows, or declare two producers?
+9. **bg_rules:** backfill concept ids by migration or change `DO NOTHING` to `DO UPDATE`; drop/rename `confidence` or build a discriminating score; populate or remove `dasha_system_id`.
+10. **Dispositions:** accept keep (not C) for bg_class_priors and bg_class_lifetime_counts; keep (not I) for bg_prashna_rules; integrate (declare the unit) for bg_text_index; enrich for bg_yogas.
+11. **CF-10 (13 assets):** should Build.history count only runs since the last change to the asset’s writer or registry row?
+12. **CF-12 (18 upsert writers):** is "no orphan rows under the writer’s own partition" the Idem claim for L0 upsert writers (TGH-T3-18)?
+13. **CF-07:** is a D1 anchor-term match acceptable as the L0 carriage detector (PASS on the matched subset, semantic equivalence a sampled reading)? For ratified judgment seeds (bg_class_priors, bg_formula_constants non-classical rows) is Carr N/A with a decision id?
+14. **bg_vidhi_floors:** what does `catalog_status = DRAFT` block for certification (TGH-T3-21), and who ratifies `education_deepdive` and `progeny_deepdive`?
+15. **Duplicate authority:** combustion orbs are held in `bg_combustion_orbs` and `brahma_formula_constants`: intended redundancy or a consolidation question?
+16. **bg_panchanga edge:** declare `bg_ephemeris_engine` (the code calls swisseph) or `bg_ephemeris` (the ledger)?
+17. **bg_concordance:** chunk-level pointers on `classical_attributions` in scope for L0 (an output change) or is text-level carriage the contract?
+18. **bg_vastu_directions:** admit Mayamata to the corpus so D1 can run, or record its rows as outside the corpus?
+19. **bg_cohort:** report both tables in `rows_written` or scope count_sql to the primary table?
+20. **bg_yogas:** are the four unpopulated DP05 formation columns in scope for the first L0 wave, and by what source-grounded extraction?
+
 
 ## 8 · Notes on method and path
 
