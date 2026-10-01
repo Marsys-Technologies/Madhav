@@ -1,0 +1,24 @@
+{
+  "lane": "sun_required_rupa",
+  "ruling": "Sun required shadbala (SS S-L1 MANDATORY)",
+  "pr": "branch suvarna/land/TI-l1-sun-required-rupa-001",
+  "description": "The Sun's classical required (minimum) total shadbala is corrected from 5.0 to 6.5 rupa (BPHS ch.27 sl.32-33: 390 virupa = 6.5 rupa; corroborated by Phaladipika IV.22-23 and Pravaha sad_bala_sufficient v1.0, PR #2869). The other six values (Moon 6, Mars 5, Mercury 7, Jupiter 6.5, Venus 5.5, Saturn 5) are unchanged. Stored facts that change for the SUN only: graha_shadbala_total|required_rupa (ayanamsha INVARIANT, 1 row per chart: 5 -> 6.5) and graha_shadbala_total|ratio (achieved/required, one row per ayanamsha: the old ratio times 5/6.5). ga_structural composite strength now READS the L1 required_rupa fact instead of a shadow copy, so graha_in_house_composite_strength bphs_weighted / cross_formula_divergence for SUN_IN_HOUSE_n change only where the Sun's achieved rupa is below 6.5 (ratio is capped at 1.0): measured from stored facts, 0 rows on the native chart and Abhinandan, 120 rows on cb73cd3d. No achieved shadbala value, no other graha's required/ratio, no position, tier or FORENSIC anchor moves. Downstream tables outside the detector's four tables also change (ga_yoga_firings.strength via constituent_bala_v1, bodha_msr_signals.shadbala_norm, bodha_rm_resonances): see SUN_REQUIRED_RUPA_INTENT_v1_0.md.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["graha_shadbala_total"],
+      "fact_keys": ["required_rupa", "ratio"],
+      "change_types": ["value"],
+      "expected_direction": "SUN subject only. required_rupa (ayanamsha INVARIANT): 5 -> 6.5 on every chart. ratio (each of 5 ayanamshas): old_ratio * 5 / 6.5, e.g. native Lahiri 1.694 -> 1.3031; Abhinandan 1.44 -> 1.1077; cb73cd3d 1.148 -> 0.8831 (flips from at/above to below the classical minimum on all 5 ayanamshas). MOON/MAR/MER/JUP/VEN/SAT required_rupa and ratio are unchanged; the 'rupa' key is NOT listed because no achieved total moves.",
+      "note": "No expected_count: both values are continuous (non-integral), which the detector reports only as continuous statistics, so the predicted class-level count is 0; an integral/tier/appeared/disappeared change in this category would be a real surprise and should surface as UNATTRIBUTED only if it falls outside this entry."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["graha_in_house_composite_strength"],
+      "fact_keys": ["bphs_weighted", "cross_formula_divergence"],
+      "change_types": ["value"],
+      "expected_direction": "SUN_IN_HOUSE_1..12 only, and only where the Sun's achieved shadbala rupa < 6.5 (composite normalizes min(1, rupa/required)): measured offline from stored facts, 0 rows on the native chart (rupa 8.47-8.93), 0 on Abhinandan (6.9-7.2), 120 on cb73cd3d (rupa 5.74-5.98: 12 houses x 2 keys x 5 ayanamshas). simple_multiplication does not depend on the Sun's ratio and is unchanged. Rahu/Ketu composite rows keep their legacy default and are unchanged.",
+      "note": "No expected_count: continuous values; the cb73cd3d stored rows also pre-date the P0-N1 fact_key pin, so a rebuild changes them regardless of this lane (see the intent doc)."
+    }
+  ]
+}
