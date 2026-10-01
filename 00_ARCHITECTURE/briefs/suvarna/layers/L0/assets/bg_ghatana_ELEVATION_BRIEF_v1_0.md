@@ -86,7 +86,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 6 / transitive 33 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (detector only)
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
@@ -98,7 +98,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
 - **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 6 / transitive 33 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration only)
 - **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
@@ -110,7 +110,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` (`carriage`) and, only if no column exists, the writer + a migration
 - **Failing-first test and mutation:** inspector reads PASS/FAIL on the declared column; a blank source must read FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 6 / transitive 33 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration); a data fix would be a separate design
 - **Gate it moves:** Ldgr (no reading → PASS/FAIL)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T3-01 (the Ldgr source is undefined in the gate map)

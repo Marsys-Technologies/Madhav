@@ -87,11 +87,11 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 ### FD-1 · Build.completion: scope count_sql to the ten writer rows
 
 - **Answers:** census `Build.completion` FAIL (10 vs 17); ledger `bg_formula_constants-Build.completion`; CF-02
-- **Change:** decided (SS 2026-10-01, Q8): scope the asset’s `count_sql` to the ten writer-seeded constants (`constant_id IN (…)`); the 7 migration-seeded rows (migrations 400, 424) are not this asset’s producer output.
-- **Files / declaration / migration:** registry row (`count_sql`) via a surgical migration + `asset_registry_seed.ts` literal
-- **Failing-first test and mutation:** failing-first: `rows_written` of a rebuild (10 changed or 0 on a converged rerun) equals the scoped count_sql; mutation: delete one seeded constant → count and integrity fail
+- **Change:** decided (SS 2026-10-01, Q8): scope the asset’s `count_sql` to the ten writer-seeded constants (`constant_id IN (…)`); the 7 migration-seeded rows (migrations 400, 424) are not this asset’s producer output. **Floor:** the seed and live `target_floor` are 17 (`asset_registry_seed.ts:778`); scoping `count_sql` to the ten writer rows without changing the floor would create a NEW Count.floor FAIL (10 < 17). Change `target_floor` to 10 in the same migration.
+- **Files / declaration / migration:** registry row (`count_sql` AND `target_floor` 17 → 10) via a surgical migration + `asset_registry_seed.ts` (seed L768-778)
+- **Failing-first test and mutation:** failing-first: scoped `count_sql` = 10, Count.floor PASS (10 ≥ 10), `rows_written` of a rebuild equals the scoped count; mutation: restore floor 17 → Count.floor FAIL; delete one seeded constant → count and integrity fail
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** registry-only; readers `mi_pramana.py`, `mi_gunanaka.py`, `mi_pariksha.py`, `lel_calibration.py`, `base_rate.py`, `recalibrationEnqueue.ts` read the table, not `count_sql` or the floor.
 - **Rebuild:** none for the registry scope
 - **Gate it moves:** Build (completion), Earn (count_sql scope)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent; the multi-producer vocabulary is tier-dependent (TGH-T2-05)
@@ -104,7 +104,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `brahmagyan/l0_formula_constants.py` (ON CONFLICT clause) and a test next to the writer
 - **Failing-first test and mutation:** failing-first: set a calibratable constant to a non-seed value in a fixture, rebuild, assert the value survives; mutation: revert the guard → the test fails
 - **Output change:** none on first install; a rebuild no longer reverts calibrated values
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row changes on a rebuild once the 8 calibratable rows are seed-once; readers as listed above see the same values. Without the guard a rebuild would reset those 8 values to the seeds.
 - **Rebuild:** none to land the guard (it only changes what a future rebuild does); the fingerprint check belongs to the B.L0 impact statement.
 - **Gate it moves:** Build (rebuild correctness)
 - **Fix class:** writer code; **buildable before J1:** tier-independent (decided)
@@ -117,7 +117,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** a new check in the Nikaṣa inspector tooling (Track E) registered for this asset; no asset file changes
 - **Failing-first test and mutation:** a seeded mismatch the check must report and a clean pass it must report as zero; mutation: corrupt one row → count ≥ 1
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 3 / transitive 7 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (detector only)
 - **Gate it moves:** Carr (NO_DETECTOR → measured)
 - **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: per-asset D1/D2/D3 assignment is TGH-T3-02; the detector itself needs no clause
@@ -129,7 +129,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` (`carriage`) and, only if no column exists, the writer + a migration
 - **Failing-first test and mutation:** inspector reads PASS/FAIL on the declared column; a blank source must read FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 3 / transitive 7 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration); a data fix would be a separate design
 - **Gate it moves:** Ldgr (no reading → PASS/FAIL)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-dependent: TGH-T3-01 (the Ldgr source is undefined in the gate map)
@@ -141,7 +141,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/scripts/governance/asset_declarations.json` entry for this asset (`prose_fields` + `evidence.prose_fields` as `path:line`)
 - **Failing-first test and mutation:** declarations validation test; mutation: a wrongly declared `[]` must be flagged by Narr.agree/Narr.lint
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row, id or served field of this asset changes; declared dependents direct 3 / transitive 7 and the readers in the §0 row see no difference (the change lives in the inspector, the declarations file or a registry row).
 - **Rebuild:** none (declaration only)
 - **Gate it moves:** Null, Narr (NO_DETECTOR → measured or N/A)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (SS ruling 2026-10-01)
@@ -153,7 +153,7 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
+- **Blast radius:** no row changes (test or code-side only); declared dependents direct 3 / transitive 7 and the readers in the §0 row see no difference.
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
 - **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
@@ -162,12 +162,12 @@ Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as pr
 ### FD-7 · One authority for combustion orbs (Track I consolidation)
 
 - **Answers:** SS Q15; TI-L0-22; see the `bg_dignity_reference` brief
-- **Change:** decided (SS 2026-10-01, Q15): `bg_combustion_orbs` holds the values; replace the `combustion_orbs` constant’s `value_jsonb` by a reference to it and repoint the consumers `ga_condition`, `ka_vighnakara`, `ph_sodhana`.
+- **Change:** decided (SS 2026-10-01, Q15): `bg_combustion_orbs` is the single authority and `brahma_formula_constants` stops duplicating it. **Consumers, as traced in the repo:** `ga_condition_writer.py:657-663` and `ka_vighnakara.py:295-302` ALREADY read `bg_combustion_orbs`; `ph_sodhana.py` has no combustion or formula-constants reference; no code reader of the `combustion_orbs` constant by id was found (only the generic `query_formula_constants.ts` serves the table), so the constant row’s `consumer_assets` list (`ga_condition`, `ka_vighnakara`, `ph_sodhana`) is untraceable metadata. So the consolidation is: replace or remove the duplicate constant value and correct `consumer_assets`; there is nothing to repoint. Until then keep the parity test.
 - **Files / declaration / migration:** `brahmagyan/l0_formula_constants.py:28-48`, the three consumers, a parity test until the consolidation lands
 - **Failing-first test and mutation:** failing-first: the three consumers read the orbs from `bg_combustion_orbs`; a test that no second copy of the values exists; mutation: reintroduce a literal → test fails
 - **Output change:** the `combustion_orbs` constant becomes a reference
-- **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** needs production rebuild of bg_formula_constants after the reference lands (one constant changes representation)
+- **Blast radius:** one row of `brahma_formula_constants`; the traced readers of the orbs already use `bg_combustion_orbs`, so no consumer output changes; untraceable `consumer_assets` metadata is corrected.
+- **Rebuild:** needs production rebuild of bg_formula_constants (one constant changes representation); no consumer rebuild
 - **Gate it moves:** Carr (single authority), Vocab (rule 6)
 - **Fix class:** writer code; **buildable before J1:** tier-independent (decided)
 
