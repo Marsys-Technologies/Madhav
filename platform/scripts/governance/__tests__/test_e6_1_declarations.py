@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import functools
 import hashlib
 import json
 import pathlib
@@ -246,7 +247,7 @@ NARR_DECLARED = {
     "ka_jivana_parva": ["narrative.$.summary"],
     "ka_bhavishya_lekha": ["narrative.$.headline", "narrative.$.probability_statement", "narrative.$.domain_context",
                            "narrative.$.caveat", "falsifiability.$.confirm_observable", "falsifiability.$.deny_observable"],
-    "bo_upaya": ["prescription_detail_jsonb.$.maraka_contraindication_verdict.reason"],
+    "bo_upaya": ["prescription_detail_jsonb.$.maraka_contraindication_verdict.reason", "citation_human"],
     "ka_vighnakara": ["obstruction_detail.$.reason"],
     "ka_avadhi": ["dossier.$.sublord_modulation.note"],
     "ph_nimitta": ["falsifier"],
@@ -259,6 +260,15 @@ NARR_DECLARED = {
     "bo_laksana_rerank": [],
     "ph_phaladesa": ["narration_jsonb.$.text"],
 }
+# citation_human sweep (SS ruling 2026-10-01, definition: a composed string is narration if it states or grades a computed
+# value, counts included; provenance pointers, ordinals and structural labels are not): assets newly declared, and prior
+# (ddl-evidence) declarations that gained the column. The full decision table, with the AST census, is CITATION_DECISIONS.
+CITATION_NEW = {"bo_sangati": ["citation_human"], "bo_cdlm_summary": ["citation_human"], "bo_cgm_motifs": ["citation_human"],
+                "bo_karanajala": ["citation_human"], "bo_yantra_mechanism": ["citation_human", "mechanism_name"],
+                **{a: ["citation_human"] for a in ("ga_nakshatra", "ga_condition", "ga_dashas", "ga_panchanga", "ga_positions",
+                                                   "ga_sade_sati", "ga_sensitive", "ga_strength", "ga_structural", "ga_tajaka",
+                                                   "ga_vargas", "ga_yoga")}}
+CITATION_EXTENDED_PRIOR = {"bo_arudha": ["citation_human"], "bo_laksana": ["citation_human"], "bo_vargottama_dhana": ["citation_human"]}
 # declared `[]` (writer composes no NARRATION; the evidence carries the AST-backed reason). SS ruling 2026-10-01: a composed
 # string is narration only if it states or grades a computed value; provenance pointers, ordinals, labels are not.
 NARR_EMPTY = ("bg_doshas", "bg_yogas", "bg_ontology", "bo_laksana_rerank")
@@ -381,11 +391,15 @@ def _read(path):
 def test_the_committed_file_declares_exactly_the_narr_decisions_on_top_of_the_thirteen_prior_ones():
     decl = _decl()
     got = {a: e["prose_fields"] for a, e in decl.items() if e["prose_fields"] is not None}
-    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED)
     for a, v in NARR_DECLARED.items():
         assert got[a] == v, a
     assert sorted(a for a, v in got.items() if v == []) == sorted(NARR_EMPTY)
-    n = len(PRIOR_DDL) + len(NARR_DECLARED)
+    assert set(got) == (PRIOR_DDL - PRIOR_REAUDIT_NULLED) | set(NARR_DECLARED) | set(CITATION_NEW)
+    for a in CITATION_NEW:
+        assert got[a] == CITATION_NEW[a], a
+    for a, extra in CITATION_EXTENDED_PRIOR.items():                  # prior (ddl) declarations extended with citation_human
+        assert got[a][-len(extra):] == extra and len(got[a]) == len(extra) + 2, a
+    n = len(PRIOR_DDL) - len(PRIOR_REAUDIT_NULLED) + len(NARR_DECLARED) + len(CITATION_NEW)
     assert len(got) == n and sum(e["prose_fields"] is None for e in decl.values()) == 127 - n
 
 
@@ -1119,6 +1133,1232 @@ def test_no_served_surface_reads_ph_phaladesa_narration_jsonb_so_the_declaration
                 if "narration_jsonb" in (pathlib.Path(root) / f).read_text(encoding="utf-8", errors="replace"):
                     hits.append(f)
     assert hits == []         # when one appears, add its read to the evidence and drop this guard
+
+
+# ── citation_human sweep: every asset whose writer sets a citation_human value, with the decision, the AST census, the INSERT
+# that binds it and the served read. The table is generated from the code (census / interpolation / INSERT scans); the decision
+# (declare / decline) and the cites are the reviewed part. Decisions per SS ruling 2026-10-01: a composed string is narration if
+# it states or grades a computed value (counts, numbers, dignities, valences, placements stated as the assertion);
+# provenance pointers, ordinals and structural labels (an entity name, a fixed 1..12 index) are not. ──
+
+CITATION_DECISIONS = json.loads(r"""
+{
+ "bo_arudha": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/bodha_writers/arudha_emitter.py": [
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py",
+   [
+    "bodha_msr_signals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/bodha_writers/arudha_emitter.py",
+    214,
+    "\"citation_human\": f\"Arudha: "
+   ],
+   [
+    "platform/python-sidecar/bodha_writers/arudha_emitter.py",
+    243,
+    "headline=f\"Arudha Lagna (AL)"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
+   119,
+   "'verification_pass_status', "
+  ],
+  "fields": [
+   "signal_headline_text",
+   "signal_summary_text",
+   "citation_human"
+  ]
+ },
+ "bo_vargottama_dhana": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py": [
+    0,
+    0,
+    1,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py",
+   [
+    "bodha_msr_signals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py",
+    237,
+    "\"citation_human\": headline,"
+   ],
+   [
+    "platform/python-sidecar/bodha_writers/vargottama_dhana_emitter.py",
+    286,
+    "headline=f\"{graha_display} i"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
+   119,
+   "'verification_pass_status', "
+  ],
+  "fields": [
+   "signal_headline_text",
+   "signal_summary_text",
+   "citation_human"
+  ]
+ },
+ "bo_laksana": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py": [
+    4,
+    0,
+    0,
+    2
+   ],
+   "platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py": [
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
+   [
+    "bodha_msr_signals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
+    3046,
+    "f\"Navamsha D9 cross-check: {"
+   ],
+   [
+    "platform/python-sidecar/bodha_writers/bhavat_bhavam_amplifier.py",
+    391,
+    "f\"Bhavat Bhavam (house of th"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
+   119,
+   "'verification_pass_status', "
+  ],
+  "fields": [
+   "signal_headline_text",
+   "signal_summary_text",
+   "citation_human"
+  ]
+ },
+ "bo_nakshatra_semantic": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py": [
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py",
+   [
+    "bodha_msr_signals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/bodha_writers/nakshatra_semantic_emitter.py",
+    358,
+    "\"citation_human\": f\"Nakshatr"
+   ]
+  ],
+  "served": null,
+  "fields": null,
+  "labels": [
+   "graha_display"
+  ]
+ },
+ "bo_special_lagna": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/bodha_writers/special_lagna_emitter.py": [
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py",
+   [
+    "bodha_msr_signals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/bodha_writers/special_lagna_emitter.py",
+    228,
+    "\"citation_human\": f\"Special "
+   ]
+  ],
+  "served": null,
+  "fields": null,
+  "labels": [
+   "display"
+  ]
+ },
+ "bo_sudarshana": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/bodha_writers/sudarshana_emitter.py": [
+    1,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py",
+   [
+    "bodha_msr_signals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/bodha_writers/sudarshana_emitter.py",
+    382,
+    "\"citation_human\": f\"Sudarsha"
+   ]
+  ],
+  "served": null,
+  "fields": null,
+  "labels": [
+   "graha_display"
+  ]
+ },
+ "bo_sangati": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py": [
+    2,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py",
+   [
+    "bodha_cdlm_cells",
+    "bodha_convergence"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py",
+    365,
+    "\"citation_human\": f\"CDLM cel"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py",
+    440,
+    "\"citation_human\": f\"Converge"
+   ]
+  ],
+  "served": null,
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "bo_bimba": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py": [
+    4,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
+   [
+    "bodha_cgm_nodes"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
+    351,
+    "\"citation_human\": f\"Graha no"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
+    406,
+    "\"citation_human\": f\"Bhava no"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
+    456,
+    "\"citation_human\": f\"Domain n"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
+    523,
+    "\"citation_human\": f\"{sig_cla"
+   ]
+  ],
+  "served": null,
+  "fields": null,
+  "labels": [
+   "domain",
+   "graha",
+   "h",
+   "name",
+   "sig_class.capitalize()"
+  ]
+ },
+ "bo_cdlm_summary": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py": [
+    2,
+    1,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py",
+   [
+    "bodha_cdlm_chart_summary",
+    "bodha_cdlm_domain_rollups",
+    "bodha_cdlm_pattern_clusters"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py",
+    391,
+    "\"citation_human\": f\"CDLM pat"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts",
+   52,
+   "citation_ref, citation_human"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "bo_cgm_motifs": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py": [
+    7,
+    2,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+   [
+    "bodha_cgm_motifs",
+    "bodha_cgm_sub_graphs",
+    "bodha_cgm_chart_topology_summary"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+    777,
+    "f\"CGM topology summary: {n_t"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+    232,
+    "f\"Yoga cluster: configuratio"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+    348,
+    "f\"Stellium: {len(nodes)} gra"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
+   73,
+   "classical_citation_id, verif"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "bo_cgm_paths": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py": [
+    0,
+    1,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py",
+   [
+    "bodha_cgm_paths"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py",
+    350,
+    "\"citation_human\": \"CGM dispo"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
+   75,
+   "verification_pass_status, ci"
+  ],
+  "fields": null,
+  "labels": []
+ },
+ "bo_karanajala": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py": [
+    10,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+   [
+    "bodha_cgm_edges",
+    "bodha_contradictions",
+    "bodha_cgm_nodes"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+    625,
+    "f\"Argala: {graha_b} in {hous"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+    708,
+    "\"citation_human\":           "
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+    1732,
+    "\"citation_human\": f\"{node_su"
+   ]
+  ],
+  "served": null,
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "bo_upaya": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py": [
+    5,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
+   [
+    "bodha_rm_resonances",
+    "bodha_rm_remedy_prescriptions",
+    "bodha_rm_chart_summary",
+    "bodha_rm_dosha_remedy_bundles",
+    "bodha_rm_pattern_remedies"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
+    1549,
+    "f\"Resonance: {graha} | \""
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
+    1798,
+    "\"citation_human\": f\"RM chart"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
+    1842,
+    "\"citation_human\": f\"Dosha re"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts",
+   78,
+   "verification_pass_status, ci"
+  ],
+  "fields": [
+   "prescription_detail_jsonb.$.maraka_contraindication_verdict.reason",
+   "citation_human",
+   "citation_human",
+   "citation_human"
+  ]
+ },
+ "bo_yantra_mechanism": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py": [
+    10,
+    0,
+    1,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
+   [
+    "bodha_mechanisms"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
+    397,
+    "f\"CR-24 disposition (verifie"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
+    571,
+    "citation_human=(f\"{display} "
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
+    565,
+    "mechanism_name=f\"{display} o"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
+   1489,
+   "`SELECT mechanism_name, mech"
+  ],
+  "fields": [
+   "citation_human",
+   "mechanism_name"
+  ]
+ },
+ "ga_nakshatra": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py": [
+    4,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
+   [
+    "chart_facts",
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
+    191,
+    "chum = f\"{subject} {key}: {v"
+   ],
+   [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
+    193,
+    "chum = f\"{subject} {key}: {v"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_ayurdaya": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py": [
+    2,
+    2,
+    1,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py",
+    233,
+    "f\"{method.capitalize()} long"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": null,
+  "labels": [
+   "HARANA_NOTE",
+   "method.capitalize()"
+  ]
+ },
+ "ga_condition": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_condition_writer.py": [
+    5,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_condition_writer.py",
+   [
+    "<columns>"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_condition_writer.py",
+    1117,
+    "\"citation_human\":          f"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_condition_writer.py",
+    1391,
+    "f\"{graha} lajjitadi avastha "
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_dashas": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_dashas_writer.py": [
+    29,
+    1,
+    1,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+   [
+    "<columns>",
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
+    1160,
+    "human = f\"Vimshottari {' > '"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/pariprashna/pipeline/citation_resolver.ts",
+   384,
+   "`SELECT dasha_row_id::text A"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_panchanga": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_panchanga_writer.py": [
+    148,
+    0,
+    1,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
+    368,
+    "citation_human=f\"Tithi numbe"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
+    534,
+    "citation_human=f\"Sun's arc i"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_positions": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_positions_writer.py": [
+    10,
+    0,
+    1,
+    2
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_positions_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_positions_writer.py",
+    132,
+    "return (f\"{graha} whole-sign"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_positions_writer.py",
+    469,
+    "f\"Bhāva {hnum} {system.title"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_positions_writer.py",
+    487,
+    "f\"{gname} Sripati bhāva-chal"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_sade_sati": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py": [
+    136,
+    0,
+    3,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
+    892,
+    "citation_human=f\"Sade Sati {"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
+    1239,
+    "citation_human=f\"Sade Sati {"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_sensitive_degree": {
+  "decision": "decline",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py": [
+    0,
+    23,
+    1,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
+    677,
+    "\"citation_human\": citation,"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": null,
+  "labels": []
+ },
+ "ga_sensitive": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_sensitive_writer.py": [
+    4,
+    0,
+    0,
+    1
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_sensitive_writer.py",
+    246,
+    "return f\"{category}.{subject"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_strength": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_strength_writer.py": [
+    21,
+    0,
+    0,
+    1
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_strength_writer.py",
+   [
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_strength_writer.py",
+    845,
+    "f\"{graha_name} required shad"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_strength_writer.py",
+    880,
+    "f\"{graha_name} shadbala rati"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_structural": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_structural_writer.py": [
+    189,
+    5,
+    0,
+    6
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+   [
+    "<columns>",
+    "chart_facts"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+    1303,
+    "citation_human=f\"House {h} r"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+    1702,
+    "f\"House {h} strength classif"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+    4659,
+    "f\"{g_name} effective dignity"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/ganita/facts_store.ts",
+   447,
+   "cf.citation_human,"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_tajaka": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_tajaka_writer.py": [
+    2,
+    0,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_tajaka_writer.py",
+   [
+    "<columns>"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_tajaka_writer.py",
+    621,
+    "citation_human = ("
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
+   902,
+   "applicable_tajik_yogas_array"
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_vargas": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_vargas_writer.py": [
+    26,
+    1,
+    0,
+    0
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
+   [
+    "chart_divisionals",
+    "chart_divisionals"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
+    1202,
+    "\"citation_human\": f\"{body} v"
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
+    1651,
+    "\"citation_human\": (f\"{body} "
+   ]
+  ],
+  "served": null,
+  "fields": [
+   "citation_human"
+  ]
+ },
+ "ga_yoga": {
+  "decision": "declare",
+  "sites": {
+   "platform/python-sidecar/ga_writers/ga_yoga_writer.py": [
+    6,
+    16,
+    0,
+    7
+   ]
+  },
+  "insert": [
+   "platform/python-sidecar/ga_writers/ga_yoga_writer.py",
+   [
+    "ga_yoga_firings",
+    "ga_yoga_firings",
+    "ga_yoga_firings",
+    "ga_yoga_firings"
+   ]
+  ],
+  "cites": [
+   [
+    "platform/python-sidecar/ga_writers/ga_yoga_writer.py",
+    269,
+    "citation_human = ("
+   ],
+   [
+    "platform/python-sidecar/ga_writers/ga_yoga_writer.py",
+    2232,
+    "\"citation_human\": f\"A consti"
+   ]
+  ],
+  "served": [
+   "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
+   200,
+   "f.activation_dasha_periods, "
+  ],
+  "fields": [
+   "citation_human"
+  ]
+ }
+}
+""")
+CITATION_DIRS = (_SC + "pipeline/orchestrator/writers", _SC + "bodha_writers", _SC + "ga_writers")
+# writer-side files that set a citation_human but belong to no asset's decision: a verifier's constant text
+CITATION_UNOWNED_FILES = {_SC + "ga_writers/_vimshottari_independent_verifier.py"}
+CITATION_NO_SITE_ASSETS = ("ga_medical", "ga_prashna", "ga_vastu", "ga_vichara", "ga_transit_anchors")   # writers set no citation_human
+_GW = _SC + "ga_writers/"
+
+
+@functools.lru_cache(maxsize=None)
+def _ctree(path):
+    return nw._parents(ast.parse(_read(path)))
+
+
+def _census(path):
+    import collections
+    c = collections.Counter(k for _, _, k, _ in nw.citation_sites(_ctree(path)))
+    return [c.get(k, 0) for k in ("composed", "const", "passthrough", "other")]
+
+
+def test_citation_sweep_covers_every_writer_file_that_sets_a_citation_human():
+    import os
+    owned = {f for d in CITATION_DECISIONS.values() for f in d["sites"]} | CITATION_UNOWNED_FILES
+    found = set()
+    for d in CITATION_DIRS:
+        for f in sorted(os.listdir(REPO_ROOT / d)):
+            if f.endswith(".py"):
+                rel = f"{d}/{f}"
+                if nw.citation_sites(_ctree(rel)):
+                    found.add(rel)
+    assert found == owned, (sorted(found - owned), sorted(owned - found))
+    assert len(CITATION_DECISIONS) == 28
+    assert sorted(a for a, d in CITATION_DECISIONS.items() if d["decision"] == "declare") == sorted(
+        set(CITATION_NEW) | set(CITATION_EXTENDED_PRIOR) | {"bo_upaya"})
+    assert sorted(a for a, d in CITATION_DECISIONS.items() if d["decision"] == "decline") == [
+        "bo_bimba", "bo_cgm_paths", "bo_nakshatra_semantic", "bo_special_lagna", "bo_sudarshana", "ga_ayurdaya", "ga_sensitive_degree"]
+    decl = _decl()
+    for a in CITATION_NO_SITE_ASSETS:
+        assert decl[a]["prose_fields"] is None, a
+
+
+@pytest.mark.parametrize("asset", sorted(CITATION_DECISIONS))
+def test_citation_decision_matches_the_committed_declaration(asset):
+    d, pf = CITATION_DECISIONS[asset], _decl()[asset]["prose_fields"]
+    if d["decision"] == "declare":
+        assert pf is not None and "citation_human" in pf and all(f in pf for f in d["fields"]), asset
+    else:
+        assert pf is None or "citation_human" not in pf, asset
+
+
+@pytest.mark.parametrize("asset", sorted(CITATION_DECISIONS))
+def test_citation_site_census_and_insert_are_pinned(asset):
+    d = CITATION_DECISIONS[asset]
+    for f, expect in d["sites"].items():
+        assert _census(f) == expect, (asset, f)
+    f, tables = d["insert"]
+    assert [t for _, t in nw.citation_inserts(_ctree(f))] == tables, (asset, f)
+    assert tables, asset                      # the column is really in an INSERT (or a column-name list) of the writer
+    if d["decision"] == "declare":
+        assert sum(c[0] for c in d["sites"].values()) >= 1 or asset == "bo_vargottama_dhana"
+
+
+@pytest.mark.parametrize("asset", sorted(CITATION_DECISIONS))
+def test_citation_cites_and_served_reads_are_real_lines_and_cited_in_the_evidence(asset):
+    d = CITATION_DECISIONS[asset]
+    ev = _decl()[asset]["evidence"]["prose_fields"] or ""
+    for path, line, needle in d["cites"] + ([d["served"]] if d["served"] else []):
+        lines = _read(path).splitlines()
+        assert line <= len(lines) and needle in lines[line - 1], (asset, path, line, lines[line - 1])
+        if d["decision"] == "declare":
+            assert f"{path.rsplit('/', 1)[1]}:{line}" in ev, (asset, path, line)
+    if d["decision"] == "declare":
+        assert "SS ruling 2026-10-01" in ev and ev.count("AST census of the writer's citation_human sites") == 1
+
+
+@pytest.mark.parametrize("asset", sorted(a for a, d in CITATION_DECISIONS.items() if d["decision"] == "decline"))
+def test_declined_citation_assets_compose_only_labels_or_nothing(asset):
+    d = CITATION_DECISIONS[asset]
+    inter = sorted(set(x for f in d["sites"] for x in nw.site_interpolations(_ctree(f))))
+    assert inter == d["labels"], (asset, inter)
+    # every interpolated expression is an entity/label name, a loop ordinal or a provenance constant: no number formatting,
+    # no arithmetic, no call but .capitalize()
+    for f in d["sites"]:
+        for ln, how, kind, u in nw.citation_sites(_ctree(f)):
+            if kind != "composed":
+                continue
+            for x in ast.walk(ast.parse(u, mode="eval")):
+                if isinstance(x, ast.FormattedValue):
+                    assert x.format_spec is None and x.conversion == -1, (asset, ln)
+                    for y in ast.walk(x.value):
+                        assert not isinstance(y, (ast.BinOp, ast.Compare)), (asset, ln, u)
+                        if isinstance(y, ast.Call):
+                            assert isinstance(y.func, ast.Attribute) and y.func.attr == "capitalize", (asset, ln, u)
+
+
+def test_citation_composed_values_are_really_stated_in_the_declared_assets():
+    for asset, path, ln, expr in (
+            ("bo_sangati", _WR + "bo_sangati.py", 365, "len(shared_ids)"), ("bo_sangati", _WR + "bo_sangati.py", 440, "len(sigs)"),
+            ("bo_cdlm_summary", _WR + "bo_cdlm_summary.py", 391, "len(agg['cells'])"),
+            ("bo_cgm_motifs", _WR + "bo_cgm_motifs.py", 777, "len(all_edges)"),
+            ("bo_karanajala", _WR + "bo_karanajala.py", 708, "sign_num"),
+            ("bo_upaya", _WR + "bo_upaya.py", 1798, "len(resonances)"),
+            ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 571, "verdict.valence"),
+            ("ga_strength", _GW + "ga_strength_writer.py", 880, "ratio"),
+            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 368, "tithi_num"),
+            ("ga_structural", _GW + "ga_structural_writer.py", 4659, "effective_dignity_score")):
+        sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
+        assert sites, (asset, path, ln)
+        got = {e for x in ast.walk(ast.parse(sites[0][3], mode="eval")) if isinstance(x, ast.JoinedStr)
+               for e, _ in nw.fstring_interpolations(x)}
+        assert expr in got, (asset, ln, sorted(got))
+    # numbers shaped into the text by a format spec (ga_structural :4659, ga_strength :880)
+    for path, ln in ((_GW + "ga_structural_writer.py", 4659), (_GW + "ga_strength_writer.py", 880)):
+        site = next(x for x in nw.citation_sites(_ctree(path)) if x[0] == ln)
+        specs = [sp for x in ast.walk(ast.parse(site[3], mode="eval")) if isinstance(x, ast.JoinedStr)
+                 for _, sp in nw.fstring_interpolations(x)]
+        assert any(specs), (path, ln)
+
+
+def test_citation_forwarded_headline_and_mechanism_name_are_composed_by_their_callers():
+    em = _ctree(_SC + "bodha_writers/vargottama_dhana_emitter.py")
+    fwd = [s for s in nw.citation_sites(em) if s[2] == "passthrough"]
+    assert len(fwd) == 1 and fwd[0][3] == "headline"
+    fn = next(n for n in ast.walk(em) if isinstance(n, ast.FunctionDef) and any(a.arg == "headline" for a in n.args.args + n.args.kwonlyargs)
+              and "citation_human" in ast.unparse(n))
+    calls = [c for c in ast.walk(em) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id == fn.name]
+    heads = [k.value for c in calls for k in c.keywords if k.arg == "headline"]
+    assert len(heads) == 2 and all(nw._text_composed(h) or (isinstance(h, ast.Name) and any(
+        nw._text_composed(v) for v in nw._assign_values(em, h.id))) for h in heads)       # an f-string, or a name assigned from one
+    ym = _ctree(_WR + "bo_yantra_mechanism.py")
+    names = [k for c in ast.walk(ym) if isinstance(c, ast.Call) and nw._called_name(c) == "_make_mechanism"
+             for k in c.keywords if k.arg == "mechanism_name"]
+    composed = {k.value.lineno: [e for e, _ in nw.fstring_interpolations(k.value)] for k in names if isinstance(k.value, ast.JoinedStr)}
+    assert composed[565] == ["display", "label", "verdict.valence"]               # the only mechanism_name that grades a value
+    assert set(composed) == {344, 388, 472, 565}
+    assert all("valence" not in "".join(v) for ln, v in composed.items() if ln != 565)
+    assert [k.value.lineno for k in names if not isinstance(k.value, ast.JoinedStr)] == [229]     # motif_name passthrough (a label)
+
+
+def test_the_citation_sites_of_bo_laksana_py_are_outside_the_rerank_class_that_declares_empty():
+    tree = _ctree(_WR + "bo_laksana.py")
+    cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "BoLaksanaRerankWriter")
+    assert [s for s in nw.citation_sites(tree) if cls.lineno <= s[0] <= cls.end_lineno] == []
+
+
+_CITE_SYNTH = """
+def helper(a, citation_human):
+    return {"citation_human": citation_human}
+def fmt(x):
+    return f"v={x}"
+CONST = "fixed"
+def run(x, rule):
+    cite = f"n={x}"
+    helper(1, cite)
+    helper(2, "lit")
+    helper(3, CONST)
+    helper(4, citation_human=f"{x:.2f}")
+    chum = fmt(x)
+    row = {"citation_human": rule["c"], "other": 1}
+    kw = dict(citation_human="a" + x)
+    row["citation_human"] = x.get("c")
+    return {"citation_human": CONST}
+"""
+
+
+def test_citation_sites_scanner_classifies_dicts_keywords_helpers_names_and_calls():
+    got = [(h, k) for _, h, k, _ in nw.citation_sites(nw._parents(ast.parse(_CITE_SYNTH)))]
+    # a keyword to a citation-named helper parameter is seen twice (as the helper argument and as the keyword): the census pins that
+    assert got == [("dict", "passthrough"), ("arg", "composed"), ("arg", "const"), ("arg", "const"), ("arg", "composed"),
+                   ("kw", "composed"), ("var", "composed"), ("dict", "other"), ("kw", "composed"), ("var", "other"),
+                   ("dict", "const")], got
+    assert nw.site_interpolations(ast.parse(_CITE_SYNTH)) == ["x"]
+    sql = ("INSERT INTO t (a, citation_human, b) VALUES (%s,%s,%s)", "INSERT INTO u (a) VALUES (%s)")
+    src = f"S = {sql[0]!r}\nU = {sql[1]!r}\nC = ['a', 'citation_human']\nV = f'INSERT INTO w (citation_human) VALUES ({{x}})'\n"
+    assert sorted(t for _, t in nw.citation_inserts(ast.parse(src))) == ["<columns>", "t", "w"]
+    assert nw.citation_inserts(ast.parse("S = 'INSERT INTO t (a) VALUES (%s)'  # citation_human\n")) == []
 
 
 NULLED_SERVED = sorted("""bg_gochara_arcs bg_vidhi_floors bg_vidhi_primitives bg_kota_chakra_rings bg_kp_sublord_division

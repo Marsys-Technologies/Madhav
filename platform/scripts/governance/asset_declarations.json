@@ -733,7 +733,8 @@
    },
    "prose_fields": [
     "signal_headline_text",
-    "signal_summary_text"
+    "signal_summary_text",
+    "citation_human"
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
@@ -743,7 +744,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so class 'arudha' rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "bo_arudha.py:189 INSERTs into bodha_msr_signals binding %(signal_headline_text)s/%(signal_summary_text)s (bo_arudha.py:222) from row dicts built by arudha_emitter.build_signal_rows (bo_arudha.py:163) and executed unchanged (bo_arudha.py:182). The dict takes `summary`/`headline` (arudha_emitter.py:139, arudha_emitter.py:140) from _make_row, whose three call sites compose both by f-string from computed L1 values and a grade: AL house/sign/classical category (arudha_emitter.py:242, arudha_emitter.py:243), graha conjunct AL with benefic/malefic tenor (arudha_emitter.py:265, arudha_emitter.py:266), A2/A11 pada house/sign/occupants/valence (arudha_emitter.py:306, arudha_emitter.py:308). AST-checked (INSERT binds the columns; every call-site value is string-composed). Served: query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_arudha' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (query_signals.ts:449; query_signals.ts:140 in the default projection) = 'arudha'. Computed placeholders: al_house, al_sign, al_category, tenor, pada_house, pada_sign, occupants, tenancy_valence, ', '.join(occupants); identifier-only (not computed): graha_display, pada_label. Every call site interpolates at least one computed value."
+    "prose_fields": "bo_arudha.py:189 INSERTs into bodha_msr_signals binding %(signal_headline_text)s/%(signal_summary_text)s (bo_arudha.py:222) from row dicts built by arudha_emitter.build_signal_rows (bo_arudha.py:163) and executed unchanged (bo_arudha.py:182). The dict takes `summary`/`headline` (arudha_emitter.py:139, arudha_emitter.py:140) from _make_row, whose three call sites compose both by f-string from computed L1 values and a grade: AL house/sign/classical category (arudha_emitter.py:242, arudha_emitter.py:243), graha conjunct AL with benefic/malefic tenor (arudha_emitter.py:265, arudha_emitter.py:266), A2/A11 pada house/sign/occupants/valence (arudha_emitter.py:306, arudha_emitter.py:308). AST-checked (INSERT binds the columns; every call-site value is string-composed). Served: query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_arudha' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (query_signals.ts:449; query_signals.ts:140 in the default projection) = 'arudha'. Computed placeholders: al_house, al_sign, al_category, tenor, pada_house, pada_sign, occupants, tenancy_valence, ', '.join(occupants); identifier-only (not computed): graha_display, pada_label. Every call site interpolates at least one computed value. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human is f'Arudha: {headline}' and the headline states the Arudha Lagna house, sign and classical category (a verbalized computed placement). Composed at arudha_emitter.py:214, arudha_emitter.py:243. AST census of the writer's citation_human sites (arudha_emitter.py): 1 composed, 0 constant, 0 forwarded, 0 other. Column bound at bo_arudha.py:188 (INSERT INTO bodha_msr_signals); served by query_signals.ts:119."
    },
    "evidence_kind": "writer"
   },
@@ -769,7 +770,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:36",
@@ -778,7 +781,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cdlm_chart_summary; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts:36 reads `bodha_cdlm_chart_summary` (`chart_summary:       'bodha_cdlm_chart_summary',`). Dens.served=PASS. Dynamic table map: line 36 maps tier chart_summary -> bodha_cdlm_chart_summary and the same file selects `FROM ${table}` (line 180); the default tier serves it.",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): the pattern-cluster citation embeds the cell count (len(agg['cells'])); the domain-rollup string is a pointer and the chart-summary string a constant. Composed at bo_cdlm_summary.py:391. AST census of the writer's citation_human sites (bo_cdlm_summary.py): 2 composed, 1 constant, 0 forwarded, 0 other. Column bound at bo_cdlm_summary.py:52 (INSERT INTO bodha_cdlm_chart_summary); bo_cdlm_summary.py:87 (INSERT INTO bodha_cdlm_domain_rollups); bo_cdlm_summary.py:105 (INSERT INTO bodha_cdlm_pattern_clusters); served by query_cdlm_summary.ts:52."
    }
   },
   "bo_cgm_motifs": {
@@ -786,7 +789,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:74",
@@ -795,7 +800,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_motifs; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts:74 reads `bodha_cgm_motifs` (`FROM bodha_cgm_motifs`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): motif citations embed node, edge, component and diameter counts, constituent counts and stellium sizes. Composed at bo_cgm_motifs.py:777, bo_cgm_motifs.py:232, bo_cgm_motifs.py:348. AST census of the writer's citation_human sites (bo_cgm_motifs.py): 7 composed, 2 constant, 0 forwarded, 0 other. Column bound at bo_cgm_motifs.py:86 (INSERT INTO bodha_cgm_motifs); bo_cgm_motifs.py:107 (INSERT INTO bodha_cgm_sub_graphs); bo_cgm_motifs.py:125 (INSERT INTO bodha_cgm_chart_topology_summary); served by query_cgm_motifs.ts:73."
    }
   },
   "bo_cgm_paths": {
@@ -871,7 +876,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:586",
@@ -880,7 +887,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cgm_edges; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:586 reads `bodha_cgm_edges` (`JOIN bodha_cgm_edges e`). Dens.served=FAIL.",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): edge and node citations restate computed placements and relations (graha house/sign numbers at :708 :1672 :1732, argala offset and cancellation at :625); pure endpoint labels (:1024 :1147 :1199 :1269) are not counted; BORDERLINE rule: a placement stated as the assertion counts as a computed value. Composed at bo_karanajala.py:625, bo_karanajala.py:708, bo_karanajala.py:1732. AST census of the writer's citation_human sites (bo_karanajala.py): 10 composed, 0 constant, 0 forwarded, 0 other. Column bound at bo_karanajala.py:58 (INSERT INTO bodha_cgm_edges); bo_karanajala.py:92 (INSERT INTO bodha_contradictions); bo_karanajala.py:1539 (INSERT INTO bodha_cgm_nodes); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    }
   },
   "bo_laksana": {
@@ -890,7 +897,8 @@
    },
    "prose_fields": [
     "signal_headline_text",
-    "signal_summary_text"
+    "signal_summary_text",
+    "citation_human"
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
@@ -900,7 +908,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so its 15 signal_type_class values (yoga, dosha, sade_sati, panchanga, ...) rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "bo_laksana.py:3067 INSERTs into bodha_msr_signals binding the two columns (bo_laksana.py:3107), executed by _batch_insert (bo_laksana.py:3264, bo_laksana.py:3601). Three emit sites carry both columns. (1) The fact path: _build_signal_row assigns signal_summary_text = _build_summary_text(...) (bo_laksana.py:2414) whose body joins category/key/value_text/value_num and every config key (bo_laksana.py:743), and signal_headline_text = _build_headline_text(...) (bo_laksana.py:2425) whose returns f-string subject/house/varga/key = value (bo_laksana.py:771, bo_laksana.py:772); dict at bo_laksana.py:2478, bo_laksana.py:2479. (2) The D9 cross-check: headline and summary f-strings state D1/D9 dignity, classification and valence (bo_laksana.py:2920, bo_laksana.py:2924; dict bo_laksana.py:2951, bo_laksana.py:2952). (3) The varga-ratification divergence signals: summary f-string (bo_laksana.py:1394) and headline `value_text or f\"{subj}: divergent varga ratification in {dom}\"` (bo_laksana.py:1398; verbatim-first, composed fallback). Most rows are a key=value restatement of the L1 fact rather than graded prose; the grading (valence, classification) sits in the D9 cross-check. AST-checked (every dict site resolves to composed text). Served: query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_laksana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (query_signals.ts:449; query_signals.ts:140 in the default projection) = 'yoga', 'dosha', 'sade_sati', 'panchanga', 'karaka_alignment', 'tradition_specific', 'parivartana', 'configuration', 'varga_pattern', 'annual', 'medical', 'vastu', 'composite_state', 'varga_ratification_divergence', 'bhavat_bhavam_amplifier'. Computed placeholders: body, loc (the fact value, house and varga restated; value_num/value_text formatted), classification, d1_text, d9_text, valence, value_num, value_text; identifier-only: graha, subj, dom, source_l1_asset, str(fact_subject).upper(). MIXED column caveat: the divergence headline (bo_laksana.py:1398) is verbatim-first (`value_text or f\"...\"`, its fallback interpolates only identifiers), so it states no computed value of its own; row discriminator signal_type_class='varga_ratification_divergence'. Also: bhavat_bhavam_amplifier.to_msr_row composes class-'bhavat_bhavam_amplifier' text but has no caller, so no such row exists to check."
+    "prose_fields": "bo_laksana.py:3067 INSERTs into bodha_msr_signals binding the two columns (bo_laksana.py:3107), executed by _batch_insert (bo_laksana.py:3264, bo_laksana.py:3601). Three emit sites carry both columns. (1) The fact path: _build_signal_row assigns signal_summary_text = _build_summary_text(...) (bo_laksana.py:2414) whose body joins category/key/value_text/value_num and every config key (bo_laksana.py:743), and signal_headline_text = _build_headline_text(...) (bo_laksana.py:2425) whose returns f-string subject/house/varga/key = value (bo_laksana.py:771, bo_laksana.py:772); dict at bo_laksana.py:2478, bo_laksana.py:2479. (2) The D9 cross-check: headline and summary f-strings state D1/D9 dignity, classification and valence (bo_laksana.py:2920, bo_laksana.py:2924; dict bo_laksana.py:2951, bo_laksana.py:2952). (3) The varga-ratification divergence signals: summary f-string (bo_laksana.py:1394) and headline `value_text or f\"{subj}: divergent varga ratification in {dom}\"` (bo_laksana.py:1398; verbatim-first, composed fallback). Most rows are a key=value restatement of the L1 fact rather than graded prose; the grading (valence, classification) sits in the D9 cross-check. AST-checked (every dict site resolves to composed text). Served: query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_laksana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (query_signals.ts:449; query_signals.ts:140 in the default projection) = 'yoga', 'dosha', 'sade_sati', 'panchanga', 'karaka_alignment', 'tradition_specific', 'parivartana', 'configuration', 'varga_pattern', 'annual', 'medical', 'vastu', 'composite_state', 'varga_ratification_divergence', 'bhavat_bhavam_amplifier'. Computed placeholders: body, loc (the fact value, house and varga restated; value_num/value_text formatted), classification, d1_text, d9_text, valence, value_num, value_text; identifier-only: graha, subj, dom, source_l1_asset, str(fact_subject).upper(). MIXED column caveat: the divergence headline (bo_laksana.py:1398) is verbatim-first (`value_text or f\"...\"`, its fallback interpolates only identifiers), so it states no computed value of its own; row discriminator signal_type_class='varga_ratification_divergence'. Also: bhavat_bhavam_amplifier.to_msr_row composes class-'bhavat_bhavam_amplifier' text but has no caller, so no such row exists to check. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human states the D1 and D9 readings and their cross-check classification (bo_laksana.py), and the derived bhava numbers of the bhavat-bhavam amplifier. Composed at bo_laksana.py:3046, bhavat_bhavam_amplifier.py:391. AST census of the writer's citation_human sites (bo_laksana.py, bhavat_bhavam_amplifier.py): 5 composed, 0 constant, 0 forwarded, 2 other. Column bound at bo_laksana.py:3066 (INSERT INTO bodha_msr_signals); served by query_signals.ts:119."
    },
    "evidence_kind": "writer"
   },
@@ -1019,7 +1027,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:821",
@@ -1028,7 +1038,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_cdlm_cells; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:821 reads `bodha_cdlm_cells` (`FROM bodha_cdlm_cells`). Dens.served=FAIL. Served domain-reading capability (per-cell rows with cell_remedy_priority_rank).",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human embeds the shared-signal count (len(shared_ids)) and the signal count (len(sigs)). Composed at bo_sangati.py:365, bo_sangati.py:440. AST census of the writer's citation_human sites (bo_sangati.py): 2 composed, 0 constant, 0 forwarded, 0 other. Column bound at bo_sangati.py:55 (INSERT INTO bodha_cdlm_cells); bo_sangati.py:100 (INSERT INTO bodha_convergence); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    }
   },
   "bo_special_lagna": {
@@ -1079,7 +1089,8 @@
     "served_surface": true
    },
    "prose_fields": [
-    "prescription_detail_jsonb.$.maraka_contraindication_verdict.reason"
+    "prescription_detail_jsonb.$.maraka_contraindication_verdict.reason",
+    "citation_human"
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
@@ -1089,7 +1100,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) bodha_rm_resonances; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:362 reads `bodha_rm_resonances` (`FROM bodha_rm_resonances`). Dens.served=FAIL.",
-    "prose_fields": "writers/bo_upaya.py _compute_gemstone_maraka_verdict composes verdict['reason'] by f-string in both the contraindicated and the no-contraindication branches (bo_upaya.py:1008; the fact-missing branch at :989 is a constant); the verdict is bound as prescription_detail_jsonb['maraka_contraindication_verdict'] (bo_upaya.py:1690) into bodha_rm_remedy_prescriptions. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:404 selects the column and query_remedies.ts:564 surfaces the verdict via marakaVerdictFrom. The other keys of prescription_detail_jsonb (prescription_text, mantra_text, gemstone, charity_action, deity) are copied from brahma_remedy_corpus (composed upstream by bg_remedies), not declared here."
+    "prose_fields": "writers/bo_upaya.py _compute_gemstone_maraka_verdict composes verdict['reason'] by f-string in both the contraindicated and the no-contraindication branches (bo_upaya.py:1008; the fact-missing branch at :989 is a constant); the verdict is bound as prescription_detail_jsonb['maraka_contraindication_verdict'] (bo_upaya.py:1690) into bodha_rm_remedy_prescriptions. Served: platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts:404 selects the column and query_remedies.ts:564 surfaces the verdict via marakaVerdictFrom. The other keys of prescription_detail_jsonb (prescription_text, mantra_text, gemstone, charity_action, deity) are copied from brahma_remedy_corpus (composed upstream by bg_remedies), not declared here. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): resonance citation embeds the normalized shadbala and dosha count; summaries embed resonance and prescription counts. Composed at bo_upaya.py:1549, bo_upaya.py:1798, bo_upaya.py:1842. AST census of the writer's citation_human sites (bo_upaya.py): 5 composed, 0 constant, 0 forwarded, 0 other. Column bound at bo_upaya.py:57 (INSERT INTO bodha_rm_resonances); bo_upaya.py:77 (INSERT INTO bodha_rm_remedy_prescriptions); bo_upaya.py:124 (INSERT INTO bodha_rm_chart_summary); bo_upaya.py:142 (INSERT INTO bodha_rm_dosha_remedy_bundles); bo_upaya.py:157 (INSERT INTO bodha_rm_pattern_remedies); served by query_rm_chart_summary.ts:78."
    },
    "evidence_kind": "writer"
   },
@@ -1100,7 +1111,8 @@
    },
    "prose_fields": [
     "signal_headline_text",
-    "signal_summary_text"
+    "signal_summary_text",
+    "citation_human"
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
@@ -1110,7 +1122,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_msr_signals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:507 reads `bodha_msr_signals` (`FROM bodha_msr_signals m`). Dens.served=PASS. Shared table bodha_msr_signals: served by query_signals.ts with the signal_type_class facet (:448-450 `m.signal_type_class = $n`, applied in the WHERE before the salience cap), so classes 'vargottama_amplification' / 'dhana_axis' rows are reachable; the asset's count_sql selects exactly that class filter.",
-    "prose_fields": "bo_vargottama_dhana.py:173 INSERTs into bodha_msr_signals binding the two columns (bo_vargottama_dhana.py:206) from rows built by build_vargottama_rows (bo_vargottama_dhana.py:144) + build_dhana_axis_rows (bo_vargottama_dhana.py:147) and executed unchanged (bo_vargottama_dhana.py:166). vargottama_dhana_emitter.py:162 and vargottama_dhana_emitter.py:163 put `summary`/`headline` from _make_row, whose call sites compose both by f-string: vargottama rows (vargottama_dhana_emitter.py:284, vargottama_dhana_emitter.py:286: D1=D9 sign, graded valence) and dhana-axis rows (vargottama_dhana_emitter.py:381, vargottama_dhana_emitter.py:386: house sign/lord/occupants/valence). AST-checked. Served: query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_vargottama_dhana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (query_signals.ts:449; query_signals.ts:140 in the default projection) = 'vargottama_amplification', 'dhana_axis'. Computed placeholders: sign, house_d1, house_sign, house_lord, lord_house_d1, tenancy_valence, vg_verdict.valence, occupants, ', '.join(occupants), house_num; identifier-only: graha_display, label."
+    "prose_fields": "bo_vargottama_dhana.py:173 INSERTs into bodha_msr_signals binding the two columns (bo_vargottama_dhana.py:206) from rows built by build_vargottama_rows (bo_vargottama_dhana.py:144) + build_dhana_axis_rows (bo_vargottama_dhana.py:147) and executed unchanged (bo_vargottama_dhana.py:166). vargottama_dhana_emitter.py:162 and vargottama_dhana_emitter.py:163 put `summary`/`headline` from _make_row, whose call sites compose both by f-string: vargottama rows (vargottama_dhana_emitter.py:284, vargottama_dhana_emitter.py:286: D1=D9 sign, graded valence) and dhana-axis rows (vargottama_dhana_emitter.py:381, vargottama_dhana_emitter.py:386: house sign/lord/occupants/valence). AST-checked. Served: query_signals.ts:141 selects signal_summary_text and signal_headline_text in the default projection (DEFAULT_SERVE_COLUMNS; also in MSR_SIGNAL_COLUMNS) via FROM bodha_msr_signals m (query_signals.ts:507). Shared table: bodha_msr_signals is written by six bo_* writers (bo_laksana_rerank only UPDATEs), so a per-asset Narr check must filter by producing asset: producer_asset_id='bo_vargottama_dhana' (migration 1036_data_plane_l2_producer_generations.sql (line 299), NOT NULL, CHECK-listed, trigger-maintained) - a column the served query neither selects nor filters, i.e. dark in the default projection and absent from MSR_SIGNAL_COLUMNS; the served equivalent is the signal_type_class facet (query_signals.ts:449; query_signals.ts:140 in the default projection) = 'vargottama_amplification', 'dhana_axis'. Computed placeholders: sign, house_d1, house_sign, house_lord, lord_house_d1, tenancy_valence, vg_verdict.valence, occupants, ', '.join(occupants), house_num; identifier-only: graha_display, label. | citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human is the headline itself, an f-string stating the D1=D9 sign and the vargottama valence. Composed at vargottama_dhana_emitter.py:237, vargottama_dhana_emitter.py:286. AST census of the writer's citation_human sites (vargottama_dhana_emitter.py): 0 composed, 0 constant, 1 forwarded, 0 other. Column bound at bo_vargottama_dhana.py:172 (INSERT INTO bodha_msr_signals); served by query_signals.ts:119."
    },
    "evidence_kind": "writer"
   },
@@ -1119,7 +1131,10 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human",
+    "mechanism_name"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:446",
@@ -1128,7 +1143,7 @@
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) bodha_mechanisms; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): b",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts:446 reads `bodha_mechanisms` (`FROM bodha_mechanisms d`). Dens.served=PASS.",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human embeds the converging-graha count (:397) and valence, net score, natural score and dignity modifier (:571); mechanism_name embeds the valence (:565); the cycle-label strings (:237 :352 :480) and the other names (:344 :388 :472) are structural labels and are not counted. Composed at bo_yantra_mechanism.py:397, bo_yantra_mechanism.py:571, bo_yantra_mechanism.py:565. AST census of the writer's citation_human sites (bo_yantra_mechanism.py): 10 composed, 0 constant, 1 forwarded, 0 other. Column bound at bo_yantra_mechanism.py:77 (INSERT INTO bodha_mechanisms); served by register_d9_judgment.ts:1489."
    }
   },
   "ga_ayurdaya": {
@@ -1153,7 +1168,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:91",
@@ -1162,7 +1179,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_condition_composite; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:91 reads `ga_condition_composite` (`FROM ga_condition_composite`). Dens.served=PASS.",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the computed avastha values (baladi, deeptaadi, lajjitadi, sayanadi with deg_in_sign). Composed at ga_condition_writer.py:1117, ga_condition_writer.py:1391. AST census of the writer's citation_human sites (ga_condition_writer.py): 5 composed, 0 constant, 0 forwarded, 0 other. Column bound at ga_condition_writer.py:1201 (column list); served by facts_store.ts:447."
    }
   },
   "ga_dashas": {
@@ -1170,7 +1187,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:727",
@@ -1179,7 +1198,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_dashas; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts:727 reads `chart_dashas` (`FROM chart_dashas d`). Dens.served=PASS.",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation states the computed dasha lord chain and level ('Vimshottari {chain} (level N, ayanamsha)'). Composed at ga_dashas_writer.py:1160. AST census of the writer's citation_human sites (ga_dashas_writer.py): 29 composed, 1 constant, 1 forwarded, 0 other. Column bound at ga_dashas_writer.py:2976 (column list); ga_dashas_writer.py:3453 (INSERT INTO chart_facts); served by citation_resolver.ts:384."
    }
   },
   "ga_medical": {
@@ -1204,7 +1223,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:91",
@@ -1213,7 +1234,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts:91 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(NAKSHATRA_CATEGORIES), 15 of the asset's 16 count_sql categories (nakshatra_lord_placement is not in the file).",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation_human restates each fact: '{subject} {key}: {value} [{category}]'. Composed at ga_nakshatra.py:191, ga_nakshatra.py:193. AST census of the writer's citation_human sites (ga_nakshatra.py): 4 composed, 0 constant, 0 forwarded, 0 other. Column bound at ga_nakshatra.py:356 (INSERT INTO chart_facts); ga_nakshatra.py:497 (INSERT INTO chart_facts); served by facts_store.ts:447."
    }
   },
   "ga_panchanga": {
@@ -1221,7 +1242,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:103",
@@ -1230,7 +1253,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts:103 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(PANCHANGA_CATEGORIES) (panchanga_* categories, this asset's LIKE 'panchanga%' set).",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the computed tithi, vara, yoga, karana numbers and names, end times and solar arc. Composed at ga_panchanga_writer.py:368, ga_panchanga_writer.py:534. AST census of the writer's citation_human sites (ga_panchanga_writer.py): 148 composed, 0 constant, 1 forwarded, 0 other. Column bound at ga_panchanga_writer.py:1276 (INSERT INTO chart_facts); served by facts_store.ts:447."
    }
   },
   "ga_positions": {
@@ -1238,7 +1261,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193",
@@ -1247,7 +1272,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:193 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY($2) whose default includes graha_position (this asset's category; bhava_cusps/graha_sign_attributes are not in the file, so a subset is served).",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state longitudes, signs, pada and house numbers (helper _citation_human_position and the chalit rows). Composed at ga_positions_writer.py:132, ga_positions_writer.py:469, ga_positions_writer.py:487. AST census of the writer's citation_human sites (ga_positions_writer.py): 10 composed, 0 constant, 1 forwarded, 2 other. Column bound at ga_positions_writer.py:537 (INSERT INTO chart_facts); served by facts_store.ts:447."
    }
   },
   "ga_prashna": {
@@ -1272,7 +1297,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:100",
@@ -1281,7 +1308,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts:100 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(SS_CATEGORIES), all 15 of the asset's count_sql categories.",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state cycle dates, durations, Saturn signs and dignities, rule counts. Composed at ga_sade_sati_writer.py:892, ga_sade_sati_writer.py:1239. AST census of the writer's citation_human sites (ga_sade_sati_writer.py): 136 composed, 0 constant, 3 forwarded, 0 other. Column bound at ga_sade_sati_writer.py:1838 (INSERT INTO chart_facts); served by facts_store.ts:447."
    }
   },
   "ga_sensitive": {
@@ -1289,7 +1316,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114",
@@ -1298,7 +1327,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts:114 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(categories) of which 7 of the asset's 20 count_sql categories appear in the file (upagraha/saham/saturn_derived/lal_kitab/maharsi...): a subset is served.",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): helper _citation_human renders '{category}.{subject}.{key} = {value} (ayanamsha).' from the computed value; the other composed strings are honest-gap/error text. Composed at ga_sensitive_writer.py:246. AST census of the writer's citation_human sites (ga_sensitive_writer.py): 4 composed, 0 constant, 0 forwarded, 1 other. Column bound at ga_sensitive_writer.py:2963 (INSERT INTO chart_facts); served by facts_store.ts:447."
    }
   },
   "ga_sensitive_degree": {
@@ -1323,7 +1352,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:189",
@@ -1332,7 +1363,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:189 reads `chart_facts` (`FROM chart_facts`). Dens.served=NO_DETECTOR. Shared table chart_facts: the query filters fact_category = ANY(STRENGTH_CATEGORIES) (graha_shadbala_*, graha_vimsopaka_*, ishta/kashta phala...: the asset's categories).",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state shadbala rupa values, ratios against the classical minimum, bindu and pinda counts. Composed at ga_strength_writer.py:845, ga_strength_writer.py:880. AST census of the writer's citation_human sites (ga_strength_writer.py): 21 composed, 0 constant, 0 forwarded, 1 other. Column bound at ga_strength_writer.py:1713 (INSERT INTO chart_facts); served by facts_store.ts:447."
    }
   },
   "ga_structural": {
@@ -1340,7 +1371,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:138",
@@ -1349,7 +1382,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_facts,fact_category_ownership; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts:138 reads `chart_facts` (`FROM chart_facts`). Dens.served=PASS. Shared table chart_facts: the query filters fact_category = ANY(STRUCTURAL_SIGNAL_CATEGORIES) (19 categories) which get_structural_signals.ts:1-12 documents as ga_structural's residual categories; the fact_category_ownership table was not checked offline.",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state aspect counts, classifications with totals, dignity scores, house and sign placements. Composed at ga_structural_writer.py:1303, ga_structural_writer.py:1702, ga_structural_writer.py:4659. AST census of the writer's citation_human sites (ga_structural_writer.py): 189 composed, 5 constant, 0 forwarded, 6 other. Column bound at ga_structural_writer.py:4871 (column list); ga_structural_writer.py:4880 (INSERT INTO chart_facts); served by facts_store.ts:447."
    }
   },
   "ga_tajaka": {
@@ -1357,7 +1390,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:215",
@@ -1366,7 +1401,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) l1_tajik_varsha_year_lords; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): l",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts:215 reads `l1_tajik_varsha_year_lords` (`let vSql = `SELECT * FROM l1_tajik_varsha_year_lords WHERE chart_id = $1``). Dens.served=PASS.",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citation states the varsha window, Muntha sign, house from Lagna and lords. Composed at ga_tajaka_writer.py:621. AST census of the writer's citation_human sites (ga_tajaka_writer.py): 2 composed, 0 constant, 0 forwarded, 0 other. Column bound at ga_tajaka_writer.py:661 (column list); served by reading_checklist.ts:902."
    }
   },
   "ga_transit_anchors": {
@@ -1391,7 +1426,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:90",
@@ -1400,7 +1437,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) chart_divisionals; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts:90 reads `chart_divisionals` (`let sql = `SELECT * FROM chart_divisionals WHERE chart_id = $1``). Dens.served=PASS.",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state varga signs, dignities, house placements, contributions and scores (also helper _citation_human). Composed at ga_vargas_writer.py:1202, ga_vargas_writer.py:1651. AST census of the writer's citation_human sites (ga_vargas_writer.py): 26 composed, 1 constant, 0 forwarded, 0 other. Column bound at ga_vargas_writer.py:2609 (INSERT INTO chart_divisionals); ga_vargas_writer.py:2638 (INSERT INTO chart_divisionals); emitted by the writer INSERT (no served read of this table's citation_human confirmed)."
    }
   },
   "ga_vastu": {
@@ -1442,7 +1479,9 @@
    "carriage": {
     "served_surface": true
    },
-   "prose_fields": null,
+   "prose_fields": [
+    "citation_human"
+   ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
    "read_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:213",
@@ -1451,7 +1490,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_yoga_firings; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts:213 reads `ga_yoga_firings` (`FROM ga_yoga_firings f`). Dens.served=PASS.",
-    "prose_fields": null
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the constituent grahas of the strength mean, the strength value and the cancelling ground. Composed at ga_yoga_writer.py:269, ga_yoga_writer.py:2232. AST census of the writer's citation_human sites (ga_yoga_writer.py): 6 composed, 16 constant, 0 forwarded, 7 other. Column bound at ga_yoga_writer.py:2519 (INSERT INTO ga_yoga_firings); ga_yoga_writer.py:2723 (INSERT INTO ga_yoga_firings); ga_yoga_writer.py:2912 (INSERT INTO ga_yoga_firings); ga_yoga_writer.py:3008 (INSERT INTO ga_yoga_firings); served by get_yoga_firings.ts:200."
    }
   },
   "ka_avadhi": {

@@ -400,6 +400,136 @@ def fstring_interpolations(node):
             for v in node.values if isinstance(v, ast.FormattedValue)]
 
 
+# ───────────────────────── (3d) census of every site that sets a `citation_human` value ─────────────────────────
+
+CITATION_PARAMS = ("citation_human", "citation", "cite", "chum", "human")
+
+
+def _text_composed(node):
+    return any(isinstance(x, ast.JoinedStr) or (isinstance(x, ast.BinOp) and isinstance(x.op, (ast.Add, ast.Mod)))
+               or (isinstance(x, ast.Call) and isinstance(x.func, ast.Attribute) and x.func.attr in ("format", "join"))
+               for x in ast.walk(node))
+
+
+def citation_sites(tree):
+    """[(lineno, how, kind, unparsed)] for every place the module sets a citation_human value. `how`: `dict` (a dict literal
+    key "citation_human"), `kw` (a keyword argument citation_human=), `arg` (the argument bound to a citation-named parameter
+    of a function defined in the module: citation_human / citation / cite / chum / human), `var` (an assignment to such a
+    name). `kind`: `composed` (the value, or a name it is assigned from in the module, builds text: f-string, `+`, `%`,
+    .format, .join, or a call to a module function that does), `const` (a string constant or a name assigned only constants),
+    `passthrough` (a parameter forwarded as is: counted where the caller binds it), `other` (a read, a subscript, a call to
+    something that is not a module function). Pure syntax: the caller decides which composed sites state a value."""
+    fdefs = {n.name: n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)}
+    assigns = {}
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Assign):
+            for tg in n.targets:
+                if isinstance(tg, ast.Name):
+                    assigns.setdefault(tg.id, []).append(n.value)
+    helpers = {}
+    for f in fdefs.values():
+        for i, a in enumerate(f.args.args):
+            if a.arg in CITATION_PARAMS:
+                helpers.setdefault(f.name, []).append((a.arg, i))
+        for a in f.args.kwonlyargs:
+            if a.arg in CITATION_PARAMS:
+                helpers.setdefault(f.name, []).append((a.arg, None))
+
+    def params_of(node):
+        while node is not None and not isinstance(node, ast.FunctionDef):
+            node = getattr(node, "_parent", None)
+        return {a.arg for a in node.args.args + node.args.kwonlyargs} if node is not None else set()
+
+    def classify(v):
+        if _text_composed(v):
+            return "composed"
+        if isinstance(v, ast.Constant):
+            return "const"
+        if isinstance(v, ast.Name):
+            if v.id in params_of(v):
+                return "passthrough"
+            vals = assigns.get(v.id, [])
+            if any(_text_composed(x) for x in vals):
+                return "composed"
+            return "const" if vals and all(isinstance(x, ast.Constant) for x in vals) else "other"
+        if isinstance(v, ast.Call) and isinstance(v.func, ast.Name) and v.func.id in fdefs:
+            return "composed" if _text_composed(fdefs[v.func.id]) else "other"
+        return "other"
+
+    _parents(tree)
+    out = []
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Dict):
+            for k, v in zip(n.keys, n.values):
+                if isinstance(k, ast.Constant) and k.value == "citation_human":
+                    out.append((v.lineno, "dict", classify(v), ast.unparse(v)))
+        elif isinstance(n, ast.keyword) and n.arg == "citation_human":
+            out.append((n.value.lineno, "kw", classify(n.value), ast.unparse(n.value)))
+        elif isinstance(n, ast.Assign):
+            for tg in n.targets:
+                if isinstance(tg, ast.Name) and tg.id in ("citation_human", "chum", "chuman", "l1_citation_human"):
+                    out.append((n.lineno, "var", classify(n.value), ast.unparse(n.value)))
+                if (isinstance(tg, ast.Subscript) and isinstance(tg.slice, ast.Constant) and tg.slice.value == "citation_human"):
+                    out.append((n.lineno, "var", classify(n.value), ast.unparse(n.value)))
+        elif isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in helpers:
+            for pname, idx in helpers[n.func.id]:
+                v = next((k.value for k in n.keywords if k.arg == pname), None)
+                if v is None and idx is not None and idx < len(n.args):
+                    v = n.args[idx]
+                if v is not None:
+                    out.append((v.lineno, "arg", classify(v), ast.unparse(v)))
+    return sorted(set(out), key=lambda t: (t[0], t[1], t[3]))
+
+
+def site_interpolations(tree, kind="composed"):
+    """Sorted set of the `{...}` expressions interpolated by the citation sites of `kind`. A site that is a bare Name is
+    followed to the f-strings it is assigned from in the module; a site that calls a module function is followed to the
+    f-strings of that function."""
+    fdefs = {n.name: n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)}
+    out = set()
+
+    def grab(node):
+        for x in ast.walk(node):
+            if isinstance(x, ast.JoinedStr):
+                out.update(e for e, _ in fstring_interpolations(x))
+
+    for _, _, k, u in citation_sites(tree):
+        if k != kind:
+            continue
+        node = ast.parse(u, mode="eval").body
+        grab(node)
+        if isinstance(node, ast.Name):
+            for v in _assign_values(tree, node.id):
+                grab(v)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in fdefs:
+            grab(fdefs[node.func.id])
+    return sorted(out)
+
+
+_INSERT_COLS_RE = re.compile(r"INSERT\s+INTO\s+(?:public\.)?([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)", re.I | re.S)
+
+
+def citation_inserts(tree):
+    """[(lineno, table)] of every string (constant, or the constant parts of an f-string) in the module holding an
+    `INSERT INTO table (cols)` whose column list names citation_human, plus [(lineno, "<columns>")] for every list/tuple
+    constant of column names that holds citation_human (a writer that builds its INSERT from a column list)."""
+    out = []
+    for n in ast.walk(tree):
+        text = None
+        if isinstance(n, ast.Constant) and isinstance(n.value, str):
+            text = n.value
+        elif isinstance(n, ast.JoinedStr):
+            text = "".join(v.value for v in n.values if isinstance(v, ast.Constant) and isinstance(v.value, str))
+        if text:
+            for m in _INSERT_COLS_RE.finditer(_strip_sql_comments(text)):
+                if "citation_human" in m.group(2):
+                    out.append((n.lineno, m.group(1)))
+        if isinstance(n, (ast.List, ast.Tuple)) and n.elts and all(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in n.elts) \
+                and any(e.value == "citation_human" for e in n.elts):
+            out.append((n.lineno, "<columns>"))
+    return sorted(set(out))
+
+
 # ───────────────────────── (4) a `[]` claim: the bound columns are only verbatim/slice/constant ─────────────────────────
 
 _ALLOWED_PARAM_NODES = (ast.Name, ast.Constant, ast.Subscript, ast.Slice, ast.Load, ast.IfExp, ast.BoolOp, ast.Or, ast.And,
