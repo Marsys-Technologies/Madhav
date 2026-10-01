@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_REOPEN_AGENDA_T2
 canonical_id: SUVARNA_REOPEN_AGENDA_T2
-version: "1.1"
+version: "1.2"
 status: DRAFT-HELD-FOR-J1
 produced_on: 2026-10-02
 produced_in: "Exec Suvarna Engine, Track E lane E2 (queue id E2.1-design-002); drafted by a Sonnet drafter"
@@ -17,7 +17,8 @@ sources:
   - "NIKASHA_CHANGE_REGISTER_v2_0.md (v2.8), the eleven rows"
   - "the tier-2 document, the tier-3 and tier-4 templates and the L0 instance at origin/campaign/nikasha-test @ 2a78ec64d"
 changelog:
-  - "1.1 (2026-10-02): independent-review changes. R89 owner/supplier split; D-7.1 consistency (DP02 use, one DP05 producer, DP10/DP16/DP17, no 'mechanical' claim, DP13 removed from L5); R88 L1 row aligned with the detector; D3 citations relabelled."
+  - "1.2 (2026-10-02): SS rulings folded, each marked SS direction to be confirmed at J1: new section Rows that change what counts as PASS (grid movement computed where the saved censuses allow, else not computable today) and one Decisions required at J1 table; R119 open question on [TRANSFERS]-pending settled (annotation, no verdict value added)."
+  - "1.1 (2026-10-02): independent-review changes. R89 owner/supplier split; D-7.1 consistency (DP02 use, one DP05 producer, DP10/DP16/DP17, no mechanical claim, DP13 removed from L5); R88 L1 row aligned with the detector; D3 citations relabelled."
   - "1.0 (2026-10-02): first issue. Eleven rows; drafted replacement text; no tier document edited. R85 is not a row (withdrawn from the T2 agenda by D2 rev. 2.1; CLOSED in the register); R109's registry columns are P9 data work, not a reopen."
 ---
 
@@ -59,6 +60,59 @@ Line numbers are those of the blobs at `origin/campaign/nikasha-test` @ `2a78ec6
 | R198 | T2 §13.3 item 6 :682 and §7.1 | Per-layer index in §7.1 (shared draft D-7.1); the fallback (name where the index lives) is given | structural |
 
 Not rows here: R85 (withdrawn from the T2 agenda; CLOSED), R109 (registry columns `produces_contracts` / `consumes_contracts`, P9 data work), the T4 §1.2 half of R119 (the D2 "proceed now" list).
+
+## Rows that change what counts as PASS
+
+*SS direction, to be confirmed at J1.* This section holds the VERDICT-CHANGING rows of Tier 2, one block per row: the wording before and after, and which cells of the 9 × 127 grid would move. 
+
+**How the movement was computed (and what the numbers are).** The grid is the nine gates (Ldgr, Idem, Earn, Null, Vocab, Carr, Narr, Dens, Build) by the 127 active assets: **1,143 cells**. On 2026-10-02 the worktree's `platform/scripts/governance/asset_census.py` rollup (`build_rollup_output`, with `load_asset_declarations()`) was run offline over the saved Track A censuses `/Users/Dev/suvarna-evidence/census/census_L0.json` … `census_L5.json` (inspector `2a78ec64d`, chart `482012f1-710e-4a25-994a-93821f5871aa`); no database, nothing written. Caution: the saved measurements predate the E6 detectors, so most gates read NO_DETECTOR today. Baseline cells by verdict: Ldgr NO_DETECTOR 57 · PASS 69 · PARTIAL 1; Idem PASS 110 · PARTIAL 11 · NO_DETECTOR 5 · FAIL 1; Earn, Null, Carr, Narr NO_DETECTOR 127 each; Vocab NO_DETECTOR 126 · FAIL 1; Dens FAIL 59 · PASS 40 · NO_DETECTOR 28; Build FAIL 53 · PARTIAL 50 · NO_DETECTOR 18 · ERRORED 4 · PASS 2. A number below is computed from those files; where a movement needs a detector or a declaration that does not exist yet, the row says "not computable today: needs …" and gives no number.
+
+**R06 — shared tables (T2 §13.3 item 2).**
+- *Before* (:678): `2. Complete owned inventory including accepted, residual, service, shared and historical capital; source/runtime evidence levels separated.`
+- *After:* the same, plus: `**Shared tables:** … each producer's row count and its count_sql are scoped to the rows that producer writes. A producer credited with rows another producer wrote is a measurement defect, not a count.`
+- *Cells that could move:* Build gate, check `Build.count_integrity` only. **Upper bound 25 of 127 Build cells**: 25 assets have a `count_sql` that names a table another asset's `count_sql` also names. The five tables are `brahma_class_priors` (2 assets), `brahma_ontology` (4: `bg_dasha_systems`, `bg_doshas`, `bg_ontology`, `bg_yogas`, the L0 C-10 case), `classical_text_chunks` (2), `chart_facts` (10) and `bodha_msr_signals` (7). All 25 read PASS on that check today, so a move could only be downward.
+- *How many actually move:* **not computable today: needs** a detector that compares each producer's `count_sql` scope with the rows that producer writes (declared producers: R22's universes or R109's registry columns).
+
+**R88 — per-layer switch behaviour (T2 §9.2).**
+- *Before* (:501): OFF = `Nothing derived from life events, anywhere. …` — no per-layer statement.
+- *After:* a per-layer table; for L1, `Birth-fact immutability per (chart_id, input revision)` is the named detector.
+- *Cells:* none of the nine gates carries a T3 §2.1 rule detector today; `CRITERION_REGISTRY` has no switch or immutability criterion. **Not computable today: needs** the birth-fact immutability detector (an ON-versus-OFF comparison of the L1 fact rows per (chart_id, input revision)) and an SS decision on which gate carries a §2.1 rule detector.
+
+**R89 — carried by layer (T2 §3.4).**
+- *Before* (:188–197): two columns, no layer.
+- *After:* a third column, `Carried by layer (owner; supplier)`, and the rule that only the named owner owns a row.
+- *Cells:* **not computable today: needs** the sealed owner column and a producer-field carriage test per layer. No criterion for it exists in the registry; its natural home is T3 §5.4 test 4 on a layer instance, which is not one of the 1,143 cells unless SS maps it to a gate.
+
+**R90 — per-layer obligation ownership (T2 §5).**
+- *Before* (:325–339): three columns.
+- *After:* a fourth column, `Owned by (layer → what it owns)`, with UNASSIGNED where T2 states no owner, and the declared-universe rule.
+- *Cells moved in the nine-gate grid:* **0** — the width measure is `Complete.width`, a gate outside the nine (`rollup_excluded`). What changes is that **127 `Complete.width` cells, all NOT_GENERIC today**, become measurable once universes are declared. Which become PASS or FAIL: **not computable today: needs** the per-layer declared universes (the UNASSIGNED decisions).
+
+**R91 — entity classes per layer (T2 §4.1).**
+- *Before* (:268–271): the sixteen classes and L0 ownership; §13.3 item 1a asks each plan to state its classes.
+- *After (Option A):* `**Per layer.** L0 owns … a class is declared if and only if a canonical id of that class appears in a field of one of those contracts …`.
+- *Cells:* Vocab gate. **Upper bound 126 of 127 Vocab cells** (NO_DETECTOR today; the 127th is FAIL) could move once classes are declared. Actual movement: **not computable today: needs** the per-layer class declarations (Option A rests on §7.1 contracts that name no L4 or L5 producer; Option B needs an owner assignment) and the per-class alias and map census run over them.
+
+**R119 — [TRANSFERS] at the point of use (T2 half).**
+- *Before:* §13.3 items 1 and 6 (:662, :682) and DP10–DP12 (:429–431) carry no tag.
+- *After:* the D3 sentence in item 1, the extended clause in item 6, the tag on DP10 (split), DP11, DP12; optionally a non-transferred §12.2 row `Presentation fields carried`.
+- *Cells moved in the nine-gate grid:* **0** (the Dens gate's only check, `Dens.served`, is untouched). The effect lands on instance acceptance test 4 (T3 R71) of the layer instances; L0's records parity as `UNMET` (L0 :658). L1–L5 instances do not exist yet, so a count of instances that move is **not computable today: needs** those instances.
+
+## Decisions required at J1
+
+*SS direction, to be confirmed at J1.* One table. R90, R91 and D-7.1 stay UNASSIGNED or open exactly as drafted; the other rows are the remaining open questions of this agenda.
+
+| Row | Decision | Options | Recommendation |
+|---|---|---|---|
+| R90 | Owners of the two UNASSIGNED obligations (Bhāvat Bhāvam; voluntary practice) and the partial cells (Rāśi/bhāva, Varga, Nakshatra/KP, Praśna/Muhūrta/calendar) | (a) layer owners assign now; (b) Track A's A.H harvest supplies them before the agendas are combined; (c) seal with UNASSIGNED and raise as a round-two tier-2 gap | (b); fall back to (c). The draft stays UNASSIGNED until then |
+| R91 | Entity classes per layer | Option A rule (declare from §7.1 contracts); Option B matrix | A; B only if SS wants one reviewable table and an owner supplies L1–L5 |
+| D-7.1 (R181, R186, R198) | Edge-type and declared-use values for the 18 contracts | confirm the proposals; defer the columns to R109's registry data and seal the structure only | Defer values to R109 (they are judgements); seal the structure |
+| D-7.1 | L4 and L5 "produces" (no contract names them beyond DP10) | add a contract row; state that L4 produces DP09 and L5 DP15a/b; leave unnamed | A content decision for the layer owners; do not close by transcription |
+| D-7.1 / R89 | DP05's producer reading | (i) L2 produces configuration and clause results (draft); (ii) L0 and L1 each produce part, L2 assembles | (i), as drafted |
+| R89 | DP09 manifestation bridge: L4 as owner | confirm; leave to L3 | Confirm L4 (§6.5) |
+| R88 | L0's OFF behaviour; detectors for L0, L2–L5 | name them in T2; leave to each layer instance (T3 §2.1) | Leave to the instances; T2 carries L1's only |
+| R119 | Which DP rows carry the tag; the optional §12.2 row (d) | as drafted (DP10 split, DP11, DP12; (d) kept); strike (d) | Keep the tags; keep (d) so D3's "producer-field carriage test" has a definition |
+| R06 | Home of the shared-table clause | §13.3 item 2 (drafted); §7.1 | §13.3 item 2 |
 
 ## R06 — Multi-producer shared tables have no expression in the contract vocabulary
 
@@ -541,7 +595,7 @@ DP12: append  **[TRANSFERS]** (conversation plane, §8).
 **Open questions.**
 1. **Which DP rows carry the tag (SS).** D2 says "the §12.2/DP rows where a layer plan reads them" and does not list the rows; (c) is derived from §8's header. DP11 and DP12 are fully tagged and DP10 split on that reading; the owner of the retrieval and conversation planes' obligations may disagree.
 2. §12.2's "Omission challenge" row (T2 :620) is named in §8's header as a retrieval-plane obligation ("the omission challenge") but is not tagged. The draft does not tag it (D2 lists none); flagged for the second round if SS agrees it is [TRANSFERS].
-3. Is `[TRANSFERS]-pending` a recorded annotation or a new verdict value? See R71 open question 1 in the T3 agenda; this agenda assumes an annotation (the closed verdict set of T3 §5.3 is not touched).
+3. `[TRANSFERS]-pending` is an annotation, not a verdict value (*SS direction, to be confirmed at J1*; see R71 in the T3 agenda). The closed verdict set of T3 §5.3 is not touched.
 4. Item (d) is a new row, not a tag; if SS holds the agenda to D2's wording it is struck and T3's "producer-field carriage test" needs a definition elsewhere (T3 §2.2 body is the natural place).
 
 ## Shared draft D-7.1 — the §7.1 additions that close R181, R186 and R198

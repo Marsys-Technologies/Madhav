@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_REOPEN_AGENDA_T1
 canonical_id: SUVARNA_REOPEN_AGENDA_T1
-version: "1.0"
+version: "1.1"
 status: DRAFT-HELD-FOR-J1
 produced_on: 2026-10-02
 produced_in: "Exec Suvarna Engine, Track E lane E2 (queue id E2.1-design-001); drafted by a Sonnet drafter"
@@ -17,6 +17,7 @@ sources:
   - "NIKASHA_CHANGE_REGISTER_v2_0.md (v2.8), rows R01, R72, R76"
   - "the tier-1 document at origin/campaign/nikasha-test @ 2a78ec64d"
 changelog:
+  - "1.1 (2026-10-02): SS rulings folded, each marked as SS direction to be confirmed at J1: new sections Rows that change what counts as PASS (T1: none; grid movement 0) and Decisions required at J1; R72 seal-basis direction recorded (N-5.T1 covers all of T1; the review file exists on no ref). Appendix A updated: the plan model now reads 31."
   - "1.0 (2026-10-02): first issue. Three rows, one section each; drafted replacement text; no tier document edited. Appendix A reconciles the plan's 32 clause fixes with the Track E brief's 31 for all three agendas."
 ---
 
@@ -50,6 +51,23 @@ Line numbers below are those of the blobs at `origin/campaign/nikasha-test` @ `2
 | R76 | T1 frontmatter `review_record` :24 (field name); no glossary section exists | Rename the field to `document_reviews`; one glossary line as a new last bullet of §16 | wording-only |
 
 Not on this agenda for T1: nothing is deferred and nothing in T1 is in the D2 "proceed now" list.
+
+## Rows that change what counts as PASS
+
+*SS direction, to be confirmed at J1.* This section holds the VERDICT-CHANGING rows of Tier 1, one block per row: the wording before and after, and which cells of the 9 × 127 grid would move. 
+
+**Tier 1 has no VERDICT-CHANGING row.** R01 (order), R72 (a pointer) and R76 (a field name and a glossary line) change no gate, obligation, test or verdict. **Grid cells that move: 0.** R72 carries a seal-basis decision, recorded below under "Decisions required at J1".
+
+
+## Decisions required at J1
+
+*SS direction, to be confirmed at J1.* One table; each row states the options and the drafter's recommendation.
+
+| Row | Decision | Options | Recommendation |
+|---|---|---|---|
+| R72 | What the T1 seal rests on, given the review file is lost | (a) accept the changelog's record and apply the not-located correction only; (b) as (a), and require the N-5.T1 independent review to cover all of T1 FINAL, not only the three changed clauses | **(b)** — SS direction: accepted; the N-5.T1 review covers all of T1 |
+| R72 | The seal record `ELEVATION_CHAIN_SEAL_2026-09-25_v1_0.md` lines 40–43 repeat the lost review's path and counts | edit them, or annotate them | Annotate (a seal record is history); same commit as the T1 redline |
+| R76 | Does the glossary line also name the fifth field, `independent_review:` (T3 :32, T4 :31)? | four names (as the register), five names | Four names now; add the fifth in round two if SS wants it |
 
 ## R01 — P24 printed before P23 in the §2 needs table
 
@@ -113,7 +131,7 @@ Chosen here: reorder, because the identifiers are cited by number everywhere and
 > "FINAL (2026-09-24): review REVIEW_PRODUCT_DEFINITION_v3_1.md returned ACCEPT with 11 MAJOR and 14 MINOR findings; all folded.
 > — T1 :34
 
-**Evidence that the file cannot be restored.** `git ls-tree -r --name-only origin/campaign/nikasha-test | grep -i REVIEW_PRODUCT_DEFINITION` and the same on `origin/main` return nothing (checked 2026-10-02). The directory that should hold it contains only:
+**Evidence that the file cannot be restored.** `git ls-tree -r --name-only origin/campaign/nikasha-test | grep -i REVIEW_PRODUCT_DEFINITION` and the same on `origin/main` return nothing (checked 2026-10-02), and a path search over every ref in the repository (`git log --all -- '*REVIEW_PRODUCT_DEFINITION*'`, 3,906 refs) finds no commit that ever touched such a file: it exists on no branch. The directory that should hold it contains only:
 
 ~~~~
 00_ARCHITECTURE/briefs/reviews/KIMI_K3_PACKET_LAYER_TEMPLATE_v1_0.md
@@ -168,10 +186,9 @@ The changelog entry at :34 is history and is left as written; a dated correction
 - `NIKASHA_CHANGE_REGISTER_v2_0.md` R72 closes with this row; `PHASE6_ANALYSIS.md` row 7 and `NIKASHA_TEST_CAMPAIGN_REPORT_v1_0.md` :250 describe the defect and need no edit.
 - No tool reads the key: `git grep review_record` over `platform/` and `00_ARCHITECTURE/control/` on `origin/campaign/nikasha-test` returns nothing.
 
-**Open questions.**
+**Open questions.** None open: the seal-basis question is settled by SS direction (below) and the remaining item is in "Decisions required at J1".
 
-1. **Seal basis (SS decides).** The T1 seal was signed under native ruling 9 ("a review happened", T1 :15 `signed_under`), and the seal record names this review as the thing it rests on. The review's existence is unverifiable. Options: (a) accept the changelog's own record of the review and apply the honest-null correction above (this draft); (b) additionally require that the N-5.T1 independent review cover the whole of T1 FINAL, not only the three changed clauses, so the seal acquires a review file that exists. (b) is recommended: it costs one review scope line and closes the doubt for good. Either way, R72 is not closed by pretending the file exists.
-2. Whether the seal record's lines 40–43 are edited or annotated (SS).
+**SS direction, to be confirmed at J1: accepted.** Option (b): the pointer is corrected as drafted above, and the N-5.T1 independent review covers all of T1 FINAL, so the seal acquires a review file that exists. The earlier file, `REVIEW_PRODUCT_DEFINITION_v3_1.md`, exists on no branch (path search above), so nothing is restored and no replacement is invented.
 
 ## R76 — "Review record" names four different artefact patterns across tiers
 
@@ -235,7 +252,7 @@ Frontmatter: the key `review_record:` becomes `document_reviews:` (the combined 
 
 ## Appendix A — Row-count reconciliation: the plan's "32" against the brief's "31" (applies to all three agendas)
 
-**Finding in one paragraph.** The three agendas together hold **31** rows (T1 3, T2 11, T3 12 plus 5 closing rows). The Track E brief's 31 is right and the plan's "32" is the stale figure. "32" first appears in the D2 ruling document's own summary ("32 named rows"), which was never updated and which equals the number of distinct register ids the ruling's three tier bullets *name* — the 31 agenda rows **plus R109**, whose registry-column half the ruling explicitly says is "P9 data work, not a reopen". The row the plan's 32 would include that the brief's list lacks is therefore **R109**, and it is correctly absent. (R85 is a second candidate after the 2026-09-27 revision: it is still named in the ruling, as withdrawn from T2, and is CLOSED in the register.) Strategic Suvarṇa should correct the plan (§3.6 line :205, E2 line :353, plan model E2.1 title) and the D2 summary lines, not the brief.
+**Finding in one paragraph.** The three agendas together hold **31** rows (T1 3, T2 11, T3 12 plus 5 closing rows). The Track E brief's 31 is right and the plan's "32" is the stale figure. "32" first appears in the D2 ruling document's own summary ("32 named rows"), which was never updated and which equals the number of distinct register ids the ruling's three tier bullets *name* — the 31 agenda rows **plus R109**, whose registry-column half the ruling explicitly says is "P9 data work, not a reopen". The row the plan's 32 would include that the brief's list lacks is therefore **R109**, and it is correctly absent. (R85 is a second candidate after the 2026-09-27 revision: it is still named in the ruling, as withdrawn from T2, and is CLOSED in the register.) Strategic Suvarṇa has since corrected the plan model (E2.1 now reads 31, R109 named as data work); the plan documents (§3.6 line :205, E2 line :353) and the D2 summary lines still carry 32 and should be corrected, not the brief.
 
 **Per-tier rows, as drafted in these three files.**
 
@@ -256,8 +273,8 @@ Frontmatter: the key `review_record:` becomes `document_reviews:` (the combined 
 > reconciling 31 listed vs 32 ruled
 > — PLAN v1.5 :353
 
-> {"id": "E2.1", "track": "E", "lane": "E2 Clause fixes", "title": "32 clause fixes drafted per document, held for the combined reopen", "depends_on": ["N-1"], "done_by": "event"},
-> — plan_model.json :148 (as read 2026-10-02)
+> {"id": "E2.1", "track": "E", "lane": "E2 Clause fixes", "title": "31 clause fixes drafted per document (R109 is data work, not a reopen), held for the combined reopen", "depends_on": ["N-1"], "done_by": "event"},
+> — plan_model.json :148 (as read 2026-10-02: corrected to 31 after this packet's reconciliation, commit d97e6bb65 "E2.1 is 31 clause fixes, not 32 (R109 is data work)"; it read "32 clause fixes drafted per document" before)
 
 > **What changed from v1.0:** agenda 12 → 32 named rows plus three explicit deferrals; seal order
 > reversed to parent-before-child; cross-surface rows split; alternative remedies chosen on the agenda.
@@ -297,7 +314,7 @@ Neither version of the ruling changed the agenda count: v2.1 swapped R85 out and
 
 Cross-check against the register: rows whose *state* cell contains the word "reopen" number **33** — the 30 agenda rows other than R221 (R221's state says "on the D2 T3 agenda") plus the three deferred rows R131, R210, R214. Adding R221 gives 31 agenda rows.
 
-**Which document is wrong.** The plan (v1.0 through v1.5), `plan_model.json` E2.1 and the Nikaṣa start prompt inherited "32" from the D2 summary line; the Track E brief counted the rows it lists. The brief is right. Note also that the D2 ruling's own summary lines (D2 :156 and :427) are stale for the same reason and should be corrected when the register is next folded.
+**Which document is wrong.** The plan (v1.0 through v1.5), `plan_model.json` E2.1 (since corrected) and the Nikaṣa start prompt inherited "32" from the D2 summary line; the Track E brief counted the rows it lists. The brief is right. Note also that the D2 ruling's own summary lines (D2 :156 and :427) are stale for the same reason and should be corrected when the register is next folded.
 
 **A related gap the reconciliation exposed (SS to decide, not drafted here).** D2 closes the per-layer confirmation rows of exactly two clause families with their parent (R94, R140, R185 with R71; R192, R208 with R120). The register carries many more per-layer "confirmed on L1–L5" rows whose dependency column points at an agenda row but whose state is a bare OPEN and which D2 does not mention: with R09 — R92, R112, R144, R159, R174, R190, R204; with R06 — R95, R103, R136, R205; with R88 — R107, R138, R150, R165, R191, R199; with R89 — R108, R139, R151, R166, R184, R200; with R90 — R98, R110, R142, R187, R202; with R91 — R111, R143, R189, R203; with R93 — R115, R116, R147, R155, R170, R191, R207. (Found by script: register rows whose dependency column names an agenda row and which are not themselves on an agenda or in a tier-4/inspector section; the list is indicative, not audited, and R209 depends on several of these parents.) They are not agenda rows and do not change the 31, but J1's `register_freeze_clean` watches only R24, R34, R36, R39, R71 and R244, so they will not block a freeze; whether they close with their parent or stay for round two is the strategist's call.
 

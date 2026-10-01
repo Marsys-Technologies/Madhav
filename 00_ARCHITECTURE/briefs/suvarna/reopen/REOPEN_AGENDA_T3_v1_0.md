@@ -1,7 +1,7 @@
 ---
 artifact: SUVARNA_REOPEN_AGENDA_T3
 canonical_id: SUVARNA_REOPEN_AGENDA_T3
-version: "1.1"
+version: "1.2"
 status: DRAFT-HELD-FOR-J1
 produced_on: 2026-10-02
 produced_in: "Exec Suvarna Engine, Track E lane E2 (queue id E2.1-design-003); drafted by a Sonnet drafter"
@@ -20,6 +20,7 @@ sources:
   - "NIKASHA_CHANGE_REGISTER_v2_0.md (v2.8), the seventeen rows"
   - "the tier-3 document, the tier-1/2/4 documents and the L0 instance at origin/campaign/nikasha-test @ 2a78ec64d"
 changelog:
+  - "1.2 (2026-10-02): SS rulings folded, each marked SS direction to be confirmed at J1: new section Rows that change what counts as PASS (grid movement computed where the saved censuses allow, else not computable today) and one Decisions required at J1 table; R65 Option A is primary, Option B the fallback; R71 is an annotation and no verdict value is added (open question removed, annotation wording drafted); R221 consequential T3 :467 edit flagged for explicit authorisation."
   - "1.1 (2026-10-02): independent-review changes. R65 re-tagged VERDICT-CHANGING with Option B and the dependency on unsealed T4; R93 rule 2 quotes the register example; R221 open question 3 rewritten (catalog_provenance.py is on main, identical blob); R120 role placed in 3.2/3.3; R74 wording labelled; D3 citations relabelled; tracker line cited."
   - "1.0 (2026-10-02): first issue. Twelve agenda rows plus five rows that close with them; R131, R210, R214 listed as deferred, not rows. Drafted replacement text; no tier document edited."
 ---
@@ -65,6 +66,50 @@ Line numbers are those of the blobs at `origin/campaign/nikasha-test` @ `2a78ec6
 | R192, R208 | T4 §0 `role` cites "layer §4.4" | Close with R120 | structural |
 
 Deferred to a second reopen round, **not agenda rows**: R131, R210, R214 (listed at the end). In the D2 "proceed now" list and already closed on their non-sealed halves: R65 (tracker comment, CLOSED 2026-09-28), R68 (T4 :278, CLOSED 2026-09-28).
+
+## Rows that change what counts as PASS
+
+*SS direction, to be confirmed at J1.* This section holds the VERDICT-CHANGING rows of Tier 3, one block per row: the wording before and after, and which cells of the 9 × 127 grid would move. 
+
+**How the movement was computed (and what the numbers are).** The grid is the nine gates (Ldgr, Idem, Earn, Null, Vocab, Carr, Narr, Dens, Build) by the 127 active assets: **1,143 cells**. On 2026-10-02 the worktree's `platform/scripts/governance/asset_census.py` rollup (`build_rollup_output`, with `load_asset_declarations()`) was run offline over the saved Track A censuses `/Users/Dev/suvarna-evidence/census/census_L0.json` … `census_L5.json` (inspector `2a78ec64d`, chart `482012f1-710e-4a25-994a-93821f5871aa`); no database, nothing written. Caution: the saved measurements predate the E6 detectors, so most gates read NO_DETECTOR today. Baseline cells by verdict: Ldgr NO_DETECTOR 57 · PASS 69 · PARTIAL 1; Idem PASS 110 · PARTIAL 11 · NO_DETECTOR 5 · FAIL 1; Earn, Null, Carr, Narr NO_DETECTOR 127 each; Vocab NO_DETECTOR 126 · FAIL 1; Dens FAIL 59 · PASS 40 · NO_DETECTOR 28; Build FAIL 53 · PARTIAL 50 · NO_DETECTOR 18 · ERRORED 4 · PASS 2. A number below is computed from those files; where a movement needs a detector or a declaration that does not exist yet, the row says "not computable today: needs …" and gives no number.
+
+**R10 — shared tables in the layer instance (T3 §1.1).**
+- *Before* (:169–172): inventory lists each asset's target table(s), row counts and so on; no statement on shared tables.
+- *After:* `**Shared tables.** Where one table has several producers … an asset's row count is the rows it writes, never the table's total, and a table is not assigned to one asset by default (Data plane §13.3 item 2).`
+- *Cells:* the same cells as T2 R06, **not additive**: Build gate, `Build.count_integrity`, upper bound **25 of 127** (all PASS on that check today; five tables named in more than one asset's `count_sql`: `brahma_class_priors` 2 assets, `brahma_ontology` 4, `classical_text_chunks` 2, `chart_facts` 10, `bodha_msr_signals` 7). Actual movement: **not computable today: needs** a detector comparing each producer's `count_sql` scope with the rows it writes (R22 universes or R109 registry columns).
+
+**R65 — Build check count (T3 §5.2 Build row :539; changelog :37).** (*SS direction, to be confirmed at J1:* Option A primary.)
+- *Before:* `six static checks (registered · contract · dispatchable target · DAG resolvable · count/integrity · completion honesty) plus a runtime state`.
+- *After, Option A (primary):* `the nine read-only checks of the tier-4 template §4.2 (… · exercised · history · dependency liveness) plus a runtime state`.
+- *Cells moved against today's rollup under Option A:* **0 of 127 Build cells.** `CRITERION_REGISTRY` already has nine Build criteria (`Build.registered`, `contract`, `target`, `dag`, `count_integrity`, `completion`, `exercised`, `history`, `dep_liveness`) and the Build cell already rolls up all nine; Option A makes the text say what the rollup does. Build today: FAIL 53 · PARTIAL 50 · NO_DETECTOR 18 · ERRORED 4 · PASS 2.
+- *Fallback, Option B (six-plus-three), if T4 does not seal in the same pass:* if the Build gate were computed on the six named checks only, **64 of 127 Build cells would differ from today's rollup, every one upward**: PARTIAL→PASS 50, NO_DETECTOR→PASS 9, FAIL→PASS 2, FAIL→PARTIAL 2, NO_DETECTOR→PARTIAL 1 (Build PASS 2 → 63; by layer L0 19, L1 14, L2 16, L3 7, L4 3, L5 5). That is the size of the divergence between T3's text and the census if B were sealed and the census left computing nine; it is why B keeps T4 §4.2's three checks named and defined outside T3.
+
+**R71 — [TRANSFERS] contradiction (T3 §5.4 test 4 :628; §2.2 `measured_by` :278).** (*SS direction, to be confirmed at J1:* an annotation, no verdict value added.)
+- *Before:* `4. **Presentation parity** holds for the layer's served surface.` and `measured_by: presentation-parity test (Data plane §12.2): both renderings from the consumed reading package, no recomputation, …`.
+- *After:* D3's two texts, verbatim (see the R71 section): test 4 becomes `Presentation fields carried` (a producer-field contract test run in the layer) with end-to-end parity and delivery sentinel [TRANSFERS], recorded as an annotation where the owner or its test is not built.
+- *Cells moved in the nine-gate grid:* **0.** Test 4 is an acceptance test of a layer instance, not one of the 1,143 asset cells; the `Dens` gate and the closed verdict set are untouched. Instance effect: the L0 instance records test 4 as `UNMET` (L0 :658); how many of the six instances change is **not computable today: needs** the L1–L5 instances, which do not exist.
+
+**R221 — §0.1 re-scoped (T3 §0.1 :99–116).**
+- *Before:* `List the P-needs and V-journeys for which this layer is **necessary** …`, `measured_by: none — definitional`.
+- *After:* the catalog units the layer's assets produce, and the layer's place in the necessity closure (`catalog_provenance.py --closure`), derived, never judged (see the R221 section).
+- *Cells moved in the nine-gate grid:* **0.** §0.1 is the origin of the alignment test and of the necessity-based dispositions, not an asset gate. The register's own closure measurement (R85) puts 111 of 127 active assets in the closure and 16 outside; that is a necessity figure, not a cell movement. Which dispositions or struck sections change: **not computable today: needs** the re-rendered §0.1 of each layer instance (L1–L5 not written) and the :467 consequential edit authorised (below).
+
+**R94, R140, R185 — the R71 clauses seen from L1, L3, L4.** Inherited from R71: grid cells moved **0**; instance effect as R71.
+
+## Decisions required at J1
+
+*SS direction, to be confirmed at J1.* One table. R221 stays open exactly as drafted; the other rows are the remaining open questions of this agenda.
+
+| Row | Decision | Options | Recommendation |
+|---|---|---|---|
+| R221 | **Explicit authorisation of the consequential edit at T3 :467** (§4.4 bullet 1, "the P-needs and V-journeys the asset serves (from 0.1, narrowed)"), and of the other echoes listed in the R221 section (T3 :123, :149, :182, :279, :306, :335, :461, :679; T4 :66, :90) | authorise the consequential edits with R221; hold R221 to round two (D2 names §0.1 only, so without authorisation :467 is out of scope) | Authorise: without the :467 edit the asset-brief derivation loses its first row. Needs SS's explicit word at J1; the draft does not apply it |
+| R221 | Closure figures in the template | cite the instrument (`catalog_provenance.py --closure`, already on `main`) at a named revision; copy figures | Cite the instrument and revision, never the figures |
+| R93 | Evidence → disposition rules 1–5 | confirm; supply rules for P, Q, C, H; defer to round two | Confirm 1–4 as written (the register's examples); defer P/Q/C/H rules; rule order U before E confirmed |
+| R120 | Criterion for assigning `role` | instance assigns with a reason (drafted); SS supplies a criterion | As drafted |
+| R65 | A or B | A primary, B fallback | **A** (*SS direction*); B only if T4 §4.2 does not seal in the same pass |
+| R08 | May Part 6 carry DOCUMENT rows? | yes (L0 precedent); no (LAYER and SEALED PARENT only) | No: a document-level finding is fixed, not recorded (§5.4) |
+| R09 | Is a pure-carrier asset `N/A` or `NO_DETECTOR` for Carr? | `NO_DETECTOR` (drafted; T4 says Carr applies always); `N/A` (T4 change) | `NO_DETECTOR` |
+| R71 | Vacuous test 4 for a layer that owns no §3.4 field | `N/A`; pass | `N/A` with the reason, as T4 §4 requires for any N/A |
 
 ## R08 — §5.2 cites a "§7" the template never defines; §2.5 is ordered after §2.7
 
@@ -235,7 +280,7 @@ One check per asset: the one that fits what the asset actually does (§5.2). An 
 
 ## R65 — Build check count: T3 says six static checks, T4 lists nine
 
-**Risk class: VERDICT-CHANGING.** Option A makes the sealed Build gate itself include the run-record checks 7–9 of T4 §4.2; check 8 (`history`) FAILs when the latest run errored or aborted, so an asset can lose a Build PASS because of T3's wording. The nine checks are defined in T4 §4.2, which is still DRAFT_PENDING_REVIEW.
+**Risk class: VERDICT-CHANGING.** Option A fixes, in the sealed text, that the Build gate includes the run-record checks 7–9 of T4 §4.2; check 8 (`history`) FAILs when the latest run errored or aborted. The census rollup already counts all nine Build criteria, so against today's rollup no cell moves (see "Rows that change what counts as PASS"); the row still decides what Build PASS means in the sealed template. *SS direction, to be confirmed at J1:* Option A is primary, because the combined reopen re-seals T3 and T4 together.
 **Register row.**
 
 > Build check-count disagreement: T3 §5.2/changelog and the tracker GATES comment say "six static checks"; T4 §4.2 lists nine. Align on nine, or explicitly record "T3 names the six static checks; T4 adds three run-record checks"
@@ -267,7 +312,7 @@ T4's status, which matters for Option A:
 > R65's T3 half (§5.2/changelog check count — "align on nine" or "record the six-plus-three split", chosen on the agenda)
 > — D2 :129–130
 
-**Two options; SS chooses.** **Option A, align on nine** (drafted below): the tier that defines the checks (T4 §4.2: "All nine checks run read-only, and all nine can return false"), T4's gate table (:232) and the tracker already say nine; the tracker's Build comment (`00_ARCHITECTURE/control/asset_elevation_tracker.py` :73 on `campaign/nikasha-test`) reads "nine static checks, all read-only (R65: aligned on nine per T4 §4.2; D2 reopen carries the T3 §5.2/changelog half)". Cost: sealed T3 then depends on an unsealed document (T4 is DRAFT_PENDING_REVIEW), and the sealed Build gate includes check 8, which FAILs on an errored latest run. Do not seal T3 under Option A before T4 §4.2 is accepted. **Option B, record the six-plus-three split** (the register's alternative): T3 keeps naming the six static checks and says that tier-4 §4.2 adds three run-record checks (exercised, history, dependency liveness) that it, not T3, defines; the sealed gate text does not change what Build PASS requires, but T3 and T4 then count differently by design and say so. The `ctx.dry_run` runtime state is separate in T4 (:286–290) under both options.
+**Two options. Option A, align on nine, is PRIMARY (SS direction, to be confirmed at J1: the combined reopen re-seals T3 and T4 together). Option B is the fallback if T4 does not seal in the same pass.** **Option A** (drafted below): the tier that defines the checks (T4 §4.2: "All nine checks run read-only, and all nine can return false"), T4's gate table (:232) and the tracker already say nine; the tracker's Build comment (`00_ARCHITECTURE/control/asset_elevation_tracker.py` :73 on `campaign/nikasha-test`) reads "nine static checks, all read-only (R65: aligned on nine per T4 §4.2; D2 reopen carries the T3 §5.2/changelog half)". Cost: sealed T3 depends on T4 §4.2, which is DRAFT_PENDING_REVIEW today, and the sealed Build gate includes check 8, which FAILs on an errored latest run; under SS's direction both seal in one pass, so T3 does not depend on an unsealed document at J1. Do not seal T3 under Option A unless T4 §4.2 is accepted in the same pass. **Option B, record the six-plus-three split** (the register's alternative, fully drafted below as the fallback): T3 keeps naming the six static checks and says that tier-4 §4.2 adds three run-record checks (exercised, history, dependency liveness) that it, not T3, defines; the sealed gate text does not change what Build PASS requires, but T3 and T4 then count differently by design and say so. The `ctx.dry_run` runtime state is separate in T4 (:286–290) under both options.
 
 **Drafted replacement text.**
 Option A, (a) §5.2 Build row (:539), inside the cell:
@@ -277,14 +322,14 @@ old: six static checks (registered · contract · dispatchable target · DAG res
 new: the nine read-only checks of the tier-4 template §4.2 (registered · contract · dispatchable target · DAG resolvable · count/integrity · completion honesty · exercised · history · dependency liveness) plus a runtime state
 ~~~~
 
-Option B, §5.2 Build row (:539), inside the cell:
+Option B (fallback), §5.2 Build row (:539), inside the cell:
 
 ~~~~
 old: six static checks (registered · contract · dispatchable target · DAG resolvable · count/integrity · completion honesty) plus a runtime state
 new: six read-only static checks (registered · contract · dispatchable target · DAG resolvable · count/integrity · completion honesty), which this template names, plus three run-record checks (exercised · history · dependency liveness) that the tier-4 template §4.2 adds and defines, plus a runtime state
 ~~~~
 
-(b) Under Option A, changelog :37 is history; annotate, do not rewrite (T2 precedent, T2 :45):
+(b) Under Option A (primary), changelog :37 is history; annotate, do not rewrite (T2 precedent, T2 :45):
 
 ~~~~
 old: six read-only static checks plus a runtime state that `ctx.dry_run` establishes without any production write
@@ -293,7 +338,7 @@ new: six read-only static checks [CORRECTED on the T3 reopen: nine read-only che
 
 **Cross-tier re-render hazards.** T4 :34 (changelog) and T4 :245 (`measured_by: six static checks …`) still say six: that is register row R252 (OPEN, not sealed, not on this agenda); fix it in the same pass or T3 and T4 will disagree again. T3 :518–521 and T4 :13, :232 say "nine gates"/"nine checks": consistent. Grep "six static" across tiers, instances and the tracker.
 
-**Open questions.** 1. A or B (SS). 2. Under A, the seal order: T4 §4.2 accepted first (J1 row 8 accepts Tier 4 at J1.4). 3. The sequencing with R252.
+**Open questions.** 1. *SS direction, to be confirmed at J1:* A primary, B fallback. 2. The trigger for the fallback: T4 §4.2 not accepted in the same pass (J1 row 8 accepts Tier 4). 3. The sequencing with R252.
 
 ## R67 — §5.4 test 5 says "eight-row map"; the map has nine rows
 
@@ -453,7 +498,20 @@ new (:520): claim with a detector that could return false; a gate without one is
 measured_by: producer-field carriage test — each §3.4 field this layer owns is present in its produced contracts; the presentation-parity test itself (Data plane §12.2) is [TRANSFERS] and is linked when its owner runs it, never run as this layer's own acceptance
 ~~~~
 
-(c) The same tag at the other inheritance points: T2 §13.3 items 1 and 6 and the DP rows (R119, T2 agenda); T4 §1.2 (D2 "proceed now").
+(c) **Annotation wording and its status** (*SS direction, to be confirmed at J1: an annotation, not a verdict value; no verdict value is added*). In the layer instance, on test 4 and on the asset brief's §2.2 and `Dens` rows, the record reads:
+
+~~~~
+test 4 — producer-field carriage: PASS | FAIL | PARTIAL | NO_DETECTOR
+annotation (not a verdict): [TRANSFERS]-pending — <obligation>; owner: <plane>; depends on: <artefact>
+~~~~
+
+and one sentence is added to §5.3 after the closed-set line (:611): 
+~~~~
+A `[TRANSFERS]-pending` record (§5.4 test 4) is an annotation written beside a verdict, never a verdict: the set above is unchanged.
+~~~~
+The annotation is free text. It is not written to `asset_certs.jsonl`, not read by the tracker's `VERDICTS`, not emitted by the census, and T3 §5.3's closed set (`PASS | FAIL | PARTIAL | NO_DETECTOR | N/A`) is untouched.
+
+(d) The same tag at the other inheritance points: T2 §13.3 items 1 and 6 and the DP rows (R119, T2 agenda); T4 §1.2 (D2 "proceed now").
 
 **R94, R140 and R185 close with this row** (D3: "R94, R119, R140 and R185 close with R71"); each has its own section below.
 
@@ -461,12 +519,11 @@ measured_by: producer-field carriage test — each §3.4 field this layer owns i
 - T2 (R119, R89): the "owns" in test 4 reads T2 §3.4's new "Carried by layer" column; the "producer-field carriage test" is defined in T2 only if R119 (d) is kept. Seal T2 first (D2 rule 3).
 - T3 §2.2's body (:282–286) and the gate map's `Dens` row (:538, :581) do not mention parity; no change.
 - Instances: L0 :329 (`measured_by: presentation-parity test … NOT RUN`), :341, :465, :525, :551, :658 ("UNMET"), :681 (C-6) all record parity as a layer test; they re-render to a producer-field result plus `[TRANSFERS]-pending`.
-- The ledger/tracker: no verdict value is added (see open question 1).
+- The ledger/tracker: no verdict value is added (SS direction, to be confirmed at J1).
 
 **Open questions.**
-1. **Is `[TRANSFERS]-pending` an annotation or a verdict?** D3 says the instance "records" it and that it is "no pass, and no block". T3 §5.3 closes the verdict set at `PASS | FAIL | PARTIAL | NO_DETECTOR | N/A` "these spellings exactly", and the tracker, census and `asset_certs.jsonl` `_schema` share it. This agenda assumes an annotation on test 4 and on the asset brief's §2.2/`Dens` rows. If SS wants it as a verdict value, five surfaces change and R71 is no longer a wording fix.
-2. D3's test-4 text says "run here" for a contract test; where no §3.4 field is owned by the layer (a pure reference layer) the test is vacuous. State whether that is `N/A` or a pass (not drafted).
-3. Whether "product acceptance" (D3: "This does not discharge product acceptance") needs a pointer in T1 §14 is a T1 question outside this agenda.
+1. D3's test-4 text says "run here" for a contract test; where no §3.4 field is owned by the layer (a pure reference layer) the test is vacuous. State whether that is `N/A` or a pass (not drafted).
+2. Whether "product acceptance" (D3: "This does not discharge product acceptance") needs a pointer in T1 §14 is a T1 question outside this agenda.
 
 ## R74 — "Ten obligations": T3 §5.1 lists ten with no reason for omitting Domain correctness
 
@@ -716,7 +773,7 @@ An asset outside the closure is first a catalog-provenance finding; only once ev
 - Instances: the L0 instance's §0.1 (L0 :28) and every L1–L5 instance.
 
 **Open questions.**
-1. **The echo set decides the size of this row.** :467 (4.4 bullet 1) needs a consequential edit or the asset-brief derivation loses its first row; the draft does not rewrite it because D2 names §0.1 only. SS to widen or accept the consequence.
+1. **The echo set decides the size of this row, and the :467 edit needs SS's explicit authorisation at J1** (it is outside D2's literal wording, which names §0.1 only; see "Decisions required at J1"). :467 (4.4 bullet 1) needs a consequential edit or the asset-brief derivation loses its first row; the draft does not rewrite it because D2 names §0.1 only. SS to widen or accept the consequence.
 2. R218 and R85 closed on a snapshot (17/24 P-needs PASS; 111 of 127 assets in the closure, per R85's closure note); the template cites the instrument, not the figures.
 3. The instrument is already on `main`: `platform/scripts/governance/catalog_provenance.py` has the same git blob (`8ef86fba5d96`) on `origin/main` and on `origin/campaign/nikasha-test` (checked 2026-10-02 with `git rev-parse <ref>:<path>`), so the re-seal precondition on the script is met. What differs is the data: `CLOSURE_REPORT.md` and `producer_provenance.derived.json` are on the nikasha-test branch only, and `main` carries `capability_knowledge.snapshot.json`; the closure figures must be re-run at a named revision, which the draft's `measured_by` already requires.
 
