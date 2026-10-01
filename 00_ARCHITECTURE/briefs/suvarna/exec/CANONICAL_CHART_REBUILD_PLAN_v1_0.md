@@ -2086,4 +2086,20 @@ bg_vidhi_floors|fresh|[]
 
 **What v1.2 could not verify (consolidated).** (1) Whether the pipeline job writes receipts and freshness through a role or path other than `data_plane_builder`; the runner's handling of the permission-denied exceptions; (2) the content of the current pipeline-job image and which deploy built it (the 1211-carrying run skipped that job); (3) who applied the grant-plan grants, the L2 FK drop and the `chart_divisionals` access fix at about 17:48-17:55Z and earlier, and that none of it was a migration; (4) P0b.3 checks 1, 3 (owner side), 4-7 (owner-path count, builder probe, `chart_snapshot` canary, ownership gate); (5) whether the `ph_*`/`mi_bhavisya` writers need UPDATE on tables where UPDATE is false, the N-46 guard's specification, and the five-column `life_events` grant; (6) target-table grants for `ka_moorti_nirnaya` and `ka_vedha_gochara` (only `gochara_resonance_map` was re-checked); (7) whether the job container can run the ephemeris probe (pinned Swiss Ephemeris files); (8) the run durations of the Gochara trio; (9) `ref_transit_rules_get` and any MCP/app reader (no production MCP call was made); (10) every code-derived outcome above (S0b.4, P0.6 item 1, S0L `bg_panchanga` flips, the probe-path spec gap) was derived from code and catalog state, none exercised; (11) which commit the held 1216 branch sits on (not on origin); (12) E1-E12 figures not named in the v1.2 box remain as of their original read times.
 
+### E14. v1.2.1 re-read (2026-10-01 18:09Z, `suvarna_reader`, SELECT and catalog reads only; `gh` read-only)
+
+```
+migrations applied since 17:00Z: 1214 (17:16:06.208Z), 1211 (17:35:43.052Z); no 1212, 1213, 1215, 1216, 1217
+active runs, any chart: 0
+asset_freshness / bg_transit_moorti, data_plane_builder INSERT, UPDATE: f f / f f; owner of both: amjis_app
+PR #2826 (1212, 1213): MERGED 2026-10-01T18:02:46Z; origin/main head 57bcef8c9
+kala_moorti_nirnaya (chart 482012f1): 74 rows, md5 acb77e4a14e29b374eb498a7d089b34c
+kala_vedha_gochara  (chart 482012f1): 171 rows, md5 7e8c5a981f698218327bc96d7d80c334
+kala_gochara_windows_v2 generation 2.0: 87; kala_gochara_windows generation 4.0: 0
+registry target tables: ka_moorti_nirnaya -> kala_moorti_nirnaya; ka_vedha_gochara -> kala_vedha_gochara; ka_gochara -> kala_gochara_windows (count_sql, generation 4.0; writer table is kala_gochara_windows_v2); ka_gochara_resonance -> gochara_resonance_map
+data_plane_builder on the 18 ka_gochara_* tables (1153-1157) and kala_gochara_contacts / _convention / _coverage / _publication / _cutover_step05_snapshot / _windows__ssv_20260728c: s=f i=f u=f d=f
+data_plane_builder on kala_gochara_authority, kala_gochara_windows, kala_gochara_windows_v2, kala_gochara_v2_build_state: s=t i=t u=t d=t; kala_gochara_windows_archive_20260805: s=t only
+```
+The content md5 uses the F4 form of section 3.2 (`to_jsonb(row)` minus `id`, `build_id`, `computed_at`, `created_at`, `updated_at`, ordered by its own text). `dispatch_frozen_rebuild.py` was read (arguments, manifest construction, `create_run` ROLLBACK without `--commit`, `--confirm`), not run. The rulings of v1.2.1 (acceptance, Grant v1.4 ownership and number, Pravāha's confirmation about run 1865991c, S0c conditions, S0L scope, NL-1, S0b.7a) are recorded as given by SS/Pravāha and were not independently verifiable in the DB.
+
 *End of document.*
