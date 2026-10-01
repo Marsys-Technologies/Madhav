@@ -2347,6 +2347,11 @@ def test_bo_bimba_node_citation_name_depends_on_a_fact_datum_so_the_column_is_de
            "def run(cfg):\n    label = nm(cfg, 'z')\n    fixed = K[0]\n    r = {'citation_human': f'{label} {fixed}'}\n")
     st = ast.parse(syn)
     assert nw.interpolation_datum_flags(st) == {"label": True, "fixed": False}
+    # a datum that arrives through a parameter the caller binds (a helper called with a fact read), and tuple-unpack bindings
+    syn2 = ("def show(label, other):\n    return {'citation_human': f'x {label} {other}'}\n"
+            "def run(cfg):\n    show(cfg['fact_value_text'], 'k')\n    a, b = cfg['configuration_jsonb'], 1\n"
+            "    return {'citation_human': f'{a} {b}'}\n")
+    assert nw.interpolation_datum_flags(ast.parse(syn2)) == {"label": True, "other": False, "a": True, "b": True}
     assert nw.reads_datum(st, ast.parse("K[0]", mode="eval").body) is False
     assert nw.reads_datum(st, ast.parse("cfg['configuration_jsonb']", mode="eval").body) is True
 
