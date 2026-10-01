@@ -171,6 +171,12 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=1),
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=2),
     "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module; PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1)
+    "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A candidate, cause no-prose, undecided)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),  # E6 (c): the declaration and the table's columns agree
+    "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5); never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty; a non-NULL DEFAULT on a declared prose column; never PASS alone", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty; blank or placeholder rows standing in for NULL; never PASS alone", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Carr.detector":         dict(gate="Carr",  check="detector",         applicability="always (the generic 'some carriage detector exists' reading)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # ── registered, hand-observed only (detector NONE — D4 finding #5's honest, visible form) ──
@@ -249,6 +255,8 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.exercised": ("never-run-no-writer", "never-executed-no-writer"),
     "Build.history": ("never-run",),
     "Build.dep_liveness": ("no-declared-dependencies",),
+    "Narr.agree": ("no-prose",), "Narr.checkable": ("no-prose",), "Narr.fidelity_test": ("no-prose",), "Narr.lint": ("no-prose",),
+    "Null.schema_default": ("no-prose-declared",), "Null.blank_rows": ("no-prose-declared",),
     "Earn.build_record": ("never-attempted", "healthy-non-execution", "no-registered-writer",
                          "before-completion-write"),
 }
@@ -287,7 +295,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 4     # 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 5     # 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -392,7 +400,17 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
         if v == PASS and e["detector"] == "NONE":
             return dict(criterion=crit, v=NO_DET, state="MEASURED",
                         reason="detector NONE never reaches PASS")
-        return dict(criterion=crit, v=v, state="MEASURED", reason="measured")
+        # E6 packet (c): the rollup does not trust a record's own verdict where the claim cannot be established
+        # (INCONCLUSIVE is a state: nothing was measured), and the two capped checks cannot read PASS (SS: Null "never
+        # PASS alone"; Narr.fidelity_test structural only)
+        infl = bool(meas.get("inconclusive"))
+        if infl and v in (PASS, PARTIAL):
+            return dict(criterion=crit, v=NO_DET, state="MEASURED", inconclusive=True,
+                        reason="INCONCLUSIVE record: nothing was established, so it cannot read PASS or PARTIAL")
+        if v == PASS and (crit.startswith("Null.") or crit == "Narr.fidelity_test"):
+            return dict(criterion=crit, v=PARTIAL, state="MEASURED",
+                        reason=f"{crit} is capped at PARTIAL (Null: never PASS alone; fidelity_test: structural only)")
+        return dict(criterion=crit, v=v, state="MEASURED", reason="measured", **(dict(inconclusive=True) if infl else {}))
     st = ap["state"]
     if st == "OUT_OF_LAYER":
         return None
@@ -844,6 +862,699 @@ def build_rollup_output(census_by_layer: dict, declarations: dict | None = None)
     return dict(rollup=dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(),
                             layers=layers),
                 rollup_excluded=excluded)
+
+
+# ─────────────────────────── E6 packet (c): the Null and Narr checks ───────────────────────────
+# Design: /Users/Dev/suvarna-evidence/E6.1/packet_c_design.md. Each check is a pure grader over inputs the census
+# reads (declarations, catalog, writer code, tests on disk); measure() calls `prose_checks`, so the saved-census
+# harness and the unit tests run exactly what measure() runs. INCONCLUSIVE is a measured STATE (`inconclusive: true`
+# on a NO_DETECTOR record), never a verdict and never a PASS. Null can never read PASS ("never PASS alone", Track E E6.1).
+PROSE_JSON_TYPES = ("json", "jsonb")
+_EMPTY_JSON_DEFAULT = re.compile(r"\s*'\s*(?:\{\s*\}|\[\s*\])\s*'\s*(?:::\s*jsonb?)?\s*", re.I)
+
+
+
+def _json_entry(entry: str) -> bool:
+    return parse_prose_field(entry)[1] is not None
+
+
+def grade_narr_agree_tables(entries, own) -> dict:
+    """Narr.agree over every table the asset owns (`own`: table -> (columns | None, types | None)): a declared prose
+    entry must resolve to a column of at least one owned table (a multi-table asset keeps its narration column in a
+    table other than the registry's target_table). FAIL: a column found in no owned table while every owned table's
+    columns are known, or a JSON-path entry whose column is typed non-JSON everywhere it is found. PASS: all resolve
+    (JSON types verified). PARTIAL: names resolve but a JSON-path column's type was not read. NO_DETECTOR: no owned
+    table, or a missing column could sit in a table whose columns are unknown (never 'zero columns')."""
+    if not own:
+        return dict(v=NO_DET, measured="NO_DETECTOR — no target table to read the declared prose columns against")
+    known = {t: set(c) for t, (c, _ty) in own.items() if isinstance(c, (list, tuple, set)) and c}
+    unknown = sorted(t for t in own if t not in known)
+    names = ", ".join(own)
+    parsed = [(e, *parse_prose_field(e)) for e in entries]
+    missing = [e for e, col, _ in parsed if not any(col in cs for cs in known.values())]
+    if missing:
+        if unknown:
+            return dict(v=NO_DET, measured=f"NO_DETECTOR — {', '.join(missing)} not found in the known columns of {names}, and "
+                                           f"the columns of {', '.join(unknown)} are unknown (never 'zero columns')")
+        return dict(v=FAIL, measured=f"declared prose column(s) not among the columns of {names}: {', '.join(missing)}")
+    wrong, unread = [], []
+    for e, col, path in parsed:
+        if path is None:
+            continue
+        kinds = [(own[t][1] or {}).get(col) for t in known if col in known[t]]
+        if any(k and k.lower() in PROSE_JSON_TYPES for k in kinds):
+            continue
+        if any(k is None for k in kinds):
+            unread.append(col)
+        else:
+            wrong.append(f"{col} ({', '.join(sorted(set(kinds)))})")
+    if wrong:
+        return dict(v=FAIL, measured=f"JSON-path entries on non-JSON column(s) of {names}: {', '.join(wrong)}")
+    if unread:
+        return dict(v=PARTIAL, measured=f"every declared column exists in {names}; the type of JSON-path column(s) "
+                                        f"{', '.join(sorted(set(unread)))} was not read")
+    return dict(v=PASS, measured=f"all {len(parsed)} declared prose entr{'y' if len(parsed) == 1 else 'ies'} resolve to "
+                                 f"column(s) of {names} (names, and JSON types for path entries; the writer binding is "
+                                 "the declaration tests' claim, not read here)")
+
+
+def grade_narr_agree(entries, table, columns, types) -> dict:
+    """Single-table form of grade_narr_agree_tables (table, its columns, its column types)."""
+    return grade_narr_agree_tables(entries, {table: (columns, types)} if table else {})
+
+
+def _holders(col, own):
+    """The owned tables whose KNOWN columns include `col`."""
+    return [t for t, v in own.items() if isinstance(v[0], (list, tuple, set)) and v[0] and col in v[0]]
+
+
+def grade_null_schema_default_tables(entries, own) -> dict:
+    """Null.schema_default over the asset's owned tables (`own`: table -> (columns, types, defaults)): each declared
+    entry is read against the default of the owned table(s) that HOLD its column (a same-named column elsewhere is not
+    read). FAIL names a non-NULL default (an empty JSON container on a path-only column is structure, not a stand-in).
+    PARTIAL (never PASS) when none; NO_DETECTOR when an entry's column is held by no owned table or its table's
+    defaults were not read."""
+    parsed = [parse_prose_field(e) for e in entries]
+    hit, unread = [], []
+    for col in sorted({c for c, _ in parsed}):
+        held = _holders(col, own)
+        if not held:
+            unread.append(f"{col} (no owned table holds it)")
+            continue
+        for t in held:
+            dflts = own[t][2] if len(own[t]) > 2 else None
+            if not isinstance(dflts, dict):
+                unread.append(f"{col} (defaults of {t} not read)")
+                continue
+            d = dflts.get(col)
+            if d in (None, ""):
+                continue
+            if all(path is not None for c2, path in parsed if c2 == col) and _EMPTY_JSON_DEFAULT.fullmatch(d):
+                continue
+            hit.append(f"{t}.{col} DEFAULT {d}")
+    if hit:
+        return dict(v=FAIL, measured="declared prose column(s) carry a non-NULL schema default: " + "; ".join(hit))
+    if unread:
+        return dict(v=NO_DET, measured="NO_DETECTOR — the column default could not be read for: " + "; ".join(unread))
+    cols = sorted({c for c, _ in parsed})
+    return dict(v=PARTIAL, measured=f"no schema default on the declared prose column(s) {', '.join(cols)}; writer "
+                                    "literal fallbacks and constant columns are not measured here, so this is never PASS")
+
+
+def grade_null_schema_default(entries, columns, defaults) -> dict:
+    """Single-table form of grade_null_schema_default_tables (the target table's columns and defaults)."""
+    if not isinstance(columns, (list, tuple, set)) or not columns or not isinstance(defaults, dict):
+        return dict(v=NO_DET, measured="NO_DETECTOR — the target table's columns or column defaults were not read")
+    return grade_null_schema_default_tables(entries, {"(table)": (list(columns), None, defaults)})
+
+
+# Placeholder literals that stand in for NULL in prose (closed, lowercase; compared trimmed and lowercased).
+PROSE_PLACEHOLDERS = ("", "n/a", "na", "none", "null", "unknown", "tbd", "-", "--", "undefined", "nan")
+_IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_SCOPE_COUNT = re.compile(r"\s*select\s+count\(\s*(?:\*|1)\s*\)(?:\s+as\s+\w+)?\s+from\s+(?:public\.)?(\w+)"
+                          r"(\s+where\s+.+?)?\s*;?\s*", re.I | re.S)
+_SCOPE_BANNED = re.compile(r"\b(?:select|join|group|having|union|limit|order|intersect|except)\b|;", re.I)
+
+
+def _count_scope_tail(count_sql: str, table: str):
+    """The ` WHERE ...` tail (or "") of a registry count_sql that is a plain `SELECT count(*) FROM <table> [WHERE ...]`
+    over `table`; None for any other shape (join, group, union, subselect, constant, another table): the asset's
+    own rows cannot then be scoped from it."""
+    q = re.sub(r"--[^\n]*", "", count_sql or "")
+    m = _SCOPE_COUNT.fullmatch(q)
+    if not m or m.group(1).lower() != (table or "").lower():
+        return None
+    tail = (m.group(2) or "").strip()
+    if tail and _SCOPE_BANNED.search(tail):
+        return None
+    return " " + tail if tail else ""
+
+
+def _in_list() -> str:
+    return ", ".join("'" + p + "'" for p in PROSE_PLACEHOLDERS)
+
+
+# whitespace class for "blank": the POSIX space class (space, tab, LF, VT, FF, CR) plus NBSP, zero-width space,
+# U+2000-200A (en/em/thin... spaces) and the BOM; the same class text is valid in a PostgreSQL ARE and in Python re
+_WS = r"[\s\u00A0\u200B\u2000-\u200A\uFEFF]"
+_WS_TRIM_PY = f"^{_WS}+|{_WS}+$"
+_WS_TRIM = f"'{_WS_TRIM_PY}', '', 'g'"
+
+
+def prose_row_counts_sql(table: str, entries, where_tail: str, types=None) -> str:
+    """One read-only count query: per declared entry, `count(*) FILTER` rows whose text is checkable (non-NULL, a TEXT
+    value, not blank, not a placeholder) and rows holding a blank/placeholder string instead of NULL. A plain column
+    reads `"c"::text` (a json/jsonb column must hold a JSON string, an array column is never text: `types` = column ->
+    data_type); a JSON path `("c"::jsonb #>> '{k,k}')` only where the leaf is a JSON string; an array path (`[*]`) an
+    EXISTS over jsonb_path_query. Trimming covers space, tab, CR and LF. Identifiers come from parse_prose_field
+    (regex-validated): ValueError otherwise."""
+    if not _IDENT.fullmatch(table or "") or not entries:
+        raise ValueError("prose_row_counts_sql needs a table identifier and at least one declared entry")
+    items = []
+    for e in entries:
+        col, path = parse_prose_field(e)
+        if path and PROSE_WILDCARD in path:
+            jp = "$"
+            for seg in path:
+                jp += "[*]" if seg == PROSE_WILDCARD else f'."{seg}"'
+            src = (f"EXISTS (SELECT 1 FROM jsonb_path_query(\"{col}\"::jsonb, '{jp}') AS e(x) WHERE jsonb_typeof(x) = 'string' "
+                   f"AND lower(regexp_replace(x #>> '{{}}', {_WS_TRIM})) ")
+            checkable, blank = src + f"NOT IN ({_in_list()}))", src + f"IN ({_in_list()}))"
+        else:
+            ty = ((types or {}).get(col) or "").lower()
+            if path is not None:
+                keys = ",".join(path)
+                v = f"(\"{col}\"::jsonb #>> '{{{keys}}}')"
+                guard = f"jsonb_typeof(\"{col}\"::jsonb #> '{{{keys}}}') = 'string' AND "
+            elif ty in ("json", "jsonb"):
+                v, guard = f'("{col}"::jsonb #>> \'{{}}\')', f'jsonb_typeof("{col}"::jsonb) = \'string\' AND '
+            elif ty == "array" or ty.endswith("[]") or ty.startswith("_"):
+                v, guard = f'"{col}"::text', "FALSE AND "
+            else:
+                v, guard = f'"{col}"::text', ""
+            tr = f"lower(regexp_replace({v}, {_WS_TRIM}))"
+            checkable = ("(FALSE)" if guard == "FALSE AND " else f"{guard}{v} IS NOT NULL AND {tr} NOT IN ({_in_list()})")
+            blank = ("(FALSE)" if guard == "FALSE AND " else f"{guard}{v} IS NOT NULL AND {tr} IN ({_in_list()})")
+        items += [f"count(*) FILTER (WHERE {checkable})::text", f"count(*) FILTER (WHERE {blank})::text"]
+    return f"SELECT {', '.join(items)} FROM {table}{where_tail}"
+
+
+def prose_row_counts(table: str, entries, where_tail: str, types=None) -> dict:
+    """entry -> dict(checkable=int, blank=int), from one read-only query. A malformed answer raises Unknown."""
+    row = (psql(prose_row_counts_sql(table, entries, where_tail, types)) or [[]])[0]
+    if len(row) != 2 * len(entries):
+        raise Unknown(f"prose row-count query answered {len(row)} value(s) for {len(entries)} declared entr(ies)")
+    try:
+        return {e: dict(checkable=int(row[2 * i]), blank=int(row[2 * i + 1])) for i, e in enumerate(entries)}
+    except ValueError as exc:
+        raise Unknown(f"prose row-count query returned a non-integer: {exc}") from exc
+
+
+UPPER_BOUND = "whole-table upper bound"
+
+
+def grade_narr_checkable(entries, counts) -> dict:
+    """Narr.checkable (SS 2026-10-01): rows actually CHECKABLE per declared entry (`counts[entry]` = dict(checkable,
+    blank, scope), or None = unknown for that entry). PASS: every entry has >= 1 checkable row in a chart-scoped (or
+    chart-free) count; PARTIAL: some have none / are unknown, or the count is a whole-table upper bound (the scope is
+    named). Zero everywhere, unknown everywhere, or no row data: INCONCLUSIVE (NO_DETECTOR + inconclusive), never PASS."""
+    if not isinstance(counts, dict):
+        return dict(v=NO_DET, inconclusive=True, measured="INCONCLUSIVE: no row data was read for the declared prose "
+                                                          "entries (scope unsupported or not measured); no PASS is possible")
+    n = {e: (None if counts.get(e) is None else int(counts[e].get("checkable", 0))) for e in entries}
+    scopes = sorted({counts[e]["scope"] for e in entries if counts.get(e) and counts[e].get("scope")})
+    extra = dict(scope="; ".join(scopes)) if scopes else {}
+    text = ", ".join(f"{e}={'unknown' if k is None else k}" for e, k in n.items())
+    if not any(n.values()):
+        return dict(v=NO_DET, inconclusive=True, checkable=n, **extra,
+                    measured=f"INCONCLUSIVE: 0 checkable rows on every declared entry ({text})")
+    bad = [e for e, k in n.items() if not k]
+    if bad:
+        return dict(v=PARTIAL, checkable=n, **extra,
+                    measured=f"checkable rows per declared entry: {text}; none or unknown on {', '.join(bad)}")
+    if UPPER_BOUND in scopes:
+        return dict(v=PARTIAL, checkable=n, **extra, measured=f"checkable rows per declared entry: {text}; the count is a "
+                    f"{UPPER_BOUND} (count_sql unparseable, unshared table that carries chart_id): rows of other charts may count")
+    return dict(v=PASS, checkable=n, **extra, measured=f"checkable rows per declared entry: {text} ({'; '.join(scopes) or 'scope n/a'})")
+
+
+def grade_null_blank_rows(entries, counts) -> dict:
+    """Null.blank_rows: declared prose rows holding a blank string or a placeholder literal instead of NULL. FAIL on
+    any. PARTIAL (never PASS) when none in >= 1 checkable row; INCONCLUSIVE without row data or checkable rows."""
+    if isinstance(counts, dict):
+        bad = {e: (None if counts.get(e) is None else int(counts[e].get("blank", 0))) for e in entries}
+        ub = {e for e in entries if (counts.get(e) or {}).get("scope") == UPPER_BOUND}
+        hit = [f"{e}={k}" for e, k in bad.items() if k and e not in ub]
+        hit_ub = [f"{e}={k}" for e, k in bad.items() if k and e in ub]
+        if hit:
+            return dict(v=FAIL, blank=bad, measured="blank or placeholder rows standing in for NULL in declared prose "
+                                                    "column(s): " + ", ".join(hit)
+                        + (f" (not counted: {', '.join(hit_ub)} in a {UPPER_BOUND})" if hit_ub else ""))
+        if hit_ub:
+            return dict(v=PARTIAL, blank=bad, measured=f"blank or placeholder rows ({', '.join(hit_ub)}) in a {UPPER_BOUND}: "
+                        "they may belong to other charts, so this chart is not failed on them; chart-scope the count to decide")
+        if any((counts.get(e) or {}).get("checkable", 0) for e in entries):
+            unk = [e for e, k in bad.items() if k is None]
+            return dict(v=PARTIAL, blank=bad, measured="no blank or placeholder row among the checkable prose rows"
+                        + (f" (unknown for {', '.join(unk)})" if unk else "") + "; schema defaults are read by "
+                        "Null.schema_default and writer literal fallbacks and constant columns are not measured, so "
+                        "this is never PASS")
+    return dict(v=NO_DET, inconclusive=True,
+                measured="INCONCLUSIVE: no checkable prose rows were read for the declared entries")
+
+
+_SIDECAR_PREFIX = "platform/python-sidecar/"
+_TEST_FACTS: dict = {}
+
+
+def python_tests(sidecar=None) -> list:
+    """Every `test_*.py` under a `tests/` or `__tests__/` directory of the python sidecar, as (Path, text)."""
+    root = Path(sidecar) if sidecar is not None else SIDECAR
+    out = []
+    for f in sorted(root.rglob("test_*.py")):
+        if {"tests", "__tests__"} & set(f.relative_to(root).parts[:-1]):
+            try:
+                out.append((f, f.read_text(encoding="utf-8", errors="replace")))
+            except OSError:
+                continue
+    return out
+
+
+def _cited_modules(evidence) -> list:
+    """The dotted sidecar modules the declaration's evidence cites (`platform/python-sidecar/x/y.py:LINE`)."""
+    out = []
+    for c in _EVIDENCE_ANY_CITE_RE.findall(evidence or ""):
+        if c.startswith(_SIDECAR_PREFIX) and c.endswith(".py"):
+            d = c[len(_SIDECAR_PREFIX):-3].replace("/", ".")
+            d = d[:-len(".__init__")] if d.endswith(".__init__") else d
+            if d not in out:
+                out.append(d)
+    return out
+
+
+def _dotted(node, bound):
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    if isinstance(node, ast.Call):
+        return None
+    if not isinstance(node, ast.Name) or node.id not in bound:
+        return None
+    return ".".join([bound[node.id]] + parts[::-1])
+
+
+_GENERIC_LEAVES = ("statement", "reason", "text", "summary", "description", "note")
+
+
+_SKIP_WORD = re.compile(r"\b(?:skip\w*|xfail)\b", re.I)
+
+
+def _skips(node, aliases=()) -> bool:
+    """A skip/xfail decorator (`pytest.mark.skip[if]`, `unittest.skip*`, `xfail`), directly or through an alias name
+    (`sk = pytest.mark.skip` ... `@sk`)."""
+    for d in getattr(node, "decorator_list", []):
+        u = ast.unparse(d)
+        if _SKIP_WORD.search(u) or any(re.search(rf"\b{re.escape(a)}\b", u) for a in aliases):
+            return True
+    return False
+
+
+def _path_loaded(node, loaders):
+    """`loader('x.py')` where `loader` is a module-level helper that loads a module from a file path
+    (spec_from_file_location): the token `<file>:x`, which a cited module of the same stem matches."""
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in loaders and node.args
+            and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str)
+            and node.args[0].value.endswith(".py")):
+        return "<file>:" + node.args[0].value[:-3].replace("/", ".").split(".")[-1]
+    return None
+
+
+def _import_module_arg(node, bound):
+    """`importlib.import_module('x')` / `import_module('x')` / an alias of it (`from importlib import import_module as im`):
+    the dotted module string, else None."""
+    if not (isinstance(node, ast.Call) and node.args and isinstance(node.args[0], ast.Constant)
+            and isinstance(node.args[0].value, str)):
+        return None
+    f = node.func
+    name = _dotted(f, bound) if isinstance(f, (ast.Name, ast.Attribute)) else None
+    if ast.unparse(f).endswith("import_module") or (name or "").endswith("import_module"):
+        return node.args[0].value
+    return None
+
+
+def _test_facts(path: Path, text: str):
+    """(functions, module_skipped) for a test file — cached; None if unparseable. One record per `test*` function:
+    the dotted names it CALLS, whether it has a real assert, the leaf names it references (`leaves`; `assert_leaves`
+    = those inside asserts / assert-call arguments) and whether it is skipped (decorator, class decorator, a
+    `pytest.skip(` call, or a module `pytestmark` skip)."""
+    key = (str(path), text)
+    if key in _TEST_FACTS:
+        return _TEST_FACTS[key]
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        _TEST_FACTS[key] = None
+        return None
+    try:
+        pkg = list(path.relative_to(SIDECAR).parts[:-1])
+    except ValueError:
+        pkg = []
+    bound: dict = {}
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Import):
+            for a in n.names:
+                if a.asname:
+                    bound[a.asname] = a.name
+                else:
+                    bound[a.name.split(".")[0]] = a.name.split(".")[0]
+        elif isinstance(n, ast.ImportFrom):
+            if n.level:
+                base = pkg[:len(pkg) - (n.level - 1)] if n.level - 1 <= len(pkg) else []
+                mod = ".".join(base + ([n.module] if n.module else []))
+            else:
+                mod = n.module or ""
+            for a in n.names:
+                bound[a.asname or a.name] = f"{mod}.{a.name}" if mod else a.name
+    # a helper that RETURNS an imported module/name (`def _mod(): from x import m; return m`) binds `w = _mod()`;
+    # `w = importlib.import_module('x')` binds w to x
+    rets = {}
+    loaders = {f.name for f in tree.body if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))
+               and any(isinstance(c, ast.Call) and ast.unparse(c.func).endswith("spec_from_file_location") for c in ast.walk(f))}
+    for fn in ast.walk(tree):
+        if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for r in ast.walk(fn):
+                if isinstance(r, (ast.Return, ast.Yield)) and r.value is not None:
+                    d = (_dotted(r.value, bound) if isinstance(r.value, (ast.Name, ast.Attribute))
+                         else _import_module_arg(r.value, bound) or _path_loaded(r.value, loaders))
+                    if d:
+                        rets[fn.name] = d
+                        if any("fixture" in ast.unparse(dd) for dd in fn.decorator_list):
+                            bound[fn.name] = d          # a test parameter named like the fixture is that module
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Assign) and isinstance(n.value, ast.Call):
+            f = n.value.func
+            tgt = [t.id for t in n.targets if isinstance(t, ast.Name)]
+            if isinstance(f, ast.Name) and f.id in rets:
+                for t in tgt:
+                    bound[t] = rets[f.id]
+            elif _import_module_arg(n.value, bound) or _path_loaded(n.value, loaders):
+                for t in tgt:
+                    bound[t] = _import_module_arg(n.value, bound) or _path_loaded(n.value, loaders)
+    aliases = {t.id for n in ast.walk(tree) if isinstance(n, ast.Assign) and _SKIP_WORD.search(ast.unparse(n.value))
+               for t in n.targets if isinstance(t, ast.Name) and t.id != "pytestmark"}
+    mod_skip = any(isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "pytestmark" for t in n.targets)
+                   and _SKIP_WORD.search(ast.unparse(n.value)) for n in tree.body)
+    cls_skip = {id(c): _skips(k, aliases) for k in ast.walk(tree) if isinstance(k, ast.ClassDef)
+                for c in k.body if isinstance(c, (ast.FunctionDef, ast.AsyncFunctionDef))}
+
+    def leaves_of(root, acc):
+        for n in ast.walk(root):
+            if isinstance(n, ast.Constant) and isinstance(n.value, str):
+                acc.add(n.value)
+            elif isinstance(n, ast.Attribute):
+                acc.add(n.attr)
+            elif isinstance(n, ast.Name):
+                acc.add(n.id)
+            elif isinstance(n, ast.keyword) and n.arg:
+                acc.add(n.arg)
+    def facts_of(fn):
+        calls, leaves, aleaves, asserts, called = set(), set(), set(), False, set()
+        skipped = _skips(fn, aliases) or cls_skip.get(id(fn), False)
+        leaves_of(fn, leaves)
+        for n in ast.walk(fn):
+            if isinstance(n, ast.Call):
+                d = _dotted(n.func, bound)
+                if d:
+                    calls.add(d)
+                if isinstance(n.func, ast.Name):
+                    called.add(n.func.id)
+                nm = ast.unparse(n.func)
+                if nm in ("pytest.skip", "skip", "pytest.xfail", "xfail"):
+                    skipped = True
+                if isinstance(n.func, ast.Attribute) and (n.func.attr.startswith("assert") or n.func.attr == "raises"):
+                    asserts = True
+                    for x in list(n.args) + [k.value for k in n.keywords]:
+                        leaves_of(x, aleaves)
+            elif isinstance(n, ast.Assert):
+                if not (isinstance(n.test, ast.Constant) and n.test.value):      # `assert True` / `assert 1` prove nothing
+                    asserts = True
+                    leaves_of(n.test, aleaves)
+        return dict(name=fn.name, calls=calls, asserts=asserts, leaves=leaves, assert_leaves=aleaves, skipped=skipped,
+                    called=called)
+    helpers = {n.name: facts_of(n) for n in tree.body
+               if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("test")}
+    funcs = []
+    for fn in ast.walk(tree):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)) or not fn.name.startswith("test"):
+            continue
+        f = facts_of(fn)
+        for h in f["called"]:                       # ONE level of module-level helper: its calls, asserts and leaves
+            if h in helpers:
+                f["calls"] |= helpers[h]["calls"]
+                f["leaves"] |= helpers[h]["leaves"]
+                f["asserts"] = f["asserts"] or helpers[h]["asserts"]
+        funcs.append(f)
+    _TEST_FACTS[key] = (funcs, mod_skip)
+    return _TEST_FACTS[key]
+
+
+def _calls_module(call: str, mod: str) -> bool:
+    """A dotted call lies in `mod`, or in a module loaded from a file path whose stem is mod's last component."""
+    if call == mod or call.startswith(mod + "."):
+        return True
+    return call.startswith("<file>:") and call[len("<file>:"):].split(".")[0] == mod.rsplit(".", 1)[-1]
+
+
+def _leaf_in(leaf: str, names) -> bool:
+    """A declared leaf is referenced when a name contains it (`citation_human` in `_citation_human_position`) or is one of
+    its underscore tokens of length >= 5 (`reason` for `verdict_reason`)."""
+    toks = {t for t in leaf.split("_") if len(t) >= 5}
+    return any(leaf in n or n in toks for n in names)
+
+
+def narr_fidelity_scan(entries, evidence, tests) -> dict:
+    """Narr.fidelity_test (CLAUDE.md N.7 item 5): a test exists that exercises the narration builder. Builder modules
+    = the .py files the declaration's evidence cites. A test QUALIFIES when it calls a name imported from a builder
+    module and contains an assert; it COVERS an entry when it also references the entry's leaf (column or last key).
+    FAIL: no qualifying test. PARTIAL: >= 1 qualifying test. PASS is NOT reachable (SS decision: structural coverage
+    does not prove a test grades the sentence). NO_DETECTOR: no readable builder module cited."""
+    mods = _cited_modules(evidence)
+    if not mods:
+        return dict(v=NO_DET, measured="NO_DETECTOR — the declaration's evidence cites no readable sidecar writer module "
+                                       "to look for tests of")
+    leaves = {e: (lambda c, p: [k for k in (p or ()) if k != PROSE_WILDCARD][-1] if p else c)(*parse_prose_field(e))
+              for e in entries}
+    spec = [e for e, lf in leaves.items() if lf not in _GENERIC_LEAVES]
+    spec_leaves = {leaves[e] for e in spec}
+    qual, covered = [], set()
+    for path, text in tests:
+        f = _test_facts(Path(path), text)
+        if not f or f[1]:                                  # unparseable, or the module is skipped
+            continue
+        for fn in f[0]:
+            if fn["skipped"] or not fn["asserts"] or not any(_calls_module(c, m) for c in fn["calls"] for m in mods):
+                continue
+            qual.append(Path(path).name)
+            beside = any(_leaf_in(lf, fn["leaves"]) for lf in spec_leaves)
+            covered |= {e for e, lf in leaves.items()
+                        if (_leaf_in(lf, fn["leaves"]) if lf not in _GENERIC_LEAVES
+                            else (lf in fn["assert_leaves"] or (lf in fn["leaves"] and beside)))}
+    if not qual:
+        return dict(v=FAIL, covered=[], tests=[], measured=f"no (unskipped) test function calls the builder module(s) "
+                    f"{', '.join(mods)} and asserts in the same function — N.7 item 5 (a fidelity test for the narration) "
+                    "has no evidence in the repo")
+    cov = [e for e in entries if e in covered]
+    unc = [e for e in entries if e not in covered]
+    names = sorted(set(qual))
+    if not cov:
+        return dict(v=PARTIAL, covered=[], tests=names, measured=f"{len(names)} test file(s) call the builder and assert "
+                    f"({', '.join(names[:4])}): tests call the builder but none names a declared field (direct or indirect); "
+                    f"declared: {', '.join(entries)}; structural only, never PASS")
+    return dict(v=PARTIAL, covered=cov, tests=names, measured=(
+        f"structural only: {len(names)} test file(s) call the builder and assert in the same test function "
+        f"({', '.join(names[:4])}{'…' if len(names) > 4 else ''}); declared field(s) referenced: {', '.join(cov)}"
+        + (f"; no qualifying test names: {', '.join(unc)}" if unc else "")
+        + "; whether the assertion grades the sentence is not read, so this never reads PASS"))
+
+
+_LINTS: dict = {}
+
+
+def _lint_module(name: str):
+    """A sibling governance lint, loaded by path once (registered in sys.modules: its dataclasses need it)."""
+    if name not in _LINTS:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(f"_census_{name}", Path(__file__).resolve().parent / f"{name}.py")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = mod
+        spec.loader.exec_module(mod)
+        _LINTS[name] = mod
+    return _LINTS[name]
+
+
+def _flat_str(node):
+    """The text of a string expression made of constants, f-string constant parts and `+` concatenation; None otherwise."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.JoinedStr):
+        return "".join(v.value if isinstance(v, ast.Constant) and isinstance(v.value, str) else " " for v in node.values)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        a, b = _flat_str(node.left), _flat_str(node.right)
+        return None if a is None or b is None else a + b
+    return None
+
+
+def _fact_category_surface(text: str) -> bool:
+    """Real code that SELECTs chart_facts by fact_category: a non-docstring string expression (constant, f-string,
+    `+` concatenation) holding SELECT, chart_facts and fact_category. A comment, a docstring or two unrelated strings
+    each mentioning one word are not a surface. Raises SyntaxError for unparseable source."""
+    tree = ast.parse(text)
+    docs = _docstring_ids(tree)
+    for n in ast.walk(tree):
+        if id(n) in docs or not isinstance(n, (ast.Constant, ast.JoinedStr, ast.BinOp)):
+            continue
+        t = _flat_str(n)
+        if t and re.search(r"\bSELECT\b", t, re.I) and "chart_facts" in t and "fact_category" in t:
+            return True
+    return False
+
+
+def _raw_token_surface(col: str) -> bool:
+    """A column the raw-token lint's narrative-field pattern covers: signal_headline_text, signal_text, *_thesis, *_narrative."""
+    return col in ("signal_headline_text", "signal_text") or col.endswith(("_thesis", "_narrative"))
+
+
+def narr_lint_scan(paths, columns=()) -> dict:
+    """Narr.lint: the existing narration lints (check_fact_category_pinning: the D1 class, N.7 item 2;
+    check_no_raw_token_in_narrative) over the writer's resolved scope files, with their own allowlists. FAIL: a
+    non-allowlisted violation (file:line). PARTIAL: only allowlisted ones (named; CI accepts them, the census does not
+    call them clean). PASS needs a lint SURFACE that applied: fact_category selection of chart_facts in the scope
+    (fact-category-pin) and/or a declared column the raw-token lint's field pattern covers (raw-token); with neither,
+    the lints say nothing about this asset: NO_DETECTOR 'not applicable' (a clean scan of code a lint cannot see is
+    not a pass). `applied` names the surfaces. NO_DETECTOR: no file in scope. ERRORED: unreadable file/lint."""
+    paths = [Path(p) for p in paths]
+    if not paths:
+        return dict(v=NO_DET, applied=[], measured="NO_DETECTOR — no writer file in scope to run the narration lints over")
+    try:
+        fcp, rt = _lint_module("check_fact_category_pinning"), _lint_module("check_no_raw_token_in_narrative")
+        allow_f, allow_r = fcp.load_allowlist(fcp.ALLOWLIST_PATH), rt.load_allowlist(rt.ALLOWLIST_PATH)
+        new, old = [], []
+        fact_surface = False
+        for p in paths:
+            text = p.read_text(encoding="utf-8")
+            fact_surface = fact_surface or _fact_category_surface(text)
+            try:
+                rel = p.resolve().relative_to(ROOT).as_posix()
+            except ValueError:
+                rel = str(p)
+            vf = [fcp.Violation(rel, ln, "python", "sql_select", sn, "") for ln, sn in fcp.scan_python_text(text)]
+            vr = [rt.Violation(rel, ln, kind, sn, "") for ln, kind, sn in rt.scan_py_file(text)]
+            for tag, vs, allow, mod in (("fact-category-pin", vf, allow_f, fcp), ("raw-token", vr, allow_r, rt)):
+                a, n = mod.partition_allowlisted(vs, allow)
+                old += [f"{tag} {v.file}:{v.line}" for v in a]
+                new += [f"{tag} {v.file}:{v.line}" for v in n]
+    except (OSError, ValueError, AttributeError, SyntaxError, ImportError) as exc:
+        return dict(v=ERRORED, measured=f"check errored: narration lint could not run ({type(exc).__name__}: {exc})")
+    applied = (["fact-category-pin"] if fact_surface else []) + (["raw-token"] if any(_raw_token_surface(c) for c in columns) else [])
+    if new:
+        return dict(v=FAIL, applied=applied, measured="narration lint violation(s) in the writer scope: " + "; ".join(new))
+    if old:
+        return dict(v=PARTIAL, applied=applied, measured="only allowlisted narration lint violation(s) in scope: " + "; ".join(old))
+    if not applied:
+        return dict(v=NO_DET, applied=[], measured=f"NO_DETECTOR — the narration lints are not applicable to this asset: no "
+                    f"chart_facts fact_category selection in its {len(paths)}-file writer scope and no declared column the "
+                    "raw-token lint covers; a clean scan of code they cannot see is not a pass")
+    return dict(v=PASS, applied=applied, measured=f"{len(paths)} writer scope file(s) clean under the {' and '.join(applied)} "
+                                                  "narration lint(s) that applied (their own allowlists applied)")
+
+
+_QQ = r"(?:ONLY\s+)?(?:public\.)?\"?"
+_INSERT_COLS = re.compile(r"INSERT\s+INTO\s+" + _QQ + r"([A-Za-z_][A-Za-z_0-9]*)\"?\s*(\([^)]*\))?", re.I)
+_UPDATE_SET = re.compile(r"\bUPDATE\s+" + _QQ + r"([A-Za-z_][A-Za-z_0-9]*)\"?\s+SET\s+(.*?)(?=\bWHERE\b|\bFROM\b|\bRETURNING\b|\Z)",
+                         re.I | re.S)
+
+
+def written_columns(units, tables):
+    """table -> the columns the writer's resolved scope INSERTs (column list) or UPDATEs (SET targets) on `tables`.
+    None when a write to one of them cannot be read (no column list, an unresolved `{?}` name): never a guess."""
+    tset = {t.lower() for t in tables if t}
+    out: dict = {}
+    for u in units:
+        for node in u["nodes"]:
+            for text, _ln in _sql_texts(dict(u, nodes=[node])):
+                for m in _INSERT_COLS.finditer(text):
+                    if m.group(1).lower() not in tset:
+                        continue
+                    if not m.group(2) or "{?}" in m.group(2):
+                        return None
+                    out.setdefault(m.group(1).lower(), set()).update(
+                        c.strip().strip('"') for c in m.group(2)[1:-1].split(",") if c.strip())
+                for m in _UPDATE_SET.finditer(text):
+                    if m.group(1).lower() not in tset:
+                        continue
+                    if "{?}" in m.group(2):
+                        return None
+                    for a in _split_top(m.group(2)):
+                        if "=" in a:
+                            out.setdefault(m.group(1).lower(), set()).add(a.split("=", 1)[0].strip().strip('"'))
+    return out
+
+
+def prose_vocabulary(declarations) -> set:
+    """The columns some asset's declaration lists as prose (the file's own narration-column vocabulary)."""
+    return {parse_prose_field(e)[0] for d in (declarations or {}).values() if isinstance(d, dict)
+            for e in (d.get("prose_fields") or [])}
+
+
+def prose_reverse_leg(written, vocabulary) -> list:
+    """`[]`-declared asset: the `table.column` writes that hit a column the declarations treat as narration elsewhere
+    (principle 8: such a column present while prose_fields is empty reads FAIL). Write-column names only: it does not
+    prove 'composes no string' (the AST proofs in test_e6_1_declarations.py do, per asset)."""
+    return sorted(f"{t}.{c}" for t, cols in (written or {}).items() for c in cols if c in vocabulary)
+
+
+NARR_CHECKS = ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint")
+NULL_CHECKS = ("Null.schema_default", "Null.blank_rows")
+
+
+def _own3(ctx: dict) -> dict:
+    """ctx -> {table: (columns, types, defaults)}: the owned tables when supplied (a 2-tuple has unread defaults),
+    else the single target table with ctx's columns/types/defaults."""
+    if ctx.get("own") is not None:
+        return {t: (v[0], v[1], v[2] if len(v) > 2 else None) for t, v in ctx["own"].items()}
+    return {ctx["table"]: (ctx.get("columns"), ctx.get("types"), ctx.get("defaults"))} if ctx.get("table") else {}
+
+
+def prose_checks(aid: str, decl, ctx: dict) -> dict:
+    """The six Narr/Null records for one asset, from its declaration entry (`prose_fields`, `evidence`) and `ctx`:
+    table, columns, types, defaults, counts (None = not read), paths (writer scope files), tests, vocabulary, written
+    (None = the writer's writes could not be read). null prose_fields = undeclared: every check NO_DETECTOR, never
+    'no prose'. [] = positive declaration: measured N/A candidates (causes no-prose / no-prose-declared; no rule is
+    declared, so the rollup reads them NO_DETECTOR) unless a write hits a column the file treats as narration (agree
+    FAIL, the rest NO_DETECTOR) or the writes are unreadable (NO_DETECTOR)."""
+    allc = NARR_CHECKS + NULL_CHECKS
+    pf = decl.get("prose_fields") if isinstance(decl, dict) else None
+    if pf is None:
+        return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — prose_fields is undeclared for {aid}: never read as 'no prose'")
+                for c in allc}
+    if not pf:
+        if ctx.get("written") is None:
+            return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares prose_fields [] but its writes could not be "
+                                               "read, so the declaration cannot be checked") for c in allc}
+        hits = prose_reverse_leg(ctx["written"], ctx.get("vocabulary") or set())
+        if hits:
+            out = {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares prose_fields [] but Narr.agree failed") for c in allc}
+            out["Narr.agree"] = dict(v=FAIL, measured=f"prose_fields is [] but the writer writes column(s) the declarations "
+                                                      f"treat as narration: {', '.join(hits)}")
+            return out
+        why = ("prose_fields [] declared and no write to a column the declarations treat as narration (write-column "
+               "names only; the composed-string proof is the declaration tests')")
+        return {c: _na(why, "no-prose" if c.startswith("Narr.") else "no-prose-declared") for c in allc}
+    ev = (decl.get("evidence") or {}).get("prose_fields") if isinstance(decl.get("evidence"), dict) else None
+    out = {}
+    for crit, fn in (
+            ("Narr.agree", lambda: grade_narr_agree_tables(pf, {t: (v[0], v[1]) for t, v in _own3(ctx).items()})),
+            ("Narr.checkable", lambda: grade_narr_checkable(pf, ctx.get("counts"))),
+            ("Narr.fidelity_test", lambda: narr_fidelity_scan(pf, ev, ctx.get("tests") or ())),
+            ("Narr.lint", lambda: narr_lint_scan(ctx.get("paths") or (), [parse_prose_field(e)[0] for e in pf])),
+            ("Null.schema_default", lambda: grade_null_schema_default_tables(pf, _own3(ctx))),
+            ("Null.blank_rows", lambda: grade_null_blank_rows(pf, ctx.get("counts")))):
+        try:
+            out[crit] = fn()
+        except (Unknown, DeclarationsError) as exc:      # R41: one check's failure degrades only that check
+            out[crit] = dict(v=ERRORED, measured=f"check errored: {exc}")
+    if out.get("Narr.agree", {}).get("v") == PASS and ctx.get("written") is None:
+        out["Narr.agree"] = dict(v=PARTIAL, measured=out["Narr.agree"]["measured"] + "; reverse leg unavailable: the writer's "
+                                 "writes could not be read, so a prose-vocabulary column it writes without declaring is unchecked")
+    if out.get("Narr.agree", {}).get("v") == PASS and ctx.get("written") is not None:
+        # two-way: a column the declarations treat as narration that this writer writes but does not declare
+        declared_cols = {parse_prose_field(e)[0] for e in pf}
+        und = [h for h in prose_reverse_leg(ctx["written"], ctx.get("vocabulary") or set()) if h.split(".", 1)[1] not in declared_cols]
+        if und:
+            out["Narr.agree"] = dict(v=PARTIAL, measured=out["Narr.agree"]["measured"] + "; but the writer also writes "
+                                     f"prose-vocabulary column(s) it does not declare (undeclared): {', '.join(und)}")
+    return out
 
 
 # R40: the psql subprocess timeout was hardcoded at 180s, which is shorter than a full-table
@@ -1640,6 +2351,127 @@ def _refusal_guard(units: list[dict], tset=frozenset()) -> tuple[str, int, str, 
     return None
 
 
+_UO_SCOPE_COLS = ("chart_id", "ayanamsha_id", "build_id", "asset_id", "run_id")
+_UO_SET = re.compile(r"\bSET\b(.*?)(?=\bWHERE\b|\bFROM\b|\bRETURNING\b|\Z)", re.I | re.S)
+_UO_WHERE = re.compile(r"\bWHERE\b(.*?)(?=\bRETURNING\b|\Z)", re.I | re.S)
+_UO_ARRAY_ACC = re.compile(r"\b(?:array_(?:append|cat|prepend)|concat|jsonb_insert)\s*\(", re.I)
+_UO_KEYED = re.compile(r"\b([A-Za-z_]\w*)\s*=\s*(?:%s|%\(\w+\)s|\$\d+|ANY\s*\()", re.I)
+
+
+_UO_JSON_DELETE = r"(?:''|ARRAY\s*\[[^\]]*\]|(?:%s|%\(\w+\)s)\s*::\s*text(?:\[\])?)"
+
+
+def _split_top_br(s: str) -> list:
+    """_split_top that also keeps `[...]` (array constructors) whole."""
+    parts, depth, cur = [], 0, []
+    for ch in s:
+        depth += ch in "(["
+        depth -= ch in ")]"
+        if ch == "," and depth == 0:
+            parts.append("".join(cur))
+            cur = []
+        else:
+            cur.append(ch)
+    return parts + ["".join(cur)]
+
+
+def _uo_assignments(set_text: str):
+    """(column, expression) pairs of a SET clause; a tuple form `(a, b) = (x, y)` / `= ROW(x, y)` is paired by
+    position (an unpairable right side is attributed whole to each column)."""
+    for a in _split_top_br(set_text):
+        if "=" not in a:
+            continue
+        lhs, rhs = (x.strip() for x in a.split("=", 1))
+        if lhs.startswith("(") and lhs.endswith(")"):
+            cols = [c.strip().strip('"') for c in lhs[1:-1].split(",")]
+            r = rhs[3:].strip() if rhs.upper().startswith("ROW") else rhs
+            exprs = _split_top(r[1:-1]) if r.startswith("(") and r.endswith(")") else None
+            if exprs and len(exprs) == len(cols):
+                yield from zip(cols, (x.strip() for x in exprs))
+            else:
+                yield from ((c, rhs) for c in cols)
+        else:
+            yield lhs.strip('"'), rhs
+
+
+def _uo_shapes(w) -> list:
+    """The row-set predicate shapes of an UPDATE's WHERE text (None = no WHERE)."""
+    found = []
+    if w is None:
+        return ["no-predicate"]
+    if re.search(r"\bIS\s+DISTINCT\s+FROM\b", w, re.I):
+        found.append("guarded")
+    if re.search(r"\bIS\s+(?:NOT\s+)?NULL\b", w, re.I):
+        found.append("state-conditional")
+    lhs = [c.lower() for c in _UO_KEYED.findall(w)]
+    if any(c not in _UO_SCOPE_COLS for c in lhs):
+        found.append("keyed")
+    if any(c in _UO_SCOPE_COLS for c in lhs) or re.search(r"\b(?:" + "|".join(_UO_SCOPE_COLS) + r")\b", w, re.I):
+        found.append("scope")
+    return found or ["other-predicate"]
+
+
+def _update_only_reading(units, tset) -> dict:
+    """Idem.pattern's update-only sub-reading (N-22 ruling 6; SS: Idem stays ONE gate, update-only is not N/A): each
+    own-table UPDATE is read for (a) an ACCUMULATING assignment (`SET c = c + x`, `c * x`, array_append/cat/prepend
+    of c: a second rebuild changes the row again; named update-only:accumulating-assignment) and (b) its row-set
+    predicate shape: keyed, scope (chart/ayanamsha/build/asset), state-conditional (IS [NOT] NULL), guarded (IS DISTINCT
+    FROM), none, other. Whether a rebuild re-derives EVERY row is not provable statically (PASS needs the E5.5
+    semantic-fingerprint comparison on the E5.6 rehearsal database), so the reading never PASSes."""
+    acc, concat, shapes, recs = [], [], {}, []
+    for u in units:
+        for node in u["nodes"]:
+            for text, ln in _sql_texts(dict(u, nodes=[node])):
+                m = _SQL_UPDATE.search(text)
+                if not m or m.group(1).lower() not in tset:
+                    continue
+                flat = re.sub(r"'(?:[^']|'')*'", "''", re.sub(r"--[^\n]*", "", text))
+                where = _UO_WHERE.search(flat)
+                cite_ = f"{m.group(1).lower()} ({u['rel']}:{ln}{' via ' + u['via'] if u['hop'] else ''})"
+                st = _UO_SET.search(flat)
+                fns = sorted(((f.lineno, f.end_lineno) for f in ast.walk(node)
+                              if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))), key=lambda r: r[1] - r[0])
+                fn = next((r for r in fns if r[0] <= ln <= r[1]), None)
+                shapes_here = _uo_shapes(where.group(1) if where else None)
+                ifs = [(i.lineno, i.end_lineno) for i in ast.walk(node) if isinstance(i, ast.If)]
+                # a reset excuses an accumulation only when UNCONDITIONAL (not inside an `if`) and chart-wide (no keyed,
+                # state-conditional, guarded or other predicate)
+                excuses = (not any(a0 <= ln <= b0 for a0, b0 in ifs)
+                           and not set(shapes_here) & {"keyed", "state-conditional", "guarded", "other-predicate"})
+                for col, expr in (_uo_assignments(st.group(1)) if st else []):
+                    if not re.fullmatch(r"[A-Za-z_]\w*", col):
+                        continue
+                    if not re.search(rf"\b{re.escape(col)}\b", expr):
+                        recs.append(dict(kind="reset", table=m.group(1).lower(), col=col, line=ln, fn=fn, u=u["rel"], ok=excuses))
+                    elif re.fullmatch(rf"\s*{re.escape(col)}\s*-\s*{_UO_JSON_DELETE}\s*", expr, re.I):
+                        continue                                # jsonb key delete: idempotent
+                    elif re.search(r"[+\-*/]", re.sub(r"%\(\w+\)s|::\w+", "", expr)) or _UO_ARRAY_ACC.search(expr):
+                        recs.append(dict(kind="acc", table=m.group(1).lower(), col=col, line=ln, fn=fn, u=u["rel"],
+                                         text=f"{col} = {expr[:60]} in {cite_}"))
+                    elif "||" in expr:
+                        concat.append(f"{col} in {cite_}")
+                found = shapes_here
+                for f in found:
+                    shapes.setdefault(f, []).append(cite_)
+    # an accumulation is excused only by a reset of the SAME column of the SAME table earlier in the SAME function
+    for r in recs:
+        if r["kind"] == "acc" and not any(x["kind"] == "reset" and x["ok"] and x["table"] == r["table"] and x["col"] == r["col"]
+                                          and x["u"] == r["u"] and r["fn"] is not None and x["fn"] == r["fn"]
+                                          and x["line"] < r["line"] for x in recs):
+            acc.append(r["text"])
+    return dict(accumulating=acc, concat=concat, shapes=shapes)
+
+
+def _update_only_text(rd: dict) -> str:
+    slugs = [f"update-only:{k}-row-set-unproven" for k in ("keyed", "scope", "state-conditional", "guarded", "no-predicate",
+                                                          "other-predicate") if k in rd["shapes"]]
+    if rd["concat"]:
+        slugs.append("update-only:self-referencing-concat-type-unread (" + "; ".join(rd["concat"]) + ")")
+    return (" ".join(slugs) + "; no row is added, but whether a rebuild re-derives every row is not proven statically: "
+            "PASS needs the E5.5 semantic-fingerprint comparison across a rebuild on the E5.6 rehearsal database, "
+            "which this scan does not run")
+
+
 def idem_scan(asset_id: str, files: list[str], convention: str, targets=()) -> tuple[str, list[str]]:
     """§N.3, over real SQL strings (docstrings excluded), measured on the code a rebuild RUNS.
 
@@ -1719,8 +2551,17 @@ def idem_scan(asset_id: str, files: list[str], convention: str, targets=()) -> t
     if own["insert"]:
         reasons.append(f"plain INSERT into the asset's own table(s) and no replacement found: {cite(own['insert'])}")
     if own["update"] and not (own["upsert"] or own["insert"]):
-        reasons.append(f"the asset's own table(s) are only UPDATEd in place: {cite(own['update'])} — no row is added, "
-                       "but whether a rebuild re-derives every row is not measured")
+        rd = _update_only_reading(units, tset)
+        if rd["accumulating"]:
+            what = "update-only:accumulating-assignment: " + "; ".join(rd["accumulating"])
+            if not unresolved:
+                return FAIL, [f"the asset's own table(s) are only UPDATEd in place: {cite(own['update'])} — {what} — a second "
+                              "rebuild changes the rows again (not idempotent)"]
+            reasons.append(f"the asset's own table(s) are only UPDATEd in place: {cite(own['update'])} — {what} (the scope "
+                           "is not fully read, so this is PARTIAL, not FAIL)")
+        else:
+            reasons.append(f"the asset's own table(s) are only UPDATEd in place: {cite(own['update'])} — "
+                           f"{_update_only_text(rd)}")
     if other and not mismatch:
         reasons.append(f"it replaces only other tables: {', '.join(other)}")
     if not any(own.values()):
@@ -2818,7 +3659,20 @@ def catalog(tables: list[str]) -> dict:
     # R46: which targets are VIEWS (or materialized views) — a view is counted by the view itself.
     views = {r[0] for r in psql("SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
                                 f"WHERE n.nspname='public' AND c.relkind IN ('v','m') AND c.relname IN ({lit})")}
-    return dict(exists=exists | views, cols=cols, keys=keys, views=views)
+    # E6 packet (c): column data types and non-NULL defaults (Narr.agree / Null.schema_default). `cols` is unchanged;
+    # a failed read leaves them None (unknown), it never aborts the layer.
+    types: dict | None = {}
+    defaults: dict | None = {}
+    try:
+        for tn, cn, dt_, dflt in psql("SELECT table_name, column_name, data_type, coalesce(replace(column_default, E'\\n', ' '), '') "
+                                      f"FROM information_schema.columns WHERE table_schema='public' AND table_name IN ({lit}) "
+                                      "ORDER BY table_name, ordinal_position"):
+            types.setdefault(tn, {})[cn] = dt_
+            if dflt:
+                defaults.setdefault(tn, {})[cn] = dflt
+    except Unknown:
+        types = defaults = None
+    return dict(exists=exists | views, cols=cols, keys=keys, views=views, types=types, defaults=defaults)
 
 
 def build_history(prefix: str, ids=None) -> dict:
@@ -3506,6 +4360,64 @@ def _layer_read(name: str, fn, *args):
         raise Unknown(f"layer-wide read '{name}' failed: {exc}") from exc
 
 
+def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> dict:
+    """measure()'s glue for the six Narr/Null checks: gathers the inputs (catalog columns/types/defaults, the asset's
+    row counts from its own count_sql scope, the writer scope, tests) and calls prose_checks. Fault-isolated (R41)."""
+    tbl = r["target_table"]
+    pf = decl.get("prose_fields") if isinstance(decl, dict) else None
+    own = {}
+    for t in dict.fromkeys([x for x in [tbl] + list(ctables) if x]):
+        own[t] = (_target_columns_fact(t, cat),
+                  (cat.get("types") or {}).get(t) if cat.get("types") is not None else None,
+                  (cat.get("defaults") or {}).get(t, {}) if cat.get("defaults") is not None else None)
+    # the asset's own tables: the registry target plus every table its count_sql reads (a multi-table asset keeps its
+    # narration column outside the target_table); a table the catalog lacks is unknown, never 'zero columns'
+    ctx = dict(table=tbl, own=own, tests=ptests, vocabulary=vocab, counts=None, paths=[], written=None)
+    if files and pf is not None:
+        try:
+            units, _beyond = _delegation_scope(aid, files)
+            ctx["paths"] = [u["path"] for u in units]
+            ctx["written"] = written_columns(units, [tbl] + list(ctables))
+        except Unknown:
+            pass
+    errored = {}
+    if pf:
+        # each entry is counted in the owned table that HOLDS its column; an entry no owned table holds, or a table
+        # whose scope cannot be established (shared + unparseable count_sql), is unknown for that entry
+        counts: dict = {e: None for e in pf}
+        groups: dict = {}
+        for e in pf:
+            held = _holders(parse_prose_field(e)[0], own)
+            if held and held[0] in cat["exists"]:
+                groups.setdefault(held[0], []).append(e)
+        try:
+            for t, es in groups.items():
+                tail = _count_scope_tail(r["count_sql"], t)
+                if tail is not None:
+                    # chart-scoped only when the predicate BINDS chart_id to the census chart (`chart_id = $1`, no OR); a
+                    # parseable count_sql without it on a table that carries chart_id counts every chart: an upper bound
+                    if re.search(r"\bchart_id\s*=\s*\$1(?!\d)", tail) and not re.search(r"\bOR\b", tail, re.I):
+                        scope = "chart-scoped by count_sql"
+                    elif "chart_id" in (own[t][0] or ()):
+                        scope = UPPER_BOUND
+                    else:
+                        scope = "count_sql predicate (not chart-scoped)"
+                elif t in shared:
+                    continue
+                else:
+                    tail = ""
+                    scope = (UPPER_BOUND if "chart_id" in (own[t][0] or ()) else "whole-table (table has no chart_id column)")
+                got = prose_row_counts(t, es, _bind_chart(tail, CHART_ID), own[t][1])
+                for e in es:
+                    counts[e] = dict(got[e], scope=scope)
+            ctx["counts"] = counts if any(v is not None for v in counts.values()) else None
+        except Unknown as exc:
+            errored = {c: dict(v=ERRORED, measured=f"check errored: {exc}") for c in ("Narr.checkable", "Null.blank_rows")}
+    out = prose_checks(aid, decl, ctx)
+    out.update(errored)
+    return out
+
+
 def measure(layer_key: str) -> dict:
     """Measure one layer.
 
@@ -3519,7 +4431,8 @@ def measure(layer_key: str) -> dict:
     `instrument unreachable` — D6 item 1.)"""
     cfg = LAYERS[layer_key]
     reg, population = _layer_read("registry", registry, layer_key)
-    cat = _layer_read("catalog", catalog, [r["target_table"] for r in reg.values()])
+    cat = _layer_read("catalog", catalog, [r["target_table"] for r in reg.values()]
+                      + [t for r in reg.values() for t in _count_tables(r["count_sql"])])
     regd = _layer_read("registered_ids", registered_ids, cfg["prefix"])
     # R46 (L2 handverify): a view asset whose registry count_sql is a constant (bo_samvada: `SELECT 0`
     # over vw_chart_digest, which returns 15 rows) is counted by the VIEW — chart-scoped where the view
@@ -3567,6 +4480,12 @@ def measure(layer_key: str) -> dict:
             _decl.setdefault(_t, set()).add(_aid)
     dens_shared = frozenset(t for t, who in _decl.items() if len(who) > 1)
     owners: dict = {}                                     # R53: read lazily, at most once per layer
+    try:                                                   # E6 packet (c): read once per layer run
+        prose_decls = load_asset_declarations()
+        prose_vocab = prose_vocabulary(prose_decls)
+    except DeclarationsError as exc:
+        prose_decls, prose_vocab = exc, set()
+    prose_tests = None
     assets = []
     for aid, r in reg.items():
         m: dict[str, dict] = {}
@@ -3873,6 +4792,20 @@ def measure(layer_key: str) -> dict:
         cap = capability_scan(CAPS_ROOTS, dtoks, shared=dens_shared, columns=cat["cols"],
                               outside_roots=DENS_OUTSIDE_ROOTS)
         m["Dens.served"] = _grade_dens(cap, tbl or aid)
+
+        # E6 packet (c): the Null and Narr checks (declarations file + catalog + writer scope + tests; fault-isolated)
+        if isinstance(prose_decls, DeclarationsError):
+            for _c in NARR_CHECKS + NULL_CHECKS:
+                m[_c] = dict(v=ERRORED, measured=f"check errored: the declarations file is unreadable ({prose_decls})")
+        else:
+            try:
+                if prose_tests is None and (prose_decls.get(aid) or {}).get("prose_fields"):
+                    prose_tests = python_tests()
+                m.update(_measure_prose(aid, prose_decls.get(aid), r, files, cat, ctables, dens_shared, prose_tests or (),
+                                        prose_vocab))
+            except (Unknown, DeclarationsError) as exc:
+                for _c in NARR_CHECKS + NULL_CHECKS:
+                    m[_c] = dict(v=ERRORED, measured=f"check errored: {exc}")
 
         h = hist["per"].get(aid)
         if not h:
