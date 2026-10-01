@@ -1,0 +1,186 @@
+---
+artifact: ORACLE_EXECUTION_MAP
+version: 1.2
+status: CURRENT
+date: 2026-10-02
+author: Pravāha Stream B (B5.5; v1.1 B6.0 PART 3; v1.2 F-5)
+branch: pravaha/b5-oracle-tests (v1.2 map; code on pravaha/b5-p5-evaluator-fixtures, PR #2871)
+supersedes: ORACLE_EXECUTION_MAP v1.1 (the file named _v1_0.md, content v1.1 — retained unedited as history)
+---
+
+# ORACLE_EXECUTION_MAP v1.2 — the 36 `executable_at_A5.5` oracles, mapped to tests
+
+**v1.2 (F-5, Codex v1.4 rank 5; steward M20261001T205832-b69b):** (1) the stale **migration-1205 reference** in the O-P6-TARA row is corrected — 1205 was withdrawn from PR #2817 (AM-8); the P6 day tier returns with a **designed P6-testimony-template migration** (AM-8 / AM-4, parent-context and containment deferred); (2) the two **A5.3-seam sentinels B6-F16 / B6-F17 are restated as acceptance contracts** with the exact assertions the seam must satisfy (§F-16/F-17 below) — a bare `hasattr` probe is not behavioural closure; (3) §F-5 adds the **P5 evaluator fixtures** (`test_f5_p5_evaluators.py`, 76 cases) and the AM-7 declaration read-back as a real evaluator path; (4) the O-RP-7 note "sad_bala_summary excluded (D2)" is superseded by AM-6 Option C once F-4 (PR #2869) merges: the factor inventory then carries `sad_bala_sufficient` and `sad_bala_summary` appears only in `SUPERSEDED_FACTORS`. The v1.1 text below is otherwise unchanged.
+
+**v1.1 (B6.0 PART 3):** adds the A5.3-seam coverage of PART 2 (PR #2819, branch
+`pravaha/b6-a53-oracle-tests`, base `pravaha/a53-registered-writer` — the modules
+under test live on Stream A's integration branch). New suite:
+`platform/python-sidecar/tests/l3/gochara/test_b6_oracles_a53.py` — 11 REAL + 2
+strict-xfail FINDINGs; 54 passed + 2 xfailed with Stream A's own a53 suites.
+The v1.0 map below is unchanged; where a PART 2 test covers a new leg of an
+already-mapped oracle it is marked *(+ A5.3 leg)* and detailed in §A5.3 after
+the v1.0 tables.
+
+Every `executable_at_A5.5` oracle of `GOCHARA_TEST_ORACLES_v1_4.json` (36 total) is
+executed by a pytest on branch `pravaha/b5-oracle-tests`, under
+`platform/python-sidecar/tests/l3/gochara_rules/` and `.../tests/l3/gochara/`.
+
+**Status legend**
+- `REAL` — every 'then' clause asserted on the OUTPUT of production code; mutation
+  demonstrated RED (applied, run, reverted).
+- `FINDING` (strict-xfail, `strict=True`) — the oracle's 'then' has no production
+  output to assert on; the test calls the production seam the spec implies and
+  XPASS-fails the moment Stream A lands the fix. Findings F1–F15 are consolidated
+  below for routing to A5.2/A5.3/kernel.
+- `NOT-BUILT` (xfail, `strict=False`) — the A5.2 substrate itself is not built; not
+  a finding, flips when A5.2 lands.
+
+Suite state at push `823eb921b`: **432 passed + 21 xfailed** across
+`tests/l3/gochara_rules` + `tests/l3/gochara` (84 skipped = WP6 disposable-DB tests).
+
+## Map
+
+| Oracle | Guards / defects | Test | Status |
+|---|---|---|---|
+| O-TV-1 | §3 valence; #11,#12 | `gochara_rules/test_oracles_a55_tv_vi.py::test_o_tv_1` (+ P3 father-frame admission assert) | REAL |
+| O-TV-2 | §3; #12,S-03 | same file `::test_o_tv_2` | REAL |
+| O-TV-3 | §3; ADK-0026,#12 | same file `::test_o_tv_3` | REAL |
+| O-VI-1 | §5 vedha; #17,E2 | same file `::test_o_vi_1` | REAL |
+| O-VI-3 | §5; M-8-conformance | same file `::test_o_vi_3` | REAL |
+| O-VI-5 | §5; #25 | same file `::test_o_vi_5` | REAL |
+| O-BP-2 | §8; RQ-1,G-10,S-05 | `gochara_rules/test_oracles_a55_bp_p6.py` cases A/B/C | REAL |
+| O-BP-3 | §8; N8 | same file `::test_o_bp_3` | REAL |
+| O-BP-4 | §8/P5c; #19,T0-10 | same file — donor-key path REAL; fallback label `test_o_bp_4_fallback_label_emitted_by_real_path` | REAL + **F1** |
+| O-P6-TARA | §2 P6; #5 | same file — tārā arithmetic REAL; name→index normaliser `test_o_p6_tara_name_to_index_normalisation` | REAL + **F2** |
+| O-RR-4 | §1; #9,E3 | `gochara_rules/test_rr_oracles_a55.py::test_o_rr_4_negative_fact_no_object` REAL (R-1 writer path); qualifier landing `test_o_rr_4_negative_fact_lands_as_graha_qualifier` | REAL + **F3** |
+| O-RR-5 | §1/§2; #22,NK-7 | same file `test_o_rr_5_yoga_admission_via_production_path` REAL (`_build_yoga_rows`, house_of pins kept); cancellation gate `test_o_rr_5_cancellation_blocks_admission` | REAL + **F4** |
+| O-RR-6 | §1.2 inv 8; #23 | same file `test_o_rr_6_affliction_predicate` REAL (TRUE/FALSE/UNKNOWN); named- afflicter + orb `test_o_rr_6_afflicter_named_and_orb_enforced` | REAL + **F5** |
+| O-RR-7 | §1.2 inv 2; S-04,D-PADMIT | same file `test_o_rr_7_testimony_row_bitwise_equal_scores` REAL; breakdown annotation `test_o_rr_7_testimony_annotation_in_breakdown` | REAL + **F6** |
+| O-RP-1 | §2; union-not-cascade,#11 | `gochara_rules/test_rp_oracles_a55.py::test_o_rp_1_union_admission_no_cascade` | REAL |
+| O-RP-3 | §2; P4-definition,R3-S02 | same file `test_o_rp_3_p4_admission_…` REAL; peak `test_o_rp_3_peak_is_argmax_min_activity_not_endpoint` | REAL + **F7** |
+| O-RP-5b | §2/§3; S-03,R2-S05,S-04 | same file `test_o_rp_5b_sade_sati_testimony_zero_score_effect` | REAL |
+| O-RP-6 | §2.3 inv 8; #1 | same file `test_o_rp_6_promise_strength_times_condition` | REAL |
+| O-RP-7 | §2.2 P1; #20 | same file `test_o_rp_7_dignity_flip_flips_qualifier_sign` REAL (factor rows); one-qualifier flip `test_o_rp_7_one_production_qualifier_flips_with_dignity` | REAL + **F8** |
+| O-RP-8 | §2.3 inv 7; #21 | same file `test_o_rp_8_only_qualified_set_enumerated` REAL (registry selectors); enumerator `test_o_rp_8_production_enumerator_row_count` | REAL + **F9** |
+| O-SS-1 | §6 substrate; #27,E1 | `gochara/test_a55_substrate_oracles.py` — 12/27/96 exact counts (Swiss/Lahiri pinned) | REAL |
+| O-SS-2 | §6; #14,N2,NK-7 | same file — case 1 direct Aries ingress REAL; case 2 retrograde 0°-seam root 63.3 s off | REAL + **F10** |
+| O-SS-3 | §6; N3,NK-7 | same file — end-truncated contact + end-clipped span carry `truncated_at_horizon=None` | **F11**, **F12** |
+| O-SS-4 | §6; Moon-on-demand | same file — moon-on-demand live legs REAL; global-substrate `count(*)=0` leg | REAL + NOT-BUILT |
+| O-SM-3 | §7; stations,R2-S06 | same file — station `swiss_refined` audit | NOT-BUILT |
+| O-RX-1 | §6.1; NK-2,R3-amendment-1 | same file — occurrence-ordinal identity | NOT-BUILT |
+| O-CF-N5 | §10 conformance; N5,RQ-6 | `gochara/test_a55_conformance_oracles.py` — producer keeps both 60-day peaks | REAL |
+| O-CF-N6 | §10; N6 | same file — birth_anchor raises + non-empty marriage control | REAL |
+| O-CF-N7 | §10; N7,RQ-4 | same file — mūrti-testimony A/B bit-identical REAL; production row audit | REAL + NOT-BUILT |
+| O-AO-1 | §9 annual; saham-year-mixing,S-07 | same file — year-join | NOT-BUILT |
+| O-AO-2 | §9; saham-provenance,R2-S06 | same file — saham positive control | NOT-BUILT |
+| O-AO-3 | §9; D-T2-gate,S-04 | same file — empty-P9 set + scored-P9 shape + testimony-P9 zero channels | REAL |
+| O-RW-1 | §10 writer; lineage,S-02 | `gochara/test_a55_writer_oracles.py::test_o_rw_1_geometry_change_yields_new_convention_id_valence_cannot` REAL; invocation counter + invalidation `test_o_rw_1_solver_invocation_counter_and_invalidation_record` | REAL + **F13** |
+| O-RW-2 | §10; §N.6,coverage-honesty | same file `test_o_rw_2_no_window_answer_carries_coverage_object` REAL; confirmed-vs-context `test_o_rw_2_window_set_counts_confirmed_vs_context_separately` | REAL + **F14** |
+| O-RW-3 | §10; N-10,D-41 | same file `test_o_rw_3_provenance_names_ka_gochara_republish_from_manifest` | REAL |
+| O-GR-PLATEAU | §2.3 inv 4; #24,E5 | same file `test_o_gr_plateau_grain_lineage_and_clipped_curve_flag` | **F15** |
+
+## Consolidated FINDINGs (strict-xfail, XPASS-fails on fix) — routing list for Stream A
+
+| # | Oracle | Finding | Evidence (file:line) | Owner |
+|---|---|---|---|---|
+| F1 | O-BP-4 | sign-level fallback label 'coarser P5a qualification' emitted by no code path | `services/gochara_rules/ashtakavarga.py:~110` (docstring-only) | A5.2/A5.3 |
+| F2 | O-P6-TARA | nakṣatra name→index normaliser (case-mismatch defect #5) not built; `p6.nakshatra_index` absent | `services/gochara_rules/p6.py` | A5.2 |
+| F3 | O-RR-4 | negative sensitive fact attaches nowhere as a graha qualifier — dropped with a report count only | `services/ka_gochara_resonance/writer.py:494-495` | A5.2/A5.3 |
+| F4 | O-RR-5 | no production path evaluates yoga cancellation for admission; `bhanga_active` carried as qualifier string, never a gate; no cancellation report | `services/ka_gochara_resonance/writer.py:683-684` | A5.2/A5.3 |
+| F5 | O-RR-6 | `afflicted()` returns bare TRUE — afflicter not named on output, no orb operands; Saturn at orb 6.0 > 5.0 still afflicts | `services/gochara_rules/records.py:108-121` | A5.2/A5.3 |
+| F6 | O-RR-7 | `path_channel_scores` breakdown carries no per-record annotations (channel totals only) | `services/gochara_rules/score.py:68-83` | A5.2/A5.3 |
+| F7 | O-RP-3 | no production peak = argmax min-activity; declared only as a `score_rule` string | `services/gochara_rules/registry.py:550` | A5.5 trajectory |
+| F8 | O-RP-7 | no production function composes dignity into ONE P1 qualifier whose direction/valence flips | `services/gochara_rules/ashtakavarga.py:143` (P5-only qualifier) | A5.2 |
+| F9 | O-RP-8 | no production record enumerator driven by qualified restrictions (only registry selector strings) | `services/gochara_rules/registry.py` | A5.2 |
+| F10 | O-SS-2 | retrograde 0°-seam root found but 63.3 s off (outside δt < 60 s) | kernel (case-2 fixture) | kernel |
+| F11 | O-SS-3 | end-truncated degree contact carries `truncated_at_horizon=None` — 'end' honesty not propagated | `services/gochara_kernel/episodes.py:671` | kernel |
+| F12 | O-SS-3 | end-clipped residence span `truncated_at_horizon=None`, same site | `services/gochara_kernel/episodes.py:671` | kernel |
+| F13 | O-RW-1 | no solver-invocation counter; no dependency-driven invalidation writer recording 'which fired and why' (§10.1) | grep `services/` — absent | A5.3 writer |
+| F14 | O-RW-2 | served window set does not count confirmed vs context rows separately (§N.6) | `services/ka_gochara/service.py` (EpisodeBatch) | A5.3 serving |
+| F15 | O-GR-PLATEAU | no per-row grain lineage (era/month/day → grain-operating path; day-only-P6; clipped-era-curve flag) | `services/gochara_v3/engine.py`, `ka_gochara_sweep/` | A5.3 writer lineage |
+
+## Mutation evidence
+
+Each REAL test's mutation was applied to production code, run RED, and reverted
+(documented per batch in the B5.5 steward reports M20260930T180408-0d78,
+…T180646-b5e3, …T181022-b694, …T181143-f58f, …T181424-4da7, …T181833-7cfd,
+…T184018-b1fc): valence flips, silent defaults, attenuation-on-inactive,
+donor/SAV absence, declaration-always-true, wrong contributor key, wrong
+nine-fold class, cross-path cascade, AND-within-agent, testimony scored,
+condition-independent promise, unrestricted Cartesian enumeration, sign grid
+without 0° seam, minted Moon contact_id, producer-default 90-day trim,
+birth_anchor mapped, scored P9 registered, constant convention_id, neutered
+CoverageRecord invariants, skipped published-refusal.
+
+---
+
+## §A5.3 — PART 2 coverage of the A5.3 seam (B6.0, PR #2819, v1.1)
+
+Modules: `services/gochara_kernel/rule_registry.py` (rule_binding) and
+`services/gochara_kernel/evaluator.py` (window_evaluator), merged on
+`pravaha/a53-registered-writer`. Suite: `tests/l3/gochara/test_b6_oracles_a53.py`.
+Legs asserted here are the **enumeration/binding** legs; the A5.5-trajectory legs
+(admission arithmetic, peak, bit-identical scoring) stay with the v1.0 rows.
+
+| Oracle | Test | Status | What the A5.3 leg adds beyond v1.0 |
+|---|---|---|---|
+| O-CF-N6 | `::test_o_cf_n6_birth_anchor_zero_rows_every_path_and_control_nonempty` | REAL | birth_anchor raises on every implemented path P1–P5 (enumeration refuses); non-empty marriage control |
+| O-RP-5a | `::test_o_rp_5a_saturn_8th_from_moon_scores_for_illness_acute_only` (+ `…_mutation_target_gain_class_attachment_fails`) | REAL | the exact 13-edge RQ-5 plan for `illness_acute` (count written); every gain class's edges justified by the cited favourable table only |
+| O-RP-5b | `::test_o_rp_5b_sade_sati_phase_rows_are_testimony_and_never_on_gain` | REAL | phase rows uncited_extension/testimony/D-PADMIT on adverse classes only; no Sade-Sati edge on any gain class (the zero-score-effect leg stays v1.0 REAL) |
+| O-RP-3 | `::test_o_rp_3_p4_is_one_rule_p3_scored_restricted_to_jupiter_saturn` | REAL | P4 = P3 scored ∩ {jupiter, saturn} exactly; span + point target per agent (agents need not share one target) |
+| O-RP-8 | `::test_o_rp_8_marriage_p3_exact_qualified_row_set` | REAL | the exact 34-edge marriage P3 set with the count arithmetic written out; targets ⊆ qualified set (a Cartesian enumeration fails the count) |
+| O-RR-3 | `::test_o_rr_3_natal_saturn_is_an_occupant_of_the_7th_for_marriage` | REAL | natal Saturn 202.43° an occupant of the 7th span beside the 7L Venus ownership row; no occupancy row on a non-signature sign |
+| O-RP-7 | `::test_o_rp_7_bound_factor_inventory_declared_effects_ranges_and_orderings` | REAL | the rule_binding factor inventory: declared effects, binary direction vocab, ranges ⊆ [0,1], doctrine orderings weakest→strongest; sad_bala_summary excluded (D2) and binding it raises |
+| §2.2/E3 (spec, not an oracle id) | `::test_rule_binding_path_frames_match_spec_2_2`, `::test_rule_binding_store_divergence_raises_reuse_and_insert`, `::test_rule_binding_membership_guard_rejects_dangling_references` | REAL | frames per §2.2 (P1 dasha_lord, P2 moon, P3/P4/P5 lagna); store divergence→loud / identical→reused / absent→inserted; declared membership complete |
+| O-RP-1 | `::test_o_rp_1_union_not_cascade_on_a53_seam` | **B6-F16** (strict-xfail) | no admission-evaluation seam in the A5.3 modules yet (union-not-cascade + evidence_against attribution) |
+| O-P6-TARA | `::test_o_p6_tara_day_tier_enumeration_on_a53_seam` | **B6-F17** (strict-xfail) | P6 day-tier enumeration deferred (D1: day_on_demand). **Corrected in v1.2:** the v1.1 text cited migration 1205 / the `inherited` frame fold; 1205 was withdrawn (AM-8) and no `inherited` arm ships — P6 returns as a designed P6-testimony-template migration with `day_on_demand`, parent-context/containment held (AM-4). See the B6-F17 acceptance contract below |
+
+### B6-F16 acceptance contract (O-RP-1 on the A5.3 seam) — what replaces the `hasattr` probe
+
+The seam is an admission evaluator over the enumerated grains (Stream A's `window_evaluator`; name not
+fixed). When it lands, the sentinel is replaced by a test asserting, on that seam's OUTPUT:
+1. **union admission** — a window admitted by P3 stays admitted at the instant P2's Moon-frame residence is
+   adverse (no cascade exclusion): the window's `admission_state` is `admitted` with **both** paths in its
+   evidence;
+2. **channel attribution** — the P2 record attaches as `evidence_against_occurrence` on the native's own-fortune
+   (gain) class and as `evidence_for_occurrence` on an adverse class (D-RQ5; `score.channel_for`), and attaches
+   to **no relative's** event (kgrr_relative_frame_ck);
+3. **unknown-state behaviour** — an `unknown` necessary predicate yields `unqualified`, never `excluded` and never
+   `admitted` (S:160–163, S:399–402); a `NULL` prerequisite result counts as unknown (1155:822–832) — the
+   prerequisites are **evaluated**, not left NULL (PREREQUISITE_EVALUATION_ANSWER_v1_0);
+4. **mutation that must fail** — a cascade implementation (P2 adverse vetoes the P3 window) fails (O-RP-1).
+The same behaviours are REAL today on the rules package (O-RP-1 in `test_rp_oracles_a55.py`, `score.channel_for`,
+`predicates.admission_state`); B6-F16 closes only when the **writer's** seam shows them.
+
+### B6-F17 acceptance contract (O-P6-TARA on the A5.3 seam)
+
+When the P6 day tier exists (`day_on_demand`), the sentinel is replaced by a test asserting, on its OUTPUT:
+1. the **actual tārā class** for the pinned stars (natal 24 → transit 20: count 24, nine-fold class **6**) with the
+   normalised key (a null key from the case-mismatch defect fails); the nakṣatra name→index normaliser exists
+   (today a separate strict-xfail in `test_oracles_a55_bp_p6.py`);
+2. **admitted-parent binding** — the annotation resolves to an **admitted** parent window of the same chart and
+   generation (the `admitted_window_exists` read-back); an annotation with no admitted parent is refused;
+3. **temporal containment / coverage** — the day lies inside the parent's admitted interval and carries its own
+   `moon_on_demand` coverage row (O-SS-4; AM-4 query receipt) — the sealed generation is not mutated;
+4. **zero scoring effect** — the annotation has `operator_role='testimony'`, `weight 0.0`, and the window's score
+   and admission are bit-identical with and without it (S-04, §0).
+Parent-context resolution and containment are **deferred to the future P6 design** (AM-4/AM-8); until then the
+sentinel stays strict-xfail — recorded, not softened.
+
+### §F-5 — P5 evaluator fixtures (F-5, `test_f5_p5_evaluators.py`, 76 cases, no database)
+
+| Oracle / contract | Coverage added | Status |
+|---|---|---|
+| O-BP-1 (BAV frame) | P5a reads the **transiting graha's own** BAV; swapping graha flips the outcome (wrong-frame detectable); no substitution of another row or the SAV; invalid counts (bool/str/float/negative/NaN) are `unqualified`, never a known zero | REAL |
+| O-BP-5 / S:362 (SAV bands) | exact boundaries 24/25/30/31; measured Aquarius 23 → adverse, not the config 28; invalid SAV → `unqualified` | REAL |
+| O-BP-2 (independent missingness) | all 32 present-operand subsets of {P5a,P5b,P5c,P5d,P5e}: each operand gates exactly its own form; only a missing AV build is cross-form | REAL |
+| O-BP-3 / AM-7 (declaration read-back) | `consume_declaration` as an evaluator path: absent / unavailable / ungoverned-category / operand-missing / **numeric bindu mismatch** (recorded vs extract, both figures reported) refused; accepted binding returns typed evidence (unit `bindus`, `scored: False`); competing BAV+SAV both recorded; a refused read-back means **no record**, never a stored false | REAL |
+| AM-7 selection rule | `typed_operands`: own-graha BAV + sign SAV, missingness independent | REAL |
+Mutation evidence (applied, RED, reverted): wrong-graha BAV selection, invalid-SAV guard removed, bindu comparison
+removed, category check removed, BAV selection removed, band boundary `>`→`>=`, whole-build gate removed — each fails ≥1 test.
+The O-BP-4 fallback-label and tārā name→index strict-xfails in `test_oracles_a55_bp_p6.py` are unchanged FINDINGs.
+
+Mutation evidence (applied, run RED, reverted, 2026-10-01): Saturn's 8th
+dropped from the P2 adverse plan → O-RP-5a pair RED; node-aspect skip
+removed → O-RP-8 exact count RED; dignity doctrine ordering reversed →
+O-RP-7 RED.
