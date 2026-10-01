@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "enrich (E)"
 disposition_proposal_approver: "Steward (G16) for the disposition; the output changes it names need SS (Track A §10, R5)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-05, TI-L0-09, TI-L0-13]
 ledger_gap_ids: [bg_remedies-Idem.pattern, bg_remedies-Earn.build_record, bg_remedies-Cost.baseline, bg_remedies-Dens.served, bg_remedies-Carr.detector, bg_remedies-Build.history]
 ---
 # bg_remedies — Classical remedy corpus (341 rows)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -65,25 +67,25 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | bg_remedies-Idem.pattern | Idem | stale | ledger row from an earlier run; saved census Idem.pattern reads PASS \| ledger: measured: no ON CONFLICT in the writer's own SQL — it likely delegates to a seeder; verify there / required: the Idem gate's claim |
 | bg_remedies-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
 | bg_remedies-Cost.baseline | Cost | information | same absent instrument; CF-05 |
-| bg_remedies-Dens.served | Dens | real as measured at rev 1; applicability and re-measure pending | CF-04 \| ledger: measured: 1 module(s): query_remedy_corpus.ts; declaring density_contract: 0 / required: the Dens gate's claim |
+| bg_remedies-Dens.served | Dens | real as measured at rev 1 (Dens applies per SS Q2; offline re-measure in INDEX section 9.1) | CF-04 \| ledger: measured: 1 module(s): query_remedy_corpus.ts; declaring density_contract: 0 / required: the Dens gate's claim |
 | bg_remedies-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
 | bg_remedies-Build.history | Build | history | 1 abort on record, 0 errors; latest run complete; CF-10 \| ledger: measured: latest run complete, but 0 error(s) and 1 abort(s) on record. / required: the Build gate's claim |
 | layer instance CH-05 / Q-05 | Ldgr (qualification), Vocab | real | 289 of 341 `source_canonical_id` do not resolve exactly (204 case-only, 85 not even case-folded); CF-09 |
-| layer instance Q-05 | Ldgr (qualification) | real or accepted provenance: SS question | 80 rows cite `classical_tradition` (`l0_remedy_corpus.py:263,507,526,…`); CF-11 |
+| layer instance Q-05 | Ldgr (qualification) | real (decided SS Q3: token not accepted; state `unsourced`) | 80 rows cite `classical_tradition` (`l0_remedy_corpus.py:263,507,526,…`); CF-11 |
 | declarations `prose_fields` | Narr, Null | real (test absent) | `prescription_text` and `charity_action` are composed by f-string; no fidelity test exists in the saved census (Narr registered at rev 5) |
 
 ## 3 · Disposition
 
-**enrich (E)** — agreed with the carried E for the normalisation of the 289 source ids (additive, no row removed); the `classical_tradition` rows are an explicit attribution state, not re-sourcing; the composed prose needs its fidelity test. Output changes need SS.
+**enrich (E)** — agreed with the carried E for the normalisation of the 289 source ids (additive, no row removed); the `classical_tradition` rows get the explicit state `unsourced` (token not accepted as provenance, SS 2026-10-01); the composed prose needs its fidelity test. Output changes need SS.
 
-Approver under Track A brief §10: **Steward (G16) for the disposition; the output changes it names need SS (Track A §10, R5)**. 
+Approver under Track A brief §10: **Steward (G16) for the disposition; the output changes it names need SS (Track A §10, R5)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
 ### FD-1 · Normalise the source ids at the authority (289 → predicted)
 
 - **Answers:** layer instance CH-05; ledger `bg_ontology-G08`; CF-09
-- **Change:** do not edit the 341 rows’ meaning: resolve `source_canonical_id` through the normalisation declared once at the authority (CF-09 b), so the 204 case-only ids resolve; the 85 that do not resolve split into 80 `classical_tradition` (explicit state, next fix) and 5 whose texts are missing from the ontology `text` class (Tajaka ×3, nadi_navamsa_patel, bphs_jaimini: resolved by the `text` reconciliation in bg_ontology). Predicted unresolved count after both: 80 (the tradition rows), stated before the change.
+- **Change:** do not edit the 341 rows’ meaning: resolve `source_canonical_id` through the normalisation declared once at the authority (CF-09 b), so the 204 case-only ids resolve; the 85 that do not resolve split into 80 `classical_tradition` (explicit state, next fix) and 5 whose texts are missing from the ontology `text` class (Tajaka ×3, nadi_navamsa_patel, bphs_jaimini: resolved by the `text` reconciliation in bg_ontology). Predicted unresolved count after both: 80 (the tradition rows), stated before the change. **Decided (SS 2026-10-01, Q4, follows normalisation at the authority): resolve at read time through the authority’s rule; no stored rewrite unless REVIEW to SS.** After normalisation the predicted unresolved count is 80 (the `unsourced` rows), not 0, because those rows carry no source.
 - **Files / declaration / migration:** `brahmagyan/l0_remedy_corpus.py` / the resolver at read time; depends on the ontology change
 - **Failing-first test and mutation:** failing-first: unresolved count 289 → 80 after normalisation + text reconciliation, → 0 only if the 80 are given the explicit state; mutation: break the rule → the count moves
 - **Output change:** none
@@ -91,20 +93,20 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 - **Rebuild:** needs production rebuild of bg_remedies only if the stored ids are rewritten; a read-time resolver needs none
 - **Gate it moves:** Ldgr (qualification), Vocab (rule 3)
 - **Fix class:** data (output change) or writer code; **buildable before J1:** tier-dependent: TGH-T2-12
-- **Question for SS:** Resolve at read time (no stored change) or rewrite the stored ids?
+- **Decision:** ANSWERED by SS 2026-10-01 (follows Q4, normalisation at the authority): resolve source ids through the authority's normalisation at read time; no stored rewrite unless REVIEW to SS. Not separately asked.
 
-### FD-2 · Explicit attribution state for the 80 `classical_tradition` rows
+### FD-2 · Explicit attribution state `sourced | unsourced | refuted`
 
 - **Answers:** layer instance Q-05; CF-11
-- **Change:** add `attribution_state` derived from the token (`tradition_rooted`), no citation replaced; the 80 rows are the largest instance of the policy documented in `l0_doshas.py:18-21`.
+- **Change:** decided (SS 2026-10-01, Q3): the token is not accepted as provenance (B.3): add `attribution_state` ∈ `sourced | unsourced | refuted`; the 80 `classical_tradition` rows read `unsourced`; neither `unsourced` nor `refuted` is a PASS. No citation is replaced; the 80 largest instance of the policy documented in `l0_doshas.py:18-21`.
 - **Files / declaration / migration:** a migration (additive column) + `l0_remedy_corpus.py`
-- **Failing-first test and mutation:** count of `tradition_rooted` rows = 80, citations unchanged
+- **Failing-first test and mutation:** count of `unsourced` rows = 80, citations unchanged
 - **Output change:** one additive column
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** needs production rebuild: bg_remedies (after the migration)
 - **Gate it moves:** Ldgr (qualification), Carr
 - **Fix class:** data (output change); **buildable before J1:** tier-independent for the state
-- **Question for SS:** Is `classical_tradition` an accepted provenance value?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q3): `classical_tradition` is NOT accepted as provenance (B.3: no claim rests on 'per tradition' without a source). Give it an explicit attribution state `sourced | unsourced | refuted`; neither `unsourced` nor `refuted` is a PASS. The 19 refuted 'BPHS Ch.29' transit citations are marked `refuted`; re-sourcing them from the `bg_texts` corpus is a Track I research item, spot-checked at the milestone review.
 
 ### FD-3 · Narr golden tests for the composed remedy text
 
@@ -133,23 +135,23 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 ### FD-5 · Dens: declare density on the served module(s)
 
 - **Answers:** census `Dens.served` FAIL (saved, rev 1): 1 module: `query_remedy_corpus.ts`; CF-04
-- **Change:** per CF-04: declare `density_contract` where the module paginates or facets, after the applicability ruling
+- **Change:** decided (SS 2026-10-01, Q2): Dens applies because this asset reaches a served surface. Declare `density_contract` facets (`paginated`, `facets`, `empty_reason`) on the module(s); if the table is a uniform-authority vocabulary also declare `uniform_authority: true` in the declarations (R, PROVISIONAL until the J1 review); a mixed-authority table needs a real tier column.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
-- **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 + N-22 applicability
-- **Question for SS:** Does Dens apply to this reference table at all (it carries no verification tier)?
+- **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
+- **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
 - **CF-05** — Earn.build_record and Cost.baseline: the instrument is absent (migration 1094). *This asset:* Earn.build_record / Cost.baseline NO_DETECTOR (instrument absent); no change to this asset.
 - **CF-09** — Identity and normalisation reconciliation at the authority (bg_ontology and its consumers). *This asset:* the 289 unresolved source ids
-- **CF-11** — `classical_tradition` provenance made an explicit queryable state (no invented citations). *This asset:* 80 tradition-rooted rows
+- **CF-11** — `classical_tradition` is not provenance: explicit attribution state `sourced | unsourced | refuted` (no invented citations). *This asset:* 80 tradition-rooted rows
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D1 above
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* 1 module
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* 1 module
 - **CF-10** — Build.history PARTIAL is a record of past errors; no edit changes it. *This asset:* 1 abort; latest run complete
 
 ## 5 · Semantic fingerprint contract (for E5.5)
@@ -162,7 +164,15 @@ Natural key `remedy_id` (census, 0 duplicates). Fingerprint over `(remedy_id, re
 - **Carriage check chosen (T4 §4.1; one only):** D1 (sourced rows); tradition-rooted rows are explicitly outside it.
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Source ids: read-time resolution or rewrite the stored values?
-2. Is `classical_tradition` an accepted provenance value (explicit state) or are the 80 rows to be re-sourced?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (follows Q4, normalisation at the authority): resolve source ids through the authority's normalisation at read time; no stored rewrite unless REVIEW to SS. Not separately asked.
+2. ANSWERED by SS 2026-10-01 (Q3): `classical_tradition` is NOT accepted as provenance (B.3: no claim rests on 'per tradition' without a source). Give it an explicit attribution state `sourced | unsourced | refuted`; neither `unsourced` nor `refuted` is a PASS. The 19 refuted 'BPHS Ch.29' transit citations are marked `refuted`; re-sourcing them from the `bg_texts` corpus is a Track I research item, spot-checked at the milestone review.
+3. CF-09: ANSWERED by SS 2026-10-01 (Q4): the normalisation rule lives in the `bg_ontology` writer, the one authority; the vocabulary release id goes in the first wave if it is cheap; for the 11 two-class ids take the recommended option (a, class-aware resolvers) unless it changes served ids (then REVIEW to SS); of bhrigu_samhita, jaimini_sutram, lal_kitab_text keep any with a consumer and remove the rest; Abhijit is a declared exception (classically intercalary) and the 27-id class stays canonical. ANSWERED by SS 2026-10-01 (Q5): authority-side declaration with NO stored-value change: `bg_ephemeris` declares `node: TRUE`; consumers needing MEAN must not read node values from it (a check, Track I item); body-name normalisation is declared the same way. BEFORE any wave touches `bg_ephemeris` or `bg_texts`, SS notifies Pravāha (Exec sends SS an ASK first).
+4. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+5. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+6. CF-10: ANSWERED by SS 2026-10-01 (Q11): yes: Build.history counts only runs since the last change to the writer or the registry row.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-09, TI-L0-13.

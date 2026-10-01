@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "enrich (E)"
 disposition_proposal_approver: "Steward (G16) for the disposition; the output changes it names need SS (Track A §10, R5)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-13, TI-L0-23]
 ledger_gap_ids: [bg_rules-G01, bg_rules-G02, bg_rules-G03, bg_rules-G04, bg_rules-G05, bg_rules-G06, bg_rules-G07, bg_rules-G08, bg_rules-O1, bg_rules-O2, bg_rules-O3, bg_rules-O4, bg_rules-Idem.pattern, bg_rules-Earn.build_record, bg_rules-Cost.baseline, bg_rules-Complete.depth, bg_rules-Carr.detector, bg_rules-Carr.D1, bg_rules-G03, bg_rules-Carr.detector, bg_rules-Completeness.depth.dasha_link, bg_rules-G06, bg_rules-Complete.depth]
 ---
 # bg_rules — Classical rule extraction (`sutravali_rules`, 3,002 rules)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -67,7 +69,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | bg_rules-G03 | Carr | detector | no D1 compares a rule to its verse; CF-07 |
 | bg_rules-G04 | Synergy (seam B) | real | 17 of 3,002 rules name the concept they qualify; 0 name a daśā system \| ledger: measured: 17 of 3,002 rules carry yoga_canonical_id; 0 of 3,002 carry dasha_system_id / required: a rule names the concept it qualifies |
 | bg_rules-G05 | Dens / Reach | real (served surface) | exposed only through the MCP tool surface; absent from the 46 L0 retrieval-registry modules \| ledger: measured: exposed through the MCP tool surface (platform-mcp/src/tools/l0_brahmagyan.ts, ref_rules_search) and absent from all 46 L0 retrieval-registry capability module… |
-| bg_rules-G06 | Complete (depth) | real or column removal: SS question | `dasha_system_id` populated on 0 of 3,002 rows \| ledger: measured: dasha_system_id populated on 0 of 3,002 rows — a column never used / required: populated where the rule is daśā-conditioned, or the column removed |
+| bg_rules-G06 | Complete (depth) | real (decided SS Q9: NULL where no source exists; removal later is a REVIEW) | `dasha_system_id` populated on 0 of 3,002 rows \| ledger: measured: dasha_system_id populated on 0 of 3,002 rows — a column never used / required: populated where the rule is daśā-conditioned, or the column removed |
 | bg_rules-G07 | Complete (width) | real | 14 of 15 texts yield rules; `tajaka_neelakanthi` yields 0 from 290 chunks without a stated reason \| ledger: measured: 14 of 15 corpus texts yield rules; tajaka_neelakanthi yields 0 from 290 chunks / required: every ingested text either yields rules or carries a stated reason i… |
 | bg_rules-G08 | Vocab | real | 2 of 14 rule `text_id`s have no ontology identity; CF-09 \| ledger: measured: 2 of 14 rule text_ids (bhrigu_nandi_nadi, bphs_jaimini) have no identity in brahma_ontology's text class / required: every text_id resolves through the control… |
 | bg_rules-O1 | NONE | opportunity | per-text extraction (the largest value increase available in L0) \| ledger: the largest single value increase available in L0: at saravali's yield BPHS alone would produce ~3,400 rules, more than the entire corpus holds today |
@@ -80,7 +82,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | bg_rules-Complete.depth | Complete | information | `dasha_system_id` never populated \| ledger: measured: 3002 rows, 14 cols; fully populated 12; NEVER populated ['dasha_system_id'] / required: the Complete gate's claim |
 | bg_rules-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
 | bg_rules-Carr.D1 | Carr | detector | same as G03 (folded) |
-| bg_rules-Completeness.depth.dasha_link | Complete (depth) | real or column removal: SS question | same as G06 \| ledger: measured: dasha_system_id populated on 0 of 3,002 rows — a column never used / required: populated where the rule is daśā-conditioned, or the column removed \|\| folded ce… |
+| bg_rules-Completeness.depth.dasha_link | Complete (depth) | real (decided SS Q9: NULL where no source exists; removal later is a REVIEW) | same as G06 \| ledger: measured: dasha_system_id populated on 0 of 3,002 rows — a column never used / required: populated where the rule is daśā-conditioned, or the column removed \|\| folded ce… |
 | census: Ldgr (no reading) | Ldgr | detector | no recognised citation column on the target table; CF-08 |
 | census: Null/Narr (declarations) | Null, Narr | detector | `prose_fields` undeclared; CF-06 |
 
@@ -88,7 +90,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **enrich (E)** — agreed with the carried E: the extraction works and cites every verse, but rule→concept linkage is effectively absent (seam B: 17/3,002), the confidence signal does not discriminate and one text yields nothing. The additions are columns/links, not removal. Output changes need SS.
 
-Approver under Track A brief §10: **Steward (G16) for the disposition; the output changes it names need SS (Track A §10, R5)**. 
+Approver under Track A brief §10: **Steward (G16) for the disposition; the output changes it names need SS (Track A §10, R5)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
@@ -107,28 +109,28 @@ Approver under Track A brief §10: **Steward (G16) for the disposition; the outp
 ### FD-2 · Rule → concept linkage (seam B)
 
 - **Answers:** ledger `bg_rules-G04` / O3; layer instance §1.3
-- **Change:** populate `yoga_canonical_id` (and, where the rule is daśā-conditioned, `dasha_system_id`) from the pattern family’s own match (the family that extracts a yoga formation already knows the yoga name) and resolve it through the ontology; rows with no determinable concept stay NULL with the reason (honest null). An additive output change.
+- **Change:** populate `yoga_canonical_id` (and, where the rule is daśā-conditioned, `dasha_system_id`) from the pattern family’s own match (the family that extracts a yoga formation already knows the yoga name) and resolve it through the ontology; rows with no determinable concept stay NULL with the reason (honest null). An additive output change. **Decided (SS 2026-10-01, Q9): change the writer to `DO UPDATE` so a rebuild reproduces the concept ids; do NOT backfill by migration. `dasha_system_id`: populate where a source exists, otherwise NULL (removal later is a REVIEW).**
 - **Files / declaration / migration:** `brahmagyan/l0_rules.py` (pattern families + INSERT) ; depends on the ontology identity (CF-09)
 - **Failing-first test and mutation:** failing-first: the count of rules with a concept id rises from 17 to the number the pattern families can resolve (stated in advance by a dry run) and every populated id resolves to the ontology (`brahma_yoga_catalog`); mutation: break a family’s name capture → the id count drops
 - **Output change:** concept-id columns populated on a larger subset of rules
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** needs production rebuild: bg_rules (note `ON CONFLICT (rule_id) DO NOTHING` does not UPDATE existing rows, so the writer needs `DO UPDATE` for the new columns or a one-time backfill migration)
+- **Rebuild:** needs production rebuild: bg_rules with the `DO UPDATE` conflict clause (no separate backfill)
 - **Gate it moves:** Vocab/Synergy (seam B)
 - **Fix class:** data (output change) + writer code; **buildable before J1:** tier-dependent: TGH-T3-13 (no synergy seams defined) and DP02 clause wording
-- **Question for SS:** Backfill by migration or change the conflict clause to `DO UPDATE`?
+- **Decision:** ANSWERED by SS 2026-10-01 (Q9): change the writer to `DO UPDATE` so a rebuild reproduces the concept ids and do NOT backfill; `confidence`: no fake score (CLAUDE.md N.7): if it does not discriminate the writer sets it NULL and documents why (dropping the column later is a REVIEW); `dasha_system_id`: populate if a source exists, otherwise NULL (removal later is a REVIEW).
 
-### FD-3 · Honest confidence
+### FD-3 · Honest confidence: NULL, documented, no fake score
 
 - **Answers:** ledger `bg_rules-G02` / O2; CLAUDE.md §N.7 item 6, §N.8
-- **Change:** either emit a graded signal that can discriminate or collapse `confidence` into an explicitly named quality tier and drop the duplicate (`confidence = quality_score` on all rows); never present two identical values as two signals.
+- **Change:** decided (SS 2026-10-01, Q9; CLAUDE.md N.7): no fake score. Because `confidence` equals `quality_score` on every row and does not discriminate, the writer sets it NULL and documents why; dropping or renaming the column later is a REVIEW to SS.
 - **Files / declaration / migration:** `brahmagyan/l0_rules.py` (scoring) + consumers of `confidence`
 - **Failing-first test and mutation:** failing-first: `confidence` and `quality_score` are not identical on every row, or the column is declared a tier; mutation: set both equal → test fails
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** needs production rebuild: bg_rules (see the conflict-clause note)
 - **Gate it moves:** Earn
-- **Fix class:** data (output change) + writer code; **buildable before J1:** tier-independent
-- **Question for SS:** Drop/rename `confidence`, or build a discriminating score?
+- **Fix class:** data (output change) + writer code; **buildable before J1:** tier-independent (decided)
+- **Decision:** ANSWERED by SS 2026-10-01 (Q9): change the writer to `DO UPDATE` so a rebuild reproduces the concept ids and do NOT backfill; `confidence`: no fake score (CLAUDE.md N.7): if it does not discriminate the writer sets it NULL and documents why (dropping the column later is a REVIEW); `dasha_system_id`: populate if a source exists, otherwise NULL (removal later is a REVIEW).
 
 ### FD-4 · Serve the rules from the L0 registry
 
@@ -196,8 +198,12 @@ Natural key `rule_id` (deterministic UUID5 of `text_id|verse_ref|sha256[:16]`; c
 - **Carriage check chosen (T4 §4.1; one only):** D1 (re-match each rule against its cited verse with its own family).
 - **Opportunities (never blocking):** `bg_rules-O1…O4` (per-text extraction; one honest signal; rule→concept linkage; rate baseline).
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Concept backfill: migration or `DO UPDATE`?
-2. `confidence`: drop/rename or a discriminating score?
-3. `dasha_system_id`: populate or remove the column?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q9): change the writer to `DO UPDATE` so a rebuild reproduces the concept ids and do NOT backfill; `confidence`: no fake score (CLAUDE.md N.7): if it does not discriminate the writer sets it NULL and documents why (dropping the column later is a REVIEW); `dasha_system_id`: populate if a source exists, otherwise NULL (removal later is a REVIEW).
+2. CF-09: ANSWERED by SS 2026-10-01 (Q4): the normalisation rule lives in the `bg_ontology` writer, the one authority; the vocabulary release id goes in the first wave if it is cheap; for the 11 two-class ids take the recommended option (a, class-aware resolvers) unless it changes served ids (then REVIEW to SS); of bhrigu_samhita, jaimini_sutram, lal_kitab_text keep any with a consumer and remove the rest; Abhijit is a declared exception (classically intercalary) and the 27-id class stays canonical. ANSWERED by SS 2026-10-01 (Q5): authority-side declaration with NO stored-value change: `bg_ephemeris` declares `node: TRUE`; consumers needing MEAN must not read node values from it (a check, Track I item); body-name normalisation is declared the same way. BEFORE any wave touches `bg_ephemeris` or `bg_texts`, SS notifies Pravāha (Exec sends SS an ASK first).
+3. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-13, TI-L0-23.

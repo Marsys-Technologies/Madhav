@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "keep (P)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-08, TI-L0-25]
 ledger_gap_ids: [bg_sign_medical-Idem.pattern, bg_sign_medical-Build.completion, bg_sign_medical-Earn.build_record, bg_sign_medical-Cost.baseline, bg_sign_medical-Dens.served, bg_sign_medical-Carr.detector, bg_sign_medical-Build.exercised]
 ---
 # bg_sign_medical — Kalapurusha sign → body-part map (12 rows; rider on the medical writer)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -69,7 +71,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 | bg_sign_medical-Build.completion | Build | real (status) | live 12 with no build record at all; CF-02 \| ledger: measured: live=12 and no build record at all / required: the Build gate's claim |
 | bg_sign_medical-Earn.build_record | Earn | detector | instrument absent (migration 1094); CF-05; no asset change |
 | bg_sign_medical-Cost.baseline | Cost | information | same absent instrument; CF-05 |
-| bg_sign_medical-Dens.served | Dens | real as measured at rev 1; applicability and re-measure pending | CF-04 \| ledger: measured: 2 module(s): index.ts, query_sign_medical.ts; declaring density_contract: 0 / required: the Dens gate's claim |
+| bg_sign_medical-Dens.served | Dens | real as measured at rev 1 (Dens applies per SS Q2; offline re-measure in INDEX section 9.1) | CF-04 \| ledger: measured: 2 module(s): index.ts, query_sign_medical.ts; declaring density_contract: 0 / required: the Dens gate's claim |
 | bg_sign_medical-Carr.detector | Carr | detector | no D1/D2/D3 detector exists for this asset; CF-07 |
 | bg_sign_medical-Build.exercised | Build | real (status) | registered with a writer and never dispatched; CF-02/CF-03 \| ledger: measured: registered with a writer and the orchestrator has NEVER run it (no build_run_assets row) / required: the Build gate's claim |
 | census: Null/Narr (declarations) | Null, Narr | detector | `prose_fields` undeclared; CF-06 |
@@ -78,22 +80,22 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **keep (P)** — the data is complete and cited; the gaps are about whether the orchestrator ever exercised this id (CF-02/CF-03).
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
-### FD-1 · Exercise the id
+### FD-1 · Rider relation declared; sibling dispatch exercises the id
 
 - **Answers:** census `Build.exercised` FAIL; ledger `bg_sign_medical-Build.exercised`; layer instance C-13; CF-02
-- **Change:** dispatch `bg_sign_medical` (alone or through the shared writer) in one L0 asset-set/layer run so a `build_run_assets` row and a throughput record exist; or, if SS rules that a rider is exercised by its sibling’s dispatch (T4 `producer_covered`), declare that and leave the cell to read it.
+- **Change:** decided (SS 2026-10-01, Q6): a sibling’s dispatch counts when the registry declares the rider relation: declare `bg_sign_medical` a rider of `bg_medical_mappings`; the first L0 dispatch of the sibling records the run.
 - **Files / declaration / migration:** an L0 run (production action) or a declaration
 - **Failing-first test and mutation:** after the run: a `build_run_assets` row for the id; the 12 rows’ fingerprint unchanged (idempotent)
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** needs production rebuild/dispatch (12 rows, idempotent): REVIEW item for SS
+- **Rebuild:** none (declaration); the first sibling dispatch clears the finding
 - **Gate it moves:** Build (exercised, completion)
-- **Fix class:** registry/declaration only (declaration) or a build action; **buildable before J1:** tier-dependent: TGH-T4-01 (rider kind)
-- **Question for SS:** Does the sibling’s dispatch count for a rider (T4 `producer_covered`), or must each id run?
+- **Fix class:** registry/declaration only; **buildable before J1:** tier-independent (decided)
+- **Decision:** ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch.
 
 ### FD-2 · Carr detector — D1 on the 12 rows
 
@@ -122,15 +124,15 @@ Approver under Track A brief §10: **Steward (G16)**.
 ### FD-4 · Dens: declare density on the served module(s)
 
 - **Answers:** census `Dens.served` FAIL (saved, rev 1): 2 modules: `index.ts`, `query_sign_medical.ts`; CF-04
-- **Change:** per CF-04: declare `density_contract` where the module paginates or facets, after the applicability ruling
+- **Change:** decided (SS 2026-10-01, Q2): Dens applies because this asset reaches a served surface. Declare `density_contract` facets (`paginated`, `facets`, `empty_reason`) on the module(s); if the table is a uniform-authority vocabulary also declare `uniform_authority: true` in the declarations (R, PROVISIONAL until the J1 review); a mixed-authority table needs a real tier column.
 - **Files / declaration / migration:** `platform/src/lib/retrieval/registry/layers/L0_brahmagyan/` module(s) named above; `platform/src/lib/retrieval/registry/types.ts` (descriptor, unchanged)
 - **Failing-first test and mutation:** response-shape test for `empty_reason` and the trim; mutation: drop the declaration → census FAIL
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
 - **Rebuild:** none (TypeScript only)
 - **Gate it moves:** Dens
-- **Fix class:** served surface (TS); **buildable before J1:** tier-dependent: TGH-T3-26 + N-22 applicability
-- **Question for SS:** Does Dens apply to this reference table at all (it carries no verification tier)?
+- **Fix class:** served surface (TS); **buildable before J1:** tier-independent for the facets (decided); the `uniform_authority` detector support is an (R) item for the E6 work
+- **Decision:** ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
 
 ### Shared fixes that apply to this asset (full design in `INDEX.md`)
 
@@ -138,7 +140,7 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **CF-02** — Producer attribution: rider ids, multi-table writers and multi-producer tables. *This asset:* rider id, never dispatched
 - **CF-07** — Carr (source carriage and reproduction) detectors, one check per asset. *This asset:* D1 above
 - **CF-06** — prose_fields declarations for the 35 L0 assets that have none (Null and Narr gates). *This asset:* prose declaration
-- **CF-04** — Dens (serving density) on the L0 served modules. *This asset:* 2 modules
+- **CF-04** — Dens (serving density) on the L0 served modules: applies wherever a served surface is reached; `uniform_authority` (R). *This asset:* 2 modules
 - **CF-12** — Idem: an orphan census for upsert-only writers (the Idem PASS does not test accretion). *This asset:* upsert, no DELETE found
 
 ## 5 · Semantic fingerprint contract (for E5.5)
@@ -151,6 +153,14 @@ Natural key `sign_number` (census, 0 duplicates). Upsert; volatile: `created_at`
 - **Carriage check chosen (T4 §4.1; one only):** D1 (where the cited text is in the corpus).
 - **Opportunities (never blocking):** none registered beyond the ledger rows listed in §2
 
-## 7 · Questions for Strategic Suvarṇa
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
 
-1. Rider: sibling dispatch counts, or must the id run itself?
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch.
+2. CF-02: ANSWERED by SS 2026-10-01 (Q6): a sibling's dispatch counts (`producer_covered`) when the registry declares the rider relation; the R61 cascade may stand until the first L0 dispatch. ANSWERED by SS 2026-10-01 (Q19): scope `count_sql` to the primary table and declare the asset multi-table.
+3. CF-07: ANSWERED by SS 2026-10-01 (Q13): D1 anchor-term matching is accepted as the L0 carriage detector, but the cell reads PASS ONLY if every row matches, else PARTIAL; semantic equivalence is sampled. Ratified judgment seeds get check-level Carr N/A by cause `ratified_judgment` from a declared fact (R, PROVISIONAL until the J1 review); it becomes a rule in `NA_RULE_DECISIONS` only via SS approval.
+4. CF-04: ANSWERED by SS 2026-10-01 (Q2): Dens applies wherever an asset reaches a served surface. A reference vocabulary of uniform authority declares `uniform_authority: true` in the declarations file and Dens then PASSes on `density_contract` facets without a tier column (R, PROVISIONAL until the J1 review); mixed-authority tables need a real tier. Re-measure first with the current inspector (done offline here, see INDEX section 9).
+5. CF-12: ANSWERED by SS 2026-10-01 (Q12): yes: 'no orphan rows under the writer's own partition' is the Idem claim for L0 upsert writers.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-05, TI-L0-06, TI-L0-08, TI-L0-25.

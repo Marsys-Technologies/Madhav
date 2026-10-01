@@ -13,11 +13,13 @@ layer_instance: "00_ARCHITECTURE/briefs/suvarna/layers/L0/L0_LAYER_INSTANCE_v3_1
 base_commit: "main 0250cbade"
 disposition: "qualify (Q)"
 disposition_proposal_approver: "Steward (G16)"
+decisions_applied: "SS answers to INDEX section 7, 2026-10-01 (items marked R are PROVISIONAL until the J1 review); disposition accepted as proposed"
+track_i_items: [TI-L0-03, TI-L0-06, TI-L0-20]
 ledger_gap_ids: [bg_sarvatobhadra_grid-G01, bg_sarvatobhadra_grid-G02, bg_sarvatobhadra_grid-O1, bg_sarvatobhadra_grid-O2, bg_sarvatobhadra_grid-Build.count_integrity, bg_sarvatobhadra_grid-Earn.build_record, bg_sarvatobhadra_grid-Cost.baseline, bg_sarvatobhadra_grid-Carr.detector, bg_sarvatobhadra_grid-Complete.depth, bg_sarvatobhadra_grid-Vocab.identity]
 ---
 # bg_sarvatobhadra_grid — School-tagged Sarvatobhadra Chakra grid (registered deliberately empty)
 
-> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. Where a fix depends on a Strategic Suvarṇa ruling it is stated as a question.
+> **PROVISIONAL — until J1; may register gaps, may not certify.** Facts come from the repository and the saved census only (B.10); no figure here was invented. SS answered the open questions on 2026-10-01: decisions are recorded in §4 and §7 (items marked (R) are PROVISIONAL until the J1 review).
 
 ## 0 · Identity — what the asset is
 
@@ -89,7 +91,7 @@ Class vocabulary: **real** = a shortfall in the asset’s rows, writer, registry
 
 **qualify (Q)** — agreed with the carried Q: retain the asset and keep the abstention explicit; it is an honest null by a native-level ruling, not an unfinished build. Seating the grid requires a school's passage that is not in hand (`bg_sarvatobhadra_grid-G01`), so no data is proposed.
 
-Approver under Track A brief §10: **Steward (G16)**. 
+Approver under Track A brief §10: **Steward (G16)**. Disposition accepted as proposed (SS 2026-10-01, Q10).
 
 ## 4 · Fix designs (one per real gap; `needs production rebuild` is a REVIEW item for Strategic Suvarṇa)
 
@@ -117,17 +119,17 @@ Approver under Track A brief §10: **Steward (G16)**.
 - **Gate it moves:** Null, Complete (information)
 - **Fix class:** registry/declaration only; **buildable before J1:** tier-independent
 
-### FD-3 · Writer/no-writer and `lit` status
+### FD-3 · Dispatchable writer for the static empty asset (confirm)
 
 - **Answers:** census `Build.exercised` N/A; layer instance §1.1 finding 5; CF-05
-- **Change:** confirm that no writer is intended (static, empty by ruling) so `has_writer = false` is correct; the `lit` throughput row without a run is the §N.8 pattern and is handled by the CF-05 instrument, not by a writer.
-- **Files / declaration / migration:** none for the asset
+- **Change:** SS 2026-10-01, Q7: static migration-seeded assets get a dispatchable writer that re-seeds from the git source (delete-then-insert). For this asset the source is the empty-by-ruling state (ADJUDICATION-11): the writer asserts 0 rows (delete-then-insert of nothing) and preserves the school-keyed shape, so Build is measurable. Confirm with SS that the empty re-seed is intended before building (the asset’s rows are empty by ruling; no data is seeded).
+- **Files / declaration / migration:** `pipeline/orchestrator/writers/bg_sarvatobhadra_grid.py` (new) + registry `has_writer = true`
 - **Failing-first test and mutation:** n/a
 - **Output change:** none
 - **Blast radius:** as the §0 row (declared dependents; the change is local to this asset’s record or declaration unless the output change says otherwise)
-- **Rebuild:** none
+- **Rebuild:** needs production rebuild/dispatch (0 rows): REVIEW item
 - **Gate it moves:** Earn
-- **Fix class:** detector/tooling; **buildable before J1:** tier-dependent: TGH-T4-03 (an empty writer-backed/static asset: how "empty by design" is declared)
+- **Fix class:** writer code; **buildable before J1:** tier-independent (decided, to be confirmed)
 
 ### FD-4 · Declare `prose_fields` (Null and Narr gates)
 
@@ -156,3 +158,11 @@ Natural key `(school_tag, cell_kind, cell_index, table_version)`; the fingerprin
 - **Preserved kernel:** the empty-by-ruling state with its disclosed approximation downstream; the school-keyed shape that lets variants coexist.
 - **Carriage check chosen (T4 §4.1; one only):** none applies while empty (no restatement and no computation); recorded NO_DETECTOR with the reason (T4 §4.1). A D1 against the school’s passage applies once a grid is seated.
 - **Opportunities (never blocking):** `bg_sarvatobhadra_grid-O1/O2` (seat the grid when a passage exists; hold two school grids).
+
+## 7 · Decisions applied (SS answered INDEX section 7 on 2026-10-01; no question is open in this brief)
+
+Disposition accepted as proposed (Q10). Items marked (R) are PROVISIONAL until the J1 review.
+
+1. CF-10: ANSWERED by SS 2026-10-01 (Q11): yes: Build.history counts only runs since the last change to the writer or the registry row.
+
+**Track I items arising (see INDEX section 8):** TI-L0-03, TI-L0-06, TI-L0-20.
