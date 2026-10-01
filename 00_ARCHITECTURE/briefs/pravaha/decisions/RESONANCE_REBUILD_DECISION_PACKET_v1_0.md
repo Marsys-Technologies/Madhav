@@ -1,7 +1,7 @@
 ---
 artifact: RESONANCE_REBUILD_DECISION_PACKET
 version: "1.0"
-status: "READY FOR NATIVE — re-synced 2026-10-01 to the MERGED runbook (#2769 + #2804 on main); the two certificate queries are re-measured by the native on execution day (production is password-gated to agents)"
+status: "READY FOR NATIVE — re-synced 2026-10-01 to the MERGED runbook (#2769 + #2804 on main); steward re-measured the read-only certificates 2026-10-01: unchanged (values below); the native re-runs the §1 certificate as part of the snapshot step"
 date: 2026-09-30
 author: Stream B (Śāstra), item B6.0
 decision_needed: "Native authorises and personally executes the production resonance-map rebuild (A5.4 runbook). No agent performs any write."
@@ -70,9 +70,10 @@ Chart `482012f1-710e-4a25-994a-93821f5871aa`, table `gochara_resonance_map`:
 Full text: `platform/python-sidecar/scripts/kala_gochara_cutover/resonance_rebuild_R1_R6_runbook.md`
 (merged on main; 704 lines). In outline:
 
-1. **§0 preconditions (read-only):** migration 1080 columns present (already verified
-   today); deployed sidecar image carries writer FORMULA_VERSION
-   `ka_gochara_resonance_v2.2`; render this run's statements with
+1. **§0 preconditions (read-only):** migration 1080 columns present (already verified);
+   the `brahma-build-pipeline-job` image `fedc5ae50` carries writer FORMULA_VERSION
+   `ka_gochara_resonance_v2.2` (steward-verified 2026-10-01 — the rebuild runs in the
+   pipeline job, not the sidecar); render this run's statements with
    `resonance_rebuild_backup_sql.py` (fresh UTC stamp).
 2. **§1 snapshot (your write, storage only):** `CREATE TABLE
    gochara_resonance_map_snap_482012f1_<stamp> AS SELECT * … WHERE chart_id=…`, then record
@@ -82,11 +83,25 @@ Full text: `platform/python-sidecar/scripts/kala_gochara_cutover/resonance_rebui
    through the governed pipeline (build_runs row, `scope='asset'`, `action='rebuild'`,
    `plan.asset_ids=["ka_gochara_resonance"]`; the normal Cloud Run job path). Capture the
    writer's `WriterResult.notes` JSON into the evidence file.
-4. **§3 verification (read-only):** every MUST in the runbook — 0 negative-keyed rows;
-   kept-set ≡ positive-fact set (both EXCEPT directions empty); 0 NULL/dangling refs;
-   every row carries a valid state and partition non-empty; arudha/yoga/lord positive
-   controls; R-5 afflicted-lord identity both directions empty; record after-counts and the
-   new content digest.
+4. **§3 verification (read-only):** every MUST in the merged runbook, by name —
+   **R-1** 0 negative-result/out-of-vocabulary sensitive targets, its positive control
+   (kept rows > 0 and equal to the positive-fact count), and the class-associated
+   ayanāṃśa-pinned R-1 identity (both EXCEPT directions 0);
+   **chart-scoped TEXT fact-ref resolution:** 0 NULL/malformed/dangling refs;
+   **R-6** every row a valid stored state and the partition non-empty;
+   **R-2** arudha rows > 0, all keyed to this chart's `fact_key='sign'` facts, and the
+   class-associated R-2 identity (both directions 0);
+   **R-3** yoga rows > 0, 0 refs unbacked by a live fired firing, and the
+   class-associated R-3 identity (both directions 0);
+   **R-4** lord rows > 0 and all `'resolved'`, the ALL-lord identity (both directions 0);
+   **R-5** afflicted-lord qualifier identity (both directions 0);
+   **value invariants:** 0 rows violating the writer's declared weight/provenance/state/
+   qualifier invariants, including the #2804 additions — the mechanism_node weight
+   contract, mechanism_node `'resolved'` state, and the M-6 operand-presence state;
+   **mechanism identity:** (event_class, source_rule_id) rows ≡ eligible bg_transit_rules
+   (both directions 0);
+   **post-rebuild content digest** recorded (a rerun MUST reproduce it).
+   Where this outline is shorter, the runbook text is authoritative.
 5. **§4 rollback (refuse-unless-verified):** restores the exact §1 preimage from the
    snapshot table; refuses before any DELETE if the snapshot is absent, empty, foreign, or
    certificate-mismatched; re-verifies after restore. The block was rehearsed
@@ -102,9 +117,11 @@ end state.
 
 ## Recommendation
 
-**Option 1, now that #2769 has merged, as soon as the deployed sidecar image carries
-`ka_gochara_resonance_v2.2` (merge alone is not enough — deploy is Stream A's lane).**
-The pre-counts above were measured 2026-09-30 against production; on execution day,
-re-run the two certificate queries (read-only, but production is password-gated to
-agents — you run them), substitute the fresh stamp, and proceed. Expected wall time:
-minutes for the snapshot, one governed build for the writer, minutes for §3 verification.
+**Option 1: execute.** #2769 and #2804 are merged, and the `brahma-build-pipeline-job`
+image `fedc5ae50` carries `ka_gochara_resonance_v2.2` (steward-verified 2026-10-01).
+The steward re-measured the read-only certificates 2026-10-01: **unchanged** — full-row
+preimage certificate `(765, 3d270ef0a2db00b240a2acb4d45171c0)`, 765 rows all
+`'resolved'`, 176 sensitive_degree (the baseline above stands). Re-run the §1
+certificate as part of the snapshot step, substitute the fresh stamp, and proceed.
+Expected wall time: minutes for the snapshot, one governed build for the writer,
+minutes for §3 verification.
