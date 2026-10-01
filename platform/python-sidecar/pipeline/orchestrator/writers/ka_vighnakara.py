@@ -6,10 +6,14 @@ and real panchāṅga calls.  Detection hierarchy:
 
   1. malefic_transit   — Saturn or Rahu in adversarial sign relative to native lagna/moon,
                          computed via swisseph at peak_date.
-  2. panchanga_obstruction — Rikta tithi (4, 9, 14) from ka_muhurta_seva; real tithi,
-                             not day-mod arithmetic.
-  3. gandanta          — Moon in last 3°20' of Cancer/Scorpio/Pisces at peak_date,
-                         computed via swisseph.
+  2. panchanga_obstruction — Rikta tithi (the engine's set, tithi ids 4/9/14/19/24/29,
+                             classified by `panchang_engine.rich_topics.compute_tithi_attrs`) from
+                             ka_muhurta_seva; real tithi, not day-mod arithmetic.
+  3. gandanta          — Moon within the water-fire junction at peak_date (last 3°20' of
+                         Cancer/Scorpio/Pisces AND first 3°20' of Leo/Sagittarius/Aries),
+                         computed via swisseph; the arc and zone test are the L1 definition
+                         (`ga_writers.ga_sensitive_degree_writer.check_gandanta`), not
+                         re-declared here.
   4. papakartari       — lagna bhava hemmed between malefics in adjacent signs at peak_date,
                          from natal lagna + swisseph transit positions.
   5. combustion        — any planet within 6° of Sun (from chart_facts natal positions).
@@ -22,6 +26,11 @@ from datetime import date as DateType
 from typing import Optional
 
 from panchang_engine.swiss_state import serialized_swiss_state
+# Rikta classification: the engine's own tithi-type table (tithi ids 1..30), via its public
+# accessor. Referenced, never re-listed here.
+from panchang_engine.rich_topics import compute_tithi_attrs
+# Gandanta arc + zone test: the L1 definition (SS ruling N-28). Referenced, never re-declared.
+from ga_writers.ga_sensitive_degree_writer import GANDANTA_CITATION, check_gandanta
 
 import psycopg
 
@@ -53,6 +62,11 @@ _SIGN_NAMES = (
     'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
     'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
 )
+
+
+def _is_rikta_tithi(tithi: int) -> bool:
+    """Rikta per the panchang engine's own tithi-type table (no local copy of the set)."""
+    return compute_tithi_attrs(tithi).anga_type == 'Rikta'
 
 
 def _ordinal(n: int) -> str:
@@ -88,12 +102,11 @@ def _chart_adverse_signs(
     rahu = _build([(natal_lagna_lon, _RAHU_LAGNA_OFFSETS, 'lagna')])
     return saturn, rahu
 
-# Gandanta: last 3°20' (3.333°) of water signs before fire-sign junction
-_GANDANTA_RANGES = [
-    (90.0, 93.333),    # Cancer end → Leo start
-    (210.0, 213.333),  # Scorpio end → Sagittarius start
-    (330.0, 333.333),  # Pisces end → Aries start
-]
+# Gandanta windows are NOT declared here: the water-fire junction (last GANDANTA_ARC of
+# Cancer/Scorpio/Pisces AND first GANDANTA_ARC of Leo/Sagittarius/Aries) is the L1 definition
+# in ga_writers.ga_sensitive_degree_writer (CLAUDE.md §N.7 item 3: no wrapper-local constant
+# may shadow an L1 value). The previous local table covered the first 3°20' of the water signs
+# (90-93.33, 210-213.33, 330-333.33) — a window that is not gandanta at all.
 
 # (C12 fix) flat _COMBUSTION_ORB_DEG = 6.0 DELETED — per-graha orbs from bg_combustion_orbs.
 # These classical fallback values are used when the DB table is unavailable.
@@ -690,7 +703,9 @@ def _check_malefic_transit(peak_date, jd=None, swe=None, muhurta_service=None,
 def _check_panchanga_obstruction(peak_date, jd=None, swe=None, muhurta_service=None,
                                  native_location=None, natal_lagna_lon=None) -> Optional[dict]:
     """
-    Rikta tithi (4, 9, 14) from real panchāṅga via ka_muhurta_seva.
+    Rikta tithi from real panchāṅga via ka_muhurta_seva. The Rikta set is the engine's
+    (`panchang_engine.rich_topics.compute_tithi_attrs(t).anga_type == 'Rikta'`: tithi ids
+    4/9/14/19/24/29, i.e. the 4th/9th/14th of each paksha); Pūrṇimā (15) and Amāvasyā (30) are Pūrṇa, not Rikta.
     Falls back to day-mod proxy only when the service is unavailable.
     Citation: Muhurta-Chintamani §Tithi; Rikta tithis inauspicious for most karyas.
     """
@@ -718,8 +733,8 @@ def _check_panchanga_obstruction(peak_date, jd=None, swe=None, muhurta_service=N
         # Fallback: day-mod proxy (less accurate but better than nothing)
         tithi = (peak_date.day % 15) or 15
 
-    # Rikta (inauspicious) tithis: 4, 9, 14. Amavasya proxy: day % 15 = 0 → tithi 15 included.
-    if tithi in (4, 9, 14, 15):
+    # Rikta (inauspicious) tithis: the engine's set — referenced, not re-listed.
+    if _is_rikta_tithi(tithi):
         severity_score = 0.35
         return {
             'obstruction_type': 'panchanga_obstruction',
@@ -743,10 +758,18 @@ def _check_panchanga_obstruction(peak_date, jd=None, swe=None, muhurta_service=N
 def _check_gandanta(peak_date, jd=None, swe=None, muhurta_service=None,
                    native_location=None, natal_lagna_lon=None) -> Optional[dict]:
     """
-    Gandanta: Moon in the last 3°20' of Cancer, Scorpio, or Pisces at peak_date.
-    Uses swisseph sidereal (Lahiri) Moon longitude.
-    Returns a stub dict (not None) when called without swe — so test contracts are satisfied.
-    Citation: Phaladeepika ch.2; Muhurta-Chintamani §Gandanta — junction of water→fire.
+    Gandanta: Moon at the water-fire junction at peak_date — the LAST 3°20' of Cancer,
+    Scorpio and Pisces AND the FIRST 3°20' of Leo, Sagittarius and Aries
+    (Āśleṣā-Maghā, Jyeṣṭhā-Mūla, Revatī-Aśvinī sandhi).
+    Uses swisseph sidereal (Lahiri) Moon longitude; the arc and the zone test come from the
+    L1 definition `ga_sensitive_degree_writer.check_gandanta` (SS ruling N-28) — nothing is
+    hard-coded here. Returns a stub dict (not None) when called without swe — so test
+    contracts are satisfied.
+    Citation: the L1 `GANDANTA_CITATION` (BPHS / Sarvartha Chintamani); L0 reference
+    `brahma_dosha_catalog` canonical_id='gandanta_dosha', classical_citations
+    [{"text_id": "bphs", "chapter": 9}] (brahmagyan/l0_doshas.py). The bg_texts passage
+    itself was not looked up when this was written — citation: pending bg_texts lookup
+    for the verse-level reference.
     """
     peak_date = _coerce_date(peak_date)
     if peak_date is None:
@@ -769,28 +792,43 @@ def _check_gandanta(peak_date, jd=None, swe=None, muhurta_service=None,
     if moon_lon is None:
         return None
 
-    for range_start, range_end in _GANDANTA_RANGES:
-        if range_start <= moon_lon < range_end:
-            junction_sign = _lon_to_sign(range_start)
-            severity_score = 0.55
-            return {
-                'obstruction_type': 'gandanta',
-                'severity': _severity(severity_score),
-                'severity_score': severity_score,
-                'override_score': 0.22,
-                'detail': {
-                    'moon_longitude': round(moon_lon, 3),
-                    'junction_sign': junction_sign,
-                    'reason': (
-                        f"Moon at {moon_lon:.2f}° (Lahiri) — in Gandanta zone at "
-                        f"end of {junction_sign}. Instability at rāśi-nakshatra junction."
-                    ),
-                    'citation': "Phaladeepika ch.2 — last 3°20' of water sign before fire",
-                    'peak_date': str(peak_date),
-                    'source': 'swisseph/lahiri',
-                },
-            }
-    return None
+    # The 3°20' edges (26°40' of a water sign / 3°20' of a fire sign) are not exactly
+    # representable in binary floating point, and `lon % 30` of a sign-multiple-plus-edge longitude
+    # lands a few ulp on the wrong side (e.g. Scorpio 26°40' -> 26.666666666666657 < 26.666666666666668).
+    # Rounding the in-sign degree to 9 decimals (~3.6e-6 arcsec) keeps the inclusive L1 edges inclusive.
+    moon_lon = moon_lon % 360.0
+    gd = check_gandanta(int(moon_lon // 30), round(moon_lon % 30.0, 9))
+    if not gd['fired']:
+        return None
+
+    moon_sign = gd['sign']
+    zone = gd['gandanta_zone']  # 'end_of_<water sign>' | 'start_of_<fire sign>'
+    side = "end" if zone.startswith('end_of_') else "start"
+    severity_score = 0.55
+    return {
+        'obstruction_type': 'gandanta',
+        'severity': _severity(severity_score),
+        'severity_score': severity_score,
+        'override_score': 0.22,
+        'detail': {
+            'moon_longitude': round(moon_lon, 3),
+            # The sign the Moon occupies (a water sign at the end-junction, a fire sign at the
+            # start-junction); kept under the legacy key for stored-row/consumer continuity.
+            'junction_sign': moon_sign,
+            'gandanta_zone': zone,
+            'distance_to_junction_deg': gd['distance_to_junction_deg'],
+            'gandanta_arc_deg': gd['gandanta_arc_deg'],
+            'reason': (
+                f"Moon at {moon_lon:.2f}° (Lahiri) — in Gandanta zone at "
+                f"{side} of {moon_sign}, {gd['distance_to_junction_deg']:.2f}° from the "
+                f"water-fire junction. Instability at rāśi-nakshatra junction."
+            ),
+            'citation': GANDANTA_CITATION,
+            'l0_ref': "brahma_dosha_catalog:gandanta_dosha (bphs ch.9)",
+            'peak_date': str(peak_date),
+            'source': 'swisseph/lahiri',
+        },
+    }
 
 
 # ── Detector 4: papakartari ───────────────────────────────────────────────────
