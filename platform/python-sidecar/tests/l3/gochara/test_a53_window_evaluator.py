@@ -161,7 +161,50 @@ def test_p3_citation_fields_complete_for_verse_cited():
             assert e.ruling_ref is not None         # kgrr_ruling_ck
 
 
-# ── (c) P4 ────────────────────────────────────────────────────────────────────
+# ── (c) P2 ────────────────────────────────────────────────────────────────────
+
+
+def test_p2_scored_adverse_residence_oracle_shape():
+    """O-RP-5a: Saturn in the 8th from the Aquarius Moon is a SCORED edge on
+    the adverse class illness_acute (evidence FOR occurrence); gain classes
+    carry nothing."""
+    edges = ev.enumerate_edges("illness_acute", "P2", CHART)
+    sat8 = [e for e in edges if e.agent == "saturn" and e.operator_role == "scored"]
+    # Aquarius 1st … Virgo 8th (the oracle's written-out count)
+    assert [e.obj.canonical_target for e in sat8] == ["span:sign:virgo"]
+    assert all(e.frame_kind == "moon" and e.affected_person == "native"
+               and e.relation == "residence" and e.transit for e in edges)
+
+
+def test_p2_sade_sati_phase_rows_are_testimony_only():
+    """O-RP-5b / RQ-5: Saturn's 12/1/2-from-Moon rows are testimony with zero
+    score effect — and never a second scored row on the same object."""
+    edges = ev.enumerate_edges("illness_acute", "P2", CHART)
+    sat = {(e.obj.canonical_target, e.operator_role) for e in edges
+           if e.agent == "saturn"}
+    assert sat == {("span:sign:virgo", "scored"),       # 8th — scored
+                   ("span:sign:capricorn", "testimony"),  # 12th
+                   ("span:sign:aquarius", "testimony"),   # 1st
+                   ("span:sign:pisces", "testimony")}     # 2nd
+    assert all(e.ruling_ref == "D-PADMIT" for e in edges
+               if e.operator_role == "testimony")
+    # no natural-key collision: one (agent, relation, object) appears once
+    keys = [(e.agent, e.relation, e.obj.canonical_target) for e in edges]
+    assert len(keys) == len(set(keys))
+
+
+def test_p2_never_attaches_to_gain_classes():
+    assert ev.enumerate_edges("childbirth", "P2", CHART) == []
+    assert ev.enumerate_edges("marriage", "P2", CHART) == []
+
+
+def test_p2_adverse_classes_all_covered():
+    for cls, row in ev.CLASS_BY_NAME.items():
+        if row["polarity"] == "adverse" and cls != "birth_anchor":
+            assert ev.enumerate_edges(cls, "P2", CHART), cls
+
+
+# ── (d) P4 ────────────────────────────────────────────────────────────────────
 
 
 def test_p4_is_p3_scored_edges_restricted_to_jupiter_and_saturn():
@@ -187,7 +230,7 @@ def test_birth_anchor_refused():
 
 
 def test_unimplemented_paths_refuse_loudly():
-    for path in ("P1", "P2", "P5"):
+    for path in ("P1", "P5"):
         with pytest.raises(NotImplementedError, match=path):
             ev.enumerate_edges("marriage", path, CHART)
     with pytest.raises(ValueError):

@@ -61,7 +61,7 @@ from services.gochara_rules.registry import (
 from services.gochara_rules.frames import SIGN_LORDS, Frame
 
 #: Paths whose enumeration machinery has landed in this increment.
-IMPLEMENTED_PATHS = ("P3", "P4")
+IMPLEMENTED_PATHS = ("P2", "P3", "P4")
 
 #: Frame kinds per class row (P3 truth table; bereavement (father) counts
 #: from the 9th — spec §2.2). Everything else is lagna-frame.
@@ -261,17 +261,72 @@ def enumerate_p4_edges(event_class: str, chart: dict,
             if e.agent in ("jupiter", "saturn") and e.operator_role == "scored"]
 
 
+def enumerate_p2_edges(event_class: str, chart: dict,
+                       convention_id: str | None = None) -> list[RecordEdge]:
+    """P2 (Moon-frame gochara-phala): the PINNED edge set, per O-RP-5a/5b
+    and the RQ-5 phase split:
+
+      * SCORED adverse residence (D-RQ5 shape): Sun/Mars/Jupiter in 12/8/1
+        from janma-rāśi, and Saturn in the 8th — evidence FOR the adverse
+        classes, never attached to gain classes (O-RP-5a);
+      * TESTIMONY Sade-Sati phase rows (S-04/R2-S05): Saturn in 12/1/2 from
+        the Moon — operator_role testimony, ZERO score effect (O-RP-5b;
+        scoring with vs without is bit-identical).
+
+    The per-planet FAVOURABLE-house tables (Phaladīpikā XXVI.1–8, PG321-323)
+    are Stream B registry content not yet landed — a named gap, reported to
+    the steward; P2 grains for gain classes enumerate empty until then
+    (never a fabricated house set). Frame: moon; affected_person: native
+    (P2 licenses the native's fortune only)."""
+    from services.gochara_rules.frames import Frame, nth_sign_from
+
+    cid = convention_id or convention_id_for()
+    if event_class == "birth_anchor":
+        raise ValueError("birth_anchor is excluded from enumeration entirely (O-CF-N6)")
+    if CLASS_BY_NAME[event_class]["polarity"] != "adverse":
+        return []
+    text, page = _path_citation("P2")
+    moon_frame = Frame("moon")
+    # (agent, house, testimony?) — the RQ-5 split.
+    plan = [("Sun", h, False) for h in (12, 8, 1)]
+    plan += [("Mars", h, False) for h in (12, 8, 1)]
+    plan += [("Jupiter", h, False) for h in (12, 8, 1)]
+    plan += [("Saturn", 8, False)]
+    plan += [("Saturn", h, True) for h in (12, 1, 2)]  # Sade-Sati phases
+    edges: list[RecordEdge] = []
+    for agent, house, testimony in plan:
+        agent_lc = agent.lower()
+        sign = nth_sign_from(moon_frame, house, chart)
+        edges.append(RecordEdge(
+            event_class=event_class, affected_person="native",
+            frame_kind="moon", frame_arg=None,
+            agent=agent_lc, relation="residence",
+            obj=PhysicalObjectId(
+                body=agent_lc, relation_kind="residence",
+                canonical_target=_span_target(sign), convention_id=cid),
+            object_kind="house_span", object_role="signature_house",
+            path_id="P2", rule_version=RULE_VERSION,
+            provenance=("uncited_extension" if testimony else "verse_cited"),
+            operator_role=("testimony" if testimony else "scored"),
+            ruling_ref=("D-PADMIT" if testimony else None),
+            source_text=text, source_page=page,
+            transit=True))
+    return edges
+
+
 def enumerate_edges(event_class: str, path_id: str, chart: dict,
                     convention_id: str | None = None) -> list[RecordEdge]:
     """The grain's edge set. Unimplemented paths refuse LOUDLY — a grain is
     never silently empty (unknown is a state, never an omission)."""
     if event_class not in CLASS_BY_NAME:
         raise ValueError(f"unknown event class {event_class!r}")
+    if path_id == "P2":
+        return enumerate_p2_edges(event_class, chart, convention_id)
     if path_id == "P3":
         return enumerate_p3_edges(event_class, chart, convention_id)
     if path_id == "P4":
         return enumerate_p4_edges(event_class, chart, convention_id)
-    if path_id in ("P1", "P2", "P5"):
+    if path_id in ("P1", "P5"):
         raise NotImplementedError(
             f"{path_id} record enumeration lands in a later window_evaluator "
             "increment — never a silent empty grain"
