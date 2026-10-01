@@ -3,12 +3,13 @@ import { RecoveryEnvelopeSchema } from './schema'
 import type { AttemptStart, AttemptReceipt, MeteringContext } from './types'
 import { insertAttempt, insertReceipt, type MeteringDb } from './repository'
 import { recoveryStore, type RecoveryStore } from './recovery'
+import { classifyMeteringContext } from './attribution'
 
 export interface MeteringDependencies { db?: MeteringDb; recovery?: RecoveryStore }
 export async function startAttempt(context: MeteringContext, dependencies: MeteringDependencies = {}): Promise<AttemptStart> {
   // Resolve recovery configuration before charging a provider, not only after a failure.
   if (!dependencies.recovery) recoveryStore()
-  const start: AttemptStart = { ...context, attemptId: crypto.randomUUID(), startedAt: new Date().toISOString() }
+  const start: AttemptStart = { ...classifyMeteringContext(context), attemptId: crypto.randomUUID(), startedAt: new Date().toISOString() }
   await insertAttempt(start, dependencies.db)
   return start
 }
