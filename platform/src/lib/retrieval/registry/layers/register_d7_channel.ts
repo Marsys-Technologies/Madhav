@@ -56,7 +56,6 @@ import { extractGroundingFromFactRows, judgmentFlag, type JudgmentFlagEntry } fr
 import { PANCHANGA_CATEGORIES } from './L1_ganita/get_panchanga'
 import { resolveConceptWithLiveFallback, liveFactCategories, noConceptMatchNote } from './L1_ganita/resolve_concept'
 import { canonicalFirstOrderSql, disclosePivotVariants, formulaRoleOf } from './L1_ganita/canonical_formulas'
-
 // Category-alias resolution (chart_facts_query category filter): bare umbrella terms that do
 // not themselves exist as a fact_category but have an obvious real-category family behind them.
 // 'panchanga' is not a stored fact_category — the real data lives under panchanga_tithi,
