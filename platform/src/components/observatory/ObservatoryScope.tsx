@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { PROBE_USER_ID } from '@/lib/metering/attribution'
 
 type Scope = 'mine' | 'portal' | 'user'
 type Period = 'today' | '7d' | '30d'
@@ -32,8 +33,9 @@ export function ObservatoryScope({ children, admin, userId }: { children: React.
     let cancelled = false
     fetch('/api/admin/users', { cache: 'no-store' }).then(async response => {
       if (!response.ok) return
-      const data = await response.json() as { users?: { id: string; name: string | null; username: string | null }[] }
-      if (!cancelled) setUsers((data.users ?? []).map(user => ({ id: user.id, name: user.name || user.username || 'Unnamed user' })))
+      const data = await response.json() as { users?: { id: string; name: string | null; username: string | null; email: string | null }[] }
+      if (!cancelled) setUsers((data.users ?? []).map(user => ({ id: user.id,
+        name: user.id === PROBE_USER_ID ? 'System probe' : user.name || user.username || user.email || 'Member without a name' })))
     }).catch(() => {})
     return () => { cancelled = true }
   }, [admin])

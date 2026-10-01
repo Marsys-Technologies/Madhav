@@ -1,6 +1,7 @@
 import 'server-only'
 import { z } from 'zod'
 import { meteringDb, type MeteringDb } from './repository'
+import { PROBE_USER_ID } from './attribution'
 
 const Filter = z.object({ from: z.string().datetime({ offset: true }), to: z.string().datetime({ offset: true }),
   channel: z.enum(['web','mcp','api','backend','scheduled','unknown']).optional(),
@@ -27,7 +28,9 @@ export function parseUsageFilter(url: URL, scope: UsageScope, now = new Date()):
 // Exact invocation IDs exclude compatibility observations already represented by transport leaves.
 const DATA = `WITH evidence AS (
  SELECT a.attempt_id::text AS id,a.user_id,a.conversation_id,a.turn_id,a.operation_id,a.parent_operation_id,
- a.channel,a.purpose,a.payer,a.provider,a.model,a.role,a.connection_id,a.snapshot_id,a.test_run_id,a.aggregation,
+ CASE WHEN a.user_id='${PROBE_USER_ID}' AND a.purpose='customer' AND a.channel='web' THEN 'api' ELSE a.channel END AS channel,
+ CASE WHEN a.user_id='${PROBE_USER_ID}' AND a.purpose='customer' THEN 'validation' ELSE a.purpose END AS purpose,
+ a.payer,a.provider,a.model,a.role,a.connection_id,a.snapshot_id,a.test_run_id,a.aggregation,
  a.started_at,r.finished_at,COALESCE(r.status,'pending') AS status,
  r.usage,r.provider_request_id,r.finish_reason,r.first_token_at,r.provider_cost_usd::text,
  r.computed_cost_usd::text,r.pricing_status,r.pricing_snapshot,'metered'::text AS evidence,
@@ -85,6 +88,8 @@ export async function usageEvents(input: UsageFilter, scope: UsageScope, db: Met
 const TOTALS = `count(*)::int AS records,
  count(*) FILTER(WHERE evidence='metered')::int AS attempts,
  count(*) FILTER(WHERE evidence='metered' AND aggregation='transport')::int AS transport_attempts,
+ count(*) FILTER(WHERE evidence='metered' AND aggregation='transport' AND purpose='customer')::int AS customer_attempts,
+ count(*) FILTER(WHERE evidence='metered' AND aggregation='transport' AND purpose='validation')::int AS validation_attempts,
  count(*) FILTER(WHERE evidence='metered' AND aggregation='transport' AND status='success')::int AS transport_success,
  count(*) FILTER(WHERE evidence='metered' AND aggregation='transport' AND status IN ('error','timeout','cancelled','incomplete'))::int AS transport_failed,
  count(*) FILTER(WHERE evidence='metered' AND aggregation='transport' AND status='pending')::int AS transport_pending,
