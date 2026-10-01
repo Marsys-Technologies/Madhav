@@ -62,6 +62,12 @@ describe('migration 1223 — ka_gochara count_sql re-scope 4.0 → 4.1', () => {
     expect(code).toMatch(/NOT LIKE '%generation=''4\.1''%'[\s\S]*?RAISE EXCEPTION|RAISE EXCEPTION '1223 gate failed: count_sql not re-scoped/)
   })
 
+  it('contains no top-level BEGIN/COMMIT/ROLLBACK — the migration runner owns the transaction (migrate.ts ~L828-835)', () => {
+    // Statement-terminating forms only; the plpgsql DO bodies' bare BEGIN/END
+    // keywords are not transaction control.
+    expect(code).not.toMatch(/^(BEGIN|COMMIT|ROLLBACK)\s*;/m)
+  })
+
   it('stays out of the capability-census digest-spec scan (keeps the census byte-identical)', () => {
     // scripts/generate_capability_estate_census.ts scans every migration file whose
     // raw text contains this token; assembled so this test file is not a scanned migration.

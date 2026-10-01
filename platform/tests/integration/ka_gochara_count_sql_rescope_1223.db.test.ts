@@ -107,6 +107,32 @@ describe.skipIf(!TEST_DB_URL)('migration 1223 — ka_gochara count_sql re-scope 
     expect(await currentCountSql()).toBe(C_41)
   })
 
+  it('RUNNER TRANSACTION: the file runs inside an outer BEGIN, leaves it open, and ROLLBACK undoes the change', async () => {
+    // The runner (platform/scripts/migrate.ts ~L828-835) wraps each file in its
+    // own BEGIN/COMMIT and writes the _migrations_applied row inside it; the file
+    // must neither open nor close a transaction itself.
+    await seed(C_1091)
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      await client.query(fs.readFileSync(MIGRATION_PATH, 'utf8'))
+      // Still inside the caller's transaction (autocommit would read NULL), and
+      // the file's UPDATE is visible to it.
+      const tx = await client.query<{ txid: string | null }>(
+        'SELECT txid_current_if_assigned() AS txid'
+      )
+      expect(tx.rows[0]!.txid).not.toBeNull()
+      const inner = await client.query<{ count_sql: string }>(
+        `SELECT count_sql FROM asset_registry WHERE asset_id = 'ka_gochara'`
+      )
+      expect(inner.rows[0]!.count_sql).toBe(C_41)
+      await client.query('ROLLBACK')
+    } finally {
+      client.release()
+    }
+    expect(await currentCountSql()).toBe(C_1091)
+  })
+
   it('FAILS CLOSED: an unrecognised prior count_sql raises and leaves the row untouched', async () => {
     const foreign =
       "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='9.9'"

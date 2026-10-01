@@ -38,8 +38,11 @@
 -- the guard refuses to overwrite a state it does not recognise.
 --
 -- PR is titled HOLD (A2.6 tranche): merged by the steward's queue, not before.
-
-BEGIN;
+--
+-- No BEGIN/COMMIT here: the migration runner owns the transaction
+-- (platform/scripts/migrate.ts ~L828-835: BEGIN; <SQL>; INSERT INTO
+-- _migrations_applied; COMMIT) — an inner COMMIT would end it early and the
+-- tracking row would be written outside it.
 
 DO $$
 DECLARE
@@ -75,5 +78,3 @@ BEGIN
     RAISE EXCEPTION '1223 gate failed: count_sql not re-scoped to generation 4.1';
   END IF;
 END $$;
-
-COMMIT;
