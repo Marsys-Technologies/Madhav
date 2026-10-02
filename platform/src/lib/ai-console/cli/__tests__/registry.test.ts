@@ -60,6 +60,12 @@ describe('closed CLI registry', () => {
       'stream-json', '--print-timeout', '2m', '--model', 'gemini-3.8-flash-low',
     ])
     expect(buildExecutionArgs(CLI_REGISTRY.kimi_code, 'kimi-code/k3-256k')).toEqual(['acp'])
+    expect(buildExecutionArgs(CLI_REGISTRY.codex, 'gpt-5.5', { effort: 'low' }))
+      .toContain('model_reasoning_effort=low')
+    expect(buildExecutionArgs(CLI_REGISTRY.claude_code, 'claude-sonnet-4-6', { effort: 'high' }))
+      .toEqual(expect.arrayContaining(['--effort', 'high']))
+    expect(() => buildExecutionArgs(CLI_REGISTRY.kimi_code, 'kimi-code/k3-256k', { effort: 'low' })).toThrow()
+    expect(() => buildExecutionArgs(CLI_REGISTRY.codex, null, { effort: 'low' })).toThrow()
   })
 
   it('rejects model argument injection and exposes all four compatible roles', () => {

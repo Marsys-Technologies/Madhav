@@ -66,11 +66,13 @@ describe('remote CLI runner', () => {
 
   it('requires a confirmed remote identity and only executes a model sealed by validation', async () => {
     const operations: string[] = []
+    const executionBodies: Array<Record<string, unknown>> = []
     const fetchImpl = vi.fn(async (_input: URL | RequestInfo, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body))
       operations.push(body.operation)
       if (body.operation === 'confirm') return Response.json({ ok: true })
       if (body.operation === 'execute') {
+        executionBodies.push(body)
         return Response.json({ stdout: '{"type":"turn.completed","usage":{}}', exitCode: 0, signal: null })
       }
       throw new Error(`unexpected ${body.operation}`)
@@ -80,8 +82,9 @@ describe('remote CLI runner', () => {
 
     await expect(runner.runExecution('owner', 'codex', { modelId: 'not-approved', stdin: 'prompt' }))
       .rejects.toMatchObject({ code: 'AI_MODEL_UNAVAILABLE' })
-    await expect(runner.runExecution('owner', 'codex', { modelId: 'gpt-6-sol', stdin: 'prompt' }))
+    await expect(runner.runExecution('owner', 'codex', { modelId: 'gpt-6-sol', stdin: 'prompt', effort: 'medium' }))
       .resolves.toMatchObject({ exitCode: 0 })
+    expect(executionBodies).toEqual([expect.objectContaining({ modelId: 'gpt-6-sol', effort: 'medium' })])
     expect(operations).toEqual(['confirm', 'execute'])
   })
 

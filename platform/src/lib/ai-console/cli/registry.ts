@@ -1,7 +1,8 @@
 import 'server-only'
 import { z } from 'zod'
 import { AiConsoleError } from '../errors'
-import { CLI_IDS, type AiRole, type CliId } from '../types'
+import { CLI_IDS, type AiEffort, type AiRole, type CliId } from '../types'
+import { cliEffortLevels } from '../effort'
 import { ALL_CLI_ROLES } from './types'
 
 export type CliOutputFormat = 'codex_jsonl' | 'claude_json' | 'antigravity_stream_json' | 'kimi_acp_json'
@@ -119,13 +120,21 @@ export function validateCliModelId(modelId: string | null): string | null {
 }
 
 export function buildExecutionArgs(definition: CliDefinition, modelId: string | null,
-  options: { cwd?: string; schemaPath?: string } = {}): string[] {
+  options: { cwd?: string; schemaPath?: string; effort?: AiEffort } = {}): string[] {
   if (!definition.execution) throw new AiConsoleError('AI_CLI_UNREACHABLE')
   const model = validateCliModelId(modelId)
   const args = definition.execution.args.map(value => value === '__CWD__' ? options.cwd ?? '__CWD__' : value)
   const additions: string[] = []
   if (model !== null && definition.execution.modelFlag.length > 0) {
     additions.push(...definition.execution.modelFlag, model)
+  }
+  if (options.effort) {
+    if (!cliEffortLevels(definition.id, model).includes(options.effort)) {
+      throw new AiConsoleError('AI_ROLE_INCOMPATIBLE')
+    }
+    if (definition.id === 'codex') additions.push('-c', `model_reasoning_effort=${options.effort}`)
+    else if (definition.id === 'claude_code') additions.push('--effort', options.effort)
+    else throw new AiConsoleError('AI_ROLE_INCOMPATIBLE')
   }
   if (options.schemaPath !== undefined) {
     if (!definition.execution.structuredSchemaFlag) throw new AiConsoleError('AI_ROLE_INCOMPATIBLE')
