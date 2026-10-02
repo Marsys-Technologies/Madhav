@@ -143,6 +143,7 @@ def _world(monkeypatch, tmp_path, faithful):
     wd.conn, wd.step, wd.set_periods, wd.boot, wd.seed, wd.grain = conn, step, set_periods, boot, seed_crossings, grain
     wd.set_lord_periods = set_lord_periods
     wd.result_policy = None
+    wd.dsn, wd.dbname = dsn, name
     try:
         yield wd
     finally:

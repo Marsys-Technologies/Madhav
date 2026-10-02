@@ -20,7 +20,7 @@ from services.gochara_kernel import window_gate as wg
 
 from .test_a53_inventory import CHART_ID
 from .test_a53_p1_support import GEN, _t, _world
-from .test_a53_window_verification_gate import CLS, SPANS, _materialise, _windows
+from .test_a53_window_verification_gate import CLS, SPANS, _materialise
 
 UTC = timezone.utc
 HELPER = "public.ka_gochara_window_qualification_ok(jsonb)"
@@ -70,7 +70,7 @@ def _builder_flow(w):
         w.boot()
         w.seed("saturn", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
         counts = _materialise(w, "P3", {"saturn": (_t(1, 10), _t(2, 20))})
-        out = _windows(w)
+        out = {p: w.step(f"window:{CLS}:{p}") for p in ("P1", "P2", "P3", "P4")}      # the BUILDER's steps only
     return counts, out
 
 

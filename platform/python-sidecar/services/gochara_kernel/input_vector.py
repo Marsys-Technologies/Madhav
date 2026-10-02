@@ -53,7 +53,7 @@ _K, _R = "services.gochara_kernel.", "services.gochara_rules."
 # the vector). Verifiers sit with the stage they verify; nothing here is "optional".
 IMPLEMENTATION_MODULES = {
     "geometry": tuple(_K + m for m in (
-        "arcs", "contacts", "convention", "episodes", "ids", "knots", "materialise", "record_store",
+        "arcs", "boundary_match", "contact_certify", "contact_reconstruct", "contacts", "convention", "episodes", "ids", "knots", "materialise", "record_store",
         "substrate", "targets")),
     "evaluation": tuple(_K + m for m in (
         "chart_context", "coverage", "dasha_read", "evaluator", "input_vector", "input_vector_verifier",
@@ -430,6 +430,16 @@ def implementation_digests(modules: dict | None = None) -> dict:
 
 # ── the vector ───────────────────────────────────────────────────────────────
 
+def consumed_jd_range(horizon=None) -> tuple[float, float]:
+    """The CONSUMED julian-day range the ephemeris identity is taken over: the substrate domain every arc is built over,
+    widened by the class horizon. One definition — the independent census verifier is GIVEN these numbers."""
+    from .substrate import SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START
+    lo = min(x for x in (SUBSTRATE_DOMAIN_START, horizon[0] if horizon else None) if x is not None)
+    hi = max(x for x in (SUBSTRATE_DOMAIN_END, horizon[1] if horizon else None) if x is not None)
+    jd = lambda d: d.timestamp() / 86400.0 + 2440587.5            # noqa: E731
+    return jd(lo), jd(hi)
+
+
 def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
                        path_refs: Iterable[tuple[str, str]], rulings: Iterable[dict],
                        horizon: tuple | None = None, bodies: Iterable[str] | None = None,
@@ -443,11 +453,8 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
     from .record_store import POINT_ORB_SOURCE
     refs = list(path_refs)
     payload = registry_payload(conn, refs, census_override=census_override)
-    # the CONSUMED range: the substrate domain every arc is built over, widened by the class horizon
-    lo = min(x for x in (SUBSTRATE_DOMAIN_START, horizon[0] if horizon else None) if x is not None)
-    hi = max(x for x in (SUBSTRATE_DOMAIN_END, horizon[1] if horizon else None) if x is not None)
-    jd = lambda d: d.timestamp() / 86400.0 + 2440587.5
-    eph = ephemeris_component(ephe_path, tuple(bodies or SUBSTRATE_BODIES), jd(lo), jd(hi),
+    jd_lo, jd_hi = consumed_jd_range(horizon)
+    eph = ephemeris_component(ephe_path, tuple(bodies or SUBSTRATE_BODIES), jd_lo, jd_hi,
                               files_probe=files_probe, series_probe=series_probe)
     sky = sky_convention_identity(conn, sky_convention_id)
     sky_row = conn.execute(
@@ -523,7 +530,7 @@ def verify_live(conn, stored: dict, **kw) -> None:
 
 
 __all__ = ["EXCLUDED_AUDIT_FIELDS", "IMPLEMENTATION_MODULES", "InputDrift", "REGISTRY_DIGEST_SCHEMA",
-           "DEFAULT_RESULT_POLICY", "EPHEMERIS_KEYS", "L0_CONSUMED", "POLICY_ALL_NULL", "POLICY_QUALIFICATION",
+           "DEFAULT_RESULT_POLICY", "EPHEMERIS_KEYS", "L0_CONSUMED", "consumed_jd_range", "POLICY_ALL_NULL", "POLICY_QUALIFICATION",
            "RESULT_POLICIES", "VECTOR_SCHEMA", "activity_orb_states", "ephemeris_component", "l0_identities",
            "library_artifact_sha",
            "platform_identity",

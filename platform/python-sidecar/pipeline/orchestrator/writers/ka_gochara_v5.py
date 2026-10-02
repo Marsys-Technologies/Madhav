@@ -68,6 +68,7 @@ from services.gochara_kernel import input_vector as gk_input_vector
 from services.gochara_kernel import input_vector_verifier as gk_input_vector_verifier
 from services.gochara_kernel import window_sweep as gk_window_sweep
 from services.gochara_kernel import result_policy as gk_result_policy
+from services.gochara_kernel import contact_certify as gk_contact_certify
 from services.gochara_kernel.record_verifier import (verify_p1_anchors, verify_p1_house_descriptor,
                                                     verify_p1_support)
 from services.gochara_kernel import window_gate as gk_window_gate
@@ -171,6 +172,9 @@ def _applicable_rulings() -> list[dict]:
     out += [{"id": r["ruling_ref"], "path": f"{r['path_id']}@{r['rule_version']}"}
             for r in _rr.path_rows() if r["ruling_ref"]]
     out.append({"id": "AM-14", "rule": "moon_agent_excluded_from_stored_tier"})
+    # R9-5: the PD level of P1 is explicitly authorised TESTIMONY under a named limitation (part of the identity)
+    out.append({"id": gk_evaluator.P1_PD_RULING, "limitation": gk_evaluator.P1_PD_LIMITATION,
+                "rule": "p1_pd_level_is_testimony_never_scored"})
     return out
 
 
@@ -442,9 +446,10 @@ class GocharaV5Writer(WriterBase):
                 result_policy=ctx.config.get("result_policy", gk_input_vector.DEFAULT_RESULT_POLICY))
             # every component that can be derived without the builder's code is derived a SECOND way and the two
             # must agree before the identity is bound
-            gk_input_vector_verifier.verify_inputs(
+            inputs_report = gk_input_vector_verifier.verify_inputs(
                 ctx.db_conn, vector, ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
-                path_refs=gk_rule_registry.bound_path_refs())
+                path_refs=gk_rule_registry.bound_path_refs(),
+                jd_range=gk_input_vector.consumed_jd_range(horizon))
             jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
             _lon, retflag = calc_sidereal_lon("Sun", jd, ephe_path)
             if not (retflag & 2):
@@ -572,34 +577,33 @@ class GocharaV5Writer(WriterBase):
                                    "lacks the Swiss bit (F-14)")
             return lon
 
+        position_at.cache_key = ("swiss", ephe_path)
         spans = gk_verifier.verify_aspect_span_contacts(
             ctx.db_conn, chart_id=chart_id, generation=GENERATION, obligations=res["obligations"],
             position_at=position_at, horizon=horizon,
             _cache=self.__dict__.setdefault("_aspect_span_cache", {}))
-        gk_verifier.write_verification(
-            ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
-            rederived_digest=res["digest"])
+        # R9-3: the COMPLETE contact geometry of every concrete transit obligation, reconstructed from the ephemeris
+        # and compared with the ledger both ways (interior exits/re-entries, bridged and omitted contacts all fail);
+        # incomplete evidence raises GeometryUnavailable — no complete-search claim without it
+        geometry = gk_contact_certify.certify_contact_geometry(
+            ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class, position_at=position_at)
+        # R9-6.1: the builder NEVER persists a verification row (it holds no privilege to, and the database cannot tell a
+        # builder-written "independent" verification from a real one). Everything above is the builder's in-build
+        # SELF-CHECK, reported; persistence of the 1206 inventory row and every 1240 window row belongs to the separate
+        # verification job (`pipeline/orchestrator/verification_job.py`, run by the verifier principal after the build).
         # R8-4: the candidate gate's window half — every included P1–P4 grain of this class must carry a
         # VERIFIED, current, input-bound verification result. The build refuses a class that cannot pass it
         # rather than leave a candidate no sealer could accept (UNVERIFIED_DYNAMIC / missing both fail).
-        if not gk_window_gate.verification_available(ctx.db_conn):
-            gate_note = "; window verification gate NOT evaluated (migration 1240 is not applied)"
-        elif not gk_window_gate.can_write_verification(ctx.db_conn):
-            # no verifier principal is provisioned: no result CAN exist, so the seal trigger will refuse the
-            # candidate; say so rather than fail every class — the roles decision is the named blocker
-            # (the builder holds no privilege on the verification table or the gate functions, so it does not READ
-            # the gate either: the state is explicit and the seal trigger is the authority)
-            gate_note = ("; window verification gate CLOSED — verification_pending_verifier_principal "
-                         "(a verifier principal must be provisioned; the candidate cannot be sealed until then)")
-        else:
-            gk_window_gate.require_candidate_gate(ctx.db_conn, chart_id, GENERATION, event_class)
-            gate_note = "; window verification gate passed"
+        gate_note = ("; verification NOT persisted by the builder — verification_pending_verifier_principal: the separate "
+                     "verification job persists the 1206 and 1240 rows; the candidate gate stays CLOSED until it has run")
         return WriterResult(asset_id=self.asset_id, rows_inserted=1,
                             notes=f"verify {event_class}: inventory + ledger digests "
-                                  "independently reproduced; "
+                                  "independently reproduced (report only); "
                                   f"{spans['objects_checked']} aspect-to-span object(s) / "
                                   f"{spans['occurrences']} occurrence(s) re-derived by sampling "
-                                  f"and matched; verification row written{gate_note}")
+                                  f"and matched; contact geometry certified complete for "
+                                  f"{geometry['obligations_certified']} concrete obligation(s) "
+                                  f"({geometry['contacts_expected']} contacts; {geometry['named_limit']}){gate_note}")
 
     def _run_record_phase(self, ctx: ContextSpec, step: SubStep,
                           chart_id: str) -> WriterResult:
@@ -625,6 +629,7 @@ class GocharaV5Writer(WriterBase):
                     f"{retflag} lacks the Swiss bit (F-14 — a Moshier "
                     "fallback is a named failure, never a silent probe)")
             return lon
+        position_at.cache_key = ("swiss", ephe_path)        # lets the independent reconstruction memoise across classes
 
         p1_closed = p1_minting_closed_reason(ctx.db_conn)
         house_for = _house_resolver(context, p1_minting=p1_closed is None)
@@ -710,8 +715,12 @@ class GocharaV5Writer(WriterBase):
             # snapshot-bound daśā rows) and must equal what was stored
             verify_p1_support(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                               event_class=event_class)
-            # AM-21 part 2: the ANCHOR set of every contact is re-derived from the verifier's own table
-            verify_p1_anchors(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class)
+            # AM-21 part 2 / R9-2 (iii): the ANCHOR set of every contact of the EXPECTED contact set (reconstructed from
+            # the ephemeris), zero-output cases included — only meaningful when P1 minting is OPEN; with the named gate
+            # closed nothing was minted, the class makes no P1 completeness claim, and the notes say so
+            if not p1_closed:
+                verify_p1_anchors(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
+                                  position_at=position_at)
             # AM-20 (revised): the stored house descriptor is the count from the lagna
             verify_p1_house_descriptor(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                                        event_class=event_class)
@@ -769,13 +778,9 @@ class GocharaV5Writer(WriterBase):
             " WHERE chart_id = %s AND generation = %s AND event_class = %s AND path_id = %s"
             " ORDER BY 1", (chart_id, GENERATION, event_class, path_id)).fetchall()}
             | {gk_rule_registry.selected_path_version(event_class, path_id)})
-        available = gk_window_gate.verification_available(ctx.db_conn)
-        # 1240: the builder deliberately holds NO privilege on the verification table (the writer cannot verify
-        # itself); only a provisioned verifier principal may write it
-        privileged = available and gk_window_gate.can_write_verification(ctx.db_conn)
-        input_digest = (InventoryStore(ctx.db_conn).snapshot_input_digest(chart_id, GENERATION)
-                        if privileged else None)
-        persist = privileged and input_digest is not None
+        # R9-6.1: the builder holds NO privilege on the verification tables and never persists a result; the window phase's
+        # independent checks below are the in-build SELF-CHECK (reported). The 1240 rows are written by the separate
+        # verification job under the verifier principal.
         windows = memberships = 0
         excluded: dict = {}
         reasons: dict = {}
@@ -805,10 +810,6 @@ class GocharaV5Writer(WriterBase):
                 path_id=path_id, rule_version=version,
                 factor_rows=bound_rows(path_id, version),
                 drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=VEDHA_SOURCE is not None)
-            if persist:      # the generation-bound result the candidate gate consumes (R8-4; migration 1240)
-                gk_window_gate.record_verification(
-                    ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
-                    path_id=path_id, rule_version=version, report=report, input_digest=input_digest)
             unverified += report["unverified_dynamic"]
             reproduced += report["fully_reproduced"]
             windows += counts["windows"]
@@ -830,13 +831,8 @@ class GocharaV5Writer(WriterBase):
                 "members — checked against universal bounds only; this result does NOT satisfy a "
                 "verification gate)" if unverified
                 else f"reproduced all {reproduced} window(s) exactly")
-        stored_note = ("; verification result persisted (the candidate gate consumes it)" if persist else
-                       "; verification result NOT persisted — "
-                       + ("migration 1240 is not applied" if not available else
-                          "verification_pending_verifier_principal — the running role holds no INSERT on the "
-                          "verification table (no verifier principal is provisioned; a builder never writes it)"
-                          if not privileged else
-                          "no search-input snapshot to bind it to") + " (the candidate gate stays closed)")
+        stored_note = ("; verification result NOT persisted by the builder — verification_pending_verifier_principal "
+                       "(the separate verification job writes it; the candidate gate stays closed until it has run)")
         return WriterResult(asset_id=self.asset_id, rows_inserted=windows + memberships,
                             notes=head + tail + stored_note)
 

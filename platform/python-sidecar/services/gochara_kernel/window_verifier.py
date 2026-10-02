@@ -23,6 +23,8 @@ from __future__ import annotations
 
 from datetime import timezone
 
+from . import boundary_match as bm
+
 _TOL = 1e-6                                 # REAL (float4) storage round-trip — NOT the peak tie
 _TIE = 1e-9                                 # the frozen measurement contract's peak-tie tolerance
 _MAGNITUDE_ONLY = ("higher = stronger", "lower = stronger")
@@ -200,26 +202,52 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         + (" objective, objective_value, qualification" if has_prov else " NULL, NULL, NULL") +
         " FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s"
         " AND event_class = %s AND path_id = %s AND rule_version = %s ORDER BY 2", grain).fetchall()]
-    member_rows = conn.execute(
-        "SELECT m.window_id::text, r.record_id::text, COALESCE(r.contact_id, r.object_id)::text,"
+    # R9-2: the COMPLETE expected membership, derived here from the grain's own records — not read back from the stored
+    # links. Every admitted scored record whose support overlaps a window is a member; no other record is; no admitted
+    # record with a support sits in no window. The numeric derivation below runs over the EXPECTED members.
+    record_rows = conn.execute(
+        "SELECT r.record_id::text, COALESCE(r.contact_id, r.object_id)::text,"
         " r.relation, r.object_kind, r.agent, r.house_from_frame, lower(s.x), upper(s.x)"
-        " FROM public.ka_gochara_eval_window_record m"
-        " JOIN public.ka_gochara_relationship_record r ON r.record_id = m.record_id"
+        " FROM public.ka_gochara_relationship_record r"
         " CROSS JOIN LATERAL unnest(r.temporal_support_intervals) AS s(x)"
-        " WHERE m.chart_id = %s AND m.generation = %s AND m.event_class = %s AND m.path_id = %s"
-        " AND m.rule_version = %s", grain).fetchall()
-    by_window: dict[str, dict[str, dict]] = {}
-    for wid, rid, root, rel, kind, agent, house, lo, hi in member_rows:
-        rec = by_window.setdefault(wid, {}).setdefault(
-            rid, {"root": root, "relation": rel, "kind": kind, "agent": agent, "house": house,
-                  "supports": []})
+        " WHERE r.chart_id = %s AND r.generation = %s AND r.event_class = %s AND r.path_id = %s"
+        " AND r.rule_version = %s AND r.admission_state = 'admitted' AND r.operator_role = 'scored'", grain).fetchall()
+    grain_records: dict[str, dict] = {}
+    for rid, root, rel, kind, agent, house, lo, hi in record_rows:
+        rec = grain_records.setdefault(rid, {"root": root, "relation": rel, "kind": kind, "agent": agent,
+                                             "house": house, "supports": []})
         rec["supports"].append((lo, hi))
+    stored_links: dict[str, set] = {}
+    for wid, rid in conn.execute(
+            "SELECT window_id::text, record_id::text FROM public.ka_gochara_eval_window_record"
+            " WHERE chart_id = %s AND generation = %s AND event_class = %s AND path_id = %s AND rule_version = %s",
+            grain).fetchall():
+        stored_links.setdefault(wid, set()).add(rid)
+    by_window: dict[str, dict[str, dict]] = {}
+    membership_problems: list[str] = []
+    in_some_window: set[str] = set()
+    for (wid, wlo, whi, *_rest) in windows:
+        expected_ids = {rid for rid, rec in grain_records.items()
+                        if any(a < whi and wlo < b for a, b in rec["supports"])}
+        by_window[wid] = {rid: grain_records[rid] for rid in sorted(expected_ids)}
+        in_some_window |= expected_ids
+        have = stored_links.get(wid, set())
+        if have != expected_ids:
+            membership_problems.append(
+                f"window {wlo.astimezone(timezone.utc).isoformat()}: membership omits {sorted(expected_ids - have)} "
+                f"and includes unexpected {sorted(have - expected_ids)}")
+    orphans = sorted(rid for rid, rec in grain_records.items() if rec["supports"] and rid not in in_some_window)
+    if orphans:
+        membership_problems.append(f"admitted scored record(s) {orphans} overlap no stored window")
+    for wid in stored_links:
+        if wid not in by_window:
+            membership_problems.append(f"membership links point at an unknown window {wid}")
     completed = _completed_horizon(conn, grain)
     for recs_ in by_window.values():
         for rec_ in recs_.values():
             rec_["boundaries_complete"] = _boundaries_complete(rec_["relation"], rec_["supports"], completed)
     against_ok = _against_evaluated(path_id, factor_rows)
-    problems: list[str] = []
+    problems: list[str] = list(membership_problems)
     numeric = 0
     fully_reproduced = 0            # windows whose stored fields were reproduced EXACTLY (incl. the NULL ones)
     unverified: list[str] = []      # windows with a function-valued member while the solver is enabled
@@ -570,6 +598,33 @@ def _probe_contact(position_at, body, relation, target, t_in, t_out, open_start,
     return problems
 
 
+def _probe_contact_derived(position_at, body, relation, target, t_in, t_out, open_start, open_end, accuracy_deg,
+                           floor_seconds):
+    """`_probe_contact` with margins DERIVED per end (see `boundary_match`): inside/outside probes sit `2 x` the time
+    tolerance from the stored edge (never closer than `floor_seconds`, never more than a quarter of the span); an end where
+    no time tolerance exists (a station) is verified in angle: the stored boundary must lie within the stated accuracy of an
+    edge of the geometry."""
+    span = (t_out - t_in).total_seconds()
+    problems = []
+    margins = []
+    for t, is_open in ((t_in, open_start), (t_out, open_end)):
+        tol = bm.time_tolerance_seconds(position_at, body, t, accuracy_deg)
+        if tol is None:
+            # a station: no time margin means anything. If the body IS at an edge of the geometry the boundary is
+            # genuine in ANGLE and the time probes are skipped for this end; if it is not at an edge the stored end is
+            # not a crossing at all and the ordinary probes (floor margin) say which side is wrong
+            at_edge = bm.edge_distance_degrees(position_at, body, relation, target, t) <= 2 * accuracy_deg
+            margins.append(None if (at_edge or is_open) else max(floor_seconds, min(60.0, span / 4.0)))
+        else:
+            margins.append(max(floor_seconds, min(2.0 * tol, span / 4.0)))
+    m = [x for x in margins if x is not None]
+    if not m:
+        return problems
+    return problems + _probe_contact(position_at, body, relation, target, t_in, t_out,
+                                     open_start or margins[0] is None, open_end or margins[1] is None,
+                                     min(max(m), span / 4.0))
+
+
 def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
                            rule_version: str, position_at, probe_seconds: float = 1.0) -> dict:
     """The window members' CONTACT SPANS checked against the ephemeris itself (R8-4: `verify_member_support` compares
@@ -580,7 +635,7 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
     grain = (chart_id, generation, event_class, path_id, rule_version)
     rows = conn.execute(
         "SELECT DISTINCT c.contact_id::text, c.body, c.relation_kind, c.t_in, c.t_out, c.t_exact, o.canonical_target,"
-        " lower(cov.completed_horizon), upper(cov.completed_horizon)"
+        " lower(cov.completed_horizon), upper(cov.completed_horizon), c.delta_lambda"
         " FROM public.ka_gochara_eval_window_record m"
         " JOIN public.ka_gochara_relationship_record r ON r.record_id = m.record_id"
         " JOIN public.ka_gochara_contact c ON (c.chart_id, c.generation, c.contact_id)"
@@ -593,18 +648,21 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
     problems: list[str] = []
     probed = 0
     for row in rows:
-        cid, body, relation, t_in, t_out, t_exact, target, h_lo, h_hi = (
+        cid, body, relation, t_in, t_out, t_exact, target, h_lo, h_hi, delta_lambda = (
             tuple(row.values()) if isinstance(row, dict) else tuple(row))
         end = t_out if t_out is not None else h_hi
         open_start = t_exact is None and t_in <= h_lo          # a span truncated at the horizon's start
         open_end = t_out is None or t_out >= h_hi              # truncated at (or open to) the horizon's end
-        margin = min(probe_seconds, (end - t_in).total_seconds() / 4.0)
-        if margin <= 0:
+        if (end - t_in).total_seconds() <= 0:
             problems.append(f"contact {cid}: an empty span")
             continue
-        problems.extend(f"contact {cid}: {p}" for p in _probe_contact(
-            position_at, body, "residence" if relation in ("residence", "sign_ingress") else relation, target,
-            t_in, end, open_start, open_end, margin))
+        rel = "residence" if relation in ("residence", "sign_ingress") else relation
+        # R9-9: the probe margin is DERIVED from the contact's stated angular accuracy and the body's speed at each end —
+        # a fixed 1 s margin rejected correct contacts on the real sky (the solver is accurate to 1 arcsecond: ≈ 24 s for
+        # the Sun, ≈ 12 min for Saturn). At a station (no usable time tolerance) the end is checked in ANGLE instead.
+        acc = bm.accuracy_degrees(delta_lambda)
+        problems.extend(f"contact {cid}: {p}" for p in _probe_contact_derived(
+            position_at, body, rel, target, t_in, end, open_start, open_end, acc, probe_seconds))
         probed += 1
     if problems:
         raise RuntimeError(f"member geometry verification failed {event_class}/{path_id}: " + "; ".join(problems))

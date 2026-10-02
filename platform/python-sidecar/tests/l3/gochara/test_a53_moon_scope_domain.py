@@ -366,6 +366,9 @@ def test_a_manifest_without_the_scope_refuses_an_unqualified_completeness_claim(
     monkeypatch.setattr(iv, "build_input_vector", lambda *a, **k: {x: y for x, y in real(*a, **k).items()
                                                                   if x != "stored_scope"})
     monkeypatch.setattr(writer_mod.gk_input_vector, "build_input_vector", iv.build_input_vector)
+    # the independent input check (R9-3) now REFUSES a vector with an unnamed scope at build time; this test is about the
+    # RESPONSE constructor refusing a manifest that already exists without one, so the build-time check is bypassed
+    monkeypatch.setattr(writer_mod.gk_input_vector_verifier, "verify_inputs", lambda *a, **k: {"derived": [], "not_derived": []})
     step(writer_mod.CONVENTION_SUBSTEP)
     step(writer_mod.MANIFEST_SUBSTEP)
     for windows in ([{"interval": "x"}], []):

@@ -107,6 +107,85 @@ def stored_windows(conn, *, chart_id, generation, event_class, path_id, rule_ver
     return [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in rows]
 
 
+# ── R9-2: the digest of EVERYTHING the window derivation depends on (the verifier's own derivation) ─────────────────
+
+def _canon(v) -> str:
+    """The canonical JSON of `ka_gochara_canonical_json` (sorted keys by code point, no spaces, UTF-8 unescaped), built
+    here — never taken from the database — so the two derivations of the preimage stay independent."""
+    from decimal import Decimal
+    if v is None:
+        return "null"
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, (int, Decimal)):
+        return format(v, "f") if isinstance(v, Decimal) else str(v)
+    if isinstance(v, str):
+        return json.dumps(v, ensure_ascii=False)
+    if isinstance(v, dict):
+        return "{" + ",".join(json.dumps(k, ensure_ascii=False) + ":" + _canon(v[k]) for k in sorted(v)) + "}"
+    if isinstance(v, (list, tuple)):
+        return "[" + ",".join(_canon(x) for x in v) + "]"
+    raise TypeError(f"no canonical JSON for {type(v).__name__}")
+
+
+def _opt(t):
+    return None if t is None else _fmt(t)
+
+
+def derivation_inputs_preimage(conn, *, chart_id, generation, event_class, path_id, rule_version) -> dict:
+    """The grain's derivation inputs as this verifier reads them: every record (identity, agent, relation, kind, role,
+    admission, house, anchor, target, contact, supports), its prerequisite results, the contacts it references, the
+    snapshot's input identity, the manifest vector (digest) and the result policy."""
+    import json as _json
+    from decimal import Decimal
+    grain = (chart_id, generation, event_class, path_id, rule_version)
+    rows = conn.execute(
+        "SELECT r.record_id::text, r.agent, r.relation, r.object_kind, r.operator_role, r.admission_state,"
+        " r.house_from_frame, r.period_anchor_lord, r.period_anchor_level, o.canonical_target, r.contact_id::text,"
+        " r.temporal_support_intervals FROM public.ka_gochara_relationship_record r"
+        " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id"
+        " WHERE r.chart_id = %s AND r.generation = %s AND r.event_class = %s AND r.path_id = %s"
+        " AND r.rule_version = %s ORDER BY r.record_id::text", grain).fetchall()
+    rows = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in rows]
+    records, ids, contact_ids = [], [], set()
+    for (rid, agent, rel, kind, role, adm, house, a_lord, a_level, target, contact, supports) in rows:
+        ids.append(rid)
+        if contact is not None:
+            contact_ids.add(contact)
+        records.append({
+            "id": rid, "agent": agent, "relation": rel, "kind": kind, "role": role, "admission": adm, "house": house,
+            "anchor": [a_lord, a_level], "target": target, "contact": contact,
+            "supports": [[_fmt(x.lower), _fmt(x.upper)] for x in sorted(supports or [], key=lambda x: x.lower)]})
+    prereqs = []
+    if ids:
+        prereqs = [list(tuple(r.values()) if isinstance(r, dict) else tuple(r)) for r in conn.execute(
+            "SELECT record_id::text, ordinal, predicate_id, predicate_rule_version, result"
+            " FROM public.ka_gochara_record_prerequisite WHERE record_id = ANY(%s::uuid[])"
+            " ORDER BY record_id::text, ordinal", (ids,)).fetchall()]
+    contacts = []
+    if contact_ids:
+        contacts = [[r[0], _opt(r[1]), _opt(r[2])] for r in (
+            tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
+                "SELECT contact_id::text, t_in, t_out FROM public.ka_gochara_contact"
+                " WHERE chart_id = %s AND generation = %s AND contact_id = ANY(%s::uuid[])"
+                " ORDER BY contact_id::text", (chart_id, generation, sorted(contact_ids))).fetchall())]
+    snap = conn.execute("SELECT input_digest FROM public.ka_gochara_search_input_snapshot"
+                        " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    pub = conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication"
+                       " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    vector = None if pub is None else _json.loads(
+        next(iter(pub.values())) if isinstance(pub, dict) else pub[0], parse_float=Decimal)
+    return {
+        "records": records, "prerequisites": prereqs, "contacts": contacts,
+        "input": None if snap is None else (next(iter(snap.values())) if isinstance(snap, dict) else snap[0]),
+        "manifest": None if vector is None else hashlib.sha256(_canon(vector).encode("utf-8")).hexdigest(),
+        "policy": None if vector is None else vector.get("result_policy")}
+
+
+def derivation_inputs_digest(conn, **grain) -> str:
+    return hashlib.sha256(_canon(derivation_inputs_preimage(conn, **grain)).encode("utf-8")).hexdigest()
+
+
 def record_verification(conn, *, chart_id, generation, event_class, path_id, rule_version, report: dict,
                         input_digest: str) -> dict:
     """Refuse a stored window set that is not the independently expected one, then persist the generation-bound
@@ -133,6 +212,7 @@ def record_verification(conn, *, chart_id, generation, event_class, path_id, rul
         (chart_id, generation, event_class, path_id, rule_version)).fetchone()
     content = next(iter(content.values())) if isinstance(content, dict) else content[0]
     digest = intervals_digest(stored)
+    inputs_digest = derivation_inputs_digest(conn, **grain)             # R9-2: bound into the stored verification
     conn.execute(
         "DELETE FROM public.ka_gochara_eval_window_verification WHERE chart_id = %s AND generation = %s"
         " AND event_class = %s AND path_id = %s AND rule_version = %s AND verifier_id = %s"
@@ -143,11 +223,11 @@ def record_verification(conn, *, chart_id, generation, event_class, path_id, rul
         " chart_id, generation, event_class, path_id, rule_version, verifier_id, verifier_version, status,"
         " policy_version, windows_expected, windows_stored, windows_reproduced, windows_unverified,"
         " expected_windows_digest, stored_windows_digest, windows_content_digest, fields_verified,"
-        " input_digest) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        " input_digest, derivation_inputs_digest) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
         (chart_id, generation, event_class, path_id, rule_version, VERIFIER_ID, VERIFIER_VERSION,
          report["status"], report["policy_version"], len(expected), len(stored), report["fully_reproduced"],
          report["unverified_dynamic"], intervals_digest(expected), digest, content,
-         list(report["fields_verified"]), input_digest))
+         list(report["fields_verified"]), input_digest, inputs_digest))
     return {"status": report["status"], "windows": len(stored), "content_digest": content}
 
 
@@ -171,5 +251,6 @@ def require_candidate_gate(conn, chart_id: str, generation: str, event_class: st
 
 
 __all__ = ["CandidateGateRefused", "POLICY_VERSION", "VERIFIER_ID", "VERIFIER_VERSION", "candidate_gate",
+           "derivation_inputs_digest", "derivation_inputs_preimage",
            "can_write_verification", "expected_windows", "intervals_digest", "record_verification", "require_candidate_gate",
            "stored_windows", "verification_available"]

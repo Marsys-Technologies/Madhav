@@ -87,7 +87,12 @@ def _boot_p3(w):
 
 
 def _windows(w, paths=("P1", "P2", "P3", "P4")):
-    return {p: w.step(f"window:{CLS}:{p}") for p in paths}
+    """The builder's window steps, then what the SEPARATE verification job persists (R9-6.1: the builder writes no
+    verification row; this fixture connects as a superuser, so the job's window half is run on it explicitly)."""
+    from ._verification_persist import persist_window_verification
+    out = {p: w.step(f"window:{CLS}:{p}") for p in paths}
+    persist_window_verification(w.conn, writer_mod, event_class=CLS, generation=GEN, paths=paths)
+    return out
 
 
 def _violations(w):
@@ -112,7 +117,8 @@ def test_the_window_phase_persists_a_verified_result_for_every_included_grain_an
     w = world
     _boot_p3(w)
     out = _windows(w)
-    assert all("verification result persisted" in r.notes for r in out.values()), [r.notes for r in out.values()]
+    # R9-6.1: the BUILDER persists nothing — its notes say so; the rows below are the verification job's (see `_windows`)
+    assert all("NOT persisted by the builder" in r.notes for r in out.values()), [r.notes for r in out.values()]
     assert _rows(w) == [("P1", "VERIFIED", 0, 0, 0, 0, "window_qualification/1"),
                         ("P2", "VERIFIED", 0, 0, 0, 0, "window_qualification/1"),
                         ("P3", "VERIFIED", 1, 1, 1, 0, "window_qualification/1"),
@@ -200,8 +206,11 @@ def test_a_missing_result_fails_the_gate_in_both_the_database_and_the_python_gat
 def test_a_grain_with_no_verification_at_all_is_missing_for_every_included_pin(world):
     w = world
     _boot_p3(w)
-    assert {p for p, v in _violations(w)} == {"P1", "P2", "P3", "P4"} and {v for _p, v in _violations(w)} == {
-        "window_verification_missing"}
+    # every included pin is missing its verification; P3 also holds an admitted record that sits in no window yet (the
+    # windows were not built) — the R9-2 membership check says so, it is not a verification gap
+    assert _violations(w) == {("P1", "window_verification_missing"), ("P2", "window_verification_missing"),
+                              ("P3", "window_verification_missing"), ("P4", "window_verification_missing"),
+                              ("P3", "window_membership_not_expected")}
 
 
 def test_unverified_dynamic_and_failed_results_cannot_satisfy_the_gate(world):
@@ -321,11 +330,11 @@ def test_the_table_refuses_an_incoherent_verified_row_and_any_update(world):
     cols = ("chart_id, generation, event_class, path_id, rule_version, verifier_id, verifier_version, status,"
             " policy_version, windows_expected, windows_stored, windows_reproduced, windows_unverified,"
             " expected_windows_digest, stored_windows_digest, windows_content_digest, fields_verified,"
-            " input_digest")
+            " input_digest, derivation_inputs_digest")
     h = "a" * 64
-    ok = [CHART_ID, GEN, CLS, "P3", "1.0.0", "other", "1", "VERIFIED", "p", 1, 1, 1, 0, h, h, h, ["interval"], h]
+    ok = [CHART_ID, GEN, CLS, "P3", "1.0.0", "other", "1", "VERIFIED", "p", 1, 1, 1, 0, h, h, h, ["interval"], h, h]
     ins = (f"INSERT INTO public.ka_gochara_eval_window_verification ({cols})"
-           " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)")
+           " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)")
     for label, mutate in (
             ("VERIFIED with an unverified window", lambda r: r.__setitem__(12, 1)),
             ("VERIFIED reproducing fewer than stored", lambda r: r.__setitem__(11, 0)),
@@ -360,17 +369,18 @@ def test_a_verification_row_needs_a_finalised_inventory_and_an_included_pin(worl
     ins = ("INSERT INTO public.ka_gochara_eval_window_verification (chart_id, generation, event_class, path_id,"
            " rule_version, verifier_id, verifier_version, status, policy_version, windows_expected, windows_stored,"
            " windows_reproduced, windows_unverified, expected_windows_digest, stored_windows_digest,"
-           " windows_content_digest, fields_verified, input_digest) VALUES (%s,%s,%s,%s,'1.0.0','v','1','VERIFIED',"
-           "'p',0,0,0,0,%s,%s,%s,ARRAY['interval'],%s)")
+           " windows_content_digest, fields_verified, input_digest, derivation_inputs_digest) VALUES"
+           " (%s,%s,%s,%s,'1.0.0','v','1','VERIFIED','p',0,0,0,0,%s,%s,%s,ARRAY['interval'],%s,%s)")
     for cls, path in (("career_entry", "P3"), (CLS, "P5")):         # no inventory for the class / no included pin
         with pytest.raises(psycopg.errors.Error):
             with w.conn.transaction():
                 w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
-                w.conn.execute(ins, (CHART_ID, GEN, cls, path, h, h, h, h))
+                w.conn.execute(ins, (CHART_ID, GEN, cls, path, h, h, h, h, h))
 
 
-def test_the_writers_verify_step_refuses_a_class_that_cannot_pass_the_window_gate(world, monkeypatch):
-    """The production caller of the gate: `verify:<class>` raises rather than leave a candidate no sealer could accept."""
+def test_the_writers_verify_step_only_reports_and_the_gate_refuses_a_class_without_a_verification(world, monkeypatch):
+    """R9-6.1: `verify:<class>` is the builder's in-build self-check — REPORT ONLY. It never raises the candidate gate (the
+    builder cannot read it) and never persists; the gate itself refuses a class with no verification result."""
     w = world
     _boot_p3(w)
     _windows(w)
@@ -379,12 +389,16 @@ def test_the_writers_verify_step_refuses_a_class_that_cannot_pass_the_window_gat
         w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification WHERE path_id = 'P3'")
     monkeypatch.setattr(writer_mod.gk_verifier, "verify_aspect_span_contacts",
                         lambda *a, **k: {"objects_checked": 0, "occurrences": 0})
-    with pytest.raises(wg.CandidateGateRefused, match="window_verification_missing"):
-        w.step(f"verify:{CLS}")
-    # with the result restored the same step completes and says the gate passed
-    _windows(w, ("P3",))
+    monkeypatch.setattr(writer_mod.gk_contact_certify, "certify_contact_geometry",     # its own suite (R9-3)
+                        lambda *a, **k: {"obligations_certified": 0, "contacts_expected": 0, "named_limit": "stubbed"})
     res = w.step(f"verify:{CLS}")
-    assert "window verification gate passed" in res.notes
+    assert "NOT persisted by the builder" in res.notes and "gate stays CLOSED" in res.notes
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification WHERE path_id = 'P3'"
+                          ).fetchone()[0] == 0                                  # the builder wrote nothing
+    with pytest.raises(wg.CandidateGateRefused, match="window_verification_missing"):
+        wg.require_candidate_gate(w.conn, CHART_ID, GEN, CLS)
+    _windows(w, ("P3",))                                                         # the verification job's window half
+    wg.require_candidate_gate(w.conn, CHART_ID, GEN, CLS)                        # now passes
 
 
 def test_without_1240_the_writer_says_so_and_does_not_pretend_the_gate_passed(world):
@@ -393,7 +407,7 @@ def test_without_1240_the_writer_says_so_and_does_not_pretend_the_gate_passed(wo
     with w.conn.transaction():
         w.conn.execute("DROP TABLE public.ka_gochara_eval_window_verification CASCADE")
     res = w.step(f"window:{CLS}:P3")
-    assert "verification result NOT persisted — migration 1240 is not applied" in res.notes
+    assert "NOT persisted by the builder" in res.notes             # the builder never persists, with or without 1240
     assert wg.verification_available(w.conn) is False
 
 
@@ -408,7 +422,7 @@ def test_a_not_admitted_record_forms_no_expected_window_in_either_derivation(wor
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         w.conn.execute("UPDATE public.ka_gochara_record_prerequisite SET result = 'false'")
         w.conn.execute("UPDATE public.ka_gochara_relationship_record SET admission_state = 'not_admitted'")
-    w.step(f"window:{CLS}:P3")                                  # the record no longer admits: no window
+    _windows(w, ("P3",))                                        # the record no longer admits: no window (then re-verified)
     grain = dict(chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P3", rule_version="1.0.0")
     assert wg.expected_windows(w.conn, **grain) == [] and wg.stored_windows(w.conn, **grain) == []
     assert not {v for p, v in _db_violations(w) if p == "P3"}
