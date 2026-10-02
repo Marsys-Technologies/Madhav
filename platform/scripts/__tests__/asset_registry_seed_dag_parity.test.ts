@@ -25,7 +25,6 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
     'bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive',
     'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra',
     'ga_condition', 'ga_vargas', 'ga_vichara',
-    'ga_yoga', // migration 1226 (ga_yoga_firings read, bo_laksana.py)
   ],
   bo_bimba: [
     'bo_laksana', 'bo_sudarshana', 'bo_nakshatra_semantic',
@@ -171,11 +170,7 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
     }
   })
 
-  it('carries the six pre-S-L1 edges of migration 1226 (ordered as the migration appends them)', () => {
-    expect(assetsById.get('bo_upaya')?.depends_on).toEqual([
-      'bo_laksana', 'bo_sangati', 'ga_structural', 'ga_dashas', 'bo_cgm_motifs',
-      'bo_bimba', // migration 1226 (bodha_cgm_nodes join, bo_upaya.py)
-    ])
+  it('carries the four pre-S-L1 L1 edges of migration 1226 (ordered as the migration appends them)', () => {
     expect(assetsById.get('ga_dashas')?.depends_on).toEqual([
       'ga_positions',
       'ga_sensitive', 'ga_vargas', // migration 1226 (karaka assignments; chart_divisionals)
@@ -188,7 +183,7 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
       'ga_positions',
       'ga_sensitive', // migration 1226 (kn_rao_rahu_included karaka assignments; N-69, S-L1)
     ])
-    // bo_laksana += ga_yoga is pinned in MIGRATION_GOVERNED_DEPENDENCIES above; ga_sensitive is untouched.
+    // The two L2 edges (bo_laksana += ga_yoga, bo_upaya += bo_bimba) are migration 1253's, not this migration's.
     expect(assetsById.get('ga_sensitive')?.depends_on).toEqual(['ga_positions', 'bg_reference'])
   })
 

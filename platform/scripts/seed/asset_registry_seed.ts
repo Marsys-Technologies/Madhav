@@ -1624,8 +1624,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: 'Signal count driven by ga_structural exhaustive enumeration; sealed count 66,738 per L2 build (chart 482012f1).',
-    // Migration 1226: ga_yoga added — bo_laksana.py reads ga_yoga_firings (Q-L2-07).
-    depends_on: ['bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive', 'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra', 'ga_condition', 'ga_vargas', 'ga_vichara', 'ga_yoga'],
+    depends_on: ['bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive', 'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra', 'ga_condition', 'ga_vargas', 'ga_vichara'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {
@@ -1830,8 +1829,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // ga_dashas (chart_dashas), bo_cgm_motifs (bodha_cgm_motifs) — bo_upaya now reads all
     // three for real resonance_score_v1 inputs (dispositor_chain_weakness,
     // dasha_proximity_activation_score, cgm_motifs_weakest_node).
-    // Migration 1226: bo_bimba added — bo_upaya.py joins bodha_cgm_nodes (bo_bimba output; Q-L2-07).
-    depends_on: ['bo_laksana', 'bo_sangati', 'ga_structural', 'ga_dashas', 'bo_cgm_motifs', 'bo_bimba'],
+    depends_on: ['bo_laksana', 'bo_sangati', 'ga_structural', 'ga_dashas', 'bo_cgm_motifs'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
   },
   {

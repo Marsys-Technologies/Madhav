@@ -1,16 +1,16 @@
 """
-Migration 1226 (six pre-S-L1 `asset_registry.depends_on` edges). The 1224 (chart_grants) tests live in
+Migration 1226 (four pre-S-L1 L1 `asset_registry.depends_on` edges: ga_dashas/ga_yoga/ga_vargas/ga_sensitive). The 1224 (chart_grants) tests live in
 test_migration_1224_chart_grants.py.
 
 Two tiers:
-  * STATIC (always runs, DB-free): file shape, the six edges, seed parity, header ordering rule.
+  * STATIC (always runs, DB-free): file shape, the four edges, seed parity, header ordering rule.
   * LIVE (needs PostgreSQL server binaries): applies the REAL on-disk migration files to a
     DISPOSABLE cluster this module creates with initdb in a temp dir (own port, trust auth, removed at
     session end). It never connects to anything else. Skipped, loudly, when no `initdb`/`pg_ctl` is
     found (looked up via $PG_BIN, PATH, homebrew, /usr/lib/postgresql/*/bin). Set $PG_BIN to pin a
     version (production is PostgreSQL 15).
 
-What the LIVE tier proves for 1226: the six edges land (existing order preserved, appended in dep order);
+What the LIVE tier proves for 1226: the four edges land (existing order preserved, appended in dep order);
 no other column and no other row changes; a second run rewrites nothing (xmin unchanged); a direct or an
 indirect cycle RAISES and rolls back; a missing / inactive / partial asset set RAISES; an empty registry
 is a no-op; a NULL depends_on is treated as empty.
@@ -30,18 +30,18 @@ from pathlib import Path
 import pytest
 
 _REPO = Path(__file__).resolve().parents[3]
-_M1226 = _REPO / "platform" / "migrations" / "1226_asset_registry_six_pre_s_l1_edges.sql"
+_M1226 = _REPO / "platform" / "migrations" / "1226_asset_registry_four_pre_s_l1_edges.sql"
 _SEED = _REPO / "platform" / "scripts" / "seed" / "asset_registry_seed.ts"
 
-SIX_EDGES = [
-    ("bo_laksana", "ga_yoga"),
-    ("bo_upaya", "bo_bimba"),
+FOUR_EDGES = [
     ("ga_dashas", "ga_vargas"),
     ("ga_yoga", "ga_vargas"),
     ("ga_vargas", "ga_sensitive"),
     ("ga_dashas", "ga_sensitive"),
 ]
-CONSUMERS = ["bo_laksana", "bo_upaya", "ga_dashas", "ga_yoga", "ga_vargas"]
+CONSUMERS = ["ga_dashas", "ga_yoga", "ga_vargas"]
+# L2 assets present in the fixture only to prove 1226 neither edits nor stales them (their edges are 1253's)
+L2_UNTOUCHED = ["bo_laksana", "bo_upaya", "bo_bimba"]
 
 # Live production `depends_on` (read 2026-10-02 via suvarna_reader) for the assets involved + the one
 # neighbour (ga_structural) that closes the ga_yoga -> ga_structural -> {ga_dashas, ga_vargas} paths.
@@ -60,8 +60,6 @@ LIVE_BEFORE: dict[str, list[str]] = {
     "ga_positions": [],
 }
 EXPECTED_AFTER: dict[str, list[str]] = {
-    "bo_laksana": LIVE_BEFORE["bo_laksana"] + ["ga_yoga"],
-    "bo_upaya": LIVE_BEFORE["bo_upaya"] + ["bo_bimba"],
     "ga_dashas": ["ga_positions", "ga_sensitive", "ga_vargas"],
     "ga_yoga": ["ga_structural", "ga_dashas", "ga_vargas"],
     "ga_vargas": ["ga_positions", "ga_sensitive"],
@@ -93,10 +91,12 @@ def _seed_graph() -> dict[str, list[str]]:
     return out
 
 
-def test_1226_is_exactly_the_six_edges():
+def test_1226_is_exactly_the_four_l1_edges():
     edges = _migration_edges()
-    assert sorted(edges) == sorted(SIX_EDGES)
-    assert len(set(edges)) == 6 and not any(a == b for a, b in edges)
+    assert sorted(edges) == sorted(FOUR_EDGES)
+    # the two L2 edges are migration 1253's, never here
+    assert not [e for e in edges if e[0].startswith("bo_") or e[1].startswith("bo_")]
+    assert len(set(edges)) == 4 and not any(a == b for a, b in edges)
 
 
 def test_migration_does_not_own_the_transaction_and_has_no_destructive_sql():
@@ -119,14 +119,17 @@ def test_1226_writes_only_depends_on_and_discloses_ordering_and_consequences():
                    "PRODUCTION STRUCTURE", "WITH RECURSIVE", "planned/running/paused",
                    "nirmana_registry_receipt_invalidation", "asset_freshness",
                    "APPLY TIMING RULE", "MERGE = APPLY", "S-L1 window", "MIGRATION_1226_EDGES_INTENT_v1_0.md",
-                   "No other run may be dispatching or running"):
+                   "No other run may be dispatching or running", "migration 1253", "THREE assets",
+                   "exactly those three", "37 min"):
         assert needle in sql, f"1226 header/body no longer states: {needle}"
 
 
-def test_seed_carries_the_six_edges_and_graph_stays_acyclic():
+def test_seed_carries_the_four_edges_only_and_graph_stays_acyclic():
     seed = _seed_graph()
-    for a, d in SIX_EDGES:
+    for a, d in FOUR_EDGES:
         assert d in seed[a], f"seed {a} lacks {d}"
+    # independent of 1253: this PR's seed must NOT carry the L2 edges
+    assert "ga_yoga" not in seed["bo_laksana"] and "bo_bimba" not in seed["bo_upaya"]
     # the seed's own acyclicity (iterative DFS)
     colour: dict[str, int] = {}
     for root in seed:
@@ -266,14 +269,14 @@ def _snapshot_without_deps(connect):
     return _q(connect, "SELECT asset_id, to_jsonb(r) - 'depends_on' FROM asset_registry r ORDER BY asset_id")
 
 
-def test_1226_applies_the_six_edges_in_order_and_touches_nothing_else(db):
+def test_1226_applies_the_four_edges_in_order_and_touches_nothing_else(db):
     _make_registry(db)
     before_other = _snapshot_without_deps(db)
     untouched_before = {a: _deps(db, a) for a in LIVE_BEFORE if a not in CONSUMERS}
     _apply(db, _M1226)
     for aid, want in EXPECTED_AFTER.items():
         assert _deps(db, aid) == want, aid
-    for a, d in SIX_EDGES:
+    for a, d in FOUR_EDGES:
         assert d in _deps(db, a)
     assert _snapshot_without_deps(db) == before_other, "a non-depends_on column changed"
     assert {a: _deps(db, a) for a in untouched_before} == untouched_before, "a non-consumer row changed"
@@ -292,14 +295,22 @@ def test_1226_is_idempotent_and_rewrites_nothing_on_second_run(db):
 
 def test_1226_only_appends_missing_edges_when_some_are_already_present(db):
     rows = {k: list(v) for k, v in LIVE_BEFORE.items()}
-    rows["ga_dashas"] = ["ga_positions", "ga_vargas"]  # edge 3 pre-declared
-    rows["bo_laksana"] = rows["bo_laksana"] + ["ga_yoga"]  # edge 1 pre-declared
+    rows["ga_dashas"] = ["ga_positions", "ga_vargas"]  # edge 1 pre-declared
+    rows["ga_yoga"] = rows["ga_yoga"] + ["ga_vargas"]  # edge 2 pre-declared (fully covered row)
     _make_registry(db, rows)
-    yoga_xmin = _q(db, "SELECT xmin::text FROM asset_registry WHERE asset_id='bo_laksana'")
+    yoga_xmin = _q(db, "SELECT xmin::text FROM asset_registry WHERE asset_id='ga_yoga'")
     _apply(db, _M1226)
     assert _deps(db, "ga_dashas") == ["ga_positions", "ga_vargas", "ga_sensitive"]
-    assert _deps(db, "bo_laksana") == rows["bo_laksana"]
-    assert _q(db, "SELECT xmin::text FROM asset_registry WHERE asset_id='bo_laksana'") == yoga_xmin
+    assert _deps(db, "ga_yoga") == rows["ga_yoga"]
+    assert _q(db, "SELECT xmin::text FROM asset_registry WHERE asset_id='ga_yoga'") == yoga_xmin
+
+
+def test_1226_needs_no_l2_asset_and_never_touches_one(db):
+    l1_only = {k: list(v) for k, v in LIVE_BEFORE.items() if k not in L2_UNTOUCHED}
+    _make_registry(db, l1_only)
+    _apply(db, _M1226)  # must not require bo_* rows (their edges are 1253's)
+    for aid, want in EXPECTED_AFTER.items():
+        assert _deps(db, aid) == want
 
 
 def test_1226_treats_null_depends_on_as_empty(db):
@@ -311,8 +322,9 @@ def test_1226_treats_null_depends_on_as_empty(db):
 
 
 @pytest.mark.parametrize("reverse_edge,culprit", [
-    (("ga_sensitive", "ga_vargas"), "ga_vargas"),    # direct reverse of edge 5
-    (("bo_bimba", "bo_upaya"), "bo_upaya"),          # reverse of edge 2
+    (("ga_sensitive", "ga_vargas"), "ga_vargas"),    # direct reverse of edge 3
+    (("ga_vargas", "ga_dashas"), "ga_dashas"),       # reverse of edge 1 (ga_dashas -> ga_vargas -> ga_dashas)
+    (("ga_sensitive", "ga_dashas"), "ga_dashas"),    # reverse of edge 4
     (("ga_structural", "ga_yoga"), "ga_yoga"),       # the known BACK-READ (ga_yoga -> ga_structural -> ga_yoga)
 ])
 def test_1226_refuses_when_a_cycle_would_result_and_rolls_back(db, reverse_edge, culprit):
@@ -351,7 +363,7 @@ def test_1226_ignores_a_preexisting_cycle_that_does_not_pass_through_an_edited_a
         assert _deps(db, aid) == want
 
 
-@pytest.mark.parametrize("missing", ["ga_sensitive", "bo_bimba", "ga_yoga", "bo_upaya", "ga_dashas"])
+@pytest.mark.parametrize("missing", ["ga_sensitive", "ga_yoga", "ga_dashas", "ga_vargas"])
 def test_1226_refuses_when_an_involved_asset_is_missing(db, missing):
     rows = {k: list(v) for k, v in LIVE_BEFORE.items() if k != missing}
     _make_registry(db, rows)
@@ -408,8 +420,10 @@ def test_1226_registry_trigger_marks_exactly_the_five_edited_assets_stale_once(d
         c.commit()
     _apply(db, _M1226)
     rows = dict(_q(db, "SELECT asset_id, freshness_state FROM asset_freshness"))
-    assert {a for a, st in rows.items() if st == "stale"} == set(CONSUMERS)
+    assert {a for a, st in rows.items() if st == "stale"} == {"ga_vargas", "ga_dashas", "ga_yoga"}
     assert all(rows[a] == "fresh" for a in LIVE_BEFORE if a not in CONSUMERS)
+    # the producer and the L2 assets (1253's) are NOT staled by 1226
+    assert all(rows[a] == "fresh" for a in ["ga_sensitive", *L2_UNTOUCHED])
     reasons = _q(db, "SELECT reasons::text FROM asset_freshness WHERE asset_id='ga_vargas'")[0][0]
     assert "registry_changed" in reasons
     snap = _q(db, "SELECT asset_id, freshness_state, reasons::text, observed_at FROM asset_freshness ORDER BY 1")
