@@ -1,0 +1,111 @@
+# Gochara VERIFICATION JOB — act 6 DEFINITION. DRAFT: HOLD. Codex reviews this file BEFORE it is ever dispatched.
+#
+# What it does, and only this: creates/updates the Cloud Run job `gochara-verification-job` — the SAME image the deploy builds for the
+# pipeline job (brahma-pipeline:<sha>, built by deploy.yml's deploy-pipeline-job), run as the verifier's own runtime identity with the
+# verifier's one secret and the verifier entry point. It does not run the job, build an image, touch the builder job, read any secret
+# value, or touch the database. workflow_dispatch ONLY, main only, a confirmation phrase.
+#
+#   job name            gochara-verification-job                          (the name act 7's gate treats as the one permitted holder)
+#   runtime identity    gochara-verifier-runtime@madhav-astrology         (act 3; no keys)
+#   secret              gochara-verifier-db-url:latest -> GOCHARA_VERIFIER_DB_URL   (act 4/1; the ONLY secret; --set-secrets REPLACES, so no other can survive)
+#   entry point         python -m pipeline.orchestrator.verification_job  (as the container COMMAND, so an operator's `--args` at execute time
+#                       supply only the flags: --chart/--generation/--brief/--sealing-commit; the image's builder ENTRYPOINT is overridden)
+#   GOCHARA_RUNNER_COMMIT = the commit this workflow runs from == the image tag (so the runner identity the verifier records is the code
+#                       that was actually reviewed and built; the workflow refuses if no image exists for that commit)
+#   never retried (max-retries 0), one task; dispatched by an OPERATOR only — nothing here chains it to a build.
+#
+# Preconditions (runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md act 6): Codex ACCEPT of the job's code; acts 1, 3, 4, 7, 8 and the L1 ACLs done;
+# an image exists for the dispatched commit (deploy.yml builds it when the pipeline changes). The deploy principal must be able to act as the
+# verifier account (act 10) — if not, `gcloud run jobs deploy` fails and nothing changes.
+# Rollback: `gcloud run jobs delete gochara-verification-job --region asia-south1`; AFTER USE this file stays (it is how the job is redeployed
+# for a new commit) unless the steward removes it.
+name: Gochara verification job (definition, reviewed)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type exactly: DEFINE-GOCHARA-VERIFICATION-JOB'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: gochara-verification-job-definition
+  cancel-in-progress: false
+
+env:
+  GCP_REGION: asia-south1
+  WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
+  WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
+  VERIFICATION_JOB: gochara-verification-job
+  VERIFIER_SERVICE_ACCOUNT: gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com
+  VERIFIER_SECRET: gochara-verifier-db-url
+  PIPELINE_IMAGE_REPO: asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline
+  CLOUDSQL_INSTANCE: madhav-astrology:asia-south1:amjis-postgres
+
+jobs:
+  define:
+    name: Define the verification job
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'DEFINE-GOCHARA-VERIFICATION-JOB'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Refuse unless an image exists for this exact commit
+        run: |
+          gcloud artifacts docker images describe "${PIPELINE_IMAGE_REPO}:${GITHUB_SHA}" --format='value(image_summary.digest)' \
+            || { echo "::error::No pipeline image for commit ${GITHUB_SHA}; the verification job runs only code that was built from this commit."; exit 1; }
+
+      - name: Create or update the verification job (the one secret, the verifier identity, the verifier entry point)
+        run: |
+          gcloud run jobs deploy "$VERIFICATION_JOB" \
+            --project madhav-astrology \
+            --region "$GCP_REGION" \
+            --image "${PIPELINE_IMAGE_REPO}:${GITHUB_SHA}" \
+            --service-account "$VERIFIER_SERVICE_ACCOUNT" \
+            --command "python,-m,pipeline.orchestrator.verification_job" \
+            --clear-args \
+            --set-secrets "GOCHARA_VERIFIER_DB_URL=${VERIFIER_SECRET}:latest" \
+            --set-env-vars "GOCHARA_RUNNER_COMMIT=${GITHUB_SHA}" \
+            --set-cloudsql-instances "$CLOUDSQL_INSTANCE" \
+            --max-retries 0 \
+            --tasks 1 \
+            --task-timeout 7200 \
+            --memory 8Gi \
+            --cpu 2 \
+            --quiet
+
+      - name: Verify the definition (read-only; prints non-secret facts)
+        run: |
+          gcloud run jobs describe "$VERIFICATION_JOB" --project madhav-astrology --region "$GCP_REGION" --format=json > job.json
+          python3 - <<'PY'
+          import json, os, sys
+          j = json.load(open("job.json"))
+          t = j["spec"]["template"]["spec"]["template"]["spec"]
+          c = t["containers"][0]
+          env = {e["name"]: e for e in c.get("env", [])}
+          errs = []
+          if t.get("serviceAccountName") != os.environ["VERIFIER_SERVICE_ACCOUNT"]:
+              errs.append(f"service account is {t.get('serviceAccountName')}")
+          secrets = [n for n, e in env.items() if "secretKeyRef" in e.get("valueFrom", {})]
+          if secrets != ["GOCHARA_VERIFIER_DB_URL"] or env["GOCHARA_VERIFIER_DB_URL"]["valueFrom"]["secretKeyRef"]["name"] != os.environ["VERIFIER_SECRET"]:
+              errs.append(f"secret bindings are {secrets}")
+          if c.get("command") != ["python", "-m", "pipeline.orchestrator.verification_job"]:
+              errs.append(f"command is {c.get('command')}")
+          if env.get("GOCHARA_RUNNER_COMMIT", {}).get("value") != os.environ["GITHUB_SHA"]:
+              errs.append("GOCHARA_RUNNER_COMMIT is not the dispatched commit")
+          if not c["image"].endswith(":" + os.environ["GITHUB_SHA"]):
+              errs.append(f"image is {c['image']}")
+          if errs:
+              print("::error::verification job definition is wrong: " + "; ".join(errs)); sys.exit(1)
+          print("verification job:", os.environ["VERIFICATION_JOB"], "| identity:", t["serviceAccountName"], "| secrets:", secrets, "| image:", c["image"])
+          PY
