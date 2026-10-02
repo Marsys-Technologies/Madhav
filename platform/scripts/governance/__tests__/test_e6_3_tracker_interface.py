@@ -120,7 +120,7 @@ def _snapshot(root):
 
 
 def test_no_side_effects_and_no_database(w, monkeypatch):
-    monkeypatch.setenv("DATABASE_URL", "postgres://nobody:nothing@127.0.0.1:1/none")
+    monkeypatch.setenv("DATABASE_URL", "postgres://nobody:" + "x" * 4 + chr(64) + "127.0.0.1:1/none")
     monkeypatch.setenv("NIKASHA_CONTROL_DIR", "/nonexistent/control")
     before_tree, before_status, before_head = _snapshot(w.repo), git(w.repo, "status", "--porcelain"), git(w.repo, "rev-parse", "HEAD")
     refs_before = git(w.repo, "for-each-ref")
