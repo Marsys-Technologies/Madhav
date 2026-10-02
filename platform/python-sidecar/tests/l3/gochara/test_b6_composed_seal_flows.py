@@ -342,42 +342,49 @@ def _replay_as_sealer(w, manifest):
     return again
 
 
-def _grants_of_1241():
-    """(role, kind, privilege, object) for every privilege the REAL 1241 file grants, parsed from its own GRANT statements."""
+def _spec_of_1241():
+    """The jsonb SPEC embedded in the REAL 1241 file (the one source its GRANTs and its closure check both read)."""
+    import json as _json
     import re
     from .test_a53_record_store import MIGRATIONS
     if not (MIGRATIONS / cw.M1241).exists():
+        return None
+    return _json.loads(re.search(r"\$spec\$(.*?)\$spec\$", (MIGRATIONS / cw.M1241).read_text(), re.S).group(1))
+
+
+def _grants_of_1241():
+    """(role, kind, privilege, object, columns) for every privilege of ORIGIN '1241' in the spec (1240's backfilled ones are 1240's reviewed set)."""
+    spec = _spec_of_1241()
+    if spec is None:
         return []                                      # the integration exhibit without 1241 in the tree: the parametrized tests are skipped
-    sql = "\n".join(l for l in (MIGRATIONS / cw.M1241).read_text().split("\n") if not l.strip().startswith("--"))
     out = []
-    for head, role in re.findall(r"GRANT\s+(.*?)\s+TO\s+(gochara_\w+);", sql, re.S):
-        if head.startswith("EXECUTE ON FUNCTION"):
-            for name, args in re.findall(r"public\.(\w+)\(([^)]*)\)", head):
-                out.append((role, "func", "EXECUTE", f"{name}({', '.join(a.strip() for a in args.split(',') if a.strip())})"))
-        else:
-            m = re.match(r"((?:SELECT|INSERT|UPDATE|DELETE)(?:\s*,\s*(?:SELECT|INSERT|UPDATE|DELETE))*)\s+ON\s+(.*)", head, re.S)
-            for priv in re.split(r"\s*,\s*", m.group(1)):
-                for t in re.findall(r"public\.(\w+)", m.group(2)):
-                    out.append((role, "table", priv, t))
+    for role, body in spec["roles"].items():
+        for tbl, priv, cols, origin in body["tables"]:
+            if origin == "1241":
+                out.append((role, "table", priv, tbl, tuple(cols) if cols else None))
+        for sig, origin in body["functions"]:
+            if origin == "1241":
+                out.append((role, "func", "EXECUTE", sig, None))
     return out
 
 
 _G1241 = _grants_of_1241()
 
 
-def test_1241_parses_to_the_expected_number_of_grants():
+def test_1241_spec_has_the_expected_number_of_1241_origin_grants():
     if not _G1241:
         pytest.skip("NOT_RUN: migration 1241 is not in this tree")
-    assert len(_G1241) == len(set(_G1241)) == 35, len(_G1241)          # sealer: 10 table + 18 function; verifier: 6 table + 1 function
+    assert len(_G1241) == len(set(_G1241)) == 36, len(_G1241)   # sealer: 11 table (incl. the column-level windows read and publication update) + 18 function; verifier: 6 table + 1 function
 
 
-@pytest.mark.parametrize("role,kind,priv,obj", _G1241, ids=[f"{r.split('_')[1]}-{p.lower()}-{o}" for r, k, p, o in _G1241])
-def test_each_grant_of_migration_1241_is_individually_necessary(cbuilt, role, kind, priv, obj):
+@pytest.mark.parametrize("role,kind,priv,obj,cols", _G1241, ids=[f"{r.split('_')[1]}-{p.lower()}-{o}" for r, k, p, o, c in _G1241])
+def test_each_grant_of_migration_1241_is_individually_necessary(cbuilt, role, kind, priv, obj, cols):
     """The REAL 1241 file is applied; ONE of its privileges is revoked; the verification-then-seal flow must then FAIL on a permission denial —
     so every grant in the file is demonstrably needed by a flow (nothing speculative)."""
     w = cbuilt
     if kind == "table":
-        w.conn.execute(f"REVOKE {priv} ON public.{obj} FROM {role}")
+        colsql = f" ({', '.join(cols)})" if cols else ""
+        w.conn.execute(f"REVOKE {priv}{colsql} ON public.{obj} FROM {role}")
     else:
         w.conn.execute(f"REVOKE EXECUTE ON FUNCTION public.{obj} FROM {role}")
     with pytest.raises(RuntimeError, match=r"permission denied|verification job exit|refused"):
@@ -409,6 +416,79 @@ def test_the_l1_reads_that_1241_does_not_carry_are_individually_necessary(cbuilt
     with pytest.raises(RuntimeError, match=r"permission denied|verification job exit|refused"):
         verify_as_verifier(w)
         seal_as_sealer(w)
+
+
+def _strip_principals(conn):
+    """The state a window applied while the roles did NOT exist leaves behind: 1240's role-conditional grants were SKIPPED, so verifier and sealer hold NOTHING on
+    any ka_gochara_/kala_gochara_ relation or function (REVOKE ALL also removes column-level privileges)."""
+    for role in (cw.VERIFIER, cw.SEALER):
+        conn.execute(f"""DO $$ DECLARE x record; BEGIN
+          FOR x IN SELECT c.oid::regclass AS rel FROM pg_class c WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r','p')
+                   AND (c.relname LIKE 'ka\\_gochara\\_%' OR c.relname LIKE 'kala\\_gochara\\_%') LOOP
+            EXECUTE format('REVOKE ALL ON TABLE %s FROM {role}', x.rel); END LOOP;
+          FOR x IN SELECT p.oid::regprocedure AS fn FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname LIKE 'ka\\_gochara\\_%' LOOP
+            EXECUTE format('REVOKE ALL ON FUNCTION %s FROM {role}', x.fn); END LOOP; END $$""")
+
+
+def _reapply_1241(conn):
+    conn.execute("DELETE FROM public._migrations_applied WHERE filename = %s", (cw.M1241,))
+    cw.apply_migrations(conn, [cw.M1241])
+
+
+def test_a_role_created_after_the_window_gets_1240s_skipped_grants_from_1241_and_verifies_and_seals(cbuilt):
+    """R10-7 (i): 1240's role-conditional grants are skipped permanently when the owner creates the roles AFTER the window. State reproduced: the window
+    applied (the clone), then verifier and sealer hold NOTHING (what the skipped grants leave); 1241 is applied ONCE — it carries 1240's grants as well as its
+    own — and the real job verifies and the sealer seals (and replays)."""
+    w = cbuilt
+    _strip_principals(w.conn)
+    for role in (cw.VERIFIER, cw.SEALER):                       # nothing on any gochara object: the verifier cannot even read the window-verification table
+        assert w.conn.execute("SELECT has_table_privilege(%s, 'public.ka_gochara_eval_window_verification', 'SELECT')", (role,)).fetchone()[0] is False
+    _reapply_1241(w.conn)                                       # the single backfill
+    apply_extra_grants(w.conn)                                  # (the L1 reads, stood in for the data-plane owner)
+    report = verify_as_verifier(w)
+    manifest = seal_as_sealer(w)
+    assert manifest is not None and _replay_as_sealer(w, manifest) == manifest
+
+
+def test_1241_closure_refuses_a_privilege_the_spec_does_not_name_at_table_function_and_column_level(cbuilt):
+    """R10-7 (iv): the post-check compares the ENTIRE ACL, so a PROHIBITED privilege held by either principal fails the migration — a table write, a function, and a
+    bare column-level read — and applying it again after the extra is removed passes."""
+    import psycopg
+    w = cbuilt
+    for grant, fragment in ((f"GRANT UPDATE ON public.ka_gochara_eval_window TO {cw.VERIFIER}", "UPDATE on ka_gochara_eval_window: PROHIBITED"),
+                            (f"GRANT DELETE ON public.ka_gochara_relationship_record TO {cw.SEALER}", "DELETE on ka_gochara_relationship_record: PROHIBITED"),
+                            (f"GRANT EXECUTE ON FUNCTION public.ka_gochara_search_av_entry(text) TO {cw.SEALER}", r"EXECUTE on ka_gochara_search_av_entry\(text\): PROHIBITED"),
+                            (f"GRANT SELECT (chart_id) ON public.kala_gochara_contacts TO {cw.VERIFIER}", r"SELECT \(chart_id\) on kala_gochara_contacts: PROHIBITED")):
+        w.conn.execute(grant)
+        with pytest.raises(psycopg.errors.Error, match=fragment):
+            _reapply_1241(w.conn)
+        w.conn.execute(grant.replace("GRANT", "REVOKE", 1).replace(" TO ", " FROM "))
+    _reapply_1241(w.conn)                                       # clean again: the closure passes
+
+
+def test_1241_closure_refuses_a_missing_required_privilege_only_if_it_cannot_be_granted_and_heals_otherwise(cbuilt):
+    """Re-applying 1241 after a required privilege was revoked GRANTS it back (idempotent backfill) and the closure then passes."""
+    w = cbuilt
+    w.conn.execute(f"REVOKE SELECT ON public.ka_gochara_search_obligation FROM {cw.VERIFIER}")
+    _reapply_1241(w.conn)
+    assert w.conn.execute("SELECT has_table_privilege(%s, 'public.ka_gochara_search_obligation', 'SELECT')", (cw.VERIFIER,)).fetchone()[0] is True
+
+
+def test_the_sealers_publication_update_and_legacy_windows_read_are_column_narrow(cbuilt):
+    """R10-7 (ii)+(iii): the sealer can set ONLY the four publication columns ledger.publish writes, and read the legacy windows relation ONLY on
+    (chart_id, generation) — nothing else of it."""
+    import psycopg
+    w = cbuilt
+    for col in ("status", "published_at", "content_digest", "row_counts"):
+        assert w.conn.execute("SELECT has_column_privilege(%s, 'public.kala_gochara_publication', %s, 'UPDATE')", (cw.SEALER, col)).fetchone()[0] is True, col
+    for col in ("superseded_at", "manifest_id", "input_generation_vector"):
+        assert w.conn.execute("SELECT has_column_privilege(%s, 'public.kala_gochara_publication', %s, 'UPDATE')", (cw.SEALER, col)).fetchone()[0] is False, col
+    assert w.conn.execute("SELECT has_table_privilege(%s, 'public.kala_gochara_publication', 'UPDATE')", (cw.SEALER,)).fetchone()[0] is False
+    with as_role(w.conn, cw.SEALER):
+        n = w.conn.execute("SELECT count(*) FROM public.kala_gochara_windows WHERE chart_id = %s AND generation = '5.0'", (CHART_ID,)).fetchone()[0]
+        assert n == 2                                            # the count ledger.publish records
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            w.conn.execute("SELECT raw_intensity FROM public.kala_gochara_windows LIMIT 1")
 
 
 def test_first_seal_builder_then_verifier_then_sealer_with_every_guard_enabled(cbuilt):

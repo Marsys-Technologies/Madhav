@@ -128,7 +128,13 @@ def _populate(conn, stack):
     for graha, house, vedha, citation, rule_type in L0_VEDHA_ROWS:
         conn.execute("INSERT INTO public.bg_transit_rules (rule_type, graha, primary_house, vedha_house, phala, classical_citation)"
                      " VALUES (%s,%s,%s,%s,'x',%s)", (rule_type, graha, house, vedha, citation))
+    # the LEGACY 4.x windows relation (production: owned by amjis_app, RLS off, many readers). `ledger.publish` counts its rows for the manifest when the
+    # relation EXISTS (ledger.py:612), so a production-shaped schema must carry it (Codex R10-7 ii): the sealer needs a column-narrow SELECT on it.
+    conn.execute("CREATE TABLE public.kala_gochara_windows (window_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid NOT NULL, generation text NOT NULL,"
+                 " raw_intensity numeric, signed_intensity numeric, payload jsonb)")
     conn.execute("INSERT INTO public.charts(id) VALUES (%s)", (CHART_ID,))
+    conn.execute("INSERT INTO public.kala_gochara_windows(chart_id, generation, raw_intensity, signed_intensity) VALUES (%s,'5.0',1.0,1.0),(%s,'5.0',2.0,-2.0)",
+                 (CHART_ID, CHART_ID))
     subj = {"LAGNA": CHART["lagna_deg"], "SUN": CHART["natal"]["Sun"], "MOON": CHART["natal"]["Moon"], "MAR": CHART["natal"]["Mars"],
             "MER": CHART["natal"]["Mercury"], "JUP": CHART["natal"]["Jupiter"], "VEN": CHART["natal"]["Venus"],
             "SAT": CHART["natal"]["Saturn"], "RAH_MEAN": CHART["natal"]["Rahu"], "KET_MEAN": CHART["natal"]["Ketu"]}
