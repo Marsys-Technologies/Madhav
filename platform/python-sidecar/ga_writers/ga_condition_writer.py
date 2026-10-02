@@ -1180,10 +1180,17 @@ def _build_per_varga_avastha_rows(
     return rows
 
 
-def _insert_per_varga_avastha_rows(conn: Any, rows: list[dict]) -> None:
-    """Delete-then-insert per (chart_id, ayanamsha_id, fact_category) for per-varga avastha categories."""
+def _insert_per_varga_avastha_rows(conn: Any, rows: list[dict]) -> int:
+    """Delete-then-insert per (chart_id, ayanamsha_id, fact_category) for per-varga avastha categories.
+
+    Returns the number of ``chart_facts`` rows actually INSERTed (summed from each statement's
+    ``rowcount``).  The caller adds it to the substep's reported ``rows_inserted``: these rows are
+    written inside the same L1 partition as the ``ga_condition_composite`` rows, so the protected
+    capture counts them, and ``complete_l1_data_plane_partition`` rejects a partition whose reported
+    count omits them ("reported 9 rows but protected capture contains 594").
+    """
     if not rows:
-        return
+        return 0
 
     # ── Idempotent delete scoped to the categories we are about to write ──────
     cats = sorted({r["fact_category"] for r in rows})
@@ -1209,9 +1216,12 @@ def _insert_per_varga_avastha_rows(conn: Any, rows: list[dict]) -> None:
     placeholders = ", ".join(["%s"] * len(cols))
     col_str = ", ".join(cols)
     sql = f"INSERT INTO chart_facts ({col_str}) VALUES ({placeholders})"
+    landed = 0
     for row in rows:
         values = [row[c] for c in cols]
-        conn.execute(sql, values)
+        cur = conn.execute(sql, values)
+        landed += max(0, cur.rowcount)
+    return landed
 
 
 # ── Amendment BA-P3A: D1 sayanadi + lajjitadi + yuddha chart_facts rows ──────
@@ -1432,7 +1442,8 @@ def build_ga_condition_substep(
       7. Delete-then-insert (idempotent replace)
 
     Returns:
-        Number of rows inserted.
+        Number of rows inserted across everything this partition writes: the
+        ``ga_condition_composite`` rows PLUS the per-varga and D1 avastha ``chart_facts`` rows.
     """
     computed_at = datetime.now(timezone.utc).isoformat()
 
@@ -1689,8 +1700,9 @@ def build_ga_condition_substep(
         conn, chart_id, str(build_id) if build_id else None, ayanamsha_id, computed_at, ENGINE_VERSION
     )
     if per_varga_rows:
-        _insert_per_varga_avastha_rows(conn, per_varga_rows)
-        logger.info("[ga_condition_writer] per_varga_avastha_rows=%d", len(per_varga_rows))
+        per_varga_landed = _insert_per_varga_avastha_rows(conn, per_varga_rows)
+        inserted += per_varga_landed
+        logger.info("[ga_condition_writer] per_varga_avastha_rows=%d", per_varga_landed)
 
     # ── Amendment BA-P3A: D1 sayanadi + lajjitadi + yuddha chart_facts rows ────
     d1_avastha_rows = _build_d1_avastha_rows(
@@ -1698,7 +1710,8 @@ def build_ga_condition_substep(
         ayanamsha_id, computed_at, ENGINE_VERSION
     )
     if d1_avastha_rows:
-        _insert_per_varga_avastha_rows(conn, d1_avastha_rows)
-        logger.info("[ga_condition_writer] d1_avastha_rows=%d", len(d1_avastha_rows))
+        d1_landed = _insert_per_varga_avastha_rows(conn, d1_avastha_rows)
+        inserted += d1_landed
+        logger.info("[ga_condition_writer] d1_avastha_rows=%d", d1_landed)
 
     return inserted
