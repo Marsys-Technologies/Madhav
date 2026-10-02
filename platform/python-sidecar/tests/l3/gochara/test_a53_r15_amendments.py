@@ -67,7 +67,7 @@ def test_the_first_seal_of_a_governed_generation_is_refused_without_result_polic
 # ── F-R15-4 ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 VERBATIM = ("The ten natal longitudes this generation consumes (LAGNA, SUN, MOON, MAR, MER, JUP, VEN, SAT, RAH_MEAN, KET_MEAN; chart_facts "
-            "graha_position longitude_sidereal, lahiri) are read at the tier they carry, which is `single` (one derivation, no independent second "
+            "graha_position longitude_sidereal, lahiri_chitrapaksha) are read at the tier they carry, which is `single` (one derivation, no independent second "
             "pass); they are bound by content digest, not verified by this generation.")
 
 

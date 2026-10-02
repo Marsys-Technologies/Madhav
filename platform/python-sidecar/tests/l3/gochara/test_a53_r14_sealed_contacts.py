@@ -88,18 +88,26 @@ def test_after_the_seal_a_contact_append_enrichment_and_precision_propagation_ar
 
 
 def test_historical_scope_a_generation_sealed_before_this_regime_keeps_the_older_behaviour(built):
-    """A seal whose manifest carries NO `result_policy` (the vector schema of this regime) is a pre-regime seal: enrichment / precision_sync behave as
-    in 1153/1155 (the new refusal does not reach it); the same operations on a regime seal are refused (test above)."""
+    """A seal whose manifest carries NO `result_policy` (the vector schema of this regime) is a pre-regime seal: the REAL operations — a truncated ->
+    exact enrichment flip (NULL-to-value) with its precision propagation, a direct precision restatement, a contact INSERT — behave as in 1153/1155
+    (the new refusal does not reach them), by a non-owner holding the privileges; the same operations on a regime seal are refused (test below).
+    Seal REPLAY is untouched."""
     w = built
-    _verified(w)
+    _enrichable_world(w)
     _prepare_contact_in_another_generation(w)
     _seal(w)
     with w.conn.transaction():
-        w.conn.execute("SET LOCAL session_replication_role = replica")                 # (simulates the stored shape of a pre-regime manifest)
+        w.conn.execute("SET LOCAL session_replication_role = replica")                 # (the stored shape of a pre-regime manifest)
         w.conn.execute("UPDATE public.kala_gochara_publication SET input_generation_vector = input_generation_vector - 'result_policy'")
-    w.conn.execute(ENRICH_CONTACT, (GEN,))                                               # allowed again: the older behaviour
-    w.conn.execute(PRECISION_SYNC, (GEN,))
-    w.conn.execute(LATE_CONTACT, (GEN,))                                                  # (1153's INSERT branch never refused it)
+    with _builder(w) as b:
+        b.execute(ENRICH, (GEN,))                                                       # allowed again: the older behaviour, really executed
+        assert b.execute("SELECT delta_t FROM public.ka_gochara_contact WHERE generation = %s", (GEN,)).fetchone()[0] == 3e-9
+        assert b.execute("SELECT DISTINCT (precision ->> 'delta_t')::float8 FROM public.ka_gochara_relationship_record WHERE generation = %s"
+                         " AND contact_id IS NOT NULL", (GEN,)).fetchall() == [(3e-9,)]          # …and its precision propagation really ran
+        b.execute(PRECISION_SYNC, (GEN,))                                               # 1155's sealed precision_sync (restating the contact's own value)
+        assert b.execute("SELECT DISTINCT (precision ->> 'delta_t')::float8 FROM public.ka_gochara_relationship_record WHERE generation = %s"
+                         " AND contact_id IS NOT NULL", (GEN,)).fetchall() == [(3e-9,)]
+        b.execute(LATE_CONTACT, (GEN,))                                                 # (1153's INSERT branch never refused it)
     # REPLAY of the seal is untouched by any of this: sealing an already-sealed generation is a no-op that returns the same manifest
     mid = w.conn.execute("SELECT manifest_id FROM public.ka_gochara_generation_seal").fetchone()[0]
     assert w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0] == mid
@@ -219,21 +227,27 @@ def test_the_guard_inventory_reads_what_is_guarded_and_shows_a_late_created_rela
 STATUSES = ("candidate", "published", "superseded", "rolled_back")
 
 
-def _reach(b, status):
-    """Walk a SEALED, published manifest to `status` through the only legal path (as the builder login)."""
+def _reach(w, b, status):
+    """Put a SEALED manifest into `status`. superseded / rolled_back: the only legal path (as the builder login). `candidate`: a DELIBERATELY
+    INCONSISTENT state (a seal exists beside a candidate manifest — unreachable through the guards; created by the trigger-bypassing owner path)
+    so that the guard's decision from that source is tested too."""
     if status in ("superseded", "rolled_back"):
         b.execute("UPDATE public.kala_gochara_publication SET status = %s", (status,))
+    elif status == "candidate":
+        with w.conn.transaction():
+            w.conn.execute("SET LOCAL session_replication_role = replica")
+            w.conn.execute("UPDATE public.kala_gochara_publication SET status = 'candidate'")
 
 
-@pytest.mark.parametrize("src", STATUSES[1:])                                  # a sealed manifest is never 'candidate' again
+@pytest.mark.parametrize("src", STATUSES)                                      # 4 sources x 4 targets = 16 pairs (3 reachable + 1 inconsistent source)
 @pytest.mark.parametrize("dst", STATUSES)
 def test_every_sealed_lifecycle_transition_is_decided_as_the_whitelist_says(sched, src, dst):
-    """EVERY (from, to) pair over the CHECK's four statuses, for a sealed generation, as the builder login: allowed iff it is a no-op or
-    published -> superseded / rolled_back."""
+    """EVERY (from, to) pair over the CHECK's four statuses (16 = 3 reachable sealed sources + the deliberately inconsistent candidate-with-seal
+    source, each x 4 targets), for a sealed generation, as the builder login: allowed iff it is a no-op or published -> superseded / rolled_back."""
     sched.begin_seal()
     sched.commit()
     with sched.connect("data_plane_builder") as b:
-        _reach(b, src)
+        _reach(sched.w, b, src)
         assert b.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == src
         allowed = src == dst or (src == "published" and dst in ("superseded", "rolled_back"))
         if allowed:
@@ -279,7 +293,7 @@ ENRICH = ("UPDATE public.ka_gochara_contact SET t_exact = t_in, solver_method = 
           " delta_t = 3e-9, delta_lambda = 0.00055555557, precision_regime = 'swiss_bisect_tol_1e-9d'"
           " WHERE generation = %s AND t_exact IS NULL")      # the real truncated -> exact NULL-to-value enrichment flip
 PROPAGATE = ("UPDATE public.ka_gochara_relationship_record SET precision = '{\"delta_t\": 2e-9, \"delta_lambda\": 0.001, "
-             "\"solver_method\": \"swiss_refined\"}'::jsonb WHERE generation = %s")
+             "\"solver_method\": \"swiss_refined\"}'::jsonb WHERE generation = %s AND contact_id IS NOT NULL")
 
 
 def test_a_real_null_to_value_enrichment_and_a_real_precision_restatement_are_refused_after_the_seal_as_a_non_owner(built):
@@ -331,7 +345,12 @@ def test_chronological_upgrade_a_generation_sealed_under_the_pre_1240_schema_the
     without result_policy); then 1240 (and 1241) are applied on top. PROTECTED from then on: the sealed lifecycle (published -> candidate refused),
     brief insertion (a seal exists), TRUNCATE while governed rows exist, the first-seal rules for any NEW generation. NOT protected / not
     retroactive: the generation has no approval receipt (`ka_gochara_seal_receipt_missing` stays true and a receipt cannot be attached later),
-    no verification attestations, and — by the regime scope — its contacts/precision keep the older behaviour. Replay still works."""
+    no verification attestations, and — by the regime scope — its contacts/precision keep the older behaviour. Replay still works.
+
+    NARROWED CLAIM: this test does NOT execute contact enrichment / precision propagation on the upgraded generation (that needs a full contact +
+    record world, which the empty pre-1240 mirror does not have); the historical behaviour of those operations is executed for real, as a non-owner,
+    by `test_historical_scope_a_generation_sealed_before_this_regime_keeps_the_older_behaviour` on a generation whose manifest has the pre-regime
+    shape. What THIS test proves about the upgrade is the lifecycle, brief, TRUNCATE, receipt and replay behaviour listed above."""
     import uuid
     from psycopg.conninfo import make_conninfo
     from .test_a53_inventory import ADMIN_DSN, MIGRATIONS, create_am5_database, drop_am5_database
