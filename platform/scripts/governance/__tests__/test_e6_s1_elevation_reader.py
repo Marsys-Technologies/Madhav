@@ -628,3 +628,14 @@ def test_a_stamp_column_among_the_covered_columns_is_not_an_earned_block(tmp_pat
     for c in (SD, BR):
         ms[c]["null_convention"]["stamp_columns"] = ["effect_description"]            # a covered column cannot also be a stamp (null_lift_problem)
     assert satisfied(world(tmp_path, ms)) == [False, False]
+
+
+def test_M37_a_malformed_stamp_declaration_at_the_ref_with_a_block_that_has_no_stamp_list_stays_capped(tmp_path):
+    for i, bad in enumerate(("created_at", [7], [{"why": "x"}], {"column": "created_at"}, None)):
+        ms = _stamp_lifted(())                                                         # a stamp-free lift: block stamp_columns == []
+        doc = json.loads(decl_text_for(ms))
+        doc["assets"][ASSET]["null_convention"]["stamp_columns"] = bad
+        assert satisfied(world(tmp_path / f"a{i}", ms, decl=json.dumps(doc))) == [False, False], bad
+        for c in (SD, BR):                                                              # ... and with the key absent from the block altogether
+            ms[c]["null_convention"].pop("stamp_columns", None)
+        assert satisfied(world(tmp_path / f"b{i}", ms, decl=json.dumps(doc))) == [False, False], bad

@@ -26,6 +26,8 @@ from _disposable_pg import disposable_pg  # noqa: E402,F401  (the session fixtur
 NA, NO_DET, PASS, FAIL, PARTIAL, ERRORED = ac.NA, ac.NO_DET, ac.PASS, ac.FAIL, ac.PARTIAL, ac.ERRORED
 SD, BR = s1.SD, s1.BR
 EV = s1.EV
+STAMP_TEXT = ("stamp columns (write-time, constant test exempted; checked instead: NOT NULL timestamp, no NULL row, no sentinel timestamp): "
+              "created_at (timestamptz, NOT NULL, 1 distinct value(s) over 8 row(s))")
 STAMP_WHY = "written by the seed transaction, one shared write time"
 STAMP = dict(column="created_at", why=STAMP_WHY)
 NON_STAMP_CONSTS = [c for c in s1.CONST_COLS if c != "created_at"]
@@ -45,7 +47,7 @@ def SSPEC(scope="exactly", stamps=_DEFAULT, **over):
 def SSTATS(rows=8, facts=None, **over):
     """The fetched stats of the clean latta table with created_at as ONE shared timestamp, plus the catalog's stamp facts."""
     st = s1.STATS(rows)
-    st["cols"]["created_at"] = dict(nulls=0, distinct=1, fallback=0, sole="2026-01-01 00:00:00+00")
+    st["cols"]["created_at"] = dict(nulls=0, distinct=1, fallback=0, sentinel=0, sole="2026-01-01 00:00:00+00")
     for c, d in over.items():
         st["cols"][c] = dict(st["cols"][c], **d)
     st["stamp_facts"] = {"created_at": dict(type="timestamptz", notnull=True)} if facts is None else facts
@@ -82,16 +84,17 @@ def test_validator_accepts_stamp_columns_alone_and_beside_the_other_words():
     ([dict(STAMP, why="N/A")], r"stamp_columns\[0\]\.why"), ([dict(STAMP, why="two words")], r"stamp_columns\[0\]\.why"), ([dict(STAMP, why="a\nb c d e f g h i j")], r"stamp_columns\[0\]\.why"),
     ([dict(STAMP, why=" padded reason for the column ")], r"stamp_columns\[0\]\.why"), ([dict(STAMP, why=7)], r"stamp_columns\[0\]\.why"), ([dict(STAMP, why="x" * 1201)], r"stamp_columns\[0\]\.why"),
     ([STAMP, dict(STAMP)], "declared twice"),
-    ([dict(column=f"c{i}", why=STAMP_WHY) for i in range(ac.NULL_MAX_STAMPS + 1)], "not a convention"),
+    ([dict(column=f"c{i}", why=STAMP_WHY) for i in range(17)], "not a convention"),
 ])
 def test_validator_refuses_a_malformed_stamp_columns_declaration(stamps, match):
     _bad(SSPEC(stamps=stamps), match)
 
 
-def test_validator_the_cap_on_the_list_length_is_exactly_the_constant():
-    ok = [dict(column=f"c{i}", why=STAMP_WHY) for i in range(ac.NULL_MAX_STAMPS)]
-    ac.validate_null_convention_declaration("a", SSPEC(stamps=ok), {})
-    _bad(SSPEC(stamps=ok + [dict(column="one_more", why=STAMP_WHY)]), "not a convention")
+def test_validator_the_cap_on_the_list_length_is_the_literal_16():
+    assert ac.NULL_MAX_STAMPS == 16                                                                                 # pinned as a literal: the cap cannot drift with the constant
+    ok = [dict(column=f"c{i}", why=STAMP_WHY) for i in range(16)]
+    ac.validate_null_convention_declaration("a", SSPEC(stamps=ok), {})                                              # 16 accepted
+    _bad(SSPEC(stamps=ok + [dict(column="c16", why=STAMP_WHY)]), "not a convention")                                # 17 refused
 
 
 def test_validator_a_column_may_not_be_declared_in_two_words():
@@ -123,7 +126,7 @@ def test_the_declarations_file_lists_the_new_field_and_keeps_its_version_and_dec
 def test_a_stamp_column_with_all_equal_timestamps_passes_and_the_text_names_it_separately():
     r = _grade()
     assert r["v"] == PASS, r
-    assert "stamp columns (write-time, constant test exempted): created_at (timestamptz, NOT NULL, 1 distinct value(s) over 8 row(s))" in r["measured"], r["measured"]
+    assert STAMP_TEXT in r["measured"], r["measured"]
     assert r["convention"]["stamp_columns"] == ["created_at"] and r["convention"]["stamp_nulls"] == {}
     assert r["convention"]["undeclared_constants"] == [] and r["convention"]["constant_violations"] == []
 
@@ -381,7 +384,7 @@ def test_through_measure_prose_a_stamp_declaration_earns_the_lift_and_the_block_
     m = s1._prose(monkeypatch, dict(null_convention=SSPEC(), prose_fields=None), stats=SSTATS())
     assert m[SD]["v"] == PASS and m[BR]["v"] == PASS, (m[SD], m[BR])
     assert m[SD]["null_convention"]["stamp_columns"] == ["created_at"] and m[SD]["null_convention"]["columns"] == ["effect_description"]
-    assert "stamp columns (write-time, constant test exempted)" in m[SD]["measured"]
+    assert "stamp columns (write-time, constant test exempted" in m[SD]["measured"]
     assert ac.rollup_asset("L0", m)["Null"]["v"] == PASS
 
 
@@ -416,7 +419,7 @@ def _real_check(monkeypatch, pg, setup, spec=None, types=None):
 def test_REAL_SQL_the_original_conflict_the_shared_created_at_passes_as_a_stamp_and_fails_when_undeclared(monkeypatch, disposable_pg):
     r = _real_check(monkeypatch, disposable_pg, LATTA_STAMP_SQL)
     assert r["v"] == PASS, r
-    assert "stamp columns (write-time, constant test exempted): created_at (timestamptz, NOT NULL, 1 distinct value(s) over 8 row(s))" in r["measured"]
+    assert STAMP_TEXT in r["measured"]
     r = _real_check(monkeypatch, disposable_pg, LATTA_STAMP_SQL, spec=SSPEC(stamps=[]))                             # the SAME column, neither stamp nor constant
     assert r["v"] == FAIL and r["convention"]["undeclared_constants"] == ["created_at"], r
     r = _real_check(monkeypatch, disposable_pg, LATTA_STAMP_SQL, spec=s1.SPEC(table="latta_t"))                      # declared constant (the S1 way): still PASS, no stamp text
@@ -573,3 +576,156 @@ def test_on_the_saved_censuses_pin_15_moves_no_cell_and_no_check():
 def test_the_pin_15_edit_leaves_the_s1_field_helpers_alone():
     assert ac.NULL_CONVENTION_DECL_FIELDS == ("table", "nullable", "constants", "stamp_columns", "allowed_literals", "why", "evidence")
     assert ac.NULL_STAMP_FIELDS == ("column", "why")
+
+
+# ═════════════════════════ review round: SENTINEL timestamps are the stamp column's literal fallback ═════════════════════════
+
+def test_a_stamp_column_holding_a_sentinel_timestamp_fails_and_the_count_is_in_the_text():
+    r = _grade(stats=SSTATS(created_at=dict(sentinel=8)))
+    assert r["v"] == FAIL and r["convention"]["stamp_sentinels"] == {"created_at": 8}, r
+    assert "sentinel timestamp" in r["measured"] and "created_at (8 row(s))" in r["measured"], r["measured"]
+    r = _grade(stats=SSTATS(created_at=dict(sentinel=1, distinct=2)))                                              # mixed: real stamps plus ONE sentinel
+    assert r["v"] == FAIL and r["convention"]["stamp_sentinels"] == {"created_at": 1}
+
+
+def test_a_clean_stamp_reports_no_sentinels_and_the_block_says_so():
+    r = _grade()
+    assert r["v"] == PASS and r["convention"]["stamp_sentinels"] == {}
+
+
+def test_a_missing_or_malformed_sentinel_count_on_a_timestamp_stamp_is_unknown():
+    for bad in (None, "0", 1.5, True):
+        st = SSTATS()
+        if bad is None:
+            del st["cols"]["created_at"]["sentinel"]
+        else:
+            st["cols"]["created_at"]["sentinel"] = bad
+        with pytest.raises(ac.Unknown):
+            _grade(stats=st)
+    st = SSTATS(facts={"created_at": dict(type="text", notnull=True)})                                             # a refused stamp is never graded: it needs no sentinel count
+    del st["cols"]["created_at"]["sentinel"]
+    assert _grade(stats=st)["v"] == NO_DET
+
+
+def test_the_sentinel_counter_is_built_in_the_columns_own_type_only_for_timestamp_stamps(monkeypatch):
+    for typ in ("timestamptz", "timestamp"):
+        got = _two_stub(monkeypatch, _table_json(), json.dumps({"created_at": {"t": typ, "nn": True}}))
+        ac.null_convention_fetch("bg_phaladeepika_latta", s1.LATTA_COLS, s1.LATTA_TYPES, SSPEC(), "")
+        sql = got["table"][0]
+        assert sql.count("'sentinel'") == 1 and f"<= 'epoch'::{typ} + interval '1 day'" in sql and "= 'infinity'" in sql and "= '-infinity'" in sql, (typ, sql)
+        assert not __import__("re").search(r"\b(insert|update|delete|drop|alter|create|truncate|grant)\b", sql, __import__("re").I)
+    got = _two_stub(monkeypatch, _table_json(), json.dumps({"created_at": {"t": "text", "nn": True}}))              # a text stamp is refused later: no timestamp predicate may run on it
+    ac.null_convention_fetch("bg_phaladeepika_latta", s1.LATTA_COLS, s1.LATTA_TYPES, SSPEC(), "")
+    assert "'sentinel'" not in got["table"][0]
+    got = _two_stub(monkeypatch, _table_json(), "{}")                                                               # no stamp declared: no sentinel counter at all
+    ac.null_convention_fetch("bg_phaladeepika_latta", s1.LATTA_COLS, s1.LATTA_TYPES, SSPEC(stamps=[]), "")
+    assert "'sentinel'" not in got["table"][0]
+
+
+def test_the_sentinel_predicate_refuses_a_non_timestamp_type():
+    for typ in ("date", "text", "int4", ""):
+        with pytest.raises(ac.Unknown):
+            ac._null_stamp_sentinel_sql("c", typ)
+
+
+# the accounting is a strict partition: every column of the table is in EXACTLY ONE of: fallback-checked, element-not-inspected, type-cannot-hold-one (not examined), stamp (examined for NULL / sentinel instead)
+
+def _partition(block, cols):
+    groups = [block["fallback_checked_columns"], block["elements_not_inspected"], block["fallback_not_applicable"], block["stamp_columns"]]
+    flat = [c for g in groups for c in g]
+    assert len(flat) == len(set(flat)), ("a column is in two groups", groups)
+    assert sorted(flat) == sorted(cols), ("a column is in no group", sorted(set(cols) - set(flat)))
+
+
+def test_the_pass_accounting_is_a_strict_partition_a_stamp_is_in_the_stamp_group_only():
+    r = _grade()
+    assert r["v"] == PASS
+    _partition(r["convention"], s1.LATTA_COLS)
+    assert r["convention"]["stamp_columns"] == ["created_at"] and "created_at" not in r["convention"]["fallback_not_applicable"]
+    assert "count_from_graha" in r["convention"]["fallback_not_applicable"]                                         # a real non-examined column is still named
+    assert "NOT examined for a literal fallback (the type cannot hold one): count_from_graha (smallint)" in r["measured"], r["measured"]
+    assert "created_at (timestamp with time zone)" not in r["measured"]                                             # the stamp is not claimed unexamined
+    assert "except the stamp column(s) named next" in r["measured"]                                                  # 'no other column constant' no longer sits unqualified beside a 1-distinct stamp
+
+
+def test_the_partition_holds_without_a_stamp_too_and_the_wording_is_unchanged_there():
+    r = ac.grade_null_convention(s1.SPEC(), list(s1.LATTA_COLS), s1.LATTA_TYPES, s1.STATS())
+    _partition(r["convention"], s1.LATTA_COLS)
+    assert "no other column constant" in r["measured"] and "except the stamp" not in r["measured"]
+    assert "created_at (timestamp with time zone)" in r["measured"]                                                 # an undeclared-stamp timestamp is still named as not examined
+
+
+def test_the_stamp_wording_no_longer_claims_a_stamp_cannot_hold_a_placeholder():
+    r = _grade()
+    assert "no sentinel timestamp" in r["measured"]
+    assert "the type cannot hold one): created_at" not in r["measured"] and ", created_at (" not in r["measured"].split("NOT examined for a literal fallback")[-1]
+
+
+# ---- REAL SQL: both timestamp types, every sentinel flavour -------------------------------------------------------------------------------
+
+TS_FLAVOURS = {"timestamptz": ("timestamptz", "timestamp with time zone", "'2026-03-04 05:06:07+00'"),
+               "timestamp": ("timestamp", "timestamp without time zone", "'2026-03-04 05:06:07'")}
+SENTINELS = ["'epoch'", "'infinity'", "'-infinity'", "'1970-01-01 00:00:00'", "'1970-01-01 00:00:00+00'", "'0001-01-01 00:00:00'", "'0001-01-01'", "'1970-01-02 00:00:00'"]
+
+
+def _lit(v, typ):
+    """A timestamp literal; for timestamptz a bare date-time gets an explicit +00 so the test does not depend on the server's TimeZone setting."""
+    return v if typ == "timestamp" or not v[1].isdigit() or "+" in v else v[:-1] + "+00'"
+
+
+def _ts_setup(typ):
+    if typ == "timestamptz":
+        return list(LATTA_STAMP_SQL)                                    # the base table already is timestamptz
+    return _variant("created_at timestamptz NOT NULL DEFAULT '2026-01-01'", f"created_at {typ} NOT NULL DEFAULT '2026-01-01'")
+
+
+@pytest.mark.parametrize("typ", ["timestamptz", "timestamp"])
+def test_REAL_SQL_real_write_times_pass_on_both_timestamp_types(monkeypatch, disposable_pg, typ):
+    t, dt, real = TS_FLAVOURS[typ]
+    r = _real_check(monkeypatch, disposable_pg, _ts_setup(t), types=dict(s1.REAL_TYPES, created_at=dt))
+    assert r["v"] == PASS and r["convention"]["stamp_sentinels"] == {}, r                                           # one shared real value on every row
+    r = _real_check(monkeypatch, disposable_pg, _ts_setup(t) + [f"UPDATE latta_t SET created_at = {real}::{t} + (count_from_graha || ' seconds')::interval;"],
+                    types=dict(s1.REAL_TYPES, created_at=dt))
+    assert r["v"] == PASS, r
+    r = _real_check(monkeypatch, disposable_pg, _ts_setup(t) + [f"UPDATE latta_t SET created_at = {_lit(chr(39) + '1970-01-02 00:00:01' + chr(39), t)}::{t};"], types=dict(s1.REAL_TYPES, created_at=dt))
+    assert r["v"] == PASS, r                                                                                          # one second past the boundary is a (very early) real time
+
+
+@pytest.mark.parametrize("typ", ["timestamptz", "timestamp"])
+@pytest.mark.parametrize("sentinel", SENTINELS)
+def test_REAL_SQL_every_sentinel_flavour_fails_on_both_timestamp_types_all_rows_and_mixed(monkeypatch, disposable_pg, typ, sentinel):
+    t, dt, real = TS_FLAVOURS[typ]
+    types = dict(s1.REAL_TYPES, created_at=dt)
+    sentinel = _lit(sentinel, typ)
+    r = _real_check(monkeypatch, disposable_pg, _ts_setup(t) + [f"UPDATE latta_t SET created_at = {sentinel}::{t};"], types=types)
+    assert r["v"] == FAIL and r["convention"]["stamp_sentinels"] == {"created_at": 8}, (sentinel, r)
+    assert "sentinel timestamp" in r["measured"] and "created_at (8 row(s))" in r["measured"], r["measured"]
+    r = _real_check(monkeypatch, disposable_pg, _ts_setup(t) + [f"UPDATE latta_t SET created_at = {real}::{t};", f"UPDATE latta_t SET created_at = {sentinel}::{t} WHERE graha = 'Sun';"],
+                    types=types)
+    assert r["v"] == FAIL and r["convention"]["stamp_sentinels"] == {"created_at": 1}, (sentinel, r)               # real stamps + ONE sentinel
+
+
+@pytest.mark.parametrize("typ", ["timestamptz", "timestamp"])
+def test_REAL_SQL_a_column_default_of_each_sentinel_and_a_stored_generated_1970_column_fail(monkeypatch, disposable_pg, typ):
+    t, dt, _ = TS_FLAVOURS[typ]
+    types = dict(s1.REAL_TYPES, created_at=dt)
+    for default in ("'epoch'", "'infinity'", "'-infinity'", "'1970-01-01 00:00:00+00'", "'0001-01-01 00:00:00+00'"):
+        setup = _variant("created_at timestamptz NOT NULL DEFAULT '2026-01-01'", f"created_at {t} NOT NULL DEFAULT {default}")
+        r = _real_check(monkeypatch, disposable_pg, setup, types=types)
+        assert r["v"] == FAIL and r["convention"]["stamp_sentinels"] == {"created_at": 8}, (default, r)
+    gen = _variant("created_at timestamptz NOT NULL DEFAULT '2026-01-01'", f"created_at {t} GENERATED ALWAYS AS ('1970-01-01 00:00:00+00'::{t}) STORED NOT NULL")
+    r = _real_check(monkeypatch, disposable_pg, gen, types=types)
+    assert r["v"] == FAIL and r["convention"]["stamp_sentinels"] == {"created_at": 8}, r
+
+
+def test_REAL_SQL_the_same_sentinel_column_undeclared_still_fails_through_the_constant_test(monkeypatch, disposable_pg):
+    r = _real_check(monkeypatch, disposable_pg, LATTA_STAMP_SQL + ["UPDATE latta_t SET created_at = 'epoch';"], spec=SSPEC(stamps=[]))
+    assert r["v"] == FAIL and r["convention"]["undeclared_constants"] == ["created_at"]
+
+
+def test_REAL_SQL_the_whole_chain_a_sentinel_stamp_never_lifts_the_cap(monkeypatch, disposable_pg):
+    s3._real(monkeypatch, disposable_pg, LATTA_STAMP_SQL + ["UPDATE latta_t SET created_at = 'epoch';"])
+    cat = dict(s1._cat(table="latta_t"), keys={"latta_t": [["table_version", "graha"]]})
+    r = dict(target_table="latta_t", count_sql="SELECT count(*) FROM latta_t")
+    m = ac._measure_prose("bg_phaladeepika_latta", dict(null_convention=dict(SSPEC(), table="latta_t"), prose_fields=None), r, None, cat, [], set(), (), set())
+    assert ac.rollup_asset("L0", m)["Null"]["v"] == FAIL and "sentinel timestamp" in m[BR]["measured"], m[BR]["measured"]
