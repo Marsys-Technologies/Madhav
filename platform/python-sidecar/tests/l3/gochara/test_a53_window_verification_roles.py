@@ -83,13 +83,21 @@ def _record(w, path="P3", **over):
                                rule_version="1.0.0", report=report, input_digest=_input_digest(w))
 
 
-def _seal(w):
-    """Publish + seal in one transaction (the governed path); returns the manifest id or raises."""
+def _seal(w, receipt=True):
+    """Publish + seal in one transaction (the governed path); returns the manifest id or raises. R11-3: the seal is only
+    committable with its approval receipt (1240's deferred constraint trigger), so the helper writes one in the same
+    transaction (idempotent for a REPLAY, where the seal row — and its receipt — already exist)."""
     with w.conn.transaction():
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         gk_ledger.publish(w.conn, CHART_ID, GEN)
-        return w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)",
-                              (CHART_ID, GEN)).fetchone()[0]
+        manifest = w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
+        if receipt:
+            w.conn.execute(
+                "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login,"
+                " approved_by_note, run_id, run_attempt, workflow_commit) VALUES (%s::uuid, %s, %s::uuid, repeat('a', 64),"
+                " 'test-approver', 'test helper', 1, 1, 'test-commit') ON CONFLICT (chart_id, generation) DO NOTHING",
+                (CHART_ID, GEN, manifest))
+        return manifest
 
 
 def _built(w):

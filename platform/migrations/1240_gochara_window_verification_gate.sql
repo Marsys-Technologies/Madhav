@@ -761,6 +761,32 @@ CREATE TRIGGER ka_gochara_generation_seal_zz_window_verified
   BEFORE INSERT ON public.ka_gochara_generation_seal
   FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_generation_seal_window_guard();
 
+-- ── 6b. the approval receipt is ENFORCED at the first seal (R11-3; steward M…145007) ───────────────────────────────────
+-- A seal must not be able to exist without its approval receipt. A DEFERRED constraint trigger on the seal INSERT requires, at
+-- COMMIT, a `ka_gochara_seal_approval` row for the same (chart, generation) naming THIS manifest and carrying a brief digest;
+-- otherwise the whole transaction (the publication flip, the seal row) is refused by name and nothing remains. It is an AFTER
+-- INSERT trigger, so it fires only for a row actually inserted: a REPLAY (`ka_gochara_seal_generation` inserts ON CONFLICT DO
+-- NOTHING) and every generation sealed before 1240 are untouched. A receipt cannot pre-exist its seal (its FK to the seal row is
+-- deferred to the same commit), so "a receipt exists" means "written in this transaction". The receipt table's `sealed_by` is the
+-- SESSION login (`session_user`), not a role switched to inside the session.
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_requires_approval_receipt()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.ka_gochara_seal_approval a
+                 WHERE a.chart_id = NEW.chart_id AND a.generation = NEW.generation AND a.manifest_id = NEW.manifest_id
+                   AND a.brief_digest ~ '^[0-9a-f]{64}$') THEN
+    RAISE EXCEPTION 'ka_gochara_generation_seal refused at commit (approval_receipt_missing): no ka_gochara_seal_approval row with a brief digest was written for (chart %, generation %, manifest %) in this transaction — a seal exists only with its approval receipt',
+      NEW.chart_id, NEW.generation, NEW.manifest_id USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER ka_gochara_generation_seal_zz_receipt_required
+  AFTER INSERT ON public.ka_gochara_generation_seal
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_requires_approval_receipt();
+
 -- ── 7. privileges (role-existence-guarded; explicit; table-level; no SECURITY DEFINER) ─────────────────
 -- The builder gets NOTHING on the verification table, and exactly ONE function: EXECUTE on the window CHECK helper
 -- `ka_gochara_window_qualification_ok(jsonb)`, which this migration's own `kgew_qualification_shape_ck` CALLS on every
@@ -853,9 +879,9 @@ BEGIN
   END IF;
   SELECT count(*) INTO n FROM pg_trigger t
   WHERE t.tgrelid = 'public.ka_gochara_generation_seal'::regclass AND NOT t.tgisinternal
-    AND t.tgname = 'ka_gochara_generation_seal_zz_window_verified';
-  IF n <> 1 THEN
-    RAISE EXCEPTION 'migration 1240 post-apply check failed: the seal trigger is not present exactly once';
+    AND t.tgname IN ('ka_gochara_generation_seal_zz_window_verified', 'ka_gochara_generation_seal_zz_receipt_required');
+  IF n <> 2 THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the window-verification seal trigger and the receipt-required seal trigger must each be present exactly once';
   END IF;
   SELECT string_agg(x.sig, ', ') INTO missing
   FROM (VALUES
