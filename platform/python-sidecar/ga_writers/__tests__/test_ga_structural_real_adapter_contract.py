@@ -52,6 +52,34 @@ def test_real_adapter_ascendant_carries_longitude_deg_only(real_chart):
     assert "longitude_deg" in chart["ascendant"]
 
 
+# The exact key set the REAL adapter emits for the ascendant.  Hand-built fixtures in the writer's other
+# tests must carry a subset of these (no invented ``longitude`` key -- that is what hid the defect).
+REAL_ASCENDANT_KEYS = frozenset({
+    "degree_in_sign", "longitude_deg", "nakshatra", "nakshatra_id", "pada",
+    "sign", "sign_id", "sign_lord",
+})
+
+
+def test_real_adapter_ascendant_key_set_is_pinned(real_chart):
+    """A new/renamed adapter key must be a conscious change here, next to the validator it feeds."""
+    _, chart = real_chart
+    assert set(chart["ascendant"]) == REAL_ASCENDANT_KEYS
+
+
+def test_validator_and_extractor_read_only_keys_the_real_adapter_emits(real_chart):
+    """Strip the real ascendant to the keys the writer is entitled to read: still accepted.
+    Removing the one longitude key must fail loudly (never default)."""
+    _, chart = real_chart
+    minimal = {**chart, "ascendant": {k: chart["ascendant"][k] for k in ("sign", "sign_id", "longitude_deg")}}
+    _validate_chart_output_complete(minimal)
+    assert _extract_chart_state(minimal)["LAGNA"]["longitude"] == pytest.approx(chart["ascendant"]["longitude_deg"])
+    broken = {**chart, "ascendant": {k: v for k, v in chart["ascendant"].items() if k != "longitude_deg"}}
+    with pytest.raises(RuntimeError, match="ascendant 'longitude_deg' missing"):
+        _validate_chart_output_complete(broken)
+    with pytest.raises(RuntimeError, match="ascendant 'longitude_deg' missing"):
+        _extract_chart_state(broken)
+
+
 def test_validator_accepts_real_adapter_output(real_chart):
     _, chart = real_chart
     _validate_chart_output_complete(chart)  # raised "ascendant 'longitude' missing" before the fix
