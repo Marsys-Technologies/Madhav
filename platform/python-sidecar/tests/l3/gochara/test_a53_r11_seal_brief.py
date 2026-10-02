@@ -25,7 +25,7 @@ from .test_a53_verification_job import PASSWORD
 from .test_a53_window_verification_gate import SPANS, _boot_p3  # noqa: F401
 from .test_a53_window_verification_roles import _consistent_sky, _seal, as_role  # noqa: F401
 
-APPROVAL = dict(approver_login="owner-login", run_id="987654321", run_attempt=1, approval_note="approved per ruling #2",
+APPROVAL = dict(approver_login="owner-login", run_id=987654321, run_attempt=1, approval_note="steward under owner ruling #2",
                 sealing_commit="seal-commit-abc")
 
 
@@ -109,10 +109,10 @@ def test_the_approved_seal_publishes_seals_and_writes_a_receipt_linked_to_the_se
         out = seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **APPROVAL)
     assert out["brief_digest"] == approved
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "published"
-    row = w.conn.execute("SELECT s.manifest_id::text, a.brief_digest, a.approver_login, a.run_id, a.run_attempt, a.sealing_commit,"
+    row = w.conn.execute("SELECT s.manifest_id::text, a.brief_digest, a.approver_login, a.run_id, a.run_attempt, a.workflow_commit,"
                          " a.manifest_id::text FROM public.ka_gochara_generation_seal s JOIN public.ka_gochara_seal_approval a"
                          " USING (chart_id, generation)").fetchone()
-    assert row[0] == row[6] == out["manifest_id"] and row[1:6] == (approved, "owner-login", "987654321", 1, "seal-commit-abc")
+    assert row[0] == row[6] == out["manifest_id"] and row[1:6] == (approved, "owner-login", 987654321, 1, "seal-commit-abc")
     for sql in ("UPDATE public.ka_gochara_seal_approval SET approver_login = 'someone else'",
                 "DELETE FROM public.ka_gochara_seal_approval", "TRUNCATE public.ka_gochara_seal_approval"):
         with pytest.raises(psycopg.errors.Error, match="append-only"):
@@ -179,7 +179,7 @@ def test_the_approved_seal_runs_as_the_real_sealer_role_with_only_the_named_read
     """The whole approved seal (locks → recompute → publish → authoritative seal → receipt) as the SEALER principal. Beyond what
     1240 and 1241 already grant it needs exactly: SELECT on the two L1 tables (the data-plane owner's open ACL item, stood in here)
     and a column-level SELECT on the migration ledger `(filename, sha256, applied_at)` for the payload's `ledger` evidence —
-    derived by running the flow and adding one grant per `permission denied` (Stream B's 1241 v4). The receipt INSERT is 1240's own."""
+    derived by running the flow and adding one grant per `permission denied` (Stream B's 1241 v4). The receipt INSERT/EXECUTE grants are Stream B's 1241 (stood in by the delta fixture)."""
     w = built
     _verified(w)
     approved = _brief_as_verifier(w, sealing_commit="s")["sha256"]
@@ -189,6 +189,14 @@ def test_the_approved_seal_runs_as_the_real_sealer_role_with_only_the_named_read
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         w.conn.execute("SET LOCAL ROLE gochara_sealer")
         out = seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved,
-                                           approver_login="owner-login", run_id="42", sealing_commit="s")
+                                           approver_login="owner-login", run_id=42, approval_note="n", sealing_commit="s")
     assert out["brief_digest"] == approved
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 1
+
+
+def test_a_seal_without_a_receipt_is_detectable_and_the_sealing_function_refuses_to_commit_one(built):
+    w = built
+    _verified(w)
+    assert w.conn.execute("SELECT public.ka_gochara_seal_receipt_missing(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0] is False  # not sealed
+    _seal(w)                                                         # the plain governed seal: publish + seal, NO receipt
+    assert w.conn.execute("SELECT public.ka_gochara_seal_receipt_missing(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0] is True
