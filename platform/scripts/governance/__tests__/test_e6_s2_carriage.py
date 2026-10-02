@@ -406,7 +406,7 @@ def test_d1_fetch_rows_selects_only_the_declared_columns_in_a_total_order(monkey
     seen = []
     monkeypatch.setattr(ac, "scalar", lambda sql: seen.append(sql) or json.dumps(ROWS))
     assert ac.d1_fetch_rows("bg_phaladeepika_latta", ["graha", "count_from_graha", "graha"]) == ROWS
-    assert '"graha","count_from_graha"' in seen[0] and 'FROM "bg_phaladeepika_latta" ORDER BY "graha","count_from_graha"' in seen[0]
+    assert 'SELECT "graha","count_from_graha" FROM "bg_phaladeepika_latta"' in seen[0] and 'ORDER BY t."graha",t."count_from_graha"' in seen[0]
 
 
 @pytest.mark.parametrize("table, cols", [("bad table", ["a"]), ("t", ["a;b"]), ("t", []), ("t", ["1a"]), ('t"', ["a"])])
@@ -414,6 +414,127 @@ def test_d1_fetch_rows_refuses_a_malformed_identifier(monkeypatch, table, cols):
     monkeypatch.setattr(ac, "scalar", lambda sql: pytest.fail("no SQL may run"))
     with pytest.raises(ac.Unknown):
         ac.d1_fetch_rows(table, cols)
+
+
+# ───────────────────────── HIGH 1 (adversarial review): the rows read must come back as ONE psql output line ─────────────────────────
+
+def _psql_lines(raw: str, sep: str = "\x1f"):
+    """What asset_census.psql() does with psql's stdout: split on newlines, drop blank lines, split on the field separator."""
+    return [ln.split(sep) for ln in raw.strip().split("\n") if ln.strip()]
+
+
+# a captured sample: `SELECT json_agg(t)::text FROM (SELECT graha, count_from_graha FROM bg_phaladeepika_latta) t` under psql -tA with 3 rows
+_JSON_AGG_SAMPLE = '[{"graha":"Jupiter","count_from_graha":6}, \n {"graha":"Mars","count_from_graha":3}, \n {"graha":"Mercury","count_from_graha":7}]\n'
+_JSONB_AGG_SAMPLE = '[{"graha": "Jupiter", "count_from_graha": 6}, {"graha": "Mars", "count_from_graha": 3}, {"graha": "Mercury", "count_from_graha": 7}]\n'
+
+
+def test_the_json_agg_record_shape_is_multi_line_and_scalar_sees_only_its_first_line():
+    """The live bug: with two or more rows `json_agg(t)` puts ', <newline> ' between elements; scalar() returns the first line only."""
+    first = _psql_lines(_JSON_AGG_SAMPLE)[0][0]
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(first)
+    assert len(_psql_lines(_JSONB_AGG_SAMPLE)) == 1 and json.loads(_psql_lines(_JSONB_AGG_SAMPLE)[0][0])[2]["graha"] == "Mercury"
+
+
+def test_d1_fetch_rows_reads_a_multi_row_table_as_one_line_and_never_uses_json_agg_of_a_record(monkeypatch):
+    seen = []
+
+    def fake_psql(sql, sep="\x1f", timeout=None):
+        seen.append(sql)
+        return _psql_lines(_JSONB_AGG_SAMPLE)
+    monkeypatch.setattr(ac, "psql", fake_psql)
+    rows = ac.d1_fetch_rows("bg_phaladeepika_latta", ["graha", "count_from_graha"])
+    assert [r["graha"] for r in rows] == ["Jupiter", "Mars", "Mercury"]
+    assert "jsonb_agg(to_jsonb(t) ORDER BY" in seen[0] and "json_agg(t)" not in seen[0]
+    monkeypatch.setattr(ac, "psql", lambda sql, sep="\x1f", timeout=None: _psql_lines(_JSON_AGG_SAMPLE))      # the old shape is refused loudly
+    with pytest.raises(ac.Unknown):
+        ac.d1_fetch_rows("bg_phaladeepika_latta", ["graha", "count_from_graha"])
+
+
+def test_d1_fetch_rows_is_chart_scoped_when_the_table_carries_chart_id(monkeypatch):
+    seen = []
+    monkeypatch.setattr(ac, "scalar", lambda sql: seen.append(sql) or "[]")
+    ac.d1_fetch_rows("bg_t", ["a"])
+    ac.d1_fetch_rows("bg_t", ["a"], "482012f1-710e-4a25-994a-93821f5871aa")
+    assert "chart_id" not in seen[0] and "WHERE \"chart_id\" = '482012f1-710e-4a25-994a-93821f5871aa'" in seen[1]
+    for bad in ("x", "482012f1-710e-4a25-994a-93821f5871aa'; DROP TABLE t;--", 5):
+        with pytest.raises(ac.Unknown):
+            ac.d1_fetch_rows("bg_t", ["a"], bad)
+
+
+# REAL SQL: the SAME statements run on the off-production rehearsal cluster (127.0.0.1:55432, db `rehearsal`), through the E5.6 URL guard,
+# against TEMP tables inside a transaction that is ALWAYS rolled back (ON COMMIT DROP, then ROLLBACK): nothing persistent is created.
+# Skipped where the guard or the cluster is absent (CI).
+_GUARD = pathlib.Path("/Users/Dev/suvarna-engine-lane-e5-6/platform/scripts/governance/rehearsal/rehearsal_guard.py")
+
+
+def _rehearsal_url():
+    if not _GUARD.exists():
+        return None
+    import importlib.util
+    import subprocess
+    spec = importlib.util.spec_from_file_location("rehearsal_guard_for_test", _GUARD)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    url = mod.normalise_rehearsal_url("postgresql://127.0.0.1:55432/rehearsal")
+    try:
+        p = subprocess.run(["psql", url, "-tAX", "-q", "-c", "select 1"], capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return url if p.returncode == 0 and p.stdout.strip() == "1" else None
+
+
+_REHEARSAL = _rehearsal_url()
+rehearsal = pytest.mark.skipif(_REHEARSAL is None, reason="rehearsal cluster / guard not available")
+
+
+def _q(v):
+    return "NULL" if v is None else "'" + str(v).replace("'", "''") + "'"
+
+
+def _rolled_back_psql(monkeypatch):
+    import subprocess
+    pre = ["CREATE TEMP TABLE bg_phaladeepika_latta (graha text, direction text, count_from_graha int, effect_description text, "
+           "affliction_condition text, verse_ref text) ON COMMIT DROP;",
+           "CREATE TEMP TABLE classical_text_chunks (chunk_id text, text_id text, content_en text, content_sa text, content_sha256 text) ON COMMIT DROP;"]
+    pre += [f"INSERT INTO bg_phaladeepika_latta VALUES ({_q(r['graha'])},{_q(r['direction'])},{r['count_from_graha']},{_q(r['effect_description'])},"
+            f"{_q(r['affliction_condition'])},{_q(r['verse_ref'])});" for r in ROWS]
+    pre += [f"INSERT INTO classical_text_chunks VALUES ({_q(c['chunk_id'])},{_q(c['text_id'])},{_q(c['content_en'])},{_q(c['content_sa'])},"
+            f"{_q(c['content_sha256'])});" for c in CHUNKS.values()]
+
+    def fake_psql(sql, sep="\x1f", timeout=None):
+        script = "BEGIN;\n" + "\n".join(pre) + f"\n{sql};\nROLLBACK;\n"
+        p = subprocess.run(["psql", _REHEARSAL, "-tAX", "-q", "-F", sep, "-v", "ON_ERROR_STOP=1", "-f", "-"], input=script,
+                           capture_output=True, text=True, timeout=30)
+        if p.returncode != 0:
+            raise ac.Unknown((p.stderr.strip().splitlines() or ["psql failed"])[0])
+        return _psql_lines(p.stdout, sep)
+    monkeypatch.setattr(ac, "psql", fake_psql)
+
+
+@rehearsal
+def test_REAL_SQL_the_rows_read_returns_all_eight_rows_through_the_census_scalar(monkeypatch):
+    _rolled_back_psql(monkeypatch)
+    rows = ac.d1_fetch_rows("bg_phaladeepika_latta", ["graha", "count_from_graha", "direction", "effect_description"])
+    assert sorted(r["graha"] for r in rows) == sorted(r["graha"] for r in ROWS) and len(rows) == 8
+    assert {r["graha"]: r["count_from_graha"] for r in rows} == {r["graha"]: r["count_from_graha"] for r in ROWS}
+
+
+@rehearsal
+def test_REAL_SQL_the_old_json_agg_shape_really_fails_on_the_same_data(monkeypatch):
+    _rolled_back_psql(monkeypatch)
+    out = ac.scalar("SELECT json_agg(t)::text FROM (SELECT graha FROM bg_phaladeepika_latta ORDER BY graha) t")
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(out)
+
+
+@rehearsal
+def test_REAL_SQL_the_chunk_read_and_the_whole_d1_measurement_run_end_to_end(monkeypatch):
+    _rolled_back_psql(monkeypatch)
+    got = ac.d1_fetch_chunks(IDS)
+    assert set(got) == set(IDS) and all(d1.verify_chunk(c)["verified"] for c in got.values())
+    rec = ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta")
+    assert rec["Carr.D1"]["v"] == "PASS" and rec["Carr.D1"]["d1"]["rows_total"] == 8
 
 
 def test_both_fetchers_raise_unknown_on_an_unparseable_read(monkeypatch):

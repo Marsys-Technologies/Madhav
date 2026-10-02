@@ -1175,15 +1175,25 @@ def d1_fetch_chunks(chunk_ids) -> dict:
     return {c["chunk_id"]: c for c in got if isinstance(c, dict) and c.get("chunk_id")}
 
 
-def d1_fetch_rows(table: str, columns) -> list:
-    """The asset's own table rows restricted to the DECLARED claim columns, in a total order (ORDER BY every column): a second
-    read-only SELECT, needed to compare EVERY row with the passage. Identifiers are matched against a strict pattern. Raises Unknown
-    on a failed read."""
+_UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+
+def d1_fetch_rows(table: str, columns, chart_id: str | None = None) -> list:
+    """The asset's own table rows restricted to the DECLARED columns, in a total order (ORDER BY every column): the SECOND
+    read-only SELECT D1 makes (listed in the detector's stated reads), needed to compare EVERY row with the passage. When the
+    table carries `chart_id` the caller passes the census chart and the read is chart-scoped (`WHERE chart_id = '<uuid>'`).
+    Identifiers and the chart id are matched against strict patterns before they reach SQL. The rows come back as ONE line
+    (`jsonb_agg(...)::text`; `json_agg` over record rows puts ', <newline> ' between elements and `scalar()` returns only the
+    first output line: a 2+ row table read ERRORED live). Raises Unknown on a failed read."""
     cols = list(dict.fromkeys(columns))
     if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table) and cols and all(_D1_SQL_IDENT.fullmatch(c) for c in cols)):
         raise Unknown(f"d1_fetch_rows: malformed identifier(s) {table!r} / {cols!r}")
+    if chart_id is not None and not (isinstance(chart_id, str) and _UUID.fullmatch(chart_id)):
+        raise Unknown(f"d1_fetch_rows: malformed chart id {chart_id!r}")
     sel = ",".join(f'"{c}"' for c in cols)
-    blob = scalar(f"SELECT coalesce(json_agg(t)::text,'[]') FROM (SELECT {sel} FROM \"{table}\" ORDER BY {sel}) t")
+    order = ",".join(f't."{c}"' for c in cols)
+    where = f" WHERE \"chart_id\" = '{chart_id}'" if chart_id else ""
+    blob = scalar(f"SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY {order})::text,'[]') FROM (SELECT {sel} FROM \"{table}\"{where}) t")
     try:
         return json.loads(blob or "[]")
     except json.JSONDecodeError as exc:
