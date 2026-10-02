@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "d027a49736a1da0a6614b56a1741fc946686948629ad05bdd9d74f4d1f30db36",
+  "content_sha256": "d78da49b1ada02b2aa973f20c6397bd495a367022e7597882bad3eecc353927c",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -4215,6 +4215,10 @@
           "limit": {
             "description": "Max rows (default 50, max 50).",
             "type": "number"
+          },
+          "varga_fallback_used": {
+            "description": "Dens facet. true = only rows whose condition_score was computed on D1 dignity alone (no divisional composite); false = only rows that read divisional dignity. Omit for both.",
+            "type": "boolean"
           }
         },
         "internal_route": "handler",
@@ -20966,7 +20970,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-02T00:09:10.000Z",
+  "generated_at": "2026-10-02T00:30:26.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20988,7 +20992,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "eb66c018343ec0fe84b3e64168db8bc8e626fe5550a73b25903c8fed20042962"
+        "sha256": "716fb326a4023441caab4b1e4871e5323967879388f0652bcc82a5f0e06d9626"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21923,7 +21927,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts",
-            "sha256": "d879196139c9591435451b35ef22292b3a56e9430673082f3746f0b3fef776a9"
+            "sha256": "0ad2c2f82d181cc3873eeaa25ab11a392c3d470320b7cc541e3ab82c3fba294f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts",
@@ -22399,7 +22403,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "ba4459c089babc07cd235c64c961a8194bbf667bf35e8ef2170fdf94ddd41c2f"
+        "sha256": "a56209d7f0ea1776d079b398f1311591f4d6cb9ff331b1342b467fdac7ef47d1"
       },
       {
         "id": "service_effect_contracts",
@@ -22424,5 +22428,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "b62bb638cab2cb318fd63f4a0662862c03cef146"
+  "source_revision": "c70d0067857e839945f15275bfc692b9dabdbc65"
 }
