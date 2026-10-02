@@ -168,7 +168,10 @@ def graduated_drishti(row: dict, rec: SweepRecord,
 
     def _fn(t: datetime, _o=off_at, _a=rec.agent):
         off = _o(t)
-        return None if off is None else _check_unit(drishti(_a, off), "graduated_drishti")
+        if off is None:
+            return None
+        v = drishti(_a, off)               # None = an operand the source cannot classify (unqualified)
+        return None if v is None else _check_unit(v, "graduated_drishti")
 
     return Outcome("fn", fn=_fn, null_state=row["null_state"], factor=row["factor_id"])
 
@@ -310,8 +313,12 @@ def build_program(rec: SweepRecord, factor_rows: list[dict], *,
 def maximise_earliest(f: Callable[[datetime], float | None], lo: datetime, hi: datetime, *,
                       samples: int = 64, tol_seconds: float = 1.0) -> tuple[float, datetime] | None:
     """(max value, earliest instant achieving it) of `f` over `[lo, hi)`; None when `f` is
-    undeterminable everywhere. Bracketed scan, then golden-section refinement of the best
-    bracket — an interior maximum is found even when both endpoints are lower."""
+    undeterminable everywhere. Bracketed scan, then:
+      * a smooth INTERIOR maximum (golden-section refinement of the best bracket beats every sampled
+        value) is returned at its refined instant — never endpoint-only (§7.2 inv 2, O-SM-4);
+      * a plateau or a step (the sampled best is the max) is returned at the EARLIEST instant that
+        reaches it: the transition between the last lower sample and the first maximal one is bisected
+        down to `tol_seconds` — so a step's exact breakpoint is found, not the next grid point."""
     span = (hi - lo).total_seconds()
     if span <= 0:
         raise SweepRefusal("empty support piece")
@@ -322,10 +329,9 @@ def maximise_earliest(f: Callable[[datetime], float | None], lo: datetime, hi: d
         return None
     best = max(vals[i] for i in live)
     i0 = min(i for i in live if vals[i] >= best - _EPS)
+    # golden-section on the bracket around the best sample
     lo_b = pts[max(i0 - 1, 0)]
-    hi_b = pts[min(i0 + 1, samples - 1)] if i0 + 1 < samples else hi - timedelta(microseconds=1)
-    best_t, best_v = pts[i0], vals[i0]
-    # golden-section on [lo_b, hi_b]
+    hi_b = pts[i0 + 1] if i0 + 1 < samples else hi - timedelta(microseconds=1)
     phi = (math.sqrt(5) - 1) / 2
     a, b = lo_b, hi_b
     c = b - timedelta(seconds=(b - a).total_seconds() * phi)
@@ -342,9 +348,20 @@ def maximise_earliest(f: Callable[[datetime], float | None], lo: datetime, hi: d
             fd = f(d)
     mid = a + (b - a) / 2
     fm = f(mid)
-    if fm is not None and fm > best_v + _EPS and lo <= mid < hi:
-        best_t, best_v = mid, fm
-    return best_v, best_t
+    if fm is not None and fm > best + _EPS and lo <= mid < hi:
+        return fm, mid
+    # plateau / step: the earliest instant reaching `best`
+    if i0 == 0:
+        return best, pts[0]
+    left, right = pts[i0 - 1], pts[i0]            # f(left) < best - eps (or undeterminable); f(right) >= best - eps
+    while (right - left).total_seconds() > tol_seconds:
+        m = left + (right - left) / 2
+        fm2 = f(m)
+        if fm2 is not None and fm2 >= best - _EPS:
+            right = m
+        else:
+            left = m
+    return best, right
 
 
 # ── window formation ─────────────────────────────────────────────────────────

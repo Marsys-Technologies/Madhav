@@ -430,3 +430,54 @@ def test_p2_vedha_state_undeterminable_everywhere_is_unqualified_not_zero():
     (w,), _ = _draft([_p2("a", "saturn", 8, supports=((0, 10),))], _p2_rows, cls="bereavement",
                      vedha=lambda rec, t: None)
     assert w.score is None and w.unresolved == {"operand_undeterminable_over_support": 1}
+
+
+# ── steps: the earliest instant of the max is the exact breakpoint, not the next grid point ──────────
+
+def test_maximise_earliest_finds_a_step_breakpoint_off_the_sample_grid():
+    lo, hi = _d(0), _d(1000)
+    breakpoint_day = 333.3333                                    # not a multiple of 1000/64 days
+    f = lambda t: 1.0 if (t - lo).total_seconds() / 86400.0 >= breakpoint_day else 0.25
+    best, at = ws.maximise_earliest(f, lo, hi)
+    assert best == 1.0
+    assert abs((at - _d(breakpoint_day)).total_seconds()) < 2.0
+
+
+def test_a_drishti_step_inside_one_aspect_record_peaks_at_the_offset_change():
+    # the aspect offset moves 5 -> 7 on day 41.7 (the body leaves one source sign for the next):
+    # half then full; the window's peak is the instant it reaches FULL, exactly
+    table = {5: 0.5, 7: 1.0}
+    rec = _rec("a", relation="aspect", supports=((0, 100),),
+               aspect_offset_at=lambda t: 5 if (t - _d(0)).total_seconds() / 86400.0 < 41.7 else 7)
+    (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o: table[o])
+    assert w.score == 1.0
+    assert abs((w.peak_instant - _d(41.7)).total_seconds()) < 2.0
+
+
+def test_a_drishti_source_returning_none_makes_that_instant_undeterminable():
+    rec = _rec("a", relation="aspect", supports=((0, 10),), aspect_offset_at=lambda t: 6)
+    (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o: None)   # e.g. 'no_aspect_at_this_offset'
+    assert w.score is None and w.unresolved == {"operand_undeterminable_over_support": 1}
+
+
+# ── the writer's real drishti source (Stream B's cited table, called) ────────────────────────────────
+
+def test_the_writers_drishti_source_is_streamb_graduated_drishti_not_a_copy():
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+    from services.gochara_rules import drishti
+    for agent in ("saturn", "sun", "mars", "jupiter", "rahu"):
+        for off in range(0, 14):
+            assert writer_mod.DRISHTI_SOURCE(agent, off) == drishti.graduated_drishti(
+                agent.title(), off)["value"]
+
+
+def test_an_aspect_record_scores_through_the_real_table():
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+    full = _rec("s", relation="aspect", agent="saturn", supports=((0, 10),), aspect_offset_at=lambda t: 3)
+    quarter = _rec("m", relation="aspect", agent="sun", supports=((0, 10),), aspect_offset_at=lambda t: 3)
+    (a,), _ = _draft([full], _rows_declared, drishti=writer_mod.DRISHTI_SOURCE)
+    (b,), _ = _draft([quarter], _rows_declared, drishti=writer_mod.DRISHTI_SOURCE)
+    assert (a.score, b.score) == (1.0, 0.25)                    # Saturn's special 3rd; the Sun's ordinary 3rd
+    node = _rec("n", relation="aspect", agent="rahu", supports=((0, 10),), aspect_offset_at=lambda t: 7)
+    (c,), _ = _draft([node], _rows_declared, drishti=writer_mod.DRISHTI_SOURCE)
+    assert c.score is None                                       # N-14: a node casts no dṛṣṭi

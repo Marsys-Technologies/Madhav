@@ -545,3 +545,11 @@ objects — when ND-ORB is ruled (`orb_not_ratified`). It is the honest outcome,
 - A record whose operand is undeterminable over its whole support (a source returning None everywhere) is
   UNQUALIFIED (`operand_undeterminable_over_support`), never a 0.0 — found when the first P2 plumbing returned 0.0.
 - Mutation-checked: 19 mutations (13 builder, 6 verifier) all killed; 54 window tests; sidecar suite green.
+- **graduated_drishti is now wired** to Stream B's `gochara_rules.drishti.graduated_drishti` (#2894 merged): the writer's
+  `DRISHTI_SOURCE` calls it and reads its `value` (None = unclassifiable ⇒ an undeterminable instant ⇒ unqualified; nodes
+  cast none, N-14). The aspect house-offset operand is derived from the body's sign at t. Under today's 1.0.0 rows an
+  aspect record is still unqualified (`applicability_undeclared`) — the source only matters once 1.1.0 declares
+  `applicability.relations`.
+- **Steps are exact**: `maximise_earliest` bisects the transition between the last lower sample and the first maximal one,
+  so a dṛṣṭi step inside one aspect record (the body leaving one source sign) peaks at its exact breakpoint (< 2 s),
+  not at the next grid point.

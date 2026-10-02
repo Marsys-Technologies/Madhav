@@ -88,10 +88,18 @@ COVERAGE_SUBSTEP_PREFIX = "coverage:"
 RECORD_SUBSTEP_PREFIX = "record:"
 # design v1.5: the window sweep — `window:<class>:<path>` after the class's record grains.
 WINDOW_SUBSTEP_PREFIX = "window:"
-# The two operand SOURCES the sweep calls but this writer does not own yet. None = a named missing
-# input in the sweep (graduated_drishti_source_not_landed / vedha_overlay_not_bound) and the same
-# fact handed to the independent window verifier, so builder and verifier cannot disagree on it.
-DRISHTI_SOURCE = None       # Stream B's services/gochara_rules/drishti.py once #2894 lands
+def _drishti_source(agent: str, offset: int):
+    """Stream B's `gochara_rules.drishti.graduated_drishti` (cited table; CALLED, never copied).
+    Its `value` is None for an operand it cannot classify (a node, a non-aspect offset) — the sweep
+    reads that as an undeterminable instant (unqualified), never a default."""
+    from services.gochara_rules import drishti as rules_drishti
+    return rules_drishti.graduated_drishti(agent.title(), offset)["value"]
+
+
+# The two operand SOURCES the sweep calls but this writer does not own. None = a named missing input
+# in the sweep (graduated_drishti_source_not_landed / vedha_overlay_not_bound), and the same fact is
+# handed to the independent window verifier, so builder and verifier cannot disagree on it.
+DRISHTI_SOURCE = _drishti_source
 VEDHA_SOURCE = None         # the overlay binding is a pending steward ruling (kala_vedha_gochara vs derived)
 # AM-5 (v1.5 amendments; migration 1206): the search-completeness chain.
 MANIFEST_SUBSTEP = "manifest"
