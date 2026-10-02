@@ -48,7 +48,7 @@
 -- columns of the live trigger nirmana_registry_receipt_invalidation (it would stale the asset's freshness),
 -- and floors are re-declared from achieved counts after S-L1 in one registry migration.
 --
---   1. fact_category_ownership (the mechanism of 410 / 842): 172 rows listed (rows already present are skipped, ON CONFLICT DO NOTHING).
+--   1. fact_category_ownership (the mechanism of 410 / 842): 174 rows listed (rows already present are skipped, ON CONFLICT DO NOTHING).
 --      * argala_graha_natal -> ga_structural (the new category).
 --      * Q-L1-04: ga_structural owns bhava_bala_* (already owned, 842) and every category its writer
 --        emits that lacks a row: the 22 categories in migration 914's digest spec without an ownership
@@ -66,6 +66,17 @@
 --        sunrise_jd is never passed). Without a row the next build that emits one raises
 --        'cannot mutate chart_facts category'. After 1219 every live category and every category a
 --        ga_* chart_facts writer names as emitted has an owner.
+--      * Two more categories, found by the static enumeration of every emitted fact_category (AST over
+--        ga_writers/*.py and pipeline/orchestrator/writers/ga_*.py; the test
+--        test_l1_emitted_categories_have_ownership.py repeats it on every CI run):
+--        dasha_scope_cap (ga_dashas: the INVARIANT scope-cap sentinel written by
+--        write_dasha_scope_cap_sentinels() into chart_facts; the data-plane rehearsal of the full
+--        ga_dashas build fails at its post-pass with 'L1 asset ga_dashas cannot mutate chart_facts
+--        category dasha_scope_cap' without this row) and panchanga_amrit_kaal (ga_panchanga: the
+--        amrit_kaal entry of the auspicious-window loop, emitted only when the panchanga engine
+--        returns a matching timing, so 0 live rows today). Neither is read by any count_sql
+--        (ga_dashas counts chart_dashas; ga_panchanga's predicate already matches panchanga_*), so
+--        no asset count moves.
 --      * Five panchanga categories (bhadra_flag, chandra_bala_natal_baseline, eclipse_proximity_natal,
 --        panchaka_flag, tara_bala_natal_baseline; 216 canonical rows) are written only by ga_panchanga
 --        (ga_panchanga_writer.py) and inside its count_sql predicate, yet 410 owns them under
@@ -153,6 +164,7 @@ BEGIN
     ('graha_avastha_jagradadi_per_varga', 'ga_condition'),
     ('graha_avastha_lajjitadi_per_varga', 'ga_condition'),
     ('graha_avastha_sayanadi_per_varga', 'ga_condition'),
+    ('dasha_scope_cap', 'ga_dashas'),
     ('cusp_kp_lords', 'ga_nakshatra'),
     ('graha_degree_flags', 'ga_nakshatra'),
     ('graha_gandanta', 'ga_nakshatra'),
@@ -174,6 +186,7 @@ BEGIN
     ('panchaka_flag', 'ga_panchanga'),
     ('panchanga_abhijit_muhurta', 'ga_panchanga'),
     ('panchanga_agni_vasa', 'ga_panchanga'),
+    ('panchanga_amrit_kaal', 'ga_panchanga'),
     ('panchanga_brahma_muhurta', 'ga_panchanga'),
     ('panchanga_calendrical', 'ga_panchanga'),
     ('panchanga_choghadiya_birth', 'ga_panchanga'),

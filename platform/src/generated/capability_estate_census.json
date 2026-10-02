@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "a07a005efc5949219046b849db6450f157a7f10e060420bb3d488c095bde581f",
+  "content_sha256": "ec8bb9958c06f5c2d1118f94d5e63863cf5d2c3e1db907ea33626812e320216f",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20967,7 +20967,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-02T22:30:00.000Z",
+  "generated_at": "2026-10-02T22:45:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21081,7 +21081,7 @@
           },
           {
             "path": "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql",
-            "sha256": "0b21ae93742464714cfab14de67bd671afa6b7d2d0ae29b485bdc0579d960d7a"
+            "sha256": "dc9d65c0c23b423847c0dc35516cdb046d9231ed22b878e718ec805055edb55b"
           },
           {
             "path": "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
@@ -21365,7 +21365,7 @@
           }
         ],
         "path": "platform/{migrations,supabase/migrations}/*.sql containing asset_output_digest_specs",
-        "sha256": "ce53903b276c3d58ca4f62b9aeb986bdf45ba15e88fe573ea787c16b6b553040"
+        "sha256": "94aef4338629c97fccc9711e7f24561e4e1f5b99797689e07674c07a0f4ce44e"
       },
       {
         "id": "producer_asset_seed",
