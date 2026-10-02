@@ -10,11 +10,12 @@ identity self-check (`verification_job.check_identity`): it refuses to run as th
 that can write a builder table. It does not `SET ROLE`.
 
 `--brief` (R11-3) is the SEAL BRIEF mode, not a report: it evaluates the candidate adapter gate, reads the persisted attestations and persists
-the brief (`ka_gochara_seal_brief`, F-R12-4) and prints ONE line `{"brief": <payload>, "persisted": {brief_id, manifest_id, state_digest},
-"sha256": <digest>}` (sorted keys, compact, ASCII) — or, when that line exceeds 200,000 characters (the full brief is ~10 KB per event class
-+ ~8 KB), N lines `{"brief_chunk": {"data", "index", "sha256": <sha256 of the whole line>, "total"}}` of 60,000-character slices
-(F-R13-2; the contract with Stream B's extractor). Refuses (exit 3, the reasons named) unless the gate is clean
-and every grain is VERIFIED under the manifest-pinned runner. The approval carries the digest; the sealing step recomputes it under the
+the brief (`ka_gochara_seal_brief`, F-R12-4) and prints a COMPACT last line `{"status": "BRIEFED", "sha256", "persisted": {brief_id,
+manifest_id, state_digest}, "brief_bytes", "brief_file", "brief_chunks"}` — refusing (exit 3, the reasons named) unless the gate is clean
+and every grain is VERIFIED under the manifest-pinned runner. The FULL brief (canonical JSON; its sha256 IS the digest) is not a log line —
+it grows with the event-class count (~255 KB at 26 classes), so stdout ALWAYS carries it as `{brief_chunk, of, sha256, b64}` lines
+(<= `--brief-chunk-bytes` raw bytes each, base64 — safe at any byte boundary) BEFORE the compact one (F-R13-2, steward ruling); `--brief-out
+FILE` additionally writes the bytes. A lock not available within 2 minutes is a named refusal (`brief_lock_timeout`, exit 2). The approval carries that digest; the sealing step recomputes it under the
 seal locks (`seal_brief.recompute_under_locks`) and refuses on any difference.
 
 Prints one JSON report on stdout. Exit codes: 0 every required grain VERIFIED (or `--report-only` finished) · 2 refused by
@@ -27,6 +28,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 from services.gochara_kernel import verification_job as vj
 
@@ -75,8 +77,10 @@ def main(argv=None) -> int:
     ap.add_argument("--generation", default=vj.GENERATION)
     ap.add_argument("--class", dest="classes", action="append", default=None)
     ap.add_argument("--report-only", action="store_true")
-    ap.add_argument("--brief", action="store_true", help="produce, persist and digest the canonical seal approval payload and print it "
-                    "as one line {brief, persisted, sha256} (or as brief_chunk lines past 200,000 chars)")
+    ap.add_argument("--brief", action="store_true", help="produce, persist and digest the canonical seal approval payload; stdout ends in "
+                    "{brief_chunk,...} lines then a COMPACT last line {status, sha256, persisted, brief_bytes, brief_file, brief_chunks}")
+    ap.add_argument("--brief-out", default=None, help="also write the full brief (canonical JSON bytes; sha256 == the digest) to this file")
+    ap.add_argument("--brief-chunk-bytes", type=int, default=48 * 1024, help="raw bytes per chunk line (default 48 KiB)")
     ap.add_argument("--sealing-commit", default=os.environ.get("GOCHARA_SEALING_COMMIT"))
     ap.add_argument("--ephe-path", default=os.environ.get("SE_EPHE_PATH"))
     args = ap.parse_args(argv)
@@ -91,17 +95,37 @@ def main(argv=None) -> int:
         if args.brief:
             from services.gochara_kernel import seal_brief
             vj.check_identity(conn)
+            import psycopg
             try:
                 with conn.transaction():
+                    # a held lock ends in a NAMED refusal (steward ruling M20261002T175331), never a hang
+                    seal_brief.set_local_timeouts(conn, lock=seal_brief.BRIEF_LOCK_TIMEOUT)
                     out = seal_brief.brief(conn, args.chart, args.generation, sealing_commit=args.sealing_commit)
                     persisted = seal_brief.persist_brief(conn, out)      # F-R12-4: the receipt must name a brief persisted HERE
-                    line = seal_brief.brief_line(out, persisted)         # (a line that cannot be displayed rolls the persistence back)
+                raw = seal_brief.brief_bytes(out)
+            except psycopg.errors.LockNotAvailable as exc:
+                print(seal_brief.canonical_json({"status": "REFUSED", "code": "brief_lock_timeout", "detail":
+                                                 f"a seal lock was not available within {seal_brief.BRIEF_LOCK_TIMEOUT}; nothing was "
+                                                 f"persisted ({exc})"}))
+                return vj.EXIT_REFUSED
             except seal_brief.BriefRefused as exc:
                 print(seal_brief.canonical_json({"status": "REFUSED", "code": exc.code, "detail": exc.detail,
                                                  "violations": exc.violations}))
                 return vj.EXIT_DISAGREE
-            for text in seal_brief.emit_lines(line):                          # F-R13-2: one line, or chunk lines past the size limit
-                print(text)
+            brief_file = None
+            if args.brief_out:                                               # optional: the full brief as a file as well
+                import hashlib
+                path = Path(args.brief_out)
+                path.write_bytes(raw)
+                if hashlib.sha256(path.read_bytes()).hexdigest() != out["sha256"]:
+                    print(seal_brief.canonical_json({"status": "ERROR", "detail": f"{path} does not read back as the brief"}))
+                    return vj.EXIT_ERROR
+                brief_file = str(path)
+            # ONE path, always exercised (steward ruling): the full brief as index/total chunk lines, then the compact result as the LAST line
+            for line in seal_brief.brief_chunk_lines(raw, out["sha256"], args.brief_chunk_bytes):
+                print(line)
+            print(seal_brief.canonical_json({"status": "BRIEFED", "sha256": out["sha256"], "persisted": persisted,
+                                             "brief_bytes": len(raw), "brief_file": brief_file, "brief_chunks": True}))
             return vj.EXIT_OK
         report = vj.run(conn, chart_id=args.chart, generation=args.generation, classes=args.classes,
                         report_only=args.report_only, **_build_kwargs(conn, args.ephe_path))

@@ -9,8 +9,10 @@ generation-wide OUTPUT IDENTITY (every column of every record, prerequisite, con
 header). The sealing transaction recomputes it under the seal locks and refuses on any difference BEFORE publishing."""
 from __future__ import annotations
 
+import hashlib
+import os
+from pathlib import Path
 import json
-import re
 
 import pytest
 
@@ -159,7 +161,7 @@ def test_a_failure_after_publication_rolls_back_the_publication_the_seal_and_the
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 4
 
 
-def test_the_entry_points_brief_mode_ends_in_a_compact_line_carries_the_brief_by_file_or_chunks_and_refuses_when_not_approvable(built, monkeypatch, capsys):
+def test_the_entry_points_brief_mode_ends_in_a_compact_line_carries_the_brief_by_file_or_chunks_and_refuses_when_not_approvable(built, monkeypatch, capsys, tmp_path):
     from psycopg.conninfo import make_conninfo
     w = built
     w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")
@@ -170,27 +172,26 @@ def test_the_entry_points_brief_mode_ends_in_a_compact_line_carries_the_brief_by
         assert refused["status"] == "REFUSED" and refused["code"] == "candidate_not_approvable" and refused["violations"]
         _verified(w)                                                       # (its login helper re-locks the role afterwards)
         w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")
-        assert entry.main(["--chart", CHART_ID, "--brief", "--sealing-commit", "cli-sha"]) == vj.EXIT_OK
+        out_file = tmp_path / "brief.json"
+        assert entry.main(["--chart", CHART_ID, "--brief", "--sealing-commit", "cli-sha", "--brief-out", str(out_file),
+                           "--brief-chunk-bytes", "4096"]) == vj.EXIT_OK
         lines = capsys.readouterr().out.strip().splitlines()
-        assert len(lines) == 1 and lines[0].isascii()                       # a small brief is ONE line, printed unchanged
-        out = json.loads(lines[0], parse_float=__import__("decimal").Decimal)
-        assert list(out) == ["brief", "persisted", "sha256"]                # exactly the shape Stream B's extractor/check require
-        assert set(out["persisted"]) == {"brief_id", "manifest_id", "state_digest"}
-        assert out["persisted"]["manifest_id"] == out["brief"]["manifest"]["manifest_id"] and out["persisted"]["brief_id"] > 0
-        assert re.fullmatch(r"[0-9a-f]{64}", out["persisted"]["state_digest"])
-        assert out["brief"]["schema"] == "seal_approval_payload/1" and out["brief"]["code"]["sealing_commit"] == "cli-sha"
-        assert out["sha256"] == sb.payload_digest(out["brief"]) == sb.payload_digest(
-            sb.build_payload(w.conn, CHART_ID, GEN, sealing_commit="cli-sha"))
-        assert out["persisted"]["brief_id"] == w.conn.execute("SELECT max(brief_id) FROM public.ka_gochara_seal_brief").fetchone()[0]
-        # past the 200,000-character limit the SAME text is printed as brief_chunk lines (Stream B's contract) that reassemble to it
-        monkeypatch.setattr(sb, "BRIEF_SINGLE_LINE_MAX", 5_000)
-        monkeypatch.setattr(sb, "CHUNK_CHARS", 4_000)
-        assert entry.main(["--chart", CHART_ID, "--brief", "--sealing-commit", "cli-sha"]) == vj.EXIT_OK
-        chunk_lines = capsys.readouterr().out.strip().splitlines()
-        assert len(chunk_lines) == -(-len(lines[0]) // 4_000) > 1 and all(x.startswith('{"brief_chunk"') for x in chunk_lines)
-        from .test_a53_r13_brief_serializer import REF
-        again = REF.extract([{"textPayload": x} for x in chunk_lines])
-        assert json.loads(again)["sha256"] == out["sha256"]                    # (a new brief was persisted: same state, same digest)
+        compact, chunk_lines = json.loads(lines[-1]), lines[:-1]            # the LAST line is the compact result, whatever the size
+        assert set(compact) == {"status", "sha256", "persisted", "brief_bytes", "brief_file", "brief_chunks"}
+        assert compact["status"] == "BRIEFED" and compact["persisted"]["brief_id"] and compact["brief_file"] == str(out_file)
+        assert len(lines[-1]) < 1024 and "brief" not in compact                # no full brief in the compact line
+        raw = out_file.read_bytes()
+        assert len(raw) == compact["brief_bytes"] and hashlib.sha256(raw).hexdigest() == compact["sha256"]      # the file IS the digest's preimage
+        assert len(chunk_lines) > 1 and sb.reassemble_chunks(chunk_lines) == raw                              # …and so are the chunks
+        assert compact["brief_chunks"] is True and len(chunk_lines) == -(-len(raw) // 4096)
+        brief = json.loads(raw)
+        assert brief["schema"] == "seal_approval_payload/1" and brief["code"]["sealing_commit"] == "cli-sha"
+        assert compact["sha256"] == sb.payload_digest(sb.build_payload(w.conn, CHART_ID, GEN, sealing_commit="cli-sha"))
+        assert compact["persisted"]["brief_id"] == w.conn.execute("SELECT max(brief_id) FROM public.ka_gochara_seal_brief").fetchone()[0]
+        golden = os.environ.get("GOCHARA_WRITE_GOLDEN_BRIEF")                  # (opt-in: regenerate the fixture Stream B's extractor tests use)
+        if golden:                                                             # the REAL stdout, no --brief-out, chunks of 8 KiB (3 for 1 class)
+            assert entry.main(["--chart", CHART_ID, "--brief", "--sealing-commit", "cli-sha", "--brief-chunk-bytes", "8192"]) == vj.EXIT_OK
+            Path(golden).write_text(capsys.readouterr().out)
     finally:
         w.conn.execute("ALTER ROLE gochara_verifier NOLOGIN PASSWORD NULL")
 
