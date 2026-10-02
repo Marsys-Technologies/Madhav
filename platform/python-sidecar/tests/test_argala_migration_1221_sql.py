@@ -1,5 +1,5 @@
-"""The real migration file 1221 (the a29 integrity conjunct on ga_structural AND the ga_structural output-digest spec swap),
-executed against a disposable Postgres.
+"""The real migration file 1221 (the a29 integrity conjunct on ga_structural, the corrections of its (bb) and (c9) conjuncts,
+AND the ga_structural output-digest spec swap), executed against a disposable Postgres.
 
 HELD migration: it merges only in the S-L1 window, after the ga_structural writer image is deployed. The SQL is read from the
 migration file itself (platform/migrations/1221_*.sql); 00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1221_A29_INTENT_v1_0.md
@@ -132,7 +132,38 @@ def test_the_spec_swap_reproduces_both_shas_is_old_plus_one_sorted_unique_catego
 
 # ── executed ───────────────────────────────────────────────────────────────────────────
 
-STANDIN = "SELECT\n  (TRUE)\n  -- (g28) stand-in tail\n  AND NOT EXISTS (SELECT 1 FROM chart_facts WHERE false)\n  AS integrity_passed\n\n"
+# The two live conjuncts (read 2026-10-02 as suvarna_reader from asset_registry.integrity_check_sql of ga_structural, md5 of the whole
+# text bb9803524a61427e7f4f179a59911e33), verbatim: comment plus SQL. The migration must replace exactly these.
+OLD_BB = r'''  -- (bb) value_jsonb.orb_strength must equal the writer's own per-type formula: 1.0 for yamaya
+  -- (exact-degree case); 0.1 for manaau (the fixed "denial" weight); for ithasala/eesarpha,
+  -- round(greatest(0, 1 - orb_deg/deeptamsa_sum_deg), 4) -- a genuine cross-field re-derivation
+  -- combining two already-stored fields into a third, not a bare restatement. 0/76 violations
+  -- live.
+  AND NOT EXISTS (
+    SELECT 1 FROM chart_facts
+    WHERE fact_category = 'aspect_tajik'
+      AND (fact_value_jsonb->>'orb_strength')::numeric <>
+        CASE fact_key
+          WHEN 'yamaya' THEN 1.0
+          WHEN 'manaau' THEN 0.1
+          ELSE round(
+            GREATEST(0.0, 1.0 -
+              (fact_value_jsonb->>'orb_deg')::numeric / (fact_value_jsonb->>'deeptamsa_sum_deg')::numeric
+            ), 4
+          )
+        END
+  )
+'''
+OLD_C9 = r'''  -- (c9) composite_strength domain: must be one of the seven achievable values given the
+  -- formula's four dignity tiers x three house tiers. 0/450 violations live.
+  AND NOT EXISTS (
+    SELECT 1 FROM chart_facts
+    WHERE fact_category = 'karakatva_strength_per_significance' AND fact_key = 'composite_strength'
+      AND fact_value_num NOT IN (0.375, 0.5, 0.625, 0.75, 0.8125, 0.9375, 1.0)
+  )
+'''
+STANDIN = ("SELECT\n  (TRUE)\n" + OLD_BB + OLD_C9 + "  -- (g28) stand-in tail\n  AND NOT EXISTS (SELECT 1 FROM chart_facts WHERE false)\n"
+           "  AS integrity_passed\n\n")
 SCHEMA_B = """
 CREATE TABLE chart_facts (fact_id text PRIMARY KEY, chart_id uuid, ayanamsha_id text, build_id uuid,
   fact_category text, fact_subject text, fact_key text, fact_value_text text, fact_value_num numeric, fact_value_jsonb jsonb);
@@ -148,6 +179,19 @@ def _a29() -> str:
 def _e27() -> str:
     body = M904.split("-- (e27) argala-offset full re-derivation", 1)[1].split("-- (f27)", 1)[0]
     return "AND NOT EXISTS (" + body.split("AND NOT EXISTS (", 1)[1].rstrip()
+
+
+def _new_bb_fragment() -> str:
+    return B.split("new_bb constant text := $nb$", 1)[1].split("$nb$", 1)[0]
+
+
+def _new_c9_fragment() -> str:
+    return B.split("new_c9 constant text := $nc$", 1)[1].split("$nc$", 1)[0]
+
+
+def _conj(fragment: str) -> str:
+    """The conjunct (from `AND NOT EXISTS (` on) of a comment-plus-SQL fragment, ready for _violations."""
+    return "AND NOT EXISTS (" + fragment.split("AND NOT EXISTS (", 1)[1].rstrip()
 
 
 ASSETS = ["ga_structural", "ga_strength", "ga_vargas"]
@@ -185,6 +229,9 @@ def test_1221_applies_once_touches_only_integrity_text_and_the_spec_and_is_idemp
     assert psql(pg, db, file=f).returncode == 0
     text = q(pg, db, "SELECT integrity_check_sql FROM asset_registry WHERE asset_id='ga_structural'")
     assert text.count("(a29)") >= 1 and text.count("AS integrity_passed") == 1 and "(g28)" in text
+    assert OLD_BB not in text and OLD_C9 not in text                     # the live (bb) and (c9) are gone ...
+    assert text.count(_new_bb_fragment()) == 1 and text.count(_new_c9_fragment()) == 1   # ... replaced once each by the corrected text
+    assert text.count("Migration 1221 (bb tolerance)") == 1 and text.count("Migration 1221 (c9 domain)") == 1
     assert q(pg, db, other) == other_before
     assert q(pg, db, "SELECT integrity_check_sql FROM asset_registry WHERE asset_id='ga_strength'") == "keep"
     once = q(pg, db, "SELECT md5(integrity_check_sql) FROM asset_registry WHERE asset_id='ga_structural'")
@@ -201,6 +248,14 @@ def test_1221_applies_once_touches_only_integrity_text_and_the_spec_and_is_idemp
     ("UPDATE asset_registry SET integrity_check_sql = replace(integrity_check_sql, '(g28)', '(zzz)') WHERE asset_id='ga_structural'", "lacks conjunct (g28)"),
     ("UPDATE asset_registry SET integrity_check_sql = integrity_check_sql || E'\\n  AS integrity_passed' WHERE asset_id='ga_structural'", "anchor is not unique"),
     ("UPDATE asset_registry SET integrity_check_sql = NULL WHERE asset_id='ga_structural'", "no integrity_check_sql"),
+    ("UPDATE asset_registry SET integrity_check_sql = replace(integrity_check_sql, 'orb_strength', 'orb_strengthX') WHERE asset_id='ga_structural'",
+     "live conjunct (bb) is not present exactly once"),
+    ("UPDATE asset_registry SET integrity_check_sql = replace(integrity_check_sql, '0.9375', '0.9376') WHERE asset_id='ga_structural'",
+     "live conjunct (c9) is not present exactly once"),
+    ("UPDATE asset_registry SET integrity_check_sql = integrity_check_sql || $d$" + OLD_BB + "$d$ WHERE asset_id='ga_structural'",
+     "live conjunct (bb) is not present exactly once"),
+    ("UPDATE asset_registry SET integrity_check_sql = integrity_check_sql || $d$" + OLD_C9 + "$d$ WHERE asset_id='ga_structural'",
+     "live conjunct (c9) is not present exactly once"),
     (f"UPDATE asset_output_digest_specs SET retired_at = now() WHERE spec_sha256 = '{OLD_SHA}'; "
      "INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec) VALUES ('ga_structural', repeat('c', 64), '{}'::jsonb)",
      "unrecognised active row"),
@@ -266,6 +321,194 @@ def test_the_old_conjunct_e27_is_vacuous_on_null_which_is_why_a29_exists(pg):
     q(pg, d2, SCHEMA_B)
     _seed(pg, d2, {**GOOD, 11: (0.75, None)})
     assert _violations(pg, d2, _e27()) == 1 and _violations(pg, d2, _a29()) == 0
+
+
+# ── (bb) aspect_tajik orb_strength and (c9) karakatva composite_strength: the two corrected conjuncts ─────────────────
+
+WRITER = (pathlib.Path(__file__).resolve().parents[1] / "ga_writers" / "ga_structural_writer.py").read_text(encoding="utf-8")
+# the writer's own constants, mirrored from ga_writers/ga_structural_writer.py (static test below asserts the mirror)
+DEEPTAMSA = {"Sun": 15.0, "Moon": 12.0, "Mars": 8.0, "Mercury": 7.0, "Jupiter": 9.0, "Venus": 7.0, "Saturn": 9.0}
+KARAKA_STRENGTH = (1.0, 0.875, 0.5, 0.25)          # exalted, own_sign, neutral, debilitated
+HOUSE_STRENGTH = (1.0, 0.75, 0.5)                  # kendra, 5/9, other
+
+
+def test_the_writer_constants_mirrored_in_these_tests_are_the_writers_own():
+    """If the writer's tables change, this fails and the (c9) domain and the (bb) tolerance bound must be re-derived."""
+    assert '"Sun": 15.0, "Moon": 12.0, "Mars": 8.0, "Mercury": 7.0,' in WRITER and '"Jupiter": 9.0, "Venus": 7.0, "Saturn": 9.0,' in WRITER
+    assert '{"exalted": 1.0, "own_sign": 0.875, "neutral": 0.5, "debilitated": 0.25}.get(dignity, 0.5)' in WRITER
+    assert "house_strength = (1.0 if karaka_house in {1, 4, 7, 10} else 0.75 if karaka_house in {5, 9} else 0.5)" in WRITER
+    assert "composite = round((karaka_strength + house_strength) / 2.0, 4)" in WRITER and "composite = 0.5" in WRITER
+    assert "orb_strength = round(max(0.0, 1.0 - orb / deeptamsa_sum), 4)" in WRITER      # rounds the UNROUNDED quotient
+    assert 'value_jsonb={\n                    "orb_deg": round(orb, 4),' in WRITER      # the stored orb_deg is rounded to 4 dp
+    assert min(a + b for a in DEEPTAMSA.values() for b in DEEPTAMSA.values()) == 14.0      # the 5e-5/14 term of the bound
+
+
+def test_the_migration_replaces_exactly_the_live_conjunct_texts_and_the_new_texts_carry_the_markers():
+    assert B.split("old_bb constant text := $ob$", 1)[1].split("$ob$", 1)[0] == OLD_BB
+    assert B.split("old_c9 constant text := $oc$", 1)[1].split("$oc$", 1)[0] == OLD_C9
+    assert "Migration 1221 (bb tolerance)" in _new_bb_fragment() and "Migration 1221 (c9 domain)" in _new_c9_fragment()
+    assert _new_bb_fragment().startswith("  -- (bb) ") and _new_c9_fragment().startswith("  -- (c9) ")
+    assert _new_bb_fragment().endswith("  )\n") and _new_c9_fragment().endswith("  )\n")     # the next comment line follows directly, as live
+    flat = re.sub(r"\s*\n--\s*", " ", B)
+    assert "bb9803524a61427e7f4f179a59911e33" in flat and "TWO CORRECTIONS RIDE WITH a29" in flat
+    assert "99564aa71a950037fd391fe62ae487e5" in flat and "206808" in flat      # the recorded target md5 (post-apply verification)
+    assert "check defects, not writer defects" in flat
+
+
+def _tajik_rows(rows) -> str:
+    """rows: (key, orb_deg, deeptamsa_sum, orb_strength). One INSERT, all values as exact decimal text."""
+    vals = ", ".join(
+        f"('t{i}', '{CANON}', 'a', '{BUILD}', 'aspect_tajik', 'X_Y', '{k}', NULL, {od!r}, "
+        f"'{{\"orb_deg\": {od!r}, \"deeptamsa_sum_deg\": {d!r}, \"orb_strength\": {st!r}}}'::jsonb)"
+        for i, (k, od, d, st) in enumerate(rows))
+    return "INSERT INTO chart_facts VALUES " + vals
+
+
+def _writer_value(orb: float, d: float) -> tuple[float, float]:
+    """(stored orb_deg, stored orb_strength) exactly as the writer computes them for an ithasala / eesarpha row."""
+    return round(orb, 4), round(max(0.0, 1.0 - orb / d), 4)
+
+
+def _row_count_sql(conjunct: str) -> str:
+    """The conjunct's own SELECT, counting the violating ROWS instead of testing for existence."""
+    inner = conjunct.split("AND NOT EXISTS (", 1)[1].rstrip()
+    assert inner.endswith(")")
+    return inner[:-1].replace("SELECT 1 FROM", "SELECT count(*) FROM", 1)
+
+
+def _count(port: int, rows, conjunct: str) -> int:
+    db = new_db(port)
+    q(port, db, SCHEMA_B)
+    if rows:
+        q(port, db, _tajik_rows(rows))
+    return int(q(port, db, _row_count_sql(conjunct)))
+
+
+@requires_pg
+def test_bb_the_old_text_false_reds_on_the_writers_own_rounding_ties_and_the_new_text_accepts_them(pg):
+    import random
+    # the rehearsal's own row: orb 13.4585 / deeptamsa 22.0 -> the writer stores 0.3882, the old check expects round(0.38825, 4) = 0.3883
+    tie = [("ithasala", 13.4585, 22.0, 0.3882)]
+    assert _count(pg, tie, _conj(OLD_BB)) == 1                      # old text: RED on a correct build
+    assert _count(pg, tie, _conj(_new_bb_fragment())) == 0          # new text: accepts the writer's value
+    # 4000 rows computed exactly the way the writer computes them, over every pairwise deeptamsa_sum, plus 800 constructed AT a
+    # rounding boundary of the quotient (the worst case for the tolerance, with the smallest sum 14)
+    rnd = random.Random(1221)
+    sums = sorted({a + b for a in DEEPTAMSA.values() for b in DEEPTAMSA.values()})
+    writer_rows = []
+    for _ in range(4000):
+        d = rnd.choice(sums)
+        orb = rnd.uniform(1.0001, d)
+        od, st = _writer_value(orb, d)
+        writer_rows.append((rnd.choice(["ithasala", "eesarpha"]), od, d, st))
+    for _ in range(800):
+        d = rnd.choice([14.0, 14.0, 15.0, 16.0])
+        k = rnd.randrange(1, int(d * 100))
+        target = 1.0 - (k + 0.5) / 10000.0                          # a quotient on a 4 dp rounding boundary
+        orb = d * (1.0 - target) + rnd.choice([-1, 1]) * rnd.uniform(0, 3e-6)
+        if 1.0 < orb <= d:
+            od, st = _writer_value(orb, d)
+            writer_rows.append(("ithasala", od, d, st))
+    old_red = _count(pg, writer_rows, _conj(OLD_BB))
+    assert old_red >= 20, old_red                                   # the false RED is common on writer-exact rows, not a one-off
+    assert _count(pg, writer_rows, _conj(_new_bb_fragment())) == 0  # the corrected text never flags a value the writer computed
+    # fixed per-type values stay exact: yamaya 1.0, manaau 0.1
+    assert _count(pg, [("yamaya", 0.5, 22.0, 1.0), ("manaau", 25.0, 22.0, 0.1)], _conj(_new_bb_fragment())) == 0
+
+
+@requires_pg
+@pytest.mark.parametrize("row", [
+    ("ithasala", 13.4585, 22.0, 0.3885),     # two units off the writer's 0.3882
+    ("eesarpha", 13.4585, 22.0, 0.3892),
+    ("ithasala", 13.4585, 22.0, 0.4585),     # 0.07 off
+    ("ithasala", 13.4585, 22.0, 0.0),
+    ("ithasala", 13.4585, 22.0, 0.6118),     # orb/sum instead of 1 - orb/sum
+    ("ithasala", 5.0, 22.0, 0.7619),         # strength computed with the wrong deeptamsa sum (21.0 gives 0.7619; 22.0 gives 0.7727)
+    ("yamaya", 0.5, 22.0, 0.9999),           # yamaya is exactly 1.0
+    ("yamaya", 0.5, 22.0, 0.5),
+    ("manaau", 25.0, 22.0, 0.1001),          # manaau is exactly 0.1
+    ("manaau", 25.0, 22.0, 0.0999),
+    ("manaau", 25.0, 22.0, 1.0),
+])
+def test_bb_a_genuinely_wrong_orb_strength_is_still_false(pg, row):
+    assert _count(pg, [row], _conj(_new_bb_fragment())) == 1, row
+
+
+@requires_pg
+def test_bb_a_null_orb_strength_is_not_flagged_before_or_after(pg):
+    db = new_db(pg)
+    q(pg, db, SCHEMA_B)
+    q(pg, db, f"INSERT INTO chart_facts VALUES ('n', '{CANON}', 'a', '{BUILD}', 'aspect_tajik', 'X_Y', 'ithasala', NULL, 5.0, "
+              "'{\"orb_deg\": 5.0, \"deeptamsa_sum_deg\": 22.0}'::jsonb)")
+    assert _violations(pg, db, _conj(OLD_BB)) == 0 and _violations(pg, db, _conj(_new_bb_fragment())) == 0   # NULL <> x is not true: same on both
+
+
+@requires_pg
+def test_bb_the_writers_zero_clamp_is_kept_a_strength_of_zero_beyond_the_sum_is_accepted_as_before(pg):
+    row = [("eesarpha", 23.0, 22.0, 0.0)]                           # max(0.0, 1 - orb/sum) = 0.0, as the writer clamps
+    assert _count(pg, row, _conj(OLD_BB)) == 0 and _count(pg, row, _conj(_new_bb_fragment())) == 0
+    assert _count(pg, [("eesarpha", 23.0, 22.0, 0.05)], _conj(_new_bb_fragment())) == 1
+
+
+def _c9_rows(values) -> str:
+    vals = ", ".join(f"('c{i}', '{CANON}', 'a', '{BUILD}', 'karakatva_strength_per_significance', 's{i}', 'composite_strength', NULL, {v!r}, NULL)"
+                     for i, v in enumerate(values))
+    return "INSERT INTO chart_facts VALUES " + vals
+
+
+def _domain_sql(fragment: str) -> str:
+    """The value list of the conjunct's NOT IN (...), so a per-row count can be taken from the migration's own text."""
+    return re.search(r"NOT IN \(([^)]*)\)", fragment).group(1)
+
+
+def _writer_composites() -> list[float]:
+    """Every value the writer can store: (karaka_strength + house_strength) / 2 over the 4 x 3 tiers, plus the 0.5 fallback."""
+    return sorted({round((k + h) / 2.0, 4) for k in KARAKA_STRENGTH for h in HOUSE_STRENGTH} | {0.5})
+
+
+@requires_pg
+def test_c9_the_domain_is_exactly_what_the_writer_can_store_and_the_old_list_missed_two_values(pg):
+    domain = _writer_composites()
+    assert domain == [0.375, 0.5, 0.625, 0.6875, 0.75, 0.8125, 0.875, 0.9375, 1.0]
+    listed = sorted(float(x) for x in _domain_sql(_new_c9_fragment()).split(","))
+    assert listed == domain                                         # the migration's list IS the writer's reachable set
+    old_listed = sorted(float(x) for x in _domain_sql(OLD_C9).split(","))
+    assert sorted(set(domain) - set(old_listed)) == [0.6875, 0.875] and set(old_listed) <= set(domain)
+    db = new_db(pg)
+    q(pg, db, SCHEMA_B)
+    q(pg, db, _c9_rows(domain))
+    assert _violations(pg, db, _conj(OLD_C9)) == 1                 # old text: RED on a correct chart that lands on 0.6875 / 0.875
+    assert _violations(pg, db, _conj(_new_c9_fragment())) == 0     # new text: accepts every value the writer can store
+
+
+@requires_pg
+@pytest.mark.parametrize("wrong", [0.7, 0.9, 0.3125, 0.0, 1.0625, 0.8751, 0.6874, 1.5, 0.25])
+def test_c9_a_value_the_writer_cannot_store_is_still_false(pg, wrong):
+    db = new_db(pg)
+    q(pg, db, SCHEMA_B)
+    q(pg, db, _c9_rows(_writer_composites() + [wrong]))
+    assert _violations(pg, db, _conj(_new_c9_fragment())) == 1, wrong
+
+
+@requires_pg
+def test_1221_corrections_are_idempotent_and_apply_individually_when_a_part_is_already_there(pg):
+    db = _fresh_b(pg)
+    f = _write("b", B)
+    assert psql(pg, db, file=f).returncode == 0
+    full = q(pg, db, "SELECT md5(integrity_check_sql) FROM asset_registry WHERE asset_id='ga_structural'")
+    for old, new_frag in ((OLD_BB, _new_bb_fragment()), (OLD_C9, _new_c9_fragment())):
+        # (a29) and the other correction are in; this one is back to the live text: the file corrects just this one, to the same result
+        q(pg, db, f"UPDATE asset_registry SET integrity_check_sql = replace(integrity_check_sql, $n${new_frag}$n$, $o${old}$o$) "
+                  "WHERE asset_id='ga_structural'")
+        assert q(pg, db, "SELECT md5(integrity_check_sql) FROM asset_registry WHERE asset_id='ga_structural'") != full
+        assert psql(pg, db, file=f).returncode == 0
+        assert q(pg, db, "SELECT md5(integrity_check_sql) FROM asset_registry WHERE asset_id='ga_structural'") == full
+    # (a29) back out (the pre-1221 live shape of a text that already carries both corrections): only a29 is added again
+    db2 = _fresh_b(pg)
+    q(pg, db2, f"UPDATE asset_registry SET integrity_check_sql = replace(replace(integrity_check_sql, $o${OLD_BB}$o$, $n${_new_bb_fragment()}$n$), "
+               f"$o${OLD_C9}$o$, $n${_new_c9_fragment()}$n$) WHERE asset_id='ga_structural'")
+    assert psql(pg, db2, file=f).returncode == 0
+    assert q(pg, db2, "SELECT md5(integrity_check_sql) FROM asset_registry WHERE asset_id='ga_structural'") == full
 
 
 @requires_pg
