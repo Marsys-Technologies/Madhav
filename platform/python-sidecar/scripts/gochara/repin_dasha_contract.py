@@ -13,10 +13,15 @@ READ-ONLY against the database (the connection is set READ ONLY); --apply edits 
 files in this repository:
   * services/gochara_rules/permission.py: DASHA_READ_CONTRACT['build_id'] and the MD/AD/PD
     reference-row tuples (re-measured from the new build, matched by (level, parent path, index));
-  * the literal row ids / instants of those reference rows in tests/l3/**/*.py (exact-string);
+  * tests/l3/**/*.py: ONLY the reference rows' ids and the old pin's build id (exact-string, ONE pass). An old boundary INSTANT in a test is NOT rewritten — it may be an event date
+    that merely equals a boundary (D8) — it is printed as `REVIEW path:line old -> new` for a human;
   * a generated tests/l3/gochara_rules/test_am10_repin_<build8>.py asserting the OLD id is refused
     (DashaReadConflict) and the NEW id accepted (rule 2(g)).
 The frozen v1.4 spec/oracle JSON are never edited (rule 3).
+
+MOSHIER → SWISS (Suvarṇa addendum 4; steward M20261002T222913-35c5): the stored rows were built on the Moshier fallback; at S-L1 the Vimśottarī BOUNDARIES move by ≈ 1.94 h while lords and
+row counts hold. So a MOVED boundary is not a flip: the STOP is a different lord (or a missing/extra row) at ANY matched (level, parent path, index) row (D7); the oracle instants whose lord
+differs only because an edge moved are reported as BOUNDARY-SENSITIVE (D8), and the per-level old → new shift is in the evidence.
 
 Exit codes: 0 evidence clean (and applied if asked) · 3 STOP (a stop reason is listed) · 2 usage.
 Evidence item (e) — the seven FORENSIC anchors — is supplied by the L1 owner as --forensic-report
@@ -30,7 +35,7 @@ import os
 import re
 import statistics
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve()
@@ -133,17 +138,24 @@ def lord_flips(old_rows: list[dict], new_rows: list[dict], instants: list[str]) 
     return flips
 
 
+def path_lord_flips(old: dict, new: dict, matched: list) -> list[dict]:
+    """D7 (steward M20261002T222913-35c5): EVERY matched (level, path) row — not only the pinned reference rows — must keep its lord. A boundary that MOVED (the Moshier → Swiss
+    ≈ 1.94 h shift) is not a flip; a different lord at the same (level, path) is. Returns the differences (empty = lords hold)."""
+    return [{"key": k, "old": old[k]["lord_graha"], "new": new[k]["lord_graha"]} for k in matched if old[k]["lord_graha"] != new[k]["lord_graha"]]
+
+
 def oracle_instants(repo_tests: Path | None = None) -> list[str]:
     """Every instant the contract is exercised at: the pinned reference rows' edges (±1 s) and every
     ISO-8601 UTC literal in the gochara_rules / step06b tests (O-PP-1/2/3, worked events)."""
-    iso = re.compile(r"\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\b")
+    iso_re = re.compile(r"\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\b")
     found: set[str] = set()
     for rows in (PERM.MD_ROWS, PERM.AD_ROWS, PERM.PD_ROWS):
         for r in rows:
-            found |= {r["start_iso"], r["end_iso"]}
+            for edge in (r["start_iso"], r["end_iso"]):
+                found |= {iso(_t(edge) + timedelta(seconds=d)) for d in (-1, 0, 1)}        # the edge ±1 s, as the docstring says
     base = repo_tests or (SIDECAR / "tests" / "l3")
     for p in list(base.glob("gochara_rules/*.py")) + list(base.glob("gochara/test_step06b*.py")):
-        found |= set(iso.findall(p.read_text(encoding="utf-8")))
+        found |= set(iso_re.findall(p.read_text(encoding="utf-8")))
     return sorted(found)
 
 
@@ -175,7 +187,7 @@ def decide(*, new_tier_ok: bool, new_integrity: dict, m: dict, flips: list, ref_
     if new_integrity["duplicates"]:
         stops.append(f"{new_integrity['duplicates']} duplicate rows under the §4.0 rules")
     if flips:
-        stops.append(f"{len(flips)} lord flip(s) at oracle instants — a STOP, not a re-pin (CLAUDE.md §N.5)")
+        stops.append(f"{len(flips)} lord flip(s) at matched (level, path) rows — a STOP, not a re-pin (CLAUDE.md §N.5; D7)")
     stops += ref_problems
     if m["only_old"] or m["only_new"]:
         stops.append(f"row-count difference needs an explanation: {len(m['only_old'])} only in old, {len(m['only_new'])} only in new")
@@ -185,7 +197,7 @@ def decide(*, new_tier_ok: bool, new_integrity: dict, m: dict, flips: list, ref_
 
 
 # ── rendering / applying ─────────────────────────────────────────────────────
-def render(*, old_id, new_id, chart_id, o_int, n_int, m, stats, flips, maps, stops) -> str:
+def render(*, old_id, new_id, chart_id, o_int, n_int, m, stats, flips, maps, stops, sensitive=()) -> str:
     L = [f"# AM-10 re-pin evidence — chart {chart_id}", "",
          f"* old pin: `{old_id}`  →  new build: `{new_id}`", f"* verdict: **{'CLEAN' if not stops else 'STOP'}**", ""]
     if stops:
@@ -199,7 +211,9 @@ def render(*, old_id, new_id, chart_id, o_int, n_int, m, stats, flips, maps, sto
     for lv, d in stats.items():
         for side, v in d.items():
             L.append(f"| {LEVEL_NAME.get(lv, lv)} | {side} | {v['min']:.0f} | {v['max']:.0f} | {v['mean']:.1f} | {v['n']} |")
-    L += ["", f"## (f) lords at {len(flips)} flip(s) over the oracle instants", *[f"* {f['instant']}: {f['old']} → {f['new']}" for f in flips], "",
+    L += ["", f"## (f) lord flips at matched (level, path) rows: {len(flips)} (D7 — any is a STOP)", *[f"* {LEVEL_NAME.get(f['key'][0], f['key'][0])} path {f['key'][1]}: {f['old']} → {f['new']}" for f in flips], "",
+          f"## (f2) {len(sensitive)} BOUNDARY-SENSITIVE oracle instant(s): the lord at the instant differs old → new because a boundary MOVED, not because a lord changed (D8: re-run every event-dated comparison at these)",
+          *[f"* {x['instant']}: {x['old']} → {x['new']}" for x in sensitive], "",
           "## (3) re-measured reference rows (every id in full)"]
     for x in maps:
         o, n = x["old"], x["new"]
@@ -207,29 +221,44 @@ def render(*, old_id, new_id, chart_id, o_int, n_int, m, stats, flips, maps, sto
     return "\n".join(L) + "\n"
 
 
-def apply_repin(new_id: str, maps: list[dict], repo_root: Path) -> list[str]:
+_WHOLE_SECOND_Z = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+
+
+def rewrite_once(text: str, mapping: dict[str, str]) -> str:
+    """ONE pass (never sequential `str.replace`: a new value equal to a later old one would be replaced twice), longest key first, exact strings only."""
+    if not mapping:
+        return text
+    pat = re.compile("|".join(re.escape(k) for k in sorted(mapping, key=len, reverse=True)))
+    return pat.sub(lambda m_: mapping[m_.group(0)], text)
+
+
+def apply_repin(new_id: str, maps: list[dict], repo_root: Path, review: list[str] | None = None) -> list[str]:
+    """Rewrites (a) permission.py: the pin, the reference rows' ids and instants — one pass; (b) tests/l3: ONLY the unambiguous literals (the reference rows' ids and the pin's build id).
+    An OLD BOUNDARY INSTANT found in a test is NOT rewritten (it may be an event date that merely equals a boundary — D8): it is appended to `review` as `path:line literal -> new`."""
     changed = []
     perm = SIDECAR / "services" / "gochara_rules" / "permission.py"
     s = perm.read_text(encoding="utf-8")
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     assert s.count(f'"build_id": "{old_id}"') == 1
-    s = s.replace(f'"build_id": "{old_id}"', f'"build_id": "{new_id}"')
-    literals = {}
+    ids: dict[str, str] = {}
+    instants: dict[str, str] = {}
     for x in maps:
         o, n = x["old"], x["new"]
-        literals[o["row_id"]] = n["dasha_row_id"]
-        literals[o["start_iso"]] = n["start_iso"]
-        literals[o["end_iso"]] = n["end_iso"]
-    # only reference-row literals, exact strings; an old instant shared with another row maps consistently by construction
-    for a, b in literals.items():
-        s = s.replace(a, b)
+        ids[o["row_id"]] = n["dasha_row_id"]
+        for side in ("start_iso", "end_iso"):
+            assert _WHOLE_SECOND_Z.fullmatch(n[side]), f"new instant {n[side]!r} is not whole-second …Z (permission.py compares these lexicographically)"
+            instants[o[side]] = n[side]
+    s = rewrite_once(s, {**ids, **instants, f'"build_id": "{old_id}"': f'"build_id": "{new_id}"'})
     perm.write_text(s, encoding="utf-8")
     changed.append(str(perm.relative_to(repo_root)))
     for p in sorted((SIDECAR / "tests" / "l3").rglob("*.py")):
-        txt = p.read_text(encoding="utf-8"); new_txt = txt
-        for a, b in literals.items():
-            new_txt = new_txt.replace(a, b)
-        new_txt = new_txt.replace(old_id, new_id)
+        txt = p.read_text(encoding="utf-8")
+        new_txt = rewrite_once(txt, {**ids, old_id: new_id})
+        if review is not None:
+            for ln, line in enumerate(txt.splitlines(), 1):
+                for a_, b_ in instants.items():
+                    if a_ in line:
+                        review.append(f"{p.relative_to(repo_root)}:{ln} {a_} -> {b_}")
         if new_txt != txt:
             p.write_text(new_txt, encoding="utf-8"); changed.append(str(p.relative_to(repo_root)))
     gen = SIDECAR / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{new_id[:8]}.py"
@@ -292,20 +321,24 @@ def main(argv=None, *, conn=None) -> int:
     old_idx, new_idx = index_paths(old_rows), index_paths(new_rows)
     m = match(old_idx, new_idx)
     stats = shift_stats(old_idx, new_idx, m["matched"])
-    flips = lord_flips(old_rows, new_rows, oracle_instants()) if new_rows else []
+    flips = path_lord_flips(old_idx, new_idx, m["matched"])                       # D7: every matched row keeps its lord — the STOP
+    sensitive = lord_flips(old_rows, new_rows, oracle_instants()) if new_rows else []   # instants whose lord differs because a boundary MOVED — reported, D8
     maps, ref_problems = remeasure_reference_rows(old_idx, new_idx)
     stops = decide(new_tier_ok=new_tier_ok, new_integrity=integrity(new_rows), m=m, flips=flips,
                    ref_problems=ref_problems, forensic_report=a.forensic_report)
     report = render(old_id=old_id, new_id=a.new_build_id, chart_id=a.chart_id, o_int=integrity(old_rows),
-                    n_int=integrity(new_rows), m=m, stats=stats, flips=flips, maps=maps, stops=stops)
+                    n_int=integrity(new_rows), m=m, stats=stats, flips=flips, sensitive=sensitive, maps=maps, stops=stops)
     if a.out:
         Path(a.out).write_text(report, encoding="utf-8")
     print(report)
     if stops:
         print("STOP — not re-pinning.", file=sys.stderr); return 3
     if a.apply:
-        for f in apply_repin(a.new_build_id, maps, SIDECAR.parents[1]):
+        review: list[str] = []
+        for f in apply_repin(a.new_build_id, maps, SIDECAR.parents[1], review=review):
             print("changed:", f)
+        for r in review:
+            print("REVIEW (NOT rewritten — a human decides whether this literal is a daśā boundary or an event date):", r)
     return 0
 
 

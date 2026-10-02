@@ -3,7 +3,7 @@ every assertion runs its production code (no rule re-implemented here)."""
 import importlib.util
 import pathlib
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -73,7 +73,7 @@ def test_decide_lists_every_stop_and_is_clean_only_with_all_evidence():
     good = dict(new_tier_ok=True, new_integrity={"orphans": [], "duplicates": 0}, m=m_ok, flips=[], ref_problems=[], forensic_report="f.md")
     assert T.decide(**good) == []
     assert any("FORENSIC" in s for s in T.decide(**{**good, "forensic_report": None}))
-    assert any("lord flip" in s for s in T.decide(**{**good, "flips": [{"instant": "x"}]}))
+    assert any("lord flip" in s for s in T.decide(**{**good, "flips": [{"key": (2, (0,)), "old": "Ketu", "new": "Venus"}]}))
     assert any("two_pass_verified" in s for s in T.decide(**{**good, "new_tier_ok": False}))
     assert any("row-count" in s for s in T.decide(**{**good, "m": {"matched": [], "only_old": [(1, (0,))], "only_new": []}}))
     assert any("orphaned" in s for s in T.decide(**{**good, "new_integrity": {"orphans": ["o"], "duplicates": 0}}))
@@ -122,14 +122,69 @@ def test_apply_rewrites_the_pin_the_reference_rows_and_literals_and_generates_th
     new_id = "22222222-2222-4222-8222-222222222222"
     maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z",
                                  "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
-    changed = T.apply_repin(new_id, maps, tmp_path)
+    review: list[str] = []
+    changed = T.apply_repin(new_id, maps, tmp_path, review=review)
     p = (tmp_path / "services" / "gochara_rules" / "permission.py").read_text(encoding="utf-8")
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     assert f'"build_id": "{new_id}"' in p and f'"build_id": "{old_id}"' not in p     # (the old id may survive in the module docstring as history)
     assert "99999999-9999-4999-8999-999999999999" in p and ref["row_id"] not in p
+    assert "2013-01-14T09:13:56Z" in p and ref["start_iso"] not in p       # permission.py: the reference rows' instants ARE rewritten (single pass)
     text = lit.read_text(encoding="utf-8")
-    assert "99999999-9999-4999-8999-999999999999" in text and "2013-01-14T09:13:56Z" in text and new_id in text
+    assert "99999999-9999-4999-8999-999999999999" in text and new_id in text
+    # D8: an old BOUNDARY INSTANT in a test is NOT rewritten (it may be an event date that merely equals a boundary) — it is listed for a human
+    assert f'T = "{ref["start_iso"]}"' in text and "2013-01-14T09:13:56Z" not in text
+    assert any("test_literal.py:2" in r and ref["start_iso"] in r and "2013-01-14T09:13:56Z" in r for r in review)
     assert "OTHER = \"2099-01-01T00:00:00Z\"" in text                        # unrelated literals untouched
     gen = tmp_path / "tests" / "l3" / "gochara_rules" / "test_am10_repin_22222222.py"
     assert gen.exists() and PERM.DASHA_READ_CONTRACT["build_id"] in gen.read_text(encoding="utf-8") and "DashaReadConflict" in gen.read_text(encoding="utf-8")
     assert any(c.endswith("permission.py") for c in changed) and len(changed) == 3
+
+
+# ── Moshier → Swiss (≈ 1.94 h boundary shift; steward M20261002T222913-35c5, D7/D8) ─────────────────────────────────────────────────
+def test_a_uniform_boundary_shift_with_every_lord_kept_is_CLEAN_and_the_moved_edges_are_only_boundary_sensitive():
+    old, new = build("old"), build("new", shift_s=6993)         # +6993 s ≈ 1.94 h on every edge
+    oi, ni = T.index_paths(old), T.index_paths(new)
+    m = T.match(oi, ni)
+    assert T.path_lord_flips(oi, ni, m["matched"]) == []        # lords hold at EVERY matched (level, path)
+    edge = ["2005-01-01T00:00:10Z"]
+    sens = T.lord_flips(old, new, edge)                          # the lord AT the old edge instant differs …
+    assert sens and sens[0]["old"]["AD"] == "Ketu" and sens[0]["new"]["AD"] == "Mercury"
+    good = dict(new_tier_ok=True, new_integrity={"orphans": [], "duplicates": 0}, m=m, ref_problems=[], forensic_report="f.md")
+    assert T.decide(**good, flips=T.path_lord_flips(oi, ni, m["matched"])) == []   # … but a moved boundary is NOT a STOP
+
+
+def test_a_lord_difference_at_ANY_matched_row_is_a_STOP_not_only_at_the_reference_rows():
+    old, new = build("old"), build("new", shift_s=6993)
+    new[-1]["lord_graha"] = "Rahu"                              # a non-reference row's lord changes
+    oi, ni = T.index_paths(old), T.index_paths(new)
+    m = T.match(oi, ni)
+    flips = T.path_lord_flips(oi, ni, m["matched"])
+    assert len(flips) == 1 and flips[0]["new"] == "Rahu"
+    good = dict(new_tier_ok=True, new_integrity={"orphans": [], "duplicates": 0}, m=m, ref_problems=[], forensic_report="f.md")
+    assert any("lord flip" in x for x in T.decide(**good, flips=flips))
+
+
+def test_oracle_instants_carry_each_pinned_edge_plus_and_minus_one_second():
+    inst = set(T.oracle_instants())
+    r = PERM.MD_ROWS[0]
+    for edge in (r["start_iso"], r["end_iso"]):
+        base = T._t(edge)
+        for d in (-1, 0, 1):
+            assert T.iso(base + timedelta(seconds=d)) in inst
+
+
+def test_rewrite_is_ONE_pass_a_new_value_equal_to_a_later_old_value_is_not_replaced_twice():
+    mapping = {"2010-08-18T15:50:23Z": "2010-08-18T17:46:56Z", "2010-08-18T17:46:56Z": "2010-08-18T19:43:29Z"}
+    assert T.rewrite_once("a 2010-08-18T15:50:23Z b 2010-08-18T17:46:56Z", mapping) == "a 2010-08-18T17:46:56Z b 2010-08-18T19:43:29Z"
+    assert T.rewrite_once("untouched", {}) == "untouched"
+
+
+def test_a_non_whole_second_new_instant_is_refused_by_apply(monkeypatch, tmp_path):
+    (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
+    (tmp_path / "tests" / "l3").mkdir(parents=True)
+    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    ref = PERM.AD_ROWS[0]
+    bad = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56.5Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    with pytest.raises(AssertionError, match="whole-second"):
+        T.apply_repin("22222222-2222-4222-8222-222222222222", bad, tmp_path)
