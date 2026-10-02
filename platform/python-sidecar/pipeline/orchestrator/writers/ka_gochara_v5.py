@@ -380,7 +380,7 @@ class GocharaV5Writer(WriterBase):
                 event_class=event_class, chart=chart, horizon=horizon,
                 sealed_paths=inv_store.sealed_rule_paths(),
                 capability=gk_inventory.SearchCapability(
-                    position_probe=True, arc_index=True, aspect_span_solver=False),
+                    position_probe=True, arc_index=True, aspect_span_solver=True),
                 path_exclusions=path_excl, h_unknown_exclusion=h_unknown,
                 dasha_rows=inv_store.consumed_dasha_rows(chart_id, GENERATION))
             out = inv_store.write_class_inventory(
@@ -415,7 +415,7 @@ class GocharaV5Writer(WriterBase):
         led = gk_verifier.rederive_ledger_digest(
             ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
             obligations=res["obligations"],
-            capability={"position_probe": True, "arc_index": True, "aspect_span_solver": False})
+            capability={"position_probe": True, "arc_index": True, "aspect_span_solver": True})
         db_led = ctx.db_conn.execute(
             "SELECT ledger_digest FROM public.ka_gochara_search_inventory WHERE chart_id = %s"
             " AND generation = %s AND event_class = %s", (chart_id, GENERATION, event_class)
@@ -424,12 +424,34 @@ class GocharaV5Writer(WriterBase):
             raise RuntimeError(
                 f"verify {event_class}: the independent LEDGER derivation (daśā cuts / "
                 f"resolved agents) disagrees with the stored ledger ({led} vs {db_led})")
+        # aspect-to-span: the builder derives these occurrences from residence spans; the verifier
+        # re-derives them by SAMPLING + BISECTION (no shared code, no crossings) and the two must
+        # agree — the capability the inventory claims is only earned if they do (steward
+        # M20261002T000907-c058 (b)). Any disagreement fails the build before a verification row exists.
+        horizon = ctx.config.get("horizon", DEFAULT_HORIZON)
+        ephe_path = ctx.config.get("ephe_path")
+
+        def position_at(body: str, t: datetime) -> float:
+            jd = t.timestamp() / 86400.0 + _JD_UNIX_EPOCH
+            lon, retflag = calc_sidereal_lon(body.title(), jd, ephe_path)
+            if not (retflag & 2):
+                raise RuntimeError(f"position probe {body} @ {t.isoformat()}: retflag {retflag} "
+                                   "lacks the Swiss bit (F-14)")
+            return lon
+
+        spans = gk_verifier.verify_aspect_span_contacts(
+            ctx.db_conn, chart_id=chart_id, generation=GENERATION, obligations=res["obligations"],
+            position_at=position_at, horizon=horizon,
+            _cache=self.__dict__.setdefault("_aspect_span_cache", {}))
         gk_verifier.write_verification(
             ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
             rederived_digest=res["digest"])
         return WriterResult(asset_id=self.asset_id, rows_inserted=1,
                             notes=f"verify {event_class}: inventory + ledger digests "
-                                  "independently reproduced; verification row written")
+                                  "independently reproduced; "
+                                  f"{spans['objects_checked']} aspect-to-span object(s) / "
+                                  f"{spans['occurrences']} occurrence(s) re-derived by sampling "
+                                  "and matched; verification row written")
 
     def _run_record_phase(self, ctx: ContextSpec, step: SubStep,
                           chart_id: str) -> WriterResult:

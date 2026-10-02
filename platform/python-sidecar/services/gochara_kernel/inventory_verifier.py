@@ -335,7 +335,8 @@ def rederive_ledger_digest(
             state = "searched_complete" if capability["position_probe"] else "missing_inputs"
         elif relation == "aspect" and ob.split("|")[6].startswith("span:"):
             # aspect-to-span (the aspect point's ingress into a house span) is not a point root
-            state = ("searched_complete" if capability.get("aspect_span_solver", False)
+            state = ("searched_complete" if (capability.get("aspect_span_solver", False)
+                                             and capability["position_probe"])
                      else "missing_inputs")
         elif relation in ("conjunction", "aspect"):
             state = "searched_complete" if capability["arc_index"] else "missing_inputs"
@@ -390,3 +391,118 @@ __all__ = ["Unverifiable", "VERIFIER_ID", "VERIFIER_VERSION", "derive_path_pin",
            "inventory_preimage", "read_chart", "rederive_inventory_digest",
            "rederive_ledger_digest",
            "write_verification"]
+
+
+# ── aspect-to-span occurrences, re-derived by SAMPLING + BISECTION (no shared code) ──────────────
+#
+# The builder derives an aspect-to-span occurrence from the body's residence spans over the aspect
+# SOURCE signs (crossing events + midpoint probes + contiguity merging). This is the independent
+# second reading: it never reads a crossing, a residence span or the builder's source-sign table. It
+# samples the body's longitude on a fixed grid, asks the plain geometric question "does any of the
+# body's aspect points lie in the target sign at t?", and bisects every change of that answer down to
+# `tol_seconds`. Disagreement between the two readings (a span the builder minted that sampling
+# cannot see, or one it missed) fails the build.
+
+#: the special-dṛṣṭi angles, BPHS ch.26 (bphs_vol1_rsanthanam_djvu.txt:16496-16505); N-14: the nodes
+#: cast none. Written out again here — this module imports nothing from the builder.
+_DRISHTI_DEG = {"sun": (180.0,), "moon": (180.0,), "mercury": (180.0,), "venus": (180.0,),
+                "mars": (90.0, 180.0, 210.0), "jupiter": (120.0, 180.0, 240.0),
+                "saturn": (60.0, 180.0, 270.0), "rahu": (), "ketu": ()}
+
+
+def rederive_aspect_span_runs(
+    position_at, *, body: str, target_sign_index: int, lo, hi,
+    step_hours: float = 6.0, tol_seconds: float = 1.0,
+) -> list[tuple[Any, Any]]:
+    """Maximal runs `[t_in, t_out)` inside `[lo, hi)` during which some aspect point of `body` lies in
+    the 0-based target sign. `t_in == lo` / `t_out == hi` where the run touches the window edge.
+    `position_at(body, t)` is the injected sidereal-longitude probe."""
+    from datetime import timedelta
+    angles = _DRISHTI_DEG[body.lower()]
+    if not angles:
+        return []
+
+    def aspected(t) -> bool:
+        lon = position_at(body, t)
+        return any(int(((lon + a) % 360.0) // 30.0) == target_sign_index for a in angles)
+
+    def bisect(a, b, fa):
+        """The instant in (a, b] at which `aspected` first differs from `fa` (monotone in [a, b])."""
+        while (b - a).total_seconds() > tol_seconds:
+            mid = a + (b - a) / 2
+            if aspected(mid) == fa:
+                a = mid
+            else:
+                b = mid
+        return b
+
+    step = timedelta(hours=step_hours)
+    runs: list[tuple[Any, Any]] = []
+    t = lo
+    state = aspected(t)
+    start = lo if state else None
+    while t < hi:
+        nxt = min(t + step, hi)
+        s2 = aspected(nxt) if nxt < hi else state     # the last sample IS the window end: no probe at hi
+        if nxt < hi and s2 != state:
+            edge = bisect(t, nxt, state)
+            if state:
+                runs.append((start, edge))
+                start = None
+            else:
+                start = edge
+            state = s2
+        t = nxt
+    if state and start is not None:
+        runs.append((start, hi))
+    return runs
+
+
+def verify_aspect_span_contacts(
+    conn: Any, *, chart_id: str, generation: str, obligations: Sequence[str], position_at,
+    horizon: tuple[Any, Any], tol_seconds: float = 3.0, step_hours: float = 6.0,
+    _cache: dict | None = None,
+) -> dict[str, int]:
+    """Re-derive every (agent, span) aspect-to-span object named by the class's obligations and compare
+    with the STORED contacts. Returns counts; raises `RuntimeError` on ANY disagreement (a missing run, an
+    extra one, or a boundary off by more than `tol_seconds`)."""
+    from datetime import timedelta
+    lo, hi = horizon
+    pairs = sorted({(ob.split("|")[3], ob.split("|")[6]) for ob in obligations
+                    if ob.split("|")[4] == "aspect" and ob.split("|")[6].startswith("span:")
+                    and not ob.split("|")[3].startswith("period_lord:")})
+    checked = runs_total = 0
+    for agent, target in pairs:
+        if not _DRISHTI_DEG.get(agent):
+            continue
+        target_idx = int(target.split(":")[1]) - 1
+        key = (agent, target_idx, lo, hi)
+        if _cache is not None and key in _cache:
+            derived = _cache[key]
+        else:
+            derived = rederive_aspect_span_runs(
+                position_at, body=agent, target_sign_index=target_idx, lo=lo, hi=hi,
+                step_hours=step_hours, tol_seconds=tol_seconds / 3.0)
+            if _cache is not None:
+                _cache[key] = derived
+        stored = conn.execute(
+            "SELECT c.t_in, c.t_out FROM public.ka_gochara_contact c"
+            " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = c.physical_object_id"
+            " WHERE c.chart_id = %s AND c.generation = %s AND o.body = %s"
+            "   AND o.relation_kind = 'aspect' AND o.canonical_target = %s ORDER BY c.t_in",
+            (chart_id, generation, agent, target)).fetchall()
+        tol = timedelta(seconds=tol_seconds)
+        if len(stored) != len(derived):
+            raise RuntimeError(
+                f"aspect-to-span {agent}->{target}: the independent sampling derivation finds "
+                f"{len(derived)} occurrence(s) in [{lo.isoformat()}, {hi.isoformat()}) but "
+                f"{len(stored)} contact(s) are stored — the two readings DISAGREE")
+        for (d_in, d_out), (s_in, s_out) in zip(derived, stored):
+            if abs(d_in - s_in) > tol or abs(d_out - s_out) > tol:
+                raise RuntimeError(
+                    f"aspect-to-span {agent}->{target}: derived run [{d_in.isoformat()}, "
+                    f"{d_out.isoformat()}) vs stored contact [{s_in.isoformat()}, "
+                    f"{s_out.isoformat()}) differ by more than {tol_seconds}s")
+        checked += 1
+        runs_total += len(derived)
+    return {"objects_checked": checked, "occurrences": runs_total}

@@ -68,7 +68,7 @@ from . import targets
 from .contacts import find_roots
 from .convention import ORB_TABLE
 from .evaluator import RULE_VERSION, RecordEdge, record_uuid
-from .materialise import (BoundaryCrossing, ResidenceSpan, mint_natal_record,
+from .materialise import (BoundaryCrossing, ResidenceSpan, aspect_spans, mint_natal_record,
                           mint_transit_records, residence_spans)
 from .substrate import (DB_BODY, SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START,
                         IdentityCollisionError, PhysicalObjectId,
@@ -671,7 +671,7 @@ class RecordStore:
         params = (
             chart_id, generation, str(contact.contact_id), str(poid.uuid),
             contact.occurrence_ordinal, convention_id, DB_BODY.get(poid.body, poid.body.lower()),
-            "residence", t_in, t_out, None if truncated else span.t_exact,
+            poid.relation_kind, t_in, t_out, None if truncated else span.t_exact,
             solver,
             None if truncated else (crossing.delta_lambda if crossing else None),
             None if truncated else (crossing.delta_t if crossing else None),
@@ -695,7 +695,7 @@ class RecordStore:
             (chart_id, generation, str(contact.contact_id)),
         ).fetchone()
         _byte_check(row, (str(poid.uuid), contact.occurrence_ordinal,
-                          DB_BODY.get(poid.body, poid.body.lower()), "residence"),
+                          DB_BODY.get(poid.body, poid.body.lower()), poid.relation_kind),
                     f"contact {contact.contact_id}")
 
     # ── point contacts (conjunction/aspect on point:<λ>, 3/N) ─────────────
@@ -915,12 +915,15 @@ def write_class_coverage(
                    if e.transit and e.relation == "aspect"
                    and e.obj.canonical_target.startswith("span:")]
     point_solved = bool(point) and arc_index_available
+    # aspect-to-span derives from the body's residence spans: searched iff the position probe is
+    aspect_span_solved = bool(aspect_span) and position_at is not None
     deferred = sorted({e.relation for e in class_edges
                        if e.transit and e.relation != "residence"
                        and e.relation not in POINT_KERNEL_RELATION})
     relations_searched = (
         (["residence"] if residence and position_at is not None else [])
         + (sorted({e.relation for e in point}) if point_solved else [])
+        + (["aspect"] if aspect_span_solved and not point_solved else [])
         + (["natal_fact"] if natal else []))
     unavailable: dict = {}
     unsearched_parts: list[str] = []
@@ -939,11 +942,11 @@ def write_class_coverage(
             "enumeration by rule: the Moon is an EPHEMERAL tier (AM-4) — served by a "
             "moon_on_demand partition at query time, never stored by this build")
         unsearched_parts.append("Moon-agent edges are on-demand (AM-4)")
-    if aspect_span:
+    if aspect_span and not aspect_span_solved:
         unavailable["aspect_span_solver"] = (
-            f"{len(aspect_span)} aspect-to-span edge(s) (the aspect point's ingress into a house "
-            "span) have no solver in this slice — unsolved, named, never fabricated")
-        unsearched_parts.append("aspect-to-span (aspect point ingress) has no solver")
+            f"{len(aspect_span)} aspect-to-span edge(s) need the position probe (they derive from "
+            "the body's residence spans) — unsolved, named, never fabricated")
+        unsearched_parts.append("aspect-to-span needs the position probe")
     unsearched = "; ".join(unsearched_parts) or None
     if residence and position_at is None:
         unavailable["position_probe"] = ("ephemeris probe unavailable — no "
@@ -951,8 +954,8 @@ def write_class_coverage(
         unsearched = "; ".join(x for x in (
             unsearched, "residence spans underived without a position probe") if x)
     eps: list[float] = []
-    if residence and position_at is not None:
-        for body in sorted({e.agent for e in residence}):
+    if (residence or aspect_span_solved) and position_at is not None:
+        for body in sorted({e.agent for e in residence + (aspect_span if aspect_span_solved else [])}):
             eps += [c.delta_lambda * 3600.0
                     for c in store.fetch_crossings(body, sky_convention_id)
                     if c.delta_lambda is not None]
@@ -964,6 +967,7 @@ def write_class_coverage(
                                      "relations — resolution not applicable "
                                      "(0.0 is a non-claim)")
     searched = (len(residence if position_at is not None else [])
+                + (len(aspect_span) if aspect_span_solved else 0)
                 + (len(point) if point_solved else 0) + len(natal))
     total = len(class_edges)
     if inventory_facts is not None:
@@ -1036,9 +1040,11 @@ def materialise_record_grain(
     point_edges = [e for e in edges
                    if e.transit and e.relation in POINT_KERNEL_RELATION
                    and e.obj.canonical_target.startswith("point:")]
-    aspect_span_deferred = sum(
-        1 for e in edges if e.transit and e.relation == "aspect"
-        and e.obj.canonical_target.startswith("span:"))
+    aspect_span_edges = [e for e in edges if e.transit and e.relation == "aspect"
+                         and e.obj.canonical_target.startswith("span:")]
+    # aspect-to-span derives from the body's residence spans (like residence itself), so it needs
+    # the position probe: without one nothing is minted — counted and named, never fabricated
+    aspect_span_deferred = len(aspect_span_edges) if position_at is None else 0
     natal_edges = [e for e in edges if not e.transit]
     skipped_natal_p1 = 0
     if path_id == "P1":
@@ -1083,8 +1089,8 @@ def materialise_record_grain(
     # with the requested horizon. One crossing read + one span set per body.
     spans_by_body: dict[str, list[ResidenceSpan]] = {}
     crossings_by_body: dict[str, dict[datetime, CrossingInfo]] = {}
-    if residence_edges and position_at is not None:
-        for body in sorted({e.agent for e in residence_edges}):
+    if (residence_edges or aspect_span_edges) and position_at is not None:
+        for body in sorted({e.agent for e in residence_edges + aspect_span_edges}):
             infos = store.fetch_crossings(body, sky_convention_id)
             crossings_by_body[body] = {c.t: c for c in infos}
             spans_by_body[body] = residence_spans(
@@ -1099,16 +1105,38 @@ def materialise_record_grain(
     # anchor is unknown is NOT minted (a state, never an omission).
     h_start, h_end = horizon
     work: list[tuple[RecordEdge, dict, int]] = []
-    for e in residence_edges:
+    for e in residence_edges + (aspect_span_edges if position_at is not None else []):
         body_spans = spans_by_body.get(e.agent, [])
         if not body_spans:
             continue
+        if e.relation == "aspect":
+            # aspect-to-span: the contiguous runs of the body's residence spans over the aspect
+            # source signs, labelled with the target sign (materialise.aspect_spans)
+            body_spans = aspect_spans(
+                body_spans, body=e.agent,
+                target_sign=targets.span_sign_name(e.obj.canonical_target))
+            if not body_spans:
+                continue
         for m in mint_transit_records(
                 e, body_spans, chart_id=chart_id, generation=generation,
                 prerequisites=prerequisites):
             span = m["span"]
             if not (span.t_in < h_end and (span.t_out is None or span.t_out > h_start)):
                 continue  # full-domain span outside the requested horizon
+            # The stored contact and record SUPPORT must lie inside the class partition's
+            # completed horizon (F7/C7, enforced by the database): clip the full-domain span to the
+            # requested half-open horizon [h_start, h_end). An ingress before h_start is not an
+            # exact instant of THIS horizon — t_exact NULL, a truncated span (N3), never absence;
+            # an egress after h_end is open-ended (t_out NULL ⇒ truncated at the horizon's end).
+            # Identity is untouched: ordinals were assigned over the full-domain set above.
+            span = ResidenceSpan(
+                sign=span.sign, t_in=max(span.t_in, h_start),
+                t_out=span.t_out if (span.t_out is not None and span.t_out <= h_end) else None,
+                t_exact=(span.t_exact if (span.t_exact is not None
+                                          and h_start <= span.t_exact < h_end) else None),
+                truncated=span.truncated or span.t_in < h_start
+                or span.t_out is None or span.t_out > h_end)
+            m = {**m, "span": span, "span_full_domain": m["span"]}
             house = house_for(e, span.sign)
             if house is None:
                 continue
@@ -1167,7 +1195,7 @@ def materialise_record_grain(
     supports_by_agent: dict[str, list[tuple[datetime, datetime]]] = {}
     searched_agents: set[str] = set()
     if position_at is not None:
-        searched_agents |= {e.agent for e in residence_edges}
+        searched_agents |= {e.agent for e in residence_edges + aspect_span_edges}
     if arc_index_for is not None:
         searched_agents |= {e.agent for e in point_edges}
     for edge, m, house in work:
@@ -1180,13 +1208,14 @@ def materialise_record_grain(
             horizon_end=h_end)
         counts["contacts"] += 1
         counts["truncated_contacts"] += 1 if span.t_exact is None else 0
-        precision = None
-        if span.t_exact is not None:
-            precision = {
-                "solver_method": crossing.solver_method if crossing else "swiss_refined",
-                "delta_lambda": crossing.delta_lambda if crossing else None,
-                "delta_t": crossing.delta_t if crossing else None,
-            }
+        # kgrr_transit_natal_ck: a TRANSIT record always restates a precision object (N7); a
+        # truncated contact restates 'clipped_truncated' with null deltas (1155 precision_ok)
+        precision = ({
+            "solver_method": crossing.solver_method if crossing else "swiss_refined",
+            "delta_lambda": crossing.delta_lambda if crossing else None,
+            "delta_t": crossing.delta_t if crossing else None,
+        } if span.t_exact is not None else {
+            "solver_method": "clipped_truncated", "delta_lambda": None, "delta_t": None})
         interval = f"[{span.t_in.isoformat()},{(span.t_out or h_end).isoformat()})"
         store.insert_record(
             chart_id=chart_id, generation=generation, edge=edge,
@@ -1197,10 +1226,13 @@ def materialise_record_grain(
             coverage_facts=coverage_facts, source_fact_ids=source_fact_ids,
             prerequisites=prerequisites, house_from_frame=house)
         counts["records"] += 1
+        full = m["span_full_domain"]
         evaluated.append({
             "record_id": m["record_id"], "edge": edge, "kind": "transit",
             "house": house,
-            "instant": span.t_exact or span.t_in,
+            # the occurrence instant is the EXACT ingress even when it lies before the requested
+            # horizon (the stored contact is clipped; the evaluation is not — v1.5 binding)
+            "instant": full.t_exact or full.t_in,
             "support": (span.t_in, span.t_out or h_end)})
         supports_by_agent.setdefault(edge.agent, []).append(
             (span.t_in, span.t_out or h_end))
@@ -1210,13 +1242,12 @@ def materialise_record_grain(
             poid=edge.obj, convention_id=sky_convention_id)
         counts["contacts"] += 1
         counts["truncated_contacts"] += 1 if occ.truncated else 0
-        precision = None
-        if occ.t_exact is not None:
-            precision = {
-                "solver_method": occ.solver_method,
-                "delta_lambda": occ.delta_lambda,
-                "delta_t": occ.delta_t,
-            }
+        precision = ({
+            "solver_method": occ.solver_method,
+            "delta_lambda": occ.delta_lambda,
+            "delta_t": occ.delta_t,
+        } if occ.t_exact is not None else {
+            "solver_method": "clipped_truncated", "delta_lambda": None, "delta_t": None})
         interval = f"[{occ.t_in.isoformat()},{occ.t_out.isoformat()})"
         store.insert_record(
             chart_id=chart_id, generation=generation, edge=edge,

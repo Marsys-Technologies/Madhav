@@ -96,13 +96,11 @@ def test_the_seal_check_then_reports_only_what_is_genuinely_unfinished(run):
     found = {v for _c, v in _violations(conn)}
     assert "partition_overclaims" not in found
     assert not found & {"committed_set_mismatch", "inventory_digest_mismatch",
+                        "obligation_uncovered", "missing_inputs_present",
                         "input_snapshot_drift", "input_snapshot_mismatch",
                         "input_vector_mismatch", "horizon_manifest_mismatch",
                         "registry_unaccounted_path", "inventory_not_finalised"}, found
     assert "verification_missing_or_mismatch" in found      # not verified yet
-    # P3's aspect-to-span obligations have NO solver in this slice: they stay `missing_inputs`
-    # (and so uncovered) — an honest, named seal refusal, not a green the writer did not earn
-    assert {"missing_inputs_present", "obligation_uncovered"} <= found, found
 
 
 def test_the_verifier_refuses_a_class_with_a_path_it_cannot_derive_and_the_note_says_so(run):

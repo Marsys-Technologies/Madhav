@@ -163,11 +163,16 @@ def test_interval_states_follow_the_search_capability_never_assumed():
     no_arc = _plan(cap=inv.SearchCapability(position_probe=True, arc_index=False,
                                             aspect_span_solver=True))
     by_ob = lambda plan: {o.ob_id: o for o in plan.obligations}  # noqa: E731
-    for plan, relations in ((no_probe, {"residence"}), (no_arc, {"conjunction", "aspect"})):
+    # no probe: residence is unsearched AND so is aspect-to-span (it derives from the residence
+    # spans); the POINT aspects (arc index) are still searched
+    kinds = lambda plan: {  # noqa: E731
+        (by_ob(plan)[iv.ob_id].relation,
+         by_ob(plan)[iv.ob_id].target.split(":")[0])
+        for iv in plan.intervals if iv.state == "missing_inputs" and by_ob(plan)[iv.ob_id].transit}
+    assert kinds(no_probe) == {("residence", "span"), ("aspect", "span")}
+    assert kinds(no_arc) == {("conjunction", "point"), ("aspect", "point")}
+    for plan in (no_probe, no_arc):
         obs = by_ob(plan)
-        missing = {obs[iv.ob_id].relation for iv in plan.intervals
-                   if iv.state == "missing_inputs" and obs[iv.ob_id].transit}
-        assert missing == relations
         # an atemporal natal fact is evaluated from L1 whatever the solver set
         assert all(iv.state == "searched_complete" for iv in plan.intervals
                    if not obs[iv.ob_id].transit)
@@ -454,7 +459,8 @@ def test_the_verifier_imports_nothing_from_the_builder():
                  "record_store", "gochara_rules", "gochara_kernel")
     bad = {m for m in imported if any(f in m.replace("inventory_verifier", "") for f in forbidden)}
     assert not bad, f"the verifier must be independent of the builder: {bad}"
-    assert imported <= {"__future__", "hashlib", "typing", "decimal"}, imported
+    # stdlib only (the aspect-to-span re-derivation needs `datetime.timedelta`)
+    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime"}, imported
 
 
 def test_the_seal_check_sees_exactly_what_is_missing_after_the_builder_alone(am5):

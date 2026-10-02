@@ -172,8 +172,9 @@ class SearchCapability:
 
     position_probe: bool
     arc_index: bool
-    #: aspect-to-span (the aspect point's ingress into a house span) has NO solver in this slice:
-    #: such obligations are `missing_inputs` (a seal refusal by design) until one lands.
+    #: aspect-to-span (the aspect point's ingress into a house span): derived from the body's
+    #: residence spans (materialise.aspect_spans), so it is searched only with the position probe
+    #: AND this flag — flipped on only once the independent oracle derives the same spans.
     aspect_span_solver: bool = False
 
 
@@ -210,7 +211,7 @@ def _interval_state(o: Obligation, cap: SearchCapability) -> str:
         return STATE_COMPLETE if cap.position_probe else STATE_MISSING
     if o.relation == "aspect" and o.target.startswith("span:"):
         # aspect-to-span is not a point root: the arc index alone does not search it
-        return STATE_COMPLETE if cap.aspect_span_solver else STATE_MISSING
+        return STATE_COMPLETE if (cap.aspect_span_solver and cap.position_probe) else STATE_MISSING
     if o.relation in ("conjunction", "aspect"):
         return STATE_COMPLETE if cap.arc_index else STATE_MISSING
     return STATE_MISSING               # a transit relation this build has no solver for

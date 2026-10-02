@@ -13,6 +13,15 @@ occurrences and mint one record per occurrence:
     calls an ephemeris itself). This handles every case uniformly: direct
     passage, retrograde re-entry across the SAME boundary (equal consecutive
     levels — ambiguous without a probe, never guessed), and the 0° seam.
+  * aspect on span:<X> (aspect-to-span, evaluator E8: "the aspect point's ingress into the span") —
+    each special-dṛṣṭi angle (SPECIAL_DRISHTI_DEG, BPHS ch.26; nodes cast none, N-14) is a whole
+    number of signs, so a body aspects sign X exactly while it RESIDES in a source sign
+    X − angle/30 (mod 12). The occurrences are the maximal CONTIGUOUS runs of the body's residence
+    spans over those source signs (union within an agent: a body that passes straight from one
+    source sign into the next is aspecting continuously — one occurrence), labelled with the target
+    sign. They inherit the residence derivation's half-open [t_in, t_out) intervals, its
+    multi-revolution handling (every crossing of the full-domain crossing set) and its N3
+    truncation flags.
   * horizon truncation: a span whose ingress lies outside the horizon is
     TRUNCATED (t_exact NULL, N3; solver_method 'clipped_truncated' per
     kgc_solver_method_ck) — kept as a span, never treated as absence
@@ -32,8 +41,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable, Sequence
 
-from services.gochara_rules.frames import sign_of
+from services.gochara_rules.frames import SIGNS, sign_of
 from . import targets
+from .convention import SPECIAL_DRISHTI_DEG
 from .evaluator import RecordEdge, record_uuid
 from .substrate import PhysicalObjectId, SubstrateContact
 
@@ -115,6 +125,49 @@ def residence_spans(
     return spans
 
 
+def aspect_source_signs(body: str, target_sign_index: int) -> frozenset[int]:
+    """0-based sign indexes whose residents aspect sign `target_sign_index` (0-based): each
+    special-dṛṣṭi angle of `body` shifts a whole number of signs (all pinned angles are multiples
+    of 30°), so the source of an aspect onto X is X − angle/30 (mod 12). Nodes: empty (N-14)."""
+    out = set()
+    for angle in SPECIAL_DRISHTI_DEG.get(body.title(), []):
+        if angle % 30.0:
+            raise ValueError(f"{body}: dṛṣṭi angle {angle}° is not a whole number of signs — "
+                             "the sign-based aspect derivation does not apply")
+        out.add((target_sign_index - int(angle // 30.0)) % 12)
+    return frozenset(out)
+
+
+def aspect_spans(
+    body_spans: Sequence[ResidenceSpan], *, body: str, target_sign: str,
+) -> list[ResidenceSpan]:
+    """The aspect-to-span occurrences of `body` onto `target_sign` over the span set's domain:
+    the maximal CONTIGUOUS runs (equal consecutive crossing instants — the same boundary event)
+    of the body's residence spans over the aspect source signs, labelled with the TARGET sign.
+
+    `t_exact` is the ingress into the first source sign of the run (None when the run starts at
+    the domain's start — truncated, N3); `t_out` is the egress from the last (None when it runs
+    to the domain's end). A body that leaves a source sign for a non-source sign and later
+    returns (retrograde loops, ordinary revolutions) yields separate occurrences."""
+    target_idx = [n.lower() for n in targets.SIGN_NAMES].index(target_sign.lower())
+    sources = {SIGNS[i].lower() for i in aspect_source_signs(body, target_idx)}
+    if not sources:
+        return []
+    mine = sorted((s for s in body_spans if s.sign.lower() in sources), key=lambda s: s.t_in)
+    runs: list[list[ResidenceSpan]] = []
+    for span in mine:
+        if runs and runs[-1][-1].t_out is not None and runs[-1][-1].t_out == span.t_in:
+            runs[-1].append(span)
+        else:
+            runs.append([span])
+    label = SIGNS[target_idx]
+    return [
+        ResidenceSpan(
+            sign=label, t_in=run[0].t_in, t_out=run[-1].t_out, t_exact=run[0].t_exact,
+            truncated=run[0].truncated or run[-1].truncated)
+        for run in runs]
+
+
 def spans_for_object(
     spans: Sequence[ResidenceSpan],
     obj: PhysicalObjectId,
@@ -147,10 +200,12 @@ def mint_transit_records(
 ) -> list[dict]:
     """One record per contact occurrence of a transit residence edge.
     Returns dicts: {natural_key, record_id, contact, span}."""
-    assert edge.transit and edge.relation == "residence", (
-        f"mint_transit_records: {edge.relation} edge — only residence spans "
-        "materialise through this path (aspect/conjunction solve per the "
-        "boundary solver; natal facts mint directly)")
+    assert edge.transit and (
+        edge.relation == "residence"
+        or (edge.relation == "aspect" and edge.obj.canonical_target.startswith("span:"))), (
+        f"mint_transit_records: {edge.relation} edge on {edge.obj.canonical_target} — only "
+        "residence spans and aspect-to-span spans materialise through this path (point "
+        "conjunction/aspect solve per the boundary solver; natal facts mint directly)")
     sign = targets.span_sign_name(edge.obj.canonical_target)
     mine = sorted(
         (s for s in spans if s.sign.lower() == sign.lower()),
@@ -192,6 +247,8 @@ def mint_natal_record(
 
 __all__ = [
     "BoundaryCrossing",
+    "aspect_source_signs",
+    "aspect_spans",
     "ResidenceSpan",
     "mint_natal_record",
     "mint_transit_records",

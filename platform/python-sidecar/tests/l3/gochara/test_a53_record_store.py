@@ -180,20 +180,24 @@ def test_class_coverage_names_the_search_and_the_deferrals():
     assert kinds[0] == "fetch_crossings"   # resolution restatement read
     assert "ensure_bridge" in kinds and kinds.index("ensure_bridge") < kinds.index("write_coverage")
     cov = [kw for k, kw in store.calls if k == "write_coverage"][0]
-    assert cov["relations_searched"] == ["residence", "natal_fact"]
+    # aspect-to-span derives from the residence spans: searched whenever the probe is (the point
+    # conjunction is not — no arc index in this run — so it stays named below)
+    assert cov["relations_searched"] == ["residence", "aspect", "natal_fact"]
     assert cov["resolution"] == pytest.approx(2.0)  # N7 restatement, arcsec
     assert rs.DEFERRAL_POINT_SOLVE in cov["unsearched_reason"]
     # edge-level counts over the FULL class enumeration: the residence +
     # natal edges searched, the conjunction edge unavailable
-    residence = [e for e in class_edges if e.transit and e.relation == "residence"]
+    span_searched = [e for e in class_edges if e.transit and (
+        e.relation == "residence"
+        or (e.relation == "aspect" and e.obj.canonical_target.startswith("span:")))]
     natal = [e for e in class_edges if not e.transit]
     assert cov["targets_requested"] == len(class_edges) + 1
-    assert cov["targets_resolved"] == len(residence) + len(natal)
-    assert cov["state_counts"] == {"resolved": len(residence) + len(natal),
+    assert cov["targets_resolved"] == len(span_searched) + len(natal)
+    assert cov["state_counts"] == {"resolved": len(span_searched) + len(natal),
                                    "unavailable": len(class_edges) + 1
-                                   - len(residence) - len(natal),
+                                   - len(span_searched) - len(natal),
                                    "unqualified": 0}
-    assert "aspect-to-span" in cov["unsearched_reason"]
+    assert "aspect-to-span" not in cov["unsearched_reason"]      # it IS searched with the probe
 
 
 def test_class_coverage_missing_probe_is_a_named_non_claim():
@@ -444,12 +448,12 @@ def test_grain_end_to_end_on_disposable_pg(pg):
     # 3/N: with the arc index available the class coverage names the POINT solves as searched.
     # Not every enumerated P3 edge is resolved any more: Moon-agent edges are the EPHEMERAL tier
     # (AM-4) and aspect-to-span edges have no solver in this slice — both named, never claimed.
-    all_edges = ev.enumerate_edges("marriage", "P3", CHART)       # the STORED set: no Moon agent
-    resolved = [e for e in all_edges if not (e.transit and e.relation == "aspect"
-                                             and e.obj.canonical_target.startswith("span:"))]
-    assert 0 < len(resolved) < len(all_edges)
+    # with the probe AND the arc index every STORED P3 edge (Moon-agent edges are the EPHEMERAL
+    # tier, excluded by rule — AM-4) is searched: residence, aspect-to-span (derived from the
+    # residence spans), the point solves and the natal facts
+    all_edges = ev.enumerate_edges("marriage", "P3", CHART)
     assert cov == ("marriage", ["residence", "aspect", "conjunction", "natal_fact"],
-                   len(resolved))
+                   len(all_edges))
 
 
 def test_grain_rerun_is_idempotent(pg):
@@ -788,9 +792,11 @@ def test_p1_period_running_at_domain_start_truncated_uses_observed_span_start():
 
 
 def test_p1_period_running_at_ingress_before_horizon_uses_the_exact_ingress():
-    """An ingress BEFORE the horizon is not truncated under the full-domain
-    derivation: its exact instant is known, and period_running_at is judged at
-    THAT instant — not at the clipped horizon start."""
+    """An ingress BEFORE the horizon: the stored contact must lie inside the class partition's
+    completed horizon (F7/C7, enforced by the database), so it is CLIPPED to the horizon and kept
+    as a truncated span (t_exact NULL, N3 — never absence). The occurrence instant the prerequisite
+    is judged at is still the exact full-domain ingress — period_running_at is evaluated at THAT
+    instant, not at the clipped horizon start."""
     edge = _p1_libra_edge("saturn")
     store = FakeStore({"saturn": [_crossing(-500, 180.0),
                                   _crossing(200, 210.0)]})
@@ -800,7 +806,7 @@ def test_p1_period_running_at_ingress_before_horizon_uses_the_exact_ingress():
         {"saturn": [{"start_iso": T0 - 10 * DAY, "end_iso": T0 + 10 * DAY}]})
     kw["position_at"] = _probe([(-500, 200)])
     counts = rs.materialise_record_grain(store, **kw)
-    assert counts["records"] == 1 and counts["truncated_contacts"] == 0
+    assert counts["records"] == 1 and counts["truncated_contacts"] == 1     # clipped to the horizon
     assert _results(store, "period_running_at") == ["false"]
 
 
