@@ -10,9 +10,11 @@ THE METHOD. A disposable local PostgreSQL (initdb in a temp dir, unix socket onl
 credential) holds two databases built from the LIVE DDL shape of `public.ephemeris_daily` (read as suvarna_reader,
 2026-10-02, snapshot below):
 
-    db_true   TRUE rows only, the CURRENT key  UNIQUE (date, body, ayanamsha_id)  + the step-0 index (1227)
-    db_mixed  the same TRUE rows + a synthetic MEAN Rahu/Ketu set, the post-1250 key (the 3-column constraint
-              dropped; UNIQUE (date, body, ayanamsha_id, node_mode) NULLS NOT DISTINCT only)
+    db_true          TRUE rows only, the CURRENT key  UNIQUE (date, body, ayanamsha_id)  + the step-0 index (1227)
+    db_mixed         the same TRUE rows + a synthetic MEAN Rahu/Ketu set, the post-1250 key (the 3-column constraint
+                     dropped; UNIQUE (date, body, ayanamsha_id, node_mode) NULLS NOT DISTINCT only)
+    db_true_missing  db_mixed with the TRUE Rahu/Ketu rows REMOVED (MEAN present): the state a reader must not "repair"
+                     by silently reading the MEAN series. A reader that REQUIRES the node rows must refuse loudly here.
 
 Each registered reader is run against both and the results compared (volatile timestamps scrubbed). The synthetic
 MEAN set is plausible: mean Rahu retrogrades at a constant 0.0529 deg/day, mean Ketu = mean Rahu + 180 with the
@@ -219,8 +221,22 @@ class Cluster:
 @dataclass
 class Ctx:
     """What a reader driver gets: a live autocommit connection and the DSN a route would read from DATABASE_URL."""
-    conn: Any
+    conn: Any            # psycopg2, autocommit (the L0 readers take a psycopg2 connection)
     dsn: str
+    _pg3: Any = None
+
+    @property
+    def pg3(self):
+        """A psycopg (v3) autocommit connection to the same database: the orchestrator writers use psycopg.rows."""
+        if self._pg3 is None:
+            import psycopg
+            self._pg3 = psycopg.connect(self.dsn, autocommit=True)
+        return self._pg3
+
+    def close(self):
+        if self._pg3 is not None:
+            self._pg3.close()
+        self.conn.close()
 
     @contextlib.contextmanager
     def database_url(self):
@@ -247,10 +263,10 @@ def cluster():
     c = Cluster(bindir)
     try:
         admin = c.connect("postgres")
-        for db in ("db_true", "db_mixed"):
+        for db in ("db_true", "db_mixed", "db_true_missing"):
             admin.cursor().execute(f"CREATE DATABASE {db}")
         admin.close()
-        for db, mixed in (("db_true", False), ("db_mixed", True)):
+        for db, mixed in (("db_true", False), ("db_mixed", True), ("db_true_missing", True)):
             conn = c.connect(db)
             cur = conn.cursor()
             cur.execute(LIVE_DDL)
@@ -260,6 +276,8 @@ def cluster():
             cur.executemany(INSERT, _rows_true())
             if mixed:                                                  # post-1250: only the four-column key exists
                 cur.executemany(INSERT, _rows_mean())
+            if db == "db_true_missing":
+                cur.execute("DELETE FROM public.ephemeris_daily WHERE body IN ('Rahu', 'Ketu') AND node_mode = 'true'")
             conn.close()
         yield c
     finally:
@@ -269,15 +287,25 @@ def cluster():
 @pytest.fixture(scope="module")
 def ctx_true(cluster):
     conn = cluster.connect("db_true")
-    yield Ctx(conn, cluster.dsn("db_true"))
-    conn.close()
+    ctx = Ctx(conn, cluster.dsn("db_true"))
+    yield ctx
+    ctx.close()
 
 
 @pytest.fixture(scope="module")
 def ctx_mixed(cluster):
     conn = cluster.connect("db_mixed")
-    yield Ctx(conn, cluster.dsn("db_mixed"))
-    conn.close()
+    ctx = Ctx(conn, cluster.dsn("db_mixed"))
+    yield ctx
+    ctx.close()
+
+
+@pytest.fixture(scope="module")
+def ctx_true_missing(cluster):
+    conn = cluster.connect("db_true_missing")
+    ctx = Ctx(conn, cluster.dsn("db_true_missing"))
+    yield ctx
+    ctx.close()
 
 
 # ------------------------------------------------------------------------------------------- normalisation
@@ -317,6 +345,9 @@ class Reader:
     kind: str                                  # SAME | LOUD | LEGACY | NOT_DRIVEN
     run: Callable[[Ctx], Any] | None = None
     reason: str = ""                           # required for NOT_DRIVEN and LEGACY
+    # what the reader does when the TRUE node rows are absent and the MEAN ones are present: None = not asserted,
+    # LOUD = it must raise (a reader that REQUIRES the node series and must never fall back to the MEAN one)
+    when_true_missing: str | None = None
 
 
 def _route(fn, *a, **kw):
@@ -362,6 +393,12 @@ def _driven() -> list[Reader]:
                       _route(routes.get_all_bodies_range, W0, W1, count_only=True, ayanamsha_id="tropical")))
     out.append(Reader("S11", "S11 /native_lifetime_meta", SAME,
                       _route(routes.get_native_lifetime_meta, start_date="2026-01-01", end_date="2026-12-31", count_only=False)))
+
+    def kota(ctx: Ctx):
+        from services.ka_kota_chakra import writer as kota_writer
+        return kota_writer._fetch_daily_nak_idx_by_graha(ctx.pg3, DAYS[0], DAYS[-1], 23.9)
+
+    out.append(Reader("P4", "P4 ka_kota_chakra._fetch_daily_nak_idx_by_graha", SAME, kota, when_true_missing=LOUD))
     return out
 
 
@@ -378,7 +415,6 @@ def _not_driven() -> list[Reader]:
     nd = lambda rid, reason: Reader(rid, rid, NOT_DRIVEN, None, reason)  # noqa: E731
     return [
         nd("P3", "ka_kshetra stage 0 (stage0_kinematics.fetch_ephemeris_series): travels with the I-10 digest move (PR E, prepared last)"),
-        nd("P4", "ka_kota_chakra writer: driven by PR B of the NODE-SERIES step-1 stack"),
         nd("P8", "ka_graha_sancara engine PATH-A: driven by PR C of the NODE-SERIES step-1 stack"),
         nd("P9", "phala/muhurta grading reads through P8 (get_ephemeris): driven with PR C"),
         nd("L1-e", "get_av_transit_gating is a TypeScript tool over HTTP /planet_transit (= S2, driven above); its INPUT guard is PR D"),
@@ -496,6 +532,14 @@ def test_reader_refuses_loudly_instead_of_reading_both_series(reader, ctx_true, 
     reader.run(ctx_true)                                                  # the TRUE-only table is served normally
     with pytest.raises((NodeSeriesError, RuntimeError, ValueError)):
         reader.run(ctx_mixed)
+
+
+@pytest.mark.parametrize("reader", [pytest.param(r, id=r.label) for r in _RUNNABLE if r.when_true_missing == LOUD])
+def test_a_required_path_reader_refuses_loudly_when_the_true_series_is_absent_and_the_mean_one_present(reader, ctx_true, ctx_true_missing):
+    """The reader must not 'repair' a hole in the TRUE series by reading MEAN: it raises NodeSeriesError (or an explicit error)."""
+    reader.run(ctx_true)                                                  # served normally on the TRUE-only table
+    with pytest.raises((NodeSeriesError, RuntimeError, ValueError)):
+        reader.run(ctx_true_missing)
 
 
 def test_the_proof_is_not_vacuous_the_mean_series_changes_the_node_longitudes(ctx_true, ctx_mixed):

@@ -175,16 +175,6 @@
       "note": "P8 PATH-A: last-row-wins body_map over an arbitrary tie order (Rahu/Ketu TRUE or MEAN by row order); feeds ph muhurta (P9). Step 1: NULL-safe pin to 'true' (PATH-A == PATH-B TRUE); switch to MEAN only together with PATH-B in step 3."
     },
     {
-      "file": "platform/python-sidecar/services/ka_kota_chakra/writer.py",
-      "anchor": "<module>._FETCH_EPHEMERIS_RANGE_SQL",
-      "count": 1,
-      "lines_at_rollout": [
-        96
-      ],
-      "owner": "Suvarna",
-      "note": "P4: SILENT duplicate per-date nakshatra entries for Rahu/Ketu windows. Step 1: NODE_SERIES_PREDICATE pin (output unchanged)."
-    },
-    {
       "file": "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py",
       "anchor": "fetch_ephemeris_series",
       "count": 1,
@@ -333,6 +323,13 @@
       "was_count": 1,
       "retired_by": "NODE-SERIES step 1 PR A (L0 pinned query module + routes)",
       "note": "S11 /native_lifetime_meta pinned in place with NODE_SERIES_PREDICATE. The hard-coded expected_rows (157266) and coverage_pct are UNCHANGED (served numbers are not touched in step 1); deriving them from days x bodies is a wave 2 item."
+    },
+    {
+      "file": "platform/python-sidecar/services/ka_kota_chakra/writer.py",
+      "anchor": "<module>._FETCH_EPHEMERIS_RANGE_SQL",
+      "was_count": 1,
+      "retired_by": "NODE-SERIES step 1 PR B (P4 ka_kota_chakra)",
+      "note": "P4 pinned with NODE_SERIES_PREDICATE (output unchanged on the TRUE-only table); _fetch_daily_nak_idx_by_graha now raises NodeSeriesError on two rows for one (node, date) and on a node with no row or a hole in its dates (loud; the non-node gap handling stays the writer's own graceful refusal). MEAN only with the step-3 switch."
     }
   ]
 }
