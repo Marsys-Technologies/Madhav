@@ -575,8 +575,8 @@ def test_retries_from_v2_reads_jobs_and_executions_and_never_defaults():
     assert vjc.retries_from_v2({"template": {"template": {"maxRetries": 0}}}, "job") == 0
     assert vjc.retries_from_v2({"template": {"maxRetries": 0}}, "execution") == 0
     assert vjc.retries_from_v2({"template": {"template": {}}}, "job") is None
-    assert vjc.retries_from_v2({"template": {"maxRetries": True}}, "execution") is None
-    assert vjc.retries_from_v2(None, "job") is None
+    assert vjc.retries_from_v2({"template": {"maxRetries": True}}, "execution") is vjc.INVALID           # R16-5: present but invalid is NOT absence
+    assert vjc.retries_from_v2(None, "job") is None                                                      # not supplied
 
 
 PROD = {"commit": SHA, "execution_id": PEID, "image_digest": IMG}
@@ -815,9 +815,50 @@ def test_parse_int64_and_parse_quantity_directly():
     assert all(q(v) is None for v in (8, True, "1.5", "1e3", "-1", "8gi", " 8Gi", "8Gi ", "", None))
 
 
+# R16-5: invalid-present v2 retries refuse (never read as absence); both documents are scanned for the annotation on EVERY path; the int64 domain is enforced
+@pytest.mark.parametrize("bad", [False, True, "garbage", "07", "-1", -1, 2**63, "9223372036854775808", 1.5, [], {}])
+def test_an_invalid_present_v2_retries_value_is_INVALID_not_absent_and_refuses_even_when_v1_is_a_valid_zero(bad):
+    assert xcheck_contract.retries_from_v2({"template": {"maxRetries": bad}}, "execution") is xcheck_contract.INVALID
+    with pytest.raises(xc.Refused, match="not a valid non-negative integer"):
+        xcheck(execution(), v2_execution={"template": {"maxRetries": bad}})                       # v1 carries a valid 0; the invalid v2 value still refuses
+
+
+def test_absent_v2_retries_is_None_and_a_non_object_document_or_template_is_invalid():
+    assert xcheck_contract.retries_from_v2({}, "execution") is None
+    assert xcheck_contract.retries_from_v2({"template": {}}, "execution") is None
+    assert xcheck_contract.retries_from_v2({"template": {"maxRetries": None}}, "execution") is None          # JSON null = unset
+    assert xcheck_contract.retries_from_v2({"template": {"template": {}}}, "job") is None
+    assert xcheck_contract.retries_from_v2([], "job") is xcheck_contract.INVALID
+    assert xcheck_contract.retries_from_v2({"template": "x"}, "job") is xcheck_contract.INVALID
+    assert xcheck_contract.retries_from_v2({"template": {"template": 5}}, "job") is xcheck_contract.INVALID
+    assert xcheck_contract.retries_from_v2({"template": {"template": {"maxRetries": "0"}}}, "job") == 0       # a canonical int64 STRING is valid
+
+
+def test_the_int64_domain_is_non_negative_and_bounded():
+    p = xcheck_contract.parse_int64
+    assert p("9223372036854775807") == 2**63 - 1 and p(2**63 - 1) == 2**63 - 1 and p(0) == 0 and p("0") == 0
+    assert all(p(v) is None for v in (-1, "-1", 2**63, "9223372036854775808", True, "00", "1 ", 1.0))
+
+
+def test_the_PRE_EXECUTION_path_scans_BOTH_documents_for_the_secrets_annotation_and_the_v2_retries_validity(tmp_path):
+    import json as _json
+    import pathlib as _pl
+    ex = execution()
+    ex["spec"]["template"]["spec"]["containers"][0]["args"] = []                                  # the JOB definition carries no per-run arguments
+    j = {"metadata": {"name": "gochara-verification-job"}, "spec": {"template": {"spec": {"taskCount": 1, "template": ex["spec"]["template"]}}}}     # the Job-style nesting
+    jf = tmp_path / "job.json"; jf.write_text(_json.dumps(j))
+    base = ["job-image", "--job-file", str(jf), "--image-digest", IMG, "--image-repo", REPO, "--runner-commit", SHA, "--secret-name", "gochara-verifier-db-url", "--service-account", SA]
+    v2_ok = tmp_path / "v2ok.json"; v2_ok.write_text(_json.dumps({"template": {"template": {"maxRetries": 0}}}))
+    assert xc.main(base + ["--v2-job-file", str(v2_ok)]) == 0
+    v2_ann = tmp_path / "v2ann.json"; v2_ann.write_text(_json.dumps({"template": {"template": {"maxRetries": 0}}, "annotations": {"run.googleapis.com/secrets": "a:projects/p/secrets/x"}}))
+    assert xc.main(base + ["--v2-job-file", str(v2_ann)]) != 0                                    # the annotation only in the v2 document: the pre-execution path refuses it too
+    v2_bad = tmp_path / "v2bad.json"; v2_bad.write_text(_json.dumps({"template": {"template": {"maxRetries": "garbage"}}}))
+    assert xc.main(base + ["--v2-job-file", str(v2_bad)]) != 0                                    # invalid-present retries refuse on the pre-execution path
+
+
 # R14-3: the verification-job contract is ONE file carried by BOTH #2975 (executed-resource check) and #2976 (definition readback). If the two copies ever diverge, one of these two tests fails
 # (the pinned digest is the same constant in both PRs; change it in both when the contract is deliberately changed).
-CONTRACT_SHA256 = "2919bf044f63e4aee7deaec0f9cea6d8686ce81827edaabb0bf41f5ca444788a"
+CONTRACT_SHA256 = "caf6fe767682c9699c12bfe9d91753ecc50400500eb267e7999639ac7d51311f"
 
 
 def test_the_shared_verification_job_contract_is_the_file_both_prs_carry():
