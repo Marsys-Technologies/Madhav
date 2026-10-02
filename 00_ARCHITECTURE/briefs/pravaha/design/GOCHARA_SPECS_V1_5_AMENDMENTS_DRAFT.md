@@ -1,6 +1,6 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.23
+version: 0.24
 status: v0.5 ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); v0.6 adds AM-10 and the F-2 exclusion-evidence binding (not yet reviewed); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
@@ -1519,6 +1519,9 @@ PR #2914 (strict L1 input wrappers) is a **prerequisite of qualified P1 scoring 
 4. **Trust boundary stated plainly.** Database grants identify *which principal* wrote a result; they cannot prove that the independent derivation *ran*. The verifier job is therefore **pinned** (code identity recorded on the result: runner commit/digest, policy version) and **executed independently** of the build; table access alone is never described as computational independence.
 **What this does not claim.** It does not require the deferred objective maximiser or qualified vedha/P1 scoring; it concerns **completeness and currency of the materialised, all-NULL output**.
 **Owner:** Stream A implements the derivations and the migration-1240 dependency digest; Stream B states the invariant and reviews the fix when pushed (steward M20261002T062613-6d61).
+
+## AM-25 — CANDIDATE (not ruled; named pre-condition of NUMERICAL activation): one in-orb stay = one evidence root (steward M20261002T084648-f2c2)
+Full text, the real-loop computation and the proposed oracle O-RL-1: `design/AM25_RETROGRADE_LOOP_ROOT_IDENTITY_CANDIDATE_v1_0.md`. Summary: the frozen §2.1 sums over roots with `root_id := contact_id` (one exact crossing = one contact, NK-2/O-RX-1) and the kernel's WP2-pinned episodes overlap by construction, so one continuous in-orb stay holding k exact crossings would contribute k times once numbers exist. Candidate rule: keep contact identity and episodes exactly as frozen; accumulate over **stays** (`stay_id`, maximal connected in-orb interval) with `max` inside a stay; exact hits are sub-events. Real example (Saturn, canonical natal Ketu 229.0330°, aspect 270°, orb 1.0°, 2024): 3 roots in 2 stays (frozen 3.0 vs candidate 2.0 for a unit record value). Not part of the all-NULL milestone.
 
 ## Batch checklist for the A5.5 gate (v0.5)
 
