@@ -598,6 +598,12 @@ def test_d1_a_short_run_of_the_passage_is_not_a_condition_even_without_declared_
     assert r["v"] == "PARTIAL" and r["d1"]["rows_matched"] == 0
 
 
+def test_d1_effect_matches_itself_trims_a_padded_claimant_not_only_its_caller():
+    seg = "Shkos In the Latta of Venus there will be quarrel. Thus the separate effects"
+    spec = _mini(effect_clauses={"Venus": dict(clause="In the Latta of Venus there will be quarrel", effect="quarrel")})
+    assert d1._effect_matches("quarrel", "  Venus ", seg, spec) is True
+
+
 @pytest.mark.parametrize("ev", ["unverified:", "unverified:   ", "unverified"])
 def test_an_empty_unverified_pointer_is_not_evidence(ev):
     assert not ac._evidence_pointer_ok(ev)
