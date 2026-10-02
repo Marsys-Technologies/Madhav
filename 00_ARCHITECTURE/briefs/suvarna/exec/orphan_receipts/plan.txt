@@ -22,6 +22,7 @@ DELETE FROM public.asset_provenance_receipts WHERE asset_id = 'ga_positions' AND
 RESET ROLE
 -- REVOKE amjis_app FROM <session user> only if granted here; snapshot B
 -- commit only if: both DELETE rowcounts == 1; the row-key+md5 diff of BOTH tables is exactly the two removed keys (no other row of any table changed); the per-asset verdict diff over ALL assets is exactly {ga_positions: receipt_not_proven -> RESOLVED}; relacl, owner, relrowsecurity, relforcerowsecurity, pg_policy and pg_auth_members diffs between snapshot A and B are all empty; chart-scoped receipt<->freshness twin integrity unchanged
--- --dry-run: the same statements, then ROLLBACK, always. --apply: COMMIT only if every check above holds and --expect-plan equals this plan hash.
--- resolver port: resolver_verdicts.sql sha256 cbd79344bb5c9d23f23a4b33fef1e410ee765d2dab9d3936292288b20b6b1126
--- executor: orphan_receipts_exec.py sha256 eba9c7da1f72907fedd8c9a8a6eefb1e5b735d3f3c697a0c7fb9076b867ab09f
+-- --dry-run: the same statements, then ROLLBACK, always. --apply: COMMIT only if every check above holds, --expect-plan equals this plan hash AND --expect-evidence (REQUIRED) equals the evidence digest computed in this transaction (check E).
+-- the real run is started through run_gated.sh: prerun_gate.py must read zero non-completed main deploy runs and zero planned/running/paused build_runs, else the executor is not started.
+-- resolver port: resolver_verdicts.sql sha256 724ef0db39f61799a0bffc325e4babbeeac7918d3ce1896ab031661841b96f23
+-- executor: orphan_receipts_exec.py sha256 de4aad0cdec65ed91c2f1569a658008c0fa1b8eae24b1fd0849c19f656aef9d2

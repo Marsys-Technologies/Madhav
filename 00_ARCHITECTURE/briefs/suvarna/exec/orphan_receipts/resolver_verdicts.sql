@@ -9,12 +9,16 @@
 --   psql -X -A -t -v chart=482012f1-710e-4a25-994a-93821f5871aa -f resolver_verdicts.sql
 -- Output rows: asset_id | verdict | partitions
 --
+-- Labels are the reason names of served_generation.ts (partitionDefect, in its order, per partition in partition_key order;
+-- then the split check: rows build, receipt build and spec digest must each be a single value, else
+-- partition_generation_split). v1.1: the earlier port merged the three unservable-rows labels into
+-- intervening_or_writer_missing and omitted the receipt-build and spec-digest split checks.
 -- Fidelity: validated only against a reading of served_generation.ts (design review section 5). It is NOT the deployed
 -- code. The executor uses it as a before/after DIFF (nothing else may change), not as an absolute oracle.
 -- Every relation is schema-qualified so the file also runs under the executor's `search_path = pg_catalog, pg_temp`.
 WITH base AS (
   SELECT receipt.asset_id, receipt.partition_key, receipt.receipt_state, freshness.freshness_state,
-         receipt.build_id::text AS receipt_build_id,
+         receipt.build_id::text AS receipt_build_id, receipt.output_digest_spec_sha256,
          EXISTS (SELECT 1 FROM public.asset_output_digest_specs s WHERE s.asset_id = receipt.asset_id AND s.spec_sha256 = receipt.output_digest_spec_sha256 AND s.retired_at IS NULL) AS spec_active,
          receipt_run.state AS run_state, (receipt_asset.run_id IS NOT NULL) AS asset_present, receipt_asset.disposition AS disp,
          (CASE
@@ -43,12 +47,24 @@ WITH base AS (
      THEN NULL ELSE b.writer END) AS rows_build
  FROM base b)
 SELECT asset_id,
-  CASE WHEN bool_or(receipt_state <> 'proven') THEN 'receipt_not_proven'
-       WHEN bool_or(freshness_state IS DISTINCT FROM 'fresh') THEN 'receipt_not_fresh'
-       WHEN bool_or(NOT spec_active) THEN 'receipt_spec_retired'
-       WHEN bool_or(run_state IS DISTINCT FROM 'completed') THEN 'receipt_run_not_completed'
-       WHEN bool_or(NOT asset_present) THEN 'receipt_run_asset_missing'
-       WHEN bool_or(rows_build IS NULL) THEN 'intervening_or_writer_missing'
-       WHEN count(DISTINCT rows_build) <> 1 THEN 'partition_generation_split'
-       ELSE 'RESOLVED' END AS verdict, count(*) AS partitions
-FROM r GROUP BY asset_id ORDER BY 2, 1
+  COALESCE(
+    -- classifyAssetGeneration: the FIRST partition (ORDER BY partition_key, as RESOLVER_SQL) that has a defect decides
+    (array_agg(defect ORDER BY partition_key) FILTER (WHERE defect IS NOT NULL))[1],
+    -- no partition defect: rows builds, receipt builds and spec digests must each be a single value, else a split
+    CASE WHEN count(DISTINCT rows_build) <> 1 OR count(DISTINCT receipt_build_id) <> 1
+           OR count(DISTINCT output_digest_spec_sha256) <> 1 THEN 'partition_generation_split'
+         ELSE 'RESOLVED' END) AS verdict,
+  count(*) AS partitions
+FROM (
+  SELECT r.*, (CASE
+      WHEN receipt_state <> 'proven' THEN 'receipt_not_proven'
+      WHEN freshness_state IS DISTINCT FROM 'fresh' THEN 'receipt_not_fresh'
+      WHEN NOT spec_active THEN 'receipt_spec_retired'
+      WHEN run_state IS DISTINCT FROM 'completed' OR receipt_build_id IS NULL THEN 'receipt_run_not_completed'
+      WHEN NOT asset_present THEN 'receipt_run_asset_missing'
+      WHEN rows_build IS NULL THEN (CASE WHEN writer IS NOT NULL THEN 'intervening_attempt_unreceipted'
+                                         WHEN disp = 'skip_no_delta' THEN 'skip_chain_writer_missing'
+                                         ELSE 'receipt_disposition_unservable' END)
+      ELSE NULL END) AS defect
+  FROM r) d
+GROUP BY asset_id ORDER BY 2, 1

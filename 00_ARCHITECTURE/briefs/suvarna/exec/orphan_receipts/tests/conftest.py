@@ -124,24 +124,43 @@ def db(cluster):
 
 
 class Runner:
-    """Runs the executor's execute() against one fixture DB as the non-superuser admin `adm`."""
+    """Runs the executor's execute() against one fixture DB as the admin role (`adm` by default).
+
+    `--apply` now REQUIRES --expect-evidence: run("apply") first performs a dry run in the same state and passes its digest
+    (a refused/aborted dry run has no digest: a dummy is used, the apply then refuses for the real reason or on E).
+    """
 
     def __init__(self, cluster, mod, db, tmp_path):
         self.cl, self.m, self.db, self.tmp = cluster, mod, db, tmp_path
         self.ev = str(tmp_path / "ev")
 
-    def args(self, mode, asset="ga_positions", chart=fx.CANON, min_after=fx.MIN_AFTER, expect_plan=None, expect_evidence=None):
+    def args(self, mode, asset="ga_positions", chart=fx.CANON, min_after=fx.MIN_AFTER, expect_plan=None, expect_evidence=None,
+             evidence_root=None):
         a = ["--asset", asset, "--chart", chart]
         a += ["--dry-run"] if mode == "dry" else ["--apply", "--expect-plan", expect_plan or self.m.plan_hash(asset, chart)]
         if min_after is not None:
             a += ["--min-build-after", min_after]
         if expect_evidence:
             a += ["--expect-evidence", expect_evidence]
+        if evidence_root:
+            a += ["--evidence-root", evidence_root]
         return self.m.parse_args(a)
 
+    def execute(self, args, **kw):
+        return self.m.execute(args, lambda: self.cl.conn(self.db, user=ADMIN_USER), **kw)
+
     def run(self, mode, evidence_root=None, **kw):
-        args = self.args(mode, **kw)
-        return self.m.execute(args, lambda: self.cl.conn(self.db, user=ADMIN_USER), evidence_root=evidence_root or self.ev)
+        if mode == "apply" and not kw.get("expect_evidence"):
+            dry = {k: v for k, v in kw.items() if k not in ("expect_plan", "expect_evidence")}
+            _, d = self.execute(self.args("dry", evidence_root=evidence_root, **dry))
+            kw["expect_evidence"] = d.get("evidence_digest", "0" * 64)
+        return self.execute(self.args(mode, evidence_root=evidence_root, **kw))
+
+
+@pytest.fixture(autouse=True)
+def evidence_env(monkeypatch, tmp_path):
+    """The executor ignores --evidence-root unless this test-only variable is set; the real path is never used by tests."""
+    monkeypatch.setenv("ORPH_TEST_EVIDENCE_ROOT", str(tmp_path / "ev"))
 
 
 @pytest.fixture()

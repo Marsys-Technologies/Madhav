@@ -74,25 +74,36 @@ def test_cli_rejects_bad_asset_and_chart(mod):
             mod.parse_args(argv)
 
 
-def test_apply_requires_expect_plan_and_min_build_after(mod, runner, cluster, db):
+def test_apply_requires_expect_plan_min_build_after_and_expect_evidence(mod, runner, cluster, db):
     before = cluster.image(db)
+    base = ["--asset", "ga_positions", "--chart", CANON, "--apply"]
+    h = mod.plan_hash("ga_positions", CANON)
     with pytest.raises(SystemExit):
-        mod.parse_args(["--asset", "ga_positions", "--chart", CANON, "--apply"])
-    a = mod.parse_args(["--asset", "ga_positions", "--chart", CANON, "--apply", "--expect-plan", mod.plan_hash("ga_positions", CANON)])
+        mod.parse_args(base)
+    # --expect-evidence is REQUIRED at apply (parse level) ...
+    with pytest.raises(SystemExit):
+        mod.parse_args(base + ["--expect-plan", h, "--min-build-after", fx.MIN_AFTER])
+    # ... and execute() itself refuses too, before any connection, even if parse_args were bypassed
+    import argparse
+    a = argparse.Namespace(asset="ga_positions", chart=CANON, apply=True, dry_run=False, expect_plan=h,
+                           min_build_after=fx.MIN_AFTER, expect_evidence=None, evidence_root=None)
+    with pytest.raises(SystemExit, match="expect-evidence"):
+        mod.execute(a, lambda: pytest.fail("must not connect"))
+    a = mod.parse_args(base + ["--expect-plan", h, "--expect-evidence", "0" * 64])
     with pytest.raises(SystemExit, match="min-build-after"):
-        mod.execute(a, lambda: pytest.fail("must not connect"), evidence_root=runner.ev)
-    a = mod.parse_args(["--asset", "ga_positions", "--chart", CANON, "--apply", "--expect-plan", mod.plan_hash("ga_positions", CANON),
-                        "--min-build-after", "2026-10-05T09:00:00"])  # naive timestamp
+        mod.execute(a, lambda: pytest.fail("must not connect"))
+    a = mod.parse_args(base + ["--expect-plan", h, "--expect-evidence", "0" * 64, "--min-build-after", "2026-10-05T09:00:00"])  # naive
     with pytest.raises(SystemExit, match="timezone"):
-        mod.execute(a, lambda: pytest.fail("must not connect"), evidence_root=runner.ev)
+        mod.execute(a, lambda: pytest.fail("must not connect"))
     assert_unchanged(cluster, db, before)
 
 
 def test_hash_mismatch_on_apply_refuses_before_connecting(mod, runner, cluster, db):
     before = cluster.image(db)
-    a = mod.parse_args(["--asset", "ga_positions", "--chart", CANON, "--apply", "--expect-plan", "0" * 64, "--min-build-after", fx.MIN_AFTER])
+    a = mod.parse_args(["--asset", "ga_positions", "--chart", CANON, "--apply", "--expect-plan", "0" * 64, "--min-build-after", fx.MIN_AFTER,
+                        "--expect-evidence", "0" * 64])
     with pytest.raises(SystemExit, match="does not equal the plan hash"):
-        mod.execute(a, lambda: pytest.fail("must not connect"), evidence_root=runner.ev)
+        mod.execute(a, lambda: pytest.fail("must not connect"))
     assert not os.path.exists(runner.ev)                 # nothing written either
     assert_unchanged(cluster, db, before)
 
@@ -407,8 +418,8 @@ def test_two_runs_in_the_same_second_do_not_overwrite_evidence(runner, mod):
     import datetime as dt
     now = dt.datetime(2026, 10, 6, 1, 2, 3, tzinfo=dt.timezone.utc)
     a = runner.args("dry")
-    c1, r1 = mod.execute(a, lambda: runner.cl.conn(runner.db, user=conftest.ADMIN_USER), evidence_root=runner.ev, now=now)
-    c2, r2 = mod.execute(a, lambda: runner.cl.conn(runner.db, user=conftest.ADMIN_USER), evidence_root=runner.ev, now=now)
+    c1, r1 = mod.execute(a, lambda: runner.cl.conn(runner.db, user=conftest.ADMIN_USER), now=now)
+    c2, r2 = mod.execute(a, lambda: runner.cl.conn(runner.db, user=conftest.ADMIN_USER), now=now)
     assert c1 == 0 and c2 == 1 and r2["status"] == "ABORTED_ROLLED_BACK"      # O_EXCL / exist_ok=False: never silently overwritten
 
 
@@ -439,10 +450,150 @@ def test_resolver_sql_matches_expected_verdicts_on_the_fixture(cluster, db, mod)
 def test_lock_timeout_5s_a_blocked_table_fails_loudly_and_rolls_back(runner, cluster, db):
     """Another session holds a conflicting lock: the executor must not wait forever (lock_timeout 5s) and must change nothing."""
     before = cluster.image(db)
+    _, dry = runner.run("dry")
     with cluster.conn(db) as holder:
         holder.cursor().execute("LOCK TABLE public.asset_freshness IN ROW EXCLUSIVE MODE")     # what an in-flight builder write holds
         # lock_timeout and statement_timeout are both 5s (as specified), so whichever fires first ends the wait
         with pytest.raises((psycopg.errors.LockNotAvailable, psycopg.errors.QueryCanceled)):
-            runner.run("apply")
+            runner.run("apply", expect_evidence=dry["evidence_digest"])
         holder.rollback()
     assert_unchanged(cluster, db, before)
+
+
+# ------------------------------------------------------------------------------------------------ execute() validates parameters itself
+@pytest.mark.parametrize("asset,chart", [
+    ("GA_POSITIONS", CANON), ("ga positions", CANON), ("ga_positions;DROP TABLE x", CANON), ("ga_positions\n", CANON),
+    ("", CANON), ("g", CANON), ("1ga", CANON), ("ga-positions", CANON), ("a" * 80, CANON),
+    ("ga_positions", "not-a-uuid"), ("ga_positions", ""), ("ga_positions", CANON.upper()),
+    ("ga_positions", "{" + CANON + "}"), ("ga_positions", CANON.replace("-", "")), ("ga_positions", None), (None, CANON),
+])
+def test_execute_validates_asset_and_chart_itself_before_connecting(mod, asset, chart):
+    import argparse
+    a = argparse.Namespace(asset=asset, chart=chart, apply=False, dry_run=True, expect_plan=None, min_build_after=None,
+                           expect_evidence=None, evidence_root=None)
+    with pytest.raises(SystemExit, match="REFUSED"):
+        mod.execute(a, lambda: pytest.fail("must not connect"))
+
+
+@pytest.mark.parametrize("asset,chart", [("ga_positions\n", CANON), ("ga positions", CANON), ("ga_positions", "zz"),
+                                         ("ga_positions", ""), ("bo;x", CANON)])
+def test_parse_args_rejects_the_same_odd_parameters(mod, asset, chart):
+    with pytest.raises(SystemExit):
+        mod.parse_args(["--asset", asset, "--chart", chart, "--dry-run"])
+
+
+# ------------------------------------------------------------------------------------------------ evidence root
+def test_evidence_root_flag_is_ignored_unless_the_test_env_var_is_set(mod, monkeypatch):
+    monkeypatch.delenv("ORPH_TEST_EVIDENCE_ROOT", raising=False)
+    assert mod.resolve_evidence_root("/tmp/elsewhere") == "/Users/Dev/suvarna-evidence/OrphanReceipts" == mod.EVIDENCE_ROOT
+    assert mod.resolve_evidence_root(None) == mod.EVIDENCE_ROOT
+    monkeypatch.setenv("ORPH_TEST_EVIDENCE_ROOT", "/tmp/envroot")
+    assert mod.resolve_evidence_root(None) == "/tmp/envroot"
+    assert mod.resolve_evidence_root("/tmp/flagroot") == "/tmp/flagroot"
+
+
+def test_without_the_env_var_a_run_writes_only_under_the_real_root(mod, runner, cluster, db, monkeypatch, tmp_path):
+    """The real root is never written by a test: the connection is refused first, and nothing lands at the flag path."""
+    monkeypatch.delenv("ORPH_TEST_EVIDENCE_ROOT", raising=False)
+    seen = {}
+    monkeypatch.setattr(mod, "write_evidence", lambda root, *a, **k: seen.setdefault("root", root) and (_ for _ in ()).throw(mod.EvidenceError("stop")))
+    flag = tmp_path / "flagged"
+    args = runner.args("dry", evidence_root=str(flag))
+    code, res = runner.execute(args)
+    assert seen["root"] == mod.EVIDENCE_ROOT and not flag.exists()
+
+
+def test_every_created_evidence_dir_is_0700_and_an_existing_root_is_chmodded(mod, tmp_path):
+    old = os.umask(0o000)                     # a permissive umask must not leak into the evidence directories
+    try:
+        deep = tmp_path / "a" / "b" / "OrphanReceipts"
+        mod.mkdir_0700(deep)
+        for p in (tmp_path / "a", tmp_path / "a" / "b", deep):
+            assert stat.S_IMODE(p.stat().st_mode) == 0o700, p
+        pre = tmp_path / "pre"
+        pre.mkdir(mode=0o755)
+        os.chmod(pre, 0o755)
+        mod.mkdir_0700(pre)                   # existing root tolerated and tightened
+        assert stat.S_IMODE(pre.stat().st_mode) == 0o700
+    finally:
+        os.umask(old)
+
+
+def test_run_evidence_tree_is_0700_under_a_permissive_umask(runner, mod):
+    old = os.umask(0o000)
+    try:
+        code, res = runner.run("dry")
+    finally:
+        os.umask(old)
+    d = pathlib.Path(res["before_images"]["dir"])
+    assert stat.S_IMODE(d.stat().st_mode) == 0o700 and stat.S_IMODE(d.parent.stat().st_mode) == 0o700
+
+
+# ------------------------------------------------------------------------------------------------ resolver port: split checks and labels
+def verdicts_of(cluster, db, mod):
+    return {a: v for a, v, _ in cluster.su(db, mod.load_verdict_sql().replace("%(chart)s", "'%s'" % CANON))}
+
+
+def two_partition_asset(cluster, db, asset, *, second_build, second_disposition="build", second_spec=None):
+    """An asset with two partitions p1/p2, both proven + fresh + active spec, so only the SPLIT check can decide."""
+    cur_sql = cluster.su
+    cur_sql(db, "INSERT INTO asset_registry (asset_id, layer, target_table) VALUES (%s,'ganita','chart_facts')", (asset,))
+    spec1, spec2 = fx.sha(asset + "/s1"), fx.sha(asset + "/s2")
+    cur_sql(db, "INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec) VALUES (%s,%s,'{}')", (asset, spec1))
+    if second_spec:
+        cur_sql(db, "DROP INDEX asset_output_digest_specs_one_current")
+        cur_sql(db, "INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec) VALUES (%s,%s,'{}')", (asset, spec2))
+    builds = [("a", "2026-09-20T10:00:00Z", "build")] + ([("b", "2026-09-21T10:00:00Z", second_disposition)] if second_build else [])
+    for name, ts, disp in builds:
+        cur_sql(db, "INSERT INTO build_runs (id, chart_id, scope, action, state, plan, triggered_by, created_at, started_at, ended_at) "
+                    "VALUES (%s,%s,'asset','rebuild','completed','{}','f',%s::timestamptz,%s::timestamptz,%s::timestamptz + interval '20 seconds')",
+                (fx.uid(asset + name), CANON, ts, ts, ts))
+        cur_sql(db, "INSERT INTO build_run_assets (run_id, asset_id, position, state, started_at, ended_at, disposition) "
+                    "VALUES (%s,%s,0,'complete',%s::timestamptz,%s::timestamptz + interval '20 seconds',%s)", (fx.uid(asset + name), asset, ts, ts, disp))
+    b2 = "b" if second_build else "a"
+    for part, build, spec in (("p1", "a", spec1), ("p2", b2, spec2 if second_spec else spec1)):
+        cur_sql(db, "INSERT INTO asset_provenance_receipts (asset_id, chart_id, partition_key, receipt_version, receipt_state, observed_at, build_id, output_digest_spec_sha256) "
+                    "VALUES (%s,%s,%s,'v','proven','2026-09-22',%s,%s)", (asset, CANON, part, fx.uid(asset + build), spec))
+        cur_sql(db, "INSERT INTO asset_freshness (asset_id, chart_id, partition_key, freshness_state, receipt_version) VALUES (%s,%s,%s,'fresh','v')", (asset, CANON, part))
+
+
+def test_single_partition_control_is_resolved(cluster, db, mod):
+    two_partition_asset(cluster, db, "ga_ctl", second_build=False)             # both partitions: same build, same spec
+    assert verdicts_of(cluster, db, mod)["ga_ctl"] == "RESOLVED"
+
+
+def test_partitions_with_different_receipt_builds_are_a_split_not_resolved(cluster, db, mod):
+    """p2's receipt is a skip_no_delta re-attribution from a LATER run: rows build is the same writer (a), the receipt builds
+    differ (a vs b). served_generation.ts: receiptBuilds.size !== 1 -> partition_generation_split. The v1.0 port said RESOLVED."""
+    two_partition_asset(cluster, db, "ga_split_build", second_build=True, second_disposition="skip_no_delta")
+    assert verdicts_of(cluster, db, mod)["ga_split_build"] == "partition_generation_split"
+
+
+def test_partitions_with_different_spec_digests_are_a_split_not_resolved(cluster, db, mod):
+    """Both specs un-retired (the real unique-current index is dropped in this fixture) and same build: only the spec digests differ."""
+    two_partition_asset(cluster, db, "ga_split_spec", second_build=False, second_spec=True)
+    assert verdicts_of(cluster, db, mod)["ga_split_spec"] == "partition_generation_split"
+
+
+def test_partitions_served_by_different_rows_builds_are_not_resolved(cluster, db, mod):
+    """Two real builds (both 'build'): the later one is an intervening attempt for the earlier writer, so the rows build is
+    unservable (the TS names this intervening_attempt_unreceipted); either way never RESOLVED."""
+    two_partition_asset(cluster, db, "ga_split_rows", second_build=True)
+    assert verdicts_of(cluster, db, mod)["ga_split_rows"] == "intervening_attempt_unreceipted"
+
+
+def test_unservable_rows_labels_follow_partitionDefect(cluster, db, mod):
+    """The three labels the v1.0 port merged: intervening_attempt_unreceipted / skip_chain_writer_missing / receipt_disposition_unservable."""
+    for asset, disp, state in (("ga_l_skip", "skip_no_delta", "complete"), ("ga_l_unserv", "deferred_no_writer", "complete")):
+        cluster.su(db, "INSERT INTO asset_registry (asset_id, layer, target_table) VALUES (%s,'ganita','chart_facts')", (asset,))
+        cluster.su(db, "INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec) VALUES (%s,%s,'{}')", (asset, fx.sha(asset)))
+        cluster.su(db, "INSERT INTO build_runs (id, chart_id, scope, action, state, plan, triggered_by, created_at, started_at, ended_at) "
+                       "VALUES (%s,%s,'asset','rebuild','completed','{}','f','2026-09-20','2026-09-20','2026-09-20 00:01')", (fx.uid(asset), CANON))
+        cluster.su(db, "INSERT INTO build_run_assets (run_id, asset_id, position, state, started_at, ended_at, disposition) VALUES (%s,%s,0,%s,'2026-09-20','2026-09-20 00:01',%s)",
+                   (fx.uid(asset), asset, state, disp))
+        cluster.su(db, "INSERT INTO asset_provenance_receipts (asset_id, chart_id, partition_key, receipt_version, receipt_state, observed_at, build_id, output_digest_spec_sha256) "
+                       "VALUES (%s,%s,'p','v','proven','2026-09-22',%s,%s)", (asset, CANON, fx.uid(asset), fx.sha(asset)))
+        cluster.su(db, "INSERT INTO asset_freshness (asset_id, chart_id, partition_key, freshness_state, receipt_version) VALUES (%s,%s,'p','fresh','v')", (asset, CANON))
+    v = verdicts_of(cluster, db, mod)
+    assert v["ga_l_skip"] == "skip_chain_writer_missing"           # skip_no_delta and no earlier complete build to be the writer
+    assert v["ga_l_unserv"] == "receipt_disposition_unservable"    # disposition that is neither build nor skip_no_delta

@@ -5,13 +5,16 @@ ga_positions at S-L1 and bo_laksana / bo_sangati / bo_cgm_motifs / bo_upaya at S
 
   python3 orphan_receipts_exec.py --asset <asset_id> --chart <chart_id> --dry-run [--min-build-after <ISO ts>]
   python3 orphan_receipts_exec.py --asset <asset_id> --chart <chart_id> --apply --expect-plan <sha256>
-                                  --min-build-after <ISO ts, tz-aware> [--expect-evidence <sha256>]
+                                  --min-build-after <ISO ts, tz-aware> --expect-evidence <digest of the dry run>
+
+The real dry run / apply MUST be started through run_gated.sh (prerun_gate.py: deploy runs + builds in flight == 0).
 
   exit codes: 0 ok / committed; 1 apply refused or aborted; 2 dry-run refused; 3 dry-run counterfactual (no --min-build-after)
 
   --dry-run   runs EVERY check and the real DELETEs inside one transaction, then ALWAYS ROLLS BACK, and prints the
               full diff JSON plus the plan hash it computes.
-  --apply     requires --expect-plan == the plan hash and --min-build-after; re-checks every condition inside the
+  --apply     requires --expect-plan == the plan hash, --min-build-after and --expect-evidence (the evidence_digest the
+              dry run printed: the apply must see exactly the state the dry run showed); re-checks every condition inside the
               same transaction; COMMITs only if all pass (otherwise ROLLBACK and exit 1).
 
 Every condition is a CHECK that REFUSES (P1-P5 pre-checks, D/V/A post-checks, E evidence digest: see run_txn); nothing is committed unless all hold. Before-images of
@@ -51,7 +54,8 @@ HERE = pathlib.Path(__file__).resolve().parent
 VERDICT_SQL_FILE = HERE / "resolver_verdicts.sql"
 INFLIGHT_STATES = ("planned", "running", "paused")
 EXPECTED_VERDICT = ("receipt_not_proven", "RESOLVED")
-ASSET_RE = re.compile(r"^[a-z][a-z0-9_]{1,62}$")
+ASSET_RE = re.compile(r"[a-z][a-z0-9_]{1,62}")        # used with fullmatch (no trailing-newline loophole)
+TEST_EVIDENCE_ENV = "ORPH_TEST_EVIDENCE_ROOT"
 
 # The two DELETEs. Shared by the executor and the rendered plan text so they cannot drift apart.
 # The state guards mean the executor can never delete a proven/fresh row (it only ever removes an `unknown`/non-fresh
@@ -128,7 +132,8 @@ def render_plan(asset, chart, sha, vsha=None):
         "RESET ROLE",
         "-- REVOKE %s FROM <session user> only if granted here; snapshot B" % OWNER,
         "-- commit only if: both DELETE rowcounts == 1; the row-key+md5 diff of BOTH tables is exactly the two removed keys (no other row of any table changed); the per-asset verdict diff over ALL assets is exactly {%s: %s -> %s}; relacl, owner, relrowsecurity, relforcerowsecurity, pg_policy and pg_auth_members diffs between snapshot A and B are all empty; chart-scoped receipt<->freshness twin integrity unchanged" % ((asset,) + EXPECTED_VERDICT),
-        "-- --dry-run: the same statements, then ROLLBACK, always. --apply: COMMIT only if every check above holds and --expect-plan equals this plan hash.",
+        "-- --dry-run: the same statements, then ROLLBACK, always. --apply: COMMIT only if every check above holds, --expect-plan equals this plan hash AND --expect-evidence (REQUIRED) equals the evidence digest computed in this transaction (check E).",
+        "-- the real run is started through run_gated.sh: prerun_gate.py must read zero non-completed main deploy runs and zero planned/running/paused build_runs, else the executor is not started.",
         "-- resolver port: resolver_verdicts.sql sha256 %s" % vsha,
         "-- executor: orphan_receipts_exec.py sha256 %s" % sha,
     ])
@@ -222,14 +227,35 @@ def sha_file(p):
     return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
 
 
+def resolve_evidence_root(flag=None):
+    """The real run ALWAYS writes under EVIDENCE_ROOT: --evidence-root is ignored unless the test-only env var
+    ORPH_TEST_EVIDENCE_ROOT is set (then the flag, else the env value, is used)."""
+    env = os.environ.get(TEST_EVIDENCE_ENV)
+    return (flag or env) if env else EVIDENCE_ROOT
+
+
+def mkdir_0700(path):
+    """Create `path` (and any missing ancestors) with mode 0700 and chmod every directory THIS call created to 0700
+    (mkdir's mode is masked by umask); a pre-existing directory is only chmod'ed on the leaf, tolerating failure."""
+    path = pathlib.Path(path)
+    missing = [p for p in [path] + list(path.parents) if not p.exists()]
+    for p in reversed(missing):
+        p.mkdir(mode=0o700)
+        os.chmod(p, 0o700)
+    if not missing:
+        try:
+            os.chmod(path, 0o700)
+        except OSError:
+            pass            # an existing root we do not own: tolerated; the per-run directory below is ours and is 0700
+
+
 def write_evidence(root, asset, chart, ts, images, inserts, sha):
     """Create <root>/<asset>_<chart8>_<UTC ts>/ (0700) with before_images.json + reversal.sql (0600) and SHA256SUMS."""
     try:
         rootp = pathlib.Path(root)
-        rootp.mkdir(mode=0o700, parents=True, exist_ok=True)
+        mkdir_0700(rootp)
         d = rootp / ("%s_%s_%s" % (asset, chart[:8], ts))
-        d.mkdir(mode=0o700)
-        os.chmod(d, 0o700)
+        mkdir_0700(d)
         bi = json.dumps({"asset_id": asset, "chart_id": chart, "partition_key": WHOLE, "tables": images},
                         indent=2, sort_keys=True) + "\n"
         rev = "\n".join([
@@ -432,7 +458,7 @@ def run_txn(conn, args, sha, phash, evidence_root, now):
         "before_images_sha256": evidence["before_images.json"]["sha256"], "reversal_sha256": evidence["reversal.sql"]["sha256"],
         "verdict_diff": vdiff, "chart_scoped_before": counts_before, "chart_scoped_after": counts_after,
         "checks": {k: v["ok"] for k, v in checks.items()}}, sort_keys=True).encode()).hexdigest()
-    if apply_mode and args.expect_evidence is not None:
+    if apply_mode:
         chk("E_evidence_digest_matches_expected", args.expect_evidence == evidence_digest,
             {"computed": evidence_digest, "expected": args.expect_evidence})
 
@@ -462,9 +488,23 @@ def save_result(result):
         result.setdefault("warnings", []).append("result.json could not be saved next to the before-images")
 
 
-def execute(args, connect, evidence_root=EVIDENCE_ROOT, now=None):
+def validate_params(asset, chart):
+    """Single validation used by parse_args AND execute(): returns the canonical chart uuid text or exits (REFUSED)."""
+    if not isinstance(asset, str) or not ASSET_RE.fullmatch(asset):
+        raise SystemExit("REFUSED: --asset must match %s" % ASSET_RE.pattern)
+    try:
+        canon = str(uuid.UUID(chart))
+    except (ValueError, AttributeError, TypeError):
+        raise SystemExit("REFUSED: --chart must be a uuid")
+    return canon
+
+
+def execute(args, connect, now=None):
     """Returns (exit_code, result dict). `connect` is the only door to a database."""
     now = now or dt.datetime.now(dt.timezone.utc)
+    if validate_params(args.asset, args.chart) != args.chart:
+        raise SystemExit("REFUSED: --chart must be the canonical lowercase uuid text")
+    evidence_root = resolve_evidence_root(getattr(args, "evidence_root", None))
     sha = exec_sha()
     phash = plan_hash(args.asset, args.chart, sha)
     if args.apply:
@@ -472,6 +512,8 @@ def execute(args, connect, evidence_root=EVIDENCE_ROOT, now=None):
             raise SystemExit("REFUSED: --expect-plan does not equal the plan hash")
         if args.min_build_after is None:
             raise SystemExit("REFUSED: --apply requires --min-build-after")
+        if not args.expect_evidence:
+            raise SystemExit("REFUSED: --apply requires --expect-evidence <digest from the dry run>")
     parse_min(args.min_build_after)
     conn = connect()
     try:
@@ -518,28 +560,28 @@ def build_parser():
     p.add_argument("--expect-plan")
     p.add_argument("--expect-evidence")
     p.add_argument("--min-build-after")
-    p.add_argument("--evidence-root", default=EVIDENCE_ROOT)
+    p.add_argument("--evidence-root", default=None, help="ignored unless %s is set (tests only)" % TEST_EVIDENCE_ENV)
     return p
 
 
 def parse_args(argv):
     p = build_parser()
     a = p.parse_args(argv)
-    if not ASSET_RE.match(a.asset):
-        p.error("--asset must match %s" % ASSET_RE.pattern)
     try:
-        a.chart = str(uuid.UUID(a.chart))
-    except ValueError:
-        p.error("--chart must be a uuid")
+        a.chart = validate_params(a.asset, a.chart)
+    except SystemExit as exc:
+        p.error(str(exc))
     if a.apply and not a.expect_plan:
         p.error("--apply requires --expect-plan <sha256>")
+    if a.apply and not a.expect_evidence:
+        p.error("--apply requires --expect-evidence <digest printed by the dry run>")
     return a
 
 
 def main(argv=None):
     args = parse_args(sys.argv[1:] if argv is None else argv)
     try:
-        code, result = execute(args, connect_admin, evidence_root=args.evidence_root)
+        code, result = execute(args, connect_admin)
     except SystemExit:
         raise
     except Exception as exc:
