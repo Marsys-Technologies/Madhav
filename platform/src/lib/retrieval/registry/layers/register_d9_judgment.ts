@@ -477,9 +477,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
     'and Tajaka; it is exhaustive only when every unit is honestly settled in this response.',
     'Every resolution (bhava/lord/occupants/karaka, both frames) goes through the SAME address',
     'resolver W1/W2 built (design §19 single-source) — no parallel resolver logic here.',
-    'Honest gap: "notably-absent" yoga near-miss checking needs a data-plane addition (design §12 D3)',
-    'that does not exist yet. The receipt explicitly reports `notably_absent_yogas: not_computed`,',
-    'so it cannot manufacture closure; cancellation (bhaṅga) on fired yogas is handled separately.',
+    'Formation-gap ("notably absent") detection is NOT claimed: `notably_absent_yogas` is an empty array by design,',
+    'with `near_miss_capable_candidates: 0` and a `band_coverage` count of the six dhana candidates',
+    '(present/absent/indeterminate) derived at serve time from L1 facts; when that evidence is not served the unit',
+    'reads `source_unproven`, and non-wealth domains read `not_joined`. Cancellation (bhaṅga) on fired yogas is handled separately.',
     'chart_id is required — never defaulted (principle #14).',
   ].join(' '),
 

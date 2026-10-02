@@ -1673,7 +1673,7 @@ CITATION_DECISIONS = json.loads(r"""
   ],
   "served": [
    "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-   1489,
+   1490,
    "`SELECT mechanism_name, mech"
   ],
   "fields": [
