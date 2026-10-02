@@ -88,6 +88,9 @@ STANDING_NOT_CHECKED = (
      "reason": "the detector compares dasha row sets and start shifts, never the dasha tier column", "readback": "W7 hand read-back: chart_dashas tier SQL in FLIP_DETECTOR_README.md"},
     {"id": "l1_tajik_varsha_year_lords.tier", "table": "l1_tajik_varsha_year_lords", "what": "l1_tajik_varsha_year_lords verification_pass_status",
      "reason": "the table is not one of the four tables the detector reads", "readback": "W7 hand read-back: l1_tajik_varsha_year_lords tier SQL in FLIP_DETECTOR_README.md"},
+    {"id": "chart_vichara", "table": "chart_vichara", "what": "chart_vichara (ga_vichara rows: counts, dedupe, sorted constituent_fact_ids, leverage as-of)",
+     "reason": "the table is not one of the four tables the detector reads: an empty flip report says nothing about ga_vichara",
+     "readback": "W7: run 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/evidence/ga_vichara_writer_ACCEPTANCE.sql; every row must read ok = t"},
 )
 
 

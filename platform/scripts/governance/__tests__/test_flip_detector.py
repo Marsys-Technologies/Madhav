@@ -389,7 +389,7 @@ def test_1d_verdict_cannot_be_hidden_by_a_stale_verdict_field(tmp_path):
 def test_2_both_uncheckable_tier_changes_are_listed_on_every_compare(tmp_path):
     rep = run(base_state(), base_state(), [])
     ids = [n["id"] for n in rep["not_checked"]]
-    assert ids == ["chart_dashas.tier", "l1_tajik_varsha_year_lords.tier"]
+    assert ids == ["chart_dashas.tier", "l1_tajik_varsha_year_lords.tier", "chart_vichara"]
     assert all(n["status"] == "NOT CHECKED" and n["readback"] for n in rep["not_checked"])
 
 
@@ -444,9 +444,9 @@ def test_2_cli_exit_codes_and_printed_output(tmp_path, capsys):
     out = tmp_path / "r.json"
     code = F.main(["--compare", str(before), "--against", str(after), "--hooks-dir", str(d), "--out", str(out)])
     text = capsys.readouterr().out
-    assert code == 4 and "NOT CHECKED chart_dashas.tier" in text and "NOT CHECKED l1_tajik_varsha_year_lords.tier" in text
+    assert code == 4 and "NOT CHECKED chart_dashas.tier" in text and "NOT CHECKED l1_tajik_varsha_year_lords.tier" in text and "NOT CHECKED chart_vichara" in text
     rep = json.loads(out.read_text())
-    assert rep["verdict"] == "NOT_CHECKED" and rep["exit_code"] == 4 and len(rep["not_checked"]) == 2
+    assert rep["verdict"] == "NOT_CHECKED" and rep["exit_code"] == 4 and len(rep["not_checked"]) == 3
     code = F.main(["--compare", str(before), "--against", str(after), "--hooks-dir", str(d), "--out", str(out), "--allow-not-checked"])
     text = capsys.readouterr().out
     assert code == 0 and "NOT CHECKED chart_dashas.tier" in text and json.loads(out.read_text())["verdict"] == "NOT_CHECKED"
