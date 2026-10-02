@@ -55,3 +55,44 @@ describe('N-91 — lineage flags survive a forced kernel trim (static floor)', (
     expect(isProtectedKernelFlag(judgmentFlag('domain_inference_requires_acharya_validation', 'x'), new Set<string>())).toBe(false)
   })
 })
+
+describe('N-91 — WORST CASE (S-L1: all 8 L2 assets stale) fits the 2 KB assess kernel without evicting other disclosures', () => {
+  // The exact worst-case served detail of l2LineageFlag (platform l2_lineage.test.ts pins <= 300 B).
+  const WORST = '8 L2 asset(s) (bo_arudha, bo_grounding, bo_karanajala +5 more) were built before 18 L1 asset(s) were rebuilt; cited fact_ids may not resolve until L2 is rebuilt.'
+  const verdict = 'Career / Vocation assessment draws on 10 composite-ranked signal(s) for this chart, cross-referenced against classical yoga firings, varga placements, contradictions, and dasha timing below. ' +
+    'Significator condition (D1): Saturn, the 10th bhaveshas, is exalted in Libra at 7.83 deg; the 10th bhava is occupied by Mercury. ' +
+    '3 classical yoga(s) fire for this domain. D10 places the 10th lord in own sign. No domain contradictions were found; 3 chart-wide contradictions exist. A promise-bearing dasha window is active now through 2031.'
+
+  it('sanity: the realistic verdict is ~600-700 B and the worst-case flag detail is within the 300 B cap', () => {
+    expect(Buffer.byteLength(WORST, 'utf8')).toBeLessThanOrEqual(300)
+    expect(Buffer.byteLength(verdict, 'utf8')).toBeGreaterThan(500)
+  })
+
+  it('kernel stays <= 2048 B, the lineage flag survives, no kernel_ceiling_exceeded_for_disclosure, other floor disclosures kept', () => {
+    const lineage = judgmentFlag('l2_receipts_predate_l1', WORST, 'warning')
+    const kernel = {
+      verdict,
+      flags: [
+        judgmentFlag('domain_inference_requires_acharya_validation', 'Domain-level inference from classical sources requires acharya validation before it is treated as a prediction.', 'warning'),
+        judgmentFlag('catalog_only_rows_present', 'catalog-only yoga rows are counted separately from confirmed firings; see ganita_yoga_firings_get.', 'info'),
+        judgmentFlag('significator_condition_unavailable', 'the D1 dignity/shadbala condition of one occupant could not be assembled this call.', 'warning'),
+        lineage,
+      ],
+      promise: null,
+      pointers: bulkPointers(6),
+    } as unknown as SaraKernel
+    const assembled = assembleSaraContent({ kernel, budget_kb: 40, counts: COUNTS })
+    const codes = (assembled.kernel.flags as Array<{ code?: string }>).map(f => f.code)
+    expect(estimateBytes(assembled.kernel)).toBeLessThanOrEqual(2048)
+    expect(codes).toContain('l2_receipts_predate_l1')
+    expect(codes).toContain('significator_condition_unavailable') // another floor disclosure is not evicted
+    expect(codes).not.toContain('kernel_ceiling_exceeded_for_disclosure')
+  })
+
+  it('CONTROL: the previous ~1.6 KB detail WOULD breach the ceiling (this test is sensitive to detail size)', () => {
+    const fat = judgmentFlag('l2_receipts_predate_l1', 'x'.repeat(1600), 'warning')
+    const kernel = { verdict, flags: [fat], promise: null, pointers: bulkPointers(6) } as unknown as SaraKernel
+    const assembled = assembleSaraContent({ kernel, budget_kb: 40, counts: COUNTS })
+    expect((assembled.kernel.flags as Array<{ code?: string }>).map(f => f.code)).toContain('kernel_ceiling_exceeded_for_disclosure')
+  })
+})
