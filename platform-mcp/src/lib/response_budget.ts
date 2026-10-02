@@ -124,6 +124,13 @@ export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
   // is always a handful of composed sentences/flags, never a raw signal/fact dump — those
   // live in sibling `verdict_skeleton`/`checklist` keys, which remain fully trimmable).
   'verdict',
+  // SS N-62 Q10 (display-side, Āyurdāya): the unreduced-base disclosure that must travel with every
+  // served longevity year figure — the nested object (registry post-processor, query_signals,
+  // chart_facts_query) and the flat `caveat` string on get_ayurdaya's content. The caveat is a
+  // >120-char sentence; the last-resort string walk must never cut it mid-sentence, because a
+  // truncated "…not a prediction of" is worse than none (Ethical Framework).
+  'ayurdaya_figure_disclosure',
+  'caveat',
 ])
 
 // F-179 (audit) — non-flag disclosure fields AUDITED and DELIBERATELY LEFT OUT of the set

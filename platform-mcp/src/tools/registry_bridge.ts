@@ -2680,6 +2680,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         const judgment_flags: JudgmentFlagEntry[] = []
         if (returned_count === 0) judgment_flags.push(judgmentFlag('zero_rows_returned'))
         if (truncated) judgment_flags.push(judgmentFlag('response_size_truncated'))
+        // Flags the capability set inside `content` (e.g. SS N-62 Q10 ayurdaya_unreduced_base_figures): this bridge only reads `content`, so carry them to the v3 envelope's own judgment_flags.
+        if (Array.isArray(inner['judgment_flags'])) judgment_flags.push(...(inner['judgment_flags'] as JudgmentFlagEntry[]))
 
         // Typed per design §28.4 (R5 W3 Phase B) — additive; see get_chart_orientation's
         // sibling comment above for why the orient-view pointer is 'other'. The graph
