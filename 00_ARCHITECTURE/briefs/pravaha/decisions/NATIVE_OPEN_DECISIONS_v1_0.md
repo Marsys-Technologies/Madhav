@@ -1,6 +1,6 @@
 ---
 artifact: NATIVE_OPEN_DECISIONS
-version: "1.1"
+version: "1.2"
 status: LIVING — the one place the native's open decisions for the Gochara build are listed (steward M20261002T004621-2b84)
 date: 2026-10-02
 author: Stream B (Śāstra)
@@ -9,11 +9,22 @@ rule: "Plain language. One paragraph each. Nothing here is decided; until you ru
 
 # Decisions only you can make
 
-**ND-ORB — how close is "touching"?** When a planet moves toward an exact point in your chart (a planet's degree, a sensitive degree), how many
-degrees either side still count as touching it? The classical books we can read give no such number for transit contact. Until you decide, every
-true-point contact is marked "unqualified" (the engine declines to score it); signs, houses and nakṣatras are not affected. The options, what each
-rests on, and their effect on how long things look "active" are in `decisions/ND_ORB_DECISION_PACKET_v1_0.md`; my recommendation there is to adopt
-the orb the engine already uses to find contacts, openly labelled "engine convention, not classical".
+**ND-ORB-ADMISSION — how close must a moving planet come for a "touch" to exist at all?** When a planet moves toward an exact point in your chart (a planet's
+degree, a sensitive degree), within how many degrees does the engine count it as touching? This decides how **long** each touch lasts and so how many **days**
+look "active" — the number the false-alarm test caps. Change it and every touch and its duration changes, so everything built on them must be rebuilt.
+In the places we searched, the classical books we can read **gave no such number for transit contact** (*not found in the stated searches* — that is a statement
+about those searches, not proof that no book has one; a Tājaka orb table from another system and a combustion table were found and are shown as analogies only).
+Until you decide, every true-point contact is marked "unqualified" (the engine declines to score it); signs, houses and nakṣatras are not affected.
+
+**ND-ORB-SCALE — once a touch exists, how strongly does it count as the planet nears exact?** This is the angle over which the "activity" falls from full to
+nothing. It only **orders** touches against each other: with the touches already fixed it changes **no day counts** and cannot by itself change the false-alarm test.
+Until you decide, the ranking inside a point contact is "unqualified".
+
+**One ruling or two?** You may give **one value for both** (say so in the ruling) or **two separate values**; a ruling must state which. A ranking-only (SCALE)
+change can never silently change which touches exist (ADMISSION). The options, what each rests on, and the corrected effects are in
+`decisions/ND_ORB_DECISION_PACKET_v1_1.md` (v1.0 is superseded and must not be used); the recommendation there is to decide the two questions separately — for
+admission the orb the engine already uses, openly labelled "engine convention, not classical", is the least-new-number choice, a smaller chosen value is equally
+legitimate, and neither is cited.
 
 **ND-VIPAREETA — is "cancelled obstruction" used, and on what authority?** In transit practice, an obstruction (vedha) of a good transit can be
 said to be cancelled in special circumstances. The passages of Phaladīpikā we can read (chapter XXVI, verses 3–8) say that an occupied obstructing
