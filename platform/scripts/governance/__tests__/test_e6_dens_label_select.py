@@ -16,6 +16,9 @@ branch and could never read the N/A. Now every occurrence of the asset's tokens 
 
 Two directions for every pattern: a label-only module must not make the asset reached (N/A allowed), a select must (N/A refused), every
 ambiguous form must refuse the N/A. Comments keep today's R51 reading (comment-only mention blocks the N/A: a comment can assert served-ness).
+COMMENTS: one rule -- a comment naming the asset anywhere in a module blocks the N/A, even when that module's code only labels it (bg_cohort stays
+NO_DETECTOR; a later per-asset declared cause, not a scanner inference from prose). A name EMBEDDED in a longer literal is a label only on a positive
+recognition (prose-shaped, `:` `/` `#` adjacent, a label-keyed value, an import path); a label key is guarded against same-module readers.
 Python readers are outside the served surface BY DESIGN: the scan reads `*.ts` under the serving roots only.
 `ka_vedha_gochara/writer.py` (a Python L3 writer) DOES read `FROM bg_phaladeepika_latta`; the rule says no SERVED module selects from it, which
 is true. Dens.served N/A means "not served directly", NOT "unused".
@@ -90,6 +93,15 @@ LABELS = {
     "provenance-envelope-next-to-real-sql-of-another-table":
         "export const c = { run: async () => { const r = await query(`SELECT id FROM kala_other WHERE chart_id = $1`, [1]);\n"
         "  return { r, provenance: { tables: ['kala_other', 't_x'] } } } }\n",
+    "grouping-paren-after-arrow": "export const c = { run: () => ({ source_table: 't_x', rows: [] }) }\n",
+    "grouping-paren-after-return": "export const c = () => { return ({ tables: ['t_x'] }) }\n",
+    "label-const-never-handed-on": "const REF = { table: 't_x' }\nexport const ok = 1\n",
+    "a-different-key-is-read": "export const c = { table: 't_x', other: 1 }\nexport const v = (r: any) => r.other\n",
+    "label-object-returned-from-a-function": "export const f = () => ({ provenance: { tables: ['t_x'], source: 'served' } })\n",
+    "embedded-name-under-label-key": "export const c = { source: 't_x (cohort-scored scarcity)' }\n",
+    "path-with-hash": "export const p = { note: 'migrations/624_probe.sql#t_x' }\n",
+    "colon-id": "export const p = { note: 'health-probe:t_x' }\n",
+    "side-effect-import": "import 't_x'\nexport const ok = 1\n",
     "multiline-concat-prose":
         "export const c = { description: 'Returns eligibility windows for a chart ' +\n   '(t_x service) over a date range, ranked.' }\n",
 }
@@ -156,6 +168,50 @@ SELECTS = {
     "update-prefix-no-set-uppercase": "export const q = () => query(`UPDATE t_x`)\n",
     "table-ddl": "export const q = () => query(`CREATE TABLE t_x (id int)`)\n",
     "asset-id-select-from-in-a-sql-literal": "export const q = () => query(`SELECT id FROM bg_x`)\n",
+    # SS DENS review M1: a name EMBEDDED in a longer literal with no SQL signal is a label only on a positive recognition
+    "knex-alias-string": "export const q = () => knex('bg_x as b')\n",
+    "builder-alias-string": "export const q = () => db.from('t_x a')\n",
+    "builder-schema-qualified-string": "export const q = () => db.from('app.t_x')\n",
+    "comma-list-of-tables": "export const q = () => readTables('t_x,t_y')\n",
+    "two-names-in-one-string": "export const q = () => run('t_x t_y')\n",
+    "json-parsed-list": "export const q = () => JSON.parse('[\"t_x\"]')\n",
+    "copy-upper": "export const q = () => query('COPY t_x TO STDOUT')\n",
+    "copy-lower": "export const q = () => query('copy t_x to stdout')\n",
+    "copy-columns-lower": "export const q = () => query('copy t_x (id, name) from stdin')\n",
+    "long-lower-case-update": "export const q = () => query('update t_x set col1 = col_b, col2 = col_c, col3 = col_d, col4 = col_e, col5 = col_f')\n",
+    "long-lower-case-update-alias": "export const q = () => query('update t_x a set col1 = col_b, col2 = col_c, col3 = col_d, col4 = col_e')\n",
+    "long-lower-case-create-table": "export const q = () => query('create table t_x (id int, name text, note text, created_at timestamptz, kind text)')\n",
+    "lower-case-create-temp-table": "export const q = () => query('create temp table t_x (id int, name text, note text, created_at timestamptz)')\n",
+    "lower-case-create-or-replace-view": "export const q = () => query('create or replace view t_x as select 1')\n",
+    "lower-case-alter-table": "export const q = () => query('alter table t_x add column note text, add column kind text, add column score int')\n",
+    "lower-case-drop-table": "export const q = () => query('drop table t_x')\n",
+    "sql-prefix-in-a-variable": "const A = 'SELECT * FROM '\nexport const q = () => query(A + `${'t_x'}`)\n",
+    "call-argument-in-a-template-interpolation": "export const m = async () => `rows: ${await readTable('t_x')}`\n",
+    "call-argument-in-a-prose-template": "export const m = async () => `Fetched the rows for this chart just now: ${await readTable('t_x')} and more`\n",
+    "nested-interpolation-call": "export const m = async () => `a ${ok ? `${readTable('t_x')}` : ''} b`\n",
+    # SS DENS review L1: a same-module reader of a label key
+    "label-key-read-through-this": "export const c = { table: 't_x', run() { return read(this.table) } }\n",
+    "label-key-read-through-property": "const c = { table: 't_x' }\nexport const v = c.table\n",
+    "label-key-read-through-optional-chain": "const c = { table: 't_x' }\nexport const v = c?.table\n",
+    "label-key-read-through-brackets": "const c = { table: 't_x' }\nexport const v = c['table']\n",
+    "label-key-read-through-brackets-of-a-parameter": "export const c = { table: 't_x' }\nexport const f = (o: any) => o['table']\n",
+    "label-key-read-through-destructure": "const c = { table: 't_x' }\nconst { table } = c\n",
+    "label-key-read-through-destructure-rename": "const c = { table: 't_x' }\nconst { a, table: tb } = c\n",
+    "label-key-read-through-parameter-destructure": "export const c = { table: 't_x' }\nexport const f = ({ table }) => table\n",
+    "label-const-passed-to-a-call": "const REF = { table: 't_x' }\ndb.rpc('fetch', REF)\n",
+    "label-const-passed-as-first-argument": "const REF = { table: 't_x' }\nfetchAll(REF)\n",
+    "label-const-spread": "const REF = { table: 't_x' }\nexport const c = { ...REF }\n",
+    "label-const-iterated": "const SOURCES = { assets: ['t_x'] }\nfor (const a of SOURCES.assets) fetchAsset(db, a)\n",
+    "label-const-array-iterated-by-method": "const NAMES = { tables: ['t_x'] }\nNAMES.tables.forEach(load)\n",
+    "label-const-indexed": "const REF = { table: 't_x' }\nexport const v = REF[k]\n",
+    "label-object-literal-as-call-argument": "register({ tables: ['t_x'] })\n",
+    "label-object-literal-as-second-argument": "register(db, { source_table: 't_x' })\n",
+    "label-object-literal-in-new-expression": "new Probe({ asset_id: 't_x' })\n",
+    "label-array-iterated-inline": "export const c = { tables: ['t_x'].map(load) }\n",
+    "label-array-in-spread": "export const c = [...{ tables: ['t_x'] }]\n",
+    "map-key-object-passed-to-a-call": "const M = { t_x: 1 }\nuse(M)\n",
+    "map-key-object-iterated": "const M = { t_x: 1 }\nfor (const k in M) go(k)\n",
+    "label-const-returned": "const REF = { table: 't_x' }\nexport const get = () => { return REF }\n",
 }
 
 
@@ -261,7 +317,8 @@ def _kinds(src, tok="t_x"):
     ("export const c = { table : \n 't_x' }", ["label"]),
     ("export const c = { Table: 't_x' }", ["label"]),                      # the key vocabulary is case-insensitive
     ("export const c = { SOURCE_TABLE: 't_x' }", ["label"]),
-    ("export const c = { notes: 'about t_x here' }", ["label"]),
+    ("export const c = { notes: 'about t_x here' }", ["ambiguous"]),                       # a short embedded name is NOT a label by default (SS DENS review M1)
+    ("export const c = { notes: 'a note about t_x for the reader of this page' }", ["label"]),   # prose-shaped: a label
     ("export const c = { x: `SELECT 1 FROM t_x` }", ["select"]),
     ("export const c = { x: 'select 1 from t_x' }", ["select"]),
     ("export const c = { x: 'sELeCt 1 FrOm t_x' }", ["select"]),
@@ -325,8 +382,8 @@ def test_every_sql_signal_marks_the_literal_a_select_not_a_label(src):
     "export const c = { d: 'rows where present, or limit to the first few' + ' t_x' }",
     "export const c = { d: 'the union of t_x and its siblings' }",
     "export const c = { d: 'a table of t_x rows, set aside, updated' }",
-    "export const c = { d: 'returning t_x quickly' }",
-    "export const c = { d: 'truncate the list for t_x' }",
+    "export const c = { d: 'a note on returning t_x rows quickly to the caller' }",
+    "export const c = { d: 'we truncate the list shown for t_x in the view' }",
     "export const c = { d: 'a where clause on t_x is not used' }",
 ])
 def test_prose_with_a_lower_case_sql_word_is_not_mistaken_for_a_select_signal_where_the_word_is_not_sql(src):
@@ -443,15 +500,16 @@ def test_the_head_and_the_tail_of_a_concatenated_name_are_ambiguous():
     assert _kinds("run(prefix + 't_x rows')") == ["ambiguous"]
     assert _kinds("run('rows t_x' + suffix)") == ["ambiguous"]
     assert _kinds("run('rows t_x'.concat(suffix))") == ["ambiguous"]
-    assert _kinds("run('rows t_x', other)") == ["label"]
-    assert _kinds("run('pre t_x post' + other)") == ["label"]
+    assert _kinds("run('a few more words before t_x in this sentence', other)") == ["label"]
+    assert _kinds("run('rows t_x', other)") == ["ambiguous"]
+    assert _kinds("run('some words before t_x and after it' + other)") == ["label"]
 
 
 def test_a_dynamic_table_access_in_the_module_turns_bare_labels_and_keys_ambiguous_but_not_prose():
     dyn = "\nexport const q = (t: string) => query(`SELECT id FROM ${t}`)"
     assert _kinds("export const c = { tables: ['t_x'] }" + dyn) == ["ambiguous"]
     assert _kinds("export const c = { t_x: 1 }" + dyn) == ["ambiguous"]
-    assert _kinds("export const c = { note: 'about t_x here' }" + dyn) == ["label"]       # prose cannot build a table name
+    assert _kinds("export const c = { note: 'a note about t_x for the reader of this page' }" + dyn) == ["label"]   # prose cannot build a table name
     bld = "\nexport const q = (t: string) => db.from(t).select()"
     assert _kinds("export const c = { tables: ['t_x'] }" + bld) == ["ambiguous"]
     assert _kinds("export const c = { tables: ['t_x'] }\nexport const q = () => db.from('other').select()") == ["label"]
@@ -488,7 +546,7 @@ def test_import_and_require_paths_are_labels_but_other_calls_are_not():
 
 
 def test_every_occurrence_is_classified_and_one_ambiguous_one_decides():
-    kinds = _kinds("export const c = { tables: ['t_x'], d: 'about t_x', run: () => query('SELECT 1 FROM t_x') }")
+    kinds = _kinds("export const c = { tables: ['t_x'], d: 'a note about t_x for the reader of this page', run: () => query('SELECT 1 FROM t_x') }")
     assert kinds == ["label", "label", "select"], kinds
     assert ac._module_reaches(kinds) and not ac._module_reaches(["label", "label"]) and not ac._module_reaches([])
 
@@ -533,7 +591,7 @@ def test_an_envelope_in_one_object_does_not_reach_a_label_in_a_sibling_object(tr
     src = ("export const a = { kind: 'service_probe', asset_id: 'other_asset' }\n"
            "export const b = { asset_id: 'bg_x' }\n")
     assert _svc(tree, src, True)[0]["v"] == NA          # the 'service_probe' string belongs to a's object, not b's
-    assert _svc(tree, "export const b = { kind: 'service_probe', nested: { asset_id: 'bg_x' } }\n", True)[0]["v"] == NA   # the innermost object holds no 'service_probe'
+    assert _svc(tree, "export const b = { kind: 'service_probe', nested: { asset_id: 'bg_x' } }\n", True)[0]["v"] == NO_DET   # one object deeper in the envelope: a reach (L4)
 
 
 def test_a_service_envelope_beside_a_real_select_is_still_the_select_verdict(tree):
@@ -555,7 +613,7 @@ def test_the_probe_kind_is_a_reach_in_the_unit_classifier():
 
 
 def test_inside_an_envelope_only_a_label_becomes_a_probe_other_kinds_keep_their_name():
-    src = "export const p = { kind: 'service_probe', q: 'SELECT id FROM t_x', n: 'a note about t_x here' }"
+    src = "export const p = { kind: 'service_probe', q: 'SELECT id FROM t_x', n: 'a note about t_x for the reader of this page' }"
     assert ac._ref_kinds(src, "t_x", service=True) == ["select", "probe"]
     assert ac._ref_kinds("export const p = { kind: 'service_probe', ids: pick('t_x') }", "t_x", service=True) == ["ambiguous"]
 
@@ -594,6 +652,206 @@ def test_measure_hands_the_registry_kind_to_the_scan(monkeypatch, tree):
     assert seen == [False] and dr._dens(census, "bg_x")["v"] == NA
 
 
+# ───────────────────────── review round: M1 (embedded names), L1 (same-module readers), L2 (comments), L3, L4, L5 ─────────────────────────
+
+@pytest.mark.parametrize("src, want", [
+    ("run('t_x as b')", ["ambiguous"]),
+    ("run('t_x a')", ["ambiguous"]),
+    ("run('app.t_x')", ["ambiguous"]),
+    ("run('t_x,t_y')", ["ambiguous"]),
+    ("run('t_x t_y')", ["ambiguous"]),
+    ("run('[\"t_x\"]')", ["ambiguous"]),
+    ("run('COPY t_x TO STDOUT')", ["select"]),
+    ("run('copy t_x to stdout')", ["select"]),
+    ("run('copy t_x (id) from stdin')", ["select"]),
+    ("run('update t_x set a = b')", ["select"]),
+    ("run('update t_x a set a = b')", ["select"]),
+    ("run('update only t_x set a = b')", ["select"]),
+    ("run('create table t_x (id int)')", ["select"]),
+    ("run('create or replace view t_x as x')", ["select"]),
+    ("run('create unlogged table t_x (a int)')", ["select"]),
+    ("run('create materialized view t_x as x')", ["select"]),
+    ("run('create global temporary table t_x (a int)')", ["select"]),
+    ("run('create index t_x')", ["select"]),
+    ("run('alter table t_x add c int')", ["select"]),
+    ("run('alter view t_x rename')", ["select"]),
+    ("run('drop table t_x')", ["select"]),
+    ("run('drop index t_x')", ["select"]),
+    ("run(`${await readTable('t_x')}`)", ["ambiguous"]),
+    ("run(`Fetched the rows for this chart just now: ${await readTable('t_x')} and more`)", ["ambiguous"]),
+    ("run(`${a}${b ? 't_x' : 'u'} text`)", ["ambiguous"]),
+    ("run(`Fetched the rows for this chart ${a} then t_x here later on`)", ["label"]),
+    ("run(`a ${ {x: 1}.x } then some words around t_x for the reader here`)", ["label"]),
+    ("run('some words that make up a sentence about t_x')", ["label"]),
+    ("run('alpha beta t_x gamma delta omega')", ["label"]),
+    ("run('alpha beta t_x gamma delta')", ["ambiguous"]),             # four words: not prose-shaped
+    ("run('health-probe:t_x')", ["label"]),
+    ("run('a/b/t_x')", ["label"]),
+    ("run('f.sql#t_x')", ["label"]),
+    ("run('t_x:note')", ["label"]),
+    ("run('./t_x')", ["label"]),
+    ("run('x.t_x')", ["ambiguous"]),
+    ("import 't_x'", ["label"]),
+    ('import "t_x"', ["label"]),
+    ("import a from 'x-t_x'", ["label"]),
+])
+def test_embedded_name_unit_table(src, want):
+    assert _kinds(src) == want, (src, _kinds(src))
+
+
+@pytest.mark.parametrize("src, want", [
+    ("run('a note ${ about t_x for the reader here')", ["label"]),                 # `${` in a plain-quoted string is text, not an interpolation
+    ("run(`a note ${ about t_x for the reader here`)", ["ambiguous"]),            # in a template literal it opens an expression
+    ("run(`Fetched the rows for this chart ${ ({a: 1}).a + readTable('t_x') } and more`)", ["ambiguous"]),   # nested braces inside the expression
+    ("run(`${p}t_x and four more words after it here`)", ["ambiguous"]),         # glued to a closed interpolation even in a long sentence
+    ("run(`words before and more words t_x${s} here`)", ["ambiguous"]),
+    ("run(prefix + 't_x and four more words after it here')", ["ambiguous"]),     # the head of a concatenated name, even in a long sentence
+    ("run('words before and more words then t_x' + suffix)", ["ambiguous"]),      # the tail
+    ("run('words before and more words then t_x'.concat(suffix))", ["ambiguous"]),
+    ("export const c = { tables: ['t_x' + s] }", ["ambiguous"]),                  # a bare label-key element that is concatenated
+    ("export const c = { tables: [p + 't_x'] }", ["ambiguous"]),
+    ("export const c = { tables: ['t_x'] }", ["label"]),
+    ("run('COPY t_x')", ["select"]),
+    ("run('lower copy t_x for the reader of this page now')", ["label"]),          # prose-shaped, `copy` lower-case is not a signal
+    ("curry(a)({ tables: ['t_x'] })", ["ambiguous"]),                              # a call on a call result
+    ("items[0]({ tables: ['t_x'] })", ["ambiguous"]),
+    ("const x = ({ tables: ['t_x'] })", ["label"]),                                # a grouping paren after `=`
+    ("const x = [{ tables: ['t_x'] }]", ["label"]),
+    ("const x = cond ? { tables: ['t_x'] } : null", ["label"]),
+])
+def test_review_round_unit_table(src, want):
+    assert _kinds(src) == want, (src, _kinds(src))
+
+
+def test_key_reads_and_const_holders_directly():
+    f = ac._dens_facts
+    assert ac._key_read(f("export const f = (o: any) => o['table']"), "table")
+    assert ac._key_read(f("export const f = (o: any) => o[\"table\"]"), "table")
+    assert not ac._key_read(f("const x = ({ table: 't_x' }, 1)"), "table")          # an object LITERAL is not a destructuring
+    assert ac._key_read(f("const x = ({ table: tb }, 1)"), "table")                 # a rename to an identifier is
+    assert ac._key_read(f("const { table = 'd' } = c"), "table") and ac._key_read(f("const { a, table } = c"), "table")
+    assert ac._key_read(f("export const g = ({ a, table }) => a"), "table") and ac._key_read(f("function g({ table }) { return 1 }"), "table")
+    assert not ac._key_read(f("const c = { table: 't_x' }"), "table")
+    for use in ("REF.filter(x)", "REF.forEach(x)", "REF.map(x)", "for (const k in REF) go(k)", "use(REF)", "use(a, REF)", "go({ ...REF })", "REF[k]",
+                "const f = () => { return REF }", "run(() => REF)"):
+        src = "const REF = { table: 't_x' }\n" + use + "\n"
+        mod = f(src)
+        assert ac._const_holder_consumed(mod, src.index("{")), use
+    mod = f("const REF = { table: 't_x' }\nexport const ok = 1\n")
+    assert not ac._const_holder_consumed(mod, mod["txt"].index("{"))
+
+
+def test_the_name_itself_is_not_counted_as_a_word_of_the_sentence():
+    assert not ac._prose_shaped("one two three abc_def", "abc_def") and ac._prose_shaped("one two three four abc_def five", "abc_def")
+
+
+def test_an_upper_case_table_keyword_alone_is_a_select_signal():
+    assert _kinds("run('TABLE t_x')") == ["select"]
+
+
+def test_the_prose_threshold_is_exactly_five_words():
+    assert ac._prose_shaped("one two three four five", "") and not ac._prose_shaped("one two three four", "")
+    assert ac._prose_shaped("one two t_x three four five", "t_x") and not ac._prose_shaped("one two t_x three four", "t_x")
+
+
+def test_a_label_in_one_token_and_an_ambiguous_form_of_another_token_is_one_reach(tree):
+    """`kinds` is read over EVERY referencing token of the asset (the table AND the asset id), not the first only."""
+    src = "export const c = { tables: ['t_x'] }\nexport const IDS = ['bg_x']\n"
+    d, cap = _verdict(tree, src)
+    assert d["v"] == NO_DET and cap["modules"] == ["tool.ts"] and not cap["label_only"], (d, cap)
+    d, cap = _verdict(tree, "export const IDS = ['t_x']\nexport const c = { source_table: 'bg_x' }\n")
+    assert d["v"] == NO_DET and cap["modules"] == ["tool.ts"], (d, cap)
+    d, cap = _verdict(tree, "export const c = { tables: ['t_x'], assets: ['bg_x'] }\n")
+    assert d["v"] == NA and cap["label_only"] == ["tool.ts"], (d, cap)
+
+
+def test_the_concatenation_chain_reaches_two_literals_each_way_and_no_further():
+    assert _kinds("run('SELECT a ' + 'b ' + 't_x z')") == ["select"]
+    assert _kinds("run('t_x z' + ' b' + ' FROM x')") == ["select"]
+    assert _kinds("run('SELECT a ' + 'b ' + 'c ' + 't_x z')") == ["ambiguous"]
+    assert _kinds("run('t_x z' + ' b' + ' c' + ' FROM x')") == ["ambiguous"]
+
+
+# L2: a comment names the asset anywhere in a module -> the N/A is blocked, in code-label modules as in any other
+
+def test_a_comment_in_the_same_module_as_label_only_code_blocks_the_na(tree):
+    d, cap = _verdict(tree, LABELS["provenance-tables-array"] + "// t_x is served through a generic route\n")
+    assert d["v"] == NO_DET and cap["label_only"] == ["tool.ts"] and cap["label_comment"] == ["tool.ts"], (d, cap)
+    assert "comment" in d["measured"] and "never the closable N/A" in d["measured"], d
+    assert d["measured"].startswith("NO_DETECTOR"), d
+
+
+@pytest.mark.parametrize("comment", ["// bg_x serves it\n", "/* t_x is read elsewhere */\n", "/**\n * t_x\n */\n"])
+def test_every_comment_form_naming_either_token_blocks(tree, comment):
+    d, cap = _verdict(tree, LABELS["asset_id-key"] + comment)
+    assert d["v"] == NO_DET and cap["label_comment"] == ["tool.ts"], (comment, d)
+
+
+def test_a_comment_naming_the_table_while_the_code_labels_the_asset_id_blocks(tree):
+    d, cap = _verdict(tree, "// reads t_x\nexport const c = { asset_id: 'bg_x' }\n")
+    assert d["v"] == NO_DET and cap["label_comment"] == ["tool.ts"], (d, cap)
+
+
+def test_the_same_label_only_module_without_a_comment_still_reads_na_and_names_no_comment(tree):
+    d, cap = _verdict(tree, LABELS["provenance-tables-array"])
+    assert d["v"] == NA and cap["label_comment"] == [], (d, cap)
+    d, cap = _verdict(tree, LABELS["provenance-tables-array"] + "// an unrelated note\n")
+    assert d["v"] == NA and cap["label_comment"] == [], (d, cap)
+
+
+def test_a_comment_inside_a_string_is_not_a_comment(tree):
+    d, cap = _verdict(tree, "export const c = { source: 'see http://x/t_x for the long form of this page' }\n")
+    assert d["v"] == NA and cap["label_comment"] == [], (d, cap)
+
+
+def test_a_comment_in_another_module_blocks_and_a_comment_in_a_hit_module_changes_nothing(tree):
+    tree.write(tree.layers, "label.ts", LABELS["provenance-tables-array"])
+    tree.write(tree.layers, "note.ts", "// t_x\nexport {}\n")
+    d = ac._grade_dens(dr._scan(tree, list(TOKS)), "t_x")
+    assert d["v"] == NO_DET and "comments only" in d["measured"], d
+    d, cap = _verdict(tree, "// t_x\nexport const q = () => query(`SELECT id FROM t_x`)\n", name="sel.ts")
+    assert d["v"] == ac.FAIL, d
+
+
+# L4: the service envelope, safe direction
+
+@pytest.mark.parametrize("src", [
+    "export const probe = { kind: PROBE_KIND, asset_id: 'bg_x' }\n",
+    "const base = { kind: 'service_probe' }\nexport const probe = { ...base, asset_id: 'bg_x' }\n",
+    "export const probe = { kind: 'service_probe', meta: { asset_id: 'bg_x' } }\n",
+    "export const probe = { kind: 'service_probe', meta: { deeper: { x: 1 }, asset_id: 'bg_x' } }\n",
+    "export const probe = { kind: probeKind(), asset_id: 'bg_x' }\n",
+    "export const probe = { kind: \"service_probe\", asset_id: 'bg_x' }\n",
+    "export const probe = { kind: `service_probe`, asset_id: 'bg_x' }\n",
+])
+def test_an_envelope_the_scan_cannot_read_or_one_level_deeper_is_a_reach_for_a_service(tree, src):
+    assert _svc(tree, src, True)[0]["v"] == NO_DET, src
+    assert _svc(tree, src, False)[0]["v"] == NA, src          # ... and the same text on a data asset is still a label
+
+
+def test_a_kind_that_is_a_plain_literal_other_than_the_marker_does_not_open_the_envelope(tree):
+    assert _svc(tree, "export const probe = { kind: 'something_else', asset_id: 'bg_x' }\n", True)[0]["v"] == NA
+    assert _svc(tree, "export const probe = { asset_id: 'bg_x' }\n", True)[0]["v"] == NA
+    assert _svc(tree, "export const a = { kind: 'service_probe' }\nexport const probe = { asset_id: 'bg_x' }\n", True)[0]["v"] == NA
+
+
+def test_two_objects_deeper_than_the_marker_is_not_the_envelope(tree):
+    assert _svc(tree, "export const a = { kind: 'service_probe', n: { m: { asset_id: 'bg_x' } } }\n", True)[0]["v"] == NA
+
+
+def test_the_real_services_stay_no_detector_under_the_wider_envelope_rule(real_dens):
+    for a in SERVICE_PROBE_ONLY:
+        assert real_dens[a][0]["v"] == NO_DET, a
+
+
+# L5: the carr_checks / grade_carr_no_carriage docstring no longer calls a Dens N/A "scanned, no reference"
+
+def test_the_carr_no_carriage_docstring_describes_the_dens_na_as_no_served_select():
+    d = ac.grade_carr_no_carriage.__doc__
+    assert "scanned, no served select" in d and "REGISTRY_REVISION 14" in d and 'meaning "scanned, no reference"' not in d, d
+    assert ac.NA_CAUSES["Dens.served"] == ("no-served-surface",)
+
+
 # ───────────────────────── Python readers are outside the served surface, by design ─────────────────────────
 
 def test_a_python_reader_of_the_table_is_outside_the_served_surface_and_does_not_block_the_na(tree):
@@ -619,7 +877,8 @@ def test_the_real_scan_roots_name_no_python_tree():
 
 FX = json.loads((HERE / "fixtures" / "dens_scan_inputs_2026-10-02.json").read_text(encoding="utf-8"))
 R02_PRE_N74 = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
-R02_LABEL_REPAIR = ("bg_cohort", "bg_phaladeepika_latta", "bg_vedha_malefic_scale")
+R02_LABEL_REPAIR = ("bg_phaladeepika_latta", "bg_vedha_malefic_scale")
+COMMENT_BLOCKED = ("bg_cohort",)        # label-only in code, but a comment in the same module names it: blocks the N/A (SS DENS L2, option ii)
 SERVICE_PROBE_ONLY = ("bg_ephemeris_engine", "bg_panchanga")          # registry kind `service`, named only by a service_probe envelope: a reach
 REPO = HERE.parents[3]
 
@@ -705,6 +964,15 @@ def test_bg_phaladeepika_latta_python_reader_exists_but_is_not_the_served_surfac
     assert g["v"] == NA and cap["modules"] == [] and cap["outside"] == [] and cap["outside_named"] == [], (g, cap)
 
 
+def test_bg_cohort_is_label_only_in_code_but_a_comment_in_the_same_module_blocks_the_na(real_dens):
+    """kala_ritual_resonance.ts names bg_cohort in code only as a label (L575-578) and in comments (L21, L568): ONE rule for comments, so it
+    stays NO_DETECTOR. Its 'no retrieval capability wired' is a later per-asset declared cause, not a scanner inference from prose."""
+    g, cap = real_dens["bg_cohort"]
+    assert g["v"] == NO_DET and cap["label_only"] and not cap["modules"], (g, cap)
+    assert cap["label_comment"] == ["platform-mcp/src/lib/kala_ritual_resonance.ts"], cap
+    assert "comment" in g["measured"], g
+
+
 def test_bg_sarvatobhadra_grid_stays_no_detector_because_a_comment_names_it_r51(real_dens):
     g, cap = real_dens["bg_sarvatobhadra_grid"]
     assert g["v"] == NO_DET and cap["comment_only"] and not cap["modules"], (g, cap)
@@ -714,7 +982,7 @@ def test_no_pass_partial_or_fail_cell_moves_on_the_real_tree(real_dens):
     from collections import Counter
     c = Counter(g["v"] for g, _cap in real_dens.values())
     assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (5, 26, 43), c
-    assert c["N/A"] == 6 and c["NO_DETECTOR"] == 47, c
+    assert c["N/A"] == 5 and c["NO_DETECTOR"] == 48, c
 
 
 def test_a_real_select_is_never_relabelled_on_the_real_tree():

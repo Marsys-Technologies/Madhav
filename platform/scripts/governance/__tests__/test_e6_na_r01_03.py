@@ -35,9 +35,9 @@ DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS     # the exact production 
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
-# REGISTRY_REVISION 14 (SS N-74(a)): the scan tells a SELECT from a LABEL; three more DATA assets are named only as labels in the serving modules.
+# REGISTRY_REVISION 14 (SS N-74(a)): the scan tells a SELECT from a LABEL; two more DATA assets are named only as labels in the serving modules (bg_cohort too, but a comment in the same module names it: it stays NO_DETECTOR, SS DENS L2).
 # (bg_ephemeris_engine and bg_panchanga are named only by their service_probe envelope but are registry kind `service`: that is a reach, they stay NO_DETECTOR.)
-R02_LABEL_ASSETS = ("bg_cohort", "bg_phaladeepika_latta", "bg_vedha_malefic_scale")
+R02_LABEL_ASSETS = ("bg_phaladeepika_latta", "bg_vedha_malefic_scale")
 R02_ALL = R02_ASSETS + R02_LABEL_ASSETS
 R03_ASSETS = ("bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank")
 NA, NO_DET = ac.NA, ac.NO_DET
@@ -339,7 +339,7 @@ def test_saved_censuses_only_the_listed_gate_cells_move_and_all_of_them_no_detec
     for aid, crit, _ in released_checks:
         by.setdefault(crit.split(".")[0], set()).add(aid)
     assert by == {"Build": set(R01_ASSETS), "Dens": set(R02_ALL), "Narr": set(R03_ASSETS)}, by
-    assert len(released_checks) == 6 + 6 + 16
+    assert len(released_checks) == 6 + 5 + 16
 
 
 # ───────────────────────── F1: an empty write scan is not evidence of "no narration write" ─────────────────────────
@@ -361,10 +361,10 @@ def test_F1_a_no_prose_asset_whose_dml_the_scan_cannot_see_reads_no_detector_nev
 
 def test_F3_the_real_dens_scan_reads_na_on_exactly_the_approved_assets_over_all_127(monkeypatch):
     """The inputs of the 127 assets' scans are a committed fixture (verdict-free); the scan is the REAL one over the current
-    source tree. A seventh N/A (a new unreferenced table, a served read removed, a new label-only mention) fails here and needs a
-    ruling, not a widening; a served read added to one of the six also fails here (the rule no longer fits it). The six are
-    the three that no served module references at all (N-65) plus the three DATA assets a serving module only NAMES as a label (SS N-74(a),
-    REGISTRY_REVISION 14: bg_cohort, bg_phaladeepika_latta, bg_vedha_malefic_scale). The two service-kind assets named only by their
+    source tree. A sixth N/A (a new unreferenced table, a served read removed, a new label-only mention) fails here and needs a
+    ruling, not a widening; a served read added to one of the five also fails here (the rule no longer fits it). The five are
+    the three that no served module references at all (N-65) plus the two DATA assets a serving module only NAMES as a label (SS N-74(a),
+    REGISTRY_REVISION 14: bg_phaladeepika_latta, bg_vedha_malefic_scale; bg_cohort is label-only too but a comment in the same module blocks it). The two service-kind assets named only by their
     service_probe envelope (bg_ephemeris_engine, bg_panchanga) are a reach and stay NO_DETECTOR.
     File reads are cached for speed."""
     fx = json.loads((HERE / "fixtures" / "dens_scan_inputs_2026-10-02.json").read_text(encoding="utf-8"))

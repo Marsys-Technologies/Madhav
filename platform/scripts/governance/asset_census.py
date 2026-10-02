@@ -1322,7 +1322,8 @@ def grade_carr_no_carriage(record_facts) -> dict:
       measured_served                    the Dens.served verdict of this census run
     N/A (cause `no-carriage`, a CANDIDATE) ONLY when ALL hold: the pointer is declared; measured direct AND transitive
     dependents are both 0; `served_surface` is None or False (true contradicts; a non-bool is malformed); and the
-    measured Dens.served verdict is EXACTLY 'N/A' (the only verdict meaning "scanned, no reference"). Every other
+    measured Dens.served verdict is EXACTLY 'N/A' (the only verdict meaning "scanned, no served select": since REGISTRY_REVISION 14 a serving
+    module may still NAME the asset as a label, a provenance string or a type name, which is not a select; the cause stays `no-served-surface`). Every other
     Dens.served value (NO_DETECTOR, ERRORED, absent, a case variant) means "possibly served" (the scan did not run, a module
     names the table but no served select was found, comment-only, outside the scanned roots, unparsed, shared-only), which
     is not evidence of no carriage: NO_DETECTOR. A declaration that a measured fact contradicts is NO_DETECTOR with a
@@ -4354,12 +4355,13 @@ DENS_LABEL_KEYS = frozenset({"source_table", "source_tables", "table", "tables",
 # "where present", "the union of"; SQL in this codebase is upper-case, and a lower-case SQL literal carries one of the case-insensitive signals)
 _SQL_STRONG = re.compile(r"\bSELECT\b|\bJOIN\b|\bINSERT\s+INTO\b|\bDELETE\s+FROM\b|\bMERGE\s+INTO\b|\bON\s+CONFLICT\b"
                          r"|\bORDER\s+BY\b|\bGROUP\s+BY\b|\bLIMIT\s+[\d$]|\bOFFSET\s+[\d$]|\$\d|::\s*[A-Za-z_]"
-                         r"|\bWHERE\s+[\w.\"()]+\s*(?:=|<|>|!|~|\b(?:IN|IS|LIKE|ILIKE|BETWEEN|ANY|NOT)\b)", re.I)
-_SQL_UPPER = re.compile(r"\b(?:FROM|INTO|UPDATE|TABLE|SET|WHERE|RETURNING|TRUNCATE|UNION)\b")
-# (JOIN is not listed: it is a case-insensitive strong signal, so a literal holding it never reaches this test)
-_SQL_KW_BEFORE = re.compile(r"\b(?:FROM|INTO|UPDATE|TABLE|LATERAL|TRUNCATE)\s+(?:ONLY\s+)?(?:\"?public\"?\.)?\"?$", re.I)
+                         r"|\bWHERE\s+[\w.\"()]+\s*(?:=|<|>|!|~|\b(?:IN|IS|LIKE|ILIKE|BETWEEN|ANY|NOT)\b)"
+                         # DDL / COPY / `update t set` in any case (a long lower-case statement is still SQL, not prose)
+                         r"|\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:(?:GLOBAL\s+|LOCAL\s+)?TEMP(?:ORARY)?\s+|UNLOGGED\s+|MATERIALIZED\s+)?(?:TABLE|VIEW|INDEX)\b"
+                         r"|\b(?:ALTER|DROP)\s+(?:TABLE|VIEW|INDEX)\b|\bUPDATE\s+(?:ONLY\s+)?[\w.\"]+(?:\s+(?:AS\s+)?\w+)?\s+SET\b"
+                         r"|\bCOPY\s+[\w.\"]+(?:\s*\([^)]*\))?\s+(?:TO|FROM)\b", re.I)
+_SQL_UPPER = re.compile(r"\b(?:FROM|INTO|UPDATE|TABLE|SET|WHERE|RETURNING|TRUNCATE|UNION|COPY)\b")
 _LIT_GAP = re.compile(r"[\s+,]*(?:\.concat\s*\(\s*)?")
-_BARE_NAME = r"\s*(?:\"?public\"?\.)?\"?{tok}\"?\s*"
 _LABEL_KEY_AT_END = re.compile(r"(?:^|[{,]|\n)\s*(?:([A-Za-z_$][\w$]*)|'([A-Za-z_]\w*)'|\"([A-Za-z_]\w*)\")\s*\??:\s*$")
 _IMPORT_PATH_BEFORE = re.compile(r"(?:^|[\s;}])(?:from|import)\s*$|\b(?:import|require)\s*\(\s*$")
 _TYPE_NAME_BEFORE = re.compile(r"\b(?:type|interface|enum|class)\s+$")
@@ -4400,26 +4402,155 @@ def _prose_shaped(c: str, tok: str) -> bool:
     return len(re.findall(r"[A-Za-z]{2,}", c.replace(tok, " ") if tok else c)) >= 5
 
 
-def _label_key_context(mod: dict, q: int) -> bool:
-    """Is the string literal opening at offset `q` the value of a label key, or an element of an array directly under one?"""
-    cm, blank = mod["cmask"], mod["blank"]
+_ITER_METHODS = r"(?:map|forEach|filter|reduce|reduceRight|flatMap|find|findIndex|some|every|join|includes|indexOf|keys|values|entries|flat|slice|concat)"
 
-    def key_at_end(text: str) -> bool:
-        m = _LABEL_KEY_AT_END.search(text)
-        return bool(m) and (m.group(1) or m.group(2) or m.group(3)).lower() in DENS_LABEL_KEYS
-    if key_at_end(cm[max(0, q - 200):q]):
-        return True
-    depth, i = 0, q - 1
-    while i >= 0:
-        ch = blank[i]
+
+def _opener_before(blank: str, i: int):
+    """Index of the innermost unmatched opener `([{` before offset `i` in the comment- and string-blanked text, or None."""
+    depth, k = 0, i - 1
+    while k >= 0:
+        ch = blank[k]
         if ch in ")]}":
             depth += 1
         elif ch in "([{":
             if depth == 0:
-                return ch == "[" and key_at_end(cm[max(0, i - 200):i])
+                return k
             depth -= 1
-        i -= 1
-    return False
+        k -= 1
+    return None
+
+
+def _closer_of(blank: str, i: int):
+    """Index of the bracket closing the opener at `i`, or None."""
+    depth = 0
+    for k in range(i, len(blank)):
+        if blank[k] in "([{":
+            depth += 1
+        elif blank[k] in ")]}":
+            depth -= 1
+            if depth == 0:
+                return k
+    return None
+
+
+def _label_key_of(mod: dict, q: int):
+    """`(key, openers)` when the string literal opening at offset `q` is the value of a label key, or an element of an array directly under one
+    (`key` lower-cased; `openers` = the offsets of the array and/or the object that holds the key), else None."""
+    cm, blank = mod["cmask"], mod["blank"]
+
+    def key_at_end(text: str):
+        m = _LABEL_KEY_AT_END.search(text)
+        k = ((m.group(1) or m.group(2) or m.group(3)).lower() if m else None)
+        return k if k in DENS_LABEL_KEYS else None
+    k = key_at_end(cm[max(0, q - 200):q])
+    if k:
+        o = _opener_before(blank, q)
+        return k, ([o] if o is not None else [])
+    o = _opener_before(blank, q)
+    if o is not None and blank[o] == "[":
+        k = key_at_end(cm[max(0, o - 200):o])
+        if k:
+            parent = _opener_before(blank, o)
+            return k, [o] + ([parent] if parent is not None else [])
+    return None
+
+
+def _label_key_context(mod: dict, q: int) -> bool:
+    """Is the string literal opening at offset `q` the value of a label key, or an element of an array directly under one?"""
+    return _label_key_of(mod, q) is not None
+
+
+_NOT_A_CALL_WORDS = frozenset({"return", "await", "yield", "typeof", "of", "in", "case", "else", "void", "throw", "delete", "instanceof", "do"})
+
+
+def _paren_is_call(blank: str, k: int) -> bool:
+    """Is the `(` at `k` a call / `new` argument list (as opposed to a grouping paren after `=>`, `return`, `=`, `:`, an operator or a bracket)?"""
+    j = k - 1
+    while j >= 0 and blank[j].isspace():
+        j -= 1
+    if j < 0:
+        return False
+    ch = blank[j]                                                  # `=> (` and `= (` end in a non-word char: a grouping paren
+    if ch.isalnum() or ch in "_$":
+        w = re.search(r"[A-Za-z_$][\w$]*$", blank[max(0, j - 40):j + 1])
+        return not (w and w.group(0) in _NOT_A_CALL_WORDS)
+    return ch in ")]"                                              # `f(x)(...)`, `a[0](...)`
+
+
+def _bracket_is_call_arg(mod: dict, i: int) -> bool:
+    """Is the object / array opening at `i` handed to something: a call argument (first or later), a spread, or iterated at once (`[...].map(`)?"""
+    blank = mod["blank"]
+    k = i - 1
+    while k >= 0 and blank[k].isspace():
+        k -= 1
+    p = blank[k] if k >= 0 else ""
+    if p == ".":
+        return True                                                # `...{...}`
+    if p == "(":
+        return _paren_is_call(blank, k)                            # `f({...})`; `=> ({...})` / `return ({...})` only group
+    if p == ",":
+        o = _opener_before(blank, k)
+        if o is not None and blank[o] == "(":
+            return _paren_is_call(blank, o)                        # a later call argument
+    c = _closer_of(blank, i)
+    return bool(c is not None and re.match(r"\s*\??\.\s*" + _ITER_METHODS + r"\b", blank[c + 1:c + 40]))
+
+
+def _const_holder_consumed(mod: dict, i: int) -> bool:
+    """The object / array at `i` is the initialiser of `const NAME = ...`: is NAME passed to a call, spread, iterated, indexed or read by a
+    method anywhere in the module (a same-module reader the scan can see)?"""
+    cm, blank = mod["cmask"], mod["blank"]
+    m = re.search(r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=\s*$", cm[max(0, i - 120):i])
+    if not m:
+        return False
+    n = re.escape(m.group(1))
+    pats = (r"[(,]\s*" + n + r"\s*[,)]", r"\.\.\.\s*" + n + r"\b", r"\b(?:of|in)\s+" + n + r"\b",
+            r"\b" + n + r"\s*\??\.\s*" + _ITER_METHODS + r"\b", r"\b" + n + r"\s*\[", r"\breturn\s+" + n + r"\b",
+            r"=>\s*" + n + r"\b\s*[,)]", r"\b" + n + r"\s*\)\s*\.")
+    return any(re.search(x, blank) for x in pats)
+
+
+def _container_consumed(mod: dict, openers) -> bool:
+    return any(_bracket_is_call_arg(mod, o) or _const_holder_consumed(mod, o) for o in openers)
+
+
+def _key_read(mod: dict, key: str) -> bool:
+    """Does the module READ `key` from an object: `.key`, `?.key`, `['key']`, or a destructuring that names it (`{ key }`, `{ key = d }`,
+    `{ key: alias }` in a declaration or a parameter list; an object LITERAL `{ key: 'x' }` is not a destructuring)?"""
+    k = re.escape(key)
+    blank, cm = mod["blank"], mod["cmask"]
+    named = r"\{[^{}]*\b" + k + r"\b\s*(?:,|=|(?=\})|:\s*[A-Za-z_$])[^{}]*\}"
+    return bool(re.search(r"\.\s*" + k + r"\b", blank, re.I)
+                or re.search(r"\[\s*['\"`]" + k + r"['\"`]\s*\]", cm, re.I)
+                or re.search(r"\b(?:const|let|var)\s*" + named + r"\s*=(?!=)", blank, re.I)
+                or re.search(r"\(\s*" + named + r"\s*(?:\)\s*(?:=>|\{|:)|,)", blank, re.I))
+
+
+def _label_key_ok(mod: dict, q: int) -> bool:
+    """A label key makes a name a LABEL only where nothing in the module can turn it into a table: no run-time table access, the key is never
+    READ from an object (`.table`, `['table']`, destructuring), and the object / array that holds it (or the const holding that) is never passed to
+    a call, spread or iterated (SS DENS review L1: a same-module reader of the label key)."""
+    got = _label_key_of(mod, q)
+    if got is None or mod["dynamic_table"]:
+        return False
+    key, openers = got
+    return not (_key_read(mod, key) or _container_consumed(mod, openers))
+
+
+def _in_interpolation(c: str, rel: int) -> bool:
+    """Is offset `rel` of a template literal's content inside a `${ ... }` expression (code, not text)?"""
+    depth, k = 0, 0
+    while k < rel:
+        if c.startswith("${", k):
+            depth += 1
+            k += 2
+            continue
+        if depth and c[k] == "{":
+            depth += 1
+        elif depth and c[k] == "}":
+            depth -= 1
+        k += 1
+    return depth > 0
 
 
 def _literal_ref_kind(mod: dict, i: int, off: int, tok: str) -> str:
@@ -4428,22 +4559,25 @@ def _literal_ref_kind(mod: dict, i: int, off: int, tok: str) -> str:
     chain = _literal_chain(mod, i)
     if _SQL_STRONG.search(chain) or _SQL_UPPER.search(chain):
         return SELECT_REF
-    if re.fullmatch(_BARE_NAME.format(tok=re.escape(tok)), c):
-        if _IMPORT_PATH_BEFORE.search(cm[max(0, start - 1 - 120):start - 1]):
-            return LABEL
-        if _label_key_context(mod, start - 1) and not mod["dynamic_table"]:
-            return LABEL
-        return AMBIGUOUS_REF
     before, after = c[:off - start], c[off - start + len(tok):]
-    if _SQL_KW_BEFORE.search(before) and not _prose_shaped(c, tok):
-        return AMBIGUOUS_REF                                      # a fragment (`' from t'`), not prose
+    if txt[start - 1] == "`" and _in_interpolation(c, off - start):
+        return AMBIGUOUS_REF                                      # code inside `${ ... }`: a call argument, a name built at run time
     if before.endswith("}") or after.startswith("${"):
         return AMBIGUOUS_REF                                      # glued to an interpolation: a name built at run time
     if not before.strip() and re.search(r"\+\s*$", cm[max(0, start - 1 - 8):start - 1]):
         return AMBIGUOUS_REF                                      # the head of a concatenated name
     if not after.strip() and re.match(r"\s*(?:\+|\.concat\b)", txt[start + len(c) + 1:start + len(c) + 12]):
         return AMBIGUOUS_REF                                      # the tail of a concatenated name
-    return LABEL
+    # A name EMBEDDED in a longer literal with no SQL signal is a label only on a positive recognition (SS DENS review M1), never by default:
+    if _IMPORT_PATH_BEFORE.search(cm[max(0, start - 1 - 120):start - 1]):
+        return LABEL                                              # an import / require path
+    if _prose_shaped(c, tok):
+        return LABEL                                              # a sentence (five or more words)
+    if before[-1:] in (":", "/", "#") or after[:1] in (":", "/", "#"):
+        return LABEL                                              # an id / path / fragment (`a:b:name`, `file.sql#name`, `./name`)
+    if _label_key_ok(mod, start - 1):
+        return LABEL                                              # a value of a label key (`source: 'name (note)'`)
+    return AMBIGUOUS_REF                                          # `'t_x a'`, `'app.t_x'`, `'t_x,t_y'`, `'["t_x"]'`, `'name as b'` ...
 
 
 def _code_ref_kind(mod: dict, off: int, end: int) -> str:
@@ -4451,14 +4585,32 @@ def _code_ref_kind(mod: dict, off: int, end: int) -> str:
     if _TYPE_NAME_BEFORE.search(cm[max(0, off - 24):off]):
         return LABEL
     if (_KEY_AFTER.match(cm[end:end + 24]) and _KEY_START_BEFORE.search(cm[max(0, off - 200):off]) and not mod["dynamic_table"]):
-        return LABEL                                              # an object-literal key: a names-map entry
+        o = _opener_before(mod["blank"], off)                     # an object-literal key: a names-map entry, unless the map is handed on
+        if o is None or not _container_consumed(mod, [o]):
+            return LABEL
     return AMBIGUOUS_REF
 
 
+_PROBE_MARK = re.compile(r"""['"`]service_probe['"`]""")
+_PROBE_OPEN_KIND = re.compile(r"""\bkind\s*:\s*[A-Za-z_$]""")        # `kind: PROBE_KIND`: a kind the scan cannot read
+_PROBE_SPREAD = re.compile(r"\.\.\.\s*[A-Za-z_$(\[{]")                # `...base`: a probe assembled from another object
+
+
 def _in_probe_envelope(mod: dict, off: int) -> bool:
-    """Is `off` inside the innermost object literal that holds the string 'service_probe' (a `kind: 'service_probe'` envelope)?"""
-    lo, hi = _enclosing_object(mod["blank"], off)
-    return bool(re.search(r"""['"`]service_probe['"`]""", mod["cmask"][lo:hi]))
+    """Is `off` inside a `service_probe` envelope? The innermost object literal holds the string 'service_probe', OR holds a `kind:` whose value is
+    not a literal, OR spreads another object (the kind is then unreadable: the safe direction treats it as an envelope), OR the object one level up
+    holds the marker (an asset id nested one object deeper in the envelope)."""
+    blank, cm = mod["blank"], mod["cmask"]
+    lo, hi = _enclosing_object(blank, off)
+    body = cm[lo:hi]
+    if _PROBE_MARK.search(body) or _PROBE_OPEN_KIND.search(blank[lo:hi]) or _PROBE_SPREAD.search(blank[lo:hi]):
+        return True
+    if lo > 0:
+        plo, phi = _enclosing_object(blank, lo)
+        if (plo, phi) == (0, len(blank)):
+            return False                                           # no enclosing object: the whole file is not a parent envelope
+        return bool(_PROBE_MARK.search(cm[plo:phi]))
+    return False
 
 
 def _ref_kinds_mod(mod: dict, tok: str, service: bool = False) -> list[str]:
@@ -4791,7 +4943,11 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     source string, prose, a path or id, a type name, an import path, a value under a label key such as `tables:` / `asset_id:` or a map key, the
     last two only where the module has no run-time table access) and that carries no strict served select is `label_only`: it names the asset,
     it does not read it. The rest of the scan (attribution, contract and tier, `served`, `shared_only`, `comment_only`, the outside probe) is
-    unchanged, so no PASS / PARTIAL / FAIL moves; comments keep their R51 reading (a comment-only mention still blocks the N/A).
+    unchanged, so no PASS / PARTIAL / FAIL moves. The label side needs a POSITIVE recognition (a name embedded in a literal is a label only when
+    the literal is prose-shaped, the name sits next to `:` `/` `#`, it is a label-keyed value, or an import path; everything else is a reach), a
+    label key counts only if the module never reads that key, never hands the holding object / array (or its const) to a call, a spread or an
+    iteration, and has no run-time table access (SS DENS review M1, L1). COMMENTS: ONE rule (R51, strategist option ii): a comment that names
+    the asset ANYWHERE in a module blocks the N/A, including a module whose code only labels it (`label_comment`).
     SERVICE ASSETS. `service` (measure() passes the asset's registry kind == 'service'): an occurrence inside a `service_probe` envelope is a
     reach (PROBE), not a label, so a service asset named only by its probe envelope stays NO_DETECTOR; the same envelope on a data asset is a
     label. A service asset's prose / label mention elsewhere stays a label (an ambiguous form still blocks). Whether Dens.served applies to
@@ -4802,7 +4958,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     sidecar reader of a table (`platform/python-sidecar/**`, e.g. the `ka_vedha_gochara` writer's `FROM bg_phaladeepika_latta`) is a build-time
     reader, not a served module, and never makes an asset served (R02's decision text, N-74(a)).
 
-    Returns `modules` (by code, attributing tokens), `label_only` (modules that name it only as a label), `density` (capabilities that are dense), `dense`, `declared`
+    Returns `modules` (by code, attributing tokens), `label_only` (modules that name it only as a label), `label_comment` (those of them a comment ALSO names: they block the N/A), `density` (capabilities that are dense), `dense`, `declared`
     (modules whose referencing capability declares the contract, with why the tier half is missing), `tier_only`,
     `served` (how many served selects of the asset's tables), `shared_only`, `comment_only` (R51: a comment names it,
     no code does), `outside`, `outside_named`."""
@@ -4817,6 +4973,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     sh = [t for t in dict.fromkeys(tables) if t and t in shared]
     hits, dense, declared, tier_only, shared_only, mentions, elsewhere = [], [], [], [], [], [], []
     label_only: list[str] = []
+    label_comment: list[str] = []
     unparsed: list[str] = []
     served = 0
     seen: set[str] = set()
@@ -4871,6 +5028,11 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                 # strict served select of the asset's table is in the module: it names the asset, it does not read it. Such a module never
                 # carried a contract/tier credit (those need a select), so skipping the rest changes no PASS / PARTIAL / FAIL.
                 label_only.append(name)
+                # SS DENS L2 (strategist, option ii): ONE rule for comments -- a comment that names the asset ANYWHERE in a module blocks the N/A, even
+                # when the module's code only labels it (a comment can assert served-ness the scan cannot read, R51)
+                if any(len(re.findall(r"\b" + re.escape(t) + r"\b", mod["txt"])) > len(re.findall(r"\b" + re.escape(t) + r"\b", mod["cmask"]))
+                       for t in code_toks):
+                    label_comment.append(name)
                 continue
             hits.append(name)
             tier_decls = {d for d, _p, st, _c in sels if st == TIER_YES}
@@ -4933,7 +5095,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                     outside_named.append(f"{rel} (a comment names it)")                          # R51: alone or beside code
                 elif mod["dynamic_from"]:
                     outside_named.append(f"{rel} (holds the table and selects FROM a run-time table name)")
-    return dict(modules=hits, label_only=label_only, density=len(dense), note="", scanned=True, comment_only=mentions, dense=dense,
+    return dict(modules=hits, label_only=label_only, label_comment=label_comment, density=len(dense), note="", scanned=True, comment_only=mentions, dense=dense,
                 declared=declared, tier_only=tier_only, served=served, shared_only=shared_only, outside=outside, outside_named=outside_named, unparsed=unparsed, elsewhere=elsewhere,
                 shared_tokens=sh, tokens=toks, roots=dirs)
 
@@ -5006,6 +5168,11 @@ def _grade_dens(cap: dict, label: str) -> dict:
         return dict(v=NO_DET, measured=(f"NO_DETECTOR — no capability module's code references {label}; named in comments "
                                         f"only in: {', '.join(cap['comment_only'])} — the served surface cannot be "
                                         "attributed by code (never the closable N/A)"))
+    if cap.get("label_comment"):
+        # SS DENS L2: a comment in a module that otherwise only labels the asset still blocks the N/A (one rule for comments, R51)
+        return dict(v=NO_DET, measured=(f"NO_DETECTOR — no module's code selects from or otherwise reaches {label}; {len(lab)} module(s) name it only as a "
+                                        f"label, and a comment in {_few(cap['label_comment'], 4)} also names it: a comment can assert that it is served, "
+                                        "which the scan cannot read — never the closable N/A"))
     return _na(f"STRUCTURAL: 0 module(s) reference it by code in the {len(cap.get('roots') or [])} "
                "serving root(s) scanned, and no served select of it exists in the wider source "
                "scanned; declaring density_contract: 0"

@@ -146,12 +146,14 @@ def test_a_contract_in_a_declaration_that_only_names_the_asset_id_is_not_its_ser
     non-label key, not SQL), so the module is not a reach and the asset reads the N/A with the label-only module named;
     before 14 this read NO_DETECTOR ("reach it by code, no served select"). A mention the scan cannot classify still reads
     NO_DETECTOR: see test_e6_dens_label_select.py."""
-    tree.write(tree.tools, "tool.ts", "export const cap = {\n  " + CONTRACT + "\n  note: 'covers bg_x',\n}\n")
+    tree.write(tree.tools, "tool.ts", "export const cap = {\n  " + CONTRACT + "\n  note: 'a note that covers bg_x for the reader of this page',\n}\n")
     d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
     assert d["v"] == ac.NA and "only as a label" in d["measured"], d
-    tree.write(tree.tools, "tool.ts", "export const cap = {\n  " + CONTRACT + "\n  tags: ['bg_x'],\n}\n")        # an unkeyed list: not classifiable
-    d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
-    assert d["v"] == ac.NO_DET and "no served select" in d["measured"], d
+    # a short embedded name is NOT recognised as a label by default (SS DENS review M1): the scan cannot tell, so NO_DETECTOR
+    for body in ("note: 'covers bg_x',", "tags: ['bg_x'],"):
+        tree.write(tree.tools, "tool.ts", "export const cap = {\n  " + CONTRACT + "\n  " + body + "\n}\n")
+        d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
+        assert d["v"] == ac.NO_DET and "no served select" in d["measured"], (body, d)
 
 
 def test_a_contract_and_a_served_select_in_different_declarations_is_partial_with_that_reason(tree, monkeypatch):
