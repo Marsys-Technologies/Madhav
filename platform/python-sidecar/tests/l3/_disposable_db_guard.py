@@ -17,7 +17,10 @@ WHAT THE GUARD REQUIRES (all of them, or it refuses)
 ════════════════════════════════════════════════════
   1. no comma anywhere in the URI netloc (fast multi-host reject — urlparse
      cannot be trusted to see past the first host);
-  2. parsed with psycopg's OWN conninfo parser (conninfo_to_dict — the same
+  2. a URI whose query string carries dbname, host, hostaddr or service is
+     refused outright (Suvarṇa F1: `…/x_test?dbname=madhav` connects to
+     `madhav` while a path-only name check reads `x_test`); then parsed with
+     psycopg's OWN conninfo parser (conninfo_to_dict — the same
      libpq-faithful interpretation the connection will actually use), valid
      for BOTH URI and keyword/value DSNs: EVERY host AND hostaddr entry
      (comma-separated lists included) must be loopback
@@ -31,12 +34,15 @@ WHAT THE GUARD REQUIRES (all of them, or it refuses)
      string itself does not show);
   5. assert_disposable_connection(): AFTER connecting, current_database()
      equals the expected name AND inet_server_addr() is NULL (a unix-socket
-     connection) or loopback; a private/link-local server address is accepted
-     ONLY inside GitHub Actions (Postgres runs there as a Docker service
-     container and legitimately reports a bridge address such as 172.18.0.2 —
-     everywhere else that shape is a local proxy to a remote database);
-     a PUBLIC address is refused everywhere — checked before any destructive
-     statement.
+     connection) or loopback (v4-mapped IPv6 unwrapped before classifying);
+     an RFC 1918 IPv4 address (EXACTLY 10/8, 172.16/12, 192.168/16 — not
+     Python's wider is_private) is accepted ONLY inside GitHub Actions
+     (Postgres runs there as a Docker service container and legitimately
+     reports a bridge address such as 172.18.0.2 — everywhere else that
+     shape is a local proxy to a remote database); everything else
+     non-loopback is refused everywhere — checked before any destructive
+     statement. NOT COVERED (documented): a loopback port tunnel to a remote
+     server (ssh -L) whose address still reads loopback/NULL, and PGPORT.
 
 Pure string checks connect to nothing; only step 5 needs a connection.
 """
@@ -44,7 +50,7 @@ from __future__ import annotations
 
 import ipaddress
 import os
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from psycopg.conninfo import conninfo_to_dict
 
@@ -96,6 +102,19 @@ def validate_disposable_dsn(
             f"REFUSED: multi-host DSN (comma in netloc {parsed_uri.netloc!r}) — "
             "libpq can fail over to any of the hosts; a disposable fixture takes "
             "exactly one loopback host")
+    if "://" in dsn and parsed_uri.query:
+        # F1 (Suvarṇa review): target-deciding options in a URI QUERY STRING are
+        # refused outright — `postgresql://u@localhost/x_test?dbname=madhav`
+        # connects to `madhav` while a path-only name check reads `x_test`.
+        # (The keyword/value DSN form legitimately carries the same keys as
+        # words, not a query string, and is fully parsed by conninfo below.)
+        smuggled = {"dbname", "host", "hostaddr", "service"} & {
+            k.lower() for k in parse_qs(parsed_uri.query)}
+        if smuggled:
+            raise RefusedError(
+                f"REFUSED: URI query string carries {sorted(smuggled)} — "
+                "target-deciding options belong in the URI authority/path or in "
+                "the keyword/value form, never smuggled into the query string")
     try:
         info = conninfo_to_dict(dsn)
     except Exception as exc:
@@ -117,6 +136,12 @@ def validate_disposable_dsn(
     return info
 
 
+_RFC1918_NETWORKS = tuple(
+    ipaddress.ip_network(cidr)
+    for cidr in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+)
+
+
 def assert_disposable_connection(
     conn,
     expected_dbname: str,
@@ -127,16 +152,28 @@ def assert_disposable_connection(
     on the disposable database and on a server that cannot be remote.
 
     inet_server_addr() is accepted when it is NULL (unix socket) or loopback.
-    A PRIVATE/link-local server address is accepted ONLY inside GitHub Actions
-    (os.environ GITHUB_ACTIONS == 'true'): CI runs Postgres as a service
-    container — the runner connects to localhost:5432, Docker port-forwards
-    onto the bridge network, and the server legitimately reports its own
-    bridge address (e.g. 172.18.0.2/32). Everywhere else a private address is
-    REFUSED, because on a developer machine a local cloud-sql-proxy listening
-    on 127.0.0.1 and forwarding to a remote (e.g. production) database reports
-    exactly that shape (steward ruling M20261002T174717-5721). A PUBLIC
-    address is refused everywhere. The target discipline itself is carried by
-    validate_disposable_dsn (loopback host everywhere, no env overrides)."""
+    A v4-mapped IPv6 address is UNWRAPPED before classification (on Python
+    < 3.13 is_private reads ::ffff:8.8.8.8 as private — Suvarṇa F2). An
+    RFC 1918 IPv4 address (EXACTLY 10.0.0.0/8, 172.16.0.0/12 or
+    192.168.0.0/16 — not Python's wider is_private, which also admits
+    link-local, ULA, 0.0.0.0 and the documentation ranges) is accepted ONLY
+    inside GitHub Actions (os.environ GITHUB_ACTIONS == 'true'): CI runs
+    Postgres as a service container — the runner connects to localhost:5432,
+    Docker port-forwards onto the bridge network, and the server legitimately
+    reports its own bridge address (e.g. 172.18.0.2/32). Everywhere else an
+    RFC 1918 address is REFUSED, because on a developer machine a local
+    cloud-sql-proxy listening on 127.0.0.1 and forwarding to a remote (e.g.
+    production) database reports exactly that shape (steward ruling
+    M20261002T174717-5721). Everything else non-loopback (public, link-local,
+    ULA, unspecified, documentation ranges, v4-mapped public) is refused
+    everywhere.
+
+    NOT COVERED (documented, Suvarṇa DOC): a loopback PORT tunnelling to a
+    remote server whose address still reads loopback/NULL (e.g. ssh -L), and
+    PGPORT — the port never decides the target's identity the way host does,
+    but a tunnel can. The DSN-level discipline (loopback host, no env
+    overrides, exact dbname, post-connect dbname proof) is the mitigation;
+    a full port-tunnel defence is out of scope for a string+session guard."""
     env = os.environ if env is None else env
     in_github_actions = env.get("GITHUB_ACTIONS", "") == "true"
     row = conn.execute(
@@ -146,19 +183,24 @@ def assert_disposable_connection(
         raise RefusedError(
             f"REFUSED: connected to database {dbname!r}, not the disposable "
             f"{expected_dbname!r}")
-    if server_addr is not None:
-        # inet::text carries the mask ('172.18.0.2/32'); ip_interface takes both.
-        addr = ipaddress.ip_interface(server_addr).ip
-        if addr.is_loopback:
+    if server_addr is None:
+        return  # unix socket — local by construction
+    # inet::text carries the mask ('172.18.0.2/32'); ip_interface takes both.
+    addr = ipaddress.ip_interface(server_addr).ip
+    # F2: unwrap v4-mapped IPv6 BEFORE classifying, so ::ffff:8.8.8.8 is the
+    # public 8.8.8.8 (and ::ffff:10.0.0.1 the private 10.0.0.1).
+    addr = getattr(addr, "ipv4_mapped", None) or addr
+    if addr.is_loopback:
+        return
+    if addr.version == 4 and any(addr in net for net in _RFC1918_NETWORKS):
+        if in_github_actions:
             return
-        if addr.is_private or addr.is_link_local:
-            if in_github_actions:
-                return
-            raise RefusedError(
-                f"REFUSED: the server reports a private address {server_addr!r} — "
-                "a local proxy to a remote database looks exactly like this "
-                "(accepted only inside GitHub Actions, where Postgres runs as a "
-                "Docker service container)")
         raise RefusedError(
-            f"REFUSED: the server reports a PUBLIC address {server_addr!r} — "
-            "the connection did not land where the loopback DSN claimed")
+            f"REFUSED: the server reports a private address {server_addr!r} — "
+            "a local proxy to a remote database looks exactly like this "
+            "(accepted only inside GitHub Actions, where Postgres runs as a "
+            "Docker service container)")
+    raise RefusedError(
+        f"REFUSED: the server reports a non-loopback, non-RFC1918 address "
+        f"{server_addr!r} — the connection did not land where the loopback "
+        "DSN claimed")

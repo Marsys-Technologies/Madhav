@@ -53,8 +53,27 @@ def test_keyword_value_dsn_accepted():
     _accept(f"host=localhost port=5432 dbname={DB} user=u")
 
 
-def test_query_string_loopback_hostaddr_accepted():
-    _accept(f"postgresql://u:p@localhost/{DB}?hostaddr=127.0.0.1")
+@pytest.mark.parametrize("key", ["dbname", "host", "hostaddr", "service"])
+def test_query_string_target_options_refused(key):
+    """Suvarṇa F1: target-deciding options are refused outright in a URI query
+    string — even a LOOPBACK value (no `?hostaddr=127.0.0.1` loophole)."""
+    value = "127.0.0.1" if key == "hostaddr" else "anything"
+    _refuse(f"postgresql://u:p@localhost/{DB}?{key}={value}", name=None)
+
+
+def test_query_string_dbname_attack_refused():
+    """F1: postgresql://u@localhost/x_test?dbname=madhav would connect to
+    `madhav` while a path-only name check reads `x_test`."""
+    _refuse("postgresql://u@localhost/x_test?dbname=madhav", name=None)
+
+
+def test_keyword_dbname_attack_visible_in_effective_conninfo():
+    """F1: 'host=localhost dbname=madhav application_name=test' passes a
+    string/path 'test' check — but the helper's returned conninfo exposes the
+    EFFECTIVE dbname, which is what callers assert their name rule on."""
+    info = _accept("host=localhost dbname=madhav application_name=test", name=None)
+    assert info["dbname"] == "madhav"
+    assert "test" not in info["dbname"].lower()  # the caller's rule must fail
 
 
 def test_expected_dbname_none_is_host_discipline_only():
@@ -80,6 +99,12 @@ def test_query_string_host_override_refused():
 
 def test_query_string_non_loopback_hostaddr_refused():
     _refuse(f"postgresql://u:p@localhost/{DB}?hostaddr=10.0.0.5")
+
+
+def test_query_string_loopback_hostaddr_refused_too():
+    # folded into test_query_string_target_options_refused (F1) — kept as an
+    # explicit pin of the behavioural change from the first C24 draft.
+    _refuse(f"postgresql://u:p@localhost/{DB}?hostaddr=127.0.0.1")
 
 
 def test_remote_single_host_refused():
@@ -132,10 +157,11 @@ def test_post_connect_accepts_unix_and_loopback_everywhere(addr, env):
     assert_disposable_connection(_FakeConn(DB, addr), DB, env=env)
 
 
-@pytest.mark.parametrize("addr", ["172.18.0.2/32", "10.0.0.5/8", "192.168.1.10/24", "169.254.1.1/16"])
-def test_post_connect_accepts_private_only_in_github_actions(addr):
+@pytest.mark.parametrize("addr", ["172.18.0.2/32", "10.0.0.5/8", "192.168.1.10/24", "::ffff:10.0.0.1/128"])
+def test_post_connect_accepts_rfc1918_only_in_github_actions(addr):
     # 172.18.0.2 is the GitHub Actions service-container bridge address — the
-    # legitimate CI shape, accepted only there.
+    # legitimate CI shape, accepted only there. ::ffff:10.0.0.1 unwraps to the
+    # RFC 1918 10.0.0.1 (F2) — private, so likewise accepted only in CI.
     assert_disposable_connection(_FakeConn(DB, addr), DB, env=GHA)
     with pytest.raises(RefusedError):
         assert_disposable_connection(_FakeConn(DB, addr), DB, env=NOT_GHA)
@@ -148,8 +174,17 @@ def test_post_connect_accepts_private_only_in_github_actions(addr):
 
 
 @pytest.mark.parametrize("env", [GHA, NOT_GHA])
-@pytest.mark.parametrize("addr", ["8.8.8.8/32", "1.1.1.1/32", "2606:4700:4700::1111/128"])
-def test_post_connect_refuses_a_public_server_address_everywhere(addr, env):
+@pytest.mark.parametrize("addr", [
+    "8.8.8.8/32",                 # public
+    "1.1.1.1/32",                 # public
+    "2606:4700:4700::1111/128",   # public v6
+    "::ffff:8.8.8.8/128",         # v4-mapped PUBLIC — is_private on py<3.13 (F2)
+    "169.254.1.1/16",             # link-local — outside the explicit RFC 1918 set
+    "fd00::1/128",                # ULA — outside the explicit set
+    "0.0.0.0/32",                 # unspecified — outside the explicit set
+    "192.0.2.1/24",               # TEST-NET-1 documentation range — not RFC 1918
+])
+def test_post_connect_refuses_everything_else_everywhere(addr, env):
     with pytest.raises(RefusedError):
         assert_disposable_connection(_FakeConn(DB, addr), DB, env=env)
 
