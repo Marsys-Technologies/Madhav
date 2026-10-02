@@ -57,6 +57,7 @@ from typing import Any
 
 from panchang_engine.swiss_backend import ensure_swiss_backend
 from panchang_engine.swiss_state import serialized_swiss_state, swiss_state_scope
+from pyjhora_adapter._swiss_thread_scope import with_sidereal_mode
 
 from brahmagyan.graha_vocabulary import norm_graha
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal
@@ -342,6 +343,38 @@ def _write_halt_log(gate_name: str, msg: str) -> None:
 # ── Swisseph Saturn transit detection ────────────────────────────────────────
 
 @serialized_swiss_state
+def _saturn_sign_at_jd(jd: float) -> int:
+    """Return Saturn's LAHIRI sidereal sign number (1=Aries ... 12=Pisces) at Julian day ``jd`` (UT).
+
+    A sign at a JD is ayanamsha-dependent (Lahiri vs Fagan-Bradley differ by ~0.88 deg, i.e. up to a
+    month of Saturn motion around an ingress), so the mode is selected HERE, on the calling thread
+    (swisseph keeps it per thread on Linux), not inherited from whichever function ran earlier.
+    Hoisted from a closure inside ``_detect_saturn_sign_changes`` (TI thread-fix lane) so it holds on
+    every path and is directly testable; behaviour is unchanged when the thread already holds Lahiri.
+    """
+    import swisseph as swe
+
+    with with_sidereal_mode("lahiri", jd):
+        result, _ = swe.calc_ut(jd, swe.SATURN, swe.FLG_SIDEREAL | swe.FLG_SPEED)
+    lon = result[0] % 360.0
+    return int(lon // 30) + 1  # 1-based sign num
+
+
+@serialized_swiss_state
+def _saturn_speed_at_jd(jd: float) -> float:
+    """Saturn's sidereal (Lahiri) longitude speed in deg/day at Julian day ``jd`` (UT).
+
+    Mode and ephemeris path are selected on the calling thread (see ``_saturn_sign_at_jd``); hoisted
+    from a closure inside ``_detect_saturn_retrogrades``.
+    """
+    import swisseph as swe
+
+    with with_sidereal_mode("lahiri", jd):
+        result, _ = swe.calc_ut(jd, swe.SATURN, swe.FLG_SIDEREAL | swe.FLG_SPEED)
+    return result[3]  # speed in deg/day
+
+
+@serialized_swiss_state
 def _detect_saturn_sign_changes(window_start: datetime, window_end: datetime) -> list[dict]:
     """
     Use swisseph (via panchanga_engine) to detect all Saturn sign-change events
@@ -378,14 +411,6 @@ def _detect_saturn_sign_changes(window_start: datetime, window_end: datetime) ->
     changes: list[dict] = []
     STEP_DAYS = 5.0  # 5-day step for coarse scan
     REFINE_STEP = 0.25  # 6-hour refinement
-
-    SAT_ID = swe.SATURN
-
-    def _saturn_sign_at_jd(jd: float) -> int:
-        """Return Saturn's sidereal sign number (1=Aries … 12=Pisces) at Julian day."""
-        result, _ = swe.calc_ut(jd, SAT_ID, swe.FLG_SIDEREAL | swe.FLG_SPEED)
-        lon = result[0] % 360.0
-        return int(lon // 30) + 1  # 1-based sign num
 
     prev_sign = _saturn_sign_at_jd(jd_start)
     jd = jd_start + STEP_DAYS
@@ -450,10 +475,6 @@ def _detect_saturn_retrogrades(window_start: datetime, window_end: datetime) -> 
     retros: list[dict] = []
     STEP = 3.0  # 3-day step
 
-    def _speed_at_jd(jd: float) -> float:
-        result, _ = swe.calc_ut(jd, swe.SATURN, swe.FLG_SIDEREAL | swe.FLG_SPEED)
-        return result[3]  # speed in deg/day
-
     def _jd_to_dt(jd: float) -> datetime:
         ut_parts = swe.jdut1_to_utc(jd, swe.GREG_CAL)
         return datetime(
@@ -461,12 +482,12 @@ def _detect_saturn_retrogrades(window_start: datetime, window_end: datetime) -> 
             int(ut_parts[3]), int(ut_parts[4]), tzinfo=timezone.utc,
         )
 
-    in_retro = _speed_at_jd(jd_start) < 0
+    in_retro = _saturn_speed_at_jd(jd_start) < 0
     retro_start_jd: float | None = jd_start if in_retro else None
     jd = jd_start + STEP
 
     while jd <= jd_end:
-        speed = _speed_at_jd(jd)
+        speed = _saturn_speed_at_jd(jd)
         is_retro = speed < 0
         if is_retro and not in_retro:
             retro_start_jd = jd - STEP

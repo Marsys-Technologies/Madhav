@@ -80,9 +80,12 @@ EXPECTED_OPERATION_OWNERS = {
     ("ga_writers/ga_dashas_writer.py", "_mudda_solar_return_jd"),
     ("ga_writers/ga_dashas_writer.py", "build_system"),
     ("ga_writers/ga_dashas_writer.py", "compute_mudda_system"),
-    ("ga_writers/ga_sade_sati_writer.py", "_detect_saturn_retrogrades"),
+    # TI thread-fix lane: the two Saturn closures were hoisted to module level so each owns its
+    # mode setter; `_detect_saturn_retrogrades` itself no longer touches Swiss state directly.
     ("ga_writers/ga_sade_sati_writer.py", "_detect_saturn_sign_changes"),
     ("ga_writers/ga_sade_sati_writer.py", "_lookup_tara_bala_for_saturn_at"),
+    ("ga_writers/ga_sade_sati_writer.py", "_saturn_sign_at_jd"),
+    ("ga_writers/ga_sade_sati_writer.py", "_saturn_speed_at_jd"),
     # Lane l3/gochara-autonomous-wp0-7 added _derive_ashtakavarga_prastara
     # (G-10 / ruling sheet M-7, N-21 testimony grade) already decorated with
     # @serialized_swiss_state; registered here as a compliant boundary owner.
