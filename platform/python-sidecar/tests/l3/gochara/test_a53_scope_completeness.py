@@ -253,7 +253,10 @@ def test_each_returned_window_carries_its_persisted_qualification_and_the_p2_ved
                              windows=[{"window_id": wid}, {"interval": "no id"}], horizon=(H0, H1))
     first, second = r["window_qualification"]
     assert first["objective"] == objective and first["qualification"] == qual
-    assert first["qualification"]["unqualified_reason"] == "applicability_undeclared"      # why it is NULL, served
+    # why it is NULL, served: the milestone's policy (the manifest's) — every window carries no number
+    assert first["qualification"]["unqualified_reason"] == "all_null_candidate_policy"
+    assert first["qualification"]["policy"] == "all_null_candidate/1"
+    assert first["qualification"]["unresolved"] == {"applicability_undeclared": 1}         # the audit trail survives
     assert second["qualification"] is None and second["objective"] is None                 # never invented
     assert first["vedha_moon_obstruction_scope"] is None                                   # P3: no vedha operand
     # a numeric P2 window carries the cited vedha scope (a stored state can prove `active`, never fully `inactive`)

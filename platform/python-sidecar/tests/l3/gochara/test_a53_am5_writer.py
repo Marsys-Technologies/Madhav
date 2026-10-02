@@ -187,7 +187,7 @@ def _manifest_vector(conn):
 def test_the_manifest_binds_the_versioned_input_vector_derived_two_ways(run):
     step, conn = run
     step(writer_mod.CONVENTION_SUBSTEP)
-    assert "input vector ka_gochara_input_vector/2" in step(writer_mod.MANIFEST_SUBSTEP).notes
+    assert "input vector ka_gochara_input_vector/3" in step(writer_mod.MANIFEST_SUBSTEP).notes
     v = _manifest_vector(conn)
     from services.gochara_kernel import input_vector as iv
     from services.gochara_kernel import input_vector_verifier as ivv

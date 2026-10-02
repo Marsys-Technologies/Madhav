@@ -183,7 +183,7 @@ def test_the_database_content_digest_equals_the_independently_built_preimage(wor
         conn.execute(
             "UPDATE public.ka_gochara_eval_window SET peak_instant = lower(interval), score = 0.5, evidence_for = 1.0,"
             " evidence_against = NULL, severity = NULL, objective_value = 0.1, outcome_valence_for_native = 'favourable',"
-            " qualification = '{\"unqualified_reason\": null, \"unresolved\": {}, \"affected_channels\": [],"
+            " qualification = '{\"policy\": \"window_qualification/1\", \"unqualified_reason\": null, \"unresolved\": {}, \"affected_channels\": [],"
             " \"members\": 1, \"qualified_members\": 1}'::jsonb, null_states_used = '{}' WHERE path_id = 'P3'")
     row = conn.execute(
         "SELECT lower(interval), upper(interval), peak_instant, score, evidence_for, evidence_against, severity,"

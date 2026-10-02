@@ -184,6 +184,11 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
     if "platform" in stored["ephemeris"]:
         check("ephemeris.platform", runtime_platform(), stored["ephemeris"]["platform"])
     derived.append("ephemeris.library")
+    # R9-1: the result policy the generation is built under is a REQUIRED, NAMED member of the verifier's own list —
+    # its own literal, not the builder's tuple
+    if stored.get("result_policy") not in ("all_null_candidate/1", "window_qualification/1"):
+        problems.append(f"result_policy: {stored.get('result_policy')!r} is not a named policy")
+    derived.append("result_policy")
     check("node", _NODE, stored["node"])
     derived.append("node")
     check("implementation", module_digests(modules), stored["implementation"])

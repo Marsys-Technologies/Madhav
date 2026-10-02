@@ -44,6 +44,13 @@ def _consistent_sky(world, monkeypatch):
     monkeypatch.setattr(writer_mod, "calc_sidereal_lon", calc)
 
 
+@pytest.fixture(autouse=True)
+def _qualification_policy(world):
+    """These suites exercise the numbers-enabled `window_qualification/1` semantics; the all-NULL policy has its own
+    suites (test_a53_all_null_policy*.py). The policy is the MANIFEST's: the world's manifest step binds it."""
+    world.result_policy = "window_qualification/1"
+
+
 def _libra_edges(path):
     return [e for e in ev.enumerate_edges(CLS, path, CHART)
             if e.transit and e.relation == "residence" and e.obj.canonical_target == "span:7"]
@@ -126,14 +133,15 @@ def test_the_window_persists_its_objective_and_structured_provenance_and_the_ver
     # at the 1.0.0 registry the P3 activity_kernel declares no applicability ⇒ the member is unqualified ⇒ the window
     # is NULL — and the persisted provenance says WHY, in structured form
     assert objective == "evidence_for_per_root_sum" and value is None and score is None
-    assert qual == {"unqualified_reason": "applicability_undeclared", "members": 1, "qualified_members": 0,
+    assert qual == {"policy": "window_qualification/1", "unqualified_reason": "applicability_undeclared",
+                    "members": 1, "qualified_members": 0,
                     "unresolved": {"applicability_undeclared": 1}, "affected_channels": ["evidence_for_occurrence"]}
     fields = w.conn.execute("SELECT fields_verified FROM public.ka_gochara_eval_window_verification"
                             " WHERE path_id = 'P3'").fetchone()[0]
     assert set(fields) == set(wv.GOVERNED_FIELDS) >= {"objective", "objective_value", "qualification"}
     # a persisted provenance that differs from the verifier's derivation is refused
     for column, bad in (("objective", "'max_min_agent_activity'"),
-                        ("qualification", """'{"unqualified_reason": "other", "members": 1, "qualified_members": 0,
+                        ("qualification", """'{"policy": "window_qualification/1", "unqualified_reason": "other", "members": 1, "qualified_members": 0,
                          "unresolved": {"applicability_undeclared": 1}, "affected_channels": ["evidence_for_occurrence"]}'::jsonb""")):
         with w.conn.transaction():
             w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))

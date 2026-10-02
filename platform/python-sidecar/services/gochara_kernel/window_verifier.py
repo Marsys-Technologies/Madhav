@@ -141,6 +141,25 @@ def _live(recs, t):
 #: the frozen qualification policy this verifier implements (R8-4) — the builder's `window_sweep.draft_windows`
 #: documents the same table; the two are separate code and the DB gate binds the version
 POLICY_VERSION = "window_qualification/1"
+#: R9-1: the OTHER named policy and its reason — this verifier's OWN literals (the builder's live in `result_policy`;
+#: a test asserts equality, so drift is visible, never imported). `all_null_candidate/1`: every numerical result
+#: field NULL for every path and channel composition, peak absent, valence `unqualified`.
+ALL_NULL_POLICY = "all_null_candidate/1"
+ALL_NULL_REASON = "all_null_candidate_policy"
+POLICIES = (ALL_NULL_POLICY, POLICY_VERSION)
+
+
+def _manifest_policy(conn, grain) -> str | None:
+    """The policy the generation's MANIFEST selected, read by this verifier's own SQL (None = no manifest row)."""
+    row = conn.execute(
+        "SELECT input_generation_vector ->> 'result_policy' FROM public.kala_gochara_publication"
+        " WHERE chart_id = %s AND generation = %s", (grain[0], grain[1])).fetchone()
+    if row is None:
+        return None
+    value = next(iter(row.values())) if isinstance(row, dict) else row[0]
+    if value not in POLICIES:
+        raise RuntimeError(f"window verifier: the manifest selects result_policy {value!r}, not one of {POLICIES}")
+    return value
 #: the named switch (R8-4/R8-6): a window with a qualified function-valued member is unqualified until a solver
 #: with a stated global-maximum guarantee exists
 DYNAMIC_SWITCH_REASON = "dynamic_objective_solver_guarantee_not_available"
@@ -160,8 +179,17 @@ def _expected_valence(event_class, ev_for, ev_against, reason):
 def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
                             rule_version: str, factor_rows: list[dict],
                             drishti_bound: bool = False, vedha_bound: bool = False,
-                            dynamic_enabled: bool = False) -> dict:
+                            dynamic_enabled: bool = False, policy: str | None = None) -> dict:
     grain = (chart_id, generation, event_class, path_id, rule_version)
+    # R9-1: the policy is the MANIFEST's. An explicit `policy` is only for a generation without a manifest row (the
+    # solver's own fixtures); against a manifest it must agree — it never overrides it.
+    manifest_policy = _manifest_policy(conn, grain)
+    if policy is None:
+        policy = manifest_policy
+    elif manifest_policy is not None and policy != manifest_policy:
+        raise RuntimeError(f"window verifier: policy {policy!r} != the manifest's {manifest_policy!r}")
+    if policy not in POLICIES:
+        raise RuntimeError(f"window verifier: no result policy selected (the generation has no manifest row)")
     prov_cols = conn.execute(
         "SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_eval_window'::regclass"
         " AND attname IN ('objective', 'objective_value', 'qualification') AND NOT attisdropped").fetchone()
@@ -223,7 +251,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         want_v = row["objective_value"]
         if (s_value is None) != (want_v is None) or (s_value is not None and abs(s_value - want_v) > _TOL):
             problems.append(f"{tag}: objective_value {s_value} != re-derived {want_v}")
-        want_q = {"unqualified_reason": row["unqualified_reason"], "unresolved": row["unresolved"],
+        want_q = {"policy": policy, "unqualified_reason": row["unqualified_reason"], "unresolved": row["unresolved"],
                   "affected_channels": row["affected_channels"], "members": row["members"],
                   "qualified_members": qualified_members}
         if s_qual != want_q:
@@ -267,6 +295,19 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                "objective_value": None, "unqualified_reason": None, "unresolved": dict(sorted(reasons.items())),
                "affected_channels": affected}
         stored = (score, peak, ev_for, ev_against, valence)
+
+        # ── R9-1: the all-NULL candidate policy — decided before ANY objective is derived ───────────────────
+        if policy == ALL_NULL_POLICY:
+            row["unqualified_reason"] = ALL_NULL_REASON
+            ok_null = expect_null_window(tag, stored, ALL_NULL_REASON)
+            if s_objective_value is not None:
+                problems.append(f"{tag}: objective_value {s_objective_value} must be NULL under {ALL_NULL_POLICY}")
+                ok_null = False
+            check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
+            if ok_null and severity is None:
+                fully_reproduced += 1
+            detail.append(row)
+            continue
 
         # ── policy 1: an unqualified member whose channel is `for` or unknown ⇒ everything NULL ────────────
         if for_unq:
@@ -395,7 +436,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             f"window semantic verification failed {event_class}/{path_id}: " + "; ".join(problems))
     return {"windows": len(windows), "numeric_reproduced": numeric,
             "fully_reproduced": fully_reproduced, "unverified_dynamic": len(unverified),
-            "unverified_windows": unverified, "policy_version": POLICY_VERSION,
+            "unverified_windows": unverified, "policy_version": policy,
             "fields_verified": list(GOVERNED_FIELDS), "windows_detail": detail,
             # VERIFIED only when EVERY window's stored fields were reproduced exactly
             "status": "UNVERIFIED_DYNAMIC" if unverified else "VERIFIED"}

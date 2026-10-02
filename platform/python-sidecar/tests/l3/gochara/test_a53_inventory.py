@@ -345,7 +345,9 @@ def _boot(conn, generation, vector=None):
         kala = rs.RecordStore(conn).ensure_kala_convention()
         rs.RecordStore(conn).ensure_bridge(kala, sky)
         gk_ledger.publish_candidate(
-            conn, CHART_ID, generation, kala, vector or {"rule_registry": "r1"},
+            conn, CHART_ID, generation, kala,
+            # R9-1: these legacy fixtures exercise the qualification policy that applies when numbers are enabled
+            vector or {"rule_registry": "r1", "result_policy": "window_qualification/1"},
             {"backend": "swieph"}, f"[{H0.isoformat()},{H1.isoformat()})",
             writer_asset_id="ka_gochara_v5")
     return InventoryStore(conn), sky, kala

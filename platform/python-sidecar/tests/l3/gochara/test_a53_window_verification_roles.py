@@ -39,6 +39,12 @@ def rworld(monkeypatch, tmp_path):
 
 
 @pytest.fixture(autouse=True)
+def _qualification_policy(rworld):
+    """The seal/role flows run under the numbers-enabled policy; the all-NULL policy has its own suites."""
+    rworld.result_policy = "window_qualification/1"
+
+
+@pytest.fixture(autouse=True)
 def _consistent_sky(rworld, monkeypatch):
     SPANS.clear()
 
