@@ -32,7 +32,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from brahmagyan.verification_tiers import SINGLE, emit_tier
+from brahmagyan.verification_tiers import UNVERIFIED_DEFAULT, emit_tier
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 from pipeline.orchestrator.birth_params import resolve_birth_params
@@ -144,14 +144,15 @@ def _conn():
 # already-computed panchang_engine anga objects (tithi/nakshatra/yoga/karana/
 # vara) — a real, single computation, but NOT independently cross-checked by
 # a second method. `_single_verif()` makes that honest: the class-wide
-# tier for this file is SINGLE = "single" (formulas.py VERIFICATION_RESCALE 0.85
+# tier for this file is UNVERIFIED_DEFAULT = "single" (formulas.py VERIFICATION_RESCALE 0.85
 # vs 1.00 for two_pass_verified) unless/until a genuine second-pass
 # cross-check is implemented for a given anga (at which point that specific
 # emit function should compute its own real two_pass_verified tier instead
 # of calling this helper).
 def _single_verif() -> str:
-    # Q-L1-16(a): canonical spelling; "single_pass" is a deprecated reader-only alias.
-    return SINGLE
+    # Q03 / SS N-62: UNVERIFIED_DEFAULT ("single") -- no check ran on any panchanga row, so none is
+    # stamped with a tier. ("single_pass" is a deprecated reader-only alias, never emitted.)
+    return UNVERIFIED_DEFAULT
 
 
 def _fact_id(category: str, subject: str, key: str,
@@ -177,7 +178,7 @@ def _row(
     value_jsonb: Optional[Any] = None,
     unit: Optional[str] = None,
     citation_human: str = "",
-    verification_pass_status: str = "single",
+    verification_pass_status: str = UNVERIFIED_DEFAULT,
     computed_at: Optional[str] = None,
 ) -> dict[str, Any]:
     """Build one chart_facts row dict."""
@@ -359,7 +360,7 @@ def _emit_tithi(pi: Any, chart_id: str, build_id: str, computed_at: str) -> list
     INAUSPICIOUS_TITHIS = {4, 6, 8, 9, 12, 14, 30}
     inauspicious = tithi_num in INAUSPICIOUS_TITHIS
 
-    vp = "single"
+    vp = UNVERIFIED_DEFAULT
     rows = [
         _row(cat, subj, "name",         chart_id, ay, build_id,
              value_text=name,
@@ -405,7 +406,7 @@ def _emit_vara(pi: Any, chart_id: str, build_id: str, computed_at: str) -> list[
     subj = "VARA_BIRTH"
     ay = "INVARIANT"
     v = pi.vara
-    vp = "single"
+    vp = UNVERIFIED_DEFAULT
 
     # Lord from VARA_NAMES table
     VARA_LORDS = {
@@ -443,7 +444,7 @@ def _emit_yoga(pi: Any, chart_id: str, build_id: str, computed_at: str) -> list[
     subj = "YOGA_BIRTH"
     ay = "INVARIANT"
     y = pi.yoga
-    vp = "single"
+    vp = UNVERIFIED_DEFAULT
 
     yoga_num = y.id  # 1..27
     INAUSPICIOUS_YOGAS = {1, 6, 9, 10, 13, 15, 17, 19, 27}
@@ -477,7 +478,7 @@ def _emit_karana(pi: Any, chart_id: str, build_id: str, computed_at: str) -> lis
     subj = "KARANA_BIRTH"
     ay = "INVARIANT"
     k = pi.karana
-    vp = "single"
+    vp = UNVERIFIED_DEFAULT
 
     karana_id = k.id  # 1..11
     # Vishti/Bhadra karana_id = 7
@@ -517,7 +518,7 @@ def _emit_solar_context(pi: Any, chart_id: str, build_id: str, computed_at: str)
     subj = "SOLAR_CONTEXT_BIRTH"
     ay = "INVARIANT"
     cal = pi.calendrical
-    vp = "single"
+    vp = UNVERIFIED_DEFAULT
 
     if cal is None:
         return []
@@ -551,7 +552,7 @@ def _emit_calendrical(pi: Any, chart_id: str, build_id: str, computed_at: str) -
     subj = "CALENDRICAL_BIRTH"
     ay = "INVARIANT"
     cal = pi.calendrical
-    vp = "single"
+    vp = UNVERIFIED_DEFAULT
 
     if cal is None:
         return []
@@ -603,7 +604,7 @@ def _emit_sun_moon_dynamics(pi: Any, chart_id: str, build_id: str, computed_at: 
     subj = "SUN_MOON_DYNAMICS_BIRTH"
     ay = "INVARIANT"
     sm = pi.sun_moon
-    vp = "single"
+    vp = UNVERIFIED_DEFAULT
 
     rows = []
     if sm is None:
@@ -821,7 +822,7 @@ def _emit_hora_birth(pi: Any, chart_id: str, build_id: str, computed_at: str) ->
     cat = "panchanga_hora_birth"
     subj = "HORA_BIRTH"
     ay = "INVARIANT"
-    vp = "single"
+    vp = UNVERIFIED_DEFAULT
     rows = []
 
     wm = pi.window_membership
@@ -841,7 +842,7 @@ def _emit_choghadiya_birth(pi: Any, chart_id: str, build_id: str, computed_at: s
     cat = "panchanga_choghadiya_birth"
     subj = "CHOGHADIYA_BIRTH"
     ay = "INVARIANT"
-    vp = "single"
+    vp = UNVERIFIED_DEFAULT
     rows = []
 
     wm = pi.window_membership
@@ -1000,7 +1001,7 @@ def _emit_nakshatra_moon(pi: Any, chart_id: str, build_id: str, computed_at: str
     cat = "panchanga_nakshatra_moon"
     subj = "NAKSHATRA_MOON_BIRTH"
     ay = ayanamsha_id
-    vp = "single"
+    vp = UNVERIFIED_DEFAULT
 
     nak = pi.nakshatra
     na = pi.nakshatra_attrs
@@ -1191,7 +1192,7 @@ def _emit_tara_bala_baseline(pi: Any, chart_id: str, build_id: str, computed_at:
     """
     cat = "tara_bala_natal_baseline"
     ay = ayanamsha_id
-    vp = "single"
+    vp = UNVERIFIED_DEFAULT
     rows = []
 
     birth_nak_id = (
@@ -1233,7 +1234,7 @@ def _emit_chandra_bala_baseline(pi: Any, chart_id: str, build_id: str, computed_
     """
     cat = "chandra_bala_natal_baseline"
     ay = ayanamsha_id
-    vp = "single"
+    vp = UNVERIFIED_DEFAULT
     rows = []
 
     birth_nak_id = (

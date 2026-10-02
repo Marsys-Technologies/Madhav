@@ -99,7 +99,12 @@ from typing import Any, Callable
 import psycopg.rows
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
-from brahmagyan.verification_tiers import SINGLE, emit_tier
+from brahmagyan.verification_tiers import (
+    COMPUTED_EXTENSION,
+    DOCUMENTED_APPROXIMATION,
+    FLOORED,
+    emit_tier,
+)
 from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT, assert_legal
 from brahmagyan.dignity_oracle import classify_dignity
 from brahmagyan.aspects import get_graha_aspects
@@ -1279,7 +1284,7 @@ def _build_aspect_rows(
                     chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                     value_num=round(orb, 4),
                     unit="deg",
-                    verif="single",
+                    verif=UNVERIFIED_DEFAULT,
                     source=f"pyjhora_adapter.conjunction/{eng_ver}",
                     citation_human=(
                         f"{g1} conjunct {g2} within {orb:.2f}° orb ({ayanamsha_id})."
@@ -2478,12 +2483,12 @@ def _build_yoga_rows(
                 # Y-7 fix: this is a single catalog-rule evaluation against L1 facts,
                 # not the redundant two-pass cross-check the rest of this writer's
                 # categories perform — it must not claim the top verification tier.
-                # SINGLE ("single") is the canonical spelling; the former alias
+                # UNVERIFIED_DEFAULT ("single") is the canonical spelling; the former alias
                 # "single_pass" is deprecated for writers (Q-L1-16(a)). Both resolve to
                 # formulas.py VERIFICATION_RESCALE = 0.85, vs 1.00 for two_pass_verified
                 # (#1729/D-CND-05), so this correctly demotes catalog label rows in
                 # bo_laksana's salience_formula_v2 rather than inventing a new status.
-                verif=SINGLE,
+                verif=UNVERIFIED_DEFAULT,
                 source=f"brahma_yoga_catalog.label_pass/{eng_ver}",
                 citation_human=(
                     f"Yoga {name_en} ({yoga_name}) labels chart {str(chart_id)[:8]} "
@@ -3254,8 +3259,8 @@ def _build_dosha_rows(
                 },
                 # Y-7 fix: same rationale as the yoga_label site above — single
                 # catalog-rule evaluation, not the writer's two-pass cross-check;
-                # demoted to the already-wired SINGLE verification tier.
-                verif=SINGLE,
+                # demoted to the already-wired UNVERIFIED_DEFAULT ("single") tier.
+                verif=UNVERIFIED_DEFAULT,
                 source=f"brahma_dosha_catalog.label_pass/{eng_ver}",
                 citation_human=citation_human,
             ))
@@ -3968,7 +3973,7 @@ def _build_composite_strength_rows(
                     chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                     value_num=None,
                     value_jsonb={"floored": True, "reason": "missing_ga3_shadbala_or_bhava_bala_fact"},
-                    verif="floored",
+                    verif=FLOORED,
                     source=f"ga_structural.composite_strength_bphs/{eng_ver}",
                     citation_human=(
                         f"{g_name} in house {h}: composite strength floored — "
@@ -4051,7 +4056,7 @@ def _build_composite_strength_rows(
                 # DIVERGENT_FLAGGED, CLASSICAL_MATCH are named), so this uses the
                 # literal string, matching the existing convention in
                 # ga_condition_writer.py / ga_strength_writer.py / ga_yoga_writer.py.
-                verif="computed_extension",
+                verif=COMPUTED_EXTENSION,
                 source=f"ga_structural.composite_strength_div/{eng_ver}",
                 citation_human=f"{g_name} in house {h}: formula divergence {divergence:.4f} ({ayanamsha_id}).",
                 constituent_facts_array=constituent_ids or None,
@@ -4089,7 +4094,7 @@ def _build_functional_class_rows(
         # (CLAUDE.md §N.8). Only the Aries branch changes; the non-Aries
         # documented_approximation branch is a real, already-correctly-tiered
         # methodological approximation and is untouched.
-        fc_verif = UNVERIFIED_DEFAULT if lagna_sign == "Aries" else "documented_approximation"
+        fc_verif = UNVERIFIED_DEFAULT if lagna_sign == "Aries" else DOCUMENTED_APPROXIMATION
 
         rows.append(_base_row(
             "graha_functional_class_per_ascendant", subject, "bphs_canonical",
@@ -4462,7 +4467,7 @@ def _build_structural_relationship_rows(
             "graha_composite_state_classification", subject, "classification",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_text=classification,
-            verif=SINGLE,
+            verif=UNVERIFIED_DEFAULT,
             source=f"pyjhora_adapter.composite_state/{eng_ver}",
             citation_human=(
                 f"{g_name} composite state: {classification} "
