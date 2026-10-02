@@ -1040,7 +1040,7 @@ def _emit_cycle_rows(
             "concurrent_naisargika_age_bracket",
             "concurrent_mudda_lord",
         ]:
-            dasha_val = natal_facts.get(f"{dasha_key}_at_{phase_name.lower()}", "PENDING_GA7_LOOKUP")
+            dasha_val = natal_facts.get(f"{dasha_key}_at_{phase_name.lower()}")  # None: GA7 had no covering period
             # NAR-GA fix (P2 :974): citation_human previously narrated the raw
             # snake_case dasha_key verbatim ("concurrent_vimshottari_maha_lord
             # during ..."), a mislabel/drift against the sibling
@@ -1049,10 +1049,10 @@ def _emit_cycle_rows(
             # fact_key (the DB column) is correctly left as the machine key.
             rows.append(
                 R(cat_ph, subj, dasha_key,
-                  value_text=str(dasha_val),
+                  value_text=None if dasha_val is None else str(dasha_val),
                   citation_human=(
                       f"{CONCURRENT_DASHA_LABELS[dasha_key]} during {cy_id} "
-                      f"{phase_name}: {dasha_val} ({ayanamsha_id})."
+                      f"{phase_name}: {_ga7_shown(dasha_key, dasha_val)} ({ayanamsha_id})."
                   ),
                   verification=_verif_for_text(dasha_val))
             )
@@ -1110,11 +1110,11 @@ def _emit_cycle_rows(
 
         # Tara bala at Janma peak (Q9=A)
         if phase_name == "JANMA":
-            tara_val = natal_facts.get("tara_bala_at_janma_peak", "PENDING_GA4_LOOKUP")
+            tara_val = natal_facts.get("tara_bala_at_janma_peak")  # None: GA4 resolved no tara class
             rows.append(
                 R(cat_ph, subj, "tara_bala_during_peak",
-                  value_text=str(tara_val),
-                  citation_human=f"Tara bala at {cy_id} JANMA peak: {tara_val} ({ayanamsha_id}).",
+                  value_text=None if tara_val is None else str(tara_val),
+                  citation_human=f"Tara bala at {cy_id} JANMA peak: {_ga4_shown(tara_val)} ({ayanamsha_id}).",
                   verification=_verif_for_text(tara_val))
             )
 
@@ -1307,11 +1307,11 @@ def _emit_cycle_rows(
         ("mudda_lord", "Mudda (annual) dasha lord at cycle start"),
     ]:
         dk, desc = dasha_key
-        val = natal_facts.get(f"concurrent_{dk}_at_cycle_start", "PENDING_GA7_LOOKUP")
+        val = natal_facts.get(f"concurrent_{dk}_at_cycle_start")  # None: GA7 had no covering period
         rows.append(
             R(cat_do, cy_id, f"concurrent_{dk}",
-              value_text=str(val),
-              citation_human=f"{desc} for {cy_id}: {val} ({ayanamsha_id}).",
+              value_text=None if val is None else str(val),
+              citation_human=f"{desc} for {cy_id}: {_ga7_shown(f'concurrent_{dk}', val)} ({ayanamsha_id}).",
               verification=_verif_for_text(val))
         )
 
@@ -1333,11 +1333,11 @@ def _emit_cycle_rows(
           citation_human=f"Argala matrix cross-ref for {cy_id}: {len(argala_subset)} activations ({ayanamsha_id}).")
     )
     # Tara bala baseline (from GA4)
-    tara = natal_facts.get("tara_bala_at_janma_peak", "PENDING_GA4_LOOKUP")
+    tara = natal_facts.get("tara_bala_at_janma_peak")  # None: GA4 resolved no tara class
     rows.append(
         R(cat_dx, cy_id, "tara_bala_baseline_ref",
-          value_text=str(tara),
-          citation_human=f"Tara bala baseline at {cy_id} Janma peak: {tara} ({ayanamsha_id}).",
+          value_text=None if tara is None else str(tara),
+          citation_human=f"Tara bala baseline at {cy_id} Janma peak: {_ga4_shown(tara)} ({ayanamsha_id}).",
           verification=_verif_for_text(tara))
     )
 
@@ -1901,17 +1901,110 @@ def _update_asset_throughput(chart_id: str, build_id: str, row_count: int) -> No
 
 # ── Materialized view refresh ─────────────────────────────────────────────────
 
-def _refresh_mv(conn: Any) -> None:
-    """Refresh mv_chart_sade_sati_lifetime_summary synchronously."""
+# ── GA7 concurrent-dasha value that GA7 could not supply ─────────────────────
+# (Defined here, not beside CONCURRENT_DASHA_LABELS, so no line-pinned site above it moves.)
+#
+# The writer used to store the literal string "PENDING_GA7_LOOKUP" as fact_value_text when the
+# real chart_dashas lookup returned nothing: a placeholder presented as a value (130 production
+# rows, every one concurrent_mudda_lord, where the mudda dasha table's horizon ends before the
+# Sade Sati phase date). An honest null beats an invented value (CLAUDE.md §N.7 item 6):
+# fact_value_text is NULL and the citation sentence carries the named reason. System and level
+# come from DASHA_LOOKUP_SPECS, the same table the lookup itself uses.
+GA7_NO_PERIOD_REASON = "no_ga7_period_covers_date"
+
+
+def _ga7_shown(concurrent_key: str, value: str | None) -> str:
+    """The value as narrated in citation_human: the real lord/sign, or the named reason."""
+    if value is not None:
+        return value
+    system_id, level_n = next(
+        (sys_id, lvl) for dk, sys_id, lvl in DASHA_LOOKUP_SPECS if f"concurrent_{dk}" == concurrent_key
+    )
+    return (
+        f"not available ({GA7_NO_PERIOD_REASON}: chart_dashas has no {system_id} "
+        f"level-{level_n} period covering this date)"
+    )
+
+
+GA4_NO_TARA_REASON = "ga4_tara_bala_unavailable"
+
+
+def _ga4_shown(value: str | None) -> str:
+    """Same treatment for the GA4 Tara-bala lookup (live stored rows carrying the old
+    PENDING_GA4_LOOKUP placeholder: 0 on every chart; fixed here so it can never be stored)."""
+    if value is not None:
+        return value
+    return (
+        f"not available ({GA4_NO_TARA_REASON}: no GA4 tara_bala_natal_baseline class resolved "
+        "for Saturn's transit nakshatra at this date)"
+    )
+
+
+SADE_SATI_MV = "mv_chart_sade_sati_lifetime_summary"
+
+
+def _conn_owns_matview(conn: Any, mv_name: str) -> tuple[bool, str | None]:
+    """(may_refresh, owner_role) for ``mv_name`` as seen by this connection.
+
+    REFRESH MATERIALIZED VIEW requires ownership of the view (directly or via
+    a role whose privileges the connection inherits) -- exactly what
+    ``pg_has_role(<relowner>, 'USAGE')`` answers for ``current_user``
+    (superusers answer true too, and may refresh).  The probe is a plain
+    catalog SELECT, so it can never abort the caller's transaction.  A view
+    that does not exist yields ``(False, None)``.
+    """
+    row = conn.execute(
+        "SELECT c.relowner::regrole::text AS owner_role, "
+        "       pg_has_role(c.relowner, 'USAGE') AS may_refresh "
+        "FROM pg_class c WHERE c.oid = to_regclass(%s) AND c.relkind = 'm'",
+        [mv_name],
+    ).fetchone()
+    if row is None:
+        return False, None
+    owner, may_refresh = (
+        (row["owner_role"], row["may_refresh"]) if isinstance(row, dict)
+        else (row[0], row[1])
+    )
+    return bool(may_refresh), owner
+
+
+def _refresh_mv(conn: Any) -> str:
+    """Refresh mv_chart_sade_sati_lifetime_summary synchronously -- but only
+    if this connection owns the view.
+
+    The S-L1 build job connects as ``data_plane_builder``, which is not a
+    member of the view's owner role (``amjis_app``).  A refresh attempt by a
+    non-owner fails with "must be owner of materialized view", and because
+    the writer shares the orchestrator's transaction (``ctx.db_conn``) the
+    swallowed failure left that transaction ABORTED -- deterministically
+    failing every build.  A writer that does not own the view must not try:
+    it skips (logged at INFO) and the view is refreshed afterwards by its
+    owner (runbook step W7, L1_MV_REFRESH_AFTER_REBUILD_v1_0.md).
+
+    Returns ``"refreshed"``, ``"refresh_failed"`` (owner path only; the
+    universal guard in data_plane_runtime.guarded then catches any resulting
+    aborted transaction) or ``"skipped_not_owner"`` (also when the view is
+    absent).
+    """
+    may_refresh, owner = _conn_owns_matview(conn, SADE_SATI_MV)
+    if not may_refresh:
+        logger.info(
+            "[ga_sade_sati_writer] MV %s NOT refreshed: this connection does not own it "
+            "(owner=%s) -- left stale for the post-build owner refresh (runbook W7)",
+            SADE_SATI_MV, owner or "<view absent>",
+        )
+        return "skipped_not_owner"
     try:
-        conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_chart_sade_sati_lifetime_summary")
-        logger.info("[ga_sade_sati_writer] MV mv_chart_sade_sati_lifetime_summary refreshed")
+        conn.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {SADE_SATI_MV}")
+        logger.info("[ga_sade_sati_writer] MV %s refreshed", SADE_SATI_MV)
     except Exception:
         try:
-            conn.execute("REFRESH MATERIALIZED VIEW mv_chart_sade_sati_lifetime_summary")
+            conn.execute(f"REFRESH MATERIALIZED VIEW {SADE_SATI_MV}")
             logger.info("[ga_sade_sati_writer] MV refreshed (non-concurrent)")
         except Exception as exc:
             logger.warning("[ga_sade_sati_writer] MV refresh failed (non-fatal): %s", exc)
+            return "refresh_failed"
+    return "refreshed"
 
 
 # ── Main build function ───────────────────────────────────────────────────────
@@ -2171,7 +2264,7 @@ def build_ga_sade_sati(
             conn.commit()
 
         # ── Step 5: Refresh MV ────────────────────────────────────────────────
-        _refresh_mv(conn)
+        summary["mv_refresh"] = _refresh_mv(conn)
         if owns_conn:
             conn.commit()
 

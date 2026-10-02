@@ -319,8 +319,23 @@ def test_boolean_flags_are_atomic_text_not_jsonb():
 # ── 3. Dasha lords are atomic text rows ──────────────────────────────────────
 
 def test_dasha_lords_are_atomic_text_rows():
-    """7 concurrent dasha lord keys must be atomic text rows (no JSONB)."""
-    rows = _emit_rows_for_cycle_1()
+    """7 concurrent dasha lord keys must be atomic text rows (no JSONB).
+
+    Every key is given a resolved GA7 value here (the real upstream lookup succeeded). A key
+    GA7 could NOT resolve is emitted as a NULL value with a named reason instead of a stored
+    placeholder string: see tests/test_ga_sade_sati_unresolved_ga7_null.py.
+    """
+    resolved = {}
+    for dk in ("vimshottari_maha_lord", "vimshottari_antar_lord", "yogini_period_lord",
+               "ashtottari_lord", "chara_karaka_sign", "naisargika_age_bracket", "mudda_lord"):
+        for at in ("cycle_start", "vishakha", "janma", "anumukha"):
+            resolved[f"concurrent_{dk}_at_{at}"] = "SATURN"
+    cycles = _build_cycles_aq()
+    rows = _emit_cycle_rows(
+        CHART_ID, AYANAMSHA, BUILD_ID,
+        cycles[0], [],
+        {**MOCK_NATAL_FACTS, **resolved}, COMPUTED_AT,
+    )
     dasha_keys = [
         "concurrent_vimshottari_maha_lord",
         "concurrent_vimshottari_antar_lord",

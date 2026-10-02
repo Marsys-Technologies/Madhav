@@ -618,6 +618,22 @@ jobs:
           cd python-sidecar
           python -m pytest tests/l3/test_builder_role_overlay_writers.py -q --tb=short
 
+      - name: TI-l1-min-fixes-001 — L1 MV-refresh ownership skip + aborted-transaction guard against real Postgres
+        # The S-L1 job runs as data_plane_builder, which is not a member of amjis_app
+        # (the owner of every L1 materialized view): an in-writer REFRESH fails, the
+        # writer swallowed it and left the shared transaction ABORTED. This suite
+        # drives ga_sade_sati_writer._refresh_mv AS an authenticated builder
+        # connection (must skip, transaction healthy) and as the owner (must
+        # refresh), and the universal guard in ga_writers/data_plane_runtime.py
+        # (a writer that swallows a DB error must raise a named ContractError),
+        # on the shared fixture's production power structure.
+        env:
+          C7_BUILDER_ROLE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/c7_builder_role_test
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest ga_writers/__tests__/test_l1_min_fixes_builder_role_pg.py -q --tb=short
+
       - name: C21 — WP10 cutover rehearsal gate against the CI Postgres service
         # Pravāha C21 (steward M20261002T080256-690e): this suite used to skip
         # NOT_RUN in every CI run — its fixture pointed at a local disposable
