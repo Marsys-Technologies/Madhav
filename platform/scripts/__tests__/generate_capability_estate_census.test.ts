@@ -43,6 +43,9 @@ describe('capability estate census', () => {
       + census.denominators.public_registrar_resolution.name_only_unverified,
     ).toBe(census.denominators.public_registrar_resolution.descriptor_denominator)
     expect(census.denominators.producer_assets).toMatchObject({
+      // Pravāha A2.5 (PR #2799): ka_gochara_v4_41_candidate ships in the seed
+      // is_active: false — inert to all planners — so it counts as retired
+      // (inactive), never active, until the steward dispatch's transient flip.
       // Pravāha A5.3 (steward ruling M20261001T014547-357e, pins 1-2):
       // ka_gochara_v5 ships in the seed is_active: false — inert to all
       // planners — so it counts as retired (inactive), never active. Its
@@ -50,10 +53,10 @@ describe('capability estate census', () => {
       // (regenerated at the geometry_store step, 2026-10-01), so the census
       // counts it as a WRITER identity; the analysis-layer pins admission is
       // a separate governed step and does not change this count.
-      total: 130,
+      total: 131,
       active: 128,
-      retired: 2,
-      writer_identities: 124,
+      retired: 3,
+      writer_identities: 125,
       non_writer_identities: 6,
     })
     expect(
@@ -77,6 +80,9 @@ describe('capability estate census', () => {
     ]) expect(Object.values(subtotal).reduce((sum, value) => sum + value, 0)).toBe(128)
     expect(census.denominators.reviewed_output_digest_coverage).toMatchObject({
       assets_with_any_reviewed_spec: 120,
+      // main's 9 + the inactive A2.5 candidate (no output-digest spec by
+      // design — candidate-only, steward-dispatched); crucially it does NOT
+      // enter active_assets_without_any_reviewed_spec below.
       // main's 9 + the inactive A5.3 skeleton (no output-digest spec by
       // design — inert, geometry pending steward pins 3-7); crucially it does
       // NOT enter active_assets_without_any_reviewed_spec below.
@@ -104,10 +110,10 @@ describe('capability estate census', () => {
       ])
 
     // "retired" is the census's inactive bucket (generator: !asset.is_active,
-    // line ~617); the A5.3 skeleton ships inactive (planner-inert), so it
-    // lists here until a future steward-governed activation after pins 3-7.
+    // line ~617); the A2.5 candidate and the A5.3 writer ship inactive (planner-inert), so they
+    // list here until the steward dispatch's transient flip / a steward-governed activation.
     expect(census.details.producer_assets.retired_asset_ids)
-      .toEqual(['ka_gochara_sweep', 'ka_gochara_v5'])
+      .toEqual(['ka_gochara_sweep', 'ka_gochara_v4_41_candidate', 'ka_gochara_v5'])
     expect(census.details.reviewed_output_digest_coverage.active_assets_without_any_reviewed_spec)
       .not.toContain('ka_gochara_sweep')
     expect(census.details.reviewed_output_digest_coverage.assets_without_any_reviewed_spec)

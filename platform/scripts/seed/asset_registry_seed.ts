@@ -2251,6 +2251,46 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     asset_kind: 'data',
   },
+  // ── PRAVĀHA A2.5 — '4.1' gochara CANDIDATE writer (no migration; the      ──
+  //    registry row is staged idempotently by
+  //    platform/scripts/dispatch_a25_v41_candidate_job.py ON STEWARD GO ONLY) ──
+  {
+    // depends_on: [] and NOTHING depends on it, so no existing DAG build
+    // ever schedules it — it runs ONLY via a steward-dispatched asset_set
+    // build_run. Generation fixed '4.1' (candidate only — never serving/
+    // published, never flipped by this asset); horizon fixed
+    // [1998-01-01, 2026-04-18). Replaces the deleted bespoke Cloud Run job
+    // that drove scripts/kala_gochara_cutover/step06* out-of-band.
+    asset_id: 'ka_gochara_v4_41_candidate',
+    layer: 'kala', sort_order: 141,
+    catalog_status: 'CURRENT',
+    sanskrit_name: 'Gocara-Pratijñā 4.1',
+    english_name: "Gochara '4.1' Candidate (Pravāha A2.5)",
+    english_description: "PRAVĀHA A2.5 heavy writer: the '4.1' gochara CANDIDATE chain (step06 enumerate → candidate build → class context → windows projection, scripts/kala_gochara_cutover/) run inside the governed build pipeline. Substeps: manifest → body:<Body> ×8 → windows, each idempotent (delete-then-insert scoped chart × '4.1' × sub-span) on ctx.db_conn. Candidate-only: the ledger guards (_require_not_published) and the serving-side authority filter make '4.1' unreachable until a steward flip this asset cannot perform.",
+    storage_type: 'postgres_table',
+    target_table: 'kala_gochara_windows',
+    count_sql: "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='4.1'",
+    size_sql: "SELECT pg_total_relation_size('kala_gochara_windows')",
+    target_floor: 0,
+    expected_volume_formula: null,
+    expected_volume_inputs: null,
+    volume_explanation: "'4.1' candidate windows over the narrowed scored horizon [1998-01-01, 2026-04-18) — era/month/day tiers per event class. Candidate-only generation; the count stays 0 until the steward-dispatched run lands.",
+    depends_on: [],
+    // Pravāha A2.5: INERT to all planners. is_active=false keeps this row out
+    // of runPreparation's planning set (src/lib/build/runPreparation.ts:183,
+    // WHERE is_active = true) and recalibrationEnqueue's writer sweep
+    // (src/lib/build/recalibrationEnqueue.ts:141, is_active = true AND
+    // has_writer = true). The steward dispatch script flips it true only for
+    // the staging window and restores false in a try/finally. The writer
+    // itself hard-refuses any chart other than the pinned candidate chart.
+    scope: 'per_chart', is_active: false, estimated_seconds: null,
+    has_writer: true, has_substeps: true,
+    // ASTRA A2.5 A10: the dispatch stages this heavy job with a 7200s budget;
+    // the seed must agree — the registry insert is ON CONFLICT DO NOTHING, so
+    // a seeded 600 (the default) would silently cap the run at ten minutes.
+    writer_timeout_seconds: 7200,
+    asset_kind: 'data',
+  },
   // ── PRAVĀHA A5.3 — ka_gochara_v5 INERT writer skeleton (no migration;    ──
   //    the registry row ships here in the seed, exactly as PR #2799 did for  ──
   //    ka_gochara_v4_41_candidate)                                            ──
@@ -2263,7 +2303,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // (steward ruling M20261001T014547-357e, pins 1-2; geometry blocked
     // pending pins 3-7). A full-chart build must never pick it up.
     asset_id: 'ka_gochara_v5',
-    layer: 'kala', sort_order: 141,
+    layer: 'kala', sort_order: 142,
     catalog_status: 'CURRENT',
     sanskrit_name: 'Gocara-Pratijñā 5.0',
     english_name: "Gochara '5.0' Writer Skeleton (Pravāha A5.3, INERT)",
@@ -2288,6 +2328,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     has_writer: true, has_substeps: false,
     asset_kind: 'data',
   },
+  // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──
+  {
   // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──
   {
     asset_id: 'ka_graha_sancara',

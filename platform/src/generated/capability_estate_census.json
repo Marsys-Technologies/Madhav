@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "1f97979add8182f2526bf8d18765f094e1872875501d55b51adfe8ebf05b6dac",
+  "content_sha256": "4f7099e0bba89fd7a582b197ef54801b1beac43a3fb1b0c8dc3f4c61eb0dd7ab",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -10814,7 +10814,7 @@
       ],
       "retired_asset_ids": [
         "ka_gochara_sweep",
-        "ka_gochara_v5"
+        "ka_gochara_v4_41_candidate"
       ],
       "writer_identity_ids": [
         "bg_class_lifetime_counts",
@@ -10901,7 +10901,7 @@
         "ka_gochara",
         "ka_gochara_resonance",
         "ka_gochara_v3_century_materialize",
-        "ka_gochara_v5",
+        "ka_gochara_v4_41_candidate",
         "ka_graha_sancara",
         "ka_jivana_parva",
         "ka_kala_darshana",
@@ -14017,7 +14017,7 @@
         "bg_panchanga",
         "ka_gochara_sweep",
         "ka_gochara_v3_century_materialize",
-        "ka_gochara_v5",
+        "ka_gochara_v4_41_candidate",
         "ka_graha_sancara",
         "ka_tulana",
         "lel_events",
@@ -20966,7 +20966,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-02T00:08:16.000Z",
+  "generated_at": "2026-10-01T23:37:46.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21365,7 +21365,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "93158c75fd49b8daa2858bcd5e7f177ab394c8318d8751ccec17cb87d258f205"
+        "sha256": "4ccda99b103617a5da34f941cdc23459ce0e64e075f1e020fa72ef054e9430a9"
       },
       {
         "id": "public_registrar_source_set",
@@ -22419,10 +22419,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "40f06cc9524913eb3155a7b5ef282f729de2cb9cdcac75556a51e0307ab8e49e"
+        "sha256": "dcb1f47d5e7065129cff93ec253cc442bf8fa694482e231f420600e29339d56e"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "d9b8898d84f76c9494078f31a3ffb819dc6012f0"
+  "source_revision": "99ea501b53e1c9918f36926e2109ad9aebd8d4fb"
 }
