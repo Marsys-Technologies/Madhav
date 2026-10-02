@@ -196,6 +196,40 @@ def derivation_inputs_digest(conn, **grain) -> str:
     return hashlib.sha256(_canon(derivation_inputs_preimage(conn, **grain)).encode("utf-8")).hexdigest()
 
 
+def generation_output_problems(conn, chart_id: str, generation: str, policy: str | None) -> list[str]:
+    """R11-1: the GENERATION-WIDE output check, in Python and independent of the SQL gate arms: (a) every relationship
+    record, window and membership link of the generation sits in a PERMITTED OUTPUT GRAIN — a (class, path, version) the
+    generation's inventory INCLUDES on a windowed path (P1–P4); a sealed-but-superseded version, a held path (P5) or an
+    unpinned class holds NO output; (b) the manifest's all-NULL policy holds for EVERY record and window of the generation,
+    whatever its grain (a numeric result in an unexamined grain digests into nothing the attestations cover)."""
+    def rows(sql, params):
+        return [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(sql, params).fetchall()]
+    permitted = {(c, p, v) for c, p, v in rows(
+        "SELECT event_class, path_id, rule_version FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND"
+        " generation = %s AND disposition = 'included' AND path_id IN ('P1','P2','P3','P4')", (chart_id, generation))}
+    problems: list[str] = []
+    for what, table in (("relationship record(s)", "ka_gochara_relationship_record"), ("window(s)", "ka_gochara_eval_window"),
+                        ("window-membership link(s)", "ka_gochara_eval_window_record")):
+        for cls, path, ver, n in rows(
+                f"SELECT event_class, path_id, rule_version, count(*) FROM public.{table} WHERE chart_id = %s AND"
+                " generation = %s GROUP BY 1, 2, 3", (chart_id, generation)):
+            if (cls, path, ver) not in permitted:
+                problems.append(f"{n} {what} in {cls}/{path}@{ver}, a grain this generation's inventory does not include")
+    for cls, path, ver, n in rows(
+            "SELECT event_class, path_id, rule_version, count(*) FROM public.ka_gochara_relationship_record WHERE chart_id = %s"
+            " AND generation = %s AND (evidence_for_occurrence IS NOT NULL OR evidence_against_occurrence IS NOT NULL OR"
+            " severity IS NOT NULL OR outcome_valence_for_native <> 'unqualified') GROUP BY 1, 2, 3", (chart_id, generation)):
+        problems.append(f"{n} record(s) in {cls}/{path}@{ver} carry a numeric result or a qualified valence under {policy!r}")
+    if policy == "all_null_candidate/1":
+        for cls, path, ver, n in rows(
+                "SELECT event_class, path_id, rule_version, count(*) FROM public.ka_gochara_eval_window WHERE chart_id = %s"
+                " AND generation = %s AND (peak_instant IS NOT NULL OR score IS NOT NULL OR evidence_for IS NOT NULL OR"
+                " evidence_against IS NOT NULL OR severity IS NOT NULL OR objective_value IS NOT NULL OR"
+                " outcome_valence_for_native IS DISTINCT FROM 'unqualified') GROUP BY 1, 2, 3", (chart_id, generation)):
+            problems.append(f"{n} window(s) in {cls}/{path}@{ver} carry a numerical result or peak under {policy!r}")
+    return problems
+
+
 ENV_RUNNER_COMMIT = "GOCHARA_RUNNER_COMMIT"
 
 
@@ -311,7 +345,7 @@ def require_candidate_gate(conn, chart_id: str, generation: str, event_class: st
                         for v in violations))
 
 
-__all__ = ["ENV_RUNNER_COMMIT", "combined_candidate_gate", "runner_identity", "CandidateGateRefused", "POLICY_VERSION", "VERIFIER_ID", "VERIFIER_VERSION", "candidate_gate",
+__all__ = ["generation_output_problems", "ENV_RUNNER_COMMIT", "combined_candidate_gate", "runner_identity", "CandidateGateRefused", "POLICY_VERSION", "VERIFIER_ID", "VERIFIER_VERSION", "candidate_gate",
            "derivation_inputs_digest", "derivation_inputs_preimage",
            "can_write_verification", "expected_windows", "intervals_digest", "record_verification", "require_candidate_gate",
            "stored_windows", "verification_available"]
