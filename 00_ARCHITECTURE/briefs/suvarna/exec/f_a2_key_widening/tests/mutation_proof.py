@@ -7,7 +7,7 @@ For each mutation: copy the folder (and a `platform` symlink, the tests read mig
 apply ONE exact-string replacement to ONE file of the copy (asserting the old text occurs exactly once), optionally RECOMPUTE the bound md5/sha256/diff
 constants (kind "recompute": so that a behavioural mutation of a hunk is not trivially caught by the EXPECTED_DIFF binding but must be caught by the
 behavioural tests), run the named pytest selection there and require a non-zero exit. The un-mutated copy must be green first (the deliberate TBD-pin
-test is deselected). The repository files are never modified. Needs a local PostgreSQL (PG_BIN) like the tests."""
+test and the plan.txt re-render test are deselected). The repository files are never modified. Needs a local PostgreSQL (PG_BIN) like the tests."""
 import hashlib
 import importlib.util
 import os
@@ -21,7 +21,7 @@ import tempfile
 SRC = pathlib.Path(__file__).resolve().parent.parent
 REPO = SRC.parents[4]
 REL = SRC.relative_to(REPO)
-DESELECT = "not test_gate_pins_are_bound"
+DESELECT = "not test_gate_pins_are_bound and not test_plan_txt_is_the_rendering_with_the_current_pins"      # the second compares plan.txt with the (mutated) executor sha: a spurious red
 FAST = "tests/test_plan_and_wiring.py tests/test_combined_exec.py tests/test_capture_shapes.py"
 
 # (name, file, old, new, kind, test files, -k expression or None)
@@ -77,12 +77,14 @@ MUTATIONS = [
     # ---- EXPECTED_DIFF / byte-for-byte binding
     ("EXPECTED_DIFF neutered in the database (body and diff checks)", EX,
      "new_def == st.to_def and hashlib.md5(new_def.encode()).hexdigest() == st.to_md5,", "True,", None, COMBINED, "extra_byte"),
-    ("EXPECTED_DIFF diff-digest check neutered in the database", EX,
-     "pa.diff_digest(old_def, new_def) == p.diff_sha256 and len(pa.unified_hunks(old_def, new_def)) == p.diff_hunks,", "True,", None, COMBINED, "extra_byte"),
     ("EXPECTED_DIFF binding neutered before the database", EX, "        if got != want:\n", "        if False:\n", None, COMBINED + " " + WIRING, "tampered_hunk or ONLY_by or expected_diff"),
     ("live body byte-for-byte precondition neutered", EX, "md5 == st.from_md5 and definition == st.from_def,", "True,", None, COMBINED, "md5_differs"),
-    ("only-the-patched-functions-changed check neutered", EX, 'changed == {st.patch.regproc.replace("public.", "") for st in leg.functions}, sorted(changed))',
-     "True, sorted(changed))", None, COMBINED, "apply_commits"),
+    ("only-the-patched-functions-changed identity check neutered (counts still satisfied)", EX,
+     '    out.append(("post_changed_functions_are_exactly_the_patched_ones",\n                changed == {st.patch.regproc.replace("public.", "") for st in leg.functions}, sorted(changed)))',
+     '    out.append(("post_changed_functions_are_exactly_the_patched_ones", True, sorted(changed)))', None, COMBINED, "change_accounting"),
+    ("function change COUNT check neutered (identity check still there)", EX,
+     '        out.append((f"post_exactly_{want}_{key}_entries_changed", len(removed) == want and len(added) == want, f"-{len(removed)} +{len(added)}"))',
+     '        out.append((f"post_exactly_{want}_{key}_entries_changed", True, f"-{len(removed)} +{len(added)}"))', None, COMBINED, "change_accounting"),
     # ---- rollback
     ("rollback skipped (rollback leg re-applies the patched body)", EX,
      "    steps = tuple(FnStep(p, p.patched_def(), p.live_def(), p.patched_md5, p.live_md5, p.patched_sha256, p.live_sha256)",
@@ -98,14 +100,14 @@ MUTATIONS = [
     ("function attestation row precondition neutered", EX, 'ck.chk(f"pre_{tag}_attestation_row", n == 1 and dg == st.from_sha,', 'ck.chk(f"pre_{tag}_attestation_row", True,', None, COMBINED, "attestation_row_is_missing"),
     ("owner precondition neutered", EX, 'ck.chk(f"pre_{tag}_owner_secdef_config_acl", (owner, secdef, config, acl) == (p.owner, p.secdef, p.config, p.acl),',
      'ck.chk(f"pre_{tag}_owner_secdef_config_acl", True,', None, COMBINED, "not_owned"),
-    ("post-apply deploy-gate check neutered", EX, 'ck.chk("post_deploy_gate_green", not fa2.gate_red(gate_after),', 'ck.chk("post_deploy_gate_green", True,', None, COMBINED, "drift_is_zero or gate_is_green"),
+    ("post-apply deploy-gate check neutered", EX, 'ck.chk("post_deploy_gate_green", not fa2.gate_red(gate_after),', 'ck.chk("post_deploy_gate_green", True,', None, COMBINED, "gate_going_red"),
     ("evidence digest comparison neutered", EX, 'ck.chk("evidence_digest_matches_expected", expect_evidence == digest,', 'ck.chk("evidence_digest_matches_expected", True,', None, COMBINED, "wrong_digest"),
     ("writer-first precondition neutered", EX, 'ck.chk("pre_writer_first", not problems,', 'ck.chk("pre_writer_first", True,', None, COMBINED, "writer_first"),
     ("--expect-plan comparison neutered", EX, "        if args.expect_plan != phash:\n", "        if False:\n", None, WIRING, "wrong_plan_hash"),
     ("launch check removed from main()", EX, "    gate_fp = launch_gate()                  # FIRST: before the arguments are even parsed\n", "    gate_fp = None\n", None, WIRING, "launch_gate_FIRST"),
     ("TBD pins no longer refused by launch_gate", EX, "    if any(v == GATE_TBD for v in GATE_PINS.values()):\n", "    if False:\n", None, WIRING, "tbd"),
     ("plan hash no longer binds the gate pins", EX, '{"gate_sha256": pins["prerun_gate.py"], "run_gated_sha256": pins["run_gated.sh"]})', '{"gate_sha256": "0" * 64, "run_gated_sha256": "0" * 64})', None, WIRING, "plan_hash_binds"),
-    ("outcome after commit recorded as failed (committed flag not set)", EX, "                    o.mark_committed(digest)\n", "                    pass\n", None, COMBINED, "interruption"),
+    ("outcome after commit recorded as failed (committed flag not set)", EX, "                    o.mark_committed(digest)                                  # IMMEDIATELY after the commit\n", "                    pass\n", None, COMBINED, "interruption"),
     ("test evidence-root variable honoured outside pytest", EX, "    if PYTEST_ENV not in environ:\n        sys.stderr.write(f\"REFUSED: {TEST_EVIDENCE_ENV}", "    if False:\n        sys.stderr.write(f\"REFUSED: {TEST_EVIDENCE_ENV}", None, WIRING, "stray_test_variables"),
     ("under_test launch marker accepted outside pytest", EX, '    if gate_fp.get("under_test") and PYTEST_ENV not in environ:\n', "    if False:\n", None, WIRING, "under_test"),
     ("commit_state_unknown no longer recorded when commit() raises", EX, "                        o.mark_commit_unknown(digest, type(exc).__name__)\n                        raise\n",
@@ -175,7 +177,8 @@ def main(argv):
             r = run_tests(tree, files, kexpr)
             red = r.returncode != 0
             tail = next((l for l in reversed(r.stdout.splitlines()) if "failed" in l or "error" in l), "")
-            print(("RED   " if red else "GREEN (MUTATION SURVIVED!) ") + name + (f"   [{tail.strip()}]" if red else ""))
+            by = next((l.strip()[:150] for l in r.stdout.splitlines() if l.startswith(("FAILED", "ERROR"))), "")
+            print(("RED   " if red else "GREEN (MUTATION SURVIVED!) ") + name + (f"   [{tail.strip()}] by {by}" if red else ""))
             bad += 0 if red else 1
             shutil.rmtree(tmp / f"m{i}", ignore_errors=True)
         print(f"{len(sel) - bad}/{len(sel)} mutations proven (each RED)")

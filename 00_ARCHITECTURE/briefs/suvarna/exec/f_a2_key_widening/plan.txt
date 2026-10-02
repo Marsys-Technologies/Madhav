@@ -108,4 +108,4 @@ ALTER TABLE public.l1_data_plane_trigger_attestations ENABLE TRIGGER l1_data_pla
 -- F-A2 module: d6_f_a2_key_widening_DRAFT.py sha256 af5e6565d6e6c0b0d4906952bb7cf76ad5ea000147b43eeda2c2f4fcaa347215
 -- patch A module: d6_capture_patch_a.py sha256 613553c1320ab3ed63bbb98ce7bc0f2468fe3d762b6daf06d27d3d85d6b79d81
 -- live definition: live_defs/l1_data_plane_capture_row.LIVE.sql sha256 0f8f42b6c93a9a5d2d25333cc2bd3cf52aed60e7cb7d51a87979ede92e74b9b8
--- executor: d6_dataplane_capture_fa2_exec.py sha256 f7ea0b8b3bc38f3b6274f48b217b20748766330371ef198dc62825c1df3bffa7
+-- executor: d6_dataplane_capture_fa2_exec.py sha256 3fdcdddf1e5da2952253418fbdfc027d5e92937ad72b9f56c29c9146fb92ce97

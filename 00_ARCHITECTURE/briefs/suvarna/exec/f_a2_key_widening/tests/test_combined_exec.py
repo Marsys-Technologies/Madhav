@@ -468,3 +468,55 @@ def test_verify_sql_passes_before_and_after_and_is_read_only(runner, cluster, db
 def test_verify_sql_fails_on_the_wrong_state(runner, cluster, db):
     rows = {r[0]: r for r in reader_rows(cluster, db, "verify_after_apply.sql")}          # the AFTER script on the pre-state
     assert rows["11"][-1] == "FAIL" and rows["16"][-1] == "FAIL" and rows["999"][-1] == "FAIL"
+
+
+# ------------------------------------------------------------------------------------- change accounting and the post-apply gate
+def _images(mod, patched_name="l1_data_plane_capture_row()", extra=None, drop_att=False):
+    """Crafted before/after catalog snapshots for the pure accounting function: the planned change, optionally with an unplanned one."""
+    before = {"index": {("i", "old")}, "trigger": {("t", "old")}, "trigger_attestation": {("ta", "old")},
+              "function": {("l1_data_plane_capture_row()", "m0"), ("l1_data_plane_fact_unit(text,text,jsonb)", "u0")},
+              "function_attestation": {("l1_data_plane_capture_row()", "d0")}}
+    after = {"index": {("i", "new")}, "trigger": {("t", "new")}, "trigger_attestation": {("ta", "new")},
+             "function": {("l1_data_plane_capture_row()", "m1"), ("l1_data_plane_fact_unit(text,text,jsonb)", "u0")},
+             "function_attestation": {("l1_data_plane_capture_row()", "d1")}}
+    if patched_name != "l1_data_plane_capture_row()":          # the WRONG function changed: one entry removed/added, so the counts still say 1
+        after["function"] = {("l1_data_plane_capture_row()", "m0"), ("l1_data_plane_fact_unit(text,text,jsonb)", "u1")}
+    if extra:                                                   # an UNPLANNED second function changed as well
+        after["function"] = {("l1_data_plane_capture_row()", "m1"), ("l1_data_plane_fact_unit(text,text,jsonb)", "u1")}
+    return before, after
+
+
+def acct(mod, **kw):
+    b, a = _images(mod, **kw)
+    return {n: ok for n, ok, _ in mod.change_accounting(mod.forward_leg(), b, a)}
+
+
+def test_change_accounting_passes_the_planned_change_and_only_it(mod):
+    assert all(acct(mod).values()), acct(mod)
+
+
+def test_change_accounting_refuses_the_wrong_function_even_when_the_counts_say_one(mod):
+    r = acct(mod, patched_name="l1_data_plane_fact_unit(text,text,jsonb)")
+    assert r["post_exactly_1_function_entries_changed"] is True               # the counts alone are satisfied...
+    assert r["post_changed_functions_are_exactly_the_patched_ones"] is False  # ...the identity check is what refuses
+
+
+def test_change_accounting_refuses_an_unplanned_second_function_change_by_count(mod):
+    r = acct(mod, extra=True)
+    assert r["post_exactly_1_function_entries_changed"] is False and r["post_changed_functions_are_exactly_the_patched_ones"] is False
+
+
+def test_the_post_apply_gate_going_red_refuses_the_commit_and_changes_nothing(runner, mod, monkeypatch):
+    pre = runner.state()
+    _, dry = runner.execute(runner.args("dry-run"))
+    real = mod.fa2.gate_mirror
+    calls = []
+
+    def red_after(cur, tables):
+        g = real(cur, tables)
+        calls.append(1)
+        return dict(g, function_digests_unsafe=True) if len(calls) >= 2 else g          # the AFTER image only
+    monkeypatch.setattr(mod.fa2, "gate_mirror", red_after)
+    code, res = runner.execute(runner.args("apply", expect_evidence=dry["evidence_digest"]))
+    assert code == 1 and "post_deploy_gate_green" in res["failed_checks"]
+    assert runner.state() == pre

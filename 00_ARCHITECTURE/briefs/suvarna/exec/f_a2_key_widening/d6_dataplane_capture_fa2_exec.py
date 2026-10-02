@@ -602,18 +602,27 @@ def apply_leg(cur, leg: Leg, on_exclusive=None) -> dict:
     return {"function_attestation_rows": fn_rows, "trigger_attestation_rows": trg_rows, "old_defs": old_defs}
 
 
+def change_accounting(leg: Leg, before: dict, after: dict) -> list:
+    """Pure (no database): across the before/after catalog snapshots EXACTLY one index, one trigger, one trigger-attestation row and one entry per
+    patched function / function attestation changed, and the functions that changed are EXACTLY the patched ones. [(check name, ok, detail)]."""
+    n_fn = len(leg.functions)
+    out = []
+    for key, want in (("index", 1), ("trigger", 1), ("trigger_attestation", 1), ("function", n_fn), ("function_attestation", n_fn)):
+        removed, added = before[key] - after[key], after[key] - before[key]
+        out.append((f"post_exactly_{want}_{key}_entries_changed", len(removed) == want and len(added) == want, f"-{len(removed)} +{len(added)}"))
+    changed = {r[0] for r in before["function"] - after["function"]}
+    out.append(("post_changed_functions_are_exactly_the_patched_ones",
+                changed == {st.patch.regproc.replace("public.", "") for st in leg.functions}, sorted(changed)))
+    return out
+
+
 def check_after(cur, leg: Leg, before: dict, after: dict, plan: dict, probe: dict | None, ck: Checks) -> None:
     cur.execute(f"SET LOCAL ROLE {OWNER}")
     ck.chk("post_attestation_update_rowcounts_all_1",
            all(v == 1 for v in plan["function_attestation_rows"].values()) and plan["trigger_attestation_rows"] == 1,
            f"{plan['function_attestation_rows']}/{plan['trigger_attestation_rows']}")
-    n_fn = len(leg.functions)
-    for key, want in (("index", 1), ("trigger", 1), ("trigger_attestation", 1), ("function", n_fn), ("function_attestation", n_fn)):
-        removed, added = before[key] - after[key], after[key] - before[key]
-        ck.chk(f"post_exactly_{want}_{key}_entries_changed", len(removed) == want and len(added) == want, f"-{len(removed)} +{len(added)}")
-    changed = {r[0] for r in before["function"] - after["function"]}
-    ck.chk("post_changed_functions_are_exactly_the_patched_ones",
-           changed == {st.patch.regproc.replace("public.", "") for st in leg.functions}, sorted(changed))
+    for name, ok, detail in change_accounting(leg, before, after):
+        ck.chk(name, ok, detail)
     removed, added = before["comment"] - after["comment"], after["comment"] - before["comment"]
     ck.chk("post_comment_changes_are_exactly_the_planned_ones",
            (len(removed), len(added)) == (leg.removed_comments, leg.added_comments) and after["comment"] == {tuple(x) for x in leg.comments_to},
