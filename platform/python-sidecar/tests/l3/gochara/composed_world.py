@@ -47,6 +47,9 @@ def composed_create(tag="comp", stack=None):
     """-> (admin_conn, db_name, dsn). `stack` = the migration files to apply, in order (default: the full production-ordered stack)."""
     psycopg = pytest.importorskip("psycopg")
     from psycopg.conninfo import make_conninfo
+    missing = [f for f in (FULL_STACK if stack is None else stack) + [M1241] if not (MIGRATIONS / f).exists()]
+    if missing:
+        pytest.skip(f"NOT_RUN: integration exhibit — the migration tree lacks {missing} (they ship in the stacked draft PRs; see the PR description)")
     try:
         admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
     except Exception as exc:  # noqa: BLE001
@@ -130,9 +133,9 @@ def _populate(conn, stack):
                      " VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,%s,%s,%s,%s,%s,'two_pass_verified')",
                      (r.row_id, CHART_ID, r.level, None if parent is None else str(uuid.UUID(int=parent)), r.lord.title(),
                       r.start, r.end, PINNED_BUILD))
-    # the reads the builder holds in production today (read-only check 2026-10-02); the verifier/sealer READ the same L1/L0 data
-    conn.execute(f"GRANT SELECT ON public.charts, public.chart_facts, public.chart_dashas, public.bg_transit_rules"
-                 f" TO {BUILDER}, {VERIFIER}, {SEALER}")
+    # the reads the BUILDER holds in production today (read-only check 2026-10-02). The verifier's and sealer's L1/L0 reads are NOT granted here:
+    # they are part of the derived sets the 1241 grants migration must carry (test_b6_composed_seal_flows.BASELINE), so the sweep covers them.
+    conn.execute(f"GRANT SELECT ON public.charts, public.chart_facts, public.chart_dashas, public.bg_transit_rules TO {BUILDER}")
     conn.execute("RESET ROLE")
     apply_migrations(conn, stack)
 
@@ -140,3 +143,4 @@ def _populate(conn, stack):
 #: the world as it stood BETWEEN 1206 and 1240 — a generation sealed here is "sealed before 1240 existed"
 STACK_BETWEEN_1206_AND_1240 = [f for f in FULL_STACK if not f.startswith("1240_")]
 M1240 = "1240_gochara_window_verification_gate.sql"
+M1241 = "1241_gochara_verifier_sealer_inventory_grants.sql"
