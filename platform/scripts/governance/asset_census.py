@@ -5532,6 +5532,73 @@ def _write_atomic(path, text: str) -> None:
         raise
 
 
+_GIT_SHA = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")      # sha1 or sha256 object format; abbreviated/garbage is never adopted
+
+
+def _git_env() -> dict:
+    """The environment the provenance git calls run under: every GIT_* variable dropped (GIT_DIR / GIT_WORK_TREE /
+    GIT_INDEX_FILE ... override the cwd and would make git answer for a different repository than the one this tool file
+    lives in) and optional locks off (a read-only status must not write the index)."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env["GIT_OPTIONAL_LOCKS"] = "0"
+    return env
+
+
+def _git_provenance(tool_file) -> dict:
+    """`tool_commit`, `tool_dirty` (and, when no commit can be certified, `tool_commit_unavailable`) for the checkout
+    `tool_file` lives in. Strict: a checkout whose tool code differs from HEAD cannot be certified from, so
+    `tool_commit` is HEAD only when (1) git answers from a scrubbed environment, (2) the repository toplevel contains
+    `tool_file` and git TRACKS it (a non-git copy nested inside another repo must not report the outer repo's HEAD) and
+    (3) no tracked file under the governance directory or the repo module the census loads at runtime is modified.
+    Otherwise `tool_commit` is null with a reason (`tool_dirty` true = modified tracked files, null = unknown)."""
+    tool_file = Path(tool_file).resolve()
+    here = tool_file.parent
+    runtime = [here]
+    if len(tool_file.parents) > 2:
+        runtime.append(tool_file.parents[2] / "python-sidecar" / "pipeline" / "orchestrator" / "dag_edge_guard.py")
+    env = _git_env()
+
+    def git(*args):
+        return subprocess.run(["git", *args], capture_output=True, text=True, timeout=10, env=env, cwd=str(here), shell=False)
+
+    def unknown(why):
+        return dict(tool_commit=None, tool_dirty=None, tool_commit_unavailable=why)
+
+    try:
+        p = git("rev-parse", "--show-toplevel", "HEAD")
+        lines = p.stdout.strip().splitlines()
+        if p.returncode != 0 or len(lines) != 2 or not _GIT_SHA.fullmatch(lines[1].strip()):
+            why = (p.stderr or "").strip().splitlines()[-1:] or ["no output"]
+            return unknown(f"not a git checkout (git rev-parse HEAD exit {p.returncode}): {why[0][:160]}")
+        top, sha = Path(lines[0]).resolve(), lines[1].strip()
+        if not tool_file.is_relative_to(top):
+            return unknown(f"git toplevel {top} does not contain the tool file {tool_file}")
+        if git("ls-files", "--error-unmatch", "--", str(tool_file)).returncode != 0:
+            return unknown(f"the tool file {tool_file.name} is not tracked by the enclosing git repository {top}")
+        st = git("status", "--porcelain", "--untracked-files=no", "--", *[str(x) for x in runtime])
+        if st.returncode != 0:
+            return unknown(f"git status could not run (exit {st.returncode}): "
+                           f"{((st.stderr or '').strip().splitlines() or ['no output'])[-1][:160]}")
+    except (OSError, subprocess.SubprocessError) as exc:      # no git binary, unreadable dir, timeout
+        return unknown(f"git could not run: {type(exc).__name__}")
+    n = len([ln for ln in st.stdout.splitlines() if ln.strip()])
+    if n:
+        return dict(tool_commit=None, tool_dirty=True, tool_commit_unavailable=f"dirty checkout: {n} modified files")
+    return dict(tool_commit=sha, tool_dirty=False)
+
+
+def census_stamp() -> dict:
+    """Strategist ruling N-44 A: the provenance a layer census carries in its head, so a certificate can never be written
+    from a census measured under a different registry revision or a different tool. Keys: `registry_revision`
+    (REGISTRY_REVISION), `registry_fingerprint` (registry_fingerprint()), `tool_commit` (HEAD of the checkout this module
+    runs from, only when that checkout is clean and verifiably the one this file lives in), `tool_dirty` (bool, or null when
+    unknown) and, only when `tool_commit` is null, `tool_commit_unavailable` (the reason). Verdict-neutral by construction:
+    read-only, touches no measurement, and the rollup reads only a layer's `layer` and `assets`, never its other head keys.
+    A null tool_commit is never guessed; consumers (E5.1) refuse it."""
+    return dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(),
+                **_git_provenance(__file__))
+
+
 def census_scope(obj) -> dict | None:
     """The scope label of a layer census, or None (a full census carries none). Fail-closed on a malformed label."""
     if not isinstance(obj, dict) or "scope" not in obj:
@@ -6340,6 +6407,7 @@ def main() -> int:
               "another --out", file=sys.stderr)
         return EXIT_SCOPE
 
+    stamp = census_stamp()      # once per run: every layer head carries the same revision/fingerprint/tool provenance
     out, worst = {}, 0
     for k in keys:
         try:
@@ -6353,6 +6421,7 @@ def main() -> int:
             print("  R41 isolates per-asset checks only; a failed layer-wide read leaves this whole layer "
                   f"unmeasured{' and stops every layer after it (no census file written)' if len(keys) > 1 else ''}.")
             return 4
+        c.update(stamp)              # N-44 A: registry revision + fingerprint + tool commit in every layer head
         out[k] = c
         if by_layer is not None:
             print(f"{k} SCOPED RUN — partial census, not a layer census: {c['n_assets']} of "
