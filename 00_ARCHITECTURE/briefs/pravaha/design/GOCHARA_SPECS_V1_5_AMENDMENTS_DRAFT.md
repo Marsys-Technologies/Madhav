@@ -1257,9 +1257,10 @@ every P3/P4/P5 span record is `unqualified`.
 
 **Rule (ruled).** A versioned factor row **`activity_kernel@1.1`** declares **applicability by object kind**, in its
 `operand_selector` (JSONB; `ka_gochara_named_operands_ok` already admits a token-array value, so **no schema change**):
-* **span objects** (`span:<sign>`): a **membership step — 1.0 inside the span, 0.0 outside**, `unitless`, `uncalibrated_default`
-  (a span has no centre or orb in any cited source; an angular-to-centre/boundary gradient would be an invented effect, §N.7 item 6);
-* **point / star objects:** the angular kernel `1 − |Δλ|/orb` (§7.2 inv 3), with the **orb a row parameter**.
+* **objects with EXTENT** (`sign_span`, `house_span`, and **`star:<n>` — a 13°20′ nakṣatra span**): a **membership step — 1.0 inside, 0.0 outside**,
+  `unitless`, `uncalibrated_default` (such a target has no centre or orb in any cited source; an angular gradient would be an invented effect, §N.7 item 6);
+* **true POINT objects** (`degree_point`, `derived_point`, `saham`, `house_lord` — a longitude): the angular kernel `1 − |Δλ|/orb` (§7.2 inv 3), with the **orb a row parameter**.
+* Classification is by **geometry, not name** (steward M20261002T002620-6575); `varga_position` is not classified (unqualified).
 
 `graduated_drishti` is declared applicable to **aspect records only** (offset operand); residence/conjunction records have no offset —
 "not applicable" is a declared state of the row, not a missing operand and not a silent 1. New P3/P4/P5 rule_versions reference the
@@ -1271,8 +1272,8 @@ Other numbers exist but none is a ratified activity-kernel orb: `services/gochar
 `orb_conj_slow` 1.0°, `orb_conj_moon` 3.0°) — its own header marks every numeric orb `uncited_extension=true` and it governs **contact
 enumeration** (episodes emitted at `orb_max_deg`), not the kernel's scale; O-RP-3 "the pinned 5° admission orb" is an **oracle fixture pin**
 for P4 admission; the 4.x manifest vector records `orb_ruling: "M-1 fallback no-box × 5.0° (unratified)"`. **Therefore the point-kernel orb
-is a named NATIVE DECISION (ND-ORB, open) and until it is made the point/star branch stays `unqualified` with reason `orb_not_ratified` —
-the unratified 5.0° is not carried forward.** The span branch needs no orb and is unaffected.
+is a named NATIVE DECISION (ND-ORB, open) and until it is made the point branch stays `unqualified` with reason `orb_not_ratified` —
+the unratified 5.0° is not carried forward.** The extent branch needs no orb and is unaffected. Decision packet: `decisions/ND_ORB_DECISION_PACKET_v1_0.md`.
 
 **Vehicle.** The catalogue is persisted at run time by Stream A's `rule_binding` step from `services/gochara_rules/registry.py`
 (insert-if-absent; `rule_registry.py` docstring) — **not by a migration**; so the change is a registry code PR plus A's binding of the new
@@ -1324,7 +1325,7 @@ a plateau): `score` = max over the window's admitted records of the within-path 
 | AM-10 | §4.0 daśā read-contract re-pin rule (conditional on L1-rebuild close; no new pin value) | §4.0 | no (one code PR at re-pin) | steward declares rebuild landed |
 | AM-11 | Prerequisite-evaluation implementation pins (a)–(d) + P1 obligation-agent role token (e) | §2.2 / §10.1 | no | no |
 | PC-1…4 | Named pre-conditions (sealer replay EXECUTE; F-3/F-6 remainder; protected-deployment rehearsal; distinct verifier principal) | see the PRE-CONDITIONS section | — | gate steps, not merges |
-| AM-13 | RULED: factor applicability by object kind (`activity_kernel@1.1`: span ⇒ membership step, point/star ⇒ angular with orb a row parameter; drishti = aspect records only); orb = open native decision ND-ORB | factor catalogue | no (registry code + A's binding; no DDL) | ND-ORB |
+| AM-13 | RULED: factor applicability by object kind (`activity_kernel@1.1`: extent targets incl. star ⇒ membership step, true points ⇒ angular with orb a row parameter; drishti = aspect records only); orb = open native decision ND-ORB | factor catalogue | no (registry code + A's binding; no DDL) | ND-ORB |
 | AM-14 | RULED: Moon-agent edges excluded from the stored obligation enumeration; completeness scoped "excluding the on-demand Moon tier" | §AM-5 / AM-4 | no (1206 unchanged; live test added) | no |
 | AM-15 | RULED: P1 anchor counted inclusive from the lagna | §2.2 P1 | no | no |
 | AM-16 | RULED: `'5.0'` manifest vector contents | §10 / AM-5 | no | no |
