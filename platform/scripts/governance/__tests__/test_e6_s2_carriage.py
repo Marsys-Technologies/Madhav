@@ -742,6 +742,42 @@ def test_d1_a_per_claimant_condition_must_share_the_shared_start_in_the_engine_a
         d1.validate_spec(dict(SPEC, extra_fields=[dict(SPEC["extra_fields"][0], by_claimant={"Sun": other_after}), SPEC["extra_fields"][1]]), "x")
 
 
+def test_d1_the_engine_itself_refuses_a_per_claimant_condition_with_its_own_valid_sentence_start():
+    """A per-claimant entry that is, by itself, a perfectly valid whole sentence of the passage is still refused unless it carries the
+    shared start and start_after (the engine is handed an UNVALIDATED spec here: it must not rely on validate_spec)."""
+    head = dict(text=_span("Sloka 42-44", "forward Lattas."), start="Sloka 42-44", end="forward Lattas.")
+    assert d1._cut_sentence(_passage(), head) == d1._toks(head["text"])                           # a valid whole sentence on its own
+    ef = dict(SPEC["extra_fields"][0], by_claimant={"Sun": head})
+    r = _sun_cond(head["text"], dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]]))
+    assert [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", ["affliction_condition"])]
+    late = dict(COND, start_after="Lattaa")                                                       # same start, a DIFFERENT (still valid) lead-in
+    assert d1._cut_sentence(_passage(), late) == d1._toks(COND["text"])
+    ef = dict(SPEC["extra_fields"][0], by_claimant={"Sun": late})
+    r = _sun_cond(TRUE_COND, dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]]))
+    assert [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", ["affliction_condition"])]
+
+
+def test_d1_a_repair_may_not_merge_or_split_words_its_to_must_be_whole_words_of_the_sentence():
+    ef = dict(SPEC["extra_fields"][0], repairs=RP + [{"from": "ang ", "to": "ang", "evidence": EVID}])
+    spec = dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]])
+    d1.validate_spec(spec, "x")                                                                    # fine for the spec check: similar, short, evidenced
+    assert _sun_cond(TRUE_COND.replace("anguish", "ang uish"), spec)["v"] == "PARTIAL"            # "ang"+"uish" is not a word of the sentence
+
+
+def test_d1_a_repair_is_plain_text_a_trailing_backslash_is_just_punctuation_never_a_regex_error():
+    ef = dict(SPEC["extra_fields"][0], repairs=RP + [{"from": "sickness", "to": "sickness\\", "evidence": EVID}])
+    r = _sun_cond(TRUE_COND, dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]]))              # unvalidated; the template would raise under re.sub
+    assert r["v"] == "PASS"
+
+
+def test_d1_ocr_stops_are_a_short_list_of_stop_ending_literals():
+    ef = dict(SPEC["extra_fields"][0])
+    for bad in (["a."] * 5, ["tJanmunukshatra"], [""], "tJanmunukshatra.", [1]):
+        with pytest.raises(d1.SpecError, match="condition"):
+            d1.validate_spec(dict(SPEC, extra_fields=[dict(ef, condition=dict(COND, ocr_stops=bad)), SPEC["extra_fields"][1]]), "x")
+    d1.validate_spec(dict(SPEC, extra_fields=[dict(ef, condition=dict(COND, ocr_stops=["a.", "b.", "c.", "d."])), SPEC["extra_fields"][1]]), "x")
+
+
 def test_d1_by_claimant_cannot_name_more_claimants_than_the_table_has_rows():
     bc = {f"c{i}": dict(COND) for i in range(SPEC["expected_rows"] + 1)}
     with pytest.raises(d1.SpecError, match="by_claimant names"):
@@ -779,7 +815,7 @@ def test_d1_a_repair_cannot_launder_text_even_if_it_slips_past_the_spec_check():
     assert run(junk, RP + [{"from": " PLUS ARBITRARY TRAILING CLAIM", "to": ".", "evidence": EVID}])["v"] == "PARTIAL"
     assert run("Totally wrong", [{"from": "Totally wrong", "to": TRUE_COND, "evidence": EVID}])["v"] == "PARTIAL"
     r = run(true_stored, [{"from": "Janma-nakshatra", "to": "\\d\\1", "evidence": EVID}])      # a backslash replacement never crashes: no regex semantics
-    assert r["v"] == "PARTIAL" and not any(str(u["failed"]).startswith("[\'error") for u in r["d1"]["unmatched"])
+    assert r["v"] == "PARTIAL" and all(u["failed"] == ["affliction_condition"] for u in r["d1"]["unmatched"])
     imp = TRUE_COND.replace("anguish", "Misery")
     assert run(imp, RP + [{"from": "Misery", "to": "Misery will", "evidence": EVID}])["v"] == "PARTIAL"     # `to` must be a run of THE SENTENCE
     assert run(TRUE_COND.replace("Janma-nakshatra", "janma-nakshatra"), RP)["v"] == "PARTIAL"            # plain, case-sensitive text (stated)
