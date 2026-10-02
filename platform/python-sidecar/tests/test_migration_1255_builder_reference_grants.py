@@ -10,13 +10,13 @@ applied as the owner inside one transaction, the way platform/scripts/migrate.ts
 What it proves (each scenario returns a list of VIOLATIONS; the real file must produce none):
   * apply_once         the builder's reads FAIL before (InsufficientPrivilege, then InFailedSqlTransaction: the
                        swallowed-error abort the migration exists to prevent) and WORK after; the builder holds
-                       SELECT and NO other privilege on all seven, by every path; the relacl diff is exactly seven
+                       SELECT and NO other privilege on all seven (effective privileges: direct, PUBLIC, inherited; column-level); the relacl diff is exactly seven
                        `data_plane_builder=r/amjis_app` entries; the out-of-scope tables (bg_prashna_significators,
                        prashna_charts), a materialized view and a control table are untouched;
                        lock_timeout is transaction-local (back to 0 after COMMIT).
-  * section 2          data_plane_l1_owner (NOLOGIN, NOINHERIT, member of another role, like production) cannot read
+  * section 2          data_plane_l1_owner (NOLOGIN, NOINHERIT, a member of no role; data_plane_migrator is a member of it, like production) cannot read
                        brahma_yoga_catalog before and can after (SET ROLE read, the capture function's access
-                       shape); it holds SELECT and nothing else by every path; the ACL diff is exactly the seven
+                       shape); it holds SELECT and nothing else (effective privileges, as above); the ACL diff is exactly the seven
                        builder entries plus `data_plane_l1_owner=r/amjis_app` on brahma_yoga_catalog; the builder
                        gets nothing on brahma_yoga_catalog.
   * idempotent         a second apply changes nothing and reports eight no-ops (seven + one).
@@ -116,7 +116,9 @@ class Cluster:
                 "CREATE ROLE data_plane_builder LOGIN NOINHERIT",
                 "CREATE ROLE data_plane_l1_owner NOLOGIN NOINHERIT",
                 "CREATE ROLE data_plane_migrator NOLOGIN",
-                "GRANT data_plane_migrator TO data_plane_l1_owner",
+                # Production direction (pg_auth_members): data_plane_migrator is a MEMBER OF data_plane_l1_owner;
+                # data_plane_l1_owner itself belongs to no role.
+                "GRANT data_plane_l1_owner TO data_plane_migrator",
                 "CREATE ROLE role_web_serve NOLOGIN",
                 "CREATE ROLE extra_path NOLOGIN",
                 "CREATE ROLE wrong_role NOLOGIN",
@@ -215,7 +217,7 @@ class Env:
 
 
 def _privs(env: Env, table: str, role: str = "data_plane_builder") -> dict[str, bool]:
-    """Effective privileges of `role` on `table`, by every path (direct, PUBLIC, inherited; column-level)."""
+    """Effective privileges of `role` on `table` (direct, PUBLIC, inherited; column-level). NOT covered: NOINHERIT-membership paths, PG17 MAINTAIN."""
     out: dict[str, bool] = {}
     with env.admin() as c:
         rel = f"public.{table}"

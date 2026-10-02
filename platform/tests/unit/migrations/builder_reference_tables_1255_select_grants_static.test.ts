@@ -1,8 +1,8 @@
 /**
  * Suvarna / migration 1255 — STATIC contract (GRANT SELECT on seven reference tables to data_plane_builder, plus section 2: SELECT on brahma_yoga_catalog to
  * data_plane_l1_owner).
- * The live proof (a disposable PostgreSQL 15 and 17 cluster: apply, idempotent re-run, SELECT-only by every
- * path, guards, extra-privilege refusal, lock_timeout, and 14 mutants) is
+ * The live proof (a disposable PostgreSQL 15 and 17 cluster: apply, idempotent re-run, SELECT-only by effective
+ * privilege, guards, extra-privilege refusal, lock_timeout, and 30 mutants) is
  * python-sidecar/tests/test_migration_1255_builder_reference_grants.py. This file pins the text so a drive-by
  * edit (an eighth table, a broader privilege, a REVOKE) is a deliberate, reviewed change.
  */

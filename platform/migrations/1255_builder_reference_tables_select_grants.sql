@@ -43,10 +43,11 @@
 -- privilege on brahma_yoga_catalog (has_table_privilege false for SELECT and for every other privilege), so
 -- EVERY ga_yoga_firings insert fails with `permission denied for table brahma_yoga_catalog` and ga_yoga cannot
 -- build. PROVEN by the data-plane rehearsal. Live facts behind the strict post-check of this section:
--- data_plane_l1_owner is NOLOGIN, NOINHERIT, not a superuser, bypassrls = false, a member of one role
--- (data_plane_migrator) which gives it nothing on this table; brahma_yoga_catalog is owned by amjis_app, has no
--- RLS and no policy (233 rows), and its ACL does not mention data_plane_l1_owner. So the strict post-check
--- (SELECT held, nothing else by any path) applies cleanly and is kept as strict as section 1's.
+-- data_plane_l1_owner is NOLOGIN, NOINHERIT, not a superuser, bypassrls = false and a member of NO role (the
+-- membership runs the other way: data_plane_migrator is a member of data_plane_l1_owner); brahma_yoga_catalog is
+-- owned by amjis_app, has no RLS and no policy (233 rows), and its ACL does not mention data_plane_l1_owner.
+-- Production is PostgreSQL 15.18. So the post-check (see POST-CHECK SCOPE below) applies cleanly and is kept as
+-- strict as section 1's.
 -- ORDER: this grant must be live BEFORE the D6 plan's functions are exercised and before ga_yoga builds.
 -- SERVING EFFECT AT APPLY: none (the table is read only by the capture trigger and the build).
 --
@@ -63,15 +64,20 @@
 -- different table), so no ACL-allowlist or drift gate sees this grant. The three SQL functions the L1 writers
 -- call already grant EXECUTE to the builder.
 --
--- PRODUCTION BEHAVIOUR: ONE GRANT PER TABLE (seven in all), issued by the table owner; the migration runner
--- authenticates as amjis_app, which owns all seven (same authority as 1225). A table the role already reads is
+-- PRODUCTION BEHAVIOUR: ONE GRANT PER TABLE (eight in all: seven in section 1, one in section 2), issued by the
+-- table owner; the migration runner authenticates as amjis_app, which owns all eight (same authority as 1225). A table the role already reads is
 -- skipped (no-op), so a re-run, or an environment that already holds the grant, is harmless.
 --
 -- SCOPE: exactly one privilege (SELECT): seven tables to data_plane_builder (section 1) and one table to
 -- data_plane_l1_owner (section 2), each to its own single role. No INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/
 -- TRIGGER, no column-level privilege, no sequence, no CREATE, no WITH GRANT OPTION, no role membership.
--- Post-condition asserted per table: SELECT held, and no other privilege held by ANY path (has_table_privilege
--- is effective privilege: direct, PUBLIC, inherited; has_any_column_privilege also catches column-level ones).
+-- Post-condition asserted per table: SELECT held, and none of INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER
+-- held according to has_table_privilege.
+-- POST-CHECK SCOPE (exactly what it does and does not see): has_table_privilege reports EFFECTIVE privilege, so
+-- the direct, PUBLIC and INHERITED paths are covered; has_any_column_privilege additionally catches column-level
+-- INSERT/UPDATE/REFERENCES. NOT detected: a privilege reachable only through a NOINHERIT membership (usable by
+-- SET ROLE, not held by the role itself), and, on PostgreSQL 17, the MAINTAIN privilege (production is 15.18).
+-- Today data_plane_l1_owner has no membership and no privilege on brahma_yoga_catalog.
 --
 -- DATA-DRIVEN. Each section has its own list that appears exactly once (section 1: the `tables` array; section
 -- 2: the `l1_owner_tables` array); the guards, the grants and the post-check of that section all iterate it.
@@ -131,7 +137,9 @@ BEGIN
         RAISE EXCEPTION '1255: role data_plane_builder does not exist';
     END IF;
 
-    -- Guard pass: every table must exist as an ordinary table in public BEFORE anything is granted.
+    -- Guard pass: every table must exist as an ordinary table in public BEFORE anything is granted. (The role and
+    -- table guards are partly redundant: the later ::regclass cast or the GRANT itself would also fail on a missing
+    -- role or table; the guards exist for the clear message and to refuse before any grant is issued.)
     FOREACH tbl IN ARRAY tables LOOP
         rel := to_regclass(format('public.%I', tbl));
         IF rel IS NULL THEN
@@ -153,7 +161,8 @@ BEGIN
         END IF;
     END LOOP;
 
-    -- Post-check: SELECT took effect (never trust a silent no-op) and nothing broader is held, by any path.
+    -- Post-check: SELECT took effect (never trust a silent no-op) and nothing broader is held, within the scope
+    -- stated under POST-CHECK SCOPE in the header (effective privileges; not NOINHERIT-membership paths, not MAINTAIN).
     FOREACH tbl IN ARRAY tables LOOP
         rel := format('public.%I', tbl)::regclass;
         IF NOT has_table_privilege('data_plane_builder', rel, 'SELECT') THEN
@@ -170,7 +179,8 @@ BEGIN
     END LOOP;
 END $$;
 
--- SECTION 2: data_plane_l1_owner -> public.brahma_yoga_catalog (see the header). Same guards, same strict post-check.
+-- SECTION 2: data_plane_l1_owner -> public.brahma_yoga_catalog (see the header). Same guards, same post-check
+-- (same POST-CHECK SCOPE as section 1).
 DO $$
 DECLARE
     -- THE ONE PLACE THE SECTION-2 LIST LIVES. Unqualified names in schema public; grantee is data_plane_l1_owner.
