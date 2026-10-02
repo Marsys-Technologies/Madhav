@@ -47,7 +47,7 @@ from services.gochara_kernel import window_verifier as wv
 from . import composed_world as cw
 from . import test_a53_p1_support as p1s
 from .conftest import EPHE_PATH as EPHE  # noqa: E402
-from .test_a53_inventory import CHART_ID
+from .test_a53_inventory import CHART_ID, PINNED_BUILD
 from .test_a53_p1_support import GEN
 from .test_a53_window_verification_gate import CLS, SPANS, _boot_p3, _windows  # noqa: F401
 from .test_a53_window_verification_roles import _input_digest, _seal  # noqa: F401
