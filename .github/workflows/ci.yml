@@ -1473,10 +1473,14 @@ jobs:
     # (exit-code-3 known_residuals whitelist) but blocks NEW regressions.
     name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
     runs-on: ubuntu-latest
-    # The Python suite has historical healthy variance in the low single-digit
-    # minutes. A finite ceiling turns an otherwise silent hosted-runner stall into
-    # a visible, retryable protected-check outcome.
-    timeout-minutes: 30
+    # C23 (2026-10-02): the sidecar pytest selection now includes the four
+    # previously-unrun gochara directories — the fast step measured 27m33s in CI
+    # (was ~20 min), and this job also carries the required slow_real_ephemeris
+    # step (≤20 min) and the non-gating benchmark step (≤15 min). 75 minutes fits
+    # worst case (~63 min) with headroom; the per-step timeout-minutes stay the
+    # real budgets. A finite ceiling still turns a silent hosted-runner stall
+    # into a visible, retryable protected-check outcome.
+    timeout-minutes: 75
     permissions:
       contents: read
 
