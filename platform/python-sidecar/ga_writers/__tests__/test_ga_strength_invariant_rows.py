@@ -221,3 +221,117 @@ def test_build_fails_loudly_if_an_invariant_row_is_re_emitted(monkeypatch):
     with pytest.raises(DuplicateNaturalKeyError, match="INVARIANT"):
         build_ga_strength(CHART, BUILD, conn=conn, birth_params=SYNTHETIC_BP)
     assert len(conn.batches) == 1  # the first batch landed; the second was refused before its write
+
+
+# ── through the real registered writer + the data-plane runtime boundary ─────────────────────
+
+class _CaptureCursor(_Cursor):
+    def __init__(self, conn):
+        super().__init__(conn.batches)
+        self._owner = conn
+
+    def execute(self, sql, params=None):
+        if "complete_l1_data_plane_partition" in sql:
+            self._owner.reported = params[-1]
+            # The protected capture keeps one revision per DISTINCT fact_id (chart_facts row identity),
+            # including identities a later upsert overwrote (the 28 phantom versions).
+            captured = len({r["fact_id"] for b in self._owner.batches for r in b})
+            if self._owner.reported != captured:
+                raise RuntimeError(
+                    f"L1 partition {params[3]} reported {self._owner.reported} rows but protected "
+                    f"capture contains {captured}"
+                )
+        return _Result()
+
+
+class _BoundaryConn(_FakeConn):
+    _l1_contract_test_double = True
+
+    def __init__(self, vargas):
+        super().__init__(vargas)
+        self.reported = None
+
+    def cursor(self, *a, **k):
+        return _CaptureCursor(self)
+
+
+def _run_registered_writer():
+    from pipeline.orchestrator.writers import ContextSpec, discover_all, list_writers
+
+    discover_all()
+    vargas = compute_chart(inputs=SYNTHETIC_BP, ayanamsha_id="lahiri")["vargas"]
+    conn = _BoundaryConn(vargas)
+    ctx = ContextSpec(
+        asset_id="ga_strength", build_id=BUILD, db_conn=conn,
+        config={"chart_id": CHART, "birth_params": SYNTHETIC_BP},
+    )
+    result = list_writers()["ga_strength"]().run(ctx)  # raises on a reported != captured partition
+    return result, conn
+
+
+def test_registered_writer_partition_completes_reported_equals_captured():
+    result, conn = _run_registered_writer()
+    stored = {_natural_key(r) for b in conn.batches for r in b}
+    assert result.rows_inserted == conn.reported == len(stored) == 17011
+    assert len({r["fact_id"] for b in conn.batches for r in b}) == 17011
+
+
+def test_mutation_emitting_invariant_rows_every_pass_fails_the_partition(monkeypatch):
+    """Fix 1 reverted (the guard bypassed so the real boundary is what fails): 80 INVARIANT emissions
+    for 16 stored rows -> reported 17,075 against 17,011 captured."""
+    real = gs._build_shadbala_rows
+
+    def always_emit(*args, **kwargs):
+        kwargs["emit_invariant"] = True
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(gs, "_build_shadbala_rows", always_emit)
+    monkeypatch.setattr(gs, "assert_unique_natural_keys", lambda *a, **k: 0)
+    with pytest.raises(RuntimeError, match=r"reported 17075 rows but protected capture contains 17011"):
+        _run_registered_writer()
+
+
+def test_mutation_both_fixes_reverted_reproduces_the_rehearsal_failure(monkeypatch):
+    """The original code: every pass emits AND required_rupa hashes the loop ayanamsha ->
+    'reported 17075 rows but protected capture contains 17039' (the 28 phantom versions)."""
+    real = gs._build_shadbala_rows
+
+    def original(*args, **kwargs):
+        kwargs["emit_invariant"] = True
+        rows = real(*args, **kwargs)
+        loop_ayanamsha = args[5]
+        for r in rows:
+            if r["fact_category"] == "graha_shadbala_total" and r["fact_key"] == "required_rupa":
+                r["fact_id"] = hashlib.sha256(
+                    f"graha_shadbala_total|{r['fact_subject']}|required_rupa|{CHART}|{loop_ayanamsha}".encode()
+                ).hexdigest()[:16]
+        return rows
+
+    monkeypatch.setattr(gs, "_build_shadbala_rows", original)
+    monkeypatch.setattr(gs, "assert_unique_natural_keys", lambda *a, **k: 0)
+    with pytest.raises(RuntimeError, match=r"reported 17075 rows but protected capture contains 17039"):
+        _run_registered_writer()
+
+
+def test_mutation_fact_id_hashed_from_the_loop_ayanamsha_changes_the_identity(monkeypatch):
+    """Fix 2 reverted alone: counts still agree (one emission), but the stored identity is no longer
+    derived from the stored ayanamsha -- the stable-id test above is the detector."""
+    real = gs._build_shadbala_rows
+
+    def loop_hash(*args, **kwargs):
+        rows = real(*args, **kwargs)
+        for r in rows:
+            if r["fact_category"] == "graha_shadbala_total" and r["fact_key"] == "required_rupa":
+                r["fact_id"] = hashlib.sha256(
+                    f"graha_shadbala_total|{r['fact_subject']}|required_rupa|{CHART}|{args[5]}".encode()
+                ).hexdigest()[:16]
+        return rows
+
+    monkeypatch.setattr(gs, "_build_shadbala_rows", loop_hash)
+    _result, conn = _run_registered_writer()
+    rupa = [r for b in conn.batches for r in b
+            if r["fact_category"] == "graha_shadbala_total" and r["fact_key"] == "required_rupa"]
+    stable = hashlib.sha256(
+        f"graha_shadbala_total|{rupa[0]['fact_subject']}|required_rupa|{CHART}|INVARIANT".encode()
+    ).hexdigest()[:16]
+    assert rupa[0]["fact_id"] != stable
