@@ -27,6 +27,7 @@ for f in "${WINDOW[@]}"; do printf '  %s  %s\n' "$(shasum -a 256 "$M/$f" | cut -
 if [ -f "$HERE/EXPECTED_WINDOW_SHA256.txt" ]; then
   (cd "$M" && shasum -a 256 -c "$HERE/EXPECTED_WINDOW_SHA256.txt" >/dev/null) && echo "  window file hashes match EXPECTED_WINDOW_SHA256.txt" || { echo "  FAIL window file hashes differ from EXPECTED_WINDOW_SHA256.txt"; exit 1; }
 fi
+for extra in "$M"/1240_*.sql; do [ -f "$extra" ] && WINDOW+=("$(basename "$extra")") && echo "  + $(basename "$extra") (Stream A, picked up automatically)"; done
 ONLY="$(IFS=,; echo "${WINDOW[*]}")"     # exactly the list deploy.yml builds for gochara_contracts_schema_migration=true
 
 echo "== S1 disposable database, roles, ownership, default privileges =="

@@ -8,7 +8,7 @@ audience: "Stream C (Kimi) executes M1–M4 on a DISPOSABLE database; the stewar
 files: "runbooks/rehearsal/run_window_rehearsal.sh · prod_ledger_2026-10-02.txt · EXPECTED_WINDOW_SHA256.txt; PR #2919 tests/integration/gochara_b6_rehearsal_volume.db.test.ts"
 ---
 
-# Protected-window rehearsal — 1204 → 1206 → 1232 → 1233
+# Protected-window rehearsal — 1204 → 1206 → 1232 → 1233 → 1240
 
 **What it proves / does not prove.** It rehearses *source, ordering, ownership, privileges, recovery and cost* on a disposable PostgreSQL 15 that mirrors production's ledger, schema ownership, default privileges and roles. It is **not** evidence about production itself (no production credential is used or needed) and it does not exercise the not-yet-existing sealer/verifier principals in production — it proves the *proposed* least-privilege sets.
 
@@ -19,9 +19,10 @@ files: "runbooks/rehearsal/run_window_rehearsal.sh · prod_ledger_2026-10-02.txt
 | **1206** (AM-5, v1.2) | PR #2867 head `fc10a91fe` — `1ec9008f36782029…` |
 | **1232** (AM-14) | PR #2909 head `358c33211` — `f2ef6406604b819d…` |
 | **1233** (AM-21 part 2) | PR #2919 head `3994a57dc` — `958b911703eee352…` |
+| **1240** (Stream A: `ka_gochara_eval_window_verification` + candidate gate) | **not yet written** — the script picks up `platform/migrations/1240_*.sql` automatically once present and adds it to the window list; constraints: `design/MIGRATION_1240_CONTRACT_CONSTRAINTS_v1_0.md` |
 | 1153–1157 | applied in production; re-applied in the rehearsal through the real runner (hashes in `EXPECTED_WINDOW_SHA256.txt`) |
 | **application head** | the steward names the deployment ref (the integration of the four PRs over `origin/main`; the reviewed writer head was `f4767b0e6`). **The rehearsal runs on that ref**: `git worktree add <dir> origin/main && git -C <dir> merge <#2817> <#2867> <#2909> <#2919>`; record `git rev-parse HEAD`. |
-| window wiring | `platform/scripts/migrate.ts` `PROTECTED_PUBLIC_SCHEMA_MIGRATIONS` and `.github/workflows/deploy.yml` (`gochara_contracts_schema_migration`) list exactly: 1153–1157, 1204, 1206, 1232, 1233 |
+| window wiring | `platform/scripts/migrate.ts` `PROTECTED_PUBLIC_SCHEMA_MIGRATIONS` and `.github/workflows/deploy.yml` (`gochara_contracts_schema_migration`) list exactly: 1153–1157, 1204, 1206, 1232, 1233 (**+ 1240 when it lands**) |
 | **PostgreSQL** | production is **15.18** (Cloud SQL); the rehearsal MUST run on PostgreSQL **15** (CI's advisory DB job is `postgres:16` — not the target) |
 After **any** change to a window file regenerate `EXPECTED_WINDOW_SHA256.txt`: `(cd platform/migrations && shasum -a 256 <the nine files>) > runbooks/rehearsal/EXPECTED_WINDOW_SHA256.txt`; the script refuses a mismatch.
 
@@ -36,6 +37,8 @@ Then, with the **real** `npx tsx scripts/migrate.ts --only <the deploy list>` (`
 | S3c per-file failure recovery: force 1233 to fail | 1204, 1206, 1232 stay committed (**separate file transactions**); 1233 not recorded, no partial columns; after removing the cause the **same invocation** applies only 1233; all four recorded exactly once | **reproduced** |
 | S4 ownership | every `ka_gochara_*` function and table owned by `amjis_app`; `amjis_app` holds **no** CREATE after the window; **no** `ka_gochara_*` function has PUBLIC EXECUTE | **reproduced** |
 **The ledger precondition (the answer to Codex's `migrate.ts:756–763` point).** `--only` refuses every unselected, unapplied file whose number is ≤ the highest selected number. Against the 2026-10-02 production ledger exactly **one** such file exists: **`1230_ka_gochara_registry_revert_1091_pin.sql`**. So the single deployment invocation works **only after the routine deploy has applied 1230** (or 1230 is otherwise recorded). The live fixtures' intervening 1216 application is *not* the proof — the production ledger already holds 1216/1220/1225/1231.
+
+**1240 in the rehearsal:** once the file exists, `run_window_rehearsal.sh` appends it to `WINDOW`/`ONLY` (hash-checked if listed in `EXPECTED_WINDOW_SHA256.txt`), and S4 must additionally assert: the builder holds **no** privilege on `ka_gochara_eval_window_verification`; the verifier may INSERT (and pre-seal DELETE); the sealer may SELECT and EXECUTE the gate; the new seal-table trigger exists exactly once and sorts after `ka_gochara_generation_seal_z_search_complete`; a pre-1240 generation replays.
 
 ## M2 — role behaviour, applied under the deployment-faithful mirror (SCRIPTED + existing suites)
 Run on PG15 (`GOCHARA_REQUIRE_DB=1 GOCHARA_A51_TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:<port>/gochara_a51_test npx vitest run tests/integration/gochara_b6_am5_search_inventory.db.test.ts tests/integration/gochara_b6_am14_moon_domain.db.test.ts tests/integration/gochara_b6_am21_p1_anchor.db.test.ts --no-file-parallelism`) — **55 tests, passed on PG15.17 on 2026-10-02**: initial seal and both replays **as the restricted sealer**, builder refusals (permission denied for the seal function, the seal table, seal-side helpers), replay-helper EXECUTE proven necessary, the six-table matrix, the Moon-resolved daśā case (1232), the anchor CHECKs and sealed-generation freeze (1233).
