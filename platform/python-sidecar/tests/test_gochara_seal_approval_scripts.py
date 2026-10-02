@@ -441,8 +441,9 @@ REPO = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline"
 
 def execution(name="exec-1", **over):
     ex = {"metadata": {"name": name},
-          "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": SA, "maxRetries": 0,
+          "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": SA, "maxRetries": 0, "timeoutSeconds": "7200",     # int64 fields arrive as decimal STRINGS (API/SDK shape)
                   "containers": [{"image": f"{REPO}@{IMG}", "command": list(xcheck_contract.ENTRYPOINT), "args": ARGS,
+                                  "resources": {"limits": {"cpu": "2", "memory": "8Gi"}},
                                   "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG},
                                           {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url", "key": "latest"}}}]}]}}},
           "status": {"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": 1}}
@@ -724,9 +725,99 @@ def test_the_seal_jobs_non_zero_status_fails_the_run_unchanged(world, rc, needle
     assert called(world)
 
 
+# R15-2 / R15-3: int64 strings, quantities, the secret selector and the secret-remapping annotation — through the executed-resource check (the deploy readback and the pre-execution check
+# share the same contract functions; #2976's tests drive the same shapes through its readback)
+@pytest.mark.parametrize("ok", ["7200", 7200])
+def test_a_documented_int64_string_or_integer_timeout_is_accepted(ok):
+    assert xcheck(_mut((*T, "timeoutSeconds"), ok))["execution"] == "exec-1"
+
+
+@pytest.mark.parametrize("bad", [True, "7200.0", 7200.5, float("inf"), float("nan"), " 7200", "+7200", "07200", "7200s", "", None, "0x1c20", "7e3", 3600, "3600"])
+def test_a_timeout_that_is_not_exactly_the_documented_7200_is_refused(bad):
+    with pytest.raises(xc.Refused, match="timeoutSeconds"):
+        xcheck(_mut((*T, "timeoutSeconds"), bad))
+
+
+def test_an_absent_timeout_is_refused_not_defaulted():
+    with pytest.raises(xc.Refused, match="timeoutSeconds"):
+        xcheck(_del((*T, "timeoutSeconds")))
+
+
+@pytest.mark.parametrize("mem", ["8Gi", "8192Mi"])
+def test_an_equivalent_quantity_spelling_is_accepted_by_value(mem):
+    assert xcheck(_mut((*T, "containers", 0, "resources"), {"limits": {"cpu": "2000m", "memory": mem}}))["execution"] == "exec-1"
+
+
+@pytest.mark.parametrize("lim", [{"cpu": "2", "memory": "4Gi"}, {"cpu": "1", "memory": "8Gi"}, {"cpu": 2, "memory": "8Gi"}, {"cpu": "2", "memory": 8589934592}, {"cpu": "2.0", "memory": "8Gi"}, {"cpu": "2", "memory": "8gi"}, {"cpu": "2", "memory": "8e9"}, {"cpu": "2"}])
+def test_a_resource_limit_that_is_not_the_deployed_value_is_refused(lim):
+    with pytest.raises(xc.Refused, match="limit"):
+        xcheck(_mut((*T, "containers", 0, "resources"), {"limits": lim}))
+
+
+def test_taskcount_as_an_int64_string_is_normalised_and_a_malformed_one_is_refused():
+    assert xcheck(_mut(("spec", "taskCount"), "1"))["execution"] == "exec-1"
+    with pytest.raises(xc.Refused, match="more than one task"):
+        xcheck(_mut(("spec", "taskCount"), "1.0"))
+
+
+def test_counts_as_decimal_strings_are_read_by_value():
+    ex = execution(status={"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": "1", "failedCount": "0"})
+    assert xcheck(ex)["execution"] == "exec-1"
+    with pytest.raises(xc.Refused, match="FAILED"):
+        xcheck(execution(status={"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": 1, "failedCount": "x"}))
+
+
+SECRET = "gochara-verifier-db-url"
+
+
+@pytest.mark.parametrize("annotations", [
+    {"run.googleapis.com/secrets": f"{SECRET}:projects/foreign-project/secrets/another-database"},                # the foreign-project alias Codex named
+    {"run.googleapis.com/secrets": f"{SECRET}:projects/madhav-astrology/secrets/another-database"},               # same project, different secret
+    {"run.googleapis.com/secrets": f"{SECRET}:projects/madhav-astrology/secrets/{SECRET}"},                       # even a self-referential mapping: this job never uses the annotation
+    {"run.googleapis.com/secrets": f"{SECRET}:projects/1/secrets/a,{SECRET}:projects/2/secrets/b"},               # duplicate / conflicting aliases
+    {"run.googleapis.com/secrets": ""},                                                                           # present but empty is still present
+])
+def test_the_secret_remapping_annotation_is_refused_wherever_it_appears(annotations):
+    meta_ex = execution(metadata={"name": "exec-1", "annotations": annotations})
+    with pytest.raises(xc.Refused, match="secrets-mapping annotation"):
+        xcheck(meta_ex)
+    tmpl_ex = execution()
+    tmpl_ex["spec"]["template"]["metadata"] = {"annotations": annotations}
+    with pytest.raises(xc.Refused, match="secrets-mapping annotation"):
+        xcheck(tmpl_ex)
+    with pytest.raises(xc.Refused, match="secrets-mapping annotation"):
+        xcheck(execution(), v2_execution={"template": {"maxRetries": 0}, "annotations": annotations})
+
+
+def test_the_ordinary_sdk_shape_without_the_annotation_is_accepted():
+    ex = execution(metadata={"name": "exec-1", "annotations": {"run.googleapis.com/creator": "someone@example.com"}})
+    assert xcheck(ex)["execution"] == "exec-1"
+
+
+@pytest.mark.parametrize("ref", [
+    {"name": SECRET},                                       # key missing
+    {"name": SECRET, "key": "1"},                           # a pinned version is not this job's policy (latest only)
+    {"name": SECRET, "key": ""},
+    {"name": SECRET, "key": "latest", "optional": True},    # no extra selector fields (an optional reference would let a missing secret pass)
+    {"name": f"projects/foreign-project/secrets/{SECRET}", "key": "latest"},
+])
+def test_the_secret_selector_must_be_exactly_name_and_latest(ref):
+    with pytest.raises(xc.Refused, match="reference to the secret"):
+        xcheck(_mut((*T, "containers", 0, "env", 2), {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": ref}}))
+
+
+def test_parse_int64_and_parse_quantity_directly():
+    p = xcheck_contract.parse_int64
+    assert [p(v) for v in ("0", "7200", 7200, 0)] == [0, 7200, 7200, 0]
+    assert all(p(v) is None for v in (True, False, 1.0, "1.0", "-1", "+1", " 1", "01", "1 ", "", None, [], "NaN", "Infinity"))
+    q = xcheck_contract.parse_quantity
+    assert q("8Gi") == q("8192Mi") == q("8589934592") and q("2") == q("2000m") and q("1500m") == 1500
+    assert all(q(v) is None for v in (8, True, "1.5", "1e3", "-1", "8gi", " 8Gi", "8Gi ", "", None))
+
+
 # R14-3: the verification-job contract is ONE file carried by BOTH #2975 (executed-resource check) and #2976 (definition readback). If the two copies ever diverge, one of these two tests fails
 # (the pinned digest is the same constant in both PRs; change it in both when the contract is deliberately changed).
-CONTRACT_SHA256 = "3cd8ece1dcb0427b1436996b9c1aec6f7eb6509c951bb903398f7474b6a726fd"
+CONTRACT_SHA256 = "2919bf044f63e4aee7deaec0f9cea6d8686ce81827edaabb0bf41f5ca444788a"
 
 
 def test_the_shared_verification_job_contract_is_the_file_both_prs_carry():

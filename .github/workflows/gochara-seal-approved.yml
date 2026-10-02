@@ -25,8 +25,8 @@
 # Honest limits (packet §R10a-2): the approval is NOT an independent human check (same account); GitHub enforces the pause, no admin bypass and protected-branch
 # use, not independence or attribution beyond the login; the database enforces that a receipt exists naming the manifest and a verifier-persisted brief, not that this workflow
 # computed it honestly. The approval comment's run/attempt are CLAIMED by the approver, not API metadata. The sealer credential outlives a run (runbook §5.3: five places).
-# CAPACITY: the verification job's own task timeout is 7200 s (#2976), so the brief job waits up to 125 min for it (job limit 150 min); the seal job is 30 min — Stream A measured the
-# sealing transaction at ~0.7 s at the expected size and ~35 s at 50x, behind a 15 min statement_timeout and a 2 min lock_timeout. The approval wait does not count against either.
+# CAPACITY: the verification job's own task timeout is 7200 s (#2976), so the brief job waits up to 125 min for it (job limit 150 min); the seal job is 30 min — Stream A's ESTIMATES (not
+# measured on a real build; the first seal's own timings are the first measurement) for the sealing transaction are ~0.7 s at the expected size and ~35 s at 50x, behind a 15 min statement_timeout and a 2 min lock_timeout. The approval wait does not count against either.
 # DEPENDENCIES before any dispatch: Stream A's pipeline/orchestrator/seal_job.py; the verification job defined by #2976 at THIS SAME commit (same-commit rule); acts 12/13/14 (the workflow
 # identity reads ONLY that job's logs through a log view, may execute that one job with overrides, and holds the Cloud SQL client right); the sealer DSN (GOCHARA_SEALER_DB_URL in
 # `gochara-seal`) must use the runner's loopback proxy tail (@127.0.0.1:5432/<db>).
