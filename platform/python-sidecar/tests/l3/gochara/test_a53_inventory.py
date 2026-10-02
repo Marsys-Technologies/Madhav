@@ -7,6 +7,7 @@ tests are where a shape change shows.
 """
 from __future__ import annotations
 
+import os
 import json
 import uuid
 from datetime import datetime, timezone
@@ -214,6 +215,8 @@ def create_am5_database(tag="am5", faithful=False):
     try:
         admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
     except Exception as exc:  # noqa: BLE001
+        if os.environ.get("GOCHARA_A53_REQUIRE_DB") == "1":      # CI: an unreachable server is a FAILURE, never a skip
+            pytest.fail(f"GOCHARA_A53_REQUIRE_DB=1 but the disposable database server is unreachable ({exc})")
         pytest.skip(f"NOT_RUN: disposable database server unreachable ({exc})")
     name = f"{DB_PREFIX}{tag}_{uuid.uuid4().hex[:8]}"
     if faithful:

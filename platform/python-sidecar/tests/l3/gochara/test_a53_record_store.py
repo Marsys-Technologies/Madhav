@@ -324,6 +324,8 @@ def _pg_dsn():
     try:
         admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
     except Exception as exc:  # noqa: BLE001
+        if os.environ.get("GOCHARA_A53_REQUIRE_DB") == "1":      # CI: an unreachable server is a FAILURE, never a skip
+            pytest.fail(f"GOCHARA_A53_REQUIRE_DB=1 but the disposable database server is unreachable ({exc})")
         pytest.skip(f"NOT_RUN: disposable database server unreachable ({exc})")
     name = f"{DB_PREFIX}{uuid.uuid4().hex[:10]}"
     admin.execute(f'CREATE DATABASE "{name}"')
