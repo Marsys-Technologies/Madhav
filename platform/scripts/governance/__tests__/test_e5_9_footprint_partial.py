@@ -230,7 +230,7 @@ def test_scan_follows_source_paths_one_level(repo):
     write(repo, "platform/python-sidecar/ga_writers/a_x_writer.py", 'SQL = "INSERT INTO t_real (x) VALUES (1)"\n')
     writer(repo, "a_x", '''
         class W:
-            source_paths = ['platform/python-sidecar/ga_writers/a_x_writer.py', 'docs/notes.md']
+            source_paths = ['platform/python-sidecar/ga_writers/a_x_writer.py']
         ''')
     res = slw.scan_writer_tables("a_x", repo)
     assert res["tables"] == ["public.t_real"] and any(f.endswith("a_x_writer.py") for f in res["files"])
@@ -449,7 +449,7 @@ def test_complete_impact_lines_state_scope_complete(repo):
     writer(repo, "a_one", 'x = "INSERT INTO tbl_a (x) VALUES (1)"\n')
     rep = slw._footprint_report(conn_for("tbl_a", "tbl_b"), [row("a_one", "tbl_a")], repo=repo)
     text = "\n".join(rep["impact_lines"])
-    assert "Footprint scope: COMPLETE" in text and "PARTIAL" not in text
+    assert "Footprint scope: COMPLETE_PER_STATIC_SCAN" in text and "PARTIAL" not in text and "indicative" in text
 
 
 def test_no_target_tables_is_partial_with_unknown_blockers(repo):
@@ -471,6 +471,304 @@ def test_scope_fields_are_json_serialisable(repo):
     writer(repo, "a_one", 'x = "INSERT INTO tbl_a (x) VALUES (1)"\ny = "INSERT INTO tbl_x (x) VALUES (1)"\n')
     rep = slw._footprint_report(conn_for("tbl_a", "tbl_b"), [row("a_one", "tbl_a")], repo=repo)
     json.dumps(rep)
+
+
+# ───────────────────────── review round: FK-closure incompleteness makes the report partial ─────────────────────────
+
+def _one_clean_writer(repo):
+    writer(repo, "a_one", 'x = "INSERT INTO tbl_a (x) VALUES (1)"\n')
+    return [row("a_one", "tbl_a")]
+
+
+def test_incomplete_fk_closure_no_edges_in_catalog_makes_the_report_partial(repo):
+    rows = _one_clean_writer(repo)
+    rep = slw._footprint_report(conn_for("tbl_a", fk=()), rows, repo=repo)         # catalog returned no FK edges at all
+    assert rep["footprint"]["fk_closure_status"] == "INCOMPLETE"
+    assert rep["fk_closure_status"] == "INCOMPLETE"
+    assert rep["footprint_scope"] == "partial" and "fk_closure_incomplete" in rep["partial_reasons"]
+    assert rep["has_blockers"] == "unknown" and rep["has_blockers"] is not False
+    assert rep["has_blockers_known_subset"] is False and rep["fk_closure_incomplete_reasons"]
+    assert rep["footprint"]["has_blockers"] == "unknown" and rep["footprint"]["footprint_scope"] == "partial"
+    text = "\n".join(rep["impact_lines"])
+    assert "Footprint scope: PARTIAL" in text and "FK closure is INCOMPLETE" in text and "fk_closure_incomplete" in text
+
+
+def test_incomplete_fk_closure_table_unknown_to_the_catalog_makes_the_report_partial(repo):
+    rows = _one_clean_writer(repo)
+    other_edge = ("c", "public.tbl_b", "public.tbl_c", "c", "a", ["x"], [], False, False, None, None, False, False)
+    rep = slw._footprint_report(conn_for("tbl_b", "tbl_c", fk=(other_edge,)), rows, repo=repo)   # tbl_a is not in the catalog
+    assert rep["footprint"]["unknown_tables"] and rep["fk_closure_status"] == "INCOMPLETE"
+    assert rep["footprint_scope"] == "partial" and rep["has_blockers"] == "unknown"
+    assert rep["has_blockers_known_subset"] is False
+
+
+def test_complete_closure_and_clean_writers_report_complete_with_closure_status(repo):
+    rows = _one_clean_writer(repo)
+    harmless = ("c", "public.tbl_b", "public.tbl_c", "c", "a", ["x"], [], False, False, None, None, False, False)
+    rep = slw._footprint_report(conn_for("tbl_a", "tbl_b", "tbl_c", fk=(harmless,)), rows, repo=repo)
+    assert rep["fk_closure_status"] == "COMPLETE" and rep["footprint_scope"] == "complete"
+    assert rep["partial_reasons"] == [] and rep["has_blockers"] is False and rep["has_blockers_known_subset"] is False
+
+
+def test_incomplete_closure_keeps_a_blocker_found_in_the_known_subset(repo):
+    rows = _one_clean_writer(repo)
+    # tbl_unknown_to_catalog is a second write table the catalog does not know -> closure INCOMPLETE; tbl_a has a blocker
+    writer(repo, "a_two", 'x = "INSERT INTO tbl_unknown_to_catalog (x) VALUES (1)"\n')
+    rep = slw._footprint_report(conn_for("tbl_a", "tbl_b", fk=(blockers_fk(),)),
+                                rows + [row("a_two", "tbl_unknown_to_catalog")], repo=repo)
+    assert rep["fk_closure_status"] == "INCOMPLETE" and rep["has_blockers"] == "unknown"
+    assert rep["has_blockers_known_subset"] is True
+
+
+# ───────────────────────── review round: a name is a constant only if EVERY binding of it is the same literal ─────────────────────────
+
+BINDINGS = {
+    "for_loop": 'for tbl in ("a", "b"):\n    pass\n',
+    "for_tuple_target": 'for i, tbl in enumerate(["a"]):\n    pass\n',
+    "async_for": 'async def g(xs):\n    async for tbl in xs:\n        pass\n',
+    "with_as": 'with open("f") as tbl:\n    pass\n',
+    "comprehension": 'names = [tbl for tbl in ("a", "b")]\n',
+    "aug_assign": 'tbl += "_x"\n',
+    "walrus": 'if (tbl := get()):\n    pass\n',
+    "function_param": 'def other(tbl):\n    return tbl\n',
+    "kwonly_param": 'def other(*, tbl="z"):\n    return tbl\n',
+    "vararg_param": 'def other(*tbl):\n    return tbl\n',
+    "lambda_param": 'f = lambda tbl: tbl\n',
+    "import_alias": 'import something as tbl\n',
+    "import_plain": 'import tbl\n',
+    "from_import": 'from mod import tbl\n',
+    "from_import_alias": 'from mod import other as tbl\n',
+    "global_stmt": 'def g():\n    global tbl\n',
+    "nonlocal_stmt": 'def outer():\n    def inner():\n        nonlocal tbl\n    tbl = 1\n',
+    "except_as": 'try:\n    pass\nexcept Exception as tbl:\n    pass\n',
+    "tuple_unpack": 'tbl, other = pair()\n',
+    "starred_unpack": 'first, *tbl = pair()\n',
+    "reassigned_other_value": 'tbl = "other"\n',
+    "reassigned_non_literal": 'tbl = compute()\n',
+    "def_name": 'def tbl():\n    pass\n',
+    "class_name": 'class tbl:\n    pass\n',
+    "del_stmt": 'del tbl\n',
+    "match_capture": 'match x:\n    case tbl:\n        pass\n',
+    "match_star": 'match x:\n    case [*tbl]:\n        pass\n',
+    "match_mapping_rest": 'match x:\n    case {"k": 1, **tbl}:\n        pass\n',
+    "attribute_assign": 'obj.tbl = runtime()\n',
+}
+
+
+@pytest.mark.parametrize("kind", sorted(BINDINGS))
+def test_a_name_with_any_other_binding_is_unresolved_not_scanned(repo, kind):
+    writer(repo, "a_x", 'tbl = "own"\ndef run(conn):\n    conn.execute(f"DELETE FROM {tbl} WHERE x = 1")\n' + BINDINGS[kind])
+    res = slw.scan_writer_tables("a_x", repo)
+    assert "tables" not in res and "not_scanned" in res, (kind, res)
+
+
+def test_the_reviewed_example_is_not_scanned_complete(repo):
+    writer(repo, "a_x", '''
+        tbl = "own"
+        def run(conn):
+            conn.execute(f"DELETE FROM {tbl} WHERE x = 1")
+            for tbl in ("a", "b"):
+                conn.execute(f"INSERT INTO {tbl} (x) VALUES (1)")
+        ''')
+    assert "not_scanned" in slw.scan_writer_tables("a_x", repo)
+    rep = slw.footprint_scope([row("a_x", "own")], ["own"], repo)
+    assert rep["footprint_scope"] == "partial" and rep["assets_not_scanned"][0]["asset_id"] == "a_x"
+
+
+def test_a_name_assigned_only_a_non_literal_is_not_a_constant(repo):
+    writer(repo, "a_x", 'TBL = compute()\ndef run(conn):\n    conn.execute(f"DELETE FROM {TBL} WHERE x = 1")\n')
+    assert "not_scanned" in slw.scan_writer_tables("a_x", repo)
+
+
+def test_attribute_target_assigned_elsewhere_makes_a_class_constant_unresolved(repo):
+    writer(repo, "a_x", '''
+        class W:
+            TBL = "own"
+            def run(self, conn, other):
+                self.TBL = other
+                conn.execute(f"DELETE FROM {self.TBL} WHERE x = 1")
+        ''')
+    assert "not_scanned" in slw.scan_writer_tables("a_x", repo)
+
+
+def test_positive_controls_the_same_literal_bound_twice_or_declared_without_value_still_resolves(repo):
+    writer(repo, "a_x", '''
+        tbl = "own"
+        tbl = "own"
+        class C:
+            tbl: str
+        def run(conn):
+            conn.execute(f"DELETE FROM {tbl} WHERE x = 1")
+        ''')
+    assert slw.scan_writer_tables("a_x", repo)["tables"] == ["public.own"]
+    writer(repo, "a_y", 'tbl: str = "own"\ndef run(conn):\n    conn.execute(f"DELETE FROM {tbl} WHERE x = 1")\n')
+    assert slw.scan_writer_tables("a_y", repo)["tables"] == ["public.own"]
+
+
+def test_a_function_parameter_shadowing_a_constant_resolves_as_a_parametric_helper_not_as_the_constant(repo):
+    writer(repo, "a_x", '''
+        tbl = "own"
+        def wipe(conn, tbl):
+            conn.execute(f"DELETE FROM {tbl} WHERE x = 1")
+        def run(conn):
+            wipe(conn, "other_table")
+        ''')
+    # the module constant is unusable (parameter binding); the helper resolves from its call site: the table is other_table
+    assert slw.scan_writer_tables("a_x", repo)["tables"] == ["public.other_table"]
+
+
+# ───────────────────────── review round: write forms the scan does not analyse -> not scanned ─────────────────────────
+
+TRIPWIRES = {
+    "merge": ('"MERGE INTO t_m USING s ON t_m.id = s.id WHEN MATCHED THEN UPDATE SET x = 1"', "MERGE INTO"),
+    "refresh_mv": ('"REFRESH MATERIALIZED VIEW CONCURRENTLY mv_x"', "REFRESH MATERIALIZED VIEW"),
+    "refresh_mv_lower": ('"refresh materialized view mv_x"', "REFRESH MATERIALIZED VIEW"),
+    "create_table_as": ('"CREATE TABLE t_new AS SELECT 1"', "CREATE TABLE"),
+    "create_temp_table": ('"CREATE TEMP TABLE t_tmp (x int)"', "CREATE TABLE"),
+    "create_unlogged": ('"CREATE UNLOGGED TABLE t_u (x int)"', "CREATE TABLE"),
+    "select_into": ('"SELECT a, b INTO t_new FROM src"', "SELECT ... INTO"),
+    "select_into_temp": ('"SELECT a INTO TEMP t_new FROM src"', "SELECT ... INTO"),
+    "alter_table": ('"ALTER TABLE t_a ADD COLUMN x int"', "ALTER TABLE"),
+    "drop_table": ('"DROP TABLE IF EXISTS t_a"', "DROP TABLE"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(TRIPWIRES))
+def test_unanalysed_write_forms_make_a_writer_not_scanned(repo, name):
+    sql, label = TRIPWIRES[name]
+    writer(repo, "a_x", f'ok = "INSERT INTO t_a (x) VALUES (1)"\nother = {sql}\n')
+    res = slw.scan_writer_tables("a_x", repo)
+    assert "tables" not in res and label in res["not_scanned"], res
+
+
+@pytest.mark.parametrize("src,label", [
+    ("from psycopg import sql\ndef r(c):\n    c.execute(sql.SQL('x'))\n", "composition"),
+    ("from psycopg import sql\ndef r(c):\n    q = sql.Identifier('t')\n", "composition"),
+    ("from psycopg.sql import Identifier\ndef r(c):\n    q = Identifier('t')\n", "composition"),
+    ("def r(c):\n    c.execute(open('q.txt').read())\n", "read from a file"),
+    ("import pathlib\ndef r(c):\n    q = pathlib.Path('q.txt').read_text()\n    c.execute(q)\n", "read from a file"),
+    ("def r(c):\n    with open('q.txt') as f:\n        q = f.read()\n    c.executemany(q, [])\n", "read from a file"),
+    ("Q = 'queries/insert_things.sql'\n", "sql file reference"),
+])
+def test_call_level_tripwires_make_a_writer_not_scanned(repo, src, label):
+    writer(repo, "a_x", 'ok = "INSERT INTO t_a (x) VALUES (1)"\n' + src)
+    res = slw.scan_writer_tables("a_x", repo)
+    assert "tables" not in res and label in res["not_scanned"], res
+
+
+def test_tripwires_do_not_fire_on_ordinary_single_table_writers(repo):
+    writer(repo, "a_x", '''
+        """Docstring may mention REFRESH MATERIALIZED VIEW, MERGE INTO, DROP TABLE, CREATE TABLE and SELECT x INTO y."""
+        # ALTER TABLE in a comment
+        import json, pathlib
+        CFG = json.loads(pathlib.Path("cfg.json").read_text())
+        A = "WITH s AS (SELECT 1 AS x) INSERT INTO t_a (x) SELECT x FROM s"
+        B = "INSERT INTO t_a (x) SELECT x FROM src WHERE c = 1"
+        C = "SELECT a, b FROM src WHERE c = 1"
+        def r(c):
+            c.execute("SELECT 1")
+            c.execute(A)
+        ''')
+    assert slw.scan_writer_tables("a_x", repo)["tables"] == ["public.t_a"]
+
+
+def test_real_refresh_materialized_view_writers_are_not_scanned_as_single_table():
+    for asset in ("ga_sade_sati", "ga_sensitive", "bo_pramana_mapa"):
+        res = slw.scan_writer_tables(asset, REAL_REPO)
+        assert "tables" not in res and "REFRESH MATERIALIZED VIEW" in res["not_scanned"], (asset, res)
+
+
+# ───────────────────────── review round: edge cases ─────────────────────────
+
+def test_empty_row_set_is_partial_never_complete(repo):
+    sc = slw.footprint_scope([], [], repo)
+    assert sc["footprint_scope"] == "partial" and sc["partial_reasons"] == ["no_assets_in_set"]
+    rep = slw._footprint_report(conn_for("tbl_a"), [], repo=repo)
+    assert rep["footprint_scope"] == "partial" and rep["has_blockers"] == "unknown" and rep["status"] == "NO_TARGET_TABLES"
+    text = "\n".join(rep["impact_lines"])
+    assert "Footprint scope: PARTIAL" in text and "FK closure is NOT_COMPUTED" in text and rep["fk_closure_status"] == "NOT_COMPUTED"
+
+
+def test_relative_repo_argument_does_not_raise(repo, monkeypatch):
+    _one_clean_writer(repo)
+    monkeypatch.chdir(repo)
+    assert slw.scan_writer_tables("a_one", ".")["tables"] == ["public.tbl_a"]
+    assert slw.footprint_scope([row("a_one", "tbl_a")], ["tbl_a"], ".")["footprint_scope"] == "complete"
+    rep = slw._footprint_report(conn_for("tbl_a", "tbl_b"), [row("a_one", "tbl_a")], repo=".")
+    assert rep["footprint_scope"] == "complete"
+    (repo / "sub").mkdir()
+    assert slw.scan_writer_tables("a_one", "sub/..")["tables"] == ["public.tbl_a"]      # relative with .. still resolves
+    # a relative repo with source_paths followed (the resolved candidate is compared with the repo root)
+    write(repo, "platform/python-sidecar/ga_writers/a_follow_writer.py", 'S = "INSERT INTO t_f (x) VALUES (1)"\n')
+    writer(repo, "a_follow", "class W:\n    source_paths = ['platform/python-sidecar/ga_writers/a_follow_writer.py']\n")
+    res = slw.scan_writer_tables("a_follow", ".")
+    assert res["tables"] == ["public.t_f"] and res["files"][-1].endswith("a_follow_writer.py")
+    assert slw.footprint_scope([row("a_follow", "t_f")], ["t_f"], ".")["footprint_scope"] == "complete"
+
+
+def test_recursion_error_while_parsing_puts_the_asset_in_not_scanned(repo, monkeypatch):
+    writer(repo, "a_x", 'x = "INSERT INTO t_a (x) VALUES (1)"\n')
+
+    def boom(*a, **k):
+        raise RecursionError("maximum recursion depth exceeded")
+    monkeypatch.setattr(slw.ast, "parse", boom)
+    res = slw.scan_writer_tables("a_x", repo)
+    assert res["not_scanned"] == "writer_file_unparseable"
+    sc = slw.footprint_scope([row("a_x", "t_a")], ["t_a"], repo)
+    assert sc["footprint_scope"] == "partial" and sc["assets_not_scanned"][0]["asset_id"] == "a_x"
+
+
+def test_recursion_error_while_walking_puts_the_asset_in_not_scanned(repo, monkeypatch):
+    writer(repo, "a_x", 'x = "INSERT INTO t_a (x) VALUES (1)"\n')
+
+    def boom(self, node, fn_stack):
+        raise RecursionError("deep")
+    monkeypatch.setattr(slw._WriteScan, "_walk", boom)
+    assert "too_deeply_nested" in slw.scan_writer_tables("a_x", repo)["not_scanned"]
+
+
+def test_any_other_scan_exception_becomes_not_scanned_never_a_crash_or_clean(repo, monkeypatch):
+    writer(repo, "a_x", 'x = "INSERT INTO t_a (x) VALUES (1)"\n')
+
+    def boom(*a, **k):
+        raise RuntimeError("unexpected")
+    monkeypatch.setattr(slw, "scan_writer_tables", boom)
+    sc = slw.footprint_scope([row("a_x", "t_a")], ["t_a"], repo)
+    assert sc["footprint_scope"] == "partial" and sc["assets_not_scanned"][0]["reason"] == "scan_error: RuntimeError"
+
+
+def test_a_very_long_concatenation_never_raises(repo):
+    writer(repo, "a_x", "x = " + " + ".join(['"a"'] * 4000) + "\n")
+    res = slw.scan_writer_tables("a_x", repo)
+    assert isinstance(res, dict) and ("tables" in res or "not_scanned" in res)
+
+
+def test_non_python_source_path_is_not_scanned(repo):
+    writer(repo, "a_x", "class W:\n    source_paths = ['platform/python-sidecar/ga_writers/a_x_writer.py', 'docs/notes.md']\n")
+    write(repo, "platform/python-sidecar/ga_writers/a_x_writer.py", 'S = "INSERT INTO t_a (x) VALUES (1)"\n')
+    assert slw.scan_writer_tables("a_x", repo)["not_scanned"] == "source_path_not_python: docs/notes.md"
+    writer(repo, "a_dir", "class W:\n    source_paths = ['platform/python-sidecar/services/a_dir/']\n")
+    assert "source_path_not_python" in slw.scan_writer_tables("a_dir", repo)["not_scanned"]
+
+
+def test_source_paths_that_is_not_a_literal_list_is_not_scanned(repo):
+    writer(repo, "a_x", 'P = "x.py"\nclass W:\n    source_paths = [P]\n    s = "INSERT INTO t_a (x) VALUES (1)"\n')
+    assert slw.scan_writer_tables("a_x", repo)["not_scanned"] == "source_paths_not_a_literal_list_of_strings"
+    writer(repo, "a_y", 'class W:\n    source_paths = compute()\n    s = "INSERT INTO t_a (x) VALUES (1)"\n')
+    assert slw.scan_writer_tables("a_y", repo)["not_scanned"] == "source_paths_not_a_literal_list_of_strings"
+
+
+def test_schema_version_is_bumped_because_has_blockers_can_be_unknown(repo):
+    assert slw.SCHEMA == "suvarna.e5_9.transitive_footprint/3"
+    rows = _one_clean_writer(repo)
+    rep = slw._footprint_report(conn_for("tbl_a", fk=()), rows, repo=repo)
+    assert rep["footprint"]["schema"] == slw.SCHEMA and rep["footprint"]["has_blockers"] == "unknown"
+
+
+def test_limitations_of_the_scan_are_printed_with_the_impact_lines(repo):
+    rep = slw._footprint_report(conn_for("tbl_a", "tbl_b"), _one_clean_writer(repo), repo=repo)
+    text = "\n".join(rep["impact_lines"])
+    assert "Limitations of the writer scan:" in text and "stored functions" in text and "delegates" in text
 
 
 # ───────────────────────── anchors on the REAL writer tree (read, never imported) ─────────────────────────
