@@ -351,7 +351,7 @@ def approved_seal_as_sealer(w, digest, sealing_commit=SEALING_COMMIT, approver="
     with as_role(w.conn, cw.SEALER):
         with w.conn.transaction():
             return seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=digest, approver_login=approver,
-                                                run_id="26104817", run_attempt=1, approval_note="approved by the steward under the owner's ruling #2",
+                                                run_id=26104817, run_attempt=1, approval_note="approved by the steward under the owner's ruling #2",
                                                 sealing_commit=sealing_commit)
 
 
@@ -408,7 +408,7 @@ _G1241 = _grants_of_1241()
 def test_1241_spec_has_the_expected_number_of_1241_origin_grants():
     if not _G1241:
         pytest.skip("NOT_RUN: migration 1241 is not in this tree")
-    assert len(_G1241) == len(set(_G1241)) == 49, len(_G1241)   # sealer: 12 table (incl. the column-level windows read, publication update and ledger read) + 18 function; verifier: 9 table (incl. the column-level ledger read) + 10 function (R10-4 iii: the job's final combined gate)
+    assert len(_G1241) == len(set(_G1241)) == 52, len(_G1241)   # sealer: 14 table (incl. the column-level windows read, publication update, ledger read and the receipt SELECT + INSERT) + 19 function; verifier: 9 table (incl. the column-level ledger read) + 10 function (R10-4 iii: the job's final combined gate)
 
 
 @pytest.mark.parametrize("role,kind,priv,obj,cols", _G1241, ids=[f"{r.split('_')[1]}-{p.lower()}-{o}" for r, k, p, o, c in _G1241])
@@ -422,7 +422,8 @@ def test_each_grant_of_migration_1241_is_individually_necessary(cbuilt, role, ki
     else:
         w.conn.execute(f"REVOKE EXECUTE ON FUNCTION public.{obj} FROM {role}")
     with pytest.raises(RuntimeError, match=r"permission denied|no_verifier_privilege|brief exit"):
-        approved_flow(w)             # verify, then the verifier's BRIEF, then the sealer's recompute + publish + seal + receipt: every principal's reads and writes
+        _, res = approved_flow(w)    # verify, then the verifier's BRIEF, then the sealer's recompute + publish + seal + receipt: every principal's reads and writes
+        _replay_as_sealer(w, __import__("uuid").UUID(res["manifest_id"]))     # ...and the seal REPLAY (the replay-side helper functions)
 
 
 def test_charts_row_level_security_is_evaluated_through_chart_grants_but_neither_principal_reads_charts(cbuilt):
@@ -980,7 +981,7 @@ def test_attack_r11_1_the_same_attack_after_verification_is_refused_at_the_seal_
 # ── 6. round 11: the approved seal (R11-3) and complete P1 record validation (R11-2), as the real principals ────────────────────────────────
 
 def _receipt(conn):
-    return conn.execute("SELECT brief_digest, approver_login, run_id, run_attempt, sealing_commit, sealed_by, manifest_id::text FROM public.ka_gochara_seal_approval").fetchall()
+    return conn.execute("SELECT brief_digest, approver_login, run_id, run_attempt, workflow_commit, sealed_by, manifest_id::text FROM public.ka_gochara_seal_approval").fetchall()
 
 
 def test_the_approved_seal_publishes_seals_and_writes_a_durable_receipt_naming_the_approved_digest(cbuilt):
@@ -999,7 +1000,7 @@ def test_the_approved_seal_publishes_seals_and_writes_a_durable_receipt_naming_t
     rows = _receipt(w.conn)
     # `sealed_by` defaults to session_user: this harness runs the sealing step as SET ROLE on a superuser connection (session_user = the harness login); in production the
     # sealer LOGS IN, so it records `gochara_sealer`
-    assert rows == [(b["sha256"], "steward-as-owner", "26104817", 1, SEALING_COMMIT, rows[0][5], res["manifest_id"])] and rows[0][5] in ("postgres", cw.SEALER), rows
+    assert rows == [(b["sha256"], "steward-as-owner", 26104817, 1, SEALING_COMMIT, rows[0][5], res["manifest_id"])] and rows[0][5] in ("postgres", cw.SEALER), rows
 
 
 def test_the_receipt_is_append_only_even_for_the_owner(cbuilt):
@@ -1011,6 +1012,7 @@ def test_the_receipt_is_append_only_even_for_the_owner(cbuilt):
         with pytest.raises(psycopg.errors.Error, match="append-only"):
             w.conn.execute(stmt)
     assert len(_receipt(w.conn)) == 1
+    assert w.conn.execute("SELECT public.ka_gochara_seal_receipt_missing(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0] is False
 
 
 def test_attack_a_candidate_changed_after_the_brief_whose_gate_is_still_empty_invalidates_the_approval(cbuilt):
@@ -1053,6 +1055,8 @@ def test_documented_limit_the_database_cannot_force_the_sealing_workflow_to_use_
     verify_as_verifier(w)
     assert seal_as_sealer(w) is not None
     assert _receipt(w.conn) == []
+    # ...but the bypass is DETECTABLE: a seal with no receipt is exactly what `ka_gochara_seal_receipt_missing` reports
+    assert w.conn.execute("SELECT public.ka_gochara_seal_receipt_missing(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0] is True
 
 
 def _copy_p1_record(w, *, person=None, flip_role=None):
