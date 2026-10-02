@@ -1,4 +1,4 @@
--- 1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_digest.sql
+-- 1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql
 --
 -- Suvarna Track I (SS decision N-61, 2026-10-01, approved with changes 2026-10-02; design note
 -- 00_ARCHITECTURE/briefs/suvarna/exec/DESIGN_ARGALA_L1_GRAHA_ROWS_v1_0.md; explanation and before/after counts:
@@ -12,10 +12,18 @@
 -- LOCK TIMEOUT. The first statement is SET LOCAL lock_timeout = '5s' (migration 1218 pattern): a blocked migrate
 -- job must fail fast, not hang a shared deploy.
 --
+-- SERVING EFFECT AT APPLY: none: touches no trigger column of asset_registry (the trigger fires only on UPDATE OF
+-- depends_on, natural_key_partition, health_probe, integrity_check_sql, target_floor, asset_kind, asset_type, scope,
+-- has_writer, is_active, target_table: count_sql is not one of them) and retires no digest spec. No asset_freshness
+-- row changes and no asset_output_digest_specs row is retired (proved by test_argala_migration_1219_sql.py against the
+-- real trigger function body on a disposable Postgres). The frozen manifests of ga_strength and ga_condition read
+-- evidence_refresh_required (count_sql is in the registry-contract fingerprint), which is not a serving state.
+--
 -- ORDERING. 1219 is a HARD PREREQUISITE of the S-L1 ga_structural rebuild: it must be applied BEFORE that rebuild
 -- launches. It has no dependency on the writer deploy and MAY APPLY INDEPENDENTLY of it (before, with or after).
--- Its companion 1221 (the a29 integrity conjunct) is a different matter and is a SEPARATE, HELD PR: it is NOT applied
--- with this file and never before the ga_structural writer deploy; see the header of 1221.
+-- Its companion 1221 (the a29 integrity conjunct AND the ga_structural digest-spec swap) is a different matter and is a
+-- SEPARATE, HELD PR: it is NOT applied with this file and never before the ga_structural writer deploy; see the header
+-- of 1221.
 --
 -- THIS MIGRATION IS A HARD PREREQUISITE OF THE S-L1 ga_structural REBUILD, not registry tidiness.
 -- The live trigger l1_data_plane_mutation_guard on chart_facts (function
@@ -25,7 +33,7 @@
 -- categories the writer emits without an ownership row today, and every other L1 producer's categories
 -- must be owned before the rebuild runs.
 --
--- Three parts, in order. The integrity conjunct (a29) is NOT here: it is migration 1221 (own file, applied as a
+-- Two parts, in order. The integrity conjunct (a29) is NOT here: it is migration 1221 (own file, applied as a
 -- named S-L1 step immediately before the ga_structural launch and never before the writer deploy). Floors are NOT touched here: target_floor is in the
 -- columns of the live trigger nirmana_registry_receipt_invalidation (it would stale the asset's freshness),
 -- and floors are re-declared from achieved counts after S-L1 in one registry migration.
@@ -96,24 +104,18 @@
 --      narrowing the 70 vimsopaka / saptavargaja rows owned here would have joined that list). Rows of the
 --      new argala_graha_natal category appear after S-L1 (156 expected, pre-ephemeris estimate).
 --
---   3. asset_output_digest_specs. ga_structural has ONE active spec (migration 914, sha b24906468e53894de0f223c70c9222eb8fbad3933f79ef7dbee7422b8dd709a6,
---      81 categories); a category outside its where_in is not digested, so a change to the new rows would
---      not move the output digest. This retires it and inserts the same spec plus argala_graha_natal (82).
---      spec_sha256 = canonical_digest (pipeline.orchestrator.provenance), which reproduces 914's stored
---      sha exactly. Retired, not deleted (609 / 1086 precedent).
---      FRESHNESS NOTE: swapping the active spec changes the output_digest_spec_sha256 that a fresh ga_structural
---      receipt would carry, so classify_receipt (pipeline/orchestrator/provenance.py) reports the stored receipt
---      stale ('output_digest_spec_sha256_changed') at the next receipt reconciliation, even when 1219 applies alone
---      before the writer deploy. Expected: the S-L1 ga_structural rebuild writes the new receipt. (This is separate
---      from the count_sql statement above, which concerns only count_sql.)
+--   The ga_structural output-digest spec (81 -> 82 categories, adding argala_graha_natal) is NOT here: it moved to
+--   migration 1221 (own HELD PR), because retiring the active spec makes ga_structural's receipts read
+--   receipt_spec_retired for serving (served_generation.ts) until rebuilt, and that must happen only in the S-L1 window
+--   together with the a29 freshness stale, not from the integration's deploy.
 --
 -- Post-apply verification (each should return the stated value):
 --   SELECT count(*) FROM fact_category_ownership
 --    WHERE fact_category = 'argala_graha_natal' AND owning_asset_id = 'ga_structural';            -- 1
 --   SELECT count(*) FROM fact_category_ownership
 --    WHERE fact_category IN ('bhadra_flag', 'panchaka_flag') AND owning_asset_id = 'ga_structural'; -- 0
---   SELECT spec_sha256 FROM asset_output_digest_specs
---    WHERE asset_id = 'ga_structural' AND retired_at IS NULL;                                     -- d480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620
+--   SELECT count(*) FROM asset_output_digest_specs WHERE retired_at IS NOT NULL;                   -- unchanged by 1219
+--   SELECT count(*) FROM asset_freshness WHERE reasons ? 'registry_changed';                       -- unchanged by 1219
 --   SELECT count_sql LIKE '%house_bhava_bala_%' AND count_sql NOT LIKE '%saptavargaja%'
 --     FROM asset_registry WHERE asset_id = 'ga_strength';                                         -- t
 --   SELECT count(*) FROM fact_category_ownership
@@ -371,55 +373,5 @@ BEGIN
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 1 AND NOT EXISTS (SELECT 1 FROM asset_registry WHERE asset_id = 'ga_condition' AND count_sql = condition_new) THEN
     RAISE EXCEPTION 'ga_condition count_sql re-declaration refused: live count_sql is not the text read (rows %)', n;
-  END IF;
-END $$;
-
--- ── 3. ga_structural output-digest spec ──────────────────────────────────────────────────────
-DO $$
-DECLARE
-  unexpected_active_count integer;
-  active_new_count integer;
-BEGIN
-  SELECT count(*)
-  INTO unexpected_active_count
-  FROM asset_output_digest_specs
-  WHERE asset_id = 'ga_structural'
-    AND retired_at IS NULL
-    AND spec_sha256 NOT IN (
-      'b24906468e53894de0f223c70c9222eb8fbad3933f79ef7dbee7422b8dd709a6',
-      'd480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620'
-    );
-
-  IF unexpected_active_count <> 0 THEN
-    RAISE EXCEPTION
-      'ga_structural digest-spec revision refused: % unrecognised active row(s)',
-      unexpected_active_count;
-  END IF;
-
-  UPDATE asset_output_digest_specs
-  SET retired_at = now()
-  WHERE asset_id = 'ga_structural'
-    AND spec_sha256 = 'b24906468e53894de0f223c70c9222eb8fbad3933f79ef7dbee7422b8dd709a6'
-    AND retired_at IS NULL;
-
-  INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
-  VALUES (
-    'ga_structural',
-    'd480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620',
-    '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"chart_facts","relation":"chart_facts","where_in":{"fact_category":["argala_graha_natal","argala_natal_matrix","ashtakavarga_anubindu","aspect_jaimini","aspect_jaimini_per_varga","aspect_matrix_summary","aspect_parashari_given","aspect_parashari_per_varga","aspect_parashari_received","aspect_received_by_special_point","aspect_tajik","bhava_bala_aspectual","bhava_bala_directional","bhava_bala_lord","bhava_bala_occupant","bhava_bala_positional","bhava_bala_temporal","bhava_bala_total_extended","bhava_chalit_rasi_divergence","bhava_significance_link","chart_center_of_gravity","chart_cluster","combustion_per_varga","combustion_relationship","composite_dispositor_strength","conjunction_per_varga","conjunction_special_point","conjunction_within_orb","contradiction_pair","convergence_count","dispositor_chain_per_varga","dispositor_tree","dosha_fires","dosha_label","graha_avastha_baladi","graha_avastha_deepta","graha_avastha_jagrad","graha_avastha_lifetime_exposure_summary","graha_centrality","graha_composite_state_classification","graha_dignity_per_varga","graha_dispositor_chain","graha_effective_dignity_modified_by_aspects","graha_functional_class_per_ascendant","graha_in_house_composite_strength","graha_saptavargaja_bala_component","graha_special_state_rollup","graha_tri_deva_role_strength","graha_vargottama_amplification_factor","graha_yoga_karaka_flag","graha_yuddha","graha_yuddha_per_varga","house_strength_classification_rollup","jaimini_tri_deva_role_per_graha","kala_sarpa_per_varga","karaka_bhava_concordance","karaka_house_lord_overlap_flag","karaka_web_per_varga","karakatva_strength_per_significance","kendradhipati_dosha","lord_aspects_lord_per_varga","lord_in_house_per_varga","nakshatra_co_tenancy","nakshatra_dispositor_chain","nakshatra_lord_relationship","net_argala_per_varga","nway_config_per_varga","panchadha_maitri","parivartana_pairs","parivartana_per_varga","pranic_strength_per_graha","retrograde_aspect_modification","sambandha_grade","significator_path","tara_bala","upapada_lagna","vargottama_per_varga","vimsopaka_bala_per_graha","virodha_argala_natal_matrix","virupa_drishti","yoga_fires","yoga_label"]},"key_columns":["fact_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"value_columns":["fact_id","chart_id","ayanamsha_id","fact_category","fact_subject","fact_key","fact_value_text","fact_value_num","fact_value_jsonb","unit","citation_ref","citation_human","source_calculation","verification_pass_status","engine_version","salience_formula_ver","tolerance_arcsec","near_sign_boundary_flag","near_nakshatra_boundary_flag","vargottama_flag_at_point","formula_provenance_text","cross_ayanamsha_divergence_arcsec","formula_id"]}]}'::jsonb
-  )
-  ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
-
-  SELECT count(*)
-  INTO active_new_count
-  FROM asset_output_digest_specs
-  WHERE asset_id = 'ga_structural'
-    AND spec_sha256 = 'd480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620'
-    AND retired_at IS NULL;
-
-  IF active_new_count <> 1 THEN
-    RAISE EXCEPTION
-      'ga_structural digest-spec revision failed: expected one active new row, got %',
-      active_new_count;
   END IF;
 END $$;

@@ -24,7 +24,7 @@ import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from pipeline.orchestrator.provenance import canonical_digest  # noqa: E402
+from tests import argala_registry_fixture as reg  # noqa: E402
 from tests.pg_disposable import HAVE_PG, PG_SKIP_REASON, new_db, psql, q, pg, requires_pg  # noqa: E402,F401
 
 
@@ -40,13 +40,11 @@ if not HAVE_PG:
 REPO = pathlib.Path(__file__).resolve().parents[3]
 DOC = (REPO / "00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1219_INTENT_v1_0.md").read_text(encoding="utf-8")
 MIGRATIONS = REPO / "platform/migrations"
-F1219 = "1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_digest.sql"
+F1219 = "1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql"
 FIXTURES = pathlib.Path(__file__).resolve().parent / "fixtures" / "argala_1219"
 M914 = (MIGRATIONS / "914_nirmana_l1_ga_structural_output_digest_spec.sql").read_text(encoding="utf-8")
 
 A = (MIGRATIONS / F1219).read_text(encoding="utf-8")
-OLD_SHA = "b24906468e53894de0f223c70c9222eb8fbad3933f79ef7dbee7422b8dd709a6"
-NEW_SHA = "d480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620"
 FIVE = ["bhadra_flag", "chandra_bala_natal_baseline", "eclipse_proximity_natal", "panchaka_flag", "tara_bala_natal_baseline"]
 SIX_WRITER_ONLY = {("ashtakavarga_bindu_contributor", "ga_strength"), ("graha_degree_flags", "ga_nakshatra"),
                    ("nakshatra_exchange", "ga_nakshatra"), ("esoteric_point_trisphuta", "ga_sensitive"),
@@ -109,16 +107,6 @@ def test_lock_timeout_is_the_first_statement_and_fails_fast():
     assert "must fail fast, not hang a shared deploy" in flat
 
 
-def test_914_sha_is_reproduced_by_the_real_digest_function_and_the_new_spec_is_old_plus_one_category():
-    assert canonical_digest(_spec(M914)) == OLD_SHA
-    old, new = _spec(M914), _spec(A)
-    oc, nc = old["components"][0]["where_in"]["fact_category"], new["components"][0]["where_in"]["fact_category"]
-    assert len(oc) == 81 and len(nc) == 82 and set(nc) - set(oc) == {"argala_graha_natal"} and set(oc) <= set(nc)
-    old["components"][0]["where_in"]["fact_category"] = nc
-    assert old == new and canonical_digest(new) == NEW_SHA
-    assert A.count(NEW_SHA) >= 3 and OLD_SHA in A
-
-
 def test_the_guard_md5s_are_the_live_count_sql_texts_read():
     assert hashlib.md5(STRENGTH_LIVE.encode()).hexdigest() in A
     assert hashlib.md5(CONDITION_LIVE.encode()).hexdigest() in A
@@ -156,10 +144,24 @@ def test_scope_no_floors_no_integrity_and_no_transaction_statements():
     assert "graha_yuddha" not in new_condition and "graha_avastha_%_per_varga" in new_condition
 
 
-def test_the_category_in_the_spec_is_the_one_the_writer_emits():
+def test_the_category_the_writer_emits_is_owned_by_ga_structural_here():
     import ga_writers.ga_structural_writer as sut
     rows = sut._build_argala_graha_rows({"Mars": {"sign_num": 1}, "Sun": {"sign_num": 2}}, "D1", "c", "b", "a", "t", "e")
     assert {r["fact_category"] for r in rows} == {"argala_graha_natal"}
+    assert ("argala_graha_natal", "ga_structural") in _pairs()
+
+
+def test_the_digest_spec_swap_is_not_in_1219_it_moved_to_1221():
+    code = _code(A)
+    assert "asset_output_digest_specs" not in code and "retired_at" not in code and "spec_sha256" not in code
+    flat = re.sub(r"\s*\n--\s*", " ", A)
+    assert "migration 1221 (own HELD PR)" in flat and "receipt_spec_retired" in flat
+    # the serving statement is the coordinator-approved text, and names the trigger columns exactly
+    assert ("SERVING EFFECT AT APPLY: none: touches no trigger column of asset_registry (the trigger fires only on UPDATE OF "
+            "depends_on, natural_key_partition, health_probe, integrity_check_sql, target_floor, asset_kind, asset_type, scope, "
+            "has_writer, is_active, target_table: count_sql is not one of them) and retires no digest spec") in flat
+    assert [c for c in reg.TRIGGER_COLUMNS if re.search(rf"^\s*UPDATE asset_registry SET {c}\b", _code(A), re.M)] == []
+    assert "count_sql = " in _code(A)
 
 
 def test_block_a_header_states_it_is_a_prerequisite_that_may_apply_independently_of_the_writer_deploy():
@@ -171,31 +173,37 @@ def test_block_a_header_states_it_is_a_prerequisite_that_may_apply_independently
 
 # ── executed ───────────────────────────────────────────────────────────────────────────
 
-SCHEMA_A = """
-CREATE TABLE fact_category_ownership (fact_category text NOT NULL, owning_asset_id text NOT NULL,
-  created_at timestamptz DEFAULT now(), PRIMARY KEY (fact_category, owning_asset_id));
-CREATE TABLE asset_registry (asset_id text PRIMARY KEY, count_sql text, target_floor integer, integrity_check_sql text);
-CREATE TABLE asset_output_digest_specs (asset_id text NOT NULL, spec_sha256 text NOT NULL, spec jsonb NOT NULL,
-  reviewed_at timestamptz, retired_at timestamptz, UNIQUE (asset_id, spec_sha256));
-"""
+OLD_SPEC_SHA = "b24906468e53894de0f223c70c9222eb8fbad3933f79ef7dbee7422b8dd709a6"
+ASSETS = ["ga_strength", "ga_condition", "ga_structural", "ga_panchanga", "ga_vargas"]
 
 
 def _fresh_a(port: int) -> str:
+    """The real trigger and serving tables on a disposable DB, a fresh asset_freshness row per asset, the live ga_structural
+    spec (migration 914's) active, an old-spec receipt for ga_structural."""
     db = new_db(port)
-    q(port, db, SCHEMA_A)
+    q(port, db, "CREATE TABLE fact_category_ownership (fact_category text NOT NULL, owning_asset_id text NOT NULL, "
+                "created_at timestamptz DEFAULT now(), PRIMARY KEY (fact_category, owning_asset_id));")
+    reg.install(port, db)
     old_spec = json.dumps(_spec(M914)).replace("'", "''")
     q(port, db, f"""
       INSERT INTO fact_category_ownership VALUES ('bhava_bala_lord','ga_structural'), ('graha_avastha_lajjitadi','ga_condition'),
         {", ".join(f"('{c}','ga_structural')" for c in FIVE)};
-      INSERT INTO asset_registry VALUES ('ga_strength', $a${STRENGTH_LIVE}$a$, 13621, 'strength-integrity'),
-        ('ga_condition', $a${CONDITION_LIVE}$a$, 2880, 'condition-integrity'), ('ga_structural', 'x', 98446, 'structural-integrity');
-      INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec) VALUES ('ga_structural', '{OLD_SHA}', '{old_spec}'::jsonb);
+      INSERT INTO asset_registry (asset_id, count_sql, target_floor, integrity_check_sql, is_active) VALUES
+        ('ga_strength', $a${STRENGTH_LIVE}$a$, 13621, 'strength-integrity', true),
+        ('ga_condition', $a${CONDITION_LIVE}$a$, 2880, 'condition-integrity', true),
+        ('ga_structural', 'x', 98446, 'structural-integrity', true),
+        ('ga_panchanga', 'y', 437, 'panchanga-integrity', true), ('ga_vargas', 'z', 1, 'vargas-integrity', true);
+      INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec, reviewed_at)
+        VALUES ('ga_structural', '{OLD_SPEC_SHA}', '{old_spec}'::jsonb, '2026-09-01T00:00:00Z');
+      INSERT INTO asset_provenance_receipts (asset_id, scope_key, partition_key, receipt_version, receipt_state, output_digest_spec_sha256)
+        VALUES ('ga_structural', 'chart', 'canonical', 'v1', 'proven', '{OLD_SPEC_SHA}');
     """)
+    reg.seed_fresh(port, db, ASSETS)
     return db
 
 
 @requires_pg
-def test_block_a_applies_every_part_touches_no_floor_or_integrity_and_is_idempotent(pg):
+def test_block_a_applies_both_parts_touches_no_floor_or_integrity_and_is_idempotent(pg):
     db = _fresh_a(pg)
     floors_integrity = "SELECT string_agg(asset_id || target_floor || integrity_check_sql, ',' ORDER BY asset_id) FROM asset_registry"
     before = q(pg, db, floors_integrity)
@@ -214,8 +222,7 @@ def test_block_a_applies_every_part_touches_no_floor_or_integrity_and_is_idempot
     condition = q(pg, db, "SELECT count_sql FROM asset_registry WHERE asset_id='ga_condition'")
     assert "graha_yuddha" not in condition and "ga_condition_composite" in condition and "graha_avastha_%_per_varga" in condition
     assert q(pg, db, floors_integrity) == before                               # no floor, no integrity text moved
-    assert q(pg, db, f"SELECT count(*) FROM asset_output_digest_specs WHERE retired_at IS NULL AND spec_sha256='{NEW_SHA}'") == "1"
-    assert q(pg, db, f"SELECT retired_at IS NOT NULL FROM asset_output_digest_specs WHERE spec_sha256='{OLD_SHA}'") == "t"
+    assert q(pg, db, f"SELECT count(*) FROM asset_output_digest_specs WHERE retired_at IS NULL AND spec_sha256='{OLD_SPEC_SHA}'") == "1"   # 1219 retires nothing
     fp = "SELECT (SELECT md5(string_agg(count_sql, '' ORDER BY asset_id)) FROM asset_registry) || (SELECT count(*) FROM fact_category_ownership)"
     first = q(pg, db, fp)
     assert psql(pg, db, file=f).returncode == 0
@@ -227,7 +234,6 @@ def test_block_a_applies_every_part_touches_no_floor_or_integrity_and_is_idempot
     ("INSERT INTO fact_category_ownership VALUES ('virupa_drishti','ga_sensitive')", "already owned by a different asset"),
     ("UPDATE asset_registry SET count_sql = count_sql || ' ' WHERE asset_id='ga_strength'", "ga_strength count_sql narrowing refused"),
     ("UPDATE asset_registry SET count_sql = 'SELECT 1' WHERE asset_id='ga_condition'", "ga_condition count_sql re-declaration refused"),
-    ("INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec) VALUES ('ga_structural','deadbeef','{}'::jsonb)", "unrecognised active row"),
 ])
 def test_block_a_refuses_unexpected_live_state(pg, sabotage, expect):
     db = _fresh_a(pg)
@@ -307,3 +313,58 @@ def test_the_double_claim_check_has_teeth_it_catches_anubindu_if_the_exclusion_i
     assert mutant != A
     claims = _claimants(pg, mutant, ["ashtakavarga_anubindu"])
     assert claims["ashtakavarga_anubindu"] == {"ga_structural", "ga_strength"}
+
+
+# ── serving neutrality (the REAL trigger function body and trigger definition, read from the live database) ───
+
+@requires_pg
+def test_the_fixture_trigger_is_the_real_one_and_is_live_so_the_neutrality_proof_has_teeth(pg):
+    db = _fresh_a(pg)
+    assert q(pg, db, "SELECT count(*) FROM pg_trigger WHERE tgname = 'nirmana_registry_receipt_invalidation' AND NOT tgisinternal") == "1"
+    assert "registry_changed" in q(pg, db, "SELECT pg_get_functiondef('nirmana_invalidate_registry_receipts'::regproc)")
+    before = reg.freshness_snapshot(pg, db)
+    # count_sql is NOT a trigger column: a distinct count_sql leaves every freshness row byte-identical
+    q(pg, db, "UPDATE asset_registry SET count_sql = count_sql || ' ' WHERE asset_id = 'ga_condition'")
+    assert reg.freshness_snapshot(pg, db) == before
+    # integrity_check_sql IS a trigger column (what 1221's a29 does): that asset's row goes stale, only that asset's
+    q(pg, db, "UPDATE asset_registry SET integrity_check_sql = integrity_check_sql || ' ' WHERE asset_id = 'ga_structural'")
+    states = dict(line.split("|") for line in q(pg, db, "SELECT asset_id || '|' || freshness_state || ':' || reasons::text FROM asset_freshness").splitlines())
+    assert states["ga_structural"] == 'stale:["registry_changed"]'
+    assert all(v == "fresh:[]" for k, v in states.items() if k != "ga_structural")
+    # target_floor is a trigger column too (why 1219 touches no floor)
+    q(pg, db, "UPDATE asset_registry SET target_floor = target_floor + 1 WHERE asset_id = 'ga_vargas'")
+    assert q(pg, db, "SELECT freshness_state FROM asset_freshness WHERE asset_id = 'ga_vargas'") == "stale"
+
+
+@requires_pg
+def test_applying_1219_changes_no_asset_freshness_row_and_retires_no_digest_spec(pg):
+    db = _fresh_a(pg)
+    fresh_before, specs_before = reg.freshness_snapshot(pg, db), reg.specs_snapshot(pg, db)
+    assert fresh_before.count('"freshness_state": "fresh"') == len(ASSETS) and '"retired_at": null' in specs_before
+    r = psql(pg, db, file=_write("a", A), single_transaction=True)         # the migrate.ts shape: one transaction
+    assert r.returncode == 0, r.stderr
+    # the migration did real work (count_sql narrowed, ownership added) ...
+    assert "<> 'ashtakavarga_anubindu'" in q(pg, db, "SELECT count_sql FROM asset_registry WHERE asset_id = 'ga_strength'")
+    assert q(pg, db, "SELECT count(*) FROM fact_category_ownership WHERE fact_category = 'argala_graha_natal'") == "1"
+    # ... and served nothing differently: NO asset_freshness row changed (observed_at included), no spec retired or added
+    assert reg.freshness_snapshot(pg, db) == fresh_before
+    assert q(pg, db, "SELECT count(*) FROM asset_freshness WHERE freshness_state <> 'fresh' OR reasons <> '[]'::jsonb") == "0"
+    assert reg.specs_snapshot(pg, db) == specs_before
+    assert q(pg, db, "SELECT count(*) FROM asset_output_digest_specs WHERE retired_at IS NOT NULL") == "0"
+    # served_generation.ts's spec_active predicate still holds for the ga_structural receipt
+    assert q(pg, db, "SELECT count(*) FROM asset_provenance_receipts r WHERE EXISTS (SELECT 1 FROM asset_output_digest_specs s "
+                     "WHERE s.asset_id = r.asset_id AND s.spec_sha256 = r.output_digest_spec_sha256 AND s.retired_at IS NULL)") == "1"
+
+
+@requires_pg
+def test_the_neutrality_proof_catches_a_1219_that_touches_a_trigger_column_or_retires_a_spec(pg):
+    for tail, expect_fresh_change, expect_retired in (
+        ("UPDATE asset_registry SET integrity_check_sql = integrity_check_sql || ' ' WHERE asset_id = 'ga_structural';", True, 0),
+        (f"UPDATE asset_output_digest_specs SET retired_at = now() WHERE spec_sha256 = '{OLD_SPEC_SHA}';", False, 1),
+    ):
+        db = _fresh_a(pg)
+        before = reg.freshness_snapshot(pg, db)
+        r = psql(pg, db, file=_write("m", A + "\n" + tail + "\n"), single_transaction=True)
+        assert r.returncode == 0, r.stderr
+        assert (reg.freshness_snapshot(pg, db) != before) is expect_fresh_change
+        assert int(q(pg, db, "SELECT count(*) FROM asset_output_digest_specs WHERE retired_at IS NOT NULL")) == expect_retired
