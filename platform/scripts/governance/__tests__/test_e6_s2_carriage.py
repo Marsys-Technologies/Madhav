@@ -1,0 +1,415 @@
+"""test_e6_s2_carriage.py: E6 S2 (SS N-72 S2, N-73): declared carriage + the generic D1 (source correspondence) detector.
+
+An asset declares ONE carriage check chosen by its NATURE (transcription -> D1, computation -> D3, derivation -> D2); the validator
+refuses a mismatch; the other two read N/A by the declaration-keyed cause `not-the-declared-carriage`; D1 is measured by the
+engine in carriage_d1.py against the declared passage (verified by its stored hash) and PASSES only if every row matches. The
+Phaladipika latta (8 rows transcribed from Phaladipika Sloka 42-44) is the first instance, as a FIXTURE (no real asset declares a
+carriage check yet). Offline; no database."""
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+import pathlib
+import sys
+
+import pytest
+
+HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+
+import asset_census as ac  # noqa: E402
+import carriage_d1 as d1  # noqa: E402
+import test_e6_a_na_causes as na_causes  # noqa: E402
+import test_e6_na_r01_03 as r13  # noqa: E402
+
+FX = json.loads((HERE / "fixtures" / "phaladeepika_latta_d1_fixture.json").read_text(encoding="utf-8"))
+CHUNKS = {c["chunk_id"]: c for c in FX["classical_text_chunks"]}
+ROWS = FX["bg_phaladeepika_latta"]
+IDS = ["phaladeepika_pg0338_c01", "phaladeepika_pg0339_c01"]
+SPEC = dict(matcher="ordinal_count_direction_effect_v1", table="bg_phaladeepika_latta", chunk_ids=IDS, span=dict(start="Sloka 42-44"),
+            fields=dict(claimant="graha", count="count_from_graha", direction="direction", effect="effect_description"),
+            direction_words={"forward": "forward", "backward": "rear"}, anchor_stems=["Latt", "Latin"], effect_marker="Shkos")
+CAR_D1 = dict(applies="D1", nature="transcription", why="eight rows transcribed from Phaladipika Adh. XXVI Sloka 42-44",
+              evidence="00_ARCHITECTURE/briefs/suvarna/layers/L0/assets/bg_phaladeepika_latta_ELEVATION_BRIEF_v1_0.md",
+              citation_state="sourced_ocr_unverified", spec=SPEC)
+NA, NO_DET = ac.NA, ac.NO_DET
+S2_RULES = {f"Carr.D{i}#measured:not-the-declared-carriage": "test" for i in (1, 2, 3)}
+
+
+def _rehash(c):
+    c = dict(c)
+    c["content_sha256"] = hashlib.sha256(f"{c['text_id']}::{c['content_en']}".encode("utf-8")).hexdigest()
+    return c
+
+
+def _measure(rows=ROWS, chunks=CHUNKS, spec=SPEC, table="bg_phaladeepika_latta"):
+    return d1.d1_measure(spec, "sourced_ocr_unverified", chunks, copy.deepcopy(rows), table)
+
+
+# ───────────────────────── the fixture itself ─────────────────────────
+
+def test_the_fixture_records_its_source_hash_and_the_stored_hashes_verify():
+    assert len(FX["_source"]["sha256"]) == 64
+    for c in CHUNKS.values():
+        v = d1.verify_chunk(c)
+        assert v["verified"] and v["preimage"] == "text_id::content_en", v
+
+
+# ───────────────────────── the D1 engine ─────────────────────────
+
+def test_d1_all_eight_latta_rows_match_and_the_record_states_what_it_proves():
+    r = _measure()
+    assert r["v"] == "PASS" and r["citation_state"] == "sourced_ocr_unverified"
+    e = r["d1"]
+    assert e["rows_total"] == 8 and e["rows_matched"] == 8 and e["unmatched"] == [] and e["translation_only"] is True
+    assert [c["chunk_id"] for c in e["chunks"]] == IDS and all(c["verified"] and c["preimage"] == "text_id::content_en" for c in e["chunks"])
+    assert len(e["passage_sha256"]) == 64 and e["content_sa_all_null"] is True
+    for needle in ("ENGLISH translation", "content_sa", "NULL", "OCR text not checked against the printed book", "text_id-prefixed",
+                   "sourced_ocr_unverified"):
+        assert needle in r["measured"], needle
+
+
+@pytest.mark.parametrize("name, mutate, row", [
+    ("Moon 22 -> 21", lambda rs: [r.update(count_from_graha=21) for r in rs if r["graha"] == "Moon"], "Moon"),
+    ("Sun forward -> backward", lambda rs: [r.update(direction="backward") for r in rs if r["graha"] == "Sun"], "Sun"),
+    ("Rahu effect = Quarrel", lambda rs: [r.update(effect_description="Quarrel.") for r in rs if r["graha"] == "Rahu"], "Rahu"),
+    ("Mars effect invented", lambda rs: [r.update(effect_description="Misery.") for r in rs if r["graha"] == "Mars"], "Mars"),
+    ("Venus 5 -> 6", lambda rs: [r.update(count_from_graha=6) for r in rs if r["graha"] == "Venus"], "Venus"),
+    ("Mercury 7 -> 8", lambda rs: [r.update(count_from_graha=8) for r in rs if r["graha"] == "Mercury"], "Mercury"),
+])
+def test_d1_a_seeded_wrong_row_is_never_a_pass_and_is_named(name, mutate, row):
+    rows = copy.deepcopy(ROWS)
+    mutate(rows)
+    r = _measure(rows=rows)
+    assert r["v"] == "PARTIAL", name
+    assert [u["row"] for u in r["d1"]["unmatched"]] == [row] and row in r["measured"]
+
+
+def test_d1_swapped_counts_name_both_rows_and_a_ketu_row_fails():
+    rows = copy.deepcopy(ROWS)
+    for r in rows:
+        if r["graha"] in ("Sun", "Saturn"):
+            r["count_from_graha"] = 8 if r["graha"] == "Sun" else 12
+    assert sorted(u["row"] for u in _measure(rows=rows)["d1"]["unmatched"]) == ["Saturn", "Sun"]
+    ketu = copy.deepcopy([r for r in ROWS if r["graha"] == "Rahu"][0])
+    ketu["graha"] = "Ketu"
+    r = _measure(rows=ROWS + [ketu])
+    assert r["v"] == "PARTIAL" and [u["row"] for u in r["d1"]["unmatched"]] == ["Ketu"]
+
+
+def test_d1_hash_mismatch_is_unreadable_never_pass():
+    ch = copy.deepcopy(CHUNKS)
+    ch[IDS[0]]["content_en"] = ch[IDS[0]]["content_en"] + " tampered"          # stored hash no longer matches
+    r = _measure(chunks=ch)
+    assert r["v"] == NO_DET and "unreadable" in r["measured"] and IDS[0] in r["measured"]
+    assert r["d1"]["chunks"][0]["verified"] is False and "matches neither" in r["d1"]["chunks"][0]["reason"]
+
+
+def test_d1_the_plain_preimage_is_accepted_and_named_and_a_wrong_hash_is_not():
+    ch = copy.deepcopy(CHUNKS)
+    for c in ch.values():
+        c["content_sha256"] = hashlib.sha256(c["content_en"].encode("utf-8")).hexdigest()
+    r = _measure(chunks=ch)
+    assert r["v"] == "PASS" and {c["preimage"] for c in r["d1"]["chunks"]} == {"content_en"} and "content_en preimage" in r["measured"]
+    ch[IDS[1]]["content_sha256"] = "0" * 64
+    assert _measure(chunks=ch)["v"] == NO_DET
+
+
+@pytest.mark.parametrize("field, value", [("content_sha256", None), ("content_sha256", "xyz"), ("content_en", ""), ("content_en", None),
+                                          ("text_id", None)])
+def test_d1_an_absent_or_malformed_field_makes_the_chunk_unreadable(field, value):
+    ch = copy.deepcopy(CHUNKS)
+    ch[IDS[0]][field] = value
+    r = _measure(chunks=ch)
+    assert r["v"] == NO_DET and "unreadable" in r["measured"]
+
+
+def test_d1_a_missing_chunk_is_no_detector_and_named():
+    ch = {k: v for k, v in CHUNKS.items() if k != IDS[1]}
+    r = _measure(chunks=ch)
+    assert r["v"] == NO_DET and IDS[1] in r["measured"] and r["d1"]["missing_chunks"] == [IDS[1]]
+
+
+def test_d1_span_markers_absent_is_no_detector():
+    for sp in (dict(start="Sloka 99-100"), dict(start="Sloka 42-44", end="NO SUCH END MARKER")):
+        r = _measure(spec=dict(SPEC, span=sp))
+        assert r["v"] == NO_DET and "marker" in r["measured"], sp
+
+
+def test_d1_empty_table_and_unreadable_rows_are_no_detector():
+    assert _measure(rows=[])["v"] == NO_DET and "empty" in _measure(rows=[])["measured"]
+    r = d1.d1_measure(SPEC, "sourced_ocr_unverified", CHUNKS, None, "bg_phaladeepika_latta")
+    assert r["v"] == NO_DET and "could not be read" in r["measured"]
+
+
+def test_d1_a_table_other_than_the_specs_is_not_guessed():
+    r = _measure(table="bg_other")
+    assert r["v"] == NO_DET and "does not guess" in r["measured"]
+
+
+def test_d1_a_malformed_row_is_a_miss_not_a_crash():
+    rows = copy.deepcopy(ROWS)
+    rows[0].pop("count_from_graha")
+    rows[1]["graha"] = None
+    r = _measure(rows=rows)
+    assert r["v"] == "PARTIAL" and r["d1"]["rows_matched"] == 6
+
+
+def test_d1_the_match_is_against_the_declared_span_not_the_page_string_of_the_row():
+    rows = copy.deepcopy(ROWS)
+    for r in rows:
+        r["verse_ref"] = "Adh.XXVI PG999 Sloka 1"                       # a misleading per-row page string changes nothing
+    assert _measure(rows=rows)["v"] == "PASS"
+    sp = dict(SPEC, span=dict(start="Sloka 45-46"))                      # a different span: nothing is found there (marker absent)
+    assert _measure(spec=sp)["v"] == NO_DET
+
+
+def test_d1_a_passage_changed_after_certification_changes_the_recorded_passage_digest():
+    before = _measure()["d1"]["passage_sha256"]
+    ch = copy.deepcopy(CHUNKS)
+    ch[IDS[1]]["content_en"] = ch[IDS[1]]["content_en"].replace("Misery will", "Grief will")      # re-ingested with a CONSISTENT new hash
+    ch[IDS[1]] = _rehash(ch[IDS[1]])
+    r = _measure(chunks=ch)
+    assert r["d1"]["passage_sha256"] != before                              # a certificate bound to the old record is stale
+    assert r["v"] == "PARTIAL"                                               # and the rows no longer all match the changed text
+    assert d1.passage_digest(_measure()["d1"]["chunks"]) == before
+
+
+def test_d1_content_sa_present_is_reported_not_matched():
+    ch = copy.deepcopy(CHUNKS)
+    ch[IDS[0]] = _rehash(dict(ch[IDS[0]], content_sa="sanskrit"))
+    r = _measure(chunks=ch)
+    assert r["d1"]["content_sa_all_null"] is False and "NOT matched" in r["measured"] and r["v"] == "PASS"
+
+
+def test_d1_the_engine_is_generic_a_second_spec_over_a_second_table_runs():
+    """A different table, claimant column and anchor stem through the same engine (no latta constant in the engine)."""
+    spec = dict(SPEC, table="t_other", fields=dict(claimant="who", count="n", direction="way", effect="what"))
+    rows = [dict(who=r["graha"], n=r["count_from_graha"], way=r["direction"], what=r["effect_description"]) for r in ROWS]
+    assert d1.d1_measure(spec, "sourced", CHUNKS, rows, "t_other")["v"] == "PASS"
+
+
+# ───────────────────────── the declaration validator ─────────────────────────
+
+def _doc(car, extra=None):
+    e = {"kind": "data", "carriage": car}
+    e.update(extra or {})
+    return dict(version="1.7.0", kind_enum=list(ac.DECLARED_KINDS), assets={"bg_phaladeepika_latta": e})
+
+
+def _bad(car, match, extra=None):
+    with pytest.raises(ac.DeclarationsError, match=match):
+        ac.validate_declarations(_doc(car, extra))
+
+
+def test_validator_accepts_the_latta_declaration_and_the_other_two_natures():
+    ac.validate_declarations(_doc(copy.deepcopy(CAR_D1)))
+    ac.validate_declarations(_doc(dict(applies="D3", nature="computation", why="w", evidence="e.py:1")))
+    ac.validate_declarations(_doc(dict(applies="D2", nature="derivation", why="w", evidence="e.py:1")))
+    ac.validate_declarations(_doc(dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e.md")))
+    ac.validate_declarations(_doc(dict(served_surface=True, **{k: v for k, v in CAR_D1.items()}),
+                                  dict(read_evidence="platform/src/x.ts:1", read_table="t")))      # served_surface coexists
+
+
+@pytest.mark.parametrize("nature, applies", [("transcription", "D3"), ("transcription", "D2"), ("computation", "D1"), ("computation", "D2"),
+                                             ("derivation", "D1"), ("derivation", "D3")])
+def test_validator_refuses_a_nature_check_mismatch(nature, applies):
+    car = dict(applies=applies, nature=nature, why="w", evidence="e:1", **({"citation_state": "sourced"} if nature == "transcription" else {}))
+    _bad(car, "requires applies")
+
+
+def test_validator_refuses_missing_or_blank_parts():
+    base = copy.deepcopy(CAR_D1)
+    for k in ("why", "evidence"):
+        _bad({**base, k: "  "}, rf"carriage\.{k}")
+        _bad({kk: v for kk, v in base.items() if kk != k}, rf"carriage\.{k}")
+    _bad({**base, "nature": "guess"}, "nature must be one of")
+    _bad({kk: v for kk, v in base.items() if kk != "nature"}, "nature must be one of")
+    _bad({**base, "applies": None}, "requires applies")
+    _bad({kk: v for kk, v in base.items() if kk != "citation_state"}, "citation_state")
+    _bad({**base, "citation_state": "verified"}, "citation_state")
+    _bad({**base, "ruling": "N-73"}, "ruling is only for")
+    _bad({**base, "why": "two\nlines"}, "single-line")
+
+
+def test_validator_ratified_judgment_discipline():
+    ok = dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e.md")
+    _bad({kk: v for kk, v in ok.items() if kk != "ruling"}, "ruling")
+    _bad({**ok, "ruling": "yes"}, "ruling")
+    _bad({**ok, "applies": "D1"}, "declares no check")
+    _bad({**ok, "spec": SPEC}, "declares no check")
+    _bad({**ok, "citation_state": "sourced"}, "citation_state")
+
+
+def test_validator_spec_only_for_d1_and_well_formed():
+    _bad(dict(applies="D3", nature="computation", why="w", evidence="e:1", spec=SPEC), "only defined for applies D1")
+    for name, spec in {"unknown field": dict(SPEC, extra=1), "missing": {k: v for k, v in SPEC.items() if k != "chunk_ids"},
+                       "matcher": dict(SPEC, matcher="nope"), "table": dict(SPEC, table="bad table"),
+                       "empty chunks": dict(SPEC, chunk_ids=[]), "dup chunks": dict(SPEC, chunk_ids=[IDS[0], IDS[0]]),
+                       "bad chunk id": dict(SPEC, chunk_ids=["Bad Id"]), "span": dict(SPEC, span=dict(start=" ")),
+                       "span extra": dict(SPEC, span=dict(start="a", mid="b")), "fields": dict(SPEC, fields=dict(claimant="graha")),
+                       "field ident": dict(SPEC, fields=dict(SPEC["fields"], count="1bad")), "dir words": dict(SPEC, direction_words={}),
+                       "dir word": dict(SPEC, direction_words={"x": "a b"}), "stems": dict(SPEC, anchor_stems=[]),
+                       "stem": dict(SPEC, anchor_stems=["(a|b)"]), "marker": dict(SPEC, effect_marker=" ")}.items():
+        _bad({**CAR_D1, "spec": spec}, "spec"), name
+
+
+def test_validator_refuses_a_carriage_check_together_with_terminal_by_construction():
+    _bad(copy.deepcopy(CAR_D1), "contradict", extra=dict(terminal_by_construction="writer x.py:1 writes nothing read"))
+
+
+def test_validator_doc_level_field_list_must_match():
+    doc = _doc(None)
+    doc["carriage_declaration_fields"] = ["applies"]
+    with pytest.raises(ac.DeclarationsError, match="carriage_declaration_fields"):
+        ac.validate_declarations(doc)
+
+
+def test_the_committed_file_is_1_7_0_declares_no_carriage_check_and_lists_the_fields():
+    raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
+    assert raw["version"] == "1.7.0" and raw["carriage_declaration_fields"] == list(ac.CARRIAGE_DECL_FIELDS)
+    assert [a for a, e in raw["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)] == []
+    ac.load_asset_declarations()
+
+
+# ───────────────────────── the census records ─────────────────────────
+
+@pytest.fixture()
+def fetch(monkeypatch):
+    monkeypatch.setattr(ac, "d1_fetch_chunks", lambda ids: {i: CHUNKS[i] for i in ids if i in CHUNKS})
+    monkeypatch.setattr(ac, "d1_fetch_rows", lambda table, cols: copy.deepcopy(ROWS))
+
+
+def test_an_undeclared_asset_emits_nothing_and_reads_as_today(fetch):
+    assert ac.carriage_declared_checks("bg_x", None, "t") == {} and ac.carriage_declared_checks("bg_x", {"served_surface": True}, "t") == {}
+    cell = ac.rollup_asset("L0", {})["Carr"]
+    assert cell["v"] == NO_DET and all(c["state"] == "APPLIES" for c in cell["checks"])
+
+
+def test_a_declared_d1_asset_measures_d1_and_the_other_two_read_na_by_the_declaration_keyed_cause(fetch):
+    got = ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta")
+    assert got["Carr.D1"]["v"] == "PASS" and got["Carr.D1"]["citation_state"] == "sourced_ocr_unverified"
+    for c in ("Carr.D2", "Carr.D3"):
+        assert got[c]["v"] == NA and got[c]["cause"] == "not-the-declared-carriage" and "declared carriage check is D1" in got[c]["measured"]
+    cell = ac.rollup_asset("L0", got)["Carr"]
+    assert cell["v"] == "PASS" and [c["v"] for c in cell["checks"]] == ["PASS", "N/A", "N/A"]
+    assert {c["rule_id"] for c in cell["checks"] if c["v"] == NA} == {"Carr.D2#measured:not-the-declared-carriage", "Carr.D3#measured:not-the-declared-carriage"}
+
+
+def test_the_na_is_released_only_by_the_declared_rule(fetch, monkeypatch):
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {k: v for k, v in ac.NA_RULE_DECISIONS.items() if "not-the-declared-carriage" not in k})
+    got = ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta")
+    cell = ac.rollup_asset("L0", got)["Carr"]
+    assert cell["v"] == NO_DET and [c["v"] for c in cell["checks"]] == ["PASS", NO_DET, NO_DET]
+
+
+def test_the_caller_chosen_not_chosen_cause_does_not_exist():
+    assert all("not-chosen" not in v for v in ac.NA_CAUSES.values())
+    with pytest.raises(ValueError):
+        old = dict(ac.NA_RULE_DECISIONS)
+        try:
+            ac.NA_RULE_DECISIONS["Carr.D2#measured:not-chosen"] = "x"
+            ac.validate_na_rule_decisions()
+        finally:
+            ac.NA_RULE_DECISIONS.clear()
+            ac.NA_RULE_DECISIONS.update(old)
+
+
+def test_a_seeded_wrong_row_holds_the_carr_cell_below_pass(monkeypatch):
+    rows = copy.deepcopy(ROWS)
+    [r.update(count_from_graha=21) for r in rows if r["graha"] == "Moon"]
+    monkeypatch.setattr(ac, "d1_fetch_chunks", lambda ids: dict(CHUNKS))
+    monkeypatch.setattr(ac, "d1_fetch_rows", lambda t, c: rows)
+    cell = ac.rollup_asset("L0", ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta"))["Carr"]
+    assert cell["v"] == "PARTIAL"
+
+
+@pytest.mark.parametrize("applies, nature", [("D2", "derivation"), ("D3", "computation")])
+def test_a_declared_d2_or_d3_has_no_detector_yet_and_the_other_two_read_na(applies, nature):
+    got = ac.carriage_declared_checks("x", dict(applies=applies, nature=nature, why="w", evidence="e:1"), None)
+    own = f"Carr.{applies}"
+    assert got[own]["v"] == NO_DET and "detector is built yet" in got[own]["measured"]
+    assert sorted(c for c in got if got[c]["v"] == NA) == sorted(c for c in ("Carr.D1", "Carr.D2", "Carr.D3") if c != own)
+    assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET
+    assert ac.CRITERION_REGISTRY[own]["detector"] == "NONE"
+
+
+def test_a_d1_declaration_without_a_spec_is_no_detector_not_pass():
+    got = ac.carriage_declared_checks("x", {k: v for k, v in CAR_D1.items() if k != "spec"}, "t")
+    assert got["Carr.D1"]["v"] == NO_DET and "without a `spec`" in got["Carr.D1"]["measured"]
+
+
+def test_a_failed_database_read_degrades_only_d1_to_errored(monkeypatch):
+    def boom(*a, **k):
+        raise ac.Unknown("connection refused")
+    monkeypatch.setattr(ac, "d1_fetch_chunks", boom)
+    got = ac.carriage_declared_checks("x", CAR_D1, "bg_phaladeepika_latta")
+    assert got["Carr.D1"]["v"] == ac.ERRORED and got["Carr.D1"]["citation_state"] == "sourced_ocr_unverified"
+    assert got["Carr.D2"]["v"] == NA
+
+
+def test_a_ratified_judgment_seed_reads_na_on_all_three_by_its_own_cause_and_needs_its_own_rule(monkeypatch):
+    got = ac.carriage_declared_checks("x", dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e.md"), None)
+    assert {c: got[c]["cause"] for c in got} == {c: "ratified_judgment" for c in ("Carr.D1", "Carr.D2", "Carr.D3")}
+    assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET                       # no rule declared for ratified_judgment: not released
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {**ac.NA_RULE_DECISIONS, **{f"Carr.D{i}#measured:ratified_judgment": "SS (test)" for i in (1, 2, 3)}})
+    assert ac.rollup_asset("L0", got)["Carr"]["v"] == NA
+
+
+def test_the_registry_gives_d1_a_detector_and_leaves_d2_d3_none_and_declares_the_three_rules():
+    assert ac.CRITERION_REGISTRY["Carr.D1"]["detector"] != "NONE" and ac.CRITERION_REGISTRY["Carr.D1"]["revision"] == 2
+    assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == ac.CRITERION_REGISTRY["Carr.D3"]["detector"] == "NONE"
+    assert r13.S2_IDS <= set(ac.NA_RULE_DECISIONS)
+    assert not [i for i in ac.NA_RULE_DECISIONS if "ratified_judgment" in i]
+
+
+def test_measure_wires_the_declared_carriage_through_to_the_asset_record(monkeypatch, tmp_path, fetch):
+    reg = {"x": na_causes._reg_row("x", "bg_phaladeepika_latta"), "y": na_causes._reg_row("y")}
+    decl = {"x": dict(kind="data", carriage=CAR_D1)}
+    na_causes._stub_layer(monkeypatch, tmp_path, reg, tables={"bg_phaladeepika_latta": (["graha"], [])})
+    monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: decl)
+    ms = {a["asset_id"]: a["measurements"] for a in ac.measure("L0")["assets"]}
+    assert ms["x"]["Carr.D1"]["v"] == "PASS" and ms["x"]["Carr.D1"]["d1"]["rows_matched"] == 8
+    assert ms["x"]["Carr.D2"]["cause"] == "not-the-declared-carriage"
+    assert not [k for k in ms["y"] if k.startswith("Carr.")]                              # an undeclared asset reads as before
+
+
+# ───────────────────────── the two SELECTs ─────────────────────────
+
+def test_d1_fetch_chunks_builds_one_select_by_declared_ids_and_parses(monkeypatch):
+    seen = []
+    monkeypatch.setattr(ac, "scalar", lambda sql: seen.append(sql) or json.dumps(list(CHUNKS.values())))
+    got = ac.d1_fetch_chunks(IDS)
+    assert set(got) == set(IDS) and len(seen) == 1
+    assert "FROM classical_text_chunks WHERE chunk_id IN ('phaladeepika_pg0338_c01','phaladeepika_pg0339_c01')" in seen[0]
+    assert seen[0].lstrip().upper().startswith("SELECT") and not any(w in seen[0].upper() for w in ("INSERT", "UPDATE", "DELETE", "DROP"))
+
+
+@pytest.mark.parametrize("ids", [[], ["a'; DROP TABLE x;--"], ["Bad Id"], [1]])
+def test_d1_fetch_chunks_refuses_a_malformed_id_list_before_any_sql(monkeypatch, ids):
+    monkeypatch.setattr(ac, "scalar", lambda sql: pytest.fail("no SQL may run"))
+    with pytest.raises(ac.Unknown):
+        ac.d1_fetch_chunks(ids)
+
+
+def test_d1_fetch_rows_selects_only_the_declared_columns_in_a_total_order(monkeypatch):
+    seen = []
+    monkeypatch.setattr(ac, "scalar", lambda sql: seen.append(sql) or json.dumps(ROWS))
+    assert ac.d1_fetch_rows("bg_phaladeepika_latta", ["graha", "count_from_graha", "graha"]) == ROWS
+    assert '"graha","count_from_graha"' in seen[0] and 'FROM "bg_phaladeepika_latta" ORDER BY "graha","count_from_graha"' in seen[0]
+
+
+@pytest.mark.parametrize("table, cols", [("bad table", ["a"]), ("t", ["a;b"]), ("t", []), ("t", ["1a"]), ('t"', ["a"])])
+def test_d1_fetch_rows_refuses_a_malformed_identifier(monkeypatch, table, cols):
+    monkeypatch.setattr(ac, "scalar", lambda sql: pytest.fail("no SQL may run"))
+    with pytest.raises(ac.Unknown):
+        ac.d1_fetch_rows(table, cols)
+
+
+def test_both_fetchers_raise_unknown_on_an_unparseable_read(monkeypatch):
+    monkeypatch.setattr(ac, "scalar", lambda sql: "not json")
+    with pytest.raises(ac.Unknown):
+        ac.d1_fetch_chunks(IDS)
+    with pytest.raises(ac.Unknown):
+        ac.d1_fetch_rows("t", ["a"])
