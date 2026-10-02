@@ -1,6 +1,6 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.13
+version: 0.14
 status: v0.5 ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); v0.6 adds AM-10 and the F-2 exclusion-evidence binding (not yet reviewed); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
@@ -1370,6 +1370,16 @@ P3 table is "lagna frame"). Previously silent beyond "natal sign positions".
 * **Verification.** The writer and the independent derivation **recompute** these bindings from the inputs they actually consume and **refuse on mismatch**;
   changing any result-bearing component changes the input identity or raises a mismatch refusal. **Historical replay checks its original bound inputs; it
   does not recompute a fingerprint of today's catalogue.**
+* **NORMATIVE key schema (reconciled with Stream A's implementation `input_vector.py` @`3677cccae`; v0.14).** The vector is a **nested object** (so a refusal names the component that
+  moved) with `schema = "ka_gochara_input_vector/1"` and: `sky_convention {id, content_digest}`; `registry {digest, census}` (digest = sha256 of the canonical JSON of
+  `{schema:"ka_gochara_registry_digest/1", paths, prerequisites, soft_factors, predicates, factors, census}` — full jsonb rows of the selected versions and the predicates/factors they reference,
+  minus enumerated audit fields `created_at` (predicate/factor/path) and `sealed_at` (seal table, never selected), in a total order; ordinals preserved); `node {model, source, zodiac, ayanamsha}`;
+  `ephemeris {backend, swe_version, files}` where **`files` are the `.se1` files the kernel actually opens for the consumed bodies over the consumed horizon, not every file present**
+  (measured: Sun/Moon/Saturn/MEAN_NODE open `sepl_18` + `semo_18` and never `seas_18`; a file present but unopened must not move the identity, and an opened file absent is refused);
+  `l0 {asset_id: sha256(canonical rows consumed)}` for every L0 table a path reads (AM-18: the `bg_transit_rules` vedha rows); `orb_policy {admission_digest, activity{row version: orb | state token, + orb_decision_ref once ratified}}`;
+  `rulings_digest`; `implementation {geometry, evaluation, window}` = sha256 of the canonical `{module: sha256(source)}` over module lists that **must cover** the import closure of the writer from `services.gochara_kernel` + `services.gochara_rules`
+  (a coverage test fails when a result-bearing module is missing from every list — `kernel_factor`, `flat_selector`, `vedha_derive`, `records`, `frames`, `permission`, `p6`, `ashtakavarga`, `nature` today). Canonical JSON: sorted keys, no spaces, UTF-8, no NaN.
+  There is no aggregate identity field; `diff_vectors` names the differing components. The reference model `design/am16_vectors_model.py` v2 states this and was **cross-checked byte-for-byte against A's pure functions**.
 * **Frozen test vectors (DELIVERED: `design/am16_vectors_model.py`, reference model + frozen identity table; Stream A's implementation must reproduce them byte-for-byte):** a membership-only change (a soft factor moved), a node-series-only change (one series
   row differs) and a window-algorithm-only change (implementation identity bumped) must each change the vector and be refused when mismatched.
 
