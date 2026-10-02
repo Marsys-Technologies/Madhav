@@ -458,6 +458,33 @@ jobs:
           M1220_GOCHARA_FN_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1220_gochara_fn_execute_test
         run: npx vitest run tests/integration/gochara_contract_builder_function_execute.db.test.ts --reporter=verbose
 
+      - name: C7 — provision the builder-role fixture test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE c7_builder_role_test;"
+
+      - name: C7 — ka_gochara_resonance writer row build + insert AS data_plane_builder against real Postgres
+        # Pravāha C7 (steward M20261001T234151-3592): four production builds
+        # failed on privileges the suites never exercised because they connected
+        # as a superuser. The shared fixture (python-sidecar/tests/l3/_builder_role.py)
+        # rebuilds the production power structure — schema public owned by a
+        # NOLOGIN amjis_app with the governed bootstrap's PUBLIC-EXECUTE revoke
+        # in force, and a LOGIN data_plane_builder holding only what the REAL
+        # grant migrations (1211, 1216, 1217, 1220, 1225) give it, applied
+        # verbatim as the owner — then runs the resonance writer's row build +
+        # insert path through an authenticated builder connection and asserts a
+        # forbidden op (CREATE TABLE in public) is refused.
+        # requirements-ci.txt is the governance-gates suite's verified slim
+        # install set; this test's imports (psycopg, the resonance writer's
+        # jhora/brahmagyan chain) are all within it.
+        env:
+          C7_BUILDER_ROLE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/c7_builder_role_test
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest tests/l3/test_builder_role_resonance_writer.py -q --tb=short
+
       - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
         env:
           PGPASSWORD: postgres
