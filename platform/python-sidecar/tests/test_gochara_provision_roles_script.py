@@ -42,7 +42,8 @@ def world(tmp_path):
     shim = tmp_path / "gcloud"
     shim.write_text(f'''#!/usr/bin/env bash
 case "$*" in
-  *"secrets versions add"*) cat > "{capture}" ; echo "$*" >> "{tmp_path}/gcloud_argv.txt" ;;
+  *"secrets versions add"*) cat > "{capture}" ; echo "$*" >> "{tmp_path}/gcloud_argv.txt"; echo "projects/1/secrets/gochara-verifier-db-url/versions/7" ;;
+  *"secrets versions destroy"*) echo "$*" >> "{tmp_path}/gcloud_destroy.txt" ;;
   *"secrets versions list"*) printf '1\\tenabled\\n' ;;
   *) echo "unexpected gcloud call: $*" >&2; exit 9 ;;
 esac
@@ -124,6 +125,8 @@ def test_refuses_to_certify_membership_on_a_server_without_cloudsqlsuperuser(wor
         r = run(world)
         assert r.returncode == 4 and "cloudsqlsuperuser is absent" in r.stderr
         assert not world["capture"].exists()                       # no secret was written
+        with _admin() as c:                                        # ...and this run's roles were ROLLED BACK (nothing half-done is left)
+            assert c.execute("SELECT count(*) FROM pg_roles WHERE rolname IN ('gochara_verifier','gochara_sealer')").fetchone()[0] == 0
     finally:
         with _admin() as c:
             c.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='cloudsqlsuperuser') THEN CREATE ROLE cloudsqlsuperuser NOLOGIN; END IF; END $$")
@@ -163,20 +166,39 @@ exec "{PSQL}" "$@"
         assert s[0] is True and s[8] is False
 
 
-def test_the_secret_write_happens_before_the_role_password_is_set(world):
-    """If Secret Manager fails the role must still have NO password (never an unknown password nobody holds)."""
+def test_a_secret_store_failure_rolls_the_roles_back_and_no_password_was_ever_set(world):
+    """The secret write happens BEFORE the role password: if it fails, the role never had a password and this run's roles are dropped."""
     broken = world["tmp"] / "gcloud_broken"
     broken.write_text("#!/usr/bin/env bash\nexit 1\n")
     broken.chmod(broken.stat().st_mode | stat.S_IEXEC)
     r = run(world, extra={"GCLOUD_BIN": str(broken)})
-    assert r.returncode == 5 and "Secret Manager failed" in r.stderr
+    assert r.returncode == 5 and "Secret Manager failed" in r.stderr and "dropped role gochara_verifier" in r.stderr, r.stderr
     with _admin() as c:
-        assert role(c, "gochara_verifier")[8] is True               # still PASSWORD NULL
+        assert c.execute("SELECT count(*) FROM pg_roles WHERE rolname IN ('gochara_verifier','gochara_sealer')").fetchone()[0] == 0
 
 
-def test_a_role_that_ends_up_in_cloudsqlsuperuser_fails_the_act_before_any_secret_is_written(world):
+def test_an_alter_role_failure_destroys_the_new_secret_version_drops_the_roles_and_never_shows_the_password(world):
+    """A server error can QUOTE the failing statement (and so the password). The shim fails every ALTER ROLE and prints the statement on stderr, as a server
+    syntax error would: the script must discard that stderr, destroy the version it just wrote, drop both roles and leak nothing."""
+    shim = world["tmp"] / "psql_alter_shim"
+    shim.write_text(f'''#!/usr/bin/env bash
+prev=""; for a in "$@"; do if [ "$prev" = "-f" ] && [ "$a" = "-" ]; then stmt="$(cat)"; echo "ERROR: syntax error near LINE 1: $stmt" >&2; exit 1; fi; prev="$a"; done
+exec "{PSQL}" "$@"
+''')
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    r = run(world, psql=str(shim))
+    assert r.returncode == 5 and "ALTER ROLE PASSWORD failed" in r.stderr, r.stdout + r.stderr
+    secret = world["capture"].read_text()
+    pw = re.search(r"gochara_verifier:([0-9a-f]{96})@", secret).group(1)
+    assert pw not in visible(r)
+    assert "versions/7" in (world["tmp"] / "gcloud_destroy.txt").read_text() or " 7 " in (world["tmp"] / "gcloud_destroy.txt").read_text()
+    with _admin() as c:
+        assert c.execute("SELECT count(*) FROM pg_roles WHERE rolname IN ('gochara_verifier','gochara_sealer')").fetchone()[0] == 0
+
+
+def test_a_role_that_ends_up_in_cloudsqlsuperuser_fails_the_act_before_any_secret_is_written_and_is_rolled_back(world):
     """What `gcloud sql users create` would have done: a shim makes the new verifier a member of cloudsqlsuperuser right after it is created; the
-    post-check must REFUSE (exit 4) before the password is generated or any secret written."""
+    post-check must REFUSE (exit 4) before the password is generated or any secret written, and this run's roles are dropped."""
     shim = world["tmp"] / "psql_member_shim"
     shim.write_text(f'''#!/usr/bin/env bash
 "{PSQL}" "$@" || exit $?
@@ -186,3 +208,5 @@ for a in "$@"; do case "$a" in *"CREATE ROLE gochara_verifier LOGIN"*) "{PSQL}" 
     r = run(world, psql=str(shim))
     assert r.returncode == 4 and "member of cloudsqlsuperuser" in r.stderr, r.stdout + r.stderr
     assert not world["capture"].exists()
+    with _admin() as c:
+        assert c.execute("SELECT count(*) FROM pg_roles WHERE rolname IN ('gochara_verifier','gochara_sealer')").fetchone()[0] == 0

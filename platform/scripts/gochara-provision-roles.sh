@@ -28,6 +28,28 @@ GCLOUD_PROJECT="${GCLOUD_PROJECT:-madhav-astrology}"
 GCLOUD_BIN="${GCLOUD_BIN:-gcloud}"
 PSQL_BIN="${PSQL_BIN:-psql}"
 
+CREATED_ROLES=()      # roles created by THIS process — rolled back automatically if anything later fails
+CREATED_VERSION=""    # the secret version written by THIS process — destroyed if anything later fails
+COMPLETED=0
+rollback() {
+  # Runs on EVERY exit path (trap): secrets never outlive the process, and a half-finished act leaves nothing behind.
+  local rc=$?
+  unset PW SEALER_PASSWORD_STAGING 2>/dev/null || true
+  if [ "$COMPLETED" != 1 ] && { [ "${#CREATED_ROLES[@]}" -gt 0 ] || [ -n "$CREATED_VERSION" ]; }; then
+    echo "ROLLING BACK this run's partial work (exit $rc)..." >&2
+    if [ -n "$CREATED_VERSION" ]; then
+      "$GCLOUD_BIN" secrets versions destroy "$CREATED_VERSION" --secret "$VERIFIER_SECRET" --project "$GCLOUD_PROJECT" --quiet >/dev/null 2>&1 \
+        && echo "rolled back: destroyed secret version $CREATED_VERSION" >&2 || echo "ROLLBACK INCOMPLETE: destroy secret version $CREATED_VERSION by hand" >&2
+    fi
+    local r
+    for r in "${CREATED_ROLES[@]}"; do
+      "$PSQL_BIN" "$ADMIN_DATABASE_URL" -X -q -v ON_ERROR_STOP=1 -c "DROP ROLE IF EXISTS $r" >/dev/null 2>&1 \
+        && echo "rolled back: dropped role $r" >&2 || echo "ROLLBACK INCOMPLETE: DROP OWNED BY $r; DROP ROLE $r; by hand" >&2
+    done
+  fi
+  exit "$rc"
+}
+trap rollback EXIT
 fail() { echo "REFUSED: $*" >&2; exit "${2:-3}"; }
 note() { echo "$*"; }
 q() { "$PSQL_BIN" "$ADMIN_DATABASE_URL" -X -q -t -A -v ON_ERROR_STOP=1 -c "$1"; }       # read-only fact queries (no secret in them)
@@ -61,7 +83,7 @@ verification_facts() {
 create_role() {   # $1 role, $2 connection limit; prints which form was used
   local role="$1" limit="$2" form="LOGIN PASSWORD NULL"
   if ! "$PSQL_BIN" "$ADMIN_DATABASE_URL" -X -q -v ON_ERROR_STOP=1 \
-        -c "CREATE ROLE $role LOGIN $CREATE_COMMON CONNECTION LIMIT $limit PASSWORD NULL" >/dev/null 2>&1; then
+        -c "CREATE ROLE $role LOGIN $CREATE_COMMON CONNECTION LIMIT $limit PASSWORD NULL" >/dev/null 2>&1; then   # (the statement carries no secret)
     if [ "$role" = "$SEALER_ROLE" ]; then
       # the runbook's fallback: the role must still EXIST for 1240's role-guarded grants; act 2b then does ALTER ROLE ... LOGIN PASSWORD
       "$PSQL_BIN" "$ADMIN_DATABASE_URL" -X -q -v ON_ERROR_STOP=1 \
@@ -71,6 +93,7 @@ create_role() {   # $1 role, $2 connection limit; prints which form was used
       fail "CREATE ROLE $role (LOGIN, PASSWORD NULL) was rejected by the server" 4
     fi
   fi
+  CREATED_ROLES+=("$role")
   note "created $role: $form"
 }
 
@@ -96,15 +119,19 @@ case "$STAGE" in
     PW="$(openssl rand -hex 48)"
     [ "${#PW}" -eq 96 ] || fail "password generation failed" 5
     echo "::add-mask::$PW"
-    printf '%s' "postgresql://${VERIFIER_ROLE}:${PW}${DSN_TAIL}" \
-      | "$GCLOUD_BIN" secrets versions add "$VERIFIER_SECRET" --project "$GCLOUD_PROJECT" --data-file=- >/dev/null \
-      || fail "writing the verifier DSN to Secret Manager failed — the role exists with PASSWORD NULL; roll back (DROP ROLE) before re-running" 5
+    VERSION_OUT="$(printf '%s' "postgresql://${VERIFIER_ROLE}:${PW}${DSN_TAIL}" \
+      | "$GCLOUD_BIN" secrets versions add "$VERIFIER_SECRET" --project "$GCLOUD_PROJECT" --data-file=- --format='value(name)')" \
+      || fail "writing the verifier DSN to Secret Manager failed — rolling back this run's roles" 5
+    CREATED_VERSION="${VERSION_OUT##*/versions/}"
+    [ -n "$CREATED_VERSION" ] || fail "the secret version id was not returned — rolling back this run's roles" 5
+    # stderr of the ALTER is discarded: a server error message can quote the statement (and so the password)
     printf "ALTER ROLE %s PASSWORD '%s';\n" "$VERIFIER_ROLE" "$PW" \
-      | "$PSQL_BIN" "$ADMIN_DATABASE_URL" -X -q -v ON_ERROR_STOP=1 -f - >/dev/null \
-      || fail "ALTER ROLE PASSWORD failed — the role exists; a secret version exists but is unused; roll back before re-running" 5
+      | "$PSQL_BIN" "$ADMIN_DATABASE_URL" -X -q -v ON_ERROR_STOP=1 -f - >/dev/null 2>&1 \
+      || fail "ALTER ROLE PASSWORD failed (server message suppressed: it can quote the statement) — rolling back this run's roles and secret version" 5
     unset PW
     note "verifier password set; DSN written to Secret Manager secret $VERIFIER_SECRET"
     "$GCLOUD_BIN" secrets versions list "$VERIFIER_SECRET" --project "$GCLOUD_PROJECT" --format='value(name,state)' | sed 's/^/secret_version: /'
+    COMPLETED=1
     note "NEXT: the steward reports acts 1 and 2a (non-secret facts above) to the owner; the sealer stays PASSWORD NULL until act 2b."
     ;;
   sealer-password)
@@ -117,9 +144,11 @@ case "$STAGE" in
     pw_null="$(q "SELECT rolpassword IS NULL FROM pg_authid WHERE rolname = '$SEALER_ROLE'" 2>/dev/null || echo unreadable)"
     if [ "$can_login" = "t" ] && [ "$pw_null" != "t" ]; then fail "the sealer already has a password — refusing to overwrite"; fi
     printf "ALTER ROLE %s LOGIN PASSWORD '%s';\n" "$SEALER_ROLE" "$SEALER_PASSWORD_STAGING" \
-      | "$PSQL_BIN" "$ADMIN_DATABASE_URL" -X -q -v ON_ERROR_STOP=1 -f - >/dev/null
+      | "$PSQL_BIN" "$ADMIN_DATABASE_URL" -X -q -v ON_ERROR_STOP=1 -f - >/dev/null 2>&1 \
+      || fail "ALTER ROLE for the sealer failed (server message suppressed: it can quote the statement) — nothing was changed; the sealer still cannot authenticate" 5
     verification_facts "$SEALER_ROLE" 2
-    note "sealer password set. NEXT: the steward deletes the staging secret and reports act 2b."
+    COMPLETED=1
+    note "sealer password set. NEXT: the steward deletes the staging secret (and verifies it is absent) and reports act 2b."
     ;;
   *) fail "unknown STAGE '$STAGE'" 2 ;;
 esac

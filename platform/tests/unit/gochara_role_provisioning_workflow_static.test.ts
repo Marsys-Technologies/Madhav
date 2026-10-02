@@ -61,6 +61,14 @@ describe('gochara-provision-roles.sh', () => {
     expect(c.indexOf('secrets versions add')).toBeLessThan(c.indexOf('ALTER ROLE %s PASSWORD'))
     expect(c).toContain('echo "::add-mask::$PW"')
   })
+  it('discards the stderr of every statement that carries a password (a server error can quote it) and rolls back its own partial work on every exit path', () => {
+    const alters = c.split('\n').filter((l, i, all) => /\| "\$PSQL_BIN"/.test(l) && /-f -/.test(l))
+    expect(alters.length).toBe(2)
+    for (const l of alters) expect(l).toContain('>/dev/null 2>&1')
+    expect(c).toContain('trap rollback EXIT')
+    expect(c).toContain('secrets versions destroy')
+    expect(c).toContain('DROP ROLE IF EXISTS')
+  })
   it('is idempotent by refusal and refuses a non-loopback connection', () => {
     expect(c).toContain('already exists')
     expect(c).toContain('must point at the loopback Cloud SQL proxy')
