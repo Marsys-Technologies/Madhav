@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "gochara-sealer-stage-secrets.sh"
-TAIL = "@/amjis?host=/cloudsql/p:r:i"
+TAIL = "@127.0.0.1:5432/amjis"
 
 
 @pytest.fixture()
@@ -92,6 +92,14 @@ def test_bad_input_exits_2(env):
     for tail in ("@user:pass@host/db", "no-at-sign", "@/db;drop"):
         r = run(env, DSN_TAIL=tail)
         assert r.returncode == 2, (tail, r.stderr)
+    assert calls(env) == []
+
+
+def test_the_cloud_run_socket_form_is_refused_for_the_sealer(env):
+    """F-R13-7(d): the sealer connects from the GitHub runner through the loopback proxy; a /cloudsql socket tail would be staged and then fail at the first seal."""
+    for tail in ("@/amjis?host=/cloudsql/p:r:i", "@10.0.0.5:5432/amjis", "@localhost:5432/amjis", "@127.0.0.1/amjis"):
+        r = run(env, DSN_TAIL=tail)
+        assert r.returncode == 2 and "loopback proxy form" in r.stderr, (tail, r.stderr)
     assert calls(env) == []
 
 
