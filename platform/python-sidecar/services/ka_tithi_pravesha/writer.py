@@ -43,6 +43,7 @@ from typing import Any
 
 import psycopg.rows
 
+from panchang_engine.swiss_backend import records_swiss_backend
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from pyjhora_adapter._jhora import drik, utils
 from pyjhora_adapter.compute import compute_chart
@@ -232,6 +233,7 @@ def _compute_one_year(
 
 
 @register("ka_tithi_pravesha")
+@records_swiss_backend
 class KaTithiPraveshaWriter(WriterBase):
     """ka_tithi_pravesha — Tithi-Praveśa lunar-return annual chart (L3 Kāla, item 13). LIGHT writer."""
 

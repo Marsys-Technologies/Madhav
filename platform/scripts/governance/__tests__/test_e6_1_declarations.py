@@ -167,8 +167,8 @@ def test_a_wildcard_entry_round_trips_through_the_loader_and_the_fact(tmp_path):
             ac.validate_declarations(_doc(w=dict(prose_fields=[bad], evidence=PEV)))
 
 
-def test_the_file_version_is_1_6_0():
-    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.6.0"
+def test_the_file_version_is_1_7_0():
+    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.7.0"
 
 
 def test_empty_prose_list_is_a_valid_positive_declaration_distinct_from_null(tmp_path):
@@ -299,10 +299,10 @@ NARR_CITES = {
     "bo_upaya": [(_WR + "bo_upaya.py", 1008, "reason = ("), (_WR + "bo_upaya.py", 1690, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
                  (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
-    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 639, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 691, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 748, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 825, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 904, "'reason': ("), (_WR + "ka_vighnakara.py", 960, "'reason': f\"{planet_str} combust"),
-                      (_WR + "ka_vighnakara.py", 288, "json.dumps(obs['detail'])"),
+    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 641, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 693, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 750, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 827, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 906, "'reason': ("), (_WR + "ka_vighnakara.py", 962, "'reason': f\"{planet_str} combust"),
+                      (_WR + "ka_vighnakara.py", 290, "json.dumps(obs['detail'])"),
                       (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
     "ka_avadhi": [(_WR + "ka_avadhi.py", 293, '"note": f"AD lord {lord} modulates MD lord {sublord}."'),
                   (_WR + "ka_avadhi.py", 303, '"dossier": json.dumps(dossier)'),
@@ -618,7 +618,7 @@ def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant
     roots = [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
              if isinstance(k, ast.Constant) and k.value == "detail"]
     composed, constant = _composed_lines(nw.composed_report(tree, roots, ("reason",)))
-    assert composed == [639, 691, 748, 825, 904, 960] and constant == [786, 861]
+    assert composed == [641, 693, 750, 827, 906, 962] and constant == [788, 863]
 
 
 def test_ka_avadhi_sublord_note_is_bound_into_the_dossier_json_and_composed():
@@ -1701,12 +1701,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
-    191,
+    192,
     "chum = f\"{subject} {key}: {v"
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
-    193,
+    194,
     "chum = f\"{subject} {key}: {v"
    ]
   ],
@@ -1936,12 +1936,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    892,
+    893,
     "citation_human=f\"Sade Sati {"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    1239,
+    1240,
     "citation_human=f\"Sade Sati {"
    ]
   ],
@@ -2460,7 +2460,7 @@ def test_citation_sites_scanner_sees_attribute_setdefault_variable_uppercase_key
 
 def test_the_declarations_file_states_the_fact_row_narr_rule_and_the_version():
     doc = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))
-    assert doc["version"] == "1.6.0"
+    assert doc["version"] == "1.7.0"
     d = doc["description"]
     for phrase in ("fact_value_text is the datum", "citation_human is the sentence", "verbalising an L1 fact value states a computed value",
                    "fact_value_text / formula_provenance_text columns stay undeclared", "[*]"):

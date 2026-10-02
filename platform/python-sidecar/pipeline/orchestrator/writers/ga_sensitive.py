@@ -7,12 +7,14 @@ watchdog reapers and makes a connection drop non-fatal (prior ayanamshas survive
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from panchang_engine.swiss_backend import records_swiss_backend
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
 
 @register('ga_sensitive')
 @l1_producer_contract
+@records_swiss_backend
 class GaSensitiveWriter(WriterBase):
     asset_id = 'ga_sensitive'
     has_substeps = True

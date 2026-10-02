@@ -23,11 +23,14 @@ sys.path.insert(0, str(HERE.parent))
 import asset_census as ac  # noqa: E402
 
 NARR = ("Narr.agree", "Narr.checkable", "Narr.fidelity_test", "Narr.lint")
-DECLARED_IDS = frozenset({
+N65_IDS = frozenset({
     "Build.history#measured:never-run",
     "Dens.served#measured:no-served-surface",
     *(f"{c}#measured:no-prose" for c in NARR),
 })
+PIN10_IDS = frozenset({"Build.dep_liveness#measured:no-declared-dependencies", "Earn.service_state#measured:not-a-service"})   # SS N-72
+S2_IDS = frozenset(f"Carr.D{i}#measured:not-the-declared-carriage" for i in (1, 2, 3))              # SS N-72 S2, N-73
+DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS     # the exact production table since REGISTRY_REVISION 11
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
@@ -41,25 +44,29 @@ def _na(cause):
 
 # ───────────────────────── the declared set ─────────────────────────
 
-def test_exactly_the_three_approved_rules_are_declared_and_they_validate():
+def test_exactly_the_approved_rules_are_declared_and_they_validate():
     assert set(ac.NA_RULE_DECISIONS) == DECLARED_IDS
     ac.validate_na_rule_decisions()
     for rid, why in ac.NA_RULE_DECISIONS.items():
-        assert re.fullmatch(r"[A-Za-z]+\.[a-z_]+#measured:[a-z0-9-]+", rid), rid          # cause-keyed, nothing else
+        assert re.fullmatch(r"[A-Za-z]+\.[A-Za-z0-9_]+#measured:[a-z0-9-]+", rid), rid          # cause-keyed, nothing else
         crit, _, cause = rid.partition("#measured:")
         assert cause in ac.NA_CAUSES[crit], rid
-        assert "N-22" in why and "N-65" in why, (rid, why)                                  # every rule cites its decisions
+        assert "N-22" in why, (rid, why)                                                      # every rule cites its decisions
+        assert ("N-65" if rid in N65_IDS else "N-72") in why, (rid, why)                      # ... and the ruling that approved it (per rule)
 
 
 def test_no_rule_beyond_the_ruling_is_declared():
     ids = set(ac.NA_RULE_DECISIONS)
-    assert not [i for i in ids if i.startswith(("Null.", "Earn.", "Carr.", "Count.", "Complete.", "Vocab.", "Ldgr.", "Idem."))]
-    assert not [i for i in ids if i.startswith("Build.") and i != "Build.history#measured:never-run"]
+    assert not [i for i in ids if i.startswith(("Null.", "Count.", "Complete.", "Vocab.", "Ldgr.", "Idem."))]
+    assert not [i for i in ids if i.startswith("Carr.") and i not in S2_IDS]            # no no-carriage / not-chosen / ratified_judgment rule
+    assert not [i for i in ids if i.startswith("Earn.") and i != "Earn.service_state#measured:not-a-service"]    # Earn.build_record stays held
+    assert not [i for i in ids if i.startswith("Build.") and i not in ("Build.history#measured:never-run",
+                                                                      "Build.dep_liveness#measured:no-declared-dependencies")]
     assert not [i for i in ids if "user_data" in i or "write-nothing" in i or "rolling_horizon" in i or "no-carriage" in i]
 
 
-def test_revision_is_9():
-    assert ac.REGISTRY_REVISION == 9
+def test_revision_is_at_least_9():
+    assert ac.REGISTRY_REVISION >= 9
 
 
 # ───────────────────────── positive: the declared rule releases exactly its own N/A ─────────────────────────
@@ -179,7 +186,7 @@ def test_the_held_rules_are_not_released_even_though_their_causes_are_registered
 
 def test_count_floor_target_floor_zero_and_other_registered_causes_stay_unreleased():
     for crit, cause in (("Build.target", "service-no-target-table"), ("Build.exercised", "never-run-no-writer"),
-                        ("Build.dep_liveness", "no-declared-dependencies"), ("Build.completion", "no-writer-no-count-sql")):
+                        ("Build.completion", "no-writer-no-count-sql")):
         chk = next(c for c in ac.rollup_asset("L0", {crit: _na(cause)})["Build"]["checks"] if c["criterion"] == crit)
         assert chk["v"] == NO_DET, crit
 

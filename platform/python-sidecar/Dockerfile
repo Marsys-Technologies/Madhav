@@ -26,8 +26,14 @@ RUN set -e; \
     download_and_verify "$GCS_BASE/seas_18.se1"   /app/ephe/seas_18.se1   180000; \
     download_and_verify "$GCS_BASE/sefstars.txt"  /app/ephe/sefstars.txt    1024; \
     download_and_verify "$GCS_BASE/seleapsec.txt" /app/ephe/seleapsec.txt   1024; \
-    echo "All ephemeris files downloaded and size-verified."
+    echo 'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  /app/ephe/sepl_18.se1' | sha256sum -c -; \
+    echo '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  /app/ephe/semo_18.se1' | sha256sum -c -; \
+    echo 'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  /app/ephe/seas_18.se1' | sha256sum -c -; \
+    echo "All ephemeris files downloaded, size-verified and SHA-256 pinned (same pins as Dockerfile.pipeline)."
 ENV SWE_EPHE_PATH=/app/ephe
+# SE_EPHE_PATH is the variable the Swiss C library itself reads (SWE_EPHE_PATH is
+# read only by project code). Both are kept; see panchang_engine/swiss_backend.py.
+ENV SE_EPHE_PATH=/app/ephe
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 

@@ -13,12 +13,31 @@ from __future__ import annotations
 
 import os
 
+from panchang_engine.swiss_backend import reassert_swiss_backend_nowait
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 # Direct-submodule imports — these do NOT import PyQt6.
+#
+# DO NOT take SWISS_STATE_LOCK (blocking) anywhere in this module body: the interpreter
+# holds this module's import lock while the body runs, so a blocking wait here deadlocks
+# with a thread that holds the Swiss lock and first-imports this module (lock-order
+# inversion).  See reassert_swiss_backend_nowait().
 from jhora.panchanga import drik  # noqa: E402
 from jhora import utils, const  # noqa: E402
 from jhora.horoscope.chart import charts  # noqa: E402
+
+# Importing jhora.const executed swe.set_ephe_path(<wheel>/data/ephe) (const.py:262) --
+# a directory with NO planetary .se1 files, i.e. a silent switch to the Moshier fallback
+# for later calcs.  Re-assert the configured .se1 path (probed) right away, best effort:
+# import NEVER fails because of the ephemeris (a raise here would take down discover_all()
+# for every writer, L0 and Pravaha included).  An unset / unusable SE_EPHE_PATH, or a busy
+# lock, is logged loudly and the import continues; the fail-closed raise stays at use, in
+# each writer's / endpoint's own ensure_swiss_backend().  With SE_EPHE_PATH in the
+# environment (both images) the C library also finds the files from any path state.
+# This re-assert pins only the IMPORTING thread (on Linux the Swiss path is thread-local,
+# see panchang_engine/swiss_backend.py DESIGN RULE); every computing thread pins itself.
+reassert_swiss_backend_nowait()
 
 # Pin Rahu/Ketu to the MEAN node (swe.MEAN_NODE) for ALL ayanamshas.
 # Two reasons:

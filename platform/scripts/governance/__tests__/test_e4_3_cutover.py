@@ -6,7 +6,13 @@ the append-only PREFIX check -- the exact whole-file check is the one-off cut-ov
 red the first time a census appends a row, so it is exercised only on tmp copies here.
 
 Mutations are always made on tmp copies; no real file is touched.
+
+The real asset_gaps.jsonl legitimately GROWS by appends (a census adds rows), so no test here may assume the real
+tree's ledger is the cut-over ledger. Every test that needs "the ledger as it was at the cut" builds a tmp tree
+from the CUT COMMIT'S BLOBS (`git show <cut_sha>:<path>`), never from the working-tree files; the real tree is
+checked only by the append-only PREFIX check (first `old_bytes` bytes / `old_lines` lines / `old_md5`).
 """
+import hashlib
 import importlib.util
 import json
 import pathlib
@@ -43,14 +49,42 @@ needs_cut = pytest.mark.skipif(
            "(this is a skip, never a pass)")
 
 
+def _cut_tree_source(rel: str, rec: dict) -> bytes | None:
+    """The bytes of `rel` AS THEY WERE AT THE CUT: `git show <cut_sha>:<rel>` when the cut commit is reachable
+    (the normal case: local checkouts and the tag nikasha-cut-2a78ec64d). When it is not (shallow CI clone) the
+    only remaining source is the working tree's first `old_bytes` bytes, accepted ONLY if their lines/bytes/md5
+    equal the recorded cut (the register, which is not append-only, must be equal whole); otherwise None."""
+    cut_sha = _record()["cut_sha"]
+    blob = vc.git_show(REPO, cut_sha, rel) if vc.cut_reachable(REPO, cut_sha) else None
+    if blob is not None:
+        return blob
+    wt = (REPO / rel).read_bytes()
+    view = wt[: rec["old_bytes"]]
+    want = {"lines": rec["old_lines"], "bytes": rec["old_bytes"], "md5": rec["old_md5"]}
+    return view if vc.measure(view) == want else None
+
+
 @pytest.fixture
 def tmp_tree(tmp_path):
-    """A tmp copy of the three cut-over files at their repo-relative paths."""
+    """A tmp copy of the three cut-over files AT THE CUT (from the cut commit's blobs), independent of how far
+    the real ledgers have since grown by appends. Skips (never passes) when the cut cannot be reproduced."""
+    files = _record()["files"]
     for rel in (GAPS, CERTS, REGISTER):
+        data = _cut_tree_source(rel, files[rel])
+        if data is None:
+            pytest.skip(f"NO_DETECTOR: cannot reproduce {rel} as of the cut (cut commit unreachable and the "
+                        "working tree no longer matches the record); a skip, never a pass")
         dst = tmp_path / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(REPO / rel, dst)
+        dst.write_bytes(data)
     return tmp_path
+
+
+def _append_rows(path: pathlib.Path, n: int) -> None:
+    """Append n well-formed synthetic ledger rows (what a census does), newline-terminated."""
+    with path.open("ab") as f:
+        for i in range(n):
+            f.write(b'{"asset":"synthetic","gap_id":"synthetic-G%d","state":"OPEN"}\n' % i)
 
 
 def _flip_one_byte(path: pathlib.Path, offset: int) -> None:
@@ -172,6 +206,71 @@ def test_truncated_ledger_fails_prefix_mode(tmp_tree):
     assert code == vc.EXIT_MISMATCH and any("SHORTER" in line for line in report)
 
 
+def test_tmp_tree_is_the_cut_exactly(tmp_tree):
+    """The fixture itself: a tmp copy at the cut has exactly the recorded lines/bytes/md5, so the exact-mode tests
+    above are not vacuous and do not depend on the real tree's current length."""
+    for rel, rec in _record()["files"].items():
+        m = vc.measure((tmp_tree / rel).read_bytes())
+        assert (m["lines"], m["bytes"], m["md5"]) == (rec["old_lines"], rec["old_bytes"], rec["old_md5"]), rel
+
+
+# Mutation matrix on an EXTENDED ledger (the cut plus census-style appends, 857 -> 1872 lines):
+
+N_APPENDED = 1015
+
+
+def test_extended_ledger_one_rewritten_historical_byte_fails_prefix_mode(tmp_tree):
+    _append_rows(tmp_tree / GAPS, N_APPENDED)
+    assert vc.verify(tmp_tree, _record(), "prefix", use_git=False)[0] == vc.EXIT_NO_DETECTOR   # control: grown, intact
+    _flip_one_byte(tmp_tree / GAPS, 12345)                                                    # inside the first 857 lines
+    code, report = vc.verify(tmp_tree, _record(), "prefix", use_git=False)
+    assert code == vc.EXIT_MISMATCH and any(line.startswith("FAIL") and GAPS in line for line in report), report
+
+
+def test_extended_ledger_truncated_to_856_lines_fails_prefix_mode(tmp_tree):
+    _append_rows(tmp_tree / GAPS, N_APPENDED)
+    lines = (tmp_tree / GAPS).read_bytes().splitlines(keepends=True)
+    assert len(lines) == _record()["files"][GAPS]["old_lines"] + N_APPENDED
+    (tmp_tree / GAPS).write_bytes(b"".join(lines[:856]))
+    code, report = vc.verify(tmp_tree, _record(), "prefix", use_git=False)
+    assert code == vc.EXIT_MISMATCH and any("SHORTER" in line for line in report), report
+
+
+def test_extended_ledger_with_1015_appended_lines_still_passes_prefix_mode(tmp_tree):
+    _append_rows(tmp_tree / GAPS, N_APPENDED)
+    assert (tmp_tree / GAPS).read_bytes().count(b"\n") == _record()["files"][GAPS]["old_lines"] + N_APPENDED == 1872
+    code, report = vc.verify(tmp_tree, _record(), "prefix", use_git=False)
+    assert code == vc.EXIT_NO_DETECTOR and not any(line.startswith("FAIL") for line in report), report
+    assert any(line.startswith("ok") and GAPS in line for line in report), report
+
+
+@needs_cut
+def test_extended_ledger_prefix_matches_git_show_of_the_cut_and_exits_zero(tmp_tree):
+    _append_rows(tmp_tree / GAPS, N_APPENDED)
+    code, report = vc.verify(tmp_tree, _record(), "prefix", git_repo=REPO)
+    assert code == vc.EXIT_OK, report
+
+
+@needs_cut
+def test_extended_ledger_rewritten_byte_is_caught_by_the_git_side_even_with_a_forged_record(tmp_tree):
+    _append_rows(tmp_tree / GAPS, N_APPENDED)
+    _flip_one_byte(tmp_tree / GAPS, 777)
+    forged = _record()
+    pre = (tmp_tree / GAPS).read_bytes()[: forged["files"][GAPS]["old_bytes"]]
+    m = vc.measure(pre)
+    forged["files"][GAPS].update(old_lines=m["lines"], old_md5=m["md5"])
+    code, report = vc.verify(tmp_tree, forged, "prefix", git_repo=REPO)
+    assert code == vc.EXIT_MISMATCH and any("git show" in line and line.startswith("FAIL") for line in report), report
+
+
+def test_exact_mode_on_the_cut_plus_one_appended_row_fails_exact_and_passes_prefix(tmp_tree):
+    _append_rows(tmp_tree / GAPS, 1)
+    code, report = vc.verify(tmp_tree, _record(), "exact", use_git=False)
+    assert code == vc.EXIT_MISMATCH and any(line.startswith("FAIL") and GAPS in line for line in report), report
+    code, report = vc.verify(tmp_tree, _record(), "prefix", use_git=False)
+    assert code == vc.EXIT_NO_DETECTOR and not any(line.startswith("FAIL") for line in report), report
+
+
 def test_prefix_mode_does_not_check_the_register(tmp_tree):
     _flip_one_byte(tmp_tree / REGISTER, 9)
     code, report = vc.verify(tmp_tree, _record(), "prefix", use_git=False)
@@ -187,6 +286,18 @@ def test_real_ledgers_still_begin_with_the_cut_rows_byte_for_byte():
     assert not any(line.startswith("FAIL") for line in report), report
     # an empty files map, or a regression that emits no comparison, must not pass by having nothing to fail
     assert any(line.startswith("ok") for line in report), f"no comparison was made: {report}"
+
+
+def test_real_ledgers_prefix_has_the_recorded_lines_bytes_and_md5_independently_of_the_verifier():
+    """The permanent real-tree check, written without the verifier: however many rows were appended since, the
+    first `old_bytes` bytes of each append-only ledger are the cut (`old_lines` lines, `old_md5`)."""
+    for rel in (GAPS, CERTS):
+        rec = _record()["files"][rel]
+        data = (REPO / rel).read_bytes()
+        assert len(data) >= rec["old_bytes"], f"{rel} is shorter than the cut: rows were removed"
+        pre = data[: rec["old_bytes"]]
+        assert pre.endswith(b"\n") and pre.count(b"\n") == rec["old_lines"], rel
+        assert hashlib.md5(pre).hexdigest() == rec["old_md5"], f"{rel}: a historical row was rewritten"
 
 
 @needs_cut
