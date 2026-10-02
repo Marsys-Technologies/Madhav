@@ -321,7 +321,7 @@ describe('R16-1: one project canonicaliser and one annotation parser through the
   it('an exception declared by project NUMBER is honoured by the verifier-control check; the shared builder-impersonation gate still applies to it (an exception must pass ALL gates)', () => {
     const folderOwner = [{ resource: 'folders/1', policy: { bindings: [{ role: 'roles/owner', members: ['user:other@example.com'] }] } }]
     expect(() => assertVerifierInheritedControl(folderOwner, resolved, OWNER, NUMBER, 'folders/1|roles/owner|user:other@example.com')).not.toThrow()
-    expect(() => composed(folderOwner, [buildJob], 'folders/1|roles/owner|user:other@example.com')).toThrow(/builder service-account impersonation|secret accessor/i)   // the verifier exception does not exempt it from the others
+    expect(() => composed(folderOwner, [buildJob], 'folders/1|roles/owner|user:other@example.com')).toThrow(/Secret Manager accessor|builder service-account impersonation/i)   // the verifier exception does not exempt it from the others
     const projectOther = [{ resource: `projects/${NUMBER}`, policy: { bindings: [{ role: 'roles/owner', members: ['user:other@example.com'] }] } }]
     expect(() => assertVerifierInheritedControl(projectOther, resolved, OWNER, NUMBER, `projects/${NUMBER}|roles/owner|user:other@example.com`)).not.toThrow()
     expect(() => assertVerifierInheritedControl(projectOther, resolved, OWNER, NUMBER, '')).toThrow(/remains outside the declared control-plane exceptions/)
