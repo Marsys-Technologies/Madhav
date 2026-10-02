@@ -1,33 +1,34 @@
 ---
 artifact: PROTECTED_WINDOW_REHEARSAL_PLAN
-version: "1.1"
+version: "1.3"
 status: EXECUTABLE CHECKLIST — mechanical part (M1–M4) is scripted and was run once by its author on PostgreSQL 15; operator part (O1–O7) needs the steward/native. Authorizes nothing; touches no production system.
 date: 2026-10-02
-amended: "v1.2 (2026-10-02, steward M20261002T075234-8e98): ledger refreshed read-only from production (916 names) — 1230/1231/1237/1238/1239 are applied; the unselected, unapplied predecessors of the window are 1234 and 1236 only; 1241 (verifier/sealer grants) and 1242 (builder record replace/finalise grants) are numbered ABOVE 1240 and are NOT predecessors (1242 is needed before the first restricted build, by the routine route, either side of the window; 1241 merges only AFTER the window — the routine runner refuses at a pending protected file); PC-4 applied in the integration ref; re-run: 42 asserts, 0 findings; v1.1 (steward M20261002T053914-0033): re-run on FIVE files against Stream A's final 1240 — integration ref 427d87834 (A 4221f3bc5 + #2919 + #2920 + #2922), 39 asserts pass, 1 finding (PC-4); the real refusal now names 1230, 1234 and 1236"
+amended: "v1.3 (2026-10-02, Codex round 11 docs amendment): the stale heads/status below are replaced by the CURRENT ones (§0 and the M1/M2 status tables) — window file hashes, the writer head `d4609f181`, the integration ref `169141f0e`, the refreshed production ledger `prod_ledger_2026-10-02c.txt` (919 names: 1234, 1236 and 1242 now APPLIED, so no unapplied predecessor remains), the TODAY mode of the script (38 asserts) beside the original mode (43 asserts), PC-4 CLOSED (folded into 1206). v1.2 (2026-10-02, steward M20261002T075234-8e98): ledger refreshed read-only from production (916 names) — 1230/1231/1237/1238/1239 are applied; the unselected, unapplied predecessors of the window are 1234 and 1236 only; 1241 (verifier/sealer grants) and 1242 (builder record replace/finalise grants) are numbered ABOVE 1240 and are NOT predecessors (1242 is needed before the first restricted build, by the routine route, either side of the window; 1241 merges only AFTER the window — the routine runner refuses at a pending protected file); PC-4 applied in the integration ref; re-run: 42 asserts, 0 findings; v1.1 (steward M20261002T053914-0033): re-run on FIVE files against Stream A's final 1240 — integration ref 427d87834 (A 4221f3bc5 + #2919 + #2920 + #2922), 39 asserts pass, 1 finding (PC-4); the real refusal now names 1230, 1234 and 1236"
 author: Stream B (Śāstra), item B6.0 — Codex round 8 R8-10 (steward M20261002T032818-fea8)
 audience: "Stream C (Kimi) executes M1–M4 on a DISPOSABLE database; the steward owns O1–O7"
-files: "runbooks/rehearsal/run_window_rehearsal.sh · prod_ledger_2026-10-02.txt · EXPECTED_WINDOW_SHA256.txt; PR #2919 tests/integration/gochara_b6_rehearsal_volume.db.test.ts"
+files: "runbooks/rehearsal/run_window_rehearsal.sh · prod_ledger_2026-10-02.txt / 2026-10-02b / 2026-10-02c · EXPECTED_WINDOW_SHA256.txt; PR #2919 tests/integration/gochara_b6_rehearsal_volume.db.test.ts"
 ---
 
 # Protected-window rehearsal — 1204 → 1206 → 1232 → 1233 → 1240
 
 **What it proves / does not prove.** It rehearses *source, ordering, ownership, privileges, recovery and cost* on a disposable PostgreSQL 15 that mirrors production's ledger, schema ownership, default privileges and roles. It is **not** evidence about production itself (no production credential is used or needed) and it does not exercise the not-yet-existing sealer/verifier principals in production — it proves the *proposed* least-privilege sets.
 
-## 0. The exact inputs (record them in the rehearsal record)
-| item | value at this plan |
+## 0. The exact inputs (record them in the rehearsal record) — CURRENT as of v1.3
+| item | value |
 |---|---|
-| **1204** (AM-7) | PR #2817 head `b9d5d2718` — file sha256 `a0b267f7ef6002a1…` |
-| **1206** (AM-5, v1.2) | PR #2867 head `fc10a91fe` — `1ec9008f36782029…` |
-| **1232** (AM-14) | PR #2909 head `358c33211` — `f2ef6406604b819d…` |
-| **1233** (AM-21 part 2) | PR #2919 — `958b911703eee352…` |
-| **1240** (A5.3 window verification gate; Stream A) | branch `pravaha/a53-am5-inventory` head `4221f3bc5` — `7844359140eb4435…`; wired into the window by PR #2919 |
-| **routine, applied BEFORE the window** | 1230 (registry revert), **1234** (PR #2920, eval-window grants), **1236** (PR #2922, authority guard) — named by the real `--only` refusal |
-| **1240** (Stream A: `ka_gochara_eval_window_verification` + candidate gate) | **not yet written** — the script picks up `platform/migrations/1240_*.sql` automatically once present and adds it to the window list; constraints: `design/MIGRATION_1240_CONTRACT_CONSTRAINTS_v1_0.md` |
+| **1204** (AM-7) | sha256 `a0b267f7ef6002a1…` — Codex round 11: ACCEPT |
+| **1206** (AM-5 with PC-4 folded) | `941c79f59f2d3d31…` (PR #2867 `e4d31c9ef`) — ACCEPT |
+| **1232** (AM-14) | `f2ef6406604b819d…` — ACCEPT |
+| **1233** (AM-21 part 2) | `958b911703eee352…` — ACCEPT |
+| **1240** (A5.3 window verification gate; Stream A, branch `pravaha/a53-am5-inventory` head `d4609f181`) | `c30fe58571120884…` — **REJECT pending R11-1** in round 11 (the file will change; regenerate `EXPECTED_WINDOW_SHA256.txt` and re-run both modes) |
+| **routine, applied BEFORE the window** | 1230, **1234**, **1236** — all APPLIED in production per the refreshed read-only ledger (919 names, 2026-10-02c; **1242 too**); no unselected, unapplied predecessor numbered ≤ 1240 remains |
+| **after the window** | **1241** (verifier/sealer grants; the roles are created IMMEDIATELY BEFORE the window per the runbook, so 1240's guarded grants fire and 1241 completes the set additively) |
 | 1153–1157 | applied in production; re-applied in the rehearsal through the real runner (hashes in `EXPECTED_WINDOW_SHA256.txt`) |
-| **application head** | the steward names the deployment ref (the integration of the four PRs over `origin/main`; the reviewed writer head was `f4767b0e6`). **The rehearsal runs on that ref**: `git worktree add <dir> origin/main && git -C <dir> merge <#2817> <#2867> <#2909> <#2919>`; record `git rev-parse HEAD`. |
-| window wiring | `platform/scripts/migrate.ts` `PROTECTED_PUBLIC_SCHEMA_MIGRATIONS` and `.github/workflows/deploy.yml` (`gochara_contracts_schema_migration`) list exactly: 1153–1157, 1204, 1206, 1232, 1233 (**+ 1240 when it lands**) |
+| **application head** | the **integration ref** `pravaha/b6-composed-rehearsal-integration` @ `169141f0e` (Stream A `d4609f181` + #2867 + 1234 + 1236 + 1233 + 1241 v3 + 1242 + the composed tests); record `git rev-parse HEAD` of whatever ref is actually rehearsed |
+| window wiring | `platform/scripts/migrate.ts` `PROTECTED_PUBLIC_SCHEMA_MIGRATIONS` and `.github/workflows/deploy.yml` (`gochara_contracts_schema_migration`): 1153–1157, 1204, 1206, 1232, 1233, 1240 (#2919) |
 | **PostgreSQL** | production is **15.18** (Cloud SQL); the rehearsal MUST run on PostgreSQL **15** (CI's advisory DB job is `postgres:16` — not the target) |
-After **any** change to a window file regenerate `EXPECTED_WINDOW_SHA256.txt`: `(cd platform/migrations && shasum -a 256 <the nine files>) > runbooks/rehearsal/EXPECTED_WINDOW_SHA256.txt`; the script refuses a mismatch.
+| **modes** | original ledger mode (`prod_ledger_2026-10-02b.txt`: refusal naming 1234/1236, then the routine application) — **43 asserts, 0 findings**; **TODAY mode** (`TODAY=1 LEDGER=prod_ledger_2026-10-02c.txt`: the state production is actually in) — **38 asserts, 0 findings**; both on 1240 `c30fe5857…` |
+After **any** change to a window file regenerate `EXPECTED_WINDOW_SHA256.txt`: `(cd platform/migrations && shasum -a 256 <the ten files>) > runbooks/rehearsal/EXPECTED_WINDOW_SHA256.txt`; the script refuses a mismatch.
 
 ## M1 — the real invocation against a production-shaped ledger (SCRIPTED)
 `PGPORT=<disposable pg15 port> REPO=<integration worktree> runbooks/rehearsal/run_window_rehearsal.sh` — loopback only, creates database `gochara_rehearsal`.
@@ -35,11 +36,11 @@ It builds: schema `public` owned by **`data_plane_schema_owner`**, `amjis_app` (
 Then, with the **real** `npx tsx scripts/migrate.ts --only <the deploy list>` (`ONLY` = the list `deploy.yml` builds):
 | step | expected | status on 2026-10-02 |
 |---|---|---|
-| S3a the invocation against today's ledger | **REFUSED**: `--only would jump unapplied predecessor migration(s): 1230_ka_gochara_registry_revert_1091_pin.sql` — nothing from the window applied | **reproduced** |
-| S3b the routine deploy applies 1230 (a routine migration, merged in #2889, not yet applied in production) | prerequisite of the window | represented by its ledger row |
+| S3a the invocation against the ledger | original mode: **REFUSED** naming exactly the two unapplied predecessors (1234, 1236); TODAY mode: **no refusal** (they are applied) — the first window run is the S3c run | **reproduced (both modes)** |
+| S3b the routine deploy applies the named predecessors | original mode only; TODAY mode applies the real SQL of 1234/1236/1242 up front | **reproduced** |
 | S3c per-file failure recovery: force 1233 to fail | 1204, 1206, 1232 stay committed (**separate file transactions**); 1233 and 1240 not recorded, no partial columns or objects; after removing the cause the **same invocation** applies only 1233; all four recorded exactly once | **reproduced** |
 | S4 ownership | every `ka_gochara_*` function and table owned by `amjis_app`; `amjis_app` holds **no** CREATE after the window; **no** `ka_gochara_*` function has PUBLIC EXECUTE | **reproduced** |
-**The ledger precondition (the answer to Codex's `migrate.ts:756–763` point).** `--only` refuses every unselected, unapplied file whose number is ≤ the highest selected number. Against the 2026-10-02 production ledger exactly **one** such file exists: **`1230_ka_gochara_registry_revert_1091_pin.sql`**. So the single deployment invocation works **only after the routine deploy has applied 1230** (or 1230 is otherwise recorded). The live fixtures' intervening 1216 application is *not* the proof — the production ledger already holds 1216/1220/1225/1231.
+**The ledger precondition (the answer to Codex's `migrate.ts:756–763` point).** `--only` refuses every unselected, unapplied file whose number is ≤ the highest selected number. History: against the early-2026-10-02 ledger the files were 1230, then 1234 and 1236; **against the refreshed read-only ledger (`prod_ledger_2026-10-02c.txt`, 919 names) none remains** — 1234, 1236 and 1242 are applied — so the single deployment invocation is expected to run directly. This is a snapshot, not a live check: re-read the ledger immediately before dispatch.
 
 **1240 in the rehearsal:** once the file exists, `run_window_rehearsal.sh` appends it to `WINDOW`/`ONLY` (hash-checked if listed in `EXPECTED_WINDOW_SHA256.txt`), and S4 must additionally assert: the builder holds **no** privilege on `ka_gochara_eval_window_verification`; the verifier may INSERT (and pre-seal DELETE); the sealer may SELECT and EXECUTE the gate; the new seal-table trigger exists exactly once and sorts after `ka_gochara_generation_seal_z_search_complete`; a pre-1240 generation replays.
 
@@ -49,7 +50,7 @@ Run on PG15 (`GOCHARA_REQUIRE_DB=1 GOCHARA_A51_TEST_DATABASE_URL=postgresql://po
 | principal | must be refused | status |
 |---|---|---|
 | `data_plane_builder` | seal function, `ka_gochara_generation_seal` INSERT, completeness/replay checks, 1232's two helpers, any UPDATE beyond `(inventory_digest, ledger_digest, finalized_at)` on the inventory header | **asserted** |
-| `data_plane_builder` | **writing independent-verification rows** (`ka_gochara_search_inventory_verification` INSERT/DELETE) | **FINDING — currently GRANTED** (1206 §7 line ~993). PC-4 requires removal; see O4 |
+| `data_plane_builder` | **writing independent-verification rows** (`ka_gochara_search_inventory_verification` INSERT/DELETE) | **CLOSED** — PC-4 is folded into 1206 (#2867 `e4d31c9ef`); the builder holds nothing on either verification table (asserted) |
 | `gochara_sealer` | any inventory/record/window content write | **asserted** |
 | `gochara_verifier` (proposed) | writing obligations, intervals, records, windows; sealing | **asserted** (proposed set: SELECT on inventory/snapshot/pin/obligation/interval/record/window/coverage + L1 facts/dashas; INSERT on the verification table only) |
 | `PUBLIC` | EXECUTE on any `ka_gochara_*` function | **asserted** |
