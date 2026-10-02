@@ -4,9 +4,10 @@ test_q03_tiers_sade_sati.py -- Q03 / SS N-62 honest tiers for ga_sade_sati (TS-S
 The six examined keys (cycle_start_iso, cycle_end_iso, duration_days, duration_years on
 `sade_sati_cycle`; the same four on `sade_sati_phase`, i.e. phase_start_iso/phase_end_iso/
 duration_days/duration_years) are backed ONLY by `two_pass_verify_cycles`, a +/-600 day duration
-bound and date-ordering check over the engine's own output. That is a bounds/ordering invariant,
-not an independent re-derivation, so the tier is `classical_match`, and only when the check
-actually ran and passed for that cycle (the verifier marks the cycle it examined).
+bound and date-ordering check over the engine's own output. That is a plausibility guard: not a
+match against a classical reference table and not a second derivation, so it earns NO tier above
+`single` (SS ruling, S-L1 follow-up: demoted from the earlier `classical_match`). A cycle outside
+the bound halts the build; the verifier still marks the cycles it examined (an audit record).
 
 Spec: AUDIT_L1_TIERS_PER_EMITTER_v1_0.md v1.1 §2.2 / §5.
 """
@@ -75,33 +76,44 @@ def _examined(rows):
     return [r for r in rows if (r["fact_category"], r["fact_key"]) in _EXAMINED]
 
 
-def test_checked_cycle_stamps_classical_match_on_exactly_the_examined_keys():
+def test_checked_cycle_examined_keys_are_single_not_classical_match():
     cycles = _cycles()
     assert W.two_pass_verify_cycles(cycles) == []
+    assert cycles[0].get(W.CYCLE_INVARIANTS_CHECKED_KEY) is True  # the guard ran and passed
     rows = _emit(cycles[0])
     ex = _examined(rows)
-    assert ex and {r["verification_pass_status"] for r in ex} == {T.CLASSICAL_MATCH}
     # 4 cycle keys + 4 phase keys x 3 phases
     assert len(ex) == 4 + 4 * 3
-    others = [r for r in rows if (r["fact_category"], r["fact_key"]) not in _EXAMINED]
-    assert others
-    assert T.TWO_PASS_VERIFIED not in {r["verification_pass_status"] for r in rows}
-    assert T.CLASSICAL_MATCH not in {r["verification_pass_status"] for r in others}
+    assert {r["verification_pass_status"] for r in ex} == {T.SINGLE}
+    tiers = {r["verification_pass_status"] for r in rows}
+    assert not {T.TWO_PASS_VERIFIED, T.CLASSICAL_MATCH} & tiers
 
 
-def test_unchecked_cycle_never_gets_the_tier():
-    """The emitter alone cannot stamp the tier: a cycle the verifier did not examine is `single`."""
+def test_unchecked_cycle_is_single_too():
     rows = _emit(_cycles()[0])
     assert {r["verification_pass_status"] for r in _examined(rows)} == {T.SINGLE}
 
 
-def test_stubbed_verifier_mutant_drops_the_six_keys_to_single(monkeypatch):
-    """MUTANT: `two_pass_verify_cycles` stubbed to return [] without running. The marker is never
-    set, so the examined keys must be `single` (a tier stamped WITHOUT the check having run)."""
-    monkeypatch.setattr(W, "two_pass_verify_cycles", lambda cycles: [])
+def test_mutant_marker_gated_classical_match_is_caught(monkeypatch):
+    """MUTANT (the pre-ruling behaviour): re-introduce a marker-gated classical_match on the examined
+    keys. The two tests above fail on it; this one proves the mutant is visible (rows would be
+    classical_match after the verifier ran)."""
+    real = W._emit_cycle_rows
+
+    def mutant(*a, **k):
+        rows = real(*a, **k)
+        cy = a[3]
+        if cy.get(W.CYCLE_INVARIANTS_CHECKED_KEY):
+            for r in rows:
+                if (r["fact_category"], r["fact_key"]) in _EXAMINED:
+                    r["verification_pass_status"] = T.CLASSICAL_MATCH
+        return rows
+
+    monkeypatch.setattr(W, "_emit_cycle_rows", mutant)
     cycles = _cycles()
-    assert W.two_pass_verify_cycles(cycles) == []  # the stub "passes"
-    assert {r["verification_pass_status"] for r in _examined(_emit(cycles[0]))} == {T.SINGLE}
+    W.two_pass_verify_cycles(cycles)
+    ex = _examined(W._emit_cycle_rows(CHART_ID, AYA, BUILD, cycles[0], [], dict(_NATAL), AT))
+    assert {r["verification_pass_status"] for r in ex} == {T.CLASSICAL_MATCH}
 
 
 def test_900_day_cycle_is_a_divergence_and_is_not_marked():
@@ -158,7 +170,7 @@ def _run_build(monkeypatch, verifier=None):
 def test_build_summary_two_pass_flag_is_null_even_after_the_real_check_passes(monkeypatch):
     summary = _run_build(monkeypatch)
     assert summary["total_chart_facts_rows"] > 0  # the real two_pass_verify_cycles ran and passed
-    assert summary["two_pass_verified"] is None  # bounds invariant: earns classical_match, not this flag
+    assert summary["two_pass_verified"] is None  # plausibility guard: earns no tier above single, not this flag
     assert summary["divergent_flagged"] is False  # a real detector result: it would be True before the raise
 
 

@@ -59,7 +59,7 @@ from panchang_engine.swiss_state import serialized_swiss_state, swiss_state_scop
 
 from brahmagyan.graha_vocabulary import norm_graha
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal
-from brahmagyan.verification_tiers import CLASSICAL_MATCH, DOCUMENTED_APPROXIMATION
+from brahmagyan.verification_tiers import DOCUMENTED_APPROXIMATION
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 
@@ -631,23 +631,25 @@ def build_sade_sati_cycles(
 # ── Two-pass verification ────────────────────────────────────────────────────
 
 #: Marker `two_pass_verify_cycles` sets on a cycle dict that PASSED every invariant it examines.
-#: `_emit_cycle_rows` stamps the six examined keys `classical_match` ONLY when this marker is
-#: present, so the tier cannot be stamped without the check having run (Q03 / SS N-62; a stubbed
-#: or skipped verifier leaves the marker unset and the rows fall to `single`).
+#: Records that the plausibility guard ran and passed for this cycle. SS ruling (S-L1 follow-up):
+#: the guard earns NO tier above `single` (see `two_pass_verify_cycles`), so `_emit_cycle_rows`
+#: stamps the examined keys `single` whether or not the marker is set; the marker is kept as an
+#: auditable record (and as the single place a future real comparison would hook a tier in).
 CYCLE_INVARIANTS_CHECKED_KEY = "_invariants_checked"
 
 
 def two_pass_verify_cycles(cycles: list[dict]) -> list[str]:
     """
     Invariant check per A9 §6 (historically named "two-pass"; it is a bounds/ordering check
-    over the engine's own output, NOT an independent re-derivation, so it earns
-    `classical_match`, never `two_pass_verified` -- Q03 / SS N-62):
+    over the engine's own output: a plausibility guard, neither a match against a classical
+    reference table nor an independent re-derivation, so it earns NO tier above `single`
+    (never `classical_match`, never `two_pass_verified` -- Q03 / SS N-62 + SS ruling, S-L1 follow-up):
     1. ~7.5y per cycle invariant (±600 days)
     2. Cycle ordering: janma_entry > vishakha_entry, anumukha_entry > janma_entry
     3. Cycle count consistency
 
     Returns list of divergence messages (empty = PASS). Every cycle that passes all invariants
-    is marked with `CYCLE_INVARIANTS_CHECKED_KEY` (the emitter's license to stamp the tier).
+    is marked with `CYCLE_INVARIANTS_CHECKED_KEY` (an audit record; it does not license a tier).
     """
     divergences: list[str] = []
     for cy in cycles:
@@ -899,11 +901,11 @@ def _emit_cycle_rows(
     # ordering. Everything else in this category (moon_sign_for_cycle, cycle_type,
     # the compound_with_* stubs) has no check behind it and falls to the R()
     # default (UNVERIFIED_DEFAULT).
-    # Q03 / SS N-62: those invariants are bounds/ordering checks over the engine's own output
-    # (not an independent re-derivation) -> `classical_match`, and ONLY for a cycle that
-    # two_pass_verify_cycles() actually examined and passed (marker set by that function);
-    # otherwise the honest `single`.
-    checked = CLASSICAL_MATCH if cycle.get(CYCLE_INVARIANTS_CHECKED_KEY) else UNVERIFIED_DEFAULT
+    # Q03 / SS N-62 + SS ruling (S-L1 follow-up): those invariants are a plausibility guard
+    # (a +/-600-day duration bound and date ordering) over the engine's own output: not a match
+    # against a classical reference table and not a second derivation, so they earn no tier above
+    # the honest `single` (a cycle outside the bound halts the build; it is never stamped).
+    checked = UNVERIFIED_DEFAULT
     cat = "sade_sati_cycle"
     dur_yrs = cycle["duration_days"] / 365.25
     rows += [
@@ -969,7 +971,7 @@ def _emit_cycle_rows(
         # phase_start_iso/phase_end_iso/duration_days/duration_years are the phase-
         # level counterparts of the same 4 genuine cycle keys above (ph_start/ph_end
         # are vis_dt/jan_dt/anu_dt/end_dt, the exact values two_pass_verify_cycles()
-        # examines) — same rationale, same marker-gated `classical_match`.
+        # examines) — same rationale, same `single`.
         rows += [
             R(cat_ph, subj, "phase_start_iso",
               value_text=ph_start.isoformat(),
@@ -1963,7 +1965,7 @@ def build_ga_sade_sati(
         "total_chart_facts_rows": 0,
         # SS ruling (S-L1 tier-honesty follow-up, CLAUDE.md §N.8): this was initialised to True
         # before any check ran. `two_pass_verify_cycles` is a bounds/ordering invariant (it earns
-        # `classical_match` on the rows it examines, never `two_pass_verified`), so there is no
+        # no tier above `single` on the rows it examines, never `two_pass_verified`), so there is no
         # two-pass result to report: None ("not measured"). `divergent_flagged` is a real
         # detector result (set True just before the build raises) and starts False honestly.
         "two_pass_verified": None,
