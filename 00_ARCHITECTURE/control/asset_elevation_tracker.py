@@ -340,6 +340,9 @@ def main():
 #                     evidence.census_run_id, writer_hashes{path: sha256}, writer_hashes_reason, upstream_cert_ids,
 #                     semantic_fingerprint, cert_key "<asset>|<kind>|<criterion>", generation (1..n per key). The
 #                     current record of a cert_key is its highest generation.
+#                     record_version 1 or 2 (anything else raises). v2 adds citation_state (sourced|sourced_ocr_unverified|
+#                     unsourced|refuted|null) and citation_state_caveat (bool, must agree with the state); a v1 record may not
+#                     carry them (v1 reads as null). A PASS whose state is unsourced/refuted does not count (N-74).
 #   invalidation      E5.5: asset, layer, invalidates "<cert_id>" (a certificate on an EARLIER line), reason
 #                     [{code,...}], walk >= 1. A repeated invalidation of one certificate is tolerated; the first wins.
 #   watermark         E5.5: asset "_ledger", covers_seq (the seq of the last record the evaluation covered, below the
