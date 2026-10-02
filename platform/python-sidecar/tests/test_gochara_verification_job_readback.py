@@ -88,10 +88,24 @@ def test_an_unexpected_shape_is_refused_never_passed():
 
 # R14-3: the verification-job contract is ONE file carried by BOTH #2975 (executed-resource check) and #2976 (definition readback). If the two copies ever diverge, one of these two tests fails
 # (the pinned digest is the same constant in both PRs; change it in both when the contract is deliberately changed).
-CONTRACT_SHA256 = "5c9c062adcbe2101eb066024c107eb3605f9d542319cdb7414ca44feb4ec104a"
+CONTRACT_SHA256 = "3cd8ece1dcb0427b1436996b9c1aec6f7eb6509c951bb903398f7474b6a726fd"
 
 
 def test_the_shared_verification_job_contract_is_the_file_both_prs_carry():
     import hashlib
     import gochara_verification_job_contract as _vjc
     assert hashlib.sha256(Path(_vjc.__file__).read_bytes()).hexdigest() == CONTRACT_SHA256
+
+
+def test_maxretries_absent_in_v1_is_accepted_only_when_the_v2_representation_carries_a_zero():
+    """F-R15-3: v1 may omit a proto3 zero; the v2 REST representation carries `maxRetries` as a union member. Absence is NEVER read as 0."""
+    def v1_absent():
+        j = copy.deepcopy(job())
+        task(j).pop("maxRetries")
+        return j
+    kw = dict(image_repo=REPO, image_digest=DIG, service_account=SA, runner_commit=SHA, secret_name="gochara-verifier-db-url", cloudsql_instance=INST, timeout_seconds=7200, memory="8Gi", cpu="2")
+    assert rb.check(v1_absent(), v2_job={"template": {"template": {"maxRetries": 0}}}, **kw) == []
+    assert any("maxRetries" in b for b in rb.check(v1_absent(), v2_job={"template": {"template": {}}}, **kw))               # absent in BOTH
+    assert any("maxRetries" in b for b in rb.check(v1_absent(), v2_job={"template": {"template": {"maxRetries": 3}}}, **kw))
+    assert any("disagrees" in b for b in rb.check(job(), v2_job={"template": {"template": {"maxRetries": 3}}}, **kw))
+    assert any("maxRetries" in b for b in rb.check(v1_absent(), **kw))                                                      # no v2 supplied: strict v1 rule stands
