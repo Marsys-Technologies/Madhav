@@ -27,12 +27,14 @@
 |---|---|---|---|---|
 | **Lagna (Ascendant)** | — | Aries (Mesha) | 12°23′55″ | Ashwini nakshatra, pada 4 |
 | **Lagna lord** | Mars | Libra | 18°31′38″ | House 7, Swati nakshatra, pada 4 |
-| **Atmakaraka (AK)** | Moon | Aquarius | 27°02′48″ | Highest degree (7-karaka system); soul-level significator |
+| **Atmakaraka (AK)** | Moon | Aquarius | 27°02′48″ | Highest degree (both schemes); soul-level significator |
 | **Amatyakaraka (AmK)** | Saturn | Libra | 22°27′04″ | Career/status significator; exalted in D1 |
 | **Putrakaraka (PK)** | Mars | Libra | 18°31′38″ | Creativity / children / future significations |
 | **Darakaraka (DK)** | Mercury | Capricorn | 00°50′11″ | Lowest degree; spouse / partnership significator |
 | **Bhratrukaraka (BK)** | Sun | Capricorn | 21°57′35″ | Siblings / guru / resources |
 | **Matrukaraka (MK)** | Venus | Sagittarius | 19°10′12″ | Mother / heart / home |
+
+**Scheme note:** the table above shows the 7-karaka variant (Rahu excluded; Matrukaraka also serves as Pitrikaraka). The headline scheme is the 8-karaka scheme (Rahu included, reckoned by 30° minus its degree in sign); both schemes are shown and labelled in the served karaka data.
 
 **Key D9 note:** Mercury is vargottama (Capricorn in both D1 and D9) — the Darakaraka is chart-position-stable across the soul-level divisional. Venus debilitated in D9 Virgo with neecha-bhanga active (Mercury in D9 kendra as dispositor).
 
