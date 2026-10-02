@@ -11,15 +11,15 @@ One-shot operator tooling (not product code). The plan is `PLAN.md`; the hash-in
 | `make_plan.py` | offline (no DB, no credential): re-render `plan.txt` and print executor sha, gate shas and the (gate-bound) plan hash for any `--asset` |
 | `orphan_count.sql` | READ-ONLY standing S-L1 / S-L2 exit check: the orphan receipt rows (expected: none) |
 | `resolver_verdicts.sql` | READ-ONLY per-asset served-generation verdict for one chart (SQL port of `served_generation.ts`; shared with the executor) |
-| `tests/` | 142 tests (119 executor on a disposable local Postgres, 23 gate-wiring / plan-binding / launch tests with PATH shims) + `mutation_proof.py` (42 mutations) |
+| `tests/` | 152 tests (128 executor on a disposable local Postgres, 24 gate-wiring / plan-binding / launch tests with PATH shims) + `mutation_proof.py` (50 mutations) |
 
 ## Pre-run gate (binding, GATE_V2): always start the real executor through `run_gated.sh`
 
 | file | sha256 (byte-identical to `gate_v2/`, PR #2938) |
 |---|---|
-| `prerun_gate.py` | `ba65d82a338257bd7b3b1ae37df312fb382ef548291a211eadbc2538a987ef73` |
+| `prerun_gate.py` | `01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e` |
 | `run_gated.sh` | `305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076` |
-| `executor_standards.py` | `7ca8ea9cc3422f41d38ced27f6501d666dcce78918e38e1d255b8dabcdd3c38d` |
+| `executor_standards.py` | `bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135` |
 
 ```bash
 cd 00_ARCHITECTURE/briefs/suvarna/exec/orphan_receipts

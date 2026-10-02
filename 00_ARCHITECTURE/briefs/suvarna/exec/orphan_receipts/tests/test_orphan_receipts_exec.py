@@ -884,17 +884,41 @@ def test_a_failure_writing_the_applied_outcome_after_commit_records_applied_with
     assert "failed" not in [x["status"] for x in outcomes(runner)] and "failed" not in calls
 
 
-def test_a_failure_before_the_commit_is_recorded_as_failed_and_nothing_is_committed(mod, runner, cluster, db):
+def test_a_failure_before_the_commit_is_recorded_as_failed_and_nothing_is_committed(mod, runner, cluster, db, monkeypatch):
     _, dry = runner.run("dry")
     before = cluster.image(db)
 
-    def boom():
-        raise RuntimeError("synthetic: commit never reached the server")
+    def boom(*a, **k):
+        raise RuntimeError("synthetic: failure before the commit")
+    monkeypatch.setattr(mod, "run_txn", boom)
     with pytest.raises(RuntimeError):
-        runner.m.execute(runner.args("apply", expect_evidence=dry["evidence_digest"]),
-                         lambda: CommitProxy(cluster.conn(db, user=conftest.ADMIN_USER), before=boom))
+        runner.execute(runner.args("apply", expect_evidence=dry["evidence_digest"]))
     assert_outcome(outcomes(runner)[-1], mod, "failed", None, ["RuntimeError"])
     assert_unchanged(cluster, db, before)
+
+
+@pytest.mark.parametrize("server_committed", [False, True], ids=["connection_lost_before_the_server_saw_it", "ack_lost_after_the_server_committed"])
+def test_a_commit_call_that_itself_raises_is_commit_state_unknown_not_failed(mod, runner, cluster, db, server_committed):
+    """The real server outcome differs between the two cases and the executor cannot know: both are `commit_state_unknown`."""
+    _, dry = runner.run("dry")
+    before = cluster.image(db)
+
+    class LostAck(CommitProxy):
+        def commit(self):
+            if server_committed:
+                self._c.commit()
+            raise psycopg.OperationalError("synthetic: connection dropped at the commit acknowledgement")
+    with pytest.raises(psycopg.OperationalError):
+        runner.m.execute(runner.args("apply", expect_evidence=dry["evidence_digest"]),
+                         lambda: LostAck(cluster.conn(db, user=conftest.ADMIN_USER)))
+    o = outcomes(runner)[-1]
+    assert o["status"] == "commit_state_unknown" and o["warnings"] == ["commit_raised:OperationalError"] and o["failed_checks"] == []
+    assert o["evidence_digest"] == dry["evidence_digest"]
+    assert "failed" not in [x["status"] for x in outcomes(runner)]
+    if server_committed:
+        only_applied_rows_changed(cluster, db)
+    else:
+        assert_unchanged(cluster, db, before)
 
 
 def test_an_exception_in_the_first_step_after_the_commit_still_ends_in_applied(mod, runner, cluster, db, monkeypatch):
@@ -924,6 +948,13 @@ def test_a_sigint_arriving_during_commit_is_held_too(mod, runner, cluster, db):
     assert_outcome(outcomes(runner)[-1], mod, "applied", None, warnings=["outcome_write_failed_after_commit:KeyboardInterrupt"])
 
 
+def reset_signals():
+    """preexec for the signal subprocesses: a backgrounded / nohup test run inherits SIGHUP ignored, which would (rightly) stop the handler install."""
+    import signal
+    signal.signal(signal.SIGTERM, signal.SIG_DFL)
+    signal.signal(signal.SIGHUP, signal.SIG_DFL)
+
+
 SIGNAL_SCRIPT = """
 import importlib.util, os, signal, sys, time
 spec = importlib.util.spec_from_file_location("orphan_receipts_exec", %(exec)r)
@@ -945,7 +976,8 @@ def test_signal_handlers_exit_cleanly_after_writing_the_right_outcome(tmp_path, 
     import sys
     ev = tmp_path / "ev"
     r = subprocess.run([sys.executable, "-c", SIGNAL_SCRIPT % {"exec": str(EXEC_DIR / "orphan_receipts_exec.py"), "ev": str(ev),
-                                                               "committed": committed, "sig": sig}], capture_output=True, text=True, timeout=60)
+                                                               "committed": committed, "sig": sig}], capture_output=True, text=True, timeout=60,
+                       preexec_fn=reset_signals)
     assert r.returncode == code, r.stderr
     o = json.loads((ev / "outcome.json").read_text())
     if committed:
@@ -994,3 +1026,119 @@ def test_main_passes_the_launch_fingerprint_to_execute_and_installs_the_handlers
     monkeypatch.setattr(mod, "execute", fake_execute)
     assert mod.main(["--asset", "ga_positions", "--chart", CANON, "--dry-run"]) == 0
     assert seen["handlers"] and seen["gate_fp"]["under_test"] is True
+
+
+class BrokenStderr:
+    def write(self, text):
+        raise BrokenPipeError("stderr is gone")
+
+    def flush(self):
+        raise BrokenPipeError("stderr is gone")
+
+
+def test_a_broken_stderr_never_costs_the_applied_outcome_after_a_commit(mod, tmp_path, monkeypatch):
+    fp = mod.es.fingerprint()
+    d = tmp_path / "run"
+    monkeypatch.setattr(mod.sys, "stderr", BrokenStderr())
+    with pytest.raises(RuntimeError):
+        with mod.SafeOutcome(d, str(EXEC_DIR / "orphan_receipts_exec.py"), "a" * 64, fp) as o:
+            o.mark_committed("b" * 64)
+            raise RuntimeError("late failure")
+    monkeypatch.undo()
+    body = json.loads((d / "outcome.json").read_text())
+    assert body["status"] == "applied" and body["warnings"] == ["outcome_write_failed_after_commit:RuntimeError"]
+
+
+def test_a_broken_stderr_never_costs_the_commit_state_unknown_outcome(mod, tmp_path, monkeypatch):
+    fp = mod.es.fingerprint()
+    d = tmp_path / "run"
+    monkeypatch.setattr(mod.sys, "stderr", BrokenStderr())
+    with pytest.raises(RuntimeError):
+        with mod.SafeOutcome(d, str(EXEC_DIR / "orphan_receipts_exec.py"), "a" * 64, fp) as o:
+            o.mark_commit_unknown("b" * 64, "OperationalError")
+            raise RuntimeError("x")
+    monkeypatch.undo()
+    assert json.loads((d / "outcome.json").read_text())["status"] == "commit_state_unknown"
+
+
+SECOND_SIGNAL_SCRIPT = """
+import importlib.util, os, signal, sys, time
+spec = importlib.util.spec_from_file_location("orphan_receipts_exec", %(exec)r)
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m.install_signal_handlers()
+real = m.es.write_outcome
+def slow_write(*a, **k):
+    os.kill(os.getpid(), signal.SIGHUP)          # a SECOND signal arrives while the outcome is being written
+    os.kill(os.getpid(), signal.SIGTERM)
+    return real(*a, **k)
+m.es.write_outcome = slow_write
+with m.SafeOutcome(%(ev)r, %(exec)r, "a" * 64, m.es.fingerprint()) as o:
+    o.mark_committed("b" * 64)
+    os.kill(os.getpid(), signal.SIGTERM)
+    time.sleep(5)
+"""
+
+IGNORED_SCRIPT = """
+import importlib.util, signal
+spec = importlib.util.spec_from_file_location("orphan_receipts_exec", %(exec)r)
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m.install_signal_handlers()
+print(signal.getsignal(signal.SIGHUP) == signal.SIG_IGN, signal.getsignal(signal.SIGTERM) == m._on_terminate)
+"""
+
+
+def test_a_second_signal_during_the_outcome_write_does_not_lose_the_outcome(tmp_path):
+    import subprocess
+    import sys
+    ev = tmp_path / "ev"
+    r = subprocess.run([sys.executable, "-c", SECOND_SIGNAL_SCRIPT % {"exec": str(EXEC_DIR / "orphan_receipts_exec.py"), "ev": str(ev)}],
+                       capture_output=True, text=True, timeout=60, preexec_fn=reset_signals)
+    assert r.returncode == 143, r.stderr
+    o = json.loads((ev / "outcome.json").read_text())
+    assert o["status"] == "applied" and o["warnings"] == ["outcome_write_failed_after_commit:SystemExit"]
+
+
+def test_a_signal_that_was_ignored_at_start_is_not_replaced_by_the_handler(tmp_path):
+    import signal
+    import subprocess
+    import sys
+    r = subprocess.run([sys.executable, "-c", IGNORED_SCRIPT % {"exec": str(EXEC_DIR / "orphan_receipts_exec.py")}], capture_output=True, text=True,
+                       timeout=60, preexec_fn=lambda: (signal.signal(signal.SIGHUP, signal.SIG_IGN), signal.signal(signal.SIGTERM, signal.SIG_DFL)))
+    assert r.stdout.strip() == "True True", r.stderr                          # SIGHUP stays ignored (nohup); SIGTERM got the handler
+
+
+def test_the_handler_ignores_further_signals_after_the_first_unit(mod):
+    import signal
+    old = {s: signal.getsignal(s) for s in (signal.SIGTERM, signal.SIGHUP)}
+    try:
+        with pytest.raises(SystemExit) as e:
+            mod._on_terminate(signal.SIGHUP, None)
+        assert e.value.code == 129 and all(signal.getsignal(s) == signal.SIG_IGN for s in old)
+    finally:
+        for s, h in old.items():
+            signal.signal(s, h)
+
+
+# ------------------------------------------------------------------------------------------------ rev3: under_test launches never reach a database
+def test_an_under_test_launch_is_refused_outside_pytest_in_every_mode(mod, monkeypatch, capsys):
+    monkeypatch.setattr(mod, "launch_gate", lambda environ=None: {"gate_sha256": "1" * 64, "run_gated_sha256": "2" * 64, "under_test": True})
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    called = []
+    monkeypatch.setattr(mod, "execute", lambda *a, **k: called.append(1))
+    for argv in (["--asset", "ga_positions", "--chart", CANON, "--dry-run"],
+                 ["--asset", "ga_positions", "--chart", CANON, "--apply", "--expect-plan", "0" * 64, "--expect-evidence", "0" * 64,
+                  "--min-build-after", "2026-10-05T09:00:00Z"]):
+        with pytest.raises(SystemExit) as e:
+            mod.main(argv)
+        assert e.value.code == 93
+    assert not called and "ran under test" in capsys.readouterr().err
+
+
+def test_the_under_test_refusal_function_only_refuses_under_test_markers_outside_pytest(mod):
+    fp = {"gate_sha256": "1" * 64, "run_gated_sha256": "2" * 64}
+    mod.refuse_under_test_outside_pytest(dict(fp, under_test=False), {})
+    mod.refuse_under_test_outside_pytest(dict(fp, under_test=True), {"PYTEST_CURRENT_TEST": "x"})
+    mod.refuse_under_test_outside_pytest(fp, {})
+    with pytest.raises(SystemExit) as e:
+        mod.refuse_under_test_outside_pytest(dict(fp, under_test=True), {})
+    assert e.value.code == 93

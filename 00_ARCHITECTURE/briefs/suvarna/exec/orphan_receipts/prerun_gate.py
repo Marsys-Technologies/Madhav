@@ -5,12 +5,13 @@ Reads, in THIS invocation:
   (a) deploy_runs_not_completed : runs of the deploy.yml workflow on ANY ref whose status != completed (deploy.yml accepts
       workflow_dispatch from any ref, so a dispatched deploy on a feature ref must be seen), EXCEPT event == pull_request
       (build-only runs); an unknown or missing event is counted (fail closed). Counted over the UNION BY databaseId of
-      `gh run list -R Marsys-Technologies/Madhav --workflow deploy.yml --limit 100 --json databaseId,status,event`
-      and one `--status <s>` query (same --limit 100) for each of queued, in_progress, waiting, pending, requested
-      (a stuck run older than the newest 100 is still found by its status query; a per-status query that returns a FULL
-      --limit page containing pull_request runs fails closed, because a non-PR run could be hidden behind them).
-      The repository is PINNED (-R) and GH_REPO / GH_HOST / GH_ENTERPRISE_TOKEN / GITHUB_ENTERPRISE_TOKEN / GITHUB_REPOSITORY are
-      removed from gh's environment (the token variables gh needs are kept).
+      `gh run list -R Marsys-Technologies/Madhav --workflow deploy.yml --limit 1000 --json databaseId,status,event`
+      and one `--status <s>` query (same --limit 1000; gh pages internally, GitHub caps a filtered query at 1000) for each of
+      queued, in_progress, waiting, pending, requested (a stuck run older than the newest 1000 is still found by its status
+      query; a per-status query that returns a FULL --limit page (1000) containing pull_request runs fails closed, because a
+      non-PR run could be hidden behind them: the operator remedy is in the README).
+      The repository is PINNED (-R) and GH_REPO / GH_HOST / GH_ENTERPRISE_TOKEN / GITHUB_ENTERPRISE_TOKEN / GITHUB_REPOSITORY /
+      GH_CONFIG_DIR / GH_PATH are removed from gh's environment (the token variables gh needs are kept).
   (b) build_runs_in_flight      : build_runs in state planned/running/paused on ANY chart, read through psql as the
       read-only role in ONE call that also reports `current_user` and `current_database()`; the role must be exactly
       suvarna_reader and the database exactly amjis.
@@ -20,16 +21,18 @@ PRINTS BOTH COUNTS to STDERR ("n/a" for one that could not be read), then one fi
   GATE_V2 deploy_runs_not_completed=<n> build_runs_in_flight=<m> role=<role> OK     (exit 0)
   GATE_V2 FAIL <reason>                                                              (exit non-zero)
 EVERY exit path prints exactly one GATE_V2 line, also an unexpected internal error: `GATE_V2 FAIL internal_error <ExceptionClassName>`
-(exit 2; no message text). STDOUT IS ALWAYS EMPTY. Never prints a credential, a child process's output, or row content.
+(exit 2; no message text) and a termination signal: `GATE_V2 FAIL signal <n>` (SIGTERM / SIGHUP / SIGQUIT; exit 128+n; the gh / psql child is
+killed, never orphaned; a signal that was already ignored when the gate started, e.g. nohup's SIGHUP, stays ignored). STDOUT IS ALWAYS EMPTY. Never prints a credential, a child process's output, or row content.
 
 Exit codes:
    0  both counts read and both are 0, role is suvarna_reader
    1  at least one count is > 0
    2  a read failed or its output was malformed / empty / not UTF-8 / timed out / non-zero exit, or an internal error (fail closed)
-  94  a required binary (gh, psql, bash) is missing
+  94  a required binary (gh, psql, bash) is missing (label missing_binary)
   95  a test-only environment variable is set outside the test harness (ORPH_TEST_EVIDENCE_ROOT, PYTEST_CURRENT_TEST)
-  96  the psql session is not suvarna_reader, or not connected to the amjis database (message names the unexpected value only)
-  97  `source ~/.config/suvarna/pgenv.sh` failed (missing file or non-zero status)
+  96  the psql session is not suvarna_reader, or not connected to the amjis database (label wrong_role_or_database; message names the unexpected value only)
+  97  `source ~/.config/suvarna/pgenv.sh` failed (missing file or non-zero status; label pgenv_failed)
+ 128+n the gate was terminated by signal n (label signal)
 Test harness only (GATE_V2_UNDER_TEST=1): bypasses ONLY the test-env refusal, honours GATE_V2_PGENV (pgenv path) and
 GATE_V2_TIMEOUT_S. Without GATE_V2_UNDER_TEST=1 none of those three is read; the production pgenv path is the real file.
 Optional GATE_V2_GH / GATE_V2_PSQL / GATE_V2_BASH carry absolute binary paths (run_gated.sh sets them from `command -v`).
@@ -49,9 +52,9 @@ PGENV_PRODUCTION = "~/.config/suvarna/pgenv.sh"
 EXPECTED_DATABASE = "amjis"
 REPO = "Marsys-Technologies/Madhav"                      # pinned: gh is always called with -R REPO
 WORKFLOW = "deploy.yml"
-HISTORY_LIMIT = 100
+HISTORY_LIMIT = 1000                                     # gh pages internally; GitHub caps a filtered query at 1000
 EXCLUDED_EVENT = "pull_request"                          # build-only runs (deploy.yml build-check job); every other or unknown event counts
-GH_STRIPPED_ENV = ("GH_REPO", "GH_HOST", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "GITHUB_REPOSITORY")
+GH_STRIPPED_ENV = ("GH_REPO", "GH_HOST", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "GITHUB_REPOSITORY", "GH_CONFIG_DIR", "GH_PATH")
 MAX_COUNT_DIGITS = 12
 NON_COMPLETED_STATUSES = ("queued", "in_progress", "waiting", "pending", "requested")
 TIMEOUT_S = 60
@@ -67,6 +70,8 @@ EXIT_OK, EXIT_IN_FLIGHT, EXIT_READ_FAILED = 0, 1, 2
 EXIT_MISSING_BINARY, EXIT_TEST_ENV, EXIT_ROLE, EXIT_PGENV = 94, 95, 96, 97
 # when several reads fail, the most specific class is reported (lowest rank first)
 _RANK = {EXIT_PGENV: 0, EXIT_ROLE: 1, EXIT_MISSING_BINARY: 2, EXIT_READ_FAILED: 3}
+_LABEL = {EXIT_PGENV: "pgenv_failed", EXIT_ROLE: "wrong_role_or_database", EXIT_MISSING_BINARY: "missing_binary"}   # default: read_failed
+HANDLED_SIGNALS = (signal.SIGTERM, signal.SIGHUP, signal.SIGQUIT)
 TEST_ENV_VARS = ("ORPH_TEST_EVIDENCE_ROOT", "PYTEST_CURRENT_TEST")
 
 
@@ -74,6 +79,27 @@ class GateError(Exception):
     def __init__(self, code, msg):
         super().__init__(msg)
         self.code, self.msg = code, msg
+
+
+class GateSignal(BaseException):
+    """Raised by the termination-signal handler (BaseException: no `except Exception` can swallow it)."""
+
+    def __init__(self, signum):
+        super().__init__(signum)
+        self.signum = signum
+
+
+def _on_signal(signum, frame):
+    for sig in HANDLED_SIGNALS:                          # a second signal must not interrupt the cleanup and the final line
+        signal.signal(sig, signal.SIG_IGN)
+    raise GateSignal(signum)
+
+
+def install_signal_handlers():
+    """SIGTERM/SIGHUP/SIGQUIT -> GateSignal. A signal that is ALREADY ignored (nohup) stays ignored."""
+    for sig in HANDLED_SIGNALS:
+        if signal.getsignal(sig) != signal.SIG_IGN:
+            signal.signal(sig, _on_signal)
 
 
 def say(line):
@@ -116,7 +142,7 @@ def run_cmd(argv, env, timeout, label):
         raise GateError(EXIT_MISSING_BINARY, "missing binary: " + label)
     try:
         out, _ = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
+    except BaseException as exc:                           # the child must never outlive the gate (timeout, signal, anything)
         try:
             os.killpg(proc.pid, signal.SIGKILL)
         except OSError:
@@ -125,6 +151,8 @@ def run_cmd(argv, env, timeout, label):
             proc.communicate(timeout=5)
         except Exception:
             pass
+        if not isinstance(exc, subprocess.TimeoutExpired):
+            raise
         raise GateError(EXIT_READ_FAILED, "%s timed out after %ss" % (label, timeout))
     return proc.returncode, out
 
@@ -220,11 +248,19 @@ def read_builds(bash, psql, environ, timeout):
     return role, int(count)
 
 
-def main(environ=None):
+def main(environ=None, handle_signals=False):
     """Prints exactly one GATE_V2 verdict line on EVERY exit path: an unexpected error inside the gate is `GATE_V2 FAIL internal_error
     <ExceptionClassName>` (exit 2, class name only: no message text, no traceback, no secret)."""
     try:
+        if handle_signals:                               # installed INSIDE the try: a signal right after it is still classified
+            install_signal_handlers()
         return _main(environ)
+    except GateSignal as sig:
+        try:
+            say("GATE_V2 FAIL signal %d" % sig.signum)
+        except BaseException:
+            pass
+        return 128 + sig.signum
     except BaseException as exc:
         try:
             say("GATE_V2 FAIL internal_error " + type(exc).__name__)
@@ -266,7 +302,7 @@ def _main(environ=None):
     say("build_runs_in_flight=%s" % ("n/a" if builds is None else builds))
     if errors:
         code = min((c for _, c, _ in errors), key=lambda c: _RANK.get(c, 9))
-        say("GATE_V2 FAIL read_failed (fail closed): " + "; ".join("%s: %s" % (n, m) for n, _, m in errors))
+        say("GATE_V2 FAIL %s (fail closed): " % _LABEL.get(code, "read_failed") + "; ".join("%s: %s" % (n, m) for n, _, m in errors))
         return code
     if deploys != 0 or builds != 0:
         say("GATE_V2 FAIL in_flight: deploy_runs_not_completed=%d build_runs_in_flight=%d role=%s" % (deploys, builds, role))
@@ -276,4 +312,4 @@ def _main(environ=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(handle_signals=True))

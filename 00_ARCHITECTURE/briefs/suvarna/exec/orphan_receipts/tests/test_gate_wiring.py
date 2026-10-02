@@ -19,9 +19,9 @@ import fixture_schema as fx
 EXEC_DIR = pathlib.Path(__file__).resolve().parent.parent
 CANON = fx.CANON
 GATE_V2_SHAS = {      # gate_v2 (PR #2938) README, verbatim
-    "prerun_gate.py": "ba65d82a338257bd7b3b1ae37df312fb382ef548291a211eadbc2538a987ef73",
+    "prerun_gate.py": "01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e",
     "run_gated.sh": "305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076",
-    "executor_standards.py": "7ca8ea9cc3422f41d38ced27f6501d666dcce78918e38e1d255b8dabcdd3c38d",
+    "executor_standards.py": "bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135",
 }
 WRONG_HASH_APPLY = ["--asset", "ga_positions", "--chart", CANON, "--apply", "--expect-plan", "0" * 64, "--expect-evidence", "0" * 64,
                     "--min-build-after", "2026-10-05T09:00:00Z"]
@@ -204,6 +204,17 @@ def test_cli_refuses_an_under_test_marker_in_an_operators_environment(tmp_path):
     assert r.returncode == 93 and "under_test_marker_refused_outside_tests" in r.stderr and not ev.exists()
 
 
+def test_cli_refuses_an_under_test_launch_outside_pytest_even_with_a_marker_the_verifier_accepts(tmp_path):
+    """GATE_V2_UNDER_TEST=1 in the operator's shell makes the verifier accept an under_test marker; the executor still refuses it
+    (no PYTEST_CURRENT_TEST): exit 93 before the arguments are parsed, no evidence directory, no database."""
+    ut = mod_es().make_marker(str(EXEC_DIR / "prerun_gate.py"), str(EXEC_DIR / "run_gated.sh"), under_test=True)
+    ev = tmp_path / "ev"
+    r = cli(tmp_path, GATE_V2_LAUNCH=ut, GATE_V2_UNDER_TEST="1", GATE_V2_PGENV="/nonexistent")
+    assert r.returncode == 93 and "ran under test" in r.stderr and r.stdout == "" and not ev.exists()
+    for argv in (["--asset", "ga_positions", "--chart", CANON, "--dry-run"], WRONG_HASH_APPLY):
+        assert cli(tmp_path, argv, GATE_V2_LAUNCH=ut, GATE_V2_UNDER_TEST="1").returncode == 93
+
+
 def test_cli_refuses_the_stray_evidence_root_variable_with_exit_95(tmp_path):
     ev = tmp_path / "stray"
     r = cli(tmp_path, GATE_V2_LAUNCH=marker(), ORPH_TEST_EVIDENCE_ROOT=str(ev))        # no PYTEST_CURRENT_TEST: an operator's shell
@@ -273,7 +284,7 @@ def test_run_gated_sets_the_marker_and_the_executor_accepts_it(tmp_path, shims):
 
 @pytest.mark.parametrize("fake,why", [(dict(FAKE_PSQL_OUT="suvarna_reader|amjis|1"), "in_flight"),
                                       (dict(FAKE_GH_OUT='[{"databaseId":1,"status":"in_progress","event":"workflow_run"}]'), "in_flight"),
-                                      (dict(FAKE_PSQL_OUT="postgres|amjis|0"), "read_failed")], ids=["build-in-flight", "deploy-in-flight", "wrong-role"])
+                                      (dict(FAKE_PSQL_OUT="postgres|amjis|0"), "wrong_role_or_database")], ids=["build-in-flight", "deploy-in-flight", "wrong-role"])
 def test_run_gated_does_not_start_the_executor_when_the_gate_blocks(tmp_path, shims, fake, why):
     r = run_gated(tmp_path, shims, WRONG_HASH_APPLY, **fake)
     assert r.returncode != 0 and "target NOT started" in r.stderr

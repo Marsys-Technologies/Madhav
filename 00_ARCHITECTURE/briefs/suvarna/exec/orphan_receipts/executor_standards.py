@@ -17,10 +17,12 @@
 
 (2) OUTCOME FILE. In EVERY mode (dry_run, applied, failed) the executor writes <evidence_dir>/outcome.json (file 0600,
     dir 0700), also on failure, so a lost stdout never hides what happened:
-        schema, status (dry_run|applied|failed), utc (ISO-8601 Z), executor_sha256, plan_hash, gate_sha256,
+        schema, status (dry_run|applied|failed|commit_state_unknown), utc (ISO-8601 Z), executor_sha256, plan_hash, gate_sha256,
         run_gated_sha256, evidence_digest (hex or null), failed_checks (list of check names; empty unless failed),
         under_test (true only when the launch marker says the run was started under the test bypass; false otherwise),
         warnings (list of short `<warning>:<ExceptionClassName>` strings; empty normally)
+    `commit_state_unknown` is for an executor whose COMMIT call itself raised (e.g. the connection dropped at the acknowledgement): the
+    server MAY have committed, so the outcome is neither applied nor failed: check the database before anything else.
     A MISSING outcome.json means "nothing was recorded, check the database": SIGKILL, power loss or a crash inside the last
     instructions after COMMIT can leave none. An executor must never read a missing outcome.json as "nothing happened".
     Use the outcome_guard() context manager: whatever happens inside (a refusal, an exception, a SystemExit, a return with
@@ -46,7 +48,7 @@ MAX_FUTURE_SKEW_S = 120
 EXIT_NO_LAUNCH = 93
 OUTCOME_FILE = "outcome.json"
 OUTCOME_SCHEMA = "executor_outcome_v1"
-STATUSES = ("dry_run", "applied", "failed")
+STATUSES = ("dry_run", "applied", "failed", "commit_state_unknown")
 _HEX64 = re.compile(r"[0-9a-f]{64}")
 _CHECK_NAME = re.compile(r"[A-Za-z0-9_.:\-]{1,80}")
 HERE = os.path.dirname(os.path.abspath(__file__))
