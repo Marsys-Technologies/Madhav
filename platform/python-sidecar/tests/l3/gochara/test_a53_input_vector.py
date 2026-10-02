@@ -74,9 +74,10 @@ def _sky(conn) -> str:
 # ── the vector and its two derivations ───────────────────────────────────────────────────────────────
 
 def test_the_vector_binds_every_named_component_and_is_deterministic(db, ephe):
-    v = _vector(db, ephe)
+    v = _vector(db, ephe, l0_consumed=("bg_transit_rules",))
     assert v["schema"] == iv.VECTOR_SCHEMA
-    assert set(v["ephemeris"]) == {"backend", "swe_version", "files", "probe_digest"}
+    assert set(v["ephemeris"]) == {"backend", "swe_version", "files", "probe_digest", "runtime"}
+    assert len(v["ephemeris"]["runtime"]["swisseph_sha256"]) == 64          # the loaded library ARTIFACT, bound
     assert set(v) == {"schema", "stored_scope", "sky_convention", "registry", "node", "ephemeris", "l0",
                       "orb_policy", "rulings_digest", "implementation"}
     assert set(v["sky_convention"]) == {"id", "content_digest"} and len(v["sky_convention"]["content_digest"]) == 64
@@ -87,7 +88,7 @@ def test_the_vector_binds_every_named_component_and_is_deterministic(db, ephe):
     assert set(v["implementation"]) == {"geometry", "evaluation", "window"}
     assert v["registry"]["census"] == [[p, "1.0.0"] for p, _ in REFS]
     assert v["orb_policy"]["activity"] == {"1.0.0": "undeclared"}   # today: no ratified activity orb anywhere
-    assert _vector(db, ephe) == v                               # deterministic
+    assert _vector(db, ephe, l0_consumed=("bg_transit_rules",)) == v      # deterministic
 
 
 def test_the_registry_digest_agrees_between_the_python_and_the_sql_derivations(db):
@@ -258,16 +259,103 @@ def test_a_live_build_refuses_a_registry_that_gained_a_sealed_version(db, ephe, 
         _live(db, stored, ephe)                                           # the census moved
 
 
+def _replay(conn, stored, ephe, refs=REFS, **over):
+    kw = dict(sky_convention_id=stored["sky_convention"]["id"], ephe_path=ephe,
+              rulings=RULINGS, files_probe=_dir_probe, series_probe=lambda ephe: "ab" * 32)
+    kw.update(over)
+    iv.verify_replay(conn, stored, refs, **kw)
+
+
 def test_historical_replay_checks_the_original_inputs_not_todays_catalogue(db, ephe, monkeypatch):
     stored = _vector(db, ephe)
     _bind_successor(db, monkeypatch)                                      # a version sealed AFTER the build
-    iv.verify_replay(db, stored, REFS)                                    # the past build still verifies
+    _replay(db, stored, ephe)                                             # the past build still verifies
     assert ivv.sql_registry_digest(db, REFS, stored["registry"]["census"]) == stored["registry"]["digest"]
     with pytest.raises(iv.InputDrift):
-        iv.verify_replay(db, dict(stored, registry=dict(stored["registry"], digest="0" * 64)), REFS)
+        _replay(db, dict(stored, registry=dict(stored["registry"], digest="0" * 64)), ephe)
     with pytest.raises(iv.InputDrift, match="no longer sealed"):
-        iv.verify_replay(db, dict(stored, registry=dict(
-            stored["registry"], census=stored["registry"]["census"] + [["P9", "1.0.0"]])), REFS)
+        _replay(db, dict(stored, registry=dict(
+            stored["registry"], census=stored["registry"]["census"] + [["P9", "1.0.0"]])), ephe)
+
+
+def test_replay_reuses_the_original_ephemeris_l0_implementation_and_policy_not_only_the_registry(
+        db, ephe, tmp_path, monkeypatch):
+    """R8-1: the replay rebuilds the WHOLE vector from the inputs available now and compares every component
+    with the stored one — and uses the L0 set the ORIGINAL build consumed, not today's choice."""
+    stored = _vector(db, ephe, l0_consumed=CONSUME)
+    _replay(db, stored, ephe)                                             # the original inputs are all still here
+    # L0 changed since the build: a replay cannot reuse the original authority
+    db.execute("UPDATE public.bg_transit_rules SET vedha_house = 11 WHERE graha = 'saturn' AND primary_house = 3")
+    with pytest.raises(iv.InputDrift, match="l0.bg_transit_rules"):
+        _replay(db, stored, ephe)
+    db.execute("UPDATE public.bg_transit_rules SET vedha_house = 12 WHERE graha = 'saturn' AND primary_house = 3")
+    _replay(db, stored, ephe)
+    # a different ephemeris directory
+    other = tmp_path / "e3"
+    other.mkdir()
+    for name in ("sepl_18.se1", "semo_18.se1", "seas_18.se1"):
+        (other / name).write_bytes(b"y" + name.encode())
+    with pytest.raises(iv.InputDrift, match="ephemeris"):
+        _replay(db, stored, str(other))
+    # a different series result (library numerics) and a different runtime library artifact
+    with pytest.raises(iv.InputDrift, match="ephemeris.probe_digest"):
+        _replay(db, stored, ephe, series_probe=lambda e: "cd" * 32)
+    monkeypatch.setattr(iv, "runtime_artifact_sha", lambda: "9" * 64)
+    with pytest.raises(iv.InputDrift, match="ephemeris.runtime"):
+        _replay(db, stored, ephe)
+    monkeypatch.undo()
+    # different policy (rulings) and different implementation source
+    with pytest.raises(iv.InputDrift, match="rulings_digest"):
+        _replay(db, stored, ephe, rulings=RULINGS + [{"id": "NEW"}])
+    mods = {"geometry": (), "evaluation": (), "window": ("services.gochara_kernel.window_sweep",)}
+    with pytest.raises(iv.InputDrift, match="implementation"):
+        _replay(db, stored, ephe, modules=mods)
+
+
+def test_a_live_check_uses_the_manifests_own_l0_set(db, ephe):
+    """The consumed-authority set is part of what a manifest binds: a live check recomputes exactly that set."""
+    stored_none = _vector(db, ephe)
+    _live(db, stored_none, ephe)                                          # no L0 bound ⇒ none loaded
+    stored = _vector(db, ephe, l0_consumed=CONSUME)
+    _live(db, stored, ephe)
+    db.execute("UPDATE public.bg_transit_rules SET vedha_house = 11 WHERE graha = 'saturn' AND primary_house = 3")
+    _live(db, stored_none, ephe)                                          # an unconsumed authority cannot drift it
+    with pytest.raises(iv.InputDrift, match="l0.bg_transit_rules"):
+        _live(db, stored, ephe)
+
+
+def test_the_independent_input_check_derives_every_derivable_component_and_names_the_rest(db, ephe):
+    stored = _vector(db, ephe, l0_consumed=CONSUME)
+    mods = iv.IMPLEMENTATION_MODULES
+    out = ivv.verify_inputs(db, stored, ephe_path=ephe, modules=mods, path_refs=REFS)
+    assert set(out["derived"]) == {"registry", "l0", "sky_convention", "ephemeris.files", "ephemeris.runtime",
+                                   "node", "implementation"}
+    assert set(out["not_derived"]) == {"orb_policy", "rulings_digest"}      # named: a pass never claims them
+    # each independently derived component is individually caught
+    for label, tamper, match in (
+            ("l0", lambda v: dict(v, l0={"bg_transit_rules": "0" * 64}), "l0.bg_transit_rules"),
+            ("sky", lambda v: dict(v, sky_convention=dict(v["sky_convention"], content_digest="0" * 64)),
+             "sky_convention"),
+            ("file", lambda v: dict(v, ephemeris=dict(v["ephemeris"], files={
+                **v["ephemeris"]["files"], "sepl_18.se1": "0" * 64})), "ephemeris.files.sepl_18.se1"),
+            ("runtime", lambda v: dict(v, ephemeris=dict(v["ephemeris"], runtime={"swisseph_sha256": "0" * 64})),
+             "ephemeris.runtime"),
+            ("node", lambda v: dict(v, node=dict(v["node"], model="true")), "node"),
+            ("impl", lambda v: dict(v, implementation=dict(v["implementation"], window="0" * 64)),
+             "implementation"),
+            ("registry", lambda v: dict(v, registry=dict(v["registry"], digest="0" * 64)), "registry.digest")):
+        with pytest.raises(RuntimeError, match=match):
+            ivv.verify_inputs(db, tamper(stored), ephe_path=ephe, modules=mods, path_refs=REFS)
+    no_runtime = dict(stored, ephemeris={k: v for k, v in stored["ephemeris"].items() if k != "runtime"})
+    with pytest.raises(RuntimeError, match="binds no runtime library identity"):
+        ivv.verify_inputs(db, no_runtime, ephe_path=ephe, modules=mods, path_refs=REFS)
+
+
+def test_the_runtime_artifact_identity_is_the_loaded_library_file_and_both_derivations_agree():
+    import swisseph
+    a = iv.runtime_artifact_sha()
+    assert a == ivv.runtime_library_digest() and len(a) == 64
+    assert a == iv._file_sha(Path(swisseph.__file__))
 
 
 # ═══ AM-16 reconciliation with Stream B's model (steward M20261002T014514-c929) ═══════════════════════
@@ -325,33 +413,101 @@ def test_the_probe_follows_file_block_boundaries_and_refuses_the_next_block_when
         iv.probe_opened_files(EPHE_PATH, ("Sun",), 2415020.5, 2634166.5)             # … 2500: next block absent
 
 
-# (2) L0 identities ───────────────────────────────────────────────────────────────────────────────────
+# (2) L0 identities — the authority the PAIR LOADER consumes (R8-1) ──────────────────────────────────
 
-def test_l0_binds_the_consumed_vedha_rows_and_says_which_path_consumes_them(db, ephe):
+from services.gochara_rules import vedha_derive  # noqa: E402
+
+from .test_a53_inventory import L0_VEDHA_ROWS  # noqa: E402
+
+CONSUME = ("bg_transit_rules",)
+
+
+def _vedha_digest(db, ephe):
+    return _vector(db, ephe, l0_consumed=CONSUME)["l0"]["bg_transit_rules"]
+
+
+def test_l0_binds_the_authority_the_pair_loader_consumes_with_the_loaders_own_digest(db, ephe):
     assert iv.L0_CONSUMED["bg_transit_rules"][0] == "P2"                          # the path that reads it
     assert "bg_transit_av_gates" not in iv.L0_CONSUMED                            # P5 is held: not consumed
-    base = _vector(db, ephe)
-    assert set(base["l0"]) == {"bg_transit_rules"}
+    loaded = vedha_derive.pairs_from_rows(L0_VEDHA_ROWS)
+    assert loaded.census["total"] == 42 and loaded.census["node_rows"] == {"Rahu": 3, "Ketu": 3}
+    assert _vedha_digest(db, ephe) == loaded.content_digest                      # all 42 rows, the loader's identity
+    # ... derived a second, independent way (Postgres canonical JSON; no loader, no builder code)
+    assert ivv.sql_l0_digest(db) == loaded.content_digest
 
 
-def test_a_changed_vedha_row_moves_l0_and_a_non_vedha_row_or_a_surrogate_id_does_not(db, ephe):
-    base = _vector(db, ephe)
-    db.execute("INSERT INTO public.bg_transit_rules (rule_type, graha, primary_house, vedha_house, phala,"
-               " classical_citation) VALUES ('favourable','sun',6,NULL,'x','c')")          # not consumed
-    assert _vector(db, ephe)["l0"] == base["l0"]
-    db.execute("UPDATE public.bg_transit_rules SET id = id + 1000")                          # a surrogate key
-    assert _vector(db, ephe)["l0"] == base["l0"]
-    db.execute("UPDATE public.bg_transit_rules SET vedha_house = 11 WHERE graha = 'saturn' AND rule_type = 'vedha'")
-    assert iv.diff_vectors(base, _vector(db, ephe)) == ["l0.bg_transit_rules"]
-
-
-def test_an_absent_or_empty_l0_table_is_refused(db, ephe):
-    db.execute("DELETE FROM public.bg_transit_rules")
-    with pytest.raises(iv.InputDrift, match="no consumed rows"):
-        _vector(db, ephe)
+def test_an_authority_the_build_does_not_consume_is_not_a_dependency(db, ephe):
+    """`VEDHA_SOURCE` is unbound today: nothing reads the vedha pairs, so the table is neither loaded nor bound —
+    its absence or damage cannot block (or silently shape) a build that never uses it."""
+    assert _vector(db, ephe)["l0"] == {}
     db.execute("DROP TABLE public.bg_transit_rules")
+    assert _vector(db, ephe)["l0"] == {}
     with pytest.raises(iv.InputDrift, match="not readable"):
-        _vector(db, ephe)
+        _vector(db, ephe, l0_consumed=CONSUME)
+    assert db.execute("SELECT 1").fetchone()[0] == 1                 # the failed read did not poison the connection
+
+
+def test_the_writers_consumption_set_follows_the_vedha_binding(monkeypatch):
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+    assert writer_mod.VEDHA_SOURCE is None and writer_mod._l0_consumed() == ()
+    monkeypatch.setattr(writer_mod, "VEDHA_SOURCE", lambda *a: None)
+    assert writer_mod._l0_consumed() == ("bg_transit_rules",)
+
+
+def test_row_deletion_pair_alteration_and_citation_alteration_are_each_caught(db, ephe):
+    base = _vedha_digest(db, ephe)
+    # (a) a pair ALTERED: still a valid authority, a different identity — in both derivations
+    db.execute("UPDATE public.bg_transit_rules SET vedha_house = CASE vedha_house WHEN 12 THEN 11 ELSE 12 END"
+               " WHERE graha = 'jupiter' AND primary_house = 2")
+    moved = _vedha_digest(db, ephe)
+    assert moved != base and ivv.sql_l0_digest(db) == moved
+    assert iv.diff_vectors(_vector(db, ephe, l0_consumed=CONSUME), _vector(db, ephe, l0_consumed=CONSUME)) == []
+    # (b) a citation moved to ANOTHER supported Phaladīpikā XXVI.3–8 line: valid, but the identity moves
+    db.execute("UPDATE public.bg_transit_rules SET classical_citation = replace(classical_citation, 'Sloka 7',"
+               " 'Sloka 6') WHERE graha = 'jupiter' AND primary_house = 2")
+    cited = _vedha_digest(db, ephe)
+    assert cited not in (base, moved) and ivv.sql_l0_digest(db) == cited
+    # (c) a node row altered (all 42 rows are consumed): the identity moves
+    db.execute("UPDATE public.bg_transit_rules SET vedha_house = vedha_house % 12 + 1 WHERE id ="
+               " (SELECT min(id) FROM public.bg_transit_rules WHERE graha = 'rahu')")
+    node = _vedha_digest(db, ephe)
+    assert node not in (base, moved, cited) and ivv.sql_l0_digest(db) == node
+
+
+def test_a_deleted_row_an_uncited_row_and_a_fabricated_citation_are_refused_by_the_loader(db, ephe):
+    for sql, why in (
+            ("DELETE FROM public.bg_transit_rules WHERE graha = 'sun' AND primary_house = 3", "incomplete"),
+            ("UPDATE public.bg_transit_rules SET classical_citation = 'folk tradition' WHERE graha = 'venus'"
+             " AND primary_house = 12", "unsupported or missing citation"),
+            ("UPDATE public.bg_transit_rules SET classical_citation = 'Phaladipika Adh. XXVI, Sloka 9 — "
+             "phaladeepika:PG324:C1' WHERE graha = 'saturn' AND primary_house = 3", "unsupported or missing citation"),
+            ("UPDATE public.bg_transit_rules SET classical_citation = 'Phaladipika Adh. XXVI, Sloka 3 — "
+             "phaladeepika:PG322:C1' WHERE graha = 'rahu'", "ND-NODE-VEDHA")):
+        db.execute("BEGIN")
+        try:
+            db.execute(sql)
+            with pytest.raises(iv.InputDrift, match=why):
+                _vector(db, ephe, l0_consumed=CONSUME)
+        finally:
+            db.execute("ROLLBACK")
+    assert _vedha_digest(db, ephe) == vedha_derive.pairs_from_rows(L0_VEDHA_ROWS).content_digest   # restored
+
+
+def test_a_non_vedha_row_or_a_surrogate_id_does_not_move_l0(db, ephe):
+    base = _vedha_digest(db, ephe)
+    db.execute("INSERT INTO public.bg_transit_rules (rule_type, graha, primary_house, vedha_house, phala,"
+               " classical_citation) VALUES ('unfavourable','sun',6,NULL,'x','c')")          # carries no vedha house
+    assert _vedha_digest(db, ephe) == base
+    db.execute("UPDATE public.bg_transit_rules SET id = id + 1000")                          # a surrogate key
+    assert _vedha_digest(db, ephe) == base
+
+
+def test_an_empty_authority_is_refused_not_bound_as_an_empty_digest(db, ephe):
+    db.execute("DELETE FROM public.bg_transit_rules")
+    with pytest.raises(iv.InputDrift, match="incomplete"):
+        _vector(db, ephe, l0_consumed=CONSUME)
+    with pytest.raises(RuntimeError, match="no vedha rows"):
+        ivv.sql_l0_digest(db)
 
 
 # (3) the implementation lists cover the writer's import closure ──────────────────────────────────────
@@ -623,3 +779,14 @@ def test_the_writer_module_itself_is_in_a_stage_list():
     assert "pipeline.orchestrator.writers.ka_gochara_v5" in listed
     assert {"services.gochara_kernel.substrate", "services.gochara_kernel.inventory",
             "services.gochara_rules.permission", "services.gochara_rules.frames"} <= listed
+
+
+def test_the_runtime_artifact_extends_the_serializer_without_moving_streams_bs_frozen_literals():
+    """`ephemeris.runtime` is present exactly when the build supplies the runtime artifact; B's frozen inputs
+    (which predate it) still serialize byte-identically — the frozen-vector tests above are that proof — and the
+    extended shape is itself a deterministic function of its inputs."""
+    assert "runtime" not in iv.assemble_vector(_BASE)["ephemeris"]
+    a = iv.assemble_vector({**_BASE, "runtime_artifact": "a" * 64})
+    b = iv.assemble_vector({**_BASE, "runtime_artifact": "b" * 64})
+    assert a["ephemeris"]["runtime"] == {"swisseph_sha256": "a" * 64} and a != b
+    assert iv.canonical_json(a) == iv.canonical_json(iv.assemble_vector({**_BASE, "runtime_artifact": "a" * 64}))

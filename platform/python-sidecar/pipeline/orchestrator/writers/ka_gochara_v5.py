@@ -184,9 +184,18 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
         sky_convention_id=SkyEventStore(ctx.db_conn).register_convention(),
         ephe_path=ctx.config.get("ephe_path"), path_refs=gk_rule_registry.bound_path_refs(),
         rulings=_applicable_rulings())
-    # ... and the registry component is re-derived the independent way (Postgres canonical JSON)
-    gk_input_vector_verifier.verify_registry_digest(
-        ctx.db_conn, gk_rule_registry.bound_path_refs(), stored["registry"]["digest"])
+    # ... and every component that can be derived WITHOUT the builder's code is (registry + L0 + sky in
+    # Postgres, ephemeris files + runtime library + implementation by direct hashing)
+    gk_input_vector_verifier.verify_inputs(
+        ctx.db_conn, stored, ephe_path=ctx.config.get("ephe_path"),
+        modules=gk_input_vector.IMPLEMENTATION_MODULES, path_refs=gk_rule_registry.bound_path_refs())
+
+
+def _l0_consumed() -> tuple[str, ...]:
+    """The L0 authorities this build ACTUALLY consumes (R8-1). The vedha pairs feed P2's vedha operand only;
+    while `VEDHA_SOURCE` is unbound nothing reads them, so `bg_transit_rules` is not a dependency of the
+    build and is neither loaded nor bound."""
+    return ("bg_transit_rules",) if VEDHA_SOURCE is not None else ()
 
 
 class ChartRefusal(Exception):
@@ -423,11 +432,13 @@ class GocharaV5Writer(WriterBase):
             rstore.ensure_bridge(kala_cid, sky_cid)
             vector = gk_input_vector.build_input_vector(
                 ctx.db_conn, sky_convention_id=sky_cid, ephe_path=ephe_path,
-                path_refs=gk_rule_registry.bound_path_refs(), rulings=_applicable_rulings())
-            # the registry component is derived a SECOND way (Postgres' own canonical JSON + sha256)
-            # and the two must agree before the identity is bound
-            gk_input_vector_verifier.verify_registry_digest(
-                ctx.db_conn, gk_rule_registry.bound_path_refs(), vector["registry"]["digest"])
+                path_refs=gk_rule_registry.bound_path_refs(), rulings=_applicable_rulings(),
+                l0_consumed=_l0_consumed())
+            # every component that can be derived without the builder's code is derived a SECOND way and the two
+            # must agree before the identity is bound
+            gk_input_vector_verifier.verify_inputs(
+                ctx.db_conn, vector, ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
+                path_refs=gk_rule_registry.bound_path_refs())
             jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
             _lon, retflag = calc_sidereal_lon("Sun", jd, ephe_path)
             if not (retflag & 2):

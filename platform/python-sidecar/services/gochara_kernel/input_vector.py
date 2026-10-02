@@ -56,17 +56,17 @@ IMPLEMENTATION_MODULES = {
         "rule_registry")) + ("pipeline.orchestrator.writers.ka_gochara_v5",) + tuple(_R + m for m in (
         "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "flat_selector", "frames",
         "kernel_factor", "nature", "p6", "permission", "predicates", "records", "registry", "score", "strength",
-        "valence", "vedha")),
+        "valence", "vedha", "vedha_derive")),
     "window": tuple(_K + m for m in ("window_store", "window_sweep", "window_verifier")),
 }
 
-# The L0 tables a path READS, and which. `bg_transit_rules` (the cited vedha rows) is consumed by P2's vedha
-# operand (AM-18); `bg_transit_av_gates` would be consumed by P5 only — held by ruling ST-P5-HOLD, so it is
-# NOT consumed by this build and is not bound (a held path's input is not an input).
-L0_CONSUMED = {
-    "bg_transit_rules": ("P2", "SELECT to_jsonb(t) - 'id' FROM public.bg_transit_rules t"
-                               " WHERE t.rule_type = 'vedha' ORDER BY t.graha, t.rule_type, t.primary_house"),
-}
+# The L0 authorities a path READS, and which loader reads them (R8-1). `bg_transit_rules` is consumed ONLY
+# through Stream B's `vedha_derive.load_pairs` (rows carrying a vedha house — the `favourable` rows, 36 cited
+# classical + 6 L0-flagged UNSOURCED node rows; validated and census-checked there), so its identity is that
+# loader's `content_digest` — never a selection of this module's own. It is a build dependency ONLY when the
+# build actually consumes it (the vedha operand bound — `VEDHA_SOURCE`); an unconsumed authority is not an
+# input (`bg_transit_av_gates` would be consumed by P5 only — held by ruling ST-P5-HOLD — so it is not bound).
+L0_CONSUMED = {"bg_transit_rules": ("P2", "services.gochara_rules.vedha_derive.load_pairs")}
 
 
 class InputDrift(RuntimeError):
@@ -163,6 +163,17 @@ def registry_digest(conn, path_refs: Iterable[tuple[str, str]], *, census_overri
     return registry_digest_of(registry_payload(conn, path_refs, census_override=census_override))
 
 
+def _ephemeris_component(inp: dict) -> dict:
+    out = {"backend": "swieph", "swe_version": inp["swe_version"],
+           "files": dict(sorted(inp["opened_files"].items())), "probe_digest": inp["probe_digest"]}
+    # R8-1: the runtime library ARTIFACT (the loaded swisseph extension's sha256) — a version string plus 16 probe
+    # results do not prove identical behaviour at every unprobed instant. Present whenever the build supplies it
+    # (production always does); absent only in inputs that predate it (B's frozen literals stay byte-identical).
+    if inp.get("runtime_artifact") is not None:
+        out["runtime"] = {"swisseph_sha256": inp["runtime_artifact"]}
+    return out
+
+
 def assemble_vector(inp: dict) -> dict:
     """The vector from already-obtained inputs, PURE — the single serializer `build_input_vector` and the
     frozen test vectors (`am16_vectors_frozen_v1.json`, literal preimages + expected sha256) both use."""
@@ -176,9 +187,11 @@ def assemble_vector(inp: dict) -> dict:
         "registry": {"digest": registry_digest_of(inp["registry"]),
                      "census": sorted([list(c) for c in inp["registry"]["census"]])},
         "node": inp["node"],
-        "ephemeris": {"backend": "swieph", "swe_version": inp["swe_version"],
-                      "files": dict(sorted(inp["opened_files"].items())), "probe_digest": inp["probe_digest"]},
-        "l0": {k: _sha(canonical_json(v)) for k, v in sorted(inp["l0_rows"].items())},
+        "ephemeris": _ephemeris_component(inp),
+        # `l0_rows` (raw rows hashed here — the frozen vectors) and `l0_digests` (an identity already computed by
+        # the authority's own loader — production) together; both name the build's CONSUMED authorities only
+        "l0": {k: v for k, v in sorted({**{k: _sha(canonical_json(v)) for k, v in inp.get("l0_rows", {}).items()},
+                                        **inp.get("l0_digests", {})}.items())},
         "orb_policy": {"admission_digest": _sha(canonical_json(inp["admission_orb"])),
                        "activity": inp["activity_orb"]},
         "rulings_digest": _sha(canonical_json(sorted(inp["rulings"], key=canonical_json))),
@@ -280,7 +293,18 @@ def ephemeris_identity(ephe_path: str | None, *, bodies: Iterable[str], jd_lo: f
         raise InputDrift(f"ephemeris: no .se1 file was opened under {ephe_path!r} — nothing to bind")
     return {"backend": "swieph", "swe_version": swe.version,
             "files": {name: _file_sha(Path(path)) for name, path in sorted(opened.items())},
-            "probe_digest": (series_probe or probe_series_digest)(ephe_path)}
+            "probe_digest": (series_probe or probe_series_digest)(ephe_path),
+            "runtime_artifact": runtime_artifact_sha()}
+
+
+def runtime_artifact_sha() -> str:
+    """sha256 of the swisseph runtime library file actually LOADED (the extension module's own file) — the
+    implementation the series numbers come from, bound beside its version string."""
+    import swisseph as swe
+    path = getattr(swe, "__file__", None)
+    if not path or not Path(path).is_file():
+        raise InputDrift("ephemeris: the loaded swisseph library has no file to bind (no runtime identity)")
+    return _file_sha(Path(path))
 
 
 def node_identity() -> dict:
@@ -298,12 +322,12 @@ def admission_orb_digest() -> str:
     return _sha(canonical_json({"orb_table": ORB_TABLE, "point_orb_source": POINT_ORB_SOURCE}))
 
 
-def activity_orb_states(conn, path_refs) -> dict:
+def activity_orb_states(conn, path_refs, census_override=None) -> dict:
     """The ACTIVITY orb as the persisted `activity_kernel` rows state it: per row version, the orb
     (omitted when unratified) — restated explicitly so a ratification is visible in the vector
     itself, not only inside the registry digest."""
     out = {}
-    for f in registry_payload(conn, path_refs)["factors"]:
+    for f in registry_payload(conn, path_refs, census_override=census_override)["factors"]:
         if f["factor_id"] == "activity_kernel":
             sel = f["operand_selector"]
             if sel.get("orb_state") == "ratified":
@@ -314,24 +338,24 @@ def activity_orb_states(conn, path_refs) -> dict:
     return out
 
 
-def l0_identities(conn) -> dict:
-    """{asset_id: sha256(canonical rows consumed, total order)} — see `l0_rows`."""
-    return {k: _sha(canonical_json(v)) for k, v in sorted(l0_rows(conn).items())}
-
-
-def l0_rows(conn) -> dict:
-    """{asset_id: the consumed rows, total order} for every L0 table a path reads (`L0_CONSUMED`; the
-    surrogate `id` is not content). An absent table is refused — nothing to bind."""
+def l0_identities(conn, consumed: Iterable[str]) -> dict:
+    """{asset_id: content digest of the rows the build CONSUMES} for exactly the L0 authorities named in
+    `consumed` (the build's actual consumption — never "every table a path could read"). `bg_transit_rules` is
+    read through B's validated loader: an absent table, an empty/incomplete/changed authority, an uncited or
+    fabricated row is refused by name; the digest is the loader's own `content_digest` (all 42 consumed rows)."""
+    from services.gochara_rules import vedha_derive
     out = {}
-    for asset, (_path, sql) in sorted(L0_CONSUMED.items()):
+    for asset in sorted(set(consumed)):
+        if asset not in L0_CONSUMED:
+            raise InputDrift(f"l0: {asset!r} is not a known consumed authority (known: {sorted(L0_CONSUMED)})")
         try:
-            rows = [r[0] if not isinstance(r, dict) else next(iter(r.values()))
-                    for r in conn.execute(sql).fetchall()]
+            with conn.transaction():                  # a savepoint: a missing table must not poison the caller
+                pairs = vedha_derive.load_pairs(conn.cursor())
+        except vedha_derive.VedhaPairsError as exc:
+            raise InputDrift(f"l0: {asset} is not the validated authority the pair loader consumes: {exc}") from exc
         except Exception as exc:  # noqa: BLE001 - a missing L0 table must name itself, not leak a driver error
             raise InputDrift(f"l0: {asset} is not readable ({type(exc).__name__}) — nothing to bind") from exc
-        if not rows:
-            raise InputDrift(f"l0: {asset} has no consumed rows — an empty reference is not an identity")
-        out[asset] = rows
+        out[asset] = pairs.content_digest
     return out
 
 
@@ -366,12 +390,15 @@ def implementation_digests(modules: dict | None = None) -> dict:
 def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
                        path_refs: Iterable[tuple[str, str]], rulings: Iterable[dict],
                        horizon: tuple | None = None, bodies: Iterable[str] | None = None,
-                       files_probe=None, series_probe=None, modules: dict | None = None) -> dict:
+                       files_probe=None, series_probe=None, modules: dict | None = None,
+                       l0_consumed: Iterable[str] = (), census_override=None) -> dict:
+    """The vector of what this build CONSUMES. `l0_consumed` names the L0 authorities actually read (none ⇒
+    none is a dependency); `census_override` (historical replay) restates the ORIGINAL sealed-version census."""
     from .substrate import SUBSTRATE_BODIES, SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START
     from .convention import ORB_TABLE
     from .record_store import POINT_ORB_SOURCE
     refs = list(path_refs)
-    payload = registry_payload(conn, refs)
+    payload = registry_payload(conn, refs, census_override=census_override)
     # the CONSUMED range: the substrate domain every arc is built over, widened by the class horizon
     lo = min(x for x in (SUBSTRATE_DOMAIN_START, horizon[0] if horizon else None) if x is not None)
     hi = max(x for x in (SUBSTRATE_DOMAIN_END, horizon[1] if horizon else None) if x is not None)
@@ -387,9 +414,10 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
         "stored_scope": STORED_SCOPE, "sky_id": sky_convention_id, "sky_vector": sky_vector,
         "registry": payload, "node": node_identity(), "swe_version": eph["swe_version"],
         "opened_files": eph["files"], "probe_digest": eph["probe_digest"],
-        "l0_rows": l0_rows(conn),
+        "runtime_artifact": eph.get("runtime_artifact"),
+        "l0_digests": l0_identities(conn, l0_consumed),
         "admission_orb": {"orb_table": ORB_TABLE, "point_orb_source": POINT_ORB_SOURCE},
-        "activity_orb": activity_orb_states(conn, refs),
+        "activity_orb": activity_orb_states(conn, refs, census_override=census_override),
         "rulings": list(rulings),
         "impl_modules": _implementation_modules(modules),
     })
@@ -414,22 +442,33 @@ def diff_vectors(stored: dict, live: dict) -> list[str]:
     return out
 
 
-def verify_replay(conn, stored: dict, path_refs: Iterable[tuple[str, str]]) -> None:
-    """HISTORICAL REPLAY checks the ORIGINAL bound inputs: the registry digest recomputed over the
-    ORIGINAL references and the ORIGINAL census — never a fingerprint of today's catalogue (versions
-    sealed since do not move a past build's identity)."""
+def verify_replay(conn, stored: dict, path_refs: Iterable[tuple[str, str]], **kw) -> None:
+    """HISTORICAL REPLAY checks the ORIGINAL bound inputs, ALL of them (R8-1): the vector is rebuilt from the
+    inputs a replay would actually consume — the registry rows over the ORIGINAL references and the ORIGINAL
+    census (versions sealed since do not move a past build's identity), the SAME L0 authorities the original
+    build consumed (never today's choice), the ephemeris files + runtime library, the sky convention, the
+    orb policies, the rulings and the implementation sources — and compared component by component with the
+    stored vector. A replay whose ephemeris, L0, implementation or policy inputs are not the original ones is
+    refused naming the component: it is a NEW generation, not a replay. `kw` = the same input arguments
+    `build_input_vector` takes (sky_convention_id, ephe_path, rulings, …)."""
     if stored.get("schema") != VECTOR_SCHEMA:
         raise InputDrift(f"manifest vector schema {stored.get('schema')!r} != {VECTOR_SCHEMA!r}")
-    got = registry_digest(conn, path_refs, census_override=stored["registry"]["census"])
-    if got != stored["registry"]["digest"]:
-        raise InputDrift(f"replay: the registry rows the original build consumed changed "
-                         f"({got} != {stored['registry']['digest']})")
+    kw.setdefault("l0_consumed", tuple(stored.get("l0", {})))
+    replayed = build_input_vector(conn, path_refs=path_refs, census_override=stored["registry"]["census"], **kw)
+    diff = diff_vectors(stored, replayed)
+    if diff:
+        raise InputDrift("replay: the inputs the original build consumed are not the ones available now at: "
+                         + ", ".join(diff) + " — a replay must reuse the ORIGINAL ephemeris, L0, implementation "
+                         "and policy inputs; anything else is a new generation")
 
 
 def verify_live(conn, stored: dict, **kw) -> None:
-    """A LIVE build consumes today's inputs: they must equal the vector its manifest was bound to."""
+    """A LIVE build consumes today's inputs: they must equal the vector its manifest was bound to — including
+    which L0 authorities it consumes (the stored vector's own set, so a manifest never silently grows or loses
+    a dependency)."""
     if stored.get("schema") != VECTOR_SCHEMA:
         raise InputDrift(f"manifest vector schema {stored.get('schema')!r} != {VECTOR_SCHEMA!r}")
+    kw.setdefault("l0_consumed", tuple(stored.get("l0", {})))
     live = build_input_vector(conn, **kw)
     diff = diff_vectors(stored, live)
     if diff:
@@ -439,7 +478,7 @@ def verify_live(conn, stored: dict, **kw) -> None:
 
 
 __all__ = ["EXCLUDED_AUDIT_FIELDS", "IMPLEMENTATION_MODULES", "InputDrift", "REGISTRY_DIGEST_SCHEMA",
-           "L0_CONSUMED", "VECTOR_SCHEMA", "activity_orb_states", "l0_identities",
+           "L0_CONSUMED", "VECTOR_SCHEMA", "activity_orb_states", "l0_identities", "runtime_artifact_sha",
            "probe_opened_files", "sky_convention_identity", "admission_orb_digest", "build_input_vector",
            "STORED_SCOPE", "assemble_vector", "canonical_json", "diff_vectors", "ephemeris_identity", "implementation_digests",
            "node_identity", "probe_series_digest", "registry_digest", "registry_digest_of",

@@ -942,3 +942,25 @@ Steward M20261002T032818-3cf4 (scope: the all-NULL `5.0` candidate; numeric acti
   (refused), unknown-H (every version excluded with the ruling — never `superseded` with no superseder), held P5, a computed-empty successor, P1/P4; planner == verifier for six scenarios; on the REAL 1206
   schema the supersession plan passes `ka_gochara_search_completeness_violations` and the old all-included behaviour is flagged `multiple_included_versions`; replay under a changed configuration
   reproduces the stored digest. 11 mutations, all killed.
+
+### Design v1.23 (2026-10-02) — Codex round 8, R8-1 (the consumed-input identity)
+
+* **L0 = what the pair loader consumes.** `input_vector.py` selected `rule_type = 'vedha'`; the authority (and B's loader) is the 42 rows carrying a vedha house, all `favourable` — on the real
+  data the selection was empty and `l0_rows` raised, masked by four synthetic `'vedha'` rows in `test_a53_inventory.py`. The L0 identity is now `vedha_derive.load_pairs(...).content_digest` (B's loader:
+  validated, census-checked 36 cited + 6 UNSOURCED node rows; a missing/uncited/fabricated/duplicated row or an incomplete authority is refused by name → `InputDrift`), bound at BOTH boundaries — the
+  builder through the loader, the verifier by an independent Postgres derivation (`input_vector_verifier.sql_l0_digest`: the same rows, canonical JSON + sha256 in the database, no loader code). The integration
+  fixture is now **B's validated 42-row exhibit** (`l0_vedha_rows_2026_10_02.json`), with row-deletion / pair-alteration / citation-alteration / node-row / non-vedha-row / surrogate-id / empty-authority tests.
+  `assemble_vector` takes `l0_digests` (an identity computed by the authority's own loader) beside the frozen-vector `l0_rows`, so B's 13 frozen literals stay byte-identical.
+* **A dependency only when consumed.** `build_input_vector(l0_consumed=…)`; the writer's `_l0_consumed()` is `("bg_transit_rules",)` only while `VEDHA_SOURCE` is bound (today `None` ⇒ `l0 == {}`: the table is
+  neither loaded nor bound and cannot block or shape the build — tested with the table DROPPED). `verify_live` / `verify_replay` default the consumed set to the STORED vector's own (a manifest never silently
+  gains or loses a dependency). `vedha_derive` joins the evaluation implementation stage (the AST closure test caught it).
+* **Complete historical replay.** `verify_replay(conn, stored, refs, **inputs)` rebuilds the WHOLE vector over the original references + original census + the ORIGINAL L0 set and compares every component
+  (ephemeris files, probe, runtime library, L0, implementation, orb policy, rulings, sky convention) — an L0 / ephemeris / series / runtime / policy / implementation change is refused by component name. The
+  old registry-only form is gone.
+* **Independent input check beyond the registry** (`input_vector_verifier.verify_inputs`): registry + L0 + sky-convention content in Postgres; opened-file digests and the swisseph runtime library by direct
+  hashing (located through `importlib.util.find_spec`, not the builder's helpers); node identity from the verifier's own literals; implementation sources re-hashed independently (the module LISTS are the
+  governing-code closure the AST test checks). It returns `{"derived": […], "not_derived": ["orb_policy", "rulings_digest"]}` — those two live in builder code and are named, so a pass never claims them. Called at
+  the manifest bind and at every substep's live check.
+* **Runtime artifact identity.** `ephemeris.runtime = {swisseph_sha256}` (sha256 of the loaded extension file) is bound beside the version string and the 16-instant probe; present whenever the build supplies it
+  (production always) and absent only for inputs that predate it — B's frozen literals are unchanged. **This adds a key B's fixture does not yet contain: asking B to extend the frozen cases.**
+* 13 mutations, all killed. tests/l3: only the 3 pre-existing wp10_cutover failures.

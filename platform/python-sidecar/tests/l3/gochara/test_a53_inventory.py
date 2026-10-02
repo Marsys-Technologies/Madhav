@@ -7,6 +7,7 @@ tests are where a shape change shows.
 """
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,6 +41,8 @@ def _row(i, level, lord, a, b):
 
 #: parent of each fixture row (an AD nests in its MD, a PD in its AD — §4.0 linkage)
 DASHA_PARENT = {1: None, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3}
+L0_VEDHA_ROWS = [tuple(r) for r in json.loads(
+    (Path(__file__).resolve().parents[1] / "gochara_rules" / "fixtures" / "l0_vedha_rows_2026_10_02.json").read_text())]
 PINNED_BUILD = "1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb"      # the frozen §4.0 contract build
 
 
@@ -251,10 +254,12 @@ def _populate_am5_database(conn):
                     " primary_house INTEGER NOT NULL, vedha_house INTEGER, phala TEXT NOT NULL,"
                     " classical_citation TEXT NOT NULL, rule_notes TEXT,"
                     " UNIQUE (graha, rule_type, primary_house))")
-        for graha, house, vedha in (("sun", 3, 9), ("sun", 6, 12), ("saturn", 3, 12), ("jupiter", 2, 12)):
+        # the VALIDATED 42-row authority exhibit (36 cited classical + 6 L0-flagged UNSOURCED node rows, read
+        # read-only from production 2026-10-02 — Stream B's literal fixture), exactly what the pair loader consumes
+        for graha, house, vedha, citation, rule_type in L0_VEDHA_ROWS:
             cur.execute("INSERT INTO public.bg_transit_rules (rule_type, graha, primary_house, vedha_house,"
-                        " phala, classical_citation) VALUES ('vedha', %s, %s, %s, 'x', 'Phaladeepika XXVI')",
-                        (graha, house, vedha))
+                        " phala, classical_citation) VALUES (%s, %s, %s, %s, 'x', %s)",
+                        (rule_type, graha, house, vedha, citation))
         for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql"]:
             cur.execute((MIGRATIONS / fname).read_text())
             cur.execute("INSERT INTO public._migrations_applied(filename) VALUES (%s)",
