@@ -21,13 +21,13 @@ FINDING() { findings=$((findings+1)); echo "  FINDING $1"; if [ "$STRICT" = 1 ];
 
 echo "== S0 inputs =="
 M="$REPO/platform/migrations"
-WINDOW=(1153_gochara_sky_event_substrate.sql 1154_gochara_rule_path_registry.sql 1155_gochara_relationship_record.sql 1156_gochara_eval_window.sql 1157_gochara_av_polarity_declaration.sql 1204_gochara_av_qualifier_object_role.sql 1206_gochara_search_inventory_completeness.sql 1232_gochara_search_moon_scope_domain.sql 1233_gochara_p1_period_anchor.sql)
+WINDOW=(1153_gochara_sky_event_substrate.sql 1154_gochara_rule_path_registry.sql 1155_gochara_relationship_record.sql 1156_gochara_eval_window.sql 1157_gochara_av_polarity_declaration.sql 1204_gochara_av_qualifier_object_role.sql 1206_gochara_search_inventory_completeness.sql 1232_gochara_search_moon_scope_domain.sql 1233_gochara_p1_period_anchor.sql 1240_gochara_window_verification_gate.sql)
 echo "integration ref: $(git -C "$REPO" rev-parse HEAD)  (record this SHA in the rehearsal record)"
 for f in "${WINDOW[@]}"; do printf '  %s  %s\n' "$(shasum -a 256 "$M/$f" | cut -c1-16)" "$f"; done
 if [ -f "$HERE/EXPECTED_WINDOW_SHA256.txt" ]; then
   (cd "$M" && shasum -a 256 -c "$HERE/EXPECTED_WINDOW_SHA256.txt" >/dev/null) && echo "  window file hashes match EXPECTED_WINDOW_SHA256.txt" || { echo "  FAIL window file hashes differ from EXPECTED_WINDOW_SHA256.txt"; exit 1; }
 fi
-for extra in "$M"/1240_*.sql; do [ -f "$extra" ] && WINDOW+=("$(basename "$extra")") && echo "  + $(basename "$extra") (Stream A, picked up automatically)"; done
+[ -f "$M/1240_gochara_window_verification_gate.sql" ] || { echo "  FAIL 1240 (Stream A's file) is not in this integration ref"; exit 1; }
 ONLY="$(IFS=,; echo "${WINDOW[*]}")"     # exactly the list deploy.yml builds for gochara_contracts_schema_migration=true
 
 echo "== S1 disposable database, roles, ownership, default privileges =="
@@ -77,6 +77,8 @@ URL="postgresql://amjis_app:rehearsal@$PGHOST:$PGPORT/$DB"
 # production already holds 1153-1157: apply them through the REAL runner now (CREATE capability is granted for the run)
 (cd "$REPO/platform" && DATABASE_URL="$URL" npx tsx scripts/migrate.ts --only "${ONLY%%,1204*}" >/dev/null 2>&1) || { echo "  FAIL 1153-1157 prelude"; exit 1; }
 echo "  ledger rows: $($SUDB -c 'SELECT count(*) FROM _migrations_applied')"
+# production's authority pointer (supabase migration 527) — the prerequisite of 1236, represented by its real DDL
+{ echo "SET ROLE amjis_app;"; echo "CREATE TABLE IF NOT EXISTS kala_gochara_authority (chart_id UUID PRIMARY KEY, authoritative_generation TEXT NOT NULL DEFAULT 'v1', flipped_at TIMESTAMPTZ, flipped_by TEXT, evidence_ref TEXT);"; echo "INSERT INTO kala_gochara_authority (chart_id, authoritative_generation) VALUES ('482012f1-710e-4a25-994a-93821f5871aa','3.0');"; } | $SUDB >/dev/null
 CAP "REVOKE CREATE" FROM
 ASSERT "amjis_app has NO CREATE on schema public outside the window" "$($SUDB -c "SELECT has_schema_privilege('amjis_app','public','CREATE')")" "f"
 # the pending routine migration that blocks the window: remove its row if the snapshot had it, to reproduce today's ledger exactly
@@ -90,26 +92,26 @@ ASSERT "migrate.ts --only <window list> is REFUSED while an unselected predecess
 ASSERT "the refusal names the unapplied predecessor 1230" "$(echo "$OUT" | grep -c '1230_ka_gochara_registry_revert_1091_pin.sql')" "1"
 PRED=$(echo "$OUT" | grep -o "jump unapplied predecessor migration(s): .*" | sed 's/^[^:]*: //' | tr "," "\n" | sed 's/^ *//' | grep "\.sql$" || true)
 echo "  unapplied predecessors named by the refusal: $(echo $PRED | tr "\n" " ")"
-ASSERT "nothing from the window was applied by the refused run" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql','1233_gochara_p1_period_anchor.sql'])")" "0"
+ASSERT "nothing from the window was applied by the refused run" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql','1233_gochara_p1_period_anchor.sql','1240_gochara_window_verification_gate.sql'])")" "0"
 
-echo "== S3b the routine deploy applies the named predecessors first (1234 = grants, applied for real; 1230 = represented by its ledger row) =="
+echo "== S3b the routine deploy applies the named predecessors first (1234 grants and 1236 authority guard applied for real; 1230 = represented by its ledger row) =="
 for fn in $PRED; do
   h=$(shasum -a 256 "$M/$fn" | cut -d' ' -f1)
   case "$fn" in
-    1234_*) { echo "SET ROLE amjis_app;"; cat "$M/$fn"; } | $SUDB >/dev/null; echo "  applied $fn (grants)";;
+    1234_*|1235_*|1236_*) { echo "SET ROLE amjis_app;"; cat "$M/$fn"; } | $SUDB >/dev/null; echo "  applied $fn (routine)";;
     *) echo "  recorded $fn";;
   esac
   $SUDB -c "INSERT INTO _migrations_applied (filename, sha256) VALUES ('$fn','$h') ON CONFLICT DO NOTHING"
 done
 # 1234 (eval-window grants) is numbered ABOVE the current window ceiling (1233), so the refusal does not name it; it is applied by the same
 # routine deploy and MUST be applied before the window lists 1240 (the ceiling then rises past 1234). Represent that routine application:
-for f in "$M"/1234_*.sql; do
-  [ -f "$f" ] || continue; fn=$(basename "$f"); case " $PRED " in *" $fn "*) continue;; esac
-  { echo "SET ROLE amjis_app;"; cat "$f"; } | $SUDB >/dev/null; echo "  applied $fn (routine grants, number above the window ceiling)"
+for f in "$M"/1234_*.sql "$M"/1235_*.sql "$M"/1236_*.sql; do
+  [ -f "$f" ] || continue; fn=$(basename "$f"); if printf '%s\n' "$PRED" | grep -qx "$fn"; then continue; fi
+  { echo "SET ROLE amjis_app;"; cat "$f"; } | $SUDB >/dev/null; echo "  applied $fn (routine, number above the 1233 ceiling but below 1240)"
   $SUDB -c "INSERT INTO _migrations_applied (filename, sha256) VALUES ('$fn','$(shasum -a 256 "$f" | cut -d' ' -f1)') ON CONFLICT DO NOTHING"
 done
 
-echo "== S3c per-file failure recovery: make 1233 fail AFTER 1204/1206/1232 =="
+echo "== S3c per-file failure recovery: make 1233 fail AFTER 1204/1206/1232 (1240 follows it) =="
 # pre-seed a P1 row's blocker the cheap way: a column of the same name makes 1233's gate refuse (migration_1233_already_applied)
 # (the gate only runs once 1155 exists; 1153-1157 apply first in the same invocation, so add the column AFTER them via a first partial run)
 ASSERT "1153-1157 are applied (the production-shaped prelude)" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename LIKE '115_\_gochara%'")" "5"
@@ -119,11 +121,12 @@ echo "$OUT" | tail -4 | sed 's/^/    /'
 ASSERT "the full window run FAILS at 1233" "$([ $RC -ne 0 ] && echo failed || echo ok)" "failed"
 ASSERT "1204, 1206 and 1232 stay committed (separate file transactions)" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql'])")" "3"
 ASSERT "1233 is NOT recorded and its columns are not half-applied" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename='1233_gochara_p1_period_anchor.sql'")" "0"
+ASSERT "1240 is NOT recorded and none of its objects exist (the run stopped at 1233)" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename='1240_gochara_window_verification_gate.sql'")$($SUDB -c "SELECT (to_regclass('public.ka_gochara_eval_window_verification') IS NOT NULL)::int")" "00"
 $SUDB -c "SET ROLE amjis_app; ALTER TABLE ka_gochara_relationship_record DROP COLUMN period_anchor_lord"
 set +e; OUT=$(RUN); RC=$?; set -e
 echo "$OUT" | tail -3 | sed 's/^/    /'
-ASSERT "after the cause is removed, the SAME invocation applies only 1233" "$RC" "0"
-ASSERT "all four window files are now recorded exactly once" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql','1233_gochara_p1_period_anchor.sql'])")" "4"
+ASSERT "after the cause is removed, the SAME invocation applies only 1233 and 1240" "$RC" "0"
+ASSERT "all five window files are now recorded exactly once" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql','1233_gochara_p1_period_anchor.sql','1240_gochara_window_verification_gate.sql'])")" "5"
 
 echo "== S4 ownership and privilege matrix (deployment-faithful) =="
 ASSERT "amjis_app holds no CREATE on schema public after the window (capability revoked)" "$($SUDB -c "SELECT has_schema_privilege('amjis_app','public','CREATE')")" "f"
@@ -162,6 +165,18 @@ ASSERT "verifier may NOT write obligations, intervals, records or windows" "$(HA
 ASSERT "verifier may NOT seal" "$(HAS_F gochara_verifier 'ka_gochara_seal_generation(uuid,text)')" "f"
 echo "  -- 1233: the anchor columns ride the builder's table-level grant"
 ASSERT "builder INSERT covers period_anchor_lord / period_anchor_level" "$($SUDB -c "SELECT has_column_privilege('data_plane_builder','public.ka_gochara_relationship_record','period_anchor_lord','INSERT')::text || has_column_privilege('data_plane_builder','public.ka_gochara_relationship_record','period_anchor_level','INSERT')::text")" "truetrue"
+
+echo "  -- 1240: the window verification gate (the builder gets NOTHING; the verifier/sealer grants it makes are role-existence-guarded)"
+ASSERT "1240: builder holds NO privilege on the window-verification table" "$(HAS_T data_plane_builder ka_gochara_eval_window_verification SELECT)$(HAS_T data_plane_builder ka_gochara_eval_window_verification INSERT)$(HAS_T data_plane_builder ka_gochara_eval_window_verification DELETE)" "fff"
+ASSERT "1240: the verifier role (existing at apply time) may SELECT/INSERT/DELETE the verification table" "$(HAS_T gochara_verifier ka_gochara_eval_window_verification SELECT)$(HAS_T gochara_verifier ka_gochara_eval_window_verification INSERT)$(HAS_T gochara_verifier ka_gochara_eval_window_verification DELETE)" "ttt"
+ASSERT "1240: the verifier may NOT UPDATE a verification row, nor seal" "$(HAS_T gochara_verifier ka_gochara_eval_window_verification UPDATE)$(HAS_F gochara_verifier 'ka_gochara_seal_generation(uuid,text)')" "ff"
+ASSERT "1240: the sealer may SELECT the verification table but not write it" "$(HAS_T gochara_sealer ka_gochara_eval_window_verification SELECT)$(HAS_T gochara_sealer ka_gochara_eval_window_verification INSERT)" "tf"
+ASSERT "1240: the three provenance columns exist on ka_gochara_eval_window" "$($SUDB -c "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='ka_gochara_eval_window' AND column_name IN ('objective','objective_value','qualification')")" "3"
+ASSERT "1240: the additive seal trigger exists after 1206's" "$($SUDB -c "SELECT string_agg(tgname, ',' ORDER BY tgname) FROM pg_trigger WHERE tgrelid='public.ka_gochara_generation_seal'::regclass AND tgname LIKE 'ka_gochara_generation_seal\_z%'")" "ka_gochara_generation_seal_z_search_complete,ka_gochara_generation_seal_zz_window_verified"
+ASSERT "1240: the builder keeps the eval-window grants of 1234 (no regression)" "$(HAS_T data_plane_builder ka_gochara_eval_window INSERT)" "t"
+echo "  -- 1236: the authority pointer refuses a governed generation (applied by the routine route before the window)"
+ASSERT "1236 is recorded and the CHECK exists" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename LIKE '1236\_%'")$($SUDB -c "SELECT count(*) FROM pg_constraint WHERE conname='kga_governed_generation_refused_ck' AND convalidated")" "11"
+ASSERT "1236: a '5.0' authority row is refused, a '3.0' row is not" "$($SUDB -c "SET ROLE amjis_app; UPDATE kala_gochara_authority SET authoritative_generation='5.0'" 2>&1 | grep -c 'kga_governed_generation_refused_ck')$($SUDB -c "SET ROLE amjis_app; UPDATE kala_gochara_authority SET authoritative_generation='3.0'" 2>&1 | grep -c 'violates')" "10"
 
 echo
 echo "REHEARSAL (mechanical part): $pass passed, $fail failed, $findings finding(s)."

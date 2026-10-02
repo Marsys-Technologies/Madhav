@@ -1,8 +1,9 @@
 ---
 artifact: PROTECTED_WINDOW_REHEARSAL_PLAN
-version: "1.0"
+version: "1.1"
 status: EXECUTABLE CHECKLIST — mechanical part (M1–M4) is scripted and was run once by its author on PostgreSQL 15; operator part (O1–O7) needs the steward/native. Authorizes nothing; touches no production system.
 date: 2026-10-02
+amended: "v1.1 (steward M20261002T053914-0033): re-run on FIVE files against Stream A's final 1240 — integration ref 427d87834 (A 4221f3bc5 + #2919 + #2920 + #2922), 39 asserts pass, 1 finding (PC-4); the real refusal now names 1230, 1234 and 1236"
 author: Stream B (Śāstra), item B6.0 — Codex round 8 R8-10 (steward M20261002T032818-fea8)
 audience: "Stream C (Kimi) executes M1–M4 on a DISPOSABLE database; the steward owns O1–O7"
 files: "runbooks/rehearsal/run_window_rehearsal.sh · prod_ledger_2026-10-02.txt · EXPECTED_WINDOW_SHA256.txt; PR #2919 tests/integration/gochara_b6_rehearsal_volume.db.test.ts"
@@ -18,7 +19,9 @@ files: "runbooks/rehearsal/run_window_rehearsal.sh · prod_ledger_2026-10-02.txt
 | **1204** (AM-7) | PR #2817 head `b9d5d2718` — file sha256 `a0b267f7ef6002a1…` |
 | **1206** (AM-5, v1.2) | PR #2867 head `fc10a91fe` — `1ec9008f36782029…` |
 | **1232** (AM-14) | PR #2909 head `358c33211` — `f2ef6406604b819d…` |
-| **1233** (AM-21 part 2) | PR #2919 head `3994a57dc` — `958b911703eee352…` |
+| **1233** (AM-21 part 2) | PR #2919 — `958b911703eee352…` |
+| **1240** (A5.3 window verification gate; Stream A) | branch `pravaha/a53-am5-inventory` head `4221f3bc5` — `7844359140eb4435…`; wired into the window by PR #2919 |
+| **routine, applied BEFORE the window** | 1230 (registry revert), **1234** (PR #2920, eval-window grants), **1236** (PR #2922, authority guard) — named by the real `--only` refusal |
 | **1240** (Stream A: `ka_gochara_eval_window_verification` + candidate gate) | **not yet written** — the script picks up `platform/migrations/1240_*.sql` automatically once present and adds it to the window list; constraints: `design/MIGRATION_1240_CONTRACT_CONSTRAINTS_v1_0.md` |
 | 1153–1157 | applied in production; re-applied in the rehearsal through the real runner (hashes in `EXPECTED_WINDOW_SHA256.txt`) |
 | **application head** | the steward names the deployment ref (the integration of the four PRs over `origin/main`; the reviewed writer head was `f4767b0e6`). **The rehearsal runs on that ref**: `git worktree add <dir> origin/main && git -C <dir> merge <#2817> <#2867> <#2909> <#2919>`; record `git rev-parse HEAD`. |
@@ -34,7 +37,7 @@ Then, with the **real** `npx tsx scripts/migrate.ts --only <the deploy list>` (`
 |---|---|---|
 | S3a the invocation against today's ledger | **REFUSED**: `--only would jump unapplied predecessor migration(s): 1230_ka_gochara_registry_revert_1091_pin.sql` — nothing from the window applied | **reproduced** |
 | S3b the routine deploy applies 1230 (a routine migration, merged in #2889, not yet applied in production) | prerequisite of the window | represented by its ledger row |
-| S3c per-file failure recovery: force 1233 to fail | 1204, 1206, 1232 stay committed (**separate file transactions**); 1233 not recorded, no partial columns; after removing the cause the **same invocation** applies only 1233; all four recorded exactly once | **reproduced** |
+| S3c per-file failure recovery: force 1233 to fail | 1204, 1206, 1232 stay committed (**separate file transactions**); 1233 and 1240 not recorded, no partial columns or objects; after removing the cause the **same invocation** applies only 1233; all four recorded exactly once | **reproduced** |
 | S4 ownership | every `ka_gochara_*` function and table owned by `amjis_app`; `amjis_app` holds **no** CREATE after the window; **no** `ka_gochara_*` function has PUBLIC EXECUTE | **reproduced** |
 **The ledger precondition (the answer to Codex's `migrate.ts:756–763` point).** `--only` refuses every unselected, unapplied file whose number is ≤ the highest selected number. Against the 2026-10-02 production ledger exactly **one** such file exists: **`1230_ka_gochara_registry_revert_1091_pin.sql`**. So the single deployment invocation works **only after the routine deploy has applied 1230** (or 1230 is otherwise recorded). The live fixtures' intervening 1216 application is *not* the proof — the production ledger already holds 1216/1220/1225/1231.
 
@@ -74,5 +77,5 @@ Reading: sealing is cheap at these volumes and **serialises with other writes on
 | O3 | rerun M1–M3 on PG15 at the real obligation counts (Kimi) | the JSON from M3, the script transcript |
 | O4 | decide M4.1 (author 1234) and M4.2 (verifier split); provision the sealer and verifier principals with the exact grant sets the suites/script use | role/grant evidence from a read-only query after provisioning |
 | O5 | dispatch the protected window: `deploy.yml` with `gochara_contracts_schema_migration=true` (the capability is granted and revoked around the run) | the run URL; ledger rows for 1204/1206/1232/1233 |
-| O6 | post-window read-only checks: table/function owners, PUBLIC EXECUTE count (0), `has_function_privilege` matrix per role, the four ledger rows, the three CHECK names on the record table | query outputs |
+| O6 | post-window read-only checks: table/function owners, PUBLIC EXECUTE count (0), `has_function_privilege` matrix per role, the five ledger rows, the three CHECK names on the record table | query outputs |
 | O7 | actual-role evidence: initial seal + both replays under the real sealer on a disposable restore or a real candidate; builder refusal; verifier access | transcripts |
