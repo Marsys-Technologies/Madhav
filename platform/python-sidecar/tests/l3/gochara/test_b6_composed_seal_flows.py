@@ -1594,3 +1594,35 @@ def test_the_sealing_job_refuses_owner_membership_and_column_grants_on_the_verif
             w.conn.execute(f"REVOKE {priv} ({col}) ON public.{table} FROM {cw.SEALER}")
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0] == "candidate"
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0 and _receipt(w.conn) == []
+
+
+def test_attack_on_a_sealed_generation_the_manifests_result_policy_cannot_be_removed_or_altered_by_the_builder_or_the_sealer(cbuilt):
+    """Steward round-15 attack: Stream A's sealed-contact guard keys its SCOPE on the manifest's `result_policy` key (a sealed manifest without it is treated as a PRE-regime seal and
+    the older, looser behaviour applies). So on a SEALED generation, removing or altering that key would silently re-open the contact/record write path. Each of: removing the key,
+    changing its value, and replacing the whole vector, attempted (a) as the RESTRICTED BUILDER and (b) as the REAL SEALER login, must be REFUSED, and the manifest must be unchanged."""
+    import psycopg
+    w = cbuilt
+    verify_as_verifier(w)
+    seal_as_sealer(w)
+    before = w.conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN)).fetchone()[0]
+    assert '"result_policy"' in before
+    attacks = ("UPDATE public.kala_gochara_publication SET input_generation_vector = input_generation_vector - 'result_policy' WHERE chart_id = '%s' AND generation = '%s'" % (CHART_ID, GEN),
+               "UPDATE public.kala_gochara_publication SET input_generation_vector = jsonb_set(input_generation_vector, '{result_policy}', '\"numeric_policy/1\"') WHERE chart_id = '%s' AND generation = '%s'" % (CHART_ID, GEN),
+               "UPDATE public.kala_gochara_publication SET input_generation_vector = '{}'::jsonb WHERE chart_id = '%s' AND generation = '%s'" % (CHART_ID, GEN))
+    for stmt in attacks:                                                                  # (a) the restricted builder (a savepoint per attempt, so the connection stays usable)
+        with pytest.raises((psycopg.errors.Error, RuntimeError)):
+            with as_role(w.conn, cw.BUILDER):
+                with w.conn.transaction():
+                    w.conn.execute(stmt)
+    for stmt in attacks:                                                                  # (b) the real sealer login
+        with pytest.raises(psycopg.errors.Error):
+            _sealer_raw(w, lambda conn, st=stmt: conn.execute(st))
+    after = w.conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN)).fetchone()[0]
+    assert after == before
+
+
+def test_the_boundary_guard_inventory_reports_every_boundary_relation_existing_and_guarded(cbuilt):
+    """Runbook §4.1 W5 / Stream A's `ka_gochara_boundary_guard_inventory()`: four rows, each (exists, write_guarded, truncate_guarded) = (true, true, true) in the composed world."""
+    rows = cbuilt.conn.execute("SELECT * FROM public.ka_gochara_boundary_guard_inventory()").fetchall()
+    got = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in rows]
+    assert len(got) == 4 and all(r[1:] == (True, True, True) for r in got), got
