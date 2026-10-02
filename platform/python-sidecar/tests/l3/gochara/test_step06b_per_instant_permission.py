@@ -498,8 +498,10 @@ def test_main_installs_the_per_instant_permission_on_the_executable_path(monkeyp
             weights=[0.9], weight_by_target_ref={"Venus": 0.9},
             context_source="test")
     # main() constructs every ClassContext through the builder — no other
-    # ClassContext( call sites remain in main()
-    tree = ast.parse(inspect.getsource(w.main))
+    # ClassContext( call sites remain on the executable path. A2.5
+    # conn-injection: main() is a thin CLI wrapper over project_windows_core,
+    # so the guard inspects the core.
+    tree = ast.parse(inspect.getsource(w.project_windows_core))
     calls = [n.func.id for n in ast.walk(tree)
              if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)]
     assert "build_projection_class_context" in calls
@@ -842,7 +844,10 @@ def test_actual_main_path_pins_the_build_before_canonicalization():
 def test_main_calls_the_pinned_loader_and_never_the_unpinned_fetch():
     import ast, inspect
     mod = _load_step06a()
-    src = inspect.getsource(mod.main)
+    # A2.5 conn-injection: main() is a thin CLI wrapper; the executable path
+    # it routes through is build_all_class_contexts, so the guard inspects
+    # the core.
+    src = inspect.getsource(mod.build_all_class_contexts)
     calls = {n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", None)
              for n in ast.walk(ast.parse(src)) if isinstance(n, ast.Call)}
     assert "load_pinned_dasha_periods" in calls

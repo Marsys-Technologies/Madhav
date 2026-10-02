@@ -531,6 +531,6 @@ def test_carr_detector_na_from_a_detector_script_carries_no_cause(monkeypatch, t
     monkeypatch.setattr(ac, "CTRL", tmp_path)
     rec = ac._run_carriage_detector("bg_x")
     assert rec["v"] == NA and "cause" not in rec
-    cell = ac.rollup_asset("L2", {"Carr.detector": rec})["Carr"]
-    chk = next(c for c in cell["checks"] if c["criterion"] == "Carr.detector")
+    cell = ac.rollup_asset("L2", {"Carr.D1": rec})["Carr"]      # E6 item i: Carr.detector is retired; D1 is the check a _D1 script feeds
+    chk = next(c for c in cell["checks"] if c["criterion"] == "Carr.D1")
     assert chk["v"] == "NO_DETECTOR" and "N/A without a declared cause" in chk["reason"]

@@ -66,7 +66,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from .arcs import ArcIndex, MonotoneArc, _refine_boundary
+from .arcs import ArcIndex, _refine_boundary
 from .contacts import (
     BOUNDARY_RELATIONS,
     ContactRoot,
@@ -124,15 +124,6 @@ class ResidenceSpan:
 
 # ── in-orb intervals ─────────────────────────────────────────────────────────
 
-def _segment_band_level(segment: MonotoneArc, level_wrapped: float) -> float:
-    """The unwrapped representative of `level_wrapped` nearest the segment's
-    longitude range — so a level of 0° tests as 360° inside a segment that
-    peaks at 359.9° (the wrap-tangency geometry)."""
-    mid = 0.5 * (segment.start_lon_unwrapped + segment.end_lon_unwrapped)
-    k = round((mid - float(level_wrapped)) / 360.0)
-    return float(level_wrapped) + 360.0 * k
-
-
 def in_orb_intervals(
     index: ArcIndex,
     level_wrapped_deg: float,
@@ -143,37 +134,49 @@ def in_orb_intervals(
     Solved per station-bounded monotone segment (the spline is only trusted
     inside its fitted span), so a turnaround INSIDE the orb closes the
     interval at the station rather than leaking through it (E8-2).
-    """
+
+    Every revolution band [level+360k−orb, level+360k+orb] intersecting a
+    segment is enumerated (the R3-class rule residence_spans already obeys):
+    a stationless body's segment spans the whole domain — many revolutions —
+    and choosing ONE unwrapped representative (the pre-fix midpoint choice)
+    silently dropped every other revolution's in-orb span: whole occurrences
+    of a Sun contact absent with no truncation mark (N3-class absence)."""
     if orb_deg <= 0.0:
         return []
     tol_deg = max(index.tolerance_arcsec / 3600.0, 1e-9)
+    level_w = float(level_wrapped_deg) % 360.0
     intervals: list[tuple[float, float]] = []
     for seg in index.segments:
-        level_u = _segment_band_level(seg, level_wrapped_deg)
-        lo = level_u - orb_deg
-        hi = level_u + orb_deg
         span_lo = min(seg.start_lon_unwrapped, seg.end_lon_unwrapped)
         span_hi = max(seg.start_lon_unwrapped, seg.end_lon_unwrapped)
-        if span_hi < lo - 1e-12 or span_lo > hi + 1e-12:
-            continue
-        # Entry/exit edges depend on direction: a RISING segment enters at the
-        # band's lower edge and leaves at the upper; a FALLING segment enters
-        # at the upper edge and leaves at the lower (a retrograde body crosses
-        # the orb top first). Missing the direction assigns the whole segment
-        # to the wrong side of the band.
-        a = seg.start_jd
-        b = seg.end_jd
-        if seg.direction == 1:
-            if span_lo < lo - 1e-12:
-                a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo, tol_deg)
-            if span_hi > hi + 1e-12:
-                b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi, tol_deg)
-        else:
-            if span_hi > hi + 1e-12:
-                a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi, tol_deg)
-            if span_lo < lo - 1e-12:
-                b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo, tol_deg)
-        intervals.append((a, b))
+        # All revolution indices k whose band [level+360k−orb, level+360k+orb]
+        # can meet the segment's unwrapped span.
+        k_min = math.ceil((span_lo - (level_w + orb_deg)) / 360.0 - 1e-9)
+        k_max = math.floor((span_hi - (level_w - orb_deg)) / 360.0 + 1e-9)
+        for k in range(k_min, k_max + 1):
+            level_u = level_w + 360.0 * k
+            lo = level_u - orb_deg
+            hi = level_u + orb_deg
+            if span_hi < lo - 1e-12 or span_lo > hi + 1e-12:
+                continue
+            # Entry/exit edges depend on direction: a RISING segment enters at
+            # the band's lower edge and leaves at the upper; a FALLING segment
+            # enters at the upper edge and leaves at the lower (a retrograde
+            # body crosses the orb top first). Missing the direction assigns
+            # the whole segment to the wrong side of the band.
+            a = seg.start_jd
+            b = seg.end_jd
+            if seg.direction == 1:
+                if span_lo < lo - 1e-12:
+                    a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo, tol_deg)
+                if span_hi > hi + 1e-12:
+                    b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi, tol_deg)
+            else:
+                if span_hi > hi + 1e-12:
+                    a = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, hi, tol_deg)
+                if span_lo < lo - 1e-12:
+                    b = _refine_boundary(index.evaluate, seg.start_jd, seg.end_jd, lo, tol_deg)
+            intervals.append((a, b))
     intervals.sort()
     merged: list[tuple[float, float]] = []
     for a, b in intervals:
@@ -210,10 +213,21 @@ def _clip_to_horizon(
     t_out: float,
     horizon: tuple[float, float],
 ) -> tuple[float, float, str | None, bool]:
-    """Clip [t_in, t_out] to the horizon. Returns (t_in, t_out, truncated,
-    overlaps). Episodes with no overlap are dropped by the caller."""
+    """Clip [t_in, t_out] to the half-open horizon [h0, h1). Returns
+    (t_in, t_out, truncated, overlaps). Episodes with no overlap are dropped
+    by the caller.
+
+    Half-open discipline (ASTRA v1.1 A2): a span overlaps iff t_out > h0 and
+    t_in < h1 — an empty "overlap" at the excluded end (t_in == h1) or at the
+    start (t_out == h0) is NOT a legitimate truncated span and is dropped. A
+    degenerate instantaneous event (t_in == t_out == t) is kept iff it lies
+    inside the half-open horizon (h0 <= t < h1): the horizon's own start is
+    inside, its end is not."""
     h0, h1 = horizon
-    if t_out < h0 or t_in > h1:
+    if t_in == t_out:
+        if not (h0 <= t_in < h1):
+            return t_in, t_out, None, False
+    elif t_out <= h0 or t_in >= h1:
         return t_in, t_out, None, False
     truncated: list[str] = []
     if t_in < h0:
@@ -383,7 +397,12 @@ def build_episodes(
                     open_end=k == len(inside) - 1 and i1 >= data_end - 1e-9,
                 )
                 h0, h1 = horizon
-                exact_inside = h0 - 1e-9 <= root.exact_jd <= h1 + 1e-9
+                # Half-open [h0, h1) — EXACT (ASTRA A2.5 A2): the 1e-9 slack
+                # admitted genuinely out-of-domain instants (a root ~40µs
+                # before h0, or exactly at the excluded h1, was retained).
+                # A root on the excluded end belongs to the NEXT domain; the
+                # overlapping span stays, clipped, with t_exact=None (N3).
+                exact_inside = h0 <= root.exact_jd < h1
                 dwell_base = prev_t_out if prev_t_out is not None else ci0
                 episodes.append(
                     Episode(
@@ -447,11 +466,15 @@ def solve_boundary_episodes(
     roots: list[ContactRoot] | None = None,
 ) -> list[Episode]:
     """Boundary-exact ingress episodes (WP1 §7 orb_ingress): t_in = t_exact =
-    t_out at the grid edge, no orb, never dropped at the horizon edge when the
-    root falls inside it (closed interval — Codex v1.1 amendment 3 / R2Q3:
-    "the domain start at 0 is a real crossing", so a root exactly AT the
-    horizon start is INCLUDED; the 1e-9 slack absorbs float noise at either
-    edge).
+    t_out at the grid edge, no orb. Horizon membership is HALF-OPEN and EXACT
+    — `h0 <= exact_jd < h1` (ASTRA A2.5 A2): a root exactly AT the horizon
+    start is a real crossing and is INCLUDED (Codex v1.1 amendment 3 / R2Q3:
+    "the domain start at 0 is a real crossing"); a root exactly AT the
+    horizon end belongs to the NEXT domain and is EXCLUDED. The former 1e-9
+    slack admitted genuinely out-of-domain instants (a root ~40µs before h0,
+    or exactly at the excluded h1) — removed; the horizon bounds are exact JD
+    values and the solver tolerance is disclosed on the row, never absorbed
+    into membership.
 
     `roots` (optional): pre-solved boundary roots for (body, relation) — the
     caller's per-body global boundary table (R5). When supplied, no solving
@@ -467,7 +490,7 @@ def solve_boundary_episodes(
     h0, h1 = horizon
     episodes: list[Episode] = []
     for root in roots:
-        if not (h0 - 1e-9 <= root.exact_jd <= h1 + 1e-9):
+        if not (h0 <= root.exact_jd < h1):  # half-open, exact (ASTRA A2.5 A2)
             continue
         branch, station_flag, unresolved = classify_branch(index, root)
         episodes.append(
@@ -682,10 +705,11 @@ def residence_spans(
             open_end=exit_crossing is None and b >= data_end - 1e-9,
         )
         # The ingress is OBSERVED only when its refined instant lies inside
-        # the horizon; a crossing before h0 is a clipped span (truncated
+        # the half-open horizon [h0, h1) (ASTRA v1.1 A2 — no slack, the end
+        # is excluded); a crossing outside it is a clipped span (truncated
         # start), never a fabricated exact stamp (N3).
         ingress_observed = (
-            entry_exact is not None and h0 - 1e-9 <= entry_exact <= h1 + 1e-9
+            entry_exact is not None and h0 <= entry_exact < h1
         )
         stamps = _episode_stamps(body, "sign_ingress", "orb_ingress")
         if ingress_observed:
