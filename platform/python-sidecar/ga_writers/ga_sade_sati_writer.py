@@ -1879,17 +1879,71 @@ def _update_asset_throughput(chart_id: str, build_id: str, row_count: int) -> No
 
 # ── Materialized view refresh ─────────────────────────────────────────────────
 
-def _refresh_mv(conn: Any) -> None:
-    """Refresh mv_chart_sade_sati_lifetime_summary synchronously."""
+SADE_SATI_MV = "mv_chart_sade_sati_lifetime_summary"
+
+
+def _conn_owns_matview(conn: Any, mv_name: str) -> tuple[bool, str | None]:
+    """(may_refresh, owner_role) for ``mv_name`` as seen by this connection.
+
+    REFRESH MATERIALIZED VIEW requires ownership of the view (directly or via
+    a role whose privileges the connection inherits) -- exactly what
+    ``pg_has_role(<relowner>, 'USAGE')`` answers for ``current_user``
+    (superusers answer true too, and may refresh).  The probe is a plain
+    catalog SELECT, so it can never abort the caller's transaction.  A view
+    that does not exist yields ``(False, None)``.
+    """
+    row = conn.execute(
+        "SELECT c.relowner::regrole::text AS owner_role, "
+        "       pg_has_role(c.relowner, 'USAGE') AS may_refresh "
+        "FROM pg_class c WHERE c.oid = to_regclass(%s) AND c.relkind = 'm'",
+        [mv_name],
+    ).fetchone()
+    if row is None:
+        return False, None
+    owner, may_refresh = (
+        (row["owner_role"], row["may_refresh"]) if isinstance(row, dict)
+        else (row[0], row[1])
+    )
+    return bool(may_refresh), owner
+
+
+def _refresh_mv(conn: Any) -> str:
+    """Refresh mv_chart_sade_sati_lifetime_summary synchronously -- but only
+    if this connection owns the view.
+
+    The S-L1 build job connects as ``data_plane_builder``, which is not a
+    member of the view's owner role (``amjis_app``).  A refresh attempt by a
+    non-owner fails with "must be owner of materialized view", and because
+    the writer shares the orchestrator's transaction (``ctx.db_conn``) the
+    swallowed failure left that transaction ABORTED -- deterministically
+    failing every build.  A writer that does not own the view must not try:
+    it skips (logged at INFO) and the view is refreshed afterwards by its
+    owner (runbook step W7, L1_MV_REFRESH_AFTER_REBUILD_v1_0.md).
+
+    Returns ``"refreshed"``, ``"refresh_failed"`` (owner path only; the
+    universal guard in data_plane_runtime.guarded then catches any resulting
+    aborted transaction) or ``"skipped_not_owner"`` (also when the view is
+    absent).
+    """
+    may_refresh, owner = _conn_owns_matview(conn, SADE_SATI_MV)
+    if not may_refresh:
+        logger.info(
+            "[ga_sade_sati_writer] MV %s NOT refreshed: this connection does not own it "
+            "(owner=%s) -- left stale for the post-build owner refresh (runbook W7)",
+            SADE_SATI_MV, owner or "<view absent>",
+        )
+        return "skipped_not_owner"
     try:
-        conn.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_chart_sade_sati_lifetime_summary")
-        logger.info("[ga_sade_sati_writer] MV mv_chart_sade_sati_lifetime_summary refreshed")
+        conn.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {SADE_SATI_MV}")
+        logger.info("[ga_sade_sati_writer] MV %s refreshed", SADE_SATI_MV)
     except Exception:
         try:
-            conn.execute("REFRESH MATERIALIZED VIEW mv_chart_sade_sati_lifetime_summary")
+            conn.execute(f"REFRESH MATERIALIZED VIEW {SADE_SATI_MV}")
             logger.info("[ga_sade_sati_writer] MV refreshed (non-concurrent)")
         except Exception as exc:
             logger.warning("[ga_sade_sati_writer] MV refresh failed (non-fatal): %s", exc)
+            return "refresh_failed"
+    return "refreshed"
 
 
 # ── Main build function ───────────────────────────────────────────────────────
@@ -2144,7 +2198,7 @@ def build_ga_sade_sati(
             conn.commit()
 
         # ── Step 5: Refresh MV ────────────────────────────────────────────────
-        _refresh_mv(conn)
+        summary["mv_refresh"] = _refresh_mv(conn)
         if owns_conn:
             conn.commit()
 
