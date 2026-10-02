@@ -56,6 +56,16 @@ Output is JSON lines, flushed per event: `run_committed` (with the run_id, the m
 line that also lists every run committed so far. A database error or any exception ends in that JSON line, never a
 traceback, so the operator can always find a running run by its run_id.
 
+## DEPS_SQL parity with the frozen runner
+
+`DEPS_SQL` is a copy of the statement in `asset_runner.deps_unsatisfied`. `extract_runner_deps_sql(text)` pulls that
+statement out of the runner source by `ast` (nothing is imported) and `deps_sql_matches_runner(text)` compares it with
+`DEPS_SQL` modulo whitespace (not case, not token spacing). `runner_text_at_ref(repo, ref)` reads the COMMITTED runner
+(`git show`, local objects only). `__tests__/test_e5_3_deps_sql_parity.py` pins it at `HEAD`; an unextractable runner
+(unparseable, function missing or duplicated, zero or several candidate statements, f-string or `+`-built statement)
+raises `RunnerSqlExtractionError` and fails the test -- it never skips. If the runner's query is changed (a deliberate
+runner change), update `DEPS_SQL` in the same commit.
+
 ## Exit codes
 
 | code | meaning |
