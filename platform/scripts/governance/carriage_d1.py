@@ -134,9 +134,9 @@ def cut_span(joined: str, span: dict):
 #              both sides: before it the start, punctuation, a capitalised start or a declared frame word; after it the end,
 #              punctuation, a capitalised word (the OCR often drops the full stop) or a declared frame word, so "Loss" is not the
 #              effect "Loss of position or similar untoward event";
-#              (3) it must belong to THIS claimant: of every unit anchor in the section ("Latta of <X>", "<X>'s Latta", stems
-#              declared) the NEAREST one to the occurrence is the claimant's, no '.' or ';' lies between them, and they are
-#              <=120 characters apart: the other claimant's effect, even one stated a few words away, is not this claimant's;
+#              (3) it must belong to THIS claimant: of the unit anchors in the SAME SENTENCE as the occurrence (no '.' or ';'
+#              between; "Latta of <X>", "<X>'s Latta", stems declared) the NEAREST one is the claimant's, and it is
+#              <=120 characters away: the other claimant's effect, even one stated a few words away, is not this claimant's;
 #              a NULL effect needs NO anchor of this claimant in the effect section (nothing is invented for a row the passage
 #              gives no effect for).
 #   extra      each declared extra column: `equals` an exact declared value, or `passage_text` (every declared anchor phrase in
@@ -198,16 +198,18 @@ def _effect_matches(eff: str, claimant: str, sec: str, spec: dict):
             continue
         best = None
         for name, a0, a1 in anchors:
+            between = sec[a1:m.start()] if a1 <= m.start() else (sec[m.end():a0] if a0 >= m.end() else "")
+            if "." in between or ";" in between:
+                continue                                  # another sentence: not a candidate owner of this effect
             gap = 0 if (a0 < m.end() and m.start() < a1) else (m.start() - a1 if a1 <= m.start() else a0 - m.end())
             if best is None or gap < best[0]:
-                best = (gap, [name], a0, a1)
+                best = (gap, [name])
             elif gap == best[0] and name not in best[1]:
                 best[1].append(name)
-        gap, names, a0, a1 = best
-        if len(names) != 1 or names[0].lower() != claimant.lower() or gap > _ANCHOR_REACH:
+        if best is None:
             continue
-        between = sec[a1:m.start()] if a1 <= m.start() else sec[m.end():a0]
-        if "." in between or ";" in between:
+        gap, names = best
+        if len(names) != 1 or names[0].lower() != claimant.lower() or gap > _ANCHOR_REACH:
             continue
         return True
     return False

@@ -23,6 +23,7 @@ import carriage_d1 as d1  # noqa: E402
 import test_e6_a_na_causes as na_causes  # noqa: E402
 import test_e6_na_r01_03 as r13  # noqa: E402
 
+EVID = "00_ARCHITECTURE/briefs/suvarna/layers/L0/assets/bg_phaladeepika_latta_ELEVATION_BRIEF_v1_0.md"
 FX = json.loads((HERE / "fixtures" / "phaladeepika_latta_d1_fixture.json").read_text(encoding="utf-8"))
 CHUNKS = {c["chunk_id"]: c for c in FX["classical_text_chunks"]}
 ROWS = FX["bg_phaladeepika_latta"]
@@ -39,7 +40,7 @@ SPEC = dict(matcher=d1.MATCHER, table="bg_phaladeepika_latta", chunk_ids=IDS, sp
 STORED_HASHES = {"phaladeepika_pg0338_c01": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
                  "phaladeepika_pg0339_c01": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44"}
 CAR_D1 = dict(applies="D1", nature="transcription", why="eight rows transcribed from Phaladipika Adh. XXVI Sloka 42-44",
-              evidence="00_ARCHITECTURE/briefs/suvarna/layers/L0/assets/bg_phaladeepika_latta_ELEVATION_BRIEF_v1_0.md",
+              evidence=EVID,
               citation_state="sourced_ocr_unverified", spec=SPEC)
 NA, NO_DET = ac.NA, ac.NO_DET
 S2_RULES = {f"Carr.D{i}#measured:not-the-declared-carriage": "test" for i in (1, 2, 3)}
@@ -227,6 +228,181 @@ def test_d1_the_engine_is_generic_a_second_spec_over_a_second_table_runs():
     assert d1.d1_measure(spec, "sourced", CHUNKS, rows, "t_other")["v"] == "PASS"
 
 
+# ───────────────────────── adversarial review: the effect rule (HIGH 2) ─────────────────────────
+
+def _eff(graha, text):
+    rows = copy.deepcopy(ROWS)
+    [r.update(effect_description=text) for r in rows if r["graha"] == graha]
+    return _measure(rows=rows)
+
+
+@pytest.mark.parametrize("graha, wrong", [
+    ("Sun", "Misery."), ("Jupiter", "Quarrel."), ("Venus", "A great loss."), ("Mercury", "Loss."), ("Mercury", "A great loss."),
+    ("Rahu", "Ruin of every business."), ("Moon", "Quarrel."), ("Venus", "Loss of position or similar untoward event."),
+])
+def test_d1_another_claimants_effect_is_a_miss_naming_the_row(graha, wrong):
+    r = _eff(graha, wrong)
+    assert r["v"] == "PARTIAL" and [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [(graha, ["effect"])]
+
+
+@pytest.mark.parametrize("text", ["", " ", ".", "a", "...", "ab.", "the", "Loss"])
+def test_d1_an_empty_or_too_short_effect_is_a_miss_never_a_match(text):
+    r = _eff("Sun", text)
+    assert r["v"] == "PARTIAL" and r["d1"]["unmatched"][0]["row"] == "Sun"
+
+
+def test_d1_trailing_whitespace_in_the_stored_effect_is_normalised_not_a_false_negative():
+    assert _eff("Sun", "Ruin of every business.  ")["v"] == "PASS" and _eff("Sun", "  Ruin   of every business.")["v"] == "PASS"
+
+
+def test_d1_an_effect_is_matched_inside_its_own_clause_not_a_window_across_sentences():
+    seg = "Shkos During the Sun's Latta there will be grief. Misery will result during the Latta of Rahu."
+    spec = dict(SPEC, effect_marker="Shkos", effect_end=None, extra_fields=[])
+    spec.pop("effect_end")
+    f = lambda g, e: d1.match_ordinal_row({"graha": g, "count_from_graha": 1, "direction": "forward", "effect_description": e}, seg, spec)["effect"]
+    assert f("Sun", "grief") is True and f("Rahu", "Misery") is True
+    assert f("Sun", "Misery") is False and f("Rahu", "grief") is False          # the neighbouring sentence's effect is not this claimant's
+
+
+def test_d1_the_anchor_must_be_near_and_in_the_same_sentence():
+    near = "Shkos There will be quarrel in the Latta of Venus."
+    far = "Shkos There will be quarrel in " + "thus it is said by many wise men of old " * 6 + "the Latta of Venus."
+    stop = "Shkos There will be quarrel. In the Latta of Venus."
+    spec = {k: v for k, v in SPEC.items() if k not in ("extra_fields", "effect_end")}
+    f = lambda seg: d1.match_ordinal_row({"graha": "Venus", "count_from_graha": 1, "direction": "forward", "effect_description": "quarrel"}, seg, spec)["effect"]
+    assert f(near) is True and f(far) is False and f(stop) is False
+
+
+def test_d1_effect_frame_words_are_part_of_the_stated_rule():
+    spec = dict(SPEC, effect_frame_words=[])
+    r = _measure(spec=spec)
+    assert r["v"] == "PARTIAL" and {u["row"] for u in r["d1"]["unmatched"]} >= {"Moon", "Venus"}      # "A great loss will mark ...": 'will' is a frame word
+
+
+def test_d1_a_declared_effect_marker_or_end_that_is_absent_is_no_detector_not_a_wider_section():
+    for key in ("effect_marker", "effect_end"):
+        r = _measure(spec=dict(SPEC, **{key: "NO SUCH MARKER"}))
+        assert r["v"] == NO_DET and key in r["measured"] and "does not widen" in r["measured"], key
+
+
+# ───────────────────────── adversarial review: the count rule's guards ─────────────────────────
+
+def test_d1_a_count_that_belongs_to_another_claimant_is_a_miss_the_intervening_ordinal_guard():
+    rows = copy.deepcopy(ROWS)
+    [r.update(count_from_graha=9) for r in rows if r["graha"] == "Moon"]               # 9th is Rahu's count; "22nd" lies between it and 'that of the Moon'
+    r = _measure(rows=rows)
+    assert r["v"] == "PARTIAL" and [u["row"] for u in r["d1"]["unmatched"]] == ["Moon"]
+
+
+def _count(seg, n=5, g="Venus"):
+    spec = {k: v for k, v in SPEC.items() if k != "extra_fields"}
+    return d1.match_ordinal_row({"graha": g, "count_from_graha": n, "direction": "forward", "effect_description": None}, seg, spec)["count"]
+
+
+def test_d1_the_count_reach_and_stops_are_bounded():
+    assert _count("the 5th star reckoned from that of Venus forward") is True
+    assert _count("the 5th " + "x " * 70 + "that of Venus forward") is False                   # > 90 characters between the ordinal and the unit
+    assert _count("the 5th star. Next that of Venus forward") is False                         # a full stop ends the clause
+    assert _count("the 5th star; next that of Venus forward") is False                         # a semicolon ends the clause
+
+
+# ───────────────────────── adversarial review: citation_state, evidence, table, completeness (MED 3-7) ─────────────────────────
+
+@pytest.mark.parametrize("state", ["unsourced", "refuted", None, "bogus"])
+def test_d1_unsourced_refuted_or_undeclared_citation_state_is_capped_at_no_detector_even_with_every_row_matched(state):
+    r = _measure(state=state)
+    assert r["v"] == NO_DET and r["d1"]["rows_matched"] == 8 and "cannot tell a contradicted source" in r["measured"]
+    assert r["citation_state"] == state
+
+
+def test_d1_sourced_passes_and_a_sourced_ocr_unverified_pass_is_marked_on_the_record_and_the_cell():
+    assert _measure(state="sourced")["v"] == "PASS" and _measure(state="sourced")["d1"]["pass_basis"] == "sourced"
+    rec = _measure(state="sourced_ocr_unverified")
+    chk = next(c for c in ac.rollup_asset("L0", {"Carr.D1": rec})["Carr"]["checks"] if c["criterion"] == "Carr.D1")
+    assert chk["v"] == "PASS" and chk["citation_state"] == "sourced_ocr_unverified"
+    assert rec["d1"]["pass_basis"] == "sourced_ocr_unverified" and "citation_state sourced_ocr_unverified" in rec["measured"]
+
+
+def _carr(d1_record):
+    got = {c: ac._na("x", "not-the-declared-carriage") for c in ("Carr.D2", "Carr.D3")}
+    got["Carr.D1"] = d1_record
+    return ac.rollup_asset("L0", got)["Carr"]
+
+
+def test_a_bare_d1_pass_or_partial_with_the_other_two_na_does_not_roll_up_to_pass():
+    for v in ("PASS", "PARTIAL"):
+        cell = _carr(dict(v=v, measured="trust me"))
+        assert cell["v"] == NO_DET and "without verified passage evidence" in cell["checks"][0]["reason"], v
+
+
+@pytest.mark.parametrize("breakage, reason", [
+    (lambda r: r["d1"].pop("passage_sha256"), "passage_sha256"),
+    (lambda r: r["d1"].update(passage_sha256="xyz"), "passage_sha256"),
+    (lambda r: r["d1"].pop("chunks"), "verified chunk ledger"),
+    (lambda r: r["d1"].update(chunks=[]), "verified chunk ledger"),
+    (lambda r: r["d1"]["chunks"][0].update(verified=False), "verified chunk ledger"),
+    (lambda r: r.update(citation_state="unsourced"), "citation_state"),
+    (lambda r: r.update(citation_state=None), "citation_state"),
+    (lambda r: r["d1"].update(rows_total=0), "no rows"),
+    (lambda r: r["d1"].update(unmatched=[dict(row="x", failed=["count"])]), "not every row matched"),
+    (lambda r: r["d1"].update(row_count_ok=False), "not every row matched"),
+    (lambda r: r.pop("d1"), "no `d1` evidence"),
+])
+def test_a_d1_record_missing_any_part_of_its_evidence_is_not_honoured(breakage, reason):
+    rec = _measure()
+    breakage(rec)
+    cell = _carr(rec)
+    assert cell["v"] == NO_DET and reason in cell["checks"][0]["reason"]
+
+
+def test_a_genuine_d1_record_with_its_evidence_is_honoured_and_a_genuine_partial_too():
+    assert _carr(_measure())["v"] == "PASS"
+    rows = copy.deepcopy(ROWS)
+    [r.update(count_from_graha=21) for r in rows if r["graha"] == "Moon"]
+    assert _carr(_measure(rows=rows))["v"] == "PARTIAL"
+
+
+def test_d1_an_asset_with_no_table_is_never_measured_against_a_spec_table(fetch):
+    assert _measure(table=None)["v"] == NO_DET and "no table" in _measure(table=None)["measured"].lower()
+    got = ac.carriage_declared_checks("x", CAR_D1, None)
+    assert got["Carr.D1"]["v"] == NO_DET and got["Carr.D2"]["v"] == NA and "does not guess" in got["Carr.D1"]["measured"]
+
+
+def test_d1_the_row_count_must_equal_the_declared_expected_rows():
+    r = _measure(rows=ROWS[:1])
+    assert r["v"] == "PARTIAL" and r["d1"]["row_count_ok"] is False and "1 row(s) but 8 are declared" in r["measured"]
+    extra = copy.deepcopy(ROWS[0])
+    extra["graha"] = "Ketu"
+    r = _measure(rows=ROWS + [extra])
+    assert r["v"] == "PARTIAL" and "9 row(s) but 8" in r["measured"]
+    assert _measure(rows=ROWS[:7] + [copy.deepcopy(ROWS[0])])["d1"]["unmatched"][0]["failed"][-1] == "duplicate"      # 8 rows, one claimant twice
+
+
+def test_d1_a_duplicate_claimant_is_refused_even_when_both_copies_match():
+    r = _measure(rows=ROWS + [copy.deepcopy(ROWS[3])])
+    assert r["v"] == "PARTIAL" and [u["failed"] for u in r["d1"]["unmatched"]] == [["duplicate"], ["duplicate"]]
+
+
+@pytest.mark.parametrize("col, value", [
+    ("affliction_condition", "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star, there will be great prosperity."),
+    ("affliction_condition", "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Rahu star, there will be sickness and anguish."),
+    ("affliction_condition", ROWS[0]["affliction_condition"] + " The native will also gain a kingdom."),
+    ("affliction_condition", None), ("affliction_condition", ""),
+    ("verse_ref", "Adh.XXVI PG338-339 Sloka 45-46"), ("verse_ref", None),
+])
+def test_d1_an_altered_extra_column_is_a_miss(col, value):
+    rows = copy.deepcopy(ROWS)
+    [r.update({col: value}) for r in rows if r["graha"] == "Sun"]
+    r = _measure(rows=rows)
+    assert r["v"] == "PARTIAL" and [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", [col])]
+
+
+def test_d1_the_real_affliction_condition_matches_through_the_declared_ocr_repair():
+    assert _measure()["v"] == "PASS"
+    no_repair = dict(SPEC, extra_fields=[dict(SPEC["extra_fields"][0], repairs={}), SPEC["extra_fields"][1]])
+    assert _measure(spec=no_repair)["v"] == "PARTIAL"                                  # without the declared repair the OCR spelling does not match
+
+
 # ───────────────────────── the declaration validator ─────────────────────────
 
 def _doc(car, extra=None):
@@ -242,9 +418,9 @@ def _bad(car, match, extra=None):
 
 def test_validator_accepts_the_latta_declaration_and_the_other_two_natures():
     ac.validate_declarations(_doc(copy.deepcopy(CAR_D1)))
-    ac.validate_declarations(_doc(dict(applies="D3", nature="computation", why="w", evidence="e.py:1")))
-    ac.validate_declarations(_doc(dict(applies="D2", nature="derivation", why="w", evidence="e.py:1")))
-    ac.validate_declarations(_doc(dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e.md")))
+    ac.validate_declarations(_doc(dict(applies="D3", nature="computation", why="w", evidence=EVID)))
+    ac.validate_declarations(_doc(dict(applies="D2", nature="derivation", why="w", evidence=EVID)))
+    ac.validate_declarations(_doc(dict(nature="ratified_judgment", ruling="N-73", why="w", evidence=EVID)))
     ac.validate_declarations(_doc(dict(served_surface=True, **{k: v for k, v in CAR_D1.items()}),
                                   dict(read_evidence="platform/src/x.ts:1", read_table="t")))      # served_surface coexists
 
@@ -252,7 +428,7 @@ def test_validator_accepts_the_latta_declaration_and_the_other_two_natures():
 @pytest.mark.parametrize("nature, applies", [("transcription", "D3"), ("transcription", "D2"), ("computation", "D1"), ("computation", "D2"),
                                              ("derivation", "D1"), ("derivation", "D3")])
 def test_validator_refuses_a_nature_check_mismatch(nature, applies):
-    car = dict(applies=applies, nature=nature, why="w", evidence="e:1", **({"citation_state": "sourced"} if nature == "transcription" else {}))
+    car = dict(applies=applies, nature=nature, why="w", evidence=EVID, **({"citation_state": "sourced"} if nature == "transcription" else {}))
     _bad(car, "requires applies")
 
 
@@ -271,7 +447,7 @@ def test_validator_refuses_missing_or_blank_parts():
 
 
 def test_validator_ratified_judgment_discipline():
-    ok = dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e.md")
+    ok = dict(nature="ratified_judgment", ruling="N-73", why="w", evidence=EVID)
     _bad({kk: v for kk, v in ok.items() if kk != "ruling"}, "ruling")
     _bad({**ok, "ruling": "yes"}, "ruling")
     _bad({**ok, "applies": "D1"}, "declares no check")
@@ -280,7 +456,7 @@ def test_validator_ratified_judgment_discipline():
 
 
 def test_validator_spec_only_for_d1_and_well_formed():
-    _bad(dict(applies="D3", nature="computation", why="w", evidence="e:1", spec=SPEC), "only defined for applies D1")
+    _bad(dict(applies="D3", nature="computation", why="w", evidence=EVID, spec=SPEC), "only defined for applies D1")
     for name, spec in {"unknown field": dict(SPEC, extra=1), "missing": {k: v for k, v in SPEC.items() if k != "chunk_ids"},
                        "matcher": dict(SPEC, matcher="nope"), "table": dict(SPEC, table="bad table"),
                        "empty chunks": dict(SPEC, chunk_ids=[]), "dup chunks": dict(SPEC, chunk_ids=[IDS[0], IDS[0]]),
@@ -290,6 +466,14 @@ def test_validator_spec_only_for_d1_and_well_formed():
                        "dir word": dict(SPEC, direction_words={"x": "a b"}), "stems": dict(SPEC, anchor_stems=[]),
                        "stem": dict(SPEC, anchor_stems=["(a|b)"]), "marker": dict(SPEC, effect_marker=" ")}.items():
         _bad({**CAR_D1, "spec": spec}, "spec"), name
+
+
+def test_validator_checks_the_evidence_pointer_exists_or_says_it_is_unverified():
+    base = copy.deepcopy(CAR_D1)
+    ac.validate_declarations(_doc({**base, "evidence": EVID + ":12"}))                              # an existing file, with a line
+    ac.validate_declarations(_doc({**base, "evidence": "unverified:recorded in DECISIONS.jsonl N-74"}))   # a pointer that cannot be checked says so
+    for bad in ("00_ARCHITECTURE/briefs/does_not_exist_ever.md", "../outside.md", "/etc/hosts", "N-74", "bg_phaladeepika_latta brief"):
+        _bad({**base, "evidence": bad}, "not an existing repo-relative file")
 
 
 def test_validator_refuses_a_carriage_check_together_with_terminal_by_construction():
@@ -364,7 +548,7 @@ def test_a_seeded_wrong_row_holds_the_carr_cell_below_pass(monkeypatch):
 
 @pytest.mark.parametrize("applies, nature", [("D2", "derivation"), ("D3", "computation")])
 def test_a_declared_d2_or_d3_has_no_detector_yet_and_the_other_two_read_na(applies, nature):
-    got = ac.carriage_declared_checks("x", dict(applies=applies, nature=nature, why="w", evidence="e:1"), None)
+    got = ac.carriage_declared_checks("x", dict(applies=applies, nature=nature, why="w", evidence=EVID), None)
     own = f"Carr.{applies}"
     assert got[own]["v"] == NO_DET and "detector is built yet" in got[own]["measured"]
     assert sorted(c for c in got if got[c]["v"] == NA) == sorted(c for c in ("Carr.D1", "Carr.D2", "Carr.D3") if c != own)
@@ -387,7 +571,7 @@ def test_a_failed_database_read_degrades_only_d1_to_errored(monkeypatch):
 
 
 def test_a_ratified_judgment_seed_reads_na_on_all_three_by_its_own_cause_and_needs_its_own_rule(monkeypatch):
-    got = ac.carriage_declared_checks("x", dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e.md"), None)
+    got = ac.carriage_declared_checks("x", dict(nature="ratified_judgment", ruling="N-73", why="w", evidence=EVID), None)
     assert {c: got[c]["cause"] for c in got} == {c: "ratified_judgment" for c in ("Carr.D1", "Carr.D2", "Carr.D3")}
     assert ac.rollup_asset("L0", got)["Carr"]["v"] == NO_DET                       # no rule declared for ratified_judgment: not released
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {**ac.NA_RULE_DECISIONS, **{f"Carr.D{i}#measured:ratified_judgment": "SS (test)" for i in (1, 2, 3)}})

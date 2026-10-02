@@ -659,6 +659,13 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
         v = car.get(f)
         if not (isinstance(v, str) and v.strip() and "\n" not in v and len(v) <= 1200):
             raise DeclarationsError(f"{where}.carriage.{f} must be a non-blank single-line string (a reason / a pointer file:line or document)")
+    ev = car["evidence"]
+    if not ev.startswith("unverified:"):          # a pointer is a repo-relative file (optionally :line) that EXISTS, else it is flagged unverified
+        rel = re.sub(r":[0-9]+$", "", ev)
+        p = (ROOT / rel).resolve() if not rel.startswith("/") and ".." not in rel.split("/") else None
+        if p is None or not p.is_file():
+            raise DeclarationsError(f"{where}.carriage.evidence {ev!r} is not an existing repo-relative file (optionally with :line); a "
+                                    f"pointer that cannot be checked must say so: 'unverified:<where it is recorded>'")
     if isinstance(e.get("terminal_by_construction"), str) and e["terminal_by_construction"].strip():
         raise DeclarationsError(f"{where}: a declared carriage check and terminal_by_construction contradict each other (an asset that "
                                 f"declares a carriage check carries something from a source; declare one or the other)")
