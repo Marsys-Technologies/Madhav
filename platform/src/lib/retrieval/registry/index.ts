@@ -15,10 +15,12 @@ import type {
   Layer,
   CapabilityType,
 } from './types'
+import { postProcessAyurdayaDisclosure } from './layers/L1_ganita/ayurdaya_unreduced_base'
 
 // ── Registry store ────────────────────────────────────────────────────────────
 
 const _registry = new Map<CapabilityUri, CapabilityDescriptor>()
+const AYURDAYA_WRAPPED = new WeakSet<object>()
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -34,6 +36,19 @@ export function registerCapability(descriptor: CapabilityDescriptor): void {
   const callable = descriptor.handler ?? (descriptor as unknown as Record<string, unknown>)['loader']
   if (!callable || typeof callable !== 'function') {
     throw new Error(`[registry] capability ${descriptor.uri} has no handler function`)
+  }
+  // SS N-62 Q10 (display-side): any tool that can surface Āyurdāya year figures — including via a
+  // caller-supplied `categories`/`category` list on a generic reader — must say they are UNREDUCED
+  // BASE figures. One post-processor at the single registration chokepoint covers every dispatch path
+  // (HTTP route, direct handler calls, bulk-context prefetch, agentic adapters). Idempotent (marker),
+  // never throws, and returns non-ayurdaya results by reference unchanged.
+  if (descriptor.type === 'tool' && typeof descriptor.handler === 'function' && !AYURDAYA_WRAPPED.has(descriptor.handler)) {
+    const original = descriptor.handler
+    const wrapped = async function (args: Record<string, unknown>, ctx?: unknown): Promise<unknown> {
+      return postProcessAyurdayaDisclosure(await original.call(descriptor, args, ctx as never))
+    } as typeof original
+    AYURDAYA_WRAPPED.add(wrapped)
+    descriptor.handler = wrapped
   }
   _registry.set(descriptor.uri, descriptor)
 }
