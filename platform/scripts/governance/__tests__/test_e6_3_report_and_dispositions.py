@@ -189,6 +189,20 @@ def test_a_reason_made_only_of_invisible_filler_characters_is_blank(w, reason):
     assert got(w) == ALL - {"ka_gamma"}
 
 
+@pytest.mark.parametrize("cp", ["\ufe0f", "\ufe00", "\ufe01", "\u034f", "\u17b4", "\u17b5", "\u0301", "\ufffc", "\U000e0100",
+                                 "\u20dd", "\u0e31", "\u200b\u0301\ufe0f", "!!!", "\u2014"])
+def test_a_reason_without_a_single_letter_or_digit_is_blank(w, cp):
+    """The visible-reason check is an allowlist (>= 1 alphanumeric after NFKC + cleaning), not a denylist of invisibles."""
+    w.disps = [d for d in w.disps if d["asset"] != "ka_gamma"] + [disp("ka_gamma", "retire", reason=cp)]
+    assert got(w) == ALL - {"ka_gamma"}
+
+
+@pytest.mark.parametrize("reason", ["superseded", "N-70 folded", "\u0301a", "1", "\u00e9"])
+def test_a_reason_with_a_letter_or_digit_counts(w, reason):
+    w.disps = [d for d in w.disps if d["asset"] != "ka_gamma"] + [disp("ka_gamma", "retire", reason=reason)]
+    assert "ka_gamma" in got(w)
+
+
 def test_a_reason_with_visible_text_among_fillers_still_counts(w):
     w.disps = [d for d in w.disps if d["asset"] != "ka_gamma"] + [disp("ka_gamma", "retire", reason="ㅤgoneㅤ")]
     assert "ka_gamma" in got(w)

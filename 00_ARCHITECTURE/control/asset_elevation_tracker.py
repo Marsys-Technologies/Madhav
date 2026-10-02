@@ -595,6 +595,14 @@ def _e63_clean(s):
                    and ch not in _E63_FILLERS).strip()
 
 
+def _e63_visible_reason(s):
+    """The reason as a human reads it, or "" when nothing readable is left. `_e63_clean` is a denylist, so a reason made of
+    other zero-width or mark-only code points (variation selectors, U+034F, Khmer inherent vowels, a lone combining accent,
+    U+FFFC, tag characters) would survive it: after cleaning the text must hold at least one letter or digit."""
+    cleaned = _e63_clean(s)
+    return cleaned if any(ch.isalnum() for ch in cleaned) else ""
+
+
 def _e63_is_none(detector):
     return isinstance(detector, str) and _e63_clean(detector).upper() == "NONE"
 
@@ -1158,7 +1166,7 @@ def _e63_parse_dispositions(data, facts, registry):
             _e63_fail("malformed", f"{where}: additions must be unique addition ids that do not shadow a registered criterion")
         adds.setdefault(asset, set()).update(a)
         latest[asset] = dict(disposition=disp, effective=disp if dec is not None else "unresolved",
-                             reason=_e63_clean(r.get("reason") or ""), decision_id=dec)
+                             reason=_e63_visible_reason(r.get("reason") or ""), decision_id=dec)
     return {a: dict(d, additions=tuple(sorted(adds[a]))) for a, d in latest.items()}
 
 
