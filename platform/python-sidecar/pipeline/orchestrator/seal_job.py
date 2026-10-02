@@ -11,9 +11,9 @@ post-publication boundary re-check; a failure anywhere rolls publication back to
 
 INTERFACE (agreed with Stream B through the steward):
   --approval-file   JSON written by the workflow from the GitHub approval of THIS run (schema `seal_approval/2`, ST-WIRE-2):
-                    {"schema": "seal_approval/2", "brief_digest": <sha256>, "brief_id": <int>, "execution_id": <str>, "run_id": <int>,
+                    {"schema": "seal_approval/2", "brief_digest": <sha256>, "brief_id": <int>, "producer_execution_id": <str>, "run_id": <int>,
                      "run_attempt": <int>, "approver_login": <str>, "approved_by_note": "ruling:<owner ruling id>; actor:<github.triggering_actor>"}
-                    `brief_id` is the persisted brief the approval is for and `execution_id` the verifier execution that produced it; the job
+                    `brief_id` is the persisted brief the approval is for and `producer_execution_id` the verifier execution that produced it; the job
                     refuses unless that brief is the CURRENT persisted one, with the approved digest, produced by the sealing commit in that execution.
                     The note is MECHANICAL — exactly that format, written by the workflow, never free text; its actor must be this run's
                     GITHUB_TRIGGERING_ACTOR (a blank, a sentence, or another person's name is refused).

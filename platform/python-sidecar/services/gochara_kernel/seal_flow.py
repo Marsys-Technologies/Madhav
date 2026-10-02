@@ -110,8 +110,8 @@ class SealRefused(RuntimeError):
 
 def parse_approval(text: str | None) -> dict:
     """The approval record the workflow writes from the GitHub approval of THIS run (schema `seal_approval/1`):
-    {schema, brief_digest, brief_id, execution_id, run_id, run_attempt, approver_login, approved_by_note}. `brief_id` and
-    `execution_id` (ST-WIRE-2) are the SPECIFIC persisted brief and the verifier execution the approval is for (R13-3: taken from the compact
+    {schema, brief_digest, brief_id, producer_execution_id, run_id, run_attempt, approver_login, approved_by_note}. `brief_id` and
+    `producer_execution_id` (ST-WIRE-2, final shapes) are the SPECIFIC persisted brief and the verifier execution the approval is for (R13-3: taken from the compact
     line of THIS workflow run's brief job — or, for an explicit reuse, from the earlier run's still-current brief). Absent / malformed ⇒ refused."""
     if not text or not text.strip():
         raise SealRefused("approval_absent", "no approval record was supplied")
@@ -127,8 +127,8 @@ def parse_approval(text: str | None) -> dict:
     for k in ("run_id", "run_attempt", "brief_id"):
         if not isinstance(a.get(k), int) or isinstance(a.get(k), bool) or a[k] < 1:
             raise SealRefused("approval_malformed", f"{k} is not a positive integer")
-    if not isinstance(a.get("execution_id"), str) or not a["execution_id"].strip():
-        raise SealRefused("approval_malformed", "execution_id is blank")
+    if not isinstance(a.get("producer_execution_id"), str) or not a["producer_execution_id"].strip():
+        raise SealRefused("approval_malformed", "producer_execution_id is blank")
     for k, v in (("approver_login", login), ("approved_by_note", note)):
         if not isinstance(v, str) or not v.strip():
             raise SealRefused("approval_malformed", f"{k} is blank")
@@ -234,7 +234,7 @@ def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id
             return seal_with_approval(conn, chart_id=chart_id, generation=generation, approved_digest=approval["brief_digest"],
                                       approver_login=approval["approver_login"], run_id=run_id, run_attempt=run_attempt,
                                       approval_note=approval["approved_by_note"], sealing_commit=sealing_commit,
-                                      brief_id=approval["brief_id"], producer_execution_id=approval["execution_id"])
+                                      brief_id=approval["brief_id"], producer_execution_id=approval["producer_execution_id"])
     except psycopg.errors.LockNotAvailable as exc:
         raise SealRefused("seal_lock_timeout", f"a seal lock was not available within {seal_brief.SEAL_LOCK_TIMEOUT} — another build, "
                           f"verification or seal holds it; nothing was published ({exc})") from exc

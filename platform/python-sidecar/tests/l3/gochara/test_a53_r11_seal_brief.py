@@ -202,9 +202,9 @@ def test_the_entry_points_brief_mode_ends_in_a_compact_line_carries_the_brief_by
                            "--brief-chunk-bytes", "4096"]) == vj.EXIT_OK
         lines = capsys.readouterr().out.strip().splitlines()
         compact, chunk_lines = json.loads(lines[-1]), lines[:-1]            # the LAST line is the compact result, whatever the size
-        assert set(compact) == {"status", "contract", "sha256", "persisted", "producer", "brief_bytes", "brief_file", "brief_chunks"}
-        assert compact["contract"] == sb.TRANSPORT_CONTRACT == "gochara_brief_transport/1"
-        assert all(json.loads(x)["contract"] == "gochara_brief_transport/1" for x in chunk_lines)         # EVERY chunk line carries it (ST-WIRE-2)
+        assert set(compact) == {"status", "contract_version", "sha256", "persisted", "producer", "brief_bytes", "brief_file", "brief_chunks"}
+        assert compact["contract_version"] == sb.TRANSPORT_CONTRACT == "seal_brief_transport/1"
+        assert all("contract" not in json.loads(x) for x in chunk_lines)               # chunk lines unchanged: bound to the compact line by sha256
         assert compact["producer"] == {"commit": "cli-sha", "image_digest": IMAGE,
                                        "execution_id": "projects/p/locations/l/jobs/gochara-verifier/executions/exec-9"}
         assert compact["status"] == "BRIEFED" and compact["persisted"]["brief_id"] and compact["brief_file"] == str(out_file)
