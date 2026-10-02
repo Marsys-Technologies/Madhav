@@ -98,7 +98,9 @@ def apply_migrations(conn, files):
                              " ON CONFLICT DO NOTHING", (CHART_ID,))
             with conn.transaction():
                 conn.execute((MIGRATIONS / fname).read_text())
-                conn.execute("INSERT INTO public._migrations_applied(filename) VALUES (%s)", (fname,))
+                import hashlib
+                conn.execute("INSERT INTO public._migrations_applied(filename, sha256) VALUES (%s, %s)",
+                             (fname, hashlib.sha256((MIGRATIONS / fname).read_bytes()).hexdigest()))
     finally:
         conn.execute("RESET ROLE")
 
@@ -116,7 +118,9 @@ def _populate(conn, stack):
     conn.execute("CREATE POLICY chart_owner_policy ON public.charts USING (owner_id = current_setting('app.principal_id', true))")
     conn.execute("CREATE POLICY chart_service_policy ON public.charts USING (current_setting('app.principal_id', true) IS NULL"
                  " OR current_setting('app.principal_id', true) = '')")
-    conn.execute("CREATE TABLE public._migrations_applied (filename text PRIMARY KEY, applied_at timestamptz DEFAULT now())")
+    # as in production: id, filename, applied_at, sha256 NOT NULL, sql_identity (the approval payload reads (filename, sha256, applied_at) column-level)
+    conn.execute("CREATE TABLE public._migrations_applied (id serial PRIMARY KEY, filename text UNIQUE NOT NULL, applied_at timestamptz NOT NULL DEFAULT now(),"
+                 " sha256 text NOT NULL, sql_identity text)")
     conn.execute("CREATE TABLE public.chart_facts (fact_id text PRIMARY KEY, chart_id uuid, ayanamsha_id text, fact_category text,"
                  " fact_subject text, fact_key text, fact_value_num double precision, created_at timestamptz DEFAULT now())")
     conn.execute("CREATE TABLE public.chart_dashas (dasha_row_id uuid PRIMARY KEY, chart_id uuid, ayanamsha_id text, system_id text,"
