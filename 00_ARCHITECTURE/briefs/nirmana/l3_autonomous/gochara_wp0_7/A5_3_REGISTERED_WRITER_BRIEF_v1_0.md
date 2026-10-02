@@ -600,3 +600,26 @@ Steward M20261002T005809-4f92 adopts Codex's closing text (`ASTRA_REVIEW_A5_5_SP
   instant; restricting a P1 record's support to the running-period intervals needs the §4.0 dasha intervals and waits
   with R2's Moon-lord domain on Stream B's AM-14 text); `score.py` is not yet the reduction used here — the sweep
   carries its own reduction until Stream B's qualification-in-the-result PR lands (then it is called, not copied).
+
+### Design v1.10 (2026-10-02) — Codex round 6, R4 (geometry as a validated contract)
+
+- **Kind ↔ target agreement is checked before any factor is evaluated** (`validate_geometry`): the kgrr object-kind
+  vocabulary maps to the canonical-target FORM it requires (`sign_span`/`house_span` → `span:`, `star` → `star:`,
+  `degree_point`/`derived_point`/`saham`/`house_lord` → `point:`); a malformed target, a missing one, or a disagreement
+  (a point labelled a span would take the membership step and bypass the unratified-orb branch) REFUSES the build —
+  it is a defect, not a missing operand. `varga_position` stays explicitly unqualified. A node-cast aspect record
+  (N-14) is refused outright.
+- **Membership comes from the contact geometry**, not only the stored support: the store supplies an `inside_at`
+  probe (residence: the body is IN the sign; aspect-on-span: one of the agent's own directed rays λ+angle lands in
+  it) and the sweep refuses a window whose peak lies where the geometry contradicts the support (a probe that cannot
+  decide — None — is not "outside"). The `outside: 0.0` of a membership step is never a second admission filter:
+  the sweep only evaluates inside a support.
+- **Aspect distance is the DIRECTED ray with seam-safe wrap** (`wrap180`; the nearest of the agent's own angles;
+  nodes: no provider) and the house offset keeps the inclusive convention.
+- **The lowercase-token adapter is closed** (`GRAHA_TITLE`, nine tokens; anything else — Title case, unknown — refuses);
+  every `.title()` in the window code is gone.
+- **Orb configuration fails closed**: a finite, strictly positive number is required (0, negative, NaN, ±inf, bool,
+  string are refused). *Open for Stream B:* Codex also asks for "a ratified decision binding and matching immutable
+  factor version" before the angular formula runs — the factor row has no field naming the ratifying decision, so the
+  sweep cannot check one; send the field name when ND-ORB is ruled and it becomes a guard.
+- 95 window tests; 11 R4 mutations all killed.

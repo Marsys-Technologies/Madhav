@@ -25,6 +25,8 @@ from datetime import timezone
 
 _TOL = 1e-6                                 # REAL (float4) storage
 _MAGNITUDE_ONLY = ("higher = stronger", "lower = stronger")
+_TITLE = {"sun": "Sun", "moon": "Moon", "mars": "Mars", "mercury": "Mercury", "jupiter": "Jupiter",
+          "venus": "Venus", "saturn": "Saturn", "rahu": "Rahu", "ketu": "Ketu"}
 
 
 def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool):
@@ -73,7 +75,7 @@ def _channel(event_class: str, path_id: str, rec: dict) -> str:
     if path_id == "P2":
         from services.gochara_rules import admission, favourable_houses
         from services.gochara_rules.score import channel_for
-        name, house = rec["agent"].title(), rec["house"]
+        name, house = _TITLE[rec["agent"]], rec["house"]
         fav = house in favourable_houses.favourable_houses(name)
         adv = name in admission.ADVERSE_RESIDENCE_BODIES and house in admission.ADVERSE_RESIDENCE_HOUSES
         if fav == adv:

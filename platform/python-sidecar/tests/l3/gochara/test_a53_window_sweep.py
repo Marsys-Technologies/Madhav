@@ -25,13 +25,19 @@ def _d(days: float) -> datetime:
     return T0 + timedelta(days=days)
 
 
+_DEFAULT_TARGET = {"sign_span": "span:7", "house_span": "span:7", "star": "star:3",
+                   "degree_point": "point:100.0", "derived_point": "point:100.0",
+                   "saham": "point:100.0", "house_lord": "point:100.0"}
+
+
 def _rec(rid, *, root=None, path="P3", version="1.0.0", relation="residence", kind="sign_span",
-         agent="jupiter", role="scored", admission="admitted", supports=((0, 10),), **kw):
+         agent="jupiter", role="scored", admission="admitted", supports=((0, 10),), target=None, **kw):
     return SweepRecord(
         record_id=rid, root_id=root or f"root-{rid}", path_id=path, rule_version=version,
         relation=relation, object_kind=kind, agent=agent, operator_role=role,
         admission_state=admission,
-        supports=tuple((_d(a), _d(b)) for a, b in supports), **kw)
+        supports=tuple((_d(a), _d(b)) for a, b in supports),
+        canonical_target=target if target is not None else _DEFAULT_TARGET.get(kind), **kw)
 
 
 def _with_applicability(rows, *, orb=None):
@@ -477,9 +483,12 @@ def test_an_aspect_record_scores_through_the_real_table():
     (a,), _ = _draft([full], _rows_declared, drishti=writer_mod.DRISHTI_SOURCE)
     (b,), _ = _draft([quarter], _rows_declared, drishti=writer_mod.DRISHTI_SOURCE)
     assert (a.score, b.score) == (1.0, 0.25)                    # Saturn's special 3rd; the Sun's ordinary 3rd
+    # N-14: a node casts no dṛṣṭi — the source says so (value None) ...
+    assert writer_mod.DRISHTI_SOURCE("rahu", 7) is None
+    # ... and a node-cast ASPECT RECORD is refused outright before any factor is evaluated (R4)
     node = _rec("n", relation="aspect", agent="rahu", supports=((0, 10),), aspect_offset_at=lambda t: 7)
-    (c,), _ = _draft([node], _rows_declared, drishti=writer_mod.DRISHTI_SOURCE)
-    assert c.score is None                                       # N-14: a node casts no dṛṣṭi
+    with pytest.raises(SweepRefusal, match="N-14"):
+        _draft([node], _rows_declared, drishti=writer_mod.DRISHTI_SOURCE)
 
 
 # ── P1: windows are formed; the categorical factors declare no value mapping ─────────────────────────
@@ -661,3 +670,104 @@ def test_a_later_maximum_that_is_higher_only_below_the_solver_resolution_does_no
              delta_lambda_at=lambda t: abs(day(t) - 38.0) * (5.0 / 15.0))
     (w,), _ = _draft([a, b], rows)
     assert abs(day(w.peak_instant) - 8.0) < 1e-3
+
+
+# ═══ Codex round 6, R4 — geometry is a validated contract ═══════════════════════════════════════════
+
+def test_a_point_labelled_a_span_is_refused_before_the_membership_step_can_take_it():
+    """house_span with a point target would take the step branch and bypass the orb_not_ratified
+    branch — 1155 does not stop it, the sweep must."""
+    bad = _rec("a", kind="house_span", target="point:12.5")
+    with pytest.raises(SweepRefusal, match="geometry and kind disagree"):
+        _draft([bad], _rows_declared)
+
+
+def test_every_kind_requires_its_own_target_form_and_a_missing_or_malformed_target_is_refused():
+    for kind, form in ws.KIND_TARGET_FORM.items():
+        other = "point:12.5" if form != "point:" else "span:3"
+        with pytest.raises(SweepRefusal):
+            _draft([_rec("a", kind=kind, target=other)], _rows_declared)
+        ok = {"span:": "span:3", "star:": "star:9", "point:": "point:12.5"}[form]
+        assert _draft([_rec("a", kind=kind, target=ok)], _rows_declared)[0]   # accepted
+    with pytest.raises(SweepRefusal):
+        _draft([_rec("a", kind="sign_span", target="span:13")], _rows_declared)     # not a canonical token
+    with pytest.raises(SweepRefusal):
+        _draft([SweepRecord("a", "r", "P3", "1.0.0", "residence", "sign_span", "saturn", "scored",
+                            "admitted", ((_d(0), _d(5)),))], _rows_declared)       # no target at all
+
+
+def test_varga_position_is_not_classified_and_stays_unqualified_never_1():
+    (w,), _ = _draft([_rec("a", kind="varga_position", target=None)], _rows_declared)
+    assert w.score is None and w.unresolved == {"object_kind_not_covered_by_applicability": 1}
+
+
+def test_the_lowercase_token_adapter_is_closed():
+    assert ws.graha_title("saturn") == "Saturn" and set(ws.GRAHA_TITLE) == {
+        "sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"}
+    for bad in ("Saturn", "SATURN", "pluto", "", "sat urn"):
+        with pytest.raises(SweepRefusal):
+            ws.graha_title(bad)
+
+
+@pytest.mark.parametrize("orb", [0, -1, float("nan"), float("inf"), -0.0, True, "5"])
+def test_an_invalid_orb_configuration_fails_closed_never_scores(orb):
+    rec = _rec("a", relation="conjunction", kind="house_lord", delta_lambda_at=lambda t: 0.5)
+    with pytest.raises(SweepRefusal):
+        _draft([rec], lambda p, v: _rows_declared(p, v, orb=orb))
+
+
+def test_a_declared_membership_step_outside_zero_is_not_a_second_admission_filter():
+    # `outside: 0.0` is declared on the row; the sweep only ever evaluates INSIDE a support, so a
+    # zero outside the support can never remove an admitted record from a window
+    (w,), _ = _draft([_rec("a", supports=((0, 10),))], _rows_declared)
+    assert w.score == 1.0 and w.members == 1
+
+
+# ── the directed aspect ray, seam-safe (store-side providers) ───────────────────────────────────────
+
+def test_point_delta_is_directed_and_seam_safe():
+    from services.gochara_kernel.window_store import _point_delta_provider
+    probe = lambda lon: (lambda body, t: lon)
+    # a conjunction across the 0°/360° seam: 359.9° vs a target at 0.2° is 0.3° away, not 359.7°
+    d = _point_delta_provider("conjunction", "saturn", "point:0.2", probe(359.9))
+    assert d(_d(0)) == pytest.approx(0.3, abs=1e-9)
+    # Saturn's 3rd ray (λ+60°): at 299.9° it lands on 359.9°, 0.3° from the target at 0.2°
+    d = _point_delta_provider("aspect", "saturn", "point:0.2", probe(299.9))
+    assert d(_d(0)) == pytest.approx(0.3, abs=1e-9)
+    # the ray is DIRECTED: the same longitude is NOT aspecting a target 60° BEHIND it
+    d = _point_delta_provider("aspect", "sun", "point:239.9", probe(299.9))   # Sun casts only 180°
+    assert d(_d(0)) == pytest.approx(120.0, abs=1e-9)     # 299.9+180 = 119.9, 120° from 239.9
+    # the nearest of the agent's OWN angles is the one used (Mars: 90 / 180 / 210)
+    d = _point_delta_provider("aspect", "mars", "point:210.2", probe(120.0))   # 120+90 = 210 → 0.2 away
+    assert d(_d(0)) == pytest.approx(0.2, abs=1e-9)
+    # a node casts nothing: no provider
+    assert _point_delta_provider("aspect", "rahu", "point:10.0", probe(0.0)) is None
+
+
+def test_aspect_offset_is_inclusive_whole_sign():
+    from services.gochara_kernel.window_store import _aspect_offset_provider
+    # Saturn in sign 10 (Capricorn, 270-300), target span:1 (Aries): Aries is the 4th from Capricorn
+    off = _aspect_offset_provider("span:1", "saturn", lambda body, t: 281.0)
+    assert off(_d(0)) == 4
+    assert _aspect_offset_provider("span:1", "saturn", lambda body, t: 15.0)(_d(0)) == 1   # same sign = 1
+
+
+def test_inside_provider_checks_residence_and_the_directed_ray_against_the_target_sign():
+    from services.gochara_kernel.window_store import _inside_provider
+    res = _inside_provider("residence", "saturn", "span:7", lambda body, t: 195.0)   # Libra
+    assert res(_d(0)) is True
+    assert _inside_provider("residence", "saturn", "span:7", lambda body, t: 15.0)(_d(0)) is False
+    ray = _inside_provider("aspect", "saturn", "span:7", lambda body, t: 135.0)      # 135+60 = 195 → Libra
+    assert ray(_d(0)) is True
+    assert _inside_provider("aspect", "rahu", "span:7", lambda body, t: 135.0) is None   # N-14
+    assert _inside_provider("residence", "saturn", "point:195.0", lambda body, t: 195.0) is None
+
+
+def test_a_support_the_contact_geometry_contradicts_at_the_peak_is_refused():
+    rec = _rec("a", supports=((0, 10),), inside_at=lambda t: False)
+    with pytest.raises(SweepRefusal, match="support/geometry disagree"):
+        _draft([rec], _rows_declared)
+    ok = _rec("a", supports=((0, 10),), inside_at=lambda t: True)
+    assert _draft([ok], _rows_declared)[0][0].score == 1.0
+    unknown = _rec("a", supports=((0, 10),), inside_at=lambda t: None)       # not determinable ≠ outside
+    assert _draft([unknown], _rows_declared)[0][0].score == 1.0

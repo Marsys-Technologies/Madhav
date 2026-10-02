@@ -20,7 +20,7 @@ from . import targets
 from .convention import drishti_angles
 from .evaluator import record_uuid
 from .record_store import RecordStore
-from .window_sweep import SweepRecord, WindowDraft
+from .window_sweep import SweepRecord, WindowDraft, graha_title
 
 _SIGN_DEG = 30.0
 
@@ -46,12 +46,13 @@ def _point_delta_provider(rec_relation: str, agent: str, target: str,
     through the aspect angle that applies (0 for a conjunction; the agent's own dṛṣṭi angles for an
     aspect — the nearest one is the one the contact is on, the angles being ≥ 30° apart)."""
     lam = float(target[len("point:"):])
-    angles = (0.0,) if rec_relation == "conjunction" else drishti_angles(agent.title())
+    name = graha_title(agent)
+    angles = (0.0,) if rec_relation == "conjunction" else drishti_angles(name)
     if not angles:
         return None
 
     def delta(t: datetime) -> float:
-        lon = position_at(agent.title(), t)
+        lon = position_at(name, t)
         return min(abs(_wrap180(lon + a - lam)) for a in angles)
 
     return delta
@@ -66,11 +67,33 @@ def _aspect_offset_provider(target: str, agent: str, position_at: Callable[[str,
     else:
         return None
 
+    name = graha_title(agent)
+
     def offset(t: datetime) -> int:
-        src_sign = int(position_at(agent.title(), t) // _SIGN_DEG) % 12
+        src_sign = int(position_at(name, t) // _SIGN_DEG) % 12
         return (tgt_sign - src_sign) % 12 + 1
 
     return offset
+
+
+def _inside_provider(rel: str, agent: str, target: str,
+                     position_at: Callable[[str, datetime], float]):
+    """Does the body's geometry at t actually put the target under it? Residence on a span: the body
+    is IN that sign. Aspect on a span: one of its directed dṛṣṭi rays (λ + angle) lands in the sign.
+    (Point and star targets are measured by Δλ / not probed here: None = not determinable.)"""
+    if not target.startswith("span:"):
+        return None
+    name = graha_title(agent)
+    sign = targets.span_sign_index(target) - 1
+    angles = (0.0,) if rel == "residence" else (drishti_angles(name) if rel == "aspect" else None)
+    if not angles:
+        return None
+
+    def inside(t: datetime) -> bool:
+        lon = position_at(name, t)
+        return any(int(((lon + a) % 360.0) // _SIGN_DEG) == sign for a in angles)
+
+    return inside
 
 
 class WindowStore:
@@ -110,18 +133,20 @@ class WindowStore:
                 g["supports"].append((lo.astimezone(timezone.utc), hi.astimezone(timezone.utc)))
         out: list[SweepRecord] = []
         for rid, g in grouped.items():
-            delta = offset = None
+            delta = offset = inside = None
             if position_at is not None and g["rel"] in ("conjunction", "aspect") \
                     and g["target"].startswith("point:"):
                 delta = _point_delta_provider(g["rel"], g["agent"], g["target"], position_at)
             if position_at is not None and g["rel"] == "aspect":
                 offset = _aspect_offset_provider(g["target"], g["agent"], position_at)
+            if position_at is not None and g["rel"] in ("residence", "aspect"):
+                inside = _inside_provider(g["rel"], g["agent"], g["target"], position_at)
             out.append(SweepRecord(
                 record_id=rid, root_id=g["root"], path_id=g["pid"], rule_version=g["ver"],
                 relation=g["rel"], object_kind=g["kind"], agent=g["agent"],
                 operator_role=g["role"], admission_state=g["adm"],
                 supports=tuple(g["supports"]), delta_lambda_at=delta, aspect_offset_at=offset,
-                house_from_frame=g["house"]))
+                house_from_frame=g["house"], canonical_target=g["target"], inside_at=inside))
         return out
 
     # ── write ───────────────────────────────────────────────────────────────

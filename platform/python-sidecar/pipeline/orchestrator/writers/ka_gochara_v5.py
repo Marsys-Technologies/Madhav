@@ -93,7 +93,7 @@ def _drishti_source(agent: str, offset: int):
     Its `value` is None for an operand it cannot classify (a node, a non-aspect offset) — the sweep
     reads that as an undeterminable instant (unqualified), never a default."""
     from services.gochara_rules import drishti as rules_drishti
-    return rules_drishti.graduated_drishti(agent.title(), offset)["value"]
+    return rules_drishti.graduated_drishti(gk_window_sweep.graha_title(agent), offset)["value"]
 
 
 # The two operand SOURCES the sweep calls but this writer does not own. None = a named missing input

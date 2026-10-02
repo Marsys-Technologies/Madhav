@@ -100,6 +100,57 @@ class SweepRecord:
     delta_lambda_at: Callable[[datetime], float | None] | None = None
     aspect_offset_at: Callable[[datetime], int | None] | None = None
     house_from_frame: int | None = None        # the record's own §1.2 inv 5 house (P2: from janma-rāśi)
+    # R4: the record's physical object's canonical target (validated against `object_kind` BEFORE any
+    # factor is evaluated) and, when the store has a position probe, whether the contact geometry
+    # actually places the target inside/under the body's ray at t (None = not determinable).
+    canonical_target: str | None = None
+    inside_at: Callable[[datetime], bool | None] | None = None
+
+
+# ── R4: the boundary adapters and the geometry contract ──────────────────────
+
+# The persisted graha tokens are lowercase (kgrr_agent_ck); the rule helpers speak Title case. A CLOSED,
+# tested adapter — never `.title()` on whatever arrives.
+GRAHA_TITLE = {"sun": "Sun", "moon": "Moon", "mars": "Mars", "mercury": "Mercury",
+               "jupiter": "Jupiter", "venus": "Venus", "saturn": "Saturn",
+               "rahu": "Rahu", "ketu": "Ketu"}
+
+
+def graha_title(token: str) -> str:
+    if token not in GRAHA_TITLE:
+        raise SweepRefusal(f"graha token {token!r} is not in the closed lowercase vocabulary")
+    return GRAHA_TITLE[token]
+
+
+# kgrr_object_kind_ck's vocabulary → the canonical-target FORM each kind requires. Extents (a sign, a
+# house, a 13°20′ nakṣatra) are `span:`/`star:`; the point kinds are `point:<longitude>`. 1155 does
+# NOT enforce this agreement; the sweep does, before it evaluates anything. `varga_position` has no
+# classified geometry here and stays explicitly unqualified (object_kind_not_covered_by_applicability).
+KIND_TARGET_FORM = {"sign_span": "span:", "house_span": "span:", "star": "star:",
+                    "degree_point": "point:", "derived_point": "point:", "saham": "point:",
+                    "house_lord": "point:"}
+
+
+def validate_geometry(rec: "SweepRecord") -> None:
+    """Refuse a record whose object kind and canonical target disagree (a point labelled a span would
+    take the membership step and bypass the unratified-orb branch), and a node-cast aspect (N-14)."""
+    from . import targets as _targets
+    if rec.relation == "aspect" and rec.agent in ("rahu", "ketu"):
+        raise SweepRefusal(f"record {rec.record_id}: a node casts no dṛṣṭi (N-14) — aspect record refused")
+    form = KIND_TARGET_FORM.get(rec.object_kind)
+    if form is None:
+        return
+    if rec.canonical_target is None:
+        raise SweepRefusal(f"record {rec.record_id}: object kind {rec.object_kind!r} requires its "
+                           "canonical target to validate the geometry — none supplied")
+    try:
+        _targets.validate_canonical_target(rec.canonical_target)
+    except ValueError as exc:
+        raise SweepRefusal(f"record {rec.record_id}: {exc}") from exc
+    if not rec.canonical_target.startswith(form):
+        raise SweepRefusal(
+            f"record {rec.record_id}: object kind {rec.object_kind!r} requires a {form!r} target, "
+            f"got {rec.canonical_target!r} — geometry and kind disagree")
 
 
 # ── factor outcomes ──────────────────────────────────────────────────────────
@@ -277,7 +328,7 @@ def p2_direction(agent: str, house: int | None) -> str:
     from services.gochara_rules import favourable_houses as _fav
     if house is None:
         raise SweepRefusal("P2 record without a house from janma-rāśi — direction undeterminable")
-    name = agent.title()
+    name = graha_title(agent)
     fav = house in _fav.favourable_houses(name)
     adv = name in _adm.ADVERSE_RESIDENCE_BODIES and house in _adm.ADVERSE_RESIDENCE_HOUSES
     if fav == adv:
@@ -319,6 +370,7 @@ def build_program(rec: SweepRecord, factor_rows: list[dict], *,
                   drishti: Callable[[str, int], float] | None = None,
                   vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
                   channel: str = CHANNEL_FOR) -> RecordProgram:
+    validate_geometry(rec)
     outcomes = evaluate_factors(rec, factor_rows, drishti=drishti, vedha=vedha)
     null_states: set = set()
     reasons: list = []
@@ -650,6 +702,12 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             continue
         best = max(v for v, _ in cands)
         peak = min(t for v, t in cands if v >= best - _TIE)
+        for p in qualified:        # R4: membership comes from the contact GEOMETRY, not only the support
+            if p.rec.inside_at is not None and _contains(p.rec.supports, peak) \
+                    and p.rec.inside_at(peak) is False:
+                raise SweepRefusal(
+                    f"record {p.rec.record_id}: its stored support contains the peak {peak.isoformat()} "
+                    "but the contact geometry places the target outside — support/geometry disagree")
         ev_for = _evidence_at(qualified, peak, CHANNEL_FOR)
         if path_id == "P4":
             score = best
@@ -689,7 +747,8 @@ __all__ = [
     "CHANNEL_AGAINST", "CHANNEL_FOR", "DIRECTIONAL_PATHS", "FOR_ONLY_PATHS", "Outcome",
     "RecordProgram", "SWEEP_PATHS", "SweepRecord", "SweepRefusal", "WindowDraft",
     "activity_kernel", "against_channel_state", "build_program", "draft_windows",
-    "CATEGORICAL_PATHS", "categorical_factor", "p2_direction", "record_channel", "vedha_attenuation",
+    "CATEGORICAL_PATHS", "GRAHA_TITLE", "KIND_TARGET_FORM", "categorical_factor", "graha_title",
+    "validate_geometry", "p2_direction", "record_channel", "vedha_attenuation",
     "evaluate_factors", "graduated_drishti", "intersect_components", "maximise_earliest",
     "registry_factor_rows", "union_components",
 ]
