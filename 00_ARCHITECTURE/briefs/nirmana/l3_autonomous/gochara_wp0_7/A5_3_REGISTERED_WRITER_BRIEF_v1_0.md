@@ -813,3 +813,34 @@ is a top-level key of the candidate vector (v1.14). (iv) **The mandatory positiv
 lists any `moon_on_demand` answers beside it (the scope does not change after an on-demand query), and **refuses** — `completeness = "refused"`,
 `stored_scope_missing`, no scope statement — when the manifest states no scope, no manifest exists, or the scope is unknown. Serving must call it
 (Stream C / the retrieval layer); the writer side is done and tested on the real schema.
+
+### Design v1.18 (2026-10-02) — Codex round 7, [5] (no unconditional pass), [8] (validated row contract), [9] (frozen vectors)
+
+**[5] Verifier.** `verify_window_semantics` now returns a **status**: `VERIFIED` only when every window's stored fields were reproduced EXACTLY
+(statically-unqualified windows reproduce their NULLs; constant-member windows reproduce score, peak and per-channel evidence); a window with a
+**function-valued member** is `UNVERIFIED_DYNAMIC` — checked against structure and **universal bounds** only (a per-root value is ≤ 1, so evidence
+is ≤ the number of roots feeding the channel and the score cannot exceed the evidence at the same peak) and counted, never passed. The review's
+fabricated one-root `evidence_for = 123.0` is refused (and a within-bounds wrong sum on a two-root window is refused by the exact check).
+`satisfies_gate(report)` is True only for a fully VERIFIED report; the writer's note says **"UNVERIFIED … this result does NOT satisfy a verification
+gate"** for a dynamic window and never "passed". **Source geometry:** `verify_member_support` checks, from the contact and its partition (independent
+SQL), that every member's stored support equals the contact span clipped to the partition horizon (P1's restricted support is `record_verifier`'s) and
+that the physical object's canonical target has the form its object kind requires (the verifier's own table). Dynamic numbers/peaks are NOT yet
+reproduced from independently obtained operands: no qualified dynamic window can exist today (the orb is unratified; vedha is unbound), and the
+status keeps that explicit when one does. **The surviving P4 mutant is equivalent only in the constant-step domain** (both agents' step value is 1),
+supplies no evidence for dynamic P4, and is not used to imply coverage of the full sweep. *Vedha verification* must not call the same `derive_vedha`:
+it needs an independent oracle over the source intervals — with #2901.
+
+**[8] The validated row contract.** A numeric orb is admissible only when the row AFFIRMATIVELY declares `orb_state == "ratified"` (and names its
+`orb_decision_ref`): the review's row — orb 5 with `orb_status` still "unratified" — is REFUSED (three spellings of "not ratified" tested); ratification
+is never inferred from a number being present. **Span membership requires the contact GEOMETRY** (`inside_at`): missing geometry is the named missing
+operand `geometry_operand_missing` (unqualified), never affirmative membership; the geometry is checked at every piece start and just inside its end
+across the WHOLE component (not only at the peak), a contradiction refuses the build, an undeterminable geometry makes the piece unknown. (The nakṣatra
+boundary defect is in #2897's `kernel_factor`; `star` records carry no geometry probe here and therefore stay unqualified — the explicit non-consumption gate.)
+When #2897 lands the sweep delegates to `kernel_factor` — it is not copied.
+
+**[9] Frozen vectors.** `input_vector.assemble_vector(inp)` is the ONE pure serializer (`build_input_vector` gathers inputs and calls it);
+`tests/l3/gochara/fixtures/am16_vectors_frozen_v1.json` (Stream B's literal preimages + expected sha256, campaign/pravaha 425a89218) is reproduced
+byte-for-byte for all 13 cases + the registry preimage; the ephemeris carries B's `probe_digest` (sha256 over the exact `float.hex()` `calc_ut` results of the
+fixed probe set), equal to B's independent probe implementation; `stored_scope` and the audit/unopened-file cases agree with the model
+(`am16_vectors_model.py` and `--cross-check` both OK). The writer module itself (`ka_gochara_v5`) is now in the evaluation stage list, with
+`substrate`/`inventory`/`permission`/`frames` already listed; the closure coverage test stays.

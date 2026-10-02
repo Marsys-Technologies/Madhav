@@ -37,7 +37,9 @@ def _rec(rid, *, root=None, path="P3", version="1.0.0", relation="residence", ki
         relation=relation, object_kind=kind, agent=agent, operator_role=role,
         admission_state=admission,
         supports=tuple((_d(a), _d(b)) for a, b in supports),
-        canonical_target=target if target is not None else _DEFAULT_TARGET.get(kind), **kw)
+        canonical_target=target if target is not None else _DEFAULT_TARGET.get(kind),
+        **({"inside_at": (lambda t: True)} if kind in ("sign_span", "house_span") and "inside_at" not in kw
+           else {}), **kw)
 
 
 def _with_applicability(rows, *, orb=None):
@@ -52,7 +54,8 @@ def _with_applicability(rows, *, orb=None):
                          "inside": 1.0, "outside": 0.0},
                 "angular": {"object_kinds": ["degree_point", "derived_point", "saham", "house_lord"],
                             "function": "linear", "orb_deg": orb,
-                            **({"orb_decision_ref": "ruling:nd_orb_test"} if orb is not None else {})},
+                            **({"orb_decision_ref": "ruling:nd_orb_test", "orb_state": "ratified"}
+                               if orb is not None else {})},
             }
         elif row["factor_id"] == "graduated_drishti":
             row["applicability"] = {"relations": ["aspect"]}
@@ -767,14 +770,54 @@ def test_inside_provider_checks_residence_and_the_directed_ray_against_the_targe
     assert _inside_provider("residence", "saturn", "point:195.0", lambda body, t: 195.0) is None
 
 
-def test_a_support_the_contact_geometry_contradicts_at_the_peak_is_refused():
-    rec = _rec("a", supports=((0, 10),), inside_at=lambda t: False)
+def test_a_support_the_contact_geometry_contradicts_is_refused_across_the_component_not_only_at_the_peak():
+    rec = _rec("a", supports=((0, 10),), inside_at=lambda t: t < _d(5))       # outside for the second half
     with pytest.raises(SweepRefusal, match="support/geometry disagree"):
         _draft([rec], _rows_declared)
     ok = _rec("a", supports=((0, 10),), inside_at=lambda t: True)
     assert _draft([ok], _rows_declared)[0][0].score == 1.0
-    unknown = _rec("a", supports=((0, 10),), inside_at=lambda t: None)       # not determinable ≠ outside
-    assert _draft([unknown], _rows_declared)[0][0].score == 1.0
+
+
+def test_an_undeterminable_geometry_is_unknown_never_affirmative_membership():
+    unknown = _rec("a", supports=((0, 10),), inside_at=lambda t: None)
+    (w,), _ = _draft([unknown], _rows_declared)
+    assert w.score is None and w.unqualified_reason == "objective_unknown_over_component"
+    partial = _rec("a", supports=((0, 10),), state_boundaries=lambda lo, hi: [_d(5)],
+                   inside_at=lambda t: True if t < _d(5) else None)
+    (w2,), _ = _draft([partial], _rows_declared)
+    assert w2.score is None                                      # a known half cannot stand in for the unknown half
+
+
+def test_a_span_record_whose_geometry_cannot_be_consulted_is_a_named_missing_operand_not_inside():
+    rec = _rec("a", supports=((0, 10),), inside_at=None)
+    # (the helper defaults inside_at for span kinds; pass it explicitly as None via the dataclass)
+    import dataclasses
+    rec = dataclasses.replace(rec, inside_at=None)
+    (w,), _ = _draft([rec], _rows_declared)
+    assert w.score is None and w.unresolved == {"geometry_operand_missing": 1}
+
+
+def test_a_numeric_orb_never_ratifies_itself_whatever_the_row_calls_its_state():
+    """The review's reproduction: a real 1.1.0 row modified to carry orb 5 while its orb_status still says
+    unratified returned 1.0 from the sweep. Ratification is NEVER inferred from a number being present."""
+    for status in ("unratified_nd_orb_open", "ND-ORB open: not ratified (draft AM-13)", "unratified"):
+        rows = _rows_declared("P3", "1.0.0", orb=5.0)
+        for r in rows:
+            if r["factor_id"] == "activity_kernel":
+                r["applicability"]["angular"]["orb_status"] = status
+                r["applicability"]["angular"]["orb_state"] = status      # whatever it calls itself, not "ratified"
+        rec = _rec("a", relation="conjunction", kind="house_lord", delta_lambda_at=lambda t: 0.0)
+        with pytest.raises(SweepRefusal, match="does not ratify itself"):
+            _draft([rec], lambda p, v, rr=rows: rr)
+    # a ratified state WITH its decision ref scores
+    rows = _rows_declared("P3", "1.0.0", orb=5.0)
+    for r in rows:
+        if r["factor_id"] == "activity_kernel":
+            r["applicability"]["angular"]["orb_state"] = "ratified"
+    rec = _rec("a", relation="conjunction", kind="house_lord", delta_lambda_at=lambda t: 0.0,
+               peak_hints=lambda lo, hi: [_d(1)])
+    assert _draft([rec], lambda p, v: rows)[0][0].score == pytest.approx(1.0)
+
 
 
 # ═══ Stream B's qualification-aware reduction (score.path_channel_scores, #2905) is the one called ═════

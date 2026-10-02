@@ -99,10 +99,29 @@ def grain(pg):
     return conn
 
 
+@pytest.fixture(autouse=True)
+def _geometry_probe_for_every_read(monkeypatch):
+    """The sweep requires the contact GEOMETRY for span members (Codex round 7 [8]). The writer's store
+    always supplies a position probe; these tests do the same, matched to the grains they seed."""
+    original = WindowStore.read_grain
+
+    def read_grain(self, **kw):
+        if kw.get("position_at") is None:
+            kw["position_at"] = _probe_for(kw["path_id"])
+        return original(self, **kw)
+    monkeypatch.setattr(WindowStore, "read_grain", read_grain)
+
+
+def _p3_probe(body, t):
+    """Saturn is in Libra for days [10, 200) of the grain — the same fact the seeded crossings state."""
+    d = (t - T0) / DAY
+    return 195.0 if 10 <= d < 200 else 15.0
+
+
 def _sweep_and_write(conn, rows_for):
     ws_store = WindowStore(conn)
     recs = ws_store.read_grain(chart_id=CHART_ID, generation=GEN, event_class=CLS,
-                               path_id=PATH, rule_version=VERSION)
+                               path_id=PATH, rule_version=VERSION, position_at=_p3_probe)
     drafts, excluded = ws.draft_windows(CLS, recs, rows_for)
     with conn.transaction():
         conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
@@ -191,7 +210,7 @@ def test_the_writer_window_substep_runs_on_the_runners_native_types(grain, monke
     with grain.transaction():
         res = w.run_substep(ctx, SubStep(key=f"window:{CLS}:{PATH}", label="w"))
     assert res.rows_inserted == 2                                # 1 window + 1 membership row
-    assert "1 window(s) (1 unqualified" in res.notes and "independent SQL union + semantic re-derivation passed" in res.notes
+    assert "1 window(s) (1 unqualified" in res.notes and "reproduced all 1 window(s) exactly" in res.notes
     (row,) = _window_rows(grain)
     assert row[3] is None and row[6] == "unqualified"
     # the dry run solves and writes nothing
@@ -318,19 +337,31 @@ def _verify(conn, cls, path, rows_for=ws.registry_factor_rows, **kw):
                                    factor_rows=rows_for(path, VERSION), **kw)
 
 
+def _probe_for(path):
+    def p2(body, t):
+        d = (t - T0) / DAY
+        return 15.0 if 20 <= d < 120 else 195.0
+    def p4(body, t):
+        d = (t - T0) / DAY
+        window = (10, 200) if body.lower() == "jupiter" else (100, 300)
+        return 195.0 if window[0] <= d < window[1] else 15.0
+    return {"P2": p2, "P3": _p3_probe, "P4": p4}[path]
+
+
 def _drafts(conn, cls, path, rows_for):
     recs = WindowStore(conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls,
-                                        path_id=path, rule_version=VERSION)
+                                        path_id=path, rule_version=VERSION, position_at=_probe_for(path))
     return ws.draft_windows(cls, recs, rows_for)[0]
 
 
 def test_verifier_reproduces_the_unqualified_and_the_qualified_window(grain):
     _write(grain, CLS, PATH, _drafts(grain, CLS, PATH, ws.registry_factor_rows))
     # every member unqualified: nothing numeric to reproduce, and the structural checks hold
-    assert _verify(grain, CLS, PATH) == {"windows": 1, "numeric_reproduced": 0, "structural_only": 1}
+    out0 = _verify(grain, CLS, PATH)
+    assert (out0["windows"], out0["numeric_reproduced"], out0["fully_reproduced"], out0["status"]) == (1, 0, 1, "VERIFIED")
     _write(grain, CLS, PATH, _drafts(grain, CLS, PATH, _declared_rows))
     out = _verify(grain, CLS, PATH, _declared_rows)
-    assert out == {"windows": 1, "numeric_reproduced": 1, "structural_only": 0}
+    assert (out["windows"], out["numeric_reproduced"], out["fully_reproduced"], out["status"]) == (1, 1, 1, "VERIFIED")
 
 
 def test_verifier_refuses_a_wrong_score_a_wrong_peak_and_a_wrong_evidence_sum(grain):
@@ -368,7 +399,8 @@ def test_verifier_checks_the_p2_channels_from_the_cited_sets(p2_grain):
     _write(conn, cls, "P2", drafts)
     # the sweep ran with a bound vedha source; tell the verifier the same fact
     out = _verify(conn, cls, "P2", vedha_bound=True)
-    assert out["windows"] == 1 and out["structural_only"] == 1      # vedha value is a function: not claimed
+    assert out["windows"] == 1 and out["unverified_dynamic"] == 1    # vedha value is a function: NOT reproduced
+    assert out["status"] == "UNVERIFIED_DYNAMIC"
 
 
 # ── P4 on the real schema: the window is the INTERSECTION; members extend past it ─────────────────────
@@ -431,8 +463,8 @@ def test_p4_window_is_the_joint_support_and_members_extend_past_it(p4_grain):
         conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         assert WindowStore(conn).verify_grain(chart_id=CHART_ID, generation=GEN, event_class=cls,
                                               path_id="P4", rule_version=VERSION) == {"windows": 1}
-    assert _verify(conn, cls, "P4", _declared_rows) == {"windows": 1, "numeric_reproduced": 1,
-                                                        "structural_only": 0}
+    out = _verify(conn, cls, "P4", _declared_rows)
+    assert (out["windows"], out["numeric_reproduced"], out["status"]) == (1, 1, "VERIFIED")
 
 
 def test_p4_sql_check_refuses_a_window_built_on_the_raw_union(p4_grain):
@@ -512,3 +544,123 @@ def test_the_affected_channels_and_reasons_are_reconstructable_from_the_stored_r
                                          factor_rows=_declared_rows(PATH, VERSION))
     (w2,) = rebuilt2.values()
     assert w2["affected_channels"] == [] and w2["reasons"] == {}
+
+
+# ═══ Codex round 7 [5]: no unconditional pass — UNVERIFIED is a real state; universal bounds; source geometry ═══
+
+def _p2_dynamic_world(p2_grain):
+    conn, cls = p2_grain
+    recs = WindowStore(conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P2",
+                                        rule_version=VERSION)
+    drafts = ws.draft_windows(cls, recs, ws.registry_factor_rows, vedha=lambda r, t: 0.5)[0]
+    return conn, cls, drafts
+
+
+def test_a_fabricated_evidence_for_of_123_on_a_one_root_dynamic_window_is_refused(p2_grain):
+    """The review's reproduction: a one-root P2 window with evidence_for=123.0 used to be accepted as
+    {numeric_reproduced: 0, structural_only: 1}. Even without reproducing the number, ONE root feeding a
+    channel bounds its evidence by 1 (every per-root value is ≤ 1)."""
+    import dataclasses
+    conn, cls, drafts = _p2_dynamic_world(p2_grain)
+    _write(conn, cls, "P2", [dataclasses.replace(drafts[0], evidence_for=123.0)])
+    with pytest.raises(RuntimeError, match="evidence_for 123.0 is outside"):
+        _verify(conn, cls, "P2", vedha_bound=True)
+    _write(conn, cls, "P2", [dataclasses.replace(drafts[0], score=0.9, evidence_for=0.5)])
+    with pytest.raises(RuntimeError, match="score 0.9 exceeds evidence_for"):
+        _verify(conn, cls, "P2", vedha_bound=True)
+    _write(conn, cls, "P2", [dataclasses.replace(drafts[0], evidence_against=3.0)])
+    with pytest.raises(RuntimeError, match="evidence_against 3.0 is outside"):
+        _verify(conn, cls, "P2", vedha_bound=True)
+
+
+def test_a_genuine_dynamic_window_is_reported_unverified_and_cannot_satisfy_the_gate(p2_grain):
+    from services.gochara_kernel import window_verifier as wv
+    conn, cls, drafts = _p2_dynamic_world(p2_grain)
+    _write(conn, cls, "P2", drafts)
+    out = _verify(conn, cls, "P2", vedha_bound=True)
+    assert out["status"] == "UNVERIFIED_DYNAMIC" and out["unverified_dynamic"] == 1
+    assert out["fully_reproduced"] == 0 and len(out["unverified_windows"]) == 1
+    assert wv.satisfies_gate(out) is False
+
+
+def test_a_fully_reproduced_world_satisfies_the_gate_and_an_unqualified_one_is_fully_verified(grain):
+    from services.gochara_kernel import window_verifier as wv
+    _write(grain, CLS, PATH, _drafts(grain, CLS, PATH, ws.registry_factor_rows))      # all unqualified
+    out = _verify(grain, CLS, PATH)
+    assert out["status"] == "VERIFIED" and out["fully_reproduced"] == 1 and wv.satisfies_gate(out) is True
+    _write(grain, CLS, PATH, _drafts(grain, CLS, PATH, _declared_rows))                # constants, reproduced
+    out2 = _verify(grain, CLS, PATH, _declared_rows)
+    assert out2["status"] == "VERIFIED" and out2["numeric_reproduced"] == 1 and wv.satisfies_gate(out2)
+
+
+def test_the_gate_helper_never_passes_a_report_that_is_not_verified():
+    from services.gochara_kernel import window_verifier as wv
+    assert wv.satisfies_gate({"status": "UNVERIFIED_DYNAMIC", "unverified_windows": ["w"]}) is False
+    assert wv.satisfies_gate({"status": "VERIFIED", "unverified_windows": ["w"]}) is False
+    assert wv.satisfies_gate({}) is False
+    assert wv.satisfies_gate({"status": "VERIFIED", "unverified_windows": []}) is True
+
+
+def test_the_writer_never_reports_an_unconditional_semantic_pass_for_a_dynamic_window(p2_grain, monkeypatch):
+    conn, cls = p2_grain
+    monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
+    monkeypatch.setattr(writer_mod, "_verify_live_inputs", lambda ctx, chart_id: None)
+    monkeypatch.setattr(writer_mod, "VEDHA_SOURCE", lambda rec, t: 0.5)
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-dyn", db_conn=conn,
+                      config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON}, dry_run=False)
+    with conn.transaction():
+        res = writer_mod.GocharaV5Writer().run_substep(
+            ctx, SubStep(key=f"window:{cls}:P2", label="w"))
+    assert "UNVERIFIED" in res.notes and "does NOT satisfy a verification gate" in res.notes
+    assert "reproduced all" not in res.notes and "passed" not in res.notes
+
+
+class _GeomConn:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def execute(self, sql, params=()):
+        class R:
+            def __init__(s, rows):
+                s.rows = rows
+
+            def fetchall(s):
+                return s.rows
+        return R(self.rows)
+
+
+def test_member_support_is_checked_against_the_source_geometry_and_the_kind_target_form():
+    from services.gochara_kernel.window_verifier import verify_member_support
+    kw = dict(chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P3", rule_version=VERSION)
+    ok = [("r1", "sign_span", "span:7", True), ("r2", "house_lord", "point:12.5", True)]
+    assert verify_member_support(_GeomConn(ok), **kw) == {"members": 2}
+    with pytest.raises(RuntimeError, match="not the contact span"):
+        verify_member_support(_GeomConn([("r1", "sign_span", "span:7", False)]), **kw)
+    for kind, target in (("sign_span", "point:12.5"), ("house_lord", "span:7"), ("star", "star:28"),
+                         ("sign_span", "span:13")):
+        with pytest.raises(RuntimeError, match="object kind"):
+            verify_member_support(_GeomConn([("r1", kind, target, True)]), **kw)
+    # P1's support is the prerequisite-restricted one (record_verifier's), not the raw contact span
+    assert verify_member_support(_GeomConn([("r1", "sign_span", "span:7", False)]),
+                                 **dict(kw, path_id="P1")) == {"members": 1}
+
+
+def test_member_support_check_passes_on_the_real_schema(grain):
+    from services.gochara_kernel.window_verifier import verify_member_support
+    _write(grain, CLS, PATH, _drafts(grain, CLS, PATH, ws.registry_factor_rows))
+    assert verify_member_support(grain, chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id=PATH,
+                                 rule_version=VERSION) == {"members": 1}
+
+
+def test_a_wrong_but_in_bounds_evidence_sum_is_caught_by_the_exact_check_not_only_the_bounds(p4_grain):
+    """Two roots (Jupiter, Saturn) are live at the P4 peak: evidence_for must be 2.0. Storing 1.0 is
+    inside the universal bounds ([0, 2], ≥ the score 1.0) — only the exact re-derivation can refuse it."""
+    import dataclasses
+    conn, cls = p4_grain
+    recs = WindowStore(conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P4",
+                                        rule_version=VERSION)
+    good = ws.draft_windows(cls, recs, _declared_rows)[0][0]
+    assert good.evidence_for == 2.0 and good.score == 1.0
+    _write(conn, cls, "P4", [dataclasses.replace(good, evidence_for=1.0)])
+    with pytest.raises(RuntimeError, match="evidence_for 1.0 != re-derived 2.0"):
+        _verify(conn, cls, "P4", _declared_rows)

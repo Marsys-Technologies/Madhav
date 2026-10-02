@@ -53,7 +53,7 @@ IMPLEMENTATION_MODULES = {
         "chart_context", "coverage", "dasha_read", "evaluator", "input_vector", "input_vector_verifier",
         "inventory", "inventory_store", "inventory_verifier", "ledger", "lifecycle", "native_conn",
         "record_verifier", "scope_response",
-        "rule_registry")) + tuple(_R + m for m in (
+        "rule_registry")) + ("pipeline.orchestrator.writers.ka_gochara_v5",) + tuple(_R + m for m in (
         "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "frames", "nature", "p6",
         "permission", "predicates", "records", "registry", "score", "strength", "valence", "vedha")),
     "window": tuple(_K + m for m in ("window_store", "window_sweep", "window_verifier")),
@@ -135,8 +135,54 @@ def registry_payload(conn, path_refs: Iterable[tuple[str, str]], *,
             "soft_factors": softs, "predicates": predicates, "factors": factors, "census": census}
 
 
+def _strip_audit(row: dict) -> dict:
+    return {k: v for k, v in row.items() if k not in EXCLUDED_AUDIT_FIELDS}
+
+
+def registry_digest_of(rows: dict) -> str:
+    """The registry digest of already-fetched rows, PURE: total order, audit fields stripped — the one
+    function the runtime and the frozen vectors share (so a serializer drift fails both)."""
+    return _sha(canonical_json(registry_preimage(rows)))
+
+
+def registry_preimage(rows: dict) -> dict:
+    return {"schema": REGISTRY_DIGEST_SCHEMA,
+            "paths": [_strip_audit(r) for r in sorted(rows["paths"], key=lambda r: (r["path_id"], r["rule_version"]))],
+            "prerequisites": sorted(rows["prerequisites"], key=lambda r: (r["path_id"], r["rule_version"], r["ordinal"])),
+            "soft_factors": sorted(rows["soft_factors"], key=lambda r: (
+                r["path_id"], r["rule_version"], r["factor_id"], r["factor_rule_version"])),
+            "predicates": [_strip_audit(r) for r in sorted(rows["predicates"], key=lambda r: (
+                r["predicate_id"], r["rule_version"]))],
+            "factors": [_strip_audit(r) for r in sorted(rows["factors"], key=lambda r: (
+                r["factor_id"], r["rule_version"]))],
+            "census": sorted([list(c) for c in rows["census"]])}
+
+
 def registry_digest(conn, path_refs: Iterable[tuple[str, str]], *, census_override=None) -> str:
-    return _sha(canonical_json(registry_payload(conn, path_refs, census_override=census_override)))
+    return registry_digest_of(registry_payload(conn, path_refs, census_override=census_override))
+
+
+def assemble_vector(inp: dict) -> dict:
+    """The vector from already-obtained inputs, PURE — the single serializer `build_input_vector` and the
+    frozen test vectors (`am16_vectors_frozen_v1.json`, literal preimages + expected sha256) both use."""
+    return {
+        "schema": VECTOR_SCHEMA,
+        # AM-14: the machine-readable scope of what this generation STORES — the Moon is the on-demand
+        # tier. 1232's completeness function refuses a manifest vector without it, and serving must
+        # be able to state it with every answer.
+        "stored_scope": inp["stored_scope"],
+        "sky_convention": {"id": inp["sky_id"], "content_digest": _sha(canonical_json(inp["sky_vector"]))},
+        "registry": {"digest": registry_digest_of(inp["registry"]),
+                     "census": sorted([list(c) for c in inp["registry"]["census"]])},
+        "node": inp["node"],
+        "ephemeris": {"backend": "swieph", "swe_version": inp["swe_version"],
+                      "files": dict(sorted(inp["opened_files"].items())), "probe_digest": inp["probe_digest"]},
+        "l0": {k: _sha(canonical_json(v)) for k, v in sorted(inp["l0_rows"].items())},
+        "orb_policy": {"admission_digest": _sha(canonical_json(inp["admission_orb"])),
+                       "activity": inp["activity_orb"]},
+        "rulings_digest": _sha(canonical_json(sorted(inp["rulings"], key=canonical_json))),
+        "implementation": {st: _sha(canonical_json(m)) for st, m in sorted(inp["impl_modules"].items())},
+    }
 
 
 # ── node series / ephemeris ──────────────────────────────────────────────────
@@ -193,8 +239,34 @@ def probe_opened_files(ephe_path: str, bodies: Iterable[str], jd_lo: float, jd_h
     return opened
 
 
+# The fixed series probe (design/am16_series_equivalence_probe.py): the cheap CONTENT binding of the consumed
+# arc/node series — the kernel computes it with pyswisseph, so it is a pure function of (opened file
+# contents, library version, flags, instants); `probe_digest` catches library-numerics drift the file hashes
+# alone would miss.
+PROBE_BODIES = {"Sun": 0, "Moon": 1, "Saturn": 6, "MeanNode": 10}
+PROBE_INSTANTS = [(2024, 6, 1, 0.0), (2025, 1, 1, 0.0), (2025, 7, 1, 12.0), (2026, 1, 1, 0.0)]
+
+
+@serialized_swiss_state
+def probe_series_digest(ephe_path: str) -> str:
+    import swisseph as swe
+    swe.close()
+    swe.set_ephe_path(ephe_path)
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    flags = swe.FLG_SWIEPH | swe.FLG_SPEED | swe.FLG_SIDEREAL
+    rows = []
+    for y, m, d, h in PROBE_INSTANTS:
+        jd = swe.julday(y, m, d, h)
+        for name, body in PROBE_BODIES.items():
+            xx, ret = swe.calc_ut(jd, body, flags)
+            if not (int(ret) & 2):
+                raise InputDrift(f"ephemeris probe: {name} at jd {jd} was not served from the .se1 files")
+            rows.append([name, jd, True, [float(v).hex() for v in xx]])
+    return hashlib.sha256(json.dumps(rows, separators=(",", ":")).encode()).hexdigest()
+
+
 def ephemeris_identity(ephe_path: str | None, *, bodies: Iterable[str], jd_lo: float, jd_hi: float,
-                       files_probe=None) -> dict:
+                       files_probe=None, series_probe=None) -> dict:
     """The Swiss library version and the sha256 of the files the kernel OPENS for the consumed bodies and
     range — never "every .se1 present" (a file merely lying in the directory is not an input). No path ⇒
     refused, never recorded as unknown (a vector that cannot distinguish two ephemerides is not an
@@ -206,7 +278,8 @@ def ephemeris_identity(ephe_path: str | None, *, bodies: Iterable[str], jd_lo: f
     if not opened:
         raise InputDrift(f"ephemeris: no .se1 file was opened under {ephe_path!r} — nothing to bind")
     return {"backend": "swieph", "swe_version": swe.version,
-            "files": {name: _file_sha(Path(path)) for name, path in sorted(opened.items())}}
+            "files": {name: _file_sha(Path(path)) for name, path in sorted(opened.items())},
+            "probe_digest": (series_probe or probe_series_digest)(ephe_path)}
 
 
 def node_identity() -> dict:
@@ -241,8 +314,13 @@ def activity_orb_states(conn, path_refs) -> dict:
 
 
 def l0_identities(conn) -> dict:
-    """{asset_id: sha256(canonical rows consumed, total order)} for every L0 table a path reads
-    (`L0_CONSUMED`; the surrogate `id` is not content). An absent table is refused — nothing to bind."""
+    """{asset_id: sha256(canonical rows consumed, total order)} — see `l0_rows`."""
+    return {k: _sha(canonical_json(v)) for k, v in sorted(l0_rows(conn).items())}
+
+
+def l0_rows(conn) -> dict:
+    """{asset_id: the consumed rows, total order} for every L0 table a path reads (`L0_CONSUMED`; the
+    surrogate `id` is not content). An absent table is refused — nothing to bind."""
     out = {}
     for asset, (_path, sql) in sorted(L0_CONSUMED.items()):
         try:
@@ -252,11 +330,11 @@ def l0_identities(conn) -> dict:
             raise InputDrift(f"l0: {asset} is not readable ({type(exc).__name__}) — nothing to bind") from exc
         if not rows:
             raise InputDrift(f"l0: {asset} has no consumed rows — an empty reference is not an identity")
-        out[asset] = _sha(canonical_json(rows))
+        out[asset] = rows
     return out
 
 
-def sky_convention_identity(conn, convention_id: str) -> dict:
+def sky_convention_identity(conn, convention_id: str) -> dict:  # noqa: D401
     """The convention's id AND the digest of its stored content (a label alone is not an identity)."""
     row = conn.execute(
         "SELECT to_jsonb(t) - %s::text[] FROM public.ka_gochara_sky_convention t WHERE t.convention_id = %s",
@@ -287,31 +365,38 @@ def implementation_digests(modules: dict | None = None) -> dict:
 def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
                        path_refs: Iterable[tuple[str, str]], rulings: Iterable[dict],
                        horizon: tuple | None = None, bodies: Iterable[str] | None = None,
-                       files_probe=None, modules: dict | None = None) -> dict:
+                       files_probe=None, series_probe=None, modules: dict | None = None) -> dict:
     from .substrate import SUBSTRATE_BODIES, SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START
+    from .convention import ORB_TABLE
+    from .record_store import POINT_ORB_SOURCE
     refs = list(path_refs)
     payload = registry_payload(conn, refs)
     # the CONSUMED range: the substrate domain every arc is built over, widened by the class horizon
     lo = min(x for x in (SUBSTRATE_DOMAIN_START, horizon[0] if horizon else None) if x is not None)
     hi = max(x for x in (SUBSTRATE_DOMAIN_END, horizon[1] if horizon else None) if x is not None)
     jd = lambda d: d.timestamp() / 86400.0 + 2440587.5
-    return {
-        "schema": VECTOR_SCHEMA,
-        # AM-14: the machine-readable scope of what this generation STORES — the Moon is the on-demand
-        # tier. 1232's completeness function refuses a manifest vector without it, and serving must
-        # be able to state it with every answer.
-        "stored_scope": STORED_SCOPE,
-        "sky_convention": sky_convention_identity(conn, sky_convention_id),
-        "registry": {"digest": _sha(canonical_json(payload)), "census": payload["census"]},
-        "node": node_identity(),
-        "ephemeris": ephemeris_identity(ephe_path, bodies=tuple(bodies or SUBSTRATE_BODIES),
-                                        jd_lo=jd(lo), jd_hi=jd(hi), files_probe=files_probe),
-        "l0": l0_identities(conn),
-        "orb_policy": {"admission_digest": admission_orb_digest(),
-                       "activity": activity_orb_states(conn, refs)},
-        "rulings_digest": rulings_digest(rulings),
-        "implementation": implementation_digests(modules),
-    }
+    eph = ephemeris_identity(ephe_path, bodies=tuple(bodies or SUBSTRATE_BODIES), jd_lo=jd(lo), jd_hi=jd(hi),
+                             files_probe=files_probe, series_probe=series_probe)
+    sky = sky_convention_identity(conn, sky_convention_id)
+    sky_row = conn.execute(
+        "SELECT to_jsonb(t) - %s::text[] FROM public.ka_gochara_sky_convention t WHERE t.convention_id = %s",
+        (list(EXCLUDED_AUDIT_FIELDS), sky_convention_id)).fetchone()
+    sky_vector = sky_row[0] if not isinstance(sky_row, dict) else next(iter(sky_row.values()))
+    return assemble_vector({
+        "stored_scope": STORED_SCOPE, "sky_id": sky_convention_id, "sky_vector": sky_vector,
+        "registry": payload, "node": node_identity(), "swe_version": eph["swe_version"],
+        "opened_files": eph["files"], "probe_digest": eph["probe_digest"],
+        "l0_rows": l0_rows(conn),
+        "admission_orb": {"orb_table": ORB_TABLE, "point_orb_source": POINT_ORB_SOURCE},
+        "activity_orb": activity_orb_states(conn, refs),
+        "rulings": list(rulings),
+        "impl_modules": _implementation_modules(modules),
+    })
+
+
+def _implementation_modules(modules: dict | None) -> dict:
+    mods = modules or IMPLEMENTATION_MODULES
+    return {stage: {m: _module_source_digest(m) for m in names} for stage, names in mods.items()}
 
 
 def diff_vectors(stored: dict, live: dict) -> list[str]:
@@ -355,6 +440,7 @@ def verify_live(conn, stored: dict, **kw) -> None:
 __all__ = ["EXCLUDED_AUDIT_FIELDS", "IMPLEMENTATION_MODULES", "InputDrift", "REGISTRY_DIGEST_SCHEMA",
            "L0_CONSUMED", "VECTOR_SCHEMA", "activity_orb_states", "l0_identities",
            "probe_opened_files", "sky_convention_identity", "admission_orb_digest", "build_input_vector",
-           "STORED_SCOPE", "canonical_json", "diff_vectors", "ephemeris_identity", "implementation_digests",
-           "node_identity", "registry_digest", "registry_payload", "rulings_digest", "verify_live",
+           "STORED_SCOPE", "assemble_vector", "canonical_json", "diff_vectors", "ephemeris_identity", "implementation_digests",
+           "node_identity", "probe_series_digest", "registry_digest", "registry_digest_of",
+           "registry_preimage", "registry_payload", "rulings_digest", "verify_live",
            "verify_replay"]

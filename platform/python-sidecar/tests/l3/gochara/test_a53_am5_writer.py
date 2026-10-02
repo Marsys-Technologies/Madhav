@@ -43,6 +43,7 @@ def make_ephe(path, monkeypatch) -> str:
         (path / name).write_bytes(name.encode() * 32)
     from pathlib import Path
     from services.gochara_kernel import input_vector as _iv
+    monkeypatch.setattr(_iv, "probe_series_digest", lambda ephe: "cd" * 32)
     monkeypatch.setattr(_iv, "probe_opened_files",
                         lambda ephe, bodies, lo, hi: {f.name: str(f) for f in Path(ephe).glob("sep*.se1")}
                         | {f.name: str(f) for f in Path(ephe).glob("semo*.se1")})

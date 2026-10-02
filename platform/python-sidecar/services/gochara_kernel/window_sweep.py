@@ -191,13 +191,25 @@ def activity_kernel(row: dict, rec: SweepRecord) -> Outcome:
         return _missing(row, "applicability_undeclared")
     span, angular = ap.get("span") or {}, ap.get("angular") or {}
     if rec.object_kind in (span.get("object_kinds") or ()):
-        # A support interval IS the membership: every instant the sweep evaluates is inside it.
+        # Membership is a declared step (1 inside); the record's support is the claim, and the CONTACT
+        # GEOMETRY must confirm it. A span record whose geometry cannot be consulted is not affirmatively
+        # a member: missing geometry is a named missing operand, never silently "inside" (R7 [8]).
+        if rec.inside_at is None:
+            return _missing(row, "geometry_operand_missing")
         return Outcome("const", value=_check_unit(span.get("inside"), "activity_kernel span.inside"),
                        factor=row["factor_id"])
     if rec.object_kind in (angular.get("object_kinds") or ()):
         orb = angular.get("orb_deg")
         if orb is None:
             return _missing(row, "orb_not_ratified")
+        # Ratification is NEVER inferred from a number being present (Codex round 7 [8]): a numeric orb is
+        # admissible only when the row AFFIRMATIVELY declares `orb_state == "ratified"`; any other (or no)
+        # state — "unratified", "ND-ORB open", free text — is a contradiction that refuses, never scores.
+        state = angular.get("orb_state")
+        if state != "ratified":
+            raise SweepRefusal(
+                f"activity_kernel angular.orb_deg {orb!r} is present but the row's orb_state is {state!r} "
+                f"(orb_status {angular.get('orb_status')!r}) — a numeric orb does not ratify itself")
         if not (isinstance(orb, (int, float)) and not isinstance(orb, bool) and orb > 0
                 and math.isfinite(orb)):
             raise SweepRefusal(f"activity_kernel angular.orb_deg {orb!r} is not a positive finite number")
@@ -725,6 +737,25 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             if path_id == "P4":
                 if {p.rec.agent for p in live} != {"jupiter", "saturn"}:
                     continue               # outside the joint support within this piece: not a candidate
+            # membership comes from the CONTACT GEOMETRY across the whole component, not only at the
+            # chosen peak (R7 [8]): at every piece start, and just inside its end, a live member's
+            # geometry must not place the target outside its stored support; an undeterminable
+            # geometry makes the piece unknown (never affirmative membership)
+            geometry_unknown = False
+            for p in live:
+                if p.rec.inside_at is None:
+                    continue
+                for instant in (a, b - timedelta(microseconds=1)):
+                    g = p.rec.inside_at(instant)
+                    if g is False:
+                        raise SweepRefusal(
+                            f"record {p.rec.record_id}: its stored support contains {instant.isoformat()} "
+                            "but the contact geometry places the target outside — support/geometry disagree")
+                    if g is None:
+                        geometry_unknown = True
+            if geometry_unknown:
+                unknown_pieces += 1
+                continue
             f = _objective_fn(path_id, live, event_class)
             if all(p.constant is not None for p in live):
                 v = f(a)
@@ -750,12 +781,6 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             continue
         best = max(v for v, _ in cands)
         peak = min(t for v, t in cands if v >= best - _TIE)
-        for p in qualified:        # R4: membership comes from the contact GEOMETRY, not only the support
-            if p.rec.inside_at is not None and _contains(p.rec.supports, peak) \
-                    and p.rec.inside_at(peak) is False:
-                raise SweepRefusal(
-                    f"record {p.rec.record_id}: its stored support contains the peak {peak.isoformat()} "
-                    "but the contact geometry places the target outside — support/geometry disagree")
         live_at_peak = [p for p in in_win if _contains(p.rec.supports, peak)]
         red = reduce_at(live_at_peak, peak, event_class)
         ev_for = red[CHANNEL_FOR]

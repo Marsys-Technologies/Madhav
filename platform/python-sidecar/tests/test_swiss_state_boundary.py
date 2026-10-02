@@ -150,6 +150,7 @@ EXPECTED_OPERATION_OWNERS = {
     ("routers/pyhora.py", "compute_natal"),
     ("routers/pyhora.py", "smoke_test"),
     ("services/gochara_kernel/input_vector.py", "probe_opened_files"),
+    ("services/gochara_kernel/input_vector.py", "probe_series_digest"),
     ("services/gochara_kernel/knots.py", "_assert_moon_file_backend"),
     ("services/gochara_kernel/knots.py", "calc_sidereal_lon"),
     ("services/gochara_v3/engine.py", "_evaluate_single_from_context"),

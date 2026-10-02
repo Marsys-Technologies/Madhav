@@ -252,7 +252,7 @@ def encode_applicability(app: dict) -> dict:
         flat["span_outside"] = span["outside"]
     ang = app.get("angular")
     if ang is not None:
-        if set(ang) - {"object_kinds", "function", "formula", "orb_deg", "orb_status", "orb_decision_ref"}:
+        if set(ang) - {"object_kinds", "function", "formula", "orb_deg", "orb_status", "orb_decision_ref", "orb_state"}:
             raise RegistryDivergenceError(f"applicability.angular: unknown key(s) {sorted(set(ang))}")
         flat["angular_kinds"] = list(ang["object_kinds"])
         flat["angular_function"] = ang["function"]
@@ -298,8 +298,10 @@ def decode_applicability(flat: dict) -> dict:
         if state == "ratified":
             ang["orb_deg"] = flat["angular_orb_deg"]
             ang["orb_decision_ref"] = flat["angular_orb_decision_ref"]
+            ang["orb_state"] = "ratified"
         elif state == "unratified":
             ang["orb_deg"] = None
+            ang["orb_state"] = "unratified"
         else:
             raise RegistryDivergenceError(f"angular_orb_state {state!r} is neither ratified nor unratified")
         app["angular"] = ang

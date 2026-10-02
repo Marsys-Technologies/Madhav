@@ -267,7 +267,7 @@ def test_the_sweep_lights_up_from_the_persisted_declaration_alone(pg, successor)
         record_id="a", root_id="r", path_id="P3", rule_version=kw.pop("version"), relation="residence",
         object_kind="sign_span", agent="saturn", operator_role="scored", admission_state="admitted",
         supports=((datetime(2010, 1, 1, tzinfo=timezone.utc), datetime(2010, 1, 11, tzinfo=timezone.utc)),),
-        canonical_target="span:7")
+        canonical_target="span:7", inside_at=lambda t: True)
     for version, expect in (("1.0.0", None), ("1.2.0", 1.0)):
         (w,), _ = ws.draft_windows("marriage", [rec(version=version)],
                                    lambda p, v: store.bound_factor_rows(p, v))

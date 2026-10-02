@@ -138,6 +138,8 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     against_ok = _against_evaluated(path_id, factor_rows)
     problems: list[str] = []
     numeric = 0
+    fully_reproduced = 0            # windows whose stored fields were reproduced EXACTLY (incl. the NULL ones)
+    unverified: list[str] = []      # windows with a function-valued member: NOT reproduced (R7 [5])
     for wid, lo, hi, peak, score, ev_for, ev_against, severity, null_states in windows:
         recs = by_window.get(wid, {})
         tag = f"window {lo.astimezone(timezone.utc).isoformat()}"
@@ -172,19 +174,37 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             if (score, peak, ev_for, ev_against) != (None, None, None, None):
                 problems.append(f"{tag}: a for-channel member is unqualified yet score/peak/evidence "
                                 "are not all NULL (a partial subtotal was stored)")
+            else:
+                fully_reproduced += 1
             continue
         if score is None or ev_for is None or peak is None:
             if not has_fn:
                 problems.append(f"{tag}: the objective is qualified but score/peak/evidence_for is NULL")
+            else:
+                unverified.append(tag)      # NULL only the builder can explain (an unknown piece)
             continue
         if not (0.0 <= score <= 1.0 + _TOL):
             problems.append(f"{tag}: score {score} outside [0,1]")
         if not against_ok and ev_against is not None:
             problems.append(f"{tag}: evidence_against is stored but the registry row declares no way to "
                             "evaluate that channel (expected NULL)")
+        # UNIVERSAL BOUNDS (hold for any factor value in [0,1], so they bind even where the numbers cannot be
+        # reproduced): evidence is a Σ over roots of a per-root max of values ≤ 1, so it cannot exceed the
+        # number of roots feeding the channel; the stored score cannot exceed the evidence at the same peak.
+        for_roots = {recs[rid]["root"] for rid in qualified if chans[rid] == "evidence_for_occurrence"}
+        against_roots = {recs[rid]["root"] for rid in qualified if chans[rid] == "evidence_against_occurrence"}
+        if ev_for < -_TOL or ev_for > len(for_roots) + _TOL:
+            problems.append(f"{tag}: evidence_for {ev_for} is outside [0, {len(for_roots)}] — {len(for_roots)} "
+                            "root(s) feed the channel and every per-root value is ≤ 1")
+        if ev_against is not None and (ev_against < -_TOL or ev_against > len(against_roots) + _TOL):
+            problems.append(f"{tag}: evidence_against {ev_against} is outside [0, {len(against_roots)}]")
+        if score > ev_for + _TOL:
+            problems.append(f"{tag}: score {score} exceeds evidence_for {ev_for} at the same peak")
         if has_fn:
-            continue                                   # structural only — not claimed as reproduced
+            unverified.append(tag)         # numbers NOT reproduced — an explicit UNVERIFIED state, never a pass
+            continue
         numeric += 1
+        fully_reproduced += 1
         # ── re-derive the objective piecewise (every live member is a constant here) ────────────
         cands = []
         for a, b in _pieces(lo, hi, recs):
@@ -239,7 +259,55 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         raise RuntimeError(
             f"window semantic verification failed {event_class}/{path_id}: " + "; ".join(problems))
     return {"windows": len(windows), "numeric_reproduced": numeric,
-            "structural_only": len(windows) - numeric}
+            "fully_reproduced": fully_reproduced, "unverified_dynamic": len(unverified),
+            "unverified_windows": unverified,
+            # VERIFIED only when EVERY window's stored fields were reproduced exactly; a window with a
+            # function-valued member was checked against universal bounds and structure only
+            "status": "UNVERIFIED_DYNAMIC" if unverified else "VERIFIED"}
+
+
+def satisfies_gate(report: dict) -> bool:
+    """The window verification can satisfy a gate (PC-5 / a class seal) ONLY when it is fully VERIFIED."""
+    return report.get("status") == "VERIFIED" and not report.get("unverified_windows")
+
+
+_KIND_TARGET = {"sign_span": r"^span:([1-9]|1[0-2])$", "house_span": r"^span:([1-9]|1[0-2])$",
+                "star": r"^star:([1-9]|1[0-9]|2[0-7])$", "degree_point": r"^point:", "derived_point": r"^point:",
+                "saham": r"^point:", "house_lord": r"^point:"}
+
+
+def verify_member_support(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
+                          rule_version: str) -> dict:
+    """The members' SUPPORT checked against the SOURCE GEOMETRY (Codex round 7 [5]): for every window
+    member, the stored support must equal the contact's own span clipped to its partition's horizon (P1's
+    prerequisite-restricted support is `record_verifier`'s), and the physical object's canonical target
+    must have the form its object kind requires — the verifier's own table, never trusting the
+    record's kind/support declarations."""
+    grain = (chart_id, generation, event_class, path_id, rule_version)
+    rows = conn.execute(
+        "SELECT r.record_id::text, r.object_kind, o.canonical_target,"
+        " COALESCE((SELECT range_agg(x) FROM unnest(r.temporal_support_intervals) x), '{}'::tstzmultirange)"
+        "   = tstzrange(c.t_in, COALESCE(c.t_out, upper(cov.completed_horizon)), '[)')::tstzmultirange AS eq"
+        " FROM public.ka_gochara_eval_window_record m"
+        " JOIN public.ka_gochara_relationship_record r ON r.record_id = m.record_id"
+        " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id"
+        " LEFT JOIN public.ka_gochara_contact c ON (c.chart_id, c.generation, c.contact_id)"
+        "                                      = (r.chart_id, r.generation, r.contact_id)"
+        " LEFT JOIN public.kala_gochara_coverage cov ON (cov.chart_id, cov.generation, cov.partition_kind,"
+        "          cov.partition_key) = (r.chart_id, r.generation, r.coverage_partition_kind, r.coverage_partition_key)"
+        " WHERE m.chart_id = %s AND m.generation = %s AND m.event_class = %s AND m.path_id = %s"
+        " AND m.rule_version = %s", grain).fetchall()
+    import re
+    problems = []
+    for rid, kind, target, eq in rows:
+        pattern = _KIND_TARGET.get(kind)
+        if pattern is not None and not re.match(pattern, target):
+            problems.append(f"record {rid}: object kind {kind!r} but canonical target {target!r}")
+        if path_id != "P1" and eq is not True:
+            problems.append(f"record {rid}: stored support is not the contact span clipped to the partition horizon")
+    if problems:
+        raise RuntimeError(f"member support verification failed {event_class}/{path_id}: " + "; ".join(problems))
+    return {"members": len(rows)}
 
 
 def reconstruct_qualification(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
@@ -272,4 +340,4 @@ def reconstruct_qualification(conn, *, chart_id: str, generation: str, event_cla
             for wid, v in out.items()}
 
 
-__all__ = ["reconstruct_qualification", "verify_window_semantics"]
+__all__ = ["reconstruct_qualification", "satisfies_gate", "verify_member_support", "verify_window_semantics"]

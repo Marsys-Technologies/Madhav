@@ -58,6 +58,7 @@ def _dir_probe(ephe, bodies, lo, hi):
 
 def _vector(conn, ephe, **kw):
     kw.setdefault("files_probe", _dir_probe)
+    kw.setdefault("series_probe", lambda ephe: "ab" * 32)
     return iv.build_input_vector(conn, sky_convention_id=_sky(conn), ephe_path=ephe,
                                  path_refs=kw.pop("refs", REFS), rulings=kw.pop("rulings", RULINGS), **kw)
 
@@ -75,6 +76,7 @@ def _sky(conn) -> str:
 def test_the_vector_binds_every_named_component_and_is_deterministic(db, ephe):
     v = _vector(db, ephe)
     assert v["schema"] == iv.VECTOR_SCHEMA
+    assert set(v["ephemeris"]) == {"backend", "swe_version", "files", "probe_digest"}
     assert set(v) == {"schema", "stored_scope", "sky_convention", "registry", "node", "ephemeris", "l0",
                       "orb_policy", "rulings_digest", "implementation"}
     assert set(v["sky_convention"]) == {"id", "content_digest"} and len(v["sky_convention"]["content_digest"]) == 64
@@ -227,7 +229,7 @@ def test_the_real_implementation_closure_resolves_and_is_stable(db, ephe):
 
 def _live(conn, stored, ephe, **over):
     kw = dict(sky_convention_id=stored["sky_convention"]["id"], ephe_path=ephe, path_refs=REFS,
-              rulings=RULINGS, files_probe=_dir_probe)
+              rulings=RULINGS, files_probe=_dir_probe, series_probe=lambda ephe: "ab" * 32)
     kw.update(over)
     iv.verify_live(conn, stored, **kw)
 
@@ -394,7 +396,7 @@ def test_the_sky_convention_content_digest_moves_when_the_stored_content_does_wi
     except Exception:                                    # an immutable ledger refuses the edit — equally fine
         pytest.skip("the convention table refuses an in-place edit here")
     changed = iv.build_input_vector(db, sky_convention_id=cid, ephe_path=ephe, path_refs=REFS,
-                                    rulings=RULINGS, files_probe=_dir_probe)
+                                    rulings=RULINGS, files_probe=_dir_probe, series_probe=lambda ephe: "ab" * 32)
     assert iv.diff_vectors(base, changed) == ["sky_convention.content_digest"]      # the id label did not move
 
 
@@ -494,3 +496,128 @@ def test_the_sky_identity_is_the_id_and_a_digest_of_the_stored_content():
     assert a["content_digest"] != c["content_digest"]                            # same label, different content
     with pytest.raises(iv.InputDrift, match="not persisted"):
         iv.sky_convention_identity(_SkyConn(None), "c1")
+
+
+# ═══ Codex round 7 [9]: frozen expected-byte vectors, the series probe, the writer in the closure ═════════
+
+import copy as _copy                                                   # noqa: E402
+import json as _json                                                   # noqa: E402
+
+FROZEN = Path(__file__).parent / "fixtures" / "am16_vectors_frozen_v1.json"
+#: the INPUTS the frozen vectors were generated from (Stream B's `am16_vectors_model.py` BASE, vendored with
+#: the frozen file at campaign/pravaha 425a89218; if either moves, this test is the alarm)
+_BASE = {
+    "sky_id": "sky:lahiri_sidereal_v1", "sky_vector": {"zodiac": "sidereal", "ayanamsha": "lahiri", "node_model": "mean"},
+    "registry": {
+        "paths": [{"path_id": "P3", "rule_version": "1.1.0", "agent_set": "dusthana", "created_at": "t0"}],
+        "prerequisites": [
+            {"path_id": "P3", "rule_version": "1.1.0", "ordinal": 1, "predicate_id": "agent_resolved", "predicate_rule_version": "1.0.0"},
+            {"path_id": "P3", "rule_version": "1.1.0", "ordinal": 2, "predicate_id": "in_house_set", "predicate_rule_version": "1.0.0"}],
+        "soft_factors": [{"path_id": "P3", "rule_version": "1.1.0", "factor_id": "activity_kernel", "factor_rule_version": "1.1.0"}],
+        "predicates": [{"predicate_id": "agent_resolved", "rule_version": "1.0.0", "created_at": "t0"},
+                       {"predicate_id": "in_house_set", "rule_version": "1.0.0", "created_at": "t0"}],
+        "factors": [{"factor_id": "activity_kernel", "rule_version": "1.1.0", "function": "piecewise_step_linear", "created_at": "t0",
+                     "operand_selector": {"operand": "geometry:object_kind_dispatch", "span_kinds": ["sign_span", "house_span", "star"],
+                                          "orb_state": "unratified_nd_orb_open", "uncovered_state": "unqualified"}}],
+        "census": [["P3", "1.0.0"], ["P3", "1.1.0"]],
+    },
+    "node": {"model": "mean", "source": "swiss_mean_node_flg_sidereal", "zodiac": "sidereal", "ayanamsha": "lahiri"},
+    "swe_version": "2.10.03", "stored_scope": "stored_non_moon", "probe_digest": "6ea09e40aad66687" + "0" * 48,
+    "opened_files": {"sepl_18.se1": "a" * 64, "semo_18.se1": "b" * 64},
+    "l0_rows": {"bg_transit_rules": [{"graha": "sun", "house": 4, "rule_type": "vedha", "obstructor_house": 10}]},
+    "admission_orb": {"orb_table": {"conjunction": 1.0}, "point_orb_source": "convention"},
+    "activity_orb": {"1.1.0": "unratified_nd_orb_open"},
+    "rulings": [{"id": "ruling:am13"}, {"id": "ruling:am18", "basis": "Phaladīpikā XXVI.3–8 (phaladeepika:PG322:C1)"}],
+    "impl_modules": {"geometry": {"arcs": "c" * 64}, "evaluation": {"score": "d" * 64, "kernel_factor": "e" * 64},
+                     "window": {"window_sweep": "f" * 64}},
+}
+
+
+def _mutate(case):
+    d = _copy.deepcopy(_BASE)
+    r = d["registry"]
+    if case == "membership_only": r["soft_factors"][0]["path_id"] = "P4"
+    elif case == "node_series_only": d["opened_files"]["sepl_18.se1"] = "9" * 64
+    elif case == "window_algorithm_only": d["impl_modules"]["window"]["window_sweep"] = "0" * 64
+    elif case == "prerequisite_order_only": r["prerequisites"][0]["ordinal"], r["prerequisites"][1]["ordinal"] = 2, 1
+    elif case == "census_only": r["census"].append(["P4", "1.0.0"])
+    elif case == "orb_policy_only": d["activity_orb"]["1.1.0"] = {"orb_deg": 3.0, "orb_decision_ref": "ruling:nd_orb_x"}
+    elif case == "l0_rows_only": d["l0_rows"]["bg_transit_rules"][0]["obstructor_house"] = 9
+    elif case == "kernel_factor_source": d["impl_modules"]["evaluation"]["kernel_factor"] = "1" * 64
+    elif case == "stored_scope_only": d["stored_scope"] = "stored_all"
+    elif case == "probe_digest_only": d["probe_digest"] = "1" * 64
+    elif case == "audit_field_only": r["paths"][0]["created_at"] = "t1"
+    return d
+
+
+CASES = ["base", "membership_only", "node_series_only", "window_algorithm_only", "prerequisite_order_only",
+         "census_only", "orb_policy_only", "l0_rows_only", "kernel_factor_source", "stored_scope_only",
+         "probe_digest_only", "audit_field_only", "unopened_file_only"]
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_assemble_vector_reproduces_the_frozen_literal_bytes_and_hashes(case):
+    """The LITERAL canonical JSON of every frozen case, and its sha256, are reproduced byte-for-byte by the
+    runtime's own serializer (`assemble_vector`) — a serializer drift (separators, key order, escaping,
+    number format, a renamed key) fails here."""
+    import hashlib
+    frozen = _json.loads(FROZEN.read_text(encoding="utf-8"))[case]
+    vec = iv.assemble_vector(_mutate(case))
+    literal = iv.canonical_json(vec)
+    assert literal == frozen["literal"]
+    assert hashlib.sha256(literal.encode("utf-8")).hexdigest() == frozen["sha256"]
+
+
+def test_the_frozen_registry_preimage_is_reproduced_byte_for_byte():
+    import hashlib
+    frozen = _json.loads(FROZEN.read_text(encoding="utf-8"))["registry_preimage"]
+    literal = iv.canonical_json(iv.registry_preimage(_BASE["registry"]))
+    assert literal == frozen["literal"] and hashlib.sha256(literal.encode()).hexdigest() == frozen["sha256"]
+
+
+def test_every_frozen_case_changes_exactly_the_component_it_should_and_the_unobserved_ones_do_not():
+    base = iv.assemble_vector(_mutate("base"))
+    want = {"membership_only": "registry.digest", "node_series_only": "ephemeris.files.sepl_18.se1",
+            "window_algorithm_only": "implementation.window", "prerequisite_order_only": "registry.digest",
+            "census_only": "registry.census", "orb_policy_only": "orb_policy.activity.1.1.0",
+            "l0_rows_only": "l0.bg_transit_rules", "kernel_factor_source": "implementation.evaluation",
+            "stored_scope_only": "stored_scope", "probe_digest_only": "ephemeris.probe_digest"}
+    for case, component in want.items():
+        diff = iv.diff_vectors(base, iv.assemble_vector(_mutate(case)))
+        # the NAMED component must be among those that moved (a census also moves the digest it is part of)
+        assert diff and any(x == component or x.startswith(component + ".") or component.startswith(x)
+                            for x in diff), (case, diff)
+    assert iv.diff_vectors(base, iv.assemble_vector(_mutate("audit_field_only"))) == []
+    assert iv.diff_vectors(base, iv.assemble_vector(_mutate("unopened_file_only"))) == []
+
+
+def test_build_input_vector_goes_through_the_same_serializer(db, ephe):
+    """build_input_vector must be assemble_vector over the gathered inputs — one serializer, not two."""
+    v = _vector(db, ephe)
+    assert iv.canonical_json(v) == iv.canonical_json(json_roundtrip(v))
+    assert v["ephemeris"]["probe_digest"] == "ab" * 32
+
+
+def json_roundtrip(v):
+    return _json.loads(_json.dumps(v))
+
+
+@real_ephemeris
+def test_the_runtime_series_probe_equals_stream_bs_independent_probe_implementation():
+    import importlib.util
+    path = Path("/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/design/am16_series_equivalence_probe.py")
+    if not path.exists():
+        pytest.skip("Stream B's probe script is not available here")
+    spec = importlib.util.spec_from_file_location("b_probe", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mine = iv.probe_series_digest(EPHE_PATH)
+    assert mine == iv.probe_series_digest(EPHE_PATH)                                  # deterministic
+    assert mine == mod.series_digest(EPHE_PATH)[0]                                    # = the independent derivation
+
+
+def test_the_writer_module_itself_is_in_a_stage_list():
+    listed = {m for mods in iv.IMPLEMENTATION_MODULES.values() for m in mods}
+    assert "pipeline.orchestrator.writers.ka_gochara_v5" in listed
+    assert {"services.gochara_kernel.substrate", "services.gochara_kernel.inventory",
+            "services.gochara_rules.permission", "services.gochara_rules.frames"} <= listed

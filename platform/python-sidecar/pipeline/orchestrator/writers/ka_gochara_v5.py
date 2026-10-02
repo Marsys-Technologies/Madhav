@@ -68,6 +68,7 @@ from services.gochara_kernel import input_vector as gk_input_vector
 from services.gochara_kernel import input_vector_verifier as gk_input_vector_verifier
 from services.gochara_kernel import window_sweep as gk_window_sweep
 from services.gochara_kernel.record_verifier import verify_p1_support
+from services.gochara_kernel import window_verifier as gk_window_verifier
 from services.gochara_kernel.window_verifier import verify_window_semantics
 from services.gochara_kernel.window_store import WindowStore
 from services.gochara_kernel import inventory_verifier as gk_verifier
@@ -675,7 +676,7 @@ class GocharaV5Writer(WriterBase):
         windows = memberships = 0
         excluded: dict = {}
         reasons: dict = {}
-        unqualified = 0
+        unqualified = unverified = reproduced = 0
         for version in versions:        # the path→version map comes from the records, not a constant
             records = store.read_grain(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
@@ -687,11 +688,16 @@ class GocharaV5Writer(WriterBase):
                 path_id=path_id, rule_version=version, drafts=drafts)
             store.verify_grain(chart_id=chart_id, generation=GENERATION, event_class=event_class,
                                path_id=path_id, rule_version=version)
-            verify_window_semantics(
+            gk_window_verifier.verify_member_support(
+                ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
+                path_id=path_id, rule_version=version)
+            report = verify_window_semantics(
                 ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version,
                 factor_rows=bound_rows(path_id, version),
                 drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=VEDHA_SOURCE is not None)
+            unverified += report["unverified_dynamic"]
+            reproduced += report["fully_reproduced"]
             windows += counts["windows"]
             memberships += counts["memberships"]
             unqualified += sum(1 for d in drafts if d.score is None)
@@ -703,13 +709,15 @@ class GocharaV5Writer(WriterBase):
                 excluded[k] = excluded.get(k, 0) + v
         # qualification summary (the per-window detail is reconstructable from the stored rows)
         why = sorted(f"{k}×{v}" for k, v in reasons.items())
-        return WriterResult(
-            asset_id=self.asset_id, rows_inserted=windows + memberships,
-            notes=(f"{event_class}/{path_id}: {windows} window(s) ({unqualified} unqualified"
-                   f"{' — ' + ', '.join(why) if why else ''} — "
-                   f"score/evidence/peak NULL, severity NULL by ruling), {memberships} "
-                   f"membership row(s); excluded records {excluded}; independent SQL union "
-                   "+ semantic re-derivation passed"))
+        head = (f"{event_class}/{path_id}: {windows} window(s) ({unqualified} unqualified"
+                f"{' — ' + ', '.join(why) if why else ''} — score/evidence/peak NULL, severity NULL by "
+                f"ruling), {memberships} membership row(s); excluded records {excluded}; independent SQL "
+                "components + member-support geometry checked; semantic re-derivation: ")
+        tail = (f"{reproduced} window(s) reproduced exactly, {unverified} UNVERIFIED (function-valued "
+                "members — checked against universal bounds only; this result does NOT satisfy a "
+                "verification gate)" if unverified
+                else f"reproduced all {reproduced} window(s) exactly")
+        return WriterResult(asset_id=self.asset_id, rows_inserted=windows + memberships, notes=head + tail)
 
     @staticmethod
     def _take_chart_lock(ctx: ContextSpec, chart_id: str) -> None:
