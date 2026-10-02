@@ -1188,8 +1188,11 @@ def test_r3_the_registry_really_yields_that_rule_id_for_those_facts():
     assert ap["state"] == "NOT_APPLICABLE" and ap["rule_id"] == NA_RID
 
 
-def test_r3_na_is_refused_while_no_rule_is_declared_the_real_state_today(ledger):
-    assert ac.NA_RULE_DECISIONS == {}, "N-22 declared a rule: update this test to the declared state"
+def test_r3_na_is_refused_while_its_rule_is_undeclared(ledger, monkeypatch):
+    # N-65 declared the first six rules (pin 9): this test is about an UNDECLARED rule, so state it explicitly
+    # (the Ldgr.source_presence rule used here is not among the declared ones: pinned below).
+    assert NA_RID not in ac.NA_RULE_DECISIONS, "this rule is declared now: pick another undeclared one"
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})
     e = na_refused(ledger, "na_not_computed")
     assert "undecided" in str(e)
     assert len(lines(ledger)) == 1
@@ -1283,7 +1286,8 @@ def measured_na(**over):
 
 
 def test_r3_a_measured_cause_na_is_recorded_only_from_the_census_cell_and_a_declared_rule(ledger, monkeypatch):
-    e = refused(ledger, "na_not_computed", **measured_na())                  # rule undeclared (real state)
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})                          # rule undeclared (N-65 declares MEAS_NA since pin 9)
+    e = refused(ledger, "na_not_computed", **measured_na())
     assert "undecided" in str(e)
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {MEAS_NA: "N-22.nr"})
     rec = nc.write_certification(**kw(ledger, **measured_na())).record
