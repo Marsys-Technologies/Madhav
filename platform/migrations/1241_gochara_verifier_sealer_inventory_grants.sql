@@ -26,11 +26,13 @@
 -- flows (a restricted-builder build; the verifier's window verifications then inventory verification, twice; the sealer's first seal; a
 -- generation sealed between 1206 and 1240; builder/sealer contention) were run adding one grant per `permission denied` until they converged, and
 -- then EACH grant was individually removed and the first-seal and re-verification flows re-run: a grant that does not make a flow fail is NOT
--- here. Of the 53 candidates the earlier role suites and the derivation produced, 18 are left out: 13 are ALREADY held through 1240 / 1220
--- (the sealer's SELECT on the seal, publication, record, window, membership, snapshot and pin tables and EXECUTE on lock_chart, lock_global_shared,
--- sha256_hex, canonical_json; the verifier's EXECUTE on lock_chart and generation_is_sealed), and 5 are needed by NO flow (the verifier's DELETE on
--- the inventory-verification table — a re-run REPLACES without it; the sealer's SELECT on the polarity declaration and EXECUTE on
--- av_entry, replay_violations and inventories_digest — the seal trigger reaches them as the table owner).
+-- here. Of the 53 candidates the earlier role suites and the derivation produced, 17 are left out: 13 are ALREADY held through 1240 and the
+-- earlier migrations (the sealer's SELECT on the seal, publication, record, window, membership, snapshot and pin tables and EXECUTE on
+-- lock_chart, lock_global_shared, sha256_hex, canonical_json; the verifier's EXECUTE on lock_chart and generation_is_sealed), and 4 are needed by
+-- NO flow (the verifier's DELETE on the inventory-verification table — a re-run REPLACES without it; the sealer's SELECT on the polarity
+-- declaration and EXECUTE on av_entry and inventories_digest). NOTE the correction the REPLAY flow forced: a first-seal-only sweep had counted
+-- ka_gochara_search_replay_violations among the unneeded; replaying an EXISTING seal (ka_gochara_seal_generation inserts ON CONFLICT DO NOTHING; 1206's
+-- BEFORE trigger fires first) calls it as the sealer, so it is granted — the necessity tests now run first seal AND replay.
 --
 -- THE GRANTS
 -- ══════════
@@ -48,7 +50,8 @@
 --                    ka_gochara_search_inventory_verification                          what the seal-side checks read as the invoker
 --   EXECUTE          ka_gochara_seal_generation, ka_gochara_coverage_drift, ka_gochara_horizon_finite_ok, ka_gochara_coverage_facts,
 --                    ka_gochara_facts_horizon, ka_gochara_membership_violations, ka_gochara_membership_violation,
---                    ka_gochara_search_completeness_violations, ka_gochara_search_l1_facts_digest, ka_gochara_search_dasha_digest,
+--                    ka_gochara_search_completeness_violations, ka_gochara_search_replay_violations (the REPLAY of an existing seal),
+--                    ka_gochara_search_l1_facts_digest, ka_gochara_search_dasha_digest,
 --                    ka_gochara_search_inventory_digest, ka_gochara_search_ledger_digest, ka_gochara_search_inventory_preimage,
 --                    ka_gochara_utc_ts, ka_gochara_search_moon_scope_violations, ka_gochara_search_moon_resolved_domain,
 --                    ka_gochara_generation_governed
@@ -100,7 +103,8 @@ BEGIN
       public.ka_gochara_horizon_finite_ok(tstzrange), public.ka_gochara_coverage_facts(text, tstzrange, text[]),
       public.ka_gochara_facts_horizon(jsonb), public.ka_gochara_membership_violations(uuid, text),
       public.ka_gochara_membership_violation(jsonb, uuid, text, jsonb, tstzrange[]),
-      public.ka_gochara_search_completeness_violations(uuid, text), public.ka_gochara_search_l1_facts_digest(uuid, text[]),
+      public.ka_gochara_search_completeness_violations(uuid, text), public.ka_gochara_search_replay_violations(uuid, text),
+      public.ka_gochara_search_l1_facts_digest(uuid, text[]),
       public.ka_gochara_search_dasha_digest(uuid, uuid[]), public.ka_gochara_search_inventory_digest(uuid, text, text),
       public.ka_gochara_search_ledger_digest(uuid, text, text), public.ka_gochara_search_inventory_preimage(uuid, text, text),
       public.ka_gochara_utc_ts(timestamptz), public.ka_gochara_search_moon_scope_violations(uuid, text),
