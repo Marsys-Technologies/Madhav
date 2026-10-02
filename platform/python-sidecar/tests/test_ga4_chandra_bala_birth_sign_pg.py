@@ -17,7 +17,7 @@ never skips: a missing variable or an unreachable database FAILS (ci.yml provisi
 sets the variable in the "TI-l1-panchanga-moon-sign-001" step of the DB-service job, which runs this
 file with no -m filter).
 
-Run:  GA4_MOON_SIGN_TEST_DATABASE_URL='postgresql:///pms_test?host=/private/tmp/claude-504/pms' \
+Run:  GA4_MOON_SIGN_TEST_DATABASE_URL='postgresql:///ga4_moon_sign_test?host=/private/tmp/claude-504/pms' \
       python -m pytest tests/test_ga4_chandra_bala_birth_sign_pg.py
 """
 from __future__ import annotations
@@ -55,8 +55,8 @@ B_MID = "00000000-0000-4000-8000-00000000b002"
 B_NEW = "00000000-0000-4000-8000-00000000b003"
 
 
-# ── disposable-database guard (the fixture TRUNCATEs chart_facts) ────────────
-_DISPOSABLE_NAME = re.compile(r"^[a-z0-9_]+_test$")
+# ── disposable-database guard (the fixture TRUNCATEs chart_facts): exact name + local host + table guard ────────────
+EXPECTED_DB_NAME = "ga4_moon_sign_test"
 _LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 _MINIMAL_COLUMNS = {
     "chart_id", "ayanamsha_id", "build_id", "fact_category", "fact_subject", "fact_key",
@@ -69,19 +69,19 @@ class RefusedError(RuntimeError):
 
 
 def require_disposable(dsn: str) -> str:
-    """Refuse unless `dsn` targets a LOCAL (loopback host or unix-socket) database whose name
-    is a test-database name (`<...>_test`, never containing 'prod'). This module TRUNCATEs
-    `chart_facts`; a mis-set variable must never reach a real database. Returns the name."""
+    """Refuse unless `dsn` targets a LOCAL (loopback host or unix-socket) database named EXACTLY
+    `ga4_moon_sign_test`. This module TRUNCATEs `chart_facts`; a mis-set variable, or a staging
+    copy that merely ends in `_test`, must never be reachable. Returns the name."""
     parsed = urlparse(dsn)
     host = parsed.hostname or (parse_qs(parsed.query).get("host") or [""])[0]
     local = host in _LOOPBACK or host.startswith("/") or host == ""
     if not local:
         raise RefusedError(f"REFUSED: DSN host {host!r} is not loopback / a unix socket")
     name = (parsed.path or "").lstrip("/")
-    if not _DISPOSABLE_NAME.match(name) or "prod" in name:
+    if name != EXPECTED_DB_NAME:
         raise RefusedError(
-            f"REFUSED: database {name!r} is not a disposable test database "
-            "(expected '<name>_test', e.g. 'ga4_moon_sign_test'); this module TRUNCATEs chart_facts"
+            f"REFUSED: database {name!r} is not the disposable {EXPECTED_DB_NAME!r}; "
+            "this module TRUNCATEs chart_facts"
         )
     return name
 

@@ -247,26 +247,31 @@ def test_no_nakshatra_id_to_sign_formula_in_ga_writers():
 
 @pytest.mark.parametrize("dsn", [
     "postgresql://postgres:postgres@localhost:5432/ga4_moon_sign_test",
-    "postgresql://pms@/pms_test?host=/private/tmp/claude-504/pms",
-    "postgresql://u@127.0.0.1/some_other_test",
+    "postgresql://u@/ga4_moon_sign_test?host=/private/tmp/claude-504/pms",
+    "postgresql://u@127.0.0.1/ga4_moon_sign_test",
 ])
-def test_guard_accepts_local_test_databases(dsn):
+def test_guard_accepts_only_the_exact_local_database(dsn):
     from tests.test_ga4_chandra_bala_birth_sign_pg import require_disposable
-    assert require_disposable(dsn).endswith("_test")
+    assert require_disposable(dsn) == "ga4_moon_sign_test"
 
 
 @pytest.mark.parametrize("dsn", [
+    "postgresql://u:p@localhost:5432/pms_test",
+    "postgresql://u:p@localhost:5432/some_other_test",
+    "postgresql://u:p@localhost:5432/ga4_moon_sign_test_backup",
+    "postgresql://u:p@localhost:5432/staging_ga4_moon_sign_test",
+    "postgresql://u:p@localhost:5432/GA4_MOON_SIGN_TEST",
+    "postgresql://u:p@localhost:5432/madhav_prod_test",
     "postgresql://u:p@localhost:5432/postgres",
     "postgresql://u:p@localhost:5432/amjis",
     "postgresql://u:p@localhost:5432/chart_facts",
-    "postgresql://u:p@localhost:5432/madhav_prod_test",
-    "postgresql://u:p@localhost:5432/ga4_moon_sign_test_backup",
     "postgresql://u:p@localhost:5432/",
     "postgresql://u:p@db.internal.example.com:5432/ga4_moon_sign_test",
     "postgresql://u:p@10.0.0.5/ga4_moon_sign_test",
     "postgresql://u@/amjis?host=/cloudsql/proj:region:inst",
+    "postgresql://u@/ga4_moon_sign_test?host=db.example.com",
 ])
-def test_guard_refuses_non_test_databases_and_remote_hosts(dsn):
+def test_guard_refuses_every_other_name_and_remote_hosts(dsn):
     from tests.test_ga4_chandra_bala_birth_sign_pg import RefusedError, require_disposable
     with pytest.raises(RefusedError, match="REFUSED"):
         require_disposable(dsn)
