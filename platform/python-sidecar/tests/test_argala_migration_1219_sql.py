@@ -18,13 +18,24 @@ import re
 import subprocess
 import sys
 import tempfile
+import warnings
 
 import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from pipeline.orchestrator.provenance import canonical_digest  # noqa: E402
-from tests.pg_disposable import new_db, psql, q, pg, requires_pg  # noqa: E402,F401
+from tests.pg_disposable import HAVE_PG, PG_SKIP_REASON, new_db, psql, q, pg, requires_pg  # noqa: E402,F401
+
+
+if not HAVE_PG:
+    # LOUD, never failing: a skip must be visible in the pytest warnings summary. PR rule: while these DB-backed tests
+    # are skipped here they have NOT run in this environment; the PR must keep saying they were run locally on PG 15 and
+    # 17, and must not claim CI exercised them.
+    warnings.warn(
+        f"{pathlib.Path(__file__).name}: DB-backed migration tests are SKIPPED, not passed. Reason: {PG_SKIP_REASON}. "
+        "PR rule: say 'run locally on PG 15 and 17' and do not claim CI ran them.",
+        UserWarning, stacklevel=1)
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
 DOC = (REPO / "00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1219_INTENT_v1_0.md").read_text(encoding="utf-8")
@@ -81,9 +92,12 @@ def test_the_migration_file_exists_with_the_right_name_and_this_change_adds_no_o
     assert "```sql" not in DOC and F1219 in DOC
     # this change adds no migration number other than 1219 (skipped when origin/main is not fetchable;
     # empty once the file is on main)
-    r = subprocess.run(["git", "diff", "--name-only", "--diff-filter=A", "origin/main...HEAD", "--", "platform/migrations"],
-                       cwd=REPO, capture_output=True, text=True)
-    if r.returncode == 0:
+    try:
+        r = subprocess.run(["git", "diff", "--name-only", "--diff-filter=A", "origin/main...HEAD", "--", "platform/migrations"],
+                           cwd=REPO, capture_output=True, text=True)
+    except OSError:                                                       # no git binary: the check is skipped
+        r = None
+    if r is not None and r.returncode == 0:
         added = {pathlib.PurePosixPath(x).name for x in r.stdout.split()}
         assert added <= {F1219}, added
 
