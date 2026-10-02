@@ -75,6 +75,7 @@ SET / BEGIN / COMMIT / ROLLBACK and never commit, roll back or close the caller'
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import importlib.util
 import json
@@ -1072,6 +1073,74 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) f ON true
 """
+
+# ---------------------------------------------------------------------------------------------
+# DEPS_SQL parity with the FROZEN runner (asset_runner.deps_unsatisfied)
+# ---------------------------------------------------------------------------------------------
+# DEPS_SQL is a COPY of the dependency query the runner's DEP-ASSERT executes (asset_runner.py is FROZEN and is only read,
+# as text, here; its path is ASSET_RUNNER_REL, defined with the force-marker constants below). The dispatcher's pre-check
+# (check_external_dependencies) is only as good as that copy: if the runner's query changes and this one does not, the
+# pre-check approves what the runner then refuses (or the reverse). The parity check extracts the runner's statement by a
+# deterministic parse (ast) of the file text at a given git ref and compares it with DEPS_SQL modulo whitespace. Extraction
+# that finds nothing, or more than one candidate, RAISES: a check that cannot read its subject is a failure, never a pass
+# and never a skip.
+
+RUNNER_DEPS_FUNCTION = "deps_unsatisfied"
+_RUNNER_SQL_START = re.compile(r"\A\s*SELECT\s+dep\.asset_id\b")
+
+
+class RunnerSqlExtractionError(LevelWaveError):
+    """The runner's dependency SQL could not be extracted (or read) unambiguously: parity is UNVERIFIED, not true."""
+
+
+def collapse_sql_whitespace(sql: str) -> str:
+    """Every run of whitespace -> one space, ends trimmed. The only normalisation the parity check applies."""
+    return " ".join(sql.split())
+
+
+def extract_runner_deps_sql(text: str) -> str:
+    """The dependency statement inside `def deps_unsatisfied` of the runner source `text`, exactly as written.
+
+    The candidate is a plain (non-f) string literal in that function that starts with `SELECT dep.asset_id` and ends with
+    `) f ON true`. Raises RunnerSqlExtractionError for: unparseable text, the function missing or defined more than once,
+    and zero or several candidates (an f-string or a `+`-built statement is not a candidate, so it raises rather than
+    matching a fragment)."""
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError) as exc:
+        raise RunnerSqlExtractionError(f"runner source is not parseable: {exc}") from exc
+    fns = [n for n in ast.walk(tree)
+           if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == RUNNER_DEPS_FUNCTION]
+    if len(fns) != 1:
+        raise RunnerSqlExtractionError(f"expected exactly one def {RUNNER_DEPS_FUNCTION}, found {len(fns)}")
+    inside_fstring = {id(v) for n in ast.walk(fns[0]) if isinstance(n, ast.JoinedStr) for v in n.values}
+    found = []
+    for n in ast.walk(fns[0]):
+        if (isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in inside_fstring
+                and _RUNNER_SQL_START.match(n.value) and collapse_sql_whitespace(n.value).endswith(") f ON true")):
+            found.append(n.value)
+    if len(found) != 1:
+        raise RunnerSqlExtractionError(
+            f"expected exactly one dependency SQL literal in {RUNNER_DEPS_FUNCTION}, found {len(found)}")
+    return found[0]
+
+
+def deps_sql_matches_runner(runner_text: str, deps_sql: str | None = None) -> bool:
+    """True iff DEPS_SQL (or `deps_sql`) equals the runner's statement modulo whitespace. Raises if it cannot be extracted."""
+    return collapse_sql_whitespace(DEPS_SQL if deps_sql is None else deps_sql) == \
+        collapse_sql_whitespace(extract_runner_deps_sql(runner_text))
+
+
+def runner_text_at_ref(repo: str | Path, ref: str = "HEAD", *, git=_git) -> str:
+    """asset_runner.py as COMMITTED at `ref` (`git show`; local objects only, no network). Raises
+    RunnerSqlExtractionError when git cannot produce it."""
+    shown = git(str(repo), ["show", f"{ref}:{ASSET_RUNNER_REL}"])
+    if shown.returncode != 0:
+        raise RunnerSqlExtractionError(
+            f"git show {ref}:{ASSET_RUNNER_REL} failed ({(shown.stderr or '').strip()[:200]})")
+    if not (shown.stdout or "").strip():
+        raise RunnerSqlExtractionError(f"{ASSET_RUNNER_REL} at {ref} is empty")
+    return shown.stdout
 
 
 def registry_row_digest(row: Mapping[str, Any]) -> str:
