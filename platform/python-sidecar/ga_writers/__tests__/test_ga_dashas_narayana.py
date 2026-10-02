@@ -89,7 +89,8 @@ def test_verify_narayana_consistent_when_non_overlapping():
         {"level_n": 1, "lord_graha": "Aries", "start_date": date(2000, 1, 1), "end_date": date(2010, 1, 1)},
         {"level_n": 1, "lord_graha": "Taurus", "start_date": date(2010, 1, 1), "end_date": date(2020, 1, 1)},
     ]
-    assert sut._verify_narayana(rows) == "two_pass_verified"
+    # Q03 / SS N-62: a non-overlap ordering check is `classical_match`, not an independent re-derivation.
+    assert sut._verify_narayana(rows) == "classical_match"
 
 
 def test_verify_narayana_return_value_is_valid_chart_dashas_enum():

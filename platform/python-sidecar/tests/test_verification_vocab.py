@@ -177,11 +177,13 @@ def test_ga_nakshatra_never_emits_a_pass_literal():
     assert not re.search(r'''["']verification_pass_status["']\s*:\s*["']pass["']''', src, re.I)
 
 
-def test_agreeing_attribution_earns_two_pass_verified():
+def test_agreeing_attribution_is_classical_match_not_two_pass_verified():
     # Purva Bhadrapada (nakshatra 25) spans 320°00'–333°20'; 326.0° is pada 2.
+    # Q03 / SS N-62: the check re-runs the same floor division over the same longitude, so it is a
+    # relay-fidelity match (`classical_match`), not an independent re-derivation.
     got = _statuses(_chart_output(326.0, 25, 2))
-    assert got[("graha_nakshatra_join", "nakshatra_id_ref")] == "two_pass_verified"
-    assert got[("graha_pada_join", "pada_number_ref")] == "two_pass_verified"
+    assert got[("graha_nakshatra_join", "nakshatra_id_ref")] == "classical_match"
+    assert got[("graha_pada_join", "pada_number_ref")] == "classical_match"
 
 
 def test_non_attribution_rows_are_never_promoted_by_the_detector():

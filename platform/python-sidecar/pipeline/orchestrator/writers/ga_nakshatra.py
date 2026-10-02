@@ -23,7 +23,8 @@ from typing import Any
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register, ContextSpec
 from ga_writers._idempotency import replace_prior_chart_facts
 from brahmagyan.graha_vocabulary import to_title
-from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal, two_pass_verdict
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT, assert_legal
+from brahmagyan.verification_tiers import CLASSICAL_MATCH, DIVERGENT_FLAGGED
 from ga_writers.ga_nakshatra_emitters import (
     emit_nakshatra_join, emit_kp_lords, emit_gandanta_flags,
     emit_dispositor_graph, emit_tara_bala, emit_statistics,
@@ -91,9 +92,10 @@ _PADA_ARC_DEG = _NAK_ARC_DEG / 4.0  # 3°20' — one pada
 
 
 def _derive_nakshatra_pada(longitude_deg: float) -> tuple[int, int]:
-    """Independent 1-based (nakshatra, pada) from a sidereal longitude.
+    """Re-derived 1-based (nakshatra, pada) from a sidereal longitude.
 
-    SECOND PASS. The first pass is PyJHora's `drik.nakshatra_pada()`, reached via
+    CHECK PATH (a relay-fidelity match, tier `classical_match`; NOT an independent
+    re-derivation -- see `_nakshatra_pada_verdicts`). The first pass is PyJHora's `drik.nakshatra_pada()`, reached via
     `pyjhora_adapter.positions._nakshatra_for_long` (grahas) and `drik.ascendant`
     (Lagna). This is a separate implementation of the same classical division —
     it does NOT call the library — so a boundary-convention difference, an ayanāṃśa
@@ -109,11 +111,19 @@ def _derive_nakshatra_pada(longitude_deg: float) -> tuple[int, int]:
 def _nakshatra_pada_verdicts(chart_output: dict) -> dict[str, dict[str, str]]:
     """Run the second pass for every body and return {subject: {claim: status}}.
 
-    `claim` is 'nakshatra' or 'pada'. Status is `two_pass_verified` when the engine's
-    attribution and the independent re-derivation agree, `divergent_flagged` when they
-    disagree (a halt-worthy inconsistency the row must carry, not hide), and
-    `UNVERIFIED_DEFAULT` when the body carries no usable longitude so no second pass
-    could run at all.
+    `claim` is 'nakshatra' or 'pada'. Status is `classical_match` when the engine's
+    attribution and the re-derivation agree, `divergent_flagged` when they disagree (a
+    halt-worthy inconsistency the row must carry, not hide), and `UNVERIFIED_DEFAULT`
+    when the body carries no usable longitude so no check could run at all.
+
+    WHY `classical_match` AND NOT `two_pass_verified` (Q03 / SS N-62 ruling, audit
+    AUDIT_L1_TIERS_PER_EMITTER_v1_0.md §2.2): the "second path differs because" sentence
+    cannot be written. The first path, PyJHora's `drik.nakshatra_pada`, is itself
+    `int(longitude / (360/27))` plus a remainder division, and `_derive_nakshatra_pada` is
+    the same floor division over the same exported longitude -- a bug in the shared formula
+    would not be caught. The check is real (it catches attribution/longitude
+    desynchronisation and a boundary-convention slip) but it is a relay-fidelity match,
+    not an independent re-derivation.
     """
     grahas = chart_output.get("grahas", []) or []
     asc = chart_output.get("ascendant", {}) or {}
@@ -141,11 +151,11 @@ def _nakshatra_pada_verdicts(chart_output: dict) -> dict[str, dict[str, str]]:
             if engine_value is None:
                 per_claim[claim] = UNVERIFIED_DEFAULT
                 continue
-            # int() coercion stays HERE, deliberately: two_pass_verdict compares as-given
-            # and must never silently redefine what "agrees" means for a caller.
+            # int() coercion stays HERE, deliberately: "agrees" means integer equality of the
+            # 1-based nakshatra / pada numbers, defined at the call site, not by a shared helper.
             engine_i, derived_i = int(engine_value), int(derived_value)
             agrees = engine_i == derived_i
-            per_claim[claim] = two_pass_verdict(engine_i, derived_i)
+            per_claim[claim] = CLASSICAL_MATCH if agrees else DIVERGENT_FLAGGED
             if not agrees:
                 logger.warning(
                     "[ga_nakshatra] second-pass DIVERGENCE for %s %s: engine=%s "
