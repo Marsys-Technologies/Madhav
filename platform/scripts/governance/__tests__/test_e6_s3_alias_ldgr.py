@@ -61,7 +61,8 @@ def _pairs(*rows):
 
 
 SPEC = {"class": "planet", "vocab_column": "graha", "alias_column": "synonyms", "table": "t"}
-SPEC_NA = {k: v for k, v in SPEC.items() if k != "alias_column"}
+SPEC_NA = {**{k: v for k, v in SPEC.items() if k != "alias_column"}, "identity_only": True, "identity_only_why": "the asset stores canonical display names only"}
+SPEC_PLAIN = {k: v for k, v in SPEC.items() if k != "alias_column"}          # no alias_column and no identity_only: identity alone
 
 
 # ───────────────────────── the declaration validator ─────────────────────────
@@ -69,7 +70,8 @@ SPEC_NA = {k: v for k, v in SPEC.items() if k != "alias_column"}
 def test_validator_accepts_every_declared_form():
     for extra in (dict(vocab_alias=VA_NA), dict(vocab_alias=VA_M), dict(vocab_alias=VA_M_NOALIAS), dict(ldgr_source=LS_NA),
                   dict(ldgr_source=LS_M()), dict(ldgr_source=LS_M("sourced_ocr_unverified")), dict(vocab_alias=None, ldgr_source=None),
-                  dict(vocab_alias=dict(VA_NA, evidence="unverified:the L0 review sheet")),
+                  dict(vocab_alias=dict(VA_M, evidence="unverified:the L0 review sheet notes")), dict(ldgr_source=dict(LS_M(), evidence="unverified:the elevation brief section 4")),
+                  dict(vocab_alias=dict(VA_M_NOALIAS, identity_only=True, identity_only_why="the asset stores the canonical display names only")),
                   dict(vocab_alias=dict(VA_NA, na=None, **{"class": "planet", "vocab_column": "graha"}))):
         ac.validate_declarations(_doc(extra))
     for st in ac.CITATION_STATES:
@@ -411,13 +413,13 @@ def test_the_source_stats_read_lists_the_placeholders_and_the_key_sample(monkeyp
     got = _capture(monkeypatch, json.dumps(dict(rows=4, lacking=1, sample=[dict(rule_id="r1")])))
     assert ac.ldgr_fetch_source_stats("t", "citation", ["rule_id"])["lacking"] == 1
     sql = got[0]
-    assert sql.lstrip().upper().startswith("SELECT") and '"citation" IS NULL' in sql and "lower(btrim(" in sql and "ORDER BY \"rule_id\" LIMIT 5" in sql
+    assert sql.lstrip().upper().startswith("SELECT") and '"citation" IS NULL' in sql and "regexp_replace(" in sql and "ORDER BY \"rule_id\" LIMIT 5" in sql
     assert "'not traced'" in sql and "'source unidentified'" in sql
     assert not re.search(r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT)\b", sql, re.I)
     ac.ldgr_fetch_source_stats("t", "citation", [])
     assert "'[]'::jsonb" in got[1] and "ORDER BY" not in got[1]
     assert all("'" not in x and '"' not in x for x in ac.LDGR_PLACEHOLDERS) and "not traced" in ac.LDGR_PLACEHOLDERS
-    for bad in (("t;", "c", []), ("t", "c d", []), ("t", "c", ['k"']), (None, "c", [])):
+    for bad in (("t;", "c", []), ("t", "c d", []), ("t", "c", ['k"']), (None, "c", []), ("t", "c", [], "numeric"), ("t", "c", [], None)):
         with pytest.raises(ac.Unknown):
             ac.ldgr_fetch_source_stats(*bad)
     _capture(monkeypatch, json.dumps(dict(rows="4", lacking=1)))
@@ -461,7 +463,8 @@ def test_ldgr_a_declared_column_the_table_does_not_carry_fails_before_any_select
 
 def test_ldgr_the_read_uses_the_declared_column_and_the_first_non_surrogate_key(monkeypatch):
     seen = []
-    monkeypatch.setattr(ac, "ldgr_fetch_source_stats", lambda t, c, k=(): seen.append((t, c, list(k))) or _stats(2, 0))
+    monkeypatch.setattr(ac, "ldgr_fetch_column_type", lambda t, c: "text")
+    monkeypatch.setattr(ac, "ldgr_fetch_source_stats", lambda t, c, k=(), kind="text": seen.append((t, c, list(k))) or _stats(2, 0))
     ac.ldgr_source_declared_check("x", LS_M(col="citation"), "t", ["id", "rule_id", "citation"], [["id"], ["rule_id", "ayanamsha"]])
     ac.ldgr_source_declared_check("x", LS_M(col="citation"), "t", ["id", "citation"], [["id"]])
     ac.ldgr_source_declared_check("x", LS_M(col="citation"), "t", ["a", "citation"], [])
@@ -471,6 +474,7 @@ def test_ldgr_the_read_uses_the_declared_column_and_the_first_non_surrogate_key(
 def test_ldgr_a_failed_read_degrades_only_this_check_and_keeps_the_state(monkeypatch):
     def boom(*a, **k):
         raise ac.Unknown("connection refused")
+    monkeypatch.setattr(ac, "ldgr_fetch_column_type", lambda t, c: "text")
     monkeypatch.setattr(ac, "ldgr_fetch_source_stats", boom)
     rec = ac.ldgr_source_declared_check("x", LS_M("sourced_ocr_unverified"), "t", ["citation"])[LDGR]
     assert rec["v"] == ERRORED and rec["citation_state"] == "sourced_ocr_unverified"
@@ -492,9 +496,12 @@ def test_an_unsourced_or_refuted_state_can_never_read_pass_or_partial(state, v):
 @pytest.mark.parametrize("state", ["unsourced", "refuted"])
 def test_a_populated_column_with_an_unsourced_state_end_to_end_never_passes(state):
     rec = ac.grade_ldgr_source(LS_M(state), _stats(8, 0), "t")           # every row populated, the claim is not sourced
-    assert rec["v"] == PASS                                              # the presence count alone
-    assert ac.rollup_asset("L0", {LDGR: rec})["Ldgr"]["v"] == NO_DET     # the cell is not
-    assert ac.rollup_asset("L0", {LDGR: ac.grade_ldgr_source(LS_M(state), _stats(8, 4, [dict(k=1)]), "t")})["Ldgr"]["v"] == NO_DET
+    assert rec["v"] == NO_DET and "never a PASS" in rec["measured"] and rec["citation_state"] == state      # M1: the RAW record is capped, not only the rollup
+    assert ac.rollup_asset("L0", {LDGR: rec})["Ldgr"]["v"] == NO_DET
+    part = ac.grade_ldgr_source(LS_M(state), _stats(8, 4, [dict(k=1)]), "t")
+    assert part["v"] == NO_DET and ac.rollup_asset("L0", {LDGR: part})["Ldgr"]["v"] == NO_DET
+    assert ac.grade_ldgr_source(LS_M(state), _stats(8, 8), "t")["v"] == FAIL                              # nothing populated: a real defect, still a FAIL
+    assert ac.grade_ldgr_source(LS_M(state), _stats(0, 0), "t")["v"] == NO_DET
 
 
 @pytest.mark.parametrize("state", ["unsourced", "refuted"])
@@ -532,7 +539,8 @@ def test_the_legacy_pattern_measurement_is_skipped_for_a_declaring_asset_and_unc
     queries = []
     base = ac.scalar
     monkeypatch.setattr(ac, "scalar", lambda sql: queries.append(sql) or base(sql))
-    monkeypatch.setattr(ac, "ldgr_fetch_source_stats", lambda t, c, k=(): dict(rows=48, lacking=0, sample=[]))
+    monkeypatch.setattr(ac, "ldgr_fetch_column_type", lambda t, c: "text")
+    monkeypatch.setattr(ac, "ldgr_fetch_source_stats", lambda t, c, k=(), kind="text": dict(rows=48, lacking=0, sample=[]))
     ms = {a["asset_id"]: a["measurements"] for a in ac.measure("L0")["assets"]}
     assert legacy_alias == ["t_old"]                                                                       # the declaring asset never ran the synonyms census
     # x: a column the pattern does not know ('citation'), measured with its declared state; the legacy IS NOT NULL count never ran for x
@@ -555,6 +563,299 @@ def test_measure_emits_the_declared_na_for_an_asset_without_a_production_table(m
     assert ms["ghost"][ALIAS]["v"] == NO_DET and ms["ghost"][LDGR]["v"] == NO_DET                            # measured forms need a table
     rolled = ac.rollup_census(ac.measure("L0"))
     assert rolled["svc"]["Ldgr"]["v"] == NA
+
+
+# ───────────────────────── adversarial review: M1 the raw record, the gap ledger and the rollup agree ─────────────────────────
+
+def _gap_ctrl(monkeypatch, tmp_path, crit):
+    monkeypatch.setattr(ac, "CTRL", tmp_path)
+    row = dict(asset="bg_x", gap_id=f"bg_x-{crit}", kind="gap", criterion=crit, what="w", change="", detector="d", owner="asset_census",
+               gate="this asset's certification", state="OPEN", ts="t0")
+    (tmp_path / "asset_gaps.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+    return lambda: [json.loads(x) for x in (tmp_path / "asset_gaps.jsonl").read_text(encoding="utf-8").splitlines() if x.strip()]
+
+
+@pytest.mark.parametrize("state", ["unsourced", "refuted"])
+@pytest.mark.parametrize("stats", [_stats(8, 0), _stats(8, 3, [dict(k=1)])])
+def test_an_unsourced_or_refuted_declared_ldgr_record_does_not_close_an_open_gap(monkeypatch, tmp_path, state, stats):
+    read = _gap_ctrl(monkeypatch, tmp_path, LDGR)
+    rec = ac.grade_ldgr_source(LS_M(state), stats, "t")
+    assert rec["v"] == NO_DET                                                       # the RAW record, not only the rollup
+    census = dict(layer="L0", assets=[dict(asset_id="bg_x", measurements={LDGR: rec})])
+    assert ac.emit_gaps(census)[2] == 0 and read()[0]["state"] == "OPEN"
+
+
+@pytest.mark.parametrize("state", ["sourced", "sourced_ocr_unverified"])
+def test_a_sourced_declared_ldgr_pass_closes_an_open_gap(monkeypatch, tmp_path, state):
+    read = _gap_ctrl(monkeypatch, tmp_path, LDGR)
+    rec = ac.grade_ldgr_source(LS_M(state), _stats(8, 0), "t")
+    assert rec["v"] == PASS
+    census = dict(layer="L0", assets=[dict(asset_id="bg_x", measurements={LDGR: rec})])
+    assert ac.emit_gaps(census)[2] == 1 and read()[-1]["state"] == "CLOSED"
+
+
+def test_the_citation_cap_is_one_rule_shared_by_both_detectors_the_rollup_and_the_writer():
+    import carriage_d1 as d1_mod
+    import nikasha_certify as nc_mod
+    assert ac.CITATION_CAPPED_STATES == d1_mod.CITATION_CAPPED_STATES == nc_mod.CITATION_PASS_REFUSED == ("unsourced", "refuted")
+    assert set(ac.CITATION_CAPPED_STATES) == set(ac.CITATION_STATES) - {"sourced", "sourced_ocr_unverified"}
+    assert nc_mod.CITATION_CAPPED == ("Carr.D1", "Ldgr.source_presence")
+    # the detector side, both criteria, same state: never a PASS/PARTIAL
+    for state in ac.CITATION_CAPPED_STATES:
+        assert ac.grade_ldgr_source(LS_M(state), _stats(8, 0), "t")["v"] == NO_DET
+        rec = d1_mod.d1_measure(s2.SPEC, state, s2.CHUNKS, s2.ROWS, "bg_phaladeepika_latta")
+        assert rec["v"] == NO_DET
+
+
+def test_one_row_lacking_a_source_is_partial_and_names_it():
+    r = ac.grade_ldgr_source(LS_M(), _stats(4, 1, [dict(rule_id="r9")]), "t")
+    assert r["v"] == PARTIAL and "3/4" in r["measured"] and '"r9"' in r["measured"]
+
+
+# ───────────────────────── M3: the placeholder detector on a real Postgres ─────────────────────────
+
+def _lit(v):
+    """An E'' literal with every non-alphanumeric character as a \\uXXXX escape: exact bytes whatever the client does with them."""
+    return "NULL" if v is None else "E'" + "".join(c if c.isalnum() and c.isascii() else f"\\u{ord(c):04x}" for c in v) + "'"
+
+
+LACKING_TEXT = ["", " ", "   ", "\t", "\n", "\r", "\r\n", "\u00a0", "\u200b", "\u200b\u200b", "\ufeff", "\u2028", "\u3000", "\u2003", "-", "--", "\u2014", "\u2013", "\u2012",
+                "\u2212", ".", "..", "...", "\u2026", "?", "??", "{}", "[]", '""', "''", "()", "n.a.", "N.A.", "N/A", "N/A.", "n/a", "NA", "nil", "Nil.", "not available",
+                "Not Available.", "no source", "No Source", "not traced", "Not Traced", "not traced yet", "  not   traced  ", "\tnot traced\n", "- not traced -", "pending",
+                "Pending...", "TBD", "TBD.", "tbd", "TBA", "todo", "nan", "NaN", "none", "None.", "(none)", "null", "NULL", "unknown", "Unknown", "unsourced", "untraced",
+                "source unidentified", "missing", "0", "false", "\u0001", "\u0007\u001f", "\u007f", "@", "+-+", "\u0001 \u0002", "\u200bnot traced\u200b", "\u00a0n/a\u00a0"]
+SOURCED_TEXT = ["Phaladipika 26.42", "BPHS 3.12", "PG338-339", "Sloka 42", "Surya Siddhanta 1.1", "a", "x.1", "Brihat Parashara Hora Shastra",
+                "\u092c\u0943\u0939\u0924\u094d\u092a\u093e\u0930\u093e\u0936\u0930 3.12", "\u092c\u0943\u0939\u0924\u094d", "not traced in the printed edition; see BPHS 3.12",
+                "1.1", "none other than Parashara (BPHS 1.1)", "BPHS 3.12 (pending verification)"]
+
+
+def _utf8(pg):
+    return True
+
+
+def _table(rows, ddl):
+    return [f"CREATE TEMP TABLE s_t (k int PRIMARY KEY, c {ddl}) ON COMMIT DROP;",
+            "INSERT INTO s_t VALUES " + ",".join(f"({i},{_lit(v) if not isinstance(v, tuple) else v[0]})" for i, v in enumerate(rows, 1)) + ";"]
+
+
+def _lacking_ks(monkeypatch, pg, rows, ddl, kind):
+    _real(monkeypatch, pg, _table(rows, ddl))
+    if ac.psql("SHOW server_encoding")[0][0].upper() != "UTF8":
+        pytest.skip("the disposable cluster is not UTF8: the Unicode escapes in the placeholder patterns need a UTF8 database (production is)")
+    out = ac.psql(f"SELECT k FROM s_t WHERE {ac._ldgr_lacking('c', kind)} ORDER BY k")
+    return [int(r[0]) for r in out]
+
+
+def test_REAL_SQL_every_leak_the_review_probed_counts_as_lacking_a_source_and_real_citations_do_not(monkeypatch, disposable_pg):
+    rows = LACKING_TEXT + SOURCED_TEXT + [None]
+    got = _lacking_ks(monkeypatch, disposable_pg, rows, "text", "text")
+    want = [i for i, v in enumerate(rows, 1) if v is None or v in LACKING_TEXT]
+    assert got == want, [rows[k - 1] for k in sorted(set(got) ^ set(want))]
+
+
+def test_REAL_SQL_varchar_and_the_text_array_elements_are_inspected(monkeypatch, disposable_pg):
+    got = _lacking_ks(monkeypatch, disposable_pg, ["BPHS 1.1", " ", "not traced", "N/A."], "varchar(40)", "text")
+    assert got == [2, 3, 4]
+    arrs = [("ARRAY['BPHS 1.1']",), ("ARRAY['']",), ("ARRAY['not traced']",), ("ARRAY['BPHS 1.1','']",), ("ARRAY[]::text[]",), ("NULL",),
+            ("ARRAY[NULL]::text[]",), ("ARRAY['BPHS 1.1','not traced']",), ("ARRAY['BPHS 1.1','BPHS 1.2']",), ("ARRAY[E'\\u200b']",), ("ARRAY['n.a.']",)]
+    assert _lacking_ks(monkeypatch, disposable_pg, arrs, "text[]", "array") == [2, 3, 4, 5, 6, 7, 8, 10, 11]
+
+
+def test_REAL_SQL_json_and_jsonb_values_scalars_arrays_and_objects_are_inspected(monkeypatch, disposable_pg):
+    js = [("'\"BPHS 1.1\"'",), ("'\"\"'",), ("'\"not traced\"'",), ("'[\"BPHS 1.1\"]'",), ("'[\"\"]'",), ("'[\"BPHS\",\"  \"]'",), ("'[]'",), ("'{}'",), ("'null'",), ("'5'",),
+          ("'true'",), ("'{\"src\":\"BPHS\"}'",), ("'[[\"a\"]]'",), ("NULL",), ("'[\"BPHS\",\"N/A\"]'",), ("'[{\"src\":\"x\"}]'",), ("'[{}]'",), ("'[\"a\",1]'",)]
+    want = [2, 3, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 17, 18]
+    for ddl in ("jsonb", "json"):
+        assert _lacking_ks(monkeypatch, disposable_pg, js, ddl, "json") == want, ddl
+
+
+def test_REAL_SQL_the_column_type_decides_what_can_carry_a_source(monkeypatch, disposable_pg):
+    _real(monkeypatch, disposable_pg, ["CREATE TEMP TABLE ty_t (a text, b varchar(40), c char(5), d text[], e jsonb, f json, g boolean, h integer, i date, j numeric, k varchar(9)[]) ON COMMIT DROP;"])
+    got = {c: (ac.ldgr_fetch_column_type("ty_t", c), ac.ldgr_column_kind(ac.ldgr_fetch_column_type("ty_t", c))) for c in "abcdefghijk"}
+    assert got["a"] == ("text", "text") and got["b"][1] == "text" and got["c"][1] == "text" and got["d"] == ("text[]", "array")
+    assert got["e"] == ("jsonb", "json") and got["f"] == ("json", "json") and got["k"][1] == "array"
+    assert [got[c][1] for c in "ghij"] == [None, None, None, None]
+    assert ac.ldgr_fetch_column_type("ty_t", "nope") == "" and ac.ldgr_column_kind("") is None and ac.ldgr_column_kind(None) is None
+
+
+@pytest.mark.parametrize("ddl, val", [("boolean", "false"), ("boolean", "true"), ("integer", "0"), ("integer", "7"), ("numeric", "1.5"), ("date", "'2020-01-01'")])
+def test_REAL_SQL_a_boolean_integer_or_date_source_column_is_no_detector_never_pass(monkeypatch, disposable_pg, ddl, val):
+    _real(monkeypatch, disposable_pg, [f"CREATE TEMP TABLE b_t (k int, c {ddl}) ON COMMIT DROP;", f"INSERT INTO b_t VALUES (1,{val}),(2,{val});"])
+    rec = ac.ldgr_source_declared_check("x", LS_M(col="c"), "b_t", ["k", "c"], [["k"]])[LDGR]
+    assert rec["v"] == NO_DET and ddl.split("(")[0] in rec["measured"] and "only text" in rec["measured"] and rec["citation_state"] == "sourced"
+    assert ac.rollup_asset("L0", {LDGR: rec})["Ldgr"]["v"] == NO_DET
+
+
+def test_REAL_SQL_the_whole_declared_ldgr_check_with_the_leaks_and_the_sample_cap_of_five(monkeypatch, disposable_pg):
+    rows = ["BPHS 1.1", "\t", "N/A.", "\u200b", "-", "pending", "TBD.", "nan", "BPHS 1.2"]
+    _real(monkeypatch, disposable_pg, _table(rows, "text"))
+    rec = ac.ldgr_source_declared_check("x", LS_M(col="c"), "s_t", ["k", "c"], [["k"]])[LDGR]
+    assert rec["v"] == PARTIAL and rec["ldgr"]["rows"] == 9 and rec["ldgr"]["lacking"] == 7
+    assert [x["k"] for x in rec["ldgr"]["sample"]] == [2, 3, 4, 5, 6] and len(rec["ldgr"]["sample"]) == 5 and "(first 5)" in rec["measured"]    # the cap is pinned
+    _real(monkeypatch, disposable_pg, _table(["-"], "text"))
+    assert ac.ldgr_source_declared_check("x", LS_M(col="c"), "s_t", ["k", "c"], [["k"]])[LDGR]["v"] == FAIL
+
+
+# ───────────────────────── M4: Vocab.alias without an alias column is identity only ─────────────────────────
+
+def test_an_alias_declaration_without_an_alias_column_reads_partial_unless_identity_only_is_declared():
+    r = ac.grade_vocab_alias(SPEC_PLAIN, FORMS, _pairs(("Sun", None, 1), ("Moon", None, 1)))
+    assert r["v"] == PARTIAL and "identity only" in r["measured"] and "completeness leg" in r["measured"] and "identity_only: true" in r["measured"]
+    ok = ac.grade_vocab_alias(SPEC_NA, FORMS, _pairs(("Sun", None, 1), ("Moon", None, 1)))
+    assert ok["v"] == PASS and "identity_only declared" in ok["measured"] and "canonical display names" in ok["measured"]
+    assert ac.grade_vocab_alias(SPEC_PLAIN, FORMS, _pairs(("Pluto", None, 1)))["v"] == FAIL            # an unresolved value still fails
+    assert ac.grade_vocab_alias(SPEC, FORMS, _pairs(("Sun", ["Surya", "Ravi", "SUN"], 1)))["v"] == PASS    # with the alias column the full leg runs
+    cell = ac.rollup_asset("L0", {ALIAS: r, "Vocab.identity": dict(v=PASS, measured="k")})["Vocab"]
+    assert cell["v"] == PARTIAL
+
+
+def test_bg_phaladeepika_latta_shaped_asset_reaches_pass_only_through_the_explicit_identity_only_word(monkeypatch):
+    names = ["Sun", "Moon", "Mercury", "Ketu"]                                                          # the canonical display names, no alias column
+    monkeypatch.setattr(ac, "alias_fetch_forms", lambda c: FORMS)
+    monkeypatch.setattr(ac, "alias_fetch_values", lambda t, v, a=None: _pairs(*((n, None, 1) for n in names)))
+    cols = ["graha", "direction", "count_from_graha"]
+    plain = ac.vocab_alias_declared_check("bg_phaladeepika_latta", VA_M_NOALIAS, "bg_phaladeepika_latta", cols)[ALIAS]
+    assert plain["v"] == PARTIAL
+    ident = dict(VA_M_NOALIAS, identity_only=True, identity_only_why="graha stores the canonical display names, no alias set is carried")
+    ac.validate_declarations(_doc(dict(vocab_alias=ident)))
+    rec = ac.vocab_alias_declared_check("bg_phaladeepika_latta", ident, "bg_phaladeepika_latta", cols)[ALIAS]
+    assert rec["v"] == PASS and "identity_only declared" in rec["measured"]
+
+
+@pytest.mark.parametrize("like", ac.ALIAS_LIKE_COLUMNS)
+def test_a_measured_declaration_without_an_alias_column_is_refused_beside_an_alias_like_column(monkeypatch, like):
+    monkeypatch.setattr(ac, "alias_fetch_forms", lambda c: pytest.fail("not read"))
+    for va in (VA_M_NOALIAS, dict(VA_M_NOALIAS, identity_only=True, identity_only_why="the asset stores the canonical display names only")):
+        rec = ac.vocab_alias_declared_check("bg_x", va, "t", ["graha", like])[ALIAS]
+        assert rec["v"] == NO_DET and rec["declaration_disagreements"][0]["field"] == "vocab_alias.alias_column" and like in rec["measured"]
+
+
+@pytest.mark.parametrize("like", ac.ALIAS_LIKE_COLUMNS)
+def test_no_alias_class_is_refused_beside_any_alias_like_column(like):
+    rec = ac.vocab_alias_declared_check("bg_x", VA_NA, "t", ["id", like])[ALIAS]
+    assert rec["v"] == NO_DET and "cause" not in rec
+
+
+@pytest.mark.parametrize("extra, match", [
+    (dict(identity_only=True, identity_only_why="the asset stores the canonical display names only", alias_column="synonyms"), "contradicts a declared alias_column"),
+    (dict(identity_only=True), "identity_only_why"),
+    (dict(identity_only=True, identity_only_why="TBD"), "identity_only_why"),
+    (dict(identity_only=True, identity_only_why="too short"), "identity_only_why"),
+    (dict(identity_only=False, identity_only_why="the asset stores the canonical display names only"), "identity_only must be true"),
+    (dict(identity_only="yes", identity_only_why="the asset stores the canonical display names only"), "identity_only must be true"),
+    (dict(identity_only_why="the asset stores the canonical display names only"), "only for identity_only true"),
+])
+def test_validator_identity_only_discipline(extra, match):
+    base = dict(VA_M_NOALIAS if "alias_column" not in extra else VA_M, **extra)
+    _bad(dict(vocab_alias=base), match)
+
+
+def test_na_form_refuses_identity_only_fields():
+    _bad(dict(vocab_alias=dict(VA_NA, identity_only=True, identity_only_why="the asset stores the canonical display names only")), "declares no alias class")
+
+
+# ───────────────────────── M5: declaration quality ─────────────────────────
+
+BAD_WHY = ["TBD", ".", "tbd tbd tbd", "too short", "a b c", "this is a todo for later review", "n/a for this asset in general", "pending a real reason here",
+           "line one\rline two is longer", "line one\u2028line two is longer", "line one\u2029line two is longer", "line one\u0085line two longer", "zero\u200bwidth joiner here ok",
+           "tab\there is not a visible line", " ".join(["word"] * 241), " leading space is not allowed here", "trailing space is not allowed here ", "placeholder text goes right here"]
+
+
+@pytest.mark.parametrize("why", BAD_WHY)
+@pytest.mark.parametrize("key, base", [("vocab_alias", VA_NA), ("vocab_alias", VA_M), ("ldgr_source", LS_NA), ("ldgr_source", LS_M())])
+def test_a_placeholder_or_multiline_or_too_short_reason_is_refused_for_every_s3_form(key, base, why):
+    _bad({key: dict(base, why=why)}, rf"{key}\.why")
+
+
+@pytest.mark.parametrize("ev", ["platform/scripts/governance/asset_census.py:99999999", "platform/scripts/governance/asset_census.py:0",
+                                "platform/scripts/governance/asset_census.py:-1", "unverified:x", "unverified:TBD", "unverified:todo later", "unverified:n/a", "unverified:short",
+                                "unverified:" + "x" * 9, "unverified:one-word-only-long", "unverified:\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b",
+                                "unverified:line one\nline two longer", "platform/scripts/governance/asset_census.py\u200b:1"])
+def test_evidence_must_be_a_real_line_or_a_real_description(ev):
+    for key, base in (("vocab_alias", VA_M), ("ldgr_source", LS_M())):
+        _bad({key: dict(base, evidence=ev)}, rf"{key}\.evidence")
+
+
+def test_evidence_line_numbers_are_held_to_the_files_real_line_count():
+    n = len((ac.ROOT / "platform/scripts/governance/asset_census.py").read_bytes().splitlines())
+    ac.validate_declarations(_doc(dict(ldgr_source=dict(LS_M(), evidence=f"platform/scripts/governance/asset_census.py:{n}"))))
+    _bad(dict(ldgr_source=dict(LS_M(), evidence=f"platform/scripts/governance/asset_census.py:{n + 1}")), "line")
+    ac.validate_declarations(_doc(dict(ldgr_source=dict(LS_M(), evidence="platform/scripts/governance/asset_census.py"))))     # a bare file is fine
+
+
+@pytest.mark.parametrize("key, base", [("vocab_alias", VA_NA), ("ldgr_source", LS_NA)])
+def test_an_na_release_may_not_rest_on_unverified_evidence(key, base):
+    _bad({key: dict(base, evidence="unverified:the L0 review sheet notes")}, "may not be `unverified:`")
+    ac.validate_declarations(_doc({key: dict(base)}))
+    for measured in (VA_M, LS_M()):                                          # a measured declaration may still say what it could not verify
+        k = "vocab_alias" if measured is VA_M else "ldgr_source"
+        ac.validate_declarations(_doc({k: dict(measured, evidence="unverified:the L0 review sheet notes")}))
+
+
+def test_the_why_length_cap_is_exactly_1200_and_the_alias_like_list_is_pinned():
+    ok = " ".join(["word"] * 240)
+    assert len(ok) <= 1200
+    ac.validate_declarations(_doc(dict(ldgr_source=dict(LS_M(), why=ok))))
+    assert ac.ALIAS_LIKE_COLUMNS == ("synonyms", "aliases", "alias", "alt_names", "alternate_names", "other_names", "also_known_as")
+
+
+def test_the_s2_carriage_validator_is_unchanged_by_the_s3_text_rules():
+    ac.validate_declarations(_doc(dict(carriage=dict(applies="D3", nature="computation", why="w", evidence=s2.EVID))))      # S2 still takes a one-letter why
+
+
+# ───────────────────────── LOW: malformed declarations, unknown columns, carriage guards ─────────────────────────
+
+@pytest.mark.parametrize("va", [dict(**{"class": "planet"}), dict(**{"class": "planet", "vocab_column": 7}), dict(**{"class": "sign", "vocab_column": "g"}),
+                                dict(na="bogus", why="x", evidence="y"), dict(na="no_alias_class")])
+def test_a_malformed_alias_declaration_that_reaches_the_check_is_no_detector_not_an_exception(va, monkeypatch):
+    monkeypatch.setattr(ac, "alias_fetch_forms", lambda c: pytest.fail("not read"))
+    rec = ac.vocab_alias_declared_check("bg_x", va, "t", ["graha", "synonyms"])[ALIAS]
+    assert rec["v"] == NO_DET and "malformed" in rec["measured"]
+
+
+@pytest.mark.parametrize("ls", [dict(source_column="c"), dict(source_column="c", citation_state="verified"), dict(source_column=7, citation_state="sourced"),
+                                dict(na="bogus", why="x", evidence="y"), dict(na="no_classical_claim")])
+def test_a_malformed_ldgr_declaration_that_reaches_the_check_is_no_detector_not_an_exception(ls, monkeypatch):
+    monkeypatch.setattr(ac, "ldgr_fetch_source_stats", lambda *a, **k: pytest.fail("not read"))
+    rec = ac.ldgr_source_declared_check("bg_x", ls, "t", ["c"])[LDGR]
+    assert rec["v"] == NO_DET and "malformed" in rec["measured"]
+
+
+def test_unknown_columns_of_a_declared_target_table_are_no_detector_and_only_no_table_at_all_passes_the_na_through():
+    for cols in (None, [], ()):
+        assert ac.vocab_alias_declared_check("bg_x", VA_NA, "a_view", cols)[ALIAS]["v"] == NO_DET
+        assert ac.ldgr_source_declared_check("bg_x", LS_NA, "a_view", cols)[LDGR]["v"] == NO_DET
+        assert ac.vocab_alias_declared_check("bg_x", VA_NA, None, cols)[ALIAS]["v"] == NA          # a service: no table, nothing to contradict
+        assert ac.ldgr_source_declared_check("bg_x", LS_NA, None, cols)[LDGR]["v"] == NA
+    rec = ac.vocab_alias_declared_check("bg_x", VA_NA, "a_view", None)[ALIAS]
+    assert "cause" not in rec and ac.rollup_asset("L0", {ALIAS: rec})["Vocab"]["v"] == NO_DET
+
+
+@pytest.mark.parametrize("nature, extra", [("derivation", dict(applies="D2")), ("ratified_judgment", dict(ruling="N-73"))])
+def test_no_classical_claim_is_refused_beside_a_derivation_or_ratified_judgment_carriage(nature, extra):
+    car = dict(nature=nature, why="w", evidence=s2.EVID, **extra)
+    _bad(dict(ldgr_source=LS_NA, carriage=car), f"contradicts a declared {nature} carriage")
+
+
+def test_measure_reads_a_declared_na_on_a_view_or_an_absent_table_as_no_detector(monkeypatch, tmp_path):
+    reg = {"v": na_causes._reg_row("v", "a_view"), "g": na_causes._reg_row("g", "absent_t")}
+    na_causes._stub_layer(monkeypatch, tmp_path, reg, tables={"a_view": ([], [])})
+    monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: {a_: dict(kind="data", vocab_alias=VA_NA, ldgr_source=LS_NA) for a_ in reg})
+    for fn in ("alias_fetch_forms", "alias_fetch_values", "ldgr_fetch_column_type", "ldgr_fetch_source_stats"):
+        monkeypatch.setattr(ac, fn, lambda *a, **k: pytest.fail("no table, no read"))
+    ms = {a["asset_id"]: a["measurements"] for a in ac.measure("L0")["assets"]}
+    for aid in ("v", "g"):
+        assert ms[aid][ALIAS]["v"] == NO_DET and ms[aid][LDGR]["v"] == NO_DET
+
+
+def test_the_declared_ldgr_check_checks_the_table_exists_in_the_measure_wiring(monkeypatch, tmp_path):
+    reg = {"ghost": na_causes._reg_row("ghost", "absent_t")}
+    na_causes._stub_layer(monkeypatch, tmp_path, reg, tables={})
+    monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: {"ghost": dict(kind="data", ldgr_source=LS_M(), vocab_alias=VA_M)})
+    for fn in ("alias_fetch_forms", "alias_fetch_values", "ldgr_fetch_column_type", "ldgr_fetch_source_stats"):
+        monkeypatch.setattr(ac, fn, lambda *a, **k: pytest.fail("a table absent from production is never read"))
+    ms = ac.measure("L0")["assets"][0]["measurements"]
+    assert ms[LDGR]["v"] == NO_DET and ms[ALIAS]["v"] == NO_DET and ms[LDGR]["citation_state"] == "sourced"
 
 
 # ───────────────────────── pin 12 ─────────────────────────
@@ -643,7 +944,7 @@ def test_REAL_SQL_a_synonym_in_the_ontology_missing_from_the_asset_flips_the_cel
         "INSERT INTO asset_t VALUES ('Sun',ARRAY['Surya','SUN']),('Moon',ARRAY['Chandra','MOON']);"])
     rec = ac.vocab_alias_declared_check("bg_x", VA_M, "asset_t", ["graha", "synonyms"])[ALIAS]
     assert rec["v"] == FAIL and rec["alias"]["missing_synonyms"] == {"sun": ["Ravi"]}
-    assert ac.vocab_alias_declared_check("bg_x", VA_M_NOALIAS, "asset_t", ["graha", "synonyms"])[ALIAS]["v"] == PASS      # leg 1 alone resolves both
+    assert ac.vocab_alias_declared_check("bg_x", VA_M_NOALIAS, "asset_t", ["graha", "synonyms"])[ALIAS]["v"] == NO_DET   # M4: beside a synonyms column an alias_column must be declared
 
 
 def test_REAL_SQL_an_unresolved_vocabulary_value_fails_and_a_jsonb_alias_column_is_read(monkeypatch, disposable_pg):

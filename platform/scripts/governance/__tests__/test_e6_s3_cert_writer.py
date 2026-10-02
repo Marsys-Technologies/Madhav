@@ -71,3 +71,47 @@ def test_a_declared_na_is_certifiable_from_the_census_cell_with_the_declared_rul
     assert rec["na"]["basis"] == "measured_cause" and rec["na"]["cause"] == "no-classical-claim"
 
 
+
+
+# ───────────────────────── adversarial review M2: an Ldgr PARTIAL on an unsourced / refuted state ─────────────────────────
+
+@pytest.mark.parametrize("state", ["unsourced", "refuted"])
+def test_an_ldgr_partial_on_an_unsourced_or_refuted_state_is_refused_by_the_writer_and_the_reader(ledger, state):
+    before = ledger.read_bytes()
+    refused(ledger, "citation_state_partial_refused", **{k: v for k, v in kw(ledger, criterion=LDGR, verdict="PARTIAL",
+                                                                              cell=dict(v="PARTIAL", citation_state=state, declared=True),
+                                                                              rec=dict(target_columns=["id", "citation"])).items() if k != "ledger_path"})
+    assert ledger.read_bytes() == before
+    rec = dict(record_version=2, kind="gate", criterion=LDGR, verdict="PARTIAL", citation_state=state, citation_state_caveat=False, na=None)
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc._check_citation_fields(dict(rec), 7)
+    assert ei.value.code == "bad_ledger" and "PARTIAL" in str(ei.value)
+
+
+def test_an_ldgr_partial_on_a_sourced_state_is_still_certifiable_and_a_legacy_null_state_partial_still_reads(ledger):
+    ok = nc.write_certification(**kw(ledger, criterion=LDGR, verdict="PARTIAL", cell=dict(v="PARTIAL", citation_state="sourced", declared=True),
+                                     rec=dict(target_columns=["id", "citation"]))).record
+    assert ok["verdict"] == "PARTIAL" and ok["citation_state_caveat"] is False
+    legacy = dict(record_version=2, kind="gate", criterion=LDGR, verdict="PARTIAL", citation_state=None, citation_state_caveat=False, na=None)
+    nc._check_citation_fields(dict(legacy), 3)                                              # no raise: Ldgr is not strict about a MISSING state
+
+
+def test_a_declared_ocr_unverified_ldgr_pass_is_certified_with_the_caveat(ledger):
+    rec = nc.write_certification(**kw(ledger, criterion=LDGR, verdict="PASS", cell=dict(v="PASS", citation_state="sourced_ocr_unverified", declared=True),
+                                      rec=dict(target_columns=["id", "citation"]))).record
+    assert rec["citation_state"] == "sourced_ocr_unverified" and rec["citation_state_caveat"] is True
+
+
+@pytest.mark.parametrize("crit", ["Carr.D1", LDGR])
+@pytest.mark.parametrize("verdict", ["PASS", "PARTIAL"])
+@pytest.mark.parametrize("state", ["unsourced", "refuted"])
+def test_the_writer_refuses_pass_and_partial_on_unsourced_or_refuted_for_both_citation_criteria(ledger, crit, verdict, state):
+    before = ledger.read_bytes()
+    code = "citation_state_pass_refused" if verdict == "PASS" else "citation_state_partial_refused"
+    refused(ledger, code, **{k: v for k, v in kw(ledger, criterion=crit, verdict=verdict, cell=dict(v=verdict, citation_state=state, declared=True),
+                                                  rec=dict(target_columns=["id", "citation"])).items() if k != "ledger_path"})
+    assert ledger.read_bytes() == before
+    rec = dict(record_version=2, kind="gate", criterion=crit, verdict=verdict, citation_state=state, citation_state_caveat=verdict == "PASS", na=None)
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc._check_citation_fields(dict(rec), 5)                                              # and the reader refuses the same record
+    assert ei.value.code == "bad_ledger"

@@ -113,9 +113,12 @@ def test_the_same_states_are_recordable_on_no_detector_without_a_caveat(ledger, 
 
 
 @pytest.mark.parametrize("state", ["unsourced", "refuted"])
-def test_ldgr_partial_keeps_an_unsourced_or_refuted_state_but_carr_d1_partial_refuses_it(ledger, state):
-    rec = write(ledger, LDGR, state, "PARTIAL").record                              # Ldgr: lenient, no caveat (not a PASS)
-    assert rec["verdict"] == "PARTIAL" and rec["citation_state"] == state and rec["citation_state_caveat"] is False
+def test_ldgr_partial_with_an_unsourced_or_refuted_state_is_refused_like_carr_d1_partial(ledger, state):
+    # S3 (adversarial review M2): the census record and rollup cap an Ldgr PASS/PARTIAL carrying one of these at NO_DETECTOR, so a certificate may not claim it
+    before = ledger.read_bytes()
+    with pytest.raises(nc.CertificationRefused) as ei:
+        write(ledger, LDGR, state, "PARTIAL")
+    assert ei.value.code == "citation_state_partial_refused" and ledger.read_bytes() == before
 
 
 def test_a_failing_ldgr_cell_keeps_its_state_too(ledger):

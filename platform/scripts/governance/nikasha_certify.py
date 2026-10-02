@@ -120,6 +120,10 @@ LDGR_NULL_STATE_WRITE_ALLOWED = False
 DECLARATIONS_RELPATH = "platform/scripts/governance/asset_declarations.json"
 CITATION_STRICT = ("Carr.D1",)                       # a PASS/PARTIAL needs a state (sourced / sourced_ocr_unverified); Ldgr is lenient
 CITATION_PASS_REFUSED = ("unsourced", "refuted")     # the census caps these at NO_DETECTOR: a PASS carrying one is inconsistent
+# ONE rule for both citation criteria (S3, strategist decision): the census caps a PASS or PARTIAL carrying unsourced / refuted at NO_DETECTOR IN THE DETECTOR
+# (carriage_d1.d1_measure for Carr.D1, asset_census.grade_ldgr_source for Ldgr.source_presence) and again in the rollup, so a certificate may not claim either
+# verdict on such a state. Missing-state strictness stays per criterion (CITATION_STRICT): Ldgr still reads a legacy null-state PARTIAL.
+CITATION_CAPPED = CITATION_STRICT + ("Ldgr.source_presence",)       # derived, so a reader that substitutes CITATION_STRICT (E6.3 fixtures) keeps one rule
 VERDICTS = ("PASS", "FAIL", "PARTIAL", "NO_DETECTOR", "ERRORED", "N/A")
 KINDS = ("gate", "addition")
 ENV_LEDGER = "NIKASHA_CERTS_LEDGER"
@@ -335,11 +339,10 @@ def _check_citation_fields(r: dict, n: int) -> None:
         _refuse("bad_ledger", f"line {n}: a PASS with citation_state {cs!r} (the census caps that at NO_DETECTOR)")
     if cs is not None and isinstance(r.get("na"), dict) and r["na"].get("basis") == "applicability_facts":
         _refuse("bad_ledger", f"line {n}: citation_state {cs!r} on an applicability N/A (no census cell, so none to read)")
-    if citation_gate and r.get("criterion") in CITATION_STRICT and r.get("verdict") in ("PASS", "PARTIAL"):
-        if cs is None:
-            _refuse("bad_ledger", f"line {n}: a {r.get('criterion')} {r.get('verdict')} with no citation_state")
-        if cs in CITATION_PASS_REFUSED:
-            _refuse("bad_ledger", f"line {n}: a {r.get('criterion')} {r.get('verdict')} with citation_state {cs!r}")
+    if citation_gate and r.get("criterion") in CITATION_STRICT and r.get("verdict") in ("PASS", "PARTIAL") and cs is None:
+        _refuse("bad_ledger", f"line {n}: a {r.get('criterion')} {r.get('verdict')} with no citation_state")
+    if citation_gate and r.get("criterion") in CITATION_CAPPED and r.get("verdict") in ("PASS", "PARTIAL") and cs in CITATION_PASS_REFUSED:
+        _refuse("bad_ledger", f"line {n}: a {r.get('criterion')} {r.get('verdict')} with citation_state {cs!r} (the census caps that at NO_DETECTOR)")
     want = citation_gate and r.get("verdict") == "PASS" and cs != "sourced"
     if not isinstance(caveat, bool) or caveat != want:
         _refuse("bad_ledger", f"line {n}: citation_state_caveat is {caveat!r}, expected {want!r} for this verdict and "
@@ -1083,15 +1086,14 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
     if verdict == "PASS" and cstate in CITATION_PASS_REFUSED:
         _refuse("citation_state_pass_refused", f"{criterion} reads PASS with citation_state {cstate!r}, which the census "
                                                "caps at NO_DETECTOR: an inconsistent claim")
-    if kind == "gate" and criterion in CITATION_STRICT and verdict in ("PASS", "PARTIAL"):
-        # Carr.D1's own rollup (S2 `d1_evidence_problem`) demotes a PASS/PARTIAL whose state is not sourced /
-        # sourced_ocr_unverified to NO_DETECTOR: a certificate may not claim what the census would not honour
-        if cstate is None:
-            _refuse("citation_state_missing", f"{criterion} reads {verdict} but the census cell carries no "
-                                              "citation_state: its rollup would read NO_DETECTOR")
-        if cstate in CITATION_PASS_REFUSED:
-            _refuse("citation_state_partial_refused", f"{criterion} reads {verdict} with citation_state {cstate!r}, "
-                                                      "which its rollup caps at NO_DETECTOR")
+    if kind == "gate" and criterion in CITATION_STRICT and verdict in ("PASS", "PARTIAL") and cstate is None:
+        # Carr.D1's own rollup (S2 `d1_evidence_problem`) demotes a PASS/PARTIAL with no state to NO_DETECTOR
+        _refuse("citation_state_missing", f"{criterion} reads {verdict} but the census cell carries no "
+                                          "citation_state: its rollup would read NO_DETECTOR")
+    if kind == "gate" and criterion in CITATION_CAPPED and verdict in ("PASS", "PARTIAL") and cstate in CITATION_PASS_REFUSED:
+        # the same cap in both detectors and the rollup: a certificate may not claim what the census would not honour
+        _refuse("citation_state_partial_refused", f"{criterion} reads {verdict} with citation_state {cstate!r}, "
+                                                  "which its census record and rollup cap at NO_DETECTOR")
     if (kind == "gate" and criterion == "Ldgr.source_presence" and verdict == "PASS" and cstate is None
             and not LDGR_NULL_STATE_WRITE_ALLOWED):
         _refuse("citation_state_missing", f"{criterion} reads PASS but the census cell carries no citation_state: the "
