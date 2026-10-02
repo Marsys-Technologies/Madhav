@@ -76,6 +76,7 @@ assert _SCOPE_CAP_SENTINEL_ENTRY is not None, (
 )
 SCOPE_CAP_SENTINEL: str = _SCOPE_CAP_SENTINEL_ENTRY.status
 from ga_writers._idempotency import authorize_chart_fact_delete, replace_prior_chart_dashas
+from ga_writers._karaka_roles import KARAKA_ABBREVIATIONS_8, KARAKA_SCHOOL_KN_RAO
 from ga_writers._telemetry import update_asset_throughput
 from ga_writers._vimshottari_independent_verifier import (
     compare_row as _iv_compare_row,
@@ -641,17 +642,178 @@ def _activate_natal_context(chart_id: str, ayanamsha_id: str, conn: Any) -> None
     _CURRENT_NATAL_CONTEXT_KEY = key
 
 
-# Karakas mapping (7 Jaimini karakas based on degree-ordering — FORENSIC chart)
-# AK=Sun(highest deg), AmK=Mars, BK=Mercury, MK=Saturn, PK=Jupiter, GK=Venus, DK=Moon
-_JAIMINI_KARAKAS = {
-    "Sun":     "AK",    # Atmakaraka
-    "Mars":    "AmK",   # Amatyakaraka
-    "Mercury": "BK",    # Bhratrukaraka
-    "Saturn":  "MK",    # Matrukaraka
-    "Jupiter": "PK",    # Pitrukaraka
-    "Venus":   "GK",    # Gnatikaraka
-    "Moon":    "DK",    # Darakaraka
-}
+# ── Jaimini karaka roles (karaka_role_at_period / karakas_active_during_period) ──
+#
+# CLAUDE.md N.5 / N.7 item 3: ga_sensitive OWNS the chara-karaka derivation
+# (chart_facts fact_category='karaka_chara_position'); this writer READS the
+# chart's own assignments and never re-derives or hard-codes them. The prior
+# version applied ONE hard-coded lord -> role dict (Sun AK, Mars AmK, Mercury BK,
+# Saturn MK, Jupiter PK, Venus GK, Moon DK, commented "FORENSIC chart") to EVERY
+# chart, so all three charts carried identical role columns (~169k non-null
+# rows each) regardless of their own degree order; on the canonical chart the
+# real kn_rao roles (Lahiri) are Moon AK ... Mercury DK, Rahu PK. The dict also
+# had no Rahu entry and used the retired 7-scheme names (PK=Jupiter, ...).
+#
+# School: ``kn_rao_rahu_included`` (SS N-69 headline school; 8 grahas, rank ->
+# AK AmK BK MK PiK PK GK DK via the shared vocabulary in ga_writers/
+# _karaka_roles.py). It is stamped on every row that carries a role claim (see
+# _karaka_provenance_suffix) so a reader sees which school the label belongs to.
+#
+# NULL is the honest value, never an invented one, where no role exists:
+#   * Ketu has no karaka role in the 8-scheme.
+#   * chara_karaka / kalachakra / narayana lords are zodiac SIGNS and yogini
+#     lords are yogini NAMES (Mangala, Pingala, ...): none of them is a graha, so
+#     they cannot carry a chara-karaka role (the stored values were already NULL
+#     there; the old dict simply never matched them). The yogini deity -> graha
+#     alias used for lord_natal_* is deliberately NOT applied to roles.
+#
+# ``karakas_active_during_period`` = the 'Graha:role' strings of the row's lord and
+# its parent lord, derived from the SAME read. Emission order is the fixed graha
+# order below (the legacy dict's insertion order, Rahu appended), a convention
+# kept so rows whose roles do not change keep byte-identical arrays.
+_KARAKAS_ACTIVE_GRAHA_ORDER: tuple[str, ...] = (
+    "Sun", "Mars", "Mercury", "Saturn", "Jupiter", "Venus", "Moon", "Rahu",
+)
+
+# Cache: (chart_id, ayanamsha_id) -> {graha: role abbreviation}, or the error
+# message when ga_sensitive's rows are absent/malformed (raised lazily, only if a
+# role is actually needed). Keyed on the FULL (chart, ayanamsha) pair and looked
+# up by the explicit ids every _build_row() call already carries, so per-ayanamsha
+# builds, interleaved systems and parallel/forked workers never read each other's
+# roles (no "current context" global). Every build_system() call RELOADS its own
+# key from the DB (never trusts an earlier process-lifetime entry), so a ga_sensitive
+# rebuild between two builds in one long-lived process is picked up.
+_KARAKA_ROLE_CACHE: dict[tuple[str, str], dict[str, str] | str] = {}
+
+
+class KarakaDependencyMissing(RuntimeError):
+    """ga_sensitive's kn_rao karaka_chara_position rows are absent or malformed for the
+    (chart, ayanamsha) ga_dashas is building. ga_dashas does not recompute karakas."""
+
+
+def _read_karaka_roles(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, str]:
+    """READ the chart's own Jaimini chara-karaka assignments from ga_sensitive's L1 rows.
+
+    Returns ``{graha: role abbreviation}`` (AK AmK BK MK PiK PK GK DK), e.g. on the
+    canonical chart / Lahiri ``{"Moon": "AK", "Saturn": "AmK", ..., "Rahu": "PK", ...}``.
+
+    Mirrors ga_vargas_writer._read_jaimini_karakas: rows are pinned on fact_category +
+    fact_key (assigned_graha, karaka_rank) + the canonical school formula_id with a
+    total ORDER BY, and the rank -> abbreviation mapping is by the stored
+    ``karaka_rank`` (vocabulary: ga_writers/_karaka_roles.py), never by parsing subject
+    names. Raises KarakaDependencyMissing (never recomputes, never returns a partial map)
+    when ga_sensitive has not built this chart/ayanamsha or its rows are not a clean
+    permutation of the eight ranks.
+    """
+    import psycopg.rows as _pr
+    with conn.cursor(row_factory=_pr.tuple_row) as cur:
+        cur.execute(
+            """
+            SELECT fact_subject, fact_key, fact_value_text, fact_value_num
+            FROM chart_facts
+            WHERE chart_id = %s
+              AND ayanamsha_id = %s
+              AND fact_category = 'karaka_chara_position'
+              AND fact_key IN ('assigned_graha', 'karaka_rank')
+              AND formula_id = %s
+            ORDER BY fact_subject, fact_key, fact_id
+            """,
+            (chart_id, ayanamsha_id, KARAKA_SCHOOL_KN_RAO),
+        )
+        fetched = cur.fetchall()
+    return _karaka_roles_from_rows(fetched, chart_id, ayanamsha_id)
+
+
+def _karaka_roles_from_rows(
+    fetched: list[tuple[Any, ...]], chart_id: str, ayanamsha_id: str,
+) -> dict[str, str]:
+    """Pure core of _read_karaka_roles: (subject, key, text, num) rows -> {graha: role}."""
+    where = (
+        f"chart_id={chart_id} ayanamsha={ayanamsha_id} "
+        f"(ga_sensitive karaka_chara_position, formula_id={KARAKA_SCHOOL_KN_RAO})"
+    )
+    if not fetched:
+        raise KarakaDependencyMissing(
+            f"[ga_dashas] ga_sensitive dependency missing: no kn_rao karaka_chara_position "
+            f"rows for {where}. Build ga_sensitive for this chart first; ga_dashas does not "
+            f"recompute karakas."
+        )
+    graha_by_subject: dict[str, str] = {}
+    rank_by_subject: dict[str, int] = {}
+    for subject, key, text, num in fetched:
+        if key == "assigned_graha":
+            bucket, value = graha_by_subject, text
+        else:  # karaka_rank
+            bucket, value = rank_by_subject, (int(num) if num is not None else None)
+        if value is None or subject in bucket:
+            raise KarakaDependencyMissing(
+                f"[ga_dashas] malformed ga_sensitive karaka rows ({key} for subject {subject!r} "
+                f"is {'duplicated' if value is not None else 'NULL'}) for {where}."
+            )
+        bucket[subject] = value
+    if set(graha_by_subject) != set(rank_by_subject):
+        raise KarakaDependencyMissing(
+            f"[ga_dashas] malformed ga_sensitive karaka rows: assigned_graha subjects "
+            f"{sorted(graha_by_subject)} != karaka_rank subjects {sorted(rank_by_subject)} "
+            f"for {where}."
+        )
+    ranks = sorted(rank_by_subject.values())
+    if ranks != list(range(1, len(KARAKA_ABBREVIATIONS_8) + 1)):
+        raise KarakaDependencyMissing(
+            f"[ga_dashas] ga_sensitive kn_rao karaka ranks {ranks} are not a "
+            f"1..{len(KARAKA_ABBREVIATIONS_8)} permutation for {where}."
+        )
+    roles = {
+        graha_by_subject[subject]: KARAKA_ABBREVIATIONS_8[rank - 1]
+        for subject, rank in rank_by_subject.items()
+    }
+    if len(roles) != len(KARAKA_ABBREVIATIONS_8) or not set(roles) <= set(_KARAKAS_ACTIVE_GRAHA_ORDER):
+        raise KarakaDependencyMissing(
+            f"[ga_dashas] ga_sensitive kn_rao karaka assignments {sorted(roles)} are not 8 distinct "
+            f"grahas drawn from {list(_KARAKAS_ACTIVE_GRAHA_ORDER)} for {where}."
+        )
+    return roles
+
+
+def _activate_karaka_roles(chart_id: str, ayanamsha_id: str, conn: Any) -> None:
+    """(Re)load the karaka roles for (chart_id, ayanamsha_id) from ga_sensitive.
+
+    Always reloads (see _KARAKA_ROLE_CACHE). Absent/malformed ga_sensitive rows are
+    recorded, not raised here: systems whose lords can never carry a role (yogini,
+    chara_karaka, kalachakra, narayana) must still build, and any row that DOES need a
+    role raises at that point. A genuine database error propagates (never swallowed).
+    """
+    key = (chart_id, ayanamsha_id)
+    try:
+        _KARAKA_ROLE_CACHE[key] = _read_karaka_roles(conn, chart_id, ayanamsha_id)
+    except KarakaDependencyMissing as exc:
+        _KARAKA_ROLE_CACHE[key] = str(exc)
+
+
+def set_karaka_roles(chart_id: str, ayanamsha_id: str, roles: dict[str, str]) -> None:
+    """Explicitly seed the karaka roles for (chart_id, ayanamsha_id). Production code
+    never calls this (build_system() reads ga_sensitive); it exists so unit tests that
+    compute a system directly (no DB, no build_system()) can supply a deliberate,
+    correctly-labelled fixture instead of silently getting NULL roles."""
+    _KARAKA_ROLE_CACHE[(chart_id, ayanamsha_id)] = dict(roles)
+
+
+def _karaka_roles_needed(chart_id: str, ayanamsha_id: str, *lords: str | None) -> dict[str, str] | None:
+    """The {graha: role} map for this build, or None when none of ``lords`` is a graha
+    that can carry a role (so yogini/sign lords and a bare Ketu need no ga_sensitive
+    read). Raises KarakaDependencyMissing when a role is needed but unavailable."""
+    if not any(lord in _KARAKAS_ACTIVE_GRAHA_ORDER for lord in lords if lord):
+        return None
+    entry = _KARAKA_ROLE_CACHE.get((chart_id, ayanamsha_id))
+    if entry is None:
+        raise KarakaDependencyMissing(
+            f"[ga_dashas] karaka roles not loaded for chart_id={chart_id} ayanamsha={ayanamsha_id}: "
+            f"ga_sensitive's karaka_chara_position rows were never read (build_system() reads them; "
+            f"direct callers must set_karaka_roles()). ga_dashas does not hard-code or recompute karakas."
+        )
+    if isinstance(entry, str):
+        raise KarakaDependencyMissing(entry)
+    return entry
 
 
 def _get_natal_context(lord: str) -> dict[str, Any]:
@@ -666,13 +828,35 @@ def _get_natal_context(lord: str) -> dict[str, Any]:
     }
 
 
-def _get_karakas_active(lord: str, parent_lord: str | None) -> list[str]:
-    """Karakas active at this branch (Addition Q)."""
-    active = []
-    for graha, karaka in _JAIMINI_KARAKAS.items():
-        if graha == lord or graha == parent_lord:
-            active.append(f"{graha}:{karaka}")
-    return active
+def _get_karaka_role(chart_id: str, ayanamsha_id: str, lord: str) -> str | None:
+    """The chart's own kn_rao karaka role of ``lord`` (None: no role — Ketu, sign, yogini)."""
+    roles = _karaka_roles_needed(chart_id, ayanamsha_id, lord)
+    return roles.get(lord) if roles is not None else None
+
+
+def _get_karakas_active(
+    chart_id: str, ayanamsha_id: str, lord: str, parent_lord: str | None,
+) -> list[str]:
+    """Karakas active at this branch (Addition Q): 'Graha:role' for the lord and the
+    parent lord, from the same ga_sensitive read as karaka_role_at_period, in
+    _KARAKAS_ACTIVE_GRAHA_ORDER. Empty when neither carries a role."""
+    roles = _karaka_roles_needed(chart_id, ayanamsha_id, lord, parent_lord)
+    if roles is None:
+        return []
+    return [
+        f"{graha}:{roles[graha]}"
+        for graha in _KARAKAS_ACTIVE_GRAHA_ORDER
+        if graha in roles and (graha == lord or graha == parent_lord)
+    ]
+
+
+def _karaka_provenance_suffix(role: str | None, karakas: list[str]) -> str:
+    """Provenance text appended to citation_human on rows that carry a karaka claim, so
+    a reader sees which school the role labels belong to. Empty when the row claims no
+    role (the row then carries no karaka assertion to attribute)."""
+    if role is None and not karakas:
+        return ""
+    return f"; karaka_school={KARAKA_SCHOOL_KN_RAO} (ga_sensitive karaka_chara_position)"
 
 
 # ── Two-pass verification ─────────────────────────────────────────────────────
@@ -1057,7 +1241,8 @@ def _build_row(
     duration_days = float(_days_between(start_d, end_d))
 
     natal = _get_natal_context(lord)
-    karakas = _get_karakas_active(lord, parent_lord)
+    karaka_role = _get_karaka_role(chart_id, ayanamsha_id, lord)
+    karakas = _get_karakas_active(chart_id, ayanamsha_id, lord, parent_lord)
     relationship = _planet_relationship(lord, parent_lord)
 
     # Sandhi (V-11 fix): whether this period, by its own duration, is a
@@ -1083,11 +1268,11 @@ def _build_row(
         "end_iso": end_iso,
         "duration_days": duration_days,
         "sandhi_flag": sandhi_flag,
-        "karaka_role_at_period": _JAIMINI_KARAKAS.get(lord),
+        "karaka_role_at_period": karaka_role,
         "verification_pass_status": verification_status,
         "verification_method": "two_pass_classical_reconstruction",
         "citation_ref": citation_computer,
-        "citation_human": citation_human,
+        "citation_human": citation_human + _karaka_provenance_suffix(karaka_role, karakas),
         "computed_at": datetime.now(timezone.utc).isoformat(),
         "engine_version": "pyjhora_adapter/0.1.0",
         # A7 additions
@@ -3158,6 +3343,9 @@ def build_system(
     if not skip_db:
         with (_conn() if conn is None else nullcontext(conn)) as _nc:
             _activate_natal_context(chart_id, ayanamsha_id, _nc)
+            # S-L1: read the chart's OWN karaka roles from ga_sensitive (N.5) for this
+            # exact (chart, ayanamsha); raises later, only if a row needs a role.
+            _activate_karaka_roles(chart_id, ayanamsha_id, _nc)
 
     logger.info(
         "[ga_dashas] Building system=%s ayanamsha=%s chart_id=%s",

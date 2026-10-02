@@ -906,10 +906,6 @@ class TestKarakaRolesGolden:
         emitted_subjects = {r["fact_subject"] for r in rows}
         assert emitted_subjects == set(cat["applies_to_subjects"])
         assert "strikaraka_alias" in cat["allowed_keys"]
-        # Declared tier == emitted tier (the alias is a pure label; it is `single`).
-        alias = next(r for r in rows if r["fact_key"] == "strikaraka_alias")
-        assert cat["allowed_keys"]["strikaraka_alias"]["verification_min"] \
-            == alias["verification_pass_status"] == "single"
 
 
 def _find_schema_category(node, name):

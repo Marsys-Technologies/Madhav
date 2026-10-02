@@ -1794,9 +1794,9 @@ CITATION_DECISIONS = json.loads(r"""
   "decision": "decline",
   "sites": {
    "platform/python-sidecar/ga_writers/ga_dashas_writer.py": [
-    29,
+    30,
     2,
-    1,
+    0,
     0
    ]
   },
@@ -1810,7 +1810,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_dashas_writer.py",
-    1166,
+    1351,
     "human = f\"Vimshottari {' > '"
    ]
   ],
@@ -2149,12 +2149,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
-    1302,
+    1287,
     "\"citation_human\": f\"{body} v"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
-    1751,
+    1736,
     "\"citation_human\": (f\"{body} "
    ]
   ],

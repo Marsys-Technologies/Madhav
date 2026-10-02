@@ -36,6 +36,26 @@ AYA = "lahiri"
 CHART = W.CANONICAL_CHART_ID
 
 
+# #2886 (S-L1 karaka roles): ga_dashas READS the chart's karaka roles from ga_sensitive and raises
+# KarakaDependencyMissing for a role-bearing lord when none were loaded. These tests compute systems
+# directly (no DB, no build_system()), so they seed the canonical chart / Lahiri roles (kn_rao_rahu_included
+# by stored rank) the way the unit-test path is meant to, and restore the cache afterwards. Module-scoped
+# and autouse so it is set up before the module-scoped row fixtures below.
+_KARAKA_ROLES_FIXTURE = {
+    "Moon": "AK", "Saturn": "AmK", "Sun": "BK", "Venus": "MK",
+    "Mars": "PiK", "Rahu": "PK", "Jupiter": "GK", "Mercury": "DK",
+}
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _seed_karaka_roles():
+    saved = dict(W._KARAKA_ROLE_CACHE)
+    W.set_karaka_roles(CHART, AYA, _KARAKA_ROLES_FIXTURE)
+    yield
+    W._KARAKA_ROLE_CACHE.clear()
+    W._KARAKA_ROLE_CACHE.update(saved)
+
+
 def _row_cache(name, build):
     """Compute-once helper. `Q03_DASHAS_ROW_CACHE=<dir>` (a developer convenience for repeated
     mutation runs; unset in CI) pickles the engines' raw output so a mutant re-run does not pay the

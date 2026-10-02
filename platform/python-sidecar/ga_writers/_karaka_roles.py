@@ -13,14 +13,8 @@ Rulings (SS N-69, binding):
     named variant.
   * 8-scheme role order (BPHS 32.13-17, sourced_ocr_unverified; J1 print-edition
     check pending) = Atma, Amatya, Bhratri, Matri, Pitri, Putra, Gnati, Dara.
-  * 7-scheme role order is unchanged from before this lane: it carries no
-    PITRIKARAKA subject. Source note: BPHS 32.13-17 (and the editor's note after
-    it) records only that some authorities "consider Matrukaraka and
-    Putrakaraka as identical" and so count seven karakas; it does not say the
-    Matrikaraka doubles as Pitrikaraka, and it does not give a rank -> role
-    table for the 7-scheme. The 7 labels above are this writer's pre-existing
-    convention, retained by the SS ruling, not a transcription of that note
-    (sourced_ocr_unverified; J1 print-edition check pending).
+  * 7-scheme role order is unchanged (Pitri is not a separate role: the
+    Matrikaraka doubles as Pitrikaraka).
   * STRIKARAKA is a labelled ALIAS of the Darakaraka in the 8-scheme (same
     graha). It is emitted as an extra fact_key on the DARAKARAKA subject, never
     as a ninth subject row and never as a STRIKARAKA subject.

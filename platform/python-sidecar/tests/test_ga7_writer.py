@@ -115,6 +115,31 @@ NATIVE_BIRTH_PARAMS = {
 }
 
 
+# S-L1 karaka-roles fix: ga_dashas READS the chart's own karaka roles from ga_sensitive's
+# karaka_chara_position rows (no hard-coded lord -> role constant). This module computes
+# systems directly (no DB / no build_system), so it seeds the roles the way the unit-test
+# path is meant to: canonical chart 482012f1, Lahiri, kn_rao_rahu_included by stored rank
+# (Moon Saturn Sun Venus Mars Rahu Jupiter Mercury = AK AmK BK MK PiK PK GK DK).
+KARAKA_ROLES_FIXTURE: dict[str, str] = {
+    "Moon": "AK", "Saturn": "AmK", "Sun": "BK", "Venus": "MK",
+    "Mars": "PiK", "Rahu": "PK", "Jupiter": "GK", "Mercury": "DK",
+}
+_SAVED_KARAKA_CACHE: dict = {}
+
+
+def setUpModule():
+    mod = _get_mod()
+    _SAVED_KARAKA_CACHE.clear()
+    _SAVED_KARAKA_CACHE.update(mod._KARAKA_ROLE_CACHE)
+    mod.set_karaka_roles(mod.CANONICAL_CHART_ID, "lahiri", KARAKA_ROLES_FIXTURE)
+
+
+def tearDownModule():
+    mod = _get_mod()
+    mod._KARAKA_ROLE_CACHE.clear()
+    mod._KARAKA_ROLE_CACHE.update(_SAVED_KARAKA_CACHE)
+
+
 def _mock_get_moon_position(ayanamsha_id: str, birth: dict | None = None):
     """Return FORENSIC Moon position for all ayanamshas."""
     return FORENSIC_MOON_LON, BIRTH_JD

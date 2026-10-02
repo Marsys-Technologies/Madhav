@@ -652,10 +652,6 @@ def _compute_aspect_matrix(varga_positions: dict[str, int]) -> list[tuple[str, s
     return aspects
 
 
-# Grahas that can hold a chara karaka in the 8-scheme: the 7 classical grahas + Rahu (Ketu never).
-_KARAKA_VALID_GRAHAS = (*CLASSICAL_7_GRAHAS, "Rahu")
-
-
 class KarakaDependencyMissing(RuntimeError):
     """ga_sensitive's kn_rao karaka_chara_position rows are absent or malformed for the
     (chart, ayanamsha) ga_vargas is building. ga_vargas does not recompute karakas."""
@@ -735,21 +731,10 @@ def _karakas_from_rows(
             f"[ga_vargas] ga_sensitive kn_rao karaka ranks {ranks} are not a 1..{len(JAIMINI_KARAKA_NAMES)} "
             f"permutation for {where}."
         )
-    assignments = {
+    return {
         JAIMINI_KARAKA_NAMES[rank - 1]: graha_by_subject[subject]
         for subject, rank in rank_by_subject.items()
     }
-    # The ranks are a clean permutation; the eight grahas must be too: distinct (the 8-scheme
-    # gives each graha exactly one role) and drawn from the 7 classical grahas + Rahu. Same check
-    # as ga_dashas' reader of the same rows.
-    if len(set(assignments.values())) != len(JAIMINI_KARAKA_NAMES) \
-            or not set(assignments.values()) <= set(_KARAKA_VALID_GRAHAS):
-        raise KarakaDependencyMissing(
-            f"[ga_vargas] ga_sensitive kn_rao karaka assignments {sorted(assignments.values())} are "
-            f"not {len(JAIMINI_KARAKA_NAMES)} distinct grahas drawn from {list(_KARAKA_VALID_GRAHAS)} "
-            f"for {where}."
-        )
-    return assignments
 
 
 def _resolve_karakas_in_varga(

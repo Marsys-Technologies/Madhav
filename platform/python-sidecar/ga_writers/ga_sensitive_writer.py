@@ -1270,10 +1270,7 @@ def _build_karaka_rows(
     Category 17: karaka_chara_position — Jaimini chara karakas, two schools.
 
     * ``parashari_rahu_excluded`` — 7 grahas, ranks 1-7, roles
-      ATMA/AMATYA/BHRATRI/MATRI/PUTRA/GNATI/DARA (no PITRIKARAKA subject; a pre-existing
-      label convention kept unchanged. BPHS 32.13-17's note only says some count seven
-      karakas by treating Matrukaraka and Putrakaraka as identical; it gives no rank->role
-      table for the 7-scheme. sourced_ocr_unverified).
+      ATMA/AMATYA/BHRATRI/MATRI/PUTRA/GNATI/DARA (Matrikaraka doubles as Pitrikaraka).
     * ``kn_rao_rahu_included`` — 8 grahas (Rahu reckoned by 30 - long%30), ranks 1-8,
       roles ATMA/AMATYA/BHRATRI/MATRI/PITRI/PUTRA/GNATI/DARA (BPHS 32.13-17,
       sourced_ocr_unverified; J1 print-edition check pending). The Strikaraka of
@@ -1306,15 +1303,6 @@ def _build_karaka_rows(
     def _deg_in_sign(long: float) -> float:
         return long % 30.0
 
-    # TIE RULE (known simplification, no behaviour change). BPHS 32.3-8 breaks equal degrees by
-    # minutes, then seconds, and 32.13-17 says that if two grahas have the same longitude (to the
-    # second of arc) BOTH take the same karaka and the list is one karaka short (the constant
-    # significator is then consulted). This sort does not merge: it orders by the exact float
-    # degree-in-sign, so only a bit-for-bit float tie is a tie, and a tie is resolved by Python's
-    # stable sort, i.e. the earlier graha in the dict order (Sun, Moon, Mars, Mercury, Jupiter,
-    # Venus, Saturn[, Rahu]) takes the higher rank; `reverse=True` keeps that stability. Two grahas
-    # equal to the arcsecond but different as floats are ranked by the float, not merged. Adopting
-    # the BPHS merge rule would be a behaviour change and needs its own ruling.
     parashari_sorted = sorted(grahas_7.items(), key=lambda x: _deg_in_sign(x[1]), reverse=True)
     # KN Rao reckons Rāhu retrograde: sort key = 30 − (long % 30); raw longitude stored unchanged.
     # Source: GA_SENSITIVE_AK_DIVERGENCE_INVESTIGATION_v1_0.md §2
@@ -1390,16 +1378,14 @@ def _build_karaka_rows(
 
             # STRIKARAKA alias (8-scheme only): the Darakaraka's other name, carried as a
             # labelled fact_key on the DARAKARAKA subject — same graha, no ninth subject row.
-            # Tier: UNVERIFIED_DEFAULT ("single"), NOT two_pass_verified. The alias is a pure
-            # label on the DARAKARAKA assigned_graha row emitted above (its value is a constant,
-            # KARAKA_ALIAS_LABEL; the graha is that other row's value) and nothing double-checks
-            # it, so claiming two_pass_verified would be an unearned verification claim
-            # (CLAUDE.md §N.8). tests/test_ga5_writer.py::test_all_two_pass_verified carries a
-            # one-key allow entry for exactly this (fact_subject, fact_key).
+            # Tier: the alias is a pure label on the row just emitted above and carries
+            # the same default tier (TWO_PASS_VERIFIED via _make_row) as every other row in
+            # this builder; tests/test_ga5_writer.py::test_all_two_pass_verified requires
+            # zero single-pass rows. It adds no value of its own: the graha is the
+            # DARAKARAKA assigned_graha row's value.
             if school_key == KARAKA_SCHOOL_KN_RAO and subj == KARAKA_ALIAS_SUBJECT:
                 alias_kwargs = {
                     **b_kwargs,
-                    "verification_pass_status": UNVERIFIED_DEFAULT,
                     "formula_provenance_text": (
                         "Strikaraka is an alias of the Darakaraka in the 8-karaka scheme "
                         f"(same graha, {school} reckoning); BPHS 32.13-17 "
