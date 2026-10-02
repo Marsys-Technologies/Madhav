@@ -2,7 +2,7 @@
 """Pull the verifier job's `--brief` output out of its Cloud Run execution logs (R12-2: the brief is produced under the VERIFIER's identity, in the Cloud Run job — this
 workflow's identity must never hold the verifier's credential, so the logs are the transport).
 
-Stream A's `--brief --brief-chunks` output (F-R13-2; the brief is ~255 KB at 26 classes, beyond a log entry): N chunk lines, then ONE compact result line, one JSON object each —
+Stream A's `--brief` output (always chunked since head a289b38eb) (F-R13-2; the brief is ~255 KB at 26 classes, beyond a log entry): N chunk lines, then ONE compact result line, one JSON object each —
     {"b64": <base64 of the i-th slice>, "brief_chunk": i, "of": N, "sha256": <digest of the WHOLE brief bytes>}
     {"brief_bytes": <int>, "brief_chunks": true, "brief_file": null, "persisted": {brief_id, manifest_id, state_digest}, "sha256": <digest>, "status": "BRIEFED"}
 The brief is the CANONICAL JSON of the approval payload; its sha256 IS the brief digest. This script reassembles it from the execution's `gcloud logging read … --format=json`
@@ -73,7 +73,7 @@ def extract(entries) -> tuple[bytes, dict]:
     if set(c) != _COMPACT_KEYS or not _is_int(c["brief_bytes"]) or c["brief_bytes"] < 1 or not isinstance(c["sha256"], str) or not _HEX.match(c["sha256"]) or not isinstance(c["persisted"], dict):
         raise ValueError("the compact result line is malformed (keys brief_bytes/brief_chunks/brief_file/persisted/sha256/status)")
     if c["brief_chunks"] is not True:
-        raise ValueError("the job was not run with --brief-chunks: the brief is not in the logs")
+        raise ValueError("the compact line does not announce chunks (`brief_chunks` is not true): the brief is not in the logs")
     if not chunks:
         raise ValueError("the compact line announces chunks but none are in the execution's logs")
     total, whole = None, None

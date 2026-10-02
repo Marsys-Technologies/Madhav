@@ -347,8 +347,8 @@ SEALING_COMMIT = "5ea1" + "0" * 36
 
 
 def brief_stdout_as_verifier(w, sealing_commit=SEALING_COMMIT, *extra):
-    """The verifier job's `--brief --brief-chunks` STDOUT, byte for byte (what Cloud Run would log: the chunk lines, then the compact `BRIEFED` line): raises RuntimeError if it refuses."""
-    rc, out = _run_job(w, ["--chart", CHART_ID, "--generation", GEN, "--brief", "--brief-chunks", "--sealing-commit", sealing_commit, *extra])
+    """The verifier job's `--brief` STDOUT (always chunked since Stream A a289b38eb), byte for byte (what Cloud Run would log: the chunk lines, then the compact `BRIEFED` line): raises RuntimeError if it refuses."""
+    rc, out = _run_job(w, ["--chart", CHART_ID, "--generation", GEN, "--brief", "--sealing-commit", sealing_commit, *extra])
     if rc != 0:
         raise RuntimeError(f"brief exit {rc}: {out[:1500]}")
     return out
@@ -1370,7 +1370,7 @@ def test_the_sealing_job_refuses_a_login_that_is_not_the_bare_sealer(cbuilt):
 
 
 def test_cross_pr_round_trip_the_real_brief_stdout_through_the_real_extractor_check_approval_and_seal_job(cbuilt, tmp_path):
-    """F-R13-1 (the seam bug): the sealing workflow's scripts (PR #2975) had only ever seen a FIXTURE brief. Here the REAL `--brief --brief-chunks` stdout (Stream A head 7e81f2870: chunk
+    """F-R13-1 (the seam bug): the sealing workflow's scripts (PR #2975) had only ever seen a FIXTURE brief. Here the REAL `--brief` stdout (Stream A head 7e81f2870: chunk
     lines, then the compact `BRIEFED` line) as a real verifier login goes, shaped as Cloud Run log entries, through the REAL extractor and the REAL check, the REAL approval extraction,
     and the REAL gated orchestrator script, which runs the REAL `seal_job` as a subprocess on the sealer login — and the receipt names the digest the verifier persisted."""
     import hashlib as _hl
@@ -1442,3 +1442,28 @@ def test_brief_size_report_per_class_and_projected_to_the_real_class_count(cbuil
     print(f"BRIEF_SIZE rig: total_bytes={total} classes_in_brief={len(classes)} grains={grains} per_class_bytes={per_class} fixed_bytes={fixed} pinned_classes_in_rig={real_classes}")
     print("BRIEF_SIZE components:", _json.dumps(comps, sort_keys=True))
     assert total > 0 and grains >= 1 and fixed > 0
+
+
+def test_stream_as_golden_stdout_goes_through_the_sealing_scripts_unchanged():
+    """The golden `--brief --brief-chunks` stdout Stream A committed (the REAL output of their suite): B's REAL extractor reassembles it, and B's REAL check accepts it for the chart,
+    generation and sealing commit the payload itself names — with the digest the compact line declares (so a change to either side's format breaks THIS test, not the first dispatch)."""
+    import hashlib
+    import json as _json
+    import sys as _sys
+    scripts = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "scripts"))
+    _sys.path.insert(0, scripts)
+    try:
+        import gochara_seal_brief_check as bc
+        import gochara_seal_brief_extract as bx
+    finally:
+        _sys.path.remove(scripts)
+    golden = os.path.join(os.path.dirname(__file__), "fixtures", "golden_brief_stdout_1class.txt")
+    with open(golden, encoding="utf-8") as f:
+        entries = [{"textPayload": l} for l in f.read().splitlines()]
+    raw, compact = bx.extract(entries)
+    p = _json.loads(raw)
+    assert hashlib.sha256(raw).hexdigest() == compact["sha256"] and len(raw) == compact["brief_bytes"]
+    # the fixture's sealing commit is the placeholder 'cli-sha' (not a revision): every OTHER check must pass and the commit binding must be the one to refuse; with a real
+    # 40-hex revision in the payload (the round-trip test above) it passes — ask Stream A to regenerate the fixture with a 40-hex commit to make this a full positive check
+    with pytest.raises(bc.Refused, match="not this workflow's reviewed revision"):
+        bc.check(raw, compact, chart_id=p["chart_id"], generation=p["generation"], sealing_commit="a" * 40)
