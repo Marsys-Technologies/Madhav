@@ -927,14 +927,16 @@ def three_field_valence(supportive_channel: float, afflicting_channel: float,
 
 # ── tārā: P6 testimony annotation on day rows (S-04, O-P6-TARA; ASTRA P1-6) ──
 
-NAKSHATRA_ARC_DEG = 360.0 / 27.0
 TARA_CONTRACT = "P6 tārā testimony (GOCHARA_DESIGN_SPECS_v1_4 §2.2 P6; S-04; D-PADMIT)"
 
 
 def nakshatra_index_1based(longitude_deg: float) -> int:
-    """1..27 (Aśvinī = 1) — the gochara_rules.p6.tara index convention."""
-    idx = int((float(longitude_deg) % 360.0) // NAKSHATRA_ARC_DEG) + 1
-    return max(1, min(27, idx))
+    """1..27 (Aśvinī = 1) — the gochara_rules.p6.tara index convention. EXACT boundary
+    membership (C13): the float `// (360/27)` put 15 of the 27 exact boundaries in the
+    preceding nakṣatra; the one exact helper (gochara_rules.kernel_factor.extent_index,
+    integer arcseconds) puts a boundary longitude in the FOLLOWING nakṣatra, seam-safe."""
+    from services.gochara_rules.kernel_factor import NAKSHATRA_ARCSEC, extent_index
+    return extent_index(float(longitude_deg), None, NAKSHATRA_ARCSEC)
 
 
 def make_tara_annotator(natal_moon_deg, planet_pos_fn):
