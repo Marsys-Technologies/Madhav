@@ -1,11 +1,12 @@
 ---
 artifact: L1_MV_REFRESH_AFTER_REBUILD
-version: 1.1
+version: 1.2
 status: DRAFT_FOR_REVIEW
 date: 2026-10-02
 lane: suvarna/land/TI-l1-min-fixes-001
 decision: SS minimum S-L1 fix set (b): skip the in-writer MV refresh when the writer does not own the view; refresh afterwards as the owner
 changelog:
+  - "1.2 (2026-10-02): R2b review: corrected the false claim that suvarna_reader has no SELECT (it has, except on mv_chart_vargas_summary; role_table_grants filters by enabled roles); added the dated BEFORE row counts (5.1) and how W7 reads the skip; refreshed line references."
   - "1.1 (2026-10-02): SS decision: W7 records the view as knowingly stale (counts before); the refresh is migration 1256 (ordinary guarded migration as amjis_app), first post-window PR; owner-path executor route withdrawn."
   - "1.0 (2026-10-02): view inventory (live catalog, read as suvarna_reader), what the S-L1 path refreshes, what a stale view affects, the W7 runbook step, the statements, the verification SQL."
 ---
@@ -24,7 +25,7 @@ Measured read-only as `suvarna_reader` (`pg_matviews`, `pg_index`, `pg_depend`, 
 
 | # | View | Attempted at (file:line) | On the S-L1 path? | Owner (live) | `data_plane_builder` a member of owner? | Unique index (CONCURRENTLY legal?) | Treatment in this PR |
 |---|---|---|---|---|---|---|---|
-| 1 | `mv_chart_sade_sati_lifetime_summary` | `ga_writers/ga_sade_sati_writer.py` `_refresh_mv` (def `:1935`; pre-fix `:1882`), called unconditionally from `build_ga_sade_sati` (`:2226`; pre-fix `:2147`) on `ctx.db_conn` | **YES** (`ga_sade_sati` adapter passes `conn=ctx.db_conn`) | `amjis_app` | no | yes (`mv_sade_sati_summary_idx`) | **skip when not owner** (INFO), returns `skipped_not_owner`; owner connection still refreshes |
+| 1 | `mv_chart_sade_sati_lifetime_summary` | `ga_writers/ga_sade_sati_writer.py` `_refresh_mv` (def `:1949`; pre-fix `:1882`), called unconditionally from `build_ga_sade_sati` (`:2240`; pre-fix `:2147`) on `ctx.db_conn` | **YES** (`ga_sade_sati` adapter passes `conn=ctx.db_conn`) | `amjis_app` | no | yes (`mv_sade_sati_summary_idx`) | **skip when not owner** (INFO), returns `skipped_not_owner`; owner connection still refreshes |
 | 2 | `mv_chart_sensitive_points_summary` | `ga_writers/ga_sensitive_writer.py:3018` `_refresh_mv`, called at `:3236` inside `build_ga_sensitive` | **NO.** The `ga_sensitive` adapter calls `build_ga_sensitive_for_ayanamsha` (per-ayanamsha substeps), which never refreshes. `build_ga_sensitive` is reached only from `build_runner.py:225` (row 3). | `amjis_app` | no | yes (`idx_mv_sensitive_points_unique`) | untouched (not on the path). Same latent defect if ever called with `ctx.db_conn` as a non-owner: **finding, not fixed** |
 | 3a | `mv_chart_planet_summary` | `ga_writers/build_runner.py:73/84`, `MATERIALIZED_VIEWS` list `:51-61`, `refresh_materialized_views` (def `:64`), called `:289` | **NO.** `build_runner.py` is the legacy CLI path (`scripts/run_l1_ganita_build.py`), not in any Docker entrypoint, and not part of the frozen orchestrator contract (`ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` does not mention it). It opens its own `_conn()` and rolls back on each failure, so it never aborts a shared transaction. | `amjis_app` | no | yes (`mv_chart_planet_summary_idx`) | untouched, listed |
 | 3b | `mv_chart_shadbala_summary` | same, `:53` | NO | `amjis_app` | no | yes (`..._shadbala_summary_idx`) | untouched, listed |
@@ -39,11 +40,11 @@ Measured read-only as `suvarna_reader` (`pg_matviews`, `pg_index`, `pg_depend`, 
 
 Other `mv_chart_*` views that are chart_facts/chart_divisionals aggregates and that NO writer, runner or script refreshes at all (`mv_chart_aspect_matrix`, `mv_chart_super_vargottama_bodies`, `mv_chart_t1_composite_strengths`, `mv_chart_yogas_fired_summary`) are out of scope here; they are already refreshed by no code path, S-L1 or otherwise.
 
-Dependents and readers (git grep of `platform/src`, `platform-mcp/src`, `platform/python-sidecar`, `platform/scripts`; `pg_depend` and `pg_proc.prosrc` in the live catalog): **no served or planning reader reads any of rows 1-3 or 4 by name.** The retrieval layer reads `chart_facts` directly. The only references are: the writers' own REFRESH, `build_runner.py`, `platform/scripts/governance/drift_detector.py:941-948,1049-1056` (existence checks), one comment in `get_dasha_lord_capability.ts:21`, and one live dependent object, `mv_sensitive_points_cross_ayanamsha` (row 4, itself unread). So a stale view today affects only ad-hoc SQL and the drift detector's presence check, not a served answer. `suvarna_reader` holds no SELECT on these views (verified: `information_schema.role_table_grants` empty), so row counts below must be read as the owner.
+Dependents and readers (git grep of `platform/src`, `platform-mcp/src`, `platform/python-sidecar`, `platform/scripts`; `pg_depend` and `pg_proc.prosrc` in the live catalog): **no served or planning reader reads any of rows 1-3 or 4 by name.** The retrieval layer reads `chart_facts` directly. The only references are: the writers' own REFRESH, `build_runner.py`, `platform/scripts/governance/drift_detector.py:941-948,1049-1056` (existence checks), one comment in `get_dasha_lord_capability.ts:21`, and one live dependent object, `mv_sensitive_points_cross_ayanamsha` (row 4, itself unread). So a stale view today affects only ad-hoc SQL and the drift detector's presence check, not a served answer. `suvarna_reader` DOES hold an explicit SELECT on every one of these views except `mv_chart_vargas_summary` (verified 2026-10-02 with `has_table_privilege('suvarna_reader', <view>, 'SELECT')` and a live `SELECT count(*)`; an earlier draft claimed none, wrongly: `information_schema.role_table_grants` is empty only because it filters by ENABLED roles, so it cannot show another role's grants; use `pg_class.relacl` / `has_table_privilege`). `mv_chart_vargas_summary` is granted to `amjis_app`, `retrieval_census_ro`, `role_web_serve`, `role_orchestrator`, `role_jobs`, `role_sidecar` only; read it as one of those (or the owner).
 
 ## 3. The runbook step (SS decision 2026-10-02: no owner-path executor; migration 1256, post-window)
 
-> **W7: record `mv_chart_sade_sati_lifetime_summary` as KNOWINGLY STALE after the S-L1 rebuild, with its row counts BEFORE (section 5, read as the owner or any role with SELECT; `suvarna_reader` has none). Do not refresh it in the window. The post-window check records the counts AFTER. Migration 1256 is the first post-window PR and does the refresh.**
+> **W7: record `mv_chart_sade_sati_lifetime_summary` as KNOWINGLY STALE after the S-L1 rebuild, with its row counts BEFORE (section 5; the BEFORE numbers for 2026-10-02 are already recorded in section 5.1, read as `suvarna_reader`, so W7 needs no owner access to read them). Do not refresh it in the window. The post-window check records the counts AFTER. Migration 1256 is the first post-window PR and does the refresh.**
 
 **Migration 1256 (NOT written in this PR; do not write it now).** An ordinary guarded migration run by `migrate` as `amjis_app` (the view's owner), idempotent, `lock_timeout` set first:
 
@@ -60,7 +61,30 @@ Superseded draft (kept for the record, not to be run): an owner-path executor ro
 
 `REFRESH ... CONCURRENTLY` needs a unique index and does not block `SELECT` on the view; the plain statement (rows 3e and 4) takes `ACCESS EXCLUSIVE` for the duration. With no served reader of any of these views, the plain refresh blocks nothing in production serving. If a refresh fails, the migration transaction rolls back and the view simply stays stale; it is safe to re-run.
 
-## 5. Verification (read-only SQL; run as the owner or any role with SELECT on the views; `suvarna_reader` has none)
+## 5. Verification (read-only SQL; run as `suvarna_reader` (SELECT on every view here except `mv_chart_vargas_summary`) or the owner)
+
+### 5.1 BEFORE row counts, read live as `suvarna_reader` (counts only), 2026-10-02T15:25Z
+
+These are the W7 "before" numbers (no refresh has been run by this lane). `has_table_privilege('suvarna_reader', <view>, 'SELECT')` shown.
+
+| View | reader SELECT | `count(*)` before |
+|---|---|---|
+| `mv_chart_sade_sati_lifetime_summary` | yes | 60 (`count(DISTINCT build_id)` = 3) |
+| `mv_chart_sensitive_points_summary` | yes | 1515 |
+| `mv_sensitive_points_cross_ayanamsha` | yes | 0 |
+| `mv_chart_planet_summary` | yes | 50 |
+| `mv_chart_shadbala_summary` | yes | 42 |
+| `mv_chart_ashtakavarga_summary` | yes | 520 |
+| `mv_chart_bhava_bala_summary` | yes | 60 |
+| `mv_cross_ayanamsha_consensus` | yes | 20043 |
+| `mv_chart_panchanga_birth_summary` | yes | 386 |
+| `mv_chart_vargas_summary` | **no** | not readable as the reader; planner estimate `reltuples` = 1550 (an estimate, not a count) |
+
+Two of the reads (sade_sati, sensitive_points) first hit a transient connection drop and were re-read once; the table shows the re-read values. `mv_sensitive_points_cross_ayanamsha` is populated (`ispopulated = t`) but holds 0 rows.
+
+How W7 reads whether the in-writer skip fired in a given build: the `[ga_sade_sati_writer] MV mv_chart_sade_sati_lifetime_summary NOT refreshed: this connection does not own it (owner=amjis_app) ...` INFO line in the `brahma-build-pipeline-job` Cloud Run logs for that execution. The `summary["mv_refresh"]` value (`skipped_not_owner`) is in-memory only: the `ga_sade_sati` adapter returns only `rows_inserted`, and `WriterResult.notes` is not persisted by the orchestrator, so threading it through would add no durable signal; left unchanged. Corroboration: the view's `build_id` set for the chart (section 5.2) still shows the OLD build.
+
+### 5.2 Checks
 
 The views carry no `computed_at` except `mv_chart_panchanga_birth_summary` and `mv_chart_vargas_summary`, so use row counts and build coverage, plus a definition-exact freshness diff.
 
@@ -101,4 +125,4 @@ Acceptance for the post-window check: `differing_rows = 0` for every view refres
 
 Verified here: the live owner/index/dependency/membership facts in section 2 (read-only, as `suvarna_reader`); the non-owner skip, the owner refresh, the absent-view skip and the pre-fix abort on a disposable Postgres 15 with the production role structure (`amjis_app` owner, `data_plane_builder` LOGIN non-member); the `CONCURRENTLY`-in-a-transaction and `\gexec` freshness statements on the same disposable cluster.
 
-Not verified: any production refresh (none was run: this lane takes no production action), migration 1256 itself (not written), `SELECT` access of any role to the views in production (only the absence of a `suvarna_reader` grant was read), and the view row counts (`reltuples` estimates only: sade_sati 60, sensitive_points 1515, planet 50, shadbala 42, ashtakavarga 520, bhava_bala 60, panchanga 386, vargas 1550, cross_ayanamsha 20043).
+Not verified: any production refresh (none was run: this lane takes no production action), migration 1256 itself (not written), the row count of `mv_chart_vargas_summary` (the reader holds no SELECT on it; section 5.1 carries only the planner estimate 1550), and the grants of any role other than `suvarna_reader` beyond the vargas `relacl` read above.

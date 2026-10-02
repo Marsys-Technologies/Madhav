@@ -52,7 +52,11 @@ DSN = os.environ.get("C7_BUILDER_ROLE_TEST_DATABASE_URL")
 # unregistered across tests/; no --strict-markers is configured anywhere.)
 pytestmark = pytest.mark.integration
 
-needs_pg = pytest.mark.skipif(
+# Locally an unset DSN SKIPS (NOT_RUN). Under GitHub Actions it must FAIL, never skip: a suite that
+# silently skips in CI is green without being evidence (CLAUDE.md §N.8). In CI `needs_pg` is a
+# no-op so the tests run and the `world` fixture fails with a clear message.
+_IN_CI = os.environ.get("GITHUB_ACTIONS", "").strip().lower() == "true"
+needs_pg = (lambda fn: fn) if _IN_CI else pytest.mark.skipif(
     not DSN, reason="NOT_RUN: set C7_BUILDER_ROLE_TEST_DATABASE_URL to the disposable Postgres"
 )
 
@@ -65,6 +69,11 @@ BUILD = "22222222-2222-4222-8222-222222222222"
 def world():
     import psycopg
 
+    if not DSN:
+        pytest.fail(
+            "C7_BUILDER_ROLE_TEST_DATABASE_URL is unset under GITHUB_ACTIONS: this suite must run "
+            "against the disposable Postgres in CI, never skip"
+        )
     BR.require_disposable(DSN)
     admin = psycopg.connect(DSN, autocommit=True, connect_timeout=5)
     try:
