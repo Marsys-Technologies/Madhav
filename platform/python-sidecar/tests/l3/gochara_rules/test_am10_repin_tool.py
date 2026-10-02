@@ -104,6 +104,7 @@ def test_cli_refuses_the_current_pin_and_stops_without_a_forensic_report(monkeyp
     assert T.main(["--new-build-id", PERM.DASHA_READ_CONTRACT["build_id"]], conn=object()) == 2
     # the DB stand-in: no rows for the new build ⇒ the new build is absent ⇒ STOP (exit 3), nothing applied
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
     out = tmp_path / "evidence.md"
     assert T.main(["--new-build-id", "11111111-1111-4111-8111-111111111111", "--out", str(out)], conn=object()) == 3
     assert "STOP" in out.read_text()
@@ -244,6 +245,82 @@ def test_apply_is_refused_without_the_hold_lift_and_dry_run_excludes_apply_and_w
     assert "ST-SL1-HOLD" in capsys.readouterr().err
     assert T.main(["--new-build-id", new, "--apply", "--dry-run", "--hold-lifted", "M1"], conn=object()) == 2
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
     out = tmp_path / "evidence.md"
     assert T.main(["--new-build-id", new, "--dry-run", "--out", str(out)], conn=object()) == 3        # absent build ⇒ STOP, and …
     assert not out.exists()                                                                          # … a dry run writes no file
+
+
+# ── G6: coexisting builds; capture the OLD rows BEFORE S-L1 (steward M20261002T223036-02f0) ─────────────────────────────────────────────
+OLDB = PERM.DASHA_READ_CONTRACT["build_id"]
+NEWB = "11111111-1111-4111-8111-111111111111"
+
+
+def test_exactly_one_vimshottari_build_and_it_is_the_settled_one():
+    assert T.build_problems({NEWB: 117}, NEWB) == []
+    assert any("exactly ONE" in p for p in T.build_problems({OLDB: 117, NEWB: 117}, NEWB))          # coexistence — the silent-old-read risk
+    assert T.build_problems({OLDB: 117}, NEWB)                                                       # only the OLD build present
+    assert T.build_problems({}, NEWB)                                                                # nothing at all
+
+
+def test_the_fetch_of_builds_is_a_read_only_group_by_over_lahiri_levels_1_to_3():
+    class Cur:
+        def execute(self, q, p): self.q, self.p = q, p
+        def fetchall(self): return [(NEWB, 117)]
+    class Conn:
+        def __init__(self): self.c = Cur()
+        def cursor(self): return self.c
+    c = Conn()
+    assert T.fetch_vimshottari_builds(c, "chart-x") == {NEWB: 117}
+    q = c.c.q.lower()
+    assert q.startswith("select") and "group by" in q and "level_n in (1, 2, 3)" in q and "system_id = 'vimshottari'" in q and not any(w in q for w in ("update", "delete", "insert"))
+    assert c.c.p == ("chart-x", "lahiri_chitrapaksha")
+
+
+def test_capture_and_load_round_trip_and_refuse_a_wrong_or_altered_file(tmp_path):
+    rows = T.norm_rows(build("old"))
+    p = tmp_path / "old.json"
+    digest = T.write_capture(str(p), "c1", OLDB, rows)
+    assert T.load_capture(str(p), "c1", OLDB) == rows and len(digest) == 64
+    with pytest.raises(ValueError):
+        T.load_capture(str(p), "c2", OLDB)                                       # another chart
+    with pytest.raises(ValueError):
+        T.load_capture(str(p), "c1", NEWB)                                       # another build
+    d = __import__("json").loads(p.read_text()); d["rows"][0]["lord_graha"] = "Venus"; p.write_text(__import__("json").dumps(d))
+    with pytest.raises(ValueError):
+        T.load_capture(str(p), "c1", OLDB)                                       # altered after capture
+
+
+def test_the_cli_compares_against_a_captured_old_file_when_the_old_rows_are_gone_and_stops_on_coexistence(monkeypatch, tmp_path, capsys):
+    rows_old = T.norm_rows(build("old"))
+    rows_new = T.norm_rows(build("new", shift_s=6993))
+    cap = tmp_path / "old.json"
+    T.write_capture(str(cap), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB, rows_old)
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])    # the old build is GONE from the DB
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
+    monkeypatch.setattr(T, "remeasure_reference_rows", lambda old, new: ([], []))      # the reference rows are covered by their own test; this fixture is not the pinned data
+    notice = tmp_path / "n.json"
+    notice.write_text('{"settled_1": true, "new_build_id": "%s", "expected_shift_seconds": {"1": 6993, "2": 6993}, "tolerance_seconds": 1}' % NEWB)
+    fr = tmp_path / "f.md"; fr.write_text("anchors ok")
+    args = ["--new-build-id", NEWB, "--old-rows", str(cap), "--settled-notice", str(notice), "--forensic-report", str(fr), "--dry-run"]
+    rc = T.main(args, conn=object())
+    out = capsys.readouterr().out
+    assert rc == 0 and "verdict: **CLEAN**" in out, out[-800:]
+    # without the capture the old rows are absent ⇒ STOP with the instruction
+    rc = T.main([x for x in args if x not in ("--old-rows", str(cap))], conn=object())
+    assert rc == 3 and "--capture-old" in capsys.readouterr().out
+    # coexistence of the old build ⇒ STOP even though the comparison is otherwise clean
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {OLDB: 117, NEWB: 117})
+    rc = T.main(args, conn=object())
+    assert rc == 3 and "exactly ONE" in capsys.readouterr().out
+
+
+def test_capture_old_writes_a_file_and_refuses_when_the_pinned_build_has_no_rows(monkeypatch, tmp_path):
+    rows = T.norm_rows(build("old"))
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: rows)
+    p = tmp_path / "cap.json"
+    assert T.main(["--new-build-id", NEWB, "--capture-old", str(p)], conn=object()) == 0 and p.exists()
+    assert T.load_capture(str(p), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB) == rows
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
+    q = tmp_path / "none.json"
+    assert T.main(["--new-build-id", NEWB, "--capture-old", str(q)], conn=object()) == 3 and not q.exists()

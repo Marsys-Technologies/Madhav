@@ -9,6 +9,8 @@ nothing stops it, performs the single change.
     python3 scripts/gochara/repin_dasha_contract.py --new-build-id <uuid> \\
         [--chart-id 482012f1-…] [--out evidence.md] [--forensic-report path]
         [--settled-notice notice.json]      # Suvarṇa's SETTLED-1 notice: expected per-level shift + a STATED tolerance — the measured shift must match or the verdict is STOP
+        [--capture-old old.json]             # BEFORE S-L1 (read-only): save the pinned build's rows — the old rows may not exist afterwards; then pass --old-rows old.json
+        [--old-rows old.json]                # the old rows come from this capture (sha256-checked) instead of the database
         [--dry-run]                          # print the full report and the test-literal matches; write NOTHING
         [--apply --hold-lifted <steward message id> [--rulings rulings.json]]
 
@@ -30,6 +32,10 @@ MOSHIER → SWISS (Suvarṇa addendum 4; steward M20261002T222913-35c5): the sto
 row counts hold. So a MOVED boundary is not a flip: the STOP is a different lord (or a missing/extra row) at ANY matched (level, parent path, index) row (D7); the oracle instants whose lord
 differs only because an edge moved are reported as BOUNDARY-SENSITIVE (D8), and the per-level old → new shift is in the evidence.
 
+G6 (steward M20261002T223036-02f0): the §4.0 read accepts the pinned build WHILE ITS ROWS ARE PRESENT even if another build coexists (dasha_read.py:44–49). So the verdict is STOP unless
+chart_dashas holds EXACTLY ONE Vimśottarī build (Lahiri, levels 1–3, any tier) and it is the SETTLED-1 build; --apply asserts the re-pinned constant equals that build and the old pin is gone.
+(The writer-side refusal when more than one two_pass_verified build is present is a separate Stream A code change.)
+
 Exit codes: 0 evidence clean (and applied if asked) · 3 STOP (a stop reason is listed) · 2 usage.
 Evidence item (e) — the seven FORENSIC anchors — is supplied by the L1 owner as --forensic-report
 (this tool does not recompute foundational chart facts; CLAUDE.md §B); without it the verdict is
@@ -38,6 +44,7 @@ Evidence item (e) — the seven FORENSIC anchors — is supplied by the L1 owner
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -144,6 +151,40 @@ def lord_flips(old_rows: list[dict], new_rows: list[dict], instants: list[str]) 
         if a != b:
             flips.append({"instant": t, "old": a, "new": b})
     return flips
+
+
+def fetch_vimshottari_builds(conn, chart_id: str, ayanamsha_id: str = "lahiri_chitrapaksha") -> dict[str, int]:
+    """READ-ONLY: every Vimśottarī build present for the chart at the Lahiri levels 1–3, ANY tier -> row count. The §4.0 read accepts the pinned build WHILE ITS ROWS ARE PRESENT even if
+    another build coexists (dasha_read.py:44–49), so after S-L1 a coexisting old build would be read silently — G6."""
+    cur = conn.cursor()
+    cur.execute("SELECT build_id::text, count(*) FROM public.chart_dashas WHERE chart_id = %s AND system_id = 'vimshottari' AND ayanamsha_id = %s AND level_n IN (1, 2, 3) GROUP BY 1 ORDER BY 1",
+                (chart_id, ayanamsha_id))
+    return {str(b): int(n) for b, n in cur.fetchall()}
+
+
+def build_problems(builds: dict[str, int], new_id: str) -> list[str]:
+    """G6 (a): exactly ONE Vimśottarī build exists for the chart (Lahiri, levels 1–3) and it is the SETTLED-1 build."""
+    if set(builds) == {new_id}:
+        return []
+    return [f"chart_dashas holds Vimśottarī build(s) {sorted(builds)} (Lahiri levels 1–3); exactly ONE — the SETTLED-1 build {new_id} — must exist (G6: the read accepts the pinned OLD build while its rows are present, so a coexisting old build would be read silently)"]
+
+
+def _rows_digest(rows: list[dict]) -> str:
+    return hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def write_capture(path: str, chart_id: str, build_id: str, rows: list[dict]) -> str:
+    """The OLD build's rows, captured READ-ONLY BEFORE S-L1 (the old rows may no longer exist afterwards): {chart_id, build_id, sha256, rows} — the file is the evidence the comparison uses."""
+    d = {"chart_id": chart_id, "build_id": build_id, "rows": rows, "sha256": _rows_digest(rows)}
+    Path(path).write_text(json.dumps(d, indent=1, sort_keys=True), encoding="utf-8")
+    return d["sha256"]
+
+
+def load_capture(path: str, chart_id: str, build_id: str) -> list[dict]:
+    d = json.loads(Path(path).read_text(encoding="utf-8"))
+    if d.get("chart_id") != chart_id or d.get("build_id") != build_id or not d.get("rows") or d.get("sha256") != _rows_digest(d["rows"]):
+        raise ValueError("the captured old-rows file is not for this chart and the pinned build, is empty, or its sha256 does not match its rows")
+    return d["rows"]
 
 
 class NeedsRuling(Exception):
@@ -312,6 +353,7 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | 
     if unclassified:
         raise NeedsRuling(unclassified)                                              # nothing has been written
     s = rewrite_once(s, {**ids, **instants, f'"build_id": "{old_id}"': f'"build_id": "{new_id}"'})
+    assert s.count(f'"build_id": "{new_id}"') == 1 and f'"build_id": "{old_id}"' not in s, "the re-pin constant must equal the SETTLED-1 build and the old pin must be gone (G6 b)"
     perm.write_text(s, encoding="utf-8")
     changed.append(str(perm.relative_to(repo_root)))
     by_file: dict[str, dict[int, dict[str, str]]] = {}
@@ -366,6 +408,18 @@ def test_pin_is_the_new_build_and_the_old_one_is_refused():
 
 
 # ── CLI ──────────────────────────────────────────────────────────────────────
+def _capture_old(a, conn) -> int:
+    old_id = PERM.DASHA_READ_CONTRACT["build_id"]
+    if conn is None:
+        import psycopg2
+        conn = psycopg2.connect(os.environ["DATABASE_URL"]); conn.set_session(readonly=True)
+    rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=old_id, levels=(1, 2, 3, 4)))
+    if not rows:
+        print(f"STOP — the pinned build {old_id} has no rows to capture", file=sys.stderr); return 3
+    print(f"captured {len(rows)} rows of {old_id} -> {a.capture_old} sha256 {write_capture(a.capture_old, a.chart_id, old_id, rows)}")
+    return 0
+
+
 def main(argv=None, *, conn=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--new-build-id", required=True)
@@ -376,8 +430,12 @@ def main(argv=None, *, conn=None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="print the full report and the test-literal matches; write NOTHING (no --out, no --apply)")
     ap.add_argument("--settled-notice", default=None, help="JSON of Suvarṇa's SETTLED-1 notice: expected per-level shift + a stated tolerance (see load_notice)")
     ap.add_argument("--hold-lifted", default=None, help="the steward's message id announcing 'SETTLED-1 received AND daśā re-pin merged' — ST-SL1-HOLD; REQUIRED for --apply")
+    ap.add_argument("--capture-old", default=None, help="READ-ONLY: write the OLD (pinned) build's rows to this file BEFORE S-L1 and exit — the old rows may not exist afterwards")
+    ap.add_argument("--old-rows", default=None, help="the file written by --capture-old: the old build's rows when the DB no longer holds them")
     ap.add_argument("--rulings", default=None, help="JSON {rewrite: [path:line…], keep: [path:line…]} — the steward's ruling on test literals that equal an old boundary")
     a = ap.parse_args(argv)
+    if a.capture_old:
+        return _capture_old(a, conn)
     if a.dry_run and a.apply:
         print("--dry-run and --apply are mutually exclusive", file=sys.stderr); return 2
     if a.apply and not a.hold_lifted:
@@ -388,7 +446,13 @@ def main(argv=None, *, conn=None) -> int:
     if conn is None:
         import psycopg2
         conn = psycopg2.connect(os.environ["DATABASE_URL"]); conn.set_session(readonly=True)
-    old_rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=old_id, levels=(1, 2, 3, 4)))
+    if a.old_rows:
+        try:
+            old_rows = load_capture(a.old_rows, a.chart_id, old_id)
+        except (OSError, ValueError) as exc:
+            print(f"STOP — {exc}", file=sys.stderr); return 3
+    else:
+        old_rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=old_id, levels=(1, 2, 3, 4)))
     new_rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=a.new_build_id, levels=(1, 2, 3, 4)))
     # tier is pinned IN the query (two_pass_verified): an empty result means the new build is absent or at another tier
     new_tier_ok = bool(new_rows) and all(r.get("verification_pass_status") == PERM.DASHA_READ_CONTRACT["tier"] for r in new_rows)
@@ -402,8 +466,13 @@ def main(argv=None, *, conn=None) -> int:
         notice = load_notice(a.settled_notice) if a.settled_notice else None
     except (OSError, ValueError) as exc:
         print(f"STOP — {exc}", file=sys.stderr); return 3
+    builds = fetch_vimshottari_builds(conn, a.chart_id)
+    extra_stops = build_problems(builds, a.new_build_id)
+    if not old_rows:
+        extra_stops.append("the OLD build's rows are absent from the database and no --old-rows capture was supplied (capture them BEFORE S-L1 with --capture-old)")
     stops = decide(new_tier_ok=new_tier_ok, new_integrity=integrity(new_rows), m=m, flips=flips,
                    ref_problems=ref_problems, forensic_report=a.forensic_report, shift_issues=shift_problems(stats, notice))
+    stops += extra_stops
     if notice is not None and notice.get("new_build_id") not in (None, a.new_build_id):
         stops.append(f"the SETTLED-1 notice names build {notice.get('new_build_id')}, not {a.new_build_id}")
     report = render(old_id=old_id, new_id=a.new_build_id, chart_id=a.chart_id, o_int=integrity(old_rows),
