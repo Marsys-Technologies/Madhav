@@ -1201,7 +1201,7 @@ def carriage_declared_checks(aid: str, car, target_table) -> dict:
         return {}
     why = car.get("why") or ""
     if car["nature"] == RATIFIED_JUDGMENT:
-        return {c: _na(f"ratified judgment seed (ruling {car.get('ruling')}): {why}", RATIFIED_JUDGMENT) for c in CARR_D_CHECKS}
+        return {c: _na(f"ratified judgment seed (ruling {car.get('ruling')}): {why}", "ratified_judgment") for c in CARR_D_CHECKS}
     applies = car["applies"]
     own = f"Carr.{applies}"
     out = {c: _na(f"the asset's declared carriage check is {applies} (nature {car['nature']}; reviewed, evidence: {car.get('evidence')}); "
