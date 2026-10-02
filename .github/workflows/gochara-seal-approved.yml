@@ -15,7 +15,7 @@
 #
 # Honest limits (packet §R10a-2): the approval is NOT an independent human check (same account); GitHub enforces the pause, no admin bypass and protected-branch
 # use, not independence or attribution beyond the login; the database enforces that a receipt exists naming the manifest, not that this workflow computed it honestly.
-# DEPENDENCIES before any dispatch: Stream A's pipeline/orchestrator/seal_job.py; the verification Cloud Run job with `--brief`; roles/logging.viewer for the workflow identity;
+# DEPENDENCIES before any dispatch: Stream A's pipeline/orchestrator/seal_job.py; the verification Cloud Run job with `--brief`; act 12 (the workflow identity reads ONLY that job's logs, through a log view);
 # the sealer DSN (GOCHARA_SEALER_DB_URL in `gochara-seal`) must use the runner's loopback proxy tail (@127.0.0.1:5432/<db>).
 name: Gochara approved seal (reviewed; draft HOLD)
 
@@ -99,7 +99,7 @@ jobs:
         run: |
           set -euo pipefail
           gcloud logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$VERIFICATION_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$EXECUTION\"" \
-            --project madhav-astrology --order=asc --freshness=2h --format=json > execution_logs.json
+            --project madhav-astrology --bucket=_Default --location=global --view=gochara_verification_job --order=asc --freshness=2h --format=json > execution_logs.json
           python3 platform/scripts/gochara_seal_brief_extract.py --logs-file execution_logs.json --out brief.json
 
       - name: Check the brief (digest recomputed, gate clean, policy, revision)

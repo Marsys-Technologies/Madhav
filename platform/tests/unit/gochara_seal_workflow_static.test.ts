@@ -55,6 +55,10 @@ describe('gochara-seal-approved.yml', () => {
     expect(JSON.stringify(brief.steps)).toContain('NOT an independent human check')
     expect(text).toContain('TRIGGERING_ACTOR: ${{ github.triggering_actor }}')
   })
+  it('reads the execution logs only through the single-job log view (act 12), never the whole project log', () => {
+    const read = (brief.steps as any[]).find((x) => x.name === 'Retrieve the brief from the execution\'s logs')
+    expect(read.run).toContain('--bucket=_Default --location=global --view=gochara_verification_job')
+  })
   it('passes inputs only through env and never swallows a failure', () => {
     for (const j of [brief, seal]) for (const s of j.steps as any[]) if (s.run) expect(s.run).not.toContain('${{')
     expect(code(text)).not.toMatch(/continue-on-error|\|\|\s*true|set \+e/)
