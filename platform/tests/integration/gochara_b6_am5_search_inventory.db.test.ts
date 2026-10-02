@@ -58,6 +58,7 @@ const WINDOW_FILES = [...CONTRACT_FILES, M1204, M1206, M1216] as const
 
 const BUILDER = 'data_plane_builder'
 const SEALER = 'gochara_sealer'
+const VERIFIER = 'gochara_verifier'   // PC-4: the independent re-derivation is written by this principal, never by the builder
 // What migration 1206 §7 grants the builder EXECUTE on (12 own helpers + 5 contract functions its guards call).
 const BUILDER_OWN_FUNCTIONS = [
   'ka_gochara_sha256_hex(text)', 'ka_gochara_uuidv8(text)', 'ka_gochara_canonical_json(jsonb)',
@@ -72,6 +73,10 @@ const BUILDER_CONTRACT_FUNCTIONS = [
   'ka_gochara_generation_governed(text)', 'ka_gochara_horizon_finite_ok(tstzrange)',
 ] as const
 // The seal principal's functions (names; unique in the schema).
+// the verifier's EXECUTE set: the guard chain of its one INSERT (derived; the suite re-proves it)
+const VERIFIER_FUNCTIONS = [
+  'ka_gochara_lock_chart(uuid)', 'ka_gochara_generation_is_sealed(uuid, text)',
+] as const
 const SEALER_FUNCTIONS = [
   'ka_gochara_lock_chart', 'ka_gochara_seal_generation', 'ka_gochara_generation_governed', 'ka_gochara_coverage_drift',
   'ka_gochara_horizon_finite_ok', 'ka_gochara_coverage_facts', 'ka_gochara_facts_horizon',
@@ -223,7 +228,7 @@ async function resetSchema(): Promise<void> {
 /** Roles are cluster-global: create each only if absent, and install the production default-privilege
  *  revocation (per database, idempotent). */
 async function ensureRoles(): Promise<void> {
-  for (const r of [OWNER, BUILDER, SEALER])
+  for (const r of [OWNER, BUILDER, SEALER, VERIFIER])
     await pool.query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${r}') THEN CREATE ROLE ${r} NOLOGIN; END IF; END $$`)
   await pool.query(`ALTER DEFAULT PRIVILEGES FOR ROLE ${OWNER} REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`)
 }
@@ -231,7 +236,7 @@ async function ensureRoles(): Promise<void> {
  *  other database on the cluster still needs. */
 async function dropRoles(): Promise<void> {
   await pool.query(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`)
-  for (const r of [BUILDER, SEALER, OWNER]) {
+  for (const r of [BUILDER, SEALER, VERIFIER, OWNER]) {
     await pool.query(`DROP OWNED BY ${r} CASCADE`).catch(() => undefined)
     await pool.query(`DROP ROLE IF EXISTS ${r}`).catch(() => undefined)
   }
@@ -371,10 +376,18 @@ async function partition(c: Q, gen: string, o: { cls?: string; relations?: strin
      VALUES ($1,$2,'event_class',$3,$4,${h},${h},1.0,$5::text[],1,1,0,'{"resolved":1}','build-am5')`,
     [CHART, gen, o.cls ?? CLS, o.legacy ?? LEGACY_CONV, o.relations ?? ['residence']])
 }
+/** The verification row is written AS THE VERIFIER principal (the builder holds no privilege on the table). The harness switches the
+ *  role inside the build transaction; the composed rehearsal runs the verifier as a separate connection. */
 async function verify(c: Q, gen: string, digest: string, who = 'verifier-a', cls = CLS): Promise<void> {
-  await c.query(`INSERT INTO ka_gochara_search_inventory_verification
-     (chart_id, generation, event_class, verifier_id, verifier_version, rederived_inventory_digest) VALUES ($1,$2,$3,$4,'1',$5)`,
-    [CHART, gen, cls, who, digest])
+  const prev = (await c.query<{ u: string; s: string }>(`SELECT current_user AS u, session_user AS s`)).rows[0]!
+  await c.query(`SET LOCAL ROLE ${VERIFIER}`)
+  try {
+    await c.query(`INSERT INTO ka_gochara_search_inventory_verification
+       (chart_id, generation, event_class, verifier_id, verifier_version, rederived_inventory_digest) VALUES ($1,$2,$3,$4,'1',$5)`,
+      [CHART, gen, cls, who, digest])
+  } finally {
+    await c.query(prev.u === prev.s ? 'RESET ROLE' : `SET LOCAL ROLE ${prev.u}`).catch(() => undefined)
+  }
 }
 async function publishAndSeal(gen: string, opts: { role?: string; tz?: string } = {}): Promise<void> {
   if (!opts.role) opts = { ...opts, role: SEALER }   // every seal runs as the separately authorised principal
@@ -447,7 +460,7 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
     await window([M1206])
     await window([M1216])            // the REAL builder grants (1216) on top, as production routine deploys will
     await seedStatic()
-    await pool.query(`GRANT USAGE ON SCHEMA public TO ${BUILDER}, ${SEALER}`)
+    await pool.query(`GRANT USAGE ON SCHEMA public TO ${BUILDER}, ${SEALER}, ${VERIFIER}`)
     // the seal principal: INSERT on the seal table + UPDATE on the publication + the reads the seal functions perform
     await pool.query(`
       GRANT SELECT, INSERT ON ka_gochara_generation_seal TO ${SEALER};
@@ -462,6 +475,12 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
     // 'permission denied for function X' until publishAndSeal-as-sealer converged, and proven sufficient by
     // every seal in this suite running as SEALER (publishAndSeal defaults to it).
     await pool.query(`GRANT EXECUTE ON FUNCTION ${SEALER_FUNCTIONS.map(f => `public.${f}`).join(', ')} TO ${SEALER}`)
+    // The verifier principal (PC-4): writes the independent re-derivation, nothing else. Not granted by any migration (the verifier is
+    // provisioned by the administrator, ND-ROLES); this is the set its write path reaches, derived by adding one grant per
+    // 'permission denied' until every verification write in this suite — now made AS the verifier — converged.
+    await pool.query(`GRANT SELECT, INSERT, DELETE ON ka_gochara_search_inventory_verification TO ${VERIFIER};
+      GRANT SELECT ON ka_gochara_search_inventory, ka_gochara_generation_seal TO ${VERIFIER}`)
+    await pool.query(`GRANT EXECUTE ON FUNCTION ${VERIFIER_FUNCTIONS.map(f => `public.${f}`).join(', ')} TO ${VERIFIER}`)
   }, 180_000)
 
   afterAll(async () => {
@@ -897,10 +916,22 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
       expect(r.rows.filter(x => x.sig.startsWith(name + '(') || x.sig.startsWith('public.' + name + '(')).every(x => !x.builder), name).toBe(true)
   })
 
-  it('six-table grants (Stream A writer + in-process verifier, steward M20261001T234743-1ae5): SELECT/INSERT/DELETE on each, column UPDATE on exactly the three finalisation columns, nothing else', async () => {
+  it('five-table builder grants (PC-4: the verification table is NOT the builder\'s): SELECT/INSERT/DELETE on each, column UPDATE on exactly the three finalisation columns, nothing else', async () => {
     const SIX = ['ka_gochara_search_input_snapshot', 'ka_gochara_search_inventory', 'ka_gochara_search_path_pin',
       'ka_gochara_search_obligation', 'ka_gochara_search_interval', 'ka_gochara_search_inventory_verification']
-    for (const t of SIX) {
+    const FIVE = SIX.slice(0, 5)
+    // the builder holds NOTHING on the verification table
+    const vr = await pool.query<Record<string, boolean>>(
+      `SELECT has_table_privilege($1, 'public.ka_gochara_search_inventory_verification', 'SELECT') AS sel,
+              has_table_privilege($1, 'public.ka_gochara_search_inventory_verification', 'INSERT') AS ins,
+              has_table_privilege($1, 'public.ka_gochara_search_inventory_verification', 'DELETE') AS del,
+              has_table_privilege($1, 'public.ka_gochara_search_inventory_verification', 'UPDATE') AS upd`, [BUILDER])
+    expect(vr.rows[0]).toEqual({ sel: false, ins: false, del: false, upd: false })
+    await refused(tx(async c => { await c.query(`INSERT INTO ka_gochara_search_inventory_verification (chart_id, generation, event_class, verifier_id, verifier_version, rederived_inventory_digest) VALUES ($1,'9.9','marriage','b','1','x')`, [CHART]) }, { role: BUILDER }),
+      /permission denied for table ka_gochara_search_inventory_verification/)
+    await refused(tx(async c => { await c.query(`DELETE FROM ka_gochara_search_inventory_verification WHERE false`) }, { role: BUILDER }),
+      /permission denied for table ka_gochara_search_inventory_verification/)
+    for (const t of FIVE) {
       const r = await pool.query<Record<string, boolean>>(
         `SELECT has_table_privilege($1, $2, 'SELECT') AS sel, has_table_privilege($1, $2, 'INSERT') AS ins,
                 has_table_privilege($1, $2, 'DELETE') AS del, has_table_privilege($1, $2, 'UPDATE') AS upd,
@@ -929,7 +960,7 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
       /permission denied for table ka_gochara_search_inventory_verification/)
     for (const t of SIX)
       await refused(tx(async c => { await c.query(`TRUNCATE ${t}`) }, { role: BUILDER }), new RegExp(`permission denied for table ${t}`))
-    // and the in-session verifier path: construct, finalise AND write the verification row, all as the builder
+    // construct and finalise as the builder; the verification row is written by the verifier principal
     await goodBuild(nextGen(), { role: BUILDER })
   })
 
@@ -944,6 +975,50 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
       }
     }
     await goodBuild(nextGen(), { role: BUILDER })   // restored: the builder works again
+  })
+
+  it('PC-4: the verifier writes the independent re-derivation and NOTHING else — each of its grants is necessary', async () => {
+    // it may insert/delete (pre-seal) and read verification rows; it may not UPDATE them, write any build table, or seal
+    const p = await pool.query<Record<string, boolean>>(
+      `SELECT has_table_privilege($1,'public.ka_gochara_search_inventory_verification','INSERT') AS ins,
+              has_table_privilege($1,'public.ka_gochara_search_inventory_verification','DELETE') AS del,
+              has_table_privilege($1,'public.ka_gochara_search_inventory_verification','UPDATE') AS upd,
+              has_table_privilege($1,'public.ka_gochara_search_obligation','INSERT') AS ob,
+              has_table_privilege($1,'public.ka_gochara_search_interval','INSERT') AS iv,
+              has_table_privilege($1,'public.ka_gochara_search_inventory','UPDATE') AS invupd,
+              has_table_privilege($1,'public.ka_gochara_generation_seal','INSERT') AS seal,
+              has_function_privilege($1,'public.ka_gochara_seal_generation(uuid,text)','EXECUTE') AS sealfn`, [VERIFIER])
+    expect(p.rows[0]).toEqual({ ins: true, del: true, upd: false, ob: false, iv: false, invupd: false, seal: false, sealfn: false })
+    for (const sig of VERIFIER_FUNCTIONS) {
+      const name = sig.slice(0, sig.indexOf('('))
+      await asOwner(c => c.query(`REVOKE EXECUTE ON FUNCTION public.${sig} FROM ${VERIFIER}`))
+      try { await refused(goodBuild(nextGen()), new RegExp(`permission denied for function ${name}\\b`)) }
+      finally { await asOwner(c => c.query(`GRANT EXECUTE ON FUNCTION public.${sig} TO ${VERIFIER}`)) }
+    }
+    // the table reads it needs are necessary too
+    for (const t of ['ka_gochara_search_inventory', 'ka_gochara_generation_seal']) {
+      await asOwner(c => c.query(`REVOKE SELECT ON ${t} FROM ${VERIFIER}`))
+      try { await refused(goodBuild(nextGen()), new RegExp(`permission denied for table ${t}`)) }
+      finally { await asOwner(c => c.query(`GRANT SELECT ON ${t} TO ${VERIFIER}`)) }
+    }
+    await goodBuild(nextGen())       // restored
+  })
+
+  it('PC-4: a REBUILD by the restricted builder invalidates a stale verification (FK cascade) without the builder ever holding DELETE on it', async () => {
+    const g = nextGen()
+    await goodBuild(g, { role: BUILDER })                                          // built by the builder, verified by the verifier
+    const n = async () => Number((await pool.query(`SELECT count(*) FROM ka_gochara_search_inventory_verification WHERE chart_id=$1 AND generation=$2`, [CHART, g])).rows[0].count)
+    expect(await n()).toBe(1)
+    await tx(async c => {                                                          // the builder's delete-then-insert chain, in dependency order
+      await chartCtx(c)
+      for (const t of ['ka_gochara_search_interval', 'ka_gochara_search_obligation', 'ka_gochara_search_path_pin', 'ka_gochara_search_inventory', 'ka_gochara_search_input_snapshot'])
+        await c.query(`DELETE FROM ${t} WHERE chart_id=$1 AND generation=$2`, [CHART, g])
+    }, { role: BUILDER })
+    expect(await n()).toBe(0)                                                      // the stale verification went with the header
+    const g2 = nextGen()                                                           // a SEALED generation still refuses the builder's delete
+    await goodBuild(g2, { role: BUILDER })
+    await publishAndSeal(g2)
+    await refused(tx(async c => { await chartCtx(c); await c.query(`DELETE FROM ka_gochara_search_inventory WHERE chart_id=$1 AND generation=$2`, [CHART, g2]) }, { role: BUILDER }), /sealed|SEALED|foreign key|violates/i)
   })
 
   it('R3: an excluded pin with a NULL reason is refused in BOTH variants (with and without a ruling_ref); other dispositions carry no reason', async () => {
