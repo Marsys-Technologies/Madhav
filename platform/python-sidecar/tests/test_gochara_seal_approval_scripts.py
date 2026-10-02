@@ -24,6 +24,7 @@ import gochara_seal_approval as approval  # noqa: E402
 import gochara_seal_brief_check as bc  # noqa: E402
 import gochara_seal_brief_extract as bx  # noqa: E402
 import gochara_seal_execution_check as xc  # noqa: E402
+import gochara_verification_job_contract as xcheck_contract  # noqa: E402
 import gochara_seal_reconcile as rc_  # noqa: E402
 
 CHART = "482012f1-710e-4a25-994a-93821f5871aa"
@@ -435,10 +436,13 @@ SA = "gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
 ARGS = ["--chart", CHART, "--generation", GEN, "--brief", "--sealing-commit", SHA]
 
 
+REPO = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline"
+
+
 def execution(name="exec-1", **over):
     ex = {"metadata": {"name": name},
           "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": SA, "maxRetries": 0,
-                  "containers": [{"image": f"asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline@{IMG}", "args": ARGS,
+                  "containers": [{"image": f"{REPO}@{IMG}", "command": list(xcheck_contract.ENTRYPOINT), "args": ARGS,
                                   "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG},
                                           {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url", "key": "latest"}}}]}]}}},
           "status": {"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": 1}}
@@ -448,7 +452,7 @@ def execution(name="exec-1", **over):
 
 
 def xcheck(ex=None, **over):
-    kw = dict(execution_name="exec-1", image_digest=IMG, service_account=SA, runner_commit=SHA, args=ARGS, secret_name="gochara-verifier-db-url")
+    kw = dict(execution_name="exec-1", image_repo=REPO, image_digest=IMG, service_account=SA, runner_commit=SHA, args=ARGS, secret_name="gochara-verifier-db-url")
     kw.update(over)
     return xc.check(execution() if ex is None else ex, **kw)
 
@@ -465,6 +469,15 @@ def _mut(path, value):
 T = ("spec", "template", "spec")
 
 
+def _del(path):
+    ex = execution()
+    d = ex
+    for k in path[:-1]:
+        d = d[k]
+    d.pop(path[-1])
+    return ex
+
+
 def test_the_executed_resource_is_verified_and_the_envelope_binds_run_attempt_commit_and_brief():
     v = xcheck()
     assert v["image_digest"] == IMG and v["execution"] == "exec-1"
@@ -475,16 +488,25 @@ def test_the_executed_resource_is_verified_and_the_envelope_binds_run_attempt_co
 
 @pytest.mark.parametrize("ex,needle", [
     (_mut(("metadata", "name"), "another"), "not 'exec-1'"),
-    (_mut((*T, "containers", 0, "image"), "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:" + SHA), "mutable"),               # a tag, not a digest
-    (_mut((*T, "containers", 0, "image"), "x/brahma-pipeline@sha256:" + "b" * 64), "mutable"),                                                    # another digest
-    (_mut((*T, "serviceAccountName"), "github-actions@madhav-astrology.iam.gserviceaccount.com"), "ran as"),
-    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG}, {"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}]), "secret bindings"),                                  # no secret
-    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG}, {"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "data-plane-builder-db-url"}}}]), "secret bindings"),
+    (_mut((*T, "containers", 0, "image"), "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:" + SHA), "image is"),               # a tag, not a digest
+    (_mut((*T, "containers", 0, "image"), "x/brahma-pipeline@sha256:" + "b" * 64), "image is"),                                                    # another digest
+    (_mut((*T, "serviceAccountName"), "github-actions@madhav-astrology.iam.gserviceaccount.com"), "service account is"),
+    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG}, {"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}]), "environment variables"),                                  # no secret
+    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG}, {"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "data-plane-builder-db-url"}}}]), "reference to the secret"),
     (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG}, {"name": "GOCHARA_RUNNER_COMMIT", "value": "b" * 40}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url"}}}]), "RUNNER_COMMIT"),
-    (_mut((*T, "containers", 0, "args"), ARGS[:-1] + ["b" * 40]), "arguments"),
+    (_mut((*T, "containers", 0, "args"), ARGS[:-1] + ["b" * 40]), "args are"),
     (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url"}}}]), "RUNNER_IMAGE_DIGEST"),   # no digest env: the verifier would refuse to brief
     (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": "sha256:" + "b" * 64}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url"}}}]), "RUNNER_IMAGE_DIGEST"),
-    (_mut((*T, "maxRetries"), 3), "retries"),
+    (_mut((*T, "maxRetries"), 3), "maxRetries"),
+    (_mut((*T, "containers", 0, "command"), ["python", "-m", "pipeline.orchestrator.main"]), "command"),                 # R14-3: the builder entry point swapped back
+    (_mut((*T, "containers", 0, "command"), None), "command"),                                                          # …or the command omitted
+    (_mut((*T, "containers", 0, "env"), [*execution()["spec"]["template"]["spec"]["containers"][0]["env"], {"name": "EXTRA", "value": "x"}]), "environment variables"),   # an extra variable
+    (_mut((*T, "containers", 0, "env", 0), {"name": "GOCHARA_RUNNER_COMMIT", "valueFrom": {"secretKeyRef": {"name": "x"}}}), "plain value"),
+    (_mut((*T, "volumes"), [{"name": "s", "secret": {"secretName": "gochara-verifier-db-url"}}]), "volumes"),            # a secret volume
+    (_mut((*T, "containers", 0, "volumeMounts"), [{"name": "s", "mountPath": "/secrets"}]), "volumeMounts"),
+    (_mut((*T, "containers", 0, "envFrom"), [{"secretRef": {"name": "data-plane-builder-db-url"}}]), "envFrom"),
+    (_mut((*T, "containers"), [execution()["spec"]["template"]["spec"]["containers"][0], {"image": "x"}]), "not exactly one"),   # a sidecar
+    (_del((*T, "maxRetries")), "maxRetries"),                                                                          # R14-3: ABSENT retries is the API default of 3, never zero
     (_mut(("spec", "taskCount"), 2), "more than one task"),
     (_mut(("status", "conditions"), [{"type": "Completed", "status": "False"}]), "FAILED"),
     (_mut(("status", "succeededCount"), 0), "RUNNING"),
@@ -667,3 +689,14 @@ def test_the_seal_jobs_non_zero_status_fails_the_run_unchanged(world, rc, needle
     r = orch(world, SEAL_RC=str(rc))
     assert r.returncode == rc and needle in r.stderr, (rc, r.stdout, r.stderr)
     assert called(world)
+
+
+# R14-3: the verification-job contract is ONE file carried by BOTH #2975 (executed-resource check) and #2976 (definition readback). If the two copies ever diverge, one of these two tests fails
+# (the pinned digest is the same constant in both PRs; change it in both when the contract is deliberately changed).
+CONTRACT_SHA256 = "5c9c062adcbe2101eb066024c107eb3605f9d542319cdb7414ca44feb4ec104a"
+
+
+def test_the_shared_verification_job_contract_is_the_file_both_prs_carry():
+    import hashlib
+    import gochara_verification_job_contract as _vjc
+    assert hashlib.sha256(Path(_vjc.__file__).read_bytes()).hexdigest() == CONTRACT_SHA256

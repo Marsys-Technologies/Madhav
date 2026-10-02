@@ -56,7 +56,11 @@ def state(ex: dict) -> str:
     return "RUNNING"
 
 
-def check(ex, *, execution_name: str, image_digest: str, service_account: str, runner_commit: str, args: list, secret_name: str) -> dict:
+def check(ex, *, execution_name: str, image_repo: str, image_digest: str, service_account: str, runner_commit: str, args: list, secret_name: str) -> dict:
+    """The EXECUTED resource is judged by the SAME strict contract as the deployed definition (R14-3: `gochara_verification_job_contract.validate_task`, shared byte for byte with
+    #2976's readback): exact image@digest, exact command (the builder entry point may not be swapped back), exact args, `maxRetries` PRESENT and 0, exact environment, no volumes /
+    volumeMounts / envFrom / unexpected fields, exact service account."""
+    import gochara_verification_job_contract as vjc
     if not isinstance(ex, dict):
         raise Refused("the execution description is not a JSON object")
     if not _DIGEST.fullmatch(image_digest or ""):
@@ -66,29 +70,9 @@ def check(ex, *, execution_name: str, image_digest: str, service_account: str, r
     if (ex.get("metadata") or {}).get("name") != execution_name:
         raise Refused(f"this is execution {(ex.get('metadata') or {}).get('name')!r}, not {execution_name!r}")
     t = _task_spec(ex)
-    cs = t.get("containers") or []
-    if len(cs) != 1:
-        raise Refused(f"the execution has {len(cs)} containers, not exactly one")
-    c = cs[0]
-    image = c.get("image") or ""
-    if not image.endswith("@" + image_digest) or "@" not in image:
-        raise Refused(f"the execution ran image {image!r}, not an image pinned to the digest {image_digest} deployed for this commit (a tag is mutable and is refused)")
-    if t.get("serviceAccountName") != service_account:
-        raise Refused(f"the execution ran as {t.get('serviceAccountName')!r}, not {service_account!r}")
-    env = c.get("env") or []
-    secrets = [e for e in env if isinstance(e, dict) and "secretKeyRef" in ((e.get("valueFrom") or {}))]
-    if [e.get("name") for e in secrets] != [ENV_SECRET] or ((secrets[0].get("valueFrom") or {}).get("secretKeyRef") or {}).get("name") != secret_name:
-        raise Refused(f"the execution's secret bindings are not exactly {ENV_SECRET} <- {secret_name}")
-    commits = [e for e in env if isinstance(e, dict) and e.get("name") == ENV_COMMIT]
-    if len(commits) != 1 or commits[0].get("value") != runner_commit:
-        raise Refused(f"the execution's {ENV_COMMIT} is not exactly the sealing commit {runner_commit}")
-    images = [e for e in env if isinstance(e, dict) and e.get("name") == ENV_IMAGE]
-    if len(images) != 1 or images[0].get("value") != image_digest:
-        raise Refused(f"the execution's {ENV_IMAGE} is not exactly the immutable digest {image_digest} (the verifier records it as its producer identity)")
-    if list(c.get("args") or []) != list(args):
-        raise Refused("the execution's arguments are not exactly the ones this workflow passed")
-    if int(t.get("maxRetries") if t.get("maxRetries") is not None else 0) != 0:
-        raise Refused("the execution allowed task retries (a retried task could have produced a stale brief)")
+    bad = vjc.validate_task(t, image_repo=image_repo, image_digest=image_digest, service_account=service_account, runner_commit=runner_commit, secret_name=secret_name, expected_args=list(args))
+    if bad:
+        raise Refused("the executed resource does not conform to the verification-job contract: " + "; ".join(bad))
     if int((ex.get("spec") or {}).get("taskCount") or 1) != 1:
         raise Refused("the execution has more than one task")
     if state(ex) != "SUCCEEDED":
@@ -146,6 +130,9 @@ def main(argv=None) -> int:
     ji = sub.add_parser("job-image")
     ji.add_argument("--job-file", required=True)
     ji.add_argument("--image-digest", required=True)
+    ji.add_argument("--image-repo", required=True)
+    ji.add_argument("--runner-commit", required=True)
+    ji.add_argument("--secret-name", required=True)
     ji.add_argument("--service-account", required=True)
     ce = sub.add_parser("check-envelope")
     ce.add_argument("--envelope-file", required=True)
@@ -159,6 +146,7 @@ def main(argv=None) -> int:
     bv.add_argument("--compact-file", required=True)
     bv.add_argument("--execution-name", required=True)
     bv.add_argument("--image-digest", required=True)
+    bv.add_argument("--image-repo", required=True)
     bv.add_argument("--service-account", required=True)
     bv.add_argument("--secret-name", required=True)
     bv.add_argument("--args-json", required=True, help="the JSON array of the exact arguments the workflow passed")
@@ -170,17 +158,13 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     try:
         if a.cmd == "job-image":
+            import gochara_verification_job_contract as vjc
             with open(a.job_file, encoding="utf-8") as f:
                 job = json.load(f)
-            t = _task_spec(job)
-            image = ((t.get("containers") or [{}])[0].get("image")) or ""
-            if not _DIGEST.fullmatch(a.image_digest) or not image.endswith("@" + a.image_digest):
-                raise Refused(f"the verification job is defined with image {image!r}, not the digest {a.image_digest} deployed for this commit: re-dispatch the job-definition workflow at this commit (same-commit rule)")
-            if t.get("serviceAccountName") != a.service_account:
-                raise Refused(f"the verification job runs as {t.get('serviceAccountName')!r}, not {a.service_account!r}")
-            envs = [e for e in ((t.get("containers") or [{}])[0].get("env") or []) if isinstance(e, dict) and e.get("name") == ENV_IMAGE]
-            if len(envs) != 1 or envs[0].get("value") != a.image_digest:
-                raise Refused(f"the verification job does not carry {ENV_IMAGE} = {a.image_digest}: it would refuse to brief (producer_identity_absent); re-dispatch #2976 at this commit")
+            bad = vjc.validate_task(_task_spec(job), image_repo=a.image_repo, image_digest=a.image_digest, service_account=a.service_account, runner_commit=a.runner_commit,
+                                    secret_name=a.secret_name, expected_args=[])
+            if bad:
+                raise Refused("the verification job's DEFINITION does not conform to the contract (re-dispatch #2976 at this commit — same-commit rule): " + "; ".join(bad))
             print("OK")
             return 0
         if a.cmd == "check-envelope":
@@ -199,7 +183,7 @@ def main(argv=None) -> int:
         with open(a.compact_file, encoding="utf-8") as f:
             compact = json.load(f)
         per = (compact or {}).get("persisted") or {}
-        verified = check(ex, execution_name=a.execution_name, image_digest=a.image_digest, service_account=a.service_account, runner_commit=a.sealing_commit,
+        verified = check(ex, execution_name=a.execution_name, image_repo=a.image_repo, image_digest=a.image_digest, service_account=a.service_account, runner_commit=a.sealing_commit,
                          args=json.loads(a.args_json), secret_name=a.secret_name)
         if compact.get("sha256") != a.brief_digest:
             raise Refused("the compact result's digest is not the checked brief's digest")

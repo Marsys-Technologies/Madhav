@@ -103,6 +103,8 @@ describe('gochara-seal-approved.yml', () => {
     const image = steps.find((st) => st.id === 'image'), exec = steps.find((st) => st.id === 'execute'), wait = steps.find((st) => st.id === 'wait'), check = steps.find((st) => st.id === 'check')
     expect(run(image)).toContain('gcloud artifacts docker images describe')
     expect(run(image)).toContain('gochara_seal_execution_check.py job-image')
+    expect(run(image)).toContain('--image-repo "$PIPELINE_IMAGE_REPO"')
+    expect(run(image)).toContain('--runner-commit "$GITHUB_SHA" --secret-name "$VERIFIER_SECRET"')
     expect(run(exec)).toContain('--async')                                               // the execution id is recorded BEFORE the wait, so a cancelled wait can still cancel it
     expect(run(exec)).not.toContain('--wait')
     expect(wait['timeout-minutes']).toBeLessThanOrEqual(brief['timeout-minutes'])
@@ -113,6 +115,7 @@ describe('gochara-seal-approved.yml', () => {
     expect(run(cancel)).toContain('gcloud run jobs executions cancel')
     expect(run(check)).toContain('gochara_seal_execution_check.py build-envelope')
     expect(run(check)).toContain('--image-digest "$IMAGE_DIGEST"')
+    expect(run(check)).toContain('--image-repo "$PIPELINE_IMAGE_REPO"')
     expect(names.indexOf(String(image.name))).toBeLessThan(names.indexOf(String(exec.name)))
     expect(names.indexOf(String(exec.name))).toBeLessThan(names.indexOf(String(wait.name)))
     expect(wf.env.VERIFIER_SERVICE_ACCOUNT).toBe('gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com')
