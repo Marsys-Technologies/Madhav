@@ -296,28 +296,42 @@ RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
     FROM expected, unnest(expected.m) AS c), '[]'::jsonb)));
 $$;
 
--- R9-2: the digest of EVERYTHING the window derivation depends on — not just the windows and their member ids. Every record
--- of the grain (identity, agent, relation, kind, role, admission, house, anchor, target, contact, supports), its
--- prerequisite results, the contacts they reference, the snapshot's input identity, the manifest vector (digest) and the
--- result policy. The independent verifier builds the SAME canonical preimage in Python from its own reads; the gate
--- recomputes this one, so any later change to any of it (a record inserted with its membership link omitted, a result
--- flipped, a contact moved, a different manifest) makes the stored verification stale at the seal.
+-- R9-2 / R10-2: the digest of the COMPLETE SEMANTIC DEPENDENCY SET of the window derivation — preimage version 'inputs/2'.
+--   records   every record of the grain: identity, agent, relation, kind, object role, operator role, PROVENANCE, RULING,
+--             admission, house, frame (kind, arg), affected person, anchor, target, contact, support state and supports, and
+--             EVERY result field (evidence for/against, severity — as the text the database prints for the REAL — and the
+--             valence): a post-verification delete+reinsert of a record with a number in it changes this digest;
+--   prerequisites   each record's declared-prerequisite results;
+--   contacts  EVERY contact of the generation (not only those a surviving record references — a contact whose records were
+--             all removed is still a dependency) with the fields the geometry certification reads: identity, body,
+--             relation, target, t_in, t_out, t_exact, solver, delta_lambda, delta_t, precision regime;
+--   input / manifest / policy  the snapshot's input identity, the manifest vector (digest) and the result policy.
+-- The independent verifier builds the SAME canonical preimage in Python from its own reads (`window_gate`); the gate
+-- recomputes this one, so any later change to any of it makes the stored verification stale at the seal.
 CREATE OR REPLACE FUNCTION public.ka_gochara_eval_window_inputs_digest(
   p_chart uuid, p_generation text, p_class text, p_path text, p_version text)
 RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
   WITH recs AS (
-    SELECT r.record_id, r.agent, r.relation, r.object_kind, r.operator_role, r.admission_state, r.house_from_frame,
-           r.period_anchor_lord, r.period_anchor_level, r.contact_id, r.temporal_support_intervals, o.canonical_target
+    SELECT r.record_id, r.agent, r.relation, r.object_kind, r.object_role, r.operator_role, r.provenance, r.ruling_ref,
+           r.admission_state, r.house_from_frame, r.frame_kind, r.frame_arg, r.affected_person, r.temporal_support_state,
+           r.period_anchor_lord, r.period_anchor_level, r.contact_id, r.temporal_support_intervals, o.canonical_target,
+           r.evidence_for_occurrence, r.evidence_against_occurrence, r.severity, r.outcome_valence_for_native
     FROM public.ka_gochara_relationship_record r
     JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id
     WHERE (r.chart_id, r.generation, r.event_class, r.path_id, r.rule_version)
         = (p_chart, p_generation, p_class, p_path, p_version))
   SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(jsonb_build_object(
+    'version', 'inputs/2',
     'records', COALESCE((SELECT jsonb_agg(jsonb_build_object(
         'id', r.record_id::text, 'agent', r.agent, 'relation', r.relation, 'kind', r.object_kind,
-        'role', r.operator_role, 'admission', r.admission_state, 'house', r.house_from_frame,
+        'object_role', r.object_role, 'role', r.operator_role, 'provenance', r.provenance, 'ruling', r.ruling_ref,
+        'admission', r.admission_state, 'house', r.house_from_frame,
+        'frame_kind', r.frame_kind, 'frame_arg', r.frame_arg, 'person', r.affected_person,
+        'support_state', r.temporal_support_state,
         'anchor', jsonb_build_array(r.period_anchor_lord, r.period_anchor_level),
         'target', r.canonical_target, 'contact', r.contact_id::text,
+        'evidence_for', r.evidence_for_occurrence::text, 'evidence_against', r.evidence_against_occurrence::text,
+        'severity', r.severity::text, 'valence', r.outcome_valence_for_native,
         'supports', COALESCE((SELECT jsonb_agg(jsonb_build_array(
                        to_char(lower(x) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
                        to_char(upper(x) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) ORDER BY lower(x))
@@ -328,12 +342,14 @@ RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
         ORDER BY pr.record_id::text, pr.ordinal)
       FROM public.ka_gochara_record_prerequisite pr WHERE pr.record_id IN (SELECT record_id FROM recs)), '[]'::jsonb),
     'contacts', COALESCE((SELECT jsonb_agg(jsonb_build_array(
-        c.contact_id::text,
+        c.contact_id::text, c.body, c.relation_kind, o.canonical_target,
         to_char(c.t_in AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
-        to_char(c.t_out AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) ORDER BY c.contact_id::text)
+        to_char(c.t_out AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+        to_char(c.t_exact AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+        c.solver_method, c.delta_lambda::text, c.delta_t::text, c.precision_regime) ORDER BY c.contact_id::text)
       FROM public.ka_gochara_contact c
-      WHERE c.chart_id = p_chart AND c.generation = p_generation
-        AND c.contact_id IN (SELECT contact_id FROM recs WHERE contact_id IS NOT NULL)), '[]'::jsonb),
+      JOIN public.ka_gochara_physical_object o ON o.physical_object_id = c.physical_object_id
+      WHERE c.chart_id = p_chart AND c.generation = p_generation), '[]'::jsonb),
     'input', (SELECT s.input_digest FROM public.ka_gochara_search_input_snapshot s
               WHERE s.chart_id = p_chart AND s.generation = p_generation),
     'manifest', (SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(p.input_generation_vector))
@@ -504,6 +520,19 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
           AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_eval_window_record l WHERE l.record_id = r.record_id)) AS orphans
   ) m
   WHERE m.missing + m.extra + m.orphans > 0
+  UNION ALL
+  -- R10-2: the manifest's result policy governs EVERY record result field. No independent derivation of a record number
+  -- exists under either known policy, so a record carries NULL evidence and severity and the `unqualified` valence
+  SELECT e.event_class, e.path_id, e.rule_version, 'record_result_not_policy'::text,
+         (x.n || ' relationship record(s) carry a numeric evidence/severity or a qualified valence under the manifest policy')::text
+  FROM expected e
+  CROSS JOIN LATERAL (
+    SELECT count(*) AS n FROM public.ka_gochara_relationship_record r
+    WHERE (r.chart_id, r.generation, r.event_class, r.path_id, r.rule_version)
+        = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)
+      AND (r.evidence_for_occurrence IS NOT NULL OR r.evidence_against_occurrence IS NOT NULL
+           OR r.severity IS NOT NULL OR r.outcome_valence_for_native <> 'unqualified')) x
+  WHERE x.n > 0
   UNION ALL
   SELECT e.event_class, e.path_id, e.rule_version, 'window_provenance_missing'::text,
          (count(*) || ' stored window(s) carry no objective/qualification provenance')::text

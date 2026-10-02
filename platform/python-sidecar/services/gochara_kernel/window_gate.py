@@ -133,28 +133,36 @@ def _opt(t):
 
 
 def derivation_inputs_preimage(conn, *, chart_id, generation, event_class, path_id, rule_version) -> dict:
-    """The grain's derivation inputs as this verifier reads them: every record (identity, agent, relation, kind, role,
-    admission, house, anchor, target, contact, supports), its prerequisite results, the contacts it references, the
-    snapshot's input identity, the manifest vector (digest) and the result policy."""
+    """The COMPLETE SEMANTIC DEPENDENCY SET of the grain's window derivation as this verifier reads it (preimage
+    'inputs/2'; R9-2, R10-2): every record (identity, roles, provenance, ruling, admission, house, frame, person, anchor,
+    target, contact, support state and supports, and EVERY result field — evidence for/against and severity as the text the
+    database prints, and the valence), its prerequisite results, EVERY contact of the generation with the fields the geometry
+    certification reads (not only those a surviving record references), the snapshot's input identity, the manifest vector
+    (digest) and the result policy. Equal to 1240's `ka_gochara_eval_window_inputs_digest` byte for byte."""
     import json as _json
     from decimal import Decimal
     grain = (chart_id, generation, event_class, path_id, rule_version)
     rows = conn.execute(
-        "SELECT r.record_id::text, r.agent, r.relation, r.object_kind, r.operator_role, r.admission_state,"
-        " r.house_from_frame, r.period_anchor_lord, r.period_anchor_level, o.canonical_target, r.contact_id::text,"
-        " r.temporal_support_intervals FROM public.ka_gochara_relationship_record r"
+        "SELECT r.record_id::text, r.agent, r.relation, r.object_kind, r.object_role, r.operator_role, r.provenance,"
+        " r.ruling_ref, r.admission_state, r.house_from_frame, r.frame_kind, r.frame_arg, r.affected_person,"
+        " r.temporal_support_state, r.period_anchor_lord, r.period_anchor_level, o.canonical_target, r.contact_id::text,"
+        " r.evidence_for_occurrence::text, r.evidence_against_occurrence::text, r.severity::text,"
+        " r.outcome_valence_for_native, r.temporal_support_intervals"
+        " FROM public.ka_gochara_relationship_record r"
         " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id"
         " WHERE r.chart_id = %s AND r.generation = %s AND r.event_class = %s AND r.path_id = %s"
         " AND r.rule_version = %s ORDER BY r.record_id::text", grain).fetchall()
     rows = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in rows]
-    records, ids, contact_ids = [], [], set()
-    for (rid, agent, rel, kind, role, adm, house, a_lord, a_level, target, contact, supports) in rows:
+    records, ids = [], []
+    for (rid, agent, rel, kind, orole, role, prov, ruling, adm, house, fkind, farg, person, sstate, a_lord, a_level,
+         target, contact, ev_for, ev_against, severity, valence, supports) in rows:
         ids.append(rid)
-        if contact is not None:
-            contact_ids.add(contact)
         records.append({
-            "id": rid, "agent": agent, "relation": rel, "kind": kind, "role": role, "admission": adm, "house": house,
-            "anchor": [a_lord, a_level], "target": target, "contact": contact,
+            "id": rid, "agent": agent, "relation": rel, "kind": kind, "object_role": orole, "role": role,
+            "provenance": prov, "ruling": ruling, "admission": adm, "house": house, "frame_kind": fkind,
+            "frame_arg": farg, "person": person, "support_state": sstate, "anchor": [a_lord, a_level],
+            "target": target, "contact": contact, "evidence_for": ev_for, "evidence_against": ev_against,
+            "severity": severity, "valence": valence,
             "supports": [[_fmt(x.lower), _fmt(x.upper)] for x in sorted(supports or [], key=lambda x: x.lower)]})
     prereqs = []
     if ids:
@@ -162,13 +170,14 @@ def derivation_inputs_preimage(conn, *, chart_id, generation, event_class, path_
             "SELECT record_id::text, ordinal, predicate_id, predicate_rule_version, result"
             " FROM public.ka_gochara_record_prerequisite WHERE record_id = ANY(%s::uuid[])"
             " ORDER BY record_id::text, ordinal", (ids,)).fetchall()]
-    contacts = []
-    if contact_ids:
-        contacts = [[r[0], _opt(r[1]), _opt(r[2])] for r in (
-            tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
-                "SELECT contact_id::text, t_in, t_out FROM public.ka_gochara_contact"
-                " WHERE chart_id = %s AND generation = %s AND contact_id = ANY(%s::uuid[])"
-                " ORDER BY contact_id::text", (chart_id, generation, sorted(contact_ids))).fetchall())]
+    contacts = [[r[0], r[1], r[2], r[3], _opt(r[4]), _opt(r[5]), _opt(r[6]), r[7], r[8], r[9], r[10]] for r in (
+        tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
+            "SELECT c.contact_id::text, c.body, c.relation_kind, o.canonical_target, c.t_in, c.t_out, c.t_exact,"
+            " c.solver_method, c.delta_lambda::text, c.delta_t::text, c.precision_regime"
+            " FROM public.ka_gochara_contact c JOIN public.ka_gochara_physical_object o"
+            "   ON o.physical_object_id = c.physical_object_id"
+            " WHERE c.chart_id = %s AND c.generation = %s ORDER BY c.contact_id::text",
+            (chart_id, generation)).fetchall())]
     snap = conn.execute("SELECT input_digest FROM public.ka_gochara_search_input_snapshot"
                         " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
     pub = conn.execute("SELECT input_generation_vector::text FROM public.kala_gochara_publication"
@@ -176,6 +185,7 @@ def derivation_inputs_preimage(conn, *, chart_id, generation, event_class, path_
     vector = None if pub is None else _json.loads(
         next(iter(pub.values())) if isinstance(pub, dict) else pub[0], parse_float=Decimal)
     return {
+        "version": "inputs/2",
         "records": records, "prerequisites": prereqs, "contacts": contacts,
         "input": None if snap is None else (next(iter(snap.values())) if isinstance(snap, dict) else snap[0]),
         "manifest": None if vector is None else hashlib.sha256(_canon(vector).encode("utf-8")).hexdigest(),
