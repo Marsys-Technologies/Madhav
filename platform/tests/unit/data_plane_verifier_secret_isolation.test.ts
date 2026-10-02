@@ -1,4 +1,6 @@
 /** DP-SD-018 extension: the Gochara verification pair (verifier SA + secret + one named job). */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   extractRunIdentityAndSecrets, parseSecretsAnnotation,
@@ -256,3 +258,15 @@ describe('R15-3: Cloud Run secret aliases (`run.googleapis.com/secrets`) — doc
   })
 })
 
+
+describe('deploy.yml wires the preflight\'s operator-declared inputs (Fable F-R16-1 / F-R16-2)', () => {
+  const deploy = readFileSync(resolve(__dirname, '../../../.github/workflows/deploy.yml'), 'utf8')
+  const stepsRunningPreflight = deploy.split(/\n {6}- /).filter((blk) => blk.includes('data-plane-secret-isolation-preflight'))
+  it('every routine step that runs the isolation preflight passes the phase AND the control-exceptions variables', () => {
+    expect(stepsRunningPreflight.length).toBeGreaterThanOrEqual(4)
+    for (const blk of stepsRunningPreflight) {
+      expect(blk).toContain('DATA_PLANE_VERIFIER_PHASE: ${{ vars.DATA_PLANE_VERIFIER_PHASE }}')
+      expect(blk).toContain('DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS: ${{ vars.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS }}')
+    }
+  })
+})
