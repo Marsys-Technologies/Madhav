@@ -26,7 +26,12 @@ as `known_unpinned_legacy` and must FAIL the same-result check (xfail strict): t
 detect the defect. Each later reader PR of the NODE-SERIES stack flips its `not_driven` rows to driven.
 
 Requires PostgreSQL >= 15 binaries (NULLS NOT DISTINCT). Found via NODE_SERIES_PG_BIN, Homebrew, /usr/lib/postgresql,
-or PATH. When absent the module SKIPS unless NODE_SERIES_REQUIRE_PG=1 (then it fails: use that on a release gate).
+or PATH. EARNED IN CI (SS ruling 3): when GITHUB_ACTIONS=true (or NODE_SERIES_REQUIRE_PG=1) this module NEVER skips: a
+missing psycopg2, a root runner or the absence of PostgreSQL >= 15 binaries FAILS the run. On a developer machine
+without PostgreSQL it still SKIPS. The sidecar CI job (ci.yml `Governance Gates`) has no `services:` Postgres, so the
+proof runs on the runner image's preinstalled PostgreSQL binaries through a disposable initdb cluster (unix socket only).
+A pytest terminal-summary line ("NODE-SERIES PROOF: N passed ...") is printed even under `-q` so the CI job log carries
+the pass count.
 """
 from __future__ import annotations
 
@@ -46,7 +51,13 @@ from typing import Any, Callable
 
 import pytest
 
-psycopg2 = pytest.importorskip("psycopg2")
+# EARNED IN CI: under GitHub Actions (or NODE_SERIES_REQUIRE_PG=1) every skip route of this module becomes a failure.
+MUST_RUN = os.environ.get("GITHUB_ACTIONS") == "true" or os.environ.get("NODE_SERIES_REQUIRE_PG") == "1"
+
+if MUST_RUN:
+    import psycopg2          # an ImportError is a collection ERROR, never a skip
+else:
+    psycopg2 = pytest.importorskip("psycopg2")
 
 from brahmagyan import ephemeris_routes as routes  # noqa: E402
 from brahmagyan import l0_ephemeris as legacy  # noqa: E402
@@ -227,13 +238,12 @@ class Ctx:
 @pytest.fixture(scope="module")
 def cluster():
     if hasattr(os, "geteuid") and os.geteuid() == 0:
-        pytest.skip("initdb refuses to run as root")
+        msg = "initdb refuses to run as root"
+        pytest.fail(msg) if MUST_RUN else pytest.skip(msg)
     bindir = _find_pg_bin()
     if bindir is None:
         msg = "no PostgreSQL >= 15 binaries (set NODE_SERIES_PG_BIN); the disposable-cluster proof cannot run here"
-        if os.environ.get("NODE_SERIES_REQUIRE_PG") == "1":
-            pytest.fail(msg)
-        pytest.skip(msg)
+        pytest.fail(msg) if MUST_RUN else pytest.skip(msg)
     c = Cluster(bindir)
     try:
         admin = c.connect("postgres")
@@ -356,7 +366,7 @@ def _driven() -> list[Reader]:
 
 
 def _legacy() -> list[Reader]:
-    why = ("dead unpinned copy in brahmagyan/l0_ephemeris.py (kept byte-identical: editing it moves 48 writer digests); "
+    why = ("dead unpinned copy in brahmagyan/l0_ephemeris.py (kept byte-identical: editing it moves 49 writer digests); "
            "it must differ once a MEAN set exists, which proves this harness detects the defect")
     # calls on a non-node body (Venus, Saturn) never see a node row: the legacy copy is correct for them, so they are not
     # xfail rows (their pinned twins above still assert the same result)
@@ -499,3 +509,43 @@ def test_the_proof_is_not_vacuous_the_mean_series_changes_the_node_longitudes(ct
     t, m = lon(ctx_mixed, "true"), lon(ctx_mixed, "mean")
     assert t is not None and m is not None and abs(t - m) > 0.2
     assert lon(ctx_true, "true") == t and lon(ctx_true, "mean") is None
+
+
+def test_the_proof_has_not_silently_shrunk():
+    """A collected-count floor: the registry may only grow (later PRs flip not_driven rows to driven), so a refactor that
+    quietly drops reader cases cannot keep this file green with a smaller proof."""
+    kinds = [r.kind for r in _RUNNABLE]
+    assert kinds.count(SAME) >= 20, kinds.count(SAME)
+    assert kinds.count(LOUD) >= 1
+    assert kinds.count(LEGACY) >= 14, kinds.count(LEGACY)
+
+
+# ------------------------------------------------------------------------------------------- CI-visible pass count
+_THIS_FILE = os.path.basename(__file__)
+
+
+class _ProofSummary:
+    """Registered by the autouse fixture below. Prints the pass count of THIS module in the terminal summary (shown under
+    `-q`, which the sidecar CI step uses without `-rs`), plus a GitHub Actions ::notice:: annotation."""
+
+    def pytest_terminal_summary(self, terminalreporter):
+        def n(outcome: str, phases: tuple[str, ...]) -> int:
+            return sum(1 for rep in terminalreporter.stats.get(outcome, [])
+                       if f"{_THIS_FILE}::" in getattr(rep, "nodeid", "") and getattr(rep, "when", "call") in phases)
+
+        counts = {"passed": n("passed", ("call",)), "xfailed": n("xfailed", ("call",)), "xpassed": n("xpassed", ("call",)),
+                  "failed": n("failed", ("call",)), "error": n("error", ("setup", "teardown", "call")),
+                  "skipped": n("skipped", ("setup", "call"))}
+        line = ("NODE-SERIES PROOF ({f}): {passed} passed, {xfailed} xfailed (known-unpinned legacy copies, strict), "
+                "{xpassed} xpassed, {failed} failed, {error} errors, {skipped} skipped").format(f=_THIS_FILE, **counts)
+        terminalreporter.write_line(line, bold=True)
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            terminalreporter.write_line(f"::notice title=node-series reader proof::{line}")
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _register_proof_summary(request):
+    pm = request.config.pluginmanager
+    if not pm.has_plugin("node_series_proof_summary"):
+        pm.register(_ProofSummary(), "node_series_proof_summary")
+    yield
