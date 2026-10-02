@@ -25,8 +25,12 @@ from typing import Any, Sequence
 from .inventory import ClassInventory, DashaRow
 from .record_store import SealedGenerationError
 
+# The builder deletes ONLY the tables it owns. The verification row
+# (ka_gochara_search_inventory_verification) is the verifier's: the builder holds NO privilege
+# on it (1206 §7, ND-ROLES option A), so listing it here would fail 'permission denied' at the
+# replace-prelude. A rebuild still invalidates a stale verification — the FK to the header is
+# ON DELETE CASCADE (PC-4 e4d31c9ef), so deleting the header removes it.
 _CLASS_TABLES_DELETE_ORDER = (
-    "ka_gochara_search_inventory_verification",
     "ka_gochara_search_interval",
     "ka_gochara_search_obligation",
     "ka_gochara_search_path_pin",

@@ -111,3 +111,12 @@ def test_mutation_removing_the_helper_grant_makes_the_builder_flow_fail_on_exact
     w.conn.execute(f"REVOKE EXECUTE ON FUNCTION {HELPER} FROM data_plane_builder")
     with pytest.raises(psycopg.errors.InsufficientPrivilege, match="ka_gochara_window_qualification_ok"):
         _builder_flow(w)
+
+
+def test_the_builder_replace_prelude_never_names_a_verification_table():
+    """R9-6.1 follow-up (Stream B finding on 58ce55523): the builder holds NO privilege on
+    ka_gochara_search_inventory_verification (1206 §7), so the replace-prelude must not DELETE
+    it — the header FK cascades the verifier's row instead (PC-4)."""
+    from services.gochara_kernel import inventory_store as store
+    assert not [t for t in store._CLASS_TABLES_DELETE_ORDER if t.endswith("_verification")]
+    assert store._CLASS_TABLES_DELETE_ORDER[-1] == "ka_gochara_search_inventory"  # header last
