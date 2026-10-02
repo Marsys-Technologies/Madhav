@@ -2920,6 +2920,11 @@ def build_ga_vargas(
 
         d1_data = all_vargas.get("D1", {})
 
+        # The six INVARIANT scope-cap sentinels are ayanamsha-independent, so they are written by
+        # the FIRST canonical ayanamsha pass only. Each pass used to delete and re-emit all six:
+        # five passes reported 30 sentinel rows for 6 stored (24 overwrites; TI-l1-writer-fixes-001).
+        emit_sentinels = ayan_id == next(iter(CANONICAL_AYANAMSHAS))
+
         # For cross-varga harmonics post-pass, collect per-body sign per varga
         all_varga_signs: dict[str, dict[str, int]] = {b: {} for b in CLASSICAL_BODIES}
 
@@ -2927,7 +2932,8 @@ def build_ga_vargas(
             # INVARIANT sentinel deletion: purge stale scope-cap sentinel rows for
             # this chart before inserting new ones. Runs once per ayanamsha loop
             # entry (idempotent — deletes 0 rows if nothing was written yet).
-            _delete_invariant_sentinels(conn, chart_id)
+            if emit_sentinels:
+                _delete_invariant_sentinels(conn, chart_id)
             if owns_conn:
                 conn.commit()
 
@@ -3081,7 +3087,7 @@ def build_ga_vargas(
             # Scope-cap sentinel: D81 (saptatisamsa) — intentionally not computed.
             # Emitted once per ayanamsha under 'INVARIANT' so absence ≠ bug.
             # Locked decision: GA6 brief §2 decision J.
-            if not _check_already_written(conn, chart_id, "INVARIANT", "D81_SCOPE_CAP", build_id):
+            if emit_sentinels and not _check_already_written(conn, chart_id, "INVARIANT", "D81_SCOPE_CAP", build_id):
                 now = datetime.now(timezone.utc).isoformat()
                 scope_cap_row = {
                     "fact_id": hashlib.sha256(
@@ -3127,7 +3133,7 @@ def build_ga_vargas(
             # One sentinel per body so absence is explicitly intentional, not a bug.
             for floored_body in FLOORED_BODIES:
                 sentinel_key = f"{floored_body.upper()}_OUTER_PLANET_SCOPE_CAP"
-                if not _check_already_written(conn, chart_id, "INVARIANT", sentinel_key, build_id):
+                if emit_sentinels and not _check_already_written(conn, chart_id, "INVARIANT", sentinel_key, build_id):
                     now = datetime.now(timezone.utc).isoformat()
                     outer_cap_row = {
                         "fact_id": hashlib.sha256(
