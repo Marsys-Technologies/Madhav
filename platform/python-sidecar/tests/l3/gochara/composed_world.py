@@ -105,7 +105,17 @@ def apply_migrations(conn, files):
 
 def _populate(conn, stack):
     conn.execute(f"SET ROLE {OWNER}")
-    conn.execute("CREATE TABLE public.charts (id uuid PRIMARY KEY)")
+    # `charts` as in production (read-only check 2026-10-02): row-level security ON (not forced), three PERMISSIVE policies for PUBLIC — the grant policy reads
+    # `chart_grants`, so ANY role that reads `charts` needs SELECT on `chart_grants` too (policy expressions run as the invoker). chart_facts, chart_dashas and
+    # bg_transit_rules have RLS OFF and no policies in production, so a table-level SELECT on them suffices (the mirror has none either).
+    conn.execute("CREATE TABLE public.charts (id uuid PRIMARY KEY, owner_id text)")
+    conn.execute("CREATE TABLE public.chart_grants (chart_id uuid, principal_id text)")
+    conn.execute("ALTER TABLE public.charts ENABLE ROW LEVEL SECURITY")
+    conn.execute("CREATE POLICY chart_grant_policy ON public.charts FOR SELECT USING (EXISTS (SELECT 1 FROM public.chart_grants g WHERE g.chart_id = charts.id"
+                 " AND g.principal_id = current_setting('app.principal_id', true)))")
+    conn.execute("CREATE POLICY chart_owner_policy ON public.charts USING (owner_id = current_setting('app.principal_id', true))")
+    conn.execute("CREATE POLICY chart_service_policy ON public.charts USING (current_setting('app.principal_id', true) IS NULL"
+                 " OR current_setting('app.principal_id', true) = '')")
     conn.execute("CREATE TABLE public._migrations_applied (filename text PRIMARY KEY, applied_at timestamptz DEFAULT now())")
     conn.execute("CREATE TABLE public.chart_facts (fact_id text PRIMARY KEY, chart_id uuid, ayanamsha_id text, fact_category text,"
                  " fact_subject text, fact_key text, fact_value_num double precision, created_at timestamptz DEFAULT now())")
@@ -135,7 +145,7 @@ def _populate(conn, stack):
                       r.start, r.end, PINNED_BUILD))
     # the reads the BUILDER holds in production today (read-only check 2026-10-02). The verifier's and sealer's L1/L0 reads are NOT granted here:
     # they are part of the derived sets the 1241 grants migration must carry (test_b6_composed_seal_flows.BASELINE), so the sweep covers them.
-    conn.execute(f"GRANT SELECT ON public.charts, public.chart_facts, public.chart_dashas, public.bg_transit_rules TO {BUILDER}")
+    conn.execute(f"GRANT SELECT ON public.charts, public.chart_grants, public.chart_facts, public.chart_dashas, public.bg_transit_rules TO {BUILDER}")
     conn.execute("RESET ROLE")
     apply_migrations(conn, stack)
 

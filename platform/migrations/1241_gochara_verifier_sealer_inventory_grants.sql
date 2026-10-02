@@ -26,11 +26,11 @@
 -- flows (a restricted-builder build; the verifier's window verifications then inventory verification, twice; the sealer's first seal; a
 -- generation sealed between 1206 and 1240; builder/sealer contention) were run adding one grant per `permission denied` until they converged, and
 -- then EACH grant was individually removed and the first-seal and re-verification flows re-run: a grant that does not make a flow fail is NOT
--- here. Of the 53 candidates the earlier role suites and the derivation produced, 17 are left out: 13 are ALREADY held through 1240 and the
+-- here. Of the 53 candidates the earlier role suites and the derivation produced, 18 are left out: 13 are ALREADY held through 1240 and the
 -- earlier migrations (the sealer's SELECT on the seal, publication, record, window, membership, snapshot and pin tables and EXECUTE on
--- lock_chart, lock_global_shared, sha256_hex, canonical_json; the verifier's EXECUTE on lock_chart and generation_is_sealed), and 4 are needed by
--- NO flow (the verifier's DELETE on the inventory-verification table — a re-run REPLACES without it; the sealer's SELECT on the polarity
--- declaration and EXECUTE on av_entry and inventories_digest). NOTE the correction the REPLAY flow forced: a first-seal-only sweep had counted
+-- lock_chart, lock_global_shared, sha256_hex, canonical_json; the verifier's EXECUTE on lock_chart and generation_is_sealed), and 5 are needed by
+-- NO flow (the verifier's DELETE on the inventory-verification table — a re-run REPLACES without it — and its SELECT on the search-interval table, which
+-- Stream A's real job never reads as the verifier; the sealer's SELECT on the polarity declaration and EXECUTE on av_entry and inventories_digest). NOTE the correction the REPLAY flow forced: a first-seal-only sweep had counted
 -- ka_gochara_search_replay_violations among the unneeded; replaying an EXISTING seal (ka_gochara_seal_generation inserts ON CONFLICT DO NOTHING; 1206's
 -- BEFORE trigger fires first) calls it as the sealer, so it is granted — the necessity tests now run first seal AND replay.
 --
@@ -40,7 +40,9 @@
 --   SELECT, INSERT   ka_gochara_search_inventory_verification   the inventory verification row (the writer's `verify:<class>` step, run by the
 --                                                               verification RUNNER under this identity, R9-6.1)
 --   SELECT           ka_gochara_sky_convention, ka_gochara_rule_path_prerequisite, ka_gochara_predicate,
---                    ka_gochara_search_obligation, ka_gochara_search_interval          reads of the independent re-derivation
+--                    ka_gochara_search_obligation                                    reads of the independent re-derivation
+--                    (ka_gochara_search_interval is NOT granted: Stream A's REAL job never reads it as the verifier — measured; an earlier
+--                    hand-written verifier needed it, which is why it appeared in the first derivation)
 --   EXECUTE          ka_gochara_window_verification_violations(uuid,text)            the candidate gate the `verify:` step runs first
 --   (NO DELETE: a re-run replaces the row without it — measured. NO UPDATE, NO seal, NO build-data write.)
 -- SEALER (gochara_sealer)
@@ -86,7 +88,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_verifier') THEN
     GRANT SELECT, INSERT ON public.ka_gochara_search_inventory_verification TO gochara_verifier;
     GRANT SELECT ON public.ka_gochara_sky_convention, public.ka_gochara_rule_path_prerequisite, public.ka_gochara_predicate,
-      public.ka_gochara_search_obligation, public.ka_gochara_search_interval TO gochara_verifier;
+      public.ka_gochara_search_obligation TO gochara_verifier;
     GRANT EXECUTE ON FUNCTION public.ka_gochara_window_verification_violations(uuid, text) TO gochara_verifier;
     RAISE NOTICE 'migration 1241: grants issued to role gochara_verifier';
   ELSE
@@ -130,7 +132,6 @@ BEGIN
             AND has_table_privilege('gochara_verifier', 'public.ka_gochara_rule_path_prerequisite', 'SELECT')
             AND has_table_privilege('gochara_verifier', 'public.ka_gochara_predicate', 'SELECT')
             AND has_table_privilege('gochara_verifier', 'public.ka_gochara_search_obligation', 'SELECT')
-            AND has_table_privilege('gochara_verifier', 'public.ka_gochara_search_interval', 'SELECT')
             AND has_function_privilege('gochara_verifier', 'public.ka_gochara_window_verification_violations(uuid, text)', 'EXECUTE')) THEN
       RAISE EXCEPTION 'migration 1241 post-apply check failed: gochara_verifier does not hold the inventory-verification privileges';
     END IF;
