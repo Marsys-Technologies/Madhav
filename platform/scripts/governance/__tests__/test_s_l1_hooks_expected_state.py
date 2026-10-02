@@ -768,7 +768,7 @@ def test_karaka_dasha_roles_is_narrowed_to_the_systems_the_backend_does_not_touc
 
 
 # ----------------------------------------------------------------------------------------------- T-EB: the ephemeris hook is real
-# Figures copied from SE1_SHIFT_ANALYSIS.md (section 5: the real flip_detector.dasha_diff on the real stored-vs-se1 dasha rows), NOT read back from
+# Figures copied from /Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403; section 5: the real flip_detector.dasha_diff on the real stored-vs-se1 dasha rows), NOT read back from
 # the hook: appeared / disappeared level-4 rows per ayanamsha. The five-ayanamsha totals (146 / 146, 1,103 / 1,118) are deliberately never asserted as a check.
 EB_VIM = {"lahiri_chitrapaksha": (29, 17), "true_chitra": (40, 38), "krishnamurti": (29, 28), "raman": (21, 30), "surya_siddhanta_classical": (27, 33)}
 EB_KAL = {"lahiri_chitrapaksha": (216, 213), "true_chitra": (198, 198), "krishnamurti": (227, 217), "raman": (193, 201), "surya_siddhanta_classical": (269, 289)}

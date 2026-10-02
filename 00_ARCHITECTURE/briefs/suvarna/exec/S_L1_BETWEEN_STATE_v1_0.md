@@ -1,6 +1,6 @@
 ---
 artifact: S_L1_BETWEEN_STATE
-version: 1.2
+version: 1.3
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna (integration-docs worker)
 produced_on: 2026-10-03
@@ -11,8 +11,10 @@ evidence:
   - /Users/Dev/suvarna-evidence/FactId/FACTID_IMPACT_REPORT.md (sha256 9eda8e6e20e2faad2d495d7cc6816ba57164761ceff2d6f44567a27305520ca7)
   - /Users/Dev/suvarna-evidence/FactId/FACTID_SERVED_IMPACT_REPORT.md (sha256 3346899bf4b4266ed626667273e159e3fa217a86df2dab0d427572171bd4d043)
   - /Users/Dev/suvarna-evidence/OwnerDecisions/N-91_between_state_ruling_v1_0.md
+  - /Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403)
 changelog:
-  - "1.2 (2026-10-03): the ephemeris statements corrected to the measured truth (SE1_SHIFT_ANALYSIS; SS 2026-10-03 decision): 'about two hours on Vimshottari boundaries' and 'fact_ids, row counts and tiers are unaffected' replaced. Measured: Vimshottari +6,990..+6,994 s (about +1 h 56 m), Kalachakra +145,089..+145,111 s (about +40 h 18 m; Surya Siddhanta +150,309 s, about +41 h 45 m), Yogini / Ashtottari / Chara / Narayana / Naisargika exactly 0, Mudda 0..+1 s plus one -43 s bisection step (True Chitra 2001 varsha), Saturn ingress up to about 17 minutes. chart_dashas levels 1-3 are exact; level 4 changes by declared per-ayanamsha deltas (Vimshottari +12 / +2 / +1 / -9 / -6, Kalachakra +3 / 0 / +10 / -8 / -20); the five-ayanamsha total is not a check. chart_facts and chart_divisionals row counts and every fact_id are unaffected. Pointers to the W2/W6 backend-evidence rule and POST_WINDOW_FINDINGS (HOOKS_COMPLETENESS sections 10 and 11)."
+  - "1.3 (2026-10-03): citations only, no content change: every citation of SE1_SHIFT_ANALYSIS.md now names the read-only evidence copy /Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403); the file lived only in a session scratchpad before. The analysis itself is unchanged."
+  - "1.2 (2026-10-03): the ephemeris statements corrected to the measured truth (/Users/Dev/suvarna-evidence/Ephemeris/SE1_SHIFT_ANALYSIS.md (sha256 22564b863fc7cb3713e5d4b5d88ca5dc7376532fd93a9faa6461c99689ac3403); SS 2026-10-03 decision): 'about two hours on Vimshottari boundaries' and 'fact_ids, row counts and tiers are unaffected' replaced. Measured: Vimshottari +6,990..+6,994 s (about +1 h 56 m), Kalachakra +145,089..+145,111 s (about +40 h 18 m; Surya Siddhanta +150,309 s, about +41 h 45 m), Yogini / Ashtottari / Chara / Narayana / Naisargika exactly 0, Mudda 0..+1 s plus one -43 s bisection step (True Chitra 2001 varsha), Saturn ingress up to about 17 minutes. chart_dashas levels 1-3 are exact; level 4 changes by declared per-ayanamsha deltas (Vimshottari +12 / +2 / +1 / -9 / -6, Kalachakra +3 / 0 / +10 / -8 / -20); the five-ayanamsha total is not a check. chart_facts and chart_divisionals row counts and every fact_id are unaffected. Pointers to the W2/W6 backend-evidence rule and POST_WINDOW_FINDINGS (HOOKS_COMPLETENESS sections 10 and 11)."
   - "1.1 (2026-10-03): 'no chart value is wrong' qualified: the stored 2026-09-07/08 rows were built on the Moshier ephemeris and S-L1 rebuilds on the canonical Swiss .se1 backend (#2860), so graha longitudes move by up to 0.665 arcsec and Vimshottari boundaries by about +1.94 h on the canonical chart (section 10 item, HOOKS_W7_HAND_READBACK 1.2 H22/H23). fact_ids, row counts and tiers are unaffected."
   - "1.0 (2026-10-03): first version. Baseline values were read 2026-10-02 22:10 to 22:17 UTC (2026-10-03 03:40 to 03:47 IST) as suvarna_reader on the canonical chart 482012f1-710e-4a25-994a-93821f5871aa; the 'after' columns are to be filled at W7."
 ---
