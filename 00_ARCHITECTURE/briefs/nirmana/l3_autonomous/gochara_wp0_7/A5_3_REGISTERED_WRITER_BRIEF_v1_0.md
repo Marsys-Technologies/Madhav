@@ -565,3 +565,38 @@ undeclared shape — never ignored). Channel assignment through `agent_nature` i
 is ever qualified before it is. The independent verifier derives the same reason from the same rows with its own code (a
 cross-check test compares builder and verifier on every factor state of every swept path). All four of P1–P4 now have a
 `window:<class>:<path>` grain; P5 stays held; P6 is day-tier only.
+
+### Design v1.9 (2026-10-02) — Codex round 6, R3 (window construction) and the consumer side of R1
+
+Steward M20261002T005809-4f92 adopts Codex's closing text (`ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_5.md`). Landed:
+
+- **R3 — one window per MAXIMAL CONNECTED COMPONENT of the prerequisite-satisfied support, never bridged.**
+  For every path but P4 the support is the union of the admitted scored records' supports; for **P4 it is the
+  INTERSECTION of Jupiter's and Saturn's influence unions** (`intersect_components`; Jupiter `[0,2)` ∧ Saturn
+  `[1,3)` ⇒ `[1,2)`, not `[0,3)`; no joint support ⇒ no window). **Members are the admitted records OVERLAPPING the
+  window** — a P4 record may extend past it (1156's membership guard checks the coverage horizon, not the window).
+- **The peak maximises a NAMED objective, earliest attained maximum.** P4: the frozen max-min
+  `min(act_Jupiter, act_Saturn)` (S:321–323, O-RP-3), with `act_g(t)` = the **max** over agent g's live admitted
+  records of the within-path product (max, not Σ: union semantics, stays in [0,1]) — recorded as a definition for
+  Codex. Every other path: `evidence_for(t)` = Σ over roots of the per-root max for-channel value. Solved
+  piecewise between support endpoints (constant pieces exact; non-constant pieces by scan + golden section,
+  steps by bisection). `score` = the max live for-channel product at the peak (P4: the max-min value itself);
+  evidence per channel at the peak, never netted. Codex's counterexample (Jupiter 0.2+0.8t, Saturn 1−0.8t) is a
+  test: the peak is t=0.5, not an endpoint (best-single-record) and not the plateau's start (summed evidence).
+- **R1 consumer side — qualification PROPAGATES.** An unresolved applicable factor on any member makes its channel
+  NULL (a member of unknown channel affects both); the objective is then unqualified and `peak_instant`, `score`
+  and the dependent evidence are NULL with the reason kept (`unqualified_reason`). Admission and admitted support
+  are unchanged; no partial subtotal is stored. **This SUPERSEDES the lower-bound disclosure of v1.7 (c)** — there is
+  no `score_is_lower_bound` any more (the field and its encoding are removed). 1156 permits a NULL `peak_instant`
+  (`CHECK peak_instant IS NULL OR peak_instant <@ interval`), so no DDL is needed.
+- **Independent verification follows the same rules**: SQL `range_agg` components (P4: multirange `*` intersection),
+  overlap membership both ways plus "admitted record in no window"; the semantic verifier re-derives qualification,
+  propagation, the piecewise objective, peak, score and per-channel evidence from stored rows (constant members;
+  non-constant ones are structural only).
+- Mutation-checked: 27 mutations over the builder, the verifier and the SQL check — all killed except ONE equivalent
+  mutant: the verifier's P4 numeric path only reproduces constant members, where both agents' step-kernel values are
+  equal, so `min`↔`max` is unobservable there (non-constant P4 windows are structural-only by design).
+- **Open for the next steps**: P1 prerequisite-restricted support (`period_running_at` is evaluated at a single
+  instant; restricting a P1 record's support to the running-period intervals needs the §4.0 dasha intervals and waits
+  with R2's Moon-lord domain on Stream B's AM-14 text); `score.py` is not yet the reduction used here — the sweep
+  carries its own reduction until Stream B's qualification-in-the-result PR lands (then it is called, not copied).

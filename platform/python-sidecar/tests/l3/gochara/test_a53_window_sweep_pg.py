@@ -344,7 +344,7 @@ def test_verifier_refuses_a_wrong_score_a_wrong_peak_and_a_wrong_evidence_sum(gr
             _verify(grain, CLS, PATH, _declared_rows)
 
 
-def test_verifier_refuses_a_lower_bound_marker_the_records_do_not_support(grain):
+def test_verifier_refuses_a_null_state_disclosure_the_records_do_not_support(grain):
     import dataclasses
     # one admitted qualified record: claiming 'unqualified' member(s) in the disclosure is a lie ...
     good = _drafts(grain, CLS, PATH, _declared_rows)
@@ -367,3 +367,113 @@ def test_verifier_checks_the_p2_channels_from_the_cited_sets(p2_grain):
     # the sweep ran with a bound vedha source; tell the verifier the same fact
     out = _verify(conn, cls, "P2", vedha_bound=True)
     assert out["windows"] == 1 and out["structural_only"] == 1      # vedha value is a function: not claimed
+
+
+# ── P4 on the real schema: the window is the INTERSECTION; members extend past it ─────────────────────
+
+@pytest.fixture()
+def p4_grain(pg):
+    """P4 / marriage: Jupiter in Libra [day 10, day 200) and Saturn in Libra [day 100, day 300) — the
+    7th signature house from the Aries lagna. Both records are ADMITTED (each overlaps the other)."""
+    from services.gochara_kernel import evaluator as ev
+    from services.gochara_kernel.rule_registry import RuleRegistryStore as _R
+    conn = pg
+    _R(conn).seed()
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        sky_cid = _sky_convention_id(conn)
+        _seed_crossings(conn, sky_cid, "Jupiter", ((180.0, 10), (210.0, 200)))
+        _seed_crossings(conn, sky_cid, "Saturn", ((180.0, 100), (210.0, 300)))
+    store = rs.RecordStore(conn)
+    kala_cid = store.ensure_kala_convention()
+    cls = "marriage"
+    edges = [e for e in ev.enumerate_edges(cls, "P4", CHART)
+             if e.transit and e.relation == "residence" and e.obj.canonical_target == "span:7"]
+    assert {e.agent for e in edges} == {"jupiter", "saturn"}
+
+    def probe(body, t):
+        d = (t - T0) / DAY
+        window = (10, 200) if body.lower() == "jupiter" else (100, 300)
+        return 195.0 if window[0] <= d < window[1] else 15.0
+
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        rs.write_class_coverage(store, **{**_coverage_kwargs(store, kala_cid, sky_cid),
+                                          "event_class": cls,
+                                          "class_edges": ev.enumerate_edges(cls, "P4", CHART),
+                                          "position_at": probe})
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        counts = rs.materialise_record_grain(
+            store, chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P4", edges=edges,
+            horizon=HORIZON, position_at=probe, house_for=writer_mod._house_resolver(CHART),
+            sky_convention_id=sky_cid, source_fact_ids=["fact-1"], chart=CHART)
+    assert counts["records"] == 2
+    return conn, cls
+
+
+def test_p4_window_is_the_joint_support_and_members_extend_past_it(p4_grain):
+    conn, cls = p4_grain
+    ws_store = WindowStore(conn)
+    recs = ws_store.read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P4",
+                               rule_version=VERSION)
+    assert {r.admission_state for r in recs} == {"admitted"}
+    drafts, _ = ws.draft_windows(cls, recs, _declared_rows)
+    _write(conn, cls, "P4", drafts)
+    (row,) = _window_rows(conn)
+    assert (row[0], row[1]) == (T0 + 100 * DAY, T0 + 200 * DAY)          # NOT the raw union [10, 300)
+    assert (row[2], row[3]) == (T0 + 100 * DAY, 1.0)
+    members = conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_record").fetchone()[0]
+    assert members == 2                                                     # both extend past the window
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        assert WindowStore(conn).verify_grain(chart_id=CHART_ID, generation=GEN, event_class=cls,
+                                              path_id="P4", rule_version=VERSION) == {"windows": 1}
+    assert _verify(conn, cls, "P4", _declared_rows) == {"windows": 1, "numeric_reproduced": 1,
+                                                        "structural_only": 0}
+
+
+def test_p4_sql_check_refuses_a_window_built_on_the_raw_union(p4_grain):
+    import dataclasses
+    conn, cls = p4_grain
+    recs = WindowStore(conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls,
+                                        path_id="P4", rule_version=VERSION)
+    good = ws.draft_windows(cls, recs, _declared_rows)[0][0]
+    wrong = dataclasses.replace(good, interval=(T0 + 10 * DAY, T0 + 300 * DAY),
+                                peak_instant=T0 + 10 * DAY)
+    with pytest.raises(RuntimeError, match="SQL connected components"):
+        _write(conn, cls, "P4", [wrong])
+        _verify_store(conn, cls, "P4")
+
+
+def _verify_store(conn, cls, path):
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        WindowStore(conn).verify_grain(chart_id=CHART_ID, generation=GEN, event_class=cls,
+                                       path_id=path, rule_version=VERSION)
+
+
+def test_membership_is_overlap_a_dropped_overlapping_member_is_caught(p4_grain):
+    conn, cls = p4_grain
+    recs = WindowStore(conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls,
+                                        path_id="P4", rule_version=VERSION)
+    _write(conn, cls, "P4", ws.draft_windows(cls, recs, _declared_rows)[0])
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        conn.execute("DELETE FROM public.ka_gochara_eval_window_record WHERE record_id ="
+                     " (SELECT record_id FROM public.ka_gochara_eval_window_record LIMIT 1)")
+    with pytest.raises(RuntimeError, match="not members"):
+        _verify_store(conn, cls, "P4")
+
+
+def test_verifier_refuses_a_partial_subtotal_stored_on_an_unqualified_window(grain):
+    """R1: today's rows leave the only (for-channel) member unqualified, so the objective is
+    unqualified — a stored score/peak/evidence_for would be a partial subtotal passed off as complete."""
+    import dataclasses
+    good = _drafts(grain, CLS, PATH, ws.registry_factor_rows)[0]
+    assert good.score is None
+    bad = dataclasses.replace(good, score=1.0, peak_instant=good.interval[0], evidence_for=1.0,
+                              evidence_against=0.0)
+    _write(grain, CLS, PATH, [bad])
+    with pytest.raises(RuntimeError, match="partial subtotal"):
+        _verify(grain, CLS, PATH)

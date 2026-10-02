@@ -169,49 +169,64 @@ class WindowStore:
 
     def verify_grain(self, *, chart_id: str, generation: str, event_class: str, path_id: str,
                      rule_version: str) -> dict[str, int]:
-        """The stored windows must equal the connected union of the stored ADMITTED, SCORED
-        records' supports — recomputed here by Postgres `range_agg`, not by the sweep — and each
-        window's membership must be exactly the admitted records whose support lies inside it."""
+        """The stored windows must equal the connected components of the prerequisite-satisfied
+        support — recomputed here by Postgres `range_agg` over the stored ADMITTED, SCORED records'
+        supports (P4: the multirange INTERSECTION of Jupiter's and Saturn's influence unions), not by
+        the sweep — and each window's membership must be exactly the admitted scored records whose
+        support OVERLAPS it."""
         grain = (chart_id, generation, event_class, path_id, rule_version)
-        where = (" chart_id = %s AND generation = %s AND event_class = %s"
-                 " AND path_id = %s AND rule_version = %s")
+        rec_where = ("r.chart_id = %s AND r.generation = %s AND r.event_class = %s"
+                     " AND r.path_id = %s AND r.rule_version = %s"
+                     " AND r.admission_state = 'admitted' AND r.operator_role = 'scored'")
+        if path_id == "P4":
+            union = ("SELECT range_agg(s.x) FILTER (WHERE r.agent = 'jupiter')"
+                     " * range_agg(s.x) FILTER (WHERE r.agent = 'saturn') AS m")
+        else:
+            union = "SELECT range_agg(s.x) AS m"
         expected = self.conn.execute(
-            "SELECT lower(m), upper(m) FROM ("
-            " SELECT unnest(range_agg(s.x)) AS m"
+            "SELECT lower(c), upper(c) FROM ("
+            " SELECT unnest(m) AS c FROM (" + union +
             " FROM public.ka_gochara_relationship_record r,"
             "      LATERAL unnest(r.temporal_support_intervals) AS s(x)"
-            " WHERE r.chart_id = %s AND r.generation = %s AND r.event_class = %s"
-            " AND r.path_id = %s AND r.rule_version = %s"
-            " AND r.admission_state = 'admitted' AND r.operator_role = 'scored') q"
-            " ORDER BY 1", grain).fetchall()
+            " WHERE " + rec_where + ") q) z ORDER BY 1", grain).fetchall()
         stored = self.conn.execute(
             "SELECT lower(interval), upper(interval) FROM public.ka_gochara_eval_window WHERE"
-            + where + " ORDER BY 1", grain).fetchall()
+            " chart_id = %s AND generation = %s AND event_class = %s AND path_id = %s"
+            " AND rule_version = %s ORDER BY 1", grain).fetchall()
         if [tuple(r) for r in expected] != [tuple(r) for r in stored]:
             raise RuntimeError(
                 f"window verification failed {event_class}/{path_id}: stored windows "
-                f"{stored!r} != SQL connected union {expected!r}")
-        bad = self.conn.execute(
-            "SELECT count(*) FROM ("
-            " SELECT r.record_id FROM public.ka_gochara_relationship_record r"
-            " WHERE r.chart_id = %s AND r.generation = %s AND r.event_class = %s"
-            " AND r.path_id = %s AND r.rule_version = %s"
-            " AND r.admission_state = 'admitted' AND r.operator_role = 'scored'"
-            " AND cardinality(r.temporal_support_intervals) > 0"
-            " EXCEPT SELECT m.record_id FROM public.ka_gochara_eval_window_record m"
-            " WHERE m.chart_id = %s AND m.generation = %s AND m.event_class = %s"
-            " AND m.path_id = %s AND m.rule_version = %s) z", grain + grain).fetchone()[0]
+                f"{stored!r} != SQL connected components {expected!r}")
+        pair_where = ("w.chart_id = %s AND w.generation = %s AND w.event_class = %s"
+                      " AND w.path_id = %s AND w.rule_version = %s")
+        want_pairs = ("SELECT w.window_id, r.record_id FROM public.ka_gochara_eval_window w"
+                      " JOIN public.ka_gochara_relationship_record r"
+                      "   ON r.chart_id = w.chart_id AND r.generation = w.generation"
+                      "  AND r.event_class = w.event_class AND r.path_id = w.path_id"
+                      "  AND r.rule_version = w.rule_version"
+                      "  AND r.admission_state = 'admitted' AND r.operator_role = 'scored'"
+                      " WHERE " + pair_where +
+                      " AND EXISTS (SELECT 1 FROM unnest(r.temporal_support_intervals) x"
+                      "             WHERE x && w.interval)")
+        have_pairs = ("SELECT m.window_id, m.record_id FROM public.ka_gochara_eval_window_record m"
+                      " JOIN public.ka_gochara_eval_window w ON w.window_id = m.window_id"
+                      " WHERE " + pair_where)
+        missing = self.conn.execute(
+            "SELECT count(*) FROM (" + want_pairs + " EXCEPT " + have_pairs + ") z",
+            grain + grain).fetchone()[0]
         extra = self.conn.execute(
-            "SELECT count(*) FROM public.ka_gochara_eval_window_record m"
-            " JOIN public.ka_gochara_relationship_record r ON r.record_id = m.record_id"
-            " WHERE m.chart_id = %s AND m.generation = %s AND m.event_class = %s"
-            " AND m.path_id = %s AND m.rule_version = %s"
-            " AND NOT (r.admission_state = 'admitted' AND r.operator_role = 'scored')",
-            grain).fetchone()[0]
-        if bad or extra:
+            "SELECT count(*) FROM (" + have_pairs + " EXCEPT " + want_pairs + ") z",
+            grain + grain).fetchone()[0]
+        orphans = self.conn.execute(
+            "SELECT count(*) FROM public.ka_gochara_relationship_record r WHERE " + rec_where +
+            " AND cardinality(r.temporal_support_intervals) > 0"
+            " AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_eval_window_record m"
+            "                 WHERE m.record_id = r.record_id)", grain).fetchone()[0]
+        if missing or extra or orphans:
             raise RuntimeError(
-                f"window verification failed {event_class}/{path_id}: {bad} admitted record(s) "
-                f"in no window, {extra} non-admitted member(s)")
+                f"window verification failed {event_class}/{path_id}: {missing} overlapping "
+                f"admitted record(s) not members, {extra} non-overlapping/non-admitted member(s), "
+                f"{orphans} admitted record(s) in no window")
         return {"windows": len(stored)}
 
 

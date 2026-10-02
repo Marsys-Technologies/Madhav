@@ -6,13 +6,14 @@ nothing from `window_sweep` (the builder) and reads the stored windows, their st
 and the factor rows the path is sealed against:
 
   * which members are qualified/unqualified (per each factor row's own declaration);
-  * `score IS NULL` ⇔ no qualified member; the null-state disclosure — `'unqualified'` is in
-    `null_states_used` ⇔ some member is unqualified — and therefore the LOWER-BOUND marker
-    (`score IS NOT NULL AND 'unqualified' = ANY(null_states_used)`, the only encoding 1156 allows
-    without DDL) reproduces from the records;
-  * for a window whose qualified members all take a constant value (membership step): score, peak
-    (earliest instant of the for-channel max), `evidence_for` / `evidence_against` (per-channel Σ over
-    roots of the per-root max at the peak, never netted) and the NULL-ness of the against sum;
+  * qualification PROPAGATES (Codex round 6, R1): a for-channel (or unknown-channel) unqualified
+    member makes the objective unqualified — score, peak and `evidence_for` NULL, nothing partial
+    stored; the null-state disclosure (`'unqualified'` in `null_states_used` ⇔ some member is);
+  * for a window whose qualified members all take a constant value (membership step): the peak —
+    the earliest attained maximum of the NAMED objective (P4: max-min of the agents' activity; other
+    paths: Σ over roots of the per-root max for-channel value) solved piecewise between support
+    endpoints — then `score`, `evidence_for` / `evidence_against` (per-channel Σ over roots of the
+    per-root max at the peak, never netted) and the NULL-ness of the against sum;
   * severity is NULL, `peak ∈ interval`, and an unqualified window carries no peak and no evidence.
 
 A window with a non-constant member (an angular kernel) is checked structurally only and reported as
@@ -87,6 +88,21 @@ def _against_evaluated(path_id: str, factor_rows: list[dict]) -> bool:
     return bool(factor_rows) and all(r.get("direction") in _MAGNITUDE_ONLY for r in factor_rows)
 
 
+def _pieces(lo, hi, recs):
+    """Elementary pieces of [lo, hi): between consecutive clipped support endpoints."""
+    cuts = {lo, hi}
+    for r in recs.values():
+        for a, b in r["supports"]:
+            if a < hi and b > lo:
+                cuts.update((max(a, lo), min(b, hi)))
+    ordered = sorted(cuts)
+    return list(zip(ordered, ordered[1:]))
+
+
+def _live(recs, t):
+    return [rid for rid, r in recs.items() if any(a <= t < b for a, b in r["supports"])]
+
+
 def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
                             rule_version: str, factor_rows: list[dict],
                             drishti_bound: bool = False, vedha_bound: bool = False) -> dict:
@@ -118,55 +134,89 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         tag = f"window {lo.astimezone(timezone.utc).isoformat()}"
         states = {rid: _record_state(factor_rows, r, drishti_bound, vedha_bound)
                   for rid, r in recs.items()}
+        unq_ids = [rid for rid, s in states.items() if s[0] == "unq"]
         qualified = {rid: s for rid, s in states.items() if s[0] != "unq"}
-        unq = len(recs) - len(qualified)
         null_states = list(null_states or [])
+        has_fn = any(s[0] == "fn" for s in qualified.values())
         if severity is not None:
             problems.append(f"{tag}: severity {severity} must be NULL")
         if peak is not None and not (lo <= peak < hi):
             problems.append(f"{tag}: peak {peak} outside [{lo}, {hi})")
-        has_fn = any(s[0] == "fn" for s in qualified.values())
         # a non-constant member may turn out undeterminable at evaluation time (the sweep then marks
         # it unqualified), which only the builder can know — so with one, only the one-way check holds
-        if (unq and "unqualified" not in null_states) or (
-                not has_fn and not unq and "unqualified" in null_states):
-            problems.append(f"{tag}: null_states_used {null_states} but {unq} unqualified member(s)")
-        if not qualified:
+        if (unq_ids and "unqualified" not in null_states) or (
+                not has_fn and not unq_ids and "unqualified" in null_states):
+            problems.append(f"{tag}: null_states_used {null_states} but {len(unq_ids)} unqualified member(s)")
+
+        def chan(rid, must=False):
+            try:
+                return _channel(event_class, path_id, recs[rid])
+            except RuntimeError:
+                if must:
+                    raise
+                return None                      # unknown channel: affects BOTH
+        chans = {rid: chan(rid, must=(rid in qualified)) for rid in recs}
+        for_unq = [rid for rid in unq_ids if chans[rid] in ("evidence_for_occurrence", None)]
+        against_unq = [rid for rid in unq_ids if chans[rid] in ("evidence_against_occurrence", None)]
+        if for_unq:
+            # R1: the affected channel is NULL and the objective (which maximises it) is unqualified
             if (score, peak, ev_for, ev_against) != (None, None, None, None):
-                problems.append(f"{tag}: no qualified member yet score/peak/evidence are not NULL")
+                problems.append(f"{tag}: a for-channel member is unqualified yet score/peak/evidence "
+                                "are not all NULL (a partial subtotal was stored)")
             continue
-        if score is None or ev_for is None:
-            problems.append(f"{tag}: {len(qualified)} qualified member(s) but score/evidence_for NULL")
+        if score is None or ev_for is None or peak is None:
+            if not has_fn:
+                problems.append(f"{tag}: the objective is qualified but score/peak/evidence_for is NULL")
             continue
         if not (0.0 <= score <= 1.0 + _TOL):
             problems.append(f"{tag}: score {score} outside [0,1]")
-        if (ev_against is not None) != against_ok:
+        want_against_null = (not against_ok) or bool(against_unq)
+        if (ev_against is None) != want_against_null:
             problems.append(f"{tag}: evidence_against NULL-ness {ev_against is None} contradicts the "
-                            f"registry row (evaluated={against_ok})")
+                            f"registry row / member qualification (expected NULL={want_against_null})")
         if has_fn:
             continue                                   # structural only — not claimed as reproduced
         numeric += 1
-        chan = {rid: _channel(event_class, path_id, recs[rid]) for rid in qualified}
-        fors = [(qualified[rid][1], min(a for a, _ in recs[rid]["supports"]))
-                for rid in qualified if chan[rid] == "evidence_for_occurrence"]
-        if fors:
-            best = max(v for v, _ in fors)
-            want_peak = min(t for v, t in fors if v >= best - _TOL)
+        # ── re-derive the objective piecewise (every live member is a constant here) ────────────
+        cands = []
+        for a, b in _pieces(lo, hi, recs):
+            live = [rid for rid in _live(recs, a) if rid in qualified]
+            if path_id == "P4":
+                act = {}
+                for rid in live:
+                    act[recs[rid]["agent"]] = max(act.get(recs[rid]["agent"], 0.0), qualified[rid][1])
+                if set(act) == {"jupiter", "saturn"}:
+                    cands.append((min(act.values()), a))
+            else:
+                per_root: dict[str, float] = {}
+                for rid in live:
+                    if chans[rid] == "evidence_for_occurrence":
+                        per_root[recs[rid]["root"]] = max(per_root.get(recs[rid]["root"], 0.0),
+                                                          qualified[rid][1])
+                cands.append((sum(per_root.values()), a))
+        if not cands:
+            problems.append(f"{tag}: no objective candidate re-derived")
+            continue
+        best = max(v for v, _ in cands)
+        want_peak = min(t for v, t in cands if v >= best - _TOL)
+        live_at_peak = [rid for rid in _live(recs, want_peak) if rid in qualified]
+        sums = {"evidence_for_occurrence": {}, "evidence_against_occurrence": {}}
+        for rid in live_at_peak:
+            slot = sums[chans[rid]]
+            slot[recs[rid]["root"]] = max(slot.get(recs[rid]["root"], 0.0), qualified[rid][1])
+        want_for = sum(sums["evidence_for_occurrence"].values())
+        if path_id == "P4":
+            want_score = best
         else:
-            best, want_peak = 0.0, lo
-        if abs(score - best) > _TOL:
-            problems.append(f"{tag}: score {score} != re-derived {best}")
+            fors = [qualified[rid][1] for rid in live_at_peak if chans[rid] == "evidence_for_occurrence"]
+            want_score = max(fors, default=0.0)
+        if abs(score - want_score) > _TOL:
+            problems.append(f"{tag}: score {score} != re-derived {want_score}")
         if peak != want_peak:
             problems.append(f"{tag}: peak {peak} != re-derived {want_peak}")
-        sums = {"evidence_for_occurrence": {}, "evidence_against_occurrence": {}}
-        for rid, s in qualified.items():
-            if any(a <= want_peak < b for a, b in recs[rid]["supports"]):
-                slot = sums[chan[rid]]
-                slot[recs[rid]["root"]] = max(slot.get(recs[rid]["root"], 0.0), s[1])
-        want_for = sum(sums["evidence_for_occurrence"].values())
         if abs(ev_for - want_for) > _TOL:
             problems.append(f"{tag}: evidence_for {ev_for} != re-derived {want_for}")
-        if against_ok and ev_against is not None:
+        if not want_against_null and ev_against is not None:
             want_against = sum(sums["evidence_against_occurrence"].values())
             if abs(ev_against - want_against) > _TOL:
                 problems.append(f"{tag}: evidence_against {ev_against} != re-derived {want_against}")

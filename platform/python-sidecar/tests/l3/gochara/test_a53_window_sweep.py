@@ -61,6 +61,12 @@ def _rows_declared(path, version, orb=None):
     return _with_applicability(ws.registry_factor_rows(path, version), orb=orb)
 
 
+def _p4(supports_j, supports_s, **kw):
+    """A P4 pair: one Jupiter and one Saturn record (distinct roots)."""
+    return [_rec("J", path="P4", agent="jupiter", root="RJ", supports=(supports_j,), **kw),
+            _rec("S", path="P4", agent="saturn", root="RS", supports=(supports_s,), **kw)]
+
+
 def _draft(records, rows_for=_rows_1_0_0, cls="marriage", **kw):
     return ws.draft_windows(cls, records, rows_for, **kw)
 
@@ -120,16 +126,17 @@ def test_a_factor_with_no_evaluator_refuses_never_skips():
 # ── registry state 1: today's rows (no applicability) ────────────────────────
 
 def test_today_registry_every_p3_p4_record_is_unqualified_and_the_window_says_so():
-    for path in ("P3", "P4"):
-        drafts, _ = _draft([_rec("a", path=path, supports=((0, 30),))])
-        (w,) = drafts
-        assert w.interval == (_d(0), _d(30))
+    for path, recs, interval, members in (
+            ("P3", [_rec("a", path="P3", supports=((0, 30),))], (_d(0), _d(30)), 1),
+            ("P4", _p4((0, 30), (10, 40)), (_d(10), _d(30)), 2)):      # P4: the intersection
+        (w,), _ = _draft(recs)
+        assert w.interval == interval
         assert (w.score, w.evidence_for, w.evidence_against, w.peak_instant) == (None, None, None, None)
         assert w.severity is None                       # a named null, never 0
         assert w.outcome_valence_for_native == "unqualified"
         assert w.null_states_used == ["unqualified"]
-        assert w.unresolved == {"applicability_undeclared": 1}
-        assert w.qualified_members == 0 and w.members == 1
+        assert w.unresolved == {"applicability_undeclared": members}
+        assert w.qualified_members == 0 and w.members == members
 
 
 # ── registry state 2: a row that declares applicability ──────────────────────
@@ -146,8 +153,9 @@ def test_declared_span_residence_is_a_step_one_and_peaks_at_the_earliest_instant
 
 
 def test_declared_state_p4_residence_span_qualifies():
-    (w,), _ = _draft([_rec("a", path="P4", agent="saturn", supports=((0, 100),))], _rows_declared)
-    assert w.score == 1.0 and w.null_states_used == []
+    (w,), _ = _draft(_p4((0, 100), (20, 60)), _rows_declared)
+    assert w.interval == (_d(20), _d(60)) and w.score == 1.0 and w.null_states_used == []
+    assert w.objective == ws.OBJECTIVE_P4
 
 
 def test_evidence_is_a_sum_over_roots_of_the_per_root_max_never_netted():
@@ -281,14 +289,18 @@ def test_peak_is_the_earliest_instant_of_the_window_maximum_across_members():
 
 # ── mixed windows ────────────────────────────────────────────────────────────
 
-def test_mixed_window_scores_from_qualified_members_and_discloses_the_unqualified_ones():
+def test_mixed_window_propagates_qualification_nothing_partial_is_stored():
+    """Codex round 6 R1: an unresolved applicable factor propagates — the for-channel is NULL and
+    the peak (which maximises it) is NULL; the partial subtotal 1.0 is never stored as complete."""
     q = _rec("q", root="Rq", supports=((0, 10),))
     u = _rec("u", root="Ru", kind="varga_position", supports=((0, 10),))
     (w,), _ = _draft([q, u], _rows_declared)
-    assert w.score == 1.0 and w.evidence_for == 1.0
+    assert (w.score, w.evidence_for, w.evidence_against, w.peak_instant) == (None, None, None, None)
+    assert w.outcome_valence_for_native == "unqualified"
     assert w.null_states_used == ["unqualified"]
     assert w.unresolved == {"object_kind_not_covered_by_applicability": 1}
     assert (w.members, w.qualified_members) == (2, 1)
+    assert w.interval == (_d(0), _d(10))                      # admission and support are unchanged
 
 
 def test_two_components_make_two_windows_each_with_its_own_peak():
@@ -321,9 +333,8 @@ def _row(factor_id, direction):
 
 
 def test_a_row_that_declares_only_magnitude_has_an_evaluated_empty_against_sum_for_any_path_name():
-    for path in ("P3", "P4"):
-        (w,), _ = _draft([_rec("a", path=path, supports=((0, 10),))],
-                         lambda p, v: [_row("activity_kernel", "higher = stronger")])
+    for recs in ([_rec("a", path="P3", supports=((0, 10),))], _p4((0, 10), (0, 10))):
+        (w,), _ = _draft(recs, lambda p, v: [_row("activity_kernel", "higher = stronger")])
         assert w.score == 1.0 and w.evidence_against == 0.0
 
 
@@ -357,20 +368,8 @@ def test_todays_p3_p4_registry_rows_declare_no_against_channel():
 
 # ── a mixed window's score and evidence are LOWER BOUNDS, said machine-readably ─────────────────────
 
-def test_mixed_window_discloses_lower_bound_in_the_stored_encoding():
-    q = _rec("q", root="Rq", supports=((0, 10),))
-    u = _rec("u", root="Ru", kind="varga_position", supports=((0, 10),))
-    (w,), _ = _draft([q, u], _rows_declared)
-    assert w.score_is_lower_bound is True
-    assert w.score is not None and "unqualified" in w.null_states_used     # the stored encoding
-
-
-def test_a_fully_qualified_window_is_not_a_lower_bound_and_an_unqualified_one_has_no_score_to_bound():
-    (a,), _ = _draft([_rec("q", supports=((0, 10),))], _rows_declared)
-    assert a.score_is_lower_bound is False and a.null_states_used == []
-    (b,), _ = _draft([_rec("u", kind="varga_position", supports=((0, 10),))], _rows_declared)
-    assert b.score is None and b.score_is_lower_bound is False
-
+# (the round-6 R1 text SUPERSEDES the earlier lower-bound disclosure: a mixed window stores no
+#  partial subtotal at all — see test_mixed_window_propagates_qualification_nothing_partial_is_stored)
 
 # ── P2: a direction per record, vedha a named missing input ──────────────────────────────────────────
 
@@ -523,3 +522,142 @@ def test_builder_and_verifier_agree_on_every_factor_state_of_every_swept_path_to
             assert (built == []) == (derived[0] != "unq"), (path, relation)
             if built:
                 assert built == derived[1], (path, relation, built, derived)
+
+
+# ═══ Codex round 6, R3 — window construction and the optimised quantity ═════════════════════════════
+
+def test_intersect_components_never_bridges_and_keeps_half_open_ends():
+    xs = [(_d(0), _d(4)), (_d(10), _d(14))]
+    ys = [(_d(2), _d(11)), (_d(13), _d(20))]
+    assert ws.intersect_components(xs, ys) == [(_d(2), _d(4)), (_d(10), _d(11)), (_d(13), _d(14))]
+    assert ws.intersect_components([(_d(0), _d(2))], [(_d(2), _d(5))]) == []    # touching ≠ overlapping
+
+
+def test_p4_support_is_the_intersection_of_the_two_agents_influence_unions():
+    # Jupiter active [0,2), Saturn active [1,3): the joint support is [1,2), NOT the raw union [0,3)
+    (w,), _ = _draft(_p4((0, 2), (1, 3)), _rows_declared)
+    assert w.interval == (_d(1), _d(2))
+    assert w.record_ids == ("J", "S")                 # members OVERLAP the window; they extend past it
+
+
+def test_p4_without_joint_support_or_with_one_agent_forms_no_window():
+    assert _draft(_p4((0, 2), (5, 7)), _rows_declared)[0] == []                    # never active together
+    assert _draft(_p4((0, 2), (2, 4)), _rows_declared)[0] == []                    # abutting is not overlap
+    assert _draft([_rec("J", path="P4", agent="jupiter", supports=((0, 9),))], _rows_declared)[0] == []
+
+
+def test_p4_components_are_never_bridged():
+    recs = [_rec("J1", path="P4", agent="jupiter", root="a", supports=((0, 3),)),
+            _rec("J2", path="P4", agent="jupiter", root="b", supports=((10, 13),)),
+            _rec("S1", path="P4", agent="saturn", root="c", supports=((2, 11),))]
+    drafts, _ = _draft(recs, _rows_declared)
+    assert [d.interval for d in drafts] == [(_d(2), _d(3)), (_d(10), _d(11))]
+
+
+def test_the_codex_counterexample_p4_peak_is_the_max_min_not_an_endpoint_nor_a_plateau():
+    """Jupiter's activity 0.2+0.8t and Saturn's 1−0.8t on t∈[0,1] (days): the frozen objective
+    max_t min(act_J, act_S) peaks at t=0.5. Maximising the best single record picks an endpoint
+    (J reaches 1 at t=1, S at t=0); maximising the summed evidence is the constant plateau 1.2 whose
+    earliest instant is t=0 — neither is the prescribed peak."""
+    orb = 5.0
+    rows = lambda p, v: _rows_declared(p, v, orb=orb)
+    # activity = 1 − |Δλ|/orb  ⇒  |Δλ|_J = 4(1−t),  |Δλ|_S = 4t
+    day = lambda t: (t - _d(0)).total_seconds() / 86400.0
+    j = _rec("J", path="P4", agent="jupiter", root="RJ", relation="conjunction", kind="house_lord",
+             supports=((0, 1),), delta_lambda_at=lambda t: 4.0 * (1.0 - day(t)))
+    s = _rec("S", path="P4", agent="saturn", root="RS", relation="conjunction", kind="house_lord",
+             supports=((0, 1),), delta_lambda_at=lambda t: 4.0 * day(t))
+    (w,), _ = _draft([j, s], rows)
+    assert w.objective == ws.OBJECTIVE_P4
+    assert abs(day(w.peak_instant) - 0.5) < 1e-3
+    assert w.score == pytest.approx(0.6, abs=1e-4)                  # min(0.6, 0.6)
+    assert w.peak_instant not in (w.interval[0],) and day(w.peak_instant) not in (0.0, 1.0)
+    assert w.evidence_for == pytest.approx(1.2, abs=1e-3)           # both contacts count at the peak
+
+
+def test_non_p4_peak_maximises_the_per_root_evidence_not_the_best_single_record():
+    # A [0,10) root R1; B [5,15) root R2: E(t)=1 on [0,5), 2 on [5,10), 1 on [10,15): the EARLIEST
+    # attained maximum is day 5 (a best-single-record objective would say day 0)
+    recs = [_rec("A", root="R1", supports=((0, 10),)), _rec("B", root="R2", supports=((5, 15),))]
+    (w,), _ = _draft(recs, _rows_declared)
+    assert w.objective == ws.OBJECTIVE_EVIDENCE
+    assert w.peak_instant == _d(5) and w.evidence_for == 2.0 and w.score == 1.0
+
+
+def test_shared_root_records_reduce_by_max_in_the_objective():
+    recs = [_rec("A", root="R1", supports=((0, 10),)), _rec("B", root="R1", supports=((5, 15),))]
+    (w,), _ = _draft(recs, _rows_declared)
+    assert w.peak_instant == _d(0) and w.evidence_for == 1.0        # one root: never 2
+
+
+def test_window_gap_is_never_bridged_for_any_other_path():
+    recs = [_rec("A", supports=((0, 5),)), _rec("B", root="rb", supports=((6, 9),))]
+    drafts, _ = _draft(recs, _rows_declared)
+    assert [d.interval for d in drafts] == [(_d(0), _d(5)), (_d(6), _d(9))]
+
+
+# ── Codex round 6, R1 consumer side: qualification per channel ───────────────────────────────────────
+
+def test_p2_unqualified_against_member_leaves_only_the_against_channel_null():
+    """The for-channel member qualifies (vedha bound for it); the against-channel member's operand is
+    undeterminable. The peak (which maximises the FOR channel) stands; the AFFECTED channel is NULL
+    and the valence cannot be stated — no partial subtotal is stored as complete."""
+    adv = _p2("adv", "saturn", 8, root="R1", supports=((0, 10),))      # adverse residence
+    fav = _p2("fav", "jupiter", 5, root="R2", supports=((0, 10),))     # favourable residence
+    vedha = lambda rec, t: 0.5 if rec.record_id == "adv" else None     # 'fav' undeterminable everywhere
+    (w,), _ = _draft([adv, fav], _p2_rows, cls="marriage", vedha=vedha)  # gain class: adv=against, fav=for
+    # fav (for-channel for a gain class) is the unqualified one here → the for-channel is affected
+    assert (w.score, w.evidence_for, w.peak_instant) == (None, None, None)
+    (w2,), _ = _draft([adv, fav], _p2_rows, cls="bereavement",
+                      vedha=lambda rec, t: 0.5 if rec.record_id == "fav" else None)
+    # adverse class: adv=for (unqualified), fav=against (qualified) → for-channel affected again
+    assert w2.evidence_for is None
+    (w3,), _ = _draft([adv, fav], _p2_rows, cls="bereavement",
+                      vedha=lambda rec, t: 0.5 if rec.record_id == "adv" else None)
+    # adverse class: adv=for (qualified, 0.5), fav=against (unqualified) → against NULL, peak stands
+    assert w3.peak_instant == _d(0) and w3.evidence_for == 0.5 and w3.score == 0.5
+    assert w3.evidence_against is None and w3.outcome_valence_for_native == "unqualified"
+
+
+def test_a_qualified_window_has_nothing_hidden_and_zero_is_a_real_zero():
+    recs = [_p2("a", "saturn", 8, supports=((0, 10),))]               # an all-against window
+    (w,), _ = _draft(recs, _p2_rows, cls="marriage", vedha=lambda r, t: 1.0)
+    assert (w.score, w.evidence_for, w.evidence_against) == (0.0, 0.0, 1.0)     # a genuine numeric zero
+
+
+def test_p1_unqualified_record_of_unknown_channel_nulls_both_channels():
+    (w,), _ = _draft([_rec("a", path="P1", supports=((0, 10),))], ws.registry_factor_rows)
+    assert (w.score, w.evidence_for, w.evidence_against, w.peak_instant) == (None, None, None, None)
+
+
+def test_testimony_and_non_applicable_factors_never_make_a_window_unqualified():
+    recs = [_rec("ok", supports=((0, 10),)),
+            _rec("tm", role="testimony", kind="varga_position", supports=((0, 10),))]
+    (w,), ex = _draft(recs, _rows_declared)
+    assert ex["testimony"] == 1 and w.score == 1.0 and w.null_states_used == []
+    prog = ws.build_program(_rec("res"), _rows_declared("P3", "1.0.0"))           # drishti: declared N/A
+    assert prog.qualified and prog.null_states == set()
+
+
+def test_equal_maxima_in_different_pieces_resolve_to_the_earlier_instant_not_to_search_noise():
+    rows = lambda p, v: _rows_declared(p, v, orb=5.0)
+    a = _rec("A", relation="conjunction", kind="house_lord", root="R1", supports=((0, 30),),
+             delta_lambda_at=_tri(8.0, 15.0))
+    b = _rec("B", relation="conjunction", kind="house_lord", root="R2", supports=((30, 60),),
+             delta_lambda_at=_tri(38.0, 15.0))
+    (w,), _ = _draft([a, b], rows)
+    assert w.interval == (_d(0), _d(60))                       # abutting supports: one window
+    assert abs((w.peak_instant - _d(8.0)).total_seconds()) < 5   # both reach 1.0; the earlier wins
+
+
+def test_a_later_maximum_that_is_higher_only_below_the_solver_resolution_does_not_win():
+    """A peaks at 1 − 5e-8 on day 8, B at exactly 1.0 on day 38. 5e-8 is far below the maximiser's own
+    resolution (1 s on a 5° orb ≈ 1e-6 of kernel value): they are one plateau, and the EARLIER wins."""
+    rows = lambda p, v: _rows_declared(p, v, orb=5.0)
+    day = lambda t: (t - _d(0)).total_seconds() / 86400.0
+    a = _rec("A", relation="conjunction", kind="house_lord", root="R1", supports=((0, 30),),
+             delta_lambda_at=lambda t: 2.5e-7 + abs(day(t) - 8.0) * (5.0 / 15.0))
+    b = _rec("B", relation="conjunction", kind="house_lord", root="R2", supports=((30, 60),),
+             delta_lambda_at=lambda t: abs(day(t) - 38.0) * (5.0 / 15.0))
+    (w,), _ = _draft([a, b], rows)
+    assert abs(day(w.peak_instant) - 8.0) < 1e-3
