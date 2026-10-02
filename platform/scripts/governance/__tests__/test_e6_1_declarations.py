@@ -1857,12 +1857,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    368,
+    359,
     "citation_human=f\"Tithi numbe"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_panchanga_writer.py",
-    534,
+    525,
     "citation_human=f\"Sun's arc i"
    ]
   ],
@@ -2324,7 +2324,7 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_upaya", _WR + "bo_upaya.py", 1798, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 571, "verdict.valence"),
             ("ga_strength", _GW + "ga_strength_writer.py", 880, "ratio"),
-            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 368, "tithi_num"),
+            ("ga_panchanga", _GW + "ga_panchanga_writer.py", 359, "tithi_num"),
             ("ga_structural", _GW + "ga_structural_writer.py", 4659, "effective_dignity_score")):
         sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
         assert sites, (asset, path, ln)
