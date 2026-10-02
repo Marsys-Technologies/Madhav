@@ -116,7 +116,7 @@ def _swe_longitude(swe, body_name: str, jd: float) -> float:
 
     swe_id = next(b["swe_id"] for b in DAILY_BODIES if b["name"] == body_name)
     flags = swe.FLG_SWIEPH | swe.FLG_SPEED
-    if swe_id == -1:  # Ketu = mean node + 180°, exactly as the builder does it
+    if swe_id == -1:  # Ketu = TRUE node (swe body 11) + 180°, exactly as the builder does it
         rahu = swe.calc_ut(jd, 11, flags)
         return (rahu[0][0] + 180.0) % 360.0
     return swe.calc_ut(jd, swe_id, flags)[0][0]

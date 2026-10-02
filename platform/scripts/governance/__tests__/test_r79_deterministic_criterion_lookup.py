@@ -46,12 +46,14 @@ def test_lookup_criterion_returns_none_for_an_unregistered_criterion_rather_than
 
 def test_no_runtime_family_alias_resolution_specific_and_generic_are_never_conflated():
     """D4: the four family aliases are migration-time crosswalk entries only. At runtime,
-    Carr.D1 and Carr.detector (its generic placeholder) must resolve to two DIFFERENT gap ids for
-    the same asset — lookup_criterion must never silently redirect one onto the other."""
-    d1 = ac.lookup_criterion("bg_ontology", None, "Carr.D1")
-    generic = ac.lookup_criterion("bg_ontology", None, "Carr.detector")
+    Completeness.depth.dasha_link and Complete.depth (its generic placeholder) must resolve to two
+    DIFFERENT gap ids for the same asset — lookup_criterion must never silently redirect one onto the
+    other. (The Carr.D1/Carr.detector pair this test used was retired at REGISTRY_REVISION 8; a retired
+    criterion resolves to None, asserted in test_e6_i_*.)"""
+    d1 = ac.lookup_criterion("bg_ontology", None, "Completeness.depth.dasha_link")
+    generic = ac.lookup_criterion("bg_ontology", None, "Complete.depth")
     assert d1 is not None and generic is not None
-    assert d1[0] != generic[0], "Carr.D1 and Carr.detector must not resolve to the same gap_id"
+    assert d1[0] != generic[0], "the specific and the generic criterion must not resolve to the same gap_id"
     assert d1[1] is not generic[1]
 
 
