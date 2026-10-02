@@ -15,6 +15,16 @@ from . import seal_brief
 
 def seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest: str, approver_login: str,
                        run_id: int, run_attempt: int = 1, approval_note: str, sealing_commit: str) -> dict[str, Any]:
+    """The sealing step inside the caller's transaction, under the PINNED text-rendering session settings (F-R12-6): the publication
+    digest `ledger.publish` stores is computed by the sealer's session and must be rendered exactly as the briefed one was."""
+    with seal_brief.pinned_session(conn):
+        return _seal_with_approval(conn, chart_id=chart_id, generation=generation, approved_digest=approved_digest,
+                                   approver_login=approver_login, run_id=run_id, run_attempt=run_attempt,
+                                   approval_note=approval_note, sealing_commit=sealing_commit)
+
+
+def _seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest: str, approver_login: str,
+                        run_id: int, run_attempt: int = 1, approval_note: str, sealing_commit: str) -> dict[str, Any]:
     """`sealing_commit` is the sealing workflow's DEPLOY_SHA (it is inside the approved payload AND in the receipt);
     `approval_note` states on whose authority the approval was given."""
     if not approver_login.strip() or not str(sealing_commit).strip() or not approval_note.strip():

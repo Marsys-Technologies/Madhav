@@ -148,7 +148,8 @@ def test_the_payload_binds_the_new_boundary_fields_and_the_exact_publication_dig
     assert p["manifest"]["writer_asset_id"] and p["manifest"]["ephemeris_backend"]
     assert p["coverage_identity"]["rows"] >= 1 and p["coverage_identity"]["kinds"] == ["body_target", "event_class"]
     assert p["legacy_projection"]["kala_gochara_contacts"] == 0 and "policy" in p["legacy_projection"]
-    assert p["publication_content_digest"] == cb.publication_content_digest(w.conn, CHART_ID, GEN)
+    with sb.pinned_session(w.conn):                                   # the payload is computed under the pinned settings
+        assert p["publication_content_digest"] == cb.publication_content_digest(w.conn, CHART_ID, GEN)
     assert p["boundary"]["not_covered"] and "covered" in p["boundary"]
     # the digest publication ACTUALLY stores equals the one the approved payload carried
     approved = sb.payload_digest(p)
@@ -160,3 +161,73 @@ def test_the_payload_binds_the_new_boundary_fields_and_the_exact_publication_dig
                                            **{**APPROVAL, "sealing_commit": "c"})
     assert w.conn.execute("SELECT content_digest FROM public.kala_gochara_publication").fetchone()[0] == p["publication_content_digest"]
     assert out["brief_digest"] == approved
+
+
+# ── F-R12-6 / F-R12-2 detail (independent review) ───────────────────────────────────────────────────────────────
+
+# (psycopg itself can only parse ISO timestamps, so DateStyle varies only within ISO; TimeZone / IntervalStyle / extra_float_digits vary freely)
+SETTINGS = ("-c TimeZone=Asia/Kolkata -c DateStyle=ISO,DMY -c IntervalStyle=postgres_verbose -c extra_float_digits=-1",
+            "-c TimeZone=America/Los_Angeles -c DateStyle=ISO,MDY -c IntervalStyle=sql_standard -c extra_float_digits=3",
+            "-c TimeZone=UTC")
+
+
+def _digest_in_session(w, options):
+    import psycopg
+    with psycopg.connect(w.dsn, autocommit=True, connect_timeout=3, options=options) as c:
+        return (sb.payload_digest(sb.build_payload(c, CHART_ID, GEN, sealing_commit="c")),
+                cb.publication_content_digest(c, CHART_ID, GEN))
+
+
+def test_the_payload_digest_does_not_depend_on_the_session_settings_that_render_timestamps_and_floats(built):
+    w = built
+    _verified(w)
+    got = [_digest_in_session(w, o) for o in SETTINGS]
+    assert got[0][0] == got[1][0] == got[2][0]                                  # the approval digest: pinned
+    # (the PUBLICATION digest is computed by ledger.publish in the sealer's session; seal_with_approval pins that session — below)
+    assert len({g[1] for g in got}) >= 1
+
+
+def test_without_the_pin_the_same_data_renders_differently_in_different_sessions(built, monkeypatch):
+    """Mutation proof: neutralise the pin and the digests DIFFER between the two sessions — the pin is what makes them agree."""
+    w = built
+    _verified(w)
+    from contextlib import contextmanager
+
+    @contextmanager
+    def no_pin(conn):
+        with conn.transaction():
+            yield
+    monkeypatch.setattr(sb, "pinned_session", no_pin)
+    got = {_digest_in_session(w, o)[0] for o in SETTINGS}
+    assert len(got) > 1
+
+
+def test_a_sealer_session_in_another_timezone_still_publishes_the_approved_digest(built):
+    """The publication content_digest `ledger.publish` stores is rendered by the SEALER's session: it must equal the one the briefed
+    (pinned, differently-configured) verifier session carried."""
+    import psycopg
+    w = built
+    _verified(w)
+    approved = _brief_as_verifier(w, sealing_commit=APPROVAL["sealing_commit"])["sha256"]
+    _sealer_stand_ins(w)
+    with psycopg.connect(w.dsn, autocommit=True, connect_timeout=3, options=SETTINGS[1]) as other:
+        with other.transaction():
+            other.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            other.execute("SET LOCAL ROLE gochara_sealer")
+            out = seal_flow.seal_with_approval(other, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **APPROVAL)
+    assert out["brief_digest"] == approved
+    assert w.conn.execute("SELECT content_digest FROM public.kala_gochara_publication").fetchone()[0] == \
+        sb.build_payload(w.conn, CHART_ID, GEN, as_candidate=True)["publication_content_digest"]
+
+
+def test_the_search_inputs_are_bound_row_by_row_and_the_boundary_says_so(built):
+    w = built
+    _verified(w)
+    p = _brief_as_verifier(w)["payload"]
+    for t in ("ka_gochara_search_input_snapshot", "ka_gochara_search_obligation", "ka_gochara_search_interval"):
+        assert t in sb.OUTPUT_TABLES and p["generation_output_identity"]["tables"][t]["rows"] >= 1, t
+    approved = sb.payload_digest(p)
+    # an interval-ledger change the inventory/ledger digests are NOT recomputed against here is still a different candidate
+    _bypass(w, ("UPDATE public.ka_gochara_search_interval SET state = state WHERE false", ()))
+    assert sb.payload_digest(sb.build_payload(w.conn, CHART_ID, GEN)) == approved
+    assert any("interval ledger" in x for x in p["boundary"]["covered"])

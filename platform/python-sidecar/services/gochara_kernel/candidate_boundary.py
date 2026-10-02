@@ -82,6 +82,8 @@ def publication_content_digest(conn, chart_id: str, generation: str) -> str:
 
 def boundary_statement() -> dict:
     return {"covered": ["governed output tables (every column but created_at)", "build coverage partitions",
+                        "the search-input snapshot, the committed obligations and the interval ledger (row by row — and through the "
+                        "inventory_digest / ledger_digest / input_digest the verifier re-derives and the 1206 gate recomputes)",
                         "manifest identity incl. writer asset and ephemeris backend", "the publication content digest",
                         "attestations, runner/code identity, migration-ledger evidence",
                         "legacy projection relations: none may exist"],

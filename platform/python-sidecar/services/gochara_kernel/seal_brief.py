@@ -32,7 +32,10 @@ _DIGEST = re.compile(r"^[0-9a-f]{64}$")
 #: the generation-scoped output tables the identity digest covers, with a stable per-table ordering
 OUTPUT_TABLES = (
     "ka_gochara_relationship_record", "ka_gochara_record_prerequisite", "ka_gochara_contact", "ka_gochara_eval_window",
-    "ka_gochara_eval_window_record", "ka_gochara_search_path_pin", "ka_gochara_search_inventory")
+    "ka_gochara_eval_window_record", "ka_gochara_search_path_pin", "ka_gochara_search_inventory",
+    # F-R12-2 (independent review): the inventory's own inputs are bound ROW BY ROW as well, not only through the inventory/ledger
+    # digests — the search-input snapshot, the committed obligations and the interval ledger
+    "ka_gochara_search_input_snapshot", "ka_gochara_search_obligation", "ka_gochara_search_interval")
 _VERIFICATION_TABLES = ("ka_gochara_eval_window_verification", "ka_gochara_search_inventory_verification")
 
 
@@ -98,8 +101,36 @@ def _ledger_evidence(conn) -> list[dict]:
     return out
 
 
+#: the session settings that change how timestamps, intervals, ranges and floats RENDER as text — pinned for every computation of the
+#: payload / publication digest so a verifier session and a sealer session in different settings still agree (F-R12-6)
+PINNED_SETTINGS = (("TimeZone", "UTC"), ("DateStyle", "ISO, YMD"), ("IntervalStyle", "iso_8601"), ("extra_float_digits", "1"))
+
+
+from contextlib import contextmanager
+
+
+@contextmanager
+def pinned_session(conn):
+    """Pin the text-rendering session settings for the duration of the block (transaction-local), and RESTORE the caller's values at
+    exit — so the digest cannot depend on the session that computes it, and the caller's session is left as it was."""
+    with conn.transaction():
+        prev = {k: _rows(conn, "SELECT current_setting(%s)", (k,))[0][0] for k, _ in PINNED_SETTINGS}
+        for k, v in PINNED_SETTINGS:
+            conn.execute("SELECT set_config(%s, %s, true)", (k, v))
+        yield                      # (an exception rolls the savepoint back, which reverts the transaction-local settings by itself)
+        for k, v in prev.items():
+            conn.execute("SELECT set_config(%s, %s, true)", (k, v))
+
+
 def build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str | None = None,
                   as_candidate: bool = False) -> dict:
+    """See `_build_payload`; computed inside `pinned_session` (F-R12-6)."""
+    with pinned_session(conn):
+        return _build_payload(conn, chart_id, generation, sealing_commit=sealing_commit, as_candidate=as_candidate)
+
+
+def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str | None = None,
+                   as_candidate: bool = False) -> dict:
     """The canonical COMPLETE approval payload (`seal_approval_payload/1`). Pure reads. The caller decides whether a violation
     is fatal (`brief` refuses; the sealer's recompute compares digests). `as_candidate=True` is for the post-PUBLICATION re-check
     inside the sealing transaction: the manifest's own publication fields (status, the digest/counts publication fills in) are
