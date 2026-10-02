@@ -81,6 +81,11 @@ from services.gochara_rules.frames import SIGN_LORDS, Frame
 
 #: The period LEVELS a P1 anchor can carry (the role tokens `period_lord:md|ad|pd`).
 P1_LEVELS = ("md", "ad", "pd")
+#: R9-5 (steward M20261002T062613-3e6e): the pratyantar (PD) level has no verse in Phaladīpikā XX.34-38 (MD and AD only).
+#: PD readings are minted as explicitly authorised TESTIMONY — never scored-path members — under this named limitation and
+#: ruling, consistently in enumeration, inventory, records and verification.
+P1_PD_LIMITATION = "p1_pd_level_no_source"
+P1_PD_RULING = "ST-P1-PD-TESTIMONY-20261002"
 
 #: Paths whose enumeration machinery has landed in this increment.
 IMPLEMENTED_PATHS = ("P1", "P2", "P3", "P4", "P5")
@@ -493,7 +498,7 @@ def enumerate_p1_edges(event_class: str, chart: dict,
     # Transit residence edges, ONE PER ANCHOR (AM-21 part 2). A record is licensed by the running periods of its
     # ANCHOR lord at its anchor LEVEL, and the anchor is not always the agent:
     #   XX.34–35 / XX.37 — a graha's OWN transit through its own / exaltation / depression sign: anchor = the agent,
-    #     at MD (Dasa, XX.34–35), AD (Bhukti, XX.37) and PD (the specification's flagged extension, no verse);
+    #     at MD (Dasa, XX.34–35), AD (Bhukti, XX.37) and PD (no verse: authorised TESTIMONY, `p1_pd_level_no_source`);
     #   XX.38 — the Sun or Jupiter entering ANOTHER graha's exaltation sign (favourable) and the Sun entering
     #     another graha's depression sign (adverse): anchor = that bhukti lord, at AD. (The "inimical sign" branch
     #     needs the maitrī table and is a named limitation of the first candidate.)
@@ -525,8 +530,10 @@ def enumerate_p1_edges(event_class: str, chart: dict,
                 canonical_target=_span_target(sign), convention_id=cid),
             object_kind="house_span", object_role="period_lord",
             path_id="P1", rule_version=rule_version,
-            provenance="verse_cited", operator_role="scored",
-            ruling_ref=None, source_text=text, source_page=page,
+            # MD/AD readings are the verse's (XX.34-38); the PD level is an authorised TESTIMONY extension (R9-5)
+            provenance=("uncited_extension" if level == "pd" else "verse_cited"),
+            operator_role=("testimony" if level == "pd" else "scored"),
+            ruling_ref=(P1_PD_RULING if level == "pd" else None), source_text=text, source_page=page,
             transit=True, period_anchor_lord=anchor.lower(), period_anchor_level=level))
     return edges
 

@@ -202,6 +202,15 @@ def named_limits() -> list[dict]:
          "statement": contact_reconstruct.NAMED_LIMIT},
         {"name": "boundary_tolerance", "assumption": "solver_angular_accuracy_derived_tolerance",
          "statement": contact_certify.BOUNDARY_TOLERANCE_STATEMENT},
+        # R9-5: P1 is the IMPLEMENTED SUBSET of Phaladīpikā XX.34-38, not exhaustive classical coverage
+        {"name": "p1_pd_level_no_source", "assumption": "authorised_testimony_ST-P1-PD-TESTIMONY-20261002",
+         "statement": "P1 pratyantar (PD) readings have no verse in the source; they are minted as explicitly authorised "
+                      "TESTIMONY (operator_role testimony), never score and never open a window"},
+        {"name": "p1_transit_subset_not_exhaustive", "assumption": "implemented_subset",
+         "statement": "P1 transit coverage is the implemented subset of Phaladīpikā XX.34-38 — a graha's own / exaltation / "
+                      "debilitation signs at MD and AD, and the Sun's and Jupiter's deliveries to another graha's exaltation "
+                      "sign (and the Sun's to another's debilitation sign) read under that bhukti lord; the 'inimical sign' "
+                      "branch of XX.38 and any retrograde-motion admission rule are DEFERRED, not covered"},
     ]
 
 

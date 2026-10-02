@@ -172,6 +172,9 @@ def _applicable_rulings() -> list[dict]:
     out += [{"id": r["ruling_ref"], "path": f"{r['path_id']}@{r['rule_version']}"}
             for r in _rr.path_rows() if r["ruling_ref"]]
     out.append({"id": "AM-14", "rule": "moon_agent_excluded_from_stored_tier"})
+    # R9-5: the PD level of P1 is explicitly authorised TESTIMONY under a named limitation (part of the identity)
+    out.append({"id": gk_evaluator.P1_PD_RULING, "limitation": gk_evaluator.P1_PD_LIMITATION,
+                "rule": "p1_pd_level_is_testimony_never_scored"})
     return out
 
 

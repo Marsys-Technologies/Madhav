@@ -273,7 +273,8 @@ def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
             for a, b, r in pieces:
                 if r is None:
                     intervals.append(IntervalPlan(o.ob_id, a, b, STATE_MISSING,
-                                                  {"resolved_agent": None, "dasha_row_id": None}))
+                                                  {"resolved_agent": None, "dasha_row_id": None,
+                                                   **({"limitation": "p1_pd_level_no_source"} if role == "pd" else {})}))
                 else:
                     # a period whose lord is the MOON resolves to an agent the stored build never
                     # searches (AM-4: EPHEMERAL tier). AM-14: the exclusion follows the RESOLVED
@@ -292,7 +293,9 @@ def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
                     intervals.append(IntervalPlan(
                         o.ob_id, a, b, state,
                         {"resolved_agent": r.lord, "dasha_row_id": str(r.row_id),
-                         **({"tier": tier} if tier else {})}))
+                         **({"tier": tier} if tier else {}),
+                         # R9-5: the PD level has no verse — searched, but its readings are TESTIMONY only
+                         **({"limitation": "p1_pd_level_no_source"} if role == "pd" else {})}))
     # AM-21 part 2 / XX.38 (steward M…053914): the DELIVERY searches. The Sun's or Jupiter's transit through ANOTHER
     # graha's exaltation sign (and the Sun's through another's debilitation sign) is read under that graha's AD, so it
     # is a CONCRETE-agent search — the agent is not the period lord, and the role-token obligations above resolve to

@@ -642,7 +642,8 @@ def test_a_dasha_gap_is_a_missing_inputs_interval_never_silently_covered():
     pd = next(o for o in obs if o.agent == "period_lord:pd")
     gaps = [iv for iv in plan.intervals if iv.ob_id == pd.ob_id and iv.state == "missing_inputs"]
     assert [(g.start, g.end) for g in gaps] == [(_dt(2025, 1, 15), _dt(2025, 2, 1))]
-    assert gaps[0].detail == {"resolved_agent": None, "dasha_row_id": None}
+    # the PD role obligation also carries its named limitation (R9-5: searched, but readings are testimony)
+    assert gaps[0].detail == {"resolved_agent": None, "dasha_row_id": None, "limitation": "p1_pd_level_no_source"}
 
 
 def test_p1_without_the_pinned_rows_or_with_a_subsecond_boundary_is_blocked_by_name():

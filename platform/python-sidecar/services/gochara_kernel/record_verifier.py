@@ -132,6 +132,9 @@ def verify_p1_house_descriptor(conn, *, chart_id: str, generation: str, event_cl
 
 _GRAHAS7 = ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn")
 _LEVELS = ("md", "ad", "pd")
+#: R9-5 (this verifier's OWN literals): the PD level has no verse; its readings are authorised TESTIMONY
+PD_LIMITATION = "p1_pd_level_no_source"
+PD_RULING = "ST-P1-PD-TESTIMONY-20261002"
 
 
 def expected_p1_anchors(agent: str, sign_index: int) -> set[tuple[str, str]]:
@@ -219,12 +222,19 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
         " WHERE c.chart_id = %s AND c.generation = %s AND c.relation_kind = 'residence'"
         "   AND o.canonical_target LIKE 'span:%%'", (chart_id, generation)).fetchall()]
     by_contact: dict[str, set] = {}
-    for cid, lord, level in (tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
-            "SELECT contact_id::text, period_anchor_lord, period_anchor_level"
+    role_problems: list[str] = []
+    for cid, lord, level, role, prov, ruling in (tuple(r.values()) if isinstance(r, dict) else tuple(r)
+                                                 for r in conn.execute(
+            "SELECT contact_id::text, period_anchor_lord, period_anchor_level, operator_role, provenance, ruling_ref"
             " FROM public.ka_gochara_relationship_record"
             " WHERE chart_id = %s AND generation = %s AND event_class = %s AND path_id = 'P1'"
             "   AND contact_id IS NOT NULL", (chart_id, generation, event_class)).fetchall()):
         by_contact.setdefault(cid, set()).add((lord, level))
+        # R9-5: the PD level is explicitly authorised TESTIMONY (own literals); MD and AD are the verse's scored readings
+        want = (("testimony", "uncited_extension", PD_RULING) if level == "pd" else ("scored", "verse_cited", None))
+        if (role, prov, ruling) != want:
+            role_problems.append(f"record on contact {cid} ({lord}, {level}): stored (role, provenance, ruling) "
+                                 f"{(role, prov, ruling)} != {want}")
 
     from . import boundary_match as bm
 
@@ -254,10 +264,12 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
             problems.append(f"contact {label}: anchors stored {sorted(have)} != derived {sorted(want)}")
     for cid in sorted(set(by_contact) - matched):          # P1 records on a contact the ephemeris does not reconstruct
         problems.append(f"contact {cid} carries P1 records but is not a reconstructed in-sign interval")
+    problems.extend(role_problems)
     if problems:
         raise RuntimeError(f"P1 anchor verification failed {event_class}: " + "; ".join(problems))
     return {"contacts": len(expected), "reconstructed_contacts": len(expected),
-            "guarantee_assumption": cr.GUARANTEE_ASSUMPTION, "named_limit": cr.NAMED_LIMIT}
+            "guarantee_assumption": cr.GUARANTEE_ASSUMPTION, "named_limit": cr.NAMED_LIMIT,
+            "limitations": [PD_LIMITATION]}
 
 
-__all__ = ["expected_p1_anchors", "verify_p1_anchors", "verify_p1_support", "verify_p1_house_descriptor"]
+__all__ = ["PD_LIMITATION", "PD_RULING", "expected_p1_anchors", "verify_p1_anchors", "verify_p1_support", "verify_p1_house_descriptor"]

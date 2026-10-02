@@ -228,3 +228,103 @@ def test_1233_checks_hold_on_the_real_schema(world):
                 "UPDATE public.ka_gochara_relationship_record SET period_anchor_level = 'xd'"):
         with pytest.raises(psycopg.errors.CheckViolation):
             w.conn.execute(sql)
+
+
+# ── R9-5: the PD level is explicitly authorised TESTIMONY, consistently everywhere ───────────────────
+
+PD_RULING = "ST-P1-PD-TESTIMONY-20261002"
+
+
+def test_enumeration_marks_exactly_the_pd_readings_as_testimony_under_the_named_ruling():
+    edges = [e for e in ev.enumerate_edges("marriage", "P1", CHART) if e.transit]
+    assert ev.P1_PD_LIMITATION == "p1_pd_level_no_source" and ev.P1_PD_RULING == PD_RULING
+    for e in edges:
+        want = (("testimony", "uncited_extension", PD_RULING) if e.period_anchor_level == "pd"
+                else ("scored", "verse_cited", None))
+        assert (e.operator_role, e.provenance, e.ruling_ref) == want, (e.agent, e.period_anchor_lord, e.period_anchor_level)
+    assert {e.period_anchor_level for e in edges if e.operator_role == "testimony"} == {"pd"}
+
+
+def test_sun_in_libra_is_three_scored_readings_and_one_testimony_pd(world):
+    """The corrected O-PP-5 shape: Sun MD, Sun AD, Saturn AD are scored-path; Sun PD is testimony."""
+    w = world
+    w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 20)), ("saturn", 2, _t(1, 20), _t(2, 5))])
+    w.boot()
+    w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    w.grain("sun", lambda t: _t(1, 10) <= t < _t(2, 20), anchors=[SUN_AD, SAT_AD, ("sun", "md"), ("sun", "pd")])
+    got = {(r[0], r[1]): (r[2], r[3], r[4]) for r in w.conn.execute(
+        "SELECT period_anchor_lord, period_anchor_level, operator_role, provenance, ruling_ref"
+        " FROM public.ka_gochara_relationship_record WHERE path_id = 'P1'").fetchall()}
+    assert got == {("sun", "md"): ("scored", "verse_cited", None), ("sun", "ad"): ("scored", "verse_cited", None),
+                   ("saturn", "ad"): ("scored", "verse_cited", None),
+                   ("sun", "pd"): ("testimony", "uncited_extension", PD_RULING)}
+    out = _anchors(w)                                         # verification agrees, and names the limitation
+    assert out["limitations"] == ["p1_pd_level_no_source"]
+
+
+def _sun_full(w):
+    w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 20)), ("saturn", 2, _t(1, 20), _t(2, 5))])
+    w.boot()
+    w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    w.grain("sun", lambda t: _t(1, 10) <= t < _t(2, 20), anchors=[SUN_AD, SAT_AD, ("sun", "md"), ("sun", "pd")])
+    assert _anchors(w)["contacts"] >= 1
+
+
+def _tamper(w, set_clause, where):
+    w.conn.execute("ALTER TABLE public.ka_gochara_relationship_record DISABLE TRIGGER USER")
+    w.conn.execute(f"UPDATE public.ka_gochara_relationship_record SET {set_clause} WHERE path_id = 'P1' AND {where}")
+
+
+@pytest.mark.parametrize("label,set_clause,where", [
+    ("a PD reading minted as SCORED", "operator_role = 'scored', provenance = 'verse_cited', ruling_ref = NULL",
+     "period_anchor_level = 'pd'"),
+    ("an AD reading minted as TESTIMONY", "operator_role = 'testimony', provenance = 'uncited_extension',"
+     " ruling_ref = 'ST-P1-PD-TESTIMONY-20261002'", "period_anchor_lord = 'saturn'"),
+    ("a PD reading under a different ruling", "ruling_ref = 'D-PADMIT'", "period_anchor_level = 'pd'"),
+])
+def test_the_verifier_refuses_a_wrong_role_for_the_level(world, label, set_clause, where):
+    w = world
+    _sun_full(w)
+    _tamper(w, set_clause, where)
+    with pytest.raises(RuntimeError, match="stored \\(role, provenance, ruling\\)"):
+        _anchors(w)
+
+
+def test_the_pd_ruling_and_limitation_are_part_of_the_manifest_identity_and_the_inventory_and_coverage():
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+    ids = {r["id"] for r in writer_mod._applicable_rulings()}
+    assert PD_RULING in ids
+    pd = next(r for r in writer_mod._applicable_rulings() if r["id"] == PD_RULING)
+    assert pd["limitation"] == "p1_pd_level_no_source"
+    from services.gochara_kernel import scope_response as sr
+    names = {l["name"]: l for l in sr.named_limits()}
+    assert "TESTIMONY" in names["p1_pd_level_no_source"]["statement"] and "never score" in names["p1_pd_level_no_source"]["statement"]
+    assert "not covered" in names["p1_transit_subset_not_exhaustive"]["statement"]
+    assert "inimical sign" in names["p1_transit_subset_not_exhaustive"]["statement"]
+
+
+def test_the_pd_role_obligation_intervals_carry_the_limitation():
+    from .test_a53_inventory import _plan
+    plan = _plan()
+    (p1,) = [p for p in plan.pins if p.path_id == "P1"]
+    pd_ids = {o.ob_id for o in p1.obligations if o.agent == "period_lord:pd"}
+    md_ids = {o.ob_id for o in p1.obligations if o.agent == "period_lord:md"}
+    pd_iv = [iv for iv in plan.intervals if iv.ob_id in pd_ids]
+    assert pd_iv and all(iv.detail.get("limitation") == "p1_pd_level_no_source" for iv in pd_iv)
+    assert not any("limitation" in iv.detail for iv in plan.intervals if iv.ob_id in md_ids)
+
+
+def test_testimony_pd_readings_never_enter_a_window(world):
+    """The sweep admits scored records only: the PD testimony record is excluded (and counted), so a window's members are
+    the MD/AD readings alone."""
+    from services.gochara_kernel import window_sweep as ws
+    from services.gochara_kernel.window_store import WindowStore
+    w = world
+    _sun_full(w)
+    recs = WindowStore(w.conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class="marriage", path_id="P1",
+                                          rule_version="1.0.0")
+    assert {r.operator_role for r in recs} == {"scored", "testimony"}
+    drafts, excluded = ws.draft_windows("marriage", recs, lambda p, v: [], policy="all_null_candidate/1")
+    assert excluded["testimony"] == 1
+    member_roles = {r.operator_role for r in recs if r.record_id in {i for d in drafts for i in d.record_ids}}
+    assert member_roles <= {"scored"}
