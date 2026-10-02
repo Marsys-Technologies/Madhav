@@ -27,6 +27,7 @@ from pathlib import Path
 import pytest
 import swisseph as real_swe
 
+from panchang_engine.swiss_state import swiss_state_scope
 from services.gochara_kernel import contacts as kernel_contacts
 from services.gochara_kernel import knots
 from services.gochara_kernel.contacts import swiss_bisect
@@ -46,28 +47,53 @@ JD_BEFORE_1800 = 2378466.0                 # 1799-12-01: before the file — rea
 # ── REAL library ─────────────────────────────────────────────────────────────
 
 @pytest.fixture
-def sepl_only_dir(tmp_path):
-    """The production failure shape: planets present, Moon file absent."""
+def sepl_only_dir(tmp_path, monkeypatch):
+    """The production failure shape: planets present, Moon file absent.
+
+    C22 isolation: the Swiss C library ALSO searches the SE_EPHE_PATH environment
+    variable after ``set_ephe_path(<dir>)`` (the measured caveat in
+    panchang_engine/swiss_backend.py), so a process-level corpus would serve the
+    Moon anyway and the "missing semo" simulation would silently not be one.
+    Both legacy path variables are pinned at the sepl-only directory for the
+    duration of the test (monkeypatch restores them afterwards).
+    """
     d = tmp_path / "sepl_only"
     d.mkdir()
     shutil.copy(Path(EPHE_PATH) / "sepl_18.se1", d / "sepl_18.se1")
+    monkeypatch.setenv("SE_EPHE_PATH", str(d))
+    monkeypatch.setenv("SWE_EPHE_PATH", str(d))
     return str(d)
+
+
+def _assert_no_moon_file_open() -> None:
+    """Detector for the simulation itself: with semo absent, no Moon file may be
+    open after the calc — otherwise some search path leaked the corpus back in.
+    (On a failed open the C library still reports the ATTEMPTED path with zero
+    coverage dates, so the check is whether the reported path actually exists.)"""
+    path = real_swe.get_current_file_data(1)[0]
+    assert not (path and Path(path).exists()), (
+        f"the missing-semo simulation is broken: Moon file {path!r} was opened "
+        "(SE_EPHE_PATH leaked a second search path into the test)"
+    )
 
 
 @requires_swieph
 def test_real_moon_flag_lies_but_the_kernel_fails_closed(sepl_only_dir):
-    real_swe.set_ephe_path(sepl_only_dir)
-    real_swe.set_sid_mode(real_swe.SIDM_LAHIRI)
-    _lon, raw_flag = real_swe.calc_ut(J2000, real_swe.MOON, knots.EPHE_FLAGS)
+    with swiss_state_scope():
+        real_swe.set_ephe_path(sepl_only_dir)
+        real_swe.set_sid_mode(real_swe.SIDM_LAHIRI)
+        _lon, raw_flag = real_swe.calc_ut(J2000, real_swe.MOON, knots.EPHE_FLAGS)
     assert raw_flag & 2 and not raw_flag & 4, (
         "precondition (the SS N-28 measurement): without semo the Moon's own "
         "flag still says SWIEPH — if this stops holding the probe is redundant"
     )
+    _assert_no_moon_file_open()
     with pytest.raises(EphemerisBackendError) as excinfo:
         calc_sidereal_lon("Moon", J2000, sepl_only_dir)
     assert excinfo.value.body == "Moon"
     assert excinfo.value.retflag & 4
     assert "file-level probe" in str(excinfo.value)
+    _assert_no_moon_file_open()
 
 
 @requires_swieph
@@ -92,6 +118,7 @@ def test_real_entry_points_all_fail_closed_for_the_moon(sepl_only_dir):
         sample_knots("Moon", date(2000, 1, 1), date(2000, 1, 6), ephe_path=sepl_only_dir)
     with pytest.raises(EphemerisBackendError):
         swiss_bisect("Moon", J2000, J2000 + 0.5, 199.0, sepl_only_dir)
+    _assert_no_moon_file_open()
 
 
 @requires_swieph
