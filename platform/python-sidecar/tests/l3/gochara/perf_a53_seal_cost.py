@@ -160,7 +160,8 @@ def test_measure_end_to_end_seal_as_the_real_sealer(built, monkeypatch):
     from .test_a53_verification_job import PASSWORD
     w = built
     _verified(w)
-    digest = _brief_as_verifier(w, sealing_commit="0" * 40)["sha256"]
+    brief = _brief_as_verifier(w, sealing_commit="0" * 40)
+    digest = brief["sha256"]
     _sealer_stand_ins(w)
     w.conn.execute(f"ALTER ROLE gochara_sealer LOGIN PASSWORD '{PASSWORD}'")
     try:
@@ -183,7 +184,7 @@ def test_measure_end_to_end_seal_as_the_real_sealer(built, monkeypatch):
             monkeypatch.setattr(sb, "build_payload", build)
             monkeypatch.setattr(sf.gk_ledger, "publish", publish)
             sf.execute_seal(conn, chart_id=CHART_ID, generation=GEN,
-                            approval={"brief_digest": digest, "run_id": 1, "run_attempt": 1, "approver_login": "x",
+                            approval={"brief_digest": digest, "brief_id": brief["persisted"]["brief_id"], "producer_execution_id": brief["execution"], "run_id": 1, "run_attempt": 1, "approver_login": "x",
                                       "approved_by_note": "ruling:perf; actor:perf"},
                             run_id=1, run_attempt=1, sealing_commit="0" * 40, triggering_actor="perf")
             total = time.perf_counter() - t0

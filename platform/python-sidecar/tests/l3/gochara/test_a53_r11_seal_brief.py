@@ -85,7 +85,7 @@ def test_a_verified_candidate_yields_a_complete_deterministic_payload_read_with_
     assert p["code"]["sealing_commit"] == "c1" and p["code"]["verification_runners"]
     assert [m["migration"] for m in p["ledger"]] == list(sb.LEDGER_MIGRATIONS)
     assert p["seal_is_not_a_flip"] and p["disclosures"]["named_limits"]
-    assert p["disclosures"]["policy"].startswith(p["result_policy"] + " — ")           # the wording follows the MANIFEST's policy name
+    assert p["disclosures"]["policy"] == sb.ALL_NULL_DISCLOSURE and p["result_policy"] in p["disclosures"]["policy"]   # packet §R13b, verbatim
     assert sb.payload_digest(_brief_as_verifier(w, sealing_commit="c2")["payload"]) != one["sha256"]   # the commit is in it
 
 

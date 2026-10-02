@@ -109,10 +109,12 @@ class SealRefused(RuntimeError):
 
 
 def parse_approval(text: str | None) -> dict:
-    """The approval record the workflow writes from the GitHub approval of THIS run (schema `seal_approval/1`):
+    """The approval record the workflow writes from the GitHub approval of THIS run (schema `seal_approval/2`):
     {schema, brief_digest, brief_id, producer_execution_id, run_id, run_attempt, approver_login, approved_by_note}. `brief_id` and
-    `producer_execution_id` (ST-WIRE-2, final shapes) are the SPECIFIC persisted brief and the verifier execution the approval is for (R13-3: taken from the compact
-    line of THIS workflow run's brief job — or, for an explicit reuse, from the earlier run's still-current brief). Absent / malformed ⇒ refused."""
+    `producer_execution_id` are the SPECIFIC persisted brief and the verifier execution the approval is for — taken from the compact line of
+    THIS workflow run's own brief job. (The database also accepts an earlier run's brief while it is still the current one — a "reuse" — but the
+    workflow never offers it: its approval always names the brief its own run produced, so that path is unreachable through the workflow.)
+    Absent / malformed / any other schema ⇒ refused."""
     if not text or not text.strip():
         raise SealRefused("approval_absent", "no approval record was supplied")
     try:
