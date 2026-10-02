@@ -430,6 +430,14 @@ def test_a_present_null_sha_on_a_v2_gate_record_is_a_forgery_not_legacy(ledger):
     assert nc.read_ledger(ledger)["bg_ontology|gate|Build.registered"][0]["declarations_sha256"] is None
 
 
+def test_a_version_with_no_sha_key_at_all_is_refused_on_read(ledger):
+    nc.write_certification(**kw(ledger))
+    rewrite(ledger, 1, declarations_sha256=..., declarations_version="1.7.0")               # sha key absent, version present
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.read_ledger(ledger)
+    assert ei.value.code == "bad_ledger" and "no declarations_sha256" in ei.value.message
+
+
 def test_a_present_null_on_an_addition_is_still_fine(ledger):
     add_call(ledger)
     assert lines(ledger)[1]["declarations_sha256"] is None
@@ -459,6 +467,7 @@ def test_an_edit_hidden_by_skip_worktree_or_assume_unchanged_is_refused(fresh_re
     with pytest.raises(nc.CertificationRefused) as ei:
         nc.write_certification(**kw(ledger, census_path=cf, writer_repo=fresh_repo))
     assert ei.value.code == "declarations_worktree_differs"
+    assert "writer_ref" in str(ei.value) and "skip-worktree" in str(ei.value)                   # the way out is in the message
 
 
 def test_a_clean_unflagged_file_is_still_accepted_by_the_byte_comparison(fresh_repo, ledger):
