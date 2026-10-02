@@ -145,7 +145,7 @@ def test_the_canonical_digest_equals_the_sidecars_own_payload_digest_wherever_it
         assert bc.digest(p) == seal_brief.payload_digest(p)
 
 
-# ── the log transport (Stream A's `--brief --brief-chunks`) ─────────────────────────────────────────────────────────────────────
+# ── the log transport (Stream A's `--brief`, always chunked) ─────────────────────────────────────────────────────────────────────
 
 def _logs(p=None, size=150, *, extra_before=(), extra_after=()):
     raw, c = pair(p)
@@ -196,7 +196,7 @@ def _drop_chunk(entries, idx):
     (lambda en: [e for e in en if e["textPayload"].startswith(('starting', 'done'))], "no compact"),
     (lambda en: en + [{"textPayload": json.dumps({**compact(), "sha256": "1" * 64}, sort_keys=True)}], "more than one distinct"),
     (lambda en: en + [{"textPayload": json.dumps({"status": "REFUSED", "code": "gate_not_clean", "detail": "x"})}], "did not produce a brief"),
-    (lambda en: [e if not e["textPayload"].startswith('{"brief_bytes"') else {"textPayload": json.dumps({**json.loads(e["textPayload"]), "brief_chunks": False})} for e in en], "not run with --brief-chunks"),
+    (lambda en: [e if not e["textPayload"].startswith('{"brief_bytes"') else {"textPayload": json.dumps({**json.loads(e["textPayload"]), "brief_chunks": False})} for e in en], "does not announce chunks"),
     (lambda en: [e if not e["textPayload"].startswith('{"brief_bytes"') else {"textPayload": json.dumps({**json.loads(e["textPayload"]), "brief_bytes": 3})} for e in en], "bytes, the compact line says"),
 ])
 def test_a_missing_altered_duplicated_or_mismatched_chunk_or_a_refusal_line_is_refused(mut, needle):

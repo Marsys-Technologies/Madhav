@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check the RETAINED seal brief before anyone approves it and before the sealer is allowed near the database (R12-2).
 
-Inputs (both produced by `gochara_seal_brief_extract.py` from the verifier job's `--brief --brief-chunks` logs, Stream A head `7e81f2870`): the BRIEF FILE — the canonical JSON bytes of the
+Inputs (both produced by `gochara_seal_brief_extract.py` from the verifier job's `--brief` logs, Stream A head `a289b38eb`): the BRIEF FILE — the canonical JSON bytes of the
 approval payload `seal_approval_payload/1`, whose sha256 IS the brief digest — and the COMPACT FILE, the job's last output line
 `{"brief_bytes", "brief_chunks", "brief_file", "persisted": {brief_id, manifest_id, state_digest}, "sha256", "status": "BRIEFED"}` (design: `design/SEAL_APPROVAL_PAYLOAD_v1_2.md`).
 This script — stdlib only, no database — refuses unless:

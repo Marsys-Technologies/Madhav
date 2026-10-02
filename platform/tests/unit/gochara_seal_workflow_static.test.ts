@@ -72,9 +72,10 @@ describe('gochara-seal-approved.yml', () => {
     expect(c).toContain('--approval-file "$APPROVAL_FILE"')
     expect(c).not.toMatch(/\|\|\s*true/)
   })
-  it('asks the verification job for the chunked brief and carries BOTH brief files (the brief bytes and the compact result) to the gated job', () => {
+  it('asks the verification job for the brief (always chunked since a289b38eb) and carries BOTH brief files (the brief bytes and the compact result) to the gated job', () => {
     const exec = (brief.steps as any[]).find((s) => String(s.run ?? '').includes('gcloud run jobs execute'))
-    expect(String(exec.run)).toContain('--brief,--brief-chunks,--sealing-commit')
+    expect(String(exec.run)).toContain('--brief,--sealing-commit')
+    expect(String(exec.run)).not.toContain('--brief-chunks')                          // Stream A a289b38eb: the chunk transport is ALWAYS on; the flag no longer exists
     const extract = (brief.steps as any[]).find((s) => String(s.run ?? '').includes('gochara_seal_brief_extract.py'))
     expect(String(extract.run)).toContain('--out-brief brief.json --out-compact brief.compact.json')
     const chk = (brief.steps as any[]).find((s) => String(s.run ?? '').includes('gochara_seal_brief_check.py'))

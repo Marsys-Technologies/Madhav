@@ -89,7 +89,7 @@ jobs:
         run: |
           set -euo pipefail
           EXECUTION="$(gcloud run jobs execute "$VERIFICATION_JOB" --project madhav-astrology --region "$GCP_REGION" \
-            --args="--chart,${CHART_ID},--generation,${GENERATION},--brief,--brief-chunks,--sealing-commit,${GITHUB_SHA}" --wait --format='value(metadata.name)')"
+            --args="--chart,${CHART_ID},--generation,${GENERATION},--brief,--sealing-commit,${GITHUB_SHA}" --wait --format='value(metadata.name)')"
           test -n "$EXECUTION"
           echo "execution=$EXECUTION" >> "$GITHUB_OUTPUT"
 
