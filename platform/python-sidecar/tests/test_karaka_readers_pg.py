@@ -23,11 +23,13 @@ do NOT silently pick a generation).
 
 Needs KARAKA_READER_TEST_DATABASE_URL pointing at a disposable database named EXACTLY ``karaka_reader_test`` on a
 loopback host or unix socket (the fixture TRUNCATEs ``chart_facts``; see the guard below, SS N-46). All rows are
-SYNTHETIC. Marked ``integration``: the generic sidecar job (``-m "not integration"``) deselects the module; ci.yml's
+SYNTHETIC. The fixture only TRUNCATEs a ``chart_facts`` it created itself (stamped with a table-comment marker; a
+production-shaped table without the marker, or holding any non-synthetic chart_id, is refused), and a unix-socket
+target must be a real socket under the system temp dir. Marked ``integration``: the generic sidecar job (``-m "not integration"``) deselects the module; ci.yml's
 dedicated step in the DB-service job runs it with no -m filter. Under GITHUB_ACTIONS=true a missing variable or an
 unreachable database FAILS (never skips); locally an unset variable skips.
 
-Run:  KARAKA_READER_TEST_DATABASE_URL='postgresql://postgres@/karaka_reader_test?host=/private/tmp/claude-504/ik&port=55461' \\
+Run:  KARAKA_READER_TEST_DATABASE_URL='postgresql://postgres@/karaka_reader_test?host=/tmp/ikfx/sock&port=55471' \\
       python -m pytest tests/test_karaka_readers_pg.py -q
 """
 from __future__ import annotations
@@ -38,8 +40,11 @@ import itertools
 import os
 import pathlib
 import random
+import socket
+import stat
 import subprocess
 import sys
+import tempfile
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -71,11 +76,36 @@ class RefusedError(RuntimeError):
     """The disposable-database guard refused the connection target."""
 
 
-def _is_local(entry: str) -> bool:
-    """A loopback NAME, a loopback IP LITERAL (127.0.0.0/8, ::1) or a unix-socket directory; "" = libpq's default
-    local socket. A prefix test ("127.") would accept the hostname 127.0.0.1.evil.example, so IPs are parsed."""
-    if entry == "" or entry in _LOOPBACK_NAMES or entry.startswith("/"):
-        return True
+def _temp_roots() -> "set[str]":
+    """The real paths of the system temp dir (and /tmp): the only place a unix-socket directory may live."""
+    return {os.path.realpath(tempfile.gettempdir()), os.path.realpath("/tmp")}
+
+
+def _is_test_socket_dir(directory: str, port: str) -> bool:
+    """A unix-socket DIRECTORY this test may TRUNCATE through: absolute, EXISTS, resolves under the system temp dir (a
+    Cloud SQL proxy directory such as /cloudsql/... or /var/run/postgresql never does), and holds a real unix socket
+    named ``.s.PGSQL.<port>`` (os.stat S_ISSOCK), not merely any string that starts with '/'."""
+    if not directory.startswith("/") or "," in port:
+        return False
+    real = os.path.realpath(directory)
+    if not os.path.isdir(real):
+        return False
+    if not any(real == root or real.startswith(root.rstrip("/") + "/") for root in _temp_roots()):
+        return False
+    try:
+        return stat.S_ISSOCK(os.stat(os.path.join(real, f".s.PGSQL.{port or '5432'}")).st_mode)
+    except OSError:
+        return False
+
+
+def _is_local(entry: str, port: str = "5432", *, allow_socket: bool = True) -> bool:
+    """A loopback NAME, a loopback IP LITERAL (127.0.0.0/8, ::1) or (``allow_socket``) a unix-socket directory that
+    `_is_test_socket_dir` verifies. "" is NOT local here: libpq's default socket directory cannot be verified, so a
+    DSN must name its host. A prefix test ("127.") would accept the hostname 127.0.0.1.evil.example, so IPs are parsed."""
+    if entry in _LOOPBACK_NAMES:
+        return allow_socket  # a loopback NAME is not an address literal: hostaddr must be an IP
+    if entry.startswith("/"):
+        return allow_socket and _is_test_socket_dir(entry, port)
     try:
         return ipaddress.ip_address(entry.strip("[]")).is_loopback
     except ValueError:
@@ -102,19 +132,25 @@ def require_disposable(dsn: str, environ: "dict[str, str] | None" = None) -> str
             raise RefusedError(f"REFUSED: DSN query-string overrides {sorted(extra)} are not allowed")
     if info.get("service"):
         raise RefusedError("REFUSED: a service= entry can redirect the target")
+    if not (info.get("host") or info.get("hostaddr")):
+        raise RefusedError("REFUSED: the DSN names no host (libpq's default socket directory cannot be verified)")
+    port = info.get("port", "") or "5432"
     for key in ("host", "hostaddr"):
         value = info.get(key, "")
         if "," in value:
             raise RefusedError(f"REFUSED: ',' in {key} (multi-host failover list)")
-        if not _is_local(value):
-            raise RefusedError(f"REFUSED: {key} {value!r} is not loopback / a unix socket")
+        if value and not _is_local(value, port, allow_socket=(key == "host")):
+            raise RefusedError(
+                f"REFUSED: {key} {value!r} is not loopback / a real unix socket under the temp dir")
     if info.get("dbname") != EXPECTED_DB_NAME:
         raise RefusedError(f"REFUSED: database {info.get('dbname')!r} is not the disposable {EXPECTED_DB_NAME!r}")
     # Environment overrides libpq would honour: PGHOSTADDR redirects the connection even when the DSN names a
     # host; PGHOST/PGDATABASE would redirect a DSN that omits them; PGSERVICE fills any unset parameter from a
     # service file we cannot see. Refused whatever the DSN says (stricter than needed, never looser).
     for var in ("PGHOST", "PGHOSTADDR"):
-        bad = [e for e in env.get(var, "").split(",") if not _is_local(e.strip())]
+        env_port = (env.get("PGPORT", "") or port).strip()
+        bad = [e for e in env.get(var, "").split(",")
+               if e.strip() and not _is_local(e.strip(), env_port, allow_socket=(var == "PGHOST"))]
         if bad:
             raise RefusedError(f"REFUSED: environment {var} names a non-loopback target {bad}")
     if env.get("PGDATABASE") not in (None, "", EXPECTED_DB_NAME):
@@ -134,31 +170,66 @@ def require_connected_to_disposable(current_database: str) -> None:
         raise RefusedError(f"REFUSED: connected to database {current_database!r}, not {EXPECTED_DB_NAME!r}")
 
 
-def require_disposable_chart_facts(existing_columns: "set[str]") -> None:
-    """Refuse to TRUNCATE a `chart_facts` that this module did not create: absent (empty set) or EXACTLY the
-    production-shaped column set is fine; extra columns, or any other shape, is not a disposable table."""
+# The sentinel this module writes on ITS OWN table (COMMENT ON TABLE) the first time it creates it. A restored copy
+# of production has the same columns but never this comment, so the column set alone is not trusted.
+OWNER_MARKER = "karaka_readers_pg.py: disposable synthetic chart_facts created by tests/test_karaka_readers_pg.py"
+SYNTHETIC_CHART_PREFIX = "00000000-0000-4000-8000-"
+
+
+def require_disposable_chart_facts(
+    existing_columns: "set[str]", table_comment: "str | None" = None, foreign_rows: int = 0,
+) -> None:
+    """Refuse to TRUNCATE a `chart_facts` that this module did not create. Absent (no columns) is fine (the fixture
+    creates it and stamps OWNER_MARKER). A pre-existing table must (1) carry OWNER_MARKER as its table comment, (2)
+    have EXACTLY the production-shaped column set, and (3) hold no row whose chart_id is outside this module's
+    synthetic id range. Production-shaped columns WITHOUT the marker are refused (that is what a restored copy is)."""
     cols = set(existing_columns)
-    if not cols or cols == PRODUCTION_COLUMNS:
+    if not cols:
         return
+    if table_comment != OWNER_MARKER:
+        raise RefusedError(
+            "REFUSED: chart_facts already exists and does not carry this test's ownership marker (a restored copy "
+            "of production has the same columns): not a table this module created, refusing to TRUNCATE. Drop it "
+            "by hand if it really is disposable."
+        )
     extra = sorted(cols - PRODUCTION_COLUMNS)
     if extra:
         raise RefusedError(
             "REFUSED: chart_facts already exists with columns this test did not create "
             f"({extra[:4]}...): not a disposable table, refusing to TRUNCATE"
         )
-    raise RefusedError(
-        f"REFUSED: chart_facts already exists with a different shape (missing {sorted(PRODUCTION_COLUMNS - cols)[:4]}...)"
-    )
+    if cols != PRODUCTION_COLUMNS:
+        raise RefusedError(
+            f"REFUSED: chart_facts already exists with a different shape (missing {sorted(PRODUCTION_COLUMNS - cols)[:4]}...)"
+        )
+    if foreign_rows:
+        raise RefusedError(
+            f"REFUSED: chart_facts holds {foreign_rows} row(s) whose chart_id is outside this module's synthetic range"
+        )
 
 
 # ── DB-free tests of the guard (they run in the explicit step; the module is `integration`) ─────────────────────
+SOCK_PORT = "55461"
+
+
+@pytest.fixture()
+def unix_sock():
+    """A REAL unix socket ``.s.PGSQL.<port>`` in a fresh SHORT directory under /tmp (AF_UNIX paths are <= ~104 bytes)."""
+    import shutil
+    d = tempfile.mkdtemp(prefix="krt", dir="/tmp")
+    srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        srv.bind(os.path.join(d, f".s.PGSQL.{SOCK_PORT}"))
+        yield d
+    finally:
+        srv.close()
+        shutil.rmtree(d, ignore_errors=True)
+
+
 _OK_URLS = [
-    "postgresql://postgres@/karaka_reader_test?host=/private/tmp/claude-504/ik&port=55461",
     "postgresql://postgres:postgres@localhost:5432/karaka_reader_test",
     "postgresql://postgres:postgres@127.0.0.1:5432/karaka_reader_test",
     "postgresql://postgres:postgres@[::1]:5432/karaka_reader_test",
-    "postgresql:///karaka_reader_test",
-    "host=/private/tmp/claude-504/ik dbname=karaka_reader_test",
     "host=127.0.0.1 hostaddr=127.0.0.1 dbname=karaka_reader_test",
 ]
 _BAD_URLS = [
@@ -179,12 +250,56 @@ _BAD_URLS = [
     ("host=localhost hostaddr=127.0.0.1,203.0.113.9 dbname=karaka_reader_test", "multi-host"),
     ("host=localhost dbname=karaka_reader_test service=prod", "service"),
     ("postgresql://u:p@lo calhost:5432/karaka_reader_test", "not parseable"),
+    # no host at all: libpq's default socket directory cannot be verified
+    ("postgresql:///karaka_reader_test", "names no host"),
+    ("dbname=karaka_reader_test", "names no host"),
+    # a socket-looking host that is not a real socket under the temp dir
+    ("host=/cloudsql/proj:region:inst dbname=karaka_reader_test port=5432", "not loopback"),
+    ("host=/var/run/postgresql dbname=karaka_reader_test", "not loopback"),
+    ("host=/tmp/definitely-not-there-krt dbname=karaka_reader_test port=55461", "not loopback"),
+    ("host=/tmp dbname=karaka_reader_test port=55461", "not loopback"),  # exists, under /tmp, but holds no socket
 ]
 
 
 @pytest.mark.parametrize("dsn", _OK_URLS)
-def test_guard_accepts_loopback_and_socket_targets(dsn):
+def test_guard_accepts_loopback_targets(dsn):
     assert require_disposable(dsn, {}) == EXPECTED_DB_NAME
+
+
+def test_guard_accepts_a_real_unix_socket_under_the_temp_dir(unix_sock):
+    for dsn in (f"postgresql://postgres@/karaka_reader_test?host={unix_sock}&port={SOCK_PORT}",
+                f"host={unix_sock} port={SOCK_PORT} dbname=karaka_reader_test"):
+        assert require_disposable(dsn, {}) == EXPECTED_DB_NAME
+    assert require_disposable("postgresql://postgres:postgres@localhost:5432/karaka_reader_test",
+                              {"PGHOST": unix_sock, "PGPORT": SOCK_PORT}) == EXPECTED_DB_NAME
+
+
+def test_guard_refuses_a_socket_dir_whose_file_is_not_a_unix_socket(unix_sock):
+    # a regular file named like the socket (S_ISSOCK is false), in a directory that exists under /tmp
+    other = tempfile.mkdtemp(prefix="krt", dir="/tmp")
+    try:
+        pathlib.Path(other, f".s.PGSQL.{SOCK_PORT}").write_text("not a socket")
+        with pytest.raises(RefusedError, match="not loopback"):
+            require_disposable(f"host={other} port={SOCK_PORT} dbname=karaka_reader_test", {})
+    finally:
+        import shutil
+        shutil.rmtree(other, ignore_errors=True)
+    # right dir, wrong port: the socket for THAT port does not exist
+    with pytest.raises(RefusedError, match="not loopback"):
+        require_disposable(f"host={unix_sock} port=5433 dbname=karaka_reader_test", {})
+
+
+def test_guard_refuses_a_real_unix_socket_outside_the_temp_dir(unix_sock, monkeypatch):
+    """A real socket in a directory that is NOT under the system temp dir (modelled by pointing the temp roots
+    elsewhere) is refused: a socket file alone proves nothing (a Cloud SQL proxy directory holds real sockets)."""
+    monkeypatch.setattr(sys.modules[__name__], "_temp_roots", lambda: {"/nonexistent-root"})
+    with pytest.raises(RefusedError, match="not loopback"):
+        require_disposable(f"host={unix_sock} port={SOCK_PORT} dbname=karaka_reader_test", {})
+
+
+def test_guard_refuses_a_socket_path_as_hostaddr(unix_sock):
+    with pytest.raises(RefusedError, match="not loopback"):
+        require_disposable(f"host=localhost hostaddr={unix_sock} port={SOCK_PORT} dbname=karaka_reader_test", {})
 
 
 @pytest.mark.parametrize("dsn,why", _BAD_URLS)
@@ -197,6 +312,8 @@ def test_guard_refuses_unsafe_dsn(dsn, why):
 @pytest.mark.parametrize("env", [
     {"PGHOST": "db.prod.example.com"},
     {"PGHOST": "localhost,db.prod.example.com"},
+    {"PGHOST": "/cloudsql/proj:region:inst"},
+    {"PGHOST": "/tmp/definitely-not-there-krt"},
     {"PGHOSTADDR": "203.0.113.9"},
     {"PGHOSTADDR": "127.0.0.1,203.0.113.9"},
     {"PGSERVICE": "prod"},
@@ -208,7 +325,7 @@ def test_guard_refuses_environment_overrides_even_with_a_good_dsn(env):
         require_disposable("postgresql://postgres:postgres@localhost:5432/karaka_reader_test", env)
 
 
-@pytest.mark.parametrize("env", [{"PGHOST": "localhost"}, {"PGHOST": "/private/tmp/claude-504/ik"},
+@pytest.mark.parametrize("env", [{"PGHOST": "localhost"}, {"PGHOST": ""},
                                  {"PGHOSTADDR": "127.0.0.1"}, {"PGDATABASE": "karaka_reader_test"}, {"PGSERVICE": ""}])
 def test_guard_accepts_loopback_environment(env):
     assert require_disposable("postgresql://postgres:postgres@localhost:5432/karaka_reader_test", env) == EXPECTED_DB_NAME
@@ -231,12 +348,26 @@ def test_post_connect_check_accepts_the_disposable_database():
 
 
 def test_chart_facts_shape_guard():
+    # absent: fine (the fixture creates it and stamps the marker)
     require_disposable_chart_facts(set())
-    require_disposable_chart_facts(set(PRODUCTION_COLUMNS))
+    require_disposable_chart_facts(set(), None)
+    # this module's own table: marker + exact production column set + only synthetic rows
+    require_disposable_chart_facts(set(PRODUCTION_COLUMNS), OWNER_MARKER)
+    require_disposable_chart_facts(set(PRODUCTION_COLUMNS), OWNER_MARKER, 0)
     with pytest.raises(RefusedError, match="did not create"):
-        require_disposable_chart_facts(set(PRODUCTION_COLUMNS) | {"some_real_extra_column"})
+        require_disposable_chart_facts(set(PRODUCTION_COLUMNS) | {"some_real_extra_column"}, OWNER_MARKER)
     with pytest.raises(RefusedError, match="different shape"):
-        require_disposable_chart_facts({"chart_id", "fact_id"})
+        require_disposable_chart_facts({"chart_id", "fact_id"}, OWNER_MARKER)
+    with pytest.raises(RefusedError, match="outside this module's synthetic range"):
+        require_disposable_chart_facts(set(PRODUCTION_COLUMNS), OWNER_MARKER, 3)
+
+
+@pytest.mark.parametrize("comment", [None, "", "some production comment", OWNER_MARKER + " ", OWNER_MARKER.upper()])
+def test_a_production_shaped_table_without_the_marker_is_refused(comment):
+    """The reviewer's scenario: a restored production copy has EXACTLY the production columns. Without the marker
+    this module stamps on its own table it is refused (the column set alone no longer passes)."""
+    with pytest.raises(RefusedError, match="ownership marker"):
+        require_disposable_chart_facts(set(PRODUCTION_COLUMNS), comment)
 
 
 # ── production-shaped chart_facts + the real writer's rows ───────────────────────────────────────────────────────
@@ -401,8 +532,19 @@ def conn():
     cols = {r[0] for r in c.execute(
         "SELECT column_name FROM information_schema.columns "
         "WHERE table_schema = current_schema() AND table_name = 'chart_facts'").fetchall()}
-    require_disposable_chart_facts(cols)
+    comment, foreign_rows = None, 0
+    if cols:
+        comment = c.execute(
+            "SELECT obj_description(format('%I.chart_facts', current_schema())::regclass, 'pg_class')").fetchone()[0]
+        if comment == OWNER_MARKER and cols == PRODUCTION_COLUMNS:
+            foreign_rows = c.execute(
+                "SELECT count(*) FROM chart_facts WHERE chart_id::text NOT LIKE %s",
+                (SYNTHETIC_CHART_PREFIX + "%",)).fetchone()[0]
+    require_disposable_chart_facts(cols, comment, foreign_rows)
     c.execute(DDL)
+    if not cols:  # this module just created the table: stamp it so a later run recognises it as ITS OWN
+        from psycopg import sql as _sql  # utility statements take no bind parameters: a quoted literal
+        c.execute(_sql.SQL("COMMENT ON TABLE chart_facts IS {}").format(_sql.Literal(OWNER_MARKER)))
     c.execute("TRUNCATE chart_facts")
     c.commit()
     yield c
