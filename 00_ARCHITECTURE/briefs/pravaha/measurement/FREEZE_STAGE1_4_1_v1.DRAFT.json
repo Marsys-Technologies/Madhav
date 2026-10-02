@@ -184,5 +184,10 @@
    "end": "2026-04-18"
   },
   "consumed_bodies_note": "the eight persisted bodies AND the Moon (the windows projection and class context read it: on-demand, never persisted, but consumed) — freeze.py REQUIRED_CONSUMED_BODIES; the opened-file census must then contain sepl_NN (all bodies but the Moon) AND semo_NN (the Moon) for every 600-year block the horizon touches."
+ },
+ "dasha_plurality_tier_policy": {
+  "decision": "ND-DASHA-PLURALITY-TIERS (decisions/ND_DASHA_PLURALITY_TIERS_v1_0.md)",
+  "version": "<<DASHA_PLURALITY_TIER_POLICY_VERSION_AT_FREEZE: the option chosen (a|b|c|d) and Stream A's per-(system, level) accepted-set version (PR #2954)>>",
+  "note": "a FROZEN INPUT (steward M20261002T095645-d429): the 4.x permission arithmetic enters the stored '4.1' intensities, so the tier policy must be fixed in Stage 1 before any '4.1' output exists (DR-15(d))."
  }
 }
