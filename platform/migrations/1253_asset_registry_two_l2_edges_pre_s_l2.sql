@@ -13,6 +13,12 @@
 --     (bo_laksana has 24 declared direct dependents, read live) until S-L2 rebuilds them.
 -- So the PR is held until the S-L2 window and merges only then.
 --
+-- PRECONDITIONS AT MERGE TIME (repeat them immediately before merging, not only before arming the PR): (a) the
+-- 0-active-runs operator check below; (b) gate readiness: ga_yoga and bo_bimba must be lit and fresh on every
+-- chart, because bo_laksana now needs ga_yoga fresh and bo_upaya now needs bo_bimba fresh (checked directly by
+-- asset_runner.deps_unsatisfied), i.e. S-L1 is complete first and the S-L2 build order has bo_bimba rebuilt before
+-- bo_upaya. Any RAISE here, or a lock_timeout expiry, fails the migrate job and therefore the whole deploy.
+--
 --   #  consumer (gains the edge)   producer (new dep)   why the consumer reads the producer
 --   1  bo_laksana                  ga_yoga              bo_laksana.py:2713,2769 read ga_yoga_firings   (Q-L2-07)
 --   2  bo_upaya                    bo_bimba             bo_upaya.py:578 joins bodha_cgm_nodes          (Q-L2-07)

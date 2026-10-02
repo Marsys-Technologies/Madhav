@@ -116,7 +116,8 @@ def test_1253_writes_only_depends_on_and_discloses_apply_timing_and_consequences
                    "NO DATA ROW CHANGES", "compute_upstream_hash", "plan_adaptation_required",
                    "assertManifestMatchesRegistryIdentity", "Trap 103", "PRODUCTION STRUCTURE", "WITH RECURSIVE",
                    "planned/running/paused", "nirmana_registry_receipt_invalidation", "asset_freshness",
-                   "an OPERATOR check, not a RAISE", "NEVER SHARES A PR WITH A WRITER CHANGE", "1226"):
+                   "an OPERATOR check, not a RAISE", "NEVER SHARES A PR WITH A WRITER CHANGE", "1226",
+                   "PRECONDITIONS AT MERGE TIME", "gate readiness"):
         assert needle in sql, f"1253 header/body no longer states: {needle}"
 
 
