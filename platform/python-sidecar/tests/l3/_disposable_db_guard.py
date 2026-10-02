@@ -30,13 +30,17 @@ WHAT THE GUARD REQUIRES (all of them, or it refuses)
      environment (libpq merges them into the parsed DSN — an override the
      string itself does not show);
   5. assert_disposable_connection(): AFTER connecting, current_database()
-     equals the expected name AND inet_server_addr() is loopback or NULL
-     (a unix-socket connection) — checked before any destructive statement.
+     equals the expected name AND inet_server_addr() is NULL (a unix-socket
+     connection), loopback, or non-public (CI's Postgres runs as a Docker
+     service container and legitimately reports a bridge address such as
+     172.18.0.2 — only a PUBLIC address proves a wrong landing) — checked
+     before any destructive statement.
 
 Pure string checks connect to nothing; only step 5 needs a connection.
 """
 from __future__ import annotations
 
+import ipaddress
 import os
 from urllib.parse import urlparse
 
@@ -113,7 +117,18 @@ def validate_disposable_dsn(
 
 def assert_disposable_connection(conn, expected_dbname: str) -> None:
     """Post-connect proof, before ANY destructive statement: the session really is
-    on the disposable database and on a loopback (or local unix-socket) server."""
+    on the disposable database and on a non-public server.
+
+    inet_server_addr() is accepted when it is NULL (unix socket), loopback, or
+    any non-public (RFC 1918 / link-local / ULA) address — CI runs Postgres as
+    a GitHub Actions SERVICE CONTAINER: the runner connects to localhost:5432,
+    Docker port-forwards onto the bridge network, and the server legitimately
+    reports its own bridge address (e.g. 172.18.0.2/32). Requiring literal
+    loopback there is impossible; a PUBLIC address is what proves the
+    connection did not land where the loopback DSN claimed. The target
+    discipline itself is carried by validate_disposable_dsn (loopback host
+    everywhere, no env overrides); this check catches the landing being a
+    public server."""
     row = conn.execute(
         "SELECT current_database(), inet_server_addr()::text").fetchone()
     dbname, server_addr = row[0], row[1]
@@ -121,7 +136,10 @@ def assert_disposable_connection(conn, expected_dbname: str) -> None:
         raise RefusedError(
             f"REFUSED: connected to database {dbname!r}, not the disposable "
             f"{expected_dbname!r}")
-    if server_addr is not None and not _is_loopback(server_addr):
-        raise RefusedError(
-            f"REFUSED: the server reports a non-loopback address {server_addr!r} — "
-            "the connection did not land where the DSN claimed")
+    if server_addr is not None:
+        # inet::text carries the mask ('172.18.0.2/32'); ip_interface takes both.
+        addr = ipaddress.ip_interface(server_addr).ip
+        if not (addr.is_loopback or addr.is_private or addr.is_link_local):
+            raise RefusedError(
+                f"REFUSED: the server reports a PUBLIC address {server_addr!r} — "
+                "the connection did not land where the loopback DSN claimed")

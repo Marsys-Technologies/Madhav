@@ -109,6 +109,37 @@ def test_unparseable_dsn_refused():
 
 # ── post-connect proof (needs the CI Postgres / a local disposable) ──────────
 
+class _FakeConn:
+    """Post-connect proof without a server: execute() returns a canned row."""
+
+    def __init__(self, dbname, server_addr):
+        self._row = (dbname, server_addr)
+
+    def execute(self, _sql):
+        return self
+
+    def fetchone(self):
+        return self._row
+
+
+@pytest.mark.parametrize("addr", [None, "127.0.0.1/32", "::1/128", "172.18.0.2/32", "10.0.0.5/8", "192.168.1.10/24"])
+def test_post_connect_accepts_unix_loopback_and_private(addr):
+    # 172.18.0.2 is the GitHub Actions service-container bridge address — the
+    # legitimate CI shape; only a PUBLIC address proves a wrong landing.
+    assert_disposable_connection(_FakeConn(DB, addr), DB)
+
+
+@pytest.mark.parametrize("addr", ["8.8.8.8/32", "1.1.1.1/32", "2606:4700:4700::1111/128"])
+def test_post_connect_refuses_a_public_server_address(addr):
+    with pytest.raises(RefusedError):
+        assert_disposable_connection(_FakeConn(DB, addr), DB)
+
+
+def test_post_connect_refuses_the_wrong_database():
+    with pytest.raises(RefusedError):
+        assert_disposable_connection(_FakeConn("production", None), DB)
+
+
 @pytest.mark.skipif(not C7_DSN, reason="C7_BUILDER_ROLE_TEST_DATABASE_URL not set")
 def test_post_connect_check_on_the_real_disposable():
     psycopg = pytest.importorskip("psycopg")
