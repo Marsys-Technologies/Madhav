@@ -49,11 +49,22 @@ describe('migration 1241 — static contract', () => {
 
   it('the sealer: writes only INSERT on the seal row and a COLUMN-LEVEL UPDATE of the four publication columns ledger.publish sets; reads the legacy windows ONLY on (chart_id, generation)', () => {
     const writes = S.tables.filter(([, p]) => p !== 'SELECT')
-    expect(writes).toEqual([
+    expect(writes).toHaveLength(3)
+    expect(writes).toEqual(expect.arrayContaining([
       ['ka_gochara_generation_seal', 'INSERT', null, '1241'],
       ['kala_gochara_publication', 'UPDATE', ['status', 'published_at', 'content_digest', 'row_counts'], '1241'],
-    ])
+      ['ka_gochara_seal_approval', 'INSERT', null, '1241'],          // R11-3: the approval receipt (append-only; the sealer is the only writer)
+    ]))
     expect(S.tables.filter(([t]) => t === 'kala_gochara_windows')).toEqual([['kala_gochara_windows', 'SELECT', ['chart_id', 'generation'], '1241']])
+  })
+
+  it('R11-3: both principals read the migration ledger ONLY at column level (filename, sha256, applied_at); the verifier holds nothing on the receipt; the sealer reads it for the receipt-missing check', () => {
+    const ledger = (role: any) => role.tables.filter(([t]: any) => t === '_migrations_applied')
+    expect(ledger(S)).toEqual([['_migrations_applied', 'SELECT', ['filename', 'sha256', 'applied_at'], '1241']])
+    expect(ledger(V)).toEqual([['_migrations_applied', 'SELECT', ['filename', 'sha256', 'applied_at'], '1241']])
+    expect(V.tables.filter(([t]: any) => t === 'ka_gochara_seal_approval')).toEqual([])
+    expect(S.tables.filter(([t]: any) => t === 'ka_gochara_seal_approval').map(([, p]: any) => p).sort()).toEqual(['INSERT', 'SELECT'])
+    expect(S.functions.map(([f]: any) => f)).toContain('ka_gochara_seal_receipt_missing(uuid,text)')
   })
 
   it('does NOT carry the L1 reads (chart_facts / chart_dashas): their ACLs belong to the data-plane ownership script', () => {

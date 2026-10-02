@@ -32,6 +32,9 @@
 --              `permission denied` until the job's own final gate converged; 1240 grants EXECUTE on the combined function itself);
 --              and 1240's: SELECT/INSERT/DELETE on its own window-verification table, reads, EXECUTE lists. NO DELETE on the inventory-verification
 --              table (a re-run replaces it without one — measured), NO UPDATE anywhere, NO seal, NO build-data write.
+--   (R11-3, v4) BOTH principals: column-level SELECT (filename, sha256, applied_at) on the migration ledger — the approval payload carries its evidence and the sealing
+--              recompute reads the same. The SEALER also gets SELECT + INSERT on the append-only approval-receipt table (the receipt-missing check reads it) and EXECUTE on `ka_gochara_seal_receipt_missing` (1240 creates
+--              both and grants NOTHING on them); the VERIFIER needs nothing on the receipt. Each is proven necessary by running the whole approved seal as the real roles.
 --   SEALER   — INSERT on the seal table; UPDATE on kala_gochara_publication ONLY on the four columns ledger.publish actually sets (status, published_at,
 --              content_digest, row_counts — R10-7 iii; narrowed from table-wide); SELECT on the legacy windows relation ONLY on (chart_id, generation)
 --              (R10-7 ii: `ledger.publish` counts the legacy projection's rows when the relation exists, so the production-shaped schema needs this read
@@ -87,7 +90,8 @@ DECLARE
       ["ka_gochara_predicate","SELECT",null,"1241"],
       ["ka_gochara_search_obligation","SELECT",null,"1241"],
       ["ka_gochara_convention_bridge","SELECT",null,"1241"],
-      ["ka_gochara_search_interval","SELECT",null,"1241"]
+      ["ka_gochara_search_interval","SELECT",null,"1241"],
+      ["_migrations_applied","SELECT",["filename","sha256","applied_at"],"1241"]
      ],
      "functions": [
       ["ka_gochara_lock_chart(uuid)","1240"],
@@ -127,6 +131,9 @@ DECLARE
       ["ka_gochara_record_prerequisite","SELECT",null,"1240"],
       ["ka_gochara_contact","SELECT",null,"1240"],
       ["ka_gochara_physical_object","SELECT",null,"1240"],
+      ["ka_gochara_seal_approval","SELECT",null,"1241"],
+      ["ka_gochara_seal_approval","INSERT",null,"1241"],
+      ["_migrations_applied","SELECT",["filename","sha256","applied_at"],"1241"],
       ["ka_gochara_generation_seal","INSERT",null,"1241"],
       ["kala_gochara_publication","UPDATE",["status","published_at","content_digest","row_counts"],"1241"],
       ["kala_gochara_windows","SELECT",["chart_id","generation"],"1241"],
@@ -169,7 +176,8 @@ DECLARE
       ["ka_gochara_utc_ts(timestamptz)","1241"],
       ["ka_gochara_search_moon_scope_violations(uuid,text)","1241"],
       ["ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)","1241"],
-      ["ka_gochara_generation_governed(text)","1241"]
+      ["ka_gochara_generation_governed(text)","1241"],
+      ["ka_gochara_seal_receipt_missing(uuid,text)","1241"]
      ]
     }
   },
@@ -226,7 +234,7 @@ BEGIN
     CONTINUE WHEN NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r);
     FOR rec IN SELECT c.oid AS relid, c.relname FROM pg_class c
                WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r','p')
-                 AND (c.relname LIKE 'ka\_gochara\_%' OR c.relname LIKE 'kala\_gochara\_%') ORDER BY c.relname LOOP
+                 AND (c.relname LIKE 'ka\_gochara\_%' OR c.relname LIKE 'kala\_gochara\_%' OR c.relname = '_migrations_applied') ORDER BY c.relname LOOP
       FOREACH priv IN ARRAY ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'] LOOP
         expected_tbl := EXISTS (SELECT 1 FROM jsonb_array_elements(spec->'roles'->r->'tables') e
                                 WHERE e->>0 = rec.relname AND e->>1 = priv AND jsonb_typeof(e->2) <> 'array');
