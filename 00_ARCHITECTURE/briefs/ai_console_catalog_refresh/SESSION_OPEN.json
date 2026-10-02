@@ -2,7 +2,7 @@
   "session_open": {
     "session_id": "AI-CONSOLE-CATALOG-REFRESH-20261002",
     "cowork_thread_name": "Madhav — AI Console catalogue refresh",
-    "agent_name": "Codex", "agent_version": "GPT-6", "tool": "Codex",
+    "agent_name": "Codex", "agent_version": "model identifier not exposed", "tool": "Codex",
     "tool_profile": "madhav-parity",
     "worktree_path": "/Users/Dev/.codex/worktrees/ai-console-cli-role-effort/Madhav",
     "step_number_or_layer": "AI Console catalogue refresh, continuing the existing AI Console session",
@@ -24,10 +24,10 @@
     ],
     "canonical_artifact_fingerprint_check": [],
     "declared_scope": {
-      "may_touch": ["00_ARCHITECTURE/briefs/ai_console_catalog_refresh/**", "platform/src/lib/ai-console/**", "platform/src/app/api/ai-console/**", "platform/src/components/ai-console/**", "platform/scripts/ai-cli-bridge/**", "platform/supabase/migrations/1301_ai_console_catalog_refresh.sql", "platform/src/lib/adapters/types.ts", "platform/scripts/__tests__/**", "platform/docs/runbooks/ai-console-local-cutover.md"],
+      "may_touch": ["00_ARCHITECTURE/briefs/ai_console_catalog_refresh/**", "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", "platform/src/lib/ai-console/**", "platform/src/app/api/ai-console/**", "platform/src/components/ai-console/**", "platform/scripts/ai-cli-bridge/**", "platform/supabase/migrations/1301_ai_console_catalog_refresh.sql", "platform/src/lib/adapters/types.ts", "platform/scripts/__tests__/**", "platform/docs/runbooks/ai-console-local-cutover.md", "platform/tests/unit/migrations/builder_reference_tables_1255_select_grants_static.test.ts"],
       "must_not_touch": ["01_FACTS_LAYER/**", "025_HOLISTIC_SYNTHESIS/**", "platform/python-sidecar/**", "00_ARCHITECTURE/briefs/nirmana/**", "CLAUDE.md", "platform/src/lib/gochara/**", "platform/supabase/migrations/1300_ai_console_role_effort.sql"]
     },
     "mirror_pair_freshness_check": [], "native_directive_obligations": [], "red_team_due": true,
-    "notes": "Continuing the already opened AI Console conversation; confirms refreshed orientation reads for this additive work order. Parallel workers own CLI discovery, API metadata refresh and UI, with the parent owning persistence, contracts, migration and verification. No paid provider generation in refresh."
+    "notes": "Continuing the already opened AI Console conversation; confirms refreshed orientation reads for this additive work order. Read timestamps are approximate session-open registration times. Parallel workers own CLI discovery, API metadata refresh and UI, with the parent owning persistence, contracts, migration and verification. No paid provider generation in refresh. Scope includes required source-only close provenance, not modification of another campaign's state."
   }
 }

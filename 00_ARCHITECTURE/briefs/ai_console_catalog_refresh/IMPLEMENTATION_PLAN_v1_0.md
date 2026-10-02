@@ -1,7 +1,7 @@
 ---
 artifact: AI_CONSOLE_CATALOG_REFRESH_PLAN
 version: 1.0
-status: IN_PROGRESS
+status: SOURCE_VERIFIED_RELEASE_PENDING
 produced_on: 2026-10-02
 authority: Continuing native AI Console feature request
 ---
@@ -44,3 +44,7 @@ authentication, grant isolation, credential/epoch fencing, TTL/cooldown, preserv
 on failed refresh, model removal, dynamically advertised effort, scoped UI refresh,
 and full repository quality gates. Independent code/security/migration review follows.
 Production release remains a separate exact-revision milestone after these pass.
+
+Integration-only accommodation: current main's migration-1255 static test lacked
+TypeScript guards for two array lookups. Added explicit undefined guards after
+existing single-element assertions; no migration SQL or Gochara behavior changed.
