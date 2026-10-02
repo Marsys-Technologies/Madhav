@@ -3,6 +3,7 @@
 -- committed manifest must appear, byte for byte, in production's output (`comm -23 expected actual` is empty). A missing relation (REL ... MISSING), a missing trigger, or a trigger with a different
 -- function, event, timing, level, UPDATE-OF column list, argument list, deferrability or ENABLED mode ⇒ STOP. Production-only extra lines (legacy triggers the mirror does not carry) are REPORTED,
 -- not failed — they are listed in the act report so the steward and Stream A can classify them.
+-- Each TRG line ends with md5(pg_get_functiondef(trigger function)) so W5 pins the guard BODIES as well as the trigger set (schema-qualified: `SET search_path = ''`).
 -- Scope: every relation in the post-seal immutability matrix of Codex's round-15 review (digest/candidate-boundary, brief/seal/receipt, referenced/global/external-guarded) in schema public.
 -- Run with:  psql -X -q -t -A -F '	' -v ON_ERROR_STOP=1 -f window_trigger_manifest.sql   (tab-separated, C-collation order, no psql footers).
 SET search_path = '';
@@ -31,7 +32,8 @@ SELECT line FROM (
          || coalesce((SELECT string_agg(a.attname, ',' ORDER BY a.attnum) FROM pg_catalog.pg_attribute a WHERE a.attrelid = t.tgrelid AND a.attnum = ANY (t.tgattr)), '') || E'\t'
          || coalesce(encode(t.tgargs, 'escape'), '') || E'\t'
          || (t.tgconstraint <> 0)::text || '/' || t.tgdeferrable::text || '/' || t.tginitdeferred::text || E'\t'
-         || (t.tgqual IS NOT NULL)::text AS line,
+         || (t.tgqual IS NOT NULL)::text || E'\t'
+         || md5(pg_catalog.pg_get_functiondef(p.oid)) AS line,                   -- the trigger FUNCTION BODY (Fable F-R16-5a): a changed guard body is a difference, not only a changed trigger set
          r.relname AS k1, t.tgname AS k2
   FROM rel r
   JOIN pg_catalog.pg_trigger t ON t.tgrelid = r.reloid AND NOT t.tgisinternal
