@@ -333,8 +333,9 @@ def test_dens_served_criterion_revision_is_bumped_and_says_structural():
     assert e["revision"] == 4 and "tier column" in e["applicability"], e
 
 
-def test_na_rule_decisions_stays_empty_so_a_measured_dens_na_reads_no_detector_in_the_cell(tree, monkeypatch):
-    assert ac.NA_RULE_DECISIONS == {}
+def test_an_undeclared_rule_leaves_a_measured_dens_na_reading_no_detector_in_the_cell(tree, monkeypatch):
+    # REGISTRY_REVISION 9 declares Dens.served#measured:no-served-surface (SS N-65); this is the UNDECLARED path
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})
     tree.write(tree.tools, "tool.ts", _cap("SELECT id FROM unrelated"))
     c = _measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")})
     assert _dens(c, "bg_x")["v"] == ac.NA
@@ -342,6 +343,10 @@ def test_na_rule_decisions_stays_empty_so_a_measured_dens_na_reads_no_detector_i
     assert cell["v"] == ac.NO_DET, cell
     chk = next(k for k in cell["checks"] if k["criterion"] == "Dens.served")
     assert chk["cause"] == "no-served-surface" and chk["rule_id"] == "Dens.served#measured:no-served-surface", chk
+    # ... and with the approved rule declared (the production table) the same measurement reads N/A
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {"Dens.served#measured:no-served-surface": "N-22/N-22a row 19; N-65 (test)"})
+    cell = ac.rollup_asset("L0", next(a for a in c["assets"] if a["asset_id"] == "bg_x")["measurements"])["Dens"]
+    assert cell["v"] == ac.NA, cell
 
 
 def test_the_legacy_call_shape_still_lists_modules_by_code(tmp_path):

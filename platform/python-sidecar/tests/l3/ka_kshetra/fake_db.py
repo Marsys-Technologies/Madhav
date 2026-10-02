@@ -369,7 +369,10 @@ class FakeConn:
 class FakeCtx:
     def __init__(self, conn: FakeConn, chart_id: str, dry_run: bool = False):
         self.db_conn = conn
-        self.config = {'chart_id': chart_id}
+        # a decorated (@records_swiss_backend) per-chart writer needs a checkable birth window
+        # (window_unchecked otherwise); the writer itself reads its birth instant from the fake DB.
+        self.config = {'chart_id': chart_id,
+                       'birth_params': {'datetime_iso': '1984-02-05T10:43:00+05:30'}}
         self.dry_run = dry_run
         self.asset_id = 'ka_kshetra'
         self.build_id = 'test-build'

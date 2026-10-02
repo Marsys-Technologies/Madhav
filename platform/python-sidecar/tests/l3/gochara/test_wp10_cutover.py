@@ -1,6 +1,8 @@
 """WP10 cutover rehearsal gate (remainder brief §7.A) — the step scripts under
-scripts/kala_gochara_cutover/ exercised end-to-end against the disposable
-remainder Postgres (port 55434) on a stripped-down synthetic schema.
+scripts/kala_gochara_cutover/ exercised end-to-end against a uniquely named
+disposable database created per run on the admin DSN's cluster (locally the
+shared disposable remainder Postgres, port 55434; in CI the db-integration
+job's Postgres service, via GOCHARA_WP10_ADMIN_DSN + GOCHARA_WP10_REQUIRE_DB=1).
 
 Synthetic schema only: kala_gochara_windows (migration 460 columns + 527's
 generation + 556's era_slice_key), _v2/build_state stubs (for step 10),
@@ -26,8 +28,9 @@ Per-step coverage:
 Production-refusal: every script refuses a 5433/non-loopback DSN without the
 matching tranche flag (asserted for steps 3 and 6 as representatives).
 
-NOT_RUN (skip with reason) when the disposable DB is unreachable — never a
-fallback to any other DSN.
+NOT_RUN (skip with reason) when the admin database is unreachable and
+GOCHARA_WP10_REQUIRE_DB is unset; a hard FAIL when the flag is set (CI) —
+never a fallback to any other DSN, never a silent pass.
 """
 from __future__ import annotations
 
@@ -35,14 +38,30 @@ import importlib.util
 import os
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 import psycopg
 import pytest
 
-DSN = os.environ.get(
-    "GOCHARA_REMAINDER_DSN", "postgresql://wp6:local@localhost:55434/wp6"
+# C21 (steward M20261002T080256-690e): the fixture takes its ADMIN DSN from
+# GOCHARA_WP10_ADMIN_DSN (the shared disposable cluster's admin database
+# locally, the CI Postgres service in CI) and creates its OWN uniquely named
+# disposable database per run — the shared wp6 database made full-suite runs
+# fail with 'DROP ROLE data_plane_builder … DependentObjectsStillExist'
+# because roles are cluster-global and other databases on the cluster still
+# own objects for the role. With GOCHARA_WP10_REQUIRE_DB=1 an unreachable
+# server FAILS instead of skipping (CI sets it, so a missing server can never
+# read as green); without the flag it skips NOT_RUN with the reason.
+ADMIN_DSN = os.environ.get(
+    "GOCHARA_WP10_ADMIN_DSN", "postgresql://wp6:local@localhost:55434/postgres"
 )
+REQUIRE_DB = os.environ.get("GOCHARA_WP10_REQUIRE_DB") == "1"
+
+# The DSN of THIS RUN's disposable database, bound by the db fixture. Read at
+# call time by the tests (same-module global); only ever points at a database
+# the fixture itself created in this run.
+DSN = None
 
 SIDECAR = Path(__file__).resolve().parents[3]
 CUTOVER = SIDECAR / "scripts" / "kala_gochara_cutover"
@@ -55,10 +74,7 @@ DDL = """
 -- Ledger tables are created by step 4's migration apply (1081) and are NOT
 -- re-created by this fixture; reset them row-wise so every test starts from
 -- a clean ledger (a rolled-back manifest from a prior test must not leak
--- in). Never DROP them: this fixture can share a database with the WP6
--- tests (conftest's session-scoped wp6_schema), and dropping the ledger
--- tables out from under that schema fails downstream WP6 tests with
--- UndefinedTable (§12.5 / F-31 test-isolation).
+-- in). Never DROP them (§12.5 / F-31 test-isolation).
 DO $$
 BEGIN
   IF to_regclass('kala_gochara_convention') IS NOT NULL
@@ -225,6 +241,13 @@ INSERT INTO kala_gochara_windows (chart_id, event_class, temporal_shape,
   ('{CHART_A}', 'marriage', 'point', '2001-01-01', '2001-01-01', '2001-01-01', 1, 1, 'gain', false, 'v1'),
   ('{CHART_A}', 'marriage', 'point', '2002-01-01', '2002-01-01', '2002-01-01', 1, 1, 'gain', false, 'v1'),
   ('{CHART_A}', 'marriage', 'point', '2003-01-01', '2003-01-01', '2003-01-01', 1, 1, 'gain', false, 'v1'),
+  -- a 4th v1 row: conjunct (h) (v1 corpus strictly larger than the '4.0'
+  -- layer) must still hold now that FABLE v3.0 T0-5's angular kernel
+  -- (fedc5ae504, #2769) projects 3 '4.0' rows for the 4h synthetic contact
+  -- (activity ≈ 1 across the whole bracket, so month/day tiers appear
+  -- alongside era — under the old time-triangle only one era-tier row was
+  -- written, see _write_4_0_windows).
+  ('{CHART_A}', 'marriage', 'point', '2004-01-01', '2004-01-01', '2004-01-01', 1, 1, 'gain', false, 'v1'),
   ('{CHART_A}', 'marriage', 'point', '2013-05-01', '2013-05-01', '2013-05-01', 2, 2, 'gain', false, '3.0'),
   ('{CHART_A}', 'marriage', 'point', '2014-05-01', '2014-05-01', '2014-05-01', 2, 2, 'gain', false, '3.0');
 INSERT INTO kala_gochara_windows_archive_20260805 (id, chart_id) VALUES
@@ -266,10 +289,29 @@ def _apply_step05_repin(conn):
 
 @pytest.fixture()
 def db():
+    """A brand-new uniquely named disposable database per run, on the admin
+    DSN's cluster — never a shared database, and the cluster-global role is
+    never dropped (C21: the _builder_role.py discipline — DROP OWNED BY in
+    the current database only; create the role only if absent; drop only the
+    database this fixture itself created). Refuses by construction to run
+    against a database it did not create: the name is unique per run, so
+    CREATE DATABASE fails rather than touch anyone else's database."""
+    global DSN
     try:
-        conn = psycopg.connect(DSN, autocommit=True, connect_timeout=3)
+        admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
     except Exception as exc:  # noqa: BLE001
-        pytest.skip(f"NOT_RUN: disposable remainder database unreachable ({exc})")
+        if REQUIRE_DB:
+            pytest.fail(
+                f"GOCHARA_WP10_REQUIRE_DB=1: the WP10 cutover suite REQUIRES "
+                f"a reachable Postgres at GOCHARA_WP10_ADMIN_DSN and got: {exc}")
+        pytest.skip(f"NOT_RUN: WP10 admin database unreachable ({exc})")
+    dbname = f"wp10cut_{os.getpid()}_{uuid.uuid4().hex[:8]}"
+    admin.execute(f'CREATE DATABASE "{dbname}"')
+    parts = psycopg.conninfo.conninfo_to_dict(ADMIN_DSN)
+    parts["dbname"] = dbname
+    DSN = psycopg.conninfo.make_conninfo(**parts)
+    admin.close()
+    conn = psycopg.connect(DSN, autocommit=True)
     with conn.cursor() as cur:
         cur.execute(DDL)
         cur.execute(SEED)
@@ -277,14 +319,16 @@ def db():
         BEGIN
           IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'data_plane_builder') THEN
             DROP OWNED BY data_plane_builder;
-            DROP ROLE data_plane_builder;
+          ELSE
+            CREATE ROLE data_plane_builder NOLOGIN;
           END IF;
         END $$""")
-        cur.execute("CREATE ROLE data_plane_builder NOLOGIN")
     yield conn
-    with conn.cursor() as cur:
-        cur.execute("DROP OWNED BY data_plane_builder")
-        cur.execute("DROP ROLE IF EXISTS data_plane_builder")
+    conn.close()
+    admin = psycopg.connect(ADMIN_DSN, autocommit=True)
+    admin.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
+    admin.close()
+    DSN = None
 
 
 def _scalar(conn, sql, args=()):
@@ -497,9 +541,11 @@ def _write_4_0_windows(chart: str) -> None:
     kala_gochara_windows under '4.0' (plan §2.2/§4.7). The synthetic contact
     (karaka SUN, 2026-06-15 12:00 ±2h) joins the seeded map row (marriage,
     karaka, SUN, 0.9); the rehearsal-synthetic class context is recorded as
-    such on every row (source='fixture'). The 4h span yields one era-tier
-    row (a single above-threshold series point admits no month/day peaks —
-    honest, and the windows_present gate only needs rows to exist).
+    such on every row (source='fixture'). Since FABLE v3.0 T0-5's angular
+    kernel (fedc5ae504, #2769) the fixture contact is physically consistent
+    (target = Saturn's real longitude at t_exact), so activity ≈ 1 across
+    the whole 4h bracket and the projection writes 3 rows (era + month +
+    day tiers); the windows_present gate only needs rows to exist.
     """
     r = _run_script("step06b_windows_projection.py", "--dsn", DSN,
                     "--chart-id", chart, "--rehearse-synthetic")
@@ -577,7 +623,7 @@ def test_step08_flip_and_reverse(db):
     assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
                        "WHERE chart_id=%s AND generation='4.0'", (CHART_A,)) == 0
     assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
-                       "WHERE chart_id=%s AND generation='v1'", (CHART_A,)) == 3
+                       "WHERE chart_id=%s AND generation='v1'", (CHART_A,)) == 4
     assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
                        "WHERE chart_id=%s AND generation='3.0'", (CHART_A,)) == 2
     # Post-reversal integrity: with the orphan windows gone, conjuncts (a)/(f)
@@ -641,7 +687,7 @@ def test_clear_windows_on_reversal_refusals(db):
     # 'v1'/'3.0' windows untouched throughout
     assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
                        "WHERE chart_id=%s AND generation IN ('v1','3.0')",
-                   (CHART_A,)) == 5
+                   (CHART_A,)) == 6
 
 
 # ── step 9 — birth-epoch detector (#2534 class) ─────────────────────────────

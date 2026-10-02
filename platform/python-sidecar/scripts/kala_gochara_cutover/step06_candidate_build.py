@@ -120,11 +120,28 @@ def _coerce_episode_times(episodes: list[dict]) -> list[dict]:
 def _synthetic_episodes() -> list[dict]:
     t = datetime(2026, 6, 15, 12, 0, 0, tzinfo=UTC)
     from datetime import timedelta
+    # FABLE v3.0 T0-5 (fedc5ae504, #2769) made step06b's M-1 activity kernel
+    # ANGULAR: activity(t) = 1 − min(|Δλ(t)|/orb, 1) against the contact's
+    # target_longitude_deg, with Δλ from the transiting body's real Swiss
+    # longitude. The prior TIME-triangle peaked at t_exact by construction,
+    # so this fixture's arbitrary 90.0° target was never checked — under the
+    # ruled kernel it puts Saturn ~101° off target and the projection writes
+    # 0 windows (test_wp10_cutover.test_step07_flip_gates windows_present
+    # gate). The synthetic conjunction must be physically consistent:
+    # target_longitude_deg = Saturn's sidereal longitude at t_exact via the
+    # same pipeline.transit_search._get_planet_pos accessor and the same
+    # timestamp→jd conversion step06b_windows_projection.jd_of uses.
+    if str(SIDECAR) not in sys.path:
+        sys.path.insert(0, str(SIDECAR))
+    import swisseph as swe
+    from pipeline.transit_search import _get_planet_pos
+    target_lon = float(_get_planet_pos(
+        swe, "Saturn", t.timestamp() / 86400.0 + 2440587.5)[0])
     return [{
         "independence_group": "ig-saturn-rehearsal",
         "body": "Saturn", "relation": "conjunction", "aspect_deg": 0,
         "target_type": "karaka", "target_ref": "SUN", "target_fact_id": None,
-        "target_resolution_state": "resolved", "target_longitude_deg": 90.0,
+        "target_resolution_state": "resolved", "target_longitude_deg": target_lon,
         "t_in": t - timedelta(hours=2),
         "t_exact": t,
         "t_out": t + timedelta(hours=2),

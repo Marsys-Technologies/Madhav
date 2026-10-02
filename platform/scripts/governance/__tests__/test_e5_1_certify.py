@@ -60,6 +60,9 @@ def sha(b: bytes) -> str:
 WH = {W1: sha(W1_BYTES), W2: sha(W2_BYTES)}     # an asset with a writer: a PASS hashes ALL its census-listed writer files
 W3 = "platform/python-sidecar/pipeline/orchestrator/writers/bg_third.py"     # committed, NOT in the census's writer_files
 W4 = "platform/python-sidecar/pipeline/orchestrator/writers/bg_untracked.py"  # in the census's writer_files, never committed
+DECL_REL = "platform/scripts/governance/asset_declarations.json"
+DECL_BYTES = b'{"version": "1.7.0", "assets": {}}\n'
+DECL_SHA = hashlib.sha256(DECL_BYTES).hexdigest()
 COMMIT_DATE = "2026-09-30T10:00:00+05:30"                                      # before RUN: the census postdates the writers
 TOOL_COMMIT = "a" * 40
 CENSUS_DIR_REL = "00_ARCHITECTURE/control/census"
@@ -80,7 +83,7 @@ def make_repo(path, files=None, date=COMMIT_DATE):
     """A git repo whose census dir exists, with `files` ({relpath: bytes}) committed at `date`."""
     path.mkdir(parents=True, exist_ok=True)
     git(path, "init", "-q")
-    for rel, b in (files or {}).items():
+    for rel, b in {DECL_REL: DECL_BYTES, **(files or {})}.items():
         f = path / rel
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_bytes(b)
@@ -128,7 +131,7 @@ def ledger(tmp_path):
 
 def stamp(**over):
     d = dict(registry_revision=ac.REGISTRY_REVISION, registry_fingerprint=ac.registry_fingerprint(),
-             tool_commit=TOOL_COMMIT)
+             tool_commit=TOOL_COMMIT, declarations_sha256=DECL_SHA, declarations_version="1.7.0")
     d.update(over)
     return d
 
@@ -275,12 +278,12 @@ def test_verified_by_is_required_and_verified_on_is_stamped_tz_aware(ledger):
 # ───────────────────────── R1: detector NONE ─────────────────────────
 
 def test_r1_pass_on_a_detector_none_criterion_is_refused(ledger):
-    assert ac.CRITERION_REGISTRY["Carr.D1"]["detector"] == "NONE"
-    refused(ledger, "detector_none", criterion="Carr.D1")
+    assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == "NONE"
+    refused(ledger, "detector_none", criterion="Carr.D2")
 
 
 def test_r1_a_census_cell_reading_pass_on_a_detector_none_criterion_is_refused_too(ledger):
-    refused(ledger, "detector_none", criterion="Carr.D1", verdict=None, cell=dict(v="PASS"))
+    refused(ledger, "detector_none", criterion="Carr.D2", verdict=None, cell=dict(v="PASS"))
 
 
 @pytest.mark.parametrize("verdict", ["FAIL", "PARTIAL", "ERRORED", "N/A"])
@@ -308,7 +311,7 @@ def test_r1_registry_entry_turning_none_makes_a_pass_refused(ledger, monkeypatch
 
 
 def test_r1_a_caller_supplied_detector_cannot_override_the_registry(ledger):
-    refused(ledger, "detector_mismatch", criterion="Carr.D1", detector="my_detector.py")
+    refused(ledger, "detector_mismatch", criterion="Carr.D2", detector="my_detector.py")
     refused(ledger, "detector_mismatch", detector="something_else")
     assert nc.write_certification(**kw(ledger, detector="asset_census.py:measure()")).status == "appended"
 
@@ -1188,8 +1191,11 @@ def test_r3_the_registry_really_yields_that_rule_id_for_those_facts():
     assert ap["state"] == "NOT_APPLICABLE" and ap["rule_id"] == NA_RID
 
 
-def test_r3_na_is_refused_while_no_rule_is_declared_the_real_state_today(ledger):
-    assert ac.NA_RULE_DECISIONS == {}, "N-22 declared a rule: update this test to the declared state"
+def test_r3_na_is_refused_while_its_rule_is_undeclared(ledger, monkeypatch):
+    # N-65 declared the first six rules (pin 9): this test is about an UNDECLARED rule, so state it explicitly
+    # (the Ldgr.source_presence rule used here is not among the declared ones: pinned below).
+    assert NA_RID not in ac.NA_RULE_DECISIONS, "this rule is declared now: pick another undeclared one"
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})
     e = na_refused(ledger, "na_not_computed")
     assert "undecided" in str(e)
     assert len(lines(ledger)) == 1
@@ -1283,7 +1289,8 @@ def measured_na(**over):
 
 
 def test_r3_a_measured_cause_na_is_recorded_only_from_the_census_cell_and_a_declared_rule(ledger, monkeypatch):
-    e = refused(ledger, "na_not_computed", **measured_na())                  # rule undeclared (real state)
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})                          # rule undeclared (N-65 declares MEAS_NA since pin 9)
+    e = refused(ledger, "na_not_computed", **measured_na())
     assert "undecided" in str(e)
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {MEAS_NA: "N-22.nr"})
     rec = nc.write_certification(**kw(ledger, **measured_na())).record
@@ -1467,9 +1474,11 @@ def test_unserialisable_facts_on_an_addition_and_a_nan_evidence_are_refusals(led
 
 EXPECTED_CURRENCY = {"verdict", "criterion_version", "registry_revision", "registry_fingerprint",
                      "detector", "writer_hashes", "writer_hashes_verified", "writer_hashes_reason", "upstream_cert_ids",
-                     "semantic_fingerprint", "na", "basis", "inconclusive", "transitive_only"}
+                     "semantic_fingerprint", "na", "basis", "inconclusive", "transitive_only", "citation_state",
+                     "declarations_sha256"}
 PROVENANCE_ONLY = {"evidence", "job_image_tag", "verified_by", "verified_on", "cross_checked", "prev_sha256", "seq", "cert_id",
-                   "cert_key", "generation", "asset", "layer", "kind", "gate", "criterion", "record_version"}
+                   "cert_key", "generation", "asset", "layer", "kind", "gate", "criterion", "record_version",
+                   "citation_state_caveat", "declarations_version"}                    # derived from citation_state + verdict + criterion: not independent
 
 
 def test_the_currency_fields_are_exactly_the_documented_set_and_provenance_is_excluded():
@@ -1547,7 +1556,7 @@ def test_registry_revision_change_is_a_changed_measurement(ledger, monkeypatch):
 
 def test_a_refused_request_after_a_good_one_still_writes_nothing(ledger):
     nc.write_certification(**kw(ledger))
-    refused(ledger, "detector_none", criterion="Carr.D1")
+    refused(ledger, "detector_none", criterion="Carr.D2")
     refused(ledger, "no_census_run_id", evidence={})
     refused(ledger, "census_required", census_path=None)
     assert len(lines(ledger)) == 2
@@ -1694,7 +1703,7 @@ def test_the_schema_row_and_the_append_are_byte_stable(tmp_path):
 def test_r9_a_refused_request_does_not_create_the_ledger_even_with_init(tmp_path):
     p = tmp_path / "new.jsonl"
     with pytest.raises(nc.CertificationRefused):
-        nc.write_certification(**kw(p, init=True, criterion="Carr.D1"))
+        nc.write_certification(**kw(p, init=True, criterion="Carr.D2"))
     assert not p.exists()
     refused(p, "census_required", init=True, census_path=None)
     assert not p.exists()
@@ -1715,7 +1724,7 @@ def test_zero_byte_ledger_without_init_is_refused_and_a_refused_init_never_remov
     p.write_bytes(b"")
     refused(p, "bad_ledger")
     refused(p, "upstream_unknown", init=True, upstream_cert_ids=["bg_x|gate|Build.registered@1"])
-    refused(p, "detector_none", init=True, criterion="Carr.D1")
+    refused(p, "detector_none", init=True, criterion="Carr.D2")
     assert p.exists() and p.read_bytes() == b""                              # untouched, NOT unlinked
 
 
@@ -2386,7 +2395,7 @@ def test_verify_reads_an_applicability_na_with_no_cell_and_refuses_a_non_na_over
     cert_in_repo(fresh_repo, **na_kw(None))
     commit_all(fresh_repo)
     assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["status"] == "PASS"
-    doctor(fresh_repo, verdict="PASS")
+    doctor(fresh_repo, verdict="PASS", citation_state_caveat=True)       # a PASS on Ldgr.source_presence with no state: caveat
     with pytest.raises(nc.CertificationRefused) as ei:
         nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
     assert ei.value.code == "census_verdict_mismatch" and "no cell" in str(ei.value)
@@ -2565,7 +2574,7 @@ def test_cli_appends_then_reports_unchanged_and_exits_zero(ledger):
 def test_cli_refusal_exits_2_names_the_code_and_writes_nothing(ledger):
     before = ledger.read_bytes()
     args = cli_args(ledger)
-    args[args.index("Build.registered")] = "Carr.D1"
+    args[args.index("Build.registered")] = "Carr.D2"
     p = cli(args)
     assert p.returncode == 2 and "detector_none" in p.stderr
     assert ledger.read_bytes() == before

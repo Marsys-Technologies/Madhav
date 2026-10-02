@@ -115,6 +115,7 @@ from pipeline.orchestrator.writers import (
     WriterResult,
     register,
 )
+from panchang_engine import swiss_backend as _swiss_backend
 
 logger = logging.getLogger(__name__)
 
@@ -406,12 +407,28 @@ class GocharaV41CandidateWriter(WriterBase):
             detail = "; ".join(
                 f"{name}: {r.summary()}" for name, r in reports.items())
             raise step06_build.StaleOverlayRefusal(detail)
+        # The recorded ephemeris claim is OBSERVED, not asserted (C17 /
+        # §N.8 — a status needs a detector behind it): probe the calling
+        # thread's live backend over the pinned horizon's JDs. backend_name
+        # RAISES SwissBackendError on anything but 'swieph' (and
+        # OutOfCorpusRangeError for a date outside the .se1 corpus window),
+        # so a Moshier state refuses here — before register_convention —
+        # and no manifest is written. probe_retflag is the flag set the
+        # helper's Sun + TRUE_NODE probe ran under (FLG_SWIEPH | FLG_SPEED,
+        # panchang_engine/swiss_backend.py _observed_backend_name), read
+        # from the library rather than re-typed.
+        import swisseph as _swe
+        horizon_jds = (
+            _swe.julday(1998, 1, 1, 12.0),
+            _swe.julday(2026, 4, 18, 12.0))
+        observed_backend = _swiss_backend.backend_name(*horizon_jds)
+        probe_retflag = int(_swe.FLG_SWIEPH | _swe.FLG_SPEED)
         cid = ledger_mod.register_convention(
             conn, step06_build.CONVENTION_VECTOR,
-            {"ephemeris_backend": "swieph", "retflag": 258})
+            {"ephemeris_backend": observed_backend, "retflag": probe_retflag})
         manifest_id = ledger_mod.publish_candidate(
             conn, chart_id, GENERATION, cid, vector,
-            {"backend": "swieph", "retflag": 258}, HORIZON_TEXT,
+            {"backend": observed_backend, "retflag": probe_retflag}, HORIZON_TEXT,
             writer_asset_id=ASSET_ID)
         elapsed = _time.time() - t_start
         logger.info(
@@ -423,7 +440,8 @@ class GocharaV41CandidateWriter(WriterBase):
             duration_seconds=elapsed,
             notes=(f"'4.1' candidate manifest {manifest_id} (convention {cid}); "
                    f"§12.9 {vector['vedha_upstream_freshness']}/"
-                   f"{vector['moorti_upstream_freshness']}"))
+                   f"{vector['moorti_upstream_freshness']}; "
+                   f"ephemeris_backend={observed_backend} (probed)"))
 
     def _run_body(self, ctx: ContextSpec, chart_id: str, body: str,
                   ephe_path: str) -> WriterResult:
