@@ -512,6 +512,72 @@ def test_1221_corrections_are_idempotent_and_apply_individually_when_a_part_is_a
 
 
 @requires_pg
+def test_bb_the_true_extreme_of_the_tolerance_is_accepted_and_a_half_unit_tolerance_would_reject_it(pg):
+    """The largest disagreement the writer's own arithmetic can produce between its stored orb_strength and the check's
+    recomputation from the stored orb_deg is 16/3 * 1e-5 = 5.333e-5 (1/18750) (deeptamsa_sum 15 and above; found by exhaustive search over
+    every pairwise sum), which is MORE than half a unit in the 4th decimal: a tolerance of 0.00005 would false-RED a correct build.
+    Concrete case, computed with the writer's arithmetic: orb 7.4902500000000005 (the float just above the tie 7.49025) stores orb_deg 7.4903 and orb_strength 0.5007, while
+    1 - 7.4903/15 = 0.50064667 (the review's 9.3742 / 0.375 pair is not reachable: it needs the quotient below 0.37505, i.e.
+    orb above 9.37425, which stores orb_deg 9.3743)."""
+    from fractions import Fraction
+    od, st = _writer_value(7.4902500000000005, 15.0)
+    assert (od, st) == (7.4903, 0.5007)
+    gap = abs(Fraction(str(st)) - (1 - Fraction(str(od)) / 15))
+    assert Fraction(5, 100000) < gap < Fraction(1, 10000) and abs(float(gap) - 16e-5 / 3) < 1e-9     # 5.333e-5
+    # nothing the writer can produce exceeds it: exhaustive over the 4 dp orb grid and both rounding edges, every pairwise sum
+    worst = Fraction(0)
+    for total in sorted({int(a + b) for a in DEEPTAMSA.values() for b in DEEPTAMSA.values()}):
+        for k in range(10001, total * 10000 + 1, 7):               # stride 7 keeps this fast; the case above is checked exactly
+            y = 1 - Fraction(k, 10000) / total
+            for edge in (Fraction(-5, 100000), Fraction(5, 100000)):
+                x = max(Fraction(0), 1 - (Fraction(k, 10000) + edge) / total)
+                t = x * 10000
+                s4 = Fraction(int(t) + (1 if t - int(t) >= Fraction(1, 2) else 0), 10000)
+                worst = max(worst, abs(s4 - y))
+    assert worst <= Fraction(16, 3 * 100000) < Fraction(1, 10000)
+    row = [("ithasala", od, 15.0, st)]
+    assert _count(pg, row, _conj(OLD_BB)) == 1                     # the old exact check false-REDs it
+    assert _count(pg, row, _conj(_new_bb_fragment())) == 0         # the corrected check accepts it
+    assert _count(pg, [("ithasala", od, 15.0, 0.5009)], _conj(_new_bb_fragment())) == 1    # two units off: still false
+
+
+def _fresh_b_two_rows(port: int) -> str:
+    """_fresh_b, but with the registry's primary key dropped and a second ga_structural row, so the single UPDATE matches 2 rows."""
+    db = _fresh_b(port)
+    q(port, db, "ALTER TABLE asset_registry DROP CONSTRAINT asset_registry_pkey CASCADE")
+    q(port, db, "INSERT INTO asset_registry (asset_id, count_sql, target_floor, integrity_check_sql, is_active) "
+                "SELECT asset_id, count_sql, target_floor, integrity_check_sql, is_active FROM asset_registry WHERE asset_id = 'ga_structural'")
+    return db
+
+
+def _fresh_b_text_rewriting_trigger(port: int) -> str:
+    """_fresh_b plus a BEFORE UPDATE trigger that strips the (c9) marker from the text being written: the UPDATE matches one row but
+    the stored text lacks a marker."""
+    db = _fresh_b(port)
+    q(port, db, """
+      CREATE FUNCTION strip_marker() RETURNS trigger LANGUAGE plpgsql AS $f$
+      BEGIN NEW.integrity_check_sql := replace(NEW.integrity_check_sql, 'Migration 1221 (c9 domain)', 'x'); RETURN NEW; END $f$;
+      CREATE TRIGGER strip_marker BEFORE UPDATE OF integrity_check_sql ON asset_registry FOR EACH ROW EXECUTE FUNCTION strip_marker();
+    """)
+    return db
+
+
+@requires_pg
+@pytest.mark.parametrize("make_db", [_fresh_b_two_rows, _fresh_b_text_rewriting_trigger], ids=["update_matches_two_rows", "stored_text_lacks_a_marker"])
+def test_1221_after_apply_assertion_raises_on_correct_looking_code_and_the_runner_shaped_transaction_changes_nothing(pg, make_db):
+    """The guards before the UPDATE all pass here (live text carries (g28), anchor once, each old conjunct once); only the
+    after-apply assertion (`n <> 1 OR NOT EXISTS (... markers present, old text gone)` -> 'failed to apply') can catch it."""
+    db = make_db(pg)
+    snap = "SELECT string_agg(md5(integrity_check_sql), ',' ORDER BY md5(integrity_check_sql)) FROM asset_registry"
+    before, fresh_before, specs_before = q(pg, db, snap), reg.freshness_snapshot(pg, db), reg.specs_snapshot(pg, db)
+    r = psql(pg, db, file=_write("b", B), single_transaction=True)
+    assert r.returncode != 0 and "ga_structural integrity patch failed to apply" in r.stderr, r.stderr
+    assert q(pg, db, snap) == before                               # the registry is untouched
+    assert reg.freshness_snapshot(pg, db) == fresh_before          # no trigger side effect survived
+    assert reg.specs_snapshot(pg, db) == specs_before              # and part 2 (the spec swap) never ran
+
+
+@requires_pg
 def test_1221_applies_in_one_transaction_with_lock_timeout_and_a_refusal_changes_nothing(pg):
     db = _fresh_b(pg)
     ok = psql(pg, db, file=_write("b", B), single_transaction=True)
