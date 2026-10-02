@@ -1159,16 +1159,19 @@ export const ASSETS: AssetDef[] = [
     // Matches migration 307 (L1 Phase 3 Enrichment) — Amendment 1 adds 4 per-varga bala
     // categories covered by the new `graha_%_bala_per_varga` clause. ashtakavarga per-varga
     // rows already covered by existing `ashtakavarga_%`. Migration 217 broadened the family.
+    // Migration 1219 (Q-L1-04) narrows it so no row is counted by two assets: the bhava_bala_* rows
+    // (house_bhava_bala_% stays), vimsopaka_bala_per_graha and graha_saptavargaja_bala_component are
+    // ga_structural's (it emits and owns them). Same text as 1219's strength_new, byte for byte
+    // (migration-governed once a row exists: a re-seed never reverts it; this text seeds NEW rows).
     count_sql: `
   SELECT count(*) AS count FROM chart_facts
   WHERE chart_id = $1
     AND (
       fact_category LIKE 'graha_shadbala_%'
       OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala')
-      OR fact_category LIKE '%vimsopaka%'
+      OR fact_category LIKE 'graha_vimsopaka_%'
       OR fact_category LIKE 'ashtakavarga_%'
-      OR fact_category LIKE '%bhava_bala%'
-      OR fact_category = 'graha_saptavargaja_bala_component'
+      OR fact_category LIKE 'house_bhava_bala_%'
       OR fact_category LIKE 'graha_%_bala_per_varga'
     )
 `,
@@ -1487,7 +1490,15 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // Combined count: D1 composite rows (ga_condition_composite) + per-varga avastha rows (chart_facts).
     // Amendment 2 added graha_avastha_*_per_varga rows; BUG-1 fix (migration 309) removed them
     // from ga_structural count_sql so ga_condition is the sole counter of those rows.
-    count_sql: `SELECT (SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1) + (SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'graha_avastha_%_per_varga') AS count`,
+    // Migration 1219 (Q-L1-04) re-declares it as the text below, byte for byte (the live text before it also carried
+    // a stale graha_yuddha clause, which ga_structural emits and owns; the seed had lagged the live text, which
+    // already carried the sayanadi / lajjitadi clauses). Migration-governed once a row exists: a re-seed never reverts it.
+    count_sql: `SELECT (SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1)
+       + (SELECT count(*) FROM chart_facts
+          WHERE chart_id = $1
+            AND (fact_category LIKE 'graha_avastha_%_per_varga'
+                 OR fact_category = 'graha_avastha_sayanadi'
+                 OR fact_category = 'graha_avastha_lajjitadi')) AS count`,
     size_sql: `SELECT pg_total_relation_size('ga_condition_composite')`,
     // Floor: 2,880 measured on prod chart 482012f1 (2026-06-18, migration 310).
     // Breakdown: 45 D1 composite (ga_condition_composite) + 2,835 per-varga avastha (chart_facts).
