@@ -107,11 +107,17 @@ def node_db():
     anywhere else). NOT_RUN when the maintenance server is unreachable."""
     parts = urlsplit(MAINT_DSN)
     # C25: host discipline via the ONE shared guard (tests/l3/_disposable_db_guard.py)
-    # — every host/hostaddr entry loopback (multi-host, keyword/value and query-string
-    # forms), no libpq environment overrides. Keeps the NOT_RUN skip semantics.
+    # — every host/hostaddr entry loopback (multi-host, keyword/value forms; URI
+    # query strings carrying dbname/host/hostaddr/service refused outright), no
+    # libpq environment overrides. Locally a refusal keeps the NOT_RUN skip
+    # semantics; under CI a refusal FAILS (Suvarṇa F3) — a dangerous DSN must
+    # never read as green-by-skip where the suite is expected to run.
+    _in_ci = os.environ.get("GITHUB_ACTIONS") == "true" or os.environ.get("CI") == "true"
     try:
         validate_disposable_dsn(MAINT_DSN, None)
     except RefusedError as exc:
+        if _in_ci:
+            raise
         pytest.skip(f"NOT_RUN: node-pin PG tests run only against a loopback disposable server ({exc})")
     try:
         maint = psycopg.connect(MAINT_DSN, autocommit=True, connect_timeout=3)

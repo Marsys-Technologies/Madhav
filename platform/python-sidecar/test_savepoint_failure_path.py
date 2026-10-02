@@ -27,14 +27,9 @@ The test proves:
 import os
 import sys
 from pathlib import Path
-from urllib.parse import urlparse
 
 import psycopg
 import pytest
-
-sys.path.insert(0, str(Path(__file__).resolve().parent / "tests" / "l3"))
-
-from _disposable_db_guard import validate_disposable_dsn  # noqa: E402
 
 pytestmark = pytest.mark.integration
 
@@ -48,13 +43,23 @@ if not DB_URL:
         allow_module_level=True,
     )
 
-# C25: host discipline via the ONE shared guard (tests/l3/_disposable_db_guard.py)
-# — every host/hostaddr entry loopback (multi-host, keyword/value and query-string
-# forms), no libpq environment overrides; the dbname convention stays this suite's own.
-validate_disposable_dsn(DB_URL, None)
-_parsed_db_url = urlparse(DB_URL)
-_database_name = _parsed_db_url.path.lstrip("/")
-if "test" not in _database_name.lower():
+
+def _validate_disposable(dsn: str) -> dict:
+    """C25: host discipline via the ONE shared guard
+    (tests/l3/_disposable_db_guard.py) — every host/hostaddr entry loopback
+    (multi-host, keyword/value forms; URI query strings carrying
+    dbname/host/hostaddr/service refused outright), no libpq environment
+    overrides. Imported LAZILY (Suvarṇa F4): the skip above must win over a
+    collection-time ImportError. Returns the parsed conninfo."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "tests" / "l3"))
+    from _disposable_db_guard import validate_disposable_dsn
+    return validate_disposable_dsn(dsn, None)
+
+
+# Suvarṇa F1: the name rule asserts on the EFFECTIVE libpq dbname from the
+# parsed conninfo, never on the URL path/string.
+_info = _validate_disposable(DB_URL)
+if "test" not in (_info.get("dbname") or "").lower():
     raise RuntimeError("SAVEPOINT_TEST_DATABASE_URL must name a test database")
 
 # ── helpers ──────────────────────────────────────────────────────────────────
