@@ -80,13 +80,13 @@ describe('capability estate census', () => {
     ]) expect(Object.values(subtotal).reduce((sum, value) => sum + value, 0)).toBe(128)
     expect(census.denominators.reviewed_output_digest_coverage).toMatchObject({
       assets_with_any_reviewed_spec: 120,
-      // main's 9 + the inactive A2.5 candidate (no output-digest spec by
+      // main's 9 + the inactive A2.5 candidate and A5.3 writer (no output-digest spec by
       // design — candidate-only, steward-dispatched); crucially it does NOT
       // enter active_assets_without_any_reviewed_spec below.
       // main's 9 + the inactive A5.3 skeleton (no output-digest spec by
       // design — inert, geometry pending steward pins 3-7); crucially it does
       // NOT enter active_assets_without_any_reviewed_spec below.
-      assets_without_any_reviewed_spec: 10,
+      assets_without_any_reviewed_spec: 11,
       active_assets_without_any_reviewed_spec: 8,
       current_source_intended_spec_rows: 119,
       current_source_intended_active_spec_rows: 119,
