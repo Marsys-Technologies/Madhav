@@ -186,16 +186,16 @@ export const DIVISIONAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
     known_gaps: ['Public MCP uses ganita_chart_facts_get with a required divisional_chart filter, not a same-name tool.'],
     producer_output_claims: [{
       asset_id: 'ga_vargas', component: 'chart_divisionals placements',
-      output_digest_spec_sha256: '9c278d217f045f140596b452aa3c929bc83632bf96f0a266a2532dfe2ee60862',
-      disposition: 'reviewed_output', evidence: 'platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql:108',
+      output_digest_spec_sha256: '5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51',
+      disposition: 'reviewed_output', evidence: 'platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql:28',
     }],
     availability_contracts: [{
       binding_id: 'registry:marsys://tool/L1/get_divisionals',
       requirements: [{
         kind: 'producer_output', asset_id: 'ga_vargas',
-        spec_sha256: '9c278d217f045f140596b452aa3c929bc83632bf96f0a266a2532dfe2ee60862',
+        spec_sha256: '5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51',
         scope: 'chart_build',
-        source_ref: 'platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql:108',
+        source_ref: 'platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql:28',
       }],
     }, {
       binding_id: 'mcp:ganita_chart_facts_get:divisional_chart',

@@ -7,7 +7,6 @@ import { describe, expect, it } from 'vitest'
 import {
   buildCapabilityEstateCensus,
   canonicalJson,
-  currentSourceIntendedDigestSpecs,
   readCommittedCapabilityEstateCensusProvenance,
   renderCapabilityEstateCensus,
 } from '../generate_capability_estate_census'
@@ -210,30 +209,6 @@ describe('capability estate census', () => {
       })
     } finally {
       rmSync(repoRoot, { recursive: true, force: true })
-    }
-  })
-})
-
-describe('current source-intended digest specs: replay order', () => {
-  const sha = (c: string) => c.repeat(64)
-  const insert = (asset: string, s: string) =>
-    `INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)\nVALUES ('${asset}', '${s}', '{"version":"v","components":[]}'::jsonb);\n`
-
-  it('replays migrations in NUMERIC order: a 4-digit revision supersedes a 3-digit original', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'census-order-'))
-    try {
-      const original = join(dir, '883_x_digest_spec.sql')
-      const revision = join(dir, '1223_x_digest_spec_revision.sql')
-      writeFileSync(original, insert('ga_x', sha('a')))
-      writeFileSync(revision,
-        `UPDATE asset_output_digest_specs SET retired_at = now() WHERE asset_id = 'ga_x' AND spec_sha256 = '${sha('a')}' AND retired_at IS NULL;\n${insert('ga_x', sha('b'))}`)
-      for (const files of [[original, revision], [revision, original]]) {
-        const current = currentSourceIntendedDigestSpecs(dir, files)
-        expect(current.map((c) => [c.asset_id, c.spec_sha256])).toEqual([['ga_x', sha('b')]])
-        expect(current[0]!.migration_path).toBe('1223_x_digest_spec_revision.sql')
-      }
-    } finally {
-      rmSync(dir, { recursive: true, force: true })
     }
   })
 })

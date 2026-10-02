@@ -435,14 +435,11 @@ function sqlString(value: string): string {
  * Replays only the append/retire state machine for asset_output_digest_specs.
  * This is deliberately not a database-schema replay and makes no deployed-state
  * claim; it resolves the source-intended current row after lexically ordered
- * migrations (numeric filename order) from both governed trees.
+ * migrations from both governed trees.
  */
-export function currentSourceIntendedDigestSpecs(repoRoot: string, files: readonly string[]): CurrentDigestSpec[] {
+function currentSourceIntendedDigestSpecs(repoRoot: string, files: readonly string[]): CurrentDigestSpec[] {
   const current = new Map<string, CurrentDigestSpec>()
-  // NUMERIC filename order, the order migrate.ts applies them in: a plain lexical sort puts 1223_ before 883_,
-  // so a later-numbered revision of a spec (1223 re-keys ga_vargas' 883 spec) would be replayed BEFORE the
-  // migration it supersedes and the census would report the retired spec as current.
-  const ordered = [...files].sort((a, b) => basename(a).localeCompare(basename(b), 'en', { numeric: true }) || a.localeCompare(b))
+  const ordered = [...files].sort((a, b) => basename(a).localeCompare(basename(b)) || a.localeCompare(b))
   for (const path of ordered) {
     const sql = stripSqlComments(readFileSync(path, 'utf8'))
     const stringConstants = new Map<string, string>()

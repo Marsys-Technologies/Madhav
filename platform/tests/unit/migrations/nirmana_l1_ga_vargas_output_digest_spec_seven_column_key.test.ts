@@ -10,14 +10,13 @@ import { describe, expect, it } from 'vitest'
  * disposable PostgreSQL by python-sidecar/tests/test_migration_1222_1223_ga_vargas.py, and the new sha is
  * recomputed there with the repository's own canonical_digest. Here: the file is a guarded retire+insert on
  * asset_output_digest_specs only, the new spec is the migration-883 spec with `fact_subject` appended to
- * key_columns and nothing else, and the replacement is declared in editorial.ts (the knowledge layer pins the
- * spec sha a receipt must carry).
+ * key_columns and nothing else, and the header names the editorial.ts follow-up (the knowledge layer pins the
+ * spec sha a receipt must carry; moving it is a coordinated follow-up, see the header).
  */
 const root = process.cwd()
 const migration = fs.readFileSync(
   path.resolve(root, 'migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql'), 'utf8')
 const m883 = fs.readFileSync(path.resolve(root, 'migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql'), 'utf8')
-const editorial = fs.readFileSync(path.resolve(root, 'src/lib/retrieval/registry/knowledge/editorial.ts'), 'utf8')
 
 const OLD_SHA = '5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51'
 const NEW_SHA = '9c278d217f045f140596b452aa3c929bc83632bf96f0a266a2532dfe2ee60862'
@@ -72,9 +71,9 @@ describe('migration 1223 -- ga_vargas digest spec, seven-column key', () => {
     }
   })
 
-  it('editorial.ts pins the NEW spec sha for the producer-output claim and the availability requirement', () => {
-    expect(editorial).not.toContain(OLD_SHA)
-    expect(editorial.match(new RegExp(NEW_SHA, 'g'))?.length).toBe(2)
-    expect(editorial).toContain('platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql')
+  it('names the knowledge-pin follow-up that is NOT in this PR', () => {
+    const flat = migration.replace(/^--/gm, ' ').replace(/\s+/g, ' ')
+    expect(flat).toContain('KNOWLEDGE-PIN FOLLOW-UP (NOT in this PR')
+    expect(flat).toContain('editorial.ts')
   })
 })

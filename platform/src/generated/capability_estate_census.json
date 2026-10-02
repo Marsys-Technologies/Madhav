@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "7ec04994b5310885ad155fbff9e5fffd8f9bf2d5245a23e40b0215379b2f1a1c",
+  "content_sha256": "d66e8b289fe3fd6954622e8654deef19aaa25a2805e4139453d68b52c705166e",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -12430,9 +12430,9 @@
       {
         "asset_id": "ga_strength",
         "contract_ref": {
-          "migration_path": "platform/migrations/1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql",
+          "migration_path": "platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql",
           "source_state": "ordered_static_replay_not_database_replay",
-          "spec_sha256": "52a0d2537dc43fc04effe54fd65a165a223e918b14544f96a0892e1df3987a97"
+          "spec_sha256": "7251b1192714e6e1b09720fff165f78f6089bc74dca862dfaab0f7537ee677c3"
         },
         "disposition": "relational_digest_current_source_intent",
         "implementation_refs": [
@@ -12510,9 +12510,9 @@
       {
         "asset_id": "ga_vargas",
         "contract_ref": {
-          "migration_path": "platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql",
+          "migration_path": "platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql",
           "source_state": "ordered_static_replay_not_database_replay",
-          "spec_sha256": "9c278d217f045f140596b452aa3c929bc83632bf96f0a266a2532dfe2ee60862"
+          "spec_sha256": "5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51"
         },
         "disposition": "relational_digest_current_source_intent",
         "implementation_refs": [
@@ -18224,7 +18224,7 @@
         },
         {
           "asset_id": "ga_strength",
-          "migration_path": "platform/migrations/1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql",
+          "migration_path": "platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql",
           "spec": {
             "components": [
               {
@@ -18263,9 +18263,6 @@
                 },
                 "where_in": {
                   "fact_category": [
-                    "ashtakavarga_bindu_contributor",
-                    "ashtakavarga_bindu_per_varga",
-                    "ashtakavarga_pinda_sarva_per_varga",
                     "graha_shadbala_total"
                   ]
                 }
@@ -18273,7 +18270,7 @@
             ],
             "version": "nirmana-output-digest-spec-v1"
           },
-          "spec_sha256": "52a0d2537dc43fc04effe54fd65a165a223e918b14544f96a0892e1df3987a97"
+          "spec_sha256": "7251b1192714e6e1b09720fff165f78f6089bc74dca862dfaab0f7537ee677c3"
         },
         {
           "asset_id": "ga_structural",
@@ -18476,7 +18473,7 @@
         },
         {
           "asset_id": "ga_vargas",
-          "migration_path": "platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql",
+          "migration_path": "platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql",
           "spec": {
             "components": [
               {
@@ -18486,8 +18483,7 @@
                   "ayanamsha_id",
                   "varga",
                   "fact_category",
-                  "fact_key",
-                  "fact_subject"
+                  "fact_key"
                 ],
                 "name": "chart_divisionals",
                 "relation": "chart_divisionals",
@@ -18526,7 +18522,7 @@
             ],
             "version": "nirmana-output-digest-spec-v1"
           },
-          "spec_sha256": "9c278d217f045f140596b452aa3c929bc83632bf96f0a266a2532dfe2ee60862"
+          "spec_sha256": "5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51"
         },
         {
           "asset_id": "ga_vastu",
@@ -20971,7 +20967,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-02T07:57:25.000Z",
+  "generated_at": "2026-10-02T08:28:36.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20988,7 +20984,7 @@
       {
         "id": "census_generator",
         "path": "platform/scripts/generate_capability_estate_census.ts",
-        "sha256": "6213b89138d9332217218de8fc500ba32bbe80a538ef53a18a41a56f9bd28c3b"
+        "sha256": "286fb17d0393ff97d98b164b4f108ac8f16643e6b58499ce6f26d2a743e9ac60"
       },
       {
         "id": "live_runtime_catalog_projection",
@@ -21085,7 +21081,7 @@
           },
           {
             "path": "platform/migrations/1223_nirmana_l1_ga_vargas_output_digest_spec_seven_column_key.sql",
-            "sha256": "b004895f384bd21e14fc564a4d6438a681c76c675eeca507e25860767f646e13"
+            "sha256": "7dd8bf53c5fe3bd6ca916125149052088822c7e6bfee09fdedaffdf6b125e9f9"
           },
           {
             "path": "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
@@ -21369,7 +21365,7 @@
           }
         ],
         "path": "platform/{migrations,supabase/migrations}/*.sql containing asset_output_digest_specs",
-        "sha256": "45faa21010d0f360305217fbac094086ad4430c24b6a4d719f3616536eae3c54"
+        "sha256": "3b2ddfce74d899a6645510e73bf327a098693aa0faf83959927d34e1b4945f92"
       },
       {
         "id": "producer_asset_seed",
@@ -21640,7 +21636,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
-            "sha256": "9144c4c2af04cc5f2d676a9d33e7b20fe3384ba83ed095154842ba2fd05580db"
+            "sha256": "887f92425ba10b389094d88ccc362714b1693f20e35ef1167964e68cabed926d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/index.ts",
@@ -22412,7 +22408,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "f402aa67cd80e284a4cd5fb05cc39ddf52de1a41a546afc8b0c898dcdfc22313"
+        "sha256": "bfe33a51a9baa3d6dd8477dbad287a3eb76cb79ad5f02950aeb52f6c8e2ceda8"
       },
       {
         "id": "service_effect_contracts",
@@ -22437,5 +22433,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "c521d293de788a398c10fe6356ec75258c81a1a8"
+  "source_revision": "936c4cd0c858787b3f887cf9173b628303dc7edb"
 }

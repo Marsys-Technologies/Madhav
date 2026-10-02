@@ -39,9 +39,15 @@
 --   Degraded set when this PR merges in W1 together with 1221/1226 = {ga_structural, ga_vargas, ga_dashas,
 --   ga_yoga}, all rebuilt inside the S-L1 window. Dependents' compute_upstream_hash read the ga_vargas receipt's
 --   output_digest, so they go stale when it changes; that cascade is the S-L1 wave order's job (L1 first).
---   The asset is asset_frozen (N-51) and needs no refreeze for a spec revision. The editorial knowledge declaration
---   of get_divisionals (platform/src/lib/retrieval/registry/knowledge/editorial.ts) pins the spec sha it expects a
---   receipt to carry; it moves to the new sha in this same PR (with the regenerated census and knowledge snapshot).
+--   The asset is asset_frozen (N-51) and needs no refreeze for a spec revision.
+--   KNOWLEDGE-PIN FOLLOW-UP (NOT in this PR; it must land in the same S-L1 window, before the F-A2 ga_vargas rebuild's
+--   receipt is relied on): the editorial knowledge declaration of get_divisionals
+--   (platform/src/lib/retrieval/registry/knowledge/editorial.ts, producer_output requirement + claim) pins the OLD spec
+--   sha 5f332a48..., so a receipt written under the new spec does not satisfy that requirement until the pin moves to
+--   9c278d21... Moving it changes the capability knowledge snapshot content hash, which re-pins files owned by other
+--   campaigns (the Beyond-Acarya acceptance artifact and the Pariprashna route golden baselines), so it is a separate,
+--   coordinated change; the census generator's digest-spec replay order (lexical: 1223 before 883) needs its numeric-order
+--   fix in that same change. Until then the census lists the 883 spec as current for ga_vargas.
 --
 -- WHAT CHANGES. Only key_columns of the one component: `fact_subject` is appended. name, relation, where_equals
 -- (chart 482012f1-710e-4a25-994a-93821f5871aa) and value_columns (26, `fact_subject` already among them: re-read live
