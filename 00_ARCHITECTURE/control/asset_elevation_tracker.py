@@ -1181,9 +1181,19 @@ def _e63_declared_null_columns(nc, ent):
     return list(dict.fromkeys(list(pf or []) + [n["column"] for n in nl]))
 
 
+def _e63_declared_stamp_columns(nc):
+    """The stamp column names the declaration holds (REGISTRY_REVISION 15, `null_convention.stamp_columns`), in declared order; [] when it declares none; None when the key is not a list
+    of {column: str} entries. Stamp columns are NOT part of the covered columns (`_e63_declared_null_columns`: the prose + nullable columns the Null graders run over, as for constants): they
+    are bound to the declaration separately and strictly."""
+    st = nc.get("stamp_columns", [])
+    if not (isinstance(st, list) and all(isinstance(x, dict) and isinstance(x.get("column"), str) for x in st)):
+        return None
+    return [x["column"] for x in st]
+
+
 def _e63_null_lift_earned(repo, sha, rec, census_src):
     """True only when the ref's own census earns this Null PASS certificate (see the block comment above) AND the ref's asset_declarations.json declares the
-    convention the lift block names (same table, evidence, why AND the same covered columns: declared prose_fields + nullable columns): a hand-built complete block without a matching declaration stays capped."""
+    convention the lift block names (same table, evidence, why AND the same covered columns: declared prose_fields + nullable columns, AND the same stamp columns): a hand-built complete block without a matching declaration stays capped."""
     got = _e63_null_census_record(repo, sha, rec)
     if got is None:
         return False
@@ -1195,6 +1205,9 @@ def _e63_null_lift_earned(repo, sha, rec, census_src):
         return False
     cols = _e63_declared_null_columns(*got_decl)
     if cols is None or block.get("columns") != cols:        # the covered columns are exactly the declared prose fields + nullable columns
+        return False
+    stamps = _e63_declared_stamp_columns(got_decl[0])
+    if stamps is None or block.get("stamp_columns", []) != stamps:      # the stamp columns the census verified are exactly the ones the declaration at the ref names
         return False
     ms = {c: m for c, m in arec["measurements"].items() if c in E63_NULL_CHECKS}
     req = json.dumps({"layer": rec["layer"], "criterion": rec["criterion"], "measurements": ms}, sort_keys=True, default=str).encode("utf-8")

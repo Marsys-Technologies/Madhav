@@ -731,7 +731,7 @@ def test_revision_13_pins_the_s1_content():
     assert ac.REGISTRY_REVISION >= 13
     for crit in (SD, BR):
         e = ac.CRITERION_REGISTRY[crit]
-        assert e["revision"] == 2 and "null_convention" in e["applicability"] and "never PASS alone" in e["applicability"], crit
+        assert e["revision"] >= 2 and "null_convention" in e["applicability"] and "never PASS alone" in e["applicability"], crit
     assert ac.CRITERION_REGISTRY["Null.schema_default"]["detector"] == "asset_census.py:measure()"
 
 

@@ -1122,8 +1122,8 @@ def test_dens_served_criterion_revision_5_states_the_select_reading():
     assert e["revision"] == 5 and "tier column" in e["applicability"] and "label" in e["applicability"], e
 
 
-def test_registry_revision_is_14_and_the_declarations_file_is_at_the_decl_latta_version():
-    assert ac.REGISTRY_REVISION == 14
+def test_registry_revision_is_at_least_14_and_the_declarations_file_is_at_the_decl_latta_version():
+    assert ac.REGISTRY_REVISION >= 14          # pin 15 (STAMP) is stacked on this one
     # 1.9.0 at pin 14 (the Dens PR did not touch the file); 1.10.0 after DECL-LATTA (bg_phaladeepika_latta's entry only)
     assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.10.0"
 
