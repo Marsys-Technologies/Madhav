@@ -1,6 +1,6 @@
 # AI Console catalogue release — 3 October 2026
 
-Status: FIRST RELEASE FAILED LIVE ACCEPTANCE AND WAS ROLLED BACK; NARROW CORRECTION IN PROGRESS. This record is not a deployment-completion claim.
+Status: FIRST RELEASE FAILED LIVE ACCEPTANCE AND WAS ROLLED BACK; CORRECTED CATALOGUE SCOPE LIVE-VERIFIED. Latest-main synchronization and final close are recorded in PRODUCTION_ACCEPTANCE.md, not inferred from this historical rollout.
 
 The first checklist records the initial preflight snapshot; subsequent verified progress below supersedes its staged/pending descriptions.
 
@@ -51,3 +51,16 @@ Pending: protected merge after current-main gates and predecessor deployment; mi
 - The original release lease was released with failed-acceptance/rollback status. A fresh correction lease `MADHAV-AI-CONSOLE-CATALOG-CORRECTION-20261003` was pushed and remotely verified at coordination commit `5390d61401be6784eba590099690d38da2f66d42`, start 02:50 IST, expiry 06:50 IST on 3 October. The correction scope is provider discovery-to-persistence validation and an independently proven exact AGY 1.2.15 compatibility extension only.
 - Regression-first reproduction used real Google/OpenRouter adapters and real strict repository validation, substituting only external HTTP and PostgreSQL transport. Both realistic capacity-metadata fixtures failed before the fix with unrecognized `contextWindow`/`outputLimit`; 17 existing cases passed. Explicitly projecting the persistence contract, without weakening the strict DAO or changing migration 1301, made all 19 cases pass.
 - Broader checks, disposable-database proof, independent review, protected correction merge/deployment, authenticated live recheck, fresh observation watch, and final lease release are still pending.
+
+## Corrective qualification supersedes the preceding pending snapshot
+
+PR #2985 merged through protected gates to `55a666f8943bcda313f1e9bc52f3ea3d47916c96`.
+Automatic deployment `37071001730` succeeded at that SHA; the corrected revision
+served 100% traffic. Authenticated OpenAI, Gemini and OpenRouter catalogue refresh
+passed; Codex/Claude model and effort controls and mixed unsaved CLI choices passed;
+explicit AGY 1.2.15 subscription validation made it Reachable. The independent
+22:28–22:43 UTC window saw all 32 AI Console requests return 200, no server 5xx and
+no ERROR entries. Exact bridge hashes and unchanged applied migration 1301 were
+reconfirmed. Details, known account/setup issues, the minor refresh-hint residual,
+separate failed Pariprasna smoke and subsequent main advancement remain explicit in
+`PRODUCTION_ACCEPTANCE.md`. This does not retroactively accept the first rollout.
