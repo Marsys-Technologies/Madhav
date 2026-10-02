@@ -377,3 +377,26 @@ def test_cache_is_bounded_and_evicts_the_oldest_entry(w, monkeypatch):
     T._e63_e51_validate(str(w.repo), sha, b"ledger 0")           # evicted: runs again
     assert len(calls) == 6
     T._E63_E51_CACHE.clear()
+
+
+# ---- the dispatch the reader keeps (E5.1 settled which lines are certificates and which are events) ----------------------------
+
+def test_a_certificate_line_with_a_stray_type_is_refused_not_read_as_an_event(w):
+    """E5.1 accepts a certificate that carries an extra `type` field (it reads it as a certificate); the reader will not guess."""
+    w.find("ga_alpha", "Idem.pat")["type"] = "invalidation"
+    w.commit()
+    with pytest.raises(T.ElevatedInputError, match="both a `type` and a cert_key"):
+        w.elevated(T)
+
+
+def test_an_event_of_a_type_nobody_reads_is_refused_when_handed_to_the_parser(tmp_path):
+    wld = World(tmp_path)
+    wld.commit()
+    facts = T._e63_registry_facts(str(wld.repo), wld.last)
+    with pytest.raises(T.ElevatedInputError, match="unknown event type"):
+        T._e63_parse_certs([{"seq": 1, "type": "bogus"}], facts)
+
+
+def test_the_readers_event_classification_copy_is_gone():
+    for name in ("_e63_is_cert_line", "_e63_is_event_line", "E63_EVENT_FORBIDDEN", "E63_EVENT_TYPES"):
+        assert not hasattr(T, name), name

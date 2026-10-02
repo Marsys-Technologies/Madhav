@@ -440,8 +440,6 @@ E63_BASIS_DECLARATION = "declaration"        # the one recognised `basis` (asset
 # id allowed in the gap ledger besides `_schema`. They never block an asset (no asset carries that id).
 E63_PSEUDO_GAP_ASSETS = frozenset({"_layer_all"})
 E63_MAX_JSON_DEPTH = 64
-E63_EVENT_TYPES = ("invalidation", "watermark", "epoch_reset")     # E5.1's EVENT_TYPES
-E63_EVENT_FORBIDDEN = ("cert_key", "cert_id", "generation")          # certificate-only fields an event may not carry
 E63_CERT_KINDS = ("gate", "addition")
 E63_GUARDED_NAMES = ("CRITERION_REGISTRY", "CELL_GATES", "NA_RULE_DECISIONS", "LAYERS")
 E63_MUTATORS = frozenset({"update", "pop", "popitem", "setdefault", "clear", "append", "extend", "insert", "remove",
@@ -915,21 +913,6 @@ class _Ledger:
     unevaluated: int        # certificates with seq > the last watermark's covers_seq
 
 
-def _e63_is_cert_line(r):
-    key, gen = r.get("cert_key"), r.get("generation")
-    return (isinstance(key, str) and _e63_int(gen) and gen >= 1 and r.get("cert_id") == f"{key}@{gen}"
-            and isinstance(r.get("verdict"), str))
-
-
-def _e63_is_event_line(r):
-    t = r.get("type")
-    if not isinstance(t, str) or t in E63_CERT_KINDS:
-        return False                                 # (an unknown type is refused by the dispatch in _e63_parse_certs)
-    if any(k in r for k in E63_EVENT_FORBIDDEN):
-        return False
-    return not (r.get("kind") in E63_CERT_KINDS or (isinstance(r.get("verdict"), str) and r["verdict"] in E63_VERDICTS))
-
-
 def _e63_check_cert(r, n, facts):
     where = f"{E63_CERTS_PATH} line {n}"
     asset, kind, crit, verdict = r.get("asset"), r.get("kind"), r.get("criterion"), r.get("verdict")
@@ -1105,11 +1088,9 @@ def _e63_parse_certs(records, facts):
     for r in records:
         n = r["seq"]
         where = f"{E63_CERTS_PATH} record {n}"
-        is_cert = "type" not in r and _e63_is_cert_line(r)       # a line that names a `type` is an event or invalid
-        if not is_cert and not _e63_is_event_line(r):
-            _e63_fail("malformed", f"{where}: not a record this reader can trust (a certificate needs cert_key/"
-                                   "generation/cert_id/verdict; any other line needs a `type` in "
-                                   f"{E63_EVENT_TYPES} and no certificate field)")
+        if "type" in r and "cert_key" in r:         # (E5.1 reads a certificate line carrying a stray `type` as a certificate)
+            _e63_fail("malformed", f"{where}: a line with both a `type` and a cert_key is neither a certificate nor an event")
+        is_cert = "type" not in r         # E5.1 settled the rest: no `type` = a certificate, a `type` = one of its events
         if is_cert:
             _e63_check_cert(r, n, facts)
             led.pos[r["cert_id"]] = r["seq"]
