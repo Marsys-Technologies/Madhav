@@ -279,6 +279,37 @@ def test_d1_effect_frame_words_are_part_of_the_stated_rule():
     assert r["v"] == "PARTIAL" and {u["row"] for u in r["d1"]["unmatched"]} >= {"Moon", "Venus"}      # "A great loss will mark ...": 'will' is a frame word
 
 
+def test_d1_the_effect_section_is_bounded_by_the_declared_marker_and_end():
+    seg = "Latta of Venus there will be quarrel here. Shkos In the Latta of Sun there will be grief. Thus the separate effects the Latta of Mars in quarrel."
+    spec = {k: v for k, v in SPEC.items() if k != "extra_fields"}
+    f = lambda g, e, **kw: d1.match_ordinal_row({"graha": g, "count_from_graha": 1, "direction": "forward", "effect_description": e}, seg, dict(spec, **kw))["effect"]
+    assert f("Sun", "grief") is True
+    assert f("Venus", "quarrel", effect_marker="Shkos") is False                  # before the marker: not in the effect section
+    assert f("Mars", "quarrel", effect_end="Thus the separate effects") is False   # after the end marker: not in the effect section
+    seg2 = "Latta of Venus there will be quarrel in the Sloka. Shkos Latta of Sun will be grief."
+    g = lambda **kw: d1.match_ordinal_row({"graha": "Venus", "count_from_graha": 1, "direction": "forward", "effect_description": "quarrel"}, seg2, dict(spec, **kw))["effect"]
+    assert g(effect_marker=None, effect_end=None) is True and g(effect_marker="Shkos", effect_end=None) is False
+    seg3 = "Shkos Latta of Sun will be grief. Thus the separate effects the Latta of Mars there will be quarrel in."
+    h = lambda **kw: d1.match_ordinal_row({"graha": "Mars", "count_from_graha": 1, "direction": "forward", "effect_description": "quarrel"}, seg3, dict(spec, **kw))["effect"]
+    assert h(effect_end=None) is True and h(effect_end="Thus the separate effects") is False
+
+
+def test_measure_scopes_the_rows_read_to_the_census_chart_when_the_table_has_chart_id(monkeypatch, tmp_path):
+    seen = []
+    monkeypatch.setattr(ac, "d1_fetch_chunks", lambda ids: dict(CHUNKS))
+    monkeypatch.setattr(ac, "d1_fetch_rows", lambda t, c, chart=None: seen.append(chart) or copy.deepcopy(ROWS))
+    decl = {"x": dict(kind="data", carriage=CAR_D1), "y": dict(kind="data", carriage=CAR_D1)}
+    reg = {"x": na_causes._reg_row("x", "bg_phaladeepika_latta"), "y": na_causes._reg_row("y", "bg_phaladeepika_latta")}
+    na_causes._stub_layer(monkeypatch, tmp_path, reg, tables={"bg_phaladeepika_latta": (["graha", "chart_id"], [])})
+    monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: decl)
+    ac.measure("L0")
+    assert seen == [ac.CHART_ID, ac.CHART_ID]                                      # the table carries chart_id: both reads are chart-scoped
+    seen.clear()
+    na_causes._stub_layer(monkeypatch, tmp_path, reg, tables={"bg_phaladeepika_latta": (["graha"], [])})
+    ac.measure("L0")
+    assert seen == [None, None]                                                    # no chart_id column: not scoped
+
+
 def test_d1_a_declared_effect_marker_or_end_that_is_absent_is_no_detector_not_a_wider_section():
     for key in ("effect_marker", "effect_end"):
         r = _measure(spec=dict(SPEC, **{key: "NO SUCH MARKER"}))
