@@ -30,8 +30,10 @@ describe('closed CLI registry', () => {
 
   it('accepts only the independently inspected versions', () => {
     expect(parseSupportedVersion(CLI_REGISTRY.codex, 'codex-cli 0.158.0')).toBe('0.158.0')
+    expect(parseSupportedVersion(CLI_REGISTRY.codex, 'codex-cli 0.155.1')).toBe('0.155.1')
     expect(parseSupportedVersion(CLI_REGISTRY.codex, 'codex-cli 0.158.1')).toBeNull()
     expect(parseSupportedVersion(CLI_REGISTRY.claude_code, '2.1.284 (Claude Code)')).toBe('2.1.284')
+    expect(parseSupportedVersion(CLI_REGISTRY.claude_code, '2.1.239 (Claude Code)')).toBe('2.1.239')
     expect(parseSupportedVersion(CLI_REGISTRY.claude_code, '2.2.0')).toBeNull()
     expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.2.12')).toBe('1.2.12')
     expect(parseSupportedVersion(CLI_REGISTRY.gemini_antigravity, 'agy version 1.2.13')).toBe('1.2.13')
@@ -66,6 +68,12 @@ describe('closed CLI registry', () => {
       .toEqual(expect.arrayContaining(['--effort', 'high']))
     expect(() => buildExecutionArgs(CLI_REGISTRY.kimi_code, 'kimi-code/k3-256k', { effort: 'low' })).toThrow()
     expect(() => buildExecutionArgs(CLI_REGISTRY.codex, null, { effort: 'low' })).toThrow()
+    expect(buildExecutionArgs(CLI_REGISTRY.codex, 'gpt-catalog-model', {
+      effort: 'ultra', supportedEfforts: ['medium', 'ultra'],
+    })).toContain('model_reasoning_effort=ultra')
+    expect(() => buildExecutionArgs(CLI_REGISTRY.codex, 'gpt-catalog-model', {
+      effort: 'high', supportedEfforts: ['medium', 'ultra'],
+    })).toThrow()
   })
 
   it('rejects model argument injection and exposes all four compatible roles', () => {

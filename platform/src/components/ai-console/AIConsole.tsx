@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronDown, KeyRound, TerminalSquare } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import '@/components/pariprashna/pariprashna.css'
@@ -8,7 +8,7 @@ import './ai-console.css'
 import { ProviderConnectionsSection } from './ProviderConnectionsSection'
 import { CustomConfigurationsSection } from './CustomConfigurationsSection'
 import { LocalClisSection } from './LocalClisSection'
-import type { AiChoice, AiConsoleStateDto, CliStateDto, ConsoleMutation } from './types'
+import { hasCurrentProviderConfirmation, type AiChoice, type AiConsoleStateDto, type CliStateDto, type ConsoleMutation, type CatalogRefreshStatus, type CatalogRefresh } from './types'
 
 const CONSOLE_QUERY_KEY = ['ai-console', 'state'] as const
 const CLI_QUERY_KEY = ['ai-console', 'clis'] as const
@@ -42,6 +42,7 @@ const SAFE_MESSAGES: Record<string, string> = {
   AI_PROVIDER_UNREACHABLE: 'The provider could not be reached. Try again later.',
   AI_CLI_NOT_GRANTED: 'Access to this local CLI has not been granted.',
   AI_CLI_UNREACHABLE: 'The local CLI could not be reached.',
+  AI_MODEL_UNAVAILABLE: 'This model is no longer available.',
   AI_EXECUTION_FAILED: 'The request could not be completed.',
 }
 
@@ -69,6 +70,16 @@ export function AIConsole() {
   const [announcedStatus, setAnnouncedStatus] = useState('')
   const [cliSeed, setCliSeed] = useState<{ sourceId: string; nonce: number } | null>(null)
   const [apiSeed, setApiSeed] = useState<{ sourceId: string; nonce: number } | null>(null)
+  const [refreshStatus, setRefreshStatus] = useState<Record<string, CatalogRefreshStatus>>({})
+  const refreshFlights = useRef(new Map<string, Promise<void>>())
+  const mounted = useRef(true)
+  const autoRefreshSeen = useRef(new Set<string>())
+  const autoRefreshQueue = useRef(Promise.resolve())
+
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
 
   const stateQuery = useQuery({
     queryKey: CONSOLE_QUERY_KEY,
@@ -78,6 +89,58 @@ export function AIConsole() {
     queryKey: CLI_QUERY_KEY,
     queryFn: ({ signal }) => fetchJson<CliStateDto>('/api/ai-console/clis', { signal }),
   })
+
+  const refreshCatalog: CatalogRefresh = useCallback((kind, id, force = true) => {
+    const key = `${kind}:${id}`
+    const existing = refreshFlights.current.get(key)
+    if (existing) return existing
+    setRefreshStatus(current => ({ ...current, [key]: { pending: true } }))
+    const work = (async () => {
+      try {
+        const result = await fetchJson<{ status: string; state?: string }>(kind === 'cli'
+          ? `/api/ai-console/clis/${id}/refresh` : `/api/ai-console/connections/${id}/refresh`, {
+          method: 'POST', body: JSON.stringify({ force }),
+        })
+        setRefreshStatus(current => ({ ...current, [key]: { pending: false,
+          ...(result.state === 'needs_attention' ? { error: 'Models were refreshed. Test local CLI to verify this installed version before using it.' } : {}) } }))
+        if (force) setStatus(result.status === 'skipped' ? 'The model list is already current. Please wait a moment before another refresh.' : 'Models and effort levels refreshed.')
+      } catch (error) {
+        const message = error instanceof SafeRequestError ? error.message : 'The model list could not be refreshed.'
+        setRefreshStatus(current => ({ ...current, [key]: { pending: false, error: `${message} The previous model list is retained.` } }))
+      } finally {
+        await Promise.allSettled([
+          queryClient.invalidateQueries({ queryKey: CONSOLE_QUERY_KEY }),
+          queryClient.invalidateQueries({ queryKey: CLI_QUERY_KEY }),
+        ])
+        refreshFlights.current.delete(key)
+      }
+    })()
+    refreshFlights.current.set(key, work)
+    return work
+  }, [queryClient])
+
+  useEffect(() => {
+    const stale = (source: { catalogRefreshedAt?: string | null; catalogAttemptedAt?: string | null; catalogErrorCode?: string | null }) => {
+      const stamp = source.catalogErrorCode ? source.catalogAttemptedAt : source.catalogRefreshedAt
+      const checked = stamp ? new Date(stamp).getTime() : 0
+      return !Number.isFinite(checked) || Date.now() - checked >= (source.catalogErrorCode ? 60_000 : 15 * 60_000)
+    }
+    const enqueue = (kind: 'connection' | 'cli', id: string) => {
+      const key = `${kind}:${id}`
+      if (autoRefreshSeen.current.has(key)) return
+      autoRefreshSeen.current.add(key)
+      autoRefreshQueue.current = autoRefreshQueue.current.then(async () => {
+        if (mounted.current) await refreshCatalog(kind, id, false)
+      })
+    }
+    for (const connection of stateQuery.data?.connections ?? []) {
+      if (!connection.deletedAt && ['openai', 'anthropic', 'google', 'openrouter'].includes(connection.providerId)
+        && hasCurrentProviderConfirmation(connection) && stale(connection)) enqueue('connection', connection.id)
+    }
+    for (const cli of cliQuery.data?.clis ?? []) {
+      if (cli.state !== 'not_granted' && stale(cli)) enqueue('cli', cli.cliId)
+    }
+  }, [stateQuery.data, cliQuery.data, refreshCatalog])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setAnnouncedStatus(status), 180)
@@ -111,10 +174,10 @@ export function AIConsole() {
     method: 'PUT', body: JSON.stringify({ choice }),
   }, 'Default AI updated.')
 
-  const stateStatus = stateQuery.isSuccess ? 'ready' : stateQuery.isError ? 'error' : 'loading'
-  const cliStatus = cliQuery.isSuccess ? 'ready' : cliQuery.isError ? 'error' : 'loading'
-  const state = stateQuery.isSuccess ? stateQuery.data : undefined
-  const clis = cliQuery.isSuccess ? cliQuery.data.clis : []
+  const stateStatus = stateQuery.data ? 'ready' : stateQuery.isError ? 'error' : 'loading'
+  const cliStatus = cliQuery.data ? 'ready' : cliQuery.isError ? 'error' : 'loading'
+  const state = stateQuery.data
+  const clis = cliQuery.data?.clis ?? []
   const loading = stateStatus === 'loading' || cliStatus === 'loading'
   const defaultName = describeDefault(state, clis)
 
@@ -130,6 +193,8 @@ export function AIConsole() {
           <div className="aic-default-summary"><span>Current default</span><strong>{defaultName}</strong><small>{state && !state.defaultChoice ? 'Create a role setup below, then choose it as the default before using Paripraśna.' : 'Paripraśna uses this when its picker is set to Default.'}</small></div>
         </header>
 
+        {(stateQuery.isRefetchError || cliQuery.isRefetchError) && <p className="aic-failure-guidance" role="status">The latest settings could not be reloaded. The previous view is retained; refresh the page to try again.</p>}
+
         <div className="aic-sections" aria-busy={loading}>
           <details className="aic-group" open>
             <summary className="aic-group-summary"><span className="aic-group-icon"><KeyRound aria-hidden="true" /></span><span><strong>API providers</strong><small>Keys, tested models, role setups, and custom API configurations</small></span><ChevronDown className="aic-chevron" aria-hidden="true" /></summary>
@@ -142,6 +207,8 @@ export function AIConsole() {
             mutate={mutate}
             onSelectDefault={selectDefault}
             onConfigureRoles={sourceId => setApiSeed(current => ({ sourceId, nonce: (current?.nonce ?? 0) + 1 }))}
+            refreshStatus={refreshStatus}
+            onRefreshCatalog={refreshCatalog}
           />
           <CustomConfigurationsSection
             key={`api-${apiSeed?.nonce ?? 0}`}
@@ -172,6 +239,8 @@ export function AIConsole() {
             mutate={mutate}
             onSelectDefault={selectDefault}
             onConfigureRoles={sourceId => setCliSeed(current => ({ sourceId, nonce: (current?.nonce ?? 0) + 1 }))}
+            refreshStatus={refreshStatus}
+            onRefreshCatalog={refreshCatalog}
           />
           <CustomConfigurationsSection
             key={`cli-${cliSeed?.nonce ?? 0}`}

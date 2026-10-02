@@ -50,13 +50,19 @@ interface SetupOptions {
   cliResponse?: CliStateDto
   duplicateNameError?: boolean
   validationResponse?: unknown
+  refreshError?: boolean
+  reloadErrorAfterRefresh?: boolean
 }
 
 function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
   const current = { ...state, ...overrides }
   const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = []
+  let refreshed = false
   vi.stubGlobal('fetch', vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
     calls.push([url, init])
+    if (options.reloadErrorAfterRefresh && refreshed && ['/api/ai-console', '/api/ai-console/clis'].includes(String(url))) {
+      return response({ error: 'AI_PROVIDER_UNREACHABLE' }, 503)
+    }
     if (String(url) === '/api/ai-console/clis' && options.cliPending) return new Promise<Response>(() => {})
     if (String(url) === '/api/ai-console/clis') return options.cliError
       ? response({ error: 'AI_CLI_UNREACHABLE' }, 503)
@@ -64,6 +70,10 @@ function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
     if (String(url) === '/api/ai-console' && options.aggregatePending) return new Promise<Response>(() => {})
     if (String(url) === '/api/ai-console' && options.aggregateError) return response({ error: 'AI_PROVIDER_UNREACHABLE' }, 503)
     if (String(url) === '/api/ai-console/default' && init?.method === 'PUT') return response({ defaultChoice: JSON.parse(String(init.body)).choice })
+    if (String(url).endsWith('/refresh') && init?.method === 'POST') {
+      refreshed = true
+      return options.refreshError ? response({ error: 'AI_CLI_UNREACHABLE' }, 503) : response({ status: 'refreshed' })
+    }
     if (String(url).endsWith('/validate') && init?.method === 'POST' && options.validationResponse) return response(options.validationResponse)
     if (String(url) === '/api/ai-console/configurations' && init?.method === 'POST'
       && options.duplicateNameError && String(init.body).includes('duplicateFrom')) {
@@ -79,6 +89,112 @@ function setup(overrides?: Partial<typeof state>, options: SetupOptions = {}) {
 afterEach(() => { cleanup(); onlineManager.setOnline(true); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('AI Console', () => {
+  it('refreshes stale validated API catalogs and authorized CLI catalogs once without generation tests', async () => {
+    const { calls } = setup({ connections: [state.connections[0],
+      { ...state.connections[0], id: 'retired', name: 'Retired Kimi', providerId: 'kimi' },
+      { ...state.connections[0], id: 'unvalidated', name: 'Invalid OpenAI', validationState: 'invalid', confirmedValid: false },
+      { ...state.connections[0], id: 'deleted', name: 'Deleted OpenAI', deletedAt: '2026-09-28T10:00:00.000Z' },
+    ] })
+    await screen.findByText('Personal OpenAI')
+    await waitFor(() => expect(calls.filter(([url]) => String(url).endsWith('/refresh'))).toHaveLength(4))
+    const refreshes = calls.filter(([url]) => String(url).endsWith('/refresh'))
+    expect(refreshes.map(([url]) => String(url))).toEqual([
+      `/api/ai-console/connections/${CONNECTION_ID}/refresh`, '/api/ai-console/clis/codex/refresh',
+      '/api/ai-console/clis/claude_code/refresh', '/api/ai-console/clis/kimi_code/refresh',
+    ])
+    expect(refreshes.every(([, init]) => JSON.parse(String(init?.body)).force === false)).toBe(true)
+    expect(calls.some(([url]) => String(url).endsWith('/validate') || String(url).endsWith('/models'))).toBe(false)
+    expect(calls.some(([url]) => String(url).includes('/gemini_antigravity/refresh'))).toBe(false)
+  })
+
+  it('uses a fresh catalog on entry and allows a scoped manual forced refresh for APIs and CLIs', async () => {
+    const stamp = new Date().toISOString()
+    const { calls } = setup({ connections: [{ ...state.connections[0], catalogRefreshedAt: stamp }] }, {
+      cliResponse: { clis: cliState.clis.map(cli => cli.state === 'not_granted' ? cli : { ...cli, catalogRefreshedAt: stamp }) },
+    })
+    const api = (await screen.findByText('Personal OpenAI')).closest('article')!
+    expect(calls.some(([url]) => String(url).endsWith('/refresh'))).toBe(false)
+    await userEvent.click(within(api).getByRole('button', { name: 'Refresh Personal OpenAI models and effort levels' }))
+    await waitFor(() => expect(calls.some(([url, init]) => String(url) === `/api/ai-console/connections/${CONNECTION_ID}/refresh`
+      && JSON.parse(String(init?.body)).force === true)).toBe(true))
+    const cli = screen.getByText('Codex CLI').closest('article')!
+    await userEvent.click(within(cli).getByRole('button', { name: 'Refresh Codex CLI version, models, and effort levels' }))
+    await waitFor(() => expect(calls.filter(([url]) => String(url).endsWith('/refresh'))).toHaveLength(2))
+    expect(JSON.parse(String(calls.find(([url]) => String(url) === '/api/ai-console/clis/codex/refresh')![1]?.body))).toEqual({ force: true })
+  })
+
+  it('retains working model choices after refresh failure and does not loop background retries', async () => {
+    const { calls } = setup(undefined, { refreshError: true })
+    const card = (await screen.findByText('Claude Code')).closest('article')!
+    await waitFor(() => expect(within(card).getByText(/previous model list is retained/i)).toBeTruthy())
+    expect(within(card).getByText('Built-in default')).toBeTruthy()
+    await userEvent.click(within(card).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    expect(within(dialog).getByLabelText(/model for synthesizer/i)).toHaveValue('__builtin__')
+    expect(calls.filter(([url]) => String(url) === '/api/ai-console/clis/claude_code/refresh')).toHaveLength(1)
+    expect(calls.some(([url]) => String(url).endsWith('/models'))).toBe(false)
+  })
+
+  it('keeps the existing view if settings cannot be reloaded after a catalog refresh', async () => {
+    setup(undefined, { reloadErrorAfterRefresh: true })
+    await screen.findByText(/latest settings could not be reloaded/i)
+    expect(screen.getByText('Personal OpenAI')).toBeTruthy()
+    const cli = screen.getByText('Claude Code').closest('article')!
+    expect(within(cli).getByRole('button', { name: 'Set up four roles' })).not.toBeDisabled()
+    expect(within(cli).getByText('Built-in default')).toBeTruthy()
+  })
+
+  it('uses advertised API effort capabilities rather than a static effort list', async () => {
+    setup({ models: [{ ...state.models[0], modelId: 'claude-new', displayName: 'New Claude', supportedEfforts: ['high', 'max'], effortSource: 'provider' }],
+      connections: [{ ...state.connections[0], providerId: 'anthropic' }] })
+    const card = (await screen.findByText('Personal OpenAI')).closest('article')!
+    await userEvent.click(within(card).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    const effort = within(dialog).getByLabelText(/effort for synthesizer/i) as HTMLSelectElement
+    expect([...effort.options].map(option => option.value)).toEqual(['', 'high', 'max'])
+    expect(effort).not.toBeDisabled()
+  })
+
+  it('shows Codex catalogue effort levels and saves an exact model-specific effort without another CLI family', async () => {
+    const { calls } = setup(undefined, { cliResponse: { clis: cliState.clis.map(cli => cli.cliId === 'codex' && 'models' in cli
+      ? { ...cli, state: 'reachable', models: [{ modelId: 'gpt-6-astra', displayName: 'GPT 6 Astra',
+        compatibleRoles: ['synthesizer', 'planner', 'deep_planner', 'worker'], supportsTools: true,
+        supportsStructuredOutput: true, isBuiltinDefault: false, isCatalogDiscovered: true, isIndividuallyTested: false,
+        supportedEfforts: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'], defaultEffort: 'medium' }] } : cli) } })
+    const card = (await screen.findByText('Codex CLI')).closest('article')!
+    expect(within(card).getByText(/listed by subscription · not individually tested/i)).toBeTruthy()
+    await userEvent.click(within(card).getByRole('button', { name: 'Set up four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Set up four roles' })
+    const model = within(dialog).getByLabelText(/model for synthesizer/i)
+    await userEvent.selectOptions(model, 'gpt-6-astra')
+    const effort = within(dialog).getByLabelText(/effort for synthesizer/i) as HTMLSelectElement
+    expect([...effort.options].map(option => option.value)).toEqual(['', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'])
+    expect(effort.options[0].textContent).toBe('Model default · medium')
+    expect(within(dialog).queryByText(/Claude Code/)).toBeNull()
+    await userEvent.selectOptions(effort, 'ultra')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Use this model for every role' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save configuration' }))
+    await waitFor(() => expect(calls.some(([url]) => String(url) === '/api/ai-console/configurations')).toBe(true))
+    const saved = JSON.parse(String(calls.find(([url]) => String(url) === '/api/ai-console/configurations')![1]?.body))
+    expect(saved.roles.synthesizer).toEqual({ kind: 'local_cli', cliId: 'codex', modelId: 'gpt-6-astra', effort: 'ultra' })
+  })
+
+  it('keeps an unsupported saved effort visible for repair when the refreshed model advertises fewer levels', async () => {
+    const target = { kind: 'local_cli' as const, cliId: 'claude_code' as const, modelId: 'claude-opus-4-6', effort: 'ultra' }
+    setup({ configurations: [{ ...state.configurations[0], name: 'Saved Claude roles', configurationKind: 'cli_preset',
+      ownerConnectionId: null, ownerCliId: 'claude_code', roles: { synthesizer: target, planner: target, deep_planner: target, worker: target } }] }, {
+      cliResponse: { clis: cliState.clis.map(cli => cli.cliId === 'claude_code' && 'models' in cli
+        ? { ...cli, models: [{ ...cli.models[0], modelId: 'claude-opus-4-6', displayName: 'Opus 4.6',
+          isBuiltinDefault: false, supportedEfforts: ['low', 'high'] }] } : cli) },
+    })
+    const card = (await screen.findByText('Claude Code')).closest('article')!
+    await userEvent.click(within(card).getByRole('button', { name: 'Edit four roles' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit role setup' })
+    expect(within(dialog).getByLabelText(/effort for synthesizer/i)).toHaveAttribute('aria-invalid', 'true')
+    expect(within(dialog).getByRole('button', { name: 'Save configuration' })).toBeDisabled()
+    expect(within(dialog).getByText(/saved effort level is unsupported/i)).toBeTruthy()
+  })
+
   it('sets up a provider-owned four-role preset without offering CLI sources', async () => {
     const { calls } = setup()
     const card = (await screen.findByText('Personal OpenAI')).closest('article')!

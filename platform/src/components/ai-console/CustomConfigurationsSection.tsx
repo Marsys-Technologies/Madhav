@@ -7,7 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { AiChoiceRadio } from './AiChoiceRadio'
 import { cliEffortLevels, providerEffortLevels } from '@/lib/ai-console/effort'
 import {
-  AI_ROLES, PROVIDER_LABELS, ROLE_LABELS, choicesEqual, hasCurrentProviderConfirmation,
+  AI_ROLES, PROVIDER_LABELS, ROLE_LABELS, choicesEqual, cliModelEvidence, hasCurrentProviderConfirmation,
   type AiChoice, type AiConsoleStateDto, type AiRole, type CliCardDto, type ConfigurationDto, type ConfigurationKind,
   type ConsoleMutation, type RoleTarget,
 } from './types'
@@ -50,14 +50,15 @@ function configurationAvailability(
     if (target.kind === 'provider_model') {
       const connection = state?.connections.find(item => item.id === target.connectionId)
       const model = state?.models.find(item => item.connectionId === target.connectionId && item.modelId === target.modelId)
-      return Boolean(connection && (!target.effort || providerEffortLevels(connection.providerId, target.modelId).includes(target.effort))
+      return Boolean(connection && (!target.effort || (model?.supportedEfforts ?? providerEffortLevels(connection.providerId, target.modelId)).includes(target.effort))
         && hasCurrentProviderConfirmation(connection) && !connection.deletedAt && model?.available === true
         && model.userSelected && model.plainTestedAt && model.compatibleRoles.includes(role))
     }
     if (cliStatus !== 'ready') { unknown = true; return true }
     const cli = clis.find(item => item.cliId === target.cliId)
-    return cli?.state === 'reachable' && (!target.effort || cliEffortLevels(target.cliId, target.modelId).includes(target.effort))
-      && cli.models.some(model => model.modelId === target.modelId && model.compatibleRoles.includes(role))
+    return cli?.state === 'reachable'
+      && cli.models.some(model => model.modelId === target.modelId && model.compatibleRoles.includes(role)
+        && (!target.effort || (model.supportedEfforts ?? cliEffortLevels(target.cliId, target.modelId)).includes(target.effort)))
   })
   return !usable ? 'unusable' : unknown ? 'unknown' : 'usable'
 }
@@ -84,7 +85,8 @@ export function CustomConfigurationsSection({ mode, state, clis, loading, error,
     }
     if (seedCli?.state === 'reachable') for (const role of AI_ROLES) {
       const model = seedCli.models.find(item => item.isBuiltinDefault && item.compatibleRoles.includes(role))
-      if (model) next[role] = { source: `cli:${seedCli.cliId}`, model: encodeModel(model.modelId), effort: '' }
+        ?? seedCli.models.find(item => item.compatibleRoles.includes(role))
+      next[role] = { source: `cli:${seedCli.cliId}`, model: model ? encodeModel(model.modelId) : '', effort: '' }
     }
     if (seedConnection) for (const role of AI_ROLES) {
       const model = state?.models.find(item => item.connectionId === seedConnection.id && item.available
@@ -127,12 +129,17 @@ export function CustomConfigurationsSection({ mode, state, clis, loading, error,
     const [kind, id] = source.split(':', 2)
     if (kind === 'provider') return (state?.models ?? []).filter(model => model.connectionId === id && model.available
       && model.userSelected && model.plainTestedAt && model.compatibleRoles.includes(role))
-      .map(model => ({ value: encodeModel(model.modelId), label: model.displayName, target: { kind: 'provider_model' as const, connectionId: id, modelId: model.modelId } }))
+      .map(model => ({ value: encodeModel(model.modelId), label: model.displayName,
+        supportedEfforts: model.supportedEfforts ?? providerEffortLevels(state!.connections.find(item => item.id === id)!.providerId, model.modelId),
+        defaultEffort: model.defaultEffort, effortSource: model.effortSource ?? 'policy',
+        target: { kind: 'provider_model' as const, connectionId: id, modelId: model.modelId } }))
     if (kind === 'cli') {
       const cli = clis.find(item => item.cliId === id)
       if (cli?.state !== 'reachable') return []
       return cli.models.filter(model => model.compatibleRoles.includes(role)).map(model => ({ value: encodeModel(model.modelId),
-        label: `${model.displayName}${model.isBuiltinDefault ? ' · validated default' : cli.cliId === 'codex' || cli.cliId === 'claude_code' ? ' · individually tested' : ' · discovered, not individually tested'}`,
+        label: `${model.displayName} · ${cliModelEvidence(model)}`,
+        supportedEfforts: model.supportedEfforts ?? cliEffortLevels(cli.cliId, model.modelId), defaultEffort: model.defaultEffort,
+        effortSource: model.effortSource ?? (model.supportedEfforts ? 'cli' : 'policy'),
         target: { kind: 'local_cli' as const, cliId: cli.cliId, modelId: model.modelId } }))
     }
     return []
@@ -163,17 +170,14 @@ export function CustomConfigurationsSection({ mode, state, clis, loading, error,
   function effortOptions(source: string, model: string, role: AiRole) {
     const option = modelOptions(source, role).find(item => item.value === model)
     if (!option) return []
-    const target = option.target
-    if (target.kind === 'local_cli') return cliEffortLevels(target.cliId, target.modelId)
-    const connection = state?.connections.find(item => item.id === target.connectionId)
-    return connection ? providerEffortLevels(connection.providerId, target.modelId) : []
+    return option.supportedEfforts
   }
 
   function targetFor(role: AiRole): RoleTarget | null {
     const draft = drafts[role]
     const option = modelOptions(draft.source, role).find(item => item.value === draft.model)
-    if (!option || (draft.effort && !effortOptions(draft.source, draft.model, role).includes(draft.effort as 'low' | 'medium' | 'high'))) return null
-    return { ...option.target, ...(draft.effort ? { effort: draft.effort as 'low' | 'medium' | 'high' } : {}) }
+    if (!option || (draft.effort && !effortOptions(draft.source, draft.model, role).includes(draft.effort))) return null
+    return { ...option.target, ...(draft.effort ? { effort: draft.effort } : {}) }
   }
 
   function sourceUnavailable(role: AiRole): boolean {
@@ -201,7 +205,7 @@ export function CustomConfigurationsSection({ mode, state, clis, loading, error,
   const hasUnavailableSource = AI_ROLES.some(sourceUnavailable)
   const hasUnavailableModel = AI_ROLES.some(modelUnavailable)
   const hasUnavailableEffort = AI_ROLES.some(role => drafts[role].effort
-    && !effortOptions(drafts[role].source, drafts[role].model, role).includes(drafts[role].effort as 'low' | 'medium' | 'high'))
+    && !effortOptions(drafts[role].source, drafts[role].model, role).includes(drafts[role].effort))
   const fillAllTarget = targetFor('synthesizer')
   const canFillAll = fillAllTarget !== null && AI_ROLES.every(role => modelOptions(drafts.synthesizer.source, role).some(option => option.value === drafts.synthesizer.model))
 
@@ -302,13 +306,15 @@ export function CustomConfigurationsSection({ mode, state, clis, loading, error,
         <DialogHeader><DialogTitle>{seed ? editing ? 'Edit role setup' : 'Set up four roles' : editing ? 'Edit custom configuration' : 'New custom configuration'}</DialogTitle><DialogDescription>{seed ? `Only ${mode === 'api' ? seedConnection?.name ?? 'this API provider' : seedCli?.productName ?? 'this local CLI'} models can be used in this setup. ` : ''}Review the model and effort for each role. Model default is safest: the listed effort controls are based on known model support, but are not separately tested. API models have passed a small generation test, not a full role execution test; discovered CLI models may still fail at execution.</DialogDescription></DialogHeader>
         <div className="aic-form">
           <div className="aic-field"><label htmlFor="aic-config-name">Configuration name</label><input id="aic-config-name" value={name} onChange={event => { setName(event.target.value); if (fieldError?.target === 'name') setFieldError(null) }} aria-invalid={fieldError?.target === 'name' || undefined} aria-describedby={fieldError?.target === 'name' ? 'aic-config-error' : undefined} /></div>
-          {seedCli && (seedCli.cliId === 'codex' || seedCli.cliId === 'claude_code') && <div className="aic-inline-add"><p className="aic-section-copy">Only the CLI’s built-in default is listed until you test an exact model ID with this local subscription. The test does not use a saved API key.</p><div className="aic-field"><label htmlFor="aic-role-cli-candidate">Add a model to the role lists</label><input id="aic-role-cli-candidate" value={cliCandidateId} onChange={event => { setCliCandidateId(event.target.value); setCliCandidateError('') }} placeholder="Exact CLI model ID" autoComplete="off" aria-invalid={Boolean(cliCandidateError) || undefined} aria-describedby={cliCandidateError ? 'aic-role-cli-candidate-error' : undefined} /></div><button className="aic-button" type="button" disabled={!cliCandidateId.trim() || mutationPending} onClick={testCliCandidate}>Test through CLI and add</button>{cliCandidateError && <p id="aic-role-cli-candidate-error" className="aic-field-error" role="alert">{cliCandidateError}</p>}</div>}
+          {seedCli && (seedCli.cliId === 'codex' || seedCli.cliId === 'claude_code') && <details className="aic-inline-add"><summary>Advanced · add an exact model ID</summary><p className="aic-section-copy">Use Refresh on the CLI card to retrieve its subscription models and effort levels. If a model is missing, test its exact ID through this local subscription.</p><div className="aic-field"><label htmlFor="aic-role-cli-candidate">Add a model to the role lists</label><input id="aic-role-cli-candidate" value={cliCandidateId} onChange={event => { setCliCandidateId(event.target.value); setCliCandidateError('') }} placeholder="Exact CLI model ID" autoComplete="off" aria-invalid={Boolean(cliCandidateError) || undefined} aria-describedby={cliCandidateError ? 'aic-role-cli-candidate-error' : undefined} /></div><button className="aic-button" type="button" disabled={!cliCandidateId.trim() || mutationPending} onClick={testCliCandidate}>Test through CLI and add</button>{cliCandidateError && <p id="aic-role-cli-candidate-error" className="aic-field-error" role="alert">{cliCandidateError}</p>}</details>}
           {AI_ROLES.map(role => {
             const unavailableSource = sourceUnavailable(role)
             const options = modelOptions(drafts[role].source, role)
             const unavailableModel = modelUnavailable(role)
             const efforts = effortOptions(drafts[role].source, drafts[role].model, role)
-            const unavailableEffort = Boolean(drafts[role].effort) && !efforts.includes(drafts[role].effort as 'low' | 'medium' | 'high')
+            const unavailableEffort = Boolean(drafts[role].effort) && !efforts.includes(drafts[role].effort)
+            const defaultEffort = options.find(option => option.value === drafts[role].model)?.defaultEffort
+            const effortSource = options.find(option => option.value === drafts[role].model)?.effortSource
             const retainedStaleModel = Boolean(drafts[role].model) && !options.some(option => option.value === drafts[role].model)
             const missingRoleSource = fieldError?.target === 'roles' && !drafts[role].source
             const missingRoleModel = fieldError?.target === 'roles' && !drafts[role].model
@@ -317,8 +323,8 @@ export function CustomConfigurationsSection({ mode, state, clis, loading, error,
             return <div className="aic-editor-role" data-mixed={!seed} role="group" aria-labelledby={`aic-${role}-label`} key={role}>
               <span id={`aic-${role}-label`}>{ROLE_LABELS[role]}</span>
               {!seed && <div className="aic-field"><label htmlFor={`aic-${role}-source`}>Source <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-source`} value={drafts[role].source} aria-invalid={unavailableSource || missingRoleSource || undefined} aria-describedby={sourceDescription} onChange={event => { updateDraft(role, 'source', event.target.value); if (fieldError?.target === 'roles') setFieldError(null) }}><option value="">Choose source</option>{sources.map(source => <option key={source.value} value={source.value}>{source.label}</option>)}</select></div>}
-              <div className="aic-field"><label htmlFor={`aic-${role}-model`}>Model <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-model`} value={drafts[role].model} disabled={!drafts[role].source || unavailableSource || options.length === 0} aria-invalid={unavailableModel || missingRoleModel || undefined} aria-describedby={modelDescription} onChange={event => { updateDraft(role, 'model', event.target.value); if (fieldError?.target === 'roles') setFieldError(null) }}><option value="">{options.length === 0 ? 'No tested model for this role' : 'Choose model'}</option>{retainedStaleModel && <option value={drafts[role].model} disabled>Saved model {drafts[role].model === '__builtin__' ? 'Built-in default' : drafts[role].model} · needs a current test or role check</option>}{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
-              <div className="aic-field"><label htmlFor={`aic-${role}-effort`}>Effort <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-effort`} value={drafts[role].effort} disabled={!drafts[role].model || unavailableModel || (efforts.length === 0 && !drafts[role].effort)} aria-invalid={unavailableEffort || undefined} aria-describedby={unavailableEffort ? 'aic-effort-repair' : undefined} onChange={event => updateDraft(role, 'effort', event.target.value)}><option value="">Model default{efforts.length === 0 ? ' · no effort control' : ''}</option>{unavailableEffort && <option value={drafts[role].effort} disabled>Saved effort · unsupported now</option>}{efforts.map(effort => <option key={effort} value={effort}>{effort[0].toUpperCase() + effort.slice(1)}</option>)}</select></div>
+              <div className="aic-field"><label htmlFor={`aic-${role}-model`}>Model <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-model`} value={drafts[role].model} disabled={!drafts[role].source || unavailableSource || options.length === 0} aria-invalid={unavailableModel || missingRoleModel || undefined} aria-describedby={modelDescription} onChange={event => { updateDraft(role, 'model', event.target.value); if (fieldError?.target === 'roles') setFieldError(null) }}><option value="">{options.length === 0 ? mode === 'cli' ? 'No subscription model for this role' : 'No tested model for this role' : 'Choose model'}</option>{retainedStaleModel && <option value={drafts[role].model} disabled>Saved model {drafts[role].model === '__builtin__' ? 'Built-in default' : drafts[role].model} · needs a current test or role check</option>}{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
+              <div className="aic-field"><label htmlFor={`aic-${role}-effort`}>Effort <span className="sr-only">for {ROLE_LABELS[role]}</span></label><select id={`aic-${role}-effort`} value={drafts[role].effort} title={effortSource === 'cli' ? 'Effort levels reported by this CLI' : effortSource === 'provider' ? 'Effort levels reported by this API provider' : 'Effort levels based on known model capabilities; the provider does not report them in its catalog'} disabled={!drafts[role].model || unavailableModel || (efforts.length === 0 && !drafts[role].effort)} aria-invalid={unavailableEffort || undefined} aria-describedby={unavailableEffort ? 'aic-effort-repair' : undefined} onChange={event => updateDraft(role, 'effort', event.target.value)}><option value="">Model default{defaultEffort ? ` · ${defaultEffort}` : efforts.length === 0 ? ' · no effort control' : ''}</option>{unavailableEffort && <option value={drafts[role].effort} disabled>Saved effort · unsupported now</option>}{efforts.map(effort => <option key={effort} value={effort}>{effort[0].toUpperCase() + effort.slice(1)}</option>)}</select></div>
             </div>
           })}
           {hasUnavailableSource && <p id="aic-source-repair" className="aic-field-error" role="status">One or more saved sources are no longer selectable. Choose an available source and model for every affected role.</p>}

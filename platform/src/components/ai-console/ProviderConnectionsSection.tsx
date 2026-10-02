@@ -5,9 +5,11 @@ import { AlertCircle, CheckCircle2, CircleDashed, Clock3, Plus, ShieldAlert, Pen
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { AiChoiceRadio } from './AiChoiceRadio'
+import { CatalogRefreshControl } from './CatalogRefreshControl'
+import { providerEffortLevels } from '@/lib/ai-console/effort'
 import {
   AI_ROLES, PROVIDER_LABELS, ROLE_LABELS, choicesEqual, formatCheckedAt, hasCurrentProviderConfirmation,
-  type AiChoice, type AiConsoleStateDto, type ConsoleMutation, type ProviderConnectionDto, type ProviderId,
+  type AiChoice, type AiConsoleStateDto, type ConsoleMutation, type ProviderConnectionDto, type ProviderId, type CatalogRefresh, type CatalogRefreshStatus,
 } from './types'
 
 // Direct Kimi onboarding is retired; existing connections remain visible for repair.
@@ -57,12 +59,14 @@ interface Props {
   mutate: ConsoleMutation
   onSelectDefault: (choice: AiChoice) => Promise<unknown>
   onConfigureRoles: (connectionId: string) => void
+  onRefreshCatalog: CatalogRefresh
+  refreshStatus: Record<string, CatalogRefreshStatus>
 }
 
 type ProviderErrorTarget = 'name' | 'apiKey' | 'workspaceId' | 'acknowledgement' | 'form'
 interface ProviderFieldError { message: string; target: ProviderErrorTarget }
 
-export function ProviderConnectionsSection({ state, loading, error, mutationPending, mutate, onSelectDefault, onConfigureRoles }: Props) {
+export function ProviderConnectionsSection({ state, loading, error, mutationPending, mutate, onSelectDefault, onConfigureRoles, onRefreshCatalog, refreshStatus }: Props) {
   const [editor, setEditor] = useState<Editor>(null)
   const [name, setName] = useState('')
   const [providerId, setProviderId] = useState<ProviderId>('openai')
@@ -231,7 +235,8 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
                 const target = preset.roles[role]
                 if (target.kind !== 'provider_model' || target.connectionId !== connection.id) return false
                 const model = state?.models.find(item => item.connectionId === connection.id && item.modelId === target.modelId)
-                return Boolean(model?.available && model.userSelected && model.plainTestedAt && model.compatibleRoles.includes(role))
+                return Boolean(model?.available && model.userSelected && model.plainTestedAt && model.compatibleRoles.includes(role)
+                  && (!target.effort || (model.supportedEfforts ?? providerEffortLevels(connection.providerId, target.modelId)).includes(target.effort)))
               }))
             const canConfigureRoles = connection.providerId !== 'kimi' && hasCurrentProviderConfirmation(connection)
               && AI_ROLES.every(role => (state?.models ?? []).some(model => model.connectionId === connection.id
@@ -249,6 +254,10 @@ export function ProviderConnectionsSection({ state, loading, error, mutationPend
                   {connection.providerId === 'anthropic' && connection.workspaceId && connection.validationState === 'needs_attention' &&
                     <p className="aic-meta">The key was retained. Check whether this workspace ID belongs to the key, then run Test connection. Replace the key only if the provider rejects it.</p>}
                   <p className="aic-meta">Last check · {formatCheckedAt(connection.lastCheckedAt ?? connection.lastValidatedAt)}</p>
+                  {!connection.deletedAt && connection.providerId !== 'kimi' && hasCurrentProviderConfirmation(connection) && <CatalogRefreshControl
+                    name={connection.name} kind="connection" refreshedAt={connection.catalogRefreshedAt}
+                    errorCode={connection.catalogErrorCode} status={refreshStatus[`connection:${connection.id}`]}
+                    onRefresh={() => void onRefreshCatalog('connection', connection.id, true)} />}
                   {connection.validationState !== 'validated' && connection.lastErrorCode && (
                     <p className="aic-failure-guidance">{FAILURE_GUIDANCE[connection.lastErrorCode] ?? FAILURE_GUIDANCE.AI_EXECUTION_FAILED}</p>
                   )}

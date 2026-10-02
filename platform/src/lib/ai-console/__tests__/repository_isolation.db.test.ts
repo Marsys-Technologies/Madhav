@@ -107,6 +107,8 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
     const shortlistMigration = readFileSync(resolve(__dirname, '../../../../migrations/1151_ai_console_model_shortlist.sql'), 'utf8')
     const configurationTypesMigration = readFileSync(resolve(__dirname, '../../../../supabase/migrations/1158_ai_console_configuration_types.sql'), 'utf8')
     const anthropicWorkspaceMigration = readFileSync(resolve(__dirname, '../../../../supabase/migrations/1159_ai_anthropic_workspace_id.sql'), 'utf8')
+    const roleEffortMigration = readFileSync(resolve(__dirname, '../../../../supabase/migrations/1300_ai_console_role_effort.sql'), 'utf8')
+    const catalogRefreshMigration = readFileSync(resolve(__dirname, '../../../../supabase/migrations/1301_ai_console_catalog_refresh.sql'), 'utf8')
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
@@ -115,6 +117,8 @@ describe.skipIf(!enabled).sequential('AI Console real repository isolation', () 
       await client.query(shortlistMigration)
       await client.query(configurationTypesMigration)
       await client.query(anthropicWorkspaceMigration)
+      await client.query(roleEffortMigration)
+      await client.query(catalogRefreshMigration)
       await client.query('COMMIT')
     }
     catch (error) { await client.query('ROLLBACK'); throw error }
