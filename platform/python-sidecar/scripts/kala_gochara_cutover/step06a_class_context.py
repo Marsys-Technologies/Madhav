@@ -326,7 +326,10 @@ def fetch_class_contact_instants(conn, chart_id: str, generation: str):
         (chart_id, generation)).fetchall()
     by_class: dict[str, list[float]] = {}
     null_exact = 0
-    for cls, t_exact in rows:
+    for row in rows:
+        # dict/tuple row agnostic (ASTRA v1.1 A1): the runner hands dict rows
+        cls, t_exact = ((row["event_class"], row["t_exact"])
+                        if isinstance(row, dict) else (row[0], row[1]))
         if t_exact is None:
             null_exact += 1
             continue
@@ -396,6 +399,72 @@ def build_class_context(swe, conn, chart_id: str, event_class: str,
     }
 
 
+class NoContactsError(Exception):
+    """No candidate contacts joined to resolved map rows (exit 3 at the CLI)."""
+
+
+def build_all_class_contexts(swe, conn, chart_id: str, generation: str):
+    """The whole class-context pass on a CALLER-SUPPLIED connection: per event
+    class, the union-semantics permission context the windows projection
+    consumes. Returns (contexts, omitted, null_exact). READ-ONLY — never
+    commits/rolls back/closes `conn`, never opens its own. Raises
+    NoContactsError when no candidate contacts join (the CLI's exit 3)."""
+    by_class, null_exact = fetch_class_contact_instants(
+        conn, chart_id, generation)
+    if not by_class:
+        raise NoContactsError(
+            f"no candidate contacts joined to resolved map rows "
+            f"for chart {chart_id} generation {generation!r} "
+            "— run step06_candidate_build.py first")
+
+    # The caller's transaction mode governs: under the CLI's autocommit
+    # connection savepoint_scope is a no-op passthrough (the _dbutil
+    # docstring's recommended shape for this engine's many defensive-catch
+    # queries); under the governed writer the orchestrator's per-substep
+    # transaction carries them.
+    # T0-6: MD/AD/PD (levels 1-3) at the §4.0 contract tier; a duplicate
+    # CONFLICT raises loudly (DashaReadConflict propagates — never
+    # silently served), a DB-shape surprise yields the honest [].
+    # ASTRA v1.2 P1-1: the build pin is selected from a RAW read and
+    # applied BEFORE canonicalization (load_pinned_dasha_periods).
+    dasha_periods, dasha_contract = load_pinned_dasha_periods(
+        conn, chart_id, list(perm.DASHA_SYSTEM_IDS))
+
+    # T0-7 / O-TV-3 / D-SPECS C4: the AV donor matrix is read once as a
+    # per-key set and emitted at the document's top level; it is NOT a
+    # class-level unresolved operand (P5c alone consumes it).
+    av_donor_matrix = fetch_av_donor_matrix(conn, chart_id)
+    unresolved_valence: list[str] = []
+    # ASTRA P1-2: the frozen C5 licence needs the chart operands and the
+    # §4.0 read pin; both are read once and emitted at the top level.
+    chart_operands = fetch_chart_operands(conn, chart_id)
+
+    contexts: dict[str, dict] = {}
+    omitted: list[dict] = []
+    for cls in sorted(by_class):
+        entry = build_class_context(
+            swe, conn, chart_id, cls, sorted(by_class[cls]),
+            dasha_periods, unresolved_valence)
+        if entry is None:
+            omitted.append({
+                "event_class": cls,
+                "reason": "targets did not resolve "
+                          "(fetch_resonance_targets/enrich_targets empty) "
+                          "— omitted, never fabricated",
+                "candidate_instants": len(by_class[cls]),
+            })
+            continue
+        contexts[cls] = entry
+    # The per-instant payload step06b consumes (T0-6): chart-level rows,
+    # emitted once; per-class entries stay self-describing otherwise.
+    contexts["_permission_mode"] = PERMISSION_MODE
+    contexts["_dasha_periods"] = [_jsonable_period(p) for p in dasha_periods]
+    contexts["_av_donor_matrix"] = av_donor_matrix
+    contexts["_chart"] = chart_operands
+    contexts["_dasha_read_contract"] = dasha_contract
+    return contexts, omitted, null_exact
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = step_parser(6, __doc__)
     parser.add_argument("--chart-id", required=True)
@@ -408,58 +477,24 @@ def main(argv: list[str] | None = None) -> int:
 
     conn = connect(args.dsn, step=6, autocommit=True)
     try:
-        by_class, null_exact = fetch_class_contact_instants(
-            conn, args.chart_id, args.generation)
-        if not by_class:
-            print(f"ERROR: no candidate contacts joined to resolved map rows "
-                  f"for chart {args.chart_id} generation {args.generation!r} "
-                  "— run step06_candidate_build.py first", file=sys.stderr)
-            return 3
-
         # autocommit: savepoint_scope is a no-op passthrough there and each
         # defensive read is its own transaction (the _dbutil docstring's
         # recommended shape for this engine's many defensive-catch queries).
-        # T0-6: MD/AD/PD (levels 1-3) at the §4.0 contract tier; a duplicate
-        # CONFLICT raises loudly (DashaReadConflict propagates — never
-        # silently served), a DB-shape surprise yields the honest [].
-        # ASTRA v1.2 P1-1: the build pin is selected from a RAW read and
-        # applied BEFORE canonicalization (load_pinned_dasha_periods).
-        dasha_periods, dasha_contract = load_pinned_dasha_periods(
-            conn, args.chart_id, list(perm.DASHA_SYSTEM_IDS))
-
-        # T0-7 / O-TV-3 / D-SPECS C4: the AV donor matrix is read once as a
-        # per-key set and emitted at the document's top level; it is NOT a
-        # class-level unresolved operand (P5c alone consumes it).
-        av_donor_matrix = fetch_av_donor_matrix(conn, args.chart_id)
-        unresolved_valence: list[str] = []
-        # ASTRA P1-2: the frozen C5 licence needs the chart operands and the
-        # §4.0 read pin; both are read once and emitted at the top level.
-        chart_operands = fetch_chart_operands(conn, args.chart_id)
-
-        contexts: dict[str, dict] = {}
-        omitted: list[dict] = []
-        for cls in sorted(by_class):
-            entry = build_class_context(
-                swe, conn, args.chart_id, cls, sorted(by_class[cls]),
-                dasha_periods, unresolved_valence)
-            if entry is None:
-                omitted.append({
-                    "event_class": cls,
-                    "reason": "targets did not resolve "
-                              "(fetch_resonance_targets/enrich_targets empty) "
-                              "— omitted, never fabricated",
-                    "candidate_instants": len(by_class[cls]),
-                })
-                continue
-            contexts[cls] = entry
-        # The per-instant payload step06b consumes (T0-6): chart-level rows,
-        # emitted once; per-class entries stay self-describing otherwise.
-        wired_classes = sorted(contexts)
-        contexts["_permission_mode"] = PERMISSION_MODE
-        contexts["_dasha_periods"] = [_jsonable_period(p) for p in dasha_periods]
-        contexts["_av_donor_matrix"] = av_donor_matrix
-        contexts["_chart"] = chart_operands
-        contexts["_dasha_read_contract"] = dasha_contract
+        try:
+            contexts, omitted, null_exact = build_all_class_contexts(
+                swe, conn, args.chart_id, args.generation)
+        except NoContactsError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 3
+        # The chart-level payloads live on the document's top level (the
+        # core emits them); the CLI report reads them back out.
+        wired_classes = sorted(k for k in contexts if not k.startswith("_"))
+        dasha_contract = contexts["_dasha_read_contract"]
+        chart_operands = contexts["_chart"]
+        av_donor_matrix = contexts["_av_donor_matrix"]
+        unresolved_valence = sorted({
+            op for cls, entry in contexts.items() if not cls.startswith("_")
+            for op in entry.get("valence_unresolved_operands", [])})
     finally:
         conn.close()
 
