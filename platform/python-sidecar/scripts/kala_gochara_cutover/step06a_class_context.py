@@ -81,6 +81,7 @@ if str(SIDECAR) not in sys.path:
     sys.path.insert(0, str(SIDECAR))
 
 from services.gochara_grammar import dasha_data as DD  # noqa: E402
+from services.gochara_grammar import read_tier_policy as RTP  # noqa: E402
 from services.gochara_grammar.resonance_map import fetch_resonance_targets  # noqa: E402
 from services.gochara_intensity import enrichment, valence  # noqa: E402
 from services.gochara_intensity import permission as perm  # noqa: E402
@@ -282,7 +283,13 @@ def load_pinned_dasha_periods(conn, chart_id: str, systems: list[str]) -> tuple[
     contract["rows_excluded_by_build_pin"] = len(raw_vim) - len(
         [r for r in raw_vim if str(r.get("build_id")) == str(contract["build_id"])])
     others = [s for s in systems if s != "vimshottari"]
-    rest = DD.fetch_dasha_periods_multilevel(conn, chart_id, systems=others) if others else []
+    # the non-pinned DR-14 systems only VOTE in the plurality: they are read at
+    # any honestly emitted computed tier (each row keeps its own tier and
+    # carries it to the permission detail); floored / divergent / pending /
+    # unknown stay refused. The vimshottari reads above stay STRICT (§4.0).
+    rest = (DD.fetch_dasha_periods_multilevel(
+        conn, chart_id, systems=others, accept_tiers=RTP.HONEST_COMPUTED_TIERS)
+        if others else [])
     return list(vim) + list(rest), contract
 
 
@@ -300,6 +307,18 @@ def _jsonable_period(p: dict) -> dict:
         else:
             out[k] = str(v)
     return out
+
+
+def _rows_by_system_tier(periods: list[dict]) -> dict:
+    """{system_id: {tier: n}} of the rows actually emitted — a system absent
+    here had NO readable row (the consumer reports it inactive); the tier of
+    each emitted row is stated, never implied verified."""
+    out: dict[str, dict[str, int]] = {}
+    for p in periods:
+        t = p.get("verification_pass_status")
+        d = out.setdefault(str(p.get("system_id")), {})
+        d[str(t)] = d.get(str(t), 0) + 1
+    return {k: dict(sorted(v.items())) for k, v in sorted(out.items())}
 
 
 def _to_jd(ts) -> float:
@@ -512,6 +531,11 @@ def main(argv: list[str] | None = None) -> int:
         "dasha_periods_emitted": len(contexts.get("_dasha_periods", [])),
         "dasha_levels": list(DD.DEFAULT_LEVELS),
         "dasha_read_tier": DD.READ_CONTRACT_TIER,
+        "dasha_read_tier_policy": {
+            "pinned_system(vimshottari)": sorted(RTP.STRICT_TIERS),
+            "other_systems": sorted(RTP.HONEST_COMPUTED_TIERS)},
+        "dasha_rows_by_system_tier": _rows_by_system_tier(
+            contexts.get("_dasha_periods", [])),
         "dasha_read_contract": dasha_contract,
         "chart_operands_missing": chart_operands["operands_missing"],
         "valence_unresolved_operands": unresolved_valence,

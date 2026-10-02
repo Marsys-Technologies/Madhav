@@ -87,6 +87,7 @@ from services.gochara_grammar import dasha_data as DD
 from services.gochara_grammar import primitives as P
 from services.gochara_grammar import composition as CO
 from services.gochara_grammar.models import ResonanceTarget
+from services.gochara_grammar.read_tier_policy import tier_evidence
 from pipeline.transit_search import _jd_to_ist_iso
 from ._dbutil import savepoint_scope
 
@@ -204,6 +205,10 @@ def _dasha_contributions(
             "start_iso": period.get("start_iso"),
             "end_iso": period.get("end_iso"),
             "lord_relevance_check": "matched_relevant_lord" if lord_check_available else "no_relevant_lord_vocabulary_resolved_any_period_counted",
+            # the tier the period row carries (multi-level reads only; MD-only
+            # rows carry none) — stated, never implied verified
+            **(tier_evidence(period.get("verification_pass_status"))
+               if "verification_pass_status" in period else {}),
         }}
     return out
 
