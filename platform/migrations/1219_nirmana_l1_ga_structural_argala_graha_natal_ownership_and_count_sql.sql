@@ -19,6 +19,16 @@
 -- real trigger function body on a disposable Postgres). The frozen manifests of ga_strength and ga_condition read
 -- evidence_refresh_required (count_sql is in the registry-contract fingerprint), which is not a serving state.
 --
+-- LIVE READ (suvarna_reader, read-only, 2026-10-02): the ONLY non-internal trigger on asset_registry, asset_freshness,
+-- asset_output_digest_specs, asset_provenance_receipts and fact_category_ownership is nirmana_registry_receipt_invalidation
+-- on asset_registry; no rules (pg_rules) on them; row-level security off on all five; amjis_app (the runner role and owner)
+-- holds INSERT/UPDATE/DELETE on fact_category_ownership, asset_output_digest_specs and asset_registry.
+--
+-- FINGERPRINT EFFECT (campaign control, not a serving state): count_sql is part of the Nirmana registry-contract fingerprint, so
+-- the frozen manifests of ga_strength and ga_condition go to evidence_refresh_required; accepted W1/W2 evidence bound to the old fingerprint reads as not current, and lane C receipt validation refuses
+-- a frozen manifest that no longer matches the live registry. The S-L1 runbook must therefore re-bind evidence (a refresh
+-- of the affected frozen manifests) before those two assets are accepted again.
+--
 -- ORDERING. 1219 is a HARD PREREQUISITE of the S-L1 ga_structural rebuild: it must be applied BEFORE that rebuild
 -- launches. It has no dependency on the writer deploy and MAY APPLY INDEPENDENTLY of it (before, with or after).
 -- Its companion 1221 (the a29 integrity conjunct AND the ga_structural digest-spec swap) is a different matter and is a
@@ -38,7 +48,7 @@
 -- columns of the live trigger nirmana_registry_receipt_invalidation (it would stale the asset's freshness),
 -- and floors are re-declared from achieved counts after S-L1 in one registry migration.
 --
---   1. fact_category_ownership (the mechanism of 410 / 842): 172 rows added, ON CONFLICT DO NOTHING.
+--   1. fact_category_ownership (the mechanism of 410 / 842): 172 rows listed (rows already present are skipped, ON CONFLICT DO NOTHING).
 --      * argala_graha_natal -> ga_structural (the new category).
 --      * Q-L1-04: ga_structural owns bhava_bala_* (already owned, 842) and every category its writer
 --        emits that lacks a row: the 22 categories in migration 914's digest spec without an ownership
