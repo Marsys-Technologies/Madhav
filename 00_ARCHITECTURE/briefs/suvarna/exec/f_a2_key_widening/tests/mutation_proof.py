@@ -54,6 +54,7 @@ COMBINED = "tests/test_combined_exec.py"
 WIRING = "tests/test_plan_and_wiring.py tests/test_plan_docs.py"
 BCT = "tests/test_dasha_partition_patches.py"
 BC = "d6_dasha_partition_patches.py"
+VT = "tests/test_vichara_item5.py"
 
 MUTATIONS = [
     # ---- the hunks (behavioural: constants recomputed so only the BEHAVIOUR tests can catch them)
@@ -70,12 +71,14 @@ MUTATIONS = [
     ("H2 removed, constants NOT recomputed (EXPECTED_DIFF binding)", PA, '    ("H2_all_null_row_is_floored_or_unavailable", H2_OLD, H2_NEW),\n', "", None, WIRING + " " + COMBINED, None),
     # ---- re-attestation
     ("function re-attestation skipped", EX, "        cur.execute(fn_att_update_sql(st.patch.signature))\n", '        cur.execute("SELECT 1")\n', None, COMBINED + " " + SHAPES, None),
-    ("trigger re-attestation skipped", EX, "    cur.execute(f\"UPDATE {TRG_ATT} a SET definition_digest = encode(public.digest(pg_get_triggerdef(t.oid,true),'sha256'),'hex') \"\n"
-     "                \"FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid \"\n"
-     "                \"WHERE a.table_name=%s AND a.trigger_name=%s AND c.relname=a.table_name AND t.tgname=a.trigger_name\", (TABLE, TRIGGER))\n",
-     "    cur.execute(\"SELECT 1\")\n", None, COMBINED, None),
+    ("trigger re-attestation skipped", EX,
+     "        cur.execute(f\"UPDATE {TRG_ATT} a SET definition_digest = encode(public.digest(pg_get_triggerdef(t.oid,true),'sha256'),'hex') \"\n"
+     "                    \"FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid \"\n"
+     "                    \"WHERE a.table_name=%s AND a.trigger_name=%s AND c.relname=a.table_name AND t.tgname=a.trigger_name\", (ts.table, TRIGGER))\n",
+     "        cur.execute(\"SELECT 1\")\n", None, COMBINED, None),
     ("immutability trigger not re-enabled after the function attestation", EX,
-     '        cur.execute(f"ALTER TABLE {FN_ATT} ENABLE TRIGGER {FN_ATT_IMMUTABLE}")\n    cur.execute(f"CREATE UNIQUE INDEX', '    cur.execute(f"CREATE UNIQUE INDEX', None, COMBINED, None),
+     '        cur.execute(f"ALTER TABLE {FN_ATT} ENABLE TRIGGER {FN_ATT_IMMUTABLE}")\n    for ts in leg.triggers:\n        if ts.change.swap_index:\n            cur.execute(f"CREATE UNIQUE INDEX',
+     '    for ts in leg.triggers:\n        if ts.change.swap_index:\n            cur.execute(f"CREATE UNIQUE INDEX', None, COMBINED, None),
     # ---- EXPECTED_DIFF / byte-for-byte binding
     ("EXPECTED_DIFF neutered in the database (body and diff checks)", EX,
      "new_def == st.to_def and hashlib.md5(new_def.encode()).hexdigest() == st.to_md5,", "True,", None, COMBINED, "extra_byte"),
@@ -91,8 +94,8 @@ MUTATIONS = [
     ("rollback skipped (rollback leg re-applies the patched body)", EX,
      "    steps = tuple(FnStep(p, p.patched_def(), p.live_def(), p.patched_md5, p.live_md5, p.patched_sha256, p.live_sha256)",
      "    steps = tuple(FnStep(p, p.patched_def(), p.patched_def(), p.patched_md5, p.patched_md5, p.patched_sha256, p.patched_sha256)", None, COMBINED + " " + SHAPES, "rollback"),
-    ("rollback does not restore the six-column index", EX, "    return Leg(\"rollback\", steps, PATCHED_TRG_DIGEST, LIVE_TRG_DIGEST, NEW_COLS, OLD_COLS,",
-     "    return Leg(\"rollback\", steps, PATCHED_TRG_DIGEST, LIVE_TRG_DIGEST, NEW_COLS, NEW_COLS,", None, COMBINED, "rollback"),
+    ("rollback does not restore the six-column index or the old trigger arguments", EX, "TrgStep(c, c.to_args, c.from_args, c.to_digest, c.from_digest)",
+     "TrgStep(c, c.to_args, c.to_args, c.to_digest, c.from_digest)", None, COMBINED, "rollback"),
     ("rollback widened-row collision guard neutered", EX, "ck.chk(\"pre_no_widened_rows_collide_on_the_six_column_key\", dup == 0,", "ck.chk(\"pre_no_widened_rows_collide_on_the_six_column_key\", True,", None, COMBINED, "widened_rows"),
     # ---- comments (the SS condition)
     ("contract comments not applied", EX, "    for stmt in leg.comment_stmts:\n        cur.execute(stmt)\n", "", None, COMBINED + " " + SHAPES, None),
@@ -131,6 +134,14 @@ MUTATIONS = [
     ("patch B: bound base md5 no longer the production md5 (base-md5 mismatch)", EX, 'live_md5="eee8d9d4f5fbbbbbd03a9abda7c62385"', 'live_md5="00000000000000000000000000000000"', None, BCT, "base_is_production"),
     ("patch C: its bound target md5 no longer what the hunks produce", EX, 'patched_md5="31d005e8ecacf40547f0537e24d717d5"', 'patched_md5="11111111111111111111111111111111"', None, BCT, "base_is_production or target_is_bound"),
     ("item 5 slot filled (a chart_vichara hunk smuggled in)", BC, "PATCH_C_HUNKS = (", "PATCH_C_HUNKS = (('X5_chart_vichara', 'BEGIN\\n', 'BEGIN\\n  -- chart_vichara\\n'), ", None, WIRING, "item_5"),
+    # ---- item 5 (K1): the chart_vichara trigger leg, data-driven
+    ("item 5: the chart_vichara argument list changed (target digest no longer what the live trigger text hashes to)", EX, 'VICHARA_NEW = VICHARA_OLD + ("constituent_fact_ids",)', 'VICHARA_NEW = VICHARA_OLD + ("constituent_facts_array",)', None, VT, None),
+    ("item 5: the chart_vichara entry dropped from TRIGGER_CHANGES", EX, "TRIGGER_CHANGES = (FA2_TRIGGER, VICHARA_TRIGGER)", "TRIGGER_CHANGES = (FA2_TRIGGER,)", None, VT + " " + WIRING, "item_5 or vichara or expected_diff"),
+    ("item 5: the chart_vichara trigger attestation row is not re-attested", EX, "    for ts in leg.triggers:                          # re-attest ONLY the rows of the changed tables\n",
+     "    for ts in leg.triggers:                          # re-attest ONLY the rows of the changed tables\n        if ts.table == 'chart_vichara':\n            continue\n", None, VT, "post_apply or dry_run"),
+    ("item 5: the base-trigger-text precondition neutered", EX, 'ck.chk(f"pre_trigger_shape_{ts.table}", bool(row) and trigger_args(row[0]) == ts.from_args,', 'ck.chk(f"pre_trigger_shape_{ts.table}", True,', None, VT, "bound_base"),
+    ("item 5: the chart_vichara identity probe neutered", EX, '''                and probe["vichara_identities_live_args"] == probe["vichara_fixture_rows"]''', "                and True", None, VT, "collapses"),
+    ("item 5: changed-attestation identity check neutered (counts alone would still say N)", EX, '''        out.append((name, tables == planned, sorted(tables)))''', "        out.append((name, True, sorted(tables)))", None, COMBINED, "wrong_table or extra_tables"),
 ]
 
 
@@ -141,6 +152,8 @@ def sh(cmd, cwd, env=None):
 def build_tree(tmp: pathlib.Path) -> pathlib.Path:
     dest = tmp / REL
     shutil.copytree(SRC, dest, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    for sibling in SRC.parent.glob("*.md"):                  # the contract document sits one level up (exec/); the doc tests read it
+        shutil.copy(sibling, dest.parent / sibling.name)
     (tmp / "platform").symlink_to(REPO / "platform")
     return dest
 

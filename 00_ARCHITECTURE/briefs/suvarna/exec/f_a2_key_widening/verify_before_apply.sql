@@ -13,6 +13,10 @@ WITH fn AS (
 ), fc AS (
   SELECT pg_get_functiondef(p.oid) AS d, pg_get_userbyid(p.proowner) || ' / ' || p.prosecdef::text || ' / ' || COALESCE(p.proconfig::text, '') || ' / ' || COALESCE(p.proacl::text, '') AS meta
   FROM pg_proc p WHERE p.oid = to_regprocedure('public.complete_l1_data_plane_partition(uuid,text,text,text,integer)')
+), tv AS (
+  SELECT pg_get_triggerdef(t.oid, true) AS d, t.tgenabled::text AS en
+  FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+  WHERE c.relname = 'chart_vichara' AND t.tgname = 'l1_data_plane_capture' AND NOT t.tgisinternal
 ), trg AS (
   SELECT pg_get_triggerdef(t.oid, true) AS d, t.tgenabled::text AS en
   FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
@@ -112,6 +116,9 @@ WITH fn AS (
   UNION ALL SELECT 37, 'ITEM 3 patch C (BEFORE: live pre-state): md5 / length', (SELECT md5(d) || ' / ' || length(d)::text FROM fc), 'dcab40cf524c39efca628517c14fd9e8 / 8647'
   UNION ALL SELECT 38, 'ITEM 3 patch C: attestation digest = live sha256 = the pre-state digest', (SELECT a.definition_digest || ' / ' || (a.definition_digest = encode(public.digest(f.d, 'sha256'), 'hex'))::text FROM public.l1_data_plane_function_attestations a, fc f WHERE a.function_signature = 'complete_l1_data_plane_partition(uuid,text,text,text,integer)'), '93bcb4afee1d568e885d83cc8eb58c1122dc429bfa201f90226b162a18cf5b4c / true'
   UNION ALL SELECT 39, 'ITEM 3 patch C hunk absent (post-pass dasha block)', (SELECT ((length(d) - length(replace(d, 'the post-pass partition also INSERTS rows', ''))) / length('the post-pass partition also INSERTS rows'))::text FROM fc), '0'
+  UNION ALL SELECT 50, 'ITEM 5 chart_vichara capture trigger BEFORE: eight arguments (live pre-state), enabled', (SELECT d || ' / ' || en FROM tv), 'CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON chart_vichara FOR EACH ROW EXECUTE FUNCTION l1_data_plane_capture_row(''chart_id'', ''ayanamsha_id'', ''vichara_family'', ''subject'', ''target'', ''domain'', ''varga_id'', ''formula_version'') / O'
+  UNION ALL SELECT 51, 'ITEM 5 chart_vichara capture trigger attestation digest = the pre-state digest', (SELECT definition_digest FROM public.l1_data_plane_trigger_attestations WHERE table_name = 'chart_vichara' AND trigger_name = 'l1_data_plane_capture'), 'aa242e3b291de7460d09cbaed833cdf179e8f4f896f1bb0a931028c4708367a8'
+  UNION ALL SELECT 52, 'ITEM 5 chart_vichara mutation-guard attestation row unchanged (only the capture trigger row is re-attested)', (SELECT definition_digest FROM public.l1_data_plane_trigger_attestations WHERE table_name = 'chart_vichara' AND trigger_name = 'l1_data_plane_mutation_guard'), '34e107e2120ea118ab18b2162a8344c92e4636e3011b62429e39ab795e765df3'
 )
 SELECT ord, chk, obs, exp, CASE WHEN exp = '(info)' THEN 'INFO' WHEN obs IS NOT DISTINCT FROM exp THEN 'PASS' ELSE 'FAIL' END AS verdict FROM r
 UNION ALL SELECT 999, 'SUMMARY: checks that are not PASS/INFO', count(*) FILTER (WHERE exp <> '(info)' AND obs IS DISTINCT FROM exp)::text, '0',

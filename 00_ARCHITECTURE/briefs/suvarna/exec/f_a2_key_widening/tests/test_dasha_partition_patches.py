@@ -43,7 +43,7 @@ def test_b_and_c_are_in_the_plan_as_items_2_and_3_with_their_own_attestation_han
         assert f"CREATE OR REPLACE FUNCTION public.{sig}" in plan and p.live_md5 in plan and p.patched_md5 in plan and p.diff_sha256 in plan
         assert f"a.function_signature='{sig}'" in plan                                         # its own function-attestation re-attestation row
     assert plan.count("ALTER TABLE public.l1_data_plane_function_attestations DISABLE TRIGGER") == 3     # one re-attestation per patched function
-    assert len(mod.EXPECTED_DIFF["functions"]) == 3 and "ITEM 5" in plan and "RESERVED SLOT" in plan
+    assert len(mod.EXPECTED_DIFF["functions"]) == 3 and "ITEM 5" in plan and "RESERVED" not in plan
 
 
 @pytest.mark.parametrize("sig", SIGS)

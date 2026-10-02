@@ -156,6 +156,40 @@ LIVE_TRG_DIGEST = "d0064f5ed31f7db91cb239967f783af3a885f21b39aa7c833877989a71376
 PATCHED_TRG_DIGEST = "ea1281cfcd1d2250e3a073dbb070a566da18cab1431a0547f6c10583a4f5fe83"  # the same trigger with the 7th argument
 
 FA2_HUNK = ("F_A2_dependency_identity_fact_subject", fa2.HUNK_OLD_KEY, fa2.HUNK_NEW_KEY)
+
+
+@dataclasses.dataclass(frozen=True)
+class TriggerChange:
+    """One capture-trigger argument change, as DATA (item 4 = chart_divisionals, item 5 = chart_vichara). The step re-creates the table's
+    `l1_data_plane_capture` trigger with `to_args` (ARGUMENTS ONLY: no function hunk) and re-attests ONLY that table's row in
+    l1_data_plane_trigger_attestations. `swap_index` additionally swaps the table's unique index (same columns as the arguments; F-A2 only)."""
+    item: str
+    table: str
+    from_args: tuple
+    to_args: tuple
+    from_digest: str            # the attestation row (sha256 of pg_get_triggerdef(oid, true) under search_path public) before
+    to_digest: str              # and after
+    swap_index: bool
+    note: str
+
+    @property
+    def added(self) -> tuple:
+        return tuple(a for a in self.to_args if a not in self.from_args)
+
+
+FA2_TRIGGER = TriggerChange("ITEM 4 (F-A2)", TABLE, OLD_COLS, NEW_COLS, LIVE_TRG_DIGEST, PATCHED_TRG_DIGEST, True,
+                            "natural key widened by fact_subject: unique index and trigger arguments")
+VICHARA_TABLE = "chart_vichara"
+VICHARA_OLD = ("chart_id", "ayanamsha_id", "vichara_family", "subject", "target", "domain", "varga_id", "formula_version")   # read live as suvarna_reader, 2026-10-02
+VICHARA_NEW = VICHARA_OLD + ("constituent_fact_ids",)
+VICHARA_TRIGGER = TriggerChange("ITEM 5 (K1, chart_vichara capture identity)", VICHARA_TABLE, VICHARA_OLD, VICHARA_NEW,
+                                "aa242e3b291de7460d09cbaed833cdf179e8f4f896f1bb0a931028c4708367a8",     # live attestation row = sha256 of the live trigger text
+                                "f02569e953979bd1dee7118eafee431fe24bc2c20f46c432f9d0ba37b6136e19", False,
+                                "grain plus L1 source-fact provenance set (constituent_fact_ids), NOT a natural key: chart_vichara has none")
+TRIGGER_CHANGES = (FA2_TRIGGER, VICHARA_TRIGGER)
+assert len({c.table for c in TRIGGER_CHANGES}) == len(TRIGGER_CHANGES) and sum(c.swap_index for c in TRIGGER_CHANGES) == 1
+assert all(c.table == TABLE for c in TRIGGER_CHANGES if c.swap_index), "only the chart_divisionals unique index swap is supported"
+assert all(c.to_args[:len(c.from_args)] == c.from_args and len(c.to_args) > len(c.from_args) for c in TRIGGER_CHANGES), "arguments are only ever appended"
 CAPTURE_PATCH = FunctionPatch(
     signature=CAPTURE_FN_SIG,
     live_md5="1e079261aa42eb97a1885a48035e7520", live_len=19780,
@@ -188,10 +222,9 @@ COMPLETE_PATCH = FunctionPatch(
     patched_md5="31d005e8ecacf40547f0537e24d717d5",
     patched_sha256="21d297abdbc99d11c073dc1b9c57b85eb0ea662f0d6927b1faa3889b07043ac0",
     diff_sha256="8c9d7d8dcfb5c6da760b36051e1e882562ea481503a5a23a7d3178f0dcf85c2f", diff_hunks=1)
-# ITEM 5, RESERVED SLOT, NOT WRITTEN: "chart_vichara capture identity" (ga_vichara F1). It joins this plan ONLY if the ga_vichara F1 identity design under review
-# (vichara-design) is accepted, and then only as DATA here (a FunctionPatch hunk for the capture function and, if the design needs it, a trigger-argument entry
-# beside the chart_divisionals one), with the authorisation sentence gaining its own clause. Until then the plan has exactly items 1-4 (FUNCTION_PATCHES below plus the item-4 index and trigger).
-# Item numbering of the plan: 1 = option A (CAPTURE_PATCH, H1..H3b), 2 = patch B, 3 = patch C, 4 = F-A2 (index + trigger + the F-A2 hunk inside CAPTURE_PATCH).
+# ITEM 5 (K1, SS decision: joins the combined D6) is NOT a function hunk: it is the chart_vichara entry of TRIGGER_CHANGES above (arguments only).
+# Item numbering of the plan: 1 = option A (CAPTURE_PATCH, H1..H3b), 2 = patch B, 3 = patch C, 4 = F-A2 (index + trigger + the F-A2 hunk inside CAPTURE_PATCH),
+# 5 = K1 (the chart_vichara capture-trigger arguments).
 FUNCTION_PATCHES = (CAPTURE_PATCH, DASHA_CAPTURE_PATCH, COMPLETE_PATCH)
 assert len({p.signature for p in FUNCTION_PATCHES}) == len(FUNCTION_PATCHES) and CAPTURE_FN_SIG in {p.signature for p in FUNCTION_PATCHES}
 assert all(p.owner == OWNER for p in FUNCTION_PATCHES), "an L2-owned function needs its own owner-role leg and attestation table: not supported"
@@ -242,16 +275,20 @@ def _expected_functions() -> list[dict]:
 EXPECTED_DIFF = {
     "functions": _expected_functions(),
     "index": [f"{TABLE}|{INDEX}|6col->7col (+fact_subject, NULLS NOT DISTINCT)"],
-    "trigger": [f"{TABLE}|{TRIGGER}|args 6->7 (+'fact_subject')"],
-    "trigger_attestation": [f"{TABLE}|{TRIGGER}|digest {LIVE_TRG_DIGEST} -> {PATCHED_TRG_DIGEST}|ONE row"],
+    "trigger": [f"{c.table}|{TRIGGER}|args {len(c.from_args)}->{len(c.to_args)} (+{', '.join(repr(a) for a in c.added)})|{c.item}" for c in TRIGGER_CHANGES],
+    "trigger_attestation": [f"{c.table}|{TRIGGER}|digest {c.from_digest} -> {c.to_digest}|ONE row, this table's row only" for c in TRIGGER_CHANGES],
     "comments": "removed 2 (the 1035 table comments) / added 7 (2 table comments + 5 column comments)",
     "unchanged": ["every other index, trigger, l1_/l2_ function, attestation row", "ACL", "membership", "RLS", "policy",
-                  "per-chart row data of chart_divisionals", "append-only (immutable) triggers: all enabled before and after"],
+                  "per-chart row data of " + ", ".join(c.table for c in TRIGGER_CHANGES),
+                  "every other table's trigger attestation row (only the rows of the tables in the trigger list change)",
+                  "append-only (immutable) triggers: all enabled before and after"],
     "identity_probe": fa2.EXPECTED_DIFF["identity_probe"],
+    "chart_vichara_identity_probe": "writer-shaped fixture rows (whole-row distinct, constituent_fact_ids sorted): under the live 9-argument trigger the identities are all "
+                                    "distinct (rows == identities); under the legacy 8 arguments they collapse (fewer identities than rows)",
     "deploy_gate": fa2.EXPECTED_DIFF["deploy_gate"],
     "writer_first": fa2.EXPECTED_DIFF["writer_first"],
-    "rollback": "the exact inverse (live definition re-applied, 6-column index, 6-argument trigger, 1035 comments, two re-attestations): "
-                "md5 and attestation rows equal the pre-state; refused if widened rows exist",
+    "rollback": "the exact inverse (every live definition re-applied, 6-column index, the old trigger arguments of every changed table, 1035 comments, every "
+                "re-attestation): md5 and attestation rows equal the pre-state; refused if widened rows exist",
 }
 
 # ------------------------------------------------------------------------------------------------------ gate wiring (GATE_V2)
@@ -347,13 +384,23 @@ class FnStep:
 
 
 @dataclasses.dataclass(frozen=True)
+class TrgStep:
+    change: TriggerChange
+    from_args: tuple
+    to_args: tuple
+    from_digest: str
+    to_digest: str
+
+    @property
+    def table(self) -> str:
+        return self.change.table
+
+
+@dataclasses.dataclass(frozen=True)
 class Leg:
     name: str                       # forward | rollback
     functions: tuple                # FnStep, one per FunctionPatch
-    from_trg: str
-    to_trg: str
-    from_cols: tuple
-    to_cols: tuple
+    triggers: tuple                 # TrgStep, one per TriggerChange (forward: from -> to; rollback: to -> from)
     comments_from: frozenset
     comments_to: frozenset
     comment_stmts: tuple
@@ -364,20 +411,22 @@ class Leg:
 def forward_leg() -> Leg:
     steps = tuple(FnStep(p, p.live_def(), p.patched_def(), p.live_md5, p.patched_md5, p.live_sha256, p.patched_sha256)
                   for p in FUNCTION_PATCHES)
-    return Leg("forward", steps, LIVE_TRG_DIGEST, PATCHED_TRG_DIGEST, OLD_COLS, NEW_COLS, frozenset(COMMENTS_OLD), frozenset(COMMENTS_NEW),
+    trg = tuple(TrgStep(c, c.from_args, c.to_args, c.from_digest, c.to_digest) for c in TRIGGER_CHANGES)
+    return Leg("forward", steps, trg, frozenset(COMMENTS_OLD), frozenset(COMMENTS_NEW),
                tuple(comment_sql(COMMENT_NEW_TABLES, COMMENT_NEW_COLUMNS)), len(COMMENTS_OLD), len(COMMENTS_NEW))
 
 
 def rollback_leg() -> Leg:
     steps = tuple(FnStep(p, p.patched_def(), p.live_def(), p.patched_md5, p.live_md5, p.patched_sha256, p.live_sha256)
                   for p in FUNCTION_PATCHES)
-    return Leg("rollback", steps, PATCHED_TRG_DIGEST, LIVE_TRG_DIGEST, NEW_COLS, OLD_COLS, frozenset(COMMENTS_NEW), frozenset(COMMENTS_OLD),
+    trg = tuple(TrgStep(c, c.to_args, c.from_args, c.to_digest, c.from_digest) for c in TRIGGER_CHANGES)
+    return Leg("rollback", steps, trg, frozenset(COMMENTS_NEW), frozenset(COMMENTS_OLD),
                tuple(comment_sql(COMMENT_OLD_TABLES, None) + comment_null_sql()), len(COMMENTS_NEW), len(COMMENTS_OLD))
 
 
-def trigger_create_sql(cols) -> str:
+def trigger_create_sql(table, cols) -> str:
     args = ", ".join("'%s'" % c for c in cols)
-    return (f"CREATE TRIGGER {TRIGGER} AFTER INSERT OR UPDATE ON public.{TABLE} FOR EACH ROW "
+    return (f"CREATE TRIGGER {TRIGGER} AFTER INSERT OR UPDATE ON public.{table} FOR EACH ROW "
             f"EXECUTE FUNCTION {CAPTURE_FN.split('(')[0]}({args})")
 
 
@@ -392,15 +441,16 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
     fwd = forward_leg()
     names = ", ".join(p.signature for p in FUNCTION_PATCHES)
     lines = [
-        "-- COMBINED D6 plan (data-driven): F-A2 key widening of public.chart_divisionals + function patches [" + names + "] + contract comments + re-attestation (and the exact inverse)",
+        "-- COMBINED D6 plan (data-driven): F-A2 key widening of public.chart_divisionals + capture-trigger argument changes [" + ", ".join(c.table for c in TRIGGER_CHANGES) + "] + function patches [" + names + "] + contract comments + re-attestation (and the exact inverse)",
         "-- one transaction as data_plane_l1_owner (transient GRANT <role> TO CURRENT_USER only if not a member, SET LOCAL ROLE, REVOKE only what was granted)",
         f"SET LOCAL search_path = {fa2.SEARCH_PATH}",
         "SET LOCAL lock_timeout = '5s'",
         "SET LOCAL statement_timeout = '120s'",
         "-- FORWARD (--dry-run / --apply), as data_plane_l1_owner unless noted:",
         f"-- preconditions (read only; any failure = refuse + ROLLBACK): no build_runs planned/running/paused on ANY chart (as {APP_OWNER}); no L1 generation 'building'; "
-        "no data_plane_builder session active/idle-in-transaction; public.digest(text,text) resolves; the six-column index and six-argument trigger; the capture-trigger attestation "
-        f"row EXISTS exactly once with digest {LIVE_TRG_DIGEST}; the two table comments are the 1035 text and no column comment exists; the deploy gate's own three queries are green "
+        "no data_plane_builder session active/idle-in-transaction; public.digest(text,text) resolves; the six-column index; for EVERY trigger change the live trigger has exactly the "
+        "'from' arguments and its capture-trigger attestation row EXISTS exactly once with the 'from' digest (" + "; ".join(f"{c.table} {len(c.from_args)} args, digest {c.from_digest}" for c in TRIGGER_CHANGES) + "); "
+        "the two table comments are the 1035 text and no column comment exists; the deploy gate's own three queries are green "
         "(as amjis_app, search_path public); --writer-commit: image tag == commit and ga_vargas digest == the frozen one; and for EVERY patched function:",
     ]
     for p in FUNCTION_PATCHES:
@@ -416,35 +466,39 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
             lines.append("--     + " + new.replace("\n", "\n--       "))
         lines.append(f"--   bound: patched md5 {p.patched_md5}, sha256 {p.patched_sha256}; zero-context diff {p.diff_hunks} hunks, sha256 {p.diff_sha256}; "
                      "re-checked against pg_get_functiondef after the statement")
-    lines.append("-- ITEM 5 (chart_vichara capture identity, ga_vichara F1): RESERVED SLOT, NOT PART OF THIS PLAN, NOT WRITTEN; joins only if the vichara identity design is accepted, as data, with its own authorisation clause")
     lines.append("-- contract comments (owner path):")
     lines += ["   " + x for x in fwd.comment_stmts]
     lines.append("-- re-attest each patched function row (immutability trigger off, then on, same transaction; rowcount must be 1):")
     for p in FUNCTION_PATCHES:
         lines += [f"ALTER TABLE {FN_ATT} DISABLE TRIGGER {FN_ATT_IMMUTABLE}", fn_att_update_sql(p.signature), f"ALTER TABLE {FN_ATT} ENABLE TRIGGER {FN_ATT_IMMUTABLE}"]
     lines += [
-        "-- F-A2 index + trigger (the ACCESS EXCLUSIVE window starts at DROP INDEX; functions, comments, function attestations and the identity-probe inserts run BEFORE it):",
-        f"CREATE UNIQUE INDEX {NEW_INDEX_TMP} ON public.{TABLE} ({', '.join(NEW_COLS)}) NULLS NOT DISTINCT",
-        f"DROP INDEX public.{INDEX}",
-        f"ALTER INDEX public.{NEW_INDEX_TMP} RENAME TO {INDEX}",
-        f"DROP TRIGGER {TRIGGER} ON public.{TABLE}",
-        trigger_create_sql(NEW_COLS),
-        "-- re-attest the capture-trigger row (immutability trigger off, then on; rowcount must be 1):",
-        f"ALTER TABLE {TRG_ATT} DISABLE TRIGGER {TRG_ATT_IMMUTABLE}",
-        f"UPDATE {TRG_ATT} a SET definition_digest = encode(public.digest(pg_get_triggerdef(t.oid,true),'sha256'),'hex') FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE a.table_name='{TABLE}' AND a.trigger_name='{TRIGGER}' AND c.relname=a.table_name AND t.tgname=a.trigger_name",
-        f"ALTER TABLE {TRG_ATT} ENABLE TRIGGER {TRG_ATT_IMMUTABLE}",
+        "-- trigger changes, ARGUMENTS ONLY (the ACCESS EXCLUSIVE window starts at the first DROP; functions, comments, function attestations and the identity-probe inserts run BEFORE it):",
+    ]
+    for c in TRIGGER_CHANGES:
+        lines.append(f"-- {c.item}: {c.table}: {c.note}")
+        if c.swap_index:
+            lines += [f"CREATE UNIQUE INDEX {NEW_INDEX_TMP} ON public.{c.table} ({', '.join(c.to_args)}) NULLS NOT DISTINCT",
+                      f"DROP INDEX public.{INDEX}",
+                      f"ALTER INDEX public.{NEW_INDEX_TMP} RENAME TO {INDEX}"]
+        lines += [f"DROP TRIGGER {TRIGGER} ON public.{c.table}", trigger_create_sql(c.table, c.to_args)]
+    lines.append("-- re-attest ONLY the rows of the changed tables in the trigger attestation table (immutability trigger off, then on; each rowcount must be 1):")
+    for c in TRIGGER_CHANGES:
+        lines += [f"ALTER TABLE {TRG_ATT} DISABLE TRIGGER {TRG_ATT_IMMUTABLE}",
+                  f"UPDATE {TRG_ATT} a SET definition_digest = encode(public.digest(pg_get_triggerdef(t.oid,true),'sha256'),'hex') FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE a.table_name='{c.table}' AND a.trigger_name='{TRIGGER}' AND c.relname=a.table_name AND t.tgname=a.trigger_name",
+                  f"ALTER TABLE {TRG_ATT} ENABLE TRIGGER {TRG_ATT_IMMUTABLE}"]
+    lines += [
         "-- commit only if ALL hold (EXPECTED_DIFF): across a before/after snapshot of every public index, trigger, l1_/l2_ and lifecycle function, both attestation tables and the "
-        f"table/column comments of the two snapshot tables, exactly ONE entry changed in each of index, trigger, trigger attestation and EXACTLY {len(FUNCTION_PATCHES)} in function and function attestation "
+        f"table/column comments of the two snapshot tables, exactly ONE entry changed in index and EXACTLY {len(TRIGGER_CHANGES)} in trigger and trigger attestation (the tables of the trigger changes, no other table's row) and EXACTLY {len(FUNCTION_PATCHES)} in function and function attestation "
         "(the patched signatures), comments removed 2 / added 7; ACL, membership, RLS, policy, per-chart row data, every append-only trigger state identical; for each patched function "
         "pg_get_functiondef after == the patched body (md5 as bound) and its diff from the before body has the bound sha256 and hunk count; owner/secdef/config/ACL unchanged; the new index is unique, "
         "valid, NULLS NOT DISTINCT on the 7 columns; every attestation row equals the live object under the gate's own join and equals the bound digest; the gate's three queries "
-        "are false AFTER the plan under search_path public and stored == gate-side digests; identity probe 84 landed / 84 distinct identities (legacy 6 args: 18); transient grants "
+        "are false AFTER the plan under search_path public and stored == gate-side digests; identity probes: chart_divisionals 84 landed / 84 distinct identities (legacy 6 args: 18), chart_vichara writer-shaped fixture rows == distinct identities under the live 9 arguments and fewer under the legacy 8; transient grants "
         "revoked and membership equals the pre-state; --expect-plan == plan hash; --expect-evidence == this run's evidence digest (apply).",
         "-- ROLLBACK (--rollback-dry-run / --rollback), the exact inverse, as data_plane_l1_owner (generic: every function re-applied from its shipped live definition and re-attested):",
-        f"-- preconditions: each function md5 == its patched md5 and its attestation == its patched sha256; 7-column index; 7-argument trigger with attestation {PATCHED_TRG_DIGEST}; the patched comments; "
+        "-- preconditions: each function md5 == its patched md5 and its attestation == its patched sha256; 7-column index; every changed table's trigger has its 'to' arguments with attestation " + "; ".join(f"{c.table} {c.to_digest}" for c in TRIGGER_CHANGES) + "; the patched comments; "
         "NO two chart_divisionals rows share the six-column key (a rebuild that landed widened rows makes the old index impossible: delete them first); no build in flight; gate green",
         "-- CREATE OR REPLACE FUNCTION from each shipped live definition; the 1035 table comments restored and the five column comments set to NULL; 6-column index (create tmp, drop, rename); "
-        f"6-argument trigger; re-attest every function row and the trigger row; commit conditions mirror the forward ones with the live constants (trigger digest {LIVE_TRG_DIGEST}).",
+        "the old trigger arguments of every changed table; re-attest every function row and every changed table's trigger row; commit conditions mirror the forward ones with the live constants (trigger digests " + "; ".join(f"{c.table} {c.from_digest}" for c in TRIGGER_CHANGES) + ").",
         "-- the real run is started ONLY through exec/gate_v2/run_gated.sh <python3> <this file> <args> (GATE_V2): the executor REFUSES (exit 93) unless the marker verifies against "
         "the gate files pinned below; it writes outcome.json (dry_run | applied | failed | commit_state_unknown) in every mode; it refuses an under_test launch marker (exit 93) and a DPFA2_TEST_* variable (exit 95) outside pytest.",
         "-- every mode needs --expect-plan: the in-process administrator credential is fetched only after the plan hash matched.",
@@ -510,8 +564,10 @@ def snap(cur) -> dict:
     for k, sql in SNAP_SQL.items():
         cur.execute(sql)
         out[k] = {tuple(str(x) for x in row) for row in cur.fetchall()}
-    cur.execute(fa2.ROWDATA_SQL)
-    out["rowdata"] = {tuple(str(x) for x in row) for row in cur.fetchall()}
+    out["rowdata"] = set()
+    for c in TRIGGER_CHANGES:                       # the row data (count + md5 of ids per chart) of every table whose trigger changes: identical before and after
+        cur.execute(f"SELECT '{c.table}', chart_id::text, count(*), md5(string_agg(id::text, ',' ORDER BY id)) FROM public.{c.table} GROUP BY chart_id ORDER BY chart_id")
+        out["rowdata"] |= {tuple(str(x) for x in row) for row in cur.fetchall()}
     cur.execute("RESET ROLE")
     return out
 
@@ -574,19 +630,21 @@ def preconditions(cur, leg: Leg, ck: Checks, out) -> None:
         n, dg = cur.fetchone()
         ck.chk(f"pre_{tag}_attestation_row", n == 1 and dg == st.from_sha, f"{n} row(s), digest {dg}")
         cur.execute("RESET ROLE")
-    cur.execute(f"SET LOCAL ROLE {OWNER}")
-    cur.execute(f"SELECT count(*), min(definition_digest) FROM {TRG_ATT} WHERE table_name = %s AND trigger_name = %s", (TABLE, TRIGGER))
-    n, dg = cur.fetchone()
-    ck.chk("pre_trigger_attestation_row", n == 1 and dg == leg.from_trg, f"{n} row(s), digest {dg}")
-    cur.execute("RESET ROLE")
-    cur.execute("SELECT indexdef FROM pg_indexes WHERE schemaname='public' AND indexname=%s", (INDEX,))
-    row = cur.fetchone()
-    want = "(" + ", ".join(leg.from_cols) + ") NULLS NOT DISTINCT"
-    ck.chk("pre_index_shape", bool(row) and want in row[0] and row[0].count("(") == 1, row[0] if row else None)
-    cur.execute("SELECT pg_get_triggerdef(t.oid,true) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE c.relname=%s AND t.tgname=%s",
-                (TABLE, TRIGGER))
-    row = cur.fetchone()
-    ck.chk("pre_trigger_shape", bool(row) and trigger_args(row[0]) == leg.from_cols, row[0] if row else None)
+    for ts in leg.triggers:
+        cur.execute(f"SET LOCAL ROLE {OWNER}")
+        cur.execute(f"SELECT count(*), min(definition_digest) FROM {TRG_ATT} WHERE table_name = %s AND trigger_name = %s", (ts.table, TRIGGER))
+        n, dg = cur.fetchone()
+        ck.chk(f"pre_trigger_attestation_row_{ts.table}", n == 1 and dg == ts.from_digest, f"{n} row(s), digest {dg}")
+        cur.execute("RESET ROLE")
+        cur.execute("SELECT pg_get_triggerdef(t.oid,true) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE c.relname=%s AND t.tgname=%s",
+                    (ts.table, TRIGGER))
+        row = cur.fetchone()
+        ck.chk(f"pre_trigger_shape_{ts.table}", bool(row) and trigger_args(row[0]) == ts.from_args, row[0] if row else None)
+        if ts.change.swap_index:
+            cur.execute("SELECT indexdef FROM pg_indexes WHERE schemaname='public' AND indexname=%s", (INDEX,))
+            row = cur.fetchone()
+            want = "(" + ", ".join(ts.from_args) + ") NULLS NOT DISTINCT"
+            ck.chk("pre_index_shape", bool(row) and want in row[0] and row[0].count("(") == 1, row[0] if row else None)
     cur.execute("SELECT c.relname, COALESCE(a.attname,''), d.description FROM pg_description d "
                 "JOIN pg_class c ON c.oid=d.objoid AND d.classoid='pg_class'::regclass JOIN pg_namespace n ON n.oid=c.relnamespace "
                 "LEFT JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum=d.objsubid AND d.objsubid > 0 "
@@ -616,40 +674,53 @@ def apply_leg(cur, leg: Leg, on_exclusive=None) -> dict:
         cur.execute(fn_att_update_sql(st.patch.signature))
         fn_rows[st.patch.signature] = cur.rowcount
         cur.execute(f"ALTER TABLE {FN_ATT} ENABLE TRIGGER {FN_ATT_IMMUTABLE}")
-    cur.execute(f"CREATE UNIQUE INDEX {NEW_INDEX_TMP} ON public.{TABLE} ({', '.join(leg.to_cols)}) NULLS NOT DISTINCT")
+    for ts in leg.triggers:
+        if ts.change.swap_index:
+            cur.execute(f"CREATE UNIQUE INDEX {NEW_INDEX_TMP} ON public.{ts.table} ({', '.join(ts.to_args)}) NULLS NOT DISTINCT")
     if on_exclusive:
         on_exclusive()
-    cur.execute(f"DROP INDEX public.{INDEX}")
-    cur.execute(f"ALTER INDEX public.{NEW_INDEX_TMP} RENAME TO {INDEX}")
-    cur.execute(f"DROP TRIGGER {TRIGGER} ON public.{TABLE}")
-    cur.execute(trigger_create_sql(leg.to_cols))
-    cur.execute(f"ALTER TABLE {TRG_ATT} DISABLE TRIGGER {TRG_ATT_IMMUTABLE}")
-    cur.execute(f"UPDATE {TRG_ATT} a SET definition_digest = encode(public.digest(pg_get_triggerdef(t.oid,true),'sha256'),'hex') "
-                "FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid "
-                "WHERE a.table_name=%s AND a.trigger_name=%s AND c.relname=a.table_name AND t.tgname=a.trigger_name", (TABLE, TRIGGER))
-    trg_rows = cur.rowcount
-    cur.execute(f"ALTER TABLE {TRG_ATT} ENABLE TRIGGER {TRG_ATT_IMMUTABLE}")
+    for ts in leg.triggers:
+        if ts.change.swap_index:
+            cur.execute(f"DROP INDEX public.{INDEX}")
+            cur.execute(f"ALTER INDEX public.{NEW_INDEX_TMP} RENAME TO {INDEX}")
+        cur.execute(f"DROP TRIGGER {TRIGGER} ON public.{ts.table}")
+        cur.execute(trigger_create_sql(ts.table, ts.to_args))
+    trg_rows = {}
+    for ts in leg.triggers:                          # re-attest ONLY the rows of the changed tables
+        cur.execute(f"ALTER TABLE {TRG_ATT} DISABLE TRIGGER {TRG_ATT_IMMUTABLE}")
+        cur.execute(f"UPDATE {TRG_ATT} a SET definition_digest = encode(public.digest(pg_get_triggerdef(t.oid,true),'sha256'),'hex') "
+                    "FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid "
+                    "WHERE a.table_name=%s AND a.trigger_name=%s AND c.relname=a.table_name AND t.tgname=a.trigger_name", (ts.table, TRIGGER))
+        trg_rows[ts.table] = cur.rowcount
+        cur.execute(f"ALTER TABLE {TRG_ATT} ENABLE TRIGGER {TRG_ATT_IMMUTABLE}")
     return {"function_attestation_rows": fn_rows, "trigger_attestation_rows": trg_rows, "old_defs": old_defs}
 
 
 def change_accounting(leg: Leg, before: dict, after: dict) -> list:
-    """Pure (no database): across the before/after catalog snapshots EXACTLY one index, one trigger, one trigger-attestation row and one entry per
-    patched function / function attestation changed, and the functions that changed are EXACTLY the patched ones. [(check name, ok, detail)]."""
-    n_fn = len(leg.functions)
+    """Pure (no database): across the before/after catalog snapshots EXACTLY one index, one trigger and one trigger-attestation row per trigger change and one
+    entry per patched function / function attestation changed, and the objects that changed are EXACTLY the planned ones (the patched functions, the tables of the
+    trigger changes: no other table's trigger or attestation row). [(check name, ok, detail)]."""
+    n_fn, n_trg = len(leg.functions), len(leg.triggers)
+    n_idx = sum(1 for t in leg.triggers if t.change.swap_index)
     out = []
-    for key, want in (("index", 1), ("trigger", 1), ("trigger_attestation", 1), ("function", n_fn), ("function_attestation", n_fn)):
+    for key, want in (("index", n_idx), ("trigger", n_trg), ("trigger_attestation", n_trg), ("function", n_fn), ("function_attestation", n_fn)):
         removed, added = before[key] - after[key], after[key] - before[key]
         out.append((f"post_exactly_{want}_{key}_entries_changed", len(removed) == want and len(added) == want, f"-{len(removed)} +{len(added)}"))
     changed = {r[0] for r in before["function"] - after["function"]}
     out.append(("post_changed_functions_are_exactly_the_patched_ones",
                 changed == {st.patch.regproc.replace("public.", "") for st in leg.functions}, sorted(changed)))
+    planned = {ts.table for ts in leg.triggers}
+    for key, name in (("trigger", "post_changed_triggers_are_exactly_the_planned_tables"), ("trigger_attestation", "post_changed_trigger_attestations_are_exactly_the_planned_tables")):
+        tables = {r[0] for r in before[key] - after[key]} | {r[0] for r in after[key] - before[key]}
+        out.append((name, tables == planned, sorted(tables)))
     return out
 
 
 def check_after(cur, leg: Leg, before: dict, after: dict, plan: dict, probe: dict | None, ck: Checks) -> None:
     cur.execute(f"SET LOCAL ROLE {OWNER}")
     ck.chk("post_attestation_update_rowcounts_all_1",
-           all(v == 1 for v in plan["function_attestation_rows"].values()) and plan["trigger_attestation_rows"] == 1,
+           all(v == 1 for v in plan["function_attestation_rows"].values()) and all(v == 1 for v in plan["trigger_attestation_rows"].values())
+           and len(plan["trigger_attestation_rows"]) == len(leg.triggers),
            f"{plan['function_attestation_rows']}/{plan['trigger_attestation_rows']}")
     for name, ok, detail in change_accounting(leg, before, after):
         ck.chk(name, ok, detail)
@@ -683,24 +754,78 @@ def check_after(cur, leg: Leg, before: dict, after: dict, plan: dict, probe: dic
         ck.chk(f"post_{tag}_attestation_matches_live_function", cur.fetchone()[0] == 1)
         cur.execute(f"SELECT definition_digest FROM {FN_ATT} WHERE function_signature=%s", (p.signature,))
         ck.chk(f"post_{tag}_attestation_is_the_bound_digest", cur.fetchone()[0] == st.to_sha)
-    cur.execute("SELECT i.indisunique, i.indisvalid, i.indnullsnotdistinct, "
-                "array(SELECT a.attname::text FROM unnest(i.indkey) WITH ORDINALITY k(attnum,ord) "
-                "JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum ORDER BY k.ord) "
-                "FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid WHERE c.relname=%s", (INDEX,))
-    row = cur.fetchone()
-    ck.chk("post_index_shape", bool(row) and row[0] and row[1] and row[2] and tuple(row[3]) == leg.to_cols, row)
-    cur.execute(f"SELECT count(*) FROM {TRG_ATT} a JOIN pg_class c ON c.relname=a.table_name JOIN pg_trigger t "
-                "ON t.tgrelid=c.oid AND t.tgname=a.trigger_name WHERE a.table_name=%s AND a.trigger_name=%s "
-                "AND a.definition_digest=encode(public.digest(pg_get_triggerdef(t.oid,true),'sha256'),'hex') "
-                "AND a.trigger_type=t.tgtype AND a.enabled=t.tgenabled AND a.function_oid=t.tgfoid", (TABLE, TRIGGER))
-    ck.chk("post_trigger_attestation_matches_live_trigger", cur.fetchone()[0] == 1)
-    cur.execute(f"SELECT definition_digest FROM {TRG_ATT} WHERE table_name=%s AND trigger_name=%s", (TABLE, TRIGGER))
-    ck.chk("post_trigger_attestation_is_the_bound_digest", cur.fetchone()[0] == leg.to_trg)
+    for ts in leg.triggers:
+        if ts.change.swap_index:
+            cur.execute("SELECT i.indisunique, i.indisvalid, i.indnullsnotdistinct, "
+                        "array(SELECT a.attname::text FROM unnest(i.indkey) WITH ORDINALITY k(attnum,ord) "
+                        "JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=k.attnum ORDER BY k.ord) "
+                        "FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid WHERE c.relname=%s", (INDEX,))
+            row = cur.fetchone()
+            ck.chk("post_index_shape", bool(row) and row[0] and row[1] and row[2] and tuple(row[3]) == ts.to_args, row)
+        cur.execute("SELECT pg_get_triggerdef(t.oid,true) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE c.relname=%s AND t.tgname=%s",
+                    (ts.table, TRIGGER))
+        row = cur.fetchone()
+        ck.chk(f"post_trigger_args_are_the_target_{ts.table}", bool(row) and trigger_args(row[0]) == ts.to_args, row[0] if row else None)
+        cur.execute(f"SELECT count(*) FROM {TRG_ATT} a JOIN pg_class c ON c.relname=a.table_name JOIN pg_trigger t "
+                    "ON t.tgrelid=c.oid AND t.tgname=a.trigger_name WHERE a.table_name=%s AND a.trigger_name=%s "
+                    "AND a.definition_digest=encode(public.digest(pg_get_triggerdef(t.oid,true),'sha256'),'hex') "
+                    "AND a.trigger_type=t.tgtype AND a.enabled=t.tgenabled AND a.function_oid=t.tgfoid", (ts.table, TRIGGER))
+        ck.chk(f"post_trigger_attestation_matches_live_trigger_{ts.table}", cur.fetchone()[0] == 1)
+        cur.execute(f"SELECT definition_digest FROM {TRG_ATT} WHERE table_name=%s AND trigger_name=%s", (ts.table, TRIGGER))
+        ck.chk(f"post_trigger_attestation_is_the_bound_digest_{ts.table}", cur.fetchone()[0] == ts.to_digest)
     if probe is not None:
-        ck.chk("post_identity_probe", probe["landed"] == probe["fixture_rows"] == probe["identities_live_args"]
-               and probe["trigger_args"] == NEW_COLS and probe["live_index_cols"] == NEW_COLS
-               and probe["identities_legacy_6_args"] < probe["landed"], probe)
+        for name, ok, detail in probe_checks(probe):
+            ck.chk(name, ok, detail)
     cur.execute("RESET ROLE")
+
+
+# ------------------------------------------------------------------------------------------------------------------- identity probes
+# The capture function builds a row identity as k=v|... over the trigger's arguments; these probes build the SAME expression from the LIVE trigger arguments
+# on fixture rows in session-local temp tables (never persisted). They cannot fire the capture function itself (it needs session_user data_plane_builder).
+def _vichara_fixture() -> list:
+    """Writer-shaped chart_vichara rows AFTER the writer's whole-row dedupe: 40 groups of rows that share the eight grain columns and differ ONLY in their
+    sorted constituent_fact_ids (3 variants each), plus rows with NULL target / domain / varga_id. Whole-row distinct by construction."""
+    rows = []
+    for g in range(40):
+        fam = ("valence_pass", "varga_ratification", "varga_consistency", "leverage_index")[g % 4]
+        for v, facts in enumerate(([f"fact{g:02d}a"], [f"fact{g:02d}a", f"fact{g:02d}b"], [f"fact{g:02d}a", f"fact{g:02d}c"])):     # each list sorted
+            rows.append(("00000000-0000-0000-0000-00000000f5f5", "probe_aya", fam, f"S{g % 9}", None if g % 7 == 0 else f"T{g % 12}",
+                         None if g % 5 == 0 else "career", None if g % 11 == 0 else "D1", "v1", facts))
+    return rows
+
+
+def vichara_probe_prepare(cur) -> dict:
+    cols = ", ".join(VICHARA_NEW)
+    cur.execute(f"CREATE TEMP TABLE vichara_probe ON COMMIT DROP AS SELECT {cols} FROM public.{VICHARA_TABLE} WHERE false")
+    fixture = _vichara_fixture()
+    for r in fixture:                                  # 120 tiny statements into a temp table: cheap and obviously correct
+        cur.execute(f"INSERT INTO vichara_probe ({cols}) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", r)
+    return {"vichara_fixture_rows": len(fixture)}
+
+
+def vichara_probe_verify(cur, prep: dict) -> dict:
+    cur.execute("SELECT pg_get_triggerdef(t.oid,true) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE c.relname=%s AND t.tgname=%s", (VICHARA_TABLE, TRIGGER))
+    live = trigger_args(cur.fetchone()[0])
+    for ident in live + VICHARA_OLD:
+        assert re.fullmatch(r"[a-z_]+", ident), ident
+
+    def distinct_identities(args) -> int:
+        parts = ", ".join(f"'{a}=' || COALESCE(to_jsonb(t)->>'{a}', '<null>')" for a in args)
+        cur.execute(f"SELECT count(DISTINCT array_to_string(ARRAY[{parts}], '|')) FROM vichara_probe t")
+        return cur.fetchone()[0]
+    return {**prep, "vichara_trigger_args": live, "vichara_identities_live_args": distinct_identities(live),
+            "vichara_identities_legacy_8_args": distinct_identities(VICHARA_OLD)}
+
+
+def probe_checks(probe: dict) -> list:
+    out = [("post_identity_probe", probe["landed"] == probe["fixture_rows"] == probe["identities_live_args"]
+            and probe["trigger_args"] == NEW_COLS and probe["live_index_cols"] == NEW_COLS
+            and probe["identities_legacy_6_args"] < probe["landed"], {k: v for k, v in probe.items() if not k.startswith("vichara")})]
+    out.append(("post_vichara_identity_probe", probe["vichara_trigger_args"] == VICHARA_NEW
+                and probe["vichara_identities_live_args"] == probe["vichara_fixture_rows"]
+                and probe["vichara_identities_legacy_8_args"] < probe["vichara_fixture_rows"],
+                {k: v for k, v in probe.items() if k.startswith("vichara")}))
+    return out
 
 
 def canonical(obj) -> str:
@@ -717,7 +842,8 @@ def render_report(leg: Leg, before: dict, after: dict, plan: dict, probe, gate_b
     for key, title in names.items():
         removed, added = sorted(before[key] - after[key]), sorted(after[key] - before[key])
         want = (leg.removed_comments, leg.added_comments) if key == "comment" else \
-            ((len(leg.functions),) * 2 if key in ("function", "function_attestation") else (1, 1))
+            ((len(leg.functions),) * 2 if key in ("function", "function_attestation") else
+             ((len(leg.triggers),) * 2 if key in ("trigger", "trigger_attestation") else (sum(1 for t in leg.triggers if t.change.swap_index),) * 2))
         out.append(f"== {title}: exactly {len(removed)} removed / {len(added)} added "
                    f"({'AS PLANNED' if (len(removed), len(added)) == want else 'UNEXPECTED'}) ==")
         for r in removed:
@@ -739,6 +865,8 @@ def render_report(leg: Leg, before: dict, after: dict, plan: dict, probe, gate_b
     if probe is not None:
         out.append(f"== IDENTITY PROBE: fixture {probe['fixture_rows']} landed {probe['landed']}; distinct identities live args "
                    f"{probe['identities_live_args']}, legacy 6 args {probe['identities_legacy_6_args']} ==")
+        out.append(f"== CHART_VICHARA IDENTITY PROBE: fixture rows {probe['vichara_fixture_rows']}; distinct identities live 9 args "
+                   f"{probe['vichara_identities_live_args']}, legacy 8 args {probe['vichara_identities_legacy_8_args']} ==")
     out.append("commit conditions: " + ("ALL HOLD" if not ck.failed else f"FAILED {ck.failed}"))
     out.append(f"ACCESS EXCLUSIVE window (UTC): {window.get('start')} -> {window.get('end')}; statements inside it: {window.get('statements')}")
     return out
@@ -788,14 +916,14 @@ def run_leg(conn, leg: Leg, mode: str, out, writer_commit: str | None = None, ga
     before = snap(cur)
     before["membership"] = membership_before
     cur.execute(f"SET LOCAL ROLE {OWNER}")
-    prep = fa2.probe_prepare(cur) if leg.name == "forward" else None
+    prep = {**fa2.probe_prepare(cur), **vichara_probe_prepare(cur)} if leg.name == "forward" else None
     mark: dict = {}
 
     def on_exclusive() -> None:
         mark["t"], mark["n"] = fa2.utcnow(), cur.n
 
     plan = apply_leg(cur, leg, on_exclusive)
-    probe = fa2.probe_verify(cur, prep) if prep is not None else None
+    probe = {**fa2.probe_verify(cur, prep), **vichara_probe_verify(cur, prep)} if prep is not None else None
     cur.execute("RESET ROLE")
     after = snap(cur)
     after["membership"] = membership_before
@@ -810,7 +938,7 @@ def run_leg(conn, leg: Leg, mode: str, out, writer_commit: str | None = None, ga
     after["membership"] = {tuple(str(x) for x in row) for row in cur.fetchall()}
     ck.chk("post_membership_equals_pre_state_after_revoke", after["membership"] == membership_before)
     window = {"start": mark.get("t"), "end": fa2.utcnow(), "statements": cur.n - mark["n"]}
-    ck.chk("post_exclusive_window_statements_bounded", window["statements"] <= 60, window["statements"])
+    ck.chk("post_exclusive_window_statements_bounded", window["statements"] <= 100, window["statements"])
     digest = hashlib.sha256(canonical({
         "plan": "see plan_hash", "leg": leg.name, "executor": exec_sha(), "writer_commit": writer_commit, "writer_line": writer_line,
         "before": before, "old_def_md5": {k: hashlib.md5(v.encode()).hexdigest() for k, v in plan["old_defs"].items()},

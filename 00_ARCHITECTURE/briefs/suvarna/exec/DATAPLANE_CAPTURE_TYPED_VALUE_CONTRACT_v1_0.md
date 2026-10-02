@@ -1,11 +1,12 @@
 ---
 artifact: DATAPLANE_CAPTURE_TYPED_VALUE_CONTRACT
-version: "1.0"
+version: "1.1"
 status: DRAFT_FOR_REVIEW (describes the contract the D6 combined plan would install; nothing is applied; the plan is not frozen)
 date: 2026-10-02
 lane: suvarna/land/TI-d6-dataplane-capture-fa2-001
 decision: owner N-84, option A (the L1 data-plane capture repair); SS conditions (ii): precedence rule and companion marker documented, row_snapshots is the complete record
 changelog:
+  - "1.1 (2026-10-02): section 7 added: the chart_vichara capture identity (item 5, K1): nine trigger arguments, grain plus L1 source-fact provenance set, NOT a natural key."
   - "1.0 (2026-10-02): first version. Written beside the D6 combined plan draft; the plan installs the contract, in condensed form, as COMMENT ON TABLE / COLUMN, so it lives where a reader of the tables will see it."
 ---
 
@@ -56,3 +57,14 @@ The D6 combined plan (`exec/f_a2_key_widening/D6_COMBINED_DATAPLANE_CAPTURE_FA2_
 ## 6. How this is proved (disposable PostgreSQL 15 and 17, never a real system)
 
 An 18-shape probe inserts one `chart_facts` row per value shape and verification tier as `data_plane_builder` inside a really opened generation (real guard trigger, real capture function): before the plan the multi-value and the all-null shapes abort the capture; after the plan all 18 pass, the kept column follows the precedence, the marker lists the dropped columns, an all-null row is `floored` or `unavailable`, and the guard still refuses an unowned category. After the rollback the old shapes fail again. See `tests/test_capture_shapes.py`.
+
+## 7. chart_vichara capture identity (item 5, K1): grain plus L1 source-fact provenance set, NOT a natural key
+
+`public.chart_vichara` has **no natural key**: its only unique constraint is its serial primary key, and its writer deletes the (chart, ayanamsha) scope and plainly inserts (legitimate row multiplicity per actor and target across vargas, migration 747). The capture trigger nevertheless needs a row identity, because `complete_l1_data_plane_partition` compares the writer's reported row count with the number of DISTINCT row identities captured. The identity is built by `l1_data_plane_capture_row()` as `k=v|...` over the trigger's arguments.
+
+| | arguments | meaning |
+|---|---|---|
+| before | `chart_id, ayanamsha_id, vichara_family, subject, target, domain, varga_id, formula_version` (8) | the grain. Rows that differ only in WHICH L1 facts they rest on collapse to one identity (about 836 identities for about 1,706 rows per ayanamsha on the canonical chart, per the read-only investigation) |
+| after | the same eight plus `constituent_fact_ids` (9) | **grain plus L1 source-fact provenance set**. `constituent_fact_ids` is the set of `chart_facts.fact_id` values (deterministic per fact: category, subject, key, chart, ayanamsha) the row derives from, written sorted; it is part of the row's identity because two rows resting on different source facts are different rows. It is **not** a uniqueness rule and not a natural key: nothing is declared unique, no index is created, and `chart_vichara` stays free of a natural key |
+
+Properties: the change is arguments only (the capture function is not edited for it); only the `chart_vichara` row of `l1_data_plane_trigger_attestations` is re-attested; `fact_id` is deterministic, so the identity of a row is stable across generations; the update guard reads real unique indexes, not the capture arguments, so it is unaffected. The two halves fail closed in either order: the owner half alone, given exact duplicates, stops at completion ("reported N rows but protected capture contains N-1"); the writer half alone (sorted fact ids, whole-row dedupe), under the old eight arguments, stops at completion ("reported 1556, capture about 836"). The writer half (sort `constituent_fact_ids`, whole-row exact dedupe, a collision assertion, the acceptance SQL) is a separate lane and is not part of this plan.

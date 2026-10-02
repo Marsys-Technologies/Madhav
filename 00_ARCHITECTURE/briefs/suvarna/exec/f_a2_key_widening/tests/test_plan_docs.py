@@ -9,7 +9,8 @@ from conftest import EXEC_DIR
 PLAN = EXEC_DIR / "D6_COMBINED_DATAPLANE_CAPTURE_FA2_PLAN_DRAFT.md"
 CONTRACT = EXEC_DIR.parent / "DATAPLANE_CAPTURE_TYPED_VALUE_CONTRACT_v1_0.md"
 AUTH = ("Authorization: run the D6 owner-path plan with hash `<PLAN_HASH>` on production (the L1 data-plane capture repair, option A / N-84; patch B and "
-        "patch C, approved as design in N-85; plus the F-A2 ga_vargas key widening), exactly as described in `<PLAN FILE PATH>` sha256 `<PLAN_FILE_SHA>`, "
+        "patch C, approved as design in N-85; the chart_vichara capture identity, K1; plus the F-A2 ga_vargas key widening), exactly as described in `<PLAN FILE PATH>` "
+        "sha256 `<PLAN_FILE_SHA>`, "
         "after Strategic Suvarna has approved the dry run. No other change.")
 
 
@@ -24,25 +25,25 @@ def test_the_plain_language_summary_is_first_and_the_authorisation_sentence_is_e
         assert must in summary, must
 
 
-def test_the_summary_lists_a_b_c_and_fa2_as_four_numbered_items_each_with_a_serving_effect_and_item_5_is_a_marked_empty_slot():
+def test_the_summary_lists_a_b_c_fa2_and_k1_as_five_numbered_items_each_with_a_serving_effect():
     t = PLAN.read_text()
-    summary = t[t.index("**The four items**"):t.index("**What changes in the production database.**")]
-    items = [ln for ln in summary.splitlines() if ln[:3] in ("1. ", "2. ", "3. ", "4. ")]
-    assert len(items) == 4
-    for ln, key in zip(items, ("Option A (N-84)", "Patch B (N-85)", "Patch C (N-85)", "F-A2")):
+    summary = t[t.index("**The five items**"):t.index("**What changes in the production database.**")]
+    items = [ln for ln in summary.splitlines() if ln[:3] in ("1. ", "2. ", "3. ", "4. ", "5. ")]
+    assert len(items) == 5
+    for ln, key in zip(items, ("Option A (N-84)", "Patch B (N-85)", "Patch C (N-85)", "F-A2", "K1 (chart_vichara capture identity)")):
         assert key in ln and "*What it changes:*" in ln and "*Serving effect:*" in ln, key
-    assert "RESERVED, NOT WRITTEN, NOT PART OF THIS PLAN" in summary and "item 5" in summary
+    assert "**not** a natural key" in summary and "RESERVED" not in summary
     sec2 = t[t.index("## 2. Status of the hunk set"):t.index("## 3.")]
-    assert "RESERVED SLOT, NOT WRITTEN" in sec2 and sec2.count("**YES**") == 4
+    assert "RESERVED" not in sec2 and sec2.count("**YES**") == 5
     assert "DRAFT_NOT_FROZEN" in t and "<PLAN_FILE_SHA>" in t and "NOT COMPUTED FINAL" in t
 
 
-def test_item_5_is_absent_from_the_executor_and_the_plan_but_its_slot_is_marked(mod):
+def test_item_5_is_the_chart_vichara_trigger_arguments_entry_and_not_a_function_hunk(mod):
     assert [p.signature for p in mod.FUNCTION_PATCHES] == ["l1_data_plane_capture_row()", "capture_l1_data_plane_dasha_partition(uuid,text,text,integer)",
                                                            "complete_l1_data_plane_partition(uuid,text,text,text,integer)"]
-    src = (EXEC_DIR / "d6_dataplane_capture_fa2_exec.py").read_text()
-    assert "ITEM 5, RESERVED SLOT, NOT WRITTEN" in src and "chart_vichara" not in mod.render_plan().replace("ITEM 5 (chart_vichara capture identity", "")
-    assert "chart_vichara" not in " ".join(h[1] + h[2] for p in mod.FUNCTION_PATCHES for h in p.hunks)
+    assert [c.table for c in mod.TRIGGER_CHANGES] == ["chart_divisionals", "chart_vichara"]
+    assert "ITEM 5 (K1, chart_vichara capture identity)" in mod.render_plan() and "RESERVED" not in mod.render_plan()
+    assert "constituent_fact_ids" not in " ".join(h[1] + h[2] for p in mod.FUNCTION_PATCHES for h in p.hunks)
 
 
 def test_the_plan_file_quotes_the_bound_constants_of_the_executor(mod):
@@ -73,3 +74,11 @@ def test_the_contract_states_the_precedence_the_marker_and_the_complete_record(m
     comments = " ".join(list(mod.COMMENT_NEW_TABLES.values()) + list(mod.COMMENT_NEW_COLUMNS.values()))
     for must in ("typed_value_column", "companion_value_columns", "source_row_jsonb", "num, then text, then jsonb"):
         assert must in comments, must
+
+
+def test_the_contract_states_that_the_nine_arguments_are_not_a_natural_key():
+    t = CONTRACT.read_text()
+    sec = t[t.index("## 7. chart_vichara capture identity"):]
+    assert "grain plus L1 source-fact provenance set" in sec and "NOT a natural key" in sec and "constituent_fact_ids" in sec
+    assert "arguments only" in sec and "separate lane" in sec
+    assert "NOT a natural key" in PLAN.read_text() or "NOT** a natural key" in PLAN.read_text()

@@ -1,13 +1,14 @@
 ---
 artifact: D6_COMBINED_DATAPLANE_CAPTURE_FA2_PLAN
-version: "0.10-DRAFT"
-status: DRAFT_NOT_FROZEN (items 1-4 are in; the gate pins are BOUND (N-86); the plan hash is NOT computed: the plan freezes ONCE, after the 19-lane rehearsal, and item 5 (chart_vichara capture identity) may still join)
+version: "0.11-DRAFT"
+status: DRAFT_NOT_FROZEN (items 1-5 are in; the gate pins are BOUND (N-86); the plan hash is NOT computed: the plan freezes ONCE, when SS says)
 date: 2026-10-02
 lane: suvarna/land/TI-d6-dataplane-capture-fa2-001 (cut from #2858 head e81ed714e)
 decision: owner N-84 (option A), SS Q-L1-01 (F-A2), owner/SS N-85 (patches B and C approved as design, in the SAME plan), SS N-86 (gate v2 revision 3 bound)
 execution: NONE against any real system. Production was read only as suvarna_reader (catalog text, md5, ACL, attestation digests); every test ran on disposable local PostgreSQL 15 and 17 clusters with production-shaped roles, owners and ACLs and a fake administrator.
 frozen_by: not frozen. The plan hash, the plan file and the independent review happen ONCE, on the complete hunk set.
 changelog:
+  - "0.11-DRAFT (2026-10-02): SS: ITEM 5 = K1 joins the combined D6: the chart_vichara capture-trigger arguments gain constituent_fact_ids (nine), arguments only, no function hunk, only that table's trigger-attestation row re-attested. The executor's trigger leg is a data-driven list (chart_divisionals for F-A2, chart_vichara for item 5) with generated EXPECTED_DIFF, probes and rollback. The summary is five numbered items."
   - "0.10-DRAFT (2026-10-02): SS N-85: patches B and C moved from candidates into FUNCTION_PATCHES (items 2 and 3), each with its own live base md5, target md5, hunks, function-attestation row and tests; the owner summary is four numbered items (A, B, C, F-A2); a marked, unwritten slot for a possible item 5. SS N-86: GATE_PINS bound to GATE_V2 revision 3 (sha256 recomputed at #2938 head 7f0db55c3 before pinning); the deliberately red pin test is green."
   - "0.9-DRAFT (2026-10-02): first combined draft (option A + F-A2; B and C as candidates). Machinery is data-driven (a list of function hunks; EXPECTED_DIFF, the plan text, the generic rollback and the re-attestation are generated from it)."
 ---
@@ -16,18 +17,18 @@ changelog:
 
 ## 0. One-page summary for the owner (plain language)
 
-**What and why.** Madhav keeps a protected, append-only history of every row the chart-building programs write. The machinery that records that history has four small defects that stop the canonical chart from being rebuilt cleanly. This single plan repairs all four, in one all-or-nothing step. It changes rules and definitions only, never chart data.
+**What and why.** Madhav keeps a protected, append-only history of every row the chart-building programs write. The machinery that records that history has five small defects that stop the canonical chart from being rebuilt cleanly. This single plan repairs all five, in one all-or-nothing step. It changes rules and definitions only, never chart data.
 
-**The four items**
+**The five items**
 
 1. **Option A (N-84), the recorder stores unusual rows honestly.** *What it changes:* the recorder function accepts facts that carry no value (recorded as "floored" or "unavailable", never as present) and facts that carry several kinds of value (it keeps one in the summary table: number, then text, then structured detail; says which it kept and set aside; the complete untouched row stays in the history table). *Serving effect:* rebuilds of the assets that write such rows stop aborting at the recording step; readers of the summary table see one value per fact plus the marker, and lose nothing.
 2. **Patch B (N-85), the dasha recorder includes the `vimshottari_kp` rows.** *What it changes:* the function that records the dasha (planetary period) rows counts the 1,080 `vimshottari_kp` rows that the `vimshottari` build has always written alongside its own, instead of ignoring them. *Serving effect:* the `ga_dashas` rebuild's `vimshottari` parts complete (today they fail with "reported 10427 rows but active build scope has 9347"), and those rows are now in the protected history.
 3. **Patch C (N-85), the completion check counts the dasha post-pass rows.** *What it changes:* the function that closes a part of a build also counts the extra dasha row the `ga_dashas` post-pass writes. *Serving effect:* the `ga_dashas` post-pass part completes instead of aborting on a row-count mismatch.
 4. **F-A2, the `ga_vargas` uniqueness rule is widened by one column.** *What it changes:* one uniqueness index on `chart_divisionals` is swapped for a wider one (same name), the recorder's trigger there is re-created listing the extra column, and one line of the recorder is updated to match. *Serving effect:* the `ga_vargas` rebuild keeps about 14,200 more rows per chart (the sign-by-sign strengths and house lords that look alike to the old rule); divisional pages gain those rows (about 58 percent more rows per chart).
 
-*Slot for a possible item 5 (chart_vichara capture identity): RESERVED, NOT WRITTEN, NOT PART OF THIS PLAN.* It can join only if the `ga_vichara` identity design now under review is accepted; if it does, it becomes a fifth numbered item with its own authorisation clause and the plan is frozen only after that.
+5. **K1 (chart_vichara capture identity), the vichara recorder tells rows apart by their source facts.** *What it changes:* the recorder's trigger on `chart_vichara` gets one more argument, `constituent_fact_ids` (nine instead of eight), so rows that differ only in which source facts they rest on are recorded as separate rows. Arguments only: the recorder function itself is not edited, and only that table's seal record is updated. It is "grain plus source-fact provenance set", **not** a natural key (that table has none, and none is created). *Serving effect:* the `ga_vichara` rebuild can complete: today about 1,706 rows per ayanamsha collapse to about 836 recorded identities and the build would fail closed at completion; with the new argument and the writer's separate fix (sorting the fact list, dropping exact duplicates, a different lane) they are recorded as 1,556 distinct rows, and neither half alone can slip wrong data through.
 
-**What changes in the production database.** Three stored procedures replaced by edited copies (the recorder, the dasha recorder, the completion function); one index swapped and one trigger re-created; the three protective "seal" records for those procedures and the one for the trigger (the records the deploy gate compares against) updated to match, as the gate expects; two table descriptions replaced and five column descriptions added. **What is NOT done:** nothing is inserted into, changed in or deleted from any chart's data; no build is started; no other function, table, permission, role or setting is touched. The plan refuses, changing nothing, if any build is running on any chart, if the deploy gate is not green, or if any object is not exactly the state the plan was written against.
+**What changes in the production database.** Three stored procedures replaced by edited copies (the recorder, the dasha recorder, the completion function); one index swapped and two triggers re-created (`chart_divisionals`, `chart_vichara`); the three protective "seal" records for those procedures and the two for the triggers (the records the deploy gate compares against) updated to match, as the gate expects; two table descriptions replaced and five column descriptions added. **What is NOT done:** nothing is inserted into, changed in or deleted from any chart's data; no build is started; no other function, table, permission, role or setting is touched. The plan refuses, changing nothing, if any build is running on any chart, if the deploy gate is not green, or if any object is not exactly the state the plan was written against.
 
 **What can go wrong.**
 - *It stops by itself.* All checks run in one all-or-nothing transaction; any failure rolls everything back. Cost: a retry.
@@ -35,15 +36,15 @@ changelog:
 - *The dry run cannot run the recorders end to end.* They run only inside a real build, so their first real use is the next rebuild (tested on disposable copies, not on production). If something unexpected appears the rebuild stops with a clear error and keeps no wrong data.
 - *Rolling back after a rebuild needs a manual step.* Before any rebuild the rollback is automatic and exact. Once a rebuild has stored the extra `ga_vargas` rows the old narrow index cannot be re-created; the rollback refuses and says so, and those rows must be deleted first.
 
-**How it is undone.** One command (`--rollback`) restores all three procedures, the old index, the old trigger, the old descriptions and every old seal record in one transaction. It was **rehearsed** on disposable databases (apply, verify, roll back, verify identical to the starting state: every function fingerprint and every seal record) on PostgreSQL 15 and 17.
+**How it is undone.** One command (`--rollback`) restores all three procedures, the old index, both old triggers, the old descriptions and every old seal record in one transaction. It was **rehearsed** on disposable databases (apply, verify, roll back, verify identical to the starting state: every function fingerprint and every seal record) on PostgreSQL 15 and 17.
 
-**What you are asked to approve**, after Strategic Suvarna approves the dry run: the sentence in section 1. It authorises items 1 to 4 only, not a rebuild and not item 5.
+**What you are asked to approve**, after Strategic Suvarna approves the dry run: the sentence in section 1. It authorises items 1 to 5 only, not a rebuild and not the writer-side fix of item 5, which is a separate lane.
 
 ## 1. The owner's authorisation (one line, exact)
 
-> Authorization: run the D6 owner-path plan with hash `<PLAN_HASH>` on production (the L1 data-plane capture repair, option A / N-84; patch B and patch C, approved as design in N-85; plus the F-A2 ga_vargas key widening), exactly as described in `<PLAN FILE PATH>` sha256 `<PLAN_FILE_SHA>`, after Strategic Suvarna has approved the dry run. No other change.
+> Authorization: run the D6 owner-path plan with hash `<PLAN_HASH>` on production (the L1 data-plane capture repair, option A / N-84; patch B and patch C, approved as design in N-85; the chart_vichara capture identity, K1; plus the F-A2 ga_vargas key widening), exactly as described in `<PLAN FILE PATH>` sha256 `<PLAN_FILE_SHA>`, after Strategic Suvarna has approved the dry run. No other change.
 
-`<PLAN_HASH>`, `<PLAN FILE PATH>` and `<PLAN_FILE_SHA>` are filled in ONCE, at the freeze: the plan hash is computed from the plan text and the expected diff (section 5), which name the executor's sha256 and the three gate sha256, and it deliberately does **not** contain this file's own sha256 (that would be circular: the file's sha256 is quoted next to the hash, outside the file). If item 5 joins, the sentence gains its own clause after "the F-A2 ga_vargas key widening".
+`<PLAN_HASH>`, `<PLAN FILE PATH>` and `<PLAN_FILE_SHA>` are filled in ONCE, at the freeze: the plan hash is computed from the plan text and the expected diff (section 5), which name the executor's sha256 and the three gate sha256, and it deliberately does **not** contain this file's own sha256 (that would be circular: the file's sha256 is quoted next to the hash, outside the file). The sentence names every item (A, B and C, K1, F-A2) so that none is approved by implication.
 
 ## 2. Status of the hunk set
 
@@ -53,9 +54,9 @@ changelog:
 | 2 | patch B: `capture_l1_data_plane_dasha_partition` includes the `vimshottari_kp` rows | **YES** | the owner, via SS (N-85), as design |
 | 3 | patch C: `complete_l1_data_plane_partition` counts the `ga_dashas` post-pass dasha rows | **YES** | the owner, via SS (N-85), as design |
 | 4 | F-A2: index, trigger, and the F-A2 hunk of the capture function | **YES** | SS (Q-L1-01) |
-| 5 | chart_vichara capture identity (`ga_vichara` F1) | **NO: RESERVED SLOT, NOT WRITTEN** | pending the identity design under review |
+| 5 | K1: the `chart_vichara` capture-trigger arguments gain `constituent_fact_ids` (arguments only, no function hunk) | **YES** | SS (K1 joins the combined D6) |
 
-The plan is NOT frozen until the 19-lane rehearsal has finished all lanes and the hunk set is final. The executor, the plan text, EXPECTED_DIFF, the generic rollback and the re-attestation are generated from `FUNCTION_PATCHES`, so a further hunk is a data edit plus one `live_defs/<function>.LIVE.sql` file (`make_function_patch.py` derives the hunk list from a patched function text). Item 5 has a marked slot in the executor and in the plan text and is asserted absent by a test.
+The plan is NOT frozen until the 19-lane rehearsal has finished all lanes and the hunk set is final. The executor, the plan text, EXPECTED_DIFF, the generic rollback and the re-attestation are generated from `FUNCTION_PATCHES`, so a further hunk is a data edit plus one `live_defs/<function>.LIVE.sql` file (`make_function_patch.py` derives the hunk list from a patched function text). Item 5 is not a function hunk: it is the `chart_vichara` entry of the executor's data-driven trigger-change list.
 
 ## 3. The numbered items (exact object list)
 
@@ -70,10 +71,11 @@ All in ONE transaction as `data_plane_l1_owner` (the administrator is granted th
 | 4 | trigger `l1_data_plane_capture` on `public.chart_divisionals` | drop and re-create, one more argument `'fact_subject'` | 6 to 7 arguments |
 | 1 | comments on `l1_data_plane_row_snapshots` and `l1_data_plane_fact_snapshots` | 2 table comments replaced, 5 column comments added (the contract in `exec/DATAPLANE_CAPTURE_TYPED_VALUE_CONTRACT_v1_0.md`) | removed 2 / added 7 |
 | 1, 2, 3 | THREE function-attestation rows in `l1_data_plane_function_attestations` (one per patched function) | `definition_digest` updated to sha256(`pg_get_functiondef`), immutability trigger disabled and re-enabled around each, rowcount must be 1 | each digest equals the live sha256 above, then the patched sha256 above |
-| 4 | trigger attestation row `chart_divisionals` / `l1_data_plane_capture` in `l1_data_plane_trigger_attestations` (ONE row) | same, from the live trigger definition | `d0064f5ed31f7db91cb239967f783af3a885f21b39aa7c833877989a713768b0` to `ea1281cfcd1d2250e3a073dbb070a566da18cab1431a0547f6c10583a4f5fe83` |
-| 5 | RESERVED SLOT: chart_vichara capture identity | NOT WRITTEN, NOT PART OF THIS PLAN | n/a |
+| 4 | trigger attestation row `chart_divisionals` / `l1_data_plane_capture` in `l1_data_plane_trigger_attestations` (ONE row) | `definition_digest` updated from the live trigger definition, immutability trigger disabled and re-enabled around it, rowcount must be 1 | `d0064f5ed31f7db91cb239967f783af3a885f21b39aa7c833877989a713768b0` to `ea1281cfcd1d2250e3a073dbb070a566da18cab1431a0547f6c10583a4f5fe83` |
+| 5 | trigger `l1_data_plane_capture` on `public.chart_vichara` | drop and re-create with one more argument `'constituent_fact_ids'`, arguments only: no function hunk, no index, no constraint | 8 to 9 arguments (`chart_id, ayanamsha_id, vichara_family, subject, target, domain, varga_id, formula_version`, then `constituent_fact_ids`) |
+| 5 | trigger attestation row `chart_vichara` / `l1_data_plane_capture` (ONE row; the `chart_vichara` mutation-guard row and every other table's row untouched) | same re-attestation | `aa242e3b291de7460d09cbaed833cdf179e8f4f896f1bb0a931028c4708367a8` (read live as `suvarna_reader` 2026-10-02, equals sha256 of the live trigger text) to `f02569e953979bd1dee7118eafee431fe24bc2c20f46c432f9d0ba37b6136e19` |
 
-Order inside the transaction: preconditions (read only), the three functions, comments, the three function attestations, identity probe (84 fixture rows into a session-local temp table, never persisted), then the index swap and trigger (the `ACCESS EXCLUSIVE` window starts at `DROP INDEX` and is bounded and measured), then the trigger attestation, then every commit condition (section 5). COMMIT only if all hold.
+Order inside the transaction: preconditions (read only), the three functions, comments, the three function attestations, identity probe (84 fixture rows into a session-local temp table, never persisted), then the index swap and trigger (the `ACCESS EXCLUSIVE` window starts at `DROP INDEX` and is bounded and measured), then the trigger attestations (one per changed table), then every commit condition (section 5). COMMIT only if all hold.
 
 ### Item 1 and item 4's function hunk: the five edits to `l1_data_plane_capture_row()` (the whole diff of that function, nothing else)
 
@@ -110,12 +112,12 @@ The plan text (`plan.txt`) names the executor sha256, the three module/live-defi
 
 Across a before/after snapshot of every public index, trigger, `l1_`/`l2_`data-plane and lifecycle function, both attestation tables and the table and column comments of the two snapshot tables:
 
-- exactly ONE index, ONE trigger, ONE trigger-attestation row changed; exactly THREE entries changed in function and in function attestation (the three patched signatures); comments removed 2 / added 7;
+- exactly ONE index changed, exactly TWO triggers and TWO trigger-attestation rows changed (`chart_divisionals` and `chart_vichara`, no other table's row: identity-checked, not only counted); exactly THREE entries changed in function and in function attestation (the three patched signatures); comments removed 2 / added 7;
 - ACL, role membership, RLS, policy, per-chart row data of `chart_divisionals`, and the state of every append-only trigger identical;
 - for EACH of the three functions: the live function body BEFORE equals the shipped pre-state byte for byte (md5 as bound, read live as `suvarna_reader`), the body AFTER equals the bound patched body, and the zero-context diff between them has the bound sha256 and hunk count: the function differs ONLY by the listed hunks;
 - owner, SECURITY DEFINER, `proconfig` and ACL of the function unchanged;
 - the new index is unique, valid, NULLS NOT DISTINCT on the 7 columns; every attestation row equals the live object under the deploy gate's own join and equals the bound digest; the gate's three queries are false AFTER the plan under `search_path public` and stored equals gate-side digests (attestation drift 0);
-- the identity probe lands 84 of 84 distinct identities (18 with the legacy 6 arguments); the transient grants are revoked and membership equals the pre-state;
+- the `chart_divisionals` identity probe lands 84 of 84 distinct identities (18 with the legacy 6 arguments); the `chart_vichara` identity probe (120 writer-shaped, whole-row-distinct fixture rows, sorted fact lists) has 120 distinct identities under the live 9 arguments and fewer under the legacy 8; the transient grants are revoked and membership equals the pre-state;
 - `--expect-plan` equals the plan hash; `--expect-evidence` equals this run's evidence digest (apply).
 
 The EXPECTED_DIFF JSON is generated from `FUNCTION_PATCHES` and is part of the hashed plan.
@@ -146,9 +148,9 @@ Both read catalog text, md5, ACL and the attestation tables only. Tests prove th
 
 **Rehearsal (same test run, disposable PostgreSQL 15 and 17):** apply, verify (SQL passes), `--rollback-dry-run` (state unchanged), `--rollback`, verify: the state (every function md5 and full body, every attestation row, index, trigger, comments, ACL, RLS, row data) equals the pre-state exactly, the old shapes fail again, and the forward plan can be applied again. Test: `tests/test_combined_exec.py::test_the_rollback_is_rehearsed_apply_verify_rollback_verify_equal_to_the_pre_state`; the same rehearsal covers B and C in `tests/test_dasha_partition_patches.py` (dry run leaves everything identical; apply; rollback dry run; rollback; function md5s and attestation rows equal the pre-state).
 
-## 9. Item 5: reserved slot (NOT written)
+## 9. Item 5 (K1): the `chart_vichara` capture identity
 
-A possible item 5, "chart_vichara capture identity" (`ga_vichara` F1), may join if the identity design under review is accepted. It would be one more `FunctionPatch` hunk (and, if the design needs it, a trigger-argument entry beside the `chart_divisionals` one) added as data, with its own authorisation clause and its own owner-facing sentence in section 0. Until then it is a comment-marked slot in the executor (`FUNCTION_PATCHES`), a line in the plan text, and a row in section 2; a test asserts the plan has exactly three functions and no item-5 content.
+`chart_vichara` has no natural key (only its serial primary key); the capture trigger's arguments are the row identity that the partition completion counts against the writer's reported rows. With the eight live arguments rows that differ only in `constituent_fact_ids` collapse (about 836 identities for about 1,706 rows per ayanamsha, canonical chart, per the read-only vichara investigation, not recomputed here). Item 5 appends `constituent_fact_ids`: **"grain plus L1 source-fact provenance set", NOT a natural key** (contract: `exec/DATAPLANE_CAPTURE_TYPED_VALUE_CONTRACT_v1_0.md` section 7). Arguments only, no function hunk, one trigger-attestation row. The writer half (sort `constituent_fact_ids`, whole-row exact dedupe, a collision assertion, the acceptance SQL) is a **separate lane**, not part of this plan. Each half fails closed alone, in either order (tests: owner alone with exact duplicates "reported 4 rows but protected capture contains 3"; writer alone, old arguments, "reported 3 rows but protected capture contains 1", driven through the real generation, guard, capture trigger and `complete_l1_data_plane_partition` as `data_plane_builder`).
 
 ## 10. What can still go wrong / what was NOT verified
 
@@ -158,7 +160,8 @@ A possible item 5, "chart_vichara capture identity" (`ga_vichara` F1), may join 
 4. Snapshot volume for `chart_divisionals` grows about 58 percent per generation (38,596 vs 24,392 rows per chart captured).
 5. Whether any downstream reader assumes six-element `row_identity` values for `chart_divisionals`: a repository search found none; `l1_data_plane_row_snapshots` is not readable by the reader, so existing contents were not inspected.
 6. B and C are approved as DESIGN (N-85); their behaviour inside a real `ga_dashas` build (partition counts 10,427 vs 9,347 resolved; the post-pass completing) was exercised by the 19-lane rehearsal, not by this lane: here they are proved as exact text transformations, as attested replacements and as a rehearsed rollback on disposable databases.
-7. The F-A2 plan v1.3 (`F_A2_KEY_WIDENING_D6_PLAN_v1_0.md`) remains the reference for the F-A2 half (row-count expectations, the writer, 1222, S-L1 acceptance); this document supersedes only its execution wrapper.
+7. Item 5's numbers (836 / 1,706 / 1,556 identities and rows per ayanamsha, the 150 exact duplicates, the 330 groups) come from the vichara-design read-only investigation and were not recomputed here; the writer half of item 5 is a separate lane and is not exercised here beyond rows shaped like its output.
+8. The F-A2 plan v1.3 (`F_A2_KEY_WIDENING_D6_PLAN_v1_0.md`) remains the reference for the F-A2 half (row-count expectations, the writer, 1222, S-L1 acceptance); this document supersedes only its execution wrapper.
 
 ## 11. Test evidence (disposable databases only)
 

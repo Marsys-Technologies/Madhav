@@ -110,15 +110,18 @@ def test_apply_commits_exactly_the_expected_diff(runner, cluster, db, mod):
     assert all(f_before[k][1] == f_after[k][1] for k in f_before if k not in patched)
     # --- attestation: ONE row per patched function + ONE trigger row; every other row identical
     att_b, att_a = set(map(tuple, before["att"])), set(map(tuple, after["att"]))
-    assert len(att_b - att_a) == len(patched) + 1 and len(att_a - att_b) == len(patched) + 1
-    assert {r[1] for r in att_b - att_a} == set(patched) | {"chart_divisionals"}
+    n_trg = len(mod.TRIGGER_CHANGES)
+    assert len(att_b - att_a) == len(patched) + n_trg and len(att_a - att_b) == len(patched) + n_trg
+    assert {r[1] for r in att_b - att_a} == set(patched) | {c.table for c in mod.TRIGGER_CHANGES}       # ONLY the changed tables' rows
     fn_row = [r for r in att_a - att_b if r[0] == "F" and r[1] == "l1_data_plane_capture_row()"][0]
     assert fn_row[2] == p.patched_sha256 and fn_row[3:] == ("data_plane_l1_owner", "true", '{"search_path=pg_catalog, public, pg_temp"}')
-    trg_row = [r for r in att_a - att_b if r[0] == "T"][0]
-    assert trg_row[2] == "l1_data_plane_capture" and trg_row[5] == mod.PATCHED_TRG_DIGEST
+    trg_rows = {r[1]: r for r in att_a - att_b if r[0] == "T"}
+    for c in mod.TRIGGER_CHANGES:
+        assert trg_rows[c.table][2] == "l1_data_plane_capture" and trg_rows[c.table][5] == c.to_digest
+    assert trg_rows["chart_divisionals"][5] == mod.PATCHED_TRG_DIGEST
     # --- index, trigger, comments; nothing else (ACL / RLS / policy / row data / immutable triggers identical)
     assert len(before["snap"]["index"] - after["snap"]["index"]) == 1 and len(after["snap"]["index"] - before["snap"]["index"]) == 1
-    assert len(before["snap"]["trigger"] - after["snap"]["trigger"]) == 1
+    assert len(before["snap"]["trigger"] - after["snap"]["trigger"]) == len(mod.TRIGGER_CHANGES)
     assert len(after["snap"]["comment"]) == 7 and len(before["snap"]["comment"]) == 2
     for k in ("acl", "rls", "policy", "rowdata", "immutable_triggers"):
         assert before["snap"][k] == after["snap"][k], k
@@ -221,7 +224,8 @@ def test_a_second_apply_refuses_cleanly(runner):
     mid = runner.state()
     code, res2 = runner.run("apply")
     assert code == 1 and res2["status"] == "REFUSED_ROLLED_BACK"
-    assert {"pre_l1_data_plane_capture_row_body_is_the_bound_body", "pre_index_shape", "pre_trigger_shape"} <= set(res2["failed_checks"])
+    assert {"pre_l1_data_plane_capture_row_body_is_the_bound_body", "pre_index_shape", "pre_trigger_shape_chart_divisionals",
+            "pre_trigger_shape_chart_vichara"} <= set(res2["failed_checks"])
     assert runner.state() == mid
 
 
@@ -302,7 +306,7 @@ def test_a_broken_stderr_never_costs_the_commit_state_unknown_outcome(mod, tmp_p
 def test_the_exclusive_window_is_short_and_measured(runner):
     code, res = runner.run("apply")
     m = re.search(r"ACCESS EXCLUSIVE window \(UTC\): \S+ -> \S+; statements inside it: (\d+)", "\n".join(res["log"]))
-    assert m and int(m.group(1)) <= 60
+    assert m and int(m.group(1)) <= 100
     log = "\n".join(res["log"])
     assert log.index("writer-first check") < log.index("ACCESS EXCLUSIVE window")
 
@@ -400,7 +404,14 @@ def test_refused_when_the_trigger_attestation_row_is_missing(runner, cluster, db
     cluster.su(db, "ALTER TABLE public.l1_data_plane_trigger_attestations DISABLE TRIGGER l1_data_plane_trigger_attestations_immutable")
     cluster.su(db, "DELETE FROM public.l1_data_plane_trigger_attestations WHERE table_name='chart_divisionals' AND trigger_name='l1_data_plane_capture'")
     cluster.su(db, "ALTER TABLE public.l1_data_plane_trigger_attestations ENABLE TRIGGER l1_data_plane_trigger_attestations_immutable")
-    refusal(runner, ["pre_trigger_attestation_row"])
+    refusal(runner, ["pre_trigger_attestation_row_chart_divisionals"])
+
+
+def test_refused_when_the_chart_vichara_trigger_attestation_row_is_missing(runner, cluster, db):
+    cluster.su(db, "ALTER TABLE public.l1_data_plane_trigger_attestations DISABLE TRIGGER l1_data_plane_trigger_attestations_immutable")
+    cluster.su(db, "DELETE FROM public.l1_data_plane_trigger_attestations WHERE table_name='chart_vichara' AND trigger_name='l1_data_plane_capture'")
+    cluster.su(db, "ALTER TABLE public.l1_data_plane_trigger_attestations ENABLE TRIGGER l1_data_plane_trigger_attestations_immutable")
+    refusal(runner, ["pre_trigger_attestation_row_chart_vichara"])
 
 
 def test_refused_when_the_administrator_cannot_assume_the_owner_roles(runner, cluster, db):
@@ -472,19 +483,28 @@ def test_verify_sql_fails_on_the_wrong_state(runner, cluster, db):
 
 
 # ------------------------------------------------------------------------------------- change accounting and the post-apply gate
-def _images(mod, wrong=False, extra=False):
-    """Crafted before/after catalog snapshots for the pure accounting function: the planned change (every patched function changes, one entry each),
-    optionally the WRONG function changed in place of one patched function (the counts still say N) or an UNPLANNED extra function changed too."""
+def _images(mod, wrong=False, extra=False, wrong_trigger_table=False, extra_attestation_table=False):
+    """Crafted before/after catalog snapshots for the pure accounting function: the planned change (every patched function and every trigger-change table
+    changes, one entry each), optionally the WRONG function changed in place of one patched function (the counts still say N), an UNPLANNED extra function,
+    a trigger / attestation row of the WRONG table changed in place of a planned table's, or an extra table's attestation row changed as well."""
     sigs = [p.signature for p in mod.FUNCTION_PATCHES]
-    other = "l1_data_plane_fact_unit(text,text,jsonb)"
-    before = {"index": {("i", "old")}, "trigger": {("t", "old")}, "trigger_attestation": {("ta", "old")},
+    tabs = [c.table for c in mod.TRIGGER_CHANGES]
+    other, other_tab = "l1_data_plane_fact_unit(text,text,jsonb)", "chart_facts"
+    before = {"index": {("i", "old")}, "trigger": {(t, "tr", "def0", "O") for t in tabs} | {(other_tab, "tr", "def0", "O")},
+              "trigger_attestation": {(t, "tr", "d0") for t in tabs} | {(other_tab, "tr", "d0")},
               "function": {(s, "m0") for s in sigs} | {(other, "u0")}, "function_attestation": {(s, "d0") for s in sigs}}
-    after = {"index": {("i", "new")}, "trigger": {("t", "new")}, "trigger_attestation": {("ta", "new")},
+    after = {"index": {("i", "new")}, "trigger": {(t, "tr", "def1", "O") for t in tabs} | {(other_tab, "tr", "def0", "O")},
+             "trigger_attestation": {(t, "tr", "d1") for t in tabs} | {(other_tab, "tr", "d0")},
              "function": {(s, "m1") for s in sigs} | {(other, "u0")}, "function_attestation": {(s, "d1") for s in sigs}}
     if wrong:                                   # one patched function untouched, an UNPLANNED one changed in its place: counts equal, identities differ
         after["function"] = {(s, "m1") for s in sigs[:-1]} | {(sigs[-1], "m0"), (other, "u1")}
     if extra:                                   # every patched function changed AND an unplanned one
         after["function"] = {(s, "m1") for s in sigs} | {(other, "u1")}
+    if wrong_trigger_table:                     # the last planned table's trigger and attestation untouched, another table's changed in its place
+        after["trigger"] = {(t, "tr", "def1", "O") for t in tabs[:-1]} | {(tabs[-1], "tr", "def0", "O"), (other_tab, "tr", "def1", "O")}
+        after["trigger_attestation"] = {(t, "tr", "d1") for t in tabs[:-1]} | {(tabs[-1], "tr", "d0"), (other_tab, "tr", "d1")}
+    if extra_attestation_table:                 # the planned tables AND one more table's attestation row
+        after["trigger_attestation"] = {(t, "tr", "d1") for t in tabs} | {(other_tab, "tr", "d1")}
     return before, after
 
 
@@ -522,3 +542,19 @@ def test_the_post_apply_gate_going_red_refuses_the_commit_and_changes_nothing(ru
     code, res = runner.execute(runner.args("apply", expect_evidence=dry["evidence_digest"]))
     assert code == 1 and "post_deploy_gate_green" in res["failed_checks"]
     assert runner.state() == pre
+
+
+def test_change_accounting_refuses_a_trigger_or_attestation_change_of_the_wrong_table_even_when_the_counts_say_n(mod):
+    n = len(mod.TRIGGER_CHANGES)
+    r = acct(mod, wrong_trigger_table=True)
+    assert r[f"post_exactly_{n}_trigger_entries_changed"] is True and r[f"post_exactly_{n}_trigger_attestation_entries_changed"] is True
+    assert r["post_changed_triggers_are_exactly_the_planned_tables"] is False
+    assert r["post_changed_trigger_attestations_are_exactly_the_planned_tables"] is False
+
+
+def test_change_accounting_refuses_an_extra_tables_trigger_attestation_row(mod):
+    n = len(mod.TRIGGER_CHANGES)
+    r = acct(mod, extra_attestation_table=True)
+    assert r[f"post_exactly_{n}_trigger_attestation_entries_changed"] is False                 # n+1 rows changed
+    assert r["post_changed_trigger_attestations_are_exactly_the_planned_tables"] is False      # and the identity check says which table is extra
+    assert acct(mod)["post_changed_trigger_attestations_are_exactly_the_planned_tables"] is True

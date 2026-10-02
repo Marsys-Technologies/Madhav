@@ -13,6 +13,10 @@ WITH fn AS (
 ), fc AS (
   SELECT pg_get_functiondef(p.oid) AS d, pg_get_userbyid(p.proowner) || ' / ' || p.prosecdef::text || ' / ' || COALESCE(p.proconfig::text, '') || ' / ' || COALESCE(p.proacl::text, '') AS meta
   FROM pg_proc p WHERE p.oid = to_regprocedure('public.complete_l1_data_plane_partition(uuid,text,text,text,integer)')
+), tv AS (
+  SELECT pg_get_triggerdef(t.oid, true) AS d, t.tgenabled::text AS en
+  FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+  WHERE c.relname = 'chart_vichara' AND t.tgname = 'l1_data_plane_capture' AND NOT t.tgisinternal
 ), trg AS (
   SELECT pg_get_triggerdef(t.oid, true) AS d, t.tgenabled::text AS en
   FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
@@ -116,6 +120,9 @@ WITH fn AS (
   UNION ALL SELECT 37, 'ITEM 3 patch C (AFTER: the patched body): md5 / length', (SELECT md5(d) || ' / ' || length(d)::text FROM fc), '31d005e8ecacf40547f0537e24d717d5 / 9534'
   UNION ALL SELECT 38, 'ITEM 3 patch C: attestation digest = live sha256 = the patched digest', (SELECT a.definition_digest || ' / ' || (a.definition_digest = encode(public.digest(f.d, 'sha256'), 'hex'))::text FROM public.l1_data_plane_function_attestations a, fc f WHERE a.function_signature = 'complete_l1_data_plane_partition(uuid,text,text,text,integer)'), '21d297abdbc99d11c073dc1b9c57b85eb0ea662f0d6927b1faa3889b07043ac0 / true'
   UNION ALL SELECT 39, 'ITEM 3 patch C hunk present once (post-pass dasha block)', (SELECT ((length(d) - length(replace(d, 'the post-pass partition also INSERTS rows', ''))) / length('the post-pass partition also INSERTS rows'))::text FROM fc), '1'
+  UNION ALL SELECT 50, 'ITEM 5 chart_vichara capture trigger AFTER: nine arguments (grain plus L1 source-fact provenance set, NOT a natural key), enabled', (SELECT d || ' / ' || en FROM tv), 'CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON chart_vichara FOR EACH ROW EXECUTE FUNCTION l1_data_plane_capture_row(''chart_id'', ''ayanamsha_id'', ''vichara_family'', ''subject'', ''target'', ''domain'', ''varga_id'', ''formula_version'', ''constituent_fact_ids'') / O'
+  UNION ALL SELECT 51, 'ITEM 5 chart_vichara capture trigger attestation digest = the patched digest', (SELECT definition_digest FROM public.l1_data_plane_trigger_attestations WHERE table_name = 'chart_vichara' AND trigger_name = 'l1_data_plane_capture'), 'f02569e953979bd1dee7118eafee431fe24bc2c20f46c432f9d0ba37b6136e19'
+  UNION ALL SELECT 52, 'ITEM 5 chart_vichara mutation-guard attestation row unchanged (only the capture trigger row is re-attested)', (SELECT definition_digest FROM public.l1_data_plane_trigger_attestations WHERE table_name = 'chart_vichara' AND trigger_name = 'l1_data_plane_mutation_guard'), '34e107e2120ea118ab18b2162a8344c92e4636e3011b62429e39ab795e765df3'
 )
 SELECT ord, chk, obs, exp, CASE WHEN exp = '(info)' THEN 'INFO' WHEN obs IS NOT DISTINCT FROM exp THEN 'PASS' ELSE 'FAIL' END AS verdict FROM r
 UNION ALL SELECT 999, 'SUMMARY: checks that are not PASS/INFO', count(*) FILTER (WHERE exp <> '(info)' AND obs IS DISTINCT FROM exp)::text, '0',
