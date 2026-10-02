@@ -47,6 +47,25 @@ function grantsImpersonation(role: string, resolved: RolePermissions): boolean {
   return [...IMPERSONATION_PERMISSIONS].some((permission) => grantsPermission(role, permission, resolved))
 }
 
+// R14-4 (Codex round 14): the verifier service account must not be reachable by ANY capability that can mint, upload or
+// impersonate a credential for it, or rewrite its policy — so key CREATION and key UPLOAD and setIamPolicy are counted exactly
+// like actAs / token creation. "Zero keys exist today" proves nothing about who can create one tomorrow.
+const SA_CONTROL_PERMISSIONS = new Set([
+  ...IMPERSONATION_PERMISSIONS,
+  'iam.serviceAccountKeys.create', 'iam.serviceAccountKeys.upload', 'iam.serviceAccounts.setIamPolicy',
+])
+// Roles whose capability is known by name even if a role-permission lookup did not resolve them (defence in depth; the resolved
+// permission list is authoritative for every role that WAS resolved, including editor and any custom role).
+const KNOWN_SA_CONTROL_ROLES = new Set([
+  ...IMPERSONATION_ROLES, 'roles/iam.serviceAccountKeyAdmin', 'roles/iam.serviceAccountAdmin', 'roles/iam.securityAdmin',
+  'roles/resourcemanager.projectIamAdmin', 'roles/resourcemanager.folderIamAdmin', 'roles/resourcemanager.organizationAdmin', 'roles/owner',
+])
+
+export function grantsServiceAccountControl(role: string, resolved: RolePermissions): boolean {
+  if (KNOWN_SA_CONTROL_ROLES.has(role)) return true
+  return (resolved[role] ?? []).some((permission) => SA_CONTROL_PERMISSIONS.has(permission))
+}
+
 function isDeclaredControlPlaneAdminGrant(
   binding: IamBinding,
   member: string,
@@ -423,6 +442,72 @@ export interface VerifierState {
 }
 
 /**
+ * R14-4: the EXACT policy the verifier service account may carry, per provisioning phase — an allow-list of (role, member)
+ * pairs, nothing else:
+ *   staged (act 3 done, act 10 not yet)   → NO bindings at all;
+ *   deployable (act 10 done)              → exactly `roles/iam.serviceAccountUser` for the deployment principal, unconditional.
+ * ANY other binding — a different role, a second member, a condition, a key administrator, a policy administrator — fails, whether
+ * or not a key exists today. (Capabilities inherited from the project/folder/organization are checked separately, below.)
+ */
+export function assertVerifierServiceAccountPolicyExact(
+  policy: IamPolicy | undefined,
+  expectedDeployer: string | undefined,
+  resolved: RolePermissions = {},
+): void {
+  const bindings = policy?.bindings ?? []
+  const pairs = bindings.flatMap((binding) => (binding.members ?? []).map((member) => ({ role: binding.role, member, conditional: binding.condition !== undefined })))
+  const control = bindings.filter((binding) => grantsServiceAccountControl(binding.role, resolved))
+  if (pairs.some((pair) => pair.conditional)) {
+    throw new Error('Verifier service-account policy is not the exact allow-list: a conditional binding is never part of it.')
+  }
+  const allowedDeployable = expectedDeployer ? [`roles/iam.serviceAccountUser|${expectedDeployer}`] : []
+  const actual = pairs.map((pair) => `${pair.role}|${pair.member}`).sort()
+  const matchesStaged = actual.length === 0
+  const matchesDeployable = allowedDeployable.length === 1 && actual.length === 1 && actual[0] === allowedDeployable[0]
+  if (!matchesStaged && !matchesDeployable) {
+    const offending = control.length > 0
+      ? ` (it includes a binding that can create/upload keys, mint tokens, impersonate or rewrite the policy: ${control.map((binding) => binding.role).sort().join(', ')})`
+      : ''
+    throw new Error(`Verifier service-account policy is not the exact allow-list (staged: no bindings; deployable: only roles/iam.serviceAccountUser for the deployment principal)${offending}.`)
+  }
+}
+
+/**
+ * R14-4: no principal may hold — DIRECTLY OR INHERITED from the project, a folder or the organization — a role that can create or
+ * upload a key for, mint a token for, impersonate, or rewrite the policy of the verifier service account, outside a NAMED,
+ * DOCUMENTED control-plane exception list: (1) the declared human control-plane owner's `roles/owner` at the project, (2) Google's
+ * canonical service agents (the existing allow-list), and (3) the explicit operator-declared exceptions in
+ * DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS (`resource|role|member` triples separated by `;`, each reviewed and recorded in the
+ * act-3 report). Applies once the verifier service account exists (act 3 onward).
+ */
+export function assertVerifierInheritedControl(
+  effective: EffectivePolicy[],
+  resolved: RolePermissions = {},
+  controlPlaneAdminPrincipal = '',
+  projectNumber = '',
+  declaredExceptions = process.env.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS ?? '',
+): void {
+  const exceptions = new Set(declaredExceptions.split(';').map((entry) => entry.trim()).filter(Boolean))
+  const violations: string[] = []
+  for (const hit of effective) {
+    const resource = hit.resource ?? 'unknown resource'
+    for (const binding of hit.policy?.bindings ?? []) {
+      if (!grantsServiceAccountControl(binding.role, resolved)) continue
+      for (const member of binding.members ?? []) {
+        const isProject = resource === `projects/${project}`
+        if (isProject && isDeclaredControlPlaneAdminGrant(binding, member, controlPlaneAdminPrincipal)) continue
+        if (isProject && isCanonicalGoogleServiceAgentGrant(binding, member, projectNumber)) continue
+        if (binding.condition === undefined && exceptions.has(`${resource}|${binding.role}|${member}`)) continue
+        violations.push(`${resource}:${binding.role}:${member}`)
+      }
+    }
+  }
+  if (violations.length > 0) {
+    throw new Error(`Inherited or aggregate capability to create/upload keys for, mint tokens for, impersonate or rewrite the policy of the verifier service account remains outside the declared control-plane exceptions: ${violations.sort().join(', ')}`)
+  }
+}
+
+/**
  * Gate for the Gochara verification pair. Absent resources pass (act 3 -> act 4 are staged), but
  * whatever exists must be exact and anything gochara-named that is not the pair fails.
  * Project-wide secret access for ANY principal is already refused by assertSecretIsolation.
@@ -453,16 +538,7 @@ export function assertVerifierIsolation(
       || projectBindings.length !== 1 || projectBindings[0].role !== 'roles/cloudsql.client') {
     throw new Error('Dedicated verifier must have exactly project role roles/cloudsql.client.')
   }
-  const impersonators = (state.serviceAccountPolicy?.bindings ?? [])
-    .filter((binding) => grantsImpersonation(binding.role, resolved))
-  if (impersonators.some((binding) => binding.condition !== undefined)) {
-    throw new Error('Verifier service-account impersonation policy is not the exact deployment-only allowlist.')
-  }
-  const impersonatorMembers = impersonators.flatMap((binding) => (binding.members ?? []).map((m) => `${binding.role}:${m}`))
-  if (impersonatorMembers.length > 1
-      || (impersonatorMembers.length === 1 && (!expectedDeployer || impersonatorMembers[0] !== `roles/iam.serviceAccountUser:${expectedDeployer}`))) {
-    throw new Error('Verifier service-account impersonation policy is not the exact deployment-only allowlist.')
-  }
+  assertVerifierServiceAccountPolicyExact(state.serviceAccountPolicy, expectedDeployer, resolved)
   if (!hasSecret) return
   const accessorBindings = (state.secretPolicy?.bindings ?? [])
     .filter((binding) => grantsPermission(binding.role, SECRET_ACCESS_PERMISSION, resolved))
@@ -642,6 +718,9 @@ export function runDataPlaneSecretIsolationPreflight(): void {
   }
   assertSecretIsolation(projectPolicy, secretPolicy, serviceAccount, topicPolicy, resolved, controlPlaneAdminPrincipal)
   assertVerifierIsolation(projectPolicy, verifier, resolved)
+  if (verifier.serviceAccountEmails.includes(VERIFIER_SERVICE_ACCOUNT)) {
+    assertVerifierInheritedControl(effective, resolved, controlPlaneAdminPrincipal, projectNumber)
+  }
 
   const surfaces: CloudRunSurface[] = []
   for (const entry of gcloud<CloudRunEntry[]>(['run', 'services', 'list', '--project', project, '--platform', 'managed'])) {
