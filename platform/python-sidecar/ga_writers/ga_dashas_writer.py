@@ -76,7 +76,13 @@ assert _SCOPE_CAP_SENTINEL_ENTRY is not None, (
 )
 SCOPE_CAP_SENTINEL: str = _SCOPE_CAP_SENTINEL_ENTRY.status
 from ga_writers._idempotency import authorize_chart_fact_delete, replace_prior_chart_dashas
-from ga_writers._karaka_roles import KARAKA_ABBREVIATIONS_8, KARAKA_SCHOOL_KN_RAO
+from ga_writers._karaka_roles import (
+    KARAKA_ABBREVIATIONS_8,
+    KARAKA_SCHOOL_KN_RAO,
+    KarakaDependencyMissing,  # re-exported: tests and callers import it from this module
+    fetch_kn_rao_karaka_rows,
+    kn_rao_graha_by_rank,
+)
 from ga_writers._telemetry import update_asset_throughput
 from ga_writers._vimshottari_independent_verifier import (
     compare_row as _iv_compare_row,
@@ -686,93 +692,32 @@ _KARAKAS_ACTIVE_GRAHA_ORDER: tuple[str, ...] = (
 _KARAKA_ROLE_CACHE: dict[tuple[str, str], dict[str, str] | str] = {}
 
 
-class KarakaDependencyMissing(RuntimeError):
-    """ga_sensitive's kn_rao karaka_chara_position rows are absent or malformed for the
-    (chart, ayanamsha) ga_dashas is building. ga_dashas does not recompute karakas."""
-
-
 def _read_karaka_roles(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, str]:
     """READ the chart's own Jaimini chara-karaka assignments from ga_sensitive's L1 rows.
 
     Returns ``{graha: role abbreviation}`` (AK AmK BK MK PiK PK GK DK), e.g. on the
     canonical chart / Lahiri ``{"Moon": "AK", "Saturn": "AmK", ..., "Rahu": "PK", ...}``.
 
-    Mirrors ga_vargas_writer._read_jaimini_karakas: rows are pinned on fact_category +
-    fact_key (assigned_graha, karaka_rank) + the canonical school formula_id with a
-    total ORDER BY, and the rank -> abbreviation mapping is by the stored
-    ``karaka_rank`` (vocabulary: ga_writers/_karaka_roles.py), never by parsing subject
-    names. Raises KarakaDependencyMissing (never recomputes, never returns a partial map)
-    when ga_sensitive has not built this chart/ayanamsha or its rows are not a clean
-    permutation of the eight ranks.
+    Shares ONE implementation with ga_vargas_writer._read_jaimini_karakas
+    (ga_writers/_karaka_roles.py): rows are pinned on fact_category + fact_key
+    (assigned_graha, karaka_rank) + the canonical school formula_id with a total ORDER BY,
+    and the rank -> abbreviation mapping is by the stored ``karaka_rank`` (vocabulary:
+    the same module), never by parsing subject names. Raises KarakaDependencyMissing (never
+    recomputes, never returns a partial map) when ga_sensitive has not built this
+    chart/ayanamsha or its rows are not a clean permutation of the eight ranks.
     """
-    import psycopg.rows as _pr
-    with conn.cursor(row_factory=_pr.tuple_row) as cur:
-        cur.execute(
-            """
-            SELECT fact_subject, fact_key, fact_value_text, fact_value_num
-            FROM chart_facts
-            WHERE chart_id = %s
-              AND ayanamsha_id = %s
-              AND fact_category = 'karaka_chara_position'
-              AND fact_key IN ('assigned_graha', 'karaka_rank')
-              AND formula_id = %s
-            ORDER BY fact_subject, fact_key, fact_id
-            """,
-            (chart_id, ayanamsha_id, KARAKA_SCHOOL_KN_RAO),
-        )
-        fetched = cur.fetchall()
-    return _karaka_roles_from_rows(fetched, chart_id, ayanamsha_id)
+    return _karaka_roles_from_rows(fetch_kn_rao_karaka_rows(conn, chart_id, ayanamsha_id), chart_id, ayanamsha_id)
 
 
 def _karaka_roles_from_rows(
     fetched: list[tuple[Any, ...]], chart_id: str, ayanamsha_id: str,
 ) -> dict[str, str]:
     """Pure core of _read_karaka_roles: (subject, key, text, num) rows -> {graha: role}."""
-    where = (
-        f"chart_id={chart_id} ayanamsha={ayanamsha_id} "
-        f"(ga_sensitive karaka_chara_position, formula_id={KARAKA_SCHOOL_KN_RAO})"
+    grahas = kn_rao_graha_by_rank(
+        fetched, chart_id, ayanamsha_id,
+        consumer="ga_dashas", allowed_grahas=_KARAKAS_ACTIVE_GRAHA_ORDER,
     )
-    if not fetched:
-        raise KarakaDependencyMissing(
-            f"[ga_dashas] ga_sensitive dependency missing: no kn_rao karaka_chara_position "
-            f"rows for {where}. Build ga_sensitive for this chart first; ga_dashas does not "
-            f"recompute karakas."
-        )
-    graha_by_subject: dict[str, str] = {}
-    rank_by_subject: dict[str, int] = {}
-    for subject, key, text, num in fetched:
-        if key == "assigned_graha":
-            bucket, value = graha_by_subject, text
-        else:  # karaka_rank
-            bucket, value = rank_by_subject, (int(num) if num is not None else None)
-        if value is None or subject in bucket:
-            raise KarakaDependencyMissing(
-                f"[ga_dashas] malformed ga_sensitive karaka rows ({key} for subject {subject!r} "
-                f"is {'duplicated' if value is not None else 'NULL'}) for {where}."
-            )
-        bucket[subject] = value
-    if set(graha_by_subject) != set(rank_by_subject):
-        raise KarakaDependencyMissing(
-            f"[ga_dashas] malformed ga_sensitive karaka rows: assigned_graha subjects "
-            f"{sorted(graha_by_subject)} != karaka_rank subjects {sorted(rank_by_subject)} "
-            f"for {where}."
-        )
-    ranks = sorted(rank_by_subject.values())
-    if ranks != list(range(1, len(KARAKA_ABBREVIATIONS_8) + 1)):
-        raise KarakaDependencyMissing(
-            f"[ga_dashas] ga_sensitive kn_rao karaka ranks {ranks} are not a "
-            f"1..{len(KARAKA_ABBREVIATIONS_8)} permutation for {where}."
-        )
-    roles = {
-        graha_by_subject[subject]: KARAKA_ABBREVIATIONS_8[rank - 1]
-        for subject, rank in rank_by_subject.items()
-    }
-    if len(roles) != len(KARAKA_ABBREVIATIONS_8) or not set(roles) <= set(_KARAKAS_ACTIVE_GRAHA_ORDER):
-        raise KarakaDependencyMissing(
-            f"[ga_dashas] ga_sensitive kn_rao karaka assignments {sorted(roles)} are not 8 distinct "
-            f"grahas drawn from {list(_KARAKAS_ACTIVE_GRAHA_ORDER)} for {where}."
-        )
-    return roles
+    return dict(zip(grahas, KARAKA_ABBREVIATIONS_8))
 
 
 def _activate_karaka_roles(chart_id: str, ayanamsha_id: str, conn: Any) -> None:

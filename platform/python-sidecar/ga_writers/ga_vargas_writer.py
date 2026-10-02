@@ -78,6 +78,9 @@ from ga_writers._idempotency import replace_prior_chart_divisionals
 from ga_writers._karaka_roles import (
     KARAKA_ABBREVIATIONS_8,
     KARAKA_SCHOOL_KN_RAO,
+    KarakaDependencyMissing,  # noqa: F401  re-exported: tests and callers import it from this module
+    fetch_kn_rao_karaka_rows,
+    kn_rao_graha_by_rank,
 )
 from ga_writers.ga_positions_writer import (
     CANONICAL_AYANAMSHAS,
@@ -652,11 +655,6 @@ def _compute_aspect_matrix(varga_positions: dict[str, int]) -> list[tuple[str, s
     return aspects
 
 
-class KarakaDependencyMissing(RuntimeError):
-    """ga_sensitive's kn_rao karaka_chara_position rows are absent or malformed for the
-    (chart, ayanamsha) ga_vargas is building. ga_vargas does not recompute karakas."""
-
-
 def _read_jaimini_karakas(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[str, str]:
     """READ the 8 Jaimini chara-karaka assignments from ga_sensitive's L1 rows.
 
@@ -668,73 +666,22 @@ def _read_jaimini_karakas(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[s
     derivation ranked Rahu by raw degree-in-sign, which disagreed with ga_sensitive's
     KN Rao reckoning (30 - long % 30) and mislabelled ranks 5-8.
 
-    Rows are pinned on fact_category + fact_key (assigned_graha, karaka_rank) + the
-    canonical school formula_id, with a total ORDER BY. The rank -> abbreviation mapping
-    is by the stored `karaka_rank`, not by subject-name parsing.
+    The read (pins on fact_category + fact_key + the canonical school formula_id, total
+    ORDER BY, rank -> abbreviation by the stored `karaka_rank`, never by subject-name
+    parsing) is the one shared implementation in ga_writers/_karaka_roles.py.
 
     Raises KarakaDependencyMissing (never silently recomputes) when ga_sensitive has not
     built this chart/ayanamsha, or its rows are not a clean 8-rank permutation.
     """
-    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
-        cur.execute(
-            """
-            SELECT fact_subject, fact_key, fact_value_text, fact_value_num
-            FROM chart_facts
-            WHERE chart_id = %s
-              AND ayanamsha_id = %s
-              AND fact_category = 'karaka_chara_position'
-              AND fact_key IN ('assigned_graha', 'karaka_rank')
-              AND formula_id = %s
-            ORDER BY fact_subject, fact_key, fact_id
-            """,
-            (chart_id, ayanamsha_id, KARAKA_SCHOOL_KN_RAO),
-        )
-        fetched = cur.fetchall()
-    return _karakas_from_rows(fetched, chart_id, ayanamsha_id)
+    return _karakas_from_rows(fetch_kn_rao_karaka_rows(conn, chart_id, ayanamsha_id), chart_id, ayanamsha_id)
 
 
 def _karakas_from_rows(
     fetched: list[tuple[Any, ...]], chart_id: str, ayanamsha_id: str,
 ) -> dict[str, str]:
     """Pure core of _read_jaimini_karakas: (subject, key, text, num) rows -> {abbr: graha}."""
-    where = (
-        f"chart_id={chart_id} ayanamsha={ayanamsha_id} "
-        f"(ga_sensitive karaka_chara_position, formula_id={KARAKA_SCHOOL_KN_RAO})"
-    )
-    if not fetched:
-        raise KarakaDependencyMissing(
-            f"[ga_vargas] ga_sensitive dependency missing: no kn_rao karaka_chara_position rows "
-            f"for {where}. Build ga_sensitive for this chart first; ga_vargas does not "
-            f"recompute karakas."
-        )
-    graha_by_subject: dict[str, str] = {}
-    rank_by_subject: dict[str, int] = {}
-    for subject, key, text, num in fetched:
-        if key == "assigned_graha":
-            bucket, value = graha_by_subject, text
-        else:  # karaka_rank
-            bucket, value = rank_by_subject, (int(num) if num is not None else None)
-        if value is None or subject in bucket:
-            raise KarakaDependencyMissing(
-                f"[ga_vargas] malformed ga_sensitive karaka rows ({key} for subject {subject!r} is "
-                f"{'duplicated' if value is not None else 'NULL'}) for {where}."
-            )
-        bucket[subject] = value
-    if set(graha_by_subject) != set(rank_by_subject):
-        raise KarakaDependencyMissing(
-            f"[ga_vargas] malformed ga_sensitive karaka rows: assigned_graha subjects "
-            f"{sorted(graha_by_subject)} != karaka_rank subjects {sorted(rank_by_subject)} for {where}."
-        )
-    ranks = sorted(rank_by_subject.values())
-    if ranks != list(range(1, len(JAIMINI_KARAKA_NAMES) + 1)):
-        raise KarakaDependencyMissing(
-            f"[ga_vargas] ga_sensitive kn_rao karaka ranks {ranks} are not a 1..{len(JAIMINI_KARAKA_NAMES)} "
-            f"permutation for {where}."
-        )
-    return {
-        JAIMINI_KARAKA_NAMES[rank - 1]: graha_by_subject[subject]
-        for subject, rank in rank_by_subject.items()
-    }
+    grahas = kn_rao_graha_by_rank(fetched, chart_id, ayanamsha_id, consumer="ga_vargas")
+    return dict(zip(JAIMINI_KARAKA_NAMES, grahas))
 
 
 def _resolve_karakas_in_varga(
