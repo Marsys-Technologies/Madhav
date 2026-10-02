@@ -13,6 +13,20 @@
 -- receipts read receipt_spec_retired until rebuilt; degraded set at W1 = ga_structural (and with 1222/1223/1226:
 -- ga_vargas, ga_dashas, ga_yoga); all rebuilt in the window.
 --
+-- LIVE READ (suvarna_reader, read-only, 2026-10-02): the ONLY non-internal trigger on asset_registry, asset_freshness,
+-- asset_output_digest_specs, asset_provenance_receipts and fact_category_ownership is nirmana_registry_receipt_invalidation
+-- on asset_registry; no rules (pg_rules) on them; row-level security off on all five; amjis_app (the runner role and owner)
+-- holds INSERT/UPDATE/DELETE on fact_category_ownership, asset_output_digest_specs and asset_registry.
+--
+-- FINGERPRINT EFFECT (campaign control, not a serving state): integrity_check_sql is part of the Nirmana registry-contract fingerprint, so
+-- ga_structural's frozen manifest goes to evidence_refresh_required, and this file merges immediately before the ga_structural launch; accepted W1/W2 evidence bound to the old fingerprint reads as not current, and lane C receipt validation refuses
+-- a frozen manifest that no longer matches the live registry. The S-L1 runbook must therefore re-bind evidence (a refresh
+-- of the affected frozen manifests) between this apply and that launch (and again after the rebuild).
+--
+-- REASON CODES: while a29's stale holds, served_generation.ts partitionDefect reports receipt_not_fresh first (it is checked
+-- before the spec predicate); receipt_spec_retired is the reason once a receipt is fresh again but still names the retired
+-- spec. Both are unresolved for serving; the behaviour is the same.
+--
 -- TWO PARTS, in order: (1) the a29 conjunct on ga_structural's integrity_check_sql; (2) the ga_structural output-digest
 -- spec swap (retire the one active spec, migration 914, 81 categories, sha b24906468e53894de0f223c70c9222eb8fbad3933f79ef7dbee7422b8dd709a6; insert the
 -- same spec plus argala_graha_natal, 82 categories sorted and unique, sha d480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620 = canonical_digest,
