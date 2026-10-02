@@ -85,7 +85,8 @@
 --     these assets at apply (an OPERATOR check, not enforced in this file: the 0-active-runs query below).
 --  4. Hard dependency gate. asset_runner.deps_unsatisfied (enforce mode) requires every declared dep to be
 --     asset_throughput.state 'lit' (or 'service_ok') AND its latest asset_freshness 'fresh'. The new
---     edges 1, 2 and 4 duplicate existing transitive paths (they cost nothing); edges 3, 5 and 6 add NEW
+--     edges 1, 2 and 4 duplicate existing transitive paths (no new ORDERING constraint; the producer is now
+--     also checked directly for lit/fresh, which the apply-time staleness in item 1 makes moot); edges 3, 5 and 6 add NEW
 --     prerequisites: ga_dashas now waits for ga_vargas (3), and ga_vargas (5) and ga_dashas (6) now wait for
 --     ga_sensitive. That is exactly the S-L1 build order (ga_sensitive -> ga_vargas -> ga_dashas ...).
 --  5. Cockpit direct blocking radius of the four producers rises by their new direct consumers.
@@ -117,9 +118,11 @@
 -- LOCK TIMEOUT (pattern: migration 1218). The first statement below is `SET LOCAL lock_timeout = '5s'`:
 -- a blocked migrate job must fail fast, not hang a shared deploy.
 --
--- NEVER SHARES A PR WITH A WRITER CHANGE. This migration must PRECEDE the writer RUNS that rely on its edges (the
--- S-L1 dispatches), and may travel with or before the writer deploy; the effect of a migration that is only valid
--- with or after a new writer image must never ship in that writer's PR.
+-- NEVER SHARES A PR WITH A WRITER CHANGE. The binding rule is that this migration must PRECEDE the writer RUNS that
+-- rely on its edges (the S-L1 dispatches); relative to the writer image DEPLOY either order is safe (the apply
+-- order in the APPLY TIMING RULE above has the writer PRs deployed first, and applying it with or before them is
+-- equally valid). A migration whose effect is only valid with or after a new writer image must never ship in that
+-- writer's PR.
 --
 -- Transaction ownership belongs to platform/scripts/migrate.ts (BEGIN/COMMIT around this file). No DDL; only
 -- row updates on asset_registry (owned by amjis_app, the migration runner's role).
