@@ -5096,11 +5096,16 @@ def _reads_clause(aid: str, r: dict, files: list[str], owners_fn, g) -> tuple[st
         return ERRORED, f"check errored: {exc}", {}
     anc = {d: _ancestors(g, d) for d in deps} if g is not None else {}
     closure = set(deps).union(*anc.values()) if g is not None else None
-    findings, covered, exempt, soft = [], 0, [], []
+    findings, covered, exempt, soft, co_skipped = [], 0, [], [], []
     for t, locs in sorted(scan["reads"].items()):
         prod = [a for a in owners.get(t, []) if a != aid]
-        if not prod or aid in owners.get(t, []) or t in own or any(p in scan["co_registered"] for p in prod):
-            continue                  # nobody produces it / its own table / produced by another asset of the SAME writer class
+        if not prod or aid in owners.get(t, []) or t in own:
+            continue                  # nobody produces it / its own table
+        if any(p in scan["co_registered"] for p in prod):
+            # produced by another asset of the SAME writer class (bg_transit_engine / bg_transit_rules: one class registered
+            # twice): one writer, not a dependency. Skipped as a finding, but RECORDED (never silently dropped).
+            co_skipped.append(dict(asset=aid, table=t, producers=sorted(prod), kind="co_registered_skipped"))
+            continue
         if any(p in deps for p in prod):
             covered += 1
             continue
@@ -5150,15 +5155,19 @@ def _reads_clause(aid: str, r: dict, files: list[str], owners_fn, g) -> tuple[st
                 s += "; bedrock-named table with a non-L0 owner: not exempt (stricter than dag_edge_guard, which exempts by name alone)" \
                     if fd.get("bedrock_name_non_l0_owner") else ""
                 parts.append(s + ")")
-        extra_ev = {k: v for k, v in (("bedrock_exempt", exempt), ("soft_satisfied", soft)) if v}
+        extra_ev = {k: v for k, v in (("bedrock_exempt", exempt), ("soft_satisfied", soft), ("co_registered_skipped", co_skipped)) if v}
         miss = [fd for fd in findings if fd["kind"] == "missing_edge"]
         # transitive_only is claimed only when no back-read is present for the asset: a back-read must stay visible in the
         # rollup reason (a mix of a back-read and all-transitive missing edges is NOT "transitive only")
         only_t = bool(miss) and len(miss) == len(findings) and all(fd["transitive_via"] for fd in miss)
         return FAIL, "FAIL — " + "; ".join(parts), dict(missing_edges=findings, transitive_only=only_t, **extra_ev)
-    extra_ev = {k: v for k, v in (("bedrock_exempt", exempt), ("soft_satisfied", soft)) if v}
+    extra_ev = {k: v for k, v in (("bedrock_exempt", exempt), ("soft_satisfied", soft), ("co_registered_skipped", co_skipped)) if v}
     satisfied = covered + len(exempt) + len(soft)
     note = ""
+    if co_skipped:
+        note += (f"; {len(co_skipped)} read(s) of table(s) produced by an asset registered on the SAME writer class "
+                 f"({', '.join(c['table'] + ' <- ' + '/'.join(c['producers']) for c in co_skipped)}) were not compared with the declared "
+                 "edges: one class registered for several assets is one writer, not a dependency")
     if exempt:
         note += (f"; {len(exempt)} read(s) of bedrock-named table(s) owned only by L0 assets ({', '.join(e['table'] for e in exempt)}) "
                  "need no declared edge (dag_edge_guard exemption list; stricter than the guard, which exempts by table name alone; "
@@ -5223,20 +5232,35 @@ def _declared_kind(declarations, asset_id: str):
     return k if isinstance(k, str) and k in DECLARED_KINDS else None
 
 
-def _grade_dep_liveness_none(dag) -> dict:
+def _grade_dep_liveness_none(dag, scanned: bool = True) -> dict:
     """Build.dep_liveness for an asset with an EMPTY declared dependency list (SS N-72, S4; N-22 row 23 re-proposed).
 
     N/A (cause no-declared-dependencies) ONLY when the reads-match detector is demonstrably present AND clean: this asset's
     own Build.dag record reads PASS (exists, cycle and reads-match: the writer's SQL reads no other asset's table without a
-    declared edge, an L0 bedrock read being the ruled `bedrock_exempt`, and the scan was COMPLETE). Anything else (the dag
-    check missing, FAIL on an undeclared read or a cycle, PARTIAL/NO_DETECTOR/ERRORED because the scan was incomplete or
-    unavailable) is NO_DETECTOR, never N/A: with no declared dependency "nothing to be live" is a claim only a clean
-    reads-match scan can make (CLAUDE.md N.8; the F5 pattern of `never-run`)."""
+    declared edge, and the scan was COMPLETE) AND it recorded NO `bedrock_exempt` read. An asset that reads another L0 asset's
+    table under the ruled bedrock exemption consumes that asset's rows, so "nothing to be live" would be false: the
+    CONSERVATIVE reading withholds the N/A (NO_DETECTOR). Anything else (the dag check missing, FAIL on an undeclared read
+    or a cycle, PARTIAL/NO_DETECTOR/ERRORED because the scan was incomplete or unavailable) is NO_DETECTOR, never N/A: with
+    no declared dependency "nothing to be live" is a claim only a clean reads-match scan can make (CLAUDE.md N.8; the F5
+    pattern of `never-run`). `scanned` is False for an asset with no writer code: no scan ran, so the text says "nothing to
+    match" and never claims a detector found anything."""
     v = (dag or {}).get("v")
-    if v == PASS and not (dag or {}).get("missing_edges"):
-        ex = len((dag or {}).get("bedrock_exempt") or ())
-        return _na("no declared dependencies, and the reads-match detector (Build.dag) found no undeclared read of another "
-                   "asset's table" + (f" ({ex} ruled bedrock_exempt L0 read(s))" if ex else ""), "no-declared-dependencies")
+    ex = (dag or {}).get("bedrock_exempt") or ()
+    if v == PASS and not (dag or {}).get("missing_edges") and not ex:
+        co = (dag or {}).get("co_registered_skipped") or ()
+        if scanned:
+            text = "no declared dependencies, and the reads-match detector (Build.dag) found no undeclared read of another asset's table"
+        else:
+            text = ("no declared dependencies, and no writer (no build code to scan): there is nothing to match; the reads-match "
+                    "detector did not run")
+        if co:
+            text += (f" ({len(co)} read(s) of table(s) produced by an asset registered on the same writer class were not compared: "
+                     f"{', '.join(c['table'] for c in co)})")
+        return _na(text, "no-declared-dependencies")
+    if v == PASS and ex:
+        return dict(v=NO_DET, measured="NO_DETECTOR — no declared dependencies, but the asset reads another L0 asset's table under the "
+                                       "ruled bedrock exemption (" + ", ".join(sorted({str(e.get("table")) for e in ex}))
+                                       + "): it consumes that asset's rows, so 'nothing to be live' is not claimed")
     why = "Build.dag was not measured" if v is None else f"Build.dag reads {v}"
     return dict(v=NO_DET, measured=f"NO_DETECTOR — no declared dependencies, but the reads-match detector did not establish "
                                    f"that the asset reads nothing undeclared ({why}), so 'nothing to be live' is not claimed")
@@ -6198,7 +6222,7 @@ def measure(layer_key: str, assets=None) -> dict:
             m["Build.history"] = _grade_build_history(h)
 
         m["Build.dep_liveness"] = (_grade_dep_liveness(r["depends_on"], deprec, CHART_ID) if r["depends_on"]
-                                   else _grade_dep_liveness_none(m.get("Build.dag")))
+                                   else _grade_dep_liveness_none(m.get("Build.dag"), scanned=bool(files)))
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
         # E6 item (f): Carr.D1-D3 `no-carriage` candidates, only for an asset that DECLARES terminal_by_construction
