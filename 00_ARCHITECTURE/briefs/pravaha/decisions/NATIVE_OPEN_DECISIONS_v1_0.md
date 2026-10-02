@@ -31,8 +31,9 @@ three-quarter / full aspect rule. Our reading tool could not retrieve those line
 ii.13 and Jātaka Pārijāta). A person should read the Parāśara passage and confirm it says the same. Nothing is blocked on this; it is a
 confirmation owed.
 
-**ND-COMBUSTION — how close to the Sun is "burnt"?** The daśā-lord path asks whether the period-ruling planet is "combust" (too close to the Sun to give its
-results). The only table of distances our readable texts give comes from a modern Nāḍī book (Moon 12°, Mars 17°, Mercury 14°, Venus 10°, Jupiter 12°, Saturn 15°; slightly
-smaller for Mercury and Venus when moving backward) and a garbled Greek-influenced table — and they **disagree about Jupiter** (12° vs 11°); neither is the Parāśara school the
-rest of the system cites. Until you decide, that whole path stays "unqualified". Decision: adopt one table (which, and with what label), let the factor drop out of the score
-openly ("not scored" disclosed) until a classical source is read, or leave the path unqualified. Details: `design/P5_P1_SWEEP_ANSWER_v1_0.md`.
+**ND-COMBUSTION — do you accept the system's own "too close to the Sun" table for transits?** The system already holds one table of how close to the Sun each
+planet must be to count as "burnt" (the Moon 12°, Mars 17°, Mercury 14°, Jupiter 11°, Venus 10°, Saturn 15°; Mercury 12° and Venus 8° when moving backward; the two
+nodes never). It sits in the base reference data, and the natal chart already uses it — so transits should use the same one, not a second table. What you are
+asked to accept: (1) that table for transit use; (2) its source is only labelled at chapter level ("Saravali ch.6 / Parāśara ch.3"), and the one other table we could read
+(a modern Nāḍī book) says Jupiter 12° rather than 11° — shown so you can decide. Until you decide, the daśā-lord path stays "unqualified" (named, not scored). Details:
+`design/P1_INPUTS_ANSWER_v1_0.md`.
