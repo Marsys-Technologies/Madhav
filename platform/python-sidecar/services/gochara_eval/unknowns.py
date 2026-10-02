@@ -93,19 +93,48 @@ def _feasible(kind: str, c: int, m: int, span: Fraction | None) -> bool:
     return True                                          # "high" and "only"
 
 
+def _feasible_cuts(kind: str, m: int, span: Fraction | None, n_diff: int) -> list[int]:
+    """The cut counts attainable in one slot (the lemma in the module docstring), as a sorted list — computed arithmetically, no pattern is built."""
+    if kind == "mid":
+        out = [0] if span < (m + 1) * TAU_EXACT else []
+        top = min(n_diff, int(span // TAU_EXACT))                  # c >= 1 needs g >= c*TAU
+        return out + list(range(1, top + 1))
+    if kind == "low":
+        return list(range(0, min(n_diff, int(span // TAU_EXACT)) + 1))   # c*TAU <= v1 (the leftmost unknown stays >= 0)
+    return list(range(0, n_diff + 1))                                    # "high" / "only": any c
+
+
+def _n_diff(kind: str, m: int) -> int:
+    return m - 1 if kind == "only" else m + (1 if kind == "mid" else 0)
+
+
+def _slot_option_count(kind: str, span: Fraction | None, a: int, b: int) -> int:
+    """HOW MANY (labels, cuts) options the slot has — pure arithmetic over big integers (R10-8: the budget is checked on this number BEFORE any
+    option is generated, so no work exponential in the number of unknowns is ever done for an over-budget query)."""
+    m = a + b
+    if m == 0:
+        return 1
+    n_diff = _n_diff(kind, m)
+    return math.comb(m, a) * sum(math.comb(n_diff, c) for c in _feasible_cuts(kind, m, span, n_diff))
+
+
 def _slot_options(kind: str, span: Fraction | None, a: int, b: int):
-    """Every (labels, cuts) of the m = a+b unknowns in one slot: which positions are A (contained) and which differences are cuts."""
+    """Every (labels, cuts) of the m = a+b unknowns in one slot: which positions are A (contained) and which differences are cuts.
+    LAZY and output-bounded: cut patterns are generated per attainable cut COUNT (combinations of positions), never by scanning all 2^n masks."""
     m = a + b
     if m == 0:
         yield (), ()
         return
-    n_diff = m - 1 if kind == "only" else m + (1 if kind == "mid" else 0)
+    n_diff = _n_diff(kind, m)
+    counts = _feasible_cuts(kind, m, span, n_diff)
     for a_pos in combinations(range(m), a):
         labels = tuple("A" if i in a_pos else "B" for i in range(m))
-        for mask in range(1 << n_diff):
-            cuts = tuple(bool(mask >> i & 1) for i in range(n_diff))
-            if _feasible(kind, sum(cuts), m, span):
-                yield labels, cuts
+        for c in counts:
+            for cut_pos in combinations(range(n_diff), c):
+                cuts = [False] * n_diff
+                for i in cut_pos:
+                    cuts[i] = True
+                yield labels, tuple(cuts)
 
 
 def enumerate_structures(known: Sequence[float], known_cont: Sequence[bool], k_a: int, k_b: int,
@@ -130,11 +159,21 @@ def enumerate_structures(known: Sequence[float], known_cont: Sequence[bool], k_a
     if n_dist > budget:
         raise BudgetExceeded(f"{n_dist} slot distributions > budget {budget}")
     count = 0
+    planned = 0                                                    # structures PLANNED so far (arithmetic), checked before anything is generated
     for da in _compositions(k_a, len(slots)):
         for db in _compositions(k_b, len(slots)):
+            sizes = [_slot_option_count(kind, span, a, b) for (kind, span), a, b in zip(slots, da, db)]
+            total = 1
+            for z in sizes:
+                total *= z
+                if total == 0 or total > budget:
+                    break
+            if total == 0:
+                continue                                           # some slot has no attainable option: the distribution is impossible
+            planned += total
+            if planned > budget:
+                raise BudgetExceeded(f"more than {budget} structures (planned {planned} by arithmetic before generating any)")
             opts = [list(_slot_options(kind, span, a, b)) for (kind, span), a, b in zip(slots, da, db)]
-            if any(not o for o in opts):
-                continue
             idx = [0] * len(opts)
             while True:
                 count += 1

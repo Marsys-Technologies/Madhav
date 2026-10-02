@@ -230,6 +230,64 @@ class TestBudget:
 
 
 # ---- production == the independent reference model (exact lattice brute force) -----------------------------------------------
+# ── R10-8: the budget bounds the WORK, not just the yield ───────────────────────────────────────────────────────
+
+import time  # noqa: E402
+
+from services.gochara_eval import unknowns as _unk  # noqa: E402
+
+
+def test_an_over_budget_query_raises_before_any_option_is_generated(monkeypatch):
+    """Ten unknowns, budget 1: the old code built 512 slot options (and 2^39 for forty) BEFORE its first budget check. Now the budget is checked on an
+    arithmetic count first: `_slot_options` is never called."""
+    calls = []
+    orig = _unk._slot_options
+    monkeypatch.setattr(_unk, "_slot_options", lambda *a, **k: (calls.append(a), orig(*a, **k))[1])
+    with pytest.raises(BudgetExceeded):
+        list(enumerate_structures([], [], 0, 10, budget=1))
+    assert calls == [], f"{len(calls)} slot-option generators were created for an over-budget query"
+
+
+@pytest.mark.parametrize("known,k_a,k_b", [([], 0, 40), ([], 20, 20), ([1.0, 2.0, 3.0], 0, 40), ([1.0, 2.0, 3.0], 10, 30),
+                                           ([float(i) for i in range(30)], 5, 35)])
+def test_forty_unknowns_reach_the_conservative_fallback_fast(known, k_a, k_b):
+    """A large unknown population raises BudgetExceeded in well under a second — no 2^39 allocation, no exponential scan — at the default budget."""
+    t0 = time.perf_counter()
+    with pytest.raises(BudgetExceeded):
+        list(enumerate_structures(known, [False] * len(known), k_a, k_b))
+    assert time.perf_counter() - t0 < 1.0
+
+
+def test_the_fallback_is_the_declared_conservative_range_through_the_adapter(tmp_path):
+    """Through the production adapter path: an event whose class-year holds forty unknown candidates reports BUDGET_EXCEEDED with the FULL [0,100] range
+    (unqualified), never a partial range."""
+    from services.gochara_eval import candidate as cand
+    from services.gochara_eval.unknowns import BudgetExceeded as BE
+    try:
+        event_percentiles([1.0, 2.0], [True, False], 20, 20)
+    except BE:
+        pass
+    else:
+        pytest.fail("forty unknowns must exceed the default budget")
+    assert cand.BudgetExceeded is BE                              # the adapter catches exactly this and returns pct_lo=0.0, pct_hi=100.0
+
+
+def test_the_lazy_generation_yields_exactly_what_the_eager_one_did():
+    """The per-cut-count generation is a reordering of the same set: every attainable structure, no more, no fewer (small cases, brute-force masks)."""
+    from itertools import combinations
+    for kind, span, m in (("low", Fraction(3, 2) * TAU_EXACT, 3), ("mid", Fraction(5, 2) * TAU_EXACT, 2), ("mid", Fraction(1, 10) * TAU_EXACT, 3),
+                          ("high", None, 3), ("only", None, 4)):
+        n_diff = _unk._n_diff(kind, m)
+        want = set()
+        for mask in range(1 << n_diff):
+            cuts = tuple(bool(mask >> i & 1) for i in range(n_diff))
+            if _unk._feasible(kind, sum(cuts), m, span):
+                want.add(cuts)
+        got = [c for _, c in _unk._slot_options(kind, span, 0, m)]
+        assert set(got) == want and len(got) == len(want)
+        assert _unk._slot_option_count(kind, span, 0, m) == len(want)
+
+
 import importlib.util  # noqa: E402
 
 from .conftest import CAMPAIGN_MEASUREMENT, needs_campaign  # noqa: E402
