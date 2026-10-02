@@ -217,7 +217,7 @@ BUILDER_GRANT_MIGRATIONS = ("1216_gochara_contract_builder_grants.sql",
                             "1241_gochara_verifier_sealer_inventory_grants.sql")
 
 
-def create_am5_database(tag="am5", faithful=False):
+def create_am5_database(tag="am5", faithful=False, apply_1240=True):
     """A throwaway database with the real chain + 1206 applied and the L1 tables stubbed.
     Returns (admin_conn, name, dsn); the caller drops it (refusing non-prefixed names)."""
     psycopg = pytest.importorskip("psycopg")
@@ -249,7 +249,7 @@ def create_am5_database(tag="am5", faithful=False):
         conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
         if faithful:
             conn.execute("ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC")
-        _populate_am5_database(conn, faithful=faithful)
+        _populate_am5_database(conn, faithful=faithful, apply_1240=apply_1240)
         conn.close()
     except BaseException:
         drop_am5_database(admin, name)
@@ -263,7 +263,7 @@ def drop_am5_database(admin, name):
     admin.close()
 
 
-def _populate_am5_database(conn, faithful=False):
+def _populate_am5_database(conn, faithful=False, apply_1240=True):
     with conn.cursor() as cur:
         cur.execute("CREATE TABLE public.charts (id uuid PRIMARY KEY)")
         cur.execute("CREATE TABLE public._migrations_applied"
@@ -272,7 +272,8 @@ def _populate_am5_database(conn, faithful=False):
         cur.execute("CREATE TABLE public.chart_facts (fact_id text PRIMARY KEY,"
                     " chart_id uuid, ayanamsha_id text, fact_category text, fact_subject text,"
                     " fact_key text,"
-                    " fact_value_num double precision, created_at timestamptz DEFAULT now())")
+                    " fact_value_num double precision, verification_pass_status text NOT NULL DEFAULT 'single',"
+                    " created_at timestamptz DEFAULT now())")
         cur.execute("CREATE TABLE public.chart_dashas (dasha_row_id uuid PRIMARY KEY,"
                     " chart_id uuid, ayanamsha_id text, system_id text, level_n int,"
                     " parent_row_id uuid, lord_graha text, start_iso timestamptz,"
@@ -297,10 +298,11 @@ def _populate_am5_database(conn, faithful=False):
         # the faithful mirror applies the REAL builder-grant migrations too (R9-4): the restricted builder holds exactly
         # what production gives it (1216 tables, 1220 functions, 1234 window tables/functions) — and, once 1240 adds a
         # CHECK helper, only what 1240 itself grants it
+        # (apply_1240=False builds the PRE-1240 schema — for the chronological-upgrade test: 1240 and 1241 are applied later, by the test)
         for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql"] + (
-                ["1232_gochara_search_moon_scope_domain.sql"] if faithful else []) + [
-                                        "1240_gochara_window_verification_gate.sql"] + (
-                                            list(BUILDER_GRANT_MIGRATIONS) if faithful else []):
+                ["1232_gochara_search_moon_scope_domain.sql"] if faithful else []) + (
+                ["1240_gochara_window_verification_gate.sql"] if apply_1240 else []) + (
+                [f for f in BUILDER_GRANT_MIGRATIONS if apply_1240 or not f.startswith("1241")] if faithful else []):
             if not (MIGRATIONS / fname).exists():
                 # (F-R13-3) 1241 is Stream B's, carried by PR #2949 only — this branch holds no copy of it. Until #2949 is on main the
                 # faithful mirror needs that file present in platform/migrations (check it out from the PR branch; never commit it here).
