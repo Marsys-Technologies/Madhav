@@ -1370,7 +1370,7 @@ P3 table is "lagna frame"). Previously silent beyond "natal sign positions".
 * **Verification.** The writer and the independent derivation **recompute** these bindings from the inputs they actually consume and **refuse on mismatch**;
   changing any result-bearing component changes the input identity or raises a mismatch refusal. **Historical replay checks its original bound inputs; it
   does not recompute a fingerprint of today's catalogue.**
-* **Frozen test vectors (owed at gate acceptance; Stream B model):** a membership-only change (a soft factor moved), a node-series-only change (one series
+* **Frozen test vectors (DELIVERED: `design/am16_vectors_model.py`, reference model + frozen identity table; Stream A's implementation must reproduce them byte-for-byte):** a membership-only change (a soft factor moved), a node-series-only change (one series
   row differs) and a window-algorithm-only change (implementation identity bumped) must each change the vector and be refused when mismatched.
 
 ---
