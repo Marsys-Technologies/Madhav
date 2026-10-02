@@ -1,7 +1,7 @@
 ---
 artifact: GANDANTA_X1_LANE_INTENT
-version: "1.0"
-status: DRAFT-FOR-REVIEW (committed locally on suvarna/land/TI-l1-gandanta-x1-001; not pushed; no PR)
+version: "1.2"
+status: DRAFT-FOR-REVIEW (PR #2892, draft, never armed)
 produced_by: exec-suvarna (worker)
 produced_on: 2026-10-02
 lane: gandanta
@@ -9,6 +9,7 @@ plan_item: S-L1 mandatory lane I-22 (decision sheet A-4 + X1; SS rulings N-61/N-
 base: origin/main 925e96a5d
 scope: "one new L0 module, three L1 writer edits, tests, the lane's attribution hook, digest inventory and E6 pins. No migration, no database write, no Kāla production file, no rebuild."
 changelog:
+  - "1.2 (2026-10-02): independent-review fixes. MED-1: get_nakshatra.ts selects formula_id and its ORDER BY is total (..., fact_key, formula_id NULLS FIRST, fact_id), so offset pagination cannot duplicate/skip the canonical + strict_0_48 rows (section 12); LOW: bo_laksana signal configuration has no formula_id, recorded as an S-L2 GATE (section 10 item 3); J1 by-name list (section 13): the Gandanta FIRE side and the 0 deg 48 min orb are unsourced."
   - "1.1 (2026-10-02): SS ruling on PR #2892 applied: the ga_structural legacy dosha fallback RAISES on a failed evaluation (section 2a); read-only check against the three charts; L2-batch and wave-2 follow-ups recorded (section 10)."
   - "1.0 (2026-10-02): first version."
 ---
@@ -128,7 +129,7 @@ No L0 (`bg_*`) digest moved. No L2, L4 or L5 digest moved. E6 declaration pins r
 
 ## 6. Consumers of the rows this lane touches
 
-`graha_gandanta` (changes on rebuild): L1 served `get_nakshatra.ts` (`marsys://tool/L1/get_nakshatra`, `ganita_nakshatra_get`; flat read of 15 categories; it selects `citation_ref` but not `formula_id`, so a variant row is distinguishable only by its `fact_id` and the `:formula=strict_0_48` suffix of `citation_ref`: **follow-up: select `formula_id` there**, out of this lane); L2 `bo_laksana` (fetches every `chart_facts` row, `graha_gandanta` is in its position-category list; each variant row becomes a source fact in the next S-L2 `bo_laksana` run); its downstream signals follow. No L3/L4 writer reads `graha_gandanta`. Any future reader that reduces `(graha_gandanta, subject, is_gandanta)` to one row must now pin `formula_id IS NULL` (N.7 item 2; the fact-category-pin lint only checks `fact_key`).
+`graha_gandanta` (changes on rebuild): L1 served `get_nakshatra.ts` (`marsys://tool/L1/get_nakshatra`, `ganita_nakshatra_get`; flat read of 15 categories; it selected `citation_ref` but not `formula_id`, so a variant row was distinguishable only by its `fact_id` and the `:formula=strict_0_48` suffix of `citation_ref`; **v1.2: `formula_id` is now selected and ordered on, section 12**); L2 `bo_laksana` (fetches every `chart_facts` row, `graha_gandanta` is in its position-category list; each variant row becomes a source fact in the next S-L2 `bo_laksana` run); its downstream signals follow. No L3/L4 writer reads `graha_gandanta`. Any future reader that reduces `(graha_gandanta, subject, is_gandanta)` to one row must now pin `formula_id IS NULL` (N.7 item 2; the fact-category-pin lint only checks `fact_key`).
 
 `sensitive_degree_check.gandanta` (does not change): `reading_checklist.ts`, `composite_ranker.ts` (`sensitive_degree_check:gandanta` boost), `ka_gochara_resonance/writer.py` (sensitive targets), served `get_sensitive_points.ts`.
 
@@ -155,7 +156,7 @@ Users of the Gandanta function: `ga_structural` legacy dosha fallback (no stored
 * Citation states: the 3°20' water side is `sourced_ocr_unverified` (BPHS Santhanam, `bphs_pg0111_c01`, from the decision sheet); the fire side and 0°48' are `unsourced`; I did not re-search the corpus.
 * Whether `bo_laksana`'s natural key tolerates two `graha_gandanta` rows per (subject, key) was not traced to the table constraint; variant rows from other formula families already flow through the same fetch.
 * The raising fallback was exercised on stored-longitude reconstructions and unit tests, not on a live build; production does not reach it (catalog present).
-* Not done, by instruction: any Kāla file (`ka_vighnakara`'s own import can move to `brahmagyan.gandanta` in the Kāla lane), `get_nakshatra.ts` `formula_id` select, the L2 0.8° rule, the L0 catalog text.
+* Not done, by instruction: any Kāla file (`ka_vighnakara`'s own import can move to `brahmagyan.gandanta` in the Kāla lane), the L2 0.8° rule, the L0 catalog text. (`get_nakshatra.ts` `formula_id` select: done in v1.2, section 12.)
 
 ## 10. Follow-ups recorded (SS ruling on PR #2892; NOT done in this PR)
 
@@ -163,8 +164,23 @@ Users of the Gandanta function: `ga_structural` legacy dosha fallback (no stored
 1. `bodha_writers/nakshatra_semantic_emitter.py` `_gandanta_flag` (its own 0.8° first/last-pāda definition) must import `brahmagyan/gandanta.py`: canonical reading 3°20' (`GANDANTA_ARC` / `locate_gandanta`), the 0°48' reading as the named strict variant (`GANDANTA_STRICT_FORMULA_ID`).
 2. Any L2 reducer of `(graha_gandanta, subject, is_gandanta)`, `bo_laksana` included, must pin `formula_id IS NULL` for the canonical reading and carry `formula_id` on any signal derived from a variant row (the fact-category-pin lint checks only `fact_key`). Before S-L2, run the **"two rows per key" read check on `bo_laksana`**: its fetch (`_FETCH_SQL`) returns every `chart_facts` row of a chart with `formula_id` as a column; confirm no downstream dedupe, natural key or signal-id derivation collapses or collides on `(fact_category, fact_subject, fact_key)` once `graha_gandanta` has two rows per key (canonical + `strict_0_48`).
 
-**Wave 2 (readers):** `get_nakshatra.ts` should select `formula_id` (and order by it) so a served variant row is labelled.
+3. **S-L2 GATE (blocks the `bo_laksana` run until fixed): `bo_laksana` builds a signal's `configuration_jsonb` WITHOUT `formula_id`.** `pipeline/orchestrator/writers/bo_laksana.py:2262-2271` assembles `config` from `fact_key`, `fact_value_text`, `fact_value_num` and the fact's `fact_value_jsonb` keys only; `formula_id` is fetched as a column but never reaches the config. After the `ga_nakshatra` rebuild every `(graha_gandanta, subject, is_gandanta)` key has two rows (canonical, `formula_id` NULL, and `strict_0_48`). Consequences: where the two readings AGREE (equal values, e.g. all 50 canonical-chart rows `false`/`false`) the two facts collapse into ONE signal (one reading silently dropped); where they DIFFER (Abhinandan Mars: canonical `true`, strict `false`) they become TWO signals with different values and NO label saying which is the canonical 3 deg 20 min reading and which is the strict 0 deg 48 min variant, i.e. two unlabelled contradictory signals. Required before the S-L2 `bo_laksana` run: add `formula_id` to the signal configuration (and to whatever derives the signal identity), and pin `formula_id IS NULL` for any reducer that needs the canonical reading. Not changed in this PR (no `bo_laksana` edit).
+
+**Wave 2 (readers):** the `get_nakshatra` served-row ordering fix landed in v1.2 (section 12). Still for the tool-text wave (they move the capability knowledge snapshot, so they are not in a writer PR): refresh the `source-query:get-nakshatra:v1` contract SQL in `knowledge/source_query_availability.ts` (its availability-probe SQL does not select `formula_id` and orders only to `fact_key`) and its `get_nakshatra.ts:76-115` source_ref line anchor (the handler is now 4 lines longer); describe the `formula_id` field in the tool description.
 
 ## 11. Update (v1.1): digests, pins, census
 
 Relative to `origin/main` the moved digest set is still exactly the same seven (`ga_nakshatra`, `ga_sensitive_degree`, `ga_structural`, `ga_yoga`, `ga_sensitive`, `ga_ayurdaya`, `ka_vighnakara`); five of the hashes changed again with the `ga_structural` edit. E6 line pins for `ga_structural` re-pinned (-5/-5/-6/-6/-6 against v1.0). The census was regenerated again if its check demanded it (see the commit list in the final report).
+
+## 12. Update (v1.2): `get_nakshatra` served-row order is total (review finding MED-1)
+
+The served query ended `ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key LIMIT/OFFSET` and selected no `formula_id`. After the `ga_nakshatra` rebuild each `(graha_gandanta, subject, is_gandanta)` key has TWO rows (canonical + `strict_0_48`), so ties sorted unstably across pages and offset pagination could duplicate or skip a row. Fix (`platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts`, +7/-3 lines): select `formula_id`; `ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key, formula_id NULLS FIRST, fact_id`. Behaviour-neutral for every non-variant row (their `formula_id` is NULL; the added columns are additive). No descriptor or description text changed. New test `__tests__/get_nakshatra.pagination.test.ts` (mock-based, 2 tests): asserts the SQL's total order and that canonical and strict rows are distinguishable by `formula_id`.
+
+Snapshot evidence (SS constraint: a writer PR must not move the capability knowledge snapshot or the Pariprashna baselines): `npm run codegen:capability-knowledge:check` after the change: `capability knowledge snapshot current: sha256:6c1aefca7601a9b7204471e0a3ccc03fe8ffa31819e5800b0d5e36fe83e156a8; 182 SCUs` (unchanged); `npx vitest run tests/pariprashna src/lib/vidhi` green (one test, `reader_label_fallback`, hit its 5 s default timeout once under machine load and passes in 2 s on its own). Kept. The census (`capability_estate_census.json`) was regenerated because it fingerprints source files.
+
+## 13. J1 by-name list (items for the native's review)
+
+Both are carried as stated in section 9 and are listed here so J1 sees them by name; neither is a code defect, both are source gaps:
+
+1. **Gandanta FIRE side (the first 3 deg 20 min of Aries, Leo and Sagittarius, i.e. the fire-sign half of each water|fire junction arc): citation state `unsourced`.** Only the water side of the arc is `sourced_ocr_unverified` (BPHS Santhanam, chunk `bphs_pg0111_c01`). The shared module applies the same 3 deg 20 min to the fire side by symmetry; no source read in this lane states it.
+2. **The 0 deg 48 min orb (`strict_0_48`): citation state `unsourced`.** It is the pre-existing `ga_nakshatra` constant (`GANDANTA_ORB_ARCMIN = 48.0`), preserved as a named variant; no classical source for 48 minutes was found or searched for.
