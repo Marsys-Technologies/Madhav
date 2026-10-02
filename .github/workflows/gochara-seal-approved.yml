@@ -1,6 +1,6 @@
 # Gochara APPROVED SEAL — the trusted sealing workflow (Codex round 12, R12-2). DRAFT: HOLD. Codex reviews this file BEFORE it is ever dispatched.
 #
-# What it does, in order (design: 00_ARCHITECTURE/briefs/pravaha/design/SEAL_APPROVAL_PAYLOAD_v1_0.md; runbook §5.3 / §6):
+# What it does, in order (design: 00_ARCHITECTURE/briefs/pravaha/design/SEAL_APPROVAL_PAYLOAD_v1_2.md; runbook §5.3 / §6):
 #   job `brief`  (NO environment, NO sealer credential)
 #     1. runs ONLY from `main`, at one reviewed commit (github.sha, an ancestor of origin/main);
 #     2. runs the verification job's `--brief` mode under the VERIFIER's own identity (the Cloud Run job) with --sealing-commit = this commit;

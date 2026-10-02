@@ -6,10 +6,10 @@ Input: the JSON array `GET /repos/{owner}/{repo}/actions/runs/{run_id}/approvals
 
     brief-digest: <64 lowercase hex>  run: <run id>  attempt: <attempt number>
 
-This script REFUSES (exit 2, reason on stderr, nothing written) when there is no approval of the environment, the latest approval's state is not `approved`, its comment has no
-well-formed line (or more than one distinct line), the run id or attempt in the comment is not THIS run/attempt (a stale comment from an earlier attempt), the digest is not
-the digest of the retained brief this job re-verified (a changed brief), or the approver login is empty. It never falls back to an older approval: the LATEST approval of the
-environment decides. On success it writes `{schema: 'seal_approval/1', brief_digest, run_id, run_attempt, approver_login, approved_by_note}` where the NOTE is built mechanically (ruling id + triggering actor + the fixed statement), never taken from the comment — the file Stream A's
+This script REFUSES (exit 2, reason on stderr, nothing written) unless EXACTLY ONE approved review of the environment names THIS run and attempt in a well-formed line, with the digest of the
+retained brief this job re-verified and a non-empty approver login; a refusing review of this attempt, a comment with more than one distinct line, or a second approval of this attempt refuses too.
+The API's ordering is never assumed (F-R13-5): reviews are selected by what they NAME, so an approval of an earlier attempt is stale whatever its position, and a legitimate re-run (attempt 2
+approved after an attempt-1 seal failure) is accepted. The ordering the API actually returns is recorded as an output of the live-gate proof (runbook §7.1). On success it writes `{schema: 'seal_approval/1', brief_digest, run_id, run_attempt, approver_login, approved_by_note}` where the NOTE is built mechanically (ruling id + triggering actor + the fixed statement), never taken from the comment — the file Stream A's
 `seal_job` takes as `--approval-file`, which independently re-checks the run id / attempt against GITHUB_RUN_ID / GITHUB_RUN_ATTEMPT and the digest against its own recompute."""
 from __future__ import annotations
 
@@ -45,26 +45,38 @@ def extract(history, *, environment: str, run_id: str, attempt: str, brief_diges
     mine = [h for h in history if isinstance(h, dict) and any((e or {}).get("name") == environment for e in (h.get("environments") or []))]
     if not mine:
         raise Refused(f"no approval of environment {environment!r} exists for this run")
-    latest = mine[-1]                                          # the API lists the history oldest-first; the LATEST decides, never an older one
-    if latest.get("state") != "approved":
-        raise Refused(f"the latest review of {environment!r} is {latest.get('state')!r}, not approved")
+    # F-R13-5: the API's ordering is NOT relied on. Each review is judged by what it NAMES: the reviews that name THIS run AND attempt are the only candidates; reviews
+    # naming another attempt (a history from a re-run) are stale, never an approval of this one. Exactly one approved candidate, and no refusing review of this attempt.
+    selected, problems = [], []                                # problems: (priority, message) — the most informative one is raised when nothing is selected
+    for h in mine:
+        comment = h.get("comment")
+        lines = [m for m in (_LINE.match(l) for l in (comment.splitlines() if isinstance(comment, str) else [])) if m]
+        named = {(m.group(1), m.group(2), m.group(3)) for m in lines}
+        if len(named) > 1:
+            raise Refused("an approval comment states more than one distinct digest/run/attempt: ambiguous")
+        d, c_run, c_attempt = next(iter(named)) if named else (None, None, None)
+        this = named and c_run == str(run_id) and c_attempt == str(attempt)
+        if h.get("state") != "approved":
+            if this or not named:                              # a refusal of this attempt, or one that names no other attempt: never ignored
+                raise Refused(f"a review of {environment!r} for this attempt is {h.get('state')!r}, not approved")
+            continue
+        if not named:
+            problems.append((3, "the approval carries no comment: the digest of the approved brief must be stated in it" if not (isinstance(comment, str) and comment.strip())
+                             else "the approval comment has no `brief-digest: <hex>  run: <id>  attempt: <n>` line"))
+        elif c_run != str(run_id):
+            problems.append((1, f"the approval is for run {c_run}, this is run {run_id}"))
+        elif c_attempt != str(attempt):
+            problems.append((2, f"the approval is for attempt {c_attempt}, this is attempt {attempt}: a stale approval from an earlier attempt"))
+        else:
+            selected.append((h, d))
+    if not selected:
+        raise Refused(sorted(problems, key=lambda t: t[0])[0][1] if problems else f"no approval of environment {environment!r} names this run and attempt")
+    if len(selected) > 1:
+        raise Refused("more than one approval names this run and attempt: ambiguous")
+    latest, digest = selected[0]
     login = ((latest.get("user") or {}).get("login") or "").strip()
     if not login:
         raise Refused("the approval names no approver login")
-    comment = latest.get("comment")
-    if not isinstance(comment, str) or not comment.strip():
-        raise Refused("the approval carries no comment: the digest of the approved brief must be stated in it")
-    lines = [m for m in (_LINE.match(l) for l in comment.splitlines()) if m]
-    if not lines:
-        raise Refused("the approval comment has no `brief-digest: <hex>  run: <id>  attempt: <n>` line")
-    if len({(m.group(1), m.group(2), m.group(3)) for m in lines}) != 1:
-        raise Refused("the approval comment states more than one distinct digest/run/attempt: ambiguous")
-    m = lines[0]
-    digest, c_run, c_attempt = m.group(1), m.group(2), m.group(3)
-    if c_run != str(run_id):
-        raise Refused(f"the approval is for run {c_run}, this is run {run_id}")
-    if c_attempt != str(attempt):
-        raise Refused(f"the approval is for attempt {c_attempt}, this is attempt {attempt}: a stale approval from an earlier attempt")
     if digest != brief_digest:
         raise Refused("the approved digest is not the digest of the retained brief (the brief changed after it was approved, or the wrong brief was approved)")
     return {"schema": "seal_approval/1", "brief_digest": digest, "run_id": int(run_id), "run_attempt": int(attempt),

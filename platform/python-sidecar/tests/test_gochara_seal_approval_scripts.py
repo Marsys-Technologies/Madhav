@@ -39,7 +39,7 @@ def payload(**over):
 
 def brief_text(p=None, digest=None):
     p = payload() if p is None else p
-    return json.dumps({"brief": p, "sha256": digest or bc.digest(p)})
+    return json.dumps({"brief": p, "persisted": {"brief_id": 7, "manifest_id": p.get("manifest", {}).get("manifest_id"), "state_digest": "c" * 64}, "sha256": digest or bc.digest(p)})
 
 
 # ── the brief check ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -55,6 +55,13 @@ def test_a_good_brief_verifies_and_returns_its_digest():
     (lambda d: d.update(sha256="XYZ"), "64-hex"),
     (lambda d: d.pop("sha256"), "exactly"),
     (lambda d: d.update(extra=1), "exactly"),
+    (lambda d: d.pop("persisted"), "exactly"),                                                        # F-R13-1: the verifier's real output carries `persisted`; a brief without it was never persisted
+    (lambda d: d["persisted"].update(manifest_id="other"), "another manifest"),
+    (lambda d: d["persisted"].update(brief_id=0), "not {brief_id"),
+    (lambda d: d["persisted"].update(brief_id=True), "not {brief_id"),
+    (lambda d: d["persisted"].update(state_digest="zz"), "not {brief_id"),
+    (lambda d: d["persisted"].update(extra=1), "not {brief_id"),
+    (lambda d: d.update(persisted=True), "not {brief_id"),
 ])
 def test_a_malformed_or_altered_brief_is_refused(mut, needle):
     d = json.loads(brief_text())
@@ -116,6 +123,54 @@ def test_the_brief_is_extracted_from_exactly_one_log_entry():
 def test_a_missing_ambiguous_or_truncated_brief_is_refused(entries, needle):
     with pytest.raises(ValueError, match=needle):
         bx.extract(entries)
+
+
+# ── the chunked log transport (F-R13-2) ───────────────────────────────────────────────────────────────────────────────────────
+
+def _chunks(size=500, text=None):
+    text = brief_text() if text is None else text
+    return [{"textPayload": line} for line in bx.chunk_brief(text, size)]
+
+
+def test_a_chunked_brief_reassembles_in_any_arrival_order_and_checks_like_the_single_line_brief():
+    text = brief_text()
+    ch = _chunks(150)
+    assert len(ch) > 3
+    for order in (ch, ch[::-1], ch[1::2] + ch[0::2]):
+        assert bx.extract([{"textPayload": "starting"}, *order, {"textPayload": "done"}]) == text
+    assert bc.check(bx.extract(ch[::-1]), chart_id=CHART, generation=GEN, sealing_commit=SHA) == bc.digest(payload())
+    assert bx.extract(ch + [ch[2]]) == text                                              # an identical repeat (at-least-once delivery) is harmless
+
+
+def _ed(entry, **over):
+    c = json.loads(entry["textPayload"])
+    c["brief_chunk"].update(over)
+    return {"textPayload": json.dumps(c)}
+
+
+@pytest.mark.parametrize("mut,needle", [
+    (lambda ch: ch[:1] + ch[2:], "incomplete"),                                                      # a missing chunk
+    (lambda ch: ch[:-1], "incomplete"),                                                              # a truncated tail
+    (lambda ch: [_ed(ch[0], data=ch[0] and "x" + json.loads(ch[0]["textPayload"])["brief_chunk"]["data"])] + ch[1:], "sha256 is not the one"),   # altered data
+    (lambda ch: ch[:1] + [_ed(ch[1], index=0)] + ch[2:], "two different chunks carry index 0"),       # a duplicate index with other data
+    (lambda ch: ch[:1] + [_ed(ch[1], total=99)] + ch[2:], "disagree"),                                # another total
+    (lambda ch: ch[:1] + [_ed(ch[1], sha256="0" * 64)] + ch[2:], "disagree"),                         # another whole-brief hash
+    (lambda ch: ch[:1] + [_ed(ch[1], index=77)] + ch[2:], "outside"),
+    (lambda ch: ch[:1] + [_ed(ch[1], data=5)] + ch[2:], "malformed"),
+    (lambda ch: ch + [{"textPayload": brief_text()}], "both a single-line brief and chunks"),
+    (lambda ch: [{"textPayload": "{\"brief_chunk\": nope"}] + ch, "not valid JSON"),
+])
+def test_a_missing_altered_duplicated_or_mixed_chunk_is_refused(mut, needle):
+    with pytest.raises(ValueError, match=needle):
+        bx.extract(mut(_chunks(150)))
+
+
+def test_chunks_of_the_real_size_stay_under_the_entry_limit_even_with_json_escaping():
+    big = json.dumps({"brief": {"x": ["a" * 40 + '"' * 20] * 6000}, "persisted": {}, "sha256": "0" * 64})
+    lines = bx.chunk_brief(big)
+    assert len(big) > 256 * 1024 and len(lines) >= 4
+    assert max(len(l.encode("utf-8")) for l in lines) < 200 * 1024
+    assert bx.extract([{"textPayload": l} for l in lines]) == big
 
 
 # ── the approval ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -180,12 +235,39 @@ def test_an_absent_malformed_wrong_run_wrong_attempt_or_stale_approval_is_refuse
         approval.extract(history, environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, triggering_actor="steward-as-owner")
 
 
-def test_the_latest_review_decides_never_an_older_good_one():
-    good, rejected = review(), review(state="rejected")
-    with pytest.raises(approval.Refused, match="not approved"):
-        approval.extract([good, rejected], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, triggering_actor="steward-as-owner")
-    with pytest.raises(approval.Refused):                       # an old good approval does not rescue a later approval that is bad
-        approval.extract([good, review(comment="lgtm")], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, triggering_actor="steward-as-owner")
+def _ex(history, attempt=ATT):
+    return approval.extract(history, environment="gochara-seal", run_id=RUN, attempt=attempt, brief_digest=D, triggering_actor="steward-as-owner")
+
+
+def _att(n, state="approved", login="steward-as-owner"):
+    return review(state=state, login=login, comment=f"brief-digest: {D}  run: {RUN}  attempt: {n}")
+
+
+@pytest.mark.parametrize("order", ["oldest_first", "newest_first"])
+def test_the_approval_is_selected_by_the_attempt_it_names_never_by_the_apis_ordering(order):
+    """F-R13-5: a legitimate re-run — attempt 1 was approved and its seal failed; attempt 2 is approved — is accepted whichever way the API orders its history; and an approval
+    of ONLY an earlier attempt is stale whichever way it is ordered."""
+    hist = [_att(1), _att(2)]
+    hist = hist if order == "oldest_first" else hist[::-1]
+    assert _ex(hist, attempt="2")["run_attempt"] == 2
+    assert _ex(hist, attempt="1")["run_attempt"] == 1
+    with pytest.raises(approval.Refused, match="stale approval"):
+        _ex([_att(1)] if order == "oldest_first" else [_att(1)], attempt="2")
+
+
+@pytest.mark.parametrize("order", ["oldest_first", "newest_first"])
+def test_a_refusing_review_of_this_attempt_or_a_second_approval_of_it_refuses_whatever_the_order(order):
+    for hist, needle in (([_att(1), _att(1, state="rejected")], "not approved"), ([_att(1), _att(1, login="someone-else")], "ambiguous"),
+                         ([_att(1), review(state="rejected", comment="no")], "not approved")):
+        with pytest.raises(approval.Refused, match=needle):
+            _ex(hist if order == "oldest_first" else hist[::-1])
+
+
+def test_a_rejection_that_names_another_attempt_does_not_block_this_attempt_and_a_malformed_old_approval_does_not_rescue_a_bad_one():
+    assert _ex([_att(1, state="rejected"), _att(2)], attempt="2")["run_attempt"] == 2
+    assert _ex([review(comment="lgtm"), _att(2)], attempt="2")["run_attempt"] == 2        # a malformed old approval is ignored when exactly one well-formed one names this attempt
+    with pytest.raises(approval.Refused, match="no `brief-digest"):
+        _ex([review(comment="lgtm")])                                                      # …and never selected on its own
 
 
 # ── the gated orchestrator (the unit the `seal` job runs) ───────────────────────────────────────────────────────────────────────
