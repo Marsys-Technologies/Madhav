@@ -49,6 +49,12 @@ from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter import strength as pyjhora_strength
 from pyjhora_adapter._names import SIGN_NAMES
 from pyjhora_adapter.version import ENGINE_VERSION
+from brahmagyan.verification_tiers import (
+    DOCUMENTED_APPROXIMATION,
+    SINGLE,
+    TWO_PASS_VERIFIED,
+    emit_tier,
+)
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 from pipeline.orchestrator.birth_params import resolve_birth_params
@@ -715,10 +721,10 @@ def _verify_shadbala(shadbala: dict[str, dict[str, float]], tolerance: float = 0
     # correct classical computation. Per M-1, the shadbala engine itself is
     # a toy heuristic (never calls PyJHora). Returning "two_pass_verified"
     # here claimed an independent classical cross-check that never ran.
-    # Demoted to "single_pass" (a real single structural-invariant pass did
+    # Demoted to SINGLE ("single"; a real single structural-invariant pass did
     # run; formulas.py VERIFICATION_RESCALE 0.85 vs 1.00). Fixing the
     # underlying shadbala engine is M-1's scope, not this lane's.
-    return "single_pass"
+    return SINGLE
 
 
 def _verify_ashtakavarga(
@@ -762,9 +768,9 @@ def _verify_ashtakavarga(
     # trikona shodhana entirely (sodhita ≡ raw, comment admits) and fakes
     # ekadhipatya as bindus−1 — neither is checked here. "two_pass_verified"
     # overstated what was actually verified (raw-bindu arithmetic, not
-    # shodhana correctness). Demoted to "single_pass". Fixing the shodhana
+    # shodhana correctness). Demoted to SINGLE ("single"). Fixing the shodhana
     # step itself is M-3's scope, not this lane's.
-    return "single_pass"
+    return SINGLE
 
 
 # ── Rows builders ────────────────────────────────────────────────────────────
@@ -1440,8 +1446,8 @@ def _build_ashtakavarga_per_varga_rows(
         # structural invariant (SARVA sum=337) is a real check, but not an
         # independent second computation; the src_calc label two lines
         # below already honestly says "python_heuristic_approximation".
-        # Demoted to single_pass to match.
-        bindu_verif = "single_pass"
+        # Demoted to SINGLE to match.
+        bindu_verif = SINGLE
 
     src_calc = f"python_heuristic_approximation.ashtakavarga_per_varga/{eng_ver}"
 
@@ -1739,6 +1745,10 @@ _CHART_FACTS_UPSERT_SQL = """
 
 
 def _insert_chart_facts_rows(conn: Any, rows: list[dict[str, Any]]) -> int:
+    # Q-L1-16(a) choke point: reject a deprecated-alias / out-of-vocabulary tier BEFORE any
+    # delete or insert, however the string was built (literal, concatenation, constant).
+    for _r in rows:
+        emit_tier(_r["verification_pass_status"], table="chart_facts")
     # Idempotency: replace this chart's prior rows for the scope being written so a
     # rebuild under a new build_id replaces instead of accreting.
     replace_prior_chart_facts(conn, rows)
@@ -1849,10 +1859,10 @@ def build_ga_strength(
                 # actually returned (both variables were computed then
                 # discarded) — the literal lied about the tier even when
                 # the verifiers themselves (now correctly, post-M-1/M-3 fix)
-                # report "single_pass". The row-level stamp must reflect
+                # report SINGLE. The row-level stamp must reflect
                 # the WORSE (lowest-confidence) of the two verifier
                 # outputs, not an unconditional top tier.
-                _TIER_RANK = {"two_pass_verified": 2, "single_pass": 1, "documented_approximation": 0}
+                _TIER_RANK = {TWO_PASS_VERIFIED: 2, SINGLE: 1, DOCUMENTED_APPROXIMATION: 0}
                 verif_status = min(
                     (sb_verif, av_verif), key=lambda t: _TIER_RANK.get(t, 0),
                 )
