@@ -392,8 +392,6 @@ def test_the_writers_verify_step_only_reports_and_the_gate_refuses_a_class_witho
     with w.conn.transaction():
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification WHERE path_id = 'P3'")
-    monkeypatch.setattr(writer_mod.gk_verifier, "verify_aspect_span_contacts",
-                        lambda *a, **k: {"objects_checked": 0, "occurrences": 0})
     monkeypatch.setattr(writer_mod.gk_contact_certify, "certify_contact_geometry",     # its own suite (R9-3)
                         lambda *a, **k: {"obligations_certified": 0, "contacts_expected": 0, "named_limit": "stubbed"})
     res = w.step(f"verify:{CLS}")

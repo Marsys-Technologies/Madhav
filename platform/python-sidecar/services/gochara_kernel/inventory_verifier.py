@@ -620,56 +620,6 @@ def rederive_aspect_span_runs(
     return runs
 
 
-def verify_aspect_span_contacts(
-    conn: Any, *, chart_id: str, generation: str, obligations: Sequence[str], position_at,
-    horizon: tuple[Any, Any], tol_seconds: float = 3.0, step_hours: float = 6.0,
-    _cache: dict | None = None,
-) -> dict[str, int]:
-    """Re-derive every (agent, span) aspect-to-span object named by the class's obligations and compare
-    with the STORED contacts. Returns counts; raises `RuntimeError` on ANY disagreement (a missing run, an
-    extra one, or a boundary off by more than `tol_seconds`)."""
-    from datetime import timedelta
-    lo, hi = horizon
-    pairs = sorted({(ob.split("|")[3], ob.split("|")[6]) for ob in obligations
-                    if ob.split("|")[4] == "aspect" and ob.split("|")[6].startswith("span:")
-                    and not ob.split("|")[3].startswith("period_lord:")})
-    checked = runs_total = 0
-    for agent, target in pairs:
-        if not _DRISHTI_DEG.get(agent):
-            continue
-        target_idx = int(target.split(":")[1]) - 1
-        key = (agent, target_idx, lo, hi)
-        if _cache is not None and key in _cache:
-            derived = _cache[key]
-        else:
-            derived = rederive_aspect_span_runs(
-                position_at, body=agent, target_sign_index=target_idx, lo=lo, hi=hi,
-                step_hours=step_hours, tol_seconds=tol_seconds / 3.0)
-            if _cache is not None:
-                _cache[key] = derived
-        stored = conn.execute(
-            "SELECT c.t_in, c.t_out FROM public.ka_gochara_contact c"
-            " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = c.physical_object_id"
-            " WHERE c.chart_id = %s AND c.generation = %s AND o.body = %s"
-            "   AND o.relation_kind = 'aspect' AND o.canonical_target = %s ORDER BY c.t_in",
-            (chart_id, generation, agent, target)).fetchall()
-        tol = timedelta(seconds=tol_seconds)
-        if len(stored) != len(derived):
-            raise RuntimeError(
-                f"aspect-to-span {agent}->{target}: the independent sampling derivation finds "
-                f"{len(derived)} occurrence(s) in [{lo.isoformat()}, {hi.isoformat()}) but "
-                f"{len(stored)} contact(s) are stored — the two readings DISAGREE")
-        for (d_in, d_out), (s_in, s_out) in zip(derived, stored):
-            if abs(d_in - s_in) > tol or abs(d_out - s_out) > tol:
-                raise RuntimeError(
-                    f"aspect-to-span {agent}->{target}: derived run [{d_in.isoformat()}, "
-                    f"{d_out.isoformat()}) vs stored contact [{s_in.isoformat()}, "
-                    f"{s_out.isoformat()}) differ by more than {tol_seconds}s")
-        checked += 1
-        runs_total += len(derived)
-    return {"objects_checked": checked, "occurrences": runs_total}
-
-
 # ── the consumed daśā POPULATION, validated against the §4.0 read contract (Codex round 7 [2]) ──────────
 #
 # Hashing rows does not make them authoritative: a Moon row of an inadmissible build or system, once

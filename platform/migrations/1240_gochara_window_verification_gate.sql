@@ -796,6 +796,35 @@ BEGIN
   IF n <> 6 THEN
     RAISE EXCEPTION 'migration 1240 post-apply check failed: expected 6 window provenance constraints, found %', n;
   END IF;
+  -- R10-5: the verifier must hold NO write privilege — table OR column level — anywhere on the builder write surface (every
+  -- Gochara table except the two verification tables it writes). `has_table_privilege` alone cannot see a column grant
+  -- (1242 grants the builder columns), so the column predicate is checked as well — the same predicate the job's identity
+  -- self-check applies at run time.
+  IF to_regrole('gochara_verifier') IS NOT NULL THEN
+    SELECT string_agg(h.what, ', ') INTO missing
+    FROM (
+      SELECT p.priv || ' on ' || c.relname AS what
+      FROM pg_class c JOIN pg_namespace ns ON ns.oid = c.relnamespace
+      CROSS JOIN (VALUES ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE')) AS p(priv)
+      WHERE ns.nspname = 'public' AND c.relkind IN ('r', 'p')
+        AND (c.relname LIKE 'ka\_gochara\_%' OR c.relname LIKE 'kala\_gochara\_%')
+        AND c.relname NOT IN ('ka_gochara_search_inventory_verification', 'ka_gochara_eval_window_verification')
+        AND has_table_privilege('gochara_verifier', c.oid, p.priv)
+      UNION ALL
+      SELECT p.priv || '(' || a.attname || ') on ' || c.relname
+      FROM pg_class c JOIN pg_namespace ns ON ns.oid = c.relnamespace
+      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+      CROSS JOIN (VALUES ('INSERT'), ('UPDATE')) AS p(priv)
+      WHERE ns.nspname = 'public' AND c.relkind IN ('r', 'p')
+        AND (c.relname LIKE 'ka\_gochara\_%' OR c.relname LIKE 'kala\_gochara\_%')
+        AND c.relname NOT IN ('ka_gochara_search_inventory_verification', 'ka_gochara_eval_window_verification')
+        AND has_column_privilege('gochara_verifier', c.oid, a.attnum, p.priv)
+        AND NOT has_table_privilege('gochara_verifier', c.oid, p.priv)
+    ) h;
+    IF missing IS NOT NULL THEN
+      RAISE EXCEPTION 'migration 1240 post-apply check failed: gochara_verifier holds write privileges on the builder write surface (table or column level): %', missing;
+    END IF;
+  END IF;
   RAISE NOTICE 'migration 1240: presence checks passed';
 END;
 $$;

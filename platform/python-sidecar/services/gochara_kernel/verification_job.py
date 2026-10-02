@@ -58,30 +58,71 @@ def _one(row):
 
 # ── identity ─────────────────────────────────────────────────────────────────────────────────────────
 
-def check_identity(conn) -> dict:
-    """Refuse unless THIS connection's login is a separate verifier principal. Not a superuser, not the builder (or a
-    member of it), no write privilege on any builder-written table, INSERT on the verification tables. The job never
-    uses SET ROLE; it proves the identity it was given."""
-    who = conn.execute("SELECT current_user, session_user, r.rolsuper FROM pg_roles r WHERE r.rolname = current_user"
-                       ).fetchone()
-    user, session, superuser = tuple(who.values()) if isinstance(who, dict) else tuple(who)
-    if superuser:
-        raise VerificationRefused("identity_not_separate", f"{user} is a superuser", exit_code=EXIT_PRIVILEGE)
-    is_builder = user == "data_plane_builder" or (
-        _role_exists(conn, "data_plane_builder")
-        and bool(_one(conn.execute("SELECT pg_has_role(current_user, 'data_plane_builder', 'MEMBER')").fetchone())))
-    if is_builder:
-        raise VerificationRefused("identity_not_separate", f"{user} is, or is a member of, the builder principal",
-                                  exit_code=EXIT_PRIVILEGE)
-    held = []
-    for table in BUILDER_TABLES:
-        if _one(conn.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{table}",)).fetchone()) is not True:
-            continue
+def _builder_owner_roles(conn) -> list[str]:
+    """The roles that own the Gochara tables (the data-plane owner) — a login that is a member of one can write them all."""
+    return [_one(r) if not isinstance(r, tuple) else r[0] for r in conn.execute(
+        "SELECT DISTINCT pg_get_userbyid(c.relowner) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
+        " WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND (c.relname LIKE 'ka\\_gochara\\_%' OR"
+        " c.relname LIKE 'kala\\_gochara\\_%')").fetchall()]
+
+
+def _write_surface(conn, role: str) -> list[str]:
+    """Every WRITE privilege `role` effectively holds on the builder write surface — table level (INSERT/UPDATE/DELETE/
+    TRUNCATE) AND column level (INSERT/UPDATE on any single column: 1242 grants columns, which `has_table_privilege` does not
+    see). The surface is every Gochara table except the two verification tables the verifier itself writes."""
+    held: list[str] = []
+    tables = [(_one(r) if not isinstance(r, tuple) else r[0]) for r in conn.execute(
+        "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
+        " WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND (c.relname LIKE 'ka\\_gochara\\_%%' OR"
+        " c.relname LIKE 'kala\\_gochara\\_%%') AND c.relname <> ALL(%s) ORDER BY 1", (list(VERIFICATION_TABLES),)).fetchall()]
+    for t in tables:
         for priv in _WRITE:
-            if _one(conn.execute("SELECT has_table_privilege(current_user, %s, %s)", (f"public.{table}", priv)).fetchone()):
-                held.append(f"{priv} on {table}")
+            if _one(conn.execute("SELECT has_table_privilege(%s, %s, %s)", (role, f"public.{t}", priv)).fetchone()):
+                held.append(f"{priv} on {t}")
+        for (col,) in (tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
+                "SELECT a.attname FROM pg_attribute a WHERE a.attrelid = %s::regclass AND a.attnum > 0 AND NOT a.attisdropped"
+                " AND (has_column_privilege(%s, a.attrelid, a.attnum, 'INSERT')"
+                "   OR has_column_privilege(%s, a.attrelid, a.attnum, 'UPDATE')) ORDER BY a.attnum",
+                (f"public.{t}", role, role)).fetchall()):
+            privs = [p for p in ("INSERT", "UPDATE") if _one(conn.execute(
+                "SELECT has_column_privilege(%s, %s::regclass, %s, %s)", (role, f"public.{t}", col, p)).fetchone())]
+            for p in privs:
+                if f"{p} on {t}" not in held:                      # a table-level grant already says it
+                    held.append(f"{p}({col}) on {t}")
+    return held
+
+
+def check_identity(conn) -> dict:
+    """Refuse unless THIS session is a separate verifier principal, judged on BOTH names the session carries:
+    `session_user` (the login) and `current_user` (the effective role). Neither may be a superuser, the builder, a member of the
+    builder or of any role that OWNS the Gochara tables, and they must be the SAME role — the job never uses SET ROLE, so a
+    session whose current role differs from its login is an elevated/impersonated one (a superuser login under a restricted
+    role passes a current-role-only test). The effective role must hold NO write privilege — table OR column level — anywhere on
+    the builder write surface, INSERT on the verification tables, and SELECT on the L1 tables its derivations read."""
+    who = conn.execute("SELECT current_user, session_user").fetchone()
+    user, session = tuple(who.values()) if isinstance(who, dict) else tuple(who)
+    owners = _builder_owner_roles(conn)
+    for label, name in (("session_user", session), ("current_user", user)):
+        if _one(conn.execute("SELECT rolsuper FROM pg_roles WHERE rolname = %s", (name,)).fetchone()):
+            raise VerificationRefused("identity_not_separate", f"{label} {name} is a superuser", exit_code=EXIT_PRIVILEGE)
+        is_builder = name == "data_plane_builder" or (
+            _role_exists(conn, "data_plane_builder")
+            and bool(_one(conn.execute("SELECT pg_has_role(%s, 'data_plane_builder', 'MEMBER')", (name,)).fetchone())))
+        if is_builder:
+            raise VerificationRefused("identity_not_separate", f"{label} {name} is, or is a member of, the builder principal",
+                                      exit_code=EXIT_PRIVILEGE)
+        for owner in owners:
+            if name == owner or _one(conn.execute("SELECT pg_has_role(%s, %s, 'MEMBER')", (name, owner)).fetchone()):
+                raise VerificationRefused(
+                    "identity_not_separate", f"{label} {name} is, or is a member of, {owner}, which OWNS the Gochara tables",
+                    exit_code=EXIT_PRIVILEGE)
+    if session != user:
+        raise VerificationRefused(
+            "identity_not_separate", f"session_user {session} differs from current_user {user}: an elevated session (SET ROLE / "
+            "impersonation) — the job proves the identity it was LOGGED IN as and never uses SET ROLE", exit_code=EXIT_PRIVILEGE)
+    held = _write_surface(conn, user)
     if held:
-        raise VerificationRefused("identity_not_separate", f"{user} holds write privileges on builder tables: {held}",
+        raise VerificationRefused("identity_not_separate", f"{user} holds write privileges on the builder write surface: {held}",
                                   exit_code=EXIT_PRIVILEGE)
     l1_missing = [t for t in L1_READ_TABLES
                   if _one(conn.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{t}",)).fetchone()) is True
@@ -329,9 +370,8 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
     if led != stored_ledger:
         raise VerificationDisagrees("ledger", f"re-derived {led} != stored {stored_ledger}")
     out["inventory_digest"], out["ledger_digest"] = res["digest"], led
-    out["aspect_spans"] = stage("aspect_spans", lambda: inv_v.verify_aspect_span_contacts(
-        conn, chart_id=chart_id, generation=generation, obligations=res["obligations"], position_at=position_at,
-        horizon=horizon, _cache={}))
+    # R10-6: the fixed 3 s / 6 h aspect-span precheck is GONE — `contact_certify` (next) certifies the aspect-to-span contacts,
+    # like every other, under the DERIVED tolerance (accuracy / |speed| + 1 s) and the union-of-contacts contract
     out["geometry"] = stage("contact_geometry", lambda: cc.certify_contact_geometry(
         conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at))
     from . import record_derivation as rd
