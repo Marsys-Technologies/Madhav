@@ -777,10 +777,9 @@ def test_attack_the_jobs_published_only_arms_are_enforced_by_the_seal_and_by_a_f
         seal_as_sealer(w)
 
 
-@pytest.mark.xfail(strict=True, reason="FINDING R11-cand-1 (Stream A, verification_job.run): a GENERATION-level gate violation (event_class '*': input_vector_mismatch, "
-                   "convention_bridge_missing, convention_mismatch) is classified `gate_outside_scope` on a --class SUBSET run — the filter tests `event_class is None`, but the "
-                   "violations carry '*' — so a subset run reports status VERIFIED / gate [] / exit 0 with a generation-level violation open. The seal still refuses; a full run reports it.")
 def test_attack_a_subset_run_must_not_report_verified_with_a_generation_level_violation_open(cbuilt):
+    """FINDING R11-cand-1 (found by this suite, FIXED by Stream A `d4609f181`): a generation-level gate violation (event_class '*') on a --class SUBSET run used to
+    be filed as `gate_outside_scope` and the run reported VERIFIED / exit 0. It now exits 3. (Was a strict xfail until the fix landed.)"""
     w = cbuilt
     _unbridge_the_candidate_manifest(w)
     with pytest.raises(RuntimeError, match=r"verification job exit 3"):
