@@ -5,7 +5,7 @@ author: "Stream B (Śāstra) — Exec B (Claude Sonnet)"
 date: "2026-10-02"
 reviewer: "Codex gpt-6-astra (max) — dispatched by the steward"
 authority: "Review request only; authorizes nothing."
-supersedes: "v1.8. ROUND-8 DELTA. FILL BEFORE DISPATCH: <<WRITER_HEAD>> (Stream A, branch pravaha/a53-am5-inventory) and <<BRIEF_VERSION>>; everything else is final."
+supersedes: "v1.8. ROUND-8 DELTA. Filled at dispatch: writer f4767b0e6 (Stream A, branch pravaha/a53-am5-inventory), brief v1.19."
 ---
 
 # A5.5 gate — round-8 request (2026-10-02)
@@ -36,7 +36,7 @@ Round 7 returned REJECT (R9 CLOSED; 1232 ACCEPT_WITH_AMENDMENTS at source; AM-18
 | **Mandatory scope constructor** | Stream A | `scope_response.coverage_response` is the mandatory positive **and no-window** response constructor reading `stored_scope` from the bound manifest | **PRE-CONDITION, NOT YET MET:** the **serving call site is not yet wired** — the constructor exists; no served response uses it. Listed under PC-5. |
 
 ## §B. Stream A — writer head (to be filled at dispatch)
-* Writer: `pravaha/a53-am5-inventory` @ **<<WRITER_HEAD>>**, brief **<<BRIEF_VERSION>>**. Stream A's round-7 items [1], [7], [3], [2], [5], [8], [9] were at `f886b0ac6` (brief v1.18) when this packet was prepared; **[4] (the ONE codec and version references through the writer, against #2901 `ed03d3c6c`) was in progress**.
+* Writer: `pravaha/a53-am5-inventory` @ **f4767b0e6**, brief **v1.19**. Stream A's round-7 items [1], [7], [3], [2], [5], [8], [9] were at `f886b0ac6` (brief v1.18) when this packet was prepared; **[4] (the ONE codec and version references through the writer, against #2901 `ed03d3c6c`) was in progress**.
 * The inventory verifier still refuses included P2 until an independent derivation exists — `vedha_oracle.py` (#2901) is that oracle's candidate.
 
 ## §C. Standing limits (unchanged)
