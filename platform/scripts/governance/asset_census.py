@@ -2117,7 +2117,7 @@ def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
     fallback literal) and optionally a key `scope` (key_column, null_for, mode); a constant entry names its column, a one-line why and optionally its `value`."""
     if not isinstance(nc, dict):
         raise DeclarationsError(f"{where}.null_convention must be an object or null")
-    _s3_common(where, "null_convention", nc, NULL_CONVENTION_DECL_FIELDS)
+    _s3_common(where, "null_convention", nc, NULL_CONVENTION_DECL_FIELDS, na=False)   # no N/A form exists for Null: an `unverified:` evidence pointer is allowed here as for the non-N/A S3 keys
     _s3_ident(where, "null_convention", "table", nc.get("table"))
     for key in ("nullable", "constants"):
         if not isinstance(nc.get(key), list):
