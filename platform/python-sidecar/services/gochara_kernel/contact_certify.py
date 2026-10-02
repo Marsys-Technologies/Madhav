@@ -27,7 +27,9 @@ _TRANSIT = ("residence", "aspect", "conjunction")
 BOUNDARY_TOLERANCE_STATEMENT = (
     "a reconstructed boundary equals a stored one within accuracy/|speed| + 1 s, where accuracy is the stored contact's "
     "own stated angular accuracy (the solver's 1 arcsecond when none) and speed the body's speed at that instant; at a "
-    "station (|speed| < 1e-3 deg/day) the comparison is in angle, |dlon| <= accuracy + the reconstruction's location error")
+    "station (|speed| < 1e-3 deg/day) the comparison is in angle, |dlon| <= accuracy + the reconstruction's location error; the "
+    "ledger's contacts are compared as a UNION (the builder emits one episode per branch, so retrograde-loop episodes overlap and "
+    "their seams are not boundaries of the contact set)")
 
 
 def _merge(intervals):
@@ -58,6 +60,39 @@ def expected_intervals(position_at, body: str, relation: str, target: str, lo, h
         angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
         return cr.band_intervals(position_at, body, [(lam - a) % 360.0 for a in angles], _POINT_ORB_DEG[relation], lo, hi)
     raise cr.GeometryUnavailable(f"no independent geometry for {relation} on {target!r}")
+
+
+def compare_contact_sets(position_at, body: str, relation: str, target: str, want, have, lo, hi) -> list[str]:
+    """Compare the reconstructed in-geometry intervals `want` with the ledger's contacts `have` — [(t_in, t_out, accuracy_deg)]
+    clipped to [lo, hi) — for ONE (body, relation, target). Returns the problems (empty = they agree).
+
+    The ledger's contacts are the BUILDER's episodes: on a retrograde loop the solver emits one episode per branch, so
+    they may OVERLAP (Saturn, October 2025: one episode for the direct pass and one for the retrograde pass, the retrograde
+    one ending at an arc seam inside the band) where the reconstruction gives the maximal in-geometry interval. What is
+    certified is therefore the UNION of the ledger's contacts: it must equal the reconstructed set, interval for interval
+    (the two sequences pair up boundary for boundary, every union boundary compared with a DERIVED tolerance —
+    `boundary_match` — never a constant in seconds). A seam between overlapping episodes lies inside the union and is
+    not a boundary of the contact SET, so it is not (and must not be) required to sit on an edge."""
+    label = f"{body} {relation} {target}"
+    problems: list[str] = []
+    acc = max([h[2] for h in have] or [bm.DEFAULT_ACCURACY_DEG])
+    union = _merge([(h[0], h[1]) for h in have])
+
+    def same(w, h):
+        return bm.intervals_agree(position_at, body, h, w, acc, lo, hi)
+    if not (len(want) == len(union) and all(same(w, h) for w, h in zip(want, union))):
+        for w in want:
+            if not any(same(w, h) for h in union):
+                problems.append(f"{label}: expected contact [{w[0].isoformat()}, {w[1].isoformat()}) is not in the ledger "
+                                "(omitted, bridged or truncated)")
+        for h in union:
+            if not any(same(w, h) for w in want):
+                problems.append(f"{label}: ledger contact [{h[0].isoformat()}, {h[1].isoformat()}) is not a reconstructed "
+                                "interval (invented, or its support differs)")
+        if not problems:
+            problems.append(f"{label}: {len(union)} ledger contact interval(s) vs {len(want)} reconstructed — the two "
+                            "sequences do not pair up boundary for boundary")
+    return problems
 
 
 def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_class: str, position_at) -> dict:
@@ -94,25 +129,7 @@ def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_clas
         want = expected_intervals(position_at, agent, relation, target, lo, hi)
         have = sorted(ledger.get((agent, relation, target), []))
         expected_total += len(want)
-
-        def same(w, h, _a=agent):
-            # the tolerance is DERIVED (R9-9): the stored contact's own stated angular accuracy and the body's speed at
-            # that instant; at a station the comparison is made in angle — never a constant in seconds
-            return bm.intervals_agree(position_at, _a, (h[0], h[1]), w, h[2], lo, hi)
-        positional = len(want) == len(have) and all(same(w, h) for w, h in zip(want, have))
-        if positional:
-            continue
-        for w in want:
-            if not any(same(w, h) for h in have):
-                problems.append(f"{agent} {relation} {target}: expected contact [{w[0].isoformat()}, {w[1].isoformat()}) "
-                                "is not in the ledger (omitted, bridged or truncated)")
-        for h in have:
-            if not any(same(w, h) for w in want):
-                problems.append(f"{agent} {relation} {target}: ledger contact [{h[0].isoformat()}, {h[1].isoformat()}) "
-                                "is not a reconstructed interval (invented, or its support differs)")
-        if not problems or all(not p.startswith(f"{agent} {relation} {target}") for p in problems):
-            problems.append(f"{agent} {relation} {target}: {len(have)} ledger contact(s) vs {len(want)} reconstructed — "
-                            "the two sequences do not pair up boundary for boundary")
+        problems.extend(compare_contact_sets(position_at, agent, relation, target, want, have, lo, hi))
     if problems:
         raise RuntimeError(f"contact geometry certification failed {event_class}: " + "; ".join(problems))
     return {"obligations_certified": len(concrete), "contacts_expected": expected_total,
@@ -120,4 +137,4 @@ def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_clas
             "boundary_tolerance": BOUNDARY_TOLERANCE_STATEMENT}
 
 
-__all__ = ["BOUNDARY_TOLERANCE_STATEMENT", "certify_contact_geometry", "expected_intervals"]
+__all__ = ["BOUNDARY_TOLERANCE_STATEMENT", "certify_contact_geometry", "compare_contact_sets", "expected_intervals"]

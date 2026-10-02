@@ -152,3 +152,51 @@ def test_a_real_station_is_compared_in_angle_not_in_time():
     assert bm.time_tolerance_seconds(pos, "saturn", station, ARCSEC) is None            # unbounded: compare in angle
     assert bm.boundaries_agree(pos, "saturn", station + timedelta(hours=4), station, ARCSEC)
     assert not bm.boundaries_agree(pos, "saturn", station + timedelta(days=20), station, ARCSEC)
+
+
+# ── the BUILDER's real contacts, certified against the real ephemeris (steward M…082805) ─────────────
+
+def _builder_episodes(body, lo, hi, frac):
+    """The builder's REAL solver (`episodes.solve_episodes`, Swiss-refined) for a 1° conjunction band around a point the body
+    passes through — episodes + the reconstruction's own view of the same geometry."""
+    from datetime import date
+
+    from services.gochara_kernel import arcs as gk_arcs
+    from services.gochara_kernel import episodes as gk_episodes
+    from services.gochara_kernel.knots import sample_knots
+    pos = _swiss()
+    ks = sample_knots(body.title(), (lo - timedelta(days=30)).date(), (hi + timedelta(days=30)).date(), EPHE_PATH)
+    idx = gk_arcs.build_arc_index(body.title(), ks.knot_jds, ks.longitudes_deg)
+    target = pos(body, lo + (hi - lo) * frac)
+    jd = lambda t: t.timestamp() / 86400.0 + 2440587.5                                      # noqa: E731
+    eps = gk_episodes.solve_episodes(idx, body.title(), "conjunction", target, (jd(lo), jd(hi)), "orb_conj_slow",
+                                     ephe_path=EPHE_PATH, refine=True, orb_override_deg=1.0)
+    dt = lambda j: datetime.fromtimestamp((j - 2440587.5) * 86400.0, tz=UTC)                # noqa: E731
+    have = [(max(dt(e.t_in), lo), min(dt(e.t_out), hi), e.tolerance_arcsec / 3600.0) for e in eps]
+    return pos, f"point:{target!r}", have
+
+
+@requires_swieph
+@pytest.mark.parametrize("body,span_days,frac", [("sun", 120, 0.5), ("saturn", 520, 0.7)])
+def test_the_builders_real_contacts_agree_with_the_certification_and_a_moved_boundary_is_refused(body, span_days, frac):
+    """A FAST body (the Sun) and a SLOW one whose track includes a real retrograde loop with a station (Saturn): the
+    builder's own contacts — overlapping per-branch episodes on the loop — are certified against the ephemeris, and the
+    same ledger with ONE boundary moved by more than the tolerance is refused."""
+    lo = T0
+    hi = T0 + timedelta(days=span_days)
+    pos, target, have = _builder_episodes(body, lo, hi, frac)
+    assert have, "the builder solved at least one contact"
+    centre = float(target.split(":", 1)[1])
+    want = cr.band_intervals(pos, body, [centre], 1.0, lo, hi)
+    assert cc.compare_contact_sets(pos, body, "conjunction", target, want, have, lo, hi) == [], (have, want)
+    # negative: move the first interior stored boundary by 4 x its derived tolerance (and by 2 minutes for any body)
+    i = next(k for k, h in enumerate(have) if h[0] > lo)
+    tol = bm.time_tolerance_seconds(pos, body, have[i][0], have[i][2]) or 0.0
+    moved = list(have)
+    a, b, acc = moved[i]
+    moved[i] = (a + timedelta(seconds=max(120.0, 4.0 * tol)), b, acc)
+    problems = cc.compare_contact_sets(pos, body, "conjunction", target, want, moved, lo, hi)
+    assert problems and any("not in the ledger" in p or "not a reconstructed interval" in p for p in problems)
+    if body == "saturn":
+        assert len(have) >= 2 and any(have[k][1] > have[k + 1][0] for k in range(len(have) - 1)), (
+            "the real Saturn loop yields OVERLAPPING per-branch episodes — the union semantics is what makes them agree")

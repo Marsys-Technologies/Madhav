@@ -133,3 +133,55 @@ def test_point_and_aspect_contacts_are_reconstructed_too():
     asp = lambda lon: cc.expected_intervals(lambda b, t: lon, "jupiter", "aspect", "span:7", lo, hi)   # noqa: E731
     assert asp(5.0) == [(lo, hi)] and asp(65.0) == [(lo, hi)] and asp(305.0) == [(lo, hi)]
     assert asp(95.0) == []
+
+
+# ── the edge check and the union semantics, on smooth motion and on the builder's REAL episodes ─────────
+
+def _ramp(w, cusp_day=(1, 10), days=41.0):
+    """Saturn moving smoothly (0.73°/day) through Libra from the stored ingress: 180° at the stored start, 210° at the
+    stored end; every other body quiet."""
+    quiet = _position(w, [])
+
+    def at(body, t):
+        if body.lower() == "saturn":
+            return 180.0 + 30.0 * (t - _t(*cusp_day)).total_seconds() / (days * 86400.0)
+        return quiet(body, t)
+    return at
+
+
+def _saturn_libra_contact(w):
+    from services.gochara_kernel import boundary_match as bm
+    rows = w.conn.execute(
+        "SELECT c.t_in, c.t_out, c.delta_lambda FROM public.ka_gochara_contact c"
+        " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = c.physical_object_id"
+        " WHERE c.body = 'saturn' AND c.relation_kind = 'residence' AND o.canonical_target = 'span:7'").fetchall()
+    return [(r[0], r[1], bm.accuracy_degrees(r[2])) for r in rows]
+
+
+def test_smooth_motion_certifies_the_stored_edges_and_a_later_ingress_is_refused(world):
+    w = world
+    _boot_p3(w)
+    have = _saturn_libra_contact(w)
+    lo, hi = _t(1, 1), _t(3, 1)
+    at = _ramp(w)
+    want = cc.expected_intervals(at, "saturn", "residence", "span:7", lo, hi)
+    assert cc.compare_contact_sets(at, "saturn", "residence", "span:7", want, have, lo, hi) == []
+    late = _ramp(w, cusp_day=(1, 22))                      # an ephemeris whose Libra ingress is 12 days later
+    want = cc.expected_intervals(late, "saturn", "residence", "span:7", lo, hi)
+    problems = cc.compare_contact_sets(late, "saturn", "residence", "span:7", want, have, lo, hi)
+    assert any("is not in the ledger" in p for p in problems) and any("not a reconstructed interval" in p for p in problems)
+
+
+def test_overlapping_builder_episodes_are_certified_as_a_union_not_one_for_one():
+    """The builder emits one episode per BRANCH: on a retrograde loop two episodes overlap where the reconstruction has
+    one maximal interval (found on the real sky: Saturn, October 2025)."""
+    lo, hi = _t(1, 1), _t(3, 1)
+    pos = lambda body, t: 180.0 + 0.0 * (t - lo).total_seconds()                       # noqa: E731  (inside Libra throughout)
+    want = [(lo, hi)]
+    assert cc.compare_contact_sets(pos, "saturn", "residence", "span:7", want, [(lo, _t(2, 10), 2 / 3600.0),
+                                                                                 (_t(1, 20), hi, 2 / 3600.0)],
+                                   lo, hi) == []
+    problems = cc.compare_contact_sets(pos, "saturn", "residence", "span:7", want, [(lo, _t(1, 20), 2 / 3600.0),
+                                                                                    (_t(2, 10), hi, 2 / 3600.0)],
+                                       lo, hi)
+    assert any("not in the ledger" in p for p in problems)                             # a real GAP in the union is not hidden
