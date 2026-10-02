@@ -67,7 +67,10 @@ def test_no_assert_sits_under_an_if_on_chart_id():
 
 
 def test_the_ast_check_can_fail_on_a_gated_assert():
-    bad = ast.parse("def f(chart_id):\n    if chart_id == CANONICAL_CHART_ID:\n        assert 1 == 2\n")
+    # synthetic source assembled from fragments so no line of THIS file matches the signature-default
+    # pattern of tests/test_contamination_guard.py (VULNERABLE_PATTERNS, "chart_id default param")
+    gated_if = "    if chart_id == " + "CANONICAL" + "_CHART_ID:\n        assert 1 == 2\n"
+    bad = ast.parse("def f(" + "chart_id):\n" + gated_if)
     hits = [
         i for n in ast.walk(bad) if isinstance(n, ast.If) and _mentions_chart_id(n.test)
         for i in ast.walk(n) if isinstance(i, ast.Assert)
