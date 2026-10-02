@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-29T14:24:24.000Z",
-  "content_hash": "sha256:6c1aefca7601a9b7204471e0a3ccc03fe8ffa31819e5800b0d5e36fe83e156a8",
-  "source_catalog_fingerprint": "sha256:c25c7054e950458670605467787ef003ae5608361674f471ce0e114bdbb2874c",
+  "generated_at": "2026-10-02T00:30:26.000Z",
+  "content_hash": "sha256:0cbfae115923cf57e826e345bbcf529d9b2b57e3097587cab1238c972f9e0da3",
+  "source_catalog_fingerprint": "sha256:88236c930d0c507788031b5046a03ac957ecfa2d4ad4edb0ffb85ad009782997",
   "semantic_review_fingerprint": "sha256:a6b1381de72b70ea0d3d06542c7693135daf1a1f04dee340e470193af010a43d",
   "producer_contract_fingerprint": "sha256:a68b6466f7c05ad9f904c99226480754d28b1c7b551850b5ccc7430a683031cf",
   "scus": [
@@ -5612,7 +5612,7 @@
       "scu_id": "scu.catalog.get_condition_composite",
       "version": 1,
       "label": "Get Condition Composite",
-      "description": "Retrieve the unified per-graha condition rollup for a chart from ga_condition_composite. Per-graha row bundles: dignity_d1 + dignity_score_d1 + varga_dignity_spread/composite; all 5 avastha states (baladi/jagradadi/deeptaadi/lajjitaadi/sayanadi); motion_state, speed_degrees_per_day, is_retrograde, combustion_arc_from_sun, is_combust/deeply_combust; naisargika/tatkalika/panchadha friendship relations; graha_yuddha_with/result; a unified condition_score (0-1, condition_score_breakdown JSON) with formula version; and peak_dasha_periods/weak_dasha_periods (high/low-condition dasha windows). Filters: graha, ayanamsha_id. Bounded to 50 rows with a disclosed total. Evidence use: qualify planetary condition, strength, and exceptions without interpreting them.",
+      "description": "Retrieve the unified per-graha condition rollup for a chart from ga_condition_composite. Per-graha row bundles: dignity_d1 + dignity_score_d1 + varga_dignity_spread/composite; all 5 avastha states (baladi/jagradadi/deeptaadi/lajjitaadi/sayanadi); motion_state, speed_degrees_per_day, is_retrograde, combustion_arc_from_sun, is_combust/deeply_combust; naisargika/tatkalika/panchadha friendship relations; graha_yuddha_with/result; a unified condition_score (0-1, condition_score_breakdown JSON) with formula version; and peak_dasha_periods/weak_dasha_periods (high/low-condition dasha windows). Filters: graha, ayanamsha_id, varga_fallback_used (true = only rows whose condition_score was computed on D1 dignity ALONE because no divisional composite was available; false = rows that read divisional dignity). Every row carries varga_fallback_used (true/false/null); d1_fallback_rows_in_page and d1_fallback_total_matching count the D1-only rows separately so they are never read as divisional-based scores. Bounded to 50 rows with a disclosed total. Evidence use: qualify planetary condition, strength, and exceptions without interpreting them.",
       "kind": "datum",
       "domains": [
         "planetary_condition"
@@ -5636,7 +5636,8 @@
         "ayanamsha_id",
         "chart_id",
         "graha",
-        "limit"
+        "limit",
+        "varga_fallback_used"
       ],
       "outputs": [
         "condition_qualifiers",
@@ -5684,7 +5685,8 @@
             "ayanamsha_id": "string:optional",
             "chart_id": "string:required",
             "graha": "string:optional",
-            "limit": "number:optional"
+            "limit": "number:optional",
+            "varga_fallback_used": "boolean:optional"
           },
           "output_contract": {
             "content": "ToolResult.content"

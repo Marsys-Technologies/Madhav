@@ -1,0 +1,10 @@
+{
+  "lane": "get_condition_composite_served_fallback",
+  "ruling": "served surfacing of ga_condition's D1 fallback (SS N-62, X2, I-29), wave 2 piece",
+  "pr": "branch suvarna/land/TI-w2-condition-served-001",
+  "charts": [
+    "482012f1"
+  ],
+  "description": "get_condition_composite serves varga_fallback_used (Dens facet) and varga_fallback_reason, and counts D1-fallback rows separately. It is a READ-ONLY served tool: it writes no table, so no detector-visible change to any detector-read table is attributed. May-change is deliberately empty. The producing writer change is #2890 (hook ga_condition_fallback.json there). See BAND_X2_WAVE2_SERVED_SURFACING_v1_0.md.",
+  "may_change": []
+}
