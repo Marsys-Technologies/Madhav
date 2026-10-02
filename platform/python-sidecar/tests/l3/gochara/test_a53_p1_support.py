@@ -62,9 +62,10 @@ def _world(monkeypatch, tmp_path, faithful):
     w = writer_mod.GocharaV5Writer()
 
     def step(key):
-        ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-p1", db_conn=conn,
-                          config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe},
-                          dry_run=False)
+        config = {"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}
+        if wd.result_policy is not None:           # R9-1: the manifest's result policy (default: all_null_candidate/1)
+            config["result_policy"] = wd.result_policy
+        ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-p1", db_conn=conn, config=config, dry_run=False)
         with conn.transaction():
             return w.run_substep(ctx, SubStep(key=key, label=key))
 
@@ -141,6 +142,7 @@ def _world(monkeypatch, tmp_path, faithful):
     wd = W()
     wd.conn, wd.step, wd.set_periods, wd.boot, wd.seed, wd.grain = conn, step, set_periods, boot, seed_crossings, grain
     wd.set_lord_periods = set_lord_periods
+    wd.result_policy = None
     try:
         yield wd
     finally:

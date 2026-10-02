@@ -79,8 +79,9 @@ def test_the_vector_binds_every_named_component_and_is_deterministic(db, ephe):
     assert set(v["ephemeris"]) == {"backend", "swe_version", "files", "probe_digest", "library_sha256", "platform"}
     assert len(v["ephemeris"]["library_sha256"]) == 64                       # the loaded library ARTIFACT, bound
     assert v["ephemeris"]["platform"] == iv.platform_identity() and "-" in v["ephemeris"]["platform"]
-    assert set(v) == {"schema", "stored_scope", "sky_convention", "registry", "node", "ephemeris", "l0",
-                      "orb_policy", "rulings_digest", "implementation"}
+    assert set(v) == {"schema", "stored_scope", "result_policy", "sky_convention", "registry", "node", "ephemeris",
+                      "l0", "orb_policy", "rulings_digest", "implementation"}
+    assert v["result_policy"] == "all_null_candidate/1"
     assert set(v["sky_convention"]) == {"id", "content_digest"} and len(v["sky_convention"]["content_digest"]) == 64
     assert set(v["l0"]) == {"bg_transit_rules"}                 # bg_transit_av_gates: P5 is held, not consumed
     assert v["stored_scope"] == "stored_non_moon"
@@ -334,7 +335,7 @@ def test_the_independent_input_check_derives_every_derivable_component_and_names
     mods = iv.IMPLEMENTATION_MODULES
     out = ivv.verify_inputs(db, stored, ephe_path=ephe, modules=mods, path_refs=REFS)
     assert set(out["derived"]) == {"registry", "l0", "sky_convention", "ephemeris.files", "ephemeris.library",
-                                   "node", "implementation"}
+                                   "result_policy", "node", "implementation"}
     assert set(out["not_derived"]) == {"orb_policy", "rulings_digest"}      # named: a pass never claims them
     # each independently derived component is individually caught
     for label, tamper, match in (
@@ -673,7 +674,7 @@ def test_the_sky_identity_is_the_id_and_a_digest_of_the_stored_content():
 import copy as _copy                                                   # noqa: E402
 import json as _json                                                   # noqa: E402
 
-FROZEN = Path(__file__).parent / "fixtures" / "am16_vectors_frozen_v2.json"
+FROZEN = Path(__file__).parent / "fixtures" / "am16_vectors_frozen_v3.json"
 #: the INPUTS the frozen vectors were generated from (Stream B's `am16_vectors_model.py` BASE, vendored with
 #: the frozen file v2 at campaign/pravaha 6ba0c5fc7 — schema /2 adds ephemeris.library_sha256 + platform; if either
 #: moves, this test is the alarm)
@@ -693,7 +694,8 @@ _BASE = {
         "census": [["P3", "1.0.0"], ["P3", "1.1.0"]],
     },
     "node": {"model": "mean", "source": "swiss_mean_node_flg_sidereal", "zodiac": "sidereal", "ayanamsha": "lahiri"},
-    "swe_version": "2.10.03", "stored_scope": "stored_non_moon", "probe_digest": "6ea09e40aad66687" + "0" * 48,
+    "swe_version": "2.10.03", "stored_scope": "stored_non_moon", "result_policy": "all_null_candidate/1",
+    "probe_digest": "6ea09e40aad66687" + "0" * 48,
     "library_sha256": "5ee1ab0c" + "e" * 56, "platform": "Linux-x86_64",
     "opened_files": {"sepl_18.se1": "a" * 64, "semo_18.se1": "b" * 64},
     "l0_rows": {"bg_transit_rules": [{"graha": "sun", "house": 4, "rule_type": "vedha", "obstructor_house": 10}]},
@@ -717,6 +719,7 @@ def _mutate(case):
     elif case == "l0_rows_only": d["l0_rows"]["bg_transit_rules"][0]["obstructor_house"] = 9
     elif case == "kernel_factor_source": d["impl_modules"]["evaluation"]["kernel_factor"] = "1" * 64
     elif case == "stored_scope_only": d["stored_scope"] = "stored_all"
+    elif case == "result_policy_only": d["result_policy"] = "window_qualification/1"
     elif case == "probe_digest_only": d["probe_digest"] = "1" * 64
     elif case == "library_artifact_only": d["library_sha256"] = "7" * 64
     elif case == "platform_only": d["platform"] = "Darwin-arm64"
@@ -726,7 +729,8 @@ def _mutate(case):
 
 CASES = ["base", "membership_only", "node_series_only", "window_algorithm_only", "prerequisite_order_only",
          "census_only", "orb_policy_only", "l0_rows_only", "kernel_factor_source", "stored_scope_only",
-         "probe_digest_only", "audit_field_only", "unopened_file_only", "library_artifact_only", "platform_only"]
+         "probe_digest_only", "audit_field_only", "unopened_file_only", "library_artifact_only", "platform_only",
+         "result_policy_only"]
 
 
 @pytest.mark.parametrize("case", CASES)
@@ -755,7 +759,7 @@ def test_every_frozen_case_changes_exactly_the_component_it_should_and_the_unobs
             "window_algorithm_only": "implementation.window", "prerequisite_order_only": "registry.digest",
             "census_only": "registry.census", "orb_policy_only": "orb_policy.activity.1.1.0",
             "l0_rows_only": "l0.bg_transit_rules", "kernel_factor_source": "implementation.evaluation",
-            "stored_scope_only": "stored_scope", "probe_digest_only": "ephemeris.probe_digest",
+            "stored_scope_only": "stored_scope", "result_policy_only": "result_policy", "probe_digest_only": "ephemeris.probe_digest",
             "library_artifact_only": "ephemeris.library_sha256", "platform_only": "ephemeris.platform"}
     for case, component in want.items():
         diff = iv.diff_vectors(base, iv.assemble_vector(_mutate(case)))
@@ -805,9 +809,23 @@ def test_a_new_build_without_the_library_identity_is_refused_not_serialized():
         bad = {k: v for k, v in _BASE.items() if k != key}
         with pytest.raises(KeyError):
             iv.assemble_vector(bad)
-    assert iv.VECTOR_SCHEMA == "ka_gochara_input_vector/2"
-    with pytest.raises(iv.InputDrift, match="schema"):
-        iv.verify_live(None, {"schema": "ka_gochara_input_vector/1"})              # a /1 vector is refused by schema
+    assert iv.VECTOR_SCHEMA == "ka_gochara_input_vector/3"
+    for old in ("ka_gochara_input_vector/1", "ka_gochara_input_vector/2"):
+        with pytest.raises(iv.InputDrift, match="schema"):
+            iv.verify_live(None, {"schema": old})                                  # an older vector is refused by schema
+
+
+def test_a_new_build_without_a_named_result_policy_is_refused_not_serialized():
+    """R9-1: the result policy is a REQUIRED key of the manifest vector (schema /3) — no optional form, and only a
+    NAMED policy can be bound."""
+    bad = {k: v for k, v in _BASE.items() if k != "result_policy"}
+    with pytest.raises(KeyError):
+        iv.assemble_vector(bad)
+    with pytest.raises(iv.InputDrift, match="result_policy"):
+        iv.assemble_vector({**_BASE, "result_policy": "all_null"})
+    assert iv.RESULT_POLICIES == ("all_null_candidate/1", "window_qualification/1")
+    assert iv.DEFAULT_RESULT_POLICY == "all_null_candidate/1"
+    assert iv.assemble_vector(_BASE)["result_policy"] == "all_null_candidate/1"
 
 
 # ═══ the public ephemeris component (steward M20261002T043431-8a08; Stream B S1-REQ-EPHEMERIS) ═══════════════

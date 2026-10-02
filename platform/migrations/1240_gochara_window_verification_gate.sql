@@ -101,9 +101,11 @@ CREATE OR REPLACE FUNCTION public.ka_gochara_window_qualification_ok(q jsonb)
 RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = pg_catalog, public AS $$
   SELECT q IS NULL OR (
     jsonb_typeof(q) = 'object'
-    AND q ?& ARRAY['unqualified_reason', 'unresolved', 'affected_channels', 'members', 'qualified_members']
+    AND q ?& ARRAY['policy', 'unqualified_reason', 'unresolved', 'affected_channels', 'members', 'qualified_members']
     AND NOT EXISTS (SELECT 1 FROM jsonb_object_keys(q) k
-                    WHERE k NOT IN ('unqualified_reason', 'unresolved', 'affected_channels', 'members', 'qualified_members'))
+                    WHERE k NOT IN ('policy', 'unqualified_reason', 'unresolved', 'affected_channels', 'members', 'qualified_members'))
+    -- R9-1: the result policy this window was drafted under — one of the two NAMED policies
+    AND (q -> 'policy') IN ('"all_null_candidate/1"'::jsonb, '"window_qualification/1"'::jsonb)
     AND (jsonb_typeof(q -> 'unqualified_reason') IN ('string', 'null'))
     AND jsonb_typeof(q -> 'unresolved') = 'object'
     AND jsonb_typeof(q -> 'affected_channels') = 'array'
@@ -127,14 +129,22 @@ ALTER TABLE public.ka_gochara_eval_window
   ADD CONSTRAINT kgew_unqualified_no_result_ck CHECK (
     qualification IS NULL OR (qualification -> 'unqualified_reason') = 'null'::jsonb
     OR (peak_instant IS NULL AND score IS NULL AND evidence_for IS NULL AND evidence_against IS NULL
-        AND objective_value IS NULL));
+        AND objective_value IS NULL)),
+  -- R9-1: under `all_null_candidate/1` EVERY numerical result field is NULL, the peak absent, the valence unqualified,
+  -- for every path and channel composition (constant objectives and empty sums included)
+  ADD CONSTRAINT kgew_all_null_policy_ck CHECK (
+    qualification IS NULL OR (qualification ->> 'policy') IS DISTINCT FROM 'all_null_candidate/1'
+    OR (peak_instant IS NULL AND score IS NULL AND evidence_for IS NULL AND evidence_against IS NULL
+        AND severity IS NULL AND objective_value IS NULL
+        AND outcome_valence_for_native = 'unqualified'
+        AND (qualification ->> 'unqualified_reason') = 'all_null_candidate_policy'));
 
 COMMENT ON COLUMN public.ka_gochara_eval_window.objective IS
   'A5.3 R8-4: the NAME of the function the peak maximises (max_min_agent_activity | evidence_for_per_root_sum).';
 COMMENT ON COLUMN public.ka_gochara_eval_window.objective_value IS
   'A5.3 R8-4: that function''s value at the peak — distinct from `score` (the max live record product). NULL when unqualified.';
 COMMENT ON COLUMN public.ka_gochara_eval_window.qualification IS
-  'A5.3 R8-4: structured qualification provenance {unqualified_reason, unresolved{reason:records}, affected_channels[], members, qualified_members} — closed keys.';
+  'A5.3 R8-4/R9-1: structured qualification provenance {policy, unqualified_reason, unresolved{reason:records}, affected_channels[], members, qualified_members} — closed keys.';
 
 -- ── 2. the verification result ────────────────────────────────────────────────
 CREATE TABLE public.ka_gochara_eval_window_verification (
@@ -295,7 +305,11 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
   required_fields AS (
     SELECT ARRAY['evidence_against','evidence_for','interval','membership','null_states_used','objective',
                  'objective_value','outcome_valence_for_native','peak_instant','qualification','score',
-                 'severity']::text[] AS f)
+                 'severity']::text[] AS f),
+  -- R9-1: the policy the generation's MANIFEST selected (the vector's `result_policy`), the only source of truth
+  mp AS (
+    SELECT p.input_generation_vector ->> 'result_policy' AS pol
+    FROM public.kala_gochara_publication p WHERE p.chart_id = p_chart AND p.generation = p_generation)
   SELECT e.event_class, e.path_id, e.rule_version, 'window_verification_missing'::text,
          'no window verification result for this grain'::text
   FROM expected e
@@ -308,9 +322,43 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
   FROM public.ka_gochara_eval_window_verification v
   WHERE v.chart_id = p_chart AND v.generation = p_generation AND v.status <> 'VERIFIED'
   UNION ALL
+  SELECT e.event_class, e.path_id, e.rule_version, 'result_policy_not_selected'::text,
+         'the manifest vector selects no known result policy'::text
+  FROM expected e
+  WHERE NOT EXISTS (SELECT 1 FROM mp WHERE mp.pol IN ('all_null_candidate/1', 'window_qualification/1'))
+  UNION ALL
   SELECT v.event_class, v.path_id, v.rule_version, 'window_verification_policy_unknown'::text, v.policy_version
   FROM public.ka_gochara_eval_window_verification v
-  WHERE v.chart_id = p_chart AND v.generation = p_generation AND v.policy_version <> 'window_qualification/1'
+  WHERE v.chart_id = p_chart AND v.generation = p_generation
+    AND v.policy_version NOT IN ('all_null_candidate/1', 'window_qualification/1')
+  UNION ALL
+  SELECT v.event_class, v.path_id, v.rule_version, 'window_verification_policy_differs_from_manifest'::text,
+         (v.policy_version || ' vs ' || COALESCE((SELECT pol FROM mp), 'none'))::text
+  FROM public.ka_gochara_eval_window_verification v
+  WHERE v.chart_id = p_chart AND v.generation = p_generation
+    AND v.policy_version IS DISTINCT FROM (SELECT pol FROM mp)
+  UNION ALL
+  SELECT e.event_class, e.path_id, e.rule_version, 'window_policy_differs_from_manifest'::text,
+         (count(*) || ' window(s) were drafted under a policy other than the manifest''s')::text
+  FROM expected e
+  JOIN public.ka_gochara_eval_window w
+    ON (w.chart_id, w.generation, w.event_class, w.path_id, w.rule_version)
+     = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)
+  WHERE w.qualification IS NOT NULL AND (w.qualification ->> 'policy') IS DISTINCT FROM (SELECT pol FROM mp)
+  GROUP BY e.event_class, e.path_id, e.rule_version
+  UNION ALL
+  -- the all-NULL policy: a window that carries ANY number (or a peak, or a valence other than unqualified) is refused
+  SELECT e.event_class, e.path_id, e.rule_version, 'window_carries_a_number_under_all_null_policy'::text,
+         (count(*) || ' window(s) carry a numerical result or peak while all_null_candidate/1 is in force')::text
+  FROM expected e
+  JOIN public.ka_gochara_eval_window w
+    ON (w.chart_id, w.generation, w.event_class, w.path_id, w.rule_version)
+     = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)
+  WHERE (SELECT pol FROM mp) = 'all_null_candidate/1'
+    AND (w.peak_instant IS NOT NULL OR w.score IS NOT NULL OR w.evidence_for IS NOT NULL
+         OR w.evidence_against IS NOT NULL OR w.severity IS NOT NULL OR w.objective_value IS NOT NULL
+         OR w.outcome_valence_for_native IS DISTINCT FROM 'unqualified')
+  GROUP BY e.event_class, e.path_id, e.rule_version
   UNION ALL
   SELECT v.event_class, v.path_id, v.rule_version, 'window_verification_field_coverage_short'::text,
          array_to_string(ARRAY(SELECT f FROM unnest((SELECT f FROM required_fields)) f
@@ -479,12 +527,21 @@ CREATE TRIGGER ka_gochara_generation_seal_zz_window_verified
   FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_generation_seal_window_guard();
 
 -- ── 7. privileges (role-existence-guarded; explicit; table-level; no SECURITY DEFINER) ─────────────────
--- The builder gets NOTHING on the verification table. The VERIFIER writes it (INSERT; pre-seal DELETE — enforced by the
+-- The builder gets NOTHING on the verification table, and exactly ONE function: EXECUTE on the window CHECK helper
+-- `ka_gochara_window_qualification_ok(jsonb)`, which this migration's own `kgew_qualification_shape_ck` CALLS on every
+-- window INSERT — production revokes PUBLIC EXECUTE, and a table INSERT grant does not carry the function privilege, so
+-- without it the restricted builder cannot insert a window at all (Codex round 9, R9-4). The VERIFIER writes it (INSERT; pre-seal DELETE — enforced by the
 -- write guard) and reads what it verifies; the SEALER reads it and runs the gate (the seal trigger fires as the sealing
 -- role). EXECUTE lists were derived by running the real flows as these roles under a PUBLIC-EXECUTE-revoked schema and
 -- adding one grant per `permission denied` until the suite converged (the live tests are the detector).
 DO $$
 BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'data_plane_builder') THEN
+    GRANT EXECUTE ON FUNCTION public.ka_gochara_window_qualification_ok(jsonb) TO data_plane_builder;
+    RAISE NOTICE 'migration 1240: builder EXECUTE on ka_gochara_window_qualification_ok issued to role data_plane_builder (and nothing on the verification table)';
+  ELSE
+    RAISE NOTICE 'migration 1240: role data_plane_builder NOT FOUND — NO builder grant was issued; once it exists it needs EXECUTE on ka_gochara_window_qualification_ok(jsonb) or it cannot insert a window';
+  END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_verifier') THEN
     GRANT SELECT, INSERT, DELETE ON public.ka_gochara_eval_window_verification TO gochara_verifier;
     GRANT SELECT ON
@@ -493,7 +550,7 @@ BEGIN
       public.kala_gochara_coverage, public.ka_gochara_search_inventory, public.ka_gochara_search_path_pin,
       public.ka_gochara_search_input_snapshot, public.ka_gochara_generation_seal,
       public.ka_gochara_rule_path, public.ka_gochara_rule_path_seal,
-      public.ka_gochara_rule_path_soft_factor, public.ka_gochara_factor
+      public.ka_gochara_rule_path_soft_factor, public.ka_gochara_factor, public.kala_gochara_publication
       TO gochara_verifier;
     GRANT EXECUTE ON FUNCTION
       public.ka_gochara_lock_chart(uuid), public.ka_gochara_lock_global_shared(),
@@ -514,7 +571,7 @@ BEGIN
     GRANT SELECT ON
       public.ka_gochara_eval_window, public.ka_gochara_eval_window_record,
       public.ka_gochara_relationship_record, public.ka_gochara_search_path_pin,
-      public.ka_gochara_search_input_snapshot, public.ka_gochara_generation_seal
+      public.ka_gochara_search_input_snapshot, public.ka_gochara_generation_seal, public.kala_gochara_publication
       TO gochara_sealer;
     GRANT EXECUTE ON FUNCTION
       public.ka_gochara_window_verification_violations(uuid, text),

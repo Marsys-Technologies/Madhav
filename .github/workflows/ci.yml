@@ -373,7 +373,7 @@ jobs:
         run: |
           pip install -r python-sidecar/requirements-ci.txt --quiet
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_a53_migration_1240_static.py tests/l3/gochara/test_a53_window_verification_gate.py tests/l3/gochara/test_a53_window_verification_roles.py tests/l3/gochara/test_a53_p1_anchor.py tests/l3/gochara/test_a53_p1_support.py tests/l3/gochara/test_a53_scope_completeness.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_a53_migration_1240_static.py tests/l3/gochara/test_a53_window_verification_gate.py tests/l3/gochara/test_a53_window_verification_roles.py tests/l3/gochara/test_a53_builder_restricted_flow.py tests/l3/gochara/test_a53_all_null_policy.py tests/l3/gochara/test_a53_all_null_policy_db.py tests/l3/gochara/test_a53_p1_anchor.py tests/l3/gochara/test_a53_p1_support.py tests/l3/gochara/test_a53_scope_completeness.py -q --tb=short -rs -p no:cacheprovider
 
       - name: RATE-07 — provision the rate-limit bucket DB (migration 580, real file)
         # A third throwaway database, bare: migration 580 is self-contained

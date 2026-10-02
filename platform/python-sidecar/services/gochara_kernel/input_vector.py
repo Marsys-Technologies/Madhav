@@ -35,7 +35,13 @@ from typing import Iterable
 
 from panchang_engine.swiss_state import serialized_swiss_state
 
-VECTOR_SCHEMA = "ka_gochara_input_vector/2"
+VECTOR_SCHEMA = "ka_gochara_input_vector/3"
+#: R9-1 (steward M20261002T062742-e773): the numeric-result policy the generation is built, verified and gated UNDER is a
+#: REQUIRED key of the manifest vector — selected by the manifest, never by a writer constant. `all_null_candidate/1` =
+#: every numerical result field NULL for every path/channel (this milestone); `window_qualification/1` = the policy that
+#: applies when numbers are enabled.
+from .result_policy import (DEFAULT_RESULT_POLICY, POLICY_ALL_NULL, POLICY_QUALIFICATION,  # noqa: E402
+                            RESULT_POLICIES)
 REGISTRY_DIGEST_SCHEMA = "ka_gochara_registry_digest/1"
 STORED_SCOPE = "stored_non_moon"
 EXCLUDED_AUDIT_FIELDS = ("created_at", "sealed_at")
@@ -57,7 +63,8 @@ IMPLEMENTATION_MODULES = {
         "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "flat_selector", "frames",
         "kernel_factor", "nature", "p6", "permission", "predicates", "records", "registry", "score", "strength",
         "valence", "vedha", "vedha_derive")),
-    "window": tuple(_K + m for m in ("window_gate", "window_store", "window_sweep", "window_verifier")),
+    "window": tuple(_K + m for m in ("result_policy", "window_gate", "window_store", "window_sweep",
+                                     "window_verifier")),
 }
 
 # The L0 authorities a path READS, and which loader reads them (R8-1). `bg_transit_rules` is consumed ONLY
@@ -181,6 +188,12 @@ def _ephemeris_component(inp: dict) -> dict:
             "probe_digest": inp["probe_digest"]}
 
 
+def _require_policy(policy):
+    if policy not in RESULT_POLICIES:
+        raise InputDrift(f"result_policy {policy!r} is not one of {RESULT_POLICIES}")
+    return policy
+
+
 def assemble_vector(inp: dict) -> dict:
     """The vector from already-obtained inputs, PURE — the single serializer `build_input_vector` and the
     frozen test vectors (`am16_vectors_frozen_v1.json`, literal preimages + expected sha256) both use."""
@@ -190,6 +203,8 @@ def assemble_vector(inp: dict) -> dict:
         # tier. 1232's completeness function refuses a manifest vector without it, and serving must
         # be able to state it with every answer.
         "stored_scope": inp["stored_scope"],
+        # R9-1: the numeric-result policy in force — REQUIRED (no optional form), a named member of RESULT_POLICIES
+        "result_policy": _require_policy(inp["result_policy"]),
         "sky_convention": {"id": inp["sky_id"], "content_digest": _sha(canonical_json(inp["sky_vector"]))},
         "registry": {"digest": registry_digest_of(inp["registry"]),
                      "census": sorted([list(c) for c in inp["registry"]["census"]])},
@@ -419,7 +434,8 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
                        path_refs: Iterable[tuple[str, str]], rulings: Iterable[dict],
                        horizon: tuple | None = None, bodies: Iterable[str] | None = None,
                        files_probe=None, series_probe=None, modules: dict | None = None,
-                       l0_consumed: Iterable[str] = (), census_override=None) -> dict:
+                       l0_consumed: Iterable[str] = (), census_override=None,
+                       result_policy: str = DEFAULT_RESULT_POLICY) -> dict:
     """The vector of what this build CONSUMES. `l0_consumed` names the L0 authorities actually read (none ⇒
     none is a dependency); `census_override` (historical replay) restates the ORIGINAL sealed-version census."""
     from .substrate import SUBSTRATE_BODIES, SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START
@@ -439,7 +455,8 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
         (list(EXCLUDED_AUDIT_FIELDS), sky_convention_id)).fetchone()
     sky_vector = sky_row[0] if not isinstance(sky_row, dict) else next(iter(sky_row.values()))
     return assemble_vector({
-        "stored_scope": STORED_SCOPE, "sky_id": sky_convention_id, "sky_vector": sky_vector,
+        "stored_scope": STORED_SCOPE, "result_policy": result_policy,
+        "sky_id": sky_convention_id, "sky_vector": sky_vector,
         "registry": payload, "node": node_identity(), "ephemeris": eph,
         "l0_digests": l0_identities(conn, l0_consumed),
         "admission_orb": {"orb_table": ORB_TABLE, "point_orb_source": POINT_ORB_SOURCE},
@@ -480,6 +497,7 @@ def verify_replay(conn, stored: dict, path_refs: Iterable[tuple[str, str]], **kw
     if stored.get("schema") != VECTOR_SCHEMA:
         raise InputDrift(f"manifest vector schema {stored.get('schema')!r} != {VECTOR_SCHEMA!r}")
     kw.setdefault("l0_consumed", tuple(stored.get("l0", {})))
+    kw.setdefault("result_policy", stored.get("result_policy"))
     replayed = build_input_vector(conn, path_refs=path_refs, census_override=stored["registry"]["census"], **kw)
     diff = diff_vectors(stored, replayed)
     if diff:
@@ -495,6 +513,7 @@ def verify_live(conn, stored: dict, **kw) -> None:
     if stored.get("schema") != VECTOR_SCHEMA:
         raise InputDrift(f"manifest vector schema {stored.get('schema')!r} != {VECTOR_SCHEMA!r}")
     kw.setdefault("l0_consumed", tuple(stored.get("l0", {})))
+    kw.setdefault("result_policy", stored.get("result_policy"))
     live = build_input_vector(conn, **kw)
     diff = diff_vectors(stored, live)
     if diff:
@@ -504,7 +523,8 @@ def verify_live(conn, stored: dict, **kw) -> None:
 
 
 __all__ = ["EXCLUDED_AUDIT_FIELDS", "IMPLEMENTATION_MODULES", "InputDrift", "REGISTRY_DIGEST_SCHEMA",
-           "EPHEMERIS_KEYS", "L0_CONSUMED", "VECTOR_SCHEMA", "activity_orb_states", "ephemeris_component", "l0_identities",
+           "DEFAULT_RESULT_POLICY", "EPHEMERIS_KEYS", "L0_CONSUMED", "POLICY_ALL_NULL", "POLICY_QUALIFICATION",
+           "RESULT_POLICIES", "VECTOR_SCHEMA", "activity_orb_states", "ephemeris_component", "l0_identities",
            "library_artifact_sha",
            "platform_identity",
            "probe_opened_files", "sky_convention_identity", "admission_orb_digest", "build_input_vector",

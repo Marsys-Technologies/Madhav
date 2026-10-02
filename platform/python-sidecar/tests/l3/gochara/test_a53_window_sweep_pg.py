@@ -68,6 +68,18 @@ def _declared_rows(path, version):
     return [dict(r) for r in ws.registry_factor_rows(path, "1.1.0")]
 
 
+def _qualification_manifest(conn, store, sky_cid, kala_cid):
+    """A CANDIDATE manifest whose vector selects `window_qualification/1` — these fixtures exercise the numbers-enabled
+    policy's semantics; the policy is the MANIFEST's (R9-1), so the generation must have one."""
+    from services.gochara_kernel import ledger as gk_ledger
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        store.ensure_bridge(kala_cid, sky_cid)
+        gk_ledger.publish_candidate(conn, CHART_ID, GEN, kala_cid, {"result_policy": "window_qualification/1"},
+                                    {"backend": "swieph"}, "[2025-01-01T00:00:00+00:00,2026-01-01T00:00:00+00:00)",
+                                    writer_asset_id="ka_gochara_v5")
+
+
 @pytest.fixture()
 def grain(pg):
     """Registry sealed, coverage written, one admitted P3 record materialised."""
@@ -79,6 +91,7 @@ def grain(pg):
         _seed_saturn_crossings(conn, sky_cid)
     store = rs.RecordStore(conn)
     kala_cid = store.ensure_kala_convention()
+    _qualification_manifest(conn, store, sky_cid, kala_cid)
     with conn.transaction():
         conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         rs.write_class_coverage(store, **_coverage_kwargs(store, kala_cid, sky_cid))
@@ -252,6 +265,7 @@ def p2_grain(pg):
         _seed_crossings(conn, sky_cid, "Saturn", ((0.0, 20), (30.0, 120)))
     store = rs.RecordStore(conn)
     kala_cid = store.ensure_kala_convention()
+    _qualification_manifest(conn, store, sky_cid, kala_cid)
     cls = "career_advancement"
     edges = [e for e in ev.enumerate_edges(cls, "P2", CHART)
              if e.transit and e.agent == "saturn" and e.relation == "residence"
@@ -435,6 +449,7 @@ def p4_grain(pg):
         _seed_crossings(conn, sky_cid, "Saturn", ((180.0, 100), (210.0, 300)))
     store = rs.RecordStore(conn)
     kala_cid = store.ensure_kala_convention()
+    _qualification_manifest(conn, store, sky_cid, kala_cid)
     cls = "marriage"
     edges = [e for e in ev.enumerate_edges(cls, "P4", CHART)
              if e.transit and e.relation == "residence" and e.obj.canonical_target == "span:7"]

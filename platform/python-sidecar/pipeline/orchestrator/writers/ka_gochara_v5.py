@@ -67,6 +67,7 @@ from services.gochara_kernel import inventory as gk_inventory
 from services.gochara_kernel import input_vector as gk_input_vector
 from services.gochara_kernel import input_vector_verifier as gk_input_vector_verifier
 from services.gochara_kernel import window_sweep as gk_window_sweep
+from services.gochara_kernel import result_policy as gk_result_policy
 from services.gochara_kernel.record_verifier import (verify_p1_anchors, verify_p1_house_descriptor,
                                                     verify_p1_support)
 from services.gochara_kernel import window_gate as gk_window_gate
@@ -435,7 +436,10 @@ class GocharaV5Writer(WriterBase):
             vector = gk_input_vector.build_input_vector(
                 ctx.db_conn, sky_convention_id=sky_cid, ephe_path=ephe_path,
                 path_refs=gk_rule_registry.bound_path_refs(), rulings=_applicable_rulings(),
-                l0_consumed=_l0_consumed())
+                l0_consumed=_l0_consumed(),
+                # R9-1: the policy is an INPUT of the build, chosen here and bound into the manifest; every later
+                # stage reads it back FROM the manifest — nothing downstream holds its own constant
+                result_policy=ctx.config.get("result_policy", gk_input_vector.DEFAULT_RESULT_POLICY))
             # every component that can be derived without the builder's code is derived a SECOND way and the two
             # must agree before the identity is bound
             gk_input_vector_verifier.verify_inputs(
@@ -752,6 +756,9 @@ class GocharaV5Writer(WriterBase):
             return lon
 
         store = WindowStore(ctx.db_conn)
+        # R9-1: the result policy is read BACK from the generation's manifest (the vector the build was bound to) —
+        # this writer holds no policy constant of its own
+        policy = gk_result_policy.manifest_policy(ctx.db_conn, chart_id, GENERATION)
         # R5: the declaration the sweep evaluates is the PERSISTED one, read back (each soft factor at
         # its own membership version, flat applicability decoded and checked) — not a global constant.
         bound_rows = RuleRegistryStore(ctx.db_conn).bound_factor_rows
@@ -778,7 +785,8 @@ class GocharaV5Writer(WriterBase):
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version, position_at=position_at)
             drafts, ex = gk_window_sweep.draft_windows(
-                event_class, records, bound_rows, drishti=DRISHTI_SOURCE, vedha=VEDHA_SOURCE)
+                event_class, records, bound_rows, drishti=DRISHTI_SOURCE, vedha=VEDHA_SOURCE,
+                policy=policy)
             counts = store.replace_grain_windows(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version, drafts=drafts)

@@ -39,6 +39,12 @@ def rworld(monkeypatch, tmp_path):
 
 
 @pytest.fixture(autouse=True)
+def _qualification_policy(rworld):
+    """The seal/role flows run under the numbers-enabled policy; the all-NULL policy has its own suites."""
+    rworld.result_policy = "window_qualification/1"
+
+
+@pytest.fixture(autouse=True)
 def _consistent_sky(rworld, monkeypatch):
     SPANS.clear()
 
@@ -327,13 +333,22 @@ def test_the_grants_block_prints_which_principals_it_found_and_which_it_did_not(
     import re
     sql = (__import__("pathlib").Path(__file__).resolve().parents[4] / "migrations"
            / "1240_gochara_window_verification_gate.sql").read_text()
-    block = re.search(r"(DO \$\$\nBEGIN\n  IF EXISTS \(SELECT 1 FROM pg_roles WHERE rolname = 'gochara_verifier'\).*?\n\$\$;)",
+    block = re.search(r"(DO \$\$\nBEGIN\n  IF EXISTS \(SELECT 1 FROM pg_roles WHERE rolname = 'data_plane_builder'\).*?\n\$\$;)",
                       sql, re.S).group(1)
     notices: list[str] = []
     rworld.conn.add_notice_handler(lambda d: notices.append(d.message_primary))
     rworld.conn.execute(block)
     assert any("verifier grants issued to role gochara_verifier" in n for n in notices)
     assert any("sealer grants issued to role gochara_sealer" in n for n in notices)
+    assert any("builder EXECUTE on ka_gochara_window_qualification_ok issued to role data_plane_builder" in n
+               for n in notices), notices
+    notices.clear()
+    rworld.conn.execute("ALTER ROLE data_plane_builder RENAME TO data_plane_builder_away")
+    try:
+        rworld.conn.execute(block)
+    finally:
+        rworld.conn.execute("ALTER ROLE data_plane_builder_away RENAME TO data_plane_builder")
+    assert any("role data_plane_builder NOT FOUND — NO builder grant was issued" in n for n in notices), notices
     notices.clear()
     rworld.conn.execute("ALTER ROLE gochara_sealer RENAME TO gochara_sealer_away")
     try:

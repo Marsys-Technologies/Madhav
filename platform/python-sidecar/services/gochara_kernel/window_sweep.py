@@ -38,10 +38,14 @@ record table and in the coverage counts; testimony rows never carry weight (§1.
 """
 from __future__ import annotations
 
+import dataclasses
+
 import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Iterable
+
+from .result_policy import ALL_NULL_REASON, POLICY_ALL_NULL, POLICY_QUALIFICATION, RESULT_POLICIES
 
 UNQUALIFIED = "unqualified"
 OMIT = "omit"
@@ -591,10 +595,11 @@ class WindowDraft:
     unqualified_reason: str | None = None
     objective_value: float | None = None   # that function's value at the peak — distinct from `score`
     affected_channels: tuple = ()          # the channels an UNQUALIFIED member feeds (an unknown channel feeds both)
+    policy: str = "window_qualification/1"  # the result policy this window was drafted under (R9-1; the manifest's)
 
     def qualification(self) -> dict:
         """The structured provenance persisted with the window (1240 `qualification`; closed keys)."""
-        return {"unqualified_reason": self.unqualified_reason, "unresolved": dict(sorted(self.unresolved.items())),
+        return {"policy": self.policy, "unqualified_reason": self.unqualified_reason, "unresolved": dict(sorted(self.unresolved.items())),
                 "affected_channels": sorted(self.affected_channels), "members": self.members,
                 "qualified_members": self.qualified_members}
 
@@ -701,7 +706,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                   drishti: Callable[[str, int, tuple], float] | None = None,
                   vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
                   compute_valence: Callable | None = None,
-                  allow_dynamic: bool = False) -> tuple[list[WindowDraft], dict]:
+                  allow_dynamic: bool = False,
+                  policy: str = POLICY_QUALIFICATION) -> tuple[list[WindowDraft], dict]:
     """The grain's windows (one path-version) and an exclusion ledger — every record accounted.
 
     Window construction (Codex round 6, R3): ONE window per MAXIMAL CONNECTED COMPONENT of the
@@ -714,6 +720,13 @@ def draft_windows(event_class: str, records: list[SweepRecord],
     max-min `min(act_Jupiter, act_Saturn)`; every other path — `evidence_for` = Σ over roots of the
     per-root max for-channel value. `score` = the max live for-channel product at the peak (P4: the
     max-min value itself); evidence per channel at the peak, never netted.
+
+    RESULT POLICY (R9-1). `policy` is the one the generation's MANIFEST selected (`result_policy`):
+    `all_null_candidate/1` — EVERY window carries no number at all (score, evidence_for, evidence_against,
+    objective_value, severity NULL; peak absent; valence `unqualified`; reason `all_null_candidate_policy`) for every
+    path and channel composition, constant objectives and empty sums included; the interval, members, record ids and
+    accounting counts stay populated and the per-member classification below still fills `unresolved`.
+    `window_qualification/1` — the table that follows, which applies when numbers are enabled.
 
     QUALIFICATION POLICY (frozen, `window_qualification/1`; the independent verifier implements the same table
     from its own code). Members = admitted scored records overlapping the component; each has a channel
@@ -732,6 +745,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
     Admission and admitted support are unchanged; known partial subtotals are never stored as complete."""
     from services.gochara_rules import valence as _valence_mod
     valence_fn = compute_valence or _valence_mod.compute_valence
+    if policy not in RESULT_POLICIES:
+        raise SweepRefusal(f"result policy {policy!r} is not one of {RESULT_POLICIES}")
 
     excluded = {"not_admitted": 0, "admission_unqualified": 0, "testimony": 0, "no_support": 0}
     members: list[SweepRecord] = []
@@ -805,6 +820,15 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                     null_states_used=sorted(null_states), unresolved=unresolved,
                     members=len(in_win), qualified_members=sum(1 for p in in_win if p.qualified),
                     objective=objective_name, affected_channels=tuple(affected))
+        if policy == POLICY_ALL_NULL:
+            # R9-1: the numeric result is NOT produced at all — decided before any objective is evaluated, so a
+            # constant objective, an empty for-channel sum or an all-against population cannot store a number
+            val = valence_fn(event_class, 0.0, 0.0, ALL_NULL_REASON)
+            drafts.append(WindowDraft(
+                peak_instant=None, score=None, evidence_for=None, evidence_against=None,
+                outcome_valence_for_native=val.outcome_valence_for_native,
+                unqualified_reason=ALL_NULL_REASON, **base))
+            continue
         for_unq = [p for p in in_win if not p.qualified and p.channel in (CHANNEL_FOR, None)]
         against_unq = [p for p in in_win if not p.qualified and p.channel in (CHANNEL_AGAINST, None)]
         if for_unq:
@@ -901,6 +925,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
         drafts.append(WindowDraft(
             peak_instant=peak, score=score, evidence_for=ev_for, evidence_against=ev_against,
             outcome_valence_for_native=val.outcome_valence_for_native, objective_value=best, **base))
+    drafts = [d if d.policy == policy else dataclasses.replace(d, policy=policy) for d in drafts]
     return drafts, excluded
 
 
@@ -919,7 +944,7 @@ def utc(t: datetime) -> datetime:
 
 
 __all__ = [
-    "CHANNEL_AGAINST", "CHANNEL_FOR", "DIRECTIONAL_PATHS", "STATE_BOUNDARIES_REASON", "STATE_VALUED_FACTORS", "FOR_ONLY_PATHS", "Outcome",
+    "CHANNEL_AGAINST", "CHANNEL_FOR", "DIRECTIONAL_PATHS", "ALL_NULL_REASON", "POLICY_ALL_NULL", "POLICY_QUALIFICATION", "STATE_BOUNDARIES_REASON", "STATE_VALUED_FACTORS", "FOR_ONLY_PATHS", "Outcome",
     "RecordProgram", "SWEEP_PATHS", "SweepRecord", "SweepRefusal", "WindowDraft",
     "activity_kernel", "against_channel_state", "build_program", "draft_windows",
     "CATEGORICAL_PATHS", "DYNAMIC_SWITCH_REASON", "GRAHA_TITLE", "KIND_TARGET_FORM", "categorical_factor", "graha_title",
