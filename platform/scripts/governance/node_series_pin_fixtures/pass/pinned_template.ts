@@ -7,7 +7,7 @@ export async function a(db: any, date: string) {
 }
 
 export async function b(db: any, date: string) {
-  // node-agnostic: bodies are the five tara grahas by construction (TARA_GRAHA_SUBJECTS)
+  // node-agnostic: non_node_bodies_literal: bodies are the five tara grahas by construction (TARA_GRAHA_SUBJECTS)
   return db.query(`SELECT body, latitude FROM ephemeris_daily WHERE date = $1 AND body = ANY($2)`, [date, ['Mars']])
 }
 

@@ -1,26 +1,64 @@
 {
-  "schema_version": 1,
-  "$comment": "Baseline of today's UNPINNED readers of ephemeris_daily for check_node_series_pin.py (SS N-68/N-69, DESIGN_L0_MEAN_NODE_SERIES_v1_0.md section 7). It can only SHRINK: a new unpinned reader fails CI (R1), a baseline entry that no longer matches is stale and must be removed and recorded under `retired` (R2/R3), and the total must equal RATCHET_CEILING_TOTAL in the script (R4). `lines_at_rollout` are locators for humans, never match keys (matching is (file, anchor, count)). Never add an entry to make CI pass: pin the reader (NODE_SERIES_PREDICATE, a node_mode predicate, or a `node-agnostic: <reason>` comment). Pravaha's gochara-family readers P1/P2/P5/P6/P7/P14/P15 are already pinned and are NOT here.",
+  "schema_version": 2,
+  "$comment": "Baseline of today's UNPINNED readers of ephemeris_daily for check_node_series_pin.py (SS N-68/N-69, design section 7). FAIL-CLOSED: a read is pinned only when the lint can positively show it (see the script's docstring); everything it cannot classify is baselined here with a named owner and a reason, not modelled. It can only SHRINK: R1 new unpinned reader fails; R2 a count above what is found fails until lowered; R3 a retired reader may never return; R4 the total must equal RATCHET_CEILING_TOTAL; R5 owner+note required. Growth versus origin/main (any key, count, total or ceiling) fails in the governance pytest step unless this file carries a NEW top-level `ceiling_raise_approved: <reason>` (the test prints it). Matching is by (file, anchor, count): anchor = the enclosing def (class.def) / TS function, or the assigned constant name for a module-level constant; `lines_at_rollout` are human locators only. Never add an entry to make CI pass: pin the reader (NODE_SERIES_PREDICATE or a literal node_mode predicate in its WHERE) or add a `node-agnostic: <reason_code>: <text>` marker. Pravaha's gochara-family readers P1/P2/P5/P6/P7/P14/P15 are pinned and are NOT here.",
   "rollout": {
     "date": "2026-10-02",
-    "base": "origin/main d35938a18",
+    "revision": "2 (review fixes: fail-closed classifier, block parser, closed marker codes, def-based anchors, wider scan roots)",
     "scan_roots": {
       "py": [
         "platform/python-sidecar/**/*.py",
-        "platform/scripts/**/*.py"
+        "platform/python-sidecar/**/*.sh",
+        "platform/scripts/**/*.py",
+        "platform/scripts/**/*.sh",
+        "scripts/**/*.py",
+        "scripts/**/*.sh",
+        "evals/**/*.py",
+        "evals/**/*.sh",
+        "infra/**/*.py",
+        "infra/**/*.sh"
       ],
       "ts": [
         "platform/src/**/*.ts",
         "platform/src/**/*.tsx",
+        "platform/src/**/*.js",
+        "platform/src/**/*.mjs",
+        "platform/src/**/*.cjs",
         "platform-mcp/src/**/*.ts",
-        "platform/scripts/**/*.ts"
+        "platform-mcp/src/**/*.tsx",
+        "platform-mcp/src/**/*.js",
+        "platform-mcp/src/**/*.mjs",
+        "platform-mcp/src/**/*.cjs",
+        "platform/scripts/**/*.ts",
+        "platform/scripts/**/*.tsx",
+        "platform/scripts/**/*.js",
+        "platform/scripts/**/*.mjs",
+        "platform/scripts/**/*.cjs",
+        "scripts/**/*.ts",
+        "scripts/**/*.tsx",
+        "scripts/**/*.js",
+        "scripts/**/*.mjs",
+        "scripts/**/*.cjs",
+        "evals/**/*.ts",
+        "evals/**/*.tsx",
+        "evals/**/*.js",
+        "evals/**/*.mjs",
+        "evals/**/*.cjs",
+        "infra/**/*.ts",
+        "infra/**/*.tsx",
+        "infra/**/*.js",
+        "infra/**/*.mjs",
+        "infra/**/*.cjs"
       ],
       "sql": [
         "platform/scripts/**/*.sql",
         "platform/migrations/**/*.sql",
-        "platform/supabase/migrations/**/*.sql"
+        "platform/supabase/migrations/**/*.sql",
+        "scripts/**/*.sql",
+        "evals/**/*.sql",
+        "infra/**/*.sql"
       ]
-    }
+    },
+    "previous_total": 32
   },
   "entries": [
     {
@@ -31,7 +69,8 @@
         246,
         275
       ],
-      "note": "owner: Suvarna/L0. S9 /all_bodies_range (count_only :246 and the ORDER BY date, body LIMIT 10000 read :275): returns Rahu/Ketu rows with no node label; row cap shrinks when a second set exists. Step 1: NULL-safe pin to 'true' + node_mode in the served columns."
+      "owner": "Suvarna/L0",
+      "note": "S9 /all_bodies_range (count_only :246 and the ORDER BY date, body LIMIT 10000 read :275): returns Rahu/Ketu rows with no node label; row cap shrinks when a second set exists. Step 1: NULL-safe pin to 'true' + node_mode in the served columns."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/ephemeris_routes.py",
@@ -40,7 +79,8 @@
       "lines_at_rollout": [
         360
       ],
-      "note": "owner: Suvarna/L0. S11 /native_lifetime_meta COUNT(*) / COUNT(DISTINCT ...) (:360): counts and the hard-coded expected_rows would drift; count with a node pin or derive expected from days x bodies."
+      "owner": "Suvarna/L0",
+      "note": "S11 /native_lifetime_meta COUNT(*) / COUNT(DISTINCT ...) (:360): counts and the hard-coded expected_rows would drift; count with a node pin or derive expected from days x bodies."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/kala/temporal.py",
@@ -49,7 +89,8 @@
       "lines_at_rollout": [
         298
       ],
-      "note": "owner: none (legacy). S14: Saturn only, legacy `planet`/`ed_date` columns that do not exist in the current schema; errors are swallowed. Dead code: delete or mark node-agnostic."
+      "owner": "none (legacy)",
+      "note": "S14: Saturn only, legacy `planet`/`ed_date` columns that do not exist in the current schema; errors are swallowed. Dead code: delete or mark node-agnostic."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/kala/timeline.py",
@@ -58,7 +99,8 @@
       "lines_at_rollout": [
         263
       ],
-      "note": "owner: none (legacy). S13: legacy columns (`planet`, `longitude`, `retrograde`) absent from the current schema; the statement errors and is swallowed. Dead code: delete or pin."
+      "owner": "none (legacy)",
+      "note": "S13: legacy columns (`planet`, `longitude`, `retrograde`) absent from the current schema; the statement errors and is swallowed. Dead code: delete or pin."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -70,7 +112,8 @@
         638,
         642
       ],
-      "note": "owner: Suvarna/L0. S7 check_volume COUNT(*) (:580, :636, :638, :642): floor semantics against VOLUME_FLOOR 825084 (GREEN for any count >= floor); 1228 replaces the integrity contract. Count with a node pin or document."
+      "owner": "Suvarna/L0",
+      "note": "S7 check_volume COUNT(*) (:580, :636, :638, :642): floor semantics against VOLUME_FLOOR 825084 (GREEN for any count >= floor); 1228 replaces the integrity contract. Count with a node pin or document."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -79,7 +122,8 @@
       "lines_at_rollout": [
         779
       ],
-      "note": "owner: Suvarna/L0. S1: planet=None returns 11 rows (2 Rahu, 2 Ketu) with no discriminator. Step 1 per design option B: pinned copy in the new l0_ephemeris_queries.py; this legacy function stays deprecated under this ratchet."
+      "owner": "Suvarna/L0",
+      "note": "S1: planet=None returns 11 rows (2 Rahu, 2 Ketu) with no discriminator. Step 1 per design option B: pinned copy in the new l0_ephemeris_queries.py; this legacy function stays deprecated under this ratchet."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -88,7 +132,8 @@
       "lines_at_rollout": [
         879
       ],
-      "note": "owner: Suvarna/L0. S2 (also feeds TS query_planet_transit, get_av_transit_gating, pact_query): duplicate dated rows, LIMIT 5000 consumed twice as fast. Option B pinned copy."
+      "owner": "Suvarna/L0",
+      "note": "S2 (also feeds TS query_planet_transit, get_av_transit_gating, pact_query): duplicate dated rows, LIMIT 5000 consumed twice as fast. Option B pinned copy."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -97,7 +142,8 @@
       "lines_at_rollout": [
         986
       ],
-      "note": "owner: Suvarna/L0. S3: Rahu-vs-Rahu 'conjunction' and duplicated aspects with two series. Option B pinned copy."
+      "owner": "Suvarna/L0",
+      "note": "S3: Rahu-vs-Rahu 'conjunction' and duplicated aspects with two series. Option B pinned copy."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -106,7 +152,8 @@
       "lines_at_rollout": [
         1103
       ],
-      "note": "owner: Suvarna/L0. S4: interleaved rows create false station flips for Rahu/Ketu (TS enum excludes the nodes; the route does not). Option B pinned copy."
+      "owner": "Suvarna/L0",
+      "note": "S4: interleaved rows create false station flips for Rahu/Ketu (TS enum excludes the nodes; the route does not). Option B pinned copy."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -115,7 +162,8 @@
       "lines_at_rollout": [
         1317
       ],
-      "note": "owner: Suvarna/L0. S5 COUNT(*), COUNT(DISTINCT body): row count rises, no failure. Pin or document."
+      "owner": "Suvarna/L0",
+      "note": "S5 COUNT(*), COUNT(DISTINCT body): row count rises, no failure. Pin or document."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -124,7 +172,8 @@
       "lines_at_rollout": [
         1472
       ],
-      "note": "owner: Suvarna/L0. S6: LIMIT windows shift (9 -> 11 rows per date), duplicate Rahu/Ketu, ORDER BY tie. Option B pinned copy with a total ORDER BY."
+      "owner": "Suvarna/L0",
+      "note": "S6: LIMIT windows shift (9 -> 11 rows per date), duplicate Rahu/Ketu, ORDER BY tie. Option B pinned copy with a total ORDER BY."
     },
     {
       "file": "platform/python-sidecar/pipeline/brahma_pipeline.py",
@@ -133,7 +182,8 @@
       "lines_at_rollout": [
         121
       ],
-      "note": "owner: none (legacy). S15: COUNT(*) ... LIMIT 1 log text only in a dead pipeline module (migrations 962/963 record it dead)."
+      "owner": "none (legacy)",
+      "note": "S15: COUNT(*) ... LIMIT 1 log text only in a dead pipeline module (migrations 962/963 record it dead)."
     },
     {
       "file": "platform/python-sidecar/services/ka_graha_sancara/engine.py",
@@ -142,16 +192,18 @@
       "lines_at_rollout": [
         219
       ],
-      "note": "owner: Suvarna. P8 PATH-A: last-row-wins body_map over an arbitrary tie order (Rahu/Ketu TRUE or MEAN by row order); feeds ph muhurta (P9). Step 1: NULL-safe pin to 'true' (PATH-A == PATH-B TRUE); switch to MEAN only together with PATH-B in step 3."
+      "owner": "Suvarna",
+      "note": "P8 PATH-A: last-row-wins body_map over an arbitrary tie order (Rahu/Ketu TRUE or MEAN by row order); feeds ph muhurta (P9). Step 1: NULL-safe pin to 'true' (PATH-A == PATH-B TRUE); switch to MEAN only together with PATH-B in step 3."
     },
     {
       "file": "platform/python-sidecar/services/ka_kota_chakra/writer.py",
-      "anchor": "_FETCH_EPHEMERIS_RANGE_SQL",
+      "anchor": "<module>._FETCH_EPHEMERIS_RANGE_SQL",
       "count": 1,
       "lines_at_rollout": [
         96
       ],
-      "note": "owner: Suvarna. P4: SILENT duplicate per-date nakshatra entries for Rahu/Ketu windows. Step 1: NODE_SERIES_PREDICATE pin (output unchanged)."
+      "owner": "Suvarna",
+      "note": "P4: SILENT duplicate per-date nakshatra entries for Rahu/Ketu windows. Step 1: NODE_SERIES_PREDICATE pin (output unchanged)."
     },
     {
       "file": "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py",
@@ -160,7 +212,8 @@
       "lines_at_rollout": [
         638
       ],
-      "note": "owner: Suvarna (I-10 lane). P3: duplicate t_days -> HermiteSpline ValueError for Rahu/Ketu (LOUD). Folded into the I-10 lane: pin with NODE_SERIES_PREDICATE when I-10 touches stage0_kinematics."
+      "owner": "Suvarna (I-10 lane)",
+      "note": "P3: duplicate t_days -> HermiteSpline ValueError for Rahu/Ketu (LOUD). Folded into the I-10 lane: pin with NODE_SERIES_PREDICATE when I-10 touches stage0_kinematics."
     },
     {
       "file": "platform/python-sidecar/services/w2g_validations/v3_spline_accuracy.py",
@@ -169,7 +222,8 @@
       "lines_at_rollout": [
         127
       ],
-      "note": "owner: Pravaha. P16: reads one body per call; the validation loop covers only Mercury, Mars, Venus, Saturn and Moon (Rahu/Ketu never audited). Add a node-agnostic marker when Pravaha next edits it."
+      "owner": "Pravaha",
+      "note": "P16: reads one body per call; the validation loop covers only Mercury, Mars, Venus, Saturn and Moon (Rahu/Ketu never audited). Add a node-agnostic marker when Pravaha next edits it."
     },
     {
       "file": "platform/python-sidecar/services/w2g_validations/v3_spline_accuracy.py",
@@ -178,34 +232,58 @@
       "lines_at_rollout": [
         148
       ],
-      "note": "owner: Pravaha. P16: same as _fetch_window (body parameter never Rahu/Ketu)."
+      "owner": "Pravaha",
+      "note": "P16: same as _fetch_window (body parameter never Rahu/Ketu)."
     },
     {
       "file": "platform/scripts/data/populate_sade_sati.py",
-      "anchor": "sql",
+      "anchor": "fetch_saturn_sign_runs",
       "count": 1,
       "lines_at_rollout": [
         72
       ],
-      "note": "owner: none (legacy). S20: Saturn-only operator script on legacy columns; already broken against the current schema."
+      "owner": "none (legacy)",
+      "note": "S20: Saturn-only operator script on legacy columns; already broken against the current schema."
+    },
+    {
+      "file": "platform/scripts/governance/v13_production_gate.py",
+      "anchor": "<module>",
+      "count": 1,
+      "lines_at_rollout": [
+        58
+      ],
+      "owner": "none (legacy operator script)",
+      "note": "REAL MISS found by review: `count(\"ephemeris_daily\")` at :58 runs `SELECT count(*) FROM {table}` (the same COUNT(*) class as S5/S7/S20): table-level count for an AMBER/PASS volume message; no node value is read. Marker `count_only_table_level` when the file is next touched."
+    },
+    {
+      "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
+      "anchor": "sourceQueryParameterBindingMatchesScope",
+      "count": 1,
+      "lines_at_rollout": [
+        1730
+      ],
+      "owner": "Suvarna/L1 availability probe",
+      "note": "`LIMIT 0` zero-row availability probe over `JOIN ephemeris_daily e ON e.date = c.birth_date` (latitude_probe): returns no row, so no node row can be served. Not self-exempting under the fail-closed rules (LIMIT 0 is not one of the positive proofs); reason code `schema_introspection` when the served file is next touched (held out to keep served files untouched)."
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts",
-      "anchor": "resolveOptionAWinner.handler.latByBody.ephResult",
+      "anchor": "resolveOptionAWinner.handler",
       "count": 1,
       "lines_at_rollout": [
         191
       ],
-      "note": "owner: Suvarna/L1 tool. L1-c: bodies restricted to MAR/MER/JUP/VEN/SAT by construction (TARA_GRAHA_SUBJECTS); body = ANY($2) is not a literal. Step 1: add a `// node-agnostic:` marker (comment only; held out of this lint PR to keep served files untouched)."
+      "owner": "Suvarna/L1 tool",
+      "note": "L1-c: bodies restricted to MAR/MER/JUP/VEN/SAT by construction (TARA_GRAHA_SUBJECTS); body = ANY($2) is not a literal. Step 1: add a `// node-agnostic:` marker (comment only; held out of this lint PR to keep served files untouched)."
     },
     {
       "file": "platform/scripts/seed/asset_registry_seed.ts",
-      "anchor": "count_sql",
+      "anchor": "evalFileCount",
       "count": 1,
       "lines_at_rollout": [
         192
       ],
-      "note": "owner: Suvarna/L0. bg_ephemeris registry count_sql (SELECT count(*) FROM ephemeris_daily): floor semantics, +183,352 rows after the series lands; 1228 re-sets the floor."
+      "owner": "Suvarna/L0",
+      "note": "bg_ephemeris registry count_sql (SELECT count(*) FROM ephemeris_daily): floor semantics, +183,352 rows after the series lands; 1228 re-sets the floor."
     },
     {
       "file": "platform/scripts/l1_volumetric_check.sql",
@@ -214,7 +292,8 @@
       "lines_at_rollout": [
         117
       ],
-      "note": "owner: none (legacy). S20: legacy operator script (planet column, hard-coded 660726); counts only."
+      "owner": "none (legacy)",
+      "note": "S20: legacy operator script (planet column, hard-coded 660726); counts only."
     },
     {
       "file": "platform/scripts/l1_volumetric_check.sql",
@@ -223,7 +302,8 @@
       "lines_at_rollout": [
         120
       ],
-      "note": "owner: none (legacy). S20: legacy operator script (planet column, hard-coded 660726); counts only."
+      "owner": "none (legacy)",
+      "note": "S20: legacy operator script (planet column, hard-coded 660726); counts only."
     },
     {
       "file": "platform/scripts/l1_volumetric_check.sql",
@@ -232,7 +312,8 @@
       "lines_at_rollout": [
         126
       ],
-      "note": "owner: none (legacy). S20: legacy operator script (planet column, hard-coded 660726); counts only."
+      "owner": "none (legacy)",
+      "note": "S20: legacy operator script (planet column, hard-coded 660726); counts only."
     },
     {
       "file": "platform/scripts/l1_volumetric_check.sql",
@@ -241,43 +322,22 @@
       "lines_at_rollout": [
         178
       ],
-      "note": "owner: none (legacy). S20: legacy operator script (planet column, hard-coded 660726); counts only."
-    },
-    {
-      "file": "platform/supabase/migrations/174_brahmagyan_naming_reconciliation.sql",
-      "anchor": "sql:INSERT INTO asset_registry (asset_id, layer, sort_order, sanskrit_name,",
-      "count": 1,
-      "lines_at_rollout": [
-        29
-      ],
-      "note": "owner: none (applied migration). bg_ephemeris registry count_sql in an applied migration; immutable."
-    },
-    {
-      "file": "platform/supabase/migrations/525_kala_moorti_nirnaya.sql",
-      "anchor": "sql:INSERT INTO asset_registry ( asset_id, layer, sort_order,",
-      "count": 1,
-      "lines_at_rollout": [
-        152
-      ],
-      "note": "owner: none (applied migration). ka_moorti_nirnaya registry text naming the table in a count/description statement; applied, immutable."
+      "owner": "none (legacy)",
+      "note": "S20: legacy operator script (planet column, hard-coded 660726); counts only."
     },
     {
       "file": "platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql",
       "anchor": "sql:ephemeris_check CONSTANT TEXT := $check$ SELECT (SELECT",
-      "count": 1,
+      "count": 5,
       "lines_at_rollout": [
-        107
+        107,
+        108,
+        109,
+        111,
+        114
       ],
-      "note": "owner: Suvarna/L0. S17 integrity contract (COUNT(*)=825084, per-date count 9) in an applied migration; goes RED at the first mean row; replaced by 1228 (the baseline entry retires then)."
-    },
-    {
-      "file": "platform/supabase/migrations/606_nirmana_l0_wave0_integrity_contracts.sql",
-      "anchor": "sql:IF (registry_row.layer = 'brahmagyan' AND registry_row.sort_order =",
-      "count": 1,
-      "lines_at_rollout": [
-        221
-      ],
-      "note": "owner: Suvarna/L0. S17 integrity contract (COUNT(*)=825084, per-date count 9) in an applied migration; goes RED at the first mean row; replaced by 1228 (the baseline entry retires then)."
+      "owner": "Suvarna/L0",
+      "note": "S17 integrity contract (COUNT(*)=825084, per-date count 9) in an applied migration; goes RED at the first mean row; replaced by 1228 (the baseline entry retires then)."
     }
   ],
   "retired": []
