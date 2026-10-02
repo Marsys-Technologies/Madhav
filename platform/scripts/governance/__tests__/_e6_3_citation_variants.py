@@ -148,6 +148,7 @@ sys.path.insert(0, ".")
 import nikasha_certify as nc
 nc.CITATION_CRITERIA = ("Ldgr.src", "Idem.alt")
 nc.CITATION_STRICT = ("Idem.alt",)
+nc.CITATION_CAPPED = nc.CITATION_STRICT + ("Ldgr.source_presence",)   # derived at import in E5.1 (S3): re-derive after the mini substitution, as the committed validator copy does
 try:
     by_key = nc.parse_ledger(open(sys.argv[1], "rb").read())
     states = {r["cert_id"]: [r["citation_state"], r["citation_state_caveat"], r["declarations_sha256"], r["declarations_version"]]

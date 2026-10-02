@@ -52,6 +52,10 @@ PINNED_FINGERPRINTS = {
     # 11 (SS N-72 S2, N-73; provisional): Carr.D1 gets a detector (revision 2), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and
     # :ratified_judgment, and the three not-the-declared-carriage rules are declared (inert until an asset declares a carriage check)
     11: "c066a88e36b61827422796ae98f59a679458bbcb8ba88e2d80d351d582a39940",
+    # 12 (SS N-72 S3, N-73 (1)/(4), N-74 (b); provisional): Vocab.alias rev 2 / Ldgr.source_presence rev 3 (declared forms: an alias class measured against
+    # bg_ontology class planet; a declared source column with its citation_state), NA_CAUSES gains Vocab.alias:no-alias-class and
+    # Ldgr.source_presence:no-classical-claim, and the two declaration-keyed rules are declared (inert until an asset declares); columns_any unchanged
+    12: "35b0e03e412d0d36d8af2840bd3d4d612af2859e56035c90342266c98e33ed3d",
 }
 
 
