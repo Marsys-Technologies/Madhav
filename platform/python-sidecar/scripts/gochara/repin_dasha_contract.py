@@ -35,6 +35,9 @@ differs only because an edge moved are reported as BOUNDARY-SENSITIVE (D8), and 
 G6 (steward M20261002T223036-02f0): the §4.0 read accepts the pinned build WHILE ITS ROWS ARE PRESENT even if another build coexists (dasha_read.py:44–49). So the verdict is STOP unless
 chart_dashas holds EXACTLY ONE Vimśottarī build (Lahiri, levels 1–3, any tier) and it is the SETTLED-1 build; --apply asserts the re-pinned constant equals that build and the old pin is gone.
 (The writer-side refusal when more than one two_pass_verified build is present is a separate Stream A code change.)
+SETTLED-1 mechanical guard (steward M20261002T224436-82bd; Suvarṇa addendum 6) — the pre-flight REFUSES unless, read-only for the chart: (ii) `chart_dashas` has exactly ONE distinct build_id (whole
+table, every system); (iii) the complete shape — 45 non-scope system×ayanāṃśa partitions + 1 scope-cap; (iv) `asset_throughput.state` = 'lit' for ga_dashas and ga_positions; (v) that single
+build id equals the SETTLED-1 build id (and --apply sets the constant to it and asserts so).
 
 Exit codes: 0 evidence clean (and applied if asked) · 3 STOP (a stop reason is listed) · 2 usage.
 Evidence item (e) — the seven FORENSIC anchors — is supplied by the L1 owner as --forensic-report
@@ -160,6 +163,40 @@ def fetch_vimshottari_builds(conn, chart_id: str, ayanamsha_id: str = "lahiri_ch
     cur.execute("SELECT build_id::text, count(*) FROM public.chart_dashas WHERE chart_id = %s AND system_id = 'vimshottari' AND ayanamsha_id = %s AND level_n IN (1, 2, 3) GROUP BY 1 ORDER BY 1",
                 (chart_id, ayanamsha_id))
     return {str(b): int(n) for b, n in cur.fetchall()}
+
+
+EXPECTED_NON_SCOPE_PARTITIONS, EXPECTED_SCOPE_PARTITIONS = 45, 1       # 9 systems × 5 ayanāṃśas + the scope-cap partition (Suvarṇa addendum 6)
+
+
+def fetch_preflight_facts(conn, chart_id: str) -> dict:
+    """READ-ONLY (steward M20261002T224436-82bd): the SETTLED-1 mechanical guard's facts for the chart — (ii) the distinct build ids across the WHOLE of `chart_dashas`; (iii) the shape: distinct
+    (system, ayanāṃśa) partitions, non-scope and scope-cap; (iv) `asset_throughput.state` of `ga_dashas` and `ga_positions`."""
+    cur = conn.cursor()
+    cur.execute("SELECT DISTINCT build_id::text FROM public.chart_dashas WHERE chart_id = %s ORDER BY 1", (chart_id,))
+    builds = [str(r[0]) for r in cur.fetchall()]
+    cur.execute("SELECT count(*) FILTER (WHERE system_id <> 'scope_cap'), count(*) FILTER (WHERE system_id = 'scope_cap') "
+                "FROM (SELECT DISTINCT system_id, ayanamsha_id FROM public.chart_dashas WHERE chart_id = %s) p", (chart_id,))
+    non_scope, scope = cur.fetchone()
+    cur.execute("SELECT asset_id, state FROM public.asset_throughput WHERE chart_id = %s AND asset_id IN ('ga_dashas', 'ga_positions') ORDER BY 1", (chart_id,))
+    return {"builds": builds, "non_scope": int(non_scope), "scope": int(scope), "throughput": {str(a): str(st) for a, st in cur.fetchall()}}
+
+
+def preflight_problems(facts: dict, new_id: str, pinned_constant: str | None = None) -> list[str]:
+    """G6 closure, exact form (steward M20261002T224436-82bd; Suvarṇa addendum 6) — every one REFUSES: (ii) exactly ONE distinct build_id across chart_dashas; (iii) the complete shape, 45 non-scope
+    system×ayanāṃśa partitions + 1 scope-cap; (iv) `ga_dashas` and `ga_positions` are `lit` for the chart; (v) that single build id equals the SETTLED-1 build id (the re-pin constant is set to it
+    by --apply, which asserts it)."""
+    out = []
+    if len(facts["builds"]) != 1:
+        out.append(f"(ii) chart_dashas holds {len(facts['builds'])} distinct build_id(s) {facts['builds']}; exactly ONE is required (a part-failed or unfinished L1 rebuild leaves a mix)")
+    elif facts["builds"][0] != new_id:
+        out.append(f"(v) the single chart_dashas build {facts['builds'][0]} is not the SETTLED-1 build {new_id}")
+    if (facts["non_scope"], facts["scope"]) != (EXPECTED_NON_SCOPE_PARTITIONS, EXPECTED_SCOPE_PARTITIONS):
+        out.append(f"(iii) incomplete shape: {facts['non_scope']} non-scope + {facts['scope']} scope-cap partition(s); expected {EXPECTED_NON_SCOPE_PARTITIONS} + {EXPECTED_SCOPE_PARTITIONS}")
+    for asset in ("ga_dashas", "ga_positions"):
+        st = facts["throughput"].get(asset)
+        if st != "lit":
+            out.append(f"(iv) asset_throughput.state of {asset} is {st!r}, not 'lit'")
+    return out
 
 
 def build_problems(builds: dict[str, int], new_id: str) -> list[str]:
@@ -467,7 +504,7 @@ def main(argv=None, *, conn=None) -> int:
     except (OSError, ValueError) as exc:
         print(f"STOP — {exc}", file=sys.stderr); return 3
     builds = fetch_vimshottari_builds(conn, a.chart_id)
-    extra_stops = build_problems(builds, a.new_build_id)
+    extra_stops = build_problems(builds, a.new_build_id) + preflight_problems(fetch_preflight_facts(conn, a.chart_id), a.new_build_id)
     if not old_rows:
         extra_stops.append("the OLD build's rows are absent from the database and no --old-rows capture was supplied (capture them BEFORE S-L1 with --capture-old)")
     stops = decide(new_tier_ok=new_tier_ok, new_integrity=integrity(new_rows), m=m, flips=flips,

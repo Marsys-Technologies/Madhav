@@ -105,6 +105,7 @@ def test_cli_refuses_the_current_pin_and_stops_without_a_forensic_report(monkeyp
     # the DB stand-in: no rows for the new build ⇒ the new build is absent ⇒ STOP (exit 3), nothing applied
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {"builds": [], "non_scope": 0, "scope": 0, "throughput": {}})
     out = tmp_path / "evidence.md"
     assert T.main(["--new-build-id", "11111111-1111-4111-8111-111111111111", "--out", str(out)], conn=object()) == 3
     assert "STOP" in out.read_text()
@@ -246,6 +247,7 @@ def test_apply_is_refused_without_the_hold_lift_and_dry_run_excludes_apply_and_w
     assert T.main(["--new-build-id", new, "--apply", "--dry-run", "--hold-lifted", "M1"], conn=object()) == 2
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {"builds": [], "non_scope": 0, "scope": 0, "throughput": {}})
     out = tmp_path / "evidence.md"
     assert T.main(["--new-build-id", new, "--dry-run", "--out", str(out)], conn=object()) == 3        # absent build ⇒ STOP, and …
     assert not out.exists()                                                                          # … a dry run writes no file
@@ -254,6 +256,7 @@ def test_apply_is_refused_without_the_hold_lift_and_dry_run_excludes_apply_and_w
 # ── G6: coexisting builds; capture the OLD rows BEFORE S-L1 (steward M20261002T223036-02f0) ─────────────────────────────────────────────
 OLDB = PERM.DASHA_READ_CONTRACT["build_id"]
 NEWB = "11111111-1111-4111-8111-111111111111"
+GOODFACTS = {"builds": [NEWB], "non_scope": 45, "scope": 1, "throughput": {"ga_dashas": "lit", "ga_positions": "lit"}}
 
 
 def test_exactly_one_vimshottari_build_and_it_is_the_settled_one():
@@ -298,6 +301,7 @@ def test_the_cli_compares_against_a_captured_old_file_when_the_old_rows_are_gone
     T.write_capture(str(cap), PERM.DASHA_READ_CONTRACT["chart_id"], OLDB, rows_old)
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, build_id=None, **kw: rows_new if build_id == NEWB else [])    # the old build is GONE from the DB
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {NEWB: 117})
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: GOODFACTS)
     monkeypatch.setattr(T, "remeasure_reference_rows", lambda old, new: ([], []))      # the reference rows are covered by their own test; this fixture is not the pinned data
     notice = tmp_path / "n.json"
     notice.write_text('{"settled_1": true, "new_build_id": "%s", "expected_shift_seconds": {"1": 6993, "2": 6993}, "tolerance_seconds": 1}' % NEWB)
@@ -311,6 +315,7 @@ def test_the_cli_compares_against_a_captured_old_file_when_the_old_rows_are_gone
     assert rc == 3 and "--capture-old" in capsys.readouterr().out
     # coexistence of the old build ⇒ STOP even though the comparison is otherwise clean
     monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {OLDB: 117, NEWB: 117})
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {**GOODFACTS, "builds": [OLDB, NEWB]})
     rc = T.main(args, conn=object())
     assert rc == 3 and "exactly ONE" in capsys.readouterr().out
 
@@ -324,3 +329,33 @@ def test_capture_old_writes_a_file_and_refuses_when_the_pinned_build_has_no_rows
     monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
     q = tmp_path / "none.json"
     assert T.main(["--new-build-id", NEWB, "--capture-old", str(q)], conn=object()) == 3 and not q.exists()
+
+
+def test_the_settled_1_mechanical_guard_refuses_each_condition_separately():
+    assert T.preflight_problems(GOODFACTS, NEWB) == []
+    assert any("(ii)" in p for p in T.preflight_problems({**GOODFACTS, "builds": [OLDB, NEWB]}, NEWB))                  # mixed builds
+    assert any("(ii)" in p for p in T.preflight_problems({**GOODFACTS, "builds": []}, NEWB))                            # nothing
+    assert any("(v)" in p for p in T.preflight_problems({**GOODFACTS, "builds": [OLDB]}, NEWB))                         # one build, but not the SETTLED-1 one
+    assert any("(iii)" in p and "44 non-scope" in p for p in T.preflight_problems({**GOODFACTS, "non_scope": 44}, NEWB))   # a partition missing
+    assert any("(iii)" in p for p in T.preflight_problems({**GOODFACTS, "scope": 0}, NEWB))                             # the scope-cap partition missing
+    assert any("(iii)" in p for p in T.preflight_problems({**GOODFACTS, "non_scope": 46}, NEWB))
+    for st in ("stale", "error", "building", None):
+        bad = {**GOODFACTS, "throughput": {"ga_dashas": st or "lit", "ga_positions": "lit"}} if st else {**GOODFACTS, "throughput": {"ga_positions": "lit"}}
+        assert any("(iv)" in p and "ga_dashas" in p for p in T.preflight_problems(bad, NEWB)), st
+    assert any("(iv)" in p and "ga_positions" in p for p in T.preflight_problems({**GOODFACTS, "throughput": {"ga_dashas": "lit", "ga_positions": "stale"}}, NEWB))
+
+
+def test_the_facts_fetch_is_three_read_only_selects():
+    class Cur:
+        def __init__(self): self.qs, self.k = [], 0
+        def execute(self, q, p=None): self.qs.append(q); self.k += 1
+        def fetchall(self): return [("b1",)] if self.k == 1 else [("ga_dashas", "lit"), ("ga_positions", "lit")]
+        def fetchone(self): return (45, 1)
+    class Conn:
+        def __init__(self): self.c = Cur()
+        def cursor(self): return self.c
+    c = Conn()
+    assert T.fetch_preflight_facts(c, "x") == {"builds": ["b1"], "non_scope": 45, "scope": 1, "throughput": {"ga_dashas": "lit", "ga_positions": "lit"}}
+    assert len(c.c.qs) == 3 and all(q.lstrip().lower().startswith("select") for q in c.c.qs)
+    assert not any(w in q.lower() for q in c.c.qs for w in ("update ", "delete ", "insert ", "truncate"))
+    assert "scope_cap" in c.c.qs[1]
