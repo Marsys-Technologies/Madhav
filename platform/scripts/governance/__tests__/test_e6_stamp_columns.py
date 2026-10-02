@@ -115,7 +115,7 @@ def test_validator_a_stamp_column_is_not_a_declared_prose_field():
 def test_the_declarations_file_lists_the_new_field_and_keeps_its_version_and_declares_nothing_yet():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
     assert raw["null_convention_declaration_fields"] == list(ac.NULL_CONVENTION_DECL_FIELDS) and "stamp_columns" in ac.NULL_CONVENTION_DECL_FIELDS
-    assert raw["version"] == "1.9.0"                                                                               # the version is sequenced separately
+    assert raw["version"] == "1.10.0"          # the file version moved with DECL-LATTA (#2991); this PR does not bump it
     assert "stamp_columns" in raw["description"]
     assert [a for a, e in raw["assets"].items() if "null_convention" in e] == []
     ac.load_asset_declarations()
