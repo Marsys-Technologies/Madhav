@@ -3,10 +3,10 @@
 
 Inputs (both produced by `gochara_seal_brief_extract.py` from the verifier job's `--brief` logs, Stream A head `a289b38eb`): the BRIEF FILE — the canonical JSON bytes of the
 approval payload `seal_approval_payload/1`, whose sha256 IS the brief digest — and the COMPACT FILE, the job's last output line
-`{"brief_bytes", "brief_chunks", "brief_file", "contract": "gochara_brief_transport/1", "persisted": {brief_id, manifest_id, state_digest}, "producer": {commit, execution_id, image_digest},
+`{"brief_bytes", "brief_chunks", "brief_file", "contract_version": "seal_brief_transport/1", "persisted": {brief_id, manifest_id, state_digest}, "producer": {commit, execution_id, image_digest},
 "sha256", "status": "BRIEFED"}` (design: `design/SEAL_APPROVAL_PAYLOAD_v1_2.md`).
 This script — stdlib only, no database — refuses unless:
-  * the compact line is a well-formed `BRIEFED` result of contract `gochara_brief_transport/1` (unknown or missing = refused) whose `producer` names the commit that produced the brief — it must be the
+  * the compact line is a well-formed `BRIEFED` result of contract `seal_brief_transport/1` (unknown or missing = refused) whose `producer` names the commit that produced the brief — it must be the
     sealing commit — the immutable image digest and the execution, and whose `persisted` receipt is {brief_id: positive integer, manifest_id, state_digest: 64-hex} and whose `brief_bytes` is the
     brief file's length (F-R13-1: `persisted` is the database's own attestation that THIS brief was persisted in `ka_gochara_seal_brief`; the seal's receipt must name a persisted brief);
   * the sha256 of the BRIEF FILE'S BYTES equals the declared digest (transport integrity: a truncated or altered brief fails), and the payload re-encoded here in canonical form is
@@ -64,11 +64,11 @@ def check(raw: bytes, compact: dict, *, chart_id: str, generation: str, sealing_
         raise Refused("the expected sealing commit is not a 40-hex revision")
     if not isinstance(raw, (bytes, bytearray)) or not raw:
         raise Refused("the brief file is empty")
-    if (not isinstance(compact, dict) or set(compact) != {"brief_bytes", "brief_chunks", "brief_file", "contract", "persisted", "producer", "sha256", "status"}
+    if (not isinstance(compact, dict) or set(compact) != {"brief_bytes", "brief_chunks", "brief_file", "contract_version", "persisted", "producer", "sha256", "status"}
             or compact.get("status") != "BRIEFED" or compact.get("brief_chunks") is not True):
-        raise Refused("the compact result is not the verifier's `BRIEFED` line {brief_bytes, brief_chunks, brief_file, contract, persisted, producer, sha256, status}")
-    if compact.get("contract") != "gochara_brief_transport/1":
-        raise Refused(f"the transport contract is {compact.get('contract')!r}, not 'gochara_brief_transport/1'")
+        raise Refused("the compact result is not the verifier's `BRIEFED` line {brief_bytes, brief_chunks, brief_file, contract_version, persisted, producer, sha256, status}")
+    if compact.get("contract_version") != "seal_brief_transport/1":
+        raise Refused(f"the transport contract is {compact.get('contract_version')!r}, not 'seal_brief_transport/1'")
     prod = compact["producer"]
     if (not isinstance(prod, dict) or set(prod) != {"commit", "execution_id", "image_digest"} or not all(isinstance(prod[k], str) and prod[k].strip() for k in prod)
             or not re.fullmatch(r"sha256:[0-9a-f]{64}", prod["image_digest"])):

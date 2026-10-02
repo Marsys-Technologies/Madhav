@@ -13,9 +13,9 @@ claimed by the approver, not API metadata):
     with no well-formed grammar line (it cannot be attributed to an attempt); a comment stating more than one distinct line; more than one approval of this attempt;
   * exactly one approved candidate remains, and its digest AND brief-id must equal the retained brief's digest and the persisted brief id of THIS run's brief job; the approver login is non-empty;
   * otherwise it REFUSES (exit 2, reason on stderr, nothing written).
-On success it writes `{schema: 'seal_approval/2', brief_digest, brief_id, execution_id, run_id, run_attempt, approver_login, approved_by_note}` where the NOTE is built mechanically (ruling id + triggering actor), never taken from
+On success it writes `{schema: 'seal_approval/2', brief_digest, brief_id, producer_execution_id, run_id, run_attempt, approver_login, approved_by_note}` where the NOTE is built mechanically (ruling id + triggering actor), never taken from
 the comment — the file Stream A's `seal_job` takes as `--approval-file`, which independently re-checks the run id / attempt against GITHUB_RUN_ID / GITHUB_RUN_ATTEMPT and the digest against its own
-recompute. `brief_id` and `execution_id` (ST-WIRE-2/3; `seal_approval/1` is refused by the seal job) are the SPECIFIC persisted brief and verifier execution this approval is for — taken from the compact line of THIS
+recompute. `brief_id` and `producer_execution_id` (ST-WIRE-2; `seal_approval/1` is refused by the seal job) are the SPECIFIC persisted brief and verifier execution this approval is for — taken from the compact line of THIS
 run's brief job, bound in the approval comment (the brief id) and re-checked against the retained envelope.
 The ordering the API actually returns is recorded as an output of the live-gate proof (runbook §7.1)."""
 from __future__ import annotations
@@ -83,7 +83,7 @@ def extract(history, *, environment: str, run_id: str, attempt: str, brief_diges
         raise Refused("the approved digest is not the digest of the retained brief (the brief changed after it was approved, or the wrong brief was approved)")
     if c_brief != str(brief_id):
         raise Refused(f"the approval names persisted brief {c_brief}, this run's brief job persisted brief {brief_id}")
-    return {"schema": "seal_approval/2", "brief_digest": digest, "brief_id": int(brief_id), "execution_id": producer_execution_id, "run_id": int(run_id), "run_attempt": int(attempt),
+    return {"schema": "seal_approval/2", "brief_digest": digest, "brief_id": int(brief_id), "producer_execution_id": producer_execution_id, "run_id": int(run_id), "run_attempt": int(attempt),
             "approver_login": login, "approved_by_note": mechanical_note(triggering_actor)}
 
 
