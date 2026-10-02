@@ -60,6 +60,12 @@ PINNED_FINGERPRINTS = {
     # the Null cap lifts per asset only when schema_default and blank_rows are clean AND the detector verifies the convention; the cap line itself is unchanged);
     # no N/A rule, NA_CAUSES unchanged, inert until an asset declares one
     13: "fdee1861e969d88dc1139cbd0ff040d7b217710db3684313e00277c8150a85f1",
+    # 14 (SS N-74 item 5, N-74(a); provisional): Dens.served rev 5 (the scan tells a SELECT of the asset's table from a LABEL: an asset a serving module only
+    # names in a provenance string / prose / type name / import path / label-keyed value / map key is not reached, so it can read the no-served-surface N/A;
+    # every unclassifiable form stays a reach) and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a
+    # provenance label is not a select"; N/A = "not served directly", not "unused"); a service-kind asset named in a service_probe envelope is a REACH, not a label
+    # (bg_ephemeris_engine / bg_panchanga stay NO_DETECTOR); NA_CAUSES unchanged, asset_declarations.json unchanged
+    14: "f4af0c6c1e24fd25e41409f8f33ffeac8333411df2936bc9270d438ca20bc0f2",
 }
 
 
