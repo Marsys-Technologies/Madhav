@@ -1,6 +1,6 @@
 ---
 artifact: P2_VEDHA_ANSWER
-version: "1.0"
+version: "1.1"
 status: ANSWER TO STEWARD QUESTION (not a spec version; no code); recommendations marked MINE are not rulings
 date: 2026-10-02
 author: stream-B (Exec B)
@@ -58,3 +58,17 @@ until cited, `cancelled_vipareeta` is **not produced** (state stays `active`); r
 
 **Constrained by the 3.0-vs-controls measurement?** No — vedha never excludes a window (admission unchanged), so T-cover/T-FP are unaffected; it
 moves scores (T-rank) only, and only in the nullified direction.
+
+## Addendum (v1.1, steward M20261002T004621-2b84): would a chart-independent Moon sign-ingress series let `inactive` be proven? (recommendation only)
+**Mostly no — and the frozen spec already makes it unnecessary for scoring.** A Moon sign-ingress series is chart-independent astronomy and small
+(12 sign ingresses × ≈ 13.4 circuits a year ≈ 160 events a year, ≈ 40,000 over 250 years — about a tenth of the ≈ 4.5×10⁵ events spec §6.1 cites for
+Moon sign + nakṣatra + kakṣyā boundaries, which is the volume that justified AM-4's on-demand rule). Held as an L0 reference table consumed at serve
+time, it would **not** breach AM-4 (AM-4 forbids storing Moon contacts/records in a generation, not reading a chart-independent reference), and with
+it a vedha state could be proven fully `inactive` against the Moon. But the Moon spends ≈ 2¼ days in each sign out of ≈ 27 — about 8 % of the time in any
+given vedha house — so including it as an obstructor would slice every long favourable-house residence into dozens of short 0.0/1.0 slivers; and §5.2 inv 3
+already declares Moon-vedha **testimony / annotation-only** (S-04). (Whether that sentence covers the Moon as *obstructor* or only as *primary* is
+ambiguous in the frozen text.)
+
+**Recommendation:** do **not** build it for scoring. If the native wants the Moon obstruction *shown*, build the sign-ingress-only L0 series as a
+later improvement (versioned convention, its digest in the AM-16 vector, evaluated at serve time and shown as annotation), and first settle the
+§5.2 inv 3 ambiguity. Until then the `excluding_on_demand_moon_obstruction` scope is the honest statement and costs nothing.

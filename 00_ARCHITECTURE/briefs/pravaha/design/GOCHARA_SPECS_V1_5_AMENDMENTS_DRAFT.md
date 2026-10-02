@@ -1,6 +1,6 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.11
+version: 0.12
 status: v0.5 ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); v0.6 adds AM-10 and the F-2 exclusion-evidence binding (not yet reviewed); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
@@ -1309,24 +1309,29 @@ a plateau): `score` = max over the window's admitted records of the within-path 
 
 ---
 
-## AM-18 — CANDIDATE (steward queue M20261002T004315-1d70; text from P2_VEDHA_ANSWER_v1_0): vedha source and value mapping
+## AM-18 — RULED (steward M20261002T004621-2b84; source design/P2_VEDHA_ANSWER_v1_0.md): vedha source, value mapping, scopes
 
-**Status: proposal for the A5.5 gate; rulings on the marked points are the steward's/native's.**
-1. **Source (MINE: option b).** `ka_gochara_v5` derives vedha intervals itself as the half-open **intersection of stored residence spans**
-   — primary graha in house h from janma-rāśi ∩ an obstructor in vedha house v — using the L0 pairs table `bg_transit_rules` (the 36 cited rows of
-   the seven classical grahas; the 6 Rāhu/Ketu rows are L0-flagged UNSOURCED and are **not** used). It does not read `kala_vedha_gochara`
-   (date grain; separate generation; would need `vedha_upstream_fingerprint` in the AM-16 vector).
-2. **Value mapping (cited).** Phaladīpikā XXVI.3–8 (`phaladeepika:PG322:C1`, `PG323:C1`): an occupied vedha place **nullifies** the good result of
-   a favourable-house transit. `vedha_attenuation`: active ⇒ **0.0** (the record's for-channel value), no active obstruction ⇒ **1.0**; a
-   cited step, not a calibration; applies to favourable houses only (never to adverse residence 12/8/1). **Amend §2.3 inv 3 / §5.2 inv 1:** the
-   window stays admitted (vedha qualifies, never excludes); "zeroes" means *excludes*; the record carries `qualification: vedha_active`.
-   Fallback if the steward prefers the strict reading: value 1.0 with the nullification recorded as a qualification annotation only.
-3. **Vipareeta:** no served citation found (verbatim PG322–323 contain none) — `cancelled_vipareeta` is **not produced** until cited
-   (open native decision / human corpus read); O-VI-4 stays a mechanics oracle only.
-4. **Scope of "inactive" (AM-14 sibling):** the Moon is not a stored agent, so a stored vedha state can be proved `active` but never fully
-   `inactive`; `inactive` is scoped "excluding the on-demand Moon tier". **Open:** do Rāhu/Ketu obstruct (silent in the read slokas)?
-5. **New oracle O-VI-6** (derive vedha from two literal residence spans, incl. the Sun↔Saturn and Moon↔Mercury exceptions) — to be written
-   with the amendment; O-VI-1…5 are fixtures over built rows.
+**This amends FROZEN text (§2.3 inv 3, §5.2 inv 1) and therefore goes to Codex with the A5.5 gate.**
+1. **Source.** Vedha intervals are **derived inside `ka_gochara_v5`** as the half-open intersection, at the stored spans' own instant precision, of
+   (primary graha resident in house *h* from janma-rāśi) ∩ (an obstructor resident in the vedha house *v*). Pairs come **only** from the **36 cited**
+   `bg_transit_rules` vedha rows (**read, not copied**; accessor `services/gochara_rules/vedha_derive.py::load_pairs/pairs_from_rows`, which refuses
+   uncited rows); the **6 Rāhu/Ketu rows L0 itself flags UNSOURCED are not usable**. Exceptions: Sun↔Saturn and Moon↔Mercury never obstruct each
+   other (M-8). `kala_vedha_gochara` is **not read** (date grain, separate generation).
+2. **Value (cited step).** Phaladīpikā XXVI.3–8 (`phaladeepika:PG322:C1`, `PG323:C1`): an occupied vedha place **nullifies** the good result of a
+   favourable-house transit. `vedha_attenuation@1.1.0`: **active ⇒ 0.0 on the FOR-channel of a favourable-house residence record; no active obstruction
+   ⇒ 1.0; nothing graded.** The window **stays admitted**; the record stays stored with qualification `vedha_active`. **Amendment:** §2.3 inv 3 "no soft
+   factor zeroes an admitted window" and §5.2 inv 1 "never excludes" now read: *no soft factor **excludes** an admitted window* (a cited nullification may
+   drive a record's value to 0.0). **Applicability:** favourable houses only — adverse-residence records carry no vedha factor (declared not-applicable).
+3. **Vipareeta:** `cancelled_vipareeta` is **not produced** — no served citation (verbatim PG322–323 contain none). Open: **ND-VIPAREETA**.
+4. **Nodes as obstructors:** undecided (**ND-NODE-VEDHA**). While Rāhu or Ketu resides in the vedha house and no cited obstructor does, the factor is
+   `unqualified` (`node_obstruction_undecided`) for that sub-interval — neither 0 nor 1; a cited obstructor present ⇒ active regardless.
+5. **Moon as obstructor:** the Moon is not a stored agent (AM-4/AM-14), so stored state can prove `active` but never fully `inactive`. Value 1.0 is stored
+   with the machine-readable scope **`excluding_on_demand_moon_obstruction`** on every such record and window (a **Mercury primary is exempt** — Phaladīpikā
+   XXVI.6 excepts the Moon, so its stored `inactive` is complete); the `day_on_demand` tier evaluates Moon obstruction at serve time and serving must show the scope.
+6. **O-VI-6** (Stream B): literal residence spans incl. both exception pairs, a node alone in the vedha house, a cited obstructor beating a simultaneous node,
+   abutting obstructors, half-open edges, not-applicable and missing-input cases — `tests/l3/gochara_rules/test_am18_vedha.py` (sibling PR, stacked on #2897).
+   The **independent verifier re-derives vedha intervals from stored spans with `vedha_derive.derive_vedha`, no builder code.**
+7. **Registry:** `vedha_attenuation@1.1.0` + `P2@1.1.0` (1.0.0 rows untouched; `SUPERSEDED_*` recorded).
 
 ---
 
@@ -1346,7 +1351,7 @@ a plateau): `score` = max over the window's admitted records of the within-path 
 | AM-10 | §4.0 daśā read-contract re-pin rule (conditional on L1-rebuild close; no new pin value) | §4.0 | no (one code PR at re-pin) | steward declares rebuild landed |
 | AM-11 | Prerequisite-evaluation implementation pins (a)–(d) + P1 obligation-agent role token (e) | §2.2 / §10.1 | no | no |
 | PC-1…4 | Named pre-conditions (sealer replay EXECUTE; F-3/F-6 remainder; protected-deployment rehearsal; distinct verifier principal) | see the PRE-CONDITIONS section | — | gate steps, not merges |
-| AM-18 | CANDIDATE: vedha source (derive from stored residence spans, L0 pairs), cited nullification mapping, vipareeta uncited, `inactive` Moon-scoped | §5 | no | steward/native (inv 3 wording; node obstruction; vipareeta citation) |
+| AM-18 | RULED: vedha derived from stored residence spans (36 cited L0 pairs), cited nullification step (active 0.0 / none 1.0, window stays admitted — amends §2.3 inv 3 / §5.2 inv 1), vipareeta not produced, nodes undecided, `inactive` Moon-scoped; `vedha_attenuation@1.1.0`, `P2@1.1.0`, O-VI-6 | §5 / §2.3 | no (registry code; no DDL) | ND-VIPAREETA, ND-NODE-VEDHA |
 | AM-13 | RULED: factor applicability by object kind (`activity_kernel@1.1`: extent targets incl. star ⇒ membership step, true points ⇒ angular with orb a row parameter; drishti = aspect records only); orb = open native decision ND-ORB | factor catalogue | no (registry code + A's binding; no DDL) | ND-ORB |
 | AM-14 | RULED: Moon-agent edges excluded from the stored obligation enumeration; completeness scoped "excluding the on-demand Moon tier" | §AM-5 / AM-4 | no (1206 unchanged; live test added) | no |
 | AM-15 | RULED: P1 anchor counted inclusive from the lagna | §2.2 P1 | no | no |
