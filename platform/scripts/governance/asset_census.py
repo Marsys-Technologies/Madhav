@@ -604,6 +604,75 @@ DECLARED_KINDS = ("data", "service", "view", "static", "rider", "probe", "user_d
 # ever be wrong-or-redundant; it already was wrong for bg_gochara_arcs, whose real reader ka_gochara has no registry
 # depends_on edge (a registry defect, recorded in the evidence file, not a declaration). Nothing overrides the radius.
 CARRIAGE_FIELDS = ("served_surface",)
+# E6 S2 (SS N-72 S2, N-73): the `carriage` object also holds the asset's DECLARED CARRIAGE CHECK (declaration-keyed, reviewed):
+# ONE of D1/D2/D3 applies, chosen by the asset's NATURE, never by the caller of a rule: transcription of cited classical content
+# -> D1 (match to a cited source; N-73 (2)), computation -> D3 (re-derivation), derivation from another asset's stored facts ->
+# D2. The validator REFUSES a mismatch. The other two checks read N/A by the cause `not-the-declared-carriage`. A ratified
+# judgment seed (L0 Q13) declares nature `ratified_judgment` with a `ruling` id and no `applies`: all three read N/A by
+# `ratified_judgment`. An asset with no such declaration reads exactly as before.
+CARRIAGE_DECL_FIELDS = ("applies", "nature", "why", "evidence", "spec", "citation_state", "ruling")
+CARRIAGE_NATURE_CHECK = {"transcription": "D1", "computation": "D3", "derivation": "D2"}
+RATIFIED_JUDGMENT = "ratified_judgment"
+CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
+_RULING_ID = re.compile(r"N-[0-9]{1,6}[A-Za-z0-9._-]{0,24}")
+_CARR_D1_MOD: list = []
+
+
+def _carriage_d1():
+    """The generic D1 engine (carriage_d1.py, a pure sibling module), loaded by file path once."""
+    if not _CARR_D1_MOD:
+        import importlib.util
+        p = Path(__file__).resolve().parent / "carriage_d1.py"
+        spec = importlib.util.spec_from_file_location("carriage_d1_for_census", p)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules.setdefault("carriage_d1_for_census", mod)
+        spec.loader.exec_module(mod)
+        _CARR_D1_MOD.append(mod)
+    return _CARR_D1_MOD[0]
+
+
+def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
+    """Raises DeclarationsError when the asset's declared carriage CHECK is malformed or contradicts N-73's nature rule."""
+    nature = car.get("nature")
+    allowed = list(CARRIAGE_NATURE_CHECK) + [RATIFIED_JUDGMENT]
+    if nature not in allowed:
+        raise DeclarationsError(f"{where}.carriage.nature must be one of {allowed}, got {nature!r}")
+    for f in ("why", "evidence"):
+        v = car.get(f)
+        if not (isinstance(v, str) and v.strip() and "\n" not in v and len(v) <= 1200):
+            raise DeclarationsError(f"{where}.carriage.{f} must be a non-blank single-line string (a reason / a pointer file:line or document)")
+    if isinstance(e.get("terminal_by_construction"), str) and e["terminal_by_construction"].strip():
+        raise DeclarationsError(f"{where}: a declared carriage check and terminal_by_construction contradict each other (an asset that "
+                                f"declares a carriage check carries something from a source; declare one or the other)")
+    if nature == RATIFIED_JUDGMENT:
+        if car.get("applies") is not None or car.get("spec") is not None:
+            raise DeclarationsError(f"{where}.carriage: nature ratified_judgment declares no check (`applies`/`spec` must be absent)")
+        if not (isinstance(car.get("ruling"), str) and _RULING_ID.fullmatch(car["ruling"])):
+            raise DeclarationsError(f"{where}.carriage.ruling must be the ruling id (N-<number>) that ratified the judgment")
+        if car.get("citation_state") is not None:
+            raise DeclarationsError(f"{where}.carriage: citation_state is for a transcription, not a ratified judgment")
+        return
+    want = CARRIAGE_NATURE_CHECK[nature]
+    if car.get("applies") != want:
+        raise DeclarationsError(f"{where}.carriage: nature {nature!r} requires applies {want!r} (N-73: transcription -> D1 match to a "
+                                f"cited source; computation -> D3 re-derivation; derivation from another asset's stored facts -> D2), "
+                                f"got {car.get('applies')!r}")
+    if car.get("ruling") is not None:
+        raise DeclarationsError(f"{where}.carriage.ruling is only for nature ratified_judgment")
+    cs = car.get("citation_state")
+    if nature == "transcription":
+        if cs not in CITATION_STATES:
+            raise DeclarationsError(f"{where}.carriage.citation_state must be one of {list(CITATION_STATES)} for a transcription, got {cs!r}")
+    elif cs is not None:
+        raise DeclarationsError(f"{where}.carriage.citation_state is only declared for nature transcription")
+    spec = car.get("spec")
+    if spec is not None:
+        if want != "D1":
+            raise DeclarationsError(f"{where}.carriage.spec is only defined for applies D1")
+        try:
+            _carriage_d1().validate_spec(spec, f"{where}.carriage")
+        except ValueError as exc:
+            raise DeclarationsError(str(exc)) from exc
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
@@ -710,6 +779,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
     assets = doc.get("assets")
     if not isinstance(assets, dict):
         raise DeclarationsError("`assets` must be an object mapping asset_id to a declaration")
+    if "carriage_declaration_fields" in doc and doc["carriage_declaration_fields"] != list(CARRIAGE_DECL_FIELDS):
+        raise DeclarationsError(f"`carriage_declaration_fields` must be exactly {list(CARRIAGE_DECL_FIELDS)}")
     known = _registry_id_set(registry_ids)
     for aid, e in assets.items():
         where = f"assets[{aid!r}]"
@@ -729,12 +800,14 @@ def validate_declarations(doc, registry_ids=None) -> dict:
         if car is not None:
             if not isinstance(car, dict):
                 raise DeclarationsError(f"{where}.carriage must be an object or null")
-            bad = sorted(set(car) - set(CARRIAGE_FIELDS))
+            bad = sorted(set(car) - set(CARRIAGE_FIELDS) - set(CARRIAGE_DECL_FIELDS))
             if bad:
                 raise DeclarationsError(f"{where}.carriage: unknown field(s) {bad}")
             for f, v in car.items():
-                if v is not None and not isinstance(v, bool):
+                if f in CARRIAGE_FIELDS and v is not None and not isinstance(v, bool):
                     raise DeclarationsError(f"{where}.carriage.{f} must be true, false or null, got {v!r}")
+            if any(car.get(f) is not None for f in CARRIAGE_DECL_FIELDS):
+                validate_carriage_declaration(where, car, e)
         pf = e.get("prose_fields")
         if pf is not None:
             # null = undeclared; [] = declared "this writer composes no prose" (a positive claim); both need evidence
