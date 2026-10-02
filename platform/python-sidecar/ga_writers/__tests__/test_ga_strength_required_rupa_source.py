@@ -259,3 +259,166 @@ def test_nodes_keep_their_named_legacy_default_and_are_unaffected():
     assert len(rahu) == 36  # 12 houses x 3 keys — not floored
     assert structural_w._NODE_LEGACY_COMPOSITE_REQUIRED == 5.0
     assert any("shadbala_ratio=0.5000" in r["citation_human"] for r in rahu)  # 2.5 / 5.0
+
+
+# ── 6. a FAILED read raises; only a genuinely missing fact floors (review LOW-1) ──────
+
+class _RaisingConn:
+    """A connection whose SELECT fails (e.g. a dropped connection, a permission error)."""
+
+    def cursor(self, *a, row_factory=None, **k):
+        return _RaisingCursor()
+
+
+class _RaisingCursor:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def execute(self, sql, params=None):
+        raise RuntimeError("simulated failed SELECT")
+
+    def fetchall(self):  # pragma: no cover - never reached
+        return []
+
+
+def test_failed_required_rupa_select_propagates_not_floors():
+    with pytest.raises(RuntimeError, match="simulated failed SELECT"):
+        structural_w._load_required_rupa_map(_RaisingConn(), "chart-x")
+
+
+def test_failed_shadbala_bhava_select_propagates_not_floors():
+    with pytest.raises(RuntimeError, match="simulated failed SELECT"):
+        structural_w._load_shadbala_and_bhava_fact_ids(
+            _RaisingConn(), "chart-x", "lahiri_chitrapaksha")
+
+
+def test_composite_build_propagates_a_failed_select_instead_of_flooring_seven_grahas():
+    with pytest.raises(RuntimeError, match="simulated failed SELECT"):
+        _composite(_RaisingConn())
+
+
+def test_a_genuinely_missing_fact_is_an_empty_map_not_an_error():
+    conn = _ChartFactsFakeConn({}, [])
+    assert structural_w._load_required_rupa_map(conn, "chart-x") == {}
+
+
+# ── 7. floor reason and citation text name the ACTUAL missing input(s) (review LOW-2) ──
+
+def _sun_floor_rows(rupa, required_rows):
+    conn = _ChartFactsFakeConn(rupa, required_rows)
+    rows = _composite(conn)
+    return [r for r in rows if r["fact_subject"].startswith("SUN_IN_HOUSE_")]
+
+
+def _all_but_sun_required():
+    return [r for r in _required_rows_from_writer(strength_w.SHADBALA_REQUIRED)
+            if r["subject"] != "SUN"]
+
+
+def test_floor_text_names_only_the_missing_l1_required_fact_when_that_is_the_reason():
+    sun = _sun_floor_rows({"SUN": 5.74, "MOON": 6.0, "RAH_MEAN": 1.0}, _all_but_sun_required())
+    assert len(sun) == 12
+    for r in sun:
+        assert r["fact_value_jsonb"]["reason"] == "missing_l1_required_rupa_fact"
+        assert "missing the L1 required_rupa fact" in r["citation_human"]
+        assert "GA3" not in r["citation_human"]          # the old text blamed GA3 shadbala/bhava_bala
+
+
+def test_floor_text_names_only_the_missing_ga3_fact_when_that_is_the_reason():
+    required = _required_rows_from_writer(strength_w.SHADBALA_REQUIRED)
+    sun = _sun_floor_rows({"MOON": 6.0, "RAH_MEAN": 1.0}, required)   # Sun's achieved rupa absent
+    assert len(sun) == 12
+    for r in sun:
+        assert r["fact_value_jsonb"]["reason"] == "missing_ga3_shadbala_or_bhava_bala_fact"
+        assert "missing the GA3 shadbala fact" in r["citation_human"]
+        assert "required_rupa" not in r["citation_human"]
+
+
+def test_floor_reason_and_text_name_both_when_both_inputs_are_missing():
+    sun = _sun_floor_rows({"MOON": 6.0, "RAH_MEAN": 1.0}, _all_but_sun_required())
+    assert len(sun) == 12
+    for r in sun:
+        assert r["fact_value_jsonb"]["reason"] == (
+            "missing_l1_required_rupa_fact+missing_ga3_shadbala_or_bhava_bala_fact")
+        assert "missing the L1 required_rupa fact and the GA3 shadbala fact" in r["citation_human"]
+
+
+def test_composite_floor_detail_names_every_missing_input_and_refuses_an_empty_floor():
+    f = structural_w._composite_floor_detail
+    assert f(required_missing=False, shadbala_missing=False, bhava_missing=True) == (
+        "missing_ga3_shadbala_or_bhava_bala_fact", "missing the GA3 bhava_bala fact")
+    assert f(required_missing=True, shadbala_missing=True, bhava_missing=True) == (
+        "missing_l1_required_rupa_fact+missing_ga3_shadbala_or_bhava_bala_fact",
+        "missing the L1 required_rupa fact and the GA3 shadbala fact and the GA3 bhava_bala fact")
+    with pytest.raises(ValueError):
+        f(required_missing=False, shadbala_missing=False, bhava_missing=False)
+
+
+# ── 8. ga_strength: no silent 5.0 default (SS (b)); the citation reads the right table row ──
+
+def _raises_for_a_graha_outside_the_table(fn) -> bool:
+    try:
+        fn("Rahu")
+    except ValueError:
+        return True
+    except Exception:  # any other exception is not the contracted failure
+        return False
+    return False
+
+
+def test_required_rupa_for_raises_for_anything_outside_the_seven():
+    for bad in ("Rahu", "Ketu", "SUN", "sun", "Lagna", ""):
+        with pytest.raises(ValueError, match="no classical required shadbala"):
+            strength_w.required_rupa_for(bad)
+    for g, v in SOURCE_RUPA_NOTE.items():
+        assert strength_w.required_rupa_for(g) == v
+
+
+def test_mutation_reintroducing_the_default_is_caught():
+    """The raise-check has teeth: the real function passes it, a mutant that silently
+    defaults to 5.0 (the removed `.get(graha, 5.0)`) fails it."""
+    assert _raises_for_a_graha_outside_the_table(strength_w.required_rupa_for)
+    mutant = lambda g: strength_w.SHADBALA_REQUIRED.get(g, 5.0)  # noqa: E731
+    assert not _raises_for_a_graha_outside_the_table(mutant)
+
+
+def test_ga_strength_source_has_no_defaulting_lookup_of_the_required_table():
+    src = open(strength_w.__file__, encoding="utf-8").read()
+    code = "\n".join(line.split("#", 1)[0] for line in src.splitlines())  # comments stripped
+    assert not re.search(r"SHADBALA_REQUIRED\s*\.get\s*\(", code)
+
+
+@pytest.mark.parametrize("graha", sorted(SOURCE_RUPA_NOTE))
+def test_total_rupa_citation_states_the_graha_own_required_value(graha):
+    # Before: `graha` was the display string ('SUN'), a miss against the Title-case table, so
+    # the silent default made EVERY classical graha read "vs required 5.00 rupa" (Moon read
+    # "surplus 0.65 vs required 5.00" beside a ratio row saying below-minimum).
+    text = strength_w._citation_human_strength(
+        "graha_shadbala_total", SUBJECT[graha], "rupa", 5.65, "lahiri_chitrapaksha")
+    assert f"vs required {SOURCE_RUPA_NOTE[graha]:.2f} rupa" in text
+
+
+def test_total_rupa_citation_for_nodes_states_no_classical_minimum():
+    for subj in ("RAH_MEAN", "KET_MEAN"):
+        text = strength_w._citation_human_strength(
+            "graha_shadbala_total", subj, "rupa", 0.375, "lahiri_chitrapaksha")
+        assert "no classical required minimum exists for the nodes" in text
+        assert "vs required" not in text
+
+
+def test_total_rupa_citation_for_an_unknown_subject_raises():
+    with pytest.raises(ValueError):
+        strength_w._citation_human_strength(
+            "graha_shadbala_total", "NOT_A_GRAHA", "rupa", 1.0, "lahiri_chitrapaksha")
+
+
+def test_emitted_total_rupa_rows_carry_the_graha_own_required_in_their_citation():
+    totals = {g: 6.0 for g in SOURCE_RUPA_NOTE}
+    rows = _shadbala_rows(totals)
+    cit = {r["fact_subject"]: r["citation_human"] for r in rows
+           if r["fact_category"] == "graha_shadbala_total" and r["fact_key"] == "rupa"}
+    assert "vs required 6.50 rupa" in cit["SUN"]
+    assert "vs required 7.00 rupa" in cit["MER"]

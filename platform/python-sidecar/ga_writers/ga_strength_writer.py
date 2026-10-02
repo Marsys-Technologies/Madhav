@@ -131,6 +131,23 @@ SHADBALA_REQUIRED: dict[str, float] = {
     g: v / 60.0 for g, v in SHADBALA_REQUIRED_VIRUPA.items()
 }
 
+
+def required_rupa_for(graha: str) -> float:
+    """The classical required shadbala for one of the seven classical grahas (Title
+    case name, a key of SHADBALA_REQUIRED). A graha outside the table (the nodes, a
+    subject string such as 'SUN', a typo) RAISES — there is no default: a silent
+    `.get(graha, 5.0)` here used to make every lookup that missed the table quietly
+    read 5.0 (CLAUDE.md §N.7 item 6: an honest null / a loud failure beats an invented
+    value). Callers that legitimately handle the nodes branch BEFORE calling this."""
+    try:
+        return SHADBALA_REQUIRED[graha]
+    except KeyError:
+        raise ValueError(
+            f"no classical required shadbala for graha {graha!r}: SHADBALA_REQUIRED covers "
+            f"only {sorted(SHADBALA_REQUIRED)}; the nodes carry no classical minimum and "
+            f"must be handled before this call"
+        ) from None
+
 # Ashtakavarga invariant: sum of sarvashtakavarga across all 12 houses = 337
 SARVA_BINDU_TOTAL = 337
 
@@ -187,7 +204,22 @@ def _citation_human_strength(category: str, subject: str, key: str,
     if category == "graha_shadbala_drik":
         return f"{graha} drik bala: {value_num:.4f} rupa ({ay})."
     if category == "graha_shadbala_total":
-        req = SHADBALA_REQUIRED.get(graha, 5.0)
+        # `graha` above is the display string ('SUN', 'Jupiter'...), NOT a key of
+        # SHADBALA_REQUIRED (Title-case names), so the previous
+        # `SHADBALA_REQUIRED.get(graha, 5.0)` silently fell through to 5.0 for every
+        # subject that is not spelled like its table key (every graha but 'Jupiter'-style
+        # display strings, and the nodes). Resolve the classical graha from the SUBJECT
+        # instead; the nodes carry no classical minimum and say so; anything else raises.
+        classical = next(
+            (g for g in SHADBALA_REQUIRED if PLANET_TO_SUBJECT.get(g) == subject), None)
+        if classical is None:
+            if subject in {PLANET_TO_SUBJECT.get("Rahu"), PLANET_TO_SUBJECT.get("Ketu")}:
+                return (f"{graha} total shadbala: {value_num:.4f} rupa "
+                        f"(no classical required minimum exists for the nodes) ({ay}).")
+            raise ValueError(
+                f"graha_shadbala_total citation: subject {subject!r} is neither a "
+                f"classical graha nor a node")
+        req = required_rupa_for(classical)
         surplus = value_num - req
         direction = "surplus" if surplus >= 0 else "deficit"
         return (f"{graha} total shadbala: {value_num:.4f} rupa "
@@ -853,7 +885,7 @@ def _build_shadbala_rows(
             })
 
         # Required rupa for total
-        req = SHADBALA_REQUIRED.get(graha_name, 5.0)
+        req = required_rupa_for(graha_name)
         fid_req = _fact_id("graha_shadbala_total", subject, "required_rupa",
                             chart_id, ayanamsha_id, build_id)
         rows.append({

@@ -3841,30 +3841,32 @@ def _load_shadbala_and_bhava_fact_ids(
     """
     shadbala: dict[str, tuple[float, str]] = {}
     bhava_bala: dict[str, tuple[float, str]] = {}
-    try:
-        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
-            cur.execute("""
-                SELECT fact_subject, fact_value_num, fact_id
-                FROM chart_facts
-                WHERE chart_id = %s AND ayanamsha_id = %s
-                  AND fact_category = 'graha_shadbala_total'
-                  AND fact_key = 'rupa'
-            """, (chart_id, ayanamsha_id))
-            for subj, val, fid in cur.fetchall():
-                if val is not None:
-                    shadbala[subj] = (float(val), str(fid))
-            cur.execute("""
-                SELECT fact_subject, fact_value_num, fact_id
-                FROM chart_facts
-                WHERE chart_id = %s AND ayanamsha_id = %s
-                  AND fact_category = 'house_bhava_bala_total'
-                  AND fact_key = 'total'
-            """, (chart_id, ayanamsha_id))
-            for subj, val, fid in cur.fetchall():
-                if val is not None:
-                    bhava_bala[subj] = (float(val), str(fid))
-    except Exception as exc:
-        logger.warning("[ga_structural] shadbala/bhava_bala lookup failed: %s", exc)
+    # A FAILED SELECT is not a MISSING fact: a database error propagates (SS ruling,
+    # PR #2892/#2893: a failed evaluation must raise, never degrade into "no facts" and
+    # floor every composite row). Only a genuinely absent fact — the SELECT succeeds and
+    # returns no row for that subject — leaves the map entry out, and the caller floors
+    # that row with a NAMED reason.
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute("""
+            SELECT fact_subject, fact_value_num, fact_id
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = %s
+              AND fact_category = 'graha_shadbala_total'
+              AND fact_key = 'rupa'
+        """, (chart_id, ayanamsha_id))
+        for subj, val, fid in cur.fetchall():
+            if val is not None:
+                shadbala[subj] = (float(val), str(fid))
+        cur.execute("""
+            SELECT fact_subject, fact_value_num, fact_id
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = %s
+              AND fact_category = 'house_bhava_bala_total'
+              AND fact_key = 'total'
+        """, (chart_id, ayanamsha_id))
+        for subj, val, fid in cur.fetchall():
+            if val is not None:
+                bhava_bala[subj] = (float(val), str(fid))
     return shadbala, bhava_bala
 
 
@@ -3887,21 +3889,23 @@ def _load_required_rupa_map(
     asset_registry, so the INVARIANT row is guaranteed to exist before this runs.
     """
     required: dict[str, tuple[float, str]] = {}
-    try:
-        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
-            cur.execute("""
-                SELECT fact_subject, fact_value_num, fact_id
-                FROM chart_facts
-                WHERE chart_id = %s AND ayanamsha_id = 'INVARIANT'
-                  AND fact_category = 'graha_shadbala_total'
-                  AND fact_key = 'required_rupa'
-                ORDER BY fact_subject, fact_id
-            """, (chart_id,))
-            for subj, val, fid in cur.fetchall():
-                if val is not None:
-                    required[subj] = (float(val), str(fid))
-    except Exception as exc:
-        logger.warning("[ga_structural] required_rupa lookup failed: %s", exc)
+    # A FAILED SELECT is not a MISSING fact: a database error propagates (SS ruling:
+    # a failed evaluation must raise). Only a genuinely absent L1 fact — the SELECT
+    # succeeds and returns no row for a graha — leaves it out of the map, and the
+    # composite builder then floors that graha's rows with the named reason
+    # `missing_l1_required_rupa_fact`.
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute("""
+            SELECT fact_subject, fact_value_num, fact_id
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = 'INVARIANT'
+              AND fact_category = 'graha_shadbala_total'
+              AND fact_key = 'required_rupa'
+            ORDER BY fact_subject, fact_id
+        """, (chart_id,))
+        for subj, val, fid in cur.fetchall():
+            if val is not None:
+                required[subj] = (float(val), str(fid))
     return required
 
 
@@ -3926,6 +3930,30 @@ _NODE_LEGACY_COMPOSITE_REQUIRED = 5.0
 # ayanamsha (ratio to the max observed value) — an honest, chart-relative
 # "how strong is this house compared to this native's strongest house"
 # reading, not an absolute claim against an uncited threshold.
+
+
+def _composite_floor_detail(
+    *, required_missing: bool, shadbala_missing: bool, bhava_missing: bool,
+) -> tuple[str, str]:
+    """(machine reason, human phrase) for a floored composite row, naming EVERY missing
+    input. `missing_l1_required_rupa_fact` = the L1 graha_shadbala_total|required_rupa
+    fact; `missing_ga3_shadbala_or_bhava_bala_fact` = the GA3 shadbala `rupa` and/or
+    house bhava_bala `total` fact. When both groups are missing the reasons are joined
+    with '+' (required first)."""
+    reasons: list[str] = []
+    phrases: list[str] = []
+    if required_missing:
+        reasons.append("missing_l1_required_rupa_fact")
+        phrases.append("the L1 required_rupa fact")
+    if shadbala_missing or bhava_missing:
+        reasons.append("missing_ga3_shadbala_or_bhava_bala_fact")
+        if shadbala_missing:
+            phrases.append("the GA3 shadbala fact")
+        if bhava_missing:
+            phrases.append("the GA3 bhava_bala fact")
+    if not reasons:  # defensive: callers only floor when an input is missing
+        raise ValueError("composite floor requested but no missing input was named")
+    return "+".join(reasons), "missing " + " and ".join(phrases)
 
 
 def _build_composite_strength_rows(
@@ -4014,25 +4042,27 @@ def _build_composite_strength_rows(
             ]
 
             if shadbala_ratio is None or bhava_ratio is None:
-                # Canonical-or-floor: no real GA3 shadbala/bhava_bala row for
-                # this graha/house — floor rather than fabricate a proxy.
+                # Canonical-or-floor: a required input fact is genuinely absent for
+                # this graha/house — floor rather than fabricate a proxy. The reason
+                # (and the citation text) names EVERY input that is missing.
+                floor_reason, floor_phrase = _composite_floor_detail(
+                    required_missing=not required,
+                    shadbala_missing=sb_entry is None,
+                    bhava_missing=bhava_ratio is None,
+                )
                 rows.append(_base_row(
                     "graha_in_house_composite_strength", comp_subject, "bphs_weighted",
                     chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                     value_num=None,
                     value_jsonb={
                         "floored": True,
-                        "reason": (
-                            "missing_l1_required_rupa_fact"
-                            if required is None and sb_entry is not None
-                            else "missing_ga3_shadbala_or_bhava_bala_fact"
-                        ),
+                        "reason": floor_reason,
                     },
                     verif="floored",
                     source=f"ga_structural.composite_strength_bphs/{eng_ver}",
                     citation_human=(
                         f"{g_name} in house {h}: composite strength floored — "
-                        f"missing real shadbala/bhava_bala GA3 fact ({ayanamsha_id})."
+                        f"{floor_phrase} ({ayanamsha_id})."
                     ),
                     constituent_facts_array=constituent_ids or None,
                 ))
