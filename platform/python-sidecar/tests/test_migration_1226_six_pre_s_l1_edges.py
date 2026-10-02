@@ -111,6 +111,9 @@ def test_1226_writes_only_depends_on_and_discloses_ordering_and_consequences():
     sql = _M1226.read_text()
     code = _code(_M1226)
     assert re.findall(r"\bSET\s+([a-z_]+)\s*=", code, re.I) == ["depends_on"]
+    # lock_timeout is the FIRST executable statement, and the header says why
+    assert code.strip().startswith("SET LOCAL lock_timeout = '5s';"), code.strip()[:80]
+    assert "a blocked migrate job must fail fast, not hang a shared deploy" in sql
     for needle in ("ORDERING RULE", "BEFORE S-L1", "NO DATA ROW CHANGES", "compute_upstream_hash",
                    "plan_adaptation_required", "assertManifestMatchesRegistryIdentity", "Trap 103",
                    "PRODUCTION STRUCTURE", "WITH RECURSIVE", "planned/running/paused",

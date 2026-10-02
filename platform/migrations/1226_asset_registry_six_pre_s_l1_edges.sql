@@ -85,9 +85,9 @@
 --     these assets at apply (an OPERATOR check, not enforced in this file: the 0-active-runs query below).
 --  4. Hard dependency gate. asset_runner.deps_unsatisfied (enforce mode) requires every declared dep to be
 --     asset_throughput.state 'lit' (or 'service_ok') AND its latest asset_freshness 'fresh'. The new
---     producers (ga_yoga, bo_bimba, ga_vargas, ga_sensitive) were each already upstream of their consumers on
---     the old transitive paths for edges 1-4 (those cost nothing); edges 5-6 make ga_sensitive a direct
---     prerequisite of ga_vargas and ga_dashas, which is exactly the S-L1 build order.
+--     edges 1, 2 and 4 duplicate existing transitive paths (they cost nothing); edges 3, 5 and 6 add NEW
+--     prerequisites: ga_dashas now waits for ga_vargas (3), and ga_vargas (5) and ga_dashas (6) now wait for
+--     ga_sensitive. That is exactly the S-L1 build order (ga_sensitive -> ga_vargas -> ga_dashas ...).
 --  5. Cockpit direct blocking radius of the four producers rises by their new direct consumers.
 --
 -- APPLY ONLY WHEN no build_runs row is in state planned/running/paused (verify at apply: SELECT count(*) FROM
@@ -102,11 +102,24 @@
 --    WHERE asset_id IN ('bo_laksana','bo_upaya','ga_dashas','ga_yoga','ga_vargas') ORDER BY 1;
 --   -- expect: bo_laksana has ga_yoga; bo_upaya has bo_bimba; ga_dashas has ga_vargas and ga_sensitive;
 --   --         ga_yoga has ga_vargas; ga_vargas has ga_sensitive
---   and the recursive-CTE closure used by Guard 3 returns no row with src = node over the full registry.
+--   and the acyclicity closure over the FULL registry (Guard 3 seeds only from the edited consumers; this drops
+--   that filter, so it would also show a pre-existing cycle elsewhere) returns no row:
+--   WITH RECURSIVE edges AS (SELECT r.asset_id AS src, d.dep FROM asset_registry r
+--                             CROSS JOIN LATERAL unnest(COALESCE(r.depends_on, '{}'::text[])) AS d(dep)),
+--        reach(src, node) AS (SELECT src, dep FROM edges
+--                             UNION SELECT r.src, e.dep FROM reach r JOIN edges e ON e.src = r.node)
+--   SELECT DISTINCT src FROM reach WHERE src = node;   -- expect 0 rows
 --   SELECT asset_id, chart_id, freshness_state, reasons FROM asset_freshness
 --    WHERE asset_id IN ('bo_laksana','bo_upaya','ga_dashas','ga_yoga','ga_vargas') ORDER BY 1, 2;
 --   -- expect: every row 'stale' with 'registry_changed' in reasons (CONSEQUENCES 1); ga_sensitive and bo_bimba
 --   --         rows unchanged
+--
+-- LOCK TIMEOUT (pattern: migration 1218). The first statement below is `SET LOCAL lock_timeout = '5s'`:
+-- a blocked migrate job must fail fast, not hang a shared deploy.
+--
+-- NEVER SHARES A PR WITH A WRITER CHANGE. This migration must PRECEDE the writer RUNS that rely on its edges (the
+-- S-L1 dispatches), and may travel with or before the writer deploy; the effect of a migration that is only valid
+-- with or after a new writer image must never ship in that writer's PR.
 --
 -- Transaction ownership belongs to platform/scripts/migrate.ts (BEGIN/COMMIT around this file). No DDL; only
 -- row updates on asset_registry (owned by amjis_app, the migration runner's role).
