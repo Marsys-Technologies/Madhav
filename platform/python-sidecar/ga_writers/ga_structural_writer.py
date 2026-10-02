@@ -3939,13 +3939,16 @@ def _composite_floor_detail(
     exists, so there is no normaliser; `missing_l1_required_rupa_fact` = the L1
     graha_shadbala_total|required_rupa fact is absent; `missing_ga3_shadbala_or_bhava_
     bala_fact` = the GA3 shadbala `rupa` and/or house bhava_bala `total` fact is absent.
-    Several causes are joined with '+' (node/required first)."""
+    A node returns ONLY the node reason; for a classical graha several causes are joined
+    with '+' (required first)."""
+    if node_has_no_required:
+        # A node's single clean reason: there is no classical required value, whatever
+        # else is or is not present. No missing-fact suffix (SS ruling 2026-10-02).
+        return (NODE_NO_CLASSICAL_REQUIRED_REASON,
+                "no classical required shadbala value exists for the nodes")
     reasons: list[str] = []
     clauses: list[str] = []
     missing: list[str] = []
-    if node_has_no_required:
-        reasons.append(NODE_NO_CLASSICAL_REQUIRED_REASON)
-        clauses.append("no classical required shadbala value exists for the nodes")
     if required_missing:
         reasons.append("missing_l1_required_rupa_fact")
         missing.append("the L1 required_rupa fact")

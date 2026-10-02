@@ -282,17 +282,20 @@ def test_the_invented_node_normaliser_is_gone():
     assert "_NODE_LEGACY_COMPOSITE_REQUIRED" not in code
 
 
-def test_node_floor_also_names_a_missing_ga3_input():
+def test_node_floor_reason_is_exactly_the_node_reason_even_when_its_ga3_fact_is_absent():
     conn = _ChartFactsFakeConn(
-        {"SUN": 8.0, "MOON": 6.0},   # no RAH_MEAN rupa
+        {"SUN": 8.0, "MOON": 6.0},   # no RAH_MEAN shadbala rupa
         _required_rows_from_writer(strength_w.SHADBALA_REQUIRED),
     )
     rows = _composite(conn)
     rahu = [r for r in rows if r["fact_subject"].startswith("RAH_MEAN_IN_HOUSE_")]
     assert len(rahu) == 12
-    assert all(r["fact_value_jsonb"]["reason"] ==
-               "no_classical_required_value_for_node+missing_ga3_shadbala_or_bhava_bala_fact"
-               for r in rahu)
+    for r in rahu:
+        assert r["fact_value_jsonb"]["reason"] == structural_w.NODE_NO_CLASSICAL_REQUIRED_REASON
+        assert "missing" not in r["citation_human"]
+    assert structural_w._composite_floor_detail(
+        node_has_no_required=True, required_missing=False,
+        shadbala_missing=True, bhava_missing=True)[0] == "no_classical_required_value_for_node"
 
 
 def test_classical_grahas_are_not_floored_when_all_inputs_exist():
