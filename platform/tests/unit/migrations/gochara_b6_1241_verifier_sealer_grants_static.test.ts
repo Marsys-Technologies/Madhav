@@ -37,11 +37,11 @@ describe('migration 1241 — static contract', () => {
     }
   })
 
-  it('the verifier: no UPDATE anywhere, DELETE only on 1240\'s own window-verification table, INSERT only on the two verification tables, nothing on the seal', () => {
+  it('the verifier: no UPDATE anywhere, DELETE only on 1240\'s own window-verification table, INSERT only on the two verification tables and the append-only seal-brief table (F-R12-4), nothing on the seal', () => {
     for (const [t, p] of V.tables) {
       expect(p).not.toBe('UPDATE')
       if (p === 'DELETE') expect(t).toBe('ka_gochara_eval_window_verification')
-      if (p === 'INSERT') expect(['ka_gochara_eval_window_verification', 'ka_gochara_search_inventory_verification']).toContain(t)
+      if (p === 'INSERT') expect(['ka_gochara_eval_window_verification', 'ka_gochara_search_inventory_verification', 'ka_gochara_seal_brief']).toContain(t)
     }
     expect(V.tables.filter(([t, p]) => t === 'ka_gochara_search_inventory_verification' && p === 'DELETE')).toEqual([])
     expect(V.functions.map(f => f[0]).join('\n')).not.toMatch(/seal_generation/)

@@ -38,6 +38,8 @@
 --   (R12-1, v5) the candidate boundary now includes the LEGACY projection: both principals get EXECUTE on `ka_gochara_legacy_projection_rows` (1240's gate arm and the brief call it
 --              with invoker rights); the VERIFIER also reads the legacy relations (SELECT kala_gochara_contacts, column-level SELECT (chart_id, generation) on kala_gochara_windows);
 --              the SEALER already holds those two reads. 1240 grants nothing on any R11/R12 object — every one of them is proven necessary by the whole approved flow as the real roles.
+--   (F-R12-4, v6) the receipt must name a brief the VERIFIER persisted: the verifier gets SELECT + INSERT on the append-only `ka_gochara_seal_brief` and EXECUTE on `ka_gochara_brief_state_digest`;
+--              the sealer gets SELECT on it and EXECUTE on `ka_gochara_brief_state_digest` and `ka_gochara_seal_brief_problem` (the early check and the commit-time trigger call them with invoker rights).
 --   SEALER   — INSERT on the seal table; UPDATE on kala_gochara_publication ONLY on the four columns ledger.publish actually sets (status, published_at,
 --              content_digest, row_counts — R10-7 iii; narrowed from table-wide); SELECT on the legacy windows relation ONLY on (chart_id, generation)
 --              (R10-7 ii: `ledger.publish` counts the legacy projection's rows when the relation exists, so the production-shaped schema needs this read
@@ -96,7 +98,9 @@ DECLARE
       ["ka_gochara_search_interval","SELECT",null,"1241"],
       ["_migrations_applied","SELECT",["filename","sha256","applied_at"],"1241"],
       ["kala_gochara_contacts","SELECT",null,"1241"],
-      ["kala_gochara_windows","SELECT",["chart_id","generation"],"1241"]
+      ["kala_gochara_windows","SELECT",["chart_id","generation"],"1241"],
+      ["ka_gochara_seal_brief","SELECT",null,"1241"],
+      ["ka_gochara_seal_brief","INSERT",null,"1241"]
      ],
      "functions": [
       ["ka_gochara_lock_chart(uuid)","1240"],
@@ -121,7 +125,8 @@ DECLARE
       ["ka_gochara_utc_ts(timestamptz)","1241"],
       ["ka_gochara_search_moon_scope_violations(uuid,text)","1241"],
       ["ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)","1241"],
-      ["ka_gochara_legacy_projection_rows(uuid,text)","1241"]
+      ["ka_gochara_legacy_projection_rows(uuid,text)","1241"],
+      ["ka_gochara_brief_state_digest(uuid,text)","1241"]
      ]
     },
     "gochara_sealer": {
@@ -140,6 +145,7 @@ DECLARE
       ["ka_gochara_seal_approval","SELECT",null,"1241"],
       ["ka_gochara_seal_approval","INSERT",null,"1241"],
       ["_migrations_applied","SELECT",["filename","sha256","applied_at"],"1241"],
+      ["ka_gochara_seal_brief","SELECT",null,"1241"],
       ["ka_gochara_generation_seal","INSERT",null,"1241"],
       ["kala_gochara_publication","UPDATE",["status","published_at","content_digest","row_counts"],"1241"],
       ["kala_gochara_windows","SELECT",["chart_id","generation"],"1241"],
@@ -184,7 +190,9 @@ DECLARE
       ["ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)","1241"],
       ["ka_gochara_generation_governed(text)","1241"],
       ["ka_gochara_seal_receipt_missing(uuid,text)","1241"],
-      ["ka_gochara_legacy_projection_rows(uuid,text)","1241"]
+      ["ka_gochara_legacy_projection_rows(uuid,text)","1241"],
+      ["ka_gochara_brief_state_digest(uuid,text)","1241"],
+      ["ka_gochara_seal_brief_problem(uuid,text,uuid,text)","1241"]
      ]
     }
   },
