@@ -23,7 +23,10 @@ class Valence:
     evidence_against_occurrence: float | None
     occurrence: str  # "contested" | "plain" | "unqualified"
     outcome_valence_for_native: str
-    severity: float = 0.0
+    # No rule in the spec or registry computes severity, so it is None
+    # whenever no severity rule supplies one (i.e. always, today) — never a
+    # fabricated 0.0. Always None for an unqualified window.
+    severity: float | None = None
     unresolved_operand: str | None = None
 
 
