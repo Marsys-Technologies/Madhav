@@ -152,23 +152,16 @@ def test_interval_states_follow_the_search_capability_never_assumed():
     obs_h = {o.ob_id: o for o in honest.obligations}
     missing_h = [iv for iv in honest.intervals if iv.state == "missing_inputs"]
     is_span_aspect = lambda o: o.relation == "aspect" and o.target.startswith("span:")  # noqa: E731
-    assert missing_h and all(obs_h[iv.ob_id].agent == "moon" or is_span_aspect(obs_h[iv.ob_id])
-                             for iv in missing_h)
-    # BOTH honest gaps are present for a real class: the unsolved aspect-to-span search and the
-    # EPHEMERAL Moon tier (AM-4: a build stores no Moon contact — covered on demand at query time)
+    assert missing_h and all(is_span_aspect(obs_h[iv.ob_id]) for iv in missing_h)
     assert any(is_span_aspect(obs_h[iv.ob_id]) for iv in missing_h)
-    assert any(obs_h[iv.ob_id].agent == "moon" for iv in missing_h)
     assert {iv.state for iv in honest.intervals} == {"searched_complete", "missing_inputs"}
     full = _plan(cap=inv.SearchCapability(position_probe=True, arc_index=True,
-                                          aspect_span_solver=True,
-                                          moon_stored_search=True))
+                                          aspect_span_solver=True))
     assert {iv.state for iv in full.intervals} == {"searched_complete"}
     no_probe = _plan(cap=inv.SearchCapability(position_probe=False, arc_index=True,
-                                              aspect_span_solver=True,
-                                          moon_stored_search=True))
+                                              aspect_span_solver=True))
     no_arc = _plan(cap=inv.SearchCapability(position_probe=True, arc_index=False,
-                                            aspect_span_solver=True,
-                                          moon_stored_search=True))
+                                            aspect_span_solver=True))
     by_ob = lambda plan: {o.ob_id: o for o in plan.obligations}  # noqa: E731
     for plan, relations in ((no_probe, {"residence"}), (no_arc, {"conjunction", "aspect"})):
         obs = by_ob(plan)
@@ -331,8 +324,7 @@ def test_the_registry_seals_are_the_pin_partition_the_planner_must_cover(am5):
 def test_a_planned_class_is_stored_finalised_and_the_digests_are_the_dbs(am5):
     store, sky, _ = _boot(am5, "5.7")
     plan = _plan(cap=inv.SearchCapability(position_probe=True, arc_index=True,
-                                          aspect_span_solver=True,
-                                          moon_stored_search=True))
+                                          aspect_span_solver=True))
     digest, out = _write(am5, store, sky, "5.7", plan)
     assert out["obligations"] == len(plan.obligations) and out["pins"] == 5
     row = am5.execute(
@@ -471,8 +463,7 @@ def test_the_seal_check_sees_exactly_what_is_missing_after_the_builder_alone(am5
     input fault. (A publication row must be `published` for the manifest-bound checks.)"""
     store, sky, _ = _boot(am5, "5.7")
     plan = _plan(cap=inv.SearchCapability(position_probe=True, arc_index=True,
-                                          aspect_span_solver=True,
-                                          moon_stored_search=True))
+                                          aspect_span_solver=True))
     _write(am5, store, sky, "5.7", plan)
     with am5.transaction():
         am5.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))

@@ -175,11 +175,6 @@ class SearchCapability:
     #: aspect-to-span (the aspect point's ingress into a house span) has NO solver in this slice:
     #: such obligations are `missing_inputs` (a seal refusal by design) until one lands.
     aspect_span_solver: bool = False
-    #: the Moon is an EPHEMERAL tier (AM-4, pin 6): a build never stores a Moon-agent contact or
-    #: record (the database refuses a Moon record under an `event_class` partition — it is covered
-    #: only by a `moon_on_demand` partition at query time). Moon-agent obligations therefore stay
-    #: `missing_inputs` until a ruling says how the stored inventory accounts for the on-demand tier.
-    moon_stored_search: bool = False
 
 
 @dataclass(frozen=True)
@@ -211,8 +206,6 @@ def require_whole_second_utc(t: datetime, what: str) -> datetime:
 def _interval_state(o: Obligation, cap: SearchCapability) -> str:
     if not o.transit:
         return STATE_COMPLETE          # an atemporal natal fact: evaluated from L1
-    if o.agent == "moon":
-        return STATE_COMPLETE if cap.moon_stored_search else STATE_MISSING
     if o.relation == "residence":
         return STATE_COMPLETE if cap.position_probe else STATE_MISSING
     if o.relation == "aspect" and o.target.startswith("span:"):
@@ -271,9 +264,14 @@ def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
                     intervals.append(IntervalPlan(o.ob_id, a, b, STATE_MISSING,
                                                   {"resolved_agent": None, "dasha_row_id": None}))
                 else:
+                    # a period whose lord is the MOON resolves to an agent the stored build never
+                    # searches (AM-4: EPHEMERAL tier, excluded from the stored enumeration by rule):
+                    # honest `missing_inputs`, named — never `searched_complete` on a search not run
+                    on_demand = r.lord == "moon"
                     intervals.append(IntervalPlan(
-                        o.ob_id, a, b, _interval_state(o, cap),
-                        {"resolved_agent": r.lord, "dasha_row_id": str(r.row_id)}))
+                        o.ob_id, a, b, STATE_MISSING if on_demand else _interval_state(o, cap),
+                        {"resolved_agent": r.lord, "dasha_row_id": str(r.row_id),
+                         **({"tier": "moon_on_demand (AM-4)"} if on_demand else {})}))
     return tuple(sorted(set(obligations), key=lambda o: o.canonical_bytes)), intervals
 
 

@@ -884,6 +884,7 @@ def write_class_coverage(
     build_id: str,
     arc_index_available: bool = False,
     inventory_facts: dict | None = None,
+    ephemeral_tier_excluded: int = 0,
 ) -> None:
     """The `coverage:<event_class>` substep: ONE class-level event_class
     coverage partition (the frozen F7 key convention), written before any
@@ -905,8 +906,6 @@ def write_class_coverage(
         solves are searched (N7); 0.0 with a named non-claim when no
         angular solve happened.
     """
-    moon_edges = [e for e in class_edges if e.transit and e.agent == "moon"]
-    class_edges = [e for e in class_edges if not (e.transit and e.agent == "moon")]
     residence = [e for e in class_edges if e.transit and e.relation == "residence"]
     natal = [e for e in class_edges if not e.transit]
     point = [e for e in class_edges
@@ -932,10 +931,13 @@ def write_class_coverage(
     if deferred:
         unsearched_parts.append("relations with no solver: "
                                 + ", ".join(deferred))
-    if moon_edges:
+    if ephemeral_tier_excluded:
+        # named account of the tier this stored build does NOT own (AM-4): the Moon-agent transit
+        # edges are excluded from the stored enumeration BY RULE (evaluator.EPHEMERAL_TIER_AGENTS)
         unavailable["moon_on_demand"] = (
-            f"{len(moon_edges)} Moon-agent edge(s): the Moon is an EPHEMERAL tier (AM-4) — served "
-            "by a moon_on_demand partition at query time, never stored by this build")
+            f"{ephemeral_tier_excluded} Moon-agent transit edge(s) excluded from the stored "
+            "enumeration by rule: the Moon is an EPHEMERAL tier (AM-4) — served by a "
+            "moon_on_demand partition at query time, never stored by this build")
         unsearched_parts.append("Moon-agent edges are on-demand (AM-4)")
     if aspect_span:
         unavailable["aspect_span_solver"] = (
@@ -1026,11 +1028,6 @@ def materialise_record_grain(
     it no point contact is solved or minted (the class coverage named the
     deferral), never fabricated.
     """
-    # AM-4 (pin 6): the Moon is EPHEMERAL — a build stores no Moon-agent contact or record (the
-    # database refuses a Moon record under an `event_class` partition: it is covered only by a
-    # `moon_on_demand` partition at query time). Such edges are counted and named, never minted.
-    moon_agent_on_demand = sum(1 for e in edges if e.transit and e.agent == "moon")
-    edges = [e for e in edges if not (e.transit and e.agent == "moon")]
     residence_edges = [e for e in edges if e.transit and e.relation == "residence"]
     # conjunction/aspect on `point:<λ>` are point-root solves; an `aspect` on a house `span:<sign>`
     # is the aspect point's ingress into the span — a DIFFERENT solve this slice does not have
@@ -1160,7 +1157,6 @@ def materialise_record_grain(
               "truncated_contacts": 0, "prereq_evaluated": 0,
               "skipped_natal_p1": skipped_natal_p1,
               "aspect_span_deferred": aspect_span_deferred,
-              "moon_agent_on_demand": moon_agent_on_demand,
               "unwritable_testimony": unwritable_testimony,
               "p3_enumeration_defects": 0}
     # Per-record evaluation context for the prerequisite result pass below

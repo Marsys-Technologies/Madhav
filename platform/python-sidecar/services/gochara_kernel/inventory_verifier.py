@@ -50,6 +50,10 @@ _SIGN_LORD = {"aries": "mars", "taurus": "venus", "gemini": "mercury", "cancer":
               "pisces": "jupiter"}
 _GRAHAS = ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu")
 _NODES = ("rahu", "ketu")      # agents and targets, but they cast no dṛṣṭi (N-14)
+#: AM-4 (pin 6; steward ruling M20261002T000907-c058 (a)): the Moon is an EPHEMERAL tier — a build
+#: stores no Moon-agent TRANSIT contact or record, so the stored enumeration never lists the Moon as
+#: a transit agent. (Derived here independently of the builder's own rule; natal facts are unaffected.)
+_EPHEMERAL_TIER_AGENTS = ("moon",)
 _FACT_SUBJECT = {"SUN": "sun", "MOON": "moon", "MAR": "mars", "MER": "mercury",
                  "JUP": "jupiter", "VEN": "venus", "SAT": "saturn",
                  "RAH_MEAN": "rahu", "KET_MEAN": "ketu"}
@@ -186,7 +190,8 @@ def _p3_obligation_bytes(event_class: str, chart: Mapping[str, Any],
     ('p3' or 'p4'; P4 = P3's Jupiter/Saturn scored obligations as P4's own)."""
     h_signs, lords, lagna_sign, anchor_sign = _h_and_lords(event_class, chart)
     frame, person = _frame_person(event_class)
-    agents = _GRAHAS if path == "p3" else ("jupiter", "saturn")
+    agents = (tuple(g for g in _GRAHAS if g not in _EPHEMERAL_TIER_AGENTS)
+              if path == "p3" else ("jupiter", "saturn"))
     out = []
 
     def ob(agent, relation, role, target):
@@ -307,7 +312,7 @@ def rederive_ledger_digest(
 ) -> str:
     """Re-derive the interval LEDGER digest: SQL stores and recomputes it but cannot
     check that the cuts and resolved agents are the RIGHT ones — this is that check (a
-    process residual named in AM-11 pin e). `capability` = {position_probe, arc_index, aspect_span_solver, moon_stored_search} as
+    process residual named in AM-11 pin e). `capability` = {position_probe, arc_index, aspect_span_solver} as
     the verifier was independently told."""
     snap = conn.execute(
         "SELECT consumed_dasha_row_ids, input_digest FROM"
@@ -319,18 +324,14 @@ def rederive_ledger_digest(
         (chart_id, generation, event_class)).fetchone()
     lo, hi = hdr
     rows = conn.execute(
-        "SELECT level_n, start_iso, end_iso FROM public.chart_dashas"
+        "SELECT level_n, start_iso, end_iso, lower(lord_graha) FROM public.chart_dashas"
         " WHERE chart_id = %s AND dasha_row_id = ANY(%s::uuid[]) ORDER BY level_n, start_iso",
         (chart_id, [str(x) for x in snap[0]])).fetchall()
     lines = []
     for ob in obligations:
         agent, relation = ob.split("|")[3], ob.split("|")[4]
         transit = relation in ("residence", "aspect", "conjunction")
-        if agent == "moon":
-            # the Moon is an EPHEMERAL tier (AM-4): a build stores no Moon contact or record
-            state = ("searched_complete" if capability.get("moon_stored_search", False)
-                     else "missing_inputs")
-        elif relation == "residence":
+        if relation == "residence":
             state = "searched_complete" if capability["position_probe"] else "missing_inputs"
         elif relation == "aspect" and ob.split("|")[6].startswith("span:"):
             # aspect-to-span (the aspect point's ingress into a house span) is not a point root
@@ -344,7 +345,7 @@ def rederive_ledger_digest(
         if agent.startswith("period_lord:"):
             level = _ROLE_LEVEL[agent.split(":")[1]]
             cursor = lo
-            for lv, a, b in rows:
+            for lv, a, b, lord in rows:
                 if lv != level:
                     continue
                 a2, b2 = max(a, lo), min(b, hi)
@@ -352,7 +353,9 @@ def rederive_ledger_digest(
                     continue
                 if a2 > cursor:
                     lines.append(f"{oid}|{_utc_ts(cursor)}|{_utc_ts(a2)}|missing_inputs|{snap[1]}")
-                lines.append(f"{oid}|{_utc_ts(a2)}|{_utc_ts(b2)}|{state}|{snap[1]}")
+                # a Moon period lord resolves to an agent the stored build never searches (AM-4)
+                piece_state = "missing_inputs" if lord == "moon" else state
+                lines.append(f"{oid}|{_utc_ts(a2)}|{_utc_ts(b2)}|{piece_state}|{snap[1]}")
                 cursor = max(cursor, b2)
             if cursor < hi:
                 lines.append(f"{oid}|{_utc_ts(cursor)}|{_utc_ts(hi)}|missing_inputs|{snap[1]}")

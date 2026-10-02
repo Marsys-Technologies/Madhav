@@ -237,7 +237,15 @@ def test_p2_gain_classes_enumerate_the_cited_favourable_table():
             expected.add((agent.lower(),
                           f"span:{SIGN_NUM[nth_sign_from(moon, h, CHART).lower()]}"))
     got = {(e.agent, e.obj.canonical_target) for e in edges}
+    # AM-4: the Moon is an EPHEMERAL tier — its transit edges are excluded from the stored
+    # enumeration by rule (they are returned by `ephemeral_tier_edges`, never stored)
+    expected = {x for x in expected if x[0] != "moon"}
     assert got == expected
+    assert {(e.agent, e.obj.canonical_target)
+            for e in ev.ephemeral_tier_edges("marriage", "P2", CHART)} == {
+        (a.lower(), f"span:{SIGN_NUM[nth_sign_from(moon, h, CHART).lower()]}")
+        for a, _row in FAVOURABLE_HOUSES_FROM_MOON.items() if a.lower() == "moon"
+        for h in sorted(favourable_houses(a))}
     assert ("sun", "span:1") in got            # 3rd from Aquarius
     assert ("rahu", "span:1") in got           # śl.2: Rāhu = Sun
     assert ("ketu", "span:8") in got         # śl.2: Ketu = Sun, 10th
@@ -376,10 +384,11 @@ def test_unimplemented_paths_refuse_loudly():
 
 def test_p5_enumerates_one_residence_edge_per_graha_sign():
     edges = ev.enumerate_edges("marriage", "P5", CHART)
-    assert len(edges) == 9 * 12
+    # 9 grahas x 12 signs unfiltered; the Moon's 12 are the EPHEMERAL tier (AM-4), excluded by rule
+    assert len(edges) == 8 * 12
+    assert len(ev.ephemeral_tier_edges("marriage", "P5", CHART)) == 12
     assert {e.agent for e in edges} == {
-        "sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn",
-        "rahu", "ketu"}
+        "sun", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"}
     assert all(e.relation == "residence" and e.object_kind == "house_span"
                and e.object_role == "av_qualifier" for e in edges)
     assert all(e.frame_kind == "lagna" and e.affected_person == "native"

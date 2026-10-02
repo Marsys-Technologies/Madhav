@@ -535,12 +535,21 @@ def enumerate_p5_edges(event_class: str, chart: dict,
     return edges
 
 
-def enumerate_edges(event_class: str, path_id: str, chart: dict,
-                    convention_id: str | None = None) -> list[RecordEdge]:
-    """The grain's edge set. Unimplemented paths refuse LOUDLY — a grain is
-    never silently empty (unknown is a state, never an omission)."""
-    if event_class not in CLASS_BY_NAME:
-        raise ValueError(f"unknown event class {event_class!r}")
+#: AM-4 (pin 6; steward ruling M20261002T000907-c058 (a)): the Moon is an EPHEMERAL tier. A build
+#: stores no Moon-agent contact or record — the database refuses a Moon record under an
+#: `event_class` partition (it is covered only by a `moon_on_demand` partition at query time).
+#: So Moon-agent TRANSIT edges are excluded from the STORED enumeration by RULE, here, in the one
+#: enumerator every consumer shares (inventory, coverage, record phase) — never a per-row skip.
+#: Natal (atemporal) edges are unaffected: a natal fact about the Moon is a stored L1 fact.
+EPHEMERAL_TIER_AGENTS = frozenset({"moon"})
+
+
+def _in_stored_tier(edge: RecordEdge) -> bool:
+    return not (edge.transit and edge.agent in EPHEMERAL_TIER_AGENTS)
+
+
+def _enumerate_all(event_class: str, path_id: str, chart: dict,
+                   convention_id: str | None) -> list[RecordEdge]:
     if path_id == "P1":
         return enumerate_p1_edges(event_class, chart, convention_id)
     if path_id == "P2":
@@ -554,6 +563,27 @@ def enumerate_edges(event_class: str, path_id: str, chart: dict,
     raise ValueError(f"unknown path {path_id!r}")
 
 
+def enumerate_edges(event_class: str, path_id: str, chart: dict,
+                    convention_id: str | None = None) -> list[RecordEdge]:
+    """The grain's STORED edge set (Moon-agent transit edges excluded by rule — see
+    `EPHEMERAL_TIER_AGENTS`). Unimplemented paths refuse LOUDLY — a grain is never silently
+    empty (unknown is a state, never an omission)."""
+    if event_class not in CLASS_BY_NAME:
+        raise ValueError(f"unknown event class {event_class!r}")
+    return [e for e in _enumerate_all(event_class, path_id, chart, convention_id)
+            if _in_stored_tier(e)]
+
+
+def ephemeral_tier_edges(event_class: str, path_id: str, chart: dict,
+                         convention_id: str | None = None) -> list[RecordEdge]:
+    """The edges the rule EXCLUDED from the stored enumeration — counted and named by the
+    coverage/notes (the `moon_on_demand` tier's own coverage is the separate account of them)."""
+    if event_class not in CLASS_BY_NAME:
+        raise ValueError(f"unknown event class {event_class!r}")
+    return [e for e in _enumerate_all(event_class, path_id, chart, convention_id)
+            if not _in_stored_tier(e)]
+
+
 _AGENTS = tuple(
     (title, title.lower())
     for title in ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus",
@@ -562,6 +592,8 @@ _AGENTS = tuple(
 
 
 __all__ = [
+    "EPHEMERAL_TIER_AGENTS",
+    "ephemeral_tier_edges",
     "IMPLEMENTED_PATHS",
     "RecordEdge",
     "enumerate_edges",

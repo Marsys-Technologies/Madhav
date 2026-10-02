@@ -185,8 +185,6 @@ def test_class_coverage_names_the_search_and_the_deferrals():
     assert rs.DEFERRAL_POINT_SOLVE in cov["unsearched_reason"]
     # edge-level counts over the FULL class enumeration: the residence +
     # natal edges searched, the conjunction edge unavailable
-    # AM-4: the Moon is an EPHEMERAL tier — Moon-agent edges are not part of the stored class search
-    class_edges = [e for e in class_edges if not (e.transit and e.agent == "moon")]
     residence = [e for e in class_edges if e.transit and e.relation == "residence"]
     natal = [e for e in class_edges if not e.transit]
     assert cov["targets_requested"] == len(class_edges) + 1
@@ -195,7 +193,7 @@ def test_class_coverage_names_the_search_and_the_deferrals():
                                    "unavailable": len(class_edges) + 1
                                    - len(residence) - len(natal),
                                    "unqualified": 0}
-    assert "aspect-to-span" in cov["unsearched_reason"] and "Moon-agent" in cov["unsearched_reason"]
+    assert "aspect-to-span" in cov["unsearched_reason"]
 
 
 def test_class_coverage_missing_probe_is_a_named_non_claim():
@@ -220,7 +218,7 @@ def test_grain_binds_the_stored_class_partition():
     assert counts == {"contacts": 1, "records": 1, "natal_records": 0,
                       "truncated_contacts": 0, "prereq_evaluated": 1,
                       "skipped_natal_p1": 0, "unwritable_testimony": 0,
-                      "aspect_span_deferred": 0, "moon_agent_on_demand": 0,
+                      "aspect_span_deferred": 0,
                       "p3_enumeration_defects": 0}
     rec = [kw for k, kw in store.calls if k == "insert_record"][0]
     assert rec["coverage_key"] == "marriage"  # the frozen F7 key convention
@@ -427,7 +425,7 @@ def test_grain_end_to_end_on_disposable_pg(pg):
     assert counts == {"contacts": 1, "records": 1, "natal_records": 0,
                       "truncated_contacts": 0, "prereq_evaluated": 1,
                       "skipped_natal_p1": 0, "unwritable_testimony": 0,
-                      "aspect_span_deferred": 0, "moon_agent_on_demand": 0,
+                      "aspect_span_deferred": 0,
                       "p3_enumeration_defects": 0}
     row = conn.execute(
         "SELECT temporal_support_state, temporal_support_grain,"
@@ -446,10 +444,9 @@ def test_grain_end_to_end_on_disposable_pg(pg):
     # 3/N: with the arc index available the class coverage names the POINT solves as searched.
     # Not every enumerated P3 edge is resolved any more: Moon-agent edges are the EPHEMERAL tier
     # (AM-4) and aspect-to-span edges have no solver in this slice — both named, never claimed.
-    all_edges = ev.enumerate_edges("marriage", "P3", CHART)
-    stored = [e for e in all_edges if not (e.transit and e.agent == "moon")]
-    resolved = [e for e in stored if not (e.transit and e.relation == "aspect"
-                                          and e.obj.canonical_target.startswith("span:"))]
+    all_edges = ev.enumerate_edges("marriage", "P3", CHART)       # the STORED set: no Moon agent
+    resolved = [e for e in all_edges if not (e.transit and e.relation == "aspect"
+                                             and e.obj.canonical_target.startswith("span:"))]
     assert 0 < len(resolved) < len(all_edges)
     assert cov == ("marriage", ["residence", "aspect", "conjunction", "natal_fact"],
                    len(resolved))

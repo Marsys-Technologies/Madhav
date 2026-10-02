@@ -380,8 +380,7 @@ class GocharaV5Writer(WriterBase):
                 event_class=event_class, chart=chart, horizon=horizon,
                 sealed_paths=inv_store.sealed_rule_paths(),
                 capability=gk_inventory.SearchCapability(
-                    position_probe=True, arc_index=True, aspect_span_solver=False,
-                    moon_stored_search=False),
+                    position_probe=True, arc_index=True, aspect_span_solver=False),
                 path_exclusions=path_excl, h_unknown_exclusion=h_unknown,
                 dasha_rows=inv_store.consumed_dasha_rows(chart_id, GENERATION))
             out = inv_store.write_class_inventory(
@@ -416,8 +415,7 @@ class GocharaV5Writer(WriterBase):
         led = gk_verifier.rederive_ledger_digest(
             ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
             obligations=res["obligations"],
-            capability={"position_probe": True, "arc_index": True, "aspect_span_solver": False,
-                        "moon_stored_search": False})
+            capability={"position_probe": True, "arc_index": True, "aspect_span_solver": False})
         db_led = ctx.db_conn.execute(
             "SELECT ledger_digest FROM public.ka_gochara_search_inventory WHERE chart_id = %s"
             " AND generation = %s AND event_class = %s", (chart_id, GENERATION, event_class)
@@ -483,6 +481,9 @@ class GocharaV5Writer(WriterBase):
                 for pid in RECORD_PATHS
                 for edge in gk_evaluator.enumerate_edges(event_class, pid, chart)
             ]
+            ephemeral_excluded = sum(
+                len(gk_evaluator.ephemeral_tier_edges(event_class, pid, chart))
+                for pid in RECORD_PATHS)
             kala_cid = store.ensure_kala_convention()
             # AM-5: the partition is the guard-facing SUMMARY of the stored inventory —
             # the inventory substep runs first and the partition is aligned to it.
@@ -499,12 +500,13 @@ class GocharaV5Writer(WriterBase):
                 horizon=horizon, position_at=position_at,
                 sky_convention_id=sky_cid, kala_convention_id=kala_cid,
                 build_id=ctx.build_id, arc_index_available=True,
-                inventory_facts=inv_facts)
+                inventory_facts=inv_facts, ephemeral_tier_excluded=ephemeral_excluded)
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=1,
                 notes=(f"coverage partition {event_class} written "
                        f"(idempotent; {len(class_edges)} declared edges over "
-                       f"P1–P4, P5 held — D7)"))
+                       f"P1–P4, P5 held — D7; {ephemeral_excluded} Moon-agent transit edge(s) "
+                       "excluded by rule — AM-4 ephemeral tier)"))
 
         event_class, path_id = step.key[len(RECORD_SUBSTEP_PREFIX):].split(":", 1)
         if event_class not in SCORED_CLASSES or path_id not in RECORD_PATHS:
