@@ -1,0 +1,88 @@
+---
+artifact: HOOKS_COMPLETENESS
+version: 1.0
+status: DRAFT-FOR-REVIEW
+produced_by: exec-suvarna (integration-hooks worker, S-L1 phase 3)
+decision: SS 2026-10-02 flip_detector conditions 1 and 3 and the rehearsal-final decision (explicit counts for code-driven changes; optional only for the five chart-dependent categories)
+scope: hook directory 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/ on the S-L1 integration branch, plus the F-A2 patch for PR #2858. Hooks and tests only; no writer source, census or digest touched.
+changelog:
+  - "1.0 (2026-10-02): hooks completed against flip_detector.py v2.3 (PR #2945 head d226d865a). 22 hook files, 62 entries; every entry that read DECLARED_BUT_ABSENT on an unchanged chart now has a count; argala.json rewritten to the real shape; 11 hook files added; the offline expected-after-state tests added."
+---
+
+# S-L1 attribution hooks: completeness record
+
+## 1. What changed, in one paragraph
+
+Every lane that changes a detector-visible fact now has a hook with an explicit `expected_count` (exact or range) from the lane's own evidence. `optional: true` appears only on the five chart-dependent categories (`ga_structural_chart_geometry.json`). The eight entries that read DECLARED_BUT_ABSENT on an unchanged chart each got a count (section 3). `argala.json` was rewritten to the real hook shape (its old declaration is kept verbatim under `evidence/`). Eleven hook files were added. `flip_detector.py --validate-hooks --require-lanes <all 22 stems>` passes, and `__tests__/test_s_l1_hooks_expected_state.py` (107 tests with the detector, 5 without) proves per hook that the declared change passes, an undeclared change fails, a count off by one fails, and an unchanged state shows no DECLARED_BUT_ABSENT.
+
+## 2. The table
+
+Counts are per chart compared unless the file restricts `charts`. "Evidence" abbreviations: **REH** = the 19-lane data-plane rehearsal (integration tree 554e046ac) compared with `flip_detector.py` v2.3 against the baseline build of origin/main 7b7144fc7 on the same synthetic chart (see section 4); **PROD** = a production count read 2026-10-02 as `suvarna_reader` (counts only, no birth data); **LANE** = the lane's own evidence file or hook text.
+
+| lane | hook file | entries (what) | expected counts | source evidence | optional? |
+|---|---|---|---|---|---|
+| argala (#2851) | `argala.json` (charts: canonical) | 5: argala_graha_natal appeared; argala_natal_matrix value; zero claims on the two matrices (row set, tier), virodha value, graha rows (other kinds) | appeared **156**; value **3,444**; four exact 0 | LANE (offline model identical to the writer on all five ayanamshas; ephemeris flip report shows no class flip on the canonical chart, so these pre-ephemeris counts stand). REH measured 117 / 3,980 on a different chart: geometry dependent, not comparable | no |
+| argala (other charts) | `argala_other_charts.json` (1c826d5a, cb73cd3d) | same five | appeared 1 to 360; value 1 to 7,200; zero claims | LANE structural bounds (72 rows per ayanamsha; 30 x 48 x 5 cells) | no |
+| ashtakavarga contributor (G-10, #2731) | `ashtakavarga_bindu_contributor.json` | 1: appeared | exact **3,360** (7 x 8 x 12 x 5) | SS decision; PROD (absent on all three charts); REH (3,360 rows) | no |
+| band table (#2890) | `band_table.json` (unchanged) | 1 regression claim | exact 0 | LANE | no |
+| Chandra Bala (#2969) | `chandra_bala_birth_moon_sign.json` (canonical) | 3: surya classification value; the four other ayanamshas (all kinds); surya row set / tier | value **9**; two exact 0 | `TI_L1_PANCHANGA_MOON_SIGN_EVIDENCE_v1_0.md`, SS 2026-10-02. The rehearsal predates #2969, so NOT confirmed by REH; the W7 report is the first full-chain measurement | no |
+| dasha scope cap (#2607 + 1219) | `dasha_scope_cap.json` | 1: appeared | exact **1** | SS decision; PROD (absent on all three charts); REH (1 row) | no |
+| ga_condition fallback (#2890) | `ga_condition_fallback.json` (unchanged) | 1 regression claim | exact 0 | LANE | no |
+| ga_strength INVARIANT rows (#2960) | `ga_strength_invariant_rows.json` | 1: INVARIANT graha_shadbala rows (appeared / disappeared / occurrence_count) | exact **0** (16 rows stored before and after: 9 + 7) | PROD (16 on all three charts); REH (ledger: 17,075 reported vs 17,011 stored, stored unchanged) | no |
+| ga_structural geometry categories | `ga_structural_chart_geometry.json` | 5: one per category, appeared | min 0, max **45 / 30 / 315 / 15 / 85** (bhava_chalit_rasi_divergence / combustion_relationship / graha_yuddha / parivartana_pairs / retrograde_aspect_modification) | the emitters in `ga_structural_writer.py` (structural maxima, stated per entry); REH saw 26 / 10 / 15 / 5 / 15 rows; PROD: none of the five on the canonical chart | **yes, all five**: "emitted only when the geometry exists; category has never been built for this chart under the current emitter" |
+| ga_vargas sentinels (#2960 + F-A2 key) | `ga_vargas_invariant_sentinels.json` | 1: chart_divisionals scope_cap occurrence_count | exact **1** (key 1 to 5 occurrences; stored rows 2 to 6, +4) | REH (scope_cap occurrence_count 1: before 1, after 5); PROD (2 rows on all three charts); the lane's `test_ga_vargas_invariant_sentinels.py` | no. Needs F-A2 in the same build (stated in the hook) |
+| Gandanta (#2892) | `gandanta.json` | 3 | occurrence_count **50**; surprise entry exact **0** (was uncounted); detail keys min 0 / max 15 (existing) | LANE offline simulation; REH (occurrence_count 50, nothing else) | no |
+| karaka dasha roles (#2886) | `karaka_dasha_roles.json` | 1: chart_dashas row set of the five systems (appeared / disappeared) | exact **0** (replaces a [0,0] dasha_shift that could never match) | REH (429,583 dasha rows before and after); the lane's own statement that no row, date or tier moves | no |
+| karaka roles (#2878) | `karaka_roles.json` | 6: PITRIKARAKA appears; strikaraka_alias appears; STRIKARAKA disappears; value changes of the relabelled subjects; karaka_web zero claim; karaka_per_varga zero (existing) | appeared **35**; alias **5**; disappeared **35**; value **30 to 60**; two exact 0 | REH (35 / 5 / 35 / 54); LANE (canonical Lahiri: 12 value changes); structural (7 keys x 5 ayanamshas) | no |
+| karaka web (#2883) | `karaka_web_order.json` (canonical) | 1: appeared | **950 to 1,300** (estimate +1,074; REH +1,139) | LANE offline estimate (not reproducible from stored data; conjunctions now on both subjects); REH | no |
+| karaka web (other charts) | `karaka_web_order_other_charts.json` | 1: appeared | min 1 | none beyond the lane text (no estimate exists) | no |
+| sade sati placeholders (#2965) | `sade_sati_placeholder_null.json` (canonical, Kiran) | 2: sade_sati_phase and sade_sati_concurrent_dasha_overlay concurrent_mudda_lord value (text to NULL, reason no_ga7_period_covers_date) | **30** and **10** | SS 2026-10-02 hook fact (canonical 40); PROD by chart / category / ayanamsha (canonical 30 + 10, Kiran 30 + 10, Abhinandan 40 + 10 not covered); REH baseline carries the same 30 + 10 | no |
+| special lagna (#2971) | `special_lagna_offset.json`, `special_lagna_offset_other_charts.json` | 2 + 2 | exact 0 on every class key; other charts: class keys value min 0 / max **120** (was `optional`) | LANE + `special_lagna_offset_EVIDENCE_v1_0.md`; PROD (245 rows per chart, 35 per subject) | no (the previous `optional` was replaced by a bound, see section 5) |
+| Sun required rupa (#2893) | `sun_required_rupa.json` | 7: required_rupa value; ratio value; node bphs_weighted value / tier; node simple_multiplication + cross_formula_divergence disappeared; two zero claims | **1**; **0**; **120**; **120**; **240**; two exact 0 | LANE (stored per chart, all three charts alike); REH (value 1, composite value 120, tier 120, disappeared 240); PROD (composite 1,620 now, 1,380 after) | no |
+| tiers (#2941) | `tiers.json` (canonical), `tiers_other_charts.json` | canonical 5: the 103-category tier entry; chart_dashas tier (NOT CHECKED); l1_tajik_varsha_year_lords tier (NOT CHECKED); special_lagna; kp_cuspal_significators. Other charts 7 (adds the D30 appearance entries) | canonical **19,870**; special_lagna **245**; kp **300**; other charts band **16,900 to 22,750**, D30 appeared **480** and **40** | `evidence/tiers_evidence_v1_3.json`; REH (19,841 on the synthetic chart; reconciled to 19,870, section 3); PROD (all tier figures in the two NOT CHECKED entries re-read and equal: Tajik 240 / 235 / Kiran 305 single; dasha level 1 counts) | no |
+| YAMAKANTAKA (#2731) | `yamakantaka.json` | 1: appeared | exact **35** (7 keys x 5 ayanamshas) | SS decision; PROD (GULIKA 35 + MANDI 35 on all three charts); REH | no |
+| vichara (#2970) | none (declaration only: `evidence/ga_vichara_writer_HOOK_DECLARATION.json`) | chart_vichara is outside the detector's four tables | not a hook; W7 runs `evidence/ga_vichara_writer_ACCEPTANCE.sql` (valence_pass 7,500; chart_vichara 7,774; as-of = run date) | LANE | n/a |
+| F-A2 (#2858) | `fa2_ga_vargas.json` PATCH for its own PR (section 6) | 7 | **1,200**, **1,200**, **750**, **50**, **1**, two exact 0 | REH (24,392 to 38,596 on a chart with the same structure as production's canonical); PROD (24,392 rows; all 1,200 stored varga_ashtakavarga rows read sign Aries) | no |
+
+## 3. The eight DECLARED_BUT_ABSENT entries and how each was resolved
+
+| entry (before) | fix | count and reason |
+|---|---|---|
+| argala[0] (no shape) | rewritten to the real shape (`argala.json`) | exact 156 / 3,444 on the canonical chart |
+| gandanta[1] | explicit zero | `{"exact": 0}`: nothing but the occurrence-count change is expected; a surprise is an EXPECTATION_MISMATCH attributed to the lane |
+| karaka_dasha_roles[0] | the [0,0] shift range could never match; replaced by a row-set claim | `{"exact": 0}` appeared / disappeared on its five systems (the lane moves no row) |
+| karaka_roles[0] | split into appeared / alias / disappeared / value entries | 35, 5, 35, 30 to 60 (value is geometry dependent between structural bounds). CORRECTION found by running the detector: the two continuous keys (longitude_sidereal, degree_in_sign) of the appearing and disappearing subjects ARE detector changes (a continuous key that appears is a change), which the old text said were not listed; the rehearsal read them as 20 KIND_MISMATCH |
+| karaka_roles[1] (karaka_web) | restricted to value / disappeared, explicit zero | `{"exact": 0}`; the appearances belong to the karaka_web_order lane |
+| karaka_web_order[0] | range | 950 to 1,300, because the +1,074 estimate cannot be reproduced from stored data (hook text says so) |
+| sun_required_rupa[1] (ratio), [2] (composite value) | ratio: explicit zero (continuous). The old composite value / mixed entries were rebuilt: the node NULLs ARE class-level value changes that the old value entry also matched | ratio 0; node value 120, node tier 120, disappeared 240, two zero claims |
+| tiers[0] | canonical-only exact count; other charts in `tiers_other_charts.json` | **19,870** = lane evidence 19,905 minus 35 STRIKARAKA rows (they disappear instead of changing tier). Cross-check: REH detector tier count over the same categories is 19,841 on the synthetic chart; adding the chart-dependent differences (sade_sati +80 [320 canonical vs 240], yoga_label -12 [34 vs 46], dosha_label -4 [6 vs 10]) and removing sensitive_point_gulika_mandi's YAMAKANTAKA rows that the canonical chart does not have yet (-35) gives 19,870; the evidence path gives the same figure; 80+ categories are identical between evidence and rehearsal |
+
+## 4. Source evidence: how the rehearsal numbers were obtained
+
+The data-plane rehearsal's two Postgres databases (`dp_base`: origin/main 7b7144fc7 code, control mode; `dp`: the final clean pass) were opened read-only on a private port (nothing written), snapshotted with `flip_detector.py --snapshot` and compared with `--compare ... --against ...` using this folder's hooks. This gave the detector's own count per entry, not a row-level reading of the ledger. Two facts follow and matter for reading the table:
+
+* The rehearsal baseline is built from main's code, not from production. Categories that main already emits and production's canonical chart lacks (ashtakavarga_bindu_contributor, dasha_scope_cap, YAMAKANTAKA, the five chart-dependent categories, argala_graha_natal) therefore show as unchanged or as tier changes in the rehearsal diff, while on production they APPEAR. Their appeared counts were verified by deleting those rows from the baseline snapshot (a production-like baseline) and re-comparing: contributor 3,360, dasha_scope_cap 1, YAMAKANTAKA 35, placeholders 30 and 10 (nulled in the final state to emulate #2965), Chandra Bala 9 (emulated), the five geometry categories 26 / 10 / 15 / 5 / 15 within their bounds, and the tier count 19,806 (19,841 minus the 35 YAMAKANTAKA tier rows).
+* The rehearsal tree predates #2960, #2965, #2969, #2970 and #2971. Their counts rest on the lanes' own evidence and on production counts, not on the rehearsal.
+
+Result of the final compare (production-like baseline, all hooks with the `charts` field removed so they apply to the synthetic chart, plus `fa2_ga_vargas.json`): UNDECLARED_CHANGE 0, KIND_MISMATCH 0, DECLARED_BUT_ABSENT 0, DASHA_SHIFT_UNDECLARED 0, HOOK_ERROR 0, EMPTY_READ 0, EXPECTATION_MISMATCH 3: argala[0] (117 observed vs 156 canonical), argala[1] (3,980 vs 3,444) and tiers[0] (19,806 vs 19,870), the three entries whose figure depends on the chart's own geometry and are canonical-specific by design.
+
+## 5. Findings recorded while completing the hooks
+
+1. **Figure in the request that does not match the data.** "varga_ashtakavarga +440 per each of 32 vargas = +14,080": the table has 30 vargas, +440 per varga is +13,200, and 13,200 + 750 (varga_house_lord) + 250 (d30) + 4 (scope_cap) = 14,204 = 38,596 - 24,392. The F-A2 patch uses the data.
+2. **README item 4 NULL count.** The query counts rows whose numeric AND text values are both NULL; after the argala lane the NULL cells carry the text `no_occupant`, so that count stays 0. `HOOKS_W7_HAND_READBACK_v1_0.md` H8 reads the two columns separately.
+3. **special_lagna_offset_other_charts[0] was `optional: true` with no bound.** Under the rule that `optional` is reserved for the five chart-dependent categories it was replaced by `{"min": 0, "max": 120}` (4 moved subjects x 6 class keys x 5 ayanamshas), which still allows zero.
+4. **hooks_real refresh.** `#2945`'s `__tests__/fixtures/flip_detector/hooks_real/` holds byte copies of this directory and a golden file; after these commits reach the integration branch (or after #2945 merges onto it) the README's "Refreshing hooks_real" steps must be run (copy, regenerate the golden, read the diff, update `REAL_LANES` / `GOLDEN_LANES`). The README's W7 lane list (11 lanes) is also stale: use the 22 file stems (plus `fa2_ga_vargas`).
+5. **Other charts.** Count-bearing hooks for geometry-dependent changes are canonical-only (`charts`), with `*_other_charts.json` companions only where the previous hook already covered the other charts (argala, karaka web, tiers, special lagna). Not covered for Abhinandan / Kiran (S-L1b): chandra_bala (canonical Moon position), sade_sati_placeholder_null for Abhinandan (40 + 10 per PROD), argala exact counts. A compare of those charts will read UNDECLARED or EXPECTATION_MISMATCH until their hooks are written from that window's evidence.
+6. **Cross-lane double matching.** An entry counts every change it matches, whichever lane also declares it (the detector attributes one change to several lanes). Entries were written so the in-lane entries do not overlap, except the deliberate ones: tiers entries 3 and 4 inside entry 0, scope_cap in both `ga_vargas_invariant_sentinels.json` and `fa2_ga_vargas.json`, and the two cross-lane caveats named in `karaka_roles.json` entry 4 and `karaka_dasha_roles.json` (a rebuild after the ephemeris flip can move a few dasha rows at the window edges or a varga sign, which would read as EXPECTATION_MISMATCH here as well as under the ephemeris lane's entry).
+7. **Documented mask, tested.** A false-to-true Gandanta flip on one of two occurrences is invisible to the detector (sorted pairing); the lane scenario test asserts that the mask exists and that a NEW is_gandanta key is caught. The Abhinandan flips are therefore a hand read-back (W7 H4).
+
+## 6. The F-A2 patch (for PR #2858, not on this branch)
+
+`fa2_ga_vargas.json` is delivered as a patch file outside the repository (scratchpad `ih/fa2patch/fa2_ga_vargas.json`, with `FA2_PATCH_NOTE.md`), to be added to PR #2858's own branch under `00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/`. Seven entries, canonical chart only, all code-driven: varga_ashtakavarga occurrence_count 1,200 and value 1,200 (pairing artifact, explained in the entry), varga_house_lord 750, varga_d30_lord_per_amsa 50, scope_cap 1, two exact-zero claims. Validated with the detector against the rehearsal (every F-A2 entry observed exactly its count; with the patch present UNDECLARED_CHANGE falls from 3,200 to 0).
+
+## 7. How to re-verify
+
+```
+python3 platform/scripts/governance/flip_detector.py --validate-hooks --require-lanes $(cd 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks && ls *.json | sed 's/\.json$//' | paste -sd, -)
+python3 -m pytest platform/scripts/governance/__tests__/test_s_l1_hooks_expected_state.py -q     # skips (detector absent) until PR #2945 is in the tree; FLIP_DETECTOR_PATH points it at another copy
+```
