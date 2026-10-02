@@ -364,6 +364,10 @@ def _check_declarations_fields(r: dict, n: int) -> None:
         _refuse("bad_ledger", f"line {n}: a declarations_version with no declarations_sha256")
     if r.get("kind") != "gate" and (sha is not None or ver is not None):
         _refuse("bad_ledger", f"line {n}: a declarations binding on a record that is not a gate certificate")
+    if rv != 1 and r.get("kind") == "gate" and "declarations_sha256" in r and sha is None:
+        # only an ABSENT key is legacy: the writer never writes a null sha on a gate, so a present null is a forgery
+        _refuse("bad_ledger", f"line {n}: declarations_sha256 is present but null on a v2 gate record (only an absent "
+                              "key reads as legacy)")
     r["declarations_sha256"], r["declarations_version"] = sha, ver
 
 
@@ -716,17 +720,31 @@ def _declarations_at(repo, ref):
         if st is None or st.returncode != 0:
             _refuse("declarations_unreadable", f"git cannot be asked about {where}")
         if st.stdout.strip():
-            _refuse("declarations_not_committed", f"{where} is modified, staged for change or untracked: a certificate "
-                                                  "is bound to a COMMITTED declarations file")
+            _refuse("declarations_not_committed", f"{where} is modified, staged for change or untracked (a line-ending "
+                                                  "conversion such as core.autocrlf reads as modified too): a certificate "
+                                                  "is bound to a COMMITTED declarations file; commit it, or pass writer_ref "
+                                                  "to bind to a commit's blob")
         tracked = _git(root, "ls-files", "--error-unmatch", "--", DECLARATIONS_RELPATH)
         if tracked is None or tracked.returncode != 0:
             _refuse("declarations_not_committed", f"{where} is not tracked by git")
-        if f.is_symlink() or not f.is_file():
-            _refuse("declarations_unreadable", f"{where} is not a regular file")
+        if f.is_symlink() or not f.is_file():                    # a tracked symlink would bind to bytes that are not the blob
+            _refuse("declarations_unreadable", f"{where} is not a regular file (a symlink is never followed)")
         try:
             blob = f.read_bytes()
         except OSError as e:
             _refuse("declarations_unreadable", f"{where} cannot be read ({e})")
+        # `git status` can be clean while the bytes are not the committed blob: core.autocrlf (CRLF working tree), a
+        # skip-worktree / assume-unchanged flag, a smudge filter. The certificate binds to the COMMITTED bytes, so the bytes
+        # read must equal HEAD's blob: fail closed otherwise (and tell the caller the way out)
+        head = _git(root, "show", f"HEAD:{DECLARATIONS_RELPATH}")
+        if head is None or head.returncode != 0:
+            _refuse("declarations_unreadable", f"{where}: HEAD holds no such blob")
+        if head.stdout != blob:
+            _refuse("declarations_worktree_differs",
+                    f"the working-tree bytes of {where} ({_sha(blob)[:12]}..) are not the committed blob's "
+                    f"({_sha(head.stdout)[:12]}..) although git reports it clean (line-ending conversion such as "
+                    "core.autocrlf, skip-worktree / assume-unchanged, or a filter): pass writer_ref (the blob at a commit "
+                    "is read, never the working tree) or restore the committed bytes")
     version = None
     try:
         obj = strict_json_loads(blob.decode("utf-8"))

@@ -33,7 +33,7 @@ import asset_census as ac  # noqa: E402
 import nikasha_certify as nc  # noqa: E402
 from test_e5_1_certify import (  # noqa: E402,F401  (fixtures + helpers of the E5.1 suite)
     DECL_BYTES, DECL_REL, DECL_SHA, ENV, FP, RUN, W1, W2, add_call, add_kw, cert_in_repo, commit_all, doctor, env, fresh_repo, git, kw,
-    ledger, lines, refused, session_repo, write_census_file,
+    ledger, lines, refused, rewrite_ledger, session_repo, write_census_file,
 )
 
 NEW_BYTES = b'{"version": "1.8.0", "assets": {"bg_x": {}}}\n'
@@ -356,7 +356,11 @@ def test_a_record_certified_under_the_new_declarations_is_not_stale_after_the_ed
 def test_verify_lists_a_record_written_before_the_field_as_legacy_not_stale_not_failed(fresh_repo):
     cert_in_repo(fresh_repo)
     commit_all(fresh_repo)
-    doctor(fresh_repo, declarations_sha256=None, declarations_version=None)                  # null = legacy / unbound
+    def strip(recs):                                                                          # ABSENT keys = legacy
+        recs[0].pop("declarations_sha256")
+        recs[0].pop("declarations_version")
+    rewrite_ledger(fresh_repo, strip)
+    commit_all(fresh_repo, "legacy record")
     res = nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
     assert res["status"] == "PASS" and res["stale_declarations"] == []
     assert res["legacy_declarations"] == ["bg_ontology|gate|Build.registered@1"]
@@ -375,3 +379,98 @@ def test_verify_still_reports_nothing_for_a_ledger_with_no_gate_record(fresh_rep
     nc.write_certification(**kw(fresh_repo / nc.LEDGER_RELPATH, init=True, writer_repo=fresh_repo, **add_kw(None)))
     commit_all(fresh_repo)
     assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["status"] == "NO_DETECTOR"
+
+
+# ───────────────────────── review round: symlink, present-null, autocrlf / skip-worktree, bytes = blob ─────────────────────────
+
+def stamp_for(data):
+    return dict(declarations_sha256=hashlib.sha256(data).hexdigest(), declarations_version="1.7.0")
+
+
+def test_a_tracked_symlink_at_the_declarations_path_is_refused_whatever_its_target(fresh_repo, ledger):
+    # the committed symlink + a DIRTY/UNTRACKED target: git status is clean, the census hashes the target's bytes, and
+    # without the guard the certificate would bind to bytes that are not the committed blob
+    target = fresh_repo / "decl_target.json"
+    target.write_bytes(NEW_BYTES)                                                             # untracked, never committed
+    git(fresh_repo, "rm", "-q", DECL_REL)
+    (fresh_repo / DECL_REL).parent.mkdir(parents=True, exist_ok=True)
+    (fresh_repo / DECL_REL).symlink_to(target)
+    git(fresh_repo, "add", "--", DECL_REL)
+    commit_all(fresh_repo, "declarations is a symlink")
+    assert git(fresh_repo, "status", "--porcelain", "--", DECL_REL).strip() == ""             # clean, as the review says
+    cf = write_census_file({"Build.registered": dict(v="PASS", measured="m")}, head=stamp_for(NEW_BYTES))
+    before = ledger.read_bytes()
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.write_certification(**kw(ledger, census_path=cf, writer_repo=fresh_repo))
+    assert ei.value.code == "declarations_unreadable" and "symlink" in str(ei.value) and ledger.read_bytes() == before
+
+
+def test_a_symlink_to_the_committed_bytes_is_refused_too(fresh_repo, ledger):
+    real = fresh_repo / "real_decl.json"
+    real.write_bytes(DECL_BYTES)
+    git(fresh_repo, "add", "--", "real_decl.json")
+    git(fresh_repo, "rm", "-q", DECL_REL)
+    (fresh_repo / DECL_REL).parent.mkdir(parents=True, exist_ok=True)
+    (fresh_repo / DECL_REL).symlink_to(real)
+    git(fresh_repo, "add", "--", DECL_REL)
+    commit_all(fresh_repo, "declarations is a symlink to a committed file")
+    cf = write_census_file({"Build.registered": dict(v="PASS", measured="m")})
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.write_certification(**kw(ledger, census_path=cf, writer_repo=fresh_repo))
+    assert ei.value.code == "declarations_unreadable"
+
+
+def test_a_present_null_sha_on_a_v2_gate_record_is_a_forgery_not_legacy(ledger):
+    nc.write_certification(**kw(ledger))
+    rewrite(ledger, 1, declarations_sha256=None, declarations_version=None)
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.read_ledger(ledger)
+    assert ei.value.code == "bad_ledger" and "present but null" in ei.value.message
+    rewrite(ledger, 1, declarations_sha256=..., declarations_version=...)                    # absent = legacy: fine
+    assert nc.read_ledger(ledger)["bg_ontology|gate|Build.registered"][0]["declarations_sha256"] is None
+
+
+def test_a_present_null_on_an_addition_is_still_fine(ledger):
+    add_call(ledger)
+    assert lines(ledger)[1]["declarations_sha256"] is None
+    assert nc.read_ledger(ledger)
+
+
+def test_a_crlf_working_tree_under_autocrlf_fails_closed_with_a_clear_message(fresh_repo, ledger):
+    git(fresh_repo, "config", "core.autocrlf", "true")
+    (fresh_repo / DECL_REL).write_bytes(DECL_BYTES.replace(b"\n", b"\r\n"))                  # CRLF checkout of the LF blob
+    cf = write_census_file({"Build.registered": dict(v="PASS", measured="m")}, head=stamp_for(DECL_BYTES.replace(b"\n", b"\r\n")))
+    with pytest.raises(nc.CertificationRefused) as ei:                                         # fail closed, whichever git says
+        nc.write_certification(**kw(ledger, census_path=cf, writer_repo=fresh_repo))
+    assert ei.value.code in ("declarations_not_committed", "declarations_worktree_differs")
+    assert "autocrlf" in str(ei.value) and "writer_ref" in str(ei.value)                      # a clear way out in the message
+    # the way out: a ref reads the blob, never the working tree
+    base = git(fresh_repo, "rev-parse", "HEAD").strip()
+    cf2 = write_census_file({"Build.registered": dict(v="PASS", measured="m")})
+    assert nc.write_certification(**kw(ledger, census_path=cf2, writer_repo=fresh_repo, writer_ref=base)).status == "appended"
+
+
+@pytest.mark.parametrize("flag", ["--skip-worktree", "--assume-unchanged"])
+def test_an_edit_hidden_by_skip_worktree_or_assume_unchanged_is_refused(fresh_repo, ledger, flag):
+    git(fresh_repo, "update-index", flag, "--", DECL_REL)
+    (fresh_repo / DECL_REL).write_bytes(NEW_BYTES)                                            # edited, git is told not to look
+    assert git(fresh_repo, "status", "--porcelain", "--", DECL_REL).strip() == ""
+    cf = write_census_file({"Build.registered": dict(v="PASS", measured="m")}, head=stamp_for(NEW_BYTES))
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.write_certification(**kw(ledger, census_path=cf, writer_repo=fresh_repo))
+    assert ei.value.code == "declarations_worktree_differs"
+
+
+def test_a_clean_unflagged_file_is_still_accepted_by_the_byte_comparison(fresh_repo, ledger):
+    cf = write_census_file({"Build.registered": dict(v="PASS", measured="m")})
+    assert nc.write_certification(**kw(ledger, census_path=cf, writer_repo=fresh_repo)).status == "appended"
+
+
+def test_any_edit_of_the_declarations_file_stales_every_certificate_not_only_those_of_touched_assets(fresh_repo):
+    cert_in_repo(fresh_repo)
+    cert_in_repo(fresh_repo, asset="bg_other", writer_files=[W2], rec=dict(writer_files=["bg_other.py"]))
+    commit_all(fresh_repo)
+    set_declarations(fresh_repo, DECL_BYTES.replace(b'"assets": {}', b'"assets": {"bg_unrelated": {}}'))   # touches neither asset
+    res = nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
+    assert sorted(x["cert_id"] for x in res["stale_declarations"]) == sorted(
+        ["bg_ontology|gate|Build.registered@1", "bg_other|gate|Build.registered@1"])               # a deliberate, coarse rule
