@@ -61,8 +61,6 @@ logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-
 ALL_GRAHAS = [
     "Sun", "Moon", "Mars", "Mercury", "Jupiter",
     "Venus", "Saturn", "Rahu", "Ketu",
