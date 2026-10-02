@@ -305,7 +305,7 @@ def _verifier_dsn(w):
     return make_conninfo("", **{k: v for k, v in d.items() if k in ("host", "port", "dbname", "user")})
 
 
-def verify_as_verifier(w, *extra_args):
+def verify_as_verifier(w, *extra_args, dsn=None, all_classes=False):
     """Stream A's REAL verification job (`pipeline/orchestrator/verification_job.py`), run as a real verifier LOGIN with the REAL 1241 grants and
     no stand-in: the job proves its own identity, records the four window verifications FIRST and then the inventory verification. Returns the
     parsed report; raises RuntimeError on any non-zero exit (a refusal or a disagreement)."""
@@ -314,17 +314,17 @@ def verify_as_verifier(w, *extra_args):
     from contextlib import redirect_stdout
     from pipeline.orchestrator import verification_job as job
     w.conn.execute(f"ALTER ROLE {cw.VERIFIER} LOGIN")
-    os.environ[job.ENV_URL] = _verifier_dsn(w)
+    os.environ[job.ENV_URL] = dsn or _verifier_dsn(w)
     buf = io.StringIO()
     try:
         with redirect_stdout(buf):
-            rc = job.main(["--chart", CHART_ID, "--generation", GEN, "--class", CLS, "--ephe-path", EPHE, *extra_args])
+            rc = job.main(["--chart", CHART_ID, "--generation", GEN, *([] if all_classes else ["--class", CLS]), "--ephe-path", EPHE, *extra_args])
     finally:
         os.environ.pop(job.ENV_URL, None)
         w.conn.execute(f"ALTER ROLE {cw.VERIFIER} NOLOGIN")
     out = buf.getvalue().strip()
     if rc != 0:
-        raise RuntimeError(f"verification job exit {rc}: {out[-1500:]}")
+        raise RuntimeError(f"verification job exit {rc}: {out[:700]} ... {out[-900:]}" if len(out) > 1700 else f"verification job exit {rc}: {out}")
     return _json.loads(out.splitlines()[-1]) if out else {}
 
 
@@ -374,7 +374,7 @@ _G1241 = _grants_of_1241()
 def test_1241_spec_has_the_expected_number_of_1241_origin_grants():
     if not _G1241:
         pytest.skip("NOT_RUN: migration 1241 is not in this tree")
-    assert len(_G1241) == len(set(_G1241)) == 36, len(_G1241)   # sealer: 11 table (incl. the column-level windows read and publication update) + 18 function; verifier: 6 table + 1 function
+    assert len(_G1241) == len(set(_G1241)) == 47, len(_G1241)   # sealer: 11 table (incl. the column-level windows read and publication update) + 18 function; verifier: 8 table + 10 function (R10-4 iii: the job's final combined gate)
 
 
 @pytest.mark.parametrize("role,kind,priv,obj,cols", _G1241, ids=[f"{r.split('_')[1]}-{p.lower()}-{o}" for r, k, p, o, c in _G1241])
@@ -387,7 +387,7 @@ def test_each_grant_of_migration_1241_is_individually_necessary(cbuilt, role, ki
         w.conn.execute(f"REVOKE {priv}{colsql} ON public.{obj} FROM {role}")
     else:
         w.conn.execute(f"REVOKE EXECUTE ON FUNCTION public.{obj} FROM {role}")
-    with pytest.raises(RuntimeError, match=r"permission denied|verification job exit|refused"):
+    with pytest.raises(RuntimeError, match=r"permission denied|no_verifier_privilege"):
         verify_as_verifier(w)
         manifest = seal_as_sealer(w)
         _replay_as_sealer(w, manifest)
@@ -499,7 +499,9 @@ def test_first_seal_builder_then_verifier_then_sealer_with_every_guard_enabled(c
         seal_as_sealer(w)
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
     report = verify_as_verifier(w)                               # Stream A's REAL job, as a real verifier login
-    assert report.get("status") in ("VERIFIED", "OK", None) or "VERIFIED" in str(report), report
+    # R10-4: the job ENDS in the combined candidate gate and records the runner's identity; both are in the report
+    assert report["status"] == "VERIFIED" and report["gate"] == [] and report["gate_source"] == "ka_gochara_candidate_gate_violations", report
+    assert report["preconditions"]["runner"]["commit"] and len(report["preconditions"]["runner"]["implementation_digest"]) == 64, report
     manifest = seal_as_sealer(w)
     assert manifest is not None
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 1
@@ -675,3 +677,217 @@ def test_a_seal_in_flight_makes_a_racing_builder_rebuild_wait_then_refuses_it(cb
     assert "deleted" not in result and "error" in result, result
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 1
     assert _p3_records(w.conn) > 0                                    # the published set is intact
+
+
+# ── 4. round-10 attacks against AM-24 (Stream A head b904e561e) ───────────────────────────────────────────────────
+
+def _verification_rows(conn):
+    return (conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0],
+            conn.execute("SELECT count(*) FROM public.ka_gochara_search_inventory_verification").fetchone()[0])
+
+
+def _drop_p3_grain(conn):
+    """The builder 'omitted the whole path': every P3 window, member link, prerequisite and record of the class is gone."""
+    q = {"c": CHART_ID, "g": GEN, "e": CLS}
+    conn.execute("DELETE FROM public.ka_gochara_eval_window_record WHERE chart_id=%(c)s AND generation=%(g)s AND event_class=%(e)s AND path_id='P3'", q)
+    conn.execute("DELETE FROM public.ka_gochara_eval_window WHERE chart_id=%(c)s AND generation=%(g)s AND event_class=%(e)s AND path_id='P3'", q)
+    rs.RecordStore(conn).delete_record_grain(chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P3", rule_version="1.0.0")
+
+
+def test_attack_total_omission_of_a_path_is_a_disagreement_and_persists_nothing(cbuilt):
+    """AM-24 (1), R10-1: a path whose stored record set is EMPTY while the obligations x certified contacts demand records is not 'verified empty': the
+    job disagrees (exit 3), no verification row of any grain is written, and the seal is refused."""
+    import psycopg
+    w = cbuilt
+    assert _p3_records(w.conn) > 0
+    _drop_p3_grain(w.conn)
+    assert _p3_records(w.conn) == 0
+    with pytest.raises(RuntimeError, match=r"verification job exit 3"):
+        verify_as_verifier(w)
+    assert _verification_rows(w.conn) == (0, 0)
+    with pytest.raises(psycopg.errors.Error):
+        seal_as_sealer(w)
+
+
+def test_attack_a_record_result_changed_after_verification_makes_the_seal_refuse(cbuilt):
+    """AM-24 (2)+(3), R10-2: a number written into a record's RESULT after verification changes the inputs digest (inputs/2 covers every result field) and the
+    manifest policy forbids a numeric result at all: the seal is refused and no seal row exists."""
+    import psycopg
+    w = cbuilt
+    verify_as_verifier(w)
+    rid = w.conn.execute("SELECT record_id FROM public.ka_gochara_relationship_record WHERE event_class=%s AND path_id='P3' ORDER BY record_id LIMIT 1",
+                         (CLS,)).fetchone()[0]
+    w.conn.execute("UPDATE public.ka_gochara_relationship_record SET severity = 0.5 WHERE record_id = %s", (rid,))
+    with pytest.raises(psycopg.errors.Error, match=r"stale|record_result_not_policy|window_verification|verification"):
+        seal_as_sealer(w)
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
+
+
+def test_attack_a_record_result_present_before_verification_is_a_disagreement(cbuilt):
+    """R10-2 (policy arm), pre-verification: the job itself refuses to attest a record carrying a numeric result under the all-NULL manifest policy."""
+    w = cbuilt
+    rid = w.conn.execute("SELECT record_id FROM public.ka_gochara_relationship_record WHERE event_class=%s AND path_id='P3' ORDER BY record_id LIMIT 1",
+                         (CLS,)).fetchone()[0]
+    w.conn.execute("UPDATE public.ka_gochara_relationship_record SET evidence_for_occurrence = 1.0 WHERE record_id = %s", (rid,))
+    with pytest.raises(RuntimeError, match=r"verification job exit 3"):
+        verify_as_verifier(w)
+    assert _verification_rows(w.conn) == (0, 0)
+
+
+def test_attack_the_runner_identity_is_recorded_and_a_row_naming_other_code_is_refused_at_the_seal(cbuilt):
+    """AM-24 (4), R10-4: every window-verification row names the runner (commit, implementation digest, login); the digest equals the one the manifest pinned; a
+    row rewritten to name different code makes the seal refuse (`window_verification_runner_not_pinned`)."""
+    import psycopg
+    w = cbuilt
+    verify_as_verifier(w)
+    rows = w.conn.execute("SELECT runner_identity FROM public.ka_gochara_eval_window_verification").fetchall()
+    assert len(rows) == 4 and all(r[0]["commit"] and len(r[0]["implementation_digest"]) == 64 for r in rows), rows
+    assert all(r[0].get("login") == cw.VERIFIER for r in rows), rows
+    pinned = w.conn.execute("SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(input_generation_vector -> 'implementation'))"
+                            " FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0]
+    assert {r[0]["implementation_digest"] for r in rows} == {pinned}
+    # the table is insert-only (UPDATE refused): a changed row is DELETE + INSERT — what a verifier principal that wrote a row naming other code would have done
+    w.conn.execute("CREATE TEMP TABLE b6_v AS SELECT * FROM public.ka_gochara_eval_window_verification")
+    w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification")
+    w.conn.execute("UPDATE b6_v SET runner_identity = jsonb_set(runner_identity, '{implementation_digest}', to_jsonb(repeat('0', 64)))")
+    w.conn.execute("INSERT INTO public.ka_gochara_eval_window_verification SELECT * FROM b6_v")
+    with pytest.raises(psycopg.errors.Error, match=r"runner_not_pinned|window_verification"):
+        seal_as_sealer(w)
+
+
+def _unbridge_the_candidate_manifest(w):
+    """Break what the job's Python re-derivation of the published-only arms reads: the CANDIDATE manifest's legacy convention has no bridge row (the bridge is
+    insert-only, so a NEW legacy convention row is inserted and the manifest pointed at it)."""
+    conv = w.conn.execute("SELECT convention_id FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0]
+    w.conn.execute("CREATE TEMP TABLE b6_conv AS SELECT * FROM public.kala_gochara_convention WHERE convention_id = %s", (conv,))
+    w.conn.execute("UPDATE b6_conv SET convention_id = 'b6-unbridged-convention'")
+    w.conn.execute("INSERT INTO public.kala_gochara_convention SELECT * FROM b6_conv")
+    w.conn.execute("UPDATE public.kala_gochara_publication SET convention_id = 'b6-unbridged-convention' WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN))
+
+
+def test_attack_the_jobs_published_only_arms_are_enforced_by_the_seal_and_by_a_full_run(cbuilt):
+    """The job re-derives three arms of the completeness function against the CANDIDATE manifest (that function reads only a published one). Break what one of them
+    reads: a FULL run (every class, the operator's run) reports it and exits 3, and the seal refuses on the real function."""
+    import psycopg
+    w = cbuilt
+    _unbridge_the_candidate_manifest(w)
+    with pytest.raises(RuntimeError, match=r"verification job exit 3.*convention_bridge_missing"):
+        verify_as_verifier(w, all_classes=True)
+    with pytest.raises(psycopg.errors.Error):
+        seal_as_sealer(w)
+
+
+@pytest.mark.xfail(strict=True, reason="FINDING R11-cand-1 (Stream A, verification_job.run): a GENERATION-level gate violation (event_class '*': input_vector_mismatch, "
+                   "convention_bridge_missing, convention_mismatch) is classified `gate_outside_scope` on a --class SUBSET run — the filter tests `event_class is None`, but the "
+                   "violations carry '*' — so a subset run reports status VERIFIED / gate [] / exit 0 with a generation-level violation open. The seal still refuses; a full run reports it.")
+def test_attack_a_subset_run_must_not_report_verified_with_a_generation_level_violation_open(cbuilt):
+    w = cbuilt
+    _unbridge_the_candidate_manifest(w)
+    with pytest.raises(RuntimeError, match=r"verification job exit 3"):
+        verify_as_verifier(w)                                   # --class marriage (a subset of the generation's classes)
+
+
+def _waiting_login(admin, rolname, seconds=60.0):
+    end = time.time() + seconds
+    while time.time() < end:
+        row = admin.execute("SELECT 1 FROM pg_stat_activity WHERE usename = %s AND wait_event_type = 'Lock'", (rolname,)).fetchone()
+        if row:
+            return True
+        time.sleep(0.2)
+    return False
+
+
+def test_attack_a_verification_run_waits_for_a_rebuild_in_flight_and_judges_the_committed_state(cbuilt):
+    """R10-3, verifier-vs-builder: the builder holds the chart lock mid-rebuild (it dropped the P3 record grain, uncommitted); the REAL job, started now, WAITS
+    for the chart lock before it reads anything; after the builder commits it judges the COMMITTED state — the omitted path — and disagrees. Nothing from the
+    pre-commit state is attested."""
+    import psycopg
+    w = cbuilt
+    admin = psycopg.connect(w.conn.info.dsn, autocommit=True, connect_timeout=3)
+    builder = _open(w, cw.BUILDER)
+    out: dict = {}
+
+    def run():
+        try:
+            out["report"] = verify_as_verifier(w)
+        except RuntimeError as exc:
+            out["error"] = exc
+    try:
+        builder.execute("BEGIN")
+        rs.RecordStore(builder).delete_record_grain(chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P3", rule_version="1.0.0")
+        t = threading.Thread(target=run)
+        t.start()
+        assert _waiting_login(admin, cw.VERIFIER), "the verification job must WAIT for the builder's chart lock"
+        builder.execute("COMMIT")
+        t.join(300)
+        assert not t.is_alive()
+    finally:
+        builder.close()
+    assert "report" not in out and "error" in out, out
+    assert _verification_rows(admin) == (0, 0)
+    admin.close()
+
+
+def _login_dsn(w, user, options=None):
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+    d = conninfo_to_dict(w.conn.info.dsn)
+    d = {k: v for k, v in d.items() if k in ("host", "port", "dbname")}
+    d["user"] = user
+    if options:
+        d["options"] = options
+    return make_conninfo("", **d)
+
+
+def test_identity_negatives_column_grant_elevated_session_and_builder_membership(cbuilt):
+    """R10-5: the job's identity self-check refuses (exit 4, nothing written) a verifier that (a) holds a COLUMN-level write on a builder table, (b) is an elevated
+    session (a login that SET ROLEs to the verifier) and (c) is a login that is a member of the builder."""
+    w = cbuilt
+    # (a) a bare column-level UPDATE — invisible to has_table_privilege
+    w.conn.execute(f"GRANT UPDATE (note) ON public.ka_gochara_search_path_pin TO {cw.VERIFIER}")
+    try:
+        with pytest.raises(RuntimeError, match=r"verification job exit 4.*identity_not_separate"):
+            verify_as_verifier(w)
+    finally:
+        w.conn.execute(f"REVOKE UPDATE (note) ON public.ka_gochara_search_path_pin FROM {cw.VERIFIER}")
+    # (b) a distinct login, member of the verifier, running under `SET ROLE` (startup option) — session_user != current_user
+    w.conn.execute(f"CREATE ROLE b6_elevated LOGIN IN ROLE {cw.VERIFIER}")
+    # (c) a login that is a member of the builder
+    w.conn.execute(f"CREATE ROLE b6_builder_member LOGIN IN ROLE {cw.BUILDER}")
+    try:
+        with pytest.raises(RuntimeError, match=r"verification job exit 4.*identity_not_separate.*differs from current_user"):
+            verify_as_verifier(w, dsn=_login_dsn(w, "b6_elevated", f"-c role={cw.VERIFIER}"))
+        with pytest.raises(RuntimeError, match=r"verification job exit 4.*identity_not_separate.*builder"):
+            verify_as_verifier(w, dsn=_login_dsn(w, "b6_builder_member"))
+    finally:
+        w.conn.execute("DROP ROLE IF EXISTS b6_elevated")
+        w.conn.execute("DROP ROLE IF EXISTS b6_builder_member")
+    assert _verification_rows(w.conn) == (0, 0)
+
+
+def test_attack_a_registry_selection_or_inventory_change_after_verification_cannot_be_sealed(cbuilt):
+    """AM-24 (2)+(3): the registry SELECTION (the path pins) and the inventory are dependencies of the verified windows. Change what the selection says after
+    verification (an excluded pin's ruling, a pin's disposition via delete+insert) — either the database refuses the change itself, or the seal refuses the
+    stale attestation; a sealed set never rests on a selection that differs from the one verified."""
+    import psycopg
+    w = cbuilt
+    verify_as_verifier(w)
+    pins = w.conn.execute("SELECT path_id, rule_version, disposition FROM public.ka_gochara_search_path_pin WHERE chart_id=%s AND generation=%s AND event_class=%s"
+                          " ORDER BY path_id, rule_version", (CHART_ID, GEN, CLS)).fetchall()
+    assert pins, "the scenario needs path pins"
+    outcomes = []
+    for path_id, version, disposition in pins:
+        try:
+            w.conn.execute("UPDATE public.ka_gochara_search_path_pin SET basis = COALESCE(basis, '') || ' (changed after verification)'"
+                           " WHERE chart_id=%s AND generation=%s AND event_class=%s AND path_id=%s AND rule_version=%s", (CHART_ID, GEN, CLS, path_id, version))
+            outcomes.append((path_id, "update-accepted"))
+        except psycopg.errors.Error as exc:
+            outcomes.append((path_id, "update-refused-by-guard"))
+            break
+    print("PIN_OUTCOMES", outcomes)
+    changed = any(o == "update-accepted" for _, o in outcomes)
+    if changed:
+        with pytest.raises(psycopg.errors.Error):
+            seal_as_sealer(w)
+        assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
+    else:
+        assert outcomes and outcomes[0][1] == "update-refused-by-guard", outcomes

@@ -23,15 +23,18 @@
 -- THE SPEC (the single source: the GRANT statements and the closure check are both driven by the jsonb below)
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════
 -- tables: [relation, privilege, columns|null, origin]; functions: [signature, origin]. A privilege with a column list is a COLUMN-LEVEL grant.
---   VERIFIER — SELECT+INSERT on the inventory verification table; SELECT on four input relations; EXECUTE on window_verification_violations (1241);
+--   VERIFIER — SELECT+INSERT on the inventory verification table; SELECT on six input relations (the four of the independent derivations, plus the convention bridge
+--              and the search-interval ledger that the 1206/1232 completeness digests read as the INVOKER); EXECUTE on window_verification_violations and on the completeness function's nine-function helper
+--              closure (R10-4 iii: the job ENDS in the combined candidate gate, run as the INVOKER — the delta derived the 1206-R6 way, one grant per
+--              `permission denied` until the job's own final gate converged; 1240 grants EXECUTE on the combined function itself);
 --              and 1240's: SELECT/INSERT/DELETE on its own window-verification table, reads, EXECUTE lists. NO DELETE on the inventory-verification
 --              table (a re-run replaces it without one — measured), NO UPDATE anywhere, NO seal, NO build-data write.
 --   SEALER   — INSERT on the seal table; UPDATE on kala_gochara_publication ONLY on the four columns ledger.publish actually sets (status, published_at,
 --              content_digest, row_counts — R10-7 iii; narrowed from table-wide); SELECT on the legacy windows relation ONLY on (chart_id, generation)
 --              (R10-7 ii: `ledger.publish` counts the legacy projection's rows when the relation exists, so the production-shaped schema needs this read
 --              and nothing more); SELECT on eight inventory/legacy-ledger relations; EXECUTE on 18 seal-side functions; and 1240's SELECT/EXECUTE lists.
--- Candidates left out (each shown NOT needed by a flow): the verifier's DELETE on the inventory-verification table and its SELECT on the search-interval
--- table (Stream A's real job never reads it); the sealer's SELECT on the polarity declaration and EXECUTE on av_entry and inventories_digest.
+-- Candidates left out (each shown NOT needed by a flow): the verifier's DELETE on the inventory-verification table (its SELECT on the search-interval table WAS
+-- left out while the job never read it; R10-4 iii made it necessary — the combined gate's ledger digest reads it, and it is back); the sealer's SELECT on the polarity declaration and EXECUTE on av_entry and inventories_digest.
 -- NOT HERE, ON PURPOSE — an OPEN item for the owner of the data-plane ACLs: both principals ALSO need SELECT on the L1 tables `chart_facts` and
 -- `chart_dashas` (RLS is OFF on both in production — a table-level SELECT suffices); their ACLs are managed by data-plane-ownership-preflight.ts, so a hand
 -- grant here risks its allowlist-drift gate. Provision them BEFORE the first verification run. Because they are outside this spec's `ka_/kala_gochara_`
@@ -79,7 +82,9 @@ DECLARE
       ["ka_gochara_sky_convention","SELECT",null,"1241"],
       ["ka_gochara_rule_path_prerequisite","SELECT",null,"1241"],
       ["ka_gochara_predicate","SELECT",null,"1241"],
-      ["ka_gochara_search_obligation","SELECT",null,"1241"]
+      ["ka_gochara_search_obligation","SELECT",null,"1241"],
+      ["ka_gochara_convention_bridge","SELECT",null,"1241"],
+      ["ka_gochara_search_interval","SELECT",null,"1241"]
      ],
      "functions": [
       ["ka_gochara_lock_chart(uuid)","1240"],
@@ -93,7 +98,17 @@ DECLARE
       ["ka_gochara_canonical_json(jsonb)","1240"],
       ["ka_gochara_sha256_hex(text)","1240"],
       ["ka_gochara_f4_token(real)","1240"],
-      ["ka_gochara_window_verification_violations(uuid,text)","1241"]
+      ["ka_gochara_candidate_gate_violations(uuid,text)","1240"],
+      ["ka_gochara_window_verification_violations(uuid,text)","1241"],
+      ["ka_gochara_search_completeness_violations(uuid,text)","1241"],
+      ["ka_gochara_search_l1_facts_digest(uuid,text[])","1241"],
+      ["ka_gochara_search_dasha_digest(uuid,uuid[])","1241"],
+      ["ka_gochara_search_inventory_digest(uuid,text,text)","1241"],
+      ["ka_gochara_search_ledger_digest(uuid,text,text)","1241"],
+      ["ka_gochara_search_inventory_preimage(uuid,text,text)","1241"],
+      ["ka_gochara_utc_ts(timestamptz)","1241"],
+      ["ka_gochara_search_moon_scope_violations(uuid,text)","1241"],
+      ["ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)","1241"]
      ]
     },
     "gochara_sealer": {
