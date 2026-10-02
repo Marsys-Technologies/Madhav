@@ -1,7 +1,7 @@
 ---
 artifact: EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING
 version: "1.2"
-status: "PRE-REGISTRATION — declared before any '4.1' or '5.0' candidate output is inspected; supersedes v1.1 (which is marked superseded)"
+status: "SUPERSEDED by v1.3 (Codex round 8 R8-8: the two-extremes rule is unsound at the zero boundary and across tie-group bridges; the freeze ordering was circular) — do not pre-register from this version"
 date: 2026-10-02
 author: Stream B (Śāstra), item B6.0 — corrected per Codex round 7 [10] (steward M20261002T015923-4738 adopts the closing text)
 amends: "EVALUATION_PROTOCOL_v2_3 §4 (window identity, ranking) — adds the stored-field mapping, the NULL policy and the unknown-competitor rule the protocol left silent; changes NO existing rule, threshold, floor, denominator rule or '3.0' figure"
