@@ -35,6 +35,9 @@ DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS     # the exact production 
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
+# REGISTRY_REVISION 14 (SS N-74(a)): the scan tells a SELECT from a LABEL; five more assets are named only as labels in the serving modules
+R02_LABEL_ASSETS = ("bg_cohort", "bg_ephemeris_engine", "bg_panchanga", "bg_phaladeepika_latta", "bg_vedha_malefic_scale")
+R02_ALL = R02_ASSETS + R02_LABEL_ASSETS
 R03_ASSETS = ("bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank")
 NA, NO_DET = ac.NA, ac.NO_DET
 
@@ -94,7 +97,7 @@ def test_R01_a_never_run_history_check_reads_na_but_does_not_make_the_build_cell
     assert cell["v"] == NO_DET                                                           # the other Build checks are unmeasured
 
 
-def test_the_real_dens_scan_releases_exactly_the_three_approved_assets():
+def test_the_real_dens_scan_releases_the_three_approved_assets_with_the_serving_roots_only():
     for aid in R02_ASSETS:
         cap = ac.capability_scan(ac.CAPS_ROOTS, [aid], shared=frozenset(), columns={}, outside_roots=ac.DENS_OUTSIDE_ROOTS)
         g = ac._grade_dens(cap, aid)
@@ -273,7 +276,7 @@ def test_emit_gaps_closes_nothing_when_the_rules_are_not_declared(monkeypatch, t
     assert _closed(tmp_path) == []
 
 
-# ───────────────────────── the saved Track A censuses: exactly seven gate cells move, all NO_DETECTOR -> N/A ─────────────────────────
+# ───────────────────────── the saved Track A censuses: exactly the listed gate cells move (seven at revision 9, twelve at 14), all NO_DETECTOR -> N/A ─────────────────────────
 
 EV = pathlib.Path("/Users/Dev/suvarna-evidence")
 _SAVED = {L: EV / ("census2" if L in ("L1", "L2") else "census") / f"census_{L}.json" for L in ac.LAYERS}
@@ -291,7 +294,7 @@ def _attributed(measurements):
 
 
 @saved
-def test_saved_censuses_only_the_seven_listed_gate_cells_move_and_all_of_them_no_detector_to_na(monkeypatch):
+def test_saved_censuses_only_the_listed_gate_cells_move_and_all_of_them_no_detector_to_na(monkeypatch):
     decl = ac.load_asset_declarations()
     vocab = ac.prose_vocabulary(decl)
     reg = ac.registered_ids("")
@@ -326,14 +329,14 @@ def test_saved_censuses_only_the_seven_listed_gate_cells_move_and_all_of_them_no
                 for c in with_rules[gate]["checks"]:
                     if c["v"] == NA and next(x for x in without[gate]["checks"] if x["criterion"] == c["criterion"])["v"] != NA:
                         released_checks.append((aid, c["criterion"], (m.get(c["criterion"]) or {}).get("v")))
-    assert sorted(moved) == sorted([(a, "Dens", NO_DET, NA) for a in R02_ASSETS] + [(a, "Narr", NO_DET, NA) for a in R03_ASSETS]), moved
-    assert sorted(dens_na) == sorted(R02_ASSETS), dens_na                                                   # the scan fires on no other asset
+    assert sorted(moved) == sorted([(a, "Dens", NO_DET, NA) for a in R02_ALL] + [(a, "Narr", NO_DET, NA) for a in R03_ASSETS]), moved
+    assert sorted(dens_na) == sorted(R02_ALL), dens_na                                                      # the scan fires on no other asset
     assert all(v == NA for (_, _, v) in released_checks), released_checks                                   # nothing measured FAIL/PARTIAL/PASS was released
     by = {}
     for aid, crit, _ in released_checks:
         by.setdefault(crit.split(".")[0], set()).add(aid)
-    assert by == {"Build": set(R01_ASSETS), "Dens": set(R02_ASSETS), "Narr": set(R03_ASSETS)}, by
-    assert len(released_checks) == 6 + 3 + 16
+    assert by == {"Build": set(R01_ASSETS), "Dens": set(R02_ALL), "Narr": set(R03_ASSETS)}, by
+    assert len(released_checks) == 6 + 8 + 16
 
 
 # ───────────────────────── F1: an empty write scan is not evidence of "no narration write" ─────────────────────────
@@ -353,10 +356,13 @@ def test_F1_a_no_prose_asset_whose_dml_the_scan_cannot_see_reads_no_detector_nev
 
 # ───────────────────────── F3: the exact Dens N/A set, always on (no saved-census directory needed) ─────────────────────────
 
-def test_F3_the_real_dens_scan_reads_na_on_exactly_the_three_approved_assets_over_all_127(monkeypatch):
+def test_F3_the_real_dens_scan_reads_na_on_exactly_the_approved_assets_over_all_127(monkeypatch):
     """The inputs of the 127 assets' scans are a committed fixture (verdict-free); the scan is the REAL one over the current
-    source tree. A fourth N/A (a new unreferenced table, or a served read removed) fails here and needs a ruling, not a widening;
-    a served read added to one of the three also fails here (the rule no longer fits it). File reads are cached for speed."""
+    source tree. A ninth N/A (a new unreferenced table, a served read removed, a new label-only mention) fails here and needs a
+    ruling, not a widening; a served read added to one of the eight also fails here (the rule no longer fits it). The eight are
+    the three that no served module references at all (N-65) plus the five a serving module only NAMES as a label (SS N-74(a),
+    REGISTRY_REVISION 14: bg_cohort, bg_ephemeris_engine, bg_panchanga, bg_phaladeepika_latta, bg_vedha_malefic_scale).
+    File reads are cached for speed."""
     fx = json.loads((HERE / "fixtures" / "dens_scan_inputs_2026-10-02.json").read_text(encoding="utf-8"))
     real, cache = pathlib.Path.read_text, {}
 
@@ -376,7 +382,7 @@ def test_F3_the_real_dens_scan_reads_na_on_exactly_the_three_approved_assets_ove
                 assert g["cause"] == "no-served-surface", (r["asset_id"], g)
                 na.append(r["asset_id"])
     assert n == 127
-    assert sorted(na) == sorted(R02_ASSETS), na
+    assert sorted(na) == sorted(R02_ALL), na
 
 
 # ───────────────────────── F5: `never-run` needs the build-history source demonstrably present ─────────────────────────

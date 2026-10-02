@@ -25,8 +25,8 @@ WHAT IT MEASURES, per asset, against the tier-4 template's nine gates:
   Vocab.alias           per entity class, alias-set coverage (where the table has a synonyms column)
   Vocab.identity        uniqueness under the table's OWN DECLARED KEY, read from pg_constraint — never
                         an assumed key (native decision 16: the detector tests the declared key)
-  Dens.served           which capability modules reference the target table; do they declare a
-                        density_contract
+  Dens.served           which capability modules SELECT from the target table (a module that only names it
+                        as a label is not a reach, SS N-74(a)); do they declare a density_contract
   Complete.depth        per-column population census over the primary target table: columns fully
                         populated, columns NEVER populated
   Complete.width        the declared universe, if one exists — and it almost never does, so the honest
@@ -187,7 +187,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=2),  # S3: declared form added; was rev 1
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=3),  # S3: declared form + citation_state added; was rev 2
-    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module; PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1)
+    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=5),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label
     "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),  # E6 (c): the declaration and the table's columns agree
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5); never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
@@ -300,11 +300,12 @@ NA_RULE_DECISIONS: dict[str, str] = {
     # R01, N-22 row 20 APPROVED (principles 2, 3): never run is Build.exercised's / Build.registered's finding
     "Build.history#measured:never-run":
         "N-22/N-22a row 20 (APPROVED, principles 2-3); N-65 (R01)",
-    # R02, N-22 row 19 AMENDED (principle 4: after the Dens scanner repair, E6.1 item d): bg_gochara_arcs,
-    # bg_kota_chakra_rings, bg_kp_sublord_division on the repaired scan
+    # R02, N-22 row 19 AMENDED (principle 4: after the Dens scanner repair, E6.1 item d). Amended again by N-74(a) (REGISTRY_REVISION 14):
+    # the rule is cause-keyed, not asset-keyed. It names no asset: the measurement says which assets read N/A.
     "Dens.served#measured:no-served-surface":
-        "N-22/N-22a row 19 (AMENDED, principles 1, 3, 4); N-65 (R02). Dens 'served' means the served TS surface; "
-        "python-side readers of these three L0 tables do not make them served.",
+        "N-22/N-22a row 19 (AMENDED, principles 1, 3, 4); N-65 (R02); amended by N-74(a): an asset no served module selects rows from; "
+        "being named only as a provenance label is not a select. Dens 'served' means the served TS surface; a Python / sidecar "
+        "reader of a table does not make it served.",
     # R03, N-22 row 17 AMENDED (principle 8): the assets that declare prose_fields [] (bg_doshas, bg_ontology, bg_yogas,
     # bo_laksana_rerank; SS: bg_yogas and bg_ontology final); the reverse leg still FAILs a narration column
     # S4, N-22 row 23 re-proposed (the general form was refused for want of a reads-match detector; Build.dag's reads-match
@@ -392,8 +393,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 13     # 13 (provisional): S1 declared null convention (SS N-72 S1, N-73, N-74): Null.schema_default and Null.blank_rows rev 2 (an asset that DECLARES `null_convention`: its nullable columns each with what NULL means and an optional key scope, its declared constant columns, one-line why and checkable evidence, gets the declared form: the two checks also run over the convention columns, the detector verifies read-only that NULLs occur only in declared columns (and, with a key scope, only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL and that no column is constant unless declared constant; the Null checks read PASS ONLY when schema_default and blank_rows are clean AND the convention verifies, a defect flips the cell to FAIL, and every other path keeps the cap exactly as before: the cap line is unchanged and the lift is a separate branch that needs the verified convention block on BOTH checks; no Null N/A rule (N-22 row 33 stands), NA_CAUSES unchanged; no asset declares one yet, so no census cell verdict changes; asset_declarations.json 1.9.0). ALSO IN 13, TOUCHING A MERGED PIN-12 CHECK (recorded explicitly, S1 review F2): the shared SQL predicate `_ldgr_lacking_text` (S3's placeholder / 'states no value' test, used by Ldgr.source_presence's declared source-column check via `_ldgr_lacking` and now also by the Null convention detector) additionally compares its normalised value WITH THE SPACES REMOVED against the same placeholder list (`replace(norm, ' ', '') IN (...)`), so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; the list, the normaliser and every other branch are unchanged. It reaches Ldgr.source_presence's placeholder detector (the declared `ldgr_source` check only: the legacy undeclared Ldgr measurement is an IS NOT NULL count and never calls it). No pin-12 criterion text or revision changed (Vocab.alias rev 2 and Ldgr.source_presence rev 3 are identical to the S3 merge), nor NA_CAUSES / NA_RULE_DECISIONS; the registry fingerprint covers criterion entries, N/A rules and causes, gates and rollup order, never detector SQL, so PINNED_FINGERPRINTS[12] (35b0e03e..., equal to the S3-merged module's fingerprint) is unaffected and the revision-13 fingerprint is the same with or without this change. Measured: all six saved censuses (census_fresh/1e5781a, read only) rolled up with and without the change: 1143 cells, zero move (verdicts and checks), and zero move against the saved verdicts; no asset declares ldgr_source, so no real Ldgr cell consumes the predicate. 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
-
+REGISTRY_REVISION = 14     # 14 (provisional): Dens label-vs-select repair and the R02 amendment (SS N-74 item 5, N-74(a)): Dens.served rev 5 (the scan now tells a SELECT of the asset's table from a LABEL: a serving module that names the asset only in a provenance string, prose, a type name, an import path, a label-keyed array/value or a map key, in a module with no run-time table access, is no longer a reach, so an asset no served module selects rows from can read the no-served-surface N/A; every unclassifiable form (a bare name as a call/builder argument, in an unkeyed list, a name assembled at run time, SQL in the literal) stays a reach, comments keep the R51 reading, Python readers stay outside the served surface by design, the outside probe is unchanged), and R02's decision text is cause-keyed ("an asset no served module selects rows from; being named only as a provenance label is not a select", N-74(a)); NA_CAUSES unchanged, asset_declarations.json unchanged (1.9.0). 13 (provisional): S1 declared null convention (SS N-72 S1, N-73, N-74): Null.schema_default and Null.blank_rows rev 2 (an asset that DECLARES `null_convention`: its nullable columns each with what NULL means and an optional key scope, its declared constant columns, one-line why and checkable evidence, gets the declared form: the two checks also run over the convention columns, the detector verifies read-only that NULLs occur only in declared columns (and, with a key scope, only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL and that no column is constant unless declared constant; the Null checks read PASS ONLY when schema_default and blank_rows are clean AND the convention verifies, a defect flips the cell to FAIL, and every other path keeps the cap exactly as before: the cap line is unchanged and the lift is a separate branch that needs the verified convention block on BOTH checks; no Null N/A rule (N-22 row 33 stands), NA_CAUSES unchanged; no asset declares one yet, so no census cell verdict changes; asset_declarations.json 1.9.0). ALSO IN 13, TOUCHING A MERGED PIN-12 CHECK (recorded explicitly, S1 review F2): the shared SQL predicate `_ldgr_lacking_text` (S3's placeholder / 'states no value' test, used by Ldgr.source_presence's declared source-column check via `_ldgr_lacking` and now also by the Null convention detector) additionally compares its normalised value WITH THE SPACES REMOVED against the same placeholder list (`replace(norm, ' ', '') IN (...)`), so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; the list, the normaliser and every other branch are unchanged. It reaches Ldgr.source_presence's placeholder detector (the declared `ldgr_source` check only: the legacy undeclared Ldgr measurement is an IS NOT NULL count and never calls it). No pin-12 criterion text or revision changed (Vocab.alias rev 2 and Ldgr.source_presence rev 3 are identical to the S3 merge), nor NA_CAUSES / NA_RULE_DECISIONS; the registry fingerprint covers criterion entries, N/A rules and causes, gates and rollup order, never detector SQL, so PINNED_FINGERPRINTS[12] (35b0e03e..., equal to the S3-merged module's fingerprint) is unaffected and the revision-13 fingerprint is the same with or without this change. Measured: all six saved censuses (census_fresh/1e5781a, read only) rolled up with and without the change: 1143 cells, zero move (verdicts and checks), and zero move against the saved verdicts; no asset declares ldgr_source, so no real Ldgr cell consumes the predicate. 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 def registry_fingerprint() -> str:
     """sha256 over the canonical JSON of everything that decides a cell: the registry, the declared N/A
@@ -4310,16 +4310,166 @@ _DYN_FROM_TAIL = re.compile(r"\b(?:FROM|JOIN)\b(?:\s+(?:ONLY\s+)?[\w.\"]*)?\s*$"
 _DYN_JOINED = re.compile(r"(?:\s|/\*.*?\*/|//[^\n]*\n)*(?:\+|,|\.concat\s*\()", re.S)
 
 
-def _dynamic_from(txt: str, spans: list[tuple[int, str]]) -> bool:
+def _dynamic_from(txt: str, spans: list[tuple[int, str]], prose_tail_ok: bool = False) -> bool:
     """Does any literal name its table at run time: `FROM ${T}` (also `"${T}"`, `"public"."${T}"`, `public.${T}`, JOIN,
     ONLY), a `format(… FROM %I …)` placeholder, or a literal ending in `FROM`/`JOIN`/`FROM t_` that has a name joined
-    on with `+`, `.concat(` or an array `,` (a comment between is skipped)?"""
+    on with `+`, `.concat(` or an array `,` (a comment between is skipped)?
+    `prose_tail_ok` (the label scan, SS N-74(a)): a concatenated literal that ENDS in `from <name>` but is a prose sentence (five or more
+    words, no SQL signal: `'Retrieve rows for a chart from kala_x' + '…'`) is not a table name built at run time. The outside probe keeps
+    the broader reading (its callers pass nothing)."""
     for pos, c in spans:
         if _DYN_FROM.search(c):
             return True
         if _DYN_FROM_TAIL.search(c) and _DYN_JOINED.match(txt[pos + len(c) + 1:pos + len(c) + 200]):
+            if prose_tail_ok and _prose_shaped(c, "") and not (_SQL_STRONG.search(c) or _SQL_UPPER.search(c)):
+                continue
             return True
     return False
+
+
+# ───────────── E6 / SS N-74(a): a SELECT is not a LABEL (REGISTRY_REVISION 14) ─────────────
+# A serving module that merely NAMES the asset (a `provenance: { tables: [...] }` envelope, `asset_id: 'x'` of a service probe, a prose string, a
+# type name, an import path) is not a module that selects rows from it. Every occurrence of a token in a module is classified, deterministically
+# and read-only (regex + a bracket scan over the comment-masked text; no LLM, no file but the module itself):
+#   SELECT     the name is in an SQL literal, or is a bare name used as a table (a builder / call argument, an element of an unkeyed list, `const T = 't'`,
+#              a non-label key's value), or is part of a table name assembled at run time
+#   LABEL      the name is in a literal that is NOT SQL (prose, a path, a `a:b:name` id), a bare name under a label key (or an element of an array directly
+#              under one) in a module with no run-time table access, an import / require path, a type / interface / enum / class name, an object-literal key
+#              in a module with no run-time table access
+#   AMBIGUOUS  everything else
+# A module is a reach unless EVERY occurrence is LABEL (and it carries no strict served select): SELECT and AMBIGUOUS both count. The label side
+# needs a positive recognition; the safe direction (only an exact "scanned, no select" reads N/A) is the default.
+LABEL, SELECT_REF, AMBIGUOUS_REF = "label", "select", "ambiguous"
+# keys whose value / array elements are provenance, not a table a query is built from (SS N-74(a): `source_table:`, `table:`, a response envelope's label)
+DENS_LABEL_KEYS = frozenset({"source_table", "source_tables", "table", "tables", "source", "sources", "source_ref", "source_surface", "provenance",
+                             "asset_id", "asset_ids", "assets", "required_assets", "backing_tables"})
+# SQL signals in a literal: case-insensitive for the words prose does not use (SELECT, JOIN, INSERT INTO, ORDER BY, `$1`, `::cast`, `WHERE <col> =`),
+# case-SENSITIVE for the words prose does use (FROM / INTO / UPDATE / TABLE / SET / WHERE / RETURNING / TRUNCATE / UNION: prose says "from <table>",
+# "where present", "the union of"; SQL in this codebase is upper-case, and a lower-case SQL literal carries one of the case-insensitive signals)
+_SQL_STRONG = re.compile(r"\bSELECT\b|\bJOIN\b|\bINSERT\s+INTO\b|\bDELETE\s+FROM\b|\bMERGE\s+INTO\b|\bON\s+CONFLICT\b"
+                         r"|\bORDER\s+BY\b|\bGROUP\s+BY\b|\bLIMIT\s+[\d$]|\bOFFSET\s+[\d$]|\$\d|::\s*[A-Za-z_]"
+                         r"|\bWHERE\s+[\w.\"()]+\s*(?:=|<|>|!|~|\b(?:IN|IS|LIKE|ILIKE|BETWEEN|ANY|NOT)\b)", re.I)
+_SQL_UPPER = re.compile(r"\b(?:FROM|INTO|UPDATE|TABLE|SET|WHERE|RETURNING|TRUNCATE|UNION)\b")
+# (JOIN is not listed: it is a case-insensitive strong signal, so a literal holding it never reaches this test)
+_SQL_KW_BEFORE = re.compile(r"\b(?:FROM|INTO|UPDATE|TABLE|LATERAL|TRUNCATE)\s+(?:ONLY\s+)?(?:\"?public\"?\.)?\"?$", re.I)
+_LIT_GAP = re.compile(r"[\s+,]*(?:\.concat\s*\(\s*)?")
+_BARE_NAME = r"\s*(?:\"?public\"?\.)?\"?{tok}\"?\s*"
+_LABEL_KEY_AT_END = re.compile(r"(?:^|[{,]|\n)\s*(?:([A-Za-z_$][\w$]*)|'([A-Za-z_]\w*)'|\"([A-Za-z_]\w*)\")\s*\??:\s*$")
+_IMPORT_PATH_BEFORE = re.compile(r"(?:^|[\s;}])(?:from|import)\s*$|\b(?:import|require)\s*\(\s*$")
+_TYPE_NAME_BEFORE = re.compile(r"\b(?:type|interface|enum|class)\s+$")
+_KEY_AFTER = re.compile(r"\s*\??\s*:")
+_KEY_START_BEFORE = re.compile(r"(?:^|[{,;(\[]|\n)\s*$")
+# a run-time table through a query builder: `.from(x)` / `.into(x)` / `.table(x)` ... with a non-literal argument (the built-ins that share the
+# method name, `Array.from(x)`, are not table builders)
+_BUILDER_DYN = re.compile(r"\.\s*(?:from|into|table|insertInto|selectFrom|updateTable|deleteFrom)\s*\(\s*(?![\s'\"`)])")
+_NOT_A_BUILDER = re.compile(r"(?:\bArray|\bBuffer|\bObject|\bPromise|\bSet|\bMap|\bString|\bNumber|\bDate|\w*Array)\s*$")
+
+
+def _builder_dynamic(cmask: str) -> bool:
+    """A query-builder call that names its table at run time (`db.from(name)`): a bare name / key in the module could be what it is handed."""
+    for m in _BUILDER_DYN.finditer(cmask):
+        if not _NOT_A_BUILDER.search(cmask[max(0, m.start() - 24):m.start()]):
+            return True
+    return False
+
+
+def _literal_chain(mod: dict, i: int, radius: int = 2) -> str:
+    """Literal `i` and the literals joined to it by `+` / `,` / `.concat(` (comments between are blanked, so they do not hide the join), up to
+    `radius` each side: the text a table name or an SQL fragment of one concatenation is read from."""
+    spans, cm = mod["spans"], mod["cmask"]
+
+    def gap_ok(a: int, b: int) -> bool:
+        end = spans[a][0] + len(spans[a][1]) + 1
+        return _LIT_GAP.fullmatch(cm[end:spans[b][0] - 1]) is not None
+    lo = i
+    while lo > 0 and i - lo < radius and gap_ok(lo - 1, lo):
+        lo -= 1
+    hi = i
+    while hi + 1 < len(spans) and hi - i < radius and gap_ok(hi, hi + 1):
+        hi += 1
+    return " ".join(spans[k][1] for k in range(lo, hi + 1))
+
+
+def _prose_shaped(c: str, tok: str) -> bool:
+    return len(re.findall(r"[A-Za-z]{2,}", c.replace(tok, " ") if tok else c)) >= 5
+
+
+def _label_key_context(mod: dict, q: int) -> bool:
+    """Is the string literal opening at offset `q` the value of a label key, or an element of an array directly under one?"""
+    cm, blank = mod["cmask"], mod["blank"]
+
+    def key_at_end(text: str) -> bool:
+        m = _LABEL_KEY_AT_END.search(text)
+        return bool(m) and (m.group(1) or m.group(2) or m.group(3)).lower() in DENS_LABEL_KEYS
+    if key_at_end(cm[max(0, q - 200):q]):
+        return True
+    depth, i = 0, q - 1
+    while i >= 0:
+        ch = blank[i]
+        if ch in ")]}":
+            depth += 1
+        elif ch in "([{":
+            if depth == 0:
+                return ch == "[" and key_at_end(cm[max(0, i - 200):i])
+            depth -= 1
+        i -= 1
+    return False
+
+
+def _literal_ref_kind(mod: dict, i: int, off: int, tok: str) -> str:
+    start, c = mod["spans"][i]
+    cm, txt = mod["cmask"], mod["txt"]
+    chain = _literal_chain(mod, i)
+    if _SQL_STRONG.search(chain) or _SQL_UPPER.search(chain):
+        return SELECT_REF
+    if re.fullmatch(_BARE_NAME.format(tok=re.escape(tok)), c):
+        if _IMPORT_PATH_BEFORE.search(cm[max(0, start - 1 - 120):start - 1]):
+            return LABEL
+        if _label_key_context(mod, start - 1) and not mod["dynamic_table"]:
+            return LABEL
+        return AMBIGUOUS_REF
+    before, after = c[:off - start], c[off - start + len(tok):]
+    if _SQL_KW_BEFORE.search(before) and not _prose_shaped(c, tok):
+        return AMBIGUOUS_REF                                      # a fragment (`' from t'`), not prose
+    if before.endswith("}") or after.startswith("${"):
+        return AMBIGUOUS_REF                                      # glued to an interpolation: a name built at run time
+    if not before.strip() and re.search(r"\+\s*$", cm[max(0, start - 1 - 8):start - 1]):
+        return AMBIGUOUS_REF                                      # the head of a concatenated name
+    if not after.strip() and re.match(r"\s*(?:\+|\.concat\b)", txt[start + len(c) + 1:start + len(c) + 12]):
+        return AMBIGUOUS_REF                                      # the tail of a concatenated name
+    return LABEL
+
+
+def _code_ref_kind(mod: dict, off: int, end: int) -> str:
+    cm = mod["cmask"]
+    if _TYPE_NAME_BEFORE.search(cm[max(0, off - 24):off]):
+        return LABEL
+    if (_KEY_AFTER.match(cm[end:end + 24]) and _KEY_START_BEFORE.search(cm[max(0, off - 200):off]) and not mod["dynamic_table"]):
+        return LABEL                                              # an object-literal key: a names-map entry
+    return AMBIGUOUS_REF
+
+
+def _ref_kinds_mod(mod: dict, tok: str) -> list[str]:
+    """One kind per whole-word occurrence of `tok` in the module's comment-masked text, in order (comments are not occurrences: R51 reads them)."""
+    starts = [p for p, _c in mod["spans"]]
+    out = []
+    for m in re.finditer(r"\b" + re.escape(tok) + r"\b", mod["cmask"]):
+        i = bisect.bisect_right(starts, m.start()) - 1
+        if i >= 0 and m.start() < starts[i] + len(mod["spans"][i][1]):
+            out.append(_literal_ref_kind(mod, i, m.start(), tok))
+        else:
+            out.append(_code_ref_kind(mod, m.start(), m.end()))
+    return out
+
+
+def _ref_kinds(txt: str, tok: str) -> list[str]:
+    """`_ref_kinds_mod` over a source text (the unit-test and one-off entry; the scan itself reads each file once)."""
+    return _ref_kinds_mod(_dens_facts(txt), tok)
+
+
+def _module_reaches(kinds) -> bool:
+    """A module reaches the asset unless every occurrence is a label: one SELECT or one unclassifiable form decides."""
+    return any(k != LABEL for k in kinds)
 
 
 _DECL_LINE = re.compile(r"^(?:import\b|export\b|(?:async\s+)?function\b|(?:const|let|var|class|interface|type|enum)\b)", re.M)
@@ -4387,23 +4537,34 @@ def _enclosing_object(blank: str, pos: int) -> tuple[int, int]:
     return i, len(blank)
 
 
+def _dens_facts(txt: str) -> dict:
+    """The module text parsed once (see `_dens_module`): comment-masked text, string-blanked text, declaration starts, `density_contract:`
+    declarations, string-literal spans, desync, run-time table access."""
+    blank = _ts_mask(txt, blank_strings=True)
+    spans = _ts_literal_spans(txt)
+    cmask = _ts_mask(txt)
+    dyn_from = _dynamic_from(txt, spans)
+    return dict(
+        txt=txt,
+        cmask=cmask,
+        blank=blank,
+        starts=_ts_decl_starts(blank),
+        contracts=[m.start() for m in _DENSITY_DECL.finditer(blank)],
+        contract_objs=[(m.start(), *_enclosing_object(blank, m.start())) for m in _DENSITY_DECL.finditer(blank)],
+        spans=spans,
+        desynced=_ts_desynced(txt),
+        dynamic_from=dyn_from,
+        # a bare name or a key is a label only where nothing in the module can turn it into a table: `FROM ${x}` / `.from(x)`
+        dynamic_table=_dynamic_from(txt, spans, prose_tail_ok=True) or _builder_dynamic(cmask),
+    )
+
+
 def _dens_module(f: Path, key: tuple) -> dict:
     """The file parsed once: comment-masked text (strings kept: the SQL lives in them), the declaration starts, the
     offsets of `density_contract:` DECLARATIONS (R232: comments stripped, strings blanked), and the string literals
     with their offsets."""
     if key not in _DENS_FACTS:
-        txt = f.read_text(encoding="utf-8", errors="replace")
-        blank = _ts_mask(txt, blank_strings=True)
-        spans = _ts_literal_spans(txt)
-        _DENS_FACTS[key] = dict(
-            cmask=_ts_mask(txt),
-            starts=_ts_decl_starts(blank),
-            contracts=[m.start() for m in _DENSITY_DECL.finditer(blank)],
-            contract_objs=[(m.start(), *_enclosing_object(blank, m.start())) for m in _DENSITY_DECL.finditer(blank)],
-            spans=spans,
-            desynced=_ts_desynced(txt),
-            dynamic_from=_dynamic_from(txt, spans),
-        )
+        _DENS_FACTS[key] = _dens_facts(f.read_text(encoding="utf-8", errors="replace"))
     return _DENS_FACTS[key]
 
 
@@ -4608,7 +4769,18 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     which the string scanner loses sync (`_ts_desynced`) is returned in `unparsed` and grades NO_DETECTOR (never FAIL,
     never N/A; a PASS/PARTIAL earned in a clean file stands).
 
-    Returns `modules` (by code, attributing tokens), `density` (capabilities that are dense), `dense`, `declared`
+    SELECT VS LABEL (SS N-74(a), REGISTRY_REVISION 14). A module that references a token in code is a reach (`modules`) only when at
+    least one occurrence is an SQL read of the table or a form the scan cannot classify (`_ref_kinds_mod`: SQL in the literal, a bare name used as
+    a table, an unkeyed list, a name assembled at run time, an identifier use). A module whose EVERY occurrence is a label (a provenance /
+    source string, prose, a path or id, a type name, an import path, a value under a label key such as `tables:` / `asset_id:` or a map key, the
+    last two only where the module has no run-time table access) and that carries no strict served select is `label_only`: it names the asset,
+    it does not read it. The rest of the scan (attribution, contract and tier, `served`, `shared_only`, `comment_only`, the outside probe) is
+    unchanged, so no PASS / PARTIAL / FAIL moves; comments keep their R51 reading (a comment-only mention still blocks the N/A).
+    SERVED SURFACE = TypeScript, BY DESIGN. Only `*.ts` under the serving roots (and `*.ts` / `*.tsx` in the outside probe) are read; a Python or
+    sidecar reader of a table (`platform/python-sidecar/**`, e.g. the `ka_vedha_gochara` writer's `FROM bg_phaladeepika_latta`) is a build-time
+    reader, not a served module, and never makes an asset served (R02's decision text, N-74(a)).
+
+    Returns `modules` (by code, attributing tokens), `label_only` (modules that name it only as a label), `density` (capabilities that are dense), `dense`, `declared`
     (modules whose referencing capability declares the contract, with why the tier half is missing), `tier_only`,
     `served` (how many served selects of the asset's tables), `shared_only`, `comment_only` (R51: a comment names it,
     no code does), `outside`, `outside_named`."""
@@ -4622,6 +4794,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     toks = [t for t in dict.fromkeys(tables) if t and t not in shared]
     sh = [t for t in dict.fromkeys(tables) if t and t in shared]
     hits, dense, declared, tier_only, shared_only, mentions, elsewhere = [], [], [], [], [], [], []
+    label_only: list[str] = []
     unparsed: list[str] = []
     served = 0
     seen: set[str] = set()
@@ -4652,7 +4825,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                 elif code_toks:
                     mentions.append(name)                                              # R51: named in a comment only
                 continue
-            hits.append(name)
+            kinds = [k for t in ref_toks for k in _ref_kinds_mod(mod, t)]                # SS N-74(a): SELECT or LABEL, per occurrence
             refs = {_decl_of(mod, m.start()) for t in ref_toks for m in re.finditer(r"\b" + re.escape(t) + r"\b", mod["cmask"])}
             # a capability ENTRY that declares the contract: the object literal holding the `density_contract:` key, in a
             # top-level declaration that references the asset
@@ -4671,6 +4844,13 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                               if sel is not None else (TIER_UNKNOWN, []))           # not the served read: credits nothing
                         sels.append((d, pos, st[0], st[1]))
                         served += 1
+            if not sels and not _module_reaches(kinds):
+                # every occurrence is a label (a provenance string, prose, a type name, an import path, a label-keyed value, a map key) and no
+                # strict served select of the asset's table is in the module: it names the asset, it does not read it. Such a module never
+                # carried a contract/tier credit (those need a select), so skipping the rest changes no PASS / PARTIAL / FAIL.
+                label_only.append(name)
+                continue
+            hits.append(name)
             tier_decls = {d for d, _p, st, _c in sels if st == TIER_YES}
             inside = lambda o: [(st, cs) for _d, p, st, cs in sels if o[1] <= p < o[2]]    # noqa: E731
             dense_cols = sorted({c for o in cobjs for st, cs in inside(o) if st == TIER_YES for c in cs})
@@ -4731,7 +4911,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                     outside_named.append(f"{rel} (a comment names it)")                          # R51: alone or beside code
                 elif mod["dynamic_from"]:
                     outside_named.append(f"{rel} (holds the table and selects FROM a run-time table name)")
-    return dict(modules=hits, density=len(dense), note="", scanned=True, comment_only=mentions, dense=dense,
+    return dict(modules=hits, label_only=label_only, density=len(dense), note="", scanned=True, comment_only=mentions, dense=dense,
                 declared=declared, tier_only=tier_only, served=served, shared_only=shared_only, outside=outside, outside_named=outside_named, unparsed=unparsed, elsewhere=elsewhere,
                 shared_tokens=sh, tokens=toks, roots=dirs)
 
@@ -4754,7 +4934,9 @@ def _grade_dens(cap: dict, label: str) -> dict:
                                        "the served surface was never scanned")
     mods = cap.get("modules") or []
     outside = cap.get("outside") or []
-    reach = f"{len(mods)} module(s) reach it by code: {_few(mods)}"
+    lab = cap.get("label_only") or []
+    reach = (f"{len(mods)} module(s) reach it by code: {_few(mods)}"
+             + (f" (+{len(lab)} name it only as a label)" if lab else ""))
     tail = (f"; also a served select outside the scanned serving roots (not graded): {_few(outside, 3)}"
             if outside and mods else "")
     if mods and cap.get("density"):
@@ -4804,7 +4986,9 @@ def _grade_dens(cap: dict, label: str) -> dict:
                                         "attributed by code (never the closable N/A)"))
     return _na(f"STRUCTURAL: 0 module(s) reference it by code in the {len(cap.get('roots') or [])} "
                "serving root(s) scanned, and no served select of it exists in the wider source "
-               "scanned; declaring density_contract: 0", "no-served-surface")
+               "scanned; declaring density_contract: 0"
+               + (f"; {len(lab)} module(s) name it only as a label (a provenance string, prose, an id, a type name, an import path or a map "
+                  f"key: not a select): {_few(lab)}" if lab else ""), "no-served-surface")
 
 
 # ─────────── R23 (W2-3): field-level reachability over capability modules ───────────

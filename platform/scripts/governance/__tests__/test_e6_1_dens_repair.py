@@ -141,8 +141,15 @@ def test_a_select_of_a_shared_table_in_a_capability_that_never_names_the_asset_i
 
 def test_a_contract_in_a_declaration_that_only_names_the_asset_id_is_not_its_serving_capability(tree, monkeypatch):
     """The contract sits in a capability that mentions `bg_x` in a string but serves no rows of its table, and nothing
-    in the module selects from the table: there is no served select, so the scan cannot tell — not a PARTIAL."""
+    in the module selects from the table: there is no served select — never a PARTIAL (a contract is not credited to a
+    capability that does not serve the table). REGISTRY_REVISION 14 (SS N-74(a)): the mention is a LABEL (prose under a
+    non-label key, not SQL), so the module is not a reach and the asset reads the N/A with the label-only module named;
+    before 14 this read NO_DETECTOR ("reach it by code, no served select"). A mention the scan cannot classify still reads
+    NO_DETECTOR: see test_e6_dens_label_select.py."""
     tree.write(tree.tools, "tool.ts", "export const cap = {\n  " + CONTRACT + "\n  note: 'covers bg_x',\n}\n")
+    d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
+    assert d["v"] == ac.NA and "only as a label" in d["measured"], d
+    tree.write(tree.tools, "tool.ts", "export const cap = {\n  " + CONTRACT + "\n  tags: ['bg_x'],\n}\n")        # an unkeyed list: not classifiable
     d = _dens(_measure(monkeypatch, tree, {"bg_x": w1._reg_row("bg_x", "t_x")}), "bg_x")
     assert d["v"] == ac.NO_DET and "no served select" in d["measured"], d
 
@@ -330,7 +337,7 @@ def test_the_asset_id_attributes_a_reader_of_a_shared_table(tree, monkeypatch):
 
 def test_dens_served_criterion_revision_is_bumped_and_says_structural():
     e = ac.CRITERION_REGISTRY["Dens.served"]
-    assert e["revision"] == 4 and "tier column" in e["applicability"], e
+    assert e["revision"] == 5 and "tier column" in e["applicability"], e                 # 5: SS N-74(a), select vs label
 
 
 def test_an_undeclared_rule_leaves_a_measured_dens_na_reading_no_detector_in_the_cell(tree, monkeypatch):

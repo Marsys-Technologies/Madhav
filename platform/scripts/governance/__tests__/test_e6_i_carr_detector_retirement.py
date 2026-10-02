@@ -77,6 +77,10 @@ def _restore_pre_retirement(monkeypatch):
         reg[crit] = dict(reg[crit], revision=1, applicability=("prose_fields declared non-empty; a non-NULL DEFAULT on a declared prose column; never PASS alone"
                                                                if was == "schema_default" else
                                                                "prose_fields declared non-empty; blank or placeholder rows standing in for NULL; never PASS alone"))
+    reg["Dens.served"] = dict(reg["Dens.served"], revision=4,                      # revision 14 (N-74(a)) re-worded and bumped it
+                              applicability="reaches a served capability module; PASS (structural) needs ONE capability entry (the object literal that declares density_contract) "
+                                            "whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION "
+                                            "branch does not count")
     causes = dict(ac.NA_CAUSES)
     causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
     causes.pop("Vocab.alias", None)                        # revision 12 (S3) added the two declaration-keyed causes
