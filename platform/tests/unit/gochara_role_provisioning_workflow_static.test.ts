@@ -35,6 +35,11 @@ describe('gochara-role-provisioning-oneshot.yml', () => {
     expect(run.shell).toBe('bash')
     expect(JSON.stringify(wf.jobs.provision.steps.filter((s: any) => s !== run))).not.toContain('secrets.')
   })
+  it('verifies the downloaded Cloud SQL proxy against a pinned sha256 before running it', () => {
+    const proxy = (wf.jobs.provision.steps as any[]).find((s) => s.name === 'Start Cloud SQL Auth Proxy')
+    expect(proxy.run).toContain('276139ff5d5dc484c51e1a9c065d69a9f6e47d5b726f94dced253b0227df2056  cloud-sql-proxy' .replace('$PIN', '276139ff5d5dc484c51e1a9c065d69a9f6e47d5b726f94dced253b0227df2056'))
+    expect(proxy.run.indexOf('sha256sum -c')).toBeLessThan(proxy.run.indexOf('chmod +x'))
+  })
   it('never uses gcloud sql users or the console route, and no step turns on xtrace', () => {
     expect(code(workflowText)).not.toMatch(/gcloud sql users|set -x|xtrace|ACTIONS_STEP_DEBUG/)
   })

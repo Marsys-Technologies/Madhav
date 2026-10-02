@@ -16,6 +16,11 @@
 #                    NOLOGIN restored if the role was NOLOGIN) and the reset is VERIFIED; if that cannot be verified the run
 #                    says so loudly (exit 70) and the secrets must NOT be discarded.
 #
+# THE PASSWORD STATE IS NEVER READ FROM pg_authid (Fable F-R12-3): on Cloud SQL the admin roles are cloudsqlsuperuser members, not superusers, and pg_authid is
+#   superuser-only — a predicate that needed it would refuse unconditionally (a fail-closed dead end). Instead the state is (1) RECORDED in a role comment that
+#   create-roles writes ('gochara-provision:sealer-password-null') and the activation rewrites ('...-set'), readable by anyone via pg_shdescription, and (2) PROBED by
+#   an actual loopback authentication attempt as the sealer, which must FAIL before activation and SUCCEED after it (and fail again after a compensation).
+#
 # PERMISSION MODEL (act 11 — the workflow identity on the verifier secret ONLY, never project-level): roles/secretmanager.secretVersionManager
 #   = secretmanager.versions.{add,get,list,enable,disable,destroy} — NO secretmanager.versions.access (the payload is never readable by this
 #   identity). The script uses EXACTLY three Secret Manager verbs: `versions add`, `versions list` (verification) and `versions destroy`
@@ -96,11 +101,16 @@ unset ADMIN_DATABASE_URL _rest _authority _hostport _host _k _v          # nothi
 
 psql_admin() { "$PSQL_BIN" -X -q -v ON_ERROR_STOP=1 "$@"; }              # NO connection argument: libpq reads PG* from the environment
 q() { psql_admin -t -A -c "$1"; }                                          # read-only fact queries (no secret in them)
+MARK_NULL='gochara-provision:sealer-password-null'
+MARK_SET='gochara-provision:sealer-password-set'
+sealer_marker() { q "SELECT COALESCE(shobj_description(oid, 'pg_authid'), '') FROM pg_roles WHERE rolname = '$SEALER_ROLE'"; }
+# can the sealer AUTHENTICATE with this password? (the probe that replaces reading pg_authid; the password goes in the CHILD's environment only, never argv)
+login_ok() { PGUSER="$SEALER_ROLE" PGPASSWORD="$1" PGCONNECT_TIMEOUT=10 "$PSQL_BIN" -X -q -t -A -c 'SELECT 1' >/dev/null 2>&1; }
 
 # ── rollback / compensation: runs on EVERY exit path ──────────────────────────────────────────────────────────────────────────────────────
 rollback() {
   local rc=$?
-  unset PW SEALER_PASSWORD_STAGING 2>/dev/null || true
+  unset PW 2>/dev/null || true             # (SEALER_PASSWORD_STAGING is needed below to VERIFY a compensation by a failed authentication; it is unset last)
   if [ "$COMPLETED" != 1 ]; then
     if [ "$SEALER_ACTIVATION" = 1 ]; then
       # COMPENSATE the activation (idempotent: safe whether or not the ALTER committed): password back to NULL, NOLOGIN restored if it was NOLOGIN, then VERIFY.
@@ -108,11 +118,12 @@ rollback() {
       local restore="PASSWORD NULL"
       [ "$SEALER_WAS_LOGIN" = "f" ] && restore="NOLOGIN PASSWORD NULL"
       if psql_admin -c "ALTER ROLE $SEALER_ROLE $restore" >/dev/null 2>&1 \
-         && [ "$(q "SELECT rolpassword IS NULL FROM pg_authid WHERE rolname = '$SEALER_ROLE'" 2>/dev/null)" = "t" ] \
-         && { [ "$SEALER_WAS_LOGIN" != "f" ] || [ "$(q "SELECT rolcanlogin FROM pg_roles WHERE rolname = '$SEALER_ROLE'" 2>/dev/null)" = "f" ]; }; then
-        echo "compensated and VERIFIED: $SEALER_ROLE has NO password (login restored to '$SEALER_WAS_LOGIN'). The stored secrets are recovery material until you re-run." >&2
+         && psql_admin -c "COMMENT ON ROLE $SEALER_ROLE IS '$MARK_NULL'" >/dev/null 2>&1 \
+         && [ "$(sealer_marker 2>/dev/null)" = "$MARK_NULL" ] \
+         && ! login_ok "${SEALER_PASSWORD_STAGING:-}"; then
+        echo "compensated and VERIFIED: $SEALER_ROLE can no longer authenticate with the staged password and its recorded state is password-null (login restored to '$SEALER_WAS_LOGIN'). The stored secrets are recovery material until you re-run." >&2
       else
-        echo "ROLLBACK INCOMPLETE — THE SEALER MAY BE ACTIVE. Run 'ALTER ROLE $SEALER_ROLE $restore;' by hand and verify rolpassword IS NULL BEFORE deleting any secret; treat as an incident." >&2
+        echo "ROLLBACK INCOMPLETE — THE SEALER MAY BE ACTIVE. Run 'ALTER ROLE $SEALER_ROLE $restore;' by hand and prove the staged password no longer authenticates BEFORE deleting any secret; treat as an incident." >&2
         rc=70
       fi
     fi
@@ -132,6 +143,7 @@ rollback() {
       fi
     done
   fi
+  unset SEALER_PASSWORD_STAGING 2>/dev/null || true
   exit "$rc"
 }
 trap rollback EXIT
@@ -187,9 +199,11 @@ case "$STAGE" in
     create_role "$SEALER_ROLE" 2
     verification_facts "$VERIFIER_ROLE" "$VERIFIER_CONNECTION_LIMIT"
     verification_facts "$SEALER_ROLE" 2
-    # the sealer cannot authenticate by password at all: rolpassword IS NULL (pg_authid is readable by the admin path; if it is not, say so)
-    pw_null="$(q "SELECT rolpassword IS NULL FROM pg_authid WHERE rolname = '$SEALER_ROLE'" 2>/dev/null || echo unreadable)"
-    note "sealer_rolpassword_is_null=$pw_null"
+    # the sealer's password state is RECORDED (a role comment — readable without pg_authid) and PROBED (an authentication attempt with a random password must FAIL)
+    psql_admin -c "COMMENT ON ROLE $SEALER_ROLE IS '$MARK_NULL'" >/dev/null
+    note "sealer_recorded_state=$(sealer_marker)"
+    if login_ok "$(openssl rand -hex 32)"; then fail "the sealer AUTHENTICATED with a random password: it is not password-protected — rolling back this run's roles" 4; fi
+    note "sealer_authentication_with_a_random_password=refused"
     # the verifier's password: generated here, secret store FIRST (so a failure leaves a NULL-password role and an unused version, never an
     # unknown password), then the role. Never echoed; masked as defence in depth.
     PW="$(openssl rand -hex 48)"
@@ -219,14 +233,20 @@ case "$STAGE" in
     printf '%s' "$SEALER_PASSWORD_STAGING" | grep -Eq '^[0-9a-f]+$' || fail "the staged sealer password must be hex (no quoting hazard)" 2
     echo "::add-mask::$SEALER_PASSWORD_STAGING"
     SEALER_WAS_LOGIN="$(q "SELECT rolcanlogin FROM pg_roles WHERE rolname = '$SEALER_ROLE'")"
-    pw_null="$(q "SELECT rolpassword IS NULL FROM pg_authid WHERE rolname = '$SEALER_ROLE'" 2>/dev/null || echo unreadable)"
-    if [ "$SEALER_WAS_LOGIN" = "t" ] && [ "$pw_null" != "t" ]; then fail "the sealer already has a password — refusing to overwrite"; fi
+    state="$(sealer_marker)"
+    case "$state" in
+      "$MARK_NULL") ;;
+      "$MARK_SET") fail "the sealer's recorded state is password-SET — refusing to overwrite" ;;
+      *) fail "the sealer carries no recorded password-null state ('$state'): it was not created by this one-shot, or its state is unknown — refusing" ;;
+    esac
+    if login_ok "$SEALER_PASSWORD_STAGING"; then fail "the sealer already authenticates with the staged password — refusing"; fi
     SEALER_ACTIVATION=1       # from here on, any non-success exit (a failed statement, a failed postcondition, a cancelled run) COMPENSATES
     # ONE transaction: the activation AND its postconditions. ALTER ROLE is transactional in PostgreSQL, so a failed postcondition aborts the whole thing and the
     # password is NEVER left set by a failed check. (stderr discarded: a server error can quote the statement.)
     {
       printf "BEGIN;\n"
       printf "ALTER ROLE %s LOGIN PASSWORD '%s';\n" "$SEALER_ROLE" "$SEALER_PASSWORD_STAGING"
+      printf "COMMENT ON ROLE %s IS '%s';\n" "$SEALER_ROLE" "$MARK_SET"
       cat <<SQL
 DO \$post\$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cloudsqlsuperuser') THEN RAISE EXCEPTION 'postcondition: cloudsqlsuperuser absent (not Cloud SQL)'; END IF;
@@ -240,7 +260,8 @@ COMMIT;
 SQL
     } | psql_admin -f - >/dev/null 2>&1 \
       || fail "sealer activation or its postconditions failed (server message suppressed) — nothing was committed; compensating anyway" 5
-    unset SEALER_PASSWORD_STAGING
+    # the activation must be OBSERVABLE: the sealer can now authenticate with the staged password (otherwise: compensate)
+    login_ok "$SEALER_PASSWORD_STAGING" || fail "the sealer cannot authenticate after activation — compensating" 5
     # informational facts AFTER the commit: a failure here still compensates (the trap resets the password and verifies it)
     verification_facts "$SEALER_ROLE" 2
     COMPLETED=1

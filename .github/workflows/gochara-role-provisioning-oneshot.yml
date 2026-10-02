@@ -68,7 +68,9 @@ jobs:
         run: |
           curl -fsSL \
             "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
-            -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+            -o cloud-sql-proxy
+          echo "276139ff5d5dc484c51e1a9c065d69a9f6e47d5b726f94dced253b0227df2056  cloud-sql-proxy" | sha256sum -c -         # pinned (Fable): the v2.10.1 linux/amd64 binary as served on 2026-10-02
+          chmod +x cloud-sql-proxy
           ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
             madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5432.log 2>&1 &
           proxy_pid=$!

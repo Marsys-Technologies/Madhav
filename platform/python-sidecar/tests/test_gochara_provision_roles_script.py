@@ -1,17 +1,21 @@
-"""Behavioural tests of platform/scripts/gochara-provision-roles.sh against a DISPOSABLE PostgreSQL (the native's ruling #1, option A).
+"""Behavioural tests of platform/scripts/gochara-provision-roles.sh against a DISPOSABLE, CLOUD-SQL-SHAPED PostgreSQL (the native's ruling #1, option A).
 
-The script runs for real; only `gcloud` is a recording shim (so the test can prove WHAT is written to Secret Manager and that the
-password never appears anywhere else). The roles are cluster-level, so this suite runs ONLY against a cluster named explicitly by
-GOCHARA_PROVISION_TEST_ADMIN_DSN (a loopback superuser DSN of a throwaway cluster — never a shared one): it drops and re-creates
-`gochara_verifier`, `gochara_sealer` and a stand-in `cloudsqlsuperuser` there. Without the variable every test is skipped.
+The script runs for real; only `gcloud` is a recording shim (so the test can prove WHAT is written to Secret Manager, under WHICH permission model, and that the password never
+appears anywhere else). Each module run creates its OWN throwaway cluster (initdb in a temp directory, scram-sha-256 authentication on every line of pg_hba, loopback only,
+removed afterwards) shaped like Cloud SQL where it matters (Fable F-R12-3): the script's admin role is NOT a superuser (`CREATEROLE CREATEDB`, a member of a stand-in
+`cloudsqlsuperuser`), so **pg_authid is unreadable to it** — the password-state logic must work without it — and passwords are really checked (a role with PASSWORD NULL cannot
+authenticate). A separate superuser connection is used only to ASSERT. Needs the PostgreSQL binaries (initdb, pg_ctl, psql); set GOCHARA_PROVISION_TEST_PGBIN to their directory
+(default: next to `psql` on PATH). Never touches any other server.
 """
 from __future__ import annotations
 
 import os
 import re
 import shutil
+import socket
 import stat
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -20,22 +24,57 @@ from . import _disposable_guard as guard
 
 psycopg = pytest.importorskip("psycopg")
 
-DSN = os.environ.get("GOCHARA_PROVISION_TEST_ADMIN_DSN", "")
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "gochara-provision-roles.sh"
-PSQL = os.environ.get("GOCHARA_PROVISION_TEST_PSQL") or shutil.which("psql")
-pytestmark = pytest.mark.skipif(not DSN or not PSQL, reason="NOT_RUN: set GOCHARA_PROVISION_TEST_ADMIN_DSN (a throwaway loopback cluster) and have psql")
+BIN = Path(os.environ.get("GOCHARA_PROVISION_TEST_PGBIN") or (os.path.dirname(shutil.which("psql") or "")))
+PSQL = str(BIN / "psql") if (BIN / "psql").exists() else None
+pytestmark = pytest.mark.skipif(not (BIN / "initdb").exists() or not (BIN / "pg_ctl").exists() or not PSQL,
+                                reason="NOT_RUN: PostgreSQL binaries (initdb, pg_ctl, psql) not found — set GOCHARA_PROVISION_TEST_PGBIN")
 TAIL = "@/amjis?host=/cloudsql/p:r:i"
+ADMIN_PW = "Zm4rk3rAdminPw"          # also the argv/output marker: it must appear in NO psql argument list and NO output
+DSN = ADMIN_URL = SUDSN = ""         # set by the `cluster` fixture
 
 
 def _admin():
-    guard.assert_disposable_dsn(DSN)                       # libpq's own parse, ONE explicit loopback host, no env overrides (steward eb38)
-    c = psycopg.connect(DSN, autocommit=True, connect_timeout=3)
+    """A SUPERUSER connection, for assertions only (the script never uses it)."""
+    guard.assert_disposable_dsn(SUDSN)
+    c = psycopg.connect(SUDSN, autocommit=True, connect_timeout=3)
     guard.assert_connected_to(c)
     return c
 
 
+@pytest.fixture(scope="module")
+def cluster(tmp_path_factory):
+    global DSN, ADMIN_URL, SUDSN
+    data = tmp_path_factory.mktemp("pgscram") / "data"
+    sock = Path(tempfile.mkdtemp(prefix="b6pg"))
+    pwfile = tmp_path_factory.mktemp("pgpw") / "pw"
+    pwfile.write_text("superpw")
+    with socket.socket() as sk:
+        sk.bind(("127.0.0.1", 0))
+        port = sk.getsockname()[1]
+    env = {k: v for k, v in os.environ.items() if not k.startswith("PG")}
+    subprocess.run([str(BIN / "initdb"), "-D", str(data), "-U", "postgres", "-A", "scram-sha-256", f"--pwfile={pwfile}", "-E", "UTF8"], check=True, capture_output=True, env=env)
+    subprocess.run([str(BIN / "pg_ctl"), "-D", str(data), "-o", f"-p {port} -k {sock} -c listen_addresses=127.0.0.1", "-l", str(data.parent / "log"), "-w", "start"],
+                   check=True, capture_output=True, env=env)
+    SUDSN = f"postgresql://postgres:superpw@127.0.0.1:{port}/postgres"
+    ADMIN_URL = f"postgresql://pgadmin:{ADMIN_PW}@127.0.0.1:{port}/postgres"
+    DSN = ADMIN_URL
+    try:
+        with _admin() as c:
+            c.execute("CREATE ROLE cloudsqlsuperuser NOLOGIN")
+            c.execute(f"CREATE ROLE pgadmin LOGIN CREATEROLE CREATEDB PASSWORD '{ADMIN_PW}' IN ROLE cloudsqlsuperuser")
+        # the Cloud SQL shape: the script's admin role cannot read pg_authid
+        with psycopg.connect(ADMIN_URL, autocommit=True, connect_timeout=3) as a:
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                a.execute("SELECT rolpassword FROM pg_authid LIMIT 1")
+        yield {"port": port}
+    finally:
+        subprocess.run([str(BIN / "pg_ctl"), "-D", str(data), "-m", "immediate", "-w", "stop"], capture_output=True, env=env)
+        shutil.rmtree(sock, ignore_errors=True)
+
+
 @pytest.fixture()
-def world(tmp_path):
+def world(tmp_path, cluster):
     with _admin() as c:
         for r in ("gochara_verifier", "gochara_sealer"):
             c.execute(f"DROP ROLE IF EXISTS {r}")
@@ -62,7 +101,7 @@ esac
 
 
 def run(world, stage="create-roles", *, url=None, tail=TAIL, extra=None, psql=None):
-    env = {**{k: v for k, v in os.environ.items() if not k.startswith("PG")}, "STAGE": stage, "ADMIN_DATABASE_URL": url or DSN, "GCLOUD_BIN": world["gcloud"], "PSQL_BIN": psql or PSQL,
+    env = {**{k: v for k, v in os.environ.items() if not k.startswith("PG")}, "STAGE": stage, "ADMIN_DATABASE_URL": url or ADMIN_URL, "GCLOUD_BIN": world["gcloud"], "PSQL_BIN": psql or PSQL,
            "DSN_TAIL": tail, "GCLOUD_PROJECT": "madhav-astrology", **(extra or {})}
     return subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=120)
 
@@ -97,7 +136,9 @@ def test_create_roles_makes_both_roles_least_privileged_with_no_superuser_member
     argv = (world["tmp"] / "gcloud_argv.txt").read_text()
     assert "secrets versions add gochara-verifier-db-url" in argv and "--data-file=-" in argv and m.group(1) not in argv
     facts = out.stdout
-    assert "member_of_cloudsqlsuperuser=f" in facts and "sealer_rolpassword_is_null=t" in facts and "secret_version: 1\tenabled" in facts
+    assert "member_of_cloudsqlsuperuser=f" in facts and "secret_version: 1\tenabled" in facts
+    assert "sealer_recorded_state=gochara-provision:sealer-password-null" in facts and "sealer_authentication_with_a_random_password=refused" in facts
+    assert "sealer_rolpassword_is_null" not in facts and "pg_authid" not in facts                     # the state is recorded + probed, never read from pg_authid
     assert "created gochara_sealer: LOGIN PASSWORD NULL" in facts
 
 
@@ -174,7 +215,7 @@ def test_sealer_password_stage_sets_it_once_and_never_shows_it(world):
         assert role(c, "gochara_sealer")[8] is False                # a password is now set
     assert staged not in visible(r)
     again = run(world, "sealer-password", extra={"SEALER_PASSWORD_STAGING": "cd" * 40})
-    assert again.returncode == 3 and "already has a password" in again.stderr
+    assert again.returncode == 3 and "recorded state is password-SET" in again.stderr
     for bad in ("short", "zz" * 40):
         assert run(world, "sealer-password", extra={"SEALER_PASSWORD_STAGING": bad}).returncode in (2, 3)
 
@@ -235,7 +276,7 @@ def test_a_role_that_ends_up_in_cloudsqlsuperuser_fails_the_act_before_any_secre
     shim = world["tmp"] / "psql_member_shim"
     shim.write_text(f'''#!/usr/bin/env bash
 "{PSQL}" "$@" || exit $?
-for a in "$@"; do case "$a" in *"CREATE ROLE gochara_verifier LOGIN"*) "{PSQL}" "{DSN}" -X -q -c "GRANT cloudsqlsuperuser TO gochara_verifier" >/dev/null;; esac; done
+for a in "$@"; do case "$a" in *"CREATE ROLE gochara_verifier LOGIN"*) "{PSQL}" "{SUDSN}" -X -q -c "GRANT cloudsqlsuperuser TO gochara_verifier" >/dev/null;; esac; done
 ''')
     shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
     r = run(world, psql=str(shim))
@@ -287,8 +328,8 @@ def test_the_admin_connection_is_never_in_any_psql_argument_list(world):
     """R12-3: `ADMIN_DATABASE_URL` used to be passed positionally to psql. Now the connection comes from the process environment (PG*) — a password marker in the URL appears in no argv,
     no output, and psql still connects."""
     shim, log = _argv_logger(world)
-    marker = "Zm4rk3rpw"
-    url = DSN.replace("postgresql://postgres@", f"postgresql://postgres:{marker}@")
+    marker = ADMIN_PW
+    url = ADMIN_URL
     assert marker in url
     r = run(world, url=url, psql=str(shim))
     assert r.returncode == 0, r.stdout + r.stderr
@@ -375,7 +416,7 @@ prev=""; for a in "$@"; do if [ "$prev" = "-f" ] && [ "$a" = "-" ]; then cat > /
 exec "{PSQL}" "$@"
 ''')
     shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
-    env = {**{k: v for k, v in os.environ.items() if not k.startswith("PG")}, "STAGE": "sealer-password", "ADMIN_DATABASE_URL": DSN, "GCLOUD_BIN": world["gcloud"],
+    env = {**{k: v for k, v in os.environ.items() if not k.startswith("PG")}, "STAGE": "sealer-password", "ADMIN_DATABASE_URL": ADMIN_URL, "GCLOUD_BIN": world["gcloud"],
            "PSQL_BIN": str(shim), "SEALER_PASSWORD_STAGING": "12" * 40}
     p = subprocess.Popen(["bash", str(SCRIPT)], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
     for _ in range(100):
@@ -394,4 +435,63 @@ def test_the_preexisting_password_check_still_refuses_to_overwrite(world):
     _sealer_world(world)
     assert run(world, "sealer-password", extra={"SEALER_PASSWORD_STAGING": "ab" * 40}).returncode == 0
     again = run(world, "sealer-password", extra={"SEALER_PASSWORD_STAGING": "cd" * 40})
-    assert again.returncode == 3 and "already has a password" in again.stderr
+    assert again.returncode == 3 and "recorded state is password-SET" in again.stderr
+
+
+# ── Fable F-R12-3: the password state without pg_authid (the admin role of this mirror cannot read it, as on Cloud SQL) ─────────────────────────────
+
+def _login(user, password):
+    import psycopg as pg
+    port = SUDSN.rsplit(":", 1)[1].split("/")[0]
+    return pg.connect(f"host=127.0.0.1 port={port} dbname=postgres user={user} password={password}", connect_timeout=3)
+
+
+def test_the_sealer_really_cannot_authenticate_until_activation_and_can_afterwards_with_the_admin_unable_to_read_pg_authid(world):
+    """The whole point of the mirror: scram is enforced and the admin cannot read pg_authid, yet create-roles and sealer-password complete — the state is recorded (a role comment)
+    and PROBED (authentication), never read from pg_authid."""
+    import psycopg as pg
+    assert run(world).returncode == 0
+    for pw in ("anything", ""):                                               # PASSWORD NULL: no password authenticates
+        with pytest.raises(pg.OperationalError):
+            _login("gochara_sealer", pw)
+    staged = "ab" * 40
+    r = run(world, "sealer-password", extra={"SEALER_PASSWORD_STAGING": staged})
+    assert r.returncode == 0, r.stdout + r.stderr
+    with _login("gochara_sealer", staged) as c:                               # activation is OBSERVABLE
+        assert c.execute("SELECT current_user").fetchone()[0] == "gochara_sealer"
+    with pytest.raises(pg.OperationalError):
+        _login("gochara_sealer", "cd" * 40)
+    with _admin() as c:
+        assert c.execute("SELECT shobj_description(oid,'pg_authid') FROM pg_roles WHERE rolname='gochara_sealer'").fetchone()[0] == "gochara-provision:sealer-password-set"
+
+
+def test_a_sealer_with_no_recorded_password_null_state_is_refused_not_activated(world):
+    assert run(world).returncode == 0
+    with _admin() as c:
+        c.execute("COMMENT ON ROLE gochara_sealer IS NULL")                  # its state is now UNKNOWN (not created by this one-shot, or tampered with)
+    r = run(world, "sealer-password", extra={"SEALER_PASSWORD_STAGING": "ab" * 40})
+    assert r.returncode == 3 and "no recorded password-null state" in r.stderr, r.stdout + r.stderr
+    with _admin() as c:
+        assert role(c, "gochara_sealer")[8] is True                          # untouched
+
+
+def test_a_sealer_that_already_authenticates_with_the_staged_password_is_refused(world):
+    assert run(world).returncode == 0
+    staged = "ef" * 40
+    with _admin() as c:
+        c.execute(f"ALTER ROLE gochara_sealer PASSWORD '{staged}'")           # something else set it, but the recorded marker still says password-null
+    r = run(world, "sealer-password", extra={"SEALER_PASSWORD_STAGING": staged})
+    assert r.returncode == 3 and "already authenticates" in r.stderr, r.stdout + r.stderr
+
+
+def test_an_activation_that_cannot_be_observed_is_compensated_and_verified(world):
+    """If the sealer cannot authenticate AFTER the commit (the probe fails), the run fails and compensates."""
+    assert run(world).returncode == 0
+    shim = world["tmp"] / "psql_login_always_fails"
+    shim.write_text(f'#!/usr/bin/env bash\n[ "${{PGUSER:-}}" = "gochara_sealer" ] && exit 2\nexec "{PSQL}" "$@"\n')
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    r = run(world, "sealer-password", psql=str(shim), extra={"SEALER_PASSWORD_STAGING": "12" * 40})
+    assert r.returncode == 5 and "cannot authenticate after activation" in r.stderr and "compensated and VERIFIED" in r.stderr, r.stdout + r.stderr
+    with _admin() as c:
+        assert role(c, "gochara_sealer")[8] is True
+        assert c.execute("SELECT shobj_description(oid,'pg_authid') FROM pg_roles WHERE rolname='gochara_sealer'").fetchone()[0] == "gochara-provision:sealer-password-null"
