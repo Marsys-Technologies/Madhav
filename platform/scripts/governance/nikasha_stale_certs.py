@@ -23,8 +23,17 @@ has gone stale, writes that decision into the same append-only ledger, and recor
       certificate it cites is no longer the latest generation (unless the latest carries the SAME semantic
       fingerprint and is itself current: a generation bump with identical output invalidates nothing downstream), or
       is itself stale, invalidated or not passing; (d) the registry moved, for the assets the caller names (a
-      registry observation without `assets` is refused: a revision bump must not invalidate every gate certificate).
-      Staleness propagates down the citation graph; only what changed is invalidated.
+      registry observation without `assets` is refused: a revision bump must not invalidate every gate certificate);
+      (e) a GATE certificate's recorded `declarations_sha256` (E5.1: the sha256 of the bytes of asset_declarations.json
+      its census was run under) differs from `observed["declarations_sha256"]`, the sha256 of that file at the evaluated
+      ref (`git show <ref>:platform/scripts/governance/asset_declarations.json`); a gate with a null or absent recorded
+      sha is stale too (strict: a pre-binding record is not current), additions carry null and are exempt, and the
+      observation is REQUIRED whenever a gate certificate is evaluated (missing or malformed raises).
+      Staleness propagates down the citation graph; only what changed is invalidated. COARSE BY DESIGN: ANY edit of the
+      declarations file changes its sha and so stales EVERY gate certificate, whether or not its asset was touched; a
+      declarations change is therefore EXPECTED to cost one invalidation walk per layer, and each such walk counts
+      against the two-walk cap of (4): plan for it (a layer that has already used two walks needs the strategist's
+      `new-epoch` before a declarations change can be invalidated there).
   (3) INVALIDATION WATERMARK. `invalidate()` appends invalidation events and a watermark event to the ledger.
       `watermark_ok` / `current_certificates` refuse a ledger that holds certificates E5.5 has not evaluated, which
       is what `elevated_assets` needs to raise on. `observed_at_seq` (the chain head taken BEFORE observing) caps what
@@ -62,13 +71,16 @@ certified (E5.1). Events are outputs: they never make the watermark behind. A re
 certificate (two racing runs) is tolerated and counted once; the first wins.
 
 Usage:
+  nikasha_stale_certs.py evaluate   --ledger L --observed obs.json [--declarations-sha SHA] [--registry-assets a,b]
+                                    (read-only: prints stale/current as JSON; exit 0 none stale, 4 stale certificates)
   nikasha_stale_certs.py invalidate --ledger L --observed obs.json --commit <sha> [--observed-at-seq N]
-                                    [--registry-assets a,b]
+                                    [--declarations-sha SHA] [--registry-assets a,b]
   nikasha_stale_certs.py new-epoch --ledger L --layer L2 --decision N-28        (the strategist's act)
   nikasha_stale_certs.py watermark-ok --ledger L        (or --ref R --repo P [--path ledger path in the repo])
   nikasha_stale_certs.py fingerprint --declarations decl.json --asset A --rows rows.json
 obs.json = {"assets": {asset: {"writer_hashes": {path: sha256}, "writer_paths": [every current writer file],
-            "semantic_fingerprint": sha256}}, "registry"?: {"revision": n, "fingerprint": sha256}}
+            "semantic_fingerprint": sha256}}, "declarations_sha256": sha256 (or the --declarations-sha flag),
+            "registry"?: {"revision": n, "fingerprint": sha256}}
 Exit: 0 ok · 2 refused / watermark not ok (nothing written) · 3 re-walk limit reached (strategist review) · 5 error.
 """
 
@@ -694,6 +706,19 @@ def _evaluate(lg: Ledger, observed, registry=None) -> Evaluation:
     status: dict[str, str] = {}
     reasons_of: dict[str, list] = {}
     in_progress: set[str] = set()
+    decl_obs: list = []
+
+    def observed_declarations() -> str:
+        """The observed declarations sha (required once a gate certificate is evaluated): missing / malformed raises."""
+        if not decl_obs:
+            if "declarations_sha256" not in observed:
+                raise MissingObservation("declarations_sha256 not observed (the sha256 of asset_declarations.json at the "
+                                         "evaluated ref): required whenever a gate certificate is evaluated")
+            od = observed["declarations_sha256"]
+            if not isinstance(od, str) or not _SHA256.fullmatch(od):
+                raise UnreadableInput(f"observed declarations_sha256 is not 64 lower-case hex ({od!r})")
+            decl_obs.append(od)
+        return decl_obs[0]
 
     def resolve(rec: dict) -> str:
         cid = rec["cert_id"]
@@ -731,6 +756,10 @@ def _evaluate(lg: Ledger, observed, registry=None) -> Evaluation:
                                 recorded=dict(revision=rec.get("registry_revision"),
                                               fingerprint=rec.get("registry_fingerprint")),
                                 observed=dict(revision=registry["revision"], fingerprint=registry["fingerprint"])))
+        if rec["kind"] == "gate":
+            od, rd = observed_declarations(), rec.get("declarations_sha256")
+            if rd != od:                                          # includes a null / absent recorded sha: strict
+                reasons.append(dict(code="declarations", recorded=rd, observed=od))
         i = lg.pos[cid]
         for u in rec.get("upstream_cert_ids") or []:
             m = _CERT_ID.fullmatch(u) if isinstance(u, str) else None
@@ -982,7 +1011,14 @@ def _parser() -> argparse.ArgumentParser:
     inv.add_argument("--observed-at-seq", type=int, default=None,
                      help="the ledger's chain-head seq taken BEFORE the observations were gathered")
     inv.add_argument("--registry-assets", default=None, help="comma list: the assets the registry check applies to")
+    inv.add_argument("--declarations-sha", default=None,
+                     help="sha256 of asset_declarations.json at the evaluated ref (or declarations_sha256 in the observed file)")
     inv.add_argument("--now", default=None)
+    ev = sub.add_parser("evaluate", help="read-only: which latest certificates are stale given the observations")
+    ev.add_argument("--ledger", default=None)
+    ev.add_argument("--observed", required=True)
+    ev.add_argument("--declarations-sha", default=None)
+    ev.add_argument("--registry-assets", default=None)
     ne = sub.add_parser("new-epoch", help="the strategist's act: restart a layer's re-walk count")
     ne.add_argument("--ledger", default=None)
     ne.add_argument("--layer", required=True)
@@ -1000,17 +1036,43 @@ def _parser() -> argparse.ArgumentParser:
     return ap
 
 
+def _load_observation(a):
+    """(observed mapping, registry) from the observed file and the flags. `declarations_sha256` comes from the file or
+    --declarations-sha; given in both they must agree (a flag cannot silently override the file)."""
+    doc = json.loads(Path(a.observed).read_text(encoding="utf-8"))
+    observed = dict(doc.get("assets", {}))
+    sha = doc.get("declarations_sha256")
+    flag = a.declarations_sha
+    if flag is not None:
+        if not _SHA256.fullmatch(flag):
+            raise StaleCertsError(f"--declarations-sha {flag!r} is not 64 lower-case hex", "bad_declarations_sha")
+        if sha is not None and sha != flag:
+            raise StaleCertsError("--declarations-sha differs from declarations_sha256 in the observed file",
+                                  "bad_declarations_sha")
+        sha = flag
+    if sha is not None:
+        observed["declarations_sha256"] = sha
+    registry = doc.get("registry")
+    if a.registry_assets is not None:
+        if registry is None:
+            raise StaleCertsError("--registry-assets given but the observed file has no registry", "bad_registry")
+        registry = dict(registry, assets=[x.strip() for x in a.registry_assets.split(",") if x.strip()])
+    return observed, registry
+
+
 def main(argv=None) -> int:
     a = _parser().parse_args(argv)
     try:
+        if a.cmd == "evaluate":
+            observed, registry = _load_observation(a)
+            lg = read_ledger_file(a.ledger)
+            ev = _evaluate(lg, observed, registry)
+            print(json.dumps(dict(stale=ev.stale, current=ev.current, invalidated=ev.invalidated,
+                                  not_certificates=ev.not_certificates, flags=ev.flags)))
+            return 4 if ev.stale else 0
         if a.cmd == "invalidate":
-            doc = json.loads(Path(a.observed).read_text(encoding="utf-8"))
-            registry = doc.get("registry")
-            if a.registry_assets is not None:
-                if registry is None:
-                    raise StaleCertsError("--registry-assets given but the observed file has no registry", "bad_registry")
-                registry = dict(registry, assets=[x.strip() for x in a.registry_assets.split(",") if x.strip()])
-            r = invalidate(a.ledger, doc.get("assets", {}), commit=a.commit, registry=registry, now=a.now,
+            observed, registry = _load_observation(a)
+            r = invalidate(a.ledger, observed, commit=a.commit, registry=registry, now=a.now,
                            observed_at_seq=a.observed_at_seq)
             print(json.dumps(dict(status=r.status, invalidated=r.invalidated, walk=r.walk, ledger=str(r.ledger_path))))
             return 0

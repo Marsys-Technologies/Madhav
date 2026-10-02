@@ -182,6 +182,7 @@ def cert(ledger, asset, crit="Build.registered", *, fp=None, n=0, up=(), verdict
 def obs(*assets, **over):
     """What the world looks like now: every asset unchanged unless `over[asset]` replaces a field."""
     out = {a: dict(writer_hashes=wh_of(a), writer_paths=list(wh_of(a)), semantic_fingerprint=fp_of(a)) for a in assets}
+    out["declarations_sha256"] = DECL_SHA                  # the sha256 of asset_declarations.json at the evaluated ref
     for a, o in over.items():
         out[a] = dict(out.get(a, {}), **o)
     return out
@@ -887,7 +888,7 @@ def test_only_the_latest_generation_of_a_key_is_evaluated(ledger):
 
 def test_non_passing_records_are_not_certificates_and_need_no_observation(ledger):
     f = cert(ledger, "bg_a", verdict="FAIL")
-    ev = sc.evaluate(raw(ledger), {})
+    ev = sc.evaluate(raw(ledger), dict(declarations_sha256=DECL_SHA))
     assert ev.stale == {} and ev.current == [] and f in ev.not_certificates
 
 
@@ -899,7 +900,7 @@ def test_a_computed_n_a_with_no_hashes_or_fingerprint_needs_no_observation_and_i
                                verified_on=NOW,
                                census_path=census_file("bg_a", "Ldgr.source_presence", "N/A", cell=False,
                                                        rec=dict(target_columns=["id"]))).record["cert_id"]
-    ev = sc.evaluate(raw(ledger), {})
+    ev = sc.evaluate(raw(ledger), dict(declarations_sha256=DECL_SHA))
     assert ev.stale == {} and ev.current == [n]
 
 
@@ -917,7 +918,7 @@ def test_a_change_in_the_second_of_two_writer_files_makes_the_asset_stale(ledger
     ev = sc.evaluate(raw(ledger), o)
     assert set(ev.stale) == {a} and [(r["code"], r["path"]) for r in ev.stale[a]] == [("writer_hash", second)]
     first = wpath("bg_a")                                                       # and the first, symmetrically
-    o2 = dict(bg_a=dict(o["bg_a"], writer_hashes=dict(wh_of("bg_a", 0, 2), **{first: H("changed")})))
+    o2 = dict(declarations_sha256=DECL_SHA, bg_a=dict(o["bg_a"], writer_hashes=dict(wh_of("bg_a", 0, 2), **{first: H("changed")})))
     assert [(r["code"], r["path"]) for r in sc.evaluate(raw(ledger), o2).stale[a]] == [("writer_hash", first)]
 
 
@@ -932,7 +933,7 @@ def test_a_writer_file_added_to_the_asset_since_is_stale(ledger):
 
 def test_a_writer_file_removed_from_the_asset_since_is_stale_and_needs_no_hash_for_it(ledger):
     a = cert(ledger, "bg_a", files=2)
-    o = {"bg_a": dict(writer_hashes={wpath("bg_a"): wh_of("bg_a")[wpath("bg_a")]}, writer_paths=[wpath("bg_a")],
+    o = {"declarations_sha256": DECL_SHA, "bg_a": dict(writer_hashes={wpath("bg_a"): wh_of("bg_a")[wpath("bg_a")]}, writer_paths=[wpath("bg_a")],
                       semantic_fingerprint=fp_of("bg_a"))}
     ev = sc.evaluate(raw(ledger), o)
     assert set(ev.stale) == {a} and ev.stale[a] == [dict(code="writer_file_removed", path=wpath("bg_a_2"))]
@@ -940,7 +941,7 @@ def test_a_writer_file_removed_from_the_asset_since_is_stale_and_needs_no_hash_f
 
 def test_a_writer_set_renamed_in_place_is_added_and_removed(ledger):
     a = cert(ledger, "bg_a")
-    o = {"bg_a": dict(writer_hashes={wpath("bg_other"): H("x")}, writer_paths=[wpath("bg_other")],
+    o = {"declarations_sha256": DECL_SHA, "bg_a": dict(writer_hashes={wpath("bg_other"): H("x")}, writer_paths=[wpath("bg_other")],
                       semantic_fingerprint=fp_of("bg_a"))}
     ev = sc.evaluate(raw(ledger), o)
     assert [r["code"] for r in ev.stale[a]] == ["writer_file_added", "writer_file_removed"]
@@ -957,7 +958,7 @@ def test_the_full_writer_path_set_must_be_observed_and_well_formed(ledger):
 
 def test_a_recorded_writer_file_that_is_still_listed_but_has_no_observed_hash_raises(ledger):
     cert(ledger, "bg_a", files=2)
-    o = {"bg_a": dict(writer_hashes={wpath("bg_a"): wh_of("bg_a")[wpath("bg_a")]},          # no hash for bg_a_2
+    o = {"declarations_sha256": DECL_SHA, "bg_a": dict(writer_hashes={wpath("bg_a"): wh_of("bg_a")[wpath("bg_a")]},          # no hash for bg_a_2
                       writer_paths=[wpath("bg_a"), wpath("bg_a_2")], semantic_fingerprint=fp_of("bg_a"))}
     with pytest.raises(sc.MissingObservation):
         sc.evaluate(raw(ledger), o)
@@ -968,10 +969,150 @@ def test_a_certificate_that_recorded_no_writer_hashes_still_sees_an_added_writer
     rows = lines(ledger)
     rows[1].update(writer_hashes={}, writer_hashes_reason="service_no_writer")
     write_chained(ledger, rows)
-    o = {"bg_a": dict(semantic_fingerprint=fp_of("bg_a"), writer_paths=[])}
+    o = {"declarations_sha256": DECL_SHA, "bg_a": dict(semantic_fingerprint=fp_of("bg_a"), writer_paths=[])}
     assert sc.evaluate(raw(ledger), o).stale == {}
     o["bg_a"]["writer_paths"] = [wpath("bg_a")]                                       # the asset has a writer file now
     assert sc.evaluate(raw(ledger), o).stale[a] == [dict(code="writer_file_added", path=wpath("bg_a"))]
+
+
+# ───────────────────────── the declarations file: any edit stales every gate certificate ─────────────────────────
+
+NEW_DECL_SHA = H("an edited asset_declarations.json")
+
+
+def add_cert(ledger, asset="bg_a", **over):
+    """An ADDITION certificate (no census, so no declarations binding): written by the real E5.1 writer."""
+    wp = put_writer(asset, 0)
+    d = dict(asset=asset, layer=layer_of(asset), kind="addition", criterion="D-GROUNDING", criterion_version=1,
+             detector="grounding_probe.py", verdict="PASS", evidence=dict(census_run_id=RUN), verified_by="t",
+             ledger_path=ledger, verified_on=NOW, writer_files=wp, writer_repo=ENV.repo,
+             semantic_fingerprint=fp_of(asset))
+    d.update(over)
+    return nc.write_certification(**d).record["cert_id"]
+
+
+def test_the_records_carry_the_declarations_sha_the_harness_observes(ledger):
+    cert(ledger, "bg_a")
+    assert lines(ledger)[1]["declarations_sha256"] == DECL_SHA
+
+
+def test_a_matching_declarations_sha_is_current_and_a_differing_one_stales_every_gate_certificate(ledger):
+    a, b, c, d = chain(ledger)
+    o = obs("bg_a", "bg_b", "bg_c", "bg_d")
+    assert sc.evaluate(raw(ledger), o).stale == {}
+    o["declarations_sha256"] = NEW_DECL_SHA                      # one edit of the file touches no asset: all four are stale
+    ev = sc.evaluate(raw(ledger), o)
+    assert set(ev.stale) == {a, b, c, d}
+    for cid in (a, d):                                           # independent certificates: the declarations reason alone
+        assert ev.stale[cid] == [dict(code="declarations", recorded=DECL_SHA, observed=NEW_DECL_SHA)]
+    assert ev.current == []
+
+
+def test_the_declarations_reason_is_reported_alongside_other_reasons(ledger):
+    a = cert(ledger, "bg_a")
+    o = obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 1)))
+    o["declarations_sha256"] = NEW_DECL_SHA
+    assert sorted(r["code"] for r in sc.evaluate(raw(ledger), o).stale[a]) == ["declarations", "semantic_fingerprint"]
+
+
+def test_an_addition_carries_no_declarations_binding_and_is_exempt(ledger):
+    add = add_cert(ledger)
+    assert lines(ledger)[1]["declarations_sha256"] is None
+    o = obs("bg_a")
+    o["declarations_sha256"] = NEW_DECL_SHA
+    ev = sc.evaluate(raw(ledger), o)
+    assert ev.stale == {} and ev.current == [add]
+
+
+def test_the_declarations_observation_is_not_required_when_only_additions_are_evaluated(ledger):
+    add = add_cert(ledger)
+    ev = sc.evaluate(raw(ledger), {"bg_a": obs("bg_a")["bg_a"]})                     # no declarations_sha256 at all
+    assert ev.stale == {} and ev.current == [add]
+
+
+def test_a_missing_declarations_observation_raises_it_is_never_not_stale(ledger):
+    cert(ledger, "bg_a")
+    o = obs("bg_a")
+    del o["declarations_sha256"]
+    with pytest.raises(sc.MissingObservation) as ei:
+        sc.evaluate(raw(ledger), o)
+    assert "declarations_sha256" in ei.value.message
+    before = raw(ledger)
+    with pytest.raises(sc.MissingObservation):
+        run(ledger, o)
+    assert raw(ledger) == before
+
+
+@pytest.mark.parametrize("bad", [None, "", "abc", "A" * 64, 5, True, ["f" * 64], "f" * 63, DECL_SHA.upper()])
+def test_a_malformed_declarations_observation_raises(ledger, bad):
+    cert(ledger, "bg_a")
+    o = obs("bg_a")
+    o["declarations_sha256"] = bad
+    with pytest.raises(sc.UnreadableInput):
+        sc.evaluate(raw(ledger), o)
+
+
+def test_a_gate_with_a_null_or_absent_recorded_sha_is_stale_strictly(ledger):
+    a = cert(ledger, "bg_a")
+    rows = lines(ledger)
+    rows[1].pop("declarations_sha256")
+    rows[1].pop("declarations_version")                                              # a pre-binding record: ABSENT keys
+    write_chained(ledger, rows)
+    assert nc.read_ledger(ledger)["bg_a|gate|Build.registered"][0]["declarations_sha256"] is None
+    ev = sc.evaluate(raw(ledger), obs("bg_a"))                                       # even an observation that "matches"
+    assert set(ev.stale) == {a} and ev.stale[a] == [dict(code="declarations", recorded=None, observed=DECL_SHA)]
+
+
+def test_staleness_by_declarations_propagates_to_dependents_including_additions(ledger):
+    a = cert(ledger, "bg_a")
+    add = add_cert(ledger, "bg_b", upstream_cert_ids=[a])                            # an addition resting on a gate
+    o = obs("bg_a", "bg_b")
+    o["declarations_sha256"] = NEW_DECL_SHA
+    ev = sc.evaluate(raw(ledger), o)
+    assert set(ev.stale) == {a, add}
+    assert ev.stale[add] == [dict(code="upstream_stale", upstream=a, why="stale")]
+
+
+def test_an_invalidated_gate_stays_invalidated_and_is_not_evaluated_against_the_observation_again(ledger):
+    a = cert(ledger, "bg_a")
+    o = obs("bg_a")
+    o["declarations_sha256"] = NEW_DECL_SHA
+    run(ledger, o)
+    ev = sc.evaluate(raw(ledger), obs("bg_a"))                                       # the file reverted: still invalidated
+    assert ev.invalidated == [a] and ev.stale == {} and ev.current == []
+
+
+def test_a_declarations_change_is_one_invalidation_walk_per_layer_and_counts_against_the_cap(ledger):
+    cert(ledger, "bg_a")
+    cert(ledger, "bo_x")
+    o = obs("bg_a", "bo_x")
+    o["declarations_sha256"] = NEW_DECL_SHA
+    r = run(ledger, o)
+    assert r.walk == 1 and len(r.invalidated) == 2
+    inv = [x for x in lines(ledger) if x.get("type") == "invalidation"]
+    assert sorted(x["layer"] for x in inv) == ["L0", "L2"]
+    assert all(x["reason"] == [dict(code="declarations", recorded=DECL_SHA, observed=NEW_DECL_SHA)] for x in inv)
+    assert sc.rewalk_counts(raw(ledger)) == {"L0": 1, "L2": 1}                        # one walk each, against the cap of 2
+
+
+def test_a_layer_that_has_used_its_two_walks_cannot_absorb_a_declarations_change(ledger):
+    cert(ledger, "bg_a")
+    walk_once(ledger, 1)
+    churn(ledger, 2)
+    walk_once(ledger, 2)
+    cert(ledger, "bg_a", fp=fp_of("bg_a", 2))
+    o = obs("bg_a", bg_a=dict(semantic_fingerprint=fp_of("bg_a", 2)))
+    o["declarations_sha256"] = NEW_DECL_SHA
+    before = raw(ledger)
+    with pytest.raises(sc.RewalkLimitExceeded) as ei:
+        run(ledger, o)
+    assert ei.value.layer == "L0" and raw(ledger) == before
+
+
+def test_the_module_docstring_states_the_coarse_rule_and_the_walk_cost():
+    doc = sc.__doc__
+    assert "ANY edit" in doc and "EVERY gate certificate" in doc and "one invalidation walk per layer" in doc
+    assert "two-walk cap" in doc
 
 
 # ───────────────────────── an upstream generation bump with identical output invalidates nothing ─────────────────────────
@@ -1098,6 +1239,7 @@ def test_a_very_deep_bump_chain_is_refused_not_a_raw_recursion_error(ledger):
         cert(ledger, f"bg_y{i}", n=1, up=([f"bg_y{i - 1}|gate|Build.registered@1"] if i else []))
     names = [f"bg_y{i}" for i in range(k + 1)]
     o = {a: dict(writer_hashes=wh_of(a, 1), writer_paths=list(wh_of(a, 1)), semantic_fingerprint=fp_of(a)) for a in names}
+    o["declarations_sha256"] = DECL_SHA
     o[f"bg_y{k}"] = dict(writer_hashes=wh_of(f"bg_y{k}", 0), writer_paths=list(wh_of(f"bg_y{k}", 0)),
                          semantic_fingerprint=fp_of(f"bg_y{k}"))
     assert sc.evaluate(raw(ledger), o).stale == {}                              # fine at the normal recursion limit
@@ -2121,3 +2263,53 @@ def test_cli_fingerprint_reads_rows_json_with_a_declaration(tmp_path):
     p = cli("fingerprint", "--declarations", str(df), "--asset", "ph_nimitta", "--rows", str(rf))
     assert p.returncode == 0, p.stderr
     assert json.loads(p.stdout) == {"asset": "ph_nimitta", "semantic_fingerprint": fpr(ROWS)}
+
+
+# ───────────────────────── CLI: --declarations-sha, evaluate ─────────────────────────
+
+def obs_file(tmp_path, assets, **top):
+    doc = dict(assets={k: v for k, v in assets.items() if k != "declarations_sha256"}, **top)
+    p = tmp_path / "obs.json"
+    p.write_text(json.dumps(doc))
+    return p
+
+
+def test_cli_evaluate_is_read_only_and_exits_4_on_stale(ledger, tmp_path):
+    a = cert(ledger, "bg_a")
+    before = raw(ledger)
+    ok = obs_file(tmp_path, obs("bg_a"), declarations_sha256=DECL_SHA)
+    p = cli("evaluate", "--ledger", str(ledger), "--observed", str(ok))
+    assert p.returncode == 0 and json.loads(p.stdout)["current"] == [a] and json.loads(p.stdout)["stale"] == {}
+    bad = obs_file(tmp_path, obs("bg_a"), declarations_sha256=NEW_DECL_SHA)
+    q = cli("evaluate", "--ledger", str(ledger), "--observed", str(bad))
+    assert q.returncode == 4 and json.loads(q.stdout)["stale"][a][0]["code"] == "declarations"
+    assert raw(ledger) == before                                                      # evaluate never writes
+
+
+def test_cli_declarations_sha_flag_supplies_the_observation(ledger, tmp_path):
+    a = cert(ledger, "bg_a")
+    of = obs_file(tmp_path, obs("bg_a"))                                              # no declarations_sha256 in the file
+    p = cli("evaluate", "--ledger", str(ledger), "--observed", str(of))
+    assert p.returncode == 2 and "missing_observation" in p.stderr                    # never "not stale"
+    p = cli("evaluate", "--ledger", str(ledger), "--observed", str(of), "--declarations-sha", DECL_SHA)
+    assert p.returncode == 0 and json.loads(p.stdout)["current"] == [a]
+    p = cli("evaluate", "--ledger", str(ledger), "--observed", str(of), "--declarations-sha", NEW_DECL_SHA)
+    assert p.returncode == 4
+    r = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--commit", COMMIT,
+            "--declarations-sha", NEW_DECL_SHA)
+    assert r.returncode == 0 and json.loads(r.stdout)["invalidated"] == [a]
+    assert [x for x in lines(ledger) if x.get("type") == "invalidation"][0]["reason"][0]["code"] == "declarations"
+
+
+def test_cli_a_flag_that_disagrees_with_the_file_or_is_malformed_is_refused(ledger, tmp_path):
+    cert(ledger, "bg_a")
+    of = obs_file(tmp_path, obs("bg_a"), declarations_sha256=DECL_SHA)
+    before = raw(ledger)
+    for args in (["--declarations-sha", NEW_DECL_SHA], ["--declarations-sha", "nothex"], ["--declarations-sha", ""],
+                 ["--declarations-sha", DECL_SHA.upper()]):
+        for cmd in (["evaluate"], ["invalidate", "--commit", COMMIT]):
+            p = cli(*cmd, "--ledger", str(ledger), "--observed", str(of), *args)
+            assert p.returncode == 2 and "bad_declarations_sha" in p.stderr
+    p = cli("invalidate", "--ledger", str(ledger), "--observed", str(of), "--commit", COMMIT, "--declarations-sha", DECL_SHA)
+    assert p.returncode == 0                                                         # an agreeing flag is fine
+    assert raw(ledger) != before                                                      # (it wrote the first watermark)
