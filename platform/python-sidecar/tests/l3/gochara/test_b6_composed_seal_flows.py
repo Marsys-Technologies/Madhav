@@ -346,18 +346,30 @@ def verify_as_verifier(w, *extra_args, dsn=None, all_classes=False):
 SEALING_COMMIT = "5ea1" + "0" * 36
 
 
-def brief_stdout_as_verifier(w, sealing_commit=SEALING_COMMIT):
-    """The verifier job's `--brief` STDOUT, byte for byte (what Cloud Run would log): raises RuntimeError if it refuses."""
-    rc, out = _run_job(w, ["--chart", CHART_ID, "--generation", GEN, "--brief", "--sealing-commit", sealing_commit])
+def brief_stdout_as_verifier(w, sealing_commit=SEALING_COMMIT, *extra):
+    """The verifier job's `--brief --brief-chunks` STDOUT, byte for byte (what Cloud Run would log: the chunk lines, then the compact `BRIEFED` line): raises RuntimeError if it refuses."""
+    rc, out = _run_job(w, ["--chart", CHART_ID, "--generation", GEN, "--brief", "--brief-chunks", "--sealing-commit", sealing_commit, *extra])
     if rc != 0:
         raise RuntimeError(f"brief exit {rc}: {out[:1500]}")
     return out
 
 
 def brief_as_verifier(w, sealing_commit=SEALING_COMMIT):
-    """The verifier-run SEAL BRIEF (`--brief`, R11-3) as a real verifier login, parsed: `{"brief": <payload>, "persisted": {…}, "sha256": <digest>}`; raises RuntimeError if it refuses."""
+    """The verifier-run SEAL BRIEF (`--brief`) as a real verifier login: the compact line (`sha256`, `persisted`, …) plus the full payload read back from `--brief-out` (whose bytes hash to
+    the digest — asserted): `{"brief": <payload>, "sha256": <digest>, "persisted": {…}}`; raises RuntimeError if it refuses."""
+    import hashlib as _hl
     import json as _json
-    return _json.loads(brief_stdout_as_verifier(w, sealing_commit).splitlines()[-1])
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "brief.json")
+        rc, out = _run_job(w, ["--chart", CHART_ID, "--generation", GEN, "--brief", "--brief-out", path, "--sealing-commit", sealing_commit])
+        if rc != 0:
+            raise RuntimeError(f"brief exit {rc}: {out[:1500]}")
+        compact = _json.loads(out.splitlines()[-1])
+        with open(path, "rb") as f:
+            raw = f.read()
+    assert compact["status"] == "BRIEFED" and _hl.sha256(raw).hexdigest() == compact["sha256"] and len(raw) == compact["brief_bytes"]
+    return {"brief": _json.loads(raw.decode("utf-8")), "sha256": compact["sha256"], "persisted": compact["persisted"]}
 
 
 def _sealer_dsn(w):
@@ -1358,38 +1370,44 @@ def test_the_sealing_job_refuses_a_login_that_is_not_the_bare_sealer(cbuilt):
 
 
 def test_cross_pr_round_trip_the_real_brief_stdout_through_the_real_extractor_check_approval_and_seal_job(cbuilt, tmp_path):
-    """F-R13-1 (the seam bug): the sealing workflow's scripts (PR #2975) had only ever seen a FIXTURE brief; Stream A's verifier prints `{brief, persisted, sha256}`. Here the REAL
-    `--brief` stdout (as a real verifier login) goes, shaped as Cloud Run log entries, through the REAL extractor and the REAL check, the REAL approval extraction, and the REAL gated
-    orchestrator script, which runs the REAL `seal_job` as a subprocess on the sealer login — and the receipt names the digest the verifier persisted."""
+    """F-R13-1 (the seam bug): the sealing workflow's scripts (PR #2975) had only ever seen a FIXTURE brief. Here the REAL `--brief --brief-chunks` stdout (Stream A head 7e81f2870: chunk
+    lines, then the compact `BRIEFED` line) as a real verifier login goes, shaped as Cloud Run log entries, through the REAL extractor and the REAL check, the REAL approval extraction,
+    and the REAL gated orchestrator script, which runs the REAL `seal_job` as a subprocess on the sealer login — and the receipt names the digest the verifier persisted."""
+    import hashlib as _hl
     import json as _json
     import subprocess
     import sys as _sys
     scripts = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "scripts"))
     _sys.path.insert(0, scripts)
     try:
-        import gochara_seal_approval as sa
+        import gochara_seal_approval as sa  # noqa: F401
         import gochara_seal_brief_check as bc
         import gochara_seal_brief_extract as bx
     finally:
         _sys.path.remove(scripts)
     w = cbuilt
     verify_as_verifier(w)
-    out = brief_stdout_as_verifier(w)
-    real = _json.loads(out.splitlines()[-1])
-    assert set(real) == {"brief", "persisted", "sha256"}                       # the shape the workflow's check must accept
-    logs = [{"textPayload": "starting"}, {"textPayload": out}, {"textPayload": "done"}]
-    text = bx.extract(logs)                                                    # the REAL extractor
-    digest = bc.check(text, chart_id=CHART_ID, generation=GEN, sealing_commit=SEALING_COMMIT)    # the REAL check
-    assert digest == real["sha256"]
-    brief_file, approvals = tmp_path / "brief.json", tmp_path / "approvals.json"
-    brief_file.write_text(text)
+    out = brief_stdout_as_verifier(w, SEALING_COMMIT, "--brief-chunk-bytes", "4096")        # small slices: the multi-chunk path is the one that matters
+    lines = out.splitlines()
+    compact = _json.loads(lines[-1])
+    assert compact["status"] == "BRIEFED" and compact["brief_chunks"] is True and set(compact) == {"brief_bytes", "brief_chunks", "brief_file", "persisted", "sha256", "status"}
+    assert sum(1 for l in lines if l.startswith('{"b64"')) > 1
+    logs = [{"textPayload": "starting"}, *[{"textPayload": l} for l in reversed(lines)], {"textPayload": "done"}]    # arrival order is not relied on
+    raw, comp = bx.extract(logs)                                                           # the REAL extractor
+    digest = bc.check(raw, comp, chart_id=CHART_ID, generation=GEN, sealing_commit=SEALING_COMMIT)    # the REAL check
+    assert digest == compact["sha256"] == _hl.sha256(raw).hexdigest()
+    from services.gochara_kernel import seal_brief
+    assert bc.canon(_json.loads(raw)) == raw.decode("utf-8") == seal_brief.canonical_json(_json.loads(raw))    # the two canonical encoders agree on the REAL brief
+    brief_file, compact_file, approvals = tmp_path / "brief.json", tmp_path / "brief.compact.json", tmp_path / "approvals.json"
+    brief_file.write_bytes(raw)
+    compact_file.write_text(_json.dumps(comp))
     run_id, attempt = 26104899, 2
     approvals.write_text(_json.dumps([{"state": "approved", "user": {"login": "steward-as-owner"}, "environments": [{"name": "gochara-seal"}],
                                       "comment": f"brief-digest: {digest}  run: {run_id}  attempt: {attempt}"}]))
     orch = os.path.join(scripts, "gochara-seal-approved.sh")
     w.conn.execute(f"ALTER ROLE {cw.SEALER} LOGIN")
     try:
-        env = {**os.environ, "BRIEF_FILE": str(brief_file), "APPROVALS_FILE": str(approvals), "CHART_ID": CHART_ID, "GENERATION": GEN,
+        env = {**os.environ, "BRIEF_FILE": str(brief_file), "BRIEF_COMPACT_FILE": str(compact_file), "APPROVALS_FILE": str(approvals), "CHART_ID": CHART_ID, "GENERATION": GEN,
                "EXPECTED_SEALING_COMMIT": SEALING_COMMIT, "EXPECTED_BRIEF_DIGEST": digest, "GITHUB_RUN_ID": str(run_id), "GITHUB_RUN_ATTEMPT": str(attempt),
                "GITHUB_SHA": SEALING_COMMIT, "TRIGGERING_ACTOR": "steward-as-owner", "APPROVAL_FILE": str(tmp_path / "approval.json"),
                "PYTHON_BIN": _sys.executable, "GOCHARA_SEALER_DB_URL": _sealer_dsn(w), "PYTHONPATH": os.getcwd()}
@@ -1397,24 +1415,23 @@ def test_cross_pr_round_trip_the_real_brief_stdout_through_the_real_extractor_ch
     finally:
         w.conn.execute(f"ALTER ROLE {cw.SEALER} NOLOGIN")
     assert r.returncode == 0, (r.stdout[-1500:], r.stderr[-1500:])
-    rec = _receipt(w.conn)
-    assert len(rec) == 1
+    assert len(_receipt(w.conn)) == 1
     row = w.conn.execute("SELECT brief_digest, run_id, run_attempt, approved_by_note, sealed_by FROM public.ka_gochara_seal_approval").fetchone()
     assert tuple(row) == (digest, run_id, attempt, "ruling:NATIVE_DIRECT_RULINGS_20261002#2; actor:steward-as-owner", cw.SEALER), row
 
 
 def test_brief_size_report_per_class_and_projected_to_the_real_class_count(cbuilt):
-    """F-R13-2 MEASUREMENT: the brief is ONE stdout line. Report its bytes by component on the rig (one class, four grains) and the per-class increment, then project to the
+    """F-R13-2 MEASUREMENT (it decided the chunked transport): the brief was one stdout line. Report its bytes by component on the rig (one class, four grains) and the per-class increment, then project to the
     real class count — against Cloud Logging's documented 256 KiB per-entry limit. Asserts only the arithmetic; the numbers are the evidence (printed with -s / in the report)."""
     import json as _json
     w = cbuilt
     verify_as_verifier(w)
-    out = brief_stdout_as_verifier(w)
-    doc = _json.loads(out.splitlines()[-1])
-    b = doc["brief"]
-    total = len(out.encode("utf-8"))
+    from services.gochara_kernel import seal_brief
+    b = brief_as_verifier(w)["brief"]
+    total = len(seal_brief.canonical_json(b).encode("utf-8"))          # the brief FILE's bytes (Stream A: the canonical JSON; it travels as 48 KiB chunk lines now)
     classes = b["classes"]
-    per_class = len(_json.dumps(classes[0], sort_keys=True).encode("utf-8"))
+    # per class: the class entry AND its persisted attestation rows (4 window rows + 1 inventory row per class on the rig); everything else is fixed
+    per_class = len(_json.dumps(classes[0], sort_keys=True).encode("utf-8")) + len(_json.dumps(b["attestations"], sort_keys=True).encode("utf-8")) // len(classes)
     comps = {k: len(_json.dumps(v, sort_keys=True, default=str).encode("utf-8")) for k, v in b.items()}
     real_classes = w.conn.execute("SELECT count(DISTINCT event_class) FROM public.ka_gochara_search_path_pin").fetchone()[0]
     grains = sum(len(c["grains"]) for c in classes)
