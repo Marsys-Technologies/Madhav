@@ -447,7 +447,11 @@ def seal_as_sealer(w):
 def db_seal_attempt(w):
     """A seal attempt at the DATABASE's own gate by a FULL-privilege principal (the migration owner): the brief and the sealing job are bypassed, so a refusal here is the
     database's (the 1206 / 1240 seal triggers), not the brief's. Stream A's `_seal` helper persists a test brief and writes the receipt in the same transaction."""
-    with as_role(w.conn, cw.OWNER):
+    from unittest import mock
+
+    from .test_a53_window_verification_roles import _persist_test_brief
+    _persist_test_brief(w)                                    # as the VERIFIER login (its `ALTER ROLE … LOGIN` needs the harness superuser, not the owner role)
+    with as_role(w.conn, cw.OWNER), mock.patch("tests.l3.gochara.test_a53_window_verification_roles._persist_test_brief", lambda *a, **k: None):
         return _seal(w)
 
 
@@ -736,8 +740,8 @@ def _write_test_receipt(conn, manifest):
     digest = conn.execute("SELECT brief_digest FROM public.ka_gochara_seal_brief WHERE chart_id = %s AND generation = %s ORDER BY brief_id DESC LIMIT 1", (CHART_ID, GEN)).fetchone()[0]
     bid, eid = _brief_ref(conn, digest)
     conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id, approver_login, approved_by_note, run_id,"
-                 " run_attempt, workflow_commit) VALUES (%s::uuid, %s, %s::uuid, %s, %s, %s, 'race-test', 'ruling:locking-test; actor:race-test', 1, 1, 'test-commit')"
-                 " ON CONFLICT (chart_id, generation) DO NOTHING", (CHART_ID, GEN, manifest, digest, bid, eid))
+                 " run_attempt, workflow_commit) VALUES (%s::uuid, %s, %s::uuid, %s, %s, %s, 'race-test', 'ruling:locking-test; actor:race-test', 1, 1,"
+                 " (SELECT producer_commit FROM public.ka_gochara_seal_brief WHERE brief_id = %s)) ON CONFLICT (chart_id, generation) DO NOTHING", (CHART_ID, GEN, manifest, digest, bid, eid, bid))
 
 
 def _seal_on(conn):
