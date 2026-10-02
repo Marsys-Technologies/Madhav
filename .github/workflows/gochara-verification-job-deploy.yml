@@ -10,8 +10,8 @@
 #   secret              gochara-verifier-db-url:latest -> GOCHARA_VERIFIER_DB_URL   (act 4/1; the ONLY secret; --set-secrets REPLACES, so no other can survive)
 #   entry point         python -m pipeline.orchestrator.verification_job  (as the container COMMAND, so an operator's `--args` at execute time
 #                       supply only the flags: --chart/--generation/--brief/--sealing-commit; the image's builder ENTRYPOINT is overridden)
-#   GOCHARA_RUNNER_COMMIT = the commit this workflow runs from == the image tag (so the runner identity the verifier records is the code
-#                       that was actually reviewed and built; the workflow refuses if no image exists for that commit)
+#   GOCHARA_RUNNER_COMMIT = the commit this workflow runs from; the image is deployed BY IMMUTABLE DIGEST (the sha256 the registry holds for that commit's tag, resolved here) — a tag
+#                       is mutable, so the sealing workflow re-checks the digest on the EXECUTION itself (R13-3); the workflow refuses if no image exists for that commit
 #   never retried (max-retries 0), one task; dispatched by an OPERATOR only — nothing here chains it to a build.
 #   Environment: `--set-env-vars` REPLACES every Cloud Run env var, leaving only GOCHARA_RUNNER_COMMIT; the image's own ENV (SE_EPHE_PATH=/app/ephe, PYTHONPATH) is separate and survives.
 #   `--command` overrides the image ENTRYPOINT (python -m pipeline.orchestrator.main): this workflow does NOT execute the job, so the first operator execution is the real test that
@@ -19,6 +19,10 @@
 #   run per class (`--class`, supported) or raise the timeout — either way EVERY class must be verified after the last build (R10-2).
 #   SAME-COMMIT RULE (F-R13-8): dispatch this workflow and the sealing workflow (gochara-seal-approved.yml) from the SAME `main` commit; the verifier's kernel modules and the sealing
 #   commit's must be byte-identical or the sealing recompute refuses (exit 3). Re-dispatch THIS workflow whenever any of them changes.
+#
+# After deploy it reads the WHOLE definition back (image digest, service account, command/args, environment, Cloud SQL instance, task count, retries, timeout, resources) and INVOKES the
+# #2961 secret-isolation preflight explicitly (a deploy job's own isolation gate does not run it). A failed check leaves the deployed definition in place to inspect or remove
+# (`gcloud run jobs delete gochara-verification-job`); nothing is rolled back automatically.
 #
 # Preconditions (runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md act 6): Codex ACCEPT of the job's code; acts 1, 3, 4, 7, 8 and the L1 ACLs done;
 # an image exists for the dispatched commit (deploy.yml builds it when the pipeline changes). The deploy principal must be able to act as the
@@ -40,7 +44,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: gochara-verification-job-definition
+  group: gochara-verification-and-sealing           # the SAME group as the sealing workflow (#2975): a redefinition never overlaps a brief or a seal
   cancel-in-progress: false
 
 env:
@@ -58,25 +62,36 @@ jobs:
     name: Define the verification job
     if: github.ref == 'refs/heads/main' && inputs.confirm == 'DEFINE-GOCHARA-VERIFICATION-JOB'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
+      - name: Checkout the dispatched commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
-      - name: Refuse unless an image exists for this exact commit
+      - name: Resolve the immutable image digest for this exact commit (refuse if there is none)
+        id: image
         run: |
-          gcloud artifacts docker images describe "${PIPELINE_IMAGE_REPO}:${GITHUB_SHA}" --format='value(image_summary.digest)' \
-            || { echo "::error::No pipeline image for commit ${GITHUB_SHA}; the verification job runs only code that was built from this commit."; exit 1; }
+          set -euo pipefail
+          DIGEST="$(gcloud artifacts docker images describe "${PIPELINE_IMAGE_REPO}:${GITHUB_SHA}" --project madhav-astrology --format='value(image_summary.digest)')"
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::No pipeline image for commit ${GITHUB_SHA}; the verification job runs only code that was built from this commit."; exit 1; }
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
-      - name: Create or update the verification job (the one secret, the verifier identity, the verifier entry point)
+      - name: Create or update the verification job (by digest; the one secret, the verifier identity, the verifier entry point)
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: |
+          set -euo pipefail
           gcloud run jobs deploy "$VERIFICATION_JOB" \
             --project madhav-astrology \
             --region "$GCP_REGION" \
-            --image "${PIPELINE_IMAGE_REPO}:${GITHUB_SHA}" \
+            --image "${PIPELINE_IMAGE_REPO}@${IMAGE_DIGEST}" \
             --service-account "$VERIFIER_SERVICE_ACCOUNT" \
             --command "python,-m,pipeline.orchestrator.verification_job" \
             --clear-args \
@@ -90,28 +105,29 @@ jobs:
             --cpu 2 \
             --quiet
 
-      - name: Verify the definition (read-only; prints non-secret facts)
+      - name: Read the WHOLE definition back (image digest, identity, entry point, environment, Cloud SQL, tasks, retries, resources)
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: |
+          set -euo pipefail
           gcloud run jobs describe "$VERIFICATION_JOB" --project madhav-astrology --region "$GCP_REGION" --format=json > job.json
-          python3 - <<'PY'
-          import json, os, sys
-          j = json.load(open("job.json"))
-          t = j["spec"]["template"]["spec"]["template"]["spec"]
-          c = t["containers"][0]
-          env = {e["name"]: e for e in c.get("env", [])}
-          errs = []
-          if t.get("serviceAccountName") != os.environ["VERIFIER_SERVICE_ACCOUNT"]:
-              errs.append(f"service account is {t.get('serviceAccountName')}")
-          secrets = [n for n, e in env.items() if "secretKeyRef" in e.get("valueFrom", {})]
-          if secrets != ["GOCHARA_VERIFIER_DB_URL"] or env["GOCHARA_VERIFIER_DB_URL"]["valueFrom"]["secretKeyRef"]["name"] != os.environ["VERIFIER_SECRET"]:
-              errs.append(f"secret bindings are {secrets}")
-          if c.get("command") != ["python", "-m", "pipeline.orchestrator.verification_job"]:
-              errs.append(f"command is {c.get('command')}")
-          if env.get("GOCHARA_RUNNER_COMMIT", {}).get("value") != os.environ["GITHUB_SHA"]:
-              errs.append("GOCHARA_RUNNER_COMMIT is not the dispatched commit")
-          if not c["image"].endswith(":" + os.environ["GITHUB_SHA"]):
-              errs.append(f"image is {c['image']}")
-          if errs:
-              print("::error::verification job definition is wrong: " + "; ".join(errs)); sys.exit(1)
-          print("verification job:", os.environ["VERIFICATION_JOB"], "| identity:", t["serviceAccountName"], "| secrets:", secrets, "| image:", c["image"])
-          PY
+          python3 platform/scripts/gochara_verification_job_readback.py --job-file job.json --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$IMAGE_DIGEST" \
+            --service-account "$VERIFIER_SERVICE_ACCOUNT" --runner-commit "$GITHUB_SHA" --secret-name "$VERIFIER_SECRET" --cloudsql-instance "$CLOUDSQL_INSTANCE" \
+            --timeout-seconds 7200 --memory 8Gi --cpu 2
+
+      - name: Set up Node.js for the isolation preflight
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install the preflight's dependencies
+        run: cd platform && npm install --ignore-scripts --no-fund tsx pg
+
+      - name: Run the secret-isolation preflight (#2961, act 7) EXPLICITLY against the deployed definition
+        env:
+          GOOGLE_CLOUD_PROJECT: madhav-astrology
+          GOOGLE_CLOUD_REGION: ${{ env.GCP_REGION }}
+          DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
+          DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
+          DATA_PLANE_SECRET_ISOLATION_MODE: strict
+        run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts

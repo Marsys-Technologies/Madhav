@@ -30,7 +30,8 @@ describe('gochara-verification-job-deploy.yml', () => {
     expect(run).toContain('--service-account "$VERIFIER_SERVICE_ACCOUNT"')
     expect(run).toContain('--set-secrets "GOCHARA_VERIFIER_DB_URL=${VERIFIER_SECRET}:latest"')
     expect(run).toContain('--set-env-vars "GOCHARA_RUNNER_COMMIT=${GITHUB_SHA}"')
-    expect(run).toContain('--image "${PIPELINE_IMAGE_REPO}:${GITHUB_SHA}"')
+    expect(run).toContain('--image "${PIPELINE_IMAGE_REPO}@${IMAGE_DIGEST}"')                       // by IMMUTABLE digest, never a tag
+    expect(run).not.toContain('${PIPELINE_IMAGE_REPO}:${GITHUB_SHA}')
     expect(run).toContain('--max-retries 0')
     expect(run.match(/--set-secrets/g)).toHaveLength(1)
     expect(run).not.toMatch(/--update-secrets|--add-secrets|--remove-secrets/)
@@ -39,12 +40,26 @@ describe('gochara-verification-job-deploy.yml', () => {
     expect(code).not.toMatch(/data-plane-builder|DATABASE_URL=|brahma-build-pipeline-job|GOCHARA_SEALER|gochara-sealer/)
     expect(code).not.toMatch(/gcloud run jobs execute|docker\/build-push-action|secrets versions|environment:/)
   })
-  it('refuses to define the job unless an image exists for the dispatched commit, and verifies the result', () => {
+  it('refuses to define the job unless an image exists for the dispatched commit, deploys by its digest, and reads the WHOLE definition back', () => {
     const steps = job.steps as any[]
     const check = steps.findIndex((s) => String(s.run ?? '').includes('gcloud artifacts docker images describe'))
     const dep = steps.indexOf(deploy)
     expect(check).toBeGreaterThanOrEqual(0)
     expect(check).toBeLessThan(dep)
-    expect(String(steps[steps.length - 1].run)).toContain('gcloud run jobs describe')
+    const readback = steps.findIndex((s) => String(s.run ?? '').includes('gochara_verification_job_readback.py'))
+    expect(readback).toBeGreaterThan(dep)
+    const rb = String(steps[readback].run)
+    for (const flag of ['--image-digest', '--service-account', '--runner-commit', '--secret-name', '--cloudsql-instance', '--timeout-seconds', '--memory', '--cpu']) expect(rb).toContain(flag)
+  })
+  it('R13-3: INVOKES the #2961 isolation preflight explicitly, after the deploy, in strict mode', () => {
+    const steps = job.steps as any[]
+    const pre = steps.findIndex((s) => String(s.run ?? '').includes('data-plane-secret-isolation-preflight.ts'))
+    expect(pre).toBeGreaterThan(steps.indexOf(deploy))
+    expect(steps[pre].env.DATA_PLANE_SECRET_ISOLATION_MODE).toBe('strict')
+    expect(steps[pre].env.GOOGLE_CLOUD_PROJECT).toBe('madhav-astrology')
+  })
+  it('R13-3: shares ONE concurrency group with the sealing workflow', () => {
+    expect(wf.concurrency.group).toBe('gochara-verification-and-sealing')
+    expect(wf.concurrency['cancel-in-progress']).toBe(false)
   })
 })
