@@ -189,5 +189,11 @@
   "decision": "ND-DASHA-PLURALITY-TIERS (decisions/ND_DASHA_PLURALITY_TIERS_v1_0.md)",
   "version": "<<DASHA_PLURALITY_TIER_POLICY_VERSION_AT_FREEZE: the option chosen (a|b|c|d) and Stream A's per-(system, level) accepted-set version (PR #2954)>>",
   "note": "a FROZEN INPUT (steward M20261002T095645-d429): the 4.x permission arithmetic enters the stored '4.1' intensities, so the tier policy must be fixed in Stage 1 before any '4.1' output exists (DR-15(d))."
+ },
+ "av_donor_rows": {
+  "behaviour": "<<AV_DONOR_BEHAVIOUR_AT_FREEZE: 'donor_resolved' (the L1 ashtakavarga_bindu_contributor rows exist — the governed '4.1' run happens AFTER step 3 and after Suvarna's base-layer rebuild creates them) | 'sign_grain_interim' (they do not)>>",
+  "per_ayanamsha": "<<READ_AT_FREEZE: the object printed by `python3 -m services.gochara_eval.dump_extract --generation 4.1 --read-av-donor-rows` — row_count and sha256 digest per ayanamsha (expected 672 rows per ayanamsha, 3,360 per chart, once the rows exist)>>",
+  "comparability": "a '4.1' run made before these rows exist (the gochara_v3 sign-grain interim) and one made after (donor-resolved P5c) are DIFFERENT candidates and must never be compared as one",
+  "note": "a NAMED FROZEN INPUT (steward M20261002T121926-da0b); the live rows are reconciled against it before any window row is read."
  }
 }
