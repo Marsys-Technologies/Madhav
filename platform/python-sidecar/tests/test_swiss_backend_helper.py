@@ -815,6 +815,7 @@ _EXEMPT = {
     "ga_condition": "imports pyjhora_adapter.version only; derives from stored facts",
     "ka_gochara": "Pravaha-owned; kernel fails closed and records its backend",
     "ka_gochara_v3_century_materialize": "Pravaha-owned; kernel fails closed and records its backend",
+    "ka_gochara_v4_41_candidate": "Pravaha-owned A2.5 candidate chain; every ephemeris read goes through the gochara kernel (calc_sidereal_lon retflag assert + Moon file-level probe, both fail closed); its direct swisseph use is calendar arithmetic only (swe.revjul / swe.julday)",
     "ka_gochara_sweep": "retired, protected history (Pravaha-owned), outside the active set; never rebuilt",
     "ka_muhurta_seva": "self-test writer (rows=0, service_health only); its compute_panchang call fails closed",
     "ph_rectification": "swe.houses ascendant only (no planetary ephemeris); backend-independent",
