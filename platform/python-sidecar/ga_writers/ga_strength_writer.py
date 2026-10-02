@@ -101,16 +101,62 @@ KAKSHYA_LORDS: list[str] = [
 ]
 KAKSHYA_ARC_DEG: float = 30.0 / 8.0  # 3.75° = 3°45′
 
-# Classical required shadbala (rupa) per graha
-SHADBALA_REQUIRED: dict[str, float] = {
-    "Sun": 5.0,
-    "Moon": 6.0,
-    "Mars": 5.0,
-    "Mercury": 7.0,
-    "Jupiter": 6.5,
-    "Venus": 5.5,
-    "Saturn": 5.0,
+# Classical required (minimum) shadbala per graha — THE single source of truth for
+# the `graha_shadbala_total|required_rupa` L1 fact (stored under the pseudo-ayanamsha
+# 'INVARIANT'). Every other consumer READS that L1 fact (ga_structural composite
+# strength, ga_yoga constituent_bala_v1, ga_vichara/bo_*/serving) — none carries a
+# copy (CLAUDE.md §N.5 / §N.7 item 3).
+#
+# Source figures, in virupas (60 virupa = 1 rupa), per the two independent served
+# sources that agree on every graha:
+#   (1) BPHS ch.27 śl.32-33 (R. Santhanam trans.; corpus chunk bphs_pg0286_c01, also
+#       00_ARCHITECTURE/SOURCE_DATA/classical_texts/BPHS/bphs_vol1_rsanthanam_djvu.txt):
+#       "390, 360, 300, 420, 390, 330 and 300 Virupas are the Shadbala Pindas needed
+#       for the Sun etc. (upto Saturn)"; the translator's note gives the same in
+#       rupas: Sun 6.5, Moon 6.0, Mars 5.0, Mercury 7.0, Jupiter 6.5, Venus 5.5,
+#       Saturn 5.0. (OCR blemishes in the verse line — Moon "3*0", Mercury "42C" —
+#       are resolved by the explicit rupa note; they are not a source of doubt.)
+#   (2) Phaladīpikā IV.22-23 (V. Subrahmanya Sastri trans.; chunk
+#       phaladeepika_pg0079_c01): Sun 6½, Moon 6, Mars 5, Mercury 7, Jupiter 6½,
+#       Venus 5½, Saturn 5 rupas (the ½ glyphs OCR as "6J-"/"6j"/"5*").
+# Pravāha's sad_bala_sufficient v1.0 (PR #2869, services/gochara_rules/registry.py)
+# cites the same two sources and carries the same seven thresholds.
+#
+# History: the Sun was stored as 5.0 here before 2026-10 (a mis-transcription; BPHS
+# and Phaladīpikā both give 390 virupa = 6.5 rupa). Mars/Saturn at 5.0 were always
+# correct. See 00_ARCHITECTURE/briefs/suvarna/exec/sun_required_rupa/.
+SHADBALA_REQUIRED_VIRUPA: dict[str, int] = {
+    "Sun": 390,
+    "Moon": 360,
+    "Mars": 300,
+    "Mercury": 420,
+    "Jupiter": 390,
+    "Venus": 330,
+    "Saturn": 300,
 }
+
+# Classical required shadbala (rupa) per graha — derived from the virupa figures
+# above (all seven quotients are exact in binary floating point).
+SHADBALA_REQUIRED: dict[str, float] = {
+    g: v / 60.0 for g, v in SHADBALA_REQUIRED_VIRUPA.items()
+}
+
+
+def required_rupa_for(graha: str) -> float:
+    """The classical required shadbala for one of the seven classical grahas (Title
+    case name, a key of SHADBALA_REQUIRED). A graha outside the table (the nodes, a
+    subject string such as 'SUN', a typo) RAISES — there is no default: a silent
+    `.get(graha, 5.0)` here used to make every lookup that missed the table quietly
+    read 5.0 (CLAUDE.md §N.7 item 6: an honest null / a loud failure beats an invented
+    value). Callers that legitimately handle the nodes branch BEFORE calling this."""
+    try:
+        return SHADBALA_REQUIRED[graha]
+    except KeyError:
+        raise ValueError(
+            f"no classical required shadbala for graha {graha!r}: SHADBALA_REQUIRED covers "
+            f"only {sorted(SHADBALA_REQUIRED)}; the nodes carry no classical minimum and "
+            f"must be handled before this call"
+        ) from None
 
 # Ashtakavarga invariant: sum of sarvashtakavarga across all 12 houses = 337
 SARVA_BINDU_TOTAL = 337
@@ -168,7 +214,22 @@ def _citation_human_strength(category: str, subject: str, key: str,
     if category == "graha_shadbala_drik":
         return f"{graha} drik bala: {value_num:.4f} rupa ({ay})."
     if category == "graha_shadbala_total":
-        req = SHADBALA_REQUIRED.get(graha, 5.0)
+        # `graha` above is the display string ('SUN', 'Jupiter'...), NOT a key of
+        # SHADBALA_REQUIRED (Title-case names), so the previous
+        # `SHADBALA_REQUIRED.get(graha, 5.0)` silently fell through to 5.0 for every
+        # subject that is not spelled like its table key (every graha but 'Jupiter'-style
+        # display strings, and the nodes). Resolve the classical graha from the SUBJECT
+        # instead; the nodes carry no classical minimum and say so; anything else raises.
+        classical = next(
+            (g for g in SHADBALA_REQUIRED if PLANET_TO_SUBJECT.get(g) == subject), None)
+        if classical is None:
+            if subject in {PLANET_TO_SUBJECT.get("Rahu"), PLANET_TO_SUBJECT.get("Ketu")}:
+                return (f"{graha} total shadbala: {value_num:.4f} rupa "
+                        f"(no classical required minimum exists for the nodes) ({ay}).")
+            raise ValueError(
+                f"graha_shadbala_total citation: subject {subject!r} is neither a "
+                f"classical graha nor a node")
+        req = required_rupa_for(classical)
         surplus = value_num - req
         direction = "surplus" if surplus >= 0 else "deficit"
         return (f"{graha} total shadbala: {value_num:.4f} rupa "
@@ -863,7 +924,7 @@ def _build_shadbala_rows(
             })
 
         # Required rupa for total
-        req = SHADBALA_REQUIRED.get(graha_name, 5.0)
+        req = required_rupa_for(graha_name)
         fid_req = _fact_id("graha_shadbala_total", subject, "required_rupa",
                             chart_id, ayanamsha_id, build_id)
         rows.append({

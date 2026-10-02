@@ -3852,7 +3852,8 @@ def _load_shadbala_and_bhava_fact_ids(
     achieved/required, 'required_rupa' INVARIANT-only) — an unpinned selection let
     Postgres's unordered row return silently decide which variant survived the
     dict-overwrite below. Pinned to 'rupa' (the raw achieved value this function's
-    own caller normalizes against _COMPOSITE_SHADBALA_REQUIRED), matching the same
+    own caller normalizes against the L1 'required_rupa' fact read by
+    `_load_required_rupa_map`), matching the same
     convention already established by the bo_laksana.py (P0-5) and
     registry_bridge.ts (P0-1..4) fixes. `house_bhava_bala_total` has only one
     fact_key ('total') live today but is pinned too, defensively, per the N.7
@@ -3860,43 +3861,82 @@ def _load_shadbala_and_bhava_fact_ids(
     """
     shadbala: dict[str, tuple[float, str]] = {}
     bhava_bala: dict[str, tuple[float, str]] = {}
-    try:
-        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
-            cur.execute("""
-                SELECT fact_subject, fact_value_num, fact_id
-                FROM chart_facts
-                WHERE chart_id = %s AND ayanamsha_id = %s
-                  AND fact_category = 'graha_shadbala_total'
-                  AND fact_key = 'rupa'
-            """, (chart_id, ayanamsha_id))
-            for subj, val, fid in cur.fetchall():
-                if val is not None:
-                    shadbala[subj] = (float(val), str(fid))
-            cur.execute("""
-                SELECT fact_subject, fact_value_num, fact_id
-                FROM chart_facts
-                WHERE chart_id = %s AND ayanamsha_id = %s
-                  AND fact_category = 'house_bhava_bala_total'
-                  AND fact_key = 'total'
-            """, (chart_id, ayanamsha_id))
-            for subj, val, fid in cur.fetchall():
-                if val is not None:
-                    bhava_bala[subj] = (float(val), str(fid))
-    except Exception as exc:
-        logger.warning("[ga_structural] shadbala/bhava_bala lookup failed: %s", exc)
+    # A FAILED SELECT is not a MISSING fact: a database error propagates (SS ruling,
+    # PR #2892/#2893: a failed evaluation must raise, never degrade into "no facts" and
+    # floor every composite row). Only a genuinely absent fact — the SELECT succeeds and
+    # returns no row for that subject — leaves the map entry out, and the caller floors
+    # that row with a NAMED reason.
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute("""
+            SELECT fact_subject, fact_value_num, fact_id
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = %s
+              AND fact_category = 'graha_shadbala_total'
+              AND fact_key = 'rupa'
+        """, (chart_id, ayanamsha_id))
+        for subj, val, fid in cur.fetchall():
+            if val is not None:
+                shadbala[subj] = (float(val), str(fid))
+        cur.execute("""
+            SELECT fact_subject, fact_value_num, fact_id
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = %s
+              AND fact_category = 'house_bhava_bala_total'
+              AND fact_key = 'total'
+        """, (chart_id, ayanamsha_id))
+        for subj, val, fid in cur.fetchall():
+            if val is not None:
+                bhava_bala[subj] = (float(val), str(fid))
     return shadbala, bhava_bala
 
 
 
-# Classical required shadbala (rupa) per graha — mirrors ga_strength_writer's
-# SHADBALA_REQUIRED (kept as a separate module-local copy; no cross-import
-# between L1 writers). Used to normalize the now-real shadbala_total (post
-# lane-1a PyJHora delegation, M-1) into a 0-1 sthana-equivalent: "how many
-# multiples of the classically-required minimum has this graha attained".
-_COMPOSITE_SHADBALA_REQUIRED: dict[str, float] = {
-    "Sun": 5.0, "Moon": 6.0, "Mars": 5.0, "Mercury": 7.0,
-    "Jupiter": 6.5, "Venus": 5.5, "Saturn": 5.0,
-}
+def _load_required_rupa_map(
+    conn: Any, chart_id: str
+) -> dict[str, tuple[float, str]]:
+    """Load the classical required (minimum) shadbala per graha from the L1
+    `graha_shadbala_total|required_rupa` fact — the SINGLE source of truth, owned
+    by ga_strength_writer (SHADBALA_REQUIRED). Returns {fact_subject: (value_num,
+    fact_id)}. The row is stored under ayanamsha_id='INVARIANT' (a classical
+    constant, not ayanamsha-dependent) — same convention as the existing reader
+    ga_yoga_writer._load_shadbala_map. fact_key is pinned and the ORDER BY is total
+    (CLAUDE.md §N.7 item 2).
+
+    This replaces a module-local shadow copy (_COMPOSITE_SHADBALA_REQUIRED) that
+    had drifted from the classical figure for the Sun (5.0 vs BPHS ch.27's 390
+    virupa = 6.5 rupa) — §N.7 item 3: no wrapper-local constant may shadow an
+    L1-computed or sourced value. ga_structural already depends on ga_strength in
+    asset_registry, so the INVARIANT row is guaranteed to exist before this runs.
+    """
+    required: dict[str, tuple[float, str]] = {}
+    # A FAILED SELECT is not a MISSING fact: a database error propagates (SS ruling:
+    # a failed evaluation must raise). Only a genuinely absent L1 fact — the SELECT
+    # succeeds and returns no row for a graha — leaves it out of the map, and the
+    # composite builder then floors that graha's rows with the named reason
+    # `missing_l1_required_rupa_fact`.
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute("""
+            SELECT fact_subject, fact_value_num, fact_id
+            FROM chart_facts
+            WHERE chart_id = %s AND ayanamsha_id = 'INVARIANT'
+              AND fact_category = 'graha_shadbala_total'
+              AND fact_key = 'required_rupa'
+            ORDER BY fact_subject, fact_id
+        """, (chart_id,))
+        for subj, val, fid in cur.fetchall():
+            if val is not None:
+                required[subj] = (float(val), str(fid))
+    return required
+
+
+# Rahu/Ketu carry a total-shadbala `rupa` fact but NO classical minimum: neither BPHS
+# ch.27 nor Phaladīpikā IV.22-23 gives a requirement for the nodes (and L1 stores no
+# `required_rupa` / `ratio` for them). The composite formula used to normalise the nodes'
+# rupa by an invented flat 5.0 (`_NODE_LEGACY_COMPOSITE_REQUIRED`, SS ruling 2026-10-02:
+# removed — CLAUDE.md §N.7 item 6, an honest null beats an invented normaliser). The
+# nodes' composite rows are now FLOORED (value_num NULL, verification 'floored') with this
+# NAMED reason; their dignity/bhava inputs are not consumed without a normaliser.
+NODE_NO_CLASSICAL_REQUIRED_REASON = "no_classical_required_value_for_node"
 # NOTE: house_bhava_bala_total (GA3 ga_strength_writer._derive_bhava_bala) is
 # itself a hand-rolled, non-classically-scaled composite (adhipati_bala =
 # lord's shadbala rupa × 30, + a flat 10/15/20 digbala, + 10+5×occupant-count
@@ -3908,6 +3948,41 @@ _COMPOSITE_SHADBALA_REQUIRED: dict[str, float] = {
 # ayanamsha (ratio to the max observed value) — an honest, chart-relative
 # "how strong is this house compared to this native's strongest house"
 # reading, not an absolute claim against an uncited threshold.
+
+
+def _composite_floor_detail(
+    *, required_missing: bool, shadbala_missing: bool, bhava_missing: bool,
+    node_has_no_required: bool = False,
+) -> tuple[str, str]:
+    """(machine reason, human phrase) for a floored composite row, naming EVERY cause.
+    `no_classical_required_value_for_node` = a node (Rahu/Ketu): no classical minimum
+    exists, so there is no normaliser; `missing_l1_required_rupa_fact` = the L1
+    graha_shadbala_total|required_rupa fact is absent; `missing_ga3_shadbala_or_bhava_
+    bala_fact` = the GA3 shadbala `rupa` and/or house bhava_bala `total` fact is absent.
+    A node returns ONLY the node reason; for a classical graha several causes are joined
+    with '+' (required first)."""
+    if node_has_no_required:
+        # A node's single clean reason: there is no classical required value, whatever
+        # else is or is not present. No missing-fact suffix (SS ruling 2026-10-02).
+        return (NODE_NO_CLASSICAL_REQUIRED_REASON,
+                "no classical required shadbala value exists for the nodes")
+    reasons: list[str] = []
+    clauses: list[str] = []
+    missing: list[str] = []
+    if required_missing:
+        reasons.append("missing_l1_required_rupa_fact")
+        missing.append("the L1 required_rupa fact")
+    if shadbala_missing or bhava_missing:
+        reasons.append("missing_ga3_shadbala_or_bhava_bala_fact")
+        if shadbala_missing:
+            missing.append("the GA3 shadbala fact")
+        if bhava_missing:
+            missing.append("the GA3 bhava_bala fact")
+    if missing:
+        clauses.append("missing " + " and ".join(missing))
+    if not reasons:  # defensive: callers only floor when an input is missing
+        raise ValueError("composite floor requested but no cause was named")
+    return "+".join(reasons), "; ".join(clauses)
 
 
 def _build_composite_strength_rows(
@@ -3939,6 +4014,7 @@ def _build_composite_strength_rows(
     grahas_data = chart_output.get("grahas", [])
 
     shadbala_map, bhava_bala_map = _load_shadbala_and_bhava_fact_ids(conn, chart_id, ayanamsha_id)
+    required_map = _load_required_rupa_map(conn, chart_id)
     bhava_bala_ceiling = max(
         (v for v, _fid in bhava_bala_map.values()), default=0.0
     )
@@ -3959,7 +4035,18 @@ def _build_composite_strength_rows(
         sthana = dignity_to_strength.get(g_dignity, 0.5)
 
         sb_entry = shadbala_map.get(subject)
-        required = _COMPOSITE_SHADBALA_REQUIRED.get(g_name, 5.0)
+        # Classical grahas: required = the L1 `required_rupa` fact (read, never a
+        # local constant); a missing fact floors the row (honest null — never a
+        # substituted default). Nodes: no classical minimum exists (see
+        # NODE_NO_CLASSICAL_REQUIRED_REASON), so there is no normaliser and the row is
+        # floored with that named reason — never a labelled invented constant.
+        required_fact_id: str | None = None
+        required: float | None = None
+        node_has_no_required = g_name not in CLASSICAL_GRAHAS
+        if not node_has_no_required:
+            req_entry = required_map.get(subject)
+            if req_entry is not None:
+                required, required_fact_id = req_entry
         shadbala_ratio: float | None = None
         shadbala_fact_id: str | None = None
         if sb_entry is not None:
@@ -3977,21 +4064,33 @@ def _build_composite_strength_rows(
                 bhava_val, bhava_fact_id = bb_entry
                 bhava_ratio = round(min(1.0, bhava_val / bhava_bala_ceiling), 4)
 
-            constituent_ids = [fid for fid in (shadbala_fact_id, bhava_fact_id) if fid]
+            constituent_ids = [
+                fid for fid in (shadbala_fact_id, required_fact_id, bhava_fact_id) if fid
+            ]
 
             if shadbala_ratio is None or bhava_ratio is None:
-                # Canonical-or-floor: no real GA3 shadbala/bhava_bala row for
-                # this graha/house — floor rather than fabricate a proxy.
+                # Canonical-or-floor: a required input fact is genuinely absent for
+                # this graha/house — floor rather than fabricate a proxy. The reason
+                # (and the citation text) names EVERY input that is missing.
+                floor_reason, floor_phrase = _composite_floor_detail(
+                    node_has_no_required=node_has_no_required,
+                    required_missing=(not node_has_no_required) and not required,
+                    shadbala_missing=sb_entry is None,
+                    bhava_missing=bhava_ratio is None,
+                )
                 rows.append(_base_row(
                     "graha_in_house_composite_strength", comp_subject, "bphs_weighted",
                     chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
                     value_num=None,
-                    value_jsonb={"floored": True, "reason": "missing_ga3_shadbala_or_bhava_bala_fact"},
+                    value_jsonb={
+                        "floored": True,
+                        "reason": floor_reason,
+                    },
                     verif=FLOORED,
                     source=f"ga_structural.composite_strength_bphs/{eng_ver}",
                     citation_human=(
                         f"{g_name} in house {h}: composite strength floored — "
-                        f"missing real shadbala/bhava_bala GA3 fact ({ayanamsha_id})."
+                        f"{floor_phrase} ({ayanamsha_id})."
                     ),
                     constituent_facts_array=constituent_ids or None,
                 ))
@@ -4057,7 +4156,7 @@ def _build_composite_strength_rows(
                 source=f"ga_structural.composite_strength_simple/{eng_ver}",
                 citation_human=(
                     f"{g_name} in house {h}: simple composite strength {simple_score:.4f} "
-                    f"(shadbala_ratio={shadbala_ratio:.4f}, bhava_ratio={bhava_ratio:.4f}) ({ayanamsha_id})."
+                    f"(dignity_weight={sthana:.3f}, bhava_ratio={bhava_ratio:.4f}) ({ayanamsha_id})."
                 ),
                 constituent_facts_array=constituent_ids or None,
             ))

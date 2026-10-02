@@ -614,10 +614,17 @@ class TestCompositeStrength:
         rows = sut._build_composite_strength_rows(
             STRENGTH_FAKE_CONN, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER
         )
-        # 9 grahas × 12 houses × 3 keys = 324
-        graha_count = len(MOCK_CHART_OUTPUT["grahas"])
-        expected = graha_count * 12 * 3
+        # 7 classical grahas × 12 houses × 3 keys = 252, plus the two nodes (Rahu/Ketu), which
+        # have no classical required shadbala and so floor to ONE honest-null bphs_weighted row
+        # per house (2 × 12 = 24; SS ruling 2026-10-02) = 276.
+        grahas = MOCK_CHART_OUTPUT["grahas"]
+        node_count = sum(1 for g in grahas if g["name"] in ("Rahu", "Ketu"))
+        classical_count = len(grahas) - node_count
+        expected = classical_count * 12 * 3 + node_count * 12
         assert len(rows) == expected, f"Expected {expected}, got {len(rows)}"
+        node_rows = [r for r in rows if r["fact_subject"].startswith(("RAH_MEAN", "KET_MEAN"))]
+        assert all(r["fact_value_num"] is None and r["verification_pass_status"] == "floored"
+                   for r in node_rows)
 
     def test_strength_scores_between_0_and_2(self):
         rows = sut._build_composite_strength_rows(

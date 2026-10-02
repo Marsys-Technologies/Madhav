@@ -73,8 +73,9 @@ class TestShadbalaRequiredRupaAndRatio:
         rows = self._rows()
         req = {r["fact_subject"]: r for r in rows
                if r["fact_category"] == "graha_shadbala_total" and r["fact_key"] == "required_rupa"}
-        # BPHS minimums (verified against SHADBALA_REQUIRED constant)
-        assert req["SUN"]["fact_value_num"] == 5.0
+        # BPHS ch.27 śl.32-33 minimums (Sun = 390 virupa = 6.5 rupa; fixed 2026-10,
+        # was 5.0). Full seven-value golden test: ga_writers/__tests__/test_ga_strength_required_rupa_source.py
+        assert req["SUN"]["fact_value_num"] == 6.5
         assert req["MOON"]["fact_value_num"] == 6.0
         assert req["MER"]["fact_value_num"] == 7.0
         assert req["JUP"]["fact_value_num"] == 6.5
@@ -84,8 +85,8 @@ class TestShadbalaRequiredRupaAndRatio:
         rows = self._rows()
         ratio = {r["fact_subject"]: r for r in rows
                  if r["fact_category"] == "graha_shadbala_total" and r["fact_key"] == "ratio"}
-        # Sun: 7.5 / 5.0 = 1.5 (above minimum)
-        assert abs(ratio["SUN"]["fact_value_num"] - 1.5) < 1e-9
+        # Sun: 7.5 / 6.5 (BPHS minimum 390 virupa) = 1.1538... (above minimum)
+        assert abs(ratio["SUN"]["fact_value_num"] - 7.5 / 6.5) < 1e-9
         # Mars: 2.5 / 5.0 = 0.5 (below minimum)
         assert abs(ratio["MAR"]["fact_value_num"] - 0.5) < 1e-9
         # Mercury: 7.0 / 7.0 = 1.0 (exactly at minimum)
