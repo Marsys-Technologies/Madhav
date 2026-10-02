@@ -1,0 +1,49 @@
+{
+  "lane": "argala_other_charts",
+  "ruling": "SS N-61 (AR-1..AR-6, 2026-10-01), approved with changes 2026-10-02; outcome semantics per SS review decision (disjunctive rule: only 'argala_prevails by count' is certain)",
+  "pr": "#2851",
+  "charts": ["1c826d5a", "cb73cd3d"],
+  "description": "The argala lane (argala.json) for the charts compared besides the canonical one (Abhinandan 1c826d5a, Kiran cb73cd3d: S-L1b). No offline model exists for these charts, so the counts are only the lane's structural bounds: argala_graha_natal at most 72 rows per ayanamsha (360 per chart), argala_natal_matrix at most 7,200 empty-source argala cells per chart (30 vargas x 48 argala-offset cells x 5 ayanamshas), and at least one of each (any chart with a graha-free source sign among its argala offsets, which is every chart in practice). The exact figures are read from the flip report.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["argala_graha_natal"],
+      "change_types": ["appeared"],
+      "expected_count": {"min": 1, "max": 360},
+      "expected_direction": "new graha-level argala rows appear",
+      "note": "source: lane evidence (evidence/argala_HOOK_DECLARATION_old_shape.json, expected_rows_other_charts: at most 72 rows per ayanamsha, 360 per chart); structural bound, no per-chart estimate exists."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["argala_natal_matrix"],
+      "change_types": ["value"],
+      "expected_count": {"min": 1, "max": 7200},
+      "expected_direction": "empty-source argala cells become NULL / no_occupant",
+      "note": "source: structural bound from the lane evidence (30 vargas x 48 argala-offset cells x 5 ayanamshas = 7,200); the canonical figure is 3,444 (argala.json)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["argala_natal_matrix", "virodha_argala_natal_matrix"],
+      "change_types": ["appeared", "disappeared", "occurrence_count", "tier"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "the two stored matrices keep every row: 21,600 rows each on the canonical chart (30 vargas x 144 cells, 4,320 per ayanamsha); verification_pass_status stays single (these categories are not in the tiers lane).",
+      "note": "explicit zero; source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (no appeared / disappeared / occurrence_count / tier change in either matrix)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["virodha_argala_natal_matrix"],
+      "change_types": ["value"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "virodha_argala_natal_matrix changes only source_calculation and formula_provenance_text (21,600 rows): neither is a detector field; fact_value_num (occupant-based 1.0 / 0.0) and fact_value_text are unchanged.",
+      "note": "explicit zero; source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (no virodha value change)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["argala_graha_natal"],
+      "change_types": ["value", "disappeared", "occurrence_count", "tier"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "the new graha-level rows only APPEAR (entry above); each key has one row and none is removed.",
+      "note": "explicit zero; source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence)."
+    }
+  ]
+}

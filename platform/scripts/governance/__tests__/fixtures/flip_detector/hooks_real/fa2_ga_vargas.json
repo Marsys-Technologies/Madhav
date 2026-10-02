@@ -1,0 +1,68 @@
+{
+  "lane": "fa2_ga_vargas",
+  "ruling": "F-A2 (Q-L1-01): chart_divisionals unique key gains fact_subject (seven columns)",
+  "pr": "#2858",
+  "charts": ["482012f1"],
+  "description": "F-A2 (PR #2858; migrations 1222 / 1223; ga_vargas writer). The chart_divisionals unique index and the data-plane capture trigger gain a seventh column, fact_subject, so rows that differ only in fact_subject no longer collide on one stored row (under the six-column key the ON CONFLICT DO NOTHING silently dropped all but the first). Effect on the canonical chart (production 24,392 chart_divisionals rows; the rehearsal baseline built from main has the identical row count and structure): 24,392 -> 38,596 stored rows, +14,204 = varga_ashtakavarga +13,200 (30 vargas x 8 grahas x 5 ayanamshas = 1,200 keys, each 1 -> 12 rows, one per sign: +440 per varga) + varga_house_lord +750 (+25 per varga: the five two-sign lords gain a row per (varga, ayanamsha)) + varga_d30_lord_per_amsa +250 + scope_cap +4 (the six INVARIANT sentinels, of which four collided: stored 2 -> 6). No row of any other category appears, disappears or changes value. DETECTOR VIEW: the detector keys chart_divisionals rows by (ayanamsha, varga, graha, category, fact_key) and counts a CHANGED KEY once, so the row-level figures above read as occurrence-count changes: varga_ashtakavarga 1,200 keys (1 -> 12) and, because the old single row (sign Aries on every key, stored by the six-column writer) pairs with the alphabetically first new sign (Aquarius) in the sorted occurrence pairing, also 1,200 value changes; varga_house_lord 750 keys (1 -> 2); varga_d30_lord_per_amsa 50 keys; scope_cap 1 key (1 -> 5). CORRECTION to the figure quoted in the hook request: varga_ashtakavarga is +440 per varga over 30 vargas = +13,200, not '+440 x 32 vargas = +14,080' (the stored table has 30 vargas). The total 14,204 is the stored difference and matches 13,200 + 750 + 250 + 4. Canonical chart only: Abhinandan and Kiran hold stale generations (23,542 rows) and are S-L1b. The scope_cap entry is also declared by ga_vargas_invariant_sentinels.json (integration branch, #2960); both count the same change.",
+  "may_change": [
+    {
+      "table": "chart_divisionals",
+      "categories": ["varga_ashtakavarga"],
+      "fact_keys": ["bindus"],
+      "change_types": ["occurrence_count"],
+      "expected_count": {"exact": 1200},
+      "expected_direction": "every (ayanamsha, varga, graha) key goes from 1 to 12 occurrences (one row per sign): 5 ayanamshas x 30 vargas x 8 grahas = 1,200 keys; row level +13,200.",
+      "note": "source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (varga_ashtakavarga occurrence_count 1,200: before 1, after 12; chart_divisionals 24,392 -> 38,596). Code-driven and chart independent."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": ["varga_ashtakavarga"],
+      "fact_keys": ["bindus"],
+      "change_types": ["value"],
+      "expected_count": {"exact": 1200},
+      "expected_direction": "the stored single row (sign Aries, the first writer's row under the six-column key; production canonical: all 1,200 rows read Aries) pairs with the first sorted new occurrence (Aquarius): one value change per key, 1,200.",
+      "note": "source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (varga_ashtakavarga value 1,200) and the production reader check (canonical: 1,200 stored rows, sign Aries on every one). This is a pairing artifact of the detector, stated so a reviewer does not read it as 1,200 real value changes."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": ["varga_house_lord"],
+      "fact_keys": ["lord"],
+      "change_types": ["occurrence_count"],
+      "expected_count": {"exact": 750},
+      "expected_direction": "the five two-sign lords (Mars, Mercury, Jupiter, Venus, Saturn) gain a second occurrence per (varga, ayanamsha): 5 x 30 vargas x 5 ayanamshas = 750 keys, 1 -> 2; row level +750 (+25 per varga x 30).",
+      "note": "source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (varga_house_lord occurrence_count 750; 1,050 -> 1,800 rows). Code-driven (twelve houses over seven lords)."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": ["varga_d30_lord_per_amsa"],
+      "change_types": ["occurrence_count"],
+      "expected_count": {"exact": 50},
+      "expected_direction": "the D30 lord-per-amsa keys (10 amsa bands x 5 ayanamshas = 50) each gain occurrences: 50 -> 300 rows (+250).",
+      "note": "source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (varga_d30_lord_per_amsa occurrence_count 50; 50 -> 300 rows). Code-driven."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": ["scope_cap"],
+      "change_types": ["occurrence_count"],
+      "expected_count": {"exact": 1},
+      "expected_direction": "INVARIANT sentinels: the ALL_VARGAS scope_cap key goes 1 -> 5 occurrences (stored rows 2 -> 6: +4).",
+      "note": "source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (chart_divisionals scope_cap occurrence_count 1: before 1, after 5); production canonical 2 rows. Also declared by ga_vargas_invariant_sentinels.json."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": ["varga_ashtakavarga"],
+      "change_types": ["appeared", "disappeared"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "no varga_ashtakavarga key appears or disappears (the 1,200 keys all exist before).",
+      "note": "explicit zero; source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence)."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": ["varga_house_lord", "varga_d30_lord_per_amsa", "scope_cap"],
+      "change_types": ["value", "appeared", "disappeared"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "no other change in the three categories whose row count grows: only their occurrence counts move.",
+      "note": "explicit zero; source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (no such change)."
+    }
+  ]
+}
