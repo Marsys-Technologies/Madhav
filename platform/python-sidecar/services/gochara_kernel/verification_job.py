@@ -243,6 +243,12 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
         horizon=horizon, _cache={}))
     out["geometry"] = stage("contact_geometry", lambda: cc.certify_contact_geometry(
         conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at))
+    from . import record_derivation as rd
+    snap_facts = _one(conn.execute("SELECT consumed_fact_ids FROM public.ka_gochara_search_input_snapshot"
+                                   " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone())
+    chart = inv_v.read_chart(conn, snap_facts) if snap_facts is not None else None
+    from .result_policy import manifest_policy
+    policy = manifest_policy(conn, chart_id, generation)
     pins = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
         "SELECT path_id, rule_version FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = %s"
         " AND event_class = %s AND disposition = 'included' AND path_id IN ('P1','P2','P3','P4') ORDER BY 1, 2",
@@ -253,9 +259,16 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
                 conn, chart_id=chart_id, generation=generation, event_class=event_class)),
             "house": stage("p1_house", lambda: rv.verify_p1_house_descriptor(
                 conn, chart_id=chart_id, generation=generation, event_class=event_class))}
-        if not rv._anchor_columns(conn) or _p1_minting_open(conn, chart_id, generation, event_class):
+        # R10-1: ALWAYS certify the included P1 anchors when the schema exists — an entirely omitted P1 record
+        # population is exactly the case the expected-contact derivation exists to catch (the conditional skip,
+        # keyed on whether any anchored record SURVIVED, is gone)
+        if rv._anchor_columns(conn):
             out["p1"]["anchors"] = stage("p1_anchors", lambda: rv.verify_p1_anchors(
                 conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at))
+            p1_version = next(v for p, v in pins if p == "P1")
+            out["p1"]["results"] = stage("p1_results", lambda: rd.verify_p1_results(
+                conn, chart_id=chart_id, generation=generation, event_class=event_class, rule_version=p1_version,
+                chart=chart, policy=policy))
     snap = _one(conn.execute("SELECT input_digest FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s"
                              " AND generation = %s", (chart_id, generation)).fetchone())
     windows = []
@@ -263,6 +276,14 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
     for path_id, version in pins:
         grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
                      rule_version=version)
+        derived = None
+        if path_id != "P1":
+            # R10-1: every record the path MUST hold, derived from the obligations × the certified contacts × the bound
+            # chart; compared both directions (an empty stored path included); its DERIVED windows feed the gate
+            derived = stage(f"records {path_id}", lambda g=grain: rd.verify_path_records(
+                conn, obligations=res["obligations"], chart=chart, horizon_hi=hi, policy=policy,
+                **{k: g[k] for k in ("chart_id", "generation", "event_class", "path_id", "rule_version")}))
+            out.setdefault("records", {})[path_id] = derived["records"]
         stage(f"member_support {path_id}", lambda g=grain: wv.verify_member_support(conn, **g))
         stage(f"member_geometry {path_id}", lambda g=grain: wv.verify_member_geometry(conn, position_at=position_at, **g))
         report = stage(f"window_semantics {path_id}", lambda g=grain, p=path_id, v=version: wv.verify_window_semantics(
@@ -270,7 +291,7 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
         entry = {"path_id": path_id, "rule_version": version, "status": report["status"],
                  "policy_version": report["policy_version"], "windows": report["windows"]}
         windows.append(entry)
-        reports.append((grain, report))
+        reports.append((grain, report, None if derived is None else derived["derived_windows"]))
     out["windows"] = windows
     if persist:
         # ORDER (Stream B's all-guards rehearsal): the WINDOW verifications first, the 1206 inventory row last — the class's
@@ -280,21 +301,13 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
         # replaced by `record_verification` (the verifier holds DELETE on its own table, pre-seal).
         conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (chart_id,))
         conn.execute("SELECT public.ka_gochara_lock_global_shared()")
-        for grain, report in reports:
-            stage(f"record_verification {grain['path_id']}", lambda g=grain, r=report: wg.record_verification(
-                conn, report=r, input_digest=snap, **g))
+        for grain, report, derived_w in reports:
+            stage(f"record_verification {grain['path_id']}", lambda g=grain, r=report, d=derived_w:
+                  wg.record_verification(conn, report=r, input_digest=snap, expected=d, **g))
         stage("inventory_verification", lambda: inv_v.write_verification(
             conn, chart_id=chart_id, generation=generation, event_class=event_class, rederived_digest=res["digest"]))
     out["status"] = "VERIFIED" if all(w["status"] == "VERIFIED" for w in windows) else "UNVERIFIED_DYNAMIC"
     return out
-
-
-def _p1_minting_open(conn, chart_id, generation, event_class) -> bool:
-    """P1 anchors are certified when the generation actually holds P1 transit records, or P1 minting is OPEN (the anchor
-    columns exist) — with no anchored records and the columns absent the gate was closed and no P1 claim is made."""
-    return bool(_one(conn.execute(
-        "SELECT count(*) > 0 FROM public.ka_gochara_relationship_record WHERE chart_id = %s AND generation = %s"
-        " AND event_class = %s AND path_id = 'P1' AND contact_id IS NOT NULL", (chart_id, generation, event_class)).fetchone()))
 
 
 def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, position_at, ephe_path: str | None = None,

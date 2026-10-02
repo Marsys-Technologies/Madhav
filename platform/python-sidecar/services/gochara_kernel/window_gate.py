@@ -187,12 +187,15 @@ def derivation_inputs_digest(conn, **grain) -> str:
 
 
 def record_verification(conn, *, chart_id, generation, event_class, path_id, rule_version, report: dict,
-                        input_digest: str) -> dict:
+                        input_digest: str, expected=None) -> dict:
     """Refuse a stored window set that is not the independently expected one, then persist the generation-bound
     result (delete-then-insert for this verifier — a candidate rebuild REPLACES it)."""
     grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
                  rule_version=rule_version)
-    expected, stored = expected_windows(conn, **grain), stored_windows(conn, **grain)
+    # R10-1: `expected` — when the caller derived the records independently (record_derivation) — is the windows THOSE
+    # derived records imply; only without it do we fall back on the stored records (P1: verified-complete beforehand)
+    expected = sorted(expected) if expected is not None else expected_windows(conn, **grain)
+    stored = stored_windows(conn, **grain)
     if expected != stored:
         omitted = [w for w in expected if w not in stored]
         invented = [w for w in stored if w not in expected]

@@ -47,7 +47,9 @@ def real_class(world, monkeypatch):          # noqa: F811
     keys = [writer_mod.RULES_SUBSTEP, writer_mod.CONVENTION_SUBSTEP,
             *[f"{writer_mod.BODY_SUBSTEP_PREFIX}{b}" for b in writer_mod.SUBSTRATE_BODIES],
             writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP, "inventory:marriage", "coverage:marriage",
-            f"{writer_mod.RECORD_SUBSTEP_PREFIX}marriage:P1"]
+            *[f"{writer_mod.RECORD_SUBSTEP_PREFIX}marriage:{p}" for p in ("P1", "P2", "P3", "P4")],
+            *[f"{writer_mod.WINDOW_SUBSTEP_PREFIX}marriage:{p}" for p in ("P1", "P2", "P3", "P4")],
+            f"{writer_mod.VERIFY_SUBSTEP_PREFIX}marriage"]
     for k in keys:
         w.step(k)
     return w

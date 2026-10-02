@@ -56,9 +56,12 @@ def _libra_edges(path):
             if e.transit and e.relation == "residence" and e.obj.canonical_target == "span:7"]
 
 
-def _materialise(w, path, agents_in_sign):
-    """Materialise `path`'s Libra-residence record(s); `agents_in_sign` = {agent: (in_day_a, in_day_b)} datetimes."""
+def _materialise(w, path, agents_in_sign, with_natal=False):
+    """Materialise `path`'s Libra-residence record(s); `agents_in_sign` = {agent: (in_day_a, in_day_b)} datetimes.
+    `with_natal` adds the path's natal-fact edges (P3's māraka testimony rows) — a COMPLETE grain (R10-1)."""
     edges = [e for e in _libra_edges(path) if e.agent in agents_in_sign]
+    if with_natal:
+        edges += [e for e in ev.enumerate_edges(CLS, path, CHART) if not e.transit]
     rows_for, _ = make_period_rows_for(w.conn, CHART_ID)
     store = rs.RecordStore(w.conn)
     sky = SkyEventStore(w.conn).register_convention()
