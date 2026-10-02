@@ -174,9 +174,9 @@ def test_validator_doc_level_field_list_must_match_when_present():
             ac.validate_declarations(ok)
 
 
-def test_the_committed_file_is_1_9_0_declares_no_null_convention_yet_and_lists_the_fields():
+def test_the_committed_file_is_1_10_0_declares_no_null_convention_yet_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
-    assert raw["version"] == "1.9.0"
+    assert raw["version"] == "1.10.0"          # DECL-LATTA (no null_convention: option C)
     assert raw["null_convention_declaration_fields"] == list(ac.NULL_CONVENTION_DECL_FIELDS)
     # the per-asset review is the reviewed work: nothing is declared by pattern in this PR
     assert [a for a, e in raw["assets"].items() if "null_convention" in e] == []

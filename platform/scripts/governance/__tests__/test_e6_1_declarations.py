@@ -167,8 +167,8 @@ def test_a_wildcard_entry_round_trips_through_the_loader_and_the_fact(tmp_path):
             ac.validate_declarations(_doc(w=dict(prose_fields=[bad], evidence=PEV)))
 
 
-def test_the_file_version_is_1_9_0():
-    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.9.0"
+def test_the_file_version_is_1_10_0():
+    assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.10.0"
 
 
 def test_empty_prose_list_is_a_valid_positive_declaration_distinct_from_null(tmp_path):
@@ -2460,7 +2460,7 @@ def test_citation_sites_scanner_sees_attribute_setdefault_variable_uppercase_key
 
 def test_the_declarations_file_states_the_fact_row_narr_rule_and_the_version():
     doc = json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))
-    assert doc["version"] == "1.9.0"
+    assert doc["version"] == "1.10.0"
     d = doc["description"]
     for phrase in ("fact_value_text is the datum", "citation_human is the sentence", "verbalising an L1 fact value states a computed value",
                    "fact_value_text / formula_provenance_text columns stay undeclared", "[*]"):
