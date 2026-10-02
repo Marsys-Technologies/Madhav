@@ -124,3 +124,6 @@ events, all 17 gain classes now fail their individual T-FP budgets alongside 8 o
 classes, and its coverage shows no observed separation from its random control rate in this
 diagnostic. This remains the honest served floor against which '4.1' and '5.0' will be
 measured. No candidate generation was scored here or anywhere in B4.5b.
+
+## 9. Erratum (2026-10-02) — what the extract pin pins
+`baseline_3_0_extract_v1_0.json` sha256 `70ba6142…` pins the extract's **content** (914 rows). It is **not** a reproducible byte order: the file's row order among rows tied on `(event_class, ws)` was database-defined (the dump query ordered by `(event_class, ws)` only). A fresh read-only re-dump of production `'3.0'` with a total `ORDER BY` has the **identical row multiset** (914 rows) and different bytes (sha256 `b9ec4e4b…`; 24 row positions differ); scoring is order-invariant (the §4.2 merge sorts), and the candidate adapter + scorer reproduce every figure above from **both** files. No figure in this record changed; the extract is **not re-pinned** (steward ruling M20261002T042015-7bff). Candidate extracts are produced by a total-order command and sealed by bytes in the Stage-2 freeze (SI addendum v1.3/v1.4 §5).

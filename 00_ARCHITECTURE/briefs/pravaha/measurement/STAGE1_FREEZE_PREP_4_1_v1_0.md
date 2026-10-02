@@ -1,9 +1,10 @@
 ---
 artifact: STAGE1_FREEZE_PREP_4_1
-version: "1.0"
-status: PREPARED — Stage-1 code is a draft PR (#2923, HOLD); the freeze record is a DRAFT with named placeholders; NO '4.1' or '5.0' output was generated or read
+version: "1.1"
+status: PREPARED — Stage-1 code is a draft PR (#2923, HOLD until Codex has reviewed it as packet v1_10 §G, step (d) only); the freeze record is a DRAFT with named placeholders; NO '4.1' or '5.0' output was generated or read
 date: 2026-10-02
 author: Stream B (Śāstra), B6.0 — steward M (STAGE-1 FREEZE for the '4.1' candidate measurement)
+amended: 2026-10-02 (v1.1 — steward answers M20261002T042015-7bff: si := raw_intensity (SI addendum v1.4 §1a), orb_state text + manifest read-back, T-honesty pre-declared UNVERIFIABLE, 3.0 byte-order erratum, packet §G)
 governs: "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_3.md §5 (two-stage freeze); supersedes the command section of SCORING_RUN_4_1_PLAN_v1_0.md §3 for a measurement run (that plan's extract spec, thresholds and horizon assertion stay)"
 ---
 
@@ -15,7 +16,8 @@ governs: "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_3.md §5 (two-stage fr
 | unknown-competitor bounds, candidate adapter, scorer | PR **#2923** `services/gochara_eval/{unknowns,candidate}.py` | draft, HOLD, tests green |
 | freeze verifier (Stage 1 + Stage 2 refusal) | `freeze.py`, `candidate_score.py` | same PR |
 | exact extract-generation command | `dump_extract.py` | same PR; refuses without a verified freeze; refuses governed `5.x` |
-| freeze record | `FREEZE_STAGE1_4_1_v1.DRAFT.json` | all pre-extract input hashes filled **and verified**; placeholders only for what cannot exist yet |
+| freeze record | `FREEZE_STAGE1_4_1_v1.DRAFT.json` | all pre-extract input hashes filled **and verified**; placeholders only for what cannot exist yet (22 items listed by the verifier) |
+| si pre-registration | `EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_4.md` §1a | v1.3 + one section; v1.3 untouched |
 
 ## 2. The extract-generation command (exact)
 ```sh
@@ -25,7 +27,7 @@ python3 -m services.gochara_eval.dump_extract --generation 4.1 \
   --pinned-at <declared date> \
   --out ../../00_ARCHITECTURE/briefs/pravaha/measurement/baseline_4_1_extract_v1_0.json
 ```
-One SELECT in a READ ONLY transaction, after the horizon assertion (0 windows outside 1998-01-01 ≤ window < 2026-04-18). Deterministic: **total** `ORDER BY` over every selected column, `pinned_at` an argument, the pinned layout (indent 1, no trailing newline — byte-identical to the pinned `3.0` file when fed its rows, tested). The plan v1.1 SQL ordered by `(event_class, ws)` only.
+READ ONLY transaction: sign reconciliation (`|signed_intensity| = raw_intensity`, no negative raw — both counts 0), horizon assertion (0 windows outside 1998-01-01 ≤ window < 2026-04-18), then one ordered SELECT with **`si := raw_intensity`** (§4). Deterministic: **total** `ORDER BY` over every selected column, `pinned_at` an argument, the pinned layout (indent 1, no trailing newline — byte-identical to the pinned `3.0` file when fed its rows, tested). The plan v1.1 SQL ordered by `(event_class, ws)` only.
 
 ## 3. The `3.0` reproduction (the detector that the adapter measures what the protocol says)
 Run three ways, all from the final code:
@@ -34,15 +36,16 @@ Run three ways, all from the final code:
 3. **Random known extracts vs the existing scorer** (8 seeds, real registry): equal on every figure — with no unknown, every range collapses to a point.
 
 ## 4. Disclosures the freeze carries
-- **si mapping for `4.1` is `signed_intensity`**, not `evidence_for`: `kala_gochara_windows` has no `evidence_for` column; the addendum's mapping governs governed `5.x` eval-window rows. `signed_intensity` is `NUMERIC NOT NULL`, so **no unknown competitor can occur in a `4.1` extract**; the bounds code is exercised on synthetic extracts and the run asserts `unknown_si_rows = 0`.
+- **si for `4.1` := `raw_intensity`, as stored** (SI addendum **v1.4 §1a**, pre-registered before any `4.1` output exists). The 4.x writer (`step06b_windows_projection.py`) stores `signed_intensity = raw_intensity × (−1 if is_adverse else 1)` — **negative on every adverse window** — which protocol §4.5 (si non-negative for every class) rejects, so `signed_intensity` is not the like-for-like column. In `3.0` the pinned extract's si was `signed_intensity`, and there it equals `raw_intensity` on **all 914 rows** (none negative; 330 adverse rows positive; read-only check 2026-10-02), so `raw_intensity` is the same quantity in both generations. No abs(), no polarity transform. Enforced by the dump (stop if `|signed| ≠ raw` or `raw < 0`). `raw_intensity` is `NOT NULL`: no unknown competitor can occur; the run asserts `unknown_si_rows = 0`.
+- **Orb state** — written as the steward directed: the `4.1` candidate uses the 4.x chain's own activity orb **as declared in its manifest input vector (unratified); the value is read from the manifest at freeze, never from the freeze file**; ND-ORB-ADMISSION/SCALE bind governed `5.x` only. Keys quoted: `kala_gochara_publication.input_generation_vector` → `orb_max_deg` (writer constant `ORB_DEG = 5.0`) and `orb_ruling` (`'M-1 fallback no-box × 5.0° (unratified)'`). **Discrepancy disclosed:** the writer's source comment calls it "M-1 ratified candidate-1 enumeration orb" while the manifest string says "unratified"; the freeze quotes the manifest. Read-back command: `dump_extract --generation 4.1 --read-manifest-orb` (reads no window row).
+- **T-honesty** — pre-declared `UNVERIFIABLE` (supplied to the scorer as no manifest). Whether the candidate chain writes `kala_gochara_coverage` rows for `4.1`, and their completeness semantics, is an open question with Stream A; an honest null until answered; the `3.0` manifest is never substituted.
 - **Tie grouping**: the addendum's adjacent-gap grouping governs ranking here; `metrics.event_hit` anchors ties on the target. They differ only when ≥ 3 values chain within 1e-9 — pinned by a test, absent from `3.0`.
-- **T-honesty**: `4.1` needs the computation-coverage manifest or it is `UNVERIFIABLE` and not flip-eligible (plan §4).
-- **Orb state** is a placeholder awaiting confirmation (`<<CONFIRM…>>`): proposed "n/a for `4.1`; ND-ORB-* bind governed `5.x` only".
-- **Equivalent-mutant note**: of 13 mutations of the new code, 11 were caught by tests, 2 are equivalent (the explicit zero placement and the chain-from-zero placement are also produced by other placements); 1 initial gap (unqualified plateau treated as eligible) was closed with a test.
+- **`3.0` pin** is a content pin (erratum `BASELINE_3_0_v2_3.md` §9; no re-pin, steward ruling).
+- **Equivalent-mutant note**: of 13 mutations of the candidate code, 11 caught, 2 equivalent (the explicit zero placement and the chain-from-zero placement are also produced by other placements); 1 initial gap closed with a test; the 2 sign-reconciliation mutations of the dump are caught.
 
 ## 5. Freeze-day sequence (nothing before the merge)
 1. Merge PR #2923 (steward/native). Record the merge commit.
-2. `python3 -m services.gochara_eval.freeze` → paste `code.files`; fill both commit ids, `pinned_at`, amendments-draft version+sha, orb state; set `status: FROZEN`; save as `FREEZE_STAGE1_4_1_v1.json`; **commit before any extract exists**. (`require_stage1` lists every remaining problem.)
+2. `python3 -m services.gochara_eval.freeze` → paste `code.files`; run `dump_extract --generation 4.1 --read-manifest-orb` and paste the read-back into `orb_state.manifest_readback`; fill both commit ids, `pinned_at`, amendments-draft version+sha; set `status: FROZEN`; save as `FREEZE_STAGE1_4_1_v1.json`; **commit before any extract exists**. (`require_stage1` lists every remaining problem.)
 3. Re-run the §3.1 requalification on the frozen code; **stop if any figure differs**.
 4. Preconditions of the generation itself (not of this freeze): Suvarṇa's L1 rebuild + the AM-10 daśā re-pin landed; publication row for `4.1`.
 5. Generate the extract with the §2 command → write `FREEZE_STAGE2_4_1_v1.json` (`run_id`, `stage1_sha256`, `extracts.<file>.sha256`) → **commit before opening the extract**.

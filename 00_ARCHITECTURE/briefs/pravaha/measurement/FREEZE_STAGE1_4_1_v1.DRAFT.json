@@ -9,15 +9,22 @@
  },
  "addendum": {
   "artifact": "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING",
-  "version": "1.3"
+  "version": "1.4",
+  "note": "v1.4 = v1.3 + §1a (the '4.1' si mapping); supersedes v1.3"
  },
  "registries_selected": {
   "event_registry": "v2_3 (47 held-out: 32 timing-usable + 15 year-grain; exact 5, interval 4)",
   "governed_registry_rows": "n/a — '4.1' is a legacy-kernel generation read from kala_gochara_windows, not a governed '5.x' build (no activity_kernel/graduated_drishti/vedha rows are consumed)"
  },
- "orb_state": "<<CONFIRM: n/a for '4.1' (orbs as built by the legacy kernel); ND-ORB-ADMISSION / ND-ORB-SCALE bind governed '5.x' only>>",
+ "orb_state": {
+  "text": "the 4.1 candidate uses the 4.x chain's own activity orb as declared in its manifest input vector (unratified); the value is READ from the manifest at freeze, never taken from this file. ND-ORB-ADMISSION / ND-ORB-SCALE bind governed 5.x rule versions only.",
+  "manifest_location": "kala_gochara_publication.input_generation_vector (one row per chart x generation), keys `orb_max_deg` and `orb_ruling`",
+  "writer_declares": "ka_gochara_v4_41_candidate.py ORB_DEG = 5.0 -> vector['orb_max_deg']; vector['orb_ruling'] = 'M-1 fallback no-box x 5.0 deg (unratified)'  (the writer's source comment calls it 'M-1 ratified candidate-1 enumeration orb'; the manifest string says 'unratified' — the MANIFEST string is what this freeze quotes; discrepancy disclosed)",
+  "readback_command": "python3 -m services.gochara_eval.dump_extract --generation 4.1 --read-manifest-orb  (read-only; reads no window row)",
+  "manifest_readback": "<<READ_AT_FREEZE: output of readback_command — orb_max_deg, orb_ruling, manifest_status>>"
+ },
  "conventions": {
-  "si_mapping": "'4.1': si := signed_intensity of kala_gochara_windows (the column the pinned '3.0' extract used; NUMERIC NOT NULL, so zero unknown competitors are possible and the run asserts unknown_si_rows = 0, else it is disclosed). The addendum's si := evidence_for mapping is for governed '5.x' eval-window rows, which have no evidence_for column in kala_gochara_windows.",
+  "si_mapping": "'4.1': si := raw_intensity of kala_gochara_windows, exactly as stored (the unsigned magnitude) — SI addendum v1.4 §1a. NOT signed_intensity: the 4.x writer stores signed_intensity = raw_intensity x (-1 if is_adverse else 1), negative on every adverse window, which protocol §4.5 rejects. Like-for-like with '3.0': in generation '3.0' signed_intensity == raw_intensity on all 914 rows (none negative; 330 adverse rows positive), so the pinned '3.0' si is the same quantity. The extract command stops if any row has |signed_intensity| != raw_intensity or raw_intensity < 0. raw_intensity is NOT NULL, so no unknown competitor can occur in a '4.1' extract: the run asserts unknown_si_rows = 0 and discloses any other value. The governed-5.x mapping (si := evidence_for) is untouched.",
   "utc_to_ist": "dates converted to IST civil dates via (ts at time zone 'Asia/Kolkata')::date, applied in the extract SQL (services/gochara_eval/dump_extract.py SQL_DUMP)",
   "merge_implementation": "services/gochara_eval/candidate.py merge_candidates — protocol §4.2: overlapping/abutting same-class windows (we+1 day >= next ws) merged; representative = max si, ties (|Δ|<=1e-9) -> earliest peak; a group with any unknown member has an unqualified representative",
   "stored_value_precision": "si read as NUMERIC and converted to IEEE double via Decimal->float; JSON serialised with Python's shortest round-trip repr; dates ISO yyyy-mm-dd",
@@ -44,7 +51,7 @@
   "pinned_at": "<<PINNED_AT_DATE>>",
   "out": "../../00_ARCHITECTURE/briefs/pravaha/measurement/baseline_4_1_extract_v1_0.json"
  },
- "extract_environment": "run from platform/python-sidecar on the merged commit; read-only role; GOCHARA_EVAL_READONLY_DSN (or --libpq-env); one SELECT in a READ ONLY transaction after the horizon assertion (0)",
+ "extract_environment": "run from platform/python-sidecar on the merged commit; read-only role; GOCHARA_EVAL_READONLY_DSN (or --libpq-env); READ ONLY transaction: sign reconciliation (0 / 0), horizon assertion (0), then ONE ordered SELECT",
  "cohort": {
   "held_out": 47,
   "timing_usable": 32,
@@ -66,7 +73,7 @@
   "t_rank": "median rank percentile <= 25 with >= 17 of 32 timing-usable eligible, else rank-unproven (blocks flip); VOID on era-fingerprint >= 50 %; eligibility reduced (never floor relaxed) by non-invariant plateau verdicts",
   "t_fp_adverse": "per adverse class: admitted day-fraction <= min(1, 3*n_c*90/H) (n_c=0 -> allowance of n_c=1)",
   "t_fp_gain": "every non-adverse non-birth_anchor class with rows: 0.5 % - 40 % of horizon days",
-  "t_honesty": "computation-coverage manifest REQUIRED for '4.1' (>= 50 % per class); absent => UNVERIFIABLE and not flip-eligible",
+  "t_honesty": "UNVERIFIABLE — pre-declared. A computation-coverage manifest is required for '4.1' (>= 50 % per class), but whether the candidate chain writes kala_gochara_coverage rows for '4.1' and with what completeness semantics is an open question to Stream A (steward M20261002T042015-7bff); until it is answered T-honesty stays an honest null (UNVERIFIABLE, not flip-eligible, per protocol §6.5b). The '3.0' manifest is never substituted.",
   "random_controls": "REPRODUCED"
  },
  "tolerances_and_conversions": {
@@ -110,10 +117,6 @@
    "path": "EVALUATION_PROTOCOL_v2_3.md",
    "sha256": "a8353dc48563e08710f1fc6815ace2f15b7e9db5eec5d4ebea1e6dde1120514e"
   },
-  "si_addendum_v1_3": {
-   "path": "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_3.md",
-   "sha256": "864d06cb911fefb76902e8d45511a2e096c08fbcfa109639980db455ce5a1017"
-  },
   "unknown_competitor_bounds_model": {
    "path": "unknown_competitor_bounds_model.py",
    "sha256": "83b5ea6ecbe4683421bba31e18f29349ec2bdbf1aa18023ce1cd84abc18e7377"
@@ -129,6 +132,11 @@
   "amendments_draft": {
    "path": "../design/GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT.md",
    "sha256": "<<RECOMPUTE_AT_FREEZE: sha256 of the amendments draft as then current (v0.21 today = 2a4b438d8cc78c0063c7a635245c91ad27e643d32480044e1e42fc3241de5455)>>"
+  },
+  "si_addendum_v1_4": {
+   "path": "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_4.md",
+   "sha256": "08f0de3416ebd70ce380821b3697895d72f2f5f75162880a36d0589dd9495593"
   }
- }
+ },
+ "coverage_manifest": "UNVERIFIABLE (pre-declared; supplied to the scorer as None). Amend by a new dated freeze only, never after a result has been inspected."
 }
