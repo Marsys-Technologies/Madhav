@@ -7,7 +7,14 @@ a STOP, not a re-pin. This tool produces the evidence and, only with --apply and
 nothing stops it, performs the single change.
 
     python3 scripts/gochara/repin_dasha_contract.py --new-build-id <uuid> \\
-        [--chart-id 482012f1-…] [--out evidence.md] [--forensic-report path] [--apply]
+        [--chart-id 482012f1-…] [--out evidence.md] [--forensic-report path]
+        [--settled-notice notice.json]      # Suvarṇa's SETTLED-1 notice: expected per-level shift + a STATED tolerance — the measured shift must match or the verdict is STOP
+        [--dry-run]                          # print the full report and the test-literal matches; write NOTHING
+        [--apply --hold-lifted <steward message id> [--rulings rulings.json]]
+
+ST-SL1-HOLD (steward M20261002T223058-f6e4): from the start of Suvarṇa's S-L1 window until the steward announces 'SETTLED-1 received AND daśā re-pin merged', no Gochara build / verification /
+brief / resonance run / measurement extract runs against production chart 482012f1. --apply is REFUSED (exit 2) without --hold-lifted <the announcement's message id>. Test literals equal to
+an old boundary are listed and --apply STOPS before writing anything until --rulings classifies each `path:line` as rewrite or keep (the steward's ruling).
 
 READ-ONLY against the database (the connection is set READ ONLY); --apply edits only
 files in this repository:
@@ -31,6 +38,7 @@ Evidence item (e) — the seven FORENSIC anchors — is supplied by the L1 owner
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import statistics
@@ -138,6 +146,43 @@ def lord_flips(old_rows: list[dict], new_rows: list[dict], instants: list[str]) 
     return flips
 
 
+class NeedsRuling(Exception):
+    """--apply found test literals nobody has ruled on: nothing was written."""
+    def __init__(self, unclassified: list[str]):
+        super().__init__(f"{len(unclassified)} test literal(s) need the steward's ruling")
+        self.unclassified = unclassified
+
+
+def load_notice(path: str) -> dict:
+    """Suvarṇa's SETTLED-1 notice as JSON: {"settled_1": true, "new_build_id": "<uuid>", "expected_shift_seconds": {"1": 6993, "2": 6993, "3": 6993}, "tolerance_seconds": 2}
+    (a level may instead give {"start": n, "end": n}). The tolerance is STATED by the notice — there is no default."""
+    d = json.loads(Path(path).read_text(encoding="utf-8"))
+    if d.get("settled_1") is not True or not isinstance(d.get("expected_shift_seconds"), dict) or not isinstance(d.get("tolerance_seconds"), (int, float)) or isinstance(d.get("tolerance_seconds"), bool) or d["tolerance_seconds"] < 0:
+        raise ValueError("the SETTLED-1 notice must carry settled_1: true, expected_shift_seconds per level and a stated tolerance_seconds >= 0")
+    return d
+
+
+def shift_problems(stats: dict, notice: dict | None) -> list[str]:
+    """Steward M20261002T223121-b4d9 (d): the MEASURED per-level shift must match the EXPECTED one from the notice within its stated tolerance; an unexpected shift is a STOP, never silently
+    'boundary-sensitive'. Every measured side's min AND max are checked; a level in the notice that has no measurement, or a measured level the notice does not name, is a problem."""
+    if notice is None:
+        return ["INCOMPLETE: no --settled-notice (the expected per-level shift from Suvarṇa's SETTLED-1 notice)"]
+    exp, tol, out = notice["expected_shift_seconds"], notice["tolerance_seconds"], []
+    for lv in sorted(set(stats) | {int(k) for k in exp}):
+        e = exp.get(str(lv))
+        if lv not in stats:
+            out.append(f"level {LEVEL_NAME.get(lv, lv)}: named in the notice but not measured"); continue
+        if e is None:
+            out.append(f"level {LEVEL_NAME.get(lv, lv)}: measured but the notice states no expected shift"); continue
+        want = {"start": e, "end": e} if isinstance(e, (int, float)) and not isinstance(e, bool) else e
+        for side in ("start", "end"):
+            for stat in ("min", "max"):
+                got = stats[lv][side][stat]
+                if abs(got - want[side]) > tol:
+                    out.append(f"level {LEVEL_NAME.get(lv, lv)} {side} {stat} shift {got:.0f} s is outside the notice's {want[side]} s ± {tol} s")
+    return out
+
+
 def path_lord_flips(old: dict, new: dict, matched: list) -> list[dict]:
     """D7 (steward M20261002T222913-35c5): EVERY matched (level, path) row — not only the pinned reference rows — must keep its lord. A boundary that MOVED (the Moshier → Swiss
     ≈ 1.94 h shift) is not a flip; a different lord at the same (level, path) is. Returns the differences (empty = lords hold)."""
@@ -178,8 +223,8 @@ def remeasure_reference_rows(old: dict, new: dict) -> tuple[list[dict], list[str
     return maps, problems
 
 
-def decide(*, new_tier_ok: bool, new_integrity: dict, m: dict, flips: list, ref_problems: list, forensic_report: str | None) -> list[str]:
-    stops = []
+def decide(*, new_tier_ok: bool, new_integrity: dict, m: dict, flips: list, ref_problems: list, forensic_report: str | None, shift_issues: list[str] | None = None) -> list[str]:
+    stops = list(shift_issues or [])
     if not new_tier_ok:
         stops.append("new build is not tier two_pass_verified")
     if new_integrity["orphans"]:
@@ -232,9 +277,20 @@ def rewrite_once(text: str, mapping: dict[str, str]) -> str:
     return pat.sub(lambda m_: mapping[m_.group(0)], text)
 
 
-def apply_repin(new_id: str, maps: list[dict], repo_root: Path, review: list[str] | None = None) -> list[str]:
-    """Rewrites (a) permission.py: the pin, the reference rows' ids and instants — one pass; (b) tests/l3: ONLY the unambiguous literals (the reference rows' ids and the pin's build id).
-    An OLD BOUNDARY INSTANT found in a test is NOT rewritten (it may be an event date that merely equals a boundary — D8): it is appended to `review` as `path:line literal -> new`."""
+def scan_test_literals(instants: dict[str, str], repo_root: Path) -> list[tuple[str, int, str, str]]:
+    out = []
+    for p in sorted((SIDECAR / "tests" / "l3").rglob("*.py")):
+        for ln, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
+            for a_, b_ in instants.items():
+                if a_ in line:
+                    out.append((str(p.relative_to(repo_root)), ln, a_, b_))
+    return out
+
+
+def apply_repin(new_id: str, maps: list[dict], repo_root: Path, rulings: dict | None = None, review: list[str] | None = None) -> list[str]:
+    """Rewrites (a) permission.py: the pin, the reference rows' ids and instants — ONE pass; (b) tests/l3: the reference rows' ids and the old pin's build id (they ARE reference rows).
+    An OLD BOUNDARY INSTANT found in a test is NEVER rewritten automatically (it may be an event date that merely equals a boundary — D8): each match is listed as `path:line old -> new`
+    and --apply STOPS before writing ANYTHING (`NeedsRuling`) unless every match is classified in `rulings` = {"rewrite": ["path:line", …], "keep": ["path:line", …]} (the steward's ruling)."""
     changed = []
     perm = SIDECAR / "services" / "gochara_rules" / "permission.py"
     s = perm.read_text(encoding="utf-8")
@@ -248,19 +304,29 @@ def apply_repin(new_id: str, maps: list[dict], repo_root: Path, review: list[str
         for side in ("start_iso", "end_iso"):
             assert _WHOLE_SECOND_Z.fullmatch(n[side]), f"new instant {n[side]!r} is not whole-second …Z (permission.py compares these lexicographically)"
             instants[o[side]] = n[side]
+    matches = scan_test_literals(instants, repo_root)
+    ruled = {**{k: "rewrite" for k in (rulings or {}).get("rewrite", [])}, **{k: "keep" for k in (rulings or {}).get("keep", [])}}
+    unclassified = [f"{p}:{ln} {a_} -> {b_}" for p, ln, a_, b_ in matches if f"{p}:{ln}" not in ruled]
+    if review is not None:
+        review.extend(f"{p}:{ln} {a_} -> {b_} [{ruled.get(f'{p}:{ln}', 'UNRULED')}]" for p, ln, a_, b_ in matches)
+    if unclassified:
+        raise NeedsRuling(unclassified)                                              # nothing has been written
     s = rewrite_once(s, {**ids, **instants, f'"build_id": "{old_id}"': f'"build_id": "{new_id}"'})
     perm.write_text(s, encoding="utf-8")
     changed.append(str(perm.relative_to(repo_root)))
+    by_file: dict[str, dict[int, dict[str, str]]] = {}
+    for p, ln, a_, b_ in matches:
+        if ruled.get(f"{p}:{ln}") == "rewrite":
+            by_file.setdefault(p, {}).setdefault(ln, {})[a_] = b_
     for p in sorted((SIDECAR / "tests" / "l3").rglob("*.py")):
         txt = p.read_text(encoding="utf-8")
-        new_txt = rewrite_once(txt, {**ids, old_id: new_id})
-        if review is not None:
-            for ln, line in enumerate(txt.splitlines(), 1):
-                for a_, b_ in instants.items():
-                    if a_ in line:
-                        review.append(f"{p.relative_to(repo_root)}:{ln} {a_} -> {b_}")
+        rel = str(p.relative_to(repo_root))
+        lines = txt.splitlines(keepends=True)
+        for ln, mp in by_file.get(rel, {}).items():
+            lines[ln - 1] = rewrite_once(lines[ln - 1], mp)                            # ONLY the ruled lines
+        new_txt = rewrite_once("".join(lines), {**ids, old_id: new_id})
         if new_txt != txt:
-            p.write_text(new_txt, encoding="utf-8"); changed.append(str(p.relative_to(repo_root)))
+            p.write_text(new_txt, encoding="utf-8"); changed.append(rel)
     gen = SIDECAR / "tests" / "l3" / "gochara_rules" / f"test_am10_repin_{new_id[:8]}.py"
     gen.write_text(GENERATED_TEST.format(old=old_id, new=new_id), encoding="utf-8")
     changed.append(str(gen.relative_to(repo_root)))
@@ -307,7 +373,15 @@ def main(argv=None, *, conn=None) -> int:
     ap.add_argument("--out", default=None)
     ap.add_argument("--forensic-report", default=None)
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--dry-run", action="store_true", help="print the full report and the test-literal matches; write NOTHING (no --out, no --apply)")
+    ap.add_argument("--settled-notice", default=None, help="JSON of Suvarṇa's SETTLED-1 notice: expected per-level shift + a stated tolerance (see load_notice)")
+    ap.add_argument("--hold-lifted", default=None, help="the steward's message id announcing 'SETTLED-1 received AND daśā re-pin merged' — ST-SL1-HOLD; REQUIRED for --apply")
+    ap.add_argument("--rulings", default=None, help="JSON {rewrite: [path:line…], keep: [path:line…]} — the steward's ruling on test literals that equal an old boundary")
     a = ap.parse_args(argv)
+    if a.dry_run and a.apply:
+        print("--dry-run and --apply are mutually exclusive", file=sys.stderr); return 2
+    if a.apply and not a.hold_lifted:
+        print("--apply refused: ST-SL1-HOLD — pass --hold-lifted <steward message id> once the steward has announced 'SETTLED-1 received AND daśā re-pin merged'", file=sys.stderr); return 2
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     if a.new_build_id == old_id:
         print("new build equals the current pin — nothing to re-pin", file=sys.stderr); return 2
@@ -324,21 +398,39 @@ def main(argv=None, *, conn=None) -> int:
     flips = path_lord_flips(old_idx, new_idx, m["matched"])                       # D7: every matched row keeps its lord — the STOP
     sensitive = lord_flips(old_rows, new_rows, oracle_instants()) if new_rows else []   # instants whose lord differs because a boundary MOVED — reported, D8
     maps, ref_problems = remeasure_reference_rows(old_idx, new_idx)
+    try:
+        notice = load_notice(a.settled_notice) if a.settled_notice else None
+    except (OSError, ValueError) as exc:
+        print(f"STOP — {exc}", file=sys.stderr); return 3
     stops = decide(new_tier_ok=new_tier_ok, new_integrity=integrity(new_rows), m=m, flips=flips,
-                   ref_problems=ref_problems, forensic_report=a.forensic_report)
+                   ref_problems=ref_problems, forensic_report=a.forensic_report, shift_issues=shift_problems(stats, notice))
+    if notice is not None and notice.get("new_build_id") not in (None, a.new_build_id):
+        stops.append(f"the SETTLED-1 notice names build {notice.get('new_build_id')}, not {a.new_build_id}")
     report = render(old_id=old_id, new_id=a.new_build_id, chart_id=a.chart_id, o_int=integrity(old_rows),
                     n_int=integrity(new_rows), m=m, stats=stats, flips=flips, sensitive=sensitive, maps=maps, stops=stops)
-    if a.out:
+    if a.out and not a.dry_run:
         Path(a.out).write_text(report, encoding="utf-8")
     print(report)
     if stops:
         print("STOP — not re-pinning.", file=sys.stderr); return 3
+    if a.dry_run or not a.apply:
+        # list every test literal equal to an old boundary so the ruling can be prepared (nothing is written)
+        inst = {x["old"][side]: x["new"][side] for x in maps for side in ("start_iso", "end_iso")}
+        for p_, ln, a_, b_ in scan_test_literals(inst, SIDECAR.parents[1]):
+            print(f"TEST LITERAL (needs ruling at --apply): {p_}:{ln} {a_} -> {b_}")
     if a.apply:
+        rulings = json.loads(Path(a.rulings).read_text(encoding="utf-8")) if a.rulings else None
         review: list[str] = []
-        for f in apply_repin(a.new_build_id, maps, SIDECAR.parents[1], review=review):
-            print("changed:", f)
+        try:
+            for f in apply_repin(a.new_build_id, maps, SIDECAR.parents[1], rulings=rulings, review=review):
+                print("changed:", f)
+        except NeedsRuling as exc:
+            for r in exc.unclassified:
+                print("NEEDS RULING (nothing written):", r, file=sys.stderr)
+            print("STOP — test literals equal to an old boundary need the steward's ruling (--rulings).", file=sys.stderr); return 3
+        print(f"ST-SL1-HOLD lifted per {a.hold_lifted}")
         for r in review:
-            print("REVIEW (NOT rewritten — a human decides whether this literal is a daśā boundary or an event date):", r)
+            print("ruled:", r)
     return 0
 
 

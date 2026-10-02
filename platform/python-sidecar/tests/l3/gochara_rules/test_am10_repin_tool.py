@@ -122,8 +122,16 @@ def test_apply_rewrites_the_pin_the_reference_rows_and_literals_and_generates_th
     new_id = "22222222-2222-4222-8222-222222222222"
     maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z",
                                  "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    # (e) a test literal equal to an old boundary is NOT rewritten automatically: apply STOPS before writing ANYTHING until the ruling classifies it
+    perm_before = (tmp_path / "services" / "gochara_rules" / "permission.py").read_text(encoding="utf-8")
+    with pytest.raises(T.NeedsRuling) as nr:
+        T.apply_repin(new_id, maps, tmp_path)
+    assert any("test_literal.py:2" in u for u in nr.value.unclassified)
+    assert (tmp_path / "services" / "gochara_rules" / "permission.py").read_text(encoding="utf-8") == perm_before     # nothing written
+    assert not list((tmp_path / "tests" / "l3" / "gochara_rules").glob("test_am10_repin_*.py"))
+    rel = "tests/l3/gochara_rules/test_literal.py"
     review: list[str] = []
-    changed = T.apply_repin(new_id, maps, tmp_path, review=review)
+    changed = T.apply_repin(new_id, maps, tmp_path, rulings={"keep": [f"{rel}:2"]}, review=review)
     p = (tmp_path / "services" / "gochara_rules" / "permission.py").read_text(encoding="utf-8")
     old_id = PERM.DASHA_READ_CONTRACT["build_id"]
     assert f'"build_id": "{new_id}"' in p and f'"build_id": "{old_id}"' not in p     # (the old id may survive in the module docstring as history)
@@ -133,7 +141,7 @@ def test_apply_rewrites_the_pin_the_reference_rows_and_literals_and_generates_th
     assert "99999999-9999-4999-8999-999999999999" in text and new_id in text
     # D8: an old BOUNDARY INSTANT in a test is NOT rewritten (it may be an event date that merely equals a boundary) — it is listed for a human
     assert f'T = "{ref["start_iso"]}"' in text and "2013-01-14T09:13:56Z" not in text
-    assert any("test_literal.py:2" in r and ref["start_iso"] in r and "2013-01-14T09:13:56Z" in r for r in review)
+    assert any("test_literal.py:2" in r and ref["start_iso"] in r and "2013-01-14T09:13:56Z" in r and "[keep]" in r for r in review)
     assert "OTHER = \"2099-01-01T00:00:00Z\"" in text                        # unrelated literals untouched
     gen = tmp_path / "tests" / "l3" / "gochara_rules" / "test_am10_repin_22222222.py"
     assert gen.exists() and PERM.DASHA_READ_CONTRACT["build_id"] in gen.read_text(encoding="utf-8") and "DashaReadConflict" in gen.read_text(encoding="utf-8")
@@ -188,3 +196,54 @@ def test_a_non_whole_second_new_instant_is_refused_by_apply(monkeypatch, tmp_pat
     bad = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56.5Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
     with pytest.raises(AssertionError, match="whole-second"):
         T.apply_repin("22222222-2222-4222-8222-222222222222", bad, tmp_path)
+
+
+def test_a_ruling_to_rewrite_changes_ONLY_the_ruled_line(monkeypatch, tmp_path):
+    (tmp_path / "services" / "gochara_rules").mkdir(parents=True)
+    (tmp_path / "tests" / "l3" / "gochara_rules").mkdir(parents=True)
+    (tmp_path / "services" / "gochara_rules" / "permission.py").write_text(pathlib.Path(PERM.__file__).read_text(encoding="utf-8"), encoding="utf-8")
+    ref = PERM.AD_ROWS[0]
+    lit = tmp_path / "tests" / "l3" / "gochara_rules" / "test_two.py"
+    lit.write_text(f'A = "{ref["start_iso"]}"   # a boundary\nB = "{ref["start_iso"]}"   # an EVENT date that merely equals it\n', encoding="utf-8")
+    monkeypatch.setattr(T, "SIDECAR", tmp_path)
+    maps = [{"old": ref, "new": {"dasha_row_id": "99999999-9999-4999-8999-999999999999", "start_iso": "2013-01-14T09:13:56Z", "end_iso": "2014-01-11T14:11:56Z", "lord_graha": ref["lord"]}, "key": (2, (0,))}]
+    rel = "tests/l3/gochara_rules/test_two.py"
+    T.apply_repin("22222222-2222-4222-8222-222222222222", maps, tmp_path, rulings={"rewrite": [f"{rel}:1"], "keep": [f"{rel}:2"]})
+    a, b = lit.read_text(encoding="utf-8").splitlines()[:2]
+    assert "2013-01-14T09:13:56Z" in a and ref["start_iso"] in b
+
+
+def test_the_measured_shift_must_match_the_settled_notice_within_its_stated_tolerance():
+    old, new = T.index_paths(build("old")), T.index_paths(build("new", shift_s=6993))
+    stats = T.shift_stats(old, new, T.match(old, new)["matched"])
+    ok = {"settled_1": True, "expected_shift_seconds": {"1": 6993, "2": 6993}, "tolerance_seconds": 2}
+    assert T.shift_problems(stats, ok) == []
+    assert T.shift_problems(stats, {**ok, "expected_shift_seconds": {"1": 6993, "2": 3600}})            # level 2 shifted by 6993 s, the notice expects 3600 s ⇒ refuse
+    assert any("not measured" in p for p in T.shift_problems(stats, {**ok, "expected_shift_seconds": {"1": 6993, "2": 6993, "3": 6993}}))
+    assert any("states no expected shift" in p for p in T.shift_problems(stats, {**ok, "expected_shift_seconds": {"1": 6993}}))
+    assert any("no --settled-notice" in p for p in T.shift_problems(stats, None))
+    assert T.shift_problems(stats, {**ok, "expected_shift_seconds": {"1": {"start": 6993, "end": 6993}, "2": 6993}}) == []
+    assert T.shift_problems(stats, {**ok, "tolerance_seconds": 0}) == []                                      # exact is allowed when the data is exact
+    assert T.shift_problems(stats, {**ok, "expected_shift_seconds": {"1": 6990, "2": 6993}, "tolerance_seconds": 2})   # 3 s off with ±2 ⇒ refuse
+
+
+def test_the_settled_notice_must_state_its_tolerance_and_settle_1(tmp_path):
+    good = tmp_path / "n.json"
+    good.write_text('{"settled_1": true, "expected_shift_seconds": {"1": 6993}, "tolerance_seconds": 2}', encoding="utf-8")
+    assert T.load_notice(str(good))["tolerance_seconds"] == 2
+    for bad in ('{"settled_1": true, "expected_shift_seconds": {"1": 6993}}', '{"settled_1": false, "expected_shift_seconds": {}, "tolerance_seconds": 1}',
+                '{"settled_1": true, "expected_shift_seconds": {"1": 1}, "tolerance_seconds": true}', '{"settled_1": true, "expected_shift_seconds": {"1": 1}, "tolerance_seconds": -1}'):
+        p = tmp_path / "b.json"; p.write_text(bad, encoding="utf-8")
+        with pytest.raises(ValueError):
+            T.load_notice(str(p))
+
+
+def test_apply_is_refused_without_the_hold_lift_and_dry_run_excludes_apply_and_writes_nothing(monkeypatch, tmp_path, capsys):
+    new = "11111111-1111-4111-8111-111111111111"
+    assert T.main(["--new-build-id", new, "--apply"], conn=object()) == 2
+    assert "ST-SL1-HOLD" in capsys.readouterr().err
+    assert T.main(["--new-build-id", new, "--apply", "--dry-run", "--hold-lifted", "M1"], conn=object()) == 2
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", lambda conn, chart, **kw: [])
+    out = tmp_path / "evidence.md"
+    assert T.main(["--new-build-id", new, "--dry-run", "--out", str(out)], conn=object()) == 3        # absent build ⇒ STOP, and …
+    assert not out.exists()                                                                          # … a dry run writes no file
