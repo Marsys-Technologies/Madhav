@@ -758,7 +758,8 @@ def test_d1_the_engine_itself_refuses_a_per_claimant_condition_with_its_own_vali
 
 
 def test_d1_a_repair_may_not_merge_or_split_words_its_to_must_be_whole_words_of_the_sentence():
-    ef = dict(SPEC["extra_fields"][0], repairs=RP + [{"from": "ang ", "to": "ang", "evidence": EVID}])
+    ef = {k: v for k, v in SPEC["extra_fields"][0].items() if k != "anchors"}                      # (the optional anchors would catch it too)
+    ef["repairs"] = RP + [{"from": "ang ", "to": "ang", "evidence": EVID}]
     spec = dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]])
     d1.validate_spec(spec, "x")                                                                    # fine for the spec check: similar, short, evidenced
     assert _sun_cond(TRUE_COND.replace("anguish", "ang uish"), spec)["v"] == "PARTIAL"            # "ang"+"uish" is not a word of the sentence
@@ -776,6 +777,23 @@ def test_d1_ocr_stops_are_a_short_list_of_stop_ending_literals():
         with pytest.raises(d1.SpecError, match="condition"):
             d1.validate_spec(dict(SPEC, extra_fields=[dict(ef, condition=dict(COND, ocr_stops=bad)), SPEC["extra_fields"][1]]), "x")
     d1.validate_spec(dict(SPEC, extra_fields=[dict(ef, condition=dict(COND, ocr_stops=["a.", "b.", "c.", "d."])), SPEC["extra_fields"][1]]), "x")
+
+
+def test_d1_the_engine_refuses_a_per_claimant_condition_with_another_start_even_when_the_lead_in_is_the_same():
+    """Shared and per-claimant declarations both carry NO start_after, so only the START distinguishes them (an engine guard of its own)."""
+    head = dict(text=_span("Sloka 42-44", "forward Lattas."), start="Sloka 42-44", end="forward Lattas.")
+    second = dict(text=_span("The 5th star reckoned", "Mercury;"), start="The 5th star reckoned", end="Mercury;", ocr_stops=["Adh."])
+    assert d1._cut_sentence(_passage(), second) == d1._toks(second["text"])
+    ef = dict(SPEC["extra_fields"][0], condition=head, by_claimant={"Sun": second})
+    ef.pop("anchors")
+    spec = dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]])
+    rows = copy.deepcopy(ROWS)
+    for r in rows:
+        r["affliction_condition"] = second["text"] if r["graha"] == "Sun" else head["text"]
+    r = _measure(rows=rows, spec=spec)
+    assert [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", ["affliction_condition"])]
+    ok = dict(ef, by_claimant={"Sun": dict(head)})
+    assert _measure(rows=[dict(r, affliction_condition=head["text"]) for r in rows], spec=dict(SPEC, extra_fields=[ok, SPEC["extra_fields"][1]]))["v"] == "PASS"
 
 
 def test_d1_by_claimant_cannot_name_more_claimants_than_the_table_has_rows():
