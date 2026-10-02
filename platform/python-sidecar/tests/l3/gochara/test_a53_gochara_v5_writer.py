@@ -246,6 +246,9 @@ def _record_phase_fakes(monkeypatch):
         def ensure_kala_convention(self, vector=None, probe=None):
             return "sha256:kala"
 
+        def p1_anchor_columns_available(self):
+            return False                      # the applied schema has no 1233 (the production default)
+
     class _FakeInventoryStore:
         def __init__(self, conn):
             pass

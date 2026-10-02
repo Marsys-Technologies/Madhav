@@ -213,21 +213,19 @@ def _require_pinned_chart(chart_id) -> None:
             "surface until steward pins 3-7 land)")
 
 
-def _house_resolver(context: dict):
+def _house_resolver(context: dict, *, p1_minting: bool = False):
     """house_for(edge, sign) from the chart context, whole-sign from the
     edge's frame anchor: lagna → lagna sign; moon → natal Moon sign;
     bhavat_bhavam:<H> → the H-th house's sign from lagna.
 
-    `dasha_lord` (AM-20, ND-P1-FRAME): the inclusive count from the NATAL sign of the period lord that
-    anchors the record (`edge.period_lord`; the DB's `dasha_lord` frame carries no arg) — resolved through
-    Stream B's `frames` (called, never copied). It is a stored DESCRIPTOR only: nothing in P1 — no
-    predicate, factor, admission or channel — reads it; the natal relation to H stays AM-15's lagna count.
-    An edge with no `period_lord` (or a lord with no natal position) has no anchor ⇒ the occurrence is NOT
-    minted (kgrr_evaluated_has_house_ck — a state, never an omission)."""
-    from services.gochara_rules import frames as rules_frames
+    `dasha_lord` (AM-20 REVISED, ND-P1-FRAME; Phaladīpikā XX.34 "the Bhava it represents when counted from
+    the Lagna", XX.59): the inclusive count FROM THE LAGNA — a stored DESCRIPTOR only: nothing in P1 (no
+    predicate, factor, admission or channel) reads it; the natal relation to H stays AM-15's lagna count.
+    It resolves ONLY while `p1_minting` is True: P1 minting is gated on the applied schema carrying the
+    period-anchor columns (`P1_MINTING_GATE`, migration 1233) — until then a `dasha_lord` occurrence has no
+    resolvable record key, so it is NOT minted (kgrr_evaluated_has_house_ck — a state, never an omission)."""
     lagna_idx = int(context["lagna_deg"] // 30)
     moon_idx = int(context["natal"]["Moon"] // 30)
-    chart = {"lagna_deg": context["lagna_deg"], "natal": context["natal"]}
 
     def house_for(edge, sign: str) -> int | None:
         s = _SIGNS.index(sign.lower())
@@ -237,15 +235,30 @@ def _house_resolver(context: dict):
             anchor = moon_idx
         elif edge.frame_kind == "bhavat_bhavam" and edge.frame_arg:
             anchor = (lagna_idx + int(edge.frame_arg) - 1) % 12
-        elif edge.frame_kind == "dasha_lord":
-            if not edge.period_lord or edge.period_lord.title() not in chart["natal"]:
-                return None
-            frame = rules_frames.Frame("dasha_lord", edge.period_lord.title())
-            return rules_frames.house_of(s * 30.0 + 15.0, frame, chart)
+        elif edge.frame_kind == "dasha_lord" and p1_minting:
+            anchor = lagna_idx
         else:
             return None
         return (s - anchor) % 12 + 1
     return house_for
+
+
+#: The named switch (steward M20261002T031247-e16e): P1 transit records carry a period ANCHOR (lord + level) in
+#: their natural key (Stream B's additive migration 1233 — `period_anchor_lord`, `period_anchor_level`; no
+#: existing column can carry it). Records minted without it are mis-keyed for the XX.38 forms, so P1 minting is
+#: OFF unless the APPLIED schema has both columns AND this writer implements writing them.
+P1_MINTING_GATE = "p1_minting_requires_period_anchor_columns"
+P1_ANCHOR_MINTING_IMPLEMENTED = False       # flips with the 1233 implementation (oracle O-PP-5)
+
+
+def p1_minting_closed_reason(conn) -> str | None:
+    """None when P1 transit records may be minted; else the NAMED reason they are not. Read from the applied
+    schema (like the 1232 Moon-scope gate) — never assumed, never a flag someone forgot to flip."""
+    if not RecordStore(conn).p1_anchor_columns_available():
+        return P1_MINTING_GATE
+    if not P1_ANCHOR_MINTING_IMPLEMENTED:
+        return "p1_anchor_minting_not_implemented"
+    return None
 
 
 @register(ASSET_ID)
@@ -569,7 +582,8 @@ class GocharaV5Writer(WriterBase):
                     "fallback is a named failure, never a silent probe)")
             return lon
 
-        house_for = _house_resolver(context)
+        p1_closed = p1_minting_closed_reason(ctx.db_conn)
+        house_for = _house_resolver(context, p1_minting=p1_closed is None)
 
         # 3/N point solves: one full-domain arc index per body, built lazily
         # (only grains with conjunction/aspect point edges pay for it); the
@@ -652,9 +666,10 @@ class GocharaV5Writer(WriterBase):
             # snapshot-bound daśā rows) and must equal what was stored
             verify_p1_support(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                               event_class=event_class)
-            # AM-20: the stored house descriptor is the count from the anchoring period lord's natal sign
+            # AM-20 (revised): the stored house descriptor is the count from the lagna
             verify_p1_house_descriptor(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                                        event_class=event_class)
+        gate_note = (f"; P1 transit records NOT minted — {p1_closed}" if path_id == "P1" and p1_closed else "")
         return WriterResult(
             asset_id=self.asset_id, rows_inserted=inserted,
             notes=(f"{event_class}/{path_id}: {counts['records']} transit "
@@ -668,7 +683,8 @@ class GocharaV5Writer(WriterBase):
                    f"defects); "
                    f"{counts['prereq_evaluated']} prerequisite results "
                    f"evaluated; dasha_build="
-                   f"{dasha_contract['build_id'] if dasha_contract['read'] else 'not_read'}"))
+                   f"{dasha_contract['build_id'] if dasha_contract['read'] else 'not_read'}"
+                   f"{gate_note}"))
 
     # ------------------------------------------------------------------
 

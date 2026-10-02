@@ -1,15 +1,15 @@
-"""A5.3 — AM-20 (ND-P1-FRAME): the P1 `dasha_lord` house DESCRIPTOR (steward M20261002T…, Stream B's
-`design/P1_FRAME_ANSWER_v1_0.md`).
+"""A5.3 — AM-20 (ND-P1-FRAME), REVISED by Stream B's `P1_FRAME_ANSWER_v1_1` (steward M20261002T031247-e16e).
 
-`house_from_frame` of a P1 transit record is the inclusive whole-sign count from the NATAL sign of the period
-lord that anchors the record — resolved through Stream B's `frames` (called, not copied). It is a stored
-DESCRIPTOR only: no predicate, factor, admission or channel reads it. The natal relation to H stays AM-15's
-lagna count, and P1 records stay unscored (`value_mapping_undeclared`).
+`house_from_frame` of a P1 transit record is the inclusive whole-sign count FROM THE LAGNA (Phaladīpikā XX.34
+"the Bhava it represents when counted from the Lagna", XX.59) — a stored DESCRIPTOR only: no predicate, factor,
+admission or channel reads it; P1 records stay unscored (`value_mapping_undeclared`). P1 transit-record MINTING is
+gated on the applied schema carrying Stream B's additive migration 1233 (`period_anchor_lord`,
+`period_anchor_level` — the anchor belongs in the natural key and no existing column can carry it): the named
+switch `p1_minting_requires_period_anchor_columns`, read from the applied schema.
 """
 from __future__ import annotations
 
 import re
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -17,7 +17,7 @@ import pytest
 from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 from services.gochara_kernel import evaluator as ev
 from services.gochara_kernel import window_sweep as ws
-from services.gochara_kernel.record_verifier import expected_p1_anchor, verify_p1_house_descriptor
+from services.gochara_kernel.record_verifier import verify_p1_house_descriptor
 from services.gochara_rules import frames as rules_frames
 
 from .test_a53_inventory import CHART, CHART_ID
@@ -36,73 +36,38 @@ def _natal_idx(graha: str) -> int:
     return int(CHART["natal"][graha.title()] // 30)
 
 
-# ── the enumerator carries the anchoring period lord ─────────────────────────────────────────────────
-
-def test_every_p1_transit_edge_names_its_anchoring_period_lord_and_no_other_edge_does():
-    edges = ev.enumerate_edges("marriage", "P1", CHART)
-    transit = [e for e in edges if e.transit]
-    assert transit and all(e.period_lord for e in transit)
-    assert all(e.period_lord is None for e in edges if not e.transit)
-    for path in ("P2", "P3", "P4", "P5"):
-        assert all(e.period_lord is None for e in ev.enumerate_edges("marriage", path, CHART))
-    # the DB's `dasha_lord` frame has NO arg (ka_gochara_frame_ok): the anchor never rides the frame
-    assert all((e.frame_kind, e.frame_arg) == ("dasha_lord", None) for e in edges)
-
-
-def test_the_anchor_is_the_agent_for_its_own_signs_and_the_exaltation_owner_for_the_sun_jupiter_forms():
-    by = {(e.agent, int(e.obj.canonical_target.split(":")[1])): e.period_lord for e in _p1_transit_edges()}
-    assert by[("sun", 10)] == "mars"            # Capricorn = Mars's exaltation sign; the Sun transits it (XX.38)
-    assert by[("jupiter", 1)] == "sun"          # Aries = the Sun's exaltation sign
-    assert by[("jupiter", 7)] == "saturn"       # Libra = Saturn's exaltation sign
-    assert by[("saturn", 10)] == "saturn"       # Saturn's own sign (XX.37)
-    assert by[("venus", 7)] == "venus"
-    assert by[("sun", 7)] == "sun"              # both readings apply (Sun's debilitation / Saturn's exaltation)
-    # ... and the enumerator agrees with the VERIFIER's own table for every edge it emits
-    for (agent, sign), lord in by.items():
-        assert lord == expected_p1_anchor(agent, sign - 1), (agent, sign)
-
-
-def test_the_period_lord_is_not_a_natural_key_field_so_record_identity_is_unchanged():
-    e = _p1_transit_edges()[0]
-    kw = dict(chart_id="c", generation="5.0", contact_id="x", prerequisites=[], source_text=e.source_text)
-    assert e.natural_key(**kw) == replace(e, period_lord="saturn").natural_key(**kw)
-    assert "period_lord" not in ev.NATURAL_KEY_FIELDS
-
-
 # ── the resolver ─────────────────────────────────────────────────────────────────────────────────────
 
-def test_the_dasha_lord_house_is_the_inclusive_count_from_the_period_lords_natal_sign():
-    house_for = writer_mod._house_resolver(CONTEXT)
-    seen = 0
-    for e in _p1_transit_edges():
-        sign_no = int(e.obj.canonical_target.split(":")[1])
-        want = (sign_no - 1 - _natal_idx(e.period_lord)) % 12 + 1          # independent arithmetic
-        assert house_for(e, SIGNS[sign_no - 1].lower()) == want, (e.agent, sign_no, e.period_lord)
-        seen += 1
-    assert seen == 31
-    sun_in_capricorn = next(e for e in _p1_transit_edges()
-                            if e.agent == "sun" and e.obj.canonical_target == "span:10")
-    # the Sun transits Capricorn; the anchor is MARS (bhukti lord), natal Mars in Libra ⇒ the 4th from it
-    assert house_for(sun_in_capricorn, "capricorn") == 4
-    # the resolver is Stream B's `frames` (called, not copied)
-    assert house_for(sun_in_capricorn, "capricorn") == rules_frames.house_of(
-        9 * 30.0 + 15.0, rules_frames.Frame("dasha_lord", "Mars"), CONTEXT)
-
-
-def test_an_edge_with_no_anchor_or_an_anchor_without_a_natal_position_is_not_minted():
-    house_for = writer_mod._house_resolver(CONTEXT)
-    e = _p1_transit_edges()[0]
-    assert house_for(replace(e, period_lord=None), "libra") is None
-    assert house_for(replace(e, period_lord="pluto"), "libra") is None
-
-
-def test_the_other_frames_are_unchanged_the_natal_relation_stays_am15_lagna():
-    house_for = writer_mod._house_resolver(CONTEXT)
+def test_the_dasha_lord_house_is_the_inclusive_count_from_the_lagna():
+    house_for = writer_mod._house_resolver(CONTEXT, p1_minting=True)
     lagna_idx = int(CHART["lagna_deg"] // 30)
-    p3 = next(e for e in ev.enumerate_edges("marriage", "P3", CHART) if e.transit)
-    assert (p3.frame_kind, house_for(p3, "libra")) == ("lagna", (6 - lagna_idx) % 12 + 1)
-    moon = next(e for e in ev.enumerate_edges("marriage", "P2", CHART) if e.transit)
-    assert (moon.frame_kind, house_for(moon, "libra")) == ("moon", (6 - _natal_idx("moon")) % 12 + 1)
+    edges = _p1_transit_edges()
+    assert len(edges) == 31
+    for e in edges:
+        sign_no = int(e.obj.canonical_target.split(":")[1])
+        assert house_for(e, SIGNS[sign_no - 1].lower()) == (sign_no - 1 - lagna_idx) % 12 + 1    # independent
+    assert all((e.frame_kind, e.frame_arg) == ("dasha_lord", None) for e in edges)   # 1154: dasha_lord has no arg
+    # the lord's NATAL sign is NOT the anchor (the superseded first reading): Saturn in Capricorn is the 10th
+    # from the Aries lagna, not the 11th from natal Saturn in Pisces
+    sat = next(e for e in edges if e.agent == "saturn" and e.obj.canonical_target == "span:10")
+    assert house_for(sat, "capricorn") == 10 != (9 - _natal_idx("saturn")) % 12 + 1
+
+
+def test_p1_occurrences_are_not_minted_unless_the_gate_is_open():
+    closed = writer_mod._house_resolver(CONTEXT)                     # the default is CLOSED
+    open_ = writer_mod._house_resolver(CONTEXT, p1_minting=True)
+    e = _p1_transit_edges()[0]
+    assert closed(e, "libra") is None and open_(e, "libra") is not None
+
+
+def test_the_other_frames_are_unchanged_by_the_gate_and_the_natal_relation_stays_am15_lagna():
+    for gate in (False, True):
+        house_for = writer_mod._house_resolver(CONTEXT, p1_minting=gate)
+        lagna_idx = int(CHART["lagna_deg"] // 30)
+        p3 = next(e for e in ev.enumerate_edges("marriage", "P3", CHART) if e.transit)
+        assert (p3.frame_kind, house_for(p3, "libra")) == ("lagna", (6 - lagna_idx) % 12 + 1)
+        moon = next(e for e in ev.enumerate_edges("marriage", "P2", CHART) if e.transit)
+        assert (moon.frame_kind, house_for(moon, "libra")) == ("moon", (6 - _natal_idx("moon")) % 12 + 1)
 
 
 # ── nothing reads the descriptor ─────────────────────────────────────────────────────────────────────
@@ -173,10 +138,10 @@ def _venus_libra(w):
 def test_changing_the_descriptor_changes_nothing_else_a_record_stores_or_admits(world):
     w = world
     _venus_libra(w)
-    real = writer_mod._house_resolver(CONTEXT)
+    real = writer_mod._house_resolver(CONTEXT, p1_minting=True)
     w.grain("venus", lambda t: _t(1, 10) <= t < _t(2, 20), house_for=real)
     base, base_houses = _dump(w.conn), _houses(w.conn)
-    assert base_houses == [11]                                        # Venus in Libra, from natal Venus (Sagittarius)
+    assert base_houses == [7]                                         # Venus in Libra, counted from the Aries lagna
     for shift in (1, 5, 11):
         w.grain("venus", lambda t: _t(1, 10) <= t < _t(2, 20),
                 house_for=lambda e, s, _s=shift: (real(e, s) + _s - 1) % 12 + 1)
@@ -188,34 +153,73 @@ def test_changing_the_descriptor_changes_nothing_else_a_record_stores_or_admits(
 
 # ── the independent verifier ─────────────────────────────────────────────────────────────────────────
 
-def _facts_for_snapshot(w):
-    """The AM-5 world's snapshot binds stub L1 facts; the verifier reads the natal positions from them."""
-    return w.conn.execute(
-        "SELECT fact_subject, fact_value_num FROM public.chart_facts WHERE fact_subject IN ('VEN','LAGNA')"
-    ).fetchall()
-
-
-def test_the_verifier_rederives_the_descriptor_from_its_own_table_and_catches_a_wrong_one(world):
+def test_the_verifier_rederives_the_descriptor_from_the_lagna_and_catches_a_lord_sign_count(world):
     w = world
     _venus_libra(w)
-    w.grain("venus", lambda t: _t(1, 10) <= t < _t(2, 20), house_for=writer_mod._house_resolver(CONTEXT))
-    natal = dict(_facts_for_snapshot(w))
-    assert int(float(natal["VEN"]) // 30) == _natal_idx("venus")      # the stub L1 facts ARE the fixture chart
+    w.grain("venus", lambda t: _t(1, 10) <= t < _t(2, 20),
+            house_for=writer_mod._house_resolver(CONTEXT, p1_minting=True))
+    lagna_fact = w.conn.execute("SELECT fact_value_num FROM public.chart_facts WHERE fact_subject = 'LAGNA'"
+                                ).fetchone()[0]
+    assert int(float(lagna_fact) // 30) == int(CHART["lagna_deg"] // 30)   # the stub L1 facts ARE the fixture chart
     assert verify_p1_house_descriptor(w.conn, chart_id=CHART_ID, generation=GEN,
                                       event_class="marriage") == {"records": 1}
-    # a descriptor counted from the LAGNA (the rejected option (a)) is caught
-    lagna = int(CHART["lagna_deg"] // 30)
+    # the superseded first reading — counted from the period lord's natal sign (Venus, Sagittarius) — is caught
+    venus_idx = _natal_idx("venus")
     w.grain("venus", lambda t: _t(1, 10) <= t < _t(2, 20),
-            house_for=lambda e, s: (SIGNS.index(s.title()) - lagna) % 12 + 1)
+            house_for=lambda e, s: (SIGNS.index(s.title()) - venus_idx) % 12 + 1)
     with pytest.raises(RuntimeError, match="house-descriptor verification failed"):
         verify_p1_house_descriptor(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage")
 
 
-def test_the_writer_substep_mints_p1_transit_records_with_the_descriptor_and_verifies_it(world):
+def test_the_verifier_has_nothing_to_check_when_nothing_was_minted(world):
+    w = world
+    assert verify_p1_house_descriptor(w.conn, chart_id=CHART_ID, generation=GEN,
+                                      event_class="marriage") == {"records": 0}
+
+
+# ── the minting gate: p1_minting_requires_period_anchor_columns ──────────────────────────────────────
+
+def _p1_record_count(conn):
+    return conn.execute("SELECT count(*) FROM public.ka_gochara_relationship_record WHERE path_id = 'P1'"
+                        ).fetchone()[0]
+
+
+def test_on_the_schema_without_1233_p1_is_not_minted_and_the_switch_is_named(world):
     w = world
     _venus_libra(w)
+    assert writer_mod.P1_MINTING_GATE == "p1_minting_requires_period_anchor_columns"
+    assert writer_mod.p1_minting_closed_reason(w.conn) == writer_mod.P1_MINTING_GATE
     res = w.step("record:marriage:P1")
-    assert res.rows_inserted > 0, res.notes
+    assert _p1_record_count(w.conn) == 0
+    assert "P1 transit records NOT minted — p1_minting_requires_period_anchor_columns" in res.notes
+    # the other paths are untouched by the gate
+    assert "NOT minted" not in w.step("record:marriage:P3").notes
+
+
+def test_the_gate_reads_the_applied_schema_and_a_writer_without_anchor_support_stays_closed(world, monkeypatch):
+    """The columns are added to this DISPOSABLE database as a stand-in for 1233's DDL ONLY to exercise the
+    switch (the real migration, its natural key and the anchored minting are the next step): present columns do
+    NOT open the gate until the writer implements writing them — otherwise 1233 landing would silently turn on
+    mis-keyed minting."""
+    w = world
+    _venus_libra(w)
+    for col in ("period_anchor_lord", "period_anchor_level"):
+        w.conn.execute(f"ALTER TABLE public.ka_gochara_relationship_record ADD COLUMN {col} text")
+    assert writer_mod.RecordStore(w.conn).p1_anchor_columns_available() is True
+    assert writer_mod.p1_minting_closed_reason(w.conn) == "p1_anchor_minting_not_implemented"
+    assert "p1_anchor_minting_not_implemented" in w.step("record:marriage:P1").notes
+    assert _p1_record_count(w.conn) == 0
+    monkeypatch.setattr(writer_mod, "P1_ANCHOR_MINTING_IMPLEMENTED", True)
+    assert writer_mod.p1_minting_closed_reason(w.conn) is None
+    res = w.step("record:marriage:P1")
+    assert res.rows_inserted > 0 and "NOT minted" not in res.notes, res.notes
     houses = _houses(w.conn)
     assert houses and all(1 <= h <= 12 for h in houses)
     verify_p1_house_descriptor(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage")
+
+
+def test_one_anchor_column_is_not_enough(world):
+    w = world
+    w.conn.execute("ALTER TABLE public.ka_gochara_relationship_record ADD COLUMN period_anchor_lord text")
+    assert writer_mod.RecordStore(w.conn).p1_anchor_columns_available() is False
+    assert writer_mod.p1_minting_closed_reason(w.conn) == writer_mod.P1_MINTING_GATE

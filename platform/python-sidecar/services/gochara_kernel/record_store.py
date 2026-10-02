@@ -348,6 +348,9 @@ class SealedGenerationError(RuntimeError):
     existing sealed generation is a refusal; new evaluation is a new generation."""
 
 
+P1_ANCHOR_COLUMNS = ("period_anchor_lord", "period_anchor_level")      # Stream B's additive migration 1233
+
+
 class RecordStore:
     """Persistence for one record grain (pin 5) over 1081/1153/1155.
 
@@ -355,6 +358,16 @@ class RecordStore:
     (ka_gochara_lock_chart) — the substrate chart-lock trigger admits the
     writes. Nothing here commits, rolls back or locks.
     """
+
+    def p1_anchor_columns_available(self) -> bool:
+        """Does the APPLIED schema carry both P1 period-anchor columns on the relationship record
+        (1233)? Read from the catalogue, never assumed."""
+        row = self.conn.execute(
+            "SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_relationship_record'::regclass"
+            " AND attname = ANY(%s) AND NOT attisdropped AND attnum > 0", (list(P1_ANCHOR_COLUMNS),)).fetchone()
+        if row is None:
+            return False
+        return (next(iter(row.values())) if isinstance(row, dict) else row[0]) == len(P1_ANCHOR_COLUMNS)
 
     def __init__(self, conn):
         self.conn = conn

@@ -900,3 +900,23 @@ a lagna-counted descriptor (the rejected option (a)) is caught. 11 tests; 8 muta
 Jupiter in Capricorn, etc.) the agent's own reading is the anchor — the one the enumeration already carried. (2) P1's SUPPORT and the `period_running_at` / natal-relation
 prerequisites run over the *agent's* running periods; for the Sun/Jupiter-in-X's-exaltation forms XX.38 speaks of X's bhukti, so the period restriction may belong to X, not the
 agent — a semantic question for the gate, unchanged by AM-20 (the descriptor is the only thing that now follows the anchor).
+
+### Design v1.21 (2026-10-02) — AM-20 REVISED (Stream B, P1_FRAME_ANSWER v1.1 / amendments draft v0.19): lagna-counted descriptor; P1 minting GATED on migration 1233
+
+Steward M20261002T031247-e16e. Stream B re-read Phaladīpikā Adh. XX in full and corrected its own answer; v1.20's lord-sign anchor is superseded.
+1. **Descriptor = the inclusive count FROM THE LAGNA** (XX.34 "the Bhava it represents when counted from the Lagna"; XX.59). The writer's `dasha_lord` resolver counts
+   from the lagna sign; `record_verifier.verify_p1_house_descriptor` re-derives it from the snapshot-bound L1 lagna and now catches a **lord-sign-counted** descriptor (the superseded
+   first reading). Still a stored descriptor that nothing reads (the v1.20 tests stand: no rule module mentions it; a P1 window is identical for every value; a PG round
+   trip shifting the descriptor changes only the descriptor). `RecordEdge.period_lord` / the agent-first anchor table / `expected_p1_anchor` are REMOVED — the anchor is now
+   Stream B's `(period_anchor_lord, period_anchor_level)` pair in the natural key (one record per anchor lord; the Sun in Libra = two records on ONE contact, anchors
+   (Sun, AD) and (Saturn, AD); support = span ∩ D(anchor, level)), which no existing column can carry.
+2. **The switch** `p1_minting_requires_period_anchor_columns`: P1 transit-record minting is OFF unless the APPLIED schema carries both `period_anchor_lord` and
+   `period_anchor_level` on `ka_gochara_relationship_record` (`RecordStore.p1_anchor_columns_available`, read from `pg_attribute` like the 1232 Moon-scope gate; one column is not
+   enough) **and** this writer implements writing them (`P1_ANCHOR_MINTING_IMPLEMENTED`, False until the 1233 implementation lands — so migration 1233 arriving cannot silently turn on
+   mis-keyed minting; that second reason is named `p1_anchor_minting_not_implemented`). When closed the record substep says so in its notes
+   ("P1 transit records NOT minted — <reason>"), `_house_resolver(context, p1_minting=False)` returns `None` for `dasha_lord` occurrences (kgrr_evaluated_has_house_ck — a state,
+   never an omission), and the other paths are untouched. The minting code is kept; the gate is tested on the schema without 1233, on a disposable schema with a STAND-IN for the two
+   columns (switch logic only — the real DDL, natural key and anchored minting are the next step), and with a single column. 11 tests; 7 mutations, all killed.
+3. **Next (blocked on 1233 existing on my test schema):** implement against it on this branch — anchored enumeration (XX.34–35 forms: MD; XX.37–38: AD/bhukti; XX.38 anchor =
+   the lord whose exaltation (favourable) or depression/inimical (adverse) sign the Sun/Jupiter enters), natural-key + record_uuid with the anchor, supports = contact ∩ D(anchor, level),
+   prerequisites over the ANCHOR's periods, inventory/verifier obligations; oracle O-PP-5.

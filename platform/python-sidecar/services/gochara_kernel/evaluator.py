@@ -115,11 +115,6 @@ class RecordEdge:
     source_page: str | None
     transit: bool                   # True ⇒ per-occurrence, contact_id bound
                                     # at materialisation; False ⇒ natal fact
-    # AM-20: the concrete period-lord graha (lowercase) that ANCHORS a P1 transit record's `dasha_lord`
-    # frame — `frames.Frame("dasha_lord", <graha>)`. Enumerated by the rule, not read from the daśā rows;
-    # None on every other edge. Deliberately NOT a natural-key field (the DB's `dasha_lord` frame has no
-    # arg — `ka_gochara_frame_ok`) and read by nothing but the house-descriptor resolver.
-    period_lord: str | None = None
 
     def natural_key(self, *, chart_id: str, generation: str,
                     contact_id: str | None,
@@ -489,7 +484,6 @@ def enumerate_p1_edges(event_class: str, chart: dict,
         signs = {s for s, lord in SIGN_LORDS.items() if lord == graha}
         signs.add(EXALTATION[graha]["sign"])
         signs.add(DEBILITY[graha]["sign"])
-        own_signs = set(signs)
         if graha in ("Sun", "Jupiter"):
             signs |= {EXALTATION[g]["sign"] for g in EXALTATION}
         for sign in sorted(signs):
@@ -504,22 +498,8 @@ def enumerate_p1_edges(event_class: str, chart: dict,
                 path_id="P1", rule_version=rule_version,
                 provenance="verse_cited", operator_role="scored",
                 ruling_ref=None, source_text=text, source_page=page,
-                transit=True,
-                period_lord=_p1_period_lord(graha, sign, own_signs)))
+                transit=True))
     return edges
-
-
-def _p1_period_lord(agent: str, sign: int, own_signs: set) -> str:
-    """AM-20: the period lord anchoring a P1 transit record. A graha in its OWN / exaltation /
-    debilitation sign is itself the bhukti lord whose transit XX.37 describes; Sun/Jupiter in a sign that
-    is only ANOTHER graha's exaltation sign (XX.38) anchor on that bhukti lord. One record exists per
-    (agent, sign), so where both readings apply (e.g. the Sun in Libra: its debilitation AND Saturn's
-    exaltation) the agent's own reading is the anchor — the one the enumeration already carried."""
-    from services.gochara_rules.dignity import EXALTATION
-    if sign in own_signs:
-        return agent.lower()
-    (lord,) = [g for g, e in EXALTATION.items() if e["sign"] == sign]
-    return lord.lower()
 
 
 def enumerate_p5_edges(event_class: str, chart: dict,
