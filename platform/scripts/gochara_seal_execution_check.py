@@ -22,6 +22,7 @@ import sys
 
 SCHEMA = "seal_execution_envelope/1"
 ENV_COMMIT = "GOCHARA_RUNNER_COMMIT"
+ENV_IMAGE = "GOCHARA_RUNNER_IMAGE_DIGEST"
 ENV_SECRET = "GOCHARA_VERIFIER_DB_URL"
 _DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 _SHA = re.compile(r"[0-9a-f]{40}")
@@ -81,6 +82,9 @@ def check(ex, *, execution_name: str, image_digest: str, service_account: str, r
     commits = [e for e in env if isinstance(e, dict) and e.get("name") == ENV_COMMIT]
     if len(commits) != 1 or commits[0].get("value") != runner_commit:
         raise Refused(f"the execution's {ENV_COMMIT} is not exactly the sealing commit {runner_commit}")
+    images = [e for e in env if isinstance(e, dict) and e.get("name") == ENV_IMAGE]
+    if len(images) != 1 or images[0].get("value") != image_digest:
+        raise Refused(f"the execution's {ENV_IMAGE} is not exactly the immutable digest {image_digest} (the verifier records it as its producer identity)")
     if list(c.get("args") or []) != list(args):
         raise Refused("the execution's arguments are not exactly the ones this workflow passed")
     if int(t.get("maxRetries") if t.get("maxRetries") is not None else 0) != 0:
@@ -92,13 +96,30 @@ def check(ex, *, execution_name: str, image_digest: str, service_account: str, r
     return {"execution": execution_name, "image_digest": image_digest, "service_account": service_account, "runner_commit": runner_commit, "args": list(args)}
 
 
-def build_envelope(verified: dict, *, run_id: str, attempt: str, sealing_commit: str, brief_digest: str, brief_id: int) -> dict:
-    return {"schema": SCHEMA, **verified, "run_id": int(run_id), "run_attempt": int(attempt), "sealing_commit": sealing_commit, "brief_digest": brief_digest, "brief_id": int(brief_id)}
+def _execution_matches(producer_id: str, execution_name: str) -> bool:
+    """`CLOUD_RUN_EXECUTION` is the execution's NAME; the long resource-path form `…/executions/<name>` is accepted as the same execution. (The golden fixture's long form is documentation-built;
+    the first real execution settles which form Cloud Run prints.)"""
+    return producer_id == execution_name or producer_id.endswith("/executions/" + execution_name)
+
+
+def bind_producer(verified: dict, producer: dict, *, execution_name: str, sealing_commit: str) -> None:
+    """The brief's PRODUCER (from the compact line the verifier printed) must be the very resource this workflow read: the executed image digest, the execution id and the commit (ST-WIRE-2)."""
+    if producer.get("image_digest") != verified["image_digest"]:
+        raise Refused("the compact line's producer image digest is not the executed resource's image digest")
+    if not _execution_matches(str(producer.get("execution_id")), execution_name):
+        raise Refused("the compact line's producer execution id is not the execution this workflow started and read")
+    if producer.get("commit") != sealing_commit or verified["runner_commit"] != sealing_commit:
+        raise Refused("the compact line's producer commit is not the sealing commit")
+
+
+def build_envelope(verified: dict, *, run_id: str, attempt: str, sealing_commit: str, brief_digest: str, brief_id: int, producer_execution_id: str) -> dict:
+    return {"schema": SCHEMA, **verified, "run_id": int(run_id), "run_attempt": int(attempt), "sealing_commit": sealing_commit, "brief_digest": brief_digest, "brief_id": int(brief_id),
+            "producer_execution_id": producer_execution_id}
 
 
 def check_envelope(env, *, run_id: str, attempt: str, sealing_commit: str, brief_digest: str, brief_id: str) -> dict:
     """The gated job's re-check: the retained envelope is for THIS run, THIS attempt, THIS commit and THIS brief (digest and persisted id)."""
-    keys = {"schema", "execution", "image_digest", "service_account", "runner_commit", "args", "run_id", "run_attempt", "sealing_commit", "brief_digest", "brief_id"}
+    keys = {"schema", "execution", "image_digest", "service_account", "runner_commit", "args", "run_id", "run_attempt", "sealing_commit", "brief_digest", "brief_id", "producer_execution_id"}
     if not isinstance(env, dict) or set(env) != keys or env["schema"] != SCHEMA:
         raise Refused("the retained envelope is not a seal_execution_envelope/1")
     for k, want in (("run_id", int(run_id)), ("run_attempt", int(attempt))):
@@ -112,6 +133,8 @@ def check_envelope(env, *, run_id: str, attempt: str, sealing_commit: str, brief
         raise Refused("the envelope's persisted brief id is not the retained brief's")
     if not _DIGEST.fullmatch(env["image_digest"] or "") or not env["execution"]:
         raise Refused("the envelope carries no image digest / execution id")
+    if not isinstance(env["producer_execution_id"], str) or not _execution_matches(env["producer_execution_id"], env["execution"]):
+        raise Refused("the envelope's producer execution id is not the execution it records")
     return env
 
 
@@ -155,6 +178,9 @@ def main(argv=None) -> int:
                 raise Refused(f"the verification job is defined with image {image!r}, not the digest {a.image_digest} deployed for this commit: re-dispatch the job-definition workflow at this commit (same-commit rule)")
             if t.get("serviceAccountName") != a.service_account:
                 raise Refused(f"the verification job runs as {t.get('serviceAccountName')!r}, not {a.service_account!r}")
+            envs = [e for e in ((t.get("containers") or [{}])[0].get("env") or []) if isinstance(e, dict) and e.get("name") == ENV_IMAGE]
+            if len(envs) != 1 or envs[0].get("value") != a.image_digest:
+                raise Refused(f"the verification job does not carry {ENV_IMAGE} = {a.image_digest}: it would refuse to brief (producer_identity_absent); re-dispatch #2976 at this commit")
             print("OK")
             return 0
         if a.cmd == "check-envelope":
@@ -163,7 +189,7 @@ def main(argv=None) -> int:
             with open(a.compact_file, encoding="utf-8") as f:
                 brief_id = ((json.load(f) or {}).get("persisted") or {}).get("brief_id")
             check_envelope(envelope, run_id=a.run_id, attempt=a.attempt, sealing_commit=a.sealing_commit, brief_digest=a.brief_digest, brief_id=str(brief_id))
-            print(brief_id)
+            print(brief_id, envelope["producer_execution_id"])
             return 0
         with open(a.execution_file, encoding="utf-8") as f:
             ex = json.load(f)
@@ -177,7 +203,10 @@ def main(argv=None) -> int:
                          args=json.loads(a.args_json), secret_name=a.secret_name)
         if compact.get("sha256") != a.brief_digest:
             raise Refused("the compact result's digest is not the checked brief's digest")
-        env = build_envelope(verified, run_id=a.run_id, attempt=a.attempt, sealing_commit=a.sealing_commit, brief_digest=a.brief_digest, brief_id=per.get("brief_id"))
+        producer = (compact or {}).get("producer") or {}
+        bind_producer(verified, producer, execution_name=a.execution_name, sealing_commit=a.sealing_commit)
+        env = build_envelope(verified, run_id=a.run_id, attempt=a.attempt, sealing_commit=a.sealing_commit, brief_digest=a.brief_digest, brief_id=per.get("brief_id"),
+                             producer_execution_id=producer["execution_id"])
     except (Refused, OSError, ValueError, TypeError) as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
         return 2

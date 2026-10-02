@@ -47,11 +47,12 @@ def brief_raw(p=None):
 
 
 def compact(p=None, raw=None, **over):
-    """The verifier job's last output line (Stream A head 7e81f2870): `{status: BRIEFED, sha256, persisted, brief_bytes, brief_file, brief_chunks}`."""
+    """The verifier job's last output line (contract seal_brief_transport/1, ST-WIRE-2): `{status: BRIEFED, contract_version, sha256, persisted, producer, brief_bytes, brief_file, brief_chunks}`."""
     p = payload() if p is None else p
     raw = brief_raw(p) if raw is None else raw
-    c = {"brief_bytes": len(raw), "brief_chunks": True, "brief_file": None, "sha256": hashlib.sha256(raw).hexdigest(), "status": "BRIEFED",
-         "persisted": {"brief_id": 7, "manifest_id": p.get("manifest", {}).get("manifest_id"), "state_digest": "c" * 64}}
+    c = {"brief_bytes": len(raw), "brief_chunks": True, "brief_file": None, "contract_version": "seal_brief_transport/1", "sha256": hashlib.sha256(raw).hexdigest(), "status": "BRIEFED",
+         "persisted": {"brief_id": 7, "manifest_id": p.get("manifest", {}).get("manifest_id"), "state_digest": "c" * 64},
+         "producer": {"commit": SHA, "execution_id": "exec-1", "image_digest": "sha256:" + "a" * 64}}
     c.update(over)
     return c
 
@@ -95,6 +96,13 @@ def _flip(raw):
     (lambda raw, c: (raw, {**c, "persisted": {**c["persisted"], "extra": 1}}), "not {brief_id"),
     (lambda raw, c: (raw, {**c, "persisted": True}), "not {brief_id"),
     (lambda raw, c: (b"", c), "empty"),
+    (lambda raw, c: (raw, {k: v for k, v in c.items() if k != "contract_version"}), "BRIEFED"),                                   # a missing transport contract is refused
+    (lambda raw, c: (raw, {**c, "contract_version": "seal_brief_transport/2"}), "transport contract"),                           # an unknown one too
+    (lambda raw, c: (raw, {k: v for k, v in c.items() if k != "producer"}), "BRIEFED"),                                           # a brief of unknown producer
+    (lambda raw, c: (raw, {**c, "producer": {**c["producer"], "commit": "b" * 40}}), "not this workflow's reviewed revision"),   # produced by other code
+    (lambda raw, c: (raw, {**c, "producer": {**c["producer"], "image_digest": "latest"}}), "unknown producer"),
+    (lambda raw, c: (raw, {**c, "producer": {**c["producer"], "execution_id": " "}}), "unknown producer"),
+    (lambda raw, c: (raw, {**c, "producer": {**c["producer"], "extra": 1}}), "unknown producer"),
 ])
 def test_a_malformed_or_altered_brief_is_refused(mut, needle):
     raw, c = mut(*pair())
@@ -154,10 +162,23 @@ def _entry(line, how="root"):
     FALLBACK forms (`textPayload`; a string in `jsonPayload.message`) and must go through the same validation. Labels/resource ride along: they are never consulted."""
     meta = {"resource": {"type": "cloud_run_job", "labels": {"job_name": "gochara-verification-job"}}, "labels": {"run.googleapis.com/execution_name": "exec-1"}}
     if how == "root":
-        return {**meta, "jsonPayload": json.loads(line)}
+        return {**meta, "jsonPayload": _struct(json.loads(line))}
     if how == "message":
         return {**meta, "jsonPayload": {"message": line}}
     return {**meta, "textPayload": line}
+
+
+def _struct(doc):
+    """What Cloud Run's protobuf Struct does to a printed JSON object: key order is lost and EVERY number becomes a double (3 -> 3.0). Reading must not depend on either."""
+    def d(v):
+        if isinstance(v, bool) or v is None or isinstance(v, str):
+            return v
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, dict):
+            return {k: d(v[k]) for k in sorted(v, reverse=True)}
+        return [d(x) for x in v]
+    return d(doc)
 
 
 def _logs(p=None, size=150, *, how="root", extra_before=(), extra_after=()):
@@ -239,7 +260,16 @@ def _edit_compact(entries, **over):
     (lambda en: _edit_compact(en, brief_bytes=3), "bytes, the compact line says"),
     (lambda en: _edit_compact(en, sha256="1" * 64), "not the one"),                                      # the compact line declares another digest than the chunks
     (lambda en: _edit_compact(en, extra=1), "malformed"),
-    (lambda en: _edit_compact(en, sha256="1" * 63 + "\n"), "malformed"),                                # a trailing newline is not a digest (full-string validation)
+    (lambda en: _edit_compact(en, contract_version="seal_brief_transport/2"), "contract_version"),          # an unknown transport contract
+    (lambda en: _edit_compact(en, contract_version=None), "contract_version"),
+    (lambda en: _edit_compact(en, producer={"commit": "x"}), "producer"),                                    # a brief of unknown producer
+    (lambda en: _edit_compact(en, producer={"commit": " ", "execution_id": "e", "image_digest": "sha256:" + "a" * 64}), "producer"),
+    (lambda en: _edit_compact(en, brief_bytes=3.5), "not an integer"),                                       # a non-integral double is refused, never rounded
+    (lambda en: _edit_compact(en, brief_bytes=True), "boolean"),
+    (lambda en: _chunk_edit(en, 1, brief_chunk=1.5), "not an integer"),
+    (lambda en: _chunk_edit(en, 1, of=float("nan")), "not an integer"),
+    (lambda en: _edit_compact(en, persisted={"brief_id": 2.5, "manifest_id": "m", "state_digest": "c" * 64}), "not an integer"),
+    (lambda en: _edit_compact(en, sha256="1" * 63 + "\n"), "malformed|not the one"),                                # a trailing newline is not a digest (full-string validation)
 ])
 def test_a_missing_altered_duplicated_or_mismatched_chunk_or_a_refusal_line_is_refused(mut, needle):
     _, _, entries = _logs()
@@ -287,14 +317,18 @@ def review(state="approved", comment=None, login="steward-as-owner", env="gochar
     return {"state": state, "comment": line() if comment is None else comment, "user": {"login": login}, "environments": [{"name": env}]}
 
 
-def _ex(history, attempt=ATT, digest=D, bid=BID, **kw):
-    return approval.extract(history, environment="gochara-seal", run_id=RUN, attempt=attempt, brief_digest=digest, brief_id=bid, triggering_actor="steward-as-owner", **kw)
+PEID = "exec-1"
+
+
+def _ex(history, attempt=ATT, digest=D, bid=BID, peid=PEID, **kw):
+    return approval.extract(history, environment="gochara-seal", run_id=RUN, attempt=attempt, brief_digest=digest, brief_id=bid, producer_execution_id=peid,
+                            triggering_actor="steward-as-owner", **kw)
 
 
 def test_a_good_approval_yields_the_seal_jobs_approval_file():
     out = _ex([review()])
-    assert out == {"schema": "seal_approval/1", "brief_digest": D, "run_id": int(RUN), "run_attempt": 1, "approver_login": "steward-as-owner",
-                   "approved_by_note": approval.mechanical_note("steward-as-owner")}
+    assert out == {"schema": "seal_approval/2", "brief_digest": D, "brief_id": int(BID), "producer_execution_id": PEID, "run_id": int(RUN), "run_attempt": 1,
+                   "approver_login": "steward-as-owner", "approved_by_note": approval.mechanical_note("steward-as-owner")}
     assert out["approved_by_note"] == "ruling:NATIVE_DIRECT_RULINGS_20261002#2; actor:steward-as-owner"
 
 
@@ -319,7 +353,7 @@ def test_the_note_is_mechanical_never_free_text_from_the_comment():
         _ex([review(comment=line() + " note: I read it, trust me")])
     for bad in ("", "x y", "a;b", "$(id)", "a" * 60):
         with pytest.raises(approval.Refused, match="triggering actor"):
-            approval.extract([review()], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, brief_id=BID, triggering_actor=bad)
+            approval.extract([review()], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, brief_id=BID, producer_execution_id=PEID, triggering_actor=bad)
 
 
 @pytest.mark.parametrize("history,needle", [
@@ -345,6 +379,12 @@ def test_an_absent_malformed_wrong_run_wrong_attempt_or_stale_approval_is_refuse
         return
     with pytest.raises(approval.Refused, match=needle):
         _ex(history)
+
+
+@pytest.mark.parametrize("bad", ["", " ", "a b", "x\n", "a;b", "$(id)"])
+def test_the_producer_execution_id_must_be_present_and_well_formed(bad):
+    with pytest.raises(approval.Refused, match="producer execution id"):
+        _ex([review()], peid=bad)
 
 
 @pytest.mark.parametrize("bad", ["x" * 3, "0", "-1", "7\n", "7 ", ""])
@@ -399,7 +439,7 @@ def execution(name="exec-1", **over):
     ex = {"metadata": {"name": name},
           "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": SA, "maxRetries": 0,
                   "containers": [{"image": f"asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline@{IMG}", "args": ARGS,
-                                  "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA},
+                                  "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG},
                                           {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url", "key": "latest"}}}]}]}}},
           "status": {"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": 1}}
     for k, v in over.items():
@@ -428,7 +468,7 @@ T = ("spec", "template", "spec")
 def test_the_executed_resource_is_verified_and_the_envelope_binds_run_attempt_commit_and_brief():
     v = xcheck()
     assert v["image_digest"] == IMG and v["execution"] == "exec-1"
-    env = xc.build_envelope(v, run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id=7)
+    env = xc.build_envelope(v, run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id=7, producer_execution_id=PEID)
     assert xc.check_envelope(env, run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id="7") == env
     assert xc.check_envelope(json.loads(json.dumps(env)), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id="7")
 
@@ -438,10 +478,12 @@ def test_the_executed_resource_is_verified_and_the_envelope_binds_run_attempt_co
     (_mut((*T, "containers", 0, "image"), "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:" + SHA), "mutable"),               # a tag, not a digest
     (_mut((*T, "containers", 0, "image"), "x/brahma-pipeline@sha256:" + "b" * 64), "mutable"),                                                    # another digest
     (_mut((*T, "serviceAccountName"), "github-actions@madhav-astrology.iam.gserviceaccount.com"), "ran as"),
-    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}]), "secret bindings"),                                  # no secret
-    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "data-plane-builder-db-url"}}}]), "secret bindings"),
-    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_COMMIT", "value": "b" * 40}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url"}}}]), "RUNNER_COMMIT"),
+    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG}, {"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}]), "secret bindings"),                                  # no secret
+    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG}, {"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "data-plane-builder-db-url"}}}]), "secret bindings"),
+    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG}, {"name": "GOCHARA_RUNNER_COMMIT", "value": "b" * 40}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url"}}}]), "RUNNER_COMMIT"),
     (_mut((*T, "containers", 0, "args"), ARGS[:-1] + ["b" * 40]), "arguments"),
+    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url"}}}]), "RUNNER_IMAGE_DIGEST"),   # no digest env: the verifier would refuse to brief
+    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": "sha256:" + "b" * 64}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url"}}}]), "RUNNER_IMAGE_DIGEST"),
     (_mut((*T, "maxRetries"), 3), "retries"),
     (_mut(("spec", "taskCount"), 2), "more than one task"),
     (_mut(("status", "conditions"), [{"type": "Completed", "status": "False"}]), "FAILED"),
@@ -470,13 +512,29 @@ def test_a_job_style_nesting_is_accepted_and_a_shapeless_resource_is_refused():
     (lambda e: {**e, "brief_id": 8}, "persisted brief id"),
     (lambda e: {**e, "brief_id": True}, "persisted brief id"),
     (lambda e: {**e, "image_digest": "latest"}, "image digest"),
+    (lambda e: {**e, "producer_execution_id": "another-execution"}, "producer execution id"),
+    (lambda e: {**e, "producer_execution_id": " "}, "producer execution id"),
     (lambda e: {**e, "extra": 1}, "not a seal_execution_envelope"),
     (lambda e: {k: v for k, v in e.items() if k != "execution"}, "not a seal_execution_envelope"),
 ])
 def test_the_retained_envelope_must_be_for_this_run_attempt_commit_and_brief(mut, needle):
-    env = xc.build_envelope(xcheck(), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id=7)
+    env = xc.build_envelope(xcheck(), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id=7, producer_execution_id=PEID)
     with pytest.raises(xc.Refused, match=needle):
         xc.check_envelope(mut(env), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id="7")
+
+
+PROD = {"commit": SHA, "execution_id": PEID, "image_digest": IMG}
+
+
+def test_the_briefs_producer_must_be_the_resource_this_workflow_read():
+    """ST-WIRE-2: the compact line's producer (commit, execution id, image digest) is bound to the EXECUTED resource — a brief produced by another image, another execution or other code is refused."""
+    v = xcheck()
+    xc.bind_producer(v, PROD, execution_name="exec-1", sealing_commit=SHA)
+    xc.bind_producer(v, {**PROD, "execution_id": "projects/p/locations/l/jobs/j/executions/exec-1"}, execution_name="exec-1", sealing_commit=SHA)   # the long resource form is the same execution
+    for bad, needle in (({**PROD, "image_digest": "sha256:" + "b" * 64}, "image digest"), ({**PROD, "execution_id": "exec-2"}, "execution id"),
+                        ({**PROD, "execution_id": "xexec-1"}, "execution id"), ({**PROD, "commit": "c" * 40}, "commit")):
+        with pytest.raises(xc.Refused, match=needle):
+            xc.bind_producer(v, bad, execution_name="exec-1", sealing_commit=SHA)
 
 
 def test_the_execution_state_drives_the_wait_loop():
@@ -527,7 +585,7 @@ def world(tmp_path):
     raw, c = pair()
     brief.write_bytes(raw)
     comp.write_text(json.dumps(c))
-    envf.write_text(json.dumps(xc.build_envelope(xcheck(), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id=int(BID))))
+    envf.write_text(json.dumps(xc.build_envelope(xcheck(), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id=int(BID), producer_execution_id=PEID)))
     approvals = tmp_path / "approvals.json"
     approvals.write_text(json.dumps([review()]))
     return {"tmp": tmp_path, "shim": str(shim), "calls": calls, "brief": brief, "compact": comp, "envelope": envf, "approvals": approvals}
@@ -550,7 +608,9 @@ def test_the_orchestrator_calls_the_seal_job_once_with_the_approval_file_and_the
     assert r.returncode == 0 and "SEALED" in r.stdout, r.stdout + r.stderr
     lines = world["calls"].read_text().splitlines()
     assert lines[0] == f"--chart {CHART} --generation {GEN} --approval-file {world['tmp'] / 'approval.json'}" and f"COMMIT={SHA} ACTOR=steward-as-owner" in lines[1]
-    assert json.loads((world["tmp"] / "approval.json").read_text())["brief_digest"] == D
+    af = json.loads((world["tmp"] / "approval.json").read_text())
+    assert af["brief_digest"] == D
+    assert af["schema"] == "seal_approval/2" and af["brief_id"] == int(BID) and af["producer_execution_id"] == PEID        # ST-WIRE-2: /1 is refused by the seal job
     assert "SECRETMARKER" not in r.stdout + r.stderr and "SECRETMARKER" not in lines[0]                 # the sealer DSN is in the seal job's ENVIRONMENT only
 
 
