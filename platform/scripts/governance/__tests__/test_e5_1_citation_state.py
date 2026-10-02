@@ -364,20 +364,28 @@ def test_new_v2_records_chain_onto_a_v1_ledger(ledger):
     assert nc.read_ledger(ledger)[v1["cert_key"]][0]["citation_state"] is None
 
 
-def test_an_identical_remeasurement_of_a_v1_non_citation_record_appends_nothing(ledger):
+def test_a_remeasurement_of_a_v1_non_citation_record_differs_only_by_the_declarations_binding(ledger):
     write_v1(ledger)
     snap = ledger.read_bytes()
     r = nc.write_certification(**kw(ledger))                                     # same measurement, new writer
-    assert r.status == "unchanged" and r.record["record_version"] == 1 and ledger.read_bytes() == snap
+    # citation_state alone would make it identical (v1 reads null = the new null); the declarations binding (a currency
+    # field a v1 record never had) is what makes it a new, bound generation
+    assert r.status == "appended" and r.record["generation"] == 2 and r.record["record_version"] == 2
+    assert r.record["declarations_sha256"] is not None and ledger.read_bytes().startswith(snap)
+    assert nc._identity(dict(nc.read_ledger(ledger)["bg_ontology|gate|Build.registered"][0],
+                             declarations_sha256=r.record["declarations_sha256"])) == nc._identity(r.record)
 
 
 def test_a_v1_citation_record_gets_a_new_generation_when_a_state_is_now_declared(ledger):
     write_v1(ledger, criterion=LDGR, rec=dict(target_columns=CITE_COLS))
     r = write(ledger, LDGR, "sourced")
     assert r.status == "appended" and r.record["generation"] == 2 and r.record["record_version"] == 2
-    # but a v1 record read as "not declared" plus a new measurement that still declares none is NOT a change
+    # a v1 record read as "not declared" and a new measurement that still declares none differ only by the binding
     write_v1(ledger, criterion=LDGR, asset="bg_other", rec=dict(target_columns=CITE_COLS))
-    assert write(ledger, LDGR, ..., asset="bg_other").status == "unchanged"
+    r2 = write(ledger, LDGR, ..., asset="bg_other")
+    assert r2.status == "appended" and r2.record["citation_state"] is None and r2.record["declarations_sha256"] is not None
+    prev = nc.read_ledger(ledger)["bg_other|gate|Ldgr.source_presence"][0]
+    assert nc._identity(dict(prev, declarations_sha256=r2.record["declarations_sha256"])) == nc._identity(r2.record)
 
 
 def test_a_v1_upstream_can_be_cited_by_a_v2_record(ledger):
