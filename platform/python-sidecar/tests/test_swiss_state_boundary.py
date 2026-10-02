@@ -78,6 +78,8 @@ EXPECTED_OPERATION_OWNERS = {
     ("brahmagyan/l0_ephemeris.py", "query_ayanamsha_delta"),
     ("ga_writers/ga_dashas_writer.py", "_get_moon_position"),
     ("ga_writers/ga_dashas_writer.py", "_mudda_solar_return_jd"),
+    # TI thread-fix lane: the nested Sun-longitude closure hoisted so it owns its mode setter.
+    ("ga_writers/ga_dashas_writer.py", "_mudda_sun_long_at"),
     ("ga_writers/ga_dashas_writer.py", "build_system"),
     ("ga_writers/ga_dashas_writer.py", "compute_mudda_system"),
     # TI thread-fix lane: the two Saturn closures were hoisted to module level so each owns its

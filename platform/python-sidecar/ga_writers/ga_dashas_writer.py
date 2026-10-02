@@ -2644,6 +2644,22 @@ _MUDDA_IDX_TO_LORD = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Sat
 
 
 @serialized_swiss_state
+def _mudda_sun_long_at(jd: float, ayanamsha_id: str) -> float:
+    """Sun's sidereal longitude (deg, 0..360) at Julian day ``jd`` (UT) for ``ayanamsha_id``.
+
+    The mode and ephemeris path are selected HERE, on the calling thread (swisseph keeps both per
+    thread on Linux), instead of being inherited from ``_mudda_solar_return_jd``'s own
+    ``set_ayanamsa_mode`` call -- the same nested-helper hazard as ``ga_sade_sati_writer.
+    _saturn_sign_at_jd`` (TI thread-fix lane).  Byte-identical when the thread already holds the mode.
+    """
+    from pyjhora_adapter._jhora import drik as _drik
+    from pyjhora_adapter._swiss_thread_scope import with_sidereal_mode
+
+    with with_sidereal_mode(ayanamsha_id, jd, via_jhora=True):
+        return float(_drik.sidereal_longitude(jd, 0)) % 360.0  # 0 = Sun (swisseph body id)
+
+
+@serialized_swiss_state
 def _mudda_solar_return_jd(
     natal_sun_long: float,
     birth_jd: float,
@@ -2674,7 +2690,7 @@ def _mudda_solar_return_jd(
     _drik.set_ayanamsa_mode(_mode)
 
     def _sun_long_at(jd: float) -> float:
-        return float(_drik.sidereal_longitude(jd, 0)) % 360.0  # 0 = Sun (swisseph body id)
+        return _mudda_sun_long_at(jd, ayanamsha_id)
 
     def _ang_diff(a: float, b: float) -> float:
         return ((a - b + 180.0) % 360.0) - 180.0
