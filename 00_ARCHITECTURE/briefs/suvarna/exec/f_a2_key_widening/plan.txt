@@ -1,0 +1,110 @@
+-- COMBINED D6 plan (data-driven): F-A2 key widening of public.chart_divisionals + function patches [l1_data_plane_capture_row()] + contract comments + re-attestation (and the exact inverse)
+-- one transaction as data_plane_l1_owner (transient GRANT <role> TO CURRENT_USER only if not a member, SET LOCAL ROLE, REVOKE only what was granted)
+SET LOCAL search_path = pg_catalog, public, pg_temp
+SET LOCAL lock_timeout = '5s'
+SET LOCAL statement_timeout = '120s'
+-- FORWARD (--dry-run / --apply), as data_plane_l1_owner unless noted:
+-- preconditions (read only; any failure = refuse + ROLLBACK): no build_runs planned/running/paused on ANY chart (as amjis_app); no L1 generation 'building'; no data_plane_builder session active/idle-in-transaction; public.digest(text,text) resolves; the six-column index and six-argument trigger; the capture-trigger attestation row EXISTS exactly once with digest d0064f5ed31f7db91cb239967f783af3a885f21b39aa7c833877989a713768b0; the two table comments are the 1035 text and no column comment exists; the deploy gate's own three queries are green (as amjis_app, search_path public); --writer-commit: image tag == commit and ga_vargas digest == the frozen one; and for EVERY patched function:
+--   l1_data_plane_capture_row(): EXISTS, owner data_plane_l1_owner, SECURITY DEFINER True, proconfig {"search_path=pg_catalog, public, pg_temp"}, ACL {data_plane_l1_owner=X/data_plane_l1_owner}; pg_get_functiondef equals BYTE-FOR-BYTE the shipped pre-state (md5 1e079261aa42eb97a1885a48035e7520, 19780 chars, live_defs/l1_data_plane_capture_row.LIVE.sql); its attestation row EXISTS exactly once with digest 0f8f42b6c93a9a5d2d25333cc2bd3cf52aed60e7cb7d51a87979ede92e74b9b8
+-- 1. CREATE OR REPLACE FUNCTION public.l1_data_plane_capture_row() with the live definition plus exactly these hunks:
+--   hunk H1_declare_v_typed_col_v_companions:
+--     -   v_yoga_rule JSONB;
+--       BEGIN
+--     +   v_yoga_rule JSONB;
+--         v_typed_col TEXT;
+--         v_companions TEXT[];
+--       BEGIN
+--   hunk H2_all_null_row_is_floored_or_unavailable:
+--     -   v_epistemic := CASE
+--           WHEN v_asset = 'ga_ayurdaya' THEN 'restricted_scholarly'
+--     +   IF TG_TABLE_NAME = 'chart_facts' AND v_missingness IN ('present', 'zero')
+--            AND v_row->>'fact_value_num' IS NULL
+--            AND v_row->>'fact_value_text' IS NULL
+--            AND NULLIF(v_row->'fact_value_jsonb', 'null'::jsonb) IS NULL THEN
+--           v_missingness := CASE WHEN v_row->>'verification_pass_status' = 'floored'
+--                                 THEN 'floored' ELSE 'unavailable' END;
+--         END IF;
+--         v_epistemic := CASE
+--           WHEN v_asset = 'ga_ayurdaya' THEN 'restricted_scholarly'
+--   hunk H3a_typed_value_precedence_num_text_jsonb:
+--     -       v_value_num := NULL; v_value_text := NULL; v_value_jsonb := NULL;
+--           END IF;
+--           INSERT INTO public.l1_data_plane_fact_snapshots (
+--     +       v_value_num := NULL; v_value_text := NULL; v_value_jsonb := NULL;
+--           END IF;
+--           IF num_nonnulls(v_value_num, v_value_text, v_value_jsonb) > 1 THEN
+--             IF v_value_num IS NOT NULL THEN
+--               v_typed_col := 'fact_value_num';
+--               v_companions := ARRAY[]::TEXT[]
+--                 || CASE WHEN v_value_text IS NOT NULL THEN ARRAY['fact_value_text'] ELSE ARRAY[]::TEXT[] END
+--                 || CASE WHEN v_value_jsonb IS NOT NULL THEN ARRAY['fact_value_jsonb'] ELSE ARRAY[]::TEXT[] END;
+--               v_value_text := NULL; v_value_jsonb := NULL;
+--             ELSE
+--               v_typed_col := 'fact_value_text';
+--               v_companions := ARRAY['fact_value_jsonb'];
+--               v_value_jsonb := NULL;
+--             END IF;
+--           END IF;
+--           INSERT INTO public.l1_data_plane_fact_snapshots (
+--   hunk H3b_grain_jsonb_records_kept_and_dropped_columns:
+--     -       jsonb_build_object(
+--               'source_table', TG_TABLE_NAME,
+--               'row_identity', v_identity,
+--               'fact_category', COALESCE(v_row->>'fact_category', v_asset),
+--               'fact_subject', COALESCE(v_row->>'fact_subject', v_identity),
+--               'fact_key', COALESCE(v_row->>'fact_key', 'value')
+--             ),
+--     +       jsonb_build_object(
+--               'source_table', TG_TABLE_NAME,
+--               'row_identity', v_identity,
+--               'fact_category', COALESCE(v_row->>'fact_category', v_asset),
+--               'fact_subject', COALESCE(v_row->>'fact_subject', v_identity),
+--               'fact_key', COALESCE(v_row->>'fact_key', 'value')
+--             ) || CASE WHEN v_companions IS NULL THEN '{}'::jsonb
+--                       ELSE jsonb_build_object('typed_value_column', v_typed_col,
+--                                               'companion_value_columns', to_jsonb(v_companions)) END,
+--   hunk F_A2_dependency_identity_fact_subject:
+--     -                   'fact_key=' || cd.fact_key
+--                       )
+--                     ) ORDER BY cd.varga, cd.fact_category, cd.fact_key
+--       
+--     +                   'fact_key=' || cd.fact_key,
+--                         'fact_subject=' || COALESCE(cd.fact_subject, '<null>')
+--                       )
+--                     ) ORDER BY cd.varga, cd.fact_category, cd.fact_key, cd.fact_subject
+--       
+--   bound: patched md5 b2f4242f034d1a3983edb08c625dc353, sha256 d65a6804508e964e0e92b6a507a12fc747aa69bb0f2bc34170c721e281d0728d; zero-context diff 6 hunks, sha256 bca80fe61b88a0fcb2d2721c542a25893a4bc8cb77d0d094be31b4324056553f; re-checked against pg_get_functiondef after the statement
+-- contract comments (owner path):
+   COMMENT ON TABLE public.l1_data_plane_row_snapshots IS 'Append-only exact L1 producer rows. Active-table replacement never deletes a prior compatible generation. COMPLETE RECORD: source_row_jsonb holds every column of the producer row exactly as written, including every typed value column; l1_data_plane_fact_snapshots is a projection of it.'
+   COMMENT ON TABLE public.l1_data_plane_fact_snapshots IS 'Append-only typed field facts decomposed from each runtime producer row, preserving unit, zero, null and reason. ONE TYPED VALUE per fact: a chart_facts row may carry fact_value_num, fact_value_text and fact_value_jsonb together, but this table keeps exactly ONE of them by the fixed precedence num, then text, then jsonb (value_num, value_text, value_jsonb: the others are NULL). When a column was dropped, grain_jsonb records typed_value_column (the kept column) and companion_value_columns (the dropped ones); when nothing was dropped neither key is present. The complete row, every column, is in l1_data_plane_row_snapshots.source_row_jsonb. A row with no typed value at all is recorded as missingness floored (producer status floored) or unavailable, never present.'
+   COMMENT ON COLUMN public.l1_data_plane_row_snapshots.source_row_jsonb IS 'The COMPLETE producer row, every column as written (all typed value columns included). The record of truth; l1_data_plane_fact_snapshots keeps one typed value per fact.'
+   COMMENT ON COLUMN public.l1_data_plane_fact_snapshots.grain_jsonb IS 'Fact grain. When the producer row carried more than one typed value, also typed_value_column (the kept column) and companion_value_columns (the dropped ones, precedence num, text, jsonb); absent when nothing was dropped. The dropped values are in l1_data_plane_row_snapshots.source_row_jsonb.'
+   COMMENT ON COLUMN public.l1_data_plane_fact_snapshots.value_num IS 'Typed value, precedence 1 (num, then text, then jsonb). NULL when another column was kept; see grain_jsonb.'
+   COMMENT ON COLUMN public.l1_data_plane_fact_snapshots.value_text IS 'Typed value, precedence 2. Kept only when value_num is NULL; see grain_jsonb.'
+   COMMENT ON COLUMN public.l1_data_plane_fact_snapshots.value_jsonb IS 'Typed value, precedence 3. Kept only when value_num and value_text are NULL; see grain_jsonb.'
+-- re-attest each patched function row (immutability trigger off, then on, same transaction; rowcount must be 1):
+ALTER TABLE public.l1_data_plane_function_attestations DISABLE TRIGGER l1_data_plane_function_attestations_immutable
+UPDATE public.l1_data_plane_function_attestations a SET definition_digest = encode(public.digest(pg_get_functiondef(p.oid),'sha256'),'hex') FROM pg_proc p WHERE a.function_signature='l1_data_plane_capture_row()' AND p.oid=to_regprocedure('public.'||a.function_signature)
+ALTER TABLE public.l1_data_plane_function_attestations ENABLE TRIGGER l1_data_plane_function_attestations_immutable
+-- F-A2 index + trigger (the ACCESS EXCLUSIVE window starts at DROP INDEX; functions, comments, function attestations and the identity-probe inserts run BEFORE it):
+CREATE UNIQUE INDEX chart_divisionals_unique_idx_f_a2 ON public.chart_divisionals (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key, fact_subject) NULLS NOT DISTINCT
+DROP INDEX public.chart_divisionals_unique_idx
+ALTER INDEX public.chart_divisionals_unique_idx_f_a2 RENAME TO chart_divisionals_unique_idx
+DROP TRIGGER l1_data_plane_capture ON public.chart_divisionals
+CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.chart_divisionals FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row('chart_id', 'graha', 'ayanamsha_id', 'varga', 'fact_category', 'fact_key', 'fact_subject')
+-- re-attest the capture-trigger row (immutability trigger off, then on; rowcount must be 1):
+ALTER TABLE public.l1_data_plane_trigger_attestations DISABLE TRIGGER l1_data_plane_trigger_attestations_immutable
+UPDATE public.l1_data_plane_trigger_attestations a SET definition_digest = encode(public.digest(pg_get_triggerdef(t.oid,true),'sha256'),'hex') FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid WHERE a.table_name='chart_divisionals' AND a.trigger_name='l1_data_plane_capture' AND c.relname=a.table_name AND t.tgname=a.trigger_name
+ALTER TABLE public.l1_data_plane_trigger_attestations ENABLE TRIGGER l1_data_plane_trigger_attestations_immutable
+-- commit only if ALL hold (EXPECTED_DIFF): across a before/after snapshot of every public index, trigger, l1_/l2_ and lifecycle function, both attestation tables and the table/column comments of the two snapshot tables, exactly ONE entry changed in each of index, trigger, trigger attestation and EXACTLY 1 in function and function attestation (the patched signatures), comments removed 2 / added 7; ACL, membership, RLS, policy, per-chart row data, every append-only trigger state identical; for each patched function pg_get_functiondef after == the patched body (md5 as bound) and its diff from the before body has the bound sha256 and hunk count; owner/secdef/config/ACL unchanged; the new index is unique, valid, NULLS NOT DISTINCT on the 7 columns; every attestation row equals the live object under the gate's own join and equals the bound digest; the gate's three queries are false AFTER the plan under search_path public and stored == gate-side digests; identity probe 84 landed / 84 distinct identities (legacy 6 args: 18); transient grants revoked and membership equals the pre-state; --expect-plan == plan hash; --expect-evidence == this run's evidence digest (apply).
+-- ROLLBACK (--rollback-dry-run / --rollback), the exact inverse, as data_plane_l1_owner (generic: every function re-applied from its shipped live definition and re-attested):
+-- preconditions: each function md5 == its patched md5 and its attestation == its patched sha256; 7-column index; 7-argument trigger with attestation ea1281cfcd1d2250e3a073dbb070a566da18cab1431a0547f6c10583a4f5fe83; the patched comments; NO two chart_divisionals rows share the six-column key (a rebuild that landed widened rows makes the old index impossible: delete them first); no build in flight; gate green
+-- CREATE OR REPLACE FUNCTION from each shipped live definition; the 1035 table comments restored and the five column comments set to NULL; 6-column index (create tmp, drop, rename); 6-argument trigger; re-attest every function row and the trigger row; commit conditions mirror the forward ones with the live constants (trigger digest d0064f5ed31f7db91cb239967f783af3a885f21b39aa7c833877989a713768b0).
+-- the real run is started ONLY through exec/gate_v2/run_gated.sh <python3> <this file> <args> (GATE_V2): the executor REFUSES (exit 93) unless the marker verifies against the gate files pinned below; it writes outcome.json (dry_run | applied | failed) in every mode; it refuses (exit 95) when a DPFA2_TEST_* variable is set outside pytest.
+-- every mode needs --expect-plan: the in-process administrator credential is fetched only after the plan hash matched.
+-- gate files (exec/gate_v2, PR #2938; PINS ARE TBD, plan hash PROVISIONAL): prerun_gate.py sha256 TBD_BIND_AT_GATE_REVISION_3; run_gated.sh sha256 TBD_BIND_AT_GATE_REVISION_3; executor_standards.py sha256 TBD_BIND_AT_GATE_REVISION_3
+-- plan hash = bind_gate_into_plan_hash(sha256(plan text + "\n" + json(EXPECTED_DIFF)), prerun_gate.py pin, run_gated.sh pin)
+-- F-A2 module: d6_f_a2_key_widening_DRAFT.py sha256 af5e6565d6e6c0b0d4906952bb7cf76ad5ea000147b43eeda2c2f4fcaa347215
+-- patch A module: d6_capture_patch_a.py sha256 613553c1320ab3ed63bbb98ce7bc0f2468fe3d762b6daf06d27d3d85d6b79d81
+-- live definition: live_defs/l1_data_plane_capture_row.LIVE.sql sha256 0f8f42b6c93a9a5d2d25333cc2bd3cf52aed60e7cb7d51a87979ede92e74b9b8
+-- executor: d6_dataplane_capture_fa2_exec.py sha256 319b59d0329a9e0ac62fc374bbdf86041edb4b3ac39491a621def2e4a52fe539

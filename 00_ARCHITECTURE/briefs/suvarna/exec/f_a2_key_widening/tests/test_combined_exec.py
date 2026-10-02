@@ -1,0 +1,420 @@
+"""The combined executor against a disposable PostgreSQL holding a replay of migration 1035 on production-shaped roles/owners/ACLs.
+Never a real system; the administrator is a fake: a non-superuser CREATEROLE role with no table privilege (PostgreSQL <= 15) or the cluster
+superuser (>= 16, DPFA2_TEST_ADMIN=postgres)."""
+from __future__ import annotations
+
+import dataclasses
+import json
+import pathlib
+import re
+import subprocess
+
+import psycopg
+import pytest
+
+import conftest as cf
+import live_manifest as lm
+import shapes
+from conftest import EXEC_DIR
+
+
+@pytest.fixture()
+def runner(cluster, mod, db, tmp_path):
+    return cf.Runner(cluster, mod, db, tmp_path)
+
+
+def outcome(res):
+    return json.loads(pathlib.Path(res["outcome_file"]).read_text())
+
+
+def reader_rows(cluster, db, fname):
+    r = subprocess.run([cf.PSQL, "-X", "-A", "-t", "-F", "|", "-h", "127.0.0.1", "-p", str(cluster.port), "-U", "rehearsal_reader", "-d", db,
+                        "-f", str(EXEC_DIR / fname)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    rows = [ln.split("|") for ln in r.stdout.splitlines() if ln.strip()]
+    return rows
+
+
+def only_known_failures(rows):
+    """Every verify row is PASS or INFO except check 31, which compares the L2 functions that EXIST with production's md5: the two
+    stub functions the gate's regprocedure literals need are not production's text (documented in schema/07)."""
+    bad = [r for r in rows if r[-1] not in ("PASS", "INFO") and r[0] not in ("31", "999")]
+    assert bad == [], bad
+    return {r[0]: r for r in rows}
+
+
+# ------------------------------------------------------------------------------------------------------------- the model
+def test_replay_is_production_faithful(cluster, db, mod):
+    rows = cluster.su(db, "SELECT p.oid::regprocedure::text, md5(pg_get_functiondef(p.oid)), length(pg_get_functiondef(p.oid)), "
+                          "pg_get_userbyid(p.proowner), p.prosecdef, COALESCE(p.proconfig::text,''), COALESCE(p.proacl::text,'') FROM pg_proc p "
+                          "JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND (p.proname LIKE 'l1\\_data\\_plane\\_%' "
+                          "OR p.proname IN ('open_l1_data_plane_generation','capture_l1_data_plane_dasha_partition','authorize_l1_chart_facts_delete',"
+                          "'complete_l1_data_plane_partition','select_l1_data_plane_generation','rollback_l1_data_plane_generation'))")
+    got = {r[0]: (r[1], r[2], r[3], r[4], r[5], r[6]) for r in rows}
+    assert got == lm.LIVE_L1_MANIFEST
+    assert cluster.su(db, "SELECT count(*) FROM public.l1_data_plane_trigger_attestations")[0][0] == lm.LIVE_ATTESTATION_COUNTS["trigger"]
+    assert cluster.su(db, "SELECT count(*) FROM public.l1_data_plane_function_attestations")[0][0] == lm.LIVE_ATTESTATION_COUNTS["function"]
+    assert cluster.su(db, "SELECT definition_digest FROM public.l1_data_plane_trigger_attestations WHERE trigger_name='l1_data_plane_capture' "
+                          "AND table_name='chart_divisionals'")[0][0] == lm.LIVE_CAPTURE_TRIGGER_DIGEST
+    # production-shaped ownership: tables, functions and attestation tables belong to the protected owners; the admin holds nothing
+    assert cluster.su(db, "SELECT pg_get_userbyid(relowner) FROM pg_class WHERE relname='chart_divisionals'")[0][0] == "data_plane_l1_owner"
+    assert cluster.su(db, "SELECT pg_get_userbyid(relowner) FROM pg_class WHERE relname='l2_data_plane_trigger_attestations'")[0][0] == "data_plane_l2_owner"
+    if cluster.major <= 15:
+        assert cluster.su(db, "SELECT has_table_privilege('adm','public.chart_divisionals','SELECT'), has_schema_privilege('adm','public','USAGE')")[0] == (False, False)
+
+
+# ------------------------------------------------------------------------------------------------------------ the dry run
+def test_dry_run_prints_the_diff_and_leaves_everything_identical(runner):
+    before = runner.state()
+    code, res = runner.run("dry-run")
+    assert code == 0 and res["status"] == "DRY_RUN_ROLLED_BACK_ALL_CHECKS_HOLD", res["details"]
+    assert runner.state() == before
+    log = "\n".join(res["log"])
+    assert "commit conditions: ALL HOLD" in log and "AS PLANNED" in log and "UNEXPECTED" not in log
+    assert "FUNCTION BODY l1_data_plane_capture_row()" in log and "ACCESS EXCLUSIVE window" in log
+    o = outcome(res)
+    assert o["status"] == "dry_run" and o["failed_checks"] == [] and o["evidence_digest"] == res["evidence_digest"]
+    assert o["plan_hash"] == runner.m.plan_hash() and o["under_test"] is False
+    ev = pathlib.Path(res["evidence_dir"])
+    assert {f.name for f in ev.iterdir()} >= {"outcome.json", "report.txt", "result.json", "before_state.json", "fn_before_l1_data_plane_capture_row.sql"}
+    assert (ev / "fn_before_l1_data_plane_capture_row.sql").read_text() == runner.m.CAPTURE_PATCH.live_def()
+    assert all(oct(f.stat().st_mode & 0o777) == "0o600" for f in ev.iterdir())
+
+
+def test_count_is_read_only_and_records_an_outcome(runner):
+    before = runner.state()
+    code, res = runner.run("count")
+    assert code == 0 and res["status"] == "COUNT_READ_ONLY_OK" and runner.state() == before
+    assert outcome(res)["status"] == "dry_run"
+
+
+# ------------------------------------------------------------------------------------------------------------- the apply
+def test_apply_commits_exactly_the_expected_diff(runner, cluster, db, mod):
+    before = runner.state()
+    code, res = runner.run("apply")
+    assert code == 0 and res["status"] == "COMMITTED", res["details"]
+    after = runner.state()
+    p = mod.CAPTURE_PATCH
+    # --- the function: body, md5, owner/secdef/config/ACL
+    assert before["md5"] == p.live_md5 and after["md5"] == p.patched_md5 and after["fn"] == p.patched_def()
+    f_before = {r[0]: r for r in before["snap"]["function"]}
+    f_after = {r[0]: r for r in after["snap"]["function"]}
+    assert set(f_before) == set(f_after)
+    changed = [k for k in f_before if f_before[k] != f_after[k]]
+    assert changed == ["l1_data_plane_capture_row()"]
+    b, a = f_before[changed[0]], f_after[changed[0]]
+    assert b[2:] == a[2:] and b[2:] == ("data_plane_l1_owner", "true", '{"search_path=pg_catalog, public, pg_temp"}',
+                                        "{data_plane_l1_owner=X/data_plane_l1_owner}")       # owner, secdef, config, ACL unchanged
+    # --- the 14 other functions keep their md5
+    assert all(f_before[k][1] == f_after[k][1] for k in f_before if k != "l1_data_plane_capture_row()")
+    # --- attestation: ONE function row, ONE trigger row; every other row identical
+    att_b, att_a = set(map(tuple, before["att"])), set(map(tuple, after["att"]))
+    assert len(att_b - att_a) == 2 and len(att_a - att_b) == 2
+    assert {r[1] for r in att_b - att_a} == {"l1_data_plane_capture_row()", "chart_divisionals"}
+    fn_row = [r for r in att_a - att_b if r[0] == "F"][0]
+    assert fn_row[2] == p.patched_sha256 and fn_row[3:] == ("data_plane_l1_owner", "true", '{"search_path=pg_catalog, public, pg_temp"}')
+    trg_row = [r for r in att_a - att_b if r[0] == "T"][0]
+    assert trg_row[2] == "l1_data_plane_capture" and trg_row[5] == mod.PATCHED_TRG_DIGEST
+    # --- index, trigger, comments; nothing else (ACL / RLS / policy / row data / immutable triggers identical)
+    assert len(before["snap"]["index"] - after["snap"]["index"]) == 1 and len(after["snap"]["index"] - before["snap"]["index"]) == 1
+    assert len(before["snap"]["trigger"] - after["snap"]["trigger"]) == 1
+    assert len(after["snap"]["comment"]) == 7 and len(before["snap"]["comment"]) == 2
+    for k in ("acl", "rls", "policy", "rowdata", "immutable_triggers"):
+        assert before["snap"][k] == after["snap"][k], k
+    # --- the executor's membership snapshot: transient grants revoked
+    assert cluster.su(db, "SELECT count(*) FROM pg_auth_members am JOIN pg_roles m ON m.oid=am.member WHERE m.rolname='adm'")[0][0] == 0 \
+        or cluster.major > 15
+    o = outcome(res)
+    assert o["status"] == "applied" and o["failed_checks"] == []
+
+
+def test_attestation_drift_is_zero_and_the_gate_is_green_after_apply(runner, cluster, db, mod):
+    code, res = runner.run("apply")
+    assert code == 0, res["details"]
+    with cluster.conn(db) as c:
+        cur = c.cursor()
+        cur.execute("SET LOCAL search_path = public")             # the gate's own session path
+        g = mod.fa2.gate_mirror(cur, cf.L1_TABLES)
+        c.rollback()
+    assert mod.fa2.gate_red(g) == [] and g["trigger_digest_stored"] == g["trigger_digest_gate_side"] == mod.PATCHED_TRG_DIGEST
+    assert g["function_digest_stored"] == g["function_digest_gate_side"] == mod.CAPTURE_PATCH.patched_sha256
+    drift = cluster.su(db, """SELECT count(*) FROM public.l1_data_plane_function_attestations a
+        LEFT JOIN pg_proc p ON p.oid = to_regprocedure('public.'||a.function_signature)
+        WHERE p.oid IS NULL OR a.definition_digest <> encode(digest(pg_get_functiondef(p.oid),'sha256'),'hex')
+           OR a.owner_name <> pg_get_userbyid(p.proowner) OR a.security_definer <> p.prosecdef OR a.config IS DISTINCT FROM p.proconfig""")[0][0]
+    assert drift == 0
+
+
+def test_other_trigger_attestations_are_unchanged_by_the_three_hunks(runner, cluster, db, mod):
+    """H1-H3 alone (patch A without F-A2's trigger change) touch ONLY the capture-function attestation row: apply the patch-A body by hand."""
+    live = mod.CAPTURE_PATCH.live_def()
+    a_only = mod.pa.patch_a(live)
+    before_att = cluster.su(db, "SELECT table_name, trigger_name, trigger_type, enabled, function_oid, function_signature, definition_digest "
+                                "FROM public.l1_data_plane_trigger_attestations ORDER BY 1,2")
+    with cluster.conn(db, autocommit=False) as c:
+        cur = c.cursor()
+        cur.execute("SET LOCAL ROLE data_plane_l1_owner")
+        cur.execute(a_only)                                       # composed A compiles
+        cur.execute("ALTER TABLE public.l1_data_plane_function_attestations DISABLE TRIGGER l1_data_plane_function_attestations_immutable")
+        cur.execute(mod.fn_att_update_sql("l1_data_plane_capture_row()"))
+        assert cur.rowcount == 1
+        cur.execute("ALTER TABLE public.l1_data_plane_function_attestations ENABLE TRIGGER l1_data_plane_function_attestations_immutable")
+        cur.execute("RESET ROLE")
+        c.commit()
+    assert cluster.su(db, "SELECT table_name, trigger_name, trigger_type, enabled, function_oid, function_signature, definition_digest "
+                          "FROM public.l1_data_plane_trigger_attestations ORDER BY 1,2") == before_att
+    assert cluster.su(db, "SELECT md5(pg_get_functiondef('public.l1_data_plane_capture_row()'::regprocedure))")[0][0] \
+        == __import__("hashlib").md5(a_only.encode()).hexdigest()
+    with cluster.conn(db) as c:
+        cur = c.cursor()
+        cur.execute("SET LOCAL search_path = public")
+        g = mod.fa2.gate_mirror(cur, cf.L1_TABLES)
+        c.rollback()
+    assert mod.fa2.gate_red(g) == []                              # patch A alone attests cleanly
+
+
+def test_function_only_variants_compile_and_attest(runner, cluster, db, mod):
+    """A+F composed compiles and attests (done by the executor); the F-A2 hunk alone compiles too."""
+    live = mod.CAPTURE_PATCH.live_def()
+    f_only = mod.pa.apply_hunks(live, [mod.FA2_HUNK])
+    cluster.su(db, f_only, user="postgres")
+    assert cluster.su(db, "SELECT position('fact_subject=' in pg_get_functiondef('public.l1_data_plane_capture_row()'::regprocedure)) > 0")[0][0]
+
+
+# ------------------------------------------------------------------------ EXPECTED_DIFF: any extra byte fails (in the database too)
+def test_a_body_that_differs_by_one_extra_byte_in_the_database_is_refused(runner, mod, monkeypatch):
+    before = runner.state()
+    orig = mod.apply_leg
+
+    def tampered(cur, leg, on_exclusive=None):
+        steps = tuple(dataclasses.replace(s, to_def=s.to_def.replace("RETURN NEW;\nEND;", "RETURN NEW; -- x\nEND;")) for s in leg.functions)
+        assert steps[0].to_def != leg.functions[0].to_def
+        return orig(cur, dataclasses.replace(leg, functions=steps), on_exclusive)
+
+    monkeypatch.setattr(mod, "apply_leg", tampered)
+    code, res = runner.run("apply")
+    assert code == 1 and res["status"] == "REFUSED_ROLLED_BACK"
+    assert "post_l1_data_plane_capture_row_body_is_exactly_the_bound_body" in res["failed_checks"]
+    assert runner.state() == before                                  # rolled back, nothing committed
+    assert outcome(res)["status"] == "failed"
+
+
+def test_a_tampered_hunk_is_refused_before_any_connection(mod, monkeypatch, tmp_path):
+    m = cf.load_exec("d6_tamper")
+    m.GATE_PINS.update(cf.fixture_pins())
+    p = m.CAPTURE_PATCH
+    approved = m.plan_hash()                       # the hash the operator was given for the shipped hunks
+    monkeypatch.setattr(m, "FUNCTION_PATCHES", (dataclasses.replace(p, hunks=p.hunks[:-1] + (("F", p.hunks[-1][1], p.hunks[-1][2] + " "),)),))
+    monkeypatch.setattr(m, "plan_hash", lambda *a, **k: approved)         # even if the operator's hash matches, the body is refused
+    args = m.parse_args(["--dry-run", "--expect-plan", approved])
+    with pytest.raises(SystemExit):
+        m.execute(args, lambda: pytest.fail("connected"))
+    o = json.loads(next((tmp_path / "ev").glob("*/outcome.json")).read_text())
+    assert o["failed_checks"] == ["expected_diff_mismatch"]
+
+
+# ----------------------------------------------------------------------------------------- idempotency, evidence, outcome
+def test_a_second_apply_refuses_cleanly(runner):
+    code, res = runner.run("apply")
+    assert code == 0
+    mid = runner.state()
+    code, res2 = runner.run("apply")
+    assert code == 1 and res2["status"] == "REFUSED_ROLLED_BACK"
+    assert {"pre_l1_data_plane_capture_row_body_is_the_bound_body", "pre_index_shape", "pre_trigger_shape"} <= set(res2["failed_checks"])
+    assert runner.state() == mid
+
+
+def test_the_evidence_digest_is_equal_for_dry_run_and_apply_and_a_wrong_digest_is_refused(runner):
+    code, dry = runner.run("dry-run")
+    code, bad = runner.execute(runner.args("apply", expect_evidence="0" * 64))
+    assert code == 1 and bad["failed_checks"] == ["evidence_digest_matches_expected"]
+    code, ok = runner.execute(runner.args("apply", expect_evidence=dry["evidence_digest"]))
+    assert code == 0 and ok["evidence_digest"] == dry["evidence_digest"]
+
+
+def test_an_interruption_after_the_commit_records_applied_never_failed(runner, mod, monkeypatch):
+    orig = mod.conclude
+
+    def interrupted(o, result, kind, *a, **k):
+        if kind == "applied":
+            raise KeyboardInterrupt                    # the applied write is interrupted AFTER the COMMIT
+        return orig(o, result, kind, *a, **k)
+    monkeypatch.setattr(mod, "conclude", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        runner.run("apply")
+    outs = sorted(runner.tmp.glob("ev/apply_*/outcome.json"))
+    body = json.loads(outs[-1].read_text())
+    assert body["status"] == "applied" and any(w.startswith("outcome_write_failed_after_commit:") for w in body["warnings"])
+    assert runner.state()["md5"] == mod.CAPTURE_PATCH.patched_md5                    # the commit really happened
+
+
+def test_the_exclusive_window_is_short_and_measured(runner):
+    code, res = runner.run("apply")
+    m = re.search(r"ACCESS EXCLUSIVE window \(UTC\): \S+ -> \S+; statements inside it: (\d+)", "\n".join(res["log"]))
+    assert m and int(m.group(1)) <= 60
+    log = "\n".join(res["log"])
+    assert log.index("writer-first check") < log.index("ACCESS EXCLUSIVE window")
+
+
+# ------------------------------------------------------------------------------------------------ the rollback rehearsal
+def test_the_rollback_is_rehearsed_apply_verify_rollback_verify_equal_to_the_pre_state(runner, cluster, db, mod):
+    pre = runner.state()
+    pre_verify = only_known_failures(reader_rows(cluster, db, "verify_before_apply.sql"))
+    assert pre["md5"] == mod.CAPTURE_PATCH.live_md5
+    code, res = runner.run("apply")
+    assert code == 0, res["details"]
+    applied = runner.state()
+    assert applied != pre and applied["md5"] == mod.CAPTURE_PATCH.patched_md5
+    only_known_failures(reader_rows(cluster, db, "verify_after_apply.sql"))
+    # rollback dry run: changes nothing, then the real rollback
+    code, rd = runner.run("rollback-dry-run")
+    assert code == 0 and rd["status"] == "DRY_RUN_ROLLED_BACK_ALL_CHECKS_HOLD", rd["details"]
+    assert runner.state() == applied
+    code, rb = runner.run("rollback")
+    assert code == 0 and rb["status"] == "COMMITTED", rb["details"]
+    post = runner.state()
+    # equal to the pre-state: every function md5 and the full body, every attestation row, the index, trigger, comments, ACL, RLS, rows
+    assert post == pre
+    assert post["md5"] == mod.CAPTURE_PATCH.live_md5 == "1e079261aa42eb97a1885a48035e7520"
+    assert post["att"] == pre["att"]
+    only_known_failures(reader_rows(cluster, db, "verify_before_apply.sql"))
+    assert outcome(rb)["status"] == "applied"
+    # the forward plan can be applied again after a rollback (the inverse really is the inverse)
+    code, again = runner.run("apply")
+    assert code == 0 and runner.state() == applied
+
+
+def test_the_rollback_is_refused_when_widened_rows_collide_on_the_old_key(runner, cluster, db):
+    code, res = runner.run("apply")
+    assert code == 0
+    # two rows sharing the six-column key but differing in fact_subject (legal under the widened index), inserted as the superuser with the
+    # guard/capture triggers off
+    cols = cluster.su(db, "SELECT column_name, is_nullable, column_default FROM information_schema.columns WHERE table_name='chart_divisionals' "
+                          "AND is_nullable='NO' AND column_default IS NULL")
+    names = [c[0] for c in cols]
+    vals = {"chart_id": f"'{cf.CHART}'", "graha": "'Sun'", "ayanamsha_id": "'lahiri_chitrapaksha'", "varga": "'D1'",
+            "fact_category": "'varga_ashtakavarga'", "fact_key": "'bindus'", "build_id": f"'{cf.CHART}'"}
+    for n in names:
+        vals.setdefault(n, "'x'")
+    with cluster.conn(db, autocommit=True) as c:
+        c.execute("SET session_replication_role = replica")
+        for sub in ("D1.S1", "D1.S2"):
+            c.execute(f"INSERT INTO public.chart_divisionals ({', '.join(list(vals) + ['fact_subject'])}) VALUES ({', '.join(list(vals.values()) + [repr(sub)])})")
+    mid = runner.state()
+    code, rb = runner.run("rollback")
+    assert code == 1 and "pre_no_widened_rows_collide_on_the_six_column_key" in rb["failed_checks"]
+    assert runner.state() == mid
+
+
+# ------------------------------------------------------------------------------------------------------- refusal cases
+def refusal(runner, expect_checks, mode="apply"):
+    before = runner.state()
+    code, res = runner.run(mode) if mode != "apply" else runner.run("apply")
+    assert code == 1 and res["status"] == "REFUSED_ROLLED_BACK", res
+    assert set(expect_checks) <= set(res["failed_checks"]), res["failed_checks"]
+    assert runner.state() == before
+    assert outcome(res)["status"] == "failed"
+    return res
+
+
+def test_refused_when_the_live_function_md5_differs_from_the_plans(runner, cluster, db, mod):
+    body = mod.CAPTURE_PATCH.live_def().replace("RETURN NEW;\nEND;", "RETURN NEW; -- drift\nEND;")
+    cluster.su(db, body)                                       # superuser re-creates it: owner becomes the superuser too, so fix the owner
+    cluster.su(db, "ALTER FUNCTION public.l1_data_plane_capture_row() OWNER TO data_plane_l1_owner")
+    cluster.su(db, "REVOKE ALL ON FUNCTION public.l1_data_plane_capture_row() FROM PUBLIC")
+    refusal(runner, ["pre_l1_data_plane_capture_row_body_is_the_bound_body"])
+
+
+def test_refused_when_the_function_is_not_owned_by_the_l1_owner(runner, cluster, db):
+    cluster.su(db, "ALTER FUNCTION public.l1_data_plane_capture_row() OWNER TO data_plane_l2_owner")
+    refusal(runner, ["pre_l1_data_plane_capture_row_owner_secdef_config_acl"])
+
+
+def test_refused_when_the_function_is_missing(runner, cluster, db):
+    cluster.su(db, "DROP FUNCTION public.l1_data_plane_capture_row() CASCADE")
+    code, res = runner.run("dry-run")
+    assert code == 2 and "pre_l1_data_plane_capture_row_present" in res["failed_checks"] and outcome(res)["status"] == "failed"
+    code, res = runner.run("apply")
+    assert code == 1 and "pre_l1_data_plane_capture_row_present" in res["failed_checks"]
+
+
+def test_refused_when_the_attestation_row_is_missing(runner, cluster, db):
+    cluster.su(db, "ALTER TABLE public.l1_data_plane_function_attestations DISABLE TRIGGER l1_data_plane_function_attestations_immutable")
+    cluster.su(db, "DELETE FROM public.l1_data_plane_function_attestations WHERE function_signature='l1_data_plane_capture_row()'")
+    cluster.su(db, "ALTER TABLE public.l1_data_plane_function_attestations ENABLE TRIGGER l1_data_plane_function_attestations_immutable")
+    refusal(runner, ["pre_l1_data_plane_capture_row_attestation_row"])
+
+
+def test_refused_when_the_trigger_attestation_row_is_missing(runner, cluster, db):
+    cluster.su(db, "ALTER TABLE public.l1_data_plane_trigger_attestations DISABLE TRIGGER l1_data_plane_trigger_attestations_immutable")
+    cluster.su(db, "DELETE FROM public.l1_data_plane_trigger_attestations WHERE table_name='chart_divisionals' AND trigger_name='l1_data_plane_capture'")
+    cluster.su(db, "ALTER TABLE public.l1_data_plane_trigger_attestations ENABLE TRIGGER l1_data_plane_trigger_attestations_immutable")
+    refusal(runner, ["pre_trigger_attestation_row"])
+
+
+def test_refused_when_the_administrator_cannot_assume_the_owner_roles(runner, cluster, db):
+    cluster.su(db, "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='plainadm') THEN CREATE ROLE plainadm LOGIN; END IF; END $$")
+    before = runner.state()
+    code, res = runner.run("dry-run", user="plainadm")
+    assert code == 2 and "pre_admin_can_assume_the_owner_roles" in res["failed_checks"]
+    assert runner.state() == before
+
+
+def test_refused_while_a_build_is_in_flight_on_any_chart_or_a_generation_is_building(runner, cluster, db):
+    cluster.su(db, "INSERT INTO public.build_runs(id, chart_id, state) VALUES (gen_random_uuid(), '1c826d5a-41cb-4450-b4dc-59d440e5f75a', 'running')")
+    refusal(runner, ["pre_no_build_in_flight"])
+    cluster.su(db, "DELETE FROM public.build_runs")
+
+
+def test_refused_while_a_builder_session_is_active_and_warned_when_it_is_hidden(runner, cluster, db):
+    with cluster.conn(db, user="data_plane_builder") as busy:
+        busy.execute("SELECT 1")                                   # idle in transaction
+        if cluster.major <= 15:
+            # a non-superuser administrator without pg_read_all_stats cannot see the state: a warning, build_runs is then the only guard
+            code, res = runner.run("dry-run")
+            assert code == 0 and "hidden state" in "\n".join(res["log"])
+            cluster.su("postgres", "GRANT pg_read_all_stats TO adm")
+        try:
+            refusal(runner, ["pre_no_builder_session"])
+        finally:
+            if cluster.major <= 15:
+                cluster.su("postgres", "REVOKE pg_read_all_stats FROM adm")
+
+
+def test_refused_without_the_writer_first_proof(runner, mod):
+    res = runner.execute(runner.args("apply", expect_evidence="0" * 64), runner=cf.writer_runner(mod, tag="e" * 40))[1]
+    assert "pre_writer_first" in res["failed_checks"]
+    res = runner.execute(runner.args("dry-run", writer_commit=None))[1]            # a dry run may omit it (printed NOT CHECKED)
+    assert res["status"] == "DRY_RUN_ROLLED_BACK_ALL_CHECKS_HOLD"
+    assert "NOT CHECKED" in "\n".join(res["log"])
+
+
+def test_refused_when_the_deploy_gate_is_already_red(runner, cluster, db):
+    cluster.su(db, "ALTER TABLE public.l1_data_plane_trigger_attestations DISABLE TRIGGER l1_data_plane_trigger_attestations_immutable")
+    cluster.su(db, "UPDATE public.l1_data_plane_trigger_attestations SET definition_digest=repeat('0',64) WHERE trigger_name='l1_data_plane_mutation_guard' AND table_name='chart_facts'")
+    cluster.su(db, "ALTER TABLE public.l1_data_plane_trigger_attestations ENABLE TRIGGER l1_data_plane_trigger_attestations_immutable")
+    res = runner.run("dry-run")[1]
+    assert "pre_deploy_gate_green" in res["failed_checks"]
+
+
+def test_refused_when_the_comments_are_not_the_pre_state(runner, cluster, db):
+    cluster.su(db, "COMMENT ON COLUMN public.l1_data_plane_fact_snapshots.value_num IS 'someone documented it first'")
+    refusal(runner, ["pre_comments_are_the_pre_state"])
+
+
+# ---------------------------------------------------------------------------------------------- verification SQL, probes
+def test_verify_sql_passes_before_and_after_and_is_read_only(runner, cluster, db):
+    rows = only_known_failures(reader_rows(cluster, db, "verify_before_apply.sql"))
+    assert rows["11"][-1] == "PASS" and rows["12"][-1] == "PASS" and rows["17"][-1] == "PASS" and rows["20"][-1] == "PASS" and rows["21"][-1] == "PASS"
+    runner.run("apply")
+    rows = only_known_failures(reader_rows(cluster, db, "verify_after_apply.sql"))
+    assert all(rows[k][-1] == "PASS" for k in ("11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "30"))
+    # a reader cannot write anything with it: the script is a single SELECT (no DML/DDL keyword at statement start)
+    for f in ("verify_before_apply.sql", "verify_after_apply.sql"):
+        text = "\n".join(l for l in (EXEC_DIR / f).read_text().splitlines() if not l.strip().startswith("--"))
+        assert not re.search(r"(?im)^\s*(insert|update|delete|alter|create|drop|grant|revoke|truncate|comment)\b", text)
+
+
+def test_verify_sql_fails_on_the_wrong_state(runner, cluster, db):
+    rows = {r[0]: r for r in reader_rows(cluster, db, "verify_after_apply.sql")}          # the AFTER script on the pre-state
+    assert rows["11"][-1] == "FAIL" and rows["16"][-1] == "FAIL" and rows["999"][-1] == "FAIL"
