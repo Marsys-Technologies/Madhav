@@ -623,3 +623,32 @@ Steward M20261002T005809-4f92 adopts Codex's closing text (`ASTRA_REVIEW_A5_5_SP
   factor version" before the angular formula runs — the factor row has no field naming the ratifying decision, so the
   sweep cannot check one; send the field name when ND-ORB is ruled and it becomes a guard.
 - 95 window tests; 11 R4 mutations all killed.
+
+### Design v1.11 (2026-10-02) — Codex round 6, R5 (version-aware persistence and consumption)
+
+`rule_registry.py` no longer selects rows by a global version:
+
+- **Explicit composite references**: `BOUND_PATH_REFS`, `BOUND_FACTOR_REFS`, `BOUND_PREDICATE_REFS` are literal
+  `(id, version)` tuples. A new immutable version (the AM-13 `activity_kernel@1.1.0` / `P3,P4,P5@1.1.0` rows, or
+  `vedha_attenuation`'s successor) is bound ONLY by a deliberate edit to them after its review gate passes — nothing
+  is bound by default and nothing global is bumped (a test sets `RULE_VERSION = "9.9.9"` and asserts every row set is
+  unchanged). Every row carries ITS ref's version; each prerequisite and each soft factor keeps ITS OWN version (a
+  successor path `P3@1.2.0` with factors `@1.1.0` and a prerequisite `@1.0.0` is a test, so a binder that took the
+  path's version for its members cannot pass). A path reference to an unbound member version, or a bound path ref
+  absent from the catalogue, is refused before any SQL.
+- **Flat applicability encoding** into the existing typed `operand_selector` (1154:221-240: flat object, token /
+  number / token-array values, no nesting, no JSON null): closed key schema `span_kinds/span_function/span_inside/
+  span_outside`, `angular_kinds/angular_function/angular_form/angular_orb_state[/angular_orb_deg]`, `relations`.
+  The unavailable orb is OMITTED and the unratified state is an explicit token; the free-text `formula` becomes a token
+  and `orb_status` is dropped; an unknown key or formula is REFUSED, never guessed. The real 1154 CHECK admits it and
+  refuses the nested and the null forms (both tested on the real schema).
+- **Read-back**: every insert is read back and compared with the declaration (a store that silently kept something
+  else is a divergence); `bound_factor_rows(path, version)` reads the persisted membership, each factor row at its own
+  version, decodes the flat applicability, requires it to RE-ENCODE to exactly what is stored and equal the
+  declaration. The window sweep consumes THAT (the persisted declaration), dispatching evaluators on the exact
+  membership reference; the prose `direction` the against-channel rule reads comes from the catalogue row at the same
+  ref (the DB's direction is the binary CHECK vocabulary).
+- **Open for Stream B (#2897)**: (i) the 1.1.0 `activity_kernel` row's top-level `function = "linear"` describes a
+  piecewise function (step for extents, linear for points) — Codex asks that it identify the piecewise form;
+  (ii) `graduated_drishti@1.1.0` and the 1.1.0 `drishti.py` ref (`FACTOR_REF` is still `1.0.0` in #2894): the evaluator must
+  name the version it implements. The binder is ready for both; it will not bind 1.1.0 before acceptance.

@@ -330,13 +330,13 @@ def test_o_rp_7_bound_factor_inventory_declared_effects_ranges_and_orderings():
     # D2: sad_bala_summary is deferred (units violate kgf_units_ck) — and
     # binding it would raise, never silently re-unit
     assert "sad_bala_summary" not in rb.BOUND_FACTORS
-    original = rb.BOUND_FACTORS
-    rb.BOUND_FACTORS = original + ("sad_bala_summary",)
+    original = rb.BOUND_FACTOR_REFS
+    rb.BOUND_FACTOR_REFS = original + (("sad_bala_summary", rb.RULE_VERSION),)
     try:
         with pytest.raises(rb.RegistryDivergenceError, match="units"):
             rb.factor_rows()
     finally:
-        rb.BOUND_FACTORS = original
+        rb.BOUND_FACTOR_REFS = original
 
 
 # ── rule_binding: §2.2 frames + the store discipline (fake conn, no DB) ──────
@@ -375,6 +375,8 @@ class _FakeConn:
     def execute(self, sql, params=()):
         if sql.strip().startswith("INSERT"):
             self.inserts.append((sql, params))
+            if self.stored_row is None:
+                self.stored_row = tuple(params)       # a store reads back what it wrote (R5)
         return _FakeResult(self.stored_row)
 
 

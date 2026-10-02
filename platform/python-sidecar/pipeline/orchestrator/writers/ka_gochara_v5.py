@@ -618,6 +618,9 @@ class GocharaV5Writer(WriterBase):
             return lon
 
         store = WindowStore(ctx.db_conn)
+        # R5: the declaration the sweep evaluates is the PERSISTED one, read back (each soft factor at
+        # its own membership version, flat applicability decoded and checked) — not a global constant.
+        bound_rows = RuleRegistryStore(ctx.db_conn).bound_factor_rows
         versions = [r[0] for r in ctx.db_conn.execute(
             "SELECT DISTINCT rule_version FROM public.ka_gochara_relationship_record"
             " WHERE chart_id = %s AND generation = %s AND event_class = %s AND path_id = %s"
@@ -630,8 +633,7 @@ class GocharaV5Writer(WriterBase):
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version, position_at=position_at)
             drafts, ex = gk_window_sweep.draft_windows(
-                event_class, records, gk_window_sweep.registry_factor_rows,
-                drishti=DRISHTI_SOURCE, vedha=VEDHA_SOURCE)
+                event_class, records, bound_rows, drishti=DRISHTI_SOURCE, vedha=VEDHA_SOURCE)
             counts = store.replace_grain_windows(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version, drafts=drafts)
@@ -640,7 +642,7 @@ class GocharaV5Writer(WriterBase):
             verify_window_semantics(
                 ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version,
-                factor_rows=gk_window_sweep.registry_factor_rows(path_id, version),
+                factor_rows=bound_rows(path_id, version),
                 drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=VEDHA_SOURCE is not None)
             windows += counts["windows"]
             memberships += counts["memberships"]
