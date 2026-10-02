@@ -208,6 +208,7 @@ def test_a_non_object_line_raises(w, path):
 
 @pytest.mark.parametrize("path", [CERTS, GAPS, DISP])
 def test_a_ledger_whose_first_line_is_not_the_schema_row_raises(w, path):
+    w.gaps.append(gap("ga_alpha", "Cost.base"))                  # every ledger has a data row, so dropping the schema row is visible
     lines = w.render()[path].split("\n", 1)[1]
     _bad(w, path, lines, "malformed")
 

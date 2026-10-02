@@ -259,6 +259,7 @@ def test_the_committed_generator_not_the_working_trees_reads_the_seed(w):
 @pytest.mark.parametrize("target_crit,target_state", [
     ("Idem.alt", "CLOSED"), ("Idem.alt", "WITHDRAWN"),       # an open gap vanishing into a closed registered row
     ("Idem.zzz", "WITHDRAWN"), ("Idem.zzz", "OPEN"),          # an unregistered id of the same gate family
+    ("Ldgr.src", "OPEN"),                                     # an OPEN registered row of ANOTHER gate
 ])
 def test_folding_an_open_core_gate_gap_into_a_closed_or_unregistered_row_of_the_same_gate_raises(w, target_crit, target_state):
     w.gaps += [gap("ga_alpha", "Idem.pat", gap_id="G1", superseded_by="G2"),
@@ -306,6 +307,13 @@ def test_an_addition_gap_may_fold_into_another_open_row_of_the_same_addition(w):
     _with_addition(w)
     w.gaps += [gap("ga_alpha", "Reach.new", gap_id="G1", superseded_by="G2"), gap("ga_alpha", "Reach.new.sub", gap_id="G2")]
     assert got(w) == ALL - {"ga_alpha"}
+
+
+def test_an_open_addition_gap_folded_into_a_closed_row_of_the_same_addition_is_refused(w):
+    _with_addition(w)
+    w.gaps += [gap("ga_alpha", "Reach.new", gap_id="G1", superseded_by="G2"),
+               gap("ga_alpha", "Reach.new.sub", gap_id="G2", state="CLOSED")]
+    raises(w, "malformed", "OPEN gap")
 
 
 def test_a_non_gate_family_gap_with_no_such_addition_folds_freely(w):
