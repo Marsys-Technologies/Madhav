@@ -1973,7 +1973,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
-    692,
+    693,
     "\"citation_human\": citation,"
    ]
   ],
