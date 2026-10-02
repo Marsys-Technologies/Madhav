@@ -34,6 +34,12 @@
 --   SELECT has_table_privilege('data_plane_builder','public.chart_grants','SELECT');   -- true
 --   SELECT relacl FROM pg_class WHERE oid = 'public.chart_grants'::regclass;           -- unchanged in production
 --
+-- LOCK TIMEOUT (pattern: migration 1218). The first statement below is `SET LOCAL lock_timeout = '5s'`:
+-- a blocked migrate job must fail fast, not hang a shared deploy.
+--
+-- ORDERING. This migration has no effect that depends on a writer image, never shares a PR with a writer change,
+-- and may merge at any time (it only has to precede the builds that read public.charts as data_plane_builder).
+--
 -- Transaction ownership belongs to platform/scripts/migrate.ts (BEGIN/COMMIT around this file).
 
 SET LOCAL lock_timeout = '5s';

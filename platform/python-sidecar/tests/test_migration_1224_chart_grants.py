@@ -39,6 +39,9 @@ def test_migration_does_not_own_the_transaction_and_has_no_destructive_sql():
     code = _code(_M1224)
     assert not re.search(r"\b(BEGIN|COMMIT|ROLLBACK)\b\s*;", code), "migrate.ts owns the transaction"
     assert "SET LOCAL lock_timeout = '5s';" in code
+    # lock_timeout is the FIRST executable statement, and the header says why
+    assert code.strip().startswith("SET LOCAL lock_timeout = '5s';"), code.strip()[:80]
+    assert "a blocked migrate job must fail fast, not hang a shared deploy" in _M1224.read_text()
     # statement-start match: privilege names inside string literals (1224 lists TRUNCATE) are not statements
     assert not re.search(r"^\s*(DROP|TRUNCATE|DELETE\s+FROM|REVOKE|ALTER)\b", code, re.I | re.M)
 
