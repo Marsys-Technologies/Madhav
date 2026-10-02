@@ -15,8 +15,9 @@ Scenarios:
   * a generation sealed BETWEEN 1206 and 1240 (i.e. before 1240 existed) stays sealed and frozen when 1240 is applied, the candidate gate
     reports it honestly as unverified, and no principal can write to it;
   * restricted-role contention on one chart: a builder rebuild racing a seal, in both orders.
-Known-defect markers (strict xfail — they flip to failures the day Stream A fixes them): R9-6.1 (the shipped inventory store DELETEs the
-verification table as the builder) and R9-9 (the geometry self-check probes 1 s from an edge the solver locates to 1 arcsecond).
+History: the first two runs carried strict xfails for two Stream A defects this rehearsal found (R9-6.1: the inventory store deleted the verification table as the
+builder; R9-10: the P1 anchor certification expected Moon contacts the stored non-Moon scope never writes) and one fixed stand-in (R9-9, the geometry probe margin).
+All three are fixed in Stream A's code; no stand-in and no xfail remains: every test runs Stream A's code as shipped.
 """
 from __future__ import annotations
 
@@ -82,25 +83,6 @@ def _grant(conn, role, spec):
 
 
 # ── stand-ins and fixtures ──────────────────────────────────────────────────────────────────────────────────────
-
-def _store_without_verification_delete(mp):
-    """STAND-IN for the one-line change Stream A still owes (R9-6.1, still open on 58ce55523): with PC-4 folded into 1206 the builder holds NO
-    privilege on the verification table, so the inventory store must not DELETE it (the 1206 FK now cascades from the header). Stream A's head
-    still lists `ka_gochara_search_inventory_verification` in `_CLASS_TABLES_DELETE_ORDER`."""
-    mp.setattr(inventory_store, "_CLASS_TABLES_DELETE_ORDER",
-               tuple(t for t in inventory_store._CLASS_TABLES_DELETE_ORDER if "verification" not in t))
-
-
-def _p1_certification_skips_moon(mp):
-    """STAND-IN for a defect found by THIS rehearsal on Stream A 58ce55523 (R9-10): `record_verifier.expected_p1_contacts` reconstructs the P1
-    contact set for all seven grahas INCLUDING the Moon, but the stored scope is `stored_non_moon` (AM-14: Moon-resolved obligations are
-    `excluded_moon_tier`, the Moon is on-demand and never persisted) — so on the REAL sky the builder's own record phase rejects its correct
-    ledger ('expected contact moon span:2 … is not in the ledger'). A's synthetic sky holds the Moon fixed, which is why it never showed.
-    The stand-in drops Moon-agent contacts from the expected set; Stream A decides the real fix."""
-    from services.gochara_kernel import record_verifier as rv
-    orig = rv.expected_p1_contacts
-    mp.setattr(rv, "expected_p1_contacts", lambda *a, **k: [e for e in orig(*a, **k) if e["agent"] != "moon"])
-
 
 _LAST_SQL = [""]
 
@@ -174,13 +156,10 @@ def _template(tmp_path_factory, stack, keep):
         admin, name, dsn = cw.composed_create("tmpl", stack)
         held.update(name=name)
         return admin, name, dsn
-    _store_without_verification_delete(mp)
-    _p1_certification_skips_moon(mp)
     gen, w = _real_world(mp, tmp_path_factory.mktemp("eph"), create)
     try:
         build_as_builder(w)
         w.conn.close()
-        mp.undo()                                     # the stand-ins applied the BUILD only: every test below sees Stream A's code as shipped
         if keep:
             import psycopg
             with psycopg.connect(cw.ADMIN_DSN, autocommit=True, connect_timeout=3) as c:
@@ -208,21 +187,8 @@ def built_template_between(tmp_path_factory):
 @pytest.fixture()
 def cbuilt(built_template, monkeypatch, tmp_path):
     """A CLONE of the built template: a built, unverified, unsealed generation owned by the migration principal."""
-    _store_without_verification_delete(monkeypatch)
-    _p1_certification_skips_moon(monkeypatch)
     gen, w = _real_world(monkeypatch, tmp_path, lambda: cw.composed_clone(built_template))
     apply_extra_grants(w.conn)                        # the verifier's/sealer's derived sets (the template may predate an EXTRA change)
-    try:
-        yield w
-    finally:
-        gen.close()
-
-
-@pytest.fixture()
-def cbuilt_shipped(built_template, monkeypatch, tmp_path):
-    """The same clone WITHOUT the store stand-in and WITHOUT the P1-certification stand-in: Stream A's code as shipped."""
-    gen, w = _real_world(monkeypatch, tmp_path, lambda: cw.composed_clone(built_template))
-    apply_extra_grants(w.conn)
     try:
         yield w
     finally:
@@ -293,7 +259,7 @@ def test_the_1240_window_check_helper_grant_is_necessary_for_the_builders_window
 
 @pytest.fixture()
 def cfresh(monkeypatch, tmp_path):
-    """A FRESH production-ordered world (no build yet), Stream A's code as shipped."""
+    """A FRESH production-ordered world (no build yet), Stream A's code as shipped (no stand-in anywhere in this module)."""
     gen, w = _real_world(monkeypatch, tmp_path, lambda: cw.composed_create("fresh"))
     apply_extra_grants(w.conn)
     try:
@@ -302,31 +268,18 @@ def cfresh(monkeypatch, tmp_path):
         gen.close()
 
 
-@pytest.mark.xfail(strict=True, raises=RuntimeError,
-                   reason="R9-6.1 (STILL OPEN on Stream A 58ce55523): the shipped inventory store still lists the verification table in "
-                          "_CLASS_TABLES_DELETE_ORDER and deletes it on the FIRST inventory step, so the restricted builder (PC-4 folded into 1206) is "
-                          "denied at build time; remove this xfail when that one line is dropped (the 1206 FK now cascades from the header)")
-def test_the_shipped_inventory_store_lets_the_restricted_builder_start_a_build(cfresh):
-    try:
-        with as_role(cfresh.conn, cw.BUILDER):
-            cfresh.boot()
-    except RuntimeError as exc:
-        if "ka_gochara_search_inventory_verification" not in str(exc):
-            pytest.fail(f"failed for a DIFFERENT reason than R9-6.1: {exc}")
-        raise
+def test_the_inventory_store_lets_the_restricted_builder_start_a_build(cfresh):
+    """R9-6.1 FIXED (Stream A cc4b481f4): the store no longer deletes the verification table as the builder, so a restricted builder (PC-4 in 1206)
+    starts a build on a FRESH world. This was the first strict xfail — now an ordinary test, with Stream A's code as shipped."""
+    with as_role(cfresh.conn, cw.BUILDER):
+        cfresh.boot()
 
 
-@pytest.mark.xfail(strict=True, raises=RuntimeError,
-                   reason="R9-10 (found by this rehearsal on Stream A 58ce55523): the P1 anchor certification expects Moon contacts that the stored "
-                          "non-Moon scope never writes, so the builder's own record phase rejects a REAL-sky build; remove when Stream A fixes it")
-def test_the_shipped_record_phase_accepts_a_real_sky_build_with_moon_anchors(cbuilt_shipped):
-    try:
-        with as_role(cbuilt_shipped.conn, cw.BUILDER):
-            cbuilt_shipped.step(f"record:{CLS}:P1")
-    except RuntimeError as exc:
-        if "expected contact moon" not in str(exc):
-            pytest.fail(f"failed for a DIFFERENT reason than R9-10: {exc}")
-        raise
+def test_the_record_phase_accepts_a_real_sky_build_with_moon_anchors(cbuilt):
+    """R9-10 FIXED (Stream A dc63af112): every body-enumerating derivation takes the stored scope from the manifest and the Moon is never an
+    expected stored agent, so the builder's own P1 anchor certification accepts a correct REAL-sky ledger. This was the second strict xfail."""
+    with as_role(cbuilt.conn, cw.BUILDER):
+        cbuilt.step(f"record:{CLS}:P1")
 
 
 def test_the_geometry_self_check_accepts_a_real_sky_window_build_with_no_stand_in(cbuilt):
