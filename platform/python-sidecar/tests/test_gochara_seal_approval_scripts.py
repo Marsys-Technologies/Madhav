@@ -47,10 +47,10 @@ def brief_raw(p=None):
 
 
 def compact(p=None, raw=None, **over):
-    """The verifier job's last output line (contract seal_brief_transport/1, ST-WIRE-2): `{status: BRIEFED, contract_version, sha256, persisted, producer, brief_bytes, brief_file, brief_chunks}`."""
+    """The verifier job's last output line (contract gochara_brief_transport/1, ST-WIRE-3): `{status: BRIEFED, contract, sha256, persisted, producer, brief_bytes, brief_file, brief_chunks}`."""
     p = payload() if p is None else p
     raw = brief_raw(p) if raw is None else raw
-    c = {"brief_bytes": len(raw), "brief_chunks": True, "brief_file": None, "contract_version": "seal_brief_transport/1", "sha256": hashlib.sha256(raw).hexdigest(), "status": "BRIEFED",
+    c = {"brief_bytes": len(raw), "brief_chunks": True, "brief_file": None, "contract": "gochara_brief_transport/1", "sha256": hashlib.sha256(raw).hexdigest(), "status": "BRIEFED",
          "persisted": {"brief_id": 7, "manifest_id": p.get("manifest", {}).get("manifest_id"), "state_digest": "c" * 64},
          "producer": {"commit": SHA, "execution_id": "exec-1", "image_digest": "sha256:" + "a" * 64}}
     c.update(over)
@@ -96,8 +96,9 @@ def _flip(raw):
     (lambda raw, c: (raw, {**c, "persisted": {**c["persisted"], "extra": 1}}), "not {brief_id"),
     (lambda raw, c: (raw, {**c, "persisted": True}), "not {brief_id"),
     (lambda raw, c: (b"", c), "empty"),
-    (lambda raw, c: (raw, {k: v for k, v in c.items() if k != "contract_version"}), "BRIEFED"),                                   # a missing transport contract is refused
-    (lambda raw, c: (raw, {**c, "contract_version": "seal_brief_transport/2"}), "transport contract"),                           # an unknown one too
+    (lambda raw, c: (raw, {k: v for k, v in c.items() if k != "contract"}), "BRIEFED"),                                           # a missing transport contract is refused
+    (lambda raw, c: (raw, {**c, "contract": "gochara_brief_transport/2"}), "transport contract"),                                # an unknown one too
+    (lambda raw, c: (raw, {**c, "contract": "seal_brief_transport/1"}), "transport contract"),                                   # the superseded ST-WIRE-2 name
     (lambda raw, c: (raw, {k: v for k, v in c.items() if k != "producer"}), "BRIEFED"),                                           # a brief of unknown producer
     (lambda raw, c: (raw, {**c, "producer": {**c["producer"], "commit": "b" * 40}}), "not this workflow's reviewed revision"),   # produced by other code
     (lambda raw, c: (raw, {**c, "producer": {**c["producer"], "image_digest": "latest"}}), "unknown producer"),
@@ -260,8 +261,11 @@ def _edit_compact(entries, **over):
     (lambda en: _edit_compact(en, brief_bytes=3), "bytes, the compact line says"),
     (lambda en: _edit_compact(en, sha256="1" * 64), "not the one"),                                      # the compact line declares another digest than the chunks
     (lambda en: _edit_compact(en, extra=1), "malformed"),
-    (lambda en: _edit_compact(en, contract_version="seal_brief_transport/2"), "contract_version"),          # an unknown transport contract
-    (lambda en: _edit_compact(en, contract_version=None), "contract_version"),
+    (lambda en: _edit_compact(en, contract="gochara_brief_transport/2"), "contract"),                        # an unknown transport contract on the compact line
+    (lambda en: _edit_compact(en, contract=None), "contract"),
+    (lambda en: _chunk_edit(en, 0, contract="gochara_brief_transport/2"), "contract"),                       # …or on ANY chunk line
+    (lambda en: _chunk_edit(en, 2, contract=None), "contract"),
+    (lambda en: _chunk_edit(en, 1, contract="seal_brief_transport/1"), "contract"),
     (lambda en: _edit_compact(en, producer={"commit": "x"}), "producer"),                                    # a brief of unknown producer
     (lambda en: _edit_compact(en, producer={"commit": " ", "execution_id": "e", "image_digest": "sha256:" + "a" * 64}), "producer"),
     (lambda en: _edit_compact(en, brief_bytes=3.5), "not an integer"),                                       # a non-integral double is refused, never rounded
@@ -327,7 +331,7 @@ def _ex(history, attempt=ATT, digest=D, bid=BID, peid=PEID, **kw):
 
 def test_a_good_approval_yields_the_seal_jobs_approval_file():
     out = _ex([review()])
-    assert out == {"schema": "seal_approval/2", "brief_digest": D, "brief_id": int(BID), "producer_execution_id": PEID, "run_id": int(RUN), "run_attempt": 1,
+    assert out == {"schema": "seal_approval/2", "brief_digest": D, "brief_id": int(BID), "execution_id": PEID, "run_id": int(RUN), "run_attempt": 1,
                    "approver_login": "steward-as-owner", "approved_by_note": approval.mechanical_note("steward-as-owner")}
     assert out["approved_by_note"] == "ruling:NATIVE_DIRECT_RULINGS_20261002#2; actor:steward-as-owner"
 
@@ -610,7 +614,7 @@ def test_the_orchestrator_calls_the_seal_job_once_with_the_approval_file_and_the
     assert lines[0] == f"--chart {CHART} --generation {GEN} --approval-file {world['tmp'] / 'approval.json'}" and f"COMMIT={SHA} ACTOR=steward-as-owner" in lines[1]
     af = json.loads((world["tmp"] / "approval.json").read_text())
     assert af["brief_digest"] == D
-    assert af["schema"] == "seal_approval/2" and af["brief_id"] == int(BID) and af["producer_execution_id"] == PEID        # ST-WIRE-2: /1 is refused by the seal job
+    assert af["schema"] == "seal_approval/2" and af["brief_id"] == int(BID) and af["execution_id"] == PEID        # ST-WIRE-2: /1 is refused by the seal job
     assert "SECRETMARKER" not in r.stdout + r.stderr and "SECRETMARKER" not in lines[0]                 # the sealer DSN is in the seal job's ENVIRONMENT only
 
 
@@ -661,7 +665,7 @@ def test_a_disagreeing_triggering_actor_is_refused_before_the_seal_job(world):
     assert r.returncode == 2 and "differs from the workflow's triggering actor" in r.stderr and not called(world)
 
 
-@pytest.mark.parametrize("rc,needle", [(2, "REFUSED"), (3, "approval does not match"), (4, "identity check failed"), (5, "rolled back"), (7, "rolled back")])
+@pytest.mark.parametrize("rc,needle", [(2, "SEAL JOB REFUSED"), (3, "approval does not match"), (4, "OWN-CHECKOUT check failed"), (5, "rolled back"), (7, "rolled back")])
 def test_the_seal_jobs_non_zero_status_fails_the_run_unchanged(world, rc, needle):
     """Including a failure AFTER publication: the seal job owns the transaction and rolls publication back; the workflow's job is to FAIL the run and say so (never swallow it)."""
     r = orch(world, SEAL_RC=str(rc))
