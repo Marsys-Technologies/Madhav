@@ -347,7 +347,10 @@ def test_a_hand_edited_unsourced_pass_is_refused_on_read(ledger):
 @pytest.mark.parametrize("changes,why", [
     (dict(citation_state="refuted", citation_state_caveat=True), "refuted PASS"),
     (dict(citation_state="maybe"), "unknown state"),
-    (dict(citation_state=5), "non-text state"),
+    (dict(citation_state="maybe", citation_state_caveat=True), "unknown state with a consistent caveat"),
+    (dict(citation_state=5, citation_state_caveat=True), "non-text state with a consistent caveat"),
+    (dict(citation_state="SOURCED", citation_state_caveat=True), "wrong-case state"),
+    (dict(citation_state=["sourced"], citation_state_caveat=True), "list state"),
     (dict(citation_state_caveat=False, citation_state="sourced_ocr_unverified"), "caveat missing on a non-sourced PASS"),
     (dict(citation_state_caveat=True), "caveat on a sourced PASS"),
     (dict(citation_state_caveat="yes"), "non-boolean caveat"),
@@ -381,6 +384,15 @@ def test_a_v1_record_carrying_a_v2_field_is_refused_on_read(ledger):
     rewrite(ledger, 1, citation_state=..., citation_state_caveat=False)
     with pytest.raises(nc.CertificationRefused):
         nc.read_ledger(ledger)
+
+
+@pytest.mark.parametrize("bad", [True, False, "1", 1.0, None, [1], 3, 0, -1])
+def test_a_v1_shaped_record_with_a_malformed_record_version_is_refused(ledger, bad):
+    write_v1(ledger)                                                             # no v2 fields: only the version is wrong
+    rewrite(ledger, 1, record_version=bad)
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.read_ledger(ledger)
+    assert ei.value.code == "bad_ledger" and "record_version" in ei.value.message
 
 
 def test_a_record_with_no_record_version_reads_as_v1(ledger):
