@@ -110,5 +110,20 @@ the Lahiri nakshatra for all five ayanamshas. Harmless on the canonical chart (t
 nakshatra is Purva Bhadrapada for all five ayanamshas) but latent for any chart where an ayanamsha
 puts the Moon in a different nakshatra than Lahiri. Not fixed in this lane.
 
-Not verified here: a real-chart rebuild (production rebuild is not in scope); the `DISTINCT ON`
-SQL was exercised through a fake connection in unit tests, not against a live Postgres.
+Real-Postgres proof of the position-fact read (`tests/test_ga4_chandra_bala_birth_sign_pg.py`,
+skipped in CI unless `GA4_MOON_SIGN_TEST_DATABASE_URL` is set; run locally on a disposable PG 15 with
+production column types chart_id uuid, build_id uuid, computed_at timestamptz; synthetic rows only):
+18 tests passed. Five ayanamshas (Aquarius x4, Pisces for surya_siddhanta_classical) read exactly,
+with decoys excluded (other graha, other key, other category, other chart, non-canonical ayanamsha);
+dict-row and tuple-row connections agree. Two build generations of the same key: the LATEST
+`computed_at` (the newest build) wins, because the newer build's fact supersedes the older one; an
+equal-`computed_at` tie is broken by the higher `build_id`. Verified for every insertion order of 2 and
+3 generations (all permutations), 25 repeats each, and under PYTHONHASHSEED 0/1/2/3/random in
+subprocesses (identical output). A missing fact and an unrecognised stored sign ('Kumbha', 'aquarius',
+'', 'Ophiuchus') both raise `RuntimeError` naming the ayanamsha. Mutations (each red, writer restored
+to the committed bytes afterwards): drop the whole tie-break (7 failed), drop only `build_id DESC`
+(1 failed: the equal-instant tie), drop the `fact_key` pin (2 failed), oldest-wins `computed_at ASC`
+(9 failed).
+
+Not verified here: a real-chart rebuild (production rebuild is not in scope); the hook counts rest on
+the synthetic rehearsal plus the stored-row read.
