@@ -8,6 +8,7 @@ guard, the score/evidence/severity CHECKs, the half-open interval, and delete-th
 """
 from __future__ import annotations
 
+from ._disposable_db_guard import UnsafeAdminDSN, guarded_admin_connect  # noqa: E402
 import dataclasses
 import uuid
 from datetime import datetime, timedelta
@@ -36,7 +37,9 @@ def pg():
     psycopg = pytest.importorskip("psycopg")
     from psycopg.conninfo import make_conninfo
     try:
-        admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+        admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+    except UnsafeAdminDSN:
+        raise                    # a hostile admin DSN is a configuration ERROR, never a skip
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"NOT_RUN: disposable database server unreachable ({exc})")
     name = f"{DB_PREFIX}win_{uuid.uuid4().hex[:8]}"

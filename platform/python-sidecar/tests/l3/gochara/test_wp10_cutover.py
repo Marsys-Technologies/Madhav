@@ -34,6 +34,7 @@ never a fallback to any other DSN, never a silent pass.
 """
 from __future__ import annotations
 
+from ._disposable_db_guard import UnsafeAdminDSN, guarded_admin_connect  # noqa: E402
 import importlib.util
 import os
 import subprocess
@@ -298,7 +299,9 @@ def db():
     CREATE DATABASE fails rather than touch anyone else's database."""
     global DSN
     try:
-        admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+        admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+    except UnsafeAdminDSN:
+        raise                    # a hostile admin DSN is a configuration ERROR, never a skip
     except Exception as exc:  # noqa: BLE001
         if REQUIRE_DB:
             pytest.fail(
@@ -325,7 +328,7 @@ def db():
         END $$""")
     yield conn
     conn.close()
-    admin = psycopg.connect(ADMIN_DSN, autocommit=True)
+    admin = guarded_admin_connect(ADMIN_DSN, autocommit=True)
     admin.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
     admin.close()
     DSN = None
