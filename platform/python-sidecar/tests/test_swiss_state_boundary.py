@@ -140,6 +140,7 @@ EXPECTED_OPERATION_OWNERS = {
     ("pyjhora_adapter/positions.py", "_set_ayanamsha"),
     ("pyjhora_adapter/positions.py", "compute_positions"),
     ("pyjhora_adapter/sensitive_points.py", "compute_sensitive_points"),
+    ("pyjhora_adapter/special_lagnas.py", "_special_ascendant"),
     ("pyjhora_adapter/special_lagnas.py", "compute_special_lagnas"),
     ("pyjhora_adapter/strength.py", "_set_ayanamsha"),
     ("pyjhora_adapter/strength.py", "compute_ashtakavarga_shodhana"),
