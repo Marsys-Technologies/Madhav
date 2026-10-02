@@ -19,21 +19,24 @@ VALENCE_STATES = frozenset({"favourable", "adverse", "mixed", "unqualified"})
 
 @dataclass
 class Valence:
-    evidence_for_occurrence: float
-    evidence_against_occurrence: float
+    evidence_for_occurrence: float | None
+    evidence_against_occurrence: float | None
     occurrence: str  # "contested" | "plain" | "unqualified"
     outcome_valence_for_native: str
     severity: float = 0.0
     unresolved_operand: str | None = None
 
 
-def compute_valence(event_class: str, evidence_for: float,
-                    evidence_against: float,
+def compute_valence(event_class: str, evidence_for: float | None,
+                    evidence_against: float | None,
                     unresolved_operand: str | None = None) -> Valence:
     """§3: the three fields are independent; no arithmetic nets evidence_for
     against evidence_against. Valence derives from class polarity plus rule
     content at evaluation time, never copied class-blind from the rule row."""
     cls = CLASS_BY_NAME[event_class]
+    if unresolved_operand is None and (evidence_for is None or evidence_against is None):
+        # a NULL evidence channel is an unqualified reduction (Codex R1): the unresolved branch, never a default
+        unresolved_operand = "evidence_channel_unqualified"
     if unresolved_operand is not None:
         return Valence(evidence_for, evidence_against, "unqualified",
                        "unqualified", unresolved_operand=unresolved_operand)
