@@ -1,11 +1,12 @@
 ---
 artifact: L1_MV_REFRESH_AFTER_REBUILD
-version: 1.0
+version: 1.1
 status: DRAFT_FOR_REVIEW
 date: 2026-10-02
 lane: suvarna/land/TI-l1-min-fixes-001
 decision: SS minimum S-L1 fix set (b): skip the in-writer MV refresh when the writer does not own the view; refresh afterwards as the owner
 changelog:
+  - "1.1 (2026-10-02): SS decision: W7 records the view as knowingly stale (counts before); the refresh is migration 1256 (ordinary guarded migration as amjis_app), first post-window PR; owner-path executor route withdrawn."
   - "1.0 (2026-10-02): view inventory (live catalog, read as suvarna_reader), what the S-L1 path refreshes, what a stale view affects, the W7 runbook step, the statements, the verification SQL."
 ---
 
@@ -40,53 +41,30 @@ Other `mv_chart_*` views that are chart_facts/chart_divisionals aggregates and t
 
 Dependents and readers (git grep of `platform/src`, `platform-mcp/src`, `platform/python-sidecar`, `platform/scripts`; `pg_depend` and `pg_proc.prosrc` in the live catalog): **no served or planning reader reads any of rows 1-3 or 4 by name.** The retrieval layer reads `chart_facts` directly. The only references are: the writers' own REFRESH, `build_runner.py`, `platform/scripts/governance/drift_detector.py:941-948,1049-1056` (existence checks), one comment in `get_dasha_lord_capability.ts:21`, and one live dependent object, `mv_sensitive_points_cross_ayanamsha` (row 4, itself unread). So a stale view today affects only ad-hoc SQL and the drift detector's presence check, not a served answer. `suvarna_reader` holds no SELECT on these views (verified: `information_schema.role_table_grants` empty), so row counts below must be read as the owner.
 
-## 3. The runbook step
+## 3. The runbook step (SS decision 2026-10-02: no owner-path executor; migration 1256, post-window)
 
-> **W7: refresh `mv_chart_sade_sati_lifetime_summary` (required: the only view the S-L1 build skips), and, if the rebuild touched them, `mv_chart_sensitive_points_summary` then `mv_sensitive_points_cross_ayanamsha`, as `amjis_app`, by route A (below). Run after the S-L1 job reports success, before any reader or the next dependent step relies on those views. Record the before/after reads of section 5 in the run record.**
+> **W7: record `mv_chart_sade_sati_lifetime_summary` as KNOWINGLY STALE after the S-L1 rebuild, with its row counts BEFORE (section 5, read as the owner or any role with SELECT; `suvarna_reader` has none). Do not refresh it in the window. The post-window check records the counts AFTER. Migration 1256 is the first post-window PR and does the refresh.**
 
-Scope note: only row 1 is *attempted* (and now skipped) on the S-L1 path. Rows 2, 3a-3h and 4 are not refreshed by the S-L1 job at all, before or after this PR, so they go stale after any rebuild regardless; include them in W7 only when the rebuild rewrote their source facts (`ga_sensitive`/`ga_tajaka`/... for 2 and 4; `ga_positions`, `ga_strength`, `ga_panchanga`, `ga_vargas` for 3a-3h).
-
-### Route A (preferred): the existing owner-path executor pattern
-
-The D6 in-process pattern of `00_ARCHITECTURE/briefs/suvarna/exec/reader_grants/reader_grants.py` (present on branch `suvarna/exec`; same executor as F3 section 5): administrator password from Secret Manager inside the process, one transaction, `SET LOCAL ROLE amjis_app`, `--dry-run` rolls back, commit only after SS's `APPROVED <plan hash>`. Statements, in this order (parents before dependents; `CONCURRENTLY` only where a unique index exists):
+**Migration 1256 (NOT written in this PR; do not write it now).** An ordinary guarded migration run by `migrate` as `amjis_app` (the view's owner), idempotent, `lock_timeout` set first:
 
 ```sql
-SET LOCAL ROLE amjis_app;
 SET LOCAL lock_timeout = '10s';
-REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_chart_sade_sati_lifetime_summary;       -- required
-REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_chart_sensitive_points_summary;         -- only if ga_sensitive etc. rebuilt
-REFRESH MATERIALIZED VIEW              public.mv_sensitive_points_cross_ayanamsha;       -- no unique index: plain; after its parent
--- only if the matching L1 assets were rebuilt (build_runner.py's list):
-REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_chart_planet_summary;
-REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_chart_shadbala_summary;
-REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_chart_ashtakavarga_summary;
-REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_chart_bhava_bala_summary;
-REFRESH MATERIALIZED VIEW              public.mv_cross_ayanamsha_consensus;               -- no unique index: plain
-REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_chart_panchanga_birth_summary;
-REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_chart_vargas_summary;
+REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_chart_sade_sati_lifetime_summary;  -- unique index mv_sade_sati_summary_idx exists
 ```
 
-`CONCURRENTLY` runs inside the executor's transaction (proven on a disposable Postgres 15 in this PR's tests: an owner connection refreshes `mv_chart_sade_sati_lifetime_summary` with `CONCURRENTLY` inside a transaction block). It needs the view to be populated (all are: `ispopulated = t`).
+Views WITHOUT a unique index use the plain statement (`mv_cross_ayanamsha_consensus`, `mv_sensitive_points_cross_ayanamsha`); `CONCURRENTLY` runs inside a transaction block (proven on a disposable Postgres 15 in this PR's tests). Only row 1 is attempted (and now skipped) on the S-L1 path. Rows 2, 3a-3h and 4 are not refreshed by the S-L1 job at all, before or after this PR, so they go stale after any rebuild regardless; whether 1256 also covers them is SS's call (a refresh touches no table data and changes no stored `chart_facts` value: it recomputes a derived view from rows the build already committed). Order if several: parents before dependents (`mv_chart_sensitive_points_summary` before `mv_sensitive_points_cross_ayanamsha`).
 
-### Route B: one statement for SS to approve
-
-If SS prefers no executor change, the same transaction as a single reviewed statement run by an authorised owner session:
-
-```sql
-BEGIN; SET LOCAL ROLE amjis_app; REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_chart_sade_sati_lifetime_summary; COMMIT;
-```
-
-Either route touches no table data and changes no stored `chart_facts` value; it recomputes a derived view from rows already committed by the build.
+Superseded draft (kept for the record, not to be run): an owner-path executor route (`SET LOCAL ROLE amjis_app` through the D6 in-process pattern of `reader_grants.py` with SS's `APPROVED <plan hash>`). SS replaced it with migration 1256.
 
 ## 4. Locking and failure behaviour
 
-`REFRESH ... CONCURRENTLY` needs a unique index and does not block `SELECT` on the view; the plain statement (rows 3e and 4) takes `ACCESS EXCLUSIVE` for the duration. With no served reader of any of these views, the plain refresh blocks nothing in production serving. If a refresh fails, the owner-path transaction rolls back and the view simply stays stale; it is safe to re-run.
+`REFRESH ... CONCURRENTLY` needs a unique index and does not block `SELECT` on the view; the plain statement (rows 3e and 4) takes `ACCESS EXCLUSIVE` for the duration. With no served reader of any of these views, the plain refresh blocks nothing in production serving. If a refresh fails, the migration transaction rolls back and the view simply stays stale; it is safe to re-run.
 
 ## 5. Verification (read-only SQL; run as the owner or any role with SELECT on the views; `suvarna_reader` has none)
 
 The views carry no `computed_at` except `mv_chart_panchanga_birth_summary` and `mv_chart_vargas_summary`, so use row counts and build coverage, plus a definition-exact freshness diff.
 
-Before and after W7, per view:
+Before W7 (recorded as the knowingly-stale baseline) and after 1256 (post-window check), per view:
 
 ```sql
 SELECT 'mv_chart_sade_sati_lifetime_summary' AS mv, count(*) AS n_rows,
@@ -117,10 +95,10 @@ FROM (VALUES ('public.mv_chart_sade_sati_lifetime_summary'),
 \gexec
 ```
 
-Acceptance for W7: `differing_rows = 0` for every view refreshed, and the `build_id` sets above empty. If the `\gexec` diff cannot compare a view (a column type without equality), fall back to the row-count and build-coverage reads.
+Acceptance for the post-window check: `differing_rows = 0` for every view refreshed, and the `build_id` sets above empty. If the `\gexec` diff cannot compare a view (a column type without equality), fall back to the row-count and build-coverage reads.
 
 ## 6. What was and was not verified
 
 Verified here: the live owner/index/dependency/membership facts in section 2 (read-only, as `suvarna_reader`); the non-owner skip, the owner refresh, the absent-view skip and the pre-fix abort on a disposable Postgres 15 with the production role structure (`amjis_app` owner, `data_plane_builder` LOGIN non-member); the `CONCURRENTLY`-in-a-transaction and `\gexec` freshness statements on the same disposable cluster.
 
-Not verified: any production refresh (none was run: this lane takes no production action), the executor's actual `amjis_app` membership route (that is SS's to approve), `SELECT` access of any role to the views in production (only the absence of a `suvarna_reader` grant was read), and the view row counts (`reltuples` estimates only: sade_sati 60, sensitive_points 1515, planet 50, shadbala 42, ashtakavarga 520, bhava_bala 60, panchanga 386, vargas 1550, cross_ayanamsha 20043).
+Not verified: any production refresh (none was run: this lane takes no production action), migration 1256 itself (not written), `SELECT` access of any role to the views in production (only the absence of a `suvarna_reader` grant was read), and the view row counts (`reltuples` estimates only: sade_sati 60, sensitive_points 1515, planet 50, shadbala 42, ashtakavarga 520, bhava_bala 60, panchanga 386, vargas 1550, cross_ayanamsha 20043).

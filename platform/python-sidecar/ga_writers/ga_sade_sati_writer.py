@@ -1088,11 +1088,11 @@ def _emit_cycle_rows(
 
         # Tara bala at Janma peak (Q9=A)
         if phase_name == "JANMA":
-            tara_val = natal_facts.get("tara_bala_at_janma_peak", "PENDING_GA4_LOOKUP")
+            tara_val = natal_facts.get("tara_bala_at_janma_peak")  # None: GA4 resolved no tara class
             rows.append(
                 R(cat_ph, subj, "tara_bala_during_peak",
-                  value_text=str(tara_val),
-                  citation_human=f"Tara bala at {cy_id} JANMA peak: {tara_val} ({ayanamsha_id}).",
+                  value_text=None if tara_val is None else str(tara_val),
+                  citation_human=f"Tara bala at {cy_id} JANMA peak: {_ga4_shown(tara_val)} ({ayanamsha_id}).",
                   verification=_verif_for_text(tara_val))
             )
 
@@ -1311,11 +1311,11 @@ def _emit_cycle_rows(
           citation_human=f"Argala matrix cross-ref for {cy_id}: {len(argala_subset)} activations ({ayanamsha_id}).")
     )
     # Tara bala baseline (from GA4)
-    tara = natal_facts.get("tara_bala_at_janma_peak", "PENDING_GA4_LOOKUP")
+    tara = natal_facts.get("tara_bala_at_janma_peak")  # None: GA4 resolved no tara class
     rows.append(
         R(cat_dx, cy_id, "tara_bala_baseline_ref",
-          value_text=str(tara),
-          citation_human=f"Tara bala baseline at {cy_id} Janma peak: {tara} ({ayanamsha_id}).",
+          value_text=None if tara is None else str(tara),
+          citation_human=f"Tara bala baseline at {cy_id} Janma peak: {_ga4_shown(tara)} ({ayanamsha_id}).",
           verification=_verif_for_text(tara))
     )
 
@@ -1901,6 +1901,20 @@ def _ga7_shown(concurrent_key: str, value: str | None) -> str:
     return (
         f"not available ({GA7_NO_PERIOD_REASON}: chart_dashas has no {system_id} "
         f"level-{level_n} period covering this date)"
+    )
+
+
+GA4_NO_TARA_REASON = "ga4_tara_bala_unavailable"
+
+
+def _ga4_shown(value: str | None) -> str:
+    """Same treatment for the GA4 Tara-bala lookup (live stored rows carrying the old
+    PENDING_GA4_LOOKUP placeholder: 0 on every chart; fixed here so it can never be stored)."""
+    if value is not None:
+        return value
+    return (
+        f"not available ({GA4_NO_TARA_REASON}: no GA4 tara_bala_natal_baseline class resolved "
+        "for Saturn's transit nakshatra at this date)"
     )
 
 

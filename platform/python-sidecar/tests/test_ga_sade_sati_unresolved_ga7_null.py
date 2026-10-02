@@ -19,6 +19,7 @@ from typing import Any
 
 from ga_writers.ga_sade_sati_writer import (
     DASHA_LOOKUP_SPECS,
+    GA4_NO_TARA_REASON,
     GA7_NO_PERIOD_REASON,
     _emit_cycle_rows,
     build_sade_sati_cycles,
@@ -119,3 +120,34 @@ def test_every_one_of_the_seven_keys_gets_the_same_treatment():
         for r in hit:
             assert r["fact_value_text"] is None
             assert f"{system_id} level-{level_n}" in r["citation_human"]
+
+
+# ── sibling: GA4 Tara-bala (was the PENDING_GA4_LOOKUP default; 0 live stored rows) ────────────
+
+def _tara_rows(rows: list[dict]) -> list[dict]:
+    return [
+        r for r in rows
+        if (r["fact_category"], r["fact_key"]) in (
+            ("sade_sati_phase", "tara_bala_during_peak"),
+            ("sade_sati_downstream_cross_reference", "tara_bala_baseline_ref"),
+        )
+    ]
+
+
+def test_unresolved_tara_bala_is_null_with_named_reason():
+    rows = _rows(_resolved())  # BASE_FACTS carries no tara_bala_at_janma_peak
+    tara = _tara_rows(rows)
+    assert len(tara) == 2  # still emitted: JANMA phase row + cycle cross-reference row
+    for r in tara:
+        assert r["fact_value_text"] is None
+        assert GA4_NO_TARA_REASON in r["citation_human"]
+        assert r["verification_pass_status"] == "single"
+    for r in rows:
+        assert "PENDING_GA4_LOOKUP" not in str(r["fact_value_text"])
+        assert "PENDING_GA4_LOOKUP" not in r["citation_human"]
+
+
+def test_resolved_tara_bala_is_stored_as_is():
+    tara = _tara_rows(_rows({**_resolved(), "tara_bala_at_janma_peak": "Sampat"}))
+    assert [r["fact_value_text"] for r in tara] == ["Sampat", "Sampat"]
+    assert all(GA4_NO_TARA_REASON not in r["citation_human"] for r in tara)
