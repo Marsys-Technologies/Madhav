@@ -101,6 +101,11 @@ EXPECTED_OPERATION_OWNERS = {
     # which is the (serialized) owner of the path mutation and the backend probe.
     ("panchang_engine/swiss_backend.py", "_observed_backend_name"),
     ("panchang_engine/swiss_backend.py", "ensure_swiss_backend"),
+    # C26: per-thread mode/path preparation helper (separate module so the
+    # L1-writer import closure around swiss_state stays byte-identical); the
+    # set_ephe_path / set_sid_mode mutations run inside SWISS_STATE_LOCK in
+    # its own body.
+    ("panchang_engine/swiss_thread_scope.py", "prepare_swiss_thread"),
     ("panchang_engine/angas.py", "_get_sun_moon_lon"),
     ("panchang_engine/angas.py", "compute_nakshatra"),
     ("panchang_engine/ayanamsha.py", "get_ayanamsha_value"),
@@ -634,3 +639,182 @@ def test_cache_key_carries_mode_and_ephemeris_path_context():
     assert first == again
     assert first != second
     assert fake.calls == 2
+
+
+# ── C26 per-thread sidereal-mode guard ────────────────────────────────────────
+# On Linux the Swiss sidereal mode and ephemeris path are PER-THREAD C state:
+# a function that calls calc_ut with FLG_SIDEREAL but never sets the sidereal
+# mode in its OWN body silently computes in the default ayanamsha
+# (Fagan/Bradley, ~0.88° off Lahiri) whenever it runs on a fresh thread
+# (orchestrator pool threads, pipeline/orchestrator/runner.py). macOS is
+# process-global, so the defect is invisible on developer machines. This guard
+# requires every such function to contain set_sid_mode, prepare_swiss_thread
+# or swiss_calc_scope in its own body (nested function bodies do not count for
+# the enclosing function, and vice versa).
+
+THREAD_GUARD_STATE_CALLS = {"set_sid_mode", "prepare_swiss_thread", "swiss_calc_scope"}
+
+# Explicit, commented allow-list of offenders OUTSIDE services/gochara_* that
+# the C26 brief forbids this lane to fix (ga_writers/* and brahmagyan/* are
+# Suvarṇa's). Each entry must carry its reason. The guard asserts the offender
+# set equals this list EXACTLY, so a new offender fails the suite loudly.
+THREAD_GUARD_ALLOW_LIST = {
+    # Suvarṇa's writer (C26 brief): nested helpers rely on the enclosing scan
+    # function's earlier mode selection — per-thread fragile on Linux, but
+    # NOT this lane's to edit. The brief knew _speed_at_jd (:450-453); the
+    # guard additionally found _saturn_sign_at_jd (same pattern, :383-387).
+    ("ga_writers/ga_sade_sati_writer.py", "_saturn_sign_at_jd"),
+    ("ga_writers/ga_sade_sati_writer.py", "_speed_at_jd"),
+    # panchang_engine L0: sidereal mode is selected by panchang_engine/
+    # ayanamsha.py set_ayanamsha at service setup; per-thread fragile on
+    # Linux worker threads. Reported in the C26 PR body; fixing is a
+    # separate lane's call (FastAPI serving path, outside gochara).
+    ("panchang_engine/angas.py", "_get_sun_moon_lon"),
+    ("panchang_engine/angas.py", "_moon_lon"),
+    ("panchang_engine/planets.py", "compute_planet_state"),
+    ("panchang_engine/planets.py", "compute_all_grahas"),
+}
+
+
+def _expr_mentions_sidereal(node: ast.AST, sidereal_consts: set[str]) -> bool:
+    for sub in ast.walk(node):
+        if isinstance(sub, ast.Attribute) and sub.attr == "FLG_SIDEREAL":
+            return True
+        if isinstance(sub, ast.Name) and sub.id in sidereal_consts:
+            return True
+    return False
+
+
+def _scan_per_thread_module(source: str, relative_path: str):
+    tree = ast.parse(source)
+
+    # Module-level flag constants mentioning FLG_SIDEREAL (e.g.
+    # `_SWE_FLAGS = swe.FLG_SIDEREAL | swe.FLG_SWIEPH`), resolved to a
+    # fixpoint so constants built from other constants are caught.
+    sidereal_consts: set[str] = set()
+    changed = True
+    while changed:
+        changed = False
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(
+                node.targets[0], ast.Name
+            ):
+                name = node.targets[0].id
+                if name not in sidereal_consts and _expr_mentions_sidereal(
+                    node.value, sidereal_consts
+                ):
+                    sidereal_consts.add(name)
+                    changed = True
+
+    parents: dict[ast.AST, ast.AST] = {}
+    for parent in ast.walk(tree):
+        for child in ast.iter_child_nodes(parent):
+            parents[child] = parent
+
+    def _own_calls(fn: ast.FunctionDef | ast.AsyncFunctionDef):
+        """Calls in fn's body EXCLUDING nested function bodies."""
+        stack = list(fn.body)
+        while stack:
+            node = stack.pop()
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                continue
+            if isinstance(node, ast.Call):
+                yield node
+            stack.extend(ast.iter_child_nodes(node))
+
+    offenders: set[tuple[str, str]] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not (isinstance(node.func, ast.Attribute) and node.func.attr == "calc_ut"):
+            continue
+        flag_args = list(node.args[2:]) + [kw.value for kw in node.keywords if kw.arg == "flags"]
+        if not any(_expr_mentions_sidereal(a, sidereal_consts) for a in flag_args):
+            continue
+        cursor: ast.AST = node
+        owner: ast.FunctionDef | ast.AsyncFunctionDef | None = None
+        while cursor in parents:
+            cursor = parents[cursor]
+            if isinstance(cursor, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                owner = cursor
+                break
+        if owner is None:
+            offenders.add((relative_path, "<module>"))
+            continue
+        has_guard = any(
+            (isinstance(c.func, ast.Name) and c.func.id in THREAD_GUARD_STATE_CALLS)
+            or (isinstance(c.func, ast.Attribute) and c.func.attr in THREAD_GUARD_STATE_CALLS)
+            for c in _own_calls(owner)
+        )
+        if not has_guard:
+            offenders.add((relative_path, owner.name))
+    return offenders
+
+
+def _scan_per_thread_tree():
+    source_root = Path(__file__).resolve().parents[1]
+    offenders: set[tuple[str, str]] = set()
+    for path in sorted(source_root.rglob("*.py")):
+        relative = path.relative_to(source_root)
+        if "tests" in relative.parts or path.name.startswith("test_") or path.name == "conftest.py":
+            continue
+        offenders.update(
+            _scan_per_thread_module(path.read_text(encoding="utf-8"), relative.as_posix())
+        )
+    return offenders
+
+
+def test_every_sidereal_calc_ut_sets_sid_mode_in_its_own_function():
+    """C26: no FLG_SIDEREAL calc_ut may rely on a mode set by another function
+    (or another thread). Offenders outside services/gochara_* are pinned in
+    THREAD_GUARD_ALLOW_LIST with reasons; inside services/gochara_* there must
+    be none at all."""
+    offenders = _scan_per_thread_tree()
+    gochara_offenders = {o for o in offenders if o[0].startswith("services/gochara_")}
+    assert gochara_offenders == set(), (
+        "per-thread sidereal-mode hazard inside services/gochara_* — the owning "
+        f"function must call set_sid_mode/prepare_swiss_thread itself: {gochara_offenders}"
+    )
+    assert offenders == THREAD_GUARD_ALLOW_LIST, (
+        "offender set drifted from the commented allow-list — a new offender is a "
+        "real per-thread hazard (fix it or justify it in the list); a healed one "
+        f"must be removed from the list. new={offenders - THREAD_GUARD_ALLOW_LIST} "
+        f"healed={THREAD_GUARD_ALLOW_LIST - offenders}"
+    )
+
+
+def test_per_thread_detector_rejects_injected_gap():
+    source = (
+        "def unsafe(swe):\n"
+        "    return swe.calc_ut(2451545.0, swe.SUN, swe.FLG_SIDEREAL)\n"
+    )
+    assert _scan_per_thread_module(source, "injected.py") == {("injected.py", "unsafe")}
+
+    nested_gap = (
+        "def outer(swe):\n"
+        "    swe.set_sid_mode(swe.SIDM_LAHIRI)\n"
+        "    def inner():\n"
+        "        return swe.calc_ut(2451545.0, swe.SUN, swe.FLG_SIDEREAL)\n"
+        "    return inner()\n"
+    )
+    # The enclosing function's set_sid_mode must NOT absolve the nested one
+    # (a nested helper can be passed to another thread).
+    assert _scan_per_thread_module(nested_gap, "injected_nested.py") == {
+        ("injected_nested.py", "inner")
+    }
+
+    module_const = (
+        "_FLAGS = swe.FLG_SIDEREAL | swe.FLG_SPEED\n"
+        "def unsafe(swe):\n"
+        "    return swe.calc_ut(2451545.0, swe.SUN, _FLAGS)\n"
+    )
+    assert _scan_per_thread_module(module_const, "injected_const.py") == {
+        ("injected_const.py", "unsafe")
+    }
+
+    prepared = (
+        "def safe(swe):\n"
+        "    prepare_swiss_thread(path, swe.SIDM_LAHIRI)\n"
+        "    return swe.calc_ut(2451545.0, swe.SUN, swe.FLG_SIDEREAL)\n"
+    )
+    assert _scan_per_thread_module(prepared, "injected_safe.py") == set()
