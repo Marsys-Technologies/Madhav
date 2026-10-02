@@ -195,7 +195,7 @@ __all__ = [
 # fresh read answers "was this built from what the table says now?".
 # Step 3 §4 closes the two gaps this comment used to declare deliberate: the consumed
 # `ephemeris_daily` node series now rides the fingerprint as the `node_series` component
-# (the L0-owned node_series_digest_v1 identity — services.w2g.node_series), and the consumed
+# (the L0-owned node_series_digest_v1 identity — services.gochara_kernel.node_series_digest), and the consumed
 # natal L1 operand (the chart's MOON longitude fact: fact_id, build_id, stored value text)
 # rides it as the `l1` component — so an L1 rebuild or a series change now makes older rows
 # stale instead of silently fresh.

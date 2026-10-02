@@ -37,7 +37,7 @@ from typing import Any, Optional
 import psycopg.rows
 
 from services.gochara_kernel.l1_identity import L1OperandAbsentError, l1_operand_identity
-from services.w2g.node_series import node_series_identity
+from services.gochara_kernel.node_series_digest import node_series_identity
 from services.ka_moorti_nirnaya.logic import moorti_upstream_fingerprint
 from services.ka_moorti_nirnaya.writer import (
     _fetch_moorti_table,

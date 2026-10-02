@@ -52,8 +52,8 @@ from services.w2g.node_series import (
     NODE_SERIES_PREDICATE,
     assert_one_row_per_date,
     node_mode_differs_from_kernel,
-    node_series_identity,
 )
+from services.gochara_kernel.node_series_digest import node_series_identity
 from services.gochara_kernel.l1_identity import l1_operand_identity
 from services.ka_graha_sancara.engine import NAKSHATRAS, NAK_SIZE_DEG, SIGNS
 from services.gochara_kernel.overlays import date_to_jd as _date_to_jd

@@ -58,11 +58,11 @@ from services.ka_vedha_gochara.freshness import (
     gate_allows_overlays,
 )
 from services.ka_vedha_gochara.logic import upstream_fingerprint
-from services.w2g.node_series import (
+from services.gochara_kernel.node_series_digest import (
     NODE_SERIES_DIGEST_V1_SQL,
-    NodeSeriesError,
     node_series_identity,
 )
+from services.w2g.node_series import NodeSeriesError
 
 from .test_wp9_stamp_columns import (
     BASE_DDL,

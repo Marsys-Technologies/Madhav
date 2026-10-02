@@ -99,8 +99,8 @@ from typing import Any
 import psycopg.rows
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
-from services.w2g.node_series import (
-    NODE_SERIES_PREDICATE, assert_one_row_per_date, node_series_identity)
+from services.w2g.node_series import NODE_SERIES_PREDICATE, assert_one_row_per_date
+from services.gochara_kernel.node_series_digest import node_series_identity
 from services.gochara_kernel.l1_identity import l1_operand_identity
 from services.ka_graha_sancara.engine import ALL_GRAHAS, NAKSHATRAS, NAK_SIZE_DEG, SIGNS
 from services.ka_vedha_gochara.logic import (
