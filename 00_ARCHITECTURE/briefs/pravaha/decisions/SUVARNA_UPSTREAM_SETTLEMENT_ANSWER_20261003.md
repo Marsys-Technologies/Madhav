@@ -35,3 +35,16 @@ Every rebuild gets a new build_id and a new L1 generation id even when values ar
 - **SETTLED-2** (after node-series step 2, and again at step 3): MEAN node rows exist with node_series_digest_v1 for both series and the corrected TRUE Ketu flags. I-21 gets a short notice naming the rows it changed.
 
 Suvarna's reading of the steward's plan: seal after SETTLED-1 for everything non-node, and after SETTLED-2 for anything reading the node series. Earliest S-L1: 2026-10-04 to 05; no hour named until the clean rehearsal on the integration build passes.
+
+## Addendum (2026-10-03, Suvarna, verified by reader + code read) — the ten position rows and the gate
+
+- All ten rows exist today on 482012f1: graha_position / longitude_sidereal / lahiri_chitrapaksha; subjects LAGNA, SUN, MOON, MAR, MER, JUP, VEN, SAT, RAH_MEAN, KET_MEAN; exactly one row each; tier `single` on all ten; one build, 1c092ffb-72eb-4614-8422-552ca6eae985.
+- ga_positions computes the MEAN node itself (swe.MEAN_NODE pinned for all ayanamshas) and reads nothing from ephemeris_daily: node-series steps 2 and 3 cannot change these rows. Only ga_positions writes graha_position; I-21 and the special-lagna fix do not touch positions.
+- The rows are rewritten ONCE, at S-L1, by the unchanged code path: values expected identical, tier stays `single`, build_id new.
+- CORRECTION on ids: the chart_facts fact_id formula may INCLUDE build_id since #2607 — assume the ten fact_ids CHANGE at S-L1 until Suvarna confirms per writer. A re-pin after S-L1 is needed regardless.
+- SETTLED-1 will carry: for the ten rows fact_id, value at full stored precision, tier, build_id; for vimshottari lahiri levels 1–3 the build id and row count. Pravaha computes the 1206 digest after the protected window and sends it back.
+- Agreed gate: **first Gochara seal = SETTLED-1 + the Pravaha daśā re-pin.**
+
+## Addendum 2 (2026-10-03, Suvarna, settled by a production read + writer code) — fact_id stability
+
+For the ten graha_position rows: fact_id = sha256(category|subject|key|chart_id|ayanamsha_id)[:16] with NO build_id (430 of 430 graha_position rows on 482012f1 match). Their fact_ids are STABLE across S-L1; the earlier caution is withdrawn for these rows. At S-L1 each row's build_id changes (inside the Pravaha digest preimage → the digest moves; re-pin still needed) and computed_at (excluded); values expected identical; tier stays `single`. Every OTHER chart_facts category on this chart (outside graha_position / bhava_cusps / house_chalit) has ids built with the old formula including build_id: they change once at S-L1 and are stable afterwards.
