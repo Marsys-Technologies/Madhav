@@ -74,7 +74,7 @@ describe('buildRetrievalEnvelope (v3) — the flag rides into reading_contract e
   const base = {
     tool: 'judgment_query',
     content: { verdict: { grade: 'x' } },
-    epistemic: { grade: 'ganita_fact' as const, verified_fraction: 1 },
+    epistemic: { grade: 'ganita_fact' as const, verified_fraction: 1, note: 'fixture' },
     grounding: { fact_ids: Array.from({ length: 12 }, (_, i) => `f-${i}`), citations: [], grounding_score: 1 },
   }
 
