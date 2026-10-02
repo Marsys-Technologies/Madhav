@@ -351,19 +351,56 @@ def test_guard_reads_the_process_environment_by_default(monkeypatch):
         require_disposable(f"host=localhost dbname={OK_DB}")
 
 
-@pytest.mark.parametrize("db, addr, ok", [
-    (OK_DB, None, True), (OK_DB, "127.0.0.1", True), (OK_DB, "::1", True),
-    (OK_DB, "127.0.0.1/32", True),
-    (OK_DB, "10.0.0.5", False), (OK_DB, "10.0.0.5/32", False),
-    ("postgres", None, False), ("amjis", "127.0.0.1", False), ("ga4_moon_sign_test_backup", None, False),
-])
-def test_post_connect_check_pure(db, addr, ok):
+@pytest.mark.parametrize("addr", [None, "127.0.0.1", "127.1.2.3", "::1", "127.0.0.1/32", "::ffff:127.0.0.1"])
+@pytest.mark.parametrize("in_ci", [False, True])
+def test_post_connect_accepts_unix_socket_and_loopback_everywhere(addr, in_ci):
+    from tests.test_ga4_chandra_bala_birth_sign_pg import require_connected_to_disposable
+    require_connected_to_disposable(OK_DB, addr, in_ci)
+
+
+@pytest.mark.parametrize("addr", ["172.17.0.2", "172.16.0.1", "172.31.255.254", "10.1.2.3", "192.168.1.5",
+                                  "172.17.0.2/32", "::ffff:10.1.2.3"])
+def test_post_connect_private_addresses_only_under_github_actions(addr):
     from tests.test_ga4_chandra_bala_birth_sign_pg import RefusedError, require_connected_to_disposable
-    if ok:
-        require_connected_to_disposable(db, addr)
-    else:
-        with pytest.raises(RefusedError, match="REFUSED"):
-            require_connected_to_disposable(db, addr)
+    require_connected_to_disposable(OK_DB, addr, True)
+    with pytest.raises(RefusedError, match="only under GITHUB_ACTIONS=true"):
+        require_connected_to_disposable(OK_DB, addr, False)
+
+
+@pytest.mark.parametrize("addr", [
+    "8.8.8.8", "93.184.216.34", "2001:4860:4860::8888",
+    "100.64.0.1", "100.127.255.254",            # CGNAT (RFC 6598) is not RFC1918
+    "172.15.255.255", "172.32.0.1", "192.169.0.1", "11.0.0.1",   # just outside the RFC1918 blocks
+    "169.254.1.1", "fe80::1",                    # link-local
+    "0.0.0.0", "::",                             # unspecified
+    "fd00::1",                                   # IPv6 ULA is not accepted
+    "not-an-address", "", "172.17.0.2.5", "999.1.1.1",   # malformed
+])
+@pytest.mark.parametrize("in_ci", [False, True])
+def test_post_connect_refuses_everything_else_in_every_environment(addr, in_ci):
+    from tests.test_ga4_chandra_bala_birth_sign_pg import RefusedError, require_connected_to_disposable
+    with pytest.raises(RefusedError, match="REFUSED"):
+        require_connected_to_disposable(OK_DB, addr, in_ci)
+
+
+@pytest.mark.parametrize("db", ["postgres", "amjis", "ga4_moon_sign_test_backup", "", "GA4_MOON_SIGN_TEST"])
+@pytest.mark.parametrize("addr", [None, "127.0.0.1", "172.17.0.2"])
+def test_post_connect_refuses_any_other_database(db, addr):
+    from tests.test_ga4_chandra_bala_birth_sign_pg import RefusedError, require_connected_to_disposable
+    with pytest.raises(RefusedError, match="connected to database"):
+        require_connected_to_disposable(db, addr, True)
+
+
+def test_post_connect_reads_github_actions_from_the_environment(monkeypatch):
+    from tests.test_ga4_chandra_bala_birth_sign_pg import RefusedError, require_connected_to_disposable
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    require_connected_to_disposable(OK_DB, "172.17.0.2")
+    monkeypatch.delenv("GITHUB_ACTIONS")
+    with pytest.raises(RefusedError):
+        require_connected_to_disposable(OK_DB, "172.17.0.2")
+    monkeypatch.setenv("GITHUB_ACTIONS", "false")
+    with pytest.raises(RefusedError):
+        require_connected_to_disposable(OK_DB, "172.17.0.2")
 
 
 def test_guard_refuses_to_truncate_a_chart_facts_that_looks_real():

@@ -138,11 +138,12 @@ parse (`conninfo_to_dict`, not `urlparse().hostname`, which sees only the first 
 shows every host/hostaddr entry is loopback or a unix socket, no comma/multi-host, no query-string override
 other than a socket `host`, no `service`, the database EXACTLY `ga4_moon_sign_test` (a `<x>_test` pattern
 would let a staging copy be wiped), and no PGHOST/PGHOSTADDR/PGSERVICE/PGDATABASE environment value that
-would redirect it; after connecting it requires `current_database()` to equal `ga4_moon_sign_test` and any
-TCP `inet_server_addr()` to be loopback; and it refuses an existing `chart_facts` carrying columns beyond
+would redirect it; after connecting it requires `current_database()` to equal `ga4_moon_sign_test` and `inet_server_addr()` to be NULL (unix socket) or loopback, except that RFC1918 addresses (a CI service
+container reports its Docker bridge address) are accepted only under `GITHUB_ACTIONS=true`, while public,
+CGNAT, link-local, unspecified and malformed addresses are refused everywhere; and it refuses an existing `chart_facts` carrying columns beyond
 the test's own minimal table. DB-free unit tests cover multi-host DSNs (with and without ports, a 10.x
 second host, reversed order, all-loopback), query overrides, key/value DSNs, environment overrides and the
-post-connect function; mutants of each rule go red (the netloc-comma check is redundant with the per-host
+post-connect function (every address form, with and without CI); mutants of each rule go red (the netloc-comma check is redundant with the per-host
 check, so removing it alone stays green); on a real PG the refused targets kept their rows. Five ayanamshas (Aquarius x4, Pisces for surya_siddhanta_classical) read exactly,
 with decoys excluded (other graha, other key, other category, other chart, non-canonical ayanamsha);
 dict-row and tuple-row connections agree. Two build generations of the same key: the LATEST

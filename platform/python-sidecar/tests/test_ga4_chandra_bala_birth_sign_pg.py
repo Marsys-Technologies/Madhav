@@ -22,6 +22,7 @@ Run:  GA4_MOON_SIGN_TEST_DATABASE_URL='postgresql:///ga4_moon_sign_test?host=/pr
 """
 from __future__ import annotations
 
+import ipaddress
 import itertools
 import json
 import os
@@ -117,16 +118,44 @@ def require_disposable(dsn: str, environ: "dict[str, str] | None" = None) -> str
     return name
 
 
-def require_connected_to_disposable(current_database: str, server_addr: "str | None") -> None:
-    """Post-connect check on what the server actually is: `current_database()` must be exactly
-    `ga4_moon_sign_test` and, for a TCP connection, `inet_server_addr()` must be loopback
-    (NULL for a unix socket)."""
+_RFC1918 = tuple(ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"))
+
+
+def require_connected_to_disposable(current_database: str, server_addr: "str | None",
+                                    in_ci: "bool | None" = None) -> None:
+    """Post-connect check on what the server actually is.
+
+    `current_database()` must be exactly `ga4_moon_sign_test`, and `inet_server_addr()` must be
+    NULL (unix socket) or loopback (127.0.0.0/8, ::1). A GitHub Actions service container reports
+    its Docker bridge address (private, e.g. 172.17.0.x) rather than loopback, so RFC1918 addresses
+    (10/8, 172.16/12, 192.168/16) are accepted ONLY when GITHUB_ACTIONS=true (`in_ci`, default read
+    from the environment). A public/global, CGNAT (100.64/10), link-local, unspecified or malformed
+    address is refused in every environment."""
     if current_database != EXPECTED_DB_NAME:
         raise RefusedError(
             f"REFUSED: connected to database {current_database!r}, not {EXPECTED_DB_NAME!r}"
         )
-    if server_addr is not None and not _is_local(str(server_addr).split("/")[0]):
-        raise RefusedError(f"REFUSED: connected to non-loopback server address {server_addr!r}")
+    if server_addr is None:
+        return
+    if in_ci is None:
+        in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
+    text = str(server_addr).split("/")[0].strip()
+    try:
+        ip = ipaddress.ip_address(text)
+    except ValueError:
+        raise RefusedError(f"REFUSED: unparseable server address {server_addr!r}") from None
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    if ip.is_loopback:
+        return
+    if ip.is_unspecified or ip.is_link_local:
+        raise RefusedError(f"REFUSED: server address {server_addr!r} is unspecified / link-local")
+    if in_ci and isinstance(ip, ipaddress.IPv4Address) and any(ip in n for n in _RFC1918):
+        return  # the CI service container's Docker bridge address
+    raise RefusedError(
+        f"REFUSED: server address {server_addr!r} is not loopback"
+        + ("" if in_ci else " (private addresses are accepted only under GITHUB_ACTIONS=true)")
+    )
 
 
 def assert_connected_to_disposable(conn) -> None:
