@@ -836,3 +836,56 @@ for _pid in ("P3", "P4", "P5"):
         "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-13",
     }
 del _pid, _old, _new
+
+
+# ── AM-18 (RULED, steward M20261002T004621-2b84): vedha_attenuation@1.1.0 + P2@1.1.0 ──
+# The 1.0.0 vedha_attenuation row carried "a rule-row data field" that never existed. The
+# served corpus (Phaladīpikā XXVI.3–8, phaladeepika:PG322:C1 / PG323:C1) says an occupied
+# vedha place NULLIFIES the good result of a favourable-house transit and grades nothing, so
+# the cited mapping is a STEP: active obstruction -> 0.0, none -> 1.0 (not a calibration).
+# The window stays admitted (the record carries qualification `vedha_active`).
+from .flat_selector import decode_vedha  # noqa: E402
+
+# FLAT is the source of truth (Codex R5): `operand_selector` admits only tokens / numbers / token arrays (1154:221–240).
+_VEDHA_FLAT = {
+    "operand": "state:vedha_interval_derived_from_residence",
+    "applicable_records": "favourable_residence_cited_pairs_only",
+    "map_active": 0, "map_inactive": 1,
+    "active_qualification": "vedha_active",
+    "unqualified_reasons": ["obstructor_residence_unknown", "node_obstruction_undecided", "node_residence_unknown"],
+    "inactive_scope": "excluding_on_demand_moon_obstruction",
+    "scope_exempt_primaries": ["mercury"],            # Phaladīpikā XXVI.6: the Moon never obstructs Mercury
+    "vipareeta_state": "not_produced_no_served_citation",
+}
+assert not flat_problems(_VEDHA_FLAT), flat_problems(_VEDHA_FLAT)
+_factor("vedha_attenuation",
+        rule_version=KERNEL_VERSION,
+        operand="vedha state at t, derived from stored residence spans (vedha_derive.derive_vedha)",
+        function="step", range=[0.0, 1.0], units="unitless",
+        direction="higher = stronger", null_state="unqualified",
+        operand_selector=_VEDHA_FLAT, applicability=decode_vedha(_VEDHA_FLAT),
+        effect="the cited binary factor is applied to the favourable-residence record's contribution, which is THEN "
+               "assigned to the event class's channel: active obstruction nullifies it (0.0; admission and "
+               "admitted support are never changed — the record carries qualification vedha_active); "
+               "ESTABLISHED inactivity: 1.0 with the scope 'excluding_on_demand_moon_obstruction' (Mercury "
+               "excepted); an obstructor residence not established over the span (obstructor_residence_unknown), "
+               "Rāhu/Ketu in the vedha house with no cited obstructor (node_obstruction_undecided) or a node "
+               "residence gap (node_residence_unknown): unqualified; adverse-residence and uncited (graha, house) "
+               "records: declared not-applicable; nothing graded")
+SUPERSEDED_FACTORS[composite_ref("vedha_attenuation", RULE_VERSION)] = {
+    "superseded_by": composite_ref("vedha_attenuation", KERNEL_VERSION),
+    "reason": "1.0.0 promised a rule-row attenuation field that never existed and no value mapping; the "
+              "served corpus supports a nullification step only (AM-18)",
+    "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-18; design/P2_VEDHA_ANSWER_v1_0.md",
+}
+_p2_old = RULE_PATHS[composite_ref("P2", RULE_VERSION)]
+RULE_PATHS[composite_ref("P2", KERNEL_VERSION)] = {
+    **_p2_old, "rule_version": KERNEL_VERSION,
+    "soft_factors": [composite_ref("vedha_attenuation", KERNEL_VERSION)],
+}
+SUPERSEDED_PATHS[composite_ref("P2", RULE_VERSION)] = {
+    "superseded_by": composite_ref("P2", KERNEL_VERSION),
+    "reason": "soft factor moved to vedha_attenuation@1.1.0 (cited nullification step, AM-18)",
+    "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-18",
+}
+del _p2_old
