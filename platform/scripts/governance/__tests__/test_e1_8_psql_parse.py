@@ -230,7 +230,12 @@ def test_psql_decodes_bytes_so_a_lone_CR_in_a_value_is_not_turned_into_a_newline
         returncode = 0
         stdout = f"a\rb{US}c\n".encode()
         stderr = b""
-    monkeypatch.setattr(ac.subprocess, "run", lambda *a, **k: P())
+
+    def fake_run(*a, **k):
+        # a real text-mode subprocess would translate the CR before the census ever saw it
+        assert not k.get("text") and not k.get("universal_newlines"), "psql() must read bytes, not text"
+        return P()
+    monkeypatch.setattr(ac.subprocess, "run", fake_run)
     assert ac.psql("SELECT 1") == [["a\rb", "c"]]
 
 
@@ -306,3 +311,14 @@ def test_catalog_the_failed_read_reason_reaches_the_cells_that_needed_the_types(
     out = ac._measure_prose("bg_x", decl, r, None, cat, [], {}, [], None)
     nd = out["Null.schema_default"]
     assert nd["v"] == ac.NO_DET and "column types/defaults read failed" in nd["measured"] and "expected 4" in nd["measured"], nd
+
+
+def test_psql_passes_a_declared_width_through_to_the_parser(monkeypatch):
+    class P:
+        returncode = 0
+        stdout = f"a{US}b\n".encode()
+        stderr = b""
+    monkeypatch.setattr(ac.subprocess, "run", lambda *a, **k: P())
+    assert ac.psql("SELECT 1", width=2) == [["a", "b"]]
+    with pytest.raises(ac.ReadError):
+        ac.psql("SELECT 1", width=3)
