@@ -87,6 +87,7 @@ from services.gochara_grammar import dasha_data as DD
 from services.gochara_grammar import primitives as P
 from services.gochara_grammar import composition as CO
 from services.gochara_grammar.models import ResonanceTarget
+from services.gochara_grammar.read_tier_policy import tier_evidence
 from pipeline.transit_search import _jd_to_ist_iso
 from ._dbutil import savepoint_scope
 
@@ -173,6 +174,10 @@ def _lord_matches(sid: str, lord: str, relevant_grahas: set[str], relevant_signs
     return translated is not None and translated in relevant_grahas
 
 
+STATE_ACTIVE, STATE_INACTIVE, STATE_UNAVAILABLE = "active", "inactive", "unavailable"
+REASON_NO_READABLE_ROWS = "no_readable_dasha_rows_in_the_read"
+
+
 def _dasha_contributions(
     dasha_periods: list[dict], t_iso: str, relevant_grahas: set[str], relevant_signs: set[str],
 ) -> dict[str, dict]:
@@ -188,7 +193,16 @@ def _dasha_contributions(
     this degrades to the coarser "any period covering t" check, honestly
     noted in `detail['lord_relevance_check']` -- a system with NO way to be
     lord-checked should not be silently zeroed out."""
-    out: dict[str, dict] = {sid: {"active": False, "detail": {}} for sid in DASHA_SYSTEM_IDS}
+    out: dict[str, dict] = {sid: {"active": False, "state": STATE_INACTIVE, "detail": {}}
+                            for sid in DASHA_SYSTEM_IDS}
+    # A system with NO row at all in the read is UNAVAILABLE ("could not be
+    # checked"), not inactive ("checked, did not fire") — §N.7 item 6. Its
+    # `active` stays False, so today's permission VALUE is unchanged (below).
+    seen_systems = {p.get("system_id") for p in dasha_periods}
+    for sid in out:
+        if sid not in seen_systems:
+            out[sid] = {"active": False, "state": STATE_UNAVAILABLE,
+                        "detail": {"reason": REASON_NO_READABLE_ROWS}}
     lord_check_available = bool(relevant_grahas or relevant_signs)
     for period in dasha_periods:
         sid = period.get("system_id")
@@ -199,11 +213,15 @@ def _dasha_contributions(
         lord = period.get("lord_graha")
         if lord_check_available and not _lord_matches(sid, lord, relevant_grahas, relevant_signs):
             continue
-        out[sid] = {"active": True, "detail": {
+        out[sid] = {"active": True, "state": STATE_ACTIVE, "detail": {
             "lord_graha": lord,
             "start_iso": period.get("start_iso"),
             "end_iso": period.get("end_iso"),
             "lord_relevance_check": "matched_relevant_lord" if lord_check_available else "no_relevant_lord_vocabulary_resolved_any_period_counted",
+            # the tier the period row carries (multi-level reads only; MD-only
+            # rows carry none) — stated, never implied verified
+            **(tier_evidence(period.get("verification_pass_status"))
+               if "verification_pass_status" in period else {}),
         }}
     return out
 
@@ -248,6 +266,7 @@ def compute_permission(
         systems.append({
             "system_id": sid,
             "active": hit["active"],
+            "state": hit["state"],
             "weight": SYSTEM_WEIGHTS[sid],
             "detail": hit["detail"],
         })
@@ -364,7 +383,18 @@ def compute_permission(
     permission = active_weight / total_weight if total_weight else 0.0
 
     systems_active = [s["system_id"] for s in systems if s["active"]]
+    # DR-14 fixes the plurality's weights as disclosed structural priors over ALL
+    # generators and is silent on a generator that could not be read, so the
+    # denominator is unchanged (an unavailable system contributes 0, exactly as it
+    # always has — today's values do not move) and the value is MARKED PARTIAL,
+    # with each unavailable system and its reason listed. Dropping it from the
+    # denominator would change today's values; that is a decision, not a default.
+    systems_unavailable = [{"system_id": s["system_id"],
+                            "reason": (s.get("detail") or {}).get("reason")}
+                           for s in systems if s.get("state") == STATE_UNAVAILABLE]
     detail = {
+        "systems_unavailable": systems_unavailable,
+        "permission_partial": bool(systems_unavailable),
         "systems": systems,
         "systems_active": systems_active,
         "systems_considered": [s["system_id"] for s in systems],

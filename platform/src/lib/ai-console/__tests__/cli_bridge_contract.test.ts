@@ -25,6 +25,13 @@ describe('private AI CLI bridge contract', () => {
     expect(bridge).toContain('return await runKimiAcp')
   })
 
+  it('limits execution effort to known CLI model IDs and fixed arguments', () => {
+    expect(bridge).toContain("const SAFE_EFFORT = new Set(['low', 'medium', 'high'])")
+    expect(bridge).toContain("if (effort) args.push('-c', `model_reasoning_effort=${effort}`)")
+    expect(bridge).toContain("if (effort) args.push('--effort', effort)")
+    expect(bridge).toContain("!['codex', 'claude_code'].includes(cliId)")
+  })
+
   it('requires a file-backed bearer token and constant-time comparison', () => {
     expect(bridge).toContain("if (!TOKEN_FILE) throw new Error('MARSYS_AI_CLI_BRIDGE_TOKEN_FILE is required')")
     expect(bridge).toContain('timingSafeEqual(supplied, expected)')

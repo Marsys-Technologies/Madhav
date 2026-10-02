@@ -76,6 +76,15 @@ function makeReq(overrides: Partial<QueryRequest> = {}): QueryRequest {
 beforeEach(() => { mockStreamText.mockReset() })
 
 describe('adapterOpenai — structured output', () => {
+  test('sends configured effort with structured output and omits incompatible temperature', () => {
+    mockStreamText.mockReturnValue(fakeResult([makeFinishPart()]))
+    adapterOpenai.stream(makeReq({ effort: 'medium', temperature: 0.4,
+      responseSchema: { type: 'object', properties: { answer: { type: 'string' } } } as never }), makeMeta())
+    const callArgs = mockStreamText.mock.calls[0][0]
+    expect(callArgs.providerOptions.openai.reasoningEffort).toBe('medium')
+    expect(callArgs.providerOptions.openai.response_format.type).toBe('json_schema')
+    expect(callArgs.temperature).toBeUndefined()
+  })
   test('json_schema response_format passed when responseSchema present', () => {
     mockStreamText.mockReturnValue(fakeResult([makeFinishPart()]))
     const schema = { type: 'object', properties: { answer: { type: 'string' } } }

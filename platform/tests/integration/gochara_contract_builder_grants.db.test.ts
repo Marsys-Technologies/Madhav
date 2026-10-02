@@ -182,10 +182,10 @@ describe.skipIf(!TEST_DB_URL)('migration 1216 — gochara contract builder grant
     // publish_candidate replaces the CANDIDATE row in place: UPDATE permitted.
     await asBuilder(`UPDATE public.kala_gochara_publication SET row_counts = row_counts WHERE false`)
 
-    const sky = await pool.query(`SELECT convention_id FROM public.ka_gochara_sky_convention`)
-    expect(sky.rows.map((r: any) => r.convention_id)).toContain('m1216-test-sky-convention')
-    const kala = await pool.query(`SELECT convention_id FROM public.kala_gochara_convention`)
-    expect(kala.rows.map((r: any) => r.convention_id)).toContain('sha256:m1216-test-convention')
+    const sky = await pool.query<{ convention_id: string }>(`SELECT convention_id FROM public.ka_gochara_sky_convention`)
+    expect(sky.rows.map((r) => r.convention_id)).toContain('m1216-test-sky-convention')
+    const kala = await pool.query<{ convention_id: string }>(`SELECT convention_id FROM public.kala_gochara_convention`)
+    expect(kala.rows.map((r) => r.convention_id)).toContain('sha256:m1216-test-convention')
   })
 
   it('idempotent: applying migration 1216 a second time is a no-op and writes still land', async () => {
