@@ -49,9 +49,17 @@ CHANNEL_FOR = "evidence_for_occurrence"
 CHANNEL_AGAINST = "evidence_against_occurrence"
 
 # P3/P4: every record is a contact of an agent with the class's signature house / lord — an
-# activation of the class, so evidence FOR it (Stream B, WINDOW_SWEEP_ANSWER (1)). A path with
-# no entry here has no window sweep yet (P2/P1 are later increments) and refuses loudly.
-PATH_CHANNEL: dict[str, str] = {"P3": CHANNEL_FOR, "P4": CHANNEL_FOR}
+# activation of the class, so evidence FOR it (Stream B, WINDOW_SWEEP_ANSWER (1)). P2 carries a
+# DIRECTION per record (the house from janma-rāśi is in the cited favourable set, or in the adverse-
+# residence set — D-RQ5), assigned to a channel through `score.channel_for`. A path in neither group
+# has no window sweep yet (P1 is a later increment) and refuses loudly.
+FOR_ONLY_PATHS = frozenset({"P3", "P4"})
+DIRECTIONAL_PATHS = frozenset({"P2"})
+SWEEP_PATHS = FOR_ONLY_PATHS | DIRECTIONAL_PATHS
+
+# A factor row's `direction` that says only "which way is stronger" assigns no channel; one that
+# names a channel/valence declares an against-channel operand; anything else is ambiguous.
+MAGNITUDE_ONLY_DIRECTIONS = frozenset({"higher = stronger", "lower = stronger"})
 
 # Span-kind and angular-kind object kinds are NOT enumerated here: the factor row's own
 # applicability block lists them (activity_kernel@1.1.0). Nothing below names a kind.
@@ -83,6 +91,7 @@ class SweepRecord:
     # callable returning None means "not determinable at t" (a named missing operand).
     delta_lambda_at: Callable[[datetime], float | None] | None = None
     aspect_offset_at: Callable[[datetime], int | None] | None = None
+    house_from_frame: int | None = None        # the record's own §1.2 inv 5 house (P2: from janma-rāśi)
 
 
 # ── factor outcomes ──────────────────────────────────────────────────────────
@@ -164,8 +173,20 @@ def graduated_drishti(row: dict, rec: SweepRecord,
     return Outcome("fn", fn=_fn, null_state=row["null_state"], factor=row["factor_id"])
 
 
+def vedha_attenuation(row: dict, rec: SweepRecord,
+                      vedha: Callable[[SweepRecord, datetime], float | None] | None) -> Outcome:
+    """The vedha operand is the state of the overlay interval at t (§5). The overlay is NOT this
+    writer's substrate: until a source is bound (ruling pending: kala_vedha_gochara vs. derived) and
+    the registry carries the state→value mapping, the operand is a named missing input — never 1.0."""
+    if vedha is None:
+        return _missing(row, "vedha_overlay_not_bound")
+    return Outcome("fn", fn=lambda t, _r=rec: vedha(_r, t), null_state=row["null_state"],
+                   factor=row["factor_id"])
+
+
 def evaluate_factors(rec: SweepRecord, factor_rows: list[dict], *,
-                     drishti: Callable[[str, int], float] | None = None) -> list[Outcome]:
+                     drishti: Callable[[str, int], float] | None = None,
+                     vedha: Callable[[SweepRecord, datetime], float | None] | None = None) -> list[Outcome]:
     """One outcome per declared soft factor. A factor the sweep has no evaluator for REFUSES (a
     later increment's path must not be silently scored without it)."""
     out: list[Outcome] = []
@@ -175,10 +196,12 @@ def evaluate_factors(rec: SweepRecord, factor_rows: list[dict], *,
             out.append(activity_kernel(row, rec))
         elif fid == "graduated_drishti":
             out.append(graduated_drishti(row, rec, drishti))
+        elif fid == "vedha_attenuation":
+            out.append(vedha_attenuation(row, rec, vedha))
         else:
             raise SweepRefusal(
                 f"path {rec.path_id}: factor {fid!r} has no sweep evaluator yet "
-                "(P2/P1 are later increments) — refused, never skipped")
+                "(P1 is a later increment) — refused, never skipped")
     return out
 
 
@@ -191,6 +214,7 @@ class RecordProgram:
     null_states: set
     reasons: list                       # [(factor_id, reason)] of every missing operand
     outcomes: list = field(default_factory=list)
+    channel: str = CHANNEL_FOR
 
     def value_at(self, t: datetime) -> float | None:
         """The within-path product at t; None if any live operand is undeterminable at t."""
@@ -221,9 +245,53 @@ class RecordProgram:
         return product
 
 
+def p2_direction(agent: str, house: int | None) -> str:
+    """P2 direction of a residence record: 'favourable' iff its house from janma-rāśi is in the
+    cited favourable set (Phaladīpikā XXVI), 'adverse' iff in the adverse-residence set (D-RQ5).
+    Stream B's rows are CALLED, never copied; a house in neither, or in both, is refused."""
+    from services.gochara_rules import admission as _adm
+    from services.gochara_rules import favourable_houses as _fav
+    if house is None:
+        raise SweepRefusal("P2 record without a house from janma-rāśi — direction undeterminable")
+    name = agent.title()
+    fav = house in _fav.favourable_houses(name)
+    adv = name in _adm.ADVERSE_RESIDENCE_BODIES and house in _adm.ADVERSE_RESIDENCE_HOUSES
+    if fav == adv:
+        raise SweepRefusal(
+            f"P2 {name} house {house}: in the favourable set={fav} and the adverse set={adv} — "
+            "direction is not decidable from the cited sets; refused, never defaulted")
+    return "favourable" if fav else "adverse"
+
+
+def record_channel(event_class: str, rec: SweepRecord) -> str:
+    if rec.path_id in FOR_ONLY_PATHS:
+        return CHANNEL_FOR
+    if rec.path_id in DIRECTIONAL_PATHS:
+        from services.gochara_rules.score import channel_for
+        return channel_for(p2_direction(rec.agent, rec.house_from_frame), event_class)
+    raise SweepRefusal(f"path {rec.path_id} has no window sweep yet")
+
+
+def against_channel_state(factor_rows: list[dict]) -> str:
+    """Derived from the path's own soft-factor rows (never from a path name): 'none_declared' iff
+    every factor's `direction` says only which way is stronger; 'declared' iff one names a
+    channel/valence; 'ambiguous' otherwise (silent/unparseable ⇒ the against sum is NULL)."""
+    state = "none_declared"
+    for row in factor_rows:
+        d = row.get("direction")
+        if d in MAGNITUDE_ONLY_DIRECTIONS:
+            continue
+        if isinstance(d, str) and ("channel" in d or "valence" in d):
+            return "declared"
+        state = "ambiguous"
+    return state
+
+
 def build_program(rec: SweepRecord, factor_rows: list[dict], *,
-                  drishti: Callable[[str, int], float] | None = None) -> RecordProgram:
-    outcomes = evaluate_factors(rec, factor_rows, drishti=drishti)
+                  drishti: Callable[[str, int], float] | None = None,
+                  vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
+                  channel: str = CHANNEL_FOR) -> RecordProgram:
+    outcomes = evaluate_factors(rec, factor_rows, drishti=drishti, vedha=vedha)
     null_states: set = set()
     reasons: list = []
     qualified = True
@@ -234,7 +302,7 @@ def build_program(rec: SweepRecord, factor_rows: list[dict], *,
             if o.null_state == UNQUALIFIED:
                 qualified = False
     return RecordProgram(rec=rec, qualified=qualified, null_states=null_states,
-                         reasons=reasons, outcomes=outcomes)
+                         reasons=reasons, outcomes=outcomes, channel=channel)
 
 
 # ── maximisation (interior extrema, never endpoint-only — §7.2 inv 2, O-SM-4) ─
@@ -310,6 +378,13 @@ class WindowDraft:
     unresolved: dict                    # reason -> count of member records
     members: int
     qualified_members: int
+    # Machine-readable disclosure (steward M20261002T004131-012c (c)): a mixed window scores from
+    # its qualified members, so score AND the evidence sums are LOWER BOUNDS — an unqualified member
+    # could have been the max. 1156 gives no JSON column for it (coverage_facts must equal the
+    # partition's facts byte-for-byte; null_states_used is CHECKed to {omit, unqualified}), and no DDL
+    # is allowed, so the stored encoding is the conjunction `score IS NOT NULL AND 'unqualified' =
+    # ANY(null_states_used)`; the verifier reproduces exactly that from the records.
+    score_is_lower_bound: bool = False
 
 
 def _contains(supports, t: datetime) -> bool:
@@ -319,6 +394,7 @@ def _contains(supports, t: datetime) -> bool:
 def draft_windows(event_class: str, records: list[SweepRecord],
                   factor_rows_for: Callable[[str, str], list[dict]], *,
                   drishti: Callable[[str, int], float] | None = None,
+                  vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
                   compute_valence: Callable | None = None) -> tuple[list[WindowDraft], dict]:
     """The grain's windows (one path-version) and an exclusion ledger. Every record is accounted:
     admitted members, plus each excluded one under a named reason."""
@@ -331,7 +407,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
     if len(keys) > 1:
         raise SweepRefusal(f"a window grain is one path-version; got {sorted(keys)}")
     for r in records:
-        if r.path_id not in PATH_CHANNEL:
+        if r.path_id not in SWEEP_PATHS:
             raise SweepRefusal(f"path {r.path_id} has no window sweep yet")
         if r.operator_role != "scored":
             excluded["testimony"] += 1
@@ -348,7 +424,34 @@ def draft_windows(event_class: str, records: list[SweepRecord],
 
     path_id, version = next(iter(keys))
     factor_rows = factor_rows_for(path_id, version)
-    programs = {r.record_id: build_program(r, factor_rows, drishti=drishti) for r in members}
+    # The against channel is EVALUATED when the path assigns a direction per record (P2), or when
+    # its registry row declares no against-channel operand at all (empty sum = 0.0). A declared or
+    # ambiguous row leaves it NULL — derived from the row, never from the path's name.
+    directional = path_id in DIRECTIONAL_PATHS
+    against_evaluated = directional or against_channel_state(factor_rows) == "none_declared"
+    programs = {r.record_id: build_program(r, factor_rows, drishti=drishti, vedha=vedha,
+                                           channel=record_channel(event_class, r))
+                for r in members}
+    # Per-support-piece maxima, solved ONCE. A record whose operand is undeterminable over its
+    # whole support is unqualified — never a 0.0 (§2.1: a missing operand takes its null_state).
+    pieces: dict[str, list[tuple[float, datetime]]] = {}
+    for rid, prog in programs.items():
+        if not prog.qualified:
+            continue
+        got_pieces: list[tuple[float, datetime]] = []
+        const = prog.constant
+        for a, b in prog.rec.supports:
+            if const is not None:
+                got_pieces.append((const, a))
+            else:
+                got = maximise_earliest(prog.value_at, a, b)
+                if got is not None:
+                    got_pieces.append(got)
+        if not got_pieces:
+            prog.qualified = False
+            prog.null_states.add(UNQUALIFIED)
+            prog.reasons.append(("operand", "operand_undeterminable_over_support"))
+        pieces[rid] = got_pieces
 
     components = union_components(p for r in members for p in r.supports)
     drafts: list[WindowDraft] = []
@@ -357,56 +460,57 @@ def draft_windows(event_class: str, records: list[SweepRecord],
         if not in_win:
             raise SweepRefusal("component without a member record — union invariant violated")
         progs = [programs[r.record_id] for r in in_win]
-        candidates: list[tuple[float, datetime]] = []
-        for prog in progs:
-            if not prog.qualified:
-                continue
-            for a, b in prog.rec.supports:
-                if not (lo <= a and b <= hi):
-                    continue
-                const = prog.constant
-                if const is not None:
-                    candidates.append((const, a))
-                else:
-                    got = maximise_earliest(prog.value_at, a, b)
-                    if got is not None:
-                        candidates.append(got)
+        qualified = [p for p in progs if p.qualified]
         unresolved: dict = {}
         null_states: set = set()
         for prog in progs:
             null_states |= prog.null_states
             for reason in {r for _f, r in prog.reasons}:     # records per reason, not factor-misses
                 unresolved[reason] = unresolved.get(reason, 0) + 1
-        if candidates:
-            best = max(v for v, _ in candidates)
-            peak = min(t for v, t in candidates if v >= best - _TIE)
-            # evidence at the peak: Σ over roots of the per-root max over records live at the peak
-            per_root: dict[str, float] = {}
-            for prog in progs:
-                if not prog.qualified or not _contains(prog.rec.supports, peak):
-                    continue
-                v = prog.value_at(peak)
-                if v is None:
-                    continue
-                per_root[prog.rec.root_id] = max(per_root.get(prog.rec.root_id, 0.0), v)
-            ev_for = sum(per_root.values())
-            ev_against = 0.0
-            val = valence_fn(event_class, ev_for, ev_against, None)
-            drafts.append(WindowDraft(
-                interval=(lo, hi), peak_instant=peak, score=best, evidence_for=ev_for,
-                evidence_against=ev_against, outcome_valence_for_native=val.outcome_valence_for_native,
-                severity=None, record_ids=tuple(sorted(r.record_id for r in in_win)),
-                null_states_used=sorted(null_states), unresolved=unresolved,
-                members=len(in_win), qualified_members=sum(1 for p in progs if p.qualified)))
-        else:
+        ids = tuple(sorted(r.record_id for r in in_win))
+        base = dict(interval=(lo, hi), severity=None, record_ids=ids,
+                    null_states_used=sorted(null_states), unresolved=unresolved,
+                    members=len(in_win), qualified_members=len(qualified))
+        if not qualified:
             first = sorted(unresolved)[0] if unresolved else "no_qualified_member"
             val = valence_fn(event_class, 0.0, 0.0, first)
             drafts.append(WindowDraft(
-                interval=(lo, hi), peak_instant=None, score=None, evidence_for=None,
-                evidence_against=None, outcome_valence_for_native=val.outcome_valence_for_native,
-                severity=None, record_ids=tuple(sorted(r.record_id for r in in_win)),
-                null_states_used=sorted(null_states), unresolved=unresolved,
-                members=len(in_win), qualified_members=0))
+                peak_instant=None, score=None, evidence_for=None, evidence_against=None,
+                outcome_valence_for_native=val.outcome_valence_for_native, **base))
+            continue
+
+        # score = max over members of the FOR-channel within-path product; the peak is the
+        # earliest instant of that max. A window whose qualified members are all AGAINST-channel
+        # has an evaluated for-channel score of 0.0, attained throughout — its peak is its start.
+        candidates: list[tuple[float, datetime]] = []
+        for prog in qualified:
+            if prog.channel == CHANNEL_FOR:
+                candidates.extend(pieces[prog.rec.record_id])
+        if candidates:
+            best = max(v for v, _ in candidates)
+            peak = min(t for v, t in candidates if v >= best - _TIE)
+        else:
+            best, peak = 0.0, lo
+        # evidence at the peak: per channel, Σ over roots of the per-root max over live records
+        per_root = {CHANNEL_FOR: {}, CHANNEL_AGAINST: {}}
+        for prog in qualified:
+            if not _contains(prog.rec.supports, peak):
+                continue
+            v = prog.value_at(peak)
+            if v is None:
+                continue
+            slot = per_root[prog.channel]
+            slot[prog.rec.root_id] = max(slot.get(prog.rec.root_id, 0.0), v)
+        ev_for = sum(per_root[CHANNEL_FOR].values())
+        ev_against = sum(per_root[CHANNEL_AGAINST].values()) if against_evaluated else None
+        if ev_against is None:
+            val = valence_fn(event_class, ev_for, 0.0, "evidence_against_channel_not_evaluated")
+        else:
+            val = valence_fn(event_class, ev_for, ev_against, None)
+        drafts.append(WindowDraft(
+            peak_instant=peak, score=best, evidence_for=ev_for, evidence_against=ev_against,
+            outcome_valence_for_native=val.outcome_valence_for_native,
+            score_is_lower_bound=len(qualified) < len(progs), **base))
     return drafts, excluded
 
 
@@ -425,8 +529,10 @@ def utc(t: datetime) -> datetime:
 
 
 __all__ = [
-    "CHANNEL_AGAINST", "CHANNEL_FOR", "Outcome", "PATH_CHANNEL", "RecordProgram", "SweepRecord",
-    "SweepRefusal", "WindowDraft", "activity_kernel", "build_program", "draft_windows",
+    "CHANNEL_AGAINST", "CHANNEL_FOR", "DIRECTIONAL_PATHS", "FOR_ONLY_PATHS", "Outcome",
+    "RecordProgram", "SWEEP_PATHS", "SweepRecord", "SweepRefusal", "WindowDraft",
+    "activity_kernel", "against_channel_state", "build_program", "draft_windows",
+    "p2_direction", "record_channel", "vedha_attenuation",
     "evaluate_factors", "graduated_drishti", "maximise_earliest", "registry_factor_rows",
     "union_components",
 ]

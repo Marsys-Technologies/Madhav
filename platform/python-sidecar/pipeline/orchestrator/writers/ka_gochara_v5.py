@@ -65,6 +65,7 @@ from services.gochara_kernel.record_store import (RecordStore,
                                                   write_class_coverage)
 from services.gochara_kernel import inventory as gk_inventory
 from services.gochara_kernel import window_sweep as gk_window_sweep
+from services.gochara_kernel.window_verifier import verify_window_semantics
 from services.gochara_kernel.window_store import WindowStore
 from services.gochara_kernel import inventory_verifier as gk_verifier
 from services.gochara_kernel import ledger as gk_ledger
@@ -87,6 +88,11 @@ COVERAGE_SUBSTEP_PREFIX = "coverage:"
 RECORD_SUBSTEP_PREFIX = "record:"
 # design v1.5: the window sweep — `window:<class>:<path>` after the class's record grains.
 WINDOW_SUBSTEP_PREFIX = "window:"
+# The two operand SOURCES the sweep calls but this writer does not own yet. None = a named missing
+# input in the sweep (graduated_drishti_source_not_landed / vedha_overlay_not_bound) and the same
+# fact handed to the independent window verifier, so builder and verifier cannot disagree on it.
+DRISHTI_SOURCE = None       # Stream B's services/gochara_rules/drishti.py once #2894 lands
+VEDHA_SOURCE = None         # the overlay binding is a pending steward ruling (kala_vedha_gochara vs derived)
 # AM-5 (v1.5 amendments; migration 1206): the search-completeness chain.
 MANIFEST_SUBSTEP = "manifest"
 SNAPSHOT_SUBSTEP = "snapshot"
@@ -109,10 +115,9 @@ GENERATION = "5.0"
 # brief §interval_sweep + the batch list). The hold is a plan-level absence,
 # never a silent skip: the substep labels say so.
 RECORD_PATHS = tuple(p for p in BOUND_PATHS if p != "P5")
-# Window grains: the paths the sweep has an evaluator for (P3/P4 first; P2, then P1, are later
-# increments). A path absent here is a plan-level absence, named in the substep labels of the
-# paths that DO run — never a silent skip inside a grain.
-WINDOW_PATHS = tuple(p for p in RECORD_PATHS if p in gk_window_sweep.PATH_CHANNEL)
+# Window grains: the paths the sweep has an evaluator for (P2/P3/P4; P1 is a later increment). A
+# path absent here is a plan-level absence — never a silent skip inside a grain.
+WINDOW_PATHS = tuple(p for p in RECORD_PATHS if p in gk_window_sweep.SWEEP_PATHS)
 # birth_anchor is excluded from enumeration entirely (O-CF-N6: zero rows) — it is NOT a
 # scored class (27 − 1 = 26); the evaluator refuses it by design, so planning it would
 # crash the build at its first substep.
@@ -617,12 +622,18 @@ class GocharaV5Writer(WriterBase):
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version, position_at=position_at)
             drafts, ex = gk_window_sweep.draft_windows(
-                event_class, records, gk_window_sweep.registry_factor_rows)
+                event_class, records, gk_window_sweep.registry_factor_rows,
+                drishti=DRISHTI_SOURCE, vedha=VEDHA_SOURCE)
             counts = store.replace_grain_windows(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version, drafts=drafts)
             store.verify_grain(chart_id=chart_id, generation=GENERATION, event_class=event_class,
                                path_id=path_id, rule_version=version)
+            verify_window_semantics(
+                ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
+                path_id=path_id, rule_version=version,
+                factor_rows=gk_window_sweep.registry_factor_rows(path_id, version),
+                drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=VEDHA_SOURCE is not None)
             windows += counts["windows"]
             memberships += counts["memberships"]
             unqualified += sum(1 for d in drafts if d.score is None)
@@ -633,7 +644,7 @@ class GocharaV5Writer(WriterBase):
             notes=(f"{event_class}/{path_id}: {windows} window(s) ({unqualified} unqualified — "
                    f"score/evidence/peak NULL, severity NULL by ruling), {memberships} "
                    f"membership row(s); excluded records {excluded}; independent SQL union "
-                   "check passed"))
+                   "+ semantic re-derivation passed"))
 
     @staticmethod
     def _take_chart_lock(ctx: ContextSpec, chart_id: str) -> None:

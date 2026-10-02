@@ -112,7 +112,7 @@ def test_paths_without_a_sweep_refuse_loudly():
 
 
 def test_a_factor_with_no_evaluator_refuses_never_skips():
-    rows = _rows_declared("P3", "1.0.0") + [{"factor_id": "vedha_attenuation", "null_state": "unqualified"}]
+    rows = _rows_declared("P3", "1.0.0") + [{"factor_id": "dignity_of_transit_sign", "null_state": "unqualified"}]
     with pytest.raises(SweepRefusal):
         _draft([_rec("a")], lambda p, v: rows)
 
@@ -311,3 +311,122 @@ def test_real_1_1_0_rows_light_the_sweep_up_with_no_code_change():
     (w,), _ = _draft([_rec("a", version="1.1.0", supports=((0, 10),))],
                      lambda p, v: ws.registry_factor_rows(p, v))
     assert w.score == 1.0
+
+
+# ── the against channel is derived from the registry row, never from a path name ──────────────────
+
+def _row(factor_id, direction):
+    return {"factor_id": factor_id, "rule_version": "1.0.0", "null_state": "unqualified",
+            "direction": direction, "applicability": {"span": {"object_kinds": ["sign_span"], "inside": 1.0}}}
+
+
+def test_a_row_that_declares_only_magnitude_has_an_evaluated_empty_against_sum_for_any_path_name():
+    for path in ("P3", "P4"):
+        (w,), _ = _draft([_rec("a", path=path, supports=((0, 10),))],
+                         lambda p, v: [_row("activity_kernel", "higher = stronger")])
+        assert w.score == 1.0 and w.evidence_against == 0.0
+
+
+def test_a_synthetic_path_that_declares_an_against_operand_leaves_the_against_sum_null():
+    rows = [_row("activity_kernel", "higher = stronger"),
+            _row("graduated_drishti", "benefic -> favourable channel; malefic -> adverse channel")]
+    assert ws.against_channel_state(rows) == "declared"
+    (w,), _ = _draft([_rec("a", supports=((0, 10),))],
+                     lambda p, v: [rows[0]])             # only the magnitude factor evaluated...
+    assert w.evidence_against == 0.0
+    # ...whereas the SAME record under a row set that declares the operand cannot claim an empty sum:
+    rec = _rec("a", relation="aspect", supports=((0, 10),), aspect_offset_at=lambda t: 7)
+    (w2,), _ = _draft([rec], lambda p, v: rows, drishti=lambda a, o: 1.0)
+    assert w2.score == 1.0 and w2.evidence_for == 1.0
+    assert w2.evidence_against is None                    # declared, not evaluated here ⇒ NULL
+    assert w2.outcome_valence_for_native == "unqualified"  # contested-vs-plain cannot be stated
+
+
+def test_a_silent_or_ambiguous_direction_leaves_the_against_sum_null():
+    for direction in (None, "", "sideways", "doctrine-ordered"):
+        rows = [_row("activity_kernel", direction)]
+        assert ws.against_channel_state(rows) == "ambiguous"
+        (w,), _ = _draft([_rec("a", supports=((0, 10),))], lambda p, v, r=rows: r)
+        assert w.score == 1.0 and w.evidence_against is None
+
+
+def test_todays_p3_p4_registry_rows_declare_no_against_channel():
+    for path in ("P3", "P4"):
+        assert ws.against_channel_state(ws.registry_factor_rows(path, "1.0.0")) == "none_declared"
+
+
+# ── a mixed window's score and evidence are LOWER BOUNDS, said machine-readably ─────────────────────
+
+def test_mixed_window_discloses_lower_bound_in_the_stored_encoding():
+    q = _rec("q", root="Rq", supports=((0, 10),))
+    u = _rec("u", root="Ru", kind="varga_position", supports=((0, 10),))
+    (w,), _ = _draft([q, u], _rows_declared)
+    assert w.score_is_lower_bound is True
+    assert w.score is not None and "unqualified" in w.null_states_used     # the stored encoding
+
+
+def test_a_fully_qualified_window_is_not_a_lower_bound_and_an_unqualified_one_has_no_score_to_bound():
+    (a,), _ = _draft([_rec("q", supports=((0, 10),))], _rows_declared)
+    assert a.score_is_lower_bound is False and a.null_states_used == []
+    (b,), _ = _draft([_rec("u", kind="varga_position", supports=((0, 10),))], _rows_declared)
+    assert b.score is None and b.score_is_lower_bound is False
+
+
+# ── P2: a direction per record, vedha a named missing input ──────────────────────────────────────────
+
+def _p2(rid, agent, house, **kw):
+    return _rec(rid, path="P2", agent=agent, house_from_frame=house, **kw)
+
+
+def _p2_rows(path, version):
+    return ws.registry_factor_rows(path, version)
+
+
+def test_p2_without_a_vedha_source_is_a_named_missing_input_never_1():
+    (w,), _ = _draft([_p2("a", "saturn", 8, supports=((0, 10),))], _p2_rows, cls="bereavement")
+    assert w.score is None and w.unresolved == {"vedha_overlay_not_bound": 1}
+    assert w.outcome_valence_for_native == "unqualified"
+
+
+def test_p2_direction_is_stream_bs_cited_sets_called_not_copied():
+    assert ws.p2_direction("saturn", 8) == "adverse"        # adverse-residence set (D-RQ5)
+    assert ws.p2_direction("saturn", 3) == "favourable"     # Phaladīpikā XXVI favourable set
+    with pytest.raises(SweepRefusal):
+        ws.p2_direction("saturn", 2)                         # in neither set: refused, never defaulted
+    with pytest.raises(SweepRefusal):
+        ws.p2_direction("saturn", None)
+
+
+def test_p2_channel_is_class_relative_through_score_channel_for():
+    from services.gochara_rules.score import channel_for
+    for cls in ("bereavement", "marriage"):                  # an adverse class and a gain class
+        for house, direction in ((8, "adverse"), (3, "favourable")):
+            rec = _p2("a", "saturn", house, supports=((0, 10),))
+            assert ws.record_channel(cls, rec) == channel_for(direction, cls)
+    assert ws.record_channel("bereavement", _p2("a", "saturn", 8)) == ws.CHANNEL_FOR
+    assert ws.record_channel("marriage", _p2("a", "saturn", 8)) == ws.CHANNEL_AGAINST
+
+
+def test_p2_with_a_bound_vedha_source_evaluates_both_channels_never_netted():
+    vedha = lambda rec, t: 0.5                               # a stand-in for the bound overlay + mapping
+    recs = [_p2("adv", "saturn", 8, root="R1", supports=((0, 10),)),    # adverse residence
+            _p2("fav", "jupiter", 5, root="R2", supports=((0, 10),))]   # favourable residence
+    (w,), _ = _draft(recs, _p2_rows, cls="bereavement", vedha=vedha)
+    assert w.score == 0.5                                    # for-channel for an adverse class = the adverse record
+    assert w.evidence_for == 0.5 and w.evidence_against == 0.5
+    assert w.outcome_valence_for_native == "adverse"
+    (g,), _ = _draft(recs, _p2_rows, cls="marriage", vedha=vedha)
+    assert g.evidence_for == 0.5 and g.evidence_against == 0.5   # channels swap for a gain class
+
+
+def test_p2_window_whose_members_are_all_against_scores_an_evaluated_zero_peaking_at_its_start():
+    vedha = lambda rec, t: 1.0
+    (w,), _ = _draft([_p2("a", "saturn", 8, supports=((3, 9),))], _p2_rows, cls="marriage", vedha=vedha)
+    assert (w.score, w.evidence_for, w.evidence_against) == (0.0, 0.0, 1.0)
+    assert w.peak_instant == _d(3)
+
+
+def test_p2_vedha_state_undeterminable_everywhere_is_unqualified_not_zero():
+    (w,), _ = _draft([_p2("a", "saturn", 8, supports=((0, 10),))], _p2_rows, cls="bereavement",
+                     vedha=lambda rec, t: None)
+    assert w.score is None and w.unresolved == {"operand_undeterminable_over_support": 1}

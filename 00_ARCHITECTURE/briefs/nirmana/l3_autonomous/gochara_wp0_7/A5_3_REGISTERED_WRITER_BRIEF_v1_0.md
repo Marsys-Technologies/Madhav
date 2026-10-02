@@ -510,3 +510,38 @@ sweep refuses those paths by name; P5 stays held; `graduated_drishti` source; th
 `depends_on`, `has_substeps = true`, and a `count_sql` that counts what the writer actually writes
 (`ka_gochara_eval_window` for the chart, not `kala_gochara_windows`), plus the stale skeleton
 `english_description`.
+
+### Design v1.7 (2026-10-02) — P2 sweep, the against-channel rule, the lower-bound disclosure, the semantic verifier
+
+Steward M20261002T004131-012c: (a) membership rule CONFIRMED; (b) CONFIRMED WITH A CONDITION; (c) CONFIRMED WITH A DISCLOSURE.
+**Today's registry makes every P3/P4 window unqualified BY DESIGN** — `activity_kernel@1.0.0` declares no
+applicability and no ratified orb, so every record's operand is unevaluable (`applicability_undeclared`) and
+every stored window has `score`, `evidence_*`, `peak_instant` NULL, `severity` NULL, valence `unqualified`
+with a named reason. That changes only when 1.1.0 is bound (after #2897 is Codex-accepted) AND — for point
+objects — when ND-ORB is ruled (`orb_not_ratified`). It is the honest outcome, not a defect.
+
+- **(b) `evidence_against`** is the evaluated empty sum (0.0) ONLY when the path's own soft-factor rows declare no
+  against-channel operand: `against_channel_state(factor_rows)` — every factor's `direction` is the
+  magnitude-only vocabulary (`higher = stronger` / `lower = stronger`) ⇒ `none_declared` (0.0); a direction that
+  names a channel/valence ⇒ `declared`; anything else ⇒ `ambiguous`; both leave the against sum NULL (and the
+  valence `unqualified`: contested-vs-plain cannot be stated). Never keyed on a path name; the test runs the
+  same factor rows under P3 and P4, and a synthetic path that declares an against operand. A path that assigns a
+  DIRECTION per record (P2) evaluates both channels explicitly.
+- **(c) lower bound.** A mixed window scores from its qualified members, so `score` and the evidence sums are LOWER
+  BOUNDS. Migration 1156 gives no free JSON column — `coverage_facts` must equal the partition's facts
+  byte-for-byte and `null_states_used` is CHECKed to `{omit, unqualified}` — and no DDL is allowed, so the stored
+  encoding is `score IS NOT NULL AND 'unqualified' = ANY(null_states_used)`. `WindowDraft.score_is_lower_bound`
+  carries it in code; **`window_verifier.verify_window_semantics`** reproduces it from the stored member records
+  (it imports nothing from the builder). **If an explicit `score_is_lower_bound` column is wanted, that is a
+  1156-successor migration (a steward/native call), not something to slip in.**
+- **P2 sweep.** One direction per record from the cited sets (Stream B's `favourable_houses` /
+  `ADVERSE_RESIDENCE_*`, called not copied; a house in neither or both sets refuses), channel through
+  `score.channel_for` (class-relative polarity); score = for-channel max (an all-against window scores an
+  evaluated 0.0 peaking at its start); evidence per channel at the peak, never netted. The vedha operand is a
+  named missing input (`vedha_overlay_not_bound`) — open Questions Q1/Q2 on the tracker: source (kala_vedha_gochara
+  vs derived) and the state→value mapping the registry row does not carry. NOTE the enumerator already
+  restricts P2 edges by class polarity (adverse classes enumerate only the adverse-residence houses; the other
+  Saturn houses are testimony and never window members), so the against channel is empty in practice.
+- A record whose operand is undeterminable over its whole support (a source returning None everywhere) is
+  UNQUALIFIED (`operand_undeterminable_over_support`), never a 0.0 — found when the first P2 plumbing returned 0.0.
+- Mutation-checked: 19 mutations (13 builder, 6 verifier) all killed; 54 window tests; sidecar suite green.

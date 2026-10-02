@@ -86,7 +86,7 @@ class WindowStore:
         rows = self.conn.execute(
             "SELECT r.record_id::text, COALESCE(r.contact_id, r.object_id)::text, r.path_id,"
             " r.rule_version, r.relation, r.object_kind, r.agent, r.operator_role,"
-            " r.admission_state, o.canonical_target,"
+            " r.admission_state, o.canonical_target, r.house_from_frame,"
             " lower(s.x), upper(s.x), lower_inc(s.x), upper_inc(s.x)"
             " FROM public.ka_gochara_relationship_record r"
             " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id"
@@ -96,11 +96,12 @@ class WindowStore:
             " ORDER BY r.record_id, lower(s.x)",
             (chart_id, generation, event_class, path_id, rule_version)).fetchall()
         grouped: dict[str, dict] = {}
-        for (rid, root, pid, ver, rel, kind, agent, role, adm, target,
+        for (rid, root, pid, ver, rel, kind, agent, role, adm, target, house,
              lo, hi, lo_inc, hi_inc) in rows:
             g = grouped.setdefault(rid, {
                 "root": root, "pid": pid, "ver": ver, "rel": rel, "kind": kind, "agent": agent,
-                "role": role, "adm": adm, "target": target, "supports": []})
+                "role": role, "adm": adm, "target": target, "house": house,
+                "supports": []})
             if lo is not None:
                 if not (lo_inc and not hi_inc):
                     raise RuntimeError(
@@ -119,7 +120,8 @@ class WindowStore:
                 record_id=rid, root_id=g["root"], path_id=g["pid"], rule_version=g["ver"],
                 relation=g["rel"], object_kind=g["kind"], agent=g["agent"],
                 operator_role=g["role"], admission_state=g["adm"],
-                supports=tuple(g["supports"]), delta_lambda_at=delta, aspect_offset_at=offset))
+                supports=tuple(g["supports"]), delta_lambda_at=delta, aspect_offset_at=offset,
+                house_from_frame=g["house"]))
         return out
 
     # ── write ───────────────────────────────────────────────────────────────

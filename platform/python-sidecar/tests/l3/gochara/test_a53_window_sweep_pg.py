@@ -20,12 +20,45 @@ from services.gochara_kernel import window_sweep as ws
 from services.gochara_kernel.rule_registry import RuleRegistryStore
 from services.gochara_kernel.window_store import WindowStore
 
-from .test_a53_record_store import (CHART, CHART_ID, DAY, HORIZON, T0, _coverage_kwargs,  # noqa: F401
-                                    _grain_kwargs, _pg_dsn, _seed_saturn_crossings,
-                                    _sky_convention_id, pg)
+from .test_a53_record_store import (ADMIN_DSN, CHART, CHART_ID, DAY, DB_PREFIX, HORIZON,  # noqa: F401
+                                    MIGRATION_CHAIN, MIGRATIONS, T0, _coverage_kwargs,
+                                    _grain_kwargs, _seed_saturn_crossings, _sky_convention_id)
 
 GEN = "5.0"
 CLS, PATH, VERSION = "marriage", "P3", "1.0.0"
+
+
+@pytest.fixture()
+def pg():
+    """A FRESH database per test (the windows these tests write must not leak between them): the
+    gochara-5 chain applied verbatim, dropped afterwards; refuses to drop what it did not create."""
+    psycopg = pytest.importorskip("psycopg")
+    from psycopg.conninfo import make_conninfo
+    try:
+        admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+    except Exception as exc:  # noqa: BLE001
+        pytest.skip(f"NOT_RUN: disposable database server unreachable ({exc})")
+    name = f"{DB_PREFIX}win_{uuid.uuid4().hex[:8]}"
+    admin.execute(f'CREATE DATABASE "{name}"')
+    dsn = make_conninfo(ADMIN_DSN, dbname=name)
+    conn = None
+    try:
+        conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+        with conn.cursor() as cur:
+            cur.execute("CREATE TABLE public.charts (id uuid PRIMARY KEY)")
+            cur.execute("CREATE TABLE public._migrations_applied"
+                        " (filename text PRIMARY KEY, applied_at timestamptz DEFAULT now())")
+            for fname in MIGRATION_CHAIN:
+                cur.execute((MIGRATIONS / fname).read_text())
+                cur.execute("INSERT INTO public._migrations_applied(filename) VALUES (%s)", (fname,))
+            cur.execute("INSERT INTO public.charts(id) VALUES (%s)", (CHART_ID,))
+        yield conn
+    finally:
+        if conn is not None:
+            conn.close()
+        assert name.startswith(DB_PREFIX), name
+        admin.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+        admin.close()
 
 
 def _declared_rows(path, version):
@@ -157,7 +190,7 @@ def test_the_writer_window_substep_runs_on_the_runners_native_types(grain, monke
     with grain.transaction():
         res = w.run_substep(ctx, SubStep(key=f"window:{CLS}:{PATH}", label="w"))
     assert res.rows_inserted == 2                                # 1 window + 1 membership row
-    assert "1 window(s) (1 unqualified" in res.notes and "independent SQL union check passed" in res.notes
+    assert "1 window(s) (1 unqualified" in res.notes and "independent SQL union + semantic re-derivation passed" in res.notes
     (row,) = _window_rows(grain)
     assert row[3] is None and row[6] == "unqualified"
     # the dry run solves and writes nothing
@@ -166,9 +199,171 @@ def test_the_writer_window_substep_runs_on_the_runners_native_types(grain, monke
     assert w.run_substep(dry, SubStep(key=f"window:{CLS}:{PATH}", label="w")).rows_inserted == 0
 
 
+def _seed_crossings(conn, sky_cid, body, levels_days):
+    """Sign-ingress sky events for `body` at (level°, day) pairs, under the real substrate convention."""
+    from services.gochara_kernel.substrate import (SkyEventStore, assign_occurrence_ordinals,
+                                                   physical_object_id)
+    store = SkyEventStore(conn)
+    for level, day in levels_days:
+        poid = physical_object_id(body=body.lower(), relation_kind="sign_ingress",
+                                  canonical_target=f"point:{level!r}", convention_id=sky_cid)
+        store.insert_physical_object(poid)
+        (contact,) = assign_occurrence_ordinals(physical_object_id=poid, t_exact_list=[T0 + day * DAY])
+        store.insert_event(contact, event_kind="sign_ingress", longitude=level,
+                           solver_method="swiss_refined", delta_lambda=2.0 / 3600.0, delta_t=1e-9,
+                           precision_regime="swiss_bisect_tol_1e-9d", coverage={"truncated": False})
+
+
+@pytest.fixture()
+def p2_grain(pg):
+    """P2 / career_advancement (a native gain class): Saturn in Aries is the 3rd from the natal Moon
+    (Aquarius) — inside Saturn's cited favourable set, so the record is ADMITTED. Aries residence
+    [day 20, day 120)."""
+    from services.gochara_kernel import evaluator as ev
+    from services.gochara_kernel.rule_registry import RuleRegistryStore as _R
+    conn = pg
+    _R(conn).seed()
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        sky_cid = _sky_convention_id(conn)
+        _seed_crossings(conn, sky_cid, "Saturn", ((0.0, 20), (30.0, 120)))
+    store = rs.RecordStore(conn)
+    kala_cid = store.ensure_kala_convention()
+    cls = "career_advancement"
+    edges = [e for e in ev.enumerate_edges(cls, "P2", CHART)
+             if e.transit and e.agent == "saturn" and e.relation == "residence"
+             and e.obj.canonical_target == "span:1"]
+    assert len(edges) == 1
+
+    def probe(body, t):
+        d = (t - T0) / DAY
+        return 15.0 if 20 <= d < 120 else 195.0
+
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        rs.write_class_coverage(store, **{**_coverage_kwargs(store, kala_cid, sky_cid),
+                                          "event_class": cls,
+                                          "class_edges": ev.enumerate_edges(cls, "P2", CHART),
+                                          "position_at": probe})
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        counts = rs.materialise_record_grain(
+            store, chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P2", edges=edges,
+            horizon=HORIZON, position_at=probe, house_for=writer_mod._house_resolver(CHART),
+            sky_convention_id=sky_cid, source_fact_ids=["fact-1"], chart=CHART)
+    assert counts["records"] == 1
+    return conn, cls
+
+
+def test_p2_record_is_admitted_with_its_direction_and_the_window_is_unqualified_until_vedha_is_bound(p2_grain):
+    conn, cls = p2_grain
+    ws_store = WindowStore(conn)
+    (rec,) = ws_store.read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P2",
+                                 rule_version=VERSION)
+    assert (rec.admission_state, rec.house_from_frame, rec.agent) == ("admitted", 3, "saturn")
+    assert ws.p2_direction(rec.agent, rec.house_from_frame) == "favourable"
+    drafts, _ = ws.draft_windows(cls, [rec], ws.registry_factor_rows)
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        ws_store.replace_grain_windows(chart_id=CHART_ID, generation=GEN, event_class=cls,
+                                       path_id="P2", rule_version=VERSION, drafts=drafts)
+        ws_store.verify_grain(chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P2",
+                              rule_version=VERSION)
+    (row,) = _window_rows(conn)
+    assert (row[0], row[1]) == (T0 + 20 * DAY, T0 + 120 * DAY)
+    assert row[3] is None and row[6] == "unqualified"
+    assert list(row[8]) == ["unqualified"]
+
+
+def test_p2_with_a_bound_vedha_source_stores_both_channels_in_the_real_schema(p2_grain):
+    conn, cls = p2_grain
+    ws_store = WindowStore(conn)
+    recs = ws_store.read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P2",
+                               rule_version=VERSION)
+    drafts, _ = ws.draft_windows(cls, recs, ws.registry_factor_rows, vedha=lambda r, t: 0.5)
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        ws_store.replace_grain_windows(chart_id=CHART_ID, generation=GEN, event_class=cls,
+                                       path_id="P2", rule_version=VERSION, drafts=drafts)
+    (row,) = _window_rows(conn)
+    # favourable residence is evidence FOR a gain class; the against channel is evaluated (P2 assigns
+    # a direction per record), and empty
+    assert (row[3], row[4], row[5]) == (0.5, 0.5, 0.0)
+    assert row[2] == T0 + 20 * DAY and row[6] == "favourable"
+
+
 def test_a_window_grain_outside_the_planned_paths_is_refused_by_name(grain):
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-x", db_conn=grain,
                       config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON}, dry_run=False)
     with grain.transaction():
-        res = writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=f"window:{CLS}:P2", label="w"))
+        res = writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=f"window:{CLS}:P1", label="w"))
     assert res.rows_inserted == 0 and "unknown window grain" in res.notes
+
+
+# ── the independent semantic verifier ────────────────────────────────────────────────────────────────
+
+def _write(conn, cls, path, drafts):
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        WindowStore(conn).replace_grain_windows(chart_id=CHART_ID, generation=GEN, event_class=cls,
+                                                path_id=path, rule_version=VERSION, drafts=drafts)
+
+
+def _verify(conn, cls, path, rows_for=ws.registry_factor_rows, **kw):
+    from services.gochara_kernel.window_verifier import verify_window_semantics
+    return verify_window_semantics(conn, chart_id=CHART_ID, generation=GEN, event_class=cls,
+                                   path_id=path, rule_version=VERSION,
+                                   factor_rows=rows_for(path, VERSION), **kw)
+
+
+def _drafts(conn, cls, path, rows_for):
+    recs = WindowStore(conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls,
+                                        path_id=path, rule_version=VERSION)
+    return ws.draft_windows(cls, recs, rows_for)[0]
+
+
+def test_verifier_reproduces_the_unqualified_and_the_qualified_window(grain):
+    _write(grain, CLS, PATH, _drafts(grain, CLS, PATH, ws.registry_factor_rows))
+    # every member unqualified: nothing numeric to reproduce, and the structural checks hold
+    assert _verify(grain, CLS, PATH) == {"windows": 1, "numeric_reproduced": 0, "structural_only": 1}
+    _write(grain, CLS, PATH, _drafts(grain, CLS, PATH, _declared_rows))
+    out = _verify(grain, CLS, PATH, _declared_rows)
+    assert out == {"windows": 1, "numeric_reproduced": 1, "structural_only": 0}
+
+
+def test_verifier_refuses_a_wrong_score_a_wrong_peak_and_a_wrong_evidence_sum(grain):
+    import dataclasses
+    good = _drafts(grain, CLS, PATH, _declared_rows)
+    for bad in (dataclasses.replace(good[0], score=0.5),
+                dataclasses.replace(good[0], peak_instant=good[0].peak_instant + 7 * DAY),
+                dataclasses.replace(good[0], evidence_for=2.0),
+                dataclasses.replace(good[0], evidence_against=None),
+                dataclasses.replace(good[0], severity=0.0)):
+        _write(grain, CLS, PATH, [bad])
+        with pytest.raises(RuntimeError, match="window semantic verification failed"):
+            _verify(grain, CLS, PATH, _declared_rows)
+
+
+def test_verifier_refuses_a_lower_bound_marker_the_records_do_not_support(grain):
+    import dataclasses
+    # one admitted qualified record: claiming 'unqualified' member(s) in the disclosure is a lie ...
+    good = _drafts(grain, CLS, PATH, _declared_rows)
+    _write(grain, CLS, PATH, [dataclasses.replace(good[0], null_states_used=["unqualified"])])
+    with pytest.raises(RuntimeError, match="null_states_used"):
+        _verify(grain, CLS, PATH, _declared_rows)
+    # ... and under today's rows (every member unqualified) hiding it is too
+    bad = dataclasses.replace(_drafts(grain, CLS, PATH, ws.registry_factor_rows)[0], null_states_used=[])
+    _write(grain, CLS, PATH, [bad])
+    with pytest.raises(RuntimeError, match="null_states_used"):
+        _verify(grain, CLS, PATH)
+
+
+def test_verifier_checks_the_p2_channels_from_the_cited_sets(p2_grain):
+    conn, cls = p2_grain
+    recs = WindowStore(conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls,
+                                        path_id="P2", rule_version=VERSION)
+    drafts = ws.draft_windows(cls, recs, ws.registry_factor_rows, vedha=lambda r, t: 0.5)[0]
+    _write(conn, cls, "P2", drafts)
+    # the sweep ran with a bound vedha source; tell the verifier the same fact
+    out = _verify(conn, cls, "P2", vedha_bound=True)
+    assert out["windows"] == 1 and out["structural_only"] == 1      # vedha value is a function: not claimed
