@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "c2432ae3e633b4c4a8ddc5197044e53c630f29650ff26cc227579732882e3ca9",
+  "content_sha256": "24633fe3cabfbb7ca6347d93b82179d8d1fb8e9fffa5f336b35557f3c55a0468",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20893,6 +20893,7 @@
         "platform/migrations/1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql",
         "platform/migrations/1212_nirmana_l3_ka_vighnakara_output_digest_spec.sql",
         "platform/migrations/1213_nirmana_l3_service_selftest_output_digest_specs.sql",
+        "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql",
         "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
         "platform/migrations/820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
         "platform/migrations/821_nirmana_l5_mi_vistara_output_digest_spec.sql",
@@ -20966,7 +20967,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-02T05:55:00.000Z",
+  "generated_at": "2026-10-02T21:00:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20992,7 +20993,7 @@
       },
       {
         "id": "output_digest_migration_source_set",
-        "member_count": 91,
+        "member_count": 92,
         "members": [
           {
             "path": "platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql",
@@ -21077,6 +21078,10 @@
           {
             "path": "platform/migrations/1213_nirmana_l3_service_selftest_output_digest_specs.sql",
             "sha256": "4ce3ad91d85c3352d3b0ebc1a3c720800b52a5fba452a98c159a48fb5acbf5a5"
+          },
+          {
+            "path": "platform/migrations/1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_count_sql.sql",
+            "sha256": "a1c2ebc26369f784f08f1b5c0d556fb8cfa56923ec7c9b1668f713d79829226a"
           },
           {
             "path": "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
@@ -21360,12 +21365,12 @@
           }
         ],
         "path": "platform/{migrations,supabase/migrations}/*.sql containing asset_output_digest_specs",
-        "sha256": "ac2322e63cd47ae55b44446a3c9a5048254dce32203389ee291b4800ac788084"
+        "sha256": "3741ce9a0169f1173c381e07430f5f97ac0dd6302d3f928f87b124f962f114fe"
       },
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "7aba6aa581b1f980750edf1fdd49d5e9e9378126a055ca685151492b55fc7ec7"
+        "sha256": "bfb8f36c0418cacabe5e0133bec681d1b4fd149a65d5f97a26859011b6446e3b"
       },
       {
         "id": "public_registrar_source_set",
@@ -22423,10 +22428,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "ad7dc5fa7b5e8bb61755e24f613a3ba8ebfdb1bcad81b468daf30590c65cf133"
+        "sha256": "9577e11165a7fd47df6ab8a7f2e2b584c4d32d88653b4ec59e0c9fc9369d7024"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "ab854f2f50323a467d47cce105913281c6c19e70"
+  "source_revision": "c521d293de788a398c10fe6356ec75258c81a1a8"
 }
