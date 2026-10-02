@@ -17,6 +17,12 @@ branch and could never read the N/A. Now every occurrence of the asset's tokens 
 Two directions for every pattern: a label-only module must not make the asset reached (N/A allowed), a select must (N/A refused), every
 ambiguous form must refuse the N/A. Comments keep today's R51 reading (comment-only mention blocks the N/A: a comment can assert served-ness).
 Python readers are outside the served surface BY DESIGN: the scan reads `*.ts` under the serving roots only.
+`ka_vedha_gochara/writer.py` (a Python L3 writer) DOES read `FROM bg_phaladeepika_latta`; the rule says no SERVED module selects from it, which
+is true. Dens.served N/A means "not served directly", NOT "unused".
+SERVICE ASSETS (strategist ruling on DENS): an occurrence inside a `service_probe` envelope is a REACH when the asset's REGISTRY KIND is `service`
+(the capability that carries the envelope serves the service); the identical envelope on a data-kind asset stays a label. A service asset with
+only a prose / label mention OUTSIDE an envelope stays a label (an ambiguous form still blocks). bg_ephemeris_engine and bg_panchanga therefore
+stay NO_DETECTOR; whether Dens.served applies to services at all is a separate, later, declared rule and is not decided here.
 
 Every test drives the real `capability_scan` / `_grade_dens` over a small synthetic tree, plus the real tree for the pinned N/A set.
 
@@ -487,6 +493,107 @@ def test_every_occurrence_is_classified_and_one_ambiguous_one_decides():
     assert ac._module_reaches(kinds) and not ac._module_reaches(["label", "label"]) and not ac._module_reaches([])
 
 
+# ───────────────────────── service-kind assets: a service_probe envelope is a reach ─────────────────────────
+
+PROBE = ("export const cap = { run: () => null, probe: { kind: 'service_probe', asset_id: 'bg_x', probe_id: 'x_engine', "
+         "endpoint_identity: 'nirmana-elevation:health-probe:bg_x', source_ref: 'platform/python-sidecar/scripts/c.json#bg_x' } }\n")
+
+
+def _svc(tree, src, service, toks=TOKS):
+    tree.write(tree.layers, "tool.ts", src)
+    cap = ac.capability_scan(tree.roots, list(toks), shared=set(), columns=None, outside_roots=(), service=service)
+    return ac._grade_dens(cap, "t_x"), cap
+
+
+def test_a_service_probe_envelope_is_a_reach_for_a_service_kind_asset(tree):
+    d, cap = _svc(tree, PROBE, True)
+    assert d["v"] == NO_DET and cap["modules"] == ["tool.ts"] and not cap["label_only"], (d, cap)
+
+
+def test_the_identical_envelope_on_a_data_kind_asset_is_a_label(tree):
+    d, cap = _svc(tree, PROBE, False)
+    assert d["v"] == NA and cap["label_only"] == ["tool.ts"] and not cap["modules"], (d, cap)
+
+
+@pytest.mark.parametrize("key", ["asset_id", "endpoint_identity", "source_ref"])
+def test_each_envelope_key_alone_is_a_reach_for_a_service_and_a_label_for_data(tree, key):
+    val = {"asset_id": "'bg_x'", "endpoint_identity": "'nirmana:health-probe:bg_x'", "source_ref": "'c.json#bg_x'"}[key]
+    src = f"export const probe = {{ kind: 'service_probe', {key}: {val} }}\n"
+    assert _svc(tree, src, True)[0]["v"] == NO_DET
+    assert _svc(tree, src, False)[0]["v"] == NA
+
+
+def test_a_service_asset_with_only_a_prose_or_label_mention_outside_an_envelope_stays_a_label(tree):
+    for src in (LABELS["prose-description"], "export const c = { asset_id: 'bg_x' }\n", LABELS["provenance-tables-array"]):
+        d, cap = _svc(tree, src, True)
+        assert d["v"] == NA and cap["label_only"] == ["tool.ts"], (src, d)
+
+
+def test_an_envelope_in_one_object_does_not_reach_a_label_in_a_sibling_object(tree):
+    src = ("export const a = { kind: 'service_probe', asset_id: 'other_asset' }\n"
+           "export const b = { asset_id: 'bg_x' }\n")
+    assert _svc(tree, src, True)[0]["v"] == NA          # the 'service_probe' string belongs to a's object, not b's
+    assert _svc(tree, "export const b = { kind: 'service_probe', nested: { asset_id: 'bg_x' } }\n", True)[0]["v"] == NA   # the innermost object holds no 'service_probe'
+
+
+def test_a_service_envelope_beside_a_real_select_is_still_the_select_verdict(tree):
+    d, cap = _svc(tree, PROBE + "export const q = () => query(`SELECT id FROM t_x`)\n", True)
+    assert d["v"] == ac.FAIL and cap["served"] == 1, d
+
+
+def test_the_service_flag_never_touches_a_non_label_form(tree):
+    d, cap = _svc(tree, SELECTS["bare-name-in-unkeyed-array"], True)
+    assert d["v"] == NO_DET and cap["modules"] == ["tool.ts"], d
+    d, cap = _svc(tree, SELECTS["select-from"], True)
+    assert d["v"] == ac.FAIL
+
+
+def test_the_probe_kind_is_a_reach_in_the_unit_classifier():
+    assert _kinds(PROBE.replace("bg_x", "t_x")) == ["label", "label", "label"]
+    assert ac._ref_kinds(PROBE.replace("bg_x", "t_x"), "t_x", service=True) == ["probe", "probe", "probe"]
+    assert ac._module_reaches(["probe"]) and ac.PROBE_REF == "probe"
+
+
+def test_inside_an_envelope_only_a_label_becomes_a_probe_other_kinds_keep_their_name():
+    src = "export const p = { kind: 'service_probe', q: 'SELECT id FROM t_x', n: 'a note about t_x here' }"
+    assert ac._ref_kinds(src, "t_x", service=True) == ["select", "probe"]
+    assert ac._ref_kinds("export const p = { kind: 'service_probe', ids: pick('t_x') }", "t_x", service=True) == ["ambiguous"]
+
+
+@pytest.mark.parametrize("q", ["'", '"', "`"])
+def test_the_envelope_marker_is_recognised_in_any_string_quote(q):
+    src = f"export const p = {{ kind: {q}service_probe{q}, asset_id: 't_x' }}"
+    assert ac._ref_kinds(src, "t_x", service=True) == ["probe"]
+    assert ac._ref_kinds(src.replace("service_probe", "other_probe"), "t_x", service=True) == ["label"]
+    assert ac._ref_kinds(src.replace("service_probe", "my_service_probe_x"), "t_x", service=True) == ["label"]
+
+
+def test_measure_hands_the_registry_kind_to_the_scan(monkeypatch, tree):
+    """measure() passes `service=(registry asset_kind == 'service')` -- the kind the census already reads, not a declaration."""
+    seen = []
+    real = dr._REAL_SCAN
+
+    def spy(*a, **k):
+        seen.append(k.get("service"))
+        return real(*a, **k)
+    tree.write(tree.layers, "tool.ts", PROBE)
+    reg = {"bg_x": dict(w1._reg_row("bg_x", "t_x"), asset_kind="service")}
+    w1._stub_layer(monkeypatch, tree.tmp, reg, None)
+    monkeypatch.setattr(ac, "capability_scan", spy)
+    monkeypatch.setattr(ac, "live_counts", lambda *a, **k: ({}, {}))
+    monkeypatch.setattr(ac, "CAPS_ROOTS", tree.roots)
+    monkeypatch.setattr(ac, "DENS_OUTSIDE_ROOTS", ())
+    census = ac.measure("L0")
+    assert seen == [True], seen
+    assert dr._dens(census, "bg_x")["v"] == NO_DET
+    seen.clear()
+    reg = {"bg_x": dict(w1._reg_row("bg_x", "t_x"), asset_kind="data")}
+    w1._stub_layer(monkeypatch, tree.tmp, reg, None)
+    monkeypatch.setattr(ac, "capability_scan", spy)
+    census = ac.measure("L0")
+    assert seen == [False] and dr._dens(census, "bg_x")["v"] == NA
+
+
 # ───────────────────────── Python readers are outside the served surface, by design ─────────────────────────
 
 def test_a_python_reader_of_the_table_is_outside_the_served_surface_and_does_not_block_the_na(tree):
@@ -505,13 +612,15 @@ def test_the_real_scan_roots_name_no_python_tree():
     for r in tuple(ac.CAPS_ROOTS) + tuple(ac.DENS_OUTSIDE_ROOTS):
         assert "python" not in r and "sidecar" not in r, r
     assert "TypeScript" in ac.capability_scan.__doc__ and "Python" in ac.capability_scan.__doc__
+    assert "NOT SERVED DIRECTLY" in ac.capability_scan.__doc__.upper() and "ka_vedha_gochara" in ac.capability_scan.__doc__
 
 
 # ───────────────────────── the real tree ─────────────────────────
 
 FX = json.loads((HERE / "fixtures" / "dens_scan_inputs_2026-10-02.json").read_text(encoding="utf-8"))
 R02_PRE_N74 = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
-R02_LABEL_REPAIR = ("bg_cohort", "bg_ephemeris_engine", "bg_panchanga", "bg_phaladeepika_latta", "bg_vedha_malefic_scale")
+R02_LABEL_REPAIR = ("bg_cohort", "bg_phaladeepika_latta", "bg_vedha_malefic_scale")
+SERVICE_PROBE_ONLY = ("bg_ephemeris_engine", "bg_panchanga")          # registry kind `service`, named only by a service_probe envelope: a reach
 REPO = HERE.parents[3]
 
 
@@ -531,7 +640,7 @@ def real_dens():
         for L, d in FX["layers"].items():
             for r in d["assets"]:
                 cap = ac.capability_scan(ac.CAPS_ROOTS, r["tokens"], shared=frozenset(d["shared"]), columns=d["columns"],
-                                         outside_roots=ac.DENS_OUTSIDE_ROOTS)
+                                         outside_roots=ac.DENS_OUTSIDE_ROOTS, service=(r.get("asset_kind") == "service"))
                 out[r["asset_id"]] = (ac._grade_dens(cap, r["target_table"] or r["asset_id"]), cap)
     finally:
         pathlib.Path.read_text = real
@@ -544,6 +653,33 @@ def test_the_real_tree_reads_na_on_exactly_the_three_earlier_assets_plus_the_lab
     assert na == sorted(R02_PRE_N74 + R02_LABEL_REPAIR), na
     for a in na:
         assert real_dens[a][0]["cause"] == "no-served-surface", a
+
+
+def test_the_two_service_assets_named_only_by_their_probe_envelope_stay_no_detector(real_dens):
+    for a in SERVICE_PROBE_ONLY:
+        g, cap = real_dens[a]
+        assert g["v"] == NO_DET and cap["modules"], (a, g, cap)
+        assert "reach it by code" in g["measured"], g
+    # the prose `reason:` in get_av_transit_gating.ts is outside any envelope: a label (the service asset is reached by the envelopes, not by it)
+    assert real_dens["bg_ephemeris_engine"][1]["label_only"] == ["L1_ganita/get_av_transit_gating.ts"]
+    assert real_dens["bg_panchanga"][1]["label_only"] == []
+    assert real_dens["bg_panchanga"][1]["modules"] == ["L0_brahmagyan/call_panchanga_service.ts"]
+
+
+def test_the_same_two_assets_scanned_as_data_kind_would_read_na_which_is_exactly_the_registry_kind_split():
+    """The split is the registry kind and nothing else: the identical scan with service=False labels the envelope."""
+    for a in SERVICE_PROBE_ONLY:
+        cap = ac.capability_scan(ac.CAPS_ROOTS, [a], shared=frozenset(), columns={}, outside_roots=ac.DENS_OUTSIDE_ROOTS, service=False)
+        assert ac._grade_dens(cap, a)["v"] == NA, a
+        cap = ac.capability_scan(ac.CAPS_ROOTS, [a], shared=frozenset(), columns={}, outside_roots=ac.DENS_OUTSIDE_ROOTS, service=True)
+        assert ac._grade_dens(cap, a)["v"] == NO_DET, a
+
+
+def test_the_real_registry_kind_is_what_the_fixture_carries_for_every_asset():
+    kinds = {r["asset_id"]: r.get("asset_kind") for d in FX["layers"].values() for r in d["assets"]}
+    assert len(kinds) == 127 and all(kinds.values())
+    assert kinds["bg_ephemeris_engine"] == kinds["bg_panchanga"] == "service"
+    assert kinds["bg_phaladeepika_latta"] == kinds["bg_cohort"] == kinds["bg_vedha_malefic_scale"] == "data"
 
 
 def test_the_label_repair_assets_are_label_only_in_the_real_modules_named_in_the_evidence(real_dens):
@@ -578,7 +714,7 @@ def test_no_pass_partial_or_fail_cell_moves_on_the_real_tree(real_dens):
     from collections import Counter
     c = Counter(g["v"] for g, _cap in real_dens.values())
     assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (5, 26, 43), c
-    assert c["N/A"] == 8 and c["NO_DETECTOR"] == 45, c
+    assert c["N/A"] == 6 and c["NO_DETECTOR"] == 47, c
 
 
 def test_a_real_select_is_never_relabelled_on_the_real_tree():
@@ -595,6 +731,7 @@ def test_R02_decision_text_is_the_cause_keyed_reading_and_cites_N74a():
     assert "an asset no served module selects rows from" in t, t
     assert "being named only as a provenance label is not a select" in t, t
     assert "N-74(a)" in t and "N-22" in t and "N-65" in t, t
+    assert "not served directly" in t and "not 'unused'" in t and "service_probe envelope is a reach" in t, t
     ac.validate_na_rule_decisions()
 
 

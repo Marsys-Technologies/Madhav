@@ -35,8 +35,9 @@ DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS | S3_IDS     # the exact production 
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
-# REGISTRY_REVISION 14 (SS N-74(a)): the scan tells a SELECT from a LABEL; five more assets are named only as labels in the serving modules
-R02_LABEL_ASSETS = ("bg_cohort", "bg_ephemeris_engine", "bg_panchanga", "bg_phaladeepika_latta", "bg_vedha_malefic_scale")
+# REGISTRY_REVISION 14 (SS N-74(a)): the scan tells a SELECT from a LABEL; three more DATA assets are named only as labels in the serving modules.
+# (bg_ephemeris_engine and bg_panchanga are named only by their service_probe envelope but are registry kind `service`: that is a reach, they stay NO_DETECTOR.)
+R02_LABEL_ASSETS = ("bg_cohort", "bg_phaladeepika_latta", "bg_vedha_malefic_scale")
 R02_ALL = R02_ASSETS + R02_LABEL_ASSETS
 R03_ASSETS = ("bg_doshas", "bg_ontology", "bg_yogas", "bo_laksana_rerank")
 NA, NO_DET = ac.NA, ac.NO_DET
@@ -278,6 +279,8 @@ def test_emit_gaps_closes_nothing_when_the_rules_are_not_declared(monkeypatch, t
 
 # ───────────────────────── the saved Track A censuses: exactly the listed gate cells move (seven at revision 9, twelve at 14), all NO_DETECTOR -> N/A ─────────────────────────
 
+_DENS_FX = json.loads((HERE / "fixtures" / "dens_scan_inputs_2026-10-02.json").read_text(encoding="utf-8"))
+KIND = {r["asset_id"]: r.get("asset_kind") for d in _DENS_FX["layers"].values() for r in d["assets"]}      # the registry kind (the saved Track A censuses predate it)
 EV = pathlib.Path("/Users/Dev/suvarna-evidence")
 _SAVED = {L: EV / ("census2" if L in ("L1", "L2") else "census") / f"census_{L}.json" for L in ac.LAYERS}
 saved = pytest.mark.skipif(not all(p.exists() for p in _SAVED.values()), reason="saved Track A census JSONs not on this machine")
@@ -309,7 +312,7 @@ def test_saved_censuses_only_the_listed_gate_cells_move_and_all_of_them_no_detec
             toks = list(dict.fromkeys([t for t in ([tbl] if tbl else []) + list(a.get("count_sql_tables") or []) + [aid] if t]))
             cols = {tbl: list(a["reach"]["exposed"]) + list(a["reach"]["dark"])} if tbl and a.get("reach") else {}
             g = ac._grade_dens(ac.capability_scan(ac.CAPS_ROOTS, toks, shared=frozenset(), columns=cols,
-                                                  outside_roots=ac.DENS_OUTSIDE_ROOTS), tbl or aid)
+                                                  outside_roots=ac.DENS_OUTSIDE_ROOTS, service=(KIND.get(aid) == "service")), tbl or aid)
             if g["v"] == NA:
                 dens_na.append(aid)
             m["Dens.served"] = g
@@ -336,7 +339,7 @@ def test_saved_censuses_only_the_listed_gate_cells_move_and_all_of_them_no_detec
     for aid, crit, _ in released_checks:
         by.setdefault(crit.split(".")[0], set()).add(aid)
     assert by == {"Build": set(R01_ASSETS), "Dens": set(R02_ALL), "Narr": set(R03_ASSETS)}, by
-    assert len(released_checks) == 6 + 8 + 16
+    assert len(released_checks) == 6 + 6 + 16
 
 
 # ───────────────────────── F1: an empty write scan is not evidence of "no narration write" ─────────────────────────
@@ -358,10 +361,11 @@ def test_F1_a_no_prose_asset_whose_dml_the_scan_cannot_see_reads_no_detector_nev
 
 def test_F3_the_real_dens_scan_reads_na_on_exactly_the_approved_assets_over_all_127(monkeypatch):
     """The inputs of the 127 assets' scans are a committed fixture (verdict-free); the scan is the REAL one over the current
-    source tree. A ninth N/A (a new unreferenced table, a served read removed, a new label-only mention) fails here and needs a
-    ruling, not a widening; a served read added to one of the eight also fails here (the rule no longer fits it). The eight are
-    the three that no served module references at all (N-65) plus the five a serving module only NAMES as a label (SS N-74(a),
-    REGISTRY_REVISION 14: bg_cohort, bg_ephemeris_engine, bg_panchanga, bg_phaladeepika_latta, bg_vedha_malefic_scale).
+    source tree. A seventh N/A (a new unreferenced table, a served read removed, a new label-only mention) fails here and needs a
+    ruling, not a widening; a served read added to one of the six also fails here (the rule no longer fits it). The six are
+    the three that no served module references at all (N-65) plus the three DATA assets a serving module only NAMES as a label (SS N-74(a),
+    REGISTRY_REVISION 14: bg_cohort, bg_phaladeepika_latta, bg_vedha_malefic_scale). The two service-kind assets named only by their
+    service_probe envelope (bg_ephemeris_engine, bg_panchanga) are a reach and stay NO_DETECTOR.
     File reads are cached for speed."""
     fx = json.loads((HERE / "fixtures" / "dens_scan_inputs_2026-10-02.json").read_text(encoding="utf-8"))
     real, cache = pathlib.Path.read_text, {}
@@ -377,7 +381,8 @@ def test_F3_the_real_dens_scan_reads_na_on_exactly_the_approved_assets_over_all_
         for r in d["assets"]:
             n += 1
             g = ac._grade_dens(ac.capability_scan(ac.CAPS_ROOTS, r["tokens"], shared=frozenset(d["shared"]), columns=d["columns"],
-                                                  outside_roots=ac.DENS_OUTSIDE_ROOTS), r["target_table"] or r["asset_id"])
+                                                  outside_roots=ac.DENS_OUTSIDE_ROOTS, service=(r.get("asset_kind") == "service")),
+                               r["target_table"] or r["asset_id"])
             if g["v"] == NA:
                 assert g["cause"] == "no-served-surface", (r["asset_id"], g)
                 na.append(r["asset_id"])

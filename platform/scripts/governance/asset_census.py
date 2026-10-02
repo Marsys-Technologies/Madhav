@@ -187,7 +187,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=2),  # S3: declared form added; was rev 1
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=3),  # S3: declared form + citation_state added; was rev 2
-    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=5),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label
+    "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module (one that SELECTS from the asset's table, or names it in a form the scan cannot classify; naming it only as a label, in a provenance string, prose, a type name or an import path, is not a reach; for a service-kind asset a service_probe envelope is a reach); PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=5),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1); rev 5 (N-74(a)): select vs label
     "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),  # E6 (c): the declaration and the table's columns agree
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5); never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
@@ -305,7 +305,8 @@ NA_RULE_DECISIONS: dict[str, str] = {
     "Dens.served#measured:no-served-surface":
         "N-22/N-22a row 19 (AMENDED, principles 1, 3, 4); N-65 (R02); amended by N-74(a): an asset no served module selects rows from; "
         "being named only as a provenance label is not a select. Dens 'served' means the served TS surface; a Python / sidecar "
-        "reader of a table does not make it served.",
+        "reader of a table does not make it served (N/A means 'not served directly', not 'unused'). A service-kind asset named in a "
+        "service_probe envelope is a reach, not a label.",
     # R03, N-22 row 17 AMENDED (principle 8): the assets that declare prose_fields [] (bg_doshas, bg_ontology, bg_yogas,
     # bo_laksana_rerank; SS: bg_yogas and bg_ontology final); the reverse leg still FAILs a narration column
     # S4, N-22 row 23 re-proposed (the general form was refused for want of a reads-match detector; Build.dag's reads-match
@@ -4337,9 +4338,14 @@ def _dynamic_from(txt: str, spans: list[tuple[int, str]], prose_tail_ok: bool = 
 #              under one) in a module with no run-time table access, an import / require path, a type / interface / enum / class name, an object-literal key
 #              in a module with no run-time table access
 #   AMBIGUOUS  everything else
+#   PROBE      (strategist ruling on DENS, N-74(a) review) an occurrence inside a `service_probe` envelope (the object literal holding the string
+#              'service_probe': `asset_id`, `endpoint_identity`, `source_ref`) for an asset whose REGISTRY KIND is `service` is a REACH: the capability
+#              that carries the envelope serves the service. The identical envelope on a data-kind asset stays a label. Whether Dens.served applies to
+#              services at all is a separate, later, declared rule; nothing here decides it.
 # A module is a reach unless EVERY occurrence is LABEL (and it carries no strict served select): SELECT and AMBIGUOUS both count. The label side
 # needs a positive recognition; the safe direction (only an exact "scanned, no select" reads N/A) is the default.
 LABEL, SELECT_REF, AMBIGUOUS_REF = "label", "select", "ambiguous"
+PROBE_REF = "probe"        # a service-kind asset named inside a `service_probe` envelope: the module serves the service (a reach, not a label)
 # keys whose value / array elements are provenance, not a table a query is built from (SS N-74(a): `source_table:`, `table:`, a response envelope's label)
 DENS_LABEL_KEYS = frozenset({"source_table", "source_tables", "table", "tables", "source", "sources", "source_ref", "source_surface", "provenance",
                              "asset_id", "asset_ids", "assets", "required_assets", "backing_tables"})
@@ -4449,22 +4455,32 @@ def _code_ref_kind(mod: dict, off: int, end: int) -> str:
     return AMBIGUOUS_REF
 
 
-def _ref_kinds_mod(mod: dict, tok: str) -> list[str]:
-    """One kind per whole-word occurrence of `tok` in the module's comment-masked text, in order (comments are not occurrences: R51 reads them)."""
+def _in_probe_envelope(mod: dict, off: int) -> bool:
+    """Is `off` inside the innermost object literal that holds the string 'service_probe' (a `kind: 'service_probe'` envelope)?"""
+    lo, hi = _enclosing_object(mod["blank"], off)
+    return bool(re.search(r"""['"`]service_probe['"`]""", mod["cmask"][lo:hi]))
+
+
+def _ref_kinds_mod(mod: dict, tok: str, service: bool = False) -> list[str]:
+    """One kind per whole-word occurrence of `tok` in the module's comment-masked text, in order (comments are not occurrences: R51 reads them).
+    `service`: the asset's REGISTRY kind is `service` -- a LABEL inside a `service_probe` envelope is then a PROBE (a reach)."""
     starts = [p for p, _c in mod["spans"]]
     out = []
     for m in re.finditer(r"\b" + re.escape(tok) + r"\b", mod["cmask"]):
         i = bisect.bisect_right(starts, m.start()) - 1
         if i >= 0 and m.start() < starts[i] + len(mod["spans"][i][1]):
-            out.append(_literal_ref_kind(mod, i, m.start(), tok))
+            k = _literal_ref_kind(mod, i, m.start(), tok)
         else:
-            out.append(_code_ref_kind(mod, m.start(), m.end()))
+            k = _code_ref_kind(mod, m.start(), m.end())
+        if service and k == LABEL and _in_probe_envelope(mod, m.start()):
+            k = PROBE_REF
+        out.append(k)
     return out
 
 
-def _ref_kinds(txt: str, tok: str) -> list[str]:
+def _ref_kinds(txt: str, tok: str, service: bool = False) -> list[str]:
     """`_ref_kinds_mod` over a source text (the unit-test and one-off entry; the scan itself reads each file once)."""
-    return _ref_kinds_mod(_dens_facts(txt), tok)
+    return _ref_kinds_mod(_dens_facts(txt), tok, service)
 
 
 def _module_reaches(kinds) -> bool:
@@ -4745,7 +4761,7 @@ def _name(rel: Path, root: str, first: bool) -> str:
     return rel.as_posix() if first else f"{root}/{rel.as_posix()}"
 
 
-def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | None = None, outside_roots=()) -> dict:
+def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | None = None, outside_roots=(), service: bool = False) -> dict:
     """E6.1 (d): the Dens scanner, repaired (N-22 ruling principle 4). Structural: it reads source, not behaviour.
 
     SCOPE. `caps_dirs` (one path or several; `measure()` passes `CAPS_ROOTS`, R23's serving roots) are read
@@ -4776,6 +4792,12 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     last two only where the module has no run-time table access) and that carries no strict served select is `label_only`: it names the asset,
     it does not read it. The rest of the scan (attribution, contract and tier, `served`, `shared_only`, `comment_only`, the outside probe) is
     unchanged, so no PASS / PARTIAL / FAIL moves; comments keep their R51 reading (a comment-only mention still blocks the N/A).
+    SERVICE ASSETS. `service` (measure() passes the asset's registry kind == 'service'): an occurrence inside a `service_probe` envelope is a
+    reach (PROBE), not a label, so a service asset named only by its probe envelope stays NO_DETECTOR; the same envelope on a data asset is a
+    label. A service asset's prose / label mention elsewhere stays a label (an ambiguous form still blocks). Whether Dens.served applies to
+    services at all is a separate later declared rule.
+    N/A MEANS "NOT SERVED DIRECTLY", NOT "UNUSED". `platform/python-sidecar/services/ka_vedha_gochara/writer.py` (a Python L3 writer) does read
+    `FROM bg_phaladeepika_latta`; the rule says no SERVED module selects from it, which is true.
     SERVED SURFACE = TypeScript, BY DESIGN. Only `*.ts` under the serving roots (and `*.ts` / `*.tsx` in the outside probe) are read; a Python or
     sidecar reader of a table (`platform/python-sidecar/**`, e.g. the `ka_vedha_gochara` writer's `FROM bg_phaladeepika_latta`) is a build-time
     reader, not a served module, and never makes an asset served (R02's decision text, N-74(a)).
@@ -4825,7 +4847,7 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
                 elif code_toks:
                     mentions.append(name)                                              # R51: named in a comment only
                 continue
-            kinds = [k for t in ref_toks for k in _ref_kinds_mod(mod, t)]                # SS N-74(a): SELECT or LABEL, per occurrence
+            kinds = [k for t in ref_toks for k in _ref_kinds_mod(mod, t, service)]                # SS N-74(a): SELECT or LABEL, per occurrence
             refs = {_decl_of(mod, m.start()) for t in ref_toks for m in re.finditer(r"\b" + re.escape(t) + r"\b", mod["cmask"])}
             # a capability ENTRY that declares the contract: the object literal holding the `density_contract:` key, in a
             # top-level declaration that references the asset
@@ -7834,7 +7856,7 @@ def measure(layer_key: str, assets=None) -> dict:
         # layer also declares is SHARED: it names the table, not this asset, so it never attributes a module.
         dtoks = list(dict.fromkeys([t for t in ([tbl] if tbl else []) + list(ctables) + [aid] if t]))
         cap = capability_scan(CAPS_ROOTS, dtoks, shared=dens_shared, columns=cat["cols"],
-                              outside_roots=DENS_OUTSIDE_ROOTS)
+                              outside_roots=DENS_OUTSIDE_ROOTS, service=(r.get("asset_kind") == "service"))
         m["Dens.served"] = _grade_dens(cap, tbl or aid)
 
         # E6 packet (c): the Null and Narr checks (declarations file + catalog + writer scope + tests; fault-isolated)
