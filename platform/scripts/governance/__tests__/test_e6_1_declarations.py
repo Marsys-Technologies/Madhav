@@ -1974,7 +1974,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sensitive_degree_writer.py",
-    671,
+    672,
     "\"citation_human\": citation,"
    ]
   ],
@@ -2332,7 +2332,7 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
         got = {e for x in ast.walk(ast.parse(sites[0][3], mode="eval")) if isinstance(x, ast.JoinedStr)
                for e, _ in nw.fstring_interpolations(x)}
         assert expr in got, (asset, ln, sorted(got))
-    # numbers shaped into the text by a format spec (ga_structural :4660, ga_strength :886)
+    # numbers shaped into the text by a format spec (ga_structural :4855, ga_strength :996)
     for path, ln in ((_GW + "ga_structural_writer.py", 4855), (_GW + "ga_strength_writer.py", 996)):
         site = next(x for x in nw.citation_sites(_ctree(path)) if x[0] == ln)
         specs = [sp for x in ast.walk(ast.parse(site[3], mode="eval")) if isinstance(x, ast.JoinedStr)

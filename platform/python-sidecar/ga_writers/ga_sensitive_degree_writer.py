@@ -75,7 +75,7 @@ import psycopg.rows
 from jhora import const as _jconst
 from brahmagyan.graha_vocabulary import norm_graha
 from brahmagyan.verification_tiers import (
-    CLASSICAL_MATCH, DIVERGENT_FLAGGED, PENDING_W3_VERIFICATION, SINGLE,
+    DIVERGENT_FLAGGED, PENDING_W3_VERIFICATION, SINGLE,
 )
 from ga_writers._idempotency import replace_prior_chart_facts
 
@@ -409,13 +409,14 @@ def _load_yogi_nakshatra_lords(conn: Any) -> list[str]:
 def _yogi_pass_tier(agrees: bool) -> str:
     """Tier for a Yogi-system row whose Pass A / Pass B comparison `agrees`.
 
-    `classical_match`, NOT `two_pass_verified` (Q03 / SS N-62, audit
-    AUDIT_L1_TIERS_PER_EMITTER_v1_0.md §2.2): Pass B is the same sum in integer arcseconds over
-    the same Sun and Moon longitudes, so a wrong offset or a wrong rule in the shared formula is
-    carried identically into both. The check is real (it catches float/rounding and wrap-around
-    slips) but it is not a second derivation.
+    `single` on agreement, NOT `classical_match` or `two_pass_verified` (Q03 / SS N-62 + SS tier
+    rule, audit AUDIT_L1_TIERS_PER_EMITTER_v1_0.md §2.2): Pass B is the same sum in integer
+    arcseconds over the same Sun and Moon longitudes, so a wrong offset or a wrong rule in the
+    shared formula is carried identically into both, and no classical reference table is
+    compared. The check is real (it catches float/rounding and wrap-around slips, and a
+    disagreement is stored `divergent_flagged`) but arithmetic agreement earns nothing above `single`.
     """
-    return CLASSICAL_MATCH if agrees else DIVERGENT_FLAGGED
+    return SINGLE if agrees else DIVERGENT_FLAGGED
 
 
 def _yogi_point_two_pass(sun_long: float, moon_long: float) -> tuple[float, float, bool]:

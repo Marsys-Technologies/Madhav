@@ -338,3 +338,60 @@ def test_every_tier_ga_sensitive_emits_passes_emit_tier_for_chart_facts(rows):
     vocabulary members the chart_facts choke-point accepts (`data_error` is no longer emitted)."""
     for r in rows:
         T.emit_tier(r["verification_pass_status"], table="chart_facts")
+
+
+# ── LOW-1 (R-T1): the WITH-CUSPS kp_cuspal_significators branch ───────────────
+# The default fixture carries no `bhava_chalit`, so the no-cusps branch (EXTERNAL_COMPUTATION_REQUIRED
+# skip-rows) is what every test above exercises. A two_pass_verdict(1, 1) stamp on the with-cusps path
+# (300 canonical rows per chart: 12 cusps x 5 keys x 5 ayanamshas) survived 154 tests. These run the
+# with-cusps branch and pin the tier.
+
+
+def _chart_data_with_cusps() -> dict:
+    cd = _chart_data()
+    cd["bhava_chalit"] = {"placidus": {"cusp_boundaries": [(10.0 + 31.7 * h) % 360.0 for h in range(12)]}}
+    return cd
+
+
+def _kp(rows: list[dict]) -> list[dict]:
+    return [r for r in rows if r["fact_category"] == "kp_cuspal_significators"]
+
+
+def test_kp_cuspal_with_cusps_branch_runs_and_every_row_is_single(monkeypatch):
+    rows = _build(monkeypatch, _chart_data_with_cusps())
+    kp = _kp(rows)
+    # the with-cusps branch really ran: 12 cusps x 5 keys, real values, no external-required skip-rows
+    assert len(kp) == 60
+    assert {r["fact_key"] for r in kp} == {"sign_lord", "star_lord", "sub_lord",
+                                           "cusp_longitude_sidereal", "significators_json"}
+    assert not [r for r in kp if r["verification_pass_status"] == T.EXTERNAL_COMPUTATION_REQUIRED]
+    # nothing double-checked these rows: single, never two_pass_verified / classical_match
+    assert {r["verification_pass_status"] for r in kp} == {T.SINGLE}
+
+
+def test_kp_cuspal_without_cusps_branch_is_external_computation_required(monkeypatch):
+    rows = _build(monkeypatch)  # default fixture: no bhava_chalit
+    kp = _kp(rows)
+    assert len(kp) == 12 and {r["verification_pass_status"] for r in kp} == {T.EXTERNAL_COMPUTATION_REQUIRED}
+
+
+def test_with_cusps_chart_still_has_two_pass_verified_only_on_upagraha(monkeypatch):
+    rows = _build(monkeypatch, _chart_data_with_cusps())
+    tpv = [r for r in rows if r["verification_pass_status"] == T.TWO_PASS_VERIFIED]
+    assert tpv and {r["fact_category"] for r in tpv} == {"upagraha_position"}
+
+
+def test_kp_cuspal_two_pass_stamp_mutant_is_caught(monkeypatch):
+    """MUTANT M6 (in-process): a two_pass_verdict(1, 1) stamp on the with-cusps path. The mutant turns
+    every kp_cuspal row two_pass_verified, which test_kp_cuspal_with_cusps_branch_runs_and_every_row_is_single
+    rejects (it would FAIL on it)."""
+    real = W._make_row
+
+    def stamping(category, *a, **k):
+        if category == "kp_cuspal_significators":
+            k["verification_pass_status"] = two_pass_verdict(1, 1)
+        return real(category, *a, **k)
+
+    monkeypatch.setattr(W, "_make_row", stamping)
+    kp = _kp(_build(monkeypatch, _chart_data_with_cusps()))
+    assert {r["verification_pass_status"] for r in kp} == {T.TWO_PASS_VERIFIED} != {T.SINGLE}

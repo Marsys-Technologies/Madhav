@@ -1,10 +1,17 @@
 """
 test_q03_tiers_dashas.py -- Q03 / SS N-62 honest tiers for chart_dashas (TD-MUD, TD-NAR, TD-VIM).
 
-  * mudda and narayana: the verifiers are real invariant checks (a transcribed nakshatra->lord table
-    + a 9-year periodicity invariant; a non-overlap ordering check) but not independent
-    re-derivations -> `classical_match`, applied by build_system's post-pass ONLY to the rows the
-    verifier reads (level_n == 1, kp_sublevel None); every other row is `single`.
+  * SS tier rule (S-L1 follow-up): `classical_match` ONLY where the check compares against a classical
+    reference table or constant the value could fail; `two_pass_verified` ONLY for a second
+    implementation compared with a tolerance; a bounds / plausibility / same-arithmetic / tautological
+    membership check earns `single`.
+  * mudda keeps `classical_match` (the varsha-1 lord is compared with the transcribed nakshatra ->
+    natal-lord -> varsha-lord table chain, which the value can fail; plus a 9-year periodicity
+    invariant), applied by build_system's post-pass ONLY to the rows the verifier reads
+    (level_n == 1, kp_sublevel None); every other row is `single`.
+  * narayana (non-overlap ordering = bounds) and yogini / ashtottari / chara_karaka / naisargika
+    (lord membership in the very table the producer draws from = tautology) earn `single`; the build
+    still halts on an overlap / unknown lord.
   * Vimshottari keeps `two_pass_verified`, per row, from `_apply_vimshottari_independent_verification`
     (a separate Julian-day closed-form rebuild, discrimination-tested). If that call is skipped,
     every Vimshottari row must read `single` -- the row builders no longer pre-stamp the top tier.
@@ -172,8 +179,9 @@ def _nar_rows():
     ]
 
 
-def test_verify_narayana_non_overlap_is_classical_match_not_tpv():
-    assert W._verify_narayana(_nar_rows()) == T.CLASSICAL_MATCH
+def test_verify_narayana_non_overlap_is_single_not_classical_match_or_tpv():
+    got = W._verify_narayana(_nar_rows())
+    assert got == T.SINGLE and got not in {T.CLASSICAL_MATCH, T.TWO_PASS_VERIFIED}
 
 
 def test_verify_narayana_overlap_halts():
@@ -183,7 +191,7 @@ def test_verify_narayana_overlap_halts():
         W._verify_narayana(rows)
 
 
-def test_narayana_build_stamps_classical_match_only_on_examined_rows(monkeypatch):
+def test_narayana_build_rows_are_all_single(monkeypatch):
     """Drive the real post-pass for system_id == narayana with a patched row source (the real
     narayana engine needs a DB connection); the verifier and the post-pass are the real ones."""
     def fake_narayana(birth_jd, ayanamsha_id, chart_id, build_id, conn=None):
@@ -191,21 +199,51 @@ def test_narayana_build_stamps_classical_match_only_on_examined_rows(monkeypatch
 
     result, rows = _build_capturing(monkeypatch, "narayana",
                                     patch_compute={"compute_narayana_system": fake_narayana})
-    assert result["verification"] == T.CLASSICAL_MATCH
-    ex = [r for r in rows if _examined(r)]
-    rest = [r for r in rows if not _examined(r)]
-    assert ex and rest
-    assert {r["verification_pass_status"] for r in ex} == {T.CLASSICAL_MATCH}
-    assert {r["verification_pass_status"] for r in rest} == {T.SINGLE}
+    assert result["verification"] == T.SINGLE
+    assert rows and {r["verification_pass_status"] for r in rows} == {T.SINGLE}
 
 
 def test_narayana_hardcoded_tier_mutant_is_caught(monkeypatch):
     """MUTANT (hard-coded tier): `_verify_narayana` that ignores overlapping periods still returns
-    classical_match -> the overlap-halts test above would fail on it."""
-    monkeypatch.setattr(W, "_verify_narayana", lambda rows: T.CLASSICAL_MATCH)
+    a passing tier -> the overlap-halts test above would fail on it."""
+    monkeypatch.setattr(W, "_verify_narayana", lambda rows: T.SINGLE)
     rows = _nar_rows()
     rows[0]["end_date"] = date(2015, 1, 1)
-    assert W._verify_narayana(rows) == T.CLASSICAL_MATCH  # mutant masks the violation
+    assert W._verify_narayana(rows) == T.SINGLE  # mutant masks the violation
+
+
+def test_mutant_classical_match_narayana_is_visible(monkeypatch):
+    """MUTANT (the pre-ruling behaviour): a narayana verifier returning classical_match is exactly what
+    the single-tier tests above reject."""
+    monkeypatch.setattr(W, "_verify_narayana", lambda rows: T.CLASSICAL_MATCH)
+    assert W._verify_narayana(_nar_rows()) == T.CLASSICAL_MATCH != T.SINGLE
+
+
+# ── membership-only verifiers (yogini / ashtottari / chara / naisargika): tautology -> single ─────────
+
+
+def _l1(lord):
+    return [{"level_n": 1, "lord_graha": lord, "start_date": date(2000, 1, 1), "end_date": date(2001, 1, 1)}]
+
+
+def test_membership_verifiers_return_single_and_still_halt_on_an_unknown_lord():
+    known = {
+        "yogini": (W._verify_yogini, W.YOGINI_SEQUENCE[0][0]),
+        "ashtottari": (W._verify_ashtottari, W.ASHTOTTARI_LORDS_ORDER[0]),
+        "chara": (W._verify_chara, "Aries"),
+        "naisargika": (W._verify_naisargika, W.NAISARGIKA_SEQUENCE[0][0]),
+    }
+    for name, (fn, lord) in known.items():
+        assert fn(_l1(lord)) == T.SINGLE, name
+        if name in {"ashtottari", "chara"}:
+            assert fn([]) == T.SINGLE, name  # nothing examined -> nothing earned
+        with pytest.raises(ValueError):
+            fn(_l1("Not-A-Lord"))
+
+
+def test_mutant_membership_verifier_returning_classical_match_is_visible(monkeypatch):
+    monkeypatch.setattr(W, "_verify_yogini", lambda rows: T.CLASSICAL_MATCH)
+    assert W._verify_yogini(_l1("x")) != T.SINGLE
 
 
 # ── TD-VIM ────────────────────────────────────────────────────────────────────
