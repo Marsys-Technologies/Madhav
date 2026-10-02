@@ -1,10 +1,11 @@
 ---
 artifact: REBUILD_AND_UPSTREAM_SEQUENCING
-version: "1.2"
+version: "1.3"
 status: "DRAFT for the owner — a decision document; authorises NOTHING (no build, no seal, no dispatch). Folds in Suvarṇa's settlement answer + addendum and Stream A's upstream inventory; the steward's decisions D1–D5 are written in; ONE owner question is open (G3: single-check natal positions)."
 date: 2026-10-03
 author: Stream B (Śāstra), item B6.0 (steward M20261002T200138-3fa0, -935c, -8fce, -0ba3 — the owner's question)
 changelog:
+  - "1.3 (2026-10-03): Suvarṇa addendum 3 (resonance-map references) added to 'what is rebuilt when' (§3) and to the known limits (§7). The G2 wording is NOT yet corrected — Fable round 15 says the registry IS covered at seal (registry_unaccounted_path), ephemeris by the image digest bound to the producer, implementation by the lock; to be re-characterised when the steward relays Stream A's answer."
   - "1.2 (2026-10-03): Stream A's inventory (decisions/STREAM_A_UPSTREAM_INVENTORY_20261003.md, facts at writer head df65685d0) CORRECTS v1.1: the vedha/moorti upstream fingerprints are NOT manifest keys; the candidate reads only L1 graha_position longitudes + vimshottari MD/AD/PD (+ registry, sky convention, orb policy, rulings, implementation, ephemeris); the stored TRUE Ketu flag is not read. Steward decisions D1–D5 and gaps G1–G5 written in. The first SEAL gate is SETTLED-1 + the daśā re-pin, NOT SETTLED-2 (addendum to Suvarṇa's answer)."
   - "1.1 (2026-10-03): restructured per the steward's four-part shape; SETTLED-1/-2."
   - "1.0 (2026-10-03): first skeleton."
@@ -54,6 +55,7 @@ Facts here are Stream A's (writer head `df65685d0`) unless marked. **What the fi
 | **I-21 / doctrine rulings (Varnada Lagna, leverage-runway, anubindu)** | none — Gochara does not read them | none |
 | **ND-ORB / ND-NODE-VEDHA / combustion rulings** | recorded as inputs (orb policy is a manifest key) | affects the NUMERICAL build only; scoped rebuild of the affected path [ASSUMPTION: possible] |
 | **A registry or ephemeris change** | new manifest/vector | new generation (E/F above; G2 for the gap between verification and seal) |
+| **The resonance re-run after SETTLED-1** (Suvarṇa addendum 3: `gochara_resonance_map.target_ref` on 482012f1 holds **88 rows citing 17 `chart_facts` fact_ids** outside graha_position / bhava_cusps / house_chalit; **those ids change once at S-L1**) | none to the Gochara candidate (the candidate reads only the ten graha_position rows and the daśā rows) | **no hand re-link** (rewriting `target_ref` would change contact/window ids and `class_fingerprint`; nothing resolves those refs by id at serve time) — [DECISION: steward, agreed with Suvarṇa]. The re-run after SETTLED-1 cites the NEW ids and **must ASSERT, using Suvarṇa's old-id → natural-key map (captured for the whole chart BEFORE the window, with its sha256; path to be recorded in her record), that every old reference maps to exactly one new fact** — the AM-10 / resonance tooling's check, to be written; **owner: Pravāha resonance/AM-10 tooling** [ASSUMPTION] |
 
 ## 4. What would make a FINISHED build stale later
 | thing | stale? | detected how |
@@ -85,6 +87,7 @@ Facts here are Stream A's (writer head `df65685d0`) unless marked. **What the fi
 - The AM-10 evidence (+6,993 s shift, zero class flips, the seven anchors) is steward-reported and "to be re-measured at re-pin"; Suvarṇa's figures are lane/rehearsal evidence with final literals to come from her W7 report.
 - Whether Suvarṇa confirms the ten position rows do not change at node-series step 2 is the steward's open question to her (the gate in §2 depends on it only in the "unless" form of D1; the addendum already says they are computed by `ga_positions` itself).
 - B has not read A's code beyond what A cited; A's file:line references are quoted as A's.
+- **KNOWN LIMIT (Suvarṇa addendum 3):** between S-L1 and the resonance re-run, the **88 `gochara_resonance_map` rows on 482012f1 cite 17 `chart_facts` ids that no longer resolve**. Nothing resolves them by id at serve time, and the Gochara seal does not read them; they are a disclosed limit of the interval, not a defect of the seal. The old-id → natural-key map is to be captured before the window.
 
 ## 8. Sources
 decisions/STREAM_A_UPSTREAM_INVENTORY_20261003.md (Stream A tracker message M20261002T200908-a4bd, facts at writer head df65685d0) · decisions/SUVARNA_UPSTREAM_SETTLEMENT_ANSWER_20261003.md (incl. the 2026-10-03 addendum) · decisions/RESONANCE_REBUILD_RESULT_v1_0.md · decisions/ND_NODE_RETROGRADE_VEDHA_v1_0.md · decisions/ND_ORB_DECISION_PACKET_v1_1.md · decisions/NATIVE_OPEN_DECISIONS_v1_0.md (v1.12) · design/GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT.md (AM-10) · design/NODE_SERIES_STEP3_SPEC_v1_0.md · measurement/STAGE1_FREEZE_PREP_4_1_v1_0.md · reviews/ASTRA_REVIEW_A5_5_SPEC_AMENDMENTS_v1_12.md and v1_13 · runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md (v1.12) · runbooks/PROTECTED_WINDOW_REHEARSAL_PLAN_v1_0.md (v1.8) · steward messages M20261002T200138-3fa0, -935c, -8fce, -0ba3, M20261002T170002-83fb.
