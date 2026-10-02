@@ -1,0 +1,54 @@
+-- Migration 1225: grant data_plane_builder SELECT on bg_transit_av_gates.
+-- Pravāha C3 PART A (steward M20261001T222338-763f, 2026-10-01).
+-- Created: 2026-10-02. Author: pravaha stream C.
+--
+-- Numbering: 1225 is the lowest free number by the E-009-discipline scan at
+-- authoring time (highest numeric prefix across every origin/* head and both
+-- migration directories = 1223; 1224 is held by Suvarṇa; 1204/1205/1206 are
+-- held by open PRs).
+--
+-- WHY THIS EXISTS
+-- ═══════════════
+-- TASK C2's read-only privilege audit
+-- (00_ARCHITECTURE/briefs/pravaha/reports/BUILDER_PRIVILEGE_AUDIT_GOCHARA_v1_0.md)
+-- found the one remaining Gochara-family gap: data_plane_builder lacks SELECT
+-- on bg_transit_av_gates, which services/gochara_v3/context.py:444
+-- (_fetch_all_av_gate_rows) reads on the ka_gochara_v3_century_materialize
+-- build path. Verified read-only against production before authoring:
+--   has_table_privilege('data_plane_builder','public.bg_transit_av_gates','SELECT') = false
+-- Four builds already failed on 2026-10-01 from exactly this class of missing
+-- grant (1211 fixed the audit-table case); this closes the audited gap before
+-- a build finds it.
+--
+-- DEPLOY-GATE SAFETY (allowlist drift)
+-- ════════════════════════════════════
+-- bg_transit_av_gates is NOT in the protected relation sets: it appears in
+-- neither L1_ACTIVE_TABLES nor L2_ACTIVE_TABLES
+-- (platform/scripts/data-plane-ownership-preflight.ts:9-32), so none of the
+-- ACL allowlist checks in platform/scripts/data-plane-ownership-status.ts see
+-- it. Granting SELECT on this table therefore cannot trip any allowlist-drift
+-- gate. The role gains no INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER, no
+-- sequence privilege, and no CREATE on schema public. (The table's SERIAL id
+-- owns bg_transit_av_gates_id_seq, but SELECT never touches a sequence, so no
+-- USAGE grant is needed or given.)
+--
+-- RUNNER AUTHORITY
+-- ════════════════
+-- The routine migration runner connects as amjis_app (PROD_DATABASE_URL —
+-- platform/scripts/validate-migration-database-routes.ts:12), and amjis_app
+-- OWNS bg_transit_av_gates (verified read-only: pg_class relowner =
+-- 'amjis_app', relrowsecurity = false), so the GRANT below is issued by the
+-- owner. This is deliberately NOT a protected public-schema migration: it
+-- creates no object, only grants on an existing unprotected one.
+--
+-- SCOPE — exactly one grant, nothing else (steward instruction): SELECT only.
+-- The builder reads the gate rows; it never writes them (bg_* reference tables
+-- are brahmagyan-owned content).
+--
+-- Idempotent: GRANT of an already-held privilege is a no-op in PostgreSQL.
+--
+-- No BEGIN/COMMIT here: the migration runner owns the transaction
+-- (platform/scripts/migrate.ts ~L828-835: BEGIN; <SQL>; INSERT INTO
+-- _migrations_applied; COMMIT).
+
+GRANT SELECT ON public.bg_transit_av_gates TO data_plane_builder;

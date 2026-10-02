@@ -465,6 +465,156 @@ _factor("sad_bala_summary",
                "Phaladīpikā IV.22-24 PG79:C1/PG80:C1 [D]); any finer scaling "
                "is not (PROMISE_NATURE_YOGA_MAP_v1_1 §1.1)")
 
+# ── AM-6 Option C: sad_bala_sufficient v1.0 (GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
+# §AM-6; Codex v1.4 "AM-6 pick — Option C"; steward M20261001T205832-b69b) ─────
+# A unitless STEP factor carrying the cited sufficiency predicate and nothing
+# else: output 1 when the operand's total ṣaḍbala (rūpas) is >= the graha's
+# threshold (equality IS sufficient), else 0. `range` is the OUTPUT range;
+# raw rūpas never bound it and never ride in the score — they travel as typed
+# operand evidence (services/gochara_rules/strength.py). Rāhu/Ketu: no
+# threshold in the citation, none manufactured → the factor is `unqualified`.
+# `null_state` lives on THIS (versioned FACTOR) row — 1154:310-334 — never on a
+# path's soft-factor membership row (1154:435-445). "v1.0" in the amendment ≡
+# rule_version RULE_VERSION here (every registry row shares one version label).
+#
+# Citation, read from the SERVED corpus (classical_text_chunks, read-only,
+# 2026-10-02): Phaladīpikā adhyāya IV śl.22 (Sun, Moon, Mars, Mercury,
+# Jupiter, Venus) and śl.23 (Saturn; "less than the above … weak") are in
+# chunk phaladeepika_pg0079_c01 (verse_ref PG79:C1); śl.24 (bhāvabala
+# composition — a SEPARATE statement, never combined here) is in
+# phaladeepika_pg0080_c01 (PG80:C1). The OCR renders the half-rūpa fractions
+# of THREE thresholds as degraded glyphs (Sun "6J-", Jupiter "6j", Venus "5*"):
+# the whole-rūpa part is explicit and the ½ is the reading of a degraded
+# fraction glyph — [D-with-OCR-degradation], recorded per figure, not smoothed.
+_factor("sad_bala_sufficient",
+        operand="total ṣaḍbala of the graha, in rūpas — the L1 operand "
+                "(never recomputed here); raw value carried as typed operand "
+                "evidence, never scored",
+        function="step", range=[0.0, 1.0], units="unitless",
+        direction="higher = stronger",
+        null_state="unqualified",
+        factor_version_label="v1.0",
+        threshold_comparison="total_rupas >= threshold_rupas -> 1.0, else 0.0 "
+                             "(equality is sufficient)",
+        thresholds_rupa={"Sun": 6.5, "Moon": 6.0, "Mars": 5.0, "Mercury": 7.0,
+                         "Jupiter": 6.5, "Venus": 5.5, "Saturn": 5.0},
+        threshold_reading={
+            "Sun": {"state": "ocr_degraded_fraction_glyph", "ocr_glyph": "6J-",
+                    "fraction_confirmed_by": "BPHS ch.27 śl.32-33 (PG286:C1)"},
+            "Moon": {"state": "explicit"},
+            "Mars": {"state": "explicit"},
+            "Mercury": {"state": "explicit"},
+            "Jupiter": {"state": "ocr_degraded_fraction_glyph", "ocr_glyph": "6j",
+                        "fraction_confirmed_by": "BPHS ch.27 śl.32-33 (PG286:C1)"},
+            "Venus": {"state": "ocr_degraded_fraction_glyph", "ocr_glyph": "5*",
+                      "fraction_confirmed_by": "BPHS ch.27 śl.32-33 (PG286:C1)"},
+            "Saturn": {"state": "explicit"},
+        },
+        # Second, INDEPENDENT served source (steward M20261001T210607-03ec): BPHS
+        # ch.27 śl.32-33 states the minimum ṣaḍbala requirement in virūpas, and the
+        # translator's note below it states the same in rūpas. Both read from the
+        # served corpus (chunk bphs_pg0286_c01, read-only, 2026-10-02). Per figure:
+        # the virūpa figure and the translator's rūpa note agree with the
+        # Phaladīpikā threshold above; the Sun/Jupiter/Venus HALF-rūpa fractions
+        # are therefore CONFIRMED by a source whose figures (390, 390, 330 virūpas)
+        # and rūpa notes (6.5, 6.5, 5.5) are explicit. One residual OCR blemish is
+        # recorded, not smoothed: Mercury's virūpa figure prints "42C" in the verse
+        # (a degraded 0); its rūpa note ("7'0") is explicit, so Mercury is
+        # corroborated by the note, not by the degraded verse digit.
+        corroboration={
+            "work": "Bṛhat Pārāśara Horā Śāstra", "chapter": 27, "verses": "32-33",
+            "corpus_locator": "bphs:PG286:C1", "chunk_id": "bphs_pg0286_c01",
+            "chunk_content_sha256": "3c616170d786ffb58d36cdd6e58f1b70e9e43565c64781ef9404abc6ce3b30d6",
+            "translator": "R. Santhanam", "edition": "Trans. R. Santhanam, Ranjan Publications, New Delhi (2 vols)",
+            "text_id": "bphs",
+            "statement": "SHADBALA REQUIREMENTS: 390, 360, 300, 420, 390, 330 and 300 "
+                         "virūpas are the Ṣaḍbala piṇḍas needed for the Sun etc. (up to "
+                         "Saturn) to be considered strong; if the strength exceeds, the "
+                         "planet is very strong",
+            "virupas": {"Sun": 390, "Moon": 360, "Mars": 300, "Mercury": 420,
+                        "Jupiter": 390, "Venus": 330, "Saturn": 300},
+            "translator_note_rupas": {"Sun": 6.5, "Moon": 6.0, "Mars": 5.0,
+                                      "Mercury": 7.0, "Jupiter": 6.5, "Venus": 5.5,
+                                      "Saturn": 5.0},
+            "ocr_blemishes": {"Mercury": {"field": "virupa", "printed": "42C",
+                                          "read": 420,
+                                          "note": "the rūpa note (7'0) is explicit"}},
+            "agreement": "every graha: translator_note_rupas == thresholds_rupa; "
+                         "virūpas / 60 == thresholds_rupa",
+        },
+        unsupported_agents=["Rahu", "Ketu"],
+        unsupported_reason="the citation supplies no threshold for the nodes; "
+                           "none is manufactured (AM-6)",
+        operand_evidence={
+            "fact_category": "graha_shadbala_total", "fact_key": "rupa",
+            "unit": "rupa",
+            "l1_subjects": {"Sun": "SUN", "Moon": "MOON", "Mars": "MAR",
+                            "Mercury": "MER", "Jupiter": "JUP", "Venus": "VEN",
+                            "Saturn": "SAT", "Rahu": "RAH_MEAN", "Ketu": "KET_MEAN"},
+            "carried_fields": ["fact_id", "fact_category", "fact_key",
+                               "fact_subject", "build_id", "ayanamsha_id",
+                               "verification_pass_status", "value", "unit"],
+            "carried_as": "typed operand evidence — outside the factor's output "
+                          "range, never a second scored factor; any unit "
+                          "conversion is explicit, never inferred",
+            "tier_note": "the evaluator copies the L1 row's OWN "
+                         "verification_pass_status; it never states a tier "
+                         "(the rows read 2026-10-02 were single_pass)",
+        },
+        citation={
+            "work": "Phaladīpikā", "author": "Mantreśvara", "adhyaya": "IV",
+            "verses": "IV.22-23",
+            "corpus_locator": "phaladeepika:PG79:C1",
+            "chunk_id": "phaladeepika_pg0079_c01",
+            "chunk_content_sha256": "05e2dd25d2c64584dad3b2bcfd17b642a86959f0e15b778c4b9ddb99d7eb230b",
+            "document_id": "55343940-c408-4633-9f18-551fcbcc7ce7",
+            "text_id": "phaladeepika",
+            "edition": "Trans. V. Subrahmanya Sastri, 2nd Ed. 1950, Aruna Press Bangalore",
+            "translator": "V. Subrahmanya Sastri",
+            "source_archive": "archive.org: Phaladeepika2ndEd.1950ByVSubrahmanyaSastri",
+            "text_page": "PG79",
+            "bhavabala_statement": {
+                "verse": "IV.24", "corpus_locator": "phaladeepika:PG80:C1",
+                "chunk_id": "phaladeepika_pg0080_c01",
+                "chunk_content_sha256": "2ec000410160bcf2f34d1c9301df3c910baf72df72e57c593b3907b4e29dffc5",
+                "use": "cited ONLY for the separate bhāvabala composition "
+                       "statement; bhāvabala and ṣaḍbala are never combined",
+            },
+        },
+        l1_required_rupa_note="L1 also carries graha_shadbala_total/required_rupa "
+                              "(classical_match). This factor does NOT read it: the "
+                              "threshold is the CITED rule parameter above. RECORDED "
+                              "DISCREPANCY (2026-10-02, canonical chart, ayanamsha_id "
+                              "INVARIANT): L1's Sun required_rupa differs from BOTH served "
+                              "sources — Phaladīpikā IV.22 and BPHS ch.27 śl.32-33 "
+                              "(PG286:C1, 390 virūpas = 6.5 rūpas); the other six agree. "
+                              "Not resolved here — referred to the L1 owner "
+                              "(predicate: SELECT fact_subject, fact_value_num FROM "
+                              "chart_facts WHERE fact_category='graha_shadbala_total' "
+                              "AND fact_key='required_rupa' AND chart_id=<482012f1…>).",
+        effect="binary sufficiency classification (Phaladīpikā IV.22-23 [D]); the "
+               "citation is a classification, NOT a continuous event-strength "
+               "mapping and not a calibrated probability; a missing/unsupported "
+               "operand leaves the FACTOR unqualified and never alters a record's "
+               "admission_state (1155:822-832: admission derives from the path's "
+               "necessary predicates only)")
+
+# Retirement by SUPERSESSION, never by edit: the deferred `sad_bala_summary`
+# row above stays byte-for-byte as authored (units 'rupas' violate kgf_units_ck;
+# its declared [0,1] range contradicts rūpa magnitudes — ADK-0026, fix the data
+# not the detector). Its successor is a NEW row; the binder (kala rule_binding)
+# binds the successor and never the retired name.
+SUPERSEDED_FACTORS: dict[tuple[str, str], dict] = {
+    composite_ref("sad_bala_summary", RULE_VERSION): {
+        "superseded_by": composite_ref("sad_bala_sufficient", RULE_VERSION),
+        "reason": "units 'rupas' violate kgf_units_ck and the declared range "
+                  "[0,1] contradicts rūpa magnitudes; a unitless step factor "
+                  "with raw rūpas as typed evidence replaces it (AM-6 Option C)",
+        "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-6; ASTRA_REVIEW_A5_5_"
+                  "SPEC_AMENDMENTS_v1_4",
+    },
+}
+
 # ── rule_path registry rows P1–P6 (spec §2.2 path catalogue) ────────────────
 RULE_PATHS: dict[tuple[str, str], dict] = {}
 

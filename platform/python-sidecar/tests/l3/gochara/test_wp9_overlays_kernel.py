@@ -37,11 +37,13 @@ import psycopg  # noqa: E402
 
 from tests.l3.gochara.test_wp9_stamp_columns import (  # noqa: E402
     BASE_DDL,
+    EPHEMERIS_INSERT_SQL,
     HORIZON_BACK_DAYS,
     HORIZON_FORWARD_DAYS,
     MIGRATION_1082,
     MOORTI_CIT,
     WP6_DSN,
+    ephemeris_rows,
     _wp6_reachable,
 )
 
@@ -199,16 +201,7 @@ def _seed_ephemeris(conn, lon_fn, back=HORIZON_BACK_DAYS, forward=HORIZON_FORWAR
     horizon_start = today - timedelta(days=back)
     days = back + forward + 1
     with conn.cursor() as cur:
-        cur.executemany(
-            "INSERT INTO ephemeris_daily (date, body, ayanamsha_id, tropical_longitude, "
-            "speed_dps, is_retrograde) VALUES (%s,%s,%s,%s,%s,%s)",
-            [
-                (horizon_start + timedelta(days=off), body, "tropical",
-                 lon_fn(body, off), 1.0, False)
-                for off in range(days)
-                for body in BODIES
-            ],
-        )
+        cur.executemany(EPHEMERIS_INSERT_SQL, ephemeris_rows(horizon_start, days, lon_fn, None))
     return horizon_start
 
 
