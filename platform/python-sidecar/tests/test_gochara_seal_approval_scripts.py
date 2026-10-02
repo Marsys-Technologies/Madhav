@@ -661,7 +661,7 @@ def test_a_disagreeing_triggering_actor_is_refused_before_the_seal_job(world):
     assert r.returncode == 2 and "differs from the workflow's triggering actor" in r.stderr and not called(world)
 
 
-@pytest.mark.parametrize("rc,needle", [(2, "REFUSED"), (3, "approval does not match"), (4, "identity check failed"), (5, "rolled back"), (7, "rolled back")])
+@pytest.mark.parametrize("rc,needle", [(2, "SEAL JOB REFUSED"), (3, "approval does not match"), (4, "OWN-CHECKOUT check failed"), (5, "rolled back"), (7, "rolled back")])
 def test_the_seal_jobs_non_zero_status_fails_the_run_unchanged(world, rc, needle):
     """Including a failure AFTER publication: the seal job owns the transaction and rolls publication back; the workflow's job is to FAIL the run and say so (never swallow it)."""
     r = orch(world, SEAL_RC=str(rc))

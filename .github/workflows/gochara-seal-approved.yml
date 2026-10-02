@@ -31,7 +31,7 @@
 # identity reads ONLY that job's logs through a log view, may execute that one job with overrides, and holds the Cloud SQL client right); the sealer DSN (GOCHARA_SEALER_DB_URL in
 # `gochara-seal`) must use the runner's loopback proxy tail (@127.0.0.1:5432/<db>).
 # WIRE (ST-WIRE-2): the compact line carries contract_version seal_brief_transport/1 and producer {commit, image_digest, execution_id}; the approval file is seal_approval/2 with the REQUIRED brief_id and
-# producer_execution_id; the verification job's definition carries GOCHARA_RUNNER_IMAGE_DIGEST (set by #2976 from the digest it resolves) or the verifier refuses to brief (producer_identity_absent).
+# producer_execution_id; the seal job runs from THIS checkout of github.sha and first checks its own implementation digest against the registry lock (exit 4: own_checkout_digest_mismatch / own_checkout_digest_unregistered); the verification job's definition carries GOCHARA_RUNNER_IMAGE_DIGEST (set by #2976 from the digest it resolves) or the verifier refuses to brief (producer_identity_absent).
 name: Gochara approved seal (reviewed; draft HOLD)
 
 on:
