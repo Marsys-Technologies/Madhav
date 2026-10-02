@@ -199,9 +199,20 @@ def _p1_obligation_bytes(event_class: str, rule_version: str) -> list[str]:
         signs.add(_DEBIL[g])
     signs.update(_EXALT.values())          # Sun and Jupiter: every graha's exaltation sign
     _frame, person = _frame_person(event_class)
-    return sorted({"|".join((event_class, "p1", rule_version.lower(), f"period_lord:{role}", "residence",
-                             "period_lord", f"span:{_SIGNS.index(sg) + 1}", "dasha_lord",
-                             person)) for role in _ROLE_LEVEL for sg in signs})
+    role_token = {"|".join((event_class, "p1", rule_version.lower(), f"period_lord:{role}", "residence",
+                            "period_lord", f"span:{_SIGNS.index(sg) + 1}", "dasha_lord",
+                            person)) for role in _ROLE_LEVEL for sg in signs}
+    # XX.38 delivery searches (steward M…053914): the Sun and Jupiter transiting ANOTHER graha's exaltation sign, and
+    # the Sun another's debilitation sign, are CONCRETE-agent searches (the agent is not the period lord, so the role
+    # tokens above do not cover them). Anchor-free: the anchor is the record's property (record_verifier.verify_p1_anchors).
+    delivery: set[str] = set()
+    for agent in ("sun", "jupiter"):
+        targets = {_EXALT[g] for g in _EXALT if g != agent}
+        if agent == "sun":
+            targets |= {_DEBIL[g] for g in _DEBIL if g != "sun"}
+        delivery |= {"|".join((event_class, "p1", rule_version.lower(), agent, "residence", "period_lord",
+                               f"span:{_SIGNS.index(sg) + 1}", "dasha_lord", person)) for sg in targets}
+    return sorted(role_token | delivery)
 
 
 def _p2_obligation_bytes(event_class: str, chart: Mapping[str, Any], rule_version: str) -> list[str]:

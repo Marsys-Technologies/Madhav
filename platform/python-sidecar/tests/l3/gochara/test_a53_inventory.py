@@ -576,14 +576,30 @@ def test_p1_obligation_agents_are_the_role_tokens_and_records_keep_concrete_grah
     plan = _plan()
     p1, obs = _p1_obs(plan)
     assert p1.disposition == "included"
-    assert {o.agent for o in obs} == {"period_lord:md", "period_lord:ad", "period_lord:pd"}
+    roles = [o for o in obs if o.agent.startswith("period_lord:")]
+    delivery = [o for o in obs if not o.agent.startswith("period_lord:")]
+    assert {o.agent for o in roles} == {"period_lord:md", "period_lord:ad", "period_lord:pd"}
     assert {o.relation for o in obs} == {"residence"}              # P1's transit geometry
     assert not any(not o.transit for o in obs)                       # natal rows: not obligations
     for p in plan.pins:                                              # every other path: concrete
         if p.path_id != "P1":
             assert not any(o.agent.startswith("period_lord:") for o in p.obligations)
-    shapes = {(o.relation, o.object_role, o.target) for o in obs}
-    assert len(obs) == 3 * len(shapes)                               # the same geometry per role
+    shapes = {(o.relation, o.object_role, o.target) for o in roles}
+    assert len(roles) == 3 * len(shapes)                             # the same geometry per role
+    # XX.38 (steward M…053914): the Sun/Jupiter DELIVERY searches are concrete-agent obligations — written out
+    # literally here (sign numbers: Aries 1 … Pisces 12), not derived from the code under test
+    assert {(o.agent, o.target) for o in delivery} == (
+        {("sun", f"span:{n}") for n in (1, 2, 4, 6, 7, 8, 10, 12)}
+        | {("jupiter", f"span:{n}") for n in (1, 2, 6, 7, 10, 12)})
+    assert all(o.object_role == "period_lord" and o.frame == "dasha_lord" for o in delivery)
+
+
+def test_the_xx38_delivery_obligations_cover_the_whole_horizon_not_a_period_cut():
+    plan = _plan()
+    _p1, obs = _p1_obs(plan)
+    for o in (x for x in obs if not x.agent.startswith("period_lord:")):
+        ivs = [(iv.start, iv.end) for iv in plan.intervals if iv.ob_id == o.ob_id]
+        assert ivs == [(H0, H1)], (o.agent, o.target)
 
 
 def test_p1_intervals_are_cut_at_the_pinned_dasha_rows_with_the_resolved_agent():
@@ -778,3 +794,45 @@ def test_a_snapshot_not_bound_to_the_publications_bridged_convention_is_refused(
             store.insert_snapshot(
                 chart_id=CHART_ID, generation="5.82", convention_id="sha256:" + "ab" * 32,
                 consumed_fact_ids=FACT_IDS, consumed_dasha_row_ids=DASHA_IDS)
+
+
+# ── no record ahead of the inventory (steward M…053914) ──────────────────────────────────────────────
+
+@pytest.mark.parametrize("cls", ["marriage", "bereavement", "career_entry", "illness_acute"])
+def test_every_p1_transit_record_edge_is_obliged_by_the_inventory(cls):
+    """Every P1 transit edge the writer can mint a record for is covered by an inventory obligation: an OWN-form edge
+    (agent = anchor lord) by the role-token obligation of its anchor level on the same geometry; an XX.38 edge
+    (agent != anchor lord) by a CONCRETE-agent obligation on the same geometry. Before this, the XX.38 searches were
+    carried by records the inventory never obliged."""
+    from services.gochara_kernel import evaluator as ev
+    plan = _plan(cls)
+    (p1,) = [p for p in plan.pins if p.path_id == "P1"]
+    if p1.disposition != "included":
+        pytest.skip(f"{cls}: P1 is {p1.disposition} (H unknown)")
+    have = {(o.agent, o.relation, o.target, o.frame, o.person) for o in p1.obligations}
+    for e in ev.enumerate_edges(cls, "P1", CHART):
+        if not e.transit:
+            continue
+        frame = e.frame_kind if e.frame_arg is None else f"{e.frame_kind}:{e.frame_arg}"
+        agent = f"period_lord:{e.period_anchor_level}" if e.agent == e.period_anchor_lord else e.agent
+        assert (agent, e.relation, e.obj.canonical_target, frame, e.affected_person) in have, (
+            e.agent, e.period_anchor_lord, e.period_anchor_level, e.obj.canonical_target)
+
+
+def test_mutation_a_planner_without_the_delivery_obligations_leaves_records_ahead_of_the_inventory(monkeypatch):
+    """The same property fails when the XX.38 obligations are dropped — reinstating the defect."""
+    from services.gochara_kernel import evaluator as ev
+    real = inv._plan_p1
+
+    def without_delivery(*a, **k):
+        obs, ivs = real(*a, **k)
+        keep = [o for o in obs if o.agent.startswith("period_lord:")]
+        ids = {o.ob_id for o in keep}
+        return tuple(keep), [i for i in ivs if i.ob_id in ids]
+    monkeypatch.setattr(inv, "_plan_p1", without_delivery)
+    plan = _plan("marriage")
+    (p1,) = [p for p in plan.pins if p.path_id == "P1"]
+    have = {(o.agent, o.target) for o in p1.obligations}
+    missing = [e for e in ev.enumerate_edges("marriage", "P1", CHART)
+               if e.transit and e.agent != e.period_anchor_lord and (e.agent, e.obj.canonical_target) not in have]
+    assert missing, "the mutant must leave XX.38 edges unobliged"

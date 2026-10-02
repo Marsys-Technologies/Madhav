@@ -293,6 +293,21 @@ def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
                         o.ob_id, a, b, state,
                         {"resolved_agent": r.lord, "dasha_row_id": str(r.row_id),
                          **({"tier": tier} if tier else {})}))
+    # AM-21 part 2 / XX.38 (steward M…053914): the DELIVERY searches. The Sun's or Jupiter's transit through ANOTHER
+    # graha's exaltation sign (and the Sun's through another's debilitation sign) is read under that graha's AD, so it
+    # is a CONCRETE-agent search — the agent is not the period lord, and the role-token obligations above resolve to
+    # the running lord, never to the Sun/Jupiter. These obligations carry the geometry the records stand on: the whole
+    # horizon, like every non-role transit search. The anchor (which bhukti lord's AD licenses a reading) is NOT part of
+    # the obligation grammar (the 9-tuple has no anchor, the ledger digest no domain) — it is the RECORD's property,
+    # derived independently by `record_verifier.verify_p1_anchors`; a search obligation is anchor-free.
+    delivery = sorted({(e.agent, e.relation, e.object_role, e.obj.canonical_target,
+                        (e.frame_kind if e.frame_arg is None else f"{e.frame_kind}:{e.frame_arg}"),
+                        e.affected_person, e.rule_version, e.path_id)
+                       for e in edges if e.period_anchor_lord is not None and e.agent != e.period_anchor_lord})
+    for agent, relation, role_, target, frame, person, ver, pid in delivery:
+        o = Obligation(event_class, pid, ver, agent, relation, role_, target, frame, person, transit=True)
+        obligations.append(o)
+        intervals.append(IntervalPlan(o.ob_id, lo, hi, _interval_state(o, cap)))
     return tuple(sorted(set(obligations), key=lambda o: o.canonical_bytes)), intervals
 
 
