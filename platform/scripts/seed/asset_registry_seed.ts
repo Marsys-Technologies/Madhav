@@ -2330,8 +2330,6 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
   },
   // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──
   {
-  // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──
-  {
     asset_id: 'ka_graha_sancara',
     layer: 'kala', sort_order: 100,
     sanskrit_name: 'Graha-sañcara',
