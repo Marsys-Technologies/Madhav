@@ -461,6 +461,27 @@ jobs:
           M1237_WINDOWS_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1237_windows_grant_test
         run: npx vitest run tests/integration/gochara_windows_builder_grant_record.db.test.ts --reporter=verbose
 
+      - name: C18/1238 — provision the kala_gochara_windows_v2 grant-record test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1238_windows_v2_grant_test;"
+
+      - name: C18/1238 — kala_gochara_windows_v2 builder grant-record fails-before/succeeds-after against real Postgres
+        # The C16-flag proof for migration 1238 (which RECORDS the existing
+        # production ACL): a role with EXACTLY data_plane_builder's pre-1238
+        # grants (USAGE on schema public, nothing on kala_gochara_windows_v2)
+        # hits 'permission denied for table kala_gochara_windows_v2' on
+        # SELECT/INSERT before the migration, and succeeds after the REAL 1238
+        # file is applied — plus idempotency, exact-ACL scope (arwd + sequence
+        # USAGE/SELECT, nothing wider) and role-absent guard controls (§N.8).
+        # Table DDL from the REAL 542 file (supabase/migrations);
+        # asset_registry/kala_gochara_v2_build_state stubbed (as in the 1237
+        # suite).
+        env:
+          M1238_WINDOWS_V2_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1238_windows_v2_grant_test
+        run: npx vitest run tests/integration/gochara_windows_v2_builder_grant_record.db.test.ts --reporter=verbose
+
       - name: A2.5/1216 — provision the gochara contract grants test DB
         env:
           PGPASSWORD: postgres

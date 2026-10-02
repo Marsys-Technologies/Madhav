@@ -41,12 +41,12 @@ kala_gochara_authority), 540 (build_protected_assets, referenced by 556),
 567/568 (parent_window_id + resolution + the 7-key natural index), 1081
 (kala_gochara_convention / publication / contacts / coverage) and 1087
 (inclusivity / completeness / tier_basis on contacts). The grant-target
-schema the seven grant migrations post-check against is built by the C7
+schema the eight grant migrations post-check against is built by the C7
 suite's own _build_schema_as_owner, reused verbatim.
 
 What it proves (each assertion measures the claim it names):
   1. CONTROL — the mirror is faithful: schema public is owned by amjis_app,
-     the builder holds NO CREATE on it, and the seven real grant migrations
+     the builder holds NO CREATE on it, and the eight real grant migrations
      applied.
   2. WRITE PATH — the manifest substep (register_convention,
      publish_candidate), the body-substep writes (write_contacts,
@@ -58,7 +58,7 @@ What it proves (each assertion measures the claim it names):
   3. FORBIDDEN — the builder is refused on kala_gochara_authority (the flip
      surface the writer must never touch), and ledger writes against a
      PUBLISHED generation are refused (the candidate-only rail).
-  4. IDEMPOTENT — the seven grant migrations re-apply as a no-op.
+  4. IDEMPOTENT — the eight grant migrations re-apply as a no-op.
 
 Requires a THROWAWAY database; skipped unless C7_BUILDER_ROLE_TEST_DATABASE_URL
 is set (same disposable identity as the C7 suite):
