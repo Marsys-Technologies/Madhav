@@ -64,6 +64,7 @@ from services.gochara_grammar import dasha_data as DD                       # no
 from services.gochara_rules import permission as PERM                       # noqa: E402
 
 LEVEL_NAME = {1: "MD", 2: "AD", 3: "PD", 4: "L4"}
+LEVELS_IN_SCOPE = (1, 2, 3)          # Vimśottarī Lahiri MD/AD/PD only (steward M20261002T230554 / Suvarṇa addendum 7): lords and row counts must be EQUAL here; level 4 is out of scope
 
 
 # ── pure helpers (unit-tested) ───────────────────────────────────────────────
@@ -450,7 +451,7 @@ def _capture_old(a, conn) -> int:
     if conn is None:
         import psycopg2
         conn = psycopg2.connect(os.environ["DATABASE_URL"]); conn.set_session(readonly=True)
-    rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=old_id, levels=(1, 2, 3, 4)))
+    rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=old_id, levels=LEVELS_IN_SCOPE))
     if not rows:
         print(f"STOP — the pinned build {old_id} has no rows to capture", file=sys.stderr); return 3
     print(f"captured {len(rows)} rows of {old_id} -> {a.capture_old} sha256 {write_capture(a.capture_old, a.chart_id, old_id, rows)}")
@@ -467,10 +468,14 @@ def main(argv=None, *, conn=None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="print the full report and the test-literal matches; write NOTHING (no --out, no --apply)")
     ap.add_argument("--settled-notice", default=None, help="JSON of Suvarṇa's SETTLED-1 notice: expected per-level shift + a stated tolerance (see load_notice)")
     ap.add_argument("--hold-lifted", default=None, help="the steward's message id announcing 'SETTLED-1 received AND daśā re-pin merged' — ST-SL1-HOLD; REQUIRED for --apply")
+    ap.add_argument("--system", default="vimshottari", help="REFUSED unless vimshottari — the pin is the Vimśottarī read; other systems are out of scope")
+    ap.add_argument("--max-level", type=int, default=3, help="REFUSED unless 3 — levels 1–3 (MD/AD/PD) only; level-4 counts change by design at S-L1")
     ap.add_argument("--capture-old", default=None, help="READ-ONLY: write the OLD (pinned) build's rows to this file BEFORE S-L1 and exit — the old rows may not exist afterwards")
     ap.add_argument("--old-rows", default=None, help="the file written by --capture-old: the old build's rows when the DB no longer holds them")
     ap.add_argument("--rulings", default=None, help="JSON {rewrite: [path:line…], keep: [path:line…]} — the steward's ruling on test literals that equal an old boundary")
     a = ap.parse_args(argv)
+    if a.system != "vimshottari" or a.max_level != 3:
+        print(f"--system {a.system} --max-level {a.max_level} REFUSED: this tool judges the Vimśottarī Lahiri levels 1–3 only (other systems and level 4 are out of scope; level-4 row counts change by design at S-L1)", file=sys.stderr); return 2
     if a.capture_old:
         return _capture_old(a, conn)
     if a.dry_run and a.apply:
@@ -489,8 +494,9 @@ def main(argv=None, *, conn=None) -> int:
         except (OSError, ValueError) as exc:
             print(f"STOP — {exc}", file=sys.stderr); return 3
     else:
-        old_rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=old_id, levels=(1, 2, 3, 4)))
-    new_rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=a.new_build_id, levels=(1, 2, 3, 4)))
+        old_rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=old_id, levels=LEVELS_IN_SCOPE))
+    old_rows = [r for r in old_rows if int(r["level_n"]) in LEVELS_IN_SCOPE]        # a capture taken earlier may carry level 4: out of scope, never compared
+    new_rows = norm_rows(DD.fetch_dasha_periods_multilevel(conn, a.chart_id, systems=["vimshottari"], build_id=a.new_build_id, levels=LEVELS_IN_SCOPE))
     # tier is pinned IN the query (two_pass_verified): an empty result means the new build is absent or at another tier
     new_tier_ok = bool(new_rows) and all(r.get("verification_pass_status") == PERM.DASHA_READ_CONTRACT["tier"] for r in new_rows)
     old_idx, new_idx = index_paths(old_rows), index_paths(new_rows)

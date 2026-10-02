@@ -359,3 +359,18 @@ def test_the_facts_fetch_is_three_read_only_selects():
     assert len(c.c.qs) == 3 and all(q.lstrip().lower().startswith("select") for q in c.c.qs)
     assert not any(w in q.lower() for q in c.c.qs for w in ("update ", "delete ", "insert ", "truncate"))
     assert "scope_cap" in c.c.qs[1]
+
+
+def test_the_tool_refuses_another_system_or_level_4_and_reads_only_levels_1_to_3(monkeypatch, tmp_path):
+    new = "11111111-1111-4111-8111-111111111111"
+    assert T.main(["--new-build-id", new, "--system", "kalachakra", "--dry-run"], conn=object()) == 2
+    assert T.main(["--new-build-id", new, "--max-level", "4", "--dry-run"], conn=object()) == 2
+    seen = []
+    def fake(conn, chart, **kw):
+        seen.append(kw.get("levels")); return []
+    monkeypatch.setattr(T.DD, "fetch_dasha_periods_multilevel", fake)
+    monkeypatch.setattr(T, "fetch_vimshottari_builds", lambda conn, chart: {})
+    monkeypatch.setattr(T, "fetch_preflight_facts", lambda conn, chart: {"builds": [], "non_scope": 0, "scope": 0, "throughput": {}})
+    T.main(["--new-build-id", new, "--dry-run"], conn=object())
+    T.main(["--new-build-id", new, "--capture-old", str(tmp_path / "c.json")], conn=object())
+    assert seen and all(lv == (1, 2, 3) for lv in seen), seen                         # never level 4
