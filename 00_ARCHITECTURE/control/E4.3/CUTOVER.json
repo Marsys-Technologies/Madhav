@@ -1,0 +1,47 @@
+{
+  "item": "E4.3",
+  "_doc": "INFORMATIONAL fields: main_sha (FILLED_AFTER_MERGE until the merge) and nikasha_ref_repointed are filled by the strategist; no detector and no verify_cutover.py check reads them, by design. Everything under files/ and the two *_md5_equal flags is computed and verified by verify_cutover.py.",
+  "doc": "Ledger cut-over record: line count and md5 of both ledgers and the register at the cut commit (old) vs on main (new). Recomputed by verify_cutover.py.",
+  "cut_sha": "2a78ec64d88e59438bd6527b4c99826432102c57",
+  "cut_ref": "origin/campaign/nikasha-test",
+  "cut_subject": "Nikasa register v2.8: tallies recomputed from rows; R244/R246 extra column folded",
+  "main_sha": "FILLED_AFTER_MERGE",
+  "files": {
+    "00_ARCHITECTURE/control/asset_gaps.jsonl": {
+      "append_only": true,
+      "old_lines": 857,
+      "old_bytes": 424762,
+      "old_md5": "f6b1d3c5eeff7ec5d56d45448df69d80",
+      "new_lines": 857,
+      "new_bytes": 424762,
+      "new_md5": "f6b1d3c5eeff7ec5d56d45448df69d80",
+      "equal": true
+    },
+    "00_ARCHITECTURE/control/asset_certs.jsonl": {
+      "append_only": true,
+      "old_lines": 1,
+      "old_bytes": 706,
+      "old_md5": "514cbdfcf3fa71b3e382f84a978bf369",
+      "new_lines": 1,
+      "new_bytes": 706,
+      "new_md5": "514cbdfcf3fa71b3e382f84a978bf369",
+      "equal": true
+    },
+    "00_ARCHITECTURE/briefs/nirmana/NIKASHA_CHANGE_REGISTER_v2_0.md": {
+      "append_only": false,
+      "old_lines": 522,
+      "old_bytes": 128504,
+      "old_md5": "e4df1c25920b5aeaf0fe9a4730484e6c",
+      "new_lines": 522,
+      "new_bytes": 128504,
+      "new_md5": "e4df1c25920b5aeaf0fe9a4730484e6c",
+      "equal": true
+    }
+  },
+  "ledgers_md5_equal": true,
+  "register_md5_equal": true,
+  "nikasha_ref_repointed": false,
+  "nikasha_ref_note": "NIKASHA_REF is an environment variable of the Suvarna tracker (default set at suvarna_tracker/run_tracker.sh:12, read at detectors.py:207); it is not in this repository. Flip this field to true when the tracker is restarted with NIKASHA_REF=origin/main after this PR merges (see PR3_BODY).",
+  "schema_row_untouched": true,
+  "rule": "folds on origin/campaign/nikasha-test stop at cut_sha; no --emit-gaps on a main checkout before this file lands; the _schema row (line 1 of asset_gaps.jsonl) is not edited by this cut-over."
+}
