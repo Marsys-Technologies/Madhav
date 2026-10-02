@@ -225,8 +225,8 @@ def derive_path_pin(event_class: str, chart: Mapping[str, Any], path_id: str,
     are the verifier's OWN rulings ({reason, basis, ruling_ref}) — never read back from
     the stored pin under test."""
     p = path_id.lower()
-    if p in path_exclusions:
-        e = path_exclusions[p]
+    e = _exclusion_of(p, rule_version.lower(), path_exclusions)
+    if e is not None:
         return {"path": p, "version": rule_version.lower(), "disposition": "excluded",
                 "reason": e["reason"], "ruling": e.get("ruling_ref") or "",
                 "basis": e["basis"], "obligations": []}
@@ -270,14 +270,87 @@ def inventory_preimage(*, convention_id: str, horizon: tuple[str, str], input_di
     return "\n".join(lines)
 
 
+#: The verifier's OWN copy of the approved supersessions (R8-2): `(path, older) -> successor`. Not imported from
+#: the builder's inventory module or the registry — it is told what the amendments approved (AM-13: P3/P4/P5;
+#: AM-18: P2) independently of the code it checks.
+_SUPERSEDED = {("p2", "1.0.0"): "1.1.0", ("p3", "1.0.0"): "1.1.0",
+               ("p4", "1.0.0"): "1.1.0", ("p5", "1.0.0"): "1.1.0"}
+
+
+def _supersession_basis(path: str, old: str, new: str) -> str:
+    anchor = "AM-18" if path == "p2" else "AM-13"
+    return f"spec:GOCHARA_SPECS_V1_5_AMENDMENTS@1.5#{anchor}-{path}-{old}-superseded-by-{new}"
+
+
+def _exclusion_of(path: str, version: str, path_exclusions: Mapping) -> Mapping | None:
+    return path_exclusions.get((path, version)) or path_exclusions.get(path)
+
+
+def derive_class_pins(event_class: str, chart: Mapping[str, Any], sealed_paths: Sequence[tuple[str, str]], *,
+                      selected_versions: Mapping[str, str] | None,
+                      path_exclusions: Mapping[Any, Mapping[str, str | None]],
+                      h_unknown_exclusion: Mapping[str, str | None] | None) -> list[dict[str, Any]]:
+    """Every sealed `(path, version)` accounted, at most ONE `included` per path (R8-2), derived independently of
+    the builder. A non-selected version is excluded/computed_empty exactly as it would be if searched; one that
+    WOULD be included is `superseded_by_version` only when the selected version is its approved successor AND is
+    itself included; otherwise it is unverifiable (a withheld version needs its own composite ruling).
+    `selected_versions` None ⇒ derived: the single sealed version, or the one that is included."""
+    by_path: dict[str, list[str]] = {}
+    for pid, ver in sealed_paths:
+        by_path.setdefault(pid.lower(), []).append(ver.lower())
+    selected = {k.lower(): v.lower() for k, v in (selected_versions or {}).items()}
+    out: list[dict[str, Any]] = []
+    for path in sorted(by_path):
+        versions = sorted(by_path[path])
+        pins = {v: derive_path_pin(event_class, chart, path, v, path_exclusions=path_exclusions,
+                                   h_unknown_exclusion=h_unknown_exclusion) for v in versions}
+        if path in selected:
+            if selected[path] not in versions:
+                raise Unverifiable(f"{event_class}/{path}: selected {selected[path]!r} is not sealed")
+            chosen = selected[path]
+        elif len(versions) == 1:
+            chosen = versions[0]
+        else:
+            included = [v for v in versions if pins[v]["disposition"] == "included"]
+            if len(included) > 1:
+                raise Unverifiable(f"{event_class}/{path}: {included} would all be included and no selection "
+                                   "was given — nothing to verify against")
+            chosen = included[0] if included else versions[-1]
+        for v in versions:
+            pin = pins[v]
+            if v != chosen and pin["disposition"] == "included":
+                if pins[chosen]["disposition"] == "included" and _SUPERSEDED.get((path, v)) == chosen:
+                    pin = {"path": path, "version": v, "disposition": "excluded",
+                           "reason": "superseded_by_version", "ruling": "",
+                           "basis": _supersession_basis(path, v, chosen), "obligations": []}
+                else:
+                    raise Unverifiable(f"{event_class}/{path}@{v}: neither selected ({chosen}), superseded by "
+                                       "an included approved successor, nor excluded by a composite ruling")
+            out.append(pin)
+    return out
+
+
+def stored_selection(conn: Any, *, chart_id: str, generation: str, event_class: str) -> dict[str, str]:
+    """The ORIGINAL selection of a stored class inventory — the `included` version of each path (historical
+    replay reuses it; it never re-selects under today's configuration)."""
+    rows = conn.execute(
+        "SELECT lower(path_id), rule_version FROM public.ka_gochara_search_path_pin"
+        " WHERE chart_id = %s AND generation = %s AND event_class = %s AND disposition = 'included'",
+        (chart_id, generation, event_class)).fetchall()
+    return {r[0]: r[1] for r in rows}
+
+
 def rederive_inventory_digest(
     conn: Any, *, chart_id: str, generation: str, event_class: str,
     sealed_paths: Sequence[tuple[str, str]],
-    path_exclusions: Mapping[str, Mapping[str, str | None]],
+    path_exclusions: Mapping[Any, Mapping[str, str | None]],
     h_unknown_exclusion: Mapping[str, str | None] | None = None,
+    selected_versions: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Re-derive one class's inventory and its digest from the sealed paths, the
-    snapshot and the consumed L1 facts. Raises `Unverifiable` rather than guess."""
+    snapshot and the consumed L1 facts. Raises `Unverifiable` rather than guess.
+    `selected_versions` is the selection the verifier is TOLD (None ⇒ derived from the single sealed version
+    or the included one — never from today's configuration)."""
     if event_class not in _CLASS and event_class not in _UNKNOWN_H:
         raise Unverifiable(f"{event_class}: not a scored class")
     snap = conn.execute(
@@ -293,9 +366,8 @@ def rederive_inventory_digest(
     if snap is None or hdr is None:
         raise Unverifiable("no snapshot / inventory header to verify against")
     chart = read_chart(conn, snap[1]) if event_class in _CLASS else {"lagna": 0.0, "natal": {}}
-    pins = [derive_path_pin(event_class, chart, pid, ver, path_exclusions=path_exclusions,
-                            h_unknown_exclusion=h_unknown_exclusion)
-            for pid, ver in sealed_paths]
+    pins = derive_class_pins(event_class, chart, sealed_paths, selected_versions=selected_versions,
+                             path_exclusions=path_exclusions, h_unknown_exclusion=h_unknown_exclusion)
     pre = inventory_preimage(convention_id=snap[0], horizon=(hdr[0], hdr[1]),
                              input_digest=snap[2], pins=pins)
     obligations = sorted(o for p in pins for o in p["obligations"])

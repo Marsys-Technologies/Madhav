@@ -44,7 +44,7 @@ H_DEPENDENT_PATHS = frozenset({"P1", "P3", "P4"})
 # kgspp_reason_closed_ck / kgspp_ruling_iff_degrading_ck
 EXCLUSION_REASONS = frozenset({"not_applicable_to_class", "on_demand_tier",
                                "disabled_form", "inputs_unavailable",
-                               "tier_withheld_by_ruling"})
+                               "tier_withheld_by_ruling", "superseded_by_version"})
 DEGRADING_REASONS = frozenset({"disabled_form", "inputs_unavailable",
                                "tier_withheld_by_ruling"})
 
@@ -296,6 +296,30 @@ def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
     return tuple(sorted(set(obligations), key=lambda o: o.canonical_bytes)), intervals
 
 
+def supersession_basis(path_id: str, old: str, new: str) -> str:
+    """The 1206-grammar basis of a `superseded_by_version` pin (non-degrading: no ruling_ref). The anchor names
+    the amendment that approved the successor; the verifier carries its OWN copy of this table."""
+    anchor = "AM-18" if path_id == "P2" else "AM-13"
+    return f"spec:GOCHARA_SPECS_V1_5_AMENDMENTS@1.5#{anchor}-{path_id.lower()}-{old}-superseded-by-{new}"
+
+
+def _approved_successor(path_id: str, version: str) -> str | None:
+    """The version the registry approves as `path@version`'s successor (None if none)."""
+    from services.gochara_rules import registry as rules_registry
+    row = rules_registry.SUPERSEDED_PATHS.get(rules_registry.composite_ref(path_id, version))
+    if row is None:
+        return None
+    pid, ver = tuple(row["superseded_by"])
+    return ver if pid == path_id else None
+
+
+def _exclusion_for(path_id: str, version: str,
+                   path_exclusions: Mapping) -> Exclusion | None:
+    """A path-level exclusion (`"P5"`) applies to EVERY version of the path; a version-specific ruling is keyed
+    by the COMPOSITE `(path_id, version)` and applies to that version only."""
+    return path_exclusions.get((path_id, version)) or path_exclusions.get(path_id)
+
+
 def plan_class_inventory(
     *,
     event_class: str,
@@ -303,28 +327,50 @@ def plan_class_inventory(
     horizon: tuple[datetime, datetime],
     sealed_paths: Sequence[tuple[str, str]],
     capability: SearchCapability,
-    path_exclusions: Mapping[str, Exclusion] | None = None,
+    selected_versions: Mapping[str, str] | None = None,
+    path_exclusions: Mapping | None = None,
     h_unknown_exclusion: Exclusion | None = None,
     dasha_rows: Sequence[DashaRow] | None = None,
 ) -> ClassInventory:
-    """Plan one class. `sealed_paths` is the registry's sealed (path_id, rule_version)
-    set — every one is accounted for (`registry_unaccounted_path`)."""
+    """Plan one class. `sealed_paths` is the registry's sealed (path_id, rule_version) CATALOGUE — every
+    one is accounted for (`registry_unaccounted_path`). `selected_versions` ({path_id: version}) is the ONE
+    version of each path this class's search runs under (R8-2): at most one version of a path is `included`
+    (1206 `multiple_included_versions`); an older sealed version is `excluded/superseded_by_version` ONLY when
+    its approved successor is the selected version AND is included for this class (a supersession with no
+    included superseder is a coverage hole — `superseded_without_included_version`); every other non-selected
+    version is accounted by the same dispositions the selected one would get (excluded, computed_empty) and a
+    non-selected version that would otherwise be `included` needs an explicit composite-keyed ruling
+    (a WITHHELD successor) or the plan is refused. A catalogue with several versions of a path and no
+    selection for it is refused — never resolved by taking them all."""
     lo = require_whole_second_utc(horizon[0], "horizon start")
     hi = require_whole_second_utc(horizon[1], "horizon end")
     if not lo < hi:
         raise ValueError("horizon must be non-empty")
     path_exclusions = dict(path_exclusions or {})
     h_known = signature_houses(event_class, chart) is not None
+    by_path: dict[str, list[str]] = {}
+    for path_id, rule_version in sealed_paths:
+        by_path.setdefault(path_id, []).append(rule_version)
+    selected = dict(selected_versions or {})
+    for path_id, versions in by_path.items():
+        if path_id in selected:
+            if selected[path_id] not in versions:
+                raise InventoryBlocked(
+                    f"{event_class}/{path_id}: the selected version {selected[path_id]!r} is not sealed "
+                    f"(sealed: {sorted(versions)})")
+        elif len(versions) == 1:
+            selected[path_id] = versions[0]
+        else:
+            raise InventoryBlocked(
+                f"{event_class}/{path_id}: {len(versions)} sealed versions {sorted(versions)} and no "
+                "selected version — the planner never searches (or double-counts) them all")
 
-    pins: list[PinPlan] = []
-    intervals: list[IntervalPlan] = []
-    for path_id, rule_version in sorted(sealed_paths):
-        excl = path_exclusions.get(path_id)
+    def disposition(path_id: str, rule_version: str):
+        """(PinPlan, [IntervalPlan]) of `path@version` as if it were the searched version."""
+        excl = _exclusion_for(path_id, rule_version, path_exclusions)
         if excl is not None:
-            pins.append(PinPlan(path_id, rule_version, "excluded",
-                                exclusion_reason=excl.reason,
-                                ruling_ref=excl.ruling_ref, basis=excl.basis))
-            continue
+            return PinPlan(path_id, rule_version, "excluded", exclusion_reason=excl.reason,
+                           ruling_ref=excl.ruling_ref, basis=excl.basis), []
         if path_id in H_DEPENDENT_PATHS and not h_known:
             if h_unknown_exclusion is None:
                 raise InventoryBlocked(
@@ -332,22 +378,16 @@ def plan_class_inventory(
                     "its qualified set is unknown, not empty — it cannot be `computed_empty`. "
                     "A degrading `excluded/inputs_unavailable` pin needs a ruling_ref this "
                     "build was not given (config inventory_rulings.h_unknown).")
-            pins.append(PinPlan(path_id, rule_version, "excluded",
-                                exclusion_reason=h_unknown_exclusion.reason,
-                                ruling_ref=h_unknown_exclusion.ruling_ref,
-                                basis=h_unknown_exclusion.basis))
-            continue
+            return PinPlan(path_id, rule_version, "excluded",
+                           exclusion_reason=h_unknown_exclusion.reason,
+                           ruling_ref=h_unknown_exclusion.ruling_ref,
+                           basis=h_unknown_exclusion.basis), []
         if path_id == "P1":
-            ob_plan, iv_plan = _plan_p1(event_class, chart, lo, hi, capability, dasha_rows,
-                                    rule_version)
+            ob_plan, iv_plan = _plan_p1(event_class, chart, lo, hi, capability, dasha_rows, rule_version)
             if ob_plan:
-                pins.append(PinPlan(path_id, rule_version, "included", ob_plan))
-                intervals.extend(iv_plan)
-            else:
-                pins.append(PinPlan(
-                    path_id, rule_version, "computed_empty",
-                    basis="spec:GOCHARA_DESIGN_SPECS@1.4#2.2-p1-empty-qualified-set"))
-            continue
+                return PinPlan(path_id, rule_version, "included", ob_plan), list(iv_plan)
+            return PinPlan(path_id, rule_version, "computed_empty",
+                           basis="spec:GOCHARA_DESIGN_SPECS@1.4#2.2-p1-empty-qualified-set"), []
         edges = enumerate_edges(event_class, path_id, chart, rule_version=rule_version)
         seen: dict[str, Obligation] = {}
         for edge in edges:
@@ -355,19 +395,40 @@ def plan_class_inventory(
             seen.setdefault(ob.canonical_bytes, ob)
         obligations = tuple(seen[k] for k in sorted(seen))
         if obligations:
-            pins.append(PinPlan(path_id, rule_version, "included", obligations))
-            intervals.extend(
-                IntervalPlan(o.ob_id, lo, hi, _interval_state(o, capability))
-                for o in obligations)
-        else:
-            pins.append(PinPlan(
-                path_id, rule_version, "computed_empty",
-                basis=f"spec:GOCHARA_DESIGN_SPECS@1.4#2.2-{path_id.lower()}-empty-qualified-set"))
+            return (PinPlan(path_id, rule_version, "included", obligations),
+                    [IntervalPlan(o.ob_id, lo, hi, _interval_state(o, capability)) for o in obligations])
+        return PinPlan(path_id, rule_version, "computed_empty",
+                       basis=f"spec:GOCHARA_DESIGN_SPECS@1.4#2.2-{path_id.lower()}-empty-qualified-set"), []
+
+    pins: list[PinPlan] = []
+    intervals: list[IntervalPlan] = []
+    for path_id in sorted(by_path):
+        chosen = selected[path_id]
+        chosen_pin, chosen_iv = disposition(path_id, chosen)
+        for rule_version in sorted(by_path[path_id]):
+            if rule_version == chosen:
+                pins.append(chosen_pin)
+                intervals.extend(chosen_iv)
+                continue
+            pin, _iv = disposition(path_id, rule_version)
+            if pin.disposition != "included":
+                pins.append(pin)                 # excluded / computed_empty exactly as the version would be
+                continue
+            # a non-selected version that WOULD be searched: superseded by the included selection, or refused
+            if chosen_pin.disposition == "included" and _approved_successor(path_id, rule_version) == chosen:
+                pins.append(PinPlan(path_id, rule_version, "excluded",
+                                    exclusion_reason="superseded_by_version",
+                                    basis=supersession_basis(path_id, rule_version, chosen)))
+                continue
+            raise InventoryBlocked(
+                f"{event_class}/{path_id}: sealed version {rule_version!r} is neither the selected "
+                f"{chosen!r}, superseded by an INCLUDED approved successor, nor excluded by a composite-keyed "
+                "ruling (a withheld version needs its own ruling_ref) — it cannot be accounted honestly")
     return ClassInventory(event_class=event_class, horizon=(lo, hi),
                           pins=tuple(pins), intervals=tuple(intervals))
 
 
-__all__ = ["ClassInventory", "DEGRADING_REASONS", "DashaRow", "H_UNKNOWN_RULING",
+__all__ = ["supersession_basis", "ClassInventory", "DEGRADING_REASONS", "DashaRow", "H_UNKNOWN_RULING",
            "P5_HOLD_RULING", "PERIOD_ROLE_LEVEL", "standing_exclusions", "EXCLUSION_REASONS", "Exclusion",
            "H_DEPENDENT_PATHS", "IntervalPlan", "InventoryBlocked", "Obligation",
            "PinPlan", "STATE_COMPLETE", "STATE_EXCLUDED_MOON", "STATE_MISSING", "SearchCapability",

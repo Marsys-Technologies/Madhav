@@ -481,6 +481,7 @@ class GocharaV5Writer(WriterBase):
             plan = gk_inventory.plan_class_inventory(
                 event_class=event_class, chart=chart, horizon=horizon,
                 sealed_paths=inv_store.sealed_rule_paths(),
+                selected_versions=gk_rule_registry.selected_versions_for(event_class),
                 capability=gk_inventory.SearchCapability(
                     position_probe=True, arc_index=True, aspect_span_solver=True,
                     moon_scope_domain=inv_store.moon_scope_available()),
@@ -497,12 +498,23 @@ class GocharaV5Writer(WriterBase):
 
         # verify:<class> — the INDEPENDENT verifier (shares no code with the builder)
         sealed = inv_store.sealed_rule_paths()
+        # R8-2: the verifier re-derives under the ORIGINAL selection stored with the inventory (never today's
+        # configuration — historical replay), and the writer separately requires that stored selection to equal
+        # the configured one for every path the class actually searches.
+        stored_sel = gk_verifier.stored_selection(
+            ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class)
+        configured = {p.lower(): v for p, v in gk_rule_registry.selected_versions_for(event_class).items()}
+        drift = {p: (v, configured.get(p)) for p, v in stored_sel.items() if configured.get(p) != v}
+        if drift:
+            raise RuntimeError(f"verify {event_class}: the stored inventory searched {drift} "
+                               "(stored, configured) — the selection drifted from the build configuration")
         try:
             res = gk_verifier.rederive_inventory_digest(
                 ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                 event_class=event_class, sealed_paths=sealed,
                 path_exclusions=VERIFIER_PATH_RULINGS,
-                h_unknown_exclusion=VERIFIER_H_UNKNOWN_RULING)
+                h_unknown_exclusion=VERIFIER_H_UNKNOWN_RULING,
+                selected_versions=stored_sel or None)
         except gk_verifier.Unverifiable as exc:
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
@@ -608,12 +620,12 @@ class GocharaV5Writer(WriterBase):
                 for pid in RECORD_PATHS
                 for edge in gk_evaluator.enumerate_edges(
                     event_class, pid, chart,
-                    rule_version=gk_rule_registry.bound_path_version(pid))
+                    rule_version=gk_rule_registry.selected_path_version(event_class, pid))
             ]
             ephemeral_excluded = sum(
                 len(gk_evaluator.ephemeral_tier_edges(
                     event_class, pid, chart,
-                    rule_version=gk_rule_registry.bound_path_version(pid)))
+                    rule_version=gk_rule_registry.selected_path_version(event_class, pid)))
                 for pid in RECORD_PATHS)
             kala_cid = store.ensure_kala_convention()
             # AM-5: the partition is the guard-facing SUMMARY of the stored inventory —
@@ -643,7 +655,7 @@ class GocharaV5Writer(WriterBase):
         if event_class not in SCORED_CLASSES or path_id not in RECORD_PATHS:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"unknown record grain {step.key!r}")
-        path_version = gk_rule_registry.bound_path_version(path_id)
+        path_version = gk_rule_registry.selected_path_version(event_class, path_id)
         edges = gk_evaluator.enumerate_edges(event_class, path_id, chart,
                                              rule_version=path_version)
         # P1's period_running_at reads L1 chart_dashas under the §4.0 pin; the

@@ -84,17 +84,41 @@ BOUND_PATHS = tuple(pid for pid, _v in BOUND_PATH_REFS)
 
 
 def bound_path_refs() -> tuple[tuple[str, str], ...]:
-    """The CURRENT binding, read at call time (a consumer never captures the tuple at import)."""
+    """The CURRENT bound CATALOGUE — every sealed (path, version) — read at call time (a consumer never
+    captures the tuple at import)."""
     return tuple(BOUND_PATH_REFS)
 
 
-def bound_path_version(path_id: str) -> str:
-    """The version THIS binding selects for `path_id` — the one every enumerator, inventory pin and
-    record of that path must carry (never the global RULE_VERSION)."""
-    for pid, version in bound_path_refs():
-        if pid == path_id:
-            return version
-    raise KeyError(f"path {path_id!r} is not bound")
+# R8-2 (Codex round 8): the bound CATALOGUE is not the SELECTION. `BOUND_PATH_REFS` is every (path, version)
+# sealed (each must be accounted for in a class inventory — `registry_unaccounted_path`); the SELECTION is the
+# one version of each path a class's search runs under (1206: at most ONE `included` version per class and
+# path). The default selection is the 1.0.0 set; a successor is searched only by a deliberate edit of
+# `SELECTED_PATH_REFS` (or a per-class override) after its review gate passes. Both are read at call time.
+SELECTED_PATH_REFS = (("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0"))
+CLASS_SELECTION_OVERRIDES: dict = {}          # {(event_class, path_id): version}
+
+
+def selected_versions_for(event_class: str) -> dict[str, str]:
+    """{path_id: the ONE version a class's search runs under}: the default selection with the per-class
+    overrides applied; refuses a selection that is not sealed in the bound catalogue."""
+    selected = dict(SELECTED_PATH_REFS)
+    for (cls, pid), version in CLASS_SELECTION_OVERRIDES.items():
+        if cls == event_class:
+            selected[pid] = version
+    for pid, version in selected.items():
+        if (pid, version) not in BOUND_PATH_REFS:
+            raise ValueError(f"selected {pid}@{version} is not in the bound catalogue")
+    return selected
+
+
+def selected_path_version(event_class: str, path_id: str) -> str:
+    """The version `event_class`'s search runs `path_id` under — the one every enumerator, inventory pin and
+    record of that class/path must carry (never the global RULE_VERSION, never merely the first bound)."""
+    try:
+        return selected_versions_for(event_class)[path_id]
+    except KeyError:
+        raise KeyError(f"path {path_id!r} has no selected version") from None
+
 
 _PATH_FRAME = {
     "P1": ("dasha_lord", None),
@@ -355,6 +379,14 @@ def _membership_consistent() -> None:
     """Write-time guard: every composite reference in a BOUND path resolves to a row this binding
     declares AT THAT EXACT VERSION (a bare, dangling or wrong-version reference is rejected before
     any SQL — §2.1)."""
+    # the selection is one version per path, drawn from the bound catalogue
+    seen: set[str] = set()
+    for pid, version in SELECTED_PATH_REFS:
+        if pid in seen:
+            raise ValueError(f"selected path {pid} appears twice — at most one version per path")
+        seen.add(pid)
+        if (pid, version) not in BOUND_PATH_REFS:
+            raise ValueError(f"selected path reference {(pid, version)} is not in the bound catalogue")
     declared_predicates = set(BOUND_PREDICATE_REFS)
     declared_factors = set(BOUND_FACTOR_REFS)
     for ref in BOUND_PATH_REFS:
@@ -540,7 +572,10 @@ __all__ = [
     "BOUND_PATHS",
     "BOUND_PATH_REFS",
     "bound_path_refs",
-    "bound_path_version",
+    "SELECTED_PATH_REFS",
+    "CLASS_SELECTION_OVERRIDES",
+    "selected_path_version",
+    "selected_versions_for",
     "BOUND_PREDICATE_REFS",
     "decode_factor_selector",
     "factor_operand_selector",

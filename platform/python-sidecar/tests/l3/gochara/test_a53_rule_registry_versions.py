@@ -95,13 +95,16 @@ def test_the_default_binding_stays_at_1_0_0_until_the_successors_are_accepted():
     assert not set(SUCCESSOR_FACTORS) & set(rr.BOUND_FACTOR_REFS)
 
 
-def test_the_bound_version_of_a_path_is_read_at_call_time_never_captured(monkeypatch):
-    assert rr.bound_path_version("P3") == "1.0.0"
-    monkeypatch.setattr(rr, "BOUND_PATH_REFS", tuple(("P3", "1.1.0") if p == "P3" else (p, v)
-                                                     for p, v in rr.BOUND_PATH_REFS))
-    assert rr.bound_path_version("P3") == "1.1.0" and ("P3", "1.1.0") in rr.bound_path_refs()
+def test_the_catalogue_and_the_selection_are_read_at_call_time_never_captured(monkeypatch):
+    assert rr.selected_path_version("marriage", "P3") == "1.0.0"
+    bind_successors(monkeypatch)
+    assert ("P3", "1.1.0") in rr.bound_path_refs()                 # bound into the CATALOGUE ...
+    assert rr.selected_path_version("marriage", "P3") == "1.0.0"   # ... without changing what is SEARCHED
+    monkeypatch.setattr(rr, "SELECTED_PATH_REFS", tuple(("P3", "1.1.0") if p == "P3" else (p, v)
+                                                        for p, v in rr.SELECTED_PATH_REFS))
+    assert rr.selected_path_version("marriage", "P3") == "1.1.0"
     with pytest.raises(KeyError):
-        rr.bound_path_version("P9")
+        rr.selected_path_version("marriage", "P9")
 
 
 def test_the_real_successors_bind_beside_the_old_versions_each_member_at_its_own_version(monkeypatch):
@@ -352,14 +355,14 @@ def test_a_grain_whose_edges_disagree_with_the_selected_version_refuses(pg, monk
             source_fact_ids=["fact-1"], rule_version="1.1.0")
 
 
-def test_the_writer_selects_each_paths_version_from_the_binding_not_a_global(monkeypatch):
+def test_the_writer_selects_each_paths_version_from_the_selection_not_a_global(monkeypatch):
     import inspect
 
     from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
     src = inspect.getsource(writer_mod)
     assert "RULE_VERSION" not in src.replace("gk_rule_registry", "")
+    assert "bound_path_version" not in src and "selected_path_version" in src
     bind_successors(monkeypatch)
-    assert dict(writer_mod.gk_rule_registry.bound_path_refs()).get("P3") in {"1.0.0", "1.1.0"}
-    monkeypatch.setattr(rr, "BOUND_PATH_REFS", tuple(("P3", "1.1.0") if p == "P3" and v == "1.0.0" else (p, v)
-                                                     for p, v in rr.BOUND_PATH_REFS))
-    assert writer_mod.gk_rule_registry.bound_path_version("P3") == "1.1.0"
+    monkeypatch.setattr(rr, "SELECTED_PATH_REFS", tuple(("P3", "1.1.0") if p == "P3" else (p, v)
+                                                        for p, v in rr.SELECTED_PATH_REFS))
+    assert writer_mod.gk_rule_registry.selected_path_version("marriage", "P3") == "1.1.0"

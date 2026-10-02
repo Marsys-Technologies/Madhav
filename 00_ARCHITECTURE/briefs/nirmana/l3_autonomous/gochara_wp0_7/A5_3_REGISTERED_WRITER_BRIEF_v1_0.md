@@ -920,3 +920,25 @@ Steward M20261002T031247-e16e. Stream B re-read Phaladīpikā Adh. XX in full an
 3. **Next (blocked on 1233 existing on my test schema):** implement against it on this branch — anchored enumeration (XX.34–35 forms: MD; XX.37–38: AD/bhukti; XX.38 anchor =
    the lord whose exaltation (favourable) or depression/inimical (adverse) sign the Sun/Jupiter enters), natural-key + record_uuid with the anchor, supports = contact ∩ D(anchor, level),
    prerequisites over the ANCHOR's periods, inventory/verifier obligations; oracle O-PP-5.
+
+### Design v1.22 (2026-10-02) — Codex round 8, R8-2 (per-class version SELECTION and supersession)
+
+Steward M20261002T032818-3cf4 (scope: the all-NULL `5.0` candidate; numeric activation DISABLED with named reasons). The writer treated the sealed catalogue as the search: with `P3@1.0.0` and
+`P3@1.1.0` sealed it produced two `included` pins of 30 obligations each — which 1206 (`multiple_included_versions`) rejects — and the verifier derived the same wrong answer.
+* **Catalogue ≠ selection.** `rule_registry.BOUND_PATH_REFS` is the sealed CATALOGUE (every pin must be accounted for — `registry_unaccounted_path`);
+  `SELECTED_PATH_REFS` (+ `CLASS_SELECTION_OVERRIDES`) is the ONE version of each path a class's search runs under (`selected_versions_for(class)` / `selected_path_version(class, path)`,
+  read at call time, refusing a selection outside the catalogue or a path twice). Default = the 1.0.0 set: binding a successor into the catalogue never changes what any class searches.
+  `bound_path_version` is gone — it returned "the first bound", which with two versions bound was an accident.
+* **Planner** (`inventory.plan_class_inventory(selected_versions=…)`): every sealed version accounted; at most one `included`; a multi-version path with no selection is refused (never "all");
+  an older version is `excluded/superseded_by_version` (1206's non-degrading reason: no ruling, a spec-grammar basis naming the amendment) ONLY when the registry-approved successor is the selected version
+  AND that version is `included` for the class; every other non-selected version is accounted exactly as it would be if searched (excluded / computed_empty — path-level exclusions such as the P5 hold and
+  the H-unknown ruling apply to EVERY version of the path); a non-selected version that WOULD be searched and has no superseder needs its own **composite-keyed** `(path, version)` ruling
+  (a WITHHELD successor: `tier_withheld_by_ruling` + ruling_ref) or the plan is refused by name.
+* **Independent verifier** (`inventory_verifier.derive_class_pins`): derives the same dispositions from its OWN supersession table (`_SUPERSEDED`, asserted equal to what the registry approves so a new
+  approval cannot go unmirrored) and refuses (`Unverifiable`) what it cannot derive. **Historical replay** reuses the ORIGINAL selection stored with the inventory (`stored_selection` = the included version
+  of each path; no new vector key, so Stream B's frozen vectors stay byte-identical); the writer's verify step additionally refuses a stored selection that drifted from the configured one.
+  Writer: coverage, record and inventory phases use the class's selected version.
+* **Tests** (22 + the registry tests rewritten): old-only, old+new (successor included → old superseded), successor withheld (composite ruling / refused without), no selection, a non-approved successor
+  (refused), unknown-H (every version excluded with the ruling — never `superseded` with no superseder), held P5, a computed-empty successor, P1/P4; planner == verifier for six scenarios; on the REAL 1206
+  schema the supersession plan passes `ka_gochara_search_completeness_violations` and the old all-included behaviour is flagged `multiple_included_versions`; replay under a changed configuration
+  reproduces the stored digest. 11 mutations, all killed.
