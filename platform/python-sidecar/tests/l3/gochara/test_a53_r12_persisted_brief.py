@@ -228,6 +228,68 @@ def test_the_state_digest_does_not_depend_on_the_calling_sessions_settings(built
     assert {c.split("=")[0].lower() for c in cfg} >= {"timezone", "datestyle", "intervalstyle", "extra_float_digits"}
 
 
+# ── F-R13-4: the current brief must have been written by the VERIFIER login ───────────────────────────────────
+
+from contextlib import contextmanager
+
+OTHER = "a53_other_brief_writer"
+
+
+@contextmanager
+def _other_writer(w):
+    """A SECOND principal that holds INSERT (and every read the brief needs — it inherits the verifier's grants) but is not the verifier."""
+    w.conn.execute(f"DROP ROLE IF EXISTS {OTHER}")
+    w.conn.execute(f"CREATE ROLE {OTHER} LOGIN PASSWORD '{PASSWORD}' IN ROLE gochara_verifier")
+    conn = None
+    try:
+        conn = psycopg.connect(make_conninfo(w.dsn, user=OTHER, password=PASSWORD), autocommit=True, connect_timeout=3)
+        yield conn
+    finally:
+        if conn is not None:
+            conn.close()
+        w.conn.execute(f"DROP ROLE IF EXISTS {OTHER}")
+
+
+def _brief_as_other(w, c, **kw):
+    with c.transaction():
+        out = sb.brief(c, CHART_ID, GEN, **kw)
+        out["persisted"] = sb.persist_brief(c, out)
+    return out
+
+
+def test_a_brief_written_by_another_login_that_holds_insert_is_refused_by_name(built):
+    w = built
+    _verified(w)
+    with _other_writer(w) as c:
+        out = _brief_as_other(w, c, sealing_commit=COMMIT)
+        assert c.execute("SELECT session_user").fetchone()[0] == OTHER
+    assert _persisted(w)[0][4] == OTHER                                   # database-attested, not self-declared
+    fn = "SELECT public.ka_gochara_seal_brief_problem(%s::uuid, %s, %s::uuid, %s)"
+    assert w.conn.execute(fn, (CHART_ID, GEN, out["payload"]["manifest"]["manifest_id"], out["sha256"])).fetchone()[0] \
+        == "receipt_brief_not_from_verifier"
+    with pytest.raises(psycopg.errors.CheckViolation, match="receipt_brief_not_from_verifier"):
+        _publish_seal_receipt(w, out["sha256"])
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 0
+    # MUTATION: without the produced_by rule (the function as it was before F-R13-4) the same receipt commits
+    w.conn.execute("ALTER TABLE public.ka_gochara_seal_approval DISABLE TRIGGER ka_gochara_seal_approval_zz_persisted_brief")
+    _publish_seal_receipt(w, out["sha256"])
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 1
+
+
+def test_a_later_foreign_brief_supersedes_the_verifiers_and_neither_approves_the_seal(built):
+    w = built
+    _verified(w)
+    mine = _brief_as_verifier(w, sealing_commit=COMMIT)
+    with _other_writer(w) as c:
+        theirs = _brief_as_other(w, c, sealing_commit="2" * 40)
+    with pytest.raises(psycopg.errors.CheckViolation, match="receipt_brief_superseded"):
+        _publish_seal_receipt(w, mine["sha256"])
+    with pytest.raises(psycopg.errors.CheckViolation, match="receipt_brief_not_from_verifier"):
+        _publish_seal_receipt(w, theirs["sha256"])
+    again = _brief_as_verifier(w, sealing_commit=COMMIT)                  # the verifier's fresh brief is current again and works
+    _publish_seal_receipt(w, again["sha256"])
+
+
 # ── the job: the sealer refuses early, naming the reason, and the real flow still seals ───────────────────────────
 
 @pytest.fixture()
@@ -287,3 +349,24 @@ def test_the_migration_grants_nothing_on_the_new_objects_and_the_sealer_never_ge
     for obj in ("ka_gochara_seal_brief", "ka_gochara_brief_state_digest", "ka_gochara_seal_brief_problem"):
         assert not re.search(rf"GRANT[^;]*{obj}", src), f"1240 must grant nothing on {obj} — the grants are 1241's"
     assert "ka_gochara_seal_brief" not in " ".join(sf.SEALER_WRITE_ALLOWED)
+
+
+def test_the_job_refuses_a_foreign_brief_before_publishing(built, monkeypatch, tmp_path, capsys):
+    w = built
+    _verified(w)
+    with _other_writer(w) as c:
+        digest = _brief_as_other(w, c, sealing_commit=COMMIT)["sha256"]
+    _sealer_stand_ins(w)
+    w.conn.execute(f"ALTER ROLE gochara_sealer LOGIN PASSWORD '{PASSWORD}'")
+    try:
+        monkeypatch.setenv(seal_job.ENV_URL, make_conninfo(w.dsn, user="gochara_sealer", password=PASSWORD))
+        monkeypatch.setenv("GITHUB_RUN_ID", str(RUN))
+        monkeypatch.setenv("GITHUB_RUN_ATTEMPT", str(ATTEMPT))
+        monkeypatch.setenv("GOCHARA_SEALING_COMMIT", COMMIT)
+        monkeypatch.setenv("GITHUB_TRIGGERING_ACTOR", ACTOR)
+        w.tmp = tmp_path
+        code, out = _run_job(w, capsys, _approval(digest))
+        assert code == sf.EXIT_MISMATCH and "receipt_brief_not_from_verifier" in out["detail"], out
+        _nothing_written(w)
+    finally:
+        w.conn.execute("ALTER ROLE gochara_sealer NOLOGIN PASSWORD NULL")

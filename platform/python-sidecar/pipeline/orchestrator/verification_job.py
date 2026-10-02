@@ -9,9 +9,12 @@ A person (an operator) runs it, once per (chart, generation), AFTER the build. I
 identity self-check (`verification_job.check_identity`): it refuses to run as the builder, as a superuser, or as any login
 that can write a builder table. It does not `SET ROLE`.
 
-`--brief` (R11-3) is the SEAL BRIEF mode, not a report: it evaluates the candidate adapter gate, reads the persisted attestations and prints
-`{"brief": <canonical complete approval payload>, "sha256": <its digest>}` — refusing (exit 3, the reasons named) unless the gate is clean
-and every grain is VERIFIED under the manifest-pinned runner. The approval carries that digest; the sealing step recomputes it under the
+`--brief` (R11-3) is the SEAL BRIEF mode, not a report: it evaluates the candidate adapter gate, reads the persisted attestations and persists
+the brief (`ka_gochara_seal_brief`, F-R12-4) and prints a COMPACT last line `{"status": "BRIEFED", "sha256", "persisted": {brief_id,
+manifest_id, state_digest}, "brief_bytes", "brief_file", "brief_chunks"}` — refusing (exit 3, the reasons named) unless the gate is clean
+and every grain is VERIFIED under the manifest-pinned runner. The FULL brief (canonical JSON; its sha256 IS the digest) is not a log line —
+it grows with the event-class count (~255 KB at 26 classes): `--brief-out FILE` writes it, `--brief-chunks` prints it as
+`{brief_chunk, of, sha256, b64}` lines before the compact one (F-R13-2). The approval carries that digest; the sealing step recomputes it under the
 seal locks (`seal_brief.recompute_under_locks`) and refuses on any difference.
 
 Prints one JSON report on stdout. Exit codes: 0 every required grain VERIFIED (or `--report-only` finished) · 2 refused by
@@ -24,6 +27,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 from services.gochara_kernel import verification_job as vj
 
@@ -72,7 +76,11 @@ def main(argv=None) -> int:
     ap.add_argument("--generation", default=vj.GENERATION)
     ap.add_argument("--class", dest="classes", action="append", default=None)
     ap.add_argument("--report-only", action="store_true")
-    ap.add_argument("--brief", action="store_true", help="emit the canonical seal approval payload and its sha256")
+    ap.add_argument("--brief", action="store_true", help="produce, persist and digest the canonical seal approval payload; stdout ends in "
+                    "a COMPACT line {status, sha256, persisted, brief_bytes, brief_file, brief_chunks}")
+    ap.add_argument("--brief-out", default=None, help="also write the full brief (canonical JSON bytes; sha256 == the digest) to this file")
+    ap.add_argument("--brief-chunks", action="store_true", help="also print the full brief as {brief_chunk, of, sha256, b64} lines before the compact line")
+    ap.add_argument("--brief-chunk-bytes", type=int, default=48 * 1024, help="raw bytes per chunk line (default 48 KiB)")
     ap.add_argument("--sealing-commit", default=os.environ.get("GOCHARA_SEALING_COMMIT"))
     ap.add_argument("--ephe-path", default=os.environ.get("SE_EPHE_PATH"))
     args = ap.parse_args(argv)
@@ -91,11 +99,27 @@ def main(argv=None) -> int:
                 with conn.transaction():
                     out = seal_brief.brief(conn, args.chart, args.generation, sealing_commit=args.sealing_commit)
                     persisted = seal_brief.persist_brief(conn, out)      # F-R12-4: the receipt must name a brief persisted HERE
+                raw = seal_brief.brief_bytes(out)
             except seal_brief.BriefRefused as exc:
-                print(json.dumps({"status": "REFUSED", "code": exc.code, "detail": exc.detail,
-                                  "violations": exc.violations}, default=str))
+                print(seal_brief.canonical_json({"status": "REFUSED", "code": exc.code, "detail": exc.detail,
+                                                 "violations": exc.violations}))
                 return vj.EXIT_DISAGREE
-            print(json.dumps({"brief": out["payload"], "sha256": out["sha256"], "persisted": persisted}, default=str, sort_keys=True))
+            brief_file = None
+            if args.brief_out:                                               # F-R13-2: the full brief travels as a file…
+                import hashlib
+                path = Path(args.brief_out)
+                path.write_bytes(raw)
+                if hashlib.sha256(path.read_bytes()).hexdigest() != out["sha256"]:
+                    print(seal_brief.canonical_json({"status": "ERROR", "detail": f"{path} does not read back as the brief"}))
+                    return vj.EXIT_ERROR
+                brief_file = str(path)
+            if args.brief_chunks:                                            # …or as index/total chunk lines on stdout
+                for line in seal_brief.brief_chunk_lines(raw, out["sha256"], args.brief_chunk_bytes):
+                    print(line)
+            # the LAST line is always the compact result: small, whatever the class count
+            print(seal_brief.canonical_json({"status": "BRIEFED", "sha256": out["sha256"], "persisted": persisted,
+                                             "brief_bytes": len(raw), "brief_file": brief_file,
+                                             "brief_chunks": bool(args.brief_chunks)}))
             return vj.EXIT_OK
         report = vj.run(conn, chart_id=args.chart, generation=args.generation, classes=args.classes,
                         report_only=args.report_only, **_build_kwargs(conn, args.ephe_path))

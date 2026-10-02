@@ -9,6 +9,7 @@ generation-wide OUTPUT IDENTITY (every column of every record, prerequisite, con
 header). The sealing transaction recomputes it under the seal locks and refuses on any difference BEFORE publishing."""
 from __future__ import annotations
 
+import hashlib
 import json
 
 import pytest
@@ -157,7 +158,7 @@ def test_a_failure_after_publication_rolls_back_the_publication_the_seal_and_the
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 4
 
 
-def test_the_entry_points_brief_mode_prints_the_payload_and_its_digest_and_refuses_when_not_approvable(built, monkeypatch, capsys):
+def test_the_entry_points_brief_mode_ends_in_a_compact_line_carries_the_brief_by_file_or_chunks_and_refuses_when_not_approvable(built, monkeypatch, capsys, tmp_path):
     from psycopg.conninfo import make_conninfo
     w = built
     w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")
@@ -168,10 +169,21 @@ def test_the_entry_points_brief_mode_prints_the_payload_and_its_digest_and_refus
         assert refused["status"] == "REFUSED" and refused["code"] == "candidate_not_approvable" and refused["violations"]
         _verified(w)                                                       # (its login helper re-locks the role afterwards)
         w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")
-        assert entry.main(["--chart", CHART_ID, "--brief", "--sealing-commit", "cli-sha"]) == vj.EXIT_OK
-        out = json.loads(capsys.readouterr().out)
-        assert out["brief"]["schema"] == "seal_approval_payload/1" and out["brief"]["code"]["sealing_commit"] == "cli-sha"
-        assert out["sha256"] == sb.payload_digest(sb.build_payload(w.conn, CHART_ID, GEN, sealing_commit="cli-sha"))
+        out_file = tmp_path / "brief.json"
+        assert entry.main(["--chart", CHART_ID, "--brief", "--sealing-commit", "cli-sha", "--brief-out", str(out_file),
+                           "--brief-chunks", "--brief-chunk-bytes", "4096"]) == vj.EXIT_OK
+        lines = capsys.readouterr().out.strip().splitlines()
+        compact, chunk_lines = json.loads(lines[-1]), lines[:-1]            # the LAST line is the compact result, whatever the size
+        assert set(compact) == {"status", "sha256", "persisted", "brief_bytes", "brief_file", "brief_chunks"}
+        assert compact["status"] == "BRIEFED" and compact["persisted"]["brief_id"] and compact["brief_file"] == str(out_file)
+        assert len(lines[-1]) < 1024 and "brief" not in compact                # no full brief in the compact line
+        raw = out_file.read_bytes()
+        assert len(raw) == compact["brief_bytes"] and hashlib.sha256(raw).hexdigest() == compact["sha256"]      # the file IS the digest's preimage
+        assert len(chunk_lines) > 1 and sb.reassemble_chunks(chunk_lines) == raw                              # …and so are the chunks
+        brief = json.loads(raw)
+        assert brief["schema"] == "seal_approval_payload/1" and brief["code"]["sealing_commit"] == "cli-sha"
+        assert compact["sha256"] == sb.payload_digest(sb.build_payload(w.conn, CHART_ID, GEN, sealing_commit="cli-sha"))
+        assert compact["persisted"]["brief_id"] == w.conn.execute("SELECT max(brief_id) FROM public.ka_gochara_seal_brief").fetchone()[0]
     finally:
         w.conn.execute("ALTER ROLE gochara_verifier NOLOGIN PASSWORD NULL")
 

@@ -301,8 +301,14 @@ def _populate_am5_database(conn, faithful=False):
                 ["1232_gochara_search_moon_scope_domain.sql"] if faithful else []) + [
                                         "1240_gochara_window_verification_gate.sql"] + (
                                             list(BUILDER_GRANT_MIGRATIONS) if faithful else []):
+            if not (MIGRATIONS / fname).exists():
+                # (F-R13-3) 1241 is Stream B's, carried by PR #2949 only — this branch holds no copy of it. Until #2949 is on main the
+                # faithful mirror needs that file present in platform/migrations (check it out from the PR branch; never commit it here).
+                pytest.fail(f"{fname} is not in platform/migrations: the faithful mirror applies Stream B's REAL migration (PR #2949 "
+                            "pravaha/b6-1241-verifier-sealer-grants) and this branch carries no copy of it")
             cur.execute((MIGRATIONS / fname).read_text())
-            cur.execute("INSERT INTO public._migrations_applied(filename) VALUES (%s)",
+            cur.execute("INSERT INTO public._migrations_applied(filename)"
+                        " VALUES (%s)",
                         (fname,))
         cur.execute("INSERT INTO public.charts(id) VALUES (%s)", (CHART_ID,))
         subj = {"LAGNA": CHART["lagna_deg"], "SUN": CHART["natal"]["Sun"],

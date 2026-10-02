@@ -43,16 +43,4 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- STAND-IN for Stream B's 1241 (F-R12-4): the VERIFIER's --brief persists each brief in ka_gochara_seal_brief (INSERT + SELECT) and its
--- attestation trigger calls ka_gochara_brief_state_digest; the SEALER only reads the table and calls the two functions (the receipt's
--- commit-time trigger runs as the sealer). 1240 creates all three and grants nothing.
-GRANT SELECT, INSERT ON public.ka_gochara_seal_brief TO gochara_verifier;
-GRANT EXECUTE ON FUNCTION public.ka_gochara_brief_state_digest(uuid, text) TO gochara_verifier;
-GRANT EXECUTE ON FUNCTION public.ka_gochara_seal_brief_problem(uuid, text, uuid, text) TO gochara_verifier;
-DO $$ BEGIN
-  IF to_regrole('gochara_sealer') IS NOT NULL THEN
-    GRANT SELECT ON public.ka_gochara_seal_brief TO gochara_sealer;
-    GRANT EXECUTE ON FUNCTION public.ka_gochara_brief_state_digest(uuid, text) TO gochara_sealer;
-    GRANT EXECUTE ON FUNCTION public.ka_gochara_seal_brief_problem(uuid, text, uuid, text) TO gochara_sealer;
-  END IF;
-END $$;
+-- (F-R12-4's seal-brief grants are now Stream B's 1241 v6, PR #2949 — the stand-in that was here is removed so the real migration is what the suites prove.)
