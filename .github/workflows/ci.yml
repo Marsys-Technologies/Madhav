@@ -1727,12 +1727,45 @@ jobs:
             pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \
+            services/gochara_v3/mechanisms/tests \
+            services/ka_gochara_resonance/tests \
+            scripts/kala_admission/tests \
+            services/gochara_v3/tests \
             --ignore=tests/test_pyjhora_adapter \
             --ignore=tests/test_dasha_chain.py \
             --ignore=tests/extractors/test_cgm_extractor.py \
             --ignore=tests/test_l0_remedy_corpus.py \
-            -m "not integration" \
+            -m "not integration and not slow_real_ephemeris and not benchmark" \
             -q -rs --tb=short --no-header
+
+      - name: pytest — gochara_v3 slow real-ephemeris tests (required; time budget 20 min)
+        # C23 (Suvarṇa finding): these four directories were green-because-never-run
+        # (§N.8) — the step above is a positional-arg scope, and they sat outside it.
+        # The three fast directories + the unmarked tests of gochara_v3/tests run in the
+        # step above (the directory is selected whole, so a NEW file added later runs by
+        # default; only marker-carrying tests are excluded here). This step runs exactly
+        # the slow_real_ephemeris-marked tests: full-engine JD sweeps (200-1000 samples)
+        # with real Swiss positions per planet per JD (transit_search.py:249-251,337).
+        # Local (Moshier) measured ≈ 7.3 min for the whole marked subset; budget 20 min
+        # ≈ 2× the expected CI time. REQUIRED — never continue-on-error.
+        timeout-minutes: 20
+        run: |
+          pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+          cd platform/python-sidecar
+          pytest services/gochara_v3/tests -m slow_real_ephemeris \
+            -q --tb=short --no-header
+
+      - name: pytest — gochara_v3 non-gating benchmark (continue-on-error; NOT a gate)
+        # C23: test_speedup.py asserts TIMING RATIOS (v3-vs-v1 speedup, linear scaling)
+        # and is load-sensitive by construction — a red here can be runner load, not a
+        # regression. It runs visible but NON-GATING, never in a required step.
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+          cd platform/python-sidecar
+          pytest services/gochara_v3/tests -m benchmark \
+            -q --tb=short --no-header
 
       - name: Nirmāṇa L0 — pinned Swiss Ephemeris corpus probe
         # This is a production-shaped positive probe, not the ordinary fallback-only
