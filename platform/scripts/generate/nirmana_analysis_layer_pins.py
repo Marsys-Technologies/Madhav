@@ -186,6 +186,20 @@ AUTHORITY_BINDINGS = {
         "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
         "authority_identity_binding": "`e47d0b274ebf234ada8be7cfe82a34d5446384eb`",
     },
+    "N-71": {
+        # L0 analysis-receipts pin re-admission (Suvarna, 2026-10-02): the receipts test stays as a tripwire; an L0 writer
+        # digest moved only by an import-closure change is admitted by a transparent re-pin. Decided by Strategic Suvarna
+        # under the owner's delegation of campaign decisions (N-43); owner informed 2026-10-02; the record does not claim
+        # personal native ratification. Scope of THIS successor: exactly one L0 writer digest (bg_gochara_arcs,
+        # derived_import_change); no membership change. The authority identity is the commit that first introduced the
+        # document; the evidence commit is its squash delivery on main (byte-identical blob).
+        "authority_commit": "26cbb7e004db6f443658cbf0018603891ef7f2ed",
+        "evidence_commit": "1b2b635a4380cf713155175f978e3a466297f59c",
+        "path": "00_ARCHITECTURE/briefs/nirmana/L0_N71_PINS_READMISSION_AUTHORITY_v1_0.md",
+        "sha256": "4ebb0c5ae05517dfaf1fe0879598a7bc9010f38ead2235878c22b6c6725d4a5c",
+        "decision_binding": "status: PINS_READMISSION_AUTHORIZED",
+        "authority_identity_binding": "`26cbb7e004db6f443658cbf0018603891ef7f2ed`",
+    },
 }
 
 # These source identities were accepted on an earlier lane branch.  They stay
@@ -244,6 +258,9 @@ EXPECTED_REVIEW_ARTIFACTS = {
 }
 
 AUTHORIZED_SOURCE_COMMITS = {
+    "N-71": {
+        "L0": frozenset({"48c2d55f159605e9b9feea7ed2aabc30cbfdebe6"}),
+    },
     "CCD-018": {
         "L5": frozenset({"ed5ad601c5e568f5d6c5d8ec72bc7c8f9ff2bd2b"}),
     },
