@@ -2,11 +2,11 @@
   "caveats": [
     "This artifact is an estate census only. It does not create SCUs or infer that a descriptor semantically covers a producer output.",
     "Descriptor exposure is joined to the authored, fail-closed full-profile allowlist. Exact URI bindings are source-evidenced; a same-name parallel route is enumerated separately and never substituted for exact URI proof.",
-    "Current source-intended output-digest rows replay only the append/retire state machine across lexically ordered migration source. This is not a schema migration execution and is not deployed database proof.",
+    "Current source-intended output-digest rows replay only the append/retire state machine across numerically ordered migration source. This is not a schema migration execution and is not deployed database proof.",
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "c2432ae3e633b4c4a8ddc5197044e53c630f29650ff26cc227579732882e3ca9",
+  "content_sha256": "07a7d88e2e9544e2f99400b0a98ebc1fb68b48d813f4d238c426907829769854",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -12430,9 +12430,9 @@
       {
         "asset_id": "ga_strength",
         "contract_ref": {
-          "migration_path": "platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql",
+          "migration_path": "platform/migrations/1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql",
           "source_state": "ordered_static_replay_not_database_replay",
-          "spec_sha256": "7251b1192714e6e1b09720fff165f78f6089bc74dca862dfaab0f7537ee677c3"
+          "spec_sha256": "52a0d2537dc43fc04effe54fd65a165a223e918b14544f96a0892e1df3987a97"
         },
         "disposition": "relational_digest_current_source_intent",
         "implementation_refs": [
@@ -18224,7 +18224,7 @@
         },
         {
           "asset_id": "ga_strength",
-          "migration_path": "platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql",
+          "migration_path": "platform/migrations/1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql",
           "spec": {
             "components": [
               {
@@ -18263,6 +18263,9 @@
                 },
                 "where_in": {
                   "fact_category": [
+                    "ashtakavarga_bindu_contributor",
+                    "ashtakavarga_bindu_per_varga",
+                    "ashtakavarga_pinda_sarva_per_varga",
                     "graha_shadbala_total"
                   ]
                 }
@@ -18270,7 +18273,7 @@
             ],
             "version": "nirmana-output-digest-spec-v1"
           },
-          "spec_sha256": "7251b1192714e6e1b09720fff165f78f6089bc74dca862dfaab0f7537ee677c3"
+          "spec_sha256": "52a0d2537dc43fc04effe54fd65a165a223e918b14544f96a0892e1df3987a97"
         },
         {
           "asset_id": "ga_structural",
@@ -20872,27 +20875,13 @@
       ],
       "inserted_asset_tokens_absent_from_asset_seed": [],
       "migration_files_scanned": [
-        "platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql",
-        "platform/migrations/1002_nirmana_l3_ka_kshetra_output_digest_spec.sql",
-        "platform/migrations/1007_nirmana_l5_mi_sankalpa_output_digest_spec.sql",
-        "platform/migrations/1008_nirmana_l5_mi_gunanaka_output_digest_spec.sql",
-        "platform/migrations/1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql",
-        "platform/migrations/1011_nirmana_l5_mi_bhara_output_digest_spec.sql",
-        "platform/migrations/1012_nirmana_l2_bo_upaya_output_digest_spec.sql",
-        "platform/migrations/1014_nirmana_l4_ph_nimitta_output_digest_spec.sql",
-        "platform/migrations/1016_nirmana_l4_ph_nimitta_digest_spec_retire.sql",
-        "platform/migrations/1017_nirmana_l2_bo_upaya_digest_spec_narrow_fk_columns.sql",
-        "platform/migrations/1018_nirmana_l3_ka_gochara_output_digest_spec.sql",
-        "platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql",
-        "platform/migrations/1021_nirmana_l3_ka_taranga_ka_jivana_parva_output_digest_specs.sql",
-        "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql",
-        "platform/migrations/1028_nirmana_l2_bo_samvada_output_digest_spec.sql",
-        "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql",
-        "platform/migrations/1042_nirmana_purna_wealth_ga_strength_ashtakavarga_digest_spec.sql",
-        "platform/migrations/1070_data_plane_builder_orchestrator_grants.sql",
-        "platform/migrations/1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql",
-        "platform/migrations/1212_nirmana_l3_ka_vighnakara_output_digest_spec.sql",
-        "platform/migrations/1213_nirmana_l3_service_selftest_output_digest_specs.sql",
+        "platform/supabase/migrations/598_nirmana_output_digest_specs.sql",
+        "platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql",
+        "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql",
+        "platform/supabase/migrations/604_nirmana_l0_registry_scope_contract.sql",
+        "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql",
+        "platform/supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql",
+        "platform/supabase/migrations/630_nirmana_l0_wave1_correctness_contract.sql",
         "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
         "platform/migrations/820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
         "platform/migrations/821_nirmana_l5_mi_vistara_output_digest_spec.sql",
@@ -20955,18 +20944,32 @@
         "platform/migrations/994_nirmana_l5_mi_pramana_output_digest_spec.sql",
         "platform/migrations/996_nirmana_l2_bo_sangati_output_digest_spec.sql",
         "platform/migrations/998_nirmana_l5_mi_pariksha_output_digest_spec.sql",
+        "platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql",
+        "platform/migrations/1002_nirmana_l3_ka_kshetra_output_digest_spec.sql",
+        "platform/migrations/1007_nirmana_l5_mi_sankalpa_output_digest_spec.sql",
+        "platform/migrations/1008_nirmana_l5_mi_gunanaka_output_digest_spec.sql",
+        "platform/migrations/1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql",
+        "platform/migrations/1011_nirmana_l5_mi_bhara_output_digest_spec.sql",
+        "platform/migrations/1012_nirmana_l2_bo_upaya_output_digest_spec.sql",
+        "platform/migrations/1014_nirmana_l4_ph_nimitta_output_digest_spec.sql",
+        "platform/migrations/1016_nirmana_l4_ph_nimitta_digest_spec_retire.sql",
+        "platform/migrations/1017_nirmana_l2_bo_upaya_digest_spec_narrow_fk_columns.sql",
+        "platform/migrations/1018_nirmana_l3_ka_gochara_output_digest_spec.sql",
+        "platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql",
+        "platform/migrations/1021_nirmana_l3_ka_taranga_ka_jivana_parva_output_digest_specs.sql",
+        "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql",
+        "platform/migrations/1028_nirmana_l2_bo_samvada_output_digest_spec.sql",
+        "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql",
         "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql",
-        "platform/supabase/migrations/598_nirmana_output_digest_specs.sql",
-        "platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql",
-        "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql",
-        "platform/supabase/migrations/604_nirmana_l0_registry_scope_contract.sql",
-        "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql",
-        "platform/supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql",
-        "platform/supabase/migrations/630_nirmana_l0_wave1_correctness_contract.sql"
+        "platform/migrations/1042_nirmana_purna_wealth_ga_strength_ashtakavarga_digest_spec.sql",
+        "platform/migrations/1070_data_plane_builder_orchestrator_grants.sql",
+        "platform/migrations/1086_nirmana_l1_gochara_g10_ga_strength_contributor_digest_spec.sql",
+        "platform/migrations/1212_nirmana_l3_ka_vighnakara_output_digest_spec.sql",
+        "platform/migrations/1213_nirmana_l3_service_selftest_output_digest_specs.sql"
       ]
     }
   },
-  "generated_at": "2026-10-02T05:55:00.000Z",
+  "generated_at": "2026-10-02T10:00:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20983,7 +20986,7 @@
       {
         "id": "census_generator",
         "path": "platform/scripts/generate_capability_estate_census.ts",
-        "sha256": "286fb17d0393ff97d98b164b4f108ac8f16643e6b58499ce6f26d2a743e9ac60"
+        "sha256": "5050389773fa2751d544da9b146fda3cd1a4ba554e71400a1e306f34ad76fb0e"
       },
       {
         "id": "live_runtime_catalog_projection",
@@ -22428,5 +22431,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "ab854f2f50323a467d47cce105913281c6c19e70"
+  "source_revision": "bd081f271d116353d32e27878b45fa8369cad447"
 }

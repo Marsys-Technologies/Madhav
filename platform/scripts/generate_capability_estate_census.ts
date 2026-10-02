@@ -350,6 +350,29 @@ function descriptorFingerprint(catalog: readonly CapabilityDescriptor[]): string
   return sha256(canonicalJson(projection))
 }
 
+/**
+ * Migration order = the order `scripts/migrate.ts` applies: leading integer
+ * prefix compared NUMERICALLY (so `883_` precedes `1223_`), unprefixed names
+ * after prefixed ones, then name, then full path as the total tie-break.
+ * Lexical order would put `1223_` before `883_` and let a retired spec replay
+ * as current.
+ */
+export function compareMigrationPaths(a: string, b: string): number {
+  const nameA = basename(a)
+  const nameB = basename(b)
+  const prefixA = nameA.match(/^(\d+)/)?.[1]
+  const prefixB = nameB.match(/^(\d+)/)?.[1]
+  if (prefixA !== undefined && prefixB !== undefined) {
+    const difference = Number(prefixA) - Number(prefixB)
+    if (difference !== 0) return difference
+  } else if (prefixA !== undefined) {
+    return -1
+  } else if (prefixB !== undefined) {
+    return 1
+  }
+  return nameA.localeCompare(nameB) || a.localeCompare(b)
+}
+
 function outputDigestMigrationFiles(repoRoot: string): string[] {
   const dirs = [
     join(repoRoot, 'platform', 'migrations'),
@@ -360,7 +383,7 @@ function outputDigestMigrationFiles(repoRoot: string): string[] {
       .filter((name) => name.endsWith('.sql'))
       .map((name) => join(dir, name)))
     .filter((path) => readFileSync(path, 'utf8').includes('asset_output_digest_specs'))
-    .sort((a, b) => a.localeCompare(b))
+    .sort(compareMigrationPaths)
 }
 
 function reviewedSpecAssetTokens(files: readonly string[]): string[] {
@@ -434,12 +457,12 @@ function sqlString(value: string): string {
 /**
  * Replays only the append/retire state machine for asset_output_digest_specs.
  * This is deliberately not a database-schema replay and makes no deployed-state
- * claim; it resolves the source-intended current row after lexically ordered
+ * claim; it resolves the source-intended current row after numerically ordered
  * migrations from both governed trees.
  */
-function currentSourceIntendedDigestSpecs(repoRoot: string, files: readonly string[]): CurrentDigestSpec[] {
+export function currentSourceIntendedDigestSpecs(repoRoot: string, files: readonly string[]): CurrentDigestSpec[] {
   const current = new Map<string, CurrentDigestSpec>()
-  const ordered = [...files].sort((a, b) => basename(a).localeCompare(basename(b)) || a.localeCompare(b))
+  const ordered = [...files].sort(compareMigrationPaths)
   for (const path of ordered) {
     const sql = stripSqlComments(readFileSync(path, 'utf8'))
     const stringConstants = new Map<string, string>()
@@ -896,7 +919,7 @@ export async function buildCapabilityEstateCensus(options: {
     caveats: [
       'This artifact is an estate census only. It does not create SCUs or infer that a descriptor semantically covers a producer output.',
       'Descriptor exposure is joined to the authored, fail-closed full-profile allowlist. Exact URI bindings are source-evidenced; a same-name parallel route is enumerated separately and never substituted for exact URI proof.',
-      'Current source-intended output-digest rows replay only the append/retire state machine across lexically ordered migration source. This is not a schema migration execution and is not deployed database proof.',
+      'Current source-intended output-digest rows replay only the append/retire state machine across numerically ordered migration source. This is not a schema migration execution and is not deployed database proof.',
       'A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.',
       'The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently.',
     ],

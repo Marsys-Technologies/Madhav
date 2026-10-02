@@ -1,12 +1,14 @@
 import { createHash } from 'node:crypto'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
   buildCapabilityEstateCensus,
   canonicalJson,
+  compareMigrationPaths,
+  currentSourceIntendedDigestSpecs,
   readCommittedCapabilityEstateCensusProvenance,
   renderCapabilityEstateCensus,
 } from '../generate_capability_estate_census'
@@ -210,5 +212,72 @@ describe('capability estate census', () => {
     } finally {
       rmSync(repoRoot, { recursive: true, force: true })
     }
+  })
+
+  describe('digest-spec migration replay order', () => {
+    const OLD_SHA = 'a'.repeat(64)
+    const NEW_SHA = 'b'.repeat(64)
+    const insertSql = (sha: string, spec: string) =>
+      `INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)\nVALUES ('ga_fixture', '${sha}', '${spec}'::jsonb);\n`
+    const retireSql =
+      `UPDATE asset_output_digest_specs SET retired_at = now() WHERE asset_id = 'ga_fixture' AND retired_at IS NULL;\n`
+
+    function withFixture(run: (repoRoot: string, files: string[]) => void): void {
+      const repoRoot = mkdtempSync(join(tmpdir(), 'capability-estate-migration-order-'))
+      try {
+        const dir = join(repoRoot, 'platform', 'migrations')
+        mkdirSync(dir, { recursive: true })
+        // Written in LEXICAL-friendly order on purpose: '1223_' < '883_' as strings.
+        const early = join(dir, '883_fixture_old_spec.sql')
+        const late = join(dir, '1223_fixture_new_spec.sql')
+        writeFileSync(early, insertSql(OLD_SHA, '{"v":"old"}'))
+        writeFileSync(late, retireSql + insertSql(NEW_SHA, '{"v":"new"}'))
+        run(repoRoot, [early, late])
+      } finally {
+        rmSync(repoRoot, { recursive: true, force: true })
+      }
+    }
+
+    it('orders a three-digit migration before a four-digit one (numeric, not lexical)', () => {
+      const names = ['1223_b.sql', '883_a.sql', '0001_x.sql', 'zz_unprefixed.sql', '99_c.sql', '1000_d.sql']
+        .sort((a, b) => compareMigrationPaths(`/m/${a}`, `/m/${b}`))
+      expect(names).toEqual(['0001_x.sql', '99_c.sql', '883_a.sql', '1000_d.sql', '1223_b.sql', 'zz_unprefixed.sql'])
+      // The defect this guards: plain string order puts 1223 before 883.
+      expect(['883_a.sql', '1223_b.sql'].sort()[0]).toBe('1223_b.sql')
+      expect(compareMigrationPaths('/m/883_a.sql', '/m/1223_b.sql')).toBeLessThan(0)
+    })
+
+    it('breaks equal-prefix ties by name then full path', () => {
+      expect(compareMigrationPaths('/m/900_a.sql', '/m/900_b.sql')).toBeLessThan(0)
+      expect(compareMigrationPaths('/a/900_a.sql', '/b/900_a.sql')).toBeLessThan(0)
+    })
+
+    it('lets the later (four-digit) migration win the replayed active spec regardless of input order', () => {
+      withFixture((repoRoot, files) => {
+        for (const input of [files, [...files].reverse()]) {
+          const [current] = currentSourceIntendedDigestSpecs(repoRoot, input)
+          expect(current).toMatchObject({ asset_id: 'ga_fixture', spec_sha256: NEW_SHA })
+          expect(basename(current!.migration_path)).toBe('1223_fixture_new_spec.sql')
+        }
+      })
+    })
+
+    it("replays each asset's active spec exactly as the committed census records it (no hidden drift)", async () => {
+      const repoRoot = resolve(__dirname, '..', '..', '..')
+      const committed = JSON.parse(readFileSync(
+        join(repoRoot, 'platform', 'src', 'generated', 'capability_estate_census.json'),
+        'utf8',
+      ))
+      const scanned: string[] = committed.details.reviewed_output_digest_coverage.migration_files_scanned
+      const replayed = currentSourceIntendedDigestSpecs(repoRoot, scanned.map((path) => join(repoRoot, path)))
+      expect(replayed).toEqual(committed.details.reviewed_output_digest_coverage.current_source_intended_specs)
+
+      // The census's own scanned list is in replay order.
+      expect([...scanned].sort(compareMigrationPaths)).toEqual(scanned)
+
+      // The case that motivated the numeric ordering: the live 1086 spec supersedes 891.
+      const strength = replayed.find((spec) => spec.asset_id === 'ga_strength')
+      expect(basename(strength!.migration_path)).toMatch(/^1086_/)
+    })
   })
 })
