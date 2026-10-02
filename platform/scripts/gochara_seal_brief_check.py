@@ -29,8 +29,8 @@ from decimal import Decimal
 
 SCHEMA = "seal_approval_payload/1"
 POLICY = "all_null_candidate/1"
-_DIGEST = re.compile(r"^[0-9a-f]{64}$")
-_SHA = re.compile(r"^[0-9a-f]{40}$")
+_DIGEST = re.compile(r"[0-9a-f]{64}")
+_SHA = re.compile(r"[0-9a-f]{40}")
 
 
 def canon(v) -> str:
@@ -58,7 +58,7 @@ class Refused(Exception):
 
 
 def check(raw: bytes, compact: dict, *, chart_id: str, generation: str, sealing_commit: str) -> str:
-    if not _SHA.match(sealing_commit or ""):
+    if not _SHA.fullmatch(sealing_commit or ""):
         raise Refused("the expected sealing commit is not a 40-hex revision")
     if not isinstance(raw, (bytes, bytearray)) or not raw:
         raise Refused("the brief file is empty")
@@ -66,7 +66,7 @@ def check(raw: bytes, compact: dict, *, chart_id: str, generation: str, sealing_
             or compact.get("brief_chunks") is not True):
         raise Refused("the compact result is not the verifier's `BRIEFED` line {brief_bytes, brief_chunks, brief_file, persisted, sha256, status}")
     declared = compact["sha256"]
-    if not isinstance(declared, str) or not _DIGEST.match(declared):
+    if not isinstance(declared, str) or not _DIGEST.fullmatch(declared):
         raise Refused("the declared digest is not a lowercase 64-hex sha256")
     if isinstance(compact["brief_bytes"], bool) or compact["brief_bytes"] != len(raw):
         raise Refused(f"the compact line says {compact['brief_bytes']!r} brief bytes, the brief file has {len(raw)}")
@@ -76,7 +76,7 @@ def check(raw: bytes, compact: dict, *, chart_id: str, generation: str, sealing_
     per = compact["persisted"]
     if (not isinstance(per, dict) or set(per) != {"brief_id", "manifest_id", "state_digest"} or isinstance(per.get("brief_id"), bool)
             or not isinstance(per.get("brief_id"), int) or per["brief_id"] < 1 or not isinstance(per.get("state_digest"), str)
-            or not _DIGEST.match(per["state_digest"])):
+            or not _DIGEST.fullmatch(per["state_digest"])):
         raise Refused("the `persisted` receipt is not {brief_id: <positive integer>, manifest_id, state_digest: <64-hex>}: the brief was not persisted by the verifier")
     try:
         p = json.loads(bytes(raw).decode("utf-8"), parse_float=Decimal)

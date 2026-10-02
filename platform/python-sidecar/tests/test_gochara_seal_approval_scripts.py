@@ -23,6 +23,8 @@ sys.path.insert(0, str(SCRIPTS))
 import gochara_seal_approval as approval  # noqa: E402
 import gochara_seal_brief_check as bc  # noqa: E402
 import gochara_seal_brief_extract as bx  # noqa: E402
+import gochara_seal_execution_check as xc  # noqa: E402
+import gochara_seal_reconcile as rc_  # noqa: E402
 
 CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 GEN = "5.0"
@@ -147,39 +149,77 @@ def test_the_canonical_digest_equals_the_sidecars_own_payload_digest_wherever_it
 
 # ── the log transport (Stream A's `--brief`, always chunked) ─────────────────────────────────────────────────────────────────────
 
-def _logs(p=None, size=150, *, extra_before=(), extra_after=()):
+def _entry(line, how="root"):
+    """One Cloud Logging entry for a printed line. `root`: Cloud Run parses a JSON object on stdout into the ROOT `jsonPayload` (the real representation, R13-1); `text` and `message` are the
+    FALLBACK forms (`textPayload`; a string in `jsonPayload.message`) and must go through the same validation. Labels/resource ride along: they are never consulted."""
+    meta = {"resource": {"type": "cloud_run_job", "labels": {"job_name": "gochara-verification-job"}}, "labels": {"run.googleapis.com/execution_name": "exec-1"}}
+    if how == "root":
+        return {**meta, "jsonPayload": json.loads(line)}
+    if how == "message":
+        return {**meta, "jsonPayload": {"message": line}}
+    return {**meta, "textPayload": line}
+
+
+def _logs(p=None, size=150, *, how="root", extra_before=(), extra_after=()):
     raw, c = pair(p)
     lines = bx.chunk_lines(raw, c["sha256"], size)
-    entries = [{"textPayload": "starting"}, *[{"textPayload": x} for x in extra_before], *[{"textPayload": l} for l in lines],
-               {"textPayload": json.dumps(c, sort_keys=True, separators=(",", ":"))}, *[{"textPayload": x} for x in extra_after], {"textPayload": "done"}]
+    compact_line = json.dumps(c, sort_keys=True, separators=(",", ":"))
+    entries = [{"textPayload": "starting"}, *[_entry(x, "text") for x in extra_before], *[_entry(l, how) for l in lines], _entry(compact_line, how),
+               *[_entry(x, "text") for x in extra_after], {"textPayload": "done"}]
     return raw, c, entries
 
 
-def test_the_brief_is_reassembled_from_chunks_in_any_arrival_order_and_checks():
-    raw, c, entries = _logs()
-    chunks = [e for e in entries if e["textPayload"].startswith('{"b64"')]
+def _is_chunk(e):
+    jp = e.get("jsonPayload")
+    return (isinstance(jp, dict) and "brief_chunk" in jp) or '"brief_chunk"' in (e.get("textPayload") or "") or '"brief_chunk"' in str((jp or {}).get("message"))
+
+
+def _is_compact(e):
+    jp = e.get("jsonPayload")
+    return (isinstance(jp, dict) and jp.get("status") == "BRIEFED") or '"BRIEFED"' in (e.get("textPayload") or "") or '"BRIEFED"' in str((jp or {}).get("message"))
+
+
+@pytest.mark.parametrize("how", ["root", "message", "text"])
+def test_the_brief_is_reassembled_from_chunks_in_any_arrival_order_and_checks(how):
+    raw, c, entries = _logs(how=how)
+    chunks = [e for e in entries if _is_chunk(e)]
     assert len(chunks) > 3
-    for order in (entries, entries[::-1], sorted(entries, key=lambda e: e["textPayload"])):
+    for order in (entries, entries[::-1], entries[1::2] + entries[0::2]):
         got, comp = bx.extract(order)
         assert got == raw and comp == c
     assert check(*bx.extract(entries[::-1])) == bc.digest(payload())
-    got, _ = bx.extract(entries + [chunks[2]])                                               # an identical repeat (at-least-once delivery) is harmless
+    got, _ = bx.extract(entries + [chunks[2]])                                               # an IDENTICAL repeat (at-least-once delivery) is TOLERATED: it cannot change the bytes
     assert got == raw
-    assert bx.extract([{"jsonPayload": {"message": e["textPayload"]}} for e in entries])[0] == raw
+
+
+def test_an_identical_repeat_is_tolerated_for_chunks_and_for_the_compact_line_and_a_different_one_is_refused():
+    """R13-1: 'exactly one' is decided and the code says what the prose says — a byte-identical repeat of a chunk or of the compact line is collapsed (at-least-once log delivery cannot alter
+    the reassembled bytes, and the whole is hash-checked); anything DIFFERENT under the same index / a second distinct compact line is refused."""
+    raw, c, entries = _logs()
+    comp = next(e for e in entries if _is_compact(e))
+    assert bx.extract(entries + [comp, comp])[0] == raw
+    other = {"jsonPayload": {**comp["jsonPayload"], "persisted": {**comp["jsonPayload"]["persisted"], "brief_id": 99}}}
+    with pytest.raises(ValueError, match="more than one distinct"):
+        bx.extract(entries + [other])
 
 
 def _chunk_edit(entries, idx, **over):
     out = list(entries)
-    pos = [i for i, e in enumerate(entries) if e["textPayload"].startswith('{"b64"')][idx]
-    d = json.loads(entries[pos]["textPayload"])
+    pos = [i for i, e in enumerate(entries) if _is_chunk(e)][idx]
+    e = entries[pos]
+    d = dict(e["jsonPayload"])
     d.update(over)
-    out[pos] = {"textPayload": json.dumps(d)}
+    out[pos] = {**e, "jsonPayload": d}
     return out
 
 
 def _drop_chunk(entries, idx):
-    pos = [i for i, e in enumerate(entries) if e["textPayload"].startswith('{"b64"')][idx]
+    pos = [i for i, e in enumerate(entries) if _is_chunk(e)][idx]
     return entries[:pos] + entries[pos + 1:]
+
+
+def _edit_compact(entries, **over):
+    return [e if not _is_compact(e) else {**e, "jsonPayload": {**e["jsonPayload"], **over}} for e in entries]
 
 
 @pytest.mark.parametrize("mut,needle", [
@@ -192,12 +232,14 @@ def _drop_chunk(entries, idx):
     (lambda en: _chunk_edit(en, 1, brief_chunk=77), "incomplete or has foreign"),
     (lambda en: _chunk_edit(en, 1, b64=5), "malformed"),
     (lambda en: _chunk_edit(en, 1, b64="@@@@"), "base64"),
-    (lambda en: [e for e in en if not e["textPayload"].startswith('{"brief_bytes"')], "no compact"),
-    (lambda en: [e for e in en if e["textPayload"].startswith(('starting', 'done'))], "no compact"),
-    (lambda en: en + [{"textPayload": json.dumps({**compact(), "sha256": "1" * 64}, sort_keys=True)}], "more than one distinct"),
-    (lambda en: en + [{"textPayload": json.dumps({"status": "REFUSED", "code": "gate_not_clean", "detail": "x"})}], "did not produce a brief"),
-    (lambda en: [e if not e["textPayload"].startswith('{"brief_bytes"') else {"textPayload": json.dumps({**json.loads(e["textPayload"]), "brief_chunks": False})} for e in en], "does not announce chunks"),
-    (lambda en: [e if not e["textPayload"].startswith('{"brief_bytes"') else {"textPayload": json.dumps({**json.loads(e["textPayload"]), "brief_bytes": 3})} for e in en], "bytes, the compact line says"),
+    (lambda en: [e for e in en if not _is_compact(e)], "no compact"),
+    (lambda en: [e for e in en if not _is_chunk(e) and not _is_compact(e)], "no compact"),
+    (lambda en: en + [{"jsonPayload": {"status": "REFUSED", "code": "gate_not_clean", "detail": "x"}}], "did not produce a brief"),
+    (lambda en: _edit_compact(en, brief_chunks=False), "does not announce chunks"),
+    (lambda en: _edit_compact(en, brief_bytes=3), "bytes, the compact line says"),
+    (lambda en: _edit_compact(en, sha256="1" * 64), "not the one"),                                      # the compact line declares another digest than the chunks
+    (lambda en: _edit_compact(en, extra=1), "malformed"),
+    (lambda en: _edit_compact(en, sha256="1" * 63 + "\n"), "malformed"),                                # a trailing newline is not a digest (full-string validation)
 ])
 def test_a_missing_altered_duplicated_or_mismatched_chunk_or_a_refusal_line_is_refused(mut, needle):
     _, _, entries = _logs()
@@ -205,10 +247,19 @@ def test_a_missing_altered_duplicated_or_mismatched_chunk_or_a_refusal_line_is_r
         bx.extract(mut(entries))
 
 
+def test_log_labels_and_resource_fields_are_never_producer_attestation():
+    """Cloud Logging does not authenticate who wrote an entry, so the extractor must not select entries by labels: the same objects with the labels of ANOTHER execution/job still reassemble
+    (and are checked by the execution check and the persisted brief id, not by what a log line says about itself)."""
+    raw, c, entries = _logs()
+    forged = [{**e, "resource": {"type": "other", "labels": {"job_name": "x"}}, "labels": {"run.googleapis.com/execution_name": "someone-else"}} if "jsonPayload" in e else e for e in entries]
+    assert bx.extract(forged)[0] == raw
+
+
 def test_the_log_export_must_be_a_json_array_and_unrelated_log_lines_are_ignored():
     with pytest.raises(ValueError, match="not a JSON array"):
         bx.extract({"not": "an array"})
     raw, c, entries = _logs(extra_before=['{"level": "info", "msg": "something else"}', "{not json"])
+    entries.append({"jsonPayload": {"level": "info", "msg": "an unrelated structured line"}})
     assert bx.extract(entries) == (raw, c)
 
 
@@ -218,22 +269,30 @@ def test_chunks_of_the_real_size_stay_under_the_entry_limit():
     assert len(big) > 200 * 1024 and len(lines) >= 5
     assert max(len(l.encode("utf-8")) for l in lines) < 100 * 1024
     c = compact(raw=big)
-    got, _ = bx.extract([{"textPayload": l} for l in lines] + [{"textPayload": json.dumps(c)}])
+    got, _ = bx.extract([_entry(l) for l in lines] + [_entry(json.dumps(c))])
     assert got == big
 
 
 # ── the approval ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 D = bc.digest(payload())
+BID = "7"                                                                                           # the persisted brief id carried by `compact()` above
+
+
+def line(digest=None, run=None, att=None, bid=None):
+    return f"brief-digest: {digest or D}  run: {run or RUN}  attempt: {att or ATT}  brief-id: {bid or BID}"
 
 
 def review(state="approved", comment=None, login="steward-as-owner", env="gochara-seal"):
-    c = f"brief-digest: {D}  run: {RUN}  attempt: {ATT}" if comment is None else comment
-    return {"state": state, "comment": c, "user": {"login": login}, "environments": [{"name": env}]}
+    return {"state": state, "comment": line() if comment is None else comment, "user": {"login": login}, "environments": [{"name": env}]}
+
+
+def _ex(history, attempt=ATT, digest=D, bid=BID, **kw):
+    return approval.extract(history, environment="gochara-seal", run_id=RUN, attempt=attempt, brief_digest=digest, brief_id=bid, triggering_actor="steward-as-owner", **kw)
 
 
 def test_a_good_approval_yields_the_seal_jobs_approval_file():
-    out = approval.extract([review()], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, triggering_actor="steward-as-owner")
+    out = _ex([review()])
     assert out == {"schema": "seal_approval/1", "brief_digest": D, "run_id": int(RUN), "run_attempt": 1, "approver_login": "steward-as-owner",
                    "approved_by_note": approval.mechanical_note("steward-as-owner")}
     assert out["approved_by_note"] == "ruling:NATIVE_DIRECT_RULINGS_20261002#2; actor:steward-as-owner"
@@ -255,71 +314,205 @@ def test_the_note_is_exactly_stream_as_grammar_wherever_it_is_importable():
 
 
 def test_the_note_is_mechanical_never_free_text_from_the_comment():
-    """Fable: `approved_by_note` is built by the workflow (ruling id + triggering actor + the fixed statement). Trailing text in the comment is not accepted as a note — it makes the
-    comment line malformed and the approval is refused."""
-    with pytest.raises(approval.Refused, match="no `brief-digest"):
-        approval.extract([review(comment=f"brief-digest: {D} run: {RUN} attempt: {ATT} note: I read it, trust me")], environment="gochara-seal", run_id=RUN, attempt=ATT,
-                         brief_digest=D, triggering_actor="steward-as-owner")
+    """`approved_by_note` is built by the workflow (ruling id + triggering actor). Trailing text in the comment is not accepted as a note — it makes the line malformed and the approval is refused."""
+    with pytest.raises(approval.Refused, match="no well-formed"):
+        _ex([review(comment=line() + " note: I read it, trust me")])
     for bad in ("", "x y", "a;b", "$(id)", "a" * 60):
         with pytest.raises(approval.Refused, match="triggering actor"):
-            approval.extract([review()], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, triggering_actor=bad)
+            approval.extract([review()], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, brief_id=BID, triggering_actor=bad)
 
 
 @pytest.mark.parametrize("history,needle", [
     ([], "no approval of environment"),                                                          # absent
     ([review(env="some-other-environment")], "no approval of environment"),
     ([review(state="rejected")], "not approved"),
-    ([review(comment="")], "no comment"),
-    ([review(comment="approved")], "no `brief-digest"),                                         # malformed
-    ([review(comment=f"brief-digest: {D[:40]}  run: {RUN}  attempt: {ATT}")], "no `brief-digest"),
-    ([review(comment=f"brief-digest: {D.upper()}  run: {RUN}  attempt: {ATT}")], "no `brief-digest"),
-    ([review(comment=f"brief-digest: {D}  run: 999  attempt: {ATT}")], "this is run"),            # wrong run
-    ([review(comment=f"brief-digest: {D}  run: {RUN}  attempt: 2")], "stale approval"),          # wrong attempt
-    ([review(comment=f"brief-digest: {'f' * 64}  run: {RUN}  attempt: {ATT}")], "not the digest of the retained brief"),   # stale / changed brief
+    ([review(comment="")], "no well-formed"),
+    ([review(comment="approved")], "no well-formed"),                                           # malformed
+    ([review(comment=f"brief-digest: {D}  run: {RUN}  attempt: {ATT}")], "no well-formed"),        # the pre-R13 grammar (no brief-id) is refused
+    ([review(comment=line(digest=D[:40]))], "no well-formed"),
+    ([review(comment=line(digest=D.upper()))], "no well-formed"),
+    ([review(comment=line() + "\n\n")], None),                                                   # trailing blank lines are fine (splitlines); a trailing NEWLINE inside a line is not a form
+    ([review(comment=line(run="999"))], "no approval of environment 'gochara-seal' names run"),   # wrong run: stale, never reused
+    ([review(comment=line(att="2"))], "no approval of environment 'gochara-seal' names run"),     # wrong attempt: stale
+    ([review(comment=line(digest="f" * 64))], "not the digest of the retained brief"),            # a changed brief
+    ([review(comment=line(bid="8"))], "names persisted brief 8"),                                 # another persisted brief
     ([review(login="")], "no approver login"),
-    ([review(comment=f"brief-digest: {D}  run: {RUN}  attempt: {ATT}\nbrief-digest: {'e' * 64}  run: {RUN}  attempt: {ATT}")], "ambiguous"),
+    ([review(comment=line() + "\n" + line(digest="e" * 64))], "ambiguous"),
 ])
 def test_an_absent_malformed_wrong_run_wrong_attempt_or_stale_approval_is_refused(history, needle):
+    if needle is None:
+        assert _ex(history)["brief_digest"] == D
+        return
     with pytest.raises(approval.Refused, match=needle):
-        approval.extract(history, environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, triggering_actor="steward-as-owner")
+        _ex(history)
 
 
-def _ex(history, attempt=ATT):
-    return approval.extract(history, environment="gochara-seal", run_id=RUN, attempt=attempt, brief_digest=D, triggering_actor="steward-as-owner")
+@pytest.mark.parametrize("bad", ["x" * 3, "0", "-1", "7\n", "7 ", ""])
+def test_the_brief_id_the_workflow_expects_must_be_a_positive_integer(bad):
+    with pytest.raises(approval.Refused, match="brief id"):
+        _ex([review()], bid=bad)
 
 
-def _att(n, state="approved", login="steward-as-owner"):
-    return review(state=state, login=login, comment=f"brief-digest: {D}  run: {RUN}  attempt: {n}")
+def _att(n, state="approved", login="steward-as-owner", bid=BID):
+    return review(state=state, login=login, comment=line(att=str(n), bid=bid))
 
 
 @pytest.mark.parametrize("order", ["oldest_first", "newest_first"])
 def test_the_approval_is_selected_by_the_attempt_it_names_never_by_the_apis_ordering(order):
-    """F-R13-5: a legitimate re-run — attempt 1 was approved and its seal failed; attempt 2 is approved — is accepted whichever way the API orders its history; and an approval
-    of ONLY an earlier attempt is stale whichever way it is ordered."""
+    """R13-4: a legitimate re-run — attempt 1 was approved and its seal failed; attempt 2 is approved — is accepted whichever way the API orders its history; an approval of ONLY an earlier
+    attempt is stale whichever way it is ordered."""
     hist = [_att(1), _att(2)]
     hist = hist if order == "oldest_first" else hist[::-1]
     assert _ex(hist, attempt="2")["run_attempt"] == 2
     assert _ex(hist, attempt="1")["run_attempt"] == 1
-    with pytest.raises(approval.Refused, match="stale approval"):
-        _ex([_att(1)] if order == "oldest_first" else [_att(1)], attempt="2")
+    with pytest.raises(approval.Refused, match="names run"):
+        _ex([_att(1)], attempt="2")
 
 
 @pytest.mark.parametrize("order", ["oldest_first", "newest_first"])
-def test_a_refusing_review_of_this_attempt_or_a_second_approval_of_it_refuses_whatever_the_order(order):
-    for hist, needle in (([_att(1), _att(1, state="rejected")], "not approved"), ([_att(1), _att(1, login="someone-else")], "ambiguous"),
-                         ([_att(1), review(state="rejected", comment="no")], "not approved")):
+def test_any_ambiguity_for_this_attempt_refuses_whatever_the_order(order):
+    """R13-4: an approval and a refusal of one attempt (either order), two approvals of one attempt, a comment with two lines, and a review that names no attempt at all each REFUSE and
+    require a fresh run."""
+    cases = (([_att(1), _att(1, state="rejected")], "not approved"),
+             ([_att(1), _att(1, login="someone-else")], "more than one approval"),
+             ([_att(1), review(state="rejected", comment="no")], "no well-formed"),
+             ([_att(1), review(comment="lgtm")], "no well-formed"),
+             ([_att(1), _att(1, bid="8")], "more than one approval"))
+    for hist, needle in cases:
         with pytest.raises(approval.Refused, match=needle):
             _ex(hist if order == "oldest_first" else hist[::-1])
 
 
-def test_a_rejection_that_names_another_attempt_does_not_block_this_attempt_and_a_malformed_old_approval_does_not_rescue_a_bad_one():
+def test_a_rejection_that_names_another_attempt_does_not_block_this_attempt():
     assert _ex([_att(1, state="rejected"), _att(2)], attempt="2")["run_attempt"] == 2
-    assert _ex([review(comment="lgtm"), _att(2)], attempt="2")["run_attempt"] == 2        # a malformed old approval is ignored when exactly one well-formed one names this attempt
-    with pytest.raises(approval.Refused, match="no `brief-digest"):
-        _ex([review(comment="lgtm")])                                                      # …and never selected on its own
+    assert _ex([_att(2), _att(1, state="rejected")], attempt="2")["run_attempt"] == 2
 
 
-# ── the gated orchestrator (the unit the `seal` job runs) ───────────────────────────────────────────────────────────────────────
+# ── the executed resource and the retained envelope (R13-3) ───────────────────────────────────────────────────────────────────
+
+IMG = "sha256:" + "a" * 64
+SA = "gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
+ARGS = ["--chart", CHART, "--generation", GEN, "--brief", "--sealing-commit", SHA]
+
+
+def execution(name="exec-1", **over):
+    ex = {"metadata": {"name": name},
+          "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": SA, "maxRetries": 0,
+                  "containers": [{"image": f"asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline@{IMG}", "args": ARGS,
+                                  "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA},
+                                          {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url", "key": "latest"}}}]}]}}},
+          "status": {"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": 1}}
+    for k, v in over.items():
+        ex[k] = v
+    return ex
+
+
+def xcheck(ex=None, **over):
+    kw = dict(execution_name="exec-1", image_digest=IMG, service_account=SA, runner_commit=SHA, args=ARGS, secret_name="gochara-verifier-db-url")
+    kw.update(over)
+    return xc.check(execution() if ex is None else ex, **kw)
+
+
+def _mut(path, value):
+    ex = execution()
+    d = ex
+    for k in path[:-1]:
+        d = d[k]
+    d[path[-1]] = value
+    return ex
+
+
+T = ("spec", "template", "spec")
+
+
+def test_the_executed_resource_is_verified_and_the_envelope_binds_run_attempt_commit_and_brief():
+    v = xcheck()
+    assert v["image_digest"] == IMG and v["execution"] == "exec-1"
+    env = xc.build_envelope(v, run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id=7)
+    assert xc.check_envelope(env, run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id="7") == env
+    assert xc.check_envelope(json.loads(json.dumps(env)), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id="7")
+
+
+@pytest.mark.parametrize("ex,needle", [
+    (_mut(("metadata", "name"), "another"), "not 'exec-1'"),
+    (_mut((*T, "containers", 0, "image"), "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:" + SHA), "mutable"),               # a tag, not a digest
+    (_mut((*T, "containers", 0, "image"), "x/brahma-pipeline@sha256:" + "b" * 64), "mutable"),                                                    # another digest
+    (_mut((*T, "serviceAccountName"), "github-actions@madhav-astrology.iam.gserviceaccount.com"), "ran as"),
+    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}]), "secret bindings"),                                  # no secret
+    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "data-plane-builder-db-url"}}}]), "secret bindings"),
+    (_mut((*T, "containers", 0, "env"), [{"name": "GOCHARA_RUNNER_COMMIT", "value": "b" * 40}, {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url"}}}]), "RUNNER_COMMIT"),
+    (_mut((*T, "containers", 0, "args"), ARGS[:-1] + ["b" * 40]), "arguments"),
+    (_mut((*T, "maxRetries"), 3), "retries"),
+    (_mut(("spec", "taskCount"), 2), "more than one task"),
+    (_mut(("status", "conditions"), [{"type": "Completed", "status": "False"}]), "FAILED"),
+    (_mut(("status", "succeededCount"), 0), "RUNNING"),
+    (_mut((*T, "containers"), []), "not exactly one"),
+])
+def test_an_execution_that_is_not_the_deployed_verifier_at_this_commit_is_refused(ex, needle):
+    with pytest.raises(xc.Refused, match=needle):
+        xcheck(ex)
+
+
+def test_a_job_style_nesting_is_accepted_and_a_shapeless_resource_is_refused():
+    ex = execution()
+    nested = {"metadata": ex["metadata"], "spec": {"taskCount": 1, "template": {"spec": {"template": ex["spec"]["template"]}}}, "status": ex["status"]}
+    assert xcheck(nested)["execution"] == "exec-1"
+    with pytest.raises(xc.Refused, match="no container specification"):
+        xcheck({"metadata": {"name": "exec-1"}, "spec": {}})
+
+
+@pytest.mark.parametrize("mut,needle", [
+    (lambda e: {**e, "run_attempt": 2}, "run_attempt"),                      # a brief of another attempt is never reused
+    (lambda e: {**e, "run_id": 5}, "run_id"),
+    (lambda e: {**e, "sealing_commit": "c" * 40}, "commit"),
+    (lambda e: {**e, "runner_commit": "c" * 40}, "commit"),
+    (lambda e: {**e, "brief_digest": "f" * 64}, "digest"),
+    (lambda e: {**e, "brief_id": 8}, "persisted brief id"),
+    (lambda e: {**e, "brief_id": True}, "persisted brief id"),
+    (lambda e: {**e, "image_digest": "latest"}, "image digest"),
+    (lambda e: {**e, "extra": 1}, "not a seal_execution_envelope"),
+    (lambda e: {k: v for k, v in e.items() if k != "execution"}, "not a seal_execution_envelope"),
+])
+def test_the_retained_envelope_must_be_for_this_run_attempt_commit_and_brief(mut, needle):
+    env = xc.build_envelope(xcheck(), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id=7)
+    with pytest.raises(xc.Refused, match=needle):
+        xc.check_envelope(mut(env), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id="7")
+
+
+def test_the_execution_state_drives_the_wait_loop():
+    assert xc.state(execution()) == "SUCCEEDED"
+    assert xc.state({"status": {}}) == "RUNNING"
+    assert xc.state({"status": {"conditions": [{"type": "Completed", "status": "False"}]}}) == "FAILED"
+    assert xc.state({"status": {"failedCount": 1}}) == "FAILED"
+    assert xc.state({"status": {"cancelledCount": 1}}) == "FAILED"
+
+
+# ── the reconciliation after the seal (R13-4) ───────────────────────────────────────────────────────────────────────────────────
+
+def _rc(pub, seals, recs):
+    return rc_.classify(pub, seals, recs, digest=D, run_id=int(RUN), attempt=int(ATT))[0]
+
+
+@pytest.mark.parametrize("pub,seals,recs,want", [
+    ("candidate", 0, [], "NOT_SEALED"),
+    ("published", 1, [{"brief_digest": D, "run_id": int(RUN), "run_attempt": int(ATT)}], "SEALED"),
+    ("published", 1, [{"brief_digest": "f" * 64, "run_id": int(RUN), "run_attempt": int(ATT)}], "INCONSISTENT"),
+    ("published", 1, [{"brief_digest": D, "run_id": 5, "run_attempt": int(ATT)}], "INCONSISTENT"),
+    ("published", 1, [{"brief_digest": D, "run_id": int(RUN), "run_attempt": 2}], "INCONSISTENT"),
+    ("published", 1, [], "INCONSISTENT"),                      # a seal without a receipt
+    ("published", 0, [], "INCONSISTENT"),                      # published but not sealed
+    ("candidate", 1, [], "INCONSISTENT"),
+    (None, 0, [], "INCONSISTENT"),                             # no publication row at all
+])
+def test_the_reconcile_classifies_what_is_actually_true(pub, seals, recs, want):
+    assert _rc(pub, seals, recs) == want
+
+
+def test_an_unreadable_database_is_unknown_never_not_sealed(monkeypatch, capsys):
+    monkeypatch.delenv("GOCHARA_SEALER_DB_URL", raising=False)
+    assert rc_.main(["--chart-id", CHART, "--generation", GEN, "--brief-digest", D, "--run-id", RUN, "--attempt", ATT]) == 12
+    assert json.loads(capsys.readouterr().out)["state"] == "UNREADABLE"
+
 
 ORCH = SCRIPTS / "gochara-seal-approved.sh"
 
@@ -330,17 +523,18 @@ def world(tmp_path):
     calls = tmp_path / "seal_job_calls.txt"
     shim.write_text(f'#!/usr/bin/env bash\necho "$*" >> "{calls}"\necho "COMMIT=$GOCHARA_SEALING_COMMIT ACTOR=${{GITHUB_TRIGGERING_ACTOR:-unset}} DB=${{GOCHARA_SEALER_DB_URL:-unset}}" >> "{calls}"\nexit "${{SEAL_RC:-0}}"\n')
     shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
-    brief, comp = tmp_path / "brief.json", tmp_path / "brief.compact.json"
+    brief, comp, envf = tmp_path / "brief.json", tmp_path / "brief.compact.json", tmp_path / "brief.envelope.json"
     raw, c = pair()
     brief.write_bytes(raw)
     comp.write_text(json.dumps(c))
+    envf.write_text(json.dumps(xc.build_envelope(xcheck(), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id=int(BID))))
     approvals = tmp_path / "approvals.json"
     approvals.write_text(json.dumps([review()]))
-    return {"tmp": tmp_path, "shim": str(shim), "calls": calls, "brief": brief, "compact": comp, "approvals": approvals}
+    return {"tmp": tmp_path, "shim": str(shim), "calls": calls, "brief": brief, "compact": comp, "envelope": envf, "approvals": approvals}
 
 
 def orch(world, **over):
-    env = {**os.environ, "BRIEF_FILE": str(world["brief"]), "BRIEF_COMPACT_FILE": str(world["compact"]), "APPROVALS_FILE": str(world["approvals"]), "CHART_ID": CHART, "GENERATION": GEN,
+    env = {**os.environ, "BRIEF_FILE": str(world["brief"]), "BRIEF_COMPACT_FILE": str(world["compact"]), "BRIEF_ENVELOPE_FILE": str(world["envelope"]), "APPROVALS_FILE": str(world["approvals"]), "CHART_ID": CHART, "GENERATION": GEN,
            "EXPECTED_SEALING_COMMIT": SHA, "EXPECTED_BRIEF_DIGEST": D, "GITHUB_RUN_ID": RUN, "GITHUB_RUN_ATTEMPT": ATT, "GITHUB_SHA": SHA, "TRIGGERING_ACTOR": "steward-as-owner",
            "SEAL_JOB_CMD": world["shim"], "APPROVAL_FILE": str(world["tmp"] / "approval.json"), "PYTHON_BIN": sys.executable,
            "GOCHARA_SEALER_DB_URL": "postgresql://gochara_sealer:SECRETMARKER@127.0.0.1:5432/x", **over}
@@ -361,7 +555,8 @@ def test_the_orchestrator_calls_the_seal_job_once_with_the_approval_file_and_the
 
 
 @pytest.mark.parametrize("what", ["changed_brief", "wrong_revision_in_brief", "job_runs_from_another_commit", "no_approval", "wrong_run", "wrong_attempt", "stale_digest", "malformed_comment",
-                                  "brief_digest_differs_from_the_published_one"])
+                                  "brief_digest_differs_from_the_published_one", "envelope_of_another_attempt", "envelope_of_another_brief", "approval_names_another_brief_id", "pre_r13_grammar",
+                                  "seal_only_rerun_without_a_fresh_brief"])
 def test_every_refusal_stops_before_the_seal_job_is_invoked(world, what):
     over = {}
     if what == "changed_brief":
@@ -375,11 +570,23 @@ def test_every_refusal_stops_before_the_seal_job_is_invoked(world, what):
     elif what == "no_approval":
         world["approvals"].write_text("[]")
     elif what == "wrong_run":
-        world["approvals"].write_text(json.dumps([review(comment=f"brief-digest: {D}  run: 5  attempt: {ATT}")]))
+        world["approvals"].write_text(json.dumps([review(comment=line(run="5"))]))
     elif what == "wrong_attempt":
         over["GITHUB_RUN_ATTEMPT"] = "2"
+    elif what == "seal_only_rerun_without_a_fresh_brief":
+        # attempt 2 re-runs ONLY the seal job: the approval for attempt 2 exists but the retained brief envelope is attempt 1's — it must NOT be reused
+        over["GITHUB_RUN_ATTEMPT"] = "2"
+        world["approvals"].write_text(json.dumps([review(comment=line(att="2"))]))
     elif what == "stale_digest":
-        world["approvals"].write_text(json.dumps([review(comment=f"brief-digest: {'1' * 64}  run: {RUN}  attempt: {ATT}")]))
+        world["approvals"].write_text(json.dumps([review(comment=line(digest="1" * 64))]))
+    elif what == "envelope_of_another_attempt":
+        e = json.loads(world["envelope"].read_text()); e["run_attempt"] = 2; world["envelope"].write_text(json.dumps(e))
+    elif what == "envelope_of_another_brief":
+        e = json.loads(world["envelope"].read_text()); e["brief_id"] = 99; world["envelope"].write_text(json.dumps(e))
+    elif what == "approval_names_another_brief_id":
+        world["approvals"].write_text(json.dumps([review(comment=line(bid="99"))]))
+    elif what == "pre_r13_grammar":
+        world["approvals"].write_text(json.dumps([review(comment=f"brief-digest: {D}  run: {RUN}  attempt: {ATT}")]))
     elif what == "malformed_comment":
         world["approvals"].write_text(json.dumps([review(comment="looks good")]))
     elif what == "brief_digest_differs_from_the_published_one":
