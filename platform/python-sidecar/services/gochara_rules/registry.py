@@ -407,33 +407,50 @@ KERNEL_VERSION = "1.1.0"
 # target (a longitude) takes the angular kernel. varga_position is not classified (unqualified).
 SPAN_OBJECT_KINDS = ("sign_span", "house_span", "star")                  # 1155 kgrr_object_kind_ck
 ANGULAR_OBJECT_KINDS = ("degree_point", "derived_point", "saham", "house_lord")
+from .flat_selector import (  # noqa: E402  (declared at the point of use: the AM-13 block below)
+    ORB_UNRATIFIED, decode_drishti, decode_kernel, encode_drishti, encode_kernel, flat_problems,
+)
+
+# The FLAT form is the source of truth (Codex R5): `ka_gochara_factor.operand_selector` admits only a flat
+# object of tokens / numbers / token arrays (1154:221–240), so the declaration is written flat, the nested
+# `applicability` evaluators read is DERIVED from it by `decode_*`, and a test proves
+# encode(decode(flat)) == flat. An unavailable orb is OMITTED (no JSON null); ND-ORB is the `orb_state` token.
+_KERNEL_FLAT = {
+    "operand": "geometry:object_kind_dispatch",
+    "span_kinds": list(SPAN_OBJECT_KINDS), "span_form": "membership_step", "span_inside": 1, "span_outside": 0,
+    "point_kinds": list(ANGULAR_OBJECT_KINDS), "point_form": "one_minus_abs_delta_lambda_over_orb",
+    "orb_state": ORB_UNRATIFIED,
+    "aspect_geometry": "directed_aspect_ray",
+    "uncovered_state": "unqualified",
+}
+_DRISHTI_FLAT = {
+    "operand": "geometry:aspect_house_offset", "applicable_relations": ["aspect"],
+    "not_applicable_state": "declared_omit", "node_cast_aspects": "none",
+}
+for _f in (_KERNEL_FLAT, _DRISHTI_FLAT):
+    assert not flat_problems(_f), flat_problems(_f)
 _factor("activity_kernel",
         rule_version=KERNEL_VERSION,
-        operand="object kind + (span/star: inside-the-extent membership | point: "
-                "angular distance |Δλ| to exact contact)",
-        function="linear", range=[0.0, 1.0], units="unitless",
+        operand="object kind + (extent: inside-the-extent membership of the validated contact geometry | "
+                "point: seam-safe angular distance |Δλ| along the directed aspect ray, if any)",
+        # a PIECEWISE function: membership step on extent targets, 1 − |Δλ|/orb on point targets
+        function="piecewise_step_linear", range=[0.0, 1.0], units="unitless",
         direction="higher = stronger", null_state="unqualified",
-        applicability={
-            "span": {"object_kinds": list(SPAN_OBJECT_KINDS), "function": "step",
-                     "inside": 1.0, "outside": 0.0},
-            "angular": {"object_kinds": list(ANGULAR_OBJECT_KINDS), "function": "linear",
-                        "formula": "1 - |Δλ|/orb", "orb_deg": None,
-                        "orb_status": "ND-ORB open: not ratified (draft AM-13)"},
-        },
+        operand_selector=_KERNEL_FLAT, applicability=decode_kernel(_KERNEL_FLAT),
         effect="objects with extent (sign/house span, star = 13°20′ nakṣatra): membership step "
-               "(1 inside, 0 outside); true point objects: "
-               "activity = 1 − |Δλ|/orb (§7.2 inv 3) — qualified only once the orb is a "
-               "recorded native decision, else unqualified (orb_not_ratified); object "
-               "kinds in neither group are unqualified, never 1")
+               "(1 inside, 0 outside — never a second admission filter); true point objects: "
+               "activity = 1 − |Δλ|/orb (§7.2 inv 3), qualified only once the orb is a finite, strictly "
+               "positive, RATIFIED decision (ND-ORB open: until then unqualified, reason orb_not_ratified); "
+               "object kinds in neither group are unqualified, never 1")
 _factor("graduated_drishti",
         rule_version=KERNEL_VERSION,
         operand="aspect house-offset (aspect records only)",
         function="step", range=[0.0, 1.0], units="unitless",
         direction="higher = stronger", null_state="unqualified",
-        applicability={"relations": ["aspect"]},
-        effect="¼/½/¾/1 at 3-10/5-9/4-8/7; specials full (brihat_jataka:PG65:C1); "
-               "applicable to aspect records only — residence/conjunction have no offset "
-               "(declared not-applicable, never 1)")
+        operand_selector=_DRISHTI_FLAT, applicability=decode_drishti(_DRISHTI_FLAT),
+        effect="¼/½/¾/1 at 3-10/5-9/4-8/7; specials full per frozen O-CF-DRISHTI (ordinary graduation "
+               "corroborated by brihat_jataka:PG65:C1); applicable to aspect records only — "
+               "residence/conjunction have no offset (declared not-applicable, never 1)")
 _factor("vedha_attenuation",
         operand="vedha interval state at t",
         function="step", range=[0.0, 1.0], units="unitless",
