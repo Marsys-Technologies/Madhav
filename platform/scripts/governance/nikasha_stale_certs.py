@@ -747,7 +747,10 @@ def _evaluate(lg: Ledger, observed, registry=None) -> Evaluation:
                 # cited generation and the latest carry the SAME semantic fingerprint, the dependents' premise (what
                 # the rows say) is unchanged and an idempotent rebuild must invalidate nothing downstream.
                 bumped_same = (cited_rec.get("semantic_fingerprint") is not None
-                               and cited_rec.get("semantic_fingerprint") == latest.get("semantic_fingerprint"))
+                               and cited_rec.get("semantic_fingerprint") == latest.get("semantic_fingerprint")
+                               # E5.1 record_version 2 (N-74): a change of citation_state is not "identical output"
+                               # (v1 records carry none: both read None)
+                               and cited_rec.get("citation_state") == latest.get("citation_state"))
                 if not bumped_same:
                     reasons.append(dict(code="upstream_generation", upstream=u, cited=cited,
                                         latest=latest["generation"]))

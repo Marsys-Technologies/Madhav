@@ -989,6 +989,25 @@ def test_an_upstream_generation_bump_with_a_different_fingerprint_still_stales_d
     assert (ev.stale[b][0]["cited"], ev.stale[b][0]["latest"]) == (1, 2)
 
 
+def test_a_same_output_bump_that_changes_the_citation_state_is_not_identical_output(ledger):
+    # E5.1 record_version 2 carries citation_state; a generation bump that changes it is a currency change a dependent
+    # must see (hand-shaped here: this branch's E5.1 predates the field)
+    a1 = cert(ledger, "bg_a")
+    b = cert(ledger, "bg_b", up=[a1])
+    cert(ledger, "bg_a", n=1)
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", bg_a=dict(writer_hashes=wh_of("bg_a", 1),
+                                                               writer_paths=list(wh_of("bg_a", 1)))))
+    assert ev.stale == {}                                                         # control: same output, same (absent) state
+    rows = lines(ledger)
+    a2_idx = max(i for i, r in enumerate(rows) if r.get("cert_key") == "bg_a|gate|Build.registered")
+    rows[1]["citation_state"] = "sourced"                                         # a@1 declared sourced...
+    rows[a2_idx]["citation_state"] = "sourced_ocr_unverified"                     # ...a@2 only OCR-unverified
+    write_chained(ledger, rows)
+    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", bg_a=dict(writer_hashes=wh_of("bg_a", 1),
+                                                               writer_paths=list(wh_of("bg_a", 1)))))
+    assert set(ev.stale) == {b} and ev.stale[b][0]["code"] == "upstream_generation"
+
+
 def test_a_same_output_bump_whose_latest_generation_is_itself_stale_stales_the_dependents(ledger):
     a1 = cert(ledger, "bg_a")
     b = cert(ledger, "bg_b", up=[a1])
