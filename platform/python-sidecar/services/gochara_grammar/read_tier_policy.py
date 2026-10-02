@@ -31,14 +31,22 @@ from __future__ import annotations
 from typing import Any, Final, Iterable
 
 from brahmagyan.verification_vocab import (
+    ALL_STATUSES,
     CLASSICAL_MATCH,
-    COMPUTED_EXTENSION,
-    DOCUMENTED_APPROXIMATION,
-    SINGLE,
-    SINGLE_PASS,
     TWO_PASS_VERIFIED,
+    UNVERIFIED_DEFAULT,
     is_verified,
 )
+
+# Vocabulary members that have no named constant in verification_vocab.py. They are NOT invented here:
+# each is asserted at import to be a member of the settled vocabulary, so a rename or removal there fails
+# loudly. (They are not added to verification_vocab.py itself because that module is in the provenance closure
+# of the L0 bg_* writers — editing it re-pins the L0 convergence anchor, which a reader policy must not do.)
+SINGLE = UNVERIFIED_DEFAULT            # "single"
+SINGLE_PASS = "single_pass"            # deprecated spelling variant of `single` (chart_facts writers)
+DOCUMENTED_APPROXIMATION = "documented_approximation"
+COMPUTED_EXTENSION = "computed_extension"
+assert {SINGLE, SINGLE_PASS, DOCUMENTED_APPROXIMATION, COMPUTED_EXTENSION} <= ALL_STATUSES
 
 STRICT_TIERS: Final[frozenset[str]] = frozenset({TWO_PASS_VERIFIED})
 

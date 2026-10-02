@@ -82,8 +82,8 @@ def _load_step06a():
 # ── the policy itself ───────────────────────────────────────────────────────
 
 def test_policy_accepts_exactly_the_honest_computed_tiers_and_refuses_the_rest():
-    expected = {V.TWO_PASS_VERIFIED, V.CLASSICAL_MATCH, V.SINGLE, V.SINGLE_PASS,
-                V.DOCUMENTED_APPROXIMATION, V.COMPUTED_EXTENSION}
+    expected = {V.TWO_PASS_VERIFIED, V.CLASSICAL_MATCH, RTP.SINGLE, RTP.SINGLE_PASS,
+                RTP.DOCUMENTED_APPROXIMATION, RTP.COMPUTED_EXTENSION}
     assert RTP.HONEST_COMPUTED_TIERS == frozenset(expected)
     assert RTP.STRICT_TIERS == frozenset({V.TWO_PASS_VERIFIED})
     for status in sorted(V.ALL_STATUSES):
@@ -98,8 +98,8 @@ def test_policy_accepts_exactly_the_honest_computed_tiers_and_refuses_the_rest()
 
 
 def test_names_are_the_vocabulary_constants_not_new_members():
-    for name in (V.SINGLE, V.SINGLE_PASS, V.DOCUMENTED_APPROXIMATION,
-                 V.COMPUTED_EXTENSION, V.CLASSICAL_MATCH, V.TWO_PASS_VERIFIED):
+    for name in (RTP.SINGLE, RTP.SINGLE_PASS, RTP.DOCUMENTED_APPROXIMATION,
+                 RTP.COMPUTED_EXTENSION, V.CLASSICAL_MATCH, V.TWO_PASS_VERIFIED):
         assert name in V.ALL_STATUSES
 
 
@@ -112,7 +112,7 @@ def test_tier_evidence_never_calls_an_unverified_tier_verified():
 
 # ── behaviour-neutral on today's rows (per-level) ───────────────────────────
 
-T, CM, SG = V.TWO_PASS_VERIFIED, V.CLASSICAL_MATCH, V.SINGLE
+T, CM, SG = V.TWO_PASS_VERIFIED, V.CLASSICAL_MATCH, RTP.SINGLE
 SYSTEMS = ["vimshottari", "yogini", "ashtottari", "chara_karaka", "naisargika",
            "mudda", "narayana", "kalachakra"]
 
@@ -209,7 +209,7 @@ def test_backstop_drops_a_row_that_escapes_the_predicate():
                 def fetchall(_s):
                     return rows
             return _X()
-    rows = [_row("m1", "mudda", V.DIVERGENT_FLAGGED), _row("m2", "mudda", V.SINGLE, level=2, parent="m1x",
+    rows = [_row("m1", "mudda", V.DIVERGENT_FLAGGED), _row("m2", "mudda", RTP.SINGLE, level=2, parent="m1x",
             start="2031-01-01T00:00:00+00:00", end="2032-01-01T00:00:00+00:00"),
             _row("m3", "mudda", CM, start="2033-01-01T00:00:00+00:00", end="2034-01-01T00:00:00+00:00")]
     out = DD.fetch_dasha_periods_multilevel(

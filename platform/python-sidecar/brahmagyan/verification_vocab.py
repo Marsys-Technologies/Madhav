@@ -281,13 +281,6 @@ DIVERGENT_FLAGGED: Final[str] = "divergent_flagged"
 #: table the producer itself draws from: real, but a tautology over its own input space.
 CLASSICAL_MATCH: Final[str] = "classical_match"
 
-#: Named constants for the other EXISTING vocabulary members a reader policy must name (no member
-#: added). `single` is UNVERIFIED_DEFAULT; `single_pass` is its deprecated spelling variant.
-SINGLE: Final[str] = "single"
-SINGLE_PASS: Final[str] = "single_pass"
-DOCUMENTED_APPROXIMATION: Final[str] = "documented_approximation"
-COMPUTED_EXTENSION: Final[str] = "computed_extension"
-
 
 def two_pass_verdict(engine_value: Any, derived_value: Any) -> str:
     """The ONLY sanctioned producer of `two_pass_verified` (M-22 / CLAUDE.md §N.8).
