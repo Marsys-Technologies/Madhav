@@ -1,6 +1,6 @@
 ---
 artifact: NATIVE_OPEN_DECISIONS
-version: "1.3"
+version: "1.4"
 status: LIVING — the one place the native's open decisions for the Gochara build are listed (steward M20261002T004621-2b84)
 date: 2026-10-02
 author: Stream B (Śāstra)
@@ -54,3 +54,5 @@ transit by the *quality of the sign* (own, exalted, debilitated, inimical), not 
 from. A stored house number is still required by the database. The options: from the planet's own **birth sign** (my recommendation — it is what the name says, and the classics do count
 from the daśā lord for birth-chart relations), or from the **ascendant**. **Nothing in the scoring reads this number**, so either choice changes no result — only the label a reader is
 given. Until you decide, the daśā-lord records are not created (a stated state, not a guess). Details: `design/P1_FRAME_ANSWER_v1_0.md`.
+
+**AM-19 — how should the running-period planet's transit be scored?** Seven small questions (which sign-quality vocabulary; how big each quality counts; whether friendly/neutral signs are good, bad or neither; combustion; what happens when a good and a bad trigger hold together; the retrograde clause; what makes a period lord "auspicious") are laid out in plain language, with the passages we can read and what the two strength tables say, in `decisions/AM19_P1_VALUE_MAPPING_DECISION_PACKET_v1_0.md`. The cheapest honest answer to each is "don't score it"; until you rule, these windows stay "unqualified".
