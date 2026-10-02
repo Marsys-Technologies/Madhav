@@ -890,3 +890,56 @@ def test_attack_a_registry_selection_or_inventory_change_after_verification_cann
         assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
     else:
         assert outcomes and outcomes[0][1] == "update-refused-by-guard", outcomes
+
+
+# ── 5. round 11, R11-1: output outside the permitted grains (Stream A 8c1c0ab63) — the attack as the RESTRICTED BUILDER, real job, real seal ──────────
+
+def _r11_helpers():
+    from .test_a53_r11_generation_wide import _attack, _contact_count, _foreign_grain, _gate
+    return _attack, _contact_count, _foreign_grain, _gate
+
+
+@pytest.mark.parametrize("path", ["P3", "P5"])
+def test_attack_r11_1_a_record_in_a_sealed_but_excluded_version_or_held_path_with_a_number_is_refused_before_verification(cbuilt, path, monkeypatch):
+    """Codex R11-1 counterexample, composed: as the restricted builder, a structurally valid record under a sealed-but-EXCLUDED version (P3 successor) or the HELD
+    P5, REUSING an existing contact (no new contact), a numeric result, a consistent admission. The combined gate names `output_grain_not_permitted` and
+    `record_result_not_policy`; the REAL job (a real verifier login) refuses it (exit 3, stage generation_output) and persists NOTHING; the seal is refused."""
+    import psycopg
+    from services.gochara_kernel import input_vector_verifier as ivv
+    attack, contact_count, foreign_grain, gate = _r11_helpers()
+    w = cbuilt
+    grain = foreign_grain(w, path, None)
+    # a sealed SUCCESSOR added after the build also drifts the manifest's registry census, which the job's independent input derivation would refuse first
+    # (`stale_inputs`); isolate THIS check by letting that derivation pass (the same isolation Stream A's own test uses)
+    monkeypatch.setattr(ivv, "verify_inputs", lambda *a, **k: {})
+    n = contact_count(w)
+    attack(w, *grain)
+    assert contact_count(w) == n                                                   # NO new contact
+    got = gate(w)
+    assert (CLS, grain[0], grain[1], "output_grain_not_permitted") in got and (CLS, grain[0], grain[1], "record_result_not_policy") in got, (grain, got)
+    with pytest.raises(RuntimeError, match=r"verification job exit 3.*generation_output"):
+        verify_as_verifier(w)
+    assert _verification_rows(w.conn) == (0, 0)
+    with pytest.raises(psycopg.errors.Error):
+        seal_as_sealer(w)
+
+
+@pytest.mark.parametrize("path", ["P3", "P5"])
+def test_attack_r11_1_the_same_attack_after_verification_is_refused_at_the_seal_by_name(cbuilt, path):
+    """After a VERIFIED run the included grains' digests do NOT move (the attack reuses an existing contact), which is exactly why the grain-restricted gate let it
+    through; the generation-wide arm now refuses the seal BY NAME."""
+    import psycopg
+    attack, contact_count, foreign_grain, gate = _r11_helpers()
+    w = cbuilt
+    assert verify_as_verifier(w)["status"] == "VERIFIED"
+    grain = foreign_grain(w, path, None)
+    before = gate(w)
+    attack(w, *grain)
+    got = gate(w) - before
+    assert (CLS, grain[0], grain[1], "output_grain_not_permitted") in got and (CLS, grain[0], grain[1], "record_result_not_policy") in got, got
+    assert not any(v[3] == "window_verification_inputs_changed" for v in gate(w))
+    # P5 (held): refused BY NAME by the generation-wide arm. P3 (a sealed successor added after the build): 1206's own registry census (`registry_unaccounted_path`)
+    # ALSO refuses it, and its guard fires first on the real seal — a second line of defence; the gate arm above names it either way.
+    with pytest.raises(psycopg.errors.Error, match="output_grain_not_permitted" if path == "P5" else "output_grain_not_permitted|registry_unaccounted_path"):
+        seal_as_sealer(w)
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0

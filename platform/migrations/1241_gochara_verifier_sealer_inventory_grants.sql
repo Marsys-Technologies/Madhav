@@ -4,15 +4,18 @@
 -- STATUS: DRAFT, HOLD. Creates no object, replaces no function, edits no applied migration, REVOKES nothing (PC-4 — the builder's 1206 §7 grant on
 -- ka_gochara_search_inventory_verification — is removed AT SOURCE by the edit to 1206 itself, folded into #2867).
 --
--- WHY IT CARRIES 1240's GRANTS TOO (R10-7 i — late-created roles)
--- ═══════════════════════════════════════════════════════════════
--- 1240 grants to gochara_verifier / gochara_sealer only IF those roles exist when it is applied, and prints a NOTICE otherwise. The owner creates the
--- roles AFTER the protected window (nothing creates a credential before the native's go-ahead), so 1240's grants are skipped PERMANENTLY — a
--- migration runs once. A follow-up that carried only 1241's own statements would leave the window-verification privileges absent. This file therefore
--- carries the UNION: every privilege 1240 would have granted (origin "1240" in the spec) and every privilege 1241 adds (origin "1241"), so ONE
--- application after the roles exist yields the complete, closed set. Applying it when the roles already held 1240's grants is a no-op for those.
--- It also backfills the one builder grant 1240 makes conditionally (EXECUTE on the window CHECK helper), harmlessly if already held.
--- TEST (composed rehearsal): absent role → window applied → role created → this file applied → verification job + seal work.
+-- WHY IT CARRIES 1240's GRANTS TOO (R10-7 i — a role absent when 1240 ran; Codex round 11: comments corrected)
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+-- 1240 grants to gochara_verifier / gochara_sealer only IF those roles exist when it is applied, and prints a NOTICE otherwise — a migration runs once, so a
+-- role that is ABSENT at that moment never receives 1240's grants from 1240. The delegated sequence creates the two roles IMMEDIATELY BEFORE the protected window
+-- (runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md: acts 1 and 2a precede act 9), so in the intended order 1240's guarded grants FIRE and this file is the
+-- complete additive specification applied afterwards (a backfill for any grant 1240 did not make, and the exact-ACL closure over everything). It also covers the
+-- other order — a role created AFTER the window: this file carries the UNION (every privilege 1240 would have granted, origin "1240" in the spec, and every
+-- privilege 1241 adds, origin "1241"), so ONE application after the roles exist yields the complete, closed set. Applying it when a role already held 1240's grants
+-- is a no-op for those. IF THIS FILE ITSELF RUNS WHILE A ROLE IS ABSENT, its WARNING creates NO deferred grant: an additive follow-up migration carrying the SAME
+-- spec is then required once the role exists. It also backfills the one builder grant 1240 makes conditionally (EXECUTE on the window CHECK helper), harmlessly if already held.
+-- TESTS (composed rehearsal): (i) the intended order — roles exist → window applied (1240's guarded grants fire) → this file applied → verification job + seal work;
+-- (ii) the other order — roles absent at the window → role created → this file applied → verification job + seal work.
 --
 -- WHY THIS NUMBER, AND WHEN IT RUNS
 -- ═════════════════════════════════
