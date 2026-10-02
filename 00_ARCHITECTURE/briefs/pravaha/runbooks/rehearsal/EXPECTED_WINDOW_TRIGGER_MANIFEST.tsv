@@ -1,0 +1,138 @@
+REL	ka_gochara_av_polarity_declaration	r
+TRG	public	ka_gochara_av_polarity_declaration	ka_gochara_av_polarity_0_chart_context	O	public.ka_gochara_substrate_chart_lock	BEFORE	INSERT	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_av_polarity_declaration	ka_gochara_av_polarity_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_av_polarity_declaration	ka_gochara_av_polarity_write_guard	O	public.ka_gochara_insert_only	BEFORE	DELETE,UPDATE	ROW		\302\2478.1/\302\2478.2 inv 2 \342\200\224 a polarity change is a new convention row\000	false/false/false	false
+REL	ka_gochara_contact	r
+TRG	public	ka_gochara_contact	ka_gochara_boundary_1_write_guard	O	public.ka_gochara_boundary_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW		regime\000	false/false/false	false
+TRG	public	ka_gochara_contact	ka_gochara_contact_0_statement_lock	O	public.ka_gochara_chart_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_contact	ka_gochara_contact_1_write_guard	O	public.ka_gochara_contact_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_contact	ka_gochara_contact_2_propagate_precision	O	public.ka_gochara_contact_propagate_precision	AFTER	UPDATE	ROW			false/false/false	true
+TRG	public	ka_gochara_contact	ka_gochara_contact_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_contact_identity	r
+TRG	public	ka_gochara_contact_identity	ka_gochara_contact_identity_0_chart_context	O	public.ka_gochara_substrate_chart_lock	BEFORE	INSERT	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_contact_identity	ka_gochara_contact_identity_immutable	O	public.ka_gochara_insert_only	BEFORE	DELETE,UPDATE	ROW		\302\2476.1 publication immutability \342\200\224 an id is never renumbered or reused\000	false/false/false	false
+TRG	public	ka_gochara_contact_identity	ka_gochara_contact_identity_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_contact_identity	ka_gochara_contact_identity_supersede_check	O	public.ka_gochara_contact_identity_supersede_guard	BEFORE	INSERT	ROW			false/false/false	false
+REL	ka_gochara_convention_bridge	r
+TRG	public	ka_gochara_convention_bridge	ka_gochara_convention_bridge_0_chart_context	O	public.ka_gochara_substrate_chart_lock	BEFORE	INSERT	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_convention_bridge	ka_gochara_convention_bridge_immutable	O	public.ka_gochara_insert_only	BEFORE	DELETE,UPDATE	ROW		\302\2477.2 inv 4 \342\200\224 a convention change is a new convention\000	false/false/false	false
+TRG	public	ka_gochara_convention_bridge	ka_gochara_convention_bridge_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_eval_window	r
+TRG	public	ka_gochara_eval_window	ka_gochara_ew_0_statement_lock	O	public.ka_gochara_chart_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_eval_window	ka_gochara_ew_1_write_guard	O	public.ka_gochara_chart_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW		plain\000	false/false/false	false
+TRG	public	ka_gochara_eval_window	ka_gochara_ew_2_coverage_guard	O	public.ka_gochara_window_coverage_guard	BEFORE	INSERT,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_eval_window	ka_gochara_ew_3_sealed_path_check	O	public.ka_gochara_require_sealed_rule_path	BEFORE	INSERT,UPDATE	ROW	path_id,rule_version		false/false/false	false
+TRG	public	ka_gochara_eval_window	ka_gochara_ew_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_eval_window_record	r
+TRG	public	ka_gochara_eval_window_record	ka_gochara_ewr_0_statement_lock	O	public.ka_gochara_chart_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_eval_window_record	ka_gochara_ewr_1_write_guard	O	public.ka_gochara_chart_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW		no_update\000	false/false/false	false
+TRG	public	ka_gochara_eval_window_record	ka_gochara_ewr_2_membership_guard	O	public.ka_gochara_window_membership_guard	BEFORE	INSERT	ROW			false/false/false	false
+TRG	public	ka_gochara_eval_window_record	ka_gochara_ewr_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_eval_window_verification	r
+TRG	public	ka_gochara_eval_window_verification	ka_gochara_ewv_0_statement_lock	O	public.ka_gochara_chart_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_eval_window_verification	ka_gochara_ewv_1_write_guard	O	public.ka_gochara_window_verification_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_eval_window_verification	ka_gochara_ewv_2_sealed_path_check	O	public.ka_gochara_require_sealed_rule_path	BEFORE	INSERT	ROW			false/false/false	false
+TRG	public	ka_gochara_eval_window_verification	ka_gochara_ewv_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_factor	r
+TRG	public	ka_gochara_factor	ka_gochara_factor_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_factor	ka_gochara_factor_write_guard	O	public.ka_gochara_global_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW		\302\2472.1 amendment 1 \342\200\224 a factor change is a new rule_version row\000	false/false/false	false
+REL	ka_gochara_generation_seal	r
+TRG	public	ka_gochara_generation_seal	ka_gochara_generation_seal_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_generation_seal	ka_gochara_generation_seal_write_guard	O	public.ka_gochara_generation_seal_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_generation_seal	ka_gochara_generation_seal_z_search_complete	O	public.ka_gochara_generation_seal_search_guard	BEFORE	INSERT	ROW			false/false/false	false
+TRG	public	ka_gochara_generation_seal	ka_gochara_generation_seal_zz_receipt_required	O	public.ka_gochara_seal_requires_approval_receipt	AFTER	INSERT	ROW			true/true/true	false
+TRG	public	ka_gochara_generation_seal	ka_gochara_generation_seal_zz_window_verified	O	public.ka_gochara_generation_seal_window_guard	BEFORE	INSERT	ROW			false/false/false	false
+REL	ka_gochara_physical_object	r
+TRG	public	ka_gochara_physical_object	ka_gochara_physical_object_0_chart_context	O	public.ka_gochara_substrate_chart_lock	BEFORE	INSERT	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_physical_object	ka_gochara_physical_object_immutable	O	public.ka_gochara_insert_only	BEFORE	DELETE,UPDATE	ROW		\302\2476.1 publication immutability\000	false/false/false	false
+TRG	public	ka_gochara_physical_object	ka_gochara_physical_object_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_predicate	r
+TRG	public	ka_gochara_predicate	ka_gochara_predicate_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_predicate	ka_gochara_predicate_write_guard	O	public.ka_gochara_global_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW		\302\2472.1 amendment 1 \342\200\224 a predicate change is a new rule_version row\000	false/false/false	false
+REL	ka_gochara_record_prerequisite	r
+TRG	public	ka_gochara_record_prerequisite	ka_gochara_rpr_0_statement_lock	O	public.ka_gochara_chart_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_record_prerequisite	ka_gochara_rpr_1_write_guard	O	public.ka_gochara_chart_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW		result_only\000	false/false/false	false
+TRG	public	ka_gochara_record_prerequisite	ka_gochara_rpr_finalize	O	public.ka_gochara_record_finalize_check	AFTER	INSERT,DELETE,UPDATE	ROW			true/true/true	false
+TRG	public	ka_gochara_record_prerequisite	ka_gochara_rpr_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_relationship_record	r
+TRG	public	ka_gochara_relationship_record	ka_gochara_boundary_1_write_guard	O	public.ka_gochara_boundary_write_guard	BEFORE	UPDATE	ROW		regime\000	false/false/false	false
+TRG	public	ka_gochara_relationship_record	ka_gochara_rr_0_statement_lock	O	public.ka_gochara_chart_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_relationship_record	ka_gochara_rr_1_write_guard	O	public.ka_gochara_chart_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW		precision_sync\000	false/false/false	false
+TRG	public	ka_gochara_relationship_record	ka_gochara_rr_2_coverage_guard	O	public.ka_gochara_record_coverage_guard	BEFORE	INSERT,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_relationship_record	ka_gochara_rr_3_sealed_path_check	O	public.ka_gochara_require_sealed_rule_path	BEFORE	INSERT,UPDATE	ROW	path_id,rule_version		false/false/false	false
+TRG	public	ka_gochara_relationship_record	ka_gochara_rr_finalize	O	public.ka_gochara_record_finalize_check	AFTER	INSERT,UPDATE	ROW			true/true/true	false
+TRG	public	ka_gochara_relationship_record	ka_gochara_rr_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_rule_path	r
+TRG	public	ka_gochara_rule_path	ka_gochara_rule_path_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_rule_path	ka_gochara_rule_path_write_guard	O	public.ka_gochara_global_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW		\302\2472.1 amendment 1 \342\200\224 a path change is a new rule_version row\000	false/false/false	false
+REL	ka_gochara_rule_path_prerequisite	r
+TRG	public	ka_gochara_rule_path_prerequisite	ka_gochara_rp_prereq_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_rule_path_prerequisite	ka_gochara_rp_prereq_sealed_check	O	public.ka_gochara_membership_guard	BEFORE	INSERT	ROW			false/false/false	false
+TRG	public	ka_gochara_rule_path_prerequisite	ka_gochara_rp_prereq_write_guard	O	public.ka_gochara_global_write_guard	BEFORE	DELETE,UPDATE	ROW		\302\2472.1 amendment 1 \342\200\224 a membership change rides a new rule_version\000	false/false/false	false
+REL	ka_gochara_rule_path_seal	r
+TRG	public	ka_gochara_rule_path_seal	ka_gochara_rule_path_seal_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_rule_path_seal	ka_gochara_rule_path_seal_write_guard	O	public.ka_gochara_global_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW		F3 \342\200\224 a seal is permanent\000	false/false/false	false
+REL	ka_gochara_rule_path_soft_factor	r
+TRG	public	ka_gochara_rule_path_soft_factor	ka_gochara_rp_soft_factor_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_rule_path_soft_factor	ka_gochara_rp_soft_factor_sealed_check	O	public.ka_gochara_membership_guard	BEFORE	INSERT	ROW			false/false/false	false
+TRG	public	ka_gochara_rule_path_soft_factor	ka_gochara_rp_soft_factor_write_guard	O	public.ka_gochara_global_write_guard	BEFORE	DELETE,UPDATE	ROW		\302\2472.1 amendment 1 \342\200\224 a membership change rides a new rule_version\000	false/false/false	false
+REL	ka_gochara_seal_approval	r
+TRG	public	ka_gochara_seal_approval	ka_gochara_seal_approval_attest	O	public.ka_gochara_seal_approval_attest	BEFORE	INSERT	ROW			false/false/false	false
+TRG	public	ka_gochara_seal_approval	ka_gochara_seal_approval_no_change	O	public.ka_gochara_seal_approval_immutable	BEFORE	DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_seal_approval	ka_gochara_seal_approval_no_truncate	O	public.ka_gochara_seal_approval_immutable	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_seal_approval	ka_gochara_seal_approval_zz_first_seal	O	public.ka_gochara_seal_approval_requires_first_seal	AFTER	INSERT	ROW			true/true/true	false
+TRG	public	ka_gochara_seal_approval	ka_gochara_seal_approval_zz_persisted_brief	O	public.ka_gochara_seal_approval_requires_persisted_brief	AFTER	INSERT	ROW			true/true/true	false
+REL	ka_gochara_seal_brief	r
+TRG	public	ka_gochara_seal_brief	ka_gochara_seal_brief_attest	O	public.ka_gochara_seal_brief_attest	BEFORE	INSERT	ROW			false/false/false	false
+TRG	public	ka_gochara_seal_brief	ka_gochara_seal_brief_no_change	O	public.ka_gochara_seal_brief_immutable	BEFORE	DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_seal_brief	ka_gochara_seal_brief_no_truncate	O	public.ka_gochara_seal_brief_immutable	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_search_input_snapshot	r
+TRG	public	ka_gochara_search_input_snapshot	ka_gochara_search_input_snapshot_0_statement_lock	O	public.ka_gochara_chart_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_search_input_snapshot	ka_gochara_search_input_snapshot_1_write_guard	O	public.ka_gochara_search_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_search_input_snapshot	ka_gochara_search_input_snapshot_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_search_interval	r
+TRG	public	ka_gochara_search_interval	ka_gochara_search_interval_0_statement_lock	O	public.ka_gochara_chart_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_search_interval	ka_gochara_search_interval_1_write_guard	O	public.ka_gochara_search_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_search_interval	ka_gochara_search_interval_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_search_inventory	r
+TRG	public	ka_gochara_search_inventory	ka_gochara_search_inventory_0_statement_lock	O	public.ka_gochara_chart_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_search_inventory	ka_gochara_search_inventory_1_write_guard	O	public.ka_gochara_search_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_search_inventory	ka_gochara_search_inventory_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_search_inventory_verification	r
+TRG	public	ka_gochara_search_inventory_verification	ka_gochara_search_inventory_verification_0_statement_lock	O	public.ka_gochara_chart_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_search_inventory_verification	ka_gochara_search_inventory_verification_1_write_guard	O	public.ka_gochara_search_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_search_inventory_verification	ka_gochara_search_inventory_verification_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_search_obligation	r
+TRG	public	ka_gochara_search_obligation	ka_gochara_search_obligation_0_statement_lock	O	public.ka_gochara_chart_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_search_obligation	ka_gochara_search_obligation_1_write_guard	O	public.ka_gochara_search_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_search_obligation	ka_gochara_search_obligation_2_sealed_rule_check	O	public.ka_gochara_require_sealed_rule_path	BEFORE	INSERT	ROW			false/false/false	false
+TRG	public	ka_gochara_search_obligation	ka_gochara_search_obligation_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_search_path_pin	r
+TRG	public	ka_gochara_search_path_pin	ka_gochara_search_path_pin_0_statement_lock	O	public.ka_gochara_chart_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_search_path_pin	ka_gochara_search_path_pin_1_write_guard	O	public.ka_gochara_search_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_search_path_pin	ka_gochara_search_path_pin_2_sealed_rule_check	O	public.ka_gochara_require_sealed_rule_path	BEFORE	INSERT	ROW			false/false/false	false
+TRG	public	ka_gochara_search_path_pin	ka_gochara_search_path_pin_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_sky_convention	r
+TRG	public	ka_gochara_sky_convention	ka_gochara_sky_convention_0_chart_context	O	public.ka_gochara_substrate_chart_lock	BEFORE	INSERT	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_sky_convention	ka_gochara_sky_convention_immutable	O	public.ka_gochara_insert_only	BEFORE	DELETE,UPDATE	ROW		\302\2476.1/\302\2477.2 inv 4\000	false/false/false	false
+TRG	public	ka_gochara_sky_convention	ka_gochara_sky_convention_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	ka_gochara_sky_event	r
+TRG	public	ka_gochara_sky_event	ka_gochara_sky_event_0_chart_context	O	public.ka_gochara_substrate_chart_lock	BEFORE	INSERT,UPDATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_sky_event	ka_gochara_sky_event_mutation_guard	O	public.ka_gochara_sky_event_guard	BEFORE	DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	ka_gochara_sky_event	ka_gochara_sky_event_no_truncate	O	public.ka_gochara_refuse_truncate	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+TRG	public	ka_gochara_sky_event	ka_gochara_sky_event_supersede_check	O	public.ka_gochara_sky_event_supersede_guard	BEFORE	INSERT	ROW			false/false/false	false
+REL	kala_gochara_contacts	r
+TRG	public	kala_gochara_contacts	ka_gochara_boundary_1_write_guard	O	public.ka_gochara_boundary_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	kala_gochara_contacts	ka_gochara_boundary_2_no_truncate	O	public.ka_gochara_boundary_truncate_guard	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	kala_gochara_convention	r
+TRG	public	kala_gochara_convention	kala_gochara_convention_immutable	O	public.kala_gochara_convention_no_mutation	BEFORE	DELETE,UPDATE	ROW			false/false/false	false
+REL	kala_gochara_coverage	r
+TRG	public	kala_gochara_coverage	ka_gochara_boundary_1_write_guard	O	public.ka_gochara_boundary_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	kala_gochara_coverage	ka_gochara_boundary_2_no_truncate	O	public.ka_gochara_boundary_truncate_guard	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	kala_gochara_publication	r
+TRG	public	kala_gochara_publication	ka_gochara_boundary_0_statement_lock	O	public.ka_gochara_publication_statement_lock	BEFORE	DELETE,UPDATE	STATEMENT			false/false/false	false
+TRG	public	kala_gochara_publication	ka_gochara_boundary_1_write_guard	O	public.ka_gochara_boundary_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	kala_gochara_publication	ka_gochara_boundary_2_no_truncate	O	public.ka_gochara_boundary_truncate_guard	BEFORE	TRUNCATE	STATEMENT			false/false/false	false
+REL	kala_gochara_windows	r
+TRG	public	kala_gochara_windows	ka_gochara_boundary_1_write_guard	O	public.ka_gochara_boundary_write_guard	BEFORE	INSERT,DELETE,UPDATE	ROW			false/false/false	false
+TRG	public	kala_gochara_windows	ka_gochara_boundary_2_no_truncate	O	public.ka_gochara_boundary_truncate_guard	BEFORE	TRUNCATE	STATEMENT			false/false/false	false

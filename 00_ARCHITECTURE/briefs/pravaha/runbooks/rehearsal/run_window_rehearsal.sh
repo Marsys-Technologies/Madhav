@@ -61,6 +61,10 @@ CREATE TABLE charts (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
 CREATE TABLE chart_facts (fact_id text PRIMARY KEY, chart_id uuid NOT NULL, ayanamsha_id text NOT NULL, build_id uuid NOT NULL, fact_category text NOT NULL, fact_subject text NOT NULL, fact_key text NOT NULL, fact_value_text text, fact_value_num numeric, fact_value_jsonb jsonb, unit text, citation_ref text NOT NULL DEFAULT '', citation_human text NOT NULL DEFAULT '', source_calculation text NOT NULL DEFAULT '', verification_pass_status text NOT NULL DEFAULT 'single_pass', engine_version text NOT NULL DEFAULT 'v', salience_formula_ver text, computed_at timestamptz NOT NULL DEFAULT now(), tolerance_arcsec double precision, near_sign_boundary_flag boolean DEFAULT false, near_nakshatra_boundary_flag boolean DEFAULT false, vargottama_flag_at_point boolean DEFAULT false, formula_provenance_text text, cross_ayanamsha_divergence_arcsec double precision DEFAULT 0.0, formula_id text);
 CREATE TABLE chart_dashas (dasha_row_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid NOT NULL, ayanamsha_id text NOT NULL, build_id uuid NOT NULL, system_id text NOT NULL, level_n integer NOT NULL, parent_row_id uuid, lord_graha text NOT NULL, lord_sign text, start_date date NOT NULL, end_date date NOT NULL, start_iso timestamptz NOT NULL, end_iso timestamptz NOT NULL, duration_days numeric NOT NULL, sandhi_flag boolean NOT NULL DEFAULT false, karaka_role_at_period text, verification_pass_status text NOT NULL DEFAULT 'two_pass_verified', verification_method text NOT NULL DEFAULT '', citation_ref text NOT NULL DEFAULT '', citation_human text NOT NULL DEFAULT '', computed_at timestamptz NOT NULL DEFAULT now(), engine_version text NOT NULL DEFAULT '', lord_natal_shadbala_total numeric, next_dasha_start_iso timestamptz, concurrent_system_lords_jsonb jsonb, anchored_solar_return_iso timestamptz, karakas_active_during_period text[]);
 SQL
+# R15-5: the mirror also carries the fourth legacy relation, kala_gochara_windows (W3/W5 require all four). It is a MINIMAL STAND-IN (id, chart_id, generation + a few columns): migrations 460/461/1071
+# and the later generation-column migration need registry tables this mirror does not have, so production's legacy triggers on this relation are NOT mirrored — W5 therefore compares by
+# "every expected row must appear identically in production" and REPORTS production extras instead of failing on them.
+{ echo "SET ROLE amjis_app;"; echo "CREATE TABLE kala_gochara_windows (id BIGSERIAL PRIMARY KEY, chart_id uuid NOT NULL, generation text NOT NULL, event_class text, window_start date, window_end date, signed_intensity numeric);"; } | $SUDB >/dev/null
 for f in 1081_nirmana_l3_gochara_ledger_coverage_publication.sql 1087_nirmana_l3_gochara_contacts_inclusivity_completeness_tier_basis.sql 1152_kala_gochara_contacts_t_exact_nullable_truncated.sql; do
   { echo "SET ROLE amjis_app;"; cat "$M/$f"; } | $SUDB >/dev/null
 done
@@ -194,6 +198,15 @@ ASSERT "1240: the builder keeps the eval-window grants of 1234 (no regression)" 
 echo "  -- 1236: the authority pointer refuses a governed generation (applied by the routine route before the window)"
 ASSERT "1236 is recorded and the CHECK exists" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename LIKE '1236\_%'")$($SUDB -c "SELECT count(*) FROM pg_constraint WHERE conname='kga_governed_generation_refused_ck' AND convalidated")" "11"
 ASSERT "1236: a '5.0' authority row is refused, a '3.0' row is not" "$($SUDB -c "SET ROLE amjis_app; UPDATE kala_gochara_authority SET authoritative_generation='5.0'" 2>&1 | grep -c 'kga_governed_generation_refused_ck')$($SUDB -c "SET ROLE amjis_app; UPDATE kala_gochara_authority SET authoritative_generation='3.0'" 2>&1 | grep -c 'violates')" "10"
+
+echo "  -- W5 expected trigger manifest (R15-5): the committed file is exactly what the mirror shows at these final bytes"
+if [ -f "$HERE/EXPECTED_WINDOW_TRIGGER_MANIFEST.tsv" ]; then
+  MAN="$($SUDB -F $'\t' -f "$HERE/window_trigger_manifest.sql" 2>&1)"
+  ASSERT "the committed EXPECTED_WINDOW_TRIGGER_MANIFEST.tsv equals the mirror's manifest at the final bytes" "$(printf '%s\n' "$MAN" | shasum -a 256 | cut -c1-64)" "$(shasum -a 256 < "$HERE/EXPECTED_WINDOW_TRIGGER_MANIFEST.tsv" | cut -c1-64)"
+  ASSERT "no relation in the manifest is MISSING from the mirror" "$(printf '%s\n' "$MAN" | grep -c 'MISSING' || true)" "0"
+else
+  FINDING "EXPECTED_WINDOW_TRIGGER_MANIFEST.tsv is absent — run generate_window_trigger_manifest.sh and commit it"
+fi
 
 echo
 echo "REHEARSAL (mechanical part): $pass passed, $fail failed, $findings finding(s)."
