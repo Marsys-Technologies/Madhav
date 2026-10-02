@@ -90,7 +90,19 @@ def test_this_asset_alone_declares_the_three_blocks_and_nobody_declares_a_null_c
 def test_the_entry_declares_what_the_strategist_ruled():
     assert CAR["nature"] == "transcription" and CAR["applies"] == "D1" and CAR["citation_state"] == "sourced_ocr_unverified"
     assert CAR["served_surface"] is None                                 # unchanged
-    assert "anchor-matched, OCR-repaired" in CAR["why"] and "verbatim" not in json.dumps(ENTRY).lower()
+    assert "anchor-matched, OCR-repaired" in CAR["why"]
+    for needle in ("ENGLISH translation only", "not checked against the printed book", "text_id-prefixed preimage", "bare preimage", "Mars and Saturn",
+                   "reserved empty", "Ketu has no row"):                       # the ruling's mandatory statements are pinned
+        assert needle in CAR["why"], needle
+    assert "OCR-garbled" in LS["why"] and "Slokas 45-46" in LS["why"] and "no detector checks the sloka label" in LS["why"] and "PG339 only" in LS["why"]
+    new_sentence = DECL["description"].split("Version 1.10.0", 1)[1]
+    texts = [json.dumps(ENTRY).lower(), new_sentence.lower()]                    # every why of the entry and the 1.10.0 description sentence
+    for word in ("verbatim", "accurate", "exact"):
+        assert not any(word in t for t in texts), word
+    assert "read from classical_text_chunks by span; only the declared clause/condition strings are quoted" in new_sentence
+    assert "never copied in" not in new_sentence
+    stale = DECL["description"]
+    assert "No asset declares one yet: an asset without it reads exactly as before. Version 1.8.0" not in stale and "No asset declares either yet" not in stale
     assert SPEC["chunk_ids"] == IDS and SPEC["span"] == {"start": "Sloka 42-44"} and SPEC["table"] == AID and SPEC["expected_rows"] == 8
     ef = {e["column"]: e for e in SPEC["extra_fields"]}
     assert ef["affliction_condition"]["anchors"] == ["when thus counting", "natal star", "Latta star", "sickness and anguish"]
@@ -116,7 +128,7 @@ def test_the_passage_is_never_copied_into_the_declaration():
         elif isinstance(x, list):
             [walk(v) for v in x]
     walk(ENTRY)
-    assert max(len(s) for s in strings) < 500 and not any(len(s) > 150 and d1._ws(s) in seg for s in strings)
+    assert max(len(s) for s in strings) <= 1200 and not any(len(s) > 150 and d1._ws(s) in seg for s in strings)
     assert seg and d1._ws(" ".join(CHUNKS[i]["content_en"] for i in IDS)[:200]) not in d1._ws(json.dumps(ENTRY))
 
 
@@ -365,3 +377,29 @@ def test_REAL_cells_before_and_after_on_the_saved_census(monkeypatch, disposable
     assert moved == ["Carr", "Vocab"]                                # Ldgr stays PASS (its basis moves from source_citation to verse_ref + citation_state)
     assert next(c for c in after["Ldgr"]["checks"] if c["criterion"] == "Ldgr.source_presence")["citation_state"] == "sourced_ocr_unverified"
     assert "citation_state" not in next(c for c in before["Ldgr"]["checks"] if c["criterion"] == "Ldgr.source_presence")
+
+
+# ───────────────────────── evidence pointers land on the line that supports them ─────────────────────────
+
+ROOT = ac.ROOT
+FIXT = "platform/scripts/governance/__tests__/fixtures/phaladeepika_latta_d1_fixture.json"
+
+
+def _line(ptr):
+    rel, n = ptr.rsplit(":", 1)
+    return (ROOT / rel).read_text(encoding="utf-8").splitlines()[int(n) - 1]
+
+
+def test_every_evidence_pointer_lands_on_the_line_that_supports_its_claim():
+    """The validator accepts ANY in-range line: pin the target line content so a drifted or wrong line fails."""
+    assert CAR["evidence"] == "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:122" and "LATTA_ROWS" in _line(CAR["evidence"])
+    assert "verbatim" not in _line(CAR["evidence"]).lower()                      # not the refuted '# ... verbatim from' comment two lines above
+    assert VA["evidence"] == "platform/supabase/migrations/528_bg_phaladeepika_vedha.sql:106" and re.match(r"\s*graha\s+TEXT", _line(VA["evidence"]))
+    assert LS["evidence"] == "platform/python-sidecar/brahmagyan/l0_phaladeepika_vedha.py:84" and "_VERSE_REF_LATTA" in _line(LS["evidence"])
+    ptrs = [SPEC["effect_clauses_evidence"]]
+    for ef in SPEC["extra_fields"]:
+        if ef["kind"] == "passage_text":
+            c = ef["condition"]
+            ptrs += [ef["condition_evidence"], c["ocr_lost_stop"]["evidence"]] + [h["evidence"] for h in c["ocr_stops"]] + [r["evidence"] for r in ef["repairs"]]
+    assert ptrs and set(ptrs) == {f"{FIXT}:27"}
+    assert '"content_en": "Adh. XXVI' in _line(ptrs[0])                            # the PG339 chunk text the clauses and the OCR garbles are read from
