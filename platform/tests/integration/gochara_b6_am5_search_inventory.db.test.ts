@@ -1004,6 +1004,23 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
     await goodBuild(nextGen())       // restored
   })
 
+  it('PC-4: a REBUILD by the restricted builder invalidates a stale verification (FK cascade) without the builder ever holding DELETE on it', async () => {
+    const g = nextGen()
+    await goodBuild(g, { role: BUILDER })                                          // built by the builder, verified by the verifier
+    const n = async () => Number((await pool.query(`SELECT count(*) FROM ka_gochara_search_inventory_verification WHERE chart_id=$1 AND generation=$2`, [CHART, g])).rows[0].count)
+    expect(await n()).toBe(1)
+    await tx(async c => {                                                          // the builder's delete-then-insert chain, in dependency order
+      await chartCtx(c)
+      for (const t of ['ka_gochara_search_interval', 'ka_gochara_search_obligation', 'ka_gochara_search_path_pin', 'ka_gochara_search_inventory', 'ka_gochara_search_input_snapshot'])
+        await c.query(`DELETE FROM ${t} WHERE chart_id=$1 AND generation=$2`, [CHART, g])
+    }, { role: BUILDER })
+    expect(await n()).toBe(0)                                                      // the stale verification went with the header
+    const g2 = nextGen()                                                           // a SEALED generation still refuses the builder's delete
+    await goodBuild(g2, { role: BUILDER })
+    await publishAndSeal(g2)
+    await refused(tx(async c => { await chartCtx(c); await c.query(`DELETE FROM ka_gochara_search_inventory WHERE chart_id=$1 AND generation=$2`, [CHART, g2]) }, { role: BUILDER }), /sealed|SEALED|foreign key|violates/i)
+  })
+
   it('R3: an excluded pin with a NULL reason is refused in BOTH variants (with and without a ruling_ref); other dispositions carry no reason', async () => {
     const raw = (gen: string, disp: string, reason: string | null, ruling: string | null) => tx(async c => {
       await chartCtx(c); await publication(c, gen)
