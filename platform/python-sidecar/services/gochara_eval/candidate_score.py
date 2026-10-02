@@ -18,7 +18,7 @@ from .candidate import load_candidate_extract, score_candidate
 from .controls import ControlsMismatch, verify_controls_file
 from .dump_extract import CANONICAL_COMMAND
 from .extract import InputRejected
-from .freeze import FreezeRefused, require_stage1, require_stage2, sha256_file
+from .freeze import FreezeRefused, bind_scoring_run, require_stage1, require_stage2, sha256_file
 from .registry import RegistryError, load_registry
 from .score import PROTOCOL, RESULT_VERSION
 
@@ -68,6 +68,7 @@ def run(argv: list[str] | None = None) -> int:
             return refuse({"mode": "REFUSED", "freeze": {"status": "REFUSED", "problems": exc.problems}}, str(exc))
         result["mode"] = "MEASUREMENT"
         result["generation"] = s1["generation"]
+        frozen_doc, frozen_root = s1, root
         result["freeze"] = {"status": "VERIFIED", "run_id": s1["run_id"], "stage1_sha256": sha256_file(args.stage1),
                             "stage2_sha256": sha256_file(args.stage2)}
 
@@ -87,7 +88,16 @@ def run(argv: list[str] | None = None) -> int:
     except RegistryError as exc:
         return refuse({"source_reconciliation": {"status": "MISMATCH", "detail": str(exc)}}, str(exc))
     result["source_reconciliation"] = registry.reconciliation
-    kw = {} if args.budget is None else {"budget": args.budget}
+    if result["mode"] == "MEASUREMENT":           # the freeze is BOUND to what this run actually uses
+        bind = bind_scoring_run(frozen_doc, Path(frozen_root), registry_path=args.registry, controls_path=args.controls,
+                                extract_path=args.extract, extract_header_predicate=str(cext.meta.get("predicate", "")),
+                                registry_held_out=len(registry.held), budget=args.budget)
+        if bind:
+            return refuse({"mode": "REFUSED", "freeze": {"status": "NOT_BOUND", "problems": bind}},
+                          "FREEZE REFUSED: the run does not match the freeze: " + "; ".join(bind))
+        kw = {"budget": frozen_doc["tolerances_and_conversions"]["enumeration_budget"]}
+    else:
+        kw = {} if args.budget is None else {"budget": args.budget}
     result.update(score_candidate(registry, cext, **kw))
     if args.controls:
         try:

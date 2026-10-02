@@ -23,14 +23,14 @@ import datetime as dt
 import json
 import math
 import statistics as st
+from fractions import Fraction
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .extract import Extract, InputRejected, MergedWindow, measure_sha256
 from .metrics import candidate_set, score_generation
 from .registry import CAP_DAYS, CLASSES_27, TIE_TOL, TIMING_GRAINS, HeldEvent, Registry
-from .unknowns import (DEFAULT_BUDGET, BudgetExceeded, assignments, percentile_of,
-                       plateau_fraction)
+from .unknowns import DEFAULT_BUDGET, BudgetExceeded, enumerate_structures, event_percentiles
 
 
 @dataclass(frozen=True)
@@ -174,30 +174,23 @@ def event_bounds(event: HeldEvent, merged: dict[str, list[CandWindow]], registry
     a_unk = [w for w in cands if w.si is None and id(w) in cont_ids]
     b_unk = [w for w in cands if w.si is None and id(w) not in cont_ids]
     known_vals = [w.si for w in known]
-    known_cont = [i for i, w in enumerate(known) if id(w) in cont_ids]
     k = len(a_unk) + len(b_unk)
     # existing rule: target = first maximal-si overlapping window in candidate order (exact max)
     first_known_target = None
-    if known_cont and not a_unk:
-        first_known_target = max((known[i] for i in known_cont), key=lambda w: w.si)
+    known_in_cont = [w for w in known if id(w) in cont_ids]
+    if known_in_cont and not a_unk:
+        first_known_target = max(known_in_cont, key=lambda w: w.si)
 
     try:
-        pcts: dict[float, float] = {}          # rounded key (float-noise dedupe) -> unrounded value
-        n_assign = 0
-        for combo_a, combo_b in assignments(known_vals, [len(a_unk), len(b_unk)], budget):
-            vec = known_vals + list(combo_a) + list(combo_b)
-            cont_idx = known_cont + list(range(len(known_vals), len(known_vals) + len(a_unk)))
-            tgt = max(cont_idx, key=lambda i: vec[i])
-            raw = percentile_of(vec, tgt)
-            pcts.setdefault(round(raw, 9), raw)
-            n_assign += 1
-        pct_lo, pct_hi, status = pcts[min(pcts)], pcts[max(pcts)], ("EXACT" if k == 0 else "BOUNDED")
+        cont_flags = [id(w) in cont_ids for w in known]
+        pct_list, n_assign = event_percentiles(known_vals, cont_flags, len(a_unk), len(b_unk), budget)
+        pct_lo, pct_hi, status = pct_list[0], pct_list[-1], ("EXACT" if k == 0 else "BOUNDED")
     except BudgetExceeded:
         pct_lo, pct_hi, status, n_assign = 0.0, 100.0, "BUDGET_EXCEEDED", None
     return {**base, "hit": True, "pct_lo": pct_lo, "pct_hi": pct_hi,
             "pct": pct_lo if pct_lo == pct_hi else None, "unknown_in_set": k, "unknown_in_cont": len(a_unk),
             "target_pk": first_known_target.pk if first_known_target is not None else None,
-            "bounds_status": status, "assignments_enumerated": n_assign}
+            "bounds_status": status, "structures_enumerated": n_assign}
 
 
 def plateau_verdict(cls: str, year: int, merged: dict[str, list[CandWindow]], budget: int = DEFAULT_BUDGET) -> str:
@@ -209,9 +202,8 @@ def plateau_verdict(cls: str, year: int, merged: dict[str, list[CandWindow]], bu
     known_vals = [w.si for w in ws if w.si is not None]
     k = len(ws) - len(known_vals)
     try:
-        verdicts = set()
-        for (combo,) in assignments(known_vals, [k], budget):
-            verdicts.add(plateau_fraction(known_vals + list(combo)) < 0.5)
+        verdicts = {st["plateau"] < Fraction(1, 2)
+                    for st in enumerate_structures(known_vals, [False] * len(known_vals), 0, k, budget)}
     except BudgetExceeded:
         return "unqualified"
     if verdicts == {True}:

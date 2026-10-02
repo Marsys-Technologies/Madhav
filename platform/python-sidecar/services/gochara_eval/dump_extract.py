@@ -32,7 +32,8 @@ import re
 import sys
 from pathlib import Path
 
-from .freeze import FreezeRefused, require_stage1
+from .freeze import (EPHEMERIS_KEYS, FreezeRefused, bind_dump_run, ephemeris_component_problems,  # noqa: F401
+                     require_stage1)
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 H_START = "1998-01-01"
@@ -118,44 +119,6 @@ def rows_multiset_equal(a: list[dict], b: list[dict]) -> bool:
 def render(generation: str, pinned_at: str, rows: list[dict]) -> bytes:
     """Byte layout of the pinned '3.0' extract: indent=1, header key order, no trailing newline."""
     return json.dumps({**header(generation, pinned_at, len(rows)), "rows": rows}, indent=1).encode()
-
-
-# The AM-16 `ephemeris` component (amendments draft AM-16, schema ka_gochara_input_vector/2) — the ONE definition both the '4.1' and the
-# '5.0' manifests must carry: which Swiss ephemeris files the kernel actually opened (sha256 each), the library version AND the loaded
-# artifact's sha256, the platform, and a fixed series-probe digest. Absence of any key = not an identity.
-EPHEMERIS_KEYS = ("backend", "swe_version", "library_sha256", "platform", "files", "probe_digest")
-_SHA64 = re.compile(r"^[0-9a-f]{64}$")
-_SE1 = re.compile(r"^se[a-z]+_[0-9]{2}\.se1$")
-
-
-def ephemeris_component_problems(c) -> list[str]:
-    """Why this manifest ephemeris component does NOT identify the ephemeris that was used ([] = it does)."""
-    if not isinstance(c, dict):
-        return ["no `ephemeris` component in the manifest input vector (the vector predates AM-16)"]
-    probs = [f"ephemeris component lacks key {k!r}" for k in EPHEMERIS_KEYS if k not in c]
-    extra = sorted(set(c) - set(EPHEMERIS_KEYS))
-    if extra:
-        probs.append(f"ephemeris component has keys outside the AM-16 definition: {extra}")
-    if c.get("backend") != "swieph":
-        probs.append(f"backend is {c.get('backend')!r}, not 'swieph' (a Moshier/analytic fallback is not an identified ephemeris)")
-    if not c.get("swe_version"):
-        probs.append("swe_version is empty")
-    for k in ("library_sha256", "probe_digest"):
-        if k in c and not _SHA64.match(str(c[k])):
-            probs.append(f"{k} is not a sha256")
-    if "platform" in c and not c["platform"]:
-        probs.append("platform is empty")
-    files = c.get("files")
-    if "files" in c:
-        if not isinstance(files, dict) or not files:
-            probs.append("files is empty — no opened .se1 file is recorded (a Moshier-served build opens none)")
-        else:
-            for name, sha in files.items():
-                if not _SE1.match(str(name)):
-                    probs.append(f"files: {name!r} is not a Swiss ephemeris .se1 file name")
-                if not _SHA64.match(str(sha)):
-                    probs.append(f"files: {name!r} has no sha256")
-    return probs
 
 
 def read_manifest_orb(conn, generation: str) -> dict:
@@ -257,9 +220,13 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
             return 2
         root = args.inputs_root or str(Path(args.stage1).resolve().parent)
         try:
-            require_stage1(args.stage1, root, CANONICAL_COMMAND)
+            frozen = require_stage1(args.stage1, root, CANONICAL_COMMAND)
         except FreezeRefused as exc:
             print(str(exc), file=sys.stderr)
+            return 2
+        bind = bind_dump_run(frozen, generation=args.generation, stage1=args.stage1, pinned_at=args.pinned_at, out=args.out)
+        if bind:
+            print("FREEZE REFUSED: the invocation does not match the frozen command: " + "; ".join(bind), file=sys.stderr)
             return 2
         horizon_check = True
 
@@ -267,6 +234,14 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
     if conn is None:
         return 2
     try:
+        if horizon_check:                         # reconcile the LIVE manifest with the frozen read-back before any window row is read
+            live = read_manifest_orb(conn, args.generation)
+            rb = frozen["ephemeris_requirement"]["manifest_readback"]
+            diffs = [k for k in ("ephemeris", "orb_max_deg", "orb_ruling", "manifest_status") if live.get(k) != rb.get(k)]
+            if live["ephemeris_problems"] or diffs:
+                print("FREEZE REFUSED: the live manifest differs from the frozen read-back "
+                      f"(fields {diffs}; live ephemeris problems {live['ephemeris_problems']})", file=sys.stderr)
+                return 2
         rows = dump_rows(conn, args.generation, horizon_check)
     finally:
         conn.rollback()

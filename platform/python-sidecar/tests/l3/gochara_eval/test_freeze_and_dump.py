@@ -12,8 +12,9 @@ import pytest
 
 from services.gochara_eval import dump_extract as dx
 from services.gochara_eval.candidate_score import run
-from services.gochara_eval.freeze import (FROZEN_CODE_FILES, FreezeRefused, code_hashes, require_stage1, require_stage2,
-                                          sha256_file, stage1_problems)
+from services.gochara_eval.freeze import (FROZEN_CODE_FILES, REQUIRED_CONSUMED_BODIES, THRESHOLD_KEYS, FreezeRefused, bind_dump_run,
+                                          bind_scoring_run, code_hashes, ephemeris_coverage_problems, required_ephemeris_files,
+                                          require_stage1, require_stage2, sha256_file, stage1_problems)
 
 from .conftest import (CAMPAIGN_MEASUREMENT, EXTRACT_3_0, EXTRACT_3_0_PIN, REGISTRY_V2_3, needs_campaign, synth_registry,
                        write_json)
@@ -22,22 +23,62 @@ COMMIT = "a" * 40
 SIDECAR = Path(__file__).resolve().parents[3]
 
 
-def make_stage1(tmp_path, generation="4.1", inputs=None):
-    inp = tmp_path / "in.txt"
-    inp.write_text("frozen input")
-    args = {"generation": generation, "stage1": "FREEZE_STAGE1_t.json", "pinned_at": "2026-10-05",
-            "out": "baseline_4_1_extract_v1_0.json"}
+SHA = "ab" * 32
+GOOD_EPH = {"backend": "swieph", "swe_version": "2.10.03", "library_sha256": SHA, "platform": "Linux-x86_64",
+            "files": {"sepl_18.se1": SHA, "semo_18.se1": SHA}, "probe_digest": SHA}
+ORB_RULING = "M-1 fallback no-box x 5.0 deg (unratified)"
+INPUT_FILES = {                                            # identifier -> file name (every mandatory input identity)
+    "event_registry": "event_registry_v2_3.json", "random_controls": "random_controls_v1_3.json",
+    "baseline_3_0_extract": "baseline_3_0_extract_v1_0.json", "scorer_3_0": "rerun_3_0_v2_3_scorer.py",
+    "recorded_result_3_0": "rerun_result_v2_3.json", "recorded_per_event_3_0": "rerun_per_event_v2_3.json",
+    "evaluation_protocol": "EVALUATION_PROTOCOL_v2_3.md", "si_addendum": "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_4.md",
+    "bounds_model": "unknown_competitor_bounds_model.py", "design_specs": "GOCHARA_DESIGN_SPECS_v1_4.md",
+    "test_oracles": "GOCHARA_TEST_ORACLES_v1_4.json", "amendments_draft": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT.md",
+}
+OUT = "baseline_4_1_extract_v1_0.json"
+
+
+def make_stage1(tmp_path, generation="4.1", cohort=None):
+    """A SUBSTANTIVE, valid Stage-1 freeze: every mandatory field typed and non-empty, every mandatory input present on disk."""
+    inputs = {}
+    for ident, fname in INPUT_FILES.items():
+        f = tmp_path / fname
+        if not f.exists():
+            f.write_text(f"frozen input {ident}")
+        inputs[ident] = {"path": fname, "sha256": sha256_file(f)}
+    args = {"generation": generation, "stage1": "FREEZE_STAGE1_t.json", "pinned_at": "2026-10-05", "out": OUT}
     doc = {"artifact": "FREEZE_STAGE1", "run_id": "t", "generation": generation, "status": "FROZEN",
-           "amendments_draft": {"version": "0.21", "sha256": "0" * 64}, "addendum": {"sha256": "0" * 64},
-           "registries_selected": {}, "orb_state": "unqualified points",
-           "conventions": {"tie_tolerance": 1e-9},
-           "ephemeris_requirement": {"manifest_readback": {"ephemeris_problems": []}},
-           "code": {"adapter_commit": COMMIT, "scorer_commit": COMMIT,
-                                                            "files": code_hashes(SIDECAR)},
+           "amendments_draft": {"version": "0.22"}, "addendum": {"artifact": "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING", "version": "1.4"},
+           "registries_selected": {"event_registry": "v2_3", "governed_registry_rows": "n/a (legacy-kernel generation)"},
+           "orb_state": {"text": "the 4.x chain's own activity orb as declared in its manifest (unratified)",
+                         "manifest_location": "kala_gochara_publication.input_generation_vector"},
+           "conventions": {"si_mapping": "raw_intensity as stored", "utc_to_ist": "(ts at time zone 'Asia/Kolkata')::date",
+                           "merge_implementation": "candidate.merge_candidates", "stored_value_precision": "double via Decimal",
+                           "tie_tolerance": 1e-9, "tie_grouping": "adjacent-gap", "candidate_set": "protocol 4.6",
+                           "horizon": {"scored": "1998-01-01 -> 2026-04-17", "extract_assertion": "1998-01-01 <= w < 2026-04-18"}},
+           "ephemeris_requirement": {
+               "id": "S1-REQ-EPHEMERIS", "consumed_bodies": list(REQUIRED_CONSUMED_BODIES),
+               "horizon": {"start": "1997-12-31", "end": "2026-04-19"},
+               "manifest_readback": {"generation": generation, "manifest_status": "candidate", "orb_max_deg": 5.0,
+                                     "orb_ruling": ORB_RULING, "ephemeris": GOOD_EPH, "ephemeris_problems": []}},
+           "code": {"adapter_commit": COMMIT, "scorer_commit": COMMIT, "files": code_hashes(SIDECAR)},
            "extract_generation_args": args, "extract_generation_command": dx.CANONICAL_COMMAND.format(**args),
-           "cohort": {}, "controls": {}, "thresholds": {}, "rerun_policy": "none",
-           "inputs": inputs if inputs is not None else {"in": {"path": "in.txt", "sha256": sha256_file(inp)}}}
+           "extract_environment": "read-only role; READ ONLY transaction",
+           "cohort": cohort or {"held_out": 47, "timing_usable": 32, "year_grain": 15, "exact_cohort": 5, "interval_grain": 4,
+                                "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+           "controls": {"file": INPUT_FILES["random_controls"], "seed": 482012, "experiment": "rolling spans", "rule": "re-drawn"},
+           "thresholds": {k: f"threshold text for {k}" for k in THRESHOLD_KEYS},
+           "tolerances_and_conversions": {"tie_tolerance": 1e-9, "percentile": "100*(avg_rank-1)/N", "timezone": "IST",
+                                          "enumeration_budget": 400000, "budget_exceeded": "unqualified, full range"},
+           "coverage_manifest": "UNVERIFIABLE (determined)", "rerun_policy": "deterministic; no change after inspection",
+           "inputs": inputs}
     return doc, write_json(tmp_path / "FREEZE_STAGE1_t.json", doc)
+
+
+def conn_for(doc):
+    """A fake read-only connection whose live manifest equals the frozen read-back."""
+    rb = doc["ephemeris_requirement"]["manifest_readback"]
+    return FakeConn(ROWS, manifest=[(rb["manifest_status"], rb["orb_max_deg"], rb["orb_ruling"], rb["ephemeris"])])
 
 
 class TestStage1:
@@ -63,11 +104,12 @@ class TestStage1:
 
     def test_input_hash_mismatch_is_refused(self, tmp_path):
         doc, _ = make_stage1(tmp_path)
-        (tmp_path / "in.txt").write_text("changed after the freeze")
+        (tmp_path / INPUT_FILES["event_registry"]).write_text("changed after the freeze")
         assert any("sha256 mismatch" in p for p in stage1_problems(doc, tmp_path, dx.CANONICAL_COMMAND))
 
     def test_missing_input_file_is_refused(self, tmp_path):
-        doc, _ = make_stage1(tmp_path, inputs={"gone": {"path": "gone.txt", "sha256": "0" * 64}})
+        doc, _ = make_stage1(tmp_path)
+        (tmp_path / INPUT_FILES["bounds_model"]).unlink()
         assert any("not found" in p for p in stage1_problems(doc, tmp_path, dx.CANONICAL_COMMAND))
 
     def test_running_code_must_equal_frozen_code(self, tmp_path):
@@ -92,18 +134,79 @@ class TestStage1:
         probs = stage1_problems(doc, tmp_path, dx.CANONICAL_COMMAND)
         assert any("'FROZEN'" in p for p in probs) and any("canonical command" in p for p in probs)
 
-    def test_the_ephemeris_requirement_must_be_read_back_clean(self, tmp_path):
+    def test_the_ephemeris_requirement_is_a_real_component_not_a_flag(self, tmp_path):
         doc, _ = make_stage1(tmp_path)
-        doc["ephemeris_requirement"]["manifest_readback"] = {"ephemeris_problems": ["files is empty"]}
-        assert any("ephemeris_problems" in p for p in stage1_problems(doc, tmp_path, dx.CANONICAL_COMMAND))
-        doc["ephemeris_requirement"]["manifest_readback"] = "not read yet"
-        assert any("not the manifest read-back object" in p for p in stage1_problems(doc, tmp_path, dx.CANONICAL_COMMAND))
-        del doc["ephemeris_requirement"]
-        assert any("missing required field 'ephemeris_requirement'" in p for p in stage1_problems(doc, tmp_path, dx.CANONICAL_COMMAND))
+        P = lambda d: stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND)       # noqa: E731
+        d = copy.deepcopy(doc)
+        d["ephemeris_requirement"]["manifest_readback"]["ephemeris"]["files"] = {}
+        assert any("files is empty" in p for p in P(d))                          # re-derived: the claimed [] problems list is not trusted
+        d = copy.deepcopy(doc)
+        d["ephemeris_requirement"]["manifest_readback"]["ephemeris"]["backend"] = "moshier"
+        assert any("not 'swieph'" in p for p in P(d))
+        d = copy.deepcopy(doc)
+        d["ephemeris_requirement"]["manifest_readback"] = "not read yet"
+        assert any("manifest_readback is missing" in p for p in P(d))
+        d = copy.deepcopy(doc)
+        del d["ephemeris_requirement"]
+        assert any("ephemeris_requirement is missing" in p for p in P(d))
+
+    def test_the_moon_and_every_consumed_body_must_be_covered_by_the_opened_files(self, tmp_path):
+        doc, _ = make_stage1(tmp_path)
+        P = lambda d: stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND)       # noqa: E731
+        d = copy.deepcopy(doc)
+        del d["ephemeris_requirement"]["manifest_readback"]["ephemeris"]["files"]["semo_18.se1"]     # no lunar file
+        assert any("lacks ['semo_18.se1']" in p for p in P(d))
+        d = copy.deepcopy(doc)
+        d["ephemeris_requirement"]["consumed_bodies"] = [b for b in REQUIRED_CONSUMED_BODIES if b != "Moon"]
+        assert any("omits ['Moon']" in p for p in P(d))
+        d = copy.deepcopy(doc)
+        d["ephemeris_requirement"]["horizon"] = {"start": "1997-12-31", "end": "2400-01-02"}      # runs into the next 600-year block
+        assert any("sepl_24.se1" in p for p in P(d))
+        assert required_ephemeris_files(["Moon", "Sun"], 1998, 2026) == {"sepl_18.se1", "semo_18.se1"}
+        assert required_ephemeris_files(["Sun"], 1790, 1810) == {"sepl_12.se1", "sepl_18.se1"}
+
+    def test_an_empty_but_well_keyed_freeze_is_refused(self, tmp_path):
+        """Codex R9-8: every key present, status FROZEN, correct code hashes, canonical command — inputs {} and nulls — returned []."""
+        doc, _ = make_stage1(tmp_path)
+        hollow = {k: doc[k] for k in ("artifact", "run_id", "generation", "status", "code", "extract_generation_args",
+                                      "extract_generation_command")}
+        hollow.update({"amendments_draft": {}, "addendum": {}, "registries_selected": {}, "orb_state": {}, "conventions": {"tie_tolerance": 1e-9},
+                       "ephemeris_requirement": None, "cohort": {}, "controls": {}, "thresholds": {}, "rerun_policy": "none",
+                       "inputs": {}, "tolerances_and_conversions": {}, "extract_environment": "", "coverage_manifest": ""})
+        probs = stage1_problems(hollow, tmp_path, dx.CANONICAL_COMMAND)
+        assert probs, "an empty freeze must not validate"
+        for needle in ("inputs.event_registry", "inputs.random_controls", "ephemeris_requirement is missing", "cohort.held_out",
+                       "thresholds.t_cover", "conventions.si_mapping"):
+            assert any(needle in x for x in probs), needle
+        stub = copy.deepcopy(hollow)
+        stub["ephemeris_requirement"] = {"manifest_readback": {"ephemeris_problems": []}}                 # the review's second case
+        assert any("no `ephemeris` component" in x for x in stage1_problems(stub, tmp_path, dx.CANONICAL_COMMAND))
+
+    def test_every_mandatory_input_identity_is_required_and_unknown_ones_are_refused(self, tmp_path):
+        doc, _ = make_stage1(tmp_path)
+        for ident in INPUT_FILES:
+            d = copy.deepcopy(doc)
+            del d["inputs"][ident]
+            assert any(f"inputs.{ident} needs a path and a sha256" in x for x in stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND))
+        d = copy.deepcopy(doc)
+        d["inputs"]["whatever"] = d["inputs"]["event_registry"]
+        assert any("not a known input identifier" in x for x in stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND))
+
+    def test_typed_fields(self, tmp_path):
+        doc, _ = make_stage1(tmp_path)
+        for path, bad, needle in [(("cohort", "held_out"), "47", "cohort.held_out"), (("cohort", "chart_id"), "x", "cohort.chart_id"),
+                                  (("controls", "seed"), "482012", "controls.seed"), (("generation",), "5.0", "measurable candidate"),
+                                  (("tolerances_and_conversions", "enumeration_budget"), 0, "enumeration_budget"),
+                                  (("extract_generation_args", "pinned_at"), "tomorrow", "ISO date")]:
+            d = copy.deepcopy(doc)
+            tgt = d
+            for k in path[:-1]:
+                tgt = tgt[k]
+            tgt[path[-1]] = bad
+            assert any(needle in x for x in stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND)), path
 
     def test_missing_required_fields_are_listed(self, tmp_path):
-        assert any("missing required field 'cohort'" in p
-                   for p in stage1_problems({"status": "FROZEN"}, tmp_path, dx.CANONICAL_COMMAND))
+        assert any("cohort is missing" in p for p in stage1_problems({"status": "FROZEN"}, tmp_path, dx.CANONICAL_COMMAND))
 
 
 class TestStage2:
@@ -168,11 +271,6 @@ class FakeConn:
 D = dt.date
 ROWS = [("marriage", D(2010, 1, 1), D(2010, 2, 1), D(2010, 1, 10), decimal.Decimal("0.50"), "gain", False, None, "interval"),
         ("marriage", D(2010, 1, 1), D(2010, 3, 1), D(2010, 1, 20), decimal.Decimal("0.70"), "gain", False, "x", "interval")]
-
-
-SHA = "ab" * 32
-GOOD_EPH = {"backend": "swieph", "swe_version": "2.10.03", "library_sha256": SHA, "platform": "Linux-x86_64",
-            "files": {"sepl_18.se1": SHA, "semo_18.se1": SHA}, "probe_digest": SHA}
 
 
 class TestEphemerisComponent:
@@ -273,13 +371,38 @@ class TestDump:
         assert rc == 2 and not out.exists() and created == []          # never even connected
         assert "placeholder" in capsys.readouterr().err
 
-    def test_a_verified_freeze_dumps_and_closes(self, tmp_path):
+    def test_a_verified_freeze_dumps_and_closes(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
         doc, p = make_stage1(tmp_path)
-        out = tmp_path / "o.json"
-        conn = FakeConn(ROWS)
-        rc = dx.main(["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", str(out)],
+        conn = conn_for(doc)
+        rc = dx.main(["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT],
                      conn_factory=lambda: conn)
-        assert rc == 0 and conn.closed and json.loads(out.read_text())["row_count"] == 2
+        assert rc == 0 and conn.closed and json.loads((tmp_path / OUT).read_text())["row_count"] == 2
+
+    @pytest.mark.parametrize("flag,value", [("--pinned-at", "2026-10-06"), ("--out", "elsewhere.json")])
+    def test_the_actual_invocation_must_be_the_frozen_command(self, tmp_path, monkeypatch, capsys, flag, value):
+        monkeypatch.chdir(tmp_path)
+        doc, p = make_stage1(tmp_path)
+        argv = {"--generation": "4.1", "--stage1": str(p), "--pinned-at": "2026-10-05", "--out": OUT, flag: value}
+        created = []
+        rc = dx.main([x for kv in argv.items() for x in kv], conn_factory=lambda: created.append(1) or conn_for(doc))
+        assert rc == 2 and created == [] and "does not match the frozen command" in capsys.readouterr().err
+        assert not (tmp_path / "elsewhere.json").exists()
+
+    def test_a_manifest_that_changed_since_the_freeze_is_refused_before_any_window_row_is_read(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.chdir(tmp_path)
+        doc, p = make_stage1(tmp_path)
+        rb = doc["ephemeris_requirement"]["manifest_readback"]
+        other = {**GOOD_EPH, "library_sha256": "cd" * 32}
+        conn = FakeConn(ROWS, manifest=[(rb["manifest_status"], rb["orb_max_deg"], rb["orb_ruling"], other)])
+        rc = dx.main(["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT], conn_factory=lambda: conn)
+        assert rc == 2 and "live manifest differs" in capsys.readouterr().err
+        assert not (tmp_path / OUT).exists() and all("kala_gochara_windows" not in sql for sql, _ in conn.executed)
+
+    def test_bind_dump_run_names_each_mismatch(self, tmp_path):
+        doc, _ = make_stage1(tmp_path)
+        assert bind_dump_run(doc, generation="4.1", stage1="x/FREEZE_STAGE1_t.json", pinned_at="2026-10-05", out=OUT) == []
+        assert len(bind_dump_run(doc, generation="5.0", stage1="x/other.json", pinned_at=None, out=None)) == 4
 
     def test_requalify_3_0_reports_the_byte_comparison(self, tmp_path):
         out = tmp_path / "o.json"
@@ -346,22 +469,67 @@ class TestCli:
         assert r["mode"] == "BASELINE_DRY_RUN" and r["generation"] == "3.0" and r["extract_sha256"]["match"] is True
         assert r["unknown_competitors"]["unknown_rows"] == 1 and r["t_cover"]["hits"] == 2
 
-    def test_full_measurement_path_with_both_stages(self, tmp_path):
-        reg, ex = self.reg_ext(tmp_path, "kala_gochara_windows ... generation='4.1'")
-        ex4 = tmp_path / "baseline_4_1_extract_v1_0.json"
-        ex4.write_bytes(ex.read_bytes())
-        s1, s1p = make_stage1(tmp_path)
+    def frozen_run(self, tmp_path, predicate="kala_gochara_windows ... generation='4.1'"):
+        """A measurement whose registry, controls and extract ARE the frozen ones (synthetic registry: 2 held-out events)."""
+        from services.gochara_eval import load_registry
+        from services.gochara_eval.candidate import load_candidate_extract
+        from services.gochara_eval.controls import CONTROLS_SEED, draw_controls
+        reg0, ex0 = self.reg_ext(tmp_path, predicate)
+        reg = tmp_path / INPUT_FILES["event_registry"]
+        reg.write_bytes(reg0.read_bytes())
+        ex = tmp_path / OUT
+        ex.write_bytes(ex0.read_bytes())
+        from services.gochara_eval.extract import load_extract
+        ctl_doc = {"seed": CONTROLS_SEED, "controls": [{k: v for k, v in c.items() if not k.startswith("_")}
+                                                       for c in draw_controls(load_registry(reg), load_candidate_extract(ex))]}
+        ctl = write_json(tmp_path / INPUT_FILES["random_controls"], ctl_doc)
+        doc, s1p = make_stage1(tmp_path, cohort={"held_out": 2, "timing_usable": 1, "year_grain": 1, "exact_cohort": 1,
+                                                 "interval_grain": 0, "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"})
         s2 = write_json(tmp_path / "FREEZE_STAGE2_t.json", {"run_id": "t", "stage1_sha256": sha256_file(s1p),
-                        "extracts": {ex4.name: {"sha256": sha256_file(ex4)}}})
+                        "extracts": {ex.name: {"sha256": sha256_file(ex)}}})
+        argv = ["--registry", str(reg), "--extract", str(ex), "--controls", str(ctl), "--stage1", str(s1p), "--stage2", str(s2)]
+        return doc, argv, ex
+
+    def test_full_measurement_path_with_both_stages(self, tmp_path):
+        doc, argv, ex = self.frozen_run(tmp_path)
         out = tmp_path / "r.json"
-        assert run(["--registry", str(reg), "--extract", str(ex4), "--output", str(out), "--stage1", str(s1p),
-                    "--stage2", str(s2)]) == 0
+        assert run([*argv, "--output", str(out)]) == 0
         r = json.loads(out.read_text())
         assert r["mode"] == "MEASUREMENT" and r["generation"] == "4.1" and r["freeze"]["status"] == "VERIFIED"
-        ex4.write_text(ex4.read_text() + " ")                                # edited after the seal -> refused, nothing scored
-        assert run(["--registry", str(reg), "--extract", str(ex4), "--output", str(out), "--stage1", str(s1p),
-                    "--stage2", str(s2)]) == 1
+        ex.write_text(ex.read_text() + " ")                                # edited after the seal -> refused, nothing scored
+        assert run([*argv, "--output", str(out)]) == 1
         assert "t_cover" not in json.loads(out.read_text())
+
+    def test_the_run_is_bound_to_the_frozen_registry_controls_generation_and_budget(self, tmp_path):
+        doc, argv, ex = self.frozen_run(tmp_path)
+        out = tmp_path / "r.json"
+        # a different registry file (same name, other bytes) is not the frozen one
+        reg = Path(argv[1])
+        original = reg.read_bytes()
+        reg.write_text(json.dumps({**json.loads(original), "version": "tampered"}))
+        assert run([*argv, "--output", str(out)]) == 1
+        assert "event_registry" in json.dumps(json.loads(out.read_text())["freeze"]["problems"])
+        reg.write_bytes(original)
+        # no controls supplied
+        argv2 = [a for i, a in enumerate(argv) if a != "--controls" and (i == 0 or argv[i - 1] != "--controls")]
+        assert run([*argv2, "--output", str(out)]) == 1
+        assert "random_controls" in json.dumps(json.loads(out.read_text())["freeze"]["problems"])
+        # a budget other than the frozen one
+        assert run([*argv, "--budget", "7", "--output", str(out)]) == 1
+        assert "enumeration budget" in json.dumps(json.loads(out.read_text())["freeze"]["problems"])
+        assert run([*argv, "--budget", "400000", "--output", str(out)]) == 0
+
+    def test_bind_scoring_run_catches_generation_cohort_and_extract_name(self, tmp_path):
+        doc, argv, ex = self.frozen_run(tmp_path)
+        reg, ctl = Path(argv[1]), Path(argv[5])
+        base = dict(registry_path=reg, controls_path=ctl, extract_path=ex, extract_header_predicate="kala ... generation='4.1'",
+                    registry_held_out=2, budget=None)
+        assert bind_scoring_run(doc, tmp_path, **base) == []
+        assert any("does not name generation" in x for x in bind_scoring_run(doc, tmp_path, **{**base, "extract_header_predicate": "generation='3.0'"}))
+        assert any("held-out events" in x for x in bind_scoring_run(doc, tmp_path, **{**base, "registry_held_out": 47}))
+        other = tmp_path / "other_extract.json"
+        other.write_bytes(ex.read_bytes())
+        assert any("not the frozen output" in x for x in bind_scoring_run(doc, tmp_path, **{**base, "extract_path": other}))
 
     @needs_campaign
     def test_dry_run_on_the_real_3_0_extract_reproduces_the_recorded_numbers(self, tmp_path):
