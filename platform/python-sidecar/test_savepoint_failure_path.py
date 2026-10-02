@@ -26,10 +26,15 @@ The test proves:
 
 import os
 import sys
+from pathlib import Path
 from urllib.parse import urlparse
 
 import psycopg
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "tests" / "l3"))
+
+from _disposable_db_guard import validate_disposable_dsn  # noqa: E402
 
 pytestmark = pytest.mark.integration
 
@@ -43,10 +48,12 @@ if not DB_URL:
         allow_module_level=True,
     )
 
+# C25: host discipline via the ONE shared guard (tests/l3/_disposable_db_guard.py)
+# — every host/hostaddr entry loopback (multi-host, keyword/value and query-string
+# forms), no libpq environment overrides; the dbname convention stays this suite's own.
+validate_disposable_dsn(DB_URL, None)
 _parsed_db_url = urlparse(DB_URL)
 _database_name = _parsed_db_url.path.lstrip("/")
-if _parsed_db_url.hostname not in {"127.0.0.1", "localhost", "::1"}:
-    raise RuntimeError("SAVEPOINT_TEST_DATABASE_URL must use a loopback host")
 if "test" not in _database_name.lower():
     raise RuntimeError("SAVEPOINT_TEST_DATABASE_URL must name a test database")
 
