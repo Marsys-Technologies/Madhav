@@ -4,7 +4,8 @@ import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   extractRunIdentityAndSecrets, parseSecretsAnnotation,
-  assertEffectiveIsolation, assertVerifierInheritedControl, assertVerifierIsolation, assertVerifierServiceAccountPolicyExact, BUILDER_SERVICE_ACCOUNT, grantsServiceAccountControl, VERIFIER_JOB,
+  assertNoLiteralCredentials, canonicalResource, parseDeclaredExceptions, isThisProject,
+  assertEffectiveIsolation, assertVerifierInheritedControl, assertVerifierIsolation, assertVerifierServiceAccountPolicyExact, BUILDER_SECRET, BUILDER_SERVICE_ACCOUNT, grantsServiceAccountControl, VERIFIER_JOB,
   VERIFIER_SECRET, VERIFIER_SERVICE_ACCOUNT, type VerifierState,
 } from '../../scripts/data-plane-secret-isolation-preflight'
 
@@ -268,5 +269,75 @@ describe('deploy.yml wires the preflight\'s operator-declared inputs (Fable F-R1
       expect(blk).toContain('DATA_PLANE_VERIFIER_PHASE: ${{ vars.DATA_PLANE_VERIFIER_PHASE }}')
       expect(blk).toContain('DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS: ${{ vars.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS }}')
     }
+  })
+})
+
+
+// R16-1: the COMPOSED check sequence (the order main() runs it): the verifier-control check, then the shared effective-isolation check over the same inventory — a valid representation must
+// not pass one and fail the other, and a valid annotated ordinary resource must pass the literal-surface check.
+describe('R16-1: one project canonicaliser and one annotation parser through the composed check sequence', () => {
+  const NUMBER = '938361928218'
+  const OWNER = 'user:owner@example.com'
+  const builderPolicy = { bindings: [{ role: 'roles/iam.serviceAccountUser', members: [DEPLOYER] }] }
+  const SA_AGENT = `serviceAccount:service-${NUMBER}@serverless-robot-prod.iam.gserviceaccount.com`
+  const buildJob = { kind: 'job' as const, name: 'brahma-build-pipeline-job', definition: {
+    spec: { template: { spec: { template: { spec: { serviceAccountName: BUILDER_SERVICE_ACCOUNT, containers: [{ env: [
+      { name: 'DATABASE_URL', valueFrom: { secretKeyRef: { name: BUILDER_SECRET, key: 'latest' } } }] }] } } } } } } }
+  const resolved = { 'roles/owner': ['iam.serviceAccounts.getAccessToken', 'iam.serviceAccountKeys.create', 'iam.serviceAccounts.setIamPolicy', 'secretmanager.versions.access'],
+                     'roles/run.serviceAgent': ['run.jobs.run'] }
+  const composed = (effective: any[], surfaces: any[] = [buildJob], exceptions = '') => {
+    process.env.DATA_PLANE_DEPLOY_PRINCIPAL = DEPLOYER
+    assertVerifierInheritedControl(effective, resolved, OWNER, NUMBER, exceptions)
+    assertEffectiveIsolation(effective, builderPolicy, surfaces, resolved, OWNER, NUMBER)
+  }
+  const saved = process.env.DATA_PLANE_DEPLOY_PRINCIPAL
+  afterEach(() => { if (saved === undefined) delete process.env.DATA_PLANE_DEPLOY_PRINCIPAL; else process.env.DATA_PLANE_DEPLOY_PRINCIPAL = saved })
+
+  it('the canonicaliser maps ONLY this project\'s number to its id and leaves every other resource as given', () => {
+    expect(canonicalResource(`projects/${NUMBER}`, NUMBER)).not.toBe(`projects/${NUMBER}`)             // the number form becomes the project id form
+    expect(canonicalResource(`projects/${NUMBER}`, NUMBER)).toMatch(/^projects\/[a-z][a-z0-9-]+$/)
+    expect(canonicalResource('projects/999', NUMBER)).toBe('projects/999')
+    expect(canonicalResource('folders/1', NUMBER)).toBe('folders/1')
+    expect(canonicalResource(`projects/${NUMBER}`, '')).toBe(`projects/${NUMBER}`)            // no number resolved ⇒ unchanged
+    expect(isThisProject(`projects/${NUMBER}`, NUMBER)).toBe(true)
+    expect(isThisProject('folders/1', NUMBER)).toBe(false)
+  })
+  it('a declared exception is canonicalised like the policy it is compared to, and a malformed triple refuses', () => {
+    const set = parseDeclaredExceptions(`projects/${NUMBER}|roles/owner|user:x@example.com;folders/1|roles/owner|user:y@example.com`, NUMBER)
+    expect([...set]).toContain(`${canonicalResource(`projects/${NUMBER}`, NUMBER)}|roles/owner|user:x@example.com`)
+    expect([...set]).toContain('folders/1|roles/owner|user:y@example.com')
+    for (const bad of ['projects/x|roles/owner', 'a|b|c|d', '|roles/owner|user:x', 'projects/x||user:x']) {
+      expect(() => parseDeclaredExceptions(bad, NUMBER)).toThrow(/exactly resource\|role\|member/)
+    }
+  })
+  it('the declared owner and the canonical Cloud Run service agent PASS the composed sequence under the project NUMBER and under the project id', () => {
+    for (const resource of [`projects/${NUMBER}`, canonicalResource(`projects/${NUMBER}`, NUMBER)]) {
+      expect(() => composed([{ resource, policy: { bindings: [
+        { role: 'roles/owner', members: [OWNER] },
+        { role: 'roles/run.serviceAgent', members: [SA_AGENT] },
+      ] } }])).not.toThrow()
+    }
+  })
+  it('an exception declared by project NUMBER is honoured by the verifier-control check; the shared builder-impersonation gate still applies to it (an exception must pass ALL gates)', () => {
+    const folderOwner = [{ resource: 'folders/1', policy: { bindings: [{ role: 'roles/owner', members: ['user:other@example.com'] }] } }]
+    expect(() => assertVerifierInheritedControl(folderOwner, resolved, OWNER, NUMBER, 'folders/1|roles/owner|user:other@example.com')).not.toThrow()
+    expect(() => composed(folderOwner, [buildJob], 'folders/1|roles/owner|user:other@example.com')).toThrow(/builder service-account impersonation|secret accessor/i)   // the verifier exception does not exempt it from the others
+    const projectOther = [{ resource: `projects/${NUMBER}`, policy: { bindings: [{ role: 'roles/owner', members: ['user:other@example.com'] }] } }]
+    expect(() => assertVerifierInheritedControl(projectOther, resolved, OWNER, NUMBER, `projects/${NUMBER}|roles/owner|user:other@example.com`)).not.toThrow()
+    expect(() => assertVerifierInheritedControl(projectOther, resolved, OWNER, NUMBER, '')).toThrow(/remains outside the declared control-plane exceptions/)
+  })
+  it('a VALID annotated ordinary resource passes the literal-surface check and the composed sequence; malformed or conflicting annotations still refuse', () => {
+    const annotated = (value: string) => ({ kind: 'service' as const, name: 'ordinary', definition: { metadata: { annotations: { 'run.googleapis.com/secrets': value } },
+      spec: { template: { spec: { serviceAccountName: 'ordinary@x.iam.gserviceaccount.com', containers: [{ image: 'x' }] } } } } })
+    const ok = 'a:projects/foreign-project/secrets/other,b:projects/' + NUMBER + '/secrets/some-secret'
+    expect(() => assertNoLiteralCredentials(annotated(ok).definition)).not.toThrow()                    // the path that used to say "not valid JSON"
+    expect(() => composed([], [buildJob, annotated(ok)])).not.toThrow()
+    for (const bad of ['{"a":"b:1"}', 'a:projects/p/secrets/x,a:projects/q/secrets/y', '', 'a:', ':projects/p/secrets/x', 'a:projects/p/secrets/x,']) {
+      expect(() => assertNoLiteralCredentials(annotated(bad).definition)).toThrow(/documented alias:projects/)
+    }
+    // a redirected verifier credential is still refused: an annotation on ANOTHER resource that resolves to the verifier secret
+    const redirected = annotated(`a:projects/${NUMBER}/secrets/${VERIFIER_SECRET}`)
+    redirected.definition.spec.template.spec.containers = [{ image: 'x', env: [{ name: 'X', valueFrom: { secretKeyRef: { name: 'a', key: 'latest' } } }] }] as any
+    expect(() => composed([], [buildJob, redirected])).toThrow(/Verifier credential or identity is used outside/)
   })
 })
