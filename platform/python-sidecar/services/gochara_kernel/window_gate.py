@@ -196,8 +196,51 @@ def derivation_inputs_digest(conn, **grain) -> str:
     return hashlib.sha256(_canon(derivation_inputs_preimage(conn, **grain)).encode("utf-8")).hexdigest()
 
 
+ENV_RUNNER_COMMIT = "GOCHARA_RUNNER_COMMIT"
+
+
+def _git_head() -> str | None:
+    import subprocess
+    from pathlib import Path
+    try:
+        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parent, capture_output=True,
+                             text=True, timeout=10)
+        return out.stdout.strip() or None if out.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def runner_identity(modules: dict | None = None, *, login: str | None = None, session: str | None = None) -> dict:
+    """R10-4 / AM-24 item 4: the identity of the code that is RUNNING this verification — its commit (the deploy's
+    `GOCHARA_RUNNER_COMMIT`, else the repository HEAD it is running from), the digest of the implementation modules it
+    actually imported (the SAME function and module map the manifest vector's `implementation` pins, so a runner that is not
+    the pinned code differs), its Python runtime and its logins. Raises when no commit can be named — an unidentified runner
+    verifies nothing."""
+    import os
+    import sys
+    from . import input_vector as iv
+    from . import input_vector_verifier as ivv
+    impl = ivv.module_digests(modules or iv.IMPLEMENTATION_MODULES)
+    commit = os.environ.get(ENV_RUNNER_COMMIT) or _git_head()
+    if not commit:
+        raise RuntimeError(f"the runner's code commit cannot be named: {ENV_RUNNER_COMMIT} is unset and no repository HEAD "
+                           "is readable — an unidentified runner records nothing")
+    return {"commit": commit, "implementation_digest": hashlib.sha256(_canon(impl).encode("utf-8")).hexdigest(),
+            "implementation": impl, "python": sys.version.split()[0], "login": login, "session": session}
+
+
+def combined_candidate_gate(conn, chart_id: str, generation: str) -> list[dict]:
+    """The ONE gate the seal uses: the search-completeness violations (1206/1232) plus the window-verification violations
+    (1240) — `ka_gochara_candidate_gate_violations`."""
+    rows = conn.execute("SELECT event_class, path_id, rule_version, violation, detail"
+                        " FROM public.ka_gochara_candidate_gate_violations(%s::uuid, %s)", (chart_id, generation)).fetchall()
+    return [dict(zip(("event_class", "path_id", "rule_version", "violation", "detail"),
+                     tuple(r.values()) if isinstance(r, dict) else tuple(r))) for r in rows]
+
+
 def record_verification(conn, *, chart_id, generation, event_class, path_id, rule_version, report: dict,
-                        input_digest: str, expected=None, checked_inputs_digest: str | None = None) -> dict:
+                        input_digest: str, expected=None, checked_inputs_digest: str | None = None,
+                        runner: dict | None = None) -> dict:
     """Refuse a stored window set that is not the independently expected one, then persist the generation-bound
     result (delete-then-insert for this verifier — a candidate rebuild REPLACES it)."""
     grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
@@ -229,6 +272,7 @@ def record_verification(conn, *, chart_id, generation, event_class, path_id, rul
     if checked_inputs_digest is not None and checked_inputs_digest != inputs_digest:     # R10-3
         raise RuntimeError(f"window verification {event_class}/{path_id}: the inputs the report was produced from "
                            f"({checked_inputs_digest}) are not the stored inputs now ({inputs_digest})")
+    runner = runner if runner is not None else runner_identity()
     conn.execute(
         "DELETE FROM public.ka_gochara_eval_window_verification WHERE chart_id = %s AND generation = %s"
         " AND event_class = %s AND path_id = %s AND rule_version = %s AND verifier_id = %s"
@@ -239,11 +283,12 @@ def record_verification(conn, *, chart_id, generation, event_class, path_id, rul
         " chart_id, generation, event_class, path_id, rule_version, verifier_id, verifier_version, status,"
         " policy_version, windows_expected, windows_stored, windows_reproduced, windows_unverified,"
         " expected_windows_digest, stored_windows_digest, windows_content_digest, fields_verified,"
-        " input_digest, derivation_inputs_digest) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        " input_digest, derivation_inputs_digest, runner_identity)"
+        " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)",
         (chart_id, generation, event_class, path_id, rule_version, VERIFIER_ID, VERIFIER_VERSION,
          report["status"], report["policy_version"], len(expected), len(stored), report["fully_reproduced"],
          report["unverified_dynamic"], intervals_digest(expected), digest, content,
-         list(report["fields_verified"]), input_digest, inputs_digest))
+         list(report["fields_verified"]), input_digest, inputs_digest, json.dumps(runner, sort_keys=True)))
     return {"status": report["status"], "windows": len(stored), "content_digest": content}
 
 
@@ -266,7 +311,7 @@ def require_candidate_gate(conn, chart_id: str, generation: str, event_class: st
                         for v in violations))
 
 
-__all__ = ["CandidateGateRefused", "POLICY_VERSION", "VERIFIER_ID", "VERIFIER_VERSION", "candidate_gate",
+__all__ = ["ENV_RUNNER_COMMIT", "combined_candidate_gate", "runner_identity", "CandidateGateRefused", "POLICY_VERSION", "VERIFIER_ID", "VERIFIER_VERSION", "candidate_gate",
            "derivation_inputs_digest", "derivation_inputs_preimage",
            "can_write_verification", "expected_windows", "intervals_digest", "record_verification", "require_candidate_gate",
            "stored_windows", "verification_available"]

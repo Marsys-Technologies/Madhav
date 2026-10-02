@@ -113,11 +113,18 @@ def check_preconditions(conn, *, chart_id: str, generation: str, classes=None, e
     from . import input_vector as iv
     from . import input_vector_verifier as ivv
     from . import inventory_verifier as inv_v
-    pub = conn.execute("SELECT status, input_generation_vector FROM public.kala_gochara_publication"
+    # R10-4 (i): independent input identity is MANDATORY. A run with no ephemeris path or no module map cannot derive the
+    # identity of what it verifies; it refuses, naming the gap, before it reads or writes anything.
+    if not ephe_path or not modules:
+        raise VerificationRefused(
+            "no_input_identity", "the independent input identity cannot be derived: "
+            + ("no ephemeris path " if not ephe_path else "") + ("no implementation module map " if not modules else "")
+            + "was supplied — a verification that cannot re-derive its own inputs persists nothing")
+    pub = conn.execute("SELECT status, input_generation_vector, horizon FROM public.kala_gochara_publication"
                        " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
     if pub is None:
         raise VerificationRefused("no_candidate_manifest", f"generation {generation} has no manifest")
-    status, vector = tuple(pub.values()) if isinstance(pub, dict) else tuple(pub)
+    status, vector, manifest_horizon = tuple(pub.values()) if isinstance(pub, dict) else tuple(pub)
     if status == "published" or _one(conn.execute("SELECT public.ka_gochara_generation_is_sealed(%s::uuid, %s)",
                                                   (chart_id, generation)).fetchone()):
         raise VerificationRefused("already_sealed", f"generation {generation} is {'published' if status == 'published' else 'sealed'}"
@@ -146,16 +153,30 @@ def check_preconditions(conn, *, chart_id: str, generation: str, classes=None, e
     if gaps:
         raise VerificationRefused("incomplete_build", "; ".join(gaps))
     out = {"classes": wanted, "manifest_status": status}
-    if ephe_path is not None and modules is not None:
-        vec = vector if isinstance(vector, dict) else __import__("json").loads(vector)
-        try:
-            ivv.verify_inputs(conn, vec, ephe_path=ephe_path, modules=modules, path_refs=path_refs,
-                              jd_range=iv.consumed_jd_range(horizon))
-        except RuntimeError as exc:
-            raise VerificationRefused("stale_inputs", str(exc)) from exc
-        out["inputs"] = "independently re-derived"
-    else:
-        out["inputs"] = "NOT re-derived (no ephemeris path / module list supplied)"
+    if manifest_horizon is None:
+        raise VerificationRefused("no_input_identity", "the manifest binds no horizon — the consumed ephemeris range "
+                                  "cannot be derived")
+    vec = vector if isinstance(vector, dict) else __import__("json").loads(vector)
+    try:
+        ivv.verify_inputs(conn, vec, ephe_path=ephe_path, modules=modules, path_refs=path_refs,
+                          jd_range=iv.consumed_jd_range((manifest_horizon.lower, manifest_horizon.upper)))
+    except RuntimeError as exc:
+        raise VerificationRefused("stale_inputs", str(exc)) from exc
+    out["inputs"] = "independently re-derived"
+    # R10-4 (ii): the runner names ITS OWN code — and that code must be the code the manifest vector pinned
+    from . import window_gate as wg
+    who = conn.execute("SELECT current_user, session_user").fetchone()
+    login, session = tuple(who.values()) if isinstance(who, dict) else tuple(who)
+    try:
+        runner = wg.runner_identity(modules, login=login, session=session)
+    except RuntimeError as exc:
+        raise VerificationRefused("no_runner_identity", str(exc)) from exc
+    import hashlib
+    pinned = hashlib.sha256(wg._canon(vec["implementation"]).encode("utf-8")).hexdigest()
+    if runner["implementation_digest"] != pinned:
+        raise VerificationRefused("runner_not_pinned", f"this runner's implementation digest {runner['implementation_digest']} "
+                                  f"is not the one the manifest pinned ({pinned}) — it is not the governed verification job")
+    out["runner"] = runner
     try:
         inv_v.validate_consumed_dasha_population(conn, chart_id=chart_id, generation=generation)
     except inv_v.Unverifiable as exc:
@@ -240,7 +261,7 @@ def _inventory_header(conn, chart_id, generation, event_class):
 
 def verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
                  path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
-                 drishti_bound: bool, vedha_bound: bool, persist: bool) -> dict:
+                 drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None) -> dict:
     """See `_verify_class`. A class whose records (or any derivation) the verifier cannot independently derive is
     UNVERIFIED — an explicit result, the gate stays closed, nothing is persisted — never a pass."""
     from . import inventory_verifier as inv_v
@@ -249,14 +270,14 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
                              position_at=position_at, configured_selection=configured_selection,
                              path_rulings=path_rulings, h_unknown=h_unknown, moon_scope_domain=moon_scope_domain,
                              factor_rows_for=factor_rows_for, drishti_bound=drishti_bound, vedha_bound=vedha_bound,
-                             persist=persist)
+                             persist=persist, runner=runner)
     except inv_v.Unverifiable as exc:
         return {"event_class": event_class, "persisted": False, "status": "UNVERIFIED", "reason": str(exc)}
 
 
 def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
                   path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
-                  drishti_bound: bool, vedha_bound: bool, persist: bool) -> dict:
+                  drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None) -> dict:
     """Everything the independent verifiers say about ONE event class. With `persist=False` (the builder's in-build
     self-check, and `--report-only`) nothing is written. With `persist=True` — the verifier principal's act — the 1206
     inventory-verification row and every included P1–P4 grain's 1240 window-verification row are REPLACED (the caller
@@ -374,12 +395,63 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
                 "no longer identifies the stored state (a writer replaced it outside the lock protocol); nothing is persisted")
         for grain, report, derived_w in reports:
             stage(f"record_verification {grain['path_id']}", lambda g=grain, r=report, d=derived_w:
-                  wg.record_verification(conn, report=r, input_digest=snap, expected=d,
+                  wg.record_verification(conn, report=r, input_digest=snap, expected=d, runner=runner,
                                          checked_inputs_digest=fp0["grains"][f"{g['path_id']}@{g['rule_version']}"][0],
                                          **g))
         stage("inventory_verification", lambda: inv_v.write_verification(
             conn, chart_id=chart_id, generation=generation, event_class=event_class, rederived_digest=res["digest"]))
     out["status"] = "VERIFIED" if all(w["status"] == "VERIFIED" for w in windows) else "UNVERIFIED_DYNAMIC"
+    return out
+
+
+#: The arms of the 1206/1232 completeness function that compare the inventory/snapshot with the PUBLISHED manifest row
+#: (`... WHERE p.status = 'published'`). On a CANDIDATE manifest — the only kind a verification runs against — that row does not
+#: exist, so each reports a spurious violation against NULL. They are RE-EVALUATED here against the candidate manifest itself;
+#: nothing else in the combined gate is touched. (Stream B: the function selecting `status IN ('candidate','published')` would
+#: make this unnecessary.)
+_PUBLISHED_ONLY = (("input_vector_mismatch", None), ("horizon_manifest_mismatch", None),
+                   ("convention_bridge_missing", "publication legacy convention"))
+
+
+def candidate_gate_on_candidate_manifest(conn, chart_id: str, generation: str) -> list[dict]:
+    """R10-4 (iii): `ka_gochara_candidate_gate_violations` — the SAME combined gate the seal uses — evaluated on the actual
+    candidate manifest. The completeness half reads the manifest only while it is `published`; the three arms that do are
+    re-derived against the candidate row (same predicates), everything else is the function's own output verbatim."""
+    from . import window_gate as wg
+    out = wg.combined_candidate_gate(conn, chart_id, generation)
+    pub = conn.execute("SELECT status, horizon, input_generation_vector, convention_id FROM public.kala_gochara_publication"
+                       " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    if pub is None:
+        return out + [{"event_class": "*", "path_id": None, "rule_version": None, "violation": "no_candidate_manifest",
+                       "detail": f"generation {generation} has no manifest"}]
+    status, m_horizon, m_vector, m_convention = tuple(pub.values()) if isinstance(pub, dict) else tuple(pub)
+    if status == "published":
+        return out                                      # the function saw the manifest: its output stands unchanged
+    def spurious(v):
+        for name, prefix in _PUBLISHED_ONLY:
+            if v["violation"] == name and (prefix is None or str(v["detail"]).startswith(prefix)):
+                return True
+        return False
+    out = [v for v in out if not spurious(v)]
+    snap = conn.execute("SELECT input_generation_vector, convention_id FROM public.ka_gochara_search_input_snapshot"
+                        " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    snap_vector, snap_convention = (None, None) if snap is None else (tuple(snap.values()) if isinstance(snap, dict) else tuple(snap))
+    mk = lambda cls, name, detail: {"event_class": cls, "path_id": None, "rule_version": None, "violation": name,           # noqa: E731
+                                    "detail": detail}
+    if snap_vector != m_vector:
+        out.append(mk("*", "input_vector_mismatch", "snapshot vector differs from the candidate manifest vector"))
+    bridge = conn.execute("SELECT sky_convention_id FROM public.ka_gochara_convention_bridge WHERE kala_convention_id = %s",
+                          (m_convention,)).fetchone()
+    if bridge is None:
+        out.append(mk("*", "convention_bridge_missing", f"candidate manifest legacy convention {m_convention}"))
+    elif (bridge[0] if not isinstance(bridge, dict) else next(iter(bridge.values()))) != snap_convention:
+        out.append(mk("*", "convention_mismatch", f"candidate manifest convention {m_convention} is bridged to a sky "
+                                                   f"convention other than the snapshot's {snap_convention}"))
+    for (cls, horizon) in (tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
+            "SELECT event_class, horizon FROM public.ka_gochara_search_inventory WHERE chart_id = %s AND generation = %s",
+            (chart_id, generation)).fetchall()):
+        if horizon != m_horizon:
+            out.append(mk(cls, "horizon_manifest_mismatch", f"{horizon} vs candidate manifest {m_horizon}"))
     return out
 
 
@@ -413,20 +485,29 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
                     conn, chart_id=chart_id, generation=generation, event_class=cls, position_at=position_at,
                     configured_selection=configured_selection_for(cls), path_rulings=path_rulings, h_unknown=h_unknown,
                     moon_scope_domain=moon_scope_domain, factor_rows_for=factor_rows_for, drishti_bound=drishti_bound,
-                    vedha_bound=vedha_bound, persist=not report_only)
+                    vedha_bound=vedha_bound, persist=not report_only, runner=pre.get("runner"))
         except VerificationDisagrees as exc:
             report["classes"][cls] = {"event_class": cls, "status": "DISAGREE", "stage": exc.stage, "detail": exc.detail}
             disagreements.append(cls)
-    gate = [] if report_only else wg.candidate_gate(conn, chart_id, generation)
+    # R10-4 (iii): the job ends in the SAME combined candidate gate the seal uses (search completeness 1206/1232 + window
+    # verification 1240) on the actual candidate manifest. A run over a SUBSET of classes is judged on that subset's
+    # violations and the generation-level ones; the rest are reported, never hidden.
+    gate_all = [] if report_only else candidate_gate_on_candidate_manifest(conn, chart_id, generation)
+    scope = set(pre["classes"])
+    full = classes is None
+    gate = [v for v in gate_all if full or v["event_class"] is None or v["event_class"] in scope]
     report["gate"] = gate
+    report["gate_outside_scope"] = [v for v in gate_all if v not in gate]
+    report["gate_source"] = "ka_gochara_candidate_gate_violations"
     verified = [c for c in report["classes"].values() if c.get("status") == "VERIFIED"]
     report["status"] = ("DISAGREE" if disagreements else
                         ("VERIFIED" if not gate and not report_only and len(verified) == len(report["classes"])
                          else "NOT_VERIFIED"))
-    report["cockpit"] = (f"VERIFIED (policy {_policy(report)}, {len(verified)} of {len(report['classes'])} classes)"
+    report["cockpit"] = (f"VERIFIED (policy {_policy(report)}, {len(verified)} of {len(report['classes'])} classes, "
+                         f"combined gate clean)"
                          if report["status"] == "VERIFIED" else
                          f"BUILT · NOT VERIFIED · gate CLOSED ({len(gate)} violation(s), {len(disagreements)} disagreement(s))")
-    report["exit_code"] = (EXIT_DISAGREE if disagreements else EXIT_OK)
+    report["exit_code"] = (EXIT_DISAGREE if disagreements or gate else EXIT_OK)
     return report
 
 

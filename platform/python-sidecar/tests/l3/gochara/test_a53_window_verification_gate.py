@@ -333,11 +333,12 @@ def test_the_table_refuses_an_incoherent_verified_row_and_any_update(world):
     cols = ("chart_id, generation, event_class, path_id, rule_version, verifier_id, verifier_version, status,"
             " policy_version, windows_expected, windows_stored, windows_reproduced, windows_unverified,"
             " expected_windows_digest, stored_windows_digest, windows_content_digest, fields_verified,"
-            " input_digest, derivation_inputs_digest")
+            " input_digest, derivation_inputs_digest, runner_identity")
     h = "a" * 64
-    ok = [CHART_ID, GEN, CLS, "P3", "1.0.0", "other", "1", "VERIFIED", "p", 1, 1, 1, 0, h, h, h, ["interval"], h, h]
+    runner = '{"commit": "c0ffee", "implementation_digest": "' + h + '"}'
+    ok = [CHART_ID, GEN, CLS, "P3", "1.0.0", "other", "1", "VERIFIED", "p", 1, 1, 1, 0, h, h, h, ["interval"], h, h, runner]
     ins = (f"INSERT INTO public.ka_gochara_eval_window_verification ({cols})"
-           " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)")
+           " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)")
     for label, mutate in (
             ("VERIFIED with an unverified window", lambda r: r.__setitem__(12, 1)),
             ("VERIFIED reproducing fewer than stored", lambda r: r.__setitem__(11, 0)),
@@ -372,8 +373,9 @@ def test_a_verification_row_needs_a_finalised_inventory_and_an_included_pin(worl
     ins = ("INSERT INTO public.ka_gochara_eval_window_verification (chart_id, generation, event_class, path_id,"
            " rule_version, verifier_id, verifier_version, status, policy_version, windows_expected, windows_stored,"
            " windows_reproduced, windows_unverified, expected_windows_digest, stored_windows_digest,"
-           " windows_content_digest, fields_verified, input_digest, derivation_inputs_digest) VALUES"
-           " (%s,%s,%s,%s,'1.0.0','v','1','VERIFIED','p',0,0,0,0,%s,%s,%s,ARRAY['interval'],%s,%s)")
+           " windows_content_digest, fields_verified, input_digest, derivation_inputs_digest, runner_identity) VALUES"
+           " (%s,%s,%s,%s,'1.0.0','v','1','VERIFIED','p',0,0,0,0,%s,%s,%s,ARRAY['interval'],%s,%s,"
+           " '{\"commit\": \"c0ffee\", \"implementation_digest\": \"" + h + "\"}'::jsonb)")
     for cls, path in (("career_entry", "P3"), (CLS, "P5")):         # no inventory for the class / no included pin
         with pytest.raises(psycopg.errors.Error):
             with w.conn.transaction():

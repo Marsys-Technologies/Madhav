@@ -173,6 +173,11 @@ CREATE TABLE public.ka_gochara_eval_window_verification (
   -- input identity, the manifest vector and policy) as the verifier saw it; the gate recomputes it, so a record
   -- inserted (or a prerequisite/contact/manifest changed) after verification invalidates the stored verification
   derivation_inputs_digest text       NOT NULL,
+  -- R10-4 / AM-24 item 4: the identity of the RUNNER that executed the verification — its code commit, the digest of the
+  -- implementation modules it ran (which must be the ones the manifest vector pinned: the gate compares it to the vector's
+  -- `implementation`), its runtime and login. The database cannot prove the runner computed independently; it records WHAT ran
+  -- and refuses a row that does not name a commit or whose code is not the pinned code.
+  runner_identity         jsonb       NOT NULL,
   verified_at             timestamptz NOT NULL DEFAULT now(),
 
   PRIMARY KEY (chart_id, generation, event_class, path_id, rule_version),
@@ -197,6 +202,9 @@ CREATE TABLE public.ka_gochara_eval_window_verification (
     'travel_event')),
   CONSTRAINT kgewv_ids_nonblank_ck CHECK (btrim(verifier_id) <> '' AND btrim(verifier_version) <> ''
                                           AND btrim(policy_version) <> ''),
+  CONSTRAINT kgewv_runner_identity_ck CHECK (jsonb_typeof(runner_identity) = 'object'
+    AND btrim(COALESCE(runner_identity ->> 'commit', '')) <> ''
+    AND COALESCE(runner_identity ->> 'implementation_digest', '') ~ '^[0-9a-f]{64}$'),
   CONSTRAINT kgewv_status_ck CHECK (status IN ('VERIFIED', 'UNVERIFIED_DYNAMIC', 'FAILED')),
   CONSTRAINT kgewv_counts_ck CHECK (windows_expected >= 0 AND windows_stored >= 0
                                     AND windows_reproduced >= 0 AND windows_unverified >= 0
@@ -521,6 +529,19 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
   ) m
   WHERE m.missing + m.extra + m.orphans > 0
   UNION ALL
+  -- R10-4 / AM-24 item 4: the verification must name the code that ran, and that code must be the code the manifest PINNED
+  -- (the vector's `implementation` digests — the verification-job modules are in the governed implementation identity)
+  SELECT v.event_class, v.path_id, v.rule_version, 'window_verification_runner_not_pinned'::text,
+         ('runner ' || COALESCE(v.runner_identity ->> 'commit', '?') || ' ran implementation '
+          || COALESCE(v.runner_identity ->> 'implementation_digest', '?') || ', the manifest pins '
+          || COALESCE((SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(p.input_generation_vector -> 'implementation'))
+                       FROM public.kala_gochara_publication p WHERE p.chart_id = p_chart AND p.generation = p_generation), 'none'))::text
+  FROM public.ka_gochara_eval_window_verification v
+  WHERE v.chart_id = p_chart AND v.generation = p_generation
+    AND v.runner_identity ->> 'implementation_digest' IS DISTINCT FROM (
+          SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(p.input_generation_vector -> 'implementation'))
+          FROM public.kala_gochara_publication p WHERE p.chart_id = p_chart AND p.generation = p_generation)
+  UNION ALL
   -- R10-2: the manifest's result policy governs EVERY record result field. No independent derivation of a record number
   -- exists under either known policy, so a record carries NULL evidence and severity and the `unqualified` valence
   SELECT e.event_class, e.path_id, e.rule_version, 'record_result_not_policy'::text,
@@ -695,7 +716,10 @@ BEGIN
       public.ka_gochara_eval_window_expected_digest(uuid, text, text, text, text),
       public.ka_gochara_eval_window_inputs_digest(uuid, text, text, text, text),
       public.ka_gochara_canonical_json(jsonb), public.ka_gochara_sha256_hex(text),
-      public.ka_gochara_f4_token(real)
+      public.ka_gochara_f4_token(real),
+      -- R10-4 (iii): the job ENDS in the same combined candidate gate the seal uses (1240's own function; the 1206/1232
+      -- completeness function it calls, and what that reads, are Stream B's grants — see 1241)
+      public.ka_gochara_candidate_gate_violations(uuid, text)
       TO gochara_verifier;
     RAISE NOTICE 'migration 1240: verifier grants issued to role gochara_verifier';
   ELSE

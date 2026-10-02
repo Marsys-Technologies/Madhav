@@ -26,11 +26,12 @@ from .test_a53_p1_support import GEN, _t, _world
 from .test_a53_contact_certification import LIBRA, _concrete
 from services.gochara_kernel import contact_certify as cc
 from services.gochara_kernel import record_verifier as rv
-from .test_a53_window_verification_gate import CLS, SPANS, _boot_p3  # noqa: F401
+from .test_a53_window_verification_gate import CLS, SPANS, _boot_p3, _materialise, _t  # noqa: F401
 from .test_a53_window_verification_roles import _consistent_sky, _seal  # noqa: F401
 from ._verification_persist import persist_window_verification  # noqa: F401
 
 FIXTURE = Path(__file__).parent / "fixtures" / "l1_read_stand_in_grants.sql"
+GATE_DELTA = Path(__file__).parent / "fixtures" / "verifier_combined_gate_delta_grants.sql"
 PASSWORD = "job-test-pw"
 
 
@@ -57,6 +58,7 @@ def _provision(w):
     """The verifier's privileges are Stream B's REAL 1241 (applied by the faithful mirror); only the L1/L0 reads — the
     data-plane owner's ACLs, not 1241's — are stood in here."""
     w.conn.execute(FIXTURE.read_text())
+    w.conn.execute(GATE_DELTA.read_text())          # R10-4 (iii): Stream B's 1241 owes these (see the fixture's header)
 
 
 def _job_position(w, spans):
@@ -85,7 +87,11 @@ def _job_position(w, spans):
 
 def _kwargs(w, position_at):
     store = writer_mod.RuleRegistryStore(w.conn)
+    from services.gochara_kernel import input_vector as iv
     return dict(
+        # R10-4: independent input identity is mandatory — the same ephemeris directory and module map the build bound
+        ephe_path=w.ephe, modules=iv.IMPLEMENTATION_MODULES, path_refs=writer_mod.gk_rule_registry.bound_path_refs(),
+        classes=["marriage"],      # a SUBSET run: the combined gate is judged on this class + the generation-level rows
         position_at=position_at, configured_selection_for=writer_mod.gk_rule_registry.selected_versions_for,
         path_rulings=writer_mod.VERIFIER_PATH_RULINGS, h_unknown=writer_mod.VERIFIER_H_UNKNOWN_RULING,
         moon_scope_domain=False, factor_rows_for=store.bound_factor_rows, drishti_bound=False, vedha_bound=False)
@@ -100,10 +106,24 @@ BUILDER = ("ka_gochara_relationship_record", "ka_gochara_contact", "ka_gochara_e
            "ka_gochara_search_interval", "ka_gochara_record_prerequisite")
 
 
+def _boot_complete(w):
+    """`_boot_p3`, but with daśā cover over the WHOLE horizon at every level (Saturn runs its own MD/AD/PD throughout), so the
+    inventory's period-role intervals are all searched (no honest `missing_inputs` gap) and the combined candidate gate has
+    nothing to report but what the manifest's candidate status implies (R10-4 iii)."""
+    from datetime import datetime, timezone
+    a, b = datetime(2024, 12, 1, tzinfo=timezone.utc), datetime(2025, 4, 1, tzinfo=timezone.utc)
+    w.set_lord_periods([("saturn", 2, a, b), ("saturn", 3, a, b)])
+    w.boot()
+    w.seed("saturn", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    SPANS["saturn"] = [(_t(1, 10), _t(2, 20))]
+    counts = _materialise(w, "P3", {"saturn": (_t(1, 10), _t(2, 20))})
+    assert counts["records"] == 1
+
+
 @pytest.fixture()
 def built(rworld):
     w = rworld
-    _boot_p3(w)
+    _boot_complete(w)
     # R10-1: the verifier now derives EVERY record the obligations × certified contacts imply, so the world must hold
     # them: Saturn's Libra residence is also a P1 reading (its own exaltation sign, anchors md/ad/pd) and a P4 record
     from .test_a53_window_verification_gate import _materialise
@@ -152,7 +172,7 @@ def test_the_verifier_writes_exactly_the_two_verification_tables_and_the_gate_pa
     before = _counts(w.conn, BUILDER)
     with login(w, "gochara_verifier") as conn:
         report = vj.run(conn, chart_id=CHART_ID, generation=GEN, **_kwargs(w, _job_position(w, [LIBRA])))
-    assert report["status"] == "VERIFIED" and report["gate"] == [] and report["exit_code"] == vj.EXIT_OK, report["classes"]
+    assert report["status"] == "VERIFIED" and report["gate"] == [] and report["exit_code"] == vj.EXIT_OK, (report["gate"], report["gate_outside_scope"])
     assert report["identity"]["separate"] is True and "VERIFIED (policy" in report["cockpit"]
     after = _counts(w.conn, vj.VERIFICATION_TABLES)
     assert after["ka_gochara_search_inventory_verification"] == 1 and after["ka_gochara_eval_window_verification"] == 4
@@ -253,11 +273,12 @@ def test_the_entry_point_reads_one_credential_and_maps_outcomes_to_exit_codes(bu
     assert entry.main(["--chart", CHART_ID]) == vj.EXIT_PRIVILEGE                  # no verifier credential: refused
     assert json.loads(capsys.readouterr().out)["code"] == "no_verifier_credential"
     monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (195.0, 2))   # a stand-in sky for main()
-    monkeypatch.setattr(entry, "_build_kwargs", lambda conn, ephe: _kwargs(w, _job_position(w, [LIBRA])))
+    monkeypatch.setattr(entry, "_build_kwargs", lambda conn, ephe: {
+        k: v for k, v in _kwargs(w, _job_position(w, [LIBRA])).items() if k != "classes"})   # the entry passes --class itself
     w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")
     try:
         monkeypatch.setenv(entry.ENV_URL, make_conninfo(w.dsn, user="gochara_verifier", password=PASSWORD))
-        assert entry.main(["--chart", CHART_ID]) == vj.EXIT_OK
+        assert entry.main(["--chart", CHART_ID, "--class", CLS]) == vj.EXIT_OK
         out = json.loads(capsys.readouterr().out)
         assert out["status"] == "VERIFIED"
         monkeypatch.setenv(entry.ENV_URL, w.dsn)                                  # the admin (superuser) login
