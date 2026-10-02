@@ -1,97 +1,49 @@
 {
-  "_comment": "S-L1 attribution hook, lane 'argala' (SS standing rule: every mandatory lane ships its own hook in its PR). Follows the rulings[] shape of /Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/attribution_hooks.json (name, categories, category_regex, note) and adds per-family detail. To be aligned with the README/schema committed by PR #2859 when it lands. ALL COUNTS ARE PRE-EPHEMERIS ESTIMATES (stored signs of the canonical chart 482012f1 before the ephemeris fix); they are restated from the S-L1 result. A change in these families that matches none of the entries below is UNATTRIBUTED.",
   "lane": "argala",
-  "name": "argala",
   "ruling": "SS N-61 (AR-1..AR-6, 2026-10-01), approved with changes 2026-10-02; outcome semantics per SS review decision (disjunctive rule: only 'argala_prevails by count' is certain)",
   "pr": "#2851",
-  "design_note": "00_ARCHITECTURE/briefs/suvarna/exec/DESIGN_ARGALA_L1_GRAHA_ROWS_v1_0.md (#2850)",
-  "migration_intent": "00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1219_INTENT_v1_0.md (migration 1219 is in this PR; 1221 is a separate HELD PR, see MIGRATION_1221_A29_INTENT_v1_0.md there)",
-  "asset": "ga_structural",
-  "categories": ["argala_graha_natal", "argala_natal_matrix", "virodha_argala_natal_matrix"],
-  "category_regex": ["argala"],
-  "unchanged_categories_in_scope": ["net_argala_per_varga", "contradiction_pair"],
-  "note": "stored families: argala_natal_matrix, virodha_argala_natal_matrix, net_argala_per_varga (45,000 rows canonical, 30 vargas x 5 ayanamshas x 144 / 144 / 12) plus the new argala_graha_natal. net_argala_per_varga is unchanged by this lane (its values move only if the ephemeris fix moves graha houses). contradiction_pair rows are derived by category and subject, so they are unchanged by this lane.",
-  "families": [
+  "charts": ["482012f1"],
+  "description": "S-L1 argala lane (SS N-61 AR-1..AR-6; PR #2851; migration 1219 ownership + count_sql seeds are in the integration). ga_structural (a) emits the NEW category argala_graha_natal: graha-level argala rows (BPHS pairing, both-node reversal) on D1 only, one row per (target graha, source graha) at an argala offset, verification tier single; (b) rewrites argala_natal_matrix: fact_value_num 1.0 -> NULL and fact_value_text NULL -> 'no_occupant' on the argala-offset cells (2, 4, 5, 11) whose source sign holds no graha (a 'value' change per such cell), plus source_calculation, formula_provenance_text and citation_human text (not detector fields); (c) virodha_argala_natal_matrix changes source_calculation and formula_provenance_text only. net_argala_per_varga and contradiction_pair do not change from this lane. The ga_sade_sati argala_during_period_jsonb subset loses the activations from empty source signs (fact_value_jsonb is not a detector field). The full per-ayanamsha declaration (families, distributions, columns changed, integrity / ownership / digest effects) is kept verbatim in evidence/argala_HOOK_DECLARATION_old_shape.json (the lane's original hook, written before the hook schema existed; it uses categories / category_regex and has no may_change, which the detector rejects as HOOK_ERROR). Counts are for the canonical chart and are the lane's own evidence (offline model identical to the writer on all five ayanamshas), pre-ephemeris; the ephemeris flip report (flips_native.json) shows NO class flip on the canonical chart, so occupancy, and therefore these counts, do not move with it. Other charts: argala_other_charts.json.",
+  "may_change": [
     {
-      "category": "argala_graha_natal",
       "table": "chart_facts",
-      "status": "new",
-      "fact_subject": "D1_<graha code>",
-      "fact_key": "from_<graha code>_offset_<2|4|5|11>",
-      "verification_pass_status": "single",
-      "expected_rows_canonical": {
-        "krishnamurti": 32,
-        "lahiri_chitrapaksha": 32,
-        "raman": 32,
-        "surya_siddhanta_classical": 28,
-        "true_chitra": 32,
-        "total": 156
-      },
-      "expected_rows_other_charts": "per chart: one row per (target graha, source graha) at an argala offset, D1 only, at most 72 per ayanamsha (360 per chart)",
-      "expected_distribution_per_ayanamsha": {
-        "fact_value_text (outcome_by_count, canonical)": {
-          "krishnamurti, lahiri_chitrapaksha, raman, true_chitra": {"unobstructed": 19, "argala_prevails": 8, "undetermined": 5},
-          "surya_siddhanta_classical": {"unobstructed": 18, "argala_prevails": 6, "undetermined": 4}
-        },
-        "outcome_any_obstructor (named variant, fact_value_jsonb)": {
-          "krishnamurti, lahiri_chitrapaksha, raman, true_chitra": {"obstructed": 13, "unobstructed": 19},
-          "surya_siddhanta_classical": {"obstructed": 10, "unobstructed": 18}
-        },
-        "rows at the 5th (offset_class extended)": {"4 ayanamshas": 6, "surya_siddhanta_classical": 4},
-        "rows with count_direction reverse (node as target)": {"4 ayanamshas": 7, "surya_siddhanta_classical": 6},
-        "vipareeta_condition true": 0
-      },
-      "never_emitted": "fact_value_text = 'obstructed' (the canonical field does not emit it while strength_comparison is null)",
-      "columns_new": ["fact_value_text", "fact_value_num (argala_count)", "fact_value_jsonb", "unit (graha_count)", "source_calculation (ga_structural_writer._build_argala_graha_rows/<engine>)", "formula_provenance_text"],
-      "derivation_check": "independent offline model (/Users/Dev/suvarna-evidence/TrackI/argala_l1/offline_edge_counts.py) is identical to the writer on all five ayanamshas",
-      "downstream": "L2 bo_karanajala (later batch) builds 32 argala edges (28 for surya_siddhanta) from these rows, citing their fact_ids; cancelled_flag is NOT set from the canonical field while strength is null"
+      "categories": ["argala_graha_natal"],
+      "change_types": ["appeared"],
+      "expected_count": {"exact": 156},
+      "expected_direction": "canonical per ayanamsha: 32 (krishnamurti, lahiri_chitrapaksha, raman, true_chitra) and 28 (surya_siddhanta_classical) = 156. Fact keys from_<graha code>_offset_<2|4|5|11>, subject D1_<graha code>.",
+      "note": "source: lane evidence (evidence/argala_HOOK_DECLARATION_old_shape.json, families[0].expected_rows_canonical; derivation_check: independent offline model identical to the writer on all five ayanamshas). rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) measured +117 on the synthetic chart: the figure is chart-geometry dependent (which grahas occupy which signs), so the canonical 156 is the lane's own figure for the canonical chart and the rehearsal 117 is NOT comparable. Exact for the canonical chart."
     },
     {
-      "category": "argala_natal_matrix",
       "table": "chart_facts",
-      "status": "changed",
-      "expected_rows_canonical": {"total": 21600, "per_ayanamsha": 4320, "note": "30 vargas x 144 cells; unchanged"},
-      "columns_changed": [
-        {
-          "column": "fact_value_num",
-          "change": "1.0 -> NULL on argala-offset cells (2, 4, 5, 11) whose source sign holds no graha; unchanged on occupied cells and on non-argala offsets (0.0)",
-          "expected_null_cells_canonical": {"krishnamurti": 672, "lahiri_chitrapaksha": 700, "raman": 672, "surya_siddhanta_classical": 692, "true_chitra": 708, "total": 3444, "of_argala_offset_cells": 7200},
-          "expected_occupied_cells_canonical": {"krishnamurti": 768, "lahiri_chitrapaksha": 740, "raman": 768, "surya_siddhanta_classical": 748, "true_chitra": 732, "total": 3756},
-          "d1_per_ayanamsha": "24 of 48 argala-offset cells become NULL (all five ayanamshas)"
-        },
-        {"column": "fact_value_text", "change": "NULL -> 'no_occupant' on exactly the cells that become NULL; NULL elsewhere", "expected_count": 3444},
-        {"column": "source_calculation", "change": "pyjhora_adapter.argala/<engine> -> ga_structural_writer._build_argala_rows/<engine>", "expected_count": 21600},
-        {"column": "formula_provenance_text", "change": "NULL -> short pointer (chunk ids, 1.0/0.25 convention unsourced, NULL = no_occupant, forward-only)", "expected_count": 21600},
-        {"column": "citation_human", "change": "text changes on the NULL cells only ('no occupant in the source sign, no argala claim')", "expected_count": 3444}
-      ],
-      "unchanged_columns": ["fact_id", "fact_subject", "fact_key", "citation_ref", "verification_pass_status (single)", "fact_value_num on occupied cells (unless the ephemeris fix moves occupancy)"],
-      "never": "a non-NULL score on an empty-source argala cell, or NULL on an occupied one (integrity conjunct (a29), migration 1221, a separate HELD PR)"
+      "categories": ["argala_natal_matrix"],
+      "change_types": ["value"],
+      "expected_count": {"exact": 3444},
+      "expected_direction": "argala-offset cells with no occupant in the source sign: fact_value_num 1.0 -> NULL and fact_value_text -> 'no_occupant'. Canonical per ayanamsha: krishnamurti 672, lahiri_chitrapaksha 700, raman 672, surya_siddhanta_classical 692, true_chitra 708 = 3,444 of 7,200 argala-offset cells (3,756 occupied cells keep 1.0).",
+      "note": "source: lane evidence (columns_changed[fact_value_num].expected_null_cells_canonical). One detector value change per such cell (both fact_value_num and fact_value_text change on the same row: one change). rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) measured 3,980 on the synthetic chart (chart-geometry dependent, not comparable)."
     },
     {
-      "category": "virodha_argala_natal_matrix",
       "table": "chart_facts",
-      "status": "changed",
-      "expected_rows_canonical": {"total": 21600, "per_ayanamsha": 4320, "note": "unchanged"},
-      "columns_changed": [
-        {"column": "source_calculation", "change": "pyjhora_adapter.virodha_argala/<engine> -> ga_structural_writer._build_argala_rows/<engine>", "expected_count": 21600},
-        {"column": "formula_provenance_text", "change": "NULL -> short pointer (unpaired, forward-only)", "expected_count": 21600}
-      ],
-      "unchanged_columns": ["fact_value_num (occupant-based 1.0 / 0.0)", "fact_value_text", "fact_id", "verification_pass_status (single)"]
+      "categories": ["argala_natal_matrix", "virodha_argala_natal_matrix"],
+      "change_types": ["appeared", "disappeared", "occurrence_count", "tier"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "the two stored matrices keep every row: 21,600 rows each on the canonical chart (30 vargas x 144 cells, 4,320 per ayanamsha); verification_pass_status stays single (these categories are not in the tiers lane).",
+      "note": "explicit zero; source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (no appeared / disappeared / occurrence_count / tier change in either matrix)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["virodha_argala_natal_matrix"],
+      "change_types": ["value"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "virodha_argala_natal_matrix changes only source_calculation and formula_provenance_text (21,600 rows): neither is a detector field; fact_value_num (occupant-based 1.0 / 0.0) and fact_value_text are unchanged.",
+      "note": "explicit zero; source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (no virodha value change)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["argala_graha_natal"],
+      "change_types": ["value", "disappeared", "occurrence_count", "tier"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "the new graha-level rows only APPEAR (entry above); each key has one row and none is removed.",
+      "note": "explicit zero; source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence)."
     }
-  ],
-  "other_effects": {
-    "ga_sade_sati": {
-      "categories": ["sade_sati_phase", "sade_sati_downstream_cross_reference"],
-      "fact_key": "argala_during_period_jsonb",
-      "change": "the argala subset (reads argala_natal_matrix WHERE fact_value_num IS NOT NULL AND != 0) loses the activations from empty source signs",
-      "expected_direction": "decrease; canonical today 60 rows / 240 activations (sade_sati_phase) and 20 rows / 80 activations (downstream_cross_reference), 4 per row; roughly half expected (D1: 24 of 48 cells occupied), pre-ephemeris",
-      "attribution": "argala (AR-3)"
-    },
-    "get_argala (served tool)": "serves argala_natal_matrix and virodha_argala_natal_matrix rows: fact_value_num NULL and fact_value_text 'no_occupant' appear on 3,444 canonical rows; the all_zero flag is unaffected (a NULL is not 0); the offsets description text edit is NOT part of this lane (deferred to a tool-text batch coordinated with Purna)",
-    "integrity": "ga_structural integrity_check_sql gains conjunct (a29) (argala NULL <=> empty source sign) as migration 1221 (separate HELD PR), a named step immediately before the S-L1 launch and never before the writer deploy (the runner applies a merged file at the next deploy, so it merges only after this PR's writer image is deployed and verified); conjunct (e27) is vacuous on NULL. Expected: red on live canonical data until S-L1 writes the NULL cells, green after.",
-    "ownership_and_counts": "migration 1219: fact_category_ownership gains argala_graha_natal, the 22 ga_structural-emitted categories lacking a row and the other producers' categories (172 rows), the five panchanga categories move from ga_structural to ga_panchanga; ga_strength count_sql narrowed (14,141 -> 13,651 canonical), ga_structural 102,037 -> 106,707 (+156 argala_graha_natal rows after S-L1); registry-only, no chart_facts row changes beyond argala_graha_natal.",
-    "output_digest": "ga_structural output digest spec gains argala_graha_natal (spec sha b2490646... -> d480c829...) in migration 1221 (separate HELD PR, with the a29 conjunct, at W1), so the digest moves with the new rows; NOT in 1219 (retiring the spec at the integration deploy would make ga_structural receipts read receipt_spec_retired for serving until rebuilt)",
-    "writer_code_digests": ["ga_structural", "ga_yoga", "ga_sensitive_degree", "ga_ayurdaya", "ka_vighnakara"],
-    "frozen_manifests": "after 1219: ga_strength and ga_condition (count_sql); after 1221: ga_structural (integrity_check_sql) go to evidence_refresh_required; no L0 digest moves"
-  }
+  ]
 }
