@@ -4312,44 +4312,37 @@ _DYN_FROM_TAIL = re.compile(r"\b(?:FROM|JOIN)\b(?:\s+(?:ONLY\s+)?[\w.\"]*)?\s*$"
 _DYN_JOINED = re.compile(r"(?:\s|/\*.*?\*/|//[^\n]*\n)*(?:\+|,|\.concat\s*\()", re.S)
 
 
-def _dynamic_from(txt: str, spans: list[tuple[int, str]], prose_tail_ok: bool = False) -> bool:
+def _dynamic_from(txt: str, spans: list[tuple[int, str]]) -> bool:
     """Does any literal name its table at run time: `FROM ${T}` (also `"${T}"`, `"public"."${T}"`, `public.${T}`, JOIN,
     ONLY), a `format(… FROM %I …)` placeholder, or a literal ending in `FROM`/`JOIN`/`FROM t_` that has a name joined
-    on with `+`, `.concat(` or an array `,` (a comment between is skipped)?
-    `prose_tail_ok` (the label scan, SS N-74(a)): a concatenated literal that ENDS in `from <name>` but is a prose sentence (five or more
-    words, no SQL signal: `'Retrieve rows for a chart from kala_x' + '…'`) is not a table name built at run time. The outside probe keeps
-    the broader reading (its callers pass nothing)."""
+    on with `+`, `.concat(` or an array `,` (a comment between is skipped)?"""
     for pos, c in spans:
         if _DYN_FROM.search(c):
             return True
         if _DYN_FROM_TAIL.search(c) and _DYN_JOINED.match(txt[pos + len(c) + 1:pos + len(c) + 200]):
-            if prose_tail_ok and _prose_shaped(c, "") and not (_SQL_STRONG.search(c) or _SQL_UPPER.search(c)):
-                continue
             return True
     return False
 
 
-# ───────────── E6 / SS N-74(a): a SELECT is not a LABEL (REGISTRY_REVISION 14) ─────────────
-# A serving module that merely NAMES the asset (a `provenance: { tables: [...] }` envelope, `asset_id: 'x'` of a service probe, a prose string, a
-# type name, an import path) is not a module that selects rows from it. Every occurrence of a token in a module is classified, deterministically
-# and read-only (regex + a bracket scan over the comment-masked text; no LLM, no file but the module itself):
-#   SELECT     the name is in an SQL literal, or is a bare name used as a table (a builder / call argument, an element of an unkeyed list, `const T = 't'`,
-#              a non-label key's value), or is part of a table name assembled at run time
-#   LABEL      the name is in a literal that is NOT SQL (prose, a path, a `a:b:name` id), a bare name under a label key (or an element of an array directly
-#              under one) in a module with no run-time table access, an import / require path, a type / interface / enum / class name, an object-literal key
-#              in a module with no run-time table access
-#   AMBIGUOUS  everything else
-#   PROBE      (strategist ruling on DENS, N-74(a) review) an occurrence inside a `service_probe` envelope (the object literal holding the string
-#              'service_probe': `asset_id`, `endpoint_identity`, `source_ref`) for an asset whose REGISTRY KIND is `service` is a REACH: the capability
-#              that carries the envelope serves the service. The identical envelope on a data-kind asset stays a label. Whether Dens.served applies to
-#              services at all is a separate, later, declared rule; nothing here decides it.
-# A module is a reach unless EVERY occurrence is LABEL (and it carries no strict served select): SELECT and AMBIGUOUS both count. The label side
-# needs a positive recognition; the safe direction (only an exact "scanned, no select" reads N/A) is the default.
+# ───────────── E6 / SS N-74(a): a SELECT is not a LABEL (REGISTRY_REVISION 14) — a CLOSED ALLOW-LIST ─────────────
+# A serving module that merely NAMES the asset is not a module that selects rows from it. Every occurrence of a token in a module is classified,
+# deterministically and read-only (regex + a bracket scan over the comment-masked text; no LLM, no file but the module itself). The design is a
+# CLOSED ALLOW-LIST of label contexts (strategist, SS DENS second review): a name is a LABEL only in one of these, and EVERYTHING ELSE is a reach.
+# There is no consumption tracking and no open-ended shape heuristic:
+#   (1) PROVENANCE ENVELOPE: a bare name that is an element of the array under the key `tables` / `source_tables`, whose parent object is the value
+#       of the key `provenance`, where the object literal holding `provenance` is a property value or a return value of an object literal that is
+#       not a call argument and not a const holder (the real envelope: `return { content: { ..., provenance: { tables: [...] } } }`);
+#   (2) STRICT PROSE: a string that is the whole value of the key `source` / `source_table` / `label` / `note` / `reason` / `description` / `message` /
+#       `title`, is strict prose (`_strict_prose`) and sits in an object literal that is not a call argument;
+#   (3) the `service_probe` envelope of a SERVICE-kind asset is a REACH (kind `probe`), at any depth below the marker object; a data-kind asset's
+#       envelope is not in the list either, so it is a reach too;
+#   (4) an import / require path, a type / interface / enum / class name; a COMMENT is not a label, it BLOCKS (R51; handled in capability_scan).
+# SELECT = SQL in the literal (or its +/, neighbours); AMBIGUOUS = every other occurrence. A module is a reach unless EVERY occurrence is a LABEL (and
+# it carries no strict served select): only an exact "scanned, no select, no unrecognised form" reads N/A.
 LABEL, SELECT_REF, AMBIGUOUS_REF = "label", "select", "ambiguous"
-PROBE_REF = "probe"        # a service-kind asset named inside a `service_probe` envelope: the module serves the service (a reach, not a label)
-# keys whose value / array elements are provenance, not a table a query is built from (SS N-74(a): `source_table:`, `table:`, a response envelope's label)
-DENS_LABEL_KEYS = frozenset({"source_table", "source_tables", "table", "tables", "source", "sources", "source_ref", "source_surface", "provenance",
-                             "asset_id", "asset_ids", "assets", "required_assets", "backing_tables"})
+PROBE_REF = "probe"        # a service-kind asset named inside a `service_probe` envelope: the module serves the service
+PROV_ARRAY_KEYS = frozenset({"tables", "source_tables"})
+PROSE_KEYS = frozenset({"source", "source_table", "label", "note", "reason", "description", "message", "title"})
 # SQL signals in a literal: case-insensitive for the words prose does not use (SELECT, JOIN, INSERT INTO, ORDER BY, `$1`, `::cast`, `WHERE <col> =`),
 # case-SENSITIVE for the words prose does use (FROM / INTO / UPDATE / TABLE / SET / WHERE / RETURNING / TRUNCATE / UNION: prose says "from <table>",
 # "where present", "the union of"; SQL in this codebase is upper-case, and a lower-case SQL literal carries one of the case-insensitive signals)
@@ -4362,23 +4355,10 @@ _SQL_STRONG = re.compile(r"\bSELECT\b|\bJOIN\b|\bINSERT\s+INTO\b|\bDELETE\s+FROM
                          r"|\bCOPY\s+[\w.\"]+(?:\s*\([^)]*\))?\s+(?:TO|FROM)\b", re.I)
 _SQL_UPPER = re.compile(r"\b(?:FROM|INTO|UPDATE|TABLE|SET|WHERE|RETURNING|TRUNCATE|UNION|COPY)\b")
 _LIT_GAP = re.compile(r"[\s+,]*(?:\.concat\s*\(\s*)?")
-_LABEL_KEY_AT_END = re.compile(r"(?:^|[{,]|\n)\s*(?:([A-Za-z_$][\w$]*)|'([A-Za-z_]\w*)'|\"([A-Za-z_]\w*)\")\s*\??:\s*$")
+_KEY_AT_END = re.compile(r"(?:^|[{,]|\n)\s*(?:([A-Za-z_$][\w$]*)|'([A-Za-z_]\w*)'|\"([A-Za-z_]\w*)\")\s*\??:\s*$")
 _IMPORT_PATH_BEFORE = re.compile(r"(?:^|[\s;}])(?:from|import)\s*$|\b(?:import|require)\s*\(\s*$")
 _TYPE_NAME_BEFORE = re.compile(r"\b(?:type|interface|enum|class)\s+$")
-_KEY_AFTER = re.compile(r"\s*\??\s*:")
-_KEY_START_BEFORE = re.compile(r"(?:^|[{,;(\[]|\n)\s*$")
-# a run-time table through a query builder: `.from(x)` / `.into(x)` / `.table(x)` ... with a non-literal argument (the built-ins that share the
-# method name, `Array.from(x)`, are not table builders)
-_BUILDER_DYN = re.compile(r"\.\s*(?:from|into|table|insertInto|selectFrom|updateTable|deleteFrom)\s*\(\s*(?![\s'\"`)])")
-_NOT_A_BUILDER = re.compile(r"(?:\bArray|\bBuffer|\bObject|\bPromise|\bSet|\bMap|\bString|\bNumber|\bDate|\w*Array)\s*$")
-
-
-def _builder_dynamic(cmask: str) -> bool:
-    """A query-builder call that names its table at run time (`db.from(name)`): a bare name / key in the module could be what it is handed."""
-    for m in _BUILDER_DYN.finditer(cmask):
-        if not _NOT_A_BUILDER.search(cmask[max(0, m.start() - 24):m.start()]):
-            return True
-    return False
+_PROSE_WORD = re.compile(r"[A-Za-z]+[.,;:!?]*")
 
 
 def _literal_chain(mod: dict, i: int, radius: int = 2) -> str:
@@ -4398,11 +4378,16 @@ def _literal_chain(mod: dict, i: int, radius: int = 2) -> str:
     return " ".join(spans[k][1] for k in range(lo, hi + 1))
 
 
-def _prose_shaped(c: str, tok: str) -> bool:
-    return len(re.findall(r"[A-Za-z]{2,}", c.replace(tok, " ") if tok else c)) >= 5
-
-
-_ITER_METHODS = r"(?:map|forEach|filter|reduce|reduceRight|flatMap|find|findIndex|some|every|join|includes|indexOf|keys|values|entries|flat|slice|concat)"
+def _strict_prose(c: str, tok: str) -> bool:
+    """A literal is prose only if it has five or more whitespace-separated words besides the name, EVERY one purely alphabetic with at most
+    trailing sentence punctuation (`. , ; : ! ?`) -- no `_`, digit, `( ) = * ' " ` , -`, no identifier-like run -- and the name stands as its own
+    word (optionally in `( )` or with trailing punctuation). A snake_case run, a comma list, `a as b` or a JSON array string is never prose."""
+    words = c.split()
+    name = re.compile(r"\(?" + re.escape(tok) + r"[.,;:!?)]*")
+    others = [w for w in words if not name.fullmatch(w)]
+    if len(others) == len(words) or len(others) < 5:
+        return False
+    return all(_PROSE_WORD.fullmatch(w) for w in others)
 
 
 def _opener_before(blank: str, i: int):
@@ -4420,54 +4405,19 @@ def _opener_before(blank: str, i: int):
     return None
 
 
-def _closer_of(blank: str, i: int):
-    """Index of the bracket closing the opener at `i`, or None."""
-    depth = 0
-    for k in range(i, len(blank)):
-        if blank[k] in "([{":
-            depth += 1
-        elif blank[k] in ")]}":
-            depth -= 1
-            if depth == 0:
-                return k
-    return None
+_NOT_A_CALL_WORDS = frozenset({"return", "await", "yield", "typeof", "void", "throw", "delete"})
 
 
-def _label_key_of(mod: dict, q: int):
-    """`(key, openers)` when the string literal opening at offset `q` is the value of a label key, or an element of an array directly under one
-    (`key` lower-cased; `openers` = the offsets of the array and/or the object that holds the key), else None."""
-    cm, blank = mod["cmask"], mod["blank"]
-
-    def key_at_end(text: str):
-        m = _LABEL_KEY_AT_END.search(text)
-        k = ((m.group(1) or m.group(2) or m.group(3)).lower() if m else None)
-        return k if k in DENS_LABEL_KEYS else None
-    k = key_at_end(cm[max(0, q - 200):q])
-    if k:
-        o = _opener_before(blank, q)
-        return k, ([o] if o is not None else [])
-    o = _opener_before(blank, q)
-    if o is not None and blank[o] == "[":
-        k = key_at_end(cm[max(0, o - 200):o])
-        if k:
-            parent = _opener_before(blank, o)
-            return k, [o] + ([parent] if parent is not None else [])
-    return None
-
-
-def _label_key_context(mod: dict, q: int) -> bool:
-    """Is the string literal opening at offset `q` the value of a label key, or an element of an array directly under one?"""
-    return _label_key_of(mod, q) is not None
-
-
-_NOT_A_CALL_WORDS = frozenset({"return", "await", "yield", "typeof", "of", "in", "case", "else", "void", "throw", "delete", "instanceof", "do"})
+def _prev_nonspace(blank: str, i: int) -> int:
+    k = i - 1
+    while k >= 0 and blank[k].isspace():
+        k -= 1
+    return k
 
 
 def _paren_is_call(blank: str, k: int) -> bool:
     """Is the `(` at `k` a call / `new` argument list (as opposed to a grouping paren after `=>`, `return`, `=`, `:`, an operator or a bracket)?"""
-    j = k - 1
-    while j >= 0 and blank[j].isspace():
-        j -= 1
+    j = _prev_nonspace(blank, k)
     if j < 0:
         return False
     ch = blank[j]                                                  # `=> (` and `= (` end in a non-word char: a grouping paren
@@ -4477,64 +4427,84 @@ def _paren_is_call(blank: str, k: int) -> bool:
     return ch in ")]"                                              # `f(x)(...)`, `a[0](...)`
 
 
-def _bracket_is_call_arg(mod: dict, i: int) -> bool:
-    """Is the object / array opening at `i` handed to something: a call argument (first or later), a spread, or iterated at once (`[...].map(`)?"""
-    blank = mod["blank"]
-    k = i - 1
-    while k >= 0 and blank[k].isspace():
-        k -= 1
+def _object_is_call_arg(blank: str, o: int) -> bool:
+    """Is the object literal opening at `o` a call argument (first or later)? A spread (`...{`) counts as handed on."""
+    k = _prev_nonspace(blank, o)
     p = blank[k] if k >= 0 else ""
     if p == ".":
-        return True                                                # `...{...}`
+        return True
     if p == "(":
-        return _paren_is_call(blank, k)                            # `f({...})`; `=> ({...})` / `return ({...})` only group
+        return _paren_is_call(blank, k)
     if p == ",":
-        o = _opener_before(blank, k)
-        if o is not None and blank[o] == "(":
-            return _paren_is_call(blank, o)                        # a later call argument
-    c = _closer_of(blank, i)
-    return bool(c is not None and re.match(r"\s*\??\.\s*" + _ITER_METHODS + r"\b", blank[c + 1:c + 40]))
+        q = _opener_before(blank, k)
+        return q is not None and blank[q] == "(" and _paren_is_call(blank, q)
+    return False
 
 
-def _const_holder_consumed(mod: dict, i: int) -> bool:
-    """The object / array at `i` is the initialiser of `const NAME = ...`: is NAME passed to a call, spread, iterated, indexed or read by a
-    method anywhere in the module (a same-module reader the scan can see)?"""
-    cm, blank = mod["cmask"], mod["blank"]
-    m = re.search(r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=\s*$", cm[max(0, i - 120):i])
-    if not m:
-        return False
-    n = re.escape(m.group(1))
-    pats = (r"[(,]\s*" + n + r"\s*[,)]", r"\.\.\.\s*" + n + r"\b", r"\b(?:of|in)\s+" + n + r"\b",
-            r"\b" + n + r"\s*\??\.\s*" + _ITER_METHODS + r"\b", r"\b" + n + r"\s*\[", r"\breturn\s+" + n + r"\b",
-            r"=>\s*" + n + r"\b\s*[,)]", r"\b" + n + r"\s*\)\s*\.")
-    return any(re.search(x, blank) for x in pats)
+def _key_before(cm: str, i: int):
+    """The (lower-cased) property key whose `:` ends the text before offset `i`, or None."""
+    m = _KEY_AT_END.search(cm[max(0, i - 200):i])
+    return (m.group(1) or m.group(2) or m.group(3)).lower() if m else None
 
 
-def _container_consumed(mod: dict, openers) -> bool:
-    return any(_bracket_is_call_arg(mod, o) or _const_holder_consumed(mod, o) for o in openers)
-
-
-def _key_read(mod: dict, key: str) -> bool:
-    """Does the module READ `key` from an object: `.key`, `?.key`, `['key']`, or a destructuring that names it (`{ key }`, `{ key = d }`,
-    `{ key: alias }` in a declaration or a parameter list; an object LITERAL `{ key: 'x' }` is not a destructuring)?"""
-    k = re.escape(key)
+def _value_context_ok(mod: dict, o: int) -> bool:
+    """The object literal opening at `o` is a PROPERTY VALUE (of an object literal whose own context is ok, recursively) or a RETURN VALUE (`return {`,
+    `=> {`, `=> ({`): never a call argument, a const holder, an array element or anything else."""
     blank, cm = mod["blank"], mod["cmask"]
-    named = r"\{[^{}]*\b" + k + r"\b\s*(?:,|=|(?=\})|:\s*[A-Za-z_$])[^{}]*\}"
-    return bool(re.search(r"\.\s*" + k + r"\b", blank, re.I)
-                or re.search(r"\[\s*['\"`]" + k + r"['\"`]\s*\]", cm, re.I)
-                or re.search(r"\b(?:const|let|var)\s*" + named + r"\s*=(?!=)", blank, re.I)
-                or re.search(r"\(\s*" + named + r"\s*(?:\)\s*(?:=>|\{|:)|,)", blank, re.I))
-
-
-def _label_key_ok(mod: dict, q: int) -> bool:
-    """A label key makes a name a LABEL only where nothing in the module can turn it into a table: no run-time table access, the key is never
-    READ from an object (`.table`, `['table']`, destructuring), and the object / array that holds it (or the const holding that) is never passed to
-    a call, spread or iterated (SS DENS review L1: a same-module reader of the label key)."""
-    got = _label_key_of(mod, q)
-    if got is None or mod["dynamic_table"]:
+    k = _prev_nonspace(blank, o)
+    if k < 0:
         return False
-    key, openers = got
-    return not (_key_read(mod, key) or _container_consumed(mod, openers))
+    p = blank[k]
+    if p == ":":
+        if _key_before(cm, k + 1) is None:
+            return False                                           # a ternary colon, not a property
+        parent = _opener_before(blank, o)
+        return parent is not None and blank[parent] == "{" and _value_context_ok(mod, parent)
+    if p == "(" and not _paren_is_call(blank, k):
+        k = _prev_nonspace(blank, k)                               # a grouping paren: look before it
+        if k < 0:
+            return False
+        p = blank[k]
+    if p == ">" and k > 0 and blank[k - 1] == "=":
+        return True                                                # `=> {` / `=> ({`
+    w = re.search(r"[A-Za-z_$][\w$]*$", blank[max(0, k - 40):k + 1])
+    return bool(w and w.group(0) == "return")
+
+
+def _is_provenance_element(mod: dict, i: int) -> bool:
+    """Allow-list (1): the literal span `i` is a bare element of `provenance: { tables | source_tables: [ ... ] }` in an envelope that is a property
+    value or return value of an object literal."""
+    start, c = mod["spans"][i]
+    blank, cm = mod["blank"], mod["cmask"]
+    q = start - 1
+    k = _prev_nonspace(blank, q)
+    if k < 0 or blank[k] not in "[,":
+        return False
+    arr = _opener_before(blank, q)
+    if arr is None or blank[arr] != "[" or _key_before(cm, arr) not in PROV_ARRAY_KEYS:
+        return False
+    j = start + len(c) + 1                                          # after the closing quote
+    while j < len(blank) and blank[j].isspace():
+        j += 1
+    if j >= len(blank) or blank[j] not in ",]":
+        return False
+    po = _opener_before(blank, arr)
+    if po is None or blank[po] != "{" or _key_before(cm, po) != "provenance":
+        return False
+    holder = _opener_before(blank, po)
+    return holder is not None and blank[holder] == "{" and _value_context_ok(mod, holder)
+
+
+def _is_prose_label(mod: dict, i: int, tok: str) -> bool:
+    """Allow-list (2): the literal span `i` is the whole value of a PROSE key, strict prose, in an object literal that is not a call argument."""
+    start, c = mod["spans"][i]
+    blank, cm = mod["blank"], mod["cmask"]
+    if _key_before(cm, start - 1) not in PROSE_KEYS:
+        return False
+    o = _opener_before(blank, start - 1)
+    if o is None or blank[o] != "{" or _object_is_call_arg(blank, o):
+        return False
+    return _strict_prose(c, tok)
 
 
 def _in_interpolation(c: str, rel: int) -> bool:
@@ -4564,30 +4534,20 @@ def _literal_ref_kind(mod: dict, i: int, off: int, tok: str) -> str:
         return AMBIGUOUS_REF                                      # code inside `${ ... }`: a call argument, a name built at run time
     if before.endswith("}") or after.startswith("${"):
         return AMBIGUOUS_REF                                      # glued to an interpolation: a name built at run time
-    if not before.strip() and re.search(r"\+\s*$", cm[max(0, start - 1 - 8):start - 1]):
-        return AMBIGUOUS_REF                                      # the head of a concatenated name
     if not after.strip() and re.match(r"\s*(?:\+|\.concat\b)", txt[start + len(c) + 1:start + len(c) + 12]):
         return AMBIGUOUS_REF                                      # the tail of a concatenated name
-    # A name EMBEDDED in a longer literal with no SQL signal is a label only on a positive recognition (SS DENS review M1), never by default:
     if _IMPORT_PATH_BEFORE.search(cm[max(0, start - 1 - 120):start - 1]):
-        return LABEL                                              # an import / require path
-    if _prose_shaped(c, tok):
-        return LABEL                                              # a sentence (five or more words)
-    if before[-1:] in (":", "/", "#") or after[:1] in (":", "/", "#"):
-        return LABEL                                              # an id / path / fragment (`a:b:name`, `file.sql#name`, `./name`)
-    if _label_key_ok(mod, start - 1):
-        return LABEL                                              # a value of a label key (`source: 'name (note)'`)
-    return AMBIGUOUS_REF                                          # `'t_x a'`, `'app.t_x'`, `'t_x,t_y'`, `'["t_x"]'`, `'name as b'` ...
+        return LABEL                                              # (4) an import / require path
+    if c.strip() == tok and _is_provenance_element(mod, i):
+        return LABEL                                              # (1) the provenance envelope
+    if _is_prose_label(mod, i, tok):
+        return LABEL                                              # (2) strict prose under a prose key
+    return AMBIGUOUS_REF                                          # everything else is a reach
 
 
 def _code_ref_kind(mod: dict, off: int, end: int) -> str:
-    cm = mod["cmask"]
-    if _TYPE_NAME_BEFORE.search(cm[max(0, off - 24):off]):
-        return LABEL
-    if (_KEY_AFTER.match(cm[end:end + 24]) and _KEY_START_BEFORE.search(cm[max(0, off - 200):off]) and not mod["dynamic_table"]):
-        o = _opener_before(mod["blank"], off)                     # an object-literal key: a names-map entry, unless the map is handed on
-        if o is None or not _container_consumed(mod, [o]):
-            return LABEL
+    if _TYPE_NAME_BEFORE.search(mod["cmask"][max(0, off - 24):off]):
+        return LABEL                                              # (4) a type / interface / enum / class name
     return AMBIGUOUS_REF
 
 
@@ -4597,25 +4557,25 @@ _PROBE_SPREAD = re.compile(r"\.\.\.\s*[A-Za-z_$(\[{]")                # `...base
 
 
 def _in_probe_envelope(mod: dict, off: int) -> bool:
-    """Is `off` inside a `service_probe` envelope? The innermost object literal holds the string 'service_probe', OR holds a `kind:` whose value is
-    not a literal, OR spreads another object (the kind is then unreadable: the safe direction treats it as an envelope), OR the object one level up
-    holds the marker (an asset id nested one object deeper in the envelope)."""
+    """Is `off` inside a `service_probe` envelope, at ANY depth below the marker object? Walks every enclosing object literal: one that holds the
+    string 'service_probe', a `kind:` whose value is not a literal, or a spread (the kind is then unreadable: the safe direction)."""
     blank, cm = mod["blank"], mod["cmask"]
-    lo, hi = _enclosing_object(blank, off)
-    body = cm[lo:hi]
-    if _PROBE_MARK.search(body) or _PROBE_OPEN_KIND.search(blank[lo:hi]) or _PROBE_SPREAD.search(blank[lo:hi]):
-        return True
-    if lo > 0:
-        plo, phi = _enclosing_object(blank, lo)
-        if (plo, phi) == (0, len(blank)):
-            return False                                           # no enclosing object: the whole file is not a parent envelope
-        return bool(_PROBE_MARK.search(cm[plo:phi]))
-    return False
+    pos, first = off, True
+    while True:
+        lo, hi = _enclosing_object(blank, pos)
+        whole = (lo, hi) == (0, len(blank))
+        if whole and not first:
+            return False                                           # no further enclosing object: the whole file is not a parent envelope
+        if _PROBE_MARK.search(cm[lo:hi]) or _PROBE_OPEN_KIND.search(blank[lo:hi]) or _PROBE_SPREAD.search(blank[lo:hi]):
+            return True
+        if whole or lo <= 0:
+            return False
+        pos, first = lo, False
 
 
 def _ref_kinds_mod(mod: dict, tok: str, service: bool = False) -> list[str]:
     """One kind per whole-word occurrence of `tok` in the module's comment-masked text, in order (comments are not occurrences: R51 reads them).
-    `service`: the asset's REGISTRY kind is `service` -- a LABEL inside a `service_probe` envelope is then a PROBE (a reach)."""
+    `service`: the asset's REGISTRY kind is `service` -- an occurrence inside a `service_probe` envelope is then a PROBE (a reach, named as such)."""
     starts = [p for p, _c in mod["spans"]]
     out = []
     for m in re.finditer(r"\b" + re.escape(tok) + r"\b", mod["cmask"]):
@@ -4624,7 +4584,7 @@ def _ref_kinds_mod(mod: dict, tok: str, service: bool = False) -> list[str]:
             k = _literal_ref_kind(mod, i, m.start(), tok)
         else:
             k = _code_ref_kind(mod, m.start(), m.end())
-        if service and k == LABEL and _in_probe_envelope(mod, m.start()):
+        if service and k != SELECT_REF and _in_probe_envelope(mod, m.start()):
             k = PROBE_REF
         out.append(k)
     return out
@@ -4722,8 +4682,6 @@ def _dens_facts(txt: str) -> dict:
         spans=spans,
         desynced=_ts_desynced(txt),
         dynamic_from=dyn_from,
-        # a bare name or a key is a label only where nothing in the module can turn it into a table: `FROM ${x}` / `.from(x)`
-        dynamic_table=_dynamic_from(txt, spans, prose_tail_ok=True) or _builder_dynamic(cmask),
     )
 
 
@@ -4937,21 +4895,20 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     which the string scanner loses sync (`_ts_desynced`) is returned in `unparsed` and grades NO_DETECTOR (never FAIL,
     never N/A; a PASS/PARTIAL earned in a clean file stands).
 
-    SELECT VS LABEL (SS N-74(a), REGISTRY_REVISION 14). A module that references a token in code is a reach (`modules`) only when at
-    least one occurrence is an SQL read of the table or a form the scan cannot classify (`_ref_kinds_mod`: SQL in the literal, a bare name used as
-    a table, an unkeyed list, a name assembled at run time, an identifier use). A module whose EVERY occurrence is a label (a provenance /
-    source string, prose, a path or id, a type name, an import path, a value under a label key such as `tables:` / `asset_id:` or a map key, the
-    last two only where the module has no run-time table access) and that carries no strict served select is `label_only`: it names the asset,
-    it does not read it. The rest of the scan (attribution, contract and tier, `served`, `shared_only`, `comment_only`, the outside probe) is
-    unchanged, so no PASS / PARTIAL / FAIL moves. The label side needs a POSITIVE recognition (a name embedded in a literal is a label only when
-    the literal is prose-shaped, the name sits next to `:` `/` `#`, it is a label-keyed value, or an import path; everything else is a reach), a
-    label key counts only if the module never reads that key, never hands the holding object / array (or its const) to a call, a spread or an
-    iteration, and has no run-time table access (SS DENS review M1, L1). COMMENTS: ONE rule (R51, strategist option ii): a comment that names
-    the asset ANYWHERE in a module blocks the N/A, including a module whose code only labels it (`label_comment`).
-    SERVICE ASSETS. `service` (measure() passes the asset's registry kind == 'service'): an occurrence inside a `service_probe` envelope is a
-    reach (PROBE), not a label, so a service asset named only by its probe envelope stays NO_DETECTOR; the same envelope on a data asset is a
-    label. A service asset's prose / label mention elsewhere stays a label (an ambiguous form still blocks). Whether Dens.served applies to
-    services at all is a separate later declared rule.
+    SELECT VS LABEL (SS N-74(a), REGISTRY_REVISION 14) -- a CLOSED ALLOW-LIST. A module that references a token in code is a reach (`modules`)
+    unless EVERY occurrence is a label and it carries no strict served select (then it is `label_only`: it names the asset, it does not read it).
+    A name is a label ONLY in: (1) an element of `provenance: { tables | source_tables: [...] }` in an envelope that is a property / return value of
+    an object literal (not a call argument, not a const holder); (2) a strict-prose string (>= 5 purely alphabetic words besides the name) that is the
+    whole value of `source`/`source_table`/`label`/`note`/`reason`/`description`/`message`/`title` in an object that is not a call argument; (3) --
+    (a `service_probe` envelope is a REACH); (4) an import / require path, a type / interface / enum / class name. EVERYTHING ELSE (a bare name in a
+    list or map, a label key's value, an identifier-looking word, a path, a URL, an alias, a name in a call, an interpolation or a concatenation) is a
+    reach: there is no consumption tracking and no shape heuristic. The rest of the scan (attribution, contract and tier, `served`, `shared_only`,
+    `comment_only`, the outside probe) is unchanged, so no PASS / PARTIAL / FAIL moves. COMMENTS: ONE rule (R51, strategist option ii): a comment
+    that names the asset ANYWHERE in a module blocks the N/A, including a module whose code only labels it (`label_comment`).
+    SERVICE ASSETS. `service` (measure() passes the asset's registry kind == 'service'): an occurrence inside a `service_probe` envelope, at any
+    depth below the marker object, is a PROBE (a reach, named as such) so a service asset named only by its probe envelope stays NO_DETECTOR. The
+    envelope is not in the allow-list for a data asset either (also a reach), so `service` changes the evidence NAME, not the verdict. Whether
+    Dens.served applies to services at all is a separate later declared rule.
     N/A MEANS "NOT SERVED DIRECTLY", NOT "UNUSED". `platform/python-sidecar/services/ka_vedha_gochara/writer.py` (a Python L3 writer) does read
     `FROM bg_phaladeepika_latta`; the rule says no SERVED module selects from it, which is true.
     SERVED SURFACE = TypeScript, BY DESIGN. Only `*.ts` under the serving roots (and `*.ts` / `*.tsx` in the outside probe) are read; a Python or
