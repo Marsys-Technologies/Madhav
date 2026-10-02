@@ -5,6 +5,9 @@ the pairs come from bg_transit_rules ROWS handed to the accessor (fixtures below
 read-only from production 2026-10-02: graha, primary_house, vedha_house, citation); nothing is copied into the
 module under test. Signs 1=Aries … 12=Pisces; natal Moon in Aquarius (11) → house = (sign-11) % 12 + 1.
 """
+import json
+import pathlib
+
 import pytest
 
 from services.gochara_rules import registry
@@ -17,24 +20,30 @@ from services.gochara_rules.vedha_derive import (
 from services.gochara_rules import flat_selector as FS
 VREF = composite_ref("vedha_attenuation", KERNEL_VERSION)
 
+FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "l0_vedha_rows_2026_10_02.json"
+ROWS = [tuple(r) for r in json.loads(FIXTURE.read_text())]        # the 42 LITERAL bg_transit_rules vedha rows, read-only from production 2026-10-02
 CITE_PG322 = "Phaladipika Adh. XXVI, Sloka 3 — phaladeepika:PG322:C1 (Sastri trans. 1950)"
 CITE_PG323 = "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)"
-UNSRC = "UNSOURCED — no house-transit vedha doctrine for Rahu/Ketu found anywhere in the served corpus"
-ROWS = [
-    ("sun", 3, 9, CITE_PG322, "favourable"), ("sun", 6, 12, CITE_PG322, "favourable"),
-    ("sun", 10, 4, CITE_PG322, "favourable"), ("sun", 11, 5, CITE_PG322, "favourable"),
-    ("saturn", 3, 12, CITE_PG322, "favourable"), ("saturn", 6, 9, CITE_PG322, "favourable"),
-    ("saturn", 11, 5, CITE_PG322, "favourable"),
-    ("mercury", 2, 5, CITE_PG323, "favourable"), ("mercury", 4, 3, CITE_PG323, "favourable"),
-    ("venus", 12, 6, CITE_PG323, "favourable"), ("venus", 11, 3, CITE_PG323, "favourable"),
-    ("rahu", 3, 9, UNSRC, "favourable"), ("ketu", 6, 12, UNSRC, "favourable"),
-]
 MOON = 11
 PAIRS = pairs_from_rows(ROWS)
 
 
 def span(sign, a, b):
     return (sign, f"2025-{a}T00:00Z", f"2025-{b}T00:00Z")
+
+
+def cov(*spans, far_sign=2):
+    """The given interesting spans PLUS far_sign filling the rest of 2025 — a graha is always somewhere, so residence COVERS the year
+    (Codex round 7 [6a]: absence of coverage is missing data, no longer 'clean')."""
+    out, cur = [], "2025-01-01T00:00Z"
+    for sg in sorted(spans, key=lambda x: x[1]):
+        if cur < sg[1]:
+            out.append((far_sign, cur, sg[1]))
+        out.append(sg)
+        cur = sg[2]
+    if cur < "2025-12-31T00:00Z":
+        out.append((far_sign, cur, "2025-12-31T00:00Z"))
+    return out
 
 
 def base_residence():
@@ -48,12 +57,74 @@ def base_residence():
 def test_pairs_are_read_from_rows_nodes_refused_uncited_refused():
     assert PAIRS[("Sun", 3)] == 9 and PAIRS[("Venus", 12)] == 6 and PAIRS[("Mercury", 2)] == 5
     assert not any(k[0] in ("Rahu", "Ketu") for k in PAIRS)                 # the UNSOURCED node rows are not usable
-    with pytest.raises(VedhaPairsError):
-        pairs_from_rows([("jupiter", 2, 12, "", "favourable")])             # uncited classical row: refused, not skipped
-    with pytest.raises(VedhaPairsError):
-        pairs_from_rows([("jupiter", 2, 12, CITE_PG323, "favourable"), ("jupiter", 2, 11, CITE_PG323, "favourable")])
-    with pytest.raises(VedhaPairsError):
-        pairs_from_rows([("jupiter", 2, 12, CITE_PG323, "unfavourable")])
+    assert len(PAIRS) == 36 and PAIRS.census["total"] == 42 and PAIRS.census["classical"]["Venus"] == 9
+    assert len(PAIRS.content_digest) == 64
+    # uncited / duplicate / unfavourable are still refused, now inside a COMPLETE load (so only the defect can be the cause)
+    for bad in (lambda r: r[:0] + [("jupiter", 2, 12, "", "favourable") if x[:2] == ("jupiter", 2) else x for x in r],
+                lambda r: r + [("jupiter", 2, 11, CITE_PG323, "favourable")],
+                lambda r: [("jupiter", 2, 12, CITE_PG323, "unfavourable") if x[:2] == ("jupiter", 2) else x for x in r]):
+        with pytest.raises(VedhaPairsError):
+            pairs_from_rows(bad(list(ROWS)))
+
+
+# ── Codex round 7 [6b] — the load is validated COMPLETE, cited from the supported chunks, and content-bound ───────────
+def _mutated(f):
+    rows = [list(r) for r in ROWS]
+    f(rows)
+    return [tuple(r) for r in rows]
+
+
+def test_a_fabricated_row_is_refused_not_accepted():
+    # the exact reproduction: ('sun',1,2,'unrelated citation','favourable') used to load
+    with pytest.raises(VedhaPairsError, match="citation|duplicate|incomplete"):
+        pairs_from_rows(list(ROWS) + [("sun", 1, 2, "unrelated citation", "favourable")])
+    with pytest.raises(VedhaPairsError, match="citation"):
+        pairs_from_rows(_mutated(lambda r: r.__setitem__(0, [r[0][0], r[0][1], r[0][2], "Brihat Jataka ch. II", r[0][4]])))
+    with pytest.raises(VedhaPairsError, match="citation"):                   # a sloka outside XXVI.3–8
+        pairs_from_rows(_mutated(lambda r: r.__setitem__(0, [r[0][0], r[0][1], r[0][2], "Phaladipika Adh. XXVI, Sloka 9 — phaladeepika:PG323:C1", r[0][4]])))
+
+
+def test_a_missing_pair_is_an_incomplete_authority_not_a_declared_non_applicability():
+    for i in (0, 10, 20, 35):
+        with pytest.raises(VedhaPairsError, match="incomplete or changed"):
+            pairs_from_rows(_mutated(lambda r: r.pop(i)))
+    # the old behaviour would have loaded 35 pairs and quietly made that (graha, house) "not applicable"
+    with pytest.raises(VedhaPairsError, match="incomplete or changed"):
+        pairs_from_rows([r for r in ROWS if not (r[0] == "venus" and r[1] == 12)])
+
+
+def test_unique_keys_rule_type_and_house_domains():
+    first = ROWS[0]
+    with pytest.raises(VedhaPairsError, match="duplicate"):
+        pairs_from_rows(list(ROWS) + [first])                                   # an identical duplicate row is also refused
+    with pytest.raises(VedhaPairsError, match="rule_type"):
+        pairs_from_rows(_mutated(lambda r: r.__setitem__(0, [*r[0][:4], None])))   # None is no longer tolerated
+    for ph, vh in ((0, 5), (13, 5), (3, 0), (3, 13), (3, 3), (True, 5)):
+        with pytest.raises(VedhaPairsError, match="house domain"):
+            pairs_from_rows(_mutated(lambda r: r.__setitem__(0, [r[0][0], ph, vh, r[0][3], r[0][4]])))
+
+
+def test_node_rows_must_stay_l0_flagged_unsourced_and_unknown_grahas_are_refused():
+    node = next(i for i, r in enumerate(ROWS) if r[0] == "rahu")
+    with pytest.raises(VedhaPairsError, match="ND-NODE-VEDHA"):
+        pairs_from_rows(_mutated(lambda r: r.__setitem__(node, [*r[node][:3], CITE_PG322, r[node][4]])))
+    with pytest.raises(VedhaPairsError, match="unknown graha"):
+        pairs_from_rows(list(ROWS) + [("lagna", 1, 2, CITE_PG322, "favourable")])
+
+
+def test_content_identity_binds_the_consumed_rows():
+    base = PAIRS.content_digest
+    assert pairs_from_rows(list(reversed(ROWS))).content_digest == base      # order-independent
+    changed = _mutated(lambda r: r.__setitem__(0, [r[0][0], r[0][1], r[0][2], r[0][3].replace("(Sastri trans. 1950)", "(other)"), r[0][4]]))
+    assert pairs_from_rows(changed).content_digest != base                   # a changed citation moves the identity
+    node = next(i for i, r in enumerate(ROWS) if r[0] == "rahu")
+    moved = _mutated(lambda r: r.__setitem__(node, [r[node][0], r[node][1], 8, *r[node][3:]]))
+    assert pairs_from_rows(moved).content_digest != base                     # so does a node row (all 42 rows are consumed)
+
+
+def test_derive_refuses_a_plain_mapping_so_absence_cannot_mean_missing_data():
+    with pytest.raises(VedhaPairsError, match="validated"):
+        derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=base_residence(), pairs=dict(PAIRS))
 
 
 def test_house_from_moon_is_inclusive():
@@ -64,10 +135,10 @@ def test_house_from_moon_is_inclusive():
 def test_o_vi_6_abutting_obstructors_exception_and_node_in_one_primary_span():
     # Sun in Aries (3rd from Moon) 04-14 → 05-15; vedha house = 9th = Libra (7).
     res = base_residence()
-    res["Mars"] = [span(7, "04-01", "04-25")]               # obstructs 04-14 → 04-25
-    res["Jupiter"] = [span(7, "04-25", "05-05")]            # ABUTS Mars exactly at 04-25
-    res["Saturn"] = [span(7, "04-01", "06-01")]             # Sun↔Saturn exception: never obstructs the Sun
-    res["Rahu"] = [span(7, "05-05", "05-10")]               # a node alone in the vedha house
+    res["Mars"] = cov(span(7, "04-01", "04-25"))               # obstructs 04-14 → 04-25
+    res["Jupiter"] = cov(span(7, "04-25", "05-05"))            # ABUTS Mars exactly at 04-25
+    res["Saturn"] = cov(span(7, "04-01", "06-01"))             # Sun↔Saturn exception: never obstructs the Sun
+    res["Rahu"] = cov(span(7, "05-05", "05-10"))               # a node alone in the vedha house
     out = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
     assert out["applicable"] and out["vedha_house"] == 9
     got = [(s["t_in"][5:10], s["t_out"][5:10], s["state"], s["value"], s["reason"], s["scope"], s["obstructors"])
@@ -83,18 +154,18 @@ def test_o_vi_6_abutting_obstructors_exception_and_node_in_one_primary_span():
     for a, b in zip(out["segments"], out["segments"][1:]):
         assert a["t_out"] == b["t_in"]
     # Saturn alone (the exception) leaves the Sun's span clean
-    res2 = base_residence(); res2["Saturn"] = [span(7, "04-01", "06-01")]
+    res2 = base_residence(); res2["Saturn"] = cov(span(7, "04-01", "06-01"))
     only_exc = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res2, pairs=PAIRS)
     assert [s["state"] for s in only_exc["segments"]] == ["inactive"]
     # …but Mars (non-exception control) in the same house obstructs
-    res3 = base_residence(); res3["Mars"] = [span(7, "04-01", "06-01")]
+    res3 = base_residence(); res3["Mars"] = cov(span(7, "04-01", "06-01"))
     ctrl = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res3, pairs=PAIRS)
     assert [s["state"] for s in ctrl["segments"]] == ["active"]
 
 
 def test_o_vi_6_mercury_has_no_moon_scope_other_primaries_do():
     # Mercury in Pisces (2nd from Moon) 03-01 → 03-20; vedha house 5th = Gemini (3); Venus there from 03-10.
-    res = base_residence(); res["Venus"] = [span(3, "03-10", "03-30")]
+    res = base_residence(); res["Venus"] = cov(span(3, "03-10", "03-30"))
     m = derive_vedha("Mercury", 2, ("2025-03-01T00:00Z", "2025-03-20T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
     assert [(s["t_in"][5:10], s["state"], s["scope"]) for s in m["segments"]] == [("03-01", "inactive", None), ("03-10", "active", None)]
     # a non-Mercury primary: the same clean stretch carries the Moon scope
@@ -105,14 +176,14 @@ def test_o_vi_6_mercury_has_no_moon_scope_other_primaries_do():
 
 def test_o_vi_6_cited_obstructor_beats_a_simultaneous_node():
     res = base_residence()
-    res["Mars"] = [span(7, "04-20", "05-01")]; res["Rahu"] = [span(7, "04-15", "05-10")]
+    res["Mars"] = cov(span(7, "04-20", "05-01")); res["Rahu"] = cov(span(7, "04-15", "05-10"))
     out = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
     rows = [(s["t_in"][5:10], s["t_out"][5:10], s["state"]) for s in out["segments"]]
     assert rows == [("04-14", "04-15", "inactive"), ("04-15", "04-20", "unqualified"), ("04-20", "05-01", "active"),
                     ("05-01", "05-10", "unqualified"), ("05-10", "05-15", "inactive")]
     # a node boundary INSIDE a cited obstruction must not split it: Rahu enters 04-25 while Mars is still there
     res = base_residence()
-    res["Mars"] = [span(7, "04-20", "05-01")]; res["Rahu"] = [span(7, "04-25", "05-10")]
+    res["Mars"] = cov(span(7, "04-20", "05-01")); res["Rahu"] = cov(span(7, "04-25", "05-10"))
     inner = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
     assert [(s["t_in"][5:10], s["t_out"][5:10], s["state"]) for s in inner["segments"]] == [
         ("04-14", "04-20", "inactive"), ("04-20", "05-01", "active"), ("05-01", "05-10", "unqualified"),
@@ -120,20 +191,16 @@ def test_o_vi_6_cited_obstructor_beats_a_simultaneous_node():
 
 
 def test_o_vi_6_half_open_edges_and_not_applicable_and_missing_inputs():
-    res = base_residence(); res["Mars"] = [span(7, "05-15", "06-15")]       # starts exactly where the Sun's span ends
+    res = base_residence(); res["Mars"] = cov(span(7, "05-15", "06-15"))       # starts exactly where the Sun's span ends
     out = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
     assert [s["state"] for s in out["segments"]] == ["inactive"]
     # adverse residence (Saturn 8th from Moon): no cited pair ⇒ NOT APPLICABLE (declared), no segments, no value
     na = derive_vedha("Saturn", 8, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=base_residence(), pairs=PAIRS)
-    assert na == {"applicable": False, "reason": "no_cited_vedha_pair_for_this_house", "segments": []}
-    # a missing stored obstructor is an error, never silently "clean"
-    bad = base_residence(); del bad["Venus"]
-    with pytest.raises(VedhaPairsError):
-        derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=bad, pairs=PAIRS)
+    assert na == {"applicable": False, "state": "not_applicable", "reason": "no_cited_vedha_pair_for_this_house", "segments": []}
 
 
 def test_value_mapping_is_the_cited_step_and_never_graded():
-    res = base_residence(); res["Mars"] = [span(7, "04-20", "05-01")]; res["Ketu"] = [span(7, "05-01", "05-05")]
+    res = base_residence(); res["Mars"] = cov(span(7, "04-20", "05-01")); res["Ketu"] = cov(span(7, "05-01", "05-05"))
     out = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
     vals = {s["state"]: vedha_factor_value(s, factor_ref=VREF) for s in out["segments"]}
     assert vals["active"]["value"] == 0.0 and vals["active"]["qualification"] == "vedha_active"
@@ -165,7 +232,7 @@ def test_registry_declares_the_ruled_mapping_as_a_flat_selector_and_versions_p2(
 
 
 def test_version_exact_dispatch_and_declared_non_applicability():
-    seg = {"state": "active", "value": 0.0, "reason": None, "scope": None}
+    seg = {"state": "active", "value": 0.0, "reason": None, "scope": None, "obstructors": ["Mars"]}
     assert vedha_factor_value(seg, factor_ref=VREF)["factor"] == VREF
     with pytest.raises(ValueError):
         vedha_factor_value(seg, factor_ref=composite_ref("vedha_attenuation", RULE_VERSION))      # 1.0.0 declares nothing: refused
@@ -182,7 +249,7 @@ def test_qualification_propagates_from_the_node_state_into_the_channel():
     from services.gochara_rules.records import RelationshipRecord
     if not hasattr(score, "unqualified_reasons"):          # R1 (PR #2905) not in this tree yet
         pytest.skip("R1 qualification propagation not present in this tree")
-    res = base_residence(); res["Rahu"] = [span(7, "04-20", "05-01")]
+    res = base_residence(); res["Rahu"] = cov(span(7, "04-20", "05-01"))
     out = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
     node_seg = next(s for s in out["segments"] if s["state"] == "unqualified")
     rec = RelationshipRecord(chart_id="482012f1-710e-4a25-994a-93821f5871aa", generation="5.0", event_class="marriage", affected_person="native",
