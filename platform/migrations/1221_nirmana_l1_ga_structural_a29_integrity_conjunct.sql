@@ -29,6 +29,10 @@
 --   SELECT count(*) FROM build_runs r JOIN build_run_assets a ON a.run_id = r.id
 --    WHERE a.asset_id = 'ga_structural' AND r.state NOT IN ('completed', 'failed', 'stopped');
 --
+-- OTHER CHARTS: (a29) is scoped to the canonical chart, but the post-write integrity gate runs for every chart's
+-- ga_structural build. From apply until the canonical S-L1 rebuild has written the NULL cells, no ga_structural build
+-- for ANY chart may run (a build for another chart would evaluate (a29) against the canonical rows and fail its gate).
+--
 -- LOCK TIMEOUT. The first statement is SET LOCAL lock_timeout = '5s' (migration 1218 pattern): a blocked migrate
 -- job must fail fast, not hang a shared deploy.
 --

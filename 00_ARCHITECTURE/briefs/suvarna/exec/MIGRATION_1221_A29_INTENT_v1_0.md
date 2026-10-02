@@ -9,7 +9,7 @@ files:
   - platform/migrations/1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql
 tests: platform/python-sidecar/tests/test_argala_migration_1221_sql.py executes the real migration file against a disposable local Postgres
 changelog:
-  - "1.0 (2026-10-02): split out of the 1219/1221 explanation document (MIGRATION_1219_1221_INTENT v1.1, on #2851) by SS decision on the migration-guard review: the routine runner applies every merged file at the next deploy before that deploy's images roll, so 1221 cannot ride with the writer PR. The SQL is the file; this document carries none. Added: SET LOCAL lock_timeout = '5s' (1218 pattern)."
+  - "1.0 (2026-10-02): split out of the 1219/1221 explanation document (the explanation document of #2851, now MIGRATION_1219_INTENT_v1_0.md) by SS decision on the migration-guard review: the routine runner applies every merged file at the next deploy before that deploy's images roll, so 1221 cannot ride with the writer PR. The SQL is the file; this document carries none. Added: SET LOCAL lock_timeout = '5s' (1218 pattern)."
 ---
 
 # Migration 1221: the a29 integrity conjunct (HELD)
@@ -30,7 +30,7 @@ Adds ONE conjunct, (a29) [SS N-61, AR-3; CLAUDE.md N.8], to `ga_structural`'s `i
 1. #2851 (the `ga_structural` writer and migration 1219) is merged, its writer image is deployed, and the deployed image is verified (LC-1 digest equality).
 2. At the S-L1 window, immediately before the `ga_structural` launch, with **0 active runs** for `ga_structural` (read-only check in the file header; expected 0), merge this PR.
 3. After the deploy applies it, verify by production structure, not the deploy log (CLAUDE.md N.4, Trap 103): `SELECT position('(a29)' in integrity_check_sql) > 0 FROM asset_registry WHERE asset_id = 'ga_structural'` returns `t`; expect `integrity_passed = false` on the canonical chart until S-L1 writes the NULL cells, then true.
-4. Launch the S-L1 `ga_structural` rebuild.
+4. Launch the S-L1 `ga_structural` rebuild. From apply until the canonical rebuild has written the NULL cells, no `ga_structural` build for any chart may run: the post-write gate runs per build, but (a29) reads the canonical rows.
 
 ## 4. The SQL
 
