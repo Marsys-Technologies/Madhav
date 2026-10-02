@@ -355,7 +355,7 @@ def _factor(factor_id: str, **kw) -> None:
         "calibration_status": "uncalibrated_default",
         **kw,
     }
-    FACTORS[composite_ref(factor_id, RULE_VERSION)] = row
+    FACTORS[composite_ref(factor_id, row["rule_version"])] = row
 
 
 _factor("dignity_of_transit_sign",
@@ -391,6 +391,45 @@ _factor("graduated_drishti",
         function="step", range=[0.0, 1.0], units="unitless",
         direction="higher = stronger", null_state="unqualified",
         effect="¼/½/¾/1 at 3-10/5-9/4-8/7; specials full (BPHS1:16496-16502)")
+# ── AM-13 (RULED, steward M20261002T001617-8321): applicability by object kind ──
+# A NEW version of each factor — the 1.0.0 rows above stay byte-for-byte as authored
+# (a sealed version is never edited). §2.1 says a missing operand takes its null_state
+# ("never silently 1"); a span has no |Δλ| to be missing — "not applicable" is a DECLARED
+# state of the row, never a silent 1. `applicability` is the declaration; A's rule_binding
+# carries it in operand_selector (token arrays are admitted by ka_gochara_named_operands_ok:
+# no DDL). The ORB is NOT ratified anywhere in the spec/registry (draft AM-13 line cites;
+# open native decision ND-ORB): `orb_deg` is None and the point/star branch is
+# `unqualified` (reason orb_not_ratified) until it is decided — the unratified 5.0° is not
+# carried forward.
+KERNEL_VERSION = "1.1.0"
+SPAN_OBJECT_KINDS = ("sign_span", "house_span")                          # 1155 kgrr_object_kind_ck
+ANGULAR_OBJECT_KINDS = ("degree_point", "star", "derived_point", "saham", "house_lord")
+_factor("activity_kernel",
+        rule_version=KERNEL_VERSION,
+        operand="object kind + (span: inside-the-span membership | point/star: "
+                "angular distance |Δλ| to exact contact)",
+        function="linear", range=[0.0, 1.0], units="unitless",
+        direction="higher = stronger", null_state="unqualified",
+        applicability={
+            "span": {"object_kinds": list(SPAN_OBJECT_KINDS), "function": "step",
+                     "inside": 1.0, "outside": 0.0},
+            "angular": {"object_kinds": list(ANGULAR_OBJECT_KINDS), "function": "linear",
+                        "formula": "1 - |Δλ|/orb", "orb_deg": None,
+                        "orb_status": "ND-ORB open: not ratified (draft AM-13)"},
+        },
+        effect="span objects: membership step (1 inside, 0 outside); point/star objects: "
+               "activity = 1 − |Δλ|/orb (§7.2 inv 3) — qualified only once the orb is a "
+               "recorded native decision, else unqualified (orb_not_ratified); object "
+               "kinds in neither group are unqualified, never 1")
+_factor("graduated_drishti",
+        rule_version=KERNEL_VERSION,
+        operand="aspect house-offset (aspect records only)",
+        function="step", range=[0.0, 1.0], units="unitless",
+        direction="higher = stronger", null_state="unqualified",
+        applicability={"relations": ["aspect"]},
+        effect="¼/½/¾/1 at 3-10/5-9/4-8/7; specials full (brihat_jataka:PG65:C1); "
+               "applicable to aspect records only — residence/conjunction have no offset "
+               "(declared not-applicable, never 1)")
 _factor("vedha_attenuation",
         operand="vedha interval state at t",
         function="step", range=[0.0, 1.0], units="unitless",
@@ -605,6 +644,17 @@ _factor("sad_bala_sufficient",
 # not the detector). Its successor is a NEW row; the binder (kala rule_binding)
 # binds the successor and never the retired name.
 SUPERSEDED_FACTORS: dict[tuple[str, str], dict] = {
+    composite_ref("activity_kernel", RULE_VERSION): {
+        "superseded_by": composite_ref("activity_kernel", KERNEL_VERSION),
+        "reason": "1.0.0 declares only an angular |Δλ| operand with no orb and no "
+                  "applicability: every span-object record is unqualified (AM-13)",
+        "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-13",
+    },
+    composite_ref("graduated_drishti", RULE_VERSION): {
+        "superseded_by": composite_ref("graduated_drishti", KERNEL_VERSION),
+        "reason": "1.0.0 does not declare that the factor applies to aspect records only (AM-13)",
+        "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-13",
+    },
     composite_ref("sad_bala_summary", RULE_VERSION): {
         "superseded_by": composite_ref("sad_bala_sufficient", RULE_VERSION),
         "reason": "units 'rupas' violate kgf_units_ck and the declared range "
@@ -623,7 +673,7 @@ def _path(path_id: str, **kw) -> None:
     row = {"path_id": path_id, "rule_version": RULE_VERSION, **kw}
     if row["provenance"] == "uncited_extension" and not row.get("ruling_ref"):
         raise ValueError(f"{path_id}: uncited_extension requires ruling_ref (§0)")
-    RULE_PATHS[composite_ref(path_id, RULE_VERSION)] = row
+    RULE_PATHS[composite_ref(path_id, row["rule_version"])] = row
 
 
 _path(
@@ -742,3 +792,26 @@ _path(
          "absent as a generic rule (predicate count 0) — context-bound "
          "8th-from-Moon rules only",
 )
+
+
+# ── AM-13: P3/P4/P5 rule_version 1.1.0 — same rows, soft-factor refs moved to the ───
+# applicability-declaring factor versions. Predicates are unchanged (1.0.0 refs stay).
+# The 1.0.0 path rows are NOT edited; they are recorded as superseded below. In a class
+# inventory the older version is excluded as `superseded_by_version` (1206 v1.2).
+SUPERSEDED_PATHS: dict[tuple[str, str], dict] = {}
+_SOFT_FACTOR_MOVES = {
+    composite_ref("activity_kernel", RULE_VERSION): composite_ref("activity_kernel", KERNEL_VERSION),
+    composite_ref("graduated_drishti", RULE_VERSION): composite_ref("graduated_drishti", KERNEL_VERSION),
+}
+for _pid in ("P3", "P4", "P5"):
+    _old = RULE_PATHS[composite_ref(_pid, RULE_VERSION)]
+    _new = {**_old, "rule_version": KERNEL_VERSION,
+            "soft_factors": [_SOFT_FACTOR_MOVES.get(ref, ref) for ref in _old["soft_factors"]]}
+    RULE_PATHS[composite_ref(_pid, KERNEL_VERSION)] = _new
+    SUPERSEDED_PATHS[composite_ref(_pid, RULE_VERSION)] = {
+        "superseded_by": composite_ref(_pid, KERNEL_VERSION),
+        "reason": "soft factors moved to activity_kernel@1.1.0 / graduated_drishti@1.1.0 "
+                  "(applicability by object kind, AM-13)",
+        "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-13",
+    }
+del _pid, _old, _new
