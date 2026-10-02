@@ -194,9 +194,87 @@ def test_the_approved_seal_runs_as_the_real_sealer_role_with_only_the_named_read
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 1
 
 
-def test_a_seal_without_a_receipt_is_detectable_and_the_sealing_function_refuses_to_commit_one(built):
+def test_the_missing_receipt_check_is_false_before_a_seal_and_true_only_for_a_pre_1240_seal(built):
     w = built
     _verified(w)
     assert w.conn.execute("SELECT public.ka_gochara_seal_receipt_missing(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0] is False  # not sealed
-    _seal(w)                                                         # the plain governed seal: publish + seal, NO receipt
+
+
+# ── the receipt is ENFORCED at the first seal (steward M…145007) ───────────────────────────────────────────
+
+def _raw_seal_as_sealer(w):
+    """The sealer principal calls the authoritative seal DIRECTLY — publish + seal, no approval receipt."""
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        w.conn.execute("SET LOCAL ROLE gochara_sealer")
+        from services.gochara_kernel import ledger as gk_ledger
+        gk_ledger.publish(w.conn, CHART_ID, GEN)
+        w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
+
+
+def _sealer_stand_ins(w):
+    w.conn.execute("GRANT SELECT ON public.chart_facts, public.chart_dashas TO gochara_sealer")
+    w.conn.execute("GRANT SELECT (filename, sha256, applied_at) ON public._migrations_applied TO gochara_sealer")
+
+
+def test_a_raw_seal_with_no_receipt_is_refused_at_commit_by_name_and_leaves_nothing(built):
+    import psycopg
+    w = built
+    _verified(w)
+    _sealer_stand_ins(w)
+    with pytest.raises(psycopg.errors.CheckViolation, match="approval_receipt_missing"):
+        _raw_seal_as_sealer(w)
+    assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "candidate"
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 0
+
+
+def test_a_receipt_for_another_manifest_or_without_a_digest_does_not_satisfy_the_trigger(built):
+    import psycopg
+    w = built
+    _verified(w)
+    with pytest.raises(psycopg.errors.CheckViolation, match="approval_receipt_missing"):
+        _seal(w, receipt=False)                                        # (superuser path: still no receipt ⇒ refused)
+    with pytest.raises(psycopg.errors.CheckViolation, match="approval_receipt_missing"):
+        with w.conn.transaction():
+            w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            from services.gochara_kernel import ledger as gk_ledger
+            gk_ledger.publish(w.conn, CHART_ID, GEN)
+            w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
+            w.conn.execute(                                            # a receipt naming a DIFFERENT manifest
+                "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login,"
+                " approved_by_note, run_id, run_attempt, workflow_commit) VALUES (%s::uuid, %s, gen_random_uuid(),"
+                " repeat('a', 64), 'x', 'x', 1, 1, 'x')", (CHART_ID, GEN))
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
+
+
+def test_the_approved_seal_still_works_as_the_real_sealer_and_the_replay_needs_no_new_receipt(built):
+    w = built
+    _verified(w)
+    approved = _brief_as_verifier(w, sealing_commit="s")["sha256"]
+    _sealer_stand_ins(w)
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        w.conn.execute("SET LOCAL ROLE gochara_sealer")
+        out = seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved,
+                                           approver_login="owner-login", run_id=7, approval_note="n", sealing_commit="s")
+    assert out["brief_digest"] == approved
+    # REPLAY of the sealed generation: ON CONFLICT DO NOTHING inserts no row, so the receipt trigger never fires
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        w.conn.execute("SET LOCAL ROLE gochara_sealer")
+        w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 1
+
+
+def test_a_generation_sealed_before_1240_replays_without_a_receipt(built):
+    """Simulate 'sealed before 1240': the receipt trigger did not exist when it was sealed, so it has a seal row and no receipt.
+    Replaying it must not demand one."""
+    w = built
+    _verified(w)
+    w.conn.execute("ALTER TABLE public.ka_gochara_generation_seal DISABLE TRIGGER ka_gochara_generation_seal_zz_receipt_required")
+    _seal(w, receipt=False)
+    w.conn.execute("ALTER TABLE public.ka_gochara_generation_seal ENABLE TRIGGER ka_gochara_generation_seal_zz_receipt_required")
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 0
+    _seal(w, receipt=False)                                           # the replay: no receipt, no refusal
     assert w.conn.execute("SELECT public.ka_gochara_seal_receipt_missing(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0] is True

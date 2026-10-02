@@ -104,13 +104,17 @@ def test_1240_has_no_transaction_control_and_no_security_definer():
     assert "SECURITY DEFINER" not in body.upper()
 
 
-def test_1240_adds_exactly_one_trigger_to_the_seal_table_and_sorts_after_1206s():
+def test_1240_adds_exactly_one_before_trigger_and_one_deferred_receipt_constraint_trigger_to_the_seal_table():
     body = _statements(SQL)
     triggers = re.findall(r"CREATE TRIGGER\s+(\w+)\s+BEFORE INSERT ON public\.ka_gochara_generation_seal", body)
     assert triggers == ["ka_gochara_generation_seal_zz_window_verified"]
     assert triggers[0] > "ka_gochara_generation_seal_z_search_complete"        # name order = firing order
-    assert not re.search(r"(CREATE|DROP)\s+(OR REPLACE\s+)?TRIGGER[^;]*ka_gochara_generation_seal_(write_guard|"
-                         r"z_search_complete)", body)
+    # R11-3 (steward M…145007): the approval receipt is ENFORCED — ONE additive DEFERRED constraint trigger on the first-seal INSERT
+    # (AFTER INSERT: it never fires for a replay's ON CONFLICT DO NOTHING nor for a generation sealed before 1240)
+    cons = re.findall(r"CREATE CONSTRAINT TRIGGER\s+(\w+)\s+AFTER INSERT ON public\.ka_gochara_generation_seal\s+"
+                      r"DEFERRABLE INITIALLY DEFERRED\s+FOR EACH ROW EXECUTE FUNCTION public\.(\w+)\(\)", body)
+    assert cons == [("ka_gochara_generation_seal_zz_receipt_required", "ka_gochara_seal_requires_approval_receipt")]
+    assert "approval_receipt_missing" in body and "SECURITY DEFINER" not in body.upper()
 
 
 def test_1240_never_replaces_a_function_an_applied_migration_defines():
