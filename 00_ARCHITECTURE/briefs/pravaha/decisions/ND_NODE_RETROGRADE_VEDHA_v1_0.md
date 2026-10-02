@@ -33,8 +33,8 @@ Our vedha rows carry a small label, `retrograde_malefic`, on an obstruction made
 ## Recommendation: **(b), always — recorded with its basis**
 The corpus premise ("always retrograde") is exactly what the mean orbit encodes, so (b) is the only option that follows the text without inventing an exemption (a) or a second convention (c). Store the label's basis on the row (`node_always_retrograde:PG348:C1`) and say plainly that for nodes it carries no information. If you prefer (a), it needs a doctrinal source for the exemption — none was found in the served corpus.
 
-## A peer view (not a ruling)
-**Suvarṇa (L0), M20261002T062133-e4b6: "never for nodes" — option (a).** Her reasons: a flag that reads true on every node row carries no information, and keeping the true-orbit flags would put two node conventions into one row. These are good reasons *for the engineering*; the counter-consideration is that (a) needs a doctrinal source for exempting the nodes, and the served corpus passage calls them "always retrograde" and does not exempt them. Both readings are consistent with "no served number changes". The native decides.
+## Both readings, no advocacy from L0
+Suvarṇa (L0) first leaned to **(a) "never for nodes"** (a flag true on every node row carries no information; true-orbit flags would put two node conventions in one row) and **withdrew that lean after the corpus citation** (M20261002T062318-29c1). The two readings that remain, with no advocate from L0: **(a)** is the cleaner data (no constant label) but needs a doctrinal source for exempting the nodes, and the served passage calls them "always retrograde" without exempting them; **(b)** follows the passage's premise but stores a constant. Stream B's recommendation stays (b), recorded with its basis; the native decides.
 
 ## Decision needed
-(1) a, b or c. (2) Confirm L0 corrects Ketu's flag/speed in the MEAN rows (Suvarṇa).
+(1) a, b or c. (2) *(settled)* L0 accepted the Ketu inversion as F-L0-08: MEAN Ketu rows carry Rāhu's speed and flag; the vedha writer derives Ketu's retrograde days from Rāhu's rows whatever happens to the old TRUE Ketu rows (step-3 spec §12a).
