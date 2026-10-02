@@ -186,7 +186,12 @@ def assert_disposable_connection(
     if server_addr is None:
         return  # unix socket — local by construction
     # inet::text carries the mask ('172.18.0.2/32'); ip_interface takes both.
-    addr = ipaddress.ip_interface(server_addr).ip
+    try:
+        addr = ipaddress.ip_interface(server_addr).ip
+    except ValueError as exc:
+        raise RefusedError(
+            f"REFUSED: unparseable inet_server_addr() {server_addr!r} — "
+            "a server that cannot report a sane address is not trusted") from exc
     # F2: unwrap v4-mapped IPv6 BEFORE classifying, so ::ffff:8.8.8.8 is the
     # public 8.8.8.8 (and ::ffff:10.0.0.1 the private 10.0.0.1).
     addr = getattr(addr, "ipv4_mapped", None) or addr
