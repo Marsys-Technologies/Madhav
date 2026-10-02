@@ -29,7 +29,7 @@ describe('gochara-verification-job-deploy.yml', () => {
     expect(run).toContain('--clear-args')
     expect(run).toContain('--service-account "$VERIFIER_SERVICE_ACCOUNT"')
     expect(run).toContain('--set-secrets "GOCHARA_VERIFIER_DB_URL=${VERIFIER_SECRET}:latest"')
-    expect(run).toContain('--set-env-vars "GOCHARA_RUNNER_COMMIT=${GITHUB_SHA}"')
+    expect(run).toContain('--set-env-vars "GOCHARA_RUNNER_COMMIT=${GITHUB_SHA},GOCHARA_RUNNER_IMAGE_DIGEST=${IMAGE_DIGEST}"')   // ST-WIRE-2: the verifier records both as the brief's producer
     expect(run).toContain('--image "${PIPELINE_IMAGE_REPO}@${IMAGE_DIGEST}"')                       // by IMMUTABLE digest, never a tag
     expect(run).not.toContain('${PIPELINE_IMAGE_REPO}:${GITHUB_SHA}')
     expect(run).toContain('--max-retries 0')

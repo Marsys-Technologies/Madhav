@@ -5,7 +5,8 @@ Input: `gcloud run jobs describe gochara-verification-job --format=json`. It ref
   image            == <repository>@<the immutable sha256 digest the registry holds for this commit> (a tag is mutable and is refused)
   service account  == the verifier's runtime account
   command / args   == `python -m pipeline.orchestrator.verification_job` / none (an operator supplies the flags at execute time)
-  environment      == exactly GOCHARA_RUNNER_COMMIT (the deployed commit, as a plain value) and GOCHARA_VERIFIER_DB_URL (a secret reference to the verifier secret) — nothing else
+  environment      == exactly GOCHARA_RUNNER_COMMIT (the deployed commit, as a plain value), GOCHARA_RUNNER_IMAGE_DIGEST (the immutable digest, as a plain value — ST-WIRE-2) and
+                      GOCHARA_VERIFIER_DB_URL (a secret reference to the verifier secret) — nothing else
   Cloud SQL        == exactly the one instance, in the job's `run.googleapis.com/cloudsql-instances` annotation
   tasks / retries  == one task, no retries (a retried task could produce a stale brief); timeout, memory and CPU as deployed
 A failed check leaves the deployed definition in place to INSPECT or REMOVE (`gcloud run jobs delete`); this script never rolls anything back. The JSON shape is the documented Job resource
@@ -71,11 +72,13 @@ def check(job, *, image_repo: str, image_digest: str, service_account: str, runn
     if list(c.get("args") or []):
         bad.append(f"args are {c.get('args')!r}, expected none")
     env = {e.get("name"): e for e in (c.get("env") or []) if isinstance(e, dict)}
-    if set(env) != {"GOCHARA_RUNNER_COMMIT", "GOCHARA_VERIFIER_DB_URL"}:
-        bad.append(f"environment variables are {sorted(env)}, expected exactly GOCHARA_RUNNER_COMMIT and GOCHARA_VERIFIER_DB_URL")
+    if set(env) != {"GOCHARA_RUNNER_COMMIT", "GOCHARA_RUNNER_IMAGE_DIGEST", "GOCHARA_VERIFIER_DB_URL"}:
+        bad.append(f"environment variables are {sorted(env)}, expected exactly GOCHARA_RUNNER_COMMIT, GOCHARA_RUNNER_IMAGE_DIGEST and GOCHARA_VERIFIER_DB_URL")
     else:
         if env["GOCHARA_RUNNER_COMMIT"].get("value") != runner_commit:
             bad.append("GOCHARA_RUNNER_COMMIT is not the deployed commit")
+        if env["GOCHARA_RUNNER_IMAGE_DIGEST"].get("value") != image_digest:
+            bad.append("GOCHARA_RUNNER_IMAGE_DIGEST is not the immutable digest deployed")
         ref = _dig(env["GOCHARA_VERIFIER_DB_URL"], "valueFrom", "secretKeyRef")
         if not isinstance(ref, dict) or ref.get("name") != secret_name or "value" in env["GOCHARA_VERIFIER_DB_URL"]:
             bad.append(f"GOCHARA_VERIFIER_DB_URL is not a reference to the secret {secret_name}")

@@ -10,7 +10,7 @@
 #   secret              gochara-verifier-db-url:latest -> GOCHARA_VERIFIER_DB_URL   (act 4/1; the ONLY secret; --set-secrets REPLACES, so no other can survive)
 #   entry point         python -m pipeline.orchestrator.verification_job  (as the container COMMAND, so an operator's `--args` at execute time
 #                       supply only the flags: --chart/--generation/--brief/--sealing-commit; the image's builder ENTRYPOINT is overridden)
-#   GOCHARA_RUNNER_COMMIT = the commit this workflow runs from; the image is deployed BY IMMUTABLE DIGEST (the sha256 the registry holds for that commit's tag, resolved here) — a tag
+#   GOCHARA_RUNNER_COMMIT = the commit this workflow runs from; GOCHARA_RUNNER_IMAGE_DIGEST = the immutable digest (ST-WIRE-2: the verifier records both, with the execution id, as the brief's PRODUCER and refuses to brief without them); the image is deployed BY IMMUTABLE DIGEST (the sha256 the registry holds for that commit's tag, resolved here) — a tag
 #                       is mutable, so the sealing workflow re-checks the digest on the EXECUTION itself (R13-3); the workflow refuses if no image exists for that commit
 #   never retried (max-retries 0), one task; dispatched by an OPERATOR only — nothing here chains it to a build.
 #   Environment: `--set-env-vars` REPLACES every Cloud Run env var, leaving only GOCHARA_RUNNER_COMMIT; the image's own ENV (SE_EPHE_PATH=/app/ephe, PYTHONPATH) is separate and survives.
@@ -96,7 +96,7 @@ jobs:
             --command "python,-m,pipeline.orchestrator.verification_job" \
             --clear-args \
             --set-secrets "GOCHARA_VERIFIER_DB_URL=${VERIFIER_SECRET}:latest" \
-            --set-env-vars "GOCHARA_RUNNER_COMMIT=${GITHUB_SHA}" \
+            --set-env-vars "GOCHARA_RUNNER_COMMIT=${GITHUB_SHA},GOCHARA_RUNNER_IMAGE_DIGEST=${IMAGE_DIGEST}" \
             --set-cloudsql-instances "$CLOUDSQL_INSTANCE" \
             --max-retries 0 \
             --tasks 1 \

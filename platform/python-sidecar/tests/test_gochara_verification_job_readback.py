@@ -24,7 +24,7 @@ def job():
                                       "serviceAccountName": SA, "maxRetries": 0, "timeoutSeconds": 7200,
                                       "containers": [{"image": f"{REPO}@{DIG}", "command": list(rb.ENTRYPOINT),
                                                       "resources": {"limits": {"memory": "8Gi", "cpu": "2"}},
-                                                      "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA},
+                                                      "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": DIG},
                                                               {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url", "key": "latest"}}}]}]}}}}}}
 
 
@@ -56,7 +56,9 @@ def test_the_exact_definition_is_accepted():
     (lambda j: task(j)["containers"][0]["env"].append({"name": "DATABASE_URL", "value": "x"}), "environment variables"),
     (lambda j: task(j)["containers"][0]["env"].pop(), "environment variables"),
     (lambda j: task(j)["containers"][0]["env"][0].update(value="c" * 40), "RUNNER_COMMIT"),
-    (lambda j: task(j)["containers"][0]["env"][1].update(valueFrom={"secretKeyRef": {"name": "data-plane-builder-db-url"}}), "reference to the secret"),
+    (lambda j: task(j)["containers"][0]["env"][1].update(value="sha256:" + "c" * 64), "IMAGE_DIGEST"),
+    (lambda j: task(j)["containers"][0]["env"].pop(1), "environment variables"),
+    (lambda j: task(j)["containers"][0]["env"][2].update(valueFrom={"secretKeyRef": {"name": "data-plane-builder-db-url"}}), "reference to the secret"),
     (lambda j: j["spec"]["template"]["metadata"]["annotations"].update({"run.googleapis.com/cloudsql-instances": INST + ",other:r:i"}), "Cloud SQL"),
     (lambda j: j["spec"]["template"]["metadata"]["annotations"].clear(), "Cloud SQL"),
     (lambda j: j["spec"]["template"]["spec"].update(taskCount=3), "taskCount"),
