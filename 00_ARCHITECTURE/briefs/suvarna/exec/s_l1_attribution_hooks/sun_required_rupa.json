@@ -22,7 +22,7 @@
         "exact": 1
       },
       "expected_direction": "SUN subject only, ONE row per chart (ayanamsha INVARIANT): 5 -> 6.5. The old value 5 is integral, so the detector classifies it class_num and reports the change as a class-level `value` change (not a continuous statistic): exactly 1 per chart compared. MOON/MAR/MER/JUP/VEN/SAT required_rupa are unchanged (6 / 5 / 7 / 6.5 / 5.5 / 5).",
-      "note": "expected_count 1 = the Sun's single INVARIANT row (the other six grahas are unchanged and generate no change). Review finding LOW-5: an earlier version of this note said the predicted class-level count was 0, which was wrong."
+      "note": "expected_count 1 = the Sun's single INVARIANT row (the other six grahas are unchanged and generate no change). Review finding LOW-5: an earlier version of this note said the predicted class-level count was 0, which was wrong. REBUILD CHECKLIST (review LOW-4): platform/src/lib/retrieval/registry/layers/__tests__/chart_query.integration.test.ts:132 asserts the LIVE Sun required_rupa == 5 and goes red the moment the rebuild lands; it is data-dependent, skipped in CI (describe.skip unless INTEGRATION=true; ci.yml unit-tests job sets neither INTEGRATION nor DATABASE_URL), and intentionally NOT edited here: flip it 5 -> 6.5 in the same step as the rebuild."
     },
     {
       "table": "chart_facts",
