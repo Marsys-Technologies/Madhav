@@ -58,6 +58,9 @@ COMMIT_DATE = "2026-09-30T10:00:00+05:30"                  # before RUN: the cen
 TOOL_COMMIT = "a" * 40
 CENSUS_DIR_REL = "00_ARCHITECTURE/control/census"
 WRITERS_REL = "platform/python-sidecar/pipeline/orchestrator/writers"
+DECL_REL = "platform/scripts/governance/asset_declarations.json"
+DECL_BYTES = b'{"version": "1.7.0", "assets": {}}\n'
+DECL_SHA = hashlib.sha256(DECL_BYTES).hexdigest()
 ENV = types.SimpleNamespace(ctrl=None, repo=None, cdir=None)
 _N = itertools.count()
 
@@ -79,6 +82,8 @@ def session_repo(tmp_path_factory):
     (repo / CENSUS_DIR_REL / ".gitkeep").write_text("")
     (repo / WRITERS_REL).mkdir(parents=True)
     (repo / WRITERS_REL / ".gitkeep").write_text("")
+    (repo / DECL_REL).parent.mkdir(parents=True, exist_ok=True)         # E5.1 binds a gate to the committed declarations file
+    (repo / DECL_REL).write_bytes(DECL_BYTES)
     git(repo, "add", "-A")
     git(repo, "commit", "-q", "-m", "base", date=COMMIT_DATE)
     return repo
@@ -153,7 +158,8 @@ def census_file(asset, crit, verdict, *, generated=RUN, cell=True, rec=None, hea
                   measurements={crit: dict(v=verdict, measured="m", **(cell_extra or {}))} if cell else {})
     record.update(rec or {})
     c = dict(generated=generated, layer=layer_of(asset), registry_revision=ac.REGISTRY_REVISION,
-             registry_fingerprint=ac.registry_fingerprint(), tool_commit=TOOL_COMMIT, assets=[record])
+             registry_fingerprint=ac.registry_fingerprint(), tool_commit=TOOL_COMMIT, declarations_sha256=DECL_SHA,
+             declarations_version="1.7.0", assets=[record])
     c.update(head or {})
     p = ENV.cdir / f"census_{next(_N)}.json"
     p.write_text(json.dumps(c), encoding="utf-8")
