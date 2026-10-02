@@ -415,6 +415,9 @@ const refused = async (p: Promise<unknown>, re: RegExp): Promise<void> => { awai
 // ── fixtures specific to AM-14 ────────────────────────────────────────────────
 const PERIOD_MD: Ob = ['period_lord:md', 'residence', 'period_lord', 'house_span:7', 'dasha_lord', 'self']
 const CONCRETE: Ob = ['jupiter', 'residence', 'occupant', 'house_span:7', 'dasha_lord', 'self']
+// AM-21 part 3 (XX.38 delivery forms): a CONCRETE transiting agent with the role token `period_lord` as the OBJECT ROLE, searched over the whole horizon
+const XX38_SUN: Ob = ['sun', 'residence', 'period_lord', 'span:2', 'dasha_lord', 'self']
+const XX38_JUP: Ob = ['jupiter', 'residence', 'period_lord', 'span:2', 'dasha_lord', 'self']
 const MID_MOON = '2025-02-01T00:00:00Z'
 // level-1 daśā rows: Mercury covers [2024-06-01, 2025-02-01), the MOON period starts exactly at MID_MOON
 const DASHA_MERC = '31000000-0000-4000-8000-000000000001'
@@ -549,5 +552,33 @@ describe.skipIf(!TEST_DB_URL)('B6.0 R2 migration 1232 — AM-14 Moon-scope accou
     const extra = nextGen()
     await moonBuild(extra, { ids: [DASHA_MERC], intervals: [[LO, MID_MOON, 'searched_complete'], [MID_MOON, HI, 'excluded_moon_tier']] })
     await refused(publishAndSeal(extra), /moon_domain_extra/)
+  })
+  // ── AM-21 part 3: the XX.38 delivery searches fit the existing grammar (no migration) ─────────────────────────
+  it.each([['sun', XX38_SUN], ['jupiter', XX38_JUP]] as const)('XX.38 %s: a concrete-agent / period_lord-role obligation is NOT Moon-resolved even while a Moon period is consumed — it seals on the whole-horizon search', async (_n, obligation) => {
+    const gen = nextGen()
+    await moonBuild(gen, { obligation, ids: [DASHA_MERC, DASHA_MOON], intervals: [[LO, HI, 'searched_complete']] })   // Moon bhukti inside the horizon
+    const dom = await pool.query<{ d: string }>(`SELECT ka_gochara_search_moon_resolved_domain($1,$2,$3,(SELECT ob_id FROM ka_gochara_search_obligation WHERE chart_id=$1 AND generation=$2 AND event_class=$3)) AS d`, [CHART, gen, CLS])
+    expect(dom.rows[0]!.d).toBe('{}')                                      // 1232's domain function keys on the AGENT token (period_lord:md|ad|pd) — not the role
+    await publishAndSeal(gen)
+  })
+
+  it('XX.38: the Moon period does not excuse an unsearched portion — the whole horizon is required for a concrete agent', async () => {
+    const gen = nextGen()
+    await moonBuild(gen, { obligation: XX38_SUN, ids: [DASHA_MERC, DASHA_MOON], intervals: [[LO, MID_MOON, 'searched_complete']] })
+    await refused(publishAndSeal(gen), /obligation_uncovered/)
+  })
+
+  it('XX.38: an excluded_moon_tier claim on it is refused — the Moon is never a stored concrete agent, so it cannot be hidden as a Moon exclusion', async () => {
+    const gen = nextGen()
+    await moonBuild(gen, { obligation: XX38_JUP, ids: [DASHA_MERC, DASHA_MOON], intervals: [[LO, MID_MOON, 'searched_complete'], [MID_MOON, HI, 'excluded_moon_tier']] })
+    await refused(publishAndSeal(gen), /moon_exclusion_on_non_period_obligation/)
+  })
+
+  it('XX.38: the obligation grammar admits the tokens (agent, relation=residence, role=period_lord, target=span:n, frame=dasha_lord) and its id is anchor-free', async () => {
+    const gen = nextGen()
+    await moonBuild(gen, { obligation: XX38_SUN, ids: [DASHA_MERC], intervals: [[LO, HI, 'searched_complete']] })
+    const r = await pool.query<{ ob_id: string; canonical_bytes: string }>(`SELECT ob_id, canonical_bytes FROM ka_gochara_search_obligation WHERE chart_id=$1 AND generation=$2`, [CHART, gen])
+    expect(r.rows).toEqual([{ ob_id: obId('p1', '1.0', XX38_SUN), canonical_bytes: 'marriage|p1|1.0|sun|residence|period_lord|span:2|dasha_lord|self' }])
+    expect(r.rows[0]!.canonical_bytes.split('|')).toHaveLength(9)          // arity 9: no anchor lord or applicable domain in the preimage
   })
 })
