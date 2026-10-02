@@ -1,6 +1,6 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.8
+version: 0.9
 status: v0.5 ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); v0.6 adds AM-10 and the F-2 exclusion-evidence binding (not yet reviewed); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
@@ -1248,6 +1248,20 @@ reads that fact.
 
 ---
 
+## AM-13 — CANDIDATE (not yet a pin): factor applicability by object kind; `activity_kernel@1.1` and `graduated_drishti` scope — NEW (v0.9)
+
+**Status: proposal; from WINDOW_SWEEP_ANSWER_v1_0 items (3)/(4); no registry change made.** Defect in the frozen text: §2.1 says a
+missing factor operand takes its `null_state` ("never silently 1"), the registry declares `activity_kernel` (operand: angular |Δλ| to a
+point, no orb parameter) on P3/P4/P5 although their contacts include **span residence and aspect-on-span** records that have no |Δλ| —
+read literally, every such record is `unqualified`. Proposed: a versioned factor row `activity_kernel@1.1` declaring **applicability by
+object kind** — point/star objects: the angular kernel with the **orb as a row parameter** (4.x used 5.0° "unratified"; needs a ruling);
+span objects: a **membership step (1.0 inside, 0 outside)**, declared with its numeric function, `uncalibrated_default` — plus
+`graduated_drishti` declared **applicable to aspect records only**. "Not applicable" is then a declared state, not a missing operand and
+not a silent 1. New P3/P4/P5 rule_versions follow (older versions → `superseded_by_version`). Needs the steward/native; A must not
+hard-code it meanwhile.
+
+---
+
 ## Batch checklist for the A5.5 gate (v0.5)
 
 | # | Item | Spec fold | New migration? | Decision left? |
@@ -1263,7 +1277,26 @@ reads that fact.
 | AM-9 | L0 Rāhu/Ketu finding (provenance narrowed) | none | no | L0 owner's ruling |
 | AM-10 | §4.0 daśā read-contract re-pin rule (conditional on L1-rebuild close; no new pin value) | §4.0 | no (one code PR at re-pin) | steward declares rebuild landed |
 | AM-11 | Prerequisite-evaluation implementation pins (a)–(d) + P1 obligation-agent role token (e) | §2.2 / §10.1 | no | no |
+| PC-1…4 | Named pre-conditions (sealer replay EXECUTE; F-3/F-6 remainder; protected-deployment rehearsal; distinct verifier principal) | see the PRE-CONDITIONS section | — | gate steps, not merges |
+| AM-13 | CANDIDATE: factor applicability by object kind (`activity_kernel@1.1`: span ⇒ membership step, orb as row parameter; drishti = aspect records only) | factor catalogue | no (data rows, new rule_versions) | steward/native |
 | AM-12 | CANDIDATE: `sad_bala_sufficient` as a soft factor of a new P1 rule_version (older P1 → `superseded_by_version`) | factor catalogue / rule_path | no (data rows, new rule_version) | A5.5 gate + L1 owner (Sun rūpa finding) |
+
+## A5.5-gate NAMED PRE-CONDITIONS (v0.9 — steward M20261001T233255-6740 / M20261001T234743-1ae5; from Codex's review of migration 1206 v1.2: ACCEPT_WITH_AMENDMENTS, no merge-blocking item)
+
+Each is a condition of a *named later step*, not of merging #2867/#2817 (both stay HOLD; the steward schedules ONE
+protected window for 1204 + 1206 when A5.3's writer is ready to use them). The gate does not pass the step until the
+condition is evidenced.
+
+| # | Pre-condition | Must hold before | Owner | Evidence required |
+|---|---|---|---|---|
+| PC-1 | **Sealer replay-helper EXECUTE.** The restricted sealing principal needs `ka_gochara_search_replay_violations` (and every other function on the replay call graph); 1206's replay branch calls it as the invoker. Grant it to the sealer ONLY (never the builder) and run the **initial seal and BOTH replay calls as that role** in the live suite. | the sealing principal is **activated** | **B** (suite) + steward (principal; native provisions roles) | live suite: initial seal, identical replay, post-registry-advance replay all as the restricted sealer. **Suite part DONE at #2867 head a2a5dfed4** (replay-helper EXECUTE proven necessary: without it the replay fails `permission denied for function ka_gochara_search_replay_violations`); a per-grant necessity check for the 22 sealer grants and the real principal's activation remain |
+| PC-2 | **Remaining F-3 + F-6.** F-3: identity/census residuals (`self`→`native` vector update applied to the 1206 suite; class census; candidate invalidation). F-6: manifest binding (generation-5 manifest digest carrying `inventories_digest`, excluding `moon_on_demand`) and Moon receipts. | **writer / serving acceptance** | **B** (spec) + **A** (implementation) | specs + vectors accepted; A's writer reproduces them; before/after-seal evidence for the manifest digest |
+| PC-3 | **Protected-deployment rehearsal with REAL principals**: quiescence of the chart's writers, representative data volumes (full 26-class generation), measured **seal latency**, and a rehearsed **rollback / forward-correction** (1204 can stay committed if 1206 fails — the runner commits per file). | the **protected deployment** of 1204 + 1206 | steward (window, quiescence) + **B** (rehearsal scripts) | rehearsal record on a production-shaped clone: timings, lock waits, rollback and forward-correction outcomes |
+| PC-4 | **Distinct verifier principal.** Until then the verifier runs in the **builder's session** (steward decision M20261001T234743-1ae5), so the builder holds INSERT on `ka_gochara_search_inventory_verification`; independence is a process property, not a database one. A separate verifier principal (own role, own grants: SELECT on the inventory tables + INSERT on verification only; no obligation/interval/inventory writes) is required to make independence database-enforced. Role creation is the native's — nothing provisioned now. | **verifier independence is claimed** (and the seal check's "independent verification" is described as database-enforced) | steward / native (role), **B** (grant set + test) | a role-mirror suite where the verifier role can write verification rows only and the builder can no longer do so |
+
+Context kept honest: PC-1 is a *counterexample established from source* by the reviewer (the suite's twenty-function
+sealer list omitted the replay helper and the replay calls ran as the superuser); it is not a reproduced failure.
+Rank-4 evidence note (counts, PostgreSQL version, CI commit, advisory-vs-required) is applied to the PR body, not here.
 
 ## A5.5-gate follow-ups — Codex v1.4 ranked list (P2; owed at the A5.5 gate; no P1 blocks)
 
