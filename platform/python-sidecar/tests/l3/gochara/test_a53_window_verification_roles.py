@@ -156,6 +156,8 @@ def test_the_verifier_derives_verifies_and_persists_with_only_the_migrations_gra
 def test_the_sealer_runs_the_window_gate_and_the_replay_check(rworld):
     w = rworld
     _built(w)
+    # R12-1: the gate's legacy-rows helper is 1240's but its grant is 1241's (closed ACL spec) — stood in here
+    w.conn.execute("GRANT EXECUTE ON FUNCTION public.ka_gochara_legacy_projection_rows(uuid, text) TO gochara_sealer")
     with as_role(w.conn, "gochara_sealer"):
         assert wg.candidate_gate(w.conn, CHART_ID, GEN, CLS) == []
         n = w.conn.execute("SELECT count(*) FROM public.ka_gochara_window_verification_replay_violations(%s::uuid, %s)",

@@ -290,6 +290,10 @@ def _populate_am5_database(conn, faithful=False):
             cur.execute("INSERT INTO public.bg_transit_rules (rule_type, graha, primary_house, vedha_house,"
                         " phala, classical_citation) VALUES (%s, %s, %s, %s, 'x', %s)",
                         (rule_type, graha, house, vedha, citation))
+        if faithful:
+            # production-shaped: the LEGACY projection relation exists (1241's post-check names it; the gate's legacy-rows arm reads it)
+            cur.execute("CREATE TABLE public.kala_gochara_windows (id bigserial PRIMARY KEY, chart_id uuid NOT NULL,"
+                        " event_class text, generation text NOT NULL, intensity numeric)")
         # the faithful mirror applies the REAL builder-grant migrations too (R9-4): the restricted builder holds exactly
         # what production gives it (1216 tables, 1220 functions, 1234 window tables/functions) — and, once 1240 adds a
         # CHECK helper, only what 1240 itself grants it

@@ -690,6 +690,41 @@ BEGIN
   RAISE EXCEPTION 'ka_gochara_seal_approval is append-only: % refused', TG_OP;
 END;
 $$;
+-- RECEIPT ATTRIBUTION (Codex round 12): `sealed_by` and `approved_at` are not caller-supplied facts. A BEFORE INSERT trigger SETS them —
+-- whatever the sealer's INSERT carried — to the SESSION login (`session_user`, not a role switched to inside the session) and the
+-- transaction's timestamp, so they are database-attested.
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_approval_attest()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  NEW.sealed_by := session_user;
+  NEW.approved_at := now();
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER ka_gochara_seal_approval_attest
+  BEFORE INSERT ON public.ka_gochara_seal_approval
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_attest();
+
+-- …and a receipt is valid only for the FIRST SEAL OF THIS TRANSACTION with the SAME manifest: at COMMIT the seal row for (chart, generation)
+-- must exist, name the receipt's manifest, and have been written in this very transaction (`sealed_at` is the transaction timestamp).
+-- So a receipt cannot be attached to a generation sealed before 1240 (or before this transaction), nor to another manifest.
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_approval_requires_first_seal()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal s
+                 WHERE s.chart_id = NEW.chart_id AND s.generation = NEW.generation AND s.manifest_id = NEW.manifest_id
+                   AND s.sealed_at = transaction_timestamp()) THEN
+    RAISE EXCEPTION 'ka_gochara_seal_approval refused at commit (receipt_without_first_seal): the receipt for (chart %, generation %, manifest %) has no seal row of the same manifest written in this transaction — a receipt exists only for the first seal it is written with',
+      NEW.chart_id, NEW.generation, NEW.manifest_id USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+CREATE CONSTRAINT TRIGGER ka_gochara_seal_approval_zz_first_seal
+  AFTER INSERT ON public.ka_gochara_seal_approval
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_requires_first_seal();
+
 CREATE TRIGGER ka_gochara_seal_approval_no_change
   BEFORE UPDATE OR DELETE ON public.ka_gochara_seal_approval
   FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_immutable();
@@ -845,8 +880,7 @@ BEGIN
       public.ka_gochara_f4_token(real),
       -- R10-4 (iii): the job ENDS in the same combined candidate gate the seal uses (1240's own function; the 1206/1232
       -- completeness function it calls, and what that reads, are Stream B's grants — see 1241)
-      public.ka_gochara_candidate_gate_violations(uuid, text),
-      public.ka_gochara_legacy_projection_rows(uuid, text)
+      public.ka_gochara_candidate_gate_violations(uuid, text)
       TO gochara_verifier;
     RAISE NOTICE 'migration 1240: verifier grants issued to role gochara_verifier';
   ELSE
@@ -864,7 +898,7 @@ BEGIN
     GRANT EXECUTE ON FUNCTION
       public.ka_gochara_window_verification_violations(uuid, text),
       public.ka_gochara_window_verification_replay_violations(uuid, text),
-      public.ka_gochara_candidate_gate_violations(uuid, text), public.ka_gochara_legacy_projection_rows(uuid, text),
+      public.ka_gochara_candidate_gate_violations(uuid, text),
       public.ka_gochara_eval_window_content_digest(uuid, text, text, text, text),
       public.ka_gochara_eval_window_stored_digest(uuid, text, text, text, text),
       public.ka_gochara_eval_window_expected_digest(uuid, text, text, text, text),
@@ -895,9 +929,10 @@ BEGIN
   END IF;
   SELECT count(*) INTO n FROM pg_trigger t
   WHERE t.tgrelid = 'public.ka_gochara_seal_approval'::regclass AND NOT t.tgisinternal
-    AND t.tgname IN ('ka_gochara_seal_approval_no_change', 'ka_gochara_seal_approval_no_truncate');
-  IF n <> 2 THEN
-    RAISE EXCEPTION 'migration 1240 post-apply check failed: the seal-approval receipt table lacks its append-only triggers';
+    AND t.tgname IN ('ka_gochara_seal_approval_no_change', 'ka_gochara_seal_approval_no_truncate',
+                     'ka_gochara_seal_approval_attest', 'ka_gochara_seal_approval_zz_first_seal');
+  IF n <> 4 THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the seal-approval receipt table lacks its append-only / attestation / first-seal triggers';
   END IF;
   SELECT count(*) INTO n FROM pg_trigger t
   WHERE t.tgrelid = 'public.ka_gochara_generation_seal'::regclass AND NOT t.tgisinternal

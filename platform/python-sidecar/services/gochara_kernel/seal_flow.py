@@ -50,4 +50,115 @@ def seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest:
     return {"manifest_id": str(manifest_id), "brief_digest": approved_digest, "payload": payload}
 
 
-__all__ = ["seal_with_approval"]
+# ── the EXECUTABLE caller (R12-2): everything the sealing workflow's job does, as functions of an open connection ──────────────────
+
+import json
+import re
+
+REQUIRED_POLICY = "all_null_candidate/1"
+APPROVAL_SCHEMA = "seal_approval/1"
+#: process exit codes of `pipeline/orchestrator/seal_job.py`
+EXIT_SEALED, EXIT_REFUSED, EXIT_MISMATCH, EXIT_IDENTITY, EXIT_ERROR = 0, 2, 3, 4, 5
+_HEX64 = re.compile(r"^[0-9a-f]{64}$")
+_COMMIT = re.compile(r"^[0-9a-f]{7,64}$")
+#: the ONLY write privileges the sealer principal may hold (the seal, the publication flip, the receipt)
+SEALER_WRITE_ALLOWED = frozenset({
+    "INSERT on ka_gochara_generation_seal", "INSERT on ka_gochara_seal_approval",
+    "UPDATE(status) on kala_gochara_publication", "UPDATE(published_at) on kala_gochara_publication",
+    "UPDATE(content_digest) on kala_gochara_publication", "UPDATE(row_counts) on kala_gochara_publication"})
+
+
+class SealRefused(RuntimeError):
+    """Nothing was written: an input, the approval, the policy or the connection is not what the sealing job requires."""
+
+    def __init__(self, code: str, detail: str, *, exit_code: int = EXIT_REFUSED):
+        super().__init__(f"refused:{code} — {detail}")
+        self.code, self.detail, self.exit_code = code, detail, exit_code
+
+
+def parse_approval(text: str | None) -> dict:
+    """The approval record the workflow writes from the GitHub approval of THIS run (schema `seal_approval/1`):
+    {schema, brief_digest, run_id, run_attempt, approver_login, approved_by_note}. Absent / malformed ⇒ refused."""
+    if not text or not text.strip():
+        raise SealRefused("approval_absent", "no approval record was supplied")
+    try:
+        a = json.loads(text)
+    except ValueError as exc:
+        raise SealRefused("approval_malformed", f"the approval record is not JSON: {exc}") from exc
+    if not isinstance(a, dict) or a.get("schema") != APPROVAL_SCHEMA:
+        raise SealRefused("approval_malformed", f"the approval record is not {APPROVAL_SCHEMA}")
+    digest, login, note = a.get("brief_digest"), a.get("approver_login"), a.get("approved_by_note")
+    if not isinstance(digest, str) or not _HEX64.match(digest):
+        raise SealRefused("approval_malformed", "brief_digest is not a lowercase sha256")
+    for k in ("run_id", "run_attempt"):
+        if not isinstance(a.get(k), int) or isinstance(a.get(k), bool) or a[k] < 1:
+            raise SealRefused("approval_malformed", f"{k} is not a positive integer")
+    for k, v in (("approver_login", login), ("approved_by_note", note)):
+        if not isinstance(v, str) or not v.strip():
+            raise SealRefused("approval_malformed", f"{k} is blank")
+    return a
+
+
+def _one(row):
+    return None if row is None else (next(iter(row.values())) if isinstance(row, dict) else row[0])
+
+
+def check_sealer_identity(conn) -> dict:
+    """Refuse unless this session is the SEALER principal: logged in as `gochara_sealer` itself (session_user == current_user — the job
+    never uses SET ROLE), not a superuser, not the builder or the verifier or a member of either, holding no write privilege — table or
+    column — beyond the seal, the publication flip and the receipt, and no write on the verification tables."""
+    from . import verification_job as vj
+    who = conn.execute("SELECT current_user, session_user").fetchone()
+    user, session = tuple(who.values()) if isinstance(who, dict) else tuple(who)
+    if user != "gochara_sealer" or session != "gochara_sealer":
+        raise SealRefused("identity_not_sealer", f"session_user {session!r} / current_user {user!r}: the sealing job runs ONLY as the "
+                          "gochara_sealer login", exit_code=EXIT_IDENTITY)
+    if _one(conn.execute("SELECT rolsuper FROM pg_roles WHERE rolname = current_user").fetchone()):
+        raise SealRefused("identity_not_sealer", "the sealer is a superuser", exit_code=EXIT_IDENTITY)
+    for other in ("data_plane_builder", "gochara_verifier"):
+        if vj._role_exists(conn, other) and _one(conn.execute("SELECT pg_has_role(current_user, %s, 'MEMBER')", (other,)).fetchone()):
+            raise SealRefused("identity_not_sealer", f"the sealer is a member of {other}", exit_code=EXIT_IDENTITY)
+    held = [h for h in vj._write_surface(conn, user) if h not in SEALER_WRITE_ALLOWED]
+    for t in vj.VERIFICATION_TABLES:
+        for priv in ("INSERT", "UPDATE", "DELETE", "TRUNCATE"):
+            if _one(conn.execute("SELECT has_table_privilege(current_user, %s, %s)", (f"public.{t}", priv)).fetchone()):
+                held.append(f"{priv} on {t}")
+    if held:
+        raise SealRefused("identity_not_sealer", f"the sealer holds write privileges beyond the seal set: {held}",
+                          exit_code=EXIT_IDENTITY)
+    return {"login": user, "session": session}
+
+
+def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id: int, run_attempt: int, sealing_commit: str,
+                 required_policy: str = REQUIRED_POLICY, enforce_identity: bool = True) -> dict[str, Any]:
+    """The sealing job's whole act, owning ONE explicit transaction on an AUTOCOMMIT connection: inputs and approval validated (nothing
+    touched), the connection proven to be the sealer, then — inside the transaction — the seal locks, the policy requirement, the
+    approval RECOMPUTE (refused on any mismatch BEFORE publishing), publication, the authoritative seal, the receipt, the post-publication
+    boundary re-check. A failure anywhere — the receipt included — rolls publication back too. `run_id` / `run_attempt` /
+    `sealing_commit` are what the RUNNING workflow says it is (its environment); the approval must have been given for exactly them."""
+    from . import verification_job as vj
+    from .result_policy import manifest_policy
+    if not isinstance(run_id, int) or run_id < 1 or not isinstance(run_attempt, int) or run_attempt < 1:
+        raise SealRefused("run_identity_malformed", "the run id / attempt are not positive integers")
+    if not isinstance(sealing_commit, str) or not _COMMIT.match(sealing_commit):
+        raise SealRefused("sealing_commit_malformed", "the sealing commit (DEPLOY_SHA) is absent or not a hex commit id")
+    if (approval["run_id"], approval["run_attempt"]) != (run_id, run_attempt):
+        raise SealRefused("approval_not_for_this_run", f"the approval was given for run {approval['run_id']} attempt "
+                          f"{approval['run_attempt']}, this is run {run_id} attempt {run_attempt}")
+    if not getattr(conn, "autocommit", False):
+        raise SealRefused("connection_not_autocommit", "the sealing job owns its transaction: it needs an autocommit connection")
+    if enforce_identity:
+        check_sealer_identity(conn)
+    with conn.transaction():
+        vj.take_locks(conn, chart_id)
+        policy = manifest_policy(conn, chart_id, generation)
+        if policy != required_policy:
+            raise SealRefused("wrong_policy", f"the manifest selects {policy!r}; this milestone's sealing job requires "
+                              f"{required_policy!r}")
+        return seal_with_approval(conn, chart_id=chart_id, generation=generation, approved_digest=approval["brief_digest"],
+                                  approver_login=approval["approver_login"], run_id=run_id, run_attempt=run_attempt,
+                                  approval_note=approval["approved_by_note"], sealing_commit=sealing_commit)
+
+
+__all__ = ["APPROVAL_SCHEMA", "REQUIRED_POLICY", "SEALER_WRITE_ALLOWED", "SealRefused", "check_sealer_identity", "execute_seal",
+           "parse_approval", "seal_with_approval"]

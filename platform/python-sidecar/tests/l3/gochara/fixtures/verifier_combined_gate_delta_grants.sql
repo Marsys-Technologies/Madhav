@@ -33,3 +33,12 @@ DO $$ BEGIN
     GRANT SELECT (chart_id, generation) ON public.kala_gochara_windows TO gochara_verifier;
   END IF;
 END $$;
+
+-- STAND-IN for Stream B's 1241 (R12-1): EXECUTE on the new legacy-rows gate helper for both principals (1240 creates it and grants nothing;
+-- 1241's closed ACL spec refuses a grant it does not list).
+GRANT EXECUTE ON FUNCTION public.ka_gochara_legacy_projection_rows(uuid, text) TO gochara_verifier;
+DO $$ BEGIN
+  IF to_regrole('gochara_sealer') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.ka_gochara_legacy_projection_rows(uuid, text) TO gochara_sealer;
+  END IF;
+END $$;
