@@ -32,6 +32,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from brahmagyan.fact_identity_parser import SIGN_NAME_TO_NUM
 from brahmagyan.verification_tiers import UNVERIFIED_DEFAULT, emit_tier
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
@@ -106,16 +107,6 @@ _CHANDRA_BALA: dict[int, str] = {
     5: "unfavorable", 6: "favorable", 7: "favorable", 8: "unfavorable",
     9: "neutral", 10: "favorable", 11: "favorable", 12: "unfavorable",
 }
-
-# Native birth Moon nakshatra (Purva Bhadrapada = id 25, 1-indexed)
-NATIVE_MOON_NAK_ID = 25   # Purva Bhadrapada
-
-# Native birth Moon sign (Aquarius = Kumbha = id 11, 1-indexed)
-# 1984-02-05: Moon in Purva Bhadrapada spans Aquarius–Pisces; birth pada matters.
-# Purva Bhadrapada padas 1-3 = Aquarius, pada 4 = Pisces.
-# Canonical: Moon in Kumbha (Aquarius) at birth — confirmed FORENSIC.
-NATIVE_MOON_SIGN_ID = 11  # Kumbha (Aquarius)
-
 
 # ── DB connection (same pattern as GA3) ──────────────────────────────────────
 
@@ -1183,6 +1174,68 @@ def _emit_eclipse_proximity(pi: Any, chart_id: str, build_id: str,
     return rows
 
 
+def _birth_moon_nak_id(pi: Any) -> int:
+    """Birth Moon nakshatra id (1..27) read from the PanchangaInstant.
+
+    `panchanga_instant` always populates `pi.nakshatra` (an `Anga` with a 1..27
+    id), so absence is a broken build, not a case to paper over: there is no
+    owner-chart fallback (a constant would silently stamp this chart's rows
+    with another chart's nakshatra).
+    """
+    nak = getattr(pi, "nakshatra", None)
+    nak_id = getattr(nak, "id", None)
+    if isinstance(nak_id, bool) or not isinstance(nak_id, int) or not 1 <= nak_id <= 27:
+        raise ValueError(
+            "[ga_panchanga_writer] PanchangaInstant.nakshatra.id missing or outside "
+            f"1..27 (got {nak_id!r}); refusing to derive the Tara Bala baseline"
+        )
+    return nak_id
+
+
+def _read_birth_moon_signs(conn: Any, chart_id: str) -> dict[str, str]:
+    """Per-ayanamsha birth Moon sign, READ from the upstream ga_positions fact
+    (`graha_position` | MOON | `sign`) — never re-derived.
+
+    `pi` (panchanga_instant) is computed under ONE ayanamsha (Lahiri) and is
+    shared by the five per-ayanamsha passes, so it cannot carry the Moon's sign
+    for the other four; the position fact is the L1 authority (CLAUDE.md §N.5).
+    ga_panchanga declares ga_positions as a dependency, so the rows exist by
+    the time this writer runs. One row per ayanamsha is selected with a total
+    order (latest computed_at, then build_id) per §N.7.2.
+    """
+    cur = conn.execute(
+        """
+        SELECT DISTINCT ON (ayanamsha_id) ayanamsha_id, fact_value_text
+        FROM chart_facts
+        WHERE chart_id = %s
+          AND fact_category = 'graha_position'
+          AND fact_subject = 'MOON'
+          AND fact_key = 'sign'
+          AND ayanamsha_id = ANY(%s)
+        ORDER BY ayanamsha_id, computed_at DESC, build_id DESC
+        """,
+        [chart_id, list(CANONICAL_AYANAMSHAS)],
+    )
+    out: dict[str, str] = {}
+    for r in cur.fetchall():
+        ay, sign = (r["ayanamsha_id"], r["fact_value_text"]) if isinstance(r, dict) else (r[0], r[1])
+        out[ay] = sign
+    return out
+
+
+def _chandra_bala_birth_sign_id(birth_moon_sign: Any, ayanamsha_id: str) -> int:
+    """Sign id (1..12) of the birth Moon from the position fact's sign name
+    (English, e.g. 'Aquarius'); raises on an absent or unrecognised value."""
+    sign_id = SIGN_NAME_TO_NUM.get(birth_moon_sign) if isinstance(birth_moon_sign, str) else None
+    if sign_id is None:
+        raise RuntimeError(
+            "[ga_panchanga_writer] chandra_bala_natal_baseline needs the upstream "
+            "ga_positions fact graha_position|MOON|sign for "
+            f"ayanamsha={ayanamsha_id}; got {birth_moon_sign!r} (build ga_positions first)"
+        )
+    return sign_id
+
+
 def _emit_tara_bala_baseline(pi: Any, chart_id: str, build_id: str, computed_at: str,
                                ayanamsha_id: str) -> list[dict]:
     """
@@ -1195,12 +1248,8 @@ def _emit_tara_bala_baseline(pi: Any, chart_id: str, build_id: str, computed_at:
     vp = UNVERIFIED_DEFAULT
     rows = []
 
-    birth_nak_id = (
-        pi.nakshatra.id
-        if (pi and pi.nakshatra and pi.nakshatra.id)
-        else NATIVE_MOON_NAK_ID
-    )
-    birth_nak_name = NAKSHATRA_NAMES[birth_nak_id - 1] if 1 <= birth_nak_id <= 27 else "unknown"
+    birth_nak_id = _birth_moon_nak_id(pi)
+    birth_nak_name = NAKSHATRA_NAMES[birth_nak_id - 1]
 
     for transit_nak_idx in range(27):  # 0-indexed → nak_id = idx+1
         transit_nak_id = transit_nak_idx + 1
@@ -1225,11 +1274,15 @@ def _emit_tara_bala_baseline(pi: Any, chart_id: str, build_id: str, computed_at:
     return rows
 
 
-def _emit_chandra_bala_baseline(pi: Any, chart_id: str, build_id: str, computed_at: str,
-                                  ayanamsha_id: str) -> list[dict]:
+def _emit_chandra_bala_baseline(chart_id: str, build_id: str, computed_at: str,
+                                  ayanamsha_id: str, birth_moon_sign: Any) -> list[dict]:
     """
     chandra_bala_natal_baseline — 12-row state table per ayanamsha.
-    Birth Moon sign derived from pi.nakshatra.id (chart-specific).
+    Birth Moon sign is the ga_positions `graha_position|MOON|sign` fact for THIS
+    ayanamsha (passed in as `birth_moon_sign`, an English sign name such as
+    'Aquarius'); it is never derived from the nakshatra id, because a
+    nakshatra straddling two signs (e.g. Purva Bhadrapada: Aquarius + Pisces)
+    does not determine the Moon's sign.
     Each row: subject=TRANSIT_SIGN_<NAME>, key=classification.
     """
     cat = "chandra_bala_natal_baseline"
@@ -1237,15 +1290,8 @@ def _emit_chandra_bala_baseline(pi: Any, chart_id: str, build_id: str, computed_
     vp = UNVERIFIED_DEFAULT
     rows = []
 
-    birth_nak_id = (
-        pi.nakshatra.id
-        if (pi and pi.nakshatra and pi.nakshatra.id)
-        else NATIVE_MOON_NAK_ID
-    )
-    # Derive birth Moon sign from nakshatra start position (standard formula):
-    # each sign spans 2.25 nakshatras; sign_id = floor((nak_id-1)*4/9) + 1
-    birth_moon_sign_id = ((birth_nak_id - 1) * 4) // 9 + 1
-    birth_moon_sign_name = SIGN_NAMES[birth_moon_sign_id - 1] if 1 <= birth_moon_sign_id <= 12 else "unknown"
+    birth_moon_sign_id = _chandra_bala_birth_sign_id(birth_moon_sign, ayanamsha_id)
+    birth_moon_sign_name = SIGN_NAMES[birth_moon_sign_id - 1]
 
     for sign_idx in range(12):  # 0-indexed → sign_id = idx+1
         sign_id = sign_idx + 1
@@ -1448,6 +1494,14 @@ def build_ga_panchanga(
     summary["invariant_rows"] = len(invariant_rows)
 
     # ── Build DEPENDENT rows (×5 ayanamshas) ────────────────────────────────
+    # Per-ayanamsha birth Moon sign: read from the upstream ga_positions fact
+    # (pi is Lahiri-only, so it cannot supply it for the other ayanamshas).
+    if owns_conn:
+        with _conn() as _read_conn:
+            birth_moon_signs = _read_birth_moon_signs(_read_conn, chart_id)
+    else:
+        birth_moon_signs = _read_birth_moon_signs(conn, chart_id)
+
     all_dependent: list[dict] = []
     for ay in CANONICAL_AYANAMSHAS:
         dep_rows: list[dict] = []
@@ -1461,8 +1515,9 @@ def build_ga_panchanga(
         # Tara bala baseline (27 rows per ayanamsha) — derived from this chart's birth nakshatra
         dep_rows += _emit_tara_bala_baseline(pi, chart_id, build_id, computed_at, ay)
 
-        # Chandra bala baseline (12 rows per ayanamsha) — derived from this chart's birth Moon sign
-        dep_rows += _emit_chandra_bala_baseline(pi, chart_id, build_id, computed_at, ay)
+        # Chandra bala baseline (12 rows per ayanamsha) — from this ayanamsha's ga_positions Moon-sign fact
+        dep_rows += _emit_chandra_bala_baseline(
+            chart_id, build_id, computed_at, ay, birth_moon_signs.get(ay))
 
         summary["dependent_rows_by_ayanamsha"][ay] = len(dep_rows)
         all_dependent.extend(dep_rows)
