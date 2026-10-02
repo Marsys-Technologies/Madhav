@@ -24,7 +24,7 @@ from services.gochara_kernel import seal_flow as sf
 from .test_a53_inventory import CHART_ID
 from .test_a53_p1_support import GEN
 from .test_a53_r10_complete_records import _bypass, _run, built, login, rworld  # noqa: F401
-from .test_a53_r11_seal_brief import _brief_as_verifier, _sealer_stand_ins, _verified  # noqa: F401
+from .test_a53_r11_seal_brief import BRIEF_IDS, EXECUTION, IMAGE, _brief_as_verifier, _producer, _sealer_stand_ins, _verified  # noqa: F401
 from .test_a53_r12_seal_job import ACTOR, ATTEMPT, COMMIT, RUN, _approval, _nothing_written, _run_job, sealable  # noqa: F401
 from .test_a53_verification_job import PASSWORD
 from .test_a53_window_verification_gate import SPANS, _boot_p3  # noqa: F401
@@ -44,14 +44,16 @@ def _persisted(w) -> list[tuple]:
 
 def _publish_seal_receipt(w, digest, *, manifest=None):
     """Publish + seal + the receipt naming `digest`, in ONE transaction (superuser: the triggers are the defence under test)."""
+    brief_id, commit = w.conn.execute("SELECT brief_id, producer_commit FROM public.ka_gochara_seal_brief ORDER BY brief_id DESC LIMIT 1").fetchone() \
+        or (1, "abc1234")                                             # (no brief at all: a fabricated receipt)
     with w.conn.transaction():
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         gk_ledger.publish(w.conn, CHART_ID, GEN)
         mid = w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
         w.conn.execute(
-            "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login,"
-            " approved_by_note, run_id, run_attempt, workflow_commit) VALUES (%s::uuid, %s, %s::uuid, %s, 'x', 'x', 1, 1, 'abc1234')",
-            (CHART_ID, GEN, manifest or mid, digest))
+            "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id, approver_login,"
+            " approved_by_note, run_id, run_attempt, workflow_commit) VALUES (%s::uuid, %s, %s::uuid, %s, %s, 'executions/test-exec-1', 'x', 'x', 1, 1, %s)",
+            (CHART_ID, GEN, manifest or mid, digest, brief_id, commit))
 
 
 # ── what is persisted, by whom ────────────────────────────────────────────────────────────────────────────────
@@ -70,17 +72,18 @@ def test_forged_attested_columns_are_overwritten_and_only_a_candidate_can_be_bri
     _verified(w)
     w.conn.execute(
         "INSERT INTO public.ka_gochara_seal_brief (chart_id, generation, manifest_id, brief_digest, state_digest, runner_identity,"
-        " produced_by, produced_at) VALUES (%s::uuid, %s, gen_random_uuid(), repeat('b', 64), repeat('c', 64),"
-        " '{\"commit\": \"t\", \"implementation_digest\": \"t\"}'::jsonb, 'forged', '2001-01-01T00:00:00Z')", (CHART_ID, GEN))
+        " producer_commit, image_digest, execution_id, produced_by, produced_at) VALUES (%s::uuid, %s, gen_random_uuid(), repeat('b', 64),"
+        " repeat('c', 64), '{\"commit\": \"t\", \"implementation_digest\": \"t\"}'::jsonb, 't', 'sha256:' || repeat('1', 64), 'e',"
+        " 'forged', '2001-01-01T00:00:00Z')", (CHART_ID, GEN))
     (_, digest, manifest, state, by), = _persisted(w)
     assert manifest == w.conn.execute("SELECT manifest_id::text FROM public.kala_gochara_publication").fetchone()[0]
     assert state == _state(w) and by != "forged" and digest == "b" * 64
     w.conn.execute("UPDATE public.kala_gochara_publication SET status = 'published' WHERE chart_id = %s", (CHART_ID,))
     with pytest.raises(psycopg.errors.CheckViolation, match="brief_without_candidate"):
         w.conn.execute(
-            "INSERT INTO public.ka_gochara_seal_brief (chart_id, generation, manifest_id, brief_digest, state_digest, runner_identity)"
-            " VALUES (%s::uuid, %s, gen_random_uuid(), repeat('d', 64), repeat('0', 64),"
-            " '{\"commit\": \"t\", \"implementation_digest\": \"t\"}'::jsonb)", (CHART_ID, GEN))
+            "INSERT INTO public.ka_gochara_seal_brief (chart_id, generation, manifest_id, brief_digest, state_digest, runner_identity,"
+            " producer_commit, image_digest, execution_id) VALUES (%s::uuid, %s, gen_random_uuid(), repeat('d', 64), repeat('0', 64),"
+            " '{\"commit\": \"t\", \"implementation_digest\": \"t\"}'::jsonb, 't', 'sha256:' || repeat('1', 64), 'e')", (CHART_ID, GEN))
 
 
 def test_the_table_is_append_only(built):
@@ -98,7 +101,8 @@ def test_the_sealer_may_read_the_table_but_not_write_it_and_the_verifier_may_not
     with login(w, "gochara_sealer") as c:
         assert c.execute("SELECT count(*) FROM public.ka_gochara_seal_brief").fetchone()[0] == 1
         for sql in ("INSERT INTO public.ka_gochara_seal_brief (chart_id, generation, manifest_id, brief_digest, state_digest,"
-                    " runner_identity) VALUES (gen_random_uuid(), 'x', gen_random_uuid(), repeat('a', 64), repeat('a', 64), '{}')",
+                    " runner_identity, producer_commit, image_digest, execution_id) VALUES (gen_random_uuid(), 'x', gen_random_uuid(),"
+                    " repeat('a', 64), repeat('a', 64), '{}', 't', 'sha256:' || repeat('1', 64), 'e')",
                     "UPDATE public.ka_gochara_seal_brief SET brief_digest = repeat('a', 64)", "DELETE FROM public.ka_gochara_seal_brief"):
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
                 c.execute(sql)
@@ -253,7 +257,8 @@ def _other_writer(w):
 def _brief_as_other(w, c, **kw):
     with c.transaction():
         out = sb.brief(c, CHART_ID, GEN, **kw)
-        out["persisted"] = sb.persist_brief(c, out)
+        out["persisted"] = sb.persist_brief(c, out, producer=_producer(kw.get("sealing_commit")))
+        BRIEF_IDS[out["sha256"]] = out["persisted"]["brief_id"]
     return out
 
 

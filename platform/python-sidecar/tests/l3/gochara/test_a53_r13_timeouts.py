@@ -76,6 +76,9 @@ def test_the_briefs_held_lock_is_a_named_refusal_and_nothing_is_persisted(built,
     try:
         monkeypatch.setenv(entry.ENV_URL, make_conninfo(w.dsn, user="gochara_verifier", password=PASSWORD))
         monkeypatch.setattr(sb, "BRIEF_LOCK_TIMEOUT", "300ms")
+        monkeypatch.setenv("GOCHARA_RUNNER_IMAGE_DIGEST", "sha256:" + "1" * 64)
+        monkeypatch.setenv("CLOUD_RUN_EXECUTION", "executions/test-exec-1")
+        monkeypatch.delenv("GOCHARA_SEALING_COMMIT", raising=False)
         with psycopg.connect(w.dsn, autocommit=True) as holder:
             with holder.transaction():
                 holder.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))

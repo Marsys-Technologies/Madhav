@@ -14,17 +14,20 @@ from . import seal_brief
 
 
 def seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest: str, approver_login: str,
-                       run_id: int, run_attempt: int = 1, approval_note: str, sealing_commit: str) -> dict[str, Any]:
+                       run_id: int, run_attempt: int = 1, approval_note: str, sealing_commit: str,
+                       brief_id: int, producer_execution_id: str) -> dict[str, Any]:
     """The sealing step inside the caller's transaction, under the PINNED text-rendering session settings (F-R12-6): the publication
     digest `ledger.publish` stores is computed by the sealer's session and must be rendered exactly as the briefed one was."""
     with seal_brief.pinned_session(conn):
         return _seal_with_approval(conn, chart_id=chart_id, generation=generation, approved_digest=approved_digest,
                                    approver_login=approver_login, run_id=run_id, run_attempt=run_attempt,
-                                   approval_note=approval_note, sealing_commit=sealing_commit)
+                                   approval_note=approval_note, sealing_commit=sealing_commit, brief_id=brief_id,
+                                   producer_execution_id=producer_execution_id)
 
 
 def _seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest: str, approver_login: str,
-                        run_id: int, run_attempt: int = 1, approval_note: str, sealing_commit: str) -> dict[str, Any]:
+                        run_id: int, run_attempt: int = 1, approval_note: str, sealing_commit: str,
+                        brief_id: int, producer_execution_id: str) -> dict[str, Any]:
     """`sealing_commit` is the sealing workflow's DEPLOY_SHA (it is inside the approved payload AND in the receipt);
     `approval_note` states on whose authority the approval was given."""
     if not approver_login.strip() or not str(sealing_commit).strip() or not approval_note.strip():
@@ -34,10 +37,12 @@ def _seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest
     payload = seal_brief.recompute_under_locks(conn, chart_id, generation, approved_digest, sealing_commit=sealing_commit)
     # (1b) F-R12-4: the approved digest must be the CURRENT brief the VERIFIER persisted for this candidate (the receipt's commit-time
     # trigger enforces the same; refusing here costs nothing and says why before anything is published)
-    why = seal_brief.persisted_brief_problem(conn, chart_id, generation, payload["manifest"]["manifest_id"], approved_digest)
+    why = seal_brief.persisted_brief_problem(conn, chart_id, generation, payload["manifest"]["manifest_id"], approved_digest,
+                                             brief_id=int(brief_id), sealing_commit=sealing_commit, execution_id=producer_execution_id)
     if why:
-        raise seal_brief.ApprovalMismatch(f"{why}: the approved digest is not the current brief persisted by the verifier for this "
-                                          "candidate — re-run the verifier's --brief and approve that")
+        raise seal_brief.ApprovalMismatch(f"{why}: the approval does not name the current brief the verifier persisted for this candidate "
+                                          "(this brief id, produced by the sealing commit in this execution) — re-run the verifier's "
+                                          "--brief and approve that one")
     # (2) publish, then the authoritative SQL seal (its triggers run the combined gate on the published row)
     gk_ledger.publish(conn, chart_id, generation)
     # (2b) re-check the candidate boundary AFTER publication, still under the seal locks: nothing may have changed between the
@@ -57,9 +62,11 @@ def _seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest
     manifest_id = next(iter(manifest_id.values())) if isinstance(manifest_id, dict) else manifest_id[0]
     # (3) the approval receipt, linked to the seal row by its primary key
     conn.execute(
-        "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login,"
-        " approved_by_note, run_id, run_attempt, workflow_commit) VALUES (%s::uuid, %s, %s::uuid, %s, %s, %s, %s, %s, %s)",
-        (chart_id, generation, manifest_id, approved_digest, approver_login, approval_note, run_id, run_attempt, sealing_commit))
+        "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id,"
+        " approver_login, approved_by_note, run_id, run_attempt, workflow_commit)"
+        " VALUES (%s::uuid, %s, %s::uuid, %s, %s, %s, %s, %s, %s, %s, %s)",
+        (chart_id, generation, manifest_id, approved_digest, int(brief_id), producer_execution_id, approver_login, approval_note,
+         run_id, run_attempt, sealing_commit))
     # (4) a seal with no receipt is refused before COMMIT (the FK is deferred so either order works inside one transaction)
     if conn.execute("SELECT public.ka_gochara_seal_receipt_missing(%s::uuid, %s)", (chart_id, generation)).fetchone()[0]:
         raise RuntimeError("the generation is sealed but no approval receipt exists — the sealing transaction is refused")
@@ -72,7 +79,7 @@ import json
 import re
 
 REQUIRED_POLICY = "all_null_candidate/1"
-APPROVAL_SCHEMA = "seal_approval/1"
+APPROVAL_SCHEMA = "seal_approval/2"
 #: process exit codes of `pipeline/orchestrator/seal_job.py`
 EXIT_SEALED, EXIT_REFUSED, EXIT_MISMATCH, EXIT_IDENTITY, EXIT_ERROR = 0, 2, 3, 4, 5
 _HEX64 = re.compile(r"^[0-9a-f]{64}\Z")
@@ -97,7 +104,9 @@ class SealRefused(RuntimeError):
 
 def parse_approval(text: str | None) -> dict:
     """The approval record the workflow writes from the GitHub approval of THIS run (schema `seal_approval/1`):
-    {schema, brief_digest, run_id, run_attempt, approver_login, approved_by_note}. Absent / malformed ⇒ refused."""
+    {schema, brief_digest, brief_id, producer_execution_id, run_id, run_attempt, approver_login, approved_by_note}. `brief_id` and
+    `producer_execution_id` are the SPECIFIC persisted brief and the verifier execution the approval is for (R13-3: taken from the compact
+    line of THIS workflow run's brief job — or, for an explicit reuse, from the earlier run's still-current brief). Absent / malformed ⇒ refused."""
     if not text or not text.strip():
         raise SealRefused("approval_absent", "no approval record was supplied")
     try:
@@ -109,9 +118,11 @@ def parse_approval(text: str | None) -> dict:
     digest, login, note = a.get("brief_digest"), a.get("approver_login"), a.get("approved_by_note")
     if not isinstance(digest, str) or not _HEX64.match(digest):
         raise SealRefused("approval_malformed", "brief_digest is not a lowercase sha256")
-    for k in ("run_id", "run_attempt"):
+    for k in ("run_id", "run_attempt", "brief_id"):
         if not isinstance(a.get(k), int) or isinstance(a.get(k), bool) or a[k] < 1:
             raise SealRefused("approval_malformed", f"{k} is not a positive integer")
+    if not isinstance(a.get("producer_execution_id"), str) or not a["producer_execution_id"].strip():
+        raise SealRefused("approval_malformed", "producer_execution_id is blank")
     for k, v in (("approver_login", login), ("approved_by_note", note)):
         if not isinstance(v, str) or not v.strip():
             raise SealRefused("approval_malformed", f"{k} is blank")
@@ -143,8 +154,10 @@ def _one(row):
 
 def check_sealer_identity(conn) -> dict:
     """Refuse unless this session is the SEALER principal: logged in as `gochara_sealer` itself (session_user == current_user — the job
-    never uses SET ROLE), not a superuser, not the builder or the verifier or a member of either, holding no write privilege — table or
-    column — beyond the seal, the publication flip and the receipt, and no write on the verification tables."""
+    never uses SET ROLE), not a superuser, not the builder or the verifier or a member of either — NOR A MEMBER OF ANY ROLE THAT OWNS THE
+    GOCHARA TABLES, `NOINHERIT` membership included (`pg_has_role(..., 'MEMBER')`, the same test the verifier applies; R13-5) — and holding no
+    write privilege, at TABLE or COLUMN level, anywhere on the Gochara tables beyond the seal, the publication flip and the receipt: the
+    verification tables and the brief table are inspected like every other (a column-only INSERT/UPDATE grant on them is refused)."""
     from . import verification_job as vj
     who = conn.execute("SELECT current_user, session_user").fetchone()
     user, session = tuple(who.values()) if isinstance(who, dict) else tuple(who)
@@ -156,11 +169,11 @@ def check_sealer_identity(conn) -> dict:
     for other in ("data_plane_builder", "gochara_verifier"):
         if vj._role_exists(conn, other) and _one(conn.execute("SELECT pg_has_role(current_user, %s, 'MEMBER')", (other,)).fetchone()):
             raise SealRefused("identity_not_sealer", f"the sealer is a member of {other}", exit_code=EXIT_IDENTITY)
-    held = [h for h in vj._write_surface(conn, user) if h not in SEALER_WRITE_ALLOWED]
-    for t in vj.VERIFICATION_TABLES:
-        for priv in ("INSERT", "UPDATE", "DELETE", "TRUNCATE"):
-            if _one(conn.execute("SELECT has_table_privilege(current_user, %s, %s)", (f"public.{t}", priv)).fetchone()):
-                held.append(f"{priv} on {t}")
+    for owner in vj._builder_owner_roles(conn):
+        if user == owner or _one(conn.execute("SELECT pg_has_role(current_user, %s, 'MEMBER')", (owner,)).fetchone()):
+            raise SealRefused("identity_not_sealer", f"the sealer is, or is a member of, {owner}, which OWNS the Gochara tables",
+                              exit_code=EXIT_IDENTITY)
+    held = [h for h in vj._write_surface(conn, user, exempt=()) if h not in SEALER_WRITE_ALLOWED]
     if held:
         raise SealRefused("identity_not_sealer", f"the sealer holds write privileges beyond the seal set: {held}",
                           exit_code=EXIT_IDENTITY)
@@ -202,7 +215,8 @@ def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id
                                   f"{required_policy!r}")
             return seal_with_approval(conn, chart_id=chart_id, generation=generation, approved_digest=approval["brief_digest"],
                                       approver_login=approval["approver_login"], run_id=run_id, run_attempt=run_attempt,
-                                      approval_note=approval["approved_by_note"], sealing_commit=sealing_commit)
+                                      approval_note=approval["approved_by_note"], sealing_commit=sealing_commit,
+                                      brief_id=approval["brief_id"], producer_execution_id=approval["producer_execution_id"])
     except psycopg.errors.LockNotAvailable as exc:
         raise SealRefused("seal_lock_timeout", f"a seal lock was not available within {seal_brief.SEAL_LOCK_TIMEOUT} — another build, "
                           f"verification or seal holds it; nothing was published ({exc})") from exc

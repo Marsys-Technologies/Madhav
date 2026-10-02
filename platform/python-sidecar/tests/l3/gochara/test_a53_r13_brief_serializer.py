@@ -157,7 +157,8 @@ def test_the_golden_stdout_is_chunk_lines_then_a_compact_line_that_reassemble_to
     lines = GOLDEN.read_text().splitlines()
     chunk_lines, compact = lines[:-1], json.loads(lines[-1])
     assert len(chunk_lines) >= 3 and all(set(json.loads(x)) == {"brief_chunk", "of", "sha256", "b64"} for x in chunk_lines)
-    assert set(compact) == {"status", "sha256", "persisted", "brief_bytes", "brief_file", "brief_chunks"}
+    assert set(compact) == {"status", "contract_version", "sha256", "persisted", "producer", "brief_bytes", "brief_file", "brief_chunks"}
+    assert compact["contract_version"] == "seal_brief_transport/1" and set(compact["producer"]) == {"commit", "image_digest", "execution_id"}
     assert compact["status"] == "BRIEFED" and compact["brief_file"] is None and compact["brief_chunks"] is True
     raw = sb.reassemble_chunks(chunk_lines)
     assert len(raw) == compact["brief_bytes"] and hashlib.sha256(raw).hexdigest() == compact["sha256"]
@@ -165,3 +166,71 @@ def test_the_golden_stdout_is_chunk_lines_then_a_compact_line_that_reassemble_to
     assert sb.payload_digest(json.loads(raw, parse_float=Decimal)) == compact["sha256"]
     assert compact["persisted"]["manifest_id"] == brief["manifest"]["manifest_id"] and compact["persisted"]["brief_id"] > 0
     assert re.fullmatch(r"[0-9a-f]{64}", compact["persisted"]["state_digest"])
+
+
+# ── the Cloud Run LOG-ENTRY shape (R13-1, Stream A's half) ───────────────────────────────────────────────────────────
+# Cloud Run parses a JSON OBJECT written to stdout into the ROOT of the entry's `jsonPayload` (not `textPayload`, not `jsonPayload.message`).
+# Each chunk line and the compact line is therefore ONE entry whose jsonPayload IS the line's object. Consequences the reader must respect:
+# (1) the entry's text is NOT preserved — jsonPayload is a protobuf Struct (a map): key order is lost, so nothing may depend on the line's bytes
+#     (the chunk design carries its integrity in `sha256` + base64 `b64`, never in the printed text); (2) every JSON number becomes a double
+#     (3 -> 3.0), so integers are read through int(); (3) Cloud Logging delivers at least once, so duplicates are possible and an identical
+#     repeat of an index is harmless; (4) arrival order is not guaranteed. The fixture is built from Google's documented LogEntry fields for a
+#     `cloud_run_job` resource from the REAL golden stdout — it is NOT a capture from Cloud Run.
+
+LOG_ENTRIES = Path(__file__).parent / "fixtures" / "golden_brief_log_entries_1class.json"
+
+
+def _read_brief_from_log_entries(entries: list[dict]) -> tuple[bytes, dict]:
+    """The reader side of the structured-log transport: (brief bytes, the compact result)."""
+    chunks, compact = {}, None
+    for e in entries:
+        p = e.get("jsonPayload")
+        if not isinstance(p, dict):
+            continue
+        if "brief_chunk" in p:
+            i, n = int(p["brief_chunk"]), int(p["of"])
+            if i in chunks and chunks[i] != (n, p["sha256"], p["b64"]):
+                raise ValueError(f"two different chunks carry index {i}")
+            chunks[i] = (n, p["sha256"], p["b64"])
+        elif p.get("status") == "BRIEFED":
+            compact = p
+    assert compact is not None and chunks
+    total = {n for n, _, _ in chunks.values()}
+    assert len(total) == 1 and sorted(chunks) == list(range(total.pop())), "chunks missing or inconsistent"
+    raw = b"".join(base64.b64decode(chunks[i][2]) for i in sorted(chunks))
+    assert {s for _, s, _ in chunks.values()} == {compact["sha256"]}
+    assert hashlib.sha256(raw).hexdigest() == compact["sha256"] and len(raw) == int(compact["brief_bytes"])
+    return raw, compact
+
+
+def test_the_structured_log_fixture_is_the_golden_stdout_as_cloud_run_entries_and_reassembles():
+    entries = json.loads(LOG_ENTRIES.read_text())
+    golden = [json.loads(x) for x in GOLDEN.read_text().splitlines()]
+    assert [e["jsonPayload"] for e in entries] == golden                                # one entry per stdout line, the object at the ROOT
+    assert all("textPayload" not in e and "message" not in e["jsonPayload"] for e in entries)
+    assert {e["resource"]["type"] for e in entries} == {"cloud_run_job"}
+    raw, compact = _read_brief_from_log_entries(entries)
+    assert sb.reassemble_chunks(GOLDEN.read_text().splitlines()[:-1]) == raw           # the same bytes as the plain stdout route
+    assert compact["contract_version"] == "seal_brief_transport/1" and compact["persisted"]["brief_id"] > 0
+
+
+def test_the_reader_survives_what_cloud_logging_does_to_a_json_payload():
+    """Numbers as doubles, key order lost, duplicates, arrival order scrambled — and a conflicting duplicate refused."""
+    entries = json.loads(LOG_ENTRIES.read_text())
+
+    def doublify(v):
+        if isinstance(v, bool) or v is None or isinstance(v, str):
+            return v
+        if isinstance(v, int):
+            return float(v)
+        if isinstance(v, dict):
+            return {k: doublify(v[k]) for k in sorted(v, reverse=True)}                  # (key order is not preserved either)
+        return [doublify(x) for x in v]
+    mangled = [{**e, "jsonPayload": doublify(e["jsonPayload"])} for e in reversed(entries)]
+    mangled = mangled + mangled[:2]                                                       # at-least-once delivery: duplicates
+    raw, compact = _read_brief_from_log_entries(mangled)
+    assert hashlib.sha256(raw).hexdigest() == compact["sha256"]
+    bad = json.loads(json.dumps(next(e for e in mangled if "brief_chunk" in e["jsonPayload"])))
+    bad["jsonPayload"]["b64"] = base64.b64encode(b"tampered").decode()
+    with pytest.raises(ValueError, match="two different chunks"):
+        _read_brief_from_log_entries(mangled + [bad])

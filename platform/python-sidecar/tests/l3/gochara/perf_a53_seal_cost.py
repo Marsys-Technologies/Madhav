@@ -121,6 +121,35 @@ def test_measure_replicated_read_cost(built):
     print("\nPERF  classes  factor | obligations  records  intervals | state_digest  output_identity  publication_digest  gate  build_payload  (s)")
     print(f"PERF  {CLASSES * factor:>7}  x{factor:<5} | {c['ka_gochara_search_obligation']:>11}  {c['ka_gochara_relationship_record']:>7}  "
           f"{c['ka_gochara_search_interval']:>9} | {t_state:>12.3f}  {t_ident:>15.3f}  {t_pub:>18.3f}  {t_gate:>4.3f}  {t_payload:>13.3f}")
+    # (R13-2 cost review) memory/bytes: the OLD state digest string_agg'd every row's whole JSON text; the CURRENT one aggregates a 64-hex hash per row.
+    import subprocess
+
+    import psycopg
+
+    def fresh_backend_rss(sql, params):
+        """RSS (MB) of a FRESH backend before and after running `sql` once — peak memory attributable to that statement."""
+        with psycopg.connect(w.dsn, autocommit=True) as c:
+            pid = c.execute("SELECT pg_backend_pid()").fetchone()[0]
+            rss = lambda: int(subprocess.run(["ps", "-o", "rss=", "-p", str(pid)], capture_output=True, text=True).stdout.strip() or 0) / 1024
+            before = rss()
+            t0 = time.perf_counter()
+            c.execute(sql, params).fetchone()
+            return before, rss(), time.perf_counter() - t0
+    sizes = {t: w.conn.execute(f"SELECT count(*), coalesce(sum(length((to_jsonb(x) - 'created_at')::text)), 0) FROM public.{t} x"
+                               f" WHERE chart_id = %s AND generation = %s", (CHART_ID, GEN)).fetchone()
+             for t in sb.OUTPUT_TABLES + sb._VERIFICATION_TABLES}
+    biggest = max(sizes, key=lambda t: sizes[t][1])
+    rows, old_bytes = sizes[biggest]
+    old_sql = (f"SELECT encode(sha256(convert_to(string_agg(j::text, E'\\n' ORDER BY j::text COLLATE \"C\"), 'UTF8')), 'hex') FROM"
+               f" (SELECT to_jsonb(x) - 'created_at' AS j FROM public.{biggest} x WHERE x.chart_id = %s AND x.generation = %s) s")
+    new_sql = (f"SELECT encode(sha256(convert_to(string_agg(h, E'\\n' ORDER BY h COLLATE \"C\"), 'UTF8')), 'hex') FROM"
+               f" (SELECT encode(sha256(convert_to((to_jsonb(x) - 'created_at')::text, 'UTF8')), 'hex') AS h FROM public.{biggest} x"
+               f" WHERE x.chart_id = %s AND x.generation = %s) s")
+    ob, oa, ot = fresh_backend_rss(old_sql, (CHART_ID, GEN))
+    nb, na, nt = fresh_backend_rss(new_sql, (CHART_ID, GEN))
+    print(f"PERF  largest table {biggest}: {rows} rows. OLD (whole-row text aggregated): one field of {old_bytes / 1e6:.1f} MB "
+          f"(PG caps a field at 1 GB = ~{1e9 / max(old_bytes / max(rows, 1), 1):,.0f} rows of this width), {ot:.2f}s, backend RSS {ob:.0f}->{oa:.0f} MB. "
+          f"NEW (per-row hash): one field of {rows * 65 / 1e6:.2f} MB (64 hex + separator per row, whatever the row width), {nt:.2f}s, RSS {nb:.0f}->{na:.0f} MB")
     print("PERF  statement_timeout of this session:", w.conn.execute("SHOW statement_timeout").fetchone()[0], "(0 = none; the jobs set none)")
 
 

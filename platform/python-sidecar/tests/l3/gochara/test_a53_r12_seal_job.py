@@ -19,7 +19,7 @@ from services.gochara_kernel import seal_flow as sf
 from .test_a53_inventory import CHART_ID
 from .test_a53_p1_support import GEN
 from .test_a53_r10_complete_records import (CLS, _bypass, _run, built, login, rworld)  # noqa: F401
-from .test_a53_r11_seal_brief import _brief_as_verifier, _sealer_stand_ins, _verified  # noqa: F401
+from .test_a53_r11_seal_brief import BRIEF_IDS, EXECUTION, _brief_as_verifier, _sealer_stand_ins, _verified  # noqa: F401
 from .test_a53_verification_job import PASSWORD
 from .test_a53_window_verification_gate import SPANS, _boot_p3  # noqa: F401
 from .test_a53_window_verification_roles import _consistent_sky, _persist_test_brief, _seal  # noqa: F401
@@ -31,7 +31,8 @@ NOTE = f"ruling:owner-2#2; actor:{ACTOR}"          # the MECHANICAL note the wor
 
 
 def _approval(digest, **over):
-    a = {"schema": "seal_approval/1", "brief_digest": digest, "run_id": RUN, "run_attempt": ATTEMPT,
+    a = {"schema": "seal_approval/2", "brief_digest": digest, "brief_id": BRIEF_IDS.get(digest, 1), "producer_execution_id": EXECUTION,
+         "run_id": RUN, "run_attempt": ATTEMPT,
          "approver_login": "owner-login", "approved_by_note": NOTE}
     a.update(over)
     return a
@@ -76,8 +77,9 @@ def test_the_job_seals_as_the_real_sealer_and_writes_the_receipt_of_this_run(sea
     code, out = _run_job(w, capsys, _approval(w.digest))
     assert code == sf.EXIT_SEALED and out["status"] == "SEALED" and out["brief_digest"] == w.digest, out
     r = w.conn.execute("SELECT brief_digest, approver_login, approved_by_note, run_id, run_attempt, workflow_commit,"
-                       " manifest_id::text FROM public.ka_gochara_seal_approval").fetchone()
+                       " manifest_id::text, brief_id, producer_execution_id FROM public.ka_gochara_seal_approval").fetchone()
     assert r[:6] == (w.digest, "owner-login", NOTE, RUN, ATTEMPT, COMMIT) and r[6] == out["manifest_id"]
+    assert (r[7], r[8]) == (BRIEF_IDS[w.digest], EXECUTION)                     # R13-3: the receipt names the specific brief and execution
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "published"
 
 
@@ -286,9 +288,9 @@ def test_forged_attribution_values_in_the_insert_are_overwritten(built):
         gk_ledger.publish(w.conn, CHART_ID, GEN)
         mid = w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
         w.conn.execute(
-            "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login,"
+            "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id, approver_login,"
             " approved_by_note, run_id, run_attempt, workflow_commit, sealed_by, approved_at) VALUES (%s::uuid, %s, %s::uuid,"
-            " repeat('a', 64), 'x', 'x', 1, 1, 'abc1234', 'forged-sealer', '2001-01-01T00:00:00Z')", (CHART_ID, GEN, mid))
+            f" repeat('a', 64), (SELECT coalesce(max(brief_id), 1) FROM public.ka_gochara_seal_brief), 'executions/test-exec-1', 'x', 'x', 1, 1, 'abc1234', 'forged-sealer', '2001-01-01T00:00:00Z')", (CHART_ID, GEN, mid))
     sealed_by, approved_at, sealed_at = w.conn.execute(
         "SELECT a.sealed_by, a.approved_at, s.sealed_at FROM public.ka_gochara_seal_approval a"
         " JOIN public.ka_gochara_generation_seal s USING (chart_id, generation)").fetchone()
@@ -308,9 +310,9 @@ def test_a_receipt_cannot_be_attached_to_a_seal_written_before_this_transaction(
     with pytest.raises(psycopg.errors.CheckViolation, match="receipt_without_first_seal"):
         with w.conn.transaction():
             w.conn.execute(
-                "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login,"
+                "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id, approver_login,"
                 " approved_by_note, run_id, run_attempt, workflow_commit) VALUES (%s::uuid, %s, %s::uuid, repeat('a', 64),"
-                " 'x', 'x', 1, 1, 'abc1234')", (CHART_ID, GEN, mid))
+                f" (SELECT coalesce(max(brief_id), 1) FROM public.ka_gochara_seal_brief), 'executions/test-exec-1', 'x', 'x', 1, 1, 'abc1234')", (CHART_ID, GEN, mid))
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 0
 
 
@@ -326,7 +328,7 @@ def test_a_receipt_naming_another_manifest_is_refused_even_with_the_first_seal(b
             gk_ledger.publish(w.conn, CHART_ID, GEN)
             w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
             w.conn.execute(
-                "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login,"
+                "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id, approver_login,"
                 " approved_by_note, run_id, run_attempt, workflow_commit) VALUES (%s::uuid, %s, gen_random_uuid(),"
-                " repeat('a', 64), 'x', 'x', 1, 1, 'abc1234')", (CHART_ID, GEN))
+                f" repeat('a', 64), (SELECT coalesce(max(brief_id), 1) FROM public.ka_gochara_seal_brief), 'executions/test-exec-1', 'x', 'x', 1, 1, 'abc1234')", (CHART_ID, GEN))
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0

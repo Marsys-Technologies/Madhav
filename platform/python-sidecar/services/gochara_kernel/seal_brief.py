@@ -334,17 +334,54 @@ def brief(conn, chart_id: str, generation: str, *, sealing_commit: str | None = 
     return {"payload": payload, "sha256": payload_digest(payload)}
 
 
-def persist_brief(conn, result: dict) -> dict:
-    """F-R12-4: persist the brief the VERIFIER just produced (`brief()`'s result) in `ka_gochara_seal_brief`, inside the same transaction
-    that holds the seal locks. The database attests the manifest, the state digest, the session login and the time (whatever this INSERT
-    carries for them is overwritten); the receipt a seal writes must name this digest. Returns `{brief_id, manifest_id, state_digest}`."""
+#: the version of the stdout contract (chunk lines + compact line); in every compact line (R13-1)
+TRANSPORT_CONTRACT = "seal_brief_transport/1"
+ENV_IMAGE_DIGEST = "GOCHARA_RUNNER_IMAGE_DIGEST"      # set by the job DEFINITION to the immutable image digest (sha256:<64 hex>)
+ENV_EXECUTION = "CLOUD_RUN_EXECUTION"                   # set by Cloud Run itself for every job execution
+_IMAGE_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}\Z")
+
+
+def producer_identity(environ=None) -> dict:
+    """WHO is producing this brief (R13-3), from the running job's own environment: the commit of the code (`GOCHARA_RUNNER_COMMIT`, else the
+    repository HEAD), the immutable image digest (`GOCHARA_RUNNER_IMAGE_DIGEST`) and the Cloud Run execution (`CLOUD_RUN_EXECUTION`). An
+    absent or malformed one REFUSES — a brief of unknown producer is not an approval basis."""
+    import os
+    from . import window_gate as wg
+    env = os.environ if environ is None else environ
+    commit = env.get(wg.ENV_RUNNER_COMMIT) or wg._git_head()
+    image, execution = env.get(ENV_IMAGE_DIGEST), env.get(ENV_EXECUTION)
+    problems = []
+    if not commit or not str(commit).strip():
+        problems.append(f"the producing code's commit cannot be named ({wg.ENV_RUNNER_COMMIT} unset, no repository HEAD)")
+    if not isinstance(image, str) or not _IMAGE_DIGEST.match(image):
+        problems.append(f"{ENV_IMAGE_DIGEST} is absent or not 'sha256:<64 hex>' (the job definition must pin the immutable image)")
+    if not isinstance(execution, str) or not execution.strip():
+        problems.append(f"{ENV_EXECUTION} is absent (the brief must name the execution that produced it)")
+    if problems:
+        raise BriefRefused("producer_identity_absent", "; ".join(problems))
+    return {"commit": str(commit).strip(), "image_digest": image, "execution_id": execution.strip()}
+
+
+def persist_brief(conn, result: dict, *, producer: dict | None = None) -> dict:
+    """F-R12-4 / R13-3: persist the brief the VERIFIER just produced (`brief()`'s result) in `ka_gochara_seal_brief`, inside the same
+    transaction that holds the seal locks, with its producer identity (`producer_identity()` unless one is supplied: commit, image digest,
+    execution id). The database attests the manifest, the state digest, the session login and the time (whatever this INSERT carries for
+    them is overwritten) and takes the seal locks itself. The producing commit must be the sealing commit the payload names. Returns
+    `{brief_id, manifest_id, state_digest}`; the producer travels beside it (`producer` key of the compact line)."""
     from . import window_gate as wg
     payload = result["payload"]
+    prod = producer if producer is not None else producer_identity()
+    sealing = payload["code"].get("sealing_commit")
+    if sealing is not None and prod["commit"] != sealing:
+        raise BriefRefused("producer_not_sealing_commit", f"the brief was produced by commit {prod['commit']}, the sealing commit it names is "
+                           f"{sealing} — only code at the sealing commit may brief it")
     row = conn.execute(
-        "INSERT INTO public.ka_gochara_seal_brief (chart_id, generation, manifest_id, brief_digest, state_digest, runner_identity)"
-        " VALUES (%s::uuid, %s, %s::uuid, %s, repeat('0', 64), %s::jsonb) RETURNING brief_id, manifest_id::text, state_digest",
+        "INSERT INTO public.ka_gochara_seal_brief (chart_id, generation, manifest_id, brief_digest, state_digest, runner_identity,"
+        " producer_commit, image_digest, execution_id)"
+        " VALUES (%s::uuid, %s, %s::uuid, %s, repeat('0', 64), %s::jsonb, %s, %s, %s) RETURNING brief_id, manifest_id::text, state_digest",
         (payload["chart_id"], payload["generation"], payload["manifest"]["manifest_id"], result["sha256"],
-         _canon({k: wg.runner_identity()[k] for k in ("commit", "implementation_digest")}))).fetchone()
+         _canon({k: wg.runner_identity()[k] for k in ("commit", "implementation_digest")}),
+         prod["commit"], prod["image_digest"], prod["execution_id"])).fetchone()
     brief_id, manifest_id, state = tuple(row.values()) if isinstance(row, dict) else tuple(row)
     if manifest_id != payload["manifest"]["manifest_id"]:
         raise BriefRefused("manifest_changed", f"the database attested manifest {manifest_id}, the brief was built for "
@@ -352,13 +389,27 @@ def persist_brief(conn, result: dict) -> dict:
     return {"brief_id": brief_id, "manifest_id": manifest_id, "state_digest": state}
 
 
-def persisted_brief_problem(conn, chart_id: str, generation: str, manifest_id: str, digest: str) -> str | None:
-    """None when `digest` is the CURRENT verifier-persisted brief of the generation for this manifest and the generation's state is the
-    one it was produced for; otherwise the named reason (`receipt_brief_not_persisted` / `_superseded` / `_state_changed`). The same
-    database function the receipt's commit-time trigger calls."""
+def persisted_brief_problem(conn, chart_id: str, generation: str, manifest_id: str, digest: str, *, brief_id: int | None = None,
+                            sealing_commit: str | None = None, execution_id: str | None = None) -> str | None:
+    """None when `digest` is the CURRENT verifier-persisted brief of the generation for this manifest, written by the verifier login, in
+    the generation's state, and — when given — it is THAT brief id, produced by that commit in that execution; otherwise the named reason
+    (`receipt_brief_not_persisted` / `_superseded` / `_not_from_verifier` / `_state_changed` / `receipt_brief_id_mismatch` /
+    `receipt_brief_producer_commit_mismatch` / `receipt_brief_execution_mismatch`). The same checks the receipt's commit-time trigger runs."""
     row = conn.execute("SELECT public.ka_gochara_seal_brief_problem(%s::uuid, %s, %s::uuid, %s)",
                        (chart_id, generation, manifest_id, digest)).fetchone()
-    return next(iter(row.values())) if isinstance(row, dict) else row[0]
+    why = next(iter(row.values())) if isinstance(row, dict) else row[0]
+    if why:
+        return why
+    cur = conn.execute("SELECT brief_id, producer_commit, execution_id FROM public.ka_gochara_seal_brief"
+                       " WHERE chart_id = %s::uuid AND generation = %s ORDER BY brief_id DESC LIMIT 1", (chart_id, generation)).fetchone()
+    cur_id, cur_commit, cur_exec = tuple(cur.values()) if isinstance(cur, dict) else tuple(cur)
+    if brief_id is not None and cur_id != brief_id:
+        return "receipt_brief_id_mismatch"
+    if sealing_commit is not None and cur_commit != sealing_commit:
+        return "receipt_brief_producer_commit_mismatch"
+    if execution_id is not None and cur_exec != execution_id:
+        return "receipt_brief_execution_mismatch"
+    return None
 
 
 #: bounded waits (steward ruling M20261002T175331): a stuck lock or a runaway statement must end in a NAMED refusal with nothing written, never
