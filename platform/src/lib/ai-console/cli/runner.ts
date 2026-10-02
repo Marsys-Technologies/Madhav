@@ -10,7 +10,8 @@ import { StringDecoder } from 'node:string_decoder'
 import { z } from 'zod'
 import { AiConsoleError } from '../errors'
 import { withCliInvocationAuthorization, type CliInvocationHandle } from '../repository'
-import { CliIdSchema, type CliId } from '../types'
+import { AiEffortSchema, CliIdSchema, type AiEffort, type CliId } from '../types'
+import { cliEffortLevels } from '../effort'
 import { buildExecutionArgs, CLI_REGISTRY, isSupportedCliVersion, validateCliModelId, type CliDefinition } from './registry'
 import { parseCliModelCatalog, type CliDiscoveredModel } from './catalog'
 
@@ -95,7 +96,7 @@ export interface CliRunner {
   runModelProbeValidation(userId: string, cliId: CliId, modelId: string, stdin: string, signal?: AbortSignal): Promise<CliProcessResult>
   confirmManualModel(cliId: CliId, identity: CliInstallationIdentity, modelId: string): Promise<void>
   runExecution(userId: string, cliId: CliId, input: { modelId: string | null; stdin: string;
-    responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }): Promise<CliProcessResult>
+    effort?: AiEffort; responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }): Promise<CliProcessResult>
   inspectForTests(): { active: number; queued: number }
 }
 
@@ -187,13 +188,17 @@ class RemoteCliRunner implements CliRunner {
   }
 
   async runExecution(userId: string, cliId: CliId, input: { modelId: string | null; stdin: string;
-    responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }) {
+    effort?: AiEffort; responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }) {
     const id = CliIdSchema.parse(cliId)
     await this.ensureConfirmed(userId, id, input.signal)
     const confirmed = this.confirmed.get(id)
     const modelId = input.modelId === null ? null : validateConfirmedModelId(input.modelId)
     if (!confirmed?.modelIds.has(modelId)) throw new AiConsoleError('AI_MODEL_UNAVAILABLE')
+    if (input.effort && !cliEffortLevels(id, modelId).includes(AiEffortSchema.parse(input.effort))) {
+      throw new AiConsoleError('AI_ROLE_INCOMPATIBLE')
+    }
     return this.runAuthorized(userId, id, { operation: 'execute', cliId: id, modelId, stdin: input.stdin,
+      ...(input.effort ? { effort: input.effort } : {}),
       ...(input.responseSchema === undefined ? {} : { responseSchema: input.responseSchema }),
       ...(input.maxOutputTokens === undefined ? {} : { maxOutputTokens: input.maxOutputTokens }) },
     input.signal, 'execution')
@@ -380,7 +385,7 @@ class GovernedCliRunner implements CliRunner {
   }
 
   async runExecution(userId: string, cliId: CliId, input: { modelId: string | null; stdin: string;
-    responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }) {
+    effort?: AiEffort; responseSchema?: unknown; maxOutputTokens?: number; signal?: AbortSignal }) {
     const definition = this.invocableDefinition(cliId)
     await this.ensureConfirmed(userId, cliId, input.signal)
     const confirmed = this.confirmedIdentities.get(cliId)
@@ -391,7 +396,7 @@ class GovernedCliRunner implements CliRunner {
       : definition.id === 'codex' ? { schemaPath: '__SCHEMA__' }
         : definition.id === 'claude_code' || definition.id === 'gemini_antigravity'
           ? { schemaPath: schemaJson } : {}
-    const args = buildExecutionArgs(definition, input.modelId, schemaOption)
+    const args = buildExecutionArgs(definition, input.modelId, { ...schemaOption, effort: input.effort })
     if (definition.execution.transport === 'kimi_acp') {
       return await this.runFixedAuthorized(userId, cliId, args, input.stdin, input.signal,
         undefined, 'execution', (prepared, signal) => this.startKimiAcp(prepared, input.modelId, signal))

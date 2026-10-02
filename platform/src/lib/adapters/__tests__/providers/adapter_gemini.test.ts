@@ -77,6 +77,20 @@ function makeReq(overrides: Partial<QueryRequest> = {}): QueryRequest {
 beforeEach(() => { mockStreamText.mockReset() })
 
 describe('adapterGemini — safety settings always included', () => {
+  test('maps explicit effort to Gemini 3 thinking level', () => {
+    mockStreamText.mockReturnValue(fakeResult([makeFinishPart()]))
+    const prepared = adapterGemini.prepareRequest(makeReq({ effort: 'medium' }), makeMeta({ id: 'gemini-3.7-flash' }), { id: 'injected' } as never)
+    expect((prepared.providerOptions?.google as { thinkingConfig?: unknown })?.thinkingConfig).toEqual({ thinkingLevel: 'medium' })
+  })
+
+  test('maps explicit effort to Gemini 2.5 thinking budget and leaves BYOK default unset', () => {
+    mockStreamText.mockReturnValue(fakeResult([makeFinishPart()]))
+    const injected = { id: 'injected' } as never
+    const low = adapterGemini.prepareRequest(makeReq({ effort: 'low' }), makeMeta(), injected)
+    expect((low.providerOptions?.google as { thinkingConfig?: unknown })?.thinkingConfig).toEqual({ thinkingBudget: 1024 })
+    const baseline = adapterGemini.prepareRequest(makeReq(), makeMeta({ id: 'gemini-3.7-flash' }), injected)
+    expect((baseline.providerOptions?.google as { thinkingConfig?: unknown })?.thinkingConfig).toBeUndefined()
+  })
   test('safetySettings with BLOCK_NONE passed in providerOptions', () => {
     mockStreamText.mockReturnValue(fakeResult([makeFinishPart()]))
     adapterGemini.stream(makeReq(), makeMeta())

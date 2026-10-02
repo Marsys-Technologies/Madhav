@@ -21,6 +21,7 @@ const KILL_GRACE_MS = 500
 const GLOBAL_CONCURRENCY = 4
 const PER_CLI_CONCURRENCY = 2
 const SAFE_MODEL = /^[^-\u0000-\u001f\u007f][^\u0000-\u001f\u007f]{0,511}$/
+const SAFE_EFFORT = new Set(['low', 'medium', 'high'])
 
 if (!TOKEN_FILE) throw new Error('MARSYS_AI_CLI_BRIDGE_TOKEN_FILE is required')
 const token = (await readFile(TOKEN_FILE, 'utf8')).trim()
@@ -139,6 +140,7 @@ function safeCatalogModels(cliId, stdout) {
 async function runGeneration(payload, definition) {
   const modelId = payload.operation === 'execute' || payload.operation === 'probe_model' ? payload.modelId : null
   if (modelId !== null && !SAFE_MODEL.test(modelId)) throw bridgeError('AI_MODEL_UNAVAILABLE')
+  const effort = payload.operation === 'execute' ? payload.effort : undefined
   const cwd = await mkdtemp(join(tmpdir(), 'marsys-ai-cli-'))
   try {
     let schemaPath
@@ -152,6 +154,7 @@ async function runGeneration(payload, definition) {
       const args = ['exec', '--sandbox', 'read-only', '--ephemeral', '--ignore-user-config', '--ignore-rules',
         '--skip-git-repo-check', '--color', 'never', '--json', '--cd', cwd]
       if (modelId) args.push('--model', modelId)
+      if (effort) args.push('-c', `model_reasoning_effort=${effort}`)
       if (schemaPath) args.push('--output-schema', schemaPath)
       args.push('-')
       return await runCommand(payload.cliId, definition.path, args, payload.stdin, cwd)
@@ -161,6 +164,7 @@ async function runGeneration(payload, definition) {
         '--disable-slash-commands', '--tools', '', '--setting-sources', '', '--mcp-config', '{"mcpServers":{}}',
         '--strict-mcp-config', '--permission-mode', 'dontAsk']
       if (modelId) args.push('--model', modelId)
+      if (effort) args.push('--effort', effort)
       if (schemaPath) args.push('--json-schema', schemaPath)
       return await runCommand(payload.cliId, definition.path, args, payload.stdin, cwd)
     }
@@ -380,7 +384,7 @@ function validatePayload(raw) {
   const allowed = operation === 'confirm' ? ['operation', 'cliId', 'identity', 'version', 'modelIds']
     : operation === 'probe' ? ['operation', 'cliId', 'stdin']
       : operation === 'probe_model' ? ['operation', 'cliId', 'modelId', 'stdin']
-      : operation === 'execute' ? ['operation', 'cliId', 'modelId', 'stdin', 'responseSchema', 'maxOutputTokens']
+      : operation === 'execute' ? ['operation', 'cliId', 'modelId', 'stdin', 'effort', 'responseSchema', 'maxOutputTokens']
         : ['operation', 'cliId']
   if (Object.keys(raw).some(key => !allowed.includes(key))) throw bridgeError('AI_EXECUTION_FAILED')
   if ((operation === 'probe' || operation === 'probe_model' || operation === 'execute') && (typeof raw.stdin !== 'string'
@@ -389,6 +393,13 @@ function validatePayload(raw) {
     && (typeof raw.modelId !== 'string' || !SAFE_MODEL.test(raw.modelId))) throw bridgeError('AI_MODEL_UNAVAILABLE')
   if (operation === 'probe_model' && (!['codex', 'claude_code'].includes(cliId)
     || typeof raw.modelId !== 'string' || !SAFE_MODEL.test(raw.modelId))) throw bridgeError('AI_MODEL_UNAVAILABLE')
+  if (operation === 'execute' && raw.effort !== undefined
+    && (!SAFE_EFFORT.has(raw.effort) || !['codex', 'claude_code'].includes(cliId)
+      || typeof raw.modelId !== 'string'
+      || (cliId === 'codex' && !/^(?:gpt-[56](?:[.-]|$)|o[1-9](?:[.-]|$))/i.test(raw.modelId))
+      || (cliId === 'claude_code' && !/^claude-(?:fable|mythos)-5(?:[.-]|$)|^claude-opus-(?:4-[5-9]|5)(?:[.-]|$)|^claude-sonnet-(?:4-[6-9]|5)(?:[.-]|$)/i.test(raw.modelId)))) {
+    throw bridgeError('AI_MODEL_UNAVAILABLE')
+  }
   if (operation === 'confirm' && (typeof raw.version !== 'string' || !Array.isArray(raw.modelIds)
     || raw.modelIds.length > 257 || !raw.identity || typeof raw.identity !== 'object')) {
     throw bridgeError('AI_EXECUTION_FAILED')
