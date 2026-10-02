@@ -1,0 +1,21 @@
+-- plan: create the node-series unique index ephemeris_daily_date_body_ayanamsha_node_mode_uq on public.ephemeris_daily via the D6 owner path (one new index; no data, column, constraint, grant or owner change)
+SET LOCAL search_path = pg_catalog, pg_temp
+SET LOCAL lock_timeout = '5s'
+SET LOCAL statement_timeout = '120s'
+SET LOCAL TimeZone = 'UTC'
+-- snapshot A (session user): relacl + owner of every public relation, public schema owner + ACL, relrowsecurity/relforcerowsecurity, pg_policy, pg_auth_members, ephemeris_daily indexes + constraints, row count + order-free hash + mean-row count
+-- pre-checks (any failure: no DDL is issued, ROLLBACK):
+--   P1 server_version_num >= 150000 (NULLS NOT DISTINCT)
+--   P2 public.ephemeris_daily exists and is owned by amjis_app
+--   P3 no relation named ephemeris_daily_date_body_ayanamsha_node_mode_uq exists in schema public
+--   P4 the old key exists exactly as 'UNIQUE (date, body, ayanamsha_id)' (it stays until migration 1250)
+--   P5 zero node_mode='mean' rows (the index precedes the series)
+--   P6 no OTHER backend holds a write-level lock on the table (no bg_ephemeris rebuild in flight)
+-- membership: GRANT amjis_app and data_plane_schema_owner TO <session user> only if missing; REVOKE exactly what was granted before snapshot B
+-- evidence: before.json, reversal.sql (DROP INDEX under the same owner path), SHA256SUMS written BEFORE the DDL; unwritable: abort + ROLLBACK
+-- E evidence digest: sha256 of the PRE-DDL state (snapshot A hash, data fingerprint, index and constraint catalogs, P1-P6): --apply requires --expect-evidence == it
+-- DDL: the exact text of platform/migrations/1227_ephemeris_daily_node_series_unique_index.sql (sha256 0387da94dd7e7efc56afb5f0427e0007658e36bf45669e95bdf077c110fedd8e), executed in this transaction (its own guards and structure verification run)
+-- post-checks (commit only if all hold): relacl, owner, schema owner+ACL, relrowsecurity, pg_policy and pg_auth_members equal snapshot A; the index catalog differs by exactly +ephemeris_daily_date_body_ayanamsha_node_mode_uq; the constraint catalog is equal; row count, data hash and mean count equal; the index is unique, valid, ready, btree, NULLS NOT DISTINCT on (date, body, ayanamsha_id, node_mode)
+-- --dry-run: the same statements, then ROLLBACK, always. --apply: COMMIT only if every check holds, --expect-plan equals this plan hash AND --expect-evidence equals check E.
+-- the real run is started through run_gated.sh: prerun_gate.py must read zero non-completed main deploy runs and zero planned/running/paused build_runs, else the executor is not started.
+-- executor: node_index_exec.py sha256 52b2061f92dd36b6d413d37d722fe39748609777c530379040dc1f445a7a7dfc
