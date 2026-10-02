@@ -14,8 +14,11 @@ The Sun was stored as 5.0 before this fix. This module pins:
   3. the Sun's ratio old vs new from stored achieved totals (fixture, not live);
   4. ga_structural carries NO shadow copy: it READS the L1 fact, and follows a mutation
      of ga_strength_writer.SHADBALA_REQUIRED (CLAUDE.md §N.5 / §N.7 item 3);
-  5. a missing L1 required fact floors the classical-graha composite row (honest null),
-     and the nodes keep their pre-existing (named) legacy default.
+  5. a missing L1 required fact floors the classical-graha composite row (honest null);
+     the nodes (no classical minimum) floor with the named reason
+     `no_classical_required_value_for_node` — no invented normaliser (SS ruling 2026-10-02);
+  6. a FAILED SELECT raises (it is not a missing fact); floor reasons/text name every cause;
+  7. ga_strength has no silent 5.0 default (`required_rupa_for` raises; mutation-tested).
 """
 from __future__ import annotations
 
@@ -249,16 +252,60 @@ def test_missing_l1_required_for_a_classical_graha_floors_the_row_honestly():
     assert all(r["fact_value_num"] is not None for r in moon if r["fact_key"] == "bphs_weighted")
 
 
-def test_nodes_keep_their_named_legacy_default_and_are_unaffected():
+def test_nodes_composite_rows_are_honest_nulls_with_a_named_reason():
+    # SS ruling 2026-10-02 (CLAUDE.md N.7 item 6): Rahu/Ketu have NO classical required
+    # minimum; the invented flat 5.0 normaliser is gone. One floored bphs_weighted row per
+    # house, value NULL, tier 'floored', reason named; no simple_multiplication or
+    # cross_formula_divergence row is emitted for a floored (graha, house).
     conn = _ChartFactsFakeConn(
         {"SUN": 8.0, "MOON": 6.0, "RAH_MEAN": 2.5},
         _required_rows_from_writer(strength_w.SHADBALA_REQUIRED),
     )
     rows = _composite(conn)
     rahu = [r for r in rows if r["fact_subject"].startswith("RAH_MEAN_IN_HOUSE_")]
-    assert len(rahu) == 36  # 12 houses x 3 keys — not floored
-    assert structural_w._NODE_LEGACY_COMPOSITE_REQUIRED == 5.0
-    assert any("shadbala_ratio=0.5000" in r["citation_human"] for r in rahu)  # 2.5 / 5.0
+    assert len(rahu) == 12                                   # 12 houses x ONE floored row
+    assert {r["fact_key"] for r in rahu} == {"bphs_weighted"}
+    for r in rahu:
+        assert r["fact_value_num"] is None
+        assert r["verification_pass_status"] == "floored"
+        assert r["fact_value_jsonb"] == {
+            "floored": True, "reason": "no_classical_required_value_for_node"}
+        assert "no classical required shadbala value exists for the nodes" in r["citation_human"]
+        assert "5.0" not in r["citation_human"]
+    assert structural_w.NODE_NO_CLASSICAL_REQUIRED_REASON == "no_classical_required_value_for_node"
+
+
+def test_the_invented_node_normaliser_is_gone():
+    assert not hasattr(structural_w, "_NODE_LEGACY_COMPOSITE_REQUIRED")
+    src = open(structural_w.__file__, encoding="utf-8").read()
+    code = "\n".join(line.split("#", 1)[0] for line in src.splitlines())
+    assert "_NODE_LEGACY_COMPOSITE_REQUIRED" not in code
+
+
+def test_node_floor_also_names_a_missing_ga3_input():
+    conn = _ChartFactsFakeConn(
+        {"SUN": 8.0, "MOON": 6.0},   # no RAH_MEAN rupa
+        _required_rows_from_writer(strength_w.SHADBALA_REQUIRED),
+    )
+    rows = _composite(conn)
+    rahu = [r for r in rows if r["fact_subject"].startswith("RAH_MEAN_IN_HOUSE_")]
+    assert len(rahu) == 12
+    assert all(r["fact_value_jsonb"]["reason"] ==
+               "no_classical_required_value_for_node+missing_ga3_shadbala_or_bhava_bala_fact"
+               for r in rahu)
+
+
+def test_classical_grahas_are_not_floored_when_all_inputs_exist():
+    conn = _ChartFactsFakeConn(
+        {"SUN": 8.0, "MOON": 6.0, "RAH_MEAN": 2.5},
+        _required_rows_from_writer(strength_w.SHADBALA_REQUIRED),
+    )
+    rows = _composite(conn)
+    for subj in ("SUN", "MOON"):
+        own = [r for r in rows if r["fact_subject"].startswith(f"{subj}_IN_HOUSE_")]
+        assert len(own) == 36                                 # 12 houses x 3 keys
+        assert all(r["fact_value_jsonb"] is None or not r["fact_value_jsonb"].get("floored")
+                   for r in own)
 
 
 # ── 6. a FAILED read raises; only a genuinely missing fact floors (review LOW-1) ──────

@@ -3911,14 +3911,12 @@ def _load_required_rupa_map(
 
 # Rahu/Ketu carry a total-shadbala `rupa` fact but NO classical minimum: neither BPHS
 # ch.27 nor Phaladīpikā IV.22-23 gives a requirement for the nodes (and L1 stores no
-# `required_rupa` / `ratio` for them). Pre-existing behaviour — the composite formula
-# normalized the nodes' rupa by a flat 5.0 — is PRESERVED here byte-for-byte and
-# named, so the legacy default stays visible rather than hidden behind `.get(.., 5.0)`.
-# It is NOT a shadow of any L1 value (L1 has none) and is NOT extended to the seven
-# classical grahas, which read the L1 fact only. Flagged for the L1 owner: an honest
-# null for the nodes is the principled end-state (§N.7 item 6) but would change the
-# stored Rahu/Ketu composite rows, which is out of scope for the Sun fix.
-_NODE_LEGACY_COMPOSITE_REQUIRED = 5.0
+# `required_rupa` / `ratio` for them). The composite formula used to normalise the nodes'
+# rupa by an invented flat 5.0 (`_NODE_LEGACY_COMPOSITE_REQUIRED`, SS ruling 2026-10-02:
+# removed — CLAUDE.md §N.7 item 6, an honest null beats an invented normaliser). The
+# nodes' composite rows are now FLOORED (value_num NULL, verification 'floored') with this
+# NAMED reason; their dignity/bhava inputs are not consumed without a normaliser.
+NODE_NO_CLASSICAL_REQUIRED_REASON = "no_classical_required_value_for_node"
 # NOTE: house_bhava_bala_total (GA3 ga_strength_writer._derive_bhava_bala) is
 # itself a hand-rolled, non-classically-scaled composite (adhipati_bala =
 # lord's shadbala rupa × 30, + a flat 10/15/20 digbala, + 10+5×occupant-count
@@ -3934,26 +3932,34 @@ _NODE_LEGACY_COMPOSITE_REQUIRED = 5.0
 
 def _composite_floor_detail(
     *, required_missing: bool, shadbala_missing: bool, bhava_missing: bool,
+    node_has_no_required: bool = False,
 ) -> tuple[str, str]:
-    """(machine reason, human phrase) for a floored composite row, naming EVERY missing
-    input. `missing_l1_required_rupa_fact` = the L1 graha_shadbala_total|required_rupa
-    fact; `missing_ga3_shadbala_or_bhava_bala_fact` = the GA3 shadbala `rupa` and/or
-    house bhava_bala `total` fact. When both groups are missing the reasons are joined
-    with '+' (required first)."""
+    """(machine reason, human phrase) for a floored composite row, naming EVERY cause.
+    `no_classical_required_value_for_node` = a node (Rahu/Ketu): no classical minimum
+    exists, so there is no normaliser; `missing_l1_required_rupa_fact` = the L1
+    graha_shadbala_total|required_rupa fact is absent; `missing_ga3_shadbala_or_bhava_
+    bala_fact` = the GA3 shadbala `rupa` and/or house bhava_bala `total` fact is absent.
+    Several causes are joined with '+' (node/required first)."""
     reasons: list[str] = []
-    phrases: list[str] = []
+    clauses: list[str] = []
+    missing: list[str] = []
+    if node_has_no_required:
+        reasons.append(NODE_NO_CLASSICAL_REQUIRED_REASON)
+        clauses.append("no classical required shadbala value exists for the nodes")
     if required_missing:
         reasons.append("missing_l1_required_rupa_fact")
-        phrases.append("the L1 required_rupa fact")
+        missing.append("the L1 required_rupa fact")
     if shadbala_missing or bhava_missing:
         reasons.append("missing_ga3_shadbala_or_bhava_bala_fact")
         if shadbala_missing:
-            phrases.append("the GA3 shadbala fact")
+            missing.append("the GA3 shadbala fact")
         if bhava_missing:
-            phrases.append("the GA3 bhava_bala fact")
+            missing.append("the GA3 bhava_bala fact")
+    if missing:
+        clauses.append("missing " + " and ".join(missing))
     if not reasons:  # defensive: callers only floor when an input is missing
-        raise ValueError("composite floor requested but no missing input was named")
-    return "+".join(reasons), "missing " + " and ".join(phrases)
+        raise ValueError("composite floor requested but no cause was named")
+    return "+".join(reasons), "; ".join(clauses)
 
 
 def _build_composite_strength_rows(
@@ -4008,18 +4014,16 @@ def _build_composite_strength_rows(
         sb_entry = shadbala_map.get(subject)
         # Classical grahas: required = the L1 `required_rupa` fact (read, never a
         # local constant); a missing fact floors the row (honest null — never a
-        # substituted default). Nodes: no classical minimum exists, legacy default
-        # preserved (see _NODE_LEGACY_COMPOSITE_REQUIRED).
+        # substituted default). Nodes: no classical minimum exists (see
+        # NODE_NO_CLASSICAL_REQUIRED_REASON), so there is no normaliser and the row is
+        # floored with that named reason — never a labelled invented constant.
         required_fact_id: str | None = None
-        required: float | None
-        if g_name in CLASSICAL_GRAHAS:
+        required: float | None = None
+        node_has_no_required = g_name not in CLASSICAL_GRAHAS
+        if not node_has_no_required:
             req_entry = required_map.get(subject)
             if req_entry is not None:
                 required, required_fact_id = req_entry
-            else:
-                required = None
-        else:
-            required = _NODE_LEGACY_COMPOSITE_REQUIRED
         shadbala_ratio: float | None = None
         shadbala_fact_id: str | None = None
         if sb_entry is not None:
@@ -4046,7 +4050,8 @@ def _build_composite_strength_rows(
                 # this graha/house — floor rather than fabricate a proxy. The reason
                 # (and the citation text) names EVERY input that is missing.
                 floor_reason, floor_phrase = _composite_floor_detail(
-                    required_missing=not required,
+                    node_has_no_required=node_has_no_required,
+                    required_missing=(not node_has_no_required) and not required,
                     shadbala_missing=sb_entry is None,
                     bhava_missing=bhava_ratio is None,
                 )
