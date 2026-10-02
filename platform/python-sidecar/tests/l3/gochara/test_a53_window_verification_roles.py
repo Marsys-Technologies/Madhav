@@ -92,8 +92,9 @@ def _persist_test_brief(w, digest="a" * 64):
                       (CHART_ID, GEN)).fetchone()[0] == "candidate":
         with login(w, "gochara_verifier") as c:
             c.execute("INSERT INTO public.ka_gochara_seal_brief (chart_id, generation, manifest_id, brief_digest, state_digest,"
-                      " runner_identity) VALUES (%s::uuid, %s, gen_random_uuid(), %s, repeat('0', 64),"
-                      " '{\"commit\": \"t\", \"implementation_digest\": \"t\"}'::jsonb)", (CHART_ID, GEN, digest))
+                      " runner_identity, producer_commit, image_digest, execution_id) VALUES (%s::uuid, %s, gen_random_uuid(), %s,"
+                      " repeat('0', 64), '{\"commit\": \"t\", \"implementation_digest\": \"t\"}'::jsonb, 'abc1234',"
+                      " 'sha256:' || repeat('1', 64), 'executions/test-exec-1')", (CHART_ID, GEN, digest))
 
 
 def _seal(w, receipt=True):
@@ -108,9 +109,9 @@ def _seal(w, receipt=True):
         manifest = w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
         if receipt:
             w.conn.execute(
-                "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login,"
+                "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id, approver_login,"
                 " approved_by_note, run_id, run_attempt, workflow_commit) VALUES (%s::uuid, %s, %s::uuid, repeat('a', 64),"
-                " 'test-approver', 'test helper', 1, 1, 'test-commit') ON CONFLICT (chart_id, generation) DO NOTHING",
+                f" (SELECT coalesce(max(brief_id), 1) FROM public.ka_gochara_seal_brief), 'executions/test-exec-1', 'test-approver', 'test helper', 1, 1, 'abc1234') ON CONFLICT (chart_id, generation) DO NOTHING",
                 (CHART_ID, GEN, manifest))
         return manifest
 

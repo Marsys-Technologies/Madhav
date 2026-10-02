@@ -101,7 +101,8 @@ def main(argv=None) -> int:
                     # a held lock ends in a NAMED refusal (steward ruling M20261002T175331), never a hang
                     seal_brief.set_local_timeouts(conn, lock=seal_brief.BRIEF_LOCK_TIMEOUT)
                     out = seal_brief.brief(conn, args.chart, args.generation, sealing_commit=args.sealing_commit)
-                    persisted = seal_brief.persist_brief(conn, out)      # F-R12-4: the receipt must name a brief persisted HERE
+                    producer = seal_brief.producer_identity()            # R13-3: commit / immutable image digest / execution of THIS job
+                    persisted = seal_brief.persist_brief(conn, out, producer=producer)   # F-R12-4: the receipt must name a brief persisted HERE
                 raw = seal_brief.brief_bytes(out)
             except psycopg.errors.LockNotAvailable as exc:
                 print(seal_brief.canonical_json({"status": "REFUSED", "code": "brief_lock_timeout", "detail":
@@ -124,7 +125,8 @@ def main(argv=None) -> int:
             # ONE path, always exercised (steward ruling): the full brief as index/total chunk lines, then the compact result as the LAST line
             for line in seal_brief.brief_chunk_lines(raw, out["sha256"], args.brief_chunk_bytes):
                 print(line)
-            print(seal_brief.canonical_json({"status": "BRIEFED", "sha256": out["sha256"], "persisted": persisted,
+            print(seal_brief.canonical_json({"status": "BRIEFED", "contract_version": seal_brief.TRANSPORT_CONTRACT,
+                                             "sha256": out["sha256"], "persisted": persisted, "producer": producer,
                                              "brief_bytes": len(raw), "brief_file": brief_file, "brief_chunks": True}))
             return vj.EXIT_OK
         report = vj.run(conn, chart_id=args.chart, generation=args.generation, classes=args.classes,

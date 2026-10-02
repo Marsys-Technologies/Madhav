@@ -21,7 +21,7 @@ from services.gochara_kernel import verification_job as vj
 from .test_a53_inventory import CHART_ID
 from .test_a53_p1_support import GEN
 from .test_a53_r10_complete_records import (CLS, _bypass, _run, built, login, rworld)  # noqa: F401
-from .test_a53_r11_seal_brief import APPROVAL, _brief_as_verifier, _sealer_stand_ins, _verified  # noqa: F401
+from .test_a53_r11_seal_brief import APPROVAL, _appr, _brief_as_verifier, _sealer_stand_ins, _verified  # noqa: F401
 from .test_a53_window_verification_gate import SPANS, _boot_p3  # noqa: F401
 from .test_a53_window_verification_roles import _consistent_sky, _seal  # noqa: F401
 
@@ -39,7 +39,7 @@ def _refused_before_publication(w, approved):
     with pytest.raises(sb.ApprovalMismatch):
         with w.conn.transaction():
             w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
-            seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **APPROVAL)
+            seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **_appr(approved))
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "candidate"
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
 
@@ -136,7 +136,7 @@ def test_a_write_between_the_recompute_and_the_publication_is_caught_after_publi
     with pytest.raises(sb.ApprovalMismatch, match="changed between the approval recompute and publication"):
         with w.conn.transaction():
             w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
-            seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **APPROVAL)
+            seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **_appr(approved))
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "candidate"
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
 
@@ -158,7 +158,7 @@ def test_the_payload_binds_the_new_boundary_fields_and_the_exact_publication_dig
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         w.conn.execute("SET LOCAL ROLE gochara_sealer")
         out = seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved,
-                                           **{**APPROVAL, "sealing_commit": "c"})
+                                           **_appr(approved, sealing_commit="c"))
     assert w.conn.execute("SELECT content_digest FROM public.kala_gochara_publication").fetchone()[0] == p["publication_content_digest"]
     assert out["brief_digest"] == approved
 
@@ -214,7 +214,7 @@ def test_a_sealer_session_in_another_timezone_still_publishes_the_approved_diges
         with other.transaction():
             other.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
             other.execute("SET LOCAL ROLE gochara_sealer")
-            out = seal_flow.seal_with_approval(other, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **APPROVAL)
+            out = seal_flow.seal_with_approval(other, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **_appr(approved))
     assert out["brief_digest"] == approved
     assert w.conn.execute("SELECT content_digest FROM public.kala_gochara_publication").fetchone()[0] == \
         sb.build_payload(w.conn, CHART_ID, GEN, as_candidate=True)["publication_content_digest"]

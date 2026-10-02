@@ -36,12 +36,29 @@ def _verified(w):
     assert _run(w)["status"] == "VERIFIED"
 
 
-def _brief_as_verifier(w, **kw):
+BRIEF_IDS: dict[str, int] = {}                 # brief digest -> the persisted brief_id (what the compact line reports)
+EXECUTION = "executions/test-exec-1"
+IMAGE = "sha256:" + "1" * 64
+
+
+def _producer(commit, execution=None):
+    return {"commit": commit or "t", "image_digest": IMAGE, "execution_id": execution or EXECUTION}
+
+
+def _brief_as_verifier(w, *, execution=None, **kw):
     with login(w, "gochara_verifier") as conn:
         with conn.transaction():
             out = sb.brief(conn, CHART_ID, GEN, **kw)
-            out["persisted"] = sb.persist_brief(conn, out)          # F-R12-4: what the CLI's --brief does
+            # F-R12-4 / R13-3: what the CLI's --brief does, with the producer the test names (commit = the sealing commit it briefs)
+            out["persisted"] = sb.persist_brief(conn, out, producer=_producer(kw.get("sealing_commit"), execution))
+            BRIEF_IDS[out["sha256"]] = out["persisted"]["brief_id"]
+            out["execution"] = execution or EXECUTION
             return out
+
+
+def _appr(digest, **over):
+    """The approval's call arguments for the persisted brief with this digest (R13-3: it names the brief id and the execution)."""
+    return {**APPROVAL, "brief_id": BRIEF_IDS[digest], "producer_execution_id": EXECUTION, **over}
 
 
 def test_no_brief_is_produced_for_an_unverified_candidate_and_the_reasons_are_named(built):
@@ -112,7 +129,7 @@ def test_the_approved_seal_publishes_seals_and_writes_a_receipt_linked_to_the_se
     approved = _brief_as_verifier(w, sealing_commit=APPROVAL["sealing_commit"])["sha256"]
     with w.conn.transaction():
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
-        out = seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **APPROVAL)
+        out = seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **_appr(approved))
     assert out["brief_digest"] == approved
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "published"
     row = w.conn.execute("SELECT s.manifest_id::text, a.brief_digest, a.approver_login, a.run_id, a.run_attempt, a.workflow_commit,"
@@ -135,7 +152,7 @@ def test_a_changed_candidate_with_an_empty_gate_is_refused_before_anything_is_pu
     with pytest.raises(sb.ApprovalMismatch):
         with w.conn.transaction():
             w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
-            seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **APPROVAL)
+            seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **_appr(approved))
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "candidate"
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 0
@@ -154,7 +171,7 @@ def test_a_failure_after_publication_rolls_back_the_publication_the_seal_and_the
         with w.conn.transaction():
             w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
             w.conn.execute("SET LOCAL ROLE gochara_sealer")
-            seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **APPROVAL)
+            seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved, **_appr(approved))
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "candidate"
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 0
@@ -172,12 +189,23 @@ def test_the_entry_points_brief_mode_ends_in_a_compact_line_carries_the_brief_by
         assert refused["status"] == "REFUSED" and refused["code"] == "candidate_not_approvable" and refused["violations"]
         _verified(w)                                                       # (its login helper re-locks the role afterwards)
         w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")
+        # R13-3: the brief names its PRODUCER — no producer identity, no brief (and nothing is persisted)
+        assert entry.main(["--chart", CHART_ID, "--brief", "--sealing-commit", "cli-sha"]) == vj.EXIT_DISAGREE
+        refused = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+        assert refused["code"] == "producer_identity_absent" and "GOCHARA_RUNNER_IMAGE_DIGEST" in refused["detail"]
+        assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_brief").fetchone()[0] == 0
+        monkeypatch.setenv("GOCHARA_RUNNER_COMMIT", "cli-sha")
+        monkeypatch.setenv("GOCHARA_RUNNER_IMAGE_DIGEST", IMAGE)
+        monkeypatch.setenv("CLOUD_RUN_EXECUTION", "projects/p/locations/l/jobs/gochara-verifier/executions/exec-9")
         out_file = tmp_path / "brief.json"
         assert entry.main(["--chart", CHART_ID, "--brief", "--sealing-commit", "cli-sha", "--brief-out", str(out_file),
                            "--brief-chunk-bytes", "4096"]) == vj.EXIT_OK
         lines = capsys.readouterr().out.strip().splitlines()
         compact, chunk_lines = json.loads(lines[-1]), lines[:-1]            # the LAST line is the compact result, whatever the size
-        assert set(compact) == {"status", "sha256", "persisted", "brief_bytes", "brief_file", "brief_chunks"}
+        assert set(compact) == {"status", "contract_version", "sha256", "persisted", "producer", "brief_bytes", "brief_file", "brief_chunks"}
+        assert compact["contract_version"] == sb.TRANSPORT_CONTRACT == "seal_brief_transport/1"
+        assert compact["producer"] == {"commit": "cli-sha", "image_digest": IMAGE,
+                                       "execution_id": "projects/p/locations/l/jobs/gochara-verifier/executions/exec-9"}
         assert compact["status"] == "BRIEFED" and compact["persisted"]["brief_id"] and compact["brief_file"] == str(out_file)
         assert len(lines[-1]) < 1024 and "brief" not in compact                # no full brief in the compact line
         raw = out_file.read_bytes()
@@ -210,7 +238,8 @@ def test_the_approved_seal_runs_as_the_real_sealer_role_with_only_the_named_read
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         w.conn.execute("SET LOCAL ROLE gochara_sealer")
         out = seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved,
-                                           approver_login="owner-login", run_id=42, approval_note="n", sealing_commit="s")
+                                           approver_login="owner-login", run_id=42, approval_note="n", sealing_commit="s",
+                                           brief_id=BRIEF_IDS[approved], producer_execution_id=EXECUTION)
     assert out["brief_digest"] == approved
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 1
 
@@ -263,9 +292,9 @@ def test_a_receipt_for_another_manifest_or_without_a_digest_does_not_satisfy_the
             gk_ledger.publish(w.conn, CHART_ID, GEN)
             w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
             w.conn.execute(                                            # a receipt naming a DIFFERENT manifest
-                "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login,"
+                "INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id, approver_login,"
                 " approved_by_note, run_id, run_attempt, workflow_commit) VALUES (%s::uuid, %s, gen_random_uuid(),"
-                " repeat('a', 64), 'x', 'x', 1, 1, 'x')", (CHART_ID, GEN))
+                f" repeat('a', 64), (SELECT coalesce(max(brief_id), 1) FROM public.ka_gochara_seal_brief), 'executions/test-exec-1', 'x', 'x', 1, 1, 'x')", (CHART_ID, GEN))
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
 
 
@@ -278,7 +307,8 @@ def test_the_approved_seal_still_works_as_the_real_sealer_and_the_replay_needs_n
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         w.conn.execute("SET LOCAL ROLE gochara_sealer")
         out = seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=approved,
-                                           approver_login="owner-login", run_id=7, approval_note="n", sealing_commit="s")
+                                           approver_login="owner-login", run_id=7, approval_note="n", sealing_commit="s",
+                                           brief_id=BRIEF_IDS[approved], producer_execution_id=EXECUTION)
     assert out["brief_digest"] == approved
     # REPLAY of the sealed generation: ON CONFLICT DO NOTHING inserts no row, so the receipt trigger never fires
     with w.conn.transaction():
