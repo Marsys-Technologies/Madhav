@@ -860,7 +860,7 @@ def _verify_yogini(rows: list[dict]) -> str:
         if row["lord_graha"] not in known_lords:
             raise ValueError(f"Yogini: unknown lord {row['lord_graha']!r}")
 
-    return CLASSICAL_MATCH  # membership check only — relay fidelity, not re-derivation (§6.18 ruling)
+    return UNVERIFIED_DEFAULT  # membership in the table the producer draws from: tautology, earns `single` (SS tier rule)
 
 
 def _verify_ashtottari(rows: list[dict]) -> str:
@@ -869,14 +869,14 @@ def _verify_ashtottari(rows: list[dict]) -> str:
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
-        return CLASSICAL_MATCH  # Non-applicable → empty is OK
+        return UNVERIFIED_DEFAULT  # Non-applicable → empty is OK (no check ran)
 
     known = set(ASHTOTTARI_LORDS_ORDER)
     for row in l1_rows:
         if row["lord_graha"] not in known:
             raise ValueError(f"Ashtottari: unknown lord {row['lord_graha']!r}")
 
-    return CLASSICAL_MATCH  # membership check only — relay fidelity, not re-derivation (§6.18 ruling)
+    return UNVERIFIED_DEFAULT  # membership in the table the producer draws from: tautology, earns `single` (SS tier rule)
 
 
 def _verify_chara(rows: list[dict]) -> str:
@@ -885,7 +885,7 @@ def _verify_chara(rows: list[dict]) -> str:
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
-        return CLASSICAL_MATCH
+        return UNVERIFIED_DEFAULT
 
     sign_names = [
         "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -895,7 +895,7 @@ def _verify_chara(rows: list[dict]) -> str:
         if row["lord_graha"] not in sign_names:
             raise ValueError(f"Chara: invalid sign {row['lord_graha']!r}")
 
-    return CLASSICAL_MATCH  # membership check only — relay fidelity, not re-derivation (§6.18 ruling)
+    return UNVERIFIED_DEFAULT  # membership in the table the producer draws from: tautology, earns `single` (SS tier rule)
 
 
 def _verify_naisargika(rows: list[dict]) -> str:
@@ -907,7 +907,7 @@ def _verify_naisargika(rows: list[dict]) -> str:
     for row in l1_rows:
         if row["lord_graha"] not in known:
             raise ValueError(f"Naisargika: unknown lord {row['lord_graha']!r}")
-    return CLASSICAL_MATCH  # membership check only — relay fidelity, not re-derivation (§6.18 ruling)
+    return UNVERIFIED_DEFAULT  # membership in the table the producer draws from: tautology, earns `single` (SS tier rule)
 
 
 # Two independent classical correspondence tables PyJHora's Varsha-Vimshottari
@@ -2198,15 +2198,16 @@ def _verify_narayana(rows: list[dict]) -> str:
     raises ValueError rather than encoding an ad-hoc string into this column."""
     md_rows = sorted((r for r in rows if r["level_n"] == 1), key=lambda r: r["start_date"])
     if not md_rows:
-        return CLASSICAL_MATCH
+        return UNVERIFIED_DEFAULT
     for a, b in zip(md_rows, md_rows[1:]):
         if a["end_date"] > b["start_date"]:
             raise ValueError(
                 f"Narayana: overlapping MD periods {a['lord_graha']!r}->{b['lord_graha']!r}"
             )
-    # Q03 / SS N-62: a non-overlap ORDERING check over the engine's own output is a bounds
-    # invariant, not an independent re-derivation -> `classical_match`, never `two_pass_verified`.
-    return CLASSICAL_MATCH
+    # Q03 / SS N-62 + SS tier rule (S-L1 follow-up): a non-overlap ORDERING check over the engine's
+    # own output is a bounds invariant: neither a classical-table match nor a second implementation
+    # -> `single`. The build still halts (ValueError) on an overlap.
+    return UNVERIFIED_DEFAULT
 
 
 def compute_narayana_system(

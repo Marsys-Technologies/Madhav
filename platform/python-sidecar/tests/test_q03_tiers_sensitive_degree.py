@@ -1,7 +1,8 @@
 """
 test_q03_tiers_sensitive_degree.py -- Q03 / SS N-62 honest tiers for the Yogi-system rows of
-ga_sensitive_degree (TS-YOGI): `classical_match` on agreement (Pass B is the same sum in integer
-arcseconds), `divergent_flagged` on disagreement, never `two_pass_verified`.
+ga_sensitive_degree (TS-YOGI): `single` on agreement (Pass B is the same sum in integer arcseconds
+over the same longitudes, and no classical table is compared -- SS tier rule, S-L1 follow-up; demoted
+from the earlier `classical_match`), `divergent_flagged` on disagreement, never `two_pass_verified`.
 
 Spec: AUDIT_L1_TIERS_PER_EMITTER_v1_0.md v1.1 §2.2 / §5.
 """
@@ -36,10 +37,10 @@ def _tiers(rows) -> set[str]:
     return {r["verification_pass_status"] for r in rows}
 
 
-def test_yogi_rows_agreeing_paths_are_classical_match():
+def test_yogi_rows_agreeing_paths_are_single():
     rows = _rows()
-    assert rows and _tiers(rows) == {T.CLASSICAL_MATCH}
-    assert T.TWO_PASS_VERIFIED not in _tiers(rows)
+    assert rows and _tiers(rows) == {T.SINGLE}
+    assert not {T.TWO_PASS_VERIFIED, T.CLASSICAL_MATCH} & _tiers(rows)
 
 
 def test_yogi_pass_b_perturbed_is_divergent_flagged(monkeypatch):
@@ -54,13 +55,13 @@ def test_yogi_pass_b_perturbed_is_divergent_flagged(monkeypatch):
     monkeypatch.setattr(sut, "round", shifted_round, raising=False)
     rows = _rows()
     assert T.DIVERGENT_FLAGGED in _tiers(rows)
-    assert T.CLASSICAL_MATCH not in {
+    assert T.SINGLE not in {
         r["verification_pass_status"] for r in rows if (r["fact_subject"], r["fact_key"]) == ("YOGI", "point_longitude")
     }
 
 
-def test_yogi_unconditional_classical_match_mutant_is_caught(monkeypatch):
-    """MUTANT: stamp classical_match unconditionally. With Pass B perturbed the rows must NOT
+def test_yogi_unconditional_pass_mutant_is_caught(monkeypatch):
+    """MUTANT: stamp the passing tier unconditionally. With Pass B perturbed the rows must NOT
     be classical_match, so this mutant fails test_yogi_pass_b_perturbed_is_divergent_flagged;
     here we run the mutant and assert it really does mask the divergence."""
 
@@ -68,10 +69,17 @@ def test_yogi_unconditional_classical_match_mutant_is_caught(monkeypatch):
         return builtins.round(x) + 5 if ndigits is None else builtins.round(x, ndigits)
 
     monkeypatch.setattr(sut, "round", shifted_round, raising=False)
-    monkeypatch.setattr(sut, "_yogi_pass_tier", lambda agrees: T.CLASSICAL_MATCH)
-    assert _tiers(_rows()) == {T.CLASSICAL_MATCH}
+    monkeypatch.setattr(sut, "_yogi_pass_tier", lambda agrees: T.SINGLE)
+    assert _tiers(_rows()) == {T.SINGLE}
 
 
 def test_yogi_tier_mapping_is_exactly_agree_or_diverge():
-    assert sut._yogi_pass_tier(True) == T.CLASSICAL_MATCH
+    assert sut._yogi_pass_tier(True) == T.SINGLE
     assert sut._yogi_pass_tier(False) == T.DIVERGENT_FLAGGED
+
+
+def test_mutant_yogi_classical_match_return_is_visible(monkeypatch):
+    """MUTANT (the pre-ruling behaviour): _yogi_pass_tier returning classical_match on agreement is what
+    the single-tier tests above reject."""
+    monkeypatch.setattr(sut, "_yogi_pass_tier", lambda agrees: T.CLASSICAL_MATCH if agrees else T.DIVERGENT_FLAGGED)
+    assert _tiers(_rows()) == {T.CLASSICAL_MATCH} != {T.SINGLE}

@@ -1,6 +1,8 @@
 """
 test_q03_tiers_nakshatra_kp.py -- Q03 / SS N-62 honest tiers: ga_nakshatra attribution rows
-(TS-NAK: `classical_match`, not TPV) and the KP significator star/sub-lord rows (TS-KP: keep
+(TS-NAK: `single` on agreement, never TPV or classical_match: the second pass is the same floor division
+over the same exported longitude and compares no reference table -- SS tier rule, S-L1 follow-up;
+a disagreement is `divergent_flagged`) and the KP significator star/sub-lord rows (TS-KP: keep
 `two_pass_verified`, but only because the two paths can genuinely disagree).
 
 Spec: AUDIT_L1_TIERS_PER_EMITTER_v1_0.md v1.1 §2.2 / §5.
@@ -28,18 +30,18 @@ def _chart(lon: float, nak: int, pada: int) -> dict:
     }
 
 
-def test_nak_agreeing_attribution_is_classical_match_not_tpv():
+def test_nak_agreeing_attribution_is_single_not_classical_match_or_tpv():
     # 326.0 deg = Purva Bhadrapada (25), pada 2.
     v = N._nakshatra_pada_verdicts(_chart(326.0, 25, 2))["MOON"]
-    assert v == {"nakshatra": T.CLASSICAL_MATCH, "pada": T.CLASSICAL_MATCH}
-    assert T.TWO_PASS_VERIFIED not in v.values()
+    assert v == {"nakshatra": T.SINGLE, "pada": T.SINGLE}
+    assert not {T.TWO_PASS_VERIFIED, T.CLASSICAL_MATCH} & set(v.values())
 
 
 def test_nak_engine_perturbed_by_one_is_divergent_flagged():
     v = N._nakshatra_pada_verdicts(_chart(326.0, 26, 2))["MOON"]  # nakshatra off by one
-    assert v["nakshatra"] == T.DIVERGENT_FLAGGED and v["pada"] == T.CLASSICAL_MATCH
+    assert v["nakshatra"] == T.DIVERGENT_FLAGGED and v["pada"] == T.SINGLE
     v = N._nakshatra_pada_verdicts(_chart(326.0, 25, 3))["MOON"]  # pada off by one
-    assert v["pada"] == T.DIVERGENT_FLAGGED and v["nakshatra"] == T.CLASSICAL_MATCH
+    assert v["pada"] == T.DIVERGENT_FLAGGED and v["nakshatra"] == T.SINGLE
 
 
 def test_nak_no_longitude_means_no_check_ran_so_single():
@@ -50,9 +52,9 @@ def test_nak_no_longitude_means_no_check_ran_so_single():
 
 
 def test_nak_check_is_actually_run_the_tier_depends_on_it(monkeypatch):
-    """Spy: the re-derivation is called once per body, and its return value decides the tier.
-    MUTANT (return classical_match without calling `_derive_nakshatra_pada`) -> the spy count
-    is 0 and a shifted derivation does not flip the tier: both assertions below fail."""
+    """Spy: the re-derivation is called once per body, and its return value decides whether a
+    divergence is flagged. MUTANT (return a verdict without calling `_derive_nakshatra_pada`) -> the
+    spy count is 0 and a shifted derivation does not flip the verdict: both assertions below fail."""
     calls: list[float] = []
     real = N._derive_nakshatra_pada
 
@@ -61,14 +63,23 @@ def test_nak_check_is_actually_run_the_tier_depends_on_it(monkeypatch):
         return real(lon)
 
     monkeypatch.setattr(N, "_derive_nakshatra_pada", spy)
-    assert N._nakshatra_pada_verdicts(_chart(326.0, 25, 2))["MOON"]["nakshatra"] == T.CLASSICAL_MATCH
+    assert N._nakshatra_pada_verdicts(_chart(326.0, 25, 2))["MOON"]["nakshatra"] == T.SINGLE
     assert calls == [326.0]
 
     monkeypatch.setattr(N, "_derive_nakshatra_pada", lambda lon: (real(lon)[0] + 1, real(lon)[1]))
     assert N._nakshatra_pada_verdicts(_chart(326.0, 25, 2))["MOON"]["nakshatra"] == T.DIVERGENT_FLAGGED
 
 
-def test_nak_rows_through_enrich_carry_classical_match():
+def test_mutant_nak_classical_match_stamp_is_visible(monkeypatch):
+    """MUTANT (the pre-ruling behaviour): a verdict function stamping classical_match on agreement is
+    exactly what the single-tier tests above reject (they would FAIL on it)."""
+    monkeypatch.setattr(N, "_nakshatra_pada_verdicts",
+                        lambda co: {"MOON": {"nakshatra": T.CLASSICAL_MATCH, "pada": T.CLASSICAL_MATCH}})
+    v = N._nakshatra_pada_verdicts(_chart(326.0, 25, 2))["MOON"]
+    assert v != {"nakshatra": T.SINGLE, "pada": T.SINGLE}
+
+
+def test_nak_rows_through_enrich_are_all_single_when_the_check_agrees():
     rows = [
         {"chart_id": "c", "ayanamsha_id": "a", "build_id": "b", "fact_subject": "MOON",
          "fact_category": "graha_nakshatra_join", "fact_key": "nakshatra_id_ref", "fact_value_num": 25.0},
@@ -78,7 +89,7 @@ def test_nak_rows_through_enrich_carry_classical_match():
          "fact_category": "graha_nakshatra_join", "fact_key": "gana", "fact_value_text": "Deva"},
     ]
     out = N._enrich_rows(rows, "e", "t", N._nakshatra_pada_verdicts(_chart(326.0, 25, 2)))
-    assert [r["verification_pass_status"] for r in out] == [T.CLASSICAL_MATCH, T.CLASSICAL_MATCH, T.SINGLE]
+    assert [r["verification_pass_status"] for r in out] == [T.SINGLE, T.SINGLE, T.SINGLE]
 
 
 # ── TS-KP ─────────────────────────────────────────────────────────────────────
