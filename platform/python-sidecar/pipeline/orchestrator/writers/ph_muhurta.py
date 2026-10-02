@@ -29,6 +29,7 @@ from datetime import datetime, timedelta, date
 import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from panchang_engine.swiss_backend import records_swiss_backend
 from services.ph_muhurta.engine import (
     MuhurtaContext,
     derive_muhurta_record,
@@ -45,6 +46,7 @@ MAX_MUHURTA_ANCHORS = 400
 
 
 @register('ph_muhurta')
+@records_swiss_backend
 class PhMuhurtaWriter(WriterBase):
     """
     Builds phala_muhurta: for each influenceable anchor + each action class,

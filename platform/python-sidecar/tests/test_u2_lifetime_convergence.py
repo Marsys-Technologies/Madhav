@@ -135,6 +135,7 @@ class FakeCtx:
         self.config = {
             'chart_id': CHART_ID,
             'birth_params': {
+                'datetime_iso': '1984-02-05T10:43:00+05:30',
                 'latitude_deg': 20.2961,
                 'longitude_deg': 85.8245,
                 'tz_offset_hours': 5.5,

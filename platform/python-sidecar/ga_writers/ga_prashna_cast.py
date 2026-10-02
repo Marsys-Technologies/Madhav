@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 from dateutil.parser import parse as parse_dt
 
+from panchang_engine.swiss_backend import ensure_swiss_backend, panchang_sample_jds
 from ga_writers.ga_positions_writer import build_ga_positions, CANONICAL_AYANAMSHAS
 from ga_writers.ga_prashna_writer import seed_prashna_judgment, compute_prashna_judgment
 
@@ -163,6 +164,11 @@ def cast_prashna_chart(
         "place_name": "",
         "subject_label": "prashna",
     }
+
+    # 2b. Fail closed BEFORE any write: the Swiss .se1 backend must be serving and the
+    # question day must be inside the corpus window (out_of_corpus_range), otherwise the
+    # prashna_charts INSERT below (and everything after it) must never run.
+    ensure_swiss_backend(*panchang_sample_jds(dt.toordinal() + 1721425.0))
 
     # 3. Generate UUID for the prashna chart
     prashna_chart_id = str(uuid.uuid4())

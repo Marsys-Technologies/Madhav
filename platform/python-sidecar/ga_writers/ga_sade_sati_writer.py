@@ -55,6 +55,7 @@ import re
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
+from panchang_engine.swiss_backend import ensure_swiss_backend
 from panchang_engine.swiss_state import serialized_swiss_state, swiss_state_scope
 
 from brahmagyan.graha_vocabulary import norm_graha
@@ -363,15 +364,15 @@ def _detect_saturn_sign_changes(window_start: datetime, window_end: datetime) ->
         )
 
     # Lahiri ayanamsha as transit reference engine (GA9 brief §rails)
-    swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))
-    swe.set_sid_mode(swe.SIDM_LAHIRI)
-
     jd_start = swe.julday(
         window_start.year, window_start.month, window_start.day, 0.0
     )
     jd_end = swe.julday(
         window_end.year, window_end.month, window_end.day, 0.0
     )
+    # Backend + the whole scan window must be inside the corpus window (out_of_corpus_range).
+    ensure_swiss_backend(jd_start, jd_end)
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
 
     changes: list[dict] = []
     STEP_DAYS = 5.0  # 5-day step for coarse scan
@@ -436,14 +437,14 @@ def _detect_saturn_retrogrades(window_start: datetime, window_end: datetime) -> 
     except ImportError:
         return []  # Non-fatal; retrograde subset rows will be empty
 
-    swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))
-
     jd_start = swe.julday(
         window_start.year, window_start.month, window_start.day, 0.0
     )
     jd_end = swe.julday(
         window_end.year, window_end.month, window_end.day, 0.0
     )
+    # Backend + the whole scan window must be inside the corpus window.
+    ensure_swiss_backend(jd_start, jd_end)
 
     retros: list[dict] = []
     STEP = 3.0  # 3-day step
@@ -1592,10 +1593,10 @@ def _lookup_tara_bala_for_saturn_at(
         return None
 
     with swiss_state_scope():
-        swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))
-        swe.set_sid_mode(swe.SIDM_LAHIRI)
         jd = swe.julday(at_dt.year, at_dt.month, at_dt.day,
                         at_dt.hour + at_dt.minute / 60.0 + at_dt.second / 3600.0)
+        ensure_swiss_backend(jd)
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
         result, _ = swe.calc_ut(jd, swe.SATURN, swe.FLG_SIDEREAL)
         lon = result[0] % 360.0
         nak_idx = int(lon // (360.0 / 27.0))  # 0-based nakshatra index
