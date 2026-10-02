@@ -855,6 +855,27 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
     await refused(bad(null, null), /kgspp_basis_required_ck/)
   })
 
+  it('AM-14 (steward ruling 2026-10-02): the stored inventory lists no Moon-agent obligation; a moon_on_demand coverage record beside it neither blocks nor changes the seal', async () => {
+    const gen = nextGen()
+    await goodBuild(gen, { noPartition: true })
+    await tx(async c => {
+      await partition(c, gen)   // the event_class partition the seal checks
+      // the SEPARATE account of the on-demand tier (AM-4): a moon_on_demand partition, never an inventory obligation
+      await c.query(
+        `INSERT INTO kala_gochara_coverage
+           (chart_id, generation, partition_kind, partition_key, convention_id, requested_horizon, completed_horizon, resolution,
+            relations_searched, targets_requested, targets_resolved, targets_unresolved, target_resolution_state_counts, build_id)
+         VALUES ($1,$2,'moon_on_demand','moon:interval:2025-01-01/2025-01-31',$3,${HORIZON_SQL},${HORIZON_SQL},1.0,
+                 ARRAY['conjunction']::text[],1,1,0,'{"resolved":1}','build-am5')`, [CHART, gen, LEGACY_CONV])
+    })
+    const moonObs = await pool.query<{ n: string }>(
+      `SELECT count(*)::text AS n FROM ka_gochara_search_obligation WHERE chart_id=$1 AND generation=$2 AND lower(agent)='moon'`, [CHART, gen])
+    expect(moonObs.rows[0]!.n).toBe('0')
+    await publishAndSeal(gen)             // the first-publication checks run in full: fewer obligations, same checks — it seals
+    const sealed = await pool.query<{ n: string }>(`SELECT count(*)::text AS n FROM ka_gochara_generation_seal WHERE chart_id=$1 AND generation=$2`, [CHART, gen])
+    expect(sealed.rows[0]!.n).toBe('1')
+  })
+
   it('R6: with PUBLIC execute revoked (deployment mirror) the builder holds EXECUTE on exactly the 12 own helpers + 5 contract functions, and nothing seal-side', async () => {
     const r = await pool.query<{ sig: string; owner: string; builder: boolean; pub: boolean }>(
       `SELECT p.oid::regprocedure::text AS sig, pg_get_userbyid(p.proowner) AS owner,
