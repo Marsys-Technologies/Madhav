@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
-"""Extract THE approval of THIS run from GitHub's approval history and write the sealing job's approval file (R12-2).
+"""Extract THE approval of THIS run from GitHub's approval history and write the sealing job's approval file (R12-2, R13-4).
 
 Input: the JSON array `GET /repos/{owner}/{repo}/actions/runs/{run_id}/approvals` returned for this run. The approver (the steward, under the owner's ruling #2) approves the
-`gochara-seal` deployment with a comment that carries — on one line, exactly — the digest of the brief they were shown and the run and attempt it is for:
+`gochara-seal` deployment with a comment that carries — on one line, exactly — the digest of the brief they were shown, the run and attempt it is for, and the persisted brief's id:
 
-    brief-digest: <64 lowercase hex>  run: <run id>  attempt: <attempt number>
+    brief-digest: <64 lowercase hex>  run: <run id>  attempt: <attempt number>  brief-id: <persisted brief id>
 
-This script REFUSES (exit 2, reason on stderr, nothing written) unless EXACTLY ONE approved review of the environment names THIS run and attempt in a well-formed line, with the digest of the
-retained brief this job re-verified and a non-empty approver login; a refusing review of this attempt, a comment with more than one distinct line, or a second approval of this attempt refuses too.
-The API's ordering is never assumed (F-R13-5): reviews are selected by what they NAME, so an approval of an earlier attempt is stale whatever its position, and a legitimate re-run (attempt 2
-approved after an attempt-1 seal failure) is accepted. The ordering the API actually returns is recorded as an output of the live-gate proof (runbook §7.1). On success it writes `{schema: 'seal_approval/1', brief_digest, run_id, run_attempt, approver_login, approved_by_note}` where the NOTE is built mechanically (ruling id + triggering actor + the fixed statement), never taken from the comment — the file Stream A's
-`seal_job` takes as `--approval-file`, which independently re-checks the run id / attempt against GITHUB_RUN_ID / GITHUB_RUN_ATTEMPT and the digest against its own recompute."""
+THE CONTRACT (R13-4; none of it depends on the order of the API's array, which GitHub does not document, nor on any attempt field — the run and attempt are read from the COMMENT, which is
+claimed by the approver, not API metadata):
+  * the candidates are the reviews of the environment whose comment names THIS run AND attempt; a review naming another run or attempt is stale and ignored;
+  * ANY ambiguity REFUSES and requires a FRESH workflow run: a refusing review of this attempt (an approval and a later — or earlier — rejection are ambiguous whatever the order); a review
+    with no well-formed grammar line (it cannot be attributed to an attempt); a comment stating more than one distinct line; more than one approval of this attempt;
+  * exactly one approved candidate remains, and its digest AND brief-id must equal the retained brief's digest and the persisted brief id of THIS run's brief job; the approver login is non-empty;
+  * otherwise it REFUSES (exit 2, reason on stderr, nothing written).
+On success it writes `{schema: 'seal_approval/1', brief_digest, run_id, run_attempt, approver_login, approved_by_note}` where the NOTE is built mechanically (ruling id + triggering actor), never taken from
+the comment — the file Stream A's `seal_job` takes as `--approval-file`, which independently re-checks the run id / attempt against GITHUB_RUN_ID / GITHUB_RUN_ATTEMPT and the digest against its own
+recompute. (The brief-id is checked HERE against the artifact of this attempt; carrying it into the seal call is a wire change proposed to the steward — it is NOT in the approval file today.)
+The ordering the API actually returns is recorded as an output of the live-gate proof (runbook §7.1)."""
 from __future__ import annotations
 
 import argparse
@@ -18,7 +24,7 @@ import json
 import re
 import sys
 
-_LINE = re.compile(r"^\s*brief-digest:\s*([0-9a-f]{64})\s+run:\s*(\d+)\s+attempt:\s*(\d+)\s*$")
+_LINE = re.compile(r"\s*brief-digest:\s*([0-9a-f]{64})\s+run:\s*(\d+)\s+attempt:\s*(\d+)\s+brief-id:\s*(\d+)\s*")
 RULING = "NATIVE_DIRECT_RULINGS_20261002#2"          # the owner ruling that authorises same-account approval (no space: Stream A's grammar refuses one)
 
 
@@ -33,11 +39,13 @@ class Refused(Exception):
     pass
 
 
-def extract(history, *, environment: str, run_id: str, attempt: str, brief_digest: str, triggering_actor: str) -> dict:
+def extract(history, *, environment: str, run_id: str, attempt: str, brief_digest: str, brief_id: str, triggering_actor: str) -> dict:
     if not re.fullmatch(r"[0-9a-f]{64}", brief_digest or ""):
         raise Refused("the retained brief's digest is not a sha256")
-    if not str(run_id).isdigit() or not str(attempt).isdigit() or int(attempt) < 1:
+    if not re.fullmatch(r"[0-9]+", str(run_id)) or not re.fullmatch(r"[0-9]+", str(attempt)) or int(attempt) < 1:
         raise Refused("this run's id / attempt are not numeric")
+    if not re.fullmatch(r"[1-9][0-9]*", str(brief_id)):
+        raise Refused("the persisted brief id of this run's brief job is not a positive integer")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?", triggering_actor or ""):
         raise Refused("the workflow's triggering actor is not a GitHub login")
     if not isinstance(history, list):
@@ -45,40 +53,33 @@ def extract(history, *, environment: str, run_id: str, attempt: str, brief_diges
     mine = [h for h in history if isinstance(h, dict) and any((e or {}).get("name") == environment for e in (h.get("environments") or []))]
     if not mine:
         raise Refused(f"no approval of environment {environment!r} exists for this run")
-    # F-R13-5: the API's ordering is NOT relied on. Each review is judged by what it NAMES: the reviews that name THIS run AND attempt are the only candidates; reviews
-    # naming another attempt (a history from a re-run) are stale, never an approval of this one. Exactly one approved candidate, and no refusing review of this attempt.
-    selected, problems = [], []                                # problems: (priority, message) — the most informative one is raised when nothing is selected
+    selected = []
     for h in mine:
         comment = h.get("comment")
-        lines = [m for m in (_LINE.match(l) for l in (comment.splitlines() if isinstance(comment, str) else [])) if m]
-        named = {(m.group(1), m.group(2), m.group(3)) for m in lines}
+        named = {m.groups() for m in (_LINE.fullmatch(l) for l in (comment.splitlines() if isinstance(comment, str) else [])) if m}
         if len(named) > 1:
-            raise Refused("an approval comment states more than one distinct digest/run/attempt: ambiguous")
-        d, c_run, c_attempt = next(iter(named)) if named else (None, None, None)
-        this = named and c_run == str(run_id) and c_attempt == str(attempt)
-        if h.get("state") != "approved":
-            if this or not named:                              # a refusal of this attempt, or one that names no other attempt: never ignored
-                raise Refused(f"a review of {environment!r} for this attempt is {h.get('state')!r}, not approved")
-            continue
+            raise Refused("an approval comment states more than one distinct digest/run/attempt/brief-id: ambiguous — start a fresh run")
         if not named:
-            problems.append((3, "the approval carries no comment: the digest of the approved brief must be stated in it" if not (isinstance(comment, str) and comment.strip())
-                             else "the approval comment has no `brief-digest: <hex>  run: <id>  attempt: <n>` line"))
-        elif c_run != str(run_id):
-            problems.append((1, f"the approval is for run {c_run}, this is run {run_id}"))
-        elif c_attempt != str(attempt):
-            problems.append((2, f"the approval is for attempt {c_attempt}, this is attempt {attempt}: a stale approval from an earlier attempt"))
-        else:
-            selected.append((h, d))
+            raise Refused("a review of the environment has no well-formed `brief-digest: <hex>  run: <id>  attempt: <n>  brief-id: <n>` line, so it cannot be attributed to an attempt: "
+                          "ambiguous — start a fresh run")
+        d, c_run, c_attempt, c_brief = next(iter(named))
+        if (c_run, c_attempt) != (str(run_id), str(attempt)):
+            continue                                                       # another run or attempt: stale, ignored
+        if h.get("state") != "approved":
+            raise Refused(f"a review of {environment!r} for this attempt is {h.get('state')!r}, not approved: an approval and a refusal of one attempt are ambiguous — start a fresh run")
+        selected.append((h, d, c_brief))
     if not selected:
-        raise Refused(sorted(problems, key=lambda t: t[0])[0][1] if problems else f"no approval of environment {environment!r} names this run and attempt")
+        raise Refused(f"no approval of environment {environment!r} names run {run_id} attempt {attempt} (a stale approval of another run or attempt is never reused)")
     if len(selected) > 1:
-        raise Refused("more than one approval names this run and attempt: ambiguous")
-    latest, digest = selected[0]
+        raise Refused("more than one approval names this run and attempt: ambiguous — start a fresh run")
+    latest, digest, c_brief = selected[0]
     login = ((latest.get("user") or {}).get("login") or "").strip()
     if not login:
         raise Refused("the approval names no approver login")
     if digest != brief_digest:
         raise Refused("the approved digest is not the digest of the retained brief (the brief changed after it was approved, or the wrong brief was approved)")
+    if c_brief != str(brief_id):
+        raise Refused(f"the approval names persisted brief {c_brief}, this run's brief job persisted brief {brief_id}")
     return {"schema": "seal_approval/1", "brief_digest": digest, "run_id": int(run_id), "run_attempt": int(attempt),
             "approver_login": login, "approved_by_note": mechanical_note(triggering_actor)}
 
@@ -90,13 +91,14 @@ def main(argv=None) -> int:
     ap.add_argument("--run-id", required=True)
     ap.add_argument("--attempt", required=True)
     ap.add_argument("--brief-digest", required=True)
+    ap.add_argument("--brief-id", required=True)
     ap.add_argument("--triggering-actor", required=True)
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)
     try:
         with open(a.approvals_file, encoding="utf-8") as f:
             history = json.load(f)
-        out = extract(history, environment=a.environment, run_id=a.run_id, attempt=a.attempt, brief_digest=a.brief_digest, triggering_actor=a.triggering_actor)
+        out = extract(history, environment=a.environment, run_id=a.run_id, attempt=a.attempt, brief_digest=a.brief_digest, brief_id=a.brief_id, triggering_actor=a.triggering_actor)
     except (Refused, OSError, ValueError) as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
         return 2

@@ -26,10 +26,13 @@ describe('gochara-seal-approved.yml', () => {
     const briefText = JSON.stringify(brief)
     expect(briefText).not.toMatch(/GOCHARA_SEALER_DB_URL/)
     const sealUses = (seal.steps as any[]).filter((s) => JSON.stringify(s).includes('secrets.GOCHARA_SEALER_DB_URL'))
-    expect(sealUses).toHaveLength(1)
+    // exactly two steps of the GATED job see it: the orchestrator (the seal) and the read-only reconcile that follows it
+    expect(sealUses).toHaveLength(2)
     expect(sealUses[0].run).toBe('bash platform/scripts/gochara-seal-approved.sh')
+    expect(String(sealUses[1].run)).toContain('gochara_seal_reconcile.py')
+    expect(String(sealUses[1].run)).not.toMatch(/gochara_seal_approval|seal_job|INSERT|UPDATE/)
     // the secret appears nowhere else in the whole file
-    expect((text.match(/secrets\.GOCHARA_SEALER_DB_URL/g) ?? []).length).toBe(1)
+    expect((text.match(/secrets\.GOCHARA_SEALER_DB_URL/g) ?? []).length).toBe(2)
   })
   it('binds both jobs to one reviewed revision: github.sha, an ancestor of origin/main, passed forward and re-checked', () => {
     for (const j of [brief, seal]) {
@@ -61,8 +64,14 @@ describe('gochara-seal-approved.yml', () => {
   })
   it('passes inputs only through env and never swallows a failure', () => {
     for (const j of [brief, seal]) for (const s of j.steps as any[]) if (s.run) expect(s.run).not.toContain('${{')
-    expect(code(text)).not.toMatch(/continue-on-error|\|\|\s*true|set \+e/)
+    expect(code(text)).not.toMatch(/continue-on-error|\|\|\s*true/)
     expect(code(text)).not.toMatch(/set -x|xtrace/)
+    // `set +e` exists ONLY in the two steps that are best-effort BY DESIGN: the cancel of a still-running execution and the reconcile — and the reconcile re-raises 11/12
+    for (const j of [brief, seal]) for (const st of j.steps as any[]) {
+      if (String(st.run ?? '').includes('set +e')) expect(String(st.name)).toMatch(/^(Cancel a still-running execution|Reconcile)/)
+    }
+    const reconcile = (seal.steps as any[]).find((st) => String(st.name).startsWith('Reconcile'))
+    expect(String(reconcile.run)).toContain('0|10) exit 0 ;; *) exit "$RC"')
   })
   it('the seal job calls only the orchestrator, which checks everything BEFORE the seal job and propagates its status', () => {
     const c = code(orch)
@@ -86,5 +95,51 @@ describe('gochara-seal-approved.yml', () => {
     const sealStep = (seal.steps as any[]).find((s) => s.run === 'bash platform/scripts/gochara-seal-approved.sh')
     expect(sealStep.env.BRIEF_FILE).toBe('brief.json')
     expect(sealStep.env.BRIEF_COMPACT_FILE).toBe('brief.compact.json')
+  })
+  it('R13-3: binds the brief to the EXECUTED resource — image digest, execution id, service account, runner commit — and cancels a still-running execution', () => {
+    const steps = brief.steps as any[]
+    const names = steps.map((st) => String(st.name))
+    const run = (st: any) => String(st.run ?? '')
+    const image = steps.find((st) => st.id === 'image'), exec = steps.find((st) => st.id === 'execute'), wait = steps.find((st) => st.id === 'wait'), check = steps.find((st) => st.id === 'check')
+    expect(run(image)).toContain('gcloud artifacts docker images describe')
+    expect(run(image)).toContain('gochara_seal_execution_check.py job-image')
+    expect(run(exec)).toContain('--async')                                               // the execution id is recorded BEFORE the wait, so a cancelled wait can still cancel it
+    expect(run(exec)).not.toContain('--wait')
+    expect(wait['timeout-minutes']).toBeLessThanOrEqual(brief['timeout-minutes'])
+    expect(run(wait)).toContain('gcloud run jobs executions describe')
+    const cancel = steps.find((st) => String(st.name).startsWith('Cancel a still-running execution'))
+    expect(String(cancel.if)).toContain('always()')
+    expect(String(cancel.if)).toContain("steps.wait.outcome != 'success'")
+    expect(run(cancel)).toContain('gcloud run jobs executions cancel')
+    expect(run(check)).toContain('gochara_seal_execution_check.py build-envelope')
+    expect(run(check)).toContain('--image-digest "$IMAGE_DIGEST"')
+    expect(names.indexOf(String(image.name))).toBeLessThan(names.indexOf(String(exec.name)))
+    expect(names.indexOf(String(exec.name))).toBeLessThan(names.indexOf(String(wait.name)))
+    expect(wf.env.VERIFIER_SERVICE_ACCOUNT).toBe('gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com')
+    expect(wf.env.VERIFICATION_JOB).toBe('gochara-verification-job')
+  })
+  it('R13-4: artifacts carry run id AND attempt (a seal-only re-run finds none), the approval grammar carries the brief id, and the seal step is followed by a reconcile', () => {
+    const upload = (brief.steps as any[]).find((st) => st.uses?.startsWith('actions/upload-artifact'))
+    expect(upload.with.name).toBe('seal-brief-${{ github.run_id }}-${{ github.run_attempt }}')
+    expect(String(upload.with.path)).toContain('brief.envelope.json')
+    const download = (seal.steps as any[]).find((st) => st.uses?.startsWith('actions/download-artifact'))
+    expect(download.with.name).toBe('seal-brief-${{ github.run_id }}-${{ github.run_attempt }}')
+    const record = (seal.steps as any[]).find((st) => st.uses?.startsWith('actions/upload-artifact'))
+    expect(record.with.name).toContain('${{ github.run_attempt }}')
+    expect(text).toContain('brief-digest: $DIGEST  run: $GITHUB_RUN_ID  attempt: $GITHUB_RUN_ATTEMPT  brief-id: $BRIEF_ID')
+    const names = (seal.steps as any[]).map((st) => String(st.name))
+    expect(names.findIndex((n) => n.startsWith('Reconcile'))).toBeGreaterThan(names.findIndex((n) => n.startsWith('Verify the approval and call the seal job')))
+    const rec = (seal.steps as any[]).find((st) => String(st.name).startsWith('Reconcile'))
+    expect(String(rec.if)).toContain('always()')
+    expect(String(rec.if)).toContain("steps.seal.conclusion != 'skipped'")
+    expect(orch).toContain('--brief-id "$BRIEF_ID"')
+    expect(orch).toContain('check-envelope')
+  })
+  it('R13-3: shares ONE concurrency group with the job-definition workflow, and states its capacity basis', () => {
+    expect(wf.concurrency.group).toBe('gochara-verification-and-sealing')
+    expect(wf.concurrency['cancel-in-progress']).toBe(false)
+    expect(brief['timeout-minutes']).toBeGreaterThanOrEqual(150)                        // the verification job's own task timeout is 7200 s (#2976)
+    expect(seal['timeout-minutes']).toBe(30)
+    expect(text).toContain('CAPACITY:')
   })
 })

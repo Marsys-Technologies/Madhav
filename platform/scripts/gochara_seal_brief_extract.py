@@ -21,17 +21,33 @@ import json
 import re
 import sys
 
-_HEX = re.compile(r"^[0-9a-f]{64}$")
+_HEX = re.compile(r"[0-9a-f]{64}")
 _COMPACT_KEYS = {"brief_bytes", "brief_chunks", "brief_file", "persisted", "sha256", "status"}
 _CHUNK_KEYS = {"b64", "brief_chunk", "of", "sha256"}
 CHUNK_RAW_BYTES = 48 * 1024
 
 
-def _text_of(e):
-    text = e.get("textPayload")
-    if text is None and isinstance(e.get("jsonPayload"), dict):
-        text = e["jsonPayload"].get("message")
-    return text.strip() if isinstance(text, str) else None
+def _object_of(e):
+    """The JSON object one log entry carries, or None for a line that is not ours. Cloud Run PARSES a JSON object printed on stdout into the entry's ROOT `jsonPayload` (R13-1 —
+    the representation the real logs have); `jsonPayload.message` (a string holding the object) and `textPayload` (the object as text) are accepted as FALLBACKS and go through the
+    SAME strict validation as the root form. Log LABELS and resource fields are never consulted: they are not producer attestation (see runbook §6)."""
+    jp = e.get("jsonPayload")
+    if isinstance(jp, dict):
+        if "brief_chunk" in jp or "status" in jp:
+            return jp
+        text = jp.get("message")
+    else:
+        text = e.get("textPayload")
+    if not isinstance(text, str):
+        return None
+    text = text.strip()
+    if not text.startswith("{"):
+        return None
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        return None                                                        # a log line that is not ours (a library message) — ignored; ours are validated below
+    return doc if isinstance(doc, dict) else None
 
 
 def _is_int(v):
@@ -45,14 +61,8 @@ def extract(entries) -> tuple[bytes, dict]:
     chunks: dict[int, dict] = {}
     compacts: list[dict] = []
     for e in entries:
-        text = _text_of(e) if isinstance(e, dict) else None
-        if not text or not text.startswith("{"):
-            continue
-        try:
-            doc = json.loads(text)
-        except ValueError:
-            continue                                                       # a log line that is not ours (a library message) — ignored; ours are checked below
-        if not isinstance(doc, dict):
+        doc = _object_of(e) if isinstance(e, dict) else None
+        if doc is None:
             continue
         if "brief_chunk" in doc:
             if set(doc) != _CHUNK_KEYS or not _is_int(doc["brief_chunk"]) or not _is_int(doc["of"]) or not isinstance(doc["sha256"], str) or not isinstance(doc["b64"], str):
@@ -70,7 +80,7 @@ def extract(entries) -> tuple[bytes, dict]:
     if len(compacts) > 1:
         raise ValueError("more than one distinct `BRIEFED` result line in the execution's logs")
     c = compacts[0]
-    if set(c) != _COMPACT_KEYS or not _is_int(c["brief_bytes"]) or c["brief_bytes"] < 1 or not isinstance(c["sha256"], str) or not _HEX.match(c["sha256"]) or not isinstance(c["persisted"], dict):
+    if set(c) != _COMPACT_KEYS or not _is_int(c["brief_bytes"]) or c["brief_bytes"] < 1 or not isinstance(c["sha256"], str) or not _HEX.fullmatch(c["sha256"]) or not isinstance(c["persisted"], dict):
         raise ValueError("the compact result line is malformed (keys brief_bytes/brief_chunks/brief_file/persisted/sha256/status)")
     if c["brief_chunks"] is not True:
         raise ValueError("the compact line does not announce chunks (`brief_chunks` is not true): the brief is not in the logs")
