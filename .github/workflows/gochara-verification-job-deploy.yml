@@ -13,6 +13,12 @@
 #   GOCHARA_RUNNER_COMMIT = the commit this workflow runs from == the image tag (so the runner identity the verifier records is the code
 #                       that was actually reviewed and built; the workflow refuses if no image exists for that commit)
 #   never retried (max-retries 0), one task; dispatched by an OPERATOR only — nothing here chains it to a build.
+#   Environment: `--set-env-vars` REPLACES every Cloud Run env var, leaving only GOCHARA_RUNNER_COMMIT; the image's own ENV (SE_EPHE_PATH=/app/ephe, PYTHONPATH) is separate and survives.
+#   `--command` overrides the image ENTRYPOINT (python -m pipeline.orchestrator.main): this workflow does NOT execute the job, so the first operator execution is the real test that
+#   `python -m pipeline.orchestrator.verification_job` imports from the image's working directory. Resources (8Gi/2cpu/7200s) are a starting point; a timeout is a refusal (max-retries 0):
+#   run per class (`--class`, supported) or raise the timeout — either way EVERY class must be verified after the last build (R10-2).
+#   SAME-COMMIT RULE (F-R13-8): dispatch this workflow and the sealing workflow (gochara-seal-approved.yml) from the SAME `main` commit; the verifier's kernel modules and the sealing
+#   commit's must be byte-identical or the sealing recompute refuses (exit 3). Re-dispatch THIS workflow whenever any of them changes.
 #
 # Preconditions (runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md act 6): Codex ACCEPT of the job's code; acts 1, 3, 4, 7, 8 and the L1 ACLs done;
 # an image exists for the dispatched commit (deploy.yml builds it when the pipeline changes). The deploy principal must be able to act as the
