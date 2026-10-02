@@ -379,17 +379,6 @@ class KaMoortiNirnayaWriter(WriterBase):
         janma_nak_idx, janma_fact_id = janma
 
         moorti_table = _fetch_moorti_table(conn)
-        # §12.9: digest of exactly the bg_transit_moorti rows this build consumes, stamped on
-        # every row so an upstream change is DETECTABLE (services.ka_vedha_gochara.freshness).
-        # Step 3 §4: the fingerprint also carries the consumed node-series identity
-        # (L0-owned node_series_digest_v1), the consumed L1 natal-operand identity and
-        # this writer's formula_version.
-        upstream_fp_json = json.dumps(moorti_upstream_fingerprint(
-            moorti_table,
-            node_series=node_series_identity(conn),
-            l1=l1_operand_identity(conn, chart_id, CANONICAL_AYANAMSHA, L1_OPERANDS),
-            formula_version=FORMULA_VERSION,
-        ))
         if not moorti_table:
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
@@ -425,6 +414,20 @@ class KaMoortiNirnayaWriter(WriterBase):
                     + "; prior partition preserved"
                 ),
             )
+
+        # §12.9: digest of exactly the bg_transit_moorti rows this build consumes, stamped on
+        # every row so an upstream change is DETECTABLE (services.ka_vedha_gochara.freshness).
+        # Step 3 §4: the fingerprint also carries the consumed node-series identity
+        # (L0-owned node_series_digest_v1), the consumed L1 natal-operand identity and
+        # this writer's formula_version. Computed only after every graceful refusal
+        # above — an absent node series RAISES here, and that raise must not pre-empt
+        # the coverage refusal (spec §7 test 6: no write, no TRUE fallback).
+        upstream_fp_json = json.dumps(moorti_upstream_fingerprint(
+            moorti_table,
+            node_series=node_series_identity(conn),
+            l1=l1_operand_identity(conn, chart_id, CANONICAL_AYANAMSHA, L1_OPERANDS),
+            formula_version=FORMULA_VERSION,
+        ))
 
         moon_daily = daily_by_body.get("Moon") or []
         moon_nak_by_date: dict[date, int] = {

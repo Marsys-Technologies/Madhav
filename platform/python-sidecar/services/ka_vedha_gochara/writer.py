@@ -614,18 +614,6 @@ class KaVedhaGocharaWriter(WriterBase):
         # serve honestly; only the malefic-count grading / latta kind are
         # skipped, each with its own coverage note (never silently degraded).
         malefic_scale = _fetch_malefic_scale(conn)
-        # §12.9: digest of exactly the reference rows this build consumes, stamped on
-        # every house_vedha row so a later re-citation upstream is DETECTABLE.
-        # Step 3 §4: the fingerprint also carries the consumed node-series identity
-        # (L0-owned node_series_digest_v1), the consumed L1 natal-operand identity and
-        # this writer's formula_version — an L1 rebuild, a series change or a version
-        # bump alone makes older rows stale.
-        upstream_fp = upstream_fingerprint(
-            vedha_rules, malefic_scale,
-            node_series=node_series_identity(conn),
-            l1=l1_operand_identity(conn, chart_id, CANONICAL_AYANAMSHA, L1_OPERANDS),
-            formula_version=FORMULA_VERSION,
-        )
         latta_rules = _fetch_latta_rules(conn)
 
         today = date.today()
@@ -663,6 +651,22 @@ class KaVedhaGocharaWriter(WriterBase):
                     + "; prior partition preserved"
                 ),
             )
+
+        # §12.9: digest of exactly the reference rows this build consumes, stamped on
+        # every house_vedha row so a later re-citation upstream is DETECTABLE.
+        # Step 3 §4: the fingerprint also carries the consumed node-series identity
+        # (L0-owned node_series_digest_v1), the consumed L1 natal-operand identity and
+        # this writer's formula_version — an L1 rebuild, a series change or a version
+        # bump alone makes older rows stale. Computed only after every graceful
+        # refusal above — an absent node series RAISES here, and that raise must
+        # not pre-empt the coverage refusal (spec §7 test 6: no write, no TRUE
+        # fallback).
+        upstream_fp = upstream_fingerprint(
+            vedha_rules, malefic_scale,
+            node_series=node_series_identity(conn),
+            l1=l1_operand_identity(conn, chart_id, CANONICAL_AYANAMSHA, L1_OPERANDS),
+            formula_version=FORMULA_VERSION,
+        )
 
         # Per-graha sign runs and nakshatra runs, computed once and reused by
         # both vedha_kind branches below (no repeat ephemeris derivation).
