@@ -479,3 +479,36 @@ def test_verifier_refuses_a_partial_subtotal_stored_on_an_unqualified_window(gra
     _write(grain, CLS, PATH, [bad])
     with pytest.raises(RuntimeError, match="partial subtotal"):
         _verify(grain, CLS, PATH)
+
+
+# ── Codex round 7 [1]: unevaluated record evidence/severity is NULL, never a placeholder 0.0 ────────────
+
+def test_an_unevaluated_record_stores_null_evidence_and_severity_not_zero(grain):
+    row = grain.execute(
+        "SELECT evidence_for_occurrence, evidence_against_occurrence, severity,"
+        " outcome_valence_for_native FROM public.ka_gochara_relationship_record"
+        " WHERE generation = %s", (GEN,)).fetchone()
+    assert row == (None, None, None, "unqualified")
+
+
+# ── persisted-or-reconstructable qualification ──────────────────────────────────────────────────────
+
+def test_the_affected_channels_and_reasons_are_reconstructable_from_the_stored_rows(grain):
+    """1156 has no column for per-window reasons: the contract is that they are OBLIGATORILY reconstructable
+    from the stored members and the bound factor rows by code that shares nothing with the builder."""
+    from services.gochara_kernel.window_verifier import reconstruct_qualification
+    recs, drafts, _, _, _ = _sweep_and_write(grain, ws.registry_factor_rows)       # today's rows: unqualified
+    rebuilt = reconstruct_qualification(grain, chart_id=CHART_ID, generation=GEN, event_class=CLS,
+                                        path_id=PATH, rule_version=VERSION,
+                                        factor_rows=ws.registry_factor_rows(PATH, VERSION))
+    (w,) = rebuilt.values()
+    assert w["affected_channels"] == ["evidence_for_occurrence"]
+    assert w["reasons"] == {drafts[0].record_ids[0]: ["applicability_undeclared"]} or \
+        sorted(sum(w["reasons"].values(), [])) == ["applicability_undeclared"]
+    # and the qualified world reconstructs to "nothing affected"
+    _sweep_and_write(grain, _declared_rows)
+    rebuilt2 = reconstruct_qualification(grain, chart_id=CHART_ID, generation=GEN, event_class=CLS,
+                                         path_id=PATH, rule_version=VERSION,
+                                         factor_rows=_declared_rows(PATH, VERSION))
+    (w2,) = rebuilt2.values()
+    assert w2["affected_channels"] == [] and w2["reasons"] == {}

@@ -758,3 +758,29 @@ substep still refuses P2 by name, so no class can seal yet; `day_on_demand`; the
    your model's example row uses `orb_state`/`uncovered_state` — whichever #2897 binds, `encode_applicability` is the one place
    to align, and the vector restates the result either way.
 31 AM-16 tests (real files where present, Swiss stand-ins otherwise); 8 mutations killed.
+
+### Design v1.16 (2026-10-02) — Codex round 7, [1] (qualification over the whole component) and [7] (global maximum by pieces)
+
+**[1] A peak is qualified only when the objective's maximum AND its earliest maximising instant are established over the ENTIRE
+component.** `maximise_earliest` no longer drops unknown samples: a value that is unknown at ANY evaluated instant makes the whole
+piece unknown, and any unknown piece makes the window's objective unqualified — `peak_instant`, `score`, `evidence_*` NULL,
+`unqualified_reason = objective_unknown_over_component`, the piece count kept in `unresolved`. (An unknown portion could hold a larger
+value; "first half vedha 0, second half None" no longer yields peak=start, score=0 — Codex's reproduction is a test, as is an unknown
+island inside a known piece.) A bounded reduction would stay qualified only if proved independent of the unknown operands — none is
+claimed. A record unknown at EVERY sampled instant is still unqualified at the record level. **Records store NULL, never a placeholder
+0.0, for unevaluated evidence/severity** (1155 permits NULL; tested on the real schema). **Affected channels and reasons**: 1156 has no
+column for them, so they are OBLIGATORILY RECONSTRUCTABLE — `window_verifier.reconstruct_qualification` rebuilds them from the stored
+members and the bound factor rows (independent code), and the writer's note carries the reason summary. *Not mine:*
+`score.aggregate_paths([0.2, "unqualified"]) -> 0.2` is Stream B's cross-path reduction (flagged).
+
+**[7] The objective is solved per piece at EXACT factor-state boundaries, with a method that establishes the global maximum.** Members
+declare `state_boundaries(lo, hi)` (a dṛṣṭi source-sign ingress, a vedha interval edge) and `peak_hints(lo, hi)` (a point contact's
+exact instant); the component is cut at support endpoints ∪ every declared boundary, so within a piece each function is constant or
+smooth-unimodal. Each piece's candidates = its start ∪ every exact hint ∪ a 96-point scan, refined by bracketed golden-section around
+the best three scan points, and for a plateau/step the earliest instant is bisected to 1 ms. A short interior vedha island (12 h inside a
+100-day support) is found when its edges are declared boundaries; a spike narrower than the scan spacing is found through its hint.
+**Tie tolerance: 1e-9** (the frozen measurement contract), distinct from the 1e-6 storage-comparison tolerance (the verifier keeps
+both, separately named). **Stored score ruling applied and made explicit in code**: `objective` (a NAME) and `objective_value` are
+distinct from `score` — P4 stores the max-min value at the peak; every other path stores the max live record product at the peak
+(unequal-agent P4 and two-root cases are tests). Note the consequence of the 1e-9 rule on a smooth flat top: the earliest instant
+within 1e-9 of a parabola's maximum is ~27 s before it (kinked kernels — the real ones — are exact).

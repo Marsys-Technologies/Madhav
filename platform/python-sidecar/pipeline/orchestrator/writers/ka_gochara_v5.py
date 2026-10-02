@@ -668,6 +668,7 @@ class GocharaV5Writer(WriterBase):
             " ORDER BY 1", (chart_id, GENERATION, event_class, path_id)).fetchall()]
         windows = memberships = 0
         excluded: dict = {}
+        reasons: dict = {}
         unqualified = 0
         for version in versions:        # the path→version map comes from the records, not a constant
             records = store.read_grain(
@@ -688,11 +689,18 @@ class GocharaV5Writer(WriterBase):
             windows += counts["windows"]
             memberships += counts["memberships"]
             unqualified += sum(1 for d in drafts if d.score is None)
+            for d in drafts:
+                if d.score is None:
+                    for k, v in d.unresolved.items():
+                        reasons[k] = reasons.get(k, 0) + v
             for k, v in ex.items():
                 excluded[k] = excluded.get(k, 0) + v
+        # qualification summary (the per-window detail is reconstructable from the stored rows)
+        why = sorted(f"{k}×{v}" for k, v in reasons.items())
         return WriterResult(
             asset_id=self.asset_id, rows_inserted=windows + memberships,
-            notes=(f"{event_class}/{path_id}: {windows} window(s) ({unqualified} unqualified — "
+            notes=(f"{event_class}/{path_id}: {windows} window(s) ({unqualified} unqualified"
+                   f"{' — ' + ', '.join(why) if why else ''} — "
                    f"score/evidence/peak NULL, severity NULL by ruling), {memberships} "
                    f"membership row(s); excluded records {excluded}; independent SQL union "
                    "+ semantic re-derivation passed"))

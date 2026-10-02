@@ -23,7 +23,8 @@ from __future__ import annotations
 
 from datetime import timezone
 
-_TOL = 1e-6                                 # REAL (float4) storage
+_TOL = 1e-6                                 # REAL (float4) storage round-trip — NOT the peak tie
+_TIE = 1e-9                                 # the frozen measurement contract's peak-tie tolerance
 _MAGNITUDE_ONLY = ("higher = stronger", "lower = stronger")
 _TITLE = {"sun": "Sun", "moon": "Moon", "mars": "Mars", "mercury": "Mercury", "jupiter": "Jupiter",
           "venus": "Venus", "saturn": "Saturn", "rahu": "Rahu", "ketu": "Ketu"}
@@ -88,6 +89,12 @@ def _against_evaluated(path_id: str, factor_rows: list[dict]) -> bool:
     if path_id == "P2":
         return True
     return bool(factor_rows) and all(r.get("direction") in _MAGNITUDE_ONLY for r in factor_rows)
+
+
+def earliest_max(cands):
+    """(max value, earliest instant within the frozen peak-tie tolerance of it)."""
+    best = max(v for v, _ in cands)
+    return best, min(t for v, t in cands if v >= best - _TIE)
 
 
 def _pieces(lo, hi, recs):
@@ -198,8 +205,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         if not cands:
             problems.append(f"{tag}: no objective candidate re-derived")
             continue
-        best = max(v for v, _ in cands)
-        want_peak = min(t for v, t in cands if v >= best - _TOL)
+        best, want_peak = earliest_max(cands)
         live_at_peak = [rid for rid in _live(recs, want_peak) if rid in qualified]
         # the against channel is the per-instant reduction AT THE PEAK: NULL iff the row cannot evaluate
         # it, or a LIVE unqualified member could feed it (a channel-less one feeds both)
@@ -236,4 +242,34 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             "structural_only": len(windows) - numeric}
 
 
-__all__ = ["verify_window_semantics"]
+def reconstruct_qualification(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
+                              rule_version: str, factor_rows: list[dict],
+                              drishti_bound: bool = False, vedha_bound: bool = False) -> dict:
+    """{window_id: {affected_channels, reasons: {record_id: [reason...]}}} — the qualification a window
+    carries, RECONSTRUCTED from its stored members and the bound factor rows (1156 has no column for it;
+    persistence is not required, reconstruction is). Serving reads this; a channel is affected when an
+    unqualified member feeds it (a channel-less one feeds both)."""
+    grain = (chart_id, generation, event_class, path_id, rule_version)
+    rows = conn.execute(
+        "SELECT m.window_id::text, r.record_id::text, r.relation, r.object_kind, r.agent, r.house_from_frame"
+        " FROM public.ka_gochara_eval_window_record m"
+        " JOIN public.ka_gochara_relationship_record r ON r.record_id = m.record_id"
+        " WHERE m.chart_id = %s AND m.generation = %s AND m.event_class = %s AND m.path_id = %s"
+        " AND m.rule_version = %s ORDER BY 1, 2", grain).fetchall()
+    out: dict[str, dict] = {}
+    for wid, rid, rel, kind, agent, house in rows:
+        rec = {"relation": rel, "kind": kind, "agent": agent, "house": house}
+        slot = out.setdefault(wid, {"affected_channels": set(), "reasons": {}})
+        state = _record_state(factor_rows, rec, drishti_bound, vedha_bound)
+        if state[0] != "unq":
+            continue
+        slot["reasons"][rid] = list(state[1])
+        try:
+            slot["affected_channels"].add(_channel(event_class, path_id, rec))
+        except RuntimeError:                        # channel unknown: it feeds BOTH
+            slot["affected_channels"].update(("evidence_for_occurrence", "evidence_against_occurrence"))
+    return {wid: {"affected_channels": sorted(v["affected_channels"]), "reasons": v["reasons"]}
+            for wid, v in out.items()}
+
+
+__all__ = ["reconstruct_qualification", "verify_window_semantics"]

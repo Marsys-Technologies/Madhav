@@ -800,7 +800,9 @@ class RecordStore:
             _json.dumps(precision) if precision is not None else None,
             edge.source_text, edge.source_page, _json.dumps(source_fact_ids),
             edge.provenance, edge.operator_role, edge.ruling_ref,
-            "unqualified", house_from_frame, 0.0, 0.0, "unqualified", 0.0,
+            # an UNEVALUATED record carries NULL evidence and severity — never a numeric 0.0 (R7 [1]:
+            # a placeholder zero is indistinguishable from a computed zero downstream); 1155 permits NULL
+            "unqualified", house_from_frame, None, None, "unqualified", None,
         )
         self.conn.execute(
             "INSERT INTO public.ka_gochara_relationship_record ("

@@ -271,7 +271,9 @@ def test_maximise_earliest_o_sm_4_parabola_interior_peak():
 
     best, at = ws.maximise_earliest(f, lo, hi)
     assert best == pytest.approx(0.25, abs=1e-9)
-    assert abs((at - _d(5)).total_seconds()) < 5
+    # the EARLIEST instant within the frozen 1e-9 tie tolerance of the maximum: a smooth parabola's flat
+    # top is ~sqrt(1e-9·range²) wide (here ≈ 27 s of 10 days) — an endpoint (value 0) is nowhere near
+    assert abs((at - _d(5)).total_seconds()) < 60 and at > _d(4.99)
 
 
 def test_maximise_earliest_plateau_returns_the_earliest_instant():
@@ -661,27 +663,27 @@ def test_equal_maxima_in_different_pieces_resolve_to_the_earlier_instant_not_to_
     assert abs((w.peak_instant - _d(8.0)).total_seconds()) < 5   # both reach 1.0; the earlier wins
 
 
-def test_a_later_maximum_that_is_higher_only_below_the_solver_resolution_does_not_win():
-    """A peaks at 1 − 5e-8 on day 8, B at exactly 1.0 on day 38. 5e-8 is far below the maximiser's own
-    resolution (1 s on a 5° orb ≈ 1e-6 of kernel value): they are one plateau, and the EARLIER wins."""
+def test_a_later_maximum_higher_only_below_the_peak_tie_tolerance_does_not_win():
+    """A peaks at 1 − 5e-10 on day 8, B at exactly 1.0 on day 38. 5e-10 is inside the frozen peak-tie
+    tolerance (1e-9), so they are ONE plateau and the EARLIER instant wins; search noise is excluded by
+    evaluating at the exact peak hints."""
     rows = lambda p, v: _rows_declared(p, v, orb=5.0)
     day = lambda t: (t - _d(0)).total_seconds() / 86400.0
     a = _rec("A", relation="conjunction", kind="house_lord", root="R1", supports=((0, 30),),
-             delta_lambda_at=lambda t: 2.5e-7 + abs(day(t) - 8.0) * (5.0 / 15.0))
+             delta_lambda_at=lambda t: 2.5e-9 + abs(day(t) - 8.0) * (5.0 / 15.0),
+             peak_hints=lambda lo, hi: [_d(8.0)])
     b = _rec("B", relation="conjunction", kind="house_lord", root="R2", supports=((30, 60),),
-             delta_lambda_at=lambda t: abs(day(t) - 38.0) * (5.0 / 15.0))
+             delta_lambda_at=lambda t: abs(day(t) - 38.0) * (5.0 / 15.0),
+             peak_hints=lambda lo, hi: [_d(38.0)])
     (w,), _ = _draft([a, b], rows)
     assert abs(day(w.peak_instant) - 8.0) < 1e-3
+    # ... and a difference ABOVE the tolerance is a genuine later maximum
+    a2 = _rec("A", relation="conjunction", kind="house_lord", root="R1", supports=((0, 30),),
+              delta_lambda_at=lambda t: 5e-6 + abs(day(t) - 8.0) * (5.0 / 15.0),
+              peak_hints=lambda lo, hi: [_d(8.0)])
+    (w2,), _ = _draft([a2, b], rows)
+    assert abs(day(w2.peak_instant) - 38.0) < 1e-3
 
-
-# ═══ Codex round 6, R4 — geometry is a validated contract ═══════════════════════════════════════════
-
-def test_a_point_labelled_a_span_is_refused_before_the_membership_step_can_take_it():
-    """house_span with a point target would take the step branch and bypass the orb_not_ratified
-    branch — 1155 does not stop it, the sweep must."""
-    bad = _rec("a", kind="house_span", target="point:12.5")
-    with pytest.raises(SweepRefusal, match="geometry and kind disagree"):
-        _draft([bad], _rows_declared)
 
 
 def test_every_kind_requires_its_own_target_form_and_a_missing_or_malformed_target_is_refused():
@@ -832,3 +834,100 @@ def test_a_numeric_orb_without_its_decision_ref_never_reaches_the_formula():
     rec = _rec("a", relation="conjunction", kind="house_lord", delta_lambda_at=lambda t: 0.1)
     with pytest.raises(SweepRefusal, match="orb_decision_ref"):
         _draft([rec], lambda p, v: rows)
+
+
+# ═══ Codex round 7, [1] and [7] — qualification over the WHOLE component; global maximum by pieces ═════
+
+def test_the_codex_repro_a_known_first_half_and_an_unknown_second_half_is_unqualified_not_zero():
+    """First half: vedha value 0 (known); second half: None (node obstruction undecided). The second half
+    could hold a larger value — neither the maximum nor its earliest instant is established, so the
+    peak, score and evidence are NULL with the reason kept (never peak=start, score=0)."""
+    mid = _d(50)
+    rec = _p2("fav", "jupiter", 5, root="R", supports=((0, 100),),
+              state_boundaries=lambda lo, hi: [mid])          # the vedha state changes at `mid`
+    vedha = lambda r, t: 0.0 if t < mid else None
+    (w,), _ = _draft([rec], _p2_rows, cls="career_advancement", vedha=vedha,
+                     )
+    assert (w.peak_instant, w.score, w.evidence_for, w.evidence_against) == (None, None, None, None)
+    assert w.unqualified_reason == "objective_unknown_over_component"
+    assert w.unresolved.get("objective_unknown_over_component", 0) >= 1
+    assert w.outcome_valence_for_native == "unqualified"
+
+
+def test_an_unknown_island_inside_a_known_piece_is_not_dropped():
+    rec = _p2("fav", "jupiter", 5, root="R", supports=((0, 100),),
+              state_boundaries=lambda lo, hi: [_d(40), _d(41)])
+    vedha = lambda r, t: None if _d(40) <= t < _d(41) else 0.5
+    (w,), _ = _draft([rec], _p2_rows, cls="career_advancement", vedha=vedha)
+    assert w.peak_instant is None and w.score is None            # a known 0.5 elsewhere cannot stand in for it
+
+
+def test_a_short_interior_island_is_found_when_its_edges_are_declared_state_boundaries():
+    """vedha is 0 except 1.0 on a 12-hour interior island of a 100-day support — shorter than the scan
+    spacing. The record declares its state boundaries; the objective is solved per piece and the
+    island's start is the peak (value 1.0), not the window start (value 0)."""
+    a, b = _d(33.25), _d(33.75)
+    rec = _p2("fav", "jupiter", 5, root="R", supports=((0, 100),),
+              state_boundaries=lambda lo, hi: [a, b])
+    vedha = lambda r, t: 1.0 if a <= t < b else 0.0
+    (w,), _ = _draft([rec], _p2_rows, cls="career_advancement", vedha=vedha)
+    assert w.peak_instant == a and w.score == 1.0 and w.evidence_for == 1.0
+
+
+def test_state_boundaries_outside_the_window_are_ignored_and_inside_ones_split_the_pieces():
+    rec = _rec("a", supports=((10, 20),), state_boundaries=lambda lo, hi: [_d(5), _d(15), _d(25)])
+    pieces = ws._pieces(_d(10), _d(20), [ws.build_program(rec, _rows_declared("P3", "1.0.0"))])
+    assert [(a, b) for a, b, _l in pieces] == [(_d(10), _d(15)), (_d(15), _d(20))]
+
+
+def test_unequal_p4_agents_store_the_max_min_value_as_the_score_and_name_the_objective():
+    """Jupiter's activity is constant 1.0 (a membership step), Saturn's constant 0.25 (a point contact at a
+    fixed 3.75° of a 5° orb): the P4 objective max_t min(J, S) = 0.25 — that is the path's joint value and
+    the stored score; the objective and the score are distinct, named things."""
+    rows = lambda p, v: _rows_declared(p, v, orb=5.0)
+    j = _rec("J", path="P4", agent="jupiter", root="RJ", supports=((0, 10),))
+    s = _rec("S", path="P4", agent="saturn", root="RS", relation="conjunction", kind="house_lord",
+             supports=((0, 10),), delta_lambda_at=lambda t: 3.75)
+    (w,), _ = _draft([j, s], rows)
+    assert w.objective == ws.OBJECTIVE_P4
+    assert w.score == pytest.approx(0.25, abs=1e-9) and w.objective_value == pytest.approx(0.25, abs=1e-9)
+    assert w.evidence_for == pytest.approx(1.25, abs=1e-9)              # per-root Σ: 1.0 + 0.25
+
+
+def test_for_other_paths_the_score_is_the_max_live_record_product_and_differs_from_the_objective():
+    """Two roots live at the peak: the objective (evidence_for, Σ over roots) is 1.25; the stored SCORE
+    is the max live record product, 1.0 — they are different named quantities."""
+    rows = lambda p, v: _rows_declared(p, v, orb=5.0)
+    a = _rec("A", root="R1", supports=((0, 10),))
+    b = _rec("B", root="R2", relation="conjunction", kind="house_lord", supports=((0, 10),),
+             delta_lambda_at=lambda t: 3.75)
+    (w,), _ = _draft([a, b], rows)
+    assert w.objective == ws.OBJECTIVE_EVIDENCE
+    assert w.objective_value == pytest.approx(1.25, abs=1e-9) and w.score == pytest.approx(1.0)
+
+
+def test_the_peak_tie_tolerance_is_the_frozen_1e_9_and_separate_from_the_storage_tolerance():
+    from services.gochara_kernel import window_verifier as wv
+    assert ws._TIE == 1e-9 and wv._TOL == 1e-6 and wv._TIE == 1e-9
+
+
+def test_a_spike_narrower_than_the_scan_spacing_is_found_only_through_its_exact_hint():
+    """An angular kernel whose activity orb is tiny (0.001°) is non-zero only within minutes of its exact
+    contact — far narrower than the scan spacing of a 30-day support. The contact's exact instant is a
+    declared peak hint; without it the maximum would be missed (value 0), with it the peak is exact."""
+    rows = lambda p, v: _rows_declared(p, v, orb=0.001)
+    day = lambda t: (t - _d(0)).total_seconds() / 86400.0
+    centre = _d(11.3)
+    delta = lambda t: abs(day(t) - 11.3) * 0.1                        # 0.1°/day
+    with_hint = _rec("A", relation="conjunction", kind="house_lord", supports=((0, 30),),
+                     delta_lambda_at=delta, peak_hints=lambda lo, hi: [centre])
+    (w,), _ = _draft([with_hint], rows)
+    assert w.peak_instant == centre and w.score == pytest.approx(1.0, abs=1e-9)
+
+
+def test_the_verifier_peak_tie_is_the_frozen_tolerance_not_the_storage_tolerance():
+    from services.gochara_kernel import window_verifier as wv
+    later, earlier = _d(10), _d(2)
+    # 5e-7 apart: above the 1e-9 peak tie (a genuine later maximum), below the 1e-6 storage tolerance
+    assert wv.earliest_max([(1.0, later), (1.0 - 5e-7, earlier)]) == (1.0, later)
+    assert wv.earliest_max([(1.0, later), (1.0 - 5e-10, earlier)]) == (1.0, earlier)

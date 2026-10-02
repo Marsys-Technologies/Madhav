@@ -73,10 +73,11 @@ MAGNITUDE_ONLY_DIRECTIONS = frozenset({"higher = stronger", "lower = stronger"})
 # applicability block lists them (activity_kernel@1.1.0). Nothing below names a kind.
 
 _EPS = 1e-12
-# Two members' maxima that differ by less than the maximiser's own resolution (1 s on a 5° orb is
-# ~1e-6 of kernel value) are one plateau: the earliest instant wins, not whichever search landed
-# a hair higher.
-_TIE = 1e-6
+# The frozen measurement contract's peak-tie tolerance (1e-9): two objective values within it are ONE
+# plateau and the EARLIEST instant wins. It is deliberately NOT the storage-comparison tolerance (the
+# verifier's 1e-6 is the REAL/float4 round-trip, a different question). Search noise is kept below it
+# by evaluating at exact `peak_hints` (a point contact's exact instant) rather than by loosening it.
+_TIE = 1e-9
 
 
 class SweepRefusal(RuntimeError):
@@ -105,6 +106,11 @@ class SweepRecord:
     # actually places the target inside/under the body's ray at t (None = not determinable).
     canonical_target: str | None = None
     inside_at: Callable[[datetime], bool | None] | None = None
+    # R7 [7]: instants INSIDE the support at which an operand's STATE changes (a dṛṣṭi source sign
+    # ingress, a vedha interval edge): the objective is solved piecewise between them. And the instants
+    # at which a smooth kernel is exactly maximal (a point contact's exact instant).
+    state_boundaries: Callable[[datetime, datetime], list[datetime]] | None = None
+    peak_hints: Callable[[datetime, datetime], list[datetime]] | None = None
 
 
 # ── R4: the boundary adapters and the geometry contract ──────────────────────
@@ -391,53 +397,71 @@ def build_program(rec: SweepRecord, factor_rows: list[dict], *,
 # ── maximisation (interior extrema, never endpoint-only — §7.2 inv 2, O-SM-4) ─
 
 def maximise_earliest(f: Callable[[datetime], float | None], lo: datetime, hi: datetime, *,
-                      samples: int = 64, tol_seconds: float = 1.0) -> tuple[float, datetime] | None:
-    """(max value, earliest instant achieving it) of `f` over `[lo, hi)`; None when `f` is
-    undeterminable everywhere. Bracketed scan, then:
-      * a smooth INTERIOR maximum (golden-section refinement of the best bracket beats every sampled
-        value) is returned at its refined instant — never endpoint-only (§7.2 inv 2, O-SM-4);
-      * a plateau or a step (the sampled best is the max) is returned at the EARLIEST instant that
-        reaches it: the transition between the last lower sample and the first maximal one is bisected
-        down to `tol_seconds` — so a step's exact breakpoint is found, not the next grid point."""
+                      samples: int = 96, tol_seconds: float = 0.001,
+                      hints: Iterable[datetime] = ()) -> tuple[float, datetime] | None:
+    """(max value, earliest instant achieving it) of `f` over `[lo, hi)`, or None if `f` is UNKNOWN
+    anywhere it was evaluated. The caller partitions at exact operand-state boundaries first, so within
+    `[lo, hi)` every function is smooth/unimodal or constant; the method then establishes the maximum
+    from candidates that include (a) the piece start, (b) every exact `hint` inside it (a smooth
+    kernel's exact maximum — never found by luck), (c) a dense uniform scan, refined by bracketed
+    golden-section around the best few scan points (an interior maximum is found even when both
+    endpoints are lower, §7.2 inv 2 / O-SM-4), and (d) for a plateau or step the EARLIEST instant
+    reaching the maximum, bisected down to `tol_seconds`. An unknown value ANYWHERE makes the whole
+    piece unknown (R7 [1]: an unknown portion cannot be dropped from the determination)."""
     span = (hi - lo).total_seconds()
     if span <= 0:
         raise SweepRefusal("empty support piece")
-    pts = [lo + timedelta(seconds=span * k / samples) for k in range(samples)]
+    pts = sorted({lo} | {h for h in hints if lo <= h < hi}
+                 | {lo + timedelta(seconds=span * k / samples) for k in range(1, samples)})
     vals = [f(p) for p in pts]
-    live = [i for i, v in enumerate(vals) if v is not None]
-    if not live:
+    if any(v is None for v in vals):
         return None
-    best = max(vals[i] for i in live)
-    i0 = min(i for i in live if vals[i] >= best - _EPS)
-    # golden-section on the bracket around the best sample
-    lo_b = pts[max(i0 - 1, 0)]
-    hi_b = pts[i0 + 1] if i0 + 1 < samples else hi - timedelta(microseconds=1)
+    best = max(vals)
+    i0 = min(i for i, v in enumerate(vals) if v >= best - _TIE)
+    best_t, best_v = pts[i0], vals[i0]
+    # golden-section refinement around the best few distinct scan maxima (interior peaks)
+    order = sorted(range(len(pts)), key=lambda i: -vals[i])[:3]
     phi = (math.sqrt(5) - 1) / 2
-    a, b = lo_b, hi_b
-    c = b - timedelta(seconds=(b - a).total_seconds() * phi)
-    d = a + timedelta(seconds=(b - a).total_seconds() * phi)
-    fc, fd = f(c), f(d)
-    while (b - a).total_seconds() > tol_seconds:
-        if fd is None or (fc is not None and fc >= fd):
-            b, d, fd = d, c, fc
-            c = b - timedelta(seconds=(b - a).total_seconds() * phi)
-            fc = f(c)
-        else:
-            a, c, fc = c, d, fd
-            d = a + timedelta(seconds=(b - a).total_seconds() * phi)
-            fd = f(d)
-    mid = a + (b - a) / 2
-    fm = f(mid)
-    if fm is not None and fm > best + _EPS and lo <= mid < hi:
-        return fm, mid
-    # plateau / step: the earliest instant reaching `best`
-    if i0 == 0:
+    for i in order:
+        a = pts[max(i - 1, 0)]
+        b = pts[i + 1] if i + 1 < len(pts) else hi - timedelta(microseconds=1)
+        c = b - timedelta(seconds=(b - a).total_seconds() * phi)
+        d = a + timedelta(seconds=(b - a).total_seconds() * phi)
+        fc, fd = f(c), f(d)
+        if fc is None or fd is None:
+            return None
+        while (b - a).total_seconds() > tol_seconds:
+            if fc >= fd:
+                b, d, fd = d, c, fc
+                c = b - timedelta(seconds=(b - a).total_seconds() * phi)
+                fc = f(c)
+            else:
+                a, c, fc = c, d, fd
+                d = a + timedelta(seconds=(b - a).total_seconds() * phi)
+                fd = f(d)
+            if fc is None or fd is None:
+                return None
+        mid = a + (b - a) / 2
+        fm = f(mid)
+        if fm is None:
+            return None
+        if fm > best_v + _TIE and lo <= mid < hi:
+            best_t, best_v = mid, fm
+    best = best_v
+    if best_t not in pts:                               # an interior (refined) maximum
+        return best, best_t
+    i = pts.index(best_t)
+    if i == 0:
         return best, pts[0]
-    left, right = pts[i0 - 1], pts[i0]            # f(left) < best - eps (or undeterminable); f(right) >= best - eps
+    # plateau / step: bisect the last lower → first maximal transition to the EARLIEST instant reaching
+    # `best` (pts[i-1] is below it by construction: `i0` was the earliest scan point within the tie)
+    left, right = pts[i - 1], best_t
     while (right - left).total_seconds() > tol_seconds:
         m = left + (right - left) / 2
         fm2 = f(m)
-        if fm2 is not None and fm2 >= best - _EPS:
+        if fm2 is None:
+            return None
+        if fm2 >= best - _TIE:
             right = m
         else:
             left = m
@@ -492,8 +516,9 @@ class WindowDraft:
     unresolved: dict                    # reason -> count of member records
     members: int
     qualified_members: int
-    objective: str = ""                 # which function the peak maximises
+    objective: str = ""                 # which function the peak maximises (a NAME)
     unqualified_reason: str | None = None
+    objective_value: float | None = None   # that function's value at the peak — distinct from `score`
 
 
 OBJECTIVE_P4 = "max_min_agent_activity"          # S:321-323, O-RP-3
@@ -519,6 +544,14 @@ def _program_channel(event_class: str, rec: SweepRecord, qualified: bool) -> str
         return None
 
 
+def _known_nowhere(prog: "RecordProgram", a: datetime, b: datetime, samples: int = 24) -> bool:
+    """True iff the record's value is undeterminable at EVERY sampled instant of `[a, b)` — then the
+    record itself is unqualified (§2.1). A value known somewhere but unknown elsewhere stays qualified:
+    the unknown portion is handled where it matters, in the objective (an unknown piece ⇒ unqualified)."""
+    span = (b - a).total_seconds()
+    return all(prog.value_at(a + timedelta(seconds=span * k / samples)) is None for k in range(samples))
+
+
 def _pieces(lo: datetime, hi: datetime, progs: list[RecordProgram]):
     """Elementary pieces of [lo, hi): between consecutive support endpoints the live set is constant."""
     cuts = {lo, hi}
@@ -527,6 +560,9 @@ def _pieces(lo: datetime, hi: datetime, progs: list[RecordProgram]):
             if a < hi and b > lo:
                 cuts.add(max(a, lo))
                 cuts.add(min(b, hi))
+                # R7 [7]: the EXACT instants at which an operand's state changes inside the support
+                if p.rec.state_boundaries is not None:
+                    cuts.update(c for c in p.rec.state_boundaries(max(a, lo), min(b, hi)) if lo < c < hi)
     ordered = sorted(cuts)
     return [(a, b, [p for p in progs if _contains(p.rec.supports, a)])
             for a, b in zip(ordered, ordered[1:])]
@@ -632,7 +668,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
     # (§2.1: a missing operand takes its null_state).
     for prog in programs.values():
         if prog.qualified and prog.constant is None:
-            if all(maximise_earliest(prog.value_at, a, b) is None for a, b in prog.rec.supports):
+            if all(_known_nowhere(prog, a, b) for a, b in prog.rec.supports):
                 prog.qualified = False
                 prog.null_states.add(UNQUALIFIED)
                 prog.reasons.append(("operand", "operand_undeterminable_over_support"))
@@ -682,6 +718,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
 
         qualified = [p for p in in_win if p.qualified]
         cands: list[tuple[float, datetime]] = []
+        unknown_pieces = 0
         for a, b, live in _pieces(lo, hi, qualified):
             if not live:
                 continue
@@ -691,14 +728,20 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             f = _objective_fn(path_id, live, event_class)
             if all(p.constant is not None for p in live):
                 v = f(a)
-                if v is not None:
-                    cands.append((v, a))
+                got = None if v is None else (v, a)
             else:
-                got = maximise_earliest(f, a, b)
-                if got is not None:
-                    cands.append(got)
-        if not cands:
-            first = "objective_undeterminable"
+                hints = [h for p in live if p.rec.peak_hints is not None for h in p.rec.peak_hints(a, b)]
+                got = maximise_earliest(f, a, b, hints=hints)
+            if got is None:
+                unknown_pieces += 1
+            else:
+                cands.append(got)
+        if unknown_pieces or not cands:
+            # R7 [1]: a peak is qualified only when the objective's maximum AND its earliest maximising
+            # instant are established over the ENTIRE component — an unknown portion is never dropped
+            first = "objective_unknown_over_component" if unknown_pieces else "objective_undeterminable"
+            unresolved[first] = unknown_pieces or 1
+            base["unresolved"] = unresolved
             val = valence_fn(event_class, 0.0, 0.0, first)
             drafts.append(WindowDraft(
                 peak_instant=None, score=None, evidence_for=None, evidence_against=None,
@@ -733,7 +776,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                              else "evidence_against_channel_unqualified")
         drafts.append(WindowDraft(
             peak_instant=peak, score=score, evidence_for=ev_for, evidence_against=ev_against,
-            outcome_valence_for_native=val.outcome_valence_for_native, **base))
+            outcome_valence_for_native=val.outcome_valence_for_native, objective_value=best, **base))
     return drafts, excluded
 
 
