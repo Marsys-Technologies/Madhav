@@ -18,6 +18,13 @@ This module is deliberately separate from swiss_state.py: swiss_state is in
 the import closure of most L1 writers (changing it moves their code digests),
 while nothing may import swiss_thread_scope except computing call sites that
 need it. It imports SWISS_STATE_LOCK from swiss_state, never the reverse.
+
+Call discipline: the helpers set path and mode on EVERY call, not once per
+thread. Per-call setting is the safe pattern — beyond mode/path, Suvarṇa's
+S-L1 measurements observed further per-thread state (delta-T / tidal
+acceleration latched by the first SWIEPH call) shifting ``get_ayanamsa_ut``
+by ~3.5e-7°, so "this thread was prepared earlier" is never a sound
+assumption on a pooled worker.
 """
 from __future__ import annotations
 
