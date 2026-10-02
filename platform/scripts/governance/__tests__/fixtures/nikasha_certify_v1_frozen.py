@@ -103,23 +103,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import asset_census as ac  # noqa: E402  (read-only use of its registry, applicability and N/A tables)
 
-RECORD_VERSION = 2          # 2 (SS N-74): adds citation_state + citation_state_caveat. v1 records stay valid (read as null).
-READABLE_RECORD_VERSIONS = (1, 2)
-# citation_state (N-74): what a source-correspondence PASS rests on. Declared per asset (carriage), measured into the census
-# cell by Carr.D1 (S2), and read FROM THAT CELL by this writer for the criteria below; null for every other criterion.
-CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
-CITATION_CRITERIA = ("Carr.D1", "Ldgr.source_presence")
-# LEGACY LENIENT WRITE PATH (SS ruling (b), N-74): today the census emits no citation_state on an Ldgr.source_presence cell,
-# so an Ldgr PASS with a null state may still be WRITTEN (stored null + caveat true). Removed in the S3 PR (pin 12), when
-# the census emits citation_state on Ldgr from the asset's declared source column and declared state: set this to False
-# there and the writer refuses an Ldgr PASS with a null state (`citation_state_missing`), exactly as for Carr.D1.
-# READING an old record with a null state + caveat stays valid forever; this constant gates only new writes.
-LDGR_NULL_STATE_WRITE_ALLOWED = True
-# The declarations file a gate certificate is measured under (SS N-74 add-on): the census head records its sha256, the
-# writer refuses a census whose sha is not the committed file's, and a certificate stays current only while they agree.
-DECLARATIONS_RELPATH = "platform/scripts/governance/asset_declarations.json"
-CITATION_STRICT = ("Carr.D1",)                       # a PASS/PARTIAL needs a state (sourced / sourced_ocr_unverified); Ldgr is lenient
-CITATION_PASS_REFUSED = ("unsourced", "refuted")     # the census caps these at NO_DETECTOR: a PASS carrying one is inconsistent
+RECORD_VERSION = 1
 VERDICTS = ("PASS", "FAIL", "PARTIAL", "NO_DETECTOR", "ERRORED", "N/A")
 KINDS = ("gate", "addition")
 ENV_LEDGER = "NIKASHA_CERTS_LEDGER"
@@ -134,7 +118,7 @@ WRITER_EVIDENCE_KEYS = ("census_file", "census_sha256", "census_git", "census_to
 # record is provenance for the generation that first carried it.
 CURRENCY_FIELDS = ("verdict", "criterion_version", "registry_revision", "registry_fingerprint",
                    "detector", "writer_hashes", "writer_hashes_verified", "writer_hashes_reason", "upstream_cert_ids",
-                   "semantic_fingerprint", "na", "basis", "inconclusive", "transitive_only", "citation_state", "declarations_sha256")
+                   "semantic_fingerprint", "na", "basis", "inconclusive", "transitive_only")
 # The documented reasons a PASS may have no writer file when the census record does not state `has_writer`.
 WRITER_REASONS = ("service_no_writer", "global_reference_data")
 # Where the registry defines a PASS BY DECLARATION (asset_census._measure_target, Build.target rev 2): criterion ->
@@ -158,12 +142,7 @@ SCHEMA_DOC = (
     "measured, inspector_commit, note, and writer-set census_file (repo-relative, committed under the trusted census "
     "root), census_sha256, census_git, census_tool_commit}, cross_checked, job_image_tag, writer_hashes {path: "
     "sha256}, writer_hashes_verified, writer_hashes_reason, upstream_cert_ids, semantic_fingerprint, cert_key, "
-    "generation, cert_id, seq, prev_sha256, verified_by, verified_on, declarations_sha256 and declarations_version (gates: "
-    "the sha256 and `version` of asset_declarations.json the census was run under, equal to the committed file when "
-    "written; null on additions and on a record written before the fields), record_version (2; v1 records are read as "
-    "citation_state null), citation_state (sourced|sourced_ocr_unverified|unsourced|refuted|null: read from the census "
-    "cell of Carr.D1 / Ldgr.source_presence, null for every other criterion) and citation_state_caveat (true for a PASS "
-    "on those criteria whose state is not `sourced`). The current record of a cert_key "
+    "generation, cert_id, seq, prev_sha256, verified_by, verified_on, record_version. The current record of a cert_key "
     "is its highest generation; whether it is still CURRENT (writer hashes, upstream generations, semantic "
     "fingerprint, registry revision) is E5.5's decision. A line without cert_key carries a `type` in EVENT_TYPES (an event, "
     "e.g. E5.5's invalidation); it is chained and sequenced like every line."
@@ -305,72 +284,6 @@ def _dump(obj) -> bytes:
     return json.dumps(obj, ensure_ascii=False, allow_nan=False).encode("utf-8")
 
 
-def _check_citation_fields(r: dict, n: int) -> None:
-    """record_version and citation_state of ONE certificate line (N-74). v1 (or an absent version) must not carry the v2
-    fields and is returned READ AS `citation_state: null` / caveat false (the dict only; the bytes are untouched); a v2
-    record carries both fields and is held to the writer's own rules: a state is one of CITATION_STATES or null and
-    only on a gate certificate of a citation criterion, `unsourced`/`refuted` never on a PASS, and the caveat is exactly
-    "a PASS on those criteria whose state is not `sourced`"."""
-    rv = r.get("record_version", 1)
-    if isinstance(rv, bool) or not isinstance(rv, int) or rv not in READABLE_RECORD_VERSIONS:
-        _refuse("bad_ledger", f"line {n}: record_version {rv!r} is not one of {READABLE_RECORD_VERSIONS}")
-    if rv == 1:
-        if "citation_state" in r or "citation_state_caveat" in r:
-            _refuse("bad_ledger", f"line {n}: a record_version 1 record carries a citation_state field (a v2 field)")
-        # read as "not declared": null state; the caveat by the SAME rule as a v2 record with a null state (a PASS on a
-        # citation criterion cannot claim `sourced`), so v1 and v2 read alike
-        r["citation_state"] = None
-        r["citation_state_caveat"] = (r.get("kind") == "gate" and r.get("criterion") in CITATION_CRITERIA
-                                      and r.get("verdict") == "PASS")
-        return
-    if "citation_state" not in r or "citation_state_caveat" not in r:
-        _refuse("bad_ledger", f"line {n}: a record_version 2 record must carry citation_state and citation_state_caveat")
-    cs, caveat = r["citation_state"], r["citation_state_caveat"]
-    if cs is not None and (not isinstance(cs, str) or cs not in CITATION_STATES):
-        _refuse("bad_ledger", f"line {n}: citation_state {cs!r} is not one of {CITATION_STATES} or null")
-    citation_gate = r.get("kind") == "gate" and r.get("criterion") in CITATION_CRITERIA
-    if cs is not None and not citation_gate:
-        _refuse("bad_ledger", f"line {n}: citation_state {cs!r} on a record that is not a {CITATION_CRITERIA} gate")
-    if r.get("verdict") == "PASS" and cs in CITATION_PASS_REFUSED:
-        _refuse("bad_ledger", f"line {n}: a PASS with citation_state {cs!r} (the census caps that at NO_DETECTOR)")
-    if cs is not None and isinstance(r.get("na"), dict) and r["na"].get("basis") == "applicability_facts":
-        _refuse("bad_ledger", f"line {n}: citation_state {cs!r} on an applicability N/A (no census cell, so none to read)")
-    if citation_gate and r.get("criterion") in CITATION_STRICT and r.get("verdict") in ("PASS", "PARTIAL"):
-        if cs is None:
-            _refuse("bad_ledger", f"line {n}: a {r.get('criterion')} {r.get('verdict')} with no citation_state")
-        if cs in CITATION_PASS_REFUSED:
-            _refuse("bad_ledger", f"line {n}: a {r.get('criterion')} {r.get('verdict')} with citation_state {cs!r}")
-    want = citation_gate and r.get("verdict") == "PASS" and cs != "sourced"
-    if not isinstance(caveat, bool) or caveat != want:
-        _refuse("bad_ledger", f"line {n}: citation_state_caveat is {caveat!r}, expected {want!r} for this verdict and "
-                              "citation_state")
-
-
-def _check_declarations_fields(r: dict, n: int) -> None:
-    """declarations_sha256 / declarations_version of ONE certificate line (additive under record_version 2). v1 must not
-    carry them; a v2 record written before them lacks them and is returned READ AS null (legacy / unbound); a present sha is
-    null or 64 lower-case hex, a present version is null or non-blank text and needs a sha, and an addition carries
-    neither."""
-    rv = r.get("record_version", 1)
-    has = "declarations_sha256" in r or "declarations_version" in r
-    if rv == 1 and has:
-        _refuse("bad_ledger", f"line {n}: a record_version 1 record carries a declarations field (added after v1)")
-    sha, ver = r.get("declarations_sha256"), r.get("declarations_version")
-    if sha is not None and not (isinstance(sha, str) and _SHA256.fullmatch(sha)):
-        _refuse("bad_ledger", f"line {n}: declarations_sha256 {sha!r} is not null or 64 lower-case hex")
-    if ver is not None and (not isinstance(ver, str) or not ver.strip()):
-        _refuse("bad_ledger", f"line {n}: declarations_version {ver!r} is not null or non-blank text")
-    if ver is not None and sha is None:
-        _refuse("bad_ledger", f"line {n}: a declarations_version with no declarations_sha256")
-    if r.get("kind") != "gate" and (sha is not None or ver is not None):
-        _refuse("bad_ledger", f"line {n}: a declarations binding on a record that is not a gate certificate")
-    if rv != 1 and r.get("kind") == "gate" and "declarations_sha256" in r and sha is None:
-        # only an ABSENT key is legacy: the writer never writes a null sha on a gate, so a present null is a forgery
-        _refuse("bad_ledger", f"line {n}: declarations_sha256 is present but null on a v2 gate record (only an absent "
-                              "key reads as legacy)")
-    r["declarations_sha256"], r["declarations_version"] = sha, ver
-
-
 def _parse_full(data: bytes) -> _Parsed:
     """Strict reading of a ledger. Refuses (`bad_ledger`): an unreadable or non-UTF-8 line, a duplicate key, a first
     line that is not the `_schema` row, a second `_schema` row, a line that is neither a certificate (cert_key /
@@ -405,9 +318,6 @@ def _parse_full(data: bytes) -> _Parsed:
         if r.get("asset") == "_schema":
             _refuse("bad_ledger", f"line {n}: a second `_schema` row")
         cert = _is_cert_line(r)
-        if cert:
-            _check_citation_fields(r, n)
-            _check_declarations_fields(r, n)
         if not cert and not _is_event_line(r):
             _refuse("bad_ledger", f"line {n} is not a record this writer can read (a certificate needs cert_key/"
                                   "generation/cert_id/verdict; any other line needs a `type`)")
@@ -703,74 +613,6 @@ def _select_layer(obj: dict, layer: str) -> dict:
     return c
 
 
-def _declarations_at(repo, ref):
-    """(sha256 of the BYTES, `version`) of asset_declarations.json in `repo`: the blob at `ref` when a ref is given, else the
-    working-tree file, which must be tracked and clean (`declarations_not_committed`); an unreadable file is
-    `declarations_unreadable`. The same repo / ref the writer files are read from."""
-    root = Path(repo) if repo is not None else Path(ac.ROOT)
-    where = f"{DECLARATIONS_RELPATH} at {ref}" if ref is not None else f"{DECLARATIONS_RELPATH} in {root}"
-    if ref is not None:
-        g = _git(root, "show", f"{ref}:{DECLARATIONS_RELPATH}")
-        if g is None or g.returncode != 0:
-            _refuse("declarations_unreadable", f"{where} cannot be read")
-        blob = g.stdout
-    else:
-        f = root / DECLARATIONS_RELPATH
-        st = _git(root, "status", "--porcelain", "--", DECLARATIONS_RELPATH)
-        if st is None or st.returncode != 0:
-            _refuse("declarations_unreadable", f"git cannot be asked about {where}")
-        if st.stdout.strip():
-            _refuse("declarations_not_committed", f"{where} is modified, staged for change or untracked (a line-ending "
-                                                  "conversion such as core.autocrlf reads as modified too): a certificate "
-                                                  "is bound to a COMMITTED declarations file; commit it, or pass writer_ref "
-                                                  "to bind to a commit's blob")
-        tracked = _git(root, "ls-files", "--error-unmatch", "--", DECLARATIONS_RELPATH)
-        if tracked is None or tracked.returncode != 0:
-            _refuse("declarations_not_committed", f"{where} is not tracked by git")
-        if f.is_symlink() or not f.is_file():                    # a tracked symlink would bind to bytes that are not the blob
-            _refuse("declarations_unreadable", f"{where} is not a regular file (a symlink is never followed)")
-        try:
-            blob = f.read_bytes()
-        except OSError as e:
-            _refuse("declarations_unreadable", f"{where} cannot be read ({e})")
-        # `git status` can be clean while the bytes are not the committed blob: core.autocrlf (CRLF working tree), a
-        # skip-worktree / assume-unchanged flag, a smudge filter. The certificate binds to the COMMITTED bytes, so the bytes
-        # read must equal HEAD's blob: fail closed otherwise (and tell the caller the way out)
-        head = _git(root, "show", f"HEAD:{DECLARATIONS_RELPATH}")
-        if head is None or head.returncode != 0:
-            _refuse("declarations_unreadable", f"{where}: HEAD holds no such blob")
-        if head.stdout != blob:
-            _refuse("declarations_worktree_differs",
-                    f"the working-tree bytes of {where} ({_sha(blob)[:12]}..) are not the committed blob's "
-                    f"({_sha(head.stdout)[:12]}..) although git reports it clean (line-ending conversion such as "
-                    "core.autocrlf, skip-worktree / assume-unchanged, or a filter): pass writer_ref (the blob at a commit "
-                    "is read, never the working tree) or restore the committed bytes")
-    version = None
-    try:
-        obj = strict_json_loads(blob.decode("utf-8"))
-        if isinstance(obj, dict) and isinstance(obj.get("version"), str):
-            version = obj["version"]
-    except (UnicodeDecodeError, ValueError):
-        pass
-    return _sha(blob), version
-
-
-def _check_declarations(head: dict, repo, ref):
-    """(sha, version) the gate certificate is bound to. (a) the census head must carry a usable declarations_sha256
-    (`census_declarations_unbound`); (b) it must equal the committed file's (`census_declarations_mismatch`)."""
-    cs = head.get("declarations_sha256")
-    if not (isinstance(cs, str) and _SHA256.fullmatch(cs)):
-        extra = " (declarations_unavailable: the census run could not read the file)" if head.get("declarations_unavailable") else ""
-        _refuse("census_declarations_unbound", f"the census head carries no usable declarations_sha256 ({cs!r}){extra}: "
-                                               "it is not bound to a declarations file, so no certificate may cite it")
-    now_sha, now_ver = _declarations_at(repo, ref)
-    if cs != now_sha:
-        _refuse("census_declarations_mismatch",
-                f"the census ran under declarations {cs[:12]}.. (version {head.get('declarations_version')!r}) but the "
-                f"committed {DECLARATIONS_RELPATH} is {now_sha[:12]}.. (version {now_ver!r}): re-run the census")
-    return now_sha, now_ver
-
-
 def _check_census_head(c: dict, layer: str, run_id: str, need_stamp: bool):
     """Run id, layer and (gates) the stamp the census tool put on its head: registry revision + fingerprint (must be
     the current registry) and tool_commit. A census without them is `census_unbound`."""
@@ -911,7 +753,7 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
                  criterion_version=None, facts=None, na_rule_id=None, census=None, census_path=None,
                  job_image_tag=None, writer_hashes=None, writer_files=None, writer_repo=None,
                  writer_ref=None, writer_hashes_reason=None, upstream_cert_ids=(), semantic_fingerprint=None,
-                 basis=None, inconclusive=False, verified_on=None, citation_state=None) -> dict:
+                 basis=None, inconclusive=False, verified_on=None) -> dict:
     """Validate everything that needs no ledger and return the record without cert_id/generation/prev_sha256. Raises
     CertificationRefused; has no side effect (it reads the census file and the writer files)."""
     if not isinstance(kind, str) or kind not in KINDS:
@@ -1002,12 +844,10 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
 
     # R8: the census gate. A gate reads its verdict from the census cell; an addition may cite a census for its run id
     src, meas, record, tool_commit, head = None, None, None, None, None
-    decl_sha, decl_ver = None, None
     if kind == "gate" or census_path is not None or census is not None:
         src = _load_census(census_path, census)
         head = _select_layer(src.obj, layer)
         tool_commit = _check_census_head(head, layer, run_id, need_stamp=(kind == "gate"))
-
     cfacts = {}
     transitive_only = False
     if kind == "gate":
@@ -1062,39 +902,6 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
             _refuse("not_applicable_pass", "the census record's facts disprove this criterion's applicability: a "
                                            "measured PASS contradicts the registry")
 
-    # N-74: citation_state is read FROM THE CENSUS CELL of the criteria that carry it; a caller value is a cross-check
-    cstate, cell_state = None, (meas.get("citation_state") if meas is not None else None)
-    if citation_state is not None and (not isinstance(citation_state, str) or citation_state not in CITATION_STATES):
-        _refuse("bad_citation_state", f"citation_state must be one of {CITATION_STATES}, not {citation_state!r}")
-    if kind == "gate" and criterion in CITATION_CRITERIA:
-        if cell_state is not None and (not isinstance(cell_state, str) or cell_state not in CITATION_STATES):
-            _refuse("bad_citation_state", f"the census cell {criterion} for {asset} carries citation_state "
-                                          f"{cell_state!r}, which is not one of {CITATION_STATES}")
-        if citation_state is not None and citation_state != cell_state:
-            _refuse("citation_state_conflict", f"citation_state {citation_state!r} is not what the census cell carries "
-                                               f"({cell_state!r}): it is read from the cell, never supplied")
-        cstate = cell_state
-    elif citation_state is not None:
-        _refuse("citation_state_not_applicable", f"citation_state is carried only by {CITATION_CRITERIA}, not "
-                                                 f"{criterion!r}: a typed value is refused")
-    if verdict == "PASS" and cstate in CITATION_PASS_REFUSED:
-        _refuse("citation_state_pass_refused", f"{criterion} reads PASS with citation_state {cstate!r}, which the census "
-                                               "caps at NO_DETECTOR: an inconsistent claim")
-    if kind == "gate" and criterion in CITATION_STRICT and verdict in ("PASS", "PARTIAL"):
-        # Carr.D1's own rollup (S2 `d1_evidence_problem`) demotes a PASS/PARTIAL whose state is not sourced /
-        # sourced_ocr_unverified to NO_DETECTOR: a certificate may not claim what the census would not honour
-        if cstate is None:
-            _refuse("citation_state_missing", f"{criterion} reads {verdict} but the census cell carries no "
-                                              "citation_state: its rollup would read NO_DETECTOR")
-        if cstate in CITATION_PASS_REFUSED:
-            _refuse("citation_state_partial_refused", f"{criterion} reads {verdict} with citation_state {cstate!r}, "
-                                                      "which its rollup caps at NO_DETECTOR")
-    if (kind == "gate" and criterion == "Ldgr.source_presence" and verdict == "PASS" and cstate is None
-            and not LDGR_NULL_STATE_WRITE_ALLOWED):
-        _refuse("citation_state_missing", f"{criterion} reads PASS but the census cell carries no citation_state: the "
-                                          "legacy null-state write path is closed (the census emits it since S3)")
-    caveat = kind == "gate" and criterion in CITATION_CRITERIA and verdict == "PASS" and cstate != "sourced"
-
     # R3: N/A is computed, never typed
     na = None
     if verdict == "N/A":
@@ -1136,8 +943,6 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
     has_writer = record.get("has_writer") if record is not None and isinstance(record.get("has_writer"), bool) else None
     wh_reason = _writer_evidence(wh, wh_verified, writer_hashes_reason, verdict, na_measured, kind, has_writer)
 
-    if kind == "gate":                                  # after the writer rules: those refuse first on an unreadable repo
-        decl_sha, decl_ver = _check_declarations(head, writer_repo, writer_ref)
     cert_key = cert_key_of(asset, kind, criterion)
     ups = _upstream_ids(upstream_cert_ids, cert_key)
     ev = dict(evidence)
@@ -1154,8 +959,7 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
         writer_hashes_verified=wh_verified, writer_hashes_reason=wh_reason, upstream_cert_ids=ups,
         semantic_fingerprint=semantic_fingerprint, cert_key=cert_key, verified_by=verified_by.strip(),
         verified_on=verified_on or dt.datetime.now().astimezone().isoformat(timespec="seconds"),
-        citation_state=cstate, citation_state_caveat=caveat, declarations_sha256=decl_sha,
-        declarations_version=decl_ver, record_version=RECORD_VERSION)
+        record_version=RECORD_VERSION)
     try:
         json.dumps(rec, allow_nan=False)
     except (TypeError, ValueError) as e:
@@ -1348,66 +1152,39 @@ def write_certification(*, ledger_path=None, init: bool = False, **fields) -> Ce
 
 # ─────────────────────────── CI verification and the explicit torn-tail repair ───────────────────────────
 
-def _V(why: str):
-    return ("census_verdict_mismatch", why)
-
-
-def _citation_vs_cell(rec: dict, cell):
-    """`(code, reason)` when a record_version 2 record's citation_state / caveat disagree with the census cell (or, with no
-    cell, are not null); None when they agree or the record is v1 / not a citation gate."""
-    if rec.get("record_version", 1) != 2 or rec.get("kind") != "gate":
-        return None
-    cs = cell.get("citation_state") if isinstance(cell, dict) else None
-    if rec.get("criterion") not in CITATION_CRITERIA:
-        cs = None
-    if rec.get("citation_state") != cs:
-        return ("census_citation_mismatch", f"the record's citation_state {rec.get('citation_state')!r} is not the "
-                                            f"census cell's {cs!r}")
-    want = rec.get("criterion") in CITATION_CRITERIA and rec.get("verdict") == "PASS" and cs != "sourced"
-    if rec.get("citation_state_caveat") != want:
-        return ("census_citation_mismatch", f"the record's citation_state_caveat {rec.get('citation_state_caveat')!r} is "
-                                            f"inconsistent with its verdict {rec.get('verdict')!r} and state {cs!r}")
-    return None
-
-
 def _record_vs_cell(rec: dict, blob: bytes):
-    """None when the record agrees with the census CELL held in `blob`, else `(code, reason)`: verdict, basis, measured
-    N/A cause, registry stamp, tool_commit and run id (`census_verdict_mismatch`), and for a citation criterion of a
-    record_version 2 record its citation_state and caveat (`census_citation_mismatch`)."""
+    """None when the record agrees with the census CELL held in `blob`, else the reason it does not: verdict, basis,
+    measured N/A cause, registry stamp, tool_commit and run id."""
     try:
         obj = strict_json_loads(blob.decode("utf-8"))
         if not isinstance(obj, dict):
-            return _V("the census is not a JSON object")
+            return "the census is not a JSON object"
         head = _select_layer(obj, rec.get("layer"))
         record, cell = _census_record_and_cell(head, rec.get("asset"), rec.get("criterion"))
     except (CertificationRefused, UnicodeDecodeError, ValueError) as e:
-        return _V(f"the cited census cannot be read for this asset/criterion ({e})")
+        return f"the cited census cannot be read for this asset/criterion ({e})"
     ev = rec.get("evidence") if isinstance(rec.get("evidence"), dict) else {}
     if head.get("layer") != rec.get("layer"):
-        return _V(f"the census layer object is {head.get('layer')!r}, the record's layer is {rec.get('layer')!r}")
+        return f"the census layer object is {head.get('layer')!r}, the record's layer is {rec.get('layer')!r}"
     if head.get("generated") != ev.get("census_run_id"):
-        return _V(f"run id {ev.get('census_run_id')!r} is not the census's generated {head.get('generated')!r}")
+        return f"run id {ev.get('census_run_id')!r} is not the census's generated {head.get('generated')!r}"
     if head.get("registry_revision") != rec.get("registry_revision") or head.get("registry_fingerprint") != rec.get(
             "registry_fingerprint"):
-        return _V("the record's registry revision/fingerprint is not the census stamp")
+        return "the record's registry revision/fingerprint is not the census stamp"
     if head.get("tool_commit") != ev.get("census_tool_commit"):
-        return _V("the record's census_tool_commit is not the census's tool_commit")
-    rd = rec.get("declarations_sha256")
-    if rd is not None and head.get("declarations_sha256") != rd:
-        return ("census_declarations_mismatch", f"the record's declarations_sha256 {str(rd)[:12]}.. is not the census "
-                                                f"head's {str(head.get('declarations_sha256'))[:12]}..")
+        return "the record's census_tool_commit is not the census's tool_commit"
     na = rec.get("na") if isinstance(rec.get("na"), dict) else None
     if cell is None:
         if rec.get("verdict") != "N/A" or na is None or na.get("basis") != "applicability_facts":
-            return _V(f"the census holds no cell for it but the record says {rec.get('verdict')!r}")
-        return _citation_vs_cell(rec, None)
+            return f"the census holds no cell for it but the record says {rec.get('verdict')!r}"
+        return None
     if rec.get("verdict") != cell.get("v"):
-        return _V(f"the record says {rec.get('verdict')!r}, the census cell says {cell.get('v')!r}")
+        return f"the record says {rec.get('verdict')!r}, the census cell says {cell.get('v')!r}"
     if rec.get("basis") != cell.get("basis"):
-        return _V(f"the record's basis {rec.get('basis')!r} is not the cell's {cell.get('basis')!r}")
+        return f"the record's basis {rec.get('basis')!r} is not the cell's {cell.get('basis')!r}"
     if cell.get("v") == "N/A" and (na is None or na.get("cause") != cell.get("cause")):
-        return _V("the record's N/A cause is not the cell's")
-    return _citation_vs_cell(rec, cell)
+        return "the record's N/A cause is not the cell's"
+    return None
 
 
 def verify_ledger_census_hashes(repo, ref, ledger_relpath=None) -> dict:
@@ -1420,11 +1197,7 @@ def verify_ledger_census_hashes(repo, ref, ledger_relpath=None) -> dict:
     (`census_citation_missing`), an unreadable ledger (`bad_ledger`) or an unknown ref (`bad_ref`). Returns
     {status: "PASS", ...} only when at least one record was verified; when the ledger does not exist yet at `ref`, or
     holds no gate record, it returns {status: "NO_DETECTOR", reason: ...}: nothing was verified, so nothing is reported
-    clean. The PASS result also reports, never as a failure, the declarations binding (SS N-74 add-on): `stale_declarations`
-    (a LATEST-generation gate record whose recorded declarations_sha256 is not asset_declarations.json's sha at `ref`: the
-    certificate is no longer current), `legacy_declarations` (records written before the field) and `declarations_at_ref`;
-    a record whose recorded sha is not its own cited census head's is a failure (`census_declarations_mismatch`). The
-    result always says how many certificates are caller-asserted: `unmeasured_addition` counts the addition
+    clean. The result always says how many certificates are caller-asserted: `unmeasured_addition` counts the addition
     keys whose LATEST generation reads PASS (information, not a failure)."""
     rel = ledger_relpath or LEDGER_RELPATH
     ok_ref = _git(repo, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
@@ -1438,18 +1211,6 @@ def verify_ledger_census_hashes(repo, ref, ledger_relpath=None) -> dict:
     troot = _trusted_root_rel()
     blobs: dict[str, bytes | None] = {}
     failures, checked, additions = [], 0, []
-    stale_decl, legacy_decl = [], []
-    dg = _git(repo, "show", f"{ref}:{DECLARATIONS_RELPATH}")
-    if dg is not None and dg.returncode == 0:
-        ref_sha = _sha(dg.stdout)
-        ref_ver = None
-        try:
-            _o = strict_json_loads(dg.stdout.decode("utf-8"))
-            ref_ver = _o.get("version") if isinstance(_o, dict) and isinstance(_o.get("version"), str) else None
-        except (UnicodeDecodeError, ValueError):
-            pass
-    else:
-        ref_sha = ref_ver = None
     for key in sorted(by_key):
         for rec in by_key[key]:
             if rec.get("kind") == "addition" and rec is by_key[key][-1] and rec.get("verdict") == "PASS":
@@ -1475,17 +1236,9 @@ def verify_ledger_census_hashes(repo, ref, ledger_relpath=None) -> dict:
                 failures.append((rec["cert_id"], "census_hash_mismatch",
                                  f"{f} at {ref} hashes to {_sha(blobs[f])[:12]}.., the cert recorded {h[:12]}.."))
             else:
-                bad = _record_vs_cell(rec, blobs[f])
-                if bad is not None:
-                    failures.append((rec["cert_id"], bad[0], bad[1]))
-                elif rec is by_key[key][-1]:
-                    rd = rec.get("declarations_sha256")
-                    if rd is None:
-                        legacy_decl.append(rec["cert_id"])                  # written before the binding existed
-                    elif rd != ref_sha:
-                        stale_decl.append(dict(cert_id=rec["cert_id"], recorded_sha256=rd,
-                                               recorded_version=rec.get("declarations_version"),
-                                               at_ref_sha256=ref_sha, at_ref_version=ref_ver))
+                why = _record_vs_cell(rec, blobs[f])
+                if why is not None:
+                    failures.append((rec["cert_id"], "census_verdict_mismatch", why))
     if failures:
         detail = "; ".join(f"{c}: {code}: {m}" for c, code, m in failures[:10])
         _refuse(failures[0][1], f"{len(failures)} of {checked} gate record(s) fail census verification at {ref}: {detail}")
@@ -1493,9 +1246,7 @@ def verify_ledger_census_hashes(repo, ref, ledger_relpath=None) -> dict:
         return dict(status="NO_DETECTOR", checked=0, ref=ref, ledger=rel, unmeasured_addition=len(additions),
                     unmeasured_addition_cert_ids=additions, reason="the ledger holds no gate record: nothing was verified")
     return dict(status="PASS", checked=checked, files=len(blobs), ref=ref, ledger=rel,
-                unmeasured_addition=len(additions), unmeasured_addition_cert_ids=additions,
-                declarations_at_ref=dict(sha256=ref_sha, version=ref_ver), stale_declarations=stale_decl,
-                legacy_declarations=legacy_decl)
+                unmeasured_addition=len(additions), unmeasured_addition_cert_ids=additions)
 
 
 def archive_census(src, repo, generated) -> str:
@@ -1611,8 +1362,6 @@ def _parser() -> argparse.ArgumentParser:
     ap.add_argument("--facts-json", default=None, help="cross-check of the census record's applicability facts, e.g. "
                                                        '{"columns": ["a"], "asset_kind": "data"}')
     ap.add_argument("--basis", default=None, help="a cross-check of the census cell's basis; never supplies one")
-    ap.add_argument("--citation-state", default=None,
-                    help="a cross-check of the census cell's citation_state (Carr.D1 / Ldgr.source_presence); never supplies one")
     ap.add_argument("--inconclusive", action="store_true")
     return ap
 
@@ -1679,8 +1428,7 @@ def main(argv=None) -> int:
             job_image_tag=a.job_image_tag, writer_hashes=wh, writer_files=a.writer_file, writer_repo=a.writer_repo,
             writer_ref=a.writer_ref, writer_hashes_reason=a.writer_hashes_reason, upstream_cert_ids=a.upstream,
             semantic_fingerprint=a.semantic_fingerprint, verified_by=a.verified_by, verified_on=a.verified_on,
-            na_rule_id=a.na_rule_id, facts=facts, basis=a.basis, inconclusive=a.inconclusive,
-            citation_state=a.citation_state)
+            na_rule_id=a.na_rule_id, facts=facts, basis=a.basis, inconclusive=a.inconclusive)
     except CertificationRefused as e:
         print(f"REFUSED {e.code}: {e.message}", file=sys.stderr)
         return 2
