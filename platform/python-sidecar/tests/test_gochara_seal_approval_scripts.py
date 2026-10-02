@@ -129,12 +129,22 @@ def review(state="approved", comment=None, login="steward-as-owner", env="gochar
 
 
 def test_a_good_approval_yields_the_seal_jobs_approval_file():
-    out = approval.extract([review()], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D)
+    out = approval.extract([review()], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, triggering_actor="steward-as-owner")
     assert out == {"schema": "seal_approval/1", "brief_digest": D, "run_id": int(RUN), "run_attempt": 1, "approver_login": "steward-as-owner",
-                   "approved_by_note": approval.DEFAULT_NOTE}
-    noted = approval.extract([review(comment=f"brief-digest: {D} run: {RUN} attempt: {ATT} note: read the brief, gate 0, 4 of 4 VERIFIED")], environment="gochara-seal",
-                             run_id=RUN, attempt=ATT, brief_digest=D)
-    assert noted["approved_by_note"] == "read the brief, gate 0, 4 of 4 VERIFIED"
+                   "approved_by_note": approval.mechanical_note("steward-as-owner")}
+    assert out["approved_by_note"] == ("NATIVE_DIRECT_RULINGS_20261002 #2; triggering_actor=steward-as-owner; approved by the steward under the owner's account "
+                                       "(not an independent human check)")
+
+
+def test_the_note_is_mechanical_never_free_text_from_the_comment():
+    """Fable: `approved_by_note` is built by the workflow (ruling id + triggering actor + the fixed statement). Trailing text in the comment is not accepted as a note — it makes the
+    comment line malformed and the approval is refused."""
+    with pytest.raises(approval.Refused, match="no `brief-digest"):
+        approval.extract([review(comment=f"brief-digest: {D} run: {RUN} attempt: {ATT} note: I read it, trust me")], environment="gochara-seal", run_id=RUN, attempt=ATT,
+                         brief_digest=D, triggering_actor="steward-as-owner")
+    for bad in ("", "x y", "a;b", "$(id)", "a" * 60):
+        with pytest.raises(approval.Refused, match="triggering actor"):
+            approval.extract([review()], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, triggering_actor=bad)
 
 
 @pytest.mark.parametrize("history,needle", [
@@ -153,15 +163,15 @@ def test_a_good_approval_yields_the_seal_jobs_approval_file():
 ])
 def test_an_absent_malformed_wrong_run_wrong_attempt_or_stale_approval_is_refused(history, needle):
     with pytest.raises(approval.Refused, match=needle):
-        approval.extract(history, environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D)
+        approval.extract(history, environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, triggering_actor="steward-as-owner")
 
 
 def test_the_latest_review_decides_never_an_older_good_one():
     good, rejected = review(), review(state="rejected")
     with pytest.raises(approval.Refused, match="not approved"):
-        approval.extract([good, rejected], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D)
+        approval.extract([good, rejected], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, triggering_actor="steward-as-owner")
     with pytest.raises(approval.Refused):                       # an old good approval does not rescue a later approval that is bad
-        approval.extract([good, review(comment="lgtm")], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D)
+        approval.extract([good, review(comment="lgtm")], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, triggering_actor="steward-as-owner")
 
 
 # ── the gated orchestrator (the unit the `seal` job runs) ───────────────────────────────────────────────────────────────────────
@@ -184,7 +194,7 @@ def world(tmp_path):
 
 def orch(world, **over):
     env = {**os.environ, "BRIEF_FILE": str(world["brief"]), "APPROVALS_FILE": str(world["approvals"]), "CHART_ID": CHART, "GENERATION": GEN,
-           "EXPECTED_SEALING_COMMIT": SHA, "EXPECTED_BRIEF_DIGEST": D, "GITHUB_RUN_ID": RUN, "GITHUB_RUN_ATTEMPT": ATT, "GITHUB_SHA": SHA,
+           "EXPECTED_SEALING_COMMIT": SHA, "EXPECTED_BRIEF_DIGEST": D, "GITHUB_RUN_ID": RUN, "GITHUB_RUN_ATTEMPT": ATT, "GITHUB_SHA": SHA, "TRIGGERING_ACTOR": "steward-as-owner",
            "SEAL_JOB_CMD": world["shim"], "APPROVAL_FILE": str(world["tmp"] / "approval.json"), "PYTHON_BIN": sys.executable,
            "GOCHARA_SEALER_DB_URL": "postgresql://gochara_sealer:SECRETMARKER@127.0.0.1:5432/x", **over}
     return subprocess.run(["bash", str(ORCH)], env=env, capture_output=True, text=True, timeout=60)

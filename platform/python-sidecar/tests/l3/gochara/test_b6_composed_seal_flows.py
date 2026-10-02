@@ -417,7 +417,7 @@ _G1241 = _grants_of_1241()
 def test_1241_spec_has_the_expected_number_of_1241_origin_grants():
     if not _G1241:
         pytest.skip("NOT_RUN: migration 1241 is not in this tree")
-    assert len(_G1241) == len(set(_G1241)) == 52, len(_G1241)   # sealer: 14 table (incl. the column-level windows read, publication update, ledger read and the receipt SELECT + INSERT) + 19 function; verifier: 9 table (incl. the column-level ledger read) + 10 function (R10-4 iii: the job's final combined gate)
+    assert len(_G1241) == len(set(_G1241)) == 56, len(_G1241)   # sealer: 14 table + 20 function (incl. the legacy-projection check); verifier: 11 table (incl. the column-level ledger read and the legacy relations) + 11 function (R10-4 iii: the job's final combined gate)
 
 
 @pytest.mark.parametrize("role,kind,priv,obj,cols", _G1241, ids=[f"{r.split('_')[1]}-{p.lower()}-{o}" for r, k, p, o, c in _G1241])
@@ -1012,9 +1012,11 @@ def test_the_approved_seal_publishes_seals_and_writes_a_durable_receipt_naming_t
     b, res = approved_flow(w)
     p = b["brief"]
     assert p["schema"] == "seal_approval_payload/1" and p["candidate_gate"]["violations"] == [] and p["manifest"]["status"] == "candidate"
-    assert set(p["generation_output_identity"]["tables"]) == {"ka_gochara_relationship_record", "ka_gochara_record_prerequisite", "ka_gochara_contact",
+    # the output identity covers (at least) the seven round-11 tables PLUS the round-12 boundary additions (Codex R12-1 / Fable R12-2): the build's snapshot, obligations and intervals
+    assert set(p["generation_output_identity"]["tables"]) >= {"ka_gochara_relationship_record", "ka_gochara_record_prerequisite", "ka_gochara_contact",
                                                               "ka_gochara_eval_window", "ka_gochara_eval_window_record", "ka_gochara_search_path_pin",
-                                                              "ka_gochara_search_inventory"}
+                                                              "ka_gochara_search_inventory", "ka_gochara_search_input_snapshot", "ka_gochara_search_obligation",
+                                                              "ka_gochara_search_interval"}
     assert [e["migration"] for e in p["ledger"]] == ["1204", "1206", "1232", "1233", "1240", "1241"] and all(e["applied"] for e in p["ledger"]), p["ledger"]
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0] == "published"
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 1
@@ -1131,10 +1133,8 @@ def test_attack_r11_2_a_duplicate_or_wrong_person_p1_record_is_a_disagreement_no
 
 
 
-@pytest.mark.xfail(strict=True, reason="FINDING R12-1 (Stream A, planned gate arm `legacy_projection_rows_present`): legacy kala_gochara_windows / kala_gochara_contacts rows for a governed generation are not yet "
-                   "refused by the gate or the brief — Stream A's head bf369fcaa accepts them. Flips when the arm lands.")
 def test_attack_r12_1_legacy_generation_5_numeric_rows_are_refused_by_the_gate_the_brief_and_the_seal(cbuilt):
-    """R12-1: the candidate boundary extends beyond the governed tables: legacy projection rows for generation '5.0' with numeric intensities must make the candidate unapprovable (refused before the
+    """R12-1 (Stream A's `legacy_projection_rows_present` arm): the candidate boundary extends beyond the governed tables: legacy projection rows for generation '5.0' with numeric intensities must make the candidate unapprovable (refused before the
     brief is produced, and again at the seal)."""
     import psycopg
     w = cbuilt
