@@ -990,10 +990,13 @@ CREATE TRIGGER ka_gochara_generation_seal_z_search_complete
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'data_plane_builder') THEN
+    -- PC-4 (Codex round 9, R9-6): the builder gets NO privilege on ka_gochara_search_inventory_verification — the
+    -- independent re-derivation is written by the separate verifier principal (gochara_verifier), never by the
+    -- session that built the inventory. (Before this edit §7 listed the verification table here.)
     GRANT SELECT, INSERT, DELETE ON
       public.ka_gochara_search_input_snapshot, public.ka_gochara_search_inventory,
       public.ka_gochara_search_path_pin, public.ka_gochara_search_obligation,
-      public.ka_gochara_search_interval, public.ka_gochara_search_inventory_verification
+      public.ka_gochara_search_interval
       TO data_plane_builder;
     GRANT UPDATE (inventory_digest, ledger_digest, finalized_at)
       ON public.ka_gochara_search_inventory TO data_plane_builder;
