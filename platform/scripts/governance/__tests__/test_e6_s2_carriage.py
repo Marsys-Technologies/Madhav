@@ -1378,39 +1378,18 @@ def test_d1_fetch_rows_is_chart_scoped_when_the_table_carries_chart_id(monkeypat
             ac.d1_fetch_rows("bg_t", ["a"], bad)
 
 
-# REAL SQL: the SAME statements run on the off-production rehearsal cluster (127.0.0.1:55432, db `rehearsal`), through the E5.6 URL guard,
-# against TEMP tables inside a transaction that is ALWAYS rolled back (ON COMMIT DROP, then ROLLBACK): nothing persistent is created.
-# Skipped where the guard or the cluster is absent (CI).
-# The E5.6 URL guard lives on its own branch: point SUVARNA_REHEARSAL_GUARD at rehearsal_guard.py to run these tests; unset, they SKIP visibly.
-_GUARD_ENV = os.environ.get("SUVARNA_REHEARSAL_GUARD", "")
-_GUARD = pathlib.Path(_GUARD_ENV) if _GUARD_ENV else None
-
-
-def _rehearsal_url():
-    if _GUARD is None or not _GUARD.exists():
-        return None
-    import importlib.util
-    import subprocess
-    spec = importlib.util.spec_from_file_location("rehearsal_guard_for_test", _GUARD)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    url = mod.normalise_rehearsal_url("postgresql://127.0.0.1:55432/rehearsal")
-    try:
-        p = subprocess.run(["psql", url, "-tAX", "-q", "-c", "select 1"], capture_output=True, text=True, timeout=10)
-    except (OSError, subprocess.SubprocessError):
-        return None
-    return url if p.returncode == 0 and p.stdout.strip() == "1" else None
-
-
-_REHEARSAL = _rehearsal_url()
-rehearsal = pytest.mark.skipif(_REHEARSAL is None, reason="real-SQL tests: set SUVARNA_REHEARSAL_GUARD=<path to rehearsal_guard.py> and have the rehearsal cluster (127.0.0.1:55432) up")
+# REAL SQL: the SAME statements run on a DISPOSABLE loopback Postgres (platform/scripts/governance/__tests__/_disposable_pg.py: its own
+# initdb'd temp cluster on 127.0.0.1, gone at session end), against TEMP tables inside a transaction that is ALWAYS rolled back
+# (ON COMMIT DROP, then ROLLBACK): nothing persistent is created. They SKIP (visible reason) ONLY when no PostgreSQL binaries exist at
+# all; a cluster that will not start FAILS. Before this fixture they needed the off-production rehearsal cluster and so skipped in CI.
+from _disposable_pg import disposable_pg  # noqa: E402,F401  (the session fixture)
 
 
 def _q(v):
     return "NULL" if v is None else "'" + str(v).replace("'", "''") + "'"
 
 
-def _rolled_back_psql(monkeypatch):
+def _rolled_back_psql(monkeypatch, pg):
     import subprocess
     pre = ["CREATE TEMP TABLE bg_phaladeepika_latta (graha text, direction text, count_from_graha int, effect_description text, "
            "affliction_condition text, verse_ref text) ON COMMIT DROP;",
@@ -1422,7 +1401,7 @@ def _rolled_back_psql(monkeypatch):
 
     def fake_psql(sql, sep="\x1f", timeout=None):
         script = "BEGIN;\n" + "\n".join(pre) + f"\n{sql};\nROLLBACK;\n"
-        p = subprocess.run(["psql", _REHEARSAL, "-tAX", "-q", "-F", sep, "-v", "ON_ERROR_STOP=1", "-f", "-"], input=script,
+        p = subprocess.run([str(pg.bin_dir / "psql"), pg.url, "-tAX", "-q", "-F", sep, "-v", "ON_ERROR_STOP=1", "-f", "-"], input=script,
                            capture_output=True, text=True, timeout=30)
         if p.returncode != 0:
             raise ac.Unknown((p.stderr.strip().splitlines() or ["psql failed"])[0])
@@ -1430,25 +1409,22 @@ def _rolled_back_psql(monkeypatch):
     monkeypatch.setattr(ac, "psql", fake_psql)
 
 
-@rehearsal
-def test_REAL_SQL_the_rows_read_returns_all_eight_rows_through_the_census_scalar(monkeypatch):
-    _rolled_back_psql(monkeypatch)
+def test_REAL_SQL_the_rows_read_returns_all_eight_rows_through_the_census_scalar(monkeypatch, disposable_pg):
+    _rolled_back_psql(monkeypatch, disposable_pg)
     rows = ac.d1_fetch_rows("bg_phaladeepika_latta", ["graha", "count_from_graha", "direction", "effect_description"])
     assert sorted(r["graha"] for r in rows) == sorted(r["graha"] for r in ROWS) and len(rows) == 8
     assert {r["graha"]: r["count_from_graha"] for r in rows} == {r["graha"]: r["count_from_graha"] for r in ROWS}
 
 
-@rehearsal
-def test_REAL_SQL_the_old_json_agg_shape_really_fails_on_the_same_data(monkeypatch):
-    _rolled_back_psql(monkeypatch)
+def test_REAL_SQL_the_old_json_agg_shape_really_fails_on_the_same_data(monkeypatch, disposable_pg):
+    _rolled_back_psql(monkeypatch, disposable_pg)
     out = ac.scalar("SELECT json_agg(t)::text FROM (SELECT graha FROM bg_phaladeepika_latta ORDER BY graha) t")
     with pytest.raises(json.JSONDecodeError):
         json.loads(out)
 
 
-@rehearsal
-def test_REAL_SQL_the_chunk_read_and_the_whole_d1_measurement_run_end_to_end(monkeypatch):
-    _rolled_back_psql(monkeypatch)
+def test_REAL_SQL_the_chunk_read_and_the_whole_d1_measurement_run_end_to_end(monkeypatch, disposable_pg):
+    _rolled_back_psql(monkeypatch, disposable_pg)
     got = ac.d1_fetch_chunks(IDS)
     assert set(got) == set(IDS) and all(d1.verify_chunk(c)["verified"] for c in got.values())
     rec = ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta")
