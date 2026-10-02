@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# The GATED job's one executable unit (R12-2): re-verify the retained brief, extract THIS run's approval, and only then call Stream A's seal job — which owns the ONE
+# transaction (recompute under the seal locks -> publish -> authoritative seal -> receipt; any failure rolls back publication too).
+# Every refusal stops here with a non-zero status BEFORE the seal job is invoked; the seal job's own non-zero status is propagated unchanged
+# (0 sealed / 2 refused, nothing written / 3 approval mismatch / 4 identity / 5 error). The sealer credential (GOCHARA_SEALER_DB_URL) is only ever in THIS job's environment.
+set -Eeuo pipefail
+set +x
+umask 077
+
+: "${BRIEF_FILE:?}" "${APPROVALS_FILE:?}" "${CHART_ID:?}" "${GENERATION:?}" "${EXPECTED_SEALING_COMMIT:?}" "${GITHUB_RUN_ID:?}" "${GITHUB_RUN_ATTEMPT:?}"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+SEAL_JOB_CMD="${SEAL_JOB_CMD:-$PYTHON_BIN -m pipeline.orchestrator.seal_job}"
+APPROVAL_FILE="${APPROVAL_FILE:-$(mktemp)}"
+ENVIRONMENT_NAME="${ENVIRONMENT_NAME:-gochara-seal}"
+
+# the sealing revision this job runs from IS the reviewed revision the brief was produced for
+[ "${GITHUB_SHA:-$EXPECTED_SEALING_COMMIT}" = "$EXPECTED_SEALING_COMMIT" ] || { echo "REFUSED: this job runs from ${GITHUB_SHA}, not the reviewed sealing revision $EXPECTED_SEALING_COMMIT" >&2; exit 2; }
+
+BRIEF_DIGEST="$("$PYTHON_BIN" "$HERE/gochara_seal_brief_check.py" --brief-file "$BRIEF_FILE" --chart-id "$CHART_ID" --generation "$GENERATION" --sealing-commit "$EXPECTED_SEALING_COMMIT")" \
+  || { echo "REFUSED: the retained brief did not verify — nothing was sealed" >&2; exit 2; }
+if [ -n "${EXPECTED_BRIEF_DIGEST:-}" ] && [ "$BRIEF_DIGEST" != "$EXPECTED_BRIEF_DIGEST" ]; then
+  echo "REFUSED: the retained brief's digest $BRIEF_DIGEST is not the digest the brief job published ($EXPECTED_BRIEF_DIGEST)" >&2; exit 2
+fi
+"$PYTHON_BIN" "$HERE/gochara_seal_approval.py" --approvals-file "$APPROVALS_FILE" --environment "$ENVIRONMENT_NAME" --run-id "$GITHUB_RUN_ID" \
+  --attempt "$GITHUB_RUN_ATTEMPT" --brief-digest "$BRIEF_DIGEST" --out "$APPROVAL_FILE" \
+  || { echo "REFUSED: no valid approval for this run and attempt — nothing was sealed" >&2; exit 2; }
+
+export GOCHARA_SEALING_COMMIT="$EXPECTED_SEALING_COMMIT"
+set +e
+# shellcheck disable=SC2086
+$SEAL_JOB_CMD --chart "$CHART_ID" --generation "$GENERATION" --approval-file "$APPROVAL_FILE"
+rc=$?
+set -e
+case "$rc" in
+  0) echo "SEALED: brief $BRIEF_DIGEST, receipt written in the sealing transaction." ;;
+  2) echo "SEAL JOB REFUSED (nothing written)." >&2 ;;
+  3) echo "SEAL JOB: the approval does not match what is now recomputed (a changed candidate invalidates the approval); nothing published." >&2 ;;
+  4) echo "SEAL JOB: identity check failed (not the sealer); nothing written." >&2 ;;
+  *) echo "SEAL JOB FAILED (exit $rc): the sealing transaction rolled back; verify the generation is still a candidate before retrying." >&2 ;;
+esac
+exit "$rc"

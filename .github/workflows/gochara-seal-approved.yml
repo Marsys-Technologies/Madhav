@@ -1,0 +1,212 @@
+# Gochara APPROVED SEAL — the trusted sealing workflow (Codex round 12, R12-2). DRAFT: HOLD. Codex reviews this file BEFORE it is ever dispatched.
+#
+# What it does, in order (design: 00_ARCHITECTURE/briefs/pravaha/design/SEAL_APPROVAL_PAYLOAD_v1_0.md; runbook §5.3 / §6):
+#   job `brief`  (NO environment, NO sealer credential)
+#     1. runs ONLY from `main`, at one reviewed commit (github.sha, an ancestor of origin/main);
+#     2. runs the verification job's `--brief` mode under the VERIFIER's own identity (the Cloud Run job) with --sealing-commit = this commit;
+#     3. reassembles the brief from the execution's logs, CHECKS it (digest recomputed, candidate gate clean, every grain VERIFIED, policy all_null_candidate/1,
+#        sealing revision = this commit), DISPLAYS it in the run summary and RETAINS it as an artifact. The approver reads THIS before approving.
+#   job `seal`   (environment `gochara-seal` — the approval gate; the sealer credential exists ONLY here)
+#     4. waits for the approval (one required reviewer: the owner's account; the steward approves on his authority — native ruling #2);
+#     5. re-checks the retained brief, retrieves THIS run's approval from the approval API, extracts and checks the approved digest (comment must state
+#        `brief-digest: <hex>  run: <id>  attempt: <n>`), and refuses an absent / malformed / wrong-run / wrong-attempt / stale approval — BEFORE any database contact;
+#     6. calls Stream A's seal job, which owns the ONE transaction (recompute under the seal locks -> publish -> authoritative seal -> receipt; any failure rolls
+#        back publication too) and fails this run on any non-zero exit.
+#
+# Honest limits (packet §R10a-2): the approval is NOT an independent human check (same account); GitHub enforces the pause, no admin bypass and protected-branch
+# use, not independence or attribution beyond the login; the database enforces that a receipt exists naming the manifest, not that this workflow computed it honestly.
+# DEPENDENCIES before any dispatch: Stream A's pipeline/orchestrator/seal_job.py; the verification Cloud Run job with `--brief`; roles/logging.viewer for the workflow identity;
+# the sealer DSN (GOCHARA_SEALER_DB_URL in `gochara-seal`) must use the runner's loopback proxy tail (@127.0.0.1:5432/<db>).
+name: Gochara approved seal (reviewed; draft HOLD)
+
+on:
+  workflow_dispatch:
+    inputs:
+      chart_id:
+        description: 'Chart id (the canonical chart)'
+        required: true
+        type: string
+        default: '482012f1-710e-4a25-994a-93821f5871aa'
+      generation:
+        description: 'Generation (the first all-NULL candidate is 5.0)'
+        required: true
+        type: string
+        default: '5.0'
+      confirm:
+        description: 'Type exactly: SEAL-GOCHARA-CANDIDATE'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+
+concurrency:
+  group: gochara-approved-seal
+  cancel-in-progress: false
+
+env:
+  GCP_REGION: asia-south1
+  WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
+  WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
+  VERIFICATION_JOB: gochara-verification-job
+
+jobs:
+  brief:
+    name: Brief (verifier identity; no sealer credential)
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'SEAL-GOCHARA-CANDIDATE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      brief_digest: ${{ steps.check.outputs.brief_digest }}
+      sealing_commit: ${{ github.sha }}
+    steps:
+      - name: Checkout the dispatched commit (full history)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Bind to the reviewed sealing revision
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Run the verification job in --brief mode (verifier identity)
+        id: execute
+        env:
+          CHART_ID: ${{ inputs.chart_id }}
+          GENERATION: ${{ inputs.generation }}
+        run: |
+          set -euo pipefail
+          EXECUTION="$(gcloud run jobs execute "$VERIFICATION_JOB" --project madhav-astrology --region "$GCP_REGION" \
+            --args="--chart,${CHART_ID},--generation,${GENERATION},--brief,--sealing-commit,${GITHUB_SHA}" --wait --format='value(metadata.name)')"
+          test -n "$EXECUTION"
+          echo "execution=$EXECUTION" >> "$GITHUB_OUTPUT"
+
+      - name: Retrieve the brief from the execution's logs
+        env:
+          EXECUTION: ${{ steps.execute.outputs.execution }}
+        run: |
+          set -euo pipefail
+          gcloud logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$VERIFICATION_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$EXECUTION\"" \
+            --project madhav-astrology --order=asc --freshness=2h --format=json > execution_logs.json
+          python3 platform/scripts/gochara_seal_brief_extract.py --logs-file execution_logs.json --out brief.json
+
+      - name: Check the brief (digest recomputed, gate clean, policy, revision)
+        id: check
+        env:
+          CHART_ID: ${{ inputs.chart_id }}
+          GENERATION: ${{ inputs.generation }}
+        run: |
+          set -euo pipefail
+          DIGEST="$(python3 platform/scripts/gochara_seal_brief_check.py --brief-file brief.json --chart-id "$CHART_ID" --generation "$GENERATION" --sealing-commit "$GITHUB_SHA")"
+          echo "brief_digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Seal brief — read this BEFORE approving"
+            echo
+            echo "- chart \`$CHART_ID\`, generation \`$GENERATION\`, sealing revision \`$GITHUB_SHA\`"
+            echo "- candidate gate: **clean (0 violations)**; policy **all_null_candidate/1**; every grain **VERIFIED**"
+            echo "- **brief digest: \`$DIGEST\`**"
+            echo
+            echo "Approve the \`gochara-seal\` deployment with a comment containing exactly this line:"
+            echo
+            echo "    brief-digest: $DIGEST  run: $GITHUB_RUN_ID  attempt: $GITHUB_RUN_ATTEMPT"
+            echo
+            echo "The full brief is retained as the \`seal-brief\` artifact. A seal is not a flip."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain the brief
+        uses: actions/upload-artifact@v4
+        with:
+          name: seal-brief
+          path: brief.json
+          retention-days: 90
+          if-no-files-found: error
+
+  seal:
+    name: Seal (approval-gated; sealer credential only here)
+    needs: brief
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: gochara-seal
+    steps:
+      - name: Checkout the SAME reviewed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.brief.outputs.sealing_commit }}
+          fetch-depth: 0
+
+      - name: Bind to the reviewed sealing revision
+        env:
+          EXPECTED_SEALING_COMMIT: ${{ needs.brief.outputs.sealing_commit }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SHA" = "$EXPECTED_SEALING_COMMIT"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SEALING_COMMIT"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$EXPECTED_SEALING_COMMIT" origin/main
+
+      - name: Retrieve the retained brief
+        uses: actions/download-artifact@v4
+        with:
+          name: seal-brief
+
+      - name: Retrieve THIS run's approval history from the approval API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/approvals" > approvals.json
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5432.log 2>&1 &
+          proxy_pid=$!
+          ready=false
+          for _ in {1..20}; do
+            if kill -0 "$proxy_pid" 2>/dev/null && (echo >"/dev/tcp/127.0.0.1/5432") 2>/dev/null; then ready=true; break; fi
+            sleep 1
+          done
+          test "$ready" = true
+
+      - name: Install the sidecar dependencies
+        run: pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+
+      - name: Verify the approval and call the seal job (one transaction)
+        env:
+          GOCHARA_SEALER_DB_URL: ${{ secrets.GOCHARA_SEALER_DB_URL }}
+          BRIEF_FILE: brief.json
+          APPROVALS_FILE: approvals.json
+          CHART_ID: ${{ inputs.chart_id }}
+          GENERATION: ${{ inputs.generation }}
+          EXPECTED_SEALING_COMMIT: ${{ needs.brief.outputs.sealing_commit }}
+          EXPECTED_BRIEF_DIGEST: ${{ needs.brief.outputs.brief_digest }}
+          PYTHONPATH: platform/python-sidecar
+        run: bash platform/scripts/gochara-seal-approved.sh
+
+      - name: Retain the approval record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seal-approval-record
+          path: approvals.json
+          retention-days: 90
+          if-no-files-found: ignore
