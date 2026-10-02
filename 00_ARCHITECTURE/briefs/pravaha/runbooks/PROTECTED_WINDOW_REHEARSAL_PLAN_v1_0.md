@@ -1,6 +1,6 @@
 ---
 artifact: PROTECTED_WINDOW_REHEARSAL_PLAN
-version: "1.4"
+version: "1.5"
 status: EXECUTABLE CHECKLIST — mechanical part (M1–M4) is scripted and was run once by its author on PostgreSQL 15; operator part (O1–O7) needs the steward/native. Authorizes nothing; touches no production system.
 date: 2026-10-02
 amended: "v1.4 (2026-10-02, Codex round 12 docs amendment): the §0 table no longer hard-codes writer/integration heads that go stale on every Stream A push — it points at the files that ARE the current record (EXPECTED_WINDOW_SHA256.txt for the window bytes, the review packet for the writer head and the integration ref); the S4 trigger expectation names THREE seal triggers (search-complete, window-verified, receipt-required). v1.3 (2026-10-02, Codex round 11 docs amendment): the stale heads/status below are replaced by the CURRENT ones (§0 and the M1/M2 status tables) — window file hashes, the writer head `d4609f181`, the integration ref `169141f0e`, the refreshed production ledger `prod_ledger_2026-10-02c.txt` (919 names: 1234, 1236 and 1242 now APPLIED, so no unapplied predecessor remains), the TODAY mode of the script (38 asserts) beside the original mode (43 asserts), PC-4 CLOSED (folded into 1206). v1.2 (2026-10-02, steward M20261002T075234-8e98): ledger refreshed read-only from production (916 names) — 1230/1231/1237/1238/1239 are applied; the unselected, unapplied predecessors of the window are 1234 and 1236 only; 1241 (verifier/sealer grants) and 1242 (builder record replace/finalise grants) are numbered ABOVE 1240 and are NOT predecessors (1242 is needed before the first restricted build, by the routine route, either side of the window; 1241 merges only AFTER the window — the routine runner refuses at a pending protected file); PC-4 applied in the integration ref; re-run: 42 asserts, 0 findings; v1.1 (steward M20261002T053914-0033): re-run on FIVE files against Stream A's final 1240 — integration ref 427d87834 (A 4221f3bc5 + #2919 + #2920 + #2922), 39 asserts pass, 1 finding (PC-4); the real refusal now names 1230, 1234 and 1236"
@@ -13,7 +13,7 @@ files: "runbooks/rehearsal/run_window_rehearsal.sh · prod_ledger_2026-10-02.txt
 
 **What it proves / does not prove.** It rehearses *source, ordering, ownership, privileges, recovery and cost* on a disposable PostgreSQL 15 that mirrors production's ledger, schema ownership, default privileges and roles. It is **not** evidence about production itself (no production credential is used or needed) and it does not exercise the not-yet-existing sealer/verifier principals in production — it proves the *proposed* least-privilege sets.
 
-## 0. The exact inputs (record them in the rehearsal record) — CURRENT as of v1.3
+## 0. The exact inputs (record them in the rehearsal record) — pointers, not hard-coded heads (v1.5)
 | item | value |
 |---|---|
 | **1204** (AM-7) | sha256 `a0b267f7ef6002a1…` — Codex round 11: ACCEPT |
@@ -27,7 +27,7 @@ files: "runbooks/rehearsal/run_window_rehearsal.sh · prod_ledger_2026-10-02.txt
 | **application head** | the integration ref named in the current review packet (`pravaha/b6-composed-rehearsal-integration` at the stated commit); record `git rev-parse HEAD` of whatever ref is actually rehearsed |
 | window wiring | `platform/scripts/migrate.ts` `PROTECTED_PUBLIC_SCHEMA_MIGRATIONS` and `.github/workflows/deploy.yml` (`gochara_contracts_schema_migration`): 1153–1157, 1204, 1206, 1232, 1233, 1240 (#2919) |
 | **PostgreSQL** | production is **15.18** (Cloud SQL); the rehearsal MUST run on PostgreSQL **15** (CI's advisory DB job is `postgres:16` — not the target) |
-| **modes** | original ledger mode (`prod_ledger_2026-10-02b.txt`: refusal naming 1234/1236, then the routine application) — **43 asserts, 0 findings**; **TODAY mode** (`TODAY=1 LEDGER=prod_ledger_2026-10-02c.txt`: the state production is actually in) — **38 asserts, 0 findings**; both on 1240 `c30fe5857…` |
+| **modes** | original ledger mode (`prod_ledger_2026-10-02b.txt`: refusal naming 1234/1236, then the routine application) — **43 asserts, 0 findings**; **TODAY mode** (`TODAY=1 LEDGER=prod_ledger_2026-10-02c.txt`: the state production is actually in) — **38 asserts, 0 findings**; both on the 1240 bytes recorded in `rehearsal/EXPECTED_WINDOW_SHA256.txt` (the hash file is authoritative; this table does not repeat a hash) |
 After **any** change to a window file regenerate `EXPECTED_WINDOW_SHA256.txt`: `(cd platform/migrations && shasum -a 256 <the ten files>) > runbooks/rehearsal/EXPECTED_WINDOW_SHA256.txt`; the script refuses a mismatch.
 
 ## M1 — the real invocation against a production-shaped ledger (SCRIPTED)
