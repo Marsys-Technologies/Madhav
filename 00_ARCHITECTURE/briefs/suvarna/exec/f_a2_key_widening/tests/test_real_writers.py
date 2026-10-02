@@ -56,8 +56,9 @@ def test_FINDING_the_builder_cannot_read_bg_shashtiamsha_deities_so_the_ga_varga
     SELECT on public.bg_shashtiamsha_deities, which the ga_vargas writer reads inside the build transaction. The writer catches the error and
     floors, but the failed statement has already aborted the transaction (InFailedSqlTransaction on the next statement). Whatever role runs the
     S-L1 ga_vargas build needs that table readable (ordinary migration by the table's owner amjis_app)."""
+    assert runner.run("apply")[0] == 0                          # (the apply needs migration 1255 live: modelled by the db fixture)
+    cluster.su(db, "REVOKE SELECT ON public.bg_shashtiamsha_deities FROM data_plane_builder")        # production TODAY: no 1255, builder cannot read the table
     assert cluster.su(db, "SELECT has_table_privilege('data_plane_builder','public.bg_shashtiamsha_deities','SELECT')")[0][0] is False
-    assert runner.run("apply")[0] == 0
     rw.load_upstream(cluster, db, ("ga_positions",))
     run, out, exc = run_substeps(cluster, db, "ga_vargas", {"lahiri_chitrapaksha"})
     assert out is None and type(exc).__name__ == "InFailedSqlTransaction", exc

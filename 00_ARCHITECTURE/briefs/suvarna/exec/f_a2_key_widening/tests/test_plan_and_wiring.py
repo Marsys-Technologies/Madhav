@@ -331,3 +331,14 @@ def test_the_real_gate_launcher_chain_refuses_a_direct_start(tmp_path):
                        capture_output=True, text=True, env=env, cwd=str(tmp_path))
     assert r.returncode == 93, (r.stdout, r.stderr)
     assert "REFUSED" in r.stderr and "Traceback" not in r.stderr
+
+
+def test_the_plan_text_names_the_sha256_of_the_verification_sql_files_verify_files(mod):
+    plan = mod.render_plan()
+    for n in mod.VERIFY_FILES:
+        assert f"{n} sha256 {hashlib.sha256((EXEC_DIR / n).read_bytes()).hexdigest()}" in plan
+
+
+def test_the_plan_text_states_the_step_0_prerequisite_1255(mod):
+    plan = mod.render_plan()
+    assert "migration 1255 is live" in plan and "brahma_yoga_catalog" in plan and all(t in plan for t in mod.PREREQ_1255_BUILDER_TABLES)

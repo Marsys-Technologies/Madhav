@@ -75,6 +75,9 @@ pa = _load("d6_capture_patch_a", HERE / "d6_capture_patch_a.py")
 bc = _load("d6_dasha_partition_patches", HERE / "d6_dasha_partition_patches.py")      # patches B and C (SS decision N-85)
 
 PROJECT = "madhav-astrology"
+LOCK_TIMEOUT = "5s"                 # bounds only the WAIT for a lock (a concurrent reader of chart_divisionals or chart_vichara makes the plan fail clean after 5 s), not the hold
+STATEMENT_TIMEOUT = "120s"
+WINDOW_STATEMENT_BOUND = 100        # statements issued from the first ACCESS EXCLUSIVE statement to COMMIT (measured in the rehearsals: 63 to 65)
 OWNER = fa2.OWNER
 APP_OWNER = fa2.APP_OWNER
 TABLE = fa2.TABLE
@@ -89,6 +92,7 @@ TRG_ATT, TRG_ATT_IMMUTABLE = fa2.TRG_ATT, fa2.TRG_ATT_IMMUTABLE
 FN_ATT, FN_ATT_IMMUTABLE = fa2.FN_ATT, fa2.FN_ATT_IMMUTABLE
 EVIDENCE_ROOT = "/Users/Dev/suvarna-evidence/DataPlaneCaptureFA2"
 LIVE_DEFS = HERE / "live_defs"
+VERIFY_FILES = ("verify_before_apply.sql", "verify_after_apply.sql", "s_l1_ga_vargas_acceptance_check.sql")
 
 # ---------------------------------------------------------------------------------------------------- bound pre/post state
 # DATA-DRIVEN: one FunctionPatch per function this plan replaces. Adding a function or a hunk is adding data here (and one
@@ -442,13 +446,13 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
     names = ", ".join(p.signature for p in FUNCTION_PATCHES)
     lines = [
         "-- COMBINED D6 plan (data-driven): F-A2 key widening of public.chart_divisionals + capture-trigger argument changes [" + ", ".join(c.table for c in TRIGGER_CHANGES) + "] + function patches [" + names + "] + contract comments + re-attestation (and the exact inverse)",
-        "-- one transaction as data_plane_l1_owner (transient GRANT <role> TO CURRENT_USER only if not a member, SET LOCAL ROLE, REVOKE only what was granted)",
+        "-- one transaction as data_plane_l1_owner: STEP (transient role membership, part of the plan): GRANT data_plane_l1_owner TO CURRENT_USER and GRANT amjis_app TO CURRENT_USER, each only if the administrator is not already a member; SET LOCAL ROLE; at the end REVOKE exactly what was granted, in the SAME transaction; net role membership identical before and after (checked: post_membership_equals_pre_state_after_revoke)",
         f"SET LOCAL search_path = {fa2.SEARCH_PATH}",
-        "SET LOCAL lock_timeout = '5s'",
-        "SET LOCAL statement_timeout = '120s'",
+        f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'",
+        f"SET LOCAL statement_timeout = '{STATEMENT_TIMEOUT}'",
         "-- FORWARD (--dry-run / --apply), as data_plane_l1_owner unless noted:",
         f"-- preconditions (read only; any failure = refuse + ROLLBACK): no build_runs planned/running/paused on ANY chart (as {APP_OWNER}); no L1 generation 'building'; "
-        "no data_plane_builder session active/idle-in-transaction; public.digest(text,text) resolves; the six-column index; for EVERY trigger change the live trigger has exactly the "
+        "no data_plane_builder session active/idle-in-transaction; public.digest(text,text) resolves; STEP 0 prerequisite, read only as " + APP_OWNER + ": migration 1255 is live (data_plane_l1_owner has SELECT on public.brahma_yoga_catalog; data_plane_builder has SELECT on " + ", ".join(PREREQ_1255_BUILDER_TABLES) + ") else REFUSE naming 1255; the six-column index; for EVERY trigger change the live trigger has exactly the "
         "'from' arguments and its capture-trigger attestation row EXISTS exactly once with the 'from' digest (" + "; ".join(f"{c.table} {len(c.from_args)} args, digest {c.from_digest}" for c in TRIGGER_CHANGES) + "); "
         "the two table comments are the 1035 text and no column comment exists; the deploy gate's own three queries are green "
         "(as amjis_app, search_path public); --writer-commit: image tag == commit and ga_vargas digest == the frozen one; and for EVERY patched function:",
@@ -507,6 +511,8 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
            pins["prerun_gate.py"], pins["run_gated.sh"], pins["executor_standards.py"]),
         "-- plan hash = bind_gate_into_plan_hash(sha256(plan text + \"\\n\" + json(EXPECTED_DIFF)), prerun_gate.py pin, run_gated.sh pin)",
         "-- F-A2 module: d6_f_a2_key_widening_DRAFT.py sha256 %s" % sha_file(HERE / "d6_f_a2_key_widening_DRAFT.py"),
+        "-- verification SQL (read only, run by the operator as the reader; named in the hashed plan text so an edit changes the plan hash): "
+        + "; ".join(f"{n} sha256 {sha_file(HERE / n)}" for n in VERIFY_FILES),
         "-- patch A module: d6_capture_patch_a.py sha256 %s" % sha_file(HERE / "d6_capture_patch_a.py"),
         "-- patches B and C module: d6_dasha_partition_patches.py sha256 %s" % sha_file(HERE / "d6_dasha_partition_patches.py"),
     ]
@@ -590,6 +596,26 @@ class Checks:
         return [n for n, ok, _ in self.items if not ok]
 
 
+# ------------------------------------------------------------------------------------------------------ external prerequisite (migration 1255)
+# Migration 1255 (PR #2962: GRANT SELECT to data_plane_builder on seven reference tables and to data_plane_l1_owner on brahma_yoga_catalog) must be live and
+# verified BEFORE the dry run: its own header says the grant must precede the D6 functions being exercised. READ ONLY, fails closed, names 1255.
+PREREQ_1255_OWNER_GRANT = ("data_plane_l1_owner", "brahma_yoga_catalog")
+PREREQ_1255_BUILDER_TABLES = ("yoga_family_members", "reference_nakshatra", "reference_nakshatra_pada", "bg_shashtiamsha_deities",
+                              "bg_graha_naisargika_friendship", "bg_motion_state_thresholds", "brahma_vichara_constants")
+
+
+def missing_1255_grants(cur) -> tuple:
+    """([role.table needing SELECT but lacking it or the table], ...) for the owner grant and for the builder's seven tables. Read as amjis_app (USAGE on
+    public): a table that does not exist counts as missing."""
+    pairs = [PREREQ_1255_OWNER_GRANT] + [("data_plane_builder", t) for t in PREREQ_1255_BUILDER_TABLES]
+    missing = []
+    for role, tbl in pairs:
+        cur.execute("SELECT to_regclass(%s) IS NOT NULL AND has_table_privilege(%s, to_regclass(%s), 'SELECT')", ("public." + tbl, role, "public." + tbl))
+        if not cur.fetchone()[0]:
+            missing.append(f"{role} SELECT on public.{tbl}")
+    return tuple(missing)
+
+
 def preconditions(cur, leg: Leg, ck: Checks, out) -> None:
     """Read-only. Every refusal is a named check; nothing is written and no run is touched."""
     cur.execute(f"SET LOCAL ROLE {APP_OWNER}")
@@ -611,6 +637,16 @@ def preconditions(cur, leg: Leg, ck: Checks, out) -> None:
     ck.chk("pre_no_builder_session", busy == 0, f"a {fa2.BUILDER} session is active or idle-in-transaction" if busy else None)
     cur.execute("SELECT to_regprocedure('public.digest(text,text)') IS NOT NULL")
     ck.chk("pre_pgcrypto_digest_resolves", cur.fetchone()[0], "public.digest(text,text) does not resolve")
+    if leg.name == "forward":
+        cur.execute(f"SET LOCAL ROLE {APP_OWNER}")
+        gone = missing_1255_grants(cur)
+        cur.execute("RESET ROLE")
+        owner_missing = [g for g in gone if g.startswith(PREREQ_1255_OWNER_GRANT[0])]
+        builder_missing = [g for g in gone if g.startswith("data_plane_builder")]
+        ck.chk("pre_prereq_1255_owner_can_read_brahma_yoga_catalog", not owner_missing,
+               "migration 1255 is not live: data_plane_l1_owner has no SELECT on public.brahma_yoga_catalog (apply and verify 1255 BEFORE this plan; see plan step 0)" if owner_missing else None)
+        ck.chk("pre_prereq_1255_builder_can_read_the_seven_reference_tables", not builder_missing,
+               "migration 1255 is not live: " + ", ".join(builder_missing) + " (apply and verify 1255 BEFORE this plan; see plan step 0)" if builder_missing else None)
     # every patched function: exists, owner/secdef/config/ACL, byte-for-byte the bound body, exactly one attestation row with the bound digest
     for st in leg.functions:
         p, tag = st.patch, st.patch.short
@@ -880,8 +916,8 @@ def run_leg(conn, leg: Leg, mode: str, out, writer_commit: str | None = None, ga
     cur = fa2.CountingCursor(conn.cursor())
     out(f"start (UTC): {fa2.utcnow()}")
     cur.execute(f"SET LOCAL search_path = {fa2.SEARCH_PATH}")
-    cur.execute("SET LOCAL lock_timeout = '5s'")
-    cur.execute("SET LOCAL statement_timeout = '120s'")
+    cur.execute(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'")
+    cur.execute(f"SET LOCAL statement_timeout = '{STATEMENT_TIMEOUT}'")
     cur.execute(SNAP_SQL["membership"])
     membership_before = {tuple(str(x) for x in row) for row in cur.fetchall()}  # BEFORE any transient grant
     transient = [r for r in (OWNER, APP_OWNER) if not fa2.is_member(cur, r)]
@@ -938,7 +974,7 @@ def run_leg(conn, leg: Leg, mode: str, out, writer_commit: str | None = None, ga
     after["membership"] = {tuple(str(x) for x in row) for row in cur.fetchall()}
     ck.chk("post_membership_equals_pre_state_after_revoke", after["membership"] == membership_before)
     window = {"start": mark.get("t"), "end": fa2.utcnow(), "statements": cur.n - mark["n"]}
-    ck.chk("post_exclusive_window_statements_bounded", window["statements"] <= 100, window["statements"])
+    ck.chk("post_exclusive_window_statements_bounded", window["statements"] <= WINDOW_STATEMENT_BOUND, window["statements"])
     digest = hashlib.sha256(canonical({
         "plan": "see plan_hash", "leg": leg.name, "executor": exec_sha(), "writer_commit": writer_commit, "writer_line": writer_line,
         "before": before, "old_def_md5": {k: hashlib.md5(v.encode()).hexdigest() for k, v in plan["old_defs"].items()},

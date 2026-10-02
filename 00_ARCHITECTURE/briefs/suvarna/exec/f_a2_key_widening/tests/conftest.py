@@ -144,7 +144,11 @@ def env(monkeypatch, tmp_path):
 
 @pytest.fixture()
 def db(cluster):
-    return cluster.new_db()
+    """A fresh disposable database. Migration 1255's grants are MODELLED here (schema/10): the executor refuses without them (STEP 0); tests/test_prereq_1255.py
+    revokes them to prove the refusal. Production does not have them yet."""
+    name = cluster.new_db()
+    cluster.psql_file(name, SCHEMA / "10_migration_1255_model.sql")
+    return name
 
 
 def writer_runner(mod, tag=COMMIT, digest=None):

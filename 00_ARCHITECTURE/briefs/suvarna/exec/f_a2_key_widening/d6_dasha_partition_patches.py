@@ -6,9 +6,10 @@ executor (d6_dataplane_capture_fa2_exec.py) imports this module; each hunk's old
 make_function_patch.py from the 19-lane rehearsal's patched function texts (rehearsal_inputs/), and a test proves they reproduce those texts byte for byte.
 
 PATCH B  capture_l1_data_plane_dasha_partition(uuid,text,text,integer)
-  The ga_dashas `vimshottari` substep has always written the `vimshottari_kp` rows too (1,080 per ayanamsha), inside the vimshottari partition. The
-  function scoped the partition to `system_id = <partition system>` only, so completion failed with "dasha partition vimshottari:lahiri reported 10427 rows
-  but active build scope has 9347". B introduces `v_systems`: for the partition system `vimshottari` it is {vimshottari, vimshottari_kp}, for any other system
+  The ga_dashas `vimshottari` substep has always written the `vimshottari_kp` rows too, inside the vimshottari partition (PRODUCTION, canonical chart, per
+  ayanamsha krishnamurti/lahiri/raman/surya_siddhanta/true_chitra: vimshottari_kp 1,170/1,170/1,080/1,080/1,170 beside vimshottari 9,194/9,205/9,063/8,998/9,204). The
+  function scoped the partition to `system_id = <partition system>` only, so completion failed (IN THE REHEARSAL: "dasha partition vimshottari:lahiri reported 10427 rows
+  but active build scope has 9347"). B introduces `v_systems`: for the partition system `vimshottari` it is {vimshottari, vimshottari_kp}, for any other system
   just that system, and the four places that scope by system (the active-row count, the two sides of the completed-generation replay comparison, and the
   snapshot INSERT) use `system_id = ANY(v_systems)`.
 

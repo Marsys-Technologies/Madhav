@@ -55,6 +55,9 @@ WIRING = "tests/test_plan_and_wiring.py tests/test_plan_docs.py"
 BCT = "tests/test_dasha_partition_patches.py"
 BC = "d6_dasha_partition_patches.py"
 VT = "tests/test_vichara_item5.py"
+PQ = "tests/test_prereq_1255.py"
+LM = "tests/test_limits.py"
+DE = "tests/test_dasha_e2e.py"
 
 MUTATIONS = [
     # ---- the hunks (behavioural: constants recomputed so only the BEHAVIOUR tests can catch them)
@@ -142,6 +145,17 @@ MUTATIONS = [
     ("item 5: the base-trigger-text precondition neutered", EX, 'ck.chk(f"pre_trigger_shape_{ts.table}", bool(row) and trigger_args(row[0]) == ts.from_args,', 'ck.chk(f"pre_trigger_shape_{ts.table}", True,', None, VT, "bound_base"),
     ("item 5: the chart_vichara identity probe neutered", EX, '''                and probe["vichara_identities_live_args"] == probe["vichara_fixture_rows"]''', "                and True", None, VT, "collapses"),
     ("item 5: changed-attestation identity check neutered (counts alone would still say N)", EX, '''        out.append((name, tables == planned, sorted(tables)))''', "        out.append((name, True, sorted(tables)))", None, COMBINED, "wrong_table or extra_tables"),
+    # ---- step 0 prerequisite (migration 1255), limits independent of the sha pin, B and C against a database
+    ("step 0: owner brahma_yoga_catalog grant precondition neutered", EX, 'ck.chk("pre_prereq_1255_owner_can_read_brahma_yoga_catalog", not owner_missing,', 'ck.chk("pre_prereq_1255_owner_can_read_brahma_yoga_catalog", True,', None, PQ, "owner_grant"),
+    ("step 0: builder seven-table precondition neutered", EX, 'ck.chk("pre_prereq_1255_builder_can_read_the_seven_reference_tables", not builder_missing,', 'ck.chk("pre_prereq_1255_builder_can_read_the_seven_reference_tables", True,', None, PQ, "seven_tables or missing_reference"),
+    ("step 0: a missing reference table no longer counts as missing", EX, 'IS NOT NULL AND has_table_privilege(%s, to_regclass(%s), \'SELECT\')', 'IS NULL OR has_table_privilege(%s, to_regclass(%s), \'SELECT\')', None, PQ, "missing_reference"),
+    ("step 0: the prerequisite dropped from the plan text", EX, ' + ", ".join(PREREQ_1255_BUILDER_TABLES) + ") else REFUSE naming 1255;', ' + ") else REFUSE naming 1255;', None, PQ + " " + WIRING, "1255 or verify_sql or plan_text or prerequisite"),
+    ("limits: the window statement cap raised (no sha pin needed)", EX, "WINDOW_STATEMENT_BOUND = 100 ", "WINDOW_STATEMENT_BOUND = 1000 ", None, LM, "documented or really_sets"),
+    ("limits: lock_timeout 5s raised to 500s (no sha pin needed)", EX, 'LOCK_TIMEOUT = "5s" ', 'LOCK_TIMEOUT = "500s" ', None, LM, "documented or really_sets"),
+    ("limits: statement_timeout 120s raised (no sha pin needed)", EX, 'STATEMENT_TIMEOUT = "120s"\n', 'STATEMENT_TIMEOUT = "1200s"\n', None, LM, "documented or really_sets"),
+    ("e2e: patch B no longer includes the vimshottari_kp rows (recomputed constants, database proof)", BC, "ARRAY['vimshottari','vimshottari_kp']::TEXT[]", "ARRAY['vimshottari']::TEXT[]", "recompute", DE, "B_after"),
+    ("e2e: patch C post-pass block neutered (recomputed constants, database proof)", BC, "IF p_asset_id = 'ga_dashas' AND p_partition_key", "IF p_asset_id = 'ga_dashas_x' AND p_partition_key", "recompute", DE, "C_after"),
+    ("verify SQL: the plan text no longer names the verification files", EX, '        + "; ".join(f"{n} sha256 {sha_file(HERE / n)}" for n in VERIFY_FILES),', '        + "",', None, WIRING, "verify_files"),
 ]
 
 
