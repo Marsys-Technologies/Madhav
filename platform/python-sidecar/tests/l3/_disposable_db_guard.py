@@ -91,6 +91,15 @@ def validate_disposable_dsn(
     be done with assert_disposable_connection against the created name.
     """
     env = os.environ if env is None else env
+    # Suvarṇa re-look (M20261002T182540-5346): whitespace is refused up front,
+    # as a RULE — newer libpq (18 / psycopg 3.3.x) TRIMS a trailing space, so a
+    # whitespace-padded DSN can parse to the disposable name while the string
+    # the caller audited is not the string libpq used. dsn != dsn.strip()
+    # covers leading/trailing space, newline and tab, in both modes.
+    if dsn != dsn.strip():
+        raise RefusedError(
+            "REFUSED: the DSN carries leading or trailing whitespace — the "
+            "audited string must be exactly the string libpq parses")
     for var in DANGEROUS_ENV_VARS:
         if env.get(var, "").strip():
             raise RefusedError(
