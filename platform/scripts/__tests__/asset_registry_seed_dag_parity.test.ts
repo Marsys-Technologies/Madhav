@@ -25,6 +25,7 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
     'bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive',
     'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra',
     'ga_condition', 'ga_vargas', 'ga_vichara',
+    'ga_yoga', // migration 1226 (ga_yoga_firings read, bo_laksana.py)
   ],
   bo_bimba: [
     'bo_laksana', 'bo_sudarshana', 'bo_nakshatra_semantic',
@@ -168,6 +169,27 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
     for (const [assetId, dependencies] of Object.entries(MIGRATION_GOVERNED_DEPENDENCIES)) {
       expect(assetsById.get(assetId)?.depends_on, assetId).toEqual(dependencies)
     }
+  })
+
+  it('carries the six pre-S-L1 edges of migration 1226 (ordered as the migration appends them)', () => {
+    expect(assetsById.get('bo_upaya')?.depends_on).toEqual([
+      'bo_laksana', 'bo_sangati', 'ga_structural', 'ga_dashas', 'bo_cgm_motifs',
+      'bo_bimba', // migration 1226 (bodha_cgm_nodes join, bo_upaya.py)
+    ])
+    expect(assetsById.get('ga_dashas')?.depends_on).toEqual([
+      'ga_positions',
+      'ga_sensitive', 'ga_vargas', // migration 1226 (karaka assignments; chart_divisionals)
+    ])
+    expect(assetsById.get('ga_yoga')?.depends_on).toEqual([
+      'ga_structural', 'ga_dashas',
+      'ga_vargas', // migration 1226 (D9 via ga_structural_writer._load_varga_positions)
+    ])
+    expect(assetsById.get('ga_vargas')?.depends_on).toEqual([
+      'ga_positions',
+      'ga_sensitive', // migration 1226 (kn_rao_rahu_included karaka assignments; N-69, S-L1)
+    ])
+    // bo_laksana += ga_yoga is pinned in MIGRATION_GOVERNED_DEPENDENCIES above; ga_sensitive is untouched.
+    expect(assetsById.get('ga_sensitive')?.depends_on).toEqual(['ga_positions', 'bg_reference'])
   })
 
   it('pins the canonical order for the set-equal ga_structural dependencies', () => {
