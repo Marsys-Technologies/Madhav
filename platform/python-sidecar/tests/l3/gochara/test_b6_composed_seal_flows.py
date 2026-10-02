@@ -18,7 +18,8 @@ Scenarios:
 WHAT THIS RIG IS AND IS NOT (Codex R12: replaces "no stand-in anywhere"): it is a MIRRORED schema (the real production-ordered migrations on PostgreSQL 15 with the objects owned by the
 migration principal, plus hand-built stand-ins for tables outside the Gochara migrations: `charts` with its RLS structure, `chart_grants`, `chart_facts`, `chart_dashas`, `bg_transit_rules`,
 the migration ledger and the legacy `kala_gochara_windows`); the verifier/sealer L1 reads are SUPPLIED EXTERNALLY by the harness (the data-plane ACL owner's item, not in 1241); the
-sealing step runs as `SET ROLE gochara_sealer` on a superuser harness connection (only the verifier is a real LOGIN), so `sealed_by` records the harness login; selected tests monkeypatch
+verifier AND the sealer are REAL LOGINs (the approved seal runs Stream A's `execute_seal` as the `gochara_sealer` login, whose `sealed_by` the database attests; only the builder and the owner-level
+helpers use `SET ROLE` on the harness connection, and the DB-gate attack helper `db_seal_attempt` seals as the owner so that a refusal is the database's); selected tests monkeypatch
 `input_vector_verifier.verify_inputs` (a sealed successor added after a build also drifts the registry census, which would refuse first) and the builder's ephemeris callable (the real Swiss
 ephemeris is restored for the real-sky builds). The Stream A writer and verifier code, the six migrations and 1241 are the real files.
 History: the first two runs carried strict xfails for two Stream A defects this rehearsal found (R9-6.1: the inventory store deleted the verification table as the
@@ -354,14 +355,31 @@ def brief_as_verifier(w, sealing_commit=SEALING_COMMIT):
     return _json.loads(out.splitlines()[-1])
 
 
-def approved_seal_as_sealer(w, digest, sealing_commit=SEALING_COMMIT, approver="steward-as-owner"):
-    """The SEALING step as the real sealer role: ONE transaction — locks, recompute, refuse on mismatch, publish, authoritative seal, receipt."""
+def _sealer_dsn(w):
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+    d = conninfo_to_dict(w.conn.info.dsn)
+    d["user"] = cw.SEALER
+    return make_conninfo("", **{k: v for k, v in d.items() if k in ("host", "port", "dbname", "user")})
+
+
+NOTE = "ruling:NATIVE_DIRECT_RULINGS_20261002#2; actor:steward-as-owner"
+
+
+def approved_seal_as_sealer(w, digest, sealing_commit=SEALING_COMMIT, approver="steward-as-owner", note=NOTE, actor="steward-as-owner", run_id=26104817, run_attempt=1):
+    """The SEALING step as a REAL sealer LOGIN (no more `SET ROLE` on a superuser connection): Stream A's `execute_seal` — the executable caller's own function — on an autocommit
+    connection that proves its identity (session_user = current_user = gochara_sealer, no write privilege beyond the seal set), then ONE transaction: locks, policy requirement,
+    recompute, brief-persistence check, publish, authoritative seal, receipt (the database attests `sealed_by` / `approved_at`)."""
+    import psycopg as pg
     from services.gochara_kernel import seal_flow
-    with as_role(w.conn, cw.SEALER):
-        with w.conn.transaction():
-            return seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=digest, approver_login=approver,
-                                                run_id=26104817, run_attempt=1, approval_note="approved by the steward under the owner's ruling #2",
-                                                sealing_commit=sealing_commit)
+    approval = {"schema": "seal_approval/1", "brief_digest": digest, "run_id": run_id, "run_attempt": run_attempt, "approver_login": approver, "approved_by_note": note}
+    w.conn.execute(f"ALTER ROLE {cw.SEALER} LOGIN")
+    conn = pg.connect(_sealer_dsn(w), autocommit=True, connect_timeout=3)
+    try:
+        return seal_flow.execute_seal(conn, chart_id=CHART_ID, generation=GEN, approval=approval, run_id=run_id, run_attempt=run_attempt, sealing_commit=sealing_commit,
+                                      triggering_actor=actor)
+    finally:
+        conn.close()
+        w.conn.execute(f"ALTER ROLE {cw.SEALER} NOLOGIN")
 
 
 def approved_flow(w):
@@ -372,8 +390,24 @@ def approved_flow(w):
 
 
 def seal_as_sealer(w):
-    with as_role(w.conn, cw.SEALER):
+    """The complete governed seal: the verifier's brief (persisted), then the approved seal by the real sealer login. Returns the manifest id (a UUID)."""
+    import uuid
+    b = brief_as_verifier(w)
+    return uuid.UUID(approved_seal_as_sealer(w, b["sha256"])["manifest_id"])
+
+
+def db_seal_attempt(w):
+    """A seal attempt at the DATABASE's own gate by a FULL-privilege principal (the migration owner): the brief and the sealing job are bypassed, so a refusal here is the
+    database's (the 1206 / 1240 seal triggers), not the brief's. Stream A's `_seal` helper persists a test brief and writes the receipt in the same transaction."""
+    with as_role(w.conn, cw.OWNER):
         return _seal(w)
+
+
+def _refusals():
+    """Everything that can REFUSE a seal: the database (psycopg), the brief/verifier job (RuntimeError), the sealing job (SealRefused / ApprovalMismatch)."""
+    import psycopg as pg
+    from services.gochara_kernel import seal_brief, seal_flow
+    return (pg.errors.Error, RuntimeError, seal_brief.ApprovalMismatch, seal_flow.SealRefused)
 
 
 def _replay_as_sealer(w, manifest):
@@ -417,7 +451,7 @@ _G1241 = _grants_of_1241()
 def test_1241_spec_has_the_expected_number_of_1241_origin_grants():
     if not _G1241:
         pytest.skip("NOT_RUN: migration 1241 is not in this tree")
-    assert len(_G1241) == len(set(_G1241)) == 52, len(_G1241)   # sealer: 14 table (incl. the column-level windows read, publication update, ledger read and the receipt SELECT + INSERT) + 19 function; verifier: 9 table (incl. the column-level ledger read) + 10 function (R10-4 iii: the job's final combined gate)
+    assert len(_G1241) == len(set(_G1241)) == 62, len(_G1241)   # sealer: 15 table + 22 function (incl. the legacy-projection check and the persisted-brief functions); verifier: 13 table (incl. the legacy relations and the brief table) + 12 function (R10-4 iii: the job's final combined gate)
 
 
 @pytest.mark.parametrize("role,kind,priv,obj,cols", _G1241, ids=[f"{r.split('_')[1]}-{p.lower()}-{o}" for r, k, p, o, c in _G1241])
@@ -430,7 +464,8 @@ def test_each_grant_of_migration_1241_is_individually_necessary(cbuilt, role, ki
         w.conn.execute(f"REVOKE {priv}{colsql} ON public.{obj} FROM {role}")
     else:
         w.conn.execute(f"REVOKE EXECUTE ON FUNCTION public.{obj} FROM {role}")
-    with pytest.raises(RuntimeError, match=r"permission denied|no_verifier_privilege|brief exit"):
+    import psycopg as pg
+    with pytest.raises((RuntimeError, pg.errors.InsufficientPrivilege), match=r"permission denied|no_verifier_privilege|brief exit|identity_not_sealer"):
         _, res = approved_flow(w)    # verify, then the verifier's BRIEF, then the sealer's recompute + publish + seal + receipt: every principal's reads and writes
         _replay_as_sealer(w, __import__("uuid").UUID(res["manifest_id"]))     # ...and the seal REPLAY (the replay-side helper functions)
 
@@ -455,7 +490,8 @@ def test_the_l1_reads_that_1241_does_not_carry_are_individually_necessary(cbuilt
     """The OPEN item for the data-plane ACL owner: without SELECT on these L1 tables the verification-then-seal flow fails."""
     w = cbuilt
     w.conn.execute(f"REVOKE SELECT ON public.{table} FROM {role}")
-    with pytest.raises(RuntimeError, match=r"permission denied|verification job exit|refused"):
+    import psycopg as pg
+    with pytest.raises((RuntimeError, pg.errors.InsufficientPrivilege), match=r"permission denied|verification job exit|refused"):
         verify_as_verifier(w)
         seal_as_sealer(w)
 
@@ -500,7 +536,7 @@ def test_1241_closure_refuses_a_privilege_the_spec_does_not_name_at_table_functi
     for grant, fragment in ((f"GRANT UPDATE ON public.ka_gochara_eval_window TO {cw.VERIFIER}", "UPDATE on ka_gochara_eval_window: PROHIBITED"),
                             (f"GRANT DELETE ON public.ka_gochara_relationship_record TO {cw.SEALER}", "DELETE on ka_gochara_relationship_record: PROHIBITED"),
                             (f"GRANT EXECUTE ON FUNCTION public.ka_gochara_search_av_entry(text) TO {cw.SEALER}", r"EXECUTE on ka_gochara_search_av_entry\(text\): PROHIBITED"),
-                            (f"GRANT SELECT (chart_id) ON public.kala_gochara_contacts TO {cw.VERIFIER}", r"SELECT \(chart_id\) on kala_gochara_contacts: PROHIBITED")):
+                            (f"GRANT SELECT (raw_intensity) ON public.kala_gochara_windows TO {cw.SEALER}", r"SELECT \(raw_intensity\) on kala_gochara_windows: PROHIBITED")):
         w.conn.execute(grant)
         with pytest.raises(psycopg.errors.Error, match=fragment):
             _reapply_1241(w.conn)
@@ -538,8 +574,10 @@ def test_first_seal_builder_then_verifier_then_sealer_with_every_guard_enabled(c
     import psycopg
     w = cbuilt
     # before any verification the candidate gate is CLOSED and the seal is refused (the honest "built, not verified" state)
+    with pytest.raises(_refusals()):
+        seal_as_sealer(w)                                            # (the brief refuses an unverified candidate)
     with pytest.raises(psycopg.errors.Error):
-        seal_as_sealer(w)
+        db_seal_attempt(w)                                           # (and the DATABASE's own gate refuses it too)
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
     report = verify_as_verifier(w)                               # Stream A's REAL job, as a real verifier login
     # R10-4: the job ENDS in the combined candidate gate and records the runner's identity; both are in the report
@@ -647,9 +685,10 @@ def _waiting(admin, pid, seconds=10.0):
 def _write_test_receipt(conn, manifest):
     """The seal is only committable with an approval receipt (1240's deferred constraint trigger, R11-3 enforced): the race tests below exercise LOCKING, so their raw
     seals write one in the same transaction (as the sealer)."""
+    digest = conn.execute("SELECT brief_digest FROM public.ka_gochara_seal_brief WHERE chart_id = %s AND generation = %s ORDER BY brief_id DESC LIMIT 1", (CHART_ID, GEN)).fetchone()[0]
     conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login, approved_by_note, run_id, run_attempt,"
-                 " workflow_commit) VALUES (%s::uuid, %s, %s::uuid, repeat('a', 64), 'race-test', 'locking test', 1, 1, 'test-commit') ON CONFLICT (chart_id, generation) DO NOTHING",
-                 (CHART_ID, GEN, manifest))
+                 " workflow_commit) VALUES (%s::uuid, %s, %s::uuid, %s, 'race-test', 'ruling:locking-test; actor:race-test', 1, 1, 'test-commit') ON CONFLICT (chart_id, generation) DO NOTHING",
+                 (CHART_ID, GEN, manifest, digest))
 
 
 def _seal_on(conn):
@@ -672,6 +711,7 @@ def test_a_builder_rebuild_in_flight_makes_a_racing_seal_wait_then_refuses_it(cb
     import psycopg
     w = cbuilt
     verify_as_verifier(w)                                            # a fully verified, unsealed generation
+    brief_as_verifier(w)                                             # a persisted brief exists (the receipt must name it)
     assert _p3_records(w.conn) > 0, "the scenario needs P3 records to replace"
     builder, sealer = _open(w, cw.BUILDER), _open(w, cw.SEALER)
     result: dict = {}
@@ -703,6 +743,7 @@ def test_a_seal_in_flight_makes_a_racing_builder_rebuild_wait_then_refuses_it(cb
     import psycopg
     w = cbuilt
     verify_as_verifier(w)
+    brief_as_verifier(w)                                             # a persisted brief exists (the receipt must name it)
     builder, sealer = _open(w, cw.BUILDER), _open(w, cw.SEALER)
     result: dict = {}
 
@@ -760,7 +801,7 @@ def test_attack_total_omission_of_a_path_is_a_disagreement_and_persists_nothing(
         verify_as_verifier(w)
     assert _verification_rows(w.conn) == (0, 0)
     with pytest.raises(psycopg.errors.Error):
-        seal_as_sealer(w)
+        db_seal_attempt(w)
 
 
 def test_attack_a_record_result_changed_after_verification_makes_the_seal_refuse(cbuilt):
@@ -773,7 +814,7 @@ def test_attack_a_record_result_changed_after_verification_makes_the_seal_refuse
                          (CLS,)).fetchone()[0]
     w.conn.execute("UPDATE public.ka_gochara_relationship_record SET severity = 0.5 WHERE record_id = %s", (rid,))
     with pytest.raises(psycopg.errors.Error, match=r"stale|record_result_not_policy|window_verification|verification"):
-        seal_as_sealer(w)
+        db_seal_attempt(w)
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
 
 
@@ -806,7 +847,7 @@ def test_attack_the_runner_identity_is_recorded_and_a_row_naming_other_code_is_r
     w.conn.execute("UPDATE b6_v SET runner_identity = jsonb_set(runner_identity, '{implementation_digest}', to_jsonb(repeat('0', 64)))")
     w.conn.execute("INSERT INTO public.ka_gochara_eval_window_verification SELECT * FROM b6_v")
     with pytest.raises(psycopg.errors.Error, match=r"runner_not_pinned|window_verification"):
-        seal_as_sealer(w)
+        db_seal_attempt(w)
 
 
 def _unbridge_the_candidate_manifest(w):
@@ -828,7 +869,7 @@ def test_attack_the_jobs_published_only_arms_are_enforced_by_the_seal_and_by_a_f
     with pytest.raises(RuntimeError, match=r"verification job exit 3.*convention_bridge_missing"):
         verify_as_verifier(w, all_classes=True)
     with pytest.raises(psycopg.errors.Error):
-        seal_as_sealer(w)
+        db_seal_attempt(w)
 
 
 def test_attack_a_subset_run_must_not_report_verified_with_a_generation_level_violation_open(cbuilt):
@@ -975,7 +1016,7 @@ def test_attack_r11_1_a_record_in_a_sealed_but_excluded_version_or_held_path_wit
         verify_as_verifier(w)
     assert _verification_rows(w.conn) == (0, 0)
     with pytest.raises(psycopg.errors.Error):
-        seal_as_sealer(w)
+        db_seal_attempt(w)
 
 
 @pytest.mark.parametrize("path", ["P3", "P5"])
@@ -995,7 +1036,7 @@ def test_attack_r11_1_the_same_attack_after_verification_is_refused_at_the_seal_
     # P5 (held): refused BY NAME by the generation-wide arm. P3 (a sealed successor added after the build): 1206's own registry census (`registry_unaccounted_path`)
     # ALSO refuses it, and its guard fires first on the real seal — a second line of defence; the gate arm above names it either way.
     with pytest.raises(psycopg.errors.Error, match="output_grain_not_permitted" if path == "P5" else "output_grain_not_permitted|registry_unaccounted_path"):
-        seal_as_sealer(w)
+        db_seal_attempt(w)
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
 
 
@@ -1012,16 +1053,17 @@ def test_the_approved_seal_publishes_seals_and_writes_a_durable_receipt_naming_t
     b, res = approved_flow(w)
     p = b["brief"]
     assert p["schema"] == "seal_approval_payload/1" and p["candidate_gate"]["violations"] == [] and p["manifest"]["status"] == "candidate"
-    assert set(p["generation_output_identity"]["tables"]) == {"ka_gochara_relationship_record", "ka_gochara_record_prerequisite", "ka_gochara_contact",
+    # the output identity covers (at least) the seven round-11 tables PLUS the round-12 boundary additions (Codex R12-1 / Fable R12-2): the build's snapshot, obligations and intervals
+    assert set(p["generation_output_identity"]["tables"]) >= {"ka_gochara_relationship_record", "ka_gochara_record_prerequisite", "ka_gochara_contact",
                                                               "ka_gochara_eval_window", "ka_gochara_eval_window_record", "ka_gochara_search_path_pin",
-                                                              "ka_gochara_search_inventory"}
+                                                              "ka_gochara_search_inventory", "ka_gochara_search_input_snapshot", "ka_gochara_search_obligation",
+                                                              "ka_gochara_search_interval"}
     assert [e["migration"] for e in p["ledger"]] == ["1204", "1206", "1232", "1233", "1240", "1241"] and all(e["applied"] for e in p["ledger"]), p["ledger"]
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0] == "published"
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 1
     rows = _receipt(w.conn)
-    # `sealed_by` defaults to session_user: this harness runs the sealing step as SET ROLE on a superuser connection (session_user = the harness login); in production the
-    # sealer LOGS IN, so it records `gochara_sealer`
-    assert rows == [(b["sha256"], "steward-as-owner", 26104817, 1, SEALING_COMMIT, rows[0][5], res["manifest_id"])] and rows[0][5] in ("postgres", cw.SEALER), rows
+    # the sealer is a REAL LOGIN now and the database ATTESTS `sealed_by` (session_user) and `approved_at` — whatever an INSERT names for them is overwritten
+    assert rows == [(b["sha256"], "steward-as-owner", 26104817, 1, SEALING_COMMIT, cw.SEALER, res["manifest_id"])], rows
 
 
 def test_the_receipt_is_append_only_even_for_the_owner(cbuilt):
@@ -1131,10 +1173,8 @@ def test_attack_r11_2_a_duplicate_or_wrong_person_p1_record_is_a_disagreement_no
 
 
 
-@pytest.mark.xfail(strict=True, reason="FINDING R12-1 (Stream A, planned gate arm `legacy_projection_rows_present`): legacy kala_gochara_windows / kala_gochara_contacts rows for a governed generation are not yet "
-                   "refused by the gate or the brief — Stream A's head bf369fcaa accepts them. Flips when the arm lands.")
 def test_attack_r12_1_legacy_generation_5_numeric_rows_are_refused_by_the_gate_the_brief_and_the_seal(cbuilt):
-    """R12-1: the candidate boundary extends beyond the governed tables: legacy projection rows for generation '5.0' with numeric intensities must make the candidate unapprovable (refused before the
+    """R12-1 (Stream A's `legacy_projection_rows_present` arm): the candidate boundary extends beyond the governed tables: legacy projection rows for generation '5.0' with numeric intensities must make the candidate unapprovable (refused before the
     brief is produced, and again at the seal)."""
     import psycopg
     w = cbuilt
@@ -1145,4 +1185,168 @@ def test_attack_r12_1_legacy_generation_5_numeric_rows_are_refused_by_the_gate_t
     with pytest.raises(RuntimeError, match=r"brief exit 3"):
         brief_as_verifier(w)
     with pytest.raises(psycopg.errors.Error):
-        seal_as_sealer(w)
+        db_seal_attempt(w)
+
+
+
+def _sealer_raw(w, statements):
+    """A RAW transaction by the real sealer LOGIN, bypassing the sealing job (what a modified or malicious workflow could do): `statements(conn)` runs inside ONE transaction."""
+    import psycopg as pg
+    w.conn.execute(f"ALTER ROLE {cw.SEALER} LOGIN")
+    conn = pg.connect(_sealer_dsn(w), autocommit=True, connect_timeout=3)
+    try:
+        with conn.transaction():
+            return statements(conn)
+    finally:
+        conn.close()
+        w.conn.execute(f"ALTER ROLE {cw.SEALER} NOLOGIN")
+
+
+def _raw_receipt(conn, digest, **extra):
+    manifest = conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
+    conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login, approved_by_note, run_id, run_attempt, workflow_commit)"
+                 " VALUES (%s::uuid, %s, %s::uuid, %s, 'raw-sealer', 'ruling:raw; actor:raw-sealer', 1, 1, %s)", (CHART_ID, GEN, manifest, digest, SEALING_COMMIT))
+
+
+def test_attack_f_r12_4_the_real_sealer_commits_a_first_seal_with_a_fabricated_digest_and_is_refused_by_name(cbuilt):
+    """F-R12-4: the receipt must name a brief the VERIFIER persisted. The real sealer login, with every privilege it legitimately holds and no sealing job, writes a well-formed but
+    FABRICATED 64-hex digest: the deferred constraint trigger refuses the COMMIT (`receipt_brief_not_persisted`) — nothing is left: status stays candidate, no seal row, no receipt."""
+    import psycopg
+    w = cbuilt
+    verify_as_verifier(w)
+    brief_as_verifier(w)
+
+    def attack(conn):
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        gk_ledger.publish(conn, CHART_ID, GEN)
+        _raw_receipt(conn, "f" * 64)
+    with pytest.raises(psycopg.errors.Error, match="receipt_brief_not_persisted"):
+        _sealer_raw(w, attack)
+    assert w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0] == "candidate"
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0 and _receipt(w.conn) == []
+
+
+def test_attack_f_r12_4_a_superseded_brief_cannot_be_used_but_the_latest_can(cbuilt):
+    """F-R12-4: a REAL re-verification replaces the attestations (new `verified_at`), so the brief persisted before it is superseded (and its state changed): the sealing job refuses its digest
+    before publishing, a raw sealer commit naming it is refused by the database, and the FRESH brief seals."""
+    import psycopg
+    w = cbuilt
+    verify_as_verifier(w)
+    old = brief_as_verifier(w)
+    verify_as_verifier(w)                                           # the verifier re-attests: the old brief no longer describes the current state
+    new = brief_as_verifier(w)
+    assert new["sha256"] != old["sha256"]
+    with pytest.raises(_refusals()):
+        approved_seal_as_sealer(w, old["sha256"])                   # the sealing job: refused before publishing
+    assert w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0] == "candidate"
+
+    def attack(conn):
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        gk_ledger.publish(conn, CHART_ID, GEN)
+        _raw_receipt(conn, old["sha256"])
+    with pytest.raises(psycopg.errors.Error, match="receipt_brief_(superseded|state_changed)"):
+        _sealer_raw(w, attack)                                     # ...and the database refuses it too
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0 and _receipt(w.conn) == []
+    res = approved_seal_as_sealer(w, new["sha256"])
+    assert _receipt(w.conn)[0][0] == new["sha256"] and res["brief_digest"] == new["sha256"]
+
+
+def test_the_database_attests_the_receipts_sealer_and_time_whatever_the_insert_names(cbuilt):
+    """Receipt attribution is database-attested (Stream A): a raw INSERT naming another `sealed_by` and an old `approved_at` has both overwritten — the receipt records the real login and the commit-time clock."""
+    w = cbuilt
+    verify_as_verifier(w)
+    b = brief_as_verifier(w)
+
+    def forge(conn):
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        gk_ledger.publish(conn, CHART_ID, GEN)
+        manifest = conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
+        conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login, approved_by_note, run_id, run_attempt, workflow_commit,"
+                     " sealed_by, approved_at) VALUES (%s::uuid, %s, %s::uuid, %s, 'raw', 'ruling:raw; actor:raw', 1, 1, %s, 'somebody-else', '2000-01-01T00:00:00Z')",
+                     (CHART_ID, GEN, manifest, b["sha256"], SEALING_COMMIT))
+    _sealer_raw(w, forge)
+    row = w.conn.execute("SELECT sealed_by, approved_at > now() - interval '1 hour' FROM public.ka_gochara_seal_approval").fetchone()
+    assert row == (cw.SEALER, True), row
+
+
+def test_attack_f_r12_2_a_coverage_disclosure_edited_after_the_brief_with_an_empty_gate_changes_the_digest_and_refuses_the_old_approval(cbuilt):
+    """Fable R12-2: `kala_gochara_coverage`'s disclosure fields are read by no gate arm. Edited AFTER the brief, the gate is still empty, the NEW brief digest differs, and the sealer
+    refuses the OLD approval before publishing anything (status stays `candidate`, no seal row, no receipt); the fresh digest then seals (positive control)."""
+    from services.gochara_kernel import seal_brief
+    w = cbuilt
+    verify_as_verifier(w)
+    old = brief_as_verifier(w)
+    n = w.conn.execute("UPDATE public.kala_gochara_coverage SET unsearched_reason = COALESCE(unsearched_reason, '') || ' (edited after the brief)' WHERE chart_id = %s AND generation = %s",
+                       (CHART_ID, GEN)).rowcount
+    assert n > 0
+    new = brief_as_verifier(w)
+    assert new["brief"]["candidate_gate"]["violations"] == [] and new["sha256"] != old["sha256"]
+    with pytest.raises(seal_brief.ApprovalMismatch, match="not what was approved"):
+        approved_seal_as_sealer(w, old["sha256"])
+    assert w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0] == "candidate"
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0 and _receipt(w.conn) == []
+    approved_seal_as_sealer(w, new["sha256"])
+    assert len(_receipt(w.conn)) == 1
+
+
+def test_the_brief_digest_does_not_depend_on_the_sessions_timezone_setting(cbuilt):
+    """Fable R12-6: the brief (verifier login, Cloud Run) and the recompute (sealer login, GitHub runner) are different sessions. A role-level `timezone` on the verifier must not move the
+    digest, and the approved seal by the sealer (default timezone) must still accept it."""
+    w = cbuilt
+    verify_as_verifier(w)
+    base = brief_as_verifier(w)
+    w.conn.execute(f"ALTER ROLE {cw.VERIFIER} SET timezone = 'Asia/Kolkata'")
+    try:
+        shifted = brief_as_verifier(w)
+    finally:
+        w.conn.execute(f"ALTER ROLE {cw.VERIFIER} RESET timezone")
+    assert shifted["sha256"] == base["sha256"]
+    approved_seal_as_sealer(w, shifted["sha256"])
+    assert len(_receipt(w.conn)) == 1
+
+
+def test_the_sealing_job_refuses_a_login_that_is_not_the_bare_sealer(cbuilt):
+    """Fable R12-5: the sealing step proves its identity before anything is done. A superuser, a login that is a MEMBER of the sealer (session_user is not the sealer), and a sealer that
+    holds an extra write privilege are each refused with `identity_not_sealer` — nothing published, no receipt."""
+    import psycopg as pg
+    from services.gochara_kernel import seal_flow
+    w = cbuilt
+    verify_as_verifier(w)
+    b = brief_as_verifier(w)
+    approval = {"schema": "seal_approval/1", "brief_digest": b["sha256"], "run_id": 1, "run_attempt": 1, "approver_login": "x", "approved_by_note": NOTE}
+
+    def attempt(conn):
+        return seal_flow.execute_seal(conn, chart_id=CHART_ID, generation=GEN, approval=approval, run_id=1, run_attempt=1, sealing_commit=SEALING_COMMIT, triggering_actor="steward-as-owner")
+    # (a) a superuser (the harness connection's own role is not the sealer)
+    c = pg.connect(w.conn.info.dsn, autocommit=True)
+    try:
+        with pytest.raises(seal_flow.SealRefused, match="identity_not_sealer"):
+            attempt(c)
+    finally:
+        c.close()
+    # (b) a login that is a member of the sealer
+    w.conn.execute(f"CREATE ROLE b6_sealer_member LOGIN IN ROLE {cw.SEALER}")
+    try:
+        c = pg.connect(_login_dsn(w, "b6_sealer_member"), autocommit=True, connect_timeout=3)
+        try:
+            with pytest.raises(seal_flow.SealRefused, match="identity_not_sealer"):
+                attempt(c)
+        finally:
+            c.close()
+    finally:
+        w.conn.execute("DROP ROLE IF EXISTS b6_sealer_member")
+    # (c) the sealer itself, holding a write privilege beyond the seal set
+    w.conn.execute(f"GRANT UPDATE (note) ON public.ka_gochara_search_path_pin TO {cw.SEALER}")
+    w.conn.execute(f"ALTER ROLE {cw.SEALER} LOGIN")
+    try:
+        c = pg.connect(_sealer_dsn(w), autocommit=True, connect_timeout=3)
+        try:
+            with pytest.raises(seal_flow.SealRefused, match="identity_not_sealer"):
+                attempt(c)
+        finally:
+            c.close()
+    finally:
+        w.conn.execute(f"ALTER ROLE {cw.SEALER} NOLOGIN")
+        w.conn.execute(f"REVOKE UPDATE (note) ON public.ka_gochara_search_path_pin FROM {cw.SEALER}")
+    assert w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0] == "candidate"
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0 and _receipt(w.conn) == []
