@@ -56,6 +56,10 @@ PINNED_FINGERPRINTS = {
     # bg_ontology class planet; a declared source column with its citation_state), NA_CAUSES gains Vocab.alias:no-alias-class and
     # Ldgr.source_presence:no-classical-claim, and the two declaration-keyed rules are declared (inert until an asset declares); columns_any unchanged
     12: "35b0e03e412d0d36d8af2840bd3d4d612af2859e56035c90342266c98e33ed3d",
+    # 13 (SS N-72 S1, N-73, N-74; provisional): Null.schema_default / Null.blank_rows rev 2 (an asset that DECLARES `null_convention` gets the declared form:
+    # the Null cap lifts per asset only when schema_default and blank_rows are clean AND the detector verifies the convention; the cap line itself is unchanged);
+    # no N/A rule, NA_CAUSES unchanged, inert until an asset declares one
+    13: "fdee1861e969d88dc1139cbd0ff040d7b217710db3684313e00277c8150a85f1",
 }
 
 

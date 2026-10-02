@@ -192,8 +192,8 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5); never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty; a non-NULL DEFAULT on a declared prose column; never PASS alone", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty; blank or placeholder rows standing in for NULL; never PASS alone", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty, or a declared null_convention; a non-NULL DEFAULT on a declared prose or nullable column; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13), the cap otherwise", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
+    "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty, or a declared null_convention; blank or placeholder rows standing in for NULL; never PASS alone: PASS only for an asset whose declared null_convention the detector verifies (S1, pin 13), the cap otherwise", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),
     "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # ── registered, hand-observed only (detector NONE — D4 finding #5's honest, visible form) ──
     # These are the specific criteria R81's migration re-keys the 11 T5_LEDGER_DRIFT.md §A pairs
@@ -392,7 +392,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 12     # 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 13     # 13 (provisional): S1 declared null convention (SS N-72 S1, N-73, N-74): Null.schema_default and Null.blank_rows rev 2 (an asset that DECLARES `null_convention`: its nullable columns each with what NULL means and an optional key scope, its declared constant columns, one-line why and checkable evidence, gets the declared form: the two checks also run over the convention columns, the detector verifies read-only that NULLs occur only in declared columns (and, with a key scope, only on / exactly on the declared keys), that no declared-nullable column holds a literal fallback in place of NULL and that no column is constant unless declared constant; the Null checks read PASS ONLY when schema_default and blank_rows are clean AND the convention verifies, a defect flips the cell to FAIL, and every other path keeps the cap exactly as before: the cap line is unchanged and the lift is a separate branch that needs the verified convention block on BOTH checks; no Null N/A rule (N-22 row 33 stands), NA_CAUSES unchanged; no asset declares one yet, so no census cell verdict changes; asset_declarations.json 1.9.0). 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -466,8 +466,9 @@ def rollup_verdicts(verdicts) -> str:
     return min(graded, key=ROLLUP_ORDER.index)
 
 
-def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | None) -> dict | None:
-    """One criterion's contribution to its gate cell, or None when it is out of layer and unmeasured."""
+def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | None, all_meas: dict | None = None) -> dict | None:
+    """One criterion's contribution to its gate cell, or None when it is out of layer and unmeasured. `all_meas` (the asset's whole `measurements`
+    mapping; rollup_asset passes it) lets a Null check see its sibling: the Null cap lifts only when BOTH Null checks carry the verified convention (S1)."""
     e = CRITERION_REGISTRY[crit]
     ap = criterion_applicability(crit, layer, facts)
     if meas is not None:
@@ -524,6 +525,11 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
         if infl and v in (PASS, PARTIAL):
             return dict(criterion=crit, v=NO_DET, state="MEASURED", inconclusive=True,
                         reason="INCONCLUSIVE record: nothing was established, so it cannot read PASS or PARTIAL")
+        if v == PASS and crit.startswith("Null.") and null_lift_earned(crit, meas, all_meas):
+            # S1 (pin 13): the cap LIFTS for this asset only. Both Null checks carry the verified null_convention block (declared, evidence and reason
+            # echoed, both siblings clean, the detector's verdict PASS), no INCONCLUSIVE, no basis. Anything else falls through to the cap below.
+            return dict(criterion=crit, v=PASS, state="MEASURED", null_convention_verified=True,
+                        reason="measured; PASS earned: schema_default and blank_rows are clean and the asset's declared null convention is verified")
         if v == PASS and (crit.startswith("Null.") or crit == "Narr.fidelity_test"):
             return dict(criterion=crit, v=PARTIAL, state="MEASURED",
                         reason=f"{crit} is capped at PARTIAL (Null: never PASS alone; fidelity_test: structural only)")
@@ -575,7 +581,7 @@ def rollup_asset(layer: str, measurements: dict, facts: dict | None = None) -> d
         for crit, e in CRITERION_REGISTRY.items():
             if e["gate"] != gate:
                 continue
-            c = _check_contribution(crit, layer, measurements.get(crit), facts)
+            c = _check_contribution(crit, layer, measurements.get(crit), facts, measurements)
             if c is not None:
                 checks.append(c)
         cells[gate] = dict(gate=gate, v=rollup_verdicts([c["v"] for c in checks]), checks=checks,
@@ -900,7 +906,7 @@ def validate_ldgr_source_declaration(where: str, ls, e: dict) -> None:
 
 
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
-                    "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source")
+                    "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # prose_fields entries (SS ruling 2026-10-01; CLAUDE.md N.7 concerns GENERATED prose): a column name, or a JSON path into
 # a JSONB column, `column.$.seg(.seg)*` where a seg is an identifier key, optionally followed by ONE `[*]` (every element
@@ -1007,7 +1013,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
         raise DeclarationsError("`assets` must be an object mapping asset_id to a declaration")
     if "carriage_declaration_fields" in doc and doc["carriage_declaration_fields"] != list(CARRIAGE_DECL_FIELDS):
         raise DeclarationsError(f"`carriage_declaration_fields` must be exactly {list(CARRIAGE_DECL_FIELDS)}")
-    for _fk, _fv in (("vocab_alias_declaration_fields", VOCAB_ALIAS_DECL_FIELDS), ("ldgr_source_declaration_fields", LDGR_SOURCE_DECL_FIELDS)):
+    for _fk, _fv in (("vocab_alias_declaration_fields", VOCAB_ALIAS_DECL_FIELDS), ("ldgr_source_declaration_fields", LDGR_SOURCE_DECL_FIELDS),
+                     ("null_convention_declaration_fields", NULL_CONVENTION_DECL_FIELDS)):
         if _fk in doc and doc[_fk] != list(_fv):
             raise DeclarationsError(f"`{_fk}` must be exactly {list(_fv)}")
     known = _registry_id_set(registry_ids)
@@ -1041,6 +1048,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
             validate_vocab_alias_declaration(where, e["vocab_alias"], e)
         if e.get("ldgr_source") is not None:
             validate_ldgr_source_declaration(where, e["ldgr_source"], e)
+        if e.get("null_convention") is not None:
+            validate_null_convention_declaration(where, e["null_convention"], e)
         pf = e.get("prose_fields")
         if pf is not None:
             # null = undeclared; [] = declared "this writer composes no prose" (a positive claim); both need evidence
@@ -1926,8 +1935,9 @@ def grade_null_schema_default_tables(entries, own) -> dict:
     if unread:
         return dict(v=NO_DET, measured="NO_DETECTOR — the column default could not be read for: " + "; ".join(unread))
     cols = sorted({c for c, _ in parsed})
-    return dict(v=PARTIAL, measured=f"no schema default on the declared prose column(s) {', '.join(cols)}; writer "
-                                    "literal fallbacks and constant columns are not measured here, so this is never PASS")
+    # `clean` (S1): this PARTIAL is a genuinely clean reading (no default found, none unread); only that reading can be earned up to PASS by a verified null_convention
+    return dict(v=PARTIAL, clean=True, measured=f"no schema default on the declared prose column(s) {', '.join(cols)}; writer "
+                                                "literal fallbacks and constant columns are not measured here, so this is never PASS")
 
 
 def grade_null_schema_default(entries, columns, defaults) -> dict:
@@ -2064,12 +2074,369 @@ def grade_null_blank_rows(entries, counts) -> dict:
                         "they may belong to other charts, so this chart is not failed on them; chart-scope the count to decide")
         if any((counts.get(e) or {}).get("checkable", 0) for e in entries):
             unk = [e for e, k in bad.items() if k is None]
-            return dict(v=PARTIAL, blank=bad, measured="no blank or placeholder row among the checkable prose rows"
+            # `clean` (S1): every declared entry has >= 1 checkable row, none is unknown, none counted as a whole-table upper bound
+            clean = (not unk and not ub and all((counts.get(e) or {}).get("checkable", 0) >= 1 for e in entries))
+            return dict(v=PARTIAL, blank=bad, **({"clean": True} if clean else {}), measured="no blank or placeholder row among the checkable prose rows"
                         + (f" (unknown for {', '.join(unk)})" if unk else "") + "; schema defaults are read by "
                         "Null.schema_default and writer literal fallbacks and constant columns are not measured, so "
                         "this is never PASS")
     return dict(v=NO_DET, inconclusive=True,
                 measured="INCONCLUSIVE: no checkable prose rows were read for the declared entries")
+
+
+# ─────────────────────────── E6 S1: the declared null convention (REGISTRY_REVISION 13) ───────────────────────────
+# SS N-72 S1 (verbatim): "The cap stays as the default; it LIFTS per asset only by earning it: Null reads PASS for an asset when schema_default and blank_rows
+# both pass AND that asset's declared null convention (pin 13: which columns may be NULL and what NULL means; no literal fallbacks, no constant columns) is
+# verified by the detector. No Null N/A rule (N-22 row 33 stands)." Design: scratchpad s1/DESIGN.md.
+# An asset DECLARES `null_convention` (validated here, asset_declarations.json 1.9.0): the table, its nullable columns (each with what NULL means and an
+# optional key scope), its declared constant columns, a one-line why and a checkable evidence pointer. The detector verifies it read-only. The cap is never
+# lifted by a column pattern, a NOT NULL constraint, a clean populated table or a record's own say-so: `null_lift_earned` re-checks the evidence on BOTH
+# Null records. An undeclared asset reads exactly as before.
+NULL_CONVENTION_DECL_FIELDS = ("table", "nullable", "constants", "why", "evidence")
+NULL_NULLABLE_FIELDS = ("column", "means", "scope")
+NULL_SCOPE_FIELDS = ("key_column", "null_for", "mode")
+NULL_CONSTANT_FIELDS = ("column", "why", "value")
+NULL_SCOPE_MODES = ("only", "exactly")        # only: a NULL is allowed just on the declared keys; exactly: NULL iff the key is declared
+# literals that STAND IN for NULL (closed, compared trimmed and casefolded): the prose placeholders plus the usual not-applicable spellings and the empty JSON containers
+NULL_FALLBACK_LITERALS = tuple(dict.fromkeys(PROSE_PLACEHOLDERS + ("n.a.", "not applicable", "nil", "?", "not traced", "untraced", "not available", "{}", "[]")))
+NULL_NUMERIC_TYPES = ("smallint", "integer", "bigint", "numeric", "decimal", "real", "double precision")   # a 0 in a declared-nullable numeric column is a sentinel
+
+
+def _decl_line(v, limit: int = 1200) -> bool:
+    return isinstance(v, str) and not _blank_text(v) and v == v.strip() and "\n" not in v and len(v) <= limit
+
+
+def _decl_sentence(v, limit: int = 1200) -> bool:
+    """A one-line statement of at least three words (a meaning or a reason, not a token)."""
+    return _decl_line(v, limit) and len(v.split()) >= 3
+
+
+def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
+    """Raises DeclarationsError when an asset's `null_convention` declaration is malformed: `table` (an identifier), `nullable` and `constants` (lists, empty
+    when none), `why` (one line) and `evidence` (a checkable pointer). A nullable entry names its column, what NULL means (non-blank, one line, and not itself a
+    fallback literal) and optionally a key `scope` (key_column, null_for, mode); a constant entry names its column, a one-line why and optionally its `value`."""
+    if not isinstance(nc, dict):
+        raise DeclarationsError(f"{where}.null_convention must be an object or null")
+    _s3_common(where, "null_convention", nc, NULL_CONVENTION_DECL_FIELDS)
+    _s3_ident(where, "null_convention", "table", nc.get("table"))
+    for key in ("nullable", "constants"):
+        if not isinstance(nc.get(key), list):
+            raise DeclarationsError(f"{where}.null_convention.{key} must be a list (empty when the table declares none)")
+    n_cols, k_cols = [], []
+    for i, n in enumerate(nc["nullable"]):
+        w = f"{where}.null_convention.nullable[{i}]"
+        if not isinstance(n, dict):
+            raise DeclarationsError(f"{where}.null_convention nullable entry {i} must be an object")
+        extra = sorted(set(n) - set(NULL_NULLABLE_FIELDS))
+        if extra:
+            raise DeclarationsError(f"{w}: unknown field(s) {extra}")
+        _s3_ident(where, "null_convention", f"nullable[{i}].column", n.get("column"))
+        if isinstance(n.get("means"), str) and n["means"].strip().casefold() in NULL_FALLBACK_LITERALS:
+            raise DeclarationsError(f"{w}.means {n['means']!r} is a fallback literal, not a meaning: say what a NULL in this column states")
+        if not _decl_sentence(n.get("means")):
+            raise DeclarationsError(f"{w}.means must be a non-blank single-line statement of at least three words (what NULL means in this column)")
+        if n["column"] in n_cols:
+            raise DeclarationsError(f"{w}.column {n['column']!r} is declared twice (duplicate)")
+        n_cols.append(n["column"])
+        sc = n.get("scope")
+        if sc is None:
+            continue
+        if not isinstance(sc, dict):
+            raise DeclarationsError(f"{w}.scope must be an object or null")
+        extra = sorted(set(sc) - set(NULL_SCOPE_FIELDS))
+        if extra:
+            raise DeclarationsError(f"{w}.scope: unknown field(s) {extra}")
+        _s3_ident(where, "null_convention", f"nullable[{i}].scope.key_column", sc.get("key_column"))
+        if sc["key_column"] == n["column"]:
+            raise DeclarationsError(f"{w}.scope.key_column must differ from the nullable column itself")
+        if sc.get("mode") not in NULL_SCOPE_MODES:
+            raise DeclarationsError(f"{w}.scope.mode must be one of {list(NULL_SCOPE_MODES)}, got {sc.get('mode')!r}")
+        nf = sc.get("null_for")
+        if not (isinstance(nf, list) and nf):
+            raise DeclarationsError(f"{w}.scope.null_for must be a non-empty list of key values")
+        for v in nf:
+            if not (isinstance(v, str) and _decl_line(v, 128) and not any(unicodedata.category(ch) == "Cc" or ch == "\\" for ch in v)):
+                raise DeclarationsError(f"{w}.scope.null_for entry {v!r} must be a non-blank single-line string of at most 128 characters with no control "
+                                        "character or backslash")
+        if len(set(nf)) != len(nf):
+            raise DeclarationsError(f"{w}.scope.null_for lists a key twice (duplicate)")
+        k_cols.append(sc["key_column"])
+    c_cols = []
+    for i, c in enumerate(nc["constants"]):
+        w = f"{where}.null_convention.constants[{i}]"
+        if not isinstance(c, dict):
+            raise DeclarationsError(f"{where}.null_convention constants entry {i} must be an object")
+        extra = sorted(set(c) - set(NULL_CONSTANT_FIELDS))
+        if extra:
+            raise DeclarationsError(f"{w}: unknown field(s) {extra}")
+        _s3_ident(where, "null_convention", f"constants[{i}].column", c.get("column"))
+        if not _decl_sentence(c.get("why")):
+            raise DeclarationsError(f"{w}.why must be a non-blank single-line statement of at least three words (why this column is constant)")
+        if c.get("value") is not None and not (isinstance(c["value"], str) and c["value"] != "" and len(c["value"]) <= 4000 and "\x00" not in c["value"]):
+            raise DeclarationsError(f"{w}.value must be a non-empty string (the constant's text form) when present")
+        if c["column"] in c_cols:
+            raise DeclarationsError(f"{w}.column {c['column']!r} is declared twice (duplicate)")
+        c_cols.append(c["column"])
+    both = sorted(set(n_cols) & set(c_cols))
+    if both:
+        raise DeclarationsError(f"{where}.null_convention: {both} are both nullable and constant (a column that is NULL on every row is a dead column, not a convention)")
+    bad = sorted((set(k_cols) & set(c_cols)) | (set(k_cols) & set(n_cols)))
+    if bad:
+        raise DeclarationsError(f"{where}.null_convention: {bad} are used as a scope key_column, which must be a non-NULL identity (neither nullable nor constant)")
+
+
+def _sql_lit(s) -> str:
+    """A SQL string literal for a declared key value: quotes doubled; a non-string, a control character or a backslash is refused (the declaration validator
+    refuses them too; this is the second lock before any text reaches SQL)."""
+    if not isinstance(s, str) or any(unicodedata.category(ch) == "Cc" or ch == "\\" for ch in s):
+        raise Unknown(f"null_convention: {s!r} is not a safe key literal")
+    return "'" + s.replace("'", "''") + "'"
+
+
+def null_convention_fetch(table: str, columns, types, spec: dict, tail: str = "") -> dict:
+    """{rows, cols: {column: {nulls, distinct, [sole], [fallback, null_outside, null_outside_keys, nonnull_inside, nonnull_inside_keys]}}} for the declared
+    table: ONE read-only SELECT over the table (`tail` = the chart-scope ` WHERE ...` the caller bound), answered as ONE line of jsonb. Per column: its NULL count
+    and `count(DISTINCT col::text)`; for a declared constant its sole value (min); for a declared-nullable column the rows holding a literal fallback
+    (NULL_FALLBACK_LITERALS, trimmed and casefolded; plus the numeric 0 sentinel on a numeric-typed column) and, with a key scope, the NULL rows outside the declared
+    keys and (mode exactly) the non-NULL rows on them, as counts and up to 5 sample keys. Identifiers are matched against a strict pattern and double-quoted; key
+    values are doubled-quote literals. Raises Unknown on a malformed identifier, a failed read or a malformed answer."""
+    cols = list(columns or ())
+    nullable = {n["column"]: n for n in (spec.get("nullable") or [])}
+    consts = {c["column"]: c for c in (spec.get("constants") or [])}
+    ids = [table] + cols + [n["scope"]["key_column"] for n in nullable.values() if n.get("scope")]
+    if not cols or not all(isinstance(x, str) and _D1_SQL_IDENT.fullmatch(x) for x in ids):
+        raise Unknown(f"null_convention_fetch: malformed identifier(s) {ids!r}")
+    types = types or {}
+    fb_in = ", ".join(_sql_lit(x) for x in NULL_FALLBACK_LITERALS)
+    parts = []
+    for c in cols:
+        qc = f'"{c}"'
+        f = [f"'nulls', count(*) FILTER (WHERE {qc} IS NULL)", f"'distinct', count(DISTINCT {qc}::text)"]
+        if c in consts:
+            f.append(f"'sole', min({qc}::text)")
+        n = nullable.get(c)
+        if n:
+            pred = f"lower(regexp_replace({qc}::text, {_WS_TRIM})) IN ({fb_in})"
+            if str(types.get(c) or "").lower() in NULL_NUMERIC_TYPES:
+                pred += f" OR {qc} = 0"
+            f.append(f"'fallback', count(*) FILTER (WHERE {qc} IS NOT NULL AND ({pred}))")
+            sc = n.get("scope")
+            if sc:
+                k = f'"{sc["key_column"]}"'
+                ink = f"coalesce({k}::text IN ({', '.join(_sql_lit(v) for v in sc['null_for'])}), false)"
+                out_w, in_w = f"{qc} IS NULL AND NOT {ink}", f"{qc} IS NOT NULL AND {ink}"
+                f += [f"'null_outside', count(*) FILTER (WHERE {out_w})",
+                      f"'null_outside_keys', to_jsonb(coalesce((array_agg({k}::text ORDER BY {k}::text) FILTER (WHERE {out_w}))[1:5], ARRAY[]::text[]))"]
+                if sc["mode"] == "exactly":
+                    f += [f"'nonnull_inside', count(*) FILTER (WHERE {in_w})",
+                          f"'nonnull_inside_keys', to_jsonb(coalesce((array_agg({k}::text ORDER BY {k}::text) FILTER (WHERE {in_w}))[1:5], ARRAY[]::text[]))"]
+        parts.append(f"jsonb_build_object('{c}', jsonb_build_object({', '.join(f)}))")
+    blob = scalar(f"SELECT jsonb_build_object('rows', count(*), 'cols', ({' || '.join(parts)}))::text FROM \"{table}\"{tail}")
+    try:
+        got = json.loads(blob or "")
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise Unknown(f"null_convention_fetch: unparseable read of {table}: {exc}") from exc
+    return _checked_null_stats(got, table, cols, nullable, consts)
+
+
+def _isint(x) -> bool:
+    return isinstance(x, int) and not isinstance(x, bool)
+
+
+def _checked_null_stats(got, table: str, cols, nullable: dict, consts: dict) -> dict:
+    """The fetched / supplied stats, shape-checked: a malformed answer is Unknown, never a PASS on missing numbers."""
+    ok = isinstance(got, dict) and _isint(got.get("rows")) and isinstance(got.get("cols"), dict)
+    if ok:
+        for c in cols:
+            d = got["cols"].get(c)
+            ok = ok and isinstance(d, dict) and _isint(d.get("nulls")) and _isint(d.get("distinct"))
+            if ok and c in consts:
+                ok = "sole" in d and (d["sole"] is None or isinstance(d["sole"], str))
+            if ok and c in nullable:
+                ok = _isint(d.get("fallback"))
+                sc = nullable[c].get("scope")
+                if ok and sc:
+                    ok = _isint(d.get("null_outside")) and isinstance(d.get("null_outside_keys"), list)
+                    if ok and sc["mode"] == "exactly":
+                        ok = _isint(d.get("nonnull_inside")) and isinstance(d.get("nonnull_inside_keys"), list)
+    if not ok:
+        raise Unknown(f"null_convention: malformed or incomplete statistics for {table}")
+    return got
+
+
+def grade_null_convention(spec: dict, columns, types, stats) -> dict:
+    """The declared null convention verified (pure). Order: (1) a declared column the table does not carry is a FAIL before any statistic is read; (2) under 2 rows
+    is NO_DETECTOR (variation and constants cannot be shown); then every defect is collected: an undeclared NULL (a NULL in a column that is not declared
+    nullable), a literal fallback in a declared-nullable column, a scoped NULL outside the declared keys (both modes) or a value on a reserved-NULL key (mode
+    exactly), a column that holds ONE value on every row (NULL counted as a value) and is not declared constant, a declared constant that varies or differs from its
+    declared value. Any defect is a FAIL naming the columns and counts. A declared-nullable column that HAS NULL rows but no key scope has a meaning that is declared,
+    not machine-checked: PARTIAL. Otherwise PASS. A malformed `stats` raises Unknown."""
+    table = spec["table"]
+    nullable = {n["column"]: n for n in spec["nullable"]}
+    consts = {c["column"]: c for c in spec["constants"]}
+    cols = list(columns)
+    keys = {n["scope"]["key_column"] for n in nullable.values() if n.get("scope")}
+    absent = sorted({c for c in [*nullable, *consts, *keys] if c not in cols})
+    if absent:
+        return dict(v=FAIL, declared=True, convention=dict(table=table, absent=absent),
+                    measured=f"declared column(s) {', '.join(absent)} are not columns of {table}: the declaration names columns the table does not carry")
+    got = _checked_null_stats(stats, table, cols, nullable, consts)
+    rows, per = got["rows"], got["cols"]
+    if rows < 2:
+        return dict(v=NO_DET, declared=True, convention=dict(table=table, rows=rows),
+                    measured=f"NO_DETECTOR — {table} has {rows} row(s): constants and variation cannot be shown on fewer than 2 rows (vacuous)")
+    undecl_nulls = {c: per[c]["nulls"] for c in cols if c not in nullable and per[c]["nulls"]}
+    fallbacks = {c: per[c]["fallback"] for c in nullable if per[c]["fallback"]}
+    scope_viol: dict = {}
+    for c, n in nullable.items():
+        sc = n.get("scope")
+        if not sc:
+            continue
+        d = per[c]
+        if d["null_outside"]:
+            scope_viol.setdefault(c, {})["null_outside"] = dict(rows=d["null_outside"], keys=list(d["null_outside_keys"]))
+        if sc["mode"] == "exactly" and d["nonnull_inside"]:
+            scope_viol.setdefault(c, {})["valued_reserved"] = dict(rows=d["nonnull_inside"], keys=list(d["nonnull_inside_keys"]))
+    one_value = {c: per[c]["distinct"] + (1 if per[c]["nulls"] else 0) <= 1 for c in cols}          # NULL counts as a value: {NULL, 'x'} varies
+    undecl_consts = [c for c in cols if c not in consts and one_value[c]]
+    const_viol = []
+    for c, d in consts.items():
+        if not one_value[c]:
+            const_viol.append(c)
+        elif d.get("value") is not None and per[c]["nulls"] == 0 and per[c].get("sole") != d["value"]:
+            const_viol.append(c)
+    unscoped = [c for c, n in nullable.items() if not n.get("scope") and per[c]["nulls"] > 0]
+    block = dict(table=table, rows=rows, undeclared_nulls=undecl_nulls, fallbacks=fallbacks, scope_violations=scope_viol,
+                 undeclared_constants=undecl_consts, constant_violations=const_viol, unscoped_null_columns=unscoped)
+    problems = []
+    if undecl_nulls:
+        problems.append("undeclared NULL in column(s) " + ", ".join(f"{c} ({n} row(s))" for c, n in sorted(undecl_nulls.items()))
+                        + " (a NULL is permitted only in a declared nullable column)")
+    if fallbacks:
+        problems.append("literal fallback standing in for NULL in declared-nullable column(s) " + ", ".join(f"{c} ({n} row(s))" for c, n in sorted(fallbacks.items())))
+    for c, v in sorted(scope_viol.items()):
+        if "null_outside" in v:
+            problems.append(f"{c}: NULL outside the declared keys on {v['null_outside']['rows']} row(s) (keys: {', '.join(map(str, v['null_outside']['keys']))})")
+        if "valued_reserved" in v:
+            problems.append(f"{c}: a value on reserved-NULL key(s) {', '.join(map(str, v['valued_reserved']['keys']))} ({v['valued_reserved']['rows']} row(s); mode exactly)")
+    if undecl_consts:
+        problems.append("column(s) " + ", ".join(undecl_consts) + " hold one value on every row (NULL counted as a value) and are not declared constant")
+    for c in const_viol:
+        d = consts[c]
+        if one_value[c]:
+            problems.append(f"declared constant column {c} holds {per[c].get('sole')!r} but {d['value']!r} was declared")
+        else:
+            problems.append(f"declared constant column {c} varies ({per[c]['distinct']} distinct value(s), {per[c]['nulls']} NULL)")
+    if problems:
+        return dict(v=FAIL, declared=True, convention=block, severity=1.0, measured=f"{table} ({rows} row(s)) breaks its declared null convention: " + "; ".join(problems))
+    if unscoped:
+        return dict(v=PARTIAL, declared=True, convention=block,
+                    measured=f"{table} ({rows} row(s)): no undeclared NULL, no literal fallback, no undeclared constant; but declared-nullable column(s) "
+                             f"{', '.join(unscoped)} hold NULL rows with no declared key scope, so what NULL means there is declared, not machine-checked")
+    scoped = [f"{c} (NULL {'exactly' if n['scope']['mode'] == 'exactly' else 'only'} on {', '.join(n['scope']['null_for'])})" for c, n in nullable.items() if n.get("scope")]
+    return dict(v=PASS, declared=True, convention=block,
+                measured=f"{table} ({rows} row(s)): NULL only in the declared nullable column(s) {', '.join(nullable) or 'none'}"
+                         + (f", verified on keys: {'; '.join(scoped)}" if scoped else "")
+                         + f"; no literal fallback; {len(consts)} declared constant column(s) constant, no other column constant")
+
+
+def null_convention_check(nc: dict, own: dict, exists, scope) -> dict:
+    """measure()'s record for an asset that DECLARES `null_convention`. `own`: the asset's owned tables {table: (columns, types, defaults)}; `exists`: the tables
+    production carries; `scope`: (tail, label) the declared table is read under, None when its rows cannot be scoped. A declared table the asset does not own is
+    refused (NO_DETECTOR with the disagreement reported, nothing read); so is one production lacks, one with unknown columns, or one whose scope is unknown. A failed
+    read degrades only this check (ERRORED)."""
+    table = nc["table"]
+    if table not in own:
+        return dict(v=NO_DET, declared=True,
+                    declaration_disagreements=[dict(field="null_convention.table", declared=table, measured=f"owned tables: {sorted(own)}")],
+                    measured=f"NO_DETECTOR — the declared table {table} is not a table the asset owns (its target table or a table its count_sql reads: "
+                             f"{', '.join(sorted(own)) or 'none'}); the declaration is refused")
+    if table not in (exists or ()):
+        return dict(v=NO_DET, declared=True, measured=f"NO_DETECTOR — the declared table {table} does not exist in production")
+    cols, types = own[table][0], own[table][1]
+    if not isinstance(cols, (list, tuple, set)) or not cols:
+        return dict(v=NO_DET, declared=True, measured=f"NO_DETECTOR — the columns of {table} are unknown (never 'zero columns')")
+    if scope is None:
+        return dict(v=NO_DET, declared=True,
+                    measured=f"NO_DETECTOR — the rows of {table} cannot be scoped to this asset (shared table, count_sql not a plain count): the scope is unknown")
+    cols = sorted(cols) if not isinstance(cols, list) else list(cols)
+    try:
+        if not {c for c in [*(n["column"] for n in nc["nullable"]), *(c["column"] for c in nc["constants"])]} <= set(cols):
+            return grade_null_convention(nc, cols, types, None)
+        rec = grade_null_convention(nc, cols, types, null_convention_fetch(table, cols, types, nc, scope[0]))
+    except Unknown as exc:                                      # R41: this check's failure degrades only this check
+        return dict(v=ERRORED, declared=True, measured=f"check errored: {exc}")
+    return dict(rec, measured=f"{rec['measured']} [{scope[1]}]")
+
+
+def _null_annotation(conv: dict, verified: bool = False) -> dict:
+    """The `null_convention` block a Null record carries: what the detector said and whether the cap was lifted."""
+    a = dict(declared=True, verified=verified, v=conv.get("v"), measured=conv.get("measured"))
+    for k in ("convention", "declaration_disagreements"):
+        if conv.get(k) is not None:
+            a[k] = conv[k]
+    return a
+
+
+def earn_null_lift(entries, sd: dict, br: dict, conv: dict, decl: dict) -> dict:
+    """The whole Null decision for an asset that declares a null_convention (pure). `sd` / `br`: the Null.schema_default / Null.blank_rows records computed over
+    `entries` (the declared prose fields plus the convention's nullable columns), `conv`: the detector's record, `decl`: the declaration (evidence, why).
+    {} = no change (the cap stays, the records are exactly what prose_checks produced). A FAIL (the convention's, or a grader's over the convention columns) is written
+    to the records, so the cell flips. Both graders clean (the PARTIAL they can reach, marked `clean`) AND the convention PASS = both records PASS, each carrying the
+    verified block `null_lift_earned` re-checks in the rollup."""
+    out = {}
+    cv = conv.get("v")
+    if sd.get("v") == FAIL:
+        out["Null.schema_default"] = dict(sd, null_convention=_null_annotation(conv))
+    if br.get("v") == FAIL or cv == FAIL:
+        note = f"declared null convention violated: {conv.get('measured')}"
+        rec = dict(br, measured=f"{br['measured']}; {note}") if br.get("v") == FAIL else dict(v=FAIL, declared=True, measured=note)
+        out["Null.blank_rows"] = dict(rec, null_convention=_null_annotation(conv))
+    if out:
+        return out
+    if (cv == PASS and entries and sd.get("v") == PARTIAL and sd.get("clean") is True and br.get("v") == PARTIAL and br.get("clean") is True):
+        table = (conv.get("convention") or {}).get("table")
+        block = dict(declared=True, verified=True, v=PASS, table=table, columns=list(entries), evidence=decl.get("evidence"), why=decl.get("why"),
+                     schema_default_clean=True, blank_rows_clean=True, convention=conv.get("measured"))
+        return {"Null.schema_default": dict(sd, v=PASS, null_convention=dict(block),
+                                            measured=f"PASS earned by the declared null convention: {sd['measured']}; {conv['measured']}"),
+                "Null.blank_rows": dict(br, v=PASS, null_convention=dict(block),
+                                        measured=f"PASS earned by the declared null convention: {br['measured']}; {conv['measured']}")}
+    return {}
+
+
+def null_lift_problem(meas) -> str | None:
+    """None when this ONE Null record carries a complete verified lift block, else the reason it does not: the declared, verified, PASS block with the table, the
+    covered columns, the echoed evidence and reason and both clean flags; no INCONCLUSIVE, no basis, the record itself PASS."""
+    if not isinstance(meas, dict):
+        return "no record"
+    nc = meas.get("null_convention")
+    if not isinstance(nc, dict):
+        return "no null_convention block"
+    if nc.get("declared") is not True or nc.get("verified") is not True or nc.get("v") != PASS:
+        return "the convention is not declared, verified and PASS"
+    for k in ("table", "evidence", "why"):
+        if not (isinstance(nc.get(k), str) and nc[k].strip()):
+            return f"the block carries no {k}"
+    cols = nc.get("columns")
+    if not (isinstance(cols, list) and cols and all(isinstance(c, str) and c for c in cols)):
+        return "the block names no covered column"
+    if nc.get("schema_default_clean") is not True or nc.get("blank_rows_clean") is not True:
+        return "schema_default and blank_rows are not both clean"
+    if meas.get("inconclusive") or meas.get("basis") is not None or meas.get("v") != PASS:
+        return "the record is inconclusive, carries a basis, or is not PASS"
+    return None
+
+
+def null_lift_earned(crit: str, meas, all_meas) -> bool:
+    """True when the cap lifts for `crit`: this record AND its sibling Null record both carry a complete verified block, naming the same table and columns."""
+    if null_lift_problem(meas) is not None or not isinstance(all_meas, dict):
+        return False
+    sib = all_meas.get("Null.blank_rows" if crit == "Null.schema_default" else "Null.schema_default")
+    if null_lift_problem(sib) is not None:
+        return False
+    a, b = meas["null_convention"], sib["null_convention"]
+    return a["table"] == b["table"] and a["columns"] == b["columns"]
 
 
 _SIDECAR_PREFIX = "platform/python-sidecar/"
@@ -6254,6 +6621,79 @@ def _layer_read(name: str, fn, *args):
         raise Unknown(f"layer-wide read '{name}' failed: {exc}") from exc
 
 
+def _table_scope(t, r, own, shared):
+    """(where-tail, scope label) the rows of the owned table `t` are counted under, from the asset's registry count_sql; None when the rows cannot be scoped to this
+    asset (a shared table whose count_sql is not a plain count of it)."""
+    tail = _count_scope_tail(r["count_sql"], t)
+    if tail is not None:
+        # chart-scoped only when the predicate BINDS chart_id to the census chart (`chart_id = $1`, no OR); a
+        # parseable count_sql without it on a table that carries chart_id counts every chart: an upper bound
+        if re.search(r"\bchart_id\s*=\s*\$1(?!\d)", tail) and not re.search(r"\bOR\b", tail, re.I):
+            scope = "chart-scoped by count_sql"
+        elif "chart_id" in (own[t][0] or ()):
+            scope = UPPER_BOUND
+        else:
+            scope = "count_sql predicate (not chart-scoped)"
+    elif t in shared:
+        return None
+    else:
+        tail = ""
+        scope = (UPPER_BOUND if "chart_id" in (own[t][0] or ()) else "whole-table (table has no chart_id column)")
+    return tail, scope
+
+
+def _group_counts(groups, r, own, shared) -> dict:
+    """entry -> dict(checkable, blank, scope) for entries grouped by the owned table that holds them ({table: [entry]}); an entry whose table cannot be scoped is
+    absent (unknown). Raises Unknown on a failed read."""
+    counts = {}
+    for t, es in groups.items():
+        sc = _table_scope(t, r, own, shared)
+        if sc is None:
+            continue
+        got = prose_row_counts(t, es, _bind_chart(sc[0], CHART_ID), own[t][1])
+        for e in es:
+            counts[e] = dict(got[e], scope=sc[1])
+    return counts
+
+
+def _measure_null_convention(decl, nc, r, own, cat, shared, base) -> dict:
+    """The Null.schema_default / Null.blank_rows records of an asset that DECLARES `null_convention` (S1, pin 13). `base`: what prose_checks produced. The two
+    checks also run over the convention's nullable columns (counted in the DECLARED table); the detector verifies the convention; `earn_null_lift` decides. When
+    nothing is lifted and nothing fails, the base records come back exactly as they were, annotated with why the cap stays."""
+    sd0, br0 = base["Null.schema_default"], base["Null.blank_rows"]
+    table = nc["table"]
+    pf = list(decl.get("prose_fields") or [])
+    conv_cols = [n["column"] for n in nc["nullable"]]
+    entries = list(dict.fromkeys(pf + conv_cols))
+    scope = _table_scope(table, r, own, shared) if table in own else None
+    conv = null_convention_check(nc, own, cat.get("exists") or (), scope)
+    counts = None
+    if table in own and table in (cat.get("exists") or ()) and entries:
+        groups: dict = {}
+        for e in entries:
+            col = parse_prose_field(e)[0]
+            if col in conv_cols:
+                groups.setdefault(table, []).append(e)
+            else:
+                held = _holders(col, own)
+                if held and held[0] in (cat.get("exists") or ()):
+                    groups.setdefault(held[0], []).append(e)
+        try:
+            counts = {e: None for e in entries}
+            counts.update(_group_counts(groups, r, own, shared))
+        except Unknown:
+            counts = None
+    try:
+        sd = grade_null_schema_default_tables(entries, own) if entries else dict(v=NO_DET, measured="NO_DETECTOR — the convention declares no nullable column")
+        br = grade_null_blank_rows(entries, counts)
+    except (Unknown, DeclarationsError):
+        return {c: dict(base[c], null_convention=_null_annotation(conv)) for c in NULL_CHECKS}
+    got = earn_null_lift(entries, sd, br, conv, nc)
+    if got:
+        return got
+    return {"Null.schema_default": dict(sd0, null_convention=_null_annotation(conv)), "Null.blank_rows": dict(br0, null_convention=_null_annotation(conv))}
+
+
 def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> dict:
     """measure()'s glue for the six Narr/Null checks: gathers the inputs (catalog columns/types/defaults, the asset's
     row counts from its own count_sql scope, the writer scope, tests) and calls prose_checks. Fault-isolated (R41)."""
@@ -6285,25 +6725,7 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
             if held and held[0] in cat["exists"]:
                 groups.setdefault(held[0], []).append(e)
         try:
-            for t, es in groups.items():
-                tail = _count_scope_tail(r["count_sql"], t)
-                if tail is not None:
-                    # chart-scoped only when the predicate BINDS chart_id to the census chart (`chart_id = $1`, no OR); a
-                    # parseable count_sql without it on a table that carries chart_id counts every chart: an upper bound
-                    if re.search(r"\bchart_id\s*=\s*\$1(?!\d)", tail) and not re.search(r"\bOR\b", tail, re.I):
-                        scope = "chart-scoped by count_sql"
-                    elif "chart_id" in (own[t][0] or ()):
-                        scope = UPPER_BOUND
-                    else:
-                        scope = "count_sql predicate (not chart-scoped)"
-                elif t in shared:
-                    continue
-                else:
-                    tail = ""
-                    scope = (UPPER_BOUND if "chart_id" in (own[t][0] or ()) else "whole-table (table has no chart_id column)")
-                got = prose_row_counts(t, es, _bind_chart(tail, CHART_ID), own[t][1])
-                for e in es:
-                    counts[e] = dict(got[e], scope=scope)
+            counts.update(_group_counts(groups, r, own, shared))
             ctx["counts"] = counts if any(v is not None for v in counts.values()) else None
         except Unknown as exc:
             errored = {c: dict(v=ERRORED, measured=f"check errored: {exc}") for c in ("Narr.checkable", "Null.blank_rows")}
@@ -6315,6 +6737,13 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
             if crit in out and out[crit].get("v") in (NO_DET, PARTIAL):
                 out[crit] = dict(out[crit], measured=f"{out[crit]['measured']} [column types/defaults read failed: {cat['types_error']}]")
     out.update(errored)
+    nc = decl.get("null_convention") if isinstance(decl, dict) else None
+    if isinstance(nc, dict):
+        # S1 (pin 13): the asset's declared null convention. Fault-isolated: a failure here leaves the Null records as prose_checks wrote them.
+        try:
+            out.update(_measure_null_convention(decl, nc, r, own, cat, shared, out))
+        except Unknown as exc:
+            out.update({c: dict(out[c], null_convention=dict(declared=True, verified=False, v=ERRORED, measured=f"check errored: {exc}")) for c in NULL_CHECKS})
     return out
 
 

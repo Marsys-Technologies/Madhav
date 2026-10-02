@@ -72,6 +72,11 @@ def _restore_pre_retirement(monkeypatch):
     reg["Vocab.alias"] = dict(reg["Vocab.alias"], revision=1, applicability="the table declares an alias-bearing class census")     # revision 12 (S3) re-worded and bumped both
     reg["Ldgr.source_presence"] = dict(reg["Ldgr.source_presence"], revision=2,
                                        applicability="the target table carries a recognised citation column (R60: singular classical_citation included)")
+    for crit in ("Null.schema_default", "Null.blank_rows"):       # revision 13 (S1) re-worded and bumped both
+        was = "schema_default" if crit.endswith("default") else "blank_rows"
+        reg[crit] = dict(reg[crit], revision=1, applicability=("prose_fields declared non-empty; a non-NULL DEFAULT on a declared prose column; never PASS alone"
+                                                               if was == "schema_default" else
+                                                               "prose_fields declared non-empty; blank or placeholder rows standing in for NULL; never PASS alone"))
     causes = dict(ac.NA_CAUSES)
     causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
     causes.pop("Vocab.alias", None)                        # revision 12 (S3) added the two declaration-keyed causes

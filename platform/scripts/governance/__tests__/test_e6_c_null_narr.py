@@ -36,7 +36,7 @@ def test_the_six_criteria_are_registered_measured_by_the_census_on_every_layer()
         assert e["gate"] == crit.split(".")[0] and e["check"] == crit.split(".")[1]
         assert e["detector"] == "asset_census.py:measure()", crit
         assert e["layers"] == ac.ALL_LAYERS and e["columns_any"] is None and e["asset_kinds"] is None, crit
-        assert e["revision"] == 1, crit
+        assert e["revision"] == (2 if crit in NULL else 1), crit          # S1 (pin 13): the two Null checks are revision 2
     assert {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Narr"} == set(NARR)
     assert {c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == "Null"} == set(NULL)
 
