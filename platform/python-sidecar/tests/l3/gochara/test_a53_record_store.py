@@ -764,13 +764,16 @@ def test_p1_period_running_at_true_false_unknown():
     assert all(c["ordinal"] == 1 for c in calls if c["predicate_id"] == "period_running_at")
 
 
-def test_p1_period_running_at_domain_start_truncated_uses_observed_span_start():
-    """Spans are derived over the FULL substrate domain (R3), so the only
-    truncated span (t_exact None) is one already in the sign at the domain
-    start: it has no observed ingress, so the occurrence instant is the
-    observed span start (flagged v1.5 binding). Dasha row covering that start
-    ⇒ true; a row that does not ⇒ false (never silently the exact-less 'unknown'
-    — rows exist, the question is answerable)."""
+def _records(store):
+    return [kw for k, kw in store.calls if k == "insert_record"]
+
+
+def test_p1_domain_start_truncated_support_is_restricted_to_the_running_period():
+    """Spans are derived over the FULL substrate domain (R3), so the only truncated span (t_exact
+    None) is one already in the sign at the domain start. Its STORED support is clipped to the
+    requested horizon, and (Codex round 6 R3) restricted to the periods the agent RUNS: a row that
+    covers only the domain start — before the horizon — leaves nothing (`computed_empty`, the
+    prerequisite is `false`); a row inside the horizon leaves exactly the overlap."""
     edge = _p1_libra_edge("saturn")
     domain_start_rel_days = (rs.SUBSTRATE_DOMAIN_START - T0) / DAY   # negative
 
@@ -779,35 +782,68 @@ def test_p1_period_running_at_domain_start_truncated_uses_observed_span_start():
         kw = _p1_kwargs(store, [edge], {"saturn": [row]})
         kw["position_at"] = _probe([(domain_start_rel_days - 1, 200)])
         counts = rs.materialise_record_grain(store, **kw)
-        return counts, _results(store, "period_running_at")
+        return counts, _results(store, "period_running_at"), _records(store)[0]
 
-    covers = {"start_iso": rs.SUBSTRATE_DOMAIN_START - 10 * DAY,
-              "end_iso": rs.SUBSTRATE_DOMAIN_START + 10 * DAY}
-    misses = {"start_iso": T0 - 10 * DAY, "end_iso": T0 + 10 * DAY}
-    counts, results = run(covers)
+    before_horizon = {"start_iso": rs.SUBSTRATE_DOMAIN_START - 10 * DAY,
+                      "end_iso": rs.SUBSTRATE_DOMAIN_START + 10 * DAY}
+    inside = {"start_iso": T0 - 10 * DAY, "end_iso": T0 + 10 * DAY}
+    counts, results, rec = run(before_horizon)
     assert counts["records"] == 1 and counts["truncated_contacts"] == 1
-    assert results == ["true"]
-    counts, results = run(misses)
-    assert counts["truncated_contacts"] == 1 and results == ["false"]
+    assert results == ["false"]
+    assert (rec["support_state"], rec["support_intervals"]) == ("computed_empty", [])
+    counts, results, rec = run(inside)
+    assert counts["truncated_contacts"] == 1 and results == ["true"]
+    assert rec["support_state"] == "computed"
+    assert rec["support_intervals"] == [f"[{T0.isoformat()},{(T0 + 10 * DAY).isoformat()})"]
 
 
-def test_p1_period_running_at_ingress_before_horizon_uses_the_exact_ingress():
+def test_p1_ingress_before_horizon_support_is_clipped_then_restricted():
     """An ingress BEFORE the horizon: the stored contact must lie inside the class partition's
-    completed horizon (F7/C7, enforced by the database), so it is CLIPPED to the horizon and kept
-    as a truncated span (t_exact NULL, N3 — never absence). The occurrence instant the prerequisite
-    is judged at is still the exact full-domain ingress — period_running_at is evaluated at THAT
-    instant, not at the clipped horizon start."""
+    completed horizon (F7/C7), so it is CLIPPED to the horizon and kept as a truncated span
+    (t_exact NULL, N3). The support is then restricted to the running period: a row over the
+    horizon start leaves [T0, T0+10d)."""
     edge = _p1_libra_edge("saturn")
-    store = FakeStore({"saturn": [_crossing(-500, 180.0),
-                                  _crossing(200, 210.0)]})
-    kw = _p1_kwargs(
-        store, [edge],
-        # running at the horizon start, NOT at the ingress 500 d earlier
-        {"saturn": [{"start_iso": T0 - 10 * DAY, "end_iso": T0 + 10 * DAY}]})
+    store = FakeStore({"saturn": [_crossing(-500, 180.0), _crossing(200, 210.0)]})
+    kw = _p1_kwargs(store, [edge], {"saturn": [{"start_iso": T0 - 10 * DAY, "end_iso": T0 + 10 * DAY}]})
     kw["position_at"] = _probe([(-500, 200)])
     counts = rs.materialise_record_grain(store, **kw)
     assert counts["records"] == 1 and counts["truncated_contacts"] == 1     # clipped to the horizon
-    assert _results(store, "period_running_at") == ["false"]
+    assert _results(store, "period_running_at") == ["true"]
+    (rec,) = _records(store)
+    assert rec["support_intervals"] == [f"[{T0.isoformat()},{(T0 + 10 * DAY).isoformat()})"]
+
+
+def test_p1_support_is_the_contact_span_cut_to_every_running_period_never_bridged():
+    edge = _p1_libra_edge("saturn")                                  # in Libra [day 10, day 200)
+    store = FakeStore({"saturn": [_crossing(10, 180.0), _crossing(200, 210.0)]})
+    rows = {"saturn": [{"start_iso": T0, "end_iso": T0 + 50 * DAY},
+                       {"start_iso": T0 + 100 * DAY, "end_iso": T0 + 120 * DAY},
+                       {"start_iso": T0 + 120 * DAY, "end_iso": T0 + 130 * DAY},   # abuts: merges
+                       {"start_iso": T0 + 400 * DAY, "end_iso": T0 + 500 * DAY}]}   # outside the contact
+    counts = rs.materialise_record_grain(store, **_p1_kwargs(store, [edge], rows))
+    (rec,) = _records(store)
+    assert rec["support_state"] == "computed"
+    assert rec["support_intervals"] == [
+        f"[{(T0 + 10 * DAY).isoformat()},{(T0 + 50 * DAY).isoformat()})",
+        f"[{(T0 + 100 * DAY).isoformat()},{(T0 + 130 * DAY).isoformat()})"]
+    assert _results(store, "period_running_at") == ["true"] and counts["records"] == 1
+
+
+def test_p1_restricted_support_agrees_with_streambs_predicate_at_every_instant():
+    """The restriction is built by CALLING `period_running_at`; this checks the result against that
+    predicate pointwise (half-open ends included) so the interval form can never drift from it."""
+    from services.gochara_rules import predicates
+    rows = [{"start_iso": T0 + 5 * DAY, "end_iso": T0 + 20 * DAY},
+            {"start_iso": T0 + 20 * DAY, "end_iso": T0 + 25 * DAY},
+            {"start_iso": T0 + 40 * DAY, "end_iso": T0 + 41 * DAY}]
+    support = (T0 + 10 * DAY, T0 + 60 * DAY)
+    pieces = rs.period_running_support(support, rows)
+    assert pieces == [(T0 + 10 * DAY, T0 + 25 * DAY), (T0 + 40 * DAY, T0 + 41 * DAY)]
+    for k in range(0, 61 * 24):                                      # hourly over the whole span + edges
+        t = T0 + timedelta(hours=k)
+        inside = support[0] <= t < support[1]
+        want = inside and predicates.evaluate("period_running_at", {"rows": rows, "t": t}) == predicates.TRUE
+        assert any(a <= t < b for a, b in pieces) == want, t
 
 
 def test_p1_no_dasha_reader_is_an_explicit_unknown_never_a_silent_null():

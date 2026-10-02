@@ -59,8 +59,9 @@ def _vector(conn, ephe, **kw):
 def test_the_vector_binds_every_named_component_and_is_deterministic(db, ephe):
     v = _vector(db, ephe)
     assert v["schema"] == iv.VECTOR_SCHEMA
-    assert set(v) == {"schema", "sky_convention", "registry", "node", "ephemeris", "orb_policy",
-                      "rulings_digest", "implementation"}
+    assert set(v) == {"schema", "stored_scope", "sky_convention", "registry", "node", "ephemeris",
+                      "orb_policy", "rulings_digest", "implementation"}
+    assert v["stored_scope"] == "stored_non_moon"
     assert v["node"]["model"] == "mean" and v["ephemeris"]["backend"] == "swieph"
     assert set(v["ephemeris"]["files"]) == {"sepl_18.se1", "semo_18.se1", "seas_18.se1"}
     assert set(v["implementation"]) == {"geometry", "evaluation", "window"}

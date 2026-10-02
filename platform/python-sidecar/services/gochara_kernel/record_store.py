@@ -118,6 +118,32 @@ def _dasharow(row: dict) -> dict:
 
 
 
+def period_running_support(support: tuple[datetime, datetime], rows: list[dict]) -> list[tuple[datetime, datetime]]:
+    """The part of a contact's support during which the agent's period is RUNNING (Codex round 6 R3:
+    a window's support is the PREREQUISITE-SATISFIED support, not the raw contact span).
+
+    Stream B's `period_running_at` predicate is CALLED, never re-implemented: the support is cut at
+    every daśā-row boundary that falls inside it, so the predicate is constant on each elementary
+    piece, and a piece is kept iff the predicate is `true` at its start (half-open `[start, end)`,
+    §4.0). Adjacent kept pieces are merged; an empty result means the period never runs inside the
+    contact (the prerequisite is `false`)."""
+    lo, hi = support
+    cuts = {lo, hi}
+    for r in rows:
+        for b in (r["start_iso"], r["end_iso"]):
+            if lo < b < hi:
+                cuts.add(b)
+    ordered = sorted(cuts)
+    kept: list[list[datetime]] = []
+    for a, b in zip(ordered, ordered[1:]):
+        if rule_predicates.evaluate("period_running_at", {"rows": rows, "t": a}) == rule_predicates.TRUE:
+            if kept and kept[-1][1] == a:
+                kept[-1][1] = b
+            else:
+                kept.append([a, b])
+    return [(a, b) for a, b in kept]
+
+
 def _require_minted_record_uuid(record_id) -> None:
     """Refuse anything but a UUIDv8 (what `evaluator.record_uuid` returns)."""
     try:
@@ -978,6 +1004,13 @@ def write_class_coverage(
         relations_searched = list(inventory_facts["relations"])
         total = inventory_facts["obligations"]
         searched = total - inventory_facts["missing_inputs"]
+        if inventory_facts.get("moon_excluded_intervals"):
+            # AM-14: a Moon-resolved period-role portion is ACCOUNTED as excluded from the stored tier
+            # (neither searched here nor missing); the on-demand tier serves it — said, never implied
+            unavailable["moon_scope"] = (
+                f"{inventory_facts['moon_excluded_intervals']} period-role interval(s) resolve to the "
+                "Moon: excluded from the stored tier (AM-14, scope stored_non_moon), covered by the "
+                "moon_on_demand tier at query time")
         if inventory_facts["missing_inputs"]:
             unavailable["inventory"] = (f"{inventory_facts['missing_inputs']} obligation(s) "
                                         "carry a missing_inputs interval (a seal refusal)")
@@ -1074,6 +1107,23 @@ def materialise_record_grain(
         named in the counts, never silently dropped."""
         rel = _p1_relation(agent) if path_id == "P1" else None
         return bool(rel and rel["licence"] == "testimony")
+    _period_rows_cache: dict[str, list[dict] | None] = {}
+
+    def _p1_running_support(agent: str, support: tuple[datetime, datetime]):
+        """(state, intervals) of a P1 transit record's support restricted to the periods the agent
+        RUNS (R3). No L1 daśā reader / no rows for the agent ⇒ ('unrestricted', None): the contact
+        span is stored as is and the prerequisite is an explicit `unknown` — a support that could not
+        be restricted is never presented as restricted."""
+        if path_id != "P1" or dasha_rows_for is None:
+            return "unrestricted", None
+        if agent not in _period_rows_cache:
+            raw = dasha_rows_for(agent)
+            _period_rows_cache[agent] = [_dasharow(r) for r in raw] if raw else None
+        rows = _period_rows_cache[agent]
+        if not rows:
+            return "unrestricted", None
+        return "restricted", period_running_support(support, rows)
+
     coverage_key = event_class
     if prerequisites is None:
         rule_version = edges[0].rule_version if edges else "1.0.0"
@@ -1216,12 +1266,16 @@ def materialise_record_grain(
             "delta_t": crossing.delta_t if crossing else None,
         } if span.t_exact is not None else {
             "solver_method": "clipped_truncated", "delta_lambda": None, "delta_t": None})
-        interval = f"[{span.t_in.isoformat()},{(span.t_out or h_end).isoformat()})"
+        raw_support = (span.t_in, span.t_out or h_end)
+        rs_state, running = _p1_running_support(edge.agent, raw_support)
+        pieces = running if rs_state == "restricted" else [raw_support]
+        support_intervals = [f"[{a.isoformat()},{b.isoformat()})" for a, b in pieces]
         store.insert_record(
             chart_id=chart_id, generation=generation, edge=edge,
             record_id=m["record_id"],
             contact_id=str(m["contact"].contact_id),
-            support_state="computed", support_intervals=[interval],
+            support_state="computed" if pieces else "computed_empty",
+            support_intervals=support_intervals,
             precision=precision, coverage_key=coverage_key,
             coverage_facts=coverage_facts, source_fact_ids=source_fact_ids,
             prerequisites=prerequisites, house_from_frame=house)
@@ -1233,7 +1287,8 @@ def materialise_record_grain(
             # the occurrence instant is the EXACT ingress even when it lies before the requested
             # horizon (the stored contact is clipped; the evaluation is not — v1.5 binding)
             "instant": full.t_exact or full.t_in,
-            "support": (span.t_in, span.t_out or h_end)})
+            "support": (span.t_in, span.t_out or h_end),
+            "period_support": pieces if rs_state == "restricted" else None})
         supports_by_agent.setdefault(edge.agent, []).append(
             (span.t_in, span.t_out or h_end))
     for edge, occ, record_id, house in point_work:
@@ -1248,12 +1303,16 @@ def materialise_record_grain(
             "delta_t": occ.delta_t,
         } if occ.t_exact is not None else {
             "solver_method": "clipped_truncated", "delta_lambda": None, "delta_t": None})
-        interval = f"[{occ.t_in.isoformat()},{occ.t_out.isoformat()})"
+        raw_support = (occ.t_in, occ.t_out)
+        rs_state, running = _p1_running_support(edge.agent, raw_support)
+        pieces = running if rs_state == "restricted" else [raw_support]
+        support_intervals = [f"[{a.isoformat()},{b.isoformat()})" for a, b in pieces]
         store.insert_record(
             chart_id=chart_id, generation=generation, edge=edge,
             record_id=record_id,
             contact_id=str(occ.contact.contact_id),
-            support_state="computed", support_intervals=[interval],
+            support_state="computed" if pieces else "computed_empty",
+            support_intervals=support_intervals,
             precision=precision, coverage_key=coverage_key,
             coverage_facts=coverage_facts, source_fact_ids=source_fact_ids,
             prerequisites=prerequisites, house_from_frame=house)
@@ -1262,7 +1321,8 @@ def materialise_record_grain(
             "record_id": record_id, "edge": edge, "kind": "transit",
             "house": house,
             "instant": occ.t_exact or occ.t_in,
-            "support": (occ.t_in, occ.t_out)})
+            "support": (occ.t_in, occ.t_out),
+            "period_support": pieces if rs_state == "restricted" else None})
         supports_by_agent.setdefault(edge.agent, []).append(
             (occ.t_in, occ.t_out))
     for edge in natal_edges:
@@ -1294,12 +1354,11 @@ def materialise_record_grain(
     def _period_running_at(rec):
         if dasha_rows_for is None or rec["kind"] != "transit":
             return "unknown"           # no L1 dasha reader / atemporal row
-        rows = dasha_rows_for(rec["edge"].agent)
-        if not rows:
-            return "unknown"           # L1 dasha rows absent — never false
-        return rule_predicates.evaluate(
-            "period_running_at",
-            {"rows": [_dasharow(r) for r in rows], "t": rec["instant"]})
+        if rec.get("period_support") is None:
+            return "unknown"           # L1 daśā rows absent for this agent — never false
+        # the prerequisite holds exactly when the support, restricted to the periods the agent runs,
+        # is non-empty (the support was cut by calling the predicate — period_running_support)
+        return rule_predicates.TRUE if rec["period_support"] else rule_predicates.FALSE
 
     def _p4_double_transit(rec):
         agent = rec["edge"].agent
@@ -1403,6 +1462,7 @@ def _edge_sign(edge: RecordEdge) -> str:
 
 
 __all__ = [
+    "period_running_support",
     "CrossingInfo",
     "DEFERRAL_POINT_SOLVE",
     "KALA_CONVENTION_VECTOR",

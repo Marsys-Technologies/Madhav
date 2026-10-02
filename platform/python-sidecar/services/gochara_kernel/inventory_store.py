@@ -158,6 +158,16 @@ class InventoryStore:
             (chart_id, generation)).fetchall()
         return [DashaRow(r[0], int(r[1]), str(r[2]).lower(), r[3], r[4]) for r in rows]
 
+    def moon_scope_available(self) -> bool:
+        """Does the APPLIED schema account a Moon-resolved period-role interval (1232)? The state is
+        in `kgsiv_state_ck` AND the derived-domain function exists. Read, never assumed."""
+        row = self.conn.execute(
+            "SELECT to_regprocedure('public.ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)')"
+            " IS NOT NULL AND EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conname = 'kgsiv_state_ck'"
+            " AND c.conrelid = 'public.ka_gochara_search_interval'::regclass"
+            " AND pg_get_constraintdef(c.oid) LIKE '%excluded_moon_tier%')").fetchone()
+        return bool(row[0])
+
     def snapshot_input_digest(self, chart_id: str, generation: str) -> str | None:
         row = self.conn.execute(
             "SELECT input_digest FROM public.ka_gochara_search_input_snapshot"
@@ -243,8 +253,13 @@ class InventoryStore:
             " FROM public.ka_gochara_search_obligation o"
             " WHERE o.chart_id = %s AND o.generation = %s AND o.event_class = %s",
             (chart_id, generation, event_class)).fetchone()
+        moon = self.conn.execute(
+            "SELECT count(*) FROM public.ka_gochara_search_interval v WHERE v.chart_id = %s"
+            " AND v.generation = %s AND v.event_class = %s AND v.state = 'excluded_moon_tier'",
+            (chart_id, generation, event_class)).fetchone()[0]
         return {"horizon": (row[0], row[1]), "inventory_digest": row[2],
-                "relations": rels, "obligations": counts[0], "missing_inputs": counts[1]}
+                "relations": rels, "obligations": counts[0], "missing_inputs": counts[1],
+                "moon_excluded_intervals": moon}
 
 
 __all__ = ["InventoryStore", "SnapshotUnboundError"]

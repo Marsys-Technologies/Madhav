@@ -355,7 +355,10 @@ def rederive_ledger_digest(
                 if a2 > cursor:
                     lines.append(f"{oid}|{_utc_ts(cursor)}|{_utc_ts(a2)}|missing_inputs|{snap[1]}")
                 # a Moon period lord resolves to an agent the stored build never searches (AM-4)
-                piece_state = "missing_inputs" if lord == "moon" else state
+                # (AM-14: with the schema's Moon-domain accounting the portion is EXCLUDED from the
+                # stored tier — told to this verifier independently, like the other capabilities)
+                piece_state = (("excluded_moon_tier" if capability.get("moon_scope_domain", False)
+                                else "missing_inputs") if lord == "moon" else state)
                 lines.append(f"{oid}|{_utc_ts(a2)}|{_utc_ts(b2)}|{piece_state}|{snap[1]}")
                 cursor = max(cursor, b2)
             if cursor < hi:

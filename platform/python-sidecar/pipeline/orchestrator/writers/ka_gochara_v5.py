@@ -449,7 +449,8 @@ class GocharaV5Writer(WriterBase):
                 event_class=event_class, chart=chart, horizon=horizon,
                 sealed_paths=inv_store.sealed_rule_paths(),
                 capability=gk_inventory.SearchCapability(
-                    position_probe=True, arc_index=True, aspect_span_solver=True),
+                    position_probe=True, arc_index=True, aspect_span_solver=True,
+                    moon_scope_domain=inv_store.moon_scope_available()),
                 path_exclusions=path_excl, h_unknown_exclusion=h_unknown,
                 dasha_rows=inv_store.consumed_dasha_rows(chart_id, GENERATION))
             out = inv_store.write_class_inventory(
@@ -484,7 +485,8 @@ class GocharaV5Writer(WriterBase):
         led = gk_verifier.rederive_ledger_digest(
             ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
             obligations=res["obligations"],
-            capability={"position_probe": True, "arc_index": True, "aspect_span_solver": True})
+            capability={"position_probe": True, "arc_index": True, "aspect_span_solver": True,
+                        "moon_scope_domain": inv_store.moon_scope_available()})
         db_led = ctx.db_conn.execute(
             "SELECT ledger_digest FROM public.ka_gochara_search_inventory WHERE chart_id = %s"
             " AND generation = %s AND event_class = %s", (chart_id, GENERATION, event_class)

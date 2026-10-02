@@ -35,6 +35,7 @@ from typing import Iterable
 
 VECTOR_SCHEMA = "ka_gochara_input_vector/1"
 REGISTRY_DIGEST_SCHEMA = "ka_gochara_registry_digest/1"
+STORED_SCOPE = "stored_non_moon"
 EXCLUDED_AUDIT_FIELDS = ("created_at", "sealed_at")
 
 # Closed module lists: the code that GOVERNS each result-bearing stage.
@@ -205,6 +206,10 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
     payload = registry_payload(conn, refs)
     return {
         "schema": VECTOR_SCHEMA,
+        # AM-14: the machine-readable scope of what this generation STORES — the Moon is the on-demand
+        # tier. 1232's completeness function refuses a manifest vector without it, and serving must
+        # be able to state it with every answer.
+        "stored_scope": STORED_SCOPE,
         "sky_convention": sky_convention_id,
         "registry": {"digest": _sha(canonical_json(payload)), "census": payload["census"]},
         "node": node_identity(),
@@ -256,6 +261,6 @@ def verify_live(conn, stored: dict, **kw) -> None:
 
 __all__ = ["EXCLUDED_AUDIT_FIELDS", "IMPLEMENTATION_MODULES", "InputDrift", "REGISTRY_DIGEST_SCHEMA",
            "VECTOR_SCHEMA", "activity_orb_states", "admission_orb_digest", "build_input_vector",
-           "canonical_json", "diff_vectors", "ephemeris_identity", "implementation_digests",
+           "STORED_SCOPE", "canonical_json", "diff_vectors", "ephemeris_identity", "implementation_digests",
            "node_identity", "registry_digest", "registry_payload", "rulings_digest", "verify_live",
            "verify_replay"]

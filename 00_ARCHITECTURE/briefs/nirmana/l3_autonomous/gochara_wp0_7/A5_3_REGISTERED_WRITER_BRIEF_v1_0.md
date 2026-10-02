@@ -696,3 +696,37 @@ against channel is the per-instant reduction at the peak — an unqualified agai
 does not null it, one that is live does (the verifier follows). The window-level rule is unchanged: a for-channel
 unqualified member anywhere in the window makes the objective, and so the peak, unqualified. 80 sweep tests; 17 mutations
 killed (one equivalent: the verifier's P4 numeric path only reproduces constant members).
+
+### Design v1.14 (2026-10-02) — Codex round 6, R2 (AM-14 Moon-resolved period domain) and the P1 running-period support
+
+**R2 — built against PR #2909 / migration 1232 (HOLD; applied nowhere), gated on the APPLIED schema.**
+
+- Moon exclusion follows the RESOLVED concrete agent, per role obligation. A Moon-resolved portion of a `period_lord:md|ad|pd`
+  interval is `excluded_moon_tier` — neither `missing_inputs` nor `searched_complete` — **when the schema can account it**;
+  `InventoryStore.moon_scope_available()` READS that from the database (the `kgsiv_state_ck` state AND the derived-domain function)
+  and `SearchCapability.moon_scope_domain` carries it, so on today's 1206-only schema the same portion stays an honest
+  `missing_inputs` (the class cannot seal) — the schema is never assumed to be ahead of what is applied. Nothing that runs on
+  main's schema depends on 1232.
+- A Moon bhukti excludes only the `ad` obligation's Moon portion: the MD lord's delivery during it is still searched; the Moon as a
+  natal TARGET and in another agent's Moon-frame evaluation are untouched (tests).
+- The independent verifier re-derives the ledger with its own code and is TOLD the schema fact like every other capability; told the
+  wrong fact it disagrees (the check has teeth). Coverage names the excluded portion (`unavailable.moon_scope`) — said, never implied.
+- The manifest `input_generation_vector` now carries **`stored_scope: "stored_non_moon"`** (1232's completeness function refuses a
+  published manifest without it; serving must state it with every answer).
+- **Judged by Stream B's own function**: the integration tests apply 1232 on top of 1206 on a throwaway database and let ITS
+  `ka_gochara_search_completeness_violations` judge this writer's output — with 1232 there is no `missing_inputs_present`,
+  `moon_domain_missing`, `moon_domain_extra` or non-period exclusion; on 1206 alone `missing_inputs_present` fires; a builder that
+  does not account the domain is caught (`moon_domain_missing`). (The migration is read from the repo or from PR #2909's branch;
+  the tests skip when neither exists.) `stored_scope_missing` fires only for a PUBLISHED manifest, which this build never publishes.
+
+**P1 prerequisite-restricted support (R3 residual).** A P1 transit record's stored support is its contact span (clipped to the
+horizon) restricted to the periods the agent RUNS: `record_store.period_running_support` cuts the span at every daśā-row boundary
+inside it and keeps an elementary piece iff **Stream B's `period_running_at` predicate** is `true` at its start (called, never
+re-implemented; half-open §4.0); adjacent kept pieces merge. An empty result is a `computed_empty` record whose prerequisite is
+`false`; no L1 daśā rows for the agent leaves the contact span unrestricted and the prerequisite an explicit `unknown`. The old
+instant-based semantics (judged at the ingress) are replaced — three record-store tests were rewritten and a pointwise
+property test (hourly, ends included) ties the interval form to the predicate. **Flag to Stream B/steward:** this changes the AM-11
+"evaluated at the occurrence instant" reading to "evaluated over the support" on Codex's R3 text.
+
+*Still open:* the verifier's independent derivation of P2 (and P5's excluded pin from the sealed row) — the class-level `verify:`
+substep still refuses P2 by name, so no class can seal yet; `day_on_demand`; the vedha derivation and 1.1.0 binding (wait on B).

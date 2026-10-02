@@ -50,6 +50,10 @@ DEGRADING_REASONS = frozenset({"disabled_form", "inputs_unavailable",
 
 STATE_COMPLETE = "searched_complete"
 STATE_MISSING = "missing_inputs"
+#: AM-14 (Codex round 6 R2; migration 1232, not yet applied anywhere): the Moon-RESOLVED portion of a
+#: period-role obligation, explicitly accounted as EXCLUDED from the stored tier — neither a missing
+#: search interval nor a completed geometry search.
+STATE_EXCLUDED_MOON = "excluded_moon_tier"
 
 #: steward rulings (2026-10-02; Stream B records both under decisions/). The ids pass
 #: 1206's ruling_ref grammar `^[A-Za-z0-9._-]+$` and its basis grammar `ruling:<id>`.
@@ -176,6 +180,10 @@ class SearchCapability:
     #: residence spans (materialise.aspect_spans), so it is searched only with the position probe
     #: AND this flag — flipped on only once the independent oracle derives the same spans.
     aspect_span_solver: bool = False
+    #: the schema can account a Moon-resolved period-role interval as `excluded_moon_tier` (1232). Off
+    #: ⇒ such an interval stays an honest `missing_inputs` and the class cannot seal — the schema is
+    #: never assumed to be ahead of what is applied.
+    moon_scope_domain: bool = False
 
 
 @dataclass(frozen=True)
@@ -266,13 +274,23 @@ def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
                                                   {"resolved_agent": None, "dasha_row_id": None}))
                 else:
                     # a period whose lord is the MOON resolves to an agent the stored build never
-                    # searches (AM-4: EPHEMERAL tier, excluded from the stored enumeration by rule):
-                    # honest `missing_inputs`, named — never `searched_complete` on a search not run
+                    # searches (AM-4: EPHEMERAL tier). AM-14: the exclusion follows the RESOLVED
+                    # concrete agent, per role obligation — so a Moon bhukti excludes only the
+                    # `period_lord:ad` interval (the MD lord's delivery is still searched), and the
+                    # Moon as a natal TARGET or in another agent's Moon-frame evaluation is untouched.
+                    # With the 1232 domain accounting that portion is `excluded_moon_tier`; without
+                    # it, honest `missing_inputs` — never `searched_complete` on a search not run.
                     on_demand = r.lord == "moon"
+                    if on_demand and cap.moon_scope_domain:
+                        state, tier = STATE_EXCLUDED_MOON, "moon_resolved_domain (AM-14)"
+                    elif on_demand:
+                        state, tier = STATE_MISSING, "moon_on_demand (AM-4)"
+                    else:
+                        state, tier = _interval_state(o, cap), None
                     intervals.append(IntervalPlan(
-                        o.ob_id, a, b, STATE_MISSING if on_demand else _interval_state(o, cap),
+                        o.ob_id, a, b, state,
                         {"resolved_agent": r.lord, "dasha_row_id": str(r.row_id),
-                         **({"tier": "moon_on_demand (AM-4)"} if on_demand else {})}))
+                         **({"tier": tier} if tier else {})}))
     return tuple(sorted(set(obligations), key=lambda o: o.canonical_bytes)), intervals
 
 
@@ -349,5 +367,5 @@ def plan_class_inventory(
 __all__ = ["ClassInventory", "DEGRADING_REASONS", "DashaRow", "H_UNKNOWN_RULING",
            "P5_HOLD_RULING", "PERIOD_ROLE_LEVEL", "standing_exclusions", "EXCLUSION_REASONS", "Exclusion",
            "H_DEPENDENT_PATHS", "IntervalPlan", "InventoryBlocked", "Obligation",
-           "PinPlan", "STATE_COMPLETE", "STATE_MISSING", "SearchCapability",
+           "PinPlan", "STATE_COMPLETE", "STATE_EXCLUDED_MOON", "STATE_MISSING", "SearchCapability",
            "obligation_of_edge", "plan_class_inventory", "require_whole_second_utc"]
