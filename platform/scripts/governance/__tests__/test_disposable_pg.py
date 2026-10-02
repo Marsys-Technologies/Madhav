@@ -75,6 +75,24 @@ def test_verify_own_cluster_refuses_a_cluster_whose_data_directory_is_not_its_ow
     dpg.verify_own_cluster(disposable_pg)                                                         # the real one passes
 
 
+@pytest.mark.parametrize("ident, ok", [
+    ("{data}|127.0.0.1|{port}|suvarna_disposable", True),
+    ("{data}|10.0.0.5|{port}|suvarna_disposable", False),            # not loopback
+    ("{data}||{port}|suvarna_disposable", False),                    # a unix-socket connection reports no address
+    ("{data}|127.0.0.1|5432|suvarna_disposable", False),             # another server's port
+    ("/var/lib/postgresql/data|127.0.0.1|{port}|suvarna_disposable", False),   # not our data directory
+    ("{data}|127.0.0.1|{port}|postgres", False),                     # not our database
+])
+def test_verify_own_cluster_checks_address_port_data_directory_and_database(disposable_pg, monkeypatch, ident, ok):
+    line = ident.format(data=disposable_pg.data_dir, port=disposable_pg.port)
+    monkeypatch.setattr(dpg.Cluster, "psql", lambda self, sql, db=None: line)
+    if ok:
+        dpg.verify_own_cluster(disposable_pg)
+    else:
+        with pytest.raises(dpg.PGStartError, match="refusing"):
+            dpg.verify_own_cluster(disposable_pg)
+
+
 def test_a_free_port_is_never_a_forbidden_one(monkeypatch):
     seq = iter([5432, 55432, 40001, 40002])
 
