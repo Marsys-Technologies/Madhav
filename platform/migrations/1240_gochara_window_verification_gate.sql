@@ -622,6 +622,48 @@ COMMENT ON FUNCTION public.ka_gochara_candidate_gate_violations(uuid, text) IS
   'A5.3 R8-4: the ONE check a candidate must pass — the search-completeness violations (1206/1232) plus the window '
   'verification violations. No 1206/1232 function is redefined.';
 
+-- ── 4b. the seal APPROVAL RECEIPT (R11-3) ──────────────────────────────────────────────────────────────────
+-- A durable record, linked to the seal row, of WHAT was approved and by whom: the brief digest (the sha256 of the canonical
+-- complete approval payload the sealing transaction recomputed under the seal locks and found equal), the approver login and the
+-- workflow run the approval was given in. Append-only (UPDATE/DELETE/TRUNCATE refused). The database cannot make the sealing
+-- workflow use the brief — the approval-gated workflow running as the sealer is part of the trusted system — but the receipt
+-- exists only with a seal (FK), is immutable, and names the digest that was approved.
+CREATE TABLE public.ka_gochara_seal_approval (
+  chart_id        uuid        NOT NULL,
+  generation      text        NOT NULL,
+  manifest_id     uuid        NOT NULL,
+  brief_digest    text        NOT NULL,
+  approver_login  text        NOT NULL,
+  approval_note   text        NOT NULL DEFAULT '',
+  run_id          text        NOT NULL,
+  run_attempt     integer     NOT NULL DEFAULT 1,
+  sealing_commit  text,
+  sealed_by       text        NOT NULL DEFAULT session_user,
+  approved_at     timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (chart_id, generation),
+  CONSTRAINT kgsa_seal_fk FOREIGN KEY (chart_id, generation)
+    REFERENCES public.ka_gochara_generation_seal (chart_id, generation),
+  CONSTRAINT kgsa_digest_ck CHECK (brief_digest ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT kgsa_named_ck CHECK (btrim(approver_login) <> '' AND btrim(run_id) <> '' AND run_attempt >= 1)
+);
+COMMENT ON TABLE public.ka_gochara_seal_approval IS
+  'A5.3 R11-3: the approval receipt of a seal — brief digest (sha256 of the canonical approval payload recomputed under the seal '
+  'locks), approver login, workflow run id/attempt, sealing commit. Append-only; FK to the seal row; inserted by the sealer in the '
+  'sealing transaction.';
+
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_approval_immutable()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  RAISE EXCEPTION 'ka_gochara_seal_approval is append-only: % refused', TG_OP;
+END;
+$$;
+CREATE TRIGGER ka_gochara_seal_approval_no_change
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_seal_approval
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_immutable();
+CREATE TRIGGER ka_gochara_seal_approval_no_truncate
+  BEFORE TRUNCATE ON public.ka_gochara_seal_approval
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_seal_approval_immutable();
+
 -- ── 5. the write guard (the 1206 trio) ────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_window_verification_write_guard()
@@ -725,6 +767,7 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_verifier') THEN
     GRANT SELECT, INSERT, DELETE ON public.ka_gochara_eval_window_verification TO gochara_verifier;
+    GRANT SELECT ON public.ka_gochara_seal_approval TO gochara_verifier;             -- R11-3: the brief mode reads the seal side
     GRANT SELECT ON
       public.ka_gochara_eval_window, public.ka_gochara_eval_window_record,
       public.ka_gochara_relationship_record, public.ka_gochara_record_prerequisite, public.ka_gochara_contact,
@@ -753,6 +796,7 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_sealer') THEN
     GRANT SELECT ON public.ka_gochara_eval_window_verification TO gochara_sealer;
+    GRANT SELECT, INSERT ON public.ka_gochara_seal_approval TO gochara_sealer;       -- R11-3: the sealer writes the receipt
     GRANT SELECT ON
       public.ka_gochara_eval_window, public.ka_gochara_eval_window_record,
       public.ka_gochara_relationship_record, public.ka_gochara_search_path_pin,
@@ -790,6 +834,12 @@ BEGIN
                     AND t.tgrelid = 'public.ka_gochara_eval_window_verification'::regclass);
   IF missing IS NOT NULL THEN
     RAISE EXCEPTION 'migration 1240 post-apply check failed: missing triggers: %', missing;
+  END IF;
+  SELECT count(*) INTO n FROM pg_trigger t
+  WHERE t.tgrelid = 'public.ka_gochara_seal_approval'::regclass AND NOT t.tgisinternal
+    AND t.tgname IN ('ka_gochara_seal_approval_no_change', 'ka_gochara_seal_approval_no_truncate');
+  IF n <> 2 THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the seal-approval receipt table lacks its append-only triggers';
   END IF;
   SELECT count(*) INTO n FROM pg_trigger t
   WHERE t.tgrelid = 'public.ka_gochara_generation_seal'::regclass AND NOT t.tgisinternal

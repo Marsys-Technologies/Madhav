@@ -264,7 +264,8 @@ def _populate_am5_database(conn, faithful=False):
     with conn.cursor() as cur:
         cur.execute("CREATE TABLE public.charts (id uuid PRIMARY KEY)")
         cur.execute("CREATE TABLE public._migrations_applied"
-                    " (filename text PRIMARY KEY, applied_at timestamptz DEFAULT now())")
+                    " (filename text PRIMARY KEY, applied_at timestamptz DEFAULT now(),"
+                    " sha256 text NOT NULL DEFAULT repeat('0', 64))")
         cur.execute("CREATE TABLE public.chart_facts (fact_id text PRIMARY KEY,"
                     " chart_id uuid, ayanamsha_id text, fact_category text, fact_subject text,"
                     " fact_key text,"

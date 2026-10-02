@@ -57,7 +57,7 @@ def test_a_whole_p1_omission_is_refused_by_the_real_job_not_skipped(built):
             ("DELETE FROM public.ka_gochara_relationship_record WHERE path_id = 'P1'", ()))
     report = _run(w)
     status, stage, detail = _stage(report)
-    assert (status, stage) == ("DISAGREE", "p1_anchors") and "anchors stored []" in detail, report["classes"]
+    assert (status, stage) == ("DISAGREE", "p1_anchors") and "anchored records stored []" in detail, report["classes"]
     assert report["status"] == "DISAGREE" and report["exit_code"] == vj.EXIT_DISAGREE
     assert _verification_rows(w) == {t: 0 for t in vj.VERIFICATION_TABLES}          # nothing persisted
 
@@ -150,8 +150,8 @@ def test_the_record_derivation_imports_nothing_from_the_builder():
                  "gochara_rules.predicates")
     bad = {m for m in imported if any(f in m for f in forbidden)}
     assert not bad, f"the record derivation must be independent of the builder: {bad}"
-    # the only gochara module it reads rules from is the P1 period-lord relation the existing P1 verifiers already call
-    assert {m for m in imported if m.startswith("services.gochara_rules")} == {"services.gochara_rules"}, imported
+    # R11-2: it shares NO rule computation with the builder either — the P1 period-lord relation is the verifier's own
+    assert not {m for m in imported if "gochara_rules" in m}, imported
 
 
 def test_a_path_whose_records_cannot_be_derived_is_UNVERIFIED_never_a_pass(built, monkeypatch):
