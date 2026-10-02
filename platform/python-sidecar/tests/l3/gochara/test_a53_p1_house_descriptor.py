@@ -76,8 +76,9 @@ def test_no_rule_module_and_no_p1_code_path_mentions_the_descriptor():
     rules = [p for p in (SIDECAR / "services" / "gochara_rules").glob("*.py")
              if "house_from_frame" in p.read_text()]
     assert rules == [], f"rule modules must not read the descriptor: {rules}"
+    # window_gate.py hashes the stored descriptor as one record field of the verification-inputs preimage (R9-2)
     allowed = {"record_store.py", "window_store.py", "window_verifier.py", "window_sweep.py",
-               "record_verifier.py"}
+               "record_verifier.py", "window_gate.py"}
     users = {p.name for p in (SIDECAR / "services" / "gochara_kernel").glob("*.py")
              if "house_from_frame" in p.read_text()}
     assert users <= allowed, users - allowed

@@ -200,26 +200,52 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         + (" objective, objective_value, qualification" if has_prov else " NULL, NULL, NULL") +
         " FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s"
         " AND event_class = %s AND path_id = %s AND rule_version = %s ORDER BY 2", grain).fetchall()]
-    member_rows = conn.execute(
-        "SELECT m.window_id::text, r.record_id::text, COALESCE(r.contact_id, r.object_id)::text,"
+    # R9-2: the COMPLETE expected membership, derived here from the grain's own records — not read back from the stored
+    # links. Every admitted scored record whose support overlaps a window is a member; no other record is; no admitted
+    # record with a support sits in no window. The numeric derivation below runs over the EXPECTED members.
+    record_rows = conn.execute(
+        "SELECT r.record_id::text, COALESCE(r.contact_id, r.object_id)::text,"
         " r.relation, r.object_kind, r.agent, r.house_from_frame, lower(s.x), upper(s.x)"
-        " FROM public.ka_gochara_eval_window_record m"
-        " JOIN public.ka_gochara_relationship_record r ON r.record_id = m.record_id"
+        " FROM public.ka_gochara_relationship_record r"
         " CROSS JOIN LATERAL unnest(r.temporal_support_intervals) AS s(x)"
-        " WHERE m.chart_id = %s AND m.generation = %s AND m.event_class = %s AND m.path_id = %s"
-        " AND m.rule_version = %s", grain).fetchall()
-    by_window: dict[str, dict[str, dict]] = {}
-    for wid, rid, root, rel, kind, agent, house, lo, hi in member_rows:
-        rec = by_window.setdefault(wid, {}).setdefault(
-            rid, {"root": root, "relation": rel, "kind": kind, "agent": agent, "house": house,
-                  "supports": []})
+        " WHERE r.chart_id = %s AND r.generation = %s AND r.event_class = %s AND r.path_id = %s"
+        " AND r.rule_version = %s AND r.admission_state = 'admitted' AND r.operator_role = 'scored'", grain).fetchall()
+    grain_records: dict[str, dict] = {}
+    for rid, root, rel, kind, agent, house, lo, hi in record_rows:
+        rec = grain_records.setdefault(rid, {"root": root, "relation": rel, "kind": kind, "agent": agent,
+                                             "house": house, "supports": []})
         rec["supports"].append((lo, hi))
+    stored_links: dict[str, set] = {}
+    for wid, rid in conn.execute(
+            "SELECT window_id::text, record_id::text FROM public.ka_gochara_eval_window_record"
+            " WHERE chart_id = %s AND generation = %s AND event_class = %s AND path_id = %s AND rule_version = %s",
+            grain).fetchall():
+        stored_links.setdefault(wid, set()).add(rid)
+    by_window: dict[str, dict[str, dict]] = {}
+    membership_problems: list[str] = []
+    in_some_window: set[str] = set()
+    for (wid, wlo, whi, *_rest) in windows:
+        expected_ids = {rid for rid, rec in grain_records.items()
+                        if any(a < whi and wlo < b for a, b in rec["supports"])}
+        by_window[wid] = {rid: grain_records[rid] for rid in sorted(expected_ids)}
+        in_some_window |= expected_ids
+        have = stored_links.get(wid, set())
+        if have != expected_ids:
+            membership_problems.append(
+                f"window {wlo.astimezone(timezone.utc).isoformat()}: membership omits {sorted(expected_ids - have)} "
+                f"and includes unexpected {sorted(have - expected_ids)}")
+    orphans = sorted(rid for rid, rec in grain_records.items() if rec["supports"] and rid not in in_some_window)
+    if orphans:
+        membership_problems.append(f"admitted scored record(s) {orphans} overlap no stored window")
+    for wid in stored_links:
+        if wid not in by_window:
+            membership_problems.append(f"membership links point at an unknown window {wid}")
     completed = _completed_horizon(conn, grain)
     for recs_ in by_window.values():
         for rec_ in recs_.values():
             rec_["boundaries_complete"] = _boundaries_complete(rec_["relation"], rec_["supports"], completed)
     against_ok = _against_evaluated(path_id, factor_rows)
-    problems: list[str] = []
+    problems: list[str] = list(membership_problems)
     numeric = 0
     fully_reproduced = 0            # windows whose stored fields were reproduced EXACTLY (incl. the NULL ones)
     unverified: list[str] = []      # windows with a function-valued member while the solver is enabled

@@ -83,6 +83,9 @@ BEGIN
                    ('public.ka_gochara_search_completeness_violations(uuid,text)'),
                    ('public.ka_gochara_finite_nonneg_ok(double precision)')) AS s(sig)
       WHERE to_regprocedure(s.sig) IS NULL
+    UNION ALL SELECT 'migration_1233_not_applied', 'ka_gochara_relationship_record.period_anchor_lord'
+      WHERE NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+                        AND table_name = 'ka_gochara_relationship_record' AND column_name = 'period_anchor_lord')
     UNION ALL SELECT 'migration_1240_already_applied', 'ka_gochara_eval_window_verification'
       WHERE to_regclass('public.ka_gochara_eval_window_verification') IS NOT NULL
     UNION ALL SELECT 'migration_1240_already_applied', 'ka_gochara_eval_window.objective'
@@ -166,6 +169,10 @@ CREATE TABLE public.ka_gochara_eval_window_verification (
   windows_content_digest  text        NOT NULL,
   fields_verified         text[]      NOT NULL,
   input_digest            text        NOT NULL,
+  -- R9-2: the digest of EVERY derivation input of the grain (records, their prerequisites, contacts, the snapshot's
+  -- input identity, the manifest vector and policy) as the verifier saw it; the gate recomputes it, so a record
+  -- inserted (or a prerequisite/contact/manifest changed) after verification invalidates the stored verification
+  derivation_inputs_digest text       NOT NULL,
   verified_at             timestamptz NOT NULL DEFAULT now(),
 
   PRIMARY KEY (chart_id, generation, event_class, path_id, rule_version),
@@ -197,7 +204,8 @@ CREATE TABLE public.ka_gochara_eval_window_verification (
   CONSTRAINT kgewv_digests_ck CHECK (expected_windows_digest ~ '^[0-9a-f]{64}$'
                                      AND stored_windows_digest ~ '^[0-9a-f]{64}$'
                                      AND windows_content_digest ~ '^[0-9a-f]{64}$'
-                                     AND input_digest ~ '^[0-9a-f]{64}$'),
+                                     AND input_digest ~ '^[0-9a-f]{64}$'
+                                     AND derivation_inputs_digest ~ '^[0-9a-f]{64}$'),
   -- VERIFIED is a claim about EVERY expected window and EVERY governed field
   CONSTRAINT kgewv_verified_total_ck CHECK (status <> 'VERIFIED' OR (
       windows_unverified = 0 AND windows_reproduced = windows_stored AND windows_stored = windows_expected
@@ -286,6 +294,53 @@ RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
                                        to_char(upper(c) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'))
                      ORDER BY lower(c))
     FROM expected, unnest(expected.m) AS c), '[]'::jsonb)));
+$$;
+
+-- R9-2: the digest of EVERYTHING the window derivation depends on — not just the windows and their member ids. Every record
+-- of the grain (identity, agent, relation, kind, role, admission, house, anchor, target, contact, supports), its
+-- prerequisite results, the contacts they reference, the snapshot's input identity, the manifest vector (digest) and the
+-- result policy. The independent verifier builds the SAME canonical preimage in Python from its own reads; the gate
+-- recomputes this one, so any later change to any of it (a record inserted with its membership link omitted, a result
+-- flipped, a contact moved, a different manifest) makes the stored verification stale at the seal.
+CREATE OR REPLACE FUNCTION public.ka_gochara_eval_window_inputs_digest(
+  p_chart uuid, p_generation text, p_class text, p_path text, p_version text)
+RETURNS text LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
+  WITH recs AS (
+    SELECT r.record_id, r.agent, r.relation, r.object_kind, r.operator_role, r.admission_state, r.house_from_frame,
+           r.period_anchor_lord, r.period_anchor_level, r.contact_id, r.temporal_support_intervals, o.canonical_target
+    FROM public.ka_gochara_relationship_record r
+    JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id
+    WHERE (r.chart_id, r.generation, r.event_class, r.path_id, r.rule_version)
+        = (p_chart, p_generation, p_class, p_path, p_version))
+  SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(jsonb_build_object(
+    'records', COALESCE((SELECT jsonb_agg(jsonb_build_object(
+        'id', r.record_id::text, 'agent', r.agent, 'relation', r.relation, 'kind', r.object_kind,
+        'role', r.operator_role, 'admission', r.admission_state, 'house', r.house_from_frame,
+        'anchor', jsonb_build_array(r.period_anchor_lord, r.period_anchor_level),
+        'target', r.canonical_target, 'contact', r.contact_id::text,
+        'supports', COALESCE((SELECT jsonb_agg(jsonb_build_array(
+                       to_char(lower(x) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+                       to_char(upper(x) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) ORDER BY lower(x))
+                     FROM unnest(r.temporal_support_intervals) x), '[]'::jsonb))
+        ORDER BY r.record_id::text) FROM recs r), '[]'::jsonb),
+    'prerequisites', COALESCE((SELECT jsonb_agg(jsonb_build_array(
+        pr.record_id::text, pr.ordinal, pr.predicate_id, pr.predicate_rule_version, pr.result)
+        ORDER BY pr.record_id::text, pr.ordinal)
+      FROM public.ka_gochara_record_prerequisite pr WHERE pr.record_id IN (SELECT record_id FROM recs)), '[]'::jsonb),
+    'contacts', COALESCE((SELECT jsonb_agg(jsonb_build_array(
+        c.contact_id::text,
+        to_char(c.t_in AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+        to_char(c.t_out AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) ORDER BY c.contact_id::text)
+      FROM public.ka_gochara_contact c
+      WHERE c.chart_id = p_chart AND c.generation = p_generation
+        AND c.contact_id IN (SELECT contact_id FROM recs WHERE contact_id IS NOT NULL)), '[]'::jsonb),
+    'input', (SELECT s.input_digest FROM public.ka_gochara_search_input_snapshot s
+              WHERE s.chart_id = p_chart AND s.generation = p_generation),
+    'manifest', (SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(p.input_generation_vector))
+                 FROM public.kala_gochara_publication p WHERE p.chart_id = p_chart AND p.generation = p_generation),
+    'policy', (SELECT p.input_generation_vector ->> 'result_policy'
+               FROM public.kala_gochara_publication p WHERE p.chart_id = p_chart AND p.generation = p_generation)
+  )));
 $$;
 
 -- ── 4. the gates ──────────────────────────────────────────────────────────────
@@ -398,6 +453,57 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
   FROM public.ka_gochara_eval_window_verification v
   WHERE v.chart_id = p_chart AND v.generation = p_generation
     AND v.input_digest IS DISTINCT FROM (SELECT input_digest FROM snap)
+  UNION ALL
+  SELECT v.event_class, v.path_id, v.rule_version, 'window_verification_inputs_changed'::text,
+         'a record, prerequisite, contact, manifest or input revision changed after the windows were verified'::text
+  FROM public.ka_gochara_eval_window_verification v
+  WHERE v.chart_id = p_chart AND v.generation = p_generation
+    AND v.derivation_inputs_digest IS DISTINCT FROM public.ka_gochara_eval_window_inputs_digest(
+          v.chart_id, v.generation, v.event_class, v.path_id, v.rule_version)
+  UNION ALL
+  -- COMPLETE expected membership, both directions (the builder's own post-write check is not a seal-time invariant):
+  -- every admitted scored record whose support overlaps a window is a member, no other record is, and no admitted record
+  -- with a support sits in no window
+  SELECT e.event_class, e.path_id, e.rule_version, 'window_membership_not_expected'::text,
+         (m.missing || ' overlapping admitted record(s) not members, ' || m.extra || ' unexpected member link(s), '
+          || m.orphans || ' admitted record(s) in no window')::text
+  FROM expected e
+  CROSS JOIN LATERAL (
+    SELECT
+      (SELECT count(*) FROM (
+         SELECT w.window_id, r.record_id FROM public.ka_gochara_eval_window w
+         JOIN public.ka_gochara_relationship_record r
+           ON (r.chart_id, r.generation, r.event_class, r.path_id, r.rule_version)
+            = (w.chart_id, w.generation, w.event_class, w.path_id, w.rule_version)
+          AND r.admission_state = 'admitted' AND r.operator_role = 'scored'
+         WHERE (w.chart_id, w.generation, w.event_class, w.path_id, w.rule_version)
+             = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)
+           AND EXISTS (SELECT 1 FROM unnest(r.temporal_support_intervals) x WHERE x && w.interval)
+         EXCEPT
+         SELECT l.window_id, l.record_id FROM public.ka_gochara_eval_window_record l
+         WHERE (l.chart_id, l.generation, l.event_class, l.path_id, l.rule_version)
+             = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)) z) AS missing,
+      (SELECT count(*) FROM (
+         SELECT l.window_id, l.record_id FROM public.ka_gochara_eval_window_record l
+         WHERE (l.chart_id, l.generation, l.event_class, l.path_id, l.rule_version)
+             = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)
+         EXCEPT
+         SELECT w.window_id, r.record_id FROM public.ka_gochara_eval_window w
+         JOIN public.ka_gochara_relationship_record r
+           ON (r.chart_id, r.generation, r.event_class, r.path_id, r.rule_version)
+            = (w.chart_id, w.generation, w.event_class, w.path_id, w.rule_version)
+          AND r.admission_state = 'admitted' AND r.operator_role = 'scored'
+         WHERE (w.chart_id, w.generation, w.event_class, w.path_id, w.rule_version)
+             = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)
+           AND EXISTS (SELECT 1 FROM unnest(r.temporal_support_intervals) x WHERE x && w.interval)) z) AS extra,
+      (SELECT count(*) FROM public.ka_gochara_relationship_record r
+        WHERE (r.chart_id, r.generation, r.event_class, r.path_id, r.rule_version)
+            = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)
+          AND r.admission_state = 'admitted' AND r.operator_role = 'scored'
+          AND cardinality(r.temporal_support_intervals) > 0
+          AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_eval_window_record l WHERE l.record_id = r.record_id)) AS orphans
+  ) m
+  WHERE m.missing + m.extra + m.orphans > 0
   UNION ALL
   SELECT e.event_class, e.path_id, e.rule_version, 'window_provenance_missing'::text,
          (count(*) || ' stored window(s) carry no objective/qualification provenance')::text
@@ -546,8 +652,8 @@ BEGIN
     GRANT SELECT, INSERT, DELETE ON public.ka_gochara_eval_window_verification TO gochara_verifier;
     GRANT SELECT ON
       public.ka_gochara_eval_window, public.ka_gochara_eval_window_record,
-      public.ka_gochara_relationship_record, public.ka_gochara_contact, public.ka_gochara_physical_object,
-      public.kala_gochara_coverage, public.ka_gochara_search_inventory, public.ka_gochara_search_path_pin,
+      public.ka_gochara_relationship_record, public.ka_gochara_record_prerequisite, public.ka_gochara_contact,
+      public.ka_gochara_physical_object, public.kala_gochara_coverage, public.ka_gochara_search_inventory, public.ka_gochara_search_path_pin,
       public.ka_gochara_search_input_snapshot, public.ka_gochara_generation_seal,
       public.ka_gochara_rule_path, public.ka_gochara_rule_path_seal,
       public.ka_gochara_rule_path_soft_factor, public.ka_gochara_factor, public.kala_gochara_publication
@@ -558,6 +664,7 @@ BEGIN
       public.ka_gochara_eval_window_content_digest(uuid, text, text, text, text),
       public.ka_gochara_eval_window_stored_digest(uuid, text, text, text, text),
       public.ka_gochara_eval_window_expected_digest(uuid, text, text, text, text),
+      public.ka_gochara_eval_window_inputs_digest(uuid, text, text, text, text),
       public.ka_gochara_canonical_json(jsonb), public.ka_gochara_sha256_hex(text),
       public.ka_gochara_f4_token(real)
       TO gochara_verifier;
@@ -571,7 +678,8 @@ BEGIN
     GRANT SELECT ON
       public.ka_gochara_eval_window, public.ka_gochara_eval_window_record,
       public.ka_gochara_relationship_record, public.ka_gochara_search_path_pin,
-      public.ka_gochara_search_input_snapshot, public.ka_gochara_generation_seal, public.kala_gochara_publication
+      public.ka_gochara_search_input_snapshot, public.ka_gochara_generation_seal, public.kala_gochara_publication,
+      public.ka_gochara_record_prerequisite, public.ka_gochara_contact, public.ka_gochara_physical_object
       TO gochara_sealer;
     GRANT EXECUTE ON FUNCTION
       public.ka_gochara_window_verification_violations(uuid, text),
@@ -580,6 +688,7 @@ BEGIN
       public.ka_gochara_eval_window_content_digest(uuid, text, text, text, text),
       public.ka_gochara_eval_window_stored_digest(uuid, text, text, text, text),
       public.ka_gochara_eval_window_expected_digest(uuid, text, text, text, text),
+      public.ka_gochara_eval_window_inputs_digest(uuid, text, text, text, text),
       public.ka_gochara_f4_token(real),
       public.ka_gochara_canonical_json(jsonb), public.ka_gochara_sha256_hex(text),
       public.ka_gochara_lock_chart(uuid), public.ka_gochara_lock_global_shared()
@@ -616,6 +725,7 @@ BEGIN
     ('public.ka_gochara_eval_window_content_digest(uuid,text,text,text,text)'),
     ('public.ka_gochara_eval_window_stored_digest(uuid,text,text,text,text)'),
     ('public.ka_gochara_eval_window_expected_digest(uuid,text,text,text,text)'),
+    ('public.ka_gochara_eval_window_inputs_digest(uuid,text,text,text,text)'),
     ('public.ka_gochara_window_verification_violations(uuid,text)'),
     ('public.ka_gochara_window_verification_replay_violations(uuid,text)'),
     ('public.ka_gochara_candidate_gate_violations(uuid,text)'),
@@ -629,9 +739,9 @@ BEGIN
   SELECT count(*) INTO n FROM pg_constraint c
   WHERE c.conrelid = 'public.ka_gochara_eval_window'::regclass
     AND c.conname IN ('kgew_objective_token_ck', 'kgew_objective_value_ck', 'kgew_qualification_shape_ck',
-                      'kgew_provenance_pair_ck', 'kgew_unqualified_no_result_ck');
-  IF n <> 5 THEN
-    RAISE EXCEPTION 'migration 1240 post-apply check failed: expected 5 window provenance constraints, found %', n;
+                      'kgew_provenance_pair_ck', 'kgew_unqualified_no_result_ck', 'kgew_all_null_policy_ck');
+  IF n <> 6 THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: expected 6 window provenance constraints, found %', n;
   END IF;
   RAISE NOTICE 'migration 1240: presence checks passed';
 END;

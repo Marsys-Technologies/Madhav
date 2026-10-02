@@ -74,7 +74,7 @@ def test_the_am5_chain_runs_with_a_uuid_chart_and_a_dict_row_connection(native):
     assert n == 1
 
 
-def test_the_rules_convention_and_record_substeps_run_with_native_types(native):
+def test_the_rules_convention_and_record_substeps_run_with_native_types(native, monkeypatch):
     """The remaining non-geometry substep kinds, same two native types. (The Swiss-backed body
     substeps are exercised by the writer's own suite; this proves the row-shape/UUID seam for the
     rules, convention, manifest, snapshot, inventory, coverage, record and verify kinds.)"""
@@ -88,6 +88,13 @@ def test_the_rules_convention_and_record_substeps_run_with_native_types(native):
     rec = step("record:marriage:P3")
     assert rec is not None and rec.asset_id == writer_mod.ASSET_ID
     from services.gochara_kernel.window_gate import CandidateGateRefused
+    # R9-3: the contact-geometry certification runs on the dict-row connection too, and refuses this world — only P3's
+    # contacts were materialised, the ephemeris stand-in puts every body at 10° — an executed check, not a skipped one
+    with pytest.raises(RuntimeError, match="contact geometry certification failed"):
+        step("verify:marriage")
+    monkeypatch.setattr(writer_mod.gk_contact_certify, "certify_contact_geometry",
+                        lambda *a, **k: {"obligations_certified": 0, "contacts_expected": 0,
+                                         "named_limit": "stubbed for this row-shape seam test"})
     with pytest.raises(CandidateGateRefused, match="window_verification_missing"):
         step("verify:marriage")             # R8-4: every inventory/ledger/sampling check ran on dict rows; the
                                             # window half of the candidate gate then refuses: no window results

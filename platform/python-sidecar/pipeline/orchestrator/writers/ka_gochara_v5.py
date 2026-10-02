@@ -68,6 +68,7 @@ from services.gochara_kernel import input_vector as gk_input_vector
 from services.gochara_kernel import input_vector_verifier as gk_input_vector_verifier
 from services.gochara_kernel import window_sweep as gk_window_sweep
 from services.gochara_kernel import result_policy as gk_result_policy
+from services.gochara_kernel import contact_certify as gk_contact_certify
 from services.gochara_kernel.record_verifier import (verify_p1_anchors, verify_p1_house_descriptor,
                                                     verify_p1_support)
 from services.gochara_kernel import window_gate as gk_window_gate
@@ -442,9 +443,10 @@ class GocharaV5Writer(WriterBase):
                 result_policy=ctx.config.get("result_policy", gk_input_vector.DEFAULT_RESULT_POLICY))
             # every component that can be derived without the builder's code is derived a SECOND way and the two
             # must agree before the identity is bound
-            gk_input_vector_verifier.verify_inputs(
+            inputs_report = gk_input_vector_verifier.verify_inputs(
                 ctx.db_conn, vector, ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
-                path_refs=gk_rule_registry.bound_path_refs())
+                path_refs=gk_rule_registry.bound_path_refs(),
+                jd_range=gk_input_vector.consumed_jd_range(horizon))
             jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
             _lon, retflag = calc_sidereal_lon("Sun", jd, ephe_path)
             if not (retflag & 2):
@@ -572,10 +574,16 @@ class GocharaV5Writer(WriterBase):
                                    "lacks the Swiss bit (F-14)")
             return lon
 
+        position_at.cache_key = ("swiss", ephe_path)
         spans = gk_verifier.verify_aspect_span_contacts(
             ctx.db_conn, chart_id=chart_id, generation=GENERATION, obligations=res["obligations"],
             position_at=position_at, horizon=horizon,
             _cache=self.__dict__.setdefault("_aspect_span_cache", {}))
+        # R9-3: the COMPLETE contact geometry of every concrete transit obligation, reconstructed from the ephemeris
+        # and compared with the ledger both ways (interior exits/re-entries, bridged and omitted contacts all fail);
+        # incomplete evidence raises GeometryUnavailable — no complete-search claim without it
+        geometry = gk_contact_certify.certify_contact_geometry(
+            ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class, position_at=position_at)
         gk_verifier.write_verification(
             ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
             rederived_digest=res["digest"])
@@ -599,7 +607,10 @@ class GocharaV5Writer(WriterBase):
                                   "independently reproduced; "
                                   f"{spans['objects_checked']} aspect-to-span object(s) / "
                                   f"{spans['occurrences']} occurrence(s) re-derived by sampling "
-                                  f"and matched; verification row written{gate_note}")
+                                  f"and matched; contact geometry certified complete for "
+                                  f"{geometry['obligations_certified']} concrete obligation(s) "
+                                  f"({geometry['contacts_expected']} contacts; {geometry['named_limit']}); "
+                                  f"verification row written{gate_note}")
 
     def _run_record_phase(self, ctx: ContextSpec, step: SubStep,
                           chart_id: str) -> WriterResult:
@@ -625,6 +636,7 @@ class GocharaV5Writer(WriterBase):
                     f"{retflag} lacks the Swiss bit (F-14 — a Moshier "
                     "fallback is a named failure, never a silent probe)")
             return lon
+        position_at.cache_key = ("swiss", ephe_path)        # lets the independent reconstruction memoise across classes
 
         p1_closed = p1_minting_closed_reason(ctx.db_conn)
         house_for = _house_resolver(context, p1_minting=p1_closed is None)
@@ -710,8 +722,12 @@ class GocharaV5Writer(WriterBase):
             # snapshot-bound daśā rows) and must equal what was stored
             verify_p1_support(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                               event_class=event_class)
-            # AM-21 part 2: the ANCHOR set of every contact is re-derived from the verifier's own table
-            verify_p1_anchors(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class)
+            # AM-21 part 2 / R9-2 (iii): the ANCHOR set of every contact of the EXPECTED contact set (reconstructed from
+            # the ephemeris), zero-output cases included — only meaningful when P1 minting is OPEN; with the named gate
+            # closed nothing was minted, the class makes no P1 completeness claim, and the notes say so
+            if not p1_closed:
+                verify_p1_anchors(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
+                                  position_at=position_at)
             # AM-20 (revised): the stored house descriptor is the count from the lagna
             verify_p1_house_descriptor(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                                        event_class=event_class)

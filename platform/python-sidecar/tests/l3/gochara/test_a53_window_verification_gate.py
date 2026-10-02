@@ -200,8 +200,11 @@ def test_a_missing_result_fails_the_gate_in_both_the_database_and_the_python_gat
 def test_a_grain_with_no_verification_at_all_is_missing_for_every_included_pin(world):
     w = world
     _boot_p3(w)
-    assert {p for p, v in _violations(w)} == {"P1", "P2", "P3", "P4"} and {v for _p, v in _violations(w)} == {
-        "window_verification_missing"}
+    # every included pin is missing its verification; P3 also holds an admitted record that sits in no window yet (the
+    # windows were not built) — the R9-2 membership check says so, it is not a verification gap
+    assert _violations(w) == {("P1", "window_verification_missing"), ("P2", "window_verification_missing"),
+                              ("P3", "window_verification_missing"), ("P4", "window_verification_missing"),
+                              ("P3", "window_membership_not_expected")}
 
 
 def test_unverified_dynamic_and_failed_results_cannot_satisfy_the_gate(world):
@@ -321,11 +324,11 @@ def test_the_table_refuses_an_incoherent_verified_row_and_any_update(world):
     cols = ("chart_id, generation, event_class, path_id, rule_version, verifier_id, verifier_version, status,"
             " policy_version, windows_expected, windows_stored, windows_reproduced, windows_unverified,"
             " expected_windows_digest, stored_windows_digest, windows_content_digest, fields_verified,"
-            " input_digest")
+            " input_digest, derivation_inputs_digest")
     h = "a" * 64
-    ok = [CHART_ID, GEN, CLS, "P3", "1.0.0", "other", "1", "VERIFIED", "p", 1, 1, 1, 0, h, h, h, ["interval"], h]
+    ok = [CHART_ID, GEN, CLS, "P3", "1.0.0", "other", "1", "VERIFIED", "p", 1, 1, 1, 0, h, h, h, ["interval"], h, h]
     ins = (f"INSERT INTO public.ka_gochara_eval_window_verification ({cols})"
-           " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)")
+           " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)")
     for label, mutate in (
             ("VERIFIED with an unverified window", lambda r: r.__setitem__(12, 1)),
             ("VERIFIED reproducing fewer than stored", lambda r: r.__setitem__(11, 0)),
@@ -360,13 +363,13 @@ def test_a_verification_row_needs_a_finalised_inventory_and_an_included_pin(worl
     ins = ("INSERT INTO public.ka_gochara_eval_window_verification (chart_id, generation, event_class, path_id,"
            " rule_version, verifier_id, verifier_version, status, policy_version, windows_expected, windows_stored,"
            " windows_reproduced, windows_unverified, expected_windows_digest, stored_windows_digest,"
-           " windows_content_digest, fields_verified, input_digest) VALUES (%s,%s,%s,%s,'1.0.0','v','1','VERIFIED',"
-           "'p',0,0,0,0,%s,%s,%s,ARRAY['interval'],%s)")
+           " windows_content_digest, fields_verified, input_digest, derivation_inputs_digest) VALUES"
+           " (%s,%s,%s,%s,'1.0.0','v','1','VERIFIED','p',0,0,0,0,%s,%s,%s,ARRAY['interval'],%s,%s)")
     for cls, path in (("career_entry", "P3"), (CLS, "P5")):         # no inventory for the class / no included pin
         with pytest.raises(psycopg.errors.Error):
             with w.conn.transaction():
                 w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
-                w.conn.execute(ins, (CHART_ID, GEN, cls, path, h, h, h, h))
+                w.conn.execute(ins, (CHART_ID, GEN, cls, path, h, h, h, h, h))
 
 
 def test_the_writers_verify_step_refuses_a_class_that_cannot_pass_the_window_gate(world, monkeypatch):
@@ -379,6 +382,8 @@ def test_the_writers_verify_step_refuses_a_class_that_cannot_pass_the_window_gat
         w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification WHERE path_id = 'P3'")
     monkeypatch.setattr(writer_mod.gk_verifier, "verify_aspect_span_contacts",
                         lambda *a, **k: {"objects_checked": 0, "occurrences": 0})
+    monkeypatch.setattr(writer_mod.gk_contact_certify, "certify_contact_geometry",     # its own suite (R9-3)
+                        lambda *a, **k: {"obligations_certified": 0, "contacts_expected": 0, "named_limit": "stubbed"})
     with pytest.raises(wg.CandidateGateRefused, match="window_verification_missing"):
         w.step(f"verify:{CLS}")
     # with the result restored the same step completes and says the gate passed

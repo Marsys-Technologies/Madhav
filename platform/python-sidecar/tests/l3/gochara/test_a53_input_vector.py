@@ -63,6 +63,16 @@ def _vector(conn, ephe, **kw):
                                  path_refs=kw.pop("refs", REFS), rulings=kw.pop("rulings", RULINGS), **kw)
 
 
+def _ivv(db, stored, ephe, **kw):
+    """The independent input check with the verifier's OWN probes stubbed for the directory of dummy files (the real
+    probes are tested against the real files below)."""
+    kw.setdefault("jd_range", (2451545.0, 2470000.0))
+    kw.setdefault("census_probe", lambda e, lo, hi: {f.name: iv._file_sha(f) for f in Path(e).glob("*.se1")})
+    kw.setdefault("series_probe", lambda e: "ab" * 32)
+    kw.setdefault("backend_probe", lambda e: ("swieph", stored["ephemeris"]["swe_version"]))
+    return ivv.verify_inputs(db, stored, ephe_path=ephe, modules=iv.IMPLEMENTATION_MODULES, path_refs=REFS, **kw)
+
+
 def _sky(conn) -> str:
     """The sky convention persisted by the real substrate store (its content is what the vector digests)."""
     from services.gochara_kernel.substrate import SkyEventStore
@@ -332,11 +342,15 @@ def test_a_live_check_uses_the_manifests_own_l0_set(db, ephe):
 
 def test_the_independent_input_check_derives_every_derivable_component_and_names_the_rest(db, ephe):
     stored = _vector(db, ephe, l0_consumed=CONSUME)
-    mods = iv.IMPLEMENTATION_MODULES
-    out = ivv.verify_inputs(db, stored, ephe_path=ephe, modules=mods, path_refs=REFS)
-    assert set(out["derived"]) == {"registry", "l0", "sky_convention", "ephemeris.files", "ephemeris.library",
-                                   "result_policy", "node", "implementation"}
-    assert set(out["not_derived"]) == {"orb_policy", "rulings_digest"}      # named: a pass never claims them
+    out = _ivv(db, stored, ephe)
+    assert set(out["derived"]) == {"registry", "l0", "sky_convention", "ephemeris.files", "ephemeris.census",
+                                   "ephemeris.library", "ephemeris.backend", "ephemeris.version", "ephemeris.probe",
+                                   "schema", "stored_scope", "result_policy", "node", "implementation"}
+    # R9-3: everything it does NOT derive is NAMED — the orb tables and rulings (builder code), the span the census was
+    # taken over (supplied), and the semantics (not just the vocabulary) of the schema/scope/policy tokens
+    assert set(out["not_derived"]) == {"orb_policy", "rulings_digest", "consumed_range", "schema_semantics",
+                                       "scope_semantics", "result_policy_semantics"}
+    assert set(out["not_derived"]) == set(ivv.NOT_INDEPENDENTLY_DERIVED)
     # each independently derived component is individually caught
     for label, tamper, match in (
             ("l0", lambda v: dict(v, l0={"bg_transit_rules": "0" * 64}), "l0.bg_transit_rules"),
@@ -348,16 +362,54 @@ def test_the_independent_input_check_derives_every_derivable_component_and_names
              "ephemeris.library_sha256"),
             ("platform", lambda v: dict(v, ephemeris=dict(v["ephemeris"], platform="Plan9-mips")),
              "ephemeris.platform"),
+            ("backend", lambda v: dict(v, ephemeris=dict(v["ephemeris"], backend="moshier")), "ephemeris.backend"),
+            ("version", lambda v: dict(v, ephemeris=dict(v["ephemeris"], swe_version="0.0.0")),
+             "ephemeris.swe_version"),
+            ("probe", lambda v: dict(v, ephemeris=dict(v["ephemeris"], probe_digest="0" * 64)),
+             "ephemeris.probe_digest"),
+            ("schema", lambda v: dict(v, schema="ka_gochara_input_vector/2"), "schema: .* is not a named member"),
+            ("scope", lambda v: dict(v, stored_scope="stored_all"), "stored_scope: .* is not a named member"),
+            ("policy", lambda v: dict(v, result_policy="all_null"), "result_policy: .* is not a named member"),
             ("node", lambda v: dict(v, node=dict(v["node"], model="true")), "node"),
             ("impl", lambda v: dict(v, implementation=dict(v["implementation"], window="0" * 64)),
              "implementation"),
             ("registry", lambda v: dict(v, registry=dict(v["registry"], digest="0" * 64)), "registry.digest")):
-        with pytest.raises(RuntimeError, match=match):
-            ivv.verify_inputs(db, tamper(stored), ephe_path=ephe, modules=mods, path_refs=REFS)
-    for key in ("library_sha256", "platform"):          # schema /2 REQUIRES the identity: absent is refused, not skipped
+        try:
+            _ivv(db, tamper(stored), ephe,
+                 backend_probe=lambda e: ("swieph", stored["ephemeris"]["swe_version"]))     # the TRUE version
+        except RuntimeError as exc:
+            import re
+            assert re.search(match, str(exc)), (label, str(exc))
+        else:
+            pytest.fail(f"{label}: the tampered component was NOT refused")
+    for key in ("library_sha256", "platform"):          # schema /2+ REQUIRES the identity: absent is refused, not skipped
         missing = dict(stored, ephemeris={k: v for k, v in stored["ephemeris"].items() if k != key})
         with pytest.raises(RuntimeError, match=f"ephemeris.{key}: the vector binds no library identity"):
-            ivv.verify_inputs(db, missing, ephe_path=ephe, modules=mods, path_refs=REFS)
+            _ivv(db, missing, ephe)
+
+
+def test_the_opened_file_census_is_established_by_the_verifier_not_read_from_the_vector(db, ephe):
+    """R9-3: the verifier used to hash the file NAMES the stored vector supplied. Now it derives which files the
+    consumed bodies and range open, and the set must EQUAL the stored census (names, then hashes)."""
+    stored = _vector(db, ephe)
+    assert set(stored["ephemeris"]["files"]) == {"sepl_18.se1", "semo_18.se1", "seas_18.se1"}
+    out = _ivv(db, stored, ephe)
+    assert "ephemeris.census" in out["derived"]
+    # a stored census that OMITS a file the bodies open: every listed hash is right, the SET is wrong
+    short = dict(stored, ephemeris=dict(stored["ephemeris"], files={
+        k: v for k, v in stored["ephemeris"]["files"].items() if k != "semo_18.se1"}))
+    with pytest.raises(RuntimeError, match="ephemeris.census"):
+        _ivv(db, short, ephe)
+    # a stored census that INVENTS a file nothing opened
+    extra = dict(stored, ephemeris=dict(stored["ephemeris"], files={**stored["ephemeris"]["files"],
+                                                                    "sepl_24.se1": "0" * 64}))
+    with pytest.raises(RuntimeError, match="ephemeris.census"):
+        _ivv(db, extra, ephe)
+    # with no span supplied the census CANNOT be established, and the report says so rather than claiming it
+    no_span = ivv.verify_inputs(db, stored, ephe_path=ephe, modules=iv.IMPLEMENTATION_MODULES, path_refs=REFS,
+                                series_probe=lambda e: "ab" * 32,
+                                backend_probe=lambda e: ("swieph", stored["ephemeris"]["swe_version"]))
+    assert "ephemeris.census" not in no_span["derived"] and "ephemeris.census" in no_span["not_derived"]
 
 
 def test_the_library_identity_is_the_loaded_artifact_and_both_derivations_agree():
@@ -377,6 +429,21 @@ from .conftest import EPHE_PATH, _PROBLEMS                              # noqa: 
 from ._import_closure import writer_closure                              # noqa: E402
 
 real_ephemeris = pytest.mark.skipif(bool(_PROBLEMS), reason="NOT_RUN: pinned .se1 files unavailable")
+
+
+@real_ephemeris
+def test_the_verifiers_own_census_probe_and_backend_equal_the_builders_on_the_real_files():
+    """R9-3 on the REAL files: the verifier's own sampling (its own body list, its own step) finds exactly the files the
+    builder's probe records, its own series-probe copy reproduces the builder's digest, and the backend/version agree."""
+    import swisseph as swe
+    from services.gochara_kernel.substrate import SUBSTRATE_BODIES
+    lo, hi = iv.consumed_jd_range(None)
+    mine = ivv.derive_opened_file_census(EPHE_PATH, lo, hi)
+    builder = {n: iv._file_sha(Path(p)) for n, p in
+               iv.probe_opened_files(EPHE_PATH, tuple(SUBSTRATE_BODIES), lo, hi).items()}
+    assert mine == builder and "sepl_18.se1" in mine
+    assert ivv.derive_series_probe_digest(EPHE_PATH) == iv.probe_series_digest(EPHE_PATH)
+    assert ivv.derive_backend_and_version(EPHE_PATH) == ("swieph", swe.version)
 
 
 # (1) the ephemeris identity is the files the kernel OPENS ─────────────────────────────────────────────

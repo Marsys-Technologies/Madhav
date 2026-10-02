@@ -26,6 +26,31 @@ SUN_AD = ("sun", "ad")
 SAT_AD = ("saturn", "ad")
 
 
+def _quiet(body):
+    """A longitude in a sign where P1 reads `body` NOWHERE (so a partial world is a COMPLETE world for the contact set)."""
+    for idx in range(12):
+        if not rv.expected_p1_anchors(body, idx):
+            return idx * 30.0 + 15.0
+    raise AssertionError(body)
+
+
+def _pos(spans):
+    """The ephemeris stand-in: `spans` = {body: [(a, b)]} the body is in Libra; every other instant, and every other
+    body, sits in a P1-quiet sign."""
+    def at(body, t):
+        b = body.lower()
+        return 195.0 if any(a <= t < z for a, z in spans.get(b, ())) else _quiet(b)
+    return at
+
+
+SUN_LIBRA = _pos({"sun": [(_t(1, 10), _t(2, 20))]})
+
+
+def _anchors(w, position_at=SUN_LIBRA):
+    return rv.verify_p1_anchors(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage",
+                                position_at=position_at)
+
+
 def _records(conn):
     return conn.execute(
         "SELECT r.record_id::text, r.agent, r.period_anchor_lord, r.period_anchor_level, r.contact_id::text,"
@@ -95,7 +120,7 @@ def test_mutation_one_record_anchored_on_the_agent_only_fails_the_anchor_verifie
     w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
     w.grain("sun", lambda t: _t(1, 10) <= t < _t(2, 20), anchor=SUN_AD)
     with pytest.raises(RuntimeError, match="P1 anchor verification failed"):
-        rv.verify_p1_anchors(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage")
+        _anchors(w)
 
 
 def test_the_anchor_verifier_accepts_the_full_set_and_refuses_an_invented_anchor(world):
@@ -105,13 +130,12 @@ def test_the_anchor_verifier_accepts_the_full_set_and_refuses_an_invented_anchor
     w.seed("sun", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
     span = lambda t: _t(1, 10) <= t < _t(2, 20)                              # noqa: E731
     w.grain("sun", span, anchors=[SUN_AD, SAT_AD, ("sun", "md"), ("sun", "pd")])
-    assert rv.verify_p1_anchors(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage") == {
-        "contacts": 1}
+    assert _anchors(w)["contacts"] == 1
     # a wrong level on an existing reading: Saturn's XX.38 reading is an AD reading, never MD
     w.conn.execute("UPDATE public.ka_gochara_relationship_record SET period_anchor_level = 'md'"
                    " WHERE period_anchor_lord = 'saturn'")
     with pytest.raises(RuntimeError, match="P1 anchor verification failed"):
-        rv.verify_p1_anchors(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage")
+        _anchors(w)
 
 
 def test_mutation_domain_taken_from_the_agents_periods_for_the_xx38_reading_fails_the_support_verifier(world):

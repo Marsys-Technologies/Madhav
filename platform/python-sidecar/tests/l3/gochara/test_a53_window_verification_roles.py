@@ -322,9 +322,10 @@ def test_a_verification_row_is_refused_while_the_inventory_is_not_finalised(rwor
                 "INSERT INTO public.ka_gochara_eval_window_verification (chart_id, generation, event_class, path_id,"
                 " rule_version, verifier_id, verifier_version, status, policy_version, windows_expected,"
                 " windows_stored, windows_reproduced, windows_unverified, expected_windows_digest,"
-                " stored_windows_digest, windows_content_digest, fields_verified, input_digest)"
-                " VALUES (%s,%s,%s,'P3','1.0.0','v','1','VERIFIED','p',1,1,1,0,%s,%s,%s,ARRAY['interval'],%s)",
-                (CHART_ID, GEN, CLS, h, h, h, h))
+                " stored_windows_digest, windows_content_digest, fields_verified, input_digest,"
+                " derivation_inputs_digest)"
+                " VALUES (%s,%s,%s,'P3','1.0.0','v','1','VERIFIED','p',1,1,1,0,%s,%s,%s,ARRAY['interval'],%s,%s)",
+                (CHART_ID, GEN, CLS, h, h, h, h, h))
 
 
 def test_the_grants_block_prints_which_principals_it_found_and_which_it_did_not(rworld):
@@ -377,6 +378,9 @@ def test_when_the_session_role_cannot_write_the_result_the_substeps_record_the_p
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 0
     monkeypatch.setattr(writer_mod.gk_verifier, "verify_aspect_span_contacts",
                         lambda *a, **k: {"objects_checked": 0, "occurrences": 0})
+    # the pending-state behaviour under test is independent of the contact-geometry certification (its own suite)
+    monkeypatch.setattr(writer_mod.gk_contact_certify, "certify_contact_geometry",
+                        lambda *a, **k: {"obligations_certified": 0, "contacts_expected": 0, "named_limit": "stubbed"})
     res = w.step(f"verify:{CLS}")
     assert "verification_pending_verifier_principal" in res.notes and "gate CLOSED" in res.notes
     import psycopg
