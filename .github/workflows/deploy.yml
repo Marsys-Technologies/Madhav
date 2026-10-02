@@ -534,6 +534,7 @@ jobs:
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_SECRET_ISOLATION_MODE: strict
+          DATA_PLANE_VERIFIER_PHASE: ${{ vars.DATA_PLANE_VERIFIER_PHASE }}   # R15-1: staged (act 3 done) | deployable (act 10 done); required once the verifier service account exists
         run: |
           if (cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts); then
             echo "state=strict" >> "$GITHUB_OUTPUT"
@@ -879,6 +880,7 @@ jobs:
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_SECRET_ISOLATION_MODE: pre_transition
+          DATA_PLANE_VERIFIER_PHASE: ${{ vars.DATA_PLANE_VERIFIER_PHASE }}   # R15-1: staged (act 3 done) | deployable (act 10 done); required once the verifier service account exists
         run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
 
       - name: Execute Native-authorized automated cutover under backup, restore, lease and quiescence
@@ -942,6 +944,7 @@ jobs:
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
           DATA_PLANE_SECRET_ISOLATION_MODE: strict
+          DATA_PLANE_VERIFIER_PHASE: ${{ vars.DATA_PLANE_VERIFIER_PHASE }}   # R15-1: staged (act 3 done) | deployable (act 10 done); required once the verifier service account exists
         run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
 
       - name: Re-attest protected data-plane semantic state with deployment-only migrator
@@ -1198,6 +1201,7 @@ jobs:
           GOOGLE_CLOUD_REGION: ${{ env.GCP_REGION }}
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
+          DATA_PLANE_VERIFIER_PHASE: ${{ vars.DATA_PLANE_VERIFIER_PHASE }}   # R15-1: staged (act 3 done) | deployable (act 10 done); required once the verifier service account exists
         run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
 
       - name: Re-attest protected data-plane semantic state with routine credential

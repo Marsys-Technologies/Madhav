@@ -1,6 +1,7 @@
 /** DP-SD-018 extension: the Gochara verification pair (verifier SA + secret + one named job). */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
+  extractRunIdentityAndSecrets, parseSecretsAnnotation,
   assertEffectiveIsolation, assertVerifierInheritedControl, assertVerifierIsolation, assertVerifierServiceAccountPolicyExact, BUILDER_SERVICE_ACCOUNT, grantsServiceAccountControl, VERIFIER_JOB,
   VERIFIER_SECRET, VERIFIER_SERVICE_ACCOUNT, type VerifierState,
 } from '../../scripts/data-plane-secret-isolation-preflight'
@@ -16,8 +17,8 @@ const good = (): VerifierState => ({
   secretPolicy: { bindings: [{ role: 'roles/secretmanager.secretAccessor', members: [verifier] }] },
   userManagedKeys: 0,
 })
-const check = (state: VerifierState, project: Parameters<typeof assertVerifierIsolation>[0] = projectPolicy) =>
-  assertVerifierIsolation(project, state, {}, DEPLOYER)
+const check = (state: VerifierState, project: Parameters<typeof assertVerifierIsolation>[0] = projectPolicy, phase: 'staged' | 'deployable' | undefined = 'deployable') =>
+  assertVerifierIsolation(project, state, {}, DEPLOYER, phase)
 
 describe('assertVerifierIsolation', () => {
   it('passes the exact pair, and passes while the resources do not exist yet', () => {
@@ -68,7 +69,7 @@ describe('assertVerifierIsolation', () => {
   })
   it('allows impersonation of the verifier only by the one deployer, and only unconditionally', () => {
     const none = good(); none.serviceAccountPolicy = { bindings: [] }
-    expect(() => check(none)).not.toThrow()
+    expect(() => check(none, projectPolicy, 'staged')).not.toThrow()
     const other = good(); other.serviceAccountPolicy = { bindings: [{ role: 'roles/iam.serviceAccountUser', members: ['user:someone@example.com'] }] }
     expect(() => check(other)).toThrow(/exact allow-list/)
     const wrongRole = good(); wrongRole.serviceAccountPolicy = { bindings: [{ role: 'roles/iam.serviceAccountTokenCreator', members: [DEPLOYER] }] }
@@ -77,7 +78,7 @@ describe('assertVerifierIsolation', () => {
     expect(() => check(two)).toThrow(/exact allow-list/)
     const conditional = good(); conditional.serviceAccountPolicy = { bindings: [{ role: 'roles/iam.serviceAccountUser', members: [DEPLOYER], condition: { expression: 'true' } }] }
     expect(() => check(conditional)).toThrow(/exact allow-list/)
-    expect(() => assertVerifierIsolation(projectPolicy, good(), {}, undefined)).toThrow(/exact allow-list/)
+    expect(() => assertVerifierIsolation(projectPolicy, good(), {}, undefined, 'deployable')).toThrow(/exact allow-list/)
   })
 })
 
@@ -146,7 +147,7 @@ describe('R14-4: the verifier service account cannot be reached by key creation,
       const resolved = { 'projects/p/roles/custom': [permission] }
       expect(grantsServiceAccountControl('projects/p/roles/custom', resolved)).toBe(true)
       const st = withPolicy([DEPLOYER_BINDING, { role: 'projects/p/roles/custom', members: [STRANGER] }])
-      expect(() => assertVerifierIsolation(projectPolicy, st, resolved, DEPLOYER)).toThrow(/exact allow-list/)
+      expect(() => assertVerifierIsolation(projectPolicy, st, resolved, DEPLOYER, 'deployable')).toThrow(/exact allow-list/)
     }
     expect(grantsServiceAccountControl('roles/viewer', { 'roles/viewer': ['resourcemanager.projects.get'] })).toBe(false)
   })
@@ -156,13 +157,13 @@ describe('R14-4: the verifier service account cannot be reached by key creation,
     }
   })
   it('the exact allow-list per phase: staged = no bindings; deployable = only serviceAccountUser for the deployer, unconditional; anything else fails', () => {
-    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [] }, DEPLOYER)).not.toThrow()
-    expect(() => assertVerifierServiceAccountPolicyExact(undefined, DEPLOYER)).not.toThrow()
-    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [DEPLOYER_BINDING] }, DEPLOYER)).not.toThrow()
-    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [{ role: 'roles/viewer', members: [STRANGER] }] }, DEPLOYER)).toThrow(/exact allow-list/)   // even a harmless-looking extra role
-    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [DEPLOYER_BINDING, DEPLOYER_BINDING] }, DEPLOYER)).toThrow(/exact allow-list/)
-    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [{ ...DEPLOYER_BINDING, condition: { expression: 'true' } }] }, DEPLOYER)).toThrow(/conditional binding/)
-    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [DEPLOYER_BINDING] }, undefined)).toThrow(/exact allow-list/)
+    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [] }, DEPLOYER, {}, 'staged')).not.toThrow()
+    expect(() => assertVerifierServiceAccountPolicyExact(undefined, DEPLOYER, {}, 'staged')).not.toThrow()
+    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [DEPLOYER_BINDING] }, DEPLOYER, {}, 'deployable')).not.toThrow()
+    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [{ role: 'roles/viewer', members: [STRANGER] }] }, DEPLOYER, {}, 'deployable')).toThrow(/exact allow-list/)   // even a harmless-looking extra role
+    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [DEPLOYER_BINDING, DEPLOYER_BINDING] }, DEPLOYER, {}, 'deployable')).toThrow(/exact allow-list/)
+    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [{ ...DEPLOYER_BINDING, condition: { expression: 'true' } }] }, DEPLOYER, {}, 'deployable')).toThrow(/conditional binding/)
+    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [DEPLOYER_BINDING] }, undefined, {}, 'deployable')).toThrow(/exact allow-list/)
   })
   it('an INHERITED binding (project / folder / organization) that can create or upload keys, mint tokens, impersonate or rewrite policy FAILS, outside the declared exceptions', () => {
     const ADMIN = 'user:owner@example.com'
@@ -190,4 +191,68 @@ describe('R14-4: the verifier service account cannot be reached by key creation,
     // an unrelated role is never flagged
     expect(() => assertVerifierInheritedControl([{ resource: 'folders/1', policy: { bindings: [{ role: 'roles/viewer', members: [STRANGER] }] } }], { 'roles/viewer': ['resourcemanager.projects.get'] }, ADMIN, '123', '')).not.toThrow()
   })
+  it('R15-1: the PHASE is explicit and enforced — zero bindings is wrong once act 10 is declared done; the deployer binding is wrong while still staged; an undeclared phase refuses', () => {
+    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [] }, DEPLOYER, {}, 'deployable')).toThrow(/phase 'deployable'/)       // the act-10 postcondition
+    expect(() => assertVerifierServiceAccountPolicyExact({ bindings: [DEPLOYER_BINDING] }, DEPLOYER, {}, 'staged')).toThrow(/phase 'staged'/)
+    expect(() => assertVerifierIsolation(projectPolicy, good(), {}, DEPLOYER, undefined)).toThrow(/DATA_PLANE_VERIFIER_PHASE must be declared/)
+  })
+  it('R15-1: a CUSTOM role carrying an ancestor policy-write permission is a violation at its correct ancestor scope — with and without the exact named exception', () => {
+    const ADMIN = 'user:owner@example.com'
+    const project = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
+    const cases: [string, string, string][] = [
+      [`projects/${project}`, 'resourcemanager.projects.setIamPolicy', 'projects/p/roles/projectPolicyWriter'],
+      ['folders/1', 'resourcemanager.folders.setIamPolicy', 'organizations/9/roles/folderPolicyWriter'],
+      ['organizations/2', 'resourcemanager.organizations.setIamPolicy', 'organizations/2/roles/orgPolicyWriter'],
+    ]
+    for (const [resource, permission, role] of cases) {
+      const resolved = { [role]: [permission] }
+      expect(grantsServiceAccountControl(role, resolved)).toBe(true)
+      const effective = [{ resource, policy: { bindings: [{ role, members: [STRANGER] }] } }]
+      expect(() => assertVerifierInheritedControl(effective, resolved, ADMIN, '123', '')).toThrow(/Inherited or aggregate capability/)
+      expect(() => assertVerifierInheritedControl(effective, resolved, ADMIN, '123', `${resource}|${role}|${STRANGER}`)).not.toThrow()       // the exact named exception
+      expect(() => assertVerifierInheritedControl(effective, resolved, ADMIN, '123', `${resource}|${role}|user:other@example.com`)).toThrow(/Inherited or aggregate capability/)
+    }
+  })
+  it('R15-1: this project\'s ID and NUMBER representations are normalised before exception comparison (an allowed service-agent / declared binding under projects/<number> is not wrongly refused)', () => {
+    const ADMIN = 'user:owner@example.com'
+    const project = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
+    const byNumber = [{ resource: 'projects/123456', policy: { bindings: [{ role: 'roles/owner', members: [ADMIN] }] } }]
+    expect(() => assertVerifierInheritedControl(byNumber, {}, ADMIN, '123456', '')).not.toThrow()                  // the declared owner under the NUMBER form
+    const decl = [{ resource: 'projects/123456', policy: { bindings: [{ role: 'roles/iam.serviceAccountKeyAdmin', members: [STRANGER] }] } }]
+    expect(() => assertVerifierInheritedControl(decl, {}, ADMIN, '123456', `projects/${project}|roles/iam.serviceAccountKeyAdmin|${STRANGER}`)).not.toThrow()   // an exception declared by ID matches the NUMBER form
+    expect(() => assertVerifierInheritedControl(decl, {}, ADMIN, '999', '')).toThrow(/Inherited or aggregate capability/)                                            // another project number is NOT this project
+  })
 })
+
+describe('R15-3: Cloud Run secret aliases (`run.googleapis.com/secrets`) — documented comma-separated format, resolved to canonical project + secret', () => {
+  const project = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
+  const def = (annotation: string | undefined, refName = 'gochara-verifier-db-url') => ({
+    metadata: annotation === undefined ? {} : { annotations: { 'run.googleapis.com/secrets': annotation } },
+    spec: { template: { spec: { serviceAccountName: 'x@example.iam.gserviceaccount.com', containers: [{ env: [{ valueFrom: { secretKeyRef: { name: refName, key: 'latest' } } }] }] } } },
+  })
+  it('parses the SDK\'s normal comma-separated format (not JSON)', () => {
+    expect(parseSecretsAnnotation(`a:projects/${project}/secrets/s1,b:projects/other/secrets/s2`)).toEqual([
+      { alias: 'a', canonical: 's1' }, { alias: 'b', canonical: 'projects/other/secrets/s2' }])
+    expect(() => extractRunIdentityAndSecrets(def(`gochara-verifier-db-url:projects/${project}/secrets/gochara-verifier-db-url`))).not.toThrow()
+  })
+  it('a FOREIGN-project alias is inventoried as the foreign secret and the alias reference counts as it — never as the expected local name', () => {
+    const inv = extractRunIdentityAndSecrets(def('gochara-verifier-db-url:projects/foreign-project/secrets/another-database'))
+    expect(inv.secrets).toEqual(['projects/foreign-project/secrets/another-database'])
+    expect(inv.secrets).not.toContain('gochara-verifier-db-url')
+  })
+  it('a same-project alias resolves to the bare secret name; by NUMBER too when the project number is known', () => {
+    expect(extractRunIdentityAndSecrets(def(`alias1:projects/${project}/secrets/real-secret`, 'alias1')).secrets).toEqual(['real-secret'])
+    expect(parseSecretsAnnotation('alias1:projects/123456/secrets/real-secret', '123456')).toEqual([{ alias: 'alias1', canonical: 'real-secret' }])
+  })
+  it('duplicate-but-conflicting aliases and malformed entries refuse; an identical repeat is fine', () => {
+    expect(() => parseSecretsAnnotation(`a:projects/${project}/secrets/s1,a:projects/${project}/secrets/s2`)).toThrow(/two different secrets/)
+    expect(() => parseSecretsAnnotation(`a:projects/${project}/secrets/s1,a:projects/${project}/secrets/s1`)).not.toThrow()
+    for (const bad of ['', 'a', 'a:', ':projects/p/secrets/s', '{"a":"s"}', 'a:projects/p/secrets/s,', 'a:projects/p/notsecrets/s', 'a b:s']) {
+      expect(() => parseSecretsAnnotation(bad)).toThrow()
+    }
+  })
+  it('an annotation-bearing resource elsewhere no longer makes the inventory refuse with "not valid JSON"', () => {
+    expect(() => extractRunIdentityAndSecrets(def(`x:projects/${project}/secrets/y`, 'x'))).not.toThrow()
+  })
+})
+
