@@ -1,9 +1,9 @@
-"""The INTENDED migration text for 1219 and 1221 (held for the owner), executed against a disposable Postgres.
+"""The real migration files 1219 and 1221, executed against a disposable Postgres.
 
-The SQL lives as fenced blocks (`sql 1219-intent`, `sql 1221-intent`) in
-00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1219_1221_INTENT_v1_0.md; no file under platform/migrations/ is touched.
-Static checks always run; the executed checks use tests/pg_disposable.py (initdb into a temp dir, never the project
-database) and skip when no Postgres binaries exist.
+The SQL is read from the migration files themselves (platform/migrations/1219_*.sql = block A, 1221_*.sql = block B);
+the explanatory document 00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1219_1221_INTENT_v1_0.md (v1.1) carries no SQL
+copy, so there is nothing that can drift from the files. Static checks always run; the executed checks use
+tests/pg_disposable.py (initdb into a temp dir, never the project database) and skip when no Postgres binaries exist.
 
 Block A (1219): ownership (incl. the five panchanga categories leaving ga_structural), count_sql with no double claims
 and no floor change, digest spec. Block B (1221): the integrity conjunct (a29), argala NULL <=> empty source sign.
@@ -14,6 +14,7 @@ import hashlib
 import json
 import pathlib
 import re
+import subprocess
 import sys
 import tempfile
 import uuid
@@ -28,18 +29,15 @@ from tests.pg_disposable import new_db, psql, q, pg, requires_pg  # noqa: E402,F
 REPO = pathlib.Path(__file__).resolve().parents[3]
 DOC = (REPO / "00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1219_1221_INTENT_v1_0.md").read_text(encoding="utf-8")
 MIGRATIONS = REPO / "platform/migrations"
+F1219 = "1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_digest.sql"
+F1221 = "1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql"
 FIXTURES = pathlib.Path(__file__).resolve().parent / "fixtures" / "argala_1219"
 M914 = (MIGRATIONS / "914_nirmana_l1_ga_structural_output_digest_spec.sql").read_text(encoding="utf-8")
 M904 = (MIGRATIONS / "904_nirmana_l1_ga_structural_integrity_check_scope.sql").read_text(encoding="utf-8")
 
 
-def _block(tag: str) -> str:
-    m = re.search(r"```sql " + re.escape(tag) + r"\n(.*?)\n```", DOC, re.S)
-    assert m, f"block {tag} missing from the intent document"
-    return m.group(1) + "\n"
-
-
-A, B = _block("1219-intent"), _block("1221-intent")
+A = (MIGRATIONS / F1219).read_text(encoding="utf-8")   # block A
+B = (MIGRATIONS / F1221).read_text(encoding="utf-8")   # block B
 OLD_SHA = "b24906468e53894de0f223c70c9222eb8fbad3933f79ef7dbee7422b8dd709a6"
 NEW_SHA = "d480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620"
 CANON = "482012f1-710e-4a25-994a-93821f5871aa"
@@ -75,11 +73,24 @@ def _write(tag: str, sql: str) -> pathlib.Path:
 
 # ── static: block A ─────────────────────────────────────────────────────────────────────────────
 
-def test_the_document_is_the_only_carrier_and_no_migration_file_exists_for_1221_or_a_changed_1219():
-    assert not list(MIGRATIONS.glob("1221_*")), "1221 must not exist as a file while the owner hold stands"
-    # the pushed 1219 draft is the earlier text (it still carries the conjunct and the floors): it was not edited
-    pushed = (MIGRATIONS / "1219_nirmana_l1_ga_structural_argala_graha_natal_ownership_and_digest.sql").read_text(encoding="utf-8")
-    assert "DRAFT, NOT APPLIED" in pushed and "NOT A FILE UNDER" not in pushed
+def test_the_two_migration_files_exist_with_the_right_names_and_no_other_new_migration_number():
+    assert sorted(p.name for p in MIGRATIONS.glob("1219_*")) == [F1219]
+    assert sorted(p.name for p in MIGRATIONS.glob("1221_*")) == [F1221]
+    # they are real migrations, not drafts: no draft/hold wording, normal runner owns the transaction, verified after
+    for text in (A, B):
+        assert "DRAFT, NOT APPLIED" not in text and "INTENDED TEXT" not in text and "owner hold" not in text
+        flat = re.sub(r"\s*\n--\s*", " ", text)
+        assert "real migration, applied through the normal runner" in flat and "platform/scripts/migrate.ts owns the transaction" in flat
+        assert "VERIFIED by production structure" in flat and "Trap 103" in flat
+    # the document is the explanation only: no SQL copy to drift from the files, and it points at both files
+    assert "```sql" not in DOC and F1219 in DOC and F1221 in DOC
+    # this change adds no migration number other than 1219 and 1221 (skipped when origin/main is not fetchable;
+    # empty once the files are on main)
+    r = subprocess.run(["git", "diff", "--name-only", "--diff-filter=A", "origin/main...HEAD", "--", "platform/migrations"],
+                       cwd=REPO, capture_output=True, text=True)
+    if r.returncode == 0:
+        added = {pathlib.PurePosixPath(x).name for x in r.stdout.split()}
+        assert added <= {F1219, F1221}, added
 
 
 def test_914_sha_is_reproduced_by_the_real_digest_function_and_the_new_spec_is_old_plus_one_category():
@@ -143,8 +154,18 @@ def test_block_b_does_only_the_integrity_patch_and_states_the_ordering_hazard():
         assert other not in code
     assert "AS integrity_passed" in code and "(g28)" in code and not re.search(r"^\s*(BEGIN|COMMIT)\s*;", B, re.M)
     flat = re.sub(r"\s*\n--\s*", " ", B)
-    assert "NAMED STEP of the S-L1" in flat and "IMMEDIATELY BEFORE" in flat
-    assert "ORDERING HAZARD" in flat and "OLD writer image" in flat and "WITH or AFTER the writer deploy" in flat
+    assert "NAMED STEP of the S-L1" in flat and "IMMEDIATELY BEFORE the ga_structural launch" in flat
+    assert "NEVER BEFORE the ga_structural writer deploy" in flat
+    assert "ORDERING HAZARD" in flat and "OLD writer image" in flat and "NEVER applies before the ga_structural writer deploy" in flat
+    assert "WITH or AFTER the writer deploy" not in flat                  # the earlier, weaker wording is gone
+    assert "RUNNER CONSEQUENCE" in flat and "cannot enforce the rule above" in flat   # merge-timing rule is stated
+
+
+def test_block_a_header_states_it_is_a_prerequisite_that_may_apply_independently_of_the_writer_deploy():
+    flat = re.sub(r"\s*\n--\s*", " ", A)
+    assert "HARD PREREQUISITE of the S-L1 ga_structural rebuild" in flat and "BEFORE that rebuild launches" in flat
+    assert "MAY APPLY INDEPENDENTLY of it" in flat
+    assert "with or after the writer deploy" not in flat
 
 
 # ── executed: block A ───────────────────────────────────────────────────────────────────────────
