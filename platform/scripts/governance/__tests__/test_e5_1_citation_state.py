@@ -40,6 +40,14 @@ STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
 CITE_COLS = ["id", "source_citation"]            # a recognised citation column: Ldgr.source_presence applies
 
 
+@pytest.fixture(autouse=True)
+def _legacy_ldgr_path_open(monkeypatch):
+    """The production constant is False since S3 (pin 12: the census emits citation_state on Ldgr from the declared source column; see
+    test_e6_s3_alias_ldgr.py for the closed default). This module's fixtures and its legacy-record tests BUILD null-state Ldgr PASS records, which
+    only the open path can write, so it reopens the path for every test here; the tests that pin the closed behaviour set the constant themselves."""
+    monkeypatch.setattr(nc, "LDGR_NULL_STATE_WRITE_ALLOWED", True)
+
+
 @pytest.fixture(params=[LDGR, D1])
 def crit(request, monkeypatch):
     """Both criteria the rule covers. Carr.D1 has detector NONE on today's registry (S2 builds it): give it one here, the
@@ -116,7 +124,7 @@ def test_a_failing_ldgr_cell_keeps_its_state_too(ledger):
 
 
 def test_an_ldgr_pass_whose_census_cell_carries_no_state_is_stored_null_with_the_caveat_while_the_legacy_path_is_open(ledger):
-    assert nc.LDGR_NULL_STATE_WRITE_ALLOWED is True                                  # today: the census does not emit it yet
+    assert nc.LDGR_NULL_STATE_WRITE_ALLOWED is True                                  # reopened by this module's autouse fixture (production: False since S3)
     rec = write(ledger, LDGR, ...).record
     assert rec["verdict"] == "PASS" and rec["citation_state"] is None and rec["citation_state_caveat"] is True
 

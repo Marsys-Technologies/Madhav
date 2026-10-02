@@ -109,12 +109,12 @@ READABLE_RECORD_VERSIONS = (1, 2)
 # cell by Carr.D1 (S2), and read FROM THAT CELL by this writer for the criteria below; null for every other criterion.
 CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
 CITATION_CRITERIA = ("Carr.D1", "Ldgr.source_presence")
-# LEGACY LENIENT WRITE PATH (SS ruling (b), N-74): today the census emits no citation_state on an Ldgr.source_presence cell,
-# so an Ldgr PASS with a null state may still be WRITTEN (stored null + caveat true). Removed in the S3 PR (pin 12), when
-# the census emits citation_state on Ldgr from the asset's declared source column and declared state: set this to False
-# there and the writer refuses an Ldgr PASS with a null state (`citation_state_missing`), exactly as for Carr.D1.
+# LEGACY LENIENT WRITE PATH (SS ruling (b), N-74), CLOSED at pin 12 (S3). Until then the census emitted no citation_state on an Ldgr.source_presence
+# cell, so an Ldgr PASS with a null state could still be WRITTEN (stored null + caveat true). Since S3 the census emits citation_state on Ldgr
+# from the asset's declared source column (`ldgr_source` in asset_declarations.json), so the writer refuses an Ldgr PASS with a null state
+# (`citation_state_missing`), exactly as for Carr.D1: an Ldgr PASS is certifiable only for an asset that declares its source and the state it stands on.
 # READING an old record with a null state + caveat stays valid forever; this constant gates only new writes.
-LDGR_NULL_STATE_WRITE_ALLOWED = True
+LDGR_NULL_STATE_WRITE_ALLOWED = False
 # The declarations file a gate certificate is measured under (SS N-74 add-on): the census head records its sha256, the
 # writer refuses a census whose sha is not the committed file's, and a certificate stays current only while they agree.
 DECLARATIONS_RELPATH = "platform/scripts/governance/asset_declarations.json"
@@ -1058,7 +1058,10 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
     if inconclusive and verdict in ("PASS", "PARTIAL"):
         _refuse("inconclusive", "an INCONCLUSIVE measurement established nothing: it cannot be PASS or PARTIAL")
     if kind == "gate" and verdict == "PASS":
-        if ac.criterion_applicability(criterion, layer, cfacts)["state"] == "NOT_APPLICABLE":
+        # S3: a DECLARED source / alias class (the census record says `declared`) is applicable by the asset's reviewed declaration, not by the
+        # column pattern: a declared column outside the pattern is exactly what the declaration exists to name
+        declared_form = criterion in ("Vocab.alias", "Ldgr.source_presence") and meas is not None and meas.get("declared") is True
+        if not declared_form and ac.criterion_applicability(criterion, layer, cfacts)["state"] == "NOT_APPLICABLE":
             _refuse("not_applicable_pass", "the census record's facts disprove this criterion's applicability: a "
                                            "measured PASS contradicts the registry")
 

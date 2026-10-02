@@ -254,6 +254,11 @@ def test_every_registered_cause_is_observed_emitted_under_its_criterion(monkeypa
         assert rec["v"] == NA, rec           # E6 packet (c): the declared-no-prose measured N/A candidates
         observed.add((crit, rec["cause"]))
     observed.add(("Earn.service_state", ac._service_state_na("data", "data")["cause"]))     # S4/N-72: keyed on the declared kind
+    for got in (ac.vocab_alias_declared_check("x", dict(na="no_alias_class", why="w", evidence="e:1"), "t", ["id"]),   # S3: the declared N/A words
+                ac.ldgr_source_declared_check("x", dict(na="no_classical_claim", why="w", evidence="e:1"), "t", ["id"])):
+        for crit, rec in got.items():
+            assert rec["v"] == NA, rec
+            observed.add((crit, rec["cause"]))
     for car in (dict(nature="derivation", applies="D2", why="w", evidence="e:1"),                           # S2: a declared carriage check
                 dict(nature="transcription", applies="D1", citation_state="sourced", why="w", evidence="e:1"),
                 dict(nature="ratified_judgment", ruling="N-73", why="w", evidence="e:1")):

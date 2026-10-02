@@ -185,8 +185,8 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Complete.depth":        dict(gate="Complete", check="depth",         applicability="target_table exists in production", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Complete.width":        dict(gate="Complete", check="width",         applicability="always (declaring a universe is the first width gap where none exists)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Vocab.identity":        dict(gate="Vocab", check="identity",         applicability="a declared key exists and the table is non-empty", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=1),
-    "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=2),
+    "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census (an undeclared asset with a `synonyms` column keeps the per-class empty-alias census); an asset's reviewed declaration `vocab_alias` makes it applicable by declaration, as a measured alias class against bg_ontology (class planet: canonical id, display name, and the ontology synonyms when an alias column is declared) or as `no_alias_class` (N/A, N-72 S3, N-73 (4)). A column pattern alone never makes it N/A", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=2),  # S3: declared form added; was rev 1
+    "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included); an asset's reviewed declaration `ldgr_source` makes it applicable by declaration, naming the column that carries the source and the citation_state it stands on, or as `no_classical_claim` (N/A, N-72 S3, N-73 (1)). A column pattern alone never makes it N/A", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=3),  # S3: declared form + citation_state added; was rev 2
     "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module; PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1)
     "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),  # E6 (c): the declaration and the table's columns agree
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
@@ -322,6 +322,10 @@ NA_RULE_DECISIONS: dict[str, str] = {
     "Carr.D1#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
     "Carr.D2#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
     "Carr.D3#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+    # S3 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): the two N/A words an asset may declare, each with evidence and one line of reason, never a column pattern (A5).
+    # Inert until an asset declares one; refused (NO_DETECTOR) where the table contradicts the declaration.
+    "Vocab.alias#measured:no-alias-class": "N-72 (S3, declaration-keyed no_alias_class); N-73 (4): not where a documented alias exists; N-22/N-22a (column-pattern N/A stays refused, A5)",
+    "Ldgr.source_presence#measured:no-classical-claim": "N-72 (S3, declaration-keyed no_classical_claim); N-73 (1): a source-status disclosure is not a source; N-22/N-22a (column-pattern N/A stays refused, A5)",
     "Narr.agree#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
     "Narr.checkable#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
     "Narr.fidelity_test#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
@@ -344,6 +348,7 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Carr.D2": ("no-carriage", "not-the-declared-carriage", "ratified_judgment"),
     "Carr.D3": ("no-carriage", "not-the-declared-carriage", "ratified_judgment"),
     "Earn.service_state": ("not-a-service",),
+    "Vocab.alias": ("no-alias-class",), "Ldgr.source_presence": ("no-classical-claim",),
     "Build.exercised": ("never-run-no-writer", "never-executed-no-writer"),
     "Build.history": ("never-run",),
     "Build.dep_liveness": ("no-declared-dependencies",),
@@ -387,7 +392,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 11     # 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 12     # 12 (provisional): S3 declared Vocab.alias and Ldgr.source_presence (SS N-72 S3, N-73 (1)/(4), N-74 (b)): Vocab.alias rev 2 and Ldgr.source_presence rev 3 (an asset that DECLARES `vocab_alias` / `ldgr_source` gets the declared form: the alias class measured against bg_ontology class planet by canonical id and display name, plus the ontology synonyms when an alias column is declared; the Ldgr source column named with its citation_state, a declared unsourced / refuted state never reading PASS or PARTIAL; an undeclared asset reads exactly as before), NA_CAUSES gains Vocab.alias:no-alias-class and Ldgr.source_presence:no-classical-claim, and Vocab.alias#measured:no-alias-class / Ldgr.source_presence#measured:no-classical-claim are declared (declaration-keyed; refused where the table contradicts the declaration; inert until an asset declares); the columns_any patterns stay and still never make an N/A (A5); asset_declarations.json 1.8.0; nikasha_certify closes the legacy null-state Ldgr write path; no real asset declares either key yet, so no census cell verdict changes. 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -496,6 +501,17 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
             if bad:
                 return dict(criterion=crit, v=NO_DET, state="MEASURED",
                             reason=f"D1 {v} without verified passage evidence ({bad}): not honoured")
+        if crit == "Ldgr.source_presence" and v in (PASS, PARTIAL):
+            # S3: a DECLARED source reads PASS/PARTIAL only on a citation_state that is sourced / sourced_ocr_unverified (E5.1 / E6.3 rule, as Carr.D1):
+            # unsourced / refuted / unknown is never a source-correspondence PASS, and a declared record without its state is not honoured. An UNDECLARED
+            # asset's legacy presence count carries no state and reads as before.
+            cs = meas.get("citation_state")
+            if (cs is None and meas.get("declared") is True) or (cs is not None and cs not in CITATION_STATES):
+                return dict(criterion=crit, v=NO_DET, state="MEASURED",
+                            reason=f"{v} with citation_state {cs!r}: a declared source carries one of {list(CITATION_STATES)}; not honoured")
+            if cs in ("unsourced", "refuted"):
+                return dict(criterion=crit, v=NO_DET, state="MEASURED", citation_state=cs,
+                            reason=f"{v} with citation_state {cs!r}: a source that is {cs} is never a PASS (the column is populated, the claim is not sourced)")
         if v in (PASS, PARTIAL) and e["detector"] == "NONE":
             # E6 item i review: a check with no detector earns no graded verdict above FAIL — PARTIAL is clamped like
             # PASS (with Carr.detector gone, a measured PARTIAL on D1-D3 would otherwise have made Carr PARTIAL).
@@ -525,7 +541,7 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
                                "dependency (ordering holds, the edge is undeclared)", **(dict(inconclusive=True) if infl else {}))
         return dict(criterion=crit, v=v, state="MEASURED", reason="measured", **(dict(inconclusive=True) if infl else {}),
                     # a D1 verdict says WHICH citation state it stands on (a sourced_ocr_unverified PASS is marked as such on the cell)
-                    **({"citation_state": meas["citation_state"]} if crit == "Carr.D1" and meas.get("citation_state") else {}))
+                    **({"citation_state": meas["citation_state"]} if crit in ("Carr.D1", "Ldgr.source_presence") and meas.get("citation_state") else {}))
     st = ap["state"]
     if st == "OUT_OF_LAYER":
         return None
@@ -734,8 +750,91 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
                     raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].repairs[{rp['from']!r}].evidence "
                                             f"{rp['evidence']!r} is not an existing repo-relative file (optionally :line) or "
                                             "'unverified:<where>' (existence only)")
+# E6 S3 (SS N-72 S3, N-73 (1)/(4), N-74 (b)): two more per-asset DECLARATIONS, each reviewed and carrying evidence and ONE line of reason. `vocab_alias`
+# declares the asset's alias class (measured against bg_ontology) or that it has none (`no_alias_class`); `ldgr_source` names the column that carries
+# the asset's classical source and the citation_state it stands on, or declares that the asset states no classical rule or cited fact
+# (`no_classical_claim`). N/A is reached ONLY through these words, never from a column pattern (A5). N-73 (4): `no_alias_class` may not be declared
+# where a documented alias exists. N-73 (1): a source-status disclosure is not a source.
+NO_ALIAS_CLASS = "no_alias_class"
+NO_CLASSICAL_CLAIM = "no_classical_claim"
+ALIAS_CLASSES = ("planet",)                       # the bg_ontology entity classes an alias is measured against (widening is a registry revision)
+ONTOLOGY_TABLE = "brahma_ontology"                # bg_ontology's target table
+VOCAB_ALIAS_DECL_FIELDS = ("na", "class", "vocab_column", "alias_column", "why", "evidence")
+LDGR_SOURCE_DECL_FIELDS = ("na", "source_column", "citation_state", "why", "evidence")
+# a stored value that STATES the absence of a source is not a source (N-73 (1)); compared casefolded and trimmed, quote-free (they are SQL literals)
+LDGR_PLACEHOLDERS = ("", "not traced", "untraced", "unsourced", "not sourced", "unknown", "n/a", "na", "none", "null", "tbd", "todo", "-", "?",
+                     "{}", "[]", "source unidentified")
+_DECL_IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
+
+
+def _s3_common(where: str, key: str, d: dict, allowed) -> None:
+    extra = sorted(set(d) - set(allowed))
+    if extra:
+        raise DeclarationsError(f"{where}.{key}: unknown field(s) {extra}")
+    for f in ("why", "evidence"):
+        v = d.get(f)
+        if not (isinstance(v, str) and not _blank_text(v) and v == v.strip() and "\n" not in v and len(v) <= 1200):
+            raise DeclarationsError(f"{where}.{key}.{f} must be a non-blank single-line string (a one-line reason / a pointer file:line or document)")
+    if not _evidence_pointer_ok(d["evidence"]):
+        raise DeclarationsError(f"{where}.{key}.evidence {d['evidence']!r} is not an existing repo-relative file (optionally with :line); a pointer "
+                                f"that cannot be checked must say so: 'unverified:<where it is recorded>'")
+
+
+def _s3_ident(where: str, key: str, field: str, v) -> None:
+    if not (isinstance(v, str) and _DECL_IDENT.fullmatch(v)):
+        raise DeclarationsError(f"{where}.{key}.{field} must be a column name (an identifier), got {v!r}")
+
+
+def validate_vocab_alias_declaration(where: str, va, e: dict) -> None:
+    """Raises DeclarationsError when an asset's `vocab_alias` declaration is malformed. Exactly one of: `na: no_alias_class`, or a measured alias
+    class (`class` in ALIAS_CLASSES, `vocab_column`, optional `alias_column`); both forms need `why` (one line) and `evidence` (a checkable pointer)."""
+    if not isinstance(va, dict):
+        raise DeclarationsError(f"{where}.vocab_alias must be an object or null")
+    _s3_common(where, "vocab_alias", va, VOCAB_ALIAS_DECL_FIELDS)
+    na, cls = va.get("na"), va.get("class")
+    measured = [f for f in ("class", "vocab_column", "alias_column") if va.get(f) is not None]
+    if na is not None:
+        if na != NO_ALIAS_CLASS:
+            raise DeclarationsError(f"{where}.vocab_alias.na must be null or {NO_ALIAS_CLASS!r}, got {na!r}")
+        if measured:
+            raise DeclarationsError(f"{where}.vocab_alias: na {NO_ALIAS_CLASS!r} declares no alias class, so {measured} must be absent")
+        return
+    if cls not in ALIAS_CLASSES:
+        raise DeclarationsError(f"{where}.vocab_alias must declare na {NO_ALIAS_CLASS!r} or a measured alias class (class one of "
+                                f"{list(ALIAS_CLASSES)}), got class {cls!r}")
+    _s3_ident(where, "vocab_alias", "vocab_column", va.get("vocab_column"))
+    if va.get("alias_column") is not None:
+        _s3_ident(where, "vocab_alias", "alias_column", va["alias_column"])
+        if va["alias_column"] == va["vocab_column"]:
+            raise DeclarationsError(f"{where}.vocab_alias.alias_column must differ from vocab_column")
+
+
+def validate_ldgr_source_declaration(where: str, ls, e: dict) -> None:
+    """Raises DeclarationsError when an asset's `ldgr_source` declaration is malformed. Exactly one of: `na: no_classical_claim` (the asset states no
+    classical rule or cited fact; refused where the asset declares a transcription carriage), or `source_column` + `citation_state`
+    (one of CITATION_STATES); both forms need `why` (one line) and `evidence` (a checkable pointer)."""
+    if not isinstance(ls, dict):
+        raise DeclarationsError(f"{where}.ldgr_source must be an object or null")
+    _s3_common(where, "ldgr_source", ls, LDGR_SOURCE_DECL_FIELDS)
+    na = ls.get("na")
+    if na is not None:
+        if na != NO_CLASSICAL_CLAIM:
+            raise DeclarationsError(f"{where}.ldgr_source.na must be null or {NO_CLASSICAL_CLAIM!r}, got {na!r}")
+        if ls.get("source_column") is not None or ls.get("citation_state") is not None:
+            raise DeclarationsError(f"{where}.ldgr_source: na {NO_CLASSICAL_CLAIM!r} declares no source, so source_column / citation_state must be absent")
+        car = e.get("carriage")
+        if isinstance(car, dict) and car.get("nature") == "transcription":
+            raise DeclarationsError(f"{where}.ldgr_source: na {NO_CLASSICAL_CLAIM!r} contradicts a declared transcription carriage (the asset "
+                                    f"transcribes cited classical content)")
+        return
+    _s3_ident(where, "ldgr_source", "source_column", ls.get("source_column"))
+    if ls.get("citation_state") not in CITATION_STATES:
+        raise DeclarationsError(f"{where}.ldgr_source.citation_state must be one of {list(CITATION_STATES)} with a source_column, got "
+                                f"{ls.get('citation_state')!r}")
+
+
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
-                    "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind")
+                    "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # prose_fields entries (SS ruling 2026-10-01; CLAUDE.md N.7 concerns GENERATED prose): a column name, or a JSON path into
 # a JSONB column, `column.$.seg(.seg)*` where a seg is an identifier key, optionally followed by ONE `[*]` (every element
@@ -842,6 +941,9 @@ def validate_declarations(doc, registry_ids=None) -> dict:
         raise DeclarationsError("`assets` must be an object mapping asset_id to a declaration")
     if "carriage_declaration_fields" in doc and doc["carriage_declaration_fields"] != list(CARRIAGE_DECL_FIELDS):
         raise DeclarationsError(f"`carriage_declaration_fields` must be exactly {list(CARRIAGE_DECL_FIELDS)}")
+    for _fk, _fv in (("vocab_alias_declaration_fields", VOCAB_ALIAS_DECL_FIELDS), ("ldgr_source_declaration_fields", LDGR_SOURCE_DECL_FIELDS)):
+        if _fk in doc and doc[_fk] != list(_fv):
+            raise DeclarationsError(f"`{_fk}` must be exactly {list(_fv)}")
     known = _registry_id_set(registry_ids)
     for aid, e in assets.items():
         where = f"assets[{aid!r}]"
@@ -869,6 +971,10 @@ def validate_declarations(doc, registry_ids=None) -> dict:
                     raise DeclarationsError(f"{where}.carriage.{f} must be true, false or null, got {v!r}")
             if any(car.get(f) is not None for f in CARRIAGE_DECL_FIELDS):
                 validate_carriage_declaration(where, car, e)
+        if e.get("vocab_alias") is not None:
+            validate_vocab_alias_declaration(where, e["vocab_alias"], e)
+        if e.get("ldgr_source") is not None:
+            validate_ldgr_source_declaration(where, e["ldgr_source"], e)
         pf = e.get("prose_fields")
         if pf is not None:
             # null = undeclared; [] = declared "this writer composes no prose" (a positive claim); both need evidence
@@ -1302,6 +1408,235 @@ def carr_checks(record_facts) -> dict:
     r = grade_carr_no_carriage(f)
     return {c: dict(r, **({"declaration_disagreements": list(r["declaration_disagreements"])}
                           if "declaration_disagreements" in r else {})) for c in CARR_D_CHECKS}
+
+
+# ─────────────────────────── E6 S3: declared Vocab.alias and Ldgr.source_presence ───────────────────────────
+# Design: scratchpad s3/DESIGN.md. An asset that DECLARES `vocab_alias` / `ldgr_source` (validated above) gets the declared form of the check; an
+# undeclared asset reads EXACTLY as before (the legacy pattern measurements in measure() are skipped only for a declaring asset). The records
+# carry `declared: True` so the certificate writer does not apply the column-pattern applicability to a declared column.
+_ALIAS_WS = re.compile(r"\s+")
+
+
+def _norm_form(x) -> str:
+    """A vocabulary form compared as the ontology compares it: NFKC, casefolded, whitespace collapsed and trimmed."""
+    return _ALIAS_WS.sub(" ", unicodedata.normalize("NFKC", str(x))).strip().casefold()
+
+
+def alias_fetch_forms(cls: str) -> list:
+    """[{canonical_id, canonical_name_en, synonyms[]}] of bg_ontology's entities of class `cls`, in canonical_id order: ONE read-only SELECT, the
+    answer ONE line of jsonb (the d1_fetch_rows shape). `cls` must be one of ALIAS_CLASSES (a literal in the SQL). Raises Unknown on a failed read."""
+    if cls not in ALIAS_CLASSES:
+        raise Unknown(f"alias_fetch_forms: {cls!r} is not an alias class ({list(ALIAS_CLASSES)})")
+    blob = scalar("SELECT coalesce(jsonb_agg(jsonb_build_object('canonical_id',canonical_id,'canonical_name_en',canonical_name_en,"
+                  "'synonyms',to_jsonb(coalesce(synonyms,ARRAY[]::text[]))) ORDER BY canonical_id)::text,'[]') "
+                  f"FROM {ONTOLOGY_TABLE} WHERE entity_class = '{cls}'")
+    try:
+        got = json.loads(blob or "[]")
+    except json.JSONDecodeError as exc:
+        raise Unknown(f"alias_fetch_forms: unparseable ontology read: {exc}") from exc
+    return [g for g in got if isinstance(g, dict)]
+
+
+def alias_fetch_values(table: str, vocab_col: str, alias_col: str | None = None) -> list:
+    """The asset's distinct `[{v, a?, n}]` (the vocabulary value as text, its alias set when `alias_col` is declared, and the rows holding that pair),
+    in a total order: ONE read-only GROUP BY SELECT answered as ONE line of jsonb. Identifiers are matched against a strict pattern before they
+    reach SQL. Raises Unknown on a failed read."""
+    cols = [vocab_col] + ([alias_col] if alias_col else [])
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table) and all(isinstance(c, str) and _D1_SQL_IDENT.fullmatch(c) for c in cols)):
+        raise Unknown(f"alias_fetch_values: malformed identifier(s) {table!r} / {cols!r}")
+    sel = f'"{vocab_col}"::text AS v' + (f', to_jsonb("{alias_col}") AS a' if alias_col else "")
+    grp = "1, 2" if alias_col else "1"
+    order = "g.v, g.a::text" if alias_col else "g.v"
+    blob = scalar(f"SELECT coalesce(jsonb_agg(to_jsonb(g) ORDER BY {order}),'[]')::text FROM "
+                  f"(SELECT {sel}, count(*) AS n FROM \"{table}\" GROUP BY {grp}) g")
+    try:
+        return json.loads(blob or "[]")
+    except json.JSONDecodeError as exc:
+        raise Unknown(f"alias_fetch_values: unparseable read of {table}: {exc}") from exc
+
+
+def _alias_set(a) -> set:
+    """The normalised alias set a row carries: a list of strings, or one string; anything else (NULL, a number, a mapping) is no alias set."""
+    if isinstance(a, str):
+        a = [a]
+    return {_norm_form(x) for x in a if isinstance(x, str) and x.strip()} if isinstance(a, list) else set()
+
+
+def grade_vocab_alias(spec: dict, forms: list, pairs: list) -> dict:
+    """The declared Vocab.alias reading (pure): the asset's vocabulary column against bg_ontology's `spec['class']` entities (N-74 (b)).
+    Leg 1: every stored value must resolve, normalised, to exactly ONE entity by its canonical id or its display name (`canonical_name_en`); an
+    unresolved value is named (a value that is only an ontology synonym says so). Leg 2, only when `alias_column` is declared: every row's alias set
+    must carry every ontology synonym of the entity it resolves to (the asset's own id/display name count as present; extra aliases are not a defect);
+    a synonym present in the ontology and missing from the asset is named with the entity and the rows affected. PASS needs both legs clean on a
+    non-empty table and a non-empty class; FAIL on any unresolved value or missing synonym; NO_DETECTOR (vacuous) on an empty class or no rows."""
+    cls, vcol, acol = spec["class"], spec["vocab_column"], spec.get("alias_column")
+    rows = sum(int(p.get("n") or 0) for p in pairs if isinstance(p, dict))
+    if not forms:
+        return dict(v=NO_DET, declared=True, measured=f"NO_DETECTOR — bg_ontology holds no entity of class {cls}: nothing to resolve {vcol} against")
+    if not pairs or rows == 0:
+        return dict(v=NO_DET, declared=True, measured=f"NO_DETECTOR — the table has no rows: {vcol} resolves nothing on 0 rows (vacuous)")
+    ids, names, syns = {}, {}, {}
+    for f in forms:
+        eid = f.get("canonical_id")
+        ids.setdefault(_norm_form(eid), []).append(f)
+        if f.get("canonical_name_en"):
+            names.setdefault(_norm_form(f["canonical_name_en"]), []).append(f)
+        for sy in f.get("synonyms") or []:
+            syns.setdefault(_norm_form(sy), []).append(f)
+    resolved_by, unresolved, missing, affected, per_entity = {}, {}, {}, 0, set()
+    for p in pairs:
+        n = int(p.get("n") or 0)
+        raw = p.get("v")
+        key = _norm_form(raw) if isinstance(raw, str) else None
+        hits = {}                                           # canonical_id -> (entity, how it matched); a canonical id outranks the display name
+        for idx, by in ((names, "canonical_name_en"), (ids, "canonical_id")):
+            for e in (idx.get(key, []) if key is not None else []):
+                hits[e["canonical_id"]] = (e, by)
+        if len(hits) != 1:
+            if raw is None:
+                why = "NULL"
+            elif hits:
+                why = "ambiguous: matches " + ", ".join(sorted(hits))
+            elif key in syns:
+                why = "only an ontology synonym of " + ", ".join(sorted({e["canonical_id"] for e in syns[key]}))
+            else:
+                why = "no match"
+            slot = unresolved.setdefault("NULL" if raw is None else str(raw), dict(rows=0, why=why))
+            slot["rows"] += n
+            continue
+        ent, by = next(iter(hits.values()))
+        resolved_by.setdefault(by, set()).add(str(raw))
+        per_entity.add(ent["canonical_id"])
+        if acol:
+            have = _alias_set(p.get("a")) | {_norm_form(ent["canonical_id"]), _norm_form(ent.get("canonical_name_en") or "")}
+            lack = sorted({str(sy) for sy in (ent.get("synonyms") or []) if _norm_form(sy) not in have})
+            if lack:
+                affected += n
+                missing.setdefault(ent["canonical_id"], set()).update(lack)
+    bad_rows = affected + sum(u["rows"] for u in unresolved.values())
+    block = {"class": cls, "vocab_column": vcol, "alias_column": acol, "rows": rows, "distinct_values": len(pairs),
+             "resolved_by": {k: sorted(v) for k, v in sorted(resolved_by.items())},
+             "unresolved": {k: dict(u) for k, u in sorted(unresolved.items())},
+             "missing_synonyms": {k: sorted(v) for k, v in sorted(missing.items())}, "rows_affected": bad_rows}
+    if not unresolved and not missing:
+        tail = (f"; every ontology synonym of the {len(per_entity)} resolved entit{'y' if len(per_entity) == 1 else 'ies'} is in {acol}"
+                if acol else "; no alias column declared: ontology synonyms not compared")
+        return dict(v=PASS, declared=True, severity=0.0, alias=block,
+                    measured=f"{rows} row(s), {len(pairs)} distinct value(s) of {vcol}: all resolve to bg_ontology class {cls} by canonical id or "
+                             f"display name{tail}")
+    parts = []
+    if unresolved:
+        parts.append("unresolved " + ", ".join(f"{k!r} ({u['why']}; {u['rows']} row(s))" for k, u in sorted(unresolved.items())))
+    if missing:
+        parts.append(f"ontology synonym(s) missing from {acol}: " + ", ".join(f"{k}: {', '.join(v)}" for k, v in sorted(missing.items())) +
+                     f" ({affected} row(s))")
+    return dict(v=FAIL, declared=True, severity=round(bad_rows / rows, 4), alias=block,
+                measured=f"{bad_rows}/{rows} row(s) of {vcol} do not resolve cleanly against bg_ontology class {cls}: " + "; ".join(parts))
+
+
+def vocab_alias_declared_check(aid: str, va, table, cols, keys=None) -> dict:
+    """measure()'s Vocab.alias record for an asset that DECLARES `vocab_alias`: {} for an undeclared asset (it reads as before). `table` is the
+    target table when it exists in production (else None); `cols` its catalog column names (None = unknown). `no_alias_class` reads N/A, cause
+    `no-alias-class`, released only by the declared rule; it is NEVER emitted while the table carries the documented alias column `synonyms`
+    (N-73 (4)): that is a NO_DETECTOR with the disagreement reported. A column pattern only ever WITHHOLDS the N/A."""
+    if not isinstance(va, dict) or (va.get("na") is None and va.get("class") is None):
+        return {}
+    ev = va.get("evidence")
+    if va.get("na") == NO_ALIAS_CLASS:
+        if isinstance(cols, (list, tuple, set)) and ALIAS_COLUMN in cols:
+            return {"Vocab.alias": dict(v=NO_DET, declared=True,
+                                        declaration_disagreements=[dict(field="vocab_alias.na", declared=NO_ALIAS_CLASS, measured=f"the table carries the alias column {ALIAS_COLUMN}")],
+                                        measured=f"NO_DETECTOR — no_alias_class is declared but {table or 'the target table'} carries the documented alias column "
+                                                 f"{ALIAS_COLUMN} (N-73 (4): it may not be declared where a documented alias exists); the declaration is contradicted")}
+        return {"Vocab.alias": dict(_na(f"declared no_alias_class (reviewed; evidence: {ev}): {va.get('why')}", "no-alias-class"), declared=True)}
+    spec = dict(table=table, **{k: va.get(k) for k in ("vocab_column", "alias_column")}, **{"class": va["class"]})
+    if not table or not isinstance(cols, (list, tuple, set)) or not cols:
+        return {"Vocab.alias": dict(v=NO_DET, declared=True, measured=f"NO_DETECTOR — the declared alias class ({va['class']}) is measured on the target table, "
+                                                                        "which does not exist in production or whose columns are unknown")}
+    absent = [c for c in (va.get("vocab_column"), va.get("alias_column")) if c and c not in cols]
+    if absent:
+        return {"Vocab.alias": dict(v=FAIL, declared=True, measured=f"declared column(s) {', '.join(absent)} are not columns of {table}: the declaration names a "
+                                                                    "vocabulary the table does not carry")}
+    try:
+        forms = alias_fetch_forms(va["class"])
+        pairs = alias_fetch_values(table, va["vocab_column"], va.get("alias_column"))
+        return {"Vocab.alias": grade_vocab_alias(spec, forms, pairs)}
+    except Unknown as exc:                                  # R41: this check's failure degrades only this check
+        return {"Vocab.alias": dict(v=ERRORED, declared=True, measured=f"check errored: {exc}")}
+
+
+def ldgr_fetch_source_stats(table: str, col: str, keycols=()) -> dict:
+    """{rows, lacking, sample[{key col: value}]}: the table's row count, how many rows carry NO source in `col` (NULL, blank, or a placeholder from
+    LDGR_PLACEHOLDERS: a source-status disclosure is not a source, N-73 (1)), and up to 5 identities (the first key columns, total ORDER BY) of rows that
+    lack one: ONE read-only SELECT, answered as ONE line of jsonb. Identifiers are matched against a strict pattern before they reach SQL."""
+    keys = list(dict.fromkeys(keycols or ()))
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table) and isinstance(col, str) and _D1_SQL_IDENT.fullmatch(col)
+            and all(isinstance(k, str) and _D1_SQL_IDENT.fullmatch(k) for k in keys)):
+        raise Unknown(f"ldgr_fetch_source_stats: malformed identifier(s) {table!r} / {col!r} / {keys!r}")
+    lst = ",".join("'" + x + "'" for x in LDGR_PLACEHOLDERS)
+    pred = f'("{col}" IS NULL OR lower(btrim("{col}"::text)) IN ({lst}))'
+    sample = ("'[]'::jsonb" if not keys else
+              f"(SELECT coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) FROM (SELECT {','.join(chr(34) + k + chr(34) for k in keys)} FROM \"{table}\" "
+              f"WHERE {pred} ORDER BY {','.join(chr(34) + k + chr(34) for k in keys)} LIMIT 5) s)")
+    blob = scalar(f"SELECT jsonb_build_object('rows',count(*),'lacking',count(*) FILTER (WHERE {pred}),'sample',{sample})::text FROM \"{table}\"")
+    try:
+        got = json.loads(blob or "{}")
+    except json.JSONDecodeError as exc:
+        raise Unknown(f"ldgr_fetch_source_stats: unparseable read of {table}: {exc}") from exc
+    if not (isinstance(got, dict) and isinstance(got.get("rows"), int) and isinstance(got.get("lacking"), int)):
+        raise Unknown(f"ldgr_fetch_source_stats: malformed answer for {table}.{col}")
+    return got
+
+
+def grade_ldgr_source(ls: dict, stats: dict, table: str) -> dict:
+    """The declared Ldgr.source_presence reading (pure): the declared source column is non-empty on every row. PASS: every row names a source;
+    PARTIAL: some rows lack one (the sample names which); FAIL: no row names one; NO_DETECTOR: no rows (vacuous). The record carries the DECLARED
+    citation_state: the rollup never reads an unsourced / refuted one as PASS or PARTIAL (`_check_contribution`)."""
+    col, cs = ls["source_column"], ls["citation_state"]
+    rows, lacking = stats["rows"], stats["lacking"]
+    if rows == 0:
+        return dict(v=NO_DET, declared=True, citation_state=cs,
+                    measured=f"NO_DETECTOR — {table} has no rows: {col} names a source on 0 rows (vacuous)")
+    sample = stats.get("sample") or []
+    where = ("; rows lacking one: " + json.dumps(sample, sort_keys=True, default=str) + (" (first 5)" if lacking > len(sample) else "")) if lacking and sample else \
+            ("; row identity unavailable (no declared key)" if lacking else "")
+    v = PASS if lacking == 0 else (FAIL if lacking == rows else PARTIAL)
+    return dict(v=v, declared=True, citation_state=cs, ldgr=dict(source_column=col, rows=rows, lacking=lacking, sample=sample),
+                measured=f"declared source column {col} names a source on {rows - lacking}/{rows} rows (NULL, blank and 'not traced'-style placeholders do not "
+                         f"count); citation_state {cs}{where}")
+
+
+def ldgr_source_declared_check(aid: str, ls, table, cols, keys=None) -> dict:
+    """measure()'s Ldgr.source_presence record for an asset that DECLARES `ldgr_source`: {} for an undeclared asset. `no_classical_claim` reads N/A,
+    cause `no-classical-claim`, released only by the declared rule; it is NEVER emitted while the table carries a recognised citation column
+    (CITATION_COLUMNS): NO_DETECTOR with the disagreement reported. A measured declaration names the column that carries the source (L0 CF-08)."""
+    if not isinstance(ls, dict) or (ls.get("na") is None and ls.get("source_column") is None):
+        return {}
+    ev = ls.get("evidence")
+    if ls.get("na") == NO_CLASSICAL_CLAIM:
+        cit = [c for c in CITATION_COLUMNS if isinstance(cols, (list, tuple, set)) and c in cols]
+        if cit:
+            return {"Ldgr.source_presence": dict(v=NO_DET, declared=True,
+                                                 declaration_disagreements=[dict(field="ldgr_source.na", declared=NO_CLASSICAL_CLAIM, measured=f"the table carries citation column(s) {cit}")],
+                                                 measured=f"NO_DETECTOR — no_classical_claim is declared but {table or 'the target table'} carries citation column(s) "
+                                                          f"{', '.join(cit)}; the declaration is contradicted")}
+        return {"Ldgr.source_presence": dict(_na(f"declared no_classical_claim (reviewed; evidence: {ev}): {ls.get('why')}", "no-classical-claim"), declared=True)}
+    col, cs = ls["source_column"], ls["citation_state"]
+    if not table or not isinstance(cols, (list, tuple, set)) or not cols:
+        return {"Ldgr.source_presence": dict(v=NO_DET, declared=True, citation_state=cs,
+                                             measured="NO_DETECTOR — the declared source column is read on the target table, which does not exist in production "
+                                                      "or whose columns are unknown")}
+    if col not in cols:
+        return {"Ldgr.source_presence": dict(v=FAIL, declared=True, citation_state=cs,
+                                             measured=f"the declared source column {col} is not a column of {table}: the declaration names a source the table does not carry")}
+    kc = []
+    if keys:                                                # the same key choice as Vocab.identity: not the bare surrogate `id` when another key exists
+        k0 = keys[0] if len(keys[0]) > 1 or keys[0][0] != "id" else (keys[1] if len(keys) > 1 else keys[0])
+        kc = list(k0)
+    try:
+        return {"Ldgr.source_presence": grade_ldgr_source(ls, ldgr_fetch_source_stats(table, col, kc[:3]), table)}
+    except Unknown as exc:                                  # R41: this check's failure degrades only this check
+        return {"Ldgr.source_presence": dict(v=ERRORED, declared=True, citation_state=cs, measured=f"check errored: {exc}")}
 
 
 # ─────────────────────────── E6 packet (c): the Null and Narr checks ───────────────────────────
@@ -6324,6 +6659,11 @@ def measure(layer_key: str, assets=None) -> dict:
         tbl = r["target_table"]
         reach = None
         dc = {}
+        # E6 S3: the asset's DECLARED Vocab.alias / Ldgr.source_presence (a declaring asset's record replaces the legacy pattern measurement below)
+        _sd = ((declarations or {}).get(aid) or {}) if isinstance(declarations, dict) else {}
+        _va, _ls = _sd.get("vocab_alias"), _sd.get("ldgr_source")
+        _va_declared = isinstance(_va, dict) and (_va.get("na") is not None or _va.get("class") is not None)
+        _ls_declared = isinstance(_ls, dict) and (_ls.get("na") is not None or _ls.get("source_column") is not None)
         if tbl and tbl in cat["exists"]:
             # R41: each of these four checks queries the target table independently (one of them,
             # on the estate's largest tables, is exactly R40's kala_field timeout case) — a single
@@ -6398,7 +6738,7 @@ def measure(layer_key: str, assets=None) -> dict:
                     m["Vocab.identity"] = dict(v=ERRORED, measured=f"check errored: {exc}")
 
             try:
-                ac = alias_census(tbl, cat["cols"].get(tbl, []))
+                ac = None if _va_declared else alias_census(tbl, cat["cols"].get(tbl, []))
                 if ac:
                     bad = {k: v for k, v in ac.items() if v["no_alias"]}
                     # R54 (T1 plant vocab_alias): the verdict saturates — one empty alias set FAILs as
@@ -6428,7 +6768,7 @@ def measure(layer_key: str, assets=None) -> dict:
             # bg_transit_moorti — measured 2026-09-28 via information_schema) carry it and got no
             # Ldgr.source_presence check at all, despite a populated citation column.
             cit = [c for c in CITATION_COLUMNS if c in tcols]
-            if cit and dc.get("rows"):
+            if cit and dc.get("rows") and not _ls_declared:
                 col = cit[0]
                 try:
                     n = scalar(f"SELECT count(*)::text FROM {tbl} WHERE {col} IS NOT NULL")
@@ -6438,6 +6778,11 @@ def measure(layer_key: str, assets=None) -> dict:
                     m["Ldgr.source_presence"] = dict(v=ERRORED, measured=f"check errored: {exc}")
         elif tbl:
             m["Complete.depth"] = dict(v=FAIL, measured=f"target_table '{tbl}' does not exist in production")
+
+        # E6 S3: the declared forms (N/A by declaration, or measured against bg_ontology / the declared source column); {} for an undeclared asset
+        _t_ok = tbl if (tbl and tbl in cat["exists"]) else None
+        m.update(vocab_alias_declared_check(aid, _va, _t_ok, _target_columns_fact(tbl, cat)))
+        m.update(ldgr_source_declared_check(aid, _ls, _t_ok, _target_columns_fact(tbl, cat), cat["keys"].get(tbl, []) if tbl else []))
 
         # E6.1 (d): every token the asset is served under — target table, asset id, every count_sql table — over every
         # serving root (R23's CAPS_ROOTS, recursive) plus the wider source probe. A table another active asset of this
