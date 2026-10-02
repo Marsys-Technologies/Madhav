@@ -489,8 +489,11 @@ CREATE TABLE public.ka_gochara_search_inventory_verification (
   verified_at               timestamptz NOT NULL DEFAULT now(),
 
   PRIMARY KEY (chart_id, generation, event_class, verifier_id, verifier_version),
+  -- PC-4: ON DELETE CASCADE — the builder holds no DELETE on this table, yet a REBUILD of a candidate class deletes the inventory
+  -- header; the verification of a header that no longer exists must go with it (the RI cascade runs as the table owner, so the
+  -- builder can INVALIDATE a stale verification by rebuilding but can never WRITE one). A sealed generation still refuses.
   CONSTRAINT kgsv_header_fk FOREIGN KEY (chart_id, generation, event_class)
-    REFERENCES public.ka_gochara_search_inventory (chart_id, generation, event_class),
+    REFERENCES public.ka_gochara_search_inventory (chart_id, generation, event_class) ON DELETE CASCADE,
   CONSTRAINT kgsv_ids_nonblank_ck CHECK (btrim(verifier_id) <> '' AND btrim(verifier_version) <> ''),
   CONSTRAINT kgsv_digest_ck CHECK (rederived_inventory_digest ~ '^[0-9a-f]{64}$')
 );
