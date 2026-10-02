@@ -27,19 +27,16 @@ What it proves (§N.8 — each assertion measures the claim it names):
      executemany(_INSERT_SQL, …)) lands as an authenticated
      data_plane_builder connection, and the rows read back.
   3. FORBIDDEN — CREATE TABLE in schema public as the builder is refused.
-  4. IDEMPOTENT — the five real grant migrations apply a second time as a
+  4. IDEMPOTENT — the six real grant migrations apply a second time as a
      no-op and the insert path still works.
 
-DISCLOSED FINDING (reported, not papered over): no migration in this repo
-grants data_plane_builder anything on gochara_resonance_map — yet production
+FINDING, NOW CLOSED: until migration 1231 (PR #2906) no migration in this repo
+granted data_plane_builder anything on gochara_resonance_map — yet production
 carries `data_plane_builder=arwd/amjis_app` on it (verified read-only
-2026-10-02: pg_class.relacl for public.gochara_resonance_map), an out-of-band
-grant the B6.0 restore rehearsal also recorded ("SELECT/INSERT/DELETE on the
-table, USAGE on the sequence; steward-verified on production 2026-10-01").
-Test 2 cannot succeed without that privilege, so setup mirrors the VERIFIED
-PRODUCTION ACL (arwd + sequence USAGE) explicitly below, labelled
-PRODUCTION_MIRROR_GRANTS. A migration carrying this grant does not exist —
-that gap is part of this task's report.
+2026-10-02: pg_class.relacl for public.gochara_resonance_map). This suite
+previously mirrored that ACL out-of-band as PRODUCTION_MIRROR_GRANTS; 1231
+now records the verified production ACL, so the fixture applies it as the
+sixth real grant migration and the mirror is gone.
 
 Requires a THROWAWAY database; skipped unless C7_BUILDER_ROLE_TEST_DATABASE_URL
 is set:
@@ -89,16 +86,6 @@ DERIVED_GRANT_TARGETS = {
     "bg_transit_av_gates": "397_bg_transit_av_gates.sql",
 }
 
-# FINDING (disclosed): the builder's gochara_resonance_map privileges exist in
-# production but in NO migration (see the module docstring). Mirrored from the
-# verified production ACL, granted by the owner, so test 2 measures the real
-# production shape rather than an invented one.
-PRODUCTION_MIRROR_GRANTS = """
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.gochara_resonance_map TO data_plane_builder;
-GRANT USAGE ON SEQUENCE public.gochara_resonance_map_id_seq TO data_plane_builder;
-"""
-
-
 def _build_schema_as_owner(conn) -> dict:
     """The whole surface the five grant migrations touch plus the resonance
     writer's schema — every object created AS amjis_app, from the real files."""
@@ -127,8 +114,6 @@ def _build_schema_as_owner(conn) -> dict:
             cur.execute(path.read_text())
             cur.execute("INSERT INTO public._migrations_applied (filename) VALUES (%s)", (path.name,))
             applied["contract_ddl"].append(path.name)
-        # The verified-production ACL mirror (FINDING — no migration carries it).
-        cur.execute(PRODUCTION_MIRROR_GRANTS)
     return applied
 
 
@@ -189,7 +174,7 @@ def test_control_mirror_is_deployment_faithful(builder_world):
         "AND has_function_privilege('public', p.oid, 'EXECUTE')"
     ).fetchone()[0]
     assert public_exec == 0
-    # And the fixture applied all five real grant migrations.
+    # And the fixture applied all six real grant migrations.
     assert [Path(p).name for p in BR.grant_migration_files()] == builder_world["applied"]["grant_migrations"]
 
 
