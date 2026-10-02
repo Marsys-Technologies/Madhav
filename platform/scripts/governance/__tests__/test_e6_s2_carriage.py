@@ -567,6 +567,42 @@ def test_d1_the_spec_requires_the_declared_clause_mapping_and_its_evidence():
         d1.validate_spec(dict(SPEC, effect_clauses_evidence=" "), "x")
 
 
+def test_d1_an_effect_of_only_anchor_words_is_a_miss_even_when_it_is_the_whole_clause():
+    seg = "Shkos In the Latta of Venus. Thus the separate effects"
+    spec = _mini(effect_clauses={"Venus": dict(clause="In the Latta of Venus", effect="In the Latta of Venus")})
+    assert _eff_of(seg, "Venus", "In the Latta of Venus", spec) is False
+    spec2 = _mini(effect_clauses={"Venus": dict(clause="In the Latta of Venus quarrel", effect="quarrel")})
+    assert _eff_of("Shkos In the Latta of Venus quarrel. Thus the separate effects", "Venus", "quarrel", spec2) is True
+
+
+def test_d1_a_claimants_anchor_in_two_clauses_is_ambiguous_and_a_miss():
+    seg = "Shkos In the Latta of Venus there will be quarrel. During the Latta of Venus there will be grief. Thus the separate effects"
+    cl = {"Venus": dict(clause="In the Latta of Venus there will be quarrel", effect="quarrel")}
+    spec = _mini(effect_clauses=cl)
+    assert _eff_of(seg, "Venus", "quarrel", spec) is False
+    assert _eff_of("Shkos In the Latta of Venus there will be quarrel. Thus the separate effects", "Venus", "quarrel", spec) is True
+
+
+def test_d1_the_declared_clause_lookup_trims_and_ignores_case_in_both_the_key_and_the_claimant():
+    seg = "Shkos In the Latta of Venus there will be quarrel. Thus the separate effects"
+    for key, who in (("Venus", "  VENUS "), ("  venus ", "Venus"), ("VENUS", "venus")):
+        spec = _mini(effect_clauses={key: dict(clause="In the Latta of Venus there will be quarrel", effect="quarrel")})
+        assert _eff_of(seg, who, "quarrel", spec) is True, (key, who)
+
+
+def test_d1_a_short_run_of_the_passage_is_not_a_condition_even_without_declared_anchors():
+    spec = dict(SPEC, extra_fields=[dict(column="affliction_condition", kind="passage_text", anchors=["sickness"])])
+    rows = copy.deepcopy(ROWS)
+    [r.update(affliction_condition="sickness and anguish") for r in rows]              # 3 words, a contiguous run, but too short to identify a condition
+    r = _measure(rows=rows, spec=spec)
+    assert r["v"] == "PARTIAL" and r["d1"]["rows_matched"] == 0
+
+
+@pytest.mark.parametrize("ev", ["unverified:", "unverified:   ", "unverified"])
+def test_an_empty_unverified_pointer_is_not_evidence(ev):
+    assert not ac._evidence_pointer_ok(ev)
+
+
 def test_the_table_guard_runs_before_any_select(monkeypatch):
     called = []
     monkeypatch.setattr(ac, "d1_fetch_chunks", lambda ids: called.append("chunks") or dict(CHUNKS))
