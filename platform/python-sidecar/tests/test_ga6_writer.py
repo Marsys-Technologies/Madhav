@@ -1038,9 +1038,10 @@ class TestKarakaReaderMapping:
         # rank 5..8 -> PiK PK GK DK
         assert [got[k] for k in ("PiK", "PK", "GK", "DK")] == ["Mars", "Rahu", "Jupiter", "Mercury"]
 
-    def test_mapping_is_by_stored_rank_not_by_subject_label(self):
-        """Pre-rebuild rows (old labels: rank 5 = PUTRAKARAKA ... rank 8 = STRIKARAKA) still map
-        correctly, because the rank — not the label — is authoritative."""
+    def test_pre_2878_rows_are_refused_not_read(self):
+        """Pre-#2878 rows (old labels: rank 5 = PUTRAKARAKA ... rank 8 = STRIKARAKA subject, no PITRIKARAKA) are
+        REFUSED. The ga_sensitive -> ga_vargas ordering is enforced only by the held migration 1226, so the
+        reader guards the generation itself (subjects must be exactly KARAKA_ROLES_8)."""
         m = _mod()
         old_labels = ["ATMAKARAKA", "AMATYAKARAKA", "BHRATRIKARAKA", "MATRIKARAKA",
                       "PUTRAKARAKA", "GNATIKARAKA", "DARAKARAKA", "STRIKARAKA"]
@@ -1048,8 +1049,17 @@ class TestKarakaReaderMapping:
         rows = []
         for rank, (subj, graha) in enumerate(zip(old_labels, grahas), start=1):
             rows += [(subj, "assigned_graha", graha, None), (subj, "karaka_rank", None, float(rank))]
-        got = m._read_jaimini_karakas(_FakeKarakaConn(rows), MOCK_CHART_ID, MOCK_AYAN)
-        assert got == CANONICAL_KARAKA_ASSIGNMENTS
+        with pytest.raises(m.KarakaDependencyMissing, match=r"STRIKARAKA.*PITRIKARAKA|PITRIKARAKA.*STRIKARAKA"):
+            m._read_jaimini_karakas(_FakeKarakaConn(rows), MOCK_CHART_ID, MOCK_AYAN)
+
+    def test_correct_eight_subjects_accepted_and_duplicated_graha_still_refused(self):
+        m = _mod()
+        assert m._read_jaimini_karakas(
+            _FakeKarakaConn(_STORED_KN_RAO_ROWS), MOCK_CHART_ID, MOCK_AYAN) == CANONICAL_KARAKA_ASSIGNMENTS
+        rows = [(s, k, ("Moon" if (s == "DARAKARAKA" and k == "assigned_graha") else t), n)
+                for s, k, t, n in _STORED_KN_RAO_ROWS]
+        with pytest.raises(m.KarakaDependencyMissing, match="distinct"):
+            m._read_jaimini_karakas(_FakeKarakaConn(rows), MOCK_CHART_ID, MOCK_AYAN)
 
     def test_query_is_pinned_and_totally_ordered(self):
         m = _mod()

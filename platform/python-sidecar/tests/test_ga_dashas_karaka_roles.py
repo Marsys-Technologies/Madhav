@@ -100,11 +100,37 @@ class TestReaderGolden:
         assert tuple(got[g] for _, g in _RANKED) == KARAKA_ABBREVIATIONS_8
 
     def test_mapping_is_by_stored_rank_not_subject_label(self):
-        # Pre-rebuild labels (rank 5 = PUTRAKARAKA ... rank 8 = STRIKARAKA) still map by rank.
+        # The stored karaka_rank is authoritative, not the subject label: the same eight (exact KARAKA_ROLES_8)
+        # subjects with their ranks rotated by one still read, and the roles follow the RANK.
+        subjects = [s for s, _ in _RANKED]
+        grahas = [g for _, g in _RANKED]
+        rows = [(subj, "assigned_graha", g, None) for subj, g in zip(subjects, grahas)]
+        rows += [(subj, "karaka_rank", None, float(rank))
+                 for rank, subj in enumerate(subjects[1:] + subjects[:1], start=1)]
+        got = mod._read_karaka_roles(_FakeConn(rows), CHART, AYAN)
+        rotated_grahas = grahas[1:] + grahas[:1]
+        assert [got[g] for g in rotated_grahas] == list(KARAKA_ABBREVIATIONS_8)
+
+    def test_pre_2878_rows_are_refused_not_read(self):
+        # Pre-#2878 ga_sensitive generation: rank 5 = PUTRAKARAKA ... rank 8 = STRIKARAKA SUBJECT, no PITRIKARAKA.
+        # The ordering ga_sensitive -> ga_dashas is enforced only by the HELD migration 1226, so the reader
+        # refuses a stale generation instead of silently reading it.
         old = ["ATMAKARAKA", "AMATYAKARAKA", "BHRATRIKARAKA", "MATRIKARAKA",
                "PUTRAKARAKA", "GNATIKARAKA", "DARAKARAKA", "STRIKARAKA"]
         ranked = [(subj, g) for subj, (_, g) in zip(old, _RANKED)]
-        assert mod._read_karaka_roles(_FakeConn(_stored_rows(ranked)), CHART, AYAN) == CANONICAL_ROLES
+        with pytest.raises(mod.KarakaDependencyMissing, match=r"STRIKARAKA.*PITRIKARAKA|PITRIKARAKA.*STRIKARAKA"):
+            mod._read_karaka_roles(_FakeConn(_stored_rows(ranked)), CHART, AYAN)
+        # ... and through the loader the writer uses: recorded as a refusal message, raised where a role is needed.
+        mod._activate_karaka_roles(CHART, AYAN, _FakeConn(_stored_rows(ranked)))
+        assert isinstance(mod._KARAKA_ROLE_CACHE[(CHART, AYAN)], str)
+        assert "pre-#2878" in mod._KARAKA_ROLE_CACHE[(CHART, AYAN)]
+
+    def test_correct_eight_subjects_are_accepted_and_duplicated_graha_still_refused(self):
+        assert mod._read_karaka_roles(_FakeConn(_stored_rows()), CHART, AYAN) == CANONICAL_ROLES
+        dup = list(_RANKED)
+        dup[7] = ("DARAKARAKA", "Moon")  # Moon already holds rank 1
+        with pytest.raises(mod.KarakaDependencyMissing, match="8 distinct grahas"):
+            mod._read_karaka_roles(_FakeConn(_stored_rows(dup)), CHART, AYAN)
 
     def test_query_is_pinned_and_totally_ordered(self):
         conn = _FakeConn(_stored_rows())

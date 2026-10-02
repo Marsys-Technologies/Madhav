@@ -21,6 +21,15 @@ Rulings (SS N-69, binding):
   * STRIKARAKA is a labelled ALIAS of the Darakaraka in the 8-scheme (same
     graha). It is emitted as an extra fact_key on the DARAKARAKA subject, never
     as a ninth subject row and never as a STRIKARAKA subject.
+
+ORDERING DEPENDENCY (stated here because the code cannot enforce it): ga_vargas and
+ga_dashas must be built AFTER ga_sensitive has been (re)built for the chart. The
+ga_sensitive -> ga_vargas / ga_dashas DAG edges exist only in migration 1226, which is
+HELD and is not part of the S-L1 integration branch; until it is applied nothing in the
+orchestrator orders these assets. The reader therefore carries its own guard: it
+refuses (``KarakaDependencyMissing``) unless the stored kn_rao subjects are EXACTLY
+``KARAKA_ROLES_8``, so a stale pre-#2878 ga_sensitive generation (STRIKARAKA stored as
+an eighth subject, no PITRIKARAKA) is refused rather than silently read.
 """
 from __future__ import annotations
 
@@ -111,8 +120,9 @@ def kn_rao_graha_by_rank(
     Refuses (``KarakaDependencyMissing``, never a default, never a partial map) when: there
     are no rows; an ``assigned_graha`` / ``karaka_rank`` row for a subject is duplicated or
     NULL; the assigned_graha subjects differ from the karaka_rank subjects; the ranks are
-    not a permutation of 1..8; the eight grahas are not distinct (or, when
-    ``allowed_grahas`` is given, are not all drawn from it). ``consumer`` ("ga_vargas" /
+    not a permutation of 1..8; the subjects are not exactly ``KARAKA_ROLES_8`` (a pre-#2878
+    ga_sensitive generation: STRIKARAKA subject, no PITRIKARAKA); the eight grahas are not
+    distinct (or, when ``allowed_grahas`` is given, are not all drawn from it). ``consumer`` ("ga_vargas" /
     "ga_dashas") only names the refusing writer in the message."""
     n_roles = len(KARAKA_ABBREVIATIONS_8)
     where = (
@@ -150,6 +160,15 @@ def kn_rao_graha_by_rank(
         raise KarakaDependencyMissing(
             f"[{consumer}] ga_sensitive kn_rao karaka ranks {ranks} are not a "
             f"1..{n_roles} permutation for {where}."
+        )
+    expected_subjects = set(KARAKA_ROLES_8)
+    if set(graha_by_subject) != expected_subjects:
+        raise KarakaDependencyMissing(
+            f"[{consumer}] ga_sensitive kn_rao karaka subjects {sorted(graha_by_subject)} are not the "
+            f"expected {sorted(expected_subjects)} (missing {sorted(expected_subjects - set(graha_by_subject))}, "
+            f"unexpected {sorted(set(graha_by_subject) - expected_subjects)}) for {where}: a stale "
+            f"pre-#2878 ga_sensitive generation (STRIKARAKA as an 8th subject, no PITRIKARAKA)? "
+            f"Rebuild ga_sensitive for this chart first; {consumer} must be built after ga_sensitive."
         )
     by_rank = {rank: graha_by_subject[subject] for subject, rank in rank_by_subject.items()}
     grahas = [by_rank[rank] for rank in range(1, n_roles + 1)]

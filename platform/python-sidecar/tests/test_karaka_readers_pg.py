@@ -671,6 +671,25 @@ def test_seven_rows_only_of_the_eight_scheme_raises(conn):
     _mutate_and_read(conn, mutate, "not a 1..8 permutation")
 
 
+def test_pre_2878_shaped_rows_are_refused_by_both_readers(conn):
+    """A stale pre-#2878 ga_sensitive generation (STRIKARAKA stored as the 8th SUBJECT, no PITRIKARAKA; ranks still a
+    clean 1..8 permutation of eight distinct grahas) is REFUSED, not read. The ga_sensitive -> ga_vargas/ga_dashas
+    ordering exists only in the held migration 1226, so the reader guards the generation itself."""
+    relabel = {"PITRIKARAKA": "PUTRAKARAKA", "PUTRAKARAKA": "GNATIKARAKA", "GNATIKARAKA": "DARAKARAKA",
+               "DARAKARAKA": "STRIKARAKA"}
+
+    def mutate(rows):
+        out = []
+        for r in rows:
+            if r["formula_id"] == KN_RAO and r["fact_key"] == "strikaraka_alias":
+                continue  # the old writer had no alias row
+            if r["formula_id"] == KN_RAO and r["fact_subject"] in relabel:
+                r = mk_row(r, fact_subject=relabel[r["fact_subject"]])
+            out.append(r)
+        return out
+    _mutate_and_read(conn, mutate, r"STRIKARAKA.*PITRIKARAKA|PITRIKARAKA.*STRIKARAKA")
+
+
 def test_dashas_refuses_a_graha_outside_its_universe(conn):
     """ga_dashas' lord universe is the eight karaka grahas (no Ketu): a stored Ketu role is refused there."""
     def mutate(rows):
