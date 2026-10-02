@@ -66,6 +66,24 @@ statement out of the runner source by `ast` (nothing is imported) and `deps_sql_
 raises `RunnerSqlExtractionError` and fails the test -- it never skips. If the runner's query is changed (a deliberate
 runner change), update `DEPS_SQL` in the same commit.
 
+## --with-footprint: scope is "complete" or "partial"
+
+The E5.9 footprint is computed over the registry `target_table` of the assets in the set, and the registry holds one
+table per asset. The report therefore carries `footprint_scope`:
+
+* `partial` when ANY of: `assets_without_target_table` (null/empty target_table), `assets_whose_writer_writes_other_tables`
+  (a static scan of `pipeline/orchestrator/writers/<asset_id>.py` -- plus any `source_paths` files it lists -- found
+  INSERT/DELETE/UPDATE/TRUNCATE/COPY targets beyond the registry table and beyond the wave's write set; labelled
+  *indicative*), or `assets_not_scanned` (writer file missing/unparseable, a table named by a runtime value, or no write
+  statement visible at all, which is how a delegating adapter looks). Then `has_blockers` (report level and inside
+  `footprint`) is `"unknown"`, never false; the computed value over the known tables is kept as
+  `has_blockers_known_subset`.
+* `complete` only when none of the three lists has an entry; `has_blockers` is then the computed boolean.
+
+The scan reads source text only (`ast.parse`, nothing imported or executed). It cannot see SQL loaded from files, a
+delegate in another module, or a table named at runtime (those are reported as not scanned, not guessed), and it can
+over-report a table named in an unexecuted string. A `complete` scope is a statement about the scan, not about production.
+
 ## Exit codes
 
 | code | meaning |
