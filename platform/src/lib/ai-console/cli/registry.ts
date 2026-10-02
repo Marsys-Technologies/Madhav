@@ -7,7 +7,7 @@ import { ALL_CLI_ROLES } from './types'
 
 export type CliOutputFormat = 'codex_jsonl' | 'claude_json' | 'antigravity_stream_json' | 'kimi_acp_json'
 export type CliExecutionTransport = 'standard' | 'antigravity_stream_json' | 'kimi_acp'
-export type CliModelCatalogFormat = 'antigravity_models' | 'kimi_provider_json'
+export type CliModelCatalogFormat = 'antigravity_models' | 'kimi_provider_json' | 'codex_app_server' | 'claude_control'
 
 export interface CliExecutionDefinition {
   readonly args: readonly string[]
@@ -50,8 +50,11 @@ export const CLI_REGISTRY: Readonly<Record<CliId, CliDefinition>> = Object.freez
   codex: Object.freeze({
     id: 'codex', productName: 'Codex CLI', candidates: fixed('/opt/homebrew/bin/codex'),
     allowedRealpathPrefixes: fixed('/opt/homebrew/Caskroom/codex/'), versionArgs: fixed('--version'),
-    authStatusArgs: fixed('login', 'status'), supportedVersion: '0.158.0', compatibleRoles: ALL_CLI_ROLES,
+    authStatusArgs: fixed('login', 'status'), supportedVersion: '0.158.0',
+    supportedVersions: fixed('0.155.1', '0.158.0'), compatibleRoles: ALL_CLI_ROLES,
     supportsTools: false, supportsStructuredOutput: true,
+    modelCatalog: Object.freeze({ args: fixed('app-server', '--stdio', '-c', 'model_provider="openai"'),
+      format: 'codex_app_server' }),
     execution: Object.freeze({
       args: fixed('exec', '--sandbox', 'read-only', '--ephemeral', '--ignore-user-config', '--ignore-rules',
         '--skip-git-repo-check', '--color', 'never', '--json', '--cd', '__CWD__', '-'),
@@ -61,8 +64,13 @@ export const CLI_REGISTRY: Readonly<Record<CliId, CliDefinition>> = Object.freez
   claude_code: Object.freeze({
     id: 'claude_code', productName: 'Claude Code', candidates: fixed('/Users/Dev/.local/bin/claude'),
     allowedRealpathPrefixes: fixed('/Users/Dev/.local/share/claude/versions/'), versionArgs: fixed('--version'),
-    authStatusArgs: fixed('auth', 'status'), supportedVersion: '2.1.284', compatibleRoles: ALL_CLI_ROLES,
+    authStatusArgs: fixed('auth', 'status'), supportedVersion: '2.1.284',
+    supportedVersions: fixed('2.1.239', '2.1.284'), compatibleRoles: ALL_CLI_ROLES,
     supportsTools: false, supportsStructuredOutput: true,
+    modelCatalog: Object.freeze({ args: fixed('-p', '--input-format', 'stream-json', '--output-format',
+      'stream-json', '--verbose', '--no-session-persistence', '--tools', '', '--setting-sources', '',
+      '--mcp-config', '{"mcpServers":{}}', '--strict-mcp-config', '--permission-mode', 'dontAsk'),
+    format: 'claude_control' }),
     execution: Object.freeze({
       args: fixed('-p', '--input-format', 'text', '--output-format', 'json', '--no-session-persistence',
         '--disable-slash-commands', '--tools', '', '--setting-sources', '', '--mcp-config', '{"mcpServers":{}}',
@@ -120,7 +128,7 @@ export function validateCliModelId(modelId: string | null): string | null {
 }
 
 export function buildExecutionArgs(definition: CliDefinition, modelId: string | null,
-  options: { cwd?: string; schemaPath?: string; effort?: AiEffort } = {}): string[] {
+  options: { cwd?: string; schemaPath?: string; effort?: AiEffort; supportedEfforts?: readonly string[] } = {}): string[] {
   if (!definition.execution) throw new AiConsoleError('AI_CLI_UNREACHABLE')
   const model = validateCliModelId(modelId)
   const args = definition.execution.args.map(value => value === '__CWD__' ? options.cwd ?? '__CWD__' : value)
@@ -129,7 +137,7 @@ export function buildExecutionArgs(definition: CliDefinition, modelId: string | 
     additions.push(...definition.execution.modelFlag, model)
   }
   if (options.effort) {
-    if (!cliEffortLevels(definition.id, model).includes(options.effort)) {
+    if (!cliEffortLevels(definition.id, model, options.supportedEfforts).includes(options.effort)) {
       throw new AiConsoleError('AI_ROLE_INCOMPATIBLE')
     }
     if (definition.id === 'codex') additions.push('-c', `model_reasoning_effort=${options.effort}`)

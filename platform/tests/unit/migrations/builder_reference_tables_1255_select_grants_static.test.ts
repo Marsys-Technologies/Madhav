@@ -34,7 +34,9 @@ describe('migration 1255 — static contract', () => {
   it('has ONE data-driven table list, exactly the seven approved tables, in order', () => {
     const arrays = CODE.match(/\btables text\[\] := ARRAY\[([\s\S]*?)\];/g) ?? []
     expect(arrays).toHaveLength(1)
-    const names = [...arrays[0].matchAll(/'([a-z_]+)'/g)].map(m => m[1])
+    const first = arrays[0]
+    if (first === undefined) throw new Error('Expected the asserted single table list')
+    const names = [...first.matchAll(/'([a-z_]+)'/g)].map(m => m[1])
     expect(names).toEqual(SEVEN)
     // The table names appear nowhere else in executable SQL: guards, grants and post-check all iterate the list.
     for (const t of SEVEN) expect(CODE.match(new RegExp(`\\b${t}\\b`, 'g'))).toHaveLength(1)
@@ -43,7 +45,9 @@ describe('migration 1255 — static contract', () => {
   it('has ONE section-2 list (l1_owner_tables), exactly brahma_yoga_catalog, granted only to data_plane_l1_owner', () => {
     const arrays = CODE.match(/\bl1_owner_tables text\[\] := ARRAY\[([\s\S]*?)\];/g) ?? []
     expect(arrays).toHaveLength(1)
-    expect([...arrays[0].matchAll(/'([a-z_0-9]+)'/g)].map(m => m[1])).toEqual(OWNER_TABLES)
+    const first = arrays[0]
+    if (first === undefined) throw new Error('Expected the asserted single owner table list')
+    expect([...first.matchAll(/'([a-z_0-9]+)'/g)].map(m => m[1])).toEqual(OWNER_TABLES)
     for (const t of OWNER_TABLES) expect(CODE.match(new RegExp(`\\b${t}\\b`, 'g'))).toHaveLength(1)
     expect(CODE.match(/GRANT SELECT ON TABLE %s TO data_plane_l1_owner/g)).toHaveLength(1)
     expect(CODE).toContain("rolname = 'data_plane_l1_owner'")

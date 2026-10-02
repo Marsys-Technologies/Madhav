@@ -17,7 +17,7 @@ vi.mock('../../repository', () => ({
 
 const attempt = { cliId: 'codex' as const, epoch: '42', previous: { state: 'reachable' as const,
   detectedProduct: 'Codex CLI', detectedVersion: '0.155.1', lastCheckedAt: new Date('2026-09-27T00:00:00Z'),
-  errorCode: null } }
+  errorCode: null, entrypointSha256: 'a'.repeat(64) } }
 const identity = { cliId: 'codex' as const, entrypoint: { realpath: '/fixed/codex', device: '1', inode: '2',
   size: 3, modifiedMs: 4, sha256: 'a'.repeat(64) } }
 
@@ -39,6 +39,129 @@ beforeEach(() => {
 })
 
 describe('CLI validation', () => {
+  it('refreshes catalog metadata without inference when the validated binary is unchanged', async () => {
+    const discovered = { modelId: 'gpt-current', displayName: 'Current GPT',
+      supportedEfforts: ['low', 'xhigh'], defaultEffort: 'low', isCatalogDiscovered: true }
+    const runner = { inspectInstallation: vi.fn().mockResolvedValue(identity), confirmValidation: vi.fn(),
+      runVersionValidation: vi.fn().mockResolvedValue({ stdout: 'codex-cli 0.155.1' }),
+      runModelCatalogValidation: vi.fn().mockResolvedValue([discovered]), runProbeValidation: vi.fn(),
+    } as unknown as CliRunner
+    const registry = { codex: { ...definition, modelCatalog: {
+      args: ['app-server', '--stdio'], format: 'codex_app_server' as const,
+    } } }
+    const result = await validateCli('alice', 'codex', undefined, { runner, registry, metadataOnly: true })
+    expect(result.state).toBe('reachable')
+    expect(runner.runProbeValidation).not.toHaveBeenCalled()
+    expect(repository.storeCliValidation).toHaveBeenCalledWith('codex', expect.objectContaining({
+      state: 'reachable', models: expect.arrayContaining([expect.objectContaining(discovered)]),
+    }), '42')
+  })
+
+  it('requires an explicit execution test after a metadata refresh discovers a changed binary', async () => {
+    const changed = { ...identity, entrypoint: { ...identity.entrypoint, sha256: 'b'.repeat(64) } }
+    const runner = { inspectInstallation: vi.fn().mockResolvedValue(changed), confirmValidation: vi.fn(),
+      runVersionValidation: vi.fn().mockResolvedValue({ stdout: 'codex-cli 0.155.1' }),
+      runModelCatalogValidation: vi.fn().mockResolvedValue([{ modelId: 'gpt-current', displayName: 'Current GPT' }]),
+      runProbeValidation: vi.fn(),
+    } as unknown as CliRunner
+    const registry = { codex: { ...definition, modelCatalog: {
+      args: ['app-server', '--stdio'], format: 'codex_app_server' as const,
+    } } }
+    const result = await validateCli('alice', 'codex', undefined, { runner, registry, metadataOnly: true })
+    expect(result).toMatchObject({ state: 'needs_attention', modelCount: 1 })
+    expect(result.errorCode).toBeUndefined()
+    expect(runner.runProbeValidation).not.toHaveBeenCalled()
+    expect(runner.confirmValidation).not.toHaveBeenCalled()
+    expect(repository.storeCliValidation).toHaveBeenCalledWith('codex', expect.objectContaining({
+      state: 'needs_attention', models: [expect.objectContaining({ isCatalogDiscovered: true })],
+      entrypointSha256: changed.entrypoint.sha256, errorCode: 'AI_CLI_UNREACHABLE',
+    }), '42')
+  })
+
+  it('preserves legacy reachable choices without stamping a hash or confirming execution from metadata', async () => {
+    vi.mocked(repository.markCliValidationStarted).mockResolvedValueOnce({ ...attempt,
+      previous: { ...attempt.previous, entrypointSha256: null } })
+    const runner = { inspectInstallation: vi.fn().mockResolvedValue(identity), confirmValidation: vi.fn(),
+      runVersionValidation: vi.fn().mockResolvedValue({ stdout: 'codex-cli 0.155.1' }),
+      runModelCatalogValidation: vi.fn().mockResolvedValue([{ modelId: 'gpt-current', displayName: 'Current GPT',
+        supportedEfforts: ['low', 'high'], defaultEffort: 'low' }]), runProbeValidation: vi.fn(),
+    } as unknown as CliRunner
+    const registry = { codex: { ...definition, modelCatalog: {
+      args: ['app-server', '--stdio'], format: 'codex_app_server' as const,
+    } } }
+    const result = await validateCli('alice', 'codex', undefined, { runner, registry, metadataOnly: true })
+    expect(result).toMatchObject({ state: 'reachable', modelCount: 2 })
+    expect(result.errorCode).toBeUndefined()
+    expect(runner.runProbeValidation).not.toHaveBeenCalled()
+    expect(runner.confirmValidation).not.toHaveBeenCalled()
+    expect(repository.listConfirmedManualCliModels).not.toHaveBeenCalled()
+    const write = vi.mocked(repository.storeCliValidation).mock.calls[0][1]
+    expect(write.entrypointSha256).toBeUndefined()
+    expect(write.models).toEqual([
+      expect.objectContaining({ modelId: CLI_BUILTIN_MODEL_DB_ID, isBuiltinDefault: true }),
+      expect.objectContaining({ modelId: 'gpt-current', isCatalogDiscovered: true }),
+    ])
+  })
+
+  it('does not preserve legacy availability when the detected version changes', async () => {
+    vi.mocked(repository.markCliValidationStarted).mockResolvedValueOnce({ ...attempt,
+      previous: { ...attempt.previous, detectedVersion: '0.154.0', entrypointSha256: null } })
+    const runner = { inspectInstallation: vi.fn().mockResolvedValue(identity), confirmValidation: vi.fn(),
+      runVersionValidation: vi.fn().mockResolvedValue({ stdout: 'codex-cli 0.155.1' }),
+      runModelCatalogValidation: vi.fn().mockResolvedValue([{ modelId: 'gpt-current', displayName: 'Current GPT' }]),
+      runProbeValidation: vi.fn(),
+    } as unknown as CliRunner
+    const registry = { codex: { ...definition, modelCatalog: {
+      args: ['app-server', '--stdio'], format: 'codex_app_server' as const,
+    } } }
+    const result = await validateCli('alice', 'codex', undefined, { runner, registry, metadataOnly: true })
+    expect(result).toMatchObject({ state: 'needs_attention', modelCount: 1 })
+    expect(result.errorCode).toBeUndefined()
+    expect(runner.confirmValidation).not.toHaveBeenCalled()
+    expect(runner.runProbeValidation).not.toHaveBeenCalled()
+    expect(repository.storeCliValidation).toHaveBeenCalledWith('codex', expect.objectContaining({
+      state: 'needs_attention', entrypointSha256: identity.entrypoint.sha256,
+      models: [expect.objectContaining({ modelId: 'gpt-current' })],
+    }), '42')
+  })
+
+  it('preserves a legacy catalog after transient refresh failure without recording untested identity', async () => {
+    vi.mocked(repository.markCliValidationStarted).mockResolvedValueOnce({ ...attempt,
+      previous: { ...attempt.previous, entrypointSha256: null } })
+    const runner = { inspectInstallation: vi.fn().mockResolvedValue(identity), confirmValidation: vi.fn(),
+      runVersionValidation: vi.fn().mockResolvedValue({ stdout: 'codex-cli 0.155.1' }),
+      runModelCatalogValidation: vi.fn().mockRejectedValue(new AiConsoleError('AI_CLI_TIMEOUT')),
+      runProbeValidation: vi.fn(),
+    } as unknown as CliRunner
+    const registry = { codex: { ...definition, modelCatalog: {
+      args: ['app-server', '--stdio'], format: 'codex_app_server' as const,
+    } } }
+    const result = await validateCli('alice', 'codex', undefined, { runner, registry, metadataOnly: true })
+    expect(result).toMatchObject({ state: 'reachable', errorCode: 'AI_CLI_TIMEOUT' })
+    const write = vi.mocked(repository.storeCliValidation).mock.calls[0][1]
+    expect(write.models).toBeUndefined()
+    expect(write.entrypointSha256).toBeUndefined()
+    expect(runner.confirmValidation).not.toHaveBeenCalled()
+    expect(runner.runProbeValidation).not.toHaveBeenCalled()
+  })
+
+  it('keeps working execution and saved catalog on a transient metadata timeout', async () => {
+    const runner = { inspectInstallation: vi.fn().mockResolvedValue(identity), confirmValidation: vi.fn(),
+      runVersionValidation: vi.fn().mockResolvedValue({ stdout: 'codex-cli 0.155.1' }),
+      runModelCatalogValidation: vi.fn().mockRejectedValue(new AiConsoleError('AI_CLI_TIMEOUT')),
+      runProbeValidation: vi.fn(),
+    } as unknown as CliRunner
+    const registry = { codex: { ...definition, modelCatalog: {
+      args: ['app-server', '--stdio'], format: 'codex_app_server' as const,
+    } } }
+    const result = await validateCli('alice', 'codex', undefined, { runner, registry, metadataOnly: true })
+    expect(result).toMatchObject({ state: 'reachable', errorCode: 'AI_CLI_TIMEOUT' })
+    expect(runner.runProbeValidation).not.toHaveBeenCalled()
+    const write = vi.mocked(repository.storeCliValidation).mock.calls[0][1]
+    expect(write.state).toBe('reachable')
+    expect(write.models).toBeUndefined()
+  })
+
   it('tests an exact Claude model through the CLI before persisting and confirming it', async () => {
     const claudeIdentity = { ...identity, cliId: 'claude_code' as const }
     const output = { stdout: JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'OK' }),
@@ -46,7 +169,7 @@ describe('CLI validation', () => {
     const runner = { inspectInstallation: vi.fn().mockResolvedValue(claudeIdentity),
       runVersionValidation: vi.fn().mockResolvedValue({ stdout: '2.1.284', exitCode: 0, signal: null }),
       runAuthValidation: vi.fn().mockResolvedValue({ stdout: '', exitCode: 0, signal: null }),
-      runModelCatalogValidation: vi.fn(), runProbeValidation: vi.fn().mockResolvedValue(output),
+      runModelCatalogValidation: vi.fn().mockResolvedValue([]), runProbeValidation: vi.fn().mockResolvedValue(output),
       runModelProbeValidation: vi.fn().mockResolvedValue(output), confirmValidation: vi.fn(),
       confirmManualModel: vi.fn(),
     } as unknown as CliRunner
@@ -65,7 +188,7 @@ describe('CLI validation', () => {
     const runner = { inspectInstallation: vi.fn().mockResolvedValue(claudeIdentity),
       runVersionValidation: vi.fn().mockResolvedValue({ stdout: '2.1.284', exitCode: 0, signal: null }),
       runAuthValidation: vi.fn().mockResolvedValue({ stdout: '', exitCode: 0, signal: null }),
-      runModelCatalogValidation: vi.fn(), runProbeValidation: vi.fn().mockResolvedValue(output),
+      runModelCatalogValidation: vi.fn().mockResolvedValue([]), runProbeValidation: vi.fn().mockResolvedValue(output),
       runModelProbeValidation: vi.fn().mockResolvedValue({ ...output, stdout: JSON.stringify({
         type: 'result', subtype: 'success', is_error: false, result: 'NO',
       }) }), confirmValidation: vi.fn(), confirmManualModel: vi.fn(),
@@ -82,7 +205,7 @@ describe('CLI validation', () => {
     const runner = { inspectInstallation: vi.fn().mockResolvedValue(identity), confirmValidation: vi.fn(),
       runVersionValidation: vi.fn().mockResolvedValue({ stdout: 'codex-cli 0.158.0', exitCode: 0, signal: null }),
       runAuthValidation: vi.fn().mockResolvedValue({ stdout: '', exitCode: 0, signal: null }),
-      runProbeValidation: vi.fn().mockResolvedValue(output), runModelCatalogValidation: vi.fn(),
+      runProbeValidation: vi.fn().mockResolvedValue(output), runModelCatalogValidation: vi.fn().mockResolvedValue([]),
     } as unknown as CliRunner
     const result = await validateCli('alice', 'codex', undefined, { runner })
     expect(result.state).toBe('reachable')
