@@ -1,6 +1,6 @@
 ---
 artifact: NATIVE_OPEN_DECISIONS
-version: "1.5"
+version: "1.6"
 status: LIVING — the one place the native's open decisions for the Gochara build are listed (steward M20261002T004621-2b84)
 date: 2026-10-02
 author: Stream B (Śāstra)
@@ -50,8 +50,7 @@ asked to accept: (1) that table for transit use; (2) its source is only labelled
 `design/P1_INPUTS_ANSWER_v1_0.md`.
 
 **ND-P1-FRAME — when the engine states "which house" a running-period planet's transit is in, counted from where?** The books we can read (Phaladīpikā XX.34 and XX.59) count the period lord's
-transit **from the ascendant** ("the Bhava it represents when counted from the Lagna"), and the Moon-based count (XX.60) belongs to the ordinary house-transit path; none counts from the planet's own birth sign.
-*Recommendation: from the ascendant.* **Nothing in the scoring reads this number** (the classical test is the quality of the sign), so the choice changes no result — only the label a reader is given.
-Until you decide, the daśā-lord records are not created (a stated state, not a guess). (An earlier version of this note recommended the planet's own birth sign; that was withdrawn after a fuller read.) Details: `design/P1_FRAME_ANSWER_v1_0.md` v1.1.
+transit **from the ascendant**; none counts from the planet's own birth sign. **The engine uses the ascendant** (ruled as AM-20). This is a label only: nothing in the scoring reads the number, so the choice changes no
+result. You are asked only to confirm or object; nothing waits on you. Details: `design/P1_FRAME_ANSWER_v1_0.md`.
 
 **AM-19 — how should the running-period planet's transit be scored?** Seven small questions (which sign-quality vocabulary; how big each quality counts; whether friendly/neutral signs are good, bad or neither; combustion; what happens when a good and a bad trigger hold together; the retrograde clause; what makes a period lord "auspicious") are laid out in plain language, with the passages we can read and what the two strength tables say, in `decisions/AM19_P1_VALUE_MAPPING_DECISION_PACKET_v1_0.md`. The cheapest honest answer to each is "don't score it"; until you rule, these windows stay "unqualified".
