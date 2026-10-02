@@ -975,6 +975,12 @@ def resolve_as_of(
     if override:
         return _utc_date_start(override), AS_OF_SOURCE_OVERRIDE
     if build_id:
+        try:
+            uuid.UUID(str(build_id))
+        except ValueError as exc:
+            raise AsOfUnresolvable(
+                f"ga_vichara: build id {build_id!r} is not a UUID — cannot resolve its build_runs.created_at; "
+                "refusing to fall back to the wall clock") from exc
         with conn.cursor() as cur:
             cur.execute("SELECT created_at FROM build_runs WHERE id = %s", (build_id,))
             row = cur.fetchone()

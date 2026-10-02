@@ -430,6 +430,8 @@ def require_disposable(dsn: str | None) -> str:
         raise RefusedError(f"REFUSED: DSN scheme {parsed.scheme!r} is not a postgresql:// URL")
     if parsed.query:
         raise RefusedError("REFUSED: DSN carries a query string (libpq parameter overrides are not allowed)")
+    if "," in parsed.netloc:
+        raise RefusedError("REFUSED: DSN names several hosts (libpq would fail over to a later one)")
     if (parsed.hostname or "") not in LOOPBACK:
         raise RefusedError(f"REFUSED: DSN host {parsed.hostname!r} is not loopback")
     name = (parsed.path or "").lstrip("/")
@@ -437,6 +439,26 @@ def require_disposable(dsn: str | None) -> str:
         raise RefusedError(
             f"REFUSED: database {name!r} is not the disposable {EXPECTED_DB_NAME!r} — this suite drops and "
             "creates chart_vichara / asset_output_digest_specs")
+    # Second, independent reading by libpq's own parser: EVERY host / hostaddr entry must be loopback.
+    from psycopg.conninfo import conninfo_to_dict
+    try:
+        info = conninfo_to_dict(dsn)
+    except Exception as exc:  # noqa: BLE001
+        raise RefusedError(f"REFUSED: libpq cannot parse the DSN ({exc})") from exc
+    hosts = [h for key in ("host", "hostaddr") for h in str(info.get(key) or "").split(",") if key in info]
+    if not hosts or any(h not in LOOPBACK for h in hosts):
+        raise RefusedError(f"REFUSED: libpq host/hostaddr {hosts!r} is not entirely loopback")
+    if info.get("dbname") != EXPECTED_DB_NAME:
+        raise RefusedError(f"REFUSED: libpq dbname {info.get('dbname')!r} is not {EXPECTED_DB_NAME!r}")
+    # Environment overrides that would silently change the target (PGHOSTADDR beats the URL host).
+    for var in ("PGHOSTADDR", "PGHOST"):
+        env_hosts = [h for h in os.environ.get(var, "").split(",") if h]
+        if any(h not in LOOPBACK and not h.startswith("/") for h in env_hosts):
+            raise RefusedError(f"REFUSED: environment {var}={os.environ[var]!r} would redirect the connection")
+    if os.environ.get("PGSERVICE"):
+        raise RefusedError("REFUSED: environment PGSERVICE is set (service files can change the target)")
+    if os.environ.get("PGDATABASE") not in (None, "", EXPECTED_DB_NAME):
+        raise RefusedError(f"REFUSED: environment PGDATABASE={os.environ['PGDATABASE']!r} differs from the throwaway")
     return name
 
 
@@ -458,6 +480,11 @@ def test_guard_accepts_only_the_exact_loopback_throwaway_dsn():
     "postgresql://u:p@localhost:5432/VICHARA_DIGEST_TEST",
     "postgresql://u:p@localhost:5432/",                                     # empty path
     "postgresql://u:p@localhost:5432",
+    "postgresql://u:p@localhost:5432,db.prod.example.com:5432/vichara_digest_test",   # multi-host failover
+    "postgresql://u:p@localhost,db.prod.example.com/vichara_digest_test",
+    "postgresql://u:p@127.0.0.1:5432,10.1.2.3:5432/vichara_digest_test",
+    "postgresql://u:p@127.0.0.1,10.1.2.3/vichara_digest_test",
+    "postgresql://u:p@db.prod.example.com:5432,localhost:5432/vichara_digest_test",
     "postgresql://u:p@localhost:5432/vichara_digest_test?host=prod.example.com",   # libpq override
     "postgresql://u:p@localhost:5432/vichara_digest_test?dbname=madhav",
     "postgresql:///vichara_digest_test",                                    # no host (unix socket / PGHOST)
@@ -468,6 +495,25 @@ def test_guard_accepts_only_the_exact_loopback_throwaway_dsn():
 def test_guard_refuses_everything_else_by_name(dsn):
     with pytest.raises(RefusedError, match="REFUSED"):
         require_disposable(dsn)
+
+
+@pytest.mark.parametrize("var,val", [
+    ("PGHOSTADDR", "10.1.2.3"), ("PGHOSTADDR", "127.0.0.1,10.1.2.3"), ("PGHOST", "db.prod.example.com"),
+    ("PGSERVICE", "prod"), ("PGDATABASE", "madhav"),
+])
+def test_guard_refuses_environment_overrides(monkeypatch, var, val):
+    for v in ("PGHOSTADDR", "PGHOST", "PGSERVICE", "PGDATABASE"):
+        monkeypatch.delenv(v, raising=False)
+    monkeypatch.setenv(var, val)
+    with pytest.raises(RefusedError, match="REFUSED"):
+        require_disposable("postgresql://postgres@localhost:5432/vichara_digest_test")
+
+
+def test_guard_accepts_harmless_environment(monkeypatch):
+    for v, val in (("PGHOSTADDR", "127.0.0.1"), ("PGHOST", "localhost"), ("PGDATABASE", "vichara_digest_test")):
+        monkeypatch.setenv(v, val)
+    monkeypatch.delenv("PGSERVICE", raising=False)
+    assert require_disposable("postgresql://postgres@localhost:5432/vichara_digest_test") == "vichara_digest_test"
 
 
 def test_every_connecting_path_calls_the_guard_first(monkeypatch):
@@ -518,6 +564,50 @@ def _pg_digest(rows) -> str:
             digest, _ = compute_output_digest(cur, asset_id="ga_vichara")
         conn.rollback()
     return digest
+
+
+def _tables_present(dsn: str) -> tuple:
+    import psycopg
+    with psycopg.connect(dsn) as c:
+        return c.execute("SELECT to_regclass('public.chart_vichara'), to_regclass('public.asset_output_digest_specs')").fetchone()
+
+
+@pytest.mark.integration
+def test_pristine_check_refuses_a_database_that_already_has_chart_vichara():
+    """Post-connect check: a database named exactly vichara_digest_test that already HAS chart_vichara is refused
+    and the pre-existing table is left untouched (rows and all)."""
+    _require_pg()
+    import psycopg
+    require_disposable(DSN)
+    with psycopg.connect(DSN, autocommit=True) as c:
+        c.execute("DROP TABLE IF EXISTS chart_vichara")
+        c.execute("CREATE TABLE chart_vichara (id int PRIMARY KEY, marker text)")
+        c.execute("INSERT INTO chart_vichara VALUES (1, 'precious')")
+    try:
+        with pytest.raises(RefusedError, match="not a pristine"):
+            _pg_digest([])
+        with psycopg.connect(DSN) as c:
+            assert c.execute("SELECT id, marker FROM chart_vichara").fetchall() == [(1, "precious")]
+            assert c.execute("SELECT to_regclass('public.asset_output_digest_specs')").fetchone()[0] is None
+    finally:
+        with psycopg.connect(DSN, autocommit=True) as c:
+            c.execute("DROP TABLE IF EXISTS chart_vichara")
+    assert _tables_present(DSN) == (None, None)
+
+
+@pytest.mark.integration
+def test_pristine_check_refuses_a_wrong_current_database(monkeypatch):
+    """Post-connect check, independent of the DSN guard: with the DSN guard bypassed and the DSN pointing at ANOTHER
+    database on the same server, current_database() is not the throwaway, so the test refuses BEFORE any DDL."""
+    _require_pg()
+    from urllib.parse import urlparse, urlunparse
+    other = urlunparse(urlparse(DSN)._replace(path="/postgres"))
+    monkeypatch.setattr(sys.modules[__name__], "DSN", other)
+    monkeypatch.setattr(sys.modules[__name__], "require_disposable", lambda dsn: EXPECTED_DB_NAME)   # guard bypass
+    before = _tables_present(other)
+    with pytest.raises(RefusedError, match="not a pristine 'vichara_digest_test'"):
+        _pg_digest([])
+    assert _tables_present(other) == before                      # nothing created, nothing dropped
 
 
 def _require_pg() -> None:
@@ -742,6 +832,20 @@ def test_orchestrator_adapter_without_resolvable_run_date_raises(monkeypatch):
     res = GaVicharaWriter().run_substep(ctx, step)
     assert res.rows_inserted == len(conn.inserted) == 1556
     assert _as_of_meta(conn) == ("2026-09-08", "build_run_created_at")
+
+
+def test_non_uuid_build_id_raises_as_of_unresolvable_not_a_driver_error():
+    conn = FakeConn()
+    for bad in ("not-a-uuid", "123", "11111111-1111-4111-8111-11111111111Z"):
+        with pytest.raises(gw.AsOfUnresolvable, match="not a UUID"):
+            run_writer(conn, build_id=bad)
+    assert conn.sqls == [] or all("build_runs" not in q for q in conn.sqls)
+    assert conn.inserted == [] and conn.deleted == 0
+    from pipeline.orchestrator.writers.ga_vichara import GaVicharaWriter
+    from pipeline.orchestrator.writers import ContextSpec, SubStep
+    ctx = ContextSpec(asset_id="ga_vichara", build_id="not-a-uuid", db_conn=FakeConn(), config={"chart_id": CHART})
+    with pytest.raises(gw.AsOfUnresolvable):
+        GaVicharaWriter().run_substep(ctx, SubStep(key=f"ayanamsha_{AYA}"))
 
 
 def test_direct_call_without_run_is_flagged_unpinned_and_cannot_pass_as_pinned(monkeypatch):

@@ -11,60 +11,87 @@
 -- Run as a SELECT-only reader (suvarna_reader) AFTER the S-L1 rebuild of ga_vichara on the
 -- canonical chart. Counts only; no birth data. Every check returns one row
 --   (check_name, observed, expected, ok)
--- and the lane is accepted only when EVERY row has ok = t.
--- Run it BEFORE the rebuild as well and save the output: the "before" baseline is the reader-measured
--- stored state (valence_pass 1650/aya, total 8524, cf-order changes N = 4773 surviving rows).
+-- and the lane is accepted only when EVERY row has ok = t. A missing ayanamsha or family prints an explicit
+-- observed = 0 row (it can never pass by absence).
 --
 --   ( source ~/.config/suvarna/pgenv.sh >/dev/null 2>&1; psql -X -A -t -F '|' -f ga_vichara_writer_ACCEPTANCE.sql )
+--
+-- BEFORE THE REBUILD (reader-measured on the stored canonical generation, 2026-10-02): run it and save the output.
+-- The rows below are EXPECTED to read ok = f before the rebuild; this is the baseline to compare against:
+--   check                                  before (stored today)                       after (expected)
+--   A1 valence_pass per ayanamsha          1650 each                                   1500 each
+--   A2 valence_pass canonical total        8250                                        7500
+--   A3 chart_vichara canonical total       8524                                        7774
+--   A4 total per ayanamsha                 krishnamurti 1706, lahiri_chitrapaksha 1706,  1556, 1556, 1553, 1553, 1556
+--                                          raman 1703, surya_siddhanta_classical 1703,   (same order)
+--                                          true_chitra 1706
+--   A5 other four families per ayanamsha   already t (unchanged: leverage 35, consistency 9, ratification 9,
+--                                          divergence 3 on krishnamurti/lahiri_chitrapaksha/true_chitra, 0 on
+--                                          raman/surya_siddhanta_classical)          t
+--   A6 exact-duplicate rows (every stored column, cf SORTED)     750                0
+--   A7 identity collisions (nine-column identity, cf SORTED)     750                0
+--   A8 rows with unsorted/unmirrored cf    5133                                        0
+--   A9 orphan constituent_fact_ids         0 (already t)                               0
+--   A10 leverage rows with wrong/missing as_of   175 (no as_of keys yet)             0
+--   A11 distinct as_of per ayanamsha (max) 0 (no as_of keys yet)                       1
+--   A12 leverage rows missing dasha-system disclosure   175                            0
+--   INFO setting system                    (none)|35  (no disclosure keys yet)         the mix, e.g. vimshottari/mudda/...
+-- (A6/A7 are measured on the SORTED provenance set, i.e. the 750 true exact duplicates = 150 x 5 ayanamshas;
+--  comparing the RAW stored arrays would under-count at 690 because 60 duplicate pairs differ only in cf order.)
 --
 -- Identity used by the writer assertion and the data-plane capture trigger (after the owner-side
 -- constituent_fact_ids addition): (chart_id, ayanamsha_id, vichara_family, subject, target, domain,
 -- varga_id, formula_version, constituent_fact_ids sorted) = GRAIN PLUS L1 SOURCE-FACT PROVENANCE SET,
 -- NOT a natural key (chart_vichara has none; migration 747).
 
+WITH ayas(a) AS (VALUES ('krishnamurti'), ('lahiri_chitrapaksha'), ('raman'), ('surya_siddhanta_classical'), ('true_chitra')),
+fams(f) AS (VALUES ('valence_pass'), ('varga_ratification'), ('varga_ratification_divergence'), ('varga_consistency'), ('leverage_index')),
+grid AS (
+  SELECT a, f,
+         CASE f WHEN 'valence_pass' THEN 1500 WHEN 'leverage_index' THEN 35 WHEN 'varga_consistency' THEN 9
+                WHEN 'varga_ratification' THEN 9
+                WHEN 'varga_ratification_divergence' THEN CASE WHEN a IN ('raman', 'surya_siddhanta_classical') THEN 0 ELSE 3 END
+         END AS expected
+  FROM ayas, fams),
+cnt AS (
+  SELECT ayanamsha_id AS a, vichara_family AS f, count(*) AS n FROM chart_vichara
+  WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' GROUP BY 1, 2),
+v AS (
+  SELECT *, ARRAY(SELECT x FROM unnest(constituent_fact_ids) x ORDER BY x COLLATE "C") AS cf_sorted
+  FROM chart_vichara WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa')
 -- A1. valence_pass per ayanamsha: 1,650 -> 1,500 (150 exact duplicates removed per ayanamsha)
-SELECT 'A1 valence_pass '||ayanamsha_id AS check_name, count(*) AS observed, 1500 AS expected, count(*) = 1500 AS ok
-FROM chart_vichara
-WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND vichara_family = 'valence_pass'
-GROUP BY ayanamsha_id
+SELECT 'A1 valence_pass '||g.a AS check_name, coalesce(c.n, 0) AS observed, g.expected AS expected, coalesce(c.n, 0) = g.expected AS ok
+FROM grid g LEFT JOIN cnt c ON c.a = g.a AND c.f = g.f WHERE g.f = 'valence_pass'
 UNION ALL
 -- A2. canonical valence_pass total 8,250 -> 7,500 (750 exact-duplicate rows removed: 150 x 5 ayanamshas)
-SELECT 'A2 valence_pass total', count(*), 7500, count(*) = 7500
-FROM chart_vichara WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND vichara_family = 'valence_pass'
+SELECT 'A2 valence_pass total', coalesce(sum(n), 0), 7500, coalesce(sum(n), 0) = 7500 FROM cnt WHERE f = 'valence_pass'
 UNION ALL
 -- A3. chart_vichara canonical total 8,524 -> 7,774
-SELECT 'A3 chart_vichara canonical total', count(*), 7774, count(*) = 7774
-FROM chart_vichara WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+SELECT 'A3 chart_vichara canonical total', coalesce(sum(n), 0), 7774, coalesce(sum(n), 0) = 7774 FROM cnt
 UNION ALL
 -- A4. per-ayanamsha totals: 1,556 (krishnamurti, lahiri_chitrapaksha, true_chitra), 1,553 (raman, surya_siddhanta_classical)
-SELECT 'A4 total '||ayanamsha_id, count(*),
-       CASE WHEN ayanamsha_id IN ('raman','surya_siddhanta_classical') THEN 1553 ELSE 1556 END,
-       count(*) = CASE WHEN ayanamsha_id IN ('raman','surya_siddhanta_classical') THEN 1553 ELSE 1556 END
-FROM chart_vichara WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' GROUP BY ayanamsha_id
+SELECT 'A4 total '||y.a, coalesce(sum(c.n), 0),
+       CASE WHEN y.a IN ('raman', 'surya_siddhanta_classical') THEN 1553 ELSE 1556 END,
+       coalesce(sum(c.n), 0) = CASE WHEN y.a IN ('raman', 'surya_siddhanta_classical') THEN 1553 ELSE 1556 END
+FROM ayas y LEFT JOIN cnt c ON c.a = y.a GROUP BY y.a
 UNION ALL
--- A5. the other four families are untouched per ayanamsha (35 / 9 / 9 / 3-or-0)
-SELECT 'A5 '||vichara_family||' '||ayanamsha_id, count(*),
-       CASE vichara_family WHEN 'leverage_index' THEN 35 WHEN 'varga_consistency' THEN 9 WHEN 'varga_ratification' THEN 9
-            WHEN 'varga_ratification_divergence' THEN 3 END,
-       count(*) = CASE vichara_family WHEN 'leverage_index' THEN 35 WHEN 'varga_consistency' THEN 9 WHEN 'varga_ratification' THEN 9
-            WHEN 'varga_ratification_divergence' THEN 3 END
-FROM chart_vichara
-WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND vichara_family <> 'valence_pass'
-GROUP BY ayanamsha_id, vichara_family
+-- A5. the other four families are untouched per ayanamsha (35 / 9 / 9 / 3-or-0): an explicit row for EVERY
+--     (ayanamsha, family) cell, observed = 0 when the family is absent, so absence can never pass
+SELECT 'A5 '||g.f||' '||g.a, coalesce(c.n, 0), g.expected, coalesce(c.n, 0) = g.expected
+FROM grid g LEFT JOIN cnt c ON c.a = g.a AND c.f = g.f WHERE g.f <> 'valence_pass'
 UNION ALL
--- A6. no exact-duplicate whole rows remain (every stored column, cf sorted, value_jsonb canonical by jsonb equality)
-SELECT 'A6 exact-duplicate rows', coalesce(sum(n - 1), 0), 0, coalesce(sum(n - 1), 0) = 0
-FROM (SELECT count(*) AS n FROM chart_vichara
-      WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+-- A6. no exact-duplicate whole rows remain (every stored column; constituent_fact_ids compared SORTED;
+--     value_jsonb by jsonb equality)
+SELECT 'A6 exact-duplicate rows (cf sorted)', coalesce(sum(n - 1), 0), 0, coalesce(sum(n - 1), 0) = 0
+FROM (SELECT count(*) AS n FROM v
       GROUP BY ayanamsha_id, vichara_family, subject, actor, target, domain, varga_id, varga, value_num, value_text,
-               value_jsonb, ratification_factor, constituent_fact_ids, formula_version, source_citation
+               value_jsonb, ratification_factor, cf_sorted, formula_version, source_citation
       HAVING count(*) > 1) d
 UNION ALL
--- A7. no two rows share the nine-column identity (grain + sorted source-fact provenance set)
-SELECT 'A7 identity collisions', coalesce(sum(n - 1), 0), 0, coalesce(sum(n - 1), 0) = 0
-FROM (SELECT count(*) AS n FROM chart_vichara
-      WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
-      GROUP BY ayanamsha_id, vichara_family, subject, target, domain, varga_id, formula_version, constituent_fact_ids
+-- A7. no two rows share the nine-column identity (grain + SORTED source-fact provenance set)
+SELECT 'A7 identity collisions (cf sorted)', coalesce(sum(n - 1), 0), 0, coalesce(sum(n - 1), 0) = 0
+FROM (SELECT count(*) AS n FROM v
+      GROUP BY ayanamsha_id, vichara_family, subject, target, domain, varga_id, formula_version, cf_sorted
       HAVING count(*) > 1) d
 UNION ALL
 -- A8. constituent_fact_ids stored sorted (codepoint order) and mirrored by constituent_facts_array
