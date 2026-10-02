@@ -3,13 +3,20 @@
 of ONE asset on ONE chart. One-shot operator tool (not product code); parameterised so the same executor serves
 ga_positions at S-L1 and bo_laksana / bo_sangati / bo_cgm_motifs / bo_upaya at S-L2.
 
-  python3 orphan_receipts_exec.py --asset <asset_id> --chart <chart_id> --dry-run [--min-build-after <ISO ts>]
-  python3 orphan_receipts_exec.py --asset <asset_id> --chart <chart_id> --apply --expect-plan <sha256>
+  ./run_gated.sh python3 orphan_receipts_exec.py --asset <asset_id> --chart <chart_id> --dry-run [--min-build-after <ISO ts>]
+  ./run_gated.sh python3 orphan_receipts_exec.py --asset <asset_id> --chart <chart_id> --apply --expect-plan <sha256>
                                   --min-build-after <ISO ts, tz-aware> --expect-evidence <digest of the dry run>
 
-The real dry run / apply MUST be started through run_gated.sh (prerun_gate.py: deploy runs + builds in flight == 0).
+v3 (GATE_V2 binding). The executor is NEVER started directly: run_gated.sh runs prerun_gate.py (non-completed main deploy
+runs == 0 and planned/running/paused build_runs == 0, as suvarna_reader) and only then sets GATE_V2_LAUNCH and execs this
+file. main() calls require_gate_launch(...) FIRST and refuses (exit 93) without a verifying marker, or when any of the three
+gate files next to it (prerun_gate.py, run_gated.sh, executor_standards.py: byte-identical to gate_v2) differs from the sha256
+pinned in GATE_PINS. In every mode (dry run, apply, any refusal after the arguments are valid, any exception) it writes
+outcome.json (executor_standards.outcome_guard) into the run's evidence directory.
 
-  exit codes: 0 ok / committed; 1 apply refused or aborted; 2 dry-run refused; 3 dry-run counterfactual (no --min-build-after)
+  exit codes: 0 ok / committed; 1 apply refused or aborted (or an unexpected failure); 2 dry-run refused; 3 dry-run
+              counterfactual (no --min-build-after); 93 not launched by run_gated.sh / gate files differ from the pins;
+              95 ORPH_TEST_EVIDENCE_ROOT set outside a pytest run
 
   --dry-run   runs EVERY check and the real DELETEs inside one transaction, then ALWAYS ROLLS BACK, and prints the
               full diff JSON plus the plan hash it computes.
@@ -25,15 +32,17 @@ Admin credential: fetched from Secret Manager in-process (same mechanism as Char
 logged or saved. Proxy 127.0.0.1:5433. `main()` is the only place that reaches the real database; tests call
 `execute()` with an injected connection factory against a disposable local Postgres.
 
-plan hash = sha256(plan_text + "\\n" + json.dumps(DIFF)); the plan text embeds this file's own sha256 and that of
-resolver_verdicts.sql (so the hash binds the executor and the verdict definition). The hash is computed WITHOUT the
-database. The DB-dependent part (before-images, verdict diff, row counts, ACL/RLS/policy/membership snapshots) is
+plan hash = bind_gate_into_plan_hash(sha256(plan_text + "\\n" + json.dumps(DIFF)), gate fingerprint); the plan text embeds
+this file's own sha256, that of resolver_verdicts.sql and the three gate-file shas, and bind_gate_into_plan_hash folds the
+prerun_gate.py / run_gated.sh shas in again (editing any gate file changes the plan the operator approved). The hash is
+computed WITHOUT the database. The DB-dependent part (before-images, verdict diff, row counts, ACL/RLS/policy/membership snapshots) is
 computed at dry-run/apply time and bound by the optional `evidence_digest` (see PLAN.md).
 """
 import argparse
 import collections
 import datetime as dt
 import hashlib
+import importlib.util
 import json
 import os
 import pathlib
@@ -44,18 +53,41 @@ import uuid
 
 import psycopg
 
+HERE = pathlib.Path(__file__).resolve().parent
+
+
+def _load_standards():
+    """The executor_standards.py that sits NEXT TO this file (never one found on sys.path)."""
+    spec = importlib.util.spec_from_file_location("executor_standards", HERE / "executor_standards.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+es = _load_standards()
+
 PROJECT = "madhav-astrology"
 OWNER = "amjis_app"
 WHOLE = "__whole_asset__"
 RECEIPTS = "asset_provenance_receipts"
 FRESH = "asset_freshness"
 EVIDENCE_ROOT = "/Users/Dev/suvarna-evidence/OrphanReceipts"
-HERE = pathlib.Path(__file__).resolve().parent
 VERDICT_SQL_FILE = HERE / "resolver_verdicts.sql"
 INFLIGHT_STATES = ("planned", "running", "paused")
 EXPECTED_VERDICT = ("receipt_not_proven", "RESOLVED")
 ASSET_RE = re.compile(r"[a-z][a-z0-9_]{1,62}")        # used with fullmatch (no trailing-newline loophole)
 TEST_EVIDENCE_ENV = "ORPH_TEST_EVIDENCE_ROOT"
+PYTEST_ENV = "PYTEST_CURRENT_TEST"
+EXIT_NO_LAUNCH = es.EXIT_NO_LAUNCH            # 93: not launched by run_gated.sh / gate files differ from the pins
+EXIT_TEST_ENV = 95                            # a test-only variable is set outside the test harness (same code as the gate)
+
+# SS binding (GATE_V2, PR #2938): the three files next to this executor are BYTE-IDENTICAL copies of gate_v2's. Their sha256
+# are pinned here (so a changed gate file is refused at start, in every mode) and folded into the plan hash.
+GATE_PINS = {
+    "prerun_gate.py": "e74683cbfff63a982bf984e961bd9368b840ff51b2441af79a2dae2b70d532a8",
+    "run_gated.sh": "a9951a29cb1372946c028073e8c7260fa70034aa2ab013ed71baed7372c1fdcc",
+    "executor_standards.py": "7a1393beb439c1fbc6aed87c7ee4fe8306a7fdebafa548bc4b0a47d830cdb664",
+}
 
 # The two DELETEs. Shared by the executor and the rendered plan text so they cannot drift apart.
 # The state guards mean the executor can never delete a proven/fresh row (it only ever removes an `unknown`/non-fresh
@@ -102,8 +134,15 @@ def expected_diff(asset, chart):
     ])
 
 
-def render_plan(asset, chart, sha, vsha=None):
+def gate_shas(gate_dir=None):
+    """sha256 of the three gate files next to this executor (the live files, not the pins)."""
+    d = pathlib.Path(gate_dir) if gate_dir else HERE
+    return {name: sha_file(d / name) for name in GATE_PINS}
+
+
+def render_plan(asset, chart, sha, vsha=None, gate=None):
     vsha = vsha or sha_file(VERDICT_SQL_FILE)
+    gate = gate or gate_shas()
     d = {"a": asset, "c": chart}
     fresh = DELETE_FRESH.replace("%(a)s", "'%s'" % asset).replace("%(c)s", "'%s'" % chart)
     rec = DELETE_RECEIPT.replace("%(a)s", "'%s'" % asset).replace("%(c)s", "'%s'" % chart)
@@ -133,15 +172,26 @@ def render_plan(asset, chart, sha, vsha=None):
         "-- REVOKE %s FROM <session user> only if granted here; snapshot B" % OWNER,
         "-- commit only if: both DELETE rowcounts == 1; the row-key+md5 diff of BOTH tables is exactly the two removed keys (no other row of any table changed); the per-asset verdict diff over ALL assets is exactly {%s: %s -> %s}; relacl, owner, relrowsecurity, relforcerowsecurity, pg_policy and pg_auth_members diffs between snapshot A and B are all empty; chart-scoped receipt<->freshness twin integrity unchanged" % ((asset,) + EXPECTED_VERDICT),
         "-- --dry-run: the same statements, then ROLLBACK, always. --apply: COMMIT only if every check above holds, --expect-plan equals this plan hash AND --expect-evidence (REQUIRED) equals the evidence digest computed in this transaction (check E).",
-        "-- the real run is started through run_gated.sh: prerun_gate.py must read zero non-completed main deploy runs and zero planned/running/paused build_runs, else the executor is not started.",
+        "-- the real run is started ONLY through run_gated.sh <executor> <args> (GATE_V2): prerun_gate.py must read zero non-completed main deploy.yml runs and zero planned/running/paused build_runs as suvarna_reader, else the executor is not started; run_gated.sh then sets GATE_V2_LAUNCH and the executor REFUSES (exit 93) unless that marker verifies against the gate files pinned below.",
+        "-- in every mode the executor writes outcome.json (status dry_run | applied | failed, UTC time, executor sha, plan hash, gate shas, evidence digest, failed check names) into its evidence directory; it refuses (exit 95) when ORPH_TEST_EVIDENCE_ROOT is set outside a pytest run.",
+        "-- gate files (byte-identical to gate_v2, PR #2938): prerun_gate.py sha256 %s; run_gated.sh sha256 %s; executor_standards.py sha256 %s" % (
+            gate["prerun_gate.py"], gate["run_gated.sh"], gate["executor_standards.py"]),
+        "-- plan hash = bind_gate_into_plan_hash(sha256(plan text + \"\\n\" + DIFF), prerun_gate.py sha256, run_gated.sh sha256)",
         "-- resolver port: resolver_verdicts.sql sha256 %s" % vsha,
         "-- executor: orphan_receipts_exec.py sha256 %s" % sha,
     ])
 
 
-def plan_hash(asset, chart, sha=None):
-    text = render_plan(asset, chart, sha or exec_sha())
+def plan_hash_unbound(asset, chart, sha=None, gate=None):
+    """sha256(plan_text + "\\n" + DIFF): the v1.1 formula, before the gate shas are folded in."""
+    text = render_plan(asset, chart, sha or exec_sha(), gate=gate)
     return hashlib.sha256((text + "\n" + json.dumps(expected_diff(asset, chart))).encode()).hexdigest()
+
+
+def plan_hash(asset, chart, sha=None, gate=None):
+    gate = gate or gate_shas()
+    return es.bind_gate_into_plan_hash(plan_hash_unbound(asset, chart, sha, gate),
+                                       {"gate_sha256": gate["prerun_gate.py"], "run_gated_sha256": gate["run_gated.sh"]})
 
 
 # --------------------------------------------------------------------------------------------- db plumbing
@@ -227,11 +277,24 @@ def sha_file(p):
     return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
 
 
-def resolve_evidence_root(flag=None):
+def resolve_evidence_root(flag=None, environ=None):
     """The real run ALWAYS writes under EVIDENCE_ROOT: --evidence-root is ignored unless the test-only env var
-    ORPH_TEST_EVIDENCE_ROOT is set (then the flag, else the env value, is used)."""
-    env = os.environ.get(TEST_EVIDENCE_ENV)
-    return (flag or env) if env else EVIDENCE_ROOT
+    ORPH_TEST_EVIDENCE_ROOT is set, and that variable is honoured ONLY inside a pytest run (PYTEST_CURRENT_TEST set, value
+    non-empty): set anywhere else, even empty, it is REFUSED (exit 95), never silently ignored and never silently redirecting
+    the evidence (a stray export in the operator's shell must stop the run, not move its evidence)."""
+    environ = os.environ if environ is None else environ
+    if TEST_EVIDENCE_ENV not in environ:
+        return EVIDENCE_ROOT
+    if PYTEST_ENV not in environ:
+        sys.stderr.write("REFUSED: %s is set outside a pytest run; it would redirect the evidence directory. Unset it and run "
+                         "through run_gated.sh.\n" % TEST_EVIDENCE_ENV)
+        raise SystemExit(EXIT_TEST_ENV)
+    root = flag or environ[TEST_EVIDENCE_ENV]
+    if not root:
+        sys.stderr.write("REFUSED: %s is set but empty (test harness): refusing to fall back to the real evidence root.\n"
+                         % TEST_EVIDENCE_ENV)
+        raise SystemExit(EXIT_TEST_ENV)
+    return root
 
 
 def mkdir_0700(path):
@@ -249,13 +312,25 @@ def mkdir_0700(path):
             pass            # an existing root we do not own: tolerated; the per-run directory below is ours and is 0700
 
 
-def write_evidence(root, asset, chart, ts, images, inserts, sha):
-    """Create <root>/<asset>_<chart8>_<UTC ts>/ (0700) with before_images.json + reversal.sql (0600) and SHA256SUMS."""
+def make_run_dir(root, asset, chart, ts):
+    """Create <root>/<asset>_<chart8>_<UTC ts>/ (0700): the run's evidence directory. It is created BEFORE any connection so
+    that outcome.json can be written in every mode; it never already exists (mkdir without exist_ok), so a run can never
+    overwrite another run's evidence or outcome."""
     try:
         rootp = pathlib.Path(root)
         mkdir_0700(rootp)
         d = rootp / ("%s_%s_%s" % (asset, chart[:8], ts))
-        mkdir_0700(d)
+        d.mkdir(mode=0o700)               # NOT exist_ok: an existing run directory (a collision) is an abort, never a reuse
+        os.chmod(d, 0o700)
+    except OSError as exc:
+        raise EvidenceError("cannot create the evidence directory under %s (%s)" % (root, type(exc).__name__))
+    return d
+
+
+def write_evidence(d, asset, chart, images, inserts, sha):
+    """Write before_images.json + reversal.sql (0600) and SHA256SUMS into the run directory `d` (already created, 0700)."""
+    try:
+        d = pathlib.Path(d)
         bi = json.dumps({"asset_id": asset, "chart_id": chart, "partition_key": WHOLE, "tables": images},
                         indent=2, sort_keys=True) + "\n"
         rev = "\n".join([
@@ -276,7 +351,7 @@ def write_evidence(root, asset, chart, ts, images, inserts, sha):
         (d / "SHA256SUMS").write_text("".join("%s  %s\n" % (h, n) for n, h in sorted(sums.items())))
         os.chmod(d / "SHA256SUMS", 0o600)
     except OSError as exc:
-        raise EvidenceError("cannot write evidence under %s (%s)" % (root, type(exc).__name__))
+        raise EvidenceError("cannot write evidence under %s (%s)" % (d, type(exc).__name__))
     return {"dir": str(d), "before_images.json": {"path": str(d / "before_images.json"), "sha256": sums["before_images.json"]},
             "reversal.sql": {"path": str(d / "reversal.sql"), "sha256": sums["reversal.sql"]}}
 
@@ -291,7 +366,7 @@ def parse_min(value):
     return t
 
 
-def run_txn(conn, args, sha, phash, evidence_root, now):
+def run_txn(conn, args, sha, phash, run_dir):
     asset, chart = args.asset, args.chart
     min_after = parse_min(args.min_build_after)
     apply_mode = bool(args.apply)
@@ -323,8 +398,7 @@ def run_txn(conn, args, sha, phash, evidence_root, now):
     images, inserts = {}, {}
     for t in (RECEIPTS, FRESH):
         images[t], inserts[t] = fetch_images(cur, t, asset, chart)
-    ts = now.strftime("%Y%m%dT%H%M%S%fZ")  # microseconds: a dry run and an apply never collide
-    evidence = write_evidence(evidence_root, asset, chart, ts, images, inserts, sha)
+    evidence = write_evidence(run_dir, asset, chart, images, inserts, sha)
     n_rec, n_fr = len(images[RECEIPTS]["rows"]), len(images[FRESH]["rows"])
 
     sql_v = load_verdict_sql()
@@ -499,55 +573,110 @@ def validate_params(asset, chart):
     return canon
 
 
+class SafeOutcome(es.outcome_guard):
+    """executor_standards.outcome_guard whose own file write can never mask what actually happened: an OSError while writing
+    outcome.json is recorded in `write_error` (and surfaced as a warning in the printed result) instead of replacing the real
+    result or the real exception. Nothing else is changed: every mode, every exception, SystemExit and silent return still
+    end in an outcome.json (status failed) when the file can be written."""
+
+    write_error = None
+
+    def _write(self, status, digest=None, checks=()):
+        try:
+            super()._write(status, digest, checks)
+        except OSError as exc:
+            self.write_error = type(exc).__name__
+            self.done = True
+
+
+def conclude(o, result, kind, digest=None, checks=()):
+    """Declare the outcome ('dry_run' | 'applied' | 'failed') and annotate the printed result with the file (or the problem)."""
+    if kind == "dry_run":
+        o.dry_run(digest)
+    elif kind == "applied":
+        o.applied(digest)
+    else:
+        o.fail(list(checks) or ["refused_unspecified"], digest)
+    if o.write_error:
+        result.setdefault("warnings", []).append(
+            "outcome.json could not be written (%s)%s" % (o.write_error, "; THE COMMIT HAPPENED" if kind == "applied" else ""))
+    else:
+        result["outcome_file"] = o.path
+    return result
+
+
+def refuse(o, check, message):
+    """A refusal that happens after the run directory exists: record it in outcome.json, then stop (SystemExit, exit 1)."""
+    o.fail([check])
+    raise SystemExit("REFUSED: " + message)
+
+
 def execute(args, connect, now=None):
     """Returns (exit_code, result dict). `connect` is the only door to a database."""
     now = now or dt.datetime.now(dt.timezone.utc)
+    evidence_root = resolve_evidence_root(getattr(args, "evidence_root", None))   # exit 95 on a stray test variable
     if validate_params(args.asset, args.chart) != args.chart:
         raise SystemExit("REFUSED: --chart must be the canonical lowercase uuid text")
-    evidence_root = resolve_evidence_root(getattr(args, "evidence_root", None))
     sha = exec_sha()
+    gate_fp = es.fingerprint()
     phash = plan_hash(args.asset, args.chart, sha)
-    if args.apply:
-        if args.expect_plan != phash:
-            raise SystemExit("REFUSED: --expect-plan does not equal the plan hash")
-        if args.min_build_after is None:
-            raise SystemExit("REFUSED: --apply requires --min-build-after")
-        if not args.expect_evidence:
-            raise SystemExit("REFUSED: --apply requires --expect-evidence <digest from the dry run>")
-    parse_min(args.min_build_after)
-    conn = connect()
-    try:
-        try:
-            result, good = run_txn(conn, args, sha, phash, evidence_root, now)
-        except EvidenceError as exc:
-            conn.rollback()
-            return 1, {"status": "ABORTED_ROLLED_BACK", "reason": "before-images not writable: %s" % exc,
-                       "plan_hash": phash, "executor_sha256": sha}
-        except Exception:
-            conn.rollback()
-            raise
-        if args.apply and good:
-            result["status"] = "COMMITTED"
-            conn.commit()
-            save_result(result)
-            return 0, result
-        conn.rollback()  # --dry-run ALWAYS ends here
+    try:   # BEFORE any argument gate and any connection: every later outcome (also a refusal) lands in this directory
+        run_dir = make_run_dir(evidence_root, args.asset, args.chart, now.strftime("%Y%m%dT%H%M%S%fZ"))  # microseconds
+    except EvidenceError as exc:
+        return 1, {"status": "ABORTED_ROLLED_BACK", "reason": "before-images not writable: %s" % exc,
+                   "plan_hash": phash, "executor_sha256": sha}
+    with SafeOutcome(run_dir, __file__, phash, gate_fp) as o:
         if args.apply:
-            result["status"] = "REFUSED_ROLLED_BACK"
+            if args.expect_plan != phash:
+                refuse(o, "args_expect_plan_mismatch", "--expect-plan does not equal the plan hash")
+            if args.min_build_after is None:
+                refuse(o, "args_min_build_after_missing", "--apply requires --min-build-after")
+            if not args.expect_evidence:
+                refuse(o, "args_expect_evidence_missing", "--apply requires --expect-evidence <digest from the dry run>")
+        try:
+            parse_min(args.min_build_after)
+        except SystemExit:
+            o.fail(["args_min_build_after_not_tz_aware"])
+            raise
+        conn = connect()
+        try:
+            try:
+                result, good = run_txn(conn, args, sha, phash, run_dir)
+            except EvidenceError as exc:
+                conn.rollback()
+                result = {"status": "ABORTED_ROLLED_BACK", "reason": "before-images not writable: %s" % exc,
+                          "plan_hash": phash, "executor_sha256": sha}
+                conclude(o, result, "failed", None, ["evidence_not_writable"])
+                return 1, result
+            except Exception:
+                conn.rollback()
+                raise                                    # SafeOutcome records it (failed, exception class name)
+            digest = result["evidence_digest"]
+            if args.apply and good:
+                result["status"] = "COMMITTED"
+                conn.commit()
+                save_result(result)
+                return 0, conclude(o, result, "applied", digest)
+            conn.rollback()  # --dry-run ALWAYS ends here
+            failed_names = result["failed_checks"] or result["skipped_checks"]
+            if args.apply:
+                result["status"] = "REFUSED_ROLLED_BACK"
+                save_result(result)
+                return 1, conclude(o, result, "failed", digest, failed_names)
+            if good and args.min_build_after is None:
+                # P3 was evaluated WITHOUT the rebuild gate, so this is a counterfactual, not a rehearsal of --apply
+                result["status"] = "DRY_RUN_ROLLED_BACK_COUNTERFACTUAL_NO_MIN_BUILD_AFTER"
+                result["warnings"] = ["--min-build-after not supplied: the 'declared receipt is from the S-L1 rebuild' gate was not "
+                                      "applied. --apply requires it and would refuse unless the declared receipt is newer than it."]
+                save_result(result)
+                return 3, conclude(o, result, "failed", digest, ["counterfactual_no_min_build_after"])
+            result["status"] = "DRY_RUN_ROLLED_BACK_ALL_CHECKS_HOLD" if good else "DRY_RUN_ROLLED_BACK_REFUSED"
             save_result(result)
-            return 1, result
-        if good and args.min_build_after is None:
-            # P3 was evaluated WITHOUT the rebuild gate, so this is a counterfactual, not a rehearsal of --apply
-            result["status"] = "DRY_RUN_ROLLED_BACK_COUNTERFACTUAL_NO_MIN_BUILD_AFTER"
-            result["warnings"] = ["--min-build-after not supplied: the 'declared receipt is from the S-L1 rebuild' gate was not "
-                                  "applied. --apply requires it and would refuse unless the declared receipt is newer than it."]
-            save_result(result)
-            return 3, result
-        result["status"] = "DRY_RUN_ROLLED_BACK_ALL_CHECKS_HOLD" if good else "DRY_RUN_ROLLED_BACK_REFUSED"
-        save_result(result)
-        return (0 if good else 2), result
-    finally:
-        conn.close()
+            if good:
+                return 0, conclude(o, result, "dry_run", digest)
+            return 2, conclude(o, result, "failed", digest, failed_names)
+        finally:
+            conn.close()
 
 
 def build_parser():
@@ -578,7 +707,20 @@ def parse_args(argv):
     return a
 
 
+def launch_gate(environ=None):
+    """GATE_V2 binding: the FIRST thing main() does. Refuses (exit 93) unless (a) executor_standards.py is the pinned file, and
+    (b) GATE_V2_LAUNCH verifies: set by run_gated.sh after a passing gate, check recomputes, shas equal the live gate files AND
+    the pins in GATE_PINS, not from the future, not older than 6 hours. Returns the live gate fingerprint.
+    Convention-grade guard against accidents (running the executor directly, a stale or edited gate); not authentication."""
+    if es.sha256_file(es.__file__) != GATE_PINS["executor_standards.py"]:
+        sys.stderr.write("REFUSED: executor_standards.py differs from the version pinned in this executor (GATE_PINS)\n")
+        raise SystemExit(EXIT_NO_LAUNCH)
+    return es.require_gate_launch(environ, expected_gate_sha=GATE_PINS["prerun_gate.py"],
+                                  expected_launcher_sha=GATE_PINS["run_gated.sh"])
+
+
 def main(argv=None):
+    launch_gate()                       # FIRST: before the arguments are even parsed
     args = parse_args(sys.argv[1:] if argv is None else argv)
     try:
         code, result = execute(args, connect_admin)

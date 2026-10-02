@@ -29,6 +29,16 @@ def assert_unchanged(cl, db, before):
     assert cl.image(db) == before
 
 
+def outcomes(runner):
+    """Every outcome.json under the run's evidence root, oldest run directory first."""
+    root = pathlib.Path(runner.ev)
+    return [json.loads((d / "outcome.json").read_text()) for d in sorted(root.iterdir()) if (d / "outcome.json").exists()] if root.exists() else []
+
+
+def outcome_of(res):
+    return json.loads((pathlib.Path(res["before_images"]["dir"]) / "outcome.json").read_text())
+
+
 # ------------------------------------------------------------------------------------------------ plan text + hash (no DB)
 def test_plan_txt_is_the_rendering_for_the_committed_executor(mod):
     text = (EXEC_DIR / "plan.txt").read_text()
@@ -38,7 +48,10 @@ def test_plan_txt_is_the_rendering_for_the_committed_executor(mod):
 def test_plan_hash_is_offline_and_binds_the_executor(mod):
     h = mod.plan_hash("ga_positions", CANON)
     plan = mod.render_plan("ga_positions", CANON, mod.exec_sha())
-    assert h == hashlib.sha256((plan + "\n" + json.dumps(mod.expected_diff("ga_positions", CANON))).encode()).hexdigest()
+    unbound = hashlib.sha256((plan + "\n" + json.dumps(mod.expected_diff("ga_positions", CANON))).encode()).hexdigest()
+    assert unbound == mod.plan_hash_unbound("ga_positions", CANON)
+    # v3: the gate fingerprint is folded in with executor_standards.bind_gate_into_plan_hash
+    assert h == mod.es.bind_gate_into_plan_hash(unbound, mod.es.fingerprint()) != unbound
     assert mod.exec_sha() in plan
     assert mod.plan_hash("ga_positions", CANON, "0" * 64) != h            # a different executor sha is a different hash
     assert mod.plan_hash("bo_laksana", CANON) != h                        # asset-bound
@@ -104,7 +117,9 @@ def test_hash_mismatch_on_apply_refuses_before_connecting(mod, runner, cluster, 
                         "--expect-evidence", "0" * 64])
     with pytest.raises(SystemExit, match="does not equal the plan hash"):
         mod.execute(a, lambda: pytest.fail("must not connect"))
-    assert not os.path.exists(runner.ev)                 # nothing written either
+    out = outcomes(runner)                                # no evidence, no DB: only the failed outcome of the refused run
+    assert [o["status"] for o in out] == ["failed"] and out[0]["failed_checks"] == ["args_expect_plan_mismatch"]
+    assert sorted(f.name for f in next(pathlib.Path(runner.ev).iterdir()).iterdir()) == ["outcome.json"]
     assert_unchanged(cluster, db, before)
 
 
@@ -421,6 +436,8 @@ def test_two_runs_in_the_same_second_do_not_overwrite_evidence(runner, mod):
     c1, r1 = mod.execute(a, lambda: runner.cl.conn(runner.db, user=conftest.ADMIN_USER), now=now)
     c2, r2 = mod.execute(a, lambda: runner.cl.conn(runner.db, user=conftest.ADMIN_USER), now=now)
     assert c1 == 0 and c2 == 1 and r2["status"] == "ABORTED_ROLLED_BACK"      # O_EXCL / exist_ok=False: never silently overwritten
+    kept = json.loads((pathlib.Path(r1["before_images"]["dir"]) / "outcome.json").read_text())
+    assert kept["status"] == "dry_run" and kept["evidence_digest"] == r1["evidence_digest"]   # the first run's outcome is intact
 
 
 # ------------------------------------------------------------------------------------------------ the SQL files
@@ -487,20 +504,52 @@ def test_evidence_root_flag_is_ignored_unless_the_test_env_var_is_set(mod, monke
     monkeypatch.delenv("ORPH_TEST_EVIDENCE_ROOT", raising=False)
     assert mod.resolve_evidence_root("/tmp/elsewhere") == "/Users/Dev/suvarna-evidence/OrphanReceipts" == mod.EVIDENCE_ROOT
     assert mod.resolve_evidence_root(None) == mod.EVIDENCE_ROOT
-    monkeypatch.setenv("ORPH_TEST_EVIDENCE_ROOT", "/tmp/envroot")
+    monkeypatch.setenv("ORPH_TEST_EVIDENCE_ROOT", "/tmp/envroot")           # inside pytest (PYTEST_CURRENT_TEST is set): honoured
     assert mod.resolve_evidence_root(None) == "/tmp/envroot"
     assert mod.resolve_evidence_root("/tmp/flagroot") == "/tmp/flagroot"
+
+
+@pytest.mark.parametrize("value", ["/tmp/stray", "", "relative/dir"])
+def test_evidence_root_env_var_outside_pytest_is_refused_not_ignored(mod, capsys, value):
+    """(c) of the review: ORPH_TEST_EVIDENCE_ROOT left exported in the operator's shell silently redirected the evidence.
+    Outside a pytest run (PYTEST_CURRENT_TEST absent) the executor now REFUSES: exit 95, clear message, even for an empty value."""
+    with pytest.raises(SystemExit) as e:
+        mod.resolve_evidence_root(None, environ={"ORPH_TEST_EVIDENCE_ROOT": value})
+    assert e.value.code == 95
+    err = capsys.readouterr().err
+    assert "ORPH_TEST_EVIDENCE_ROOT is set outside a pytest run" in err and "REFUSED" in err
+    with pytest.raises(SystemExit) as e:                                 # the flag does not rescue it
+        mod.resolve_evidence_root("/tmp/flagroot", environ={"ORPH_TEST_EVIDENCE_ROOT": value})
+    assert e.value.code == 95
+
+
+def test_evidence_root_env_var_empty_inside_pytest_never_falls_back_to_the_real_root(mod, capsys):
+    with pytest.raises(SystemExit) as e:
+        mod.resolve_evidence_root(None, environ={"ORPH_TEST_EVIDENCE_ROOT": "", "PYTEST_CURRENT_TEST": "x"})
+    assert e.value.code == 95 and "empty" in capsys.readouterr().err
+    assert mod.resolve_evidence_root(None, environ={}) == mod.EVIDENCE_ROOT                # unset: the real root, flag ignored
+    assert mod.resolve_evidence_root("/tmp/f", environ={}) == mod.EVIDENCE_ROOT
+
+
+def test_execute_refuses_the_stray_evidence_env_var_before_anything_else(mod, runner, cluster, db, monkeypatch, tmp_path):
+    monkeypatch.delenv("PYTEST_CURRENT_TEST")                             # as in an operator's shell
+    before = cluster.image(db)
+    with pytest.raises(SystemExit) as e:
+        runner.execute(runner.args("dry"))                                # (the autouse fixture set ORPH_TEST_EVIDENCE_ROOT)
+    assert e.value.code == 95
+    assert not os.path.exists(runner.ev)                                  # no directory, no connection, no outcome
+    assert_unchanged(cluster, db, before)
 
 
 def test_without_the_env_var_a_run_writes_only_under_the_real_root(mod, runner, cluster, db, monkeypatch, tmp_path):
     """The real root is never written by a test: the connection is refused first, and nothing lands at the flag path."""
     monkeypatch.delenv("ORPH_TEST_EVIDENCE_ROOT", raising=False)
     seen = {}
-    monkeypatch.setattr(mod, "write_evidence", lambda root, *a, **k: seen.setdefault("root", root) and (_ for _ in ()).throw(mod.EvidenceError("stop")))
+    monkeypatch.setattr(mod, "make_run_dir", lambda root, *a, **k: seen.setdefault("root", root) and (_ for _ in ()).throw(mod.EvidenceError("stop")))
     flag = tmp_path / "flagged"
     args = runner.args("dry", evidence_root=str(flag))
     code, res = runner.execute(args)
-    assert seen["root"] == mod.EVIDENCE_ROOT and not flag.exists()
+    assert seen["root"] == mod.EVIDENCE_ROOT and not flag.exists() and code == 1
 
 
 def test_every_created_evidence_dir_is_0700_and_an_existing_root_is_chmodded(mod, tmp_path):
@@ -597,3 +646,173 @@ def test_unservable_rows_labels_follow_partitionDefect(cluster, db, mod):
     v = verdicts_of(cluster, db, mod)
     assert v["ga_l_skip"] == "skip_chain_writer_missing"           # skip_no_delta and no earlier complete build to be the writer
     assert v["ga_l_unserv"] == "receipt_disposition_unservable"    # disposition that is neither build nor skip_no_delta
+
+
+# ------------------------------------------------------------------------------------------------ v3: outcome.json in every mode
+OUTCOME_KEYS = {"schema", "status", "utc", "executor_sha256", "plan_hash", "gate_sha256", "run_gated_sha256", "evidence_digest",
+                "failed_checks"}
+
+
+def assert_outcome(o, mod, status, res=None, checks=()):
+    assert set(o) == OUTCOME_KEYS and o["schema"] == "executor_outcome_v1" and o["status"] == status
+    assert o["executor_sha256"] == mod.exec_sha() and o["plan_hash"] == mod.plan_hash("ga_positions", CANON)
+    assert o["gate_sha256"] == mod.GATE_PINS["prerun_gate.py"] and o["run_gated_sha256"] == mod.GATE_PINS["run_gated.sh"]
+    assert o["failed_checks"] == list(checks)
+    assert len(o["utc"]) == 20 and o["utc"].endswith("Z")
+    if res is not None:
+        assert o["plan_hash"] == res["plan_hash"] and o["executor_sha256"] == res["executor_sha256"]
+
+
+def test_dry_run_writes_outcome_dry_run(runner, mod):
+    code, res = runner.run("dry")
+    assert code == 0 and res["status"] == "DRY_RUN_ROLLED_BACK_ALL_CHECKS_HOLD"
+    o = outcome_of(res)
+    assert_outcome(o, mod, "dry_run", res)
+    assert o["evidence_digest"] == res["evidence_digest"] and len(o["evidence_digest"]) == 64
+    f = pathlib.Path(res["outcome_file"])
+    assert f == pathlib.Path(res["before_images"]["dir"]) / "outcome.json"          # next to the before-images
+    assert stat.S_IMODE(f.stat().st_mode) == 0o600 and stat.S_IMODE(f.parent.stat().st_mode) == 0o700
+
+
+def test_apply_writes_outcome_applied_with_the_dry_runs_digest(runner, mod):
+    _, dry = runner.run("dry")
+    code, res = runner.run("apply", expect_evidence=dry["evidence_digest"])
+    assert code == 0 and res["status"] == "COMMITTED"
+    o = outcome_of(res)
+    assert_outcome(o, mod, "applied", res)
+    assert o["evidence_digest"] == dry["evidence_digest"]
+    assert [x["status"] for x in outcomes(runner)] == ["dry_run", "applied"]
+    assert stat.S_IMODE(pathlib.Path(res["outcome_file"]).stat().st_mode) == 0o600
+
+
+def test_refused_apply_writes_failed_outcome_naming_the_failed_checks(runner, cluster, db, mod):
+    code, res = runner.run("apply", expect_evidence="0" * 64)
+    assert code == 1 and res["status"] == "REFUSED_ROLLED_BACK"
+    o = outcome_of(res)
+    assert_outcome(o, mod, "failed", res, ["E_evidence_digest_matches_expected"])
+    assert o["evidence_digest"] == res["evidence_digest"]                    # the digest the refused run computed is kept
+
+
+def test_refused_dry_run_writes_failed_outcome(runner, cluster, db, mod):
+    cluster.su(db, "INSERT INTO build_runs (chart_id, scope, action, state, plan, triggered_by) VALUES (%s,'asset','rebuild','running','{}','fixture')", (CANON,))
+    code, res = runner.run("dry")
+    assert code == 2
+    assert_outcome(outcome_of(res), mod, "failed", res, ["P5_no_build_in_flight"])
+
+
+def test_counterfactual_dry_run_is_never_recorded_as_a_dry_run_outcome(runner, mod):
+    """exit 3 (no --min-build-after): P3 was not evaluated against the rebuild gate, so it is NOT a rehearsal of --apply."""
+    code, res = runner.run("dry", min_after=None)
+    assert code == 3
+    assert_outcome(outcome_of(res), mod, "failed", res, ["counterfactual_no_min_build_after"])
+
+
+@pytest.mark.parametrize("kw,check,match", [
+    (dict(expect_plan="0" * 64), "args_expect_plan_mismatch", "does not equal the plan hash"),
+    (dict(min_after=None), "args_min_build_after_missing", "min-build-after"),
+    (dict(min_after="2026-10-05T09:00:00"), "args_min_build_after_not_tz_aware", "timezone"),
+], ids=["wrong-plan-hash", "no-min-build-after", "naive-timezone"])
+def test_apply_argument_refusals_write_a_failed_outcome_and_exit(runner, cluster, db, mod, kw, check, match):
+    before = cluster.image(db)
+    with pytest.raises(SystemExit, match=match):
+        mod.execute(runner.args("apply", expect_evidence="0" * 64, **kw), lambda: pytest.fail("must not connect"))
+    o = outcomes(runner)
+    assert len(o) == 1
+    assert_outcome(o[0], mod, "failed", None, [check])
+    assert o[0]["evidence_digest"] is None
+    assert_unchanged(cluster, db, before)
+
+
+def test_missing_expect_evidence_at_execute_writes_a_failed_outcome(mod, runner):
+    import argparse
+    a = argparse.Namespace(asset="ga_positions", chart=CANON, apply=True, dry_run=False, expect_plan=mod.plan_hash("ga_positions", CANON),
+                           min_build_after=fx.MIN_AFTER, expect_evidence=None, evidence_root=None)
+    with pytest.raises(SystemExit, match="expect-evidence"):
+        mod.execute(a, lambda: pytest.fail("must not connect"))
+    assert_outcome(outcomes(runner)[0], mod, "failed", None, ["args_expect_evidence_missing"])
+
+
+def test_a_failure_to_connect_writes_a_failed_outcome_with_the_exception_class_only(mod, runner):
+    def boom():
+        raise RuntimeError("password=hunter2 host=10.0.0.1")
+    with pytest.raises(RuntimeError):
+        mod.execute(runner.args("dry"), boom)
+    o = outcomes(runner)
+    assert len(o) == 1
+    assert_outcome(o[0], mod, "failed", None, ["RuntimeError"])
+    raw = (pathlib.Path(runner.ev) / sorted(os.listdir(runner.ev))[0] / "outcome.json").read_text()
+    assert "hunter2" not in raw and "10.0.0.1" not in raw                     # never the exception's message
+
+
+def test_an_exception_inside_the_transaction_writes_a_failed_outcome_and_rolls_back(mod, runner, cluster, db, monkeypatch):
+    before = cluster.image(db)
+
+    def boom(*a, **k):
+        raise ValueError("synthetic failure mid-transaction")
+    monkeypatch.setattr(mod, "run_txn", boom)
+    with pytest.raises(ValueError):
+        runner.execute(runner.args("dry"))
+    assert_outcome(outcomes(runner)[0], mod, "failed", None, ["ValueError"])
+    assert_unchanged(cluster, db, before)
+
+
+def test_a_systemexit_inside_the_run_writes_a_failed_outcome(mod, runner, monkeypatch):
+    def leave(*a, **k):
+        raise SystemExit(7)
+    monkeypatch.setattr(mod, "run_txn", leave)
+    with pytest.raises(SystemExit):
+        runner.execute(runner.args("dry"))
+    assert_outcome(outcomes(runner)[0], mod, "failed", None, ["exit_7"])
+
+
+def test_lock_timeout_failure_also_leaves_a_failed_outcome(runner, cluster, db, mod):
+    _, dry = runner.run("dry")
+    with cluster.conn(db) as holder:
+        holder.cursor().execute("LOCK TABLE public.asset_freshness IN ROW EXCLUSIVE MODE")
+        with pytest.raises((psycopg.errors.LockNotAvailable, psycopg.errors.QueryCanceled)):
+            runner.run("apply", expect_evidence=dry["evidence_digest"])
+        holder.rollback()
+    o = outcomes(runner)
+    assert [x["status"] for x in o] == ["dry_run", "failed"]
+    assert o[1]["failed_checks"][0] in ("LockNotAvailable", "QueryCanceled")
+
+
+def test_an_unwritable_outcome_never_masks_the_commit(runner, cluster, db, mod, monkeypatch):
+    """After COMMIT the data is changed: a failure to write outcome.json must not turn that into an exception / exit 1."""
+    _, dry = runner.run("dry")
+    real = mod.es.write_outcome
+
+    def no_applied(evidence_dir, status, *a, **k):
+        if status == "applied":
+            raise OSError("disk full")
+        return real(evidence_dir, status, *a, **k)
+    monkeypatch.setattr(mod.es, "write_outcome", no_applied)
+    code, res = runner.run("apply", expect_evidence=dry["evidence_digest"])
+    assert code == 0 and res["status"] == "COMMITTED"
+    assert any("THE COMMIT HAPPENED" in w for w in res["warnings"]) and "outcome_file" not in res
+    assert rows(cluster, db)[0] == [(DECL, "proven")]
+    assert not (pathlib.Path(res["before_images"]["dir"]) / "outcome.json").exists()
+
+
+def test_outcome_guard_silent_return_and_unwritable_dir(mod, tmp_path):
+    fp = mod.es.fingerprint()
+    d = tmp_path / "run"
+    with mod.SafeOutcome(d, str(EXEC_DIR / "orphan_receipts_exec.py"), "a" * 64, fp):
+        pass                                                                    # returns without declaring anything
+    o = json.loads((d / "outcome.json").read_text())
+    assert o["status"] == "failed" and o["failed_checks"] == ["no_outcome_recorded"]
+    ro = tmp_path / "ro"
+    ro.mkdir()
+    ro.chmod(0o500)
+    try:
+        if os.access(ro, os.W_OK):
+            pytest.skip("running as a user that ignores directory modes")
+        g = mod.SafeOutcome(ro / "run", str(EXEC_DIR / "orphan_receipts_exec.py"), "a" * 64, fp)
+        with g:
+            g.dry_run("b" * 64)                                                 # cannot be written: recorded, not raised
+        assert g.write_error == "PermissionError"
+        with pytest.raises(ValueError):                                         # the REAL exception is not replaced by the write error
+            with mod.SafeOutcome(ro / "run2", str(EXEC_DIR / "orphan_receipts_exec.py"), "a" * 64, fp):
+                raise ValueError("the real problem")
+    finally:
+        ro.chmod(0o700)
