@@ -663,9 +663,27 @@ def built(s6b_schema, tmp_path):
              (S6B_CHART, "2002-01-01", "2002-01-01", "2002-01-01", "v1"),
              (S6B_CHART, "2013-05-01", "2013-05-01", "2013-05-01", "3.0"),
              (S6B_CHART, "2014-05-01", "2014-05-01", "2014-05-01", "3.0")])
+        # Step 3 §4: the overlay fingerprints carry the chart's L1 natal-operand
+        # identity and the L0-owned node-series digest — seed the one MOON fact
+        # and a minimal pinned ('true') Rahu/Ketu series (the gate's recompute
+        # raises on either being absent).
+        cur.execute("DELETE FROM chart_facts WHERE chart_id = %s", (S6B_CHART,))
+        cur.execute(
+            "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id,"
+            " fact_category, fact_subject, fact_key, fact_value_num, build_id)"
+            " VALUES ('s6b-moon-fact', %s, 'lahiri_chitrapaksha',"
+            " 'graha_position', 'MOON', 'longitude_sidereal', 5.0,"
+            " 's6b-l1-build')", (S6B_CHART,))
+        cur.execute("DELETE FROM ephemeris_daily")
+        cur.executemany(
+            "INSERT INTO ephemeris_daily (date, body, ayanamsha_id,"
+            " tropical_longitude, speed_dps, is_retrograde, node_mode)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            [("2026-01-01", "Rahu", "tropical", 100.0, -0.05, True, "true"),
+             ("2026-01-01", "Ketu", "tropical", 280.0, -0.05, True, "true")])
 
-    vedha_fp = current_fingerprint(conn)
-    moorti_fp = current_moorti_fingerprint(conn)
+    vedha_fp = current_fingerprint(conn, S6B_CHART)
+    moorti_fp = current_moorti_fingerprint(conn, S6B_CHART)
     with conn.cursor() as cur:
         cur.execute(
             "INSERT INTO kala_vedha_gochara (chart_id, ayanamsha_id, vedha_kind,"
@@ -841,7 +859,7 @@ def test_stale_overlay_refused_exit_7(built):
             conn.execute(
                 "UPDATE kala_vedha_gochara SET detail = jsonb_set(detail,"
                 " '{upstream_fingerprint}', %s::jsonb) WHERE chart_id = %s",
-                (json.dumps(current_fingerprint(conn)), S6B_CHART))
+                (json.dumps(current_fingerprint(conn, S6B_CHART)), S6B_CHART))
 
 
 def test_published_generation_refused_exit_6(built):

@@ -52,7 +52,9 @@ from services.w2g.node_series import (
     NODE_SERIES_PREDICATE,
     assert_one_row_per_date,
     node_mode_differs_from_kernel,
+    node_series_identity,
 )
+from services.gochara_kernel.l1_identity import l1_operand_identity
 from services.ka_graha_sancara.engine import NAKSHATRAS, NAK_SIZE_DEG, SIGNS
 from services.gochara_kernel.overlays import date_to_jd as _date_to_jd
 from services.ka_moorti_nirnaya.logic import (
@@ -93,6 +95,12 @@ FROM chart_facts
 WHERE chart_id = %s AND ayanamsha_id = %s
   AND fact_category = 'graha_position' AND fact_subject = 'MOON' AND fact_key = 'longitude_sidereal'
 """
+
+# Step 3 §4: the L1 operands this writer actually reads, declared next to their
+# own SQL — the writer, the freshness gate and the '4.1' manifest all fold their
+# identity into the upstream fingerprint via the ONE shared helper
+# (gochara_kernel.l1_identity.l1_operand_identity).
+L1_OPERANDS = (("graha_position", "MOON", "longitude_sidereal"),)
 
 _FETCH_EPHEMERIS_RANGE_SQL = f"""
 SELECT date, body, tropical_longitude
@@ -373,7 +381,15 @@ class KaMoortiNirnayaWriter(WriterBase):
         moorti_table = _fetch_moorti_table(conn)
         # §12.9: digest of exactly the bg_transit_moorti rows this build consumes, stamped on
         # every row so an upstream change is DETECTABLE (services.ka_vedha_gochara.freshness).
-        upstream_fp_json = json.dumps(moorti_upstream_fingerprint(moorti_table))
+        # Step 3 §4: the fingerprint also carries the consumed node-series identity
+        # (L0-owned node_series_digest_v1), the consumed L1 natal-operand identity and
+        # this writer's formula_version.
+        upstream_fp_json = json.dumps(moorti_upstream_fingerprint(
+            moorti_table,
+            node_series=node_series_identity(conn),
+            l1=l1_operand_identity(conn, chart_id, CANONICAL_AYANAMSHA, L1_OPERANDS),
+            formula_version=FORMULA_VERSION,
+        ))
         if not moorti_table:
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,

@@ -99,7 +99,9 @@ from typing import Any
 import psycopg.rows
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
-from services.w2g.node_series import NODE_SERIES_PREDICATE, assert_one_row_per_date
+from services.w2g.node_series import (
+    NODE_SERIES_PREDICATE, assert_one_row_per_date, node_series_identity)
+from services.gochara_kernel.l1_identity import l1_operand_identity
 from services.ka_graha_sancara.engine import ALL_GRAHAS, NAKSHATRAS, NAK_SIZE_DEG, SIGNS
 from services.ka_vedha_gochara.logic import (
     D_PG353_REMOVAL,
@@ -149,6 +151,12 @@ FROM chart_facts
 WHERE chart_id = %s AND ayanamsha_id = %s
   AND fact_category = 'graha_position' AND fact_subject = 'MOON' AND fact_key = 'longitude_sidereal'
 """
+
+# Step 3 §4: the L1 operands this writer actually reads, declared next to their
+# own SQL — the writer, the freshness gate and the '4.1' manifest all fold their
+# identity into the upstream fingerprint via the ONE shared helper
+# (gochara_kernel.l1_identity.l1_operand_identity).
+L1_OPERANDS = (("graha_position", "MOON", "longitude_sidereal"),)
 
 _FETCH_VEDHA_RULES_SQL = """
 SELECT graha, primary_house, vedha_house, phala, classical_citation
@@ -608,7 +616,16 @@ class KaVedhaGocharaWriter(WriterBase):
         malefic_scale = _fetch_malefic_scale(conn)
         # §12.9: digest of exactly the reference rows this build consumes, stamped on
         # every house_vedha row so a later re-citation upstream is DETECTABLE.
-        upstream_fp = upstream_fingerprint(vedha_rules, malefic_scale)
+        # Step 3 §4: the fingerprint also carries the consumed node-series identity
+        # (L0-owned node_series_digest_v1), the consumed L1 natal-operand identity and
+        # this writer's formula_version — an L1 rebuild, a series change or a version
+        # bump alone makes older rows stale.
+        upstream_fp = upstream_fingerprint(
+            vedha_rules, malefic_scale,
+            node_series=node_series_identity(conn),
+            l1=l1_operand_identity(conn, chart_id, CANONICAL_AYANAMSHA, L1_OPERANDS),
+            formula_version=FORMULA_VERSION,
+        )
         latta_rules = _fetch_latta_rules(conn)
 
         today = date.today()

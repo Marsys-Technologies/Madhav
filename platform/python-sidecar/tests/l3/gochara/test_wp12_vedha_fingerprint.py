@@ -116,6 +116,12 @@ def _build():
     finally:
         vw._compute_ayanamsha_offset = orig
         conn.close()
+    # Step 3 §4.5: the gate now reads ALL vedha kinds, but the §3 row stamps (a
+    # fingerprint on sarvatobhadra/latta rows) are a LATER step-3 part — until
+    # then the writer stamps only house_vedha rows. Narrow the fixture to the
+    # stamped kind so this suite's subject (the fingerprint gate) is what is
+    # exercised, never an unstamped row the writer cannot yet produce.
+    _exec("DELETE FROM kala_vedha_gochara WHERE vedha_kind <> 'house_vedha'")
 
 
 def _check():
