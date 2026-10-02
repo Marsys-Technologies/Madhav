@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "956b3690039f157f2496e5d643d08e67b33aab92a86b9fd95fc80b1800c30fed",
+  "content_sha256": "fd81da734a1227578832ebda048501c6010d2e90662e51b00623d329031a211d",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -21081,7 +21081,7 @@
           },
           {
             "path": "platform/migrations/1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql",
-            "sha256": "9046714abb4be482a69064a487f3beeb379935800254be8c44219ef8dce97229"
+            "sha256": "9a8d8f6ebb34d58fb7508478465dce0e454299ab2c5d4b9d4b16e331b3f1c445"
           },
           {
             "path": "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
@@ -21365,7 +21365,7 @@
           }
         ],
         "path": "platform/{migrations,supabase/migrations}/*.sql containing asset_output_digest_specs",
-        "sha256": "8569a8a181c70a0a3cf1bf4e859117de777199f0085c2b3a80b8538e0e11a825"
+        "sha256": "bdfea994b143de751f419fbfe26a5554ca580caabd050e7dc7d0fab82b123928"
       },
       {
         "id": "producer_asset_seed",

@@ -51,24 +51,43 @@
 -- query below; CLAUDE.md N.4, Trap 103: never trust the deploy log, a run that reports success can still have
 -- done nothing).
 --
--- TWO CORRECTIONS RIDE WITH a29 (rehearsal finding, 2026-10-02): the data-plane rehearsal of a fresh ga_structural build on an
--- anchor-matched chart found two TABLE-WIDE conjuncts of the live check that read FALSE on a correct build. Both are
--- check defects, not writer defects (evidence: 00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1221_A29_INTENT_v1_0.md section 7):
+-- THREE CORRECTIONS RIDE WITH a29 (rehearsal findings and the #2969 review, 2026-10-02): (bb) and (c9) were found by the data-plane
+-- rehearsal of a fresh ga_structural build on an anchor-matched chart: two TABLE-WIDE conjuncts of the live check that read FALSE
+-- on a correct build. Both are check defects, not writer defects (evidence:
+-- 00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1221_A29_INTENT_v1_0.md sections 7 and 8):
 --   * (bb) aspect_tajik orb_strength: the check recomputed 1 - orb_deg/deeptamsa_sum_deg from the STORED orb_deg, which the writer
 --     rounds to 4 dp (round(orb, 4)), and demanded exact equality with the writer's value, which rounds the same quotient
 --     computed from the UNROUNDED orb (ga_structural_writer.py, _build_aspect_rows: orb_strength = round(max(0.0, 1.0 - orb /
 --     deeptamsa_sum), 4)). A quotient within 5e-5 of a 4 dp rounding boundary lands one unit (0.0001) apart: e.g. orb 13.4585
 --     with deeptamsa_sum 22.0 stores 0.3882, the check expects 0.3883. Corrected to a tolerance of 0.0001 (one unit in the 4th
---     decimal; the worst-case disagreement of the two roundings is 5e-5 + 5e-5/14 < 1e-4, 14 = the smallest deeptamsa_sum,
---     Mercury 7 + Venus 7); yamaya (1.0) and manaau (0.1) stay exact.
+--     decimal; the worst-case disagreement of the two roundings is 16/3 * 1e-5 = 5.333e-5 < 1e-4); yamaya (1.0) and manaau (0.1)
+--     stay exact.
 --   * (c9) karakatva composite_strength domain: the check listed seven values, but the writer computes (karaka_strength +
 --     house_strength) / 2 with karaka_strength in {1, 0.875, 0.5, 0.25} and house_strength in {1, 0.75, 0.5} (12 combinations =
 --     9 distinct values, plus the 0.5 no-karaka fallback, already in the set). It omitted 0.6875 (own sign, house not kendra /
 --     5 / 9) and 0.875 (exalted, house 5 or 9): a false RED on any chart that lands on them. Corrected to the nine values.
--- Neither conjunct is chart-scoped, and neither is read RED on production today (0/76 and 0/450 violations on the three charts that hold the
--- rows); both would turn RED on the next build that lands on a tie or on one of the two omitted combinations. Fix is guarded
--- like a29: each old conjunct must occur exactly once (refuse otherwise), is a no-op when the correction is already there.
--- Live text read 2026-10-02 (suvarna_reader): length 203539, md5 bb9803524a61427e7f4f179a59911e33, no (a29), both old conjuncts once.
+--   * (uu2) chandra_bala_natal_baseline classification: the check re-derived the birth Moon sign from
+--     panchanga_nakshatra_moon.number as ((nak - 1) * 4) / 9 + 1 (a nakshatra that straddles two signs gets its FIRST sign).
+--     PR #2969 (ga_panchanga) makes the writer READ the Moon sign from the ga_positions fact graha_position | MOON | sign of the
+--     same ayanamsha instead (CLAUDE.md N.5), so after its rebuild the old re-derivation would call a correct baseline wrong.
+--     Corrected to compare against that same position fact, selected as #2969's _read_birth_moon_signs selects it (latest
+--     computed_at, then build_id; one generation per chart and ayanamsha in steady state). NO OR of the two derivations (it
+--     would bless a baseline computed from the wrong sign). It is the ONLY live conjunct of ga_structural, and of any asset's
+--     integrity text, that carries the nakshatra-to-sign formula (the 33 copies in migrations 790-819, 840, 841 and 904 are
+--     historical restatements of this one text); (d) panchaka_flag and (v) tara_bala read the nakshatra NUMBER, which #2969 does
+--     not change.
+-- (uu2) is table-wide (not canonical-scoped) and stays TRUE for the other two charts, because on every ayanamsha their position-fact
+-- and nakshatra-derived Moon signs agree. Measured (suvarna_reader, 2026-10-02): 9 of the 180 chandra_bala_natal_baseline rows
+-- differ from the nakshatra-derived baseline, all of them the canonical chart's surya_siddhanta_classical rows (position fact
+-- Pisces, nakshatra-derived Aquarius): the rows #2969 rewrites. So the corrected (uu2) is RED on those stale canonical rows from this
+-- apply until the S-L1 ga_panchanga rebuild writes them, and TRUE after it: the same shape as (a29). ga_structural depends_on
+-- ga_panchanga, so that rebuild precedes the ga_structural post-write gate; if the order were violated ga_structural would end
+-- `error` on (uu2).
+-- (bb) and (c9) are not chart-scoped either, and neither is RED on production today (0/76 and 0/450 violations on the three charts
+-- that hold the rows); both would turn RED on the next build that lands on a tie or on one of the two omitted combinations. Each fix
+-- is guarded like a29: each old conjunct must occur exactly once (refuse otherwise), and is a no-op when the correction is there.
+-- Live text read 2026-10-02 (suvarna_reader): length 203539, md5 bb9803524a61427e7f4f179a59911e33, no (a29), all three old
+-- conjuncts once.
 --
 -- ORDERING (hard rule). 1221 must be applied as a NAMED STEP of the S-L1 stage, IMMEDIATELY BEFORE the ga_structural
 -- launch, and NEVER BEFORE the ga_structural writer deploy. It is not applied with 1219 and it is not applied
@@ -118,16 +137,16 @@
 -- Conjunct (e27) is vacuously true on a NULL score (NULL <> x is not true), so before this a NULL on an
 -- occupied cell, or a stale 1.0 on an empty one, passed. Scoped to the canonical chart (migration 904's
 -- disclosed tradeoff: the other charts still hold pre-AR-3 rows until they rebuild). (ii) corrects conjunct
--- (bb) (aspect_tajik orb_strength: tolerance 0.0001) and conjunct (c9) (karakatva composite_strength: nine-value
--- domain), see TWO CORRECTIONS above.
+-- (bb) (aspect_tajik orb_strength: tolerance 0.0001), conjunct (c9) (karakatva composite_strength: nine-value
+-- domain), and (uu2) (chandra_bala birth Moon sign from the position fact), see THREE CORRECTIONS above.
 --
 -- HOW: guarded replace() of the live text, not a 200 KB re-statement of migration 904's text, all in ONE UPDATE
 -- (so the registry trigger fires once). (a29) goes in at the single `AS integrity_passed` anchor: it refuses unless
--- (g28) is present and the anchor occurs exactly once. (bb) and (c9) each replace the live conjunct text read on
--- 2026-10-02 (comment plus SQL, verbatim): it refuses unless that text occurs exactly once. Each of the three is skipped
+-- (g28) is present and the anchor occurs exactly once. (bb), (c9) and (uu2) each replace the live conjunct text read on
+-- 2026-10-02 (comment plus SQL, verbatim): it refuses unless that text occurs exactly once. Each of the four is skipped
 -- when its marker is already there; the whole is a no-op when nothing changes; the result is asserted afterwards.
 -- Live text this was written against: md5 bb9803524a61427e7f4f179a59911e33 (length 203539); the text after this file is md5
--- 99564aa71a950037fd391fe62ae487e5 (length 206808), verified by applying this file to that real live text on a disposable Postgres.
+-- c56f9e12b2002269eb5f27a7abc42105 (length 207959), verified by applying this file to that real live text on a disposable Postgres.
 --
 -- Tests: platform/python-sidecar/tests/test_argala_migration_1221_sql.py runs this text and the conjunct
 -- against a disposable local Postgres: six mutants are killed, including the one (e27) passes; the swap reproduces
@@ -141,14 +160,16 @@
 --   SELECT count(*) FROM asset_output_digest_specs
 --    WHERE asset_id = 'ga_structural' AND retired_at IS NOT NULL;   -- >= 1 (b2490646... retired, not deleted)
 --   SELECT count(*) FROM asset_freshness WHERE asset_id = 'ga_structural' AND freshness_state = 'stale';   -- every ga_structural row
---   SELECT position('Migration 1221 (bb tolerance)' in integrity_check_sql) > 0, position('Migration 1221 (c9 domain)' in integrity_check_sql) > 0
---     FROM asset_registry WHERE asset_id = 'ga_structural';   -- t, t
+--   SELECT position('Migration 1221 (bb tolerance)' in integrity_check_sql) > 0, position('Migration 1221 (c9 domain)' in integrity_check_sql) > 0,
+--          position('Migration 1221 (uu2 moon sign)' in integrity_check_sql) > 0
+--     FROM asset_registry WHERE asset_id = 'ga_structural';   -- t, t, t
 --   SELECT md5(integrity_check_sql), length(integrity_check_sql) FROM asset_registry WHERE asset_id = 'ga_structural';
---     -- 99564aa71a950037fd391fe62ae487e5, 206808 (holds only if the live text at apply was md5 bb9803524a61427e7f4f179a59911e33;
+--     -- c56f9e12b2002269eb5f27a7abc42105, 207959 (holds only if the live text at apply was md5 bb9803524a61427e7f4f179a59911e33;
 --     -- if another change to this text landed first, the guards above govern and the md5 differs by exactly that change)
 --   Position proves the text changed, not that the whole composite parses and reads as intended: also run the
---   full integrity_check_sql read-only against the canonical chart. Expected integrity_passed = false (a29 red)
---   until the S-L1 ga_structural rebuild writes the NULL cells; true after it.
+--   full integrity_check_sql read-only against the canonical chart. Expected integrity_passed = false (a29 red, and (uu2) red on
+--   the stale canonical surya_siddhanta chandra_bala rows) until the S-L1 rebuilds (ga_panchanga, then ga_structural) write
+--   them; true after it.
 
 SET LOCAL lock_timeout = '5s';
 
@@ -264,6 +285,94 @@ $oc$;
       AND fact_value_num NOT IN (0.375, 0.5, 0.625, 0.6875, 0.75, 0.8125, 0.875, 0.9375, 1.0)
   )
 $nc$;
+  -- (uu2) chandra_bala baseline classification: the live conjunct and its corrected text (Moon sign from the position fact).
+  old_uu2 constant text := $ou$  -- (uu2) chandra_bala_natal_baseline.classification must equal the full re-derivation of the
+  -- writer's own formula: transit sign_id is parsed from fact_subject's
+  -- "TRANSIT_SIGN_{SANSKRIT_NAME}" suffix via the standard Sanskrit zodiac name table;
+  -- birth_nak_id is sourced from panchanga_nakshatra_moon.number for the same chart/ayanamsha --
+  -- the same authoritative birth-nakshatra reference already used by tara_bala_natal_baseline
+  -- (migration 782) and panchaka_flag (migration 755). Per D-L1-55, a +120 (10*12) margin is
+  -- added before the modulo, guaranteeing a positive dividend without changing the result
+  -- mod 12. 0/180 violations live.
+  AND NOT EXISTS (
+    SELECT 1 FROM chart_facts a
+    JOIN chart_facts n ON n.chart_id = a.chart_id AND n.ayanamsha_id = a.ayanamsha_id
+      AND n.fact_category = 'panchanga_nakshatra_moon' AND n.fact_subject = 'NAKSHATRA_MOON_BIRTH'
+      AND n.fact_key = 'number'
+    WHERE a.fact_category = 'chandra_bala_natal_baseline' AND a.fact_key = 'classification'
+      AND a.fact_value_text <> (
+        CASE (
+          (
+            (
+              (CASE substring(a.fact_subject from 14)
+                WHEN 'MESHA' THEN 1 WHEN 'VRISHABHA' THEN 2 WHEN 'MITHUNA' THEN 3 WHEN 'KARKA' THEN 4
+                WHEN 'SIMHA' THEN 5 WHEN 'KANYA' THEN 6 WHEN 'TULA' THEN 7 WHEN 'VRISHCHIKA' THEN 8
+                WHEN 'DHANU' THEN 9 WHEN 'MAKARA' THEN 10 WHEN 'KUMBHA' THEN 11 WHEN 'MEENA' THEN 12
+                ELSE NULL END)
+              - ( ((n.fact_value_num::int - 1) * 4) / 9 + 1 )
+              + 120
+            ) % 12
+          ) + 1
+        )
+          WHEN 1 THEN 'favorable' WHEN 2 THEN 'unfavorable' WHEN 3 THEN 'favorable'
+          WHEN 4 THEN 'unfavorable' WHEN 5 THEN 'unfavorable' WHEN 6 THEN 'favorable'
+          WHEN 7 THEN 'favorable' WHEN 8 THEN 'unfavorable' WHEN 9 THEN 'neutral'
+          WHEN 10 THEN 'favorable' WHEN 11 THEN 'favorable' WHEN 12 THEN 'unfavorable'
+          ELSE NULL END
+      )
+  )
+$ou$;
+  new_uu2 constant text := $nu$  -- (uu2) chandra_bala_natal_baseline.classification must equal the full re-derivation of the
+  -- writer's own formula: transit sign_id is parsed from fact_subject's
+  -- "TRANSIT_SIGN_{SANSKRIT_NAME}" suffix via the standard Sanskrit zodiac name table;
+  -- the birth Moon sign is the L1 graha_position MOON `sign` fact of the SAME chart and ayanamsha
+  -- (CLAUDE.md N.5: the authority, referenced and never re-derived), mapped from its English name; when
+  -- several generations of that fact exist the latest one is taken (computed_at, then build_id, both
+  -- descending), exactly as ga_panchanga's _read_birth_moon_signs selects it. Per D-L1-55, a +120
+  -- (10*12) margin is added before the modulo, guaranteeing a positive dividend without changing the
+  -- result mod 12. Migration 1221 (uu2 moon sign): the birth sign used to be re-derived from
+  -- panchanga_nakshatra_moon.number as ((nak - 1) * 4) / 9 + 1, which gives a nakshatra that straddles
+  -- two signs its FIRST sign (Purva Bhadrapada: Aquarius, although its fourth pada is in Pisces); the writer now
+  -- reads the position fact, so the old re-derivation would call a correct baseline wrong. A baseline
+  -- computed from any sign other than the position fact's is still FALSE (no OR of the two derivations).
+  -- A chart with no position fact, or a sign name outside the twelve, is not checked here, as before.
+  AND NOT EXISTS (
+    SELECT 1 FROM chart_facts a
+    CROSS JOIN LATERAL (
+      SELECT p.fact_value_text AS moon_sign
+      FROM chart_facts p
+      WHERE p.chart_id = a.chart_id AND p.ayanamsha_id = a.ayanamsha_id
+        AND p.fact_category = 'graha_position' AND p.fact_subject = 'MOON' AND p.fact_key = 'sign'
+      ORDER BY p.computed_at DESC, p.build_id DESC
+      LIMIT 1
+    ) mp
+    WHERE a.fact_category = 'chandra_bala_natal_baseline' AND a.fact_key = 'classification'
+      AND a.fact_value_text <> (
+        CASE (
+          (
+            (
+              (CASE substring(a.fact_subject from 14)
+                WHEN 'MESHA' THEN 1 WHEN 'VRISHABHA' THEN 2 WHEN 'MITHUNA' THEN 3 WHEN 'KARKA' THEN 4
+                WHEN 'SIMHA' THEN 5 WHEN 'KANYA' THEN 6 WHEN 'TULA' THEN 7 WHEN 'VRISHCHIKA' THEN 8
+                WHEN 'DHANU' THEN 9 WHEN 'MAKARA' THEN 10 WHEN 'KUMBHA' THEN 11 WHEN 'MEENA' THEN 12
+                ELSE NULL END)
+              - (CASE mp.moon_sign
+                WHEN 'Aries' THEN 1 WHEN 'Taurus' THEN 2 WHEN 'Gemini' THEN 3 WHEN 'Cancer' THEN 4
+                WHEN 'Leo' THEN 5 WHEN 'Virgo' THEN 6 WHEN 'Libra' THEN 7 WHEN 'Scorpio' THEN 8
+                WHEN 'Sagittarius' THEN 9 WHEN 'Capricorn' THEN 10 WHEN 'Aquarius' THEN 11 WHEN 'Pisces' THEN 12
+                ELSE NULL END)
+              + 120
+            ) % 12
+          ) + 1
+        )
+          WHEN 1 THEN 'favorable' WHEN 2 THEN 'unfavorable' WHEN 3 THEN 'favorable'
+          WHEN 4 THEN 'unfavorable' WHEN 5 THEN 'unfavorable' WHEN 6 THEN 'favorable'
+          WHEN 7 THEN 'favorable' WHEN 8 THEN 'unfavorable' WHEN 9 THEN 'neutral'
+          WHEN 10 THEN 'favorable' WHEN 11 THEN 'favorable' WHEN 12 THEN 'unfavorable'
+          ELSE NULL END
+      )
+  )
+$nu$;
   live text;
   patched text;
   n integer;
@@ -301,6 +410,14 @@ BEGIN
     patched := replace(patched, old_c9, new_c9);
   END IF;
 
+  -- (uu2): replace the nakshatra-derived birth Moon sign with the position fact's sign (skipped when already corrected).
+  IF position('Migration 1221 (uu2 moon sign)' in patched) = 0 THEN
+    IF (length(patched) - length(replace(patched, old_uu2, ''))) <> length(old_uu2) THEN
+      RAISE EXCEPTION 'ga_structural integrity patch refused: live conjunct (uu2) is not present exactly once';
+    END IF;
+    patched := replace(patched, old_uu2, new_uu2);
+  END IF;
+
   IF patched = live THEN
     RETURN;   -- already applied (idempotent re-run)
   END IF;
@@ -315,8 +432,10 @@ BEGIN
                               AND position('(g28)' in integrity_check_sql) > 0
                               AND position('Migration 1221 (bb tolerance)' in integrity_check_sql) > 0
                               AND position('Migration 1221 (c9 domain)' in integrity_check_sql) > 0
+                              AND position('Migration 1221 (uu2 moon sign)' in integrity_check_sql) > 0
                               AND position(old_bb in integrity_check_sql) = 0
-                              AND position(old_c9 in integrity_check_sql) = 0) THEN
+                              AND position(old_c9 in integrity_check_sql) = 0
+                              AND position(old_uu2 in integrity_check_sql) = 0) THEN
     RAISE EXCEPTION 'ga_structural integrity patch failed to apply';
   END IF;
 END $$;

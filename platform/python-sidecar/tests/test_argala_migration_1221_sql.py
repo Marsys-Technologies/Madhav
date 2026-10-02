@@ -1,4 +1,4 @@
-"""The real migration file 1221 (the a29 integrity conjunct on ga_structural, the corrections of its (bb) and (c9) conjuncts,
+"""The real migration file 1221 (the a29 integrity conjunct on ga_structural, the corrections of its (bb), (c9) and (uu2) conjuncts,
 AND the ga_structural output-digest spec swap), executed against a disposable Postgres.
 
 HELD migration: it merges only in the S-L1 window, after the ga_structural writer image is deployed. The SQL is read from the
@@ -162,11 +162,48 @@ OLD_C9 = r'''  -- (c9) composite_strength domain: must be one of the seven achie
       AND fact_value_num NOT IN (0.375, 0.5, 0.625, 0.75, 0.8125, 0.9375, 1.0)
   )
 '''
-STANDIN = ("SELECT\n  (TRUE)\n" + OLD_BB + OLD_C9 + "  -- (g28) stand-in tail\n  AND NOT EXISTS (SELECT 1 FROM chart_facts WHERE false)\n"
+OLD_UU2 = r'''  -- (uu2) chandra_bala_natal_baseline.classification must equal the full re-derivation of the
+  -- writer's own formula: transit sign_id is parsed from fact_subject's
+  -- "TRANSIT_SIGN_{SANSKRIT_NAME}" suffix via the standard Sanskrit zodiac name table;
+  -- birth_nak_id is sourced from panchanga_nakshatra_moon.number for the same chart/ayanamsha --
+  -- the same authoritative birth-nakshatra reference already used by tara_bala_natal_baseline
+  -- (migration 782) and panchaka_flag (migration 755). Per D-L1-55, a +120 (10*12) margin is
+  -- added before the modulo, guaranteeing a positive dividend without changing the result
+  -- mod 12. 0/180 violations live.
+  AND NOT EXISTS (
+    SELECT 1 FROM chart_facts a
+    JOIN chart_facts n ON n.chart_id = a.chart_id AND n.ayanamsha_id = a.ayanamsha_id
+      AND n.fact_category = 'panchanga_nakshatra_moon' AND n.fact_subject = 'NAKSHATRA_MOON_BIRTH'
+      AND n.fact_key = 'number'
+    WHERE a.fact_category = 'chandra_bala_natal_baseline' AND a.fact_key = 'classification'
+      AND a.fact_value_text <> (
+        CASE (
+          (
+            (
+              (CASE substring(a.fact_subject from 14)
+                WHEN 'MESHA' THEN 1 WHEN 'VRISHABHA' THEN 2 WHEN 'MITHUNA' THEN 3 WHEN 'KARKA' THEN 4
+                WHEN 'SIMHA' THEN 5 WHEN 'KANYA' THEN 6 WHEN 'TULA' THEN 7 WHEN 'VRISHCHIKA' THEN 8
+                WHEN 'DHANU' THEN 9 WHEN 'MAKARA' THEN 10 WHEN 'KUMBHA' THEN 11 WHEN 'MEENA' THEN 12
+                ELSE NULL END)
+              - ( ((n.fact_value_num::int - 1) * 4) / 9 + 1 )
+              + 120
+            ) % 12
+          ) + 1
+        )
+          WHEN 1 THEN 'favorable' WHEN 2 THEN 'unfavorable' WHEN 3 THEN 'favorable'
+          WHEN 4 THEN 'unfavorable' WHEN 5 THEN 'unfavorable' WHEN 6 THEN 'favorable'
+          WHEN 7 THEN 'favorable' WHEN 8 THEN 'unfavorable' WHEN 9 THEN 'neutral'
+          WHEN 10 THEN 'favorable' WHEN 11 THEN 'favorable' WHEN 12 THEN 'unfavorable'
+          ELSE NULL END
+      )
+  )
+'''
+STANDIN = ("SELECT\n  (TRUE)\n" + OLD_BB + OLD_C9 + OLD_UU2 + "  -- (g28) stand-in tail\n  AND NOT EXISTS (SELECT 1 FROM chart_facts WHERE false)\n"
            "  AS integrity_passed\n\n")
 SCHEMA_B = """
 CREATE TABLE chart_facts (fact_id text PRIMARY KEY, chart_id uuid, ayanamsha_id text, build_id uuid,
-  fact_category text, fact_subject text, fact_key text, fact_value_text text, fact_value_num numeric, fact_value_jsonb jsonb);
+  fact_category text, fact_subject text, fact_key text, fact_value_text text, fact_value_num numeric, fact_value_jsonb jsonb,
+  computed_at timestamptz);
 """
 BUILD = str(uuid.uuid4())
 
@@ -187,6 +224,10 @@ def _new_bb_fragment() -> str:
 
 def _new_c9_fragment() -> str:
     return B.split("new_c9 constant text := $nc$", 1)[1].split("$nc$", 1)[0]
+
+
+def _new_uu2_fragment() -> str:
+    return B.split("new_uu2 constant text := $nu$", 1)[1].split("$nu$", 1)[0]
 
 
 def _conj(fragment: str) -> str:
@@ -232,6 +273,7 @@ def test_1221_applies_once_touches_only_integrity_text_and_the_spec_and_is_idemp
     assert OLD_BB not in text and OLD_C9 not in text                     # the live (bb) and (c9) are gone ...
     assert text.count(_new_bb_fragment()) == 1 and text.count(_new_c9_fragment()) == 1   # ... replaced once each by the corrected text
     assert text.count("Migration 1221 (bb tolerance)") == 1 and text.count("Migration 1221 (c9 domain)") == 1
+    assert OLD_UU2 not in text and text.count(_new_uu2_fragment()) == 1 and text.count("Migration 1221 (uu2 moon sign)") == 1
     assert q(pg, db, other) == other_before
     assert q(pg, db, "SELECT integrity_check_sql FROM asset_registry WHERE asset_id='ga_strength'") == "keep"
     once = q(pg, db, "SELECT md5(integrity_check_sql) FROM asset_registry WHERE asset_id='ga_structural'")
@@ -256,6 +298,10 @@ def test_1221_applies_once_touches_only_integrity_text_and_the_spec_and_is_idemp
      "live conjunct (bb) is not present exactly once"),
     ("UPDATE asset_registry SET integrity_check_sql = integrity_check_sql || $d$" + OLD_C9 + "$d$ WHERE asset_id='ga_structural'",
      "live conjunct (c9) is not present exactly once"),
+    ("UPDATE asset_registry SET integrity_check_sql = replace(integrity_check_sql, 'NAKSHATRA_MOON_BIRTH', 'X') WHERE asset_id='ga_structural'",
+     "live conjunct (uu2) is not present exactly once"),
+    ("UPDATE asset_registry SET integrity_check_sql = integrity_check_sql || $d$" + OLD_UU2 + "$d$ WHERE asset_id='ga_structural'",
+     "live conjunct (uu2) is not present exactly once"),
     (f"UPDATE asset_output_digest_specs SET retired_at = now() WHERE spec_sha256 = '{OLD_SHA}'; "
      "INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec) VALUES ('ga_structural', repeat('c', 64), '{}'::jsonb)",
      "unrecognised active row"),
@@ -346,13 +392,21 @@ def test_the_writer_constants_mirrored_in_these_tests_are_the_writers_own():
 def test_the_migration_replaces_exactly_the_live_conjunct_texts_and_the_new_texts_carry_the_markers():
     assert B.split("old_bb constant text := $ob$", 1)[1].split("$ob$", 1)[0] == OLD_BB
     assert B.split("old_c9 constant text := $oc$", 1)[1].split("$oc$", 1)[0] == OLD_C9
+    assert B.split("old_uu2 constant text := $ou$", 1)[1].split("$ou$", 1)[0] == OLD_UU2
+    assert "Migration 1221 (uu2 moon sign)" in _new_uu2_fragment() and _new_uu2_fragment().startswith("  -- (uu2) ")
+    assert _new_uu2_fragment().endswith("  )\n") and _new_uu2_fragment().count("ORDER BY p.computed_at DESC, p.build_id DESC") == 1
     assert "Migration 1221 (bb tolerance)" in _new_bb_fragment() and "Migration 1221 (c9 domain)" in _new_c9_fragment()
     assert _new_bb_fragment().startswith("  -- (bb) ") and _new_c9_fragment().startswith("  -- (c9) ")
     assert _new_bb_fragment().endswith("  )\n") and _new_c9_fragment().endswith("  )\n")     # the next comment line follows directly, as live
     flat = re.sub(r"\s*\n--\s*", " ", B)
-    assert "bb9803524a61427e7f4f179a59911e33" in flat and "TWO CORRECTIONS RIDE WITH a29" in flat
-    assert "99564aa71a950037fd391fe62ae487e5" in flat and "206808" in flat      # the recorded target md5 (post-apply verification)
+    assert "bb9803524a61427e7f4f179a59911e33" in flat and "THREE CORRECTIONS RIDE WITH a29" in flat
+    assert "c56f9e12b2002269eb5f27a7abc42105" in flat and "207959" in flat      # the recorded target md5 (post-apply verification)
     assert "check defects, not writer defects" in flat
+    # the (uu2) statements the header must carry
+    assert "(uu2) is table-wide (not canonical-scoped) and stays TRUE for the other two charts" in flat
+    assert "9 of the 180 chandra_bala_natal_baseline rows differ from the nakshatra-derived baseline" in flat and "canonical chart's surya_siddhanta_classical rows" in flat
+    assert "the corrected (uu2) is RED on those stale canonical rows from this apply until the S-L1 ga_panchanga rebuild writes them, and TRUE after it" in flat
+    assert "ga_structural depends_on ga_panchanga" in flat and "NO OR of the two derivations" in flat
 
 
 def _tajik_rows(rows) -> str:
@@ -496,7 +550,7 @@ def test_1221_corrections_are_idempotent_and_apply_individually_when_a_part_is_a
     f = _write("b", B)
     assert psql(pg, db, file=f).returncode == 0
     full = q(pg, db, "SELECT md5(integrity_check_sql) FROM asset_registry WHERE asset_id='ga_structural'")
-    for old, new_frag in ((OLD_BB, _new_bb_fragment()), (OLD_C9, _new_c9_fragment())):
+    for old, new_frag in ((OLD_BB, _new_bb_fragment()), (OLD_C9, _new_c9_fragment()), (OLD_UU2, _new_uu2_fragment())):
         # (a29) and the other correction are in; this one is back to the live text: the file corrects just this one, to the same result
         q(pg, db, f"UPDATE asset_registry SET integrity_check_sql = replace(integrity_check_sql, $n${new_frag}$n$, $o${old}$o$) "
                   "WHERE asset_id='ga_structural'")
@@ -505,8 +559,8 @@ def test_1221_corrections_are_idempotent_and_apply_individually_when_a_part_is_a
         assert q(pg, db, "SELECT md5(integrity_check_sql) FROM asset_registry WHERE asset_id='ga_structural'") == full
     # (a29) back out (the pre-1221 live shape of a text that already carries both corrections): only a29 is added again
     db2 = _fresh_b(pg)
-    q(pg, db2, f"UPDATE asset_registry SET integrity_check_sql = replace(replace(integrity_check_sql, $o${OLD_BB}$o$, $n${_new_bb_fragment()}$n$), "
-               f"$o${OLD_C9}$o$, $n${_new_c9_fragment()}$n$) WHERE asset_id='ga_structural'")
+    q(pg, db2, f"UPDATE asset_registry SET integrity_check_sql = replace(replace(replace(integrity_check_sql, $o${OLD_BB}$o$, $n${_new_bb_fragment()}$n$), "
+               f"$o${OLD_C9}$o$, $n${_new_c9_fragment()}$n$), $o${OLD_UU2}$o$, $n${_new_uu2_fragment()}$n$) WHERE asset_id='ga_structural'")
     assert psql(pg, db2, file=f).returncode == 0
     assert q(pg, db2, "SELECT md5(integrity_check_sql) FROM asset_registry WHERE asset_id='ga_structural'") == full
 
@@ -550,20 +604,24 @@ def _fresh_b_two_rows(port: int) -> str:
     return db
 
 
-def _fresh_b_text_rewriting_trigger(port: int) -> str:
-    """_fresh_b plus a BEFORE UPDATE trigger that strips the (c9) marker from the text being written: the UPDATE matches one row but
+def _fresh_b_text_rewriting_trigger(port: int, marker: str = "Migration 1221 (c9 domain)") -> str:
+    """_fresh_b plus a BEFORE UPDATE trigger that strips one marker from the text being written: the UPDATE matches one row but
     the stored text lacks a marker."""
     db = _fresh_b(port)
-    q(port, db, """
+    q(port, db, f"""
       CREATE FUNCTION strip_marker() RETURNS trigger LANGUAGE plpgsql AS $f$
-      BEGIN NEW.integrity_check_sql := replace(NEW.integrity_check_sql, 'Migration 1221 (c9 domain)', 'x'); RETURN NEW; END $f$;
+      BEGIN NEW.integrity_check_sql := replace(NEW.integrity_check_sql, '{marker}', 'x'); RETURN NEW; END $f$;
       CREATE TRIGGER strip_marker BEFORE UPDATE OF integrity_check_sql ON asset_registry FOR EACH ROW EXECUTE FUNCTION strip_marker();
     """)
     return db
 
 
 @requires_pg
-@pytest.mark.parametrize("make_db", [_fresh_b_two_rows, _fresh_b_text_rewriting_trigger], ids=["update_matches_two_rows", "stored_text_lacks_a_marker"])
+@pytest.mark.parametrize("make_db", [
+    _fresh_b_two_rows,
+    lambda port: _fresh_b_text_rewriting_trigger(port, "Migration 1221 (c9 domain)"),
+    lambda port: _fresh_b_text_rewriting_trigger(port, "Migration 1221 (uu2 moon sign)"),
+], ids=["update_matches_two_rows", "stored_text_lacks_the_c9_marker", "stored_text_lacks_the_uu2_marker"])
 def test_1221_after_apply_assertion_raises_on_correct_looking_code_and_the_runner_shaped_transaction_changes_nothing(pg, make_db):
     """The guards before the UPDATE all pass here (live text carries (g28), anchor once, each old conjunct once); only the
     after-apply assertion (`n <> 1 OR NOT EXISTS (... markers present, old text gone)` -> 'failed to apply') can catch it."""
@@ -575,6 +633,181 @@ def test_1221_after_apply_assertion_raises_on_correct_looking_code_and_the_runne
     assert q(pg, db, snap) == before                               # the registry is untouched
     assert reg.freshness_snapshot(pg, db) == fresh_before          # no trigger side effect survived
     assert reg.specs_snapshot(pg, db) == specs_before              # and part 2 (the spec swap) never ran
+
+
+# ── (uu2) chandra_bala_natal_baseline: the birth Moon sign comes from the position fact, per ayanamsha ──────────────────
+
+import ast  # noqa: E402
+
+PANCH = (pathlib.Path(__file__).resolve().parents[1] / "ga_writers" / "ga_panchanga_writer.py").read_text(encoding="utf-8")
+SANSKRIT = ["MESHA", "VRISHABHA", "MITHUNA", "KARKA", "SIMHA", "KANYA", "TULA", "VRISHCHIKA", "DHANU", "MAKARA", "KUMBHA", "MEENA"]
+ENGLISH = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
+CHART_M = "aaaaaaaa-0000-4000-8000-0000000000a1"
+CHART_Z = "aaaaaaaa-0000-4000-8000-0000000000a2"
+
+
+def _writer_chandra_bala() -> dict:
+    src = PANCH.split("_CHANDRA_BALA: dict[int, str] = ", 1)[1].split("}", 1)[0] + "}"
+    return ast.literal_eval(src)
+
+
+def _cb_class(transit_idx: int, birth_idx: int) -> str:
+    """The writer's own formula: position = (transit - birth) % 12 + 1 -> _CHANDRA_BALA (indices are 0-based here)."""
+    return _writer_chandra_bala()[(transit_idx - birth_idx) % 12 + 1]
+
+
+def test_the_chandra_bala_mapping_the_check_encodes_is_the_writers_own_and_the_nakshatra_formula_is_the_one_replaced():
+    wb = _writer_chandra_bala()
+    assert wb == {1: "favorable", 2: "unfavorable", 3: "favorable", 4: "unfavorable", 5: "unfavorable", 6: "favorable",
+                  7: "favorable", 8: "unfavorable", 9: "neutral", 10: "favorable", 11: "favorable", 12: "unfavorable"}
+    for frag in (OLD_UU2, _new_uu2_fragment()):                     # the same CASE ladder in both texts
+        assert "WHEN 1 THEN 'favorable' WHEN 2 THEN 'unfavorable' WHEN 3 THEN 'favorable'" in frag
+        assert "WHEN 9 THEN 'neutral'" in frag and "WHEN 12 THEN 'unfavorable'" in frag
+    assert "((n.fact_value_num::int - 1) * 4) / 9 + 1" in OLD_UU2 and "panchanga_nakshatra_moon" not in _new_uu2_fragment().split("ELSE NULL END", 1)[1].replace("-- ", "")
+
+
+def _cb_rows(chart: str, aya: str, baseline_idx, position_signs, nak, stamp: int = 0) -> list[str]:
+    """INSERT value tuples for one (chart, ayanamsha): the 12 baseline rows computed with baseline_idx as the birth sign (None: no
+    baseline), one position fact per (computed_at, build, sign) in position_signs, and the nakshatra number (None: none)."""
+    out = []
+    n = 0
+
+    def row(cat, subj, key, text=None, num=None, at="2026-06-01T00:00:00Z", build="00000000-0000-4000-8000-000000000001"):
+        nonlocal n
+        n += 1
+        t = "NULL" if text is None else "'" + text.replace("'", "''") + "'"
+        v = "NULL" if num is None else str(num)
+        out.append(f"('{chart[-4:]}{aya[:3]}{stamp}_{n}', '{chart}', '{aya}', '{build}', '{cat}', '{subj}', '{key}', {t}, {v}, NULL, '{at}')")
+
+    if baseline_idx is not None:
+        for t_idx, name in enumerate(SANSKRIT):
+            row("chandra_bala_natal_baseline", "TRANSIT_SIGN_" + name, "classification", _cb_class(t_idx, baseline_idx))
+    for sign, at, build in position_signs:
+        row("graha_position", "MOON", "sign", sign, None, at, build)
+    if nak is not None:
+        row("panchanga_nakshatra_moon", "NAKSHATRA_MOON_BIRTH", "number", None, nak)
+    return out
+
+
+def _cb_db(port: int, specs) -> str:
+    """specs: (chart, aya, baseline_idx, position_signs, nak) tuples."""
+    db = new_db(port)
+    q(port, db, SCHEMA_B)
+    rows = []
+    for i, (chart, aya, b, pos, nak) in enumerate(specs):
+        rows += _cb_rows(chart, aya, b, pos, nak, stamp=i)
+    q(port, db, "INSERT INTO chart_facts VALUES " + ", ".join(rows))
+    return db
+
+
+def _per_aya(port: int, db: str, fragment: str) -> dict[str, int]:
+    """Violating chandra_bala rows per ayanamsha (the conjunct's own SELECT, grouped), so a pass is read ayanamsha by ayanamsha."""
+    inner = _conj(fragment).split("AND NOT EXISTS (", 1)[1].rstrip()
+    assert inner.endswith(")")
+    sql = inner[:-1].replace("SELECT 1 FROM chart_facts a", "SELECT a.ayanamsha_id, count(*) FROM chart_facts a", 1) + " GROUP BY a.ayanamsha_id"
+    assert "count(*)" in sql
+    out = q(port, db, sql)
+    return {ln.split("|")[0]: int(ln.split("|")[1]) for ln in out.splitlines() if ln}
+
+
+T0, T1 = "2026-01-01T00:00:00Z", "2026-06-01T00:00:00Z"
+B1, B2 = "00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"
+
+
+def _mixed(correct: bool, port: int) -> str:
+    """One synthetic chart whose Moon sign DIFFERS between ayanamshas, and where the nakshatra-derived sign agrees with the position
+    fact on two ayanamshas and disagrees on two: lahiri Aquarius / nak 25 (derived Aquarius, agree); surya_siddhanta Pisces / nak 25
+    (derived Aquarius: the canonical case); raman Taurus / nak 3 (Krittika: derived Aries); krishnamurti Gemini / nak 7 (derived Gemini).
+    correct=True: baselines as #2969 writes them (from the position fact); False: as the old writer wrote them (nakshatra-derived)."""
+    cases = [("lahiri", 10, 25), ("surya", 11, 25), ("raman", 1, 3), ("krishnamurti", 2, 7)]
+    specs = []
+    for aya, pos_idx, nak in cases:
+        derived = ((nak - 1) * 4) // 9
+        specs.append((CHART_M, aya, pos_idx if correct else derived, [(ENGLISH[pos_idx], T1, B1)], nak))
+    return _cb_db(port, specs)
+
+
+@requires_pg
+def test_uu2_per_ayanamsha_a_correct_baseline_is_false_under_the_old_text_where_the_signs_differ_and_true_under_the_new(pg):
+    db = _mixed(True, pg)
+    old = _per_aya(pg, db, OLD_UU2)
+    assert set(old) == {"surya", "raman"} and all(v > 0 for v in old.values()), old    # false-RED exactly where position and nakshatra disagree
+    assert _per_aya(pg, db, _new_uu2_fragment()) == {}                                 # new: no violation on ANY ayanamsha
+    assert _violations(pg, db, _conj(OLD_UU2)) == 1 and _violations(pg, db, _conj(_new_uu2_fragment())) == 0
+
+
+@requires_pg
+def test_uu2_per_ayanamsha_the_stale_baseline_is_true_under_the_old_text_and_false_under_the_new_exactly_where_it_differs(pg):
+    """The canonical chart today: surya_siddhanta baseline rows written from the nakshatra-derived Aquarius while the position fact
+    says Pisces. 9 of the 12 rows differ (the measured 9 of 180 on production, all canonical surya_siddhanta)."""
+    db = _mixed(False, pg)
+    assert _per_aya(pg, db, OLD_UU2) == {}
+    new = _per_aya(pg, db, _new_uu2_fragment())
+    assert set(new) == {"surya", "raman"} and new["surya"] == 9 and new["raman"] > 0, new
+    assert _violations(pg, db, _conj(OLD_UU2)) == 0 and _violations(pg, db, _conj(_new_uu2_fragment())) == 1
+
+
+@requires_pg
+def test_uu2_a_baseline_from_a_sign_that_is_neither_is_false_under_both_no_or_of_the_two_derivations(pg):
+    leo = ENGLISH.index("Leo")
+    specs = [(CHART_M, aya, leo, [(ENGLISH[pos], T1, B1)], nak) for aya, pos, nak in (("lahiri", 10, 25), ("surya", 11, 25), ("raman", 1, 3), ("krishnamurti", 2, 7))]
+    db = _cb_db(pg, specs)
+    for frag in (OLD_UU2, _new_uu2_fragment()):
+        got = _per_aya(pg, db, frag)
+        assert set(got) == {"lahiri", "surya", "raman", "krishnamurti"} and all(v > 0 for v in got.values()), got
+    # one baseline sign wrong on a single ayanamsha: only that ayanamsha is flagged (the others stay clean)
+    specs = [(CHART_M, "lahiri", 10, [("Aquarius", T1, B1)], 25), (CHART_M, "krishnamurti", ENGLISH.index("Leo"), [("Gemini", T1, B1)], 7)]
+    db2 = _cb_db(pg, specs)
+    assert set(_per_aya(pg, db2, _new_uu2_fragment())) == {"krishnamurti"}
+
+
+@requires_pg
+def test_uu2_both_texts_are_true_where_the_two_derivations_agree(pg):
+    specs = [(CHART_Z, "lahiri", 10, [("Aquarius", T1, B1)], 25), (CHART_Z, "krishnamurti", 2, [("Gemini", T1, B1)], 7),
+             (CHART_Z, "raman", 10, [("Aquarius", T1, B1)], 25)]
+    db = _cb_db(pg, specs)
+    assert _per_aya(pg, db, OLD_UU2) == {} and _per_aya(pg, db, _new_uu2_fragment()) == {}
+    assert _violations(pg, db, _conj(OLD_UU2)) == 0 and _violations(pg, db, _conj(_new_uu2_fragment())) == 0
+
+
+@requires_pg
+def test_uu2_the_position_fact_is_bound_to_its_own_ayanamsha_and_its_latest_generation_is_the_one_used(pg):
+    # (1) per-ayanamsha binding: the position facts' computed_at rises with the ayanamsha, so a clause that ignored the ayanamsha would
+    # take the LAST one (krishnamurti's Gemini) for every ayanamsha and false-RED the rest: the correct baselines must pass.
+    specs = [(CHART_M, "lahiri", 10, [("Aquarius", "2026-06-01T01:00:00Z", B1)], 25), (CHART_M, "surya", 11, [("Pisces", "2026-06-01T02:00:00Z", B1)], 25),
+             (CHART_M, "raman", 1, [("Taurus", "2026-06-01T03:00:00Z", B1)], 3), (CHART_M, "krishnamurti", 2, [("Gemini", "2026-06-01T04:00:00Z", B1)], 7)]
+    db = _cb_db(pg, specs)
+    assert _per_aya(pg, db, _new_uu2_fragment()) == {}
+    # (1b) per-chart binding: two charts on the SAME ayanamsha with different Moon signs, the later-stamped chart's fact must not leak
+    # into the other chart's rows
+    two = _cb_db(pg, [(CHART_M, "lahiri", 10, [("Aquarius", "2026-06-01T01:00:00Z", B1)], 25),
+                      (CHART_Z, "lahiri", 2, [("Gemini", "2026-06-01T05:00:00Z", B2)], 7)])
+    assert _per_aya(pg, two, _new_uu2_fragment()) == {}
+    # (2) generations: an older generation says Aquarius, the latest says Pisces; the baseline follows the latest: TRUE. The same
+    # holds when the two generations share computed_at and only build_id orders them (the writer's DISTINCT ON order).
+    for older, newer in (((T0, B2), (T1, B1)), ((T1, B1), (T1, B2))):
+        db2 = _cb_db(pg, [(CHART_M, "surya", 11, [("Aquarius", older[0], older[1]), ("Pisces", newer[0], newer[1])], 25)])
+        assert _per_aya(pg, db2, _new_uu2_fragment()) == {}, (older, newer)
+        # and a baseline following the OLDER generation is false
+        db3 = _cb_db(pg, [(CHART_M, "surya", 10, [("Aquarius", older[0], older[1]), ("Pisces", newer[0], newer[1])], 25)])
+        assert _per_aya(pg, db3, _new_uu2_fragment()).get("surya", 0) > 0, (older, newer)
+
+
+@requires_pg
+def test_uu2_null_and_vacuity_are_as_before_nothing_is_checked_without_a_baseline_a_position_fact_or_a_known_sign(pg):
+    # no position fact: the conjunct does not check that ayanamsha (the old text likewise skipped a chart with no nakshatra fact)
+    db = _cb_db(pg, [(CHART_M, "lahiri", 3, [], 25)])
+    assert _violations(pg, db, _conj(_new_uu2_fragment())) == 0 and _per_aya(pg, db, _new_uu2_fragment()) == {}
+    # a sign name outside the twelve (Sanskrit, not English): NULL arithmetic, not flagged
+    db2 = _cb_db(pg, [(CHART_M, "lahiri", 3, [("Kumbha", T1, B1)], 25)])
+    assert _violations(pg, db2, _conj(_new_uu2_fragment())) == 0
+    # a NULL classification is not flagged (NULL <> x is not true), as before
+    db3 = _cb_db(pg, [(CHART_M, "lahiri", 10, [("Aquarius", T1, B1)], 25)])
+    q(pg, db3, "UPDATE chart_facts SET fact_value_text = NULL WHERE fact_category = 'chandra_bala_natal_baseline' AND fact_subject = 'TRANSIT_SIGN_MESHA'")
+    assert _violations(pg, db3, _conj(_new_uu2_fragment())) == 0 and _violations(pg, db3, _conj(OLD_UU2)) == 0
+    # non-vacuous: the same data with one wrong classification is flagged
+    q(pg, db3, "UPDATE chart_facts SET fact_value_text = 'neutral' WHERE fact_category = 'chandra_bala_natal_baseline' AND fact_subject = 'TRANSIT_SIGN_VRISHABHA'")
+    assert _violations(pg, db3, _conj(_new_uu2_fragment())) == 1
 
 
 @requires_pg
