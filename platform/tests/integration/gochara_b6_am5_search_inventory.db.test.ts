@@ -79,7 +79,7 @@ const SEALER_FUNCTIONS = [
   'ka_gochara_search_completeness_violations', 'ka_gochara_search_l1_facts_digest', 'ka_gochara_sha256_hex',
   'ka_gochara_canonical_json', 'ka_gochara_search_dasha_digest', 'ka_gochara_search_av_entry',
   'ka_gochara_search_inventory_digest', 'ka_gochara_search_ledger_digest', 'ka_gochara_search_inventory_preimage',
-  'ka_gochara_utc_ts',
+  'ka_gochara_utc_ts', 'ka_gochara_search_replay_violations', 'ka_gochara_search_inventories_digest',
 ] as const
 // The routine/protected migration principal: in production it OWNS every table and function, and the
 // governed bootstrap revokes PUBLIC EXECUTE on whatever it creates (platform/scripts/
@@ -855,6 +855,27 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
     await refused(bad(null, null), /kgspp_basis_required_ck/)
   })
 
+  it('AM-14 (steward ruling 2026-10-02): the stored inventory lists no Moon-agent obligation; a moon_on_demand coverage record beside it neither blocks nor changes the seal', async () => {
+    const gen = nextGen()
+    await goodBuild(gen, { noPartition: true })
+    await tx(async c => {
+      await partition(c, gen)   // the event_class partition the seal checks
+      // the SEPARATE account of the on-demand tier (AM-4): a moon_on_demand partition, never an inventory obligation
+      await c.query(
+        `INSERT INTO kala_gochara_coverage
+           (chart_id, generation, partition_kind, partition_key, convention_id, requested_horizon, completed_horizon, resolution,
+            relations_searched, targets_requested, targets_resolved, targets_unresolved, target_resolution_state_counts, build_id)
+         VALUES ($1,$2,'moon_on_demand','moon:interval:2025-01-01/2025-01-31',$3,${HORIZON_SQL},${HORIZON_SQL},1.0,
+                 ARRAY['conjunction']::text[],1,1,0,'{"resolved":1}','build-am5')`, [CHART, gen, LEGACY_CONV])
+    })
+    const moonObs = await pool.query<{ n: string }>(
+      `SELECT count(*)::text AS n FROM ka_gochara_search_obligation WHERE chart_id=$1 AND generation=$2 AND lower(agent)='moon'`, [CHART, gen])
+    expect(moonObs.rows[0]!.n).toBe('0')
+    await publishAndSeal(gen)             // the first-publication checks run in full: fewer obligations, same checks — it seals
+    const sealed = await pool.query<{ n: string }>(`SELECT count(*)::text AS n FROM ka_gochara_generation_seal WHERE chart_id=$1 AND generation=$2`, [CHART, gen])
+    expect(sealed.rows[0]!.n).toBe('1')
+  })
+
   it('R6: with PUBLIC execute revoked (deployment mirror) the builder holds EXECUTE on exactly the 12 own helpers + 5 contract functions, and nothing seal-side', async () => {
     const r = await pool.query<{ sig: string; owner: string; builder: boolean; pub: boolean }>(
       `SELECT p.oid::regprocedure::text AS sig, pg_get_userbyid(p.proowner) AS owner,
@@ -874,6 +895,42 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
     for (const name of ['ka_gochara_seal_generation', 'ka_gochara_search_completeness_violations', 'ka_gochara_search_replay_violations',
       'ka_gochara_search_inventories_digest', 'ka_gochara_search_write_guard', 'ka_gochara_generation_seal_search_guard'])
       expect(r.rows.filter(x => x.sig.startsWith(name + '(') || x.sig.startsWith('public.' + name + '(')).every(x => !x.builder), name).toBe(true)
+  })
+
+  it('six-table grants (Stream A writer + in-process verifier, steward M20261001T234743-1ae5): SELECT/INSERT/DELETE on each, column UPDATE on exactly the three finalisation columns, nothing else', async () => {
+    const SIX = ['ka_gochara_search_input_snapshot', 'ka_gochara_search_inventory', 'ka_gochara_search_path_pin',
+      'ka_gochara_search_obligation', 'ka_gochara_search_interval', 'ka_gochara_search_inventory_verification']
+    for (const t of SIX) {
+      const r = await pool.query<Record<string, boolean>>(
+        `SELECT has_table_privilege($1, $2, 'SELECT') AS sel, has_table_privilege($1, $2, 'INSERT') AS ins,
+                has_table_privilege($1, $2, 'DELETE') AS del, has_table_privilege($1, $2, 'UPDATE') AS upd,
+                has_table_privilege($1, $2, 'TRUNCATE') AS trunc, has_table_privilege($1, $2, 'TRIGGER') AS trg,
+                has_table_privilege($1, $2, 'REFERENCES') AS ref`, [BUILDER, `public.${t}`])
+      expect(r.rows[0], t).toEqual({ sel: true, ins: true, del: true, upd: false, trunc: false, trg: false, ref: false })
+    }
+    // column-level UPDATE on the inventory: exactly (inventory_digest, ledger_digest, finalized_at)
+    const cols = await pool.query<{ column_name: string; upd: boolean }>(
+      `SELECT a.attname AS column_name, has_column_privilege($1, 'public.ka_gochara_search_inventory', a.attname, 'UPDATE') AS upd
+         FROM pg_attribute a WHERE a.attrelid = 'public.ka_gochara_search_inventory'::regclass AND a.attnum > 0 AND NOT a.attisdropped`, [BUILDER])
+    expect(cols.rows.filter(c => c.upd).map(c => c.column_name).sort()).toEqual(['finalized_at', 'inventory_digest', 'ledger_digest'])
+    // the reads the writer/verifier need outside the six (1216/1220 or the production L1 grant, or 1206 itself)
+    const reads = ['ka_gochara_rule_path_seal', 'ka_gochara_generation_seal', 'ka_gochara_convention_bridge',
+      'kala_gochara_publication', 'kala_gochara_coverage', 'chart_facts', 'chart_dashas']
+    for (const t of reads) {
+      const r = await pool.query<{ ok: boolean }>(`SELECT has_table_privilege($1, $2, 'SELECT') AS ok`, [BUILDER, `public.${t}`])
+      expect(r.rows[0]!.ok, t).toBe(true)
+    }
+    // real operations the grants must REFUSE, as the builder
+    await refused(tx(async c => { await c.query(`UPDATE ka_gochara_search_inventory SET horizon = horizon WHERE false`) }, { role: BUILDER }),
+      /permission denied for table ka_gochara_search_inventory/)
+    await refused(tx(async c => { await c.query(`UPDATE ka_gochara_search_path_pin SET basis = basis WHERE false`) }, { role: BUILDER }),
+      /permission denied for table ka_gochara_search_path_pin/)
+    await refused(tx(async c => { await c.query(`UPDATE ka_gochara_search_inventory_verification SET verifier_id = verifier_id WHERE false`) }, { role: BUILDER }),
+      /permission denied for table ka_gochara_search_inventory_verification/)
+    for (const t of SIX)
+      await refused(tx(async c => { await c.query(`TRUNCATE ${t}`) }, { role: BUILDER }), new RegExp(`permission denied for table ${t}`))
+    // and the in-session verifier path: construct, finalise AND write the verification row, all as the builder
+    await goodBuild(nextGen(), { role: BUILDER })
   })
 
   it('R6: each of the 17 builder EXECUTE grants is necessary — revoking any one breaks construct-and-finalise, naming that function', async () => {
@@ -1229,9 +1286,10 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
       [obBytes('p1', '1.0', P1A), obBytes('p1', '1.0', P1B), obBytes('p5a', '1.0', P5A), obBytes('p5a', '1.0', P5B)]))
     await publishAndSeal(gen)
     const d1 = await pool.query<{ d: string }>(`SELECT ka_gochara_search_inventories_digest($1,$2) AS d`, [CHART, gen])
-    await tx(async c => { await chartCtx(c); await c.query(`SELECT ka_gochara_seal_generation($1,$2)`, [CHART, gen]) })
+    // PC-1 (Codex v1.2 follow-up 1): the identical replays run AS THE RESTRICTED SEALER, not the superuser
+    await tx(async c => { await chartCtx(c); await c.query(`SELECT ka_gochara_seal_generation($1,$2)`, [CHART, gen]) }, { role: SEALER })
     await tx(async c => registry(c, [['p7', '1.0']]))
-    await tx(async c => { await chartCtx(c); await c.query(`SELECT ka_gochara_seal_generation($1,$2)`, [CHART, gen]) })
+    await tx(async c => { await chartCtx(c); await c.query(`SELECT ka_gochara_seal_generation($1,$2)`, [CHART, gen]) }, { role: SEALER })
     const d2 = await pool.query<{ d: string }>(`SELECT ka_gochara_search_inventories_digest($1,$2) AS d`, [CHART, gen])
     expect(d2.rows[0]!.d).toBe(d1.rows[0]!.d)
     const g2 = nextGen()
@@ -1240,7 +1298,7 @@ describe.skipIf(!TEST_DB_URL)('B6.0 F-1 migration 1206 — AM-5 search completen
     await refused(tx(async c => {
       await chartCtx(c)
       await c.query(`INSERT INTO ka_gochara_generation_seal (chart_id, generation, manifest_id) VALUES ($1,$2,gen_random_uuid())`, [CHART, gen])
-    }), /manifest/i)
+    }, { role: SEALER }), /manifest/i)
     const rv = await pool.query(`SELECT * FROM ka_gochara_search_replay_violations($1,$2)`, [CHART, gen])
     expect(rv.rows).toEqual([])
     REGISTRY.push(['p7', '1.0'])
