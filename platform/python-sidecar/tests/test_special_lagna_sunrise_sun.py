@@ -215,7 +215,17 @@ def test_concurrent_caller_of_drik_hora_lagna_sees_the_original_during_compute(m
         assert entered.wait(timeout=30)
         assert drik.hora_lagna is original  # observed from a second thread mid-compute
         seen = {}
-        reader = threading.Thread(target=lambda: seen.setdefault("v", drik.hora_lagna(jd, place)))
+
+        def _read():
+            # Swiss Ephemeris keeps its sidereal mode in per-thread state on Linux builds (the CI
+            # platform; one process-global state on the macOS wheel), so a fresh thread starts in the
+            # library default (Fagan/Bradley) and would return a different longitude regardless of
+            # anything compute_special_lagnas did. Select the same mode here so the comparison asks
+            # only the question this test is about: is drik.hora_lagna itself left untouched.
+            drik.set_ayanamsa_mode("LAHIRI")
+            seen.setdefault("v", drik.hora_lagna(jd, place))
+
+        reader = threading.Thread(target=_read)
         reader.start()
         reader.join(timeout=30)
         # the raw upstream function is untouched: it still returns the upstream (offset) value
