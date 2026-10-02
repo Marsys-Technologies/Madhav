@@ -21,7 +21,8 @@
   "manifest_location": "kala_gochara_publication.input_generation_vector (one row per chart x generation), keys `orb_max_deg` and `orb_ruling`",
   "writer_declares": "ka_gochara_v4_41_candidate.py ORB_DEG = 5.0 -> vector['orb_max_deg']; vector['orb_ruling'] = 'M-1 fallback no-box x 5.0 deg (unratified)'  (the writer's source comment calls it 'M-1 ratified candidate-1 enumeration orb'; the manifest string says 'unratified' — the MANIFEST string is what this freeze quotes; discrepancy disclosed)",
   "readback_command": "python3 -m services.gochara_eval.dump_extract --generation 4.1 --read-manifest-orb  (read-only; reads no window row)",
-  "manifest_readback": "<<READ_AT_FREEZE: output of readback_command — orb_max_deg, orb_ruling, manifest_status>>"
+  "manifest_readback": "<<READ_AT_FREEZE: output of readback_command — orb_max_deg, orb_ruling, manifest_status>>",
+  "companion_manifest_flags": "same vector, per Stream A: activity_shape='linear_no_box', moon_channel='separate', nodal_drishti='removed' (N-14), sade_sati_mode='testimony' (N-15), kakshya_bindu_interim=True (N-22), overlay_stamps=True (N-17), vedha_exceptions='m8_rows', delta_report=None, vedha/moorti upstream freshness + fingerprints. The '4.1' vector is NOT the '5.0' input vector (no ka_gochara_input_vector schema, no orb_policy/ephemeris components): an ephemeris/implementation identity for '4.1' is a GAP, not carried by the manifest."
  },
  "conventions": {
   "si_mapping": "'4.1': si := raw_intensity of kala_gochara_windows, exactly as stored (the unsigned magnitude) — SI addendum v1.4 §1a. NOT signed_intensity: the 4.x writer stores signed_intensity = raw_intensity x (-1 if is_adverse else 1), negative on every adverse window, which protocol §4.5 rejects. Like-for-like with '3.0': in generation '3.0' signed_intensity == raw_intensity on all 914 rows (none negative; 330 adverse rows positive), so the pinned '3.0' si is the same quantity. The extract command stops if any row has |signed_intensity| != raw_intensity or raw_intensity < 0. raw_intensity is NOT NULL, so no unknown competitor can occur in a '4.1' extract: the run asserts unknown_si_rows = 0 and discloses any other value. The governed-5.x mapping (si := evidence_for) is untouched.",
@@ -73,7 +74,7 @@
   "t_rank": "median rank percentile <= 25 with >= 17 of 32 timing-usable eligible, else rank-unproven (blocks flip); VOID on era-fingerprint >= 50 %; eligibility reduced (never floor relaxed) by non-invariant plateau verdicts",
   "t_fp_adverse": "per adverse class: admitted day-fraction <= min(1, 3*n_c*90/H) (n_c=0 -> allowance of n_c=1)",
   "t_fp_gain": "every non-adverse non-birth_anchor class with rows: 0.5 % - 40 % of horizon days",
-  "t_honesty": "UNVERIFIABLE — pre-declared. A computation-coverage manifest is required for '4.1' (>= 50 % per class), but whether the candidate chain writes kala_gochara_coverage rows for '4.1' and with what completeness semantics is an open question to Stream A (steward M20261002T042015-7bff); until it is answered T-honesty stays an honest null (UNVERIFIABLE, not flip-eligible, per protocol §6.5b). The '3.0' manifest is never substituted.",
+  "t_honesty": "UNVERIFIABLE — DETERMINED (Stream A relay M20261002T042919-8f9e, from the writer code). Protocol §6.5 defines coverage per CLASS as (class, year) cells computed ÷ (class, year) cells in the horizon, from a manifest naming those cells. The '4.1' chain writes kala_gochara_coverage rows per BODY-TARGET partition (partition_kind='body_target', key '<body>:<target_type>'; 8 persisted bodies — Moon is on-demand, never persisted) — there are NO event_class partitions and NO year cells. A per-(class, year) coverage fraction therefore cannot be computed from them without a class->(body, target_type) mapping that no governed source declares, and none is invented here. Result: t_honesty.status = UNVERIFIABLE, pass false, and by protocol §6.5(b) the '4.1' candidate is NOT flip-eligible under v2.3 whatever its other endpoints show; the measurement still runs for T-cover/T-time/T-rank/T-FP as a diagnostic. A route to verifiability needs a NEW decision made before any result: either per-(class, year) coverage rows for '4.1' (the governed 5.x chain's event_class partitions) or a protocol amendment declaring a class<->partition mapping from a governed source. The '3.0' manifest is never substituted.",
   "random_controls": "REPRODUCED"
  },
  "tolerances_and_conversions": {
@@ -138,5 +139,12 @@
    "sha256": "08f0de3416ebd70ce380821b3697895d72f2f5f75162880a36d0589dd9495593"
   }
  },
- "coverage_manifest": "UNVERIFIABLE (pre-declared; supplied to the scorer as None). Amend by a new dated freeze only, never after a result has been inspected."
+ "coverage_manifest": "UNVERIFIABLE (determined; supplied to the scorer as None).",
+ "coverage_disclosure": {
+  "status": "DISCLOSURE ONLY — never supplied to the scorer, never a T-honesty input, never described as coverage of any event class",
+  "what_it_can_say": "per body-target partition: the whole pinned horizon [1998-01-01, 2026-04-18) was searched (requested_horizon = completed_horizon), with the declared conjunction resolution and relations, over the resolved-target pool; unresolved targets are COUNTED by state (resolved / unavailable / unqualified), not dropped; unsearched_reason NULL unless a partition was not searched",
+  "what_it_cannot_say": "per-(class, year) computation coverage; that any event class's windows are complete; anything about the Moon (on-demand, never persisted in 4.1 — windows rest on the 8 persisted bodies' contacts only, a disclosed limitation of the generation); anything for the 'windows' substep (it writes kala_gochara_windows and no coverage rows)",
+  "readback_command": "python3 -m services.gochara_eval.dump_extract --generation 4.1 --read-coverage-summary  (read-only; reads no window row)",
+  "readback": "<<READ_AT_FREEZE: output of readback_command — partitions, full_horizon, unsearched, targets_requested/resolved/unresolved, event_class_partitions (expected 0)>>"
+ }
 }
