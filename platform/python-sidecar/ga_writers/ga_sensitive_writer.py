@@ -2612,10 +2612,11 @@ def _build_special_lagnas_rows(
     proportional to time-since-sunrise (the Sun moves ~1 deg/day, so "Sun%30"
     barely changes across a whole day and does not track ghatis elapsed at
     all) — the served values were essentially arbitrary. Real Bhava/Hora/
-    Ghati/Vighati Lagna advance by actual TIME elapsed since sunrise (BPHS),
-    which is exactly what PyJHora's `drik.special_ascendant()` computes
-    (drik.py:1959-1988) from the birth JD + place. Delegated here via
-    `chart_data["special_lagnas"]` (see pyjhora_adapter/special_lagnas.py).
+    Ghati/Vighati Lagna advance by actual TIME elapsed since sunrise (BPHS Ch.5
+    vv.2-8), counted from the Sun's longitude at sunrise. They are computed in
+    pyjhora_adapter/special_lagnas.py (a corrected copy of PyJHora's
+    `drik.special_ascendant()`, which read the Sun tz hours after sunrise) and
+    delivered here via `chart_data["special_lagnas"]`.
     Indu Lagna, Sree Lagna, and Varnada Lagna were previously entirely absent
     from this writer; added here via the same delegation.
     """
@@ -2638,18 +2639,21 @@ def _build_special_lagnas_rows(
 
     _delegated = [
         ("bhava_lagna", "BHAVA_LAGNA",
-         "PyJHora drik.bhava_lagna (BPHS: Bhava Lagna advances by time-since-sunrise x 0.25 "
-         "sign/min-equivalent), replacing the fabricated 'Sun within-sign offset' proxy (M-10)"),
+         "BPHS Ch.5 vv.2-3 (Special Ascendants): Sun's longitude at sunrise + time since sunrise "
+         "at 1 sign per 5 ghatis (0.25 deg/min); pyjhora_adapter.special_lagnas, replacing the "
+         "fabricated 'Sun within-sign offset' proxy (M-10)"),
         ("hora_lagna", "HORA_LAGNA",
-         "PyJHora drik.hora_lagna (BPHS Ch.11: Hora Lagna advances 1 sign/hora, 2 rev/day, "
-         "from real time-since-sunrise), replacing the fabricated 'Sun within-sign offset x2' proxy (M-10)"),
+         "BPHS Ch.5 vv.4-5 (Special Ascendants): Sun's longitude at sunrise + time since sunrise "
+         "at 1 sign per 2.5 ghatis (0.5 deg/min); pyjhora_adapter.special_lagnas, replacing the "
+         "fabricated 'Sun within-sign offset x2' proxy (M-10)"),
         ("ghati_lagna", "GHATI_LAGNA",
-         "PyJHora drik.ghati_lagna (BPHS: Ghati Lagna advances 1 sign/ghati=24min, from real "
-         "time-since-sunrise), replacing the fabricated 'Sun within-sign offset x12' proxy (M-10)"),
+         "BPHS Ch.5 vv.6-8 (Ghatika Lagna): Sun's longitude at sunrise + time since sunrise at "
+         "1 sign per ghati (1.25 deg/min); pyjhora_adapter.special_lagnas, replacing the "
+         "fabricated 'Sun within-sign offset x12' proxy (M-10)"),
         ("vighati_lagna", "VIGHATI_LAGNA",
-         "PyJHora drik.vighati_lagna (BPHS: Vighati Lagna advances 1 sign/vighati=24sec, from "
-         "real time-since-sunrise) — now computed rather than floored, since PyJHora derives it "
-         "from the birth JD directly (no sub-second precision needed; supersedes prior floor)"),
+         "PyJHora vighati_lagna rate (15 deg/min) from the Sun's longitude at sunrise; Vighati Lagna "
+         "is not in the BPHS corpus chunks, so its rate is NOT classically audited (pyjhora_adapter."
+         "special_lagnas) — now computed rather than floored (supersedes prior floor)"),
         ("indu_lagna", "INDU_LAGNA",
          "PyJHora drik.indu_lagna (BV Raman method: wealth-significator lagna from 9th-lord "
          "kalas of Lagna + Moon) — newly added via delegation (M-10)"),
