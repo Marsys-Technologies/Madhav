@@ -77,6 +77,8 @@ def test_d1_all_eight_latta_rows_match_and_the_record_states_what_it_proves():
     ("Mars effect invented", lambda rs: [r.update(effect_description="Misery.") for r in rs if r["graha"] == "Mars"], "Mars"),
     ("Venus 5 -> 6", lambda rs: [r.update(count_from_graha=6) for r in rs if r["graha"] == "Venus"], "Venus"),
     ("Mercury 7 -> 8", lambda rs: [r.update(count_from_graha=8) for r in rs if r["graha"] == "Mercury"], "Mercury"),
+    ("Sun 12 -> 2 (a digit inside 12th is not the ordinal 2nd)", lambda rs: [r.update(count_from_graha=2) for r in rs if r["graha"] == "Sun"], "Sun"),
+    ("Sun 12 -> 1", lambda rs: [r.update(count_from_graha=1) for r in rs if r["graha"] == "Sun"], "Sun"),
 ])
 def test_d1_a_seeded_wrong_row_is_never_a_pass_and_is_named(name, mutate, row):
     rows = copy.deepcopy(ROWS)
