@@ -719,6 +719,11 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
             if ef.get("kind") == "passage_text" and not _evidence_pointer_ok(ef["condition_evidence"]):
                 raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].condition_evidence {ef['condition_evidence']!r} is "
                                         "not an existing repo-relative file (optionally :line) or 'unverified:<where>' (existence only)")
+            for rp in ef.get("repairs", []) if ef.get("kind") == "passage_text" else []:
+                if not _evidence_pointer_ok(rp["evidence"]):
+                    raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].repairs[{rp['from']!r}].evidence "
+                                            f"{rp['evidence']!r} is not an existing repo-relative file (optionally :line) or "
+                                            "'unverified:<where>' (existence only)")
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
@@ -5473,7 +5478,9 @@ def _grade_dep_liveness_none(dag, scanned: bool = True) -> dict:
 
 def d1_evidence_problem(meas) -> str:
     """"" when a Carr.D1 measurement carries the evidence a D1 PASS/PARTIAL needs, else what is missing (a bare {v: PASS} is not a D1
-    result: it has no verified passage behind it)."""
+    result: it has no verified passage behind it). The digest recomputation is over the record's OWN contents (the recorded passage and
+    chunk ledger): it catches an accidental edit or a truncated record, it is NOT a forgery barrier (a record forged consistently
+    passes it; the measurement itself is what reads the database)."""
     ev = meas.get("d1") if isinstance(meas, dict) else None
     if not isinstance(ev, dict):
         return "no `d1` evidence"
