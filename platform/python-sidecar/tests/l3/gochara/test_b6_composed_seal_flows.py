@@ -305,12 +305,9 @@ def _verifier_dsn(w):
     return make_conninfo("", **{k: v for k, v in d.items() if k in ("host", "port", "dbname", "user")})
 
 
-def verify_as_verifier(w, *extra_args, dsn=None, all_classes=False):
-    """Stream A's REAL verification job (`pipeline/orchestrator/verification_job.py`), run as a real verifier LOGIN with the REAL 1241 grants and
-    no stand-in: the job proves its own identity, records the four window verifications FIRST and then the inventory verification. Returns the
-    parsed report; raises RuntimeError on any non-zero exit (a refusal or a disagreement)."""
+def _run_job(w, args, dsn=None):
+    """Stream A's REAL job entry point as a real verifier LOGIN. Returns (exit code, stdout)."""
     import io
-    import json as _json
     from contextlib import redirect_stdout
     from pipeline.orchestrator import verification_job as job
     w.conn.execute(f"ALTER ROLE {cw.VERIFIER} LOGIN")
@@ -318,14 +315,51 @@ def verify_as_verifier(w, *extra_args, dsn=None, all_classes=False):
     buf = io.StringIO()
     try:
         with redirect_stdout(buf):
-            rc = job.main(["--chart", CHART_ID, "--generation", GEN, *([] if all_classes else ["--class", CLS]), "--ephe-path", EPHE, *extra_args])
+            rc = job.main(args)
     finally:
         os.environ.pop(job.ENV_URL, None)
         w.conn.execute(f"ALTER ROLE {cw.VERIFIER} NOLOGIN")
-    out = buf.getvalue().strip()
+    return rc, buf.getvalue().strip()
+
+
+def verify_as_verifier(w, *extra_args, dsn=None, all_classes=False):
+    """Stream A's REAL verification job (`pipeline/orchestrator/verification_job.py`), run as a real verifier LOGIN with the REAL 1241 grants and
+    no stand-in: the job proves its own identity, records the four window verifications FIRST and then the inventory verification. Returns the
+    parsed report; raises RuntimeError on any non-zero exit (a refusal or a disagreement)."""
+    import json as _json
+    rc, out = _run_job(w, ["--chart", CHART_ID, "--generation", GEN, *([] if all_classes else ["--class", CLS]), "--ephe-path", EPHE, *extra_args], dsn)
     if rc != 0:
         raise RuntimeError(f"verification job exit {rc}: {out[:700]} ... {out[-900:]}" if len(out) > 1700 else f"verification job exit {rc}: {out}")
     return _json.loads(out.splitlines()[-1]) if out else {}
+
+
+SEALING_COMMIT = "5ea1" + "0" * 36
+
+
+def brief_as_verifier(w, sealing_commit=SEALING_COMMIT):
+    """The verifier-run SEAL BRIEF (`--brief`, R11-3) as a real verifier login: `{"brief": <payload>, "sha256": <digest>}`; raises RuntimeError if it refuses."""
+    import json as _json
+    rc, out = _run_job(w, ["--chart", CHART_ID, "--generation", GEN, "--brief", "--sealing-commit", sealing_commit])
+    if rc != 0:
+        raise RuntimeError(f"brief exit {rc}: {out[:1500]}")
+    return _json.loads(out.splitlines()[-1])
+
+
+def approved_seal_as_sealer(w, digest, sealing_commit=SEALING_COMMIT, approver="steward-as-owner"):
+    """The SEALING step as the real sealer role: ONE transaction — locks, recompute, refuse on mismatch, publish, authoritative seal, receipt."""
+    from services.gochara_kernel import seal_flow
+    with as_role(w.conn, cw.SEALER):
+        with w.conn.transaction():
+            return seal_flow.seal_with_approval(w.conn, chart_id=CHART_ID, generation=GEN, approved_digest=digest, approver_login=approver,
+                                                run_id="26104817", run_attempt=1, approval_note="approved by the steward under the owner's ruling #2",
+                                                sealing_commit=sealing_commit)
+
+
+def approved_flow(w):
+    """verify -> brief -> approved seal, every act as its own principal. Returns (brief, seal result)."""
+    verify_as_verifier(w)
+    b = brief_as_verifier(w)
+    return b, approved_seal_as_sealer(w, b["sha256"])
 
 
 def seal_as_sealer(w):
@@ -374,7 +408,7 @@ _G1241 = _grants_of_1241()
 def test_1241_spec_has_the_expected_number_of_1241_origin_grants():
     if not _G1241:
         pytest.skip("NOT_RUN: migration 1241 is not in this tree")
-    assert len(_G1241) == len(set(_G1241)) == 47, len(_G1241)   # sealer: 11 table (incl. the column-level windows read and publication update) + 18 function; verifier: 8 table + 10 function (R10-4 iii: the job's final combined gate)
+    assert len(_G1241) == len(set(_G1241)) == 49, len(_G1241)   # sealer: 12 table (incl. the column-level windows read, publication update and ledger read) + 18 function; verifier: 9 table (incl. the column-level ledger read) + 10 function (R10-4 iii: the job's final combined gate)
 
 
 @pytest.mark.parametrize("role,kind,priv,obj,cols", _G1241, ids=[f"{r.split('_')[1]}-{p.lower()}-{o}" for r, k, p, o, c in _G1241])
@@ -387,10 +421,8 @@ def test_each_grant_of_migration_1241_is_individually_necessary(cbuilt, role, ki
         w.conn.execute(f"REVOKE {priv}{colsql} ON public.{obj} FROM {role}")
     else:
         w.conn.execute(f"REVOKE EXECUTE ON FUNCTION public.{obj} FROM {role}")
-    with pytest.raises(RuntimeError, match=r"permission denied|no_verifier_privilege"):
-        verify_as_verifier(w)
-        manifest = seal_as_sealer(w)
-        _replay_as_sealer(w, manifest)
+    with pytest.raises(RuntimeError, match=r"permission denied|no_verifier_privilege|brief exit"):
+        approved_flow(w)             # verify, then the verifier's BRIEF, then the sealer's recompute + publish + seal + receipt: every principal's reads and writes
 
 
 def test_charts_row_level_security_is_evaluated_through_chart_grants_but_neither_principal_reads_charts(cbuilt):
@@ -943,3 +975,112 @@ def test_attack_r11_1_the_same_attack_after_verification_is_refused_at_the_seal_
     with pytest.raises(psycopg.errors.Error, match="output_grain_not_permitted" if path == "P5" else "output_grain_not_permitted|registry_unaccounted_path"):
         seal_as_sealer(w)
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
+
+
+# ── 6. round 11: the approved seal (R11-3) and complete P1 record validation (R11-2), as the real principals ────────────────────────────────
+
+def _receipt(conn):
+    return conn.execute("SELECT brief_digest, approver_login, run_id, run_attempt, sealing_commit, sealed_by, manifest_id::text FROM public.ka_gochara_seal_approval").fetchall()
+
+
+def test_the_approved_seal_publishes_seals_and_writes_a_durable_receipt_naming_the_approved_digest(cbuilt):
+    """verify (verifier login) -> brief (verifier login: candidate adapter + persisted attestations + generation-wide output identity + ledger evidence)
+    -> approved seal (sealer role): recompute under the seal locks, publish, authoritative SQL seal, receipt — in ONE transaction."""
+    w = cbuilt
+    b, res = approved_flow(w)
+    p = b["brief"]
+    assert p["schema"] == "seal_approval_payload/1" and p["candidate_gate"]["violations"] == [] and p["manifest"]["status"] == "candidate"
+    assert set(p["generation_output_identity"]["tables"]) == {"ka_gochara_relationship_record", "ka_gochara_record_prerequisite", "ka_gochara_contact",
+                                                              "ka_gochara_eval_window", "ka_gochara_eval_window_record", "ka_gochara_search_path_pin",
+                                                              "ka_gochara_search_inventory"}
+    assert [e["migration"] for e in p["ledger"]] == ["1204", "1206", "1232", "1233", "1240", "1241"] and all(e["applied"] for e in p["ledger"]), p["ledger"]
+    assert w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0] == "published"
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 1
+    rows = _receipt(w.conn)
+    # `sealed_by` defaults to session_user: this harness runs the sealing step as SET ROLE on a superuser connection (session_user = the harness login); in production the
+    # sealer LOGS IN, so it records `gochara_sealer`
+    assert rows == [(b["sha256"], "steward-as-owner", "26104817", 1, SEALING_COMMIT, rows[0][5], res["manifest_id"])] and rows[0][5] in ("postgres", cw.SEALER), rows
+
+
+def test_the_receipt_is_append_only_even_for_the_owner(cbuilt):
+    import psycopg
+    w = cbuilt
+    approved_flow(w)
+    for stmt in ("UPDATE public.ka_gochara_seal_approval SET approver_login = 'someone-else'", "DELETE FROM public.ka_gochara_seal_approval",
+                 "TRUNCATE public.ka_gochara_seal_approval"):
+        with pytest.raises(psycopg.errors.Error, match="append-only"):
+            w.conn.execute(stmt)
+    assert len(_receipt(w.conn)) == 1
+
+
+def test_attack_a_candidate_changed_after_the_brief_whose_gate_is_still_empty_invalidates_the_approval(cbuilt):
+    """R11-3 (iii): two DIFFERENT valid candidates both give an empty gate. A citation field no gate arm and no inputs/2 digest reads is changed AFTER the brief:
+    the candidate adapter still reports nothing (a fresh brief is produced), the new brief digest DIFFERS, and the sealer REFUSES the old approval before
+    publishing anything: status stays `candidate`, no seal row, no receipt. The fresh digest then seals (positive control)."""
+    from services.gochara_kernel import seal_brief
+    w = cbuilt
+    verify_as_verifier(w)
+    old = brief_as_verifier(w)
+    rid = w.conn.execute("SELECT record_id FROM public.ka_gochara_relationship_record WHERE event_class=%s AND path_id='P3' ORDER BY record_id LIMIT 1", (CLS,)).fetchone()[0]
+    w.conn.execute("UPDATE public.ka_gochara_relationship_record SET source_text = COALESCE(source_text, '') || ' (edited after the brief)' WHERE record_id = %s", (rid,))
+    new = brief_as_verifier(w)                                    # still approvable: the gate sees nothing
+    assert new["brief"]["candidate_gate"]["violations"] == [] and new["sha256"] != old["sha256"]
+    with pytest.raises(seal_brief.ApprovalMismatch, match="not what was approved"):
+        approved_seal_as_sealer(w, old["sha256"])
+    assert w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0] == "candidate"
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0 and _receipt(w.conn) == []
+    approved_seal_as_sealer(w, new["sha256"])
+    assert len(_receipt(w.conn)) == 1
+
+
+def test_a_brief_is_refused_for_an_unverified_candidate_and_a_re_verification_after_the_brief_makes_the_brief_stale(cbuilt):
+    w = cbuilt
+    with pytest.raises(RuntimeError, match=r"brief exit 3.*candidate_not_approvable"):
+        brief_as_verifier(w)                                      # built, never verified
+    verify_as_verifier(w)
+    b = brief_as_verifier(w)
+    verify_as_verifier(w)                                         # a second run REPLACES the attestations (new verified_at): the old brief is stale
+    from services.gochara_kernel import seal_brief
+    with pytest.raises(seal_brief.ApprovalMismatch):
+        approved_seal_as_sealer(w, b["sha256"])
+    assert _receipt(w.conn) == []
+
+
+def test_documented_limit_the_database_cannot_force_the_sealing_workflow_to_use_the_brief(cbuilt):
+    """Stated squarely (Stream A's table comment, the packet's claim): the sealer role can still call the authoritative seal directly — it then leaves NO receipt.
+    The approval-gated workflow running as the sealer is part of the trusted system; the receipt exists only with an approved seal and is immutable."""
+    w = cbuilt
+    verify_as_verifier(w)
+    assert seal_as_sealer(w) is not None
+    assert _receipt(w.conn) == []
+
+
+def _copy_p1_record(w, *, person=None, flip_role=None):
+    """As the RESTRICTED BUILDER, in one transaction: a copy of an existing P1 anchored record (the SAME contact, anchor and prerequisites — a duplicate), optionally
+    with another affected person. No new contact."""
+    src = w.conn.execute("SELECT record_id FROM public.ka_gochara_relationship_record WHERE event_class=%s AND path_id='P1' AND contact_id IS NOT NULL"
+                         " AND period_anchor_level = 'md' ORDER BY record_id LIMIT 1", (CLS,)).fetchone()[0]
+    new = __import__("uuid").uuid4()
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        with as_role(w.conn, cw.BUILDER):
+            w.conn.execute("CREATE TEMP TABLE _p1src ON COMMIT DROP AS SELECT * FROM public.ka_gochara_relationship_record WHERE record_id = %s", (src,))
+            w.conn.execute("UPDATE _p1src SET record_id = %s" + (", affected_person = %s" if person else ""), (new, person) if person else (new,))
+            w.conn.execute("INSERT INTO public.ka_gochara_relationship_record SELECT * FROM _p1src")
+            w.conn.execute("INSERT INTO public.ka_gochara_record_prerequisite (record_id, chart_id, generation, ordinal, predicate_id, predicate_rule_version, result)"
+                           " SELECT %s, chart_id, generation, ordinal, predicate_id, predicate_rule_version, result FROM public.ka_gochara_record_prerequisite WHERE record_id = %s",
+                           (new, src))
+    return new
+
+
+@pytest.mark.parametrize("person", [None, "father"], ids=["duplicate_record", "wrong_affected_person"])
+def test_attack_r11_2_a_duplicate_or_wrong_person_p1_record_is_a_disagreement_not_a_verification(cbuilt, person):
+    """R11-2: the P1 verifier compares exact record CARDINALITY and the affected person / object role against its own derivation. A duplicate anchored record, or a
+    record naming the wrong affected person, made by the restricted builder with no new contact, makes the real job exit 3 and persist nothing."""
+    w = cbuilt
+    contacts = w.conn.execute("SELECT count(*) FROM public.ka_gochara_contact").fetchone()[0]
+    _copy_p1_record(w, person=person)
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_contact").fetchone()[0] == contacts
+    with pytest.raises(RuntimeError, match=r"verification job exit 3"):
+        verify_as_verifier(w)
+    assert _verification_rows(w.conn) == (0, 0)
