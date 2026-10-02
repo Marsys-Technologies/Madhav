@@ -6,21 +6,26 @@ and the level-wave wrapper. **The three files below are what SS binds; the sha25
 
 | file | role | sha256 |
 |---|---|---|
-| `prerun_gate.py` | the gate | `e74683cbfff63a982bf984e961bd9368b840ff51b2441af79a2dae2b70d532a8` |
-| `run_gated.sh` | the launcher (gate, then exec target) | `a9951a29cb1372946c028073e8c7260fa70034aa2ab013ed71baed7372c1fdcc` |
-| `executor_standards.py` | launch-marker verification + outcome file (import or copy byte-identically) | `7a1393beb439c1fbc6aed87c7ee4fe8306a7fdebafa548bc4b0a47d830cdb664` |
+| `prerun_gate.py` | the gate | `ba65d82a338257bd7b3b1ae37df312fb382ef548291a211eadbc2538a987ef73` |
+| `run_gated.sh` | the launcher (gate, then exec target) | `305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076` |
+| `executor_standards.py` | launch-marker verification + outcome file (import or copy byte-identically) | `7ca8ea9cc3422f41d38ced27f6501d666dcce78918e38e1d255b8dabcdd3c38d` |
 
 ## What the gate guarantees
 
 In ONE invocation it reads and prints (to **stderr**; stdout is always empty):
 
-1. `deploy_runs_not_completed`: runs of workflow `deploy.yml` on branch `main` with status != `completed`, over the union by `databaseId` of
-   `gh run list --workflow deploy.yml --branch main --limit 100 --json databaseId,status` and one query per non-completed status
+1. `deploy_runs_not_completed`: runs of workflow `deploy.yml` on ANY ref (deploy.yml accepts `workflow_dispatch` from any ref, so a dispatched deploy on a
+   feature ref must be seen) with status != `completed`, EXCEPT runs whose `event` is exactly `pull_request` (build-only runs). An unknown, missing or any other event is counted
+   (fail closed). Over the union by `databaseId` of
+   `gh run list -R Marsys-Technologies/Madhav --workflow deploy.yml --limit 100 --json databaseId,status,event` and one query per non-completed status
    (`--status queued|in_progress|waiting|pending|requested`, each `--limit 100`). A stuck run older than the newest 100 is still found by its status query.
+   A per-status query that returns a FULL `--limit` page containing `pull_request` runs fails closed (exit 2): a non-PR run could be hidden behind them.
+   The repository is pinned (`-R Marsys-Technologies/Madhav`, a named constant `REPO`) and `GH_REPO`, `GH_HOST`, `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN`,
+   `GITHUB_REPOSITORY` are removed from gh's environment (the token variables gh needs are kept).
 2. `build_runs_in_flight`: `build_runs` in state `planned/running/paused` on ANY chart, via `psql -X -A -t -F '|'` as `suvarna_reader`, reading
-   `SELECT current_user, count(*) FROM public.build_runs WHERE state IN ('planned','running','paused')` in the SAME psql call.
+   `SELECT current_user, current_database(), count(*) FROM public.build_runs WHERE state IN ('planned','running','paused')` in the SAME psql call.
    The subshell must `source ~/.config/suvarna/pgenv.sh` successfully; every ambient `PG*` variable (and `BASH_ENV`/`ENV`/exported functions) is removed
-   from the subshell first, so nothing but the sourced file can supply the connection. The role must be exactly `suvarna_reader`.
+   from the subshell first, so nothing but the sourced file can supply the connection. The role must be exactly `suvarna_reader` and the database exactly `amjis`.
 
 It exits 0 only when both counts are 0 and the role is right, and prints one final line a log reader can grep:
 
@@ -31,7 +36,9 @@ GATE_V2 FAIL <reason>                                    (any other outcome)
 
 Fail closed on: empty output, non-JSON, JSON that is not a list, entries without an integer `databaseId` / non-empty `status`, an EMPTY `--limit 100`
 history list (a repo with history never returns zero runs; an empty per-status list is fine and means zero), a 60 s timeout per command (process group killed),
-a missing binary (gh, psql, bash), a non-zero exit, a malformed/empty/multi-line psql answer, a missing or failing `pgenv.sh`, and a wrong role.
+a missing binary (gh, psql, bash), a non-zero exit, output that is not valid UTF-8, JSON nested so deep that parsing recurses out, a malformed/empty/multi-line psql answer
+(the count must be 1 to 12 ASCII decimal digits), a missing or failing `pgenv.sh`, and a wrong role or database. An unexpected internal error is also a classified failure:
+`GATE_V2 FAIL internal_error <ExceptionClassName>` (exit 2, class name only). **Every exit path prints exactly one final `GATE_V2` line.**
 It never prints a credential, a child process's output, or row content (the role name is printed only when it is the wrong one, and only the name).
 
 ### Exit codes
@@ -40,13 +47,14 @@ It never prints a credential, a child process's output, or row content (the role
 |---|---|
 | 0 | both counts read and both 0, role `suvarna_reader` |
 | 1 | at least one count is > 0 |
-| 2 | a read failed or its output was malformed / empty / timed out / non-zero exit |
+| 2 | a read failed or its output was malformed / empty / not UTF-8 / timed out / non-zero exit, or an internal error |
 | 64 | `run_gated.sh` usage error (no target) |
 | 93 | `require_gate_launch` refusal (executor not launched by `run_gated.sh`) |
 | 94 | a required binary (gh, psql, bash, python3) is missing |
 | 95 | a test-only variable is set outside the harness (`ORPH_TEST_EVIDENCE_ROOT`, `PYTEST_CURRENT_TEST`) |
-| 96 | the psql session is not `suvarna_reader` (message names the role only) |
+| 96 | the psql session is not `suvarna_reader`, or not connected to database `amjis` (message names the unexpected value only) |
 | 97 | `source ~/.config/suvarna/pgenv.sh` failed (missing file or non-zero status) |
+| 98 | `run_gated.sh`: the target is missing / not an executable file / not found in PATH (checked before the gate runs), or the final exec failed: `GATE_V2 FAIL target_not_executable` |
 
 When several reads fail the most specific code is returned (97, 96, 94, then 2). `run_gated.sh` returns the gate's own exit code.
 
@@ -60,7 +68,8 @@ Never start the executor directly. Always:
 
 `run_gated.sh`: `set -euo pipefail`; refuses the test env (exit 95); resolves python3, gh, psql, bash ONCE by absolute path (`command -v`) and prints them
 (`run_gated: python3=... gh=... psql=... bash=...`); runs the gate with those paths (its stdout is forced to stderr, so the executor's stdout JSON stays clean);
-only on gate exit 0 sets `GATE_V2_LAUNCH` and does `exec "$@"` (arguments pass through intact, no word splitting). On any failure the target is NOT started and
+before the gate it checks that the target is an executable file (or a name found in PATH) and refuses with exit 98 otherwise (no OK / launch line is printed for a doomed launch);
+only on gate exit 0 sets `GATE_V2_LAUNCH` and does `exec -- "$@"` (arguments pass through intact, no word splitting; `--` so a dash-named target is never read as an exec option; tested on macOS bash 3.2). On any failure the target is NOT started and
 `run_gated: gate exit=<n>; target NOT started` is printed.
 
 ### Test-only switches (`GATE_V2_UNDER_TEST=1`)
@@ -78,7 +87,10 @@ Implemented once in `executor_standards.py` (stdlib; import it, or copy it byte-
 1. **Gate shas are part of the plan hash, and the executor refuses unless launched by `run_gated.sh`.**
    - `fp = fingerprint()` returns the sha256 of the live `prerun_gate.py` and `run_gated.sh`; `bind_gate_into_plan_hash(plan_hash, fp)` folds both into the plan hash, so editing either gate file changes the plan the operator approved.
    - After a passing gate `run_gated.sh` sets the environment variable **`GATE_V2_LAUNCH`** (and only it, only then):
-     `v1.<gate_sha256>.<run_gated_sha256>.<epoch_seconds>.<nonce_hex32>.<check>` with `check = sha256("GATE_V2_LAUNCH|v1|<gate_sha256>|<run_gated_sha256>|<epoch_seconds>|<nonce>")`.
+     `v2.<gate_sha256>.<run_gated_sha256>.<epoch_seconds>.<nonce_hex32>.<under_test 0|1>.<check>` with
+     `check = sha256("GATE_V2_LAUNCH|v2|<gate_sha256>|<run_gated_sha256>|<epoch_seconds>|<nonce>|<under_test>")`; `epoch_seconds` is at most 12 ASCII digits.
+     `under_test` is `1` only when `run_gated.sh` ran with `GATE_V2_UNDER_TEST=1`; it is part of the check input (a production marker cannot be replayed as an under-test one or the reverse) and a
+     verifier refuses an under-test marker (`under_test_marker_refused_outside_tests`, exit 93) unless it is itself under test (`GATE_V2_UNDER_TEST=1` or `PYTEST_CURRENT_TEST` in its environment).
    - The executor calls `require_gate_launch(expected_gate_sha=..., expected_launcher_sha=...)` FIRST. It exits **93** unless the marker exists and parses, its `check` recomputes,
      its two shas equal the sha256 of the live files next to `executor_standards.py` (and the shas pinned in the plan), it is not more than 120 s in the future and not older than 6 hours.
      The refusal message names a class (`no_marker`, `marker_check_mismatch`, `gate_sha_differs_from_live_gate_file`, `marker_stale`, ...) and never echoes the marker.
@@ -86,8 +98,9 @@ Implemented once in `executor_standards.py` (stdlib; import it, or copy it byte-
 2. **Every executor writes an outcome file in every mode, also on failure.** `outcome_guard(evidence_dir, executor_path, plan_hash, gate_fp)` is a context manager; inside it call
    `o.dry_run(evidence_digest)` / `o.applied(evidence_digest)` / `o.fail([check names])`. Whatever else happens (a refusal, an exception, a `SystemExit`, a block that returns without declaring an outcome)
    `<evidence_dir>/outcome.json` is written with status `failed` and the reason as check name. The file (atomic write, `0600`; evidence directory forced `0700`) holds exactly:
-   `schema` (`executor_outcome_v1`), `status` (`dry_run` | `applied` | `failed`), `utc`, `executor_sha256`, `plan_hash`, `gate_sha256`, `run_gated_sha256`, `evidence_digest` (hex or null), `failed_checks` (names; non-empty only for `failed`).
-   A lost stdout therefore never hides what happened.
+   `schema` (`executor_outcome_v1`), `status` (`dry_run` | `applied` | `failed`), `utc`, `executor_sha256`, `plan_hash`, `gate_sha256`, `run_gated_sha256`, `evidence_digest` (hex or null), `failed_checks` (names; non-empty only for `failed`),
+   `under_test` (bool, from the launch marker: pass the dict `require_gate_launch` returns as `gate_fp`) and `warnings` (list of `<warning>:<ExceptionClassName>` strings; empty normally).
+   A lost stdout therefore never hides what happened. **A MISSING `outcome.json` means "nothing was recorded, check the database"** (SIGKILL, power loss, a crash right after COMMIT can leave none); it never means "nothing happened".
 
 Minimal executor skeleton:
 
@@ -116,5 +129,5 @@ and python3/bash symlinks are written to a temp dir at test time; `/bin/bash` an
 
 ```bash
 python3 -m pytest platform/scripts/governance/__tests__/test_gate_v2_*.py -q
-python3 00_ARCHITECTURE/briefs/suvarna/exec/gate_v2/tests/mutation_proof.py   # script (not collected by CI): neuters each rule in a copy and shows its tests go red (19 mutations)
+python3 00_ARCHITECTURE/briefs/suvarna/exec/gate_v2/tests/mutation_proof.py   # script (not collected by CI): neuters each rule in a copy and shows its tests go red (41 mutations: the 19 original plus one per revision-2 fix)
 ```

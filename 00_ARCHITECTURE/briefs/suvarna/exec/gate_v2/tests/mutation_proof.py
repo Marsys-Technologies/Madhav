@@ -6,7 +6,8 @@
 For each mutation: copy the folder to a temp dir, apply ONE exact-string replacement to ONE file of the copy (asserting the
 string is present exactly once), run the named tests there, and require a non-zero pytest exit (red). The un-mutated copy must be
 green first. Prints one line per mutation and exits non-zero if any mutation is NOT PROVEN. The repository files are never modified.
-The six rules the SS contract names are the first six lines (tagged REQUIRED); the rest are extra.
+The six rules the SS contract names are the REQUIRED lines; the rest are extra. The last block ("rev2") is one mutation per fix of the
+second adversarial review (deploy ref/event, repo pin, malformed input, epoch bounds, under_test, database, target check).
 """
 import pathlib
 import shutil
@@ -37,7 +38,7 @@ MUTATIONS = [
     ("REQUIRED d: run_gated.sh execs the target even when the gate fails", "run_gated.sh",
      'if [ "$rc" -ne 0 ]; then', "if false; then", "not_started"),
     ("REQUIRED d: run_gated.sh passes the args word-split (exec $* instead of exec \"$@\")", "run_gated.sh",
-     'starting target" >&2\nexec "$@"', 'starting target" >&2\nexec $*', "intact or word_split"),
+     'exec -- "$@"\ndie "target_not_executable" 98', 'exec $*\ndie "target_not_executable" 98', "intact or word_split"),
     ("d: run_gated.sh exits 0 after a failed gate", "run_gated.sh",
      '  exit "$rc"\nfi', "  exit 0\nfi", "not_started or exit_code_class"),
     ("REQUIRED role check: psql session role no longer compared with suvarna_reader", "prerun_gate.py",
@@ -52,7 +53,7 @@ MUTATIONS = [
      "        if rc != 0:\n            raise GateError(EXIT_READ_FAILED, \"%s failed", "        if False:\n            raise GateError(EXIT_READ_FAILED, \"%s failed",
      "nonzero_exit or gh_read_failures"),
     ("standards: marker check recomputation neutered", "executor_standards.py",
-     "    if _check(gate_sha, launcher_sha, int(epoch_s), nonce) != check:", "    if False:", "forged_check"),
+     '        check_ok = _check(gate_sha, launcher_sha, epoch, nonce, ut == "1") == check', "        check_ok = True", "forged_check"),
     ("standards: live gate sha comparison neutered", "executor_standards.py",
      '    if gate_sha != live["gate_sha256"]:', "    if False:", "edited_gate_file"),
     ("standards: marker age check neutered", "executor_standards.py",
@@ -63,6 +64,55 @@ MUTATIONS = [
      '            self._write("failed", None, ["no_outcome_recorded"])', "            pass", "silent_return"),
     ("run_gated.sh: launch marker never exported", "run_gated.sh",
      'export GATE_V2_LAUNCH="$marker"', ': "$marker"', "launch_marker_is_set"),
+    # ---- rev2 (adversarial review): one mutation per fix
+    ("rev2-1: deploy query filtered to --branch main again (dispatch on a feature ref invisible)", "prerun_gate.py",
+     '"--workflow", WORKFLOW, "--limit", str(HISTORY_LIMIT),', '"--workflow", WORKFLOW, "--branch", "main", "--limit", str(HISTORY_LIMIT),',
+     "non_main_ref or gh_queries_history"),
+    ("rev2-1: pull_request runs counted as in-flight deploys", "prerun_gate.py",
+     '            if x.get("event") == EXCLUDED_EVENT:', "            if False:", "pull_request_run"),
+    ("rev2-1: unknown / missing event excluded (fails open)", "prerun_gate.py",
+     '            if x.get("event") == EXCLUDED_EVENT:', '            if x.get("event") != "workflow_run":', "unknown_or_missing_event or non_pull_request_run"),
+    ("rev2-1: full per-status page of PR runs no longer fails closed", "prerun_gate.py",
+     "        if saturation_matters and excluded and len(data) >= HISTORY_LIMIT:", "        if False:", "full_per_status"),
+    ("rev2-2: repository no longer pinned with -R", "prerun_gate.py",
+     '"run", "list", "-R", REPO, ', '"run", "list", ', "pins_the_repository or gh_queries_history"),
+    ("rev2-2: GH_REPO / GH_HOST not stripped from gh's environment", "prerun_gate.py",
+     "    return {k: v for k, v in environ.items() if k not in GH_STRIPPED_ENV}", "    return dict(environ)", "pins_the_repository"),
+    ("rev2-3: catch-all removed (an unexpected error is a traceback again)", "prerun_gate.py",
+     "    except BaseException as exc:\n        try:\n            say(", "    except ZeroDivisionError as exc:\n        try:\n            say(",
+     "unexpected_exception or exception_while_printing"),
+    ("rev2-3: gh output that is not UTF-8 no longer classified", "prerun_gate.py",
+     "    except UnicodeDecodeError:\n        raise GateError(EXIT_READ_FAILED, label + \" output is not valid UTF-8\")",
+     "    except ZeroDivisionError:\n        raise GateError(EXIT_READ_FAILED, label + \" output is not valid UTF-8\")", "read_failures_fail_closed"),
+    ("rev2-3: RecursionError from a deeply nested JSON no longer classified", "prerun_gate.py",
+     "    except (ValueError, RecursionError):", "    except ValueError:", "gh_read_failures_fail_closed"),
+    ("rev2-3: psql count accepted with str.isdigit() (superscript two crashes int())", "prerun_gate.py",
+     "count.isascii() and count.isdecimal()", "count.isdigit()", "psql_read_failures_fail_closed"),
+    ("rev2-3: psql count length no longer bounded", "prerun_gate.py",
+     "MAX_COUNT_DIGITS = 12", "MAX_COUNT_DIGITS = 100000", "psql_read_failures_fail_closed"),
+    ("rev2-4: epoch no longer limited to 12 ASCII digits", "executor_standards.py",
+     "1 <= len(epoch_s) <= MAX_EPOCH_DIGITS and epoch_s.isascii() and epoch_s.isdecimal()", "epoch_s.isdigit()", "epoch"),
+    ("rev2-4: int()/ValueError of a huge epoch no longer caught", "executor_standards.py",
+     "    except (ValueError, OverflowError):", "    except ZeroDivisionError:", "huge_epochs"),
+    ("rev2-4: OverflowError in the age sum no longer caught", "executor_standards.py",
+     "    except OverflowError:\n        return False, \"malformed_marker\"", "    except ZeroDivisionError:\n        return False, \"malformed_marker\"", "huge_epochs"),
+    ("rev2-7: under_test flag not part of the marker check input", "executor_standards.py",
+     '                                    "1" if under_test else "0"]).encode()).hexdigest()', '                                    "0"]).encode()).hexdigest()',
+     "under_test"),
+    ("rev2-7: verifier accepts an under_test marker outside tests", "executor_standards.py",
+     '    if ut == "1" and not verifier_under_test(environ):', "    if False:", "under_test"),
+    ("rev2-7: outcome.json does not record under_test", "executor_standards.py",
+     '"under_test": bool(gate_fp.get("under_test", False)),', '"under_test": False,', "outcome_json_records_under_test"),
+    ("rev2-7: run_gated.sh never marks the marker under_test", "run_gated.sh",
+     'if [ "${GATE_V2_UNDER_TEST:-}" = "1" ]; then ut=1; fi', ":", "under_test_launch"),
+    ("rev2-8a: database no longer compared with amjis", "prerun_gate.py",
+     "    if database != EXPECTED_DATABASE:", "    if False:", "database"),
+    ("rev2-8b: run_gated.sh exec without -- (a dash-named target is an exec option)", "run_gated.sh",
+     'set +e\nshopt -s execfail\nexec -- "$@"', 'set +e\nshopt -s execfail\nexec "$@"', "dash"),
+    ("rev2-8c: target not checked before the gate / OK line (98)", "run_gated.sh",
+     'target_ok "$1" || die "target_not_executable" 98', 'target_ok "$1" || true', "98 or exec_ed"),
+    ("rev2-8c: a failed final exec no longer exits 98", "run_gated.sh",
+     'exec -- "$@"\ndie "target_not_executable" 98', 'exec -- "$@"', "cannot_be_exec"),
 ]
 
 
