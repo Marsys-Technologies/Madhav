@@ -86,6 +86,13 @@ def test_d1_a_seeded_wrong_row_is_never_a_pass_and_is_named(name, mutate, row):
     assert [u["row"] for u in r["d1"]["unmatched"]] == [row] and row in r["measured"]
 
 
+def test_d1_a_null_effect_is_a_miss_where_the_passage_gives_that_claimant_an_effect():
+    rows = copy.deepcopy(ROWS)
+    [r.update(effect_description=None) for r in rows if r["graha"] == "Rahu"]          # the passage states Rahu's effect
+    r = _measure(rows=rows)
+    assert r["v"] == "PARTIAL" and [u["row"] for u in r["d1"]["unmatched"]] == ["Rahu"] and r["d1"]["unmatched"][0]["failed"] == ["effect"]
+
+
 def test_d1_swapped_counts_name_both_rows_and_a_ketu_row_fails():
     rows = copy.deepcopy(ROWS)
     for r in rows:
