@@ -24,6 +24,8 @@ CREATE TABLE kala_gochara_windows (chart_id uuid, generation text, event_class t
   peak_date date, signed_intensity numeric NOT NULL, raw_intensity numeric NOT NULL, valence text, is_adverse boolean,
   resolution text, temporal_shape text);
 CREATE TABLE kala_gochara_publication (chart_id uuid, generation text, status text, input_generation_vector jsonb);
+CREATE TABLE chart_facts (fact_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid, ayanamsha_id text, fact_category text, fact_subject text,
+  fact_key text, fact_value_num double precision);
 CREATE TABLE kala_gochara_coverage (chart_id uuid, generation text, partition_kind text, partition_key text,
   requested_horizon tstzrange, completed_horizon tstzrange, targets_requested int, targets_resolved int,
   targets_unresolved int, unsearched_reason text);
@@ -94,3 +96,20 @@ def test_manifest_orb_and_coverage_summary_read_back(conn):
     assert (s["partitions"], s["full_horizon"], s["unsearched"], s["targets_requested"], s["targets_unresolved"]) == (3, 2, 1, 30, 3)
     assert s["first_key_segment"] == ["saturn", "sun"]
     assert dx.read_coverage_summary(conn, "4.1")["event_class_partitions"] == 0
+
+
+def test_av_donor_identity_runs_the_real_sql_counts_and_digests_per_ayanamsha(conn):
+    """Zero donor rows is a real answer (count 0, digest NULL) for every ayanamsha that has any fact; once rows exist the digest is a function of their content."""
+    conn.execute("INSERT INTO chart_facts(chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, fact_value_num) VALUES "
+                 "(%s,'lahiri_chitrapaksha','graha_position','SUN','longitude_sidereal',291.9),(%s,'raman','graha_position','SUN','longitude_sidereal',291.2)",
+                 (dx.CHART_ID, dx.CHART_ID))
+    absent = dx.read_av_donor_identity(conn)
+    assert absent["per_ayanamsha"] == {"lahiri_chitrapaksha": {"row_count": 0, "digest": None}, "raman": {"row_count": 0, "digest": None}}
+    for subj, v in (("SUN-CONTRIBUTOR_MOON-SIGN_1", 1.0), ("SUN-CONTRIBUTOR_MAR-SIGN_1", 0.0)):
+        conn.execute("INSERT INTO chart_facts(chart_id, ayanamsha_id, fact_category, fact_subject, fact_key, fact_value_num) "
+                     "VALUES (%s,'lahiri_chitrapaksha','ashtakavarga_bindu_contributor',%s,'bindus',%s)", (dx.CHART_ID, subj, v))
+    first = dx.read_av_donor_identity(conn)["per_ayanamsha"]
+    assert first["lahiri_chitrapaksha"]["row_count"] == 2 and len(first["lahiri_chitrapaksha"]["digest"]) == 64
+    assert first["raman"] == {"row_count": 0, "digest": None}
+    conn.execute("UPDATE chart_facts SET fact_value_num = 1.0 WHERE fact_subject = 'SUN-CONTRIBUTOR_MAR-SIGN_1'")
+    assert dx.read_av_donor_identity(conn)["per_ayanamsha"]["lahiri_chitrapaksha"]["digest"] != first["lahiri_chitrapaksha"]["digest"]

@@ -68,6 +68,14 @@ SQL_MANIFEST_ORB = """SELECT status, input_generation_vector->'orb_max_deg', inp
   FROM kala_gochara_publication WHERE chart_id = %s AND generation = %s"""
 
 
+SQL_AV_DONOR_IDENTITY = """SELECT a.ayanamsha_id, COUNT(c.fact_id) AS n,
+       encode(sha256(convert_to(string_agg(concat_ws('|', c.fact_subject, c.fact_key, COALESCE(c.fact_value_num::text, 'NULL')),
+                                           E'\\n' ORDER BY c.fact_subject COLLATE "C", c.fact_key COLLATE "C", c.fact_value_num), 'UTF8')), 'hex') AS digest
+  FROM (SELECT DISTINCT ayanamsha_id FROM chart_facts WHERE chart_id = %s) a
+  LEFT JOIN chart_facts c ON c.chart_id = %s AND c.ayanamsha_id = a.ayanamsha_id AND c.fact_category = 'ashtakavarga_bindu_contributor'
+ GROUP BY a.ayanamsha_id ORDER BY a.ayanamsha_id"""
+
+
 SQL_COVERAGE_SUMMARY = """SELECT partition_kind, COUNT(*) AS partitions,
        COUNT(*) FILTER (WHERE requested_horizon = completed_horizon) AS full_horizon,
        COUNT(*) FILTER (WHERE unsearched_reason IS NOT NULL) AS unsearched,
@@ -135,6 +143,19 @@ def read_manifest_orb(conn, generation: str) -> dict:
             "ephemeris": eph, "ephemeris_problems": ephemeris_component_problems(eph)}
 
 
+def read_av_donor_identity(conn) -> dict:
+    """PRESENCE and CONTENT identity of the L1 `ashtakavarga_bindu_contributor` rows for the chart, per ayanāṁśa: the row count and a sha256 over the canonical
+    ordered (fact_subject | fact_key | fact_value_num) lines (NULL digest when there are none). Read-only; touches no window row. Recorded in the Stage-1 freeze as
+    the NAMED input `av_donor_rows`: a '4.1' run made while these rows are absent (the gochara_v3 sign-grain interim) and one made after they exist (donor-resolved
+    P5c) are DIFFERENT candidates and must never be compared as one."""
+    conn.read_only = True
+    with conn.cursor() as cur:
+        cur.execute(SQL_AV_DONOR_IDENTITY, (CHART_ID, CHART_ID))
+        rows = cur.fetchall()
+    return {"fact_category": "ashtakavarga_bindu_contributor",
+            "per_ayanamsha": {r[0]: {"row_count": int(r[1]), "digest": (r[2] if int(r[1]) > 0 else None)} for r in rows}}
+
+
 def _connect(args, conn_factory):
     if conn_factory is None:
         dsn = "" if args.libpq_env else os.environ.get(DSN_ENV)
@@ -179,13 +200,15 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
                     help="print the orb the candidate manifest declares (orb_max_deg, orb_ruling) and exit; reads no window row")
     ap.add_argument("--read-coverage-summary", action="store_true",
                     help="print the candidate's coverage-ledger summary (disclosure only; reads no window row) and exit")
+    ap.add_argument("--read-av-donor-rows", action="store_true",
+                    help="print the presence + content identity of the L1 ashtakavarga_bindu_contributor rows per ayanamsha (frozen input `av_donor_rows`) and exit")
     ap.add_argument("--requalify-3-0", metavar="PINNED_SHA256",
                     help="re-dump the '3.0' BASELINE (no freeze) and compare to this pinned sha256")
     ap.add_argument("--compare-to", help="with --requalify-3-0: the pinned extract file; its ROW MULTISET is compared as well "
                                          "(the pinned file's row order within (event_class, ws) ties was database-defined)")
     args = ap.parse_args(argv)
 
-    if args.read_manifest_orb or args.read_coverage_summary:
+    if args.read_manifest_orb or args.read_coverage_summary or args.read_av_donor_rows:
         if args.generation not in CANDIDATE_GENERATIONS:
             print(f"REFUSED: no manifest/coverage read for generation {args.generation!r}", file=sys.stderr)
             return 2
@@ -197,6 +220,8 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
                 print(json.dumps(read_manifest_orb(conn, args.generation)))
             if args.read_coverage_summary:
                 print(json.dumps(read_coverage_summary(conn, args.generation)))
+            if args.read_av_donor_rows:
+                print(json.dumps(read_av_donor_identity(conn)))
         finally:
             conn.rollback()
             conn.close()
@@ -241,6 +266,12 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
             if live["ephemeris_problems"] or diffs:
                 print("FREEZE REFUSED: the live manifest differs from the frozen read-back "
                       f"(fields {diffs}; live ephemeris problems {live['ephemeris_problems']})", file=sys.stderr)
+                return 2
+            live_av = read_av_donor_identity(conn)                  # ... and the donor-row identity (which behaviour this candidate is)
+            frozen_av = frozen["av_donor_rows"]["per_ayanamsha"]
+            if live_av["per_ayanamsha"] != frozen_av:
+                print("FREEZE REFUSED: the live ashtakavarga_bindu_contributor rows differ from the frozen `av_donor_rows` "
+                      f"(live {live_av['per_ayanamsha']}, frozen {frozen_av}) — a different candidate", file=sys.stderr)
                 return 2
         rows = dump_rows(conn, args.generation, horizon_check)
     finally:

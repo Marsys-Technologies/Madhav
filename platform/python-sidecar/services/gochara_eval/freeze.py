@@ -41,6 +41,9 @@ REQUIRED_CONSUMED_BODIES = ("Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter"
 THRESHOLD_KEYS = ("t_cover", "t_time", "t_rank", "t_fp_adverse", "t_fp_gain", "t_honesty", "random_controls")
 CONVENTION_KEYS = ("si_mapping", "utc_to_ist", "merge_implementation", "stored_value_precision", "tie_grouping", "candidate_set")
 COHORT_INT_KEYS = ("held_out", "timing_usable", "year_grain", "exact_cohort", "interval_grain")
+#: which behaviour of the '4.1' chain the frozen run uses: P5c donor-resolved (the L1 rows exist) or the gochara_v3 sign-grain interim (they do not)
+AV_DONOR_BEHAVIOURS = ("donor_resolved", "sign_grain_interim")
+AV_DONOR_AYANAMSHA = "lahiri_chitrapaksha"
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 SHA64 = re.compile(r"^[0-9a-f]{64}$")
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -245,6 +248,32 @@ def stage1_problems(doc: dict, inputs_root: Path, canonical_command: str,
         if isinstance(comp, dict):
             probs += [f"ephemeris_requirement: {p}" for p in
                       ephemeris_coverage_problems(comp, er.get("consumed_bodies"), er.get("horizon"))]
+    # ---- the donor-row identity: WHICH behaviour of the '4.1' chain this frozen run uses (steward M20261002T121926-da0b) ----
+    av = _dict(doc, "av_donor_rows", probs)
+    per = av.get("per_ayanamsha")
+    if not isinstance(per, dict) or not per:
+        probs.append("av_donor_rows.per_ayanamsha is missing or empty (the row count and digest per ayanamsha, read at freeze time)")
+        per = {}
+    for aid, ent in per.items():
+        n = ent.get("row_count") if isinstance(ent, dict) else None
+        if not (isinstance(n, int) and not isinstance(n, bool) and n >= 0):
+            probs.append(f"av_donor_rows.per_ayanamsha[{aid!r}].row_count is not a non-negative integer")
+        elif n > 0 and not SHA64.match(str(ent.get("digest", ""))):
+            probs.append(f"av_donor_rows.per_ayanamsha[{aid!r}] has {n} rows but no sha256 digest")
+        elif n == 0 and ent.get("digest") is not None:
+            probs.append(f"av_donor_rows.per_ayanamsha[{aid!r}] has no rows, so its digest must be null")
+    behaviour = av.get("behaviour")
+    if behaviour not in AV_DONOR_BEHAVIOURS:
+        probs.append(f"av_donor_rows.behaviour {behaviour!r} is not one of {AV_DONOR_BEHAVIOURS}")
+    lahiri = per.get(AV_DONOR_AYANAMSHA)
+    if not isinstance(lahiri, dict):
+        probs.append(f"av_donor_rows.per_ayanamsha lacks the candidate's own ayanamsha {AV_DONOR_AYANAMSHA!r}")
+    elif isinstance(lahiri.get("row_count"), int):
+        if behaviour == "donor_resolved" and lahiri["row_count"] == 0:
+            probs.append("av_donor_rows.behaviour is 'donor_resolved' but the candidate's ayanamsha has no donor rows")
+        if behaviour == "sign_grain_interim" and lahiri["row_count"] > 0:
+            probs.append("av_donor_rows.behaviour is 'sign_grain_interim' but donor rows EXIST (the run would be donor-resolved)")
+    _str_fields(av, ("comparability",), probs, "av_donor_rows")
     ostate = _dict(doc, "orb_state", probs)
     _str_fields(ostate, ("text", "manifest_location"), probs, "orb_state")
 

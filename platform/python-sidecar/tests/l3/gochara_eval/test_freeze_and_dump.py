@@ -70,15 +70,19 @@ def make_stage1(tmp_path, generation="4.1", cohort=None):
            "thresholds": {k: f"threshold text for {k}" for k in THRESHOLD_KEYS},
            "tolerances_and_conversions": {"tie_tolerance": 1e-9, "percentile": "100*(avg_rank-1)/N", "timezone": "IST",
                                           "enumeration_budget": 400000, "budget_exceeded": "unqualified, full range"},
+           "av_donor_rows": {"behaviour": "donor_resolved", "comparability": "a run made before these rows exist is a DIFFERENT candidate; never compared as one",
+                             "per_ayanamsha": {"lahiri_chitrapaksha": {"row_count": 672, "digest": SHA},
+                                               "raman": {"row_count": 672, "digest": SHA[::-1]}}},
            "coverage_manifest": "UNVERIFIABLE (determined)", "rerun_policy": "deterministic; no change after inspection",
            "inputs": inputs}
     return doc, write_json(tmp_path / "FREEZE_STAGE1_t.json", doc)
 
 
 def conn_for(doc):
-    """A fake read-only connection whose live manifest equals the frozen read-back."""
+    """A fake read-only connection whose live manifest and live donor-row identity equal the frozen ones."""
     rb = doc["ephemeris_requirement"]["manifest_readback"]
-    return FakeConn(ROWS, manifest=[(rb["manifest_status"], rb["orb_max_deg"], rb["orb_ruling"], rb["ephemeris"])])
+    av = [(a, e["row_count"], e["digest"]) for a, e in doc["av_donor_rows"]["per_ayanamsha"].items()]
+    return FakeConn(ROWS, manifest=[(rb["manifest_status"], rb["orb_max_deg"], rb["orb_ruling"], rb["ephemeris"])], av=av)
 
 
 class TestStage1:
@@ -254,15 +258,17 @@ class FakeCursor:
             return None
         return (self.conn.outside,)
     def fetchall(self):
+        if "ashtakavarga_bindu_contributor" in self.last:
+            return self.conn.av
         if "kala_gochara_coverage" in self.last:
             return self.conn.coverage
         return self.conn.manifest if "input_generation_vector" in self.last else self.conn.rows
 
 
 class FakeConn:
-    def __init__(self, rows, outside=0, sign=(0, 0), manifest=None, coverage=None):
+    def __init__(self, rows, outside=0, sign=(0, 0), manifest=None, coverage=None, av=None):
         self.rows, self.outside, self.executed, self.read_only, self.closed = rows, outside, [], False, False
-        self.sign, self.manifest, self.coverage = sign, manifest or [], coverage or []
+        self.sign, self.manifest, self.coverage, self.av = sign, manifest or [], coverage or [], av or []
     def cursor(self): return FakeCursor(self)
     def rollback(self): pass
     def close(self): self.closed = True
@@ -271,6 +277,41 @@ class FakeConn:
 D = dt.date
 ROWS = [("marriage", D(2010, 1, 1), D(2010, 2, 1), D(2010, 1, 10), decimal.Decimal("0.50"), "gain", False, None, "interval"),
         ("marriage", D(2010, 1, 1), D(2010, 3, 1), D(2010, 1, 20), decimal.Decimal("0.70"), "gain", False, "x", "interval")]
+
+
+class TestAvDonorRows:
+    """The donor-row identity is a NAMED frozen input: which behaviour of the '4.1' chain the run uses, with the live rows reconciled before any window row is read."""
+
+    def test_the_freeze_without_the_block_is_refused(self, tmp_path):
+        doc, _ = make_stage1(tmp_path)
+        d = copy.deepcopy(doc); del d["av_donor_rows"]
+        assert any("av_donor_rows is missing" in p for p in stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND))
+
+    @pytest.mark.parametrize("mut,needle", [
+        (lambda a: a.update(behaviour="whatever"), "is not one of"),
+        (lambda a: a["per_ayanamsha"]["lahiri_chitrapaksha"].update(row_count=0, digest=None), "has no donor rows"),
+        (lambda a: a.update(behaviour="sign_grain_interim"), "donor rows EXIST"),
+        (lambda a: a["per_ayanamsha"]["raman"].update(digest=None), "no sha256 digest"),
+        (lambda a: a["per_ayanamsha"]["raman"].update(row_count=0), "digest must be null"),
+        (lambda a: a["per_ayanamsha"].pop("lahiri_chitrapaksha"), "lacks the candidate's own ayanamsha"),
+        (lambda a: a.update(per_ayanamsha={}), "missing or empty"),
+        (lambda a: a.update(comparability=""), "comparability"),
+        (lambda a: a["per_ayanamsha"]["raman"].update(row_count="672"), "not a non-negative integer")])
+    def test_each_inconsistency_is_named(self, tmp_path, mut, needle):
+        doc, _ = make_stage1(tmp_path)
+        d = copy.deepcopy(doc); mut(d["av_donor_rows"])
+        assert any(needle in p for p in stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND)), stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND)
+
+    def test_the_interim_behaviour_with_no_rows_is_a_valid_freeze_and_a_different_candidate(self, tmp_path):
+        doc, _ = make_stage1(tmp_path)
+        d = copy.deepcopy(doc)
+        d["av_donor_rows"] = {"behaviour": "sign_grain_interim", "comparability": "different candidate from any donor-resolved run",
+                              "per_ayanamsha": {"lahiri_chitrapaksha": {"row_count": 0, "digest": None}}}
+        assert stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND) == []
+
+    def test_the_read_back_reports_count_and_digest_per_ayanamsha(self):
+        out = dx.read_av_donor_identity(FakeConn(ROWS, av=[("lahiri_chitrapaksha", 672, SHA), ("raman", 0, None)]))
+        assert out["per_ayanamsha"] == {"lahiri_chitrapaksha": {"row_count": 672, "digest": SHA}, "raman": {"row_count": 0, "digest": None}}
 
 
 class TestEphemerisComponent:
@@ -398,6 +439,22 @@ class TestDump:
         rc = dx.main(["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT], conn_factory=lambda: conn)
         assert rc == 2 and "live manifest differs" in capsys.readouterr().err
         assert not (tmp_path / OUT).exists() and all("kala_gochara_windows" not in sql for sql, _ in conn.executed)
+
+    def test_donor_rows_that_appeared_after_the_freeze_make_a_different_candidate_and_are_refused(self, tmp_path, monkeypatch, capsys):
+        """The freeze said 'sign_grain_interim' (no donor rows); the live database now HAS them (or the digest moved): the run is refused before any window row is read."""
+        monkeypatch.chdir(tmp_path)
+        doc, p = make_stage1(tmp_path)
+        rb = doc["ephemeris_requirement"]["manifest_readback"]
+        moved = [("lahiri_chitrapaksha", 672, "cd" * 32), ("raman", 672, SHA[::-1])]
+        conn = FakeConn(ROWS, manifest=[(rb["manifest_status"], rb["orb_max_deg"], rb["orb_ruling"], rb["ephemeris"])], av=moved)
+        rc = dx.main(["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT], conn_factory=lambda: conn)
+        assert rc == 2 and "ashtakavarga_bindu_contributor rows differ from the frozen" in capsys.readouterr().err
+        assert not (tmp_path / OUT).exists() and all("kala_gochara_windows" not in sql for sql, _ in conn.executed)
+
+    def test_the_cli_reads_back_the_donor_row_identity(self, capsys):
+        conn = FakeConn(ROWS, av=[("lahiri_chitrapaksha", 672, SHA)])
+        assert dx.main(["--generation", "4.1", "--read-av-donor-rows"], conn_factory=lambda: conn) == 0
+        assert json.loads(capsys.readouterr().out)["per_ayanamsha"]["lahiri_chitrapaksha"] == {"row_count": 672, "digest": SHA}
 
     def test_bind_dump_run_names_each_mismatch(self, tmp_path):
         doc, _ = make_stage1(tmp_path)
