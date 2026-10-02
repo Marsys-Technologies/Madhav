@@ -120,7 +120,8 @@ POLICY_VERSION = "window_qualification/1"
 DYNAMIC_SWITCH_REASON = "dynamic_objective_solver_guarantee_not_available"
 #: every governed stored field of a window this verifier reproduces (VERIFIED requires all of them)
 GOVERNED_FIELDS = ("interval", "peak_instant", "score", "evidence_for", "evidence_against",
-                   "outcome_valence_for_native", "severity", "null_states_used", "membership")
+                   "outcome_valence_for_native", "severity", "null_states_used", "membership",
+                   "objective", "objective_value", "qualification")
 
 
 def _expected_valence(event_class, ev_for, ev_against, reason):
@@ -135,11 +136,16 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                             drishti_bound: bool = False, vedha_bound: bool = False,
                             dynamic_enabled: bool = False) -> dict:
     grain = (chart_id, generation, event_class, path_id, rule_version)
-    windows = conn.execute(
+    prov_cols = conn.execute(
+        "SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_eval_window'::regclass"
+        " AND attname IN ('objective', 'objective_value', 'qualification') AND NOT attisdropped").fetchone()
+    has_prov = (next(iter(prov_cols.values())) if isinstance(prov_cols, dict) else prov_cols[0]) == 3
+    windows = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
         "SELECT window_id::text, lower(interval), upper(interval), peak_instant, score,"
-        " evidence_for, evidence_against, severity, null_states_used, outcome_valence_for_native"
+        " evidence_for, evidence_against, severity, null_states_used, outcome_valence_for_native,"
+        + (" objective, objective_value, qualification" if has_prov else " NULL, NULL, NULL") +
         " FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s"
-        " AND event_class = %s AND path_id = %s AND rule_version = %s ORDER BY 2", grain).fetchall()
+        " AND event_class = %s AND path_id = %s AND rule_version = %s ORDER BY 2", grain).fetchall()]
     member_rows = conn.execute(
         "SELECT m.window_id::text, r.record_id::text, COALESCE(r.contact_id, r.object_id)::text,"
         " r.relation, r.object_kind, r.agent, r.house_from_frame, lower(s.x), upper(s.x)"
@@ -174,7 +180,27 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             return False
         return True
 
-    for wid, lo, hi, peak, score, ev_for, ev_against, severity, null_states, valence in windows:
+    def check_provenance(tag, row, qualified_members, s_objective, s_value, s_qual):
+        """R8-4 (1240): the PERSISTED objective name / value / qualification provenance must equal what this verifier
+        derives from the members and the bound factor rows (never read back and trusted)."""
+        if not has_prov:
+            return
+        if s_objective is None or s_qual is None:
+            problems.append(f"{tag}: the window carries no objective/qualification provenance")
+            return
+        if s_objective != row["objective"]:
+            problems.append(f"{tag}: objective {s_objective!r} != re-derived {row['objective']!r}")
+        want_v = row["objective_value"]
+        if (s_value is None) != (want_v is None) or (s_value is not None and abs(s_value - want_v) > _TOL):
+            problems.append(f"{tag}: objective_value {s_value} != re-derived {want_v}")
+        want_q = {"unqualified_reason": row["unqualified_reason"], "unresolved": row["unresolved"],
+                  "affected_channels": row["affected_channels"], "members": row["members"],
+                  "qualified_members": qualified_members}
+        if s_qual != want_q:
+            problems.append(f"{tag}: qualification {s_qual} != re-derived {want_q}")
+
+    for (wid, lo, hi, peak, score, ev_for, ev_against, severity, null_states, valence,
+         s_objective, s_objective_value, s_qualification) in windows:
         recs = by_window.get(wid, {})
         tag = f"window {lo.astimezone(timezone.utc).isoformat()}"
         states = {rid: _record_state(factor_rows, r, drishti_bound, vedha_bound) for rid, r in recs.items()}
@@ -216,7 +242,9 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         if for_unq:
             reason = sorted(reasons)[0]
             row["unqualified_reason"] = reason
-            if expect_null_window(tag, stored, reason):
+            ok_null = expect_null_window(tag, stored, reason)
+            check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
+            if ok_null:
                 fully_reproduced += 1
             detail.append(row)
             continue
@@ -225,7 +253,9 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             row["unqualified_reason"] = DYNAMIC_SWITCH_REASON
             row["unresolved"] = {**row["unresolved"], DYNAMIC_SWITCH_REASON: sum(
                 1 for s in qualified.values() if s[0] == "fn")}
-            if expect_null_window(tag, stored, DYNAMIC_SWITCH_REASON):
+            ok_null = expect_null_window(tag, stored, DYNAMIC_SWITCH_REASON)
+            check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
+            if ok_null:
                 fully_reproduced += 1
             detail.append(row)
             continue
@@ -276,6 +306,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             continue
         best, want_peak = earliest_max(cands)
         row["objective_value"] = best
+        check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
         live_now = [rid for rid in _live(recs, want_peak)]
         live_q = [rid for rid in live_now if rid in qualified]
         live_unq_against = [rid for rid in live_now if rid in unq_ids

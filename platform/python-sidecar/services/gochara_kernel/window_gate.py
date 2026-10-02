@@ -47,6 +47,14 @@ def verification_available(conn) -> bool:
     return bool(next(iter(row.values())) if isinstance(row, dict) else row[0])
 
 
+def can_write_verification(conn) -> bool:
+    """Does the RUNNING role hold INSERT on the verification table? The builder deliberately does not (1240: the writer
+    cannot verify itself); only a provisioned verifier principal does."""
+    row = conn.execute(
+        "SELECT has_table_privilege(current_user, 'public.ka_gochara_eval_window_verification', 'INSERT')").fetchone()
+    return bool(next(iter(row.values())) if isinstance(row, dict) else row[0])
+
+
 def _union(spans):
     out: list[list] = []
     for lo, hi in sorted(spans):
@@ -117,10 +125,9 @@ def record_verification(conn, *, chart_id, generation, event_class, path_id, rul
     if (report["status"] == "VERIFIED") != satisfies_gate(report):         # the one gate predicate, now CALLED
         raise RuntimeError(f"window verification {event_class}/{path_id}: status {report['status']!r} contradicts "
                            "the gate predicate on the same report")
-    detail = report["windows_detail"]
-    if len(detail) != len(stored):
-        raise RuntimeError(f"window verification {event_class}/{path_id}: the report carries {len(detail)} "
-                           f"provenance entries for {len(stored)} stored windows")
+    if len(report["windows_detail"]) != len(stored):
+        raise RuntimeError(f"window verification {event_class}/{path_id}: the report carries "
+                           f"{len(report['windows_detail'])} provenance entries for {len(stored)} stored windows")
     content = conn.execute(
         "SELECT public.ka_gochara_eval_window_content_digest(%s::uuid, %s, %s, %s, %s)",
         (chart_id, generation, event_class, path_id, rule_version)).fetchone()
@@ -136,11 +143,11 @@ def record_verification(conn, *, chart_id, generation, event_class, path_id, rul
         " chart_id, generation, event_class, path_id, rule_version, verifier_id, verifier_version, status,"
         " policy_version, windows_expected, windows_stored, windows_reproduced, windows_unverified,"
         " expected_windows_digest, stored_windows_digest, windows_content_digest, fields_verified,"
-        " input_digest, windows_detail) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)",
+        " input_digest) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
         (chart_id, generation, event_class, path_id, rule_version, VERIFIER_ID, VERIFIER_VERSION,
          report["status"], report["policy_version"], len(expected), len(stored), report["fully_reproduced"],
          report["unverified_dynamic"], intervals_digest(expected), digest, content,
-         list(report["fields_verified"]), input_digest, json.dumps(detail, sort_keys=True)))
+         list(report["fields_verified"]), input_digest))
     return {"status": report["status"], "windows": len(stored), "content_digest": content}
 
 
@@ -164,5 +171,5 @@ def require_candidate_gate(conn, chart_id: str, generation: str, event_class: st
 
 
 __all__ = ["CandidateGateRefused", "POLICY_VERSION", "VERIFIER_ID", "VERIFIER_VERSION", "candidate_gate",
-           "expected_windows", "intervals_digest", "record_verification", "require_candidate_gate",
+           "can_write_verification", "expected_windows", "intervals_digest", "record_verification", "require_candidate_gate",
            "stored_windows", "verification_available"]

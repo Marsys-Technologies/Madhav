@@ -107,6 +107,11 @@ def _sha256_file(path) -> str:
     return h.hexdigest()
 
 
+def runtime_platform() -> str:
+    import platform
+    return f"{platform.system()}-{platform.machine()}"
+
+
 def runtime_library_digest() -> str:
     """sha256 of the swisseph extension file the interpreter would LOAD — located by the import machinery's own
     spec, not by the builder's helper."""
@@ -171,12 +176,14 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
         f = Path(ephe_path) / name
         check(f"ephemeris.files.{name}", _sha256_file(f) if f.is_file() else "<absent>", bound)
     derived.append("ephemeris.files")
-    if "runtime" in stored["ephemeris"]:
-        check("ephemeris.runtime.swisseph_sha256", runtime_library_digest(),
-              stored["ephemeris"]["runtime"]["swisseph_sha256"])
-        derived.append("ephemeris.runtime")
-    else:
-        problems.append("ephemeris.runtime: the vector binds no runtime library identity")
+    for key in ("library_sha256", "platform"):
+        if key not in stored["ephemeris"]:
+            problems.append(f"ephemeris.{key}: the vector binds no library identity (schema /2 requires it)")
+    if "library_sha256" in stored["ephemeris"]:
+        check("ephemeris.library_sha256", runtime_library_digest(), stored["ephemeris"]["library_sha256"])
+    if "platform" in stored["ephemeris"]:
+        check("ephemeris.platform", runtime_platform(), stored["ephemeris"]["platform"])
+    derived.append("ephemeris.library")
     check("node", _NODE, stored["node"])
     derived.append("node")
     check("implementation", module_digests(modules), stored["implementation"])
@@ -186,5 +193,5 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
     return {"derived": derived, "not_derived": list(NOT_INDEPENDENTLY_DERIVED)}
 
 
-__all__ = ["NOT_INDEPENDENTLY_DERIVED", "module_digests", "runtime_library_digest", "sql_l0_digest",
+__all__ = ["NOT_INDEPENDENTLY_DERIVED", "module_digests", "runtime_library_digest", "runtime_platform", "sql_l0_digest",
            "sql_registry_digest", "sql_sky_convention_digest", "verify_inputs", "verify_registry_digest"]

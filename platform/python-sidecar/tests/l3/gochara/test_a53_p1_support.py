@@ -49,8 +49,12 @@ def world(monkeypatch, tmp_path):
     """A fresh AM-5 database with the registry, convention, manifest, snapshot and ONE class inventory +
     coverage written, so a P1 grain can be materialised and verified. `daśā(rows)` rewrites the stubbed
     L1 daśā rows BEFORE the snapshot (the snapshot binds whatever is there)."""
+    yield from _world(monkeypatch, tmp_path, faithful=False)
+
+
+def _world(monkeypatch, tmp_path, faithful):
     import psycopg
-    admin, name, dsn = create_am5_database("p1s")
+    admin, name, dsn = create_am5_database("p1s", faithful=faithful)
     conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
     monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
     RuleRegistryStore(conn).seed()

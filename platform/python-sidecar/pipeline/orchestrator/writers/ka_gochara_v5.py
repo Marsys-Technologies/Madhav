@@ -577,11 +577,17 @@ class GocharaV5Writer(WriterBase):
         # R8-4: the candidate gate's window half — every included P1–P4 grain of this class must carry a
         # VERIFIED, current, input-bound verification result. The build refuses a class that cannot pass it
         # rather than leave a candidate no sealer could accept (UNVERIFIED_DYNAMIC / missing both fail).
-        if gk_window_gate.verification_available(ctx.db_conn):
+        if not gk_window_gate.verification_available(ctx.db_conn):
+            gate_note = "; window verification gate NOT evaluated (migration 1240 is not applied)"
+        elif not gk_window_gate.can_write_verification(ctx.db_conn):
+            # no verifier principal is provisioned: no result CAN exist, so the seal trigger will refuse the
+            # candidate; say so rather than fail every class — the roles decision is the named blocker
+            open_violations = gk_window_gate.candidate_gate(ctx.db_conn, chart_id, GENERATION, event_class)
+            gate_note = (f"; window verification gate CLOSED ({len(open_violations)} violation(s): the running role "
+                         "cannot write verification results — a verifier principal must be provisioned)")
+        else:
             gk_window_gate.require_candidate_gate(ctx.db_conn, chart_id, GENERATION, event_class)
             gate_note = "; window verification gate passed"
-        else:
-            gate_note = "; window verification gate NOT evaluated (migration 1240 is not applied)"
         return WriterResult(asset_id=self.asset_id, rows_inserted=1,
                             notes=f"verify {event_class}: inventory + ledger digests "
                                   "independently reproduced; "
@@ -753,9 +759,12 @@ class GocharaV5Writer(WriterBase):
             " ORDER BY 1", (chart_id, GENERATION, event_class, path_id)).fetchall()}
             | {gk_rule_registry.selected_path_version(event_class, path_id)})
         available = gk_window_gate.verification_available(ctx.db_conn)
+        # 1240: the builder deliberately holds NO privilege on the verification table (the writer cannot verify
+        # itself); only a provisioned verifier principal may write it
+        privileged = available and gk_window_gate.can_write_verification(ctx.db_conn)
         input_digest = (InventoryStore(ctx.db_conn).snapshot_input_digest(chart_id, GENERATION)
-                        if available else None)
-        persist = available and input_digest is not None
+                        if privileged else None)
+        persist = privileged and input_digest is not None
         windows = memberships = 0
         excluded: dict = {}
         reasons: dict = {}
@@ -812,7 +821,9 @@ class GocharaV5Writer(WriterBase):
         stored_note = ("; verification result persisted (the candidate gate consumes it)" if persist else
                        "; verification result NOT persisted — "
                        + ("migration 1240 is not applied" if not available else
-                          "no search-input snapshot to bind it to") + " (the candidate gate cannot pass)")
+                          "the running role holds no INSERT on the verification table (no verifier principal is "
+                          "provisioned)" if not privileged else
+                          "no search-input snapshot to bind it to") + " (the candidate gate stays closed)")
         return WriterResult(asset_id=self.asset_id, rows_inserted=windows + memberships,
                             notes=head + tail + stored_note)
 

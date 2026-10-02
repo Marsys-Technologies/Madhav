@@ -76,8 +76,9 @@ def _sky(conn) -> str:
 def test_the_vector_binds_every_named_component_and_is_deterministic(db, ephe):
     v = _vector(db, ephe, l0_consumed=("bg_transit_rules",))
     assert v["schema"] == iv.VECTOR_SCHEMA
-    assert set(v["ephemeris"]) == {"backend", "swe_version", "files", "probe_digest", "runtime"}
-    assert len(v["ephemeris"]["runtime"]["swisseph_sha256"]) == 64          # the loaded library ARTIFACT, bound
+    assert set(v["ephemeris"]) == {"backend", "swe_version", "files", "probe_digest", "library_sha256", "platform"}
+    assert len(v["ephemeris"]["library_sha256"]) == 64                       # the loaded library ARTIFACT, bound
+    assert v["ephemeris"]["platform"] == iv.platform_identity() and "-" in v["ephemeris"]["platform"]
     assert set(v) == {"schema", "stored_scope", "sky_convention", "registry", "node", "ephemeris", "l0",
                       "orb_policy", "rulings_digest", "implementation"}
     assert set(v["sky_convention"]) == {"id", "content_digest"} and len(v["sky_convention"]["content_digest"]) == 64
@@ -300,8 +301,12 @@ def test_replay_reuses_the_original_ephemeris_l0_implementation_and_policy_not_o
     # a different series result (library numerics) and a different runtime library artifact
     with pytest.raises(iv.InputDrift, match="ephemeris.probe_digest"):
         _replay(db, stored, ephe, series_probe=lambda e: "cd" * 32)
-    monkeypatch.setattr(iv, "runtime_artifact_sha", lambda: "9" * 64)
-    with pytest.raises(iv.InputDrift, match="ephemeris.runtime"):
+    monkeypatch.setattr(iv, "library_artifact_sha", lambda: "9" * 64)
+    with pytest.raises(iv.InputDrift, match="ephemeris.library_sha256"):
+        _replay(db, stored, ephe)
+    monkeypatch.undo()
+    monkeypatch.setattr(iv, "platform_identity", lambda: "Plan9-mips")
+    with pytest.raises(iv.InputDrift, match="ephemeris.platform"):
         _replay(db, stored, ephe)
     monkeypatch.undo()
     # different policy (rulings) and different implementation source
@@ -328,7 +333,7 @@ def test_the_independent_input_check_derives_every_derivable_component_and_names
     stored = _vector(db, ephe, l0_consumed=CONSUME)
     mods = iv.IMPLEMENTATION_MODULES
     out = ivv.verify_inputs(db, stored, ephe_path=ephe, modules=mods, path_refs=REFS)
-    assert set(out["derived"]) == {"registry", "l0", "sky_convention", "ephemeris.files", "ephemeris.runtime",
+    assert set(out["derived"]) == {"registry", "l0", "sky_convention", "ephemeris.files", "ephemeris.library",
                                    "node", "implementation"}
     assert set(out["not_derived"]) == {"orb_policy", "rulings_digest"}      # named: a pass never claims them
     # each independently derived component is individually caught
@@ -338,24 +343,31 @@ def test_the_independent_input_check_derives_every_derivable_component_and_names
              "sky_convention"),
             ("file", lambda v: dict(v, ephemeris=dict(v["ephemeris"], files={
                 **v["ephemeris"]["files"], "sepl_18.se1": "0" * 64})), "ephemeris.files.sepl_18.se1"),
-            ("runtime", lambda v: dict(v, ephemeris=dict(v["ephemeris"], runtime={"swisseph_sha256": "0" * 64})),
-             "ephemeris.runtime"),
+            ("library", lambda v: dict(v, ephemeris=dict(v["ephemeris"], library_sha256="0" * 64)),
+             "ephemeris.library_sha256"),
+            ("platform", lambda v: dict(v, ephemeris=dict(v["ephemeris"], platform="Plan9-mips")),
+             "ephemeris.platform"),
             ("node", lambda v: dict(v, node=dict(v["node"], model="true")), "node"),
             ("impl", lambda v: dict(v, implementation=dict(v["implementation"], window="0" * 64)),
              "implementation"),
             ("registry", lambda v: dict(v, registry=dict(v["registry"], digest="0" * 64)), "registry.digest")):
         with pytest.raises(RuntimeError, match=match):
             ivv.verify_inputs(db, tamper(stored), ephe_path=ephe, modules=mods, path_refs=REFS)
-    no_runtime = dict(stored, ephemeris={k: v for k, v in stored["ephemeris"].items() if k != "runtime"})
-    with pytest.raises(RuntimeError, match="binds no runtime library identity"):
-        ivv.verify_inputs(db, no_runtime, ephe_path=ephe, modules=mods, path_refs=REFS)
+    for key in ("library_sha256", "platform"):          # schema /2 REQUIRES the identity: absent is refused, not skipped
+        missing = dict(stored, ephemeris={k: v for k, v in stored["ephemeris"].items() if k != key})
+        with pytest.raises(RuntimeError, match=f"ephemeris.{key}: the vector binds no library identity"):
+            ivv.verify_inputs(db, missing, ephe_path=ephe, modules=mods, path_refs=REFS)
 
 
-def test_the_runtime_artifact_identity_is_the_loaded_library_file_and_both_derivations_agree():
+def test_the_library_identity_is_the_loaded_artifact_and_both_derivations_agree():
+    import importlib.util
+
     import swisseph
-    a = iv.runtime_artifact_sha()
+    a = iv.library_artifact_sha()
     assert a == ivv.runtime_library_digest() and len(a) == 64
-    assert a == iv._file_sha(Path(swisseph.__file__))
+    assert a == iv._file_sha(Path(importlib.util.find_spec("swisseph").origin))
+    assert a == iv._file_sha(Path(swisseph.__file__))                       # the compiled extension the import loaded
+    assert iv.platform_identity() == ivv.runtime_platform()
 
 
 # ═══ AM-16 reconciliation with Stream B's model (steward M20261002T014514-c929) ═══════════════════════
@@ -661,9 +673,10 @@ def test_the_sky_identity_is_the_id_and_a_digest_of_the_stored_content():
 import copy as _copy                                                   # noqa: E402
 import json as _json                                                   # noqa: E402
 
-FROZEN = Path(__file__).parent / "fixtures" / "am16_vectors_frozen_v1.json"
+FROZEN = Path(__file__).parent / "fixtures" / "am16_vectors_frozen_v2.json"
 #: the INPUTS the frozen vectors were generated from (Stream B's `am16_vectors_model.py` BASE, vendored with
-#: the frozen file at campaign/pravaha 425a89218; if either moves, this test is the alarm)
+#: the frozen file v2 at campaign/pravaha 6ba0c5fc7 — schema /2 adds ephemeris.library_sha256 + platform; if either
+#: moves, this test is the alarm)
 _BASE = {
     "sky_id": "sky:lahiri_sidereal_v1", "sky_vector": {"zodiac": "sidereal", "ayanamsha": "lahiri", "node_model": "mean"},
     "registry": {
@@ -681,6 +694,7 @@ _BASE = {
     },
     "node": {"model": "mean", "source": "swiss_mean_node_flg_sidereal", "zodiac": "sidereal", "ayanamsha": "lahiri"},
     "swe_version": "2.10.03", "stored_scope": "stored_non_moon", "probe_digest": "6ea09e40aad66687" + "0" * 48,
+    "library_sha256": "5ee1ab0c" + "e" * 56, "platform": "Linux-x86_64",
     "opened_files": {"sepl_18.se1": "a" * 64, "semo_18.se1": "b" * 64},
     "l0_rows": {"bg_transit_rules": [{"graha": "sun", "house": 4, "rule_type": "vedha", "obstructor_house": 10}]},
     "admission_orb": {"orb_table": {"conjunction": 1.0}, "point_orb_source": "convention"},
@@ -704,13 +718,15 @@ def _mutate(case):
     elif case == "kernel_factor_source": d["impl_modules"]["evaluation"]["kernel_factor"] = "1" * 64
     elif case == "stored_scope_only": d["stored_scope"] = "stored_all"
     elif case == "probe_digest_only": d["probe_digest"] = "1" * 64
+    elif case == "library_artifact_only": d["library_sha256"] = "7" * 64
+    elif case == "platform_only": d["platform"] = "Darwin-arm64"
     elif case == "audit_field_only": r["paths"][0]["created_at"] = "t1"
     return d
 
 
 CASES = ["base", "membership_only", "node_series_only", "window_algorithm_only", "prerequisite_order_only",
          "census_only", "orb_policy_only", "l0_rows_only", "kernel_factor_source", "stored_scope_only",
-         "probe_digest_only", "audit_field_only", "unopened_file_only"]
+         "probe_digest_only", "audit_field_only", "unopened_file_only", "library_artifact_only", "platform_only"]
 
 
 @pytest.mark.parametrize("case", CASES)
@@ -739,7 +755,8 @@ def test_every_frozen_case_changes_exactly_the_component_it_should_and_the_unobs
             "window_algorithm_only": "implementation.window", "prerequisite_order_only": "registry.digest",
             "census_only": "registry.census", "orb_policy_only": "orb_policy.activity.1.1.0",
             "l0_rows_only": "l0.bg_transit_rules", "kernel_factor_source": "implementation.evaluation",
-            "stored_scope_only": "stored_scope", "probe_digest_only": "ephemeris.probe_digest"}
+            "stored_scope_only": "stored_scope", "probe_digest_only": "ephemeris.probe_digest",
+            "library_artifact_only": "ephemeris.library_sha256", "platform_only": "ephemeris.platform"}
     for case, component in want.items():
         diff = iv.diff_vectors(base, iv.assemble_vector(_mutate(case)))
         # the NAMED component must be among those that moved (a census also moves the digest it is part of)
@@ -781,12 +798,13 @@ def test_the_writer_module_itself_is_in_a_stage_list():
             "services.gochara_rules.permission", "services.gochara_rules.frames"} <= listed
 
 
-def test_the_runtime_artifact_extends_the_serializer_without_moving_streams_bs_frozen_literals():
-    """`ephemeris.runtime` is present exactly when the build supplies the runtime artifact; B's frozen inputs
-    (which predate it) still serialize byte-identically — the frozen-vector tests above are that proof — and the
-    extended shape is itself a deterministic function of its inputs."""
-    assert "runtime" not in iv.assemble_vector(_BASE)["ephemeris"]
-    a = iv.assemble_vector({**_BASE, "runtime_artifact": "a" * 64})
-    b = iv.assemble_vector({**_BASE, "runtime_artifact": "b" * 64})
-    assert a["ephemeris"]["runtime"] == {"swisseph_sha256": "a" * 64} and a != b
-    assert iv.canonical_json(a) == iv.canonical_json(iv.assemble_vector({**_BASE, "runtime_artifact": "a" * 64}))
+def test_a_new_build_without_the_library_identity_is_refused_not_serialized():
+    """Schema /2 requires `library_sha256` and `platform`: the serializer has no optional form (a vector that cannot
+    distinguish two library builds is not an identity)."""
+    for key in ("library_sha256", "platform"):
+        bad = {k: v for k, v in _BASE.items() if k != key}
+        with pytest.raises(KeyError):
+            iv.assemble_vector(bad)
+    assert iv.VECTOR_SCHEMA == "ka_gochara_input_vector/2"
+    with pytest.raises(iv.InputDrift, match="schema"):
+        iv.verify_live(None, {"schema": "ka_gochara_input_vector/1"})              # a /1 vector is refused by schema

@@ -127,6 +127,13 @@ class WindowStore:
 
     # ── write ───────────────────────────────────────────────────────────────
 
+    def provenance_columns_available(self) -> bool:
+        """Does the APPLIED schema carry the window provenance columns (1240)? Read, never assumed."""
+        row = self.conn.execute(
+            "SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_eval_window'::regclass"
+            " AND attname IN ('objective', 'objective_value', 'qualification') AND NOT attisdropped").fetchone()
+        return (next(iter(row.values())) if isinstance(row, dict) else row[0]) == 3
+
     def replace_grain_windows(self, *, chart_id: str, generation: str, event_class: str,
                               path_id: str, rule_version: str,
                               drafts: list[WindowDraft]) -> dict[str, int]:
@@ -140,23 +147,36 @@ class WindowStore:
             return {"windows": 0, "memberships": 0, "replaced": deleted}
         coverage_facts = self._records.stored_coverage_facts_json(
             chart_id=chart_id, generation=generation, event_class=event_class)
+        provenance = self.provenance_columns_available()
         memberships = 0
         for d in drafts:
             wid = window_uuid(chart_id=chart_id, generation=generation, event_class=event_class,
                               path_id=path_id, rule_version=rule_version, interval=d.interval)
             rng = f"[{d.interval[0].isoformat()},{d.interval[1].isoformat()})"
-            self.conn.execute(
-                "INSERT INTO public.ka_gochara_eval_window ("
-                " window_id, chart_id, event_class, generation, path_id, rule_version, interval,"
-                " peak_instant, score, evidence_for, evidence_against,"
-                " outcome_valence_for_native, severity, coverage_partition_kind,"
-                " coverage_partition_key, coverage_facts, null_states_used)"
-                " VALUES (%s,%s,%s,%s,%s,%s,%s::tstzrange,%s,%s,%s,%s,%s,%s,'event_class',%s,"
-                " %s::jsonb,%s::text[])",
-                (str(wid), chart_id, event_class, generation, path_id, rule_version, rng,
-                 d.peak_instant, d.score, d.evidence_for, d.evidence_against,
-                 d.outcome_valence_for_native, d.severity, event_class, coverage_facts,
-                 list(d.null_states_used)))
+            base = (str(wid), chart_id, event_class, generation, path_id, rule_version, rng,
+                    d.peak_instant, d.score, d.evidence_for, d.evidence_against,
+                    d.outcome_valence_for_native, d.severity, event_class, coverage_facts,
+                    list(d.null_states_used))
+            if provenance:       # R8-4 (1240): the objective, its value and the structured qualification provenance
+                self.conn.execute(
+                    "INSERT INTO public.ka_gochara_eval_window ("
+                    " window_id, chart_id, event_class, generation, path_id, rule_version, interval,"
+                    " peak_instant, score, evidence_for, evidence_against,"
+                    " outcome_valence_for_native, severity, coverage_partition_kind,"
+                    " coverage_partition_key, coverage_facts, null_states_used,"
+                    " objective, objective_value, qualification)"
+                    " VALUES (%s,%s,%s,%s,%s,%s,%s::tstzrange,%s,%s,%s,%s,%s,%s,'event_class',%s,"
+                    " %s::jsonb,%s::text[],%s,%s,%s::jsonb)",
+                    base + (d.objective, d.objective_value, _json.dumps(d.qualification(), sort_keys=True)))
+            else:
+                self.conn.execute(
+                    "INSERT INTO public.ka_gochara_eval_window ("
+                    " window_id, chart_id, event_class, generation, path_id, rule_version, interval,"
+                    " peak_instant, score, evidence_for, evidence_against,"
+                    " outcome_valence_for_native, severity, coverage_partition_kind,"
+                    " coverage_partition_key, coverage_facts, null_states_used)"
+                    " VALUES (%s,%s,%s,%s,%s,%s,%s::tstzrange,%s,%s,%s,%s,%s,%s,'event_class',%s,"
+                    " %s::jsonb,%s::text[])", base)
             for rid in d.record_ids:
                 self.conn.execute(
                     "INSERT INTO public.ka_gochara_eval_window_record ("

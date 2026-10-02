@@ -35,7 +35,7 @@ from typing import Iterable
 
 from panchang_engine.swiss_state import serialized_swiss_state
 
-VECTOR_SCHEMA = "ka_gochara_input_vector/1"
+VECTOR_SCHEMA = "ka_gochara_input_vector/2"
 REGISTRY_DIGEST_SCHEMA = "ka_gochara_registry_digest/1"
 STORED_SCOPE = "stored_non_moon"
 EXCLUDED_AUDIT_FIELDS = ("created_at", "sealed_at")
@@ -164,14 +164,12 @@ def registry_digest(conn, path_refs: Iterable[tuple[str, str]], *, census_overri
 
 
 def _ephemeris_component(inp: dict) -> dict:
-    out = {"backend": "swieph", "swe_version": inp["swe_version"],
-           "files": dict(sorted(inp["opened_files"].items())), "probe_digest": inp["probe_digest"]}
-    # R8-1: the runtime library ARTIFACT (the loaded swisseph extension's sha256) — a version string plus 16 probe
-    # results do not prove identical behaviour at every unprobed instant. Present whenever the build supplies it
-    # (production always does); absent only in inputs that predate it (B's frozen literals stay byte-identical).
-    if inp.get("runtime_artifact") is not None:
-        out["runtime"] = {"swisseph_sha256": inp["runtime_artifact"]}
-    return out
+    """AM-16 schema /2 (Stream B's frozen vectors v2): beside the version string and the opened-file digests the
+    component binds the LOADED swisseph artifact (`library_sha256`) and the platform — float behaviour is a function
+    of the library build and the CPU/libm. Both are REQUIRED: a build that cannot name them is refused upstream."""
+    return {"backend": "swieph", "swe_version": inp["swe_version"], "library_sha256": inp["library_sha256"],
+            "platform": inp["platform"], "files": dict(sorted(inp["opened_files"].items())),
+            "probe_digest": inp["probe_digest"]}
 
 
 def assemble_vector(inp: dict) -> dict:
@@ -294,17 +292,23 @@ def ephemeris_identity(ephe_path: str | None, *, bodies: Iterable[str], jd_lo: f
     return {"backend": "swieph", "swe_version": swe.version,
             "files": {name: _file_sha(Path(path)) for name, path in sorted(opened.items())},
             "probe_digest": (series_probe or probe_series_digest)(ephe_path),
-            "runtime_artifact": runtime_artifact_sha()}
+            "library_sha256": library_artifact_sha(), "platform": platform_identity()}
 
 
-def runtime_artifact_sha() -> str:
-    """sha256 of the swisseph runtime library file actually LOADED (the extension module's own file) — the
-    implementation the series numbers come from, bound beside its version string."""
-    import swisseph as swe
-    path = getattr(swe, "__file__", None)
-    if not path or not Path(path).is_file():
-        raise InputDrift("ephemeris: the loaded swisseph library has no file to bind (no runtime identity)")
-    return _file_sha(Path(path))
+def library_artifact_sha() -> str:
+    """sha256 of the swisseph artifact the import machinery resolves (`importlib.util.find_spec('swisseph').origin` —
+    the compiled extension), bound beside the version string: two builds can share a version."""
+    import importlib.util
+    spec = importlib.util.find_spec("swisseph")
+    if spec is None or not spec.origin or not Path(spec.origin).is_file():
+        raise InputDrift("ephemeris: the swisseph library has no file to bind (no library identity)")
+    return _file_sha(Path(spec.origin))
+
+
+def platform_identity() -> str:
+    """'<system>-<machine>' (e.g. 'Linux-x86_64'): float behaviour is a function of the architecture and libm."""
+    import platform
+    return f"{platform.system()}-{platform.machine()}"
 
 
 def node_identity() -> dict:
@@ -414,7 +418,7 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
         "stored_scope": STORED_SCOPE, "sky_id": sky_convention_id, "sky_vector": sky_vector,
         "registry": payload, "node": node_identity(), "swe_version": eph["swe_version"],
         "opened_files": eph["files"], "probe_digest": eph["probe_digest"],
-        "runtime_artifact": eph.get("runtime_artifact"),
+        "library_sha256": eph["library_sha256"], "platform": eph["platform"],
         "l0_digests": l0_identities(conn, l0_consumed),
         "admission_orb": {"orb_table": ORB_TABLE, "point_orb_source": POINT_ORB_SOURCE},
         "activity_orb": activity_orb_states(conn, refs, census_override=census_override),
@@ -478,7 +482,8 @@ def verify_live(conn, stored: dict, **kw) -> None:
 
 
 __all__ = ["EXCLUDED_AUDIT_FIELDS", "IMPLEMENTATION_MODULES", "InputDrift", "REGISTRY_DIGEST_SCHEMA",
-           "L0_CONSUMED", "VECTOR_SCHEMA", "activity_orb_states", "l0_identities", "runtime_artifact_sha",
+           "L0_CONSUMED", "VECTOR_SCHEMA", "activity_orb_states", "l0_identities", "library_artifact_sha",
+           "platform_identity",
            "probe_opened_files", "sky_convention_identity", "admission_orb_digest", "build_input_vector",
            "STORED_SCOPE", "assemble_vector", "canonical_json", "diff_vectors", "ephemeris_identity", "implementation_digests",
            "node_identity", "probe_series_digest", "registry_digest", "registry_digest_of",

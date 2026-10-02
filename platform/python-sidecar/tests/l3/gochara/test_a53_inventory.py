@@ -206,7 +206,7 @@ def test_horizon_must_be_whole_second_utc():
 
 # ── store (real 1206) ────────────────────────────────────────────────────────
 
-def create_am5_database(tag="am5"):
+def create_am5_database(tag="am5", faithful=False):
     """A throwaway database with the real chain + 1206 applied and the L1 tables stubbed.
     Returns (admin_conn, name, dsn); the caller drops it (refusing non-prefixed names)."""
     psycopg = pytest.importorskip("psycopg")
@@ -216,10 +216,24 @@ def create_am5_database(tag="am5"):
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"NOT_RUN: disposable database server unreachable ({exc})")
     name = f"{DB_PREFIX}{tag}_{uuid.uuid4().hex[:8]}"
+    if faithful:
+        # a deployment-faithful mirror (1206-R6 method): the builder / verifier / sealer principals EXIST when the
+        # migrations run (so their role-guarded grants apply) and PUBLIC EXECUTE is revoked on every function the
+        # migration role creates — exactly what production's bootstrap does
+        admin.execute("DO $$ BEGIN"
+                      " IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'data_plane_builder') THEN"
+                      "   CREATE ROLE data_plane_builder NOLOGIN; END IF;"
+                      " IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_verifier') THEN"
+                      "   CREATE ROLE gochara_verifier NOLOGIN; END IF;"
+                      " IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_sealer') THEN"
+                      "   CREATE ROLE gochara_sealer NOLOGIN; END IF;"
+                      " END $$")
     admin.execute(f'CREATE DATABASE "{name}"')
     dsn = make_conninfo(ADMIN_DSN, dbname=name)
     try:
         conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+        if faithful:
+            conn.execute("ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC")
         _populate_am5_database(conn)
         conn.close()
     except BaseException:

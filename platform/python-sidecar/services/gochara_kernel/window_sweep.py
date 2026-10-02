@@ -554,6 +554,13 @@ class WindowDraft:
     objective: str = ""                 # which function the peak maximises (a NAME)
     unqualified_reason: str | None = None
     objective_value: float | None = None   # that function's value at the peak — distinct from `score`
+    affected_channels: tuple = ()          # the channels an UNQUALIFIED member feeds (an unknown channel feeds both)
+
+    def qualification(self) -> dict:
+        """The structured provenance persisted with the window (1240 `qualification`; closed keys)."""
+        return {"unqualified_reason": self.unqualified_reason, "unresolved": dict(sorted(self.unresolved.items())),
+                "affected_channels": sorted(self.affected_channels), "members": self.members,
+                "qualified_members": self.qualified_members}
 
 
 #: R8-4/R8-6: until a solver with a stated global-maximum guarantee exists for function-valued factors
@@ -755,10 +762,12 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             for reason in {r for _f, r in prog.reasons}:     # records per reason, not factor-misses
                 unresolved[reason] = unresolved.get(reason, 0) + 1
         ids = tuple(sorted(p.rec.record_id for p in in_win))
+        affected = sorted({c for p in in_win if not p.qualified
+                           for c in ((CHANNEL_FOR, CHANNEL_AGAINST) if p.channel is None else (p.channel,))})
         base = dict(interval=(lo, hi), severity=None, record_ids=ids,
                     null_states_used=sorted(null_states), unresolved=unresolved,
                     members=len(in_win), qualified_members=sum(1 for p in in_win if p.qualified),
-                    objective=objective_name)
+                    objective=objective_name, affected_channels=tuple(affected))
         for_unq = [p for p in in_win if not p.qualified and p.channel in (CHANNEL_FOR, None)]
         against_unq = [p for p in in_win if not p.qualified and p.channel in (CHANNEL_AGAINST, None)]
         if for_unq:
