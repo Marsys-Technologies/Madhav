@@ -907,6 +907,25 @@ class TestKarakaRolesGolden:
         assert emitted_subjects == set(cat["applies_to_subjects"])
         assert "strikaraka_alias" in cat["allowed_keys"]
 
+    def test_schema_verification_min_equals_the_emitted_tier(self, rows):
+        """The schema's `verification_min` for every karaka_chara_position key the writer emits must equal the tier the
+        writer actually stamps (Q03: `single` by default; `two_pass_verified` only where a second derivation ran). The
+        alias row is the one the PR review caught (schema said two_pass_verified, writer emits single)."""
+        schema = json.loads(SCHEMA_PATH.read_text())
+        cat = _find_schema_category(schema, "karaka_chara_position")
+        emitted = {}
+        for r in rows:
+            emitted.setdefault(r["fact_key"], set()).add(r["verification_pass_status"])
+        checked = []
+        for key, tiers in emitted.items():
+            if key not in cat["allowed_keys"]:
+                continue  # emitted but not declared (house_d1): the existing subject/alias assertions own that gap
+            assert tiers == {cat["allowed_keys"][key]["verification_min"]}, (key, tiers)
+            checked.append(key)
+        assert "strikaraka_alias" in checked and "assigned_graha" in checked and "karaka_rank" in checked
+        assert emitted["strikaraka_alias"] == {"single"}
+        assert cat["allowed_keys"]["strikaraka_alias"]["verification_min"] == "single"
+
 
 def _find_schema_category(node, name):
     if isinstance(node, dict):

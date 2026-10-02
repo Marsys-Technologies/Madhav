@@ -4041,7 +4041,7 @@
       "allowed_keys": {
         "assigned_graha": {
           "value_type": "text",
-          "verification_min": "two_pass_verified"
+          "verification_min": "single"
         },
         "longitude_sidereal": {
           "value_type": "num",
@@ -4051,7 +4051,7 @@
             360.0
           ],
           "precision": 6,
-          "verification_min": "two_pass_verified"
+          "verification_min": "single"
         },
         "degree_in_sign": {
           "value_type": "num",
@@ -4061,7 +4061,7 @@
             30.0
           ],
           "precision": 6,
-          "verification_min": "two_pass_verified"
+          "verification_min": "single"
         },
         "sign": {
           "value_type": "text_enum",
@@ -4079,7 +4079,7 @@
             "Aquarius",
             "Pisces"
           ],
-          "verification_min": "two_pass_verified"
+          "verification_min": "single"
         },
         "karaka_school": {
           "value_type": "text_enum",
@@ -4087,7 +4087,7 @@
             "parashari_rahu_excluded",
             "kn_rao_rahu_included"
           ],
-          "verification_min": "two_pass_verified"
+          "verification_min": "single"
         },
         "strikaraka_alias": {
           "value_type": "text_enum",
@@ -4096,7 +4096,7 @@
           ],
           "applies_only_to": "DARAKARAKA subject, formula_id kn_rao_rahu_included",
           "note": "Labelled alias of the Darakaraka in the 8-karaka scheme (same graha as DARAKARAKA.assigned_graha); not a ninth subject row.",
-          "verification_min": "two_pass_verified"
+          "verification_min": "single"
         },
         "karaka_rank": {
           "value_type": "num",
@@ -4106,7 +4106,7 @@
             8
           ],
           "precision": 0,
-          "verification_min": "two_pass_verified"
+          "verification_min": "single"
         },
         "tolerance_arcsec": {
           "value_type": "num",
