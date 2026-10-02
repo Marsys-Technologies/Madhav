@@ -46,8 +46,8 @@ TZ_CONVENTION = "dates converted to IST civil dates via (ts at time zone 'Asia/K
 
 SQL_HORIZON = """SELECT COUNT(*) FROM kala_gochara_windows
  WHERE chart_id = %s AND generation = %s
-   AND (((window_end at time zone 'Asia/Kolkata')::date) < DATE %s
-        OR ((window_start at time zone 'Asia/Kolkata')::date) >= DATE %s)"""
+   AND (((window_end at time zone 'Asia/Kolkata')::date) < %s::date
+        OR ((window_start at time zone 'Asia/Kolkata')::date) >= %s::date)"""
 SQL_DUMP = """SELECT event_class,
        (window_start at time zone 'Asia/Kolkata')::date AS ws,
        (window_end   at time zone 'Asia/Kolkata')::date AS we,
@@ -63,6 +63,14 @@ SQL_SIGN_CHECK = """SELECT COUNT(*) FILTER (WHERE abs(signed_intensity) <> raw_i
   FROM kala_gochara_windows WHERE chart_id = %s AND generation = %s"""
 SQL_MANIFEST_ORB = """SELECT status, input_generation_vector->'orb_max_deg', input_generation_vector->'orb_ruling'
   FROM kala_gochara_publication WHERE chart_id = %s AND generation = %s"""
+
+
+SQL_COVERAGE_SUMMARY = """SELECT partition_kind, COUNT(*) AS partitions,
+       COUNT(*) FILTER (WHERE requested_horizon = completed_horizon) AS full_horizon,
+       COUNT(*) FILTER (WHERE unsearched_reason IS NOT NULL) AS unsearched,
+       COALESCE(SUM(targets_requested), 0), COALESCE(SUM(targets_resolved), 0), COALESCE(SUM(targets_unresolved), 0),
+       ARRAY_AGG(DISTINCT split_part(partition_key, ':', 1) ORDER BY split_part(partition_key, ':', 1)) AS bodies
+  FROM kala_gochara_coverage WHERE chart_id = %s AND generation = %s GROUP BY partition_kind ORDER BY partition_kind"""
 
 
 def _cell(v):
@@ -136,6 +144,23 @@ def _connect(args, conn_factory):
     return conn_factory()
 
 
+def read_coverage_summary(conn, generation: str) -> dict:
+    """What the candidate's coverage ledger rows actually say — DISCLOSURE ONLY. Read-only; touches no window row. The protocol's
+    T-honesty coverage is per (class, year) cell (§6.5); the 4.1 chain writes per body-target partitions, so this summary is never
+    supplied to the scorer as a coverage manifest."""
+    conn.read_only = True
+    with conn.cursor() as cur:
+        cur.execute(SQL_COVERAGE_SUMMARY, (CHART_ID, generation))
+        rows = cur.fetchall()
+    kinds = {r[0]: {"partitions": r[1], "full_horizon": r[2], "unsearched": r[3], "targets_requested": int(r[4]),
+                    "targets_resolved": int(r[5]), "targets_unresolved": int(r[6]), "first_key_segment": list(r[7])}
+             for r in rows}
+    return {"generation": generation, "partition_kinds": kinds,
+            "event_class_partitions": kinds.get("event_class", {}).get("partitions", 0),
+            "per_class_year_cells_derivable": False,
+            "note": "per-(class, year) computation coverage (protocol §6.5c) cannot be derived from body_target partitions"}
+
+
 def main(argv: list[str] | None = None, conn_factory=None) -> int:
     ap = argparse.ArgumentParser(prog="dump_extract")
     ap.add_argument("--generation", required=True)
@@ -148,21 +173,26 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
                     help="connect with the libpq PG* environment variables instead of GOCHARA_EVAL_READONLY_DSN")
     ap.add_argument("--read-manifest-orb", action="store_true",
                     help="print the orb the candidate manifest declares (orb_max_deg, orb_ruling) and exit; reads no window row")
+    ap.add_argument("--read-coverage-summary", action="store_true",
+                    help="print the candidate's coverage-ledger summary (disclosure only; reads no window row) and exit")
     ap.add_argument("--requalify-3-0", metavar="PINNED_SHA256",
                     help="re-dump the '3.0' BASELINE (no freeze) and compare to this pinned sha256")
     ap.add_argument("--compare-to", help="with --requalify-3-0: the pinned extract file; its ROW MULTISET is compared as well "
                                          "(the pinned file's row order within (event_class, ws) ties was database-defined)")
     args = ap.parse_args(argv)
 
-    if args.read_manifest_orb:
+    if args.read_manifest_orb or args.read_coverage_summary:
         if args.generation not in CANDIDATE_GENERATIONS:
-            print(f"REFUSED: no manifest read for generation {args.generation!r}", file=sys.stderr)
+            print(f"REFUSED: no manifest/coverage read for generation {args.generation!r}", file=sys.stderr)
             return 2
         conn = _connect(args, conn_factory)
         if conn is None:
             return 2
         try:
-            print(json.dumps(read_manifest_orb(conn, args.generation)))
+            if args.read_manifest_orb:
+                print(json.dumps(read_manifest_orb(conn, args.generation)))
+            if args.read_coverage_summary:
+                print(json.dumps(read_coverage_summary(conn, args.generation)))
         finally:
             conn.rollback()
             conn.close()

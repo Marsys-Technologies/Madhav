@@ -136,16 +136,19 @@ class FakeCursor:
     def fetchone(self):
         if "sign_mismatch" in self.last:
             return self.conn.sign
-        if "input_generation_vector" in self.last:
+        if "input_generation_vector" in self.last or "kala_gochara_coverage" in self.last:
             return None
         return (self.conn.outside,)
-    def fetchall(self): return self.conn.manifest if "input_generation_vector" in self.last else self.conn.rows
+    def fetchall(self):
+        if "kala_gochara_coverage" in self.last:
+            return self.conn.coverage
+        return self.conn.manifest if "input_generation_vector" in self.last else self.conn.rows
 
 
 class FakeConn:
-    def __init__(self, rows, outside=0, sign=(0, 0), manifest=None):
+    def __init__(self, rows, outside=0, sign=(0, 0), manifest=None, coverage=None):
         self.rows, self.outside, self.executed, self.read_only, self.closed = rows, outside, [], False, False
-        self.sign, self.manifest = sign, manifest or []
+        self.sign, self.manifest, self.coverage = sign, manifest or [], coverage or []
     def cursor(self): return FakeCursor(self)
     def rollback(self): pass
     def close(self): self.closed = True
@@ -191,6 +194,16 @@ class TestDump:
         assert dx.main(["--generation", "5.0", "--read-manifest-orb"], conn_factory=lambda: conn) == 2
         with pytest.raises(RuntimeError, match="exactly one manifest"):
             dx.read_manifest_orb(FakeConn(ROWS, manifest=[]), "4.1")
+
+    def test_coverage_summary_is_disclosure_only_and_says_per_class_year_cells_are_not_derivable(self, capsys):
+        cov = [("body_target", 24, 24, 0, 300, 290, 10, ["jupiter", "ketu", "mars", "mercury", "rahu", "saturn", "sun", "venus"])]
+        conn = FakeConn(ROWS, coverage=cov)
+        assert dx.main(["--generation", "4.1", "--read-coverage-summary"], conn_factory=lambda: conn) == 0
+        out = json.loads(capsys.readouterr().out)
+        assert out["partition_kinds"]["body_target"]["partitions"] == 24 and out["event_class_partitions"] == 0
+        assert out["per_class_year_cells_derivable"] is False
+        assert all("kala_gochara_windows" not in sql for sql, _ in conn.executed)
+        assert "event_class" not in dx.SQL_COVERAGE_SUMMARY.split("WHERE")[1]          # no class mapping is invented here
 
     def test_horizon_violation_stops(self):
         with pytest.raises(RuntimeError, match="outside the scored horizon"):
