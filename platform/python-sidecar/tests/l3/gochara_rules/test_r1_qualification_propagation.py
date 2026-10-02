@@ -125,3 +125,38 @@ def test_valence_follows_the_unresolved_branch_for_a_null_evidence_channel():
         assert v.evidence_for_occurrence == f and v.evidence_against_occurrence == a        # NULL stays NULL, never 0
     known = compute_valence("marriage", 0.0, 0.0)                    # a KNOWN zero is not unqualified
     assert known.outcome_valence_for_native == "favourable" and known.occurrence == "plain"
+
+
+# ── Codex round 7 [1] — an unknown competing path qualifies the cross-path result ─────────────────────────
+from services.gochara_rules.score import aggregate_paths, aggregate_paths_detail
+
+
+def test_codex_round7_unknown_competing_path_is_not_ignored():
+    # the exact reproduction: aggregate_paths([0.2, 'unqualified']) used to return 0.2
+    assert aggregate_paths([0.2, UNQUALIFIED]) == UNQUALIFIED
+    d = aggregate_paths_detail([0.2, UNQUALIFIED])
+    assert d["qualification"] == "unqualified" and d["known_lower_bound"] == 0.2 and d["unknown_paths"] == 1
+    assert d["reason"] == "competing_path_unqualified"
+
+
+def test_a_maximum_proved_independent_of_the_unknown_stays_qualified():
+    # a known 1.0 cannot be exceeded by anything in [0,1], so the unknown path cannot change the answer
+    assert aggregate_paths([1.0, UNQUALIFIED, 0.3]) == 1.0
+    assert aggregate_paths_detail([1.0, None])["qualification"] == "qualified"
+    # but 0.999… is NOT proof
+    assert aggregate_paths([0.999999, UNQUALIFIED]) == UNQUALIFIED
+
+
+def test_all_unknown_is_unqualified_with_no_lower_bound_and_empty_is_a_real_zero():
+    d = aggregate_paths_detail([UNQUALIFIED, UNQUALIFIED])
+    assert d["value"] == UNQUALIFIED and d["known_lower_bound"] is None and d["unknown_paths"] == 2
+    assert aggregate_paths([]) == 0.0                                  # no admitted path: a computed zero, unchanged
+    assert aggregate_paths([0.0, 0.0]) == 0.0                          # genuine computed zeros stay numeric
+    assert aggregate_paths([0.0, UNQUALIFIED]) == UNQUALIFIED          # zero is not proof either
+
+
+def test_known_paths_unchanged_and_malformed_scores_refused():
+    assert aggregate_paths([0.7, 0.4]) == pytest.approx(0.7)
+    for bad in ([1.2], [-0.1], [float("nan")], [True], ["high"]):
+        with pytest.raises(ValueError):
+            aggregate_paths(bad)

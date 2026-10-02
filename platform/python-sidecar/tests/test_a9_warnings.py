@@ -227,7 +227,7 @@ class TestW2SwissephUnavailable:
         mod = self._load()
 
         ctx = MagicMock()
-        ctx.config = {"chart_id": "test-chart-id"}
+        ctx.config = {"chart_id": "test-chart-id", "birth_params": {"datetime_iso": "1984-02-05T10:43:00+05:30"}}
 
         peak = date(2026, 3, 15)
         conn = MagicMock()
@@ -253,7 +253,7 @@ class TestW2SwissephUnavailable:
         mod = self._load()
 
         ctx = MagicMock()
-        ctx.config = {"chart_id": "test-chart-id"}
+        ctx.config = {"chart_id": "test-chart-id", "birth_params": {"datetime_iso": "1984-02-05T10:43:00+05:30"}}
 
         peak = date(2026, 3, 15)
         conn = MagicMock()

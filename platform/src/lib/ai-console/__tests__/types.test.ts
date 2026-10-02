@@ -60,6 +60,10 @@ describe('AI Console safe contracts', () => {
 
   it('requires exactly four concrete assignments, with no nested configuration or Inspector', () => {
     expect(RoleAssignmentsSchema.parse(roles)).toEqual(roles)
+    expect(RoleAssignmentsSchema.parse({ ...roles, planner: { ...provider, effort: 'medium' } }).planner)
+      .toEqual({ ...provider, effort: 'medium' })
+    expect(RoleAssignmentsSchema.safeParse({ ...roles, planner: { ...provider, effort: 'extreme' } }).success).toBe(false)
+    expect(AiChoiceRefSchema.safeParse({ ...provider, effort: 'medium' }).success).toBe(false)
     expect(RoleAssignmentsSchema.safeParse({ ...roles, inspector: provider }).success).toBe(false)
     const incomplete = { synthesizer: provider, planner: provider, deep_planner: cli }
     expect(RoleAssignmentsSchema.safeParse(incomplete).success).toBe(false)

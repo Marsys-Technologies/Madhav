@@ -330,6 +330,20 @@ describe('owned AI configuration repository', () => {
     expect(roles).toHaveLength(4)
     expect(roles.map(c => c.params[2])).toEqual(['synthesizer', 'planner', 'deep_planner', 'worker'])
   })
+  it('persists a supported per-role effort and rejects effort on an unsupported model', async () => {
+    validTransport()
+    const reasoning = { ...choice, modelId: 'gpt-5.5', effort: 'medium' as const }
+    const configured = { synthesizer: reasoning, planner: reasoning, deep_planner: reasoning, worker: reasoning }
+    await repository.saveConfiguration('alice', { name: 'Reasoning roles', roles: configured })
+    const writes = calls().filter(c => c.sql.startsWith('INSERT INTO ai_custom_configuration_roles'))
+    expect(writes).toHaveLength(4)
+    expect(writes.every(c => c.sql.includes('effort=excluded.effort') && c.params[7] === 'medium')).toBe(true)
+    execute.mockClear()
+    await expect(repository.saveConfiguration('alice', { name: 'Unsupported effort',
+      roles: { ...configured, planner: { ...choice, effort: 'medium' } },
+    })).rejects.toMatchObject({ code: 'AI_ROLE_INCOMPATIBLE' })
+    expect(calls().some(c => c.sql.startsWith('INSERT INTO ai_custom_configurations'))).toBe(false)
+  })
   it('changes default through one owner-scoped upsert without clearing the old choice', async () => {
     expect(repository).toHaveProperty('setUserDefault')
     validTransport()

@@ -1,0 +1,4076 @@
+{
+ "L4": {
+  "generated": "2026-10-02T10:12:59+05:30",
+  "layer": "L4",
+  "layer_name": "Phala",
+  "scoring": "contribution",
+  "n_assets": 9,
+  "population_active": 9,
+  "population_registry_total": 9,
+  "population_excluded_inactive": [],
+  "chart_scope": "482012f1-710e-4a25-994a-93821f5871aa",
+  "chart_scoped_count_sql": 9,
+  "global_runs": 61,
+  "global_runs_touching_layer": 328,
+  "never_exercised_with_writer": [],
+  "registered_ids": 9,
+  "registry_has_writer": 9,
+  "phantom_registered": [],
+  "local_map_candidates": -1,
+  "assets": [
+   {
+    "asset_id": "ph_muhurta",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 134,
+    "reach": {
+     "table": "phala_muhurta",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 24,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "action_class",
+      "chart_personalization_score",
+      "classical_citation",
+      "composite_quality",
+      "hora_lord",
+      "linked_anchor_id",
+      "muhurta_id",
+      "panchanga_score",
+      "personal_adversity_penalty",
+      "verdict_reason",
+      "window_end",
+      "window_quality_verdict",
+      "window_start"
+     ],
+     "dark": [
+      "chart_id",
+      "computed_at",
+      "derivation_ledger_jsonb",
+      "follow_up_hook_jsonb",
+      "fructification_anchor",
+      "overlapping_obstruction_id",
+      "panchanga_snapshot_jsonb",
+      "personalization_graha",
+      "significators_met_jsonb",
+      "source_citation",
+      "tarabala_chandrabala_jsonb"
+     ],
+     "width": 0.5417,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 11,
+     "direct": 2,
+     "severity_weight": 12,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_muhurta"
+    ],
+    "target_table": "phala_muhurta",
+    "has_writer": true,
+    "writer_files": [
+     "ph_muhurta.py"
+    ],
+    "catalog_status": "CURRENT",
+    "target_columns": [
+     "action_class",
+     "chart_id",
+     "chart_personalization_score",
+     "classical_citation",
+     "composite_quality",
+     "computed_at",
+     "derivation_ledger_jsonb",
+     "follow_up_hook_jsonb",
+     "fructification_anchor",
+     "hora_lord",
+     "linked_anchor_id",
+     "muhurta_id",
+     "overlapping_obstruction_id",
+     "panchanga_score",
+     "panchanga_snapshot_jsonb",
+     "personal_adversity_penalty",
+     "personalization_graha",
+     "significators_met_jsonb",
+     "source_citation",
+     "tarabala_chandrabala_jsonb",
+     "verdict_reason",
+     "window_end",
+     "window_quality_verdict",
+     "window_start"
+    ],
+    "asset_kind": "artifact",
+    "count_sql_declared": true,
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_muhurta.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_muhurta (ph_muhurta.py:63)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_muhurta"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "8 declared edge(s); exists: all 8 are active registry assets (every layer); cycle: ph_muhurta is on no dependency cycle (registry-wide graph); reads-match: 5 read(s) of other assets' tables, every one covered by a declared edge; 1 read(s) of bedrock-named table(s) owned only by L0 assets (brahma_activity_ontology) need no declared edge (dag_edge_guard exemption list; stricter than the guard, which exempts by table name alone; provisional interpretation of T4, to be confirmed at the J1 review); static scan of 100 code unit(s), 9 SQL string(s), hops<=3, every relation named; reads through views and DB functions are not followed",
+      "bedrock_exempt": [
+       {
+        "asset": "ph_muhurta",
+        "needs": "bg_ghatana",
+        "table": "brahma_activity_ontology",
+        "file": "ph_muhurta.py",
+        "line": 501,
+        "via": "",
+        "kind": "bedrock_exempt"
+       }
+      ]
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=139 disagrees with live=134 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Earn.service_state": {
+      "v": "N/A",
+      "measured": "declared kind 'data' is not `service`; Earn.service_state is the service-state check (a service's rows_written cannot tell healthy-and-idle from broken)",
+      "cause": "not-a-service"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=134, floor=134, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "183 rows, 24 cols; fully populated 21; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (muhurta_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 13/24 built column(s) (54.2%) selected by 1 capability module(s); dark: ['chart_id', 'computed_at', 'derivation_ledger_jsonb', 'follow_up_hook_jsonb', 'fructification_anchor', 'overlapping_obstruction_id', 'panchanga_snapshot_jsonb', 'personalization_graha', 'significators_met_jsonb', 'source_citation', 'tarabala_chandrabala_jsonb']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 183/183 rows"
+     },
+     "Dens.served": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 1 serving-root file(s) naming phala_muhurta lose the string scanner's sync (an unbalanced quote, a nested template literal, or a regex literal holding a quote desynced it): platform-mcp/src/tools/register_p1_synthesis.ts; its served select and density_contract cannot be read \u2014 never FAIL, never the closable N/A"
+     },
+     "Narr.agree": {
+      "v": "PASS",
+      "measured": "all 1 declared prose entry resolve to column(s) of phala_muhurta (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)"
+     },
+     "Narr.checkable": {
+      "v": "PASS",
+      "checkable": {
+       "verdict_reason": 134
+      },
+      "scope": "chart-scoped by count_sql",
+      "measured": "checkable rows per declared entry: verdict_reason=134 (chart-scoped by count_sql)"
+     },
+     "Narr.fidelity_test": {
+      "v": "PARTIAL",
+      "covered": [
+       "verdict_reason"
+      ],
+      "tests": [
+       "test_fix_plan_proofs.py",
+       "test_ph_a5_fixes.py",
+       "test_ph_muhurta_bala_join.py",
+       "test_ph_muhurta_verdict_honesty.py",
+       "test_ph_wave4.py"
+      ],
+      "measured": "structural only: 5 test file(s) call the builder and assert in the same test function (test_fix_plan_proofs.py, test_ph_a5_fixes.py, test_ph_muhurta_bala_join.py, test_ph_muhurta_verdict_honesty.py\u2026); declared field(s) referenced: verdict_reason; whether the assertion grades the sentence is not read, so this never reads PASS"
+     },
+     "Narr.lint": {
+      "v": "NO_DETECTOR",
+      "applied": [],
+      "measured": "NO_DETECTOR \u2014 the narration lints are not applicable to this asset: no chart_facts fact_category selection in its 36-file writer scope and no declared column the raw-token lint covers; a clean scan of code they cannot see is not a pass"
+     },
+     "Null.schema_default": {
+      "v": "PARTIAL",
+      "measured": "no schema default on the declared prose column(s) verdict_reason; writer literal fallbacks and constant columns are not measured here, so this is never PASS"
+     },
+     "Null.blank_rows": {
+      "v": "PARTIAL",
+      "blank": {
+       "verdict_reason": 0
+      },
+      "measured": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so this is never PASS"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "39 executed run(s) of 93 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 9 abort(s) on record (26 additional blocked_dependency row(s) excluded as cascade-only). "
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "3/8 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)', 'ka_kalasutra (stale, chart 482012f1)', 'ka_vighnakara (stale, chart 482012f1)', 'ka_gochara (stale, chart 482012f1)', 'ka_sangam (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_nimitta",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 4,
+    "reach": {
+     "table": "phala_anchors",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts",
+      "L4_phala/query_predictive_anchors.ts"
+     ],
+     "columns_built": 34,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "anchor_id",
+      "anchor_source",
+      "ayanamsha_robustness",
+      "bhavishya_id",
+      "confidence_basis",
+      "confidence_high",
+      "confidence_low",
+      "convergence_id",
+      "dasha_consensus_count",
+      "direction",
+      "discovery_id",
+      "domain",
+      "event_type",
+      "falsifier",
+      "horizon_tier",
+      "lift_vector_jsonb",
+      "magnitude",
+      "magnitude_basis",
+      "malleability",
+      "peak_date",
+      "posterior",
+      "signal_id",
+      "source_citation",
+      "window_end",
+      "window_start"
+     ],
+     "dark": [
+      "causal_chain_jsonb",
+      "chart_id",
+      "computed_at",
+      "contradiction_jsonb",
+      "counterfactual_jsonb",
+      "derivation_ledger_jsonb",
+      "precedent_refs_jsonb",
+      "school_consensus_jsonb",
+      "structured_falsifier_jsonb"
+     ],
+     "width": 0.7353,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 17,
+     "direct": 10,
+     "severity_weight": 18,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_anchors"
+    ],
+    "target_table": "phala_anchors",
+    "has_writer": true,
+    "writer_files": [
+     "ph_nimitta.py"
+    ],
+    "catalog_status": "CURRENT",
+    "target_columns": [
+     "anchor_id",
+     "anchor_source",
+     "ayanamsha_robustness",
+     "bhavishya_id",
+     "causal_chain_jsonb",
+     "chart_id",
+     "computed_at",
+     "confidence_basis",
+     "confidence_high",
+     "confidence_low",
+     "contradiction_jsonb",
+     "convergence_id",
+     "counterfactual_jsonb",
+     "dasha_consensus_count",
+     "derivation_ledger_jsonb",
+     "direction",
+     "discovery_id",
+     "domain",
+     "event_type",
+     "falsifier",
+     "horizon_tier",
+     "karmic_frame",
+     "karmic_note",
+     "lift_vector_jsonb",
+     "magnitude",
+     "magnitude_basis",
+     "malleability",
+     "peak_date",
+     "posterior",
+     "precedent_refs_jsonb",
+     "school_consensus_jsonb",
+     "signal_id",
+     "source_citation",
+     "structured_falsifier_jsonb",
+     "subsystem_source",
+     "window_end",
+     "window_start"
+    ],
+    "asset_kind": "artifact",
+    "count_sql_declared": true,
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_nimitta.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_anchors (ph_nimitta.py:129)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_anchors"
+     },
+     "Build.dag": {
+      "v": "FAIL",
+      "measured": "9 declared edge(s); exists: all 9 are active registry assets (every layer); cycle: ph_nimitta is on no dependency cycle (registry-wide graph); reads-match: FAIL \u2014 missing depends_on edge: ph_nimitta -> bo_pratijna (reads bodha_pratijna at ph_nimitta.py:463; the producer is reachable transitively via ka_bhavishya_lekha, ka_sangam, so ordering holds but the edge is undeclared); missing depends_on edge: ph_nimitta -> ka_yojaka (reads kala_activation_predicates at ph_nimitta.py:477; the producer is reachable transitively via ka_bhavishya_lekha, ka_sangam, so ordering holds but the edge is undeclared)",
+      "missing_edges": [
+       {
+        "asset": "ph_nimitta",
+        "needs": "bo_pratijna",
+        "table": "bodha_pratijna",
+        "file": "ph_nimitta.py",
+        "line": 463,
+        "via": "",
+        "transitive_via": [
+         "ka_bhavishya_lekha",
+         "ka_sangam"
+        ],
+        "kind": "missing_edge",
+        "cycle_tested": true
+       },
+       {
+        "asset": "ph_nimitta",
+        "needs": "ka_yojaka",
+        "table": "kala_activation_predicates",
+        "file": "ph_nimitta.py",
+        "line": 477,
+        "via": "",
+        "transitive_via": [
+         "ka_bhavishya_lekha",
+         "ka_sangam"
+        ],
+        "kind": "missing_edge",
+        "cycle_tested": true
+       }
+      ],
+      "transitive_only": true,
+      "bedrock_exempt": [
+       {
+        "asset": "ph_nimitta",
+        "needs": "bg_ghatana",
+        "table": "brahma_event_ontology",
+        "file": "ph_nimitta.py",
+        "line": 455,
+        "via": "",
+        "kind": "bedrock_exempt"
+       }
+      ]
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=139 disagrees with live=4 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Earn.service_state": {
+      "v": "N/A",
+      "measured": "declared kind 'data' is not `service`; Earn.service_state is the service-state check (a service's rows_written cannot tell healthy-and-idle from broken)",
+      "cause": "not-a-service"
+     },
+     "Count.floor": {
+      "v": "FAIL",
+      "measured": "live=4, floor=139, delta=-135"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "60 rows, 37 cols; fully populated 29; NEVER populated ['subsystem_source', 'karmic_frame', 'karmic_note']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (anchor_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 25/34 built column(s) (73.5%) selected by 2 capability module(s); dark: ['causal_chain_jsonb', 'chart_id', 'computed_at', 'contradiction_jsonb', 'counterfactual_jsonb', 'derivation_ledger_jsonb', 'precedent_refs_jsonb', 'school_consensus_jsonb', 'structured_falsifier_jsonb']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 60/60 rows"
+     },
+     "Dens.served": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 1 serving-root file(s) naming phala_anchors lose the string scanner's sync (an unbalanced quote, a nested template literal, or a regex literal holding a quote desynced it): platform-mcp/src/tools/register_p1_synthesis.ts; its served select and density_contract cannot be read \u2014 never FAIL, never the closable N/A"
+     },
+     "Narr.agree": {
+      "v": "PASS",
+      "measured": "all 1 declared prose entry resolve to column(s) of phala_anchors (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)"
+     },
+     "Narr.checkable": {
+      "v": "PASS",
+      "checkable": {
+       "falsifier": 4
+      },
+      "scope": "chart-scoped by count_sql",
+      "measured": "checkable rows per declared entry: falsifier=4 (chart-scoped by count_sql)"
+     },
+     "Narr.fidelity_test": {
+      "v": "PARTIAL",
+      "covered": [
+       "falsifier"
+      ],
+      "tests": [
+       "test_d1_5b_b5_completions.py",
+       "test_ka_yojaka_multidomain.py",
+       "test_ph_a5_fixes.py",
+       "test_ph_nimitta_honest_defaults.py",
+       "test_ph_nimitta_spine.py",
+       "test_ph_nimitta_writer_date_coercion.py",
+       "test_promise_lift_sign.py"
+      ],
+      "measured": "structural only: 7 test file(s) call the builder and assert in the same test function (test_d1_5b_b5_completions.py, test_ka_yojaka_multidomain.py, test_ph_a5_fixes.py, test_ph_nimitta_honest_defaults.py\u2026); declared field(s) referenced: falsifier; whether the assertion grades the sentence is not read, so this never reads PASS"
+     },
+     "Narr.lint": {
+      "v": "NO_DETECTOR",
+      "applied": [],
+      "measured": "NO_DETECTOR \u2014 the narration lints are not applicable to this asset: no chart_facts fact_category selection in its 7-file writer scope and no declared column the raw-token lint covers; a clean scan of code they cannot see is not a pass"
+     },
+     "Null.schema_default": {
+      "v": "PARTIAL",
+      "measured": "no schema default on the declared prose column(s) falsifier; writer literal fallbacks and constant columns are not measured here, so this is never PASS"
+     },
+     "Null.blank_rows": {
+      "v": "PARTIAL",
+      "blank": {
+       "falsifier": 0
+      },
+      "measured": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so this is never PASS"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "41 executed run(s) of 95 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 1 error(s) and 9 abort(s) on record (26 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-07-10): TypeError: can't compare datetime.datetime to datetime.date Traceback (most recent call last):   File \"/app/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 459, in _run_data_write"
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "5/9 declared dependencies lit at chart 482012f1 (or global); stale: ['ka_sangam (stale, chart 482012f1)', 'ka_bhavishya_lekha (stale, chart 482012f1)', 'bo_anveshana (stale, chart 482012f1)', 'bo_cgm_paths (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_phaladesa",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 13,
+    "reach": {
+     "table": "phala_phaladesa",
+     "modules": [
+      "L4_phala/query_domain_result.ts"
+     ],
+     "columns_built": 29,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "anchor_count",
+      "anomaly_flag_count",
+      "clean_anchor_count",
+      "confidence_high",
+      "confidence_low",
+      "domain",
+      "evidence_type",
+      "incoming_spillover_count",
+      "magnitude",
+      "malleability",
+      "mitigation_available",
+      "muhurta_available",
+      "narration_status",
+      "peak_date",
+      "phaladesa_id",
+      "pramana_window_status",
+      "prediction_window_end",
+      "prediction_window_start",
+      "source_citation",
+      "staged_revision_count",
+      "top_anchor_id"
+     ],
+     "dark": [
+      "chart_id",
+      "computed_at",
+      "contradiction_summary_jsonb",
+      "derivation_ledger_jsonb",
+      "derivation_summary_jsonb",
+      "narration_jsonb",
+      "precedent_refs_jsonb",
+      "spillover_domains_jsonb"
+     ],
+     "width": 0.7241,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 9,
+     "direct": 1,
+     "severity_weight": 10,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_phaladesa"
+    ],
+    "target_table": "phala_phaladesa",
+    "has_writer": true,
+    "writer_files": [
+     "ph_phaladesa.py"
+    ],
+    "catalog_status": "CURRENT",
+    "target_columns": [
+     "anchor_count",
+     "anomaly_flag_count",
+     "chart_id",
+     "clean_anchor_count",
+     "computed_at",
+     "confidence_high",
+     "confidence_low",
+     "contradiction_summary_jsonb",
+     "derivation_ledger_jsonb",
+     "derivation_summary_jsonb",
+     "domain",
+     "evidence_type",
+     "incoming_spillover_count",
+     "magnitude",
+     "malleability",
+     "mitigation_available",
+     "muhurta_available",
+     "narration_jsonb",
+     "narration_model",
+     "narration_requested_at",
+     "narration_status",
+     "peak_date",
+     "phaladesa_id",
+     "pramana_window_status",
+     "precedent_refs_jsonb",
+     "prediction_window_end",
+     "prediction_window_start",
+     "source_citation",
+     "spillover_domains_jsonb",
+     "staged_revision_count",
+     "top_anchor_id"
+    ],
+    "asset_kind": "artifact",
+    "count_sql_declared": true,
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_phaladesa.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_phaladesa (ph_phaladesa.py:170)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_phaladesa"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "7 declared edge(s); exists: all 7 are active registry assets (every layer); cycle: ph_phaladesa is on no dependency cycle (registry-wide graph); reads-match: 7 read(s) of other assets' tables, every one covered by a declared edge; static scan of 8 code unit(s), 7 SQL string(s), hops<=3, every relation named; reads through views and DB functions are not followed"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=13 = live=13 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Earn.service_state": {
+      "v": "N/A",
+      "measured": "declared kind 'data' is not `service`; Earn.service_state is the service-state check (a service's rows_written cannot tell healthy-and-idle from broken)",
+      "cause": "not-a-service"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=13, floor=13, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "26 rows, 31 cols; fully populated 16; NEVER populated ['narration_requested_at', 'narration_model']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (phaladesa_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 21/29 built column(s) (72.4%) selected by 1 capability module(s); dark: ['chart_id', 'computed_at', 'contradiction_summary_jsonb', 'derivation_ledger_jsonb', 'derivation_summary_jsonb', 'narration_jsonb', 'precedent_refs_jsonb', 'spillover_domains_jsonb']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 26/26 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "STRUCTURAL: 1 module(s) reach it by code: L4_phala/query_domain_result.ts; 1 served select(s) of its table; no referencing capability that serves it declares density_contract"
+     },
+     "Narr.agree": {
+      "v": "PASS",
+      "measured": "all 1 declared prose entry resolve to column(s) of phala_phaladesa (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)"
+     },
+     "Narr.checkable": {
+      "v": "PASS",
+      "checkable": {
+       "narration_jsonb.$.text": 13
+      },
+      "scope": "chart-scoped by count_sql",
+      "measured": "checkable rows per declared entry: narration_jsonb.$.text=13 (chart-scoped by count_sql)"
+     },
+     "Narr.fidelity_test": {
+      "v": "PARTIAL",
+      "covered": [
+       "narration_jsonb.$.text"
+      ],
+      "tests": [
+       "test_bo_wp22_empty_shells.py",
+       "test_nar_ph_phaladesa.py"
+      ],
+      "measured": "structural only: 2 test file(s) call the builder and assert in the same test function (test_bo_wp22_empty_shells.py, test_nar_ph_phaladesa.py); declared field(s) referenced: narration_jsonb.$.text; whether the assertion grades the sentence is not read, so this never reads PASS"
+     },
+     "Narr.lint": {
+      "v": "NO_DETECTOR",
+      "applied": [],
+      "measured": "NO_DETECTOR \u2014 the narration lints are not applicable to this asset: no chart_facts fact_category selection in its 7-file writer scope and no declared column the raw-token lint covers; a clean scan of code they cannot see is not a pass"
+     },
+     "Null.schema_default": {
+      "v": "PARTIAL",
+      "measured": "no schema default on the declared prose column(s) narration_jsonb; writer literal fallbacks and constant columns are not measured here, so this is never PASS"
+     },
+     "Null.blank_rows": {
+      "v": "PARTIAL",
+      "blank": {
+       "narration_jsonb.$.text": 0
+      },
+      "measured": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so this is never PASS"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "37 executed run(s) of 96 build_run_assets row(s), scope(s): asset, asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 1 error(s) and 9 abort(s) on record (31 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-07-04): CheckViolation: new row for relation \"phala_phaladesa\" violates check constraint \"phala_phaladesa_domain_canonical\" DETAIL:  Failing row contains (f3788905-85bb-40a1-8f65-7a90a279cd94, 1c826d5a-41cb-4"
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "1/7 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)', 'ph_muhurta (stale, chart 482012f1)', 'ph_pratikara (stale, chart 482012f1)', 'ph_suddha_sodhana (stale, chart 482012f1)', 'ph_sankrama (stale, chart 482012f1)', 'ph_pramana (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_pramana",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 4,
+    "reach": {
+     "table": "phala_pramana",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 11,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "anchor_id",
+      "evidence_strength_label",
+      "evidence_type",
+      "falsifier_text",
+      "observable_criteria_jsonb",
+      "pramana_id",
+      "source_citation",
+      "window_status"
+     ],
+     "dark": [
+      "chart_id",
+      "computed_at",
+      "derivation_ledger_jsonb"
+     ],
+     "width": 0.7273,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 10,
+     "direct": 2,
+     "severity_weight": 11,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_pramana"
+    ],
+    "target_table": "phala_pramana",
+    "has_writer": true,
+    "writer_files": [
+     "ph_pramana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "target_columns": [
+     "anchor_id",
+     "chart_id",
+     "computed_at",
+     "derivation_ledger_jsonb",
+     "evidence_strength_label",
+     "evidence_type",
+     "falsifier_text",
+     "lel_entry_id",
+     "lel_entry_jsonb",
+     "linked_sodhana_id",
+     "observable_criteria_jsonb",
+     "pramana_id",
+     "source_citation",
+     "window_status"
+    ],
+    "asset_kind": "artifact",
+    "count_sql_declared": true,
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_pramana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_pramana (ph_pramana.py:56)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_pramana"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "6 declared edge(s); exists: all 6 are active registry assets (every layer); cycle: ph_pramana is on no dependency cycle (registry-wide graph); reads-match: 1 read(s) of other assets' tables, every one covered by a declared edge; static scan of 8 code unit(s), 3 SQL string(s), hops<=3, every relation named; reads through views and DB functions are not followed"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=139 disagrees with live=4 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Earn.service_state": {
+      "v": "N/A",
+      "measured": "declared kind 'data' is not `service`; Earn.service_state is the service-state check (a service's rows_written cannot tell healthy-and-idle from broken)",
+      "cause": "not-a-service"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "60 rows, 14 cols; fully populated 11; NEVER populated ['lel_entry_id', 'lel_entry_jsonb', 'linked_sodhana_id']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (pramana_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 8/11 built column(s) (72.7%) selected by 1 capability module(s); dark: ['chart_id', 'computed_at', 'derivation_ledger_jsonb']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 60/60 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "STRUCTURAL: 3 module(s) reach it by code: L3_kala/query_projections.ts, L4_phala/query_phala_calibration.ts, L5_mimamsa/query_predictions.ts; 1 served select(s) of its table; no referencing capability that serves it declares density_contract"
+     },
+     "Narr.agree": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_pramana: never read as 'no prose'"
+     },
+     "Narr.checkable": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_pramana: never read as 'no prose'"
+     },
+     "Narr.fidelity_test": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_pramana: never read as 'no prose'"
+     },
+     "Narr.lint": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_pramana: never read as 'no prose'"
+     },
+     "Null.schema_default": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_pramana: never read as 'no prose'"
+     },
+     "Null.blank_rows": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_pramana: never read as 'no prose'"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "36 executed run(s) of 93 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 9 abort(s) on record (29 additional blocked_dependency row(s) excluded as cascade-only). "
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "0/6 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)', 'ph_sankrama (stale, chart 482012f1)', 'ph_muhurta (stale, chart 482012f1)', 'ph_pratikara (stale, chart 482012f1)', 'ph_sodhana (stale, chart 482012f1)', 'ph_suddha_sodhana (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_pratikara",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 536,
+    "reach": {
+     "table": "phala_mitigation",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 20,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "afflicting_graha",
+      "classical_citation",
+      "cross_tradition_corroboration",
+      "intensity_tier",
+      "linked_anchor_id",
+      "mitigation_id",
+      "obstruction_id",
+      "obstruction_severity",
+      "program_jsonb",
+      "proportionality_basis",
+      "re_evaluation_date",
+      "recommended_tier_jsonb",
+      "tradition_options_jsonb",
+      "window_end",
+      "window_start"
+     ],
+     "dark": [
+      "chart_id",
+      "computed_at",
+      "derivation_ledger_jsonb",
+      "outcome_hook_jsonb",
+      "source_citation"
+     ],
+     "width": 0.75,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 11,
+     "direct": 2,
+     "severity_weight": 12,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_mitigation"
+    ],
+    "target_table": "phala_mitigation",
+    "has_writer": true,
+    "writer_files": [
+     "ph_pratikara.py"
+    ],
+    "catalog_status": "DRAFT",
+    "target_columns": [
+     "afflicting_graha",
+     "chart_id",
+     "classical_citation",
+     "computed_at",
+     "cross_tradition_corroboration",
+     "derivation_ledger_jsonb",
+     "initiation_muhurta_ref",
+     "intensity_tier",
+     "linked_anchor_id",
+     "mitigation_id",
+     "obstruction_id",
+     "obstruction_severity",
+     "outcome_hook_jsonb",
+     "program_jsonb",
+     "proportionality_basis",
+     "re_evaluation_date",
+     "recommended_tier_jsonb",
+     "source_citation",
+     "source_id",
+     "tradition_options_jsonb",
+     "window_end",
+     "window_start"
+    ],
+    "asset_kind": "artifact",
+    "count_sql_declared": true,
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_pratikara.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_mitigation (ph_pratikara.py:100)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_mitigation"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "4 declared edge(s); exists: all 4 are active registry assets (every layer); cycle: ph_pratikara is on no dependency cycle (registry-wide graph); reads-match: 4 read(s) of other assets' tables, every one covered by a declared edge; static scan of 4 code unit(s), 4 SQL string(s), hops<=3, every relation named; reads through views and DB functions are not followed"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=536 = live=536 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Earn.service_state": {
+      "v": "N/A",
+      "measured": "declared kind 'data' is not `service`; Earn.service_state is the service-state check (a service's rows_written cannot tell healthy-and-idle from broken)",
+      "cause": "not-a-service"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "live=536, floor=536, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "1277 rows, 22 cols; fully populated 16; NEVER populated ['initiation_muhurta_ref', 'source_id']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (mitigation_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 15/20 built column(s) (75.0%) selected by 1 capability module(s); dark: ['chart_id', 'computed_at', 'derivation_ledger_jsonb', 'outcome_hook_jsonb', 'source_citation']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 1277/1277 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "STRUCTURAL: 5 module(s) reach it by code: L4_phala/query_phala_calibration.ts, platform-mcp/src/tools/kala_views/upaya.ts, platform-mcp/src/tools/phala_mitigation_map.ts, platform-mcp/src/tools/phala_outlook.ts, platform-mcp/src/lib/kala_upaya_diagnosis.ts; 2 served select(s) of its table; no referencing capability that serves it declares density_contract; a tier column is selected without a contract in: L4_phala/query_phala_calibration.ts"
+     },
+     "Narr.agree": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_pratikara: never read as 'no prose'"
+     },
+     "Narr.checkable": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_pratikara: never read as 'no prose'"
+     },
+     "Narr.fidelity_test": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_pratikara: never read as 'no prose'"
+     },
+     "Narr.lint": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_pratikara: never read as 'no prose'"
+     },
+     "Null.schema_default": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_pratikara: never read as 'no prose'"
+     },
+     "Null.blank_rows": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_pratikara: never read as 'no prose'"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "39 executed run(s) of 93 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 9 abort(s) on record (26 additional blocked_dependency row(s) excluded as cascade-only). "
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "0/4 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)', 'bo_upaya (stale, chart 482012f1)', 'ka_vighnakara (stale, chart 482012f1)', 'ka_sangam (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_rectification",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 186,
+    "reach": {
+     "table": "phala_rectification",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 13,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "ayanamsha_id",
+      "candidate_birth_utc",
+      "id",
+      "lagna_degree_in_sign",
+      "lagna_longitude_deg",
+      "lagna_sign",
+      "lagna_stable",
+      "lel_events_matched",
+      "lel_events_tested",
+      "lel_fit_score",
+      "offset_minutes",
+      "scored_at"
+     ],
+     "dark": [
+      "chart_id"
+     ],
+     "width": 0.9231,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 0,
+     "direct": 0,
+     "severity_weight": 1,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql total over 2 table(s): phala_rectification, phala_rectification_best",
+    "count_sql_tables": [
+     "phala_rectification",
+     "phala_rectification_best"
+    ],
+    "target_table": "phala_rectification",
+    "has_writer": true,
+    "writer_files": [
+     "ph_rectification/__init__.py"
+    ],
+    "catalog_status": "CURRENT",
+    "target_columns": [
+     "ayanamsha_id",
+     "candidate_birth_utc",
+     "chart_id",
+     "id",
+     "lagna_degree_in_sign",
+     "lagna_longitude_deg",
+     "lagna_sign",
+     "lagna_stable",
+     "lel_events_matched",
+     "lel_events_tested",
+     "lel_fit_score",
+     "offset_minutes",
+     "scored_at"
+    ],
+    "asset_kind": "artifact",
+    "count_sql_declared": true,
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_rectification/__init__.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_rectification_best (ph_rectification/__init__.py:288), phala_rectification (ph_rectification/__init__.py:291)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_rectification"
+     },
+     "Build.dag": {
+      "v": "FAIL",
+      "measured": "1 declared edge(s); exists: all 1 are active registry assets (every layer); cycle: ph_rectification is on no dependency cycle (registry-wide graph); reads-match: FAIL \u2014 missing depends_on edge: ph_rectification -> ga_dashas (reads chart_dashas at ph_rectification/__init__.py:111; the producer is reachable transitively via ph_nimitta, so ordering holds but the edge is undeclared)",
+      "missing_edges": [
+       {
+        "asset": "ph_rectification",
+        "needs": "ga_dashas",
+        "table": "chart_dashas",
+        "file": "ph_rectification/__init__.py",
+        "line": 111,
+        "via": "",
+        "transitive_via": [
+         "ph_nimitta"
+        ],
+        "kind": "missing_edge",
+        "cycle_tested": true
+       }
+      ],
+      "transitive_only": true,
+      "bedrock_exempt": [
+       {
+        "asset": "ph_rectification",
+        "needs": "bg_formula_constants",
+        "table": "brahma_formula_constants",
+        "file": "ph_rectification/__init__.py",
+        "line": 91,
+        "via": "",
+        "kind": "bedrock_exempt"
+       }
+      ],
+      "soft_satisfied": [
+       {
+        "asset": "ph_rectification",
+        "needs": "ga_ayurdaya | ga_condition | ga_nakshatra | ga_panchanga | ga_positions | ga_sade_sati | ga_sensitive | ga_sensitive_degree | ga_strength | ga_structural",
+        "table": "chart_facts",
+        "file": "ph_rectification/__init__.py",
+        "line": 187,
+        "via": [
+         "ga_condition",
+         "ga_nakshatra",
+         "ga_panchanga",
+         "ga_positions",
+         "ga_sade_sati",
+         "ga_sensitive",
+         "ga_strength",
+         "ga_structural"
+        ],
+        "kind": "soft_satisfied",
+        "fact_category_matched": false
+       }
+      ]
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "PASS",
+      "measured": "rows_written=186 = live=186 (count_sql total over 2 table(s): phala_rectification, phala_rectification_best; chart 482012f1); target_table phala_rectification alone: 370 row(s), whole table \u2014 context, not the compared figure"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Earn.service_state": {
+      "v": "N/A",
+      "measured": "declared kind 'data' is not `service`; Earn.service_state is the service-state check (a service's rows_written cannot tell healthy-and-idle from broken)",
+      "cause": "not-a-service"
+     },
+     "Count.floor": {
+      "v": "PASS",
+      "measured": "count_sql total=186, floor=186, delta=+0"
+     },
+     "Complete.depth": {
+      "v": "PASS",
+      "measured": "370 rows, 13 cols; fully populated 11; NEVER populated []"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, offset_minutes, ayanamsha_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 12/13 built column(s) (92.3%) selected by 1 capability module(s); dark: ['chart_id']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Dens.served": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 1 serving-root file(s) naming phala_rectification lose the string scanner's sync (an unbalanced quote, a nested template literal, or a regex literal holding a quote desynced it): platform-mcp/src/tools/register_p1_ganita.ts; its served select and density_contract cannot be read \u2014 never FAIL, never the closable N/A"
+     },
+     "Narr.agree": {
+      "v": "PASS",
+      "measured": "all 2 declared prose entries resolve to column(s) of phala_rectification, phala_rectification_best (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)"
+     },
+     "Narr.checkable": {
+      "v": "PARTIAL",
+      "checkable": {
+       "judgment_flags.$.load_bearing_note": 0,
+       "leakage_firewall_note": 2
+      },
+      "scope": "whole-table upper bound",
+      "measured": "checkable rows per declared entry: judgment_flags.$.load_bearing_note=0, leakage_firewall_note=2; none or unknown on judgment_flags.$.load_bearing_note"
+     },
+     "Narr.fidelity_test": {
+      "v": "PARTIAL",
+      "covered": [
+       "judgment_flags.$.load_bearing_note"
+      ],
+      "tests": [
+       "test_ph_rectification.py",
+       "test_ph_rectification_discrimination_gate.py"
+      ],
+      "measured": "structural only: 2 test file(s) call the builder and assert in the same test function (test_ph_rectification.py, test_ph_rectification_discrimination_gate.py); declared field(s) referenced: judgment_flags.$.load_bearing_note; no qualifying test names: leakage_firewall_note; whether the assertion grades the sentence is not read, so this never reads PASS"
+     },
+     "Narr.lint": {
+      "v": "PASS",
+      "applied": [
+       "fact-category-pin"
+      ],
+      "measured": "12 writer scope file(s) clean under the fact-category-pin narration lint(s) that applied (their own allowlists applied)"
+     },
+     "Null.schema_default": {
+      "v": "PARTIAL",
+      "measured": "no schema default on the declared prose column(s) judgment_flags, leakage_firewall_note; writer literal fallbacks and constant columns are not measured here, so this is never PASS"
+     },
+     "Null.blank_rows": {
+      "v": "PARTIAL",
+      "blank": {
+       "judgment_flags.$.load_bearing_note": 0,
+       "leakage_firewall_note": 0
+      },
+      "measured": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so this is never PASS"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "41 executed run(s) of 95 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 2 error(s) and 9 abort(s) on record (26 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-07-06): UndefinedColumn: column \"chart_id\" does not exist LINE 4:             WHERE chart_id = $1 AND event_date IS NOT NULL                           ^ Traceback (most recent call last):   File \"/app/platfor"
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "0/1 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_sankrama",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 155,
+    "reach": {
+     "table": "phala_sankrama",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 25,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "asymmetry_score",
+      "cascade_depth",
+      "cdlm_cell_id",
+      "confidence_basis",
+      "falsifier",
+      "linkage_strength",
+      "mechanism_text",
+      "projected_peak_date",
+      "projected_window_end",
+      "projected_window_start",
+      "relationship_type",
+      "sankrama_id",
+      "source_anchor_id",
+      "source_domain",
+      "source_window_end",
+      "source_window_start",
+      "spillover_confidence",
+      "target_domain",
+      "trajectory"
+     ],
+     "dark": [
+      "bridge_path_jsonb",
+      "cascade_chain_jsonb",
+      "chart_id",
+      "computed_at",
+      "derivation_ledger_jsonb",
+      "source_citation"
+     ],
+     "width": 0.76,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 11,
+     "direct": 2,
+     "severity_weight": 12,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_sankrama"
+    ],
+    "target_table": "phala_sankrama",
+    "has_writer": true,
+    "writer_files": [
+     "ph_sankrama.py"
+    ],
+    "catalog_status": "CURRENT",
+    "target_columns": [
+     "asymmetry_score",
+     "bridge_path_jsonb",
+     "cascade_chain_jsonb",
+     "cascade_depth",
+     "cdlm_cell_id",
+     "chart_id",
+     "computed_at",
+     "confidence_basis",
+     "derivation_ledger_jsonb",
+     "falsifier",
+     "linkage_strength",
+     "mechanism_text",
+     "mitigation_ref",
+     "projected_peak_date",
+     "projected_window_end",
+     "projected_window_start",
+     "relationship_type",
+     "sankrama_id",
+     "source_anchor_id",
+     "source_citation",
+     "source_domain",
+     "source_window_end",
+     "source_window_start",
+     "spillover_confidence",
+     "target_domain",
+     "trajectory"
+    ],
+    "asset_kind": "artifact",
+    "count_sql_declared": true,
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_sankrama.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_sankrama (ph_sankrama.py:78)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_sankrama"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 declared edge(s); exists: all 2 are active registry assets (every layer); cycle: ph_sankrama is on no dependency cycle (registry-wide graph); reads-match: 2 read(s) of other assets' tables, every one covered by a declared edge; static scan of 4 code unit(s), 3 SQL string(s), hops<=3, every relation named; reads through views and DB functions are not followed"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=2510 disagrees with live=155 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Earn.service_state": {
+      "v": "N/A",
+      "measured": "declared kind 'data' is not `service`; Earn.service_state is the service-state check (a service's rows_written cannot tell healthy-and-idle from broken)",
+      "cause": "not-a-service"
+     },
+     "Count.floor": {
+      "v": "FAIL",
+      "measured": "live=155, floor=2510, delta=-2355"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "630 rows, 26 cols; fully populated 24; NEVER populated ['mitigation_ref']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (chart_id, source_anchor_id, cdlm_cell_id, target_domain, relationship_type): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 19/25 built column(s) (76.0%) selected by 1 capability module(s); dark: ['bridge_path_jsonb', 'cascade_chain_jsonb', 'chart_id', 'computed_at', 'derivation_ledger_jsonb', 'source_citation']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 630/630 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "STRUCTURAL: 1 module(s) reach it by code: L4_phala/query_phala_calibration.ts; 1 served select(s) of its table; no referencing capability that serves it declares density_contract"
+     },
+     "Narr.agree": {
+      "v": "PARTIAL",
+      "measured": "all 1 declared prose entry resolve to column(s) of phala_sankrama (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here); but the writer also writes prose-vocabulary column(s) it does not declare (undeclared): phala_sankrama.falsifier"
+     },
+     "Narr.checkable": {
+      "v": "PASS",
+      "checkable": {
+       "mechanism_text": 155
+      },
+      "scope": "chart-scoped by count_sql",
+      "measured": "checkable rows per declared entry: mechanism_text=155 (chart-scoped by count_sql)"
+     },
+     "Narr.fidelity_test": {
+      "v": "PARTIAL",
+      "covered": [],
+      "tests": [
+       "test_ph_a5_fixes.py",
+       "test_ph_sankrama_domain_and_trajectory.py",
+       "test_ph_wave4.py"
+      ],
+      "measured": "3 test file(s) call the builder and assert (test_ph_a5_fixes.py, test_ph_sankrama_domain_and_trajectory.py, test_ph_wave4.py): tests call the builder but none names a declared field (direct or indirect); declared: mechanism_text; structural only, never PASS"
+     },
+     "Narr.lint": {
+      "v": "NO_DETECTOR",
+      "applied": [],
+      "measured": "NO_DETECTOR \u2014 the narration lints are not applicable to this asset: no chart_facts fact_category selection in its 4-file writer scope and no declared column the raw-token lint covers; a clean scan of code they cannot see is not a pass"
+     },
+     "Null.schema_default": {
+      "v": "PARTIAL",
+      "measured": "no schema default on the declared prose column(s) mechanism_text; writer literal fallbacks and constant columns are not measured here, so this is never PASS"
+     },
+     "Null.blank_rows": {
+      "v": "PARTIAL",
+      "blank": {
+       "mechanism_text": 0
+      },
+      "measured": "no blank or placeholder row among the checkable prose rows; schema defaults are read by Null.schema_default and writer literal fallbacks and constant columns are not measured, so this is never PASS"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "39 executed run(s) of 93 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 9 abort(s) on record (26 additional blocked_dependency row(s) excluded as cascade-only). "
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "1/2 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_sodhana",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 0,
+    "reach": {
+     "table": "phala_sodhana",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 13,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "anchor_id",
+      "anomaly_severity",
+      "anomaly_type",
+      "auto_action",
+      "detected_field",
+      "expected_value_text",
+      "observed_value_text",
+      "recommendation_text",
+      "sodhana_id"
+     ],
+     "dark": [
+      "chart_id",
+      "computed_at",
+      "derivation_ledger_jsonb",
+      "source_citation"
+     ],
+     "width": 0.6923,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 12,
+     "direct": 2,
+     "severity_weight": 13,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_sodhana"
+    ],
+    "target_table": "phala_sodhana",
+    "has_writer": true,
+    "writer_files": [
+     "ph_sodhana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "target_columns": [
+     "anchor_id",
+     "anomaly_severity",
+     "anomaly_type",
+     "auto_action",
+     "chart_id",
+     "computed_at",
+     "derivation_ledger_jsonb",
+     "detected_field",
+     "expected_value_text",
+     "leakage_class",
+     "observed_value_text",
+     "recommendation_text",
+     "sodhana_id",
+     "source_citation"
+    ],
+    "asset_kind": "artifact",
+    "count_sql_declared": true,
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_sodhana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_sodhana (ph_sodhana.py:53)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_sodhana"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 declared edge(s); exists: all 2 are active registry assets (every layer); cycle: ph_sodhana is on no dependency cycle (registry-wide graph); reads-match: 1 read(s) of other assets' tables, every one covered by a declared edge; static scan of 4 code unit(s), 2 SQL string(s), hops<=3, every relation named; reads through views and DB functions are not followed"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "empty: live=0 (count_sql over the target table; chart 482012f1) and the registry does not declare zero rows complete (target_floor=none); build record rows_written=97"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Earn.service_state": {
+      "v": "N/A",
+      "measured": "declared kind 'data' is not `service`; Earn.service_state is the service-state check (a service's rows_written cannot tell healthy-and-idle from broken)",
+      "cause": "not-a-service"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "41 rows, 14 cols; fully populated 13; NEVER populated ['leakage_class']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (sodhana_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 9/13 built column(s) (69.2%) selected by 1 capability module(s); dark: ['chart_id', 'computed_at', 'derivation_ledger_jsonb', 'source_citation']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 41/41 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "STRUCTURAL: 1 module(s) reach it by code: L4_phala/query_phala_calibration.ts; 1 served select(s) of its table; no referencing capability that serves it declares density_contract"
+     },
+     "Narr.agree": {
+      "v": "PASS",
+      "measured": "all 1 declared prose entry resolve to column(s) of phala_sodhana (names, and JSON types for path entries; the writer binding is the declaration tests' claim, not read here)"
+     },
+     "Narr.checkable": {
+      "v": "NO_DETECTOR",
+      "inconclusive": true,
+      "checkable": {
+       "recommendation_text": 0
+      },
+      "scope": "chart-scoped by count_sql",
+      "measured": "INCONCLUSIVE: 0 checkable rows on every declared entry (recommendation_text=0)"
+     },
+     "Narr.fidelity_test": {
+      "v": "PARTIAL",
+      "covered": [
+       "recommendation_text"
+      ],
+      "tests": [
+       "test_nar_ph_sodhana.py",
+       "test_ph_sodhana_engine.py",
+       "test_ph_wave5.py"
+      ],
+      "measured": "structural only: 3 test file(s) call the builder and assert in the same test function (test_nar_ph_sodhana.py, test_ph_sodhana_engine.py, test_ph_wave5.py); declared field(s) referenced: recommendation_text; whether the assertion grades the sentence is not read, so this never reads PASS"
+     },
+     "Narr.lint": {
+      "v": "NO_DETECTOR",
+      "applied": [],
+      "measured": "NO_DETECTOR \u2014 the narration lints are not applicable to this asset: no chart_facts fact_category selection in its 4-file writer scope and no declared column the raw-token lint covers; a clean scan of code they cannot see is not a pass"
+     },
+     "Null.schema_default": {
+      "v": "PARTIAL",
+      "measured": "no schema default on the declared prose column(s) recommendation_text; writer literal fallbacks and constant columns are not measured here, so this is never PASS"
+     },
+     "Null.blank_rows": {
+      "v": "NO_DETECTOR",
+      "inconclusive": true,
+      "measured": "INCONCLUSIVE: no checkable prose rows were read for the declared entries"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "39 executed run(s) of 93 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 3 error(s) and 9 abort(s) on record (26 additional blocked_dependency row(s) excluded as cascade-only). latest error (2026-07-11): TypeError: Object of type UUID is not JSON serializable Traceback (most recent call last):   File \"/app/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 459, in _run_data_writer   "
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "1/2 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_nimitta (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     }
+    }
+   },
+   {
+    "asset_id": "ph_suddha_sodhana",
+    "layer": "L4",
+    "scoring": "contribution",
+    "live_rows": 4,
+    "reach": {
+     "table": "phala_suddha_sodhana",
+     "modules": [
+      "L4_phala/query_phala_calibration.ts"
+     ],
+     "columns_built": 13,
+     "built_basis": "populated columns (depth census)",
+     "exposed": [
+      "anchor_id",
+      "cleanliness_status",
+      "confidence_delta_if_applied",
+      "critical_flag_count",
+      "entry_id",
+      "flag_ids_jsonb",
+      "major_flag_count",
+      "minor_flag_count",
+      "staged_revision_jsonb"
+     ],
+     "dark": [
+      "chart_id",
+      "computed_at",
+      "derivation_ledger_jsonb",
+      "source_citation"
+     ],
+     "width": 0.6923,
+     "width_is_lower_bound": false,
+     "dynamic_select": [],
+     "depth": 1.0,
+     "depth_basis": "a capability query reads it with no literal row pin (upper bound)"
+    },
+    "blocking_radius": {
+     "transitive": 11,
+     "direct": 2,
+     "severity_weight": 12,
+     "basis": "active assets depending on it, transitively, every layer"
+    },
+    "live_rows_basis": "count_sql over the target table",
+    "count_sql_tables": [
+     "phala_suddha_sodhana"
+    ],
+    "target_table": "phala_suddha_sodhana",
+    "has_writer": true,
+    "writer_files": [
+     "ph_suddha_sodhana.py"
+    ],
+    "catalog_status": "CURRENT",
+    "target_columns": [
+     "anchor_id",
+     "chart_id",
+     "cleanliness_status",
+     "computed_at",
+     "confidence_delta_if_applied",
+     "critical_flag_count",
+     "derivation_ledger_jsonb",
+     "entry_id",
+     "flag_ids_jsonb",
+     "magnitude_delta_if_applied",
+     "major_flag_count",
+     "minor_flag_count",
+     "revision_applied_at",
+     "revision_approved_by",
+     "source_citation",
+     "staged_revision_jsonb"
+    ],
+    "asset_kind": "artifact",
+    "count_sql_declared": true,
+    "measurements": {
+     "Build.registered": {
+      "v": "PASS",
+      "measured": "@register in ph_suddha_sodhana.py; registry agrees"
+     },
+     "Build.contract": {
+      "v": "PASS",
+      "measured": "conformant"
+     },
+     "Idem.pattern": {
+      "v": "PASS",
+      "measured": "DELETE FROM the asset's own table(s) (delete-then-insert): phala_suddha_sodhana (ph_suddha_sodhana.py:46)"
+     },
+     "Build.target": {
+      "v": "PASS",
+      "measured": "target_table=phala_suddha_sodhana"
+     },
+     "Build.dag": {
+      "v": "PASS",
+      "measured": "2 declared edge(s); exists: all 2 are active registry assets (every layer); cycle: ph_suddha_sodhana is on no dependency cycle (registry-wide graph); reads-match: 2 read(s) of other assets' tables, every one covered by a declared edge; static scan of 4 code unit(s), 3 SQL string(s), hops<=3, every relation named; reads through views and DB functions are not followed"
+     },
+     "Build.count_integrity": {
+      "v": "PASS",
+      "measured": "count_sql=yes, integrity_check_sql=yes"
+     },
+     "Build.completion": {
+      "v": "FAIL",
+      "measured": "build record rows_written=139 disagrees with live=4 (count_sql over the target table; chart 482012f1)"
+     },
+     "Earn.build_record": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Cost.baseline": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 latest attempt at chart 482012f1: run cbd6ea44 complete/no disposition (2026-08-13): complete with no disposition and not derivable as probe-green (no probe receipt names this run) \u2014 unclassified"
+     },
+     "Earn.service_state": {
+      "v": "N/A",
+      "measured": "declared kind 'data' is not `service`; Earn.service_state is the service-state check (a service's rows_written cannot tell healthy-and-idle from broken)",
+      "cause": "not-a-service"
+     },
+     "Count.floor": {
+      "v": "FAIL",
+      "measured": "live=4, floor=139, delta=-135"
+     },
+     "Complete.depth": {
+      "v": "PARTIAL",
+      "measured": "60 rows, 16 cols; fully populated 10; NEVER populated ['revision_approved_by', 'revision_applied_at', 'magnitude_delta_if_applied']"
+     },
+     "Vocab.identity": {
+      "v": "PASS",
+      "measured": "declared key (entry_id): 0 duplicate(s)"
+     },
+     "Reach.fields": {
+      "v": "NOT_GENERIC",
+      "measured": "reported, not graded \u2014 width 9/13 built column(s) (69.2%) selected by 1 capability module(s); dark: ['chart_id', 'computed_at', 'derivation_ledger_jsonb', 'source_citation']; depth 100.0% (a capability query reads it with no literal row pin (upper bound))"
+     },
+     "Ldgr.source_presence": {
+      "v": "PASS",
+      "measured": "source_citation populated on 60/60 rows"
+     },
+     "Dens.served": {
+      "v": "FAIL",
+      "measured": "STRUCTURAL: 1 module(s) reach it by code: L4_phala/query_phala_calibration.ts; 1 served select(s) of its table; no referencing capability that serves it declares density_contract"
+     },
+     "Narr.agree": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_suddha_sodhana: never read as 'no prose'"
+     },
+     "Narr.checkable": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_suddha_sodhana: never read as 'no prose'"
+     },
+     "Narr.fidelity_test": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_suddha_sodhana: never read as 'no prose'"
+     },
+     "Narr.lint": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_suddha_sodhana: never read as 'no prose'"
+     },
+     "Null.schema_default": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_suddha_sodhana: never read as 'no prose'"
+     },
+     "Null.blank_rows": {
+      "v": "NO_DETECTOR",
+      "measured": "NO_DETECTOR \u2014 prose_fields is undeclared for ph_suddha_sodhana: never read as 'no prose'"
+     },
+     "Build.exercised": {
+      "v": "PASS",
+      "measured": "36 executed run(s) of 93 build_run_assets row(s), scope(s): asset_set, global, layer, last executed 2026-08-13"
+     },
+     "Build.history": {
+      "v": "PARTIAL",
+      "measured": "latest run complete, but 0 error(s) and 9 abort(s) on record (29 additional blocked_dependency row(s) excluded as cascade-only). "
+     },
+     "Build.dep_liveness": {
+      "v": "PARTIAL",
+      "measured": "0/2 declared dependencies lit at chart 482012f1 (or global); stale: ['ph_sodhana (stale, chart 482012f1)', 'ph_nimitta (stale, chart 482012f1)'] \u2014 built, but an upstream has moved since"
+     },
+     "Complete.width": {
+      "v": "NOT_GENERIC",
+      "measured": "no declared universe for this asset \u2014 declaring one is the first width gap"
+     }
+    }
+   }
+  ],
+  "registry_revision": 10,
+  "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
+  "tool_commit": "1e5781ae1e98d85c0d80ddcc229f0852dad41347",
+  "tool_dirty": false
+ },
+ "rollup": {
+  "registry_revision": 10,
+  "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
+  "layers": {
+   "L4": {
+    "ph_muhurta": {
+     "Ldgr": {
+      "gate": "Ldgr",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Ldgr.source_presence",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Idem": {
+      "gate": "Idem",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Idem.pattern",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Earn": {
+      "gate": "Earn",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Earn.build_record",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Earn.service_state",
+        "v": "N/A",
+        "state": "MEASURED",
+        "rule_id": "Earn.service_state#measured:not-a-service",
+        "cause": "not-a-service",
+        "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)",
+        "reason": "measured N/A under a declared rule"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Null": {
+      "gate": "Null",
+      "v": "PARTIAL",
+      "checks": [
+       {
+        "criterion": "Null.schema_default",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Null.blank_rows",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Vocab": {
+      "gate": "Vocab",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Vocab.identity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Vocab.alias",
+        "v": "NO_DETECTOR",
+        "state": "NOT_APPLICABLE",
+        "rule_id": "Vocab.alias#columns_any",
+        "reason": "N/A rule undecided (N-22): target-table columns ['action_class', 'chart_id', 'chart_personalization_score', 'classical_citation', 'composite_quality', 'computed_at', 'derivation_ledger_jsonb', 'follow_up_hook_jsonb', 'fructification_anchor', 'hora_lord', 'linked_anchor_id', 'muhurta_id', 'overlapping_obstruction_id', 'panchanga_score', 'panchanga_snapshot_jsonb', 'personal_adversity_penalty', 'personalization_graha', 'significators_met_jsonb', 'source_citation', 'tarabala_chandrabala_jsonb', 'verdict_reason', 'window_end', 'window_quality_verdict', 'window_start'] match none of ['synonyms']"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Carr": {
+      "gate": "Carr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Carr.D1",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D2",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D3",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Narr": {
+      "gate": "Narr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Narr.agree",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.checkable",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.fidelity_test",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.lint",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Dens": {
+      "gate": "Dens",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Dens.served",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Build": {
+      "gate": "Build",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Build.registered",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.contract",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.target",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dag",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.count_integrity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.completion",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.exercised",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.history",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dep_liveness",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     }
+    },
+    "ph_nimitta": {
+     "Ldgr": {
+      "gate": "Ldgr",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Ldgr.source_presence",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Idem": {
+      "gate": "Idem",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Idem.pattern",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Earn": {
+      "gate": "Earn",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Earn.build_record",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Earn.service_state",
+        "v": "N/A",
+        "state": "MEASURED",
+        "rule_id": "Earn.service_state#measured:not-a-service",
+        "cause": "not-a-service",
+        "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)",
+        "reason": "measured N/A under a declared rule"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Null": {
+      "gate": "Null",
+      "v": "PARTIAL",
+      "checks": [
+       {
+        "criterion": "Null.schema_default",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Null.blank_rows",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Vocab": {
+      "gate": "Vocab",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Vocab.identity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Vocab.alias",
+        "v": "NO_DETECTOR",
+        "state": "NOT_APPLICABLE",
+        "rule_id": "Vocab.alias#columns_any",
+        "reason": "N/A rule undecided (N-22): target-table columns ['anchor_id', 'anchor_source', 'ayanamsha_robustness', 'bhavishya_id', 'causal_chain_jsonb', 'chart_id', 'computed_at', 'confidence_basis', 'confidence_high', 'confidence_low', 'contradiction_jsonb', 'convergence_id', 'counterfactual_jsonb', 'dasha_consensus_count', 'derivation_ledger_jsonb', 'direction', 'discovery_id', 'domain', 'event_type', 'falsifier', 'horizon_tier', 'karmic_frame', 'karmic_note', 'lift_vector_jsonb', 'magnitude', 'magnitude_basis', 'malleability', 'peak_date', 'posterior', 'precedent_refs_jsonb', 'school_consensus_jsonb', 'signal_id', 'source_citation', 'structured_falsifier_jsonb', 'subsystem_source', 'window_end', 'window_start'] match none of ['synonyms']"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Carr": {
+      "gate": "Carr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Carr.D1",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D2",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D3",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Narr": {
+      "gate": "Narr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Narr.agree",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.checkable",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.fidelity_test",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.lint",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Dens": {
+      "gate": "Dens",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Dens.served",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Build": {
+      "gate": "Build",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Build.registered",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.contract",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.target",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dag",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured; transitive_only: every missing edge is already reachable through a declared dependency (ordering holds, the edge is undeclared)"
+       },
+       {
+        "criterion": "Build.count_integrity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.completion",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.exercised",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.history",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dep_liveness",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     }
+    },
+    "ph_phaladesa": {
+     "Ldgr": {
+      "gate": "Ldgr",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Ldgr.source_presence",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Idem": {
+      "gate": "Idem",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Idem.pattern",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Earn": {
+      "gate": "Earn",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Earn.build_record",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Earn.service_state",
+        "v": "N/A",
+        "state": "MEASURED",
+        "rule_id": "Earn.service_state#measured:not-a-service",
+        "cause": "not-a-service",
+        "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)",
+        "reason": "measured N/A under a declared rule"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Null": {
+      "gate": "Null",
+      "v": "PARTIAL",
+      "checks": [
+       {
+        "criterion": "Null.schema_default",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Null.blank_rows",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Vocab": {
+      "gate": "Vocab",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Vocab.identity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Vocab.alias",
+        "v": "NO_DETECTOR",
+        "state": "NOT_APPLICABLE",
+        "rule_id": "Vocab.alias#columns_any",
+        "reason": "N/A rule undecided (N-22): target-table columns ['anchor_count', 'anomaly_flag_count', 'chart_id', 'clean_anchor_count', 'computed_at', 'confidence_high', 'confidence_low', 'contradiction_summary_jsonb', 'derivation_ledger_jsonb', 'derivation_summary_jsonb', 'domain', 'evidence_type', 'incoming_spillover_count', 'magnitude', 'malleability', 'mitigation_available', 'muhurta_available', 'narration_jsonb', 'narration_model', 'narration_requested_at', 'narration_status', 'peak_date', 'phaladesa_id', 'pramana_window_status', 'precedent_refs_jsonb', 'prediction_window_end', 'prediction_window_start', 'source_citation', 'spillover_domains_jsonb', 'staged_revision_count', 'top_anchor_id'] match none of ['synonyms']"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Carr": {
+      "gate": "Carr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Carr.D1",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D2",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D3",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Narr": {
+      "gate": "Narr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Narr.agree",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.checkable",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.fidelity_test",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.lint",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Dens": {
+      "gate": "Dens",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Dens.served",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Build": {
+      "gate": "Build",
+      "v": "PARTIAL",
+      "checks": [
+       {
+        "criterion": "Build.registered",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.contract",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.target",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dag",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.count_integrity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.completion",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.exercised",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.history",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dep_liveness",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     }
+    },
+    "ph_pramana": {
+     "Ldgr": {
+      "gate": "Ldgr",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Ldgr.source_presence",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Idem": {
+      "gate": "Idem",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Idem.pattern",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Earn": {
+      "gate": "Earn",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Earn.build_record",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Earn.service_state",
+        "v": "N/A",
+        "state": "MEASURED",
+        "rule_id": "Earn.service_state#measured:not-a-service",
+        "cause": "not-a-service",
+        "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)",
+        "reason": "measured N/A under a declared rule"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Null": {
+      "gate": "Null",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Null.schema_default",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Null.blank_rows",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Vocab": {
+      "gate": "Vocab",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Vocab.identity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Vocab.alias",
+        "v": "NO_DETECTOR",
+        "state": "NOT_APPLICABLE",
+        "rule_id": "Vocab.alias#columns_any",
+        "reason": "N/A rule undecided (N-22): target-table columns ['anchor_id', 'chart_id', 'computed_at', 'derivation_ledger_jsonb', 'evidence_strength_label', 'evidence_type', 'falsifier_text', 'lel_entry_id', 'lel_entry_jsonb', 'linked_sodhana_id', 'observable_criteria_jsonb', 'pramana_id', 'source_citation', 'window_status'] match none of ['synonyms']"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Carr": {
+      "gate": "Carr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Carr.D1",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D2",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D3",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Narr": {
+      "gate": "Narr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Narr.agree",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.checkable",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.fidelity_test",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.lint",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Dens": {
+      "gate": "Dens",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Dens.served",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Build": {
+      "gate": "Build",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Build.registered",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.contract",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.target",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dag",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.count_integrity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.completion",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.exercised",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.history",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dep_liveness",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     }
+    },
+    "ph_pratikara": {
+     "Ldgr": {
+      "gate": "Ldgr",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Ldgr.source_presence",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Idem": {
+      "gate": "Idem",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Idem.pattern",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Earn": {
+      "gate": "Earn",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Earn.build_record",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Earn.service_state",
+        "v": "N/A",
+        "state": "MEASURED",
+        "rule_id": "Earn.service_state#measured:not-a-service",
+        "cause": "not-a-service",
+        "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)",
+        "reason": "measured N/A under a declared rule"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Null": {
+      "gate": "Null",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Null.schema_default",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Null.blank_rows",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Vocab": {
+      "gate": "Vocab",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Vocab.identity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Vocab.alias",
+        "v": "NO_DETECTOR",
+        "state": "NOT_APPLICABLE",
+        "rule_id": "Vocab.alias#columns_any",
+        "reason": "N/A rule undecided (N-22): target-table columns ['afflicting_graha', 'chart_id', 'classical_citation', 'computed_at', 'cross_tradition_corroboration', 'derivation_ledger_jsonb', 'initiation_muhurta_ref', 'intensity_tier', 'linked_anchor_id', 'mitigation_id', 'obstruction_id', 'obstruction_severity', 'outcome_hook_jsonb', 'program_jsonb', 'proportionality_basis', 're_evaluation_date', 'recommended_tier_jsonb', 'source_citation', 'source_id', 'tradition_options_jsonb', 'window_end', 'window_start'] match none of ['synonyms']"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Carr": {
+      "gate": "Carr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Carr.D1",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D2",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D3",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Narr": {
+      "gate": "Narr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Narr.agree",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.checkable",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.fidelity_test",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.lint",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Dens": {
+      "gate": "Dens",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Dens.served",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Build": {
+      "gate": "Build",
+      "v": "PARTIAL",
+      "checks": [
+       {
+        "criterion": "Build.registered",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.contract",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.target",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dag",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.count_integrity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.completion",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.exercised",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.history",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dep_liveness",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     }
+    },
+    "ph_rectification": {
+     "Ldgr": {
+      "gate": "Ldgr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Ldgr.source_presence",
+        "v": "NO_DETECTOR",
+        "state": "NOT_APPLICABLE",
+        "rule_id": "Ldgr.source_presence#columns_any",
+        "reason": "N/A rule undecided (N-22): target-table columns ['ayanamsha_id', 'candidate_birth_utc', 'chart_id', 'id', 'lagna_degree_in_sign', 'lagna_longitude_deg', 'lagna_sign', 'lagna_stable', 'lel_events_matched', 'lel_events_tested', 'lel_fit_score', 'offset_minutes', 'scored_at'] match none of ['source_citation', 'source_text_id', 'classical_citation', 'classical_citations', 'citation_ref']"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Idem": {
+      "gate": "Idem",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Idem.pattern",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Earn": {
+      "gate": "Earn",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Earn.build_record",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Earn.service_state",
+        "v": "N/A",
+        "state": "MEASURED",
+        "rule_id": "Earn.service_state#measured:not-a-service",
+        "cause": "not-a-service",
+        "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)",
+        "reason": "measured N/A under a declared rule"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Null": {
+      "gate": "Null",
+      "v": "PARTIAL",
+      "checks": [
+       {
+        "criterion": "Null.schema_default",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Null.blank_rows",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Vocab": {
+      "gate": "Vocab",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Vocab.identity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Vocab.alias",
+        "v": "NO_DETECTOR",
+        "state": "NOT_APPLICABLE",
+        "rule_id": "Vocab.alias#columns_any",
+        "reason": "N/A rule undecided (N-22): target-table columns ['ayanamsha_id', 'candidate_birth_utc', 'chart_id', 'id', 'lagna_degree_in_sign', 'lagna_longitude_deg', 'lagna_sign', 'lagna_stable', 'lel_events_matched', 'lel_events_tested', 'lel_fit_score', 'offset_minutes', 'scored_at'] match none of ['synonyms']"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Carr": {
+      "gate": "Carr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Carr.D1",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D2",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D3",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Narr": {
+      "gate": "Narr",
+      "v": "PARTIAL",
+      "checks": [
+       {
+        "criterion": "Narr.agree",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.checkable",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.fidelity_test",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.lint",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Dens": {
+      "gate": "Dens",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Dens.served",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Build": {
+      "gate": "Build",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Build.registered",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.contract",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.target",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dag",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured; transitive_only: every missing edge is already reachable through a declared dependency (ordering holds, the edge is undeclared)"
+       },
+       {
+        "criterion": "Build.count_integrity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.completion",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.exercised",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.history",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dep_liveness",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     }
+    },
+    "ph_sankrama": {
+     "Ldgr": {
+      "gate": "Ldgr",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Ldgr.source_presence",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Idem": {
+      "gate": "Idem",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Idem.pattern",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Earn": {
+      "gate": "Earn",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Earn.build_record",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Earn.service_state",
+        "v": "N/A",
+        "state": "MEASURED",
+        "rule_id": "Earn.service_state#measured:not-a-service",
+        "cause": "not-a-service",
+        "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)",
+        "reason": "measured N/A under a declared rule"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Null": {
+      "gate": "Null",
+      "v": "PARTIAL",
+      "checks": [
+       {
+        "criterion": "Null.schema_default",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Null.blank_rows",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Vocab": {
+      "gate": "Vocab",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Vocab.identity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Vocab.alias",
+        "v": "NO_DETECTOR",
+        "state": "NOT_APPLICABLE",
+        "rule_id": "Vocab.alias#columns_any",
+        "reason": "N/A rule undecided (N-22): target-table columns ['asymmetry_score', 'bridge_path_jsonb', 'cascade_chain_jsonb', 'cascade_depth', 'cdlm_cell_id', 'chart_id', 'computed_at', 'confidence_basis', 'derivation_ledger_jsonb', 'falsifier', 'linkage_strength', 'mechanism_text', 'mitigation_ref', 'projected_peak_date', 'projected_window_end', 'projected_window_start', 'relationship_type', 'sankrama_id', 'source_anchor_id', 'source_citation', 'source_domain', 'source_window_end', 'source_window_start', 'spillover_confidence', 'target_domain', 'trajectory'] match none of ['synonyms']"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Carr": {
+      "gate": "Carr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Carr.D1",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D2",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D3",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Narr": {
+      "gate": "Narr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Narr.agree",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.checkable",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.fidelity_test",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.lint",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Dens": {
+      "gate": "Dens",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Dens.served",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Build": {
+      "gate": "Build",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Build.registered",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.contract",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.target",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dag",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.count_integrity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.completion",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.exercised",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.history",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dep_liveness",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     }
+    },
+    "ph_sodhana": {
+     "Ldgr": {
+      "gate": "Ldgr",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Ldgr.source_presence",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Idem": {
+      "gate": "Idem",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Idem.pattern",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Earn": {
+      "gate": "Earn",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Earn.build_record",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Earn.service_state",
+        "v": "N/A",
+        "state": "MEASURED",
+        "rule_id": "Earn.service_state#measured:not-a-service",
+        "cause": "not-a-service",
+        "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)",
+        "reason": "measured N/A under a declared rule"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Null": {
+      "gate": "Null",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Null.schema_default",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Null.blank_rows",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured",
+        "inconclusive": true
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Vocab": {
+      "gate": "Vocab",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Vocab.identity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Vocab.alias",
+        "v": "NO_DETECTOR",
+        "state": "NOT_APPLICABLE",
+        "rule_id": "Vocab.alias#columns_any",
+        "reason": "N/A rule undecided (N-22): target-table columns ['anchor_id', 'anomaly_severity', 'anomaly_type', 'auto_action', 'chart_id', 'computed_at', 'derivation_ledger_jsonb', 'detected_field', 'expected_value_text', 'leakage_class', 'observed_value_text', 'recommendation_text', 'sodhana_id', 'source_citation'] match none of ['synonyms']"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Carr": {
+      "gate": "Carr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Carr.D1",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D2",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D3",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Narr": {
+      "gate": "Narr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Narr.agree",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.checkable",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured",
+        "inconclusive": true
+       },
+       {
+        "criterion": "Narr.fidelity_test",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.lint",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Dens": {
+      "gate": "Dens",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Dens.served",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Build": {
+      "gate": "Build",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Build.registered",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.contract",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.target",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dag",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.count_integrity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.completion",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.exercised",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.history",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dep_liveness",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     }
+    },
+    "ph_suddha_sodhana": {
+     "Ldgr": {
+      "gate": "Ldgr",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Ldgr.source_presence",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Idem": {
+      "gate": "Idem",
+      "v": "PASS",
+      "checks": [
+       {
+        "criterion": "Idem.pattern",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Earn": {
+      "gate": "Earn",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Earn.build_record",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Earn.service_state",
+        "v": "N/A",
+        "state": "MEASURED",
+        "rule_id": "Earn.service_state#measured:not-a-service",
+        "cause": "not-a-service",
+        "decision": "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)",
+        "reason": "measured N/A under a declared rule"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Null": {
+      "gate": "Null",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Null.schema_default",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Null.blank_rows",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Vocab": {
+      "gate": "Vocab",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Vocab.identity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Vocab.alias",
+        "v": "NO_DETECTOR",
+        "state": "NOT_APPLICABLE",
+        "rule_id": "Vocab.alias#columns_any",
+        "reason": "N/A rule undecided (N-22): target-table columns ['anchor_id', 'chart_id', 'cleanliness_status', 'computed_at', 'confidence_delta_if_applied', 'critical_flag_count', 'derivation_ledger_jsonb', 'entry_id', 'flag_ids_jsonb', 'magnitude_delta_if_applied', 'major_flag_count', 'minor_flag_count', 'revision_applied_at', 'revision_approved_by', 'source_citation', 'staged_revision_jsonb'] match none of ['synonyms']"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Carr": {
+      "gate": "Carr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Carr.D1",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D2",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       },
+       {
+        "criterion": "Carr.D3",
+        "v": "NO_DETECTOR",
+        "state": "APPLIES",
+        "reason": "not measured (applies)"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Narr": {
+      "gate": "Narr",
+      "v": "NO_DETECTOR",
+      "checks": [
+       {
+        "criterion": "Narr.agree",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.checkable",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.fidelity_test",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Narr.lint",
+        "v": "NO_DETECTOR",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Dens": {
+      "gate": "Dens",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Dens.served",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     },
+     "Build": {
+      "gate": "Build",
+      "v": "FAIL",
+      "checks": [
+       {
+        "criterion": "Build.registered",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.contract",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.target",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dag",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.count_integrity",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.completion",
+        "v": "FAIL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.exercised",
+        "v": "PASS",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.history",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       },
+       {
+        "criterion": "Build.dep_liveness",
+        "v": "PARTIAL",
+        "state": "MEASURED",
+        "reason": "measured"
+       }
+      ],
+      "registry_revision": 10,
+      "registry_fingerprint": "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a"
+     }
+    }
+   }
+  }
+ },
+ "rollup_excluded": {
+  "L4": {
+   "ph_muhurta": {
+    "Cost.baseline": "NO_DETECTOR",
+    "Count.floor": "PASS",
+    "Complete.depth": "PASS",
+    "Reach.fields": "NOT_GENERIC",
+    "Complete.width": "NOT_GENERIC"
+   },
+   "ph_nimitta": {
+    "Cost.baseline": "NO_DETECTOR",
+    "Count.floor": "FAIL",
+    "Complete.depth": "PARTIAL",
+    "Reach.fields": "NOT_GENERIC",
+    "Complete.width": "NOT_GENERIC"
+   },
+   "ph_phaladesa": {
+    "Cost.baseline": "NO_DETECTOR",
+    "Count.floor": "PASS",
+    "Complete.depth": "PARTIAL",
+    "Reach.fields": "NOT_GENERIC",
+    "Complete.width": "NOT_GENERIC"
+   },
+   "ph_pramana": {
+    "Cost.baseline": "NO_DETECTOR",
+    "Complete.depth": "PARTIAL",
+    "Reach.fields": "NOT_GENERIC",
+    "Complete.width": "NOT_GENERIC"
+   },
+   "ph_pratikara": {
+    "Cost.baseline": "NO_DETECTOR",
+    "Count.floor": "PASS",
+    "Complete.depth": "PARTIAL",
+    "Reach.fields": "NOT_GENERIC",
+    "Complete.width": "NOT_GENERIC"
+   },
+   "ph_rectification": {
+    "Cost.baseline": "NO_DETECTOR",
+    "Count.floor": "PASS",
+    "Complete.depth": "PASS",
+    "Reach.fields": "NOT_GENERIC",
+    "Complete.width": "NOT_GENERIC"
+   },
+   "ph_sankrama": {
+    "Cost.baseline": "NO_DETECTOR",
+    "Count.floor": "FAIL",
+    "Complete.depth": "PARTIAL",
+    "Reach.fields": "NOT_GENERIC",
+    "Complete.width": "NOT_GENERIC"
+   },
+   "ph_sodhana": {
+    "Cost.baseline": "NO_DETECTOR",
+    "Complete.depth": "PARTIAL",
+    "Reach.fields": "NOT_GENERIC",
+    "Complete.width": "NOT_GENERIC"
+   },
+   "ph_suddha_sodhana": {
+    "Cost.baseline": "NO_DETECTOR",
+    "Count.floor": "FAIL",
+    "Complete.depth": "PARTIAL",
+    "Reach.fields": "NOT_GENERIC",
+    "Complete.width": "NOT_GENERIC"
+   }
+  }
+ }
+}

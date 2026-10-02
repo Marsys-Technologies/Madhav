@@ -14,11 +14,21 @@ gate:
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 
 import pytest
 
-EPHE_PATH = "/Users/Dev/madhav-l3/gochara-wp0-7/.run/se1"
+# C22: no hard-coded personal path. The pinned .se1 corpus directory comes from
+# SE_EPHE_PATH — the one variable the Swiss C library itself honours (see
+# panchang_engine/swiss_backend.py), the one ci.yml exports when it downloads
+# the corpus, and the one the root python-sidecar conftest populates locally
+# (MARSYS_TEST_SE1_DIR / SWE_EPHE_PATH / /app/ephe / /tmp/se1). When the corpus
+# is missing or fails the pinned checksums the Swiss tests skip NOT_RUN with an
+# explicit reason — unless GOCHARA_SE1_REQUIRE=1, which makes an unusable corpus
+# a hard failure instead of a silent skip (CLAUDE.md §N.8: green because skipped
+# is not evidence).
+EPHE_PATH = os.environ.get("SE_EPHE_PATH", "")
 
 SE1_CHECKSUMS = {
     "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66",
@@ -30,6 +40,9 @@ SE1_CHECKSUMS = {
 def _verify_se1() -> dict[str, str]:
     problems = []
     actual = {}
+    if not EPHE_PATH:
+        problems.append("SE_EPHE_PATH is unset — no pinned .se1 corpus directory provided")
+        return problems, actual
     for name, expected in SE1_CHECKSUMS.items():
         p = Path(EPHE_PATH) / name
         if not p.exists():
@@ -43,6 +56,12 @@ def _verify_se1() -> dict[str, str]:
 
 
 _PROBLEMS, ACTUAL_CHECKSUMS = _verify_se1()
+
+if _PROBLEMS and os.environ.get("GOCHARA_SE1_REQUIRE") == "1":
+    raise RuntimeError(
+        "GOCHARA_SE1_REQUIRE=1 and the pinned .se1 corpus is unusable — refusing "
+        "to skip these tests (CLAUDE.md §N.8): " + "; ".join(_PROBLEMS)
+    )
 
 requires_swieph = pytest.mark.skipif(
     bool(_PROBLEMS),

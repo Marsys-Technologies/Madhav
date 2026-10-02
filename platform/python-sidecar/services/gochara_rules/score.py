@@ -145,13 +145,38 @@ def path_channel_scores(records: list[RelationshipRecord], event_class: str,
     return out
 
 
+def aggregate_paths_detail(path_scores: list) -> dict:
+    """Cross-path aggregation = MAX over admitted paths (union semantics), with qualification (Codex round 7 [1]).
+
+    An unknown (UNQUALIFIED / None) competing path can hold any value in the factor range [0, 1], so the maximum
+    is established only when it is PROVED independent of the unknown: the known maximum is already 1.0 (nothing in
+    [0, 1] can exceed it). Otherwise the cross-path value is unqualified — never the known maximum standing in for
+    the whole — and the known maximum is returned only as a labelled LOWER BOUND. A path score is a product of
+    factors in [0, 1] (§2.1), so anything outside that range is a defect, not a value."""
+    known, unknown = [], 0
+    for item in path_scores:
+        if item is None or item == UNQUALIFIED:
+            unknown += 1
+        elif isinstance(item, bool) or not isinstance(item, (int, float)):
+            raise ValueError(f"path score {item!r} is neither a number nor UNQUALIFIED")
+        elif not (0.0 <= item <= 1.0) or item != item:
+            raise ValueError("a path score is a product of factors in [0,1] (§2.1)")
+        else:
+            known.append(float(item))
+    lower = max(known) if known else None
+    if not path_scores:
+        return {"value": 0.0, "qualification": "qualified", "unknown_paths": 0, "known_lower_bound": None, "reason": None}
+    if unknown and (lower is None or lower < 1.0):
+        return {"value": UNQUALIFIED, "qualification": "unqualified", "unknown_paths": unknown,
+                "known_lower_bound": lower, "reason": "competing_path_unqualified"}
+    return {"value": lower, "qualification": "qualified", "unknown_paths": unknown,
+            "known_lower_bound": lower, "reason": None}
+
+
 def aggregate_paths(path_scores: list[float | str]) -> float | str:
-    """Cross-path aggregation = max over admitted paths (union semantics:
-    one strong path suffices; paths never multiply each other)."""
-    numeric = [s for s in path_scores if isinstance(s, (int, float))]
-    if not numeric:
-        return UNQUALIFIED if path_scores else 0.0
-    return max(numeric)
+    """Cross-path aggregation = max over admitted paths, qualified only if proved independent of any unknown path
+    (see `aggregate_paths_detail`, which also reports the known lower bound and the reason)."""
+    return aggregate_paths_detail(path_scores)["value"]
 
 
 def promise(strength: float | None, condition: bool) -> float:

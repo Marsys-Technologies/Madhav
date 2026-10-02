@@ -17,11 +17,11 @@ REMEDIATION (what MR-06 implements):
      - ka_gochara_sweep: catalog_status='RETIRED', is_active=false
      - ka_gochara_v2_materialize: removed from seed
      - ka_gochara: catalog_status='CURRENT', is_active=true, storage_type='postgres_table',
-       target_table='kala_gochara_windows', generation='4.0' count_sql
-       (WP10 RE-PIN, migration 1091, applied 2026-09-24 under
-           PRODUCTION_TRANCHE_1 — the registry row catalogs the '4.0' production
-           surface written by the kala_gochara_cutover scripts; supersedes the
-           Kāla B1 _v2/'2.0' literal, which was the WRITER MODULE's identity.
+       target_table='kala_gochara_windows_v2', generation='2.0' count_sql
+       (MIGRATION 1230 REVERT of the WP10 1091 re-pin, 2026-10-02, steward ruling
+           reversal 2026-10-02 — the registered writer writers/ka_gochara.py writes
+           kala_gochara_windows_v2 at generation '2.0', so the registry row catalogs
+           that surface; the 1091 '4.0' pin returns with the writer switch at D-FLIP.
            See the succession note below)
   2. The ON-CONFLICT UPDATE clause in asset_registry_seed.ts guards against
      resurrecting a RETIRED asset: it does NOT overwrite catalog_status when
@@ -34,11 +34,13 @@ WHAT THESE TESTS VERIFY (all offline/static, no DB required):
   1. Seed ka_gochara_sweep entry declares catalog_status='RETIRED' and is_active=false.
   2. Seed does NOT contain an asset_id='ka_gochara_v2_materialize' entry.
   3. Seed ka_gochara entry is post-cutover: storage_type='postgres_table',
-     target_table='kala_gochara_windows', count_sql references
-     generation='4.0' against that same table, and satisfies integrity
+     target_table='kala_gochara_windows_v2', count_sql references
+     generation='2.0' against that same table, and satisfies integrity
      conjunct (j) — target_table IS the relation count_sql reads (migration
-     1091, WP10 re-pin 2026-09-24; the _v2/'2.0' writer-module identity is a
-     separate, unchanged concern pinned by the parity test).
+     1230, the 2026-10-02 revert of the WP10 1091 re-pin, steward ruling
+     reversal 2026-10-02: the registered writer writes
+     kala_gochara_windows_v2 at generation '2.0'; the 1091 pin returns with
+     the writer switch at D-FLIP).
   4. The ON-CONFLICT UPDATE clause in asset_registry_seed.ts does NOT overwrite
      catalog_status unconditionally — it guards RETIRED rows.
   5. Migration 566 exists and contains a BEFORE DELETE trigger body that raises
@@ -69,21 +71,16 @@ ka_gochara_v3_century_materialize, a separate asset. W0 census #4
 (MADHAV_DATA_PLANE_L3_W0_FIELD_CONTRACT_REGISTER_v1_0.md) settles the same
 identity: ka_gochara → kala_gochara_windows_v2 + kala_gochara_v2_build_state.
 
-WP10 RE-PIN (2026-09-24, migration 1091, applied under PRODUCTION_TRANCHE_1,
-native-authorised) — SUPERSEDES the Kāla B1 literal as the SEED identity:
-the registry row now catalogs the '4.0' production surface,
-target_table='kala_gochara_windows' with count_sql scoped to
-generation='4.0', and integrity conjunct (j) requires target_table = the
-relation count_sql reads. The '4.0' windows are written by the cutover
-scripts (scripts/kala_gochara_cutover/step06_candidate_build.py for the
-contacts/coverage ledger and step06b_windows_projection.py for the windows
-projection, GENERATION_DEFAULT='4.0'); the WP10 design's '4.0' authority
-names ka_gochara (step07_flip_gates.py). The Kāla B1 identity remains true
-of the WRITER MODULE (ka_gochara.py TABLE/GENERATION_V2) — a separate
-question the registry row does not govern. Test 3 now pins the 1091 identity
-with a negative assertion that a target_table ≠ count_sql-relation pair can
-never pass; the never-touch-the-protected-corpus concern is carried by the
-writer-module pin in gochara_seed_target_table_parity.test.ts.
+MIGRATION 1230 REVERT (2026-10-02, steward ruling reversal 2026-10-02) —
+SUPERSEDES the WP10 re-pin as the SEED identity: the registered writer
+(writers/ka_gochara.py) still writes kala_gochara_windows_v2 at generation
+'2.0', so the registry row must point there (CLAUDE.md N.4/N.8). 1230 restores
+target_table / count_sql / integrity_check_sql / clear_tables from
+kala_gochara_cutover_step05_snapshot (the pre-1091 row), and the seed literal
+follows it. The 1091 '4.0' pin is re-applied TOGETHER WITH the writer switch
+at D-FLIP (native-only), not before. Test 3 pins the 1230 identity with the
+same conjunct-(j) equality and a negative assertion that the superseded 1091
+'4.0'/kala_gochara_windows pair can never pass.
 """
 from __future__ import annotations
 
@@ -201,17 +198,20 @@ def test_seed_ka_gochara_v2_materialize_absent():
 # ── Test 3: ka_gochara seed entry is post-cutover materializer ───────────────
 
 def test_seed_ka_gochara_is_post_cutover_materializer():
-    """ka_gochara seed entry must reflect the WP10 re-pinned registry identity.
+    """ka_gochara seed entry must reflect the migration-1230 reverted registry identity.
 
-    Post-cutover (W6.4, migration 563) AND post-WP10-RE-PIN (migration 1091,
-    applied 2026-09-24 under PRODUCTION_TRANCHE_1, native-authorised). The
-    registry row catalogs the asset's '4.0' production surface:
+    Post-cutover (W6.4, migration 563) AND post-1230-REVERT (migration 1230,
+    2026-10-02, steward ruling reversal 2026-10-02: the registered ka_gochara
+    writer — writers/ka_gochara.py — writes kala_gochara_windows_v2 at
+    generation '2.0' (TABLE / GENERATION_V2), so the registry row must point
+    there; CLAUDE.md N.4: count_sql must count what the writer writes). The
+    registry row catalogs the asset's writer surface:
       - storage_type: 'postgres_table' (was 'service')
-      - target_table: 'kala_gochara_windows' — the production relation the
-        '4.0' windows live in, written by the cutover scripts
-        (step06_candidate_build.py ledger; step06b_windows_projection.py
-        windows projection, GENERATION_DEFAULT='4.0').
-      - count_sql references generation='4.0' AGAINST kala_gochara_windows.
+      - target_table: 'kala_gochara_windows_v2' — the relation the registered
+        writer writes (1230 reverted 1091's '4.0'/kala_gochara_windows re-pin;
+        the 1091 pin returns with the writer switch at D-FLIP, native-only).
+      - count_sql references generation='2.0' AGAINST kala_gochara_windows_v2 —
+        the exact text migration 1230 writes.
       - integrity conjunct (j): target_table IS the relation count_sql reads —
         a pair where the two differ can never pass this test.
       - scope: 'per_chart' (was 'global')
@@ -225,7 +225,8 @@ def test_seed_ka_gochara_is_post_cutover_materializer():
     repoint) → '2.0'/kala_gochara_windows_v2 (Kāla B1, 2026-09-22 — the WRITER
     MODULE's native-ruled identity, still true of ka_gochara.py and pinned by
     gochara_seed_target_table_parity.test.ts) → '4.0'/kala_gochara_windows
-    (WP10 1091 — the REGISTRY/CATALOG identity, later and native-authorised).
+    (WP10 1091 — superseded) → '2.0'/kala_gochara_windows_v2 (migration 1230,
+    the revert this test pins, per the steward ruling reversal of 2026-10-02).
     Re-pointed, not weakened: the conjunct-(j) equality assertion is the
     inverted-form descendant of the never-touch-the-protected-corpus guard —
     it fails for exactly the pair that guard forbade.
@@ -239,28 +240,30 @@ def test_seed_ka_gochara_is_post_cutover_materializer():
         "ka_gochara seed entry must have storage_type: 'postgres_table' post-cutover "
         f"(found block: {block[:400]!r})"
     )
-    # Must carry the 1091 registry identity: kala_gochara_windows — the '4.0'
-    # production surface written by the kala_gochara_cutover scripts.
-    assert re.search(r"target_table\s*:\s*['\"]kala_gochara_windows['\"]", block), (
-        "ka_gochara seed entry must have target_table: 'kala_gochara_windows' "
-        "(WP10 re-pin, migration 1091 — the '4.0' production surface) "
+    # Must carry the 1230 registry identity: kala_gochara_windows_v2 — the
+    # surface the registered writer (writers/ka_gochara.py TABLE) writes.
+    assert re.search(r"target_table\s*:\s*['\"]kala_gochara_windows_v2['\"]", block), (
+        "ka_gochara seed entry must have target_table: 'kala_gochara_windows_v2' "
+        "(migration 1230 revert of the 1091 re-pin, steward ruling reversal 2026-10-02 — "
+        "the registered writer writes kala_gochara_windows_v2 at generation '2.0'; "
+        "the 1091 '4.0' pin returns with the writer switch at D-FLIP) "
         f"(found block: {block[:400]!r})"
     )
-    # count_sql must reference generation='4.0' (the WP10 cutover generation,
-    # step06b_windows_projection.py GENERATION_DEFAULT)
-    assert re.search(r"count_sql\s*:.*generation.*4\.0", block, re.DOTALL), (
-        "ka_gochara seed count_sql must reference generation='4.0' "
-        f"(WP10 cutover generation, migration 1091) (found block: {block[:400]!r})"
+    # count_sql must reference generation='2.0' (the registered writer's
+    # GENERATION_V2 — the exact text migration 1230 writes)
+    assert re.search(r"count_sql\s*:.*generation.*2\.0", block, re.DOTALL), (
+        "ka_gochara seed count_sql must reference generation='2.0' "
+        f"(registered writer's generation, migration 1230) (found block: {block[:400]!r})"
     )
-    # count_sql must query kala_gochara_windows (the production relation).
-    assert re.search(r"count_sql\s*:\s*[\"'].*FROM kala_gochara_windows\s", block), (
-        "ka_gochara seed count_sql must SELECT FROM kala_gochara_windows "
-        f"(migration 1091 re-pin) (found block: {block[:400]!r})"
+    # count_sql must query kala_gochara_windows_v2 (the writer's relation).
+    assert re.search(r"count_sql\s*:\s*[\"'].*FROM kala_gochara_windows_v2\s", block), (
+        "ka_gochara seed count_sql must SELECT FROM kala_gochara_windows_v2 "
+        f"(migration 1230 revert) (found block: {block[:400]!r})"
     )
     # Integrity conjunct (j), negative form: a row whose target_table differs
     # from the relation its count_sql reads can never pass. Derived from the
-    # block itself — never restated — and the pre-1091 _v2/'2.0' pair is shown
-    # to violate it (that mismatch is exactly what 1091 closed).
+    # block itself — never restated — and the superseded 1091 '4.0' pair is shown
+    # to violate it (that mismatch is exactly what 1230 closed).
     tt = re.search(r"target_table\s*:\s*['\"]([a-z0-9_]+)['\"]", block)
     cs = re.search(r"count_sql\s*:\s*[\"']([^\"']+)[\"']", block)
     assert tt and cs, "ka_gochara seed entry must declare both target_table and count_sql"
@@ -269,19 +272,19 @@ def test_seed_ka_gochara_is_post_cutover_materializer():
     assert tt.group(1) == cs_rel.group(1), (
         "conjunct (j) violation: ka_gochara target_table "
         f"({tt.group(1)!r}) != count_sql relation ({cs_rel.group(1)!r}) — "
-        "the mismatch migration 1091 exists to close can never pass"
+        "the mismatch migration 1230 exists to close can never pass"
     )
-    # Explicit negative control: the superseded _v2/'2.0' pair MUST NOT satisfy
+    # Explicit negative control: the superseded 1091 '4.0' pair MUST NOT satisfy
     # the invariant (proves the equality above is able to fail — §N.8).
     superseded_rel = re.search(
         r"FROM\s+([a-z0-9_]+)",
-        "SELECT COUNT(*) FROM kala_gochara_windows_v2 WHERE chart_id=$1 AND generation='2.0'",
+        "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='4.0'",
     ).group(1)
-    assert superseded_rel == "kala_gochara_windows_v2"
+    assert superseded_rel == "kala_gochara_windows"
     assert superseded_rel != tt.group(1), (
-        "negative control broken: the superseded _v2/'2.0' count_sql relation must "
+        "negative control broken: the superseded 1091 '4.0' count_sql relation must "
         "differ from the current target_table — that pair would violate conjunct (j) "
-        "under the 1091 identity"
+        "under the 1230 identity"
     )
     # Must be per_chart scope
     assert re.search(r"scope\s*:\s*['\"]per_chart['\"]", block), (
