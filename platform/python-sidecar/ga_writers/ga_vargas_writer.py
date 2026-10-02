@@ -2924,6 +2924,12 @@ def build_ga_vargas(
         # the FIRST canonical ayanamsha pass only. Each pass used to delete and re-emit all six:
         # five passes reported 30 sentinel rows for 6 stored (24 overwrites; TI-l1-writer-fixes-001).
         emit_sentinels = ayan_id == next(iter(CANONICAL_AYANAMSHAS))
+        if not emit_sentinels:
+            # ... so a later pass must also not PURGE them: the unconditional purge call below
+            # becomes a no-op from the first non-first pass on (this closure name is rebound; the
+            # first pass, which emits, is always the one that ran with the real helper).
+            def _delete_invariant_sentinels(_conn, _chart_id) -> None:  # noqa: F811
+                return None
 
         # For cross-varga harmonics post-pass, collect per-body sign per varga
         all_varga_signs: dict[str, dict[str, int]] = {b: {} for b in CLASSICAL_BODIES}
@@ -2932,8 +2938,7 @@ def build_ga_vargas(
             # INVARIANT sentinel deletion: purge stale scope-cap sentinel rows for
             # this chart before inserting new ones. Runs once per ayanamsha loop
             # entry (idempotent — deletes 0 rows if nothing was written yet).
-            if emit_sentinels:
-                _delete_invariant_sentinels(conn, chart_id)
+            _delete_invariant_sentinels(conn, chart_id)
             if owns_conn:
                 conn.commit()
 
