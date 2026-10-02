@@ -1,0 +1,55 @@
+{
+  "lane": "special_lagna_offset",
+  "ruling": "special-lagna Sun-at-sunrise offset",
+  "pr": "#2971",
+  "description": "SS-accepted S-L1 fix (branch suvarna/land/TI-l1-special-lagna-offset-001): pyjhora_adapter/special_lagnas.py reads the Sun AT sunrise for BHAVA/HORA/GHATI/VIGHATI lagna (PyJHora 4.8.6 read it tz hours after sunrise: +0.2324 deg for IST). CANONICAL CHART (482012f1), computed in memory from the stored longitudes minus the offset, no birth data read: (1) longitude_sidereal moves on 20 rows (4 subjects x 5 ayanamshas), every delta -0.2324 deg (tolerance 0.001, checked by evidence/special_lagna_offset_check.py, NOT by this detector: a continuous change is never a class change; a longitude turning NULL IS detector-visible and undeclared, so it fails; the W7 run of the script is REQUIRED, the detector alone is not sufficient); (2) near_nakshatra_boundary_flag flips on 5 points x 7 keys = 35 rows (BHAVA surya_siddhanta_classical true to false; GHATI krishnamurti, lahiri_chitrapaksha, true_chitra false to true; VIGHATI raman true to false) and formula_provenance_text changes on all 140 rows of the 4 subjects: neither column is read by the detector, both are checked by the same script; (3) EXPLICIT ZERO CHANGE, enforced below with exact 0: sign, sign_lord, house_d1, nakshatra, nakshatra_lord, pada on all 7 special_lagna subjects (the 4 moved ones x 20 each, and INDU/SREE/VARNADA, whose values do not change: VARNADA depends only on the Lagna sign and the Hora Lagna SIGN, and no Hora sign changes on this chart), and no special_lagna row appears, disappears or changes occurrence count (245 rows per chart). Tier changes on special_lagna belong to the tiers lane (#2941) and are deliberately not covered here. Other charts: see special_lagna_offset_other_charts.json.",
+  "charts": [
+    "482012f1"
+  ],
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": [
+        "special_lagna"
+      ],
+      "fact_keys": [
+        "sign",
+        "sign_lord",
+        "house_d1",
+        "nakshatra",
+        "nakshatra_lord",
+        "pada"
+      ],
+      "change_types": [
+        "value",
+        "appeared",
+        "disappeared",
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "expected_direction": "none. A class-level change on any of these six keys of any special_lagna subject on the canonical chart is an EXPECTATION MISMATCH (computed offline: none of the 20 moved points crosses a sign, nakshatra or pada edge when shifted by 0.2324 deg, and no Hora Lagna sign changes, so Varnada cannot move).",
+      "note": "zero-change expectation; tier is excluded on purpose (tiers lane #2941 changes special_lagna tier two_pass_verified to single on 245 rows)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": [
+        "special_lagna"
+      ],
+      "fact_keys": [
+        "longitude_sidereal"
+      ],
+      "change_types": [
+        "appeared",
+        "disappeared",
+        "occurrence_count"
+      ],
+      "expected_count": {
+        "exact": 0
+      },
+      "expected_direction": "none: row counts unchanged (245 special_lagna rows per chart).",
+      "note": "the VALUE of longitude_sidereal is deliberately NOT declared: a continuous number that changes to another number is counted in the detector's `continuous` block and never blocks, but a longitude that becomes NULL/text is a class `value` change that no entry declares, so the detector itself FAILS it (KIND_MISMATCH; verified offline). The -0.2324 deg delta itself is asserted by evidence/special_lagna_offset_check.py (C4), whose W7 run is REQUIRED: the detector alone is not sufficient."
+    }
+  ]
+}

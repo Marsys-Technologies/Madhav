@@ -29,6 +29,11 @@ import numpy as np
 import pytest
 import swisseph as swe
 
+# C23: both tests in this file assert TIMING RATIOS (v3-vs-v1 speedup, linear
+# scaling) and are load-sensitive by construction — they can never be a gate.
+# CI runs them only in the non-gating benchmark step (continue-on-error).
+pytestmark = pytest.mark.benchmark
+
 from services.gochara_grammar import resonance_map as RM
 from services.gochara_grammar import dasha_data as DD
 from services.gochara_intensity.engine import compute_lambda_e

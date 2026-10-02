@@ -303,10 +303,12 @@ def test_circularity_guard_field_hash_invariant_under_lel_mutation():
 
     parsed_dsn = urlparse(dsn)
     database_name = parsed_dsn.path.lstrip("/")
-    if parsed_dsn.hostname not in {"127.0.0.1", "localhost", "::1"}:
-        raise RuntimeError(
-            "MI_BHARA_CIRCULARITY_TEST_DATABASE_URL must use a loopback host"
-        )
+    # C24: host discipline via the ONE shared guard (tests/l3/_disposable_db_guard.py)
+    # — every host/hostaddr entry loopback (multi-host, keyword/value and query-string
+    # forms), no libpq environment overrides; the dbname convention stays this suite's own.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "l3"))
+    from _disposable_db_guard import validate_disposable_dsn
+    validate_disposable_dsn(dsn, None)
     if "test" not in database_name.lower():
         raise RuntimeError(
             "MI_BHARA_CIRCULARITY_TEST_DATABASE_URL must name a test database"

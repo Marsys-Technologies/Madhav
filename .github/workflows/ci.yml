@@ -1825,6 +1825,112 @@ jobs:
           # holds under threads (SS ruling N-28 / TI-ephemeris-fix-001).
           SWE_EPHE_PATH="$nirmana_ephe_dir" pytest tests/test_service_probes.py tests/test_swiss_backend_helper.py -q
 
+  governance-gates-gochara:
+    # C23 (Suvarṇa §N.8 finding; steward ruling M20261002T182324-6b9a): the four
+    # sidecar gochara test directories sat outside every pytest selection —
+    # green because never run. They run HERE, in a separate PARALLEL job, so the
+    # long-standing governance-gates job keeps its exact pre-C23 selection and
+    # ~11-minute duration. The dominant real-engine files (four files measuring
+    # 74-122s each locally) plus the previously marked slow tests run SHARDED
+    # over three slow legs (no pytest-xdist — the Swiss ephemeris lock is
+    # global); every leg targets < ~12 min wall. test_ci_slow_shard_coverage.py
+    # (in the fast leg) FAILS if any slow_real_ephemeris-marked file is in no
+    # shard, so a new slow file cannot be silently unrun. NOTE: until this job
+    # is added to the branch-protection required checks (a repository-settings
+    # act for the owner/steward) it RUNS on every PR but does not gate.
+    name: Governance Gates — gochara sidecar tests (C23)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: fast
+          # Slow shards, balanced by measured local standalone time (Moshier):
+          # shard 1 ≈ 374s, shard 2 ≈ 270s, shard 3 ≈ 357s. Keep this list in
+          # sync with the slow_real_ephemeris marks —
+          # test_ci_slow_shard_coverage.py enforces it.
+          - leg: slow-1
+            shard_files: "services/gochara_v3/tests/test_lambda_v3_bounded.py services/gochara_v3/tests/test_mr23_w12_adverse_window_golden.py"
+          - leg: slow-2
+            shard_files: "services/gochara_v3/tests/test_direction_restored.py services/gochara_v3/tests/test_graded_suppression.py"
+          - leg: slow-3
+            shard_files: "services/gochara_v3/tests/test_v1_parity.py services/gochara_v3/tests/test_lambda_decomposition.py services/gochara_v3/tests/test_w2g_arc_substrate.py"
+          - leg: benchmark
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+
+      - name: Swiss .se1 corpus (SHA-pinned)
+        # The same immutable public corpus the governance-gates job uses (SS
+        # ruling N-28 / TI-ephemeris-fix-001), so the goldens see the same
+        # SHA-pinned positions as every other CI consumer.
+        run: |
+          se1_dir="$(mktemp -d)"
+          echo "SE1_DIR=$se1_dir" >> "$GITHUB_ENV"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" \
+              --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+
+      - name: pytest — gochara fast dirs + unmarked gochara_v3 tests (required)
+        if: matrix.leg == 'fast'
+        timeout-minutes: 15
+        run: |
+          export SE_EPHE_PATH="$SE1_DIR"
+          cd platform/python-sidecar
+          # The whole gochara_v3/tests directory is selected, so a NEW file runs
+          # here by default unless it carries a marker. Includes
+          # test_ci_slow_shard_coverage.py — the shard-coverage guard.
+          pytest services/gochara_v3/mechanisms/tests \
+            services/ka_gochara_resonance/tests \
+            scripts/kala_admission/tests \
+            services/gochara_v3/tests \
+            -m "not integration and not slow_real_ephemeris and not benchmark" \
+            -q -rs --tb=short --no-header
+
+      - name: pytest — slow real-ephemeris shard ${{ matrix.leg }} (required; budget 20 min)
+        if: matrix.leg != 'fast' && matrix.leg != 'benchmark'
+        timeout-minutes: 20
+        run: |
+          export SE_EPHE_PATH="$SE1_DIR"
+          cd platform/python-sidecar
+          # Full-engine JD sweeps (200-1000 samples) with real Swiss positions per
+          # planet per JD (transit_search.py:249-251,337). REQUIRED — never
+          # continue-on-error.
+          pytest ${{ matrix.shard_files }} -m slow_real_ephemeris \
+            -q --tb=short --no-header
+
+      - name: pytest — non-gating benchmark (continue-on-error; NOT a gate)
+        if: matrix.leg == 'benchmark'
+        # test_speedup.py asserts TIMING RATIOS (v3-vs-v1 speedup, linear scaling)
+        # and is load-sensitive by construction — a red here can be runner load,
+        # not a regression. Visible but NON-GATING, never in a required step.
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          export SE_EPHE_PATH="$SE1_DIR"
+          cd platform/python-sidecar
+          pytest services/gochara_v3/tests -m benchmark \
+            -q --tb=short --no-header
+
   density-census:
     # doctrine-waves D-1.5b Lane B-7 (CLAUDE.md §N.6 — Serving Density Principle).
     # Mechanically verifies the §N.6 density/layering discipline on the two surfaces that
