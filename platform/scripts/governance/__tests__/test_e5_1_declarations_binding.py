@@ -144,6 +144,25 @@ def test_a_declarations_file_that_is_untracked_or_missing_is_refused(fresh_repo,
     assert ei.value.code in ("declarations_not_committed", "declarations_unreadable")
 
 
+def test_a_gitignored_untracked_declarations_file_is_refused_though_status_is_clean(fresh_repo, ledger):
+    cf = write_census_file({"Build.registered": dict(v="PASS", measured="m")})
+    git(fresh_repo, "rm", "-q", DECL_REL)
+    (fresh_repo / ".gitignore").write_text(DECL_REL + "\n")
+    git(fresh_repo, "add", ".gitignore")
+    commit_all(fresh_repo, "declarations untracked and ignored")
+    (fresh_repo / DECL_REL).parent.mkdir(parents=True, exist_ok=True)
+    (fresh_repo / DECL_REL).write_bytes(DECL_BYTES)                                         # present, ignored, status clean
+    assert git(fresh_repo, "status", "--porcelain", "--", DECL_REL).strip() == ""
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.write_certification(**kw(ledger, census_path=cf, writer_repo=fresh_repo))
+    assert ei.value.code == "declarations_not_committed" and "not tracked" in str(ei.value)
+
+
+def test_the_recorded_version_is_the_files_not_the_censuss(ledger):
+    rec = nc.write_certification(**kw(ledger, head=dict(declarations_version="9.9.9"))).record     # sha equal, version differs
+    assert rec["declarations_sha256"] == DECL_SHA and rec["declarations_version"] == "1.7.0"
+
+
 def test_with_a_writer_ref_the_file_at_that_ref_is_the_one_compared(fresh_repo, ledger):
     base = git(fresh_repo, "rev-parse", "HEAD").strip()
     cf = write_census_file({"Build.registered": dict(v="PASS", measured="m")})              # stamped with the base file
