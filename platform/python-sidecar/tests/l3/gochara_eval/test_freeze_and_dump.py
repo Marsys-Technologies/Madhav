@@ -1,6 +1,7 @@
 """Two-stage freeze refusal, the extract-generation command and the candidate scoring CLI (services/gochara_eval)."""
 from __future__ import annotations
 
+import argparse
 import copy
 import datetime as dt
 import decimal
@@ -269,7 +270,7 @@ class FakeCursor:
     def __init__(self, conn): self.conn = conn
     def __enter__(self): return self
     def __exit__(self, *a): return False
-    def execute(self, sql, params=()): self.conn.executed.append((sql, params)); self.last = sql
+    def execute(self, sql, params=()): self.conn.executed.append((sql, params)); self.conn.in_txn = True; self.last = sql   # the first query OPENS the transaction (autocommit=False)
     def fetchone(self):
         if "sign_mismatch" in self.last:
             return self.conn.sign
@@ -287,17 +288,70 @@ class FakeCursor:
 
 
 class FakeConn:
+    """Models psycopg's default connection (autocommit=False): the FIRST query opens a transaction, and `read_only` / `isolation_level`
+    cannot be assigned while one is open — even to the same value (psycopg.ProgrammingError: can't change 'read_only' now: connection in
+    transaction status INTRANS). Codex R11-5: the earlier fake and the autocommit PG fixture both hid this."""
     def __init__(self, rows, outside=0, sign=(0, 0), manifest=None, coverage=None, av=None, tiers=None):
-        self.rows, self.outside, self.executed, self.read_only, self.closed = rows, outside, [], False, False
+        self.rows, self.outside, self.executed, self.closed = rows, outside, [], False
+        self._read_only, self._isolation, self.in_txn = None, None, False
         self.sign, self.manifest, self.coverage, self.av, self.tiers = sign, manifest or [], coverage or [], av or [], tiers or []
+    def _guard(self, what):
+        if self.in_txn:
+            import psycopg
+            raise psycopg.ProgrammingError(f"can't change '{what}' now: connection in transaction status INTRANS")
+    read_only = property(lambda self: self._read_only)
+    isolation_level = property(lambda self: self._isolation)
+    @read_only.setter
+    def read_only(self, v): self._guard("read_only"); self._read_only = v
+    @isolation_level.setter
+    def isolation_level(self, v): self._guard("isolation_level"); self._isolation = v
     def cursor(self): return FakeCursor(self)
-    def rollback(self): pass
+    def rollback(self): self.in_txn = False
     def close(self): self.closed = True
+
+
+def RO(*a, **k):
+    """A fake connection configured exactly as `_connect` configures a real one: ONCE, before the first query."""
+    c = FakeConn(*a, **k)
+    dx.configure_read_only_snapshot(c)
+    return c
 
 
 D = dt.date
 ROWS = [("marriage", D(2010, 1, 1), D(2010, 2, 1), D(2010, 1, 10), decimal.Decimal("0.50"), "gain", False, None, "interval"),
         ("marriage", D(2010, 1, 1), D(2010, 3, 1), D(2010, 1, 20), decimal.Decimal("0.70"), "gain", False, "x", "interval")]
+
+
+class TestTransactionConfiguration:
+    """Codex R11-5: psycopg's default connection is autocommit=False — the first query opens a transaction, and `read_only` cannot be assigned inside one."""
+
+    def test_the_fake_reproduces_the_psycopg_failure_when_configuration_comes_after_a_query(self):
+        import psycopg
+        c = FakeConn(ROWS)
+        c.cursor().execute("SELECT 1")
+        with pytest.raises(psycopg.ProgrammingError, match="can't change 'read_only' now"):
+            c.read_only = True
+        with pytest.raises(psycopg.ProgrammingError, match="can't change 'read_only' now"):
+            dx.configure_read_only_snapshot(c)
+
+    def test_configuration_happens_once_before_the_first_query_and_is_repeatable_read(self):
+        import psycopg
+        c = FakeConn(ROWS, manifest=[("candidate", 5.0, "r", None)])
+        out = dx._connect(argparse.Namespace(libpq_env=False), lambda: c)
+        assert out is c and c.read_only is True and c.isolation_level == psycopg.IsolationLevel.REPEATABLE_READ and c.executed == []
+        dx.read_manifest_orb(c, "4.1"); dx.read_av_donor_identity(c); dx.read_dasha_tiers(c); dx.dump_rows(c, "4.1", horizon_check=True)
+        assert c.read_only is True            # nothing re-assigned inside the transaction (it would have raised)
+
+    def test_a_reader_refuses_a_connection_that_was_not_configured_read_only(self):
+        for fn in (lambda c: dx.read_manifest_orb(c, "4.1"), lambda c: dx.read_av_donor_identity(c), lambda c: dx.read_dasha_tiers(c),
+                   lambda c: dx.read_coverage_summary(c, "4.1"), lambda c: dx.dump_rows(c, "4.1", horizon_check=False)):
+            with pytest.raises(RuntimeError, match="not configured read-only"):
+                fn(FakeConn(ROWS))
+
+    def test_the_cli_reads_back_on_a_non_autocommit_connection_in_one_transaction(self):
+        c = FakeConn(ROWS, manifest=[("candidate", 5.0, "r", GOOD_EPH)])
+        rc = dx.main(["--generation", "4.1", "--read-manifest-orb"], conn_factory=lambda: c)
+        assert rc == 0 and c.read_only is True
 
 
 class TestAvDonorRows:
@@ -331,7 +385,7 @@ class TestAvDonorRows:
         assert stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND) == []
 
     def test_the_read_back_reports_count_and_digest_per_ayanamsha(self):
-        out = dx.read_av_donor_identity(FakeConn(ROWS, av=[("lahiri_chitrapaksha", 672, SHA), ("raman", 0, None)]))
+        out = dx.read_av_donor_identity(RO(ROWS, av=[("lahiri_chitrapaksha", 672, SHA), ("raman", 0, None)]))
         assert out["per_ayanamsha"] == {"lahiri_chitrapaksha": {"row_count": 672, "digest": SHA}, "raman": {"row_count": 0, "digest": None}}
 
 
@@ -378,7 +432,7 @@ class TestDashaPlurality:
         assert any("yields" in p and "not the frozen voting set" in p for p in stage1_problems(changed, tmp_path, dx.CANONICAL_COMMAND))
 
     def test_the_read_back_lists_tiers_and_counts(self):
-        out = dx.read_dasha_tiers(FakeConn(ROWS, tiers=[("mudda", 1, "classical_match", 48), ("mudda", 2, "single", 432)]))
+        out = dx.read_dasha_tiers(RO(ROWS, tiers=[("mudda", 1, "classical_match", 48), ("mudda", 2, "single", 432)]))
         assert out == [{"system": "mudda", "level": 1, "tier": "classical_match", "count": 48}, {"system": "mudda", "level": 2, "tier": "single", "count": 432}]
 
     def test_tiers_that_moved_since_the_freeze_are_refused_before_any_window_row_is_read(self, tmp_path, monkeypatch, capsys):
@@ -413,9 +467,9 @@ class TestEphemerisComponent:
             assert any(f"lacks key {k!r}" in p for p in dx.ephemeris_component_problems(c))
 
     def test_the_manifest_read_back_carries_the_verdict(self):
-        ok = dx.read_manifest_orb(FakeConn(ROWS, manifest=[("candidate", 5.0, "r", GOOD_EPH)]), "4.1")
+        ok = dx.read_manifest_orb(RO(ROWS, manifest=[("candidate", 5.0, "r", GOOD_EPH)]), "4.1")
         assert ok["ephemeris_problems"] == [] and ok["ephemeris"] == GOOD_EPH
-        old = dx.read_manifest_orb(FakeConn(ROWS, manifest=[("candidate", 5.0, "r", None)]), "4.1")
+        old = dx.read_manifest_orb(RO(ROWS, manifest=[("candidate", 5.0, "r", None)]), "4.1")
         assert old["ephemeris_problems"] and old["ephemeris"] is None
 
 
@@ -429,7 +483,7 @@ class TestDump:
             assert bad not in (dx.SQL_DUMP + dx.SQL_HORIZON).upper()
 
     def test_rows_are_rendered_deterministically_in_the_pinned_layout(self):
-        conn = FakeConn(ROWS)
+        conn = RO(ROWS)
         rows = dx.dump_rows(conn, "4.1", horizon_check=True)
         assert conn.read_only is True
         assert rows[0] == {"event_class": "marriage", "ws": "2010-01-01", "we": "2010-02-01", "pk": "2010-01-10", "si": 0.5,
@@ -441,9 +495,9 @@ class TestDump:
     def test_si_is_the_unsigned_raw_intensity_and_the_two_columns_must_reconcile(self):
         assert "raw_intensity AS si" in dx.SQL_DUMP and "signed_intensity AS si" not in dx.SQL_DUMP
         with pytest.raises(RuntimeError, match=r"2 rows with \|signed_intensity\| != raw_intensity"):
-            dx.dump_rows(FakeConn(ROWS, sign=(2, 0)), "4.1", horizon_check=True)
+            dx.dump_rows(RO(ROWS, sign=(2, 0)), "4.1", horizon_check=True)
         with pytest.raises(RuntimeError, match="1 rows with raw_intensity < 0"):
-            dx.dump_rows(FakeConn(ROWS, sign=(0, 1)), "3.0", horizon_check=False)      # the check runs for the baseline too
+            dx.dump_rows(RO(ROWS, sign=(0, 1)), "3.0", horizon_check=False)      # the check runs for the baseline too
 
     def test_manifest_orb_read_touches_no_window_row(self, capsys):
         conn = FakeConn(ROWS, manifest=[("candidate", 5.0, "M-1 fallback no-box x 5.0 deg (unratified)", GOOD_EPH)])
@@ -454,7 +508,7 @@ class TestDump:
         assert out["ephemeris_problems"] == []
         assert dx.main(["--generation", "5.0", "--read-manifest-orb"], conn_factory=lambda: conn) == 2
         with pytest.raises(RuntimeError, match="exactly one manifest"):
-            dx.read_manifest_orb(FakeConn(ROWS, manifest=[]), "4.1")
+            dx.read_manifest_orb(RO(ROWS, manifest=[]), "4.1")
 
     def test_coverage_summary_is_disclosure_only_and_says_per_class_year_cells_are_not_derivable(self, capsys):
         cov = [("body_target", 24, 24, 0, 300, 290, 10, ["jupiter", "ketu", "mars", "mercury", "rahu", "saturn", "sun", "venus"])]
@@ -468,7 +522,7 @@ class TestDump:
 
     def test_horizon_violation_stops(self):
         with pytest.raises(RuntimeError, match="outside the scored horizon"):
-            dx.dump_rows(FakeConn(ROWS, outside=3), "4.1", horizon_check=True)
+            dx.dump_rows(RO(ROWS, outside=3), "4.1", horizon_check=True)
 
     def test_refuses_without_a_freeze_and_for_governed_generations(self, tmp_path, capsys):
         out = tmp_path / "o.json"
@@ -551,7 +605,7 @@ class TestDump:
 
     def test_requalify_compares_the_row_multiset_when_the_pinned_order_was_database_defined(self, tmp_path):
         pinned = tmp_path / "pinned.json"
-        rows = dx.dump_rows(FakeConn(ROWS), "3.0", horizon_check=False)
+        rows = dx.dump_rows(RO(ROWS), "3.0", horizon_check=False)
         pinned.write_bytes(dx.render("3.0", "2026-09-29", list(reversed(rows))))      # same rows, other order
         out = tmp_path / "o.json"
         argv = ["--generation", "3.0", "--pinned-at", "2026-09-29", "--out", str(out), "--requalify-3-0",

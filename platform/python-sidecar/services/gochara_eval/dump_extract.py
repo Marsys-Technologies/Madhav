@@ -106,7 +106,7 @@ def header(generation: str, pinned_at: str, row_count: int) -> dict:
 
 def dump_rows(conn, generation: str, horizon_check: bool) -> list[dict]:
     """READ ONLY transaction; returns the rows as dicts keyed by COLUMNS. `horizon_check`: assert nothing outside the scored horizon."""
-    conn.read_only = True
+    _require_read_only(conn)
     with conn.cursor() as cur:
         # si := raw_intensity (the unsigned magnitude; protocol §4.5: si is stored non-negative for every class). The 4.x writer
         # stores signed_intensity = raw * (-1 if adverse else 1), which the §4.5 adapter would reject; the two columns must agree
@@ -138,7 +138,7 @@ def render(generation: str, pinned_at: str, rows: list[dict]) -> bytes:
 def read_manifest_orb(conn, generation: str) -> dict:
     """The activity orb AND the ephemeris identity the candidate chain DECLARES in its manifest (kala_gochara_publication.input_generation_vector keys
     `orb_max_deg`, `orb_ruling`, `ephemeris`; the ephemeris is checked against the AM-16 component definition). Read-only; touches no window row. Recorded in the Stage-1 freeze at freeze time."""
-    conn.read_only = True
+    _require_read_only(conn)
     with conn.cursor() as cur:
         cur.execute(SQL_MANIFEST_ORB, (CHART_ID, generation))
         rows = cur.fetchall()
@@ -154,7 +154,7 @@ def read_av_donor_identity(conn) -> dict:
     ordered (fact_subject | fact_key | fact_value_num) lines (NULL digest when there are none). Read-only; touches no window row. Recorded in the Stage-1 freeze as
     the NAMED input `av_donor_rows`: a '4.1' run made while these rows are absent (the gochara_v3 sign-grain interim) and one made after they exist (donor-resolved
     P5c) are DIFFERENT candidates and must never be compared as one."""
-    conn.read_only = True
+    _require_read_only(conn)
     with conn.cursor() as cur:
         cur.execute(SQL_AV_DONOR_IDENTITY, (CHART_ID, CHART_ID))
         rows = cur.fetchall()
@@ -165,11 +165,27 @@ def read_av_donor_identity(conn) -> dict:
 def read_dasha_tiers(conn) -> list[dict]:
     """The OBSERVED per-(system, level) verification tiers and row counts of the eight DR-14 daśā systems for the chart (frozen as
     `dasha_plurality_tier_policy.observed_tiers`; the '4.1' run must observe the same — DR-15(d))."""
-    conn.read_only = True
+    _require_read_only(conn)
     with conn.cursor() as cur:
         cur.execute(SQL_DASHA_TIERS, (CHART_ID,))
         rows = cur.fetchall()
     return [{"system": r[0], "level": int(r[1]), "tier": r[2], "count": int(r[3])} for r in rows]
+
+
+def configure_read_only_snapshot(conn) -> None:
+    """Transaction characteristics are configured ONCE, on a fresh connection BEFORE the first query (psycopg refuses to change
+    `read_only` / `isolation_level` inside an active transaction — even to the same value — and its default connection is
+    `autocommit=False`, i.e. the first query opens one). READ ONLY + REPEATABLE READ: the manifest/input reconciliation and the
+    extraction then see ONE consistent snapshot and nothing is committed between them."""
+    import psycopg
+    conn.read_only = True
+    conn.isolation_level = psycopg.IsolationLevel.REPEATABLE_READ
+
+
+def _require_read_only(conn) -> None:
+    """Fail closed: every reader here requires a connection already configured read-only (it never reconfigures one mid-transaction)."""
+    if conn.read_only is not True:
+        raise RuntimeError("REFUSED: the connection is not configured read-only (configure_read_only_snapshot must run before the first query)")
 
 
 def _connect(args, conn_factory):
@@ -182,14 +198,16 @@ def _connect(args, conn_factory):
 
         def conn_factory():
             return psycopg.connect(dsn)
-    return conn_factory()
+    conn = conn_factory()
+    configure_read_only_snapshot(conn)
+    return conn
 
 
 def read_coverage_summary(conn, generation: str) -> dict:
     """What the candidate's coverage ledger rows actually say — DISCLOSURE ONLY. Read-only; touches no window row. The protocol's
     T-honesty coverage is per (class, year) cell (§6.5); the 4.1 chain writes per body-target partitions, so this summary is never
     supplied to the scorer as a coverage manifest."""
-    conn.read_only = True
+    _require_read_only(conn)
     with conn.cursor() as cur:
         cur.execute(SQL_COVERAGE_SUMMARY, (CHART_ID, generation))
         rows = cur.fetchall()
