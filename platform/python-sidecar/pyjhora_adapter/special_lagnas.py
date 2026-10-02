@@ -23,6 +23,7 @@ from this writer.
 """
 from __future__ import annotations
 
+from functools import partial
 from typing import Any
 
 from panchang_engine.swiss_state import serialized_swiss_state
@@ -30,6 +31,7 @@ from panchang_engine.swiss_state import serialized_swiss_state
 from . import _names
 from ._ayanamsha import resolve_mode
 from ._jhora import drik
+from ._swiss_thread_scope import with_sidereal_mode
 
 
 def _place(lat: float, lon: float, tz: float):
@@ -67,6 +69,7 @@ _VIGHATI_RATE_DEG_PER_MIN = 15.0  # PyJHora's rate; not found in the BPHS corpus
 def _special_ascendant(
     jd, place, divisional_chart_factor=1, chart_method=1, lagna_rate_factor=1.0,
     base_rasi=None, count_from_end_of_sign=None, dhasa_progression_correction=0.0,
+    ayanamsha_id=None,
 ):
     """PyJHora 4.8.6 ``drik.special_ascendant`` with its Sun-at-sunrise offset corrected.
 
@@ -79,32 +82,39 @@ def _special_ascendant(
     a birth BEFORE that day's sunrise gets a negative elapsed time rather than the previous day's
     sunrise. Indu / Sree / Varnada (sign-level rules) and Pranapada / Bhrigu Bindhu / Kunda are not
     audited against the corpus in this lane (Indu's kalas 30,16,6,8,10,12,1 match Uttara Kalamrita).
+
+    ``ayanamsha_id`` (``None`` = lahiri, the pipeline default) selects the sidereal mode and pins the
+    ``.se1`` path on the CALLING thread INSIDE this function (swisseph keeps both per thread on
+    Linux), so a direct or resumed-on-a-new-thread call never computes in whatever mode an earlier
+    function left behind.  ``compute_special_lagnas`` passes its own ``ayanamsha_id`` here.
     """
     from jhora import const
     from jhora.horoscope.chart import charts
 
-    _, _, _, time_of_birth_in_hours = drik.jd_to_gregorian(jd)
-    srise = drik.sunrise(jd, place)
-    time_diff_mins = (time_of_birth_in_hours - srise[0]) * 60
-    pp = charts.divisional_chart(
-        srise[2], place,  # local sunrise JD as returned: divisional_chart removes the tz itself
-        divisional_chart_factor=divisional_chart_factor, chart_method=chart_method,
-        base_rasi=base_rasi, count_from_end_of_sign=count_from_end_of_sign,
-        dhasa_progression_correction=dhasa_progression_correction,
-    )[:const._pp_count_upto_ketu]
-    sun_long = pp[1][1][0] * 30 + pp[1][1][1]
-    spl_long = (sun_long + time_diff_mins * lagna_rate_factor) % 360
-    return drik.dasavarga_from_long(spl_long, divisional_chart_factor)
+    with with_sidereal_mode(ayanamsha_id, jd, via_jhora=True):
+        _, _, _, time_of_birth_in_hours = drik.jd_to_gregorian(jd)
+        srise = drik.sunrise(jd, place)
+        time_diff_mins = (time_of_birth_in_hours - srise[0]) * 60
+        pp = charts.divisional_chart(
+            srise[2], place,  # local sunrise JD as returned: divisional_chart removes the tz itself
+            divisional_chart_factor=divisional_chart_factor, chart_method=chart_method,
+            base_rasi=base_rasi, count_from_end_of_sign=count_from_end_of_sign,
+            dhasa_progression_correction=dhasa_progression_correction,
+        )[:const._pp_count_upto_ketu]
+        sun_long = pp[1][1][0] * 30 + pp[1][1][1]
+        spl_long = (sun_long + time_diff_mins * lagna_rate_factor) % 360
+        return drik.dasavarga_from_long(spl_long, divisional_chart_factor)
 
 
 def _rate_lagna(rate: float):
     def lagna(jd, place, divisional_chart_factor=1, chart_method=1, base_rasi=None,
-              count_from_end_of_sign=None, dhasa_progression_correction=0.0):
+              count_from_end_of_sign=None, dhasa_progression_correction=0.0, ayanamsha_id=None):
         return _special_ascendant(
             jd, place, divisional_chart_factor=divisional_chart_factor, chart_method=chart_method,
             lagna_rate_factor=rate, base_rasi=base_rasi,
             count_from_end_of_sign=count_from_end_of_sign,
             dhasa_progression_correction=dhasa_progression_correction,
+            ayanamsha_id=ayanamsha_id,
         )
     return lagna
 
@@ -116,7 +126,7 @@ vighati_lagna = _rate_lagna(_VIGHATI_RATE_DEG_PER_MIN)
 
 
 @serialized_swiss_state
-def _varnada_lagna_bv_raman(dob, tob, place):
+def _varnada_lagna_bv_raman(dob, tob, place, ayanamsha_id=None):
     """BV Raman Varnada Lagna of the Lagna itself (``varnada_method=1``, ``house_index=1``).
 
     A line-for-line copy of PyJHora 4.8.6 ``charts._varnada_lagna_bv_raman`` for those arguments,
@@ -125,27 +135,31 @@ def _varnada_lagna_bv_raman(dob, tob, place):
     ``drik.hora_lagna``: no PyJHora attribute is ever reassigned, so no other caller in the process
     can observe a changed function. ``test_special_lagna_sunrise_sun`` pins parity with upstream
     wherever the two Hora signs agree. Returns ``(varnada_sign_index_0_11, lagna_degree_in_sign)``.
+
+    ``ayanamsha_id`` (``None`` = lahiri) selects the sidereal mode and pins the ``.se1`` path on the
+    CALLING thread inside this function (see ``_special_ascendant``).
     """
     from jhora import const, utils
     from jhora.horoscope.chart import charts
 
     jd_at_dob = utils.julian_day_number(dob, tob)
-    planet_positions = charts.divisional_chart(jd_at_dob, place)
-    lagna = planet_positions[0][1][0] % 12
-    asc_long = planet_positions[0][1][1]
-    lagna_is_odd = lagna in const.odd_signs
-    count1 = (utils.count_rasis(0, lagna, direction=1) if lagna_is_odd
-              else utils.count_rasis(11, lagna, direction=-1))
-    hora_sign, _ = hora_lagna(jd_at_dob, place)
-    hora_sign = hora_sign % 12
-    hora_is_odd = hora_sign in const.odd_signs
-    count2 = (utils.count_rasis(0, hora_sign, direction=1) if hora_is_odd
-              else utils.count_rasis(11, hora_sign, direction=-1))
-    count = ((count1 + count2) % 12 if hora_is_odd == lagna_is_odd
-             else (max(count1, count2) - min(count1, count2)) % 12)
-    varnada = (utils.count_rasis(1, count, direction=1) if lagna_is_odd
-               else utils.count_rasis(12, count, direction=-1))
-    return varnada - 1, asc_long
+    with with_sidereal_mode(ayanamsha_id, jd_at_dob, via_jhora=True):
+        planet_positions = charts.divisional_chart(jd_at_dob, place)
+        lagna = planet_positions[0][1][0] % 12
+        asc_long = planet_positions[0][1][1]
+        lagna_is_odd = lagna in const.odd_signs
+        count1 = (utils.count_rasis(0, lagna, direction=1) if lagna_is_odd
+                  else utils.count_rasis(11, lagna, direction=-1))
+        hora_sign, _ = hora_lagna(jd_at_dob, place, ayanamsha_id=ayanamsha_id)
+        hora_sign = hora_sign % 12
+        hora_is_odd = hora_sign in const.odd_signs
+        count2 = (utils.count_rasis(0, hora_sign, direction=1) if hora_is_odd
+                  else utils.count_rasis(11, hora_sign, direction=-1))
+        count = ((count1 + count2) % 12 if hora_is_odd == lagna_is_odd
+                 else (max(count1, count2) - min(count1, count2)) % 12)
+        varnada = (utils.count_rasis(1, count, direction=1) if lagna_is_odd
+                   else utils.count_rasis(12, count, direction=-1))
+        return varnada - 1, asc_long
 
 
 @serialized_swiss_state
@@ -174,10 +188,10 @@ def compute_special_lagnas(
 
     # jd-only special ascendants (drik.py:1959-1988, 2107-2281)
     _jd_only = [
-        ("bhava_lagna", bhava_lagna),
-        ("hora_lagna", hora_lagna),
-        ("ghati_lagna", ghati_lagna),
-        ("vighati_lagna", vighati_lagna),
+        ("bhava_lagna", partial(bhava_lagna, ayanamsha_id=ayanamsha_id)),
+        ("hora_lagna", partial(hora_lagna, ayanamsha_id=ayanamsha_id)),
+        ("ghati_lagna", partial(ghati_lagna, ayanamsha_id=ayanamsha_id)),
+        ("vighati_lagna", partial(vighati_lagna, ayanamsha_id=ayanamsha_id)),
         ("indu_lagna", drik.indu_lagna),
         ("sree_lagna", drik.sree_lagna),
         ("pranapada_lagna", drik.pranapada_lagna),
@@ -194,7 +208,7 @@ def compute_special_lagnas(
     # Varnada Lagna needs (dob, tob, place) not jd (charts.py:1749) — BV Raman
     # method (varnada_method=1), house_index=1 (Varnada of the Lagna itself).
     try:
-        sign_idx, deg = _varnada_lagna_bv_raman(dob, tob, place)
+        sign_idx, deg = _varnada_lagna_bv_raman(dob, tob, place, ayanamsha_id=ayanamsha_id)
         out["varnada_lagna"] = _to_dict(sign_idx, deg)
     except Exception as exc:  # noqa: BLE001
         out["varnada_lagna"] = {"error": f"varnada_lagna failed: {exc!r}"}
