@@ -1,4 +1,5 @@
-"""Migration 1255 (Suvarna): GRANT SELECT on six L0 reference tables to `data_plane_builder`.
+"""Migration 1255 (Suvarna): GRANT SELECT on seven reference tables to `data_plane_builder` (section 1) and on
+`brahma_yoga_catalog` to `data_plane_l1_owner` (section 2).
 
 LIVE test on a DISPOSABLE PostgreSQL cluster (initdb in a temp dir, unix socket only, torn down at the end), once
 per available major version (15 and 17). Nothing here touches any real database. The cluster is built the way
@@ -9,17 +10,22 @@ applied as the owner inside one transaction, the way platform/scripts/migrate.ts
 What it proves (each scenario returns a list of VIOLATIONS; the real file must produce none):
   * apply_once         the builder's reads FAIL before (InsufficientPrivilege, then InFailedSqlTransaction: the
                        swallowed-error abort the migration exists to prevent) and WORK after; the builder holds
-                       SELECT and NO other privilege on all six, by every path; the relacl diff is exactly six
-                       `data_plane_builder=r/amjis_app` entries; the held-out tables (bg_prashna_significators,
-                       yoga_family_members), prashna_charts, a materialized view and a control table are untouched;
+                       SELECT and NO other privilege on all seven, by every path; the relacl diff is exactly seven
+                       `data_plane_builder=r/amjis_app` entries; the out-of-scope tables (bg_prashna_significators,
+                       prashna_charts), a materialized view and a control table are untouched;
                        lock_timeout is transaction-local (back to 0 after COMMIT).
-  * idempotent         a second apply changes nothing and reports six no-ops.
+  * section 2          data_plane_l1_owner (NOLOGIN, NOINHERIT, member of another role, like production) cannot read
+                       brahma_yoga_catalog before and can after (SET ROLE read, the capture function's access
+                       shape); it holds SELECT and nothing else by every path; the ACL diff is exactly the seven
+                       builder entries plus `data_plane_l1_owner=r/amjis_app` on brahma_yoga_catalog; the builder
+                       gets nothing on brahma_yoga_catalog.
+  * idempotent         a second apply changes nothing and reports eight no-ops (seven + one).
   * guard_missing_table / guard_missing_role / guard_not_a_table   refuse, with the migration's own message.
   * refuses_extra      a pre-existing extra privilege (table-level, column-level, via PUBLIC, via role membership)
                        makes the migration fail and roll back.
   * lock_timeout       a blocked GRANT fails fast with lock_not_available instead of hanging.
-Mutation tests then rewrite the real SQL (guard neutered, wrong role, extra privilege, a table dropped from the
-list, post-check neutered, grant to PUBLIC, lock_timeout removed or made session-wide) and require every mutant to
+Mutation tests then rewrite the real SQL (guard neutered, wrong role, extra privilege, each of the seven tables dropped
+from the list, post-check neutered, grant to PUBLIC, lock_timeout removed or made session-wide) and require every mutant to
 produce at least one violation.
 
 HONEST LIMITS: this proves the migration's SQL on stock PostgreSQL 15/17 with the production-shaped role structure;
@@ -45,19 +51,22 @@ _REPO = Path(__file__).resolve().parents[3]
 MIGRATION = _REPO / "platform" / "migrations" / "1255_builder_reference_tables_select_grants.sql"
 REAL_SQL = MIGRATION.read_text(encoding="utf-8")
 
-SIX = [
+SEVEN = [
     "reference_nakshatra",
     "reference_nakshatra_pada",
     "bg_shashtiamsha_deities",
     "bg_graha_naisargika_friendship",
     "bg_motion_state_thresholds",
     "brahma_vichara_constants",
+    "yoga_family_members",
 ]
-HELD_OUT = ["bg_prashna_significators", "yoga_family_members"]
+OWNER_TABLES = ["brahma_yoga_catalog"]  # section 2: granted to data_plane_l1_owner
+HELD_OUT = ["bg_prashna_significators"]
 OTHER_TABLES = ["prashna_charts", "control_table"]
-ALL_TABLES = SIX + HELD_OUT + OTHER_TABLES
+ALL_TABLES = SEVEN + OWNER_TABLES + HELD_OUT + OTHER_TABLES
 EXTRA_PRIVS = ["INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]
 BUILDER_ENTRY = "data_plane_builder=r/amjis_app"
+OWNER_ENTRY = "data_plane_l1_owner=r/amjis_app"
 
 SOCKDIR_ROOT = os.environ.get("SUVARNA_PG_SOCKDIR", "/tmp")  # must be SHORT (unix socket path limit)
 VERSIONS = ["15", "17"]
@@ -105,6 +114,9 @@ class Cluster:
             for stmt in (
                 "CREATE ROLE amjis_app LOGIN",
                 "CREATE ROLE data_plane_builder LOGIN NOINHERIT",
+                "CREATE ROLE data_plane_l1_owner NOLOGIN NOINHERIT",
+                "CREATE ROLE data_plane_migrator NOLOGIN",
+                "GRANT data_plane_migrator TO data_plane_l1_owner",
                 "CREATE ROLE role_web_serve NOLOGIN",
                 "CREATE ROLE extra_path NOLOGIN",
                 "CREATE ROLE wrong_role NOLOGIN",
@@ -154,6 +166,7 @@ class Env:
             c.execute("ALTER SCHEMA public OWNER TO amjis_app")
             c.execute("REVOKE ALL ON SCHEMA public FROM PUBLIC")
             c.execute("GRANT USAGE ON SCHEMA public TO data_plane_builder")
+            c.execute("GRANT USAGE ON SCHEMA public TO data_plane_l1_owner")
         with cl.connect(self.db, "amjis_app", autocommit=True) as c:
             for t in ALL_TABLES:
                 c.execute(f"CREATE TABLE public.{t} (id int PRIMARY KEY, val text)")
@@ -201,19 +214,32 @@ class Env:
             c.execute(f"DROP DATABASE IF EXISTS {self.db} WITH (FORCE)")
 
 
-def _privs(env: Env, table: str) -> dict[str, bool]:
-    """Effective privileges of the builder on `table`, by every path (direct, PUBLIC, inherited; column-level)."""
+def _privs(env: Env, table: str, role: str = "data_plane_builder") -> dict[str, bool]:
+    """Effective privileges of `role` on `table`, by every path (direct, PUBLIC, inherited; column-level)."""
     out: dict[str, bool] = {}
     with env.admin() as c:
         rel = f"public.{table}"
-        out["SELECT"] = c.execute("SELECT has_table_privilege('data_plane_builder', %s, 'SELECT')", (rel,)).fetchone()[0]
+        out["SELECT"] = c.execute("SELECT has_table_privilege(%s, %s, 'SELECT')", (role, rel)).fetchone()[0]
         for p in EXTRA_PRIVS:
-            q = "SELECT has_table_privilege('data_plane_builder', %s, %s)"
-            v = c.execute(q, (rel, p)).fetchone()[0]
+            v = c.execute("SELECT has_table_privilege(%s, %s, %s)", (role, rel, p)).fetchone()[0]
             if p in ("INSERT", "UPDATE", "REFERENCES"):
-                v = v or c.execute("SELECT has_any_column_privilege('data_plane_builder', %s, %s)", (rel, p)).fetchone()[0]
+                v = v or c.execute("SELECT has_any_column_privilege(%s, %s, %s)", (role, rel, p)).fetchone()[0]
             out[p] = v
     return out
+
+
+def _owner_read(env: Env, sql: str):
+    """Run `sql` as data_plane_l1_owner (superuser SET ROLE: the role is NOLOGIN, like production) in a rolled-back
+    transaction; this is the access shape of the SECURITY DEFINER capture function. Returns the exception or None."""
+    with env.cl.connect(env.db, "postgres") as c:
+        try:
+            c.execute("SET ROLE data_plane_l1_owner")
+            c.execute(sql)
+            return None
+        except Exception as exc:  # noqa: BLE001
+            return exc
+        finally:
+            c.rollback()
 
 
 def _try(fn):
@@ -244,8 +270,11 @@ def sc_apply_once(cl: Cluster, sql: str) -> list[str]:
                 b.execute("SELECT 1")
         finally:
             b.close()
-        for t in SIX:
+        for t in SEVEN:
             assert _privs(env, t)["SELECT"] is False, f"precondition: builder already reads {t}"
+        assert _privs(env, "brahma_yoga_catalog", "data_plane_l1_owner")["SELECT"] is False, "precondition: owner reads"
+        assert isinstance(_owner_read(env, "SELECT count(*) FROM public.brahma_yoga_catalog"),
+                          pgerr.InsufficientPrivilege), "precondition: owner already reads brahma_yoga_catalog"
 
         notices: list[str] = []
         try:
@@ -255,7 +284,7 @@ def sc_apply_once(cl: Cluster, sql: str) -> list[str]:
         if lock_after != "0":
             v.append(f"lock_timeout leaked past COMMIT: {lock_after!r}")
         after = env.acls()
-        for t in SIX:
+        for t in SEVEN:
             p = _privs(env, t)
             if not p["SELECT"]:
                 v.append(f"builder lacks SELECT on {t}")
@@ -264,14 +293,35 @@ def sc_apply_once(cl: Cluster, sql: str) -> list[str]:
                 v.append(f"builder holds extra privilege on {t}: {extra}")
             if sorted(set(before[t]) | {BUILDER_ENTRY}) != after[t]:
                 v.append(f"relacl of {t} is not 'before + builder=r': {after[t]}")
+        for t in OWNER_TABLES:
+            p = _privs(env, t, "data_plane_l1_owner")
+            if not p["SELECT"]:
+                v.append(f"data_plane_l1_owner lacks SELECT on {t}")
+            extra = [k for k in EXTRA_PRIVS if p[k]]
+            if extra:
+                v.append(f"data_plane_l1_owner holds extra privilege on {t}: {extra}")
+            if sorted(set(before[t]) | {OWNER_ENTRY}) != after[t]:
+                v.append(f"relacl of {t} is not 'before + data_plane_l1_owner=r': {after[t]}")
+            if any(_privs(env, t).values()):
+                v.append(f"the builder gained a privilege on section-2 table {t}")
+            if _owner_read(env, f"SELECT count(*) FROM public.{t}") is not None:
+                v.append(f"data_plane_l1_owner cannot read {t} after apply")
+            if not isinstance(_owner_read(env, f"DELETE FROM public.{t}"), pgerr.InsufficientPrivilege):
+                v.append(f"data_plane_l1_owner can write {t}")
+            for s_ in SEVEN:
+                if any(_privs(env, s_, "data_plane_l1_owner").values()):
+                    v.append(f"data_plane_l1_owner gained a privilege on section-1 table {s_}")
         for t in HELD_OUT + OTHER_TABLES + ["mv_control"]:
             if before[t] != after[t]:
                 v.append(f"out-of-scope relation {t} was touched: {after[t]}")
-        if any(e.startswith("=") for t in SIX for e in after[t]):
+        added = sorted(f"{t}:{e}" for t in after for e in set(after[t]) - set(before.get(t, [])))
+        if added != sorted([f"{t}:{BUILDER_ENTRY}" for t in SEVEN] + [f"{t}:{OWNER_ENTRY}" for t in OWNER_TABLES]):
+            v.append(f"ACL diff over all relations is not exactly the seven builder entries + the owner entry: {added}")
+        if any(e.startswith("=") for t in SEVEN for e in after[t]):
             v.append("a PUBLIC grant appeared on a target table")
         b = env.builder()
         try:
-            for t in SIX:
+            for t in SEVEN:
                 if _try(lambda t=t: (b.execute(f"SELECT count(*) FROM public.{t}"), b.rollback())) is not None:
                     v.append(f"builder cannot read {t} after apply")
                     b.rollback()
@@ -299,8 +349,8 @@ def sc_idempotent(cl: Cluster, sql: str) -> list[str]:
         if env.acls() != mid:
             v.append("second apply changed an ACL")
         noops = [n for n in notices if "already holds SELECT" in n]
-        if len(noops) != len(SIX):
-            v.append(f"expected {len(SIX)} no-op notices on re-run, got {len(noops)}")
+        if len(noops) != len(SEVEN) + len(OWNER_TABLES):
+            v.append(f"expected {len(SEVEN) + len(OWNER_TABLES)} no-op notices on re-run, got {len(noops)}")
         return v
     finally:
         env.drop()
@@ -308,7 +358,7 @@ def sc_idempotent(cl: Cluster, sql: str) -> list[str]:
 
 def sc_guard_missing_table(cl: Cluster, sql: str) -> list[str]:
     v = []
-    for t in SIX:
+    for t in SEVEN + OWNER_TABLES:
         env = Env(cl)
         try:
             with env.admin() as c:
@@ -327,37 +377,47 @@ def sc_guard_missing_table(cl: Cluster, sql: str) -> list[str]:
 
 
 def sc_guard_not_a_table(cl: Cluster, sql: str) -> list[str]:
-    env = Env(cl)
-    try:
-        with env.admin() as c:
-            c.execute("DROP TABLE public.brahma_vichara_constants")
-            c.execute("CREATE VIEW public.brahma_vichara_constants AS SELECT 1 AS id")
-            c.execute("ALTER VIEW public.brahma_vichara_constants OWNER TO amjis_app")
-        exc = _try(lambda: env.apply(sql))
-        if exc is None:
-            return ["a view in the list was granted instead of refused"]
-        if "is not an ordinary table" not in _msg(exc):
-            return [f"view refused with the wrong message: {_msg(exc).splitlines()[0]}"]
-        return []
-    finally:
-        env.drop()
+    v = []
+    for t in ("brahma_vichara_constants", "brahma_yoga_catalog"):  # one per section
+        env = Env(cl)
+        try:
+            with env.admin() as c:
+                c.execute(f"DROP TABLE public.{t}")
+                c.execute(f"CREATE VIEW public.{t} AS SELECT 1 AS id")
+                c.execute(f"ALTER VIEW public.{t} OWNER TO amjis_app")
+            before = env.acls()
+            exc = _try(lambda: env.apply(sql))
+            if exc is None:
+                v.append(f"{t}: a view in the list was granted instead of refused")
+            elif "is not an ordinary table" not in _msg(exc):
+                v.append(f"{t}: view refused with the wrong message: {_msg(exc).splitlines()[0]}")
+            if env.acls() != before:
+                v.append(f"{t}: ACLs changed despite the refusal")
+        finally:
+            env.drop()
+    return v
 
 
 def sc_guard_missing_role(cl: Cluster, sql: str) -> list[str]:
-    env = Env(cl)
-    with env.admin() as c:
-        c.execute("ALTER ROLE data_plane_builder RENAME TO data_plane_builder_gone")
-    try:
-        exc = _try(lambda: env.apply(sql))
-        if exc is None:
-            return ["missing role: migration did not refuse"]
-        if "1255: role data_plane_builder does not exist" not in _msg(exc):
-            return [f"missing role: refused with the wrong message: {_msg(exc).splitlines()[0]}"]
-        return []
-    finally:
+    v = []
+    for role in ("data_plane_builder", "data_plane_l1_owner"):  # one per section
+        env = Env(cl)
         with env.admin() as c:
-            c.execute("ALTER ROLE data_plane_builder_gone RENAME TO data_plane_builder")
-        env.drop()
+            c.execute(f"ALTER ROLE {role} RENAME TO {role}_gone")
+        try:
+            before = env.acls()
+            exc = _try(lambda: env.apply(sql))
+            if exc is None:
+                v.append(f"missing role {role}: migration did not refuse")
+            elif f"1255: role {role} does not exist" not in _msg(exc):
+                v.append(f"missing role {role}: refused with the wrong message: {_msg(exc).splitlines()[0]}")
+            if env.acls() != before:
+                v.append(f"missing role {role}: ACLs changed despite the refusal")
+        finally:
+            with env.admin() as c:
+                c.execute(f"ALTER ROLE {role}_gone RENAME TO {role}")
+            env.drop()
+    return v
 
 
 EXTRA_CASES = {
@@ -369,34 +429,44 @@ EXTRA_CASES = {
     "via PUBLIC (DELETE)": ("GRANT DELETE ON public.reference_nakshatra_pada TO PUBLIC", "DELETE"),
     "via role membership (TRIGGER)": (None, "TRIGGER"),
 }
+# Section 2 (grantee data_plane_l1_owner): same refusal, naming the owner role.
+OWNER_EXTRA_CASES = {
+    "owner: table-level INSERT": ("GRANT INSERT ON public.brahma_yoga_catalog TO data_plane_l1_owner", "INSERT"),
+    "owner: table-level TRUNCATE": ("GRANT TRUNCATE ON public.brahma_yoga_catalog TO data_plane_l1_owner", "TRUNCATE"),
+    "owner: column-level UPDATE": ("GRANT UPDATE (val) ON public.brahma_yoga_catalog TO data_plane_l1_owner", "UPDATE"),
+    "owner: via PUBLIC (DELETE)": ("GRANT DELETE ON public.brahma_yoga_catalog TO PUBLIC", "DELETE"),
+    "owner: via role membership (TRIGGER)": (None, "TRIGGER"),
+}
 
 
 def sc_refuses_extra(cl: Cluster, sql: str) -> list[str]:
     v = []
-    for label, (stmt, priv) in EXTRA_CASES.items():
+    cases = [(k, "data_plane_builder", "public.bg_graha_naisargika_friendship", *x) for k, x in EXTRA_CASES.items()]
+    cases += [(k, "data_plane_l1_owner", "public.brahma_yoga_catalog", *x) for k, x in OWNER_EXTRA_CASES.items()]
+    for label, role, member_table, stmt, priv in cases:
         env = Env(cl)
         member = stmt is None
         try:
             with env.admin() as c:
                 if member:
-                    c.execute("ALTER ROLE data_plane_builder INHERIT")
-                    c.execute("GRANT TRIGGER ON public.bg_graha_naisargika_friendship TO extra_path")
-                    c.execute("GRANT extra_path TO data_plane_builder")
+                    c.execute(f"ALTER ROLE {role} INHERIT")
+                    c.execute(f"GRANT TRIGGER ON {member_table} TO extra_path")
+                    c.execute(f"GRANT extra_path TO {role}")
                 else:
                     c.execute(stmt)
             before = env.acls()
             exc = _try(lambda: env.apply(sql))
             if exc is None:
                 v.append(f"{label}: migration did not refuse")
-            elif "holds more than SELECT" not in _msg(exc) or priv not in _msg(exc):
+            elif f"{role} holds more than SELECT" not in _msg(exc) or priv not in _msg(exc):
                 v.append(f"{label}: refused with the wrong message: {_msg(exc).splitlines()[0]}")
             if env.acls() != before:
                 v.append(f"{label}: ACLs changed despite the refusal (no rollback)")
         finally:
             if member:
                 with env.admin() as c:
-                    c.execute("REVOKE extra_path FROM data_plane_builder")
-                    c.execute("ALTER ROLE data_plane_builder NOINHERIT")
+                    c.execute(f"REVOKE extra_path FROM {role}")
+                    c.execute(f"ALTER ROLE {role} NOINHERIT")
             env.drop()
     return v
 
@@ -461,12 +531,25 @@ def _sub(pattern: str, repl: str, flags: int = 0):
     return f
 
 
-def _drop_table(name: str):
+def _sub_last(pattern: str, repl: str, flags: int = 0):
+    """Replace the LAST match: section 2 is the last block in the file."""
     def f(sql: str) -> str:
-        m = re.search(r"tables text\[\] := ARRAY\[(.*?)\];", sql, re.S)
+        ms = list(re.finditer(pattern, sql, flags))
+        assert ms, pattern
+        m = ms[-1]
+        return sql[:m.start()] + m.expand(repl) + sql[m.end():]
+    return f
+
+
+def _drop_table(name: str, var: str = "tables"):
+    def f(sql: str) -> str:
+        m = re.search(r"(?<![a-z_0-9])" + var + r" text\[\] := ARRAY\[(.*?)\];", sql, re.S)
         names = re.findall(r"'([a-z_]+)'", m.group(1))
         assert name in names
-        body = ",\n        ".join(f"'{n}'" for n in names if n != name)
+        rest = [n for n in names if n != name]
+        if not rest:  # keep a well-formed (typed) empty array so the mutant fails for the RIGHT reason
+            return sql[:m.start(1)] + "]::text[" + sql[m.end(1):]
+        body = ",\n        ".join(f"'{n}'" for n in rest)
         return sql[:m.start(1)] + "\n        " + body + "\n    " + sql[m.end(1):]
     return f
 
@@ -488,8 +571,34 @@ MUTANTS = {
     "lock_timeout made session-wide (SET, not SET LOCAL)": (_sub(r"^SET LOCAL lock_timeout", "SET lock_timeout", re.M),
                                                             [sc_apply_once]),
 }
-for _t in SIX:
+for _t in SEVEN:
     MUTANTS[f"table dropped from the list: {_t}"] = (_drop_table(_t), [sc_apply_once])
+
+# Section 2 (data_plane_l1_owner -> brahma_yoga_catalog). Every mutant must turn at least one scenario red.
+MUTANTS.update({
+    "s2 grant to the wrong role": (_sub(r"TO data_plane_l1_owner'", "TO wrong_role'"), FAST),
+    "s2 grant to PUBLIC": (_sub(r"TO data_plane_l1_owner'", "TO PUBLIC'"), FAST),
+    "s2 grant to the builder instead": (_sub(r"TO data_plane_l1_owner'", "TO data_plane_builder'"), FAST),
+    "s2 extra privilege granted (INSERT)": (
+        _sub(r"GRANT SELECT ON TABLE %s TO data_plane_l1_owner", "GRANT SELECT, INSERT ON TABLE %s TO data_plane_l1_owner"),
+        FAST),
+    "s2 extra privilege granted (ALL)": (
+        _sub(r"GRANT SELECT ON TABLE %s TO data_plane_l1_owner", "GRANT ALL ON TABLE %s TO data_plane_l1_owner"), FAST),
+    "s2 guard neutered: missing table": (_sub_last(r"IF rel IS NULL THEN", "IF false THEN"), FAST),
+    "s2 guard neutered: not an ordinary table": (_sub_last(r"IF kind NOT IN \('r', 'p'\) THEN", "IF false THEN"), FAST),
+    "s2 guard neutered: missing role": (
+        _sub_last(r"IF NOT EXISTS \(SELECT 1 FROM pg_roles[^)]*\) THEN", "IF false THEN"), FAST),
+    "s2 post-check neutered (extra privilege)": (_sub_last(r"IF extra IS NOT NULL THEN", "IF false THEN"), FAST),
+    "s2 post-check neutered (SELECT) + wrong role": (
+        lambda s: _sub(r"TO data_plane_l1_owner'", "TO wrong_role'")(
+            _sub_last(r"IF NOT has_table_privilege\('data_plane_l1_owner', rel, 'SELECT'\) THEN", "IF false THEN")(s)),
+        FAST),
+    "s2 post-check checks the wrong role (builder) for extras": (
+        _sub_last(r"has_table_privilege\('data_plane_l1_owner', rel, p\)", "has_table_privilege('data_plane_builder', rel, p)"),
+        [sc_refuses_extra]),
+    "s2 table dropped from the list: brahma_yoga_catalog": (_drop_table("brahma_yoga_catalog", "l1_owner_tables"),
+                                                            [sc_apply_once]),
+})
 
 
 @pytest.mark.parametrize("name", list(MUTANTS))
