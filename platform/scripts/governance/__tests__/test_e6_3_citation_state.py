@@ -172,7 +172,7 @@ def test_an_unknown_citation_state_value_raises(w, state):
     raises(w)
 
 
-@pytest.mark.parametrize("caveat,state", [(True, "sourced"), (False, "sourced_ocr_unverified"), (True, None), ("yes", "sourced"), (1, "sourced")])
+@pytest.mark.parametrize("caveat,state", [(True, "sourced"), (False, "sourced_ocr_unverified"), (True, None), ("yes", "sourced"), (1, "sourced"), (1, "sourced_ocr_unverified"), (0, "sourced")])
 def test_a_caveat_that_contradicts_the_state_or_is_not_a_boolean_raises(w, caveat, state):
     put(w, "ga_alpha", "Ldgr.src", state)
     w.find("ga_alpha", "Ldgr.src")["citation_state_caveat"] = caveat
