@@ -1825,19 +1825,55 @@ class CheckTimeout(Unknown):
     timed-out layer-wide read still aborts the layer, fail-closed, naming the read)."""
 
 
-def psql(sql: str, sep: str = "\x1f", timeout: int | None = None) -> list[list[str]]:
+class ReadError(Unknown):
+    """E1.8: psql answered, but its text does not parse into the rectangular rows a `-tA` result always is
+    (a ragged row, an unterminated output, undecodable bytes). A read that cannot be parsed exactly is not
+    measured: it degrades like every other failed query (an `Unknown`), and is never padded, trimmed or guessed."""
+
+
+def parse_psql_output(out: str, sep: str = "\x1f", width: int | None = None) -> list[list[str]]:
+    """The rows of `psql -tA -F <sep>` output, exactly. `-tA` prints each row as its fields joined by `sep` and
+    terminated by ONE newline, so exactly that one terminator is removed and nothing else: `str.strip()` also
+    removes U+001C..U+001F (the field separator is whitespace to Python) and so ate the trailing separator of a
+    last row whose last field was empty — one field fewer, `ValueError` in a fixed-width unpack, or a silently
+    shortened row — and the leading separator of a first row whose first field was empty, shifting every field.
+    A row of only empty fields is a row (a single-column result's empty value is `[""]`), not a blank line.
+    Every row must have the same field count (`width` when given): a row that does not is a `ReadError` —
+    typically a value carrying a newline, which this line-oriented transport cannot represent."""
+    if out == "":
+        return []
+    if not out.endswith("\n"):
+        raise ReadError("psql output is not newline-terminated (truncated?) — not parsed")
+    rows = [ln.split(sep) for ln in out[:-1].split("\n")]
+    want = width if width is not None else len(rows[0])
+    for i, r in enumerate(rows):
+        if len(r) != want:
+            seen = f"{r[:3]!r}"[:200]
+            raise ReadError(f"psql row {i + 1} of {len(rows)} has {len(r)} field(s), expected {want} "
+                            f"({'declared' if width is not None else 'the first row'}): {seen} — a value "
+                            "containing a newline cannot be read line by line")
+    return rows
+
+
+def psql(sql: str, sep: str = "\x1f", timeout: int | None = None, width: int | None = None) -> list[list[str]]:
     env = dict(os.environ)
     env.setdefault("PGCONNECT_TIMEOUT", "10")
     limit = timeout if timeout is not None else PSQL_TIMEOUT_SECONDS
     try:
+        # bytes, decoded here: `text=True` would translate a lone CR (or CRLF) inside a value into a newline
         p = subprocess.run(["psql", "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1", "-c", sql],
-                           capture_output=True, text=True, env=env, timeout=limit)
+                           capture_output=True, env=env, timeout=limit)
     except subprocess.TimeoutExpired as exc:
         raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
                            f"{' '.join(sql.split())[:120]}") from exc
     if p.returncode != 0:
-        raise Unknown((p.stderr.strip().splitlines() or ["psql failed"])[0])
-    return [ln.split(sep) for ln in p.stdout.strip().split("\n") if ln.strip()]
+        err = p.stderr.decode("utf-8", errors="replace")
+        raise Unknown((err.strip().splitlines() or ["psql failed"])[0])
+    try:
+        out = p.stdout.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ReadError(f"psql output is not valid UTF-8: {exc}") from exc
+    return parse_psql_output(out, sep, width)
 
 
 def scalar(sql: str) -> str | None:
@@ -3858,16 +3894,22 @@ def catalog(tables: list[str]) -> dict:
     # a failed read leaves them None (unknown), it never aborts the layer.
     types: dict | None = {}
     defaults: dict | None = {}
+    types_error: str | None = None
     try:
-        for tn, cn, dt_, dflt in psql("SELECT table_name, column_name, data_type, coalesce(replace(column_default, E'\\n', ' '), '') "
-                                      f"FROM information_schema.columns WHERE table_schema='public' AND table_name IN ({lit}) "
-                                      "ORDER BY table_name, ordinal_position"):
+        for row in psql("SELECT table_name, column_name, data_type, coalesce(replace(column_default, E'\\n', ' '), '') "
+                        f"FROM information_schema.columns WHERE table_schema='public' AND table_name IN ({lit}) "
+                        "ORDER BY table_name, ordinal_position"):
+            if len(row) != 4:      # E1.8: a malformed row is a failed read with its reason, never a crashing unpack
+                raise ReadError(f"columns/types/defaults read: a row has {len(row)} field(s), expected 4: {row[:3]!r}")
+            tn, cn, dt_, dflt = row
             types.setdefault(tn, {})[cn] = dt_
             if dflt:
                 defaults.setdefault(tn, {})[cn] = dflt
-    except Unknown:
+    except Unknown as exc:
         types = defaults = None
-    return dict(exists=exists | views, cols=cols, keys=keys, views=views, types=types, defaults=defaults)
+        types_error = str(exc)
+    return dict(exists=exists | views, cols=cols, keys=keys, views=views, types=types, defaults=defaults,
+                types_error=types_error)
 
 
 def build_history(prefix: str, ids=None) -> dict:
@@ -5397,6 +5439,12 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
         except Unknown as exc:
             errored = {c: dict(v=ERRORED, measured=f"check errored: {exc}") for c in ("Narr.checkable", "Null.blank_rows")}
     out = prose_checks(aid, decl, ctx)
+    if cat.get("types_error"):
+        # E1.8: the column types/defaults read failed (a malformed psql row, or any other Unknown): the verdicts that
+        # needed them already degrade to "not read"; say WHY on those cells instead of leaving the reason in `cat`
+        for crit in ("Narr.agree", "Null.schema_default"):
+            if crit in out and out[crit].get("v") in (NO_DET, PARTIAL):
+                out[crit] = dict(out[crit], measured=f"{out[crit]['measured']} [column types/defaults read failed: {cat['types_error']}]")
     out.update(errored)
     return out
 
