@@ -1,0 +1,20 @@
+-- plan: correct the stored TRUE Ketu speed_dps and is_retrograde on public.ephemeris_daily (F-L0-08): 91,676 rows, those two columns only; no other column, row, grant, owner or policy
+SET LOCAL search_path = pg_catalog, pg_temp
+SET LOCAL lock_timeout = '5s'
+SET LOCAL statement_timeout = '120s'
+-- snapshot A (session user): relacl + owner of every public relation, public schema owner + ACL, RLS flags, pg_policy, pg_auth_members, ephemeris_daily index + constraint catalogs, row count;
+--   digests: non_node_digest_v1, node_series_digest_bodies_v1(true,{Rahu}), node_series_digest_bodies_v1(true,{Ketu}) (exec/node_series/digest/)
+-- membership: GRANT amjis_app TO <session user> only if missing; REVOKE exactly what was granted before snapshot B
+-- pre-checks (any failure: no UPDATE, ROLLBACK):
+--   P1 ephemeris_daily is owned by amjis_app
+--   P2 the pairs: 91,676 TRUE (Rahu, Ketu) date pairs; for ALL of them Ketu speed_dps = -Rahu speed_dps (non-zero), the flags are opposite, and Ketu longitude = Rahu + 180 within 1e-6 degrees
+--   P3 no OTHER backend holds a write-level lock on the table (no bg_ephemeris rebuild in flight)
+--   P4 (SS gate, not readable from the database) the corrected bg_ephemeris writer is merged AND deployed: a rebuild with the old, inverted computation would revert this correction
+-- before-image: (id, date, body, ayanamsha_id, speed_dps, is_retrograde) of all 91,676 TRUE Ketu rows as JSON + a reversal UPDATE file, written to the evidence directory BEFORE the UPDATE; unwritable: abort + ROLLBACK
+SET LOCAL ROLE amjis_app
+UPDATE public.ephemeris_daily k SET speed_dps = r.speed_dps, is_retrograde = r.is_retrograde FROM public.ephemeris_daily r WHERE k.body = 'Ketu' AND k.node_mode = 'true' AND r.body = 'Rahu' AND r.node_mode = 'true' AND r.date = k.date AND r.ayanamsha_id = k.ayanamsha_id AND (k.speed_dps IS DISTINCT FROM r.speed_dps OR k.is_retrograde IS DISTINCT FROM r.is_retrograde)   -- rowcount must be exactly 91,676
+RESET ROLE
+-- REVOKE the transient membership; snapshot B
+-- commit only if: rowcount = 91,676; the E3 counts (design section 13) read speed_differs 0, flag_differs 0, lon_not_180 0 for node_mode 'true'; non_node_digest_v1 and node_series_digest_bodies_v1(true,{Rahu}) are IDENTICAL to snapshot A; the Ketu digest differs; every OTHER column of every Ketu row (id, date, body, ayanamsha_id, tropical_longitude, latitude, sign_number, degree_in_sign, nakshatra_number, source_citation, computed_at, node_mode, epoch_convention) is byte-identical (md5 of the row minus the two columns); row count unchanged; relacl, owner, schema owner+ACL, RLS, policies, memberships, index and constraint catalogs equal snapshot A
+-- --dry-run: the same statements, then ROLLBACK, always. --apply: COMMIT only if every check holds, --expect-plan equals the plan hash AND --expect-evidence equals the digest of the PRE-UPDATE state computed in the transaction.
+-- the real run is started through run_gated.sh (prerun_gate.py: zero non-completed main deploy runs, zero planned/running/paused build_runs), else the executor is not started.
