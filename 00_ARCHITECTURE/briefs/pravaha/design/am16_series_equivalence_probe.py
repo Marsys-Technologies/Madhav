@@ -32,6 +32,16 @@ def series_digest(ephe_dir):
     return hashlib.sha256(json.dumps(rows, separators=(",", ":")).encode()).hexdigest(), sorted(opened), swe.version
 
 
+def runtime_identity():
+    """What the vector binds besides the data files (AM-16 schema /2, Codex R8-1): the sha256 of the LOADED swisseph artifact (the compiled
+    extension the import resolved to — a version string does not distinguish two builds) and the platform."""
+    import importlib.util, platform, swisseph as swe
+    origin = importlib.util.find_spec("swisseph").origin
+    with open(origin, "rb") as fh:
+        h = hashlib.sha256(fh.read()).hexdigest()
+    return {"swe_version": swe.version, "library_file": os.path.basename(origin), "library_sha256": h, "platform": f"{platform.system()}-{platform.machine()}"}
+
+
 def child(ephe_dir):
     d, opened, ver = series_digest(ephe_dir)
     print(json.dumps({"digest": d, "opened": opened, "version": ver}))
@@ -44,6 +54,7 @@ def run_child(ephe_dir):
 
 def main(src):
     base = run_child(src); again = run_child(src)
+    print("0 runtime identity bound by the vector:", json.dumps(runtime_identity()))
     print("1 determinism (two processes):", base["digest"] == again["digest"], base["digest"][:16], "opened", base["opened"], "swe", base["version"])
     with tempfile.TemporaryDirectory() as t:
         c = os.path.join(t, "copy"); shutil.copytree(src, c)

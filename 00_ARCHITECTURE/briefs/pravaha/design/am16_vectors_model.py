@@ -1,13 +1,13 @@
-"""AM-16 reference MODEL v3 (Stream B) — reconciled with Stream A's implementation (pravaha/a53-am5-inventory @3677cccae,
+"""AM-16 reference MODEL v4 (Stream B) — reconciled with Stream A's implementation (pravaha/a53-am5-inventory @3677cccae,
 services/gochara_kernel/input_vector.py). Not production code. It states the NORMATIVE key schema and canonical
 serialization and holds the frozen cases. Stdlib only.
 
-  python am16_vectors_model.py                      # run the frozen cases: recompute and compare to design/am16_vectors_frozen_v1.json (LITERAL preimages + sha256)
+  python am16_vectors_model.py                      # run the frozen cases: recompute and compare to design/am16_vectors_frozen_v2.json (LITERAL preimages + sha256)
   python am16_vectors_model.py --freeze             # (re)write the frozen file — an explicit, reviewable act, never done by the check
   python am16_vectors_model.py --cross-check FILE   # FILE = Stream A's input_vector.py: its pure functions must agree byte-for-byte
 
-NORMATIVE SCHEMA  (`vector_schema` = "ka_gochara_input_vector/1"; a nested object, so a refusal NAMES the component that moved)
-  schema            "ka_gochara_input_vector/1"
+NORMATIVE SCHEMA  (`vector_schema` = "ka_gochara_input_vector/2"; a nested object, so a refusal NAMES the component that moved)
+  schema            "ka_gochara_input_vector/2"
   stored_scope      "stored_non_moon"  — the serving scope of the stored generation (AM-14); the mandatory response constructors read it back from the bound manifest  [added v3]
   sky_convention    id AND content digest of the convention vector (a label alone is not an identity)           [amended vs A]
   registry          {digest, census}   digest = sha256(canonical_json(payload)); payload = {schema:"ka_gochara_registry_digest/1",
@@ -16,9 +16,16 @@ NORMATIVE SCHEMA  (`vector_schema` = "ka_gochara_input_vector/1"; a nested objec
                     {created_at (predicate, factor, path tables), sealed_at (seal table; never selected)}, in a TOTAL order
                     (path_id,rule_version | …,ordinal | …,factor_id,factor_rule_version); census = every sealed (path, version)
   node              {model, source, zodiac, ayanamsha}  (the node series' file identity is carried by `ephemeris`: MEASURED — a MEAN_NODE sidereal calc opens sepl_XX and semo_XX)
-  ephemeris         {backend, swe_version, files, probe_digest} where `probe_digest` = sha256 over the exact float.hex() calc_ut results for a fixed probe set
-                    (design/am16_series_equivalence_probe.py) — the cheap CONTENT binding of the consumed arc/node series                                     [added v3]
-                    and `files` = the .se1 files the kernel ACTUALLY OPENS for the consumed
+  ephemeris         {backend, swe_version, library_sha256, platform, files, probe_digest} where
+                    `library_sha256` = sha256 of the LOADED swisseph artifact (the file `importlib.util.find_spec('swisseph').origin` names — the
+                    compiled extension carrying the Swiss Ephemeris code; a version string does not distinguish two builds)                                  [added v4, R8-1]
+                    `platform` = "<system>-<machine>" (e.g. "Linux-x86_64"): floating-point behaviour is a function of the CPU architecture/libm              [added v4]
+                    `probe_digest` = sha256 over the exact float.hex() calc_ut results for a fixed probe set (design/am16_series_equivalence_probe.py).
+                      WHAT IT IS FOR (v4): it does NOT prove behaviour at unprobed instants — the artifact hash (code) + the opened-file hashes (data) +
+                      the flags/convention (inputs) bind that. It is an END-TO-END TRIPWIRE for environment drift those three cannot see (a different libm/FMA
+                      behaviour, a preloaded library, a wrong sidereal mode or flag at run time): if the running process no longer reproduces the recorded
+                      numbers at the probe instants, the build is refused before it writes anything.
+                    `files` = the .se1 files the kernel ACTUALLY OPENS for the consumed
                     bodies over the consumed horizon (name -> sha256), never "every .se1 present"                      [amended vs A]
                     (measured on swisseph 2.10.03: Sun/Moon/Saturn/MEAN_NODE open sepl_18.se1 + semo_18.se1 and NEVER seas_18.se1;
                     get_current_file_data(0..4) reports the opened files)
@@ -32,7 +39,7 @@ There is no aggregate `identity` field: the manifest stores the whole vector and
 """
 import copy, hashlib, json, sys
 
-VECTOR_SCHEMA = "ka_gochara_input_vector/1"
+VECTOR_SCHEMA = "ka_gochara_input_vector/2"      # bumped from /1: the key set gained ephemeris.library_sha256 and ephemeris.platform (Codex R8-1)
 REGISTRY_DIGEST_SCHEMA = "ka_gochara_registry_digest/1"
 AUDIT_FIELDS = ("created_at", "sealed_at")
 
@@ -67,7 +74,8 @@ def vector(inp: dict) -> dict:
         "sky_convention": {"id": inp["sky_id"], "content_digest": sha(canonical_json(inp["sky_vector"]))},
         "registry": {"digest": registry_digest(inp["registry"]), "census": sorted([list(c) for c in inp["registry"]["census"]])},
         "node": inp["node"],
-        "ephemeris": {"backend": "swieph", "swe_version": inp["swe_version"], "files": dict(sorted(inp["opened_files"].items())),
+        "ephemeris": {"backend": "swieph", "swe_version": inp["swe_version"], "library_sha256": inp["library_sha256"], "platform": inp["platform"],
+                      "files": dict(sorted(inp["opened_files"].items())),
                       "probe_digest": inp["probe_digest"]},
         "l0": {k: sha(canonical_json(v)) for k, v in sorted(inp["l0_rows"].items())},
         "orb_policy": {"admission_digest": sha(canonical_json(inp["admission_orb"])), "activity": inp["activity_orb"]},
@@ -101,6 +109,7 @@ BASE = {
     },
     "node": {"model": "mean", "source": "swiss_mean_node_flg_sidereal", "zodiac": "sidereal", "ayanamsha": "lahiri"},
     "swe_version": "2.10.03", "stored_scope": "stored_non_moon", "probe_digest": "6ea09e40aad66687" + "0" * 48,
+    "library_sha256": "5ee1ab0c" + "e" * 56, "platform": "Linux-x86_64",
     "opened_files": {"sepl_18.se1": "a" * 64, "semo_18.se1": "b" * 64},        # the files the kernel opened for this horizon
     "l0_rows": {"bg_transit_rules": [{"graha": "sun", "house": 4, "rule_type": "vedha", "obstructor_house": 10}]},
     "admission_orb": {"orb_table": {"conjunction": 1.0}, "point_orb_source": "convention"},
@@ -119,6 +128,8 @@ CASES = {
     "orb_policy_only":        ("activity orb ratified, with its decision ref", True, "orb_policy.activity.1.1.0"),
     "l0_rows_only":           ("one consumed vedha row differs", True, "l0.bg_transit_rules"),
     "kernel_factor_source":   ("kernel_factor.py source changed (the module A's list omits today)", True, "implementation.evaluation"),
+    "library_artifact_only":  ("a different swisseph artifact with the SAME version string", True, "ephemeris.library_sha256"),
+    "platform_only":          ("the same artifact on a different architecture", True, "ephemeris.platform"),
     "stored_scope_only":      ("the serving scope token differs", True, "stored_scope"),
     "probe_digest_only":      ("the fixed-probe series digest differs (library/numerics drift the file hashes would miss)", True, "ephemeris.probe_digest"),
     "audit_field_only":       ("created_at differs", False, None),
@@ -137,6 +148,8 @@ def mutate(case):
     elif case == "orb_policy_only": d["activity_orb"]["1.1.0"] = {"orb_deg": 3.0, "orb_decision_ref": "ruling:nd_orb_x"}
     elif case == "l0_rows_only": d["l0_rows"]["bg_transit_rules"][0]["obstructor_house"] = 9
     elif case == "kernel_factor_source": d["impl_modules"]["evaluation"]["kernel_factor"] = "1" * 64
+    elif case == "library_artifact_only": d["library_sha256"] = "7" * 64
+    elif case == "platform_only": d["platform"] = "Darwin-arm64"
     elif case == "stored_scope_only": d["stored_scope"] = "stored_all"
     elif case == "probe_digest_only": d["probe_digest"] = "1" * 64
     elif case == "audit_field_only": r["paths"][0]["created_at"] = "t1"
@@ -144,7 +157,7 @@ def mutate(case):
     return d
 
 
-FROZEN = __import__("os").path.join(__import__("os").path.dirname(__import__("os").path.abspath(__file__)), "am16_vectors_frozen_v1.json")
+FROZEN = __import__("os").path.join(__import__("os").path.dirname(__import__("os").path.abspath(__file__)), "am16_vectors_frozen_v2.json")
 
 
 def run():
@@ -214,6 +227,7 @@ def cross_check(path):
     got = A.registry_digest(Conn(), [("P3", "1.1.0")])
     assert got == vector(BASE)["registry"]["digest"], (got, vector(BASE)["registry"]["digest"])
     assert A.diff_vectors({"a": {"b": 1}}, {"a": {"b": 2}}) == diff_vectors({"a": {"b": 1}}, {"a": {"b": 2}})
+    # NOTE: the vector SCHEMA label (/1 in A's head, /2 here) and the new ephemeris keys are what A must vendor; the pure functions agree
     print("CROSS-CHECK OK: canonical_json, rulings_digest, registry_digest (via a stand-in connection) and diff_vectors agree byte-for-byte")
 
 
