@@ -1,7 +1,7 @@
 ---
 artifact: EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING
 version: "1.1"
-status: "PRE-REGISTRATION — declared before any '4.1' or '5.0' candidate output is inspected; supersedes v1.0"
+status: "SUPERSEDED by v1.2 (Codex round 7 [10]: unknown competing candidates could vanish from percentile arithmetic) — do not pre-register from this version"
 date: 2026-10-02
 author: Stream B (Śāstra), item B6.0 — corrected per Codex round 6 R7
 amends: "EVALUATION_PROTOCOL_v2_3 §4 (window identity, ranking) — adds the stored-field mapping and the NULL policy the protocol left silent; changes NO existing rule, threshold, floor, denominator rule or '3.0' figure"
