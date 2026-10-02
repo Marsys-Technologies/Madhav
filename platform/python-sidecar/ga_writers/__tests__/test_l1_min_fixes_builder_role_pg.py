@@ -47,6 +47,11 @@ from ga_writers.data_plane_contracts import ContractError  # noqa: E402
 from pipeline.orchestrator.writers import WriterResult  # noqa: E402
 
 DSN = os.environ.get("C7_BUILDER_ROLE_TEST_DATABASE_URL")
+# Visible deselection in the generic sidecar job (`-m "not integration"`); this file's own CI step
+# runs it explicitly with the disposable-Postgres DSN and no -m filter. (`integration` is used
+# unregistered across tests/; no --strict-markers is configured anywhere.)
+pytestmark = pytest.mark.integration
+
 needs_pg = pytest.mark.skipif(
     not DSN, reason="NOT_RUN: set C7_BUILDER_ROLE_TEST_DATABASE_URL to the disposable Postgres"
 )
