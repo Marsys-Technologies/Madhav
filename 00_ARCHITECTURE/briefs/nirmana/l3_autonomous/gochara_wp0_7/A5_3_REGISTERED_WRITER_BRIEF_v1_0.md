@@ -873,3 +873,30 @@ flat-to-flat + decode, inventory pins/obligation ids + the verifier's independen
 the sweep lighting up from the persisted declaration alone. Mutation checks (10): all killed except one equivalent mutant (P4's provenance lookup at
 the global version — P4@1.0.0 and P4@1.1.0 carry identical provenance, and a missing version already fails in `_path_citation`).
 `test_wp10_cutover.py::{step07,step08,clear_windows}` fail identically on the untouched baseline (verified with the change set stashed) — not this change.
+
+### Design v1.20 (2026-10-02) — AM-20 (ND-P1-FRAME): P1 transit records may now be minted; the `dasha_lord` house is a stored descriptor
+
+Steward directive (from Stream B's `design/P1_FRAME_ANSWER_v1_0.md`, campaign/pravaha 99689db4b). **`house_from_frame` of a P1 transit record = the inclusive
+whole-sign count from the NATAL sign of the period lord that anchors the record**, resolved through Stream B's `frames` (`Frame("dasha_lord", <graha>)` +
+`house_of` — called, not copied); AM-15's lagna-inclusive count for the NATAL relation is unchanged. Before this the writer's resolver returned `None` for
+`dasha_lord`, so NO P1 transit record was minted in production; it now is (a stated state is retained for an edge with no anchor / a lord with no natal position).
+
+**The anchor is enumerated, not read from the daśā rows.** `RecordEdge.period_lord` (concrete graha, lowercase; P1 transit edges only, `None` elsewhere): the
+agent for its own/exaltation/debilitation signs (XX.37); for Sun/Jupiter on a sign that is only ANOTHER graha's exaltation sign (XX.38) the graha whose
+exaltation sign it is (e.g. the Sun in Capricorn ⇒ Mars). It is NOT a natural-key field and NOT in the frame (1154's `ka_gochara_frame_ok` forces the
+`dasha_lord` frame arg to NULL), so record identity, obligation bytes and the AM-5 inventory digest are unchanged. **Level:** the period *level* (md/ad/pd) is
+a property of each running piece — one contact can span the lord's MD, AD and PD — so it cannot be a single per-edge value; the edge carries the graha only and
+no stored or read quantity depends on the level (the support restriction already runs over all three levels). Flagged to the steward as an interpretation of
+"graha + level".
+
+**Nothing reads the descriptor** (tests): no `services/gochara_rules` module mentions `house_from_frame`; in the kernel only the store/verifier/sweep modules do, and
+the sweep's single reader is P2's Moon-frame direction; a P1 window is byte-identical for every descriptor value 1–12 (unscored: `value_mapping_undeclared`, NULL
+evidence/severity); and a PG round trip re-materialises the same P1 grain with the descriptor shifted by 1, 5, 11 — the descriptor changes and NOTHING else a
+record stores (admission, prerequisite results, support, evidence, frame) does. **Independent verification:** `record_verifier.verify_p1_house_descriptor` (called by
+the record phase after `verify_p1_support`) re-derives the anchor from the verifier's OWN classical table and the count from the snapshot-bound L1 natal positions;
+a lagna-counted descriptor (the rejected option (a)) is caught. 11 tests; 8 mutations, all killed.
+
+**Open (not changed here):** (1) one record exists per (agent, sign); where both XX.37 and XX.38 readings apply (the Sun in Libra: its debilitation AND Saturn's exaltation;
+Jupiter in Capricorn, etc.) the agent's own reading is the anchor — the one the enumeration already carried. (2) P1's SUPPORT and the `period_running_at` / natal-relation
+prerequisites run over the *agent's* running periods; for the Sun/Jupiter-in-X's-exaltation forms XX.38 speaks of X's bhukti, so the period restriction may belong to X, not the
+agent — a semantic question for the gate, unchanged by AM-20 (the descriptor is the only thing that now follows the anchor).

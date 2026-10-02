@@ -101,7 +101,7 @@ def world(monkeypatch, tmp_path):
                                        precision_regime="swiss_bisect_tol_1e-9d", coverage={"truncated": False})
             return sky
 
-    def grain(agent, in_sign):
+    def grain(agent, in_sign, house_for=_lagna_house):
         """Materialise the P1 `agent` Libra-residence grain; `in_sign(t)` says when the body is IN Libra."""
         edge = next(e for e in ev.enumerate_edges("marriage", "P1", CHART)
                     if e.transit and e.relation == "residence" and e.agent == agent
@@ -114,7 +114,7 @@ def world(monkeypatch, tmp_path):
             return rs.materialise_record_grain(
                 store, chart_id=CHART_ID, generation=GEN, event_class="marriage", path_id="P1",
                 edges=[edge], horizon=(H0, H1),
-                position_at=lambda body, t: 195.0 if in_sign(t) else 15.0, house_for=_lagna_house,
+                position_at=lambda body, t: 195.0 if in_sign(t) else 15.0, house_for=house_for,
                 sky_convention_id=sky, source_fact_ids=["fact-1"], prerequisites=P1_PREREQS,
                 chart=CHART, dasha_rows_for=rows_for)
 

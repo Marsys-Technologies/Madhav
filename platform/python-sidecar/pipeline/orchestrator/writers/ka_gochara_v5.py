@@ -67,7 +67,7 @@ from services.gochara_kernel import inventory as gk_inventory
 from services.gochara_kernel import input_vector as gk_input_vector
 from services.gochara_kernel import input_vector_verifier as gk_input_vector_verifier
 from services.gochara_kernel import window_sweep as gk_window_sweep
-from services.gochara_kernel.record_verifier import verify_p1_support
+from services.gochara_kernel.record_verifier import verify_p1_house_descriptor, verify_p1_support
 from services.gochara_kernel import window_verifier as gk_window_verifier
 from services.gochara_kernel.window_verifier import verify_window_semantics
 from services.gochara_kernel.window_store import WindowStore
@@ -216,12 +216,18 @@ def _require_pinned_chart(chart_id) -> None:
 def _house_resolver(context: dict):
     """house_for(edge, sign) from the chart context, whole-sign from the
     edge's frame anchor: lagna → lagna sign; moon → natal Moon sign;
-    bhavat_bhavam:<H> → the H-th house's sign from lagna. `dasha_lord`
-    returns None — its anchor needs the §4.0 dasha rows, an open binding
-    (brief §interval_sweep); an unresolvable anchor means the occurrence is
-    NOT minted (kgrr_evaluated_has_house_ck — a state, never an omission)."""
+    bhavat_bhavam:<H> → the H-th house's sign from lagna.
+
+    `dasha_lord` (AM-20, ND-P1-FRAME): the inclusive count from the NATAL sign of the period lord that
+    anchors the record (`edge.period_lord`; the DB's `dasha_lord` frame carries no arg) — resolved through
+    Stream B's `frames` (called, never copied). It is a stored DESCRIPTOR only: nothing in P1 — no
+    predicate, factor, admission or channel — reads it; the natal relation to H stays AM-15's lagna count.
+    An edge with no `period_lord` (or a lord with no natal position) has no anchor ⇒ the occurrence is NOT
+    minted (kgrr_evaluated_has_house_ck — a state, never an omission)."""
+    from services.gochara_rules import frames as rules_frames
     lagna_idx = int(context["lagna_deg"] // 30)
     moon_idx = int(context["natal"]["Moon"] // 30)
+    chart = {"lagna_deg": context["lagna_deg"], "natal": context["natal"]}
 
     def house_for(edge, sign: str) -> int | None:
         s = _SIGNS.index(sign.lower())
@@ -231,6 +237,11 @@ def _house_resolver(context: dict):
             anchor = moon_idx
         elif edge.frame_kind == "bhavat_bhavam" and edge.frame_arg:
             anchor = (lagna_idx + int(edge.frame_arg) - 1) % 12
+        elif edge.frame_kind == "dasha_lord":
+            if not edge.period_lord or edge.period_lord.title() not in chart["natal"]:
+                return None
+            frame = rules_frames.Frame("dasha_lord", edge.period_lord.title())
+            return rules_frames.house_of(s * 30.0 + 15.0, frame, chart)
         else:
             return None
         return (s - anchor) % 12 + 1
@@ -641,6 +652,9 @@ class GocharaV5Writer(WriterBase):
             # snapshot-bound daśā rows) and must equal what was stored
             verify_p1_support(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                               event_class=event_class)
+            # AM-20: the stored house descriptor is the count from the anchoring period lord's natal sign
+            verify_p1_house_descriptor(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
+                                       event_class=event_class)
         return WriterResult(
             asset_id=self.asset_id, rows_inserted=inserted,
             notes=(f"{event_class}/{path_id}: {counts['records']} transit "

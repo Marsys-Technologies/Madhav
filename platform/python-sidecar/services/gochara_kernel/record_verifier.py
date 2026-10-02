@@ -64,4 +64,64 @@ def verify_p1_support(conn, *, chart_id: str, generation: str, event_class: str)
     return {"records": len(rows), "restricted": restricted}
 
 
-__all__ = ["verify_p1_support"]
+# ── AM-20: the P1 `house_from_frame` DESCRIPTOR, re-derived from the verifier's OWN classical table ────────
+
+_HOUSE_SQL = """
+SELECT r.record_id::text, r.agent, o.canonical_target, r.house_from_frame, r.frame_kind, r.frame_arg
+FROM public.ka_gochara_relationship_record r
+JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id
+WHERE r.chart_id = %(chart)s AND r.generation = %(gen)s AND r.event_class = %(cls)s
+  AND r.path_id = 'P1' AND r.contact_id IS NOT NULL
+ORDER BY r.record_id
+"""
+
+
+def expected_p1_anchor(agent: str, sign_index: int) -> str:
+    """The period lord anchoring a P1 transit record on the sign (0 = Aries): the agent when the sign is its
+    own / exaltation / debilitation sign, else (Sun/Jupiter only) the graha whose exaltation sign it is.
+    The verifier's own table — nothing is imported from the builder."""
+    from .inventory_verifier import _DEBIL, _EXALT, _OWN, _SIGNS
+    sign = _SIGNS[sign_index]
+    if sign in _OWN.get(agent, ()) or sign in (_EXALT.get(agent), _DEBIL.get(agent)):
+        return agent
+    owners = [g for g, s in _EXALT.items() if s == sign]
+    if agent not in ("sun", "jupiter") or len(owners) != 1:
+        raise ValueError(f"{agent} on {sign} is not a P1 content sign — no anchoring period lord")
+    return owners[0]
+
+
+def verify_p1_house_descriptor(conn, *, chart_id: str, generation: str, event_class: str) -> dict:
+    """AM-20: every minted P1 transit record's `house_from_frame` equals the inclusive whole-sign count from
+    the NATAL sign of its anchoring period lord (L1 natal positions of the snapshot's consumed facts) to the
+    sign of the contact; the stored frame is the arg-less `dasha_lord`. A descriptor only — this checks that
+    it says what AM-20 says it says, never that anything depends on it."""
+    from .inventory_verifier import Unverifiable, read_chart
+    rows = conn.execute(_HOUSE_SQL, {"chart": chart_id, "gen": generation, "cls": event_class}).fetchall()
+    if not rows:
+        return {"records": 0}              # nothing minted ⇒ nothing to verify (no natal read needed)
+    snap = conn.execute(
+        "SELECT consumed_fact_ids FROM public.ka_gochara_search_input_snapshot"
+        " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    if snap is None:
+        raise Unverifiable("no snapshot to read the natal positions from")
+    natal = read_chart(conn, snap[0])["natal"]
+    problems: list[str] = []
+    for rid, agent, target, house, fkind, farg in rows:
+        if (fkind, farg) != ("dasha_lord", None):
+            problems.append(f"record {rid}: frame {fkind}:{farg} is not the arg-less dasha_lord")
+            continue
+        sign = int(target.split(":", 1)[1]) - 1
+        try:
+            lord = expected_p1_anchor(agent, sign)
+        except ValueError as exc:
+            problems.append(f"record {rid}: {exc}")
+            continue
+        want = (sign - int(natal[lord] // 30)) % 12 + 1
+        if house != want:
+            problems.append(f"record {rid}: house_from_frame {house}, the count from {lord}'s natal sign is {want}")
+    if problems:
+        raise RuntimeError(f"P1 house-descriptor verification failed {event_class}: " + "; ".join(problems))
+    return {"records": len(rows)}
+
+
+__all__ = ["verify_p1_support", "verify_p1_house_descriptor", "expected_p1_anchor"]
