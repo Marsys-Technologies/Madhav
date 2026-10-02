@@ -233,9 +233,16 @@ KNOWN_SPECIAL_POINTS = frozenset({
     # number themselves; same B.10 reasoning as above.
     "DAGDHA_RASHI_1", "DAGDHA_RASHI_2",
 })
+# Role vocabulary tracks ga_writers/_karaka_roles.py: the 8-scheme (kn_rao_rahu_included)
+# adds PITRIKARAKA at rank 5 (BPHS 32.13-17, sourced_ocr_unverified). STRIKARAKA is no
+# longer emitted as a subject (it is the strikaraka_alias fact_key on DARAKARAKA), but it
+# stays recognised here for the transition: karaka_chara_position rows built before the
+# karaka-roles rebuild still carry the STRIKARAKA subject, and removing it would turn
+# them into an unclassified "real_gap". Drop it once every chart has been rebuilt.
 KNOWN_KARAKA_ROLES = frozenset({
     "ATMAKARAKA", "AMATYAKARAKA", "BHRATRIKARAKA", "MATRIKARAKA",
-    "PUTRAKARAKA", "GNATIKARAKA", "DARAKARAKA", "STRIKARAKA",
+    "PITRIKARAKA", "PUTRAKARAKA", "GNATIKARAKA", "DARAKARAKA",
+    "STRIKARAKA",  # legacy subject, pre-rebuild rows only (see above)
 })
 # Classical yoga-name / dosha-name labels (yoga_label, dosha_label
 # categories) — catalog labels, not graha/house/varga identity.

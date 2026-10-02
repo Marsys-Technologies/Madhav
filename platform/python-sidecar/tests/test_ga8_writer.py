@@ -1991,7 +1991,7 @@ class TestKarakaWebCanonicalSchool:
     def test_no_duplicate_fact_ids_from_single_school(self):
         # 8 roles -> 8 distinct planets (a clean permutation, as a single school is)
         roles = ["ATMAKARAKA", "AMATYAKARAKA", "BHRATRIKARAKA", "MATRIKARAKA",
-                 "PUTRAKARAKA", "GNATIKARAKA", "DARAKARAKA", "STRIKARAKA"]
+                 "PITRIKARAKA", "PUTRAKARAKA", "GNATIKARAKA", "DARAKARAKA"]
         planets = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu"]
         rows_in = [(r, p, None, None) for r, p in zip(roles, planets)]
         conn = self._Conn(rows=rows_in)
