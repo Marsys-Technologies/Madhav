@@ -102,6 +102,7 @@ import {
   type ChecklistUnit,
   type GocharaSweepWindow,
 } from './reading_checklist'
+import { resolveL2Lineage, l2LineageFlag } from '../../provenance/l2_lineage'
 import { resolvedBuildFenceIds, ExplicitEmptyBuildFenceError, resolveChartServedGeneration, resolvedRowsBuildId, servedGenerationIdentity, type BuildFence, type ChartServedGeneration, type UnresolvedAssetGeneration } from '../generation/served_generation'
 
 // F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure to gochara_sweep rows.
@@ -705,6 +706,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         'warning',
       ))
     }
+    // N-91 between-state disclosure: the fact_ids this response echoes come partly from L2 (MSR)
+    // rows. A REAL receipt-pin detector (provenance/l2_lineage.ts) says whether those L2 receipts
+    // were built against an L1 generation that has since been rebuilt; if so (or if the check could
+    // not run — fail closed) the flag makes the envelope's reading_contract take the NOT-anchored
+    // branch with the cause instead of the "grounded in N resolvable" count sentence.
+    const l2LineageDisclosure = l2LineageFlag(await resolveL2Lineage(chart_id))
+    if (l2LineageDisclosure) judgment_flags.push(l2LineageDisclosure)
     const fact_ids = new Set<string>()
 
     // ── F-57: domain-resolution disclosure (§N.6 pt 3 / §N.7 pt 6 / §N.8) ──────────────

@@ -1025,6 +1025,13 @@ export const KERNEL_FLOOR_FLAG_CODES: ReadonlySet<string> = new Set<string>([
   // pressure would make that specific overage invisible — the kernel-scoped analogue of
   // `budget_exceeded_after_trim` above, and it must never itself be trimmable.
   'kernel_ceiling_exceeded_for_disclosure',
+  // N-91 (between-state disclosure): the L2 receipts behind this assessment's cited fact_ids
+  // predate the current L1 (chart_facts) rebuild, or that lineage could not be checked. This is
+  // "the reading you are about to trust may cite ids that no longer resolve / was never checked"
+  // — the exact membership bar above. assess_* has no reading_contract on the wire, so kernel.flags
+  // is the ONLY place this disclosure reaches the caller; a byte-pressure trim must not drop it.
+  'l2_receipts_predate_l1',
+  'l2_lineage_check_failed',
   // F-179 (audit) — codes AUDITED and DELIBERATELY LEFT OUT of this floor (recorded so a
   // future pass does not re-litigate from scratch; full classification table + reachability
   // analysis in PR #<pending>/F-179 audit note):
