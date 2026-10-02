@@ -161,4 +161,16 @@ describe('gochara-seal-approved.yml', () => {
     expect(String(check.run)).toContain('/executions/${EXECUTION}"')
     expect(String(check.run)).toContain('--v2-execution-file execution.v2.json')
   })
+  it('F-R16-4a: the log read is bounded by an explicit timestamp from the execution\'s own startTime — `--freshness` (a no-op with --order=asc) is NOT used', () => {
+    const steps = brief.steps as any[]
+    const read = steps.find((st) => String(st.name ?? '').startsWith('Retrieve the brief'))
+    const run = String(read.run)
+    expect(run).toContain('--order=asc')
+    expect(run).not.toMatch(/--freshness(?!`)/)                    // the flag may be mentioned in the comment only (followed by a backtick there)
+    expect(run).toContain('status')
+    expect(run).toContain('startTime')
+    expect(run).toContain('AND timestamp>=')
+    expect(run).toContain('cannot bound the log read')            // a missing startTime refuses, it does not silently read everything
+  })
 })
+
