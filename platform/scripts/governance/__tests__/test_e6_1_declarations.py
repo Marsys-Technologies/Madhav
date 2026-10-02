@@ -1937,12 +1937,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    915,
+    936,
     "citation_human=f\"Sade Sati {"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    1262,
+    1283,
     "citation_human=f\"Sade Sati {"
    ]
   ],
