@@ -304,3 +304,13 @@ def test_outcome_warnings_are_recorded_and_validated(tmp_path, ex, gdir):
     assert read(tmp_path)["warnings"] == ["outcome_write_failed_after_commit:RuntimeError"] and read(tmp_path)["status"] == "applied"
     with pytest.raises(ValueError):
         es.write_outcome(str(tmp_path / "ev"), "applied", str(ex), PLAN, fp, DIGEST, warnings=["has space"])
+
+
+def test_commit_state_unknown_is_a_status_without_failed_checks_and_failed_checks_are_refused_for_it(tmp_path, ex, gdir):
+    fp = es.fingerprint(str(gdir))
+    path = es.write_outcome(str(tmp_path / "ev"), "commit_state_unknown", str(ex), PLAN, fp, DIGEST, warnings=["commit_raised:OperationalError"])
+    body = json.loads(open(path).read())
+    assert body["status"] == "commit_state_unknown" and body["failed_checks"] == [] and body["warnings"] == ["commit_raised:OperationalError"]
+    assert "commit_state_unknown" in es.STATUSES
+    with pytest.raises(ValueError):
+        es.write_outcome(str(tmp_path / "ev"), "commit_state_unknown", str(ex), PLAN, fp, DIGEST, failed_checks=["x"])

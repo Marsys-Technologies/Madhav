@@ -23,8 +23,9 @@ GH_SHIM = '''#!%(py)s
 import json, os, sys, time
 args = sys.argv[1:]
 d = os.environ["FAKE_DIR"]
+open(os.path.join(d, "gh.pid"), "w").write(str(os.getpid()))
 open(os.path.join(d, "calls.log"), "a").write("gh " + " ".join(args) + "\\n")
-open(os.path.join(d, "calls.log"), "a").write("ghenv " + " ".join("%%s=%%s" %% (n, os.environ.get(n, "unset")) for n in ("GH_REPO", "GH_HOST", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "GITHUB_REPOSITORY")) + " token=" + ("present" if os.environ.get("GH_" + "TOKEN") else "absent") + "\\n")
+open(os.path.join(d, "calls.log"), "a").write("ghenv " + " ".join("%%s=%%s" %% (n, os.environ.get(n, "unset")) for n in ("GH_REPO", "GH_HOST", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "GITHUB_REPOSITORY", "GH_CONFIG_DIR", "GH_PATH")) + " token=" + ("present" if os.environ.get("GH_" + "TOKEN") else "absent") + "\\n")
 key, limit, branch = "history", None, None
 for i, a in enumerate(args):
     if a == "--status":

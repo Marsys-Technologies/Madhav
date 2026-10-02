@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Mutation proof: neuter one rule at a time in a COPY of the gate folder (inside a temp mini-repo that also holds the CI-collected tests) and show that its tests go RED.
 
-  python3 tests/mutation_proof.py
+  python3 tests/mutation_proof.py [name-substring ...]     (arguments run only the matching mutations, e.g. "rev3": run the proof in chunks)
 
 For each mutation: copy the folder to a temp dir, apply ONE exact-string replacement to ONE file of the copy (asserting the
 string is present exactly once), run the named tests there, and require a non-zero pytest exit (red). The un-mutated copy must be
@@ -27,7 +27,7 @@ MUTATIONS = [
      "               '[ -r \"$f\" ] || exit 97; '\n               'source \"$f\" >/dev/null 2>&1 || exit 97; '",
      "               'source \"$f\" >/dev/null 2>&1; '", "pgenv"),
     ("REQUIRED b-limit: history asks --limit 20 instead of 100", "prerun_gate.py",
-     "HISTORY_LIMIT = 100", "HISTORY_LIMIT = 20", "limit_100 or beyond_position_20 or beyond_the_newest_100"),
+     "HISTORY_LIMIT = 1000", "HISTORY_LIMIT = 20", "limit_1000 or limit_passed_to_gh or beyond_position_20 or beyond_the_newest_100"),
     ("REQUIRED b-per-status: per-status union queries removed", "prerun_gate.py",
      'NON_COMPLETED_STATUSES = ("queued", "in_progress", "waiting", "pending", "requested")', "NON_COMPLETED_STATUSES = ()",
      "per_non_completed_status or beyond_the_newest_100 or every_non_completed_status"),
@@ -113,6 +113,28 @@ MUTATIONS = [
      'target_ok "$1" || die "target_not_executable" 98', 'target_ok "$1" || true', "98 or exec_ed"),
     ("rev2-8c: a failed final exec no longer exits 98", "run_gated.sh",
      'exec -- "$@"\ndie "target_not_executable" 98', 'exec -- "$@"', "cannot_be_exec"),
+    # ---- rev3: one mutation per fix
+    ("rev3-1: backstop fires at 100 instead of at the 1000 limit", "prerun_gate.py",
+     "len(data) >= HISTORY_LIMIT:", "len(data) >= 100:", "full_per_status"),
+    ("rev3-1: backstop removed (a full page of PR runs passes)", "prerun_gate.py",
+     "        if saturation_matters and excluded and len(data) >= HISTORY_LIMIT:", "        if False:", "full_per_status"),
+    ("rev3-5: no signal handlers installed (a SIGTERM kills the gate silently)", "prerun_gate.py",
+     "        if signal.getsignal(sig) != signal.SIG_IGN:\n            signal.signal(sig, _on_signal)", "        pass", "termination_signal"),
+    ("rev3-5: gh child not killed on a signal", "prerun_gate.py",
+     "    except BaseException as exc:                           # the child must never outlive the gate (timeout, signal, anything)\n        try:\n            os.killpg(proc.pid, signal.SIGKILL)",
+     "    except BaseException as exc:                           # the child must never outlive the gate (timeout, signal, anything)\n        try:\n            os.killpg(proc.pid, 0)", "termination_signal"),
+    ("rev3-5: a second signal is not ignored during the cleanup", "prerun_gate.py",
+     "        signal.signal(sig, signal.SIG_IGN)\n    raise GateSignal(signum)", "        pass\n    raise GateSignal(signum)", "second_signal"),
+    ("rev3-5: an already ignored SIGHUP is replaced by a handler (nohup protection lost)", "prerun_gate.py",
+     "        if signal.getsignal(sig) != signal.SIG_IGN:", "        if True:", "ignored_at_start"),
+    ("rev3-6: exit 96 labelled read_failed again", "prerun_gate.py",
+     'EXIT_ROLE: "wrong_role_or_database", ', "", "own_labels"),
+    ("rev3-6: exit 97 labelled read_failed again", "prerun_gate.py",
+     'EXIT_PGENV: "pgenv_failed", ', "", "own_labels"),
+    ("rev3-6: GH_CONFIG_DIR / GH_PATH no longer stripped", "prerun_gate.py",
+     ', "GH_CONFIG_DIR", "GH_PATH")', ")", "pins_the_repository"),
+    ("rev3-3: commit_state_unknown is not a valid outcome status (standards copy)", "executor_standards.py",
+     'STATUSES = ("dry_run", "applied", "failed", "commit_state_unknown")', 'STATUSES = ("dry_run", "applied", "failed")', "commit_state_unknown"),
 ]
 
 
@@ -124,7 +146,9 @@ def run(root, expr):
 
 def main():
     bad = 0
-    for name, fname, old, new, expr in MUTATIONS:
+    only = [a.lower() for a in sys.argv[1:]]                                   # optional name filters (run the proof in chunks)
+    selected = [m for m in MUTATIONS if not only or any(o in m[0].lower() for o in only)]
+    for name, fname, old, new, expr in selected:
         with tempfile.TemporaryDirectory(prefix="mut_") as t:
             root = pathlib.Path(t)                                              # a mini repo: same repo-relative layout as the real one
             w = root / REL_GATE
@@ -141,11 +165,11 @@ def main():
             ok = green.returncode == 0 and red.returncode != 0
             tail = [l for l in red.stdout.splitlines() if l.startswith(("FAILED", "ERROR"))][:2]
             print("%-84s baseline=%s mutant=%s  %s" % (name, "green" if green.returncode == 0 else "RED(!)",
-                                                      "RED" if red.returncode else "GREEN(!)", "OK" if ok else "NOT PROVEN"))
+                                                      "RED" if red.returncode else "GREEN(!)", "OK" if ok else "NOT PROVEN"), flush=True)
             for l in tail:
                 print("      ", l[:150])
             bad += 0 if ok else 1
-    print("%d/%d mutations proven" % (len(MUTATIONS) - bad, len(MUTATIONS)))
+    print("%d/%d mutations proven" % (len(selected) - bad, len(selected)))
     return 1 if bad else 0
 
 

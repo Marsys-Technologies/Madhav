@@ -60,12 +60,12 @@ def test_the_real_state_names_and_a_single_psql_call_with_current_user(world):
     assert "env PGUSER=suvarna_reader PGHOST=127.0.0.1 PGDATABASE=amjis" in calls    # came from the SOURCED file
 
 
-def test_gh_queries_history_limit_100_and_one_query_per_non_completed_status(world):
+def test_gh_queries_history_limit_1000_and_one_query_per_non_completed_status(world):
     run_gate(world.env())
     gh_calls = [l for l in world.calls().split("\n") if l.startswith("gh ")]
     assert len(gh_calls) == 6
     for l in gh_calls:
-        assert "run list -R Marsys-Technologies/Madhav --workflow deploy.yml --limit 100 --json databaseId,status,event" in l
+        assert "run list -R Marsys-Technologies/Madhav --workflow deploy.yml --limit 1000 --json databaseId,status,event" in l
         assert "--branch" not in l                                            # any ref: deploy.yml runs from workflow_dispatch anywhere
     assert [l for l in gh_calls if "--status" not in l]
     for s in ("queued", "in_progress", "waiting", "pending", "requested"):
@@ -117,19 +117,27 @@ def test_a_pull_request_run_is_never_counted_even_when_only_a_status_query_shows
     assert run_gate(world.env()).returncode == 0
 
 
+def test_the_limit_passed_to_gh_is_1000_everywhere():
+    assert load_gate().HISTORY_LIMIT == 1000
+
+
 def test_a_full_per_status_page_that_includes_pull_request_runs_fails_closed(world):
-    """100 queued PR runs could hide a 101st non-PR (dispatch) run behind the --limit: refuse, never pass."""
-    page = runs(100, "queued", 20000, event="pull_request") + [{"databaseId": 1, "status": "queued", "event": "workflow_dispatch"}]
-    world.gh(history=runs(3), statuses={"queued": page})                        # the shim truncates to 100: the dispatch run is invisible
+    """1000 queued PR runs could hide a 1001st non-PR (dispatch) run behind the --limit: refuse, never pass."""
+    page = runs(1000, "queued", 20000, event="pull_request") + [{"databaseId": 1, "status": "queued", "event": "workflow_dispatch"}]
+    world.gh(history=runs(3), statuses={"queued": page})                        # the shim truncates to 1000: the dispatch run is invisible
     r = run_gate(world.env())
     assert r.returncode == 2 and "full page" in r.stderr and "deploy_runs_not_completed=n/a" in lines(r)
     assert lines(r)[-1].startswith("GATE_V2 FAIL")
-    world.gh(history=runs(3), statuses={"queued": runs(99, "queued", 20000, event="pull_request")})       # 99 < limit: nothing can be hidden
+    world.gh(history=runs(3), statuses={"queued": runs(999, "queued", 20000, event="pull_request")})      # 999 < limit: nothing can be hidden
     assert run_gate(world.env()).returncode == 0
+    # a full page of NON-PR runs is simply counted (all 1000 are in flight): exit 1, not the backstop
+    world.gh(history=runs(3), statuses={"queued": runs(1000, "queued", 20000)})
+    r = run_gate(world.env())
+    assert r.returncode == 1 and "deploy_runs_not_completed=1000" in lines(r)
 
 
 def test_a_full_history_page_of_pull_request_runs_is_fine(world):
-    world.gh(history=runs(100, "completed", 30000, event="pull_request"))
+    world.gh(history=runs(1000, "completed", 30000, event="pull_request"))
     assert run_gate(world.env()).returncode == 0
 
 
@@ -140,7 +148,8 @@ def test_the_repository_constant_is_the_madhav_repo():
 
 def test_every_gh_call_pins_the_repository_and_ambient_redirects_are_removed(world):
     redirects = {"GH_REPO": "other/fork", "GH_HOST": "ghe.example.com", "GH_ENTERPRISE_TOKEN": "x", "GITHUB_ENTERPRISE_TOKEN": "x",
-                 "GITHUB_REPOSITORY": "other/fork", "GH_" + "TOKEN": "x"}
+                 "GITHUB_REPOSITORY": "other/fork", "GH_CONFIG_DIR": "/nonexistent/other-gh", "GH_PATH": "/nonexistent/gh",
+                 "GH_" + "TOKEN": "x"}
     run_gate(world.env(**redirects))
     calls = world.calls().split("\n")
     gh_calls = [l for l in calls if l.startswith("gh ")]
@@ -150,7 +159,7 @@ def test_every_gh_call_pins_the_repository_and_ambient_redirects_are_removed(wor
         assert " -R Marsys-Technologies/Madhav " in l + " " and "other/fork" not in l
     for l in envs:
         assert l == ("ghenv GH_REPO=unset GH_HOST=unset GH_ENTERPRISE_TOKEN=unset GITHUB_ENTERPRISE_TOKEN=unset "
-                     "GITHUB_REPOSITORY=unset token=present")                     # the token gh needs is kept
+                     "GITHUB_REPOSITORY=unset GH_CONFIG_DIR=unset GH_PATH=unset token=present")                     # the token gh needs is kept
 
 
 # ------------------------------------------------------------------ (b) all non-completed deploys, not the newest 20
@@ -380,6 +389,110 @@ def test_the_role_is_checked_before_the_database(world):
 
 def test_the_expected_database_constant_is_amjis():
     assert load_gate().EXPECTED_DATABASE == "amjis"
+
+
+# ------------------------------------------------------------------ distinct labels for 94 / 96 / 97
+@pytest.mark.parametrize("setup,code,label", [
+    (lambda w: w.pgenv.unlink(), 97, "GATE_V2 FAIL pgenv_failed (fail closed)"),
+    (lambda w: w.psql(raw="postgres|amjis|0\n"), 96, "GATE_V2 FAIL wrong_role_or_database (fail closed)"),
+    (lambda w: w.psql(raw="suvarna_reader|postgres|0\n"), 96, "GATE_V2 FAIL wrong_role_or_database (fail closed)"),
+    (lambda w: w.gh(history=[]), 2, "GATE_V2 FAIL read_failed (fail closed)"),
+], ids=["pgenv", "role", "database", "read-failed"])
+def test_exits_96_and_97_have_their_own_labels(world, setup, code, label):
+    setup(world)
+    r = run_gate(world.env())
+    assert r.returncode == code and lines(r)[-1].startswith(label), r.stderr
+
+
+def test_exit_94_has_its_own_label(world):
+    r = run_gate(world.env(GATE_V2_GH="/nonexistent/gh"))
+    assert r.returncode == 94 and lines(r)[-1].startswith("GATE_V2 FAIL missing_binary (fail closed)")
+
+
+# ------------------------------------------------------------------ termination signals
+import signal  # noqa: E402
+import subprocess  # noqa: E402
+import time  # noqa: E402
+
+
+def start_gate(world, ignore=(), sleep="30"):
+    """Starts the gate (script mode: handlers installed) with a gh shim that sleeps; returns (proc, gh pid once it is running)."""
+    world.gh(history=runs(3), sleep={"history": sleep})
+    world.psql(count=0)
+
+    def pre():                                    # explicit dispositions: a backgrounded / nohup test run inherits SIGHUP/SIGQUIT = ignored
+        for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGQUIT):
+            signal.signal(sig, signal.SIG_IGN if sig in ignore else signal.SIG_DFL)
+    proc = subprocess.Popen([sys.executable, str(GATE)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=world.env(),
+                            preexec_fn=pre)
+    pidfile = world.dir / "gh.pid"
+    for _ in range(200):
+        if pidfile.exists() and pidfile.read_text().strip():
+            break
+        time.sleep(0.05)
+    return proc, int(pidfile.read_text())
+
+
+def alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+
+
+@pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGHUP, signal.SIGQUIT], ids=["SIGTERM", "SIGHUP", "SIGQUIT"])
+def test_a_termination_signal_prints_the_signal_line_and_kills_the_gh_child(world, sig):
+    proc, gh_pid = start_gate(world)
+    assert alive(gh_pid)
+    proc.send_signal(sig)
+    out, err = proc.communicate(timeout=30)
+    assert proc.returncode == 128 + int(sig) and out == ""
+    assert err.strip().split("\n")[-1] == "GATE_V2 FAIL signal %d" % int(sig) and "Traceback" not in err
+    for _ in range(100):
+        if not alive(gh_pid):
+            break
+        time.sleep(0.05)
+    assert not alive(gh_pid)                                                  # the child was killed, not orphaned
+
+
+def test_a_second_signal_during_the_cleanup_does_not_lose_the_final_line(world):
+    proc, gh_pid = start_gate(world)
+    proc.send_signal(signal.SIGTERM)
+    proc.send_signal(signal.SIGHUP)
+    out, err = proc.communicate(timeout=30)
+    assert err.strip().split("\n")[-1].startswith("GATE_V2 FAIL signal ") and proc.returncode in (128 + 15, 128 + 1)
+
+
+def test_the_handler_ignores_every_further_signal_after_the_first_second_signal_unit():
+    gate = load_gate()
+    old = {s: signal.getsignal(s) for s in gate.HANDLED_SIGNALS}
+    try:
+        with pytest.raises(gate.GateSignal) as e:
+            gate._on_signal(signal.SIGTERM, None)
+        assert e.value.signum == int(signal.SIGTERM)
+        assert all(signal.getsignal(s) == signal.SIG_IGN for s in gate.HANDLED_SIGNALS)
+    finally:
+        for s, h in old.items():
+            signal.signal(s, h)
+
+
+def test_sighup_that_was_ignored_at_start_stays_ignored(world):
+    proc, gh_pid = start_gate(world, ignore=(signal.SIGHUP,), sleep="2")
+    proc.send_signal(signal.SIGHUP)
+    out, err = proc.communicate(timeout=60)
+    assert proc.returncode == 0 and lines_of(err)[-1] == OK_LINE
+
+
+def lines_of(err):
+    return err.strip().split("\n")
+
+
+def test_the_handlers_are_only_installed_in_script_mode(world, monkeypatch):
+    gate = load_gate()
+    before = signal.getsignal(signal.SIGHUP)
+    monkeypatch.setattr(gate, "_main", lambda environ=None: 0)
+    assert gate.main({}) == 0 and signal.getsignal(signal.SIGHUP) == before     # in-process (tests): no handler change
 
 
 # ------------------------------------------------------------------ the discriminator line is printed on EVERY exit path

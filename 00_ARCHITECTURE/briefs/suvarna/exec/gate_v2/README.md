@@ -6,9 +6,9 @@ and the level-wave wrapper. **The three files below are what SS binds; the sha25
 
 | file | role | sha256 |
 |---|---|---|
-| `prerun_gate.py` | the gate | `ba65d82a338257bd7b3b1ae37df312fb382ef548291a211eadbc2538a987ef73` |
+| `prerun_gate.py` | the gate | `01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e` |
 | `run_gated.sh` | the launcher (gate, then exec target) | `305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076` |
-| `executor_standards.py` | launch-marker verification + outcome file (import or copy byte-identically) | `7ca8ea9cc3422f41d38ced27f6501d666dcce78918e38e1d255b8dabcdd3c38d` |
+| `executor_standards.py` | launch-marker verification + outcome file (import or copy byte-identically) | `bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135` |
 
 ## What the gate guarantees
 
@@ -17,11 +17,11 @@ In ONE invocation it reads and prints (to **stderr**; stdout is always empty):
 1. `deploy_runs_not_completed`: runs of workflow `deploy.yml` on ANY ref (deploy.yml accepts `workflow_dispatch` from any ref, so a dispatched deploy on a
    feature ref must be seen) with status != `completed`, EXCEPT runs whose `event` is exactly `pull_request` (build-only runs). An unknown, missing or any other event is counted
    (fail closed). Over the union by `databaseId` of
-   `gh run list -R Marsys-Technologies/Madhav --workflow deploy.yml --limit 100 --json databaseId,status,event` and one query per non-completed status
-   (`--status queued|in_progress|waiting|pending|requested`, each `--limit 100`). A stuck run older than the newest 100 is still found by its status query.
-   A per-status query that returns a FULL `--limit` page containing `pull_request` runs fails closed (exit 2): a non-PR run could be hidden behind them.
+   `gh run list -R Marsys-Technologies/Madhav --workflow deploy.yml --limit 1000 --json databaseId,status,event` and one query per non-completed status
+   (`--status queued|in_progress|waiting|pending|requested`, each `--limit 1000`; gh pages internally and a page that fails midway gives a non-zero exit, which fails closed; GitHub caps a filtered query at 1000). A stuck run older than the newest 10000 is still found by its status query.
+   A per-status query that returns a FULL `--limit` page (1000) containing `pull_request` runs fails closed (exit 2, `full page`): a non-PR run could be hidden behind them (see "Operator remedy for the full-page backstop" below).
    The repository is pinned (`-R Marsys-Technologies/Madhav`, a named constant `REPO`) and `GH_REPO`, `GH_HOST`, `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN`,
-   `GITHUB_REPOSITORY` are removed from gh's environment (the token variables gh needs are kept).
+   `GITHUB_REPOSITORY`, `GH_CONFIG_DIR`, `GH_PATH` are removed from gh's environment (the token variables gh needs are kept).
 2. `build_runs_in_flight`: `build_runs` in state `planned/running/paused` on ANY chart, via `psql -X -A -t -F '|'` as `suvarna_reader`, reading
    `SELECT current_user, current_database(), count(*) FROM public.build_runs WHERE state IN ('planned','running','paused')` in the SAME psql call.
    The subshell must `source ~/.config/suvarna/pgenv.sh` successfully; every ambient `PG*` variable (and `BASH_ENV`/`ENV`/exported functions) is removed
@@ -34,7 +34,7 @@ GATE_V2 deploy_runs_not_completed=0 build_runs_in_flight=0 role=suvarna_reader O
 GATE_V2 FAIL <reason>                                    (any other outcome)
 ```
 
-Fail closed on: empty output, non-JSON, JSON that is not a list, entries without an integer `databaseId` / non-empty `status`, an EMPTY `--limit 100`
+Fail closed on: empty output, non-JSON, JSON that is not a list, entries without an integer `databaseId` / non-empty `status`, an EMPTY `--limit 1000`
 history list (a repo with history never returns zero runs; an empty per-status list is fine and means zero), a 60 s timeout per command (process group killed),
 a missing binary (gh, psql, bash), a non-zero exit, output that is not valid UTF-8, JSON nested so deep that parsing recurses out, a malformed/empty/multi-line psql answer
 (the count must be 1 to 12 ASCII decimal digits), a missing or failing `pgenv.sh`, and a wrong role or database. An unexpected internal error is also a classified failure:
@@ -50,10 +50,11 @@ It never prints a credential, a child process's output, or row content (the role
 | 2 | a read failed or its output was malformed / empty / not UTF-8 / timed out / non-zero exit, or an internal error |
 | 64 | `run_gated.sh` usage error (no target) |
 | 93 | `require_gate_launch` refusal (executor not launched by `run_gated.sh`) |
-| 94 | a required binary (gh, psql, bash, python3) is missing |
+| 94 | a required binary (gh, psql, bash, python3) is missing (final line label `missing_binary`) |
 | 95 | a test-only variable is set outside the harness (`ORPH_TEST_EVIDENCE_ROOT`, `PYTEST_CURRENT_TEST`) |
-| 96 | the psql session is not `suvarna_reader`, or not connected to database `amjis` (message names the unexpected value only) |
-| 97 | `source ~/.config/suvarna/pgenv.sh` failed (missing file or non-zero status) |
+| 96 | the psql session is not `suvarna_reader`, or not connected to database `amjis` (label `wrong_role_or_database`; message names the unexpected value only) |
+| 97 | `source ~/.config/suvarna/pgenv.sh` failed (missing file or non-zero status; label `pgenv_failed`) |
+| 128+n | the gate was terminated by signal n (SIGTERM 143, SIGHUP 129, SIGQUIT 131): `GATE_V2 FAIL signal <n>`; the gh / psql child is killed, a second signal is ignored while cleaning up, and a signal already ignored at start (nohup's SIGHUP) stays ignored |
 | 98 | `run_gated.sh`: the target is missing / not an executable file / not found in PATH (checked before the gate runs), or the final exec failed: `GATE_V2 FAIL target_not_executable` |
 
 When several reads fail the most specific code is returned (97, 96, 94, then 2). `run_gated.sh` returns the gate's own exit code.
@@ -80,6 +81,15 @@ Without it neither override is read: the production pgenv path is always the rea
 `GATE_V2 WARNING under_test=1` so a log reader can see that a run was not a production run. The role check, the counts and everything else are never bypassed.
 `GATE_V2_GH` / `GATE_V2_PSQL` / `GATE_V2_BASH` carry the absolute binary paths run_gated.sh resolved (a nonexistent override fails closed, no fallback).
 
+## Operator remedy for the full-page backstop
+
+`GATE_V2 FAIL read_failed (fail closed): gh --status <s> returned a full page of 1000 runs including pull_request runs: a non-PR run may be hidden` (exit 2) means a single
+status (normally `queued`) has at least 1000 deploy.yml runs, some of them build-only `pull_request` runs, so the gate cannot prove that no deploy run is hidden among them.
+It is a refusal, never a bypass:
+1. check how many runs are in that status: `gh run list -R Marsys-Technologies/Madhav --workflow deploy.yml --status queued --limit 1000 --json databaseId,status,event,headBranch | jq 'group_by(.event) | map({event: .[0].event, n: length})'`;
+2. cancel the stuck `pull_request` runs (`gh run cancel <id>`) or wait for them to drain, then run the gate again;
+3. if it persists, ask Strategic Suvarna / the repository owner. **Bypassing the gate (editing it, setting `GATE_V2_UNDER_TEST`, running the executor directly) is never acceptable.**
+
 ## Executor standards (inherited by every executor)
 
 Implemented once in `executor_standards.py` (stdlib; import it, or copy it byte-identically next to the executor; tests in `tests/test_gate_v2_standards.py`).
@@ -98,9 +108,9 @@ Implemented once in `executor_standards.py` (stdlib; import it, or copy it byte-
 2. **Every executor writes an outcome file in every mode, also on failure.** `outcome_guard(evidence_dir, executor_path, plan_hash, gate_fp)` is a context manager; inside it call
    `o.dry_run(evidence_digest)` / `o.applied(evidence_digest)` / `o.fail([check names])`. Whatever else happens (a refusal, an exception, a `SystemExit`, a block that returns without declaring an outcome)
    `<evidence_dir>/outcome.json` is written with status `failed` and the reason as check name. The file (atomic write, `0600`; evidence directory forced `0700`) holds exactly:
-   `schema` (`executor_outcome_v1`), `status` (`dry_run` | `applied` | `failed`), `utc`, `executor_sha256`, `plan_hash`, `gate_sha256`, `run_gated_sha256`, `evidence_digest` (hex or null), `failed_checks` (names; non-empty only for `failed`),
+   `schema` (`executor_outcome_v1`), `status` (`dry_run` | `applied` | `failed` | `commit_state_unknown`), `utc`, `executor_sha256`, `plan_hash`, `gate_sha256`, `run_gated_sha256`, `evidence_digest` (hex or null), `failed_checks` (names; non-empty only for `failed`),
    `under_test` (bool, from the launch marker: pass the dict `require_gate_launch` returns as `gate_fp`) and `warnings` (list of `<warning>:<ExceptionClassName>` strings; empty normally).
-   A lost stdout therefore never hides what happened. **A MISSING `outcome.json` means "nothing was recorded, check the database"** (SIGKILL, power loss, a crash right after COMMIT can leave none); it never means "nothing happened".
+   A lost stdout therefore never hides what happened. `commit_state_unknown` is for an executor whose COMMIT call itself raised (e.g. the connection dropped at the acknowledgement): the server may have committed, so check the database before anything else. **A MISSING `outcome.json` means "nothing was recorded, check the database"** (SIGKILL, power loss, a crash right after COMMIT can leave none); it never means "nothing happened".
 
 Minimal executor skeleton:
 
@@ -115,7 +125,7 @@ with es.outcome_guard(evidence_dir, __file__, plan_hash, fp) as o:
 ## What it does NOT guarantee
 
 - It is a point-in-time read: a deploy or build can start one second after the gate passes. It narrows the race, it does not close it (the executors keep their own in-transaction checks).
-- `gh` and the database are trusted to report truthfully; a `--limit 100` history is checked for emptiness, not for completeness (the per-status queries are what cover old stuck runs; a status outside the five listed and not `completed` would be seen only if it is in the newest 100).
+- `gh` and the database are trusted to report truthfully; a `--limit 1000` history is checked for emptiness, not for completeness (the per-status queries are what cover old stuck runs; a status outside the five listed and not `completed` would be seen only if it is in the newest 1000).
 - It cannot stop an operator from skipping `run_gated.sh`; the launch marker is an accident guard, not authentication. An operator with a shell can set `GATE_V2_UNDER_TEST=1` (it is logged, never silent).
 - `build_runs_in_flight` is exactly the three states `planned/running/paused`; a new state added to the schema is not seen until the gate is versioned.
 - Sourcing `pgenv.sh` executes it as shell: it is trusted operator-owned configuration (never printed, never committed).
@@ -129,5 +139,5 @@ and python3/bash symlinks are written to a temp dir at test time; `/bin/bash` an
 
 ```bash
 python3 -m pytest platform/scripts/governance/__tests__/test_gate_v2_*.py -q
-python3 00_ARCHITECTURE/briefs/suvarna/exec/gate_v2/tests/mutation_proof.py   # script (not collected by CI): neuters each rule in a copy and shows its tests go red (41 mutations: the 19 original plus one per revision-2 fix)
+python3 00_ARCHITECTURE/briefs/suvarna/exec/gate_v2/tests/mutation_proof.py   # script (not collected by CI): neuters each rule in a copy and shows its tests go red (51 mutations: the 19 original, one per revision-2 fix and one per revision-3 fix)
 ```
