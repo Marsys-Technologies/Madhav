@@ -25,6 +25,7 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
     'bg_rules', 'ga_positions', 'ga_strength', 'ga_sensitive',
     'ga_panchanga', 'ga_sade_sati', 'ga_structural', 'ga_nakshatra',
     'ga_condition', 'ga_vargas', 'ga_vichara',
+    'ga_yoga', // migration 1253 (ga_yoga_firings read, bo_laksana.py)
   ],
   bo_bimba: [
     'bo_laksana', 'bo_sudarshana', 'bo_nakshatra_semantic',
@@ -175,6 +176,17 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
       'ga_dashas', 'ga_nakshatra', 'ga_panchanga', 'ga_positions',
       'ga_sensitive', 'ga_strength', 'ga_vargas',
     ])
+  })
+
+  it('carries the two L2 pre-S-L2 edges of migration 1253 (ordered as the migration appends them)', () => {
+    expect(assetsById.get('bo_upaya')?.depends_on).toEqual([
+      'bo_laksana', 'bo_sangati', 'ga_structural', 'ga_dashas', 'bo_cgm_motifs',
+      'bo_bimba', // migration 1253 (bodha_cgm_nodes join, bo_upaya.py)
+    ])
+    // bo_laksana += ga_yoga is pinned in MIGRATION_GOVERNED_DEPENDENCIES above. The four L1 edges are migration
+    // 1226's (a separate PR); this PR's seed must not carry them.
+    expect(assetsById.get('ga_yoga')?.depends_on).not.toContain('bo_laksana')
+    expect(assetsById.get('bo_bimba')?.depends_on).not.toContain('bo_upaya')
   })
 
   it('preserves the migration-governed collision-free Bodha order', () => {
