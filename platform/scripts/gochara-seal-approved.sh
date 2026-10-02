@@ -27,6 +27,11 @@ fi
   || { echo "REFUSED: no valid approval for this run and attempt — nothing was sealed" >&2; exit 2; }
 
 export GOCHARA_SEALING_COMMIT="$EXPECTED_SEALING_COMMIT"
+# the seal job requires the approval note's actor to be THIS run's triggering actor (it reads GITHUB_TRIGGERING_ACTOR): refuse any disagreement, then export the one value
+if [ -n "${GITHUB_TRIGGERING_ACTOR:-}" ] && [ "$GITHUB_TRIGGERING_ACTOR" != "$TRIGGERING_ACTOR" ]; then
+  echo "REFUSED: GITHUB_TRIGGERING_ACTOR ($GITHUB_TRIGGERING_ACTOR) differs from the workflow's triggering actor ($TRIGGERING_ACTOR)" >&2; exit 2
+fi
+export GITHUB_TRIGGERING_ACTOR="$TRIGGERING_ACTOR"
 set +e
 # shellcheck disable=SC2086
 $SEAL_JOB_CMD --chart "$CHART_ID" --generation "$GENERATION" --approval-file "$APPROVAL_FILE"

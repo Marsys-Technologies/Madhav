@@ -19,13 +19,14 @@ import re
 import sys
 
 _LINE = re.compile(r"^\s*brief-digest:\s*([0-9a-f]{64})\s+run:\s*(\d+)\s+attempt:\s*(\d+)\s*$")
-RULING = "NATIVE_DIRECT_RULINGS_20261002 #2"
+RULING = "NATIVE_DIRECT_RULINGS_20261002#2"          # the owner ruling that authorises same-account approval (no space: Stream A's grammar refuses one)
 
 
 def mechanical_note(triggering_actor: str) -> str:
-    """The receipt's `approved_by_note` is built MECHANICALLY by the workflow (Fable): the owner ruling id, the GitHub triggering actor and the fixed statement of what the approval is —
-    never free text taken from the approver's comment."""
-    return f"{RULING}; triggering_actor={triggering_actor}; approved by the steward under the owner's account (not an independent human check)"
+    """The receipt's `approved_by_note` is built MECHANICALLY by the workflow and is EXACTLY Stream A's grammar — `ruling:<owner ruling id>; actor:<github.triggering_actor>` (their
+    `seal_flow.NOTE_FORMAT`, which refuses any other text: `approval_note_not_mechanical`). The sentence "approved by the steward under the owner's account (not an independent human
+    check)" is NOT stored in the note: it is stated in the brief shown before the gate (run summary) and in the receipt's documented meaning (design record §3-§4)."""
+    return f"ruling:{RULING}; actor:{triggering_actor}"
 
 
 class Refused(Exception):

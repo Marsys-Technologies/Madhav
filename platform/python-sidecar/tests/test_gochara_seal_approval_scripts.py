@@ -132,8 +132,22 @@ def test_a_good_approval_yields_the_seal_jobs_approval_file():
     out = approval.extract([review()], environment="gochara-seal", run_id=RUN, attempt=ATT, brief_digest=D, triggering_actor="steward-as-owner")
     assert out == {"schema": "seal_approval/1", "brief_digest": D, "run_id": int(RUN), "run_attempt": 1, "approver_login": "steward-as-owner",
                    "approved_by_note": approval.mechanical_note("steward-as-owner")}
-    assert out["approved_by_note"] == ("NATIVE_DIRECT_RULINGS_20261002 #2; triggering_actor=steward-as-owner; approved by the steward under the owner's account "
-                                       "(not an independent human check)")
+    assert out["approved_by_note"] == "ruling:NATIVE_DIRECT_RULINGS_20261002#2; actor:steward-as-owner"
+
+
+def test_the_note_is_exactly_stream_as_grammar_wherever_it_is_importable():
+    """ONE format wins in both places: the workflow's note must satisfy `seal_flow.NOTE_FORMAT` (Stream A) — checked here for the integration ref, skipped where seal_flow is absent."""
+    sidecar = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(sidecar))
+    try:
+        from services.gochara_kernel import seal_flow
+    except Exception:                                                                       # noqa: BLE001
+        pytest.skip("NOT_RUN: services.gochara_kernel.seal_flow is not on this branch")
+    for actor in ("steward-as-owner", "amonty84", "github-actions[bot]", "a"):
+        m = seal_flow.NOTE_FORMAT.match(approval.mechanical_note(actor))
+        assert m and m.group("actor") == actor and m.group("ruling") == approval.RULING
+    for text in (approval.mechanical_note("x") + "\n", approval.mechanical_note("x") + " (not an independent human check)"):
+        assert not seal_flow.NOTE_FORMAT.match(text)
 
 
 def test_the_note_is_mechanical_never_free_text_from_the_comment():
@@ -183,7 +197,7 @@ ORCH = SCRIPTS / "gochara-seal-approved.sh"
 def world(tmp_path):
     shim = tmp_path / "seal_job"
     calls = tmp_path / "seal_job_calls.txt"
-    shim.write_text(f'#!/usr/bin/env bash\necho "$*" >> "{calls}"\necho "COMMIT=$GOCHARA_SEALING_COMMIT DB=${{GOCHARA_SEALER_DB_URL:-unset}}" >> "{calls}"\nexit "${{SEAL_RC:-0}}"\n')
+    shim.write_text(f'#!/usr/bin/env bash\necho "$*" >> "{calls}"\necho "COMMIT=$GOCHARA_SEALING_COMMIT ACTOR=${{GITHUB_TRIGGERING_ACTOR:-unset}} DB=${{GOCHARA_SEALER_DB_URL:-unset}}" >> "{calls}"\nexit "${{SEAL_RC:-0}}"\n')
     shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
     brief = tmp_path / "brief.json"
     brief.write_text(brief_text())
@@ -208,7 +222,7 @@ def test_the_orchestrator_calls_the_seal_job_once_with_the_approval_file_and_the
     r = orch(world)
     assert r.returncode == 0 and "SEALED" in r.stdout, r.stdout + r.stderr
     lines = world["calls"].read_text().splitlines()
-    assert lines[0] == f"--chart {CHART} --generation {GEN} --approval-file {world['tmp'] / 'approval.json'}" and f"COMMIT={SHA}" in lines[1]
+    assert lines[0] == f"--chart {CHART} --generation {GEN} --approval-file {world['tmp'] / 'approval.json'}" and f"COMMIT={SHA} ACTOR=steward-as-owner" in lines[1]
     assert json.loads((world["tmp"] / "approval.json").read_text())["brief_digest"] == D
     assert "SECRETMARKER" not in r.stdout + r.stderr and "SECRETMARKER" not in lines[0]                 # the sealer DSN is in the seal job's ENVIRONMENT only
 
@@ -241,6 +255,11 @@ def test_every_refusal_stops_before_the_seal_job_is_invoked(world, what):
 
 
 @pytest.mark.parametrize("rc,needle", [(2, "REFUSED"), (3, "approval does not match"), (4, "identity check failed"), (5, "rolled back"), (7, "rolled back")])
+def test_a_disagreeing_triggering_actor_is_refused_before_the_seal_job(world):
+    r = orch(world, GITHUB_TRIGGERING_ACTOR="someone-else")
+    assert r.returncode == 2 and "differs from the workflow's triggering actor" in r.stderr and not called(world)
+
+
 def test_the_seal_jobs_non_zero_status_fails_the_run_unchanged(world, rc, needle):
     """Including a failure AFTER publication: the seal job owns the transaction and rolls publication back; the workflow's job is to FAIL the run and say so (never swallow it)."""
     r = orch(world, SEAL_RC=str(rc))
