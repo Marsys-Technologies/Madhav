@@ -1,6 +1,6 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.12
+version: 0.13
 status: v0.5 ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); v0.6 adds AM-10 and the F-2 exclusion-evidence binding (not yet reviewed); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
@@ -1264,7 +1264,10 @@ every P3/P4/P5 span record is `unqualified`.
 
 `graduated_drishti` is declared applicable to **aspect records only** (offset operand); residence/conjunction records have no offset —
 "not applicable" is a declared state of the row, not a missing operand and not a silent 1. New P3/P4/P5 rule_versions reference the
-new factor; the older versions become `superseded_by_version` in each class inventory (1206 v1.2).
+new factor versions. **Supersession (Codex R5 text, replaces the earlier blanket sentence):** an older version is `superseded_by_version`
+**only when another version of that path is `included` for the same class**. Where no successor is included, the independently derived
+computed-empty or exclusion disposition and basis are retained — otherwise unknown-H or empty classes would hit 1206's intentional
+`superseded_without_included_version` refusal.
 
 **ORB — what is and is not ratified (line cites).** The spec ratifies the **shape**, not a number: §7.2 inv 3 (`activity = 1 − |Δλ|/orb`,
 D-RQ2) and `GOCHARA_PLAN_V3_AMENDMENT_v1_0.md:32` (M-1: "linear-no-box shape ruled; … **5.0° candidate 1 / 1.0° candidate 2**" — candidates).
@@ -1276,36 +1279,123 @@ is a named NATIVE DECISION (ND-ORB, open) and until it is made the point branch 
 the unratified 5.0° is not carried forward.** The extent branch needs no orb and is unaffected. Decision packet: `decisions/ND_ORB_DECISION_PACKET_v1_0.md`.
 
 **Vehicle.** The catalogue is persisted at run time by Stream A's `rule_binding` step from `services/gochara_rules/registry.py`
-(insert-if-absent; `rule_registry.py` docstring) — **not by a migration**; so the change is a registry code PR plus A's binding of the new
-version, with no DDL. (Steward asked for a migration in the 1230–1249 block; none is needed — reported on the tracker.)
+(insert-if-absent) — no DDL. **Version-aware binding (Codex R5; the 1.1.0 rows are not bound until this is done):** the binder selects explicit
+composite path/factor references, preserves **each prerequisite's own version**, **encodes the applicability declaration losslessly into
+the existing typed `operand_selector`**, reads it back and compares it, and evaluators are dispatched by the **exact soft-factor membership
+reference** (a 1.1.0 path never receives a 1.0.0 evaluation or label). It must **not** be solved by a global `RULE_VERSION` bump, which would
+disturb unchanged paths and predicates.
+
+**Flat encoding contract** (1154:221–240 admits only a FLAT object of selector tokens, numbers and token arrays; no nested object, no
+boolean, no JSON null). `services/gochara_rules/flat_selector.py` is the codec; the persisted declaration carries the branch selection
+(`span_kinds` / `point_kinds`), the relation applicability (`applicable_relations`), the step values (`span_inside`, `span_outside`),
+the angular form (`point_form`), the **explicit unratified state** (`orb_state = unratified_nd_orb_open`), and — **only when ratified** — the
+numeric `orb_deg` and a token `orb_decision_ref`. **An unavailable numeric orb is OMITTED, never inserted as null.** The top-level numeric form is
+`piecewise_step_linear` (step on extents, `1 − |Δλ|/orb` on points), not `linear`. The regexes are cross-checked against migration 1154
+in CI; `encode(decode(flat)) == flat` is tested.
+
+**Geometry and orb validation (Codex R4 closing text).**
+> Before factor evaluation, resolve the record's physical object and validate its canonical target against its object kind. `span:1`–`span:12`
+> and `star:1`–`star:27` are extents; the declared point kinds require `point:<longitude>`. Mismatches fail validation. `varga_position`
+> remains explicitly unqualified. Membership comes from the validated contact geometry, not an unchecked caller flag.
+
+For aspects, membership and distance use the **directed aspect ray** with seam-safe angular distance; the inclusive offset convention is
+preserved; N-14 forbids node-cast aspect records; persisted lowercase graha tokens pass a closed, tested adapter to the helper vocabulary.
+The angular branch requires a **finite, strictly positive, ratified** orb bound to a decision reference and to the matching immutable factor
+version; **invalid configuration (0, negative, NaN, ±Infinity, status/decision mismatch) fails closed — it never scores.** A declared membership
+step supplies a known unitless factor of 1 inside support (NK-4); its 0 outside support is **not** a second admission filter.
+
+**Qualification propagation (Codex R1 closing text; implemented in `score.py`, PR #2905).**
+> An unresolved applicable factor propagates score qualification. An affected evidence channel is NULL unless its value is established
+> independently under an explicitly specified reduction rule. Known partial subtotals may be reported separately, but never as complete
+> evidence. Admission and admitted support remain unchanged.
+
+**Attribution.** The special-aspect `1.0` values rest on the frozen oracle **O-CF-DRISHTI**; the served Brihat Jātaka passage corroborates the
+ordinary ¼/½/¾/full graduation but does not itself numerically establish Jupiter's and Saturn's specials.
 
 ---
 
-## AM-14 — RULED (steward 2026-10-02, Stream A's conformance finding): Moon-agent edges are excluded from the stored obligation enumeration
+## AM-14 — RULED, **REWRITTEN per Codex round 6 R2** (the earlier "Moon-agent obligations are excluded; 1206 needs no change" text is withdrawn)
 
-AM-4 already says a build never stores Moon contacts or records; AM-5's obligation set had still enumerated the Moon as a P3 agent, which made
-every class unsealable (`missing_inputs`). **Rule:** the stored inventory lists **no Moon-agent obligation**; the `moon_on_demand` coverage
-record is the **separate** account of the on-demand tier; a class's completeness claim is explicitly scoped **"excluding the on-demand Moon
-tier"**, and serving must present that scope. **Effect on 1206 / the model: none required** — fewer obligations, the same checks (1206 has no
-Moon reference; checked). Proven by a live test (a generation with a `moon_on_demand` partition beside its inventory, no Moon-agent
-obligation row, seals normally — #2867 head fc10a91fe).
+AM-4 forbids storing Moon contacts/records in a generation. A literal removal of obligations whose `agent` equals `moon` does **not** settle
+the stable `period_lord:md|ad|pd` obligations of AM-11, which cover the whole horizon and **resolve to the Moon during Moon periods**: Stream A's
+inventory assigns `missing_inputs` there (`gochara_kernel/inventory.py:268–275`, reproduced by `inventory_verifier.py:357–359`) and 1206:880–898
+refuses every `missing_inputs` interval and every uncovered obligation. Removing the Moon-resolved intervals leaves coverage gaps; relabelling an
+unperformed search as complete would defeat the accepted contract.
+
+**Closing contract (Codex).**
+> Moon exclusion applies to the **resolved concrete transiting agent, including period-role agents.** Each period-role obligation has a
+> **snapshot-bound applicable time domain.** Moon-resolved portions are explicitly accounted for as **excluded from the stored tier**; they are
+> neither missing search intervals nor completed geometry searches. **Completeness requires coverage of the applicable domain and verified
+> accounting of its excluded complement.**
+
+* **Domain.** For a period-role obligation the applicable domain = the class horizon minus the union of the consumed daśā rows (the snapshot's
+  `dasha_digest` binds them) at that role's level whose resolved lord is the Moon. Excluded complement = that union ∩ horizon. Both derivations
+  (the writer's and the independent verifier's) compute it from the snapshot's own rows; the seal recomputes it and **refuses any mismatch**
+  (missing exclusion, extra exclusion, an excluded portion that is also claimed as searched).
+* **Not removed:** the Moon as a **natal target**; **Moon-frame evaluation by other agents**; **Sun/Jupiter delivery during a Moon bhukti.** Exclusion follows the **transiting agent** only.
+* **Machine-readable scope** (e.g. `stored_non_moon`) is **bound to the manifest** and **returned by the mandatory coverage constructor**; a missing scope
+  **prevents an unqualified "complete" answer**. Tested on positive and no-window responses, before and after an on-demand query.
+* **Storage/checks.** The accepted 1206 remains correct for its contract (ordinary concrete-agent exclusion) and **must not be weakened**
+  (`missing_inputs_present` and `obligation_uncovered` stay as they are for the applicable domain). The additional domain/complement accounting is a
+  **new additive migration, 1232 (HOLD, protected window after 1206)** — see `migrations/1232_…` on the stacked branch of #2867; a real database test
+  uses a **Moon-resolved daśā interval** (not an already non-Moon fixture).
+* **Withdrawn claim:** "1206 needs no change" is established only for ordinary concrete-agent exclusion, **not** for the complete AM-14.
+
+---
 
 ## AM-15 — RULED: P1 daśā-lord house anchor
 The natal relation of the period lord to the class's signature-house set H is counted **inclusive from the lagna** (§0 inclusive counting;
 P3 table is "lagna frame"). Previously silent beyond "natal sign positions".
 
-## AM-16 — RULED: contents of the `'5.0'` manifest `input_generation_vector`
-Registry fingerprints (`ka_gochara_rule_path` / `_factor` / `_predicate` rows + the rule-path seal digest), `bg_transit_rules`,
-`bg_transit_av_gates`, the **kernel/orb version** (with ND-ORB's state), and the **node convention**. It is checked for equality against the
-snapshot (1206) — the snapshot covers L1 facts, dasha, AV declarations and the sky convention; the vector carries what the snapshot does not.
+## AM-16 — RULED, **REWRITTEN per Codex round 6 R6**: the complete `'5.0'` fingerprint
 
-## AM-17 — RULED: stored window fields
-One window per (class × path-version); the cross-path `max` is a **serve/measure-time** reduction, not a stored value. Window interval = the
-**connected union of its admitted records' supports** (§2.3 inv 3; no `min_lambda`). At the peak instant t\* (**earliest** instant of the max on
-a plateau): `score` = max over the window's admitted records of the within-path factor product in the for-channel, **∈ [0,1], NULL = unqualified**
-(1156 `kgew_score_unit_interval_ck`); `evidence_for` / `evidence_against` = §2.1's per-channel Σ over roots (finite ≥ 0, never netted);
-`severity` = **NULL** (no spec rule defines it; never 0); `outcome_valence_for_native` via `valence.compute_valence`. The ranking adapter's
-`si := evidence_for` is a **measurement pre-registration**, not a spec item — see `measurement/EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_0.md`.
+**Closing text (Codex).**
+> The input vector has a **versioned key schema and canonical serialization**. Its **registry digest** covers selected path, predicate and factor
+> payloads, **ordered prerequisite memberships, soft-factor memberships, applicability declarations** and the **accounted sealed-version census**,
+> excluding only enumerated audit fields. It binds consumed **L0/arc/node-series identities and content digests**, **both admission and
+> activity-orb policies**, applicable rulings, and the **implementation identities** governing geometry, evaluation and window construction. Inputs
+> already transitively bound by the snapshot need not be duplicated.
+
+* **Why the earlier list was insufficient:** a `ka_gochara_rule_path_seal` row holds only path, version and timestamp — there is **no built-in "seal digest"
+  of the rule graph**; path/predicate/factor rows alone commit neither prerequisite ordering nor soft-factor edges; `node_convention = "mean"` names a
+  convention, not **which mean-node series or source revision** was consumed; and 1206:767–768 only compares manifest vector with snapshot vector — two
+  identical stale or incomplete vectors pass.
+* **Key schema (v1).** `vector_schema=<n>`; keys sorted by codepoint, canonical JSON (no spaces, UTF-8, whole-second UTC), each value a lowercase-hex sha256
+  or a token: `registry_digest`, `registry_version_census`, `l0_identities` (per consumed L0 asset: asset id + content digest), `arc_series_digest`,
+  `node_series_digest` (**content digest of the series itself, not a label**), `admission_orb_policy`, `scale_orb_policy`, `rulings` (sorted ids),
+  `impl_geometry`, `impl_evaluation`, `impl_window` (implementation identities = source commit ids of the governing modules).
+* **Registry digest preimage:** sorted lines of the canonical payload of every *selected* `(path, version)`, `(predicate, version)`, `(factor, version)` row
+  (all columns except `created_at`), then the ordered prerequisite memberships `(path, version, ordinal, predicate, version)`, the soft-factor memberships,
+  the applicability declarations (the flat `operand_selector`), and the census of **sealed versions** per path. Enumerated audit fields excluded: `created_at`.
+* **Verification.** The writer and the independent derivation **recompute** these bindings from the inputs they actually consume and **refuse on mismatch**;
+  changing any result-bearing component changes the input identity or raises a mismatch refusal. **Historical replay checks its original bound inputs; it
+  does not recompute a fingerprint of today's catalogue.**
+* **Frozen test vectors (owed at gate acceptance; Stream B model):** a membership-only change (a soft factor moved), a node-series-only change (one series
+  row differs) and a window-algorithm-only change (implementation identity bumped) must each change the vector and be refused when mismatched.
+
+---
+
+## AM-17 — RULED, **REWRITTEN per Codex round 6 R3**: window components, supports, peak objective
+
+The earlier text ("one window per class × path-version" and, in the next sentence, a connected union) is withdrawn: a path can have several disconnected
+components, and "admitted records' supports" must mean support **after all necessary predicates are applied**.
+
+**Closing text (Codex; adopted by the steward before any candidate inspection).**
+> Emit **one window per maximal connected component of the prerequisite-satisfied support**, within a class and path-version. **Never bridge a gap.**
+> **P4 support is the intersection of the two agents' influence unions.** Its peak retains the **frozen max–min objective** (S:321–323, O-RP-3:
+> `max over t of min(activity_Jupiter(t), activity_Saturn(t))`); each agent's activity reduction is explicitly defined over its applicable records. For
+> **other paths, the peak objective is the per-root-reduced `evidence_for` function.** Choose the **earliest attained maximum** of the specified objective.
+> If that objective is unqualified, `peak_instant` and dependent peak values are **NULL with the reason retained.**
+
+* **Why the objective must be named:** on `[0,1]` let Jupiter's activity be `0.2+0.8t` and Saturn's `1−0.8t`. P4's prescribed peak is `t = 0.5`; maximising the best record
+  selects an endpoint; maximising the summed evidence gives a plateau. Earliest-tie handling cannot reconcile them.
+* **Stored fields at the selected peak (1156:247–309):** `score` = max over the window's admitted records of the within-path factor product in the for-channel (∈ [0,1],
+  NULL = unqualified); `evidence_for` / `evidence_against` = per-channel Σ over roots of the per-root max (finite ≥ 0, never netted; **NULL when qualification
+  does not propagate cleanly — R1**); `severity` = **NULL** (`valence.py:26` still defaults it to `0.0`: **Stream C's C8 fix is required**, not in PR #2894);
+  `outcome_valence_for_native` via `valence.compute_valence` (a NULL evidence channel takes the unresolved branch). The CHECKs validate values; they do not clip or define the reduction.
+* **Admission is independent of qualification.** Retaining the full admitted union is consistent with P's merge and T-FP rules; a resulting budget failure is a **failure to report,
+  not grounds for a hidden score threshold.** The ranking adapter's `si := evidence_for` and its NULL policy are the pre-registration in
+  `measurement/EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_1.md`.
 
 ---
 
@@ -1350,7 +1440,7 @@ a plateau): `score` = max over the window's admitted records of the within-path 
 | AM-9 | L0 Rāhu/Ketu finding (provenance narrowed) | none | no | L0 owner's ruling |
 | AM-10 | §4.0 daśā read-contract re-pin rule (conditional on L1-rebuild close; no new pin value) | §4.0 | no (one code PR at re-pin) | steward declares rebuild landed |
 | AM-11 | Prerequisite-evaluation implementation pins (a)–(d) + P1 obligation-agent role token (e) | §2.2 / §10.1 | no | no |
-| PC-1…4 | Named pre-conditions (sealer replay EXECUTE; F-3/F-6 remainder; protected-deployment rehearsal; distinct verifier principal) | see the PRE-CONDITIONS section | — | gate steps, not merges |
+| PC-1, PC-2a/2b, PC-3, PC-4, **PC-5** | Named pre-conditions, restructured per Codex R9 (sealer activation; identity/registry/manifest; Moon receipts; protected window; verifier independence; **first 5.0 candidate build**) | see the PRE-CONDITIONS section | — | gate steps, not merges |
 | AM-18 | RULED: vedha derived from stored residence spans (36 cited L0 pairs), cited nullification step (active 0.0 / none 1.0, window stays admitted — amends §2.3 inv 3 / §5.2 inv 1), vipareeta not produced, nodes undecided, `inactive` Moon-scoped; `vedha_attenuation@1.1.0`, `P2@1.1.0`, O-VI-6 | §5 / §2.3 | no (registry code; no DDL) | ND-VIPAREETA, ND-NODE-VEDHA |
 | AM-13 | RULED: factor applicability by object kind (`activity_kernel@1.1`: extent targets incl. star ⇒ membership step, true points ⇒ angular with orb a row parameter; drishti = aspect records only); orb = open native decision ND-ORB | factor catalogue | no (registry code + A's binding; no DDL) | ND-ORB |
 | AM-14 | RULED: Moon-agent edges excluded from the stored obligation enumeration; completeness scoped "excluding the on-demand Moon tier" | §AM-5 / AM-4 | no (1206 unchanged; live test added) | no |
@@ -1359,22 +1449,20 @@ a plateau): `score` = max over the window's admitted records of the within-path 
 | AM-17 | RULED: stored window fields (score ∈ [0,1]/NULL, evidence Σ-over-roots, severity NULL, union interval, earliest peak) | §2.1 / §3 | no | no |
 | AM-12 | CANDIDATE: `sad_bala_sufficient` as a soft factor of a new P1 rule_version (older P1 → `superseded_by_version`) | factor catalogue / rule_path | no (data rows, new rule_version) | A5.5 gate + L1 owner (Sun rūpa finding) |
 
-## A5.5-gate NAMED PRE-CONDITIONS (v0.9 — steward M20261001T233255-6740 / M20261001T234743-1ae5; from Codex's review of migration 1206 v1.2: ACCEPT_WITH_AMENDMENTS, no merge-blocking item)
+## A5.5-gate NAMED PRE-CONDITIONS (v0.13 — restructured per Codex round 6 R9: each gate is placed BEFORE the action it protects)
 
-Each is a condition of a *named later step*, not of merging #2867/#2817 (both stay HOLD; the steward schedules ONE
-protected window for 1204 + 1206 when A5.3's writer is ready to use them). The gate does not pass the step until the
-condition is evidenced.
+Conditions of **named later steps**, not of merging #2867/#2817 (both stay HOLD; the steward schedules ONE protected window for 1204 + 1206).
 
-| # | Pre-condition | Must hold before | Owner | Evidence required |
-|---|---|---|---|---|
-| PC-1 | **Sealer replay-helper EXECUTE.** The restricted sealing principal needs `ka_gochara_search_replay_violations` (and every other function on the replay call graph); 1206's replay branch calls it as the invoker. Grant it to the sealer ONLY (never the builder) and run the **initial seal and BOTH replay calls as that role** in the live suite. | the sealing principal is **activated** | **B** (suite) + steward (principal; native provisions roles) | live suite: initial seal, identical replay, post-registry-advance replay all as the restricted sealer. **Suite part DONE at #2867 head a2a5dfed4** (replay-helper EXECUTE proven necessary: without it the replay fails `permission denied for function ka_gochara_search_replay_violations`); a per-grant necessity check for the 22 sealer grants and the real principal's activation remain |
-| PC-2 | **Remaining F-3 + F-6.** F-3: identity/census residuals (`self`→`native` vector update applied to the 1206 suite; class census; candidate invalidation). F-6: manifest binding (generation-5 manifest digest carrying `inventories_digest`, excluding `moon_on_demand`) and Moon receipts. | **writer / serving acceptance** | **B** (spec) + **A** (implementation) | specs + vectors accepted; A's writer reproduces them; before/after-seal evidence for the manifest digest |
-| PC-3 | **Protected-deployment rehearsal with REAL principals**: quiescence of the chart's writers, representative data volumes (full 26-class generation), measured **seal latency**, and a rehearsed **rollback / forward-correction** (1204 can stay committed if 1206 fails — the runner commits per file). | the **protected deployment** of 1204 + 1206 | steward (window, quiescence) + **B** (rehearsal scripts) | rehearsal record on a production-shaped clone: timings, lock waits, rollback and forward-correction outcomes |
-| PC-4 | **Distinct verifier principal.** Until then the verifier runs in the **builder's session** (steward decision M20261001T234743-1ae5), so the builder holds INSERT on `ka_gochara_search_inventory_verification`; independence is a process property, not a database one. A separate verifier principal (own role, own grants: SELECT on the inventory tables + INSERT on verification only; no obligation/interval/inventory writes) is required to make independence database-enforced. Role creation is the native's — nothing provisioned now. | **verifier independence is claimed** (and the seal check's "independent verification" is described as database-enforced) | steward / native (role), **B** (grant set + test) | a role-mirror suite where the verifier role can write verification rows only and the builder can no longer do so |
+| # | Gate | Must hold before | Evidence required |
+|---|---|---|---|
+| **PC-1** | **Sealer activation.** The restricted sealing principal runs the **initial seal and BOTH replays** under the **intended restricted role**, with **PUBLIC EXECUTE revoked** and the **complete helper closure** available; **effective privileges are verified and the builder cannot seal**. (#2867's source repair addresses the earlier test defect; actual-activation evidence is outstanding.) | the sealing principal is **activated** | live run as the real role: effective-privilege query, seal, replay, replay-after-registry-advance; builder refusal |
+| **PC-3** | **Protected 1204+1206 window.** Exact migration/application **heads**; a **supported PostgreSQL version**; **faithful object ownership and default privileges**; **complete role grants**; **realistic 26-class volume**; **contention and seal timing**; **per-file failure recovery** (1204 can stay committed if 1206 fails). The advisory DB job needs **explicit evidence at the reviewed head**; its existence is not sufficient. | the **protected deployment** | rehearsal record on a production-shaped clone with the above items |
+| **PC-5** (new) | **First `'5.0'` candidate build.** *Accepted successor contracts and oracles; version-aware registry binding and read-back; geometry and qualification handling; the resolved Moon-scope contract (AM-14); deterministic window construction (AM-17); complete input/manifest binding (AM-16); class census and candidate invalidation — implemented and demonstrated through the intended restricted writer's complete output flow.* ND-ORB may remain open for a deliberately **unqualified-point** candidate, provided that state and its measurement consequences are frozen (SI addendum v1.1 §4). | the **first 5.0 candidate build** | the writer's complete flow run as the restricted role against the accepted contracts; frozen vectors |
+| **PC-2a** | **Identity, registry and manifest prerequisites** — F-3 (identity bytes, census, `self`→`native` vector update), version-aware registry binding/read-back, AM-16 manifest binding. *(split from the old PC-2)* | the first `'5.0'` candidate build (part of PC-5) | contract + vectors accepted; writer reproduces them |
+| **PC-2b** | **Moon receipts and deferred P6 containment** — F-6. *(split from the old PC-2)* | their **actual on-demand use** | receipt table/API, canonical rendering, before/after-seal evidence |
+| **PC-4** | **Verifier independence.** The verifier role has the **source/registry reads and invoker-helper EXECUTE** needed for independent derivation — not merely SELECT on the inventory tables; the **builder's verification-write capability is removed**; effective inheritance and role-switching boundaries are tested. Until then independence is described as **a property of the separate derivation code**, not of the database. | **verifier independence is claimed** | role-mirror suite: verifier derives and writes verification rows only; builder cannot |
 
-Context kept honest: PC-1 is a *counterexample established from source* by the reviewer (the suite's twenty-function
-sealer list omitted the replay helper and the replay calls ran as the superuser); it is not a reproduced failure.
-Rank-4 evidence note (counts, PostgreSQL version, CI commit, advisory-vs-required) is applied to the PR body, not here.
+**1220 needs no corrective grant change** (Codex): 18 named function signatures + seal-table SELECT, no seal-table writes, no `ka_gochara_seal_generation`, no grant option, no SECURITY DEFINER change; repeated GRANT is idempotent; it does not remove unrelated inherited privileges and its suite does not establish capability for the future window-writing flow.
 
 ## A5.5-gate follow-ups — Codex v1.4 ranked list (P2; owed at the A5.5 gate; no P1 blocks)
 

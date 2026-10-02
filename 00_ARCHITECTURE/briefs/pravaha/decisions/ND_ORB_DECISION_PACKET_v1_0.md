@@ -1,7 +1,7 @@
 ---
 artifact: ND_ORB_DECISION_PACKET
 version: "1.0"
-status: "READY FOR NATIVE — open decision ND-ORB (steward M20261002T002620-6575); until ruled, the point branch of the activity kernel stays 'unqualified'"
+status: "SUPERSEDED by ND_ORB_DECISION_PACKET_v1_1.md (Codex round 6 R8: it conflated the admission/contact orb with the activity scale and mis-stated options A, D and E) — do not decide from this version"
 date: 2026-10-02
 author: Stream B (Śāstra), item B6.0
 decision_needed: "Which 'orb' (how close, in degrees, a moving planet must be to an exact point in your chart before it counts as touching it), and how strongly it counts as it gets closer."

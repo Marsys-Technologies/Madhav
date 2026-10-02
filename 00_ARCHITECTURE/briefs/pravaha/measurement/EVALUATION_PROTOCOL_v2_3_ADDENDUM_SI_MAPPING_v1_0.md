@@ -1,7 +1,7 @@
 ---
 artifact: EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING
 version: "1.0"
-status: "PRE-REGISTRATION — declared before any '4.1' or '5.0' measurement run"
+status: "SUPERSEDED by ..._v1_1.md (Codex round 6 R7: NULL behaviour was not supplied by the cited protocol sections; 'clipped' corrected to 'constrained'). The mapping choice itself (si := evidence_for) and its provenance statement stand."
 date: 2026-10-02
 author: Stream B (Śāstra), item B6.0 — steward ruling M20261002T001617-8321 item (3)
 amends: "EVALUATION_PROTOCOL_v2_3 §4 (window identity, ranking) — adds the stored-field mapping the protocol left silent; changes NO existing rule, threshold or figure"
