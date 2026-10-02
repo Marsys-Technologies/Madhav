@@ -1001,3 +1001,23 @@ def test_EB_mudda_bisection_step_and_the_documented_noise_limit():
     assert _failures(whole) == {"DECLARED_BUT_ABSENT": 1} and _absent_labels(whole) == {f"{EB_STEM}[2]"}
     outside = _eb_compare(_eb_state(kal_shift=702000), _eb_hooks())
     assert outside["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 4
+
+
+def test_EB_the_four_rewordings_name_the_backend_move_and_say_what_their_lane_leaves_unchanged():
+    """SS 2026-10-03 condition 4: karaka_dasha_roles, tiers, tiers_other_charts and karaka_roles each state what THEIR lane leaves unchanged and
+    point at ephemeris_backend_shift for the backend move; the old absolute sentences are gone."""
+    hs = _load_hooks()
+    kdr = json.dumps(hs["karaka_dasha_roles"])
+    assert "NO other chart_dashas column moves BY THIS LANE" in kdr and "unchanged by this lane" in kdr and "ephemeris_backend_shift" in kdr
+    assert "can shift a few rows at the window edges" not in kdr and "can add or drop a few rows at the window edges" not in kdr
+    for stem in ("tiers", "tiers_other_charts"):
+        notes = [e["note"] for e in hs[stem]["may_change"] if e["table"] == "chart_dashas"]
+        assert any("its row set and start timestamps are unchanged by this lane (the ephemeris backend move" in n and "ephemeris_backend_shift" in n for n in notes), stem
+    kr = json.dumps(hs["karaka_roles"])
+    assert "NO numeric value moves for any graha BY THIS LANE" in kr and "ephemeris_backend_shift" in kr and "the ephemeris lane might" not in kr
+    assert "the ephemeris backend moves no varga sign: measured 0 flips" in kr
+
+
+def test_EB_sade_sati_hook_names_the_saturn_ingress_shift_it_cannot_declare():
+    d = _load_hooks()["sade_sati_placeholder_null"]["description"]
+    assert "about 17 minutes" in d and "1,044 s" in d and "no hook declares a sade_sati date" in d
