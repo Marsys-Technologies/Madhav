@@ -41,10 +41,31 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Iterator
 
-from panchang_engine.swiss_backend import SwissBackend, ensure_swiss_backend
+from panchang_engine.swiss_backend import (
+    OutOfCorpusRangeError,
+    SwissBackend,
+    SwissBackendError,
+    WindowUncheckedError,
+    ensure_swiss_backend,
+)
 from panchang_engine.swiss_state import swiss_state_scope
 
 from ._ayanamsha import resolve_mode
+
+# The ephemeris-BACKEND failures: an unset ``SE_EPHE_PATH``, a probe that is not ``swieph``, a JD outside
+# the corpus window, an unchecked window.  They mean "the INFRASTRUCTURE cannot compute", never "this
+# value is not defined", so a per-subject / per-value handler must let them propagate and fail the build
+# instead of turning them into a floored / null / default row (SS ruling, 2026-10-03).  The subclass
+# relations (``WindowUncheckedError`` and ``OutOfCorpusRangeError`` are ``SwissBackendError``) mean the
+# first member alone would catch all three; the tuple names each so the intent survives a refactor of
+# the hierarchy.  Use it as ``except BACKEND_FAILURE_ERRORS: raise`` BEFORE any broad ``except Exception``.
+# (``services.gochara_kernel.knots.EphemerisBackendError`` is deliberately NOT here: it is raised only by
+# the Kala kernel's own ``calc_ut`` wrappers, which no L1 writer calls; importing it would couple L1 to Kala.)
+BACKEND_FAILURE_ERRORS: tuple[type[BaseException], ...] = (
+    SwissBackendError,
+    OutOfCorpusRangeError,
+    WindowUncheckedError,
+)
 
 
 @contextmanager

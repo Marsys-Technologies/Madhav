@@ -3209,6 +3209,9 @@ def build_ga_sensitive(
     """
     import uuid
     from contextlib import nullcontext
+    # Function-local on purpose: a module-level import line would shift every line number below it,
+    # and the E6 declarations (asset_declarations.json / test_e6_1_declarations) cite this module by line.
+    from pyjhora_adapter._swiss_thread_scope import BACKEND_FAILURE_ERRORS
     if build_id is None:
         build_id = str(uuid.uuid4())
 
@@ -3247,6 +3250,11 @@ def build_ga_sensitive(
         if chart_id == CANONICAL_CHART_ID:
             forensic_gate(preflight_chart, "lahiri")
         summary["forensic_pass"] = True
+    except BACKEND_FAILURE_ERRORS:
+        # SwissBackendError is a RuntimeError: without this it would be reported as a FORENSIC gate
+        # failure (and logged to the halt log as one). A missing/unusable ephemeris backend is an
+        # infrastructure failure -- fail the build loudly (SS ruling 2026-10-03).
+        raise
     except RuntimeError as fe:
         msg = f"GA5 FORENSIC gate FAIL: {fe}"
         logger.error("[ga_sensitive] %s", msg)
@@ -3286,6 +3294,8 @@ def build_ga_sensitive(
             )
             all_rows.extend(rows)
             summary["ayanamshas"][ayanamsha_id] = {"rows": len(rows), "status": "PASS"}
+        except BACKEND_FAILURE_ERRORS:
+            raise  # infrastructure failure, not a per-ayanamsha FAIL summary (SS ruling 2026-10-03)
         except ValueError as exc:
             logger.error("[ga_sensitive] HALT for ayanamsha %s: %s", ayanamsha_id, exc)
             summary["ayanamshas"][ayanamsha_id] = {"status": "HALT", "error": str(exc)}

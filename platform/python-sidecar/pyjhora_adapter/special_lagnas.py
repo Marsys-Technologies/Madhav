@@ -31,7 +31,7 @@ from panchang_engine.swiss_state import serialized_swiss_state
 from . import _names
 from ._ayanamsha import resolve_mode
 from ._jhora import drik
-from ._swiss_thread_scope import with_sidereal_mode
+from ._swiss_thread_scope import BACKEND_FAILURE_ERRORS, with_sidereal_mode
 
 
 def _place(lat: float, lon: float, tz: float):
@@ -177,8 +177,10 @@ def compute_special_lagnas(
     Returns a dict of {name: {sign, sign_id, degree_in_sign, longitude_deg}}
     for: bhava_lagna, hora_lagna, ghati_lagna, vighati_lagna, indu_lagna,
     sree_lagna, pranapada_lagna, bhrigu_bindhu_lagna, kunda_lagna,
-    varnada_lagna. On failure for any single lagna, that entry carries
-    {"error": ...} rather than aborting the whole batch.
+    varnada_lagna. On a COMPUTATION failure for any single lagna, that entry carries
+    {"error": ...} rather than aborting the whole batch. An ephemeris-BACKEND failure
+    (``SwissBackendError`` / ``OutOfCorpusRangeError`` / ``WindowUncheckedError``) is NOT such a
+    failure: it propagates and fails the caller (the infrastructure cannot compute at all).
     """
     mode, _sidm = resolve_mode(ayanamsha_id)
     drik.set_ayanamsa_mode(mode)
@@ -202,6 +204,11 @@ def compute_special_lagnas(
         try:
             sign_idx, deg = fn(jd_ut, place)
             out[name] = _to_dict(sign_idx, deg)
+        except BACKEND_FAILURE_ERRORS:
+            # Infrastructure failure (no .se1 backend / out-of-corpus JD / unchecked window), not
+            # "this lagna is undefined": fail the build, never an {"error"} entry that ga_sensitive
+            # would turn into a FLOORED row (SS ruling 2026-10-03).
+            raise
         except Exception as exc:  # noqa: BLE001
             out[name] = {"error": f"{name} failed: {exc!r}"}
 
@@ -210,6 +217,8 @@ def compute_special_lagnas(
     try:
         sign_idx, deg = _varnada_lagna_bv_raman(dob, tob, place, ayanamsha_id=ayanamsha_id)
         out["varnada_lagna"] = _to_dict(sign_idx, deg)
+    except BACKEND_FAILURE_ERRORS:
+        raise  # infrastructure failure, not "undefined": see the loop above
     except Exception as exc:  # noqa: BLE001
         out["varnada_lagna"] = {"error": f"varnada_lagna failed: {exc!r}"}
 
