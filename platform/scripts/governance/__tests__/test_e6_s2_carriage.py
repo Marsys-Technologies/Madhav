@@ -10,6 +10,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import pathlib
 import sys
 
@@ -31,7 +32,18 @@ IDS = ["phaladeepika_pg0338_c01", "phaladeepika_pg0339_c01"]
 SPEC = dict(matcher=d1.MATCHER, table="bg_phaladeepika_latta", chunk_ids=IDS, span=dict(start="Sloka 42-44"),
             fields=dict(claimant="graha", count="count_from_graha", direction="direction", effect="effect_description"),
             direction_words={"forward": "forward", "backward": "rear"}, anchor_stems=["Latt", "Latin"], effect_marker="Shkos",
-            effect_end="Thus the separate effects", effect_frame_words=["will", "may", "in", "during", "be", "bo", "occur", "the", "there", "a"],
+            effect_end="Thus the separate effects",
+            effect_frame_words=["will", "may", "in", "during", "be", "bo", "occur", "the", "there", "a", "result", "mark"],
+            effect_clauses={
+                "Sun": dict(clause="During the Sun's Latin there will bo the ruin of every business", effect="Ruin of every business."),
+                "Rahu": dict(clause="Misery will result during the Latta of Rahu and Ketu", effect="Misery."),
+                "Jupiter": dict(clause="In the Latin of Jupiter/ death, ruin of relations and a sort of general fear or insecurity may occur",
+                                effect="Death, ruin of relations and a sort of general fear or insecurity may occur."),
+                "Venus": dict(clause="There will be quarrel in the Latta of Venus", effect="Quarrel."),
+                "Mercury": dict(clause="In Mercury's Latta will occur loss of position or similar untoward event",
+                                effect="Loss of position or similar untoward event."),
+                "Moon": dict(clause="A great loss will mark the Moon's Latta", effect="A great loss.")},
+            effect_clauses_evidence=EVID,
             expected_rows=8,
             extra_fields=[dict(column="affliction_condition", kind="passage_text",
                                anchors=["when thus counting", "natal star", "Latta star", "sickness and anguish"],
@@ -255,13 +267,25 @@ def test_d1_trailing_whitespace_in_the_stored_effect_is_normalised_not_a_false_n
     assert _eff("Sun", "Ruin of every business.  ")["v"] == "PASS" and _eff("Sun", "  Ruin   of every business.")["v"] == "PASS"
 
 
-def test_d1_an_effect_is_matched_inside_its_own_clause_not_a_window_across_sentences():
-    seg = "Shkos During the Sun's Latta there will be grief. Misery will result during the Latta of Rahu."
-    spec = dict(SPEC, effect_marker="Shkos", effect_end=None, extra_fields=[])
-    spec.pop("effect_end")
-    f = lambda g, e: d1.match_ordinal_row({"graha": g, "count_from_graha": 1, "direction": "forward", "effect_description": e}, seg, spec)["effect"]
-    assert f("Sun", "grief") is True and f("Rahu", "Misery") is True
-    assert f("Sun", "Misery") is False and f("Rahu", "grief") is False          # the neighbouring sentence's effect is not this claimant's
+def _mini(**kw):
+    s = {k: v for k, v in SPEC.items() if k != "extra_fields"}
+    s.update(kw)
+    return s
+
+
+def _eff_of(seg, g, e, spec):
+    return d1.match_ordinal_row({"graha": g, "count_from_graha": 1, "direction": "forward", "effect_description": e}, seg, spec)["effect"]
+
+
+def test_d1_an_effect_must_equal_the_claimants_whole_clause_not_a_window_across_sentences():
+    seg = "Shkos During the Sun's Latta there will be grief. Misery will result during the Latta of Rahu. Thus the separate effects"
+    spec = _mini(effect_clauses={"Sun": dict(clause="During the Sun's Latta there will be grief", effect="grief."),
+                                 "Rahu": dict(clause="Misery will result during the Latta of Rahu", effect="Misery.")})
+    assert _eff_of(seg, "Sun", "grief", spec) is True and _eff_of(seg, "Rahu", "Misery", spec) is True
+    assert _eff_of(seg, "Sun", "Misery", spec) is False and _eff_of(seg, "Rahu", "grief", spec) is False      # the neighbouring clause's effect
+    # a declared clause that is not the passage's clause (tampered or merely a window) is a miss
+    assert _eff_of(seg, "Sun", "grief", _mini(effect_clauses={"Sun": dict(clause="there will be grief", effect="grief.")})) is False
+    assert _eff_of(seg, "Sun", "grief", _mini(effect_clauses={"Sun": dict(clause="During the Sun's Latta there will be grief. Misery", effect="grief.")})) is False
 
 
 def test_d1_the_anchor_must_be_near_and_in_the_same_sentence():
@@ -280,34 +304,19 @@ def test_d1_effect_frame_words_are_part_of_the_stated_rule():
 
 
 def test_d1_the_effect_section_is_bounded_by_the_declared_marker_and_end():
+    cl = {"Venus": dict(clause="Latta of Venus there will be quarrel here", effect="quarrel here"),
+          "Sun": dict(clause="In the Latta of Sun there will be grief", effect="grief.")}
     seg = "Latta of Venus there will be quarrel here. Shkos In the Latta of Sun there will be grief. Thus the separate effects the Latta of Mars in quarrel."
-    spec = {k: v for k, v in SPEC.items() if k != "extra_fields"}
-    f = lambda g, e, **kw: d1.match_ordinal_row({"graha": g, "count_from_graha": 1, "direction": "forward", "effect_description": e}, seg, dict(spec, **kw))["effect"]
+    f = lambda g, e, **kw: _eff_of(seg, g, e, _mini(effect_clauses=cl, effect_frame_words=["will", "be", "in", "the", "there", "here"], **kw))
     assert f("Sun", "grief") is True
-    assert f("Venus", "quarrel", effect_marker="Shkos") is False                  # before the marker: not in the effect section
-    assert f("Mars", "quarrel", effect_end="Thus the separate effects") is False   # after the end marker: not in the effect section
-    seg2 = "Latta of Venus there will be quarrel in the Sloka. Shkos Latta of Sun will be grief."
-    g = lambda **kw: d1.match_ordinal_row({"graha": "Venus", "count_from_graha": 1, "direction": "forward", "effect_description": "quarrel"}, seg2, dict(spec, **kw))["effect"]
-    assert g(effect_marker=None, effect_end=None) is True and g(effect_marker="Shkos", effect_end=None) is False
+    assert f("Venus", "quarrel here", effect_marker="Shkos") is False                 # before the marker: not in the effect section
+    seg2 = "Latta of Venus there will be quarrel here. Shkos Latta of Sun will be grief."
+    g = lambda **kw: _eff_of(seg2, "Venus", "quarrel here", _mini(effect_clauses=cl, effect_frame_words=["will", "be", "in", "the", "there", "here"], **kw))
+    assert g(effect_marker="Latta of Venus") is True and g(effect_marker="Shkos") is False
+    cl2 = {"Mars": dict(clause="Thus the separate effects the Latta of Mars there will be quarrel in", effect="quarrel in")}
     seg3 = "Shkos Latta of Sun will be grief. Thus the separate effects the Latta of Mars there will be quarrel in."
-    h = lambda **kw: d1.match_ordinal_row({"graha": "Mars", "count_from_graha": 1, "direction": "forward", "effect_description": "quarrel"}, seg3, dict(spec, **kw))["effect"]
-    assert h(effect_end=None) is True and h(effect_end="Thus the separate effects") is False
-
-
-def test_measure_scopes_the_rows_read_to_the_census_chart_when_the_table_has_chart_id(monkeypatch, tmp_path):
-    seen = []
-    monkeypatch.setattr(ac, "d1_fetch_chunks", lambda ids: dict(CHUNKS))
-    monkeypatch.setattr(ac, "d1_fetch_rows", lambda t, c, chart=None: seen.append(chart) or copy.deepcopy(ROWS))
-    decl = {"x": dict(kind="data", carriage=CAR_D1), "y": dict(kind="data", carriage=CAR_D1)}
-    reg = {"x": na_causes._reg_row("x", "bg_phaladeepika_latta"), "y": na_causes._reg_row("y", "bg_phaladeepika_latta")}
-    na_causes._stub_layer(monkeypatch, tmp_path, reg, tables={"bg_phaladeepika_latta": (["graha", "chart_id"], [])})
-    monkeypatch.setattr(ac, "load_asset_declarations", lambda *a, **k: decl)
-    ac.measure("L0")
-    assert seen == [ac.CHART_ID, ac.CHART_ID]                                      # the table carries chart_id: both reads are chart-scoped
-    seen.clear()
-    na_causes._stub_layer(monkeypatch, tmp_path, reg, tables={"bg_phaladeepika_latta": (["graha"], [])})
-    ac.measure("L0")
-    assert seen == [None, None]                                                    # no chart_id column: not scoped
+    h = lambda **kw: _eff_of(seg3, "Mars", "quarrel in", _mini(effect_clauses=cl2, effect_frame_words=["will", "be", "in", "the", "there", "thus", "separate", "effects"], **kw))
+    assert h(effect_end="NO SUCH") is True and h(effect_end="Thus the separate effects") is False
 
 
 def test_d1_a_declared_effect_marker_or_end_that_is_absent_is_no_detector_not_a_wider_section():
@@ -432,6 +441,162 @@ def test_d1_the_real_affliction_condition_matches_through_the_declared_ocr_repai
     assert _measure()["v"] == "PASS"
     no_repair = dict(SPEC, extra_fields=[dict(SPEC["extra_fields"][0], repairs={}), SPEC["extra_fields"][1]])
     assert _measure(spec=no_repair)["v"] == "PARTIAL"                                  # without the declared repair the OCR spelling does not match
+
+
+# ───────────────────────── second adversarial review: the effect must EQUAL the claimant's whole clause ─────────────────────────
+
+# every one of these read PASS on all 8 rows in the second review; each is wrong in substance and must be PARTIAL naming the row
+WRONG_EFFECTS = [
+    ("Venus", "sort of general fear or insecurity may occur"), ("Venus", "Venus"), ("Venus", "Latta of Venus"), ("Venus", "There will"),
+    ("Venus", "There will be quarrel"), ("Venus", "be quarrel"), ("Venus", "a quarrel"), ("Venus", "quarrel in the Latta of Venus"),
+    ("Venus", "occur There will be quarrel"), ("Mercury", "Latta"), ("Mercury", "In Mercury's Latta"), ("Mercury", "occur loss of position or similar untoward event"),
+    ("Mercury", "Loss of position"), ("Mercury", "untoward event"), ("Mercury", "Loss"), ("Sun", "during"), ("Sun", "Latin"), ("Sun", "Ruin of every business Misery"),
+    ("Sun", "the ruin of every business"), ("Sun", "ruin of every business Misery will result"), ("Sun", "ruin of every"), ("Rahu", "result"), ("Rahu", "Rahu and Ketu"),
+    ("Rahu", "the ruin of every business Misery will result"), ("Rahu", "Misery will result"), ("Rahu", "Misery will"), ("Moon", "Moon's Latta"), ("Moon", "A great loss will mark"),
+    ("Moon", "great loss"), ("Moon", "loss of position or similar untoward event. A great loss will mark"), ("Moon", "mark the"),
+    ("Jupiter", "Death"), ("Jupiter", "ruin of relations"), ("Jupiter", "ruin of relations and a sort of general fear or insecurity may occur"),
+    ("Jupiter", "Latin of"), ("Jupiter", "fear or insecurity may occur There will be quarrel"),
+    ("Jupiter", "Death, ruin of relations and a sort of general fear or insecurity may occur There will be quarrel"),
+]
+
+
+@pytest.mark.parametrize("graha, wrong", WRONG_EFFECTS)
+def test_d1_a_borrowed_tail_concatenated_or_frame_only_effect_is_a_miss_naming_the_row(graha, wrong):
+    r = _eff(graha, wrong)
+    assert r["v"] == "PARTIAL" and [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [(graha, ["effect"])], wrong
+
+
+@pytest.mark.parametrize("graha, other", [(g, h) for g in ("Sun", "Rahu", "Jupiter", "Venus", "Mercury", "Moon")
+                                          for h in ("Sun", "Rahu", "Jupiter", "Venus", "Mercury", "Moon") if g != h])
+def test_d1_every_effect_swap_between_claimants_is_a_miss(graha, other):
+    eff = next(r["effect_description"] for r in ROWS if r["graha"] == other)
+    r = _eff(graha, eff)
+    assert r["v"] == "PARTIAL" and [u["row"] for u in r["d1"]["unmatched"]] == [graha]
+
+
+@pytest.mark.parametrize("graha, variant", [("Sun", "ruin of every business"), ("Sun", "RUIN OF EVERY BUSINESS."), ("Sun", "Ruin of every business!!"),
+                                            ("Sun", "  Ruin   of every business.  "), ("Rahu", "MISERY"), ("Rahu", "Misery  ."), ("Venus", "quarrel"),
+                                            ("Moon", "a great loss"), ("Mercury", "loss of position or similar untoward event"),
+                                            ("Jupiter", "death, ruin of relations and a sort of general fear or insecurity may occur")])
+def test_d1_benign_case_spacing_and_punctuation_variants_pass_by_the_stated_normalisation(graha, variant):
+    """STATED: the stored effect and the declared effect are compared as lower-case words and digits only, so case, spacing and
+    punctuation (a trailing '.', '!!', inner commas) do not matter and NOTHING else does."""
+    assert _eff(graha, variant)["v"] == "PASS"
+
+
+def test_d1_an_effect_made_only_of_anchor_or_frame_words_is_a_miss_even_if_the_spec_declares_it():
+    spec = copy.deepcopy(SPEC)
+    spec["effect_clauses"]["Venus"] = dict(clause="There will be quarrel in the Latta of Venus", effect="There will")
+    rows = copy.deepcopy(ROWS)
+    [r.update(effect_description="There will") for r in rows if r["graha"] == "Venus"]
+    r = _measure(rows=rows, spec=spec)
+    assert r["v"] == "PARTIAL" and [u["row"] for u in r["d1"]["unmatched"]] == ["Venus"]
+
+
+def test_d1_the_declared_clause_must_be_the_whole_passage_clause_with_only_anchor_and_frame_words_around_the_effect():
+    # (a) the declared clause is not the passage's clause
+    spec = copy.deepcopy(SPEC)
+    spec["effect_clauses"]["Venus"]["clause"] = "There will be quarrel"
+    assert _measure(spec=spec)["d1"]["unmatched"][0]["row"] == "Venus"
+    # (b) the effect does not cover the clause's content: with 'quarrel' the only content, an effect that leaves a content word out is a miss
+    spec = copy.deepcopy(SPEC)
+    spec["effect_clauses"]["Mercury"]["effect"] = "Loss of position"
+    rows = copy.deepcopy(ROWS)
+    [r.update(effect_description="Loss of position") for r in rows if r["graha"] == "Mercury"]
+    r = _measure(rows=rows, spec=spec)
+    assert r["v"] == "PARTIAL" and [u["row"] for u in r["d1"]["unmatched"]] == ["Mercury"]          # leftover 'or similar untoward event' is content
+
+
+def test_d1_a_claimant_with_a_stored_effect_but_no_declared_clause_is_a_miss():
+    spec = copy.deepcopy(SPEC)
+    del spec["effect_clauses"]["Moon"]
+    assert [u["row"] for u in _measure(spec=spec)["d1"]["unmatched"]] == ["Moon"]
+
+
+def test_d1_a_padded_or_differently_cased_claimant_is_normalised_consistently_and_duplicates_are_seen():
+    rows = copy.deepcopy(ROWS)
+    rows[0]["graha"] = "  " + rows[0]["graha"] + " "
+    assert _measure(rows=rows)["v"] == "PASS"                                         # trimmed everywhere, the same way
+    rows = copy.deepcopy(ROWS[:7]) + [copy.deepcopy(ROWS[0])]
+    rows[7]["graha"] = " " + rows[7]["graha"].upper()
+    r = _measure(rows=rows)
+    assert r["v"] == "PARTIAL" and all(u["failed"][-1] == "duplicate" for u in r["d1"]["unmatched"]) and len(r["d1"]["unmatched"]) == 2
+
+
+@pytest.mark.parametrize("cond", [
+    "If, when thus counting, the natal star happens not to come as the Latta star, there will be no sickness and anguish.",
+    "there will be sickness and anguish natal star when thus counting Latta star",
+    "Latta star when thus counting natal star sickness and anguish never come",
+    "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star, there will be sickness and anguish and loss.",
+    "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star, there will be anguish and sickness.",
+    "If, when thus counting, the Janma-nakshatra (natal star) happens to come as the Latta star",
+    "sickness and anguish", "",
+])
+def test_d1_affliction_condition_is_an_ordered_contiguous_run_of_the_passage_negation_reordering_additions_and_fragments_fail(cond):
+    rows = copy.deepcopy(ROWS)
+    [r.update(affliction_condition=cond) for r in rows if r["graha"] == "Sun"]
+    r = _measure(rows=rows)
+    assert r["v"] == "PARTIAL" and [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", ["affliction_condition"])]
+
+
+def test_d1_affliction_condition_case_and_punctuation_variants_of_the_true_text_pass():
+    rows = copy.deepcopy(ROWS)
+    [r.update(affliction_condition="IF WHEN THUS COUNTING THE JANMA-NAKSHATRA (NATAL STAR) HAPPENS TO COME AS THE LATTA STAR THERE WILL BE SICKNESS AND ANGUISH")
+     for r in rows if r["graha"] == "Sun"]
+    assert _measure(rows=rows)["v"] == "PASS"
+
+
+def test_d1_both_effect_markers_are_required_by_the_spec_and_by_the_engine():
+    for key in ("effect_marker", "effect_end"):
+        spec = {k: v for k, v in SPEC.items() if k != key}
+        with pytest.raises(d1.SpecError, match=key):
+            d1.validate_spec(spec, "x")
+        r = _measure(spec=spec)                                                      # the engine itself never widens an undeclared section
+        assert r["v"] == NO_DET and key in r["measured"]
+
+
+def test_d1_the_spec_requires_the_declared_clause_mapping_and_its_evidence():
+    for key in ("effect_clauses", "effect_clauses_evidence", "effect_frame_words"):
+        with pytest.raises(d1.SpecError, match=key):
+            d1.validate_spec({k: v for k, v in SPEC.items() if k != key}, "x")
+    for bad in ({"Sun": dict(clause="x")}, {"Sun": dict(clause="", effect="e")}, {"Sun": dict(clause="c", effect="e", more=1)},
+                {"Sun": dict(clause="c", effect="e"), " sun": dict(clause="c", effect="e")}, [], "x"):
+        with pytest.raises(d1.SpecError):
+            d1.validate_spec(dict(SPEC, effect_clauses=bad), "x")
+    with pytest.raises(d1.SpecError):
+        d1.validate_spec(dict(SPEC, effect_clauses_evidence=" "), "x")
+
+
+def test_the_table_guard_runs_before_any_select(monkeypatch):
+    called = []
+    monkeypatch.setattr(ac, "d1_fetch_chunks", lambda ids: called.append("chunks") or dict(CHUNKS))
+    monkeypatch.setattr(ac, "d1_fetch_rows", lambda t, c, chart=None: called.append("rows") or copy.deepcopy(ROWS))
+    got = ac.carriage_declared_checks("x", CAR_D1, "some_other_table")
+    assert got["Carr.D1"]["v"] == NO_DET and "does not guess" in got["Carr.D1"]["measured"] and called == []
+    got = ac.carriage_declared_checks("x", CAR_D1, None)
+    assert got["Carr.D1"]["v"] == NO_DET and called == []
+    ac.carriage_declared_checks("x", CAR_D1, "bg_phaladeepika_latta")
+    assert called == ["chunks", "rows"]
+
+
+def test_the_effect_clauses_evidence_must_exist_too_and_a_symlink_out_of_the_repo_is_not_evidence(monkeypatch, tmp_path):
+    car = copy.deepcopy(CAR_D1)
+    car["spec"] = dict(car["spec"], effect_clauses_evidence="00_ARCHITECTURE/briefs/does_not_exist.md")
+    _bad(car, "effect_clauses_evidence")
+    car["spec"] = dict(car["spec"], effect_clauses_evidence="unverified:the L0 brief")
+    ac.validate_declarations(_doc(car))
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "secret.md").write_text("x", encoding="utf-8")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "real.md").write_text("x", encoding="utf-8")
+    (repo / "link.md").symlink_to(outside / "secret.md")
+    (repo / "linkdir").symlink_to(outside, target_is_directory=True)
+    monkeypatch.setattr(ac, "ROOT", repo)
+    assert ac._evidence_pointer_ok("real.md") and ac._evidence_pointer_ok("real.md:3")
+    assert not ac._evidence_pointer_ok("link.md") and not ac._evidence_pointer_ok("linkdir/secret.md")      # resolved outside the repository
+    assert not ac._evidence_pointer_ok("../outside/secret.md") and not ac._evidence_pointer_ok(str(outside / "secret.md"))
 
 
 # ───────────────────────── the declaration validator ─────────────────────────
@@ -708,11 +873,13 @@ def test_d1_fetch_rows_is_chart_scoped_when_the_table_carries_chart_id(monkeypat
 # REAL SQL: the SAME statements run on the off-production rehearsal cluster (127.0.0.1:55432, db `rehearsal`), through the E5.6 URL guard,
 # against TEMP tables inside a transaction that is ALWAYS rolled back (ON COMMIT DROP, then ROLLBACK): nothing persistent is created.
 # Skipped where the guard or the cluster is absent (CI).
-_GUARD = pathlib.Path("/Users/Dev/suvarna-engine-lane-e5-6/platform/scripts/governance/rehearsal/rehearsal_guard.py")
+# The E5.6 URL guard lives on its own branch: point SUVARNA_REHEARSAL_GUARD at rehearsal_guard.py to run these tests; unset, they SKIP visibly.
+_GUARD_ENV = os.environ.get("SUVARNA_REHEARSAL_GUARD", "")
+_GUARD = pathlib.Path(_GUARD_ENV) if _GUARD_ENV else None
 
 
 def _rehearsal_url():
-    if not _GUARD.exists():
+    if _GUARD is None or not _GUARD.exists():
         return None
     import importlib.util
     import subprocess
@@ -728,7 +895,7 @@ def _rehearsal_url():
 
 
 _REHEARSAL = _rehearsal_url()
-rehearsal = pytest.mark.skipif(_REHEARSAL is None, reason="rehearsal cluster / guard not available")
+rehearsal = pytest.mark.skipif(_REHEARSAL is None, reason="real-SQL tests: set SUVARNA_REHEARSAL_GUARD=<path to rehearsal_guard.py> and have the rehearsal cluster (127.0.0.1:55432) up")
 
 
 def _q(v):

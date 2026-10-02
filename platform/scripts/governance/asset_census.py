@@ -649,6 +649,24 @@ def _carriage_d1():
     return _CARR_D1_MOD[0]
 
 
+def _evidence_pointer_ok(ev) -> bool:
+    """A declared evidence pointer is `unverified:<where>` or a repo-relative FILE (optionally `:line`) that exists. The resolved
+    path must stay inside the repository: a symlink (or `..`) that leads out of it is not evidence."""
+    if not (isinstance(ev, str) and ev.strip()):
+        return False
+    if ev.startswith("unverified:"):
+        return bool(ev[len("unverified:"):].strip())
+    rel = re.sub(r":[0-9]+$", "", ev)
+    if rel.startswith("/") or ".." in rel.split("/"):
+        return False
+    try:
+        root = ROOT.resolve()
+        p = (ROOT / rel).resolve()
+        return p.is_file() and (p == root or root in p.parents)
+    except (OSError, ValueError):
+        return False
+
+
 def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
     """Raises DeclarationsError when the asset's declared carriage CHECK is malformed or contradicts N-73's nature rule."""
     nature = car.get("nature")
@@ -659,13 +677,9 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
         v = car.get(f)
         if not (isinstance(v, str) and v.strip() and "\n" not in v and len(v) <= 1200):
             raise DeclarationsError(f"{where}.carriage.{f} must be a non-blank single-line string (a reason / a pointer file:line or document)")
-    ev = car["evidence"]
-    if not ev.startswith("unverified:"):          # a pointer is a repo-relative file (optionally :line) that EXISTS, else it is flagged unverified
-        rel = re.sub(r":[0-9]+$", "", ev)
-        p = (ROOT / rel).resolve() if not rel.startswith("/") and ".." not in rel.split("/") else None
-        if p is None or not p.is_file():
-            raise DeclarationsError(f"{where}.carriage.evidence {ev!r} is not an existing repo-relative file (optionally with :line); a "
-                                    f"pointer that cannot be checked must say so: 'unverified:<where it is recorded>'")
+    if not _evidence_pointer_ok(car["evidence"]):
+        raise DeclarationsError(f"{where}.carriage.evidence {car['evidence']!r} is not an existing repo-relative file (optionally with :line); a "
+                                f"pointer that cannot be checked must say so: 'unverified:<where it is recorded>'")
     if isinstance(e.get("terminal_by_construction"), str) and e["terminal_by_construction"].strip():
         raise DeclarationsError(f"{where}: a declared carriage check and terminal_by_construction contradict each other (an asset that "
                                 f"declares a carriage check carries something from a source; declare one or the other)")
@@ -698,6 +712,9 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
             _carriage_d1().validate_spec(spec, f"{where}.carriage")
         except ValueError as exc:
             raise DeclarationsError(str(exc)) from exc
+        if not _evidence_pointer_ok(spec["effect_clauses_evidence"]):
+            raise DeclarationsError(f"{where}.carriage.spec.effect_clauses_evidence {spec['effect_clauses_evidence']!r} is not an existing "
+                                    "repo-relative file (optionally :line) or 'unverified:<where>'")
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
@@ -1242,6 +1259,9 @@ def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = F
                                            "fields): there is nothing to match against")
         return out
     d1 = _carriage_d1()
+    if spec.get("table") != target_table:     # the table guard runs BEFORE any SELECT (nothing is read for an asset the spec is not about)
+        out[own] = d1.d1_measure(spec, car.get("citation_state"), {}, None, target_table)
+        return out
     try:
         chunks = d1_fetch_chunks(spec["chunk_ids"])
         rows = d1_fetch_rows(spec["table"], d1.spec_columns(spec), CHART_ID if chart_scoped else None)

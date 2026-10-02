@@ -167,7 +167,7 @@ def test_a_wildcard_entry_round_trips_through_the_loader_and_the_fact(tmp_path):
             ac.validate_declarations(_doc(w=dict(prose_fields=[bad], evidence=PEV)))
 
 
-def test_the_file_version_is_1_6_0():
+def test_the_file_version_is_1_7_0():
     assert json.loads((HERE.parent / "asset_declarations.json").read_text(encoding="utf-8"))["version"] == "1.7.0"
 
 

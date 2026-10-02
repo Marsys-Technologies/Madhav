@@ -128,23 +128,26 @@ def cut_span(joined: str, span: dict):
 #              90 characters without ';' or '.', by "that of <claimant>" / "that occupied by the <claimant>" (the page header an
 #              OCR page break leaves, "Adh. XXVI MX", is allowed between "that" and "of");
 #   direction  after that count the first of the declared direction words decides: it must be the word of the stored direction;
-#   effect     (1) a stated effect is normalised (trimmed, trailing '.' removed, spaces collapsed) and must be at least 5 characters
-#              with a word of 4+ letters (an empty, "." or one-letter effect is a miss, never a match);
-#              (2) it must occur, as whole words, in the effect section (from `effect_marker` to `effect_end`) at a CLAUSE EDGE on
-#              both sides: before it the start, punctuation, a capitalised start or a declared frame word; after it the end,
-#              punctuation, a capitalised word (the OCR often drops the full stop) or a declared frame word, so "Loss" is not the
-#              effect "Loss of position or similar untoward event";
-#              (3) it must belong to THIS claimant: of the unit anchors in the SAME SENTENCE as the occurrence (no '.' or ';'
-#              between; "Latta of <X>", "<X>'s Latta", stems declared) the NEAREST one is the claimant's, and it is
-#              <=120 characters away: the other claimant's effect, even one stated a few words away, is not this claimant's;
-#              a NULL effect needs NO anchor of this claimant in the effect section (nothing is invented for a row the passage
-#              gives no effect for).
-#   extra      each declared extra column: `equals` an exact declared value, or `passage_text` (every declared anchor phrase in
-#              the value AND in the passage, and every word of 4+ letters of the value, after the declared OCR repairs, in the
-#              passage). KNOWN LIMIT: an effect that is the tail of a longer clause after a comma is not told from the whole.
+#   effect     the stored effect must EQUAL the claimant's WHOLE passage clause, never a window of the section:
+#              (1) the effect section (from `effect_marker` to `effect_end`, both declared and present) is cut into CLAUSES at
+#                  sentence punctuation (. ; ? !) and at a capitalised word that starts a new clause (the OCR often drops the full
+#                  stop; a unit-anchor word or a claimant name is not such a start);
+#              (2) the spec declares, per claimant, `effect_clauses[claimant] = {clause, effect}` (reviewed, with the document the
+#                  mapping was read from in `effect_clauses_evidence`): the clause text as the passage gives it and the effect text the
+#                  table stores for it. A claimant with a stored effect and no declared clause is a miss (the detector does not guess);
+#              (3) the stored effect must equal the declared effect (lower-case words and digits only, so case, spacing and
+#                  punctuation do not matter and nothing else does); the declared clause must equal, in the same normalisation,
+#                  the one passage clause that holds THIS claimant's unit anchor ("Latta of <X> [and <Y>]", "<X>'s Latta"; stems
+#                  declared); and the clause minus the effect's words may contain ONLY the unit anchor words and the declared
+#                  `effect_frame_words` (so the effect is the whole content of the clause: no tail, no borrowed or concatenated text);
+#              (4) an effect made only of anchor and frame words is a miss; a NULL effect needs NO anchor of this claimant in the
+#                  effect section (nothing is invented for a row the passage gives no effect for).
+#   extra      each declared extra column: `equals` an exact declared value, or `passage_text`: the value's words, after the declared
+#              OCR repairs, are a CONTIGUOUS, ORDERED run of the passage's words (6+ words; negation, reordering or an added word
+#              breaks it).
+#   Benign variants the normalisation accepts, by statement: case, spacing, trailing/inner punctuation of the stored effect.
 
-_COUNT_REACH, _ANCHOR_REACH = 90, 120
-_PUNCT = ".;:,!?/)"
+_COUNT_REACH = 90
 
 
 def _ordinal(n: int) -> str:
@@ -159,60 +162,82 @@ def _effect_ok_text(e: str) -> bool:
     return len(e) >= 5 and bool(re.search(r"[A-Za-z]{4,}", e))
 
 
-def _token_before(pre: str) -> str:
-    m = re.search(r"([A-Za-z']+)\W*$", pre)
-    return m.group(1) if m else ""
-
-
-def _edge_ok(sec: str, start: int, end: int, frame: set) -> bool:
-    pre, post = sec[:start].rstrip(), sec[end:].lstrip()
-    first = sec[start:end][:1]
-    before = (not pre) or pre[-1] in _PUNCT or first.isupper() or _token_before(pre).lower() in frame
-    nxt = re.match(r"[A-Za-z]+", post)
-    after = (not post) or post[0] in _PUNCT or bool(nxt and nxt.group().lower() in frame) or bool(nxt and post[0].isupper())
-    return before and after
+def _toks(text: str) -> list:
+    """Lower-case words and digits only: the normalisation under which an effect, a clause and a condition are compared."""
+    return re.findall(r"[a-z0-9]+", text.lower())
 
 
 def _anchors(sec: str, stems: list) -> list:
+    """[(name, start, end, tokens)] unit anchors in `sec`: "Latta of [the] X [and Y]" and "X's Latta" (stems declared; OCR variants)."""
     st = "|".join(rf"{re.escape(x)}\w*" for x in stems)
     out = []
-    for m in re.finditer(rf"(?:{st})\s+of\s+(?:the\s+)?([A-Z][a-z]+)", sec):
-        out.append((m.group(1), m.start(), m.end()))
+    for m in re.finditer(rf"(?:{st})\s+of\s+(?:the\s+)?([A-Z][a-z]+)(?:\s+and\s+([A-Z][a-z]+))?", sec):
+        for nm in (m.group(1), m.group(2)):
+            if nm:
+                out.append((nm, m.start(), m.end(), _toks(m.group(0))))
     for m in re.finditer(rf"([A-Z][a-z]+)'s\s+(?:{st})", sec):
-        out.append((m.group(1), m.start(), m.end()))
+        out.append((m.group(1), m.start(), m.end(), _toks(m.group(0))))
     return sorted(out, key=lambda a: a[1])
 
 
+def _clauses(sec: str, anchors: list, stems: list) -> list:
+    """[(start, end)] clause spans of the effect section: cut after . ; ? ! and before a capitalised word that starts a clause (the
+    previous word is lower-case, no punctuation between; a unit-anchor stem or a claimant name is not a clause start)."""
+    names = {a[0] for a in anchors}
+    stem_re = re.compile("|".join(rf"{re.escape(x)}\w*" for x in stems))
+    cuts = [0]
+    for m in re.finditer(r"[.;?!]\s+", sec):
+        cuts.append(m.end())
+    for m in re.finditer(r"(?<=[a-z])\s+([A-Z][a-z]+)\b", sec):
+        w = m.group(1)
+        if w in names or stem_re.fullmatch(w):
+            continue
+        cuts.append(m.start(1))
+    cuts = sorted(set(cuts)) + [len(sec)]
+    return [(a, b) for a, b in zip(cuts, cuts[1:]) if sec[a:b].strip()]
+
+
+def _remove_run(tokens: list, run: list):
+    """tokens without the first contiguous occurrence of `run`, or None when it does not occur."""
+    n = len(run)
+    for i in range(len(tokens) - n + 1):
+        if tokens[i:i + n] == run:
+            return tokens[:i] + tokens[i + n:]
+    return None
+
+
 def _effect_matches(eff: str, claimant: str, sec: str, spec: dict):
-    """True / False for a stated effect (rule (1)-(3) above)."""
+    """True only when the stored effect equals the claimant's declared effect AND the declared clause is exactly the claimant's whole
+    passage clause with nothing but anchor and frame words around the effect (rule (1)-(4) above)."""
     e = _norm_effect(eff)
     if not _effect_ok_text(e):
         return False
-    frame = {w.lower() for w in spec.get("effect_frame_words", [])}
-    anchors = _anchors(sec, spec["anchor_stems"])
-    if not any(a[0].lower() == claimant.lower() for a in anchors):
+    key = claimant.strip().lower()
+    decl = next((v for k, v in (spec.get("effect_clauses") or {}).items() if k.strip().lower() == key), None)
+    if not isinstance(decl, dict):
         return False
-    pat = r"(?<![A-Za-z])" + r"\s+".join(re.escape(w) for w in e.split(" ")) + r"(?![A-Za-z])"
-    for m in re.finditer(pat, sec, re.I):
-        if not _edge_ok(sec, m.start(), m.end(), frame):
-            continue
-        best = None
-        for name, a0, a1 in anchors:
-            between = sec[a1:m.start()] if a1 <= m.start() else (sec[m.end():a0] if a0 >= m.end() else "")
-            if "." in between or ";" in between:
-                continue                                  # another sentence: not a candidate owner of this effect
-            gap = 0 if (a0 < m.end() and m.start() < a1) else (m.start() - a1 if a1 <= m.start() else a0 - m.end())
-            if best is None or gap < best[0]:
-                best = (gap, [name])
-            elif gap == best[0] and name not in best[1]:
-                best[1].append(name)
-        if best is None:
-            continue
-        gap, names = best
-        if len(names) != 1 or names[0].lower() != claimant.lower() or gap > _ANCHOR_REACH:
-            continue
-        return True
-    return False
+    frame = {w.lower() for w in spec.get("effect_frame_words", [])}
+    etoks = _toks(e)
+    if etoks != _toks(decl["effect"]):
+        return False
+    anchors = _anchors(sec, spec["anchor_stems"])
+    mine = [a for a in anchors if a[0].lower() == key]
+    if not mine:
+        return False
+    anchor_words = set()
+    for a in anchors:
+        anchor_words.update(a[3])
+        anchor_words.add(a[0].lower())
+    if not [t for t in etoks if t not in frame and t not in anchor_words]:
+        return False                                              # only anchor / frame words: no effect at all
+    holders = []
+    for c0, c1 in _clauses(sec, anchors, spec["anchor_stems"]):
+        if any(c0 <= a[1] and a[2] <= c1 for a in mine):
+            holders.append(_toks(sec[c0:c1]))
+    if len(holders) != 1 or holders[0] != _toks(decl["clause"]):
+        return False
+    left = _remove_run(holders[0], etoks)
+    return left is not None and all(t in frame or t in anchor_words for t in left)
 
 
 def _extra_ok(row: dict, ef: dict, seg: str) -> bool:
@@ -222,15 +247,13 @@ def _extra_ok(row: dict, ef: dict, seg: str) -> bool:
         return False
     if kind == "equals":
         return v == ef["value"]
-    low = seg.lower()
-    anchors = ef["anchors"]
-    if not all(a.lower() in v.lower() and a.lower() in low for a in anchors):
-        return False
     val = v
     for k, rep in ef.get("repairs", {}).items():
         val = re.sub(re.escape(k), rep, val, flags=re.I)
-    words = set(re.findall(r"[a-z]{2,}", low))
-    return all(w in words for w in re.findall(r"[A-Za-z]{4,}", val.lower()))
+    vt, st = _toks(val), _toks(seg)
+    if len(vt) < 6 or not all(a.lower() in " ".join(_toks(v)) or a.lower() in v.lower() for a in ef.get("anchors", [])):
+        return False
+    return any(st[i:i + len(vt)] == vt for i in range(len(st) - len(vt) + 1))
 
 
 def match_ordinal_row(row: dict, seg: str, spec: dict) -> dict:
@@ -278,10 +301,11 @@ MATCHING_RULE_TEXT = {
     MATCHER:
         "per row, in the declared span of the English translation: the stored count appears as a whole ordinal before 'that of "
         "<claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored "
-        "direction's declared word; a stated effect (>=5 characters, 4+ letter word) appears at a clause edge in the effect section "
-        "with the claimant's own unit anchor as its nearest anchor in the same sentence (<=120 characters) (a NULL effect needs NO such "
-        "anchor); every declared extra column equals its declared value or is anchor-matched in the passage; the table holds exactly the "
-        "declared number of rows and no claimant twice",
+        "direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the "
+        "claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the "
+        "declared frame words around the effect (a NULL effect needs NO anchor of the claimant in the effect section); every declared "
+        "extra column equals its declared value or is an ordered contiguous run of the passage after the declared OCR repairs; the "
+        "table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
 }
 
 
@@ -298,11 +322,12 @@ def validate_spec(spec, where: str) -> dict:
     if not isinstance(spec, dict):
         raise SpecError(f"{where}.spec must be an object")
     allowed = {"matcher", "table", "chunk_ids", "span", "fields", "direction_words", "anchor_stems", "effect_marker", "effect_end",
-               "effect_frame_words", "expected_rows", "extra_fields"}
+               "effect_frame_words", "expected_rows", "extra_fields", "effect_clauses", "effect_clauses_evidence"}
     extra = sorted(set(spec) - allowed)
     if extra:
         raise SpecError(f"{where}.spec: unknown field(s) {extra}")
-    missing = sorted(k for k in ("matcher", "table", "chunk_ids", "span", "fields", "direction_words", "anchor_stems", "expected_rows")
+    missing = sorted(k for k in ("matcher", "table", "chunk_ids", "span", "fields", "direction_words", "anchor_stems", "expected_rows",
+                                 "effect_marker", "effect_end", "effect_frame_words", "effect_clauses", "effect_clauses_evidence")
                      if k not in spec)
     if missing:
         raise SpecError(f"{where}.spec: missing field(s) {missing}")
@@ -331,10 +356,17 @@ def validate_spec(spec, where: str) -> dict:
         raise SpecError(f"{where}.spec.anchor_stems must be a non-empty list of word stems (letters only)")
     for k in ("effect_marker", "effect_end"):
         v = spec.get(k)
-        if v is not None and not (isinstance(v, str) and v.strip() and len(v) <= MARKER_MAX):
-            raise SpecError(f"{where}.spec.{k} must be a non-blank string or absent")
-    if "effect_frame_words" in spec:
-        _word_list(spec["effect_frame_words"], "effect_frame_words", where)
+        if not (isinstance(v, str) and v.strip() and len(v) <= MARKER_MAX):
+            raise SpecError(f"{where}.spec.{k} is REQUIRED and must be a non-blank string: an effect section without both markers would widen")
+    _word_list(spec["effect_frame_words"], "effect_frame_words", where)
+    ec = spec["effect_clauses"]
+    if not (isinstance(ec, dict) and all(isinstance(k, str) and k.strip() and isinstance(v, dict) and set(v) == {"clause", "effect"}
+                                         and all(isinstance(v[x], str) and v[x].strip() for x in ("clause", "effect")) for k, v in ec.items())):
+        raise SpecError(f"{where}.spec.effect_clauses must map each claimant to {{clause, effect}} (non-blank strings)")
+    if len({k.strip().lower() for k in ec}) != len(ec):
+        raise SpecError(f"{where}.spec.effect_clauses names a claimant twice")
+    if not (isinstance(spec["effect_clauses_evidence"], str) and spec["effect_clauses_evidence"].strip()):
+        raise SpecError(f"{where}.spec.effect_clauses_evidence must name the document the clause mapping was read from")
     er = spec["expected_rows"]
     if not (isinstance(er, int) and not isinstance(er, bool) and er >= 1):
         raise SpecError(f"{where}.spec.expected_rows must be a positive integer (the number of rows the table must hold)")
@@ -416,8 +448,8 @@ def d1_measure(spec: dict, citation_state, chunks_by_id: dict, rows, table) -> d
     ev["passage_sha256"] = span_digest(seg)
     for key in ("effect_marker", "effect_end"):
         mk = spec.get(key)
-        if mk and mk not in seg:
-            return out(NO_DET, f"NO_DETECTOR: the declared {key} {mk!r} is absent from the declared span: the effect section cannot be "
+        if not mk or mk not in seg:
+            return out(NO_DET, f"NO_DETECTOR: the {key} {mk!r} is undeclared or absent from the declared span: the effect section cannot be "
                                "bounded, and D1 does not widen it", **ev)
     if not isinstance(rows, list):
         return out(NO_DET, "NO_DETECTOR: the asset's table rows could not be read", **ev)
