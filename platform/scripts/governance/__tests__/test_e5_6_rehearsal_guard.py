@@ -496,7 +496,8 @@ def cluster_env(stubs: Stubs, tmp: pathlib.Path, **extra) -> dict:
 
 
 def run_cluster(directory, stubs, tmp, *args, **extra):
-    assert str(stubs.sbx).startswith(("/private/var/folders", "/private/tmp", "/tmp/"))   # the script accepts /tmp/* too (CI runs on Linux), \
+    # the script accepts /tmp/* too (CI runs on Linux)
+    assert str(stubs.sbx).startswith(("/private/var/folders", "/private/tmp", "/tmp/")), \
         f"sandbox {stubs.sbx} is not under a path the script accepts"
     return run(["bash", str(directory / "rehearsal_cluster.sh"), *args], cluster_env(stubs, tmp, **extra))
 
