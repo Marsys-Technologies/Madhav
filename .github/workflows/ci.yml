@@ -603,6 +603,25 @@ jobs:
           cd python-sidecar
           python -m pytest tests/l3/test_builder_role_v4_41_candidate.py -q --tb=short
 
+      - name: TI-s-l1-integration-001 — karaka-role readers (ga_vargas, ga_dashas, ga_structural karaka web) against real Postgres
+        # ga_vargas and ga_dashas share ONE reader of ga_sensitive's stored kn_rao karaka
+        # assignments (ga_writers/_karaka_roles.py) and ga_structural's karaka web has its own
+        # read (S-L1 lanes #2878/#2886/#2883). Their DB-free tests use fake cursors and cannot
+        # prove the SQL (pins, total ORDER BY, school filter, refusals); this suite does, on a
+        # throwaway database whose chart_facts has the production column types, primary key
+        # and unique indexes, on rows built by the real ga_sensitive writer (synthetic
+        # longitudes, no birth data). It must RUN here: under GITHUB_ACTIONS=true the module
+        # fails, never skips, if the variable is missing or the database is unreachable. The
+        # module is `integration`-marked, so the generic sidecar job deselects it.
+        env:
+          PGPASSWORD: postgres
+          KARAKA_READER_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/karaka_reader_test
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE karaka_reader_test;"
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest tests/test_karaka_readers_pg.py -q --tb=short
+
       - name: C19 — overlay writers' SQL layer AS data_plane_builder against real Postgres
         # Pravāha C19 (steward M20261002T062943-356e): the ka_moorti_nirnaya
         # and ka_vedha_gochara overlay writers will be rebuilt in production at
