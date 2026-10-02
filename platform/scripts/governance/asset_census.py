@@ -1697,7 +1697,10 @@ def _ldgr_lacking_text(x: str) -> str:
     n0 = f"regexp_replace(normalize({x}, NFKC), '{_LDGR_INVISIBLE}+', '', 'g')"
     norm = f"lower(regexp_replace(regexp_replace({n0}, '^{_LDGR_JUNK}+|{_LDGR_JUNK}+$', '', 'g'), '{_LDGR_SPACE}+', ' ', 'g'))"
     lst = ",".join("'" + w + "'" for w in LDGR_PLACEHOLDERS)
-    return f"({x} IS NULL OR {norm} IN ({lst}) OR ({n0} !~ '[[:alnum:]]' AND {n0} !~ '[^\\x01-\\x7f]'))"
+    # S1 (review F2): the SAME list is also compared with the spaces removed, so 'N / A', 'n o n e' and 'not  found' are the placeholders they spell; ONE definition for Ldgr and Null
+    lst_nospace = ",".join("'" + w + "'" for w in dict.fromkeys(w.replace(" ", "") for w in LDGR_PLACEHOLDERS))
+    return (f"({x} IS NULL OR {norm} IN ({lst}) OR replace({norm}, ' ', '') IN ({lst_nospace}) "
+            f"OR ({n0} !~ '[[:alnum:]]' AND {n0} !~ '[^\\x01-\\x7f]'))")
 
 
 def _ldgr_lacking(col: str, kind: str) -> str:
@@ -2089,32 +2092,52 @@ def grade_null_blank_rows(entries, counts) -> dict:
 # both pass AND that asset's declared null convention (pin 13: which columns may be NULL and what NULL means; no literal fallbacks, no constant columns) is
 # verified by the detector. No Null N/A rule (N-22 row 33 stands)." Design: scratchpad s1/DESIGN.md.
 # An asset DECLARES `null_convention` (validated here, asset_declarations.json 1.9.0): the table, its nullable columns (each with what NULL means and an
-# optional key scope), its declared constant columns, a one-line why and a checkable evidence pointer. The detector verifies it read-only. The cap is never
-# lifted by a column pattern, a NOT NULL constraint, a clean populated table or a record's own say-so: `null_lift_earned` re-checks the evidence on BOTH
-# Null records. An undeclared asset reads exactly as before.
-NULL_CONVENTION_DECL_FIELDS = ("table", "nullable", "constants", "why", "evidence")
+# optional key scope), its declared constant columns, optional `allowed_literals` (a value that looks like a placeholder but is a real value of a NON-nullable
+# column, with a reason), a real one-line why and a checkable evidence pointer. The detector verifies it read-only. The cap is never lifted by a column pattern, a
+# NOT NULL constraint, a clean populated table or a record's own say-so: `null_lift_earned` re-checks the evidence on BOTH Null records. An undeclared asset reads
+# exactly as before.
+# "No literal fallbacks" has ONE definition, S3's: the same normaliser and closed list (`_ldgr_lacking_text` / LDGR_PLACEHOLDERS: NFKC, invisible characters removed,
+# junk punctuation stripped at the ends, case folded: 'N/A.', 'Ｎ/Ａ', 'n<ZWSP>/a', '—', '0', 'pending', 'missing', 'not found' ...) is applied to EVERY text-like
+# column of the declared table (text / varchar / char / citext, element-wise on arrays, a JSON string or an empty JSON container), not only to the declared-nullable
+# ones: a non-nullable column holding '' or 'N/A' is a fallback dodging the undeclared-NULL check. A value that collides with the list legitimately must be declared
+# in `allowed_literals` (never guessed by the detector). A declared-nullable NUMERIC column also treats a 0 as a sentinel.
+# COST NOTE: `count(DISTINCT col)` over a very large or vector-heavy table can hit the client timeout (PSQL_TIMEOUT_SECONDS): that reads ERRORED, never PASS. Columns of
+# type bytea / json / jsonb / tsvector / USER-DEFINED (vector) are therefore NOT distinct-counted unless declared constant; the verdict names them as not examined.
+NULL_CONVENTION_DECL_FIELDS = ("table", "nullable", "constants", "allowed_literals", "why", "evidence")
 NULL_NULLABLE_FIELDS = ("column", "means", "scope")
 NULL_SCOPE_FIELDS = ("key_column", "null_for", "mode")
 NULL_CONSTANT_FIELDS = ("column", "why", "value")
+NULL_ALLOWED_FIELDS = ("column", "values", "why")
 NULL_SCOPE_MODES = ("only", "exactly")        # only: a NULL is allowed just on the declared keys; exactly: NULL iff the key is declared
-# literals that STAND IN for NULL (closed, compared trimmed and casefolded): the prose placeholders plus the usual not-applicable spellings and the empty JSON containers
-NULL_FALLBACK_LITERALS = tuple(dict.fromkeys(PROSE_PLACEHOLDERS + ("n.a.", "not applicable", "nil", "?", "not traced", "untraced", "not available", "{}", "[]")))
+NULL_MAX_NULLABLE, NULL_MAX_CONSTANTS, NULL_MAX_ALLOWED, NULL_MAX_VALUES, NULL_MAX_KEY_LEN = 64, 256, 64, 20, 128   # a declaration larger than this is not a convention
 NULL_NUMERIC_TYPES = ("smallint", "integer", "bigint", "numeric", "decimal", "real", "double precision")   # a 0 in a declared-nullable numeric column is a sentinel
+NULL_DISTINCT_SKIP_TYPES = ("bytea", "json", "jsonb", "tsvector", "user-defined")   # not distinct-counted (cost) unless declared constant
 
 
-def _decl_line(v, limit: int = 1200) -> bool:
-    return isinstance(v, str) and not _blank_text(v) and v == v.strip() and "\n" not in v and len(v) <= limit
+def _s3_key_problem(v, limit: int = NULL_MAX_KEY_LEN):
+    """None when `v` is a safe literal for a declared key value / allowed literal: a non-empty str of at most `limit` characters, no leading/trailing whitespace, no
+    control / format / line-separator character (U+2028 ...), no backslash."""
+    if not (isinstance(v, str) and v):
+        return "is not a non-empty string"
+    if v != v.strip() or len(v) > limit:
+        return f"has leading or trailing whitespace or is longer than {limit} characters"
+    if any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") or ch == "\\" for ch in v):
+        return "contains a control, format, line-separator character or a backslash"
+    return None
 
 
-def _decl_sentence(v, limit: int = 1200) -> bool:
-    """A one-line statement of at least three words (a meaning or a reason, not a token)."""
-    return _decl_line(v, limit) and len(v.split()) >= 3
+def _null_placeholder_text(v: str) -> bool:
+    """True when `v` (a declared meaning) is itself a placeholder of S3's list, with or without surrounding punctuation: '', '-', 'N/A', 'none.', 'Unknown'."""
+    flat = re.sub(r"\s+", " ", v.strip()).casefold()
+    core = re.sub(r"^[\W_]+|[\W_]+$", "", flat)
+    return flat in LDGR_PLACEHOLDERS or core in LDGR_PLACEHOLDERS
 
 
 def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
     """Raises DeclarationsError when an asset's `null_convention` declaration is malformed: `table` (an identifier), `nullable` and `constants` (lists, empty
-    when none), `why` (one line) and `evidence` (a checkable pointer). A nullable entry names its column, what NULL means (non-blank, one line, and not itself a
-    fallback literal) and optionally a key `scope` (key_column, null_for, mode); a constant entry names its column, a one-line why and optionally its `value`."""
+    when none), optional `allowed_literals`, `why` (a real one-line reason) and `evidence` (a checkable pointer). A nullable entry names its column, what NULL means
+    (a real statement, not itself a fallback literal) and optionally a key `scope` (key_column, null_for, mode); a constant entry names its column, a real reason and
+    optionally its `value`; an allowed-literals entry names a NON-nullable column, the literals that are real values of it and a real reason. List lengths are capped."""
     if not isinstance(nc, dict):
         raise DeclarationsError(f"{where}.null_convention must be an object or null")
     _s3_common(where, "null_convention", nc, NULL_CONVENTION_DECL_FIELDS, na=False)   # no N/A form exists for Null: an `unverified:` evidence pointer is allowed here as for the non-N/A S3 keys
@@ -2122,6 +2145,8 @@ def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
     for key in ("nullable", "constants"):
         if not isinstance(nc.get(key), list):
             raise DeclarationsError(f"{where}.null_convention.{key} must be a list (empty when the table declares none)")
+    if len(nc["nullable"]) > NULL_MAX_NULLABLE or len(nc["constants"]) > NULL_MAX_CONSTANTS:
+        raise DeclarationsError(f"{where}.null_convention declares more than {NULL_MAX_NULLABLE} nullable or {NULL_MAX_CONSTANTS} constant columns: not a convention")
     n_cols, k_cols = [], []
     for i, n in enumerate(nc["nullable"]):
         w = f"{where}.null_convention.nullable[{i}]"
@@ -2131,10 +2156,11 @@ def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
         if extra:
             raise DeclarationsError(f"{w}: unknown field(s) {extra}")
         _s3_ident(where, "null_convention", f"nullable[{i}].column", n.get("column"))
-        if isinstance(n.get("means"), str) and n["means"].strip().casefold() in NULL_FALLBACK_LITERALS:
+        if isinstance(n.get("means"), str) and _null_placeholder_text(n["means"]):
             raise DeclarationsError(f"{w}.means {n['means']!r} is a fallback literal, not a meaning: say what a NULL in this column states")
-        if not _decl_sentence(n.get("means")):
-            raise DeclarationsError(f"{w}.means must be a non-blank single-line statement of at least three words (what NULL means in this column)")
+        bad = _s3_text_problem(n.get("means"), min_chars=15, min_words=3)
+        if bad:
+            raise DeclarationsError(f"{w}.means {bad} (what NULL means in this column)")
         if n["column"] in n_cols:
             raise DeclarationsError(f"{w}.column {n['column']!r} is declared twice (duplicate)")
         n_cols.append(n["column"])
@@ -2154,10 +2180,12 @@ def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
         nf = sc.get("null_for")
         if not (isinstance(nf, list) and nf):
             raise DeclarationsError(f"{w}.scope.null_for must be a non-empty list of key values")
+        if len(nf) > NULL_MAX_VALUES * 5:
+            raise DeclarationsError(f"{w}.scope.null_for lists more than {NULL_MAX_VALUES * 5} keys: not a convention")
         for v in nf:
-            if not (isinstance(v, str) and _decl_line(v, 128) and not any(unicodedata.category(ch) == "Cc" or ch == "\\" for ch in v)):
-                raise DeclarationsError(f"{w}.scope.null_for entry {v!r} must be a non-blank single-line string of at most 128 characters with no control "
-                                        "character or backslash")
+            bad = _s3_key_problem(v)
+            if bad:
+                raise DeclarationsError(f"{w}.scope.null_for entry {v!r} {bad}")
         if len(set(nf)) != len(nf):
             raise DeclarationsError(f"{w}.scope.null_for lists a key twice (duplicate)")
         k_cols.append(sc["key_column"])
@@ -2170,8 +2198,9 @@ def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
         if extra:
             raise DeclarationsError(f"{w}: unknown field(s) {extra}")
         _s3_ident(where, "null_convention", f"constants[{i}].column", c.get("column"))
-        if not _decl_sentence(c.get("why")):
-            raise DeclarationsError(f"{w}.why must be a non-blank single-line statement of at least three words (why this column is constant)")
+        bad = _s3_text_problem(c.get("why"), min_chars=15, min_words=3)
+        if bad:
+            raise DeclarationsError(f"{w}.why {bad} (why this column is constant)")
         if c.get("value") is not None and not (isinstance(c["value"], str) and c["value"] != "" and len(c["value"]) <= 4000 and "\x00" not in c["value"]):
             raise DeclarationsError(f"{w}.value must be a non-empty string (the constant's text form) when present")
         if c["column"] in c_cols:
@@ -2183,73 +2212,156 @@ def validate_null_convention_declaration(where: str, nc, e: dict) -> None:
     bad = sorted((set(k_cols) & set(c_cols)) | (set(k_cols) & set(n_cols)))
     if bad:
         raise DeclarationsError(f"{where}.null_convention: {bad} are used as a scope key_column, which must be a non-NULL identity (neither nullable nor constant)")
+    al = nc.get("allowed_literals")
+    if al is None:
+        return
+    if not isinstance(al, list) or len(al) > NULL_MAX_ALLOWED:
+        raise DeclarationsError(f"{where}.null_convention.allowed_literals must be a list of at most {NULL_MAX_ALLOWED} entries")
+    a_cols = []
+    for i, a in enumerate(al):
+        w = f"{where}.null_convention.allowed_literals[{i}]"
+        if not isinstance(a, dict):
+            raise DeclarationsError(f"{where}.null_convention allowed_literals entry {i} must be an object")
+        extra = sorted(set(a) - set(NULL_ALLOWED_FIELDS))
+        if extra:
+            raise DeclarationsError(f"{w}: unknown field(s) {extra}")
+        _s3_ident(where, "null_convention", f"allowed_literals[{i}].column", a.get("column"))
+        vals = a.get("values")
+        if not (isinstance(vals, list) and vals) or len(vals) > NULL_MAX_VALUES:
+            raise DeclarationsError(f"{w}.values must be a non-empty list of at most {NULL_MAX_VALUES} literals")
+        for v in vals:
+            bad = _s3_key_problem(v)
+            if bad:
+                raise DeclarationsError(f"{w}.values entry {v!r} {bad}")
+        if len(set(vals)) != len(vals):
+            raise DeclarationsError(f"{w}.values lists a literal twice (duplicate)")
+        bad = _s3_text_problem(a.get("why"), min_chars=15, min_words=3)
+        if bad:
+            raise DeclarationsError(f"{w}.why {bad} (why this literal is a real value of the column)")
+        if a["column"] in a_cols:
+            raise DeclarationsError(f"{w}.column {a['column']!r} is declared twice (duplicate)")
+        a_cols.append(a["column"])
+    if set(a_cols) & set(n_cols):
+        raise DeclarationsError(f"{where}.null_convention: {sorted(set(a_cols) & set(n_cols))} are nullable, where NULL is the only way to say 'absent': an allowed literal there is the fallback itself")
 
 
 def _sql_lit(s) -> str:
     """A SQL string literal for a declared key value: quotes doubled; a non-string, a control character or a backslash is refused (the declaration validator
     refuses them too; this is the second lock before any text reaches SQL)."""
-    if not isinstance(s, str) or any(unicodedata.category(ch) == "Cc" or ch == "\\" for ch in s):
+    if not isinstance(s, str) or any(unicodedata.category(ch) in ("Cc", "Cf", "Zl", "Zp") or ch == "\\" for ch in s):
         raise Unknown(f"null_convention: {s!r} is not a safe key literal")
     return "'" + s.replace("'", "''") + "'"
 
 
+def _null_type_kind(t) -> str:
+    """'text' | 'array' | 'json' | 'num' | 'other' for a column's information_schema data_type (an unknown / missing type is the caller's NO_DETECTOR)."""
+    t = re.sub(r"\(.*?\)", "", str(t or "")).strip().lower()
+    if t in LDGR_TEXT_TYPES:
+        return "text"
+    if t == "array" or t.endswith("[]"):
+        return "array"
+    if t in ("json", "jsonb"):
+        return "json"
+    if t in NULL_NUMERIC_TYPES:
+        return "num"
+    return "other"
+
+
+def _null_declared_columns(spec: dict) -> list:
+    """Every column name the declaration refers to (nullable, constants, scope keys, allowed literals), in a stable order."""
+    out = [n["column"] for n in spec.get("nullable") or []] + [c["column"] for c in spec.get("constants") or []]
+    out += [n["scope"]["key_column"] for n in spec.get("nullable") or [] if n.get("scope")] + [a["column"] for a in spec.get("allowed_literals") or []]
+    return list(dict.fromkeys(out))
+
+
+def _null_fallback_sql(col: str, kind: str, nullable: bool, allowed=()):
+    """The SQL predicate 'this row's `col` holds a literal that stands in for NULL', or None when the column type cannot hold one. text: S3's `_ldgr_lacking_text`
+    (the ONE definition) on a non-NULL value; array: empty, or any element lacking; json: a JSON null, an empty object / array, or a string that lacks; numeric: a 0 in a
+    declared-nullable column only. A value listed in `allowed` (declared, with a reason) is never a fallback."""
+    q = f'"{col}"'
+    if kind == "text":
+        core = _ldgr_lacking_text(q)
+    elif kind == "array":
+        core = f"(cardinality({q}) = 0 OR EXISTS (SELECT 1 FROM unnest({q}::text[]) AS e(x) WHERE {_ldgr_lacking_text('e.x')}))"
+    elif kind == "json":
+        core = (f"(jsonb_typeof({q}::jsonb) = 'null' OR {q}::jsonb IN ('{{}}'::jsonb, '[]'::jsonb) OR (jsonb_typeof({q}::jsonb) = 'string' AND "
+                f"{_ldgr_lacking_text('(' + q + '::jsonb #>> ' + chr(39) + '{}' + chr(39) + ')')}))")
+    elif kind == "num" and nullable:
+        core = f"{q} = 0"
+    else:
+        return None
+    ok = f" AND {q}::text NOT IN ({', '.join(_sql_lit(v) for v in allowed)})" if allowed else ""
+    return f"{q} IS NOT NULL AND ({core}){ok}"
+
+
 def null_convention_fetch(table: str, columns, types, spec: dict, tail: str = "") -> dict:
-    """{rows, cols: {column: {nulls, distinct, [sole], [fallback, null_outside, null_outside_keys, nonnull_inside, nonnull_inside_keys]}}} for the declared
-    table: ONE read-only SELECT over the table (`tail` = the chart-scope ` WHERE ...` the caller bound), answered as ONE line of jsonb. Per column: its NULL count
-    and `count(DISTINCT col::text)`; for a declared constant its sole value (min); for a declared-nullable column the rows holding a literal fallback
-    (NULL_FALLBACK_LITERALS, trimmed and casefolded; plus the numeric 0 sentinel on a numeric-typed column) and, with a key scope, the NULL rows outside the declared
-    keys and (mode exactly) the non-NULL rows on them, as counts and up to 5 sample keys. Identifiers are matched against a strict pattern and double-quoted; key
-    values are doubled-quote literals. Raises Unknown on a malformed identifier, a failed read or a malformed answer."""
+    """{rows, cols: {column: {nulls, distinct | None, [sole], [fallback], [null_outside, null_outside_keys, nonnull_inside, nonnull_inside_keys]}}} for the declared
+    table: ONE read-only SELECT over the table (`tail` = the chart-scope ` WHERE ...` the caller has BOUND), answered as ONE line of jsonb. Per column: its NULL count and
+    its distinct count (`count(DISTINCT col)` for a numeric column, so 1 / 1.0 / 1.00 are one value; `col::text` otherwise; not counted for a bytea / json / jsonb / tsvector /
+    vector column unless declared constant: `distinct` is then None); for a declared constant its sole value (min); for every text-like column (and a declared-nullable
+    numeric one) the rows holding a literal fallback by S3's definition (see `_null_fallback_sql`); and for a scoped nullable column the NULL rows outside the declared keys
+    and (mode exactly) the non-NULL rows on them, as counts and up to 5 sample keys. Identifiers are matched against a strict pattern and double-quoted; key values are
+    doubled-quote literals. Raises Unknown on a malformed identifier or a failed read, and on a missing column type or a malformed answer."""
     cols = list(columns or ())
     nullable = {n["column"]: n for n in (spec.get("nullable") or [])}
     consts = {c["column"]: c for c in (spec.get("constants") or [])}
+    allowed = {a["column"]: list(a["values"]) for a in (spec.get("allowed_literals") or [])}
     ids = [table] + cols + [n["scope"]["key_column"] for n in nullable.values() if n.get("scope")]
     if not cols or not all(isinstance(x, str) and _D1_SQL_IDENT.fullmatch(x) for x in ids):
         raise Unknown(f"null_convention_fetch: malformed identifier(s) {ids!r}")
     types = types or {}
-    fb_in = ", ".join(_sql_lit(x) for x in NULL_FALLBACK_LITERALS)
+    if any(c not in types for c in cols):
+        raise Unknown("null_convention_fetch: the data type of a column is unknown")
     parts = []
     for c in cols:
         qc = f'"{c}"'
-        f = [f"'nulls', count(*) FILTER (WHERE {qc} IS NULL)", f"'distinct', count(DISTINCT {qc}::text)"]
+        kind = _null_type_kind(types.get(c))
+        numeric = kind == "num"
+        f = [f"'nulls', count(*) FILTER (WHERE {qc} IS NULL)"]
+        if str(types.get(c) or "").strip().lower() not in NULL_DISTINCT_SKIP_TYPES or c in consts:
+            f.append(f"'distinct', count(DISTINCT {qc}{'' if numeric else '::text'})")
+        else:
+            f.append("'distinct', NULL")
         if c in consts:
-            f.append(f"'sole', min({qc}::text)")
+            f.append(f"'sole', min({qc}{'' if numeric else '::text'})::text")
         n = nullable.get(c)
-        if n:
-            pred = f"lower(regexp_replace({qc}::text, {_WS_TRIM})) IN ({fb_in})"
-            if str(types.get(c) or "").lower() in NULL_NUMERIC_TYPES:
-                pred += f" OR {qc} = 0"
-            f.append(f"'fallback', count(*) FILTER (WHERE {qc} IS NOT NULL AND ({pred}))")
-            sc = n.get("scope")
-            if sc:
-                k = f'"{sc["key_column"]}"'
-                ink = f"coalesce({k}::text IN ({', '.join(_sql_lit(v) for v in sc['null_for'])}), false)"
-                out_w, in_w = f"{qc} IS NULL AND NOT {ink}", f"{qc} IS NOT NULL AND {ink}"
-                f += [f"'null_outside', count(*) FILTER (WHERE {out_w})",
-                      f"'null_outside_keys', to_jsonb(coalesce((array_agg({k}::text ORDER BY {k}::text) FILTER (WHERE {out_w}))[1:5], ARRAY[]::text[]))"]
-                if sc["mode"] == "exactly":
-                    f += [f"'nonnull_inside', count(*) FILTER (WHERE {in_w})",
-                          f"'nonnull_inside_keys', to_jsonb(coalesce((array_agg({k}::text ORDER BY {k}::text) FILTER (WHERE {in_w}))[1:5], ARRAY[]::text[]))"]
+        pred = _null_fallback_sql(c, kind, bool(n), allowed.get(c, ()))
+        if pred:
+            f.append(f"'fallback', count(*) FILTER (WHERE {pred})")
+        if n and n.get("scope"):
+            sc = n["scope"]
+            k = f'"{sc["key_column"]}"'
+            ink = f"coalesce({k}::text IN ({', '.join(_sql_lit(v) for v in sc['null_for'])}), false)"
+            out_w, in_w = f"{qc} IS NULL AND NOT {ink}", f"{qc} IS NOT NULL AND {ink}"
+            f += [f"'null_outside', count(*) FILTER (WHERE {out_w})",
+                  f"'null_outside_keys', to_jsonb(coalesce((array_agg({k}::text ORDER BY {k}::text) FILTER (WHERE {out_w}))[1:5], ARRAY[]::text[]))"]
+            if sc["mode"] == "exactly":
+                f += [f"'nonnull_inside', count(*) FILTER (WHERE {in_w})",
+                      f"'nonnull_inside_keys', to_jsonb(coalesce((array_agg({k}::text ORDER BY {k}::text) FILTER (WHERE {in_w}))[1:5], ARRAY[]::text[]))"]
         parts.append(f"jsonb_build_object('{c}', jsonb_build_object({', '.join(f)}))")
     blob = scalar(f"SELECT jsonb_build_object('rows', count(*), 'cols', ({' || '.join(parts)}))::text FROM \"{table}\"{tail}")
     try:
         got = json.loads(blob or "")
     except (json.JSONDecodeError, TypeError) as exc:
         raise Unknown(f"null_convention_fetch: unparseable read of {table}: {exc}") from exc
-    return _checked_null_stats(got, table, cols, nullable, consts)
+    return _checked_null_stats(got, table, cols, nullable, consts, types)
 
 
 def _isint(x) -> bool:
     return isinstance(x, int) and not isinstance(x, bool)
 
 
-def _checked_null_stats(got, table: str, cols, nullable: dict, consts: dict) -> dict:
-    """The fetched / supplied stats, shape-checked: a malformed answer is Unknown, never a PASS on missing numbers."""
+def _checked_null_stats(got, table: str, cols, nullable: dict, consts: dict, types=None) -> dict:
+    """The fetched / supplied stats, shape-checked: a malformed answer is Unknown, never a PASS on missing numbers. `distinct` may be None only for a column of a
+    skipped type that is not declared constant; `fallback` is required exactly where the column type can hold one."""
+    types = types or {}
     ok = isinstance(got, dict) and _isint(got.get("rows")) and isinstance(got.get("cols"), dict)
     if ok:
         for c in cols:
             d = got["cols"].get(c)
-            ok = ok and isinstance(d, dict) and _isint(d.get("nulls")) and _isint(d.get("distinct"))
+            ok = ok and isinstance(d, dict) and _isint(d.get("nulls"))
+            skipped = str(types.get(c) or "").strip().lower() in NULL_DISTINCT_SKIP_TYPES and c not in consts
+            ok = ok and ("distinct" in d) and ((d["distinct"] is None) if skipped else _isint(d["distinct"]))
             if ok and c in consts:
                 ok = "sole" in d and (d["sole"] is None or isinstance(d["sole"], str))
             if ok and c in nullable:
@@ -2264,29 +2376,41 @@ def _checked_null_stats(got, table: str, cols, nullable: dict, consts: dict) -> 
     return got
 
 
+def _same_constant(a, b, kind: str) -> bool:
+    """A declared constant's text compared with the stored one: numerics by value (1 = 1.0 = 1.00), everything else as text."""
+    if kind == "num":
+        try:
+            import decimal
+            return decimal.Decimal(str(a)) == decimal.Decimal(str(b))
+        except (decimal.InvalidOperation, ValueError):
+            return str(a) == str(b)
+    return a == b
+
+
 def grade_null_convention(spec: dict, columns, types, stats) -> dict:
-    """The declared null convention verified (pure). Order: (1) a declared column the table does not carry is a FAIL before any statistic is read; (2) under 2 rows
-    is NO_DETECTOR (variation and constants cannot be shown); then every defect is collected: an undeclared NULL (a NULL in a column that is not declared
-    nullable), a literal fallback in a declared-nullable column, a scoped NULL outside the declared keys (both modes) or a value on a reserved-NULL key (mode
-    exactly), a column that holds ONE value on every row (NULL counted as a value) and is not declared constant, a declared constant that varies or differs from its
-    declared value. Any defect is a FAIL naming the columns and counts. A declared-nullable column that HAS NULL rows but no key scope has a meaning that is declared,
-    not machine-checked: PARTIAL. Otherwise PASS. A malformed `stats` raises Unknown."""
+    """The declared null convention verified (pure). Order: (1) a declared column the table does not carry (nullable, constant, scope key, allowed-literals) is a FAIL
+    before any statistic is read; (2) under 2 rows is NO_DETECTOR (variation and constants cannot be shown); then every defect is collected: an undeclared NULL (a NULL in
+    a column that is not declared nullable), a literal fallback (S3's definition, `_null_fallback_sql`) in ANY text-like column or a 0 in a declared-nullable numeric
+    one, a scoped NULL outside the declared keys (both modes) or a value on a reserved-NULL key (mode exactly), a column that holds ONE value on every row (NULL counted as a
+    value; numerics by value) and is not declared constant, a declared constant that varies or differs from its declared `value`. Any defect is a FAIL naming the columns
+    and counts. A declared-nullable column that HAS NULL rows but no key scope has a meaning that is declared, not machine-checked: PARTIAL. Otherwise PASS, naming the
+    columns actually checked. A malformed `stats` raises Unknown."""
     table = spec["table"]
     nullable = {n["column"]: n for n in spec["nullable"]}
     consts = {c["column"]: c for c in spec["constants"]}
     cols = list(columns)
-    keys = {n["scope"]["key_column"] for n in nullable.values() if n.get("scope")}
-    absent = sorted({c for c in [*nullable, *consts, *keys] if c not in cols})
+    types = types or {}
+    absent = sorted({c for c in _null_declared_columns(spec) if c not in cols})
     if absent:
         return dict(v=FAIL, declared=True, convention=dict(table=table, absent=absent),
                     measured=f"declared column(s) {', '.join(absent)} are not columns of {table}: the declaration names columns the table does not carry")
-    got = _checked_null_stats(stats, table, cols, nullable, consts)
+    got = _checked_null_stats(stats, table, cols, nullable, consts, types)
     rows, per = got["rows"], got["cols"]
     if rows < 2:
         return dict(v=NO_DET, declared=True, convention=dict(table=table, rows=rows),
                     measured=f"NO_DETECTOR — {table} has {rows} row(s): constants and variation cannot be shown on fewer than 2 rows (vacuous)")
     undecl_nulls = {c: per[c]["nulls"] for c in cols if c not in nullable and per[c]["nulls"]}
-    fallbacks = {c: per[c]["fallback"] for c in nullable if per[c]["fallback"]}
+    fallbacks = {c: per[c]["fallback"] for c in cols if per[c].get("fallback")}
     scope_viol: dict = {}
     for c, n in nullable.items():
         sc = n.get("scope")
@@ -2297,23 +2421,27 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
             scope_viol.setdefault(c, {})["null_outside"] = dict(rows=d["null_outside"], keys=list(d["null_outside_keys"]))
         if sc["mode"] == "exactly" and d["nonnull_inside"]:
             scope_viol.setdefault(c, {})["valued_reserved"] = dict(rows=d["nonnull_inside"], keys=list(d["nonnull_inside_keys"]))
-    one_value = {c: per[c]["distinct"] + (1 if per[c]["nulls"] else 0) <= 1 for c in cols}          # NULL counts as a value: {NULL, 'x'} varies
-    undecl_consts = [c for c in cols if c not in consts and one_value[c]]
+    not_examined = [c for c in cols if per[c]["distinct"] is None]
+    one_value = {c: per[c]["distinct"] + (1 if per[c]["nulls"] else 0) <= 1 for c in cols if per[c]["distinct"] is not None}   # NULL counts as a value: {NULL, 'x'} varies
+    undecl_consts = [c for c in cols if c not in consts and one_value.get(c)]
     const_viol = []
     for c, d in consts.items():
         if not one_value[c]:
             const_viol.append(c)
-        elif d.get("value") is not None and per[c]["nulls"] == 0 and per[c].get("sole") != d["value"]:
+        elif d.get("value") is not None and per[c]["nulls"] == 0 and not _same_constant(per[c].get("sole"), d["value"], _null_type_kind(types.get(c))):
             const_viol.append(c)
     unscoped = [c for c, n in nullable.items() if not n.get("scope") and per[c]["nulls"] > 0]
+    fb_checked = [c for c in cols if "fallback" in per[c]]
     block = dict(table=table, rows=rows, undeclared_nulls=undecl_nulls, fallbacks=fallbacks, scope_violations=scope_viol,
-                 undeclared_constants=undecl_consts, constant_violations=const_viol, unscoped_null_columns=unscoped)
+                 undeclared_constants=undecl_consts, constant_violations=const_viol, unscoped_null_columns=unscoped,
+                 fallback_checked_columns=fb_checked, constants_not_examined=not_examined)
     problems = []
     if undecl_nulls:
         problems.append("undeclared NULL in column(s) " + ", ".join(f"{c} ({n} row(s))" for c, n in sorted(undecl_nulls.items()))
                         + " (a NULL is permitted only in a declared nullable column)")
     if fallbacks:
-        problems.append("literal fallback standing in for NULL in declared-nullable column(s) " + ", ".join(f"{c} ({n} row(s))" for c, n in sorted(fallbacks.items())))
+        problems.append("literal fallback (S3's placeholder definition: blank, N/A, none, 0 ... after normalisation) standing in for a value or for NULL in column(s) "
+                        + ", ".join(f"{c} ({n} row(s){'' if c in nullable else '; not declared nullable'})" for c, n in sorted(fallbacks.items())))
     for c, v in sorted(scope_viol.items()):
         if "null_outside" in v:
             problems.append(f"{c}: NULL outside the declared keys on {v['null_outside']['rows']} row(s) (keys: {', '.join(map(str, v['null_outside']['keys']))})")
@@ -2337,14 +2465,18 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
     return dict(v=PASS, declared=True, convention=block,
                 measured=f"{table} ({rows} row(s)): NULL only in the declared nullable column(s) {', '.join(nullable) or 'none'}"
                          + (f", verified on keys: {'; '.join(scoped)}" if scoped else "")
-                         + f"; no literal fallback; {len(consts)} declared constant column(s) constant, no other column constant")
+                         + f"; no literal fallback in the {len(fb_checked)} text-like / declared-nullable column(s) checked ({', '.join(fb_checked) or 'none'})"
+                         + f"; {len(consts)} declared constant column(s) constant, no other column constant"
+                         + (f"; constants NOT examined for {', '.join(not_examined)} (type not distinct-counted: cost)" if not_examined else ""))
 
 
 def null_convention_check(nc: dict, own: dict, exists, scope) -> dict:
     """measure()'s record for an asset that DECLARES `null_convention`. `own`: the asset's owned tables {table: (columns, types, defaults)}; `exists`: the tables
-    production carries; `scope`: (tail, label) the declared table is read under, None when its rows cannot be scoped. A declared table the asset does not own is
-    refused (NO_DETECTOR with the disagreement reported, nothing read); so is one production lacks, one with unknown columns, or one whose scope is unknown. A failed
-    read degrades only this check (ERRORED)."""
+    production carries; `scope`: (tail, label) the declared table is read under, the tail already BOUND to the chart (`_bind_chart`), None when its rows cannot be scoped.
+    A declared table the asset does not own is refused (NO_DETECTOR with the disagreement reported, nothing read); so is one production lacks, one with unknown columns or
+    types, or one whose scope is unknown. A declared column (nullable, constant, scope key, allowed literal) the table does not carry is a FAIL before any SELECT. A table read
+    as a whole-table UPPER BOUND (rows of other charts count) never reads PASS or FAIL: PARTIAL, naming what the whole table showed (as Null.blank_rows does). A failed read
+    (including a client timeout, an OS or value error) degrades only this check (ERRORED)."""
     table = nc["table"]
     if table not in own:
         return dict(v=NO_DET, declared=True,
@@ -2356,16 +2488,22 @@ def null_convention_check(nc: dict, own: dict, exists, scope) -> dict:
     cols, types = own[table][0], own[table][1]
     if not isinstance(cols, (list, tuple, set)) or not cols:
         return dict(v=NO_DET, declared=True, measured=f"NO_DETECTOR — the columns of {table} are unknown (never 'zero columns')")
+    cols = sorted(cols) if not isinstance(cols, list) else list(cols)
+    missing = sorted({c for c in _null_declared_columns(nc) if c not in cols})
+    if missing:
+        return grade_null_convention(nc, cols, types, None)           # a declaration naming what the table does not carry: FAIL before any SELECT
+    if not isinstance(types, dict) or any(c not in types for c in cols):
+        return dict(v=NO_DET, declared=True, measured=f"NO_DETECTOR — the data types of the columns of {table} were not read: a literal fallback cannot be tested without them")
     if scope is None:
         return dict(v=NO_DET, declared=True,
                     measured=f"NO_DETECTOR — the rows of {table} cannot be scoped to this asset (shared table, count_sql not a plain count): the scope is unknown")
-    cols = sorted(cols) if not isinstance(cols, list) else list(cols)
     try:
-        if not {c for c in [*(n["column"] for n in nc["nullable"]), *(c["column"] for c in nc["constants"])]} <= set(cols):
-            return grade_null_convention(nc, cols, types, None)
         rec = grade_null_convention(nc, cols, types, null_convention_fetch(table, cols, types, nc, scope[0]))
-    except Unknown as exc:                                      # R41: this check's failure degrades only this check
+    except (Unknown, OSError, ValueError) as exc:                 # R41: this check's failure (a client timeout included) degrades only this check
         return dict(v=ERRORED, declared=True, measured=f"check errored: {exc}")
+    if scope[1] == UPPER_BOUND and rec["v"] in (PASS, FAIL, PARTIAL):
+        return dict(rec, v=PARTIAL, measured=f"the table was read as a {UPPER_BOUND} (count_sql is not chart-scoped and the table carries chart_id): rows of other charts "
+                                             f"count, so this chart is neither passed nor failed on them (the whole table reads {rec['v']}: {rec['measured']}); chart-scope the count to decide")
     return dict(rec, measured=f"{rec['measured']} [{scope[1]}]")
 
 
@@ -6665,8 +6803,18 @@ def _measure_null_convention(decl, nc, r, own, cat, shared, base) -> dict:
     pf = list(decl.get("prose_fields") or [])
     conv_cols = [n["column"] for n in nc["nullable"]]
     entries = list(dict.fromkeys(pf + conv_cols))
-    scope = _table_scope(table, r, own, shared) if table in own else None
-    conv = null_convention_check(nc, own, cat.get("exists") or (), scope)
+    scope = None
+    try:
+        sc = _table_scope(table, r, own, shared) if table in own else None
+        # the tail still holds the `$1` chart parameter: bind it (as _group_counts does) before the read, or every chart-scoped asset would read ERRORED
+        scope = None if sc is None else (_bind_chart(sc[0], CHART_ID), sc[1])
+        conv = null_convention_check(nc, own, cat.get("exists") or (), scope)
+    except Unknown as exc:                                  # an unbindable scope (a phantom chart id ...) degrades only this check
+        conv = dict(v=ERRORED, declared=True, measured=f"check errored: {exc}")
+    # a declared prose field that lives outside the declared table is not covered by the convention detector (S3's placeholder definition is applied to the declared
+    # table only): the lift needs full coverage, so such an asset stays capped (a FAIL still flips the cell)
+    table_cols = set(own[table][0] or ()) if table in own and isinstance(own[table][0], (list, tuple, set)) else set()
+    uncovered = [e for e in pf if parse_prose_field(e)[0] not in table_cols]
     counts = None
     if table in own and table in (cat.get("exists") or ()) and entries:
         groups: dict = {}
@@ -6689,9 +6837,13 @@ def _measure_null_convention(decl, nc, r, own, cat, shared, base) -> dict:
     except (Unknown, DeclarationsError):
         return {c: dict(base[c], null_convention=_null_annotation(conv)) for c in NULL_CHECKS}
     got = earn_null_lift(entries, sd, br, conv, nc)
-    if got:
+    if got and not (uncovered and all(v.get("v") == PASS for v in got.values())):
         return got
-    return {"Null.schema_default": dict(sd0, null_convention=_null_annotation(conv)), "Null.blank_rows": dict(br0, null_convention=_null_annotation(conv))}
+    note = _null_annotation(conv)
+    if uncovered:
+        note["uncovered_prose_fields"] = uncovered
+        note["measured"] = f"{note.get('measured')} [not lifted: declared prose field(s) {', '.join(uncovered)} are outside the declared table {table}]"
+    return {"Null.schema_default": dict(sd0, null_convention=dict(note)), "Null.blank_rows": dict(br0, null_convention=dict(note))}
 
 
 def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> dict:
@@ -6742,7 +6894,7 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
         # S1 (pin 13): the asset's declared null convention. Fault-isolated: a failure here leaves the Null records as prose_checks wrote them.
         try:
             out.update(_measure_null_convention(decl, nc, r, own, cat, shared, out))
-        except Unknown as exc:
+        except (Unknown, OSError, ValueError) as exc:
             out.update({c: dict(out[c], null_convention=dict(declared=True, verified=False, v=ERRORED, measured=f"check errored: {exc}")) for c in NULL_CHECKS})
     return out
 

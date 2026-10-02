@@ -51,10 +51,18 @@ def census_obj(ms, *, revision=None, fingerprint=None, asset=ASSET, layer=LAYER,
     return head
 
 
-def world(tmp_path, ms, *, head=None, text=None, path=CFILE, census_src=None, sha_of=None, certs=(SD, BR), verdict="PASS", file_present=True):
+def decl_text_for(ms, asset=ASSET):
+    """The declarations file the ref holds: it declares the null_convention the (lifted) measurements' block names, table / evidence / why (L2)."""
+    blk = (ms.get(SD) or {}).get("null_convention") or {}
+    ent = {"null_convention": {k: blk.get(k) for k in ("table", "evidence", "why")}} if blk.get("table") else {}
+    return json.dumps({"version": "1.0.0", "assets": {asset: ent}}, indent=2) + "\n"
+
+
+def world(tmp_path, ms, *, head=None, text=None, path=CFILE, census_src=None, sha_of=None, certs=(SD, BR), verdict="PASS", file_present=True, decl=None):
     """A repo whose ledger holds `certs` (Null PASS certificates citing the census file committed with measurements `ms`)."""
     pathlib.Path(tmp_path).mkdir(parents=True, exist_ok=True)
     w = World(tmp_path, census=census_src or CENSUS_TEXT)
+    w.declarations_text = decl if decl is not None else decl_text_for(ms)
     body = text if text is not None else json.dumps(head if head is not None else census_obj(ms))
     if file_present:
         w.raw[path] = body
@@ -62,7 +70,8 @@ def world(tmp_path, ms, *, head=None, text=None, path=CFILE, census_src=None, sh
     for c in certs:
         e = ac.CRITERION_REGISTRY[c]
         w.certs.append(cert(ASSET, c, verdict, detector=e["detector"], layer=LAYER, revision=e["revision"], gate=e["gate"],
-                            evidence=dict(census_run_id=RUN_ID, census_file=path, census_sha256=digest)))
+                            evidence=dict(census_run_id=RUN_ID, census_file=path, census_sha256=digest),
+                            declarations_sha256=sha(w.declarations_text.encode())))
     w.disps.append(disp(ASSET, "keep"))
     w.commit()
     return w
@@ -415,15 +424,18 @@ def _real_asset_world(tmp_path, null_ms):
     rev, fp = _stamp_of(src, tmp_path)
     body = json.dumps(census_obj(null_ms, revision=rev, fingerprint=fp))
     w.raw[CFILE] = body
+    w.declarations_text = decl_text_for(null_ms)
+    dsha = sha(w.declarations_text.encode())
     ev = dict(census_run_id=RUN_ID, census_file=CFILE, census_sha256=sha(body.encode()))
     for c in sorted(req):
         e = ac.CRITERION_REGISTRY[c]
         if c in blocked:
-            w.certs.append(cert(ASSET, c, "N/A", detector=e["detector"], layer=layer, revision=e["revision"], gate=e["gate"],
+            w.certs.append(cert(ASSET, c, "N/A", detector=e["detector"], layer=layer, revision=e["revision"], gate=e["gate"], declarations_sha256=dsha,
                                 na=dict(rule_id=f"{c}#measured:x-cause", decision_id="N-test", basis="measured_cause", cause="x-cause", facts=None)))
         else:
             w.certs.append(cert(ASSET, c, "PASS", detector=e["detector"], layer=layer, revision=e["revision"], gate=e["gate"],
-                                citation_state="sourced" if c in ("Carr.D1", "Ldgr.source_presence") else ..., **(dict(evidence=ev) if c in null_c else {})))
+                                citation_state="sourced" if c in ("Carr.D1", "Ldgr.source_presence") else ..., declarations_sha256=dsha,
+                                **(dict(evidence=ev) if c in null_c else {})))
     w.disps.append(disp(ASSET, "keep"))
     w.commit()
     return w
@@ -458,3 +470,64 @@ def test_end_to_end_an_asset_is_elevated_exactly_when_its_null_lift_is_earned(tm
         defect(ms)
         w2 = _real_asset_world(tmp_path / f"d{i}", ms)
         assert ASSET not in w2.elevated(T), defect.__name__
+
+
+# ───────────────────────── adversarial review round ─────────────────────────
+
+def test_L2_a_hand_built_complete_block_without_a_matching_declaration_stays_capped(tmp_path):
+    ms = lifted()
+    assert satisfied(world(tmp_path / "ok", ms)) == [True, True]
+    nodecl = json.dumps({"version": "1.0.0", "assets": {}}) + "\n"
+    assert satisfied(world(tmp_path / "a", ms, decl=nodecl)) == [False, False]                          # no entry for the asset
+    other = json.dumps({"version": "1.0.0", "assets": {"ga_other": {"null_convention": {k: ms[SD]["null_convention"][k] for k in ("table", "evidence", "why")}}}})
+    assert satisfied(world(tmp_path / "b", ms, decl=other)) == [False, False]                           # declared for another asset
+    for k in ("table", "evidence", "why"):
+        d = json.loads(decl_text_for(ms))
+        d["assets"][ASSET]["null_convention"][k] = "something else entirely"
+        assert satisfied(world(tmp_path / f"c{k}", ms, decl=json.dumps(d) + "\n")) == [False, False], k
+        d["assets"][ASSET]["null_convention"].pop(k)
+        assert satisfied(world(tmp_path / f"d{k}", ms, decl=json.dumps(d) + "\n")) == [False, False], k
+    d = json.loads(decl_text_for(ms))
+    d["assets"][ASSET] = {"kind": "data"}                                                               # the asset is declared but declares no null_convention
+    assert satisfied(world(tmp_path / "e", ms, decl=json.dumps(d) + "\n")) == [False, False]
+    assert satisfied(world(tmp_path / "f", ms, decl="not json\n")) == [False, False]
+
+
+def _two_asset_world(tmp_path, ms_a, ms_b):
+    """ONE census file, ONE ref, two assets: ga_x (ms_a) and ga_y (ms_b)."""
+    pathlib.Path(tmp_path).mkdir(parents=True, exist_ok=True)
+    w = World(tmp_path, census=CENSUS_TEXT)
+    head = census_obj(ms_a, extra_assets=[dict(asset_id="ga_y", layer=LAYER, measurements=ms_b)])
+    body = json.dumps(head)
+    w.raw[CFILE] = body
+    decl = json.loads(decl_text_for(ms_a))
+    decl["assets"]["ga_y"] = json.loads(decl_text_for(ms_b))["assets"][ASSET]
+    w.declarations_text = json.dumps(decl) + "\n"
+    for asset in (ASSET, "ga_y"):
+        for c in (SD, BR):
+            e = ac.CRITERION_REGISTRY[c]
+            w.certs.append(cert(asset, c, "PASS", detector=e["detector"], layer=LAYER, revision=e["revision"], gate=e["gate"],
+                                evidence=dict(census_run_id=RUN_ID, census_file=CFILE, census_sha256=sha(body.encode())),
+                                declarations_sha256=sha(w.declarations_text.encode())))
+        w.disps.append(disp(asset, "keep"))
+    w.commit()
+    return w
+
+
+def test_the_lift_cache_never_leaks_between_assets_at_one_ref_in_one_process(tmp_path):
+    """Two assets share the ref, the census source and the driver: only the request (their measurements) tells them apart. One earned, one forged: the answers
+    differ in the same process whichever is asked first, and asking again returns the same answers."""
+    good, forged = lifted(), lifted()
+    _forge_verified(forged)
+    for i, (a, b) in enumerate(((good, forged), (forged, good))):
+        T._E63_NULL_CACHE.clear()
+        w = _two_asset_world(tmp_path / str(i), a, b)
+        state, *_ = T._e63_load(w.last, str(w.repo))
+
+        def ask(asset, crit):
+            return T._e63_satisfies(state.by_key[f"{asset}|gate|{crit}"][-1], state, False)
+        want_x, want_y = (i == 0), (i == 1)
+        for _round in (1, 2):
+            assert [ask(ASSET, SD), ask(ASSET, BR)] == [want_x, want_x], (i, _round)
+            assert [ask("ga_y", SD), ask("ga_y", BR)] == [want_y, want_y], (i, _round)
+        assert len(T._E63_NULL_CACHE) >= 4                                                  # one entry per (asset, criterion) request, none shared

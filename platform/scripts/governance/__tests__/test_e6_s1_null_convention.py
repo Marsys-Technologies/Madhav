@@ -33,7 +33,7 @@ NA, NO_DET, PASS, FAIL, PARTIAL, ERRORED = ac.NA, ac.NO_DET, ac.PASS, ac.FAIL, a
 EV = "platform/scripts/governance/asset_census.py:1"          # an existing repo file: a checkable evidence pointer
 SD, BR = "Null.schema_default", "Null.blank_rows"
 WHY = "one seed version, one shared passage"
-MEANS = "the retrieved passage states no per-graha effect clause for this graha (a disclosed gap, reserved NULL)"
+MEANS = "the retrieved passage states no per-graha effect clause for this graha (a disclosed gap, reserved)"
 
 LATTA_COLS = ["table_version", "graha", "count_from_graha", "direction", "effect_description", "affliction_condition", "source_citation", "verse_ref",
               "created_at"]
@@ -363,7 +363,7 @@ def test_the_fetch_is_one_read_only_select_that_names_every_column_and_the_scope
     for c in LATTA_COLS:
         assert f'"{c}"' in sql, c
     assert "'Mars'" in sql and "'Saturn'" in sql and '"graha"' in sql                                   # the scope literals and key column
-    for lit in ac.NULL_FALLBACK_LITERALS:
+    for lit in ac.LDGR_PLACEHOLDERS:
         assert "'" + lit + "'" in sql, lit
     assert re.search(r'"count_from_graha"\s*=\s*0', sql) is None                                       # the numeric 0 sentinel is read only on a declared-nullable column
     assert "count(DISTINCT" in sql
@@ -900,3 +900,313 @@ def test_REAL_SQL_the_whole_chain_lifts_the_cap_on_the_clean_table_and_not_on_a_
     s3._real(monkeypatch, disposable_pg, LATTA_SQL + ["UPDATE latta_t SET effect_description = '' WHERE graha = 'Mars';"])
     m = ac._measure_prose("bg_phaladeepika_latta", decl, r, None, cat, [], set(), (), set())
     assert ac.rollup_asset("L0", m)["Null"]["v"] == FAIL and m[BR]["v"] == FAIL
+
+
+# ═════════════════════ adversarial review round: F1, F2, L1-L6 and the survivors ═════════════════════
+
+# ---- F1: the chart-scope parameter must be bound before the convention read -------------------------------------------------------------------
+
+CHART_R = dict(target_table="bg_phaladeepika_latta", count_sql="SELECT count(*) FROM bg_phaladeepika_latta WHERE chart_id = $1")
+
+
+def test_F1_the_chart_scope_is_bound_before_the_convention_read_through_measure_prose(monkeypatch):
+    seen = []
+    monkeypatch.setattr(ac, "null_convention_fetch", lambda t, cols, types, spec, tail="": seen.append(tail) or STATS())
+    monkeypatch.setattr(ac, "prose_row_counts", lambda t, es, tail, types=None: {e: dict(checkable=6, blank=0) for e in es})
+    cols = LATTA_COLS + ["chart_id"]
+    cat = _cat(cols=cols, types=dict(LATTA_TYPES, chart_id="uuid"))
+    spec = SPEC(constants=SPEC()["constants"] + [dict(column="chart_id", why=WHY)])
+    st = STATS()
+    st["cols"]["chart_id"] = _col(8, distinct=1, sole="c")
+    monkeypatch.setattr(ac, "null_convention_fetch", lambda t, c, ty, sp, tail="": seen.append(tail) or st)
+    m = ac._measure_prose("bg_phaladeepika_latta", dict(null_convention=spec, prose_fields=None), CHART_R, None, cat, [], set(), (), set())
+    assert seen and all("$1" not in x and ac.CHART_ID in x for x in seen), seen              # bound exactly as _group_counts binds it
+    assert m[SD]["v"] == PASS and m[BR]["v"] == PASS
+
+
+def test_F1_an_unbindable_scope_degrades_only_this_check(monkeypatch):
+    monkeypatch.setattr(ac, "CHART_ID", "362f9f17-0000-0000-0000-000000000000")               # the dead phantom: refused by _bind_chart
+    monkeypatch.setattr(ac, "null_convention_fetch", lambda *a, **k: pytest.fail("an unbound scope is never read"))
+    monkeypatch.setattr(ac, "prose_row_counts", lambda t, es, tail, types=None: {e: dict(checkable=6, blank=0) for e in es})
+    cat = _cat(cols=LATTA_COLS + ["chart_id"], types=dict(LATTA_TYPES, chart_id="uuid"))
+    m = ac._measure_prose("bg_phaladeepika_latta", dict(null_convention=SPEC(), prose_fields=None), CHART_R, None, cat, [], set(), (), set())
+    assert m[SD]["null_convention"]["v"] == ERRORED and m[SD]["v"] != PASS and m[BR]["v"] != PASS
+
+
+CHART_SQL = ["CREATE TEMP TABLE cs_t (chart_id text NOT NULL, graha text NOT NULL, count_from_graha smallint, effect_description text, "
+             "table_version text NOT NULL) ON COMMIT DROP;",
+             "INSERT INTO cs_t VALUES " + ",".join(
+                 f"('{ac.CHART_ID}','{g}',{i},{'NULL' if g in ('Mars', 'Saturn') else repr('effect of ' + g)},'v01')"
+                 for i, g in enumerate(("Sun", "Mars", "Jupiter", "Saturn", "Venus", "Mercury", "Rahu", "Moon"), 1)) + ";"]
+CS_TYPES = {"chart_id": "text", "graha": "text", "count_from_graha": "smallint", "effect_description": "text", "table_version": "text"}
+
+
+def _cs_spec():
+    return dict(table="cs_t", nullable=[NULLABLE("exactly")], constants=[dict(column="chart_id", why=WHY), dict(column="table_version", why=WHY)],
+                why=SPEC()["why"], evidence=EV)
+
+
+def test_REAL_SQL_F1_a_chart_scoped_count_sql_earns_the_lift_end_to_end_and_other_charts_rows_never_fail_it(monkeypatch, disposable_pg):
+    other = "('00000000-0000-0000-0000-000000000001','Sun',NULL,NULL,'v99')"                 # another chart's row: undeclared NULL, a different constant
+    s3._real(monkeypatch, disposable_pg, CHART_SQL + [f"INSERT INTO cs_t VALUES {other};"])
+    cat = dict(exists={"cs_t"}, cols={"cs_t": list(CS_TYPES)}, keys={"cs_t": [["chart_id", "graha"]]}, views=set(), types={"cs_t": dict(CS_TYPES)}, defaults={"cs_t": {}},
+               types_error=None)
+    r = dict(target_table="cs_t", count_sql="SELECT count(*) FROM cs_t WHERE chart_id = $1")
+    m = ac._measure_prose("bg_phaladeepika_latta", dict(null_convention=_cs_spec(), prose_fields=None), r, None, cat, [], set(), (), set())
+    assert m[SD]["v"] == PASS and m[BR]["v"] == PASS, (m[SD], m[BR])                          # the `$1` is bound; this chart's rows are clean
+    assert ac.rollup_asset("L1", m)["Null"]["v"] == PASS
+
+
+def test_REAL_SQL_L1_an_unbound_whole_table_read_never_fails_on_another_charts_rows(monkeypatch, disposable_pg):
+    other = "('00000000-0000-0000-0000-000000000001','Sun',NULL,NULL,'v99')"
+    s3._real(monkeypatch, disposable_pg, CHART_SQL + [f"INSERT INTO cs_t VALUES {other};"])
+    cat = dict(exists={"cs_t"}, cols={"cs_t": list(CS_TYPES)}, keys={"cs_t": [["chart_id", "graha"]]}, views=set(), types={"cs_t": dict(CS_TYPES)}, defaults={"cs_t": {}},
+               types_error=None)
+    r = dict(target_table="cs_t", count_sql="SELECT count(*) FROM cs_t")                          # no chart binding, the table carries chart_id: a whole-table upper bound
+    m = ac._measure_prose("bg_phaladeepika_latta", dict(null_convention=_cs_spec(), prose_fields=None), r, None, cat, [], set(), (), set())
+    conv = m[BR]["null_convention"]
+    assert conv["v"] == PARTIAL and ac.UPPER_BOUND in conv["measured"] and "FAIL" in conv["measured"], conv     # the whole table reads FAIL; this chart is not failed on it
+    assert m[BR]["v"] != FAIL and m[SD]["v"] != PASS and m[BR]["v"] != PASS
+    assert ac.rollup_asset("L1", m)["Null"]["v"] != FAIL
+
+
+def test_L1_an_upper_bound_clean_table_is_partial_never_pass_and_a_scoped_one_is_unchanged(monkeypatch):
+    for label, want in ((ac.UPPER_BOUND, PARTIAL), ("chart-scoped by count_sql", PASS), ("whole-table (table has no chart_id column)", PASS)):
+        monkeypatch.setattr(ac, "null_convention_fetch", lambda *a, **k: STATS())
+        r = ac.null_convention_check(SPEC(), _own(), {"bg_phaladeepika_latta"}, ("", label))
+        assert r["v"] == want, (label, r)
+    st = STATS(count_from_graha=dict(nulls=1))
+    monkeypatch.setattr(ac, "null_convention_fetch", lambda *a, **k: st)
+    r = ac.null_convention_check(SPEC(), _own(), {"bg_phaladeepika_latta"}, ("", ac.UPPER_BOUND))
+    assert r["v"] == PARTIAL and "reads FAIL" in r["measured"]
+    assert ac.null_convention_check(SPEC(), _own(), {"bg_phaladeepika_latta"}, ("", "chart-scoped by count_sql"))["v"] == FAIL
+
+
+# ---- F2: ONE definition of "literal fallback" (S3's), on every text-like column -----------------------------------------------------------------
+
+F2_LITERALS = ["0", "Ｎ/Ａ", "ＮＯＮＥ", "n​/a", "n­/a", "N/A.", "N.A", "N / A", "—", "–", "...", "pending", "TBD.", "missing",
+               "false", "not found", "　", " ", "", "   ", "N/A", "n/a", " None ", "NULL", "-", "unknown", "TBD", "{}", "Not Traced", "nil", "not applicable"]
+
+
+def _lit_ids(v):
+    return "lit-" + "-".join(f"{ord(c):04x}" for c in v)[:40] if v else "lit-empty"
+
+
+@pytest.mark.parametrize("literal", F2_LITERALS, ids=_lit_ids)
+def test_REAL_SQL_F2_every_placeholder_form_in_a_declared_nullable_text_column_flips_the_cell(monkeypatch, disposable_pg, literal):
+    lit = literal.replace("'", "''")
+    s3._real(monkeypatch, disposable_pg, LATTA_SQL + [f"UPDATE latta_t SET effect_description = '{lit}' WHERE graha = 'Jupiter';"])
+    r = _check(_rspec("only"))
+    assert r["v"] == FAIL and r["convention"]["fallbacks"] == {"effect_description": 1}, (literal, r)
+
+
+@pytest.mark.parametrize("literal", ["", "   ", "N/A", "none", "ＮＯＮＥ", "n​/a", "-", "pending", "false", "0", "　"], ids=_lit_ids)
+def test_REAL_SQL_F2_a_placeholder_in_a_NON_nullable_text_column_is_a_fallback_too(monkeypatch, disposable_pg, literal):
+    lit = literal.replace("'", "''")
+    s3._real(monkeypatch, disposable_pg, LATTA_SQL + [f"UPDATE latta_t SET direction = '{lit}' WHERE graha = 'Sun';"])
+    r = _check()
+    assert r["v"] == FAIL and r["convention"]["fallbacks"].get("direction") == 1, (literal, r)
+    assert "not declared nullable" in r["measured"]
+
+
+def test_REAL_SQL_F2_a_legitimate_value_that_collides_with_the_list_must_be_declared_never_guessed(monkeypatch, disposable_pg):
+    s3._real(monkeypatch, disposable_pg, LATTA_SQL + ["UPDATE latta_t SET direction = 'none' WHERE graha = 'Sun';"])
+    assert _check()["v"] == FAIL
+    allowed = _rspec(allowed_literals=[dict(column="direction", values=["none"], why="a graha with no direction is stored as the word none")])
+    assert _check(allowed)["v"] == PASS
+    still = _rspec(allowed_literals=[dict(column="direction", values=["none"], why="a graha with no direction is stored as the word none")])
+    s3._real(monkeypatch, disposable_pg, LATTA_SQL + ["UPDATE latta_t SET direction = 'N/A' WHERE graha = 'Sun';"])
+    assert _check(still)["v"] == FAIL                                                       # only the declared literal is allowed, not its neighbours
+
+
+def test_REAL_SQL_F2_the_pass_text_names_the_columns_actually_checked(monkeypatch, disposable_pg):
+    s3._real(monkeypatch, disposable_pg, LATTA_SQL)
+    r = _check()
+    assert r["v"] == PASS
+    for c in ("table_version", "graha", "direction", "effect_description", "affliction_condition", "source_citation", "verse_ref"):
+        assert c in r["measured"], c
+    assert "count_from_graha" not in r["convention"]["fallback_checked_columns"]              # a non-nullable smallint cannot hold a text fallback
+    assert set(r["convention"]["fallback_checked_columns"]) >= {"table_version", "graha", "direction", "effect_description"}
+
+
+def test_REAL_SQL_F2_array_and_json_columns_use_the_same_definition(monkeypatch, disposable_pg):
+    sp = dict(table="aj_t", nullable=[dict(column="notes", means="the source gives no note for this row", scope=dict(key_column="k", null_for=["a"], mode="only")),
+                                      dict(column="tags", means="no tag was recorded for this row at all", scope=dict(key_column="k", null_for=["a"], mode="only"))],
+              constants=[], why=SPEC()["why"], evidence=EV)
+    types = {"k": "text", "notes": "jsonb", "tags": "ARRAY", "v": "integer"}
+    for notes, tags, ok in (("'{\"x\":1}'", "ARRAY['t1']", True), ("'\"N/A\"'", "ARRAY['t1']", False), ("'null'", "ARRAY['t1']", False), ("'[]'", "ARRAY['t1']", False),
+                            ("'{\"x\":1}'", "ARRAY['t1','none']", False), ("'{\"x\":1}'", "ARRAY[]::text[]", False), ("'{\"x\":1}'", "ARRAY['Ｎ/Ａ']", False)):
+        s3._real(monkeypatch, disposable_pg, [
+            "CREATE TEMP TABLE aj_t (k text PRIMARY KEY, notes jsonb, tags text[], v int NOT NULL) ON COMMIT DROP;",
+            f"INSERT INTO aj_t VALUES ('a', NULL, NULL, 1), ('b', {notes}, {tags}, 2), ('c', '{{\"y\":2}}', ARRAY['t2'], 3);"])
+        r = ac.null_convention_check(sp, {"aj_t": (["k", "notes", "tags", "v"], types, {})}, {"aj_t"}, ("", "whole-table"))
+        assert (r["v"] == PASS) is ok, (notes, tags, r)
+
+
+def test_REAL_SQL_F2_the_ground_truth_of_the_shared_predicate_is_s3s_ldgr_lacking_text(monkeypatch, disposable_pg):
+    """The convention's fallback test IS `_ldgr_lacking_text`: for every literal, the convention flags it exactly when S3's predicate says the text lacks a value."""
+    s3._real(monkeypatch, disposable_pg, [])
+    for lit in F2_LITERALS + ["Phaladeepika 26.42", "श्लोक १", "Ruin of every business.", "a", "x1"]:
+        q = lit.replace("'", "''")
+        got = ac.scalar(f"SELECT {ac._ldgr_lacking_text(chr(39) + q + chr(39) + '::text')}")
+        s3._real(monkeypatch, disposable_pg, [f"CREATE TEMP TABLE one_t (k int, c text, d text) ON COMMIT DROP;", f"INSERT INTO one_t VALUES (1, '{q}', 'x'), (2, 'a real value', 'y');"])
+        sp = dict(table="one_t", nullable=[], constants=[], why=SPEC()["why"], evidence=EV)
+        rec = ac.null_convention_check(sp, {"one_t": (["k", "c", "d"], {"k": "integer", "c": "text", "d": "text"}, {})}, {"one_t"}, ("", "whole-table"))
+        assert (rec["v"] == FAIL and "c" in rec["convention"]["fallbacks"]) == (got in ("t", "true")), (lit, got, rec["v"])
+
+
+# ---- L2/L3/L4/L6 and the survivors: validator and detector ------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("nc, match", [
+    (SPEC(allowed_literals="direction"), "allowed_literals must be a list"),
+    (SPEC(allowed_literals=["direction"]), "allowed_literals entry 0"),
+    (SPEC(allowed_literals=[dict(column="direction", values=["none"], why=WHY, extra=1)]), "unknown field"),
+    (SPEC(allowed_literals=[dict(column="a b", values=["none"], why=WHY)]), r"allowed_literals\[0\]\.column"),
+    (SPEC(allowed_literals=[dict(column="direction", values=[], why=WHY)]), r"allowed_literals\[0\]\.values"),
+    (SPEC(allowed_literals=[dict(column="direction", values="none", why=WHY)]), r"allowed_literals\[0\]\.values"),
+    (SPEC(allowed_literals=[dict(column="direction", values=["none", "none"], why=WHY)]), "duplicate"),
+    (SPEC(allowed_literals=[dict(column="direction", values=[""], why=WHY)]), r"values entry"),
+    (SPEC(allowed_literals=[dict(column="direction", values=["a\\b"], why=WHY)]), r"values entry"),
+    (SPEC(allowed_literals=[dict(column="direction", values=["a b"], why=WHY)]), r"values entry"),
+    (SPEC(allowed_literals=[dict(column="direction", values=[str(i) for i in range(21)], why=WHY)]), r"allowed_literals\[0\]\.values"),
+    (SPEC(allowed_literals=[dict(column="direction", values=["none"])]), r"allowed_literals\[0\]\.why"),
+    (SPEC(allowed_literals=[dict(column="direction", values=["none"], why="TBD later")]), r"allowed_literals\[0\]\.why"),
+    (SPEC(allowed_literals=[dict(column="direction", values=["none"], why=WHY)] * 2), "duplicate"),
+    (SPEC(allowed_literals=[dict(column="effect_description", values=["none"], why=WHY)]), "the fallback itself"),                  # nullable: NULL is the only absent value
+    (SPEC(allowed_literals=[dict(column="direction", values=["x"], why=WHY)] * 65), "at most"),
+    (SPEC(nullable=[NULLABLE("exactly", means="reserved NULL here for the graha")]), r"nullable\[0\]\.means"),                      # S3 placeholder word 'NULL'
+    (SPEC(nullable=[NULLABLE("exactly", means="to be decided, TBD for every graha")]), r"nullable\[0\]\.means"),
+    (SPEC(nullable=[NULLABLE("exactly", means="pending the next passage review")]), r"nullable\[0\]\.means"),
+    (SPEC(nullable=[NULLABLE("exactly", means="no effect clause in the passage")]), r"nullable\[0\]\.means"),
+    (SPEC(nullable=[NULLABLE("exactly", means="x" * 5 + " a b")]), r"nullable\[0\]\.means"),                                          # too short in characters
+    (SPEC(constants=[dict(column="table_version", why="unknown for all rows here")]), r"constants\[0\]\.why"),
+    (SPEC(constants=[dict(column="table_version", why="one seed version per set")]), r"constants\[0\]\.why"),
+    (SPEC(nullable=[NULLABLE(None, scope_obj=dict(key_column="graha", null_for=["Ma rs"], mode="only"))]), r"null_for entry"),    # line separator
+    (SPEC(nullable=[NULLABLE(None, scope_obj=dict(key_column="graha", null_for=["Ma​rs"], mode="only"))]), r"null_for entry"),    # format character
+    (SPEC(nullable=[NULLABLE(None, scope_obj=dict(key_column="graha", null_for=["Ma\\rs"], mode="only"))]), "backslash"),               # the backslash rule on its own
+    (SPEC(nullable=[NULLABLE(None, scope_obj=dict(key_column="graha", null_for=["x" * 129], mode="only"))]), r"null_for entry"),
+    (SPEC(nullable=[NULLABLE(None, scope_obj=dict(key_column="graha", null_for=[str(i) for i in range(101)], mode="only"))]), "more than"),
+    (SPEC(nullable=[NULLABLE(None, column=f"c{i}") for i in range(65)]), "more than 64"),
+    (SPEC(constants=[dict(column=f"c{i}", why=WHY) for i in range(257)]), "more than"),
+])
+def test_validator_review_round_refusals(nc, match):
+    _bad(nc, match)
+
+
+def test_the_nullable_and_constant_rule_stands_alone():
+    ok = SPEC(nullable=[NULLABLE(None, column="notes")], constants=[dict(column="table_version", why=WHY)])
+    ac.validate_declarations(_doc(dict(null_convention=ok)))
+    both = SPEC(nullable=[NULLABLE(None, column="notes")], constants=[dict(column="notes", why=WHY)])
+    _bad(both, "both nullable and constant")
+    _bad(SPEC(nullable=[NULLABLE(None, column="notes")], constants=[dict(column="notes", why=WHY, value="x")]), r"\['notes'\] are both nullable and constant")
+
+
+def test_the_validator_accepts_an_allowed_literal_on_a_non_nullable_column():
+    ac.validate_declarations(_doc(dict(null_convention=SPEC(allowed_literals=[dict(column="direction", values=["none", "N/A"], why="a graha with no direction stores these words")]))))
+    ac.validate_declarations(_doc(dict(null_convention=SPEC(allowed_literals=None))))
+
+
+def test_L6_a_scope_key_the_table_does_not_carry_fails_before_any_read_like_an_absent_nullable_column(monkeypatch):
+    monkeypatch.setattr(ac, "null_convention_fetch", lambda *a, **k: pytest.fail("a declaration the table cannot back is never read"))
+    for spec in (SPEC(nullable=[dict(NULLABLE("exactly"), scope=dict(key_column="no_key", null_for=["Mars"], mode="only"))]),
+                 SPEC(nullable=[NULLABLE("exactly", column="no_such_col")]), SPEC(constants=[dict(column="no_such_col", why=WHY)]),
+                 SPEC(allowed_literals=[dict(column="no_such_col", values=["none"], why=WHY)])):
+        r = ac.null_convention_check(spec, _own(), {"bg_phaladeepika_latta"}, ("", "whole-table"))
+        assert r["v"] == FAIL and "not columns of" in r["measured"], r
+
+
+def test_L6_numerics_that_differ_only_in_formatting_are_one_constant_value():
+    types = dict(LATTA_TYPES, count_from_graha="numeric")
+    spec = SPEC(constants=SPEC()["constants"] + [dict(column="count_from_graha", why=WHY, value="1")])
+    st = STATS(count_from_graha=dict(distinct=1, sole="1.00"))
+    assert ac.grade_null_convention(spec, LATTA_COLS, types, st)["v"] == PASS                      # 1 == 1.00 as a number
+    assert ac.grade_null_convention(spec, LATTA_COLS, dict(types, count_from_graha="text"), st)["v"] == FAIL    # as text they differ
+    assert ac.grade_null_convention(spec, LATTA_COLS, types, STATS(count_from_graha=dict(distinct=1, sole="2")))["v"] == FAIL
+    assert ac.grade_null_convention(spec, LATTA_COLS, types, STATS(count_from_graha=dict(distinct=1, sole="abc")))["v"] == FAIL
+
+
+def test_REAL_SQL_L6_the_distinct_count_of_a_numeric_column_is_by_value(monkeypatch, disposable_pg):
+    s3._real(monkeypatch, disposable_pg, [
+        "CREATE TEMP TABLE n_t (k int PRIMARY KEY, w numeric NOT NULL) ON COMMIT DROP;", "INSERT INTO n_t VALUES (1, 1), (2, 1.0), (3, 1.00);"])
+    spec = dict(table="n_t", nullable=[], constants=[dict(column="w", why=WHY, value="1")], why=SPEC()["why"], evidence=EV)
+    r = ac.null_convention_check(spec, {"n_t": (["k", "w"], {"k": "integer", "w": "numeric"}, {})}, {"n_t"}, ("", "whole-table"))
+    assert r["v"] == PASS, r
+
+
+def test_L4_a_failed_read_of_any_kind_ends_errored_never_a_crash(monkeypatch):
+    for exc in (ac.Unknown("x"), ac.CheckTimeout("client timeout"), OSError("disk"), ValueError("bad"), UnicodeDecodeError("utf-8", b"\xff", 0, 1, "bad")):
+        def boom(*a, **k):
+            raise exc
+        monkeypatch.setattr(ac, "null_convention_fetch", boom)
+        r = ac.null_convention_check(SPEC(), _own(), {"bg_phaladeepika_latta"}, ("", "whole-table"))
+        assert r["v"] == ERRORED and r["declared"] is True, (exc, r)
+
+
+def test_L4_an_unexpected_error_from_the_convention_ends_errored_in_measure_prose(monkeypatch):
+    """The `except` around the convention call in _measure_prose: the records stay what prose_checks wrote, annotated errored, and nothing reads PASS."""
+    base = _prose(monkeypatch, dict(prose_fields=None))
+    for exc in (ac.Unknown("x"), OSError("o"), ValueError("v")):
+        def boom(*a, **k):
+            raise exc
+        monkeypatch.setattr(ac, "_measure_null_convention", boom)
+        m = ac._measure_prose("bg_phaladeepika_latta", dict(null_convention=SPEC(), prose_fields=None), LATTA_R, None, _cat(), [], set(), (), set())
+        assert m[SD]["null_convention"]["v"] == ERRORED and m[BR]["null_convention"]["verified"] is False
+        assert _bare(m[SD]) == base[SD] and _bare(m[BR]) == base[BR]
+        monkeypatch.undo()
+
+
+def test_a_failed_count_read_inside_the_convention_path_ends_capped_with_no_pass(monkeypatch):
+    def boom(t, es, tail, types=None):
+        raise ac.Unknown("connection lost")
+    monkeypatch.setattr(ac, "null_convention_fetch", lambda *a, **k: STATS())
+    monkeypatch.setattr(ac, "prose_row_counts", boom)
+    m = ac._measure_prose("bg_phaladeepika_latta", dict(null_convention=SPEC(), prose_fields=None), LATTA_R, None, _cat(), [], set(), (), set())
+    assert ac.rollup_asset("L0", m)["Null"]["v"] != PASS and m[BR]["v"] != PASS and m[SD]["v"] != PASS
+    assert m[BR]["null_convention"]["verified"] is False
+
+
+def test_a_declared_prose_field_outside_the_declared_table_keeps_the_cap(monkeypatch):
+    monkeypatch.setattr(ac, "null_convention_fetch", lambda *a, **k: STATS())
+    monkeypatch.setattr(ac, "prose_row_counts", lambda t, es, tail, types=None: {e: dict(checkable=6, blank=0) for e in es})
+    cat = dict(_cat(), exists={"bg_phaladeepika_latta", "other_t"}, cols={"bg_phaladeepika_latta": list(LATTA_COLS), "other_t": ["id", "narrative"]},
+               types={"bg_phaladeepika_latta": dict(LATTA_TYPES), "other_t": {"id": "integer", "narrative": "text"}},
+               defaults={"bg_phaladeepika_latta": {}, "other_t": {}})
+    r = dict(target_table="bg_phaladeepika_latta", count_sql="SELECT count(*) FROM bg_phaladeepika_latta")
+    m = ac._measure_prose("bg_phaladeepika_latta", dict(null_convention=SPEC(), prose_fields=["narrative"]), r, None, cat, ["other_t"], set(), (), set())
+    assert m[SD]["v"] != PASS and m[BR]["v"] != PASS and m[BR]["null_convention"]["uncovered_prose_fields"] == ["narrative"]
+    ok = ac._measure_prose("bg_phaladeepika_latta", dict(null_convention=SPEC(), prose_fields=["affliction_condition"]), r, None, cat, ["other_t"], set(), (), set())
+    assert ok[SD]["v"] == PASS                                                                   # a prose field IN the declared table is covered
+
+
+# ---- L5: the distinct count skips the expensive types ---------------------------------------------------------------------------------------------
+
+def test_L5_a_json_or_bytea_column_is_not_distinct_counted_unless_declared_constant_and_is_named_as_not_examined(monkeypatch):
+    got = _capture(monkeypatch, "{}")
+    types = {"k": "text", "doc": "jsonb", "blob": "bytea", "emb": "USER-DEFINED", "cst": "jsonb"}
+    spec = dict(table="t", nullable=[], constants=[dict(column="cst", why=WHY)], why=SPEC()["why"], evidence=EV)
+    try:
+        ac.null_convention_fetch("t", list(types), types, spec, "")
+    except ac.Unknown:
+        pass
+    sql = got[0]
+    assert 'count(DISTINCT "k"::text)' in sql and 'count(DISTINCT "cst"::text)' in sql
+    for c in ("doc", "blob", "emb"):
+        assert f'count(DISTINCT "{c}"' not in sql, c
+    st = dict(rows=3, cols={"k": _col(3), "doc": dict(nulls=0, distinct=None, fallback=0), "blob": dict(nulls=0, distinct=None), "emb": dict(nulls=0, distinct=None),
+                            "cst": dict(nulls=0, distinct=1, sole="{}", fallback=0)})
+    r = ac.grade_null_convention(spec, list(types), types, st)
+    assert r["v"] == PASS and r["convention"]["constants_not_examined"] == ["doc", "blob", "emb"] and "NOT examined for doc, blob, emb" in r["measured"]
+
+
+def test_L5_a_missing_distinct_on_a_countable_column_is_malformed():
+    st = STATS()
+    st["cols"]["graha"]["distinct"] = None
+    with pytest.raises(ac.Unknown):
+        ac.grade_null_convention(SPEC(), LATTA_COLS, LATTA_TYPES, st)
+
+
+def test_the_fetch_needs_every_column_type():
+    with pytest.raises(ac.Unknown, match="data type"):
+        ac.null_convention_fetch("bg_phaladeepika_latta", LATTA_COLS, {"graha": "text"}, SPEC(), "")
+    r = ac.null_convention_check(SPEC(), _own({"bg_phaladeepika_latta": (LATTA_COLS, {"graha": "text"}, {})}), {"bg_phaladeepika_latta"}, ("", "whole-table"))
+    assert r["v"] == NO_DET and "data types" in r["measured"]
