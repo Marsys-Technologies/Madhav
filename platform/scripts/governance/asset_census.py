@@ -201,7 +201,7 @@ CRITERION_REGISTRY: dict[str, dict] = {
     # Carr.D1/D2/D3 had the generic Carr.detector until it was retired at revision 8 — Carr is now exactly
     # these three) — registered so a hand row has somewhere to point,
     # never auto-measured because no in-repo detector exists for the specific claim yet.
-    "Carr.D1":                       dict(gate="Carr", check="D1", applicability="the asset restates a value from a cited source (source correspondence)", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Carr.D1":                       dict(gate="Carr", check="D1", applicability="the asset DECLARES D1 (it transcribes cited classical content, N-73) with a spec: every row is matched against the declared passage of the English translation (carriage_d1.py); an asset with no declaration reads not measured", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # E6 S2: was detector NONE (rev 1)
     "Carr.D2":                       dict(gate="Carr", check="D2", applicability="the asset carries two independent witnesses of the same fact", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Carr.D3":                       dict(gate="Carr", check="D3", applicability="the asset computes a value that a second method could re-derive", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Completeness.depth.dasha_link": dict(gate="Completeness", check="depth.dasha_link", applicability="the table declares a dasha_system_id column", detector="NONE", layers=ALL_LAYERS, columns_any=("dasha_system_id",), asset_kinds=None, revision=1),
@@ -314,6 +314,13 @@ NA_RULE_DECISIONS: dict[str, str] = {
     # undeclared kinds keep reading NO_DETECTOR
     "Earn.service_state#measured:not-a-service":
         "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)",
+    # S2 (SS N-72 S2, N-73): the two checks that are NOT an asset's declared carriage check read N/A by a DECLARATION-keyed cause
+    # (the validator fixed the declared check from the asset's nature; never the caller-chosen `not-chosen`, refused at N-22 row 15).
+    # Inert until an asset declares a carriage check. `ratified_judgment` is a registered cause with NO rule declared (L0 Q13: it
+    # becomes a rule only by a separate SS approval).
+    "Carr.D1#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+    "Carr.D2#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+    "Carr.D3#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
     "Narr.agree#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
     "Narr.checkable#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
     "Narr.fidelity_test#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
@@ -332,7 +339,9 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.completion": ("no-writer-no-count-sql", "service-no-target-table-no-count-sql"),
     "Count.floor": ("target-floor-zero",),
     "Dens.served": ("no-served-surface",),
-    "Carr.D1": ("no-carriage",), "Carr.D2": ("no-carriage",), "Carr.D3": ("no-carriage",),
+    "Carr.D1": ("no-carriage", "not-the-declared-carriage", "ratified_judgment"),
+    "Carr.D2": ("no-carriage", "not-the-declared-carriage", "ratified_judgment"),
+    "Carr.D3": ("no-carriage", "not-the-declared-carriage", "ratified_judgment"),
     "Earn.service_state": ("not-a-service",),
     "Build.exercised": ("never-run-no-writer", "never-executed-no-writer"),
     "Build.history": ("never-run",),
@@ -377,7 +386,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 10     # 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 11     # 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -1141,6 +1150,79 @@ def grade_carr_no_carriage(record_facts) -> dict:
                f"Dens.served N/A (scanned, no reference); {sv}; the declared pointer is the evidence (a candidate, not a "
                "rule: released only by a declared rule, which must stay undeclared until an inverse-readers detector exists)",
                "no-carriage")
+
+
+_D1_SQL_ID = re.compile(r"[a-z0-9][a-z0-9_]*")
+_D1_SQL_IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def d1_fetch_chunks(chunk_ids) -> dict:
+    """{chunk_id: {chunk_id, text_id, content_en, content_sa, content_sha256}} for the declared passages: ONE read-only SELECT of
+    classical_text_chunks by chunk id (the ids are the validated declaration's, matched against a strict pattern before they reach
+    SQL). A chunk that does not exist is simply absent from the result (the D1 engine reports it as missing). Raises Unknown on a
+    failed read."""
+    ids = list(chunk_ids)
+    if not ids or not all(isinstance(i, str) and _D1_SQL_ID.fullmatch(i) for i in ids):
+        raise Unknown(f"d1_fetch_chunks: malformed chunk id list {ids!r}")
+    lst = ",".join(f"'{i}'" for i in ids)
+    blob = scalar("SELECT coalesce(json_agg(json_build_object('chunk_id',chunk_id,'text_id',text_id,'content_en',content_en,"
+                  "'content_sa',content_sa,'content_sha256',content_sha256) ORDER BY chunk_id)::text,'[]') "
+                  f"FROM classical_text_chunks WHERE chunk_id IN ({lst})")
+    try:
+        got = json.loads(blob or "[]")
+    except json.JSONDecodeError as exc:
+        raise Unknown(f"d1_fetch_chunks: unparseable chunk read: {exc}") from exc
+    return {c["chunk_id"]: c for c in got if isinstance(c, dict) and c.get("chunk_id")}
+
+
+def d1_fetch_rows(table: str, columns) -> list:
+    """The asset's own table rows restricted to the DECLARED claim columns, in a total order (ORDER BY every column): a second
+    read-only SELECT, needed to compare EVERY row with the passage. Identifiers are matched against a strict pattern. Raises Unknown
+    on a failed read."""
+    cols = list(dict.fromkeys(columns))
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table) and cols and all(_D1_SQL_IDENT.fullmatch(c) for c in cols)):
+        raise Unknown(f"d1_fetch_rows: malformed identifier(s) {table!r} / {cols!r}")
+    sel = ",".join(f'"{c}"' for c in cols)
+    blob = scalar(f"SELECT coalesce(json_agg(t)::text,'[]') FROM (SELECT {sel} FROM \"{table}\" ORDER BY {sel}) t")
+    try:
+        return json.loads(blob or "[]")
+    except json.JSONDecodeError as exc:
+        raise Unknown(f"d1_fetch_rows: unparseable read of {table}: {exc}") from exc
+
+
+def carriage_declared_checks(aid: str, car, target_table) -> dict:
+    """measure()'s Carr.D1/D2/D3 records for an asset that DECLARES its carriage check (SS N-72 S2): {} unless `car.nature` is
+    declared (an undeclared asset emits nothing here, so its cell reads exactly as before).
+
+    ratified_judgment: all three N/A, cause `ratified_judgment`. Otherwise the declared check (`applies`) is MEASURED (D1 by the
+    generic engine in carriage_d1.py with a spec; D2/D3 have no detector yet: NO_DETECTOR, named) and the other two read N/A,
+    cause `not-the-declared-carriage`, released only by the declared rule (never by a caller's choice)."""
+    if not isinstance(car, dict) or car.get("nature") is None:
+        return {}
+    why = car.get("why") or ""
+    if car["nature"] == RATIFIED_JUDGMENT:
+        return {c: _na(f"ratified judgment seed (ruling {car.get('ruling')}): {why}", RATIFIED_JUDGMENT) for c in CARR_D_CHECKS}
+    applies = car["applies"]
+    own = f"Carr.{applies}"
+    out = {c: _na(f"the asset's declared carriage check is {applies} (nature {car['nature']}; reviewed, evidence: {car.get('evidence')}); "
+                  f"{c.split('.')[1]} is not it", "not-the-declared-carriage") for c in CARR_D_CHECKS if c != own}
+    if applies != "D1":
+        out[own] = dict(v=NO_DET, measured=f"NO_DETECTOR — the declared carriage check is {applies} (nature {car['nature']}), and no {applies} "
+                                           "detector is built yet: nothing measures it", declared_carriage=dict(applies=applies, nature=car["nature"]))
+        return out
+    spec = car.get("spec")
+    if not isinstance(spec, dict):
+        out[own] = dict(v=NO_DET, measured="NO_DETECTOR — D1 is declared but without a `spec` (the declared passage, rows and matching "
+                                           "fields): there is nothing to match against")
+        return out
+    d1 = _carriage_d1()
+    try:
+        chunks = d1_fetch_chunks(spec["chunk_ids"])
+        rows = d1_fetch_rows(spec["table"], spec["fields"].values())
+        out[own] = d1.d1_measure(spec, car.get("citation_state"), chunks, rows, target_table)
+    except Unknown as exc:                                  # R41: this check's failure degrades only this check
+        out[own] = dict(v=ERRORED, measured=f"check errored: {exc}", citation_state=car.get("citation_state"))
+    return out
 
 
 def carr_checks(record_facts) -> dict:
@@ -6299,6 +6381,8 @@ def measure(layer_key: str, assets=None) -> dict:
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
         # E6 item (f): Carr.D1-D3 `no-carriage` candidates, only for an asset that DECLARES terminal_by_construction
+        m.update(carriage_declared_checks(aid, ((declarations or {}).get(aid) or {}).get("carriage") if isinstance(declarations, dict) else None,
+                                          r["target_table"]))
         m.update(carr_checks(dict(declared_facts(declarations, aid), blocking_radius=radius.get(aid),
                                   measured_served=m["Dens.served"]["v"])))
         if "Reach.fields" not in m:
