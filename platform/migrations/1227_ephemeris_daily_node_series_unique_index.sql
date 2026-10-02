@@ -138,6 +138,7 @@ BEGIN
       RAISE EXCEPTION 'migration 1227 refused: % node_mode=''mean'' rows already exist; the ordering rule (index before the series) was broken', n;
     END IF;
     IF NOT old_key THEN
+      -- node-agnostic: count_only_table_level: duplicate-group count over every series row, returns no node value
       SELECT count(*) INTO n FROM (
         SELECT 1 FROM public.ephemeris_daily GROUP BY date, body, ayanamsha_id, node_mode HAVING count(*) > 1 LIMIT 1) d;
       IF n <> 0 THEN

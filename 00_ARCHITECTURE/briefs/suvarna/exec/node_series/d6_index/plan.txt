@@ -14,7 +14,7 @@ SET LOCAL TimeZone = 'UTC'
 -- membership: GRANT amjis_app and data_plane_schema_owner TO <session user> only if missing; REVOKE exactly what was granted before snapshot B
 -- evidence: before.json, reversal.sql (DROP INDEX under the same owner path), SHA256SUMS written BEFORE the DDL; unwritable: abort + ROLLBACK
 -- E evidence digest: sha256 of the PRE-DDL state (snapshot A hash, data fingerprint, index and constraint catalogs, P1-P6): --apply requires --expect-evidence == it
--- DDL: the exact text of platform/migrations/1227_ephemeris_daily_node_series_unique_index.sql (sha256 a76df49c6628c7d57837f6e39e44570c3e209f21a7b9b5a300a705a37b691b3d), executed in this transaction (its own guards and structure verification run)
+-- DDL: the exact text of platform/migrations/1227_ephemeris_daily_node_series_unique_index.sql (sha256 0387da94dd7e7efc56afb5f0427e0007658e36bf45669e95bdf077c110fedd8e), executed in this transaction (its own guards and structure verification run)
 -- post-checks (commit only if all hold): relacl, owner, schema owner+ACL, relrowsecurity, pg_policy and pg_auth_members equal snapshot A; the index catalog differs by exactly +ephemeris_daily_date_body_ayanamsha_node_mode_uq; the constraint catalog is equal; row count, data hash and mean count equal; the index is unique, valid, ready, btree, NULLS NOT DISTINCT on (date, body, ayanamsha_id, node_mode)
 -- --dry-run: the same statements, then ROLLBACK, always. --apply: COMMIT only if every check holds, --expect-plan equals this plan hash AND --expect-evidence equals check E.
 -- the real run is started through run_gated.sh: prerun_gate.py must read zero non-completed main deploy runs and zero planned/running/paused build_runs, else the executor is not started.

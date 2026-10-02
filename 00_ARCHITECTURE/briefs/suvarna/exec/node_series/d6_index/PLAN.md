@@ -57,9 +57,9 @@ relies on the new key (before 1228, the writer change and 1250). After 1250 the 
    (`has no CREATE on schema public`), fails the deploy's migrate job and holds back every later pending migration.
 
 ## Hashes (pinned by a test; re-run `make_plan.py --write` after any edit)
-- plan hash: `d81ac218df5404a58023ef91e68f17a4ba98b3c53339b613c75468a32e9c2e87`
+- plan hash: `f7bfd19febaf988355101dd1454cc3697b075b22732e028f1477f08600999697`
 - executor sha256: `52b2061f92dd36b6d413d37d722fe39748609777c530379040dc1f445a7a7dfc`
-- migration 1227 sha256: `a76df49c6628c7d57837f6e39e44570c3e209f21a7b9b5a300a705a37b691b3d`
+- migration 1227 sha256: `0387da94dd7e7efc56afb5f0427e0007658e36bf45669e95bdf077c110fedd8e`
 
 ## What the dry run can and cannot show
 It runs every check and the real DDL against production inside a transaction that is then rolled back (the index build holds SHARE for the build's duration, ~seconds).
