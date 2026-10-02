@@ -1,7 +1,7 @@
 ---
 artifact: SEAL_APPROVAL_PAYLOAD
 version: "1.0"
-status: "PROPOSAL for Codex round 12 (answers R11-3, workflow/runbook side). Stream A builds the job-side functions; the schema below is to be agreed with Stream A through the steward before code. Authorises nothing."
+status: "SUPERSEDED by SEAL_APPROVAL_PAYLOAD_v1_1.md (the payload schema was implemented exactly as written here; the receipt-storage question in §4 was DECIDED as R1; the sealing workflow now exists as a draft). Kept for the record."
 date: 2026-10-02
 author: Stream B (Śāstra), item B6.0
 ---
