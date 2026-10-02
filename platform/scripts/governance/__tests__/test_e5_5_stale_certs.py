@@ -949,8 +949,10 @@ def test_a_writer_set_renamed_in_place_is_added_and_removed(ledger):
 
 def test_the_full_writer_path_set_must_be_observed_and_well_formed(ledger):
     cert(ledger, "bg_a")
-    with pytest.raises(sc.MissingObservation):
-        sc.evaluate(raw(ledger), {"bg_a": dict(writer_hashes=wh_of("bg_a"), semantic_fingerprint=fp_of("bg_a"))})
+    with pytest.raises(sc.MissingObservation) as ei:
+        sc.evaluate(raw(ledger), {"declarations_sha256": DECL_SHA,
+                                  "bg_a": dict(writer_hashes=wh_of("bg_a"), semantic_fingerprint=fp_of("bg_a"))})
+    assert "writer_paths" in ei.value.message                                         # not the declarations observation
     for bad in ("x", None, [wpath("bg_a"), wpath("bg_a")], ["/abs.py"], ["a/../b.py"], [5], {"a": 1}):
         with pytest.raises(sc.UnreadableInput):
             sc.evaluate(raw(ledger), obs("bg_a", bg_a=dict(writer_paths=bad)))
@@ -1274,12 +1276,17 @@ def test_a_missing_observation_for_a_certified_asset_raises(ledger):
 
 def test_a_missing_fingerprint_or_writer_path_raises(ledger):
     cert(ledger, "bg_a")
-    with pytest.raises(sc.MissingObservation):
-        sc.evaluate(raw(ledger), {"bg_a": dict(writer_hashes=wh_of("bg_a"))})
-    with pytest.raises(sc.MissingObservation):
-        sc.evaluate(raw(ledger), {"bg_a": dict(semantic_fingerprint=fp_of("bg_a"))})
-    with pytest.raises(sc.MissingObservation):
-        sc.evaluate(raw(ledger), {"bg_a": dict(writer_hashes={f"{WRITERS_REL}/other.py": H("x")}, semantic_fingerprint=fp_of("bg_a"))})
+    d = {"declarations_sha256": DECL_SHA}                                              # isolate the asset observation
+    with pytest.raises(sc.MissingObservation) as ei:
+        sc.evaluate(raw(ledger), dict(d, bg_a=dict(writer_hashes=wh_of("bg_a"))))
+    assert "writer_paths" in ei.value.message
+    with pytest.raises(sc.MissingObservation) as ei:
+        sc.evaluate(raw(ledger), dict(d, bg_a=dict(semantic_fingerprint=fp_of("bg_a"))))
+    assert "writer_hashes" in ei.value.message
+    with pytest.raises(sc.MissingObservation) as ei:
+        sc.evaluate(raw(ledger), dict(d, bg_a=dict(writer_hashes={f"{WRITERS_REL}/other.py": H("x")},
+                                                  semantic_fingerprint=fp_of("bg_a"))))
+    assert "writer_paths" in ei.value.message
 
 
 @pytest.mark.parametrize("bad", [
@@ -2299,6 +2306,16 @@ def test_cli_declarations_sha_flag_supplies_the_observation(ledger, tmp_path):
             "--declarations-sha", NEW_DECL_SHA)
     assert r.returncode == 0 and json.loads(r.stdout)["invalidated"] == [a]
     assert [x for x in lines(ledger) if x.get("type") == "invalidation"][0]["reason"][0]["code"] == "declarations"
+
+
+def test_cli_a_malformed_flag_is_refused_even_when_the_file_carries_no_sha(ledger, tmp_path):
+    cert(ledger, "bg_a")
+    of = obs_file(tmp_path, obs("bg_a"))
+    before = raw(ledger)
+    for cmd in (["evaluate"], ["invalidate", "--commit", COMMIT]):
+        p = cli(*cmd, "--ledger", str(ledger), "--observed", str(of), "--declarations-sha", "nothex")
+        assert p.returncode == 2 and "bad_declarations_sha" in p.stderr
+    assert raw(ledger) == before
 
 
 def test_cli_a_flag_that_disagrees_with_the_file_or_is_malformed_is_refused(ledger, tmp_path):
