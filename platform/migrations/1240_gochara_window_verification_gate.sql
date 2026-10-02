@@ -747,18 +747,22 @@ CREATE TRIGGER ka_gochara_seal_brief_no_truncate
   FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_seal_brief_immutable();
 
 -- the sealer's EARLY look (and the receipt trigger's check): NULL when the digest is the CURRENT persisted brief of the generation for
--- this manifest and its state is still the generation's state; otherwise the NAMED reason
+-- this manifest, was written by the verifier login (F-R13-4), and its state is still the generation's state; otherwise the NAMED reason
 CREATE OR REPLACE FUNCTION public.ka_gochara_seal_brief_problem(p_chart uuid, p_generation text, p_manifest uuid, p_digest text)
 RETURNS text LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public AS $$
 DECLARE l record;
 BEGIN
-  SELECT b.brief_digest, b.manifest_id, b.state_digest INTO l FROM public.ka_gochara_seal_brief b
+  SELECT b.brief_digest, b.manifest_id, b.state_digest, b.produced_by INTO l FROM public.ka_gochara_seal_brief b
   WHERE b.chart_id = p_chart AND b.generation = p_generation ORDER BY b.brief_id DESC LIMIT 1;
   IF NOT FOUND OR NOT EXISTS (SELECT 1 FROM public.ka_gochara_seal_brief b WHERE b.chart_id = p_chart AND b.generation = p_generation
                               AND b.manifest_id = p_manifest AND b.brief_digest = p_digest) THEN
     RETURN 'receipt_brief_not_persisted';
   ELSIF l.brief_digest IS DISTINCT FROM p_digest OR l.manifest_id IS DISTINCT FROM p_manifest THEN
     RETURN 'receipt_brief_superseded';
+  ELSIF l.produced_by IS DISTINCT FROM 'gochara_verifier' THEN
+    -- (F-R13-4) the brief must have been written by the VERIFIER login: `produced_by` is the database-attested session login, so a
+    -- brief inserted by any other principal that holds INSERT on the table is not an approval basis
+    RETURN 'receipt_brief_not_from_verifier';
   ELSIF l.state_digest IS DISTINCT FROM public.ka_gochara_brief_state_digest(p_chart, p_generation) THEN
     RETURN 'receipt_brief_state_changed';
   END IF;

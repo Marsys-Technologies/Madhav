@@ -279,10 +279,10 @@ def test_forged_attribution_values_in_the_insert_are_overwritten(built):
     w = built
     _verified(w)
     _sealer_stand_ins(w)
+    _persist_test_brief(w)
     with w.conn.transaction():
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         from services.gochara_kernel import ledger as gk_ledger
-        _persist_test_brief(w.conn)
         gk_ledger.publish(w.conn, CHART_ID, GEN)
         mid = w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
         w.conn.execute(
@@ -300,7 +300,7 @@ def test_a_receipt_cannot_be_attached_to_a_seal_written_before_this_transaction(
     import psycopg
     w = built
     _verified(w)
-    _persist_test_brief(w.conn)                                               # (a brief exists: only the first-seal rule can refuse)
+    _persist_test_brief(w)                                                    # (a brief exists: only the first-seal rule can refuse)
     w.conn.execute("ALTER TABLE public.ka_gochara_generation_seal DISABLE TRIGGER ka_gochara_generation_seal_zz_receipt_required")
     _seal(w, receipt=False)                                                   # sealed, no receipt (the pre-1240 shape)
     w.conn.execute("ALTER TABLE public.ka_gochara_generation_seal ENABLE TRIGGER ka_gochara_generation_seal_zz_receipt_required")
@@ -318,11 +318,11 @@ def test_a_receipt_naming_another_manifest_is_refused_even_with_the_first_seal(b
     import psycopg
     w = built
     _verified(w)
+    _persist_test_brief(w)
     with pytest.raises(psycopg.errors.CheckViolation):
         with w.conn.transaction():
             w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
             from services.gochara_kernel import ledger as gk_ledger
-            _persist_test_brief(w.conn)
             gk_ledger.publish(w.conn, CHART_ID, GEN)
             w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
             w.conn.execute(
