@@ -1,26 +1,25 @@
 """
 special_lagnas.py — Bhava/Hora/Ghati/Vighati/Indu/Sree/Pranapada/Bhrigu-Bindhu/
-Kunda/Varnada Lagna, delegated entirely to PyJHora (jhora.panchanga.drik +
-jhora.horoscope.chart.charts).
+Kunda/Varnada Lagna.
 
-M-9 + M-10 fix (R6 1d-sensitive lane, 2026-07-10): the prior ga_sensitive_writer
-computed Bhava/Hora/Ghati Lagna and "Pranapada Sphuta" as hand-rolled proxies
-using the Sun's within-sign degree as a crude time-since-sunrise stand-in
-(HL = Lagna + (Sun%30)*2, GL = Lagna + (Sun%30)*12, BL = 2*Sun - Lagna + 180,
-Pranapada = Moon + (Lagna-Sun)*4 falsely cited "BPHS"). These are non-classical
-approximations. PyJHora computes all of these correctly from the real
-time-elapsed-since-sunrise (ghatis) at the birth place/moment via
-`drik.special_ascendant()` (Bhava/Hora/Ghati/Vighati Lagna) and
-`drik.pranapada_lagna()` (real BPHS Pranapada: ghatis-since-sunrise x4,
-+ Sun's sign-category offset 0/120/240 for movable/dual/fixed) — see
-drik.py:1959-2140.
+Who computes what:
+  * Bhava / Hora / Ghati / Vighati Lagna: the local ``_special_ascendant`` below, a copy of PyJHora
+    4.8.6 ``drik.special_ascendant`` with ONE change (the Sun is read AT sunrise; upstream read it
+    ``tz`` hours after sunrise). BPHS Ch.5 vv.2-8 definition; see that function's docstring.
+  * Varnada Lagna: the local ``_varnada_lagna_bv_raman``, a copy of PyJHora's BV Raman routine fed by
+    the corrected Hora Lagna (no PyJHora attribute is reassigned). The METHOD (BV Raman, 1) is
+    upstream's choice and is not audited against the BPHS passage here.
+  * Indu / Sree / Pranapada / Bhrigu Bindhu / Kunda Lagna: delegated unchanged to PyJHora
+    (jhora.panchanga.drik); not audited here.
 
-Sunrise-based Bhava/Hora/Ghati/Vighati Lagna are computed by the local ``_special_ascendant`` below,
-NOT by ``drik.special_ascendant``: PyJHora 4.8.6 reads the Sun ``tz`` hours after sunrise (see its
-docstring). Indu Lagna, Sree Lagna, Bhrigu Bindhu Lagna, Kunda Lagna, and Varnada Lagna
-were previously absent entirely from this writer; added here via direct
-PyJHora delegation per the M-10 fix instruction ("delegate to PyJHora's
-implementations rather than in-house approximations").
+M-9 + M-10 fix (R6 1d-sensitive lane, 2026-07-10): the prior ga_sensitive_writer computed
+Bhava/Hora/Ghati Lagna and "Pranapada Sphuta" as hand-rolled proxies using the Sun's within-sign
+degree as a crude time-since-sunrise stand-in (HL = Lagna + (Sun%30)*2, GL = Lagna + (Sun%30)*12,
+BL = 2*Sun - Lagna + 180, Pranapada = Moon + (Lagna-Sun)*4 falsely cited "BPHS"). Those were
+non-classical approximations; they were replaced by computations from the real time elapsed since
+sunrise at the birth place/moment (see drik.py:1959-2140 for the upstream originals). Indu Lagna,
+Sree Lagna, Bhrigu Bindhu Lagna, Kunda Lagna and Varnada Lagna were previously absent entirely
+from this writer.
 """
 from __future__ import annotations
 

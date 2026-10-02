@@ -2517,10 +2517,11 @@ def _build_special_lagnas_rows(
     proportional to time-since-sunrise (the Sun moves ~1 deg/day, so "Sun%30"
     barely changes across a whole day and does not track ghatis elapsed at
     all) — the served values were essentially arbitrary. Real Bhava/Hora/
-    Ghati/Vighati Lagna advance by actual TIME elapsed since sunrise (BPHS),
-    which is exactly what PyJHora's `drik.special_ascendant()` computes
-    (drik.py:1959-1988) from the birth JD + place. Delegated here via
-    `chart_data["special_lagnas"]` (see pyjhora_adapter/special_lagnas.py).
+    Ghati/Vighati Lagna advance by actual TIME elapsed since sunrise (BPHS Ch.5
+    vv.2-8), counted from the Sun's longitude at sunrise. They are computed in
+    pyjhora_adapter/special_lagnas.py (a corrected copy of PyJHora's
+    `drik.special_ascendant()`, which read the Sun tz hours after sunrise) and
+    delivered here via `chart_data["special_lagnas"]`.
     Indu Lagna, Sree Lagna, and Varnada Lagna were previously entirely absent
     from this writer; added here via the same delegation.
     """

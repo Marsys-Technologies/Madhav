@@ -20,6 +20,8 @@ Usage (read-only; FLIP_READER = executable taking the SQL as argv[1], tab-separa
   special_lagna_offset_check.py --compare  snapshot.json <chart-uuid>     # exit 0 pass, 2 fail
 Only the CANONICAL chart has a computed expectation; for any other chart --compare runs C1 and C3 plus
 a |delta| <= 1 deg sanity bound and PRINTS (never fails) the class changes for review.
+Refuses to run unless the session reports transaction_read_only = on (PGOPTIONS requests it, a SHOW-equivalent query proves it,
+for FLIP_READER and plain psql alike). The W7 run of this script is REQUIRED: the flip detector alone is not sufficient.
 Stores derived chart facts only (no birth data). The snapshot file is evidence: keep it OUTSIDE the repo.
 """
 from __future__ import annotations
@@ -51,12 +53,40 @@ COLS = ("ayanamsha_id", "fact_subject", "fact_key", "fact_value_text", "fact_val
 _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
-def _query(sql: str) -> list[list[str]]:
-    assert re.match(r"^\s*select\b", sql, re.I) and ";" not in sql, "SELECT only"
+_READ_ONLY_VERIFIED = False
+_RO_PGOPTIONS = "-c default_transaction_read_only=on"
+
+
+class NotReadOnly(RuntimeError):
+    """The database session is not read-only: the script refuses to run any query."""
+
+
+def _run(sql: str) -> list[list[str]]:
+    env = dict(os.environ)
+    # Ask the server for a read-only session on the plain-psql path (an operator's own PGOPTIONS is kept).
+    env["PGOPTIONS"] = (env.get("PGOPTIONS", "") + " " + _RO_PGOPTIONS).strip()
     reader = os.environ.get("FLIP_READER")
     cmd = [reader, sql] if reader else ["psql", "-X", "-A", "-t", "-F", "\t", "-c", sql]
-    out = subprocess.run(cmd, check=True, capture_output=True, text=True).stdout
+    out = subprocess.run(cmd, check=True, capture_output=True, text=True, env=env).stdout
     return [line.split("\t") for line in out.splitlines() if line.strip()]
+
+
+def assert_read_only() -> None:
+    """Refuse unless the session reports transaction_read_only = on (verified once per process).
+    Read-only must not depend on the operator's connection: PGOPTIONS asks for it, this proves it."""
+    global _READ_ONLY_VERIFIED
+    if _READ_ONLY_VERIFIED:
+        return
+    rows = _run("select current_setting('transaction_read_only')")
+    if rows != [["on"]]:
+        raise NotReadOnly(f"database session is not read-only (transaction_read_only={rows!r}); refusing to run")
+    _READ_ONLY_VERIFIED = True
+
+
+def _query(sql: str) -> list[list[str]]:
+    assert re.match(r"^\s*select\b", sql, re.I) and ";" not in sql, "SELECT only"
+    assert_read_only()
+    return _run(sql)
 
 
 def read_rows(chart_id: str) -> list[dict]:
@@ -149,6 +179,14 @@ def check_states(before: list[dict], after: list[dict], chart_id: str = CANONICA
 
 
 def main(argv: list[str]) -> int:
+    try:
+        return _main(argv)
+    except NotReadOnly as exc:
+        print(f"REFUSED: {exc}")
+        return 2
+
+
+def _main(argv: list[str]) -> int:
     if len(argv) >= 3 and argv[0] == "--snapshot":
         rows = read_rows(argv[1])
         out = argv[argv.index("--out") + 1] if "--out" in argv else f"special_lagna_{argv[1][:8]}.json"

@@ -137,3 +137,67 @@ def test_reader_is_select_only(monkeypatch):
         M._query("delete from chart_facts")
     with pytest.raises(AssertionError):
         M._query("select 1; delete from chart_facts")
+
+
+# ---- read-only enforcement: the script must not depend on the operator's connection ----------------------------
+class _Proc:
+    def __init__(self, out):
+        self.stdout = out
+
+
+@pytest.fixture
+def fake_db(monkeypatch):
+    """Replace subprocess.run: record every call (command + env) and answer from `answers`."""
+    calls, state = [], {"ro": "on"}
+    monkeypatch.setattr(M, "_READ_ONLY_VERIFIED", False)
+    monkeypatch.delenv("FLIP_READER", raising=False)
+
+    def fake_run(cmd, check, capture_output, text, env):
+        sql = cmd[-1]
+        calls.append({"cmd": cmd, "env": env, "sql": sql})
+        if "transaction_read_only" in sql:
+            return _Proc(state["ro"])
+        return _Proc("a\tb\n")
+    monkeypatch.setattr(M.subprocess, "run", fake_run)
+    return calls, state
+
+
+@pytest.mark.parametrize("answer", ["off\n", "", "\n", "ON\n", "on\noff\n", "error\n"])
+def test_non_read_only_session_refuses_and_sends_no_data_query(fake_db, answer):
+    calls, state = fake_db
+    state["ro"] = answer
+    with pytest.raises(M.NotReadOnly):
+        M._query("select 1")
+    assert len(calls) == 1 and "transaction_read_only" in calls[0]["sql"]  # the data query was never sent
+
+
+def test_read_only_session_runs_and_is_verified_once(fake_db):
+    calls, _ = fake_db
+    assert M._query("select 1") == [["a", "b"]]
+    assert M._query("select 2") == [["a", "b"]]
+    assert sum("transaction_read_only" in c["sql"] for c in calls) == 1 and len(calls) == 3
+
+
+def test_pgoptions_requests_read_only_and_keeps_the_operators_options(fake_db, monkeypatch):
+    calls, _ = fake_db
+    monkeypatch.setenv("PGOPTIONS", "-c statement_timeout=5000")
+    M._query("select 1")
+    for c in calls:
+        assert "-c default_transaction_read_only=on" in c["env"]["PGOPTIONS"]
+        assert "-c statement_timeout=5000" in c["env"]["PGOPTIONS"]
+
+
+def test_flip_reader_path_is_verified_too(fake_db, monkeypatch):
+    calls, state = fake_db
+    monkeypatch.setenv("FLIP_READER", "/some/reader.sh")
+    state["ro"] = "off\n"
+    with pytest.raises(M.NotReadOnly):
+        M._query("select 1")
+    assert calls[0]["cmd"][0] == "/some/reader.sh"
+
+
+def test_main_refuses_with_exit_2_on_a_non_read_only_session(fake_db, capsys):
+    _, state = fake_db
+    state["ro"] = "off\n"
+    assert M.main(["--snapshot", "482012f1-710e-4a25-994a-93821f5871aa", "--out", "/nonexistent/x.json"]) == 2
+    assert "REFUSED" in capsys.readouterr().out
