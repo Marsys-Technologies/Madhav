@@ -176,6 +176,56 @@ class VerificationDisagrees(RuntimeError):
         self.stage, self.detail = stage, detail
 
 
+def take_locks(conn, chart_id: str) -> None:
+    """R10-3: the chart lock, THEN the global SHARED key — the builder's own order — taken before ANY read that feeds an
+    attestation and held (transaction-scoped advisory locks) until the caller's transaction ends. Re-entrant."""
+    conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (chart_id,))
+    conn.execute("SELECT public.ka_gochara_lock_global_shared()")
+
+
+def _included_pins(conn, chart_id, generation, event_class):
+    return [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
+        "SELECT path_id, rule_version FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = %s"
+        " AND event_class = %s AND disposition = 'included' AND path_id IN ('P1','P2','P3','P4') ORDER BY 1, 2",
+        (chart_id, generation, event_class)).fetchall()]
+
+
+def class_fingerprint(conn, chart_id: str, generation: str, event_class: str) -> dict:
+    """R10-3: the exact INPUT/OUTPUT identity one class verification checks — the inventory and ledger digests, and for each
+    included grain the digest of its complete semantic dependency set (records, results, contacts, snapshot, manifest,
+    policy: `window_gate.derivation_inputs_digest`) and the content digest of its stored windows. Read under the locks at
+    the start, re-read before anything persists; a persisted report is bound to it."""
+    from . import window_gate as wg
+    hdr = _inventory_header(conn, chart_id, generation, event_class)
+    fp: dict[str, Any] = {"inventory": None if hdr is None else [hdr[2], hdr[3]], "grains": {}}
+    for path_id, version in _included_pins(conn, chart_id, generation, event_class):
+        grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id, rule_version=version)
+        content = _one(conn.execute("SELECT public.ka_gochara_eval_window_content_digest(%s::uuid, %s, %s, %s, %s)",
+                                    (chart_id, generation, event_class, path_id, version)).fetchone())
+        fp["grains"][f"{path_id}@{version}"] = [wg.derivation_inputs_digest(conn, **grain), content]
+    return fp
+
+
+def fingerprint_digest(fp: dict) -> str:
+    import hashlib
+    from .window_gate import _canon
+    return hashlib.sha256(_canon(fp).encode("utf-8")).hexdigest()
+
+
+def precondition_fingerprint(conn, chart_id: str, generation: str) -> str:
+    """The identity of the SHARED preconditions (the manifest vector and status, the snapshot's input identity): re-read under
+    the lock by every class transaction and compared with the one the independent input derivation vouched for."""
+    import hashlib
+    from .window_gate import _canon
+    pub = conn.execute("SELECT status, input_generation_vector::text FROM public.kala_gochara_publication"
+                       " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    snap = conn.execute("SELECT input_digest FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s"
+                        " AND generation = %s", (chart_id, generation)).fetchone()
+    pub = None if pub is None else (tuple(pub.values()) if isinstance(pub, dict) else tuple(pub))
+    return hashlib.sha256(_canon({"manifest": None if pub is None else [pub[0], pub[1]],
+                                  "input": _one(snap)}).encode("utf-8")).hexdigest()
+
+
 def _sealed_paths(conn) -> list[tuple[str, str]]:
     return sorted((r[0], r[1]) for r in (tuple(x.values()) if isinstance(x, dict) else tuple(x) for x in conn.execute(
         "SELECT path_id, rule_version FROM public.ka_gochara_rule_path_seal").fetchall()))
@@ -191,6 +241,22 @@ def _inventory_header(conn, chart_id, generation, event_class):
 def verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
                  path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
                  drishti_bound: bool, vedha_bound: bool, persist: bool) -> dict:
+    """See `_verify_class`. A class whose records (or any derivation) the verifier cannot independently derive is
+    UNVERIFIED — an explicit result, the gate stays closed, nothing is persisted — never a pass."""
+    from . import inventory_verifier as inv_v
+    try:
+        return _verify_class(conn, chart_id=chart_id, generation=generation, event_class=event_class,
+                             position_at=position_at, configured_selection=configured_selection,
+                             path_rulings=path_rulings, h_unknown=h_unknown, moon_scope_domain=moon_scope_domain,
+                             factor_rows_for=factor_rows_for, drishti_bound=drishti_bound, vedha_bound=vedha_bound,
+                             persist=persist)
+    except inv_v.Unverifiable as exc:
+        return {"event_class": event_class, "persisted": False, "status": "UNVERIFIED", "reason": str(exc)}
+
+
+def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
+                  path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
+                  drishti_bound: bool, vedha_bound: bool, persist: bool) -> dict:
     """Everything the independent verifiers say about ONE event class. With `persist=False` (the builder's in-build
     self-check, and `--report-only`) nothing is written. With `persist=True` — the verifier principal's act — the 1206
     inventory-verification row and every included P1–P4 grain's 1240 window-verification row are REPLACED (the caller
@@ -212,12 +278,16 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
         except RuntimeError as exc:
             raise VerificationDisagrees(name, str(exc)) from exc
 
+    # R10-3: protection FIRST — nothing that feeds an attestation is read before the chart and global locks are held
+    take_locks(conn, chart_id)
     header = _inventory_header(conn, chart_id, generation, event_class)
     if header is None or header[2] is None:
         raise VerificationRefused("incomplete_build", f"{event_class}: no finalised inventory")
     lo, hi, stored_digest, stored_ledger = header
     horizon = (lo, hi)
     out: dict[str, Any] = {"event_class": event_class, "persisted": bool(persist)}
+    fp0 = class_fingerprint(conn, chart_id, generation, event_class)       # the exact data this verification checks
+    out["fingerprint"] = fingerprint_digest(fp0)
     stored_sel = inv_v.stored_selection(conn, chart_id=chart_id, generation=generation, event_class=event_class)
     configured = {p.lower(): v for p, v in configured_selection.items()}
     drift = {p: (v, configured.get(p)) for p, v in stored_sel.items() if configured.get(p) != v}
@@ -249,10 +319,7 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
     chart = inv_v.read_chart(conn, snap_facts) if snap_facts is not None else None
     from .result_policy import manifest_policy
     policy = manifest_policy(conn, chart_id, generation)
-    pins = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
-        "SELECT path_id, rule_version FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = %s"
-        " AND event_class = %s AND disposition = 'included' AND path_id IN ('P1','P2','P3','P4') ORDER BY 1, 2",
-        (chart_id, generation, event_class)).fetchall()]
+    pins = _included_pins(conn, chart_id, generation, event_class)
     if any(p == "P1" for p, _v in pins):
         out["p1"] = {
             "support": stage("p1_support", lambda: rv.verify_p1_support(
@@ -299,11 +366,17 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
         # on the inventory verification table and NO DELETE: a re-run replaces nothing there (`write_verification` is
         # idempotent for an identical digest, and a rebuilt inventory chain removes its own verification); the 1240 rows are
         # replaced by `record_verification` (the verifier holds DELETE on its own table, pre-seal).
-        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (chart_id,))
-        conn.execute("SELECT public.ka_gochara_lock_global_shared()")
+        take_locks(conn, chart_id)                                  # (re-entrant: held since the top)
+        fp1 = class_fingerprint(conn, chart_id, generation, event_class)
+        if fp1 != fp0:                                              # R10-3: the report must identify the data it checked
+            raise VerificationDisagrees(
+                "consistency", "the data this verification checked changed before it could be persisted — the report "
+                "no longer identifies the stored state (a writer replaced it outside the lock protocol); nothing is persisted")
         for grain, report, derived_w in reports:
             stage(f"record_verification {grain['path_id']}", lambda g=grain, r=report, d=derived_w:
-                  wg.record_verification(conn, report=r, input_digest=snap, expected=d, **g))
+                  wg.record_verification(conn, report=r, input_digest=snap, expected=d,
+                                         checked_inputs_digest=fp0["grains"][f"{g['path_id']}@{g['rule_version']}"][0],
+                                         **g))
         stage("inventory_verification", lambda: inv_v.write_verification(
             conn, chart_id=chart_id, generation=generation, event_class=event_class, rederived_digest=res["digest"]))
     out["status"] = "VERIFIED" if all(w["status"] == "VERIFIED" for w in windows) else "UNVERIFIED_DYNAMIC"
@@ -320,13 +393,22 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
     from . import window_gate as wg
     report: dict[str, Any] = {"chart_id": chart_id, "generation": generation, "report_only": report_only, "classes": {}}
     report["identity"] = check_identity(conn) if enforce_identity else {"separate": "NOT CHECKED (test seam)"}
-    pre = check_preconditions(conn, chart_id=chart_id, generation=generation, classes=classes, ephe_path=ephe_path,
-                              modules=modules, path_refs=path_refs)
+    # R10-3: the SHARED preconditions are read under the same locks, and their identity is fingerprinted for every class
+    with conn.transaction():
+        take_locks(conn, chart_id)
+        pre = check_preconditions(conn, chart_id=chart_id, generation=generation, classes=classes, ephe_path=ephe_path,
+                                  modules=modules, path_refs=path_refs)
+        shared_fp = precondition_fingerprint(conn, chart_id, generation)
     report["preconditions"] = pre
     disagreements = []
     for cls in pre["classes"]:
         try:
             with conn.transaction():
+                take_locks(conn, chart_id)
+                if precondition_fingerprint(conn, chart_id, generation) != shared_fp:
+                    raise VerificationRefused(
+                        "stale_inputs", "the manifest or the search-input snapshot changed after the preconditions were "
+                        "verified — nothing is persisted; re-run")
                 report["classes"][cls] = verify_class(
                     conn, chart_id=chart_id, generation=generation, event_class=cls, position_at=position_at,
                     configured_selection=configured_selection_for(cls), path_rulings=path_rulings, h_unknown=h_unknown,

@@ -171,7 +171,9 @@ def derive_path_records(conn, *, chart_id: str, generation: str, event_class: st
                 rec["results"][pid] = ("unknown" if other is None else
                                        ("true" if any(a < hi and lo < b for a, b in by_agent.get(other, [])) else "false"))
             else:                                    # a declared predicate this verifier has no derivation for
-                raise RuntimeError(f"{event_class}/{path_id}: declared prerequisite {pid!r} has no independent derivation")
+                from .inventory_verifier import Unverifiable
+                raise Unverifiable(f"{event_class}/{path_id}: declared prerequisite {pid!r} has no independent derivation "
+                                   "in the verifier — the path's records cannot be verified")
         rec["admission"] = admission_of([rec["results"][p] for p in declared])
     return expected
 
@@ -321,7 +323,8 @@ def verify_p1_results(conn, *, chart_id: str, generation: str, event_class: str,
             if pid == "period_running_at":
                 continue                                            # verify_p1_support's (derived from the daśā rows)
             if pid not in want:
-                problems.append(f"record {r['id']}: declared prerequisite {pid!r} has no independent derivation")
+                from .inventory_verifier import Unverifiable
+                raise Unverifiable(f"P1: declared prerequisite {pid!r} has no independent derivation in the verifier")
             elif got.get(pid) != want[pid]:
                 problems.append(f"record {r['id']}: {pid} stored {got.get(pid)!r}, derived {want[pid]!r}")
         results = [got.get(p, "unknown") if p == "period_running_at" else want.get(p, "unknown") for p in declared]

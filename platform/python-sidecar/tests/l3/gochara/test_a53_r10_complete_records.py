@@ -131,3 +131,39 @@ def test_a_wrong_p1_natal_relationship_result_is_refused(built):
     report = _run(w)
     status, stage, detail = _stage(report)
     assert (status, stage) == ("DISAGREE", "p1_results") and "natal_bhava_relationship" in detail, report["classes"]
+
+
+def test_the_record_derivation_imports_nothing_from_the_builder():
+    """Steward M…111803: the verifier-own derivation shares nothing with the builder beyond L0/L1 data and the sealed
+    registry rows it reads — it imports nothing from evaluator / record_store / the writer / the rule-admission modules."""
+    import ast
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[3] / "services" / "gochara_kernel" / "record_derivation.py").read_text()
+    imported = set()
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.ImportFrom):
+            imported.add(("." * node.level) + (node.module or ""))
+        elif isinstance(node, ast.Import):
+            imported.update(a.name for a in node.names)
+    forbidden = ("evaluator", "record_store", "ka_gochara_v5", "rule_registry", "substrate", "targets", "materialise",
+                 "gochara_rules.admission", "gochara_rules.registry", "gochara_rules.favourable_houses",
+                 "gochara_rules.predicates")
+    bad = {m for m in imported if any(f in m for f in forbidden)}
+    assert not bad, f"the record derivation must be independent of the builder: {bad}"
+    # the only gochara module it reads rules from is the P1 period-lord relation the existing P1 verifiers already call
+    assert {m for m in imported if m.startswith("services.gochara_rules")} == {"services.gochara_rules"}, imported
+
+
+def test_a_path_whose_records_cannot_be_derived_is_UNVERIFIED_never_a_pass(built, monkeypatch):
+    """A declared prerequisite with no independent derivation in the verifier ⇒ the class is UNVERIFIED (gate closed,
+    nothing persisted) — an explicit result, not a disagreement and not a pass."""
+    from services.gochara_kernel import record_derivation as rd
+    real = rd.declared_predicates
+    monkeypatch.setattr(rd, "declared_predicates",
+                        lambda conn, path_id, version: real(conn, path_id, version) + (
+                            ["a_predicate_the_verifier_cannot_derive"] if path_id == "P3" else []))
+    w = built
+    report = _run(w)
+    c = report["classes"][CLS]
+    assert c["status"] == "UNVERIFIED" and "no independent derivation" in c["reason"], c
+    assert report["status"] == "NOT_VERIFIED" and _verification_rows(w) == {t: 0 for t in vj.VERIFICATION_TABLES}

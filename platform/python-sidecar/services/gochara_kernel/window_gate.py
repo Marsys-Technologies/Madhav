@@ -197,7 +197,7 @@ def derivation_inputs_digest(conn, **grain) -> str:
 
 
 def record_verification(conn, *, chart_id, generation, event_class, path_id, rule_version, report: dict,
-                        input_digest: str, expected=None) -> dict:
+                        input_digest: str, expected=None, checked_inputs_digest: str | None = None) -> dict:
     """Refuse a stored window set that is not the independently expected one, then persist the generation-bound
     result (delete-then-insert for this verifier — a candidate rebuild REPLACES it)."""
     grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
@@ -226,6 +226,9 @@ def record_verification(conn, *, chart_id, generation, event_class, path_id, rul
     content = next(iter(content.values())) if isinstance(content, dict) else content[0]
     digest = intervals_digest(stored)
     inputs_digest = derivation_inputs_digest(conn, **grain)             # R9-2: bound into the stored verification
+    if checked_inputs_digest is not None and checked_inputs_digest != inputs_digest:     # R10-3
+        raise RuntimeError(f"window verification {event_class}/{path_id}: the inputs the report was produced from "
+                           f"({checked_inputs_digest}) are not the stored inputs now ({inputs_digest})")
     conn.execute(
         "DELETE FROM public.ka_gochara_eval_window_verification WHERE chart_id = %s AND generation = %s"
         " AND event_class = %s AND path_id = %s AND rule_version = %s AND verifier_id = %s"
