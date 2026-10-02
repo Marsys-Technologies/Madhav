@@ -1341,14 +1341,13 @@ def _e63_asset_report(asset, state, disp, gaps):
             else:
                 if rec.get("basis") == E63_BASIS_DECLARATION:
                     declared += 1
-                if rec.get("citation_state") is not None and c in E63_CITATION_CRITERIA:
+                if rec["citation_state"] is not None:          # (the reader allows a state only on a citation gate)
                     cit_states[c] = rec["citation_state"]
                 caveat = caveat or rec["citation_state_caveat"] is True
     for a in d["additions"]:                                                                 # (2)
         rec = (state.by_key.get(f"{asset}|addition|{a}") or [None])[-1]
         if rec is None or not _e63_satisfies(rec, state, addition=True):
             return None
-        caveat = caveat or rec["citation_state_caveat"] is True
     if any(_e63_gap_blocks(g, d["additions"], state.facts.info_families) for g in gaps.get(asset, ())):   # (3)
         return None
     return dict(basis="measured", declaration_based_pass_cells=declared, ruled_na_cells=ruled,
