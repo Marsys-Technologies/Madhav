@@ -279,3 +279,49 @@ def test_extent_index_matches_the_independent_oracle_on_a_dense_grid():
             break
         assert K.extent_index(x, None, 48_000) == _oracle_index(x, 48_000)
         assert K.extent_index(x, None, 108_000) == _oracle_index(x, 108_000)
+
+
+# ── Codex R5 / steward M20261002T020529-6f18 (b): ONE codec; a numeric orb is admissible only with its decision-ref token ──
+def _flat(**over):
+    flat = copy.deepcopy(FACTORS[REF]["operand_selector"])
+    flat.update(over)
+    return flat
+
+
+def test_the_final_flat_key_list_is_the_single_codec_and_the_registry_row_obeys_it():
+    flat = FACTORS[REF]["operand_selector"]
+    assert set(flat) == set(FS.KERNEL_FLAT_KEYS) and FS.kernel_flat_problems(flat) == []
+    assert flat["orb_state"] == FS.ORB_UNRATIFIED and "orb_deg" not in flat and "orb_decision_ref" not in flat    # omitted, never null
+    assert FS.encode_kernel(FS.decode_kernel(flat)) == flat                                                       # lossless round trip
+
+
+def test_a_numeric_orb_needs_ratified_status_and_a_decision_ref():
+    ok = _flat(orb_state=FS.ORB_RATIFIED, orb_deg=3.0, orb_decision_ref="ruling:nd_orb_x")
+    assert FS.kernel_flat_problems(ok) == [] and FS.encode_kernel(FS.decode_kernel(ok)) == ok
+    for bad in (_flat(orb_deg=3.0),                                                                  # number while unratified
+                _flat(orb_state=FS.ORB_RATIFIED, orb_deg=3.0),                                      # ratified, no decision ref
+                _flat(orb_state=FS.ORB_RATIFIED, orb_decision_ref="ruling:nd_orb_x"),               # ratified, no number
+                _flat(orb_state=FS.ORB_RATIFIED, orb_deg=0, orb_decision_ref="ruling:nd_orb_x"),
+                _flat(orb_state=FS.ORB_RATIFIED, orb_deg=-1.0, orb_decision_ref="ruling:nd_orb_x"),
+                _flat(orb_state=FS.ORB_RATIFIED, orb_deg=float("inf"), orb_decision_ref="ruling:nd_orb_x"),
+                _flat(orb_state=FS.ORB_RATIFIED, orb_deg=True, orb_decision_ref="ruling:nd_orb_x"),
+                _flat(orb_state="maybe"),
+                _flat(orb_decision_ref="ruling:nd_orb_x")):                                          # a ref while unratified
+        assert FS.kernel_flat_problems(bad), bad
+        with pytest.raises(ValueError):
+            FS.decode_kernel(bad)
+
+
+def test_foreign_key_names_are_refused_a_closed_schema_not_a_guess():
+    for k in ("angular_orb_state", "angular_orb_deg", "angular_orb_decision_ref", "span_function", "angular_kinds"):
+        assert any("unknown keys" in p for p in FS.kernel_flat_problems(_flat(**{k: "unratified"}))), k
+    # and a missing key is refused too
+    flat = _flat(); flat.pop("aspect_geometry")
+    assert any("missing keys" in p for p in FS.kernel_flat_problems(flat))
+
+
+def test_encoding_a_numeric_orb_without_a_decision_ref_is_refused():
+    nested = FS.decode_kernel(FACTORS[REF]["operand_selector"])
+    nested["angular"].update({"orb_deg": 3.0, "orb_status": "ratified"})                              # no orb_decision_ref
+    with pytest.raises(ValueError, match="decision_ref"):
+        FS.encode_kernel(nested)
