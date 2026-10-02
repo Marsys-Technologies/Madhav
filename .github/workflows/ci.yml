@@ -1772,7 +1772,7 @@ jobs:
           python -m pipeline.orchestrator.provenance_inventory --check
           # Nirmana analysis-receipt pins retired (NIRMANA-SUPERSESSION): the per-layer pins check and its tests no longer run;
           # the writer digest inventory check above stays (it keeps generated writer hashes honest).
-          pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
+          pytest tests/ bodha_writers/__tests__ ga_writers/__tests__ pipeline/orchestrator/tests/ \
             pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \
@@ -1781,7 +1781,7 @@ jobs:
             --ignore=tests/extractors/test_cgm_extractor.py \
             --ignore=tests/test_l0_remedy_corpus.py \
             -m "not integration" \
-            -q --tb=short --no-header
+            -q -rs --tb=short --no-header
 
       - name: Nirmāṇa L0 — pinned Swiss Ephemeris corpus probe
         # This is a production-shaped positive probe, not the ordinary fallback-only
