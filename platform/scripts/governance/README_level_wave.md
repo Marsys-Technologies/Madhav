@@ -133,6 +133,19 @@ asset's `depends_on`, and wave boundaries are informational. The frozen runner i
   check ever re-reads. A no-delta skip (`disposition = skip_no_delta`, state `complete`) is not success unless the asset is
   named in `--declared-skips`; skipped assets are always reported. Any other disposition stops the campaign.
 
+## --force-execute (OFF by default)
+
+The delta-skip: an unchanged writer re-dispatched without force no-op-completes and emits no new receipt
+(asset_runner.py ~1141-1160); L0_STATE.md D-L0-B documents it. Force bypasses it for every asset of that run. The runner reads
+`NIRMANA_FORCE_EXECUTE` (`1`/`true`/`yes`) inside the job container, per run (`runner.py` `execute_run`); there is no manifest
+field. `--force-execute` therefore sets it for ONE execution with the Cloud Run override
+`gcloud run jobs execute ... --update-env-vars=NIRMANA_FORCE_EXECUTE=1` (verified against the local gcloud 576.0.0: the flag is
+accepted next to `--args`, and a malformed value is rejected by the same parser). Rules: exactly one asset in the plan
+(`FORCE_MULTI_ASSET`), never a family asset, name pattern or `family_set`, even alone (`FORCE_FAMILY_ASSET`); a real dispatch
+needs `--commit` and the force-bound confirm token (`<N>ASSETS_<digest12>_FORCE_FROZEN_REBUILD`, different from the normal
+token, so neither confirms the other); a dry run with the flag previews the force token and dispatches nothing. `force_execute`
+is in the dry-run summary and every receipt and event.
+
 ## Out-of-set intermediates
 
 The dry-run summary lists `out_of_set_intermediates_at_risk`: outside assets E that a requested asset depends on and that

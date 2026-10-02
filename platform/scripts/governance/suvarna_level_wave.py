@@ -1271,10 +1271,30 @@ def build_level_manifest(*, chart_id: str, plan_waves: Sequence[Sequence[str]], 
     return manifest, manifest_digest(manifest)
 
 
-def expected_confirmation(digest: str, n_assets: int) -> str:
+FORCE_ENV_VAR = "NIRMANA_FORCE_EXECUTE"
+
+
+def expected_confirmation(digest: str, n_assets: int, force_execute: bool = False) -> str:
     """`--confirm` token: the existing `<SUBJECT>_FROZEN_REBUILD` convention with the subject bound to the manifest, so a
-    token from one dry run can not confirm a different manifest (a registry change moves the digest and the token)."""
-    return f"{n_assets}ASSETS_{digest[:12].upper()}_FROZEN_REBUILD"
+    token from one dry run can not confirm a different manifest (a registry change moves the digest and the token). A
+    forced dispatch has a DIFFERENT token (`..._FORCE_FROZEN_REBUILD`): a token confirmed for a normal run can not authorise
+    a force, and the reverse."""
+    return f"{n_assets}ASSETS_{digest[:12].upper()}_{'FORCE_' if force_execute else ''}FROZEN_REBUILD"
+
+
+def force_refusals(assets: Sequence[str], family: Mapping[str, Any]) -> list[dict]:
+    """`--force-execute` bypasses the runner's delta-skip for EVERY asset of the run, so it is allowed for exactly one asset,
+    and never for a family asset (name pattern or FAMILY_ASSETS.json family_set), even when it is the only asset."""
+    out: list[dict] = []
+    if len(assets) != 1:
+        out.append({"code": "FORCE_MULTI_ASSET", "detail": f"--force-execute is for a single-asset plan; {len(assets)} assets "
+                    "requested (force would bypass the delta-skip for every asset of the run)"})
+    members = family.get("family_set") if family.get("state") == "present" else frozenset()
+    for a in sorted(assets):
+        if FAMILY_NAME_PATTERN.match(a) or a in (members or frozenset()):
+            out.append({"code": "FORCE_FAMILY_ASSET", "asset": a,
+                        "detail": f"--force-execute is refused for family asset {a}"})
+    return out
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1381,7 +1401,8 @@ def _lock_key(chart_id: str) -> str:
 
 def insert_run(connect, *, chart_id: str, manifest: Mapping[str, Any], digest: str, row_digests: Mapping[str, str],
                external: Mapping[str, Sequence[str]], confirm: str | None, commit: bool,
-               footprint: bool = False, on_commit=None, meta: Mapping[str, Any] | None = None) -> dict:
+               footprint: bool = False, on_commit=None, meta: Mapping[str, Any] | None = None,
+               force_execute: bool = False) -> dict:
     """One transaction: advisory lock, active-run refusal, registry-row re-read and compare, external dependencies
     lit+fresh, INSERT build_runs + build_run_assets, then ROLLBACK (dry run) or COMMIT (only with the exact token).
 
@@ -1390,7 +1411,7 @@ def insert_run(connect, *, chart_id: str, manifest: Mapping[str, Any], digest: s
     `on_commit(receipt)` is called the instant the COMMIT succeeds, before anything else can fail, so the caller always
     knows a run exists. `meta` is merged into the receipt (the deployed job sha is printed on every receipt)."""
     plan = [a for wave in manifest["waves"] for a in wave]
-    token = expected_confirmation(digest, len(plan))
+    token = expected_confirmation(digest, len(plan), force_execute)
     if commit and confirm != token:
         raise LevelWaveRefusal([{"code": "CONFIRM_TOKEN_MISMATCH",
                                  "detail": f"--commit requires --confirm {token}", "expected": token}])
@@ -1828,6 +1849,9 @@ HELP_EPILOG = (
     "(--pause-dir, --job-sha-file re-read before every wave). Refuses: image skew, a job sha mismatch, any dependency outside "
     "the set not lit+fresh (whole plan), a registry row changed since the manifest was built, any Pravaha gochara-family asset, "
     "a split family, an unreadable or stale family file, a non-per_chart asset, an active run on the chart, stale hook files.\n\n"
+    "--force-execute (OFF by default) dispatches with NIRMANA_FORCE_EXECUTE=1: it bypasses the runner's delta-skip for EVERY "
+    "asset of the run, so it is allowed for ONE asset only, never a family asset, and needs --commit with its own force-bound "
+    "--confirm token (a dry run previews the token).\n\n"
     "Output is JSON lines, flushed per event; the last line is the summary. Exit codes: 0 ok / dry run done; 1 DATABASE_URL "
     "missing; 2 bad input; 3 dispatch failed after commit (see the warning in the summary); 4 a gate refused; 5 wave-by-wave "
     "campaign stopped; 6 unexpected exception or database error (the summary lists every run committed so far; a COMMIT "
@@ -1863,6 +1887,9 @@ def build_parser() -> argparse.ArgumentParser:
                    "head_sha), read by the operator at launch; must equal --deployed-sha")
     p.add_argument("--job-sha-file", help="a file the operator's gate keeps holding exactly the live deployed job sha (40 hex); "
                    "validated at launch and re-read before every wave (required for wave-by-wave --commit)")
+    p.add_argument("--force-execute", action="store_true", help="OFF by default. Dispatch with NIRMANA_FORCE_EXECUTE=1 (gcloud "
+                   "--update-env-vars): bypasses the runner's delta-skip for EVERY asset of the run, so a single asset only, "
+                   "never a family asset; needs --commit and its own force-bound --confirm token (a dry run previews it)")
     p.add_argument("--declared-skips", default="", help="comma list of assets whose no-delta skip (disposition skip_no_delta) counts as success")
     p.add_argument("--repo", default=str(REPO_ROOT))
     p.add_argument("--family-ref", default="origin/main")
@@ -1896,15 +1923,26 @@ def precheck_external(connect, chart_id: str, external: Mapping[str, Sequence[st
         conn.close()
 
 
+def dispatch_command(*, run_id: str, project: str, region: str, job: str, force_execute: bool = False) -> list[str]:
+    """The `gcloud run jobs execute` command. With force_execute it adds the per-execution env override
+    `--update-env-vars=NIRMANA_FORCE_EXECUTE=1` (a flag `gcloud run jobs execute` accepts next to --args: it merges the pair into
+    the job's environment for this one execution). The runner reads that variable per run (runner.py execute_run) and bypasses
+    the delta-skip for every asset of the run; there is no manifest field for it."""
+    cmd = ["gcloud", "run", "jobs", "execute", job, f"--project={project}", f"--region={region}",
+           f"--args=--run-id,{run_id}"]
+    if force_execute:
+        cmd.append(f"--update-env-vars={FORCE_ENV_VAR}=1")
+    return cmd + ["--async", "--format=value(metadata.name)"]
+
+
 def dispatch_run_with_timeout(*, run_id: str, project: str, region: str, job: str, run_command=subprocess.run,
-                              timeout: float = GCLOUD_TIMEOUT_SECONDS) -> str:
+                              timeout: float = GCLOUD_TIMEOUT_SECONDS, force_execute: bool = False) -> str:
     """The same `gcloud run jobs execute ... --async` command dispatch_frozen_rebuild.dispatch_run issues, with a timeout, no
     stdin and no prompts. After a timeout the execution may or may not have started: the caller terminalises the planned run
     (the runner refuses a run that is not planned/running), so a late start can not build anything."""
     try:
         result = run_command(
-            ["gcloud", "run", "jobs", "execute", job, f"--project={project}", f"--region={region}",
-             f"--args=--run-id,{run_id}", "--async", "--format=value(metadata.name)"],
+            dispatch_command(run_id=run_id, project=project, region=region, job=job, force_execute=force_execute),
             capture_output=True, check=False, text=True, timeout=timeout, stdin=subprocess.DEVNULL,
             env={**os.environ, "CLOUDSDK_CORE_DISABLE_PROMPTS": "1"})
     except subprocess.TimeoutExpired as exc:
@@ -1994,6 +2032,8 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
     ref_status = family_ref_status(args.repo, args.family_ref, git=git)
     family = load_family_info(args.repo, args.family_ref, git=git)
     refusals = family_ref_refusals(ref_status, committing=args.commit) + family_refusals(assets, family, committing=args.commit)
+    if args.force_execute:
+        refusals += force_refusals(assets, family)
     if refusals:
         raise LevelWaveRefusal(refusals)
     if args.commit and not args.mode:
@@ -2023,7 +2063,8 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
     pinned = binding["deployed_job_sha"]
     if args.job_sha_file:
         recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)
-    meta = {"deployed_job_sha": pinned, "inventory_sha": binding["inventory_sha"]}
+    force = bool(args.force_execute)
+    meta = {"deployed_job_sha": pinned, "inventory_sha": binding["inventory_sha"], "force_execute": force}
 
     local = load_local_writer_digests(args.repo)
     deployed = load_deployed_writer_digests(repo=args.repo, sha=args.deployed_sha, file=args.deployed_digests_file, git=git)
@@ -2035,17 +2076,17 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
     if wave_by_wave:
         precheck_external(connect, args.chart_id, plan["external_dependencies"])      # every wave's outside dependencies
     estimate = estimate_runtime(plan["waves"], plan["rows"])
-    token_full = expected_confirmation(plan["manifest_digest"], len(plan["plan"]))
+    token_full = expected_confirmation(plan["manifest_digest"], len(plan["plan"]), force)
     summary = {
         "schema": LEVEL_WAVE_SCHEMA, "never_executed_note": NEVER_EXECUTED_NOTE, "chart_id": args.chart_id, **meta,
-        "job_sha_binding": binding["binding"], "family_ref": ref_status,
+        "job_sha_binding": binding["binding"], "family_ref": ref_status, "force_execute": force,
         "family_enforcement": "name_patterns_and_family_set" if family["state"] == "present" else "name_patterns_only",
         "live_dry_run_note": "the LIVE dry run is mandatory before the first --commit; the waves above are the live waves for "
                              "this registry, any README list is indicative",
         "asset_count": len(plan["plan"]), "waves": plan["waves"], "manifest_digest": plan["manifest_digest"],
         "confirm_token_single_run": token_full,
         "per_wave": [{"wave": w["wave"], "assets": w["assets"], "manifest_digest": w["manifest_digest"],
-                      "confirm_token": expected_confirmation(w["manifest_digest"], len(w["assets"]))}
+                      "confirm_token": expected_confirmation(w["manifest_digest"], len(w["assets"]), force)}
                      for w in plan["per_wave"]],
         "external_dependencies": plan["external_dependencies"], "runtime_estimate": estimate, "committed": False,
         "out_of_set_intermediates_at_risk": at_risk_intermediates(assets, {**outside, **{a: plan["rows"][a].get("depends_on") or [] for a in assets}}),
@@ -2065,7 +2106,8 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
 
     send = None
     if args.commit:
-        send = dispatch or (lambda run_id: dispatch_run_with_timeout(run_id=run_id, project=args.project, region=args.region, job=args.job))
+        send = dispatch or (lambda run_id: dispatch_run_with_timeout(run_id=run_id, project=args.project, region=args.region, job=args.job,
+                                                                           force_execute=force))
 
     def send_or_terminalise(receipt) -> str | None:
         """Dispatch a committed run; on failure terminalise it (or return the chart-blocking warning). Returns the warning
@@ -2090,8 +2132,9 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
         ext = external_dependencies(tgt, {a: plan["rows"][a].get("depends_on") or [] for a in tgt})
         receipt = insert_run(connect, chart_id=args.chart_id, manifest=target["manifest"], digest=target["manifest_digest"],
                              row_digests={a: plan["row_digests"][a] for a in tgt}, external=ext,
-                             confirm=expected_confirmation(target["manifest_digest"], len(tgt)) if args.commit else None,
-                             commit=args.commit, footprint=args.with_footprint, on_commit=on_commit(0), meta=meta)
+                             confirm=expected_confirmation(target["manifest_digest"], len(tgt), force) if args.commit else None,
+                             commit=args.commit, footprint=args.with_footprint, on_commit=on_commit(0), meta=meta,
+                             force_execute=force)
         summary["insert"] = receipt
         summary["committed"] = receipt["committed"]
         if args.commit and send_or_terminalise(receipt) is not None:
@@ -2113,8 +2156,8 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
         ext = external_dependencies(w["assets"], {a: plan["rows"][a].get("depends_on") or [] for a in w["assets"]})
         receipt = insert_run(connect, chart_id=args.chart_id, manifest=w["manifest"], digest=w["manifest_digest"],
                              row_digests={a: plan["row_digests"][a] for a in w["assets"]}, external=ext,
-                             confirm=expected_confirmation(w["manifest_digest"], len(w["assets"])),
-                             commit=True, footprint=False, on_commit=on_commit(i), meta=meta)
+                             confirm=expected_confirmation(w["manifest_digest"], len(w["assets"]), force),
+                             commit=True, footprint=False, on_commit=on_commit(i), meta=meta, force_execute=force)
         failure = send_or_terminalise(receipt)
         if failure is not None:
             raise LevelWaveRefusal([{"code": "DISPATCH_FAILED", "run_id": receipt["run_id"],

@@ -1962,3 +1962,173 @@ def test_readme_and_help_document_exit_7_and_the_new_rules():
     assert "| 7 |" in flat and "GOOD_THROUGHPUT_STATES" in flat and "skip_no_delta" in flat
     assert "exactly one 40-hex" in flat
     assert "7 interrupted" in " ".join(slw.build_parser().format_help().split())
+
+
+# ═════════════════════════ --force-execute (NIRMANA_FORCE_EXECUTE per dispatch) ═════════════════════════
+
+BASE_CMD = ["gcloud", "run", "jobs", "execute", "j", "--project=p", "--region=g", "--args=--run-id,r1"]
+TAIL = ["--async", "--format=value(metadata.name)"]
+
+
+def test_gcloud_command_is_pinned_byte_for_byte_with_and_without_force(monkeypatch):
+    kw = dict(run_id="r1", project="p", region="g", job="j")
+    assert slw.dispatch_command(**kw) == BASE_CMD + TAIL
+    assert slw.dispatch_command(**kw, force_execute=False) == BASE_CMD + TAIL
+    assert slw.dispatch_command(**kw, force_execute=True) == BASE_CMD + ["--update-env-vars=NIRMANA_FORCE_EXECUTE=1"] + TAIL
+    seen = []
+
+    def runner(cmd, **k):
+        seen.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, "executions/e\n", "")
+    slw.dispatch_run_with_timeout(run_command=runner, **kw)
+    slw.dispatch_run_with_timeout(run_command=runner, force_execute=True, **kw)
+    assert seen[0] == BASE_CMD + TAIL and seen[1] == BASE_CMD + ["--update-env-vars=NIRMANA_FORCE_EXECUTE=1"] + TAIL
+    # the un-forced command is still the existing dispatcher's own command
+    old = _frozen_dispatcher()
+    got = []
+    monkeypatch.setattr(old.subprocess, "run", lambda c, **k: got.append(c) or subprocess.CompletedProcess(c, 0, "x\n", ""))
+    old.dispatch_run(**kw)
+    assert got[0] == seen[0]
+
+
+def test_the_env_var_name_is_the_one_the_runner_reads():
+    src = (REPO / "platform/python-sidecar/pipeline/orchestrator/runner.py").read_text()
+    assert f'os.environ.get("{slw.FORCE_ENV_VAR}"' in src
+
+
+def test_force_is_off_by_default():
+    a = slw.build_parser().parse_args(["--chart-id", CHART, "--assets", "a_one", "--deployed-job-sha", "x"])
+    assert a.force_execute is False
+    assert slw.build_parser().parse_args(["--chart-id", CHART, "--assets", "a_one", "--force-execute"]).force_execute is True
+
+
+def test_the_force_token_differs_from_the_normal_token_and_keeps_the_suffix():
+    d = "a" * 64
+    n, f = slw.expected_confirmation(d, 1), slw.expected_confirmation(d, 1, True)
+    assert n == "1ASSETS_AAAAAAAAAAAA_FROZEN_REBUILD" and f == "1ASSETS_AAAAAAAAAAAA_FORCE_FROZEN_REBUILD" and n != f
+    assert slw.expected_confirmation(d, 1, False) == n
+
+
+def test_a_force_dry_run_previews_the_force_token_and_dispatches_nothing(env):
+    repo, git = env
+    _, plain = run(args_for(repo, "a_one"), FakeDB([SMALL], READY), git)
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one", "--force-execute"), db, git, dispatch=lambda r: pytest.fail("dry run dispatched"))
+    assert code == 0 and out["force_execute"] is True and plain["force_execute"] is False
+    assert out["confirm_token_single_run"].endswith("_FORCE_FROZEN_REBUILD") and out["confirm_token_single_run"] != plain["confirm_token_single_run"]
+    assert out["manifest_digest"] == plain["manifest_digest"]                  # force is not part of the manifest
+    assert out["insert"]["force_execute"] is True and "commit" not in db.kinds()
+
+
+def test_force_commit_dispatches_with_the_flag_and_every_receipt_carries_it(env, monkeypatch):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one", "--force-execute"), FakeDB([SMALL], READY), git)
+    sent = []
+    monkeypatch.setattr(slw, "dispatch_run_with_timeout", lambda **kw: sent.append(kw) or "executions/x")
+    code, lines_, _ = run_all(args_for(repo, "a_one", "--force-execute", "--commit", "--confirm", dry["confirm_token_single_run"],
+                                       mode="single-run"), FakeDB([SMALL], READY), git)
+    assert code == 0 and sent[0]["force_execute"] is True
+    assert all(l["force_execute"] is True for l in lines_ if l["event"] in ("run_committed", "run_dispatched"))
+    assert lines_[-1]["force_execute"] is True and lines_[-1]["committed_runs"][0]["force_execute"] is True
+    assert lines_[-1]["insert"]["force_execute"] is True
+
+
+def test_a_normal_commit_never_forces(env, monkeypatch):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one"), FakeDB([SMALL], READY), git)
+    sent = []
+    monkeypatch.setattr(slw, "dispatch_run_with_timeout", lambda **kw: sent.append(kw) or "executions/x")
+    code, lines_, _ = run_all(args_for(repo, "a_one", "--commit", "--confirm", dry["confirm_token_single_run"], mode="single-run"),
+                              FakeDB([SMALL], READY), git)
+    assert code == 0 and sent[0]["force_execute"] is False and lines_[-1]["force_execute"] is False
+
+
+def test_the_token_is_bound_to_the_force_flag_in_both_directions(env):
+    repo, git = env
+    _, plain = run(args_for(repo, "a_one"), FakeDB([SMALL], READY), git)
+    _, forced = run(args_for(repo, "a_one", "--force-execute"), FakeDB([SMALL], READY), git)
+    for flag, token in ((["--force-execute"], plain["confirm_token_single_run"]), ([], forced["confirm_token_single_run"])):
+        db = FakeDB([SMALL], READY)
+        code, out = run(args_for(repo, "a_one", *flag, "--commit", "--confirm", token, mode="single-run"), db, git,
+                        dispatch=lambda r: pytest.fail("dispatched"))
+        assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "CONFIRM_TOKEN_MISMATCH"
+        assert "commit" not in db.kinds() and db.inserts("build_runs") == []
+
+
+def test_insert_run_itself_binds_the_token_to_force():
+    db = FakeDB([SMALL], READY)
+    m, d = slw.build_level_manifest(chart_id=CHART, plan_waves=[["a_one"]], rows={"a_one": SMALL[0]}, writer_digests=SMALL_DIGESTS)
+    kw = dict(chart_id=CHART, manifest=m, digest=d, row_digests={"a_one": slw.registry_row_digest(SMALL[0])}, external={}, commit=True)
+    with pytest.raises(slw.LevelWaveRefusal):
+        slw.insert_run(db.connect, confirm=slw.expected_confirmation(d, 1), force_execute=True, **kw)
+    with pytest.raises(slw.LevelWaveRefusal):
+        slw.insert_run(db.connect, confirm=slw.expected_confirmation(d, 1, True), force_execute=False, **kw)
+    assert db.log == []
+    assert slw.insert_run(db.connect, confirm=slw.expected_confirmation(d, 1, True), force_execute=True, **kw)["committed"] is True
+
+
+def test_force_is_refused_for_a_multi_asset_plan_even_with_non_family_assets(env):
+    repo, git = env
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one,a_two", "--force-execute"), db, git)
+    assert code == slw.REFUSAL_EXIT_CODE and [r["code"] for r in out["refusals"]] == ["FORCE_MULTI_ASSET"]
+    assert db.log == []
+    code, out = run(args_for(repo, "a_one,a_two,a_three", "--force-execute", "--commit", "--confirm", "x", mode="single-run"), FakeDB([SMALL], READY), git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "FORCE_MULTI_ASSET"
+
+
+@pytest.mark.parametrize("asset", ["ka_gochara", "ka_vedha_gochara_x", "bg_gochara_y", "gochara_z"])
+def test_force_is_refused_for_a_family_name_pattern_asset_even_alone(tmp_path, asset):
+    repo = make_repo(tmp_path, {asset: _hexdigest(asset)})
+    git = FakeGit(family_text=family_doc(), deployed={asset: _hexdigest(asset)})
+    db = FakeDB([[row(asset)]], READY)
+    code, out = run(args_for(repo, asset, "--force-execute"), db, git)
+    assert code == slw.REFUSAL_EXIT_CODE and "FORCE_FAMILY_ASSET" in [r["code"] for r in out["refusals"]] and db.log == []
+
+
+def test_force_is_refused_for_a_family_set_member_with_an_ordinary_name_even_alone(tmp_path):
+    repo = make_repo(tmp_path, SMALL_DIGESTS)
+    git = FakeGit(family_text=family_doc(family_sangam=["a_two"]), deployed=SMALL_DIGESTS)
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_two", "--force-execute"), db, git)
+    assert code == slw.REFUSAL_EXIT_CODE and ("FORCE_FAMILY_ASSET", "a_two") in [(r["code"], r.get("asset")) for r in out["refusals"]]
+    assert db.log == []
+
+
+def test_the_force_family_refusal_stands_on_its_own(tmp_path, monkeypatch):
+    """Even if the ordinary family check were bypassed, force still refuses a family asset."""
+    repo = make_repo(tmp_path, SMALL_DIGESTS)
+    git = FakeGit(family_text=family_doc(family_sangam=["a_two"]), deployed=SMALL_DIGESTS)
+    monkeypatch.setattr(slw, "family_refusals", lambda *a, **k: [])
+    code, out = run(args_for(repo, "a_two", "--force-execute"), FakeDB([SMALL], READY), git)
+    assert code == slw.REFUSAL_EXIT_CODE and [r["code"] for r in out["refusals"]] == ["FORCE_FAMILY_ASSET"]
+    assert slw.force_refusals(["a_one"], {"state": "absent"}) == []
+    assert slw.force_refusals(["ka_gochara"], {"state": "absent"})[0]["code"] == "FORCE_FAMILY_ASSET"
+
+
+def test_a_single_non_family_asset_passes_the_force_checks():
+    fam = {"state": "present", "family_set": frozenset({"other"})}
+    assert slw.force_refusals(["a_one"], fam) == []
+
+
+def test_force_in_wave_by_wave_uses_the_flag_for_its_single_asset(env, tmp_path, monkeypatch):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one", "--force-execute", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
+    sent = []
+    monkeypatch.setattr(slw, "dispatch_run_with_timeout", lambda **kw: sent.append(kw) or "executions/x")
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one", "--force-execute", "--commit", "--confirm", dry["confirm_token_single_run"],
+                             "--pause-dir", str(tmp_path / "p"), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git,
+                    hook=lambda *a: True, sleep=lambda s: None)
+    assert code == 0 and sent[0]["force_execute"] is True and out["committed_runs"][0]["force_execute"] is True
+
+
+def test_help_and_readme_document_force_and_the_delta_skip():
+    flat_help = " ".join(slw.build_parser().format_help().split())
+    assert "--force-execute" in flat_help and "OFF by default" in flat_help and "NIRMANA_FORCE_EXECUTE=1" in flat_help
+    readme = " ".join((HERE.parent / "README_level_wave.md").read_text().split())
+    readme = readme.replace("The delta-skip", "the delta-skip")
+    assert ("the delta-skip: an unchanged writer re-dispatched without force no-op-completes and emits no new receipt "
+            "(asset_runner.py ~1141-1160)") in readme
+    assert "force bypasses it for every asset of that run" in readme.lower() and "--update-env-vars=NIRMANA_FORCE_EXECUTE=1" in readme
+    assert "gcloud 576.0.0" in readme and "FORCE_MULTI_ASSET" in readme and "FORCE_FAMILY_ASSET" in readme
