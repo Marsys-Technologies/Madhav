@@ -6,14 +6,24 @@ chart_facts INSERT / UPDATE / DELETE by an L1 asset whose (fact_category, asset)
 write time (the data-plane rehearsal found dasha_scope_cap that way). Migration 1219 seeds the ownership rows; this test
 makes "seed list + the rows already live" a checked superset of what the writers can emit.
 
-How the emitted set is found (pure static analysis, no database, no writer is imported or run):
-  * every dict with a "fact_category" key, every fact_category= keyword, every row["fact_category"] = ... assignment;
-  * every call to a row-builder helper whose parameter feeds one of those (found by fixpoint, per file, following imports
-    between the writer modules), at the argument position the helper reads it from, including parameter defaults;
-  * every INSERT INTO chart_facts (...) SQL string that names a literal category in its VALUES tuple;
-  * names are resolved through assignments, loop targets over literal tuples / dict.items(), f-strings (including a
-    parameter filled by literals at the same file's call sites), and module constants. Anything it cannot resolve to
-    literals is reported as UNRESOLVED and FAILS the test: a new dynamic category cannot be silently ignored.
+How the emitted set is found (pure static analysis, no database, no writer is imported or run). It parses exactly:
+  (a) dict-literal "fact_category" keys;
+  (b) fact_category= keyword arguments;
+  (c) row["fact_category"] = ... assignments (a constant subscript key);
+  (d) INSERT INTO chart_facts (...) VALUES (...) SQL string literals, only the parenthesised VALUES tuple, and only when the
+      fact_category slot of that tuple is a quoted literal ('dasha_scope_cap' in ga_dashas_writer.py is the live case);
+and it follows helper call sites: every call to a row-builder helper whose parameter feeds (a)-(c) is read at the argument
+position the helper uses it from (found by fixpoint, per file, following imports between the writer modules), including the
+helper's parameter default when the call omits the argument. Names are resolved through assignments, loop targets over literal
+tuples / dict.items(), f-strings (including a parameter filled by literals at the same file's call sites) and module
+constants. Anything it cannot resolve to literals is reported as UNRESOLVED and FAILS the test: a new dynamic category cannot
+be silently ignored.
+
+What it does NOT see (three known blind spots; no current writer uses any of them; post-window hardening):
+  (1) a Python tuple row bound through INSERT ... VALUES (%s, %s, ...) (the category is then a bound parameter, not a literal);
+  (2) variable-key assignments such as row[k] = ... (only a constant 'fact_category' subscript key is recognised);
+  (3) INSERT ... SELECT 'literal' (a select list is not parsed; only a parenthesised VALUES tuple is).
+A writer that adopts one of these shapes would not be enumerated by this test.
 
 The expected owner of each emitted category is the asset of the writer file (FILE_TO_ASSET). The owner rows that count are
 the ones live on 2026-10-02 (fixtures/argala_1219/owned_live_all_2026-10-02.txt, the documented allowlist, minus the five
@@ -60,8 +70,6 @@ GUARD_CHART_FACTS_ASSETS = {"ga_positions", "ga_dashas", "ga_nakshatra", "ga_pan
                             "ga_strength", "ga_structural", "ga_condition", "ga_sade_sati", "ga_ayurdaya"}   # migration 1035 allowlist
 MOVED_TO_PANCHANGA = {"bhadra_flag", "chandra_bala_natal_baseline", "eclipse_proximity_natal", "panchaka_flag", "tara_bala_natal_baseline"}
 
-FILES = sorted(list((R/'ga_writers').glob('*.py')) + list((R/'pipeline/orchestrator/writers').glob('ga_*.py')))
-FILES = [f for f in FILES if f.name != '__init__.py']
 
 def collect_assigns(nodes):
     d = collections.defaultdict(list)
@@ -442,6 +450,9 @@ def test_dasha_scope_cap_and_amrit_kaal_are_in_the_seed_list():
 def test_the_live_allowlist_is_the_67_rows_read_on_2026_10_02():
     live = live_pairs()
     assert len(live) == 67 and len({c for c, _ in live}) == 67
+    # contents, not only the count: its ga_structural rows are the 64 names read live and kept in the repo by the 1219 SQL test
+    owned_structural = (LIVE_ALLOWLIST.parent / "owned_structural_2026-10-02.txt").read_text().split()
+    assert {c for c, a in live if a == "ga_structural"} == set(owned_structural)
 
 
 def test_mutation_removing_dasha_scope_cap_from_the_seed_list_fails_the_check(extracted):
