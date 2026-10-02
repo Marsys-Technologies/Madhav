@@ -2,32 +2,54 @@
   "lane": "ga_vichara_writer",
   "ruling": "SS item 5 = K1 (writer side): chart_vichara identity = grain plus L1 source-fact provenance set; plus SS as-of ruling (build-run creation date)",
   "pr": "branch suvarna/land/TI-l1-vichara-writer-001",
-  "detector_support": "NOT REPRESENTABLE IN flip_detector v2.2: this lane changes only chart_vichara, and flip_detector HOOK_TABLES = chart_facts, chart_divisionals, chart_dashas, panchanga_daily (+ l1_tajik_varsha_year_lords, never compared). A top-level hook with table 'chart_vichara' would be a HOOK_ERROR, so this file is kept under evidence/ (never read as a hook). The detector reports NO change for this lane: an empty detector report says nothing about ga_vichara. The machine check for this lane is ga_vichara_writer_ACCEPTANCE.sql (every row ok = t); W7 compares its before/after output by hand.",
-  "description": "ga_vichara writer (chart_vichara, per ayanamsha). (1) constituent_fact_ids / constituent_facts_array are written as a SORTED list (was the unsorted iteration order of a Python set, which varies with PYTHONHASHSEED): an ORDER-ONLY change on every surviving row whose stored order differs from sorted order (reader-measured on the stored canonical generation: 4,773 of 7,774 surviving rows: krishnamurti 980, lahiri_chitrapaksha 968, raman 1000, surya_siddhanta_classical 892, true_chitra 933); membership, values and every other column unchanged. This also stabilises the migration-920 output digest (its key and value columns include constituent_fact_ids as an ordered array). (2) Rows exactly equal on every stored column (cf compared sorted, value_jsonb canonical) are removed, first occurrence kept: 150 per ayanamsha, all valence_pass link_kind lord_placed of MAR, MER, JUP, VEN, SAT (30 each); the survivor already lists every collapsed link in its constituent_fact_ids (no provenance lost). valence_pass 1,650 -> 1,500 per ayanamsha (7,500 canonical, 750 rows removed); chart_vichara canonical total 8,524 -> 7,774 (1,556 x 3 + 1,553 x 2). (3) The writer asserts no two rows share (chart_id, ayanamsha_id, vichara_family, subject, target, domain, varga_id, formula_version, constituent_fact_ids sorted) and fails with a named-identity error, not at capture. (4) rows_inserted reported == rows inserted. (5) leverage_index is TIME-INDEXED by design: its dasha-runway term is relative to an as-of that is now the UTC DATE of the build run's creation (build_runs.created_at, read via ctx.db_conn), recorded on every leverage row as value_jsonb.as_of (YYYY-MM-DD) and value_jsonb.as_of_source = 'build_run_created_at' (ctx.config['as_of'] override => 'config_override'; there is no wall-clock fallback on the orchestrator path: a run without a resolvable creation date raises). 175 canonical leverage_index rows gain these two keys. leverage_index value_num and value_jsonb.dasha_runway_weight / years_to_start / md_duration_years change with the as-of: compare ONLY at equal as-of; a rebuild on a different day legitimately differs. The migration-920 leverage component, the flip report and delta-skip therefore move between rebuilds on different days: expected, not a defect. (6) ratification rows are inserted in sorted-subject order instead of Python set order (bigserial id order only). The L1 data-plane capture owner-side trigger (constituent_fact_ids added to its arguments) is another lane (d6-combined).",
+  "detector_support": "NOT REPRESENTABLE IN flip_detector v2.2: this lane changes only chart_vichara, and flip_detector HOOK_TABLES = chart_facts, chart_divisionals, chart_dashas, panchanga_daily (+ l1_tajik_varsha_year_lords, never compared). A top-level hook with table 'chart_vichara' would be a HOOK_ERROR, so this file is kept under evidence/ (never read as a hook). W7 OPERATOR: AN EMPTY FLIP REPORT SAYS NOTHING ABOUT ga_vichara (the detector lists chart_vichara as NOT CHECKED). RUN ga_vichara_writer_ACCEPTANCE.sql (same folder); EVERY ROW MUST READ ok = t. Expected after the rebuild on the canonical chart: valence_pass 7,500 (canonical total, 1,500 per ayanamsha); chart_vichara 7,774; leverage as-of = the build run's date (value_jsonb.as_of = UTC date of build_runs.created_at, as_of_source 'build_run_created_at'); constituent_fact_ids sorted on every row.",
+  "description": "ga_vichara writer (chart_vichara, per ayanamsha). (1) constituent_fact_ids / constituent_facts_array are written as a SORTED list (was the unsorted iteration order of a Python set, which varies with PYTHONHASHSEED): an ORDER-ONLY change on every surviving row whose stored order differs from sorted order (reader-measured on the stored canonical generation: 4,773 of 7,774 surviving rows: krishnamurti 980, lahiri_chitrapaksha 968, raman 1000, surya_siddhanta_classical 892, true_chitra 933); membership, values and every other column unchanged. This also stabilises the migration-920 output digest (its key and value columns include constituent_fact_ids as an ordered array). (2) Rows exactly equal on every stored column (cf compared sorted, value_jsonb canonical) are removed, first occurrence kept: 150 per ayanamsha, all valence_pass link_kind lord_placed of MAR, MER, JUP, VEN, SAT (30 each); the survivor already lists every collapsed link in its constituent_fact_ids (no provenance lost). valence_pass 1,650 -> 1,500 per ayanamsha (7,500 canonical, 750 rows removed); chart_vichara canonical total 8,524 -> 7,774 (1,556 x 3 + 1,553 x 2). (3) The writer asserts no two rows share (chart_id, ayanamsha_id, vichara_family, subject, target, domain, varga_id, formula_version, constituent_fact_ids sorted) and fails with a named-identity error, not at capture. (4) rows_inserted reported == rows inserted. (5) leverage_index is TIME-INDEXED by design: its dasha-runway term is relative to an as-of that is now the UTC DATE of the build run's creation (build_runs.created_at, read via ctx.db_conn), recorded on every leverage row as value_jsonb.as_of (YYYY-MM-DD) and value_jsonb.as_of_source = 'build_run_created_at' (ctx.config['as_of'] override => 'config_override'; there is no wall-clock fallback on the orchestrator path: a run without a resolvable creation date raises). 175 canonical leverage_index rows gain FOUR keys: as_of, as_of_source, dasha_runway_systems (sorted list of the level-1 dasha systems whose eligible periods contributed to that graha's runway) and dasha_runway_setting_system (the system of the period that set the value, null when no runway was found). Disclosure only: dasha_runway_weight, years_to_start and md_duration_years are byte-identical to the pre-change algorithm at equal as-of (test_leverage_values_byte_identical_to_pre_disclosure_at_equal_as_of; stored canonical values reproduce 175/175 at the stored instant). The loader now orders level-1 dasha rows by start_iso, system_id, lord_graha (a total order; reproduces the stored values 175/175). leverage_index value_num and value_jsonb.dasha_runway_weight / years_to_start / md_duration_years change with the as-of: compare ONLY at equal as-of; a rebuild on a different day legitimately differs. The migration-920 leverage component, the flip report and delta-skip therefore move between rebuilds on different days: expected, not a defect. (6) ratification rows are inserted in sorted-subject order instead of Python set order (bigserial id order only). The L1 data-plane capture owner-side trigger (constituent_fact_ids added to its arguments) is another lane (d6-combined).",
   "may_change": [
     {
       "table": "chart_vichara",
-      "categories": ["valence_pass"],
-      "change_types": ["disappeared"],
-      "expected_count": {"exact": 750},
+      "categories": [
+        "valence_pass"
+      ],
+      "change_types": [
+        "disappeared"
+      ],
+      "expected_count": {
+        "exact": 750
+      },
       "expected_direction": "canonical (5 ayanamshas): 150 per ayanamsha, 1,650 -> 1,500 per ayanamsha. Exact duplicates only: lord_placed rows of MAR/MER/JUP/VEN/SAT x 30 vargas. Valence class of the removed rows (lahiri): strong_benefic 60, malefic 30, mixed 30, strong_malefic 30; the consumer dict (last wins on actor,target,varga) is unaffected: winner change 0 (design review).",
       "note": "acceptance: ga_vichara_writer_ACCEPTANCE.sql A1, A2, A6, A7"
     },
     {
       "table": "chart_vichara",
-      "categories": ["valence_pass", "varga_ratification", "varga_ratification_divergence", "varga_consistency", "leverage_index"],
-      "change_types": ["value"],
+      "categories": [
+        "valence_pass",
+        "varga_ratification",
+        "varga_ratification_divergence",
+        "varga_consistency",
+        "leverage_index"
+      ],
+      "change_types": [
+        "value"
+      ],
       "expected_direction": "ORDER-ONLY: constituent_fact_ids / constituent_facts_array sorted; reader-measured N = 4,773 surviving canonical rows currently stored unsorted (per ayanamsha: 980, 968, 1000, 892, 933). Membership identical.",
       "note": "acceptance: A8 (0 unsorted rows after the rebuild); A9 (0 orphan ids)"
     },
     {
       "table": "chart_vichara",
-      "categories": ["leverage_index"],
-      "change_types": ["value"],
-      "expected_count": {"exact": 175},
-      "expected_direction": "value_jsonb gains as_of and as_of_source on all 175 canonical rows. value_num and the runway fields move only when the run date differs from the stored build date (2026-09-08): value changes expected with as-of; compare only at equal as-of.",
-      "note": "acceptance: A10, A11. W7 hand read-back: recorded as_of equals the UTC date of build_runs.created_at for the run that wrote the rows."
+      "categories": [
+        "leverage_index"
+      ],
+      "change_types": [
+        "value"
+      ],
+      "expected_count": {
+        "exact": 175
+      },
+      "expected_direction": "value_jsonb gains as_of, as_of_source, dasha_runway_systems and dasha_runway_setting_system on all 175 canonical rows (disclosure; no number changes from these keys). value_num and the runway fields move only when the run date differs from the stored build date (2026-09-08): value changes expected with as-of; compare only at equal as-of.",
+      "note": "acceptance: A10, A11, A12. W7 hand read-back: recorded as_of equals the UTC date of build_runs.created_at for the run that wrote the rows."
     }
   ],
-  "everything_else": "byte-identical: the other four families' counts per ayanamsha (leverage_index 35, varga_consistency 9, varga_ratification 9, varga_ratification_divergence 3 on krishnamurti/lahiri_chitrapaksha/true_chitra, 0 on raman/surya_siddhanta_classical) and every value column of every surviving row"
+  "everything_else": "byte-identical: the other four families' counts per ayanamsha (leverage_index 35, varga_consistency 9, varga_ratification 9, varga_ratification_divergence 3 on krishnamurti/lahiri_chitrapaksha/true_chitra, 0 on raman/surya_siddhanta_classical) and every value column of every surviving row",
+  "served_effect_of_the_dedupe": "ONLY ganita_vichara_get (get_vichara): verdict.total_rows and family_counts.valence_pass (1,650 -> 1,500 per ayanamsha) and the order of constituent_fact_ids in its rows. The per-actor D1 valence_pass averages (MAR 0.3909 -> 0.3800, MER -0.58 -> -0.55) reach NO served tool: taranga_service uses them only for a sign inside sidecar routes /api/compute/taranga/{activation,curve} that no served MCP tool or TS route calls. get_dasha_lord_capability, kala_permission and the L2 consumers read the same values. leverage_index values/as-of reach the bodha remedies read (query_remedies) and bodha_writers/formulas.py.",
+  "finding_by_name": "leverage runway selects level-1 dasha periods without a system pin: all eight systems mixed; section N.7 item 2. Reader-measured on the stored canonical data (35 graha x ayanamsha pairs): the runway-setting period is vimshottari for 8 pairs, mudda 15, naisargika 5, ashtottari 7; 1 contributing system for 10 pairs, 2 for 17, 3 for 8. Vimshottari-only would change 27 of 35 runways and 135 of 175 leverage_index rows (largest value change 0.74). NOT changed in S-L1 (the rebuild reproduces today's all-systems values). DEFINITION QUESTION (vimshottari only / per-system runways reported separately [SS lean: never mix] / the mix documented as deliberate) goes to the J1 by-name list and the owner's list and must be settled before S-L2 (L2 remedies read this family), with I-20/I-21."
 }

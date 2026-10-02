@@ -122,7 +122,12 @@ def dasha_rows() -> list[dict]:
     for i, g in enumerate(GRAHAS7):
         start = base + timedelta(days=int(365.25 * 3 * i) + 17)
         dur = 365.25 * (6 + i)
-        out.append({"lord_graha": g, "start_iso": start, "end_iso": start + timedelta(days=dur), "duration_days": dur})
+        out.append({"lord_graha": g, "start_iso": start, "end_iso": start + timedelta(days=dur),
+                    "duration_days": dur, "system_id": "vimshottari"})
+        if i % 2 == 0:   # a second system with a NEARER period for some grahas (the mix)
+            ms = base + timedelta(days=int(365.25 * 2 * i) + 3)
+            out.append({"lord_graha": g, "start_iso": ms, "end_iso": ms + timedelta(days=365.25),
+                        "duration_days": 365.25, "system_id": "mudda"})
     return out
 
 
@@ -144,6 +149,7 @@ class FakeCursor:
         elif s.startswith("SELECT constant_key"):
             self.rows = self.c.consts
         elif s.startswith("SELECT lord_graha"):
+            self.c.sqls.append(s)
             self.rows = self.c.dashas
         elif s.startswith("SELECT created_at FROM build_runs"):
             ts = self.c.runs.get(params[0])
@@ -172,6 +178,7 @@ class FakeConn:
         self.inserted: list[tuple] = []
         self.deleted = 0
         self.runs = {RUN: RUN_CREATED}
+        self.sqls: list[str] = []
 
     def cursor(self):
         return FakeCursor(self)
@@ -376,7 +383,10 @@ def test_hashseed_independent_rows_and_digest_model():
 
 
 # ── migration-920 digest: the REAL compute_output_digest on a disposable Postgres ─────────
-# Opt-in (skipped unless VICHARA_DIGEST_DSN points at a DISPOSABLE database; never any other DSN).
+# Runs in CI in the job that hosts the Postgres service (dedicated step, own database
+# `vichara_digest_test`). Under GITHUB_ACTIONS=true an unset/unreachable database FAILS (never
+# a silent skip). Marked `integration` so the generic sidecar selection (`-m "not integration"`,
+# no Postgres service) does not collect it. Locally it skips when no disposable DB is given.
 
 DSN = os.environ.get("VICHARA_DIGEST_DSN")
 MIG_920 = Path(__file__).resolve().parents[2] / "migrations/920_nirmana_l1_ga_vichara_output_digest_spec.sql"
@@ -418,8 +428,26 @@ def _pg_digest(rows) -> str:
     return digest
 
 
-@pytest.mark.skipif(not DSN, reason="VICHARA_DIGEST_DSN (disposable Postgres) not set")
+def _require_pg() -> None:
+    in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
+    if not DSN:
+        msg = "VICHARA_DIGEST_DSN (disposable Postgres) is not set"
+        if in_ci:
+            pytest.fail(f"{msg}: under GITHUB_ACTIONS=true this suite REQUIRES a database (never a silent skip)")
+        pytest.skip(f"NOT_RUN: {msg}")
+    try:
+        import psycopg
+        with psycopg.connect(DSN, connect_timeout=10):
+            pass
+    except Exception as exc:  # noqa: BLE001
+        if in_ci:
+            pytest.fail(f"VICHARA_DIGEST_DSN unreachable under GITHUB_ACTIONS=true: {exc}")
+        pytest.skip(f"NOT_RUN: VICHARA_DIGEST_DSN unreachable ({exc})")
+
+
+@pytest.mark.integration
 def test_mig920_real_digest_hashseed_independent_after_fix_and_dependent_before():
+    _require_pg()
     a, b = _run_seed("1"), _run_seed("2")
     assert a["rows"] == b["rows"]
     d_a, d_b = _pg_digest(a["rows"]), _pg_digest(b["rows"])
@@ -427,6 +455,108 @@ def test_mig920_real_digest_hashseed_independent_after_fix_and_dependent_before(
     la, lb = _run_seed("1", legacy=True), _run_seed("2", legacy=True)
     assert la["n"] == lb["n"]
     assert _pg_digest(la["rows"]) != _pg_digest(lb["rows"])     # BEFORE the fix: digest moves with set order
+
+
+# ── dasha-system disclosure (SS ruling: disclosure only, NO number changes) ─────────────
+
+def _legacy_runway(graha, dasha_rows, now, weights):
+    """Verbatim copy of the pre-disclosure `_dasha_runway` (selection and arithmetic)."""
+    lookforward_years = float(weights.get("runway_lookforward_years", 30))
+    base = float(weights.get("runway_base", 1.0))
+    scale = float(weights.get("runway_scale", 0.5))
+    dur_norm = float(weights.get("runway_duration_norm_years", 20))
+    start_horizon = float(weights.get("runway_start_horizon_years", 15))
+    best = None
+    for r in dasha_rows:
+        if str(r.get("lord_graha")) != graha:
+            continue
+        start, end = r.get("start_iso"), r.get("end_iso")
+        if start is None or end is None:
+            continue
+        if end < now:
+            continue
+        s_years = max(0.0, (start - now).days / 365.25)
+        if s_years > lookforward_years:
+            continue
+        if best is None or s_years < best[0]:
+            dd = r.get("duration_days")
+            y_years = float(dd) / 365.25 if dd is not None else (end - start).days / 365.25
+            best = (s_years, y_years)
+    if best is None:
+        return 1.0, {"dasha_runway_found": False}
+    s_years, y_years = best
+    weight = base + scale * (y_years / dur_norm) * max(0.0, 1 - s_years / start_horizon)
+    return weight, {"dasha_runway_found": True, "years_to_start": round(s_years, 3), "md_duration_years": round(y_years, 3)}
+
+
+_DISCLOSURE_KEYS = ("dasha_runway_systems", "dasha_runway_setting_system")
+
+
+def test_runway_disclosure_changes_no_number_randomised():
+    import random
+    rng = random.Random(920)
+    W = {"runway_lookforward_years": 30, "runway_base": 1.0, "runway_scale": 0.5,
+         "runway_duration_norm_years": 20, "runway_start_horizon_years": 15}
+    now = datetime(2026, 9, 8, tzinfo=timezone.utc)
+    systems = ["vimshottari", "mudda", "yogini", "ashtottari", "naisargika", "narayana", "kalachakra", "chara_karaka"]
+    for _ in range(300):
+        rows = []
+        for _k in range(rng.randint(0, 40)):
+            st = now + timedelta(days=rng.randint(-4000, 14000))
+            dur = rng.choice([None, rng.randint(200, 9000)])
+            rows.append({"lord_graha": rng.choice(gw.CLASSICAL_GRAHAS), "start_iso": st,
+                         "end_iso": st + timedelta(days=dur or 700), "duration_days": dur,
+                         "system_id": rng.choice(systems)})
+        rng.shuffle(rows)
+        for g in gw.CLASSICAL_GRAHAS:
+            w_old, m_old = _legacy_runway(g, rows, now, W)
+            w_new, m_new = gw._dasha_runway(g, rows, now, W)
+            assert w_new == w_old
+            assert {k: v for k, v in m_new.items() if k not in _DISCLOSURE_KEYS} == m_old
+            assert m_new["dasha_runway_systems"] == sorted(m_new["dasha_runway_systems"])
+            assert (m_new["dasha_runway_setting_system"] is None) == (not m_old["dasha_runway_found"])
+            if m_old["dasha_runway_found"]:
+                assert m_new["dasha_runway_setting_system"] in m_new["dasha_runway_systems"]
+
+
+def test_disclosure_names_the_setting_system_and_contributors():
+    now = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    mk = lambda sys_, d0, dur: {"lord_graha": "Mars", "start_iso": now + timedelta(days=d0),
+                                "end_iso": now + timedelta(days=d0 + dur), "duration_days": dur, "system_id": sys_}
+    rows = [mk("vimshottari", 3000, 2555), mk("mudda", 400, 365), mk("yogini", 900, 700),
+            mk("kalachakra", -5000, 100),          # elapsed: not a contributor
+            mk("naisargika", 20000, 700)]           # beyond the 30-year look-forward: not a contributor
+    w, m = gw._dasha_runway("Mars", rows, now, {})
+    assert m["dasha_runway_systems"] == ["mudda", "vimshottari", "yogini"]
+    assert m["dasha_runway_setting_system"] == "mudda"
+
+
+def test_leverage_values_byte_identical_to_pre_disclosure_at_equal_as_of():
+    conn, _ = run_writer(_conn_with_run(RUN_CREATED))
+    now = datetime(2026, 9, 8, tzinfo=timezone.utc)
+    consts = {r["constant_key"]: r["value_jsonb"] for r in conn.consts}
+    seen_setting = set()
+    for p in _leverage(conn):
+        j = json.loads(p[I_JSONB])
+        graha = gw.SUBJECT_TO_PLANET[p[4]]
+        w_old, m_old = _legacy_runway(graha, conn.dashas, now, consts["leverage_weights"])
+        assert j["dasha_runway_weight"] == round(w_old, 4)
+        for k, v in m_old.items():
+            assert j[k] == v
+        seen_setting.add(j["dasha_runway_setting_system"])
+        assert j["dasha_runway_systems"] == sorted(j["dasha_runway_systems"])
+    assert "mudda" in seen_setting   # the mix is real in the fixture
+    # the other four families carry no disclosure/as-of keys at all
+    for p in conn.inserted:
+        if p[I_FAMILY] != "leverage_index" and p[I_JSONB]:
+            j = json.loads(p[I_JSONB])
+            assert not ({"as_of", "as_of_source", *_DISCLOSURE_KEYS} & set(j))
+
+
+def test_dasha_loader_reads_system_id_with_a_total_order():
+    conn, _ = run_writer()
+    assert conn.sqls and "system_id" in conn.sqls[0].split("FROM")[0]
+    assert "ORDER BY start_iso, system_id, lord_graha" in conn.sqls[0]
 
 
 # ── (7) AS-OF = the build run's creation DATE: the clock must not leak into rows ──

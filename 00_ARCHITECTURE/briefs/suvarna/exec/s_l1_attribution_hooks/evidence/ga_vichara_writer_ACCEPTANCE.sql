@@ -1,5 +1,11 @@
 -- ga_vichara_writer_ACCEPTANCE.sql  (lane TI-l1-vichara-writer-001)
 --
+-- *** W7 OPERATOR: AN EMPTY FLIP REPORT SAYS NOTHING ABOUT ga_vichara. *** chart_vichara is outside the
+-- flip detector's compared tables, so the detector cannot see this lane (it prints a NOT CHECKED line for it).
+-- RUN THIS FILE; EVERY ROW MUST READ ok = t. Expected after the rebuild on the canonical chart:
+--   valence_pass 7,500 (canonical total across the 5 ayanamshas; 1,500 each), chart_vichara 7,774,
+--   leverage as-of = the build run's date (A10), constituent_fact_ids sorted on every row (A8).
+--
 -- READ-ONLY acceptance queries for the ga_vichara writer change (sorted constituent_fact_ids,
 -- whole-row dedupe, nine-column identity assertion, as-of = build-run creation date).
 -- Run as a SELECT-only reader (suvarna_reader) AFTER the S-L1 rebuild of ga_vichara on the
@@ -87,7 +93,31 @@ SELECT 'A11 distinct as_of per ayanamsha (max)', coalesce(max(n), 0), 1, coalesc
 FROM (SELECT count(DISTINCT value_jsonb->>'as_of') AS n FROM chart_vichara
       WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND vichara_family = 'leverage_index'
       GROUP BY ayanamsha_id) d
+UNION ALL
+-- A12. dasha-system disclosure on EVERY leverage row (disclosure only; no number changes): a sorted JSON array
+--      dasha_runway_systems, and dasha_runway_setting_system (a member of that array when the runway was found,
+--      JSON null when it was not)
+SELECT 'A12 leverage rows with missing/invalid dasha-system disclosure', count(*), 0, count(*) = 0
+FROM chart_vichara v
+WHERE v.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND v.vichara_family = 'leverage_index'
+  AND (jsonb_typeof(v.value_jsonb->'dasha_runway_systems') IS DISTINCT FROM 'array'
+       OR NOT (v.value_jsonb ? 'dasha_runway_setting_system')
+       OR (v.value_jsonb->>'dasha_runway_found' = 'true'
+           AND NOT (v.value_jsonb->'dasha_runway_systems') @> to_jsonb(v.value_jsonb->>'dasha_runway_setting_system'))
+       OR (v.value_jsonb->>'dasha_runway_found' = 'false'
+           AND (jsonb_typeof(v.value_jsonb->'dasha_runway_setting_system') IS DISTINCT FROM 'null'
+                OR jsonb_array_length(v.value_jsonb->'dasha_runway_systems') <> 0)))
 ORDER BY 1;
+
+-- INFORMATIONAL: dasha-system mix behind the runway (finding 'leverage runway selects level-1 dasha periods
+-- without a system pin: all eight systems mixed; section N.7 item 2'). Reader-measured on the stored canonical
+-- data before the rebuild (35 graha x ayanamsha pairs): setting system vimshottari 8, mudda 15, naisargika 5,
+-- ashtottari 7; 1 contributing system for 10 pairs, 2 for 17, 3 for 8.
+SELECT 'INFO setting system '||coalesce(value_jsonb->>'dasha_runway_setting_system','(none)'),
+       count(DISTINCT (ayanamsha_id, subject))
+FROM chart_vichara
+WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND vichara_family = 'leverage_index'
+GROUP BY 1 ORDER BY 1;
 
 -- INFORMATIONAL (not pass/fail): before the rebuild, the stored rows that survive dedupe but whose stored
 -- constituent_fact_ids order differs from sorted order. This is the ORDER-ONLY change count N declared

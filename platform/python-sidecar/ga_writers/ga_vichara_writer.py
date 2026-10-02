@@ -139,10 +139,10 @@ def _load_dasha_md_rows(conn: Any, chart_id: str, ayanamsha_id: str) -> list[dic
     try:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT lord_graha, start_iso, end_iso, duration_days
+                SELECT lord_graha, start_iso, end_iso, duration_days, system_id
                 FROM chart_dashas
                 WHERE chart_id = %s AND ayanamsha_id = %s AND level_n = 1
-                ORDER BY start_iso
+                ORDER BY start_iso, system_id, lord_graha
             """, (chart_id, ayanamsha_id))
             return [dict(r) for r in cur.fetchall()]
     except Exception as exc:
@@ -781,6 +781,7 @@ def _dasha_runway(graha: str, dasha_rows: list[dict], now: datetime, weights: di
     start_horizon = float(weights.get("runway_start_horizon_years", 15))
 
     best = None
+    contributors: set[str] = set()
     for r in dasha_rows:
         if str(r.get("lord_graha")) != graha:
             continue
@@ -797,17 +798,25 @@ def _dasha_runway(graha: str, dasha_rows: list[dict], now: datetime, weights: di
         s_years = max(0.0, (start - now).days / 365.25)
         if s_years > lookforward_years:
             continue
+        system = str(r.get("system_id") or "unknown")
+        contributors.add(system)  # disclosure only: eligible period of this system
         if best is None or s_years < best[0]:
             duration_days = r.get("duration_days")
             y_years = float(duration_days) / 365.25 if duration_days is not None else \
                 (end - start).days / 365.25
-            best = (s_years, y_years)
+            best = (s_years, y_years, system)
 
+    # Disclosure (changes NO number): the level-1 selection is NOT pinned to one dasha
+    # system — every system present contributes (section N.7 item 2; definition question
+    # open: vimshottari only / per-system runways / the mix documented as deliberate).
+    systems_meta = {"dasha_runway_systems": sorted(contributors),
+                    "dasha_runway_setting_system": best[2] if best else None}
     if best is None:
-        return 1.0, {"dasha_runway_found": False}
-    s_years, y_years = best
+        return 1.0, {"dasha_runway_found": False, **systems_meta}
+    s_years, y_years, setting = best
     weight = base + scale * (y_years / dur_norm) * max(0.0, 1 - s_years / start_horizon)
-    return weight, {"dasha_runway_found": True, "years_to_start": round(s_years, 3), "md_duration_years": round(y_years, 3)}
+    return weight, {"dasha_runway_found": True, "years_to_start": round(s_years, 3),
+                    "md_duration_years": round(y_years, 3), **systems_meta}
 
 
 def build_leverage_index_rows(

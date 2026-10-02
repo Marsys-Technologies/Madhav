@@ -618,6 +618,26 @@ jobs:
           cd python-sidecar
           python -m pytest tests/l3/gochara/test_wp10_cutover.py -q --tb=short
 
+      - name: TI-l1-vichara-writer-001 — provision the migration 920 digest test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE vichara_digest_test;"
+
+      - name: TI-l1-vichara-writer-001 — ga_vichara writer identity/as-of tests + migration 920 digest against real Postgres
+        # The writer's sorted constituent_fact_ids must make the migration-920
+        # output digest independent of Python set iteration order. This runs the
+        # REAL compute_output_digest with migration 920's verbatim spec on rows
+        # the real writer produced under two PYTHONHASHSEEDs (and a pre-fix
+        # control). The integration-marked digest test FAILS (never skips) under
+        # GITHUB_ACTIONS=true when this database is unavailable.
+        env:
+          VICHARA_DIGEST_DSN: postgresql://postgres:postgres@localhost:5432/vichara_digest_test
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest tests/test_ga_vichara_identity_and_asof.py -q --tb=short
+
       - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
         env:
           PGPASSWORD: postgres
