@@ -32,21 +32,27 @@ def am5():
         drop_am5_database(admin, name)
 
 
-def make_ephe(path) -> str:
-    """The ephemeris directory the input vector hashes (every .se1 it consumes). The pinned real
-    files when present (a record grain really samples them); otherwise a stand-in directory."""
+def make_ephe(path, monkeypatch) -> str:
+    """The ephemeris directory the input vector hashes. The pinned real files when present (the probe
+    then really asks the Swiss library which files it opens); otherwise a stand-in directory and a
+    probe stand-in that reports its files — the probe itself is tested against the real files."""
     from .conftest import EPHE_PATH, _PROBLEMS
     if not _PROBLEMS:
         return EPHE_PATH
     for name in ("sepl_18.se1", "semo_18.se1", "seas_18.se1"):
         (path / name).write_bytes(name.encode() * 32)
+    from pathlib import Path
+    from services.gochara_kernel import input_vector as _iv
+    monkeypatch.setattr(_iv, "probe_opened_files",
+                        lambda ephe, bodies, lo, hi: {f.name: str(f) for f in Path(ephe).glob("sep*.se1")}
+                        | {f.name: str(f) for f in Path(ephe).glob("semo*.se1")})
     return str(path)
 
 
 @pytest.fixture()
 def run(am5, monkeypatch, tmp_path):
     """One substep = one transaction, like the orchestrator; Swiss probe faked."""
-    ephe = make_ephe(tmp_path)
+    ephe = make_ephe(tmp_path, monkeypatch)
     monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
     RuleRegistryStore(am5).seed()
     w = writer_mod.GocharaV5Writer()

@@ -195,6 +195,9 @@ def activity_kernel(row: dict, rec: SweepRecord) -> Outcome:
         if not (isinstance(orb, (int, float)) and not isinstance(orb, bool) and orb > 0
                 and math.isfinite(orb)):
             raise SweepRefusal(f"activity_kernel angular.orb_deg {orb!r} is not a positive finite number")
+        if not angular.get("orb_decision_ref"):
+            raise SweepRefusal("activity_kernel angular.orb_deg is set but the row names no orb_decision_ref "
+                               "— a ratified orb is bound to the decision that ratified it, never a bare number")
         if rec.delta_lambda_at is None:
             return _missing(row, "delta_lambda_operand_missing")
         dl = rec.delta_lambda_at

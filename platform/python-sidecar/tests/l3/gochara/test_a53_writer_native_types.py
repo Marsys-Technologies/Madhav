@@ -30,7 +30,7 @@ def native(monkeypatch, tmp_path):
     RuleRegistryStore(conn).seed()
     w = writer_mod.GocharaV5Writer()
     from .test_a53_am5_writer import make_ephe
-    ephe = make_ephe(tmp_path)
+    ephe = make_ephe(tmp_path, monkeypatch)
 
     def step(key):
         ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-native", db_conn=conn,

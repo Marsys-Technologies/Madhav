@@ -230,6 +230,9 @@ def predicate_rows() -> list[dict]:
 # back, decoded and compared. An unavailable numeric orb is OMITTED (never null) and the unratified
 # state is an explicit token; the free-text fields (`formula`, `orb_status`) become tokens or are dropped
 # — an unknown formula or key is REFUSED, never guessed.
+import re as _re
+
+_SELECTOR_TOKEN = _re.compile(r"^[a-z][a-z0-9_]*([.:/][a-z0-9_]+)*$")     # ka_gochara_selector_token_ok
 _FORMULAS = {"1 - |Δλ|/orb": "one_minus_abs_delta_over_orb"}
 _FORMULA_TEXT = {v: k for k, v in _FORMULAS.items()}
 
@@ -249,7 +252,7 @@ def encode_applicability(app: dict) -> dict:
         flat["span_outside"] = span["outside"]
     ang = app.get("angular")
     if ang is not None:
-        if set(ang) - {"object_kinds", "function", "formula", "orb_deg", "orb_status"}:
+        if set(ang) - {"object_kinds", "function", "formula", "orb_deg", "orb_status", "orb_decision_ref"}:
             raise RegistryDivergenceError(f"applicability.angular: unknown key(s) {sorted(set(ang))}")
         flat["angular_kinds"] = list(ang["object_kinds"])
         flat["angular_function"] = ang["function"]
@@ -259,10 +262,22 @@ def encode_applicability(app: dict) -> dict:
                 raise RegistryDivergenceError(f"applicability.angular.formula {formula!r} has no token")
             flat["angular_form"] = _FORMULAS[formula]
         if ang.get("orb_deg") is None:
+            if ang.get("orb_decision_ref") is not None:
+                raise RegistryDivergenceError("applicability.angular: a decision ref without an orb is incoherent")
             flat["angular_orb_state"] = "unratified"           # explicit; the numeric orb is omitted
         else:
+            # a numeric orb is admissible ONLY with the decision that ratified it (Codex R4: a ratified
+            # decision binding) — an orb without its ref fails closed here, never reaches the evaluator
+            if not ang.get("orb_decision_ref"):
+                raise RegistryDivergenceError("applicability.angular: a ratified orb must name its "
+                                              "orb_decision_ref (ND-ORB ruling)")
+            if not _SELECTOR_TOKEN.match(str(ang["orb_decision_ref"])):
+                raise RegistryDivergenceError(
+                    f"applicability.angular.orb_decision_ref {ang['orb_decision_ref']!r} is not a selector "
+                    "token (^[a-z][a-z0-9_]*([.:/][a-z0-9_]+)*$ — 1154 admits no other form)")
             flat["angular_orb_state"] = "ratified"
             flat["angular_orb_deg"] = ang["orb_deg"]
+            flat["angular_orb_decision_ref"] = ang["orb_decision_ref"]
     if app.get("relations") is not None:
         flat["relations"] = list(app["relations"])
     return flat
@@ -282,6 +297,7 @@ def decode_applicability(flat: dict) -> dict:
         state = flat.get("angular_orb_state")
         if state == "ratified":
             ang["orb_deg"] = flat["angular_orb_deg"]
+            ang["orb_decision_ref"] = flat["angular_orb_decision_ref"]
         elif state == "unratified":
             ang["orb_deg"] = None
         else:

@@ -51,7 +51,8 @@ def _with_applicability(rows, *, orb=None):
                 "span": {"object_kinds": ["sign_span", "house_span", "star"], "function": "step",
                          "inside": 1.0, "outside": 0.0},
                 "angular": {"object_kinds": ["degree_point", "derived_point", "saham", "house_lord"],
-                            "function": "linear", "orb_deg": orb},
+                            "function": "linear", "orb_deg": orb,
+                            **({"orb_decision_ref": "ruling:nd_orb_test"} if orb is not None else {})},
             }
         elif row["factor_id"] == "graduated_drishti":
             row["applicability"] = {"relations": ["aspect"]}
@@ -821,3 +822,13 @@ def test_evidence_is_taken_at_the_peak_instant_not_at_the_window_start():
     assert w.evidence_for == pytest.approx(want, abs=1e-6)
     at_start = max(0.0, 1.0 - 8.0 / 15.0) + max(0.0, 1.0 - 20.0 / 15.0)
     assert abs(w.evidence_for - at_start) > 0.05
+
+
+def test_a_numeric_orb_without_its_decision_ref_never_reaches_the_formula():
+    rows = _rows_declared("P3", "1.0.0", orb=5.0)
+    for r in rows:
+        if r["factor_id"] == "activity_kernel":
+            del r["applicability"]["angular"]["orb_decision_ref"]
+    rec = _rec("a", relation="conjunction", kind="house_lord", delta_lambda_at=lambda t: 0.1)
+    with pytest.raises(SweepRefusal, match="orb_decision_ref"):
+        _draft([rec], lambda p, v: rows)

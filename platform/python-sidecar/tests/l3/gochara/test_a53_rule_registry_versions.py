@@ -72,10 +72,27 @@ def test_the_flat_encoding_is_admissible_lossless_and_omits_an_unavailable_orb()
 def test_a_ratified_orb_is_carried_as_a_number_with_an_explicit_state():
     app = copy.deepcopy(APPLICABILITY)
     app["angular"]["orb_deg"] = 5.0
+    app["angular"]["orb_decision_ref"] = "ruling:nd_orb_test"
     flat = rr.encode_applicability(app)
     assert flat["angular_orb_state"] == "ratified" and flat["angular_orb_deg"] == 5.0
+    assert flat["angular_orb_decision_ref"] == "ruling:nd_orb_test"
     assert rr.decode_applicability(flat)["angular"]["orb_deg"] == 5.0
+    assert rr.decode_applicability(flat)["angular"]["orb_decision_ref"] == "ruling:nd_orb_test"
     assert _mirror_named_operands_ok(flat)
+
+
+def test_a_ratified_orb_without_its_decision_ref_or_with_a_non_token_ref_is_refused():
+    base = copy.deepcopy(APPLICABILITY)
+    base["angular"]["orb_deg"] = 5.0
+    with pytest.raises(rr.RegistryDivergenceError, match="orb_decision_ref"):
+        rr.encode_applicability(base)                                   # a bare number never gets in
+    for bad in ("ruling:ND-ORB", "ND ORB", "Ruling:x"):
+        with pytest.raises(rr.RegistryDivergenceError, match="selector token"):
+            rr.encode_applicability(dict(base, angular=dict(base["angular"], orb_decision_ref=bad)))
+    unratified = copy.deepcopy(APPLICABILITY)
+    unratified["angular"]["orb_decision_ref"] = "ruling:nd_orb_test"
+    with pytest.raises(rr.RegistryDivergenceError, match="incoherent"):
+        rr.encode_applicability(unratified)                             # a ref with no orb
 
 
 def test_relations_applicability_encodes_as_a_token_array():

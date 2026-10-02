@@ -730,3 +730,31 @@ property test (hourly, ends included) ties the interval form to the predicate. *
 
 *Still open:* the verifier's independent derivation of P2 (and P5's excluded pin from the sealed row) — the class-level `verify:`
 substep still refuses P2 by name, so no class can seal yet; `day_on_demand`; the vedha derivation and 1.1.0 binding (wait on B).
+
+### Design v1.15 (2026-10-02) — AM-16 reconciled with Stream B's model (steward M20261002T014514-c929)
+
+`ka_gochara_input_vector/1` is normative; Stream B's `design/am16_vectors_model.py --cross-check input_vector.py` passes
+(canonical_json, rulings_digest, registry_digest via a stand-in connection, diff_vectors agree byte-for-byte). Four changes:
+
+1. **Ephemeris identity = the files the kernel actually OPENS.** `probe_opened_files` asks the Swiss library
+   (`swe.get_current_file_data(0..4)` after a calc, under the Swiss-state lock) which files each substrate body opens at both
+   ends of the CONSUMED range (the substrate domain, widened by the class horizon) and past every file-block boundary inside
+   it; only those are hashed (measured: sepl_18 + semo_18, never seas_18). A probe served by the Moshier fallback is refused —
+   an opened file that is absent is refused, never bound as unknown, including a MIDDLE block with both endpoints served.
+2. **L0 identities**: `l0 = {asset_id: sha256(canonical rows consumed, total order)}`. **Consumed by P2 (AM-18's vedha operand):
+   `bg_transit_rules` where `rule_type = 'vedha'`** (the surrogate `id` excluded — not content; non-vedha rows do not move it).
+   **`bg_transit_av_gates` is consumed only by P5, which is held by ruling ST-P5-HOLD — it is NOT consumed by this build and is not
+   bound**; when P5 is lifted it joins `L0_CONSUMED`. (P1/P3/P4 read no L0 table; the favourable-house table is Stream B's cited
+   catalogue code, inside the evaluation implementation digest.) An absent or empty L0 table is refused.
+3. **Implementation coverage**: the stage lists now name the writer's whole static import closure over `services.gochara_kernel` +
+   `services.gochara_rules` (42 modules; verifiers sit with the stage they verify), and a coverage test (an AST closure helper)
+   fails when a module the writer imports sits in no list — so editing it can never leave the vector unmoved. `kernel_factor`,
+   `flat_selector`, `vedha_derive` join when they land on main and the writer imports them (the test says so).
+4. **`sky_convention` = `{id, content_digest}`** — the digest is over the persisted convention row (audit field excluded), so the
+   same label with different content moves it. **`activity_orb`** restates each `activity_kernel` row version as `undeclared` /
+   `unratified` / `{orb_deg, orb_decision_ref}`; the flat encoding gained `angular_orb_decision_ref`: a numeric orb is admissible ONLY
+   with the selector-token decision that ratified it (encoder AND the sweep refuse a bare number — Codex's "ratified decision
+   binding"). *Note for Stream B:* I kept my flat key names (`angular_orb_state`, `angular_orb_deg`, `angular_orb_decision_ref`);
+   your model's example row uses `orb_state`/`uncovered_state` — whichever #2897 binds, `encode_applicability` is the one place
+   to align, and the vector restates the result either way.
+31 AM-16 tests (real files where present, Swiss stand-ins otherwise); 8 mutations killed.

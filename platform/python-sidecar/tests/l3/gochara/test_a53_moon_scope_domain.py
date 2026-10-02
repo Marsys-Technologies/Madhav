@@ -147,7 +147,7 @@ def moon_run(request, monkeypatch, tmp_path):
                      " WHERE dasha_row_id = %s", (str(uuid.UUID(int=2)),))
         monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
         RuleRegistryStore(conn).seed()
-        ephe = make_ephe(tmp_path)
+        ephe = make_ephe(tmp_path, monkeypatch)
         w = writer_mod.GocharaV5Writer()
 
         def step(key):

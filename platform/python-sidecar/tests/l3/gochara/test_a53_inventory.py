@@ -245,6 +245,16 @@ def _populate_am5_database(conn):
                     " parent_row_id uuid, lord_graha text, start_iso timestamptz,"
                     " end_iso timestamptz, build_id uuid, verification_pass_status text,"
                     " computed_at timestamptz DEFAULT now())")
+        # L0 reference the input vector binds (P2's cited vedha rows, AM-18): the real table's shape
+        cur.execute("CREATE TABLE public.bg_transit_rules (id SERIAL PRIMARY KEY, rule_type TEXT NOT NULL"
+                    " CHECK (rule_type IN ('favourable','unfavourable','vedha')), graha TEXT NOT NULL,"
+                    " primary_house INTEGER NOT NULL, vedha_house INTEGER, phala TEXT NOT NULL,"
+                    " classical_citation TEXT NOT NULL, rule_notes TEXT,"
+                    " UNIQUE (graha, rule_type, primary_house))")
+        for graha, house, vedha in (("sun", 3, 9), ("sun", 6, 12), ("saturn", 3, 12), ("jupiter", 2, 12)):
+            cur.execute("INSERT INTO public.bg_transit_rules (rule_type, graha, primary_house, vedha_house,"
+                        " phala, classical_citation) VALUES ('vedha', %s, %s, %s, 'x', 'Phaladeepika XXVI')",
+                        (graha, house, vedha))
         for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql"]:
             cur.execute((MIGRATIONS / fname).read_text())
             cur.execute("INSERT INTO public._migrations_applied(filename) VALUES (%s)",
