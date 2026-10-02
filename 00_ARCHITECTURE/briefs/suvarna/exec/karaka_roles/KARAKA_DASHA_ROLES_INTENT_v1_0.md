@@ -1,6 +1,6 @@
 ---
 artifact: KARAKA_DASHA_ROLES_INTENT
-version: 1.0
+version: 1.1
 status: DRAFT-FOR-REVIEW
 produced_by: worker for exec-suvarna
 date: 2026-10-02
@@ -9,6 +9,7 @@ branch: suvarna/land/TI-l1-dashas-karaka-001 (local commits only; not pushed). C
 decision: SS ruling MANDATORY (hard-coded karaka constant in ga_dashas), building on SS N-69 (kn_rao_rahu_included headline school)
 scope: L1 writer code + verifier + tests + generated writer-digest inventory + attribution hook + this document. No migration, no seed edit, no TypeScript, no database write.
 changelog:
+  - "1.1 (2026-10-03): the 'a rebuild may differ at window edges' statement (not-verified list) corrected to the measured cause: the Moshier-to-.se1 backend move changes the Vimshottari level-4 row set per ayanamsha (+12 / +2 / +1 / -9 / -6; no window-edge row moves), declared in s_l1_attribution_hooks/ephemeris_backend_shift.json; this lane's own row set stays unchanged on ashtottari, mudda, naisargika (the hook entry karaka_dasha_roles[0] was narrowed to those three)."
   - "1.0 (2026-10-02): first version. Facts, fix, verifier decision, NULL cases, counts, edge addendum, digests, not-verified."
 ---
 
@@ -129,7 +130,7 @@ All from `platform/python-sidecar` with `PYTHONPATH=.` and `/Users/Dev/Vibe-Codi
 ## 10. Not verified
 
 - No live rebuild was run and no database was written. The reader SQL was executed read-only against live data through psql as the reader (same predicates; 8 rows per (chart, ayanamsha), ranks 1..8, canonical Lahiri matches the golden), but `build_system()` itself was not run against a live connection; the unit tests stub the cursor.
-- The OLD-vs-NEW counts apply the rule to stored rows; they were not produced by running the new writer, and a rebuild may differ at window edges (section 6).
+- The OLD-vs-NEW counts apply the rule to stored rows; they were not produced by running the new writer, and a rebuild's Vimshottari counts differ from them by the level-4 rows the .se1 backend adds or drops per ayanamsha (+12 / +2 / +1 / -9 / -6; no window-edge row moves; declared in `ephemeris_backend_shift.json`; section 6 figures are of the live pre-rebuild Moshier-built rows).
 - BPHS 32.13-17 as the source of the 8-scheme role order remains sourced_ocr_unverified (J1 print-edition check pending), as in the karaka-roles lane.
 - The independent-verifier question is closed by dropping the claim, not by adding a second derivation (section 4).
 - `ga_vargas_writer._read_jaimini_karakas` and this writer's `_read_karaka_roles` are two copies of one parser (same query, same checks, different return shape and exception class). I did not refactor `ga_vargas` (its tests pin its SQL text and error prefix). A follow-up could move the pure core into `_karaka_roles.py`; it would move the `ga_sensitive`, `ga_vargas`, `ga_dashas` digests together.
