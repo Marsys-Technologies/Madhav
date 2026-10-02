@@ -1,6 +1,6 @@
 """
-Migration 1226 (four pre-S-L1 L1 `asset_registry.depends_on` edges: ga_dashas/ga_yoga/ga_vargas/ga_sensitive). The 1224 (chart_grants) tests live in
-test_migration_1224_chart_grants.py.
+Migration 1226 (four pre-S-L1 L1 `asset_registry.depends_on` edges: ga_dashas/ga_yoga/ga_vargas/ga_sensitive).
+The 1224 (chart_grants) tests live in test_migration_1224_chart_grants.py; the two L2 edges are 1253's.
 
 Two tiers:
   * STATIC (always runs, DB-free): file shape, the four edges, seed parity, header ordering rule.
@@ -340,7 +340,7 @@ def test_1226_refuses_when_a_cycle_would_result_and_rolls_back(db, reverse_edge,
 
 
 def test_1226_refuses_an_indirect_cycle_created_by_the_new_edges(db):
-    """ga_vargas -> ga_sensitive (edge 5, new) -> zz_mid (sabotage) -> ga_vargas: a 3-node cycle that exists
+    """ga_vargas -> ga_sensitive (edge 3, new) -> zz_mid (sabotage) -> ga_vargas: a 3-node cycle that exists
     only once the migration's own edge is added, through an intermediate asset."""
     rows = {k: list(v) for k, v in LIVE_BEFORE.items()}
     rows["zz_mid"] = ["ga_vargas"]
@@ -408,7 +408,7 @@ FOR EACH ROW WHEN (OLD IS DISTINCT FROM NEW) EXECUTE FUNCTION nirmana_invalidate
 """
 
 
-def test_1226_registry_trigger_marks_exactly_the_five_edited_assets_stale_once(db):
+def test_1226_registry_trigger_marks_exactly_the_three_edited_assets_stale_once(db):
     """Verifies the header's CONSEQUENCES 1 (migration 596's trigger, copied from production's function body)."""
     _make_registry(db)
     _exec(db, _TRIGGER_DDL)

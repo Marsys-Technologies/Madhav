@@ -23,7 +23,7 @@ Notation: `A.depends_on += B` means A reads B's output and must be built after B
 
 Live before: `ga_dashas {ga_positions}`, `ga_yoga {ga_structural, ga_dashas}`, `ga_vargas {ga_positions}`; producer `ga_sensitive {ga_positions, bg_reference}` unchanged.
 
-## Moved to migration 1253 (own branch and held PR)
+## Moved to migration 1253 (own branch and held PR #2904)
 
 `bo_laksana += ga_yoga` (`bo_laksana.py:2713,2769` read `ga_yoga_firings`) and `bo_upaya += bo_bimba` (`bo_upaya.py:578` joins `bodha_cgm_nodes`), both Q-L2-07. Applied IMMEDIATELY BEFORE S-L2 is dispatched (applying after would re-stale `bo_laksana`/`bo_upaya`; applying early stales their freshness and gates their lit `bo_*` dependents). The two migrations are independent: either order is valid, the union is acyclic, and their seed edits touch disjoint asset entries.
 
