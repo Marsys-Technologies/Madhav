@@ -145,10 +145,30 @@ def test_exclusion_ruling_is_required_iff_the_reason_degrades(reason, ruling, ok
 
 
 def test_interval_states_follow_the_search_capability_never_assumed():
-    full = _plan()
+    # the build's REAL capability: probe + arc index, but NO aspect-to-span solver (the aspect
+    # point's ingress into a house span has none in this slice) — those obligations stay
+    # `missing_inputs` (a seal refusal by design), never `searched_complete` on a search nobody ran
+    honest = _plan()
+    obs_h = {o.ob_id: o for o in honest.obligations}
+    missing_h = [iv for iv in honest.intervals if iv.state == "missing_inputs"]
+    is_span_aspect = lambda o: o.relation == "aspect" and o.target.startswith("span:")  # noqa: E731
+    assert missing_h and all(obs_h[iv.ob_id].agent == "moon" or is_span_aspect(obs_h[iv.ob_id])
+                             for iv in missing_h)
+    # BOTH honest gaps are present for a real class: the unsolved aspect-to-span search and the
+    # EPHEMERAL Moon tier (AM-4: a build stores no Moon contact — covered on demand at query time)
+    assert any(is_span_aspect(obs_h[iv.ob_id]) for iv in missing_h)
+    assert any(obs_h[iv.ob_id].agent == "moon" for iv in missing_h)
+    assert {iv.state for iv in honest.intervals} == {"searched_complete", "missing_inputs"}
+    full = _plan(cap=inv.SearchCapability(position_probe=True, arc_index=True,
+                                          aspect_span_solver=True,
+                                          moon_stored_search=True))
     assert {iv.state for iv in full.intervals} == {"searched_complete"}
-    no_probe = _plan(cap=inv.SearchCapability(position_probe=False, arc_index=True))
-    no_arc = _plan(cap=inv.SearchCapability(position_probe=True, arc_index=False))
+    no_probe = _plan(cap=inv.SearchCapability(position_probe=False, arc_index=True,
+                                              aspect_span_solver=True,
+                                          moon_stored_search=True))
+    no_arc = _plan(cap=inv.SearchCapability(position_probe=True, arc_index=False,
+                                            aspect_span_solver=True,
+                                          moon_stored_search=True))
     by_ob = lambda plan: {o.ob_id: o for o in plan.obligations}  # noqa: E731
     for plan, relations in ((no_probe, {"residence"}), (no_arc, {"conjunction", "aspect"})):
         obs = by_ob(plan)
@@ -310,7 +330,9 @@ def test_the_registry_seals_are_the_pin_partition_the_planner_must_cover(am5):
 
 def test_a_planned_class_is_stored_finalised_and_the_digests_are_the_dbs(am5):
     store, sky, _ = _boot(am5, "5.7")
-    plan = _plan()
+    plan = _plan(cap=inv.SearchCapability(position_probe=True, arc_index=True,
+                                          aspect_span_solver=True,
+                                          moon_stored_search=True))
     digest, out = _write(am5, store, sky, "5.7", plan)
     assert out["obligations"] == len(plan.obligations) and out["pins"] == 5
     row = am5.execute(
@@ -448,7 +470,9 @@ def test_the_seal_check_sees_exactly_what_is_missing_after_the_builder_alone(am5
     function must report ONLY those two absences — not a digest, commitment, coverage or
     input fault. (A publication row must be `published` for the manifest-bound checks.)"""
     store, sky, _ = _boot(am5, "5.7")
-    plan = _plan()
+    plan = _plan(cap=inv.SearchCapability(position_probe=True, arc_index=True,
+                                          aspect_span_solver=True,
+                                          moon_stored_search=True))
     _write(am5, store, sky, "5.7", plan)
     with am5.transaction():
         am5.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
@@ -458,6 +482,22 @@ def test_the_seal_check_sees_exactly_what_is_missing_after_the_builder_alone(am5
             "SELECT * FROM public.ka_gochara_search_completeness_violations(%s::uuid, '5.7')",
             (CHART_ID,)).fetchall()}
     assert found == {"inventory_without_partition", "verification_missing_or_mismatch"}, found
+
+
+def test_an_unsolved_aspect_to_span_search_blocks_the_seal_by_name(am5):
+    """The honest capability (no aspect-to-span solver) leaves those obligations
+    `missing_inputs`; the database's seal-time function reports it — the generation cannot seal
+    on a search that was never run (CLAUDE.md §N.8)."""
+    store, sky, _ = _boot(am5, "5.89")
+    _write(am5, store, sky, "5.89", _plan())            # the writer's real capability
+    with am5.transaction():
+        am5.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        gk_ledger.publish(am5, CHART_ID, "5.89")
+        am5.execute("SELECT public.ka_gochara_lock_global_shared()")
+        found = {r[1] for r in am5.execute(
+            "SELECT * FROM public.ka_gochara_search_completeness_violations(%s::uuid, '5.89')",
+            (CHART_ID,)).fetchall()}
+    assert "missing_inputs_present" in found, found
 
 
 def test_a_sealed_generation_is_refused_before_any_delete():

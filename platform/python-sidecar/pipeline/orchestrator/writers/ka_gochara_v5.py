@@ -42,6 +42,7 @@ FROZEN ORCHESTRATOR CONTRACT (§N.2)
 """
 from __future__ import annotations
 
+import dataclasses
 import logging
 from datetime import datetime, timezone
 
@@ -53,6 +54,7 @@ from pipeline.orchestrator.writers import (
     register,
 )
 from services.gochara_kernel import evaluator as gk_evaluator
+from services.gochara_kernel.native_conn import native_connection
 from services.gochara_kernel import arcs as gk_arcs
 from services.gochara_kernel.dasha_read import make_period_rows_for
 from services.gochara_kernel.chart_context import (fetch_chart_context,
@@ -128,8 +130,18 @@ class ChartRefusal(Exception):
     BEFORE any planning or execution (fail-closed; never a silent no-op)."""
 
 
-def _require_pinned_chart(chart_id: str) -> None:
-    if chart_id != PINNED_CHART_ID:
+def _native_ctx(ctx: ContextSpec) -> ContextSpec:
+    """`ctx` with its connection presented as tuple rows when the runner's is a dict_row one
+    (services.gochara_kernel.native_conn — a caller-owned VIEW, never committed or closed)."""
+    conn = native_connection(ctx.db_conn)
+    return ctx if conn is ctx.db_conn else dataclasses.replace(ctx, db_conn=conn)
+
+
+def _require_pinned_chart(chart_id) -> None:
+    """Fail-closed chart guard. The governed runner passes `chart_id` as a `uuid.UUID`; the CLI and
+    dispatch pass strings — BOTH are accepted by comparing the canonical string form (the A2.5
+    ASTRA A1 finding: a guard comparing a UUID to a string refuses the one chart it must admit)."""
+    if str(chart_id) != PINNED_CHART_ID:
         raise ChartRefusal(
             f"{ASSET_ID}: chart_id {chart_id!r} is not the pinned A5.3 "
             f"candidate chart {PINNED_CHART_ID} — refusing (fail-closed; "
@@ -183,6 +195,7 @@ class GocharaV5Writer(WriterBase):
         8-body substrate set are pinned constants (Moon excluded — EPHEMERAL
         per pin 6). The chart-scope refusal lives here too — a foreign chart
         is refused at PLAN time, not first at execution time."""
+        ctx = _native_ctx(ctx)
         _require_pinned_chart(ctx.config["chart_id"])
         steps = [
             SubStep(key=RULES_SUBSTEP,
@@ -234,7 +247,8 @@ class GocharaV5Writer(WriterBase):
         which is mutually exclusive with any chart key); every substrate
         substep takes the chart family key first. ctx.dry_run suppresses the
         solve AND the write (there is nothing to stage)."""
-        chart_id = ctx.config["chart_id"]
+        ctx = _native_ctx(ctx)
+        chart_id = str(ctx.config["chart_id"])       # the runner passes a uuid.UUID
         _require_pinned_chart(chart_id)
         known = (RULES_SUBSTEP, CONVENTION_SUBSTEP, MANIFEST_SUBSTEP, SNAPSHOT_SUBSTEP)
         if (step.key not in known
@@ -365,7 +379,9 @@ class GocharaV5Writer(WriterBase):
             plan = gk_inventory.plan_class_inventory(
                 event_class=event_class, chart=chart, horizon=horizon,
                 sealed_paths=inv_store.sealed_rule_paths(),
-                capability=gk_inventory.SearchCapability(position_probe=True, arc_index=True),
+                capability=gk_inventory.SearchCapability(
+                    position_probe=True, arc_index=True, aspect_span_solver=False,
+                    moon_stored_search=False),
                 path_exclusions=path_excl, h_unknown_exclusion=h_unknown,
                 dasha_rows=inv_store.consumed_dasha_rows(chart_id, GENERATION))
             out = inv_store.write_class_inventory(
@@ -400,7 +416,8 @@ class GocharaV5Writer(WriterBase):
         led = gk_verifier.rederive_ledger_digest(
             ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
             obligations=res["obligations"],
-            capability={"position_probe": True, "arc_index": True})
+            capability={"position_probe": True, "arc_index": True, "aspect_span_solver": False,
+                        "moon_stored_search": False})
         db_led = ctx.db_conn.execute(
             "SELECT ledger_digest FROM public.ka_gochara_search_inventory WHERE chart_id = %s"
             " AND generation = %s AND event_class = %s", (chart_id, GENERATION, event_class)

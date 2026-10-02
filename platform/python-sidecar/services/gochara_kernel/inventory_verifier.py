@@ -307,7 +307,7 @@ def rederive_ledger_digest(
 ) -> str:
     """Re-derive the interval LEDGER digest: SQL stores and recomputes it but cannot
     check that the cuts and resolved agents are the RIGHT ones — this is that check (a
-    process residual named in AM-11 pin e). `capability` = {position_probe, arc_index} as
+    process residual named in AM-11 pin e). `capability` = {position_probe, arc_index, aspect_span_solver, moon_stored_search} as
     the verifier was independently told."""
     snap = conn.execute(
         "SELECT consumed_dasha_row_ids, input_digest FROM"
@@ -326,8 +326,16 @@ def rederive_ledger_digest(
     for ob in obligations:
         agent, relation = ob.split("|")[3], ob.split("|")[4]
         transit = relation in ("residence", "aspect", "conjunction")
-        if relation == "residence":
+        if agent == "moon":
+            # the Moon is an EPHEMERAL tier (AM-4): a build stores no Moon contact or record
+            state = ("searched_complete" if capability.get("moon_stored_search", False)
+                     else "missing_inputs")
+        elif relation == "residence":
             state = "searched_complete" if capability["position_probe"] else "missing_inputs"
+        elif relation == "aspect" and ob.split("|")[6].startswith("span:"):
+            # aspect-to-span (the aspect point's ingress into a house span) is not a point root
+            state = ("searched_complete" if capability.get("aspect_span_solver", False)
+                     else "missing_inputs")
         elif relation in ("conjunction", "aspect"):
             state = "searched_complete" if capability["arc_index"] else "missing_inputs"
         else:

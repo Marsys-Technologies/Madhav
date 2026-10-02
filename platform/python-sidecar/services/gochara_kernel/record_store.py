@@ -333,6 +333,12 @@ class RecordStore:
     def __init__(self, conn):
         self.conn = conn
 
+    def ensure_object(self, poid: PhysicalObjectId) -> None:
+        """Public: a record's object must EXIST (FK) whether or not a transit contact was ever
+        materialised for it — a natal occupancy/ownership row shares the occupant/owner's
+        residence-span object (E8) and must not depend on the transit solve having produced one."""
+        self._ensure_object(poid)
+
     def _ensure_object(self, poid: PhysicalObjectId) -> None:
         """insert-if-absent + byte check (pin 4). RecordEdge objects carry
         the DB-lowercase body already; SkyEventStore.insert_physical_object
@@ -899,10 +905,16 @@ def write_class_coverage(
         solves are searched (N7); 0.0 with a named non-claim when no
         angular solve happened.
     """
+    moon_edges = [e for e in class_edges if e.transit and e.agent == "moon"]
+    class_edges = [e for e in class_edges if not (e.transit and e.agent == "moon")]
     residence = [e for e in class_edges if e.transit and e.relation == "residence"]
     natal = [e for e in class_edges if not e.transit]
     point = [e for e in class_edges
-             if e.transit and e.relation in POINT_KERNEL_RELATION]
+             if e.transit and e.relation in POINT_KERNEL_RELATION
+             and e.obj.canonical_target.startswith("point:")]
+    aspect_span = [e for e in class_edges
+                   if e.transit and e.relation == "aspect"
+                   and e.obj.canonical_target.startswith("span:")]
     point_solved = bool(point) and arc_index_available
     deferred = sorted({e.relation for e in class_edges
                        if e.transit and e.relation != "residence"
@@ -920,6 +932,16 @@ def write_class_coverage(
     if deferred:
         unsearched_parts.append("relations with no solver: "
                                 + ", ".join(deferred))
+    if moon_edges:
+        unavailable["moon_on_demand"] = (
+            f"{len(moon_edges)} Moon-agent edge(s): the Moon is an EPHEMERAL tier (AM-4) — served "
+            "by a moon_on_demand partition at query time, never stored by this build")
+        unsearched_parts.append("Moon-agent edges are on-demand (AM-4)")
+    if aspect_span:
+        unavailable["aspect_span_solver"] = (
+            f"{len(aspect_span)} aspect-to-span edge(s) (the aspect point's ingress into a house "
+            "span) have no solver in this slice — unsolved, named, never fabricated")
+        unsearched_parts.append("aspect-to-span (aspect point ingress) has no solver")
     unsearched = "; ".join(unsearched_parts) or None
     if residence and position_at is None:
         unavailable["position_probe"] = ("ephemeris probe unavailable — no "
@@ -1004,9 +1026,22 @@ def materialise_record_grain(
     it no point contact is solved or minted (the class coverage named the
     deferral), never fabricated.
     """
+    # AM-4 (pin 6): the Moon is EPHEMERAL — a build stores no Moon-agent contact or record (the
+    # database refuses a Moon record under an `event_class` partition: it is covered only by a
+    # `moon_on_demand` partition at query time). Such edges are counted and named, never minted.
+    moon_agent_on_demand = sum(1 for e in edges if e.transit and e.agent == "moon")
+    edges = [e for e in edges if not (e.transit and e.agent == "moon")]
     residence_edges = [e for e in edges if e.transit and e.relation == "residence"]
+    # conjunction/aspect on `point:<λ>` are point-root solves; an `aspect` on a house `span:<sign>`
+    # is the aspect point's ingress into the span — a DIFFERENT solve this slice does not have
+    # (E8): its edges are never solved, never minted uncomputed, and never routed to the point
+    # solver (which would assert on a span target). They are counted and named.
     point_edges = [e for e in edges
-                   if e.transit and e.relation in POINT_KERNEL_RELATION]
+                   if e.transit and e.relation in POINT_KERNEL_RELATION
+                   and e.obj.canonical_target.startswith("point:")]
+    aspect_span_deferred = sum(
+        1 for e in edges if e.transit and e.relation == "aspect"
+        and e.obj.canonical_target.startswith("span:"))
     natal_edges = [e for e in edges if not e.transit]
     skipped_natal_p1 = 0
     if path_id == "P1":
@@ -1124,6 +1159,8 @@ def materialise_record_grain(
     counts = {"contacts": 0, "records": 0, "natal_records": 0,
               "truncated_contacts": 0, "prereq_evaluated": 0,
               "skipped_natal_p1": skipped_natal_p1,
+              "aspect_span_deferred": aspect_span_deferred,
+              "moon_agent_on_demand": moon_agent_on_demand,
               "unwritable_testimony": unwritable_testimony,
               "p3_enumeration_defects": 0}
     # Per-record evaluation context for the prerequisite result pass below
@@ -1204,6 +1241,7 @@ def materialise_record_grain(
     for edge in natal_edges:
         m = mint_natal_record(edge, chart_id=chart_id, generation=generation,
                               prerequisites=prerequisites)
+        store.ensure_object(edge.obj)      # insert-if-absent: the natal row's FK target
         store.insert_record(
             chart_id=chart_id, generation=generation, edge=edge,
             record_id=m["record_id"], contact_id=None,
