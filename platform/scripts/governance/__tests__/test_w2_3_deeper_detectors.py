@@ -561,7 +561,9 @@ def test_r21_a_root_and_a_leaf_with_the_same_verdict_open_differently_weighted_b
     root, leaf = rows["bg_root-Build.completion"], rows["bg_leaf-Build.completion"]
     assert (root["blocking_radius"], root["severity_weight"]) == (3, 4), root
     assert (leaf["blocking_radius"], leaf["severity_weight"]) == (0, 1), leaf
-    assert "blocking_radius" not in rows["bg_root-Carr.detector"]
+    assert "bg_root-Carr.detector" not in rows          # E6 item i: the retired criterion opens no gap
+    nonbuild = [k for k in rows if k.startswith("bg_root-") and not k.startswith("bg_root-Build.")]
+    assert nonbuild and all("blocking_radius" not in rows[k] for k in nonbuild), nonbuild   # a non-Build gap carries no radius
 
 
 def test_r21_an_unreadable_dag_is_unmeasured_never_zero(monkeypatch, tmp_path):

@@ -207,7 +207,7 @@ def test_f8_a_detector_that_crashes_after_printing_pass_is_not_a_pass(monkeypatc
     _detector(tmp_path, "bg_x", 'import json, sys\n'
                                 'print(json.dumps({"verdict": "PASS", "measured": "looked fine"}))\n'
                                 'sys.exit("crashed after printing")\n')
-    res = _measured(ac.measure("L0"), "bg_x", "Carr.detector")
+    res = ac._run_carriage_detector("bg_x")     # E6 item i: measure() no longer wires it; the runner keeps its F8 guarantees
     assert res["v"] == ac.NO_DET, res
     assert "exited 1" in res["measured"] and "crashed after printing" in res["measured"]
 
@@ -216,7 +216,7 @@ def test_f8_a_verdict_outside_the_closed_set_is_not_adopted(monkeypatch, tmp_pat
     """Fails without the fix: `GREEN` (or any string) was adopted as the verdict verbatim."""
     _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x")})
     _detector(tmp_path, "bg_x", 'import json\nprint(json.dumps({"verdict": "GREEN", "measured": "ok"}))\n')
-    res = _measured(ac.measure("L0"), "bg_x", "Carr.detector")
+    res = ac._run_carriage_detector("bg_x")
     assert res["v"] == ac.NO_DET, res
     assert "'GREEN'" in res["measured"] and "outside the closed set" in res["measured"]
 
@@ -225,7 +225,7 @@ def test_f8_a_clean_detector_verdict_is_still_adopted(monkeypatch, tmp_path):
     """Positive control: the fix must not blind a detector that ran cleanly."""
     _stub_layer(monkeypatch, tmp_path, {"bg_x": _reg_row("bg_x")})
     _detector(tmp_path, "bg_x", 'import json\nprint(json.dumps({"verdict": "FAIL", "measured": "3 mismatches"}))\n')
-    res = _measured(ac.measure("L0"), "bg_x", "Carr.detector")
+    res = ac._run_carriage_detector("bg_x")
     assert res == dict(v=ac.FAIL, measured="bg_x_D1.py: 3 mismatches")
 
 

@@ -34,6 +34,7 @@ import type {
 } from './types'
 import { GOVERNED_METRICS } from './types'
 import type { DbProxy } from './db_proxy'
+import { deriveAyurdayaFigureDisclosure } from '../registry/layers/L1_ganita/ayurdaya_unreduced_base'
 
 // ── DB row shapes (internal — not exported) ───────────────────────────────────
 
@@ -104,7 +105,8 @@ const METRIC_SIGNAL_SQL = (metric: GovernedMetric) => `
 const METRIC_FACT_SQL = `
   SELECT
     fact_id, chart_id, fact_value_num,
-    citation_human
+    citation_human,
+    fact_category, fact_subject, fact_key, fact_value_jsonb, ayanamsha_id
   FROM chart_facts
   WHERE chart_id = $1
     AND fact_id = $2
@@ -373,6 +375,11 @@ export async function resolveMetric(
         chart_id: string
         fact_value_num: number | null
         citation_human: string
+        fact_category?: string | null
+        fact_subject?: string | null
+        fact_key?: string | null
+        fact_value_jsonb?: unknown
+        ayanamsha_id?: string | null
       }>(METRIC_FACT_SQL, [chart_id, source_id])
 
       if (rows.length === 0) {
@@ -394,6 +401,16 @@ export async function resolveMetric(
         source_id,
         source_table: 'chart_facts',
         citation: sanitizeCitationHuman(row.citation_human),
+      }
+      // SS N-62 Q10 (display-side): a bare Āyurdāya year figure must travel with its reduction status.
+      // Derived from the fact's OWN row (a lone contribution row has no total to confirm against →
+      // reduction_status_unverified, honestly). Non-ayurdaya facts are returned exactly as before.
+      const ayu = row.fact_category === 'ayurdaya' ? deriveAyurdayaFigureDisclosure([row]) : null
+      const ayuRow = ayu?.row_figures.get(row)
+      if (ayu && ayuRow) {
+        resolved.figure_kind = ayuRow.figure_kind
+        resolved.reductions_applied = ayuRow.reductions_applied
+        resolved.caveat = ayu.caveat
       }
       return { ok: true, metric: resolved }
 

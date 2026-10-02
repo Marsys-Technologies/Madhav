@@ -55,7 +55,7 @@ import { resolveAddress, grahaCodeOf, AddressResolutionError, GRAHA_CODE_TO_NAME
 import { extractGroundingFromFactRows, judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
 import { PANCHANGA_CATEGORIES } from './L1_ganita/get_panchanga'
 import { resolveConceptWithLiveFallback, liveFactCategories, noConceptMatchNote } from './L1_ganita/resolve_concept'
-
+import { withAyurdayaFigureDisclosure } from './L1_ganita/ayurdaya_unreduced_base'
 // Category-alias resolution (chart_facts_query category filter): bare umbrella terms that do
 // not themselves exist as a fact_category but have an obvious real-category family behind them.
 // 'panchanga' is not a stored fact_category — the real data lives under panchanga_tithi,
@@ -1459,7 +1459,7 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
         }
       }
 
-      return { content, is_error: false }
+      return withAyurdayaFigureDisclosure({ content, is_error: false }, servedRowsForGrounding) // SS N-62 Q10: ayurdaya figures are unreduced base
     } catch (err) {
       return { content: { error: String(err), chart_id }, is_error: true }
     }

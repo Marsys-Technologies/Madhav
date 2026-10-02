@@ -1381,7 +1381,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
             FROM handler_page CROSS JOIN handler_count`,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-95',
-      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:112-130',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:112-131',
       'platform/supabase/migrations/204_chart_facts.sql:10-29',
       'platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:270-310',
       'platform/python-sidecar/ga_writers/_idempotency.py:54-78',
