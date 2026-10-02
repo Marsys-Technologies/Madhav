@@ -67,12 +67,41 @@ def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict]) -> dict
             "basis": basis, "builds_seen": builds}
 
 
+class DashaBuildRefused(DD.DashaReadConflict):
+    """G6: the chart's Vimśottarī rows are not a single, pinned build — `code` is `dasha_builds_mixed` or `dasha_build_not_pinned`."""
+
+    def __init__(self, code: str, detail: str):
+        super().__init__(f"{code}: {detail}")
+        self.code = code
+
+
+def assert_single_pinned_build(conn, chart_id: str) -> list[str]:
+    """G6 (steward): refuse unless ALL of the chart's Vimśottarī / lahiri_chitrapaksha rows — every tier, every level — carry ONE build id, and,
+    for the canonical chart, that build is the frozen pin. During and after a part-failed L1 rebuild the table can hold a MIX of old and new
+    builds; the pinned read alone would accept the old build while its rows are present. Returns the builds seen (empty = no rows: the honest
+    empty read is the caller's)."""
+    from services.gochara_rules.permission import DASHA_READ_CONTRACT
+    rows = conn.execute(
+        "SELECT DISTINCT coalesce(build_id::text, 'NULL') FROM public.chart_dashas"
+        " WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s ORDER BY 1",
+        (chart_id, PINNED_SYSTEM, DASHA_READ_CONTRACT["ayanamsha_id"])).fetchall()
+    builds = [str(r[0] if not isinstance(r, dict) else next(iter(r.values()))) for r in rows]
+    if len(builds) > 1:
+        raise DashaBuildRefused("dasha_builds_mixed", f"chart {chart_id} carries Vimśottarī rows of {len(builds)} builds {builds} (every tier): "
+                                "a mixed L1 state is not readable — wait for the rebuild to settle and re-pin")
+    if builds and str(chart_id) == DASHA_READ_CONTRACT["chart_id"] and builds[0] != DASHA_READ_CONTRACT["build_id"]:
+        raise DashaBuildRefused("dasha_build_not_pinned", f"the canonical chart's only Vimśottarī build is {builds[0]}, the frozen read contract "
+                                f"pins {DASHA_READ_CONTRACT['build_id']} — re-pin deliberately (a code change), never read around it")
+    return builds
+
+
 def load_pinned_vimshottari(conn, chart_id: str) -> tuple[list[dict], dict]:
     """(1) a RAW, non-canonicalized read of the tier-pinned Vimśottarī rows
     selects the build pin; (2) the rows are then fetched PINNED to that build and
     canonicalized — a foreign build's overlapping rows never enter the
     duplicate/conflict pass. Returns (rows, contract); rows is [] when the chart
     has none at the read tier (honest empty — the caller reports 'unknown')."""
+    assert_single_pinned_build(conn, chart_id)                     # G6: one build, and the pinned one — before any row is read
     raw = DD.fetch_dasha_periods_multilevel(
         conn, chart_id, systems=[PINNED_SYSTEM], canonicalize=False)
     contract = select_dasha_read_contract(chart_id, raw)

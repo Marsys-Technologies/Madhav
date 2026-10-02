@@ -149,6 +149,13 @@ def module_digests(modules: dict) -> dict:
 _OWN_BODIES = {"Sun": 0, "Moon": 1, "Mercury": 2, "Venus": 3, "Mars": 4, "Jupiter": 5, "Saturn": 6, "MeanNode": 10}
 _PROBE_BODIES = {"Sun": 0, "Moon": 1, "Saturn": 6, "MeanNode": 10}
 _PROBE_INSTANTS = [(2024, 6, 1, 0.0), (2025, 1, 1, 0.0), (2025, 7, 1, 12.0), (2026, 1, 1, 0.0)]
+#: (d) THE ABSOLUTE PROBE — the verifier's own, with a hard-coded reference: Sun, Lahiri sidereal, SWIEPH, at JD 2451545.0 (2000-01-01 12:00 UT),
+#: computed from the SHA-pinned corpus (sepl_18.se1 ca1393ce…). The vector's series probe is only compared writer-vs-verifier (a wrong sidereal mode
+#: would be consistently wrong on both sides); this one is compared with a CONSTANT, so a mode (or path) error is refused by name. Same value as
+#: Kimi's C26 pin (256.5156961838706); the body, flags (FLG_SWIEPH|FLG_SIDEREAL after set_sid_mode(SIDM_LAHIRI)) and instant are THIS function's.
+ABSOLUTE_PROBE_JD = 2451545.0
+ABSOLUTE_PROBE_SUN_LAHIRI_DEG = 256.5156961838706
+ABSOLUTE_PROBE_TOLERANCE_DEG = 1e-9
 _CENSUS_STEP_DAYS = 120.0                                  # finer than a file block (≥ 20 y): every file the range needs
 _KNOWN_SCHEMA = "ka_gochara_input_vector/3"
 _KNOWN_SCOPES = ("stored_non_moon",)
@@ -210,6 +217,23 @@ def derive_series_probe_digest(ephe_path: str) -> str:
     return _probe()
 
 
+def derive_absolute_probe(ephe_path: str) -> float:
+    """Sun's sidereal (Lahiri) longitude at `ABSOLUTE_PROBE_JD` from the `.se1` files, with path and mode set in THIS thread inside the call."""
+    from panchang_engine.swiss_state import serialized_swiss_state
+
+    @serialized_swiss_state
+    def _probe():
+        import swisseph as swe
+        swe.close()
+        swe.set_ephe_path(ephe_path)
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        xx, ret = swe.calc_ut(ABSOLUTE_PROBE_JD, swe.SUN, swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
+        if not (int(ret) & 2):
+            raise RuntimeError("ephemeris absolute probe: the Sun at the reference instant was not served from the .se1 files")
+        return float(xx[0])
+    return _probe()
+
+
 def derive_backend_and_version(ephe_path: str) -> tuple[str, str]:
     """('swieph', swe.version): the backend is derived by a probe that must be served from the `.se1` files."""
     from panchang_engine.swiss_state import serialized_swiss_state
@@ -233,7 +257,7 @@ NOT_INDEPENDENTLY_DERIVED = ("orb_policy", "rulings_digest", "consumed_range", "
 
 
 def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_refs=None, census=None,
-                  jd_range=None, census_probe=None, series_probe=None, backend_probe=None) -> dict:
+                  jd_range=None, census_probe=None, series_probe=None, backend_probe=None, absolute_probe=None) -> dict:
     """Independently re-derive every component of the stored vector that CAN be derived without the builder's
     code, and refuse any disagreement by name. Returns {"derived": [...components], "not_derived": [...]}.
     `census` (replay) restates the original sealed-version census for the registry component."""
@@ -278,6 +302,13 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
     check("ephemeris.probe_digest", (series_probe or derive_series_probe_digest)(ephe_path),
           stored["ephemeris"].get("probe_digest"))
     derived.append("ephemeris.probe")
+    # (d) the ABSOLUTE probe: a constant, not a writer-vs-verifier comparison
+    sun_now = (absolute_probe or derive_absolute_probe)(ephe_path)
+    if abs(sun_now - ABSOLUTE_PROBE_SUN_LAHIRI_DEG) > ABSOLUTE_PROBE_TOLERANCE_DEG:
+        problems.append(f"ephemeris_absolute_probe_mismatch: the Sun's Lahiri sidereal longitude at JD {ABSOLUTE_PROBE_JD} is {sun_now!r}, the pinned "
+                        f"reference is {ABSOLUTE_PROBE_SUN_LAHIRI_DEG!r} (|difference| > {ABSOLUTE_PROBE_TOLERANCE_DEG} deg) — a wrong sidereal mode, "
+                        "ephemeris path or corpus")
+    derived.append("ephemeris.absolute_probe")
     # the schema, scope and policy are NAMED members of this verifier's own vocabularies (their semantics are not derived)
     for key, known, got in (("schema", (_KNOWN_SCHEMA,), stored.get("schema")),
                             ("stored_scope", _KNOWN_SCOPES, stored.get("stored_scope")),
@@ -302,6 +333,7 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
     return {"derived": derived, "not_derived": not_derived}
 
 
-__all__ = ["NOT_INDEPENDENTLY_DERIVED", "derive_backend_and_version", "derive_opened_file_census",
+__all__ = ["ABSOLUTE_PROBE_JD", "ABSOLUTE_PROBE_SUN_LAHIRI_DEG", "ABSOLUTE_PROBE_TOLERANCE_DEG", "derive_absolute_probe",
+           "NOT_INDEPENDENTLY_DERIVED", "derive_backend_and_version", "derive_opened_file_census",
            "derive_series_probe_digest", "module_digests", "runtime_library_digest", "runtime_platform", "sql_l0_digest",
            "sql_registry_digest", "sql_sky_convention_digest", "verify_inputs", "verify_registry_digest"]
