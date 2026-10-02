@@ -2111,7 +2111,7 @@ NULL_ALLOWED_FIELDS = ("column", "values", "why")
 NULL_SCOPE_MODES = ("only", "exactly")        # only: a NULL is allowed just on the declared keys; exactly: NULL iff the key is declared
 NULL_MAX_NULLABLE, NULL_MAX_CONSTANTS, NULL_MAX_ALLOWED, NULL_MAX_VALUES, NULL_MAX_KEY_LEN = 64, 256, 64, 20, 128   # a declaration larger than this is not a convention
 NULL_NUMERIC_TYPES = ("smallint", "integer", "bigint", "numeric", "decimal", "real", "double precision")   # a 0 in a declared-nullable numeric column is a sentinel
-NULL_DISTINCT_SKIP_TYPES = ("bytea", "json", "jsonb", "tsvector", "user-defined")   # not distinct-counted (cost) unless declared constant
+NULL_DISTINCT_SKIP_KINDS = ("json", "blob", "array_num")   # kinds not distinct-counted (cost: json, bytea / tsvector / vector, numeric / float arrays such as embeddings) unless declared constant
 
 
 def _s3_key_problem(v, limit: int = NULL_MAX_KEY_LEN):
@@ -2254,17 +2254,65 @@ def _sql_lit(s) -> str:
 
 
 def _null_type_kind(t) -> str:
-    """'text' | 'array' | 'json' | 'num' | 'other' for a column's information_schema data_type (an unknown / missing type is the caller's NO_DETECTOR)."""
+    """The kind of a column from its information_schema data_type STRING (the catalog read `_null_kind_from_catalog` resolves what this cannot: citext, enums, domains, array
+    element types, vector): 'text' | 'num' | 'bool' | 'json' | 'array_text' | 'array_num' | 'array_bool' | 'array_other' | 'blob' | 'other'. An `ARRAY` of unknown element
+    reads as array_text (conservative); USER-DEFINED / bytea / tsvector / xml read as 'blob' (heavy, no text to test)."""
     t = re.sub(r"\(.*?\)", "", str(t or "")).strip().lower()
     if t in LDGR_TEXT_TYPES:
         return "text"
     if t == "array" or t.endswith("[]"):
-        return "array"
+        base = t[:-2].strip() if t.endswith("[]") else ""
+        return "array_num" if base in NULL_NUMERIC_TYPES else "array_bool" if base == "boolean" else "array_text"
     if t in ("json", "jsonb"):
         return "json"
     if t in NULL_NUMERIC_TYPES:
         return "num"
+    if t == "boolean":
+        return "bool"
+    if t in ("bytea", "tsvector", "user-defined", "xml", "tsquery"):
+        return "blob"
     return "other"
+
+
+NULL_BLOB_TYPENAMES = ("bytea", "tsvector", "tsquery", "xml", "vector", "halfvec", "sparsevec")
+
+
+def _null_kind_from_catalog(typname, cat, elem_cat) -> str:
+    """The kind of a column from pg_type facts (typname and typcategory of its base type, domains resolved; for an array the element's typcategory): text = category S
+    (text, varchar, bpchar, name, citext) or E (an enum: its label text is tested); num = N; bool = B; json = json / jsonb; blob = bytea / tsvector / vector ...; an array
+    is array_text / array_num / array_bool / array_other by its element."""
+    if cat == "A":
+        return {"S": "array_text", "E": "array_text", "N": "array_num", "B": "array_bool"}.get(elem_cat, "array_other")
+    if typname in ("json", "jsonb"):
+        return "json"
+    if typname in NULL_BLOB_TYPENAMES:
+        return "blob"
+    return {"S": "text", "E": "text", "N": "num", "B": "bool"}.get(cat, "other")
+
+
+def null_fetch_column_kinds(table: str, columns) -> dict:
+    """{column: kind} for the declared table from ONE read-only pg_catalog SELECT (answered as one line of jsonb): a domain is resolved to its base type, an array to its
+    element's category. Identifiers are matched against a strict pattern. Raises Unknown on a malformed identifier, a failed read, or a column the catalog does not answer for."""
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table)):
+        raise Unknown(f"null_fetch_column_kinds: malformed table {table!r}")
+    blob = scalar("SELECT coalesce(jsonb_object_agg(a.attname, jsonb_build_object('t', bt.typname, 'c', bt.typcategory, 'ec', et.typcategory)), '{}'::jsonb)::text "
+                  "FROM pg_attribute a JOIN pg_type t ON t.oid = a.atttypid "
+                  "JOIN pg_type bt ON bt.oid = CASE WHEN t.typtype = 'd' THEN t.typbasetype ELSE t.oid END "
+                  "LEFT JOIN pg_type et ON et.oid = CASE WHEN bt.typcategory = 'A' THEN bt.typelem END "
+                  f"WHERE a.attrelid = to_regclass('\"{table}\"') AND a.attnum > 0 AND NOT a.attisdropped")
+    try:
+        got = json.loads(blob or "")
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise Unknown(f"null_fetch_column_kinds: unparseable read of {table}: {exc}") from exc
+    if not (isinstance(got, dict) and all(isinstance(got.get(c), dict) for c in columns)):
+        raise Unknown(f"null_fetch_column_kinds: the catalog does not answer for every column of {table}")
+    return {c: _null_kind_from_catalog(got[c].get("t"), got[c].get("c"), got[c].get("ec")) for c in columns}
+
+
+def _null_fb_possible(kind: str, nullable: bool) -> bool:
+    """Can a column of this kind hold a literal fallback the detector tests? text / arrays / json always; a numeric scalar only when declared nullable (the 0 sentinel);
+    boolean, dates, timestamps, uuid, enums-as-other, blobs never."""
+    return kind in ("text", "json", "array_text", "array_num", "array_bool", "array_other") or (kind == "num" and nullable)
 
 
 def _null_declared_columns(spec: dict) -> list:
@@ -2275,33 +2323,45 @@ def _null_declared_columns(spec: dict) -> list:
 
 
 def _null_fallback_sql(col: str, kind: str, nullable: bool, allowed=()):
-    """The SQL predicate 'this row's `col` holds a literal that stands in for NULL', or None when the column type cannot hold one. text: S3's `_ldgr_lacking_text`
-    (the ONE definition) on a non-NULL value; array: empty, or any element lacking; json: a JSON null, an empty object / array, or a string that lacks; numeric: a 0 in a
-    declared-nullable column only. A value listed in `allowed` (declared, with a reason) is never a fallback."""
+    """The SQL predicate 'this row's `col` holds a literal that stands in for NULL', or None when the column kind cannot hold one (`_null_fb_possible`). text: S3's
+    `_ldgr_lacking_text` (the ONE definition) on a non-NULL value. array_text: empty, or ANY element lacking (compared per element; a NULL element lacks). array_num /
+    array_bool / array_other: empty; a numeric array element of 0 only when the column is declared nullable (as the scalar sentinel). json: a JSON null, an empty object or
+    array, or NESTED to any depth any JSON null or string leaf that lacks ({"src":"N/A"}, ["none"], {"a":null}, [null]): the right question for a null convention is 'does any
+    leaf hold a placeholder or a null'. numeric scalar: a 0 in a declared-nullable column only. A literal listed in `allowed` (declared, with a reason) is never a fallback:
+    compared on the column's text for a scalar, per element for an array, per string leaf for json."""
     q = f'"{col}"'
+    lits = ", ".join(_sql_lit(v) for v in allowed)
     if kind == "text":
-        core = _ldgr_lacking_text(q)
-    elif kind == "array":
-        core = f"(cardinality({q}) = 0 OR EXISTS (SELECT 1 FROM unnest({q}::text[]) AS e(x) WHERE {_ldgr_lacking_text('e.x')}))"
+        core = _ldgr_lacking_text(f"{q}::text")                    # ::text: an enum's label, a domain's / citext's value is tested as text (normalize() needs text)
+        ok = f" AND {q}::text NOT IN ({lits})" if allowed else ""
+    elif kind == "array_text":
+        el = _ldgr_lacking_text("e.x") + (f" AND (e.x IS NULL OR e.x NOT IN ({lits}))" if allowed else "")
+        core, ok = f"(cardinality({q}) = 0 OR EXISTS (SELECT 1 FROM unnest({q}::text[]) AS e(x) WHERE {el}))", ""
+    elif kind == "array_num":
+        core, ok = f"(cardinality({q}) = 0" + (f" OR EXISTS (SELECT 1 FROM unnest({q}) AS e(x) WHERE e.x = 0)" if nullable else "") + ")", ""
+    elif kind in ("array_bool", "array_other"):
+        core, ok = f"(cardinality({q}) = 0)", ""
     elif kind == "json":
-        core = (f"(jsonb_typeof({q}::jsonb) = 'null' OR {q}::jsonb IN ('{{}}'::jsonb, '[]'::jsonb) OR (jsonb_typeof({q}::jsonb) = 'string' AND "
-                f"{_ldgr_lacking_text('(' + q + '::jsonb #>> ' + chr(39) + '{}' + chr(39) + ')')}))")
+        leaf = _ldgr_lacking_text("(l.x #>> " + chr(39) + "{}" + chr(39) + ")") + (f" AND (l.x #>> '{{}}') NOT IN ({lits})" if allowed else "")
+        core = (f"({q}::jsonb IN ('{{}}'::jsonb, '[]'::jsonb) OR EXISTS (SELECT 1 FROM jsonb_path_query({q}::jsonb, 'strict $.**') AS l(x) "
+                f"WHERE jsonb_typeof(l.x) = 'null' OR (jsonb_typeof(l.x) = 'string' AND {leaf})))")
+        ok = ""
     elif kind == "num" and nullable:
-        core = f"{q} = 0"
+        core, ok = f"{q} = 0", ""
     else:
         return None
-    ok = f" AND {q}::text NOT IN ({', '.join(_sql_lit(v) for v in allowed)})" if allowed else ""
     return f"{q} IS NOT NULL AND ({core}){ok}"
 
 
 def null_convention_fetch(table: str, columns, types, spec: dict, tail: str = "") -> dict:
-    """{rows, cols: {column: {nulls, distinct | None, [sole], [fallback], [null_outside, null_outside_keys, nonnull_inside, nonnull_inside_keys]}}} for the declared
-    table: ONE read-only SELECT over the table (`tail` = the chart-scope ` WHERE ...` the caller has BOUND), answered as ONE line of jsonb. Per column: its NULL count and
-    its distinct count (`count(DISTINCT col)` for a numeric column, so 1 / 1.0 / 1.00 are one value; `col::text` otherwise; not counted for a bytea / json / jsonb / tsvector /
-    vector column unless declared constant: `distinct` is then None); for a declared constant its sole value (min); for every text-like column (and a declared-nullable
-    numeric one) the rows holding a literal fallback by S3's definition (see `_null_fallback_sql`); and for a scoped nullable column the NULL rows outside the declared keys
-    and (mode exactly) the non-NULL rows on them, as counts and up to 5 sample keys. Identifiers are matched against a strict pattern and double-quoted; key values are
-    doubled-quote literals. Raises Unknown on a malformed identifier or a failed read, and on a missing column type or a malformed answer."""
+    """{rows, kinds, cols: {column: {nulls, distinct | None, [sole], [fallback], [null_outside, null_outside_keys, nonnull_inside, nonnull_inside_keys]}}} for the declared
+    table: one read-only pg_catalog SELECT (`null_fetch_column_kinds`: domains, enums, citext, array element types resolved) and ONE read-only SELECT over the table (`tail` = the
+    chart-scope ` WHERE ...` the caller has BOUND), answered as ONE line of jsonb. Per column: its NULL count and its distinct count (`count(DISTINCT col)` for a numeric column, so
+    1 / 1.0 / 1.00 are one value; `col::text` otherwise; NOT counted for a json, bytea / tsvector / vector or numeric-array column unless declared constant: `distinct` is then
+    None); for a declared constant its sole value (min); wherever the column kind can hold one (`_null_fb_possible`) the rows holding a literal fallback by S3's definition
+    (see `_null_fallback_sql`); and for a scoped nullable column the NULL rows outside the declared keys and (mode exactly) the non-NULL rows on them, as counts and up to 5
+    sample keys. Identifiers are matched against a strict pattern and double-quoted; key values are doubled-quote literals. Raises Unknown on a malformed identifier or a failed
+    read, and on a missing column type or a malformed answer."""
     cols = list(columns or ())
     nullable = {n["column"]: n for n in (spec.get("nullable") or [])}
     consts = {c["column"]: c for c in (spec.get("constants") or [])}
@@ -2312,13 +2372,14 @@ def null_convention_fetch(table: str, columns, types, spec: dict, tail: str = ""
     types = types or {}
     if any(c not in types for c in cols):
         raise Unknown("null_convention_fetch: the data type of a column is unknown")
+    kinds = null_fetch_column_kinds(table, cols)
     parts = []
     for c in cols:
         qc = f'"{c}"'
-        kind = _null_type_kind(types.get(c))
+        kind = kinds[c]
         numeric = kind == "num"
         f = [f"'nulls', count(*) FILTER (WHERE {qc} IS NULL)"]
-        if str(types.get(c) or "").strip().lower() not in NULL_DISTINCT_SKIP_TYPES or c in consts:
+        if kind not in NULL_DISTINCT_SKIP_KINDS or c in consts:
             f.append(f"'distinct', count(DISTINCT {qc}{'' if numeric else '::text'})")
         else:
             f.append("'distinct', NULL")
@@ -2344,6 +2405,8 @@ def null_convention_fetch(table: str, columns, types, spec: dict, tail: str = ""
         got = json.loads(blob or "")
     except (json.JSONDecodeError, TypeError) as exc:
         raise Unknown(f"null_convention_fetch: unparseable read of {table}: {exc}") from exc
+    if isinstance(got, dict):
+        got["kinds"] = kinds
     return _checked_null_stats(got, table, cols, nullable, consts, types)
 
 
@@ -2351,23 +2414,31 @@ def _isint(x) -> bool:
     return isinstance(x, int) and not isinstance(x, bool)
 
 
+def _null_kinds(got, cols, types) -> dict:
+    """The kind of each column for grading: the fetch's resolved `kinds` where present, else derived from the data_type strings (stats supplied without a catalog read)."""
+    k = got.get("kinds") if isinstance(got, dict) else None
+    return {c: (k[c] if isinstance(k, dict) and isinstance(k.get(c), str) else _null_type_kind((types or {}).get(c))) for c in cols}
+
+
 def _checked_null_stats(got, table: str, cols, nullable: dict, consts: dict, types=None) -> dict:
-    """The fetched / supplied stats, shape-checked: a malformed answer is Unknown, never a PASS on missing numbers. `distinct` may be None only for a column of a
-    skipped type that is not declared constant; `fallback` is required exactly where the column type can hold one."""
-    types = types or {}
+    """The fetched / supplied stats, shape-checked: a malformed answer is Unknown, never a PASS on missing numbers. `distinct` is None exactly for a column whose kind is
+    skipped (json / blob / numeric array) and is not declared constant; `fallback` is an int exactly where the column kind can hold a literal fallback (`_null_fb_possible`) and is
+    not required for a boolean, a date, a timestamp, an enum-as-other, a blob or a non-nullable number."""
     ok = isinstance(got, dict) and _isint(got.get("rows")) and isinstance(got.get("cols"), dict)
     if ok:
+        kinds = _null_kinds(got, cols, types)
         for c in cols:
             d = got["cols"].get(c)
             ok = ok and isinstance(d, dict) and _isint(d.get("nulls"))
-            skipped = str(types.get(c) or "").strip().lower() in NULL_DISTINCT_SKIP_TYPES and c not in consts
+            skipped = kinds[c] in NULL_DISTINCT_SKIP_KINDS and c not in consts
             ok = ok and ("distinct" in d) and ((d["distinct"] is None) if skipped else _isint(d["distinct"]))
             if ok and c in consts:
                 ok = "sole" in d and (d["sole"] is None or isinstance(d["sole"], str))
-            if ok and c in nullable:
+            if ok and _null_fb_possible(kinds[c], c in nullable):
                 ok = _isint(d.get("fallback"))
+            if ok and c in nullable:
                 sc = nullable[c].get("scope")
-                if ok and sc:
+                if sc:
                     ok = _isint(d.get("null_outside")) and isinstance(d.get("null_outside_keys"), list)
                     if ok and sc["mode"] == "exactly":
                         ok = _isint(d.get("nonnull_inside")) and isinstance(d.get("nonnull_inside_keys"), list)
@@ -2406,11 +2477,12 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
                     measured=f"declared column(s) {', '.join(absent)} are not columns of {table}: the declaration names columns the table does not carry")
     got = _checked_null_stats(stats, table, cols, nullable, consts, types)
     rows, per = got["rows"], got["cols"]
+    kinds = _null_kinds(got, cols, types)
     if rows < 2:
         return dict(v=NO_DET, declared=True, convention=dict(table=table, rows=rows),
                     measured=f"NO_DETECTOR — {table} has {rows} row(s): constants and variation cannot be shown on fewer than 2 rows (vacuous)")
     undecl_nulls = {c: per[c]["nulls"] for c in cols if c not in nullable and per[c]["nulls"]}
-    fallbacks = {c: per[c]["fallback"] for c in cols if per[c].get("fallback")}
+    fallbacks = {c: per[c]["fallback"] for c in cols if _null_fb_possible(kinds[c], c in nullable) and per[c].get("fallback")}
     scope_viol: dict = {}
     for c, n in nullable.items():
         sc = n.get("scope")
@@ -2428,13 +2500,15 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
     for c, d in consts.items():
         if not one_value[c]:
             const_viol.append(c)
-        elif d.get("value") is not None and per[c]["nulls"] == 0 and not _same_constant(per[c].get("sole"), d["value"], _null_type_kind(types.get(c))):
+        elif d.get("value") is not None and per[c]["nulls"] == 0 and not _same_constant(per[c].get("sole"), d["value"], kinds[c]):
             const_viol.append(c)
     unscoped = [c for c, n in nullable.items() if not n.get("scope") and per[c]["nulls"] > 0]
-    fb_checked = [c for c in cols if "fallback" in per[c]]
+    fb_checked = [c for c in cols if _null_fb_possible(kinds[c], c in nullable)]
+    fb_na = [c for c in cols if c not in fb_checked]
+    allowed_in_force = [dict(column=a["column"], values=list(a["values"]), why=a["why"]) for a in spec.get("allowed_literals") or []]
     block = dict(table=table, rows=rows, undeclared_nulls=undecl_nulls, fallbacks=fallbacks, scope_violations=scope_viol,
                  undeclared_constants=undecl_consts, constant_violations=const_viol, unscoped_null_columns=unscoped,
-                 fallback_checked_columns=fb_checked, constants_not_examined=not_examined)
+                 fallback_checked_columns=fb_checked, fallback_not_applicable=fb_na, constants_not_examined=not_examined, allowed_literals_in_force=allowed_in_force)
     problems = []
     if undecl_nulls:
         problems.append("undeclared NULL in column(s) " + ", ".join(f"{c} ({n} row(s))" for c, n in sorted(undecl_nulls.items()))
@@ -2467,7 +2541,9 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
                          + (f", verified on keys: {'; '.join(scoped)}" if scoped else "")
                          + f"; no literal fallback in the {len(fb_checked)} text-like / declared-nullable column(s) checked ({', '.join(fb_checked) or 'none'})"
                          + f"; {len(consts)} declared constant column(s) constant, no other column constant"
-                         + (f"; constants NOT examined for {', '.join(not_examined)} (type not distinct-counted: cost)" if not_examined else ""))
+                         + (f"; allowed literals in force (declared exemptions): " + "; ".join(f"{a['column']} {a['values']} ({a['why']})" for a in allowed_in_force) if allowed_in_force else "")
+                         + (f"; NOT examined for a literal fallback (the type cannot hold one): " + ", ".join(f"{c} ({types.get(c) or kinds[c]})" for c in fb_na) if fb_na else "")
+                         + (f"; constants NOT examined (kind not distinct-counted, cost): " + ", ".join(f"{c} ({kinds[c]})" for c in not_examined) if not_examined else ""))
 
 
 def null_convention_check(nc: dict, own: dict, exists, scope) -> dict:

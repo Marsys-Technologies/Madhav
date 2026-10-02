@@ -54,7 +54,7 @@ def census_obj(ms, *, revision=None, fingerprint=None, asset=ASSET, layer=LAYER,
 def decl_text_for(ms, asset=ASSET):
     """The declarations file the ref holds: it declares the null_convention the (lifted) measurements' block names, table / evidence / why (L2)."""
     blk = (ms.get(SD) or {}).get("null_convention") or {}
-    ent = {"null_convention": {k: blk.get(k) for k in ("table", "evidence", "why")}} if blk.get("table") else {}
+    ent = {"null_convention": dict({k: blk.get(k) for k in ("table", "evidence", "why")}, nullable=[{"column": c} for c in blk.get("columns") or []])} if blk.get("table") else {}
     return json.dumps({"version": "1.0.0", "assets": {asset: ent}}, indent=2) + "\n"
 
 
@@ -537,3 +537,33 @@ def test_the_lift_cache_never_leaks_between_assets_at_one_ref_in_one_process(tmp
             assert [ask(ASSET, SD), ask(ASSET, BR)] == [want_x, want_x], (i, _round)
             assert [ask("ga_y", SD), ask("ga_y", BR)] == [want_y, want_y], (i, _round)
         assert len(T._E63_NULL_CACHE) >= 4                                                  # one entry per (asset, criterion) request, none shared
+
+
+def test_L5_the_blocks_columns_must_be_the_declared_prose_fields_plus_nullable_columns(tmp_path):
+    ms = lifted()
+    cols = ms[SD]["null_convention"]["columns"]
+    assert cols == ["effect_description"]
+    assert satisfied(world(tmp_path / "ok", ms)) == [True, True]
+
+    def declared(nullable, prose=None):
+        d = json.loads(decl_text_for(ms))
+        d["assets"][ASSET]["null_convention"]["nullable"] = [{"column": c} for c in nullable]
+        if prose is not None:
+            d["assets"][ASSET]["prose_fields"] = prose
+        return json.dumps(d) + "\n"
+    # a declared nullable column the block does not cover, a column the declaration never named, a different order
+    assert satisfied(world(tmp_path / "a", ms, decl=declared(["effect_description", "extra_col"]))) == [False, False]
+    assert satisfied(world(tmp_path / "b", ms, decl=declared([]))) == [False, False]
+    assert satisfied(world(tmp_path / "c", ms, decl=declared(["other_col"]))) == [False, False]
+    # prose fields count: block ["a_pf", "effect_description"] needs prose_fields ["a_pf"] + nullable effect_description, in that order
+    for c in (SD, BR):
+        ms[c]["null_convention"]["columns"] = ["a_pf", "effect_description"]
+    assert satisfied(world(tmp_path / "d", ms, decl=declared(["effect_description"], ["a_pf"]))) == [True, True]
+    assert satisfied(world(tmp_path / "e", ms, decl=declared(["effect_description"]))) == [False, False]                  # the prose field is not declared
+    assert satisfied(world(tmp_path / "f", ms, decl=declared(["effect_description"], ["other_pf"]))) == [False, False]
+    assert satisfied(world(tmp_path / "g", ms, decl=declared(["effect_description"], "a_pf"))) == [False, False]            # malformed prose_fields
+    assert satisfied(world(tmp_path / "h", ms, decl=declared(["effect_description", "a_pf"], ["a_pf"]))) == [True, True]     # deduplicated: a column in both lists counts once
+    for i, bad in enumerate((["a_pf", "effect_description"], [None], [{"col": "effect_description"}], "effect_description", None)):          # a malformed nullable list is capped, never a crash
+        d = json.loads(decl_text_for(ms))
+        d["assets"][ASSET]["null_convention"]["nullable"] = bad
+        assert satisfied(world(tmp_path / f"m{i}", ms, decl=json.dumps(d) + "\n")) == [False, False], bad

@@ -347,8 +347,11 @@ def test_a_failed_read_degrades_only_this_check(monkeypatch):
 
 # ───────────────────────── the fetcher: one read-only SELECT, strict identifiers ─────────────────────────
 
-def _capture(monkeypatch, answer):
+def _capture(monkeypatch, answer, types=None):
+    """Capture the ONE table SELECT the fetch issues; the catalog kinds read is stubbed from the data_type strings (`_null_type_kind`) so it is not a second capture."""
     got = []
+    tm = dict(LATTA_TYPES, **(types or {}))
+    monkeypatch.setattr(ac, "null_fetch_column_kinds", lambda table, cols: {c: ac._null_type_kind(tm.get(c, "text")) for c in cols})
     monkeypatch.setattr(ac, "scalar", lambda sql: got.append(sql) or answer)
     return got
 
@@ -356,7 +359,7 @@ def _capture(monkeypatch, answer):
 def test_the_fetch_is_one_read_only_select_that_names_every_column_and_the_scope(monkeypatch):
     got = _capture(monkeypatch, json.dumps(STATS()))
     st = ac.null_convention_fetch("bg_phaladeepika_latta", LATTA_COLS, LATTA_TYPES, SPEC(), " WHERE chart_id = 'c'")
-    assert st == STATS() and len(got) == 1
+    assert st.pop("kinds")["effect_description"] == "text" and st == STATS() and len(got) == 1
     sql = got[0]
     assert sql.lstrip().upper().startswith("SELECT") and not re.search(r"\b(insert|update|delete|drop|alter|create|truncate|grant)\b", sql, re.I)
     assert 'FROM "bg_phaladeepika_latta" WHERE chart_id = \'c\'' in sql or "FROM bg_phaladeepika_latta WHERE chart_id = 'c'" in sql
@@ -1181,8 +1184,8 @@ def test_a_declared_prose_field_outside_the_declared_table_keeps_the_cap(monkeyp
 # ---- L5: the distinct count skips the expensive types ---------------------------------------------------------------------------------------------
 
 def test_L5_a_json_or_bytea_column_is_not_distinct_counted_unless_declared_constant_and_is_named_as_not_examined(monkeypatch):
-    got = _capture(monkeypatch, "{}")
     types = {"k": "text", "doc": "jsonb", "blob": "bytea", "emb": "USER-DEFINED", "cst": "jsonb"}
+    got = _capture(monkeypatch, "{}", types)
     spec = dict(table="t", nullable=[], constants=[dict(column="cst", why=WHY)], why=SPEC()["why"], evidence=EV)
     try:
         ac.null_convention_fetch("t", list(types), types, spec, "")
@@ -1195,7 +1198,7 @@ def test_L5_a_json_or_bytea_column_is_not_distinct_counted_unless_declared_const
     st = dict(rows=3, cols={"k": _col(3), "doc": dict(nulls=0, distinct=None, fallback=0), "blob": dict(nulls=0, distinct=None), "emb": dict(nulls=0, distinct=None),
                             "cst": dict(nulls=0, distinct=1, sole="{}", fallback=0)})
     r = ac.grade_null_convention(spec, list(types), types, st)
-    assert r["v"] == PASS and r["convention"]["constants_not_examined"] == ["doc", "blob", "emb"] and "NOT examined for doc, blob, emb" in r["measured"]
+    assert r["v"] == PASS and r["convention"]["constants_not_examined"] == ["doc", "blob", "emb"] and "constants NOT examined (kind not distinct-counted, cost): doc (json), blob (blob), emb (blob)" in r["measured"]
 
 
 def test_L5_a_missing_distinct_on_a_countable_column_is_malformed():
@@ -1210,3 +1213,273 @@ def test_the_fetch_needs_every_column_type():
         ac.null_convention_fetch("bg_phaladeepika_latta", LATTA_COLS, {"graha": "text"}, SPEC(), "")
     r = ac.null_convention_check(SPEC(), _own({"bg_phaladeepika_latta": (LATTA_COLS, {"graha": "text"}, {})}), {"bg_phaladeepika_latta"}, ("", "whole-table"))
     assert r["v"] == NO_DET and "data types" in r["measured"]
+
+
+# ═════════════════ re-review round: M1 and the LOW findings (types, JSON leaves, arrays, exemptions, cost) ═════════════════
+
+def _mp_real(monkeypatch, pg, setup, table, types, spec, count_sql=None):
+    """Run the whole convention path THROUGH _measure_prose on the disposable Postgres: `setup` creates TEMP table `table`; `types` is its information_schema data_type map."""
+    s3._real(monkeypatch, pg, setup)
+    cat = dict(exists={table}, cols={table: list(types)}, keys={table: [["k"]]}, views=set(), types={table: dict(types)}, defaults={table: {}}, types_error=None)
+    r = dict(target_table=table, count_sql=count_sql or f"SELECT count(*) FROM {table}")
+    return ac._measure_prose("bg_x", dict(null_convention=dict(spec, table=table), prose_fields=None), r, None, cat, [], set(), (), set())
+
+
+def _cv(m):
+    """What the detector said about the convention (the annotation / the lift block): independent of whether the Null checks could be lifted (a table with no nullable
+    column has no entry to check for blank rows, so its records stay capped even when the convention verifies)."""
+    return m[BR]["null_convention"]["v"]
+
+
+def _gspec(nullable=(), constants=(), allowed=None, why=None):
+    d = dict(table="x_t", nullable=list(nullable), constants=list(constants), why=SPEC()["why"], evidence=EV)
+    if allowed:
+        d["allowed_literals"] = allowed
+    return d
+
+
+def _nul(column, scope_keys=None):
+    n = dict(column=column, means="the source gives no value for this row, so the cell stays empty")
+    if scope_keys:
+        n["scope"] = dict(key_column="k", null_for=scope_keys, mode="only")
+    return n
+
+
+M1_SQL = ["CREATE TYPE mood_t AS ENUM ('good', 'bad', 'N/A');",
+          "CREATE TEMP TABLE x_t (k text PRIMARY KEY, flag boolean, born date, seen timestamptz, mood mood_t, w int NOT NULL) ON COMMIT DROP;",
+          "INSERT INTO x_t VALUES ('a', NULL, NULL, NULL, NULL, 1), ('b', true, '2020-01-01', '2020-01-02 00:00+00', 'good', 2), ('c', false, '2021-01-01', '2021-01-02 00:00+00', 'bad', 3);"]
+M1_TYPES = {"k": "text", "flag": "boolean", "born": "date", "seen": "timestamp with time zone", "mood": "USER-DEFINED", "w": "integer"}
+
+
+def test_REAL_SQL_M1_nullable_boolean_date_timestamptz_and_enum_columns_reach_pass_through_measure_prose(monkeypatch, disposable_pg):
+    spec = _gspec([_nul(c, ["a"]) for c in ("flag", "born", "seen", "mood")])
+    m = _mp_real(monkeypatch, disposable_pg, M1_SQL, "x_t", M1_TYPES, spec)
+    conv = m[BR]["null_convention"]
+    assert m[SD]["v"] == PASS and m[BR]["v"] == PASS, (m[SD], m[BR])
+    assert conv["verified"] is True
+    assert ac.rollup_asset("L1", m)["Null"]["v"] == PASS
+
+
+def test_M1_a_nullable_non_text_column_without_a_fallback_stat_is_not_malformed():
+    types = {"k": "text", "flag": "boolean", "born": "date", "seen": "timestamp with time zone", "w": "integer"}
+    nullable = {c: _nul(c, ["a"]) for c in ("flag", "born", "seen")}
+    cols = list(types)
+    per = {c: dict(nulls=0, distinct=3) for c in cols}
+    for c in nullable:
+        per[c].update(nulls=1, distinct=2, null_outside=0, null_outside_keys=[])
+    per["k"]["fallback"] = 0
+    st = dict(rows=3, cols=per)
+    spec = _gspec(list(nullable.values()))
+    r = ac.grade_null_convention(spec, cols, types, st)
+    assert r["v"] == PASS, r
+    assert set(r["convention"]["fallback_not_applicable"]) == {"flag", "born", "seen", "w"}
+    for c in ("flag", "born", "seen"):
+        assert f"{c} (" in r["measured"]
+    assert "NOT examined for a literal fallback" in r["measured"]
+    bad = copy.deepcopy(st)
+    del bad["cols"]["k"]["fallback"]                                  # a text column that lost its fallback stat IS malformed: fail closed
+    with pytest.raises(ac.Unknown):
+        ac.grade_null_convention(spec, cols, types, bad)
+    bad2 = copy.deepcopy(st)
+    bad2["cols"]["flag"].pop("null_outside")                          # a scoped nullable column without its scope stats too
+    with pytest.raises(ac.Unknown):
+        ac.grade_null_convention(spec, cols, types, bad2)
+
+
+def test_REAL_SQL_LOW1_enum_label_text_and_a_domain_over_text_are_fallback_checked(monkeypatch, disposable_pg):
+    spec = _gspec([_nul(c, ["a"]) for c in ("flag", "born", "seen", "mood")])
+    types = dict(M1_TYPES)
+    ok = _mp_real(monkeypatch, disposable_pg, M1_SQL, "x_t", types, spec)
+    assert ok[BR]["v"] == PASS, ok[BR]
+    flip = _mp_real(monkeypatch, disposable_pg, M1_SQL + ["UPDATE x_t SET mood = 'N/A' WHERE k = 'b';"], "x_t", types, spec)      # the enum LABEL 'N/A' is a fallback
+    assert flip[BR]["v"] == FAIL and "mood" in flip[BR]["null_convention"]["convention"]["fallbacks"], flip[BR]
+    dom = ["CREATE DOMAIN txt_d AS text;", "CREATE TEMP TABLE x_t (k text PRIMARY KEY, d txt_d, w int NOT NULL) ON COMMIT DROP;",
+           "INSERT INTO x_t VALUES ('a', 'real value', 1), ('b', 'N/A', 2), ('c', 'another', 3);"]
+    r = _mp_real(monkeypatch, disposable_pg, dom, "x_t", {"k": "text", "d": "text", "w": "integer"}, _gspec())
+    assert r[BR]["v"] == FAIL and r[BR]["null_convention"]["convention"]["fallbacks"] == {"d": 1}
+    r = _mp_real(monkeypatch, disposable_pg, dom + ["UPDATE x_t SET d = 'fine ' || k;"], "x_t", {"k": "text", "d": "text", "w": "integer"}, _gspec())
+    assert _cv(r) == PASS                                                                    # a domain over text with real values is fine
+
+
+def test_REAL_SQL_LOW1_citext_is_text_when_the_extension_exists(monkeypatch, disposable_pg):
+    s3._real(monkeypatch, disposable_pg, [])
+    if not ac.psql("SELECT 1 FROM pg_available_extensions WHERE name = 'citext'"):
+        pytest.skip("the citext extension is not installed in this PostgreSQL")
+    setup = ["CREATE EXTENSION IF NOT EXISTS citext;", "CREATE TEMP TABLE x_t (k text PRIMARY KEY, c citext, w int NOT NULL) ON COMMIT DROP;",
+             "INSERT INTO x_t VALUES ('a', 'real', 1), ('b', 'N/A', 2), ('c', 'other', 3);"]
+    kinds = None
+    s3._real(monkeypatch, disposable_pg, setup)
+    assert ac.null_fetch_column_kinds("x_t", ["k", "c", "w"]) == {"k": "text", "c": "text", "w": "num"}
+    r = _mp_real(monkeypatch, disposable_pg, setup, "x_t", {"k": "text", "c": "USER-DEFINED", "w": "integer"}, _gspec())
+    assert r[BR]["v"] == FAIL and r[BR]["null_convention"]["convention"]["fallbacks"] == {"c": 1}
+
+
+def test_null_kind_from_the_catalog_covers_every_category():
+    f = ac._null_kind_from_catalog
+    assert [f("text", "S", None), f("citext", "S", None), f("mood", "E", None), f("int4", "N", None), f("bool", "B", None), f("jsonb", "U", None), f("json", "U", None),
+            f("bytea", "U", None), f("vector", "U", None), f("tsvector", "U", None), f("uuid", "U", None), f("date", "D", None), f("timestamptz", "D", None)] == \
+        ["text", "text", "text", "num", "bool", "json", "json", "blob", "blob", "blob", "other", "other", "other"]
+    assert [f("_text", "A", "S"), f("_mood", "A", "E"), f("_float8", "A", "N"), f("_bool", "A", "B"), f("_uuid", "A", "U")] == \
+        ["array_text", "array_text", "array_num", "array_bool", "array_other"]
+
+
+@pytest.mark.parametrize("value, bad", [("'{\"src\":\"N/A\"}'", True), ("'[\"N/A\"]'", True), ("'{\"a\":null}'", True), ("'[null]'", True), ("'[\"none\"]'", True),
+                                        ("'{\"a\":{\"b\":\"\\uff2e/\\uff21\"}}'", True), ("'{\"a\":{\"b\":[\"pending\"]}}'", True), ("'null'", True), ("'{}'", True), ("'[]'", True),
+                                        ("'\"N/A\"'", True), ("'{\"a\":{\"b\":\"real\"},\"c\":[\"x\",\"y\"]}'", False), ("'{\"n\":3}'", False), ("'\"a real note\"'", False)])
+def test_REAL_SQL_LOW2_json_is_checked_at_every_depth(monkeypatch, disposable_pg, value, bad):
+    setup = ["CREATE TEMP TABLE x_t (k text PRIMARY KEY, doc jsonb, w int NOT NULL) ON COMMIT DROP;",
+             f"INSERT INTO x_t VALUES ('a', NULL, 1), ('b', {value}, 2), ('c', '{{\"z\":\"fine\"}}', 3);"]
+    spec = _gspec([_nul("doc", ["a"])])
+    m = _mp_real(monkeypatch, disposable_pg, setup, "x_t", {"k": "text", "doc": "jsonb", "w": "integer"}, spec)
+    assert (m[BR]["v"] == FAIL) is bad, (value, m[BR])
+
+
+def test_REAL_SQL_LOW2_a_json_allowed_literal_is_compared_per_string_leaf(monkeypatch, disposable_pg):
+    setup = ["CREATE TEMP TABLE x_t (k text PRIMARY KEY, doc jsonb NOT NULL, w int NOT NULL) ON COMMIT DROP;",
+             "INSERT INTO x_t VALUES ('a', '{\"s\":\"none\"}', 1), ('b', '{\"s\":\"x\"}', 2);"]
+    types = {"k": "text", "doc": "jsonb", "w": "integer"}
+    assert _cv(_mp_real(monkeypatch, disposable_pg, setup, "x_t", types, _gspec())) == FAIL
+    al = [dict(column="doc", values=["none"], why="a leaf with no value is stored as the word none")]
+    assert _cv(_mp_real(monkeypatch, disposable_pg, setup, "x_t", types, _gspec(allowed=al))) == PASS
+
+
+ARR_TYPES = {"k": "text", "ia": "ARRAY", "ba": "ARRAY", "na": "ARRAY", "ta": "ARRAY", "w": "integer"}
+
+
+def _arr_setup(ia, ba, na, ta):
+    return ["CREATE TEMP TABLE x_t (k text PRIMARY KEY, ia int[], ba boolean[], na numeric[], ta text[], w int NOT NULL) ON COMMIT DROP;",
+            f"INSERT INTO x_t VALUES ('a', ARRAY[1,2], ARRAY[true,false], ARRAY[1.5,2], ARRAY['t1','t2'], 1), ('b', {ia}, {ba}, {na}, {ta}, 2), "
+            "('c', ARRAY[3], ARRAY[true], ARRAY[3.5], ARRAY['t3'], 3);"]
+
+
+@pytest.mark.parametrize("ia, ba, na, ta, fails", [
+    ("ARRAY[0,5]", "ARRAY[false]", "ARRAY[0.0,2]", "ARRAY['t1']", False),                 # NON-nullable numeric/bool arrays: a 0 / false element is a real value
+    ("ARRAY[]::int[]", "ARRAY[true]", "ARRAY[1]", "ARRAY['t1']", True),                     # an empty array stands in for absent
+    ("ARRAY[1]", "ARRAY[]::boolean[]", "ARRAY[1]", "ARRAY['t1']", True),
+    ("ARRAY[1]", "ARRAY[true]", "ARRAY[]::numeric[]", "ARRAY['t1']", True),
+    ("ARRAY[1]", "ARRAY[true]", "ARRAY[1]", "ARRAY[]::text[]", True),
+    ("ARRAY[1]", "ARRAY[true]", "ARRAY[1]", "ARRAY['t1','N/A']", True),                     # a text element that lacks
+    ("ARRAY[1]", "ARRAY[true]", "ARRAY[1]", "ARRAY['ＮＯＮＥ']", True),
+])
+def test_REAL_SQL_LOW3_arrays_are_element_wise_consistent(monkeypatch, disposable_pg, ia, ba, na, ta, fails):
+    r = _mp_real(monkeypatch, disposable_pg, _arr_setup(ia, ba, na, ta), "x_t", ARR_TYPES, _gspec())
+    assert (_cv(r) == FAIL) is fails, r[BR]
+
+
+def test_REAL_SQL_LOW3_a_zero_element_is_a_sentinel_only_in_a_declared_nullable_numeric_array(monkeypatch, disposable_pg):
+    setup = _arr_setup("ARRAY[0,5]", "ARRAY[false]", "ARRAY[0.0,2]", "ARRAY['t1']")
+    plain = _mp_real(monkeypatch, disposable_pg, setup, "x_t", ARR_TYPES, _gspec())
+    assert _cv(plain) == PASS
+    nul = _mp_real(monkeypatch, disposable_pg, setup, "x_t", ARR_TYPES, _gspec([_nul("ia", ["a"]), _nul("na", ["a"])]))
+    assert _cv(nul) == FAIL and set(nul[BR]["null_convention"]["convention"]["fallbacks"]) == {"ia", "na"}                # int[] 0 and numeric[] 0.0 == 0
+    boolnul = _mp_real(monkeypatch, disposable_pg, setup, "x_t", ARR_TYPES, _gspec([_nul("ba", ["a"])]))
+    assert "ba" not in boolnul[BR]["null_convention"]["convention"]["fallbacks"]                                                                                        # false is never a sentinel
+
+
+def test_REAL_SQL_LOW3_allowed_literals_compare_per_array_element(monkeypatch, disposable_pg):
+    setup = _arr_setup("ARRAY[1]", "ARRAY[true]", "ARRAY[1]", "ARRAY['none','t9']")
+    assert _cv(_mp_real(monkeypatch, disposable_pg, setup, "x_t", ARR_TYPES, _gspec())) == FAIL
+    al = [dict(column="ta", values=["none"], why="an element with no tag is stored as the word none")]
+    assert _cv(_mp_real(monkeypatch, disposable_pg, setup, "x_t", ARR_TYPES, _gspec(allowed=al))) == PASS
+    setup2 = _arr_setup("ARRAY[1]", "ARRAY[true]", "ARRAY[1]", "ARRAY['none','N/A']")
+    assert _cv(_mp_real(monkeypatch, disposable_pg, setup2, "x_t", ARR_TYPES, _gspec(allowed=al))) == FAIL            # only the declared element is exempt
+
+
+def test_LOW4_the_exemptions_in_force_are_named_in_the_pass_text_and_the_block():
+    al = [dict(column="direction", values=["none", "N/A"], why="a graha with no direction stores these words")]
+    spec = _rspec(allowed_literals=al)
+    r = ac.grade_null_convention(spec, LATTA_COLS, LATTA_TYPES, STATS())
+    assert r["v"] == PASS
+    assert r["convention"]["allowed_literals_in_force"] == [dict(column="direction", values=["none", "N/A"], why="a graha with no direction stores these words")]
+    assert "allowed literals in force" in r["measured"] and "direction" in r["measured"] and "a graha with no direction stores these words" in r["measured"]
+    assert "allowed literals in force" not in ac.grade_null_convention(SPEC(), LATTA_COLS, LATTA_TYPES, STATS())["measured"]
+
+
+def test_LOW6_a_numeric_array_column_is_not_distinct_counted_and_is_named_not_examined(monkeypatch):
+    types = {"k": "text", "emb": "ARRAY", "w": "integer"}
+    got = _capture(monkeypatch, "{}", {"k": "text", "emb": "double precision[]", "w": "integer"})
+    spec = dict(table="t", nullable=[], constants=[], why=SPEC()["why"], evidence=EV)
+    try:
+        ac.null_convention_fetch("t", ["k", "emb", "w"], types, spec, "")
+    except ac.Unknown:
+        pass
+    assert 'count(DISTINCT "emb"' not in got[0] and 'count(DISTINCT "k"::text)' in got[0] and 'count(DISTINCT "w")' in got[0]
+    st = dict(rows=3, kinds={"k": "text", "emb": "array_num", "w": "num"},
+              cols={"k": dict(nulls=0, distinct=3, fallback=0), "emb": dict(nulls=0, distinct=None, fallback=0), "w": dict(nulls=0, distinct=3)})
+    r = ac.grade_null_convention(spec, ["k", "emb", "w"], types, st)
+    assert r["v"] == PASS and r["convention"]["constants_not_examined"] == ["emb"] and "emb (array_num)" in r["measured"]
+    assert "emb" in r["convention"]["fallback_checked_columns"]                                                           # an empty embedding is still a fallback
+    bad = copy.deepcopy(st)
+    bad["cols"]["emb"]["distinct"] = 3                                                                                    # a skipped kind that reports a count is malformed
+    with pytest.raises(ac.Unknown):
+        ac.grade_null_convention(spec, ["k", "emb", "w"], types, bad)
+
+
+def test_REAL_SQL_LOW6_float_array_embeddings_pass_without_a_distinct_count(monkeypatch, disposable_pg):
+    setup = ["CREATE TEMP TABLE x_t (k text PRIMARY KEY, emb float8[] NOT NULL, w int NOT NULL) ON COMMIT DROP;",
+             "INSERT INTO x_t VALUES ('a', ARRAY[0.1,0.2], 1), ('b', ARRAY[0.1,0.2], 2);"]                              # two identical embeddings: would read as an undeclared constant if counted
+    r = _mp_real(monkeypatch, disposable_pg, setup, "x_t", {"k": "text", "emb": "ARRAY", "w": "integer"}, _gspec())
+    assert _cv(r) == PASS
+    assert "emb (array_num)" in r[BR]["null_convention"]["measured"]
+
+
+def test_the_sample_key_list_is_capped_at_five_while_the_count_is_not(monkeypatch, disposable_pg):
+    setup = ["CREATE TEMP TABLE x_t (k text PRIMARY KEY, n text, w int NOT NULL) ON COMMIT DROP;",
+             "INSERT INTO x_t SELECT 'k' || lpad(g::text, 2, '0'), NULL, g FROM generate_series(1, 12) g;"]
+    s3._real(monkeypatch, disposable_pg, setup)
+    spec = dict(table="x_t", nullable=[dict(column="n", means="the source gives no value for these rows at all", scope=dict(key_column="k", null_for=["zz"], mode="exactly"))],
+                constants=[], why=SPEC()["why"], evidence=EV)
+    st = ac.null_convention_fetch("x_t", ["k", "n", "w"], {"k": "text", "n": "text", "w": "integer"}, spec, "")
+    n = st["cols"]["n"]
+    assert n["null_outside"] == 12 and n["null_outside_keys"] == ["k01", "k02", "k03", "k04", "k05"]
+
+
+def test_the_grader_failure_inside_the_convention_path_ends_capped_with_no_pass(monkeypatch):
+    """The `except (Unknown, DeclarationsError)` around the two graders in _measure_null_convention: a grader that cannot read leaves the base records, annotated."""
+    base = _prose(monkeypatch, dict(prose_fields=None))
+    for exc in (ac.Unknown("x"), ac.DeclarationsError("y")):
+        def boom(*a, **k):
+            raise exc
+        monkeypatch.setattr(ac, "grade_null_schema_default_tables", boom)
+        m = _prose(monkeypatch, dict(null_convention=SPEC(), prose_fields=None))
+        assert m[SD]["v"] != PASS and m[BR]["v"] != PASS and m[SD]["null_convention"]["verified"] is False
+        assert _bare(m[SD]) == base[SD] and _bare(m[BR]) == base[BR]
+        assert m[SD]["null_convention"]["v"] == PASS                  # the INNER catch keeps the detector's own verdict (the outer one in _measure_prose would say ERRORED)
+        monkeypatch.undo()
+
+
+def test_stray_fallback_stats_on_a_column_that_cannot_hold_one_are_ignored():
+    st = STATS(created_at=dict(fallback=3), count_from_graha=dict(fallback=2))                 # a timestamp and a non-nullable smallint: no fallback test applies
+    r = _grade(stats=st)
+    assert r["v"] == PASS and r["convention"]["fallbacks"] == {}
+
+
+def test_REAL_SQL_the_catalog_kinds_read_refuses_what_the_catalog_does_not_answer(monkeypatch, disposable_pg):
+    s3._real(monkeypatch, disposable_pg, ["CREATE TEMP TABLE kk_t (a text, b int) ON COMMIT DROP;"])
+    assert ac.null_fetch_column_kinds("kk_t", ["a", "b"]) == {"a": "text", "b": "num"}
+    for table, cols in (("no_such_t", ["a"]), ("kk_t", ["a", "no_such_col"])):
+        with pytest.raises(ac.Unknown):
+            ac.null_fetch_column_kinds(table, cols)
+    for bad in ("t;DROP", 'a"b', "", None):
+        with pytest.raises(ac.Unknown):
+            ac.null_fetch_column_kinds(bad, ["a"])
+
+
+def test_the_kinds_the_fetch_resolved_beat_the_data_type_strings():
+    types = dict(LATTA_TYPES, effect_description="USER-DEFINED")                                 # as information_schema reports an enum / citext
+    st = STATS()
+    st["kinds"] = {c: ac._null_type_kind(LATTA_TYPES[c]) for c in LATTA_COLS}                   # the catalog says effect_description is text
+    assert ac.grade_null_convention(SPEC(), LATTA_COLS, types, st)["convention"]["fallback_checked_columns"].count("effect_description") == 1
+    st2 = STATS()                                                                                  # no resolved kinds: the string says blob, which is skipped and needs distinct None
+    with pytest.raises(ac.Unknown):
+        ac.grade_null_convention(SPEC(), LATTA_COLS, types, st2)
+
+
+def test_REAL_SQL_a_domain_is_resolved_to_its_base_type(monkeypatch, disposable_pg):
+    setup = ["CREATE DOMAIN jd AS jsonb;", "CREATE DOMAIN ta_d AS text[];", "CREATE DOMAIN bd AS bytea;",
+             "CREATE TEMP TABLE dd_t (k text PRIMARY KEY, j jd, a ta_d, b bd) ON COMMIT DROP;"]
+    s3._real(monkeypatch, disposable_pg, setup)
+    assert ac.null_fetch_column_kinds("dd_t", ["k", "j", "a", "b"]) == {"k": "text", "j": "json", "a": "array_text", "b": "blob"}
+    ins = ["INSERT INTO dd_t VALUES ('a', '{\"s\":\"fine\"}', ARRAY['x'], '\\x01'), ('b', '{\"s\":\"N/A\"}', ARRAY['y'], '\\x02');"]
+    r = _mp_real(monkeypatch, disposable_pg, setup + ins, "dd_t", {"k": "text", "j": "jsonb", "a": "ARRAY", "b": "bytea"}, _gspec())
+    assert _cv(r) == FAIL and r[BR]["null_convention"]["convention"]["fallbacks"] == {"j": 1}               # the nested leaf of a jsonb DOMAIN

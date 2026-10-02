@@ -1160,7 +1160,7 @@ def _e63_null_census_record(repo, sha, rec):
 
 
 def _e63_declared_null_convention(repo, sha, asset):
-    """The `null_convention` object the declarations file AT THE REF holds for `asset` (like the declarations binding: read from the ref, strict JSON), else None."""
+    """(null_convention, asset entry) the declarations file AT THE REF holds for `asset` (like the declarations binding: read from the ref, strict JSON), else None."""
     try:
         doc = _e63_strict_loads(_e63_show(repo, sha, E63_DECLARATIONS_PATH).decode("utf-8"))
     except (ElevatedInputError, ValueError, UnicodeDecodeError):
@@ -1168,20 +1168,33 @@ def _e63_declared_null_convention(repo, sha, asset):
     ents = doc.get("assets") if isinstance(doc, dict) else None
     ent = ents.get(asset) if isinstance(ents, dict) else None
     nc = ent.get("null_convention") if isinstance(ent, dict) else None
-    return nc if isinstance(nc, dict) else None
+    return (nc, ent) if isinstance(nc, dict) else None
+
+
+def _e63_declared_null_columns(nc, ent):
+    """The columns the census's Null checks run over for an asset that declares `nc`: its declared prose_fields, then its nullable columns (deduplicated, in that order),
+    exactly what `_measure_null_convention` computes; None when the declaration is not a list of such entries."""
+    pf, nl = ent.get("prose_fields"), nc.get("nullable")
+    if not ((pf is None or (isinstance(pf, list) and all(isinstance(x, str) for x in pf))) and isinstance(nl, list)
+            and all(isinstance(n, dict) and isinstance(n.get("column"), str) for n in nl)):
+        return None
+    return list(dict.fromkeys(list(pf or []) + [n["column"] for n in nl]))
 
 
 def _e63_null_lift_earned(repo, sha, rec, census_src):
     """True only when the ref's own census earns this Null PASS certificate (see the block comment above) AND the ref's asset_declarations.json declares the
-    convention the lift block names (same table, evidence and why): a hand-built complete block without a matching declaration stays capped."""
+    convention the lift block names (same table, evidence, why AND the same covered columns: declared prose_fields + nullable columns): a hand-built complete block without a matching declaration stays capped."""
     got = _e63_null_census_record(repo, sha, rec)
     if got is None:
         return False
     head, arec = got
     block = (arec["measurements"].get(rec.get("criterion")) or {}).get("null_convention")
-    declared = _e63_declared_null_convention(repo, sha, rec.get("asset"))
-    if not (isinstance(block, dict) and declared is not None
-            and all(isinstance(block.get(k), str) and block.get(k) == declared.get(k) for k in ("table", "evidence", "why"))):
+    got_decl = _e63_declared_null_convention(repo, sha, rec.get("asset"))
+    if not (isinstance(block, dict) and got_decl is not None
+            and all(isinstance(block.get(k), str) and block.get(k) == got_decl[0].get(k) for k in ("table", "evidence", "why"))):
+        return False
+    cols = _e63_declared_null_columns(*got_decl)
+    if cols is None or block.get("columns") != cols:        # the covered columns are exactly the declared prose fields + nullable columns
         return False
     ms = {c: m for c, m in arec["measurements"].items() if c in E63_NULL_CHECKS}
     req = json.dumps({"layer": rec["layer"], "criterion": rec["criterion"], "measurements": ms}, sort_keys=True, default=str).encode("utf-8")
