@@ -1362,6 +1362,19 @@ def test_all_committed_source_query_producers_are_snapshot_bound():
     assert bound_count == len(re.findall(r'"disposition":\s*"derived_from_source_query"', raw))
 
 
+def test_committed_artifact_summary_agrees_with_its_entries():
+    """The generator writes `summary`; `--check` never reads it, so a hand-edited or stale summary passed
+    silently (reviewer: total_scus=999 still passed). Recompute every count the summary states from the
+    entries themselves."""
+    payload = _load_real_committed_artifact()
+    scus = payload["scus"]
+    summary = payload["summary"]
+    assert summary["total_scus"] == len(scus) == payload["snapshot_scu_count"]
+    assert summary["scus_with_producers"] == sum(1 for e in scus.values() if e.get("producers"))
+    assert summary["scus_no_detector"] == sum(1 for e in scus.values() if e.get("no_detector"))
+    assert sum(summary["no_detector_reason_counts"].values()) == summary["scus_no_detector"]
+
+
 def test_check_fails_when_a_fake_producer_is_appended_beside_a_real_one(
     tmp_path, monkeypatch, capsys
 ):
