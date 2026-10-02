@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "d027a49736a1da0a6614b56a1741fc946686948629ad05bdd9d74f4d1f30db36",
+  "content_sha256": "537f6d57a9a5b983038c7582ac08374bebc8b6a008145f475e1a6a7da5e394cf",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -12657,7 +12657,7 @@
         },
         "disposition": "relational_digest_current_source_intent",
         "implementation_refs": [
-          "relation:kala_gochara_windows"
+          "relation:kala_gochara_windows_v2"
         ],
         "known_gaps": [
           "disposable_schema_and_key_validation_not_replayed_this_wave",
@@ -20966,7 +20966,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-02T00:09:10.000Z",
+  "generated_at": "2026-10-02T00:00:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21365,7 +21365,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "4ccda99b103617a5da34f941cdc23459ce0e64e075f1e020fa72ef054e9430a9"
+        "sha256": "7aba6aa581b1f980750edf1fdd49d5e9e9378126a055ca685151492b55fc7ec7"
       },
       {
         "id": "public_registrar_source_set",
@@ -22424,5 +22424,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "b62bb638cab2cb318fd63f4a0662862c03cef146"
+  "source_revision": "aa0a4fe66cee1e4cd8557961b78c508d0c3c6ddb"
 }
