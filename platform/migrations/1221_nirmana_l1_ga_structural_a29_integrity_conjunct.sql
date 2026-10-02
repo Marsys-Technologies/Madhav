@@ -1,4 +1,4 @@
--- 1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql
+-- 1221_nirmana_l1_ga_structural_a29_integrity_conjunct.sql  (the a29 conjunct AND the ga_structural output-digest spec swap)
 --
 -- Suvarna Track I (SS decision N-61; split out of migration 1219 by SS, 2026-10-02).
 -- Design note 00_ARCHITECTURE/briefs/suvarna/exec/DESIGN_ARGALA_L1_GRAHA_ROWS_v1_0.md, sections 1 and 5;
@@ -8,6 +8,29 @@
 -- ga_structural argala writer and migration 1219 (#2851), and it merges ONLY in the S-L1 window: after #2851's writer
 -- image is deployed and verified (LC-1 digest equality), immediately before the ga_structural launch. Merge = apply:
 -- the migrate job runs at the next deploy, before that deploy's images roll.
+--
+-- SERVING EFFECT AT APPLY: ga_structural freshness stale on every chart (a29 UPDATE OF integrity_check_sql) AND its
+-- receipts read receipt_spec_retired until rebuilt; degraded set at W1 = ga_structural (and with 1222/1223/1226:
+-- ga_vargas, ga_dashas, ga_yoga); all rebuilt in the window.
+--
+-- TWO PARTS, in order: (1) the a29 conjunct on ga_structural's integrity_check_sql; (2) the ga_structural output-digest
+-- spec swap (retire the one active spec, migration 914, 81 categories, sha b24906468e53894de0f223c70c9222eb8fbad3933f79ef7dbee7422b8dd709a6; insert the
+-- same spec plus argala_graha_natal, 82 categories sorted and unique, sha d480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620 = canonical_digest,
+-- which reproduces 914's stored sha exactly; retired, not deleted: 609 / 1086 precedent). The swap used to be part 3 of
+-- migration 1219; it moved here because served_generation.ts (spec_active) reads a receipt whose
+-- output_digest_spec_sha256 is not an ACTIVE spec as receipt_spec_retired, so retiring the spec from the integration's
+-- deploy would leave ga_structural unresolved for serving until rebuilt. a29 already stales ga_structural at this step
+-- (trigger nirmana_registry_receipt_invalidation fires on UPDATE OF integrity_check_sql), so the swap here adds nothing
+-- to the degraded set.
+--
+-- THE GAP BEFORE THIS FILE (integration deployed: new argala writer live, 1219 applied, the OLD 81-category spec still
+-- ACTIVE, W1 not yet reached) and its direction. Nothing builds ga_structural in that gap. If something did:
+-- asset_runner.py computes the output digest by compute_output_digest(), which uses load_output_digest_spec = the ACTIVE
+-- row (retired_at IS NULL) and filters each component by where_in (fact_category = ANY(...)); the old spec's where_in
+-- does NOT contain argala_graha_natal. So the build SUCCEEDS; the receipt records the OLD spec sha and an output digest
+-- that does NOT cover the argala rows: a SILENT coverage gap, not a loud failure (nothing compares written categories
+-- with the spec). After this file applies, that receipt reads receipt_spec_retired anyway. The remedy is the same as for
+-- every other W1 receipt: the rebuild in the S-L1 window, which writes the receipt against the new 82-category spec.
 --
 -- This is a real migration, applied through the normal runner: platform/scripts/migrate.ts owns the transaction,
 -- so there is no BEGIN/COMMIT here. It must be VERIFIED by production structure after it applies (the post-apply
@@ -49,6 +72,9 @@
 --     ('ga_structural(receipt:stale)') until the next governed ga_structural receipt. Applied immediately
 --     before S-L1 that costs nothing, because S-L1 rebuilds ga_structural anyway.
 --
+--   * The spec swap sits in the same file, so the window during which ga_structural's receipts read receipt_spec_retired
+--     is exactly the window during which a29 keeps it stale: both end with the S-L1 rebuild.
+--
 -- ORDERING HAZARD (independent review): after (a29), a ga_structural rebuild by the OLD writer image (which still
 -- writes 1.0 on empty cells) fails the post-write integrity check. 1221 therefore NEVER applies before the ga_structural
 -- writer deploy; it applies after it, immediately before the S-L1 launch.
@@ -65,10 +91,17 @@
 -- once, is a no-op when (a29) is already there, and asserts the result afterwards.
 --
 -- Tests: platform/python-sidecar/tests/test_argala_migration_1221_sql.py runs this text and the conjunct
--- against a disposable local Postgres: six mutants are killed, including the one (e27) passes.
+-- against a disposable local Postgres: six mutants are killed, including the one (e27) passes; the swap reproduces
+-- both shas with the real canonical_digest and loads through the real output_digest._validate_spec; the combined effect
+-- (freshness stale AND spec retired) is proved against the real trigger function body.
 --
 -- Post-apply verification:
 --   SELECT position('(a29)' in integrity_check_sql) > 0 FROM asset_registry WHERE asset_id = 'ga_structural';  -- t
+--   SELECT spec_sha256 FROM asset_output_digest_specs
+--    WHERE asset_id = 'ga_structural' AND retired_at IS NULL;   -- d480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620
+--   SELECT count(*) FROM asset_output_digest_specs
+--    WHERE asset_id = 'ga_structural' AND retired_at IS NOT NULL;   -- >= 1 (b2490646... retired, not deleted)
+--   SELECT count(*) FROM asset_freshness WHERE asset_id = 'ga_structural' AND freshness_state = 'stale';   -- every ga_structural row
 --   Position proves the text changed, not that the whole composite parses and reads as intended: also run the
 --   full integrity_check_sql read-only against the canonical chart. Expected integrity_passed = false (a29 red)
 --   until the S-L1 ga_structural rebuild writes the NULL cells; true after it.
@@ -151,5 +184,55 @@ BEGIN
                             WHERE asset_id = 'ga_structural' AND position('(a29)' in integrity_check_sql) > 0
                               AND position('(g28)' in integrity_check_sql) > 0) THEN
     RAISE EXCEPTION 'ga_structural integrity patch failed to apply';
+  END IF;
+END $$;
+
+-- ── 2. ga_structural output-digest spec (after the a29 conjunct) ─────────────────────────────
+DO $$
+DECLARE
+  unexpected_active_count integer;
+  active_new_count integer;
+BEGIN
+  SELECT count(*)
+  INTO unexpected_active_count
+  FROM asset_output_digest_specs
+  WHERE asset_id = 'ga_structural'
+    AND retired_at IS NULL
+    AND spec_sha256 NOT IN (
+      'b24906468e53894de0f223c70c9222eb8fbad3933f79ef7dbee7422b8dd709a6',
+      'd480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620'
+    );
+
+  IF unexpected_active_count <> 0 THEN
+    RAISE EXCEPTION
+      'ga_structural digest-spec revision refused: % unrecognised active row(s)',
+      unexpected_active_count;
+  END IF;
+
+  UPDATE asset_output_digest_specs
+  SET retired_at = now()
+  WHERE asset_id = 'ga_structural'
+    AND spec_sha256 = 'b24906468e53894de0f223c70c9222eb8fbad3933f79ef7dbee7422b8dd709a6'
+    AND retired_at IS NULL;
+
+  INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+  VALUES (
+    'ga_structural',
+    'd480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620',
+    '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"chart_facts","relation":"chart_facts","where_in":{"fact_category":["argala_graha_natal","argala_natal_matrix","ashtakavarga_anubindu","aspect_jaimini","aspect_jaimini_per_varga","aspect_matrix_summary","aspect_parashari_given","aspect_parashari_per_varga","aspect_parashari_received","aspect_received_by_special_point","aspect_tajik","bhava_bala_aspectual","bhava_bala_directional","bhava_bala_lord","bhava_bala_occupant","bhava_bala_positional","bhava_bala_temporal","bhava_bala_total_extended","bhava_chalit_rasi_divergence","bhava_significance_link","chart_center_of_gravity","chart_cluster","combustion_per_varga","combustion_relationship","composite_dispositor_strength","conjunction_per_varga","conjunction_special_point","conjunction_within_orb","contradiction_pair","convergence_count","dispositor_chain_per_varga","dispositor_tree","dosha_fires","dosha_label","graha_avastha_baladi","graha_avastha_deepta","graha_avastha_jagrad","graha_avastha_lifetime_exposure_summary","graha_centrality","graha_composite_state_classification","graha_dignity_per_varga","graha_dispositor_chain","graha_effective_dignity_modified_by_aspects","graha_functional_class_per_ascendant","graha_in_house_composite_strength","graha_saptavargaja_bala_component","graha_special_state_rollup","graha_tri_deva_role_strength","graha_vargottama_amplification_factor","graha_yoga_karaka_flag","graha_yuddha","graha_yuddha_per_varga","house_strength_classification_rollup","jaimini_tri_deva_role_per_graha","kala_sarpa_per_varga","karaka_bhava_concordance","karaka_house_lord_overlap_flag","karaka_web_per_varga","karakatva_strength_per_significance","kendradhipati_dosha","lord_aspects_lord_per_varga","lord_in_house_per_varga","nakshatra_co_tenancy","nakshatra_dispositor_chain","nakshatra_lord_relationship","net_argala_per_varga","nway_config_per_varga","panchadha_maitri","parivartana_pairs","parivartana_per_varga","pranic_strength_per_graha","retrograde_aspect_modification","sambandha_grade","significator_path","tara_bala","upapada_lagna","vargottama_per_varga","vimsopaka_bala_per_graha","virodha_argala_natal_matrix","virupa_drishti","yoga_fires","yoga_label"]},"key_columns":["fact_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"value_columns":["fact_id","chart_id","ayanamsha_id","fact_category","fact_subject","fact_key","fact_value_text","fact_value_num","fact_value_jsonb","unit","citation_ref","citation_human","source_calculation","verification_pass_status","engine_version","salience_formula_ver","tolerance_arcsec","near_sign_boundary_flag","near_nakshatra_boundary_flag","vargottama_flag_at_point","formula_provenance_text","cross_ayanamsha_divergence_arcsec","formula_id"]}]}'::jsonb
+  )
+  ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
+
+  SELECT count(*)
+  INTO active_new_count
+  FROM asset_output_digest_specs
+  WHERE asset_id = 'ga_structural'
+    AND spec_sha256 = 'd480c829b61dcb2a94cc6f47b10d02fe63ae4830a3505f7c5a30c72d6224e620'
+    AND retired_at IS NULL;
+
+  IF active_new_count <> 1 THEN
+    RAISE EXCEPTION
+      'ga_structural digest-spec revision failed: expected one active new row, got %',
+      active_new_count;
   END IF;
 END $$;
