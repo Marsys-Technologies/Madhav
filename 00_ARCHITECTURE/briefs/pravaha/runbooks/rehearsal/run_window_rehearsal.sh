@@ -11,7 +11,11 @@
 set -euo pipefail
 : "${PGPORT:?set PGPORT to the disposable cluster port}" ; : "${REPO:?set REPO to the integration worktree}"
 PGHOST="${PGHOST:-127.0.0.1}"; DB=gochara_rehearsal; HERE="$(cd "$(dirname "$0")" && pwd)"; STRICT="${STRICT:-0}"
-case "$PGHOST" in 127.0.0.1|localhost) ;; *) echo "refusing: PGHOST must be loopback (got $PGHOST)"; exit 2;; esac
+case "$PGHOST" in 127.0.0.1|localhost) ;; *) echo "refusing: PGHOST must be exactly ONE loopback host (got $PGHOST)"; exit 2;; esac
+# steward eb38: nothing may redirect the connection away from the explicit loopback host (libpq honours these even when -h is given)
+for v in PGHOSTADDR PGSERVICE PGSERVICEFILE; do
+  [ -z "${!v:-}" ] || { echo "refusing: $v is set in the environment (it can redirect the connection)"; exit 2; }
+done
 SU="psql -X -h $PGHOST -p $PGPORT -U postgres -v ON_ERROR_STOP=1 -q -t -A"
 AS_OWNER() { psql -X -h "$PGHOST" -p "$PGPORT" -U postgres -d $DB -v ON_ERROR_STOP=1 -q -t -A -c "SET ROLE amjis_app; $1"; }
 SUDB="$SU -d $DB"
@@ -30,6 +34,7 @@ fi
 [ -f "$M/1240_gochara_window_verification_gate.sql" ] || { echo "  FAIL 1240 (Stream A's file) is not in this integration ref"; exit 1; }
 ONLY="$(IFS=,; echo "${WINDOW[*]}")"     # exactly the list deploy.yml builds for gochara_contracts_schema_migration=true
 
+ADDR=$($SU -d postgres -c "SELECT COALESCE(host(inet_server_addr()), 'socket')"); case "$ADDR" in 127.0.0.1|::1|socket) ;; *) echo "refusing: the server answered from $ADDR (not loopback)"; exit 2;; esac
 echo "== S1 disposable database, roles, ownership, default privileges =="
 $SU -c "DROP DATABASE IF EXISTS $DB" -c "CREATE DATABASE $DB"
 $SUDB <<'SQL'
