@@ -89,7 +89,7 @@ jobs:
         run: |
           set -euo pipefail
           EXECUTION="$(gcloud run jobs execute "$VERIFICATION_JOB" --project madhav-astrology --region "$GCP_REGION" \
-            --args="--chart,${CHART_ID},--generation,${GENERATION},--brief,--brief-chunks,--sealing-commit,${GITHUB_SHA}" --wait --format='value(metadata.name)')"
+            --args="--chart,${CHART_ID},--generation,${GENERATION},--brief,--sealing-commit,${GITHUB_SHA}" --wait --format='value(metadata.name)')"
           test -n "$EXECUTION"
           echo "execution=$EXECUTION" >> "$GITHUB_OUTPUT"
 
@@ -100,7 +100,7 @@ jobs:
           set -euo pipefail
           gcloud logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$VERIFICATION_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$EXECUTION\"" \
             --project madhav-astrology --bucket=_Default --location=global --view=gochara_verification_job --order=asc --freshness=2h --format=json > execution_logs.json
-          python3 platform/scripts/gochara_seal_brief_extract.py --logs-file execution_logs.json --out-brief brief.json --out-compact brief.compact.json
+          python3 platform/scripts/gochara_seal_brief_extract.py --logs-file execution_logs.json --out brief.json
 
       - name: Check the brief (digest recomputed, gate clean, policy, revision)
         id: check
@@ -109,7 +109,7 @@ jobs:
           GENERATION: ${{ inputs.generation }}
         run: |
           set -euo pipefail
-          DIGEST="$(python3 platform/scripts/gochara_seal_brief_check.py --brief-file brief.json --compact-file brief.compact.json --chart-id "$CHART_ID" --generation "$GENERATION" --sealing-commit "$GITHUB_SHA")"
+          DIGEST="$(python3 platform/scripts/gochara_seal_brief_check.py --brief-file brief.json --chart-id "$CHART_ID" --generation "$GENERATION" --sealing-commit "$GITHUB_SHA")"
           echo "brief_digest=$DIGEST" >> "$GITHUB_OUTPUT"
           {
             echo "## Seal brief — read this BEFORE approving"
@@ -131,9 +131,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: seal-brief
-          path: |
-            brief.json
-            brief.compact.json
+          path: brief.json
           retention-days: 90
           if-no-files-found: error
 
@@ -200,7 +198,6 @@ jobs:
         env:
           GOCHARA_SEALER_DB_URL: ${{ secrets.GOCHARA_SEALER_DB_URL }}
           BRIEF_FILE: brief.json
-          BRIEF_COMPACT_FILE: brief.compact.json
           APPROVALS_FILE: approvals.json
           CHART_ID: ${{ inputs.chart_id }}
           GENERATION: ${{ inputs.generation }}

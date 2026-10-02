@@ -1,23 +1,18 @@
 #!/usr/bin/env python3
 """Check the RETAINED seal brief before anyone approves it and before the sealer is allowed near the database (R12-2).
 
-Inputs (both produced by `gochara_seal_brief_extract.py` from the verifier job's `--brief --brief-chunks` logs, Stream A head `7e81f2870`): the BRIEF FILE — the canonical JSON bytes of the
-approval payload `seal_approval_payload/1`, whose sha256 IS the brief digest — and the COMPACT FILE, the job's last output line
-`{"brief_bytes", "brief_chunks", "brief_file", "persisted": {brief_id, manifest_id, state_digest}, "sha256", "status": "BRIEFED"}` (design: `design/SEAL_APPROVAL_PAYLOAD_v1_2.md`).
-This script — stdlib only, no database — refuses unless:
-  * the compact line is a well-formed `BRIEFED` result whose `persisted` receipt is {brief_id: positive integer, manifest_id, state_digest: 64-hex} and whose `brief_bytes` is the
-    brief file's length (F-R13-1: `persisted` is the database's own attestation that THIS brief was persisted in `ka_gochara_seal_brief`; the seal's receipt must name a persisted brief);
-  * the sha256 of the BRIEF FILE'S BYTES equals the declared digest (transport integrity: a truncated or altered brief fails), and the payload re-encoded here in canonical form is
-    byte-for-byte the file (so this script's canonical encoder agrees with the verifier's strict one — a disagreement is a refusal, never a different digest);
-  * the persisted receipt names the manifest the payload is for;
+The brief is the verifier job's `--brief` output: one JSON object `{"brief": <canonical complete approval payload>, "persisted": {brief_id, manifest_id, state_digest}, "sha256": <its digest>}`
+(design: `design/SEAL_APPROVAL_PAYLOAD_v1_1.md`, `seal_approval_payload/1`; the shape is Stream A's `verification_job.main`, proven against the REAL output by the round-trip test on the integration ref). This script — stdlib only, no database — refuses unless:
+  * the file parses and carries a well-formed 64-hex digest;
+  * the digest RECOMPUTED here over the canonical payload equals the declared one (a truncated or altered brief fails: transport integrity);
   * the payload schema is `seal_approval_payload/1`, the manifest is a `candidate`, the candidate gate has NO violation, and the result policy is the milestone's
     `all_null_candidate/1` (explicitly required — the first 5.0 candidate is all-NULL by design);
   * the chart and generation are the ones the workflow was dispatched for;
   * the payload's sealing commit is EXACTLY the workflow's reviewed revision (the commit the sealing code runs from).
 On success it prints the digest (and only the digest) to stdout. Exit 0 ok / 2 refused (the reason on stderr).
 
-The canonical-JSON function below mirrors `services.gochara_kernel.seal_brief.canonical_json` / `window_gate._canon` (sorted keys by code point, no spaces, UTF-8 unescaped,
-numbers/decimals as plain text); the tests prove it equal to the sidecar's own wherever that module is importable (the integration ref)."""
+The canonical-JSON function below mirrors `services.gochara_kernel.window_gate._canon` (sorted keys by code point, no spaces, UTF-8 unescaped, numbers/decimals as text);
+`tests/test_gochara_seal_approval_scripts.py` proves it equal to `seal_brief.payload_digest` wherever that module is importable."""
 from __future__ import annotations
 
 import argparse
@@ -57,41 +52,32 @@ class Refused(Exception):
     pass
 
 
-def check(raw: bytes, compact: dict, *, chart_id: str, generation: str, sealing_commit: str) -> str:
+def check(text: str, *, chart_id: str, generation: str, sealing_commit: str) -> str:
     if not _SHA.match(sealing_commit or ""):
         raise Refused("the expected sealing commit is not a 40-hex revision")
-    if not isinstance(raw, (bytes, bytearray)) or not raw:
-        raise Refused("the brief file is empty")
-    if (not isinstance(compact, dict) or set(compact) != {"brief_bytes", "brief_chunks", "brief_file", "persisted", "sha256", "status"} or compact.get("status") != "BRIEFED"
-            or compact.get("brief_chunks") is not True):
-        raise Refused("the compact result is not the verifier's `BRIEFED` line {brief_bytes, brief_chunks, brief_file, persisted, sha256, status}")
-    declared = compact["sha256"]
+    try:
+        doc = json.loads(text, parse_float=Decimal)
+    except ValueError as exc:
+        raise Refused(f"the brief is not valid JSON: {exc}") from exc
+    if not isinstance(doc, dict) or set(doc) != {"brief", "sha256", "persisted"} or not isinstance(doc.get("brief"), dict):
+        raise Refused("the brief must be exactly {brief: <payload>, persisted: <receipt of the persistence>, sha256: <digest>} (the verifier's --brief output)")
+    declared = doc["sha256"]
     if not isinstance(declared, str) or not _DIGEST.match(declared):
         raise Refused("the declared digest is not a lowercase 64-hex sha256")
-    if isinstance(compact["brief_bytes"], bool) or compact["brief_bytes"] != len(raw):
-        raise Refused(f"the compact line says {compact['brief_bytes']!r} brief bytes, the brief file has {len(raw)}")
-    got = hashlib.sha256(bytes(raw)).hexdigest()
-    if got != declared:
-        raise Refused(f"the brief file hashes to {got}, not the declared {declared}: the brief is truncated or altered")
-    per = compact["persisted"]
+    p = doc["brief"]
+    # F-R13-1: the verifier's `--brief` prints `persisted` = {brief_id, manifest_id, state_digest}, the database's own attestation that THIS brief was persisted in
+    # `ka_gochara_seal_brief` (the receipt must name a persisted brief). It is not part of the digest; it is REQUIRED (a brief that was not persisted cannot be sealed) and must name
+    # the manifest the payload is for.
+    per = doc["persisted"]
     if (not isinstance(per, dict) or set(per) != {"brief_id", "manifest_id", "state_digest"} or isinstance(per.get("brief_id"), bool)
             or not isinstance(per.get("brief_id"), int) or per["brief_id"] < 1 or not isinstance(per.get("state_digest"), str)
             or not _DIGEST.match(per["state_digest"])):
         raise Refused("the `persisted` receipt is not {brief_id: <positive integer>, manifest_id, state_digest: <64-hex>}: the brief was not persisted by the verifier")
-    try:
-        p = json.loads(bytes(raw).decode("utf-8"), parse_float=Decimal)
-    except (ValueError, UnicodeDecodeError) as exc:
-        raise Refused(f"the brief is not valid UTF-8 JSON: {exc}") from exc
-    if not isinstance(p, dict):
-        raise Refused("the brief is not a JSON object")
-    try:
-        canonical = canon(p).encode("utf-8")
-    except TypeError as exc:
-        raise Refused(f"the brief carries a value with no canonical form: {exc}") from exc
-    if canonical != bytes(raw):
-        raise Refused("the brief file is not in canonical form (this script's canonical encoder and the verifier's disagree): refused rather than approved under a digest the two sides would compute differently")
     if per.get("manifest_id") != (p.get("manifest") or {}).get("manifest_id"):
         raise Refused("the persisted receipt names another manifest than the brief's")
+    got = digest(p)
+    if got != declared:
+        raise Refused(f"the payload hashes to {got}, not the declared {declared}: the brief is truncated or altered")
     if p.get("schema") != SCHEMA:
         raise Refused(f"unexpected payload schema {p.get('schema')!r}")
     if p.get("chart_id") != chart_id or p.get("generation") != generation:
@@ -120,18 +106,14 @@ def check(raw: bytes, compact: dict, *, chart_id: str, generation: str, sealing_
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--brief-file", required=True)
-    ap.add_argument("--compact-file", required=True)
     ap.add_argument("--chart-id", required=True)
     ap.add_argument("--generation", required=True)
     ap.add_argument("--sealing-commit", required=True)
     a = ap.parse_args(argv)
     try:
-        with open(a.brief_file, "rb") as f:
-            raw = f.read()
-        with open(a.compact_file, encoding="utf-8") as f:
-            compact = json.load(f)
-        d = check(raw, compact, chart_id=a.chart_id, generation=a.generation, sealing_commit=a.sealing_commit)
-    except (Refused, OSError, ValueError) as exc:
+        with open(a.brief_file, encoding="utf-8") as f:
+            d = check(f.read(), chart_id=a.chart_id, generation=a.generation, sealing_commit=a.sealing_commit)
+    except (Refused, OSError) as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
         return 2
     print(d)

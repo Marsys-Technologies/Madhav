@@ -6,8 +6,6 @@ composed rehearsal)."""
 from __future__ import annotations
 
 import copy
-import base64
-import hashlib
 import json
 import os
 import stat
@@ -39,80 +37,44 @@ def payload(**over):
     return p
 
 
-def brief_raw(p=None):
-    """The brief file: the CANONICAL JSON bytes of the approval payload (Stream A's `seal_brief.brief_bytes`); its sha256 is the brief digest."""
-    return bc.canon(payload() if p is None else p).encode("utf-8")
-
-
-def compact(p=None, raw=None, **over):
-    """The verifier job's last output line (Stream A head 7e81f2870): `{status: BRIEFED, sha256, persisted, brief_bytes, brief_file, brief_chunks}`."""
+def brief_text(p=None, digest=None):
     p = payload() if p is None else p
-    raw = brief_raw(p) if raw is None else raw
-    c = {"brief_bytes": len(raw), "brief_chunks": True, "brief_file": None, "sha256": hashlib.sha256(raw).hexdigest(), "status": "BRIEFED",
-         "persisted": {"brief_id": 7, "manifest_id": p.get("manifest", {}).get("manifest_id"), "state_digest": "c" * 64}}
-    c.update(over)
-    return c
-
-
-def pair(p=None):
-    raw = brief_raw(p)
-    return raw, compact(p, raw)
-
-
-def check(raw, c, **kw):
-    return bc.check(raw, c, chart_id=kw.get("chart_id", CHART), generation=kw.get("generation", GEN), sealing_commit=kw.get("sealing_commit", SHA))
+    return json.dumps({"brief": p, "persisted": {"brief_id": 7, "manifest_id": p.get("manifest", {}).get("manifest_id"), "state_digest": "c" * 64}, "sha256": digest or bc.digest(p)})
 
 
 # ── the brief check ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_a_good_brief_verifies_and_returns_its_digest():
     p = payload()
-    raw, c = pair(p)
-    assert check(raw, c) == bc.digest(p) == hashlib.sha256(raw).hexdigest()
-
-
-def _flip(raw):
-    return raw[:-5] + (b"x" if raw[-5:-4] != b"x" else b"y") + raw[-4:]
+    assert bc.check(brief_text(p), chart_id=CHART, generation=GEN, sealing_commit=SHA) == bc.digest(p)
 
 
 @pytest.mark.parametrize("mut,needle", [
-    (lambda raw, c: (_flip(raw), c), "truncated or altered"),                                          # a changed brief
-    (lambda raw, c: (raw[:-10], c), "brief bytes"),                                                    # truncated (the length no longer matches)
-    (lambda raw, c: (raw, {**c, "sha256": "0" * 64}), "truncated or altered"),
-    (lambda raw, c: (raw, {**c, "sha256": "XYZ"}), "64-hex"),
-    (lambda raw, c: (raw, {k: v for k, v in c.items() if k != "sha256"}), "BRIEFED"),
-    (lambda raw, c: (raw, {**c, "extra": 1}), "BRIEFED"),
-    (lambda raw, c: (raw, {**c, "status": "REFUSED"}), "BRIEFED"),
-    (lambda raw, c: (raw, {**c, "brief_chunks": False}), "BRIEFED"),
-    (lambda raw, c: (raw, {**c, "brief_bytes": len(raw) + 1}), "brief bytes"),
-    (lambda raw, c: (raw, {k: v for k, v in c.items() if k != "persisted"}), "BRIEFED"),             # F-R13-1: a brief that was not persisted cannot be sealed
-    (lambda raw, c: (raw, {**c, "persisted": {**c["persisted"], "manifest_id": "other"}}), "another manifest"),
-    (lambda raw, c: (raw, {**c, "persisted": {**c["persisted"], "brief_id": 0}}), "not {brief_id"),
-    (lambda raw, c: (raw, {**c, "persisted": {**c["persisted"], "brief_id": True}}), "not {brief_id"),
-    (lambda raw, c: (raw, {**c, "persisted": {**c["persisted"], "state_digest": "zz"}}), "not {brief_id"),
-    (lambda raw, c: (raw, {**c, "persisted": {**c["persisted"], "extra": 1}}), "not {brief_id"),
-    (lambda raw, c: (raw, {**c, "persisted": True}), "not {brief_id"),
-    (lambda raw, c: (b"", c), "empty"),
+    (lambda d: d.update(sha256="0" * 64), "truncated or altered"),                                    # a changed brief
+    (lambda d: d["brief"].update(result_policy="numeric_policy/1"), "hashes to"),                      # (digest no longer matches the payload)
+    (lambda d: d.update(sha256="XYZ"), "64-hex"),
+    (lambda d: d.pop("sha256"), "exactly"),
+    (lambda d: d.update(extra=1), "exactly"),
+    (lambda d: d.pop("persisted"), "exactly"),                                                        # F-R13-1: the verifier's real output carries `persisted`; a brief without it was never persisted
+    (lambda d: d["persisted"].update(manifest_id="other"), "another manifest"),
+    (lambda d: d["persisted"].update(brief_id=0), "not {brief_id"),
+    (lambda d: d["persisted"].update(brief_id=True), "not {brief_id"),
+    (lambda d: d["persisted"].update(state_digest="zz"), "not {brief_id"),
+    (lambda d: d["persisted"].update(extra=1), "not {brief_id"),
+    (lambda d: d.update(persisted=True), "not {brief_id"),
 ])
 def test_a_malformed_or_altered_brief_is_refused(mut, needle):
-    raw, c = mut(*pair())
+    d = json.loads(brief_text())
+    mut(d)
     with pytest.raises(bc.Refused, match=needle):
-        check(raw, c)
-
-
-def test_a_non_canonical_but_self_consistent_brief_is_refused():
-    """The digest of the FILE'S BYTES is the brief digest, so a file in some other JSON form could hash consistently; this script refuses it because the verifier's encoder and
-    this one must agree on the canonical form (a difference would otherwise be approved under a digest the two sides compute differently)."""
-    raw = json.dumps(payload(), indent=1).encode("utf-8")
-    with pytest.raises(bc.Refused, match="canonical form"):
-        check(raw, compact(raw=raw))
+        bc.check(json.dumps(d), chart_id=CHART, generation=GEN, sealing_commit=SHA)
 
 
 @pytest.mark.parametrize("over,needle", [
     ({"schema": "other/1"}, "schema"),
     ({"chart_id": "00000000-0000-0000-0000-000000000000"}, "another chart"),
     ({"generation": "4.1"}, "another chart or generation"),
-    ({"manifest": {"manifest_id": "m", "status": "published"}}, "not a candidate"),
+    ({"manifest": {"status": "published"}}, "not a candidate"),
     ({"candidate_gate": {"violations": ["marriage/P3@1.0.0:output_grain_not_permitted"]}}, "not clean"),
     ({"result_policy": "numeric/1"}, "requires all_null_candidate/1"),
     ({"code": {"sealing_commit": "b" * 40}}, "not this workflow's reviewed revision"),
@@ -123,14 +85,13 @@ def test_a_non_canonical_but_self_consistent_brief_is_refused():
 ])
 def test_a_brief_for_the_wrong_thing_is_refused_even_with_a_self_consistent_digest(over, needle):
     p = payload(**over)
-    raw, c = pair(p)                                                                        # the digest is computed over the altered payload: it is self-consistent
     with pytest.raises(bc.Refused, match=needle):
-        check(raw, c)
+        bc.check(brief_text(p), chart_id=CHART, generation=GEN, sealing_commit=SHA)        # the digest is recomputed over the altered payload: it is self-consistent
 
 
 def test_the_workflow_revision_must_be_a_40_hex_sha():
     with pytest.raises(bc.Refused, match="40-hex"):
-        check(*pair(), sealing_commit="main")
+        bc.check(brief_text(), chart_id=CHART, generation=GEN, sealing_commit="main")
 
 
 def test_the_canonical_digest_equals_the_sidecars_own_payload_digest_wherever_it_is_importable():
@@ -145,81 +106,71 @@ def test_the_canonical_digest_equals_the_sidecars_own_payload_digest_wherever_it
         assert bc.digest(p) == seal_brief.payload_digest(p)
 
 
-# ── the log transport (Stream A's `--brief --brief-chunks`) ─────────────────────────────────────────────────────────────────────
+# ── the log transport ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-def _logs(p=None, size=150, *, extra_before=(), extra_after=()):
-    raw, c = pair(p)
-    lines = bx.chunk_lines(raw, c["sha256"], size)
-    entries = [{"textPayload": "starting"}, *[{"textPayload": x} for x in extra_before], *[{"textPayload": l} for l in lines],
-               {"textPayload": json.dumps(c, sort_keys=True, separators=(",", ":"))}, *[{"textPayload": x} for x in extra_after], {"textPayload": "done"}]
-    return raw, c, entries
+def test_the_brief_is_extracted_from_exactly_one_log_entry():
+    entries = [{"textPayload": "starting"}, {"textPayload": brief_text()}, {"textPayload": "done"}]
+    assert json.loads(bx.extract(entries))["sha256"] == bc.digest(payload())
+    assert bx.extract([{"jsonPayload": {"message": brief_text()}}])
 
 
-def test_the_brief_is_reassembled_from_chunks_in_any_arrival_order_and_checks():
-    raw, c, entries = _logs()
-    chunks = [e for e in entries if e["textPayload"].startswith('{"b64"')]
-    assert len(chunks) > 3
-    for order in (entries, entries[::-1], sorted(entries, key=lambda e: e["textPayload"])):
-        got, comp = bx.extract(order)
-        assert got == raw and comp == c
-    assert check(*bx.extract(entries[::-1])) == bc.digest(payload())
-    got, _ = bx.extract(entries + [chunks[2]])                                               # an identical repeat (at-least-once delivery) is harmless
-    assert got == raw
-    assert bx.extract([{"jsonPayload": {"message": e["textPayload"]}} for e in entries])[0] == raw
+@pytest.mark.parametrize("entries,needle", [
+    ([{"textPayload": "REFUSED: no brief"}], "no log entry carries the brief"),
+    ([{"textPayload": brief_text()}, {"textPayload": brief_text(payload(generation="9.9"))}], "more than one distinct brief"),
+    ([{"textPayload": brief_text()[:200]}], "not valid JSON"),                                  # split / truncated by the logging system
+    ({"not": "an array"}, "not a JSON array"),
+])
+def test_a_missing_ambiguous_or_truncated_brief_is_refused(entries, needle):
+    with pytest.raises(ValueError, match=needle):
+        bx.extract(entries)
 
 
-def _chunk_edit(entries, idx, **over):
-    out = list(entries)
-    pos = [i for i, e in enumerate(entries) if e["textPayload"].startswith('{"b64"')][idx]
-    d = json.loads(entries[pos]["textPayload"])
-    d.update(over)
-    out[pos] = {"textPayload": json.dumps(d)}
-    return out
+# ── the chunked log transport (F-R13-2) ───────────────────────────────────────────────────────────────────────────────────────
+
+def _chunks(size=500, text=None):
+    text = brief_text() if text is None else text
+    return [{"textPayload": line} for line in bx.chunk_brief(text, size)]
 
 
-def _drop_chunk(entries, idx):
-    pos = [i for i, e in enumerate(entries) if e["textPayload"].startswith('{"b64"')][idx]
-    return entries[:pos] + entries[pos + 1:]
+def test_a_chunked_brief_reassembles_in_any_arrival_order_and_checks_like_the_single_line_brief():
+    text = brief_text()
+    ch = _chunks(150)
+    assert len(ch) > 3
+    for order in (ch, ch[::-1], ch[1::2] + ch[0::2]):
+        assert bx.extract([{"textPayload": "starting"}, *order, {"textPayload": "done"}]) == text
+    assert bc.check(bx.extract(ch[::-1]), chart_id=CHART, generation=GEN, sealing_commit=SHA) == bc.digest(payload())
+    assert bx.extract(ch + [ch[2]]) == text                                              # an identical repeat (at-least-once delivery) is harmless
+
+
+def _ed(entry, **over):
+    c = json.loads(entry["textPayload"])
+    c["brief_chunk"].update(over)
+    return {"textPayload": json.dumps(c)}
 
 
 @pytest.mark.parametrize("mut,needle", [
-    (lambda en: _drop_chunk(en, 1), "incomplete"),                                                       # a missing chunk
-    (lambda en: _drop_chunk(en, -1), "incomplete"),                                                      # a truncated tail
-    (lambda en: _chunk_edit(en, 0, b64=base64.b64encode(b"x" * 10).decode()), "not the one"),            # altered data
-    (lambda en: _chunk_edit(en, 1, brief_chunk=0), "two different chunks carry index 0"),
-    (lambda en: _chunk_edit(en, 1, of=99), "disagree"),
-    (lambda en: _chunk_edit(en, 1, sha256="0" * 64), "disagree"),
-    (lambda en: _chunk_edit(en, 1, brief_chunk=77), "incomplete or has foreign"),
-    (lambda en: _chunk_edit(en, 1, b64=5), "malformed"),
-    (lambda en: _chunk_edit(en, 1, b64="@@@@"), "base64"),
-    (lambda en: [e for e in en if not e["textPayload"].startswith('{"brief_bytes"')], "no compact"),
-    (lambda en: [e for e in en if e["textPayload"].startswith(('starting', 'done'))], "no compact"),
-    (lambda en: en + [{"textPayload": json.dumps({**compact(), "sha256": "1" * 64}, sort_keys=True)}], "more than one distinct"),
-    (lambda en: en + [{"textPayload": json.dumps({"status": "REFUSED", "code": "gate_not_clean", "detail": "x"})}], "did not produce a brief"),
-    (lambda en: [e if not e["textPayload"].startswith('{"brief_bytes"') else {"textPayload": json.dumps({**json.loads(e["textPayload"]), "brief_chunks": False})} for e in en], "not run with --brief-chunks"),
-    (lambda en: [e if not e["textPayload"].startswith('{"brief_bytes"') else {"textPayload": json.dumps({**json.loads(e["textPayload"]), "brief_bytes": 3})} for e in en], "bytes, the compact line says"),
+    (lambda ch: ch[:1] + ch[2:], "incomplete"),                                                      # a missing chunk
+    (lambda ch: ch[:-1], "incomplete"),                                                              # a truncated tail
+    (lambda ch: [_ed(ch[0], data=ch[0] and "x" + json.loads(ch[0]["textPayload"])["brief_chunk"]["data"])] + ch[1:], "sha256 is not the one"),   # altered data
+    (lambda ch: ch[:1] + [_ed(ch[1], index=0)] + ch[2:], "two different chunks carry index 0"),       # a duplicate index with other data
+    (lambda ch: ch[:1] + [_ed(ch[1], total=99)] + ch[2:], "disagree"),                                # another total
+    (lambda ch: ch[:1] + [_ed(ch[1], sha256="0" * 64)] + ch[2:], "disagree"),                         # another whole-brief hash
+    (lambda ch: ch[:1] + [_ed(ch[1], index=77)] + ch[2:], "outside"),
+    (lambda ch: ch[:1] + [_ed(ch[1], data=5)] + ch[2:], "malformed"),
+    (lambda ch: ch + [{"textPayload": brief_text()}], "both a single-line brief and chunks"),
+    (lambda ch: [{"textPayload": "{\"brief_chunk\": nope"}] + ch, "not valid JSON"),
 ])
-def test_a_missing_altered_duplicated_or_mismatched_chunk_or_a_refusal_line_is_refused(mut, needle):
-    _, _, entries = _logs()
+def test_a_missing_altered_duplicated_or_mixed_chunk_is_refused(mut, needle):
     with pytest.raises(ValueError, match=needle):
-        bx.extract(mut(entries))
+        bx.extract(mut(_chunks(150)))
 
 
-def test_the_log_export_must_be_a_json_array_and_unrelated_log_lines_are_ignored():
-    with pytest.raises(ValueError, match="not a JSON array"):
-        bx.extract({"not": "an array"})
-    raw, c, entries = _logs(extra_before=['{"level": "info", "msg": "something else"}', "{not json"])
-    assert bx.extract(entries) == (raw, c)
-
-
-def test_chunks_of_the_real_size_stay_under_the_entry_limit():
-    big = bc.canon({"classes": [{"event_class": f"c{i}", "x": "a" * 9000} for i in range(26)]}).encode()
-    lines = bx.chunk_lines(big, hashlib.sha256(big).hexdigest())
-    assert len(big) > 200 * 1024 and len(lines) >= 5
-    assert max(len(l.encode("utf-8")) for l in lines) < 100 * 1024
-    c = compact(raw=big)
-    got, _ = bx.extract([{"textPayload": l} for l in lines] + [{"textPayload": json.dumps(c)}])
-    assert got == big
+def test_chunks_of_the_real_size_stay_under_the_entry_limit_even_with_json_escaping():
+    big = json.dumps({"brief": {"x": ["a" * 40 + '"' * 20] * 6000}, "persisted": {}, "sha256": "0" * 64})
+    lines = bx.chunk_brief(big)
+    assert len(big) > 256 * 1024 and len(lines) >= 4
+    assert max(len(l.encode("utf-8")) for l in lines) < 200 * 1024
+    assert bx.extract([{"textPayload": l} for l in lines]) == big
 
 
 # ── the approval ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -330,17 +281,15 @@ def world(tmp_path):
     calls = tmp_path / "seal_job_calls.txt"
     shim.write_text(f'#!/usr/bin/env bash\necho "$*" >> "{calls}"\necho "COMMIT=$GOCHARA_SEALING_COMMIT ACTOR=${{GITHUB_TRIGGERING_ACTOR:-unset}} DB=${{GOCHARA_SEALER_DB_URL:-unset}}" >> "{calls}"\nexit "${{SEAL_RC:-0}}"\n')
     shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
-    brief, comp = tmp_path / "brief.json", tmp_path / "brief.compact.json"
-    raw, c = pair()
-    brief.write_bytes(raw)
-    comp.write_text(json.dumps(c))
+    brief = tmp_path / "brief.json"
+    brief.write_text(brief_text())
     approvals = tmp_path / "approvals.json"
     approvals.write_text(json.dumps([review()]))
-    return {"tmp": tmp_path, "shim": str(shim), "calls": calls, "brief": brief, "compact": comp, "approvals": approvals}
+    return {"tmp": tmp_path, "shim": str(shim), "calls": calls, "brief": brief, "approvals": approvals}
 
 
 def orch(world, **over):
-    env = {**os.environ, "BRIEF_FILE": str(world["brief"]), "BRIEF_COMPACT_FILE": str(world["compact"]), "APPROVALS_FILE": str(world["approvals"]), "CHART_ID": CHART, "GENERATION": GEN,
+    env = {**os.environ, "BRIEF_FILE": str(world["brief"]), "APPROVALS_FILE": str(world["approvals"]), "CHART_ID": CHART, "GENERATION": GEN,
            "EXPECTED_SEALING_COMMIT": SHA, "EXPECTED_BRIEF_DIGEST": D, "GITHUB_RUN_ID": RUN, "GITHUB_RUN_ATTEMPT": ATT, "GITHUB_SHA": SHA, "TRIGGERING_ACTOR": "steward-as-owner",
            "SEAL_JOB_CMD": world["shim"], "APPROVAL_FILE": str(world["tmp"] / "approval.json"), "PYTHON_BIN": sys.executable,
            "GOCHARA_SEALER_DB_URL": "postgresql://gochara_sealer:SECRETMARKER@127.0.0.1:5432/x", **over}
@@ -365,11 +314,9 @@ def test_the_orchestrator_calls_the_seal_job_once_with_the_approval_file_and_the
 def test_every_refusal_stops_before_the_seal_job_is_invoked(world, what):
     over = {}
     if what == "changed_brief":
-        world["brief"].write_bytes(_flip(world["brief"].read_bytes()))
+        d = json.loads(world["brief"].read_text()); d["brief"]["result_policy"] = "numeric/1"; world["brief"].write_text(json.dumps(d))
     elif what == "wrong_revision_in_brief":
-        raw, c = pair(payload(code={"sealing_commit": "c" * 40}))
-        world["brief"].write_bytes(raw)
-        world["compact"].write_text(json.dumps(c))
+        world["brief"].write_text(brief_text(payload(code={"sealing_commit": "c" * 40})))
     elif what == "job_runs_from_another_commit":
         over["GITHUB_SHA"] = "d" * 40
     elif what == "no_approval":
