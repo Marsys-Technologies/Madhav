@@ -472,3 +472,20 @@ def test_emitted_total_rupa_rows_carry_the_graha_own_required_in_their_citation(
            if r["fact_category"] == "graha_shadbala_total" and r["fact_key"] == "rupa"}
     assert "vs required 6.50 rupa" in cit["SUN"]
     assert "vs required 7.00 rupa" in cit["MER"]
+
+
+def test_simple_multiplication_citation_states_its_real_inputs_not_the_shadbala_ratio():
+    # simple_score = sthana * bhava_ratio: there is NO shadbala term in the value, so the
+    # citation must not print shadbala_ratio for it (it used to, which was wrong).
+    conn = _ChartFactsFakeConn(
+        {"SUN": 5.74, "MOON": 6.0, "RAH_MEAN": 1.0},
+        _required_rows_from_writer(strength_w.SHADBALA_REQUIRED),
+    )
+    rows = _composite(conn)
+    (simple,) = [r for r in rows if r["fact_subject"] == "SUN_IN_HOUSE_1"
+                 and r["fact_key"] == "simple_multiplication"]
+    assert "shadbala_ratio" not in simple["citation_human"]
+    assert "dignity_weight=0.500" in simple["citation_human"] and "bhava_ratio=" in simple["citation_human"]
+    (bphs,) = [r for r in rows if r["fact_subject"] == "SUN_IN_HOUSE_1"
+               and r["fact_key"] == "bphs_weighted"]
+    assert "shadbala_ratio=0.8831" in bphs["citation_human"]

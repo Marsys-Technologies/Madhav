@@ -4136,7 +4136,7 @@ def _build_composite_strength_rows(
                 source=f"ga_structural.composite_strength_simple/{eng_ver}",
                 citation_human=(
                     f"{g_name} in house {h}: simple composite strength {simple_score:.4f} "
-                    f"(shadbala_ratio={shadbala_ratio:.4f}, bhava_ratio={bhava_ratio:.4f}) ({ayanamsha_id})."
+                    f"(dignity_weight={sthana:.3f}, bhava_ratio={bhava_ratio:.4f}) ({ayanamsha_id})."
                 ),
                 constituent_facts_array=constituent_ids or None,
             ))
