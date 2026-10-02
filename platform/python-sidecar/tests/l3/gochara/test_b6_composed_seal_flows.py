@@ -587,7 +587,7 @@ def test_a_generation_sealed_before_1240_existed_stays_sealed_frozen_and_honestl
             w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
             w.conn.execute("SELECT public.ka_gochara_lock_global_shared()")
             inv_v.write_verification(w.conn, chart_id=CHART_ID, generation=GEN, event_class=CLS, rederived_digest=digest)
-        manifest = _seal(w)                             # sealed under 1206's trigger alone
+        manifest = _seal(w, receipt=False)              # sealed under 1206's trigger alone (the receipt table does not exist yet: 1240 has not arrived)
     assert manifest is not None
     seal_row = w.conn.execute("SELECT * FROM public.ka_gochara_generation_seal").fetchall()
     c_before = _counts(w.conn)
@@ -609,7 +609,8 @@ def test_a_generation_sealed_before_1240_existed_stays_sealed_frozen_and_honestl
     with pytest.raises(Exception, match="SEALED|sealed"):
         with as_role(w.conn, cw.BUILDER):
             w.step(f"record:{CLS}:P3")
-    # a replay of the seal is IDEMPOTENT (1240: "a generation sealed before 1240 replays cleanly") — it returns the same manifest, adds no row
+    # a replay of the seal is IDEMPOTENT (1240: "a generation sealed before 1240 replays cleanly") — it returns the same manifest, adds no row, and (the receipt trigger is
+    # AFTER INSERT: it fires only for a row actually inserted) needs NO receipt
     assert _replay_as_sealer(w, manifest) == manifest
     assert w.conn.execute("SELECT * FROM public.ka_gochara_generation_seal").fetchall() == seal_row
 
@@ -633,11 +634,21 @@ def _waiting(admin, pid, seconds=10.0):
     return False
 
 
+def _write_test_receipt(conn, manifest):
+    """The seal is only committable with an approval receipt (1240's deferred constraint trigger, R11-3 enforced): the race tests below exercise LOCKING, so their raw
+    seals write one in the same transaction (as the sealer)."""
+    conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login, approved_by_note, run_id, run_attempt,"
+                 " workflow_commit) VALUES (%s::uuid, %s, %s::uuid, repeat('a', 64), 'race-test', 'locking test', 1, 1, 'test-commit') ON CONFLICT (chart_id, generation) DO NOTHING",
+                 (CHART_ID, GEN, manifest))
+
+
 def _seal_on(conn):
     with conn.transaction():
         conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         gk_ledger.publish(conn, CHART_ID, GEN)
-        return conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
+        m = conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
+        _write_test_receipt(conn, m)
+        return m
 
 
 def _p3_records(conn):
@@ -697,7 +708,7 @@ def test_a_seal_in_flight_makes_a_racing_builder_rebuild_wait_then_refuses_it(cb
         sealer.execute("BEGIN")
         sealer.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         gk_ledger.publish(sealer, CHART_ID, GEN)
-        sealer.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
+        _write_test_receipt(sealer, sealer.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0])
         t = threading.Thread(target=rebuild)
         t.start()
         assert _waiting(w.conn, builder.info.backend_pid), "the rebuild must WAIT for the sealer's chart lock"
@@ -1048,15 +1059,34 @@ def test_a_brief_is_refused_for_an_unverified_candidate_and_a_re_verification_af
     assert _receipt(w.conn) == []
 
 
-def test_documented_limit_the_database_cannot_force_the_sealing_workflow_to_use_the_brief(cbuilt):
-    """Stated squarely (Stream A's table comment, the packet's claim): the sealer role can still call the authoritative seal directly — it then leaves NO receipt.
-    The approval-gated workflow running as the sealer is part of the trusted system; the receipt exists only with an approved seal and is immutable."""
+def test_attack_a_raw_seal_by_the_real_sealer_without_a_receipt_is_refused_at_commit_by_name(cbuilt):
+    """R11-3, ENFORCED (Stream A bf369fcaa): the sealer role can still CALL the authoritative seal directly, but 1240's deferred constraint trigger refuses to COMMIT a
+    first seal with no approval receipt naming THIS manifest. The whole transaction (the publication flip and the seal row) is rolled back: status stays `candidate`,
+    no seal row, no receipt. A receipt for ANOTHER manifest does not satisfy it. A REPLAY of an approved seal needs no new receipt."""
+    import psycopg
     w = cbuilt
     verify_as_verifier(w)
-    assert seal_as_sealer(w) is not None
-    assert _receipt(w.conn) == []
-    # ...but the bypass is DETECTABLE: a seal with no receipt is exactly what `ka_gochara_seal_receipt_missing` reports
-    assert w.conn.execute("SELECT public.ka_gochara_seal_receipt_missing(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0] is True
+    with pytest.raises(psycopg.errors.Error, match="approval_receipt_missing"):
+        with as_role(w.conn, cw.SEALER):
+            _seal(w, receipt=False)
+    assert w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0] == "candidate"
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0 and _receipt(w.conn) == []
+    # a receipt that names ANOTHER manifest does not satisfy the trigger
+    with pytest.raises(psycopg.errors.Error, match="approval_receipt_missing"):
+        with as_role(w.conn, cw.SEALER):
+            with w.conn.transaction():
+                w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+                gk_ledger.publish(w.conn, CHART_ID, GEN)
+                w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
+                w.conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login, approved_by_note, run_id,"
+                               " run_attempt, workflow_commit) VALUES (%s::uuid, %s, gen_random_uuid(), repeat('b', 64), 'x', 'wrong manifest', 1, 1, 'c')", (CHART_ID, GEN))
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
+    # the approved path still works, and its replay needs no new receipt
+    b = brief_as_verifier(w)
+    res = approved_seal_as_sealer(w, b["sha256"])
+    _replay_as_sealer(w, __import__("uuid").UUID(res["manifest_id"]))
+    assert len(_receipt(w.conn)) == 1
+    assert w.conn.execute("SELECT public.ka_gochara_seal_receipt_missing(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0] is False
 
 
 def _copy_p1_record(w, *, person=None, flip_role=None):
