@@ -319,7 +319,8 @@ def main():
 # or when all four hold (`elevated_report` says which, per asset; `elevated_assets` is its key set):
 #   (1) every criterion of every core gate its layer requires -- the asset_census.CRITERION_REGISTRY entries whose
 #       gate is in CELL_GATES and whose `layers` holds the asset's layer, exactly the rows the census rollup counts --
-#       has a CURRENT satisfying certificate: a PASS (detector not NONE, not inconclusive, not capped, `basis` absent,
+#       has a CURRENT satisfying certificate: a PASS (detector not NONE, not inconclusive, not capped -- a Null PASS is capped
+#       unless the census at `ref` EARNED the lift (S1, pin 13; see `_e63_null_lift_earned`) --, `basis` absent,
 #       or `declaration` only where the registry defines it: Build.target on a service asset) or an N/A whose
 #       `na.rule_id` is declared in NA_RULE_DECISIONS at `ref` with that `na.decision_id`. A gate with no criterion for
 #       the layer cannot occur: the pinned registry FLOOR makes the function raise first;
@@ -397,6 +398,8 @@ E63_CENSUS_PATH = "platform/scripts/governance/asset_census.py"
 E63_SEED_PATH = "platform/scripts/seed/asset_registry_seed.ts"
 E63_E51_PATH = "platform/scripts/governance/nikasha_certify.py"            # E5.1: the certificate ledger's own validator
 E63_DECLARATIONS_PATH = "platform/scripts/governance/asset_declarations.json"   # a gate certificate is bound to its sha256 at `ref`
+E63_CENSUS_DIR = E63_CONTROL_DIR + "/census/"      # the trusted root of the census files a certificate cites (E5.1's TRUSTED_CENSUS_ROOT; a drift only ever stays capped)
+E63_NULL_CHECKS = ("Null.schema_default", "Null.blank_rows")   # the two Null criteria the census may lift together (S1, pin 13)
 
 # FLOOR: how many criteria each core gate must have, per layer, in asset_census.CRITERION_REGISTRY. Pinned from the
 # registry at origin/main bf6fe712b (REGISTRY_REVISION 7). A registry edit that REMOVES a core-gate criterion (or a
@@ -1015,31 +1018,40 @@ def _e63_e51_key(sha, data, nc_src, census_src):
     return (sha, _e63_sha(data), _e63_sha(nc_src), _e63_sha(census_src), _e63_sha(_E63_E51_DRIVER.encode("utf-8")))
 
 
-def _e63_e51_run(sha, data, nc_src, census_src):
-    """Run E5.1's validator (the ref's own nikasha_certify.py + asset_census.py, written to a temporary directory) in a
-    subprocess on the ledger bytes. -> the validator's answer: {"ok", "constants", "records" | "code"/"message"}. Anything but
-    an answer (cannot run, no output) raises and is never cached."""
+def _e63_ref_run(sha, files, driver, data, what, keys):
+    """Run `driver` (python source) in a subprocess whose cwd is a temporary directory holding the ref's own `files`
+    ({name: bytes}), with `data` on stdin. -> the driver's last stdout line as a dict that holds every key of `keys`. ONE
+    mechanism for every check the reader delegates to code committed at the ref (E5.1's validator, the census rollup's Null
+    lift): anything but an answer (cannot run, no output, an answer missing a key) raises and is never cached."""
     import shutil
     import tempfile
-    d = tempfile.mkdtemp(prefix="e63_e51_")
+    d = tempfile.mkdtemp(prefix="e63_ref_")
     try:
-        with open(os.path.join(d, "nikasha_certify.py"), "wb") as f:
-            f.write(nc_src)
-        with open(os.path.join(d, "asset_census.py"), "wb") as f:
-            f.write(census_src)
+        for name, body in files.items():
+            with open(os.path.join(d, name), "wb") as f:
+                f.write(body)
         try:
-            r = subprocess.run([sys.executable, "-c", _E63_E51_DRIVER], input=data, capture_output=True, cwd=d, timeout=120,
+            r = subprocess.run([sys.executable, "-c", driver], input=data, capture_output=True, cwd=d, timeout=120,
                                env={k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONSTARTUP")})
         except (OSError, subprocess.SubprocessError) as e:
-            _e63_fail("registry_unreadable", f"E5.1's validator at {sha[:12]} could not be run ({type(e).__name__}: {e})")
+            _e63_fail("registry_unreadable", f"{what} at {sha[:12]} could not be run ({type(e).__name__}: {e})")
     finally:
         shutil.rmtree(d, ignore_errors=True)
     try:
         out = json.loads(r.stdout.decode("utf-8").strip().splitlines()[-1])
-        out["constants"]
-        out["ok"]
+        for k in keys:
+            out[k]
     except (ValueError, IndexError, KeyError, TypeError, UnicodeDecodeError):
-        _e63_fail("registry_unreadable", f"E5.1's validator at {sha[:12]} did not answer ({r.stderr.decode('utf-8', 'replace')[-200:]})")
+        _e63_fail("registry_unreadable", f"{what} at {sha[:12]} did not answer ({r.stderr.decode('utf-8', 'replace')[-200:]})")
+    return out
+
+
+def _e63_e51_run(sha, data, nc_src, census_src):
+    """Run E5.1's validator (the ref's own nikasha_certify.py + asset_census.py, written to a temporary directory) in a
+    subprocess on the ledger bytes. -> the validator's answer: {"ok", "constants", "records" | "code"/"message"}. Anything but
+    an answer (cannot run, no output) raises and is never cached."""
+    out = _e63_ref_run(sha, {"nikasha_certify.py": nc_src, "asset_census.py": census_src}, _E63_E51_DRIVER, data,
+                       "E5.1's validator", ("constants", "ok"))
     if out["ok"] is True and not isinstance(out.get("records"), list):
         _e63_fail("registry_unreadable", f"E5.1's validator at {sha[:12]} accepted the ledger but returned no records")
     return out
@@ -1077,6 +1089,132 @@ def _e63_e51_validate(repo, sha, data):
     if not out["ok"]:
         _e63_fail("malformed", f"{E63_CERTS_PATH}: E5.1's own reader refuses this ledger ({out['code']}): {out['message']}")
     return _copy.deepcopy(out["records"])
+
+
+# ---- S1 (REGISTRY_REVISION 13): an EARNED Null PASS --------------------------------------------------------------------
+# The census caps every Null PASS at PARTIAL unless the asset's declared null convention is verified (`asset_census.null_lift_earned`:
+# BOTH Null records carry the verified block). The reader holds NO copy of that rule. For a capped Null PASS certificate it
+# (1) takes the census file the certificate cites (evidence.census_file + census_sha256, under the trusted census root, committed at
+# the ref, hash-checked), (2) finds the layer head whose `generated` is the certificate's census_run_id and the asset's measurements,
+# (3) runs the REF'S OWN asset_census.py on those measurements in a subprocess (`_e63_ref_run`, as E5.1's validator): the census
+# rollup of the Null cell, and `null_lift_earned` for the criterion; and (4) requires the head's registry revision and fingerprint to be
+# the ones of the asset_census.py at the ref (a lift on another revision stays capped) and the criterion's check AND the Null cell to read
+# PASS with `null_convention_verified`. A ref whose asset_census.py has no lift, a census that cannot be found or does not hash, a forged
+# or one-sided block, a convention that does not verify: stay capped (never an exception: the cap is the default). A ref whose census
+# disagrees with the reader on which checks the lift covers raises (a rule one side changed).
+_E63_NULL_DRIVER = r'''
+import json, sys
+sys.path.insert(0, ".")
+import asset_census as ac
+req = json.loads(sys.stdin.read())
+names = ("null_lift_earned", "null_lift_problem", "rollup_asset", "registry_fingerprint", "NULL_CHECKS")
+out = {"has": all(hasattr(ac, n) for n in names)}
+if out["has"]:
+    out["constants"] = {"NULL_CHECKS": list(ac.NULL_CHECKS)}
+    out["revision"] = ac.REGISTRY_REVISION
+    out["fingerprint"] = ac.registry_fingerprint()
+    try:
+        ms = {c: m for c, m in req["measurements"].items() if c in ac.NULL_CHECKS}
+        cells = ac.rollup_asset(req["layer"], ms)
+        chk = {c["criterion"]: c for c in cells["Null"]["checks"]}.get(req["criterion"], {})
+        out["earned"] = bool(ac.null_lift_earned(req["criterion"], ms.get(req["criterion"]), ms))
+        out["cell"], out["check"], out["verified"] = cells["Null"]["v"], chk.get("v"), chk.get("null_convention_verified") is True
+    except Exception as e:
+        out["error"] = type(e).__name__ + ": " + str(e)[:200]
+print(json.dumps(out))
+'''
+
+_E63_NULL_CACHE = {}
+_E63_NULL_CACHE_MAX = 64
+
+
+def _e63_null_census_record(repo, sha, rec):
+    """(layer head, asset record) of the census file the gate certificate `rec` cites, or None when it cannot be established
+    (no citation, outside the trusted root, not at the ref, not the recorded sha256, not strict JSON, no unique head / asset)."""
+    ev = rec.get("evidence") if isinstance(rec.get("evidence"), dict) else {}
+    f, h, run = ev.get("census_file"), ev.get("census_sha256"), ev.get("census_run_id")
+    if not (isinstance(f, str) and isinstance(h, str) and _E63_SHA256.fullmatch(h) and _e63_nonblank(run)):
+        return None
+    if not _e63_relpath_ok(f) or not f.startswith(E63_CENSUS_DIR) or f.count("/") != E63_CENSUS_DIR.count("/") or not f.endswith(".json"):
+        return None
+    try:
+        blob = _e63_show(repo, sha, f)
+    except ElevatedInputError:
+        return None
+    if _e63_sha(blob) != h:
+        return None
+    try:
+        obj = _e63_strict_loads(blob.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if not isinstance(obj, dict):
+        return None
+    heads = [obj] if "assets" in obj else [v for v in obj.values() if isinstance(v, dict) and "assets" in v]
+    heads = [x for x in heads if x.get("generated") == run and x.get("layer") == rec.get("layer")]
+    if len(heads) != 1 or not isinstance(heads[0].get("assets"), list):
+        return None
+    recs = [a for a in heads[0]["assets"] if isinstance(a, dict) and a.get("asset_id") == rec.get("asset")]
+    if len(recs) != 1 or not isinstance(recs[0].get("measurements"), dict):
+        return None
+    return heads[0], recs[0]
+
+
+def _e63_declared_null_convention(repo, sha, asset):
+    """(null_convention, asset entry) the declarations file AT THE REF holds for `asset` (like the declarations binding: read from the ref, strict JSON), else None."""
+    try:
+        doc = _e63_strict_loads(_e63_show(repo, sha, E63_DECLARATIONS_PATH).decode("utf-8"))
+    except (ElevatedInputError, ValueError, UnicodeDecodeError):
+        return None
+    ents = doc.get("assets") if isinstance(doc, dict) else None
+    ent = ents.get(asset) if isinstance(ents, dict) else None
+    nc = ent.get("null_convention") if isinstance(ent, dict) else None
+    return (nc, ent) if isinstance(nc, dict) else None
+
+
+def _e63_declared_null_columns(nc, ent):
+    """The columns the census's Null checks run over for an asset that declares `nc`: its declared prose_fields, then its nullable columns (deduplicated, in that order),
+    exactly what `_measure_null_convention` computes; None when the declaration is not a list of such entries."""
+    pf, nl = ent.get("prose_fields"), nc.get("nullable")
+    if not ((pf is None or (isinstance(pf, list) and all(isinstance(x, str) for x in pf))) and isinstance(nl, list)
+            and all(isinstance(n, dict) and isinstance(n.get("column"), str) for n in nl)):
+        return None
+    return list(dict.fromkeys(list(pf or []) + [n["column"] for n in nl]))
+
+
+def _e63_null_lift_earned(repo, sha, rec, census_src):
+    """True only when the ref's own census earns this Null PASS certificate (see the block comment above) AND the ref's asset_declarations.json declares the
+    convention the lift block names (same table, evidence, why AND the same covered columns: declared prose_fields + nullable columns): a hand-built complete block without a matching declaration stays capped."""
+    got = _e63_null_census_record(repo, sha, rec)
+    if got is None:
+        return False
+    head, arec = got
+    block = (arec["measurements"].get(rec.get("criterion")) or {}).get("null_convention")
+    got_decl = _e63_declared_null_convention(repo, sha, rec.get("asset"))
+    if not (isinstance(block, dict) and got_decl is not None
+            and all(isinstance(block.get(k), str) and block.get(k) == got_decl[0].get(k) for k in ("table", "evidence", "why"))):
+        return False
+    cols = _e63_declared_null_columns(*got_decl)
+    if cols is None or block.get("columns") != cols:        # the covered columns are exactly the declared prose fields + nullable columns
+        return False
+    ms = {c: m for c, m in arec["measurements"].items() if c in E63_NULL_CHECKS}
+    req = json.dumps({"layer": rec["layer"], "criterion": rec["criterion"], "measurements": ms}, sort_keys=True, default=str).encode("utf-8")
+    key = (sha, _e63_sha(census_src), _e63_sha(req), _e63_sha(_E63_NULL_DRIVER.encode("utf-8")))
+    out = _E63_NULL_CACHE.get(key)
+    if out is None:
+        out = _e63_ref_run(sha, {"asset_census.py": census_src}, _E63_NULL_DRIVER, req, "the census rollup's Null lift", ("has",))
+        while len(_E63_NULL_CACHE) >= _E63_NULL_CACHE_MAX:
+            _E63_NULL_CACHE.pop(next(iter(_E63_NULL_CACHE)))
+        _E63_NULL_CACHE[key] = out
+    if out["has"] is not True:
+        return False                                   # a ref whose census has no lift: the cap is the whole story
+    if out.get("constants") != {"NULL_CHECKS": list(E63_NULL_CHECKS)}:
+        _e63_fail("registry_unreadable", f"the census at {sha[:12]} and this reader disagree on which Null checks the lift covers "
+                                         f"({out.get('constants')!r} vs {list(E63_NULL_CHECKS)!r}): a rule one side changed")
+    if "error" in out:
+        return False
+    return (rec.get("verdict") == "PASS" and head.get("registry_revision") == out.get("revision")
+            and head.get("registry_fingerprint") == out.get("fingerprint")
+            and out.get("earned") is True and out.get("verified") is True and out.get("check") == "PASS" and out.get("cell") == "PASS")
 
 
 def _e63_parse_certs(records, facts):
@@ -1250,7 +1388,7 @@ class LedgerState:
         self.by_key, self.invalidated = by_key, invalidated
         self.pos = pos if pos is not None else {r["cert_id"]: i for i, rs in enumerate(by_key.values()) for r in rs}
         self.kinds = kinds or {}
-        self._hash_cache, self._cur_cache, self._decl = {}, {}, None
+        self._hash_cache, self._cur_cache, self._decl, self._null_cache = {}, {}, None, {}
 
     @property
     def declarations_sha256(self):
@@ -1259,6 +1397,12 @@ class LedgerState:
         if self._decl is None:
             self._decl = _e63_sha(_e63_show(self.repo, self.sha, E63_DECLARATIONS_PATH))
         return self._decl
+
+    def null_lift_earned(self, rec):
+        """Does the census at the ledger commit EARN this Null PASS certificate (`_e63_null_lift_earned`)? Memoised per cert."""
+        if rec["cert_id"] not in self._null_cache:
+            self._null_cache[rec["cert_id"]] = _e63_null_lift_earned(self.repo, self.sha, rec, _e63_show(self.repo, self.sha, E63_CENSUS_PATH))
+        return self._null_cache[rec["cert_id"]]
 
     def writer_sha256(self, path):
         """sha256 of `path` at the ledger commit, or None when the file is absent there."""
@@ -1344,7 +1488,8 @@ def _e63_satisfies(rec, state, addition):
                 not addition and _e63_is_none(state.facts.criteria.get(crit, {}).get("detector", ""))):
             return False            # detector NONE never reaches PASS (the record's own, or the registry's)
         if not addition and state.facts.capped(crit):
-            return False            # capped at PARTIAL by the census rollup (Null: never PASS alone)
+            # capped at PARTIAL by the census rollup (Null: never PASS alone) -- except a Null PASS the census EARNED (S1, pin 13)
+            return crit in E63_NULL_CHECKS and rec["kind"] == "gate" and state.null_lift_earned(rec)
         return True
     if v == "N/A" and not addition:
         na = rec.get("na") or {}

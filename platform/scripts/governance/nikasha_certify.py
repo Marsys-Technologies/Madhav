@@ -1055,7 +1055,11 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
                                  f"{record.get('asset_kind')!r}")
 
     # R5: what the census rollup itself would not honour
-    if kind == "gate" and verdict == "PASS" and (criterion.startswith("Null.") or criterion == "Narr.fidelity_test"):
+    # S1 (pin 13): a Null PASS the census EARNED (both Null records carry the verified null_convention block) is the one Null PASS the rollup honours, so it is
+    # the one this writer can certify: the same `ac.null_lift_earned` the rollup runs, read from the census record, never typed by the caller
+    null_earned = (kind == "gate" and criterion.startswith("Null.") and meas is not None
+                   and ac.null_lift_earned(criterion, meas, (record or {}).get("measurements")))
+    if kind == "gate" and verdict == "PASS" and not null_earned and (criterion.startswith("Null.") or criterion == "Narr.fidelity_test"):
         _refuse("capped_verdict", f"{criterion} is capped at PARTIAL (Null: never PASS alone; fidelity_test: "
                                   "structural only)")
     if inconclusive and verdict in ("PASS", "PARTIAL"):
