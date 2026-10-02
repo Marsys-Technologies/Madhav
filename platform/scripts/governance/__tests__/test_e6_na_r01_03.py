@@ -50,7 +50,8 @@ def test_exactly_the_approved_rules_are_declared_and_they_validate():
         assert re.fullmatch(r"[A-Za-z]+\.[a-z_]+#measured:[a-z0-9-]+", rid), rid          # cause-keyed, nothing else
         crit, _, cause = rid.partition("#measured:")
         assert cause in ac.NA_CAUSES[crit], rid
-        assert "N-22" in why and ("N-65" in why or "N-72" in why), (rid, why)               # every rule cites its decisions
+        assert "N-22" in why, (rid, why)                                                      # every rule cites its decisions
+        assert ("N-65" if rid in N65_IDS else "N-72") in why, (rid, why)                      # ... and the ruling that approved it (per rule)
 
 
 def test_no_rule_beyond_the_ruling_is_declared():
