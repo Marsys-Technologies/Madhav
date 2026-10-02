@@ -5,12 +5,14 @@ GA8 Structural Enumeration Rebuild v2.0 — per GA8_STRUCTURAL_ENUMERATION_BRIEF
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from panchang_engine.swiss_backend import records_swiss_backend
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
 
 @register('ga_structural')
 @l1_producer_contract
+@records_swiss_backend
 class GaStructuralWriter(WriterBase):
     asset_id = 'ga_structural'
     has_substeps = True

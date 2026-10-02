@@ -27,7 +27,7 @@ What it proves (§N.8 — each assertion measures the claim it names):
      executemany(_INSERT_SQL, …)) lands as an authenticated
      data_plane_builder connection, and the rows read back.
   3. FORBIDDEN — CREATE TABLE in schema public as the builder is refused.
-  4. IDEMPOTENT — the six real grant migrations apply a second time as a
+  4. IDEMPOTENT — the nine real grant migrations apply a second time as a
      no-op and the insert path still works.
 
 FINDING, NOW CLOSED: until migration 1231 (PR #2906) no migration in this repo
@@ -36,7 +36,16 @@ carries `data_plane_builder=arwd/amjis_app` on it (verified read-only
 2026-10-02: pg_class.relacl for public.gochara_resonance_map). This suite
 previously mirrored that ACL out-of-band as PRODUCTION_MIRROR_GRANTS; 1231
 now records the verified production ACL, so the fixture applies it as the
-sixth real grant migration and the mirror is gone.
+sixth real grant migration and the mirror is gone. Migration 1237 (Pravāha
+C16) likewise records the builder's production kala_gochara_windows ACL
+(C15's finding) — the fixture builds that table from the real 460 file
+(below) so the seventh grant migration applies verbatim here too. Migration
+1238 (Pravāha C18) does the same for kala_gochara_windows_v2 (C16's flag) —
+the fixture builds that table from the real 542 file (below) for the eighth.
+Migration 1239 (Pravāha C19) closes C18's report-only gap list —
+kala_gochara_v2_build_state, kala_moorti_nirnaya and kala_vedha_gochara — the
+fixture builds those three from the real 541/525/526 files (below) for the
+ninth.
 
 Requires a THROWAWAY database; skipped unless C7_BUILDER_ROLE_TEST_DATABASE_URL
 is set:
@@ -84,10 +93,23 @@ DERIVED_GRANT_TARGETS = {
     "asset_freshness": "596_nirmana_provenance_receipts.sql",
     "bg_transit_moorti": "401_bg_transit_moorti.sql",
     "bg_transit_av_gates": "397_bg_transit_av_gates.sql",
+    # 1237's grant target (C16): built from the real 460 file so the grant
+    # migration applies verbatim (its BIGSERIAL creates the id sequence).
+    "kala_gochara_windows": "460_kala_gochara_windows.sql",
+    # 1238's grant target (C18): built from the real 542 file (under
+    # supabase/migrations) so the grant migration applies verbatim.
+    "kala_gochara_windows_v2": "542_kala_gochara_windows_v2.sql",
+    # 1239's grant targets (C19, C18's report-only gap list): built from the
+    # real 541/525/526 files (under supabase/migrations) so the grant
+    # migration applies verbatim (the two overlay tables' BIGSERIALs create
+    # the id sequences 1239 grants on).
+    "kala_moorti_nirnaya": "525_kala_moorti_nirnaya.sql",
+    "kala_vedha_gochara": "526_kala_vedha_gochara.sql",
+    "kala_gochara_v2_build_state": "541_kala_gochara_v2_build_state.sql",
 }
 
 def _build_schema_as_owner(conn) -> dict:
-    """The whole surface the five grant migrations touch plus the resonance
+    """The whole surface the nine grant migrations touch plus the resonance
     writer's schema — every object created AS amjis_app, from the real files."""
     applied: dict = {"rehearsal": None, "derived_grant_targets": {}, "contract_ddl": []}
     with BR.as_owner(conn):
@@ -174,7 +196,7 @@ def test_control_mirror_is_deployment_faithful(builder_world):
         "AND has_function_privilege('public', p.oid, 'EXECUTE')"
     ).fetchone()[0]
     assert public_exec == 0
-    # And the fixture applied all six real grant migrations.
+    # And the fixture applied all nine real grant migrations.
     assert [Path(p).name for p in BR.grant_migration_files()] == builder_world["applied"]["grant_migrations"]
 
 

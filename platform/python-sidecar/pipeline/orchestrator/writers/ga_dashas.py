@@ -10,6 +10,7 @@ ORCHESTRATOR_GENERALIZATION_INVESTIGATION_v1_0.md §2.B.2.
 """
 from __future__ import annotations
 from ga_writers.data_plane_runtime import l1_producer_contract
+from panchang_engine.swiss_backend import records_swiss_backend
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
@@ -18,6 +19,7 @@ _POST_PASS_KEY = '__concurrency_post_pass__'
 
 @register('ga_dashas')
 @l1_producer_contract
+@records_swiss_backend
 class GaDashasWriter(WriterBase):
     asset_id = 'ga_dashas'
     has_substeps = True
