@@ -1,11 +1,12 @@
 ---
 artifact: HOOKS_COMPLETENESS
-version: 1.0
+version: 1.1
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna (integration-hooks worker, S-L1 phase 3)
 decision: SS 2026-10-02 flip_detector conditions 1 and 3 and the rehearsal-final decision (explicit counts for code-driven changes; optional only for the five chart-dependent categories)
 scope: hook directory 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/ on the S-L1 integration branch, plus the F-A2 patch for PR #2858. Hooks and tests only; no writer source, census or digest touched.
 changelog:
+  - "1.1 (2026-10-03): id-change correction (N-91 condition 6). The vichara row of section 2 and the evidence declaration it points to said the sorted constituent_fact_ids are an ORDER-ONLY change with identical membership; at S-L1 every chart_vichara row's ids are NEW (the fact_id formula drops build_id). Section 8 added; no hook JSON, count or test changed."
   - "1.0 (2026-10-02): hooks completed against flip_detector.py v2.3 (PR #2945 head d226d865a). 22 hook files, 62 entries; every entry that read DECLARED_BUT_ABSENT on an unchanged chart now has a count; argala.json rewritten to the real shape; 11 hook files added; the offline expected-after-state tests added."
 ---
 
@@ -41,7 +42,7 @@ Counts are per chart compared unless the file restricts `charts`. "Evidence" abb
 | Sun required rupa (#2893) | `sun_required_rupa.json` | 7: required_rupa value; ratio value; node bphs_weighted value / tier; node simple_multiplication + cross_formula_divergence disappeared; two zero claims | **1**; **0**; **120**; **120**; **240**; two exact 0 | LANE (stored per chart, all three charts alike); REH (value 1, composite value 120, tier 120, disappeared 240); PROD (composite 1,620 now, 1,380 after) | no |
 | tiers (#2941) | `tiers.json` (canonical), `tiers_other_charts.json` | canonical 5: the 103-category tier entry; chart_dashas tier (NOT CHECKED); l1_tajik_varsha_year_lords tier (NOT CHECKED); special_lagna; kp_cuspal_significators. Other charts 7 (adds the D30 appearance entries) | canonical **19,870**; special_lagna **245**; kp **300**; other charts band **16,900 to 22,750**, D30 appeared **480** and **40** | `evidence/tiers_evidence_v1_3.json`; REH (19,841 on the synthetic chart; reconciled to 19,870, section 3); PROD (all tier figures in the two NOT CHECKED entries re-read and equal: Tajik 240 / 235 / Kiran 305 single; dasha level 1 counts) | no |
 | YAMAKANTAKA (#2731) | `yamakantaka.json` | 1: appeared | exact **35** (7 keys x 5 ayanamshas) | SS decision; PROD (GULIKA 35 + MANDI 35 on all three charts); REH | no |
-| vichara (#2970) | none (declaration only: `evidence/ga_vichara_writer_HOOK_DECLARATION.json`) | chart_vichara is outside the detector's four tables | not a hook; W7 runs `evidence/ga_vichara_writer_ACCEPTANCE.sql` (valence_pass 7,500; chart_vichara 7,774; as-of = run date) | LANE | n/a |
+| vichara (#2970) | none (declaration only: `evidence/ga_vichara_writer_HOOK_DECLARATION.json`) | chart_vichara is outside the detector's four tables | not a hook; W7 runs `evidence/ga_vichara_writer_ACCEPTANCE.sql` (valence_pass 7,500; chart_vichara 7,774; as-of = run date) | LANE (corrected 2026-10-03: constituent_fact_ids carry NEW ids on every row at S-L1, see section 8) | n/a |
 | F-A2 (#2858) | `fa2_ga_vargas.json` PATCH for its own PR (section 6) | 7 | **1,200**, **1,200**, **750**, **50**, **1**, two exact 0 | REH (24,392 to 38,596 on a chart with the same structure as production's canonical); PROD (24,392 rows; all 1,200 stored varga_ashtakavarga rows read sign Aries) | no |
 
 ## 3. The eight DECLARED_BUT_ABSENT entries and how each was resolved
@@ -86,3 +87,13 @@ Result of the final compare (production-like baseline, all hooks with the `chart
 python3 platform/scripts/governance/flip_detector.py --validate-hooks --require-lanes $(cd 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks && ls *.json | sed 's/\.json$//' | paste -sd, -)
 python3 -m pytest platform/scripts/governance/__tests__/test_s_l1_hooks_expected_state.py -q     # skips (detector absent) until PR #2945 is in the tree; FLIP_DETECTOR_PATH points it at another copy
 ```
+
+## 8. Id-change correction (2026-10-03, N-91 condition 6)
+
+The 2026-10-02 text above and the lane texts it summarises were written against the fact_id formula on main, in which `build_id` is no longer part of the hash. The ids STORED in production still carry it. At S-L1 every non-`ga_positions` fact_id therefore changes once (142,094 of 143,299 canonical `chart_facts` rows; the 1,205 `ga_positions` rows keep theirs) and is stable afterwards (`/Users/Dev/suvarna-evidence/FactId/FACTID_IMPACT_REPORT.md` P2, P4). The detector does not read `fact_id`, so no hook count or test is affected (the hooks count by natural key); only three narrative statements became false and are corrected:
+
+* vichara (`evidence/ga_vichara_writer_HOOK_DECLARATION.json`, comment in `evidence/ga_vichara_writer_ACCEPTANCE.sql`): "ORDER-ONLY ... Membership identical" (N = 4,773). Now: every surviving row's `constituent_fact_ids` / `constituent_facts_array` carries NEW ids (all 7,774 canonical rows); membership is natural-key-equivalent, not id-identical; the 4,773 counts rows stored unsorted in the OLD id space.
+* Gandanta (`../gandanta/GANDANTA_X1_LANE_INTENT_v1_0.md`): "every canonical fact_id is byte-identical to before" and "keep their value and fact_id". Now: identical to main's formula, not to stored ids; all 50 canonical `graha_gandanta` ids change once at S-L1.
+* karaka roles (`../karaka_roles/KARAKA_ROLES_LANE_INTENT_v1_0.md`): "The kn_rao PUTRAKARAKA / GNATIKARAKA / DARAKARAKA ids are unchanged". Now: unchanged by this lane's formula; all 525 stored `karaka_chara_position` ids change once at S-L1.
+
+The hand checks for the id change itself are `HOOKS_W7_HAND_READBACK_v1_0.md` H22 (the ten `graha_position` ids identical, `build_id` new) and `../S_L1_BETWEEN_STATE_v1_0.md` section 5 (formula match, zero uuid36 rows, zero orphans in `chart_vichara` and `ga_yoga_firings`).

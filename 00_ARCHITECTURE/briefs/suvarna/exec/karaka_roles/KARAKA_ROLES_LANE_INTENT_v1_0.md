@@ -1,6 +1,6 @@
 ---
 artifact: KARAKA_ROLES_LANE_INTENT
-version: 1.0
+version: 1.1
 status: DRAFT-FOR-REVIEW
 produced_by: worker for exec-suvarna
 date: 2026-10-02
@@ -9,6 +9,7 @@ branch: suvarna/land/TI-l1-karaka-roles-001 (local commits only; not pushed)
 decision: SS N-69 (binding rulings, section 3)
 scope: L1 writer code + tests + generated governance artefacts + this intent document. No migration, no seed edit, no TypeScript, no database write.
 changelog:
+  - "1.1 (2026-10-03): id-change correction (N-91 condition 6). 'The kn_rao PUTRAKARAKA / GNATIKARAKA / DARAKARAKA ids are unchanged' held only against the writer formula, not against stored production ids, which all change once at S-L1. One bullet of section 8 corrected; nothing else changed."
   - "1.0 (2026-10-02): first version. Facts, rulings, exact code changes, registry-edge intent (file not written), consumer trace, held items, rebuild effect, verification, not-verified."
 ---
 
@@ -106,7 +107,7 @@ Per (chart, ayanamsha), after rebuilding ga_sensitive, ga_vargas, ga_structural:
 - Canonical Lahiri, simulated offline (old origin/main builder vs this branch, through the committed `flip_detector.compare_states`, with this lane's hook loaded): 23 class changes (12 value, 6 appeared, 5 disappeared), 0 unattributed. The simulation script is not committed.
 - `karaka_per_varga` (chart_divisionals): subjects renamed (`D1.PK/GK/DK/SK` become `D1.PiK/PK/GK/DK`), Rahu's rank follows ga_sensitive's reckoning. Row count unchanged. The detector keys these rows by assigned graha, so it sees no change (hook entry with `expected_count exact 0`).
 - `karaka_web_per_varga`: role strings in `value_jsonb` / `citation_human` follow the stored labels on the ga_structural rebuild. ga_structural's own digest does NOT move in this branch (its source is unchanged), so nothing marks it stale: it must be rebuilt explicitly, after ga_vargas (it already depends on both).
-- fact_ids: ga_sensitive ids hash `(category, subject, key, chart, ayanamsha, formula_id)`. The kn_rao PUTRAKARAKA / GNATIKARAKA / DARAKARAKA ids are unchanged but now carry a different graha; STRIKARAKA ids are orphaned; PITRIKARAKA ids are new. Any L2+ row that cited those ids (for example bo_* evidence chains) keeps pointing at the same id with a changed value: rebuild L2 after L1. I did not quantify L2 citations.
+- fact_ids: ga_sensitive ids hash `(category, subject, key, chart, ayanamsha, formula_id)` (no `build_id`). THIS lane does not change the hash of any surviving natural key: the kn_rao PUTRAKARAKA / GNATIKARAKA / DARAKARAKA natural keys keep the id the writer formula gives them, and now carry a different graha; STRIKARAKA ids are orphaned; PITRIKARAKA ids are new. This is NOT a statement about the ids STORED in production: stored `karaka_chara_position` ids are sha256(...|build_id|formula_id) (525 of 525 canonical rows), so ALL of them, kn_rao included, change once at S-L1 together with every other non-`ga_positions` id (142,094 of 143,299 `chart_facts` ids on the canonical chart), and are stable from the second build (`/Users/Dev/suvarna-evidence/FactId/FACTID_IMPACT_REPORT.md` P4; `S_L1_BETWEEN_STATE_v1_0.md`). Corrected 2026-10-03 (v1.1). Any L2+ row that cited those ids (for example bo_* evidence chains) keeps pointing at the same id with a changed value: rebuild L2 after L1. I did not quantify L2 citations.
 - Generated census snapshots that carry a measured count for the category (`platform/src/generated/census/chart_facts_categories_authoritative_v1.json` `karaka_chara_position: 1050`) will be one row per rebuilt set higher; not edited here (a measured snapshot).
 
 ## 9. Verification performed

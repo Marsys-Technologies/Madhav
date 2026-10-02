@@ -1,11 +1,12 @@
 ---
 artifact: HOOKS_W7_HAND_READBACK
-version: 1.0
+version: 1.1
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna (integration-hooks worker, S-L1 phase 3)
 decision: SS 2026-10-02 flip_detector condition 2 (W7 hand read-back for everything the tool cannot observe); W7 report = two parts, machine verdict plus hand checks each with expected and actual
 scope: documentation only. Every query is a single read-only SELECT for a SELECT-only reader (suvarna_reader); nothing here writes, and no query reads birth data.
 changelog:
+  - "1.1 (2026-10-03): H22 (H-GP) and H23 (H-VIM) added: the ten canonical graha_position rows (fact_ids identical across the rebuild, build_id changes) and the vimshottari build id, ga_dashas run row and receipt, each with the 2026-10-02 22:10-22:17Z (2026-10-03 03:40-03:47 IST) baseline read as suvarna_reader; H6 note: chart_vichara constituent_fact_ids carry NEW ids on every row at S-L1 (id-change, N-91). The 'after' columns are to be filled at W7."
   - "1.0 (2026-10-02): first version. One entry per lane for what flip_detector.py cannot see (continuous numeric changes, columns it never reads, tables outside its four, the two tier tables, formula_id twins hidden by the sorted occurrence pairing). Before-values were read 2026-10-02 as suvarna_reader on the canonical chart; after-values are the lanes' own evidence."
 ---
 
@@ -137,6 +138,8 @@ SELECT count(*) AS total, count(*) FILTER (WHERE vichara_family='valence_pass') 
 ```
 
 Before 8524 | 8250; expected after 7774 | 7500.
+
+Note on `constituent_fact_ids` (corrected 2026-10-03, id-change, N-91 condition 6): the sort is not the only change. At S-L1 the `fact_id` formula drops `build_id`, so every id this lane cites (all of them non-`ga_positions`) is NEW: EVERY surviving row's `constituent_fact_ids` and `constituent_facts_array` change (7,774 canonical rows), not only the 4,773 that were stored unsorted. Membership is natural-key-equivalent (each id replaced by the new id of the same natural key; one-to-one, per-row count unchanged by construction), not id-identical. A8 (0 unsorted) and A9 (0 orphan ids) are the checks that still hold; the id formula match, zero uuid36 and zero orphans in `chart_vichara` and `ga_yoga_firings` are in `../S_L1_BETWEEN_STATE_v1_0.md` (the W7 id check).
 
 ### H7. leverage_index as-of equals the run date (lane ga_vichara_writer)
 
@@ -319,3 +322,64 @@ Before: 219 categories, 143,299 rows. Expected after (changes this folder declar
 ### H21. Other tables the detector never reads (README "Other tables the detector never reads")
 
 Use the README count query for ga_yoga_firings, bodha_msr_signals, bodha_rm_resonances (H3 above) and repeat its shape for `ga_condition_composite`, `ga_medical`, the `ga_vastu_*` and `ga_prashna_*` tables and `prashna_charts` (confirm the chart column first). Expected: counts unchanged before and after except where a lane above says otherwise.
+
+### H22. H-GP: the ten canonical graha_position rows keep their fact_id; build_id changes (lane: ga_positions, no hook; N-91 id-change)
+
+Not visible: `flip_detector.py` never selects `fact_id` or `build_id` (FACTID_IMPACT_REPORT.md P1), so a stable or a changed id is invisible to Part 1. `ga_positions` ids are `sha256(category|subject|key|chart|ayanamsha)[:16]` with no `build_id` (`ga_positions_writer.py` `_fact_id`), and S-L1 re-runs `ga_positions`, so the five ga_positions categories (graha_position 430, bhava_cusps 360, house_chalit 225, graha_sign_attributes 100, sandhi_flag 90 = 1,205 rows) keep every id while the other 142,094 chart_facts ids change once. These ten are the lahiri_chitrapaksha `longitude_sidereal` rows (the ten ids are the `fact_id` column in the baseline below). Run BEFORE the rebuild (save), run AFTER (compare).
+
+```sql
+SELECT g.fact_subject, g.fact_id, g.fact_id = e.expected_id AS id_identical, g.fact_value_num, g.verification_pass_status AS tier, g.build_id FROM chart_facts g JOIN (VALUES ('JUP','b523f47085a3d9cd'),('KET_MEAN','091bba173f776012'),('LAGNA','456fd2e3322bf33f'),('MAR','e7864e4ce0a32c9f'),('MER','0e8654a3aa27a37c'),('MOON','722b207637ab1208'),('RAH_MEAN','c520713087b97470'),('SAT','ccc73ee023060a1d'),('SUN','bf1524f6ee813be0'),('VEN','7c6e178731526ea0')) AS e(subject, expected_id) ON e.subject = g.fact_subject WHERE g.chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND g.fact_category='graha_position' AND g.fact_key='longitude_sidereal' AND g.ayanamsha_id='lahiri_chitrapaksha' ORDER BY g.fact_subject
+```
+
+Baseline (before S-L1), read 2026-10-02 22:10-22:17Z as suvarna_reader on the canonical chart. All ten rows: `id_identical` t, tier `single`, `build_id` `1c092ffb-72eb-4614-8422-552ca6eae985`.
+
+| fact_subject | fact_id | fact_value_num (before) | tier | build_id (before) |
+|---|---|---|---|---|
+| JUP | b523f47085a3d9cd | 249.787497023181 | single | 1c092ffb-72eb-4614-8422-552ca6eae985 |
+| KET_MEAN | 091bba173f776012 | 229.033044100281 | single | 1c092ffb-72eb-4614-8422-552ca6eae985 |
+| LAGNA | 456fd2e3322bf33f | 12.4311495988431 | single | 1c092ffb-72eb-4614-8422-552ca6eae985 |
+| MAR | e7864e4ce0a32c9f | 198.519187554622 | single | 1c092ffb-72eb-4614-8422-552ca6eae985 |
+| MER | 0e8654a3aa27a37c | 270.838753918698 | single | 1c092ffb-72eb-4614-8422-552ca6eae985 |
+| MOON | 722b207637ab1208 | 327.055230133129 | single | 1c092ffb-72eb-4614-8422-552ca6eae985 |
+| RAH_MEAN | c520713087b97470 | 49.0330441002811 | single | 1c092ffb-72eb-4614-8422-552ca6eae985 |
+| SAT | ccc73ee023060a1d | 202.431986059195 | single | 1c092ffb-72eb-4614-8422-552ca6eae985 |
+| SUN | bf1524f6ee813be0 | 291.962617284992 | single | 1c092ffb-72eb-4614-8422-552ca6eae985 |
+| VEN | 7c6e178731526ea0 | 259.172696089456 | single | 1c092ffb-72eb-4614-8422-552ca6eae985 |
+
+Expected after: ten rows returned (ZERO rows means the ids changed: STOP and tell SS). **`fact_id` IDENTICAL on all ten and `id_identical` t on all ten**; **`build_id` CHANGES** to the build of the S-L1 `ga_positions` run (one value on all ten, different from `1c092ffb-...`; record it here: ______); `fact_value_num` and `tier` per the hooks' expectations, which declare NO change to `graha_position` (it is in no hook's `may_change`; the tiers lane's category list excludes it): values identical to the baseline and tier `single`. A different value or tier would also read UNDECLARED_CHANGE in Part 1. After-values: to be filled at W7.
+
+The whole family, so the 1,205 is read as a count and not assumed:
+
+```sql
+SELECT fact_category, count(*) AS n, count(*) FILTER (WHERE fact_id = left(encode(sha256(convert_to(fact_category||'|'||fact_subject||'|'||fact_key||'|'||chart_id::text||'|'||ayanamsha_id,'UTF8')),'hex'),16)) AS n_formula_match, count(DISTINCT build_id) AS builds, min(build_id::text) AS build_id FROM chart_facts WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND fact_category IN ('graha_position','bhava_cusps','house_chalit','graha_sign_attributes','sandhi_flag') GROUP BY 1 ORDER BY 1
+```
+
+Baseline (2026-10-02 22:10-22:17Z): bhava_cusps 360 | 360 | 1; graha_position 430 | 430 | 1; graha_sign_attributes 100 | 100 | 1; house_chalit 225 | 225 | 1; sandhi_flag 90 | 90 | 1; build_id `1c092ffb-72eb-4614-8422-552ca6eae985` on all five. Expected after: the same n and n_formula_match (1,205 in all), builds 1, build_id = the new `ga_positions` build id (same as above). `chart_fact_identity` (its `fact_id` foreign key is ON DELETE CASCADE, so the `ga_positions` rebuild empties it until the G-IDX refill):
+
+```sql
+SELECT count(*) AS identity_rows FROM chart_fact_identity i JOIN chart_facts f USING (fact_id) WHERE f.chart_id='482012f1-710e-4a25-994a-93821f5871aa'
+```
+
+Baseline 1,205. Expected after: 0 between the `ga_positions` rebuild and the refill (`build_fact_identity_index.py`, immediately after W2), **1,205 after the refill**.
+
+### H23. H-VIM: the new vimshottari build id, the ga_dashas run row and its receipt (lane: karaka_dasha_roles, tiers; SS Pravaha dependency, see H10)
+
+Not visible: the machine verdict reads neither `build_id` nor the run tables. H10 above is the count check (vimshottari non-KP levels 1 to 4, `not_two_pass_verified` must be 0 after the rebuild; baseline 63 / 515 / 4,576 / 40,510 rows, all `two_pass_verified`, today 0 not two_pass_verified); H9 holds the level-1 tier of every system. H23 adds the identity of the build that produced them. Run BEFORE and AFTER.
+
+```sql
+SELECT ayanamsha_id, build_id, count(*) AS n, count(*) FILTER (WHERE verification_pass_status <> 'two_pass_verified') AS not_two_pass_verified FROM chart_dashas WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND system_id='vimshottari' GROUP BY 1,2 ORDER BY 1,2
+```
+
+Baseline (2026-10-02 22:10-22:17Z, all levels of the non-KP `vimshottari` system, 45,664 rows = 63 + 515 + 4,576 + 40,510 for levels 1 to 4): krishnamurti 9,194; lahiri_chitrapaksha 9,205; raman 9,063; surya_siddhanta_classical 8,998; true_chitra 9,204; every group one `build_id` = `1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb`, 0 not_two_pass_verified. Expected after: five groups, ONE new `build_id` (the S-L1 `ga_dashas` run id; record: ______) on all five, **0 not_two_pass_verified** in every group (non-zero: STOP, tell SS, name the rows with the H10 query; Pravaha's writer and inventory verifier refuse any vimshottari row that is not `two_pass_verified`); counts may move by a few rows at the window edges (the same note as H10).
+
+```sql
+SELECT r.id AS run_id, r.state AS run_state, r.created_at, a.state AS asset_state, a.output_changed, a.disposition FROM build_run_assets a JOIN build_runs r ON r.id = a.run_id WHERE r.chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND a.asset_id='ga_dashas' ORDER BY r.created_at DESC LIMIT 5
+```
+
+Baseline (the five newest ga_dashas run rows, 2026-10-02 22:10-22:17Z): `f2a62f44-eed7-4138-8b15-d57515a6f88a` completed 2026-09-07 20:14:00+00 complete / output_changed f / skip_no_delta; `a105a76f-1a9e-42a4-9149-c12358635e91` failed 2026-09-07 20:12:30+00 aborted; `bcae04a3-9e46-476b-944f-a985b46225c5` completed 2026-09-07 12:58:28+00 complete / f / skip_no_delta; `da74fbb1-84af-42f1-ae44-260608ffe615` completed 2026-09-07 12:56:18+00 complete / f / skip_no_delta; `1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb` completed 2026-09-07 09:44:10+00 complete / **t** / **build**. The data in `chart_dashas` is the build run `1f89fd4c-...` (run id = `build_id`); the four later rows are skip_no_delta (they wrote nothing). Expected after: a NEW newest row for the S-L1 run with asset_state `complete`, output_changed **t**, disposition **build** (a `skip_no_delta` disposition means nothing was rebuilt: the window has not rebuilt ga_dashas), and its `run_id` equals the new `build_id` of the first query. Its receipt:
+
+```sql
+SELECT asset_id, partition_key, receipt_state, observed_at, build_id, left(output_digest,12) AS output_digest_12 FROM asset_provenance_receipts WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND asset_id='ga_dashas' ORDER BY observed_at DESC LIMIT 5
+```
+
+Baseline: one row, `__whole_asset__`, `proven`, observed 2026-09-07 20:14:04+00, `build_id` `f2a62f44-eed7-4138-8b15-d57515a6f88a` (the latest skip_no_delta run, not the build run), output_digest `483dd7787c48`. Expected after: a `proven` receipt NEWER than that one (S-L1 acceptance: every rebuilt ga_* asset has a PROVEN receipt newer than its pre-window one) whose `output_digest_12` DIFFERS from `483dd7787c48` (expected: this lane set changes ga_dashas values by design, the karaka role columns and the tiers; across S-L1 a changed output digest is expected on the digest-spec'd assets by construction and is not by itself evidence of an unintended value change, see `../S_L1_BETWEEN_STATE_v1_0.md`). After-values: to be filled at W7.

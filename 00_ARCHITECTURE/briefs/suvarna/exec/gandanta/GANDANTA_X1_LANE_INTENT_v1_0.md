@@ -1,6 +1,6 @@
 ---
 artifact: GANDANTA_X1_LANE_INTENT
-version: "1.2"
+version: "1.3"
 status: DRAFT-FOR-REVIEW (PR #2892, draft, never armed)
 produced_by: exec-suvarna (worker)
 produced_on: 2026-10-02
@@ -9,6 +9,7 @@ plan_item: S-L1 mandatory lane I-22 (decision sheet A-4 + X1; SS rulings N-61/N-
 base: origin/main 925e96a5d
 scope: "one new L0 module, three L1 writer edits, tests, the lane's attribution hook, digest inventory and E6 pins. No migration, no database write, no Kāla production file, no rebuild."
 changelog:
+  - "1.3 (2026-10-03): id-change correction (N-91 condition 6). The statement that canonical fact_ids are 'byte-identical to before' and 'keep their fact_id' held only against main's hash input, not against the ids stored in production; at S-L1 every non-ga_positions fact_id changes once. Two sentences corrected (the No-duplicate-identity paragraph and the canonical-chart 50-row line); nothing else changed."
   - "1.2 (2026-10-02): independent-review fixes. MED-1: get_nakshatra.ts selects formula_id and its ORDER BY is total (..., fact_key, formula_id NULLS FIRST, fact_id), so offset pagination cannot duplicate/skip the canonical + strict_0_48 rows (section 12); LOW: bo_laksana signal configuration has no formula_id, recorded as an S-L2 GATE (section 10 item 3); J1 by-name list (section 13): the Gandanta FIRE side and the 0 deg 48 min orb are unsourced."
   - "1.1 (2026-10-02): SS ruling on PR #2892 applied: the ga_structural legacy dosha fallback RAISES on a failed evaluation (section 2a); read-only check against the three charts; L2-batch and wave-2 follow-ups recorded (section 10)."
   - "1.0 (2026-10-02): first version."
@@ -61,7 +62,7 @@ Two further statements I found that the sheet's "four" does not count: (a) L0 `b
 
 **X1 row emission (`ga_nakshatra_emitters.emit_gandanta_flags`).** Per body, canonical rows exactly as before in shape (`formula_id` NULL): `is_gandanta` (true/false, from the shared 3°20' function), and when true `arc_minutes_from_junction`, `junction_type`, `side`. Then the strict variant: `is_gandanta` (true/false) for every body, and when true the same three detail keys, all with `formula_id = 'strict_0_48'` and `source_calculation = ga_nakshatra:gandanta:strict_0_48:longitude=...`. Per ayanamsha that is +10 variant `is_gandanta` rows (+3 per strict-true body).
 
-**No duplicate identity.** `chart_facts` has two partial unique indexes: `chart_facts_unique_null_formula` (…, build_id) WHERE formula_id IS NULL and `chart_facts_unique_with_formula` (…, build_id, formula_id) WHERE formula_id IS NOT NULL, and `fact_id` is the primary key. `ga_nakshatra._fact_id` now appends `|formula_id` only when one is set, so variant rows get a distinct `fact_id` and every canonical `fact_id` is byte-identical to before (asserted against the old hash input). `citation_ref` gains `:formula=strict_0_48` and `citation_human` gains ` (variant strict_0_48)` for variant rows only. Insert: canonical rows use the unchanged statement (`ON CONFLICT … WHERE formula_id IS NULL`); variant rows use a second statement with the `formula_id` column and `ON CONFLICT (…, build_id, formula_id) WHERE formula_id IS NOT NULL`. This is the same two-partition mechanism the Yogi/Avayogi, karaka and mṛtyu variant rows already use.
+**No duplicate identity.** `chart_facts` has two partial unique indexes: `chart_facts_unique_null_formula` (…, build_id) WHERE formula_id IS NULL and `chart_facts_unique_with_formula` (…, build_id, formula_id) WHERE formula_id IS NOT NULL, and `fact_id` is the primary key. `ga_nakshatra._fact_id` now appends `|formula_id` only when one is set, so variant rows get a distinct `fact_id`. Every canonical `fact_id` is byte-identical to what main's formula produced (asserted against main's hash input, which has no `build_id`); this lane does not change the hash of any surviving natural key. It is NOT byte-identical to the ids STORED in production: stored `graha_gandanta` ids are sha256(...|build_id) from the pre-fix formula, so at S-L1 all 50 canonical `graha_gandanta` ids change once, together with every other non-`ga_positions` id (142,094 of 143,299 `chart_facts` ids on the canonical chart; only the 1,205 `ga_positions` ids keep theirs), and are stable from the second build (see `/Users/Dev/suvarna-evidence/FactId/FACTID_IMPACT_REPORT.md` P4 and `S_L1_BETWEEN_STATE_v1_0.md`). Corrected 2026-10-03 (v1.3). `citation_ref` gains `:formula=strict_0_48` and `citation_human` gains ` (variant strict_0_48)` for variant rows only. Insert: canonical rows use the unchanged statement (`ON CONFLICT … WHERE formula_id IS NULL`); variant rows use a second statement with the `formula_id` column and `ON CONFLICT (…, build_id, formula_id) WHERE formula_id IS NOT NULL`. This is the same two-partition mechanism the Yogi/Avayogi, karaka and mṛtyu variant rows already use.
 
 **Idempotency (N.3).** Unchanged: `replace_prior_chart_facts` deletes the chart's rows for the (category, ayanamsha) scope present in the rows, with no `formula_id` filter, so a rebuild deletes the variant rows as well and re-inserts exactly one copy per natural key.
 
@@ -101,7 +102,7 @@ Method: stored sidereal longitudes (`graha_position.longitude_sidereal`, 10 subj
 
 Rows that would change per chart on a `ga_nakshatra` rebuild (appear / disappear / change value), counting the 50 canonical `is_gandanta` rows as unchanged except the flips:
 
-* canonical `482012f1`: **50 rows added, 0 changed, 0 removed** (50 `strict_0_48` `is_gandanta` rows, all `false`). The 50 canonical `graha_gandanta` rows keep their value and `fact_id`.
+* canonical `482012f1`: **50 rows added, 0 changed, 0 removed** (50 `strict_0_48` `is_gandanta` rows, all `false`). The 50 canonical `graha_gandanta` rows keep their value; their `fact_id` is unchanged by THIS lane (same formula as main) but changes once at S-L1 like every non-`ga_positions` id, because the stored production ids still hash `build_id` (corrected 2026-10-03, v1.3; see the "No duplicate identity" paragraph in section 2).
 * third `cb73cd3d`: **50 added, 0 changed, 0 removed**.
 * Abhinandan `1c826d5a`: **77 = 6 `is_gandanta` value changes (false to true) + 18 canonical detail rows appearing + 53 variant rows added**; 0 removed. Lagna never falls in a Gandanta arc on any chart.
 

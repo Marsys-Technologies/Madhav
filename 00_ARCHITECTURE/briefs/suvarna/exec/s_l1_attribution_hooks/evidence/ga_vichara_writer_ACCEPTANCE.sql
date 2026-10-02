@@ -148,7 +148,9 @@ GROUP BY 1 ORDER BY 1;
 
 -- INFORMATIONAL (not pass/fail): before the rebuild, the stored rows that survive dedupe but whose stored
 -- constituent_fact_ids order differs from sorted order. This is the ORDER-ONLY change count N declared
--- in the hook (no value, no membership change). Reader-measured 2026-10-02 on the stored canonical data:
+-- in the hook (no value change; the ids themselves are NEW on every row at S-L1 because the fact_id formula
+-- drops build_id: membership is natural-key-equivalent, not id-identical; corrected 2026-10-03, N-91 condition 6).
+-- N counts the rows stored unsorted in the OLD id space, not the rows that change. Reader-measured 2026-10-02 on the stored canonical data:
 -- krishnamurti 980, lahiri_chitrapaksha 968, raman 1000, surya_siddhanta_classical 892, true_chitra 933 = 4,773
 -- (stored order is the Python set order of whichever process built the rows, so N is a property of the
 -- stored generation, not a constant; after the rebuild it is 0, see A8).
