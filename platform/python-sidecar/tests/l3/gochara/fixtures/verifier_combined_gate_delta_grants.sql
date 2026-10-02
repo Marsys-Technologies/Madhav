@@ -15,3 +15,12 @@ GRANT EXECUTE ON FUNCTION public.ka_gochara_search_inventory_preimage(uuid, text
 GRANT EXECUTE ON FUNCTION public.ka_gochara_utc_ts(timestamp with time zone) TO gochara_verifier;
 GRANT EXECUTE ON FUNCTION public.ka_gochara_search_moon_scope_violations(uuid, text) TO gochara_verifier;
 GRANT EXECUTE ON FUNCTION public.ka_gochara_search_moon_resolved_domain(uuid, text, text, uuid) TO gochara_verifier;
+
+-- STAND-IN for Stream B's 1241 (R11-3): the SEALER writes the approval receipt and calls the missing-receipt check in the sealing
+-- transaction (1240 creates the table and the function and grants nothing on them; the grants are 1241's).
+DO $$ BEGIN
+  IF to_regrole('gochara_sealer') IS NOT NULL THEN
+    GRANT SELECT, INSERT ON public.ka_gochara_seal_approval TO gochara_sealer;
+    GRANT EXECUTE ON FUNCTION public.ka_gochara_seal_receipt_missing(uuid, text) TO gochara_sealer;
+  END IF;
+END $$;

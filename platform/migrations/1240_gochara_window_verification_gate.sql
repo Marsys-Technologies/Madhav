@@ -634,22 +634,34 @@ CREATE TABLE public.ka_gochara_seal_approval (
   manifest_id     uuid        NOT NULL,
   brief_digest    text        NOT NULL,
   approver_login  text        NOT NULL,
-  approval_note   text        NOT NULL DEFAULT '',
-  run_id          text        NOT NULL,
-  run_attempt     integer     NOT NULL DEFAULT 1,
-  sealing_commit  text,
+  approved_by_note text       NOT NULL,
+  run_id          bigint      NOT NULL,
+  run_attempt     integer     NOT NULL,
+  workflow_commit text        NOT NULL,
   sealed_by       text        NOT NULL DEFAULT session_user,
   approved_at     timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (chart_id, generation),
+  -- DEFERRED: the receipt and the seal row are written in ONE transaction (either order); a seal with no receipt is detectable
+  -- (`ka_gochara_seal_receipt_missing`), and the sealer step calls it before COMMIT
   CONSTRAINT kgsa_seal_fk FOREIGN KEY (chart_id, generation)
-    REFERENCES public.ka_gochara_generation_seal (chart_id, generation),
+    REFERENCES public.ka_gochara_generation_seal (chart_id, generation) DEFERRABLE INITIALLY DEFERRED,
   CONSTRAINT kgsa_digest_ck CHECK (brief_digest ~ '^[0-9a-f]{64}$'),
-  CONSTRAINT kgsa_named_ck CHECK (btrim(approver_login) <> '' AND btrim(run_id) <> '' AND run_attempt >= 1)
+  CONSTRAINT kgsa_approver_ck CHECK (btrim(approver_login) <> ''),
+  CONSTRAINT kgsa_commit_ck CHECK (btrim(workflow_commit) <> ''),
+  CONSTRAINT kgsa_attempt_ck CHECK (run_attempt >= 1)
 );
+-- (a new table carries no PUBLIC privilege: PostgreSQL grants none by default, so no REVOKE is needed — and 1240 revokes nothing)
 COMMENT ON TABLE public.ka_gochara_seal_approval IS
   'A5.3 R11-3: the approval receipt of a seal — brief digest (sha256 of the canonical approval payload recomputed under the seal '
-  'locks), approver login, workflow run id/attempt, sealing commit. Append-only; FK to the seal row; inserted by the sealer in the '
-  'sealing transaction.';
+  'locks), approver login + note, workflow run id/attempt, workflow commit. Append-only; FK to the seal row (deferred); inserted by '
+  'the sealer in the sealing transaction. The grants on it are 1241''s.';
+
+-- the sealer step calls this before COMMIT: TRUE iff the generation is sealed and no receipt exists for it
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_receipt_missing(p_chart uuid, p_generation text)
+RETURNS boolean LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
+  SELECT EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal s WHERE s.chart_id = p_chart AND s.generation = p_generation)
+     AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_seal_approval a WHERE a.chart_id = p_chart AND a.generation = p_generation);
+$$;
 
 CREATE OR REPLACE FUNCTION public.ka_gochara_seal_approval_immutable()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
@@ -767,7 +779,6 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_verifier') THEN
     GRANT SELECT, INSERT, DELETE ON public.ka_gochara_eval_window_verification TO gochara_verifier;
-    GRANT SELECT ON public.ka_gochara_seal_approval TO gochara_verifier;             -- R11-3: the brief mode reads the seal side
     GRANT SELECT ON
       public.ka_gochara_eval_window, public.ka_gochara_eval_window_record,
       public.ka_gochara_relationship_record, public.ka_gochara_record_prerequisite, public.ka_gochara_contact,
@@ -796,7 +807,6 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_sealer') THEN
     GRANT SELECT ON public.ka_gochara_eval_window_verification TO gochara_sealer;
-    GRANT SELECT, INSERT ON public.ka_gochara_seal_approval TO gochara_sealer;       -- R11-3: the sealer writes the receipt
     GRANT SELECT ON
       public.ka_gochara_eval_window, public.ka_gochara_eval_window_record,
       public.ka_gochara_relationship_record, public.ka_gochara_search_path_pin,
@@ -859,7 +869,8 @@ BEGIN
     ('public.ka_gochara_candidate_gate_violations(uuid,text)'),
     ('public.ka_gochara_window_verification_write_guard()'),
     ('public.ka_gochara_generation_seal_window_guard()'),
-    ('public.ka_gochara_window_qualification_ok(jsonb)')) AS x(sig)
+    ('public.ka_gochara_window_qualification_ok(jsonb)'),
+    ('public.ka_gochara_seal_receipt_missing(uuid,text)')) AS x(sig)
   WHERE to_regprocedure(x.sig) IS NULL;
   IF missing IS NOT NULL THEN
     RAISE EXCEPTION 'migration 1240 post-apply check failed: missing functions: %', missing;
