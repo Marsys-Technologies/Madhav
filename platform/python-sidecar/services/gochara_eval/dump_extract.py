@@ -28,6 +28,7 @@ import decimal
 import hashlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -61,7 +62,8 @@ SQL_DUMP = """SELECT event_class,
 SQL_SIGN_CHECK = """SELECT COUNT(*) FILTER (WHERE abs(signed_intensity) <> raw_intensity) AS sign_mismatch,
        COUNT(*) FILTER (WHERE raw_intensity < 0) AS negative_raw
   FROM kala_gochara_windows WHERE chart_id = %s AND generation = %s"""
-SQL_MANIFEST_ORB = """SELECT status, input_generation_vector->'orb_max_deg', input_generation_vector->'orb_ruling'
+SQL_MANIFEST_ORB = """SELECT status, input_generation_vector->'orb_max_deg', input_generation_vector->'orb_ruling',
+       input_generation_vector->'ephemeris'
   FROM kala_gochara_publication WHERE chart_id = %s AND generation = %s"""
 
 
@@ -118,17 +120,56 @@ def render(generation: str, pinned_at: str, rows: list[dict]) -> bytes:
     return json.dumps({**header(generation, pinned_at, len(rows)), "rows": rows}, indent=1).encode()
 
 
+# The AM-16 `ephemeris` component (amendments draft AM-16, schema ka_gochara_input_vector/2) — the ONE definition both the '4.1' and the
+# '5.0' manifests must carry: which Swiss ephemeris files the kernel actually opened (sha256 each), the library version AND the loaded
+# artifact's sha256, the platform, and a fixed series-probe digest. Absence of any key = not an identity.
+EPHEMERIS_KEYS = ("backend", "swe_version", "library_sha256", "platform", "files", "probe_digest")
+_SHA64 = re.compile(r"^[0-9a-f]{64}$")
+_SE1 = re.compile(r"^se[a-z]+_[0-9]{2}\.se1$")
+
+
+def ephemeris_component_problems(c) -> list[str]:
+    """Why this manifest ephemeris component does NOT identify the ephemeris that was used ([] = it does)."""
+    if not isinstance(c, dict):
+        return ["no `ephemeris` component in the manifest input vector (the vector predates AM-16)"]
+    probs = [f"ephemeris component lacks key {k!r}" for k in EPHEMERIS_KEYS if k not in c]
+    extra = sorted(set(c) - set(EPHEMERIS_KEYS))
+    if extra:
+        probs.append(f"ephemeris component has keys outside the AM-16 definition: {extra}")
+    if c.get("backend") != "swieph":
+        probs.append(f"backend is {c.get('backend')!r}, not 'swieph' (a Moshier/analytic fallback is not an identified ephemeris)")
+    if not c.get("swe_version"):
+        probs.append("swe_version is empty")
+    for k in ("library_sha256", "probe_digest"):
+        if k in c and not _SHA64.match(str(c[k])):
+            probs.append(f"{k} is not a sha256")
+    if "platform" in c and not c["platform"]:
+        probs.append("platform is empty")
+    files = c.get("files")
+    if "files" in c:
+        if not isinstance(files, dict) or not files:
+            probs.append("files is empty — no opened .se1 file is recorded (a Moshier-served build opens none)")
+        else:
+            for name, sha in files.items():
+                if not _SE1.match(str(name)):
+                    probs.append(f"files: {name!r} is not a Swiss ephemeris .se1 file name")
+                if not _SHA64.match(str(sha)):
+                    probs.append(f"files: {name!r} has no sha256")
+    return probs
+
+
 def read_manifest_orb(conn, generation: str) -> dict:
-    """The activity orb the candidate chain DECLARES in its manifest (kala_gochara_publication.input_generation_vector keys
-    `orb_max_deg`, `orb_ruling`). Read-only; touches no window row. Recorded in the Stage-1 freeze at freeze time."""
+    """The activity orb AND the ephemeris identity the candidate chain DECLARES in its manifest (kala_gochara_publication.input_generation_vector keys
+    `orb_max_deg`, `orb_ruling`, `ephemeris`; the ephemeris is checked against the AM-16 component definition). Read-only; touches no window row. Recorded in the Stage-1 freeze at freeze time."""
     conn.read_only = True
     with conn.cursor() as cur:
         cur.execute(SQL_MANIFEST_ORB, (CHART_ID, generation))
         rows = cur.fetchall()
     if len(rows) != 1:
         raise RuntimeError(f"expected exactly one manifest for generation {generation}, found {len(rows)}")
-    status, deg, ruling = rows[0]
-    return {"generation": generation, "manifest_status": status, "orb_max_deg": deg, "orb_ruling": ruling}
+    status, deg, ruling, eph = rows[0]
+    return {"generation": generation, "manifest_status": status, "orb_max_deg": deg, "orb_ruling": ruling,
+            "ephemeris": eph, "ephemeris_problems": ephemeris_component_problems(eph)}
 
 
 def _connect(args, conn_factory):

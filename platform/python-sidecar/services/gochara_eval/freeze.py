@@ -26,7 +26,7 @@ FROZEN_CODE_FILES = (            # the adapter, scorer and everything they impor
 )
 REQUIRED_STAGE1 = (
     "artifact", "run_id", "generation", "status", "amendments_draft", "addendum", "registries_selected", "orb_state",
-    "conventions", "code", "extract_generation_command", "extract_generation_args", "cohort", "controls", "thresholds", "rerun_policy", "inputs",
+    "conventions", "ephemeris_requirement", "code", "extract_generation_command", "extract_generation_args", "cohort", "controls", "thresholds", "rerun_policy", "inputs",
 )
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 
@@ -69,6 +69,13 @@ def stage1_problems(doc: dict, inputs_root: Path, canonical_command: str,
     conv = doc.get("conventions", {})
     if conv.get("tie_tolerance") != TIE_TOL:
         probs.append(f"tie_tolerance {conv.get('tie_tolerance')!r} != the protocol's {TIE_TOL!r}")
+    req = doc.get("ephemeris_requirement")
+    if isinstance(req, dict):
+        eph = req.get("manifest_readback")
+        if not isinstance(eph, dict):
+            probs.append("ephemeris_requirement.manifest_readback is not the manifest read-back object")
+        elif eph.get("ephemeris_problems") != []:
+            probs.append(f"ephemeris_requirement.manifest_readback.ephemeris_problems is {eph.get('ephemeris_problems')!r}, not []")
     code = doc.get("code", {})
     for k in ("adapter_commit", "scorer_commit"):
         if not COMMIT_RE.match(str(code.get(k, ""))):

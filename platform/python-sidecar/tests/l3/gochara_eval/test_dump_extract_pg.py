@@ -82,9 +82,12 @@ def test_sign_reconciliation_and_horizon_stop_on_real_data(conn):
 
 def test_manifest_orb_and_coverage_summary_read_back(conn):
     conn.execute("INSERT INTO kala_gochara_publication VALUES (%s,'4.1','candidate',%s)",
-                 (dx.CHART_ID, json.dumps({"orb_max_deg": 5.0, "orb_ruling": "M-1 fallback no-box × 5.0° (unratified)"})))
+                 (dx.CHART_ID, json.dumps({"orb_max_deg": 5.0, "orb_ruling": "M-1 fallback no-box × 5.0° (unratified)",
+                             "ephemeris": {"backend": "swieph", "swe_version": "2.10.03", "library_sha256": "ab" * 32, "platform": "Linux-x86_64",
+                                           "files": {"sepl_18.se1": "cd" * 32}, "probe_digest": "ef" * 32}})))
     m = dx.read_manifest_orb(conn, "4.1")
     assert m["orb_max_deg"] == 5.0 and m["orb_ruling"].endswith("(unratified)") and m["manifest_status"] == "candidate"
+    assert m["ephemeris_problems"] == [] and m["ephemeris"]["files"] == {"sepl_18.se1": "cd" * 32}
     for key, req, comp, un in (("saturn:karaka", H, H, None), ("saturn:interval", H, H, None), ("sun:karaka", H, "[1998-01-01T00:00:00+00:00,2020-01-01T00:00:00+00:00)", "x")):
         conn.execute("INSERT INTO kala_gochara_coverage VALUES (%s,'4.1','body_target',%s,%s,%s,10,9,1,%s)", (dx.CHART_ID, key, req, comp, un))
     s = dx.read_coverage_summary(conn, "4.1")["partition_kinds"]["body_target"]

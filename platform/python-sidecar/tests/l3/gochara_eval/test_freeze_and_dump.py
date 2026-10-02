@@ -30,7 +30,9 @@ def make_stage1(tmp_path, generation="4.1", inputs=None):
     doc = {"artifact": "FREEZE_STAGE1", "run_id": "t", "generation": generation, "status": "FROZEN",
            "amendments_draft": {"version": "0.21", "sha256": "0" * 64}, "addendum": {"sha256": "0" * 64},
            "registries_selected": {}, "orb_state": "unqualified points",
-           "conventions": {"tie_tolerance": 1e-9}, "code": {"adapter_commit": COMMIT, "scorer_commit": COMMIT,
+           "conventions": {"tie_tolerance": 1e-9},
+           "ephemeris_requirement": {"manifest_readback": {"ephemeris_problems": []}},
+           "code": {"adapter_commit": COMMIT, "scorer_commit": COMMIT,
                                                             "files": code_hashes(SIDECAR)},
            "extract_generation_args": args, "extract_generation_command": dx.CANONICAL_COMMAND.format(**args),
            "cohort": {}, "controls": {}, "thresholds": {}, "rerun_policy": "none",
@@ -89,6 +91,15 @@ class TestStage1:
         doc["extract_generation_command"] = "psql -c 'select 1'"
         probs = stage1_problems(doc, tmp_path, dx.CANONICAL_COMMAND)
         assert any("'FROZEN'" in p for p in probs) and any("canonical command" in p for p in probs)
+
+    def test_the_ephemeris_requirement_must_be_read_back_clean(self, tmp_path):
+        doc, _ = make_stage1(tmp_path)
+        doc["ephemeris_requirement"]["manifest_readback"] = {"ephemeris_problems": ["files is empty"]}
+        assert any("ephemeris_problems" in p for p in stage1_problems(doc, tmp_path, dx.CANONICAL_COMMAND))
+        doc["ephemeris_requirement"]["manifest_readback"] = "not read yet"
+        assert any("not the manifest read-back object" in p for p in stage1_problems(doc, tmp_path, dx.CANONICAL_COMMAND))
+        del doc["ephemeris_requirement"]
+        assert any("missing required field 'ephemeris_requirement'" in p for p in stage1_problems(doc, tmp_path, dx.CANONICAL_COMMAND))
 
     def test_missing_required_fields_are_listed(self, tmp_path):
         assert any("missing required field 'cohort'" in p
@@ -159,6 +170,39 @@ ROWS = [("marriage", D(2010, 1, 1), D(2010, 2, 1), D(2010, 1, 10), decimal.Decim
         ("marriage", D(2010, 1, 1), D(2010, 3, 1), D(2010, 1, 20), decimal.Decimal("0.70"), "gain", False, "x", "interval")]
 
 
+SHA = "ab" * 32
+GOOD_EPH = {"backend": "swieph", "swe_version": "2.10.03", "library_sha256": SHA, "platform": "Linux-x86_64",
+            "files": {"sepl_18.se1": SHA, "semo_18.se1": SHA}, "probe_digest": SHA}
+
+
+class TestEphemerisComponent:
+    def test_the_am16_component_passes(self):
+        assert dx.ephemeris_component_problems(GOOD_EPH) == []
+
+    def test_a_manifest_without_the_component_is_not_an_identity(self):
+        assert any("predates AM-16" in p for p in dx.ephemeris_component_problems(None))
+
+    @pytest.mark.parametrize("mut,needle", [
+        ({"files": {}}, "files is empty"), ({"files": {"sepl_18.se1": "short"}}, "no sha256"),
+        ({"files": {"ephemeris.bin": SHA}}, "not a Swiss ephemeris"), ({"backend": "moshier"}, "not 'swieph'"),
+        ({"swe_version": ""}, "swe_version is empty"), ({"library_sha256": "abc"}, "library_sha256 is not a sha256"),
+        ({"probe_digest": None}, "probe_digest is not a sha256"), ({"platform": ""}, "platform is empty"),
+        ({"runtime": {"swisseph_sha256": SHA}}, "outside the AM-16 definition")])
+    def test_each_defect_is_named(self, mut, needle):
+        assert any(needle in p for p in dx.ephemeris_component_problems({**GOOD_EPH, **mut}))
+
+    def test_every_missing_key_is_named(self):
+        for k in dx.EPHEMERIS_KEYS:
+            c = {kk: v for kk, v in GOOD_EPH.items() if kk != k}
+            assert any(f"lacks key {k!r}" in p for p in dx.ephemeris_component_problems(c))
+
+    def test_the_manifest_read_back_carries_the_verdict(self):
+        ok = dx.read_manifest_orb(FakeConn(ROWS, manifest=[("candidate", 5.0, "r", GOOD_EPH)]), "4.1")
+        assert ok["ephemeris_problems"] == [] and ok["ephemeris"] == GOOD_EPH
+        old = dx.read_manifest_orb(FakeConn(ROWS, manifest=[("candidate", 5.0, "r", None)]), "4.1")
+        assert old["ephemeris_problems"] and old["ephemeris"] is None
+
+
 class TestDump:
     def test_sql_is_a_single_read_only_select_with_a_total_order(self):
         assert dx.SQL_DUMP.lstrip().upper().startswith("SELECT")
@@ -186,11 +230,12 @@ class TestDump:
             dx.dump_rows(FakeConn(ROWS, sign=(0, 1)), "3.0", horizon_check=False)      # the check runs for the baseline too
 
     def test_manifest_orb_read_touches_no_window_row(self, capsys):
-        conn = FakeConn(ROWS, manifest=[("candidate", 5.0, "M-1 fallback no-box x 5.0 deg (unratified)")])
+        conn = FakeConn(ROWS, manifest=[("candidate", 5.0, "M-1 fallback no-box x 5.0 deg (unratified)", GOOD_EPH)])
         rc = dx.main(["--generation", "4.1", "--read-manifest-orb"], conn_factory=lambda: conn)
         out = json.loads(capsys.readouterr().out)
         assert rc == 0 and out["orb_max_deg"] == 5.0 and out["orb_ruling"].endswith("(unratified)")
         assert all("kala_gochara_windows" not in sql for sql, _ in conn.executed)
+        assert out["ephemeris_problems"] == []
         assert dx.main(["--generation", "5.0", "--read-manifest-orb"], conn_factory=lambda: conn) == 2
         with pytest.raises(RuntimeError, match="exactly one manifest"):
             dx.read_manifest_orb(FakeConn(ROWS, manifest=[]), "4.1")
