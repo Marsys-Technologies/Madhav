@@ -105,7 +105,10 @@ class KaGrahaSancaraWriter(WriterBase):
     # ── Self-test implementation ──────────────────────────────────────────────
 
     def _run_selftest(self, ctx: ContextSpec) -> tuple[str, dict]:
-        from services.ka_graha_sancara.engine import get_ephemeris, _EphemerisCache
+        # NODE-SERIES step 1 (P8): the PINNED get_ephemeris (TRUE node series, loud on an ambiguous or holed one);
+        # services/ka_graha_sancara/engine.py itself stays byte-identical (a one-line edit moves ~43 writer digests).
+        from services.ka_graha_sancara.engine import _EphemerisCache
+        from services.ka_graha_sancara.engine_pinned import get_ephemeris
 
         checks: list[dict] = []
         errors: list[str] = []

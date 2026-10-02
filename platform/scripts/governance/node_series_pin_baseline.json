@@ -172,7 +172,7 @@
         219
       ],
       "owner": "Suvarna",
-      "note": "P8 PATH-A: last-row-wins body_map over an arbitrary tie order (Rahu/Ketu TRUE or MEAN by row order); feeds ph muhurta (P9). Step 1: NULL-safe pin to 'true' (PATH-A == PATH-B TRUE); switch to MEAN only together with PATH-B in step 3."
+      "note": "P8 PATH-A: DEAD UNPINNED COPY (not retired: it still exists and is still unpinned). The pinned copy is services/ka_graha_sancara/engine_pinned.py (_read_from_bg_ephemeris + get_ephemeris, NODE_SERIES_PREDICATE, NodeSeriesError on two rows or a node hole, raised outside the swallow-to-None try); brahmagyan/phala/muhurta.py (P9, with a narrow `except NodeSeriesError: raise`) and the ka_graha_sancara writer now call it. This file is kept byte-identical (a test pins its sha256) because editing it moves ~43 writer digests (13 ga_*, 23 bo_*, 7 ka_*); delete the dead copy at the next planned digest move. Last-row-wins body_map over an arbitrary tie order is what made it unsafe: Rahu/Ketu TRUE or MEAN by row order. MEAN only together with PATH-B in step 3."
     },
     {
       "file": "platform/python-sidecar/services/ka_kshetra/stage0_kinematics.py",

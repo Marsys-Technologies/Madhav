@@ -381,6 +381,20 @@ S_CALLS = {
 }
 
 
+def _sancara(module: str):
+    """P8 driver: PATH-A `get_ephemeris` of `module` (the pinned copy, or the dead unpinned `engine`) at one instant."""
+    def run(ctx: Ctx):
+        import dataclasses
+        import importlib
+        from datetime import timezone
+
+        res = importlib.import_module(module).get_ephemeris(
+            datetime(2026, 7, 12, 6, 0, tzinfo=timezone(timedelta(hours=5, minutes=30))), ayanamsha="lahiri", db_conn=ctx.pg3)
+        assert res.source == "bg_ephemeris"                                # PATH-A, not the live fallback
+        return {"source": res.source, "grahas": {k: dataclasses.asdict(v) for k, v in res.grahas.items()}}
+    return run
+
+
 def _driven() -> list[Reader]:
     out: list[Reader] = []
     for label, call in S_CALLS.items():
@@ -399,6 +413,16 @@ def _driven() -> list[Reader]:
         return kota_writer._fetch_daily_nak_idx_by_graha(ctx.pg3, DAYS[0], DAYS[-1], 23.9)
 
     out.append(Reader("P4", "P4 ka_kota_chakra._fetch_daily_nak_idx_by_graha", SAME, kota, when_true_missing=LOUD))
+
+    out.append(Reader("P8", "P8 ka_graha_sancara.engine_pinned PATH-A get_ephemeris", SAME,
+                      _sancara("services.ka_graha_sancara.engine_pinned"), when_true_missing=LOUD))
+
+    def muhurta_signs(ctx: Ctx):
+        from brahmagyan.phala import muhurta
+        return muhurta._read_transiting_sign_ids(datetime(2026, 7, 12, 6, 0), ctx.dsn)
+
+    out.append(Reader("P9", "P9 phala.muhurta._read_transiting_sign_ids (through P8)", SAME, muhurta_signs,
+                      when_true_missing=LOUD))
     return out
 
 
@@ -407,16 +431,19 @@ def _legacy() -> list[Reader]:
            "it must differ once a MEAN set exists, which proves this harness detects the defect")
     # calls on a non-node body (Venus, Saturn) never see a node row: the legacy copy is correct for them, so they are not
     # xfail rows (their pinned twins above still assert the same result)
-    return [Reader(label.split()[0], "LEGACY " + label, LEGACY, _mk(legacy, call), why)
+    rows = [Reader(label.split()[0], "LEGACY " + label, LEGACY, _mk(legacy, call), why)
             for label, call in S_CALLS.items() if not label.endswith(("Venus window", "retrograde Saturn"))]
+    rows.append(Reader("P8", "LEGACY P8 ka_graha_sancara.engine_pinned PATH-A get_ephemeris", LEGACY,
+                       _sancara("services.ka_graha_sancara.engine"),
+                       "dead unpinned copy in services/ka_graha_sancara/engine.py (kept byte-identical: a one-line edit moves ~43 writer "
+                       "digests); last-row-wins body_map, so it must differ once a MEAN set exists"))
+    return rows
 
 
 def _not_driven() -> list[Reader]:
     nd = lambda rid, reason: Reader(rid, rid, NOT_DRIVEN, None, reason)  # noqa: E731
     return [
         nd("P3", "ka_kshetra stage 0 (stage0_kinematics.fetch_ephemeris_series): travels with the I-10 digest move (PR E, prepared last)"),
-        nd("P8", "ka_graha_sancara engine PATH-A: driven by PR C of the NODE-SERIES step-1 stack"),
-        nd("P9", "phala/muhurta grading reads through P8 (get_ephemeris): driven with PR C"),
         nd("L1-e", "get_av_transit_gating is a TypeScript tool over HTTP /planet_transit (= S2, driven above); its INPUT guard is PR D"),
         nd("T3", "pact_query TRIGGER (TypeScript) reaches the table only through HTTP /planet_transit = S2, driven above"),
         nd("S17", "migration 606 integrity probe: an applied migration, replaced by migration 1228 (not touched here)"),

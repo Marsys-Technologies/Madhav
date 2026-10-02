@@ -698,7 +698,8 @@ def _natal_moon_sign_id(
 def _transiting_sign_ids(window_start: datetime, db_url: str) -> Optional[dict[str, int]]:
     """{graha_lower: sign_id 1..12} for the window's date, or None if unavailable.
 
-    Delegates to `services.ka_graha_sancara.engine.get_ephemeris` — the shared
+    Delegates to `services.ka_graha_sancara.engine_pinned.get_ephemeris` (the node-series-pinned
+    copy of `engine.get_ephemeris`) — the shared
     helper whose PATH-A reads `ephemeris_daily` (bg_ephemeris). A tuple-row
     connection is opened deliberately: that helper indexes rows positionally
     (`row[0]`), so the module-default `dict_row` factory used elsewhere in this
@@ -726,15 +727,23 @@ def _read_transiting_sign_ids(
     """Uncached read behind `_transiting_sign_ids` (split out so a test can
     exercise the read and the caching separately)."""
     try:
-        from services.ka_graha_sancara.engine import get_ephemeris
+        # NODE-SERIES step 1 (P9): the PINNED copy of `get_ephemeris` (engine.py itself stays byte-identical, see
+        # engine_pinned.py): PATH-A reads the TRUE Rahu/Ketu series only and raises NodeSeriesError on an ambiguous or holed one.
+        from services.ka_graha_sancara.engine_pinned import get_ephemeris
+        from services.w2g.node_series import NodeSeriesError
     except Exception as exc:  # pragma: no cover - import guard
-        logger.debug("ka_graha_sancara.engine unavailable: %s", exc)
+        logger.debug("ka_graha_sancara.engine_pinned unavailable: %s", exc)
         return None
     try:
         with psycopg.connect(
             db_url, connect_timeout=_TRANSIT_CONNECT_TIMEOUT_S
         ) as conn:
             result = get_ephemeris(window_start, ayanamsha="lahiri", db_conn=conn)
+    except NodeSeriesError:
+        # A node-series refusal must never degrade into a silently omitted gochara grade ("ephemeris_daily_unavailable_for_date"):
+        # CLAUDE.md section N.7 item 6 (an honest null beats an invented judgment, but a REFUSAL is not a null). Every other error
+        # keeps the designed honest-unavailable None below.
+        raise
     except Exception as exc:
         logger.debug("get_ephemeris failed for %s: %s", window_start, exc)
         return None
