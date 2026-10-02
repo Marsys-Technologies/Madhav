@@ -60,6 +60,7 @@ from brahmagyan.verification_tiers import (
     emit_tier,
 )
 from ga_writers._idempotency import replace_prior_chart_facts
+from ga_writers._row_uniqueness import assert_unique_natural_keys
 from ga_writers._telemetry import update_asset_throughput
 from pipeline.orchestrator.birth_params import resolve_birth_params
 from ga_writers.ga_positions_writer import (
@@ -868,14 +869,22 @@ def _build_shadbala_rows(
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
     verif_status: str,
+    emit_invariant: bool = True,
 ) -> list[dict[str, Any]]:
-    """Shadbala / ishta-kashta / vimsopaka rows.
+    """Shadbala / ishta-kashta / vimsopaka rows for ONE ayanamsha batch.
 
     `verif_status` is the tier `_verify_shadbala` EARNED. It is applied ONLY to the rows that
     verifier actually examines (graha_shadbala_{sthana,dig,kala,cheshta,drik,total} `rupa` of the
     seven classical grahas, source `compute_shadbala`). Every other row (naisargika, required
     rupa, ratio, ishta/kashta, vimsopaka, nodal extension rows) carries `UNVERIFIED_DEFAULT`
     (Q03 / SS N-62: a verdict computed over a subset is never broadcast to the rest).
+
+    ``emit_invariant``: the ayanamsha-invariant rows (``ayanamsha_id='INVARIANT'``: naisargika
+    bala and the classical required-rupa minimum) are identical in every ayanamsha batch of a
+    build, so ``build_ga_strength`` asks for them in the FIRST batch only.  Emitting them in each
+    of the five batches reported 64 surplus rows (16 natural keys x 5 emissions) that the upsert
+    silently collapsed -- see ``ga_writers/_row_uniqueness.py``.  Defaults to True so a direct
+    single-batch call still returns the complete row set.
     """
     rows = []
     category_map = {
@@ -895,6 +904,8 @@ def _build_shadbala_rows(
 
         # Naisargika bala is ayanamsha-invariant
         for sub_key, category in category_map.items():
+            if sub_key == "naisargika" and not emit_invariant:
+                continue  # ayanamsha-invariant: emitted once per build (first batch)
             value = sb.get(sub_key, 0.0)
             eff_ayan = "INVARIANT" if sub_key == "naisargika" else ayanamsha_id
             verif = verif_status if sub_key in _SHADBALA_EXAMINED_SUBS else UNVERIFIED_DEFAULT
@@ -925,9 +936,12 @@ def _build_shadbala_rows(
 
         # Required rupa for total
         req = required_rupa_for(graha_name)
+        # fact_id is hashed from the SAME ayanamsha the row is stored under ('INVARIANT'): it
+        # used to hash the batch's live ayanamsha, so one stored row carried a different
+        # fact_id per ayanamsha batch (5 identities for 1 row; the last write won).
         fid_req = _fact_id("graha_shadbala_total", subject, "required_rupa",
-                            chart_id, ayanamsha_id, build_id)
-        rows.append({
+                            chart_id, "INVARIANT", build_id)
+        req_row = {
             "fact_id": fid_req,
             "chart_id": chart_id,
             "ayanamsha_id": "INVARIANT",  # Required is a classical constant
@@ -949,7 +963,9 @@ def _build_shadbala_rows(
             "verification_pass_status": UNVERIFIED_DEFAULT,
             "engine_version": eng_ver,
             "computed_at": computed_at,
-        })
+        }
+        if emit_invariant:
+            rows.append(req_row)
 
         # CR-18: achieved/required shadbala ratio. Bare rupas were served without
         # the classical normative band — consumers had to supply BPHS minimums from
@@ -1061,6 +1077,8 @@ def _build_shadbala_rows(
         if not sb:
             continue  # node not in chart output (degenerate case)
         for sub_key, category in category_map.items():
+            if sub_key == "naisargika" and not emit_invariant:
+                continue  # ayanamsha-invariant: emitted once per build (first batch)
             value = sb.get(sub_key, 0.0)
             eff_ayan = "INVARIANT" if sub_key == "naisargika" else ayanamsha_id
             if sub_key in NODAL_UNDEFINED_SUBS:
@@ -1918,8 +1936,13 @@ def build_ga_strength(
         chart_id, build_id,
     )
 
+    # Natural keys emitted so far in THIS build, across all ayanamsha batches: a repeat (the
+    # ayanamsha-invariant rows were once re-emitted per batch) fails here, named, instead of as an
+    # unexplained rows-reported-vs-captured mismatch at partition completion.
+    seen_natural_keys: dict[tuple, str] = {}
+
     with (_conn() if owns_conn else nullcontext(conn)) as conn:
-        for canonical_id, adapter_id in CANONICAL_AYANAMSHAS.items():
+        for ayanamsha_index, (canonical_id, adapter_id) in enumerate(CANONICAL_AYANAMSHAS.items()):
             logger.info("[ga_strength_writer] Computing ayanamsha=%s", canonical_id)
 
             chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)
@@ -1989,6 +2012,7 @@ def build_ga_strength(
                 shadbala, ishta_kashta, vimsopaka,
                 chart_id, build_id, canonical_id,
                 computed_at, eng_ver, sb_verif,
+                emit_invariant=(ayanamsha_index == 0),
             ))
             all_rows.extend(_build_ashtakavarga_rows(
                 bav, av_pinda, chart_id, build_id, canonical_id,
@@ -2032,6 +2056,9 @@ def build_ga_strength(
             ))
 
             # ── Insert ──────────────────────────────────────────────────
+            assert_unique_natural_keys(
+                all_rows, seen_natural_keys, context=f"ga_strength[{canonical_id}]",
+            )
             cf_count = _insert_chart_facts_rows(conn, all_rows)
 
             summary["ayanamshas"][canonical_id] = {

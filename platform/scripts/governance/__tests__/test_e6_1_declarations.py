@@ -1778,7 +1778,7 @@ CITATION_DECISIONS = json.loads(r"""
    ],
    [
     "platform/python-sidecar/ga_writers/ga_condition_writer.py",
-    1544,
+    1554,
     "f\"{graha} lajjitadi avastha "
    ]
   ],
@@ -2037,12 +2037,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-    945,
+    959,
     "f\"{graha_name} required shad"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-    980,
+    996,
     "f\"{graha_name} shadbala rati"
    ]
   ],
@@ -2075,17 +2075,17 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-    1371,
+    1390,
     "citation_human=f\"House {h} r"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-    1770,
+    1789,
     "f\"House {h} strength classif"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-    4836,
+    4855,
     "f\"{g_name} effective dignity"
    ]
   ],
@@ -2324,16 +2324,16 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_karanajala", _WR + "bo_karanajala.py", 708, "sign_num"),
             ("bo_upaya", _WR + "bo_upaya.py", 1798, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 571, "verdict.valence"),
-            ("ga_strength", _GW + "ga_strength_writer.py", 980, "ratio"),
+            ("ga_strength", _GW + "ga_strength_writer.py", 996, "ratio"),
             ("ga_panchanga", _GW + "ga_panchanga_writer.py", 371, "tithi_num"),
-            ("ga_structural", _GW + "ga_structural_writer.py", 4836, "effective_dignity_score")):
+            ("ga_structural", _GW + "ga_structural_writer.py", 4855, "effective_dignity_score")):
         sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
         assert sites, (asset, path, ln)
         got = {e for x in ast.walk(ast.parse(sites[0][3], mode="eval")) if isinstance(x, ast.JoinedStr)
                for e, _ in nw.fstring_interpolations(x)}
         assert expr in got, (asset, ln, sorted(got))
     # numbers shaped into the text by a format spec (ga_structural :4660, ga_strength :886)
-    for path, ln in ((_GW + "ga_structural_writer.py", 4836), (_GW + "ga_strength_writer.py", 980)):
+    for path, ln in ((_GW + "ga_structural_writer.py", 4855), (_GW + "ga_strength_writer.py", 996)):
         site = next(x for x in nw.citation_sites(_ctree(path)) if x[0] == ln)
         specs = [sp for x in ast.walk(ast.parse(site[3], mode="eval")) if isinstance(x, ast.JoinedStr)
                  for _, sp in nw.fstring_interpolations(x)]

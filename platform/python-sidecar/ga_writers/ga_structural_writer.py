@@ -943,6 +943,25 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
 
 # ── Chart state extractor ─────────────────────────────────────────────────────
 
+def _ascendant_longitude(ascendant: dict[str, Any]) -> float:
+    """Return the ascendant's sidereal longitude from the adapter's output.
+
+    ``pyjhora_adapter.houses.compute_ascendant`` carries the ascendant longitude
+    under ``longitude_deg`` ONLY (the L2.5 key every other L1 consumer reads);
+    the graha rows carry both ``longitude_deg`` and ``longitude``.  This writer
+    historically read ``ascendant["longitude"]`` -- absent on real adapter
+    output -- which (a) silently defaulted LAGNA / the bhava-chalit cusps to 0.0
+    before the completeness validator, and (b) after the validator, made the
+    build unable to start.  Read the L2.5 key; accept the legacy alias; never
+    default.
+    """
+    for key in ("longitude_deg", "longitude"):
+        raw = ascendant.get(key)
+        if raw is not None:
+            return float(raw)
+    raise RuntimeError("ga_structural: ascendant 'longitude_deg' missing")
+
+
 def _validate_chart_output_complete(chart_output: dict[str, Any]) -> None:
     """Reject incomplete numerical state before any structural family can run.
 
@@ -953,10 +972,10 @@ def _validate_chart_output_complete(chart_output: dict[str, Any]) -> None:
     ascendant = chart_output.get("ascendant")
     if not isinstance(ascendant, dict):
         raise RuntimeError("ga_structural: ascendant object missing")
-    for key in ("sign", "sign_id", "longitude"):
+    for key in ("sign", "sign_id"):
         if ascendant.get(key) is None:
             raise RuntimeError(f"ga_structural: ascendant {key!r} missing")
-    asc_longitude = float(ascendant["longitude"])
+    asc_longitude = _ascendant_longitude(ascendant)
     if not math.isfinite(asc_longitude) or not 0 <= asc_longitude < 360:
         raise RuntimeError("ga_structural: ascendant longitude is non-finite or outside [0, 360)")
     if not 1 <= int(ascendant["sign_id"]) <= 12:
@@ -994,7 +1013,7 @@ def _extract_chart_state(chart_output: dict[str, Any]) -> dict[str, Any]:
     # Lagna
     lagna_sign = ascendant["sign"]
     lagna_sign_num = ascendant["sign_id"]
-    _lagna_long = float(ascendant["longitude"])
+    _lagna_long = _ascendant_longitude(ascendant)
     state["LAGNA"] = {
         "sign": lagna_sign, "sign_num": int(lagna_sign_num),
         "house": 1, "longitude": _lagna_long, "degree": _lagna_long % 30.0,
@@ -8172,7 +8191,7 @@ def _build_bhava_chalit_divergence_rows(
     rows = []
 
     asc = chart_output.get("ascendant", {})
-    asc_long = float(asc.get("longitude", 0.0))
+    asc_long = _ascendant_longitude(asc)
 
     # 12 equal-bhava cusps: cusp k = (asc_long + (k-1)*30) % 360
     cusp_starts = [(asc_long + i * 30.0) % 360.0 for i in range(12)]
