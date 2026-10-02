@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "f4d119026cb169d937230d01c0832e085a8431a3d060c42efac5f507b8e41a35",
+  "content_sha256": "fc1b8f27a762bb3d72cd8c9493b51b00d46f70b0c4fcf2657171852ce7463a61",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20967,7 +20967,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-02T20:15:21.000Z",
+  "generated_at": "2026-10-02T20:52:19.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -22433,5 +22433,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "75dbfd2bc399ef38d4737828562ffa81cf29fce9"
+  "source_revision": "411c0549195ec761303133c36900fc8a0b66b138"
 }
