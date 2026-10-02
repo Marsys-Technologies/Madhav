@@ -342,6 +342,13 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
 
     # R10-3: protection FIRST — nothing that feeds an attestation is read before the chart and global locks are held
     take_locks(conn, chart_id)
+    # R11-1: the GENERATION-WIDE output check — nothing is verified, let alone persisted, while any record/window/membership
+    # sits outside the generation's permitted output grains or any result in ANY grain breaks the manifest's policy
+    from .result_policy import manifest_policy as _mp
+    from . import window_gate as _wg
+    wide = _wg.generation_output_problems(conn, chart_id, generation, _mp(conn, chart_id, generation))
+    if wide:
+        raise VerificationDisagrees("generation_output", "; ".join(wide))
     header = _inventory_header(conn, chart_id, generation, event_class)
     if header is None or header[2] is None:
         raise VerificationRefused("incomplete_build", f"{event_class}: no finalised inventory")

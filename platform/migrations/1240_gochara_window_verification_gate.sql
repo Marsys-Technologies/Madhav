@@ -417,27 +417,54 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
   WHERE v.chart_id = p_chart AND v.generation = p_generation
     AND v.policy_version IS DISTINCT FROM (SELECT pol FROM mp)
   UNION ALL
-  SELECT e.event_class, e.path_id, e.rule_version, 'window_policy_differs_from_manifest'::text,
+  -- R11-1: GENERATION-WIDE — every window of the generation, whatever grain it sits in (an excluded / superseded / held
+  -- version's window is not exempt because no verification covers it)
+  SELECT w.event_class, w.path_id, w.rule_version, 'window_policy_differs_from_manifest'::text,
          (count(*) || ' window(s) were drafted under a policy other than the manifest''s')::text
-  FROM expected e
-  JOIN public.ka_gochara_eval_window w
-    ON (w.chart_id, w.generation, w.event_class, w.path_id, w.rule_version)
-     = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)
-  WHERE w.qualification IS NOT NULL AND (w.qualification ->> 'policy') IS DISTINCT FROM (SELECT pol FROM mp)
-  GROUP BY e.event_class, e.path_id, e.rule_version
+  FROM public.ka_gochara_eval_window w
+  WHERE w.chart_id = p_chart AND w.generation = p_generation
+    AND w.qualification IS NOT NULL AND (w.qualification ->> 'policy') IS DISTINCT FROM (SELECT pol FROM mp)
+  GROUP BY w.event_class, w.path_id, w.rule_version
   UNION ALL
-  -- the all-NULL policy: a window that carries ANY number (or a peak, or a valence other than unqualified) is refused
-  SELECT e.event_class, e.path_id, e.rule_version, 'window_carries_a_number_under_all_null_policy'::text,
+  -- the all-NULL policy: a window that carries ANY number (or a peak, or a valence other than unqualified) is refused —
+  -- in EVERY grain of the generation
+  SELECT w.event_class, w.path_id, w.rule_version, 'window_carries_a_number_under_all_null_policy'::text,
          (count(*) || ' window(s) carry a numerical result or peak while all_null_candidate/1 is in force')::text
-  FROM expected e
-  JOIN public.ka_gochara_eval_window w
-    ON (w.chart_id, w.generation, w.event_class, w.path_id, w.rule_version)
-     = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)
-  WHERE (SELECT pol FROM mp) = 'all_null_candidate/1'
+  FROM public.ka_gochara_eval_window w
+  WHERE w.chart_id = p_chart AND w.generation = p_generation
+    AND (SELECT pol FROM mp) = 'all_null_candidate/1'
     AND (w.peak_instant IS NOT NULL OR w.score IS NOT NULL OR w.evidence_for IS NOT NULL
          OR w.evidence_against IS NOT NULL OR w.severity IS NOT NULL OR w.objective_value IS NOT NULL
          OR w.outcome_valence_for_native IS DISTINCT FROM 'unqualified')
-  GROUP BY e.event_class, e.path_id, e.rule_version
+  GROUP BY w.event_class, w.path_id, w.rule_version
+  UNION ALL
+  -- R11-1: the generation's PERMITTED OUTPUT GRAINS are exactly the grains its inventory INCLUDES on a windowed path (P1–P4,
+  -- the `expected` CTE). A relationship record, a window or a membership link in ANY other (class, path, version) — a
+  -- sealed-but-superseded version, a held path (P5), a class with no pin — is output nothing verified and nothing digests
+  -- (it may reuse an existing contact, so no contact/inventory digest moves): refused outright.
+  SELECT r.event_class, r.path_id, r.rule_version, 'output_grain_not_permitted'::text,
+         (count(*) || ' relationship record(s) sit in a grain this generation''s inventory does not include')::text
+  FROM public.ka_gochara_relationship_record r
+  WHERE r.chart_id = p_chart AND r.generation = p_generation
+    AND NOT EXISTS (SELECT 1 FROM expected e WHERE (e.event_class, e.path_id, e.rule_version)
+                                                  = (r.event_class, r.path_id, r.rule_version))
+  GROUP BY r.event_class, r.path_id, r.rule_version
+  UNION ALL
+  SELECT w.event_class, w.path_id, w.rule_version, 'output_grain_not_permitted'::text,
+         (count(*) || ' window(s) sit in a grain this generation''s inventory does not include')::text
+  FROM public.ka_gochara_eval_window w
+  WHERE w.chart_id = p_chart AND w.generation = p_generation
+    AND NOT EXISTS (SELECT 1 FROM expected e WHERE (e.event_class, e.path_id, e.rule_version)
+                                                  = (w.event_class, w.path_id, w.rule_version))
+  GROUP BY w.event_class, w.path_id, w.rule_version
+  UNION ALL
+  SELECT l.event_class, l.path_id, l.rule_version, 'output_grain_not_permitted'::text,
+         (count(*) || ' window-membership link(s) sit in a grain this generation''s inventory does not include')::text
+  FROM public.ka_gochara_eval_window_record l
+  WHERE l.chart_id = p_chart AND l.generation = p_generation
+    AND NOT EXISTS (SELECT 1 FROM expected e WHERE (e.event_class, e.path_id, e.rule_version)
+                                                  = (l.event_class, l.path_id, l.rule_version))
+  GROUP BY l.event_class, l.path_id, l.rule_version
   UNION ALL
   SELECT v.event_class, v.path_id, v.rule_version, 'window_verification_field_coverage_short'::text,
          array_to_string(ARRAY(SELECT f FROM unnest((SELECT f FROM required_fields)) f
@@ -542,18 +569,16 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
           SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(p.input_generation_vector -> 'implementation'))
           FROM public.kala_gochara_publication p WHERE p.chart_id = p_chart AND p.generation = p_generation)
   UNION ALL
-  -- R10-2: the manifest's result policy governs EVERY record result field. No independent derivation of a record number
+  -- R10-2 / R11-1: the manifest's result policy governs EVERY record result field of the GENERATION — every record in every
+  -- grain, included or not, independently of the expected-verification CTE. No independent derivation of a record number
   -- exists under either known policy, so a record carries NULL evidence and severity and the `unqualified` valence
-  SELECT e.event_class, e.path_id, e.rule_version, 'record_result_not_policy'::text,
-         (x.n || ' relationship record(s) carry a numeric evidence/severity or a qualified valence under the manifest policy')::text
-  FROM expected e
-  CROSS JOIN LATERAL (
-    SELECT count(*) AS n FROM public.ka_gochara_relationship_record r
-    WHERE (r.chart_id, r.generation, r.event_class, r.path_id, r.rule_version)
-        = (p_chart, p_generation, e.event_class, e.path_id, e.rule_version)
-      AND (r.evidence_for_occurrence IS NOT NULL OR r.evidence_against_occurrence IS NOT NULL
-           OR r.severity IS NOT NULL OR r.outcome_valence_for_native <> 'unqualified')) x
-  WHERE x.n > 0
+  SELECT r.event_class, r.path_id, r.rule_version, 'record_result_not_policy'::text,
+         (count(*) || ' relationship record(s) carry a numeric evidence/severity or a qualified valence under the manifest policy')::text
+  FROM public.ka_gochara_relationship_record r
+  WHERE r.chart_id = p_chart AND r.generation = p_generation
+    AND (r.evidence_for_occurrence IS NOT NULL OR r.evidence_against_occurrence IS NOT NULL
+         OR r.severity IS NOT NULL OR r.outcome_valence_for_native <> 'unqualified')
+  GROUP BY r.event_class, r.path_id, r.rule_version
   UNION ALL
   SELECT e.event_class, e.path_id, e.rule_version, 'window_provenance_missing'::text,
          (count(*) || ' stored window(s) carry no objective/qualification provenance')::text
