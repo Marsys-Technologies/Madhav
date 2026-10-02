@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "537f6d57a9a5b983038c7582ac08374bebc8b6a008145f475e1a6a7da5e394cf",
+  "content_sha256": "401ccb99349d74579a53801ff0e538bb5529eb72e949e53a098b63fd70d2ccf6",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -12657,7 +12657,7 @@
         },
         "disposition": "relational_digest_current_source_intent",
         "implementation_refs": [
-          "relation:kala_gochara_windows_v2"
+          "relation:kala_gochara_windows"
         ],
         "known_gaps": [
           "disposable_schema_and_key_validation_not_replayed_this_wave",
@@ -20966,7 +20966,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-02T00:00:00.000Z",
+  "generated_at": "2026-10-02T00:09:10.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21365,7 +21365,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "7aba6aa581b1f980750edf1fdd49d5e9e9378126a055ca685151492b55fc7ec7"
+        "sha256": "4ccda99b103617a5da34f941cdc23459ce0e64e075f1e020fa72ef054e9430a9"
       },
       {
         "id": "public_registrar_source_set",
@@ -21533,7 +21533,7 @@
           },
           {
             "path": "platform-mcp/src/tools/registry_bridge.ts",
-            "sha256": "92c8bf52f847c5567ad501bcc3c199141468f0b55749bd4c9c084668e91660d3"
+            "sha256": "7bedb34b8ff82443da293ef9a3a48c0dc2f89a6b5aed9aed3f4a9ed65ab574c0"
           },
           {
             "path": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
@@ -21569,7 +21569,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "812ebeca68284e323e2165594a63125d03d428779d07934f4754cced5c465f23"
+        "sha256": "da94f67d3f3e874167452050a3d64b01ce9014bcc8c7fd00bb2309a1842c51d4"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -21583,7 +21583,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 203,
+        "member_count": 204,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -21619,7 +21619,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/index.ts",
-            "sha256": "dfbe9856bfc456fbd9931c27b0d8630a30c3c5145a043f990c7fc5d548165db9"
+            "sha256": "61bd72d0fb3fcb7ee6dd75799b7561b81434558b9f46504f4ddb18ffe9f74545"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/compiler.ts",
@@ -21874,6 +21874,10 @@
             "sha256": "0054e2f01930a8174778a661d25b68811c423ca16d50d97b1af3feab86e015d0"
           },
           {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/ayurdaya_unreduced_base.ts",
+            "sha256": "afa6725b35ee5ff9a6fa02d57d03e359cd412bf5fb6488fdcba33c766de620ab"
+          },
+          {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_aliases.ts",
             "sha256": "b4549bdace0f67e11724740f155fb200d402a97887fdab7852cf1feb3b29bd5f"
           },
@@ -21907,7 +21911,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts",
-            "sha256": "f2eb9c4f51b89aeaa008aa471b7b77de34619528bedf8576c039eab133851713"
+            "sha256": "3f118fe8ab472438bab4b90251ace12a8845595c897f5c32d7bc1024af93df90"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts",
@@ -22127,7 +22131,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
-            "sha256": "a00747d3fd8c98fd3b381a33d7b45c7dff9f3087f39d49129250b3ee96b90190"
+            "sha256": "5c27c1acfe4b161f6c570de1e8571113320c01c316997a1ed48ec253894f4cc4"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts",
@@ -22323,7 +22327,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
-            "sha256": "ac9290c8582fd3dcc26869323c332b4c2c1bae40cc272a537e2023f8f5761ce3"
+            "sha256": "5a447a1ef507b43b883a4400ae540b6c7ef9e8bb4ba419f6c6d470eae19be73f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
@@ -22399,7 +22403,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "ba4459c089babc07cd235c64c961a8194bbf667bf35e8ef2170fdf94ddd41c2f"
+        "sha256": "88e21a601c801b05afc6454a7dc5a637e44e5bf18ccc195a8ab42edeaac72378"
       },
       {
         "id": "service_effect_contracts",
@@ -22424,5 +22428,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "aa0a4fe66cee1e4cd8557961b78c508d0c3c6ddb"
+  "source_revision": "36e2a5f6c2006e6c5dba29b1f86d30839f385c77"
 }
