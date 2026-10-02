@@ -51,7 +51,7 @@ if [ -f "$d/psql.rc" ]; then exit "$(cat "$d/psql.rc")"; fi
 exit 0
 '''
 
-PGENV_OK = "export PGHOST=127.0.0.1\nexport PGUSER=suvarna_reader\nexport PGDATABASE=amjis\nexport PGPASSWORD=sekrit-must-never-print\n"
+PGENV_OK = "export PGHOST=127.0.0.1\nexport PGUSER=suvarna_reader\nexport PGDATABASE=amjis\nexport GATE_CANARY_VALUE=sekrit-must-never-print\n"
 
 
 def runs(n, status="completed", start=1000):
