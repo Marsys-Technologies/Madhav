@@ -158,6 +158,17 @@ def _patch_daily_writer_dependencies(monkeypatch, module, daily_by_body):
         monkeypatch.setattr(module, "_fetch_latta_rules", lambda *_: {})
         monkeypatch.setattr(module, "_fetch_daily_sidereal_by_body", lambda *_: daily_by_body)
         monkeypatch.setattr(module, "_fetch_school_tagged_vedha_pair", lambda *_: (1, "fixture-school"))
+    if module is moorti or module is vedha:
+        # Step 3 §4: the fingerprint's node-series and L1 components — stubbed
+        # (their live-DB behaviour is covered by the step-3 fingerprint suite);
+        # these tests assert delete/insert ORDERING on a fake conn that cannot
+        # answer the digest SQL.
+        monkeypatch.setattr(
+            module, "node_series_identity",
+            lambda conn: {"mode": "true", "n_rows": 2, "digest": "d" * 64})
+        monkeypatch.setattr(
+            module, "l1_operand_identity",
+            lambda conn, cid, ay, ops: {"operands": [], "digest": "e" * 64})
     monkeypatch.setattr(module, "_compute_ayanamsha_offset", lambda *_: 0.0)
 
 

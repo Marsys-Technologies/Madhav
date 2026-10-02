@@ -39,6 +39,9 @@ MIGRATION_1082 = (
 
 CHART_ID = "11111111-2222-3333-4444-555555555555"
 JANMA_FACT_ID = "wp9-janma-moon-fact"
+# the L1 build the janma fact was produced by (step 3 §4: folded into the overlay
+# fingerprints — a different build_id must read stale)
+JANMA_BUILD_ID = "wp9-l1-build-1"
 # Janma Moon: longitude_sidereal 5.0 -> sign_idx 0 (Aries), nak_idx 0 (Ashwini).
 JANMA_MOON_LON = 5.0
 
@@ -186,15 +189,20 @@ CREATE TABLE chart_facts (
   fact_category TEXT NOT NULL,
   fact_subject TEXT NOT NULL,
   fact_key TEXT NOT NULL,
-  fact_value_num DOUBLE PRECISION
+  fact_value_num DOUBLE PRECISION,
+  build_id TEXT
 );
 
 CREATE TABLE ephemeris_daily (
   date DATE NOT NULL,
   body TEXT NOT NULL,
   ayanamsha_id TEXT NOT NULL,
-  tropical_longitude DOUBLE PRECISION NOT NULL,
-  speed_dps DOUBLE PRECISION,
+  -- NUMERIC, as in production: the L0-owned node_series_digest_v1 SQL
+  -- (step 3 §4) rounds these columns with round(., 9), which exists for
+  -- numeric only. The writers float() every value they read, so the type
+  -- change is invisible to them.
+  tropical_longitude NUMERIC NOT NULL,
+  speed_dps NUMERIC,
   is_retrograde BOOLEAN NOT NULL DEFAULT FALSE,
   -- NULL for the seven non-node bodies, 'true'/'mean' for Rahu/Ketu (migration 1076). The key
   -- mirrors the planned L0 step-2 shape, so a MEAN row set can sit beside the TRUE one.
@@ -383,9 +391,9 @@ def _seed(conn: psycopg.Connection) -> None:
     with conn.cursor() as cur:
         cur.execute(
             "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id, fact_category, "
-            "fact_subject, fact_key, fact_value_num) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            "fact_subject, fact_key, fact_value_num, build_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
             (JANMA_FACT_ID, CHART_ID, "lahiri_chitrapaksha", "graha_position",
-             "MOON", "longitude_sidereal", JANMA_MOON_LON),
+             "MOON", "longitude_sidereal", JANMA_MOON_LON, JANMA_BUILD_ID),
         )
         cur.executemany(
             "INSERT INTO bg_transit_rules (rule_type, graha, primary_house, vedha_house, "

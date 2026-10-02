@@ -128,7 +128,20 @@ CREATE TABLE chart_facts (
   fact_subject TEXT NOT NULL,
   fact_key TEXT NOT NULL,
   fact_value_text TEXT,
-  fact_value_num DOUBLE PRECISION
+  fact_value_num DOUBLE PRECISION,
+  build_id TEXT
+);
+DROP TABLE IF EXISTS ephemeris_daily CASCADE;
+CREATE TABLE ephemeris_daily (
+  date DATE NOT NULL,
+  body TEXT NOT NULL,
+  ayanamsha_id TEXT NOT NULL,
+  -- NUMERIC, as in production: the L0-owned node_series_digest_v1 SQL
+  -- (step 3 §4) rounds these columns with round(., 9) (numeric only).
+  tropical_longitude NUMERIC NOT NULL,
+  speed_dps NUMERIC,
+  is_retrograde BOOLEAN NOT NULL DEFAULT FALSE,
+  node_mode TEXT
 );
 DROP TABLE IF EXISTS chart_dashas CASCADE;
 CREATE TABLE chart_dashas (
@@ -204,6 +217,13 @@ VALUES (1, 'mild', 'rehearsal scale', 'PG353 (rehearsal)');
 INSERT INTO bg_transit_moorti (nakshatra_offset, moorti_name, quality_tier,
                                phala_brief, classical_citation)
 VALUES (1, 'Janma', 'neutral', 'rehearsal moorti', 'PG (rehearsal)');
+-- Step 3 §4: the overlay fingerprints carry the L0-owned node-series digest —
+-- the gate's recompute raises on an empty series, so seed a minimal pinned
+-- ('true') Rahu/Ketu series.
+INSERT INTO ephemeris_daily (date, body, ayanamsha_id, tropical_longitude,
+                             speed_dps, is_retrograde, node_mode)
+VALUES ('2020-01-01', 'Rahu', 'tropical', 100.0, -0.05, true, 'true'),
+       ('2020-01-01', 'Ketu', 'tropical', 280.0, -0.05, true, 'true');
 """
 
 
@@ -216,8 +236,8 @@ def _apply_migration(conn, number_prefix: str) -> None:
 def _fingerprint_overlays(conn, chart_id: str) -> None:
     """Stamp overlay rows with the fingerprint the writers' OWN fetch path
     computes right now — the only honest way to make §12.9 green."""
-    vedha_fp = freshness_mod.current_fingerprint(conn)
-    moorti_fp = freshness_mod.current_moorti_fingerprint(conn)
+    vedha_fp = freshness_mod.current_fingerprint(conn, chart_id)
+    moorti_fp = freshness_mod.current_moorti_fingerprint(conn, chart_id)
     import json
     with conn.cursor() as cur:
         cur.execute(
@@ -276,6 +296,17 @@ def pg(disposable_dsn):
     _apply_migration(conn, "1152")
     with conn.cursor() as cur:
         cur.execute(SEED_SQL)
+        # Step 3 §4: the gate's fingerprint recompute needs the chart's one L1
+        # natal operand (graha_position/MOON/longitude_sidereal) present from
+        # the start — the overlays are fingerprint-stamped here, before any
+        # per-test seeding. _seed_windows_inputs re-seeds chart_facts
+        # idempotently (delete-then-insert) so no duplicate MOON row can arise.
+        cur.execute(
+            "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id,"
+            " fact_category, fact_subject, fact_key, fact_value_num, build_id)"
+            " VALUES ('fact-moon', %s, 'lahiri_chitrapaksha', 'graha_position',"
+            " 'MOON', 'longitude_sidereal', %s, 'a25-l1-build')",
+            (CHART_ID, _NATAL["MOON"]))
     _fingerprint_overlays(conn, CHART_ID)
     yield conn
     conn.close()
@@ -375,12 +406,17 @@ def _seed_windows_inputs(conn, chart) -> None:
             " classical_citation, uncited_extension, source_rule_id)"
             " VALUES (%s, 'marriage', 'karaka', 'SUN', 0.9, 'resolved',"
             " 'PG249-250 (XX.34-38)', false, 'test-rule')", (chart,))
+        # Idempotent: the pg fixture pre-seeds the MOON fact (step 3 §4 — the
+        # overlay fingerprints carry its L1 identity); re-seeding replaces the
+        # chart's fact rows rather than colliding with them.
+        cur.execute("DELETE FROM chart_facts WHERE chart_id = %s", (chart,))
         for subj, lon in [*_NATAL.items(), ("LAGNA", _LAGNA)]:
             cur.execute(
                 "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id,"
-                " fact_category, fact_subject, fact_key, fact_value_num)"
+                " fact_category, fact_subject, fact_key, fact_value_num,"
+                " build_id)"
                 " VALUES (%s, %s, 'lahiri_chitrapaksha', 'graha_position',"
-                " %s, 'longitude_sidereal', %s)",
+                " %s, 'longitude_sidereal', %s, 'a25-l1-build')",
                 (f"fact-{subj.lower()}", chart, subj, lon))
         cur.execute(
             "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id,"
@@ -642,7 +678,7 @@ def test_windows_substep_real_execution_native_dict_rows(pg, pg_dict):
         pg_dict, CHART_UUID, "4.1")
     assert len(by_class["marriage"]) == 2 and null_exact == 0
     import json as _json
-    vedha_fp = freshness_mod.current_fingerprint(pg)
+    vedha_fp = freshness_mod.current_fingerprint(pg, CHART_ID)
     with pg.cursor() as cur:
         cur.execute(
             "INSERT INTO kala_vedha_gochara (chart_id, window_start,"
