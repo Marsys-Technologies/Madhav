@@ -145,4 +145,12 @@ describe('gochara-seal-approved.yml', () => {
     expect(seal['timeout-minutes']).toBe(30)
     expect(text).toContain('CAPACITY:')
   })
+  it('R14-5: smokes the sealing job\'s dependencies (install + import of psycopg, swisseph, seal_job, verification_job, seal_flow, seal_brief) in the BRIEF job, before any approval', () => {
+    const steps = brief.steps as any[]
+    const smoke = steps.findIndex((st) => String(st.name ?? '').startsWith('Smoke the sealing job'))
+    expect(smoke).toBeGreaterThanOrEqual(0)
+    const run = String(steps[smoke].run)
+    for (const needle of ['requirements-ci.txt', 'import psycopg, swisseph', 'seal_job', 'verification_job', 'seal_flow', 'seal_brief']) expect(run).toContain(needle)
+    expect(smoke).toBeLessThan(steps.findIndex((st) => String(st.id ?? '') === 'execute'))
+  })
 })

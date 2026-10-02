@@ -94,6 +94,12 @@ jobs:
           git fetch --no-tags origin main
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
+      - name: Smoke the sealing job's dependencies (S-DEP) — install and import at the sealing commit, BEFORE any approval is requested
+        run: |
+          set -euo pipefail
+          python3 -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+          PYTHONPATH=platform/python-sidecar python3 -c "import psycopg, swisseph; from pipeline.orchestrator import seal_job, verification_job; from services.gochara_kernel import seal_flow, seal_brief; print('S-DEP OK')"
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
