@@ -210,8 +210,8 @@ def test_no_carriage_is_registered_for_d1_d2_d3_only():
     assert [k for k, v in ac.NA_CAUSES.items() if "no-carriage" in v] == list(CHECKS)
 
 
-def test_na_rule_decisions_stays_empty():
-    assert ac.NA_RULE_DECISIONS == {}
+def test_no_carr_rule_is_declared():
+    assert not [i for i in ac.NA_RULE_DECISIONS if i.startswith("Carr.")]     # until terminal_by_construction is declared (N-22 row 16)
 
 
 def test_cause_keyed_rule_ids_validate_only_for_d1_d2_d3(monkeypatch):
