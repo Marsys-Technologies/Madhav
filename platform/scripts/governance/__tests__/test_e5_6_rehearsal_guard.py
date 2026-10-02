@@ -786,7 +786,9 @@ MUTANTS = [
            "cluster_init_idempotent"),
     Mutant("cluster: failed database check reported as 'already exists'", C,
            [('    || die "init: could not check whether database ${DBNAME} exists"', "    || true"),
-            ('  elif [ "${have}" = "1" ]; then', "  else")], "cluster_db_check_failure"),
+            # `elif true` (not a second `else`): a duplicate else is a syntax error in bash 5, which would
+            # "kill" the mutant for the wrong reason on Linux CI while bash 3.2 (macOS) tolerates it
+            ('  elif [ "${have}" = "1" ]; then', "  elif true; then")], "cluster_db_check_failure"),
     Mutant("cluster: PGOPTIONS passed through to every tool", C,
            [('PGSERVICEFILE="${TMP_HOME}/.no-pg-service" "$@"',
              'PGSERVICEFILE="${TMP_HOME}/.no-pg-service" ${PGOPTIONS:+PGOPTIONS="$PGOPTIONS"} "$@"')], "cluster_env"),
