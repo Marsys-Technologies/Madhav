@@ -40,6 +40,8 @@ BUILDER_TABLES = (
 #: the two verification tables the verifier writes (and the only ones)
 VERIFICATION_TABLES = ("ka_gochara_search_inventory_verification", "ka_gochara_eval_window_verification")
 _WRITE = ("INSERT", "UPDATE", "DELETE", "TRUNCATE")
+#: the L1 tables the independent re-derivations READ (their ACLs belong to the data-plane owner, not to 1241)
+L1_READ_TABLES = ("chart_facts", "chart_dashas")
 
 
 class VerificationRefused(RuntimeError):
@@ -81,6 +83,15 @@ def check_identity(conn) -> dict:
     if held:
         raise VerificationRefused("identity_not_separate", f"{user} holds write privileges on builder tables: {held}",
                                   exit_code=EXIT_PRIVILEGE)
+    l1_missing = [t for t in L1_READ_TABLES
+                  if _one(conn.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{t}",)).fetchone()) is True
+                  and not _one(conn.execute("SELECT has_table_privilege(current_user, %s, 'SELECT')",
+                                            (f"public.{t}",)).fetchone())]
+    if l1_missing:
+        raise VerificationRefused(
+            "no_verifier_privilege",
+            f"verifier lacks SELECT on {'/'.join(l1_missing)} — the L1 read ACLs belong to the data-plane owner and the "
+            "verifier/sealer grants migration (1241) does not grant them", exit_code=EXIT_PRIVILEGE)
     missing = [t for t in VERIFICATION_TABLES
                if _one(conn.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{t}",)).fetchone()) is True
                and not _one(conn.execute("SELECT has_table_privilege(current_user, %s, 'INSERT')",
@@ -245,17 +256,10 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
         if not rv._anchor_columns(conn) or _p1_minting_open(conn, chart_id, generation, event_class):
             out["p1"]["anchors"] = stage("p1_anchors", lambda: rv.verify_p1_anchors(
                 conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at))
-    if persist:
-        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (chart_id,))
-        conn.execute("SELECT public.ka_gochara_lock_global_shared()")
-        conn.execute("DELETE FROM public.ka_gochara_search_inventory_verification WHERE chart_id = %s AND generation = %s"
-                     " AND event_class = %s AND verifier_id = %s AND verifier_version = %s",
-                     (chart_id, generation, event_class, inv_v.VERIFIER_ID, inv_v.VERIFIER_VERSION))
-        inv_v.write_verification(conn, chart_id=chart_id, generation=generation, event_class=event_class,
-                                 rederived_digest=res["digest"])
     snap = _one(conn.execute("SELECT input_digest FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s"
                              " AND generation = %s", (chart_id, generation)).fetchone())
     windows = []
+    reports: list = []
     for path_id, version in pins:
         grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
                      rule_version=version)
@@ -265,11 +269,22 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
             conn, factor_rows=factor_rows_for(p, v), drishti_bound=drishti_bound, vedha_bound=vedha_bound, **g))
         entry = {"path_id": path_id, "rule_version": version, "status": report["status"],
                  "policy_version": report["policy_version"], "windows": report["windows"]}
-        if persist:
-            stage(f"record_verification {path_id}", lambda g=grain, r=report: wg.record_verification(
-                conn, report=r, input_digest=snap, **g))
         windows.append(entry)
+        reports.append((grain, report))
     out["windows"] = windows
+    if persist:
+        # ORDER (Stream B's all-guards rehearsal): the WINDOW verifications first, the 1206 inventory row last — the class's
+        # candidate gate refuses until every included grain has a window verification. 1241 gives the verifier SELECT+INSERT
+        # on the inventory verification table and NO DELETE: a re-run replaces nothing there (`write_verification` is
+        # idempotent for an identical digest, and a rebuilt inventory chain removes its own verification); the 1240 rows are
+        # replaced by `record_verification` (the verifier holds DELETE on its own table, pre-seal).
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (chart_id,))
+        conn.execute("SELECT public.ka_gochara_lock_global_shared()")
+        for grain, report in reports:
+            stage(f"record_verification {grain['path_id']}", lambda g=grain, r=report: wg.record_verification(
+                conn, report=r, input_digest=snap, **g))
+        stage("inventory_verification", lambda: inv_v.write_verification(
+            conn, chart_id=chart_id, generation=generation, event_class=event_class, rederived_digest=res["digest"]))
     out["status"] = "VERIFIED" if all(w["status"] == "VERIFIED" for w in windows) else "UNVERIFIED_DYNAMIC"
     return out
 

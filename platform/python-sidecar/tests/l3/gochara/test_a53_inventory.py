@@ -211,7 +211,9 @@ BUILDER_GRANT_MIGRATIONS = ("1216_gochara_contract_builder_grants.sql",
                             "1220_gochara_contract_builder_function_execute.sql",
                             "1234_gochara_eval_window_builder_grants.sql",
                             # Stream B's record replace/finalise grants (draft PR #2940) — replaced my stand-in fixture
-                            "1242_gochara_builder_record_replace_finalise_grants.sql")
+                            "1242_gochara_builder_record_replace_finalise_grants.sql",
+                            # Stream B's verifier/sealer grants (draft PR #2949) — the faithful mirror's verifier/sealer set
+                            "1241_gochara_verifier_sealer_inventory_grants.sql")
 
 
 def create_am5_database(tag="am5", faithful=False):
@@ -287,7 +289,8 @@ def _populate_am5_database(conn, faithful=False):
         # the faithful mirror applies the REAL builder-grant migrations too (R9-4): the restricted builder holds exactly
         # what production gives it (1216 tables, 1220 functions, 1234 window tables/functions) — and, once 1240 adds a
         # CHECK helper, only what 1240 itself grants it
-        for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql",
+        for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql"] + (
+                ["1232_gochara_search_moon_scope_domain.sql"] if faithful else []) + [
                                         "1240_gochara_window_verification_gate.sql"] + (
                                             list(BUILDER_GRANT_MIGRATIONS) if faithful else []):
             cur.execute((MIGRATIONS / fname).read_text())

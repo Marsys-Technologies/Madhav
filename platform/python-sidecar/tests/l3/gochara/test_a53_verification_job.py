@@ -5,8 +5,8 @@ job does, after the build. These tests connect AS the verifier (a real LOGIN rol
 mirror's `gochara_verifier` given a password) — not a superuser, not SET ROLE — and prove: the identity self-check, the
 refuse-by-name preconditions (each writing nothing), persistence of exactly the two verification tables, replace-on-rerun,
 `--report-only`, a disagreement writing nothing for the class, and the entry point's exit codes. Code only: no production
-role is assumed. Until Stream B's verifier grants migration exists, `fixtures/pending_verifier_grants.sql` stands in for it
-(derived by running the job as the verifier and adding one grant per `permission denied`)."""
+role is assumed. The verifier's privileges are Stream B's real migration 1241 (applied by the faithful mirror); only the L1
+reads (the data-plane owner's ACLs, not 1241's) are stood in by `fixtures/l1_read_stand_in_grants.sql`."""
 from __future__ import annotations
 
 import json
@@ -28,7 +28,7 @@ from .test_a53_window_verification_gate import CLS, SPANS, _boot_p3  # noqa: F40
 from .test_a53_window_verification_roles import _consistent_sky, _seal  # noqa: F401
 from ._verification_persist import persist_window_verification  # noqa: F401
 
-FIXTURE = Path(__file__).parent / "fixtures" / "pending_verifier_grants.sql"
+FIXTURE = Path(__file__).parent / "fixtures" / "l1_read_stand_in_grants.sql"
 PASSWORD = "job-test-pw"
 
 
@@ -52,10 +52,9 @@ def login(w, role):
 
 
 def _provision(w):
-    """The grants the verifier needs that no reviewed migration gives it yet (see the module docstring)."""
+    """The verifier's privileges are Stream B's REAL 1241 (applied by the faithful mirror); only the L1/L0 reads — the
+    data-plane owner's ACLs, not 1241's — are stood in here."""
     w.conn.execute(FIXTURE.read_text())
-    for table in ("charts", "chart_facts", "chart_dashas", "bg_transit_rules", "_migrations_applied"):
-        w.conn.execute(f"GRANT SELECT ON public.{table} TO gochara_verifier")
 
 
 def _kwargs(w, position_at):
@@ -137,7 +136,7 @@ def test_a_rerun_replaces_and_report_only_writes_nothing(built):
         assert again["status"] == "VERIFIED"
         assert _counts(w.conn, vj.VERIFICATION_TABLES) == {"ka_gochara_search_inventory_verification": 1,
                                                              "ka_gochara_eval_window_verification": 4}   # replaced, not accreted
-        w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification")
+        w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification")          # (superuser clean-up for the dry run)
         w.conn.execute("DELETE FROM public.ka_gochara_search_inventory_verification")
         dry = vj.run(conn, chart_id=CHART_ID, generation=GEN, report_only=True, **kw)
     assert dry["report_only"] is True and dry["status"] == "NOT_VERIFIED"
@@ -252,9 +251,9 @@ def test_the_job_is_not_a_registered_writer_and_reads_no_builder_credential():
     ("REVOKE SELECT ON public.ka_gochara_sky_convention FROM gochara_verifier", True),
     ("REVOKE SELECT ON public.ka_gochara_rule_path_prerequisite FROM gochara_verifier", True),
 ])
-def test_every_pending_verifier_grant_is_individually_necessary(built, tmp_path, revoke, inputs):
-    """The fixture is the exact delta: revoking any one of its grants makes the job fail on that privilege — so the
-    migration Stream B authors needs all of them and nothing in the fixture is padding."""
+def test_every_1241_verifier_grant_the_runner_uses_is_individually_necessary(built, tmp_path, revoke, inputs):
+    """Revoking any one of the 1241 grants the runner uses makes the job fail on that privilege — the migration's lines
+    are exactly what the runner needs."""
     from services.gochara_kernel import input_vector as iv
     w = built
     w.conn.execute(revoke)
@@ -263,3 +262,39 @@ def test_every_pending_verifier_grant_is_individually_necessary(built, tmp_path,
     with login(w, "gochara_verifier") as conn:
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             vj.run(conn, chart_id=CHART_ID, generation=GEN, **{**_kwargs(w, _position(w, [LIBRA])), **extra})
+
+
+def test_the_runner_records_the_window_verifications_first_and_the_inventory_row_last(built, monkeypatch):
+    """ORDER (Stream B's rehearsal): the class gate refuses until every included grain has a window verification, so the
+    window rows are persisted FIRST and the 1206 inventory row LAST."""
+    from services.gochara_kernel import inventory_verifier as inv_v
+    from services.gochara_kernel import window_gate as wg
+    w = built
+    order = []
+    real_w, real_i = wg.record_verification, inv_v.write_verification
+    monkeypatch.setattr(wg, "record_verification", lambda *a, **k: (order.append(("window", k["path_id"])), real_w(*a, **k))[1])
+    monkeypatch.setattr(inv_v, "write_verification", lambda *a, **k: (order.append(("inventory", None)), real_i(*a, **k))[1])
+    with login(w, "gochara_verifier") as conn:
+        assert vj.run(conn, chart_id=CHART_ID, generation=GEN, **_kwargs(w, _position(w, [LIBRA])))["status"] == "VERIFIED"
+    assert order == [("window", "P1"), ("window", "P2"), ("window", "P3"), ("window", "P4"), ("inventory", None)]
+
+
+def test_the_verifier_holds_no_delete_on_the_inventory_verification_table_and_a_rerun_still_works(built):
+    """1241 grants SELECT+INSERT only: the runner must not need DELETE there (an identical digest is idempotent)."""
+    w = built
+    with login(w, "gochara_verifier") as conn:
+        assert conn.execute("SELECT has_table_privilege(current_user, 'public.ka_gochara_search_inventory_verification',"
+                            " 'DELETE')").fetchone()[0] is False
+        kw = _kwargs(w, _position(w, [LIBRA]))
+        assert vj.run(conn, chart_id=CHART_ID, generation=GEN, **kw)["status"] == "VERIFIED"
+        assert vj.run(conn, chart_id=CHART_ID, generation=GEN, **kw)["status"] == "VERIFIED"
+
+
+@pytest.mark.parametrize("table", ["chart_facts", "chart_dashas"])
+def test_a_missing_l1_read_is_named_plainly_not_a_raw_permission_error(built, table):
+    w = built
+    w.conn.execute(f"REVOKE SELECT ON public.{table} FROM gochara_verifier")
+    with login(w, "gochara_verifier") as conn:
+        with pytest.raises(vj.VerificationRefused, match=f"verifier lacks SELECT on {table}") as exc:
+            vj.check_identity(conn)
+    assert exc.value.exit_code == vj.EXIT_PRIVILEGE and "data-plane owner" in str(exc.value)
