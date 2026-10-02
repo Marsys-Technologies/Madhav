@@ -86,15 +86,19 @@ def test_golden_v2_every_record_carries_version_2_state_and_caveat():
 
 # ---- v1 and v2 -------------------------------------------------------------------------------------------------------
 
-def test_v1_records_read_as_null_state_and_a_v1_citation_pass_is_caveated(w):
+def test_v1_records_read_as_null_state_and_a_v1_citation_pass_is_caveated_but_v1_gates_are_not_current(w):
+    """v1 records predate the declarations binding: their gates read as UNBOUND, so such an asset is not elevated (the
+    parse still gives the citation reading E5.1's reader gives)."""
     for i, c in enumerate(w.certs):
         w.certs[i] = cert(c["asset"], c["criterion"], c["verdict"], kind=c["kind"], na=c["na"], v1=True)
-    rep = report(w)
-    assert set(rep) == ALL
-    for a in ("ga_alpha", "bg_beta"):                   # they hold a v1 PASS on a citation gate: never hidden (N-74)
-        assert rep[a]["citation_states"] == {} and rep[a]["citation_caveat"] is True
-    assert rep["ka_gamma"]["citation_caveat"] is False
-    assert all(r["record_version"] == 1 and "citation_state" not in r for r in w.certs)
+    w.commit()
+    facts = T._e63_registry_facts(str(w.repo), w.last)
+    led = T._e63_parse_certs(T._e63_show(str(w.repo), w.last, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
+    a = led.by_key
+    assert a["ga_alpha|gate|Ldgr.src"][0]["citation_state"] is None and a["ga_alpha|gate|Ldgr.src"][0]["citation_state_caveat"] is True
+    assert a["ga_alpha|gate|Idem.pat"][0]["citation_state_caveat"] is False
+    assert w.elevated(T) == {"ka_gamma"}                                    # only the terminal asset
+    assert {c["reason"] for c in T.stale_declaration_cells(w.last, str(w.repo))} == {"unbound"}
 
 
 def test_a_v1_record_is_read_as_exactly_state_none_and_the_citation_gate_rule_caveat(w):
@@ -111,18 +115,19 @@ def test_a_v1_record_is_read_as_exactly_state_none_and_the_citation_gate_rule_ca
     assert led.by_key["ga_alpha|gate|Idem.pat"][0]["citation_state_caveat"] is False
 
 
-def test_both_record_versions_are_accepted_in_one_ledger(w):
+def test_both_record_versions_are_accepted_in_one_ledger_the_v1_gate_is_unbound(w):
     w.certs[w.certs.index(w.find("ga_alpha", "Idem.pat"))] = cert("ga_alpha", "Idem.pat", v1=True)
     assert {c["record_version"] for c in w.certs} == {1, 2}
     w.commit()
-    assert w.elevated(T) == ALL
+    assert w.elevated(T) == ALL - {"ga_alpha"}                              # its v1 gate carries no declarations binding
 
 
 def test_a_record_with_no_record_version_reads_as_v1_like_e5_1(w):
     rec = w.find("ga_alpha", "Idem.pat")
-    for k in ("record_version", "citation_state", "citation_state_caveat"):
+    for k in ("record_version", "citation_state", "citation_state_caveat", "declarations_sha256", "declarations_version"):
         del rec[k]
-    assert report(w)["ga_alpha"]["citation_caveat"] is False
+    w.commit()
+    assert "ga_alpha" not in w.elevated(T)                                  # read as v1: unbound
 
 
 @pytest.mark.parametrize("rv", [0, 3, 99, True, "2", None, 2.0])
@@ -138,8 +143,10 @@ def test_a_v1_record_that_carries_a_v2_field_raises(w):
     del rec["citation_state"]
     raises(w)                                                    # still carries the caveat
     del rec["citation_state_caveat"]
+    raises(w)                                                    # still carries the declarations binding
+    del rec["declarations_sha256"], rec["declarations_version"]
     w.commit()
-    assert w.elevated(T) == ALL
+    assert w.elevated(T) == ALL - {"ga_alpha"}                   # a clean v1 record reads, but is unbound
 
 
 @pytest.mark.parametrize("missing", ["citation_state", "citation_state_caveat"])

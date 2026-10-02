@@ -34,3 +34,12 @@ mutated in one citation field and re-chained) it stores the variant's sha256, th
 E5.1 worktree needed) and, where the worktree exists, against the live reader. The variants run with E5.1's `CITATION_CRITERIA` patched to
 `Ldgr.src` / `Idem.alt` and `CITATION_STRICT` to `Idem.alt` (the mini registry has no Carr.D1); real Carr.D1 strictness is checked by a
 direct-call test. Re-record when the variants or E5.1's citation rules change.
+
+## Declarations binding (N-74 add-on) -- regenerated ledgers
+
+`ledger_clean.jsonl`, `ledger_after_invalidation.jsonl` and `ledger_v2.jsonl` were REGENERATED with the real E5.1 writer after it began
+binding gate certificates to `asset_declarations.json` (branch `suvarna/engine-E5.1-citation-state`, PR #2917): every gate record is
+record_version 2 and carries `declarations_sha256` (= sha256 of the bytes of `_e6_3_fixtures.DECL_TEXT`, which the generator commits as the
+declarations file) and `declarations_version` "1.0.0"; additions carry null. The first two ledgers are written with the writer's
+`CITATION_CRITERIA` patched to the mini registry and every citation cell `sourced`. The older v1 golden ledgers are gone: a v1 record
+reads as unbound (not current), which `test_e6_3_citation_state.py` checks with hand-written v1 lines.

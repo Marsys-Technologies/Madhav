@@ -1,6 +1,6 @@
 """E6.3 reader vs E5.1's own citation-state reader (`_check_citation_fields`, branch suvarna/engine-E5.1-citation-state).
 
-Two checks over the SAME 32 mutated v2 ledgers (re-chained, so the only defect is the citation field; see
+Two checks over the SAME mutated v2 ledgers (re-chained, so the only defect is the citation field; see
 _e6_3_citation_variants.py):
   * LIVE: run the E5.1 worktree's reader now and compare accept/refuse AND the parsed (citation_state, caveat) of every
     certificate (so the v1 caveat reading is compared, not just acceptance). Skipped, with the reason, when that worktree is
@@ -51,7 +51,7 @@ def mine(tmp_path, monkeypatch):
             led = T._e63_parse_certs(data, facts)
         except T.ElevatedInputError:
             return {"verdict": "REFUSED"}
-        return {"verdict": "OK", "states": {r["cert_id"]: [r["citation_state"], r["citation_state_caveat"]]
+        return {"verdict": "OK", "states": {r["cert_id"]: [r["citation_state"], r["citation_state_caveat"], r["declarations_sha256"], r["declarations_version"]]
                                            for recs in led.by_key.values() for r in recs}}
     return parse
 
@@ -89,9 +89,9 @@ def test_the_v1_citation_gate_pass_is_caveated_true_by_both(mine):
     for name in ("v1_ldgr_pass", "v1_citation_gate_idem_alt_pass"):
         states = mine(VARIANTS[name])["states"]
         crit = "Ldgr.src" if "ldgr" in name else "Idem.alt"
-        assert states[f"ga_alpha|gate|{crit}@1"] == [None, True], name
-        assert RECORDED["variants"][name]["states"][f"ga_alpha|gate|{crit}@1"] == [None, True]
-    assert mine(VARIANTS["v1_non_citation_pass"])["states"]["ga_alpha|gate|Idem.pat@1"] == [None, False]
+        assert states[f"ga_alpha|gate|{crit}@1"] == [None, True, None, None], name
+        assert RECORDED["variants"][name]["states"][f"ga_alpha|gate|{crit}@1"] == [None, True, None, None]
+    assert mine(VARIANTS["v1_non_citation_pass"])["states"]["ga_alpha|gate|Idem.pat@1"] == [None, False, None, None]
 
 
 def test_real_carr_d1_is_strict_a_pass_or_partial_with_no_usable_state_is_refused():

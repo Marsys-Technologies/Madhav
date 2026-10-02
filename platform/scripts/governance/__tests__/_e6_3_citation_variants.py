@@ -60,8 +60,10 @@ VARIANTS = {
     "version_0": variant(lambda r: r.update(record_version=0)),
     "version_true": variant(lambda r: r.update(record_version=True)),
     "v1_with_fields": variant(lambda r: r.update(record_version=1)),
+    "v1_with_declarations_fields_only": variant(lambda r: (r.update(record_version=1), r.pop("citation_state"), r.pop("citation_state_caveat"))),
     "v1_without_fields": variant(lambda r: (r.update(record_version=1), r.pop("citation_state"), r.pop("citation_state_caveat"))),
-    "absent_version_without_fields": variant(lambda r: (r.pop("record_version"), r.pop("citation_state"), r.pop("citation_state_caveat"))),
+    "absent_version_without_fields": variant(lambda r: (r.pop("record_version"), r.pop("citation_state"), r.pop("citation_state_caveat"),
+                                                          r.pop("declarations_sha256"), r.pop("declarations_version"))),
     "absent_version_with_fields": variant(drop("record_version")),
     "unsourced_no_detector_cell": variant(lambda r: r.update(verdict="NO_DETECTOR", citation_state="unsourced", citation_state_caveat=False, semantic_fingerprint=None),
                                           lambda r: r.get("asset") == "ga_alpha" and r.get("criterion") == "Idem.alt"),
@@ -75,8 +77,8 @@ def is_(asset, crit):
 
 def v1(r):
     r.update(record_version=1)
-    r.pop("citation_state", None)
-    r.pop("citation_state_caveat", None)
+    for k in ("citation_state", "citation_state_caveat", "declarations_sha256", "declarations_version"):
+        r.pop(k, None)
 
 
 def to_na(r, state):
@@ -105,14 +107,26 @@ VARIANTS = {
     "version_0": variant(lambda r: r.update(record_version=0)),
     "version_true": variant(lambda r: r.update(record_version=True)),
     "v1_with_fields": variant(lambda r: r.update(record_version=1)),
+    "v1_with_declarations_fields_only": variant(lambda r: (r.update(record_version=1), r.pop("citation_state"), r.pop("citation_state_caveat"))),
     "v1_without_fields": variant(v1),
     "v1_ldgr_pass": variant(v1, is_("ga_alpha", "Ldgr.src")),
     "v1_citation_gate_idem_alt_pass": variant(v1, is_("ga_alpha", "Idem.alt")),
     "v1_non_citation_pass": variant(v1, is_("ga_alpha", "Idem.pat")),
-    "absent_version_without_fields": variant(lambda r: (r.pop("record_version"), r.pop("citation_state"), r.pop("citation_state_caveat"))),
+    "absent_version_without_fields": variant(lambda r: (r.pop("record_version"), r.pop("citation_state"), r.pop("citation_state_caveat"),
+                                                          r.pop("declarations_sha256"), r.pop("declarations_version"))),
     "absent_version_with_fields": variant(lambda r: r.pop("record_version")),
     "unsourced_no_detector_cell": variant(lambda r: r.update(verdict="NO_DETECTOR", citation_state="unsourced", citation_state_caveat=False, semantic_fingerprint=None),
                                           is_("ga_alpha", "Idem.alt")),
+    # the declarations binding (gates carry declarations_sha256 / declarations_version; additions null)
+    "decl_present_null_on_gate": variant(lambda r: r.update(declarations_sha256=None, declarations_version=None)),
+    "decl_fields_absent_on_v2": variant(lambda r: (r.pop("declarations_sha256"), r.pop("declarations_version"))),
+    "decl_sha_not_hex": variant(lambda r: r.update(declarations_sha256="xyz")),
+    "decl_sha_uppercase": variant(lambda r: r.update(declarations_sha256=r["declarations_sha256"].upper())),
+    "decl_sha_wrong_type": variant(lambda r: r.update(declarations_sha256=5)),
+    "decl_version_without_sha": variant(lambda r: r.update(declarations_sha256=None, declarations_version="1.0.0")),
+    "decl_blank_version": variant(lambda r: r.update(declarations_version="  ")),
+    "decl_version_not_text": variant(lambda r: r.update(declarations_version=1)),
+    "decl_sha_without_version": variant(lambda r: r.update(declarations_version=None)),
     # E5.1's CITATION_STRICT (Carr.D1 in production; Idem.alt here) and the applicability N/A rule
     "strict_pass_null_state": variant(lambda r: r.update(citation_state=None, citation_state_caveat=False), is_("ga_alpha", "Idem.alt")),
     "strict_partial_null_state": variant(lambda r: to_partial(r, None), is_("ga_alpha", "Idem.alt")),
@@ -135,7 +149,7 @@ nc.CITATION_CRITERIA = ("Ldgr.src", "Idem.alt")
 nc.CITATION_STRICT = ("Idem.alt",)
 try:
     by_key = nc.parse_ledger(open(sys.argv[1], "rb").read())
-    states = {r["cert_id"]: [r["citation_state"], r["citation_state_caveat"]]
+    states = {r["cert_id"]: [r["citation_state"], r["citation_state_caveat"], r["declarations_sha256"], r["declarations_version"]]
               for recs in by_key.values() for r in recs if r.get("kind") in ("gate", "addition")}
     print(json.dumps({"verdict": "OK", "states": states}))
 except nc.CertificationRefused as e:

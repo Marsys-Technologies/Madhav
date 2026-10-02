@@ -378,7 +378,8 @@ def main():
 # platform/scripts/seed/asset_registry_seed.ts (+ LEVEL_MAP.json when present; parsed by generate_level_map.py AS COMMITTED AT `ref`): the asset ids the registry holds and
 #   the asset kind (non-authoritative stand-in for the live registry, as in generate_level_map.py).
 #
-# "CURRENT" (see certificate_currency): the record is the latest generation of its cert_key; no invalidation line names
+# "CURRENT" (see certificate_currency): the record is the latest generation of its cert_key; a GATE record's declarations_sha256
+# equals the sha256 of asset_declarations.json's bytes at `ref` (null = not current; a missing file raises); no invalidation line names
 # its cert_id; every recorded writer file still hashes to the recorded sha256 at `ref` (absent at `ref` = stale); every
 # upstream cert id is on an earlier line and is itself current and PASS/N/A, and is either the LATEST generation of its
 # key or an older generation whose semantic fingerprint equals the latest's (E5.5: a generation bump with identical
@@ -394,6 +395,7 @@ E63_DISPOSITIONS_PATH = E63_CONTROL_DIR + "/asset_dispositions.jsonl"
 E63_LEVEL_MAP_PATH = E63_CONTROL_DIR + "/LEVEL_MAP.json"
 E63_CENSUS_PATH = "platform/scripts/governance/asset_census.py"
 E63_SEED_PATH = "platform/scripts/seed/asset_registry_seed.ts"
+E63_DECLARATIONS_PATH = "platform/scripts/governance/asset_declarations.json"   # a gate certificate is bound to its sha256 at `ref`
 
 # FLOOR: how many criteria each core gate must have, per layer, in asset_census.CRITERION_REGISTRY. Pinned from the
 # registry at origin/main bf6fe712b (REGISTRY_REVISION 7). A registry edit that REMOVES a core-gate criterion (or a
@@ -972,6 +974,29 @@ def _e63_check_citation_fields(r, where, verdict, kind, crit):
         _e63_fail("malformed", f"{where}: citation_state_caveat {cc!r} contradicts verdict {verdict!r} / citation_state {cs!r}")
 
 
+def _e63_check_declarations_fields(r, where, kind):
+    """E5.1's `_check_declarations_fields` (the declarations binding added to record_version 2): v1 may not carry the fields;
+    a v2 record written before them reads as null/null (unbound); a present sha is null or 64 lower-case hex, a version is
+    null or non-blank text and needs a sha, and an addition carries neither."""
+    rv = r.get("record_version", 1)
+    sha, ver = r.get("declarations_sha256"), r.get("declarations_version")
+    if rv == 1 and ("declarations_sha256" in r or "declarations_version" in r):
+        _e63_fail("malformed", f"{where}: a record_version 1 record carries a declarations field (added after v1)")
+    if sha is not None and not (isinstance(sha, str) and _E63_SHA256.fullmatch(sha)):
+        _e63_fail("malformed", f"{where}: declarations_sha256 {sha!r} is not null or 64 lower-case hex")
+    if ver is not None and (not isinstance(ver, str) or not ver.strip()):
+        _e63_fail("malformed", f"{where}: declarations_version {ver!r} is not null or non-blank text")
+    if ver is not None and sha is None:
+        _e63_fail("malformed", f"{where}: a declarations_version with no declarations_sha256")
+    if kind != "gate" and (sha is not None or ver is not None):
+        _e63_fail("malformed", f"{where}: a declarations binding on a record that is not a gate certificate")
+    if rv != 1 and kind == "gate" and "declarations_sha256" in r and sha is None:
+        # only an ABSENT key is legacy: the writer never writes a null sha on a gate, so a present null is a forgery
+        _e63_fail("malformed", f"{where}: declarations_sha256 is present but null on a v2 gate record (only an absent key "
+                               "reads as legacy)")
+    r["declarations_sha256"], r["declarations_version"] = sha, ver
+
+
 def _e63_check_cert(r, n, facts):
     where = f"{E63_CERTS_PATH} line {n}"
     asset, kind, crit, verdict = r.get("asset"), r.get("kind"), r.get("criterion"), r.get("verdict")
@@ -1008,6 +1033,7 @@ def _e63_check_cert(r, n, facts):
     if r.get("na") is not None and not isinstance(r.get("na"), dict):
         _e63_fail("malformed", f"{where}: na must be an object or null")
     _e63_check_citation_fields(r, where, verdict, kind, crit)
+    _e63_check_declarations_fields(r, where, kind)
     if kind == "gate":
         if r.get("cross_checked") is not True:
             _e63_fail("malformed", f"{where}: a gate record must carry cross_checked: true (the writer reads its verdict "
@@ -1231,7 +1257,15 @@ class LedgerState:
         self.by_key, self.invalidated = by_key, invalidated
         self.pos = pos if pos is not None else {r["cert_id"]: i for i, rs in enumerate(by_key.values()) for r in rs}
         self.kinds = kinds or {}
-        self._hash_cache, self._cur_cache = {}, {}
+        self._hash_cache, self._cur_cache, self._decl = {}, {}, None
+
+    @property
+    def declarations_sha256(self):
+        """sha256 of the BYTES of asset_declarations.json at the ledger commit (E5.1's definition: the blob at the ref).
+        An unreadable file raises: no certificate can be judged current without it (fail closed)."""
+        if self._decl is None:
+            self._decl = _e63_sha(_e63_show(self.repo, self.sha, E63_DECLARATIONS_PATH))
+        return self._decl
 
     def writer_sha256(self, path):
         """sha256 of `path` at the ledger commit, or None when the file is absent there."""
@@ -1262,6 +1296,10 @@ def _e63_currency(rec, state):
         return False, f"generation {rec['generation']} is not the latest ({latest['generation']})"
     if rec["cert_id"] in state.invalidated:
         return False, "invalidated by E5.5"
+    if rec["kind"] == "gate" and rec["declarations_sha256"] != state.declarations_sha256:
+        if rec["declarations_sha256"] is None:
+            return False, "the gate certificate is not bound to a declarations file (legacy or unbound)"
+        return False, "certified against declarations that are not the ones at the ref"
     for path, recorded in rec.get("writer_hashes", {}).items():
         if state.writer_sha256(path) != recorded:
             return False, f"writer file {path} no longer hashes to the certified sha256"
@@ -1332,13 +1370,31 @@ def _e63_gap_blocks(g, additions, info_families):
     return crit.split(".", 1)[0] not in info_families
 
 
+def _e63_stale_declaration_cells(state, asset=None):
+    """The LATEST gate certificates (of `asset`, or of every asset) whose declarations_sha256 is not the one at the ref:
+    [{asset, criterion, cert_id, recorded_sha256, recorded_version, at_ref_sha256, reason}] with reason "unbound" (null:
+    legacy, v1 or pre-binding) or "stale" (certified against other declarations)."""
+    out = []
+    for key in sorted(state.by_key):
+        rec = state.by_key[key][-1]
+        if rec["kind"] != "gate" or (asset is not None and rec["asset"] != asset):
+            continue
+        if rec["declarations_sha256"] != state.declarations_sha256:
+            out.append(dict(asset=rec["asset"], criterion=rec["criterion"], cert_id=rec["cert_id"],
+                            recorded_sha256=rec["declarations_sha256"], recorded_version=rec["declarations_version"],
+                            at_ref_sha256=state.declarations_sha256,
+                            reason="unbound" if rec["declarations_sha256"] is None else "stale"))
+    return out
+
+
 def _e63_asset_report(asset, state, disp, gaps):
     """None when the asset is not elevated, else HOW it is: {basis: "terminal_disposition" | "measured",
-    declaration_based_pass_cells, ruled_na_cells, citation_states, citation_caveat, terminal}."""
+    declaration_based_pass_cells, ruled_na_cells, citation_states, citation_caveat, declarations_current,
+    stale_declaration_cells, terminal}."""
     d = disp.get(asset)
     if d is not None and d["effective"] in E63_TERMINAL_DISPOSITIONS and d["reason"]:       # TERMINAL (decision id + reason)
         return dict(basis="terminal_disposition", declaration_based_pass_cells=0, ruled_na_cells=[],
-                    citation_states={}, citation_caveat=False,
+                    citation_states={}, citation_caveat=False, declarations_current=True, stale_declaration_cells=[],
                     terminal=dict(disposition=d["effective"], reason=d["reason"], decision_id=d["decision_id"]))
     if d is None or d["effective"] == "unresolved":                                          # (4)
         return None
@@ -1363,8 +1419,10 @@ def _e63_asset_report(asset, state, disp, gaps):
             return None
     if any(_e63_gap_blocks(g, d["additions"], state.facts.info_families) for g in gaps.get(asset, ())):   # (3)
         return None
+    stale = _e63_stale_declaration_cells(state, asset)          # an elevated asset's REQUIRED cells are current; others may not be
     return dict(basis="measured", declaration_based_pass_cells=declared, ruled_na_cells=ruled,
-                citation_states=dict(sorted(cit_states.items())), citation_caveat=caveat, terminal=None)
+                citation_states=dict(sorted(cit_states.items())), citation_caveat=caveat,
+                declarations_current=not stale, stale_declaration_cells=stale, terminal=None)
 
 
 def _e63_check_info_rekeys(gap_rows, disp, facts):
@@ -1398,6 +1456,7 @@ def _e63_load(ref, repo):
     for g in gap_rows:
         gaps.setdefault(g["asset"], []).append(g)
     state = LedgerState(repo, sha, facts, led.by_key, led.invalidated, led.pos, registry)
+    state.declarations_sha256                      # a missing declarations file at the ref raises, whatever the ledger holds
     return state, disp, gaps, {k.split("|", 1)[0] for k in led.by_key} | set(disp)
 
 
@@ -1410,6 +1469,13 @@ def elevated_report(ref: str, repo: str) -> dict:
     carries a decision id and a visible reason (`terminal` = {disposition, reason, decision_id}). The two are never
     summed into one flat figure by this function: a dashboard shows "elevated by measurement" and "closed by
     retirement" separately.
+
+    DECLARATIONS BINDING (N-74 add-on). A gate certificate is CURRENT only if its `declarations_sha256` equals the sha256 of
+    the bytes of platform/scripts/governance/asset_declarations.json AT `ref` (E5.1's definition); a null or absent one (v1,
+    pre-binding, legacy) is not current; an addition carries none and is judged as before; a missing declarations file at
+    the ref raises. `declarations_current` is false and `stale_declaration_cells` lists the asset's latest gate
+    certificates bound to other declarations (informational for an elevated asset: its required cells are current by
+    construction); `stale_declaration_cells(ref, repo)` lists them for every asset.
 
     CITATION STATE (N-74). E5.1 record_version 2 carries `citation_state` (sourced | sourced_ocr_unverified | unsourced |
     refuted; null when not declared or not applicable; v1 records read as null, caveat false). `citation_states` maps
@@ -1432,6 +1498,16 @@ def elevated_report(ref: str, repo: str) -> dict:
         if rep_ is not None:
             out[a] = rep_
     return out
+
+
+def stale_declaration_cells(ref: str, repo: str) -> list:
+    """Every LATEST gate certificate that is not current because of the declarations binding (SS N-74 add-on):
+    [{asset, criterion, cert_id, recorded_sha256, recorded_version, at_ref_sha256, reason}], reason "stale" (certified
+    against declarations other than asset_declarations.json at `ref`) or "unbound" (null sha: v1, pre-binding or legacy
+    records). Such a cell is never current, so its asset is simply absent from `elevated_report`; this is how a dashboard
+    shows "certified against old declarations". Same inputs, same raises (a missing declarations file raises)."""
+    state, _disp, _gaps, _pop = _e63_load(ref, repo)
+    return _e63_stale_declaration_cells(state)
 
 
 def citation_blocked_cells(ref: str, repo: str) -> list:

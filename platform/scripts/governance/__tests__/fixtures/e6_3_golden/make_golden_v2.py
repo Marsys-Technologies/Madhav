@@ -16,7 +16,7 @@ for src, name in ((E51, "nikasha_certify.py"), (E51, "asset_census.py"), (E55, "
     shutil.copy(src / name, combo / name)
 sys.path.insert(0, str(combo))
 sys.path.insert(0, str(LANE / "platform/scripts/governance/__tests__"))
-from _e6_3_fixtures import MINI_CENSUS  # noqa
+from _e6_3_fixtures import MINI_CENSUS, DECL_TEXT, DECLARATIONS  # noqa
 import asset_census as ac, nikasha_certify as nc, nikasha_stale_certs as sc  # noqa
 
 ns = {}
@@ -36,6 +36,7 @@ ASSETS = ["ga_alpha", "ga_beta", "ga_gamma", "ga_delta"]
 def wbody(a, v=1): return f"# writer of {a}, v{v}\n".encode()
 for a in ASSETS:
     p = repo / WD / f"{a}.py"; p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(wbody(a))
+(repo / DECLARATIONS).parent.mkdir(parents=True, exist_ok=True); (repo / DECLARATIONS).write_text(DECL_TEXT)   # gates bind to its sha256
 (repo / "00_ARCHITECTURE/control/census").mkdir(parents=True); (repo / "00_ARCHITECTURE/control/census/.gitkeep").write_text("")
 git("add", "-A"); git("commit", "-q", "-m", "writers", date="2026-09-30T10:00:00+05:30")
 ac.ROOT = repo; ac.SIDECAR = repo / "platform/python-sidecar"; ac.WRITERS = repo / WD
@@ -60,7 +61,7 @@ def census_file(asset):
     rec = dict(asset_id=asset, layer="L1", has_writer=True, writer_files=[f"{asset}.py"], asset_kind="data",
                target_columns=["a"], measurements=cells)
     c = dict(generated=RUN, layer="L1", registry_revision=ac.REGISTRY_REVISION, registry_fingerprint=ac.registry_fingerprint(),
-             tool_commit=TOOL, assets=[rec])
+             tool_commit=TOOL, assets=[rec], declarations_sha256=hashlib.sha256(DECL_TEXT.encode()).hexdigest(), declarations_version="1.0.0")
     p = repo / "00_ARCHITECTURE/control/census" / f"census_{asset}.json"
     p.write_text(json.dumps(c)); git("add", "--", str(p)); return p
 

@@ -8,7 +8,7 @@ No shim: E5.5 appends through E5.1's public `append_records`, events (`type`), c
 import json, os, shutil, subprocess, sys, tempfile, pathlib, importlib.util, hashlib, datetime as dt
 
 OUT = pathlib.Path(sys.argv[1])
-E51 = pathlib.Path("/Users/Dev/suvarna-engine-lane-e5-1/platform/scripts/governance")
+E51 = pathlib.Path("/Users/Dev/suvarna-engine-lane-e5-1b/platform/scripts/governance")
 E55 = pathlib.Path("/Users/Dev/suvarna-engine-lane-e5-5/platform/scripts/governance")
 LANE = pathlib.Path("/Users/Dev/suvarna-engine-lane-e6-3")
 combo = pathlib.Path(tempfile.mkdtemp())
@@ -16,7 +16,7 @@ for src, name in ((E51, "nikasha_certify.py"), (E51, "asset_census.py"), (E55, "
     shutil.copy(src / name, combo / name)
 sys.path.insert(0, str(combo))
 sys.path.insert(0, str(LANE / "platform/scripts/governance/__tests__"))
-from _e6_3_fixtures import MINI_CENSUS  # noqa
+from _e6_3_fixtures import MINI_CENSUS, DECL_TEXT, DECLARATIONS  # noqa
 import asset_census as ac, nikasha_certify as nc, nikasha_stale_certs as sc  # noqa
 
 ns = {}
@@ -33,9 +33,11 @@ def git(*a, date=None):
 git("init", "-q", "-b", "main")
 WD = "platform/python-sidecar/pipeline/orchestrator/writers"
 ASSETS = ["ga_alpha", "ga_beta"]
+nc.CITATION_CRITERIA = ("Ldgr.src", "Idem.alt")      # the mini registry's stand-ins for Carr.D1 / Ldgr.source_presence (tests patch the reader alike)
 def wbody(a, v=1): return f"# writer of {a}, v{v}\n".encode()
 for a in ASSETS:
     p = repo / WD / f"{a}.py"; p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(wbody(a))
+(repo / DECLARATIONS).parent.mkdir(parents=True, exist_ok=True); (repo / DECLARATIONS).write_text(DECL_TEXT)   # gates bind to its sha256
 (repo / "00_ARCHITECTURE/control/census").mkdir(parents=True); (repo / "00_ARCHITECTURE/control/census/.gitkeep").write_text("")
 git("add", "-A"); git("commit", "-q", "-m", "writers", date="2026-09-30T10:00:00+05:30")
 ac.ROOT = repo; ac.SIDECAR = repo / "platform/python-sidecar"; ac.WRITERS = repo / WD
@@ -46,10 +48,12 @@ FP = {"ga_alpha": hashlib.sha256(b"alpha rows").hexdigest(), "ga_beta": hashlib.
 TOOL = "a" * 40
 def census_file(asset):
     cells = {c: dict(v="PASS", measured="m") for c in ("Ldgr.src", "Idem.pat", "Idem.alt", "Build.any", "Build.target", "Build.reg")}
+    for crit in ("Ldgr.src", "Idem.alt"):
+        cells[crit]["citation_state"] = "sourced"
     rec = dict(asset_id=asset, layer="L1", has_writer=True, writer_files=[f"{asset}.py"], asset_kind="data",
                target_columns=["a"], measurements=cells)
     c = dict(generated=RUN, layer="L1", registry_revision=ac.REGISTRY_REVISION, registry_fingerprint=ac.registry_fingerprint(),
-             tool_commit=TOOL, assets=[rec])
+             tool_commit=TOOL, assets=[rec], declarations_sha256=hashlib.sha256(DECL_TEXT.encode()).hexdigest(), declarations_version="1.0.0")
     p = repo / "00_ARCHITECTURE/control/census" / f"census_{asset}.json"
     p.write_text(json.dumps(c)); git("add", "--", str(p)); return p
 

@@ -28,6 +28,9 @@ TRACKER_PATH = pathlib.Path(os.environ.get("E6_3_TRACKER_UNDER_TEST")
 CTRL = "00_ARCHITECTURE/control"
 CERTS, GAPS, DISP = f"{CTRL}/asset_certs.jsonl", f"{CTRL}/asset_gaps.jsonl", f"{CTRL}/asset_dispositions.jsonl"
 SEED = "platform/scripts/seed/asset_registry_seed.ts"
+DECLARATIONS = "platform/scripts/governance/asset_declarations.json"
+# the declarations file the fixtures (and the golden ledgers' generator) commit; gate certificates are bound to its sha256
+DECL_TEXT = '{\n  "version": "1.0.0",\n  "assets": {}\n}\n'
 GENERATOR = "00_ARCHITECTURE/control/generate_level_map.py"      # the registry-seed parser is read from the ref
 LEVEL_MAP = f"{CTRL}/LEVEL_MAP.json"
 CENSUS = "platform/scripts/governance/asset_census.py"
@@ -127,12 +130,17 @@ def cert(asset, crit, verdict="PASS", *, kind="gate", gen=1, upstream=(), na=Non
                writer_hashes_reason=None if writer else "asset has no writer file",
                upstream_cert_ids=list(upstream), semantic_fingerprint=fp if verdict in ("PASS", "N/A") else None,
                cert_key=key, generation=gen, cert_id=f"{key}@{gen}", verified_by="census-run",
-               verified_on=RUN_ID, record_version=1)
+               verified_on=RUN_ID, record_version=1,
+               # E5.1's binding: a gate carries the sha256 of the declarations file it was measured under, an addition null
+               declarations_sha256=sha(DECL_TEXT.encode()) if kind == "gate" else None,
+               declarations_version="1.0.0" if kind == "gate" else None)
     rec.update(over)
     if v1:
-        rec["record_version"] = 1                      # E5.1 v1: no citation fields at all
+        rec["record_version"] = 1                      # E5.1 v1: no citation fields at all, no declarations binding
         rec.pop("citation_state", None)
         rec.pop("citation_state_caveat", None)
+        rec.pop("declarations_sha256", None)
+        rec.pop("declarations_version", None)
     elif "citation_state" not in rec:
         # what the REAL v2 writer produces for every record: record_version 2, citation_state (null unless a citation gate),
         # citation_state_caveat true exactly for a citation-gate PASS whose state is not `sourced` (a null state counts)
@@ -260,6 +268,7 @@ class World:
         self.raw = {}            # path -> exact text/bytes (None deletes the file); replaces the rendered one
         self.watermark = "auto"
         self.level_map = None
+        self.declarations_text = DECL_TEXT
         self.last = None
 
     # -- building blocks --------------------------------------------------------------------------------------
@@ -305,7 +314,7 @@ class World:
 
     def render(self):
         files = {CERTS: self.certs_text(), GAPS: jsonl(self.gaps), DISP: chained(self.disps), CENSUS: self.census,
-                 SEED: seed_text(self.seed_assets()), GENERATOR: (REPO / GENERATOR).read_text(encoding="utf-8")}
+                 SEED: seed_text(self.seed_assets()), DECLARATIONS: self.declarations_text, GENERATOR: (REPO / GENERATOR).read_text(encoding="utf-8")}
         if self.level_map is not None:
             files[LEVEL_MAP] = self.level_map
         files.update(self.raw)

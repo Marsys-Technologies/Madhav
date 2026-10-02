@@ -6,1522 +6,2582 @@
  "citation_strict": [
   "Idem.alt"
  ],
- "e5_1_commit": "172902feb39d44e36764ac71adb25e9c262285fb",
+ "e5_1_commit": "28749c2a3b00d531dfbbb39ceb4c3c2b865819d1",
  "variants": {
   "absent_version_with_fields": {
    "code": "bad_ledger",
-   "sha256": "3d5ac6c21378915716b471b5687b337676c7c5b997e7ef3c890645315a29f79a",
+   "sha256": "31afd154021f27ed17a7b08b436160b7babb9c49b3d0f12aee22bbda6295fa3e",
    "verdict": "REFUSED"
   },
   "absent_version_without_fields": {
-   "sha256": "0c95422286af0f5bcf211e7134e2f903df52e676c51bb9edf07e5cd0cbfbaed0",
+   "sha256": "8771c5e50269196fd5f83f9d97dff9f16e3c82d2303371259c13211661cf81c8",
    "states": {
     "ga_alpha|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     null,
+     null
     ],
     "ga_beta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ]
    },
    "verdict": "OK"
   },
   "applicability_na_null_state": {
-   "sha256": "294d43df62355ca5d2e099ab7a2e4d8378e18f79f0b7a457a17eec31e01dccfc",
+   "sha256": "a35949b2cacef7b3519f22205e01c08439fd59f71500dc694e25ea065c4aaba5",
    "states": {
     "ga_alpha|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Ldgr.src@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Ldgr.src@1": [
      "sourced_ocr_unverified",
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ]
    },
    "verdict": "OK"
   },
   "applicability_na_with_state": {
    "code": "bad_ledger",
-   "sha256": "6c149483dd3d8d2a6c4e9ec5c5db5e28e4007e2a806354d65e7afadb2fe12808",
+   "sha256": "4a8fe16b99fc66dad5ab2a252d0d8ed5cf900d8d76f286ef11631a6ea71412fc",
    "verdict": "REFUSED"
   },
   "caveat_flipped_on_ocr_pass": {
    "code": "bad_ledger",
-   "sha256": "861e63bf008525c706daa21827ae42bda15a03bde77b2113a2db29c8365467c8",
+   "sha256": "deb47a7ba18b7b0d4e8b92e425f10a1ab387c21dce741051403d301a135216de",
    "verdict": "REFUSED"
   },
   "caveat_not_bool": {
    "code": "bad_ledger",
-   "sha256": "79867a32912d233bbe3deaf520bf0d362688b3f88a6e56ea0e76114a41b09f7b",
+   "sha256": "1b4c23c322acb8050a1832424fd01858152e46bfb1744249eb988eeaacc4a40e",
    "verdict": "REFUSED"
   },
   "caveat_true_on_sourced": {
    "code": "bad_ledger",
-   "sha256": "6d7b849752fa8589b3b7e8440197154ee81a403048925fb126dee54d3adbe405",
+   "sha256": "6ca0521a7c87a385b1ab489862ddc885beb5b18b05e4052b06908ac395141605",
    "verdict": "REFUSED"
   },
   "clean": {
-   "sha256": "b131c33d2a72528d833fec62bb3717f56f972d044108eb0ed67eae9a687bfe12",
+   "sha256": "d7a1828ae0d042b28455add1ecb882cd8d9d8206ceef8a193bcca294fbd72202",
    "states": {
     "ga_alpha|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Ldgr.src@1": [
      "sourced_ocr_unverified",
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ]
    },
    "verdict": "OK"
   },
+  "decl_blank_version": {
+   "code": "bad_ledger",
+   "sha256": "8ba83ef65aa6de10b87b4f970c86a2b9a903f95b6382d5b16eecbf2dc711306a",
+   "verdict": "REFUSED"
+  },
+  "decl_fields_absent_on_v2": {
+   "sha256": "584c9151cea901f9c8effe3bcf90dfc0fb318c63290ba321e7dcac8f8cbb5e1f",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     "sourced",
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     "sourced",
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     "sourced_ocr_unverified",
+     true,
+     null,
+     null
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ]
+   },
+   "verdict": "OK"
+  },
+  "decl_present_null_on_gate": {
+   "code": "bad_ledger",
+   "sha256": "2363a6d606f85c9f18ac39414c0fff526f8ac7a7f5a50eafbc7b441557d41dac",
+   "verdict": "REFUSED"
+  },
+  "decl_sha_not_hex": {
+   "code": "bad_ledger",
+   "sha256": "bc529ceae0f14f83763c2c5e9a797108cd75587e785e6a2b22fff2f749b2cb60",
+   "verdict": "REFUSED"
+  },
+  "decl_sha_uppercase": {
+   "code": "bad_ledger",
+   "sha256": "1c7d55ddb0a938a201cc9d9c7cfa0c036230d839effc199f3a126e80fffc7a07",
+   "verdict": "REFUSED"
+  },
+  "decl_sha_without_version": {
+   "sha256": "90555b08f7b8f42f78942c283e7b7f19a99af722f24f19b6c3de0eaa490fc0bb",
+   "states": {
+    "ga_alpha|gate|Build.any@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_alpha|gate|Build.reg@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_alpha|gate|Build.target@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_alpha|gate|Idem.alt@1": [
+     "sourced",
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_alpha|gate|Idem.pat@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_alpha|gate|Ldgr.src@1": [
+     "sourced",
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_alpha|gate|Null.x@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_beta|gate|Build.any@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_beta|gate|Build.reg@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_beta|gate|Build.target@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_beta|gate|Idem.alt@1": [
+     "sourced",
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_beta|gate|Idem.pat@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_beta|gate|Ldgr.src@1": [
+     "sourced_ocr_unverified",
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     null
+    ],
+    "ga_beta|gate|Null.x@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Build.any@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Build.reg@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Build.target@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Idem.alt@1": [
+     "unsourced",
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Idem.pat@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Ldgr.src@1": [
+     "sourced",
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_delta|gate|Null.x@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Build.any@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Build.reg@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Build.target@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Idem.alt@1": [
+     "sourced",
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Idem.pat@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Ldgr.src@1": [
+     null,
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ],
+    "ga_gamma|gate|Null.x@1": [
+     null,
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
+    ]
+   },
+   "verdict": "OK"
+  },
+  "decl_sha_wrong_type": {
+   "code": "bad_ledger",
+   "sha256": "dcf59abd09ed516dce0be131a6de0da27a54d94a7d29f95aad5fa463beaff47f",
+   "verdict": "REFUSED"
+  },
+  "decl_version_not_text": {
+   "code": "bad_ledger",
+   "sha256": "70142aba9ddb9c80274dbd407ff718f1c8244c56df71c554f50aab53de3ac500",
+   "verdict": "REFUSED"
+  },
+  "decl_version_without_sha": {
+   "code": "bad_ledger",
+   "sha256": "66017c2e7c14a90e2cd4e5c880534c205fb1ffe9e30e40ddd1a6d071689ceb91",
+   "verdict": "REFUSED"
+  },
   "missing_caveat": {
    "code": "bad_ledger",
-   "sha256": "5177192a96194c14ae3fb48b2ed3686bb07876c29e5c02d06b41d41acb050af1",
+   "sha256": "38e183e8d4511d632ca8e88ffcc86a885f35cc9f37e729847e08136a9c3febfd",
    "verdict": "REFUSED"
   },
   "missing_state": {
    "code": "bad_ledger",
-   "sha256": "b9c23882adf6f000619b6d64e6ab50b87eb0df0022f1c5c2c53815f9c3948672",
+   "sha256": "1ac506195a4b06f80b90b8c7b1b55d90c4021f9c9423c5e320936aa6b9669c5e",
    "verdict": "REFUSED"
   },
   "null_state_pass_caveat_false": {
    "code": "bad_ledger",
-   "sha256": "39211e850855c7114aefa4f2cd6b309c8f3b7f503f6529ccff57ce95e6575e8c",
+   "sha256": "f2a5a4b1678c83361676934a889138954808e299ceebc319754a75d98568e503",
    "verdict": "REFUSED"
   },
   "null_state_pass_caveat_true": {
-   "sha256": "b131c33d2a72528d833fec62bb3717f56f972d044108eb0ed67eae9a687bfe12",
+   "sha256": "d7a1828ae0d042b28455add1ecb882cd8d9d8206ceef8a193bcca294fbd72202",
    "states": {
     "ga_alpha|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Ldgr.src@1": [
      "sourced_ocr_unverified",
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ]
    },
    "verdict": "OK"
   },
   "pass_with_refuted": {
    "code": "bad_ledger",
-   "sha256": "4484920c7d36ec8e0a773eba268bd9162e2bea7a4b2ea0fc5eca6ea3ce2de791",
+   "sha256": "21d74638b0ea6401e3b35c5e179803f2ad201bdf790d081110b464a0ea409716",
    "verdict": "REFUSED"
   },
   "pass_with_unsourced": {
    "code": "bad_ledger",
-   "sha256": "90d2f41142345a872384bed2d5f04a7d18876498f4171d3644d4566fc9a38a15",
+   "sha256": "facca4149fe139d02f892133de2e2c8c1421c2c2ee6168dabbe4d556cc0ed9a0",
    "verdict": "REFUSED"
   },
   "state_on_non_citation_gate": {
    "code": "bad_ledger",
-   "sha256": "509547c055b0825de015cec223bb8b5163a4a74c4785e94d49d05307381ddbae",
+   "sha256": "dc00bd296dddd076d7f1380c3a2141f6ed6bdd1e169a188bc8c0a585181e481d",
    "verdict": "REFUSED"
   },
   "strict_no_detector_null_state": {
-   "sha256": "fcef80327a54d9066ff4eb74c18ef2d277b6d197763945bdd3460c205b4136ca",
+   "sha256": "1880bcdaf256ff136c4e0e874cf20f4dccb65fe8ed933a390d71ac97f4b5d548",
    "states": {
     "ga_alpha|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.alt@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Ldgr.src@1": [
      "sourced_ocr_unverified",
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ]
    },
    "verdict": "OK"
   },
   "strict_partial_null_state": {
    "code": "bad_ledger",
-   "sha256": "3e8a4f72b4febb543fc4e9f3da32989d5919e4497b035b4b24eb7448e61cfcd5",
+   "sha256": "59ae2861ced55ee022a43dc5444d6bc11cb21780a23404feec6dc50026ae79b8",
    "verdict": "REFUSED"
   },
   "strict_partial_refuted": {
    "code": "bad_ledger",
-   "sha256": "5b38cc297cc3a83d3316affdd84e10a9dd61ba9ec8ec4392e1f9c4abce6d3480",
+   "sha256": "9aec72db41938edb9c003623f0ea8829249eae926937a7a310f422ee9536406a",
    "verdict": "REFUSED"
   },
   "strict_partial_sourced": {
-   "sha256": "0f41dcdfc86592427ccf16e29d5a2a592c3d3ff7d0bc9b46ec312b0a1cd8b987",
+   "sha256": "84cb0d1329074f100056dc72eca60d0192282fa0f8da4623fa3dd18eda4ecbbb",
    "states": {
     "ga_alpha|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Ldgr.src@1": [
      "sourced_ocr_unverified",
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ]
    },
    "verdict": "OK"
   },
   "strict_partial_unsourced": {
    "code": "bad_ledger",
-   "sha256": "146a8b71914cd68b0096d6492efe56f89f42ed05d2f7cc126091bff29da8e6e3",
+   "sha256": "38fdf8fa5a8c51c905c120bfb92811a89cd978ca0846610fda52c921a7e3fdcb",
    "verdict": "REFUSED"
   },
   "strict_pass_null_state": {
    "code": "bad_ledger",
-   "sha256": "244037c7e7bf9049511c3b14028daf6cd8a44cd06addd47d247d123225223899",
+   "sha256": "76843bc2716846b94cd2f3b25959ebb4c7629f5db287337c45de026c7164466b",
    "verdict": "REFUSED"
   },
   "strict_pass_ocr": {
-   "sha256": "695068e8fec6c378539b06762f41405bd46a000a6109c13e27215b0e6a1c640b",
+   "sha256": "83eac3cd39f78ae5192b839b397b4c151b6851305bd883d3820007e07fb386ad",
    "states": {
     "ga_alpha|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.alt@1": [
      "sourced_ocr_unverified",
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Ldgr.src@1": [
      "sourced_ocr_unverified",
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ]
    },
    "verdict": "OK"
   },
   "unknown_state": {
    "code": "bad_ledger",
-   "sha256": "248a5698f4884f90184f0151f106119c7aec5e5e8285236f2f86420367aa1de5",
+   "sha256": "aab9d1295ea1b62002c29fe6bab274851a156cb5457805704a0bf72a8d101ed2",
    "verdict": "REFUSED"
   },
   "unsourced_no_detector_cell": {
-   "sha256": "15b17f669a2b5a56f5d6698eac5888ec2be04887f503b018cd7bdcc726a47010",
+   "sha256": "a508b7d2a13c406ea4eaad4903cb2e68825009afdd4b5c3159e6c0ee5692c586",
    "states": {
     "ga_alpha|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Ldgr.src@1": [
      "sourced_ocr_unverified",
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ]
    },
    "verdict": "OK"
   },
   "v1_citation_gate_idem_alt_pass": {
-   "sha256": "75d47fd7005b445fcbac12ee1fddc1d4bdc582168aa5bc355150529568e955fc",
+   "sha256": "c8bab62a881f220a5d0e16adbd6018e8011b01ee632d08519c588a67ee70de74",
    "states": {
     "ga_alpha|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.alt@1": [
      null,
-     true
+     true,
+     null,
+     null
     ],
     "ga_alpha|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Ldgr.src@1": [
      "sourced_ocr_unverified",
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ]
    },
    "verdict": "OK"
   },
   "v1_ldgr_pass": {
-   "sha256": "ae17c1644ef3801fcebbc569d66e15d6677a828874c145495976464fa93fa3c8",
+   "sha256": "c2cf298e4f281413d5a1154fa47c10663249ceb5785f88bd0a140e885b888235",
    "states": {
     "ga_alpha|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     null,
+     null
     ],
     "ga_alpha|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Ldgr.src@1": [
      "sourced_ocr_unverified",
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ]
    },
    "verdict": "OK"
   },
   "v1_non_citation_pass": {
-   "sha256": "0094a1817f0fad306c5587a0d4cd5d4cb266ea5597f2684aa5a1c38eff1d4bfd",
+   "sha256": "6160b016af9e7dfdf273864142ed2c5628bb4aac308c7a004051f334bd9bdb94",
    "states": {
     "ga_alpha|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     null,
+     null
     ],
     "ga_alpha|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Ldgr.src@1": [
      "sourced_ocr_unverified",
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ]
    },
    "verdict": "OK"
   },
+  "v1_with_declarations_fields_only": {
+   "code": "bad_ledger",
+   "sha256": "c9257c718912fbca72b8bf20dba58fbc6c9b8d0eb73a5efba1ea4ab5ebcbce7e",
+   "verdict": "REFUSED"
+  },
   "v1_with_fields": {
    "code": "bad_ledger",
-   "sha256": "dd6b8995d6954e13750c694962e7358dbdd5f75da56ae66afdad0edbfdcef0f7",
+   "sha256": "e7a6b4a71a3adcc7122aa84015a792de596fa11cf609b60d50b5ac66ef6c8e64",
    "verdict": "REFUSED"
   },
   "v1_without_fields": {
-   "sha256": "ff7d7c80ac12bdb327a2987f047c184fefaeb93fcec3c618c0846a2945b75468",
+   "sha256": "ab293cfa0e6e98ee183474d851c64e9d1f2e71dbd683bb9e8c6153fd408f277f",
    "states": {
     "ga_alpha|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_alpha|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_beta|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     null,
+     null
     ],
     "ga_beta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.alt@1": [
      "unsourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Ldgr.src@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_delta|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.any@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.reg@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Build.target@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.alt@1": [
      "sourced",
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Idem.pat@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Ldgr.src@1": [
      null,
-     true
+     true,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ],
     "ga_gamma|gate|Null.x@1": [
      null,
-     false
+     false,
+     "448f92e552f84ed962c590c4554fa2a740fc5b61d1fc03061f59d5adc311b3f0",
+     "1.0.0"
     ]
    },
    "verdict": "OK"
   },
   "version_0": {
    "code": "bad_ledger",
-   "sha256": "50dd031d9901a9a6dac67cda86668e989c8f17fd8652608e28591b9eeab6b5d8",
+   "sha256": "8d5d899bed536a0215e3a02f4a5c3a3c6619225aed3ee3c984119e0510413b4e",
    "verdict": "REFUSED"
   },
   "version_3": {
    "code": "bad_ledger",
-   "sha256": "c3e63495e5fdd38456f10b0530fb910d5cf3fe5f8b7fc50ac14f01d4a2122116",
+   "sha256": "517e34e6b64e0e0d1a7b5f8a69403ff5f354de6ff19c3a8cada7a8c46dfbbc82",
    "verdict": "REFUSED"
   },
   "version_true": {
    "code": "bad_ledger",
-   "sha256": "a2cf17a65401dba6b5e35ed7605a0f68880fa88361b0fac7155008079d292fc0",
+   "sha256": "837c7d6fadf79ef7d5def33724fca95827744ef473fc3e78b3e071308301f649",
    "verdict": "REFUSED"
   }
  }
