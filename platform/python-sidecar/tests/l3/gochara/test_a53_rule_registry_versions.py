@@ -294,7 +294,7 @@ def test_inventory_pins_and_obligation_ids_follow_the_selected_version_and_the_v
     vchart = {"lagna": INV_CHART["lagna_deg"],
               "natal": {k.lower(): v for k, v in INV_CHART["natal"].items()}}
     for pid, ver in sealed:
-        pin = ivr.derive_path_pin("marriage", vchart, pid, ver, path_exclusions={},
+        pin = ivr.derive_path_pin("marriage", vchart, pid, ver, excluded_agents=("moon",), path_exclusions={},
                                   h_unknown_exclusion=None)
         mine = sorted(o.canonical_bytes for o in plan.obligations if o.path_id == pid)
         assert pin["obligations"] == mine and all(b.split("|")[2] == "1.1.0" for b in mine)

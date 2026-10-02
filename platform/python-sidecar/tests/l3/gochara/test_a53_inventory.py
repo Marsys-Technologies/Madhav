@@ -349,7 +349,8 @@ def _boot(conn, generation, vector=None):
         gk_ledger.publish_candidate(
             conn, CHART_ID, generation, kala,
             # R9-1: these legacy fixtures exercise the qualification policy that applies when numbers are enabled
-            vector or {"rule_registry": "r1", "result_policy": "window_qualification/1"},
+            vector or {"rule_registry": "r1", "result_policy": "window_qualification/1",
+                       "stored_scope": "stored_non_moon"},      # R9-10: a real vector always declares its scope
             {"backend": "swieph"}, f"[{H0.isoformat()},{H1.isoformat()})",
             writer_asset_id="ka_gochara_v5")
     return InventoryStore(conn), sky, kala
@@ -522,8 +523,9 @@ def test_the_verifier_imports_nothing_from_the_builder():
                  "record_store", "gochara_rules", "gochara_kernel")
     bad = {m for m in imported if any(f in m.replace("inventory_verifier", "") for f in forbidden)}
     assert not bad, f"the verifier must be independent of the builder: {bad}"
-    # stdlib only (the aspect-to-span re-derivation needs `datetime.timedelta`)
-    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime"}, imported
+    # stdlib only (the aspect-to-span re-derivation needs `datetime.timedelta`; R9-10: `json` reads the
+    # manifest's stored_scope)
+    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime", "json"}, imported
 
 
 def test_the_seal_check_sees_exactly_what_is_missing_after_the_builder_alone(am5):

@@ -169,13 +169,18 @@ def _testimony_lords(natal: dict, lagna: float, event_class: str) -> set[str]:
     return out
 
 
-def expected_p1_contacts(position_at, lo, hi) -> list[dict]:
-    """The COMPLETE expected P1 contact set over [lo, hi): for every graha and every sign P1 reads it in, the maximal
-    in-sign intervals reconstructed from the ephemeris alone (`contact_reconstruct`), each with the anchor set it must
-    carry. Independent of the builder's ledger, supports and records."""
+def expected_p1_contacts(position_at, lo, hi, *, excluded_agents) -> list[dict]:
+    """The COMPLETE expected P1 contact set over [lo, hi): for every STORED graha and every sign P1 reads it in, the
+    maximal in-sign intervals reconstructed from the ephemeris alone (`contact_reconstruct`), each with the anchor set
+    it must carry. Independent of the builder's ledger, supports and records. `excluded_agents` is the set of bodies
+    the generation's manifest scope says the stored tier never holds as a transiting agent (R9-10: read from the
+    manifest by the caller, never a hard-coded exclusion here); the Moon as an ANCHOR lord of another agent's period
+    (`expected_p1_anchors`) is unaffected."""
     from . import contact_reconstruct as cr
     out = []
     for agent in _GRAHAS7:
+        if agent in excluded_agents:
+            continue
         needed = {i: expected_p1_anchors(agent, i) for i in range(12)}
         needed = {i: a for i, a in needed.items() if a}
         if not needed:
@@ -207,6 +212,8 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
     if hdr is None:
         raise Unverifiable(f"{event_class}: no inventory horizon to certify the contact set over")
     lo, hi = (tuple(hdr.values()) if isinstance(hdr, dict) else tuple(hdr))
+    from .inventory_verifier import bound_excluded_agents
+    excluded = bound_excluded_agents(conn, chart_id, generation)     # the bodies come from the MANIFEST's scope
     snap = conn.execute(
         "SELECT consumed_fact_ids FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
         (chart_id, generation)).fetchone()
@@ -241,7 +248,7 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
     def clipped(t_in, t_out):
         return max(t_in, lo), (hi if t_out is None else min(t_out, hi))
 
-    expected = expected_p1_contacts(position_at, lo, hi)
+    expected = expected_p1_contacts(position_at, lo, hi, excluded_agents=excluded)
     problems: list[str] = []
     matched: set[str] = set()
     for e in expected:
