@@ -637,6 +637,26 @@ def test_d1_a_declared_condition_that_is_not_one_whole_passage_sentence_is_a_mis
     assert r["v"] == "PARTIAL" and len(r["d1"]["unmatched"]) == 8 and all(u["failed"] == ["affliction_condition"] for u in r["d1"]["unmatched"])
 
 
+def test_d1_a_condition_that_starts_mid_sentence_at_a_lower_case_word_is_not_a_whole_sentence_even_after_an_ocr_stop():
+    frag = "natal star) happens to come as the Latta star, there will be sickness and anguish."
+    spec = _cond_spec(text=frag, start="natal star) happens", end="sickness and anguish.")          # clause-initial by the stray OCR dot, but not a capital opener
+    r = _sun_cond(frag, spec)
+    assert r["v"] == "PARTIAL" and [u["failed"] for u in r["d1"]["unmatched"] if u["row"] == "Sun"] == [["affliction_condition"]]
+
+
+def test_d1_cut_sentence_needs_a_unique_clause_initial_capital_start_and_an_end_after_it():
+    cut = d1._cut_sentence
+    seg = "ABC The first one ends. then the second goes on. Then The first one ends."
+    ok = dict(text="x", start="Then The first one", end="ends.")
+    assert cut(seg, ok) == d1._toks("Then The first one ends.")
+    assert cut("ABC The one here. tail", dict(start="The one", end="here.")) is None                 # preceded by an upper-case token: not clause-initial
+    assert cut("a The one here. b The one here.", dict(start="The one", end="here.")) is None        # the start occurs twice
+    assert cut("a b stop. then If one two stop.", dict(start="If one", end="stop.")) == d1._toks("If one two stop.")  # the end is searched AFTER the start
+    assert cut("The one here.", dict(start="The one", end="here.")) == d1._toks("The one here.")      # at the head of the passage
+    assert cut("a the one here.", dict(start="the one", end="here.")) is None                        # not a capital opener
+    assert cut("a The one here", dict(start="The one", end="here")) is None                          # the end is not a stop
+
+
 def test_d1_a_condition_may_be_declared_per_claimant_and_the_lookup_trims_and_ignores_case():
     other = dict(text=COND["text"], start=COND["start"], end=COND["end"])
     bad = dict(text="If, when thus counting, wrong", start="If, when thus counting", end="sickness and anguish.")
