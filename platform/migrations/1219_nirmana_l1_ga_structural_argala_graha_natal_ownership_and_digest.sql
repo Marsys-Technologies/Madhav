@@ -2,17 +2,20 @@
 --
 -- Suvarna Track I (SS decision N-61, 2026-10-01, approved with changes 2026-10-02; design note
 -- 00_ARCHITECTURE/briefs/suvarna/exec/DESIGN_ARGALA_L1_GRAHA_ROWS_v1_0.md; explanation and before/after counts:
--- 00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1219_1221_INTENT_v1_0.md; Q-L1-04 / I-30 of DECISION_SHEET_L1_v1_0.md).
+-- 00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1219_INTENT_v1_0.md; Q-L1-04 / I-30 of DECISION_SHEET_L1_v1_0.md).
 --
 -- This is a real migration, applied through the normal runner: platform/scripts/migrate.ts owns the transaction,
 -- so there is no BEGIN/COMMIT here (1086 pattern). It must be VERIFIED by production structure after it applies
 -- (the post-apply queries below; CLAUDE.md N.4, Trap 103: never trust the deploy log, a run that reports success
 -- can still have done nothing).
 --
+-- LOCK TIMEOUT. The first statement is SET LOCAL lock_timeout = '5s' (migration 1218 pattern): a blocked migrate
+-- job must fail fast, not hang a shared deploy.
+--
 -- ORDERING. 1219 is a HARD PREREQUISITE of the S-L1 ga_structural rebuild: it must be applied BEFORE that rebuild
 -- launches. It has no dependency on the writer deploy and MAY APPLY INDEPENDENTLY of it (before, with or after).
--- Its companion 1221 (the a29 integrity conjunct) is a different matter: it is NOT applied with this file and
--- never before the ga_structural writer deploy; see the header of 1221.
+-- Its companion 1221 (the a29 integrity conjunct) is a different matter and is a SEPARATE, HELD PR: it is NOT applied
+-- with this file and never before the ga_structural writer deploy; see the header of 1221.
 --
 -- THIS MIGRATION IS A HARD PREREQUISITE OF THE S-L1 ga_structural REBUILD, not registry tidiness.
 -- The live trigger l1_data_plane_mutation_guard on chart_facts (function
@@ -57,7 +60,12 @@
 --      * ga_strength: the 420 ga_structural bhava_bala_* rows ('%bhava_bala%' to 'house_bhava_bala_%'),
 --        the 35 vimsopaka_bala_per_graha rows ('%vimsopaka%' to 'graha_vimsopaka_%') and the 35
 --        graha_saptavargaja_bala_component rows (clause removed) leave its predicate: they are
---        ga_structural's (it is the emitter).
+--        ga_structural's (it is the emitter). So does ashtakavarga_anubindu: it is owned by ga_structural (its
+--        writer emits it, 7 grahas x 12 houses per ayanamsha) but the retained 'ashtakavarga_%' clause would still
+--        match it, so that clause becomes (LIKE 'ashtakavarga_%' AND <> 'ashtakavarga_anubindu'). Every other
+--        ashtakavarga_* category the clause matched stays ga_strength's (the 11 live ones, all in its ownership
+--        rows below, plus ashtakavarga_bindu_contributor). 0 anubindu rows exist on any chart today, so no
+--        count moves; the exclusion closes the double count before S-L1 emits those rows.
 --      * ga_condition: only the stale graha_yuddha clause leaves its predicate (ga_structural emits and owns
 --        graha_yuddha; the clause double-counts it on charts that have it; 0 rows on the canonical chart).
 --        It keeps counting the 2,925 chart_facts rows it owns (CLAUDE.md N.4 cockpit truth). NOTE for SS:
@@ -116,6 +124,10 @@
 --                            'panchaka_flag', 'tara_bala_natal_baseline') AND owning_asset_id = 'ga_structural'; -- 0
 --   SELECT count_sql NOT LIKE '%graha_yuddha%' AND count_sql LIKE '%ga_condition_composite%'
 --     FROM asset_registry WHERE asset_id = 'ga_condition';                                        -- t
+--   SELECT count_sql LIKE '%<> ''ashtakavarga_anubindu''%' FROM asset_registry WHERE asset_id = 'ga_strength'; -- t
+
+-- Fail fast: a migrate job blocked on a lock must fail, not hang a shared deploy (migration 1218 pattern).
+SET LOCAL lock_timeout = '5s';
 
 -- ── 1. ownership ─────────────────────────────────────────────────────────────────────────────
 DO $$
@@ -335,7 +347,7 @@ DECLARE
       fact_category LIKE 'graha_shadbala_%'
       OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala')
       OR fact_category LIKE 'graha_vimsopaka_%'
-      OR fact_category LIKE 'ashtakavarga_%'
+      OR (fact_category LIKE 'ashtakavarga_%' AND fact_category <> 'ashtakavarga_anubindu')
       OR fact_category LIKE 'house_bhava_bala_%'
       OR fact_category LIKE 'graha_%_bala_per_varga'
     )

@@ -1,6 +1,6 @@
 """A disposable local Postgres for migration tests (initdb into a temp dir; never the project database).
 
-Used by test_argala_1219_migration_static.py and test_argala_1221_integrity_a29.py. Skips when the binaries are
+Used by test_argala_migration_1219_sql.py and test_argala_migration_1221_sql.py (kept byte-identical in the two PRs that add it). Skips when the binaries are
 absent. Import the `pg` fixture into a test module with: from tests.pg_disposable import pg  # noqa: F401
 """
 from __future__ import annotations
@@ -45,9 +45,11 @@ def pg():
         shutil.rmtree(d, ignore_errors=True)
 
 
-def psql(port: int, db: str, sql: str | None = None, file: pathlib.Path | None = None):
+def psql(port: int, db: str, sql: str | None = None, file: pathlib.Path | None = None, single_transaction: bool = False):
     cmd = [PSQL, "-X", "-q", "-A", "-t", "-h", "127.0.0.1", "-p", str(port), "-U", "postgres", "-d", db,
            "-v", "ON_ERROR_STOP=1"]
+    if single_transaction:          # the migrate.ts shape: one transaction, rolled back whole on any error
+        cmd.append("--single-transaction")
     cmd += ["-f", str(file)] if file else ["-c", sql]
     return subprocess.run(cmd, capture_output=True, text=True)
 

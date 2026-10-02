@@ -5,7 +5,7 @@
   "ruling": "SS N-61 (AR-1..AR-6, 2026-10-01), approved with changes 2026-10-02; outcome semantics per SS review decision (disjunctive rule: only 'argala_prevails by count' is certain)",
   "pr": "#2851",
   "design_note": "00_ARCHITECTURE/briefs/suvarna/exec/DESIGN_ARGALA_L1_GRAHA_ROWS_v1_0.md (#2850)",
-  "migration_intent": "00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1219_1221_INTENT_v1_0.md (held for the owner; no migration file changed)",
+  "migration_intent": "00_ARCHITECTURE/briefs/suvarna/exec/MIGRATION_1219_INTENT_v1_0.md (migration 1219 is in this PR; 1221 is a separate HELD PR, see MIGRATION_1221_A29_INTENT_v1_0.md there)",
   "asset": "ga_structural",
   "categories": ["argala_graha_natal", "argala_natal_matrix", "virodha_argala_natal_matrix"],
   "category_regex": ["argala"],
@@ -65,7 +65,7 @@
         {"column": "citation_human", "change": "text changes on the NULL cells only ('no occupant in the source sign, no argala claim')", "expected_count": 3444}
       ],
       "unchanged_columns": ["fact_id", "fact_subject", "fact_key", "citation_ref", "verification_pass_status (single)", "fact_value_num on occupied cells (unless the ephemeris fix moves occupancy)"],
-      "never": "a non-NULL score on an empty-source argala cell, or NULL on an occupied one (integrity conjunct (a29), held as migration 1221)"
+      "never": "a non-NULL score on an empty-source argala cell, or NULL on an occupied one (integrity conjunct (a29), migration 1221, a separate HELD PR)"
     },
     {
       "category": "virodha_argala_natal_matrix",
@@ -88,7 +88,7 @@
       "attribution": "argala (AR-3)"
     },
     "get_argala (served tool)": "serves argala_natal_matrix and virodha_argala_natal_matrix rows: fact_value_num NULL and fact_value_text 'no_occupant' appear on 3,444 canonical rows; the all_zero flag is unaffected (a NULL is not 0); the offsets description text edit is NOT part of this lane (deferred to a tool-text batch coordinated with Purna)",
-    "integrity": "ga_structural integrity_check_sql gains conjunct (a29) (argala NULL <=> empty source sign) as migration 1221, a named step immediately before the S-L1 launch with or after the writer deploy; conjunct (e27) is vacuous on NULL. Expected: red on live canonical data until S-L1 writes the NULL cells, green after.",
+    "integrity": "ga_structural integrity_check_sql gains conjunct (a29) (argala NULL <=> empty source sign) as migration 1221 (separate HELD PR), a named step immediately before the S-L1 launch and never before the writer deploy (the runner applies a merged file at the next deploy, so it merges only after this PR's writer image is deployed and verified); conjunct (e27) is vacuous on NULL. Expected: red on live canonical data until S-L1 writes the NULL cells, green after.",
     "ownership_and_counts": "migration 1219 (held): fact_category_ownership gains argala_graha_natal, the 22 ga_structural-emitted categories lacking a row and the other producers' categories (172 rows), the five panchanga categories move from ga_structural to ga_panchanga; ga_strength count_sql narrowed (14,141 -> 13,651 canonical), ga_structural 102,037 -> 106,707 (+156 argala_graha_natal rows after S-L1); registry-only, no chart_facts row changes beyond argala_graha_natal.",
     "output_digest": "ga_structural output digest spec gains argala_graha_natal (spec sha b2490646... -> d480c829...), so the digest moves with the new rows",
     "writer_code_digests": ["ga_structural", "ga_yoga", "ga_sensitive_degree", "ga_ayurdaya", "ka_vighnakara"],
