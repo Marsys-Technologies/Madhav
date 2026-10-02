@@ -42,12 +42,16 @@ def world(tmp_path):
         c.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='cloudsqlsuperuser') THEN CREATE ROLE cloudsqlsuperuser NOLOGIN; END IF; END $$")
     capture = tmp_path / "secret_stdin.txt"
     shim = tmp_path / "gcloud"
+    # the shim ENFORCES a permission model (GCLOUD_PERMS, default = roles/secretmanager.secretVersionManager's three verbs the script uses) and records every verb it is asked to run
     shim.write_text(f'''#!/usr/bin/env bash
-case "$*" in
-  *"secrets versions add"*) cat > "{capture}" ; echo "$*" >> "{tmp_path}/gcloud_argv.txt"; echo "projects/1/secrets/gochara-verifier-db-url/versions/7" ;;
-  *"secrets versions destroy"*) echo "$*" >> "{tmp_path}/gcloud_destroy.txt" ;;
-  *"secrets versions list"*) printf '1\\tenabled\\n' ;;
-  *) echo "unexpected gcloud call: $*" >&2; exit 9 ;;
+verb=""; case "$*" in *"secrets versions add"*) verb=add;; *"secrets versions destroy"*) verb=destroy;; *"secrets versions list"*) verb=list;; *"secrets versions access"*) verb=access;; esac
+echo "$verb" >> "{tmp_path}/gcloud_verbs.txt"
+[ -n "$verb" ] || {{ echo "unexpected gcloud call: $*" >&2; exit 9; }}
+case ",${{GCLOUD_PERMS:-add,list,destroy}}," in *",$verb,"*) ;; *) echo "PERMISSION_DENIED: $verb (the shim models the declared IAM roles)" >&2; exit 1 ;; esac
+case "$verb" in
+  add) cat > "{capture}" ; echo "$*" >> "{tmp_path}/gcloud_argv.txt"; echo "projects/1/secrets/gochara-verifier-db-url/versions/7" ;;
+  destroy) echo "$*" >> "{tmp_path}/gcloud_destroy.txt" ;;
+  list) printf '1\\tenabled\\n' ;;
 esac
 ''')
     shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
@@ -58,7 +62,7 @@ esac
 
 
 def run(world, stage="create-roles", *, url=None, tail=TAIL, extra=None, psql=None):
-    env = {**os.environ, "STAGE": stage, "ADMIN_DATABASE_URL": url or DSN, "GCLOUD_BIN": world["gcloud"], "PSQL_BIN": psql or PSQL,
+    env = {**{k: v for k, v in os.environ.items() if not k.startswith("PG")}, "STAGE": stage, "ADMIN_DATABASE_URL": url or DSN, "GCLOUD_BIN": world["gcloud"], "PSQL_BIN": psql or PSQL,
            "DSN_TAIL": tail, "GCLOUD_PROJECT": "madhav-astrology", **(extra or {})}
     return subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=120)
 
@@ -239,3 +243,155 @@ for a in "$@"; do case "$a" in *"CREATE ROLE gochara_verifier LOGIN"*) "{PSQL}" 
     assert not world["capture"].exists()
     with _admin() as c:
         assert c.execute("SELECT count(*) FROM pg_roles WHERE rolname IN ('gochara_verifier','gochara_sealer')").fetchone()[0] == 0
+
+
+
+# ── round 12 (R12-3/4/5): the permission model, the admin secret out of argv, sealer activation made transactional and compensated ───────────────
+
+def verbs(world):
+    f = world["tmp"] / "gcloud_verbs.txt"
+    return f.read_text().split() if f.exists() else []
+
+
+def test_the_script_asks_secret_manager_for_exactly_add_and_list_on_success_and_never_for_access(world):
+    """Permission model (act 11: roles/secretmanager.secretVersionManager on the verifier secret ONLY): the success path uses `versions add` and `versions list`, and the payload is
+    never read — no `versions access`."""
+    r = run(world)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert verbs(world) == ["add", "list"], verbs(world)
+
+
+def test_under_the_version_adder_only_model_the_run_fails_and_reports_that_it_cannot_destroy_the_version(world):
+    """The model Codex tested (R12-3): `secretVersionAdder` alone lets the script ADD but neither LIST nor DESTROY. The run must fail, drop its roles and say — loudly, exit 70 — that the
+    version could not be destroyed (which is why the runbook grants secretVersionManager instead)."""
+    r = run(world, extra={"GCLOUD_PERMS": "add"})
+    assert r.returncode == 70, r.stdout + r.stderr
+    assert "listing the secret versions failed" in r.stderr and "ROLLBACK INCOMPLETE: destroy secret version 7" in r.stderr
+    with _admin() as c:
+        assert c.execute("SELECT count(*) FROM pg_roles WHERE rolname IN ('gochara_verifier','gochara_sealer')").fetchone()[0] == 0
+    assert verbs(world) == ["add", "list", "destroy"]
+
+
+def _argv_logger(world, name="psql_argv_logger"):
+    log = world["tmp"] / f"{name}.log"
+    shim = world["tmp"] / name
+    shim.write_text(f'''#!/usr/bin/env bash
+echo "$*" >> "{log}"
+exec "{PSQL}" "$@"
+''')
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    return shim, log
+
+
+def test_the_admin_connection_is_never_in_any_psql_argument_list(world):
+    """R12-3: `ADMIN_DATABASE_URL` used to be passed positionally to psql. Now the connection comes from the process environment (PG*) — a password marker in the URL appears in no argv,
+    no output, and psql still connects."""
+    shim, log = _argv_logger(world)
+    marker = "Zm4rk3rpw"
+    url = DSN.replace("postgresql://postgres@", f"postgresql://postgres:{marker}@")
+    assert marker in url
+    r = run(world, url=url, psql=str(shim))
+    assert r.returncode == 0, r.stdout + r.stderr
+    argv = log.read_text()
+    assert argv.strip() and marker not in argv and "postgresql://" not in argv and "127.0.0.1" not in argv, argv[:400]
+    assert marker not in visible(r)
+
+
+def _sealer_world(world, *, nologin=False):
+    """create-roles done (both roles PASSWORD NULL); returns nothing."""
+    shim = None
+    if nologin:
+        shim = world["tmp"] / "psql_fallback_shim"
+        shim.write_text(f'''#!/usr/bin/env bash
+for a in "$@"; do case "$a" in *"CREATE ROLE gochara_sealer LOGIN"*) exit 1;; esac; done
+exec "{PSQL}" "$@"
+''')
+        shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    r = run(world, psql=str(shim) if shim else None)
+    assert r.returncode == 0, r.stdout + r.stderr
+    return shim
+
+
+@pytest.mark.parametrize("nologin", [False, True], ids=["login_sealer", "nologin_fallback_sealer"])
+def test_a_failed_activation_postcondition_commits_nothing_and_the_compensation_is_verified(world, nologin):
+    """R12-4: activation and its postconditions are ONE transaction. Make the postcondition fail (the sealer is in cloudsqlsuperuser): nothing is committed, the compensation runs anyway and is
+    VERIFIED (password NULL; NOLOGIN restored if it was NOLOGIN), the exit is non-zero and the recovery message says the secrets are recovery material."""
+    shim = _sealer_world(world, nologin=nologin)
+    with _admin() as c:
+        c.execute("GRANT cloudsqlsuperuser TO gochara_sealer")
+        before = role(c, "gochara_sealer")
+    staged = "ab" * 40
+    r = run(world, "sealer-password", psql=str(shim) if shim else None, extra={"SEALER_PASSWORD_STAGING": staged})
+    assert r.returncode == 5 and "compensated and VERIFIED" in r.stderr and "recovery material" in r.stderr, r.stdout + r.stderr
+    with _admin() as c:
+        after = role(c, "gochara_sealer")
+    assert after == before and after[8] is True, (before, after)           # password still NULL, login attribute exactly as before
+    assert staged not in visible(r)
+
+
+def test_a_failure_after_the_activation_committed_is_compensated_and_verified(world):
+    """R12-4: the first read-only fact query AFTER the commit fails (what Codex injected): exit non-zero AND the password is reset to NULL and the reset verified — never a silent active credential."""
+    _sealer_world(world)
+    shim = world["tmp"] / "psql_post_commit_failure"
+    flag = world["tmp"] / "activated.flag"
+    shim.write_text(f'''#!/usr/bin/env bash
+prev=""; for a in "$@"; do if [ "$prev" = "-f" ] && [ "$a" = "-" ]; then stmt="$(cat)"; printf '%s' "$stmt" | "{PSQL}" "$@" || exit $?; case "$stmt" in *"LOGIN PASSWORD"*) touch "{flag}";; esac; exit 0; fi; prev="$a"; done
+if [ -f "{flag}" ]; then for a in "$@"; do case "$a" in *"rolname, rolcanlogin"*) exit 31;; esac; done; fi
+exec "{PSQL}" "$@"
+''')
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    staged = "cd" * 40
+    r = run(world, "sealer-password", psql=str(shim), extra={"SEALER_PASSWORD_STAGING": staged})
+    assert r.returncode != 0 and flag.exists(), r.stdout + r.stderr          # the activation DID commit...
+    assert "compensated and VERIFIED" in r.stderr, r.stderr                   # ...and was compensated
+    with _admin() as c:
+        assert role(c, "gochara_sealer")[8] is True                           # rolpassword IS NULL again
+    assert staged not in visible(r)
+
+
+def test_an_unverifiable_compensation_exits_70_and_says_the_sealer_may_be_active(world):
+    _sealer_world(world)
+    shim = world["tmp"] / "psql_compensation_fails"
+    flag = world["tmp"] / "activated2.flag"
+    shim.write_text(f'''#!/usr/bin/env bash
+prev=""; for a in "$@"; do if [ "$prev" = "-f" ] && [ "$a" = "-" ]; then stmt="$(cat)"; printf '%s' "$stmt" | "{PSQL}" "$@" || exit $?; touch "{flag}"; exit 0; fi; prev="$a"; done
+if [ -f "{flag}" ]; then for a in "$@"; do case "$a" in *"rolname, rolcanlogin"*) exit 31;; *"PASSWORD NULL"*) exit 1;; esac; done; fi
+exec "{PSQL}" "$@"
+''')
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    r = run(world, "sealer-password", psql=str(shim), extra={"SEALER_PASSWORD_STAGING": "ef" * 40})
+    assert r.returncode == 70 and "ROLLBACK INCOMPLETE — THE SEALER MAY BE ACTIVE" in r.stderr and "BEFORE deleting any secret" in r.stderr, r.stdout + r.stderr
+
+
+def test_a_cancelled_run_is_compensated(world):
+    """R12-4/R12-3: the runner CANCELS a run by signalling its process group. A SIGTERM while the activation is in flight must still run the compensation (the EXIT trap)."""
+    import signal
+    import time
+    _sealer_world(world)
+    shim = world["tmp"] / "psql_hangs_in_activation"
+    started = world["tmp"] / "in_flight.flag"
+    shim.write_text(f'''#!/usr/bin/env bash
+prev=""; for a in "$@"; do if [ "$prev" = "-f" ] && [ "$a" = "-" ]; then cat > /dev/null; touch "{started}"; sleep 60; exit 0; fi; prev="$a"; done
+exec "{PSQL}" "$@"
+''')
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    env = {**{k: v for k, v in os.environ.items() if not k.startswith("PG")}, "STAGE": "sealer-password", "ADMIN_DATABASE_URL": DSN, "GCLOUD_BIN": world["gcloud"],
+           "PSQL_BIN": str(shim), "SEALER_PASSWORD_STAGING": "12" * 40}
+    p = subprocess.Popen(["bash", str(SCRIPT)], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+    for _ in range(100):
+        if started.exists():
+            break
+        time.sleep(0.1)
+    assert started.exists(), "the activation never started"
+    os.killpg(p.pid, signal.SIGTERM)                       # what the runner does on cancel: the whole process group
+    out, err = p.communicate(timeout=60)
+    assert p.returncode == 143 and "compensated and VERIFIED" in err, (p.returncode, out, err)
+    with _admin() as c:
+        assert role(c, "gochara_sealer")[8] is True
+
+
+def test_the_preexisting_password_check_still_refuses_to_overwrite(world):
+    _sealer_world(world)
+    assert run(world, "sealer-password", extra={"SEALER_PASSWORD_STAGING": "ab" * 40}).returncode == 0
+    again = run(world, "sealer-password", extra={"SEALER_PASSWORD_STAGING": "cd" * 40})
+    assert again.returncode == 3 and "already has a password" in again.stderr

@@ -61,13 +61,32 @@ describe('gochara-provision-roles.sh', () => {
     expect(c.indexOf('secrets versions add')).toBeLessThan(c.indexOf('ALTER ROLE %s PASSWORD'))
     expect(c).toContain('echo "::add-mask::$PW"')
   })
-  it('discards the stderr of every statement that carries a password (a server error can quote it) and rolls back its own partial work on every exit path', () => {
-    const alters = c.split('\n').filter((l, i, all) => /\| "\$PSQL_BIN"/.test(l) && /-f -/.test(l))
-    expect(alters.length).toBe(2)
+  it('discards the stderr of every statement that carries a password (a server error can quote it) and rolls back / compensates its own partial work on every exit path', () => {
+    const alters = c.split('\n').filter((l) => /psql_admin -f -/.test(l))
+    expect(alters.length).toBe(2)                                           // the verifier ALTER and the sealer activation transaction
     for (const l of alters) expect(l).toContain('>/dev/null 2>&1')
     expect(c).toContain('trap rollback EXIT')
+    expect(c).toContain("trap 'exit 143' TERM")                              // a cancelled run still runs the compensation
     expect(c).toContain('secrets versions destroy')
     expect(c).toContain('DROP ROLE IF EXISTS')
+    expect(c).toContain('COMPENSATING the sealer activation')
+    expect(c).toContain('ROLLBACK INCOMPLETE — THE SEALER MAY BE ACTIVE')
+  })
+  it('keeps the admin connection out of argv: it is parsed once into PG* and never passed to psql', () => {
+    expect(c).not.toMatch(/"\$PSQL_BIN"\s+"\$ADMIN_DATABASE_URL"/)
+    expect(c).not.toMatch(/psql_admin\s+"\$/)
+    expect(c).toContain('unset ADMIN_DATABASE_URL')
+    expect(c).toContain('PGPASSWORD')
+  })
+  it('asks Secret Manager for exactly add / list / destroy and never for access (the secretVersionManager model, act 11)', () => {
+    const verbs = [...c.matchAll(/secrets versions (\w+)/g)].map((m) => m[1])
+    expect(new Set(verbs)).toEqual(new Set(['add', 'list', 'destroy']))
+    expect(c).not.toMatch(/secrets versions access/)
+  })
+  it('makes sealer activation and its postconditions one transaction', () => {
+    expect(c).toContain('printf "BEGIN;')
+    expect(c).toContain('COMMIT;')
+    expect(c).toMatch(/postcondition: sealer is a member of cloudsqlsuperuser/)
   })
   it('is idempotent by refusal and refuses a non-loopback connection', () => {
     expect(c).toContain('already exists')
