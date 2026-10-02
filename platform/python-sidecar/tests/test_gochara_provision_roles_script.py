@@ -13,9 +13,10 @@ import shutil
 import stat
 import subprocess
 from pathlib import Path
-from urllib.parse import urlparse
 
 import pytest
+
+from . import _disposable_guard as guard
 
 psycopg = pytest.importorskip("psycopg")
 
@@ -27,9 +28,10 @@ TAIL = "@/amjis?host=/cloudsql/p:r:i"
 
 
 def _admin():
-    host = urlparse(DSN).hostname
-    assert host in ("127.0.0.1", "localhost"), "refusing a non-loopback cluster"
-    return psycopg.connect(DSN, autocommit=True, connect_timeout=3)
+    guard.assert_disposable_dsn(DSN)                       # libpq's own parse, ONE explicit loopback host, no env overrides (steward eb38)
+    c = psycopg.connect(DSN, autocommit=True, connect_timeout=3)
+    guard.assert_connected_to(c)
+    return c
 
 
 @pytest.fixture()
@@ -105,6 +107,33 @@ def test_a_second_run_refuses_and_changes_nothing(world):
     assert world["capture"].read_text() == before
     with _admin() as c:
         assert (role(c, "gochara_verifier"), role(c, "gochara_sealer")) == snap
+
+
+@pytest.mark.parametrize("url", [
+    "postgresql://postgres:x@10.9.9.9:5432/postgres",
+    "postgresql://postgres:x@127.0.0.1:5432,db.prod.example.com:5432/postgres",             # multi-host: libpq can fail over to the second
+    "postgresql://postgres:x@db.prod.example.com:5432,127.0.0.1:5432/postgres",
+    "postgresql://postgres:x@127.0.0.1:5432/postgres?host=db.prod.example.com",             # query-string overrides
+    "postgresql://postgres:x@127.0.0.1:5432/postgres?hostaddr=10.9.9.9",
+    "postgresql://postgres:x@127.0.0.1:5432/postgres?service=prod",
+    "postgresql:///postgres?host=db.prod.example.com",
+    "postgresql://postgres:x@localhost.evil.example.com:5432/postgres",                      # a host that merely STARTS with a loopback name
+    "host=127.0.0.1 dbname=postgres",                                                         # not a URL
+])
+def test_refuses_every_non_loopback_or_redirectable_admin_connection_without_calling_psql(world, url):
+    calls = world["tmp"] / "psql_calls.txt"
+    shim = world["tmp"] / "psql_recorder"
+    shim.write_text(f'#!/usr/bin/env bash\necho "$*" >> "{calls}"\nexit 1\n')
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    r = run(world, url=url, psql=str(shim))
+    assert r.returncode == 2 and ("loopback" in r.stderr or "postgres:// URL" in r.stderr), (url, r.stdout, r.stderr)
+    assert not calls.exists(), "the script must refuse BEFORE it connects anywhere"
+
+
+@pytest.mark.parametrize("var", ["PGHOST", "PGHOSTADDR", "PGSERVICE", "PGSERVICEFILE"])
+def test_refuses_an_environment_override_of_the_connection(world, var):
+    r = run(world, extra={var: "db.prod.example.com"})
+    assert r.returncode == 2 and var in r.stderr
 
 
 def test_refuses_a_non_loopback_admin_connection_and_a_dsn_tail_that_carries_credentials(world):

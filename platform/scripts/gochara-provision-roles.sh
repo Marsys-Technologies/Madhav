@@ -54,10 +54,29 @@ fail() { echo "REFUSED: $*" >&2; exit "${2:-3}"; }
 note() { echo "$*"; }
 q() { "$PSQL_BIN" "$ADMIN_DATABASE_URL" -X -q -t -A -v ON_ERROR_STOP=1 -c "$1"; }       # read-only fact queries (no secret in them)
 
-# 0. the connection must be the loopback proxy — never a remote or a validation-instance route
+# 0. the connection must be the loopback proxy — ONE explicit loopback host, nothing that can redirect it (steward M20261002T154223-eb38: a prefix match such as
+#    `postgres://*@127.0.0.1:*` also accepts `postgres://u@127.0.0.1:5432,db.prod:5432/x`, and libpq can fail over to the second host)
+for v in PGHOST PGHOSTADDR PGSERVICE PGSERVICEFILE; do
+  [ -z "${!v:-}" ] || fail "$v is set in the environment: it can redirect the connection away from the explicit loopback host" 2
+done
 case "$ADMIN_DATABASE_URL" in
-  postgres://*@127.0.0.1[:/]*|postgres://*@localhost[:/]*|postgresql://*@127.0.0.1[:/]*|postgresql://*@localhost[:/]*) ;;
-  *) fail "ADMIN_DATABASE_URL must point at the loopback Cloud SQL proxy (127.0.0.1 / localhost)" 2 ;;
+  postgres://*|postgresql://*) ;;
+  *) fail "ADMIN_DATABASE_URL must be a postgres:// URL pointing at the loopback Cloud SQL proxy (127.0.0.1 / localhost)" 2 ;;
+esac
+_rest="${ADMIN_DATABASE_URL#*://}"
+_authority="${_rest%%[/?#]*}"
+_hostport="${_authority##*@}"
+case "$_hostport" in *,*) fail "ADMIN_DATABASE_URL must point at the loopback Cloud SQL proxy: a multi-host URL is refused" 2 ;; esac
+case "$_hostport" in
+  "["*"]"*) _host="${_hostport%%]*}]" ;;
+  *) _host="${_hostport%%:*}" ;;
+esac
+case "$_host" in
+  127.0.0.1|localhost|"[::1]") ;;
+  *) fail "ADMIN_DATABASE_URL must point at the loopback Cloud SQL proxy (127.0.0.1 / localhost), not '${_host}'" 2 ;;
+esac
+case "$_rest" in
+  *\?*) case "${_rest#*\?}" in *host=*|*hostaddr=*|*service=*) fail "ADMIN_DATABASE_URL must point at the loopback Cloud SQL proxy: a host/hostaddr/service query option is refused" 2 ;; esac ;;
 esac
 
 role_exists() { [ "$(q "SELECT count(*) FROM pg_roles WHERE rolname = '$1'")" = "1" ]; }
