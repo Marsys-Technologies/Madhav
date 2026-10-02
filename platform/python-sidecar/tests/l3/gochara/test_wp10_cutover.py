@@ -225,6 +225,13 @@ INSERT INTO kala_gochara_windows (chart_id, event_class, temporal_shape,
   ('{CHART_A}', 'marriage', 'point', '2001-01-01', '2001-01-01', '2001-01-01', 1, 1, 'gain', false, 'v1'),
   ('{CHART_A}', 'marriage', 'point', '2002-01-01', '2002-01-01', '2002-01-01', 1, 1, 'gain', false, 'v1'),
   ('{CHART_A}', 'marriage', 'point', '2003-01-01', '2003-01-01', '2003-01-01', 1, 1, 'gain', false, 'v1'),
+  -- a 4th v1 row: conjunct (h) (v1 corpus strictly larger than the '4.0'
+  -- layer) must still hold now that FABLE v3.0 T0-5's angular kernel
+  -- (fedc5ae504, #2769) projects 3 '4.0' rows for the 4h synthetic contact
+  -- (activity ≈ 1 across the whole bracket, so month/day tiers appear
+  -- alongside era — under the old time-triangle only one era-tier row was
+  -- written, see _write_4_0_windows).
+  ('{CHART_A}', 'marriage', 'point', '2004-01-01', '2004-01-01', '2004-01-01', 1, 1, 'gain', false, 'v1'),
   ('{CHART_A}', 'marriage', 'point', '2013-05-01', '2013-05-01', '2013-05-01', 2, 2, 'gain', false, '3.0'),
   ('{CHART_A}', 'marriage', 'point', '2014-05-01', '2014-05-01', '2014-05-01', 2, 2, 'gain', false, '3.0');
 INSERT INTO kala_gochara_windows_archive_20260805 (id, chart_id) VALUES
@@ -497,9 +504,11 @@ def _write_4_0_windows(chart: str) -> None:
     kala_gochara_windows under '4.0' (plan §2.2/§4.7). The synthetic contact
     (karaka SUN, 2026-06-15 12:00 ±2h) joins the seeded map row (marriage,
     karaka, SUN, 0.9); the rehearsal-synthetic class context is recorded as
-    such on every row (source='fixture'). The 4h span yields one era-tier
-    row (a single above-threshold series point admits no month/day peaks —
-    honest, and the windows_present gate only needs rows to exist).
+    such on every row (source='fixture'). Since FABLE v3.0 T0-5's angular
+    kernel (fedc5ae504, #2769) the fixture contact is physically consistent
+    (target = Saturn's real longitude at t_exact), so activity ≈ 1 across
+    the whole 4h bracket and the projection writes 3 rows (era + month +
+    day tiers); the windows_present gate only needs rows to exist.
     """
     r = _run_script("step06b_windows_projection.py", "--dsn", DSN,
                     "--chart-id", chart, "--rehearse-synthetic")
@@ -577,7 +586,7 @@ def test_step08_flip_and_reverse(db):
     assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
                        "WHERE chart_id=%s AND generation='4.0'", (CHART_A,)) == 0
     assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
-                       "WHERE chart_id=%s AND generation='v1'", (CHART_A,)) == 3
+                       "WHERE chart_id=%s AND generation='v1'", (CHART_A,)) == 4
     assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
                        "WHERE chart_id=%s AND generation='3.0'", (CHART_A,)) == 2
     # Post-reversal integrity: with the orphan windows gone, conjuncts (a)/(f)
@@ -641,7 +650,7 @@ def test_clear_windows_on_reversal_refusals(db):
     # 'v1'/'3.0' windows untouched throughout
     assert _scalar(db, "SELECT count(*) FROM kala_gochara_windows "
                        "WHERE chart_id=%s AND generation IN ('v1','3.0')",
-                   (CHART_A,)) == 5
+                   (CHART_A,)) == 6
 
 
 # ── step 9 — birth-epoch detector (#2534 class) ─────────────────────────────
