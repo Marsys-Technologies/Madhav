@@ -192,7 +192,11 @@ def test_a_rerun_replaces_and_report_only_writes_nothing(built):
         w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification")          # (superuser clean-up for the dry run)
         w.conn.execute("DELETE FROM public.ka_gochara_search_inventory_verification")
         dry = vj.run(conn, chart_id=CHART_ID, generation=GEN, report_only=True, **kw)
-    assert dry["report_only"] is True and dry["status"] == "NOT_VERIFIED"
+    assert dry["report_only"] is True and dry["status"] == "REPORT_ONLY" and dry["exit_code"] == vj.EXIT_OK
+    # R11-3: report-only EVALUATES the combined gate (it used to skip it while naming it): with the attestations deleted it
+    # names what is missing
+    assert dry["gate_source"] == "ka_gochara_candidate_gate_violations"
+    assert any(v["violation"] == "window_verification_missing" for v in dry["gate"]), dry["gate"]
     assert _counts(w.conn, vj.VERIFICATION_TABLES) == {t: 0 for t in vj.VERIFICATION_TABLES}
 
 

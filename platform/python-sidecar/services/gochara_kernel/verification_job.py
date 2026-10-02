@@ -539,7 +539,9 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
     # R10-4 (iii): the job ends in the SAME combined candidate gate the seal uses (search completeness 1206/1232 + window
     # verification 1240) on the actual candidate manifest. A run over a SUBSET of classes is judged on that subset's
     # violations and the generation-level ones; the rest are reported, never hidden.
-    gate_all = [] if report_only else candidate_gate_on_candidate_manifest(conn, chart_id, generation)
+    # R11-3: the gate is evaluated in EVERY mode — `--report-only` used to skip it while still naming the combined function as
+    # `gate_source`. A report-only run persists nothing, so it can never be VERIFIED; it reports the gate honestly.
+    gate_all = candidate_gate_on_candidate_manifest(conn, chart_id, generation)
     scope = set(pre["classes"])
     full = classes is None
     # generation-level violations carry event_class '*' (the completeness function) or None — BOTH are generation-level and
@@ -550,13 +552,14 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
     report["gate_source"] = "ka_gochara_candidate_gate_violations"
     verified = [c for c in report["classes"].values() if c.get("status") == "VERIFIED"]
     report["status"] = ("DISAGREE" if disagreements else
-                        ("VERIFIED" if not gate and not report_only and len(verified) == len(report["classes"])
-                         else "NOT_VERIFIED"))
-    report["cockpit"] = (f"VERIFIED (policy {_policy(report)}, {len(verified)} of {len(report['classes'])} classes, "
-                         f"combined gate clean)"
-                         if report["status"] == "VERIFIED" else
-                         f"BUILT · NOT VERIFIED · gate CLOSED ({len(gate)} violation(s), {len(disagreements)} disagreement(s))")
-    report["exit_code"] = (EXIT_DISAGREE if disagreements or gate else EXIT_OK)
+                        ("REPORT_ONLY" if report_only else
+                         ("VERIFIED" if not gate and len(verified) == len(report["classes"]) else "NOT_VERIFIED")))
+    report["cockpit"] = (
+        f"REPORT ONLY (nothing persisted) · combined gate: {len(gate)} violation(s)" if report["status"] == "REPORT_ONLY" else
+        f"VERIFIED (policy {_policy(report)}, {len(verified)} of {len(report['classes'])} classes, combined gate clean)"
+        if report["status"] == "VERIFIED" else
+        f"BUILT · NOT VERIFIED · gate CLOSED ({len(gate)} violation(s), {len(disagreements)} disagreement(s))")
+    report["exit_code"] = (EXIT_DISAGREE if disagreements or (gate and not report_only) else EXIT_OK)
     return report
 
 

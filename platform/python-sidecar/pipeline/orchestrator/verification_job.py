@@ -1,12 +1,18 @@
 """Entry point of the separate VERIFICATION JOB (ND-ROLES option A; Codex round 9, R9-6.1).
 
     python -m pipeline.orchestrator.verification_job --chart <uuid> [--generation 5.0] [--class <c> …] [--report-only]
+    python -m pipeline.orchestrator.verification_job --chart <uuid> [--generation 5.0] --brief [--sealing-commit <sha>]
 
 NOT a registered writer and not in the build DAG: the orchestrator contract is frozen and nothing chains this to a build.
 A person (an operator) runs it, once per (chart, generation), AFTER the build. It reads exactly ONE database credential,
 `GOCHARA_VERIFIER_DB_URL` — the verifier principal's login; it never reads the builder's — and its first act is the
 identity self-check (`verification_job.check_identity`): it refuses to run as the builder, as a superuser, or as any login
 that can write a builder table. It does not `SET ROLE`.
+
+`--brief` (R11-3) is the SEAL BRIEF mode, not a report: it evaluates the candidate adapter gate, reads the persisted attestations and prints
+`{"brief": <canonical complete approval payload>, "sha256": <its digest>}` — refusing (exit 3, the reasons named) unless the gate is clean
+and every grain is VERIFIED under the manifest-pinned runner. The approval carries that digest; the sealing step recomputes it under the
+seal locks (`seal_brief.recompute_under_locks`) and refuses on any difference.
 
 Prints one JSON report on stdout. Exit codes: 0 every required grain VERIFIED (or `--report-only` finished) · 2 refused by
 a precondition (nothing written) · 3 an independent verifier DISAGREES (nothing written for that class; the gate stays
@@ -66,6 +72,8 @@ def main(argv=None) -> int:
     ap.add_argument("--generation", default=vj.GENERATION)
     ap.add_argument("--class", dest="classes", action="append", default=None)
     ap.add_argument("--report-only", action="store_true")
+    ap.add_argument("--brief", action="store_true", help="emit the canonical seal approval payload and its sha256")
+    ap.add_argument("--sealing-commit", default=os.environ.get("GOCHARA_SEALING_COMMIT"))
     ap.add_argument("--ephe-path", default=os.environ.get("SE_EPHE_PATH"))
     args = ap.parse_args(argv)
     url = os.environ.get(ENV_URL)
@@ -76,6 +84,18 @@ def main(argv=None) -> int:
     import psycopg
     conn = psycopg.connect(url, autocommit=True)
     try:
+        if args.brief:
+            from services.gochara_kernel import seal_brief
+            vj.check_identity(conn)
+            try:
+                with conn.transaction():
+                    out = seal_brief.brief(conn, args.chart, args.generation, sealing_commit=args.sealing_commit)
+            except seal_brief.BriefRefused as exc:
+                print(json.dumps({"status": "REFUSED", "code": exc.code, "detail": exc.detail,
+                                  "violations": exc.violations}, default=str))
+                return vj.EXIT_DISAGREE
+            print(json.dumps({"brief": out["payload"], "sha256": out["sha256"]}, default=str, sort_keys=True))
+            return vj.EXIT_OK
         report = vj.run(conn, chart_id=args.chart, generation=args.generation, classes=args.classes,
                         report_only=args.report_only, **_build_kwargs(conn, args.ephe_path))
         print(json.dumps(report, default=str, sort_keys=True))
