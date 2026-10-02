@@ -715,6 +715,10 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
         if not _evidence_pointer_ok(spec["effect_clauses_evidence"]):
             raise DeclarationsError(f"{where}.carriage.spec.effect_clauses_evidence {spec['effect_clauses_evidence']!r} is not an existing "
                                     "repo-relative file (optionally :line) or 'unverified:<where>'")
+        for ef in spec.get("extra_fields", []):
+            if ef.get("kind") == "passage_text" and not _evidence_pointer_ok(ef["condition_evidence"]):
+                raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].condition_evidence {ef['condition_evidence']!r} is "
+                                        "not an existing repo-relative file (optionally :line) or 'unverified:<where>' (existence only)")
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
@@ -5478,6 +5482,14 @@ def d1_evidence_problem(meas) -> str:
     ch = ev.get("chunks")
     if not (isinstance(ch, list) and ch and all(isinstance(c, dict) and c.get("verified") is True for c in ch)):
         return "no verified chunk ledger"
+    d1m = _carriage_d1()
+    if not isinstance(ev.get("passage"), str) or d1m.span_digest(ev["passage"]) != ev["passage_sha256"]:
+        return "passage_sha256 does not equal the sha256 of the recorded passage (recomputed)"
+    try:
+        if d1m.chunks_digest(ch) != ev.get("chunks_sha256"):
+            return "chunks_sha256 does not equal the digest of the recorded chunk ledger (recomputed)"
+    except (KeyError, TypeError):
+        return "the chunk ledger is malformed (the chunks digest cannot be recomputed)"
     if meas.get("citation_state") not in ("sourced", "sourced_ocr_unverified"):
         return f"citation_state {meas.get('citation_state')!r} is not sourced / sourced_ocr_unverified"
     if not (isinstance(ev.get("rows_total"), int) and ev["rows_total"] >= 1):

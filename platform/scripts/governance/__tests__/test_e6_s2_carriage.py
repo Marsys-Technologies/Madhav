@@ -29,6 +29,8 @@ FX = json.loads((HERE / "fixtures" / "phaladeepika_latta_d1_fixture.json").read_
 CHUNKS = {c["chunk_id"]: c for c in FX["classical_text_chunks"]}
 ROWS = FX["bg_phaladeepika_latta"]
 IDS = ["phaladeepika_pg0338_c01", "phaladeepika_pg0339_c01"]
+COND = dict(text="If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish.",
+            start="If, when thus counting", end="sickness and anguish.")
 SPEC = dict(matcher=d1.MATCHER, table="bg_phaladeepika_latta", chunk_ids=IDS, span=dict(start="Sloka 42-44"),
             fields=dict(claimant="graha", count="count_from_graha", direction="direction", effect="effect_description"),
             direction_words={"forward": "forward", "backward": "rear"}, anchor_stems=["Latt", "Latin"], effect_marker="Shkos",
@@ -47,6 +49,7 @@ SPEC = dict(matcher=d1.MATCHER, table="bg_phaladeepika_latta", chunk_ids=IDS, sp
             expected_rows=8,
             extra_fields=[dict(column="affliction_condition", kind="passage_text",
                                anchors=["when thus counting", "natal star", "Latta star", "sickness and anguish"],
+                               condition=COND, condition_evidence=EVID,
                                repairs={"Janma-nakshatra": "tJanmunukshatra"}),
                           dict(column="verse_ref", kind="equals", value="Adh.XXVI PG338-339 Sloka 42-44")])
 STORED_HASHES = {"phaladeepika_pg0338_c01": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
@@ -590,12 +593,136 @@ def test_d1_the_declared_clause_lookup_trims_and_ignores_case_in_both_the_key_an
         assert _eff_of(seg, who, "quarrel", spec) is True, (key, who)
 
 
-def test_d1_a_short_run_of_the_passage_is_not_a_condition_even_without_declared_anchors():
-    spec = dict(SPEC, extra_fields=[dict(column="affliction_condition", kind="passage_text", anchors=["sickness"])])
+TRUE_COND = ROWS[0]["affliction_condition"]
+
+
+def _sun_cond(cond, spec=SPEC):
     rows = copy.deepcopy(ROWS)
-    [r.update(affliction_condition="sickness and anguish") for r in rows]              # 3 words, a contiguous run, but too short to identify a condition
-    r = _measure(rows=rows, spec=spec)
-    assert r["v"] == "PARTIAL" and r["d1"]["rows_matched"] == 0
+    [r.update(affliction_condition=cond) for r in rows if r["graha"] == "Sun"]
+    return _measure(rows=rows, spec=spec)
+
+
+# third adversarial review MED: the condition may be the true sentence PLUS passage text and still passed (a contiguous run holding the anchors)
+@pytest.mark.parametrize("cond", [
+    TRUE_COND + " -During the Sun's Latin there will bo the ruin of every business Misery will result",   # the reviewer's case, whole census PASS
+    "the 22nd from that of the Moon are called or rear Lattaa " + TRUE_COND,                                 # a prefix of passage text
+    TRUE_COND + " wxw ^r?rw m m g",                                                                          # a suffix of OCR junk
+    TRUE_COND.replace("If, ", "", 1),                                                                        # the leading "If" dropped
+    "are called or rear Lattaa " + TRUE_COND + " wxw",
+    TRUE_COND.replace("there will be sickness and anguish.", "there will be sickness."),
+])
+def test_d1_the_affliction_condition_must_BE_the_passage_sentence_not_contain_it(cond):
+    r = _sun_cond(cond)
+    assert r["v"] == "PARTIAL" and [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", ["affliction_condition"])]
+
+
+def _cond_spec(**changes):
+    ef = dict(SPEC["extra_fields"][0], condition=dict(COND, **changes))
+    return dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]])
+
+
+@pytest.mark.parametrize("changes", [
+    dict(text=COND["text"] + " wxw"),                         # a declared text longer than the sentence
+    dict(text="when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish."),
+    dict(start="when thus counting"),                         # a start that is not a capital: not clause-initial
+    dict(start="Latta"),                                      # a start that occurs more than once
+    dict(start="Sloka 42-44"),                                # at the head of the passage but not the sentence: the text must then equal the whole run
+    dict(end="there will be sickness and anguish"),           # an end that is not a stop
+    dict(end="Latta star,"),                                  # a stop-less cut: not a whole sentence
+    dict(end="no such ending."),                              # an end absent from the passage
+    dict(start="Not in the passage"),
+])
+def test_d1_a_declared_condition_that_is_not_one_whole_passage_sentence_is_a_miss_naming_every_row(changes):
+    r = d1_rows = _measure(spec=_cond_spec(**changes))
+    assert r["v"] == "PARTIAL" and len(r["d1"]["unmatched"]) == 8 and all(u["failed"] == ["affliction_condition"] for u in r["d1"]["unmatched"])
+
+
+def test_d1_a_condition_may_be_declared_per_claimant_and_the_lookup_trims_and_ignores_case():
+    other = dict(text=COND["text"], start=COND["start"], end=COND["end"])
+    bad = dict(text="If, when thus counting, wrong", start="If, when thus counting", end="sickness and anguish.")
+    ef = dict(SPEC["extra_fields"][0], by_claimant={"  SUN ": bad, "Moon": other})
+    spec = dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]])
+    r = _measure(spec=spec)
+    assert [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", ["affliction_condition"])]     # Sun's own declaration is wrong; Moon's equals the shared one
+    ok = dict(SPEC["extra_fields"][0], by_claimant={"  sun ": other})
+    assert _measure(spec=dict(SPEC, extra_fields=[ok, SPEC["extra_fields"][1]]))["v"] == "PASS"
+
+
+def test_d1_the_passage_text_column_requires_a_declared_condition_and_its_evidence():
+    ef0 = SPEC["extra_fields"][0]
+    for drop in ("condition", "condition_evidence"):
+        ef = {k: v for k, v in ef0.items() if k != drop}
+        with pytest.raises(d1.SpecError, match=drop):
+            d1.validate_spec(dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]]), "x")
+        if drop == "condition":
+            assert _measure(spec=dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]]))["v"] == "PARTIAL"       # the engine never passes an undeclared condition
+    for bad in (dict(text="x", start="If"), dict(text="x", start="If", end="a.", more="y"), dict(text=" ", start="If", end="a."), "text"):
+        with pytest.raises(d1.SpecError, match="condition"):
+            d1.validate_spec(dict(SPEC, extra_fields=[dict(ef0, condition=bad), SPEC["extra_fields"][1]]), "x")
+    for bad in ({"Sun": "text"}, {"Sun": dict(text="x", start="If", end="a."), " sun": dict(text="x", start="If", end="a.")}, ["Sun"]):
+        with pytest.raises(d1.SpecError, match="by_claimant"):
+            d1.validate_spec(dict(SPEC, extra_fields=[dict(ef0, by_claimant=bad), SPEC["extra_fields"][1]]), "x")
+    no_anchors = {k: v for k, v in ef0.items() if k != "anchors"}
+    d1.validate_spec(dict(SPEC, extra_fields=[no_anchors, SPEC["extra_fields"][1]]), "x")                        # anchors are now optional (the equality is the check)
+
+
+def test_the_condition_evidence_must_exist_too_and_is_existence_only(monkeypatch):
+    car = copy.deepcopy(CAR_D1)
+    car["spec"]["extra_fields"][0]["condition_evidence"] = "00_ARCHITECTURE/briefs/does_not_exist.md"
+    _bad(car, "condition_evidence")
+    car["spec"]["extra_fields"][0]["condition_evidence"] = "unverified:the L0 brief"
+    ac.validate_declarations(_doc(car))
+
+
+# LOW: the normalisation says only punctuation is ignored: nothing non-ASCII is dropped or folded
+@pytest.mark.parametrize("eff", ["Quarrel\u00e9", "Quarrel\u0301", "Quarrel \u0301", "Quarr\u00e9l", "Quarrel\u200bx", "Quar\u0159el"])
+def test_d1_a_non_ascii_letter_or_combining_mark_in_a_stored_effect_is_a_miss(eff):
+    seg = "Shkos There will be quarrel in the Latta of Venus. Thus the separate effects"
+    spec = _mini(effect_clauses={"Venus": dict(clause="There will be quarrel in the Latta of Venus", effect="Quarrel.")})
+    assert _eff_of(seg, "Venus", "Quarrel", spec) is True
+    assert _eff_of(seg, "Venus", eff, spec) is False
+
+
+def test_d1_non_ascii_in_a_stored_condition_is_a_miss_and_nfkc_equivalents_are_stated_variants():
+    assert _sun_cond(TRUE_COND.replace("anguish", "angu\u00efsh"))["v"] == "PARTIAL"
+    assert _sun_cond(TRUE_COND.replace("anguish", "anguish\u0301"))["v"] == "PARTIAL"
+    assert _sun_cond(TRUE_COND.replace("sickness", "\uff53ickness"))["v"] == "PASS"            # NFKC folds a full-width letter: stated
+
+
+def test_d1_the_stored_effect_must_equal_the_declared_effect_so_a_frame_padded_effect_is_a_miss():
+    seg = "Shkos There will be quarrel in the Latta of Venus. Thus the separate effects"
+    spec = _mini(effect_clauses={"Venus": dict(clause="There will be quarrel in the Latta of Venus", effect="Quarrel.")})
+    assert _eff_of(seg, "Venus", "There will be quarrel in the", spec) is False
+    assert _eff_of(seg, "Venus", "quarrel", spec) is True
+
+
+def test_d1_a_padded_claimant_is_stripped_in_the_row_label():
+    rows = copy.deepcopy(ROWS)
+    rows[6]["graha"] = "  Sun "
+    rows[6]["count_from_graha"] = 99
+    r = _measure(rows=rows)
+    assert [u["row"] for u in r["d1"]["unmatched"]] == ["Sun"] and r["d1"]["rows"][6]["row"] == "Sun"
+
+
+def test_d1_the_record_carries_the_cut_passage_it_hashed():
+    e = _measure()["d1"]
+    assert e["passage"].startswith("Sloka 42-44") and d1.span_digest(e["passage"]) == e["passage_sha256"]
+
+
+@pytest.mark.parametrize("breakage, reason", [
+    (lambda r: r["d1"].update(passage=r["d1"]["passage"] + " x"), "recomputed"),                       # the passage no longer matches its digest
+    (lambda r: r["d1"].pop("passage"), "recomputed"),
+    (lambda r: r["d1"].update(passage=None), "recomputed"),
+    (lambda r: r["d1"].update(passage_sha256="0" * 64), "recomputed"),                               # a well-formed but unrelated digest
+    (lambda r: r["d1"].update(chunks_sha256="0" * 64), "chunks_sha256"),
+    (lambda r: r["d1"].pop("chunks_sha256"), "chunks_sha256"),
+    (lambda r: r["d1"]["chunks"][0].pop("stored_sha256"), "chunk ledger is malformed"),
+])
+def test_d1_evidence_problem_recomputes_the_passage_and_chunk_digests(breakage, reason):
+    rec = _measure()
+    assert ac.d1_evidence_problem(rec) == ""
+    breakage(rec)
+    assert reason in ac.d1_evidence_problem(rec)
 
 
 def test_d1_effect_matches_itself_trims_a_padded_claimant_not_only_its_caller():

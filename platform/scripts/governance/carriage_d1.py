@@ -37,6 +37,7 @@ or with the plain sha256(content_en) (named in the record), and a chunk whose st
 from __future__ import annotations
 
 import hashlib
+import unicodedata
 import re
 
 CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
@@ -142,10 +143,15 @@ def cut_span(joined: str, span: dict):
 #                  `effect_frame_words` (so the effect is the whole content of the clause: no tail, no borrowed or concatenated text);
 #              (4) an effect made only of anchor and frame words is a miss; a NULL effect needs NO anchor of this claimant in the
 #                  effect section (nothing is invented for a row the passage gives no effect for).
-#   extra      each declared extra column: `equals` an exact declared value, or `passage_text`: the value's words, after the declared
-#              OCR repairs, are a CONTIGUOUS, ORDERED run of the passage's words (6+ words; negation, reordering or an added word
-#              breaks it).
-#   Benign variants the normalisation accepts, by statement: case, spacing, trailing/inner punctuation of the stored effect.
+#   extra      each declared extra column: `equals` an exact declared value, or `passage_text`: the spec DECLARES the condition
+#              ({text, start, end}, per claimant if it differs, with `condition_evidence`); the declared text must equal ONE WHOLE
+#              passage sentence (cut from the declared clause-initial `start` marker, which occurs once, to the declared stop `end`,
+#              inclusive) and the stored value's words, after the declared OCR repairs, must equal the declared text: a prefix, a
+#              suffix, extra passage text, a dropped opener, negation or reordering all break it.
+#   Normalisation (stated): NFKC + lower-case; words are runs of letters/digits/combining marks of any script; ONLY punctuation,
+#   symbols and whitespace are ignored. Benign variants accepted: case, spacing, punctuation of the stored effect/condition.
+#   A declared effect may omit frame words that the clause carries (the frame words are tolerated around the effect INSIDE the clause);
+#   the stored effect must equal the declared effect, so a frame-padded stored effect ("There will be quarrel in the") is a miss.
 
 _COUNT_REACH = 90
 
@@ -163,8 +169,19 @@ def _effect_ok_text(e: str) -> bool:
 
 
 def _toks(text: str) -> list:
-    """Lower-case words and digits only: the normalisation under which an effect, a clause and a condition are compared."""
-    return re.findall(r"[a-z0-9]+", text.lower())
+    """The normalisation under which an effect, a clause and a condition are compared: NFKC, lower-case, and the text split into runs of
+    letters / digits / combining marks (ANY script). Only punctuation, symbols and whitespace are ignored: a non-ASCII letter or a stray
+    combining mark is part of its word ("Quarrel\u00e9" and "quarrel" + U+0301 are NOT "quarrel"); nothing is stripped or folded."""
+    out, cur = [], []
+    for ch in unicodedata.normalize("NFKC", text).lower():
+        if ch.isalnum() or unicodedata.category(ch).startswith("M"):
+            cur.append(ch)
+        elif cur:
+            out.append("".join(cur))
+            cur = []
+    if cur:
+        out.append("".join(cur))
+    return out
 
 
 def _anchors(sec: str, stems: list) -> list:
@@ -240,20 +257,54 @@ def _effect_matches(eff: str, claimant: str, sec: str, spec: dict):
     return left is not None and all(t in frame or t in anchor_words for t in left)
 
 
-def _extra_ok(row: dict, ef: dict, seg: str) -> bool:
+def _condition_decl(ef: dict, claimant) -> dict:
+    """The declared {text, start, end} for this claimant: the per-claimant entry when the spec declares one, else the shared one."""
+    key = claimant.strip().lower() if isinstance(claimant, str) else None
+    for k, v in (ef.get("by_claimant") or {}).items():
+        if k.strip().lower() == key:
+            return v
+    return ef.get("condition") or {}
+
+
+def _cut_sentence(seg: str, decl: dict):
+    """The tokens of ONE WHOLE passage sentence named by the declaration, or None. The sentence runs from the declared `start` marker
+    to the declared `end` marker, INCLUSIVE: `start` occurs exactly once in the passage, begins with a capital and is clause-initial
+    (at the start of the passage, or after a lower-case word / a stop and whitespace); `end` is a stop (. ; ? !) and occurs after it."""
+    start, end = decl.get("start"), decl.get("end")
+    if not (isinstance(start, str) and isinstance(end, str) and start and end and start[0].isupper() and end[-1] in ".;?!"):
+        return None
+    if seg.count(start) != 1:
+        return None
+    i = seg.find(start)
+    if not re.search(r"(?:\A|[a-z.;?!]\s+)\Z", seg[:i]):
+        return None
+    j = seg.find(end, i)
+    if j < 0:
+        return None
+    return _toks(seg[i:j + len(end)])
+
+
+def _extra_ok(row: dict, ef: dict, seg: str, claimant=None) -> bool:
+    """`equals`: the exact declared value. `passage_text`: the stored value's words, after the declared OCR repairs, must EQUAL the
+    words of the DECLARED condition, and the declared condition must equal ONE WHOLE passage sentence (_cut_sentence): the value is the
+    condition, not a run that merely contains it (no prefix, suffix, dropped opener or extra passage text)."""
     col, kind = ef["column"], ef["kind"]
     v = row.get(col)
     if not (isinstance(v, str) and v.strip()):
         return False
     if kind == "equals":
         return v == ef["value"]
+    decl = _condition_decl(ef, claimant)
+    sentence = _cut_sentence(seg, decl)
+    if sentence is None or not isinstance(decl.get("text"), str):
+        return False
     val = v
     for k, rep in ef.get("repairs", {}).items():
         val = re.sub(re.escape(k), rep, val, flags=re.I)
-    vt, st = _toks(val), _toks(seg)
-    if len(vt) < 6 or not all(a.lower() in " ".join(_toks(v)) or a.lower() in v.lower() for a in ef.get("anchors", [])):
+    vt = _toks(val)
+    if not all(a.lower() in " ".join(_toks(v)) or a.lower() in v.lower() for a in ef.get("anchors", [])):
         return False
-    return any(st[i:i + len(vt)] == vt for i in range(len(st) - len(vt) + 1))
+    return bool(vt) and vt == _toks(decl["text"]) == sentence
 
 
 def match_ordinal_row(row: dict, seg: str, spec: dict) -> dict:
@@ -290,7 +341,7 @@ def match_ordinal_row(row: dict, seg: str, spec: dict) -> dict:
     else:
         res["effect"] = _effect_matches(eff, g.strip(), sec, spec)
     for ef in spec.get("extra_fields", []):
-        res[ef["column"]] = _extra_ok(row, ef, seg)
+        res[ef["column"]] = _extra_ok(row, ef, seg, g)
     return res
 
 
@@ -303,9 +354,12 @@ MATCHING_RULE_TEXT = {
         "<claimant>' (no other ordinal between, <=90 characters, no '.' or ';'); the first direction word after it is the stored "
         "direction's declared word; the stored effect EQUALS the claimant's declared effect and the declared clause equals the "
         "claimant's whole passage clause (cut at sentence punctuation and clause-initial capitals) with only the unit anchor and the "
-        "declared frame words around the effect (a NULL effect needs NO anchor of the claimant in the effect section); every declared "
-        "extra column equals its declared value or is an ordered contiguous run of the passage after the declared OCR repairs; the "
-        "table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
+        "declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the "
+        "DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every "
+        "declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared "
+        "condition, which must equal ONE WHOLE passage sentence cut between its declared clause-initial start and its declared stop; "
+        "words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining "
+        "marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
 }
 
 
@@ -383,9 +437,23 @@ def validate_spec(spec, where: str) -> dict:
             if set(ef) != {"column", "kind", "value"} or not (isinstance(ef["value"], str) and ef["value"].strip()):
                 raise SpecError(f"{where}.spec.extra_fields[{ef['column']}]: equals needs exactly {{column, kind, value}}")
         else:
-            if not set(ef) <= {"column", "kind", "anchors", "repairs"} or not (
-                    isinstance(ef.get("anchors"), list) and ef["anchors"] and all(isinstance(a, str) and a.strip() for a in ef["anchors"])):
-                raise SpecError(f"{where}.spec.extra_fields[{ef['column']}]: passage_text needs anchors (and optional repairs)")
+            if not set(ef) <= {"column", "kind", "anchors", "repairs", "condition", "by_claimant", "condition_evidence"}:
+                raise SpecError(f"{where}.spec.extra_fields[{ef['column']}]: passage_text takes only column, kind, condition, "
+                                "condition_evidence, by_claimant, anchors, repairs")
+            if "anchors" in ef and not (isinstance(ef["anchors"], list) and ef["anchors"]
+                                        and all(isinstance(a, str) and a.strip() for a in ef["anchors"])):
+                raise SpecError(f"{where}.spec.extra_fields[{ef['column']}].anchors must be a non-empty list of non-blank strings")
+            _decl_ok = lambda d: (isinstance(d, dict) and set(d) == {"text", "start", "end"}
+                                  and all(isinstance(d[x], str) and d[x].strip() and len(d[x]) <= MARKER_MAX * 4 for x in d))
+            if not _decl_ok(ef.get("condition")):
+                raise SpecError(f"{where}.spec.extra_fields[{ef['column']}]: passage_text REQUIRES a declared `condition` "
+                                "{text, start, end}: the whole passage sentence the stored value must equal")
+            bc = ef.get("by_claimant", {})
+            if not (isinstance(bc, dict) and all(isinstance(k, str) and k.strip() and _decl_ok(v) for k, v in bc.items())
+                    and len({k.strip().lower() for k in bc}) == len(bc)):
+                raise SpecError(f"{where}.spec.extra_fields[{ef['column']}].by_claimant must map each claimant (once) to {{text, start, end}}")
+            if not (isinstance(ef.get("condition_evidence"), str) and ef["condition_evidence"].strip()):
+                raise SpecError(f"{where}.spec.extra_fields[{ef['column']}].condition_evidence must name the document the condition was read from")
             rp = ef.get("repairs", {})
             if not (isinstance(rp, dict) and all(isinstance(k, str) and k and isinstance(v, str) and v for k, v in rp.items())):
                 raise SpecError(f"{where}.spec.extra_fields[{ef['column']}].repairs must map text to its OCR form")
@@ -446,6 +514,7 @@ def d1_measure(spec: dict, citation_state, chunks_by_id: dict, rows, table) -> d
     if seg is None:
         return out(NO_DET, f"NO_DETECTOR: {why}", **ev)
     ev["passage_sha256"] = span_digest(seg)
+    ev["passage"] = seg                      # the cut span itself, so the digest can be recomputed from the record
     for key in ("effect_marker", "effect_end"):
         mk = spec.get(key)
         if not mk or mk not in seg:
@@ -465,7 +534,7 @@ def d1_measure(spec: dict, citation_state, chunks_by_id: dict, rows, table) -> d
         failed = [k for k, v in res.items() if v not in (True, "NULL-ok")]
         if keys[i] in dup:
             failed.append("duplicate")
-        label = (r.get(keyf) if isinstance(r, dict) else None) or f"row {i}"
+        label = ((r.get(keyf).strip() if isinstance(r.get(keyf), str) else None) if isinstance(r, dict) else None) or f"row {i}"
         results.append(dict(row=label, result=res, matched=not failed))
         if failed:
             unmatched.append(dict(row=label, failed=failed))
