@@ -145,12 +145,12 @@ def put_writer(asset, n=0, files=1):
     return out
 
 
-def census_file(asset, crit, verdict, *, generated=RUN, cell=True, rec=None, head=None, files=1):
+def census_file(asset, crit, verdict, *, generated=RUN, cell=True, rec=None, head=None, files=1, cell_extra=None):
     """A stamped census JSON file under the trusted census root, `git add`ed (state: staged)."""
     record = dict(asset_id=asset, layer=layer_of(asset), has_writer=True,
                   writer_files=[f"{nm}.py" for nm in wnames(asset, files)],
                   asset_kind="data", target_columns=None,
-                  measurements={crit: dict(v=verdict, measured="m")} if cell else {})
+                  measurements={crit: dict(v=verdict, measured="m", **(cell_extra or {}))} if cell else {})
     record.update(rec or {})
     c = dict(generated=generated, layer=layer_of(asset), registry_revision=ac.REGISTRY_REVISION,
              registry_fingerprint=ac.registry_fingerprint(), tool_commit=TOOL_COMMIT, assets=[record])
@@ -989,23 +989,28 @@ def test_an_upstream_generation_bump_with_a_different_fingerprint_still_stales_d
     assert (ev.stale[b][0]["cited"], ev.stale[b][0]["latest"]) == (1, 2)
 
 
+@pytest.mark.skipif(not hasattr(nc, "CITATION_STATES"), reason="needs E5.1 record_version 2 (citation_state): rebase onto it")
 def test_a_same_output_bump_that_changes_the_citation_state_is_not_identical_output(ledger):
-    # E5.1 record_version 2 carries citation_state; a generation bump that changes it is a currency change a dependent
-    # must see (hand-shaped here: this branch's E5.1 predates the field)
-    a1 = cert(ledger, "bg_a")
+    # E5.1 record_version 2: Ldgr.source_presence / Carr.D1 records carry citation_state, read from the census cell. A
+    # generation bump that changes it is a currency change a dependent must see; one that does not change it is not.
+    cols = ["id", "source_citation"]
+
+    def ldgr(asset, state, n=0, up=()):
+        cf = census_file(asset, "Ldgr.source_presence", "PASS", rec=dict(target_columns=cols),
+                         cell_extra=dict(citation_state=state))
+        return cert(ledger, asset, "Ldgr.source_presence", n=n, up=up, census_path=cf)
+
+    a1 = ldgr("bg_a", "sourced")
     b = cert(ledger, "bg_b", up=[a1])
-    cert(ledger, "bg_a", n=1)
-    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", bg_a=dict(writer_hashes=wh_of("bg_a", 1),
-                                                               writer_paths=list(wh_of("bg_a", 1)))))
-    assert ev.stale == {}                                                         # control: same output, same (absent) state
-    rows = lines(ledger)
-    a2_idx = max(i for i, r in enumerate(rows) if r.get("cert_key") == "bg_a|gate|Build.registered")
-    rows[1]["citation_state"] = "sourced"                                         # a@1 declared sourced...
-    rows[a2_idx]["citation_state"] = "sourced_ocr_unverified"                     # ...a@2 only OCR-unverified
-    write_chained(ledger, rows)
-    ev = sc.evaluate(raw(ledger), obs("bg_a", "bg_b", bg_a=dict(writer_hashes=wh_of("bg_a", 1),
-                                                               writer_paths=list(wh_of("bg_a", 1)))))
+    a2 = ldgr("bg_a", "sourced", n=1)                                              # writer changed, same output, same state
+    assert a2.endswith("@2")
+    o = obs("bg_a", "bg_b", bg_a=dict(writer_hashes=wh_of("bg_a", 1), writer_paths=list(wh_of("bg_a", 1))))
+    assert sc.evaluate(raw(ledger), o).stale == {}                                  # control: identical output, nothing stale
+    a3 = ldgr("bg_a", "sourced_ocr_unverified", n=1)                                # the state changed under the same rows
+    assert a3.endswith("@3") and lines(ledger)[-1]["citation_state"] == "sourced_ocr_unverified"
+    ev = sc.evaluate(raw(ledger), o)
     assert set(ev.stale) == {b} and ev.stale[b][0]["code"] == "upstream_generation"
+    assert ev.stale[b][0]["cited"] == 1 and ev.stale[b][0]["latest"] == 3
 
 
 def test_a_same_output_bump_whose_latest_generation_is_itself_stale_stales_the_dependents(ledger):
