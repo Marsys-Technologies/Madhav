@@ -1033,6 +1033,17 @@ export function wealthLegServed(rows: ReadonlyArray<{ verification_pass_status: 
   return { tier_breakdown: wealthLegTierBreakdown(rows), verified_count: verified, evidence_tier: wealthLegEvidenceTier(verified, rows.length), incomplete_reason: null }
 }
 
+/**
+ * Checklist-level summary: how many units were SERVED but not at an all-verified tier. Counts
+ * BOTH non-verified served outcomes — `present_at_unverified_tier` (no row verified) and `mixed`
+ * (some verified, some not) — because a unit that is only partly verified is not a verified
+ * unit. Units with no evidence_tier (not served, not a tiered leg) never count. This is a
+ * disclosure beside units_served / units_total; it does not enter `exhaustive`.
+ */
+export function unitsServedUnverifiedTier(units: ReadonlyArray<{ evidence_tier?: WealthLegEvidenceTier | null }>): number {
+  return units.filter(u => u.evidence_tier === 'present_at_unverified_tier' || u.evidence_tier === 'mixed').length
+}
+
 export function wealthLegTajakaNone(reason: WealthLegIncompleteReason | null): WealthLegTajakaTier {
   return { tier: null, verified_count: 0, evidence_tier: null, incomplete_reason: reason }
 }

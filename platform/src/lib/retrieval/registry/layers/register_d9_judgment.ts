@@ -94,7 +94,7 @@ import {
   fetchWealthSpecialLagnas,
   fetchWealthYogiAvayogi,
   fetchTajakaSourceFence,
-  fetchWealthTajaka,
+  fetchWealthTajaka, unitsServedUnverifiedTier,
   fetchWealthReadingSourceFence,
   fetchNotablyAbsentYogas,
   vargaConfirmedMark,
@@ -1702,7 +1702,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           ...(wealthSpecialLagnas?.incomplete_reason ? { incomplete_reason: wealthSpecialLagnas.incomplete_reason } : {}),
           detail: spec.signal_domain === 'wealth'
             ? (wealthSourceFence?.ready
-              ? 'fixed Indu/Sree/Hora complete atomic placement rows from ga_sensitive; each row carries its own verification_pass_status (present is not verified — see tier_breakdown / verified_count)'
+              ? 'fixed Indu/Sree/Hora complete atomic placement rows from ga_sensitive; any rows served carry their own verification_pass_status (present is not verified — see tier_breakdown / verified_count)'
               : 'fresh/proven selected-build receipts are unavailable or a producer replacement is active')
             : DOMAIN_INDU_LAGNA.has(spec.signal_domain)
             // F-107: for wealth, Indu Lagna is not a generic "some lagna we skipped" — it is
@@ -1729,7 +1729,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           ...(wealthYogiAvayogi?.incomplete_reason ? { incomplete_reason: wealthYogiAvayogi.incomplete_reason } : {}),
           detail: spec.signal_domain === 'wealth'
             ? (wealthSourceFence?.ready
-              ? 'fixed Yogi/Avayogi/Duplicate-Yogi/Sahayogi selected-build atom set; each row carries its own verification_pass_status (present is not verified — see tier_breakdown / verified_count)'
+              ? 'fixed Yogi/Avayogi/Duplicate-Yogi/Sahayogi selected-build atom set; any rows served carry their own verification_pass_status (present is not verified — see tier_breakdown / verified_count)'
               : 'fresh/proven selected-build receipts are unavailable or a producer replacement is active')
             : 'yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded into this judgment',
           drill: 'ganita_sensitive_degrees_get',
@@ -1771,7 +1771,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           ...(wealthTajaka?.incomplete_reason ? { incomplete_reason: wealthTajaka.incomplete_reason } : {}),
           detail: spec.signal_domain === 'wealth'
             ? (tajakaSourceFence?.ready
-              ? `fixed annual Vārṣaphala row containing as_of_date=${as_of_date}; the row carries its own verification_pass_status (present is not verified)`
+              ? `fixed annual Vārṣaphala row containing as_of_date=${as_of_date}; a served row carries its own verification_pass_status (present is not verified)`
               : 'fresh/proven selected-build ga_tajaka receipt is unavailable or a producer replacement is active')
             : 'annual (varṣaphala/tājaka) not folded into the natal judgment',
           drill: 'ganita_tajaka_get',
@@ -1782,6 +1782,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         contract_id: JUDGMENT_READING_CHECKLIST_V2_CONTRACT.contract_id,
         units: reading_checklist_units,
         ...exhaustiveness,
+        units_served_unverified_tier: unitsServedUnverifiedTier(reading_checklist_units),
         required_units: JUDGMENT_READING_CHECKLIST_V2_CONTRACT.required_units,
         note: 'The classical bhāva-adhyāya checklist, served: each unit names whether THIS ' +
           'response carried it and — for every absent box — WHY. not_joined units carry a live ' +

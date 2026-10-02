@@ -23,6 +23,7 @@ import {
   fetchWealthTajaka,
   fetchWealthYogiAvayogi,
   isWealthLegServableTier,
+  unitsServedUnverifiedTier,
   WEALTH_LEG_REFUSED_TIERS,
   WEALTH_LEG_SERVABLE_TIERS,
   WEALTH_SPECIAL_LAGNAS,
@@ -71,9 +72,22 @@ function tajakaRow(tier: string | null) {
   }
 }
 
-/** Tiers a leg must REFUSE: every refused vocabulary member plus values outside the vocabulary. */
+/**
+ * The tier law, HARD-CODED here independent of the production constants so a change to either
+ * set in reading_checklist.ts must be mirrored (and reviewed) here. 6 served + 7 refused = the
+ * 13 settled vocabulary members.
+ */
+const SERVE_TIERS = [
+  'two_pass_verified', 'classical_match', 'single', 'single_pass', 'documented_approximation', 'computed_extension',
+] as const
+const REFUSE_TIERS = [
+  'floored', 'not_defined_for_nodes', 'scope_cap_sentinel', 'skipped_malformed_source',
+  'external_computation_required', 'divergent_flagged', 'pending_w3_verification',
+] as const
+
+/** Tiers a leg must REFUSE: all 7 refused vocabulary members plus values outside the vocabulary. */
 const REFUSED_FOR_LEGS: Array<string | null> = [
-  ...WEALTH_LEG_REFUSED_TIERS, // includes 'floored'
+  ...REFUSE_TIERS,
   null,
   'unknown_tier',
   'PASS', // prohibited spelling — never case-folded into a served tier
@@ -81,6 +95,26 @@ const REFUSED_FOR_LEGS: Array<string | null> = [
 ]
 
 describe('wealth-leg tier vocabulary law', () => {
+  it('the production serve / refuse sets are EXACTLY the hard-coded 6 / 7 lists above', () => {
+    expect([...WEALTH_LEG_SERVABLE_TIERS].sort()).toEqual([...SERVE_TIERS].sort())
+    expect([...WEALTH_LEG_REFUSED_TIERS].sort()).toEqual([...REFUSE_TIERS].sort())
+    expect(SERVE_TIERS).toHaveLength(6)
+    expect(REFUSE_TIERS).toHaveLength(7)
+  })
+
+  it('every settled vocabulary member is in exactly one of the hard-coded lists, and each list member is a real member', () => {
+    const vocab = VERIFICATION_PASS_STATUS_VOCAB.map(e => e.status as string)
+    for (const status of vocab) {
+      const n = Number((SERVE_TIERS as readonly string[]).includes(status)) + Number((REFUSE_TIERS as readonly string[]).includes(status))
+      expect({ status, n }).toEqual({ status, n: 1 })
+    }
+    for (const t of [...SERVE_TIERS, ...REFUSE_TIERS]) expect(vocab).toContain(t)
+    expect(SERVE_TIERS.length + REFUSE_TIERS.length).toBe(vocab.length)
+  })
+
+  it.each(SERVE_TIERS.map(t => [t]))('serves %s', (t) => expect(isWealthLegServableTier(t)).toBe(true))
+  it.each(REFUSE_TIERS.map(t => [t]))('refuses %s', (t) => expect(isWealthLegServableTier(t)).toBe(false))
+
   it('classifies every settled vocabulary member exactly once (a new member forces a serve/refuse decision)', () => {
     const vocab = VERIFICATION_PASS_STATUS_VOCAB.map(e => e.status)
     for (const status of vocab) {
@@ -230,6 +264,19 @@ describe('fetchWealthTajaka — tier law', () => {
   })
 })
 
+describe('each leg SELECT reads verification_pass_status (the tier it carries is the stored one)', () => {
+  it('special lagnas, yogi system and Tājika SQL all select the column', async () => {
+    queryMock.mockResolvedValueOnce({ rows: lagnaRows('single') })
+    await fetchWealthSpecialLagnas(CHART_ID, AYANAMSHA, BUILD_ID)
+    queryMock.mockResolvedValueOnce({ rows: yogiRows('classical_match') })
+    await fetchWealthYogiAvayogi(CHART_ID, AYANAMSHA, BUILD_ID)
+    queryMock.mockResolvedValueOnce({ rows: [tajakaRow('classical_match')] })
+    await fetchWealthTajaka(CHART_ID, AYANAMSHA, BUILD_ID, '2026-09-19')
+    expect(queryMock).toHaveBeenCalledTimes(3)
+    for (const call of queryMock.mock.calls) expect(String(call[0])).toMatch(/SELECT[\s\S]*verification_pass_status[\s\S]*FROM/)
+  })
+})
+
 describe('source_incomplete reasons stay distinct from present-at-unverified-tier', () => {
   it('a MISSING atom is evidence_missing_or_malformed, even when every present row is at a servable tier', async () => {
     queryMock.mockResolvedValueOnce({ rows: lagnaRows('single').slice(1) })
@@ -278,6 +325,16 @@ describe('source_incomplete reasons stay distinct from present-at-unverified-tie
       'source_incomplete|null|evidence_missing_or_malformed',
       'source_incomplete|null|unservable_tier',
     ])
+  })
+})
+
+describe('unitsServedUnverifiedTier (checklist-level disclosure)', () => {
+  it('counts present_at_unverified_tier and mixed; not verified, null or absent', () => {
+    expect(unitsServedUnverifiedTier([
+      { evidence_tier: 'present_at_unverified_tier' }, { evidence_tier: 'mixed' },
+      { evidence_tier: 'verified' }, { evidence_tier: null }, {},
+    ])).toBe(2)
+    expect(unitsServedUnverifiedTier([])).toBe(0)
   })
 })
 
