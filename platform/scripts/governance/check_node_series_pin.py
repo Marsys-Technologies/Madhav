@@ -85,7 +85,7 @@ BASELINE_REL = "platform/scripts/governance/node_series_pin_baseline.json"
 SCRIPT_REL = "platform/scripts/governance/check_node_series_pin.py"
 
 # NEVER raise this to make CI pass. It must equal the baseline's total; a fix lowers both.
-RATCHET_CEILING_TOTAL = 35  # must equal the baseline total (rev 2; rev 1 was 32); see node_series_pin_baseline.json
+RATCHET_CEILING_TOTAL = 32  # must equal the baseline total (rev 2; rev 1 was 32); see node_series_pin_baseline.json
 
 TABLE = "ephemeris_daily"
 _TS_EXT = ("ts", "tsx", "js", "mjs", "cjs")
