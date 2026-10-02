@@ -21,17 +21,30 @@
  *     with an unchanged digest. A literal "min(L2 observed_at) < max(L1 observed_at)" rule would
  *     re-arm the flag after S-L2 with no id change, and could not say which assets moved.
  *     `observed_at` is carried as evidence only, never as the comparator.
- *   - In scope: only L2 (`bo_*`) receipts for THIS chart that are `proven` AND whose output digest
- *     spec is still active. Legacy `unknown` partitions and retired-spec receipts are never
- *     rewritten, so counting them would hold the flag TRUE forever.
+ *   - In scope: only L2 (`bo_*`) receipts for THIS chart that are `proven`, whose output digest
+ *     spec is still active, AND that are REGISTRY-CURRENT: the asset is an active member of
+ *     asset_registry and the receipt's partition_key is the partition the registry currently
+ *     declares (`COALESCE(natural_key_partition, '__whole_asset__')`; a receipt's partition_key IS
+ *     that declaration at write time). Receipts are upserted per (asset, scope, partition) and
+ *     never deleted, so a superseded row (an asset retired/renamed, or a registry edit that
+ *     changed an asset's partition text) keeps its old pins forever; counting it would hold the
+ *     flag TRUE after S-L2 with text claiming "this clears when L2 is rebuilt". Legacy `unknown`
+ *     partitions and retired-spec receipts are excluded for the same reason.
  *   - 'not_applicable' when no in-scope L2 receipt carries an L1 pin (L2 never built: there is no
  *     L2 claim to disclose).
  *   - Fail closed: any error reading or evaluating => 'unknown' (flag `l2_lineage_check_failed`),
  *     NEVER 'current'/false. "Could not check" must not read as "checked clean".
  *
- * KNOWN BLIND SPOT (disclosed): the digest only sees id rotation where the L1 output-digest spec
- * carries the id column. Non-fact id spaces (chart_divisionals.id, dasha_row_id) are not echoed
- * under a "grounded in N resolvable L1 fact reference(s)" sentence and are not covered here.
+ * KNOWN BLIND SPOTS (disclosed): the digest only sees id rotation where the L1 output-digest spec
+ * carries the id column.
+ *   (1) Non-fact id spaces (chart_divisionals.id, dasha_row_id) are not echoed under a "grounded in
+ *       N resolvable L1 fact reference(s)" sentence and are not covered here.
+ *   (2) On 482012f1 (measured 2026-10-03) 2,695 of the 71,586 distinct fact_ids cited by MSR signals
+ *       (3.8%, 40 fact categories, e.g. graha_avastha_baladi_per_varga, graha_sthana_bala_per_varga,
+ *       ashtakavarga_kakshya_boundary) belong to categories that no ACTIVE ga_* digest spec lists.
+ *       A full L1 rebuild rotates them together with the covered categories (same delete-then-insert),
+ *       so the flag is right for S-L1 (all lanes rebuild); a PARTIAL / category-scoped L1 rebuild of
+ *       only those categories would rotate their ids without flipping the flag.
  *
  * COST / CACHING: one SELECT per call (~1.4 ms measured, ~100 rows in the table). No private
  * cache: every handler that calls this already rides a 60 s result memo (the MCP capability
@@ -69,6 +82,9 @@ export interface L2LineageReceiptRow {
   readonly output_digest: string | null
   /** An active (non-retired) output-digest spec exists for the receipt's spec sha. */
   readonly spec_active: boolean
+  /** The asset is an active registry member and this receipt's partition is the registry's current
+   *  declaration (see header). Only consulted for L2 receipts. */
+  readonly registry_current: boolean
   /** L1 pins held by an L2 receipt; null/absent for L1 rows. */
   readonly l1_pins?: readonly L2LineagePin[] | null
 }
@@ -106,7 +122,7 @@ const L2_PREFIX = 'bo_'
 export const L2_LINEAGE_SQL = `
   SELECT r.asset_id,
          r.chart_id::text AS chart_id,
-         r.partition_key,
+         left(r.partition_key, 80) AS partition_key,
          r.receipt_state,
          r.observed_at,
          r.output_digest,
@@ -116,6 +132,12 @@ export const L2_LINEAGE_SQL = `
               AND s.spec_sha256 = r.output_digest_spec_sha256
               AND s.retired_at IS NULL
          ) AS spec_active,
+         EXISTS (
+           SELECT 1 FROM asset_registry g
+            WHERE g.asset_id = r.asset_id
+              AND g.is_active IS NOT FALSE
+              AND r.partition_key = COALESCE(g.natural_key_partition, '__whole_asset__')
+         ) AS registry_current,
          CASE WHEN left(r.asset_id, 3) = 'bo_' THEN (
            SELECT COALESCE(jsonb_agg(jsonb_build_object(
                     'asset_id', u->>'asset_id',
@@ -177,6 +199,7 @@ export function evaluateL2Lineage(rows: readonly L2LineageReceiptRow[], chartId:
     if (row.chart_id !== chartId) continue
     if (row.receipt_state !== 'proven') continue
     if (row.spec_active !== true) continue
+    if (row.registry_current !== true) continue
     const pins = (row.l1_pins ?? []).filter(pin => pin.asset_id.startsWith(L1_PREFIX))
     if (pins.length === 0) continue
     l2InScope += 1
@@ -225,6 +248,7 @@ function coerceRow(raw: Record<string, unknown>): L2LineageReceiptRow {
     observed_at: observed instanceof Date ? observed : observed == null ? null : String(observed),
     output_digest: raw['output_digest'] == null ? null : String(raw['output_digest']),
     spec_active: raw['spec_active'] === true,
+    registry_current: raw['registry_current'] === true,
     l1_pins: pins,
   }
 }
@@ -243,6 +267,10 @@ export async function resolveL2Lineage(
     if (!res || !Array.isArray(res.rows)) throw new Error('lineage query returned no row set')
     return evaluateL2Lineage(res.rows.map(coerceRow), chartId)
   } catch (error) {
+    // The raw error (driver text can carry role names, hosts, table grants) goes to the SERVER log
+    // only; the served flag carries a fixed string. A persistent failure is therefore operator-visible
+    // here instead of silently stamping every response with the banner.
+    console.error('[l2_lineage] lineage check failed; serving l2_lineage_check_failed (fail closed)', error)
     return {
       state: 'unknown',
       stale: [],
@@ -253,35 +281,34 @@ export async function resolveL2Lineage(
   }
 }
 
-const MAX_DETAIL_ENTRIES = 12
+/** Served detail cap (bytes). The assess kernel is 2 KB and floor-protects this flag, so the
+ *  disclosure is one fixed sentence plus counts; the evidence lives in the receipts (detector SQL). */
+export const L2_LINEAGE_DETAIL_MAX_BYTES = 300
+const NAMED_ASSETS = 3
 
 /**
  * The served flag for a lineage result, or null when there is nothing to disclose
  * ('current' / 'not_applicable'). 'stale' -> `l2_receipts_predate_l1`; 'unknown' ->
  * `l2_lineage_check_failed` (fail closed: an unchecked lineage is never silently clean).
+ * The detail is deliberately short and never carries raw error text.
  */
 export function l2LineageFlag(result: L2LineageResult): JudgmentFlag | null {
   if (result.state === 'stale') {
     const l2Assets = Array.from(new Set(result.stale.map(e => e.l2_asset_id))).sort()
-    const l1Assets = Array.from(new Set(result.stale.map(e => e.l1_asset_id))).sort()
-    const moved = result.stale
-      .slice(0, MAX_DETAIL_ENTRIES)
-      .map(e => `${e.l1_asset_id} (pinned ${e.pinned_observed_at ?? 'n/a'} -> current ${e.current_observed_at ?? 'no receipt'})`)
+    const l1Assets = new Set(result.stale.map(e => e.l1_asset_id))
+    const named = l2Assets.slice(0, NAMED_ASSETS).join(', ')
+    const more = l2Assets.length > NAMED_ASSETS ? ` +${l2Assets.length - NAMED_ASSETS} more` : ''
     return judgmentFlag(
       'l2_receipts_predate_l1',
-      `${l2Assets.length} L2 asset(s) were built against an L1 (chart_facts) generation that has since been ` +
-        `rebuilt: ${l2Assets.join(', ')}. L1 asset(s) moved: ${l1Assets.join(', ')}` +
-        `${result.stale.length > moved.length ? ' (list truncated)' : ''} [${moved.join('; ')}]. ` +
-        'fact_ids cited by L2-derived rows may no longer resolve in chart_facts until L2 is rebuilt.',
+      `${l2Assets.length} L2 asset(s) (${named}${more}) were built before ${l1Assets.size} L1 asset(s) were rebuilt; ` +
+        'cited fact_ids may not resolve until L2 is rebuilt.',
       'warning',
     )
   }
   if (result.state === 'unknown') {
     return judgmentFlag(
       'l2_lineage_check_failed',
-      'the L2-to-L1 lineage check could not be completed' +
-        `${result.error ? ` (${result.error.slice(0, 200)})` : ''}; ` +
-        'whether the fact_ids cited by L2-derived rows still resolve in chart_facts is UNKNOWN, not confirmed.',
+      'the L2-to-L1 lineage check could not be completed (receipts read failed); whether cited fact_ids still resolve is UNKNOWN.',
       'warning',
     )
   }

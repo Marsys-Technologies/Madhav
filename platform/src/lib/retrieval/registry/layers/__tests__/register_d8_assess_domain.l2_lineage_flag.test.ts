@@ -66,8 +66,8 @@ function installRouter(lineage: Lineage) {
       if (lineage === 'error') throw new Error('permission denied for table asset_provenance_receipts')
       return {
         rows: [
-          { asset_id: 'ga_structural', chart_id: CHART_ID, partition_key: '__whole_asset__', receipt_state: 'proven', observed_at: new Date('2026-10-04T10:00:00Z'), output_digest: lineage === 'stale' ? 'NEW' : 'PINNED', spec_active: true, l1_pins: null },
-          { asset_id: 'bo_laksana', chart_id: CHART_ID, partition_key: '__whole_asset__', receipt_state: 'proven', observed_at: new Date('2026-09-08T18:22:33Z'), output_digest: 'l2', spec_active: true,
+          { asset_id: 'ga_structural', chart_id: CHART_ID, partition_key: '__whole_asset__', receipt_state: 'proven', observed_at: new Date('2026-10-04T10:00:00Z'), output_digest: lineage === 'stale' ? 'NEW' : 'PINNED', spec_active: true, registry_current: true, l1_pins: null },
+          { asset_id: 'bo_laksana', chart_id: CHART_ID, partition_key: '__whole_asset__', receipt_state: 'proven', observed_at: new Date('2026-09-08T18:22:33Z'), output_digest: 'l2', spec_active: true, registry_current: true,
             l1_pins: [{ asset_id: 'ga_structural', output_digest: 'PINNED', observed_at: '2026-09-07T08:37:20Z' }] },
         ],
       }

@@ -151,6 +151,28 @@ run('L2 lineage detector SQL against disposable PostgreSQL', () => {
     expect((await resolveL2Lineage(OTHER, query)).state).toBe('stale')
   })
 
+  it('registry-current filter: a superseded partition (registry now declares another) and a deactivated asset cannot hold the flag TRUE', async () => {
+    // The live L2 receipt (whole-asset partition) now carries a STALE pin (D1) ...
+    await receipt(L2, CHART, { digest: 'L2OUT', observedAt: T_NEW, pins: [pin('D1')] })
+    expect((await resolveL2Lineage(CHART, query)).state).toBe('stale')
+    // ... the registry then re-declares the asset's partition and S-L2 writes the new partition (pins current).
+    await query('UPDATE asset_registry SET natural_key_partition = $2 WHERE asset_id = $1', [L2, 'NEW PARTITION DECLARATION'])
+    await receipt(L2, CHART, { digest: 'L2OUT', observedAt: T_NEW, pins: [pin('D2', T_NEW)], partition: 'NEW PARTITION DECLARATION' })
+    const afterRename = await resolveL2Lineage(CHART, query)
+    expect(afterRename.state).toBe('current') // the superseded whole-asset row (stale pin, never rewritten) is ignored
+    expect(afterRename.l2_receipts_in_scope).toBe(1)
+    // a retired asset (is_active false) with a stale pin is ignored too
+    await receipt(L2, CHART, { digest: 'L2OUT', observedAt: T_NEW, pins: [pin('D1')], partition: 'NEW PARTITION DECLARATION' })
+    expect((await resolveL2Lineage(CHART, query)).state).toBe('stale')
+    await query('UPDATE asset_registry SET is_active = false WHERE asset_id = $1', [L2])
+    expect((await resolveL2Lineage(CHART, query)).state).toBe('not_applicable')
+    // restore for the following tests
+    await query('UPDATE asset_registry SET is_active = true, natural_key_partition = NULL WHERE asset_id = $1', [L2])
+    await query('DELETE FROM asset_provenance_receipts WHERE asset_id = $1 AND partition_key = $2', [L2, 'NEW PARTITION DECLARATION'])
+    await receipt(L2, CHART, { digest: 'L2OUT', observedAt: T_NEW, pins: [pin('D2', T_NEW)] })
+    expect((await resolveL2Lineage(CHART, query)).state).toBe('current')
+  })
+
   it('a pinned L1 asset with no current receipt for the chart -> stale', async () => {
     await query('DELETE FROM asset_provenance_receipts WHERE asset_id = $1 AND chart_id = $2', [L1, CHART])
     const r = await resolveL2Lineage(CHART, query)

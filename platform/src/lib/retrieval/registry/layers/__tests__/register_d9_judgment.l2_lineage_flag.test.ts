@@ -68,8 +68,8 @@ function route(lineage: Lineage) {
       const l1Digest = lineage === 'stale' ? 'NEW-L1-DIGEST' : 'PINNED-DIGEST'
       return {
         rows: [
-          { asset_id: 'ga_structural', chart_id: CHART_ID, partition_key: '__whole_asset__', receipt_state: 'proven', observed_at: new Date('2026-10-04T10:00:00Z'), output_digest: l1Digest, spec_active: true, l1_pins: null },
-          { asset_id: 'bo_laksana', chart_id: CHART_ID, partition_key: '__whole_asset__', receipt_state: 'proven', observed_at: new Date('2026-09-08T18:22:33Z'), output_digest: 'l2', spec_active: true,
+          { asset_id: 'ga_structural', chart_id: CHART_ID, partition_key: '__whole_asset__', receipt_state: 'proven', observed_at: new Date('2026-10-04T10:00:00Z'), output_digest: l1Digest, spec_active: true, registry_current: true, l1_pins: null },
+          { asset_id: 'bo_laksana', chart_id: CHART_ID, partition_key: '__whole_asset__', receipt_state: 'proven', observed_at: new Date('2026-09-08T18:22:33Z'), output_digest: 'l2', spec_active: true, registry_current: true,
             l1_pins: [{ asset_id: 'ga_structural', output_digest: 'PINNED-DIGEST', observed_at: '2026-09-07T08:37:20Z' }] },
         ],
       }
@@ -106,7 +106,7 @@ describe('judgment_query — L2 lineage flag wiring', () => {
     expect(codes).not.toContain('l2_lineage_check_failed')
     const f = flags.find(x => typeof x !== 'string' && x.code === 'l2_receipts_predate_l1') as { detail: string }
     expect(f.detail).toContain('bo_laksana')
-    expect(f.detail).toContain('ga_structural')
+    expect(f.detail).toContain('1 L1 asset(s)')
     expect(lineageSelects()).toBeGreaterThanOrEqual(1)
   })
 
