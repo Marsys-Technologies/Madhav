@@ -154,8 +154,8 @@ KEPT = {
         (_SV + "ph_sodhana/engine.py", 394, "recommendation_text=("),
         (_L + "L4_phala/query_phala_calibration.ts", 322, "recommendation_text"), (_L + "L4_phala/query_phala_calibration.ts", 323, "FROM phala_sodhana")]),
     "ph_muhurta": dict(table="phala_muhurta", cols=["verdict_reason"], writer=_WR + "ph_muhurta.py", emitter=_SV + "ph_muhurta/engine.py", cites=[
-        (_WR + "ph_muhurta.py", 179, "rec = derive_muhurta_record(mctx)"), (_WR + "ph_muhurta.py", 183, "INSERT INTO phala_muhurta"),
-        (_WR + "ph_muhurta.py", 217, "rec.verdict_reason"),
+        (_WR + "ph_muhurta.py", 181, "rec = derive_muhurta_record(mctx)"), (_WR + "ph_muhurta.py", 185, "INSERT INTO phala_muhurta"),
+        (_WR + "ph_muhurta.py", 219, "rec.verdict_reason"),
         (_SV + "ph_muhurta/engine.py", 122, "return None, ("), (_SV + "ph_muhurta/engine.py", 134, "reason = ("), (_SV + "ph_muhurta/engine.py", 138, "return 'mediocre', reason"),
         (_SV + "ph_muhurta/engine.py", 218, "verdict, reason = classify_verdict("), (_SV + "ph_muhurta/engine.py", 290, "verdict_reason=reason"),
         (_L + "L4_phala/query_phala_calibration.ts", 97, "verdict_reason"), (_L + "L4_phala/query_phala_calibration.ts", 99, "FROM phala_muhurta")]),

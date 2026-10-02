@@ -63,7 +63,10 @@ class RelationshipRecord:
     evidence_for_occurrence: float = 0.0
     evidence_against_occurrence: float = 0.0
     outcome_valence_for_native: str = "unqualified"
-    severity: float = 0.0
+    # No rule in the spec or registry computes severity: None until one does
+    # (migration 1156's kgew severity column allows NULL) — never a fabricated
+    # 0.0.
+    severity: float | None = None
     precision: dict | None = None
 
     def __post_init__(self):

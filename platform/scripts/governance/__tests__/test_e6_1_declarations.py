@@ -299,10 +299,10 @@ NARR_CITES = {
     "bo_upaya": [(_WR + "bo_upaya.py", 1008, "reason = ("), (_WR + "bo_upaya.py", 1690, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
                  (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
-    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 639, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 691, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 748, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 825, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 904, "'reason': ("), (_WR + "ka_vighnakara.py", 960, "'reason': f\"{planet_str} combust"),
-                      (_WR + "ka_vighnakara.py", 288, "json.dumps(obs['detail'])"),
+    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 641, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 693, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 750, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 827, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 906, "'reason': ("), (_WR + "ka_vighnakara.py", 962, "'reason': f\"{planet_str} combust"),
+                      (_WR + "ka_vighnakara.py", 290, "json.dumps(obs['detail'])"),
                       (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
     "ka_avadhi": [(_WR + "ka_avadhi.py", 293, '"note": f"AD lord {lord} modulates MD lord {sublord}."'),
                   (_WR + "ka_avadhi.py", 303, '"dossier": json.dumps(dossier)'),
@@ -618,7 +618,7 @@ def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant
     roots = [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
              if isinstance(k, ast.Constant) and k.value == "detail"]
     composed, constant = _composed_lines(nw.composed_report(tree, roots, ("reason",)))
-    assert composed == [639, 691, 748, 825, 904, 960] and constant == [786, 861]
+    assert composed == [641, 693, 750, 827, 906, 962] and constant == [788, 863]
 
 
 def test_ka_avadhi_sublord_note_is_bound_into_the_dossier_json_and_composed():
@@ -1701,12 +1701,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
-    191,
+    192,
     "chum = f\"{subject} {key}: {v"
    ],
    [
     "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
-    193,
+    194,
     "chum = f\"{subject} {key}: {v"
    ]
   ],
@@ -1936,12 +1936,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    892,
+    893,
     "citation_human=f\"Sade Sati {"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",
-    1239,
+    1240,
     "citation_human=f\"Sade Sati {"
    ]
   ],
@@ -3099,8 +3099,9 @@ def test_terminal_by_construction_against_a_measured_dependent_is_reported():
 
 # ───────────────────────── (6) declarations are facts only: no verdict moves ─────────────────────────
 
-def test_no_na_rule_is_declared_and_no_criterion_reads_a_declared_key():
-    assert ac.NA_RULE_DECISIONS == {}
+def test_the_declared_rule_set_is_exactly_the_approved_one_and_no_criterion_reads_a_declared_key():
+    import test_e6_na_r01_03 as r13   # REGISTRY_REVISION 9 declares exactly the three approved rules (SS N-65)
+    assert set(ac.NA_RULE_DECISIONS) == r13.DECLARED_IDS
     facts = dict(asset_kind="service", declared_kind="static", declared_carriage=dict(served_surface=False),
                  declared_carries_downstream=False, declared_prose_fields=[])
     base = dict(asset_kind="service")

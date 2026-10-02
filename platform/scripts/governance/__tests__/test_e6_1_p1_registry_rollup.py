@@ -43,6 +43,12 @@ PINNED_FINGERPRINTS = {
     7: "118c3154f9fc136fb83a33f4568e49688f8cf639336cae346643127e101d52f9",
     # 8 (E6 item i, SS A2): Carr.detector RETIRED - removed from the registry (32 to 31 entries; Carr is exactly D1-D3)
     8: "0479f0cdaaa56c5838f2e1a4ce5ab3a59606b856ba0acd201d3f67725bed0842",
+    # 9 (SS N-65): NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and
+    # R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (the registry and NA_CAUSES are unchanged; the rules are fingerprinted)
+    9: "9bfe15eccdd096e0a8def9199a6794a99a241e9ebd8fb1c5aadafa61a526e499",
+    # 10 (SS N-72): + Build.dep_liveness#measured:no-declared-dependencies (S4) and Earn.service_state#measured:not-a-service; NA_CAUSES gains
+    # Earn.service_state:not-a-service (the registry criteria are unchanged)
+    10: "1b980d1c48d19b53589db234ebeb5c2cbbffb6cddd5535ae7390b97b2a22666a",
 }
 
 
