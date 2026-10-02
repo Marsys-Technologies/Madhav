@@ -6,10 +6,14 @@ TI-l1-panchanga-moon-sign-001 — the position-fact read, executed on a REAL Pos
 The DB-free tests in test_ga4_chandra_bala_birth_sign.py use a fake connection and therefore
 cannot prove that SQL; this module does, against a disposable Postgres.
 
-Skipped unless GA4_MOON_SIGN_TEST_DATABASE_URL points at a disposable database (the tests
+Needs GA4_MOON_SIGN_TEST_DATABASE_URL to point at a disposable database (the tests
 CREATE/TRUNCATE a minimal `chart_facts` table carrying the production column types of the
 columns the query touches: chart_id uuid, build_id uuid, computed_at timestamptz). All rows are
 SYNTHETIC (made-up chart ids and signs); no birth data.
+
+Locally the tests SKIP when the variable is unset. Under GITHUB_ACTIONS=true they never skip:
+a missing variable or an unreachable database FAILS (ci.yml provisions the database and sets the
+variable in the "TI-l1-panchanga-moon-sign-001" step of the DB-service job).
 
 Run:  GA4_MOON_SIGN_TEST_DATABASE_URL='postgresql:///pms_test?host=/private/tmp/claude-504/pms' \
       python -m pytest tests/test_ga4_chandra_bala_birth_sign_pg.py
@@ -28,7 +32,7 @@ import pytest
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 URL = os.environ.get("GA4_MOON_SIGN_TEST_DATABASE_URL", "")
-pytestmark = pytest.mark.skipif(not URL, reason="GA4_MOON_SIGN_TEST_DATABASE_URL not set")
+IN_CI = os.environ.get("GITHUB_ACTIONS") == "true"
 
 SIDECAR = pathlib.Path(__file__).parent.parent
 CHART = "00000000-0000-4000-8000-0000000000aa"
@@ -43,7 +47,17 @@ B_MID = "00000000-0000-4000-8000-00000000b002"
 B_NEW = "00000000-0000-4000-8000-00000000b003"
 
 
+def _no_database():
+    msg = ("GA4_MOON_SIGN_TEST_DATABASE_URL is not set: the real-Postgres proof of the "
+           "ga_panchanga position-fact read cannot run")
+    if IN_CI:
+        pytest.fail(msg + " (GITHUB_ACTIONS=true: this suite must run in CI, never skip)", pytrace=False)
+    pytest.skip(msg)
+
+
 def _connect(row_factory=None):
+    if not URL:
+        _no_database()
     import psycopg
     kw = {"row_factory": row_factory} if row_factory else {}
     return psycopg.connect(URL, **kw)
