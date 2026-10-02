@@ -488,6 +488,13 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
                             decision=NA_RULE_DECISIONS[rid], reason="measured N/A under a declared rule")
             return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid, cause=cause,
                         reason="measured N/A but N/A rule undecided (N-22): an undeclared N/A is not N/A")
+        if crit == "Carr.D1" and v in (PASS, PARTIAL):
+            # S2 (adversarial review MED 4): a D1 verdict is honoured ONLY with its evidence: the verified chunk ledger and the digest of
+            # the cut span, a citation_state that is not unsourced/refuted, and (PASS) every row matched with the declared row count.
+            bad = d1_evidence_problem(meas)
+            if bad:
+                return dict(criterion=crit, v=NO_DET, state="MEASURED",
+                            reason=f"D1 {v} without verified passage evidence ({bad}): not honoured")
         if v in (PASS, PARTIAL) and e["detector"] == "NONE":
             # E6 item i review: a check with no detector earns no graded verdict above FAIL — PARTIAL is clamped like
             # PASS (with Carr.detector gone, a measured PARTIAL on D1-D3 would otherwise have made Carr PARTIAL).
@@ -515,7 +522,9 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
             return dict(criterion=crit, v=v, state="MEASURED",
                         reason="measured; transitive_only: every missing edge is already reachable through a declared "
                                "dependency (ordering holds, the edge is undeclared)", **(dict(inconclusive=True) if infl else {}))
-        return dict(criterion=crit, v=v, state="MEASURED", reason="measured", **(dict(inconclusive=True) if infl else {}))
+        return dict(criterion=crit, v=v, state="MEASURED", reason="measured", **(dict(inconclusive=True) if infl else {}),
+                    # a D1 verdict says WHICH citation state it stands on (a sourced_ocr_unverified PASS is marked as such on the cell)
+                    **({"citation_state": meas["citation_state"]} if crit == "Carr.D1" and meas.get("citation_state") else {}))
     st = ap["state"]
     if st == "OUT_OF_LAYER":
         return None
@@ -1200,7 +1209,7 @@ def d1_fetch_rows(table: str, columns, chart_id: str | None = None) -> list:
         raise Unknown(f"d1_fetch_rows: unparseable read of {table}: {exc}") from exc
 
 
-def carriage_declared_checks(aid: str, car, target_table) -> dict:
+def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = False) -> dict:
     """measure()'s Carr.D1/D2/D3 records for an asset that DECLARES its carriage check (SS N-72 S2): {} unless `car.nature` is
     declared (an undeclared asset emits nothing here, so its cell reads exactly as before).
 
@@ -1228,7 +1237,7 @@ def carriage_declared_checks(aid: str, car, target_table) -> dict:
     d1 = _carriage_d1()
     try:
         chunks = d1_fetch_chunks(spec["chunk_ids"])
-        rows = d1_fetch_rows(spec["table"], spec["fields"].values())
+        rows = d1_fetch_rows(spec["table"], d1.spec_columns(spec), CHART_ID if chart_scoped else None)
         out[own] = d1.d1_measure(spec, car.get("citation_state"), chunks, rows, target_table)
     except Unknown as exc:                                  # R41: this check's failure degrades only this check
         out[own] = dict(v=ERRORED, measured=f"check errored: {exc}", citation_state=car.get("citation_state"))
@@ -5431,6 +5440,27 @@ def _grade_dep_liveness_none(dag, scanned: bool = True) -> dict:
                                    f"that the asset reads nothing undeclared ({why}), so 'nothing to be live' is not claimed")
 
 
+def d1_evidence_problem(meas) -> str:
+    """"" when a Carr.D1 measurement carries the evidence a D1 PASS/PARTIAL needs, else what is missing (a bare {v: PASS} is not a D1
+    result: it has no verified passage behind it)."""
+    ev = meas.get("d1") if isinstance(meas, dict) else None
+    if not isinstance(ev, dict):
+        return "no `d1` evidence"
+    if not (isinstance(ev.get("passage_sha256"), str) and re.fullmatch(r"[0-9a-f]{64}", ev["passage_sha256"])):
+        return "no passage_sha256 (the cut span was not read)"
+    ch = ev.get("chunks")
+    if not (isinstance(ch, list) and ch and all(isinstance(c, dict) and c.get("verified") is True for c in ch)):
+        return "no verified chunk ledger"
+    if meas.get("citation_state") not in ("sourced", "sourced_ocr_unverified"):
+        return f"citation_state {meas.get('citation_state')!r} is not sourced / sourced_ocr_unverified"
+    if not (isinstance(ev.get("rows_total"), int) and ev["rows_total"] >= 1):
+        return "no rows were matched"
+    if meas.get("v") == PASS and not (ev.get("unmatched") == [] and ev.get("rows_matched") == ev["rows_total"]
+                                       and ev.get("row_count_ok") is True):
+        return "PASS but not every row matched under the declared row count"
+    return ""
+
+
 def _service_state_na(declared_kind, registry_kind):
     """Earn.service_state N/A candidate, keyed on the DECLARED kind (SS N-72; N-22 row 9 AMENDED): N/A, cause `not-a-service`,
     only when the asset-declarations file declares a kind that is not `service` AND the registry (`asset_kind`) does not
@@ -6392,7 +6422,8 @@ def measure(layer_key: str, assets=None) -> dict:
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
         # E6 item (f): Carr.D1-D3 `no-carriage` candidates, only for an asset that DECLARES terminal_by_construction
         m.update(carriage_declared_checks(aid, ((declarations or {}).get(aid) or {}).get("carriage") if isinstance(declarations, dict) else None,
-                                          r["target_table"]))
+                                          r["target_table"],
+                                          chart_scoped="chart_id" in (_target_columns_fact(r["target_table"], cat) or ())))
         m.update(carr_checks(dict(declared_facts(declarations, aid), blocking_radius=radius.get(aid),
                                   measured_served=m["Dens.served"]["v"])))
         if "Reach.fields" not in m:

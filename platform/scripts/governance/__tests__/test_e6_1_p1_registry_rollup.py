@@ -338,7 +338,8 @@ def test_detector_none_criterion_never_reaches_pass():
         chk = next(c for c in cell["checks"] if c["criterion"] == crit)
         assert chk["v"] == "NO_DETECTOR" and "detector NONE" in chk["reason"]
     d1 = next(c for c in cell["checks"] if c["criterion"] == "Carr.D1")
-    assert d1["v"] == "PASS"                                         # a measured D1 PASS is honoured: its detector is not NONE
+    # D1 has a detector, but a BARE {v: PASS} is not a D1 result: it carries no verified passage evidence, so it is not honoured
+    assert d1["v"] == "NO_DETECTOR" and "without verified passage evidence" in d1["reason"] and "no `d1` evidence" in d1["reason"]
 
 
 def test_measured_criterion_outside_its_layers_raises_never_dropped(monkeypatch):

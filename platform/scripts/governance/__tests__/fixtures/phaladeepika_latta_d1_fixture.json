@@ -1,11 +1,11 @@
 {
  "_source": {
-  "path": "/Users/Dev/suvarna-evidence/engine/corpus/phaladeepika_latta_corpus_fixtures.json",
-  "sha256": "2c1b7e72d53de3543b686136fe28c46190024a777fa3a976ca0140bbe6370c24",
-  "bytes": 10919,
+  "provenance_only": true,
+  "derived_from": "/Users/Dev/suvarna-evidence/engine/corpus/phaladeepika_latta_corpus_fixtures_v2.json (sha256 2c1b7e72d53de3543b686136fe28c46190024a777fa3a976ca0140bbe6370c24)",
+  "v1_original_export_sha256": "074fa5d7575ab5177eabbe72a53a67892d742147ccb4eb69e8138ea18eddf88d",
+  "note": "PROVENANCE ONLY: no test pins the export file's hash. The v2 file is the original export plus one `note` sentence and `_stored_hash_verified: true` on each chunk row (production session); nothing else changed. Tests pin the chunk CONTENT and the STORED content_sha256 (sha256(utf8(text_id + '::' + content_en)), bg_texts.py _sha256). This copy keeps the two declared chunks and the 8 rows of bg_phaladeepika_latta.",
   "exported_by": "Exec Suvarna, read-only as suvarna_reader",
-  "exported_on": "2026-10-02",
-  "note": "minimum copy: the two declared chunks (stored columns as exported; content_sha256 is sha256(utf8(text_id + '::' + content_en)), bg_texts.py _sha256) and the 8 rows of bg_phaladeepika_latta. The brief quoted sha256 074fa5d7575ab5177eabbe72a53a67892d742147ccb4eb69e8138ea18eddf88d for the source file; the file on disk at copy time hashes as recorded here."
+  "exported_on": "2026-10-02"
  },
  "classical_text_chunks": [
   {

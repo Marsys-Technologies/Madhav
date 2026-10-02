@@ -27,9 +27,17 @@ FX = json.loads((HERE / "fixtures" / "phaladeepika_latta_d1_fixture.json").read_
 CHUNKS = {c["chunk_id"]: c for c in FX["classical_text_chunks"]}
 ROWS = FX["bg_phaladeepika_latta"]
 IDS = ["phaladeepika_pg0338_c01", "phaladeepika_pg0339_c01"]
-SPEC = dict(matcher="ordinal_count_direction_effect_v1", table="bg_phaladeepika_latta", chunk_ids=IDS, span=dict(start="Sloka 42-44"),
+SPEC = dict(matcher=d1.MATCHER, table="bg_phaladeepika_latta", chunk_ids=IDS, span=dict(start="Sloka 42-44"),
             fields=dict(claimant="graha", count="count_from_graha", direction="direction", effect="effect_description"),
-            direction_words={"forward": "forward", "backward": "rear"}, anchor_stems=["Latt", "Latin"], effect_marker="Shkos")
+            direction_words={"forward": "forward", "backward": "rear"}, anchor_stems=["Latt", "Latin"], effect_marker="Shkos",
+            effect_end="Thus the separate effects", effect_frame_words=["will", "may", "in", "during", "be", "bo", "occur", "the", "there", "a"],
+            expected_rows=8,
+            extra_fields=[dict(column="affliction_condition", kind="passage_text",
+                               anchors=["when thus counting", "natal star", "Latta star", "sickness and anguish"],
+                               repairs={"Janma-nakshatra": "tJanmunukshatra"}),
+                          dict(column="verse_ref", kind="equals", value="Adh.XXVI PG338-339 Sloka 42-44")])
+STORED_HASHES = {"phaladeepika_pg0338_c01": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
+                 "phaladeepika_pg0339_c01": "870d228be22cf486c1224091ba359aac99bf22a6160dfaec741e4c8c8eb61e44"}
 CAR_D1 = dict(applies="D1", nature="transcription", why="eight rows transcribed from Phaladipika Adh. XXVI Sloka 42-44",
               evidence="00_ARCHITECTURE/briefs/suvarna/layers/L0/assets/bg_phaladeepika_latta_ELEVATION_BRIEF_v1_0.md",
               citation_state="sourced_ocr_unverified", spec=SPEC)
@@ -43,17 +51,20 @@ def _rehash(c):
     return c
 
 
-def _measure(rows=ROWS, chunks=CHUNKS, spec=SPEC, table="bg_phaladeepika_latta"):
-    return d1.d1_measure(spec, "sourced_ocr_unverified", chunks, copy.deepcopy(rows), table)
+def _measure(rows=ROWS, chunks=CHUNKS, spec=SPEC, table="bg_phaladeepika_latta", state="sourced_ocr_unverified"):
+    return d1.d1_measure(spec, state, chunks, copy.deepcopy(rows), table)
 
 
 # ───────────────────────── the fixture itself ─────────────────────────
 
-def test_the_fixture_records_its_source_hash_and_the_stored_hashes_verify():
-    assert len(FX["_source"]["sha256"]) == 64
+def test_the_fixture_pins_the_chunk_content_and_the_stored_hash_not_the_export_files_hash():
+    """The export file's own hash is provenance only (the production session appended a note and a flag to the chunk rows)."""
+    assert FX["_source"]["provenance_only"] is True and "sha256" not in FX["_source"]
+    assert {k: c["content_sha256"] for k, c in CHUNKS.items()} == STORED_HASHES
     for c in CHUNKS.values():
         v = d1.verify_chunk(c)
         assert v["verified"] and v["preimage"] == "text_id::content_en", v
+        assert hashlib.sha256(f"{c['text_id']}::{c['content_en']}".encode("utf-8")).hexdigest() == c["content_sha256"]
 
 
 # ───────────────────────── the D1 engine ─────────────────────────
@@ -65,6 +76,8 @@ def test_d1_all_eight_latta_rows_match_and_the_record_states_what_it_proves():
     assert e["rows_total"] == 8 and e["rows_matched"] == 8 and e["unmatched"] == [] and e["translation_only"] is True
     assert [c["chunk_id"] for c in e["chunks"]] == IDS and all(c["verified"] and c["preimage"] == "text_id::content_en" for c in e["chunks"])
     assert len(e["passage_sha256"]) == 64 and e["content_sa_all_null"] is True
+    assert r["d1"]["pass_basis"] == "sourced_ocr_unverified" and "D1 PASS (citation_state sourced_ocr_unverified)" in r["measured"]
+    assert any("classical_text_chunks" in x for x in r["d1"]["reads"]) and any("own table" in x for x in r["d1"]["reads"])   # both stated reads
     for needle in ("ENGLISH translation", "content_sa", "NULL", "OCR text not checked against the printed book", "text_id-prefixed",
                    "sourced_ocr_unverified"):
         assert needle in r["measured"], needle
@@ -168,8 +181,11 @@ def test_d1_a_malformed_row_is_a_miss_not_a_crash():
 def test_d1_the_match_is_against_the_declared_span_not_the_page_string_of_the_row():
     rows = copy.deepcopy(ROWS)
     for r in rows:
-        r["verse_ref"] = "Adh.XXVI PG999 Sloka 1"                       # a misleading per-row page string changes nothing
-    assert _measure(rows=rows)["v"] == "PASS"
+        r["verse_ref"] = "Adh.XXVI PG999 Sloka 1"                       # a misleading per-row page string
+    no_label = dict(SPEC, extra_fields=[SPEC["extra_fields"][0]])
+    assert _measure(rows=rows, spec=no_label)["v"] == "PASS"            # the claims are matched against the declared span, not the row's page string
+    r = _measure(rows=rows)                                             # ... and a declared verse_ref label that differs is itself a miss (MED 7)
+    assert r["v"] == "PARTIAL" and {u["failed"][0] for u in r["d1"]["unmatched"]} == {"verse_ref"}
     sp = dict(SPEC, span=dict(start="Sloka 45-46"))                      # a different span: nothing is found there (marker absent)
     assert _measure(spec=sp)["v"] == NO_DET
 
@@ -181,8 +197,19 @@ def test_d1_a_passage_changed_after_certification_changes_the_recorded_passage_d
     ch[IDS[1]] = _rehash(ch[IDS[1]])
     r = _measure(chunks=ch)
     assert r["d1"]["passage_sha256"] != before                              # a certificate bound to the old record is stale
+    assert r["d1"]["chunks_sha256"] != _measure()["d1"]["chunks_sha256"]     # the stored hashes are kept separately
     assert r["v"] == "PARTIAL"                                               # and the rows no longer all match the changed text
-    assert d1.passage_digest(_measure()["d1"]["chunks"]) == before
+    assert _measure()["d1"]["passage_sha256"] == before
+
+
+def test_d1_the_passage_digest_is_the_cut_span_as_read_text_outside_the_span_does_not_move_it():
+    ch = copy.deepcopy(CHUNKS)
+    ch[IDS[0]]["content_en"] = ch[IDS[0]]["content_en"].replace("SATURN, RAHU AND KETU", "SATURN, RAHU AND KETU (edited heading)")
+    ch[IDS[0]] = _rehash(ch[IDS[0]])                                         # a consistent re-hash of text BEFORE the span start
+    r = _measure(chunks=ch)
+    assert r["d1"]["passage_sha256"] == _measure()["d1"]["passage_sha256"] and r["v"] == "PASS"
+    assert r["d1"]["chunks_sha256"] != _measure()["d1"]["chunks_sha256"]
+    assert r["d1"]["passage_sha256"] == hashlib.sha256(d1.cut_span(d1._ws(" ".join(c["content_en"] for c in ch.values())), SPEC["span"])[0].encode("utf-8")).hexdigest()
 
 
 def test_d1_content_sa_present_is_reported_not_matched():
@@ -194,7 +221,8 @@ def test_d1_content_sa_present_is_reported_not_matched():
 
 def test_d1_the_engine_is_generic_a_second_spec_over_a_second_table_runs():
     """A different table, claimant column and anchor stem through the same engine (no latta constant in the engine)."""
-    spec = dict(SPEC, table="t_other", fields=dict(claimant="who", count="n", direction="way", effect="what"))
+    spec = {k: v for k, v in SPEC.items() if k != "extra_fields"}
+    spec.update(table="t_other", fields=dict(claimant="who", count="n", direction="way", effect="what"))
     rows = [dict(who=r["graha"], n=r["count_from_graha"], way=r["direction"], what=r["effect_description"]) for r in ROWS]
     assert d1.d1_measure(spec, "sourced", CHUNKS, rows, "t_other")["v"] == "PASS"
 
@@ -287,7 +315,7 @@ def test_the_committed_file_is_1_7_0_declares_no_carriage_check_and_lists_the_fi
 @pytest.fixture()
 def fetch(monkeypatch):
     monkeypatch.setattr(ac, "d1_fetch_chunks", lambda ids: {i: CHUNKS[i] for i in ids if i in CHUNKS})
-    monkeypatch.setattr(ac, "d1_fetch_rows", lambda table, cols: copy.deepcopy(ROWS))
+    monkeypatch.setattr(ac, "d1_fetch_rows", lambda table, cols, chart=None: copy.deepcopy(ROWS))
 
 
 def test_an_undeclared_asset_emits_nothing_and_reads_as_today(fetch):
@@ -329,7 +357,7 @@ def test_a_seeded_wrong_row_holds_the_carr_cell_below_pass(monkeypatch):
     rows = copy.deepcopy(ROWS)
     [r.update(count_from_graha=21) for r in rows if r["graha"] == "Moon"]
     monkeypatch.setattr(ac, "d1_fetch_chunks", lambda ids: dict(CHUNKS))
-    monkeypatch.setattr(ac, "d1_fetch_rows", lambda t, c: rows)
+    monkeypatch.setattr(ac, "d1_fetch_rows", lambda t, c, chart=None: rows)
     cell = ac.rollup_asset("L0", ac.carriage_declared_checks("bg_phaladeepika_latta", CAR_D1, "bg_phaladeepika_latta"))["Carr"]
     assert cell["v"] == "PARTIAL"
 

@@ -207,6 +207,7 @@ def test_P2_a_measured_pass_on_d1_d3_still_reads_no_detector():
         assert cell["v"] == "NO_DETECTOR", a
         # D2 and D3 are detector NONE (D1 got a detector in revision 11 and a measured D1 PASS is honoured)
         assert all("detector NONE never reaches PASS" in c["reason"] for c in cell["checks"] if c["criterion"] != "Carr.D1")
+        assert all(c["v"] == "NO_DETECTOR" for c in cell["checks"])      # and a bare D1 PASS (no verified evidence) is not honoured either
 
 
 def test_P3_ceiling_reads_na_on_exactly_the_six_after_the_retirement_and_not_before(monkeypatch):
