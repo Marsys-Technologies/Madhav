@@ -1161,7 +1161,8 @@ export const ASSETS: AssetDef[] = [
     // rows already covered by existing `ashtakavarga_%`. Migration 217 broadened the family.
     // Migration 1219 (Q-L1-04) narrows it so no row is counted by two assets: the bhava_bala_* rows
     // (house_bhava_bala_% stays), vimsopaka_bala_per_graha and graha_saptavargaja_bala_component are
-    // ga_structural's (it emits and owns them). Same text as 1219's strength_new, byte for byte
+    // ga_structural's (it emits and owns them), and so is ashtakavarga_anubindu (excluded from the retained
+    // 'ashtakavarga_%' clause). Same text as 1219's strength_new, byte for byte
     // (migration-governed once a row exists: a re-seed never reverts it; this text seeds NEW rows).
     count_sql: `
   SELECT count(*) AS count FROM chart_facts
@@ -1170,7 +1171,7 @@ export const ASSETS: AssetDef[] = [
       fact_category LIKE 'graha_shadbala_%'
       OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala')
       OR fact_category LIKE 'graha_vimsopaka_%'
-      OR fact_category LIKE 'ashtakavarga_%'
+      OR (fact_category LIKE 'ashtakavarga_%' AND fact_category <> 'ashtakavarga_anubindu')
       OR fact_category LIKE 'house_bhava_bala_%'
       OR fact_category LIKE 'graha_%_bala_per_varga'
     )
