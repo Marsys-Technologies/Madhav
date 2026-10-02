@@ -65,5 +65,7 @@ class GaVicharaWriter(WriterBase):
             ayanamsha_id=ayanamsha_id,
             conn=ctx.db_conn,
             dry_run=ctx.dry_run,
+            as_of=ctx.config.get("as_of"),      # explicit override only (tests/rehearsals)
+            require_run_date=True,              # orchestrator path: NEVER fall back to the wall clock
         )
         return WriterResult(asset_id=self.asset_id, rows_inserted=rows)
