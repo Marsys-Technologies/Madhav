@@ -12,18 +12,18 @@
     "acceptance_version": "beyond-acarya-source-acceptance-v2",
     "corpus_version": "beyond-acarya-inquiry-corpus-v1",
     "temporal_anchor_date": "2026-09-29",
-    "evaluated_source_revision": "b2d163c5dba6159f328348806054686f70b6a912",
+    "evaluated_source_revision": "07b1a091834c394beda06b68a917621854a0f0ab",
     "generated_snapshot": {
         "path": "platform/src/generated/capability_knowledge.snapshot.json",
-        "generated_at": "2026-10-02T01:50:26.000Z",
-        "snapshot_file_sha256": "sha256:643068ab7d96e59c26cbb27fc8aaf574ab67d6306e94876477bb21403c36eb06",
-        "capability_content_hash": "sha256:6c1aefca7601a9b7204471e0a3ccc03fe8ffa31819e5800b0d5e36fe83e156a8",
+        "generated_at": "2026-10-02T01:58:58.000Z",
+        "snapshot_file_sha256": "sha256:2fb77cfa61ac46759538e552da6395506d3a547bda8a9e2236c436ebd243f44f",
+        "capability_content_hash": "sha256:dd0e2fd86a46a247bd91274c2c0f0c7fb30a1d4b04e5ef43c2ab38dad634950a",
         "source_catalog_fingerprint": "sha256:c25c7054e950458670605467787ef003ae5608361674f471ce0e114bdbb2874c",
         "semantic_review_fingerprint": "sha256:a6b1381de72b70ea0d3d06542c7693135daf1a1f04dee340e470193af010a43d",
-        "producer_contract_fingerprint": "sha256:a68b6466f7c05ad9f904c99226480754d28b1c7b551850b5ccc7430a683031cf"
+        "producer_contract_fingerprint": "sha256:e52114464a82bb9ff6c3392202fdda7a31770dcffc6e49d93eebcf4fffeba4e5"
     },
-    "capability_content_hash": "sha256:6c1aefca7601a9b7204471e0a3ccc03fe8ffa31819e5800b0d5e36fe83e156a8",
-    "report_hash": "sha256:c0322d170afc3c8138f7ada1173476956b58b709a55f9c042a2f1899f24ad862",
+    "capability_content_hash": "sha256:dd0e2fd86a46a247bd91274c2c0f0c7fb30a1d4b04e5ef43c2ab38dad634950a",
+    "report_hash": "sha256:fac8feed351a211bd218a856bffdf9e6fa5214ced8acb7161531f9cc70a3059f",
     "evidence_kind": "synthetic_source_local",
     "source_status": "SOURCE_ONLY_NOT_LIVE",
     "verdict": "ACCEPTED_SOURCE_LOCAL",
@@ -78,5 +78,5 @@
     "production_validation": "NOT_RUN",
     "deployed_route_validation": "NOT_RUN",
     "candidate_validation": "NOT_RUN",
-    "provenance_note": "Pravaha A5.7 successor. Migration 1230 reverts the ka_gochara registry row to the pre-1091 registered-writer surface (kala_gochara_windows_v2 / generation '2.0'). Hashes updated 2026-10-02 on the main-merged tree (steward M20261002T014731-66ad): capability_content_hash and report_hash coincide byte-for-byte with v13's — the 1230 seed row does not feed the census catalog; no SCU, edge, proof kind or availability disposition changed. producer_contract_fingerprint moved with main's merged producers (a68b6466)."
+    "provenance_note": "Pravaha A5.7 successor. Migration 1230 reverts the ka_gochara registry row to the pre-1091 registered-writer surface (kala_gochara_windows_v2 / generation '2.0'); the producer contract fingerprint moved; no SCU, edge, proof kind or availability disposition changed. Hashes re-verified 2026-10-02 on the main-merged tree after a stale tsx module cache was found replaying main's pre-merge catalog into the regen (steward M20261002T014731-66ad)."
 }

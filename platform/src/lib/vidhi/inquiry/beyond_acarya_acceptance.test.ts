@@ -151,12 +151,11 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // assertions above are unchanged). Only this pinned hash was re-pinned.
     // Pravāha A5.7 ka_gochara registry revert (v14): migration 1230 reverts the ka_gochara
     // registry row to the pre-1091 registered-writer surface (kala_gochara_windows_v2 /
-    // generation '2.0'). Re-pinned 2026-10-02 on the main-merged tree (steward
-    // M20261002T014731-66ad): capability_content_hash/report_hash coincide byte-for-byte
-    // with v13 — the 1230 seed row does not feed the census catalog; no SCU, edge, proof
-    // kind or availability disposition changed (the metric assertions above are unchanged).
-    // Only this pinned hash was re-pinned.
-    expect(report.report_hash).toBe('sha256:c0322d170afc3c8138f7ada1173476956b58b709a55f9c042a2f1899f24ad862')
+    // generation '2.0'), moving capability_content_hash/producer_contract_fingerprint and, with
+    // them, report_hash; no SCU, edge, proof kind or availability disposition changed (the metric
+    // assertions above are unchanged). Only this pinned hash was re-pinned. (Re-verified on the
+    // main-merged tree 2026-10-02 after a stale tsx cache was found replaying main's catalog.)
+    expect(report.report_hash).toBe('sha256:fac8feed351a211bd218a856bffdf9e6fa5214ced8acb7161531f9cc70a3059f')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -580,9 +579,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
       },
       // Pravāha A5.7 (PR #2889): migration 1230 reverts the ka_gochara registry row to the
       // pre-1091 registered-writer surface (kala_gochara_windows_v2 / generation '2.0'); the
-      // snapshot is regenerated on the main-merged tree (steward M20261002T014731-66ad;
-      // producer_contract_fingerprint moved with main's merged producers).
-      evaluated_source_revision: 'b2d163c5dba6159f328348806054686f70b6a912',
+      // snapshot is regenerated on the main-merged tree with a cleared tsx module cache
+      // (steward M20261002T014731-66ad).
+      evaluated_source_revision: '07b1a091834c394beda06b68a917621854a0f0ab',
     })
   })
 })
