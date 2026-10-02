@@ -241,3 +241,41 @@ def test_no_nakshatra_id_to_sign_formula_in_ga_writers():
     assert offenders == []
     src = (root / "ga_panchanga_writer.py").read_text(encoding="utf-8")
     assert "NATIVE_MOON_NAK_ID" not in src and "NATIVE_MOON_SIGN_ID" not in src
+
+
+# ── (5) the real-Postgres module's disposable-database guard (DB-free unit tests) ─
+
+@pytest.mark.parametrize("dsn", [
+    "postgresql://postgres:postgres@localhost:5432/ga4_moon_sign_test",
+    "postgresql://pms@/pms_test?host=/private/tmp/claude-504/pms",
+    "postgresql://u@127.0.0.1/some_other_test",
+])
+def test_guard_accepts_local_test_databases(dsn):
+    from tests.test_ga4_chandra_bala_birth_sign_pg import require_disposable
+    assert require_disposable(dsn).endswith("_test")
+
+
+@pytest.mark.parametrize("dsn", [
+    "postgresql://u:p@localhost:5432/postgres",
+    "postgresql://u:p@localhost:5432/amjis",
+    "postgresql://u:p@localhost:5432/chart_facts",
+    "postgresql://u:p@localhost:5432/madhav_prod_test",
+    "postgresql://u:p@localhost:5432/ga4_moon_sign_test_backup",
+    "postgresql://u:p@localhost:5432/",
+    "postgresql://u:p@db.internal.example.com:5432/ga4_moon_sign_test",
+    "postgresql://u:p@10.0.0.5/ga4_moon_sign_test",
+    "postgresql://u@/amjis?host=/cloudsql/proj:region:inst",
+])
+def test_guard_refuses_non_test_databases_and_remote_hosts(dsn):
+    from tests.test_ga4_chandra_bala_birth_sign_pg import RefusedError, require_disposable
+    with pytest.raises(RefusedError, match="REFUSED"):
+        require_disposable(dsn)
+
+
+def test_guard_refuses_to_truncate_a_chart_facts_that_looks_real():
+    from tests.test_ga4_chandra_bala_birth_sign_pg import RefusedError, require_minimal_table
+    require_minimal_table(set())  # absent table: fine
+    require_minimal_table({"chart_id", "ayanamsha_id", "build_id", "fact_category", "fact_subject",
+                           "fact_key", "fact_value_text", "fact_value_num", "computed_at"})
+    with pytest.raises(RefusedError, match="not a disposable table"):
+        require_minimal_table({"chart_id", "fact_id", "citation_human", "verification_pass_status"})

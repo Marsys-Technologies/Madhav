@@ -1,11 +1,12 @@
 ---
-version: 1.0
+version: 1.1
 status: CURRENT
 lane: TI-l1-panchanga-moon-sign-001
 branch: suvarna/land/TI-l1-panchanga-moon-sign-001
 basis: origin/main 8cf05f507
 changelog:
   - 1.0 — defect, fix, expected stored change (flip-detector hook entry), residual findings.
+  - 1.1 — real-PG suite wording (runs in CI, fails never skips), disposable-DB guard, SQL derivations of the same formula and the (uu2) consequence (R2b).
 ---
 
 # chandra_bala_natal_baseline: birth Moon sign was derived from the nakshatra id
@@ -92,14 +93,31 @@ Served exposure of the stored rows on the canonical chart: dossier slice bundles
 - E6 line pins moved with the line shift: `ga_panchanga_writer.py` citation sites 368 -> 359,
   534 -> 525, INSERT 1276 -> 1322 (asset_declarations.json and test_e6_1_declarations.py).
 
-## Other nakshatra-to-sign derivations (grep of `ga_writers/` and `brahmagyan/`)
+## Other nakshatra-to-sign derivations (grep of Python, SQL migrations and TypeScript)
 
-`* 4) // 9` appears nowhere else. No other L1 writer maps a nakshatra id to a sign. Longitude to
-nakshatra index uses (`lon // (360/27)`) in ga_sade_sati_writer.py, ga_vargas_writer.py,
-ga_nakshatra_compute.py and ga_dashas_writer.py, which is the correct direction. Owner-chart sign
-constants outside this lane (not touched): `services/ka_muhurta_seva/service.py:33`
-`NATIVE_MOON_SIGN_ID = 11` and `brahmagyan/kala/l3_obstruction.py:51` `NATIVE_MOON_SIGN = "Aquarius"`
-(Kala; out of scope here).
+Python: `* 4) // 9` appears nowhere else in `ga_writers/` or `brahmagyan/`; no other L1 writer maps a
+nakshatra id to a sign. Longitude to nakshatra index (`lon // (360/27)`) in ga_sade_sati_writer.py,
+ga_vargas_writer.py, ga_nakshatra_compute.py and ga_dashas_writer.py is the correct direction.
+Owner-chart sign constants outside this lane (not touched): `services/ka_muhurta_seva/service.py:33`
+`NATIVE_MOON_SIGN_ID = 11` and `brahmagyan/kala/l3_obstruction.py:51` `NATIVE_MOON_SIGN = "Aquarius"`.
+
+SQL (the Python-only grep missed these; independent review R2b found the first, a wider grep for
+`* 4) / 9`, `*4)/9`, `/ 2.25` forms over `platform/migrations`, `platform/supabase/migrations`,
+`platform/src`, `platform-mcp/src`, `platform/scripts` and `platform/python-sidecar` lists every hit;
+finding only, no edits): the same formula `( ((n.fact_value_num::int - 1) * 4) / 9 + 1 )`, applied to
+`panchanga_nakshatra_moon.number`, appears in 33 migrations, each as a copy of the Chandra Bala
+conjunct (uu2) inside a `ga_structural` integrity check: 790, 791, 792, 793, 794, 795, 796, 797, 798,
+799, 800, 801, 802, 803, 804, 805, 806, 807, 808, 809, 810, 811, 812, 813, 814, 815, 816, 817, 818,
+819, 840, 841 and 904 (files named `<n>_nirmana_l1_ga_structural_integrity_*.sql` in the platform migrations directory; 904 is
+`..._check_scope.sql`, the others `..._contract_<name>.sql`). Per R2b the live definition is
+`asset_registry.integrity_check_sql` (not independently re-read here). There are 0 hits in
+`platform/supabase/migrations`, `platform/src`, `platform-mcp/src` and `platform/scripts`; the only
+other hit in the tree is this lane's own structural-guard test, which names the pattern in a regex.
+
+Expected consequence (R2b finding): conjunct (uu2) re-derives the birth Moon sign from the nakshatra
+number with that formula, so it would go FALSE for the 9 changed surya_siddhanta_classical rows once
+ga_panchanga is rebuilt; (uu2) must be corrected in migration 1221 before the rebuild. Handled
+separately from this lane (no edit here).
 
 ## Residual findings (recorded, no code changed)
 
@@ -111,9 +129,14 @@ nakshatra is Purva Bhadrapada for all five ayanamshas) but latent for any chart 
 puts the Moon in a different nakshatra than Lahiri. Not fixed in this lane.
 
 Real-Postgres proof of the position-fact read (`tests/test_ga4_chandra_bala_birth_sign_pg.py`,
-skipped in CI unless `GA4_MOON_SIGN_TEST_DATABASE_URL` is set; run locally on a disposable PG 15 with
-production column types chart_id uuid, build_id uuid, computed_at timestamptz; synthetic rows only):
-18 tests passed. Five ayanamshas (Aquarius x4, Pisces for surya_siddhanta_classical) read exactly,
+marked `integration`, so the generic sidecar job deselects it; it RUNS in the dedicated ci.yml step of the
+DB-service job (`ga4_moon_sign_test`, no `-m` filter) and FAILS, never skips, under `GITHUB_ACTIONS=true`
+when `GA4_MOON_SIGN_TEST_DATABASE_URL` is missing or the database is unreachable; it skips only on a
+local run with the variable unset. Verified on a disposable PG 15 with production column types chart_id uuid, build_id uuid, computed_at timestamptz; synthetic rows only):
+18 tests passed. Safety: the fixture TRUNCATEs `chart_facts`, so it refuses (`REFUSED`) any DSN that is
+not loopback/unix-socket, any database not named `<name>_test` (or containing `prod`), and any existing
+`chart_facts` carrying columns beyond the test's own minimal table; DB-free unit tests prove each refusal
+and mutations of either guard go red; on a real PG the refused databases kept their rows. Five ayanamshas (Aquarius x4, Pisces for surya_siddhanta_classical) read exactly,
 with decoys excluded (other graha, other key, other category, other chart, non-canonical ayanamsha);
 dict-row and tuple-row connections agree. Two build generations of the same key: the LATEST
 `computed_at` (the newest build) wins, because the newer build's fact supersedes the older one; an

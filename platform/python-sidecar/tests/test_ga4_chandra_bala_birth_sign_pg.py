@@ -29,6 +29,9 @@ import pathlib
 import subprocess
 import sys
 
+import re
+from urllib.parse import parse_qs, urlparse
+
 import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
@@ -52,6 +55,48 @@ B_MID = "00000000-0000-4000-8000-00000000b002"
 B_NEW = "00000000-0000-4000-8000-00000000b003"
 
 
+# ── disposable-database guard (the fixture TRUNCATEs chart_facts) ────────────
+_DISPOSABLE_NAME = re.compile(r"^[a-z0-9_]+_test$")
+_LOOPBACK = {"localhost", "127.0.0.1", "::1"}
+_MINIMAL_COLUMNS = {
+    "chart_id", "ayanamsha_id", "build_id", "fact_category", "fact_subject", "fact_key",
+    "fact_value_text", "fact_value_num", "computed_at",
+}
+
+
+class RefusedError(RuntimeError):
+    """The disposable-database guard refused the connection target."""
+
+
+def require_disposable(dsn: str) -> str:
+    """Refuse unless `dsn` targets a LOCAL (loopback host or unix-socket) database whose name
+    is a test-database name (`<...>_test`, never containing 'prod'). This module TRUNCATEs
+    `chart_facts`; a mis-set variable must never reach a real database. Returns the name."""
+    parsed = urlparse(dsn)
+    host = parsed.hostname or (parse_qs(parsed.query).get("host") or [""])[0]
+    local = host in _LOOPBACK or host.startswith("/") or host == ""
+    if not local:
+        raise RefusedError(f"REFUSED: DSN host {host!r} is not loopback / a unix socket")
+    name = (parsed.path or "").lstrip("/")
+    if not _DISPOSABLE_NAME.match(name) or "prod" in name:
+        raise RefusedError(
+            f"REFUSED: database {name!r} is not a disposable test database "
+            "(expected '<name>_test', e.g. 'ga4_moon_sign_test'); this module TRUNCATEs chart_facts"
+        )
+    return name
+
+
+def require_minimal_table(existing_columns: set[str]) -> None:
+    """Refuse to TRUNCATE a `chart_facts` that carries columns beyond this module's own minimal
+    table (i.e. one that looks like the real table). An absent table (empty set) is fine."""
+    extra = set(existing_columns) - _MINIMAL_COLUMNS
+    if extra:
+        raise RefusedError(
+            "REFUSED: chart_facts already exists with columns this test did not create "
+            f"({sorted(extra)[:4]}...): not a disposable table, refusing to TRUNCATE"
+        )
+
+
 def _no_database():
     msg = ("GA4_MOON_SIGN_TEST_DATABASE_URL is not set: the real-Postgres proof of the "
            "ga_panchanga position-fact read cannot run")
@@ -71,7 +116,13 @@ def _connect(row_factory=None):
 @pytest.fixture()
 def conn():
     from psycopg.rows import dict_row
+    if not URL:
+        _no_database()
+    require_disposable(URL)
     c = _connect(dict_row)
+    require_minimal_table({r["column_name"] for r in c.execute(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema = current_schema() AND table_name = 'chart_facts'").fetchall()})
     c.execute(
         """
         CREATE TABLE IF NOT EXISTS chart_facts (
