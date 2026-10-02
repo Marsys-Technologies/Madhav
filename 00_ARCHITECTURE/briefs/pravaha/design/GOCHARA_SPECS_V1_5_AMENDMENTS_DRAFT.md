@@ -1,6 +1,6 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.24
+version: 0.25
 status: v0.5 ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); v0.6 adds AM-10 and the F-2 exclusion-evidence binding (not yet reviewed); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
@@ -1522,6 +1522,23 @@ PR #2914 (strict L1 input wrappers) is a **prerequisite of qualified P1 scoring 
 
 ## AM-25 — CANDIDATE (not ruled; named pre-condition of NUMERICAL activation): one in-orb stay = one evidence root (steward M20261002T084648-f2c2)
 Full text, the real-loop computation and the proposed oracle O-RL-1: `design/AM25_RETROGRADE_LOOP_ROOT_IDENTITY_CANDIDATE_v1_0.md`. Summary: the frozen §2.1 sums over roots with `root_id := contact_id` (one exact crossing = one contact, NK-2/O-RX-1) and the kernel's WP2-pinned episodes overlap by construction, so one continuous in-orb stay holding k exact crossings would contribute k times once numbers exist. Candidate rule: keep contact identity and episodes exactly as frozen; accumulate over **stays** (`stay_id`, maximal connected in-orb interval) with `max` inside a stay; exact hits are sub-events. Real example (Saturn, canonical natal Ketu 229.0330°, aspect 270°, orb 1.0°, 2024): 3 roots in 2 stays (frozen 3.0 vs candidate 2.0 for a unit record value). Not part of the all-NULL milestone.
+
+## RULINGS BY DELEGATE (authority: `decisions/NATIVE_RULINGS_BY_DELEGATE_v1_0.md`, 2026-10-02) — status of every named decision; implementation DEFERRED until round 10 returns
+The native delegated every open decision; the file is treated as the native's rulings (he may overrule by a later dated ruling; nothing in it is edited — a change is a new version). **These rulings enable numerical-activation work but do NOT change the current milestone: the all-NULL `'5.0'` candidate stays the gate target, and no registry rows for the newly ruled values are started before round 10 returns.**
+| decision | ruling id | status | one line | implementation |
+|---|---|---|---|---|
+| ND-ORB-ADMISSION | `NR-ORB-ADMISSION-20261002` | **RULED** | admission orb = the engine's own `ORB_TABLE` (1.0° slow / 3.0° Moon), read at bind time, never copied; labelled an uncited engineering convention; disclosed on every served point-contact answer | deferred (new `activity_kernel` version + new path versions) |
+| ND-ORB-SCALE | `NR-ORB-SCALE-20261002` | **RULED** | `1 − |Δλ|/orb` over the same referenced orb, `uncalibrated_default — ordering only`, separately versioned | deferred |
+| ND-VIPAREETA | `NR-VIPAREETA-20261002` | **RULED: not used** | `cancelled_vipareeta` is never produced; AM-18 item 3 closes | none needed |
+| ND-NODE-VEDHA | `NR-NODE-VEDHA-20261002` | **RULED: undecided stays, with a named deadline** | `node_obstruction_undecided` (unqualified sub-interval); deadline = before qualified P2 scoring is scheduled; native chooses at the deadline if no source is found | none |
+| ND-NODE-RETRO-VEDHA | `NR-NODE-RETRO-20261002` | **RULED = N-83 (Stream B's recommendation (b) NOT adopted)** | `retrograde_malefic` never attaches to a node (NULL = "not applicable", with a stated reason); motion stored as a cited constant `obstructor_motion_basis` (always retrograde, mean series, Phaladīpikā XXVI.48 `PG348:C1`); Sarvatobhadra rows add `vedha_side = right` and `text_intensifier_status = implied_by_premise_not_computed`; Mars–Saturn keep the per-day detector | step-3 spec §12c; vedha writer version bump deferred |
+| ND-COMBUSTION | `NR-COMBUSTION-20261002` | **RULED** | L0 `bg_combustion_orbs` via L1 `check_combustion` (reference, never a copy); Jupiter 11° with the Nāḍī 12° disclosed as a source variance | deferred |
+| ND-P1-FRAME | `NR-P1-FRAME-20261002` | **RULED: the lagna (AM-20)** | confirmed | none |
+| AM-19 D1–D7 | `NR-AM19-D1…D7-20261002` | **RULED** | D1 L1's nine dignity categories; D2 XX.30 ladder (1·¾·½·¼) favourable, adverse a declared ungraded 1; D3 friendly ¼, neutral = does not fire; D4 combustion a binary adverse trigger; D5 each trigger its own directed reading, never netted; D6 adopt the retrograde clause (XX.37) via an explicit admission amendment and new P1 path version AFTER the first all-NULL candidate; D7 XX.29 as the bhukti-auspiciousness predicate for the XX.38 deliveries | deferred (P1 path version) |
+| ND-P1-PD-LEVEL | `NR-P1-PD-LEVEL-20261002` | **RULED = the steward's ruling confirmed** | PD-level readings are authorised testimony, never counted (AM-21 part 4) | in the writer already |
+| `'4.1'` T-honesty | `NR-41-DIAGNOSTIC-20261002` | **RULED: diagnostic-only** | `t_honesty.status = UNVERIFIABLE`, `pass:false`, never flip-eligible under v2.3; `'5.0'` is the gated generation | the Stage-1 freeze proceeds as prepared |
+| ND-ROLES | `NR-ROLES-20261002` | **RULED: option A** | separate principals; new `gochara_verifier` (not `data_plane_verifier`); verification = separate operator-dispatched job; seal = approval-gated workflow with the native as required reviewer; 1206 §7 edited BEFORE first application (folded into #2867) | credential/infrastructure acts (rulings §3.6, nine) **await the native's explicit go-ahead — none performed** |
+**Findings recorded by the delegate:** (1) Phaladīpikā XXVI.31–32 (`phaladeepika:PG334:C1`) states a cited house-favourability × dignity/combustion interaction bearing on the P2/P3 mappings — it needs its own decision packet before any P2/P3 numerical amendment; (2) the served BPHS cannot cite chapter 26 by locator (`read_chapter(bphs, 26)` returns chapter-1 chunks) — an L0 corpus defect passed to the L0 owner; until it is fixed such citations are by CHUNK ID and marked "re-point when the L0 corpus fix lands". **Not touched:** ST-P5-HOLD-20261001 and ST-H-UNKNOWN-20261002 stay in force.
 
 ## Batch checklist for the A5.5 gate (v0.5)
 

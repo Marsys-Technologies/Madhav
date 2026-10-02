@@ -1,6 +1,6 @@
 ---
 artifact: P1_INPUTS_ANSWER
-version: "1.2"
+version: "1.3"
 status: ANSWER (not a spec version; §(5) specifies the strict wrapper that PR #2914 implements); supersedes the P1 section of P5_P1_SWEEP_ANSWER_v1_0 where they differ; recommendations marked MINE are not rulings
 date: 2026-10-02
 author: stream-B (Exec B)
@@ -67,3 +67,6 @@ P1's four factors declare no [0,1] value mapping, so P1 windows are stored `unqu
 | `:669–680` `_load_combustion_orbs` (and the naisargika loader) | read failure ⇒ literal orbs / `{}` | **no fallback loader exists in the wrapper**; it takes rows handed by the caller, so a failed read is an error upstream, not a literal. |
 | `:123,192` `dignity_d1_from_sign` | classifies the mūlatrikoṇa range from the constant `_MOOLATRIKONA_RANGE` even when given the L0 row; a crossing schedule read from L0 `moolatrikona_from/to` could diverge | `dignity_boundaries` returns the boundary degrees **only when L0's range equals L1's effective classifier range** (and sign), else `dignity_boundary_authority_divergence` — refused until the L0/L1 owner repairs it (the Mercury/Moon one-degree finding stays referred). Dignity classification runs the same check first, so the schedule and the classification come from one effective authority. |
 **Outcome vocabulary.** A failure carries a named `reason`; the transit factor is `unqualified` with that reason (R1), never defaulted. **Binding.** The consumed rows' content digests (`l0` key, AM-16) and the implementation identity of this module and of L1's pure functions are part of the input vector. **Not scored today:** P1 has no qualified window — value mappings (dignity magnitudes, combustion level, neutral's direction) remain AM-19 / ND-COMBUSTION; nothing here is a scoring claim.
+
+## (6) Added 2026-10-02 (steward M20261002T093106-ee02; native rulings by delegate): a NODE period lord's transit dignity follows the base layer's N-82 convention
+When a P1 period lord is **Rāhu or Ketu**, the transit-sign dignity of that lord is whatever L1's base layer returns under the owner's ruling **N-82**: **exaltation and debilitation only** (Rāhu exalted in Taurus, debilitated in Scorpio; Ketu the reverse), **every other dignity an explicit null**, and nodes are **outside the strength percentile** (seven planets only). This document **references** that convention and does **not** re-declare it (CLAUDE.md §N.5: L1/L0 are the authority; a transit rule must not carry its own copy). Under the AM-19 rulings (D1: L1's nine dignity categories are the one vocabulary) a node's null dignities read as "no reading" for that trigger, never as an invented grade; the favourable/adverse mapping of a node's exaltation/debilitation is the same ladder as for any lord (D2). The readers affected in Pravāha's code are listed in `decisions/NODE_DIGNITY_READERS_N82_v1_0.md` (when delivered).

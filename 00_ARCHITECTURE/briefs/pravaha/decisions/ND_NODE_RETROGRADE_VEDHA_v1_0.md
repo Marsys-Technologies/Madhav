@@ -1,7 +1,7 @@
 ---
 artifact: ND_NODE_RETROGRADE_VEDHA
 version: "1.0"
-status: "FOR THE NATIVE — nothing here is decided. Needed before the node-series switch (step 3) rebuilds the vedha rows."
+status: "RULED (delegated, 2026-10-02) — NR-NODE-RETRO-20261002 in decisions/NATIVE_RULINGS_BY_DELEGATE_v1_0.md §2.4: the ruling AGREES with the L0 owner's N-83 and does NOT adopt this note's recommendation (b). The note is kept as the record of the options; the operative convention is N-83 (node_series step-3 spec §12c)."
 date: 2026-10-02
 author: Stream B (Śāstra), item B6.0 (steward M20261002T061832-8c7c)
 evidence_rule: "classical text only from the served corpus, cited by locator (read from `classical_text_chunks` today); row counts are read-only production figures for the canonical chart plus the MEAN series computed with pyswisseph 2.10.03 — an ESTIMATE, no build was run."
