@@ -184,8 +184,24 @@ def _subtract(spans, minus):
     return out
 
 
-def vedha_factor_value(segment: dict) -> dict:
-    """The factor result the score algebra consumes for one derived segment."""
+def vedha_factor_value(segment: dict, *, factor_ref: tuple[str, str]) -> dict:
+    """The factor result the score algebra consumes for one derived segment, labelled with the factor ref of the
+    membership that CALLED it. `unqualified` stays `value: None` (a NULL channel under R1 — never 0)."""
+    _check_ref(factor_ref)
     return {"value": segment["value"], "null_state": "unqualified", "reason": segment["reason"],
             "qualification": "vedha_active" if segment["state"] == STATE_ACTIVE else None,
-            "scope": segment["scope"]}
+            "scope": segment["scope"], "factor": factor_ref}
+
+
+def vedha_not_applicable(factor_ref: tuple[str, str]) -> dict:
+    """A DECLARED non-applicability (adverse residence / uncited pair): `score.factor_product` skips it — it is
+    neither a missing operand nor a silent 1."""
+    _check_ref(factor_ref)
+    return {"not_applicable": True, "factor": factor_ref, "value": None}
+
+
+def _check_ref(factor_ref) -> None:
+    from .registry import FACTORS
+    row = FACTORS.get(factor_ref)
+    if row is None or row["factor_id"] != "vedha_attenuation" or "applicability" not in row:
+        raise ValueError(f"{factor_ref!r} is not a vedha_attenuation row that declares applicability")

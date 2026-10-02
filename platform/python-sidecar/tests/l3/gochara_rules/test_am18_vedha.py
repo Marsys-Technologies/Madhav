@@ -12,8 +12,10 @@ from services.gochara_rules.registry import (
     FACTORS, KERNEL_VERSION, RULE_PATHS, RULE_VERSION, SUPERSEDED_FACTORS, SUPERSEDED_PATHS, composite_ref,
 )
 from services.gochara_rules.vedha_derive import (
-    MOON_SCOPE, VedhaPairsError, derive_vedha, house_from_moon, pairs_from_rows, vedha_factor_value,
+    MOON_SCOPE, VedhaPairsError, derive_vedha, house_from_moon, pairs_from_rows, vedha_factor_value, vedha_not_applicable,
 )
+from services.gochara_rules import flat_selector as FS
+VREF = composite_ref("vedha_attenuation", KERNEL_VERSION)
 
 CITE_PG322 = "Phaladipika Adh. XXVI, Sloka 3 — phaladeepika:PG322:C1 (Sastri trans. 1950)"
 CITE_PG323 = "Phaladipika Adh. XXVI, Sloka 6 — phaladeepika:PG323:C1 (Sastri trans. 1950)"
@@ -133,7 +135,7 @@ def test_o_vi_6_half_open_edges_and_not_applicable_and_missing_inputs():
 def test_value_mapping_is_the_cited_step_and_never_graded():
     res = base_residence(); res["Mars"] = [span(7, "04-20", "05-01")]; res["Ketu"] = [span(7, "05-01", "05-05")]
     out = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
-    vals = {s["state"]: vedha_factor_value(s) for s in out["segments"]}
+    vals = {s["state"]: vedha_factor_value(s, factor_ref=VREF) for s in out["segments"]}
     assert vals["active"]["value"] == 0.0 and vals["active"]["qualification"] == "vedha_active"
     assert vals["inactive"]["value"] == 1.0 and vals["inactive"]["scope"] == MOON_SCOPE
     assert vals["unqualified"]["value"] is None and vals["unqualified"]["reason"] == "node_obstruction_undecided"
@@ -141,22 +143,57 @@ def test_value_mapping_is_the_cited_step_and_never_graded():
 
 
 # ── registry: vedha_attenuation@1.1.0 + P2@1.1.0 ───────────────────────────────────
-def test_registry_declares_the_ruled_mapping_and_versions_p2():
-    row = FACTORS[composite_ref("vedha_attenuation", KERNEL_VERSION)]
-    ap = row["applicability"]
+def test_registry_declares_the_ruled_mapping_as_a_flat_selector_and_versions_p2():
+    row = FACTORS[VREF]
+    flat, ap = row["operand_selector"], row["applicability"]
+    assert FS.flat_problems(flat) == [] and FS.decode_vedha(flat) == ap and FS.encode_vedha(ap) == flat      # SQL-admissible + read-back equality
     assert ap["mapping"] == {"active": 0.0, "inactive": 1.0}
     assert ap["scope_on_inactive"] == MOON_SCOPE and ap["scope_not_needed_for"] == ["Mercury"]
-    assert "node_obstruction_undecided" in ap["unqualified_reasons"] and "not produced" in ap["vipareeta"]
+    assert "node_obstruction_undecided" in ap["unqualified_reasons"] and flat["vipareeta_state"] == "not_produced_no_served_citation"
     assert row["function"] == "step" and row["range"] == [0.0, 1.0] and row["null_state"] == "unqualified"
     old = FACTORS[composite_ref("vedha_attenuation", RULE_VERSION)]                 # 1.0.0 untouched
     assert "applicability" not in old
-    assert SUPERSEDED_FACTORS[composite_ref("vedha_attenuation", RULE_VERSION)]["superseded_by"] == composite_ref("vedha_attenuation", KERNEL_VERSION)
+    assert SUPERSEDED_FACTORS[composite_ref("vedha_attenuation", RULE_VERSION)]["superseded_by"] == VREF
     p_old, p_new = RULE_PATHS[composite_ref("P2", RULE_VERSION)], RULE_PATHS[composite_ref("P2", KERNEL_VERSION)]
-    assert p_new["soft_factors"] == [composite_ref("vedha_attenuation", KERNEL_VERSION)]
-    assert p_new["prerequisites"] == p_old["prerequisites"]
+    assert p_new["soft_factors"] == [VREF] and p_new["prerequisites"] == p_old["prerequisites"]
     assert {k: v for k, v in p_new.items() if k not in ("rule_version", "soft_factors")} == \
            {k: v for k, v in p_old.items() if k not in ("rule_version", "soft_factors")}
     assert SUPERSEDED_PATHS[composite_ref("P2", RULE_VERSION)]["superseded_by"] == composite_ref("P2", KERNEL_VERSION)
     for key, path in RULE_PATHS.items():
         for ref in path.get("soft_factors", []):
             assert ref in FACTORS, (key, ref)
+
+
+def test_version_exact_dispatch_and_declared_non_applicability():
+    seg = {"state": "active", "value": 0.0, "reason": None, "scope": None}
+    assert vedha_factor_value(seg, factor_ref=VREF)["factor"] == VREF
+    with pytest.raises(ValueError):
+        vedha_factor_value(seg, factor_ref=composite_ref("vedha_attenuation", RULE_VERSION))      # 1.0.0 declares nothing: refused
+    with pytest.raises(ValueError):
+        vedha_factor_value(seg, factor_ref=composite_ref("activity_kernel", KERNEL_VERSION))
+    na = vedha_not_applicable(VREF)
+    assert na["not_applicable"] is True and na["factor"] == VREF
+
+
+def test_qualification_propagates_from_the_node_state_into_the_channel():
+    """R1 integration: a node-undecided segment is `value: None` and must make the record's channel NULL (never 0);
+    an active (0.0) segment is a genuine zero; a declared non-applicability is skipped."""
+    score = pytest.importorskip("services.gochara_rules.score")
+    from services.gochara_rules.records import RelationshipRecord
+    if not hasattr(score, "unqualified_reasons"):          # R1 (PR #2905) not in this tree yet
+        pytest.skip("R1 qualification propagation not present in this tree")
+    res = base_residence(); res["Rahu"] = [span(7, "04-20", "05-01")]
+    out = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
+    node_seg = next(s for s in out["segments"] if s["state"] == "unqualified")
+    rec = RelationshipRecord(chart_id="482012f1-710e-4a25-994a-93821f5871aa", generation="5.0", event_class="marriage", affected_person="native",
+                             frame="moon", agent="Sun", relation="residence", object_id="obj:sign:Aries", object_kind="sign_span", object_role="occupant",
+                             contact_id="sha256:c-sun", path_id="P2", rule_version="1.1.0", prerequisites=[], provenance="verse_cited", operator_role="scored")
+    ev = score.record_channel_value(rec, "marriage", "favourable", [vedha_factor_value(node_seg, factor_ref=VREF)])
+    assert ev.get("unqualified") is True
+    totals = score.path_channel_scores([rec], "marriage", {rec.record_id: ev})
+    assert totals["evidence_for_occurrence"] is None
+    active = next(s for s in derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON,
+                                          residence={**base_residence(), "Mars": [span(7, "04-20", "05-01")]}, pairs=PAIRS)["segments"] if s["state"] == "active")
+    ev0 = score.record_channel_value(rec, "marriage", "favourable", [vedha_factor_value(active, factor_ref=VREF)])
+    assert score.path_channel_scores([rec], "marriage", {rec.record_id: ev0})["evidence_for_occurrence"] == 0.0     # a known zero, not NULL
+    assert score.factor_product([vedha_not_applicable(VREF), {"value": 0.5, "null_state": "unqualified"}]) == 0.5
