@@ -34,6 +34,13 @@ Hard rails (inherited, CLAUDE.md):
 - constituent_fact_ids / constituent_facts_array reference real
   chart_facts.fact_id values — must resolve with zero orphans (§N.5).
 - NEVER commits / closes conn — orchestrator owns the transaction boundary.
+- Row identity (TI-l1-vichara-writer-001): chart_vichara has NO natural key. Rows are written
+  with SORTED constituent_fact_ids, exact whole-row duplicates are removed (first kept), and
+  no two rows may share (chart_id, ayanamsha_id, vichara_family, subject, target, domain,
+  varga_id, formula_version, constituent_fact_ids sorted) — the grain plus the L1 source-fact
+  provenance set, NOT a natural key — else the writer raises (see `assert_no_identity_collision`).
+- leverage_index is TIME-INDEXED: its as-of is the build run's creation date (see `resolve_as_of`),
+  recorded on every leverage row; the wall clock is never read on the orchestrator path.
 
 SCHEMA NOTE (migration 435): chart_vichara carries the UNION of two
 already-merged consumers' column vocabularies (bo_laksana.py's
@@ -395,7 +402,7 @@ def build_valence_pass_rows(
             contact_type=contact, dignity_state=dig,
         )
 
-        constituent_ids = list({link["fact_id"], *idx.lordship_fact_ids(varga, lord)} - {None})
+        constituent_ids = sorted({link["fact_id"], *idx.lordship_fact_ids(varga, lord)} - {None})
 
         vjsonb: dict[str, Any] = {
             "varga": varga,
@@ -486,7 +493,7 @@ def build_aspect_valence_rows(
             contact_type="aspect", dignity_state=dig, aspect_offset=offset,
         )
 
-        constituent_ids = list({asp["fact_id"], *idx.lordship_fact_ids(varga, graha)} - {None})
+        constituent_ids = sorted({asp["fact_id"], *idx.lordship_fact_ids(varga, graha)} - {None})
 
         vjsonb: dict[str, Any] = {
             "varga": varga,
@@ -585,7 +592,7 @@ def build_varga_ratification_rows(
         if karaka:
             subjects.add(karaka)
 
-        for subject_planet in subjects:
+        for subject_planet in sorted(subjects):  # deterministic insert order (was set order)
             subj = PLANET_TO_SUBJECT.get(subject_planet, subject_planet.upper())
             d1_rec = idx.dignity.get(("D1", subj))
             d1_dignity_text = d1_rec["dignity"] if d1_rec else None
@@ -811,7 +818,13 @@ def build_leverage_index_rows(
     leverage_weights: dict[str, Any],
     dignity_score_map: dict[str, float],
     now: datetime,
+    as_of_source: str = "config_override",
 ) -> list[dict[str, Any]]:
+    """`now` is the declared AS-OF instant for the dasha-runway term (resolved
+    by `resolve_as_of`, never read from the wall clock here). It is recorded on
+    every row (`value_jsonb.as_of` / `as_of_source`) so a rebuild is reproducible
+    for a given as-of and a flip/digest reader can attribute a value move to a
+    move of the as-of."""
     rows: list[dict[str, Any]] = []
     d1_lordships = idx.lordships("D1")
     firings = idx.__dict__.get("_yoga_firings", [])  # set by caller before invocation
@@ -897,6 +910,8 @@ def build_leverage_index_rows(
                     "ratification_factor_rescaled": rf_rescaled,
                     "dasha_runway_weight": round(runway_weight, 4),
                     **runway_meta,
+                    "as_of": now.date().isoformat(),
+                    "as_of_source": as_of_source,
                 },
                 "ratification_factor": None,
                 "constituent_fact_ids": sorted(constituent_ids),
@@ -904,6 +919,141 @@ def build_leverage_index_rows(
                 "source_citation": "CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8",
             })
     return rows
+
+
+# ── As-of resolution (leverage_index clock input) ───────────────────────────
+#
+# leverage_index is TIME-INDEXED by design: its dasha-runway term is "years from
+# the as-of to the graha's next Mahadasha". The as-of is therefore a DECLARED
+# INPUT, recorded on every leverage row (value_jsonb.as_of + as_of_source), never
+# an ambient wall-clock read. On the orchestrator path it is the UTC DATE of the
+# build run's own creation (build_runs.created_at, read via ctx.db_conn): the
+# value is deterministic for a run and for any re-execution of that run, and a new
+# run on another day honestly gets a different runway and a different recorded
+# as-of. (A quantity relative to "today" in the L1 facts layer is Kāla-type — an
+# architecture note for the post-window design review, not action here.)
+
+AS_OF_SOURCE_RUN = "build_run_created_at"
+AS_OF_SOURCE_OVERRIDE = "config_override"
+AS_OF_SOURCE_WALL_CLOCK = "wall_clock_unpinned"
+
+
+class AsOfUnresolvable(RuntimeError):
+    """The orchestrator path could not resolve its build run's creation date."""
+
+
+def _utc_date_start(d: Any) -> datetime:
+    if not isinstance(d, datetime):
+        d = datetime.fromisoformat(str(d).strip().replace("Z", "+00:00"))
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=timezone.utc)
+    return d.astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def resolve_as_of(
+    conn: Any, build_id: str | None, override: Any = None, *, require_run_date: bool = False,
+) -> tuple[datetime, str]:
+    """Return (as-of instant = 00:00 UTC of the as-of DATE, source label).
+
+    1. `override` (ctx.config['as_of'] — tests/rehearsals only) -> 'config_override'.
+    2. `build_id` -> ONE read-only SELECT of build_runs.created_at on `conn`
+       -> 'build_run_created_at'. A run id that does not resolve RAISES.
+    3. No build_id and not `require_run_date` (direct call OUTSIDE the
+       orchestrator) -> wall-clock UTC date, flagged 'wall_clock_unpinned'.
+       With `require_run_date` (the orchestrator adapter) a missing run RAISES —
+       the wall-clock fallback is impossible on that path.
+    """
+    if override:
+        return _utc_date_start(override), AS_OF_SOURCE_OVERRIDE
+    if build_id:
+        with conn.cursor() as cur:
+            cur.execute("SELECT created_at FROM build_runs WHERE id = %s", (build_id,))
+            row = cur.fetchone()
+        created = (row.get("created_at") if isinstance(row, dict) else (row[0] if row else None))
+        if created is None:
+            raise AsOfUnresolvable(
+                f"ga_vichara: build run {build_id!r} has no resolvable build_runs.created_at — "
+                "refusing to fall back to the wall clock (leverage_index as-of must be a declared input)")
+        return _utc_date_start(created), AS_OF_SOURCE_RUN
+    if require_run_date:
+        raise AsOfUnresolvable(
+            "ga_vichara: orchestrator context carries no build run id — refusing to fall back to the "
+            "wall clock (leverage_index as-of must be the build run's creation date)")
+    return _utc_date_start(datetime.now(timezone.utc)), AS_OF_SOURCE_WALL_CLOCK
+
+
+# ── Row identity: sort, whole-row dedupe, collision assertion ───────────────
+#
+# chart_vichara has NO natural key (migration 747: "legitimate row multiplicity
+# per (actor,target) across varga"). The data-plane capture trigger identity is
+# therefore the GRAIN plus the L1 SOURCE-FACT PROVENANCE SET — NOT a natural key:
+#   (chart_id, ayanamsha_id, vichara_family, subject, target, domain, varga_id,
+#    formula_version, constituent_fact_ids sorted)
+IDENTITY_COLUMNS = (
+    "chart_id", "ayanamsha_id", "vichara_family", "subject", "target", "domain",
+    "varga_id", "formula_version", "constituent_fact_ids",
+)
+
+_ROW_COLUMNS = (
+    "vichara_family", "subject", "actor", "target", "domain", "varga_id", "varga",
+    "value_num", "value_text", "value_jsonb", "ratification_factor",
+    "constituent_fact_ids", "formula_version", "source_citation",
+)
+
+
+class VicharaIdentityCollision(RuntimeError):
+    """Two post-dedupe rows share the nine-column identity but are not identical."""
+
+
+def _whole_row_key(r: dict[str, Any]) -> str:
+    """Canonical form of EVERY stored column (cf sorted, value_jsonb canonicalised)."""
+    parts: list[Any] = []
+    for c in _ROW_COLUMNS:
+        v = r.get(c)
+        if c == "constituent_fact_ids":
+            v = sorted(v or [])
+        elif c == "value_jsonb":
+            v = json.dumps(v, sort_keys=True, separators=(",", ":"), default=str)
+        parts.append(v)
+    return json.dumps(parts, default=str, ensure_ascii=True)
+
+
+def dedupe_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Remove rows exactly equal on every stored column (cf compared sorted,
+    value_jsonb canonicalised), keeping the FIRST occurrence. A row differing in
+    ANY column — including its provenance set — is kept."""
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        k = _whole_row_key(r)
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append(r)
+    return out
+
+
+def row_identity(chart_id: str, ayanamsha_id: str, r: dict[str, Any]) -> tuple:
+    return (
+        chart_id, ayanamsha_id, r.get("vichara_family"), r.get("subject"), r.get("target"),
+        r.get("domain"), r.get("varga_id"), r.get("formula_version"),
+        tuple(sorted(r.get("constituent_fact_ids") or [])),
+    )
+
+
+def assert_no_identity_collision(chart_id: str, ayanamsha_id: str, rows: list[dict[str, Any]]) -> None:
+    """Fail IN THE WRITER (clear message) if two rows share the nine-column
+    identity — rather than at the data-plane capture, which would see them as one."""
+    seen: dict[tuple, int] = {}
+    for i, r in enumerate(rows):
+        ident = row_identity(chart_id, ayanamsha_id, r)
+        if ident in seen:
+            raise VicharaIdentityCollision(
+                "ga_vichara: two rows share the identity (grain + L1 source-fact provenance "
+                f"set; NOT a natural key) {dict(zip(IDENTITY_COLUMNS, ident))} "
+                f"(row indexes {seen[ident]} and {i})"
+            )
+        seen[ident] = i
 
 
 # ── Row persistence ──────────────────────────────────────────────────────────
@@ -948,9 +1098,15 @@ def build_ga_vichara_substep(
     ayanamsha_id: str,
     conn: Any,
     dry_run: bool = False,
+    as_of: Any = None,
+    require_run_date: bool = False,
 ) -> int:
     """Build chart_vichara rows for one (chart_id, ayanamsha_id) pair.
-    Called per-ayanamsha substep by GaVicharaWriter.run_substep."""
+    Called per-ayanamsha substep by GaVicharaWriter.run_substep.
+
+    Returns the number of rows ACTUALLY inserted (post whole-row dedupe).
+    `as_of` is an explicit override of leverage_index's time input; otherwise
+    it is the build run's creation date (see `resolve_as_of`)."""
     logger.info("[ga_vichara_writer] substep start: chart=%s ayanamsha=%s", chart_id, ayanamsha_id)
 
     if chart_id == CANONICAL_CHART_ID:
@@ -1008,14 +1164,28 @@ def build_ga_vichara_substep(
     ))
 
     # 4. leverage_index
-    now = datetime.now(timezone.utc)
+    now, as_of_source = resolve_as_of(conn, build_id, as_of, require_run_date=require_run_date)
+    if as_of_source == AS_OF_SOURCE_WALL_CLOCK:
+        logger.warning("[ga_vichara_writer] leverage_index as-of is UNPINNED (wall-clock date %s, "
+                        "non-orchestrated call): a rebuild on another day will differ.", now.date())
     all_rows.extend(build_leverage_index_rows(
         idx, domains_config, ratification_lookup, dasha_rows, leverage_weights, dignity_score_map, now,
+        as_of_source=as_of_source,
     ))
+
+    # Whole-row dedupe (keep first), then the nine-column identity assertion.
+    built = len(all_rows)
+    all_rows = dedupe_rows(all_rows)
+    if built != len(all_rows):
+        logger.info("[ga_vichara_writer] whole-row dedupe removed %d exact-duplicate rows "
+                    "(chart=%s ayanamsha=%s)", built - len(all_rows), chart_id, ayanamsha_id)
+    assert_no_identity_collision(chart_id, ayanamsha_id, all_rows)
 
     deleted = _delete_prior_vichara_rows(conn, chart_id, ayanamsha_id)
     logger.info("[ga_vichara_writer] deleted %d prior rows", deleted)
 
     inserted = _insert_rows(conn, chart_id, ayanamsha_id, build_id, all_rows)
+    if inserted != len(all_rows):  # reported count must equal what was written
+        raise RuntimeError(f"ga_vichara: inserted {inserted} rows but planned {len(all_rows)}")
     logger.info("[ga_vichara_writer] inserted %d rows (chart=%s ayanamsha=%s)", inserted, chart_id, ayanamsha_id)
     return inserted
