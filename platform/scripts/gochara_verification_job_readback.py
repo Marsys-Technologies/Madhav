@@ -61,11 +61,11 @@ def check(job, *, image_repo: str, image_digest: str, service_account: str, runn
         raise Refused("the expected image digest / runner commit are malformed")
     ets, task, ann = _shape(job)
     v2 = vjc.UNSET if v2_job is None else vjc.retries_from_v2(v2_job, "job")          # maxRetries from the presence-bearing v2 REST representation (F-R15-3); absent in BOTH ⇒ refusal
-    bad = vjc.validate_task(task, image_repo=image_repo, image_digest=image_digest, service_account=service_account, runner_commit=runner_commit, secret_name=secret_name,
+    bad = vjc.forbidden_annotations(job, v2_job) + vjc.validate_task(task, image_repo=image_repo, image_digest=image_digest, service_account=service_account, runner_commit=runner_commit, secret_name=secret_name,
                             expected_args=[], timeout_seconds=timeout_seconds, memory=memory, cpu=cpu, v2_retries=v2)
     if ann.get("run.googleapis.com/cloudsql-instances") != cloudsql_instance:
         bad.append(f"Cloud SQL instances annotation is {ann.get('run.googleapis.com/cloudsql-instances')!r}, expected exactly {cloudsql_instance!r}")
-    if int(ets.get("taskCount") if ets.get("taskCount") is not None else 1) != 1:
+    if (vjc.parse_int64(ets.get("taskCount")) if ets.get("taskCount") is not None else 1) != 1:           # int32/int64: number or canonical decimal string
         bad.append("taskCount is not 1")
     return bad
 
