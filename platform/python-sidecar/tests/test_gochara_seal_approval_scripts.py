@@ -441,8 +441,9 @@ REPO = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline"
 
 def execution(name="exec-1", **over):
     ex = {"metadata": {"name": name},
-          "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": SA, "maxRetries": 0,
+          "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": SA, "maxRetries": 0, "timeoutSeconds": "7200",     # int64 fields arrive as decimal STRINGS (API/SDK shape)
                   "containers": [{"image": f"{REPO}@{IMG}", "command": list(xcheck_contract.ENTRYPOINT), "args": ARGS,
+                                  "resources": {"limits": {"cpu": "2", "memory": "8Gi"}},
                                   "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG},
                                           {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url", "key": "latest"}}}]}]}}},
           "status": {"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": 1}}
@@ -451,8 +452,8 @@ def execution(name="exec-1", **over):
     return ex
 
 
-def xcheck(ex=None, **over):
-    kw = dict(execution_name="exec-1", image_repo=REPO, image_digest=IMG, service_account=SA, runner_commit=SHA, args=ARGS, secret_name="gochara-verifier-db-url")
+def xcheck(ex=None, v2_execution=None, **over):
+    kw = dict(v2_execution=v2_execution, execution_name="exec-1", image_repo=REPO, image_digest=IMG, service_account=SA, runner_commit=SHA, args=ARGS, secret_name="gochara-verifier-db-url")
     kw.update(over)
     return xc.check(execution() if ex is None else ex, **kw)
 
@@ -543,6 +544,39 @@ def test_the_retained_envelope_must_be_for_this_run_attempt_commit_and_brief(mut
     env = xc.build_envelope(xcheck(), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id=7, producer_execution_id=PEID)
     with pytest.raises(xc.Refused, match=needle):
         xc.check_envelope(mut(env), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id="7")
+
+
+def _v2_execution(retries=0):
+    """The v2 REST `executions.get` representation: the task template is at `template`, and `maxRetries` is a union (oneof) member — present when set, even when 0."""
+    t = {"containers": [{"image": "x"}]}
+    if retries is not None:
+        t["maxRetries"] = retries
+    return {"name": "projects/p/locations/l/jobs/j/executions/exec-1", "template": t}
+
+
+def test_maxretries_is_read_from_the_presence_bearing_v2_representation_and_absence_is_never_zero():
+    """F-R15-3: v1 omits the field -> the v2 value decides (a real 0 is accepted); absent in BOTH -> refused; present and different -> refused; never 'absent = 0'."""
+    absent_v1 = _del((*T, "maxRetries"))
+    assert xcheck(absent_v1, v2_execution=_v2_execution(0))["execution"] == "exec-1"            # v1 omitted a proto3 zero; v2 carries it
+    with pytest.raises(xc.Refused, match="maxRetries"):
+        xcheck(absent_v1, v2_execution=_v2_execution(None))                                    # absent in BOTH ⇒ the API default of 3
+    with pytest.raises(xc.Refused, match="maxRetries"):
+        xcheck(absent_v1, v2_execution=_v2_execution(3))
+    with pytest.raises(xc.Refused, match="disagrees"):
+        xcheck(execution(), v2_execution=_v2_execution(3))                                      # v1 says 0, v2 says 3
+    assert xcheck(execution(), v2_execution=_v2_execution(0))["execution"] == "exec-1"
+    assert xcheck(execution(), v2_execution=_v2_execution(None))["execution"] == "exec-1"       # v1 carries it; v2 absent is not a contradiction
+    with pytest.raises(xc.Refused, match="maxRetries"):
+        xcheck(absent_v1)                                                                      # no v2 supplied: strict v1 rule stands
+
+
+def test_retries_from_v2_reads_jobs_and_executions_and_never_defaults():
+    import gochara_verification_job_contract as vjc
+    assert vjc.retries_from_v2({"template": {"template": {"maxRetries": 0}}}, "job") == 0
+    assert vjc.retries_from_v2({"template": {"maxRetries": 0}}, "execution") == 0
+    assert vjc.retries_from_v2({"template": {"template": {}}}, "job") is None
+    assert vjc.retries_from_v2({"template": {"maxRetries": True}}, "execution") is None
+    assert vjc.retries_from_v2(None, "job") is None
 
 
 PROD = {"commit": SHA, "execution_id": PEID, "image_digest": IMG}
@@ -691,9 +725,99 @@ def test_the_seal_jobs_non_zero_status_fails_the_run_unchanged(world, rc, needle
     assert called(world)
 
 
+# R15-2 / R15-3: int64 strings, quantities, the secret selector and the secret-remapping annotation — through the executed-resource check (the deploy readback and the pre-execution check
+# share the same contract functions; #2976's tests drive the same shapes through its readback)
+@pytest.mark.parametrize("ok", ["7200", 7200])
+def test_a_documented_int64_string_or_integer_timeout_is_accepted(ok):
+    assert xcheck(_mut((*T, "timeoutSeconds"), ok))["execution"] == "exec-1"
+
+
+@pytest.mark.parametrize("bad", [True, "7200.0", 7200.5, float("inf"), float("nan"), " 7200", "+7200", "07200", "7200s", "", None, "0x1c20", "7e3", 3600, "3600"])
+def test_a_timeout_that_is_not_exactly_the_documented_7200_is_refused(bad):
+    with pytest.raises(xc.Refused, match="timeoutSeconds"):
+        xcheck(_mut((*T, "timeoutSeconds"), bad))
+
+
+def test_an_absent_timeout_is_refused_not_defaulted():
+    with pytest.raises(xc.Refused, match="timeoutSeconds"):
+        xcheck(_del((*T, "timeoutSeconds")))
+
+
+@pytest.mark.parametrize("mem", ["8Gi", "8192Mi"])
+def test_an_equivalent_quantity_spelling_is_accepted_by_value(mem):
+    assert xcheck(_mut((*T, "containers", 0, "resources"), {"limits": {"cpu": "2000m", "memory": mem}}))["execution"] == "exec-1"
+
+
+@pytest.mark.parametrize("lim", [{"cpu": "2", "memory": "4Gi"}, {"cpu": "1", "memory": "8Gi"}, {"cpu": 2, "memory": "8Gi"}, {"cpu": "2", "memory": 8589934592}, {"cpu": "2.0", "memory": "8Gi"}, {"cpu": "2", "memory": "8gi"}, {"cpu": "2", "memory": "8e9"}, {"cpu": "2"}])
+def test_a_resource_limit_that_is_not_the_deployed_value_is_refused(lim):
+    with pytest.raises(xc.Refused, match="limit"):
+        xcheck(_mut((*T, "containers", 0, "resources"), {"limits": lim}))
+
+
+def test_taskcount_as_an_int64_string_is_normalised_and_a_malformed_one_is_refused():
+    assert xcheck(_mut(("spec", "taskCount"), "1"))["execution"] == "exec-1"
+    with pytest.raises(xc.Refused, match="more than one task"):
+        xcheck(_mut(("spec", "taskCount"), "1.0"))
+
+
+def test_counts_as_decimal_strings_are_read_by_value():
+    ex = execution(status={"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": "1", "failedCount": "0"})
+    assert xcheck(ex)["execution"] == "exec-1"
+    with pytest.raises(xc.Refused, match="FAILED"):
+        xcheck(execution(status={"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": 1, "failedCount": "x"}))
+
+
+SECRET = "gochara-verifier-db-url"
+
+
+@pytest.mark.parametrize("annotations", [
+    {"run.googleapis.com/secrets": f"{SECRET}:projects/foreign-project/secrets/another-database"},                # the foreign-project alias Codex named
+    {"run.googleapis.com/secrets": f"{SECRET}:projects/madhav-astrology/secrets/another-database"},               # same project, different secret
+    {"run.googleapis.com/secrets": f"{SECRET}:projects/madhav-astrology/secrets/{SECRET}"},                       # even a self-referential mapping: this job never uses the annotation
+    {"run.googleapis.com/secrets": f"{SECRET}:projects/1/secrets/a,{SECRET}:projects/2/secrets/b"},               # duplicate / conflicting aliases
+    {"run.googleapis.com/secrets": ""},                                                                           # present but empty is still present
+])
+def test_the_secret_remapping_annotation_is_refused_wherever_it_appears(annotations):
+    meta_ex = execution(metadata={"name": "exec-1", "annotations": annotations})
+    with pytest.raises(xc.Refused, match="secrets-mapping annotation"):
+        xcheck(meta_ex)
+    tmpl_ex = execution()
+    tmpl_ex["spec"]["template"]["metadata"] = {"annotations": annotations}
+    with pytest.raises(xc.Refused, match="secrets-mapping annotation"):
+        xcheck(tmpl_ex)
+    with pytest.raises(xc.Refused, match="secrets-mapping annotation"):
+        xcheck(execution(), v2_execution={"template": {"maxRetries": 0}, "annotations": annotations})
+
+
+def test_the_ordinary_sdk_shape_without_the_annotation_is_accepted():
+    ex = execution(metadata={"name": "exec-1", "annotations": {"run.googleapis.com/creator": "someone@example.com"}})
+    assert xcheck(ex)["execution"] == "exec-1"
+
+
+@pytest.mark.parametrize("ref", [
+    {"name": SECRET},                                       # key missing
+    {"name": SECRET, "key": "1"},                           # a pinned version is not this job's policy (latest only)
+    {"name": SECRET, "key": ""},
+    {"name": SECRET, "key": "latest", "optional": True},    # no extra selector fields (an optional reference would let a missing secret pass)
+    {"name": f"projects/foreign-project/secrets/{SECRET}", "key": "latest"},
+])
+def test_the_secret_selector_must_be_exactly_name_and_latest(ref):
+    with pytest.raises(xc.Refused, match="reference to the secret"):
+        xcheck(_mut((*T, "containers", 0, "env", 2), {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": ref}}))
+
+
+def test_parse_int64_and_parse_quantity_directly():
+    p = xcheck_contract.parse_int64
+    assert [p(v) for v in ("0", "7200", 7200, 0)] == [0, 7200, 7200, 0]
+    assert all(p(v) is None for v in (True, False, 1.0, "1.0", "-1", "+1", " 1", "01", "1 ", "", None, [], "NaN", "Infinity"))
+    q = xcheck_contract.parse_quantity
+    assert q("8Gi") == q("8192Mi") == q("8589934592") and q("2") == q("2000m") and q("1500m") == 1500
+    assert all(q(v) is None for v in (8, True, "1.5", "1e3", "-1", "8gi", " 8Gi", "8Gi ", "", None))
+
+
 # R14-3: the verification-job contract is ONE file carried by BOTH #2975 (executed-resource check) and #2976 (definition readback). If the two copies ever diverge, one of these two tests fails
 # (the pinned digest is the same constant in both PRs; change it in both when the contract is deliberately changed).
-CONTRACT_SHA256 = "5c9c062adcbe2101eb066024c107eb3605f9d542319cdb7414ca44feb4ec104a"
+CONTRACT_SHA256 = "2919bf044f63e4aee7deaec0f9cea6d8686ce81827edaabb0bf41f5ca444788a"
 
 
 def test_the_shared_verification_job_contract_is_the_file_both_prs_carry():

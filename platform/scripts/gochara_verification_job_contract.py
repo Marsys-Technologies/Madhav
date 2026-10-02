@@ -14,8 +14,14 @@ about who ran it, so BOTH are judged by the same function against the same contr
   identity         == exactly the verifier's runtime service account
   one container    == no sidecar, no init container
 
-It returns a list of problems (empty = conforms). The JSON shape is the documented Cloud Run TaskSpec; a mismatch of SHAPE is a refusal, never a pass."""
+RETRIES PRESENCE (Fable F-R15-3). The Cloud Run reference lists `maxRetries` under the union field `retries` in BOTH the v1 `TaskSpec` and the v2 `TaskTemplate` (default 3 when unset). A union (oneof) member carries PRESENCE, so an explicitly set 0 is serialized — but
+that is the documentation's statement, not an observation of `gcloud` output (the first real describe is the proof). This contract therefore NEVER treats an absent value as zero: `validate_task` accepts an optional `v2_retries` — the value read from the v2 REST representation
+(`jobs.get` → `template.template.maxRetries`; `executions.get` → `template.maxRetries`) via `retries_from_v2` — and the effective value is the v1 value if present, else the v2 value; if both are present they must agree; if NEITHER carries it the task is REFUSED (a real absence is the API default of 3).
+
+`timeoutSeconds` (int64) arrives as a decimal STRING in the v1 representation: it is normalised by `parse_int64` (never compared raw); resource limits by `parse_quantity` (value, not spelling); `forbidden_annotations` forbids the secrets-mapping annotation. It returns a list of problems (empty = conforms). The JSON shape is the documented Cloud Run TaskSpec; a mismatch of SHAPE is a refusal, never a pass."""
 from __future__ import annotations
+
+import re
 
 ENTRYPOINT = ["python", "-m", "pipeline.orchestrator.verification_job"]
 ENV_COMMIT = "GOCHARA_RUNNER_COMMIT"
@@ -26,8 +32,72 @@ CONTAINER_FIELDS = {"name", "image", "command", "args", "env", "resources"}
 TASK_FIELDS = {"containers", "serviceAccountName", "maxRetries", "timeoutSeconds", "executionEnvironment", "volumes"}
 
 
+UNSET = object()
+SECRET_KEY = "latest"
+SECRETS_ANNOTATION = "run.googleapis.com/secrets"
+
+
+def parse_int64(v):
+    """The documented Cloud Run int64 representation: JSON `int64` fields arrive as DECIMAL STRINGS (e.g. `timeoutSeconds: "7200"`, SDK-serialised), int32 fields as numbers. Accepts an
+    int or a canonical decimal string (`0` or `[1-9][0-9]*`); REFUSES (None) a boolean, a fraction, a non-finite float, a signed/padded/malformed string, or anything else. Never guesses."""
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, int):
+        return v
+    if isinstance(v, str) and re.fullmatch(r"0|[1-9][0-9]*", v):
+        return int(v)
+    return None
+
+
+_QTY = re.compile(r"([0-9]+)(m|Ki|Mi|Gi|Ti|k|M|G|T)?")
+_QTY_MUL = {None: 1000, "m": 1, "k": 10**3 * 1000, "M": 10**6 * 1000, "G": 10**9 * 1000, "T": 10**12 * 1000,
+            "Ki": 1024 * 1000, "Mi": 1024**2 * 1000, "Gi": 1024**3 * 1000, "Ti": 1024**4 * 1000}
+
+
+def parse_quantity(v):
+    """A Kubernetes/Cloud Run resource QUANTITY string (`"8Gi"`, `"8192Mi"`, `"2"`, `"2000m"`) -> its value in milli-units (exact integer), so equivalent spellings compare equal
+    (the API echoes a limit in its own normal form). REFUSES (None) a number, a boolean, a fraction, an exponent, a sign, whitespace or any other spelling — never guesses."""
+    if not isinstance(v, str):
+        return None
+    m = _QTY.fullmatch(v)
+    return int(m.group(1)) * _QTY_MUL[m.group(2)] if m else None
+
+
+def forbidden_annotations(*docs) -> list[str]:
+    """R15-3: the secret-mapping annotation (`run.googleapis.com/secrets`, comma-separated `alias:projects/<p>/secrets/<name>`) lets a Cloud Run resource REMAP a secret NAME to a different
+    secret (even in another project) — so a `secretKeyRef.name` that looks like the verifier secret proves nothing. For THIS job the annotation is FORBIDDEN outright, anywhere in any
+    representation of the definition or the execution (a same-project short-name deployment never emits it)."""
+    bad: list[str] = []
+
+    def walk(v, path):
+        if isinstance(v, dict):
+            for k, c in v.items():
+                if k == SECRETS_ANNOTATION:
+                    bad.append(f"the secrets-mapping annotation {SECRETS_ANNOTATION!r} is present at {path or '/'} (value {str(c)[:120]!r}): secret remapping is forbidden for this job")
+                walk(c, f"{path}/{k}")
+        elif isinstance(v, list):
+            for i, c in enumerate(v):
+                walk(c, f"{path}/{i}")
+    for d in docs:
+        walk(d, "")
+    return bad
+
+
+def retries_from_v2(doc, kind: str):
+    """`maxRetries` read from the v2 REST representation: a job (`projects.locations.jobs.get`) carries it at `template.template.maxRetries`, an execution
+    (`projects.locations.jobs.executions.get`) at `template.maxRetries`. Returns the integer, or None when the field is ABSENT (never defaulted)."""
+    if not isinstance(doc, dict):
+        return None
+    t = doc.get("template")
+    if kind == "job" and isinstance(t, dict):
+        t = t.get("template")
+    if not isinstance(t, dict):
+        return None
+    return parse_int64(t.get("maxRetries")) if t.get("maxRetries") is not None else None
+
+
 def validate_task(task, *, image_repo: str, image_digest: str, service_account: str, runner_commit: str, secret_name: str, expected_args: list,
-                  timeout_seconds: int | None = None, memory: str | None = None, cpu: str | None = None) -> list[str]:
+                  timeout_seconds: int | None = None, memory: str | None = None, cpu: str | None = None, v2_retries=UNSET) -> list[str]:
     bad: list[str] = []
     if not isinstance(task, dict):
         return ["the task template is not an object"]
@@ -49,9 +119,14 @@ def validate_task(task, *, image_repo: str, image_digest: str, service_account: 
         bad.append(f"command is {c.get('command')!r}, not {ENTRYPOINT!r}")
     if list(c.get("args") or []) != list(expected_args):
         bad.append(f"args are {c.get('args')!r}, expected {list(expected_args)!r}")
-    retries = task.get("maxRetries")
-    if retries is None or isinstance(retries, bool) or retries != 0:
-        bad.append(f"maxRetries is {retries!r}, expected a PRESENT 0 (an absent value is the API default of 3)")
+    retries = parse_int64(task.get("maxRetries")) if task.get("maxRetries") is not None else None
+    if task.get("maxRetries") is not None and retries is None:
+        bad.append(f"maxRetries {task.get('maxRetries')!r} is not a canonical integer")
+    if v2_retries is not UNSET and retries is not None and v2_retries is not None and retries != v2_retries:
+        bad.append(f"maxRetries disagrees between the v1 ({retries!r}) and v2 ({v2_retries!r}) representations")
+    effective = retries if retries is not None else (None if v2_retries is UNSET else v2_retries)
+    if effective is None or isinstance(effective, bool) or effective != 0:
+        bad.append(f"maxRetries is {effective!r} (v1: {retries!r}), expected a PRESENT 0 in a presence-bearing representation (an absent value is the API default of 3)")
     env = c.get("env")
     if not isinstance(env, list) or not all(isinstance(e, dict) for e in env):
         bad.append("env is not a list of objects")
@@ -67,13 +142,17 @@ def validate_task(task, *, image_repo: str, image_digest: str, service_account: 
                 bad.append(f"{name} is not exactly the plain value {want!r}")
         e = by[ENV_SECRET]
         ref = (e.get("valueFrom") or {}).get("secretKeyRef") if isinstance(e.get("valueFrom"), dict) else None
-        if "value" in e or not isinstance(ref, dict) or ref.get("name") != secret_name or set(e) - {"name", "valueFrom"} or set(e["valueFrom"]) != {"secretKeyRef"}:
-            bad.append(f"{ENV_SECRET} is not exactly a reference to the secret {secret_name} (no literal value, no other source)")
-    if timeout_seconds is not None and task.get("timeoutSeconds") != timeout_seconds:
-        bad.append(f"timeoutSeconds is {task.get('timeoutSeconds')!r}, expected {timeout_seconds}")
+        if ("value" in e or not isinstance(ref, dict) or ref.get("name") != secret_name or ref.get("key") != SECRET_KEY or set(ref) != {"name", "key"}
+                or set(e) - {"name", "valueFrom"} or set(e["valueFrom"]) != {"secretKeyRef"}):
+            bad.append(f"{ENV_SECRET} is not exactly a reference to the secret {secret_name} at version {SECRET_KEY!r} (selector {{name, key}} only; a missing or different key, a literal value or another source is refused)")
+    if timeout_seconds is not None:
+        got = parse_int64(task.get("timeoutSeconds"))
+        if got is None or got != timeout_seconds:
+            bad.append(f"timeoutSeconds is {task.get('timeoutSeconds')!r} (int64 string or integer, canonical), expected {timeout_seconds}")
     lim = (c.get("resources") or {}).get("limits") if isinstance(c.get("resources"), dict) else None
-    if memory is not None and str((lim or {}).get("memory")) != memory:
-        bad.append(f"memory limit is {(lim or {}).get('memory')!r}, expected {memory}")
-    if cpu is not None and str((lim or {}).get("cpu")) != cpu:
-        bad.append(f"cpu limit is {(lim or {}).get('cpu')!r}, expected {cpu}")
+    for what, want in (("memory", memory), ("cpu", cpu)):
+        if want is not None:
+            got = (lim or {}).get(what)
+            if parse_quantity(got) is None or parse_quantity(got) != parse_quantity(want):
+                bad.append(f"{what} limit is {got!r} (a canonical quantity string), expected {want} (compared by value, not spelling)")
     return bad

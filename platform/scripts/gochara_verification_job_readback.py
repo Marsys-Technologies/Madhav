@@ -51,7 +51,7 @@ def _shape(job: dict):
 
 
 def check(job, *, image_repo: str, image_digest: str, service_account: str, runner_commit: str, secret_name: str, cloudsql_instance: str,
-          timeout_seconds: int, memory: str, cpu: str) -> list[str]:
+          timeout_seconds: int, memory: str, cpu: str, v2_job=None) -> list[str]:
     """The task template is judged by the SAME strict contract as the executed resource (`gochara_verification_job_contract.validate_task`, shared byte for byte with #2975's executed-resource
     check — R14-3); only the JOB-LEVEL facts (Cloud SQL instance, task count) are checked here."""
     import gochara_verification_job_contract as vjc
@@ -60,11 +60,12 @@ def check(job, *, image_repo: str, image_digest: str, service_account: str, runn
     if not _DIGEST.fullmatch(image_digest or "") or not _SHA.fullmatch(runner_commit or ""):
         raise Refused("the expected image digest / runner commit are malformed")
     ets, task, ann = _shape(job)
-    bad = vjc.validate_task(task, image_repo=image_repo, image_digest=image_digest, service_account=service_account, runner_commit=runner_commit, secret_name=secret_name,
-                            expected_args=[], timeout_seconds=timeout_seconds, memory=memory, cpu=cpu)
+    v2 = vjc.UNSET if v2_job is None else vjc.retries_from_v2(v2_job, "job")          # maxRetries from the presence-bearing v2 REST representation (F-R15-3); absent in BOTH ⇒ refusal
+    bad = vjc.forbidden_annotations(job, v2_job) + vjc.validate_task(task, image_repo=image_repo, image_digest=image_digest, service_account=service_account, runner_commit=runner_commit, secret_name=secret_name,
+                            expected_args=[], timeout_seconds=timeout_seconds, memory=memory, cpu=cpu, v2_retries=v2)
     if ann.get("run.googleapis.com/cloudsql-instances") != cloudsql_instance:
         bad.append(f"Cloud SQL instances annotation is {ann.get('run.googleapis.com/cloudsql-instances')!r}, expected exactly {cloudsql_instance!r}")
-    if int(ets.get("taskCount") if ets.get("taskCount") is not None else 1) != 1:
+    if (vjc.parse_int64(ets.get("taskCount")) if ets.get("taskCount") is not None else 1) != 1:           # int32/int64: number or canonical decimal string
         bad.append("taskCount is not 1")
     return bad
 
@@ -81,11 +82,16 @@ def main(argv=None) -> int:
     ap.add_argument("--timeout-seconds", type=int, required=True)
     ap.add_argument("--memory", required=True)
     ap.add_argument("--cpu", required=True)
+    ap.add_argument("--v2-job-file", default=None, help="the v2 REST jobs.get JSON — the presence-bearing source of maxRetries")
     a = ap.parse_args(argv)
     try:
         with open(a.job_file, encoding="utf-8") as f:
             job = json.load(f)
-        bad = check(job, image_repo=a.image_repo, image_digest=a.image_digest, service_account=a.service_account, runner_commit=a.runner_commit, secret_name=a.secret_name,
+        v2_job = None
+        if a.v2_job_file:
+            with open(a.v2_job_file, encoding="utf-8") as f:
+                v2_job = json.load(f)
+        bad = check(job, v2_job=v2_job, image_repo=a.image_repo, image_digest=a.image_digest, service_account=a.service_account, runner_commit=a.runner_commit, secret_name=a.secret_name,
                     cloudsql_instance=a.cloudsql_instance, timeout_seconds=a.timeout_seconds, memory=a.memory, cpu=a.cpu)
     except (Refused, OSError, ValueError, TypeError) as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)

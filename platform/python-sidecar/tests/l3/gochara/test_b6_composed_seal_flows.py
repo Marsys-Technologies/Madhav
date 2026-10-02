@@ -503,7 +503,7 @@ _G1241 = _grants_of_1241()
 def test_1241_spec_has_the_expected_number_of_1241_origin_grants():
     if not _G1241:
         pytest.skip("NOT_RUN: migration 1241 is not in this tree")
-    assert len(_G1241) == len(set(_G1241)) == 62, len(_G1241)   # sealer: 15 table + 22 function (incl. the legacy-projection check and the persisted-brief functions); verifier: 13 table (incl. the legacy relations and the brief table) + 12 function (R10-4 iii: the job's final combined gate)
+    assert len(_G1241) == len(set(_G1241)) == 67, len(_G1241)   # v7 (R15-6): +5 sealer SELECTs on the registry relations the seal-time re-derivation reads (v6 was 62). sealer: 20 table + 22 function (incl. the legacy-projection check and the persisted-brief functions); verifier: 13 table (incl. the legacy relations and the brief table) + 12 function (R10-4 iii: the job's final combined gate)
 
 
 @pytest.mark.parametrize("role,kind,priv,obj,cols", _G1241, ids=[f"{r.split('_')[1]}-{p.lower()}-{o}" for r, k, p, o, c in _G1241])
@@ -1424,6 +1424,7 @@ def test_cross_pr_round_trip_the_real_brief_stdout_through_the_real_extractor_ch
         import gochara_seal_brief_check as bc
         import gochara_seal_brief_extract as bx
         import gochara_seal_execution_check as xc
+        import gochara_verification_job_contract  # noqa: F401 — xc imports it lazily at call time, after this block removes the path; cache it now
         import gochara_seal_reconcile as rc_
     finally:
         _sys.path.remove(scripts)
@@ -1462,7 +1463,8 @@ def test_cross_pr_round_trip_the_real_brief_stdout_through_the_real_extractor_ch
     img = IMAGE_DIGEST
     sa = "gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
     args = ["--chart", CHART_ID, "--generation", GEN, "--brief", "--sealing-commit", SEALING_COMMIT]
-    execution = {"metadata": {"name": EXECUTION_NAME}, "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": sa, "maxRetries": 0, "containers": [{
+    execution = {"metadata": {"name": EXECUTION_NAME}, "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": sa, "maxRetries": 0, "timeoutSeconds": "7200", "containers": [{       # int64 arrives as a decimal STRING (API/SDK shape)
+        "resources": {"limits": {"cpu": "2", "memory": "8Gi"}},
         "image": f"asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline@{img}", "command": ["python", "-m", "pipeline.orchestrator.verification_job"], "args": args,
         "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SEALING_COMMIT}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": img},
                 {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url", "key": "latest"}}}]}]}}},
@@ -1626,3 +1628,30 @@ def test_the_boundary_guard_inventory_reports_every_boundary_relation_existing_a
     rows = cbuilt.conn.execute("SELECT * FROM public.ka_gochara_boundary_guard_inventory()").fetchall()
     got = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in rows]
     assert len(got) == 4 and all(r[1:] == (True, True, True) for r in got), got
+
+
+def test_attack_the_sealed_manifest_guard_refuses_even_a_role_that_HOLDS_the_column_privilege(cbuilt):
+    """Fable F-R15-5(d) / steward: the earlier sealer-login attack on the manifest's `result_policy` proves the COLUMN ACL (the sealer has no UPDATE on `input_generation_vector`), not the
+    GUARD. Here the sealer is GRANTED that column privilege (the harness superuser grants it; the real 1241 does not) so the ACL no longer refuses — and the publication guard on the SEALED
+    generation must refuse the removal, the alteration and the replacement ITSELF (named refusal, manifest unchanged). The grant is revoked afterwards."""
+    import psycopg
+    w = cbuilt
+    verify_as_verifier(w)
+    seal_as_sealer(w)
+    q = "SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s"
+    before = w.conn.execute(q, (CHART_ID, GEN)).fetchone()[0]
+    attacks = ("UPDATE public.kala_gochara_publication SET input_generation_vector = input_generation_vector - 'result_policy' WHERE chart_id = '%s' AND generation = '%s'" % (CHART_ID, GEN),
+               "UPDATE public.kala_gochara_publication SET input_generation_vector = jsonb_set(input_generation_vector, '{result_policy}', '\"numeric_policy/1\"') WHERE chart_id = '%s' AND generation = '%s'" % (CHART_ID, GEN),
+               "UPDATE public.kala_gochara_publication SET input_generation_vector = '{}'::jsonb WHERE chart_id = '%s' AND generation = '%s'" % (CHART_ID, GEN))
+    w.conn.execute(f"GRANT UPDATE (input_generation_vector) ON public.kala_gochara_publication TO {cw.SEALER}")
+    try:
+        # first prove the privilege is REAL: the ACL no longer stands in the way (a harmless same-value update on a candidate is not available here, so check the catalog)
+        assert w.conn.execute("SELECT has_column_privilege(%s, 'public.kala_gochara_publication', 'input_generation_vector', 'UPDATE')", (cw.SEALER,)).fetchone()[0] is True
+        for stmt in attacks:
+            with pytest.raises(psycopg.errors.Error) as exc:
+                _sealer_raw(w, lambda conn, st=stmt: conn.execute(st))
+            assert not isinstance(exc.value, psycopg.errors.InsufficientPrivilege), ("the ACL refused, not the guard", str(exc.value)[:200])
+            assert "seal" in str(exc.value).lower() or "guard" in str(exc.value).lower() or "lifecycle" in str(exc.value).lower() or "refused" in str(exc.value).lower(), str(exc.value)[:300]
+    finally:
+        w.conn.execute(f"REVOKE UPDATE (input_generation_vector) ON public.kala_gochara_publication FROM {cw.SEALER}")
+    assert w.conn.execute(q, (CHART_ID, GEN)).fetchone()[0] == before

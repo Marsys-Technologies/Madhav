@@ -32,6 +32,11 @@ class Refused(Exception):
     pass
 
 
+# The deployed job's resources (#2976 deploys exactly these); the executed resource and the pre-execution definition read are judged against them by VALUE through the shared contract
+# (int64 `timeoutSeconds` arrives as a decimal string; quantities in any equivalent spelling).
+JOB_TIMEOUT_SECONDS, JOB_MEMORY, JOB_CPU = 7200, "8Gi", "2"
+
+
 def _task_spec(ex: dict) -> dict:
     spec = (ex.get("spec") or {})
     t = (spec.get("template") or {}).get("spec") or {}
@@ -49,14 +54,18 @@ def _conds(ex: dict) -> dict:
 def state(ex: dict) -> str:
     st = ex.get("status") or {}
     c = _conds(ex)
-    if c.get("Completed") == "True" and int(st.get("succeededCount") or 0) >= 1 and int(st.get("failedCount") or 0) == 0:
+    import gochara_verification_job_contract as vjc
+    n = lambda k: vjc.parse_int64(st.get(k)) if st.get(k) is not None else 0               # noqa: E731 — int32/int64 counts: number or canonical decimal string
+    if None in (n("succeededCount"), n("failedCount"), n("cancelledCount")):
+        return "FAILED"                                                                  # an unparseable count is never read as zero
+    if c.get("Completed") == "True" and n("succeededCount") >= 1 and n("failedCount") == 0:
         return "SUCCEEDED"
-    if c.get("Completed") == "False" or int(st.get("failedCount") or 0) > 0 or int(st.get("cancelledCount") or 0) > 0:
+    if c.get("Completed") == "False" or n("failedCount") > 0 or n("cancelledCount") > 0:
         return "FAILED"
     return "RUNNING"
 
 
-def check(ex, *, execution_name: str, image_repo: str, image_digest: str, service_account: str, runner_commit: str, args: list, secret_name: str) -> dict:
+def check(ex, *, execution_name: str, image_repo: str, image_digest: str, service_account: str, runner_commit: str, args: list, secret_name: str, v2_execution=None) -> dict:
     """The EXECUTED resource is judged by the SAME strict contract as the deployed definition (R14-3: `gochara_verification_job_contract.validate_task`, shared byte for byte with
     #2976's readback): exact image@digest, exact command (the builder entry point may not be swapped back), exact args, `maxRetries` PRESENT and 0, exact environment, no volumes /
     volumeMounts / envFrom / unexpected fields, exact service account."""
@@ -70,10 +79,12 @@ def check(ex, *, execution_name: str, image_repo: str, image_digest: str, servic
     if (ex.get("metadata") or {}).get("name") != execution_name:
         raise Refused(f"this is execution {(ex.get('metadata') or {}).get('name')!r}, not {execution_name!r}")
     t = _task_spec(ex)
-    bad = vjc.validate_task(t, image_repo=image_repo, image_digest=image_digest, service_account=service_account, runner_commit=runner_commit, secret_name=secret_name, expected_args=list(args))
+    v2 = vjc.UNSET if v2_execution is None else vjc.retries_from_v2(v2_execution, 'execution')       # the presence-bearing v2 read of maxRetries (F-R15-3); absent in BOTH ⇒ refusal
+    bad = vjc.forbidden_annotations(ex, v2_execution) + vjc.validate_task(t, image_repo=image_repo, image_digest=image_digest, service_account=service_account, runner_commit=runner_commit, secret_name=secret_name, expected_args=list(args), timeout_seconds=JOB_TIMEOUT_SECONDS, memory=JOB_MEMORY, cpu=JOB_CPU, v2_retries=v2)
     if bad:
         raise Refused("the executed resource does not conform to the verification-job contract: " + "; ".join(bad))
-    if int((ex.get("spec") or {}).get("taskCount") or 1) != 1:
+    tc = (ex.get("spec") or {}).get("taskCount")
+    if (vjc.parse_int64(tc) if tc is not None else 1) != 1:
         raise Refused("the execution has more than one task")
     if state(ex) != "SUCCEEDED":
         raise Refused(f"the execution is {state(ex)}, not SUCCEEDED")
@@ -133,6 +144,7 @@ def main(argv=None) -> int:
     ji.add_argument("--image-repo", required=True)
     ji.add_argument("--runner-commit", required=True)
     ji.add_argument("--secret-name", required=True)
+    ji.add_argument("--v2-job-file", default=None, help="the v2 REST `jobs.get` JSON — the presence-bearing source of maxRetries")
     ji.add_argument("--service-account", required=True)
     ce = sub.add_parser("check-envelope")
     ce.add_argument("--envelope-file", required=True)
@@ -147,6 +159,7 @@ def main(argv=None) -> int:
     bv.add_argument("--execution-name", required=True)
     bv.add_argument("--image-digest", required=True)
     bv.add_argument("--image-repo", required=True)
+    bv.add_argument("--v2-execution-file", default=None, help="the v2 REST `executions.get` JSON — the presence-bearing source of maxRetries")
     bv.add_argument("--service-account", required=True)
     bv.add_argument("--secret-name", required=True)
     bv.add_argument("--args-json", required=True, help="the JSON array of the exact arguments the workflow passed")
@@ -161,8 +174,12 @@ def main(argv=None) -> int:
             import gochara_verification_job_contract as vjc
             with open(a.job_file, encoding="utf-8") as f:
                 job = json.load(f)
-            bad = vjc.validate_task(_task_spec(job), image_repo=a.image_repo, image_digest=a.image_digest, service_account=a.service_account, runner_commit=a.runner_commit,
-                                    secret_name=a.secret_name, expected_args=[])
+            v2 = vjc.UNSET
+            if a.v2_job_file:
+                with open(a.v2_job_file, encoding="utf-8") as f:
+                    v2 = vjc.retries_from_v2(json.load(f), "job")
+            bad = vjc.forbidden_annotations(job) + vjc.validate_task(_task_spec(job), image_repo=a.image_repo, image_digest=a.image_digest, service_account=a.service_account, runner_commit=a.runner_commit,
+                                    secret_name=a.secret_name, expected_args=[], timeout_seconds=JOB_TIMEOUT_SECONDS, memory=JOB_MEMORY, cpu=JOB_CPU, v2_retries=v2)
             if bad:
                 raise Refused("the verification job's DEFINITION does not conform to the contract (re-dispatch #2976 at this commit — same-commit rule): " + "; ".join(bad))
             print("OK")
@@ -184,7 +201,7 @@ def main(argv=None) -> int:
             compact = json.load(f)
         per = (compact or {}).get("persisted") or {}
         verified = check(ex, execution_name=a.execution_name, image_repo=a.image_repo, image_digest=a.image_digest, service_account=a.service_account, runner_commit=a.sealing_commit,
-                         args=json.loads(a.args_json), secret_name=a.secret_name)
+                         args=json.loads(a.args_json), secret_name=a.secret_name, v2_execution=(json.load(open(a.v2_execution_file, encoding='utf-8')) if a.v2_execution_file else None))
         if compact.get("sha256") != a.brief_digest:
             raise Refused("the compact result's digest is not the checked brief's digest")
         producer = (compact or {}).get("producer") or {}

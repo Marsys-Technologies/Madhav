@@ -126,7 +126,7 @@ def _populate(conn, stack):
     conn.execute("CREATE TABLE public._migrations_applied (id serial PRIMARY KEY, filename text UNIQUE NOT NULL, applied_at timestamptz NOT NULL DEFAULT now(),"
                  " sha256 text NOT NULL, sql_identity text)")
     conn.execute("CREATE TABLE public.chart_facts (fact_id text PRIMARY KEY, chart_id uuid, ayanamsha_id text, fact_category text,"
-                 " fact_subject text, fact_key text, fact_value_num double precision, created_at timestamptz DEFAULT now())")
+                 " fact_subject text, fact_key text, fact_value_num double precision, verification_pass_status text, created_at timestamptz DEFAULT now())")
     conn.execute("CREATE TABLE public.chart_dashas (dasha_row_id uuid PRIMARY KEY, chart_id uuid, ayanamsha_id text, system_id text,"
                  " level_n int, parent_row_id uuid, lord_graha text, start_iso timestamptz, end_iso timestamptz, build_id uuid,"
                  " verification_pass_status text, computed_at timestamptz DEFAULT now())")
@@ -150,7 +150,7 @@ def _populate(conn, stack):
             "SAT": CHART["natal"]["Saturn"], "RAH_MEAN": CHART["natal"]["Rahu"], "KET_MEAN": CHART["natal"]["Ketu"]}
     for sname, lon in subj.items():
         conn.execute("INSERT INTO public.chart_facts(fact_id, chart_id, ayanamsha_id, fact_category, fact_subject, fact_key,"
-                     " fact_value_num) VALUES (%s,%s,'lahiri_chitrapaksha','graha_position',%s,'longitude_sidereal',%s)",
+                     " fact_value_num, verification_pass_status) VALUES (%s,%s,'lahiri_chitrapaksha','graha_position',%s,'longitude_sidereal',%s,'single')",   # the real column; the ten natal positions are tier 'single' (G3)
                      (f"fact-{sname}", CHART_ID, sname, lon))
     for r in DASHA:
         parent = DASHA_PARENT[int(uuid.UUID(r.row_id).int)]
