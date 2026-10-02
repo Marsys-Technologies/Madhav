@@ -1732,7 +1732,7 @@ jobs:
             --ignore=tests/extractors/test_cgm_extractor.py \
             --ignore=tests/test_l0_remedy_corpus.py \
             -m "not integration" \
-            -q --tb=short --no-header
+            -q -rs --tb=short --no-header
 
       - name: Nirmāṇa L0 — pinned Swiss Ephemeris corpus probe
         # This is a production-shaped positive probe, not the ordinary fallback-only
