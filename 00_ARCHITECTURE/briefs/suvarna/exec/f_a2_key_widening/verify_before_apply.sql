@@ -7,6 +7,12 @@ WITH fn AS (
   SELECT p.oid, pg_get_functiondef(p.oid) AS d, pg_get_userbyid(p.proowner) AS owner, p.prosecdef AS secdef,
          COALESCE(p.proconfig::text, '') AS cfg, COALESCE(p.proacl::text, '') AS acl
   FROM pg_proc p WHERE p.oid = to_regprocedure('public.l1_data_plane_capture_row()')
+), fb AS (
+  SELECT pg_get_functiondef(p.oid) AS d, pg_get_userbyid(p.proowner) || ' / ' || p.prosecdef::text || ' / ' || COALESCE(p.proconfig::text, '') || ' / ' || COALESCE(p.proacl::text, '') AS meta
+  FROM pg_proc p WHERE p.oid = to_regprocedure('public.capture_l1_data_plane_dasha_partition(uuid,text,text,integer)')
+), fc AS (
+  SELECT pg_get_functiondef(p.oid) AS d, pg_get_userbyid(p.proowner) || ' / ' || p.prosecdef::text || ' / ' || COALESCE(p.proconfig::text, '') || ' / ' || COALESCE(p.proacl::text, '') AS meta
+  FROM pg_proc p WHERE p.oid = to_regprocedure('public.complete_l1_data_plane_partition(uuid,text,text,text,integer)')
 ), trg AS (
   SELECT pg_get_triggerdef(t.oid, true) AS d, t.tgenabled::text AS en
   FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
@@ -74,9 +80,9 @@ WITH fn AS (
   UNION ALL SELECT 23, 'append-only (immutable) attestation triggers all enabled (11 of 11 on production)',
          (SELECT count(*) FILTER (WHERE tgenabled = 'O')::text || ' of ' || count(*)::text FROM pg_trigger WHERE tgname LIKE '%\_attestations\_immutable'),
          (SELECT count(*)::text || ' of ' || count(*)::text FROM pg_trigger WHERE tgname LIKE '%\_attestations\_immutable')
-  UNION ALL SELECT 30, 'the 14 OTHER L1 lifecycle/helper functions keep their live md5 (mismatches among the 14)',
+  UNION ALL SELECT 30, 'the 12 OTHER L1 lifecycle/helper functions (not the three patched ones) keep their live md5 (mismatches among the 12)',
          (SELECT count(*)::text FROM l1m m LEFT JOIN pg_proc p ON p.oid = to_regprocedure('public.' || m.sig)
-            WHERE m.sig <> 'l1_data_plane_capture_row()' AND md5(pg_get_functiondef(p.oid)) IS DISTINCT FROM m.md5_before), '0'
+            WHERE m.sig NOT IN ('l1_data_plane_capture_row()', 'capture_l1_data_plane_dasha_partition(uuid,text,text,integer)', 'complete_l1_data_plane_partition(uuid,text,text,text,integer)') AND md5(pg_get_functiondef(p.oid)) IS DISTINCT FROM m.md5_before), '0'
   UNION ALL SELECT 31, 'the L2 functions that exist keep their live md5 (mismatches; 0 expected, absent functions are not counted)',
          (SELECT count(*)::text FROM l2m m JOIN pg_proc p ON p.oid = to_regprocedure('public.' || m.sig)
             WHERE md5(pg_get_functiondef(p.oid)) <> m.md5_live), '0'
@@ -98,6 +104,14 @@ WITH fn AS (
   UNION ALL SELECT 18, 'snapshot-table comments: the two 1035 table comments, no column comment', (SELECT count(*) FILTER (WHERE col = '')::text || ' table / ' || count(*) FILTER (WHERE col <> '')::text || ' column' FROM cm), '2 table / 0 column'
   UNION ALL SELECT 19, 'the table comments do not yet state the precedence rule', (SELECT (count(*) FILTER (WHERE txt LIKE '%precedence%'))::text FROM cm), '0'
   UNION ALL SELECT 41, 'readiness: build_runs planned/running/paused on ANY chart', (SELECT count(*)::text FROM public.build_runs WHERE state IN ('planned','running','paused')), '0'
+  UNION ALL SELECT 32, 'ITEM 2 patch B: dasha capture function owner / SECURITY DEFINER / config / ACL unchanged', (SELECT meta FROM fb), 'data_plane_l1_owner / true / {"search_path=pg_catalog, public, pg_temp"} / {data_plane_l1_owner=X/data_plane_l1_owner,data_plane_builder=X/data_plane_l1_owner}'
+  UNION ALL SELECT 33, 'ITEM 2 patch B (BEFORE: live pre-state): md5 / length', (SELECT md5(d) || ' / ' || length(d)::text FROM fb), 'eee8d9d4f5fbbbbbd03a9abda7c62385 / 5357'
+  UNION ALL SELECT 34, 'ITEM 2 patch B: attestation digest = live sha256 = the pre-state digest', (SELECT a.definition_digest || ' / ' || (a.definition_digest = encode(public.digest(f.d, 'sha256'), 'hex'))::text FROM public.l1_data_plane_function_attestations a, fb f WHERE a.function_signature = 'capture_l1_data_plane_dasha_partition(uuid,text,text,integer)'), '166928dd4d72ef82ceafd6bc48c6b66784d70a8c4326f769237e9f3eef83276f / true'
+  UNION ALL SELECT 35, 'ITEM 2 patch B hunks absent (v_systems occurrences)', (SELECT ((length(d) - length(replace(d, 'v_systems', ''))) / length('v_systems'))::text FROM fb), '0'
+  UNION ALL SELECT 36, 'ITEM 3 patch C: completion function owner / SECURITY DEFINER / config / ACL unchanged', (SELECT meta FROM fc), 'data_plane_l1_owner / true / {"search_path=pg_catalog, public, pg_temp"} / {data_plane_l1_owner=X/data_plane_l1_owner,data_plane_builder=X/data_plane_l1_owner}'
+  UNION ALL SELECT 37, 'ITEM 3 patch C (BEFORE: live pre-state): md5 / length', (SELECT md5(d) || ' / ' || length(d)::text FROM fc), 'dcab40cf524c39efca628517c14fd9e8 / 8647'
+  UNION ALL SELECT 38, 'ITEM 3 patch C: attestation digest = live sha256 = the pre-state digest', (SELECT a.definition_digest || ' / ' || (a.definition_digest = encode(public.digest(f.d, 'sha256'), 'hex'))::text FROM public.l1_data_plane_function_attestations a, fc f WHERE a.function_signature = 'complete_l1_data_plane_partition(uuid,text,text,text,integer)'), '93bcb4afee1d568e885d83cc8eb58c1122dc429bfa201f90226b162a18cf5b4c / true'
+  UNION ALL SELECT 39, 'ITEM 3 patch C hunk absent (post-pass dasha block)', (SELECT ((length(d) - length(replace(d, 'the post-pass partition also INSERTS rows', ''))) / length('the post-pass partition also INSERTS rows'))::text FROM fc), '0'
 )
 SELECT ord, chk, obs, exp, CASE WHEN exp = '(info)' THEN 'INFO' WHEN obs IS NOT DISTINCT FROM exp THEN 'PASS' ELSE 'FAIL' END AS verdict FROM r
 UNION ALL SELECT 999, 'SUMMARY: checks that are not PASS/INFO', count(*) FILTER (WHERE exp <> '(info)' AND obs IS DISTINCT FROM exp)::text, '0',

@@ -3,6 +3,9 @@
 
   (1) F-A2: widen the chart_divisionals natural key (unique index + capture trigger arguments + the one ga_vargas dependency-identity
       hunk of the capture function) to include fact_subject          [d6_f_a2_key_widening_DRAFT.py, imported];
+  (2b) PATCHES B and C (SS decision N-85, approved as design): capture_l1_data_plane_dasha_partition includes the vimshottari_kp rows the vimshottari
+      partition has always written; complete_l1_data_plane_partition counts the dasha rows of the ga_dashas post-pass [d6_dasha_partition_patches.py];
+      each is one more FunctionPatch (own live definition, md5s, hunks, function-attestation row) and is re-attested exactly like A.
   (2) PATCH A: CREATE OR REPLACE public.l1_data_plane_capture_row() so a chart_facts row that carries no typed value is recorded
       honestly, and a row that carries more than one typed value keeps ONE (precedence num, text, jsonb) with a companion marker
       [d6_capture_patch_a.py, imported];
@@ -29,9 +32,9 @@ MODES (every mode needs --expect-plan: the in-process administrator credential i
                                      re-attest => md5 and attestation rows back to the pre-state (refused if widened rows exist)
 
 LAUNCH (GATE_V2). Never started directly: `exec/gate_v2/run_gated.sh python3 d6_dataplane_capture_fa2_exec.py <args>`. main() calls
-launch_gate() FIRST and refuses (exit 93) without a verifying GATE_V2_LAUNCH marker, or while GATE_PINS is TBD. THE THREE GATE SHAS
-BELOW ARE A MARKED TBD: the gate files (exec/gate_v2/, PR #2938) are being revised (revision 3) and are not yet bound, so every plan hash
-printed by this version is PROVISIONAL BY DESIGN and tests/test_gate_pins_bound fails until the pins are bound and the hash re-frozen.
+launch_gate() FIRST and refuses (exit 93) without a verifying GATE_V2_LAUNCH marker, or while any GATE_PINS value is the unbound marker TBD. The three gate
+shas are BOUND (SS decision N-86, GATE_V2 revision 3, PR #2938 head 7f0db55c3). The plan hash printed by this version is still NOT FINAL: the plan is not
+frozen (the hunk set may still gain item 5, and the hash is computed once, at the freeze).
 
 outcome.json (status dry_run | applied | failed | commit_state_unknown) is written into the run's evidence directory in every mode
 (executor_standards.outcome_guard); commit_state_unknown means conn.commit() itself raised (the server MAY have committed: check the database first).
@@ -69,6 +72,7 @@ def _load(name: str, path: pathlib.Path):
 
 fa2 = _load("d6_fa2_key_widening_draft", HERE / "d6_f_a2_key_widening_DRAFT.py")
 pa = _load("d6_capture_patch_a", HERE / "d6_capture_patch_a.py")
+bc = _load("d6_dasha_partition_patches", HERE / "d6_dasha_partition_patches.py")      # patches B and C (SS decision N-85)
 
 PROJECT = "madhav-astrology"
 OWNER = fa2.OWNER
@@ -162,9 +166,38 @@ CAPTURE_PATCH = FunctionPatch(
     patched_md5="b2f4242f034d1a3983edb08c625dc353",
     patched_sha256="d65a6804508e964e0e92b6a507a12fc747aa69bb0f2bc34170c721e281d0728d",
     diff_sha256="bca80fe61b88a0fcb2d2721c542a25893a4bc8cb77d0d094be31b4324056553f", diff_hunks=6)
-FUNCTION_PATCHES = (CAPTURE_PATCH,)
+# ITEM 2, patch B (owner decision N-85, approved as design): capture_l1_data_plane_dasha_partition includes the vimshottari_kp rows the vimshottari partition has always written
+DASHA_CAPTURE_PATCH = FunctionPatch(
+    signature="capture_l1_data_plane_dasha_partition(uuid,text,text,integer)",
+    live_md5="eee8d9d4f5fbbbbbd03a9abda7c62385", live_len=5357,
+    live_sha256="166928dd4d72ef82ceafd6bc48c6b66784d70a8c4326f769237e9f3eef83276f",
+    owner=OWNER, secdef=True, config='{"search_path=pg_catalog, public, pg_temp"}',
+    acl="{data_plane_l1_owner=X/data_plane_l1_owner,data_plane_builder=X/data_plane_l1_owner}",
+    hunks=tuple(bc.PATCH_B_HUNKS),
+    patched_md5="873ee5da411f4e6366ec3faed98c3ae2",
+    patched_sha256="b94208d44dc371a773414eed15c59478b36a9890a83aeb26c09e72a6fa6ec750",
+    diff_sha256="e59ec6b5ad90b6376265e5c7811c45937b5ac3903aeb19f9d0aa8669d7c34c85", diff_hunks=6)
+# ITEM 3, patch C (owner decision N-85, approved as design): complete_l1_data_plane_partition counts the dasha rows of the ga_dashas post-pass
+COMPLETE_PATCH = FunctionPatch(
+    signature="complete_l1_data_plane_partition(uuid,text,text,text,integer)",
+    live_md5="dcab40cf524c39efca628517c14fd9e8", live_len=8647,
+    live_sha256="93bcb4afee1d568e885d83cc8eb58c1122dc429bfa201f90226b162a18cf5b4c",
+    owner=OWNER, secdef=True, config='{"search_path=pg_catalog, public, pg_temp"}',
+    acl="{data_plane_l1_owner=X/data_plane_l1_owner,data_plane_builder=X/data_plane_l1_owner}",
+    hunks=tuple(bc.PATCH_C_HUNKS),
+    patched_md5="31d005e8ecacf40547f0537e24d717d5",
+    patched_sha256="21d297abdbc99d11c073dc1b9c57b85eb0ea662f0d6927b1faa3889b07043ac0",
+    diff_sha256="8c9d7d8dcfb5c6da760b36051e1e882562ea481503a5a23a7d3178f0dcf85c2f", diff_hunks=1)
+# ITEM 5, RESERVED SLOT, NOT WRITTEN: "chart_vichara capture identity" (ga_vichara F1). It joins this plan ONLY if the ga_vichara F1 identity design under review
+# (vichara-design) is accepted, and then only as DATA here (a FunctionPatch hunk for the capture function and, if the design needs it, a trigger-argument entry
+# beside the chart_divisionals one), with the authorisation sentence gaining its own clause. Until then the plan has exactly items 1-4 (FUNCTION_PATCHES below plus the item-4 index and trigger).
+# Item numbering of the plan: 1 = option A (CAPTURE_PATCH, H1..H3b), 2 = patch B, 3 = patch C, 4 = F-A2 (index + trigger + the F-A2 hunk inside CAPTURE_PATCH).
+FUNCTION_PATCHES = (CAPTURE_PATCH, DASHA_CAPTURE_PATCH, COMPLETE_PATCH)
 assert len({p.signature for p in FUNCTION_PATCHES}) == len(FUNCTION_PATCHES) and CAPTURE_FN_SIG in {p.signature for p in FUNCTION_PATCHES}
 assert all(p.owner == OWNER for p in FUNCTION_PATCHES), "an L2-owned function needs its own owner-role leg and attestation table: not supported"
+ITEM_LABELS = {CAPTURE_FN_SIG: "ITEM 1 (option A, N-84: H1, H2, H3a, H3b) and the function hunk of ITEM 4 (F-A2)",
+               DASHA_CAPTURE_PATCH.signature: "ITEM 2 (patch B, N-85)", COMPLETE_PATCH.signature: "ITEM 3 (patch C, N-85)"}
+assert set(ITEM_LABELS) == {p.signature for p in FUNCTION_PATCHES}, "every function patch carries its plan item label"
 ALL_HUNKS = tuple(h for p in FUNCTION_PATCHES for h in p.hunks)
 
 # ------------------------------------------------------------------------------------------------------------ the contract
@@ -222,15 +255,12 @@ EXPECTED_DIFF = {
 }
 
 # ------------------------------------------------------------------------------------------------------ gate wiring (GATE_V2)
-GATE_TBD = "TBD_BIND_AT_GATE_REVISION_3"
-# TBD: the gate files at exec/gate_v2/ (PR #2938) are being revised (revision 3). Bind the three sha256 here, re-freeze the plan hash.
-GATE_PINS = {"prerun_gate.py": GATE_TBD, "run_gated.sh": GATE_TBD, "executor_standards.py": GATE_TBD}
-# PROPOSED, NOT BOUND: the sha256 of the gate files at PR #2938 head 7f0db55c3 (Gate v2 revision 3), as handed to this lane. They are NOT in force: only Strategic
-# Suvarna binds the pins (by replacing the TBD values above after reviewing the files). tests/gate_fixture holds byte-identical copies of exactly these
-# files and a test proves it, so the whole suite runs against the revision-3 gate; the plan prints the hash the plan WOULD have if these were bound as they are.
-GATE_REV3_PROPOSED = {"prerun_gate.py": "01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e",
-                      "run_gated.sh": "305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076",
-                      "executor_standards.py": "bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135"}
+GATE_TBD = "TBD_BIND_AT_GATE_REVISION_3"        # the marker for an UNBOUND pin: launch_gate refuses while any pin is this value
+# BOUND by SS decision N-86 to GATE_V2 revision 3 (PR #2938 head 7f0db55c371fe13ddccc493ac0730c8703a7e940), after the sha256 of the three files at that commit
+# were recomputed (git show <commit>:<path> | shasum -a 256) and found equal. tests/gate_fixture holds byte-identical copies and a test proves it.
+GATE_PINS = {"prerun_gate.py": "01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e",
+             "run_gated.sh": "305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076",
+             "executor_standards.py": "bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135"}
 GATE_DIR_ENV = "DPFA2_TEST_GATE_DIR"
 TEST_EVIDENCE_ENV = "DPFA2_TEST_EVIDENCE_ROOT"
 PYTEST_ENV = "PYTEST_CURRENT_TEST"
@@ -379,13 +409,14 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
     n = 0
     for p in FUNCTION_PATCHES:
         n += 1
-        lines.append(f"-- {n}. CREATE OR REPLACE FUNCTION public.{p.signature} with the live definition plus exactly these hunks:")
+        lines.append(f"-- {ITEM_LABELS.get(p.signature, "ITEM ? (add a label to ITEM_LABELS)")}: {n}. CREATE OR REPLACE FUNCTION public.{p.signature} with the live definition plus exactly these hunks:")
         for name, old, new in p.hunks:
             lines.append(f"--   hunk {name}:")
             lines.append("--     - " + old.replace("\n", "\n--       "))
             lines.append("--     + " + new.replace("\n", "\n--       "))
         lines.append(f"--   bound: patched md5 {p.patched_md5}, sha256 {p.patched_sha256}; zero-context diff {p.diff_hunks} hunks, sha256 {p.diff_sha256}; "
                      "re-checked against pg_get_functiondef after the statement")
+    lines.append("-- ITEM 5 (chart_vichara capture identity, ga_vichara F1): RESERVED SLOT, NOT PART OF THIS PLAN, NOT WRITTEN; joins only if the vichara identity design is accepted, as data, with its own authorisation clause")
     lines.append("-- contract comments (owner path):")
     lines += ["   " + x for x in fwd.comment_stmts]
     lines.append("-- re-attest each patched function row (immutability trigger off, then on, same transaction; rowcount must be 1):")
@@ -418,13 +449,12 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
         "the gate files pinned below; it writes outcome.json (dry_run | applied | failed | commit_state_unknown) in every mode; it refuses an under_test launch marker (exit 93) and a DPFA2_TEST_* variable (exit 95) outside pytest.",
         "-- every mode needs --expect-plan: the in-process administrator credential is fetched only after the plan hash matched.",
         "-- gate files (exec/gate_v2, PR #2938; %s): prerun_gate.py sha256 %s; run_gated.sh sha256 %s; executor_standards.py sha256 %s"
-        % ("PINS ARE TBD, plan hash PROVISIONAL" if any(v == GATE_TBD for v in pins.values()) else "pins BOUND by Strategic Suvarna",
+        % ("PINS ARE TBD, plan hash PROVISIONAL" if any(v == GATE_TBD for v in pins.values()) else "pins BOUND by SS decision N-86 (GATE_V2 revision 3)",
            pins["prerun_gate.py"], pins["run_gated.sh"], pins["executor_standards.py"]),
-        "-- gate revision 3 PROPOSED, NOT BOUND (PR #2938 head 7f0db55c3): prerun_gate.py sha256 %s; run_gated.sh sha256 %s; executor_standards.py sha256 %s"
-        % (GATE_REV3_PROPOSED["prerun_gate.py"], GATE_REV3_PROPOSED["run_gated.sh"], GATE_REV3_PROPOSED["executor_standards.py"]),
         "-- plan hash = bind_gate_into_plan_hash(sha256(plan text + \"\\n\" + json(EXPECTED_DIFF)), prerun_gate.py pin, run_gated.sh pin)",
         "-- F-A2 module: d6_f_a2_key_widening_DRAFT.py sha256 %s" % sha_file(HERE / "d6_f_a2_key_widening_DRAFT.py"),
         "-- patch A module: d6_capture_patch_a.py sha256 %s" % sha_file(HERE / "d6_capture_patch_a.py"),
+        "-- patches B and C module: d6_dasha_partition_patches.py sha256 %s" % sha_file(HERE / "d6_dasha_partition_patches.py"),
     ]
     for p in FUNCTION_PATCHES:
         lines.append(f"-- live definition: live_defs/{p.short}.LIVE.sql sha256 %s" % sha_file(p.live_file))
@@ -686,7 +716,8 @@ def render_report(leg: Leg, before: dict, after: dict, plan: dict, probe, gate_b
              "comment": "COMMENTS (table, column, text)"}
     for key, title in names.items():
         removed, added = sorted(before[key] - after[key]), sorted(after[key] - before[key])
-        want = (leg.removed_comments, leg.added_comments) if key == "comment" else (1, 1)
+        want = (leg.removed_comments, leg.added_comments) if key == "comment" else \
+            ((len(leg.functions),) * 2 if key in ("function", "function_attestation") else (1, 1))
         out.append(f"== {title}: exactly {len(removed)} removed / {len(added)} added "
                    f"({'AS PLANNED' if (len(removed), len(added)) == want else 'UNEXPECTED'}) ==")
         for r in removed:

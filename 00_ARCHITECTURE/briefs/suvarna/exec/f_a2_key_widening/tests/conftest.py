@@ -127,7 +127,7 @@ def cluster():
 @pytest.fixture(scope="session")
 def mod():
     m = load_exec()
-    m.GATE_PINS.update(fixture_pins())      # the tests run against the byte-identical rev3 gate files (PR #2938 head 7f0db55c3) kept in tests/gate_fixture
+    assert m.GATE_PINS == fixture_pins()     # the pins are BOUND (N-86); tests/gate_fixture holds the byte-identical rev3 gate files (PR #2938 head 7f0db55c3)
 
     def boom(*a, **k):
         raise AssertionError("a test reached the Secret Manager: tests inject a disposable connection and never fetch a credential")

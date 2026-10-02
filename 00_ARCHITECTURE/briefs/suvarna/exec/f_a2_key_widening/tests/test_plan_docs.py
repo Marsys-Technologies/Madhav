@@ -8,9 +8,9 @@ from conftest import EXEC_DIR
 
 PLAN = EXEC_DIR / "D6_COMBINED_DATAPLANE_CAPTURE_FA2_PLAN_DRAFT.md"
 CONTRACT = EXEC_DIR.parent / "DATAPLANE_CAPTURE_TYPED_VALUE_CONTRACT_v1_0.md"
-AUTH = ("Authorization: run the D6 owner-path plan with hash `<PLAN_HASH>` on production (the L1 data-plane capture repair, option A / N-84, plus the "
-        "F-A2 ga_vargas key widening), exactly as described in `<PLAN FILE PATH>` sha256 `<PLAN_FILE_SHA>`, after Strategic Suvarna has approved the dry run. "
-        "No other change.")
+AUTH = ("Authorization: run the D6 owner-path plan with hash `<PLAN_HASH>` on production (the L1 data-plane capture repair, option A / N-84; patch B and "
+        "patch C, approved as design in N-85; plus the F-A2 ga_vargas key widening), exactly as described in `<PLAN FILE PATH>` sha256 `<PLAN_FILE_SHA>`, "
+        "after Strategic Suvarna has approved the dry run. No other change.")
 
 
 def test_the_plain_language_summary_is_first_and_the_authorisation_sentence_is_exact():
@@ -19,17 +19,30 @@ def test_the_plain_language_summary_is_first_and_the_authorisation_sentence_is_e
     assert body.index("## 0. One-page summary for the owner") < body.index("## 1. The owner's authorisation") < body.index("## 3. The numbered items")
     assert "> " + AUTH in t
     summary = body[body.index("## 0."):body.index("## 1.")]
-    assert len(summary.split()) < 700                                                        # one page
-    for must in ("Nothing is inserted into, changed in or deleted from any chart", "How it is undone", "What can go wrong", "option A", "B", "C"):
+    assert len(summary.split()) < 1100                                                       # one dense page
+    for must in ("nothing is inserted into, changed in or deleted from any chart's data", "How it is undone", "What can go wrong", "What changes in the production database"):
         assert must in summary, must
 
 
-def test_b_and_c_are_named_separately_from_option_a_and_are_not_in_the_plan(mod):
+def test_the_summary_lists_a_b_c_and_fa2_as_four_numbered_items_each_with_a_serving_effect_and_item_5_is_a_marked_empty_slot():
     t = PLAN.read_text()
-    assert "plus patch B" in t and "plus patch C" in t and "separate approval" in t
+    summary = t[t.index("**The four items**"):t.index("**What changes in the production database.**")]
+    items = [ln for ln in summary.splitlines() if ln[:3] in ("1. ", "2. ", "3. ", "4. ")]
+    assert len(items) == 4
+    for ln, key in zip(items, ("Option A (N-84)", "Patch B (N-85)", "Patch C (N-85)", "F-A2")):
+        assert key in ln and "*What it changes:*" in ln and "*Serving effect:*" in ln, key
+    assert "RESERVED, NOT WRITTEN, NOT PART OF THIS PLAN" in summary and "item 5" in summary
     sec2 = t[t.index("## 2. Status of the hunk set"):t.index("## 3.")]
-    assert re.search(r"\| \*\*B\*\* \|.*\*\*NO, candidate\*\*", sec2) and re.search(r"\| \*\*C\*\* \|.*\*\*NO, candidate\*\*", sec2)
-    assert "DRAFT_NOT_FROZEN" in t and "<PLAN_FILE_SHA>" in t
+    assert "RESERVED SLOT, NOT WRITTEN" in sec2 and sec2.count("**YES**") == 4
+    assert "DRAFT_NOT_FROZEN" in t and "<PLAN_FILE_SHA>" in t and "NOT COMPUTED FINAL" in t
+
+
+def test_item_5_is_absent_from_the_executor_and_the_plan_but_its_slot_is_marked(mod):
+    assert [p.signature for p in mod.FUNCTION_PATCHES] == ["l1_data_plane_capture_row()", "capture_l1_data_plane_dasha_partition(uuid,text,text,integer)",
+                                                           "complete_l1_data_plane_partition(uuid,text,text,text,integer)"]
+    src = (EXEC_DIR / "d6_dataplane_capture_fa2_exec.py").read_text()
+    assert "ITEM 5, RESERVED SLOT, NOT WRITTEN" in src and "chart_vichara" not in mod.render_plan().replace("ITEM 5 (chart_vichara capture identity", "")
+    assert "chart_vichara" not in " ".join(h[1] + h[2] for p in mod.FUNCTION_PATCHES for h in p.hunks)
 
 
 def test_the_plan_file_quotes_the_bound_constants_of_the_executor(mod):
@@ -38,7 +51,7 @@ def test_the_plan_file_quotes_the_bound_constants_of_the_executor(mod):
         for v in (p.live_md5, p.patched_md5, p.live_sha256, p.patched_sha256, p.diff_sha256):
             assert v in t, v
     assert mod.LIVE_TRG_DIGEST in t and mod.PATCHED_TRG_DIGEST in t
-    for v in mod.GATE_REV3_PROPOSED.values():
+    for v in mod.GATE_PINS.values():
         assert v in t
     for n in ("d6_f_a2_key_widening_DRAFT.py", "d6_capture_patch_a.py"):
         assert hashlib.sha256((EXEC_DIR / n).read_bytes()).hexdigest() in t, n

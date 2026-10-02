@@ -100,18 +100,19 @@ def test_apply_commits_exactly_the_expected_diff(runner, cluster, db, mod):
     f_before = {r[0]: r for r in before["snap"]["function"]}
     f_after = {r[0]: r for r in after["snap"]["function"]}
     assert set(f_before) == set(f_after)
-    changed = [k for k in f_before if f_before[k] != f_after[k]]
-    assert changed == ["l1_data_plane_capture_row()"]
-    b, a = f_before[changed[0]], f_after[changed[0]]
-    assert b[2:] == a[2:] and b[2:] == ("data_plane_l1_owner", "true", '{"search_path=pg_catalog, public, pg_temp"}',
-                                        "{data_plane_l1_owner=X/data_plane_l1_owner}")       # owner, secdef, config, ACL unchanged
-    # --- the 14 other functions keep their md5
-    assert all(f_before[k][1] == f_after[k][1] for k in f_before if k != "l1_data_plane_capture_row()")
-    # --- attestation: ONE function row, ONE trigger row; every other row identical
+    changed = sorted(k for k in f_before if f_before[k] != f_after[k])
+    patched = sorted(q.signature for q in mod.FUNCTION_PATCHES)
+    assert changed == patched
+    for k in changed:
+        b, a = f_before[k], f_after[k]
+        assert b[2:] == a[2:] and b[2] == "data_plane_l1_owner" and b[3] == "true" and b[4] == '{"search_path=pg_catalog, public, pg_temp"}'   # owner, secdef, config, ACL unchanged
+    # --- the other functions keep their md5
+    assert all(f_before[k][1] == f_after[k][1] for k in f_before if k not in patched)
+    # --- attestation: ONE row per patched function + ONE trigger row; every other row identical
     att_b, att_a = set(map(tuple, before["att"])), set(map(tuple, after["att"]))
-    assert len(att_b - att_a) == 2 and len(att_a - att_b) == 2
-    assert {r[1] for r in att_b - att_a} == {"l1_data_plane_capture_row()", "chart_divisionals"}
-    fn_row = [r for r in att_a - att_b if r[0] == "F"][0]
+    assert len(att_b - att_a) == len(patched) + 1 and len(att_a - att_b) == len(patched) + 1
+    assert {r[1] for r in att_b - att_a} == set(patched) | {"chart_divisionals"}
+    fn_row = [r for r in att_a - att_b if r[0] == "F" and r[1] == "l1_data_plane_capture_row()"][0]
     assert fn_row[2] == p.patched_sha256 and fn_row[3:] == ("data_plane_l1_owner", "true", '{"search_path=pg_catalog, public, pg_temp"}')
     trg_row = [r for r in att_a - att_b if r[0] == "T"][0]
     assert trg_row[2] == "l1_data_plane_capture" and trg_row[5] == mod.PATCHED_TRG_DIGEST
@@ -471,18 +472,19 @@ def test_verify_sql_fails_on_the_wrong_state(runner, cluster, db):
 
 
 # ------------------------------------------------------------------------------------- change accounting and the post-apply gate
-def _images(mod, patched_name="l1_data_plane_capture_row()", extra=None, drop_att=False):
-    """Crafted before/after catalog snapshots for the pure accounting function: the planned change, optionally with an unplanned one."""
+def _images(mod, wrong=False, extra=False):
+    """Crafted before/after catalog snapshots for the pure accounting function: the planned change (every patched function changes, one entry each),
+    optionally the WRONG function changed in place of one patched function (the counts still say N) or an UNPLANNED extra function changed too."""
+    sigs = [p.signature for p in mod.FUNCTION_PATCHES]
+    other = "l1_data_plane_fact_unit(text,text,jsonb)"
     before = {"index": {("i", "old")}, "trigger": {("t", "old")}, "trigger_attestation": {("ta", "old")},
-              "function": {("l1_data_plane_capture_row()", "m0"), ("l1_data_plane_fact_unit(text,text,jsonb)", "u0")},
-              "function_attestation": {("l1_data_plane_capture_row()", "d0")}}
+              "function": {(s, "m0") for s in sigs} | {(other, "u0")}, "function_attestation": {(s, "d0") for s in sigs}}
     after = {"index": {("i", "new")}, "trigger": {("t", "new")}, "trigger_attestation": {("ta", "new")},
-             "function": {("l1_data_plane_capture_row()", "m1"), ("l1_data_plane_fact_unit(text,text,jsonb)", "u0")},
-             "function_attestation": {("l1_data_plane_capture_row()", "d1")}}
-    if patched_name != "l1_data_plane_capture_row()":          # the WRONG function changed: one entry removed/added, so the counts still say 1
-        after["function"] = {("l1_data_plane_capture_row()", "m0"), ("l1_data_plane_fact_unit(text,text,jsonb)", "u1")}
-    if extra:                                                   # an UNPLANNED second function changed as well
-        after["function"] = {("l1_data_plane_capture_row()", "m1"), ("l1_data_plane_fact_unit(text,text,jsonb)", "u1")}
+             "function": {(s, "m1") for s in sigs} | {(other, "u0")}, "function_attestation": {(s, "d1") for s in sigs}}
+    if wrong:                                   # one patched function untouched, an UNPLANNED one changed in its place: counts equal, identities differ
+        after["function"] = {(s, "m1") for s in sigs[:-1]} | {(sigs[-1], "m0"), (other, "u1")}
+    if extra:                                   # every patched function changed AND an unplanned one
+        after["function"] = {(s, "m1") for s in sigs} | {(other, "u1")}
     return before, after
 
 
@@ -496,14 +498,14 @@ def test_change_accounting_passes_the_planned_change_and_only_it(mod):
 
 
 def test_change_accounting_refuses_the_wrong_function_even_when_the_counts_say_one(mod):
-    r = acct(mod, patched_name="l1_data_plane_fact_unit(text,text,jsonb)")
-    assert r["post_exactly_1_function_entries_changed"] is True               # the counts alone are satisfied...
+    r = acct(mod, wrong=True)
+    assert r["post_exactly_%d_function_entries_changed" % len(mod.FUNCTION_PATCHES)] is True               # the counts alone are satisfied...
     assert r["post_changed_functions_are_exactly_the_patched_ones"] is False  # ...the identity check is what refuses
 
 
 def test_change_accounting_refuses_an_unplanned_second_function_change_by_count(mod):
     r = acct(mod, extra=True)
-    assert r["post_exactly_1_function_entries_changed"] is False and r["post_changed_functions_are_exactly_the_patched_ones"] is False
+    assert r["post_exactly_%d_function_entries_changed" % len(mod.FUNCTION_PATCHES)] is False and r["post_changed_functions_are_exactly_the_patched_ones"] is False
 
 
 def test_the_post_apply_gate_going_red_refuses_the_commit_and_changes_nothing(runner, mod, monkeypatch):

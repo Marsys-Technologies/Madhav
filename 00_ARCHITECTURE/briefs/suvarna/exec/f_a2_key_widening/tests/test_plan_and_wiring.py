@@ -22,12 +22,17 @@ def fresh(name="d6_fresh"):
 
 
 # ---------------------------------------------------------------------------------------------------- the TBD pin test
+N86_PINS = {"prerun_gate.py": "01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e",
+            "run_gated.sh": "305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076",
+            "executor_standards.py": "bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135"}
+
+
 def test_gate_pins_are_bound():
-    """DELIBERATELY RED until the three GATE_V2 sha256 are bound (gate revision 3 not yet bound): the plan hash printed by this version is
-    PROVISIONAL BY DESIGN. Bind the pins in GATE_PINS, re-freeze, and this test turns green."""
+    """Bound by SS decision N-86 to GATE_V2 revision 3 (#2938 head 7f0db55c371fe13ddccc493ac0730c8703a7e940): EXACTLY these three values, no TBD left."""
     m = fresh("d6_pins")
     unbound = [k for k, v in m.GATE_PINS.items() if v == m.GATE_TBD]
-    assert not unbound, f"GATE_PINS are TBD for {unbound}: bind them at gate revision 3 (the plan hash is provisional until then)"
+    assert not unbound, f"GATE_PINS are TBD for {unbound}"
+    assert m.GATE_PINS == N86_PINS
 
 
 # ---------------------------------------------------------------------------------------------------- bound constants
@@ -98,7 +103,8 @@ def test_adding_a_function_is_adding_data(mod, tmp_path, monkeypatch):
     live.mkdir()
     body = "CREATE OR REPLACE FUNCTION public.other_fn()\n RETURNS integer\n LANGUAGE sql\nAS $function$ SELECT 1 $function$\n"
     (live / "other_fn.LIVE.sql").write_bytes(body.encode())
-    shutil.copy(m.CAPTURE_PATCH.live_file, live / m.CAPTURE_PATCH.live_file.name)
+    for existing in m.FUNCTION_PATCHES:
+        shutil.copy(existing.live_file, live / existing.live_file.name)
     monkeypatch.setattr(m, "LIVE_DEFS", live)
     hunk = ("X", "SELECT 1", "SELECT 2")
     new = m.pa.apply_hunks(body, [hunk])
@@ -108,9 +114,10 @@ def test_adding_a_function_is_adding_data(mod, tmp_path, monkeypatch):
                          diff_sha256=m.pa.diff_digest(body, new), diff_hunks=len(m.pa.unified_hunks(body, new)))
     monkeypatch.setattr(m, "FUNCTION_PATCHES", m.FUNCTION_PATCHES + (p2,))
     assert p2.patched_def() == new
-    assert len(m.forward_leg().functions) == 2 and len(m.rollback_leg().functions) == 2
+    n = len(m.FUNCTION_PATCHES)
+    assert len(m.forward_leg().functions) == n and len(m.rollback_leg().functions) == n
     assert "other_fn()" in m.render_plan() and m.plan_hash_unbound() != base_hash
-    assert len(m._expected_functions()) == 2
+    assert len(m._expected_functions()) == n
     # a hunk anchor that is not unique is refused
     bad = dataclasses.replace(p2, hunks=(("X", "S", "T"),))
     with pytest.raises(m.ExpectedDiffError, match="occurs"):
@@ -189,20 +196,12 @@ def refused(mod, capsys, environ, reason):
 
 
 def test_the_fixture_gate_files_are_the_byte_identical_gate_v2_rev3_files(mod):
-    """tests/gate_fixture = exec/gate_v2 at PR #2938 head 7f0db55c3 (revision 3); GATE_REV3_PROPOSED is the proposal, NOT a binding."""
-    assert cf.fixture_pins() == mod.GATE_REV3_PROPOSED == {
-        "prerun_gate.py": "01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e",
-        "run_gated.sh": "305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076",
-        "executor_standards.py": "bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135"}
+    """tests/gate_fixture = exec/gate_v2 at PR #2938 head 7f0db55c3 (revision 3) = the bound pins."""
+    assert cf.fixture_pins() == mod.GATE_PINS == N86_PINS
     gv2 = EXEC_DIR.parent / "gate_v2"
     if gv2.exists():                                                  # once PR #2938 is merged the fixture must still equal it
-        for n in mod.GATE_REV3_PROPOSED:
+        for n in mod.GATE_PINS:
             assert (gv2 / n).read_bytes() == (GATE_FIXTURE / n).read_bytes(), n
-
-
-def test_the_proposed_pins_are_not_the_bound_pins():
-    m = fresh("d6_proposed")
-    assert all(v == m.GATE_TBD for v in m.GATE_PINS.values()) and m.GATE_REV3_PROPOSED != m.GATE_PINS
 
 
 def test_an_under_test_launch_marker_is_refused_in_every_mode_outside_pytest(mod, capsys):
@@ -257,11 +256,18 @@ def test_launch_gate_refuses_forged_stale_future_and_edited(mod, capsys, tmp_pat
     assert "executor_standards.py differs" in capsys.readouterr().err
 
 
-def test_launch_gate_refuses_while_the_pins_are_tbd(capsys):
-    m = fresh("d6_tbd")                         # the shipped constants
-    assert all(v == m.GATE_TBD for v in m.GATE_PINS.values())
+def test_launch_gate_refuses_while_a_pin_is_tbd(capsys):
+    m = fresh("d6_tbd")
     es = m.standards(env_with())
-    refused(m, capsys, env_with(GATE_V2_LAUNCH=marker(es)), "TBD")
+    good = marker(es)
+    for name in list(m.GATE_PINS):                                # any single unbound pin is refused, even with a verifying marker
+        saved = m.GATE_PINS[name]
+        m.GATE_PINS[name] = m.GATE_TBD
+        try:
+            refused(m, capsys, env_with(GATE_V2_LAUNCH=good), "TBD")
+        finally:
+            m.GATE_PINS[name] = saved
+    m.launch_gate(env_with(GATE_V2_LAUNCH=good))                  # all bound: accepted
 
 
 def test_main_calls_launch_gate_FIRST_before_arguments_and_before_any_secret(mod, monkeypatch, capsys):

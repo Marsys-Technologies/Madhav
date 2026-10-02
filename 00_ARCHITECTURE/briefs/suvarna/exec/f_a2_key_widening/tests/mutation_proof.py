@@ -21,8 +21,8 @@ import tempfile
 SRC = pathlib.Path(__file__).resolve().parent.parent
 REPO = SRC.parents[4]
 REL = SRC.relative_to(REPO)
-DESELECT = "not test_gate_pins_are_bound and not test_plan_txt_is_the_rendering_with_the_current_pins"      # the second compares plan.txt with the (mutated) executor sha: a spurious red
-FAST = "tests/test_plan_and_wiring.py tests/test_combined_exec.py tests/test_capture_shapes.py"
+DESELECT = "not test_plan_txt_is_the_rendering_with_the_current_pins"      # it compares plan.txt with the (mutated) executor sha: a spurious red
+FAST = "tests/test_plan_and_wiring.py tests/test_plan_docs.py tests/test_combined_exec.py tests/test_capture_shapes.py tests/test_dasha_partition_patches.py"
 
 # (name, file, old, new, kind, test files, -k expression or None)
 H3A_PRECEDENCE_OLD = """      IF v_value_num IS NOT NULL THEN
@@ -51,7 +51,9 @@ PA = "d6_capture_patch_a.py"
 EX = "d6_dataplane_capture_fa2_exec.py"
 SHAPES = "tests/test_capture_shapes.py"
 COMBINED = "tests/test_combined_exec.py"
-WIRING = "tests/test_plan_and_wiring.py"
+WIRING = "tests/test_plan_and_wiring.py tests/test_plan_docs.py"
+BCT = "tests/test_dasha_partition_patches.py"
+BC = "d6_dasha_partition_patches.py"
 
 MUTATIONS = [
     # ---- the hunks (behavioural: constants recomputed so only the BEHAVIOUR tests can catch them)
@@ -114,6 +116,21 @@ MUTATIONS = [
      "                        raise\n", None, COMBINED, "commit_call"),
     ("second function: its re-attestation skipped (data-driven loop)", EX, "        cur.execute(fn_att_update_sql(st.patch.signature))\n", '        cur.execute("SELECT 1")\n', None, "tests/test_two_function_machinery.py", None),
     ("second function: its pre-state body check neutered", EX, "md5 == st.from_md5 and definition == st.from_def,", "True,", None, "tests/test_two_function_machinery.py", "byte_for_byte"),
+    # ---- patches B and C (SS N-85): each neutered patch must be caught
+    ("patch B: declaration neutered (recomputed constants)", BC, "  v_systems TEXT[];\\nBEGIN\\n'),", "  v_systems_x TEXT[];\\nBEGIN\\n'),", "recompute", BCT, None),
+    ("patch B: one scope site left on the old single-system predicate (recomputed constants)", BC,
+     "    AND (p_partition_key = '__concurrency_post_pass__' OR (\\n      d.system_id = ANY(v_systems) AND d.ayanamsha_id = v_ayanamsha_id\\n    ))\\n\"),",
+     "    AND (p_partition_key = '__concurrency_post_pass__' OR (\\n      d.system_id = v_system_id AND d.ayanamsha_id = v_ayanamsha_id\\n    ))\\n\"),", "recompute", BCT, "semantics or reproduce or old_text"),
+    ("patch B: vimshottari_kp no longer included (recomputed constants)", BC, "ARRAY['vimshottari','vimshottari_kp']::TEXT[]", "ARRAY['vimshottari']::TEXT[]", "recompute", BCT, "semantics or reproduce"),
+    ("patch B: scope site neutered, constants NOT recomputed (EXPECTED_DIFF binding)", BC,
+     "    AND (p_partition_key = '__concurrency_post_pass__' OR (\\n      d.system_id = ANY(v_systems) AND d.ayanamsha_id = v_ayanamsha_id\\n    ))\\n\"),",
+     "    AND (p_partition_key = '__concurrency_post_pass__' OR (\\n      d.system_id = v_system_id AND d.ayanamsha_id = v_ayanamsha_id\\n    ))\\n\"),", None, BCT, "base_is_production or target_is_bound"),
+    ("patch C: post-pass block neutered (recomputed constants)", BC, "IF p_asset_id = 'ga_dashas' AND p_partition_key", "IF p_asset_id = 'ga_dashas_x' AND p_partition_key", "recompute", BCT, "semantics or reproduce"),
+    ("patch C: neutered, constants NOT recomputed (EXPECTED_DIFF binding)", BC, "IF p_asset_id = 'ga_dashas' AND p_partition_key", "IF p_asset_id = 'ga_dashas_x' AND p_partition_key", None, BCT, "base_is_production or target_is_bound"),
+    ("patch B dropped from the plan (FUNCTION_PATCHES)", EX, "FUNCTION_PATCHES = (CAPTURE_PATCH, DASHA_CAPTURE_PATCH, COMPLETE_PATCH)", "FUNCTION_PATCHES = (CAPTURE_PATCH, COMPLETE_PATCH)", None, BCT + " " + WIRING, "in_the_plan or item_5 or expected_diff"),
+    ("patch B: bound base md5 no longer the production md5 (base-md5 mismatch)", EX, 'live_md5="eee8d9d4f5fbbbbbd03a9abda7c62385"', 'live_md5="00000000000000000000000000000000"', None, BCT, "base_is_production"),
+    ("patch C: its bound target md5 no longer what the hunks produce", EX, 'patched_md5="31d005e8ecacf40547f0537e24d717d5"', 'patched_md5="11111111111111111111111111111111"', None, BCT, "base_is_production or target_is_bound"),
+    ("item 5 slot filled (a chart_vichara hunk smuggled in)", BC, "PATCH_C_HUNKS = (", "PATCH_C_HUNKS = (('X5_chart_vichara', 'BEGIN\\n', 'BEGIN\\n  -- chart_vichara\\n'), ", None, WIRING, "item_5"),
 ]
 
 
@@ -134,15 +151,20 @@ d = pathlib.Path(sys.argv[1])
 def load(n, f):
     s = importlib.util.spec_from_file_location(n, d / f); m = importlib.util.module_from_spec(s); sys.modules[n] = m; s.loader.exec_module(m); return m
 m = load("mut_exec", "d6_dataplane_capture_fa2_exec.py")
-p = m.CAPTURE_PATCH
-live = p.live_def()
-new = m.pa.apply_hunks(live, p.hunks)
-vals = {"patched_md5": hashlib.md5(new.encode()).hexdigest(), "patched_sha256": hashlib.sha256(new.encode()).hexdigest(),
-        "diff_sha256": m.pa.diff_digest(live, new)}
 src = (d / "d6_dataplane_capture_fa2_exec.py").read_text()
-for k, v in vals.items():
-    src, n = re.subn(r'(%s=")[0-9a-f]{32,64}(")' % k, r"\g<1>%s\g<2>" % v, src); assert n == 1, k
-src, n = re.subn(r"diff_hunks=\d+", "diff_hunks=%d" % len(m.pa.unified_hunks(live, new)), src); assert n == 1
+for p in m.FUNCTION_PATCHES:                                  # every patched function: recompute ITS bound constants (a window after its signature)
+    live = p.live_def()
+    new = m.pa.apply_hunks(live, p.hunks)
+    vals = {"patched_md5": hashlib.md5(new.encode()).hexdigest(), "patched_sha256": hashlib.sha256(new.encode()).hexdigest(),
+            "diff_sha256": m.pa.diff_digest(live, new)}
+    marker = 'signature="%s"' % p.signature if ('signature="%s"' % p.signature) in src else "signature=CAPTURE_FN_SIG"
+    i = src.index(marker)
+    j = src.index("diff_hunks=", i) + 40
+    win = src[i:j]
+    for k, v in vals.items():
+        win, n = re.subn(r'(%s=")[0-9a-f]{32,64}(")' % k, r"\g<1>%s\g<2>" % v, win); assert n == 1, (p.signature, k)
+    win, n = re.subn(r"diff_hunks=\d+", "diff_hunks=%d" % len(m.pa.unified_hunks(live, new)), win); assert n == 1
+    src = src[:i] + win + src[j:]
 (d / "d6_dataplane_capture_fa2_exec.py").write_text(src)
 '''
 
