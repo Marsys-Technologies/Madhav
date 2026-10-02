@@ -69,7 +69,7 @@ while read -r fn; do
   for d in "$M" "$REPO/platform/supabase/migrations"; do
     if [ -f "$d/$fn" ]; then h=$(shasum -a 256 "$d/$fn" | cut -d' ' -f1); APPLIED_SQL+=" INSERT INTO _migrations_applied (filename, sha256) VALUES ('$fn','$h') ON CONFLICT DO NOTHING;"; break; fi
   done
-done < "$HERE/prod_ledger_2026-10-02b.txt"
+done < "$HERE/${LEDGER:-prod_ledger_2026-10-02b.txt}"
 echo "$APPLIED_SQL" | $SUDB
 # prod ALSO applied the contract helper grants before the window (1216, 1220): apply their SQL (their ledger rows came from the snapshot above)
 for f in 1216_gochara_contract_builder_grants.sql; do { echo "SET ROLE amjis_app;"; cat "$M/$f"; } | $SUDB >/dev/null 2>&1 || true; done
@@ -79,11 +79,17 @@ URL="postgresql://amjis_app:rehearsal@$PGHOST:$PGPORT/$DB"
 echo "  ledger rows: $($SUDB -c 'SELECT count(*) FROM _migrations_applied')"
 # production's authority pointer (supabase migration 527) — the prerequisite of 1236, represented by its real DDL
 { echo "SET ROLE amjis_app;"; echo "CREATE TABLE IF NOT EXISTS kala_gochara_authority (chart_id UUID PRIMARY KEY, authoritative_generation TEXT NOT NULL DEFAULT 'v1', flipped_at TIMESTAMPTZ, flipped_by TEXT, evidence_ref TEXT);"; echo "INSERT INTO kala_gochara_authority (chart_id, authoritative_generation) VALUES ('482012f1-710e-4a25-994a-93821f5871aa','3.0');"; } | $SUDB >/dev/null
+if [ "${TODAY:-0}" = 1 ]; then
+  # TODAY=1 (ledger prod_ledger_2026-10-02c.txt, read-only 2026-10-02): production ALREADY holds 1234, 1236 and 1242 — apply their real SQL
+  # (their ledger rows came from the snapshot) so the window runs against the state production is actually in, with NO unapplied predecessor.
+  for f in 1234_*.sql 1236_*.sql 1242_*.sql; do { echo "SET ROLE amjis_app;"; cat "$M"/$f; } | $SUDB >/dev/null; echo "  applied $f (already applied in production: TODAY mode)"; done
+fi
 CAP "REVOKE CREATE" FROM
 ASSERT "amjis_app has NO CREATE on schema public outside the window" "$($SUDB -c "SELECT has_schema_privilege('amjis_app','public','CREATE')")" "f"
 # (snapshot 2026-10-02b: 1230/1231/1237/1238/1239 are APPLIED in production; only 1234 and 1236 are the unselected, unapplied files below the window's ceiling)
 RUN() { CAP "GRANT CREATE" TO >/dev/null; (cd "$REPO/platform" && DATABASE_URL="$URL" npx tsx scripts/migrate.ts --only "$ONLY" 2>&1); local rc=$?; CAP "REVOKE CREATE" FROM >/dev/null; return $rc; }
 
+if [ "${TODAY:-0}" != 1 ]; then
 echo "== S3a ledger precondition: the real invocation against today's ledger =="
 set +e; OUT=$(RUN); RC=$?; set -e
 echo "$OUT" | tail -3 | sed 's/^/    /'
@@ -112,6 +118,10 @@ for f in "$M"/1234_*.sql "$M"/1235_*.sql "$M"/1236_*.sql; do
   $SUDB -c "INSERT INTO _migrations_applied (filename, sha256) VALUES ('$fn','$(shasum -a 256 "$f" | cut -d' ' -f1)') ON CONFLICT DO NOTHING"
 done
 
+else
+  echo "== S3a/S3b (TODAY mode): no unapplied predecessor remains — the routine files are already applied; the first window run is the S3c run =="
+fi
+
 echo "== S3c per-file failure recovery: make 1233 fail AFTER 1204/1206/1232 (1240 follows it) =="
 # pre-seed a P1 row's blocker the cheap way: a column of the same name makes 1233's gate refuse (migration_1233_already_applied)
 # (the gate only runs once 1155 exists; 1153-1157 apply first in the same invocation, so add the column AFTER them via a first partial run)
@@ -120,6 +130,7 @@ $SUDB -c "SET ROLE amjis_app; ALTER TABLE ka_gochara_relationship_record ADD COL
 set +e; OUT=$(RUN); RC=$?; set -e
 echo "$OUT" | tail -4 | sed 's/^/    /'
 ASSERT "the full window run FAILS at 1233" "$([ $RC -ne 0 ] && echo failed || echo ok)" "failed"
+ASSERT "and not by the ledger-precondition refusal (no unapplied predecessor named)" "$(echo "$OUT" | grep -c 'jump unapplied predecessor')" "$([ "${TODAY:-0}" = 1 ] && echo 0 || echo 0)"
 ASSERT "1204, 1206 and 1232 stay committed (separate file transactions)" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql'])")" "3"
 ASSERT "1233 is NOT recorded and its columns are not half-applied" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename='1233_gochara_p1_period_anchor.sql'")" "0"
 ASSERT "1240 is NOT recorded and none of its objects exist (the run stopped at 1233)" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename='1240_gochara_window_verification_gate.sql'")$($SUDB -c "SELECT (to_regclass('public.ka_gochara_eval_window_verification') IS NOT NULL)::int")" "00"
