@@ -2,26 +2,33 @@
 """GATE_V2: pre-run gate for every production data-plane executor / dispatch (stdlib only, read-only, fails closed).
 
 Reads, in THIS invocation:
-  (a) deploy_runs_not_completed : main-branch runs of the deploy.yml workflow whose status != completed, counted over the
-      UNION BY databaseId of  `gh run list --workflow deploy.yml --branch main --limit 100 --json databaseId,status`
+  (a) deploy_runs_not_completed : runs of the deploy.yml workflow on ANY ref whose status != completed (deploy.yml accepts
+      workflow_dispatch from any ref, so a dispatched deploy on a feature ref must be seen), EXCEPT event == pull_request
+      (build-only runs); an unknown or missing event is counted (fail closed). Counted over the UNION BY databaseId of
+      `gh run list -R Marsys-Technologies/Madhav --workflow deploy.yml --limit 100 --json databaseId,status,event`
       and one `--status <s>` query (same --limit 100) for each of queued, in_progress, waiting, pending, requested
-      (a stuck run older than the newest 100 is still found by its status query).
+      (a stuck run older than the newest 100 is still found by its status query; a per-status query that returns a FULL
+      --limit page containing pull_request runs fails closed, because a non-PR run could be hidden behind them).
+      The repository is PINNED (-R) and GH_REPO / GH_HOST / GH_ENTERPRISE_TOKEN / GITHUB_ENTERPRISE_TOKEN / GITHUB_REPOSITORY are
+      removed from gh's environment (the token variables gh needs are kept).
   (b) build_runs_in_flight      : build_runs in state planned/running/paused on ANY chart, read through psql as the
-      read-only role in ONE call that also reports `current_user`; the role must be exactly suvarna_reader.
+      read-only role in ONE call that also reports `current_user` and `current_database()`; the role must be exactly
+      suvarna_reader and the database exactly amjis.
       The psql subshell must SOURCE ~/.config/suvarna/pgenv.sh successfully (no fallback to ambient PG* variables:
       every PG* variable is removed from the subshell's environment before the file is sourced).
 PRINTS BOTH COUNTS to STDERR ("n/a" for one that could not be read), then one final grep-able line:
   GATE_V2 deploy_runs_not_completed=<n> build_runs_in_flight=<m> role=<role> OK     (exit 0)
   GATE_V2 FAIL <reason>                                                              (exit non-zero)
-STDOUT IS ALWAYS EMPTY. Never prints a credential, a child process's output, or row content.
+EVERY exit path prints exactly one GATE_V2 line, also an unexpected internal error: `GATE_V2 FAIL internal_error <ExceptionClassName>`
+(exit 2; no message text). STDOUT IS ALWAYS EMPTY. Never prints a credential, a child process's output, or row content.
 
 Exit codes:
    0  both counts read and both are 0, role is suvarna_reader
    1  at least one count is > 0
-   2  a read failed or its output was malformed / empty / timed out / non-zero exit (fail closed)
+   2  a read failed or its output was malformed / empty / not UTF-8 / timed out / non-zero exit, or an internal error (fail closed)
   94  a required binary (gh, psql, bash) is missing
   95  a test-only environment variable is set outside the test harness (ORPH_TEST_EVIDENCE_ROOT, PYTEST_CURRENT_TEST)
-  96  the psql session is not suvarna_reader (message names the unexpected role only)
+  96  the psql session is not suvarna_reader, or not connected to the amjis database (message names the unexpected value only)
   97  `source ~/.config/suvarna/pgenv.sh` failed (missing file or non-zero status)
 Test harness only (GATE_V2_UNDER_TEST=1): bypasses ONLY the test-env refusal, honours GATE_V2_PGENV (pgenv path) and
 GATE_V2_TIMEOUT_S. Without GATE_V2_UNDER_TEST=1 none of those three is read; the production pgenv path is the real file.
@@ -39,12 +46,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 EXPECTED_ROLE = "suvarna_reader"
 PGENV_PRODUCTION = "~/.config/suvarna/pgenv.sh"
+EXPECTED_DATABASE = "amjis"
+REPO = "Marsys-Technologies/Madhav"                      # pinned: gh is always called with -R REPO
 WORKFLOW = "deploy.yml"
-BRANCH = "main"
 HISTORY_LIMIT = 100
+EXCLUDED_EVENT = "pull_request"                          # build-only runs (deploy.yml build-check job); every other or unknown event counts
+GH_STRIPPED_ENV = ("GH_REPO", "GH_HOST", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "GITHUB_REPOSITORY")
+MAX_COUNT_DIGITS = 12
 NON_COMPLETED_STATUSES = ("queued", "in_progress", "waiting", "pending", "requested")
 TIMEOUT_S = 60
-BUILD_SQL = ("SELECT current_user, count(*) FROM public.build_runs "
+BUILD_SQL = ("SELECT current_user, current_database(), count(*) FROM public.build_runs "
              "WHERE state IN ('planned','running','paused')")
 # argv: 1=pgenv file, 2=psql path, 3=sql. Parameters are captured BEFORE sourcing. 97 can only come from here.
 PSQL_SCRIPT = ('f="$1"; p="$2"; q="$3"; '
@@ -97,10 +108,10 @@ def resolve_bin(name, environ):
 
 
 def run_cmd(argv, env, timeout, label):
-    """Run argv (own process group, killed on timeout). Returns (rc, stdout). Child stderr is discarded, never echoed."""
+    """Run argv (own process group, killed on timeout). Returns (rc, stdout BYTES; decode with decode_out). Child stderr is discarded, never echoed."""
     try:
         proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True, env=env, cwd=HERE, start_new_session=True)
+                                env=env, cwd=HERE, start_new_session=True)
     except (FileNotFoundError, PermissionError):
         raise GateError(EXIT_MISSING_BINARY, "missing binary: " + label)
     try:
@@ -118,12 +129,20 @@ def run_cmd(argv, env, timeout, label):
     return proc.returncode, out
 
 
+def decode_out(out, label):
+    """Strict UTF-8 (never errors='replace'): output that is not valid UTF-8 is a failed read, not a crash."""
+    try:
+        return out.decode("utf-8")
+    except UnicodeDecodeError:
+        raise GateError(EXIT_READ_FAILED, label + " output is not valid UTF-8")
+
+
 def parse_runs(out, label, allow_empty):
     if not out or not out.strip():
         raise GateError(EXIT_READ_FAILED, label + " returned empty output")
     try:
         data = json.loads(out)
-    except ValueError:
+    except (ValueError, RecursionError):                 # ValueError covers JSONDecodeError and an over-long integer literal
         raise GateError(EXIT_READ_FAILED, label + " output is not JSON")
     if not isinstance(data, list):
         raise GateError(EXIT_READ_FAILED, label + " JSON is not a list")
@@ -136,19 +155,32 @@ def parse_runs(out, label, allow_empty):
     return data
 
 
+def gh_env(environ):
+    """Environment for gh: nothing may redirect it to another repository or host; the token variables gh needs are kept."""
+    return {k: v for k, v in environ.items() if k not in GH_STRIPPED_ENV}
+
+
 def read_deploys(gh, environ, timeout):
-    base = [gh, "run", "list", "--workflow", WORKFLOW, "--branch", BRANCH, "--limit", str(HISTORY_LIMIT),
-            "--json", "databaseId,status"]
-    queries = [("gh history", base, False)]
+    base = [gh, "run", "list", "-R", REPO, "--workflow", WORKFLOW, "--limit", str(HISTORY_LIMIT),
+            "--json", "databaseId,status,event"]         # NO --branch: deploy.yml runs from workflow_dispatch on any ref
+    queries = [("gh history", base, False, False)]
     for s in NON_COMPLETED_STATUSES:
-        queries.append(("gh --status " + s, base + ["--status", s], True))
+        queries.append(("gh --status " + s, base + ["--status", s], True, True))
     not_completed = {}                                   # databaseId -> True if ANY observation is non-completed
-    for label, argv, allow_empty in queries:
-        rc, out = run_cmd(argv, dict(environ), timeout, label)
+    for label, argv, allow_empty, saturation_matters in queries:
+        rc, out = run_cmd(argv, gh_env(environ), timeout, label)
         if rc != 0:
             raise GateError(EXIT_READ_FAILED, "%s failed (rc=%d)" % (label, rc))
-        for x in parse_runs(out, label, allow_empty):
+        data = parse_runs(decode_out(out, label), label, allow_empty)
+        excluded = 0
+        for x in data:
+            if x.get("event") == EXCLUDED_EVENT:        # build-only; an unknown / missing / any other event is COUNTED
+                excluded += 1
+                continue
             not_completed[x["databaseId"]] = not_completed.get(x["databaseId"], False) or x["status"] != "completed"
+        if saturation_matters and excluded and len(data) >= HISTORY_LIMIT:
+            raise GateError(EXIT_READ_FAILED, "%s returned a full page of %d runs including pull_request runs: a non-PR run may be hidden"
+                            % (label, HISTORY_LIMIT))
     return sum(1 for v in not_completed.values() if v)
 
 
@@ -172,18 +204,36 @@ def read_builds(bash, psql, environ, timeout):
         raise GateError(EXIT_PGENV, "sourcing pgenv.sh failed (missing file or non-zero status)")
     if rc != 0:
         raise GateError(EXIT_READ_FAILED, "psql failed (rc=%d)" % rc)
-    lines = out.strip().split("\n")
-    if len(lines) != 1 or "|" not in lines[0]:
+    lines = decode_out(out, "psql").strip().split("\n")
+    fields = lines[0].split("|") if len(lines) == 1 else []
+    if len(fields) != 3:
         raise GateError(EXIT_READ_FAILED, "psql output malformed")
-    role, _, count = lines[0].partition("|")
-    if not (1 <= len(role) <= 63 and all(c.isalnum() or c in "_.$-" for c in role) and count.isdigit()):
+    role, database, count = fields
+    name_ok = lambda n: 1 <= len(n) <= 63 and n.isascii() and all(c.isalnum() or c in "_.$-" for c in n)
+    # ASCII decimal digits only (str.isdigit() accepts e.g. a superscript two, which int() rejects), bounded so int() cannot fail
+    if not (name_ok(role) and name_ok(database) and 1 <= len(count) <= MAX_COUNT_DIGITS and count.isascii() and count.isdecimal()):
         raise GateError(EXIT_READ_FAILED, "psql output malformed")
     if role != EXPECTED_ROLE:
         raise GateError(EXIT_ROLE, "psql session role is %r, expected %s" % (role, EXPECTED_ROLE))
+    if database != EXPECTED_DATABASE:
+        raise GateError(EXIT_ROLE, "psql session database is %r, expected %s" % (database, EXPECTED_DATABASE))
     return role, int(count)
 
 
 def main(environ=None):
+    """Prints exactly one GATE_V2 verdict line on EVERY exit path: an unexpected error inside the gate is `GATE_V2 FAIL internal_error
+    <ExceptionClassName>` (exit 2, class name only: no message text, no traceback, no secret)."""
+    try:
+        return _main(environ)
+    except BaseException as exc:
+        try:
+            say("GATE_V2 FAIL internal_error " + type(exc).__name__)
+        except BaseException:
+            pass
+        return EXIT_READ_FAILED
+
+
+def _main(environ=None):
     environ = dict(os.environ if environ is None else environ)
     bad = test_env_violation(environ)
     if bad:

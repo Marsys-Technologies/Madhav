@@ -1,11 +1,12 @@
 ---
 artifact: D6_ORPHAN_RECEIPTS_PLAN
-version: 3.0
+version: 3.1
 status: DRAFT_FOR_REVIEW (v3 plan hash NOT yet approved; the 1.0 and 1.1 hashes are VOID for apply; no data change made)
 date: 2026-10-02
 lane: suvarna/land/TI-d6-orphan-receipts-001
 decision: design review DESIGN_REVIEW_LEGACY_WHOLE_ASSET_RECEIPTS, option (a): D6 owner-path retirement, narrow, per stage
 changelog:
+  - "3.1 (2026-10-02): rev2 after the independent adversarial review of GATE_V2 (PR #2938 head 5aa2ccefd) and of this executor. (1) The three gate files are re-copied BYTE-IDENTICALLY from gate_v2 5aa2ccefd (new shas below; the marker is now v2 and carries an under_test flag, the gate counts deploy runs on ANY ref, pins the repo, checks current_database() = amjis, run_gated.sh exits 98 for a bad target). (2) SafeOutcome: a `committed` flag is set right after conn.commit(); an interruption (the applied write raising, KeyboardInterrupt, SIGTERM/SIGHUP) after it records `applied` with the warning `outcome_write_failed_after_commit:<ExceptionClassName>`, never `failed`; SIGTERM/SIGHUP/SIGINT are held (signal mask) around the COMMIT and SIGTERM/SIGHUP end the run with SystemExit(128+n) after the right outcome is written. A MISSING outcome.json means check the database (SIGKILL / power loss cannot be handled). (3) `D_twin_integrity_unchanged` now has its own test (and a mutation). (4) outcome.json records `under_test` (from the marker) and `warnings`. New executor sha and plan hashes; the previous v3 values (executor 61a2d613..., plan hash 67d1191b0e901cbdea20e2207e869fb55dcbbe52312facad076ebb6e02ac8f55, gate shas e74683cb... / a9951a29... / 7a1393be...) are VOID for apply."
   - "3.0 (2026-10-02): v3 = the APPLY executor for the S-L1 window, on top of 1.1 (the 1.1 files are not edited in place: v3 is a new commit; the 1.1 executor de4aad0c... and plan hash 29a9e1e5... stay recorded in section 6 as history). SS binding: (1) prerun_gate.py and run_gated.sh are BYTE-IDENTICAL copies of GATE_V2 (PR #2938) plus executor_standards.py (the v1 gate and its tests are removed); (2) main() calls require_gate_launch(...) FIRST and refuses (exit 93) unless started by run_gated.sh; the three gate files are pinned by sha256 in the executor; (3) the plan hash binds the gate shas (bind_gate_into_plan_hash) in addition to the executor and resolver shas; (4) outcome.json (dry_run | applied | failed) in the evidence directory in every mode; (5) ORPH_TEST_EVIDENCE_ROOT set outside pytest is REFUSED (exit 95), not ignored. Resolver SQL unchanged. New executor sha and plan hashes (sections 5, 6)."
   - "1.1 (2026-10-02): SS review of 1.0 (bbf9b90d3): --expect-evidence REQUIRED at --apply (MED); resolver port completed (receipt-build and spec-digest split checks, TS reason labels); --evidence-root ignored outside tests, all created evidence dirs 0700; execute() validates asset/chart itself; section 8 refreshed with the first real dry run; pre-run gate as code (prerun_gate.py + run_gated.sh). New executor sha and plan hash; the 1.0 approval (13dc3c2d..., eba9c7da...) is void."
   - "1.0 (2026-10-02): plan, executor, tests, standing orphan check and resolver port. Nothing was run against the real database (read-only catalog/data reads as suvarna_reader only)."
@@ -27,19 +28,20 @@ v1.1 (head `050eace55`) was accepted after its real dry run; v3 changes ONLY the
 | 6 | tests: gate wiring (`tests/test_gate_wiring.py`), outcome tests and evidence-root refusals (`tests/test_orphan_receipts_exec.py`), mutation proof extended to the new rules (`tests/mutation_proof.py`) | `tests/` |
 
 Behaviour notes for the reviewer.
-- `SafeOutcome` only adds that an `OSError` while writing `outcome.json` is recorded as a warning (`write_error`) and never replaces the real result or the real exception; in particular a failed outcome write AFTER `COMMIT` cannot turn a committed apply into an error (the printed result carries `THE COMMIT HAPPENED`). The vendored `executor_standards.py` is imported unmodified.
+- rev2 outcome rules. `SafeOutcome.mark_committed()` runs IMMEDIATELY after `conn.commit()`. From then on an exception (also `KeyboardInterrupt`), a SIGTERM/SIGHUP, or a block that returns without declaring an outcome records `applied` with the warning `outcome_write_failed_after_commit:<ExceptionClassName>` (and a stderr line `THE COMMIT HAPPENED`), never `failed`; before the commit it records `failed` as before. SIGTERM, SIGHUP and SIGINT are blocked (`pthread_sigmask`) around `commit()` + `mark_committed()` so none can land between the COMMIT and its bookkeeping; `main()` installs handlers that turn SIGTERM/SIGHUP into `SystemExit(128+n)` after the outcome is written. A MISSING `outcome.json` therefore means "check the database" (SIGKILL, power loss and a crash inside the final instructions leave none; they are not handled and cannot be). `outcome.json` also carries `under_test` (the launch marker's flag: true only when `run_gated.sh` was started with `GATE_V2_UNDER_TEST=1`) and `warnings`.
+- `SafeOutcome` otherwise only adds that an `OSError` while writing `outcome.json` is recorded as a warning (`write_error`) and never replaces the real result or the real exception; in particular a failed outcome write AFTER `COMMIT` cannot turn a committed apply into an error (the printed result carries `THE COMMIT HAPPENED`). The vendored `executor_standards.py` is imported unmodified.
 - A dry run without `--min-build-after` (exit 3, the counterfactual) is recorded as `failed` with check `counterfactual_no_min_build_after`: it is not a rehearsal of `--apply`. `dry_run` is recorded only for a dry run in which every check holds AND `--min-build-after` was given.
 - No `outcome.json` exists for a run that stops before its evidence directory exists: an invalid `--asset`/`--chart`, an argparse error, the launch refusal (93), the test-variable refusal (95), or an evidence root that cannot be created (exit 1, `ABORTED_ROLLED_BACK`, nothing was connected). Those carry the exit code and a stderr message only.
 - Convention-grade, as in GATE_V2: the launch marker guards against accidents (direct start, stale or edited gate), not against someone who can run python; `PYTEST_CURRENT_TEST` is likewise an accident guard.
 
 | item | value |
 |---|---|
-| v3 executor `orphan_receipts_exec.py` sha256 | `61a2d613ab9f73fdc6d59b5cb0fbf29dacc9b1f8ab609ab5f09dfc59a7493417` |
+| v3 executor `orphan_receipts_exec.py` sha256 | `d94588d6d4f7cc277ae5dbfda6a87a0b9964b8239fa36d8620845e0eecb71c61` |
 | `resolver_verdicts.sql` sha256 | `724ef0db39f61799a0bffc325e4babbeeac7918d3ce1896ab031661841b96f23` (unchanged) |
-| `prerun_gate.py` sha256 (GATE_V2) | `e74683cbfff63a982bf984e961bd9368b840ff51b2441af79a2dae2b70d532a8` |
-| `run_gated.sh` sha256 (GATE_V2) | `a9951a29cb1372946c028073e8c7260fa70034aa2ab013ed71baed7372c1fdcc` |
-| `executor_standards.py` sha256 (GATE_V2) | `7a1393beb439c1fbc6aed87c7ee4fe8306a7fdebafa548bc4b0a47d830cdb664` |
-| **v3 plan hash, ga_positions on 482012f1-710e-4a25-994a-93821f5871aa** | `67d1191b0e901cbdea20e2207e869fb55dcbbe52312facad076ebb6e02ac8f55` |
+| `prerun_gate.py` sha256 (GATE_V2) | `ba65d82a338257bd7b3b1ae37df312fb382ef548291a211eadbc2538a987ef73` |
+| `run_gated.sh` sha256 (GATE_V2) | `305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076` |
+| `executor_standards.py` sha256 (GATE_V2) | `7ca8ea9cc3422f41d38ced27f6501d666dcce78918e38e1d255b8dabcdd3c38d` |
+| **v3 plan hash, ga_positions on 482012f1-710e-4a25-994a-93821f5871aa** | `50d5710a17b210d37e21afdd6115f131f52560b412f77e36c74cf4d70422cd36` |
 
 ## 1. Purpose
 
@@ -96,9 +98,9 @@ The real dry run and the real apply MUST be started as `./run_gated.sh python3 o
 
 | file | sha256 |
 |---|---|
-| `prerun_gate.py` | `e74683cbfff63a982bf984e961bd9368b840ff51b2441af79a2dae2b70d532a8` |
-| `run_gated.sh` | `a9951a29cb1372946c028073e8c7260fa70034aa2ab013ed71baed7372c1fdcc` |
-| `executor_standards.py` | `7a1393beb439c1fbc6aed87c7ee4fe8306a7fdebafa548bc4b0a47d830cdb664` |
+| `prerun_gate.py` | `ba65d82a338257bd7b3b1ae37df312fb382ef548291a211eadbc2538a987ef73` |
+| `run_gated.sh` | `305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076` |
+| `executor_standards.py` | `7ca8ea9cc3422f41d38ced27f6501d666dcce78918e38e1d255b8dabcdd3c38d` |
 
 What it does in one invocation, read-only and fail-closed: `run_gated.sh` (`set -euo pipefail`, refuses the test environment with exit 95, resolves python3 / gh / psql / bash once as absolute paths and prints them) runs `prerun_gate.py`, which reads (a) the `deploy.yml` runs on `main` whose status is not `completed` (union by `databaseId` of the newest 100 and one `--status` query per non-completed status) and (b) `build_runs` in state `planned/running/paused` on ANY chart through `psql` as `suvarna_reader` (`pgenv.sh` sourced in a subshell with every ambient `PG*` removed; the session role must be exactly `suvarna_reader`), prints both counts to stderr and exits 0 only if both are 0. Only then does `run_gated.sh` set `GATE_V2_LAUNCH` and `exec` the target; otherwise the target is NOT started and the gate's exit code (1 non-zero count, 2 read failure, 94 missing binary, 95 test env, 96 wrong role, 97 pgenv) is returned.
 
@@ -111,17 +113,17 @@ ONLY AFTER the ga_positions S-L1 rebuild is verified by direct DB read (new run 
 1. Record `T0` = the instant the S-L1 ga_positions rebuild was dispatched (UTC, with offset). That is `--min-build-after`.
 2. After the rebuild is verified: `./run_gated.sh python3 orphan_receipts_exec.py --asset ga_positions --chart 482012f1-710e-4a25-994a-93821f5871aa --dry-run --min-build-after <T0>` (`<T0>` = the S-L1 `ga_positions` dispatch time, UTC with offset); read the printed JSON: expect `status DRY_RUN_ROLLED_BACK_ALL_CHECKS_HOLD`, exit 0, `verdict_diff == {"ga_positions": ["receipt_not_proven", "RESOLVED"]}`, rowcounts 1/1, all A diffs 0, `evidence_digest`.
 3. SS approves the plan hash (section 6) and the dry-run evidence.
-4. `./run_gated.sh python3 orphan_receipts_exec.py --asset ga_positions --chart 482012f1-710e-4a25-994a-93821f5871aa --apply --expect-plan 67d1191b0e901cbdea20e2207e869fb55dcbbe52312facad076ebb6e02ac8f55 --min-build-after <T0> --expect-evidence <digest from step 2>` (`--expect-evidence` is mandatory); expect `COMMITTED`.
+4. `./run_gated.sh python3 orphan_receipts_exec.py --asset ga_positions --chart 482012f1-710e-4a25-994a-93821f5871aa --apply --expect-plan 50d5710a17b210d37e21afdd6115f131f52560b412f77e36c74cf4d70422cd36 --min-build-after <T0> --expect-evidence <digest from step 2>` (`--expect-evidence` is mandatory); expect `COMMITTED`.
 5. Read-only after commit: `orphan_count.sql` no longer lists ga_positions; `resolver_verdicts.sql` shows ga_positions RESOLVED; then served-surface acceptance (inquiry lifecycle tokens and sessions pinned to the old generation see a changed generation identity: fail closed, in-flight inquiries restart).
 
 S-L2: the same executor, `--asset bo_laksana | bo_sangati | bo_cgm_motifs | bo_upaya`, one apply each after that asset's S-L2 rebuild is verified. `bo_upaya` must additionally have been rebuilt under its CURRENT spec (`e73b69a6`; its declared receipt is under a retired spec today) or V refuses (the asset would not become RESOLVED). `bo_sangati`'s declared receipt was rebuilt 09-11 (before S-L2): only `--min-build-after` distinguishes it from the S-L2 rebuild, which is why the parameter is mandatory. Plan hashes for these (computed offline; valid only while the executor, `resolver_verdicts.sql` and the three gate files are byte-identical to this PR; re-run `make_plan.py --asset <a>`; the v1.1 hashes of these four are void):
 
 | asset | plan hash (chart 482012f1-710e-4a25-994a-93821f5871aa) |
 |---|---|
-| bo_laksana | `e5bb9e2b759cb7655de5892138c8a85a52a8fdcce9087f0ac81c727e73c3aa5f` |
-| bo_sangati | `c927885c24bf1a651ad175390d556ef10acda6d63a4f3fdfa61b91d98c674dad` |
-| bo_cgm_motifs | `19b889f9660b20f1939d56ad0ce1d4c4d4157f860b8935f8014686a56976783f` |
-| bo_upaya | `8f51b0aa627b68c70d51603bf98a1b0907545a1aa5a15379f37c294869883953` |
+| bo_laksana | `2c03f0238788dbc22a3154a3e431b6a9f74a1bfbebc5fa43ca72b0d094adda20` |
+| bo_sangati | `0b640586a7cd1ff224d296671becf2bc82d7ed1a260819986ce10d983111ec35` |
+| bo_cgm_motifs | `fa2a0ac5de45430ba33fb88850837a3f1e2c569c97e55db482f6c61aa472a9a4` |
+| bo_upaya | `c60cd45a625545372f0b18abc7e3cc478a6f93390f58011be949c00a655883d1` |
 
 ## 6. Plan hash (what is bound, what is not)
 
@@ -131,10 +133,10 @@ S-L2: the same executor, `--asset bo_laksana | bo_sangati | bo_cgm_motifs | bo_u
 
 | item | value |
 |---|---|
-| executor `orphan_receipts_exec.py` sha256 (v3) | `61a2d613ab9f73fdc6d59b5cb0fbf29dacc9b1f8ab609ab5f09dfc59a7493417` |
+| executor `orphan_receipts_exec.py` sha256 (v3) | `d94588d6d4f7cc277ae5dbfda6a87a0b9964b8239fa36d8620845e0eecb71c61` |
 | `resolver_verdicts.sql` sha256 | `724ef0db39f61799a0bffc325e4babbeeac7918d3ce1896ab031661841b96f23` |
-| `prerun_gate.py` / `run_gated.sh` / `executor_standards.py` sha256 | `e74683cbfff63a982bf984e961bd9368b840ff51b2441af79a2dae2b70d532a8` / `a9951a29cb1372946c028073e8c7260fa70034aa2ab013ed71baed7372c1fdcc` / `7a1393beb439c1fbc6aed87c7ee4fe8306a7fdebafa548bc4b0a47d830cdb664` |
-| **plan hash v3, ga_positions on 482012f1-710e-4a25-994a-93821f5871aa** | `67d1191b0e901cbdea20e2207e869fb55dcbbe52312facad076ebb6e02ac8f55` |
+| `prerun_gate.py` / `run_gated.sh` / `executor_standards.py` sha256 | `ba65d82a338257bd7b3b1ae37df312fb382ef548291a211eadbc2538a987ef73` / `305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076` / `7ca8ea9cc3422f41d38ced27f6501d666dcce78918e38e1d255b8dabcdd3c38d` |
+| **plan hash v3, ga_positions on 482012f1-710e-4a25-994a-93821f5871aa** | `50d5710a17b210d37e21afdd6115f131f52560b412f77e36c74cf4d70422cd36` |
 
 History (all VOID for apply; kept as the record): v1.0 executor `eba9c7da...`, plan hash `13dc3c2d...`; v1.1 (head `050eace55`) executor `de4aad0cdec65ed91c2f1569a658008c0fa1b8eae24b1fd0849c19f656aef9d2`, plan hash `29a9e1e5d08a006c1f58255a61cf8c7f6c1e0d0138279268500b33250d3e9967` (its real dry run ran and was accepted by SS).
 
@@ -181,8 +183,8 @@ No data change. No migration, no registry edit, no code change to `served_genera
 
 ## 10. Verification performed
 
-- 126 tests (105 executor on a disposable local PostgreSQL, 21 gate-wiring / launch / plan-binding tests that need no database) pass on PostgreSQL 15 (initdb in a temp dir, own port; non-superuser CREATEROLE admin so the transient GRANT/REVOKE of `amjis_app` is exercised) and the same suite on PostgreSQL 17 (superuser admin). All v1.1 coverage is retained: happy path, rowcounts, before-image content/modes/hashes, reversal byte-for-byte, dry-run byte-identity, generalisation to a second asset, chart scoping, every refusal of section 3, `--expect-evidence` required, `execute()` parameter validation, evidence modes under a permissive umask, resolver split cases. The v1 gate tests (23) are replaced by the wiring tests; the GATE_V2 gate itself is tested in `gate_v2/tests` (PR #2938).
-- Mutation proof (`tests/mutation_proof.py`): 34 mutations, each turns its test red (every one first proven green un-mutated): the 11 v1.1 executor/resolver rules kept (P5, P3, V, A, P1, `--expect-evidence` optional x2, E compare, `execute()` validation, resolver receipt-build and spec-digest splits) plus 23 new: launch check removed / moved after argument parsing, marker verification bypassed, gate / launcher / `executor_standards.py` pin not enforced, a pinned sha changed, a gate file edited (no longer byte-identical), plan hash not folding the gate fingerprint, plan text not naming the standards sha, outcome not declared for dry run / apply, failed outcome losing its check names, counterfactual recorded as dry_run, argument refusals and the naive-timezone refusal not recorded, an outcome write error masking the result, run-directory reuse on collision, `outcome_guard` not recording an exception or a silent return, the evidence-root variable honoured outside pytest, an empty value falling back to the real root, the flag honoured without the variable. The two v1.1 gate mutations moved to `gate_v2/tests/mutation_proof.py` (19 mutations there).
+- 142 tests (119 executor on a disposable local PostgreSQL, 23 gate-wiring / launch / plan-binding tests that need no database) pass on PostgreSQL 15 (initdb in a temp dir, own port; non-superuser CREATEROLE admin so the transient GRANT/REVOKE of `amjis_app` is exercised) and the same suite on PostgreSQL 17 (superuser admin). All v1.1 coverage is retained: happy path, rowcounts, before-image content/modes/hashes, reversal byte-for-byte, dry-run byte-identity, generalisation to a second asset, chart scoping, every refusal of section 3, `--expect-evidence` required, `execute()` parameter validation, evidence modes under a permissive umask, resolver split cases. The v1 gate tests (23) are replaced by the wiring tests; the GATE_V2 gate itself is tested in `gate_v2/tests` (PR #2938).
+- Mutation proof (`tests/mutation_proof.py`): 42 mutations (the 34 above plus 8 for rev2: twin-integrity check, commit marker, applied-after-commit recording, signal mask, signal handlers, launch fingerprint to execute, under_test recording and refusal), each turns its test red (every one first proven green un-mutated): the 11 v1.1 executor/resolver rules kept (P5, P3, V, A, P1, `--expect-evidence` optional x2, E compare, `execute()` validation, resolver receipt-build and spec-digest splits) plus 23 new: launch check removed / moved after argument parsing, marker verification bypassed, gate / launcher / `executor_standards.py` pin not enforced, a pinned sha changed, a gate file edited (no longer byte-identical), plan hash not folding the gate fingerprint, plan text not naming the standards sha, outcome not declared for dry run / apply, failed outcome losing its check names, counterfactual recorded as dry_run, argument refusals and the naive-timezone refusal not recorded, an outcome write error masking the result, run-directory reuse on collision, `outcome_guard` not recording an exception or a silent return, the evidence-root variable honoured outside pytest, an empty value falling back to the real root, the flag honoured without the variable. The two v1.1 gate mutations moved to `gate_v2/tests/mutation_proof.py` (19 mutations there).
 - v3 specific tests: the three gate files equal the gate_v2 shas and the executor pins; the plan hash changes with each gate sha and equals `bind_gate_into_plan_hash`; `launch_gate` refuses no / empty / malformed / forged / stale / future markers, a marker made over an edited gate file, and live files that differ from the pins; the real CLI as a subprocess is refused (93) when started directly (also for `--help`), with an edited `executor_standards.py` or gate file even with a marker made for it, and with the stray test variable (95); a valid marker passes the launch check and the refusal is recorded; `run_gated.sh` with PATH shims for gh / psql / python3 starts the executor only when the gate passes (deploy in flight, build in flight, wrong role: not started); `outcome.json` in dry run, apply, refused apply and dry run, counterfactual, every argument refusal, a failed connection (exception class only, never its message), an exception and a `SystemExit` inside the transaction, a lock timeout; an unwritable `outcome.json` never masks a committed apply; two runs in the same instant never overwrite each other's outcome.
 - Fixture tables are the production definitions as read from the catalog (`\d`), see `tests/fixture_schema.py` for the two deliberately minimal tables.
 - Read-only as `suvarna_reader`: `orphan_count.sql` and `resolver_verdicts.sql` run against production (README.md); the executor itself was never run against any real database by this work, and the admin secret was never read.
@@ -216,9 +218,9 @@ RESET ROLE
 -- commit only if: both DELETE rowcounts == 1; the row-key+md5 diff of BOTH tables is exactly the two removed keys (no other row of any table changed); the per-asset verdict diff over ALL assets is exactly {ga_positions: receipt_not_proven -> RESOLVED}; relacl, owner, relrowsecurity, relforcerowsecurity, pg_policy and pg_auth_members diffs between snapshot A and B are all empty; chart-scoped receipt<->freshness twin integrity unchanged
 -- --dry-run: the same statements, then ROLLBACK, always. --apply: COMMIT only if every check above holds, --expect-plan equals this plan hash AND --expect-evidence (REQUIRED) equals the evidence digest computed in this transaction (check E).
 -- the real run is started ONLY through run_gated.sh <executor> <args> (GATE_V2): prerun_gate.py must read zero non-completed main deploy.yml runs and zero planned/running/paused build_runs as suvarna_reader, else the executor is not started; run_gated.sh then sets GATE_V2_LAUNCH and the executor REFUSES (exit 93) unless that marker verifies against the gate files pinned below.
--- in every mode the executor writes outcome.json (status dry_run | applied | failed, UTC time, executor sha, plan hash, gate shas, evidence digest, failed check names) into its evidence directory; it refuses (exit 95) when ORPH_TEST_EVIDENCE_ROOT is set outside a pytest run.
--- gate files (byte-identical to gate_v2, PR #2938): prerun_gate.py sha256 e74683cbfff63a982bf984e961bd9368b840ff51b2441af79a2dae2b70d532a8; run_gated.sh sha256 a9951a29cb1372946c028073e8c7260fa70034aa2ab013ed71baed7372c1fdcc; executor_standards.py sha256 7a1393beb439c1fbc6aed87c7ee4fe8306a7fdebafa548bc4b0a47d830cdb664
+-- in every mode the executor writes outcome.json (status dry_run | applied | failed, UTC time, executor sha, plan hash, gate shas, evidence digest, failed check names, under_test from the launch marker, warnings) into its evidence directory (after COMMIT an interruption records applied with a warning, never failed; a MISSING outcome.json means check the database); it refuses (exit 95) when ORPH_TEST_EVIDENCE_ROOT is set outside a pytest run.
+-- gate files (byte-identical to gate_v2, PR #2938): prerun_gate.py sha256 ba65d82a338257bd7b3b1ae37df312fb382ef548291a211eadbc2538a987ef73; run_gated.sh sha256 305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076; executor_standards.py sha256 7ca8ea9cc3422f41d38ced27f6501d666dcce78918e38e1d255b8dabcdd3c38d
 -- plan hash = bind_gate_into_plan_hash(sha256(plan text + "\n" + DIFF), prerun_gate.py sha256, run_gated.sh sha256)
 -- resolver port: resolver_verdicts.sql sha256 724ef0db39f61799a0bffc325e4babbeeac7918d3ce1896ab031661841b96f23
--- executor: orphan_receipts_exec.py sha256 61a2d613ab9f73fdc6d59b5cb0fbf29dacc9b1f8ab609ab5f09dfc59a7493417
+-- executor: orphan_receipts_exec.py sha256 d94588d6d4f7cc277ae5dbfda6a87a0b9964b8239fa36d8620845e0eecb71c61
 ```

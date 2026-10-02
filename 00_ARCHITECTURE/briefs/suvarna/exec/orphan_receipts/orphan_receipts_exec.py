@@ -12,7 +12,11 @@ runs == 0 and planned/running/paused build_runs == 0, as suvarna_reader) and onl
 file. main() calls require_gate_launch(...) FIRST and refuses (exit 93) without a verifying marker, or when any of the three
 gate files next to it (prerun_gate.py, run_gated.sh, executor_standards.py: byte-identical to gate_v2) differs from the sha256
 pinned in GATE_PINS. In every mode (dry run, apply, any refusal after the arguments are valid, any exception) it writes
-outcome.json (executor_standards.outcome_guard) into the run's evidence directory.
+outcome.json (executor_standards.outcome_guard) into the run's evidence directory. outcome.json also records `under_test` (from the
+launch marker) and `warnings`. **A MISSING outcome.json means "check the database": SIGKILL, power loss or a crash right after COMMIT
+can leave none** (it never means "nothing happened"). After COMMIT a failure while writing it records `applied` with the warning
+`outcome_write_failed_after_commit:<ExceptionClassName>`, never `failed`; SIGTERM / SIGHUP raise a clean SystemExit(128+signal) that is
+held off (signal mask) until the COMMIT and its bookkeeping are done, so they too end in a correct outcome.json.
 
   exit codes: 0 ok / committed; 1 apply refused or aborted (or an unexpected failure); 2 dry-run refused; 3 dry-run
               counterfactual (no --min-build-after); 93 not launched by run_gated.sh / gate files differ from the pins;
@@ -47,6 +51,7 @@ import json
 import os
 import pathlib
 import re
+import signal
 import subprocess
 import sys
 import uuid
@@ -84,9 +89,9 @@ EXIT_TEST_ENV = 95                            # a test-only variable is set outs
 # SS binding (GATE_V2, PR #2938): the three files next to this executor are BYTE-IDENTICAL copies of gate_v2's. Their sha256
 # are pinned here (so a changed gate file is refused at start, in every mode) and folded into the plan hash.
 GATE_PINS = {
-    "prerun_gate.py": "e74683cbfff63a982bf984e961bd9368b840ff51b2441af79a2dae2b70d532a8",
-    "run_gated.sh": "a9951a29cb1372946c028073e8c7260fa70034aa2ab013ed71baed7372c1fdcc",
-    "executor_standards.py": "7a1393beb439c1fbc6aed87c7ee4fe8306a7fdebafa548bc4b0a47d830cdb664",
+    "prerun_gate.py": "ba65d82a338257bd7b3b1ae37df312fb382ef548291a211eadbc2538a987ef73",
+    "run_gated.sh": "305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076",
+    "executor_standards.py": "7ca8ea9cc3422f41d38ced27f6501d666dcce78918e38e1d255b8dabcdd3c38d",
 }
 
 # The two DELETEs. Shared by the executor and the rendered plan text so they cannot drift apart.
@@ -173,7 +178,7 @@ def render_plan(asset, chart, sha, vsha=None, gate=None):
         "-- commit only if: both DELETE rowcounts == 1; the row-key+md5 diff of BOTH tables is exactly the two removed keys (no other row of any table changed); the per-asset verdict diff over ALL assets is exactly {%s: %s -> %s}; relacl, owner, relrowsecurity, relforcerowsecurity, pg_policy and pg_auth_members diffs between snapshot A and B are all empty; chart-scoped receipt<->freshness twin integrity unchanged" % ((asset,) + EXPECTED_VERDICT),
         "-- --dry-run: the same statements, then ROLLBACK, always. --apply: COMMIT only if every check above holds, --expect-plan equals this plan hash AND --expect-evidence (REQUIRED) equals the evidence digest computed in this transaction (check E).",
         "-- the real run is started ONLY through run_gated.sh <executor> <args> (GATE_V2): prerun_gate.py must read zero non-completed main deploy.yml runs and zero planned/running/paused build_runs as suvarna_reader, else the executor is not started; run_gated.sh then sets GATE_V2_LAUNCH and the executor REFUSES (exit 93) unless that marker verifies against the gate files pinned below.",
-        "-- in every mode the executor writes outcome.json (status dry_run | applied | failed, UTC time, executor sha, plan hash, gate shas, evidence digest, failed check names) into its evidence directory; it refuses (exit 95) when ORPH_TEST_EVIDENCE_ROOT is set outside a pytest run.",
+        "-- in every mode the executor writes outcome.json (status dry_run | applied | failed, UTC time, executor sha, plan hash, gate shas, evidence digest, failed check names, under_test from the launch marker, warnings) into its evidence directory (after COMMIT an interruption records applied with a warning, never failed; a MISSING outcome.json means check the database); it refuses (exit 95) when ORPH_TEST_EVIDENCE_ROOT is set outside a pytest run.",
         "-- gate files (byte-identical to gate_v2, PR #2938): prerun_gate.py sha256 %s; run_gated.sh sha256 %s; executor_standards.py sha256 %s" % (
             gate["prerun_gate.py"], gate["run_gated.sh"], gate["executor_standards.py"]),
         "-- plan hash = bind_gate_into_plan_hash(sha256(plan text + \"\\n\" + DIFF), prerun_gate.py sha256, run_gated.sh sha256)",
@@ -580,13 +585,30 @@ class SafeOutcome(es.outcome_guard):
     end in an outcome.json (status failed) when the file can be written."""
 
     write_error = None
+    committed = False
+    commit_digest = None
 
-    def _write(self, status, digest=None, checks=()):
+    def mark_committed(self, digest):
+        """Called IMMEDIATELY after conn.commit(): from here on the truth is `applied`, whatever happens next."""
+        self.committed, self.commit_digest = True, digest
+
+    def _write(self, status, digest=None, checks=(), warnings=()):
         try:
-            super()._write(status, digest, checks)
+            super()._write(status, digest, checks, warnings)
         except OSError as exc:
             self.write_error = type(exc).__name__
             self.done = True
+
+    def __exit__(self, exc_type, exc, tb):
+        if self.committed and not self.done:
+            # rows ARE committed but no outcome was recorded (the applied write raised, or a signal/KeyboardInterrupt came first):
+            # record `applied` + the cause, never the `failed` the base class would write for an exception
+            why = re.sub(r"[^A-Za-z0-9_.:\-]", "_", exc_type.__name__ if exc_type is not None else "outcome_not_declared")[:40]
+            sys.stderr.write("WARNING: THE COMMIT HAPPENED but the run was interrupted (%s) before outcome.json was recorded; recording "
+                             "applied with a warning. Verify in the database.\n" % why)
+            self._write("applied", self.commit_digest, (), ["outcome_write_failed_after_commit:" + why])
+            return False
+        return super().__exit__(exc_type, exc, tb)
 
 
 def conclude(o, result, kind, digest=None, checks=()):
@@ -611,14 +633,30 @@ def refuse(o, check, message):
     raise SystemExit("REFUSED: " + message)
 
 
-def execute(args, connect, now=None):
-    """Returns (exit_code, result dict). `connect` is the only door to a database."""
+_HANDLED_SIGNALS = (signal.SIGTERM, signal.SIGHUP)
+_HELD_SIGNALS = {signal.SIGTERM, signal.SIGHUP, signal.SIGINT}      # held (not handled) around the COMMIT: SIGINT keeps its KeyboardInterrupt
+
+
+def _on_terminate(signum, frame):
+    raise SystemExit(128 + signum)
+
+
+def install_signal_handlers():
+    """SIGTERM / SIGHUP end the run with a clean SystemExit(128+n): SafeOutcome then records `failed` (before COMMIT: the connection
+    close rolls the transaction back) or `applied` + a warning (after COMMIT). SIGKILL cannot be handled: no outcome.json."""
+    for sig in _HANDLED_SIGNALS:
+        signal.signal(sig, _on_terminate)
+
+
+def execute(args, connect, now=None, gate_fp=None):
+    """Returns (exit_code, result dict). `connect` is the only door to a database. `gate_fp` is what launch_gate() returned
+    (fingerprint + under_test from the marker); without it the outcome records under_test false."""
     now = now or dt.datetime.now(dt.timezone.utc)
     evidence_root = resolve_evidence_root(getattr(args, "evidence_root", None))   # exit 95 on a stray test variable
     if validate_params(args.asset, args.chart) != args.chart:
         raise SystemExit("REFUSED: --chart must be the canonical lowercase uuid text")
     sha = exec_sha()
-    gate_fp = es.fingerprint()
+    gate_fp = gate_fp or es.fingerprint()
     phash = plan_hash(args.asset, args.chart, sha)
     try:   # BEFORE any argument gate and any connection: every later outcome (also a refusal) lands in this directory
         run_dir = make_run_dir(evidence_root, args.asset, args.chart, now.strftime("%Y%m%dT%H%M%S%fZ"))  # microseconds
@@ -654,7 +692,12 @@ def execute(args, connect, now=None):
             digest = result["evidence_digest"]
             if args.apply and good:
                 result["status"] = "COMMITTED"
-                conn.commit()
+                signal.pthread_sigmask(signal.SIG_BLOCK, _HELD_SIGNALS)       # SIGTERM/SIGHUP/SIGINT wait until the COMMIT is recorded
+                try:
+                    conn.commit()
+                    o.mark_committed(digest)                                  # IMMEDIATELY after the commit
+                finally:
+                    signal.pthread_sigmask(signal.SIG_UNBLOCK, _HELD_SIGNALS)  # a pending signal is delivered here, committed is already True
                 save_result(result)
                 return 0, conclude(o, result, "applied", digest)
             conn.rollback()  # --dry-run ALWAYS ends here
@@ -720,10 +763,11 @@ def launch_gate(environ=None):
 
 
 def main(argv=None):
-    launch_gate()                       # FIRST: before the arguments are even parsed
+    gate_fp = launch_gate()             # FIRST: before the arguments are even parsed
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    install_signal_handlers()
     try:
-        code, result = execute(args, connect_admin)
+        code, result = execute(args, connect_admin, gate_fp=gate_fp)
     except SystemExit:
         raise
     except Exception as exc:

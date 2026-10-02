@@ -395,6 +395,25 @@ def test_refuse_other_row_touched_by_a_side_effect_without_verdict_change(runner
     assert "V_verdict_diff_is_exactly_the_asset" not in failed(res)           # verdicts unchanged: ONLY the md5 map caught it
 
 
+def test_refuse_twin_integrity_change_when_only_the_pairing_breaks(runner, cluster, db):
+    """A stray freshness row (no receipt twin: twin_integrity [1, 0] before) is removed by a trigger during the DELETE ([0, 0] after).
+    No resolver verdict moves (verdicts start from receipts), so the verdict check holds and ONLY the twin check can name it."""
+    cluster.su(db, "INSERT INTO asset_freshness (asset_id, chart_id, partition_key, freshness_state, receipt_version) "
+                   "VALUES ('ka_stale_like', %s, 'stray', 'stale', 'v')", (CANON,))
+    cluster.su(db, "CREATE FUNCTION public.twin_fn() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS "
+                   "$f$ BEGIN DELETE FROM public.asset_freshness WHERE asset_id='ka_stale_like' AND partition_key='stray'; RETURN NULL; END $f$")
+    cluster.su(db, "CREATE TRIGGER twin AFTER DELETE ON public.asset_provenance_receipts FOR EACH ROW EXECUTE FUNCTION public.twin_fn()")
+    res = refused(runner, cluster, db, {"D_twin_integrity_unchanged"})
+    assert "V_verdict_diff_is_exactly_the_asset" not in failed(res)           # the verdict diff stays exactly {asset: RESOLVED}
+    d = res["checks"]["D_twin_integrity_unchanged"]["detail"]
+    assert d["freshness_without_receipt_and_receipt_without_freshness_before"] == [1, 0] and d["after"] == [0, 0]
+
+
+def test_twin_integrity_holds_on_the_clean_path(runner):
+    code, res = runner.run("dry")
+    assert code == 0 and res["checks"]["D_twin_integrity_unchanged"]["ok"] is True
+
+
 def test_refuse_delete_rowcount_not_1_when_state_guard_excludes_row(runner, cluster, db, mod):
     """A BEFORE DELETE trigger that swallows the delete (RETURN NULL) yields rowcount 0: refused, not committed."""
     cluster.su(db, "CREATE FUNCTION public.swallow_fn() RETURNS trigger LANGUAGE plpgsql AS $f$ BEGIN RETURN NULL; END $f$")
@@ -650,11 +669,12 @@ def test_unservable_rows_labels_follow_partitionDefect(cluster, db, mod):
 
 # ------------------------------------------------------------------------------------------------ v3: outcome.json in every mode
 OUTCOME_KEYS = {"schema", "status", "utc", "executor_sha256", "plan_hash", "gate_sha256", "run_gated_sha256", "evidence_digest",
-                "failed_checks"}
+                "failed_checks", "under_test", "warnings"}
 
 
-def assert_outcome(o, mod, status, res=None, checks=()):
+def assert_outcome(o, mod, status, res=None, checks=(), warnings=(), under_test=False):
     assert set(o) == OUTCOME_KEYS and o["schema"] == "executor_outcome_v1" and o["status"] == status
+    assert o["warnings"] == list(warnings) and o["under_test"] is under_test
     assert o["executor_sha256"] == mod.exec_sha() and o["plan_hash"] == mod.plan_hash("ga_positions", CANON)
     assert o["gate_sha256"] == mod.GATE_PINS["prerun_gate.py"] and o["run_gated_sha256"] == mod.GATE_PINS["run_gated.sh"]
     assert o["failed_checks"] == list(checks)
@@ -816,3 +836,161 @@ def test_outcome_guard_silent_return_and_unwritable_dir(mod, tmp_path):
                 raise ValueError("the real problem")
     finally:
         ro.chmod(0o700)
+
+
+# ------------------------------------------------------------------------------------------------ rev2: outcome after COMMIT, signals, under_test
+class CommitProxy:
+    """Delegates to a real psycopg connection; `before` runs just before commit() and `after` just after it (both optional)."""
+
+    def __init__(self, conn, before=None, after=None):
+        self._c, self._before, self._after = conn, before, after
+
+    def commit(self):
+        if self._before:
+            self._before()
+        self._c.commit()
+        if self._after:
+            self._after()
+
+    def __getattr__(self, name):
+        return getattr(self._c, name)
+
+
+def only_applied_rows_changed(cluster, db):
+    assert rows(cluster, db)[0] == [(DECL, "proven")] and rows(cluster, db)[1] == [(DECL, "fresh")]
+
+
+@pytest.mark.parametrize("exc", [RuntimeError("synthetic"), KeyboardInterrupt()], ids=["RuntimeError", "KeyboardInterrupt"])
+def test_a_failure_writing_the_applied_outcome_after_commit_records_applied_with_a_warning_never_failed(mod, runner, cluster, db, exc):
+    _, dry = runner.run("dry")
+    real = mod.es.write_outcome
+    calls = []
+
+    def flaky(evidence_dir, status, *a, **k):
+        calls.append(status)
+        if status == "applied" and calls.count("applied") == 1:
+            raise exc                                                           # the FIRST applied write dies after the commit
+        return real(evidence_dir, status, *a, **k)
+    mod.es.write_outcome = flaky
+    try:
+        with pytest.raises(type(exc)):
+            runner.run("apply", expect_evidence=dry["evidence_digest"])
+    finally:
+        mod.es.write_outcome = real
+    only_applied_rows_changed(cluster, db)                                      # the COMMIT happened
+    last = outcomes(runner)[-1]
+    assert_outcome(last, mod, "applied", None, warnings=["outcome_write_failed_after_commit:" + type(exc).__name__])
+    assert last["evidence_digest"] == dry["evidence_digest"]
+    assert "failed" not in [x["status"] for x in outcomes(runner)] and "failed" not in calls
+
+
+def test_a_failure_before_the_commit_is_recorded_as_failed_and_nothing_is_committed(mod, runner, cluster, db):
+    _, dry = runner.run("dry")
+    before = cluster.image(db)
+
+    def boom():
+        raise RuntimeError("synthetic: commit never reached the server")
+    with pytest.raises(RuntimeError):
+        runner.m.execute(runner.args("apply", expect_evidence=dry["evidence_digest"]),
+                         lambda: CommitProxy(cluster.conn(db, user=conftest.ADMIN_USER), before=boom))
+    assert_outcome(outcomes(runner)[-1], mod, "failed", None, ["RuntimeError"])
+    assert_unchanged(cluster, db, before)
+
+
+def test_an_exception_in_the_first_step_after_the_commit_still_ends_in_applied(mod, runner, cluster, db, monkeypatch):
+    _, dry = runner.run("dry")
+
+    def boom(result):
+        raise RuntimeError("synthetic: first step after commit")
+    monkeypatch.setattr(mod, "save_result", boom)
+    with pytest.raises(RuntimeError):
+        runner.run("apply", expect_evidence=dry["evidence_digest"])
+    only_applied_rows_changed(cluster, db)
+    assert_outcome(outcomes(runner)[-1], mod, "applied", None, warnings=["outcome_write_failed_after_commit:RuntimeError"])
+
+
+def test_a_sigint_arriving_during_commit_is_held_too(mod, runner, cluster, db):
+    import os
+    import signal
+    _, dry = runner.run("dry")
+    old = signal.signal(signal.SIGINT, signal.default_int_handler)             # a background / nohup run inherits SIGINT=ignored
+    try:
+        with pytest.raises(KeyboardInterrupt):
+            runner.m.execute(runner.args("apply", expect_evidence=dry["evidence_digest"]),
+                             lambda: CommitProxy(cluster.conn(db, user=conftest.ADMIN_USER), before=lambda: os.kill(os.getpid(), signal.SIGINT)))
+    finally:
+        signal.signal(signal.SIGINT, old)
+    only_applied_rows_changed(cluster, db)
+    assert_outcome(outcomes(runner)[-1], mod, "applied", None, warnings=["outcome_write_failed_after_commit:KeyboardInterrupt"])
+
+
+SIGNAL_SCRIPT = """
+import importlib.util, os, signal, sys, time
+spec = importlib.util.spec_from_file_location("orphan_receipts_exec", %(exec)r)
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m.install_signal_handlers()
+with m.SafeOutcome(%(ev)r, %(exec)r, "a" * 64, m.es.fingerprint()) as o:
+    if %(committed)s:
+        o.mark_committed("b" * 64)
+    os.kill(os.getpid(), signal.%(sig)s)
+    time.sleep(5)
+    o.dry_run(None)
+"""
+
+
+@pytest.mark.parametrize("sig,code", [("SIGTERM", 143), ("SIGHUP", 129)])
+@pytest.mark.parametrize("committed", [False, True], ids=["before_commit", "after_commit"])
+def test_signal_handlers_exit_cleanly_after_writing_the_right_outcome(tmp_path, sig, code, committed):
+    import subprocess
+    import sys
+    ev = tmp_path / "ev"
+    r = subprocess.run([sys.executable, "-c", SIGNAL_SCRIPT % {"exec": str(EXEC_DIR / "orphan_receipts_exec.py"), "ev": str(ev),
+                                                               "committed": committed, "sig": sig}], capture_output=True, text=True, timeout=60)
+    assert r.returncode == code, r.stderr
+    o = json.loads((ev / "outcome.json").read_text())
+    if committed:
+        assert o["status"] == "applied" and o["warnings"] == ["outcome_write_failed_after_commit:SystemExit"] and o["evidence_digest"] == "b" * 64
+    else:
+        assert o["status"] == "failed" and o["failed_checks"] == ["exit_%d" % code] and o["warnings"] == []
+
+
+def test_a_sigterm_arriving_during_commit_is_held_until_the_commit_is_recorded(mod, runner, cluster, db):
+    """The signal lands INSIDE conn.commit() (before the real commit runs). With the mask it waits: the rows are committed and the outcome
+    says applied. Without it the handler would abort the commit call itself."""
+    import os
+    import signal
+    _, dry = runner.run("dry")
+    old = {s: signal.getsignal(s) for s in (signal.SIGTERM, signal.SIGHUP)}
+    mod.install_signal_handlers()
+    try:
+        with pytest.raises(SystemExit) as e:
+            runner.m.execute(runner.args("apply", expect_evidence=dry["evidence_digest"]),
+                             lambda: CommitProxy(cluster.conn(db, user=conftest.ADMIN_USER),
+                                                 before=lambda: os.kill(os.getpid(), signal.SIGTERM)))
+    finally:
+        for s, h in old.items():
+            signal.signal(s, h)
+    assert e.value.code == 143
+    only_applied_rows_changed(cluster, db)
+    assert_outcome(outcomes(runner)[-1], mod, "applied", None, warnings=["outcome_write_failed_after_commit:SystemExit"])
+
+
+def test_outcome_records_under_test_from_the_launch_fingerprint(mod, runner):
+    fp = dict(mod.es.fingerprint(), under_test=True)
+    code, res = runner.execute(runner.args("dry"), gate_fp=fp)
+    assert code == 0 and outcome_of(res)["under_test"] is True
+    code, res = runner.execute(runner.args("dry"))
+    assert outcome_of(res)["under_test"] is False
+
+
+def test_main_passes_the_launch_fingerprint_to_execute_and_installs_the_handlers(mod, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(mod, "launch_gate", lambda environ=None: {"gate_sha256": "1" * 64, "run_gated_sha256": "2" * 64, "under_test": True})
+    monkeypatch.setattr(mod, "install_signal_handlers", lambda: seen.setdefault("handlers", True))
+
+    def fake_execute(args, connect, now=None, gate_fp=None):
+        seen["gate_fp"] = gate_fp
+        return 0, {"status": "x"}
+    monkeypatch.setattr(mod, "execute", fake_execute)
+    assert mod.main(["--asset", "ga_positions", "--chart", CANON, "--dry-run"]) == 0
+    assert seen["handlers"] and seen["gate_fp"]["under_test"] is True
