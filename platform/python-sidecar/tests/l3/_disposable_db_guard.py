@@ -31,10 +31,12 @@ WHAT THE GUARD REQUIRES (all of them, or it refuses)
      string itself does not show);
   5. assert_disposable_connection(): AFTER connecting, current_database()
      equals the expected name AND inet_server_addr() is NULL (a unix-socket
-     connection), loopback, or non-public (CI's Postgres runs as a Docker
-     service container and legitimately reports a bridge address such as
-     172.18.0.2 — only a PUBLIC address proves a wrong landing) — checked
-     before any destructive statement.
+     connection) or loopback; a private/link-local server address is accepted
+     ONLY inside GitHub Actions (Postgres runs there as a Docker service
+     container and legitimately reports a bridge address such as 172.18.0.2 —
+     everywhere else that shape is a local proxy to a remote database);
+     a PUBLIC address is refused everywhere — checked before any destructive
+     statement.
 
 Pure string checks connect to nothing; only step 5 needs a connection.
 """
@@ -115,20 +117,28 @@ def validate_disposable_dsn(
     return info
 
 
-def assert_disposable_connection(conn, expected_dbname: str) -> None:
+def assert_disposable_connection(
+    conn,
+    expected_dbname: str,
+    *,
+    env: dict | None = None,
+) -> None:
     """Post-connect proof, before ANY destructive statement: the session really is
-    on the disposable database and on a non-public server.
+    on the disposable database and on a server that cannot be remote.
 
-    inet_server_addr() is accepted when it is NULL (unix socket), loopback, or
-    any non-public (RFC 1918 / link-local / ULA) address — CI runs Postgres as
-    a GitHub Actions SERVICE CONTAINER: the runner connects to localhost:5432,
-    Docker port-forwards onto the bridge network, and the server legitimately
-    reports its own bridge address (e.g. 172.18.0.2/32). Requiring literal
-    loopback there is impossible; a PUBLIC address is what proves the
-    connection did not land where the loopback DSN claimed. The target
-    discipline itself is carried by validate_disposable_dsn (loopback host
-    everywhere, no env overrides); this check catches the landing being a
-    public server."""
+    inet_server_addr() is accepted when it is NULL (unix socket) or loopback.
+    A PRIVATE/link-local server address is accepted ONLY inside GitHub Actions
+    (os.environ GITHUB_ACTIONS == 'true'): CI runs Postgres as a service
+    container — the runner connects to localhost:5432, Docker port-forwards
+    onto the bridge network, and the server legitimately reports its own
+    bridge address (e.g. 172.18.0.2/32). Everywhere else a private address is
+    REFUSED, because on a developer machine a local cloud-sql-proxy listening
+    on 127.0.0.1 and forwarding to a remote (e.g. production) database reports
+    exactly that shape (steward ruling M20261002T174717-5721). A PUBLIC
+    address is refused everywhere. The target discipline itself is carried by
+    validate_disposable_dsn (loopback host everywhere, no env overrides)."""
+    env = os.environ if env is None else env
+    in_github_actions = env.get("GITHUB_ACTIONS", "") == "true"
     row = conn.execute(
         "SELECT current_database(), inet_server_addr()::text").fetchone()
     dbname, server_addr = row[0], row[1]
@@ -139,7 +149,16 @@ def assert_disposable_connection(conn, expected_dbname: str) -> None:
     if server_addr is not None:
         # inet::text carries the mask ('172.18.0.2/32'); ip_interface takes both.
         addr = ipaddress.ip_interface(server_addr).ip
-        if not (addr.is_loopback or addr.is_private or addr.is_link_local):
+        if addr.is_loopback:
+            return
+        if addr.is_private or addr.is_link_local:
+            if in_github_actions:
+                return
             raise RefusedError(
-                f"REFUSED: the server reports a PUBLIC address {server_addr!r} — "
-                "the connection did not land where the loopback DSN claimed")
+                f"REFUSED: the server reports a private address {server_addr!r} — "
+                "a local proxy to a remote database looks exactly like this "
+                "(accepted only inside GitHub Actions, where Postgres runs as a "
+                "Docker service container)")
+        raise RefusedError(
+            f"REFUSED: the server reports a PUBLIC address {server_addr!r} — "
+            "the connection did not land where the loopback DSN claimed")
