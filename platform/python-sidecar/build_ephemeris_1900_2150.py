@@ -32,8 +32,10 @@ from brahmagyan.l0_ephemeris import (
     BUILD_START,
     VOLUME_FLOOR,
     build_ephemeris,
-    check_volume,
 )
+# NODE-SERIES step 1: the node-series-pinned volume check (counts the TRUE series + the seven
+# non-node bodies, i.e. exactly the 825,084-row floor this runner builds).
+from brahmagyan.l0_ephemeris_queries import check_volume
 from datetime import date
 
 def main():

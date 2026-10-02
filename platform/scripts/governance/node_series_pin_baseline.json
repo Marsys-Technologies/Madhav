@@ -24,25 +24,6 @@
   },
   "entries": [
     {
-      "file": "platform/python-sidecar/brahmagyan/ephemeris_routes.py",
-      "anchor": "get_all_bodies_range",
-      "count": 2,
-      "lines_at_rollout": [
-        246,
-        275
-      ],
-      "note": "owner: Suvarna/L0. S9 /all_bodies_range (count_only :246 and the ORDER BY date, body LIMIT 10000 read :275): returns Rahu/Ketu rows with no node label; row cap shrinks when a second set exists. Step 1: NULL-safe pin to 'true' + node_mode in the served columns."
-    },
-    {
-      "file": "platform/python-sidecar/brahmagyan/ephemeris_routes.py",
-      "anchor": "get_native_lifetime_meta",
-      "count": 1,
-      "lines_at_rollout": [
-        360
-      ],
-      "note": "owner: Suvarna/L0. S11 /native_lifetime_meta COUNT(*) / COUNT(DISTINCT ...) (:360): counts and the hard-coded expected_rows would drift; count with a node pin or derive expected from days x bodies."
-    },
-    {
       "file": "platform/python-sidecar/brahmagyan/kala/temporal.py",
       "anchor": "_get_saturn_transit_years",
       "count": 1,
@@ -70,7 +51,7 @@
         638,
         642
       ],
-      "note": "owner: Suvarna/L0. S7 check_volume COUNT(*) (:580, :636, :638, :642): floor semantics against VOLUME_FLOOR 825084 (GREEN for any count >= floor); 1228 replaces the integrity contract. Count with a node pin or document."
+      "note": "owner: Suvarna/L0. S7 check_volume: DEAD UNPINNED COPY. The pinned copy is brahmagyan/l0_ephemeris_queries.check_volume (NODE_SERIES_PREDICATE on all four statements; the only non-test caller, build_ephemeris_1900_2150.py, now imports it). This function is kept byte-identical because editing l0_ephemeris.py moves 48 writer digests (L0 5, ga_* 13, bo_* 23, ka_* 7); delete it the next time that file is edited for another reason."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -79,7 +60,7 @@
       "lines_at_rollout": [
         779
       ],
-      "note": "owner: Suvarna/L0. S1: planet=None returns 11 rows (2 Rahu, 2 Ketu) with no discriminator. Step 1 per design option B: pinned copy in the new l0_ephemeris_queries.py; this legacy function stays deprecated under this ratchet."
+      "note": "owner: Suvarna/L0. S1: DEAD UNPINNED COPY (also still called by the unwired query_nakshatra_lord in this file). The pinned copy is brahmagyan/l0_ephemeris_queries.query_planet_position; ephemeris_routes.py /planet_position now calls it. Kept byte-identical (editing l0_ephemeris.py moves 48 writer digests); delete it the next time that file is edited for another reason."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -88,7 +69,7 @@
       "lines_at_rollout": [
         879
       ],
-      "note": "owner: Suvarna/L0. S2 (also feeds TS query_planet_transit, get_av_transit_gating, pact_query): duplicate dated rows, LIMIT 5000 consumed twice as fast. Option B pinned copy."
+      "note": "owner: Suvarna/L0. S2: DEAD UNPINNED COPY (also still called by the unwired get_ephemeris_cache_year in this file). The pinned copy is brahmagyan/l0_ephemeris_queries.query_planet_transit; ephemeris_routes.py /planet_transit now calls it (it also feeds TS query_planet_transit, get_av_transit_gating, pact_query). Kept byte-identical (editing l0_ephemeris.py moves 48 writer digests); delete it the next time that file is edited for another reason."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -97,7 +78,7 @@
       "lines_at_rollout": [
         986
       ],
-      "note": "owner: Suvarna/L0. S3: Rahu-vs-Rahu 'conjunction' and duplicated aspects with two series. Option B pinned copy."
+      "note": "owner: Suvarna/L0. S3: DEAD UNPINNED COPY. The pinned copy is brahmagyan/l0_ephemeris_queries.query_aspects_at_time; ephemeris_routes.py /aspects now calls it. Kept byte-identical (editing l0_ephemeris.py moves 48 writer digests); delete it the next time that file is edited for another reason."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -106,7 +87,7 @@
       "lines_at_rollout": [
         1103
       ],
-      "note": "owner: Suvarna/L0. S4: interleaved rows create false station flips for Rahu/Ketu (TS enum excludes the nodes; the route does not). Option B pinned copy."
+      "note": "owner: Suvarna/L0. S4: DEAD UNPINNED COPY. The pinned copy is brahmagyan/l0_ephemeris_queries.query_retrograde_periods; ephemeris_routes.py /retrograde_periods now calls it (the TS enum excludes the nodes; the route and the ref_retrograde_periods_get alias do not). Kept byte-identical (editing l0_ephemeris.py moves 48 writer digests); delete it the next time that file is edited for another reason."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -115,7 +96,7 @@
       "lines_at_rollout": [
         1317
       ],
-      "note": "owner: Suvarna/L0. S5 COUNT(*), COUNT(DISTINCT body): row count rises, no failure. Pin or document."
+      "note": "owner: Suvarna/L0. S5: DEAD UNPINNED COPY (no production caller). The pinned copy is brahmagyan/l0_ephemeris_queries.get_ephemeris_cache_native_lifetime. Kept byte-identical (editing l0_ephemeris.py moves 48 writer digests); delete it the next time that file is edited for another reason."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/l0_ephemeris.py",
@@ -124,7 +105,7 @@
       "lines_at_rollout": [
         1472
       ],
-      "note": "owner: Suvarna/L0. S6: LIMIT windows shift (9 -> 11 rows per date), duplicate Rahu/Ketu, ORDER BY tie. Option B pinned copy with a total ORDER BY."
+      "note": "owner: Suvarna/L0. S6: DEAD UNPINNED COPY (no production caller; tests only). The pinned copy is brahmagyan/l0_ephemeris_queries.query_ephemeris, which also orders by date, body, node_mode. Kept byte-identical (editing l0_ephemeris.py moves 48 writer digests); delete it the next time that file is edited for another reason."
     },
     {
       "file": "platform/python-sidecar/pipeline/brahma_pipeline.py",
@@ -280,5 +261,20 @@
       "note": "owner: Suvarna/L0. S17 integrity contract (COUNT(*)=825084, per-date count 9) in an applied migration; goes RED at the first mean row; replaced by 1228 (the baseline entry retires then)."
     }
   ],
-  "retired": []
+  "retired": [
+    {
+      "file": "platform/python-sidecar/brahmagyan/ephemeris_routes.py",
+      "anchor": "get_all_bodies_range",
+      "was_count": 2,
+      "retired_by": "NODE-SERIES step 1 PR A (L0 pinned query module + routes)",
+      "note": "S9 /all_bodies_range pinned in place with NODE_SERIES_PREDICATE (count_only and the ORDER BY date, body LIMIT 10000 read) + assert_one_row_per_date on the fetched rows; served columns unchanged (behaviour-neutral); the node_mode discriminator in served rows is a tool-text wave 2 item."
+    },
+    {
+      "file": "platform/python-sidecar/brahmagyan/ephemeris_routes.py",
+      "anchor": "get_native_lifetime_meta",
+      "was_count": 1,
+      "retired_by": "NODE-SERIES step 1 PR A (L0 pinned query module + routes)",
+      "note": "S11 /native_lifetime_meta pinned in place with NODE_SERIES_PREDICATE. The hard-coded expected_rows (157266) and coverage_pct are UNCHANGED (served numbers are not touched in step 1); deriving them from days x bodies is a wave 2 item."
+    }
+  ]
 }

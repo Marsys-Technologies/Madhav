@@ -19,11 +19,18 @@ from __future__ import annotations
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
-from brahmagyan.l0_ephemeris import (
+# NODE-SERIES step 1: the four query functions come from the node-series-PINNED module; the
+# unpinned originals stay in l0_ephemeris.py byte-identical (editing that file moves 48 writer
+# digests). See brahmagyan/l0_ephemeris_queries.py.
+from brahmagyan.l0_ephemeris_queries import (
+    NODE_SERIES_PREDICATE,
+    assert_one_row_per_date,
     query_planet_position,
     query_planet_transit,
     query_aspects_at_time,
     query_retrograde_periods,
+)
+from brahmagyan.l0_ephemeris import (
     # EL-39 fix (2026-07-25, β.C) — reused here so /all_bodies_range (backs the
     # ref_ephemeris_year_get MCP tool via ephemeris_cache_year.ts) gets the same
     # sidereal-first fix as the other 4 routes, instead of the raw ad-hoc SQL
@@ -244,7 +251,8 @@ def get_all_bodies_range(
                 with conn.cursor() as cur:
                     cur.execute(
                         "SELECT COUNT(*), MIN(date), MAX(date) FROM ephemeris_daily "
-                        "WHERE date >= %s AND date <= %s AND ayanamsha_id = %s",
+                        "WHERE date >= %s AND date <= %s AND ayanamsha_id = %s "
+                        f"AND {NODE_SERIES_PREDICATE}",
                         (start_date, end_date, _STORED_AYANAMSHA_ID),
                     )
                     row = cur.fetchone()
@@ -269,11 +277,12 @@ def get_all_bodies_range(
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    """
+                    f"""
                     SELECT date, body, tropical_longitude, sign_number, degree_in_sign,
                            nakshatra_number, is_retrograde, speed_dps, source_citation
                     FROM ephemeris_daily
                     WHERE date >= %s AND date <= %s AND ayanamsha_id = %s
+                      AND {NODE_SERIES_PREDICATE}
                     ORDER BY date, body
                     LIMIT 10000
                     """,
@@ -291,6 +300,8 @@ def get_all_bodies_range(
                     raw_rows.append(row_d)
         finally:
             conn.close()
+        # NODE-SERIES: never serve two rows for one (node body, date); loud, not merged.
+        assert_one_row_per_date(raw_rows, context="/all_bodies_range")
 
         rows = []
         for raw in raw_rows:
@@ -354,11 +365,12 @@ def get_native_lifetime_meta(
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    """
+                    f"""
                     SELECT COUNT(*), MIN(date), MAX(date),
                            COUNT(DISTINCT body), COUNT(DISTINCT date)
                     FROM ephemeris_daily
                     WHERE date >= %s AND date <= %s AND ayanamsha_id = 'tropical'
+                      AND {NODE_SERIES_PREDICATE}
                     """,
                     (start_date, end_date),
                 )

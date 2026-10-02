@@ -65,7 +65,7 @@ BASELINE_PATH = SCRIPT_DIR / "node_series_pin_baseline.json"
 BASELINE_REL = "platform/scripts/governance/node_series_pin_baseline.json"
 
 # NEVER raise this to make CI pass. It must equal the baseline's total; a fix lowers both.
-RATCHET_CEILING_TOTAL = 32  # must equal the baseline total; see node_series_pin_baseline.json
+RATCHET_CEILING_TOTAL = 29  # must equal the baseline total; see node_series_pin_baseline.json
 
 SCAN_GLOBS: Dict[str, List[str]] = {
     "py": ["platform/python-sidecar/**/*.py", "platform/scripts/**/*.py"],
