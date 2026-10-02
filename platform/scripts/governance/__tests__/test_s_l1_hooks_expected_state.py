@@ -7,11 +7,19 @@ states in the format flip_detector.compare_states() consumes and proves, with th
   T2  an undeclared change FAILS      (an undeclared category is UNDECLARED_CHANGE; a declared category with an
                                        undeclared KIND of change is KIND_MISMATCH)
   T3  a count off by one FAILS        (EXPECTATION_MISMATCH naming the entry, for exact, max and exact-zero entries)
-  T4  an UNCHANGED state shows no DECLARED_BUT_ABSENT: the only non-pass entries are those whose lower bound is
-      positive (EXPECTATION_MISMATCH: the change did not happen) and the optional ones (silent, or an OPTIONAL_ABSENT
-      warning); nothing else
+  T4  an UNCHANGED state shows no DECLARED_BUT_ABSENT, with ONE deliberate exception: a non-optional `dasha_shift`
+      entry (ephemeris_backend_shift) reads DECLARED_BUT_ABSENT on an unchanged state, because a rebuild that did not
+      run on the .se1 backend moves no dasha start and must not pass. The only other non-pass entries are those whose
+      lower bound is positive (EXPECTATION_MISMATCH: the change did not happen) and the optional ones (silent, or an
+      OPTIONAL_ABSENT warning); nothing else
   T5  the whole directory together: the union of every applicable hook's expected change passes with zero failures,
       and the unchanged state has no DECLARED_BUT_ABSENT, for the canonical chart and for an Abhinandan-like chart
+
+T-EB  the ephemeris_backend_shift hook is REAL (tests EB-*): on a synthetic before / after pair reproducing the measured
+      Moshier-to-se1 dasha shifts and the per-ayanamsha level-4 row-set deltas, WITHOUT the hook the detector fails
+      (DASHA_SHIFT_UNDECLARED, UNDECLARED_CHANGE, and the old karaka_dasha_roles entry reads 292 vs 0) and WITH it the
+      report is clean; mutations (a 12,000 s Vimshottari shift, a per-ayanamsha count off by one, a count total that is
+      preserved while two ayanamshas move, an unchanged backend) all FAIL.
 
 Not expressible in the detector's snapshot format (stated, not skipped silently): a hook entry on
 l1_tajik_varsha_year_lords or a chart_dashas entry whose only change type is `tier` (tiers.json entries 1 and 2): the
@@ -29,6 +37,7 @@ skip with a stated reason; FLIP_DETECTOR_PATH points them at another copy.
 from __future__ import annotations
 
 import collections
+import datetime
 import importlib.util
 import json
 import os
@@ -48,14 +57,15 @@ ALL_KINDS = ["value", "appeared", "disappeared", "occurrence_count", "tier"]
 # Hooks added or completed in the S-L1 hook-completion phase: every count-bearing / optional entry states its source.
 PHASE3_HOOKS = {
     "argala", "argala_other_charts", "ashtakavarga_bindu_contributor", "chandra_bala_birth_moon_sign", "dasha_scope_cap",
-    "ga_strength_invariant_rows", "ga_structural_chart_geometry", "ga_vargas_invariant_sentinels", "karaka_dasha_roles",
+    "ephemeris_backend_shift", "ga_strength_invariant_rows", "ga_structural_chart_geometry", "ga_vargas_invariant_sentinels", "karaka_dasha_roles",
     "karaka_roles", "karaka_web_order", "karaka_web_order_other_charts", "sade_sati_placeholder_null", "sun_required_rupa",
     "tiers", "tiers_other_charts", "yamakantaka",
 }
 
 
 # The EXACT set of hook lanes (HOOKS_W7_HAND_READBACK Part 1): deleting or adding a hook file must fail a test, not just shrink
-# the parametrised suites (107 tests = these 22 lanes x the generic per-hook proofs + the static / scenario tests).
+# the parametrised suites (these 23 lanes x the generic per-hook proofs + the static / scenario tests; fa2_ga_vargas is still pending
+# on PR #2858 and is NOT in this set: PENDING_HOOKS is unchanged).
 EXPECTED_HOOK_STEMS = frozenset({
     "argala",
     "argala_other_charts",
@@ -63,6 +73,7 @@ EXPECTED_HOOK_STEMS = frozenset({
     "band_table",
     "chandra_bala_birth_moon_sign",
     "dasha_scope_cap",
+    "ephemeris_backend_shift",
     "ga_condition_fallback",
     "ga_strength_invariant_rows",
     "ga_structural_chart_geometry",
@@ -132,6 +143,15 @@ class State:
 
     def cur(self):
         return {"chart_facts": self.facts_a, "divisionals": self.div_a, "dashas": self.das_a}
+
+    def add_shift(self, system, ay, shift_sec, level=1):
+        """A chart_dashas row present in BOTH states whose start moves by `shift_sec` (the detector's paired-row start shift)."""
+        self.n += 1
+        t0 = datetime.datetime(2001, 1, 1, tzinfo=datetime.timezone.utc)
+        t1 = t0 + datetime.timedelta(seconds=shift_sec)
+        path = f"/SH{self.n}"
+        self.das_b.append([ay, system, level, path, t0.isoformat(), (t0 + datetime.timedelta(days=30)).isoformat()])
+        self.das_a.append([ay, system, level, path, t1.isoformat(), (t1 + datetime.timedelta(days=30)).isoformat()])
 
     def add(self, table, category, key, ay, kind):
         """Realize ONE change of `kind` on a fresh key. Returns the change record, or None if the table cannot express it."""
@@ -243,6 +263,15 @@ def _build_expected(hooks, chart_id, only=None):
             rec = st.add(e["table"], c, k, a, kind)
             assert rec is not None, f"{h['lane']}[{i}]: cannot realize {kind} on {e['table']}"
             made += 1
+    # a non-optional dasha_shift entry reads DECLARED_BUT_ABSENT unless a start really moves inside its range: realize one paired row
+    # per (system, ayanamsha) the entry names, shifted by the middle of its declared range (optional entries stay silent)
+    for h in applicable:
+        for i, e in enumerate(h["may_change"]):
+            if e.get("kind") == "dasha_shift" and not e.get("optional"):
+                lo, hi = e["shift_range_sec"]
+                for system in e["systems"]:
+                    for a in (e.get("ayanamsha_ids") or AYS):
+                        st.add_shift(system, a, int((lo + hi) // 2))
     return st, applicable
 
 
@@ -254,13 +283,24 @@ def _failures(rep):
     return {k: v for k, v in rep["failure_counts"].items() if v}
 
 
+def _absent_labels(rep):
+    """Entry labels (lane[i]) of every DECLARED_BUT_ABSENT failure."""
+    return {m.split(" ")[3] for m in rep["failures"]["DECLARED_BUT_ABSENT"]}
+
+
+def _must_shift_labels(hooks):
+    """Labels of the non-optional dasha_shift entries: on an UNCHANGED state exactly these read DECLARED_BUT_ABSENT (a rebuild that
+    moved no dasha start did not run on the backend the hook declares)."""
+    return {f"{h['lane']}[{i}]" for h in hooks for i, e in enumerate(h["may_change"]) if e.get("kind") == "dasha_shift" and not e.get("optional")}
+
+
 # ----------------------------------------------------------------------------------------------- static hook checks
 def test_hook_directory_shape():
     hooks = _load_hooks()
     assert hooks, "the hook directory has no top-level *.json"
     assert {p.stem for p in _hook_files()} == EXPECTED_HOOK_STEMS, (
         sorted(EXPECTED_HOOK_STEMS - {p.stem for p in _hook_files()}), sorted({p.stem for p in _hook_files()} - EXPECTED_HOOK_STEMS))
-    assert len(_hook_files()) == 22
+    assert len(_hook_files()) == 23
     for stem, h in hooks.items():
         assert h.get("lane") == stem, f"{stem}.json: lane must equal the file stem"
         for i, e in enumerate(h["may_change"]):
@@ -289,6 +329,8 @@ def test_optional_only_for_the_five_chart_dependent_categories():
     seen = set()
     for stem, h in _load_hooks().items():
         for i, e in enumerate(h["may_change"]):
+            if e.get("optional") and e.get("kind") == "dasha_shift":
+                continue  # the two optional dasha_shift entries are pinned by test_EB_optional_entries_are_the_two_declared_ones
             if e.get("optional"):
                 assert set(e["categories"]) <= five, f"{stem}[{i}]: optional is reserved for the five chart-dependent categories"
                 assert "expected_count" in e and e["expected_count"].get("max"), f"{stem}[{i}]: an optional entry carries its upper bound"
@@ -386,7 +428,7 @@ def test_T4_unchanged_state_has_no_declared_but_absent(stem):
     chart = _chart_for(h)
     st = State(chart)
     rep = fd.compare_states(st.snap(), st.snap(), [h], chart, have_dash=True, have_daily=False)
-    assert rep["failure_counts"]["DECLARED_BUT_ABSENT"] == 0, rep["failures"]["DECLARED_BUT_ABSENT"]
+    assert _absent_labels(rep) == _must_shift_labels([h]), (_absent_labels(rep), _must_shift_labels([h]))
     assert rep["failure_counts"]["UNDECLARED_CHANGE"] == 0 and rep["failure_counts"]["KIND_MISMATCH"] == 0
     mism = {m.split(" ")[2] for m in rep["failures"]["EXPECTATION_MISMATCH"]}
     for i, e in enumerate(h["may_change"]):
@@ -437,7 +479,7 @@ def test_T5_whole_directory_unchanged_state(chart):
     hooks = [h for h in _all_hooks() if fd.applies_to_chart(h, chart)]
     st = State(chart)
     rep = fd.compare_states(st.snap(), st.snap(), hooks, chart, have_dash=True, have_daily=False)
-    assert rep["failure_counts"]["DECLARED_BUT_ABSENT"] == 0, rep["failures"]["DECLARED_BUT_ABSENT"]
+    assert _absent_labels(rep) == _must_shift_labels(hooks), (_absent_labels(rep), _must_shift_labels(hooks))
     assert rep["failure_counts"]["UNDECLARED_CHANGE"] == 0 and rep["failure_counts"]["KIND_MISMATCH"] == 0
     # every non-pass is an entry with a positive lower bound; list them so a reviewer sees exactly which changes the hooks insist on
     for m in rep["failures"]["EXPECTATION_MISMATCH"]:
@@ -651,6 +693,10 @@ PINNED_ENTRY_COUNTS = {
     'band_table': [{'exact': 0}],
     'chandra_bala_birth_moon_sign': [{'exact': 9}, {'exact': 0}, {'exact': 0}],
     'dasha_scope_cap': [{'exact': 1}],
+    # ephemeris_backend_shift: six dasha_shift entries (no count), then Vimshottari appeared / disappeared per ayanamsha in the order
+    # lahiri, true_chitra, krishnamurti, raman, surya_siddhanta, then Kalachakra the same, then the exact-zero entry for every other system
+    'ephemeris_backend_shift': [None] * 6 + [{'exact': 29}, {'exact': 17}, {'exact': 40}, {'exact': 38}, {'exact': 29}, {'exact': 28}, {'exact': 21}, {'exact': 30}, {'exact': 27}, {'exact': 33}]
+                               + [{'exact': 216}, {'exact': 213}, {'exact': 198}, {'exact': 198}, {'exact': 227}, {'exact': 217}, {'exact': 193}, {'exact': 201}, {'exact': 269}, {'exact': 289}] + [{'exact': 0}],
     'ga_condition_fallback': [{'exact': 0}],
     'ga_strength_invariant_rows': [{'exact': 0}],
     'ga_structural_chart_geometry': [{'min': 0, 'max': 45}, {'min': 0, 'max': 30}, {'min': 0, 'max': 315}, {'min': 0, 'max': 15}, {'min': 0, 'max': 85}],
@@ -707,3 +753,251 @@ def test_LS_tiers_entry_zero_contains_the_two_narrow_entries():
     assert any(m.startswith("EXPECTATION MISMATCH tiers[0]") for m in rep["failures"]["EXPECTATION_MISMATCH"])
     rep2 = _scenario([h], CANON, before[:-1], after[:-1])
     assert any(m.startswith("EXPECTATION MISMATCH tiers[0]") or m.startswith("EXPECTATION MISMATCH tiers[4]") for m in rep2["failures"]["EXPECTATION_MISMATCH"])
+
+
+def test_karaka_dasha_roles_is_narrowed_to_the_systems_the_backend_does_not_touch():
+    """karaka_dasha_roles[0] keeps its own exact-0 row-set claim, but only on the three systems the ephemeris backend leaves alone.
+    vimshottari and vimshottari_kp moved to ephemeris_backend_shift (a .se1 rebuild moves their level-4 row set and start times);
+    leaving them here read EXPECTATION_MISMATCH 292 vs 0 and would have hidden a genuine karaka-lane row-set defect."""
+    hooks = _load_hooks()
+    e = hooks["karaka_dasha_roles"]["may_change"][0]
+    assert e["categories"] == ["ashtottari", "mudda", "naisargika"]
+    assert e["expected_count"] == {"exact": 0} and e["change_types"] == ["appeared", "disappeared"]
+    eb_counted = {c for x in hooks["ephemeris_backend_shift"]["may_change"] if x.get("expected_count") and x["expected_count"] != {"exact": 0} for c in x["categories"]}
+    assert eb_counted == {"vimshottari", "kalachakra"} and not eb_counted & set(e["categories"])
+
+
+# ----------------------------------------------------------------------------------------------- T-EB: the ephemeris hook is real
+# Figures copied from SE1_SHIFT_ANALYSIS.md (section 5: the real flip_detector.dasha_diff on the real stored-vs-se1 dasha rows), NOT read back from
+# the hook: appeared / disappeared level-4 rows per ayanamsha. The five-ayanamsha totals (146 / 146, 1,103 / 1,118) are deliberately never asserted as a check.
+EB_VIM = {"lahiri_chitrapaksha": (29, 17), "true_chitra": (40, 38), "krishnamurti": (29, 28), "raman": (21, 30), "surya_siddhanta_classical": (27, 33)}
+EB_KAL = {"lahiri_chitrapaksha": (216, 213), "true_chitra": (198, 198), "krishnamurti": (227, 217), "raman": (193, 201), "surya_siddhanta_classical": (269, 289)}
+EB_VIM_L4_DELTA = {"lahiri_chitrapaksha": 12, "true_chitra": 2, "krishnamurti": 1, "raman": -9, "surya_siddhanta_classical": -6}  # level 4: 8165->8177, 8164->8166, 8155->8156, 8043->8034, 7983->7977
+EB_KAL_L4_DELTA = {"lahiri_chitrapaksha": 3, "true_chitra": 0, "krishnamurti": 10, "raman": -8, "surya_siddhanta_classical": -20}
+EB_SHIFT_BANDS = {"vimshottari": [6955, 7030], "vimshottari_kp": [3, 7030], "mudda": [-65, -3]}
+EB_ALL_SYSTEMS = ["vimshottari", "vimshottari_kp", "kalachakra", "yogini", "ashtottari", "chara_karaka", "narayana", "naisargika", "mudda"]
+EB_STEM = "ephemeris_backend_shift"
+
+
+def _eb_hook():
+    return _load_hooks()[EB_STEM]
+
+
+def _eb_index(system, ay, change):
+    for i, e in enumerate(_eb_hook()["may_change"]):
+        if e.get("categories") == [system] and e.get("ayanamsha_ids") == [ay] and e.get("change_types") == [change]:
+            return i
+    raise AssertionError((system, ay, change))
+
+
+def test_EB_static_shape_every_system_declared_and_no_five_ayanamsha_total():
+    h = _eb_hook()
+    assert h["charts"] == ["482012f1"] and h["lane"] == EB_STEM
+    assert fd is None or not fd.validate_hook(h, f"{EB_STEM}.json")
+    entries = h["may_change"]
+    shifts = [e for e in entries if e.get("kind") == "dasha_shift"]
+    named = {s for e in entries for s in (e.get("systems") or e.get("categories") or [])}
+    assert set(EB_ALL_SYSTEMS) <= named, sorted(set(EB_ALL_SYSTEMS) - named)  # no system left to UNDECLARED or to pass by omission
+    by_sys = {}
+    for e in shifts:
+        by_sys.setdefault(tuple(e["systems"]), []).append(e)
+    for system, band in EB_SHIFT_BANDS.items():
+        assert [e["shift_range_sec"] for e in by_sys[(system,)]] == [band], system
+    kal = by_sys[("kalachakra",)]
+    assert [(e.get("ayanamsha_ids"), e["shift_range_sec"], bool(e.get("optional"))) for e in kal] == [
+        (["lahiri_chitrapaksha", "krishnamurti", "raman", "true_chitra"], [145055, 145140], False),
+        (["surya_siddhanta_classical"], [150280, 150340], False),
+        (None, [-400000, 701000], True)]  # the noise band names no ayanamsha: on the real data Surya Siddhanta also has 811 of 6,591 rows pairing off-mode
+    # exact 0 systems carry NO shift entry: any start move on them is DASHA_SHIFT_UNDECLARED
+    for z in ("yogini", "ashtottari", "chara_karaka", "narayana", "naisargika"):
+        assert (z,) not in by_sys
+    # level-4 row-set claims: one exact entry per (system, ayanamsha, kind); an entry that counts vimshottari / kalachakra rows always names ONE ayanamsha
+    for system, table in (("vimshottari", EB_VIM), ("kalachakra", EB_KAL)):
+        for ay, (a, d) in table.items():
+            assert entries[_eb_index(system, ay, "appeared")]["expected_count"] == {"exact": a}, (system, ay)
+            assert entries[_eb_index(system, ay, "disappeared")]["expected_count"] == {"exact": d}, (system, ay)
+        counted = [e for e in entries if e.get("categories") and system in e["categories"] and e.get("expected_count")]
+        assert len(counted) == 10 and all(len(e["ayanamsha_ids"]) == 1 for e in counted), system
+    assert entries[-1]["categories"] == ["vimshottari_kp", "yogini", "ashtottari", "chara_karaka", "narayana", "naisargika", "mudda"] and entries[-1]["expected_count"] == {"exact": 0}
+    d = h["description"]
+    for needle in ("nearest-start pairing within 10 days mis-pairs systems whose shift exceeds the spacing of their periods", "FLIP_DETECTOR_KNOWN_LIMITS",
+                   "never as a five-ayanamsha total", "Saturn", "1,044 s", "+6,992 s", "+145,089 to +145,111 s", "+150,309 s", "-43 s", "Levels 1-3"):
+        assert needle in d, needle
+
+
+def test_EB_optional_entries_are_the_two_declared_ones():
+    opt = [(i, e["systems"]) for i, e in enumerate(_eb_hook()["may_change"]) if e.get("optional")]
+    assert opt == [(4, ["kalachakra"]), (5, ["mudda"])]
+    assert "expected_count" not in _eb_hook()["may_change"][4] and "expected_count" not in _eb_hook()["may_change"][5]
+
+
+def _rowset(st, system, ay, appeared, disappeared, level=4):
+    """`appeared` rows only in the after state, `disappeared` rows only in the before state (distinct lord paths, so nothing pairs)."""
+    for _ in range(appeared):
+        st.n += 1
+        st.das_a.append([ay, system, level, f"/RA{st.n}", "2010-03-01T00:00:00+00:00", "2010-03-01T09:00:00+00:00"])
+    for _ in range(disappeared):
+        st.n += 1
+        st.das_b.append([ay, system, level, f"/RD{st.n}", "2012-05-01T00:00:00+00:00", "2012-05-01T09:00:00+00:00"])
+
+
+def _eb_state(vim_shift=6992, kp_shift=6992, kal_shift=145090, kal_ss_shift=150309, mudda_tc_shift=-43, other_shift=0, vim=None, kal=None):
+    """A synthetic Moshier-before / se1-after chart_dashas pair reproducing the measured shifts and per-ayanamsha level-4 deltas.
+    `vim_shift` may be an int or {ayanamsha: seconds}. Every group that the detector reads as moving carries 3 paired rows (shifts differ by 1 s)."""
+    st = State(CANON)
+    vim = EB_VIM if vim is None else vim
+    kal = EB_KAL if kal is None else kal
+    for ay in AYS:
+        vs = vim_shift[ay] if isinstance(vim_shift, dict) else vim_shift
+        for j in (-1, 0, 1):
+            st.add_shift("vimshottari", ay, vs + j, level=4)
+            st.add_shift("vimshottari_kp", ay, kp_shift + j, level=3)
+            st.add_shift("kalachakra", ay, (kal_ss_shift if ay == "surya_siddhanta_classical" else kal_shift) + j, level=4)
+            st.add_shift("yogini", ay, other_shift, level=2)
+            st.add_shift("ashtottari", ay, 0, level=2)
+            st.add_shift("chara_karaka", ay, 0, level=1)
+            st.add_shift("narayana", ay, 0, level=1)
+            st.add_shift("naisargika", ay, 0, level=1)
+            st.add_shift("mudda", ay, mudda_tc_shift if ay == "true_chitra" else (j + 1) // 2, level=2)  # 0..+1 s on the others: below the 2 s threshold
+        _rowset(st, "vimshottari", ay, *vim[ay])
+        _rowset(st, "kalachakra", ay, *kal[ay])
+    return st
+
+
+def _eb_hooks():
+    hs = _load_hooks()
+    return [hs[EB_STEM], hs["karaka_dasha_roles"]]
+
+
+def _old_karaka_dasha_roles():
+    """karaka_dasha_roles as it was before the narrowing: the five systems, vimshottari and vimshottari_kp included."""
+    k = json.loads(json.dumps(_load_hooks()["karaka_dasha_roles"]))
+    k["may_change"][0]["categories"] = ["vimshottari", "vimshottari_kp", "ashtottari", "mudda", "naisargika"]
+    return k
+
+
+def _eb_compare(st, hooks):
+    return fd.compare_states(st.snap(), st.cur(), hooks, CANON, have_dash=True, have_daily=False)
+
+
+@needs_detector
+def test_EB_with_the_hook_the_measured_rebuild_is_clean():
+    rep = _eb_compare(_eb_state(), _eb_hooks())
+    assert not _failures(rep), (_failures(rep), {k: v[:3] for k, v in rep["failures"].items() if v})
+    assert rep["verdict"] == "NOT_CHECKED"
+    obs = {r["entry"]: r["observed"] for r in rep["expectations"] if r["lane"] == EB_STEM}
+    for system, table in (("vimshottari", EB_VIM), ("kalachakra", EB_KAL)):
+        for ay, (a, d) in table.items():
+            assert obs[_eb_index(system, ay, "appeared")] == a and obs[_eb_index(system, ay, "disappeared")] == d, (system, ay)
+    assert obs[26] == 0
+    # the net level-4 membership delta per ayanamsha (appeared minus disappeared) is the declared one, and the totals are a coincidence nobody checks
+    assert {ay: a - d for ay, (a, d) in EB_VIM.items()} == EB_VIM_L4_DELTA and {ay: a - d for ay, (a, d) in EB_KAL.items()} == EB_KAL_L4_DELTA
+    assert sum(EB_VIM_L4_DELTA.values()) == 0  # the Vimshottari total cancels: a total-only check would be blind (never used)
+    # every shifted group is attributed to the ephemeris lane and sits inside a declared range
+    moved = {k: v for k, v in rep["dashas"].items() if v.get("rows_shifted")}
+    assert {k.split("|")[1] for k in moved} == {"vimshottari", "vimshottari_kp", "kalachakra", "mudda"} and len(moved) == 16
+    assert all(v["lanes"] == [EB_STEM] and v["rows_outside_every_declared_range"] == 0 for v in moved.values()), moved
+
+
+@needs_detector
+def test_EB_without_the_hook_the_same_rebuild_fails_as_the_analysis_measured():
+    """The 22 pre-existing hooks (the old karaka_dasha_roles included) against the same data: the analysis's P1 (2,221 UNDECLARED_CHANGE,
+    karaka_dasha_roles[0] observing 292 vs exact 0, 16 DASHA_SHIFT_UNDECLARED groups)."""
+    hs = _load_hooks()
+    old = [h for stem, h in hs.items() if stem not in (EB_STEM, "karaka_dasha_roles")] + [_old_karaka_dasha_roles()]
+    rep = _eb_compare(_eb_state(), old)
+    assert rep["failure_counts"]["UNDECLARED_CHANGE"] == 2221 == sum(EB_KAL[a][0] + EB_KAL[a][1] for a in AYS)
+    assert rep["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 16
+    # (the other hooks' own positive counts read EXPECTATION_MISMATCH on this chart-dashas-only pair; only karaka_dasha_roles concerns the dasha data)
+    kmm = [m for m in rep["failures"]["EXPECTATION_MISMATCH"] if m.startswith("EXPECTATION MISMATCH karaka_dasha_roles")]
+    assert len(kmm) == 1 and kmm[0].startswith("EXPECTATION MISMATCH karaka_dasha_roles[0]") and "observed 292" in kmm[0]
+    assert sum(a + d for a, d in EB_VIM.values()) == 292
+    # with the narrowed karaka_dasha_roles but still WITHOUT the ephemeris hook: Vimshottari row sets are undeclared (292) and the shifts too
+    rep2 = _eb_compare(_eb_state(), [h for stem, h in hs.items() if stem != EB_STEM])
+    assert rep2["failure_counts"]["UNDECLARED_CHANGE"] == 2221 + 292 and rep2["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 16
+    assert not [m for m in rep2["failures"]["EXPECTATION_MISMATCH"] if m.startswith("EXPECTATION MISMATCH karaka_dasha_roles")]
+
+
+@needs_detector
+def test_EB_mutation_a_12000_second_vimshottari_shift_fails():
+    rep = _eb_compare(_eb_state(vim_shift={**{a: 6992 for a in AYS}, "lahiri_chitrapaksha": 12000}), _eb_hooks())
+    assert rep["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 1 and "lahiri_chitrapaksha|vimshottari" in rep["failures"]["DASHA_SHIFT_UNDECLARED"][0]
+    assert rep["verdict"] == "FAIL"
+    rep_all = _eb_compare(_eb_state(vim_shift=12000), _eb_hooks())
+    assert rep_all["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 5 and rep_all["verdict"] == "FAIL"
+    # the band edges: 6,955 and 7,030 pass, 6,954 and 7,031 fail (the middle row of each group is the one that decides, every row of a group must sit inside)
+    for ok, shift in ((True, 6955 + 1), (True, 7030 - 1), (False, 6954 - 1), (False, 7031 + 1)):
+        r = _eb_compare(_eb_state(vim_shift=shift), _eb_hooks())
+        assert (r["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 0) is ok, (shift, r["failure_counts"])
+    # KP above its upper edge, and a Yogini start moving by the Vimshottari amount (a system the hook declares as exactly 0)
+    assert _eb_compare(_eb_state(kp_shift=12000), _eb_hooks())["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 5
+    ry = _eb_compare(_eb_state(other_shift=6992), _eb_hooks())
+    assert ry["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 5 and all("|yogini" in m for m in ry["failures"]["DASHA_SHIFT_UNDECLARED"])
+
+
+@needs_detector
+def test_EB_mutation_a_level4_count_outside_the_declared_per_ayanamsha_delta_fails():
+    base = {a: v for a, v in EB_VIM.items()}
+    # (a) one more appeared level-4 row on Lahiri: the Lahiri appeared entry fails, nothing else
+    rep = _eb_compare(_eb_state(vim={**base, "lahiri_chitrapaksha": (30, 17)}), _eb_hooks())
+    assert [m.split(":")[0] for m in rep["failures"]["EXPECTATION_MISMATCH"]] == [f"EXPECTATION MISMATCH {EB_STEM}[{_eb_index('vimshottari', 'lahiri_chitrapaksha', 'appeared')}] (chart_dashas"]
+    # (b) the NET delta is preserved (+12) but both counts move: still fails (appeared AND disappeared are each exact)
+    rep_b = _eb_compare(_eb_state(vim={**base, "lahiri_chitrapaksha": (30, 18)}), _eb_hooks())
+    assert rep_b["failure_counts"]["EXPECTATION_MISMATCH"] == 2
+    # (c) the five-ayanamsha TOTAL is preserved (146 appeared) while two ayanamshas move in opposite directions: fails per ayanamsha
+    moved = {**base, "lahiri_chitrapaksha": (30, 17), "raman": (20, 30)}
+    assert sum(a for a, _ in moved.values()) == sum(a for a, _ in base.values()) == 146
+    rep_c = _eb_compare(_eb_state(vim=moved), _eb_hooks())
+    assert rep_c["failure_counts"]["EXPECTATION_MISMATCH"] == 2 and rep_c["verdict"] == "FAIL"
+    # (d) the same for Kalachakra (per-ayanamsha exact): +1 on krishnamurti, -1 on surya_siddhanta keeps the appeared total
+    kmoved = {**EB_KAL, "krishnamurti": (228, 217), "surya_siddhanta_classical": (268, 289)}
+    assert sum(a for a, _ in kmoved.values()) == sum(a for a, _ in EB_KAL.values()) == 1103
+    rep_d = _eb_compare(_eb_state(kal=kmoved), _eb_hooks())
+    assert rep_d["failure_counts"]["EXPECTATION_MISMATCH"] == 2
+    # (e) a level 1-3 row appearing is counted in its ayanamsha's exact entry (the detector cannot see the level: the exact count is what catches it)
+    st = _eb_state()
+    _rowset(st, "vimshottari", "krishnamurti", 1, 0, level=2)
+    rep_e = _eb_compare(st, _eb_hooks())
+    assert rep_e["failure_counts"]["EXPECTATION_MISMATCH"] == 1 and f"[{_eb_index('vimshottari', 'krishnamurti', 'appeared')}]" in rep_e["failures"]["EXPECTATION_MISMATCH"][0]
+    # (f) a row of a system declared exact 0 (KP, Mudda, Yogini, ...) appearing or disappearing fails the last entry
+    for system in ("vimshottari_kp", "mudda", "yogini", "chara_karaka", "narayana", "naisargika", "ashtottari"):
+        st = _eb_state()
+        _rowset(st, system, "raman", 0, 1, level=3)
+        r = _eb_compare(st, _eb_hooks())
+        assert r["failure_counts"]["EXPECTATION_MISMATCH"] >= 1 and r["verdict"] == "FAIL", system
+
+
+@needs_detector
+def test_EB_mutation_a_rebuild_that_did_not_run_on_se1_fails():
+    """No dasha start moves and no level-4 row crosses midnight: the rebuild ran on the same backend as the baseline. Every non-optional
+    dasha_shift entry reads DECLARED_BUT_ABSENT and every per-ayanamsha count reads observed 0."""
+    st = _eb_state(vim_shift=0, kp_shift=0, kal_shift=0, kal_ss_shift=0, mudda_tc_shift=0, vim={a: (0, 0) for a in AYS}, kal={a: (0, 0) for a in AYS})
+    rep = _eb_compare(st, _eb_hooks())
+    assert _absent_labels(rep) == {f"{EB_STEM}[{i}]" for i in range(4)}
+    assert rep["failure_counts"]["EXPECTATION_MISMATCH"] == 20 and rep["verdict"] == "FAIL"
+
+
+@needs_detector
+def test_EB_mudda_bisection_step_and_the_documented_noise_limit():
+    # a Mudda start moving by +7,000 s is not declared (only the -65..-3 bisection band is)
+    st = _eb_state()
+    st.add_shift("mudda", "raman", 7000, level=2)
+    assert _eb_compare(st, _eb_hooks())["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 1
+    # Kalachakra on Surya Siddhanta moving by the Lahiri amount (145,090 instead of 150,309): the SS main entry observes nothing, so it reads
+    # DECLARED_BUT_ABSENT (the noise band attributes the rows, the absence is what catches the wrong amount)
+    rep = _eb_compare(_eb_state(kal_ss_shift=145090), _eb_hooks())
+    assert _failures(rep) == {"DECLARED_BUT_ABSENT": 1} and _absent_labels(rep) == {f"{EB_STEM}[3]"}
+    # DOCUMENTED DETECTOR LIMIT (FLIP_DETECTOR_KNOWN_LIMITS): a MINORITY of Kalachakra rows (the mis-paired ones) on the four other
+    # ayanamshas that read anywhere inside the optional pairing-noise band [-400,000, +701,000] s are attributed, not caught; this pins that
+    # the limit exists and is the band's width. (Above the band the same extra row IS caught.)
+    st = _eb_state()
+    st.add_shift("kalachakra", "lahiri_chitrapaksha", 300000, level=4)
+    assert not _failures(_eb_compare(st, _eb_hooks()))
+    st = _eb_state()
+    st.add_shift("kalachakra", "lahiri_chitrapaksha", 702000, level=4)
+    assert _eb_compare(st, _eb_hooks())["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 1
+    # the WHOLE system moving by a wrong amount inside the band is caught by absence: the main entry then observes nothing
+    whole = _eb_compare(_eb_state(kal_shift=300000), _eb_hooks())
+    assert _failures(whole) == {"DECLARED_BUT_ABSENT": 1} and _absent_labels(whole) == {f"{EB_STEM}[2]"}
+    outside = _eb_compare(_eb_state(kal_shift=702000), _eb_hooks())
+    assert outside["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 4

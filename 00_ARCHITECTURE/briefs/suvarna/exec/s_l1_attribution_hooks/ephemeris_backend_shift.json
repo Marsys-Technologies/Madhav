@@ -1,0 +1,264 @@
+{
+  "lane": "ephemeris_backend_shift",
+  "ruling": "SS N-28 / N-64 / 2026-10-03 GO: canonical ephemeris backend is Swiss .se1 (swieph); the S-L1 rebuild is the first build on it (production rows of 2026-09-07/08 are Moshier-built)",
+  "pr": "#2860 (backend + fail-closed helper), carried by the S-L1 integration branch suvarna/land/TI-s-l1-integration-001",
+  "charts": ["482012f1"],
+  "description": "The S-L1 rebuild is the first build on the canonical Swiss .se1 ephemeris backend (swieph, SE_EPHE_PATH, #2860); the stored 2026-09-07/08 rows were built on Moshier. The backend moves one input by a measurable amount: the Moon by -0.6647 arcsec (Lahiri; the other four ayanamshas -0.6646 to -0.6648), Mars -0.118, Jupiter -0.202, Saturn +0.152, Mercury +0.016, Venus -0.036, Sun +0.0003; Rahu/Ketu (mean node) 0, Lagna and houses 0 (True Chitra / Surya Siddhanta: -0.0001). Independent Linux derivation (linux/amd64, python 3.11, pyswisseph 2.10.3.2, the three SHA-pinned .se1 files, SE_EPHE_PATH set, birth 1984-02-05 10:43 IST 20.27N 85.84E): zero class changes in the whole compute_chart payload of all five ayanamshas. What DOES move is TIME, through the Moon: a Moon-anchored dasha timeline translates rigidly by (Moon delta / span) x period. Vimshottari = 0.6647 / 48,000 arcsec (one nakshatra) x 16 y (Jupiter, the birth lord) x 365.25 d x 86,400 s = +6,992 s (+1 h 56 m 32 s; later), measured +6,990 to +6,994 s for every row except the four per ayanamsha clipped at the 1950-01-01 window start (0 s); the KP sub-periods inherit it. Kalachakra = 0.6647 / 12,000 arcsec (one pada) x the pada's paramayush (83 y Lahiri, Krishnamurti, Raman, True Chitra; 86 y Surya Siddhanta) x sidereal year = +145,089 to +145,111 s (+40 h 18 m) and +150,309 s (+41 h 45 m, Surya Siddhanta). NOT Moon-fraction anchored (birth-time anchored; Yogini and Ashtottari compute a balance and never use it): Yogini, Ashtottari, Chara-karaka, Narayana, Naisargika: exactly 0 s. Mudda follows the Sun's solar-return bisection: 0 to +1 s, plus one quantisation step of -43 s (True Chitra varsha of 2001-02-04, 425 rows). SATURN: sign-ingress instants (Lahiri, 130 events 1950-2100) move -323 to +369 s; True Chitra +-391 s; Raman +-692 s; Surya Siddhanta +-197 s; Krishnamurti up to +-1,044 s (about 17 minutes); Saturn stations -31 to +27 s (291 events). These reach the sade_sati cycle/phase *_iso time facts (writer resolution about 15 minutes); they are time-valued, not class changes, so the detector does not compare them (NOT CHECKED here; the sade_sati_placeholder_null hook declares only the placeholder-to-NULL value change, and no sade_sati date is declared by any hook); the W7 hand read-back H15 carries the expectation. The sade_sati text facts that LOOK UP the dasha lord at an instant were replayed on the se1 dasha rows (360 stored lookups, 0 flips; the closest stored lookup instant is 14.5 days from a Vimshottari boundary against a 6,993 s shift plus up to 1,044 s of ingress movement). Tajaka solar-return instants: 0 of 245 changed. ROW SET (level 4 only): compute_vimshottari and compute_kalachakra_system drop a period whose UTC start DATE is not before its end DATE, so a shift moves sub-day (3.5 h to 23.9 h) Sukshma rows across UTC midnight. Levels 1-3 keep their exact row set and lords on every system; the KP rows (kp_sublevel levels) and every other system keep their exact row set; no boundary lies within 35 h of the 1950-01-01 / 2100-12-31 window cut-offs. The level-4 membership change is declared PER AYANAMSHA, never as a five-ayanamsha total (the Vimshottari per-ayanamsha nets +12, +2, +1, -9, -6 cancel to 0 by coincidence, so a total-only check is blind): Vimshottari appeared / disappeared lahiri 29/17 (level 4: 8,165 to 8,177), true_chitra 40/38 (8,164 to 8,166), krishnamurti 29/28 (8,155 to 8,156), raman 21/30 (8,043 to 8,034), surya_siddhanta 27/33 (7,983 to 7,977); Kalachakra appeared / disappeared lahiri 216/213 (net +3), true_chitra 198/198 (0), krishnamurti 227/217 (+10), raman 193/201 (-8), surya_siddhanta 269/289 (-20). Each is its own exact entry below (the 63 / 515 / 4,576 / 40,510 figures quoted elsewhere are five-ayanamsha LEVEL totals, not Lahiri figures, and are not checks). Reproduced twice, independently (macOS arm64 BOUNDARY_FLIP_REPORT_v1_0 section 3.2; Linux amd64 here, running the real ga_dashas_writer functions; the Moshier run reproduces the 381,494 + 102,375 stored non-sentinel dasha rows with zero changes). DETECTOR LIMITS, stated plainly (they are also listed in HOOKS_COMPLETENESS_v1_0.md under FLIP_DETECTOR_KNOWN_LIMITS for the post-window tooling PR): (1) continuous chart_facts / chart_divisionals values (graha longitudes, degrees, sphutas: 1,078 of the 12,462 facts of the offline families move, max 0.665 arcsec, Sree Lagna 17.95 arcsec) are never compared as a class change, so their movement is NOT CHECKED here; H22 carries the independently derived se1 values with tolerance 0.0003 deg. (2) PAIRING NOISE: the detector pairs dasha rows by (ayanamsha, system, level, lord path) and then by nearest start within 10 days; nearest-start pairing within 10 days mis-pairs systems whose shift exceeds the spacing of their periods. For KP sub-periods (repeated paths) about 15 percent of rows and for Kalachakra a minority of rows (the analysis estimated about 12 percent; the detector's mode share was 60 to 80 percent of shifted rows) pair with a neighbour, so their measured shift scatters (KP 1,049 to 6,590 s; Kalachakra -374,000 to +701,000 s) although the true shift is one constant per system. That is why the KP and Kalachakra bands below are wide, why an optional pairing-noise band exists for Kalachakra (all five ayanamshas: on the real data 811 of the 6,591 Surya Siddhanta Kalachakra rows also pair off-mode), and why SETTLED-1 must read the per-system value from the chain-identity table, not from this detector. A wide band cannot catch a wrong shift that lies inside it; the Vimshottari band is narrow and a 12,000 s Vimshottari shift FAILS (tested), as does a 12,000 s KP shift (above the KP upper edge). (3) The detector cannot see a dasha LEVEL: an appeared / disappeared change carries no level field and an entry cannot select one, so 'levels 1-3 exact, level 4 by declared delta' is enforced only through the per-ayanamsha exact counts (every one of the 292 + 2,221 measured changes is level 4; a level 1-3 change would break the exact count of its ayanamsha) and by the W7 hand read-back (HOOKS_W7_HAND_READBACK H23: per-level counts and natural-key membership). (4) DATE columns (start_date / end_date change on roughly 1,400 to 1,600 Vimshottari rows and about 6,500 Kalachakra rows per ayanamsha), duration_days, sandhi_flag (20 / 43 / 29 / 21 / 24 Vimshottari rows and 3 / 1 / 4 / 14 / 30 Kalachakra rows) and next_dasha_start_iso are never read by the detector; the post-pass columns concurrent_system_lords_jsonb / convergence_count_at_start were recomputed offline: 0 of 839 level-1 rows change.",
+  "may_change": [
+    {
+      "table": "chart_dashas",
+      "kind": "dasha_shift",
+      "systems": ["vimshottari"],
+      "shift_range_sec": [6955, 7030],
+      "note": "Moon -0.6647 arcsec / 48,000 arcsec x 16 y x 365.25 d x 86,400 s = 6,992 s; measured 6,990 to 6,994 s across the five ayanamshas (lahiri 6,992-6,993; true_chitra 6,993-6,994; krishnamurti 6,992-6,993; raman 6,992-6,993; surya_siddhanta 6,990-6,991), band is the measured value +/- 35 s. Rows clipped at the 1950-01-01 window start do not move (0 s, below the detector's 2 s threshold). Not optional: if the rebuild did NOT run on the se1 backend nothing shifts and this entry reads DECLARED_BUT_ABSENT. Source: SE1_SHIFT_ANALYSIS.md section 3."
+    },
+    {
+      "table": "chart_dashas",
+      "kind": "dasha_shift",
+      "systems": ["vimshottari_kp"],
+      "shift_range_sec": [3, 7030],
+      "note": "KP sub-periods are children of the Vimshottari rows and shift by exactly their parent's amount (6,990 to 6,994 s: 85 percent of rows read there). The lower edge is wide ON PURPOSE: the detector pairs repeated KP lord paths with the wrong repeat for about 15 percent of rows (measured 1,049 to 6,590 s). Not near-constant as READ BY THE DETECTOR; near-constant in truth (DETECTOR LIMIT 2 in the hook description). source: SE1_SHIFT_ANALYSIS.md section 3 (measured shifts) and section 4 (what the detector reads)."
+    },
+    {
+      "table": "chart_dashas",
+      "kind": "dasha_shift",
+      "systems": ["kalachakra"],
+      "ayanamsha_ids": ["lahiri_chitrapaksha", "krishnamurti", "raman", "true_chitra"],
+      "shift_range_sec": [145055, 145140],
+      "note": "Moon -0.6647 arcsec / 12,000 arcsec (one pada) x 83 y paramayush x 31,558,150 s = 145,090 s; measured mode 145,089 / 145,090 (lahiri, krishnamurti, raman), 145,110 / 145,111 (true_chitra); 60 to 80 percent of shifted rows read at the mode, the rest are mis-paired (see the noise band). source: SE1_SHIFT_ANALYSIS.md section 3 (measured shifts) and section 4 (what the detector reads)."
+    },
+    {
+      "table": "chart_dashas",
+      "kind": "dasha_shift",
+      "systems": ["kalachakra"],
+      "ayanamsha_ids": ["surya_siddhanta_classical"],
+      "shift_range_sec": [150280, 150340],
+      "note": "Moon -0.6646 arcsec / 12,000 arcsec x 86 y paramayush x 31,558,150 s = 150,309 s; measured 150,308 / 150,309 for 80 percent of shifted rows; 811 of 6,591 are mis-paired and read between 2 and 150,280 s (attributed by the noise band, measured on the real data). source: SE1_SHIFT_ANALYSIS.md section 3 (measured shifts) and section 4 (what the detector reads)."
+    },
+    {
+      "table": "chart_dashas",
+      "kind": "dasha_shift",
+      "systems": ["kalachakra"],
+      "shift_range_sec": [-400000, 701000],
+      "optional": true,
+      "note": "PAIRING-NOISE BAND (DETECTOR LIMIT: nearest-start pairing within 10 days mis-pairs systems whose shift exceeds the spacing of their periods) for the Kalachakra rows the detector pairs with a neighbour: measured scatter -373,910 to +700,919 s over the mis-paired minority of the Kalachakra rows (measured on the four non-Surya-Siddhanta ayanamshas; on Surya Siddhanta 811 of 6,591 shifted rows pair off-mode, between the 2 s threshold and the main band). It exists only so those rows are attributed instead of reading DASHA_SHIFT_UNDECLARED; it is NOT a claim that Kalachakra shifts that much, and it means a Kalachakra start shift anywhere in that range is not caught by this band (the main entries above carry the real value; SETTLED-1 reads the chain-identity table). Remove it when the detector pairs Kalachakra rows by chain identity. source: SE1_SHIFT_ANALYSIS.md section 3 (measured shifts) and section 4 (what the detector reads)."
+    },
+    {
+      "table": "chart_dashas",
+      "kind": "dasha_shift",
+      "systems": ["mudda"],
+      "shift_range_sec": [-65, -3],
+      "optional": true,
+      "note": "Mudda follows the Sun (+0.0003 arcsec): 0 to +1 s on every row (below the 2 s threshold), plus at most one solar-return bisection quantum (tolerance 1/1440 d = 60 s) per varsha: measured one, True Chitra 2001-02-04, -43 s, 425 rows (that varsha and its sub-periods). Optional: absent if no bisection step flips. Mudda row set is unchanged on every ayanamsha (20,473 / 20,474 / 20,475 / 20,476 / 20,477), asserted by the exact-zero entry last in this hook. source: SE1_SHIFT_ANALYSIS.md section 3 (measured shifts) and section 4 (what the detector reads)."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["vimshottari"],
+      "ayanamsha_ids": ["lahiri_chitrapaksha"],
+      "change_types": ["appeared"],
+      "expected_count": {
+        "exact": 29
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). lahiri_chitrapaksha: Vimshottari level-4 rows appeared 29; the paired disappeared entry carries 17; level 4 goes 8165 to 8177 (net +12). Sub-day Sukshma rows crossing a UTC midnight after the +6,992 s shift; exact because the writer is deterministic, any other number is a finding (code changed or inputs differ). No five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["vimshottari"],
+      "ayanamsha_ids": ["lahiri_chitrapaksha"],
+      "change_types": ["disappeared"],
+      "expected_count": {
+        "exact": 17
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). lahiri_chitrapaksha: Vimshottari level-4 rows disappeared 17; the paired appeared entry carries 29; level 4 goes 8165 to 8177 (net +12). Sub-day Sukshma rows crossing a UTC midnight after the +6,992 s shift; exact because the writer is deterministic, any other number is a finding (code changed or inputs differ). No five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["vimshottari"],
+      "ayanamsha_ids": ["true_chitra"],
+      "change_types": ["appeared"],
+      "expected_count": {
+        "exact": 40
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). true_chitra: Vimshottari level-4 rows appeared 40; the paired disappeared entry carries 38; level 4 goes 8164 to 8166 (net +2). Sub-day Sukshma rows crossing a UTC midnight after the +6,992 s shift; exact because the writer is deterministic, any other number is a finding (code changed or inputs differ). No five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["vimshottari"],
+      "ayanamsha_ids": ["true_chitra"],
+      "change_types": ["disappeared"],
+      "expected_count": {
+        "exact": 38
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). true_chitra: Vimshottari level-4 rows disappeared 38; the paired appeared entry carries 40; level 4 goes 8164 to 8166 (net +2). Sub-day Sukshma rows crossing a UTC midnight after the +6,992 s shift; exact because the writer is deterministic, any other number is a finding (code changed or inputs differ). No five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["vimshottari"],
+      "ayanamsha_ids": ["krishnamurti"],
+      "change_types": ["appeared"],
+      "expected_count": {
+        "exact": 29
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). krishnamurti: Vimshottari level-4 rows appeared 29; the paired disappeared entry carries 28; level 4 goes 8155 to 8156 (net +1). Sub-day Sukshma rows crossing a UTC midnight after the +6,992 s shift; exact because the writer is deterministic, any other number is a finding (code changed or inputs differ). No five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["vimshottari"],
+      "ayanamsha_ids": ["krishnamurti"],
+      "change_types": ["disappeared"],
+      "expected_count": {
+        "exact": 28
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). krishnamurti: Vimshottari level-4 rows disappeared 28; the paired appeared entry carries 29; level 4 goes 8155 to 8156 (net +1). Sub-day Sukshma rows crossing a UTC midnight after the +6,992 s shift; exact because the writer is deterministic, any other number is a finding (code changed or inputs differ). No five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["vimshottari"],
+      "ayanamsha_ids": ["raman"],
+      "change_types": ["appeared"],
+      "expected_count": {
+        "exact": 21
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). raman: Vimshottari level-4 rows appeared 21; the paired disappeared entry carries 30; level 4 goes 8043 to 8034 (net -9). Sub-day Sukshma rows crossing a UTC midnight after the +6,992 s shift; exact because the writer is deterministic, any other number is a finding (code changed or inputs differ). No five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["vimshottari"],
+      "ayanamsha_ids": ["raman"],
+      "change_types": ["disappeared"],
+      "expected_count": {
+        "exact": 30
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). raman: Vimshottari level-4 rows disappeared 30; the paired appeared entry carries 21; level 4 goes 8043 to 8034 (net -9). Sub-day Sukshma rows crossing a UTC midnight after the +6,992 s shift; exact because the writer is deterministic, any other number is a finding (code changed or inputs differ). No five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["vimshottari"],
+      "ayanamsha_ids": ["surya_siddhanta_classical"],
+      "change_types": ["appeared"],
+      "expected_count": {
+        "exact": 27
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). surya_siddhanta_classical: Vimshottari level-4 rows appeared 27; the paired disappeared entry carries 33; level 4 goes 7983 to 7977 (net -6). Sub-day Sukshma rows crossing a UTC midnight after the +6,992 s shift; exact because the writer is deterministic, any other number is a finding (code changed or inputs differ). No five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["vimshottari"],
+      "ayanamsha_ids": ["surya_siddhanta_classical"],
+      "change_types": ["disappeared"],
+      "expected_count": {
+        "exact": 33
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). surya_siddhanta_classical: Vimshottari level-4 rows disappeared 33; the paired appeared entry carries 27; level 4 goes 7983 to 7977 (net -6). Sub-day Sukshma rows crossing a UTC midnight after the +6,992 s shift; exact because the writer is deterministic, any other number is a finding (code changed or inputs differ). No five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["kalachakra"],
+      "ayanamsha_ids": ["lahiri_chitrapaksha"],
+      "change_types": ["appeared"],
+      "expected_count": {
+        "exact": 216
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). lahiri_chitrapaksha: Kalachakra level-4 rows appeared 216; the paired disappeared entry carries 213 (net +3). Rows of 3.5 h to 23.3 h that cross a UTC midnight only after the +40 h shift. Exact and per ayanamsha; no five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["kalachakra"],
+      "ayanamsha_ids": ["lahiri_chitrapaksha"],
+      "change_types": ["disappeared"],
+      "expected_count": {
+        "exact": 213
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). lahiri_chitrapaksha: Kalachakra level-4 rows disappeared 213; the paired appeared entry carries 216 (net +3). Rows of 3.5 h to 23.3 h that cross a UTC midnight only after the +40 h shift. Exact and per ayanamsha; no five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["kalachakra"],
+      "ayanamsha_ids": ["true_chitra"],
+      "change_types": ["appeared"],
+      "expected_count": {
+        "exact": 198
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). true_chitra: Kalachakra level-4 rows appeared 198; the paired disappeared entry carries 198 (net 0). Rows of 3.5 h to 23.3 h that cross a UTC midnight only after the +40 h shift. Exact and per ayanamsha; no five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["kalachakra"],
+      "ayanamsha_ids": ["true_chitra"],
+      "change_types": ["disappeared"],
+      "expected_count": {
+        "exact": 198
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). true_chitra: Kalachakra level-4 rows disappeared 198; the paired appeared entry carries 198 (net 0). Rows of 3.5 h to 23.3 h that cross a UTC midnight only after the +40 h shift. Exact and per ayanamsha; no five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["kalachakra"],
+      "ayanamsha_ids": ["krishnamurti"],
+      "change_types": ["appeared"],
+      "expected_count": {
+        "exact": 227
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). krishnamurti: Kalachakra level-4 rows appeared 227; the paired disappeared entry carries 217 (net +10). Rows of 3.5 h to 23.3 h that cross a UTC midnight only after the +40 h shift. Exact and per ayanamsha; no five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["kalachakra"],
+      "ayanamsha_ids": ["krishnamurti"],
+      "change_types": ["disappeared"],
+      "expected_count": {
+        "exact": 217
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). krishnamurti: Kalachakra level-4 rows disappeared 217; the paired appeared entry carries 227 (net +10). Rows of 3.5 h to 23.3 h that cross a UTC midnight only after the +40 h shift. Exact and per ayanamsha; no five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["kalachakra"],
+      "ayanamsha_ids": ["raman"],
+      "change_types": ["appeared"],
+      "expected_count": {
+        "exact": 193
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). raman: Kalachakra level-4 rows appeared 193; the paired disappeared entry carries 201 (net -8). Rows of 3.5 h to 23.3 h that cross a UTC midnight only after the +40 h shift. Exact and per ayanamsha; no five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["kalachakra"],
+      "ayanamsha_ids": ["raman"],
+      "change_types": ["disappeared"],
+      "expected_count": {
+        "exact": 201
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). raman: Kalachakra level-4 rows disappeared 201; the paired appeared entry carries 193 (net -8). Rows of 3.5 h to 23.3 h that cross a UTC midnight only after the +40 h shift. Exact and per ayanamsha; no five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["kalachakra"],
+      "ayanamsha_ids": ["surya_siddhanta_classical"],
+      "change_types": ["appeared"],
+      "expected_count": {
+        "exact": 269
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). surya_siddhanta_classical: Kalachakra level-4 rows appeared 269; the paired disappeared entry carries 289 (net -20). Rows of 3.5 h to 23.3 h that cross a UTC midnight only after the +40 h shift. Exact and per ayanamsha; no five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["kalachakra"],
+      "ayanamsha_ids": ["surya_siddhanta_classical"],
+      "change_types": ["disappeared"],
+      "expected_count": {
+        "exact": 289
+      },
+      "note": "source: SE1_SHIFT_ANALYSIS.md section 5 (se1-shift-analysis worker, 2026-10-03: real ga_dashas_writer builders on linux/amd64, pinned .se1 files, stored production rows reproduced with zero changes first; the counts are those the real flip_detector.dasha_diff read). surya_siddhanta_classical: Kalachakra level-4 rows disappeared 289; the paired appeared entry carries 269 (net -20). Rows of 3.5 h to 23.3 h that cross a UTC midnight only after the +40 h shift. Exact and per ayanamsha; no five-ayanamsha total is checked anywhere."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["vimshottari_kp", "yogini", "ashtottari", "chara_karaka", "narayana", "naisargika", "mudda"],
+      "change_types": ["appeared", "disappeared"],
+      "expected_count": {
+        "exact": 0
+      },
+      "note": "Every other system of chart_dashas on the canonical chart keeps its exact row set (KP 5,670; yogini 83,740; ashtottari 32,960; chara_karaka 155,135; narayana 1,327; naisargika 21,945; mudda 102,375): none is Moon-fraction anchored or has a sub-day row that moves. The Yogini / Ashtottari / Naisargika / Chara / Narayana start times move by exactly 0 s (any shift is DASHA_SHIFT_UNDECLARED because no shift entry names them). source: SE1_SHIFT_ANALYSIS.md section 5 (row sets of these systems simulated with the real writer functions, exact on all five ayanamshas). ashtottari, mudda and naisargika are also named by karaka_dasha_roles[0] (its own exact-0 claim); the two entries overlap on those three systems on purpose and each reads 0."
+    }
+  ]
+}

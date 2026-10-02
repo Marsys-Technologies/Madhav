@@ -6,7 +6,7 @@
   "may_change": [
     {
       "table": "chart_dashas",
-      "categories": ["vimshottari", "vimshottari_kp", "ashtottari", "mudda", "naisargika"],
+      "categories": ["ashtottari", "mudda", "naisargika"],
       "change_types": ["appeared", "disappeared"],
       "expected_count": {"exact": 0},
       "expected_direction": "no chart_dashas row appears or disappears: this lane rewrites karaka_role_at_period and karakas_active_during_period (and the citation_human suffix) on existing rows only; row set, lords, start_iso / end_iso, durations and tiers are unchanged.",
