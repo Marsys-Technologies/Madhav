@@ -248,6 +248,56 @@ def test_an_interruption_after_the_commit_records_applied_never_failed(runner, m
     assert runner.state()["md5"] == mod.CAPTURE_PATCH.patched_md5                    # the commit really happened
 
 
+class CommitProxy:
+    """A connection whose commit() can be made to raise (and, optionally, to reach the server first)."""
+
+    def __init__(self, conn, server_commits):
+        self._c, self._server_commits = conn, server_commits
+
+    def commit(self):
+        if self._server_commits:
+            self._c.commit()
+        raise psycopg.OperationalError("synthetic: connection dropped at the commit acknowledgement")
+
+    def __getattr__(self, name):
+        return getattr(self._c, name)
+
+
+@pytest.mark.parametrize("server_committed", [False, True], ids=["connection_lost_before_the_server_saw_it", "ack_lost_after_the_server_committed"])
+def test_a_commit_call_that_itself_raises_is_commit_state_unknown_not_failed(runner, cluster, db, mod, server_committed):
+    """The real server outcome differs between the two cases and the executor cannot know: both are `commit_state_unknown`, never `failed`."""
+    pre = runner.state()
+    _, dry = runner.execute(runner.args("dry-run"))
+    with pytest.raises(psycopg.OperationalError):
+        mod.execute(runner.args("apply", expect_evidence=dry["evidence_digest"]),
+                    lambda: CommitProxy(cluster.conn(db, user=cf.ADMIN_USER), server_committed),
+                    gate_tables=cf.L1_TABLES, writer_runner=cf.writer_runner(mod))
+    outs = sorted(runner.tmp.glob("ev/apply_*/outcome.json"))
+    body = json.loads(outs[-1].read_text())
+    assert body["status"] == "commit_state_unknown" and body["warnings"] == ["commit_raised:OperationalError"] and body["failed_checks"] == []
+    assert body["evidence_digest"] == dry["evidence_digest"]
+    assert (runner.state()["md5"] == mod.CAPTURE_PATCH.patched_md5) is server_committed        # the outcome is honest about not knowing
+
+
+def test_a_broken_stderr_never_costs_the_commit_state_unknown_outcome(mod, tmp_path, monkeypatch):
+    class BrokenStderr:
+        def write(self, *a):
+            raise OSError("closed")
+
+        def flush(self):
+            raise OSError("closed")
+    es = mod.standards()
+    d = tmp_path / "run"
+    d.mkdir()
+    monkeypatch.setattr(mod.sys, "stderr", BrokenStderr())
+    with pytest.raises(RuntimeError):
+        with mod.safe_outcome_class(es)(d, str(EXEC_DIR / "d6_dataplane_capture_fa2_exec.py"), "a" * 64, dict(es.fingerprint(str(cf.GATE_FIXTURE)), under_test=False)) as o:
+            o.mark_commit_unknown("b" * 64, "OperationalError")
+            raise RuntimeError("x")
+    monkeypatch.undo()
+    assert json.loads((d / "outcome.json").read_text())["status"] == "commit_state_unknown"
+
+
 def test_the_exclusive_window_is_short_and_measured(runner):
     code, res = runner.run("apply")
     m = re.search(r"ACCESS EXCLUSIVE window \(UTC\): \S+ -> \S+; statements inside it: (\d+)", "\n".join(res["log"]))

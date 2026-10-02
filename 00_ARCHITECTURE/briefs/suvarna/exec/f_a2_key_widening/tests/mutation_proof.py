@@ -107,6 +107,11 @@ MUTATIONS = [
     ("plan hash no longer binds the gate pins", EX, '{"gate_sha256": pins["prerun_gate.py"], "run_gated_sha256": pins["run_gated.sh"]})', '{"gate_sha256": "0" * 64, "run_gated_sha256": "0" * 64})', None, WIRING, "plan_hash_binds"),
     ("outcome after commit recorded as failed (committed flag not set)", EX, "                    o.mark_committed(digest)\n", "                    pass\n", None, COMBINED, "interruption"),
     ("test evidence-root variable honoured outside pytest", EX, "    if PYTEST_ENV not in environ:\n        sys.stderr.write(f\"REFUSED: {TEST_EVIDENCE_ENV}", "    if False:\n        sys.stderr.write(f\"REFUSED: {TEST_EVIDENCE_ENV}", None, WIRING, "stray_test_variables"),
+    ("under_test launch marker accepted outside pytest", EX, '    if gate_fp.get("under_test") and PYTEST_ENV not in environ:\n', "    if False:\n", None, WIRING, "under_test"),
+    ("commit_state_unknown no longer recorded when commit() raises", EX, "                        o.mark_commit_unknown(digest, type(exc).__name__)\n                        raise\n",
+     "                        raise\n", None, COMBINED, "commit_call"),
+    ("second function: its re-attestation skipped (data-driven loop)", EX, "        cur.execute(fn_att_update_sql(st.patch.signature))\n", '        cur.execute("SELECT 1")\n', None, "tests/test_two_function_machinery.py", None),
+    ("second function: its pre-state body check neutered", EX, "md5 == st.from_md5 and definition == st.from_def,", "True,", None, "tests/test_two_function_machinery.py", "byte_for_byte"),
 ]
 
 

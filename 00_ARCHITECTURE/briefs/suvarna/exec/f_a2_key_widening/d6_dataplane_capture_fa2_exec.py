@@ -33,8 +33,9 @@ launch_gate() FIRST and refuses (exit 93) without a verifying GATE_V2_LAUNCH mar
 BELOW ARE A MARKED TBD: the gate files (exec/gate_v2/, PR #2938) are being revised (revision 3) and are not yet bound, so every plan hash
 printed by this version is PROVISIONAL BY DESIGN and tests/test_gate_pins_bound fails until the pins are bound and the hash re-frozen.
 
-outcome.json (status dry_run | applied | failed) is written into the run's evidence directory in every mode (executor_standards.outcome_guard).
-A MISSING outcome.json means check the database. The administrator password is fetched from Secret Manager inside this process ONLY after the
+outcome.json (status dry_run | applied | failed | commit_state_unknown) is written into the run's evidence directory in every mode
+(executor_standards.outcome_guard); commit_state_unknown means conn.commit() itself raised (the server MAY have committed: check the database first).
+An under_test launch marker is refused (exit 93) in every mode outside pytest. A MISSING outcome.json means check the database. The administrator password is fetched from Secret Manager inside this process ONLY after the
 plan hash matched, never printed or saved; tests inject a disposable connection and never reach connect_admin().
 """
 from __future__ import annotations
@@ -224,6 +225,12 @@ EXPECTED_DIFF = {
 GATE_TBD = "TBD_BIND_AT_GATE_REVISION_3"
 # TBD: the gate files at exec/gate_v2/ (PR #2938) are being revised (revision 3). Bind the three sha256 here, re-freeze the plan hash.
 GATE_PINS = {"prerun_gate.py": GATE_TBD, "run_gated.sh": GATE_TBD, "executor_standards.py": GATE_TBD}
+# PROPOSED, NOT BOUND: the sha256 of the gate files at PR #2938 head 7f0db55c3 (Gate v2 revision 3), as handed to this lane. They are NOT in force: only Strategic
+# Suvarna binds the pins (by replacing the TBD values above after reviewing the files). tests/gate_fixture holds byte-identical copies of exactly these
+# files and a test proves it, so the whole suite runs against the revision-3 gate; the plan prints the hash the plan WOULD have if these were bound as they are.
+GATE_REV3_PROPOSED = {"prerun_gate.py": "01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e",
+                      "run_gated.sh": "305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076",
+                      "executor_standards.py": "bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135"}
 GATE_DIR_ENV = "DPFA2_TEST_GATE_DIR"
 TEST_EVIDENCE_ENV = "DPFA2_TEST_EVIDENCE_ROOT"
 PYTEST_ENV = "PYTEST_CURRENT_TEST"
@@ -408,10 +415,13 @@ def render_plan(sha: str | None = None, pins: dict | None = None) -> str:
         "-- CREATE OR REPLACE FUNCTION from each shipped live definition; the 1035 table comments restored and the five column comments set to NULL; 6-column index (create tmp, drop, rename); "
         f"6-argument trigger; re-attest every function row and the trigger row; commit conditions mirror the forward ones with the live constants (trigger digest {LIVE_TRG_DIGEST}).",
         "-- the real run is started ONLY through exec/gate_v2/run_gated.sh <python3> <this file> <args> (GATE_V2): the executor REFUSES (exit 93) unless the marker verifies against "
-        "the gate files pinned below; it writes outcome.json (dry_run | applied | failed) in every mode; it refuses (exit 95) when a DPFA2_TEST_* variable is set outside pytest.",
+        "the gate files pinned below; it writes outcome.json (dry_run | applied | failed | commit_state_unknown) in every mode; it refuses an under_test launch marker (exit 93) and a DPFA2_TEST_* variable (exit 95) outside pytest.",
         "-- every mode needs --expect-plan: the in-process administrator credential is fetched only after the plan hash matched.",
-        "-- gate files (exec/gate_v2, PR #2938; PINS ARE TBD, plan hash PROVISIONAL): prerun_gate.py sha256 %s; run_gated.sh sha256 %s; executor_standards.py sha256 %s"
-        % (pins["prerun_gate.py"], pins["run_gated.sh"], pins["executor_standards.py"]),
+        "-- gate files (exec/gate_v2, PR #2938; %s): prerun_gate.py sha256 %s; run_gated.sh sha256 %s; executor_standards.py sha256 %s"
+        % ("PINS ARE TBD, plan hash PROVISIONAL" if any(v == GATE_TBD for v in pins.values()) else "pins BOUND by Strategic Suvarna",
+           pins["prerun_gate.py"], pins["run_gated.sh"], pins["executor_standards.py"]),
+        "-- gate revision 3 PROPOSED, NOT BOUND (PR #2938 head 7f0db55c3): prerun_gate.py sha256 %s; run_gated.sh sha256 %s; executor_standards.py sha256 %s"
+        % (GATE_REV3_PROPOSED["prerun_gate.py"], GATE_REV3_PROPOSED["run_gated.sh"], GATE_REV3_PROPOSED["executor_standards.py"]),
         "-- plan hash = bind_gate_into_plan_hash(sha256(plan text + \"\\n\" + json(EXPECTED_DIFF)), prerun_gate.py pin, run_gated.sh pin)",
         "-- F-A2 module: d6_f_a2_key_widening_DRAFT.py sha256 %s" % sha_file(HERE / "d6_f_a2_key_widening_DRAFT.py"),
         "-- patch A module: d6_capture_patch_a.py sha256 %s" % sha_file(HERE / "d6_capture_patch_a.py"),
@@ -852,10 +862,16 @@ def safe_outcome_class(es):
     class SafeOutcome(es.outcome_guard):
         write_error = None
         committed = False
+        commit_unknown = None              # class name of the exception conn.commit() itself raised: the server MAY have committed
         commit_digest = None
 
         def mark_committed(self, digest):
+            """Called IMMEDIATELY after conn.commit(): from here on the truth is `applied`, whatever happens next."""
             self.committed, self.commit_digest = True, digest
+
+        def mark_commit_unknown(self, digest, exc_name):
+            """conn.commit() raised (e.g. the connection dropped at the acknowledgement): neither applied nor failed is known."""
+            self.commit_unknown, self.commit_digest = exc_name, digest
 
         def _write(self, status, digest=None, checks=(), warnings=()):
             try:
@@ -864,12 +880,26 @@ def safe_outcome_class(es):
                 self.write_error = type(exc).__name__
                 self.done = True
 
+        @staticmethod
+        def _warn(text):
+            """stderr is best effort: a closed / broken stderr (SIGHUP with the terminal gone) must never cost the outcome file."""
+            try:
+                sys.stderr.write(text)
+                sys.stderr.flush()
+            except BaseException:
+                pass
+
         def __exit__(self, exc_type, exc, tb):
+            if self.commit_unknown and not self.done:
+                self._write("commit_state_unknown", self.commit_digest, (), ["commit_raised:" + self.commit_unknown])
+                self._warn("WARNING: COMMIT STATE UNKNOWN (%s raised by commit()): the change may or may not be committed. outcome.json records "
+                           "commit_state_unknown. CHECK THE DATABASE before doing anything else.\n" % self.commit_unknown)
+                return False
             if self.committed and not self.done:
                 why = re.sub(r"[^A-Za-z0-9_.:\-]", "_", exc_type.__name__ if exc_type is not None else "outcome_not_declared")[:40]
-                sys.stderr.write("WARNING: THE COMMIT HAPPENED but the run was interrupted (%s) before outcome.json was recorded; recording "
-                                 "applied with a warning. Verify in the database.\n" % why)
-                self._write("applied", self.commit_digest, (), ["outcome_write_failed_after_commit:" + why])
+                self._write("applied", self.commit_digest, (), ["outcome_write_failed_after_commit:" + why])      # the outcome FIRST
+                self._warn("WARNING: THE COMMIT HAPPENED but the run was interrupted (%s) before outcome.json was recorded; recorded "
+                           "applied with a warning. Verify in the database.\n" % why)
                 return False
             return super().__exit__(exc_type, exc, tb)
 
@@ -946,10 +976,14 @@ def execute(args, connect, now=None, gate_fp=None, gate_tables=None, writer_runn
                       "failed_checks": ck.failed, "checks": {n: ok for n, ok, _ in ck.items},
                       "details": {n: d for n, ok, d in ck.items if d and not ok}, "log": lines, "evidence_dir": str(run_dir)}
             if args.mode in ("apply", "rollback") and res["commit_ok"]:
-                signal.pthread_sigmask(signal.SIG_BLOCK, _HELD_SIGNALS)
+                signal.pthread_sigmask(signal.SIG_BLOCK, _HELD_SIGNALS)       # SIGTERM/SIGHUP/SIGINT wait until the COMMIT is recorded
                 try:
-                    conn.commit()
-                    o.mark_committed(digest)
+                    try:
+                        conn.commit()
+                    except BaseException as exc:                              # the commit call ITSELF failed: the server may have committed
+                        o.mark_commit_unknown(digest, type(exc).__name__)
+                        raise
+                    o.mark_committed(digest)                                  # IMMEDIATELY after the commit
                 finally:
                     signal.pthread_sigmask(signal.SIG_UNBLOCK, _HELD_SIGNALS)
                 result["status"] = "COMMITTED"
@@ -995,8 +1029,20 @@ def parse_args(argv):
     return a
 
 
+def refuse_under_test_outside_pytest(gate_fp, environ=None):
+    """An under_test launch marker (run_gated.sh started with GATE_V2_UNDER_TEST=1) is for the test harness only: the executor refuses it,
+    in EVERY mode including --dry-run, unless PYTEST_CURRENT_TEST is set. Otherwise an operator shell with GATE_V2_UNDER_TEST=1 and a
+    test pgenv would pass the real launcher and reach the real database with only a WARNING."""
+    environ = os.environ if environ is None else environ
+    if gate_fp.get("under_test") and PYTEST_ENV not in environ:
+        sys.stderr.write("REFUSED: the launch marker says the gate ran under test (GATE_V2_UNDER_TEST=1): the executor does not run against a "
+                         "database from such a launch outside a pytest run. Start it through run_gated.sh without the test flag.\n")
+        raise SystemExit(EXIT_NO_LAUNCH)
+
+
 def main(argv=None) -> int:
     gate_fp = launch_gate()                  # FIRST: before the arguments are even parsed
+    refuse_under_test_outside_pytest(gate_fp)
     args = parse_args(sys.argv[1:] if argv is None else argv)
     install_signal_handlers()
     try:

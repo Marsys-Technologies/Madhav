@@ -188,11 +188,39 @@ def refused(mod, capsys, environ, reason):
     assert "REFUSED" in err and reason in err
 
 
-def test_the_fixture_gate_files_are_the_byte_identical_gate_v2_rev2_files(mod):
-    shas = cf.fixture_pins()
-    assert shas == {"prerun_gate.py": "ba65d82a338257bd7b3b1ae37df312fb382ef548291a211eadbc2538a987ef73",
-                    "run_gated.sh": "305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076",
-                    "executor_standards.py": "7ca8ea9cc3422f41d38ced27f6501d666dcce78918e38e1d255b8dabcdd3c38d"}
+def test_the_fixture_gate_files_are_the_byte_identical_gate_v2_rev3_files(mod):
+    """tests/gate_fixture = exec/gate_v2 at PR #2938 head 7f0db55c3 (revision 3); GATE_REV3_PROPOSED is the proposal, NOT a binding."""
+    assert cf.fixture_pins() == mod.GATE_REV3_PROPOSED == {
+        "prerun_gate.py": "01ab1d70d0cffea015a64af5430f355dd8d419307aceeaeacf3a0cc4d715773e",
+        "run_gated.sh": "305b4406bba57f85944bbb57cb269368287aaa6d6f782e986afa7f857606f076",
+        "executor_standards.py": "bbea69552a6a92e7aed3a75758b533868e3e3d2c5b47385ccc1bf6c0660dc135"}
+    gv2 = EXEC_DIR.parent / "gate_v2"
+    if gv2.exists():                                                  # once PR #2938 is merged the fixture must still equal it
+        for n in mod.GATE_REV3_PROPOSED:
+            assert (gv2 / n).read_bytes() == (GATE_FIXTURE / n).read_bytes(), n
+
+
+def test_the_proposed_pins_are_not_the_bound_pins():
+    m = fresh("d6_proposed")
+    assert all(v == m.GATE_TBD for v in m.GATE_PINS.values()) and m.GATE_REV3_PROPOSED != m.GATE_PINS
+
+
+def test_an_under_test_launch_marker_is_refused_in_every_mode_outside_pytest(mod, capsys):
+    es = mod.standards(env_with())
+    ut = es.make_marker(str(GATE_FIXTURE / "prerun_gate.py"), str(GATE_FIXTURE / "run_gated.sh"), under_test=True)
+    # the verifier (executor_standards) is itself under test when GATE_V2_UNDER_TEST=1 is in the operator's shell, so it ACCEPTS the marker...
+    fp = mod.launch_gate(env_with(GATE_V2_LAUNCH=ut))
+    assert fp["under_test"] is True
+    # ...and the executor refuses it anyway, before the arguments are parsed, unless it runs inside pytest
+    operator_env = {"GATE_V2_UNDER_TEST": "1"}
+    with pytest.raises(SystemExit) as e:
+        mod.refuse_under_test_outside_pytest(fp, environ=operator_env)
+    assert e.value.code == 93 and "ran under test" in capsys.readouterr().err
+    mod.refuse_under_test_outside_pytest(fp, environ={"PYTEST_CURRENT_TEST": "x"})            # the harness
+    mod.refuse_under_test_outside_pytest(dict(fp, under_test=False), environ=operator_env)    # a production marker
+    src = (EXEC_DIR / "d6_dataplane_capture_fa2_exec.py").read_text()
+    body = src[src.index("def main("):]
+    assert body.index("launch_gate()") < body.index("refuse_under_test_outside_pytest(gate_fp)") < body.index("parse_args(")
 
 
 def test_launch_gate_refuses_without_a_marker(mod, capsys):
