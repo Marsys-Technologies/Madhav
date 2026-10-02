@@ -426,6 +426,10 @@ E63_CLOSED_GAP_STATES = frozenset({"CLOSED", "WITHDRAWN"})
 E63_DISPOSITIONS = frozenset({"keep", "integrate", "enrich", "qualify", "consolidate", "historical", "retire",
                               "unresolved"})
 E63_TERMINAL_DISPOSITIONS = frozenset({"retire", "consolidate"})
+E63_RECORD_VERSIONS = (1, 2)          # E5.1 record_version: 2 adds `citation_state` (N-74); v1 reads as null
+E63_CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
+E63_CITATION_BLOCKING = ("unsourced", "refuted")             # a PASS in one of these states does not count
+E63_CITATION_CRITERIA = ("Carr.D1", "Ldgr.source_presence")   # the cells whose citation state is reported per criterion
 E63_BASIS_DECLARATION = "declaration"        # the one recognised `basis` (asset_census._check_contribution)
 # Layer-wide gap rows attach to no asset (the real ledger holds five, e.g. Build.diagnosability): the one pseudo-asset
 # id allowed in the gap ledger besides `_schema`. They never block an asset (no asset carries that id).
@@ -956,6 +960,18 @@ def _e63_check_cert(r, n, facts):
         _e63_fail("malformed", f"{where}: semantic_fingerprint must be 64 lower-case hex or null")
     if r.get("na") is not None and not isinstance(r.get("na"), dict):
         _e63_fail("malformed", f"{where}: na must be an object or null")
+    rv = r.get("record_version")
+    if not _e63_int(rv) or rv not in E63_RECORD_VERSIONS:
+        _e63_fail("malformed", f"{where}: record_version {rv!r} is not one this reader knows {E63_RECORD_VERSIONS}")
+    cs, cc = r.get("citation_state"), r.get("citation_state_caveat")
+    if rv == 1 and ("citation_state" in r or "citation_state_caveat" in r):
+        _e63_fail("malformed", f"{where}: a record_version 1 record may not carry citation_state (v1 reads as null)")
+    if cs is not None and cs not in E63_CITATION_STATES:
+        _e63_fail("malformed", f"{where}: citation_state {cs!r} is outside {E63_CITATION_STATES} (or null)")
+    if cc is not None and not isinstance(cc, bool):
+        _e63_fail("malformed", f"{where}: citation_state_caveat must be a boolean")
+    if cc is not None and cc != (verdict == "PASS" and crit in E63_CITATION_CRITERIA and cs not in (None, "sourced")):
+        _e63_fail("malformed", f"{where}: citation_state_caveat contradicts citation_state {cs!r} on {crit}")
     if kind == "gate":
         if r.get("cross_checked") is not True:
             _e63_fail("malformed", f"{where}: a gate record must carry cross_checked: true (the writer reads its verdict "
@@ -1257,6 +1273,8 @@ def _e63_satisfies(rec, state, addition):
                 or state.kinds.get(rec["asset"]) not in kinds):
             return False             # an unrecognised basis, or `declaration` where the registry does not define it
     if v == "PASS":
+        if rec.get("citation_state") in E63_CITATION_BLOCKING:
+            return False            # an unsourced or refuted citation is no PASS (N-74); reported by citation_blocked_cells
         if _e63_is_none(rec["detector"]) or (
                 not addition and _e63_is_none(state.facts.criteria.get(crit, {}).get("detector", ""))):
             return False            # detector NONE never reaches PASS (the record's own, or the registry's)
@@ -1282,15 +1300,16 @@ def _e63_gap_blocks(g, additions, info_families):
 
 def _e63_asset_report(asset, state, disp, gaps):
     """None when the asset is not elevated, else HOW it is: {basis: "terminal_disposition" | "measured",
-    declaration_based_pass_cells, ruled_na_cells, terminal}."""
+    declaration_based_pass_cells, ruled_na_cells, citation_states, citation_caveat, terminal}."""
     d = disp.get(asset)
     if d is not None and d["effective"] in E63_TERMINAL_DISPOSITIONS and d["reason"]:       # TERMINAL (decision id + reason)
         return dict(basis="terminal_disposition", declaration_based_pass_cells=0, ruled_na_cells=[],
+                    citation_states={}, citation_caveat=False,
                     terminal=dict(disposition=d["effective"], reason=d["reason"], decision_id=d["decision_id"]))
     if d is None or d["effective"] == "unresolved":                                          # (4)
         return None
     layer = _e63_layer_of(asset, state.facts, f"asset {asset}")
-    declared, ruled = 0, []
+    declared, ruled, cit_states, caveat = 0, [], {}, False
     for gate, crits in state.facts.required(layer).items():                                  # (1) (the floor: crits != [])
         for c in crits:
             rec = (state.by_key.get(f"{asset}|gate|{c}") or [None])[-1]
@@ -1298,15 +1317,24 @@ def _e63_asset_report(asset, state, disp, gaps):
                 return None
             if rec["verdict"] == "N/A":
                 ruled.append(dict(criterion=c, rule_id=rec["na"]["rule_id"], decision_id=rec["na"]["decision_id"]))
-            elif rec.get("basis") == E63_BASIS_DECLARATION:
-                declared += 1
+            else:
+                if rec.get("basis") == E63_BASIS_DECLARATION:
+                    declared += 1
+                cs = rec.get("citation_state")
+                if cs is not None:
+                    if c in E63_CITATION_CRITERIA:
+                        cit_states[c] = cs
+                    caveat = caveat or cs != "sourced"
     for a in d["additions"]:                                                                 # (2)
         rec = (state.by_key.get(f"{asset}|addition|{a}") or [None])[-1]
         if rec is None or not _e63_satisfies(rec, state, addition=True):
             return None
+        if rec.get("citation_state") not in (None, "sourced"):
+            caveat = True
     if any(_e63_gap_blocks(g, d["additions"], state.facts.info_families) for g in gaps.get(asset, ())):   # (3)
         return None
-    return dict(basis="measured", declaration_based_pass_cells=declared, ruled_na_cells=ruled, terminal=None)
+    return dict(basis="measured", declaration_based_pass_cells=declared, ruled_na_cells=ruled,
+                citation_states=dict(sorted(cit_states.items())), citation_caveat=caveat, terminal=None)
 
 
 def _e63_check_info_rekeys(gap_rows, disp, facts):
@@ -1321,20 +1349,8 @@ def _e63_check_info_rekeys(gap_rows, disp, facts):
                                    "addition criterion, which may not be re-keyed to kind: info")
 
 
-def elevated_report(ref: str, repo: str) -> dict:
-    """Which assets are ELEVATED and HOW, as of the ledgers committed at `ref`: {asset: {basis, ...}}.
-
-    basis "measured": every core gate (and declared addition) by a current measured PASS or a ruled N/A;
-    `declaration_based_pass_cells` counts the PASS-by-declaration cells among them and `ruled_na_cells` lists the N/A
-    cells with their rule and decision ids. basis "terminal_disposition": retire/consolidate, honoured only when its line
-    carries a decision id and a visible reason (`terminal` = {disposition, reason, decision_id}). The two are never
-    summed into one flat figure by this function: a dashboard shows "elevated by measurement" and "closed by
-    retirement" separately.
-
-    Reads only `git -C repo show <ref>:<path>`; never the working tree or a database; no side effects. Raises
-    ElevatedInputError (WatermarkOlderThanLedger when E5.5's watermark does not cover every certificate) on any
-    unreadable or malformed input.
-    """
+def _e63_load(ref, repo):
+    """Everything both public functions read, once: (ledger state, dispositions, gaps by asset, population)."""
     sha = _e63_resolve_ref(ref, repo)
     facts = _e63_registry_facts(repo, sha)
     registry = _e63_registry_assets(repo, sha)
@@ -1352,12 +1368,50 @@ def elevated_report(ref: str, repo: str) -> dict:
     for g in gap_rows:
         gaps.setdefault(g["asset"], []).append(g)
     state = LedgerState(repo, sha, facts, led.by_key, led.invalidated, led.pos, registry)
-    population = {k.split("|", 1)[0] for k in led.by_key} | set(disp)
+    return state, disp, gaps, {k.split("|", 1)[0] for k in led.by_key} | set(disp)
+
+
+def elevated_report(ref: str, repo: str) -> dict:
+    """Which assets are ELEVATED and HOW, as of the ledgers committed at `ref`: {asset: {basis, ...}}.
+
+    basis "measured": every core gate (and declared addition) by a current measured PASS or a ruled N/A;
+    `declaration_based_pass_cells` counts the PASS-by-declaration cells among them and `ruled_na_cells` lists the N/A
+    cells with their rule and decision ids. basis "terminal_disposition": retire/consolidate, honoured only when its line
+    carries a decision id and a visible reason (`terminal` = {disposition, reason, decision_id}). The two are never
+    summed into one flat figure by this function: a dashboard shows "elevated by measurement" and "closed by
+    retirement" separately.
+
+    CITATION STATE (N-74). E5.1 record_version 2 carries `citation_state` (sourced | sourced_ocr_unverified | unsourced |
+    refuted; null when not declared or not applicable; v1 records read as null). `citation_states` maps the asset's
+    Carr.D1 / Ldgr.source_presence PASS cells to their state; `citation_caveat` is true when ANY of its PASS cells (core
+    gates or additions) has a state other than `sourced`, so a dashboard can show "ELEVATED on OCR-only citations" on its
+    own. A PASS whose state is `unsourced` or `refuted` does NOT count (the asset is not elevated; see
+    `citation_blocked_cells`); `sourced_ocr_unverified` counts and sets the caveat.
+
+    Reads only `git -C repo show <ref>:<path>`; never the working tree or a database; no side effects. Raises
+    ElevatedInputError (WatermarkOlderThanLedger when E5.5's watermark does not cover every certificate) on any
+    unreadable or malformed input.
+    """
+    state, disp, gaps, population = _e63_load(ref, repo)
     out = {}
     for a in sorted(population):
         rep_ = _e63_asset_report(a, state, disp, gaps)
         if rep_ is not None:
             out[a] = rep_
+    return out
+
+
+def citation_blocked_cells(ref: str, repo: str) -> list:
+    """The PASS certificates that do NOT count because their citation state is `unsourced` or `refuted` (N-74):
+    [{asset, criterion, cert_id, citation_state}] for the latest, current generation of each. This is how the
+    withheld ELEVATED is reported (the asset is simply absent from `elevated_report`). Same inputs, same raises."""
+    state, _disp, _gaps, _pop = _e63_load(ref, repo)
+    out = []
+    for key in sorted(state.by_key):
+        rec = state.by_key[key][-1]
+        if (rec["verdict"] == "PASS" and rec.get("citation_state") in E63_CITATION_BLOCKING and is_current(rec, state)):
+            out.append(dict(asset=rec["asset"], criterion=rec["criterion"], cert_id=rec["cert_id"],
+                            citation_state=rec["citation_state"]))
     return out
 
 

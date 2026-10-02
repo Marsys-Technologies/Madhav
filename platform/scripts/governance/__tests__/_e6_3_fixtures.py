@@ -107,7 +107,7 @@ def writer_body(asset: str, version: int = 1) -> bytes:
 
 
 def cert(asset, crit, verdict="PASS", *, kind="gate", gen=1, upstream=(), na=None, detector="census", fp=FP,
-         layer=None, revision=None, writer=True, **over):
+         layer=None, revision=None, writer=True, citation_state=..., **over):
     """One certificate record in E5.1's shape (seq / prev_sha256 are added when the ledger is rendered)."""
     layer = layer or LAYER_OF[asset[:2]]
     mini_rev = {"Ldgr.src": 1, "Idem.pat": 2, "Idem.alt": 1, "Null.x": 1, "Build.reg": 1, "Build.any": 1, "Build.target": 1}.get(crit, 1)
@@ -124,7 +124,13 @@ def cert(asset, crit, verdict="PASS", *, kind="gate", gen=1, upstream=(), na=Non
                upstream_cert_ids=list(upstream), semantic_fingerprint=fp if verdict in ("PASS", "N/A") else None,
                cert_key=key, generation=gen, cert_id=f"{key}@{gen}", verified_by="census-run",
                verified_on=RUN_ID, record_version=1)
+    if citation_state is not ...:                      # absent = a v1 record; None = a v2 record that declares no state
+        rec["citation_state"] = citation_state
+        if crit in ("Carr.D1", "Ldgr.source_presence") and verdict == "PASS":
+            rec["citation_state_caveat"] = citation_state not in (None, "sourced")
     rec.update(over)
+    if "citation_state" in rec and "record_version" not in over:
+        rec["record_version"] = 2                       # E5.1 v2: carries citation_state (N-74); v1 has no such field
     return rec
 
 
