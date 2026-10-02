@@ -1,6 +1,6 @@
 ---
 artifact: NATIVE_OPEN_DECISIONS
-version: "1.2"
+version: "1.3"
 status: LIVING — the one place the native's open decisions for the Gochara build are listed (steward M20261002T004621-2b84)
 date: 2026-10-02
 author: Stream B (Śāstra)
@@ -48,3 +48,9 @@ nodes never). It sits in the base reference data, and the natal chart already us
 asked to accept: (1) that table for transit use; (2) its source is only labelled at chapter level ("Saravali ch.6 / Parāśara ch.3"), and the one other table we could read
 (a modern Nāḍī book) says Jupiter 12° rather than 11° — shown so you can decide. Until you decide, the daśā-lord path stays "unqualified" (named, not scored). Details:
 `design/P1_INPUTS_ANSWER_v1_0.md`.
+
+**ND-P1-FRAME — when the engine states "which house" a running-period planet's transit is in, counted from where?** For the daśā-lord path, the books we can read judge the
+transit by the *quality of the sign* (own, exalted, debilitated, inimical), not by a house number; the frozen text names a "daśā-lord frame" but never says what it is counted
+from. A stored house number is still required by the database. The options: from the planet's own **birth sign** (my recommendation — it is what the name says, and the classics do count
+from the daśā lord for birth-chart relations), or from the **ascendant**. **Nothing in the scoring reads this number**, so either choice changes no result — only the label a reader is
+given. Until you decide, the daśā-lord records are not created (a stated state, not a guess). Details: `design/P1_FRAME_ANSWER_v1_0.md`.

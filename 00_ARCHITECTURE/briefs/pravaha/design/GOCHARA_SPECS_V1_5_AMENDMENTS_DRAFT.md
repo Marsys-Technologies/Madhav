@@ -1,6 +1,6 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.15
+version: 0.16
 status: v0.5 ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); v0.6 adds AM-10 and the F-2 exclusion-evidence binding (not yet reviewed); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
@@ -1346,6 +1346,9 @@ unperformed search as complete would defeat the accepted contract.
 ## AM-15 — RULED: P1 daśā-lord house anchor
 The natal relation of the period lord to the class's signature-house set H is counted **inclusive from the lagna** (§0 inclusive counting;
 P3 table is "lagna frame"). Previously silent beyond "natal sign positions".
+
+## AM-20 — CANDIDATE (needs the native; source `design/P1_FRAME_ANSWER_v1_0.md`): reference sign of the `dasha_lord` frame for P1 transit records
+S §0 enumerates the `dasha_lord` frame but never defines its reference sign; §2.2 P1 says only "Frame: `dasha_lord` / natal sign positions"; no oracle exercises it; `frames.py` reads it as the period lord's natal sign (unruled); A's resolver returns None. Phaladīpikā XX.37–38 (`phaladeepika:PG250:C1`) conditions are sign-properties, so **no P1 factor reads the house number** — it is a stored descriptor required by 1155's `kgrr_evaluated_has_house_ck`. **Candidate text (MINE, option c):** *`house_from_frame` of a P1 transit record is the inclusive count from the natal sign of the period lord that anchors the record (`dasha_lord:<graha>`); nothing in P1 reads it; the natal relation to H stays AM-15's lagna count.* Alternative: count from the lagna and retire the frame label for transit records. Open: **ND-P1-FRAME**. Also flagged: XX.37's "or be retrograde, the effects will be good" has no factor in the P1 inventory.
 
 ## AM-16 — RULED, **REWRITTEN per Codex round 6 R6**: the complete `'5.0'` fingerprint
 
