@@ -58,30 +58,71 @@ def _one(row):
 
 # ── identity ─────────────────────────────────────────────────────────────────────────────────────────
 
-def check_identity(conn) -> dict:
-    """Refuse unless THIS connection's login is a separate verifier principal. Not a superuser, not the builder (or a
-    member of it), no write privilege on any builder-written table, INSERT on the verification tables. The job never
-    uses SET ROLE; it proves the identity it was given."""
-    who = conn.execute("SELECT current_user, session_user, r.rolsuper FROM pg_roles r WHERE r.rolname = current_user"
-                       ).fetchone()
-    user, session, superuser = tuple(who.values()) if isinstance(who, dict) else tuple(who)
-    if superuser:
-        raise VerificationRefused("identity_not_separate", f"{user} is a superuser", exit_code=EXIT_PRIVILEGE)
-    is_builder = user == "data_plane_builder" or (
-        _role_exists(conn, "data_plane_builder")
-        and bool(_one(conn.execute("SELECT pg_has_role(current_user, 'data_plane_builder', 'MEMBER')").fetchone())))
-    if is_builder:
-        raise VerificationRefused("identity_not_separate", f"{user} is, or is a member of, the builder principal",
-                                  exit_code=EXIT_PRIVILEGE)
-    held = []
-    for table in BUILDER_TABLES:
-        if _one(conn.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{table}",)).fetchone()) is not True:
-            continue
+def _builder_owner_roles(conn) -> list[str]:
+    """The roles that own the Gochara tables (the data-plane owner) — a login that is a member of one can write them all."""
+    return [_one(r) if not isinstance(r, tuple) else r[0] for r in conn.execute(
+        "SELECT DISTINCT pg_get_userbyid(c.relowner) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
+        " WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND (c.relname LIKE 'ka\\_gochara\\_%' OR"
+        " c.relname LIKE 'kala\\_gochara\\_%')").fetchall()]
+
+
+def _write_surface(conn, role: str) -> list[str]:
+    """Every WRITE privilege `role` effectively holds on the builder write surface — table level (INSERT/UPDATE/DELETE/
+    TRUNCATE) AND column level (INSERT/UPDATE on any single column: 1242 grants columns, which `has_table_privilege` does not
+    see). The surface is every Gochara table except the two verification tables the verifier itself writes."""
+    held: list[str] = []
+    tables = [(_one(r) if not isinstance(r, tuple) else r[0]) for r in conn.execute(
+        "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
+        " WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND (c.relname LIKE 'ka\\_gochara\\_%%' OR"
+        " c.relname LIKE 'kala\\_gochara\\_%%') AND c.relname <> ALL(%s) ORDER BY 1", (list(VERIFICATION_TABLES),)).fetchall()]
+    for t in tables:
         for priv in _WRITE:
-            if _one(conn.execute("SELECT has_table_privilege(current_user, %s, %s)", (f"public.{table}", priv)).fetchone()):
-                held.append(f"{priv} on {table}")
+            if _one(conn.execute("SELECT has_table_privilege(%s, %s, %s)", (role, f"public.{t}", priv)).fetchone()):
+                held.append(f"{priv} on {t}")
+        for (col,) in (tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
+                "SELECT a.attname FROM pg_attribute a WHERE a.attrelid = %s::regclass AND a.attnum > 0 AND NOT a.attisdropped"
+                " AND (has_column_privilege(%s, a.attrelid, a.attnum, 'INSERT')"
+                "   OR has_column_privilege(%s, a.attrelid, a.attnum, 'UPDATE')) ORDER BY a.attnum",
+                (f"public.{t}", role, role)).fetchall()):
+            privs = [p for p in ("INSERT", "UPDATE") if _one(conn.execute(
+                "SELECT has_column_privilege(%s, %s::regclass, %s, %s)", (role, f"public.{t}", col, p)).fetchone())]
+            for p in privs:
+                if f"{p} on {t}" not in held:                      # a table-level grant already says it
+                    held.append(f"{p}({col}) on {t}")
+    return held
+
+
+def check_identity(conn) -> dict:
+    """Refuse unless THIS session is a separate verifier principal, judged on BOTH names the session carries:
+    `session_user` (the login) and `current_user` (the effective role). Neither may be a superuser, the builder, a member of the
+    builder or of any role that OWNS the Gochara tables, and they must be the SAME role — the job never uses SET ROLE, so a
+    session whose current role differs from its login is an elevated/impersonated one (a superuser login under a restricted
+    role passes a current-role-only test). The effective role must hold NO write privilege — table OR column level — anywhere on
+    the builder write surface, INSERT on the verification tables, and SELECT on the L1 tables its derivations read."""
+    who = conn.execute("SELECT current_user, session_user").fetchone()
+    user, session = tuple(who.values()) if isinstance(who, dict) else tuple(who)
+    owners = _builder_owner_roles(conn)
+    for label, name in (("session_user", session), ("current_user", user)):
+        if _one(conn.execute("SELECT rolsuper FROM pg_roles WHERE rolname = %s", (name,)).fetchone()):
+            raise VerificationRefused("identity_not_separate", f"{label} {name} is a superuser", exit_code=EXIT_PRIVILEGE)
+        is_builder = name == "data_plane_builder" or (
+            _role_exists(conn, "data_plane_builder")
+            and bool(_one(conn.execute("SELECT pg_has_role(%s, 'data_plane_builder', 'MEMBER')", (name,)).fetchone())))
+        if is_builder:
+            raise VerificationRefused("identity_not_separate", f"{label} {name} is, or is a member of, the builder principal",
+                                      exit_code=EXIT_PRIVILEGE)
+        for owner in owners:
+            if name == owner or _one(conn.execute("SELECT pg_has_role(%s, %s, 'MEMBER')", (name, owner)).fetchone()):
+                raise VerificationRefused(
+                    "identity_not_separate", f"{label} {name} is, or is a member of, {owner}, which OWNS the Gochara tables",
+                    exit_code=EXIT_PRIVILEGE)
+    if session != user:
+        raise VerificationRefused(
+            "identity_not_separate", f"session_user {session} differs from current_user {user}: an elevated session (SET ROLE / "
+            "impersonation) — the job proves the identity it was LOGGED IN as and never uses SET ROLE", exit_code=EXIT_PRIVILEGE)
+    held = _write_surface(conn, user)
     if held:
-        raise VerificationRefused("identity_not_separate", f"{user} holds write privileges on builder tables: {held}",
+        raise VerificationRefused("identity_not_separate", f"{user} holds write privileges on the builder write surface: {held}",
                                   exit_code=EXIT_PRIVILEGE)
     l1_missing = [t for t in L1_READ_TABLES
                   if _one(conn.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{t}",)).fetchone()) is True
@@ -113,11 +154,18 @@ def check_preconditions(conn, *, chart_id: str, generation: str, classes=None, e
     from . import input_vector as iv
     from . import input_vector_verifier as ivv
     from . import inventory_verifier as inv_v
-    pub = conn.execute("SELECT status, input_generation_vector FROM public.kala_gochara_publication"
+    # R10-4 (i): independent input identity is MANDATORY. A run with no ephemeris path or no module map cannot derive the
+    # identity of what it verifies; it refuses, naming the gap, before it reads or writes anything.
+    if not ephe_path or not modules:
+        raise VerificationRefused(
+            "no_input_identity", "the independent input identity cannot be derived: "
+            + ("no ephemeris path " if not ephe_path else "") + ("no implementation module map " if not modules else "")
+            + "was supplied — a verification that cannot re-derive its own inputs persists nothing")
+    pub = conn.execute("SELECT status, input_generation_vector, horizon FROM public.kala_gochara_publication"
                        " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
     if pub is None:
         raise VerificationRefused("no_candidate_manifest", f"generation {generation} has no manifest")
-    status, vector = tuple(pub.values()) if isinstance(pub, dict) else tuple(pub)
+    status, vector, manifest_horizon = tuple(pub.values()) if isinstance(pub, dict) else tuple(pub)
     if status == "published" or _one(conn.execute("SELECT public.ka_gochara_generation_is_sealed(%s::uuid, %s)",
                                                   (chart_id, generation)).fetchone()):
         raise VerificationRefused("already_sealed", f"generation {generation} is {'published' if status == 'published' else 'sealed'}"
@@ -146,16 +194,30 @@ def check_preconditions(conn, *, chart_id: str, generation: str, classes=None, e
     if gaps:
         raise VerificationRefused("incomplete_build", "; ".join(gaps))
     out = {"classes": wanted, "manifest_status": status}
-    if ephe_path is not None and modules is not None:
-        vec = vector if isinstance(vector, dict) else __import__("json").loads(vector)
-        try:
-            ivv.verify_inputs(conn, vec, ephe_path=ephe_path, modules=modules, path_refs=path_refs,
-                              jd_range=iv.consumed_jd_range(horizon))
-        except RuntimeError as exc:
-            raise VerificationRefused("stale_inputs", str(exc)) from exc
-        out["inputs"] = "independently re-derived"
-    else:
-        out["inputs"] = "NOT re-derived (no ephemeris path / module list supplied)"
+    if manifest_horizon is None:
+        raise VerificationRefused("no_input_identity", "the manifest binds no horizon — the consumed ephemeris range "
+                                  "cannot be derived")
+    vec = vector if isinstance(vector, dict) else __import__("json").loads(vector)
+    try:
+        ivv.verify_inputs(conn, vec, ephe_path=ephe_path, modules=modules, path_refs=path_refs,
+                          jd_range=iv.consumed_jd_range((manifest_horizon.lower, manifest_horizon.upper)))
+    except RuntimeError as exc:
+        raise VerificationRefused("stale_inputs", str(exc)) from exc
+    out["inputs"] = "independently re-derived"
+    # R10-4 (ii): the runner names ITS OWN code — and that code must be the code the manifest vector pinned
+    from . import window_gate as wg
+    who = conn.execute("SELECT current_user, session_user").fetchone()
+    login, session = tuple(who.values()) if isinstance(who, dict) else tuple(who)
+    try:
+        runner = wg.runner_identity(modules, login=login, session=session)
+    except RuntimeError as exc:
+        raise VerificationRefused("no_runner_identity", str(exc)) from exc
+    import hashlib
+    pinned = hashlib.sha256(wg._canon(vec["implementation"]).encode("utf-8")).hexdigest()
+    if runner["implementation_digest"] != pinned:
+        raise VerificationRefused("runner_not_pinned", f"this runner's implementation digest {runner['implementation_digest']} "
+                                  f"is not the one the manifest pinned ({pinned}) — it is not the governed verification job")
+    out["runner"] = runner
     try:
         inv_v.validate_consumed_dasha_population(conn, chart_id=chart_id, generation=generation)
     except inv_v.Unverifiable as exc:
@@ -176,6 +238,56 @@ class VerificationDisagrees(RuntimeError):
         self.stage, self.detail = stage, detail
 
 
+def take_locks(conn, chart_id: str) -> None:
+    """R10-3: the chart lock, THEN the global SHARED key — the builder's own order — taken before ANY read that feeds an
+    attestation and held (transaction-scoped advisory locks) until the caller's transaction ends. Re-entrant."""
+    conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (chart_id,))
+    conn.execute("SELECT public.ka_gochara_lock_global_shared()")
+
+
+def _included_pins(conn, chart_id, generation, event_class):
+    return [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
+        "SELECT path_id, rule_version FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = %s"
+        " AND event_class = %s AND disposition = 'included' AND path_id IN ('P1','P2','P3','P4') ORDER BY 1, 2",
+        (chart_id, generation, event_class)).fetchall()]
+
+
+def class_fingerprint(conn, chart_id: str, generation: str, event_class: str) -> dict:
+    """R10-3: the exact INPUT/OUTPUT identity one class verification checks — the inventory and ledger digests, and for each
+    included grain the digest of its complete semantic dependency set (records, results, contacts, snapshot, manifest,
+    policy: `window_gate.derivation_inputs_digest`) and the content digest of its stored windows. Read under the locks at
+    the start, re-read before anything persists; a persisted report is bound to it."""
+    from . import window_gate as wg
+    hdr = _inventory_header(conn, chart_id, generation, event_class)
+    fp: dict[str, Any] = {"inventory": None if hdr is None else [hdr[2], hdr[3]], "grains": {}}
+    for path_id, version in _included_pins(conn, chart_id, generation, event_class):
+        grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id, rule_version=version)
+        content = _one(conn.execute("SELECT public.ka_gochara_eval_window_content_digest(%s::uuid, %s, %s, %s, %s)",
+                                    (chart_id, generation, event_class, path_id, version)).fetchone())
+        fp["grains"][f"{path_id}@{version}"] = [wg.derivation_inputs_digest(conn, **grain), content]
+    return fp
+
+
+def fingerprint_digest(fp: dict) -> str:
+    import hashlib
+    from .window_gate import _canon
+    return hashlib.sha256(_canon(fp).encode("utf-8")).hexdigest()
+
+
+def precondition_fingerprint(conn, chart_id: str, generation: str) -> str:
+    """The identity of the SHARED preconditions (the manifest vector and status, the snapshot's input identity): re-read under
+    the lock by every class transaction and compared with the one the independent input derivation vouched for."""
+    import hashlib
+    from .window_gate import _canon
+    pub = conn.execute("SELECT status, input_generation_vector::text FROM public.kala_gochara_publication"
+                       " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    snap = conn.execute("SELECT input_digest FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s"
+                        " AND generation = %s", (chart_id, generation)).fetchone()
+    pub = None if pub is None else (tuple(pub.values()) if isinstance(pub, dict) else tuple(pub))
+    return hashlib.sha256(_canon({"manifest": None if pub is None else [pub[0], pub[1]],
+                                  "input": _one(snap)}).encode("utf-8")).hexdigest()
+
+
 def _sealed_paths(conn) -> list[tuple[str, str]]:
     return sorted((r[0], r[1]) for r in (tuple(x.values()) if isinstance(x, dict) else tuple(x) for x in conn.execute(
         "SELECT path_id, rule_version FROM public.ka_gochara_rule_path_seal").fetchall()))
@@ -190,7 +302,23 @@ def _inventory_header(conn, chart_id, generation, event_class):
 
 def verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
                  path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
-                 drishti_bound: bool, vedha_bound: bool, persist: bool) -> dict:
+                 drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None) -> dict:
+    """See `_verify_class`. A class whose records (or any derivation) the verifier cannot independently derive is
+    UNVERIFIED — an explicit result, the gate stays closed, nothing is persisted — never a pass."""
+    from . import inventory_verifier as inv_v
+    try:
+        return _verify_class(conn, chart_id=chart_id, generation=generation, event_class=event_class,
+                             position_at=position_at, configured_selection=configured_selection,
+                             path_rulings=path_rulings, h_unknown=h_unknown, moon_scope_domain=moon_scope_domain,
+                             factor_rows_for=factor_rows_for, drishti_bound=drishti_bound, vedha_bound=vedha_bound,
+                             persist=persist, runner=runner)
+    except inv_v.Unverifiable as exc:
+        return {"event_class": event_class, "persisted": False, "status": "UNVERIFIED", "reason": str(exc)}
+
+
+def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
+                  path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
+                  drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None) -> dict:
     """Everything the independent verifiers say about ONE event class. With `persist=False` (the builder's in-build
     self-check, and `--report-only`) nothing is written. With `persist=True` — the verifier principal's act — the 1206
     inventory-verification row and every included P1–P4 grain's 1240 window-verification row are REPLACED (the caller
@@ -212,12 +340,16 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
         except RuntimeError as exc:
             raise VerificationDisagrees(name, str(exc)) from exc
 
+    # R10-3: protection FIRST — nothing that feeds an attestation is read before the chart and global locks are held
+    take_locks(conn, chart_id)
     header = _inventory_header(conn, chart_id, generation, event_class)
     if header is None or header[2] is None:
         raise VerificationRefused("incomplete_build", f"{event_class}: no finalised inventory")
     lo, hi, stored_digest, stored_ledger = header
     horizon = (lo, hi)
     out: dict[str, Any] = {"event_class": event_class, "persisted": bool(persist)}
+    fp0 = class_fingerprint(conn, chart_id, generation, event_class)       # the exact data this verification checks
+    out["fingerprint"] = fingerprint_digest(fp0)
     stored_sel = inv_v.stored_selection(conn, chart_id=chart_id, generation=generation, event_class=event_class)
     configured = {p.lower(): v for p, v in configured_selection.items()}
     drift = {p: (v, configured.get(p)) for p, v in stored_sel.items() if configured.get(p) != v}
@@ -238,24 +370,33 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
     if led != stored_ledger:
         raise VerificationDisagrees("ledger", f"re-derived {led} != stored {stored_ledger}")
     out["inventory_digest"], out["ledger_digest"] = res["digest"], led
-    out["aspect_spans"] = stage("aspect_spans", lambda: inv_v.verify_aspect_span_contacts(
-        conn, chart_id=chart_id, generation=generation, obligations=res["obligations"], position_at=position_at,
-        horizon=horizon, _cache={}))
+    # R10-6: the fixed 3 s / 6 h aspect-span precheck is GONE — `contact_certify` (next) certifies the aspect-to-span contacts,
+    # like every other, under the DERIVED tolerance (accuracy / |speed| + 1 s) and the union-of-contacts contract
     out["geometry"] = stage("contact_geometry", lambda: cc.certify_contact_geometry(
         conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at))
-    pins = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
-        "SELECT path_id, rule_version FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = %s"
-        " AND event_class = %s AND disposition = 'included' AND path_id IN ('P1','P2','P3','P4') ORDER BY 1, 2",
-        (chart_id, generation, event_class)).fetchall()]
+    from . import record_derivation as rd
+    snap_facts = _one(conn.execute("SELECT consumed_fact_ids FROM public.ka_gochara_search_input_snapshot"
+                                   " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone())
+    chart = inv_v.read_chart(conn, snap_facts) if snap_facts is not None else None
+    from .result_policy import manifest_policy
+    policy = manifest_policy(conn, chart_id, generation)
+    pins = _included_pins(conn, chart_id, generation, event_class)
     if any(p == "P1" for p, _v in pins):
         out["p1"] = {
             "support": stage("p1_support", lambda: rv.verify_p1_support(
                 conn, chart_id=chart_id, generation=generation, event_class=event_class)),
             "house": stage("p1_house", lambda: rv.verify_p1_house_descriptor(
                 conn, chart_id=chart_id, generation=generation, event_class=event_class))}
-        if not rv._anchor_columns(conn) or _p1_minting_open(conn, chart_id, generation, event_class):
+        # R10-1: ALWAYS certify the included P1 anchors when the schema exists — an entirely omitted P1 record
+        # population is exactly the case the expected-contact derivation exists to catch (the conditional skip,
+        # keyed on whether any anchored record SURVIVED, is gone)
+        if rv._anchor_columns(conn):
             out["p1"]["anchors"] = stage("p1_anchors", lambda: rv.verify_p1_anchors(
                 conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at))
+            p1_version = next(v for p, v in pins if p == "P1")
+            out["p1"]["results"] = stage("p1_results", lambda: rd.verify_p1_results(
+                conn, chart_id=chart_id, generation=generation, event_class=event_class, rule_version=p1_version,
+                chart=chart, policy=policy))
     snap = _one(conn.execute("SELECT input_digest FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s"
                              " AND generation = %s", (chart_id, generation)).fetchone())
     windows = []
@@ -263,6 +404,14 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
     for path_id, version in pins:
         grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
                      rule_version=version)
+        derived = None
+        if path_id != "P1":
+            # R10-1: every record the path MUST hold, derived from the obligations × the certified contacts × the bound
+            # chart; compared both directions (an empty stored path included); its DERIVED windows feed the gate
+            derived = stage(f"records {path_id}", lambda g=grain: rd.verify_path_records(
+                conn, obligations=res["obligations"], chart=chart, horizon_hi=hi, policy=policy,
+                **{k: g[k] for k in ("chart_id", "generation", "event_class", "path_id", "rule_version")}))
+            out.setdefault("records", {})[path_id] = derived["records"]
         stage(f"member_support {path_id}", lambda g=grain: wv.verify_member_support(conn, **g))
         stage(f"member_geometry {path_id}", lambda g=grain: wv.verify_member_geometry(conn, position_at=position_at, **g))
         report = stage(f"window_semantics {path_id}", lambda g=grain, p=path_id, v=version: wv.verify_window_semantics(
@@ -270,7 +419,7 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
         entry = {"path_id": path_id, "rule_version": version, "status": report["status"],
                  "policy_version": report["policy_version"], "windows": report["windows"]}
         windows.append(entry)
-        reports.append((grain, report))
+        reports.append((grain, report, None if derived is None else derived["derived_windows"]))
     out["windows"] = windows
     if persist:
         # ORDER (Stream B's all-guards rehearsal): the WINDOW verifications first, the 1206 inventory row last — the class's
@@ -278,23 +427,72 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
         # on the inventory verification table and NO DELETE: a re-run replaces nothing there (`write_verification` is
         # idempotent for an identical digest, and a rebuilt inventory chain removes its own verification); the 1240 rows are
         # replaced by `record_verification` (the verifier holds DELETE on its own table, pre-seal).
-        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (chart_id,))
-        conn.execute("SELECT public.ka_gochara_lock_global_shared()")
-        for grain, report in reports:
-            stage(f"record_verification {grain['path_id']}", lambda g=grain, r=report: wg.record_verification(
-                conn, report=r, input_digest=snap, **g))
+        take_locks(conn, chart_id)                                  # (re-entrant: held since the top)
+        fp1 = class_fingerprint(conn, chart_id, generation, event_class)
+        if fp1 != fp0:                                              # R10-3: the report must identify the data it checked
+            raise VerificationDisagrees(
+                "consistency", "the data this verification checked changed before it could be persisted — the report "
+                "no longer identifies the stored state (a writer replaced it outside the lock protocol); nothing is persisted")
+        for grain, report, derived_w in reports:
+            stage(f"record_verification {grain['path_id']}", lambda g=grain, r=report, d=derived_w:
+                  wg.record_verification(conn, report=r, input_digest=snap, expected=d, runner=runner,
+                                         checked_inputs_digest=fp0["grains"][f"{g['path_id']}@{g['rule_version']}"][0],
+                                         **g))
         stage("inventory_verification", lambda: inv_v.write_verification(
             conn, chart_id=chart_id, generation=generation, event_class=event_class, rederived_digest=res["digest"]))
     out["status"] = "VERIFIED" if all(w["status"] == "VERIFIED" for w in windows) else "UNVERIFIED_DYNAMIC"
     return out
 
 
-def _p1_minting_open(conn, chart_id, generation, event_class) -> bool:
-    """P1 anchors are certified when the generation actually holds P1 transit records, or P1 minting is OPEN (the anchor
-    columns exist) — with no anchored records and the columns absent the gate was closed and no P1 claim is made."""
-    return bool(_one(conn.execute(
-        "SELECT count(*) > 0 FROM public.ka_gochara_relationship_record WHERE chart_id = %s AND generation = %s"
-        " AND event_class = %s AND path_id = 'P1' AND contact_id IS NOT NULL", (chart_id, generation, event_class)).fetchone()))
+#: The arms of the 1206/1232 completeness function that compare the inventory/snapshot with the PUBLISHED manifest row
+#: (`... WHERE p.status = 'published'`). On a CANDIDATE manifest — the only kind a verification runs against — that row does not
+#: exist, so each reports a spurious violation against NULL. They are RE-EVALUATED here against the candidate manifest itself;
+#: nothing else in the combined gate is touched. (Stream B: the function selecting `status IN ('candidate','published')` would
+#: make this unnecessary.)
+_PUBLISHED_ONLY = (("input_vector_mismatch", None), ("horizon_manifest_mismatch", None),
+                   ("convention_bridge_missing", "publication legacy convention"))
+
+
+def candidate_gate_on_candidate_manifest(conn, chart_id: str, generation: str) -> list[dict]:
+    """R10-4 (iii): `ka_gochara_candidate_gate_violations` — the SAME combined gate the seal uses — evaluated on the actual
+    candidate manifest. The completeness half reads the manifest only while it is `published`; the three arms that do are
+    re-derived against the candidate row (same predicates), everything else is the function's own output verbatim."""
+    from . import window_gate as wg
+    out = wg.combined_candidate_gate(conn, chart_id, generation)
+    pub = conn.execute("SELECT status, horizon, input_generation_vector, convention_id FROM public.kala_gochara_publication"
+                       " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    if pub is None:
+        return out + [{"event_class": "*", "path_id": None, "rule_version": None, "violation": "no_candidate_manifest",
+                       "detail": f"generation {generation} has no manifest"}]
+    status, m_horizon, m_vector, m_convention = tuple(pub.values()) if isinstance(pub, dict) else tuple(pub)
+    if status == "published":
+        return out                                      # the function saw the manifest: its output stands unchanged
+    def spurious(v):
+        for name, prefix in _PUBLISHED_ONLY:
+            if v["violation"] == name and (prefix is None or str(v["detail"]).startswith(prefix)):
+                return True
+        return False
+    out = [v for v in out if not spurious(v)]
+    snap = conn.execute("SELECT input_generation_vector, convention_id FROM public.ka_gochara_search_input_snapshot"
+                        " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    snap_vector, snap_convention = (None, None) if snap is None else (tuple(snap.values()) if isinstance(snap, dict) else tuple(snap))
+    mk = lambda cls, name, detail: {"event_class": cls, "path_id": None, "rule_version": None, "violation": name,           # noqa: E731
+                                    "detail": detail}
+    if snap_vector != m_vector:
+        out.append(mk("*", "input_vector_mismatch", "snapshot vector differs from the candidate manifest vector"))
+    bridge = conn.execute("SELECT sky_convention_id FROM public.ka_gochara_convention_bridge WHERE kala_convention_id = %s",
+                          (m_convention,)).fetchone()
+    if bridge is None:
+        out.append(mk("*", "convention_bridge_missing", f"candidate manifest legacy convention {m_convention}"))
+    elif (bridge[0] if not isinstance(bridge, dict) else next(iter(bridge.values()))) != snap_convention:
+        out.append(mk("*", "convention_mismatch", f"candidate manifest convention {m_convention} is bridged to a sky "
+                                                   f"convention other than the snapshot's {snap_convention}"))
+    for (cls, horizon) in (tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
+            "SELECT event_class, horizon FROM public.ka_gochara_search_inventory WHERE chart_id = %s AND generation = %s",
+            (chart_id, generation)).fetchall()):
+        if horizon != m_horizon:
+            out.append(mk(cls, "horizon_manifest_mismatch", f"{horizon} vs candidate manifest {m_horizon}"))
+    return out
 
 
 def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, position_at, ephe_path: str | None = None,
@@ -307,31 +505,49 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
     from . import window_gate as wg
     report: dict[str, Any] = {"chart_id": chart_id, "generation": generation, "report_only": report_only, "classes": {}}
     report["identity"] = check_identity(conn) if enforce_identity else {"separate": "NOT CHECKED (test seam)"}
-    pre = check_preconditions(conn, chart_id=chart_id, generation=generation, classes=classes, ephe_path=ephe_path,
-                              modules=modules, path_refs=path_refs)
+    # R10-3: the SHARED preconditions are read under the same locks, and their identity is fingerprinted for every class
+    with conn.transaction():
+        take_locks(conn, chart_id)
+        pre = check_preconditions(conn, chart_id=chart_id, generation=generation, classes=classes, ephe_path=ephe_path,
+                                  modules=modules, path_refs=path_refs)
+        shared_fp = precondition_fingerprint(conn, chart_id, generation)
     report["preconditions"] = pre
     disagreements = []
     for cls in pre["classes"]:
         try:
             with conn.transaction():
+                take_locks(conn, chart_id)
+                if precondition_fingerprint(conn, chart_id, generation) != shared_fp:
+                    raise VerificationRefused(
+                        "stale_inputs", "the manifest or the search-input snapshot changed after the preconditions were "
+                        "verified — nothing is persisted; re-run")
                 report["classes"][cls] = verify_class(
                     conn, chart_id=chart_id, generation=generation, event_class=cls, position_at=position_at,
                     configured_selection=configured_selection_for(cls), path_rulings=path_rulings, h_unknown=h_unknown,
                     moon_scope_domain=moon_scope_domain, factor_rows_for=factor_rows_for, drishti_bound=drishti_bound,
-                    vedha_bound=vedha_bound, persist=not report_only)
+                    vedha_bound=vedha_bound, persist=not report_only, runner=pre.get("runner"))
         except VerificationDisagrees as exc:
             report["classes"][cls] = {"event_class": cls, "status": "DISAGREE", "stage": exc.stage, "detail": exc.detail}
             disagreements.append(cls)
-    gate = [] if report_only else wg.candidate_gate(conn, chart_id, generation)
+    # R10-4 (iii): the job ends in the SAME combined candidate gate the seal uses (search completeness 1206/1232 + window
+    # verification 1240) on the actual candidate manifest. A run over a SUBSET of classes is judged on that subset's
+    # violations and the generation-level ones; the rest are reported, never hidden.
+    gate_all = [] if report_only else candidate_gate_on_candidate_manifest(conn, chart_id, generation)
+    scope = set(pre["classes"])
+    full = classes is None
+    gate = [v for v in gate_all if full or v["event_class"] is None or v["event_class"] in scope]
     report["gate"] = gate
+    report["gate_outside_scope"] = [v for v in gate_all if v not in gate]
+    report["gate_source"] = "ka_gochara_candidate_gate_violations"
     verified = [c for c in report["classes"].values() if c.get("status") == "VERIFIED"]
     report["status"] = ("DISAGREE" if disagreements else
                         ("VERIFIED" if not gate and not report_only and len(verified) == len(report["classes"])
                          else "NOT_VERIFIED"))
-    report["cockpit"] = (f"VERIFIED (policy {_policy(report)}, {len(verified)} of {len(report['classes'])} classes)"
+    report["cockpit"] = (f"VERIFIED (policy {_policy(report)}, {len(verified)} of {len(report['classes'])} classes, "
+                         f"combined gate clean)"
                          if report["status"] == "VERIFIED" else
                          f"BUILT · NOT VERIFIED · gate CLOSED ({len(gate)} violation(s), {len(disagreements)} disagreement(s))")
-    report["exit_code"] = (EXIT_DISAGREE if disagreements else EXIT_OK)
+    report["exit_code"] = (EXIT_DISAGREE if disagreements or gate else EXIT_OK)
     return report
 
 

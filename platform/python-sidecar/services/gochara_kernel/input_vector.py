@@ -58,13 +58,15 @@ IMPLEMENTATION_MODULES = {
     "evaluation": tuple(_K + m for m in (
         "chart_context", "coverage", "dasha_read", "evaluator", "input_vector", "input_vector_verifier",
         "inventory", "inventory_store", "inventory_verifier", "ledger", "lifecycle", "native_conn",
-        "record_verifier", "scope_response",
+        "record_derivation", "record_verifier", "scope_response",
         "rule_registry")) + ("pipeline.orchestrator.writers.ka_gochara_v5",) + tuple(_R + m for m in (
         "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "flat_selector", "frames",
         "kernel_factor", "nature", "p6", "permission", "predicates", "records", "registry", "score", "strength",
         "valence", "vedha", "vedha_derive")),
-    "window": tuple(_K + m for m in ("result_policy", "window_gate", "window_store", "window_sweep",
-                                     "window_verifier")),
+    # R10-4: the VERIFICATION JOB (the library and the operator entry point) is part of the governed implementation identity —
+    # the pinned job is part of the trusted system (AM-24 item 4), so a different job is a different manifest vector
+    "window": tuple(_K + m for m in ("result_policy", "verification_job", "window_gate", "window_store", "window_sweep",
+                                     "window_verifier")) + ("pipeline.orchestrator.verification_job",),
 }
 
 # The L0 authorities a path READS, and which loader reads them (R8-1). `bg_transit_rules` is consumed ONLY

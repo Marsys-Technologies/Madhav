@@ -473,11 +473,27 @@ def test_a_file_that_is_present_but_not_opened_does_not_move_the_vector(db, tmp_
 
 
 @real_ephemeris
-def test_an_opened_file_that_is_absent_is_refused_never_bound_as_unknown(db, tmp_path):
+def test_an_opened_file_that_is_absent_is_refused_never_bound_as_unknown(db, tmp_path, monkeypatch):
+    """C22 isolation (steward M…115203, from #2958): the Swiss C library ALSO searches the SE_EPHE_PATH environment variable
+    after `set_ephe_path(<dir>)`, and since #2860 that variable points at the FULL corpus — so a temp dir alone no longer hides
+    the Moon file. Both legacy path variables are pinned at the partial directory for the test's duration, the raw Swiss
+    precondition runs under `swiss_state_scope`, and the simulation has its own detector: no Moon file may actually be open."""
     import shutil
+
+    import swisseph as real_swe
+
+    from panchang_engine.swiss_state import swiss_state_scope
     d = tmp_path / "partial"
     d.mkdir()
     shutil.copy(Path(EPHE_PATH) / "semo_18.se1", d / "semo_18.se1")              # sepl_18 missing: Moshier fallback
+    monkeypatch.setenv("SE_EPHE_PATH", str(d))
+    monkeypatch.setenv("SWE_EPHE_PATH", str(d))
+    with swiss_state_scope():
+        real_swe.set_ephe_path(str(d))
+        real_swe.calc_ut(2451545.0, real_swe.SUN, 2 | 256)                      # the raw precondition: Sun, sepl absent
+        sun_file = real_swe.get_current_file_data(0)[0]
+    assert not (sun_file and Path(sun_file).exists()), (
+        f"the missing-sepl simulation is broken: {sun_file!r} was opened (SE_EPHE_PATH leaked a second search path)")
     with pytest.raises(iv.InputDrift, match="not served from the .se1 files|absent"):
         _vector(db, str(d), files_probe=iv.probe_opened_files)
 

@@ -56,9 +56,12 @@ def _libra_edges(path):
             if e.transit and e.relation == "residence" and e.obj.canonical_target == "span:7"]
 
 
-def _materialise(w, path, agents_in_sign):
-    """Materialise `path`'s Libra-residence record(s); `agents_in_sign` = {agent: (in_day_a, in_day_b)} datetimes."""
+def _materialise(w, path, agents_in_sign, with_natal=False):
+    """Materialise `path`'s Libra-residence record(s); `agents_in_sign` = {agent: (in_day_a, in_day_b)} datetimes.
+    `with_natal` adds the path's natal-fact edges (P3's māraka testimony rows) — a COMPLETE grain (R10-1)."""
     edges = [e for e in _libra_edges(path) if e.agent in agents_in_sign]
+    if with_natal:
+        edges += [e for e in ev.enumerate_edges(CLS, path, CHART) if not e.transit]
     rows_for, _ = make_period_rows_for(w.conn, CHART_ID)
     store = rs.RecordStore(w.conn)
     sky = SkyEventStore(w.conn).register_convention()
@@ -330,11 +333,12 @@ def test_the_table_refuses_an_incoherent_verified_row_and_any_update(world):
     cols = ("chart_id, generation, event_class, path_id, rule_version, verifier_id, verifier_version, status,"
             " policy_version, windows_expected, windows_stored, windows_reproduced, windows_unverified,"
             " expected_windows_digest, stored_windows_digest, windows_content_digest, fields_verified,"
-            " input_digest, derivation_inputs_digest")
+            " input_digest, derivation_inputs_digest, runner_identity")
     h = "a" * 64
-    ok = [CHART_ID, GEN, CLS, "P3", "1.0.0", "other", "1", "VERIFIED", "p", 1, 1, 1, 0, h, h, h, ["interval"], h, h]
+    runner = '{"commit": "c0ffee", "implementation_digest": "' + h + '"}'
+    ok = [CHART_ID, GEN, CLS, "P3", "1.0.0", "other", "1", "VERIFIED", "p", 1, 1, 1, 0, h, h, h, ["interval"], h, h, runner]
     ins = (f"INSERT INTO public.ka_gochara_eval_window_verification ({cols})"
-           " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)")
+           " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)")
     for label, mutate in (
             ("VERIFIED with an unverified window", lambda r: r.__setitem__(12, 1)),
             ("VERIFIED reproducing fewer than stored", lambda r: r.__setitem__(11, 0)),
@@ -369,8 +373,9 @@ def test_a_verification_row_needs_a_finalised_inventory_and_an_included_pin(worl
     ins = ("INSERT INTO public.ka_gochara_eval_window_verification (chart_id, generation, event_class, path_id,"
            " rule_version, verifier_id, verifier_version, status, policy_version, windows_expected, windows_stored,"
            " windows_reproduced, windows_unverified, expected_windows_digest, stored_windows_digest,"
-           " windows_content_digest, fields_verified, input_digest, derivation_inputs_digest) VALUES"
-           " (%s,%s,%s,%s,'1.0.0','v','1','VERIFIED','p',0,0,0,0,%s,%s,%s,ARRAY['interval'],%s,%s)")
+           " windows_content_digest, fields_verified, input_digest, derivation_inputs_digest, runner_identity) VALUES"
+           " (%s,%s,%s,%s,'1.0.0','v','1','VERIFIED','p',0,0,0,0,%s,%s,%s,ARRAY['interval'],%s,%s,"
+           " '{\"commit\": \"c0ffee\", \"implementation_digest\": \"" + h + "\"}'::jsonb)")
     for cls, path in (("career_entry", "P3"), (CLS, "P5")):         # no inventory for the class / no included pin
         with pytest.raises(psycopg.errors.Error):
             with w.conn.transaction():
@@ -387,8 +392,6 @@ def test_the_writers_verify_step_only_reports_and_the_gate_refuses_a_class_witho
     with w.conn.transaction():
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification WHERE path_id = 'P3'")
-    monkeypatch.setattr(writer_mod.gk_verifier, "verify_aspect_span_contacts",
-                        lambda *a, **k: {"objects_checked": 0, "occurrences": 0})
     monkeypatch.setattr(writer_mod.gk_contact_certify, "certify_contact_geometry",     # its own suite (R9-3)
                         lambda *a, **k: {"obligations_certified": 0, "contacts_expected": 0, "named_limit": "stubbed"})
     res = w.step(f"verify:{CLS}")

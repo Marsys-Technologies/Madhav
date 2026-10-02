@@ -562,10 +562,9 @@ class GocharaV5Writer(WriterBase):
             raise RuntimeError(
                 f"verify {event_class}: the independent LEDGER derivation (daśā cuts / "
                 f"resolved agents) disagrees with the stored ledger ({led} vs {db_led})")
-        # aspect-to-span: the builder derives these occurrences from residence spans; the verifier
-        # re-derives them by SAMPLING + BISECTION (no shared code, no crossings) and the two must
-        # agree — the capability the inventory claims is only earned if they do (steward
-        # M20261002T000907-c058 (b)). Any disagreement fails the build before a verification row exists.
+        # aspect-to-span contacts are certified like every other contact by `certify_contact_geometry` below — the
+        # DERIVED-tolerance, union-of-contacts contract (R10-6); the fixed-tolerance sampling precheck that used to run
+        # here (3 s / 6 h) contradicted it and is removed.
         horizon = ctx.config.get("horizon", DEFAULT_HORIZON)
         ephe_path = ctx.config.get("ephe_path")
 
@@ -578,10 +577,6 @@ class GocharaV5Writer(WriterBase):
             return lon
 
         position_at.cache_key = ("swiss", ephe_path)
-        spans = gk_verifier.verify_aspect_span_contacts(
-            ctx.db_conn, chart_id=chart_id, generation=GENERATION, obligations=res["obligations"],
-            position_at=position_at, horizon=horizon,
-            _cache=self.__dict__.setdefault("_aspect_span_cache", {}))
         # R9-3: the COMPLETE contact geometry of every concrete transit obligation, reconstructed from the ephemeris
         # and compared with the ledger both ways (interior exits/re-entries, bridged and omitted contacts all fail);
         # incomplete evidence raises GeometryUnavailable — no complete-search claim without it
@@ -599,9 +594,7 @@ class GocharaV5Writer(WriterBase):
         return WriterResult(asset_id=self.asset_id, rows_inserted=1,
                             notes=f"verify {event_class}: inventory + ledger digests "
                                   "independently reproduced (report only); "
-                                  f"{spans['objects_checked']} aspect-to-span object(s) / "
-                                  f"{spans['occurrences']} occurrence(s) re-derived by sampling "
-                                  f"and matched; contact geometry certified complete for "
+                                  f"contact geometry (aspect-to-span included) certified complete for "
                                   f"{geometry['obligations_certified']} concrete obligation(s) "
                                   f"({geometry['contacts_expected']} contacts; {geometry['named_limit']}){gate_note}")
 

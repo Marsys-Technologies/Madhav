@@ -375,8 +375,6 @@ def test_when_the_session_role_cannot_write_the_result_the_substeps_record_the_p
     assert all("verification_pending_verifier_principal" in r.notes and "candidate gate stays closed" in r.notes
                for r in out.values()), [r.notes for r in out.values()]
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 0
-    monkeypatch.setattr(writer_mod.gk_verifier, "verify_aspect_span_contacts",
-                        lambda *a, **k: {"objects_checked": 0, "occurrences": 0})
     # the pending-state behaviour under test is independent of the contact-geometry certification (its own suite)
     monkeypatch.setattr(writer_mod.gk_contact_certify, "certify_contact_geometry",
                         lambda *a, **k: {"obligations_certified": 0, "contacts_expected": 0, "named_limit": "stubbed"})
