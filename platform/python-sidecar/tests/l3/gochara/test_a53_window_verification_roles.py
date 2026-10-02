@@ -371,8 +371,7 @@ def test_when_the_session_role_cannot_write_the_result_the_substeps_record_the_p
     """verification_pending_verifier_principal: never an error, never a builder-written row; the gate stays closed."""
     w = rworld
     _boot_p3(w)
-    monkeypatch.setattr(wg, "can_write_verification", lambda conn: False)
-    out = _windows(w)
+    out = {p: w.step(f"window:{CLS}:{p}") for p in ("P1", "P2", "P3", "P4")}     # the BUILDER's steps only (R9-6.1)
     assert all("verification_pending_verifier_principal" in r.notes and "candidate gate stays closed" in r.notes
                for r in out.values()), [r.notes for r in out.values()]
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 0
@@ -382,7 +381,7 @@ def test_when_the_session_role_cannot_write_the_result_the_substeps_record_the_p
     monkeypatch.setattr(writer_mod.gk_contact_certify, "certify_contact_geometry",
                         lambda *a, **k: {"obligations_certified": 0, "contacts_expected": 0, "named_limit": "stubbed"})
     res = w.step(f"verify:{CLS}")
-    assert "verification_pending_verifier_principal" in res.notes and "gate CLOSED" in res.notes
+    assert "verification_pending_verifier_principal" in res.notes and "gate stays CLOSED" in res.notes
     import psycopg
     from services.gochara_kernel.window_gate import CandidateGateRefused
     monkeypatch.undo()
