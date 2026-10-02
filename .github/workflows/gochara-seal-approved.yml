@@ -122,6 +122,8 @@ jobs:
             echo
             echo "    brief-digest: $DIGEST  run: $GITHUB_RUN_ID  attempt: $GITHUB_RUN_ATTEMPT"
             echo
+            echo "**This approval is NOT an independent human check:** the owner's account is the one required reviewer and the steward approves under it (native ruling #2). What the seal rests on is the database gate, the digest-bound recompute under the seal locks, the authoritative seal checks and the receipt — not on who clicked."
+            echo
             echo "The full brief is retained as the \`seal-brief\` artifact. A seal is not a flip."
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -177,7 +179,9 @@ jobs:
       - name: Start Cloud SQL Auth Proxy
         run: |
           set -euo pipefail
-          curl -fsSL "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+          curl -fsSL "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" -o cloud-sql-proxy
+          echo "276139ff5d5dc484c51e1a9c065d69a9f6e47d5b726f94dced253b0227df2056  cloud-sql-proxy" | sha256sum -c -
+          chmod +x cloud-sql-proxy
           ./cloud-sql-proxy --address 127.0.0.1 --port 5432 madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5432.log 2>&1 &
           proxy_pid=$!
           ready=false
@@ -199,6 +203,7 @@ jobs:
           GENERATION: ${{ inputs.generation }}
           EXPECTED_SEALING_COMMIT: ${{ needs.brief.outputs.sealing_commit }}
           EXPECTED_BRIEF_DIGEST: ${{ needs.brief.outputs.brief_digest }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
           PYTHONPATH: platform/python-sidecar
         run: bash platform/scripts/gochara-seal-approved.sh
 

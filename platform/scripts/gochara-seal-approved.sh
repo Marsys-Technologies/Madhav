@@ -7,7 +7,7 @@ set -Eeuo pipefail
 set +x
 umask 077
 
-: "${BRIEF_FILE:?}" "${APPROVALS_FILE:?}" "${CHART_ID:?}" "${GENERATION:?}" "${EXPECTED_SEALING_COMMIT:?}" "${GITHUB_RUN_ID:?}" "${GITHUB_RUN_ATTEMPT:?}"
+: "${BRIEF_FILE:?}" "${APPROVALS_FILE:?}" "${CHART_ID:?}" "${GENERATION:?}" "${EXPECTED_SEALING_COMMIT:?}" "${GITHUB_RUN_ID:?}" "${GITHUB_RUN_ATTEMPT:?}" "${TRIGGERING_ACTOR:?}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 SEAL_JOB_CMD="${SEAL_JOB_CMD:-$PYTHON_BIN -m pipeline.orchestrator.seal_job}"
@@ -23,7 +23,7 @@ if [ -n "${EXPECTED_BRIEF_DIGEST:-}" ] && [ "$BRIEF_DIGEST" != "$EXPECTED_BRIEF_
   echo "REFUSED: the retained brief's digest $BRIEF_DIGEST is not the digest the brief job published ($EXPECTED_BRIEF_DIGEST)" >&2; exit 2
 fi
 "$PYTHON_BIN" "$HERE/gochara_seal_approval.py" --approvals-file "$APPROVALS_FILE" --environment "$ENVIRONMENT_NAME" --run-id "$GITHUB_RUN_ID" \
-  --attempt "$GITHUB_RUN_ATTEMPT" --brief-digest "$BRIEF_DIGEST" --out "$APPROVAL_FILE" \
+  --attempt "$GITHUB_RUN_ATTEMPT" --brief-digest "$BRIEF_DIGEST" --triggering-actor "$TRIGGERING_ACTOR" --out "$APPROVAL_FILE" \
   || { echo "REFUSED: no valid approval for this run and attempt — nothing was sealed" >&2; exit 2; }
 
 export GOCHARA_SEALING_COMMIT="$EXPECTED_SEALING_COMMIT"

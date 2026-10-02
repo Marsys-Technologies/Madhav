@@ -48,6 +48,13 @@ describe('gochara-seal-approved.yml', () => {
     expect(JSON.stringify(seal.steps)).toContain('actions/runs/${GITHUB_RUN_ID}/approvals')
     expect(JSON.stringify(seal.steps)).toContain('download-artifact')
   })
+  it('verifies the Cloud SQL proxy download against a pinned sha256, states in the brief that the approval is not independent, and passes the triggering actor for the mechanical note', () => {
+    const proxy = (seal.steps as any[]).find((x) => x.name === 'Start Cloud SQL Auth Proxy')
+    expect(proxy.run).toContain('276139ff5d5dc484c51e1a9c065d69a9f6e47d5b726f94dced253b0227df2056  cloud-sql-proxy')
+    expect(proxy.run.indexOf('sha256sum -c')).toBeLessThan(proxy.run.indexOf('chmod +x'))
+    expect(JSON.stringify(brief.steps)).toContain('NOT an independent human check')
+    expect(text).toContain('TRIGGERING_ACTOR: ${{ github.triggering_actor }}')
+  })
   it('passes inputs only through env and never swallows a failure', () => {
     for (const j of [brief, seal]) for (const s of j.steps as any[]) if (s.run) expect(s.run).not.toContain('${{')
     expect(code(text)).not.toMatch(/continue-on-error|\|\|\s*true|set \+e/)
