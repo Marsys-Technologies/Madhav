@@ -124,6 +124,7 @@ VARIANTS = {
     "decl_sha_uppercase": variant(lambda r: r.update(declarations_sha256=r["declarations_sha256"].upper())),
     "decl_sha_wrong_type": variant(lambda r: r.update(declarations_sha256=5)),
     "decl_version_without_sha": variant(lambda r: r.update(declarations_sha256=None, declarations_version="1.0.0")),
+    "decl_version_with_absent_sha": variant(lambda r: r.pop("declarations_sha256")),
     "decl_blank_version": variant(lambda r: r.update(declarations_version="  ")),
     "decl_version_not_text": variant(lambda r: r.update(declarations_version=1)),
     "decl_sha_without_version": variant(lambda r: r.update(declarations_version=None)),

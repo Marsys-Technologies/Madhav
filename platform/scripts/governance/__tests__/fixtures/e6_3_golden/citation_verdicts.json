@@ -6,7 +6,7 @@
  "citation_strict": [
   "Idem.alt"
  ],
- "e5_1_commit": "28749c2a3b00d531dfbbb39ceb4c3c2b865819d1",
+ "e5_1_commit": "11ae51ad13ab6356f9440ca4d0e03f975bbdea00",
  "variants": {
   "absent_version_with_fields": {
    "code": "bad_ledger",
@@ -931,6 +931,11 @@
   "decl_version_not_text": {
    "code": "bad_ledger",
    "sha256": "70142aba9ddb9c80274dbd407ff718f1c8244c56df71c554f50aab53de3ac500",
+   "verdict": "REFUSED"
+  },
+  "decl_version_with_absent_sha": {
+   "code": "bad_ledger",
+   "sha256": "0f53569fbb6f52326db15413bd5ae640ae7661eecb77ee0259b14fcce8c3a9f3",
    "verdict": "REFUSED"
   },
   "decl_version_without_sha": {

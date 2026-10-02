@@ -111,6 +111,12 @@ def test_a_malformed_declarations_field_raises(w, over):
     raises(w)
 
 
+def test_a_version_with_an_absent_sha_key_raises(w):
+    rec = w.find("ga_alpha", "Idem.pat")
+    del rec["declarations_sha256"]                    # the key is absent (not a present null) but a version is still there
+    raises(w)
+
+
 def test_a_v1_record_carrying_a_declarations_field_raises(w):
     rec = w.find("ga_alpha", "Idem.pat")
     for k in ("citation_state", "citation_state_caveat"):
