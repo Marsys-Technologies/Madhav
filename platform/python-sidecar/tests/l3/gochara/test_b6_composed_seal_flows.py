@@ -15,9 +15,15 @@ Scenarios:
   * a generation sealed BETWEEN 1206 and 1240 (i.e. before 1240 existed) stays sealed and frozen when 1240 is applied, the candidate gate
     reports it honestly as unverified, and no principal can write to it;
   * restricted-role contention on one chart: a builder rebuild racing a seal, in both orders.
+WHAT THIS RIG IS AND IS NOT (Codex R12: replaces "no stand-in anywhere"): it is a MIRRORED schema (the real production-ordered migrations on PostgreSQL 15 with the objects owned by the
+migration principal, plus hand-built stand-ins for tables outside the Gochara migrations: `charts` with its RLS structure, `chart_grants`, `chart_facts`, `chart_dashas`, `bg_transit_rules`,
+the migration ledger and the legacy `kala_gochara_windows`); the verifier/sealer L1 reads are SUPPLIED EXTERNALLY by the harness (the data-plane ACL owner's item, not in 1241); the
+sealing step runs as `SET ROLE gochara_sealer` on a superuser harness connection (only the verifier is a real LOGIN), so `sealed_by` records the harness login; selected tests monkeypatch
+`input_vector_verifier.verify_inputs` (a sealed successor added after a build also drifts the registry census, which would refuse first) and the builder's ephemeris callable (the real Swiss
+ephemeris is restored for the real-sky builds). The Stream A writer and verifier code, the six migrations and 1241 are the real files.
 History: the first two runs carried strict xfails for two Stream A defects this rehearsal found (R9-6.1: the inventory store deleted the verification table as the
 builder; R9-10: the P1 anchor certification expected Moon contacts the stored non-Moon scope never writes) and one fixed stand-in (R9-9, the geometry probe margin).
-All three are fixed in Stream A's code; no stand-in and no xfail remains: every test runs Stream A's code as shipped.
+All three are fixed in Stream A's code. Stream A's writer/verifier code runs as shipped; the harness's own stand-ins are listed above (not "none").
 """
 from __future__ import annotations
 
@@ -263,7 +269,7 @@ def test_the_1240_window_check_helper_grant_is_necessary_for_the_builders_window
 
 @pytest.fixture()
 def cfresh(monkeypatch, tmp_path):
-    """A FRESH production-ordered world (no build yet), Stream A's code as shipped (no stand-in anywhere in this module)."""
+    """A FRESH production-ordered world (no build yet), Stream A's code as shipped (the harness stand-ins are listed in the module docstring)."""
     gen, w = _real_world(monkeypatch, tmp_path, lambda: cw.composed_create("fresh"))
     apply_extra_grants(w.conn)
     try:
@@ -327,8 +333,7 @@ def _run_job(w, args, dsn=None):
 
 
 def verify_as_verifier(w, *extra_args, dsn=None, all_classes=False):
-    """Stream A's REAL verification job (`pipeline/orchestrator/verification_job.py`), run as a real verifier LOGIN with the REAL 1241 grants and
-    no stand-in: the job proves its own identity, records the four window verifications FIRST and then the inventory verification. Returns the
+    """Stream A's REAL verification job (`pipeline/orchestrator/verification_job.py`), run as a real verifier LOGIN with the REAL 1241 grants (the harness's L1 reads are supplied externally): the job proves its own identity, records the four window verifications FIRST and then the inventory verification. Returns the
     parsed report; raises RuntimeError on any non-zero exit (a refusal or a disagreement)."""
     import json as _json
     rc, out = _run_job(w, ["--chart", CHART_ID, "--generation", GEN, *([] if all_classes else ["--class", CLS]), "--ephe-path", EPHE, *extra_args], dsn)
@@ -522,8 +527,9 @@ def test_the_sealers_publication_update_and_legacy_windows_read_are_column_narro
         assert w.conn.execute("SELECT has_column_privilege(%s, 'public.kala_gochara_publication', %s, 'UPDATE')", (cw.SEALER, col)).fetchone()[0] is False, col
     assert w.conn.execute("SELECT has_table_privilege(%s, 'public.kala_gochara_publication', 'UPDATE')", (cw.SEALER,)).fetchone()[0] is False
     with as_role(w.conn, cw.SEALER):
-        n = w.conn.execute("SELECT count(*) FROM public.kala_gochara_windows WHERE chart_id = %s AND generation = '5.0'", (CHART_ID,)).fetchone()[0]
-        assert n == 2                                            # the count ledger.publish records
+        n = w.conn.execute("SELECT count(*) FROM public.kala_gochara_windows WHERE chart_id = %s AND generation = '3.0'", (CHART_ID,)).fetchone()[0]
+        assert n == 2                                            # the column-narrow read works (the legacy served generation); a governed '5.0' has NO legacy rows (R12-1)
+        assert w.conn.execute("SELECT count(*) FROM public.kala_gochara_windows WHERE chart_id = %s AND generation = '5.0'", (CHART_ID,)).fetchone()[0] == 0
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             w.conn.execute("SELECT raw_intensity FROM public.kala_gochara_windows LIMIT 1")
 
@@ -1122,3 +1128,21 @@ def test_attack_r11_2_a_duplicate_or_wrong_person_p1_record_is_a_disagreement_no
     with pytest.raises(RuntimeError, match=r"verification job exit 3"):
         verify_as_verifier(w)
     assert _verification_rows(w.conn) == (0, 0)
+
+
+
+@pytest.mark.xfail(strict=True, reason="FINDING R12-1 (Stream A, planned gate arm `legacy_projection_rows_present`): legacy kala_gochara_windows / kala_gochara_contacts rows for a governed generation are not yet "
+                   "refused by the gate or the brief — Stream A's head bf369fcaa accepts them. Flips when the arm lands.")
+def test_attack_r12_1_legacy_generation_5_numeric_rows_are_refused_by_the_gate_the_brief_and_the_seal(cbuilt):
+    """R12-1: the candidate boundary extends beyond the governed tables: legacy projection rows for generation '5.0' with numeric intensities must make the candidate unapprovable (refused before the
+    brief is produced, and again at the seal)."""
+    import psycopg
+    w = cbuilt
+    verify_as_verifier(w)
+    w.conn.execute("INSERT INTO public.kala_gochara_windows(chart_id, generation, raw_intensity, signed_intensity) VALUES (%s,'5.0',1.0,1.0)", (CHART_ID,))
+    assert any("legacy_projection_rows_present" in str(v) for v in w.conn.execute(
+        "SELECT * FROM public.ka_gochara_candidate_gate_violations(%s::uuid, %s)", (CHART_ID, GEN)).fetchall())
+    with pytest.raises(RuntimeError, match=r"brief exit 3"):
+        brief_as_verifier(w)
+    with pytest.raises(psycopg.errors.Error):
+        seal_as_sealer(w)
