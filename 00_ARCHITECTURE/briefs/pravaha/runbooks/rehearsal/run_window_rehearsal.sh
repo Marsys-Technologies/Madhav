@@ -69,7 +69,7 @@ while read -r fn; do
   for d in "$M" "$REPO/platform/supabase/migrations"; do
     if [ -f "$d/$fn" ]; then h=$(shasum -a 256 "$d/$fn" | cut -d' ' -f1); APPLIED_SQL+=" INSERT INTO _migrations_applied (filename, sha256) VALUES ('$fn','$h') ON CONFLICT DO NOTHING;"; break; fi
   done
-done < "$HERE/prod_ledger_2026-10-02.txt"
+done < "$HERE/prod_ledger_2026-10-02b.txt"
 echo "$APPLIED_SQL" | $SUDB
 # prod ALSO applied the contract helper grants before the window (1216, 1220): apply their SQL (their ledger rows came from the snapshot above)
 for f in 1216_gochara_contract_builder_grants.sql; do { echo "SET ROLE amjis_app;"; cat "$M/$f"; } | $SUDB >/dev/null 2>&1 || true; done
@@ -81,15 +81,16 @@ echo "  ledger rows: $($SUDB -c 'SELECT count(*) FROM _migrations_applied')"
 { echo "SET ROLE amjis_app;"; echo "CREATE TABLE IF NOT EXISTS kala_gochara_authority (chart_id UUID PRIMARY KEY, authoritative_generation TEXT NOT NULL DEFAULT 'v1', flipped_at TIMESTAMPTZ, flipped_by TEXT, evidence_ref TEXT);"; echo "INSERT INTO kala_gochara_authority (chart_id, authoritative_generation) VALUES ('482012f1-710e-4a25-994a-93821f5871aa','3.0');"; } | $SUDB >/dev/null
 CAP "REVOKE CREATE" FROM
 ASSERT "amjis_app has NO CREATE on schema public outside the window" "$($SUDB -c "SELECT has_schema_privilege('amjis_app','public','CREATE')")" "f"
-# the pending routine migration that blocks the window: remove its row if the snapshot had it, to reproduce today's ledger exactly
-$SUDB -c "DELETE FROM _migrations_applied WHERE filename IN ('1230_ka_gochara_registry_revert_1091_pin.sql')"
+# (snapshot 2026-10-02b: 1230/1231/1237/1238/1239 are APPLIED in production; only 1234 and 1236 are the unselected, unapplied files below the window's ceiling)
 RUN() { CAP "GRANT CREATE" TO >/dev/null; (cd "$REPO/platform" && DATABASE_URL="$URL" npx tsx scripts/migrate.ts --only "$ONLY" 2>&1); local rc=$?; CAP "REVOKE CREATE" FROM >/dev/null; return $rc; }
 
 echo "== S3a ledger precondition: the real invocation against today's ledger =="
 set +e; OUT=$(RUN); RC=$?; set -e
 echo "$OUT" | tail -3 | sed 's/^/    /'
 ASSERT "migrate.ts --only <window list> is REFUSED while an unselected predecessor is unapplied" "$([ $RC -ne 0 ] && echo refused || echo ran)" "refused"
-ASSERT "the refusal names the unapplied predecessor 1230" "$(echo "$OUT" | grep -c '1230_ka_gochara_registry_revert_1091_pin.sql')" "1"
+ASSERT "the refusal names the unapplied predecessor 1234" "$(echo "$OUT" | grep -c '1234_gochara_eval_window_builder_grants.sql')" "1"
+ASSERT "the refusal names the unapplied predecessor 1236" "$(echo "$OUT" | grep -c '1236_gochara_authority_refuses_governed_generation.sql')" "1"
+ASSERT "the refusal does NOT name 1230 (applied in production) nor 1241/1242 (numbered ABOVE the ceiling: not predecessors)" "$(echo "$OUT" | grep -c '1230_ka_gochara\|1241_gochara\|1242_gochara')" "0"
 PRED=$(echo "$OUT" | grep -o "jump unapplied predecessor migration(s): .*" | sed 's/^[^:]*: //' | tr "," "\n" | sed 's/^ *//' | grep "\.sql$" || true)
 echo "  unapplied predecessors named by the refusal: $(echo $PRED | tr "\n" " ")"
 ASSERT "nothing from the window was applied by the refused run" "$($SUDB -c "SELECT count(*) FROM _migrations_applied WHERE filename = ANY (ARRAY['1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql','1233_gochara_p1_period_anchor.sql','1240_gochara_window_verification_gate.sql'])")" "0"

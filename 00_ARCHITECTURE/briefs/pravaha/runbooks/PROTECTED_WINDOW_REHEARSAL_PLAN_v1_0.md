@@ -3,7 +3,7 @@ artifact: PROTECTED_WINDOW_REHEARSAL_PLAN
 version: "1.1"
 status: EXECUTABLE CHECKLIST — mechanical part (M1–M4) is scripted and was run once by its author on PostgreSQL 15; operator part (O1–O7) needs the steward/native. Authorizes nothing; touches no production system.
 date: 2026-10-02
-amended: "v1.1 (steward M20261002T053914-0033): re-run on FIVE files against Stream A's final 1240 — integration ref 427d87834 (A 4221f3bc5 + #2919 + #2920 + #2922), 39 asserts pass, 1 finding (PC-4); the real refusal now names 1230, 1234 and 1236"
+amended: "v1.2 (2026-10-02, steward M20261002T075234-8e98): ledger refreshed read-only from production (916 names) — 1230/1231/1237/1238/1239 are applied; the unselected, unapplied predecessors of the window are 1234 and 1236 only; 1241 (verifier/sealer grants) and 1242 (builder record replace/finalise grants) are numbered ABOVE 1240 and are NOT predecessors (1242 is needed before the first restricted build, by the routine route, either side of the window; 1241 merges only AFTER the window — the routine runner refuses at a pending protected file); PC-4 applied in the integration ref; re-run: 42 asserts, 0 findings; v1.1 (steward M20261002T053914-0033): re-run on FIVE files against Stream A's final 1240 — integration ref 427d87834 (A 4221f3bc5 + #2919 + #2920 + #2922), 39 asserts pass, 1 finding (PC-4); the real refusal now names 1230, 1234 and 1236"
 author: Stream B (Śāstra), item B6.0 — Codex round 8 R8-10 (steward M20261002T032818-fea8)
 audience: "Stream C (Kimi) executes M1–M4 on a DISPOSABLE database; the steward owns O1–O7"
 files: "runbooks/rehearsal/run_window_rehearsal.sh · prod_ledger_2026-10-02.txt · EXPECTED_WINDOW_SHA256.txt; PR #2919 tests/integration/gochara_b6_rehearsal_volume.db.test.ts"
