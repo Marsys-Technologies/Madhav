@@ -441,6 +441,26 @@ jobs:
           M1231_RESONANCE_MAP_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1231_resonance_map_grant_test
         run: npx vitest run tests/integration/gochara_resonance_map_builder_grant_record.db.test.ts --reporter=verbose
 
+      - name: C16/1237 — provision the kala_gochara_windows grant-record test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1237_windows_grant_test;"
+
+      - name: C16/1237 — kala_gochara_windows builder grant-record fails-before/succeeds-after against real Postgres
+        # The C15-finding proof for migration 1237 (which RECORDS the existing
+        # production ACL): a role with EXACTLY data_plane_builder's pre-1237
+        # grants (USAGE on schema public, nothing on kala_gochara_windows)
+        # hits 'permission denied for table kala_gochara_windows' on
+        # SELECT/INSERT before the migration, and succeeds after the REAL 1237
+        # file is applied — plus idempotency, exact-ACL scope (arwd + sequence
+        # USAGE/SELECT, nothing wider) and role-absent guard controls (§N.8).
+        # Table DDL from the REAL 460 file; asset_registry stubbed (as in the
+        # 1231 suite).
+        env:
+          M1237_WINDOWS_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1237_windows_grant_test
+        run: npx vitest run tests/integration/gochara_windows_builder_grant_record.db.test.ts --reporter=verbose
+
       - name: A2.5/1216 — provision the gochara contract grants test DB
         env:
           PGPASSWORD: postgres

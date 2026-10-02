@@ -41,24 +41,24 @@ kala_gochara_authority), 540 (build_protected_assets, referenced by 556),
 567/568 (parent_window_id + resolution + the 7-key natural index), 1081
 (kala_gochara_convention / publication / contacts / coverage) and 1087
 (inclusivity / completeness / tier_basis on contacts). The grant-target
-schema the six grant migrations post-check against is built by the C7
+schema the seven grant migrations post-check against is built by the C7
 suite's own _build_schema_as_owner, reused verbatim.
 
 What it proves (each assertion measures the claim it names):
   1. CONTROL — the mirror is faithful: schema public is owned by amjis_app,
-     the builder holds NO CREATE on it, and the six real grant migrations
+     the builder holds NO CREATE on it, and the seven real grant migrations
      applied.
   2. WRITE PATH — the manifest substep (register_convention,
-     publish_candidate) and the body-substep writes (write_contacts,
-     write_coverage) succeed as the builder. The windows substep does NOT:
-     write_windows' scoped DELETE on kala_gochara_windows fails with
-     InsufficientPrivilege — a FINDING (no checked-in grant migration
-     covers the table), carried as a strict-xfail naming the exact missing
-     privileges; no grant is added here to make it pass.
+     publish_candidate), the body-substep writes (write_contacts,
+     write_coverage) AND the windows substep (write_windows' scoped
+     delete-then-insert on kala_gochara_windows + the manifest count stamp)
+     all succeed as the builder — the windows ACL that was C15's
+     strict-xfail FINDING is now recorded by grant migration 1237
+     (Pravāha C16).
   3. FORBIDDEN — the builder is refused on kala_gochara_authority (the flip
      surface the writer must never touch), and ledger writes against a
      PUBLISHED generation are refused (the candidate-only rail).
-  4. IDEMPOTENT — the six grant migrations re-apply as a no-op.
+  4. IDEMPOTENT — the seven grant migrations re-apply as a no-op.
 
 Requires a THROWAWAY database; skipped unless C7_BUILDER_ROLE_TEST_DATABASE_URL
 is set (same disposable identity as the C7 suite):
@@ -333,20 +333,22 @@ def test_manifest_and_ledger_write_path_as_builder(builder_world):
             assert got == n, f"{table}: expected {n} '{GENERATION}' row(s), found {got}"
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "FINDING (C15): data_plane_builder holds NO privilege on "
-    "public.kala_gochara_windows — the windows substep's write_windows "
-    "fails its scoped DELETE with psycopg.errors.InsufficientPrivilege "
-    "('permission denied for table kala_gochara_windows'). No checked-in "
-    "grant migration (1211/1216/1217/1220/1225/1231) covers the table; the "
-    "'4.1' candidate writer cannot run its windows substep in production "
-    "until a grant migration gives the builder SELECT/INSERT/DELETE on it. "
-    "No grant is added here to make this pass — the finding is the deliverable."))
 def test_windows_write_path_as_builder(builder_world):
-    """The windows substep's write statement class as the builder — today a
-    strict-xfail FINDING (see reason)."""
+    """SUCCEEDS — the windows substep's write statement class as the builder:
+    write_windows' scoped delete-then-insert on kala_gochara_windows plus the
+    manifest windows-count stamp (UPDATE kala_gochara_publication.row_counts)
+    land, and the row reads back as the builder. The ACL that made this a
+    strict-xfail FINDING in C15 is recorded by grant migration 1237 (C16):
+    SELECT/INSERT/UPDATE/DELETE on kala_gochara_windows + USAGE/SELECT on its
+    identity sequence — exactly the production ACL."""
     written = _windows_write_path_as_builder(DSN, CHART)
     assert written == 1
+    with BR.connect_as_builder(DSN, connect_timeout=5) as conn:
+        got = conn.execute(
+            "SELECT count(*) FROM kala_gochara_windows"
+            " WHERE chart_id = %s AND generation = %s",
+            (CHART, GENERATION)).fetchone()[0]
+        assert got == 1, f"kala_gochara_windows: expected 1 '{GENERATION}' row, found {got}"
 
 
 def test_forbidden_authority_write_refused_as_builder(builder_world):

@@ -72,10 +72,12 @@ LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 # The grant migrations the fixture applies, by numeric prefix, in order.
 # 1220 = PR #2884 (pravaha/b6-1220-builder-function-execute); 1231 = PR #2906
 # (pravaha/c9-resonance-map-builder-grant-record — the builder's
-# gochara_resonance_map ACL, previously mirrored out-of-band). If any prefix
+# gochara_resonance_map ACL, previously mirrored out-of-band); 1237 = Pravāha
+# C16 (pravaha/c16-windows-builder-grant-record — the builder's
+# kala_gochara_windows ACL, C15's finding). If any prefix
 # is absent from BOTH migration roots the fixture raises — a grant the repo
 # does not carry is never re-typed here.
-GRANT_MIGRATION_PREFIXES = ("1211", "1216", "1217", "1220", "1225", "1231")
+GRANT_MIGRATION_PREFIXES = ("1211", "1216", "1217", "1220", "1225", "1231", "1237")
 
 
 class RefusedError(RuntimeError):
