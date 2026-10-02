@@ -1340,7 +1340,9 @@ def test_REAL_SQL_LOW2_a_json_allowed_literal_is_compared_per_string_leaf(monkey
     types = {"k": "text", "doc": "jsonb", "w": "integer"}
     assert _cv(_mp_real(monkeypatch, disposable_pg, setup, "x_t", types, _gspec())) == FAIL
     al = [dict(column="doc", values=["none"], why="a leaf with no value is stored as the word none")]
-    assert _cv(_mp_real(monkeypatch, disposable_pg, setup, "x_t", types, _gspec(allowed=al))) == PASS
+    got = _mp_real(monkeypatch, disposable_pg, setup, "x_t", types, _gspec(allowed=al))
+    assert _cv(got) == PASS
+    assert [a["column"] for a in got[BR]["null_convention"]["convention"]["allowed_literals_in_force"]] == ["doc"]            # a json exemption takes effect, so it is in force
 
 
 ARR_TYPES = {"k": "text", "ia": "ARRAY", "ba": "ARRAY", "na": "ARRAY", "ta": "ARRAY", "w": "integer"}
@@ -1483,3 +1485,64 @@ def test_REAL_SQL_a_domain_is_resolved_to_its_base_type(monkeypatch, disposable_
     ins = ["INSERT INTO dd_t VALUES ('a', '{\"s\":\"fine\"}', ARRAY['x'], '\\x01'), ('b', '{\"s\":\"N/A\"}', ARRAY['y'], '\\x02');"]
     r = _mp_real(monkeypatch, disposable_pg, setup + ins, "dd_t", {"k": "text", "j": "jsonb", "a": "ARRAY", "b": "bytea"}, _gspec())
     assert _cv(r) == FAIL and r[BR]["null_convention"]["convention"]["fallbacks"] == {"j": 1}               # the nested leaf of a jsonb DOMAIN
+
+
+# ═════════════════ strategist round: the PASS text claims exactly what was checked ═════════════════
+
+def _elem_setup(ja):
+    return ["CREATE TEMP TABLE x_t (k text PRIMARY KEY, label text NOT NULL, ja jsonb[], ia inet[], w int NOT NULL) ON COMMIT DROP;",
+            f"INSERT INTO x_t VALUES ('a', 'first', ARRAY['{{\"a\":\"ok\"}}'::jsonb], ARRAY['10.0.0.1'::inet], 1), ('b', 'second', {ja}, ARRAY['10.0.0.2'::inet], 2);"]
+
+
+ELEM_TYPES = {"k": "text", "label": "text", "ja": "ARRAY", "ia": "ARRAY", "w": "integer"}
+
+
+def test_REAL_SQL_an_array_whose_elements_are_not_inspected_passes_but_is_listed_as_not_examined(monkeypatch, disposable_pg):
+    ja = "ARRAY['{\"a\":\"N/A\"}'::jsonb]"                                  # a placeholder INSIDE a jsonb[] element: not inspected, so it still passes ...
+    r = _mp_real(monkeypatch, disposable_pg, _elem_setup(ja), "x_t", ELEM_TYPES, _gspec())
+    conv, text = r[BR]["null_convention"]["convention"], r[BR]["null_convention"]["measured"]
+    assert _cv(r) == PASS
+    assert ac.null_fetch_column_kinds("x_t", ["ja", "ia", "label"]) == {"ja": "array_other", "ia": "array_other", "label": "text"}
+    assert set(conv["elements_not_inspected"]) == {"ja", "ia"}                                  # ... but it is LISTED, and absent from the checked list
+    assert set(conv["fallback_checked_columns"]) == {"k", "label"} and "ja" not in conv["fallback_checked_columns"]
+    assert "NOT examined (element contents not inspected; only an empty array is a fallback): " in text and "ja (ARRAY)" in text and "ia (ARRAY)" in text
+    chk = re.search(r"no literal fallback in the (\d+) text-like / declared-nullable column\(s\) checked \(([^)]*)\)", text)
+    assert chk and int(chk.group(1)) == 2 == len(chk.group(2).split(", ")) and set(chk.group(2).split(", ")) == {"k", "label"}          # the count matches the list: 2, not 4
+
+
+def test_REAL_SQL_an_empty_array_of_an_uninspected_kind_is_still_a_fallback(monkeypatch, disposable_pg):
+    for ja in ("ARRAY[]::jsonb[]", "'{}'::jsonb[]"):
+        r = _mp_real(monkeypatch, disposable_pg, _elem_setup(ja), "x_t", ELEM_TYPES, _gspec())
+        assert _cv(r) == FAIL and r[BR]["null_convention"]["convention"]["fallbacks"] == {"ja": 1}, r[BR]
+
+
+def test_the_pass_text_counts_match_the_lists_for_every_kind():
+    types = {"k": "text", "ja": "ARRAY", "flag": "boolean", "n": "integer", "ta": "ARRAY", "w": "integer"}
+    kinds = {"k": "text", "ja": "array_other", "flag": "bool", "n": "num", "ta": "array_text", "w": "num"}
+    per = {c: dict(nulls=0, distinct=3, fallback=0) for c in types}
+    for c in ("flag", "n", "w"):
+        per[c].pop("fallback")
+    r = ac.grade_null_convention(dict(table="t", nullable=[], constants=[], why=SPEC()["why"], evidence=EV), list(types), types, dict(rows=3, kinds=kinds, cols=per))
+    conv = r["convention"]
+    assert r["v"] == PASS and conv["fallback_checked_columns"] == ["k", "ta"] and conv["elements_not_inspected"] == ["ja"] and conv["fallback_not_applicable"] == ["flag", "n", "w"]
+    assert "in the 2 text-like / declared-nullable column(s) checked (k, ta)" in r["measured"]
+    assert len(conv["fallback_checked_columns"]) + len(conv["elements_not_inspected"]) + len(conv["fallback_not_applicable"]) == len(types)      # every column is accounted for exactly once
+
+
+def test_an_allowed_literal_with_no_effect_on_the_column_type_is_not_printed_as_in_force():
+    types = dict(LATTA_TYPES, flag="boolean", nums="ARRAY")
+    cols = LATTA_COLS + ["flag", "nums"]
+    kinds = {c: ac._null_type_kind(types[c]) for c in cols}
+    kinds["nums"] = "array_num"
+    st = STATS()
+    st["cols"]["flag"] = dict(nulls=0, distinct=2)
+    st["cols"]["nums"] = dict(nulls=0, distinct=None, fallback=0)
+    st["kinds"] = kinds
+    al = [dict(column="direction", values=["none"], why="a graha with no direction stores the word none"),
+          dict(column="flag", values=["N/A"], why="a flag never holds a placeholder word at all"),
+          dict(column="nums", values=["0"], why="a numeric array element is never a placeholder word")]
+    r = ac.grade_null_convention(_rspec(allowed_literals=al), cols, types, st)
+    conv = r["convention"]
+    assert r["v"] == PASS and [a["column"] for a in conv["allowed_literals_in_force"]] == ["direction"] and conv["allowed_literals_no_effect"] == ["flag", "nums"]
+    assert "allowed literals in force (declared exemptions): direction" in r["measured"] and "flag [" not in r["measured"].split("allowed literals in force")[1].split("; NOT")[0]
+    assert "allowed_literals with no effect on the column type (not in force): flag, nums" in r["measured"]

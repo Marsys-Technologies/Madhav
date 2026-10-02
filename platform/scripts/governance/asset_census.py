@@ -2102,7 +2102,9 @@ def grade_null_blank_rows(entries, counts) -> dict:
 # ones: a non-nullable column holding '' or 'N/A' is a fallback dodging the undeclared-NULL check. A value that collides with the list legitimately must be declared
 # in `allowed_literals` (never guessed by the detector). A declared-nullable NUMERIC column also treats a 0 as a sentinel.
 # COST NOTE: `count(DISTINCT col)` over a very large or vector-heavy table can hit the client timeout (PSQL_TIMEOUT_SECONDS): that reads ERRORED, never PASS. Columns of
-# type bytea / json / jsonb / tsvector / USER-DEFINED (vector) are therefore NOT distinct-counted unless declared constant; the verdict names them as not examined.
+# KIND json, blob (bytea / tsvector / tsquery / xml / vector ...) or array_num (numeric / float arrays, e.g. embeddings) are therefore NOT distinct-counted unless declared constant;
+# the verdict names them as not examined. An array whose ELEMENT contents are not inspected (kind array_other: jsonb[], composite[], inet[], bytea[], uuid[], date[] ...) gets only the
+# empty-array fallback test, so it is NOT counted in the "no literal fallback in the N column(s) checked" claim: it is listed under "NOT examined (element contents not inspected)".
 NULL_CONVENTION_DECL_FIELDS = ("table", "nullable", "constants", "allowed_literals", "why", "evidence")
 NULL_NULLABLE_FIELDS = ("column", "means", "scope")
 NULL_SCOPE_FIELDS = ("key_column", "null_for", "mode")
@@ -2111,6 +2113,7 @@ NULL_ALLOWED_FIELDS = ("column", "values", "why")
 NULL_SCOPE_MODES = ("only", "exactly")        # only: a NULL is allowed just on the declared keys; exactly: NULL iff the key is declared
 NULL_MAX_NULLABLE, NULL_MAX_CONSTANTS, NULL_MAX_ALLOWED, NULL_MAX_VALUES, NULL_MAX_KEY_LEN = 64, 256, 64, 20, 128   # a declaration larger than this is not a convention
 NULL_NUMERIC_TYPES = ("smallint", "integer", "bigint", "numeric", "decimal", "real", "double precision")   # a 0 in a declared-nullable numeric column is a sentinel
+NULL_ALLOWED_EFFECT_KINDS = ("text", "array_text", "json")   # the kinds `_null_fallback_sql` applies allowed_literals to; on any other kind an entry has no effect
 NULL_DISTINCT_SKIP_KINDS = ("json", "blob", "array_num")   # kinds not distinct-counted (cost: json, bytea / tsvector / vector, numeric / float arrays such as embeddings) unless declared constant
 
 
@@ -2503,12 +2506,17 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
         elif d.get("value") is not None and per[c]["nulls"] == 0 and not _same_constant(per[c].get("sole"), d["value"], kinds[c]):
             const_viol.append(c)
     unscoped = [c for c, n in nullable.items() if not n.get("scope") and per[c]["nulls"] > 0]
-    fb_checked = [c for c in cols if _null_fb_possible(kinds[c], c in nullable)]
-    fb_na = [c for c in cols if c not in fb_checked]
-    allowed_in_force = [dict(column=a["column"], values=list(a["values"]), why=a["why"]) for a in spec.get("allowed_literals") or []]
+    fb_possible = [c for c in cols if _null_fb_possible(kinds[c], c in nullable)]
+    elem_not_inspected = [c for c in fb_possible if kinds[c] == "array_other"]            # only the EMPTY-array test runs: the element contents are not looked at
+    fb_checked = [c for c in fb_possible if c not in elem_not_inspected]                  # what the PASS claim "no literal fallback" actually covers
+    fb_na = [c for c in cols if c not in fb_possible]
+    allowed_all = [dict(column=a["column"], values=list(a["values"]), why=a["why"]) for a in spec.get("allowed_literals") or []]
+    allowed_in_force = [a for a in allowed_all if kinds[a["column"]] in NULL_ALLOWED_EFFECT_KINDS]          # an exemption on a boolean / number / numeric array changes nothing
+    allowed_no_effect = [a["column"] for a in allowed_all if kinds[a["column"]] not in NULL_ALLOWED_EFFECT_KINDS]
     block = dict(table=table, rows=rows, undeclared_nulls=undecl_nulls, fallbacks=fallbacks, scope_violations=scope_viol,
                  undeclared_constants=undecl_consts, constant_violations=const_viol, unscoped_null_columns=unscoped,
-                 fallback_checked_columns=fb_checked, fallback_not_applicable=fb_na, constants_not_examined=not_examined, allowed_literals_in_force=allowed_in_force)
+                 fallback_checked_columns=fb_checked, fallback_not_applicable=fb_na, elements_not_inspected=elem_not_inspected, constants_not_examined=not_examined,
+                 allowed_literals_in_force=allowed_in_force, allowed_literals_no_effect=allowed_no_effect)
     problems = []
     if undecl_nulls:
         problems.append("undeclared NULL in column(s) " + ", ".join(f"{c} ({n} row(s))" for c, n in sorted(undecl_nulls.items()))
@@ -2543,6 +2551,8 @@ def grade_null_convention(spec: dict, columns, types, stats) -> dict:
                          + f"; {len(consts)} declared constant column(s) constant, no other column constant"
                          + (f"; allowed literals in force (declared exemptions): " + "; ".join(f"{a['column']} {a['values']} ({a['why']})" for a in allowed_in_force) if allowed_in_force else "")
                          + (f"; NOT examined for a literal fallback (the type cannot hold one): " + ", ".join(f"{c} ({types.get(c) or kinds[c]})" for c in fb_na) if fb_na else "")
+                         + (f"; NOT examined (element contents not inspected; only an empty array is a fallback): " + ", ".join(f"{c} ({types.get(c) or kinds[c]})" for c in elem_not_inspected) if elem_not_inspected else "")
+                         + (f"; allowed_literals with no effect on the column type (not in force): {', '.join(allowed_no_effect)}" if allowed_no_effect else "")
                          + (f"; constants NOT examined (kind not distinct-counted, cost): " + ", ".join(f"{c} ({kinds[c]})" for c in not_examined) if not_examined else ""))
 
 
