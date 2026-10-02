@@ -203,6 +203,19 @@ echo "  -- W5 expected trigger manifest (R15-5): the committed file is exactly w
 if [ -f "$HERE/EXPECTED_WINDOW_TRIGGER_MANIFEST.tsv" ]; then
   MAN="$($SUDB -F $'\t' -f "$HERE/window_trigger_manifest.sql" 2>&1)"
   ASSERT "the committed EXPECTED_WINDOW_TRIGGER_MANIFEST.tsv equals the mirror's manifest at the final bytes" "$(printf '%s\n' "$MAN" | shasum -a 256 | cut -c1-64)" "$(shasum -a 256 < "$HERE/EXPECTED_WINDOW_TRIGGER_MANIFEST.tsv" | cut -c1-64)"
+  # Codex R16-4: PROVE the manifest detects a changed trigger CONDITION (a presence flag could not): recreate the precision-propagation trigger with another WHEN condition inside a transaction that is ROLLED BACK,
+  # run the same manifest query in that session, and require a different manifest; the committed mirror is untouched.
+  MUT="$({ echo "BEGIN;"; echo "SET ROLE amjis_app;"; cat <<'MSQL'
+DO $m$ DECLARE d text; BEGIN
+  SELECT pg_get_triggerdef(t.oid) INTO d FROM pg_trigger t WHERE t.tgrelid = 'public.ka_gochara_contact'::regclass AND t.tgname = 'ka_gochara_contact_2_propagate_precision';
+  IF d !~ ' WHEN ' THEN RAISE EXCEPTION 'the precision-propagation trigger carries no WHEN condition — pick another trigger for the negative control'; END IF;
+  DROP TRIGGER ka_gochara_contact_2_propagate_precision ON public.ka_gochara_contact;
+  EXECUTE regexp_replace(d, ' WHEN \(.*\) EXECUTE', ' WHEN (true) EXECUTE');
+END $m$;
+MSQL
+  cat "$HERE/window_trigger_manifest.sql"; echo "ROLLBACK;"; } | $SUDB -F $'\t' 2>&1 | grep -E '^(REL|TRG)'; )"
+  ASSERT "a changed trigger CONDITION is detected by the manifest (negative control, rolled back)" "$([ "$(printf '%s\n' "$MUT" | shasum -a 256 | cut -c1-64)" != "$(shasum -a 256 < "$HERE/EXPECTED_WINDOW_TRIGGER_MANIFEST.tsv" | cut -c1-64)" ] && echo detected || echo MISSED)" "detected"
+  ASSERT "the negative control left the mirror unchanged" "$(printf '%s\n' "$($SUDB -F $'\t' -f "$HERE/window_trigger_manifest.sql" 2>&1)" | shasum -a 256 | cut -c1-64)" "$(shasum -a 256 < "$HERE/EXPECTED_WINDOW_TRIGGER_MANIFEST.tsv" | cut -c1-64)"
   ASSERT "no relation in the manifest is MISSING from the mirror" "$(printf '%s\n' "$MAN" | grep -c 'MISSING' || true)" "0"
 else
   FINDING "EXPECTED_WINDOW_TRIGGER_MANIFEST.tsv is absent — run generate_window_trigger_manifest.sh and commit it"
