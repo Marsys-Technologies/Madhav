@@ -1,11 +1,12 @@
 ---
 artifact: FLIP_DETECTOR_README
-version: 2.1
+version: 2.2
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna
 decision: SS N-64 (S-L1 acceptance criterion); verdict-deciding tool, one independent review required before the S-L1 integration PR relies on it
 scope: tooling and tests only. The detector is read-only and never writes to the database.
 changelog:
+  - "2.2 (2026-10-02): delta-review fixes. A timestamp-valued fact that becomes NULL or non-timestamp text is a value change. malformed-report check pinned for a non-list not_checked. README: direction limit of the continuous/integral classification, and a correction note for the sun_required_rupa hook."
   - "2.1 (2026-10-02): fixes from the independent review of PR 2945. A continuous number that becomes NULL/text, and continuous keys that appear or disappear, are now changes (were invisible). New failure class EMPTY_READ (zero rows in a compared table in either state). Chart ids are validated as UUIDs and normalised once. Empty fact_keys / ayanamsha_ids / charts lists, an empty --hooks-dir and an empty --require-lanes are rejected. A single-SELECT guard (no statement chaining). A malformed or truncated report is FAIL (exit 2), never a KeyError. W7 hand-check list added."
   - "2.0 (2026-10-02): moved to platform/scripts/governance with CI-collected tests and mutation proof. New: DECLARED_BUT_ABSENT and KIND_MISMATCH failure classes, optional hook entries, NOT_CHECKED verdict + exit 4 + --allow-not-checked, standing NOT CHECKED registry (chart_dashas tier, l1_tajik_varsha_year_lords tier), 'pr' now required in a hook, missing/empty hooks dir is an error, offline --against compare, --out for --validate-hooks, deterministic JSON. Detector logic for class/tier/dasha diffing and anchors is unchanged from v1.1 (PR 2859)."
   - "1.1: investigation-branch version (PR 2859): snapshot, compare, validate-hooks, anchors, expectation counts."
@@ -163,7 +164,9 @@ An entry is judged once per compare: by `expected_count` if it has one, else it 
 
 For one chart: every `chart_facts` row (with `verification_pass_status`), every `chart_divisionals` row, every `chart_dashas` row (row set and start shifts), plus the global `panchanga_daily` table. A class change is a changed non-timestamp text, a changed integral number (or any value of a class-numeric key), a key that appears or disappears, or a changed occurrence count. A tier change is a changed `verification_pass_status` for `chart_facts`.
 
-Continuous (non-integral) numbers are judged by their snapshot side: a continuous number that changes to another number (longitudes, strengths) is counted in the `continuous` block and never blocks, but a continuous number that becomes **NULL or text** is a `value` change, and a continuous key that **appears or disappears** is an `appeared` / `disappeared` change (so a hook must declare it). The `continuous` block and the printed summary count `to_non_numeric`, `keys_appeared` and `keys_disappeared`. Timestamp-valued facts that appear or disappear are ignored but counted (`time_keys_appeared`, `time_keys_disappeared`). Dasha shifts of 2 s or less never block.
+Continuous (non-integral) numbers are judged by their snapshot side: a continuous number that changes to another number (longitudes, strengths) is counted in the `continuous` block and never blocks, but a continuous number that becomes **NULL or text** is a `value` change, and a continuous key that **appears or disappears** is an `appeared` / `disappeared` change (so a hook must declare it). The `continuous` block and the printed summary count `to_non_numeric`, `keys_appeared` and `keys_disappeared`. A timestamp-valued fact that changes to another timestamp is ignored, one that becomes **NULL or non-timestamp text** is a `value` change (counted as `time_to_non_time`), and one that appears or disappears is ignored but counted (`time_keys_appeared`, `time_keys_disappeared`).
+
+**Direction limit (read this before trusting an empty report).** Whether a numeric value is "class" (integral) or "continuous" is judged from the **snapshot side only**. A number that goes from continuous to integral (for example `6.5` to `5`) is therefore invisible: it is counted as a continuous change and never becomes a class change. This only matters when the snapshot is already post-change (a snapshot taken after the lane's rebuild, or an `--against` pair whose first side is the new state); take the snapshot BEFORE the rebuild, as W7 does. The reverse (`5` to `6.5`, integral to continuous) is detected. Dasha shifts of 2 s or less never block.
 
 ### Chart ids
 
@@ -190,6 +193,10 @@ WHERE chart_id = '<CHART_UUID>'
 GROUP BY fact_category
 ORDER BY fact_category;
 ```
+
+## Correction to a hook note (sun_required_rupa)
+
+The `sun_required_rupa` hook's first entry says the predicted class-level count for `required_rupa` is 0 because "both values are continuous". That is wrong for the canonical case: the old value is the integral `5` (5.0), so `required_rupa` 5 to 6.5 (SUN, ayanamsha INVARIANT) **is** detected, as one `value` change per chart (the golden test pins it). Only `ratio` (1.694 to 1.3031, and so on) is continuous and unreported. If a snapshot ever stored the old value non-integrally, the entry would read DECLARED_BUT_ABSENT. The hook file lives in its own lane PR and is not edited here; the `hooks_real` fixture is a byte copy of it and keeps the wrong note on purpose.
 
 ## What the detector cannot check
 

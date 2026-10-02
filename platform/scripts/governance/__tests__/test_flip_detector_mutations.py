@@ -117,6 +117,13 @@ MUTATIONS = [
     ("malformed_report_trusted",
      "    if report_is_malformed(rep):\n        return V_FAIL", "    if False:\n        return V_FAIL",
      ["test_malformed_report_is_a_clean_failure_not_a_keyerror", "test_saved_report_json_verdict_field_is_not_trusted"]),
+    # ---- delta-review fixes
+    ("f1_timestamp_to_null_invisible",
+     'if kind_of(y[0], y[1], key) != "time":', "if False:",
+     ["test_f1_timestamp_becoming_null_or_text_is_a_value_change"]),
+    ("f2_not_checked_type_unchecked",
+     ' or not isinstance(rep["not_checked"], list)', "",
+     ["test_malformed_report_is_a_clean_failure_not_a_keyerror"]),
 ]
 
 

@@ -1010,7 +1010,11 @@ def test_hook_fact_key_narrowing_is_honoured(tmp_path):
 
 # --- a malformed or tampered report is never PASS and never a crash
 @pytest.mark.parametrize("rep", [{}, None, {"verdict": "PASS"}, {"verdict": "PASS", "failure_counts": {}, "not_checked": [], "chart_id": "x"},
-                                 {"verdict": "PASS", "failures": [], "failure_counts": {}, "not_checked": [], "chart_id": "x"}])
+                                 {"verdict": "PASS", "failures": [], "failure_counts": {}, "not_checked": [], "chart_id": "x"},
+                                 {"verdict": "PASS", "failures": {}, "failure_counts": {}, "not_checked": None, "chart_id": "x"},
+                                 {"verdict": "PASS", "failures": {}, "failure_counts": {}, "not_checked": "", "chart_id": "x"},
+                                 {"verdict": "PASS", "failures": {}, "failure_counts": {}, "not_checked": {}, "chart_id": "x"},
+                                 {"verdict": "PASS", "failures": {}, "failure_counts": [], "not_checked": [], "chart_id": "x"}])
 def test_malformed_report_is_a_clean_failure_not_a_keyerror(rep):
     assert F.decide_verdict(rep) == "FAIL"
     assert F.exit_code(rep) == 2 and F.exit_code(rep, allow_not_checked=True) == 2
@@ -1023,3 +1027,41 @@ def test_saved_report_json_verdict_field_is_not_trusted(tmp_path):
     saved["verdict"] = "PASS"
     del saved["failures"]  # a hand-edited / truncated saved report
     assert F.exit_code(saved, allow_not_checked=True) == 2
+
+
+# --- F1 (delta review): a timestamp-valued fact that loses its timestamp
+def time_state():
+    return mutate(base_state(), lambda s: s["chart_facts"].append(["INVARIANT", "birth_time_facts", "BIRTH", "utc", "2026-01-01T00:00:00+00:00", "", "single"]))
+
+
+@pytest.mark.parametrize("after", [("", ""), ("no_data", ""), ("", "7")], ids=["null", "text", "number"])
+def test_f1_timestamp_becoming_null_or_text_is_a_value_change(after, tmp_path):
+    def lose(s):
+        for r in s["chart_facts"]:
+            if r[1] == "birth_time_facts":
+                r[4], r[5] = after
+    rep = run(time_state(), mutate(time_state(), lose), [])
+    assert counts(rep) == {"UNDECLARED_CHANGE": 1} and rep["changes"][0]["change"] == "value"
+    assert rep["continuous"]["chart_facts"]["time_to_non_time"] == 1
+    h = hook("birth", [entry(["birth_time_facts"], ["value"])])
+    assert run(time_state(), mutate(time_state(), lose), loaded(tmp_path, h), standing_not_checked=NO_STANDING)["verdict"] == "PASS"
+
+
+def test_f1_timestamp_to_another_timestamp_is_still_ignored():
+    def move(s):
+        for r in s["chart_facts"]:
+            if r[1] == "birth_time_facts":
+                r[4] = "2026-02-02T00:00:00+00:00"
+    rep = run(time_state(), mutate(time_state(), move), [], standing_not_checked=NO_STANDING)
+    assert rep["verdict"] == "PASS" and rep["changes_total"] == 0 and rep["continuous"]["chart_facts"]["time_to_non_time"] == 0
+
+
+# --- direction limit and the sun_required_rupa note
+def test_direction_limit_integral_to_continuous_is_seen_but_continuous_to_integral_is_not():
+    def val(v):
+        return mutate(base_state(), lambda s: s["chart_facts"].append(["INVARIANT", "graha_shadbala_total", "SUN", "required_rupa", "", v, "single"]))
+    forward = run(val("5"), val("6.5"), [], standing_not_checked=NO_STANDING)
+    assert counts(forward) == {"UNDECLARED_CHANGE": 1} and forward["changes"][0]["fact_key"] == "required_rupa"
+    reverse = run(val("6.5"), val("5"), [], standing_not_checked=NO_STANDING)  # the snapshot side is continuous: invisible, documented in the README
+    assert reverse["changes_total"] == 0 and reverse["continuous"]["chart_facts"]["changed"] == 1
+    assert "Direction limit" in (GOV_DIR / "FLIP_DETECTOR_README.md").read_text()

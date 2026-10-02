@@ -417,7 +417,7 @@ def diff_table(table, A, B, nkey):
     Returns (class_and_tier_changes, continuous_stats)."""
     out = []
     cont = {"compared": 0, "changed": 0, "max_abs_delta": 0.0, "to_non_numeric": 0, "keys_appeared": 0, "keys_disappeared": 0,
-            "time_keys_appeared": 0, "time_keys_disappeared": 0}
+            "time_keys_appeared": 0, "time_keys_disappeared": 0, "time_to_non_time": 0}
     for k in sorted(set(A) | set(B)):
         a, b = A.get(k), B.get(k)
         cat, key = k[nkey[0]], k[nkey[1]]
@@ -449,7 +449,12 @@ def diff_table(table, A, B, nkey):
                         cont["max_abs_delta"] = max(cont["max_abs_delta"], abs(float(y[1]) - float(x[1])))
                     except (TypeError, ValueError):
                         pass
-            elif kd != "time" and ((x[0] or "") != (y[0] or "") or not same_num(x[1], y[1])):
+            elif kd == "time":
+                if kind_of(y[0], y[1], key) != "time":
+                    # a timestamp-valued fact that became NULL or non-timestamp text lost its timestamp: a value change (a changed timestamp is not)
+                    cont["time_to_non_time"] += 1
+                    out.append({**base, "change": "value", "before": [x[0], x[1]], "after": [y[0], y[1]]})
+            elif (x[0] or "") != (y[0] or "") or not same_num(x[1], y[1]):
                 out.append({**base, "change": "value", "before": [x[0], x[1]], "after": [y[0], y[1]]})
             if len(x) > 2 and x[2] != y[2]:
                 out.append({**base, "change": "tier", "before": x[2], "after": y[2]})
@@ -689,7 +694,7 @@ def render_summary(rep, allow_not_checked=False):
     for tname in ("chart_facts", "chart_divisionals"):
         c = rep["continuous"][tname]
         L.append(f"continuous ({tname}): compared {c['compared']} changed {c['changed']} (to NULL/text {c['to_non_numeric']}) keys appeared {c['keys_appeared']} "
-                 f"disappeared {c['keys_disappeared']} max |delta| {c['max_abs_delta']:.6g}")
+                 f"disappeared {c['keys_disappeared']} timestamp->non-timestamp {c['time_to_non_time']} max |delta| {c['max_abs_delta']:.6g}")
     if rep["dashas"]:
         L.append("dasha shifts: " + json.dumps({k: (x.get("rows_shifted"), x.get("mode_shift_sec"), x.get("lanes")) for k, x in sorted(rep["dashas"].items()) if x.get("rows_shifted")}, sort_keys=True))
     if rep["chart_id"] == NATIVE and not rep["ALERT_anchor_changed"]:
