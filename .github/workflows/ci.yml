@@ -421,6 +421,26 @@ jobs:
           M1225_AV_GATES_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1225_av_gates_grant_test
         run: npx vitest run tests/integration/bg_transit_av_gates_builder_select_grant.db.test.ts --reporter=verbose
 
+      - name: C9/1231 — provision the gochara_resonance_map grant-record test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1231_resonance_map_grant_test;"
+
+      - name: C9/1231 — gochara_resonance_map builder grant-record fails-before/succeeds-after against real Postgres
+        # The C7-finding proof for migration 1231 (which RECORDS the existing
+        # production ACL): a role with EXACTLY data_plane_builder's pre-1231
+        # grants (USAGE on schema public, nothing on gochara_resonance_map)
+        # hits 'permission denied for table gochara_resonance_map' on
+        # SELECT/INSERT before the migration, and succeeds after the REAL 1231
+        # file is applied — plus idempotency, exact-ACL scope (arwd + sequence
+        # USAGE/SELECT, nothing wider) and role-absent guard controls (§N.8).
+        # Table DDL from the REAL 459 file; bg_transit_rules/asset_registry
+        # stubbed (as in the 1225 suite).
+        env:
+          M1231_RESONANCE_MAP_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1231_resonance_map_grant_test
+        run: npx vitest run tests/integration/gochara_resonance_map_builder_grant_record.db.test.ts --reporter=verbose
+
       - name: A2.5/1216 — provision the gochara contract grants test DB
         env:
           PGPASSWORD: postgres
