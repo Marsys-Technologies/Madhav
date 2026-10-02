@@ -25,7 +25,7 @@ Round 8 returned REJECT; accepted as contracts: the P4 score ruling, objective �
 | live suites 1206 + 1232 + 1233, serially, PG15 | `tests/integration/…` | **55 tests pass** |
 | volume / contention / seal timing | `tests/integration/gochara_b6_rehearsal_volume.db.test.ts` (opt-in) | 26 classes: seal 64 ms at 2 340 obligations / 7 020 intervals, 453 ms at 7 488 / 59 904; a builder write to another generation waits for the in-flight seal. Synthetic, laptop — **replace with Kimi's run on real counts** |
 | **FINDINGS (open)** | plan §M4 | (1) the builder can write independent-verification rows (1206 §7) — PC-4 requires removal; (2) **the eval-window write path had no grants** (1216 defers it; 1220 covers only contact/record flow) — **now derived: migration 1234, PR #2920 (HOLD, grants only, routine)**: 2 tables + 3 functions, each individually necessary, 7/7 mutations caught; **ledger consequence: 1230 and 1234 must be applied by the routine deploy before the window lists 1240**; (3) sealer and verifier principals are not provisioned; (4) 1230 must be applied first |
-| outstanding | plan O1–O7 | operator receipts: deployment ref, provisioning, dispatch, post-window checks, actual-role seal/replay evidence |
+| outstanding | plan O1–O7 + **ND-ROLES** | operator receipts: deployment ref, provisioning, dispatch, post-window checks, actual-role seal/replay evidence; **ND-ROLES (`decisions/ND_ROLES_DECISION_PACKET_v1_0.md`) is a blocker of (c)**: the verifier and sealer principals do not exist in usable form and the builder can write verification rows |
 
 ### (b) Bind the `1.1.0` registry versions — R8-2 (+ binding/read-back evidence)
 | exhibit | ref | state |
