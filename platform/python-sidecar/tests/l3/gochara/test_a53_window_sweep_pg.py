@@ -8,8 +8,9 @@ guard, the score/evidence/severity CHECKs, the half-open interval, and delete-th
 """
 from __future__ import annotations
 
+import dataclasses
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -107,6 +108,18 @@ def _p3_probe(body, t):
     return 195.0 if 10 <= d < 200 else 15.0
 
 
+def _swiss_from_spans(spans, inside=195.0, outside=15.0):
+    """A `calc_sidereal_lon(body, jd, ephe)` stand-in CONSISTENT with the seeded geometry: `spans` = {body: [(a, b)]}
+    — inside them the body is at `inside`°, elsewhere at `outside`°. The window phase's independent geometry check
+    (R8-4) probes the ephemeris just inside/outside each stored span end, so a constant stand-in cannot satisfy it."""
+    from datetime import timezone
+
+    def calc(body, jd, ephe):
+        t = datetime.fromtimestamp((jd - 2440587.5) * 86400.0, tz=timezone.utc)
+        return (inside if any(a <= t < b for a, b in spans.get(body.lower(), ())) else outside), 2
+    return calc
+
+
 def _sweep_and_write(conn, rows_for):
     ws_store = WindowStore(conn)
     recs = ws_store.read_grain(chart_id=CHART_ID, generation=GEN, event_class=CLS,
@@ -191,7 +204,8 @@ def test_a_not_admitted_record_never_forms_a_window(grain):
 # ── through the writer's own substep ─────────────────────────────────────────
 
 def test_the_writer_window_substep_runs_on_the_runners_native_types(grain, monkeypatch):
-    monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
+    monkeypatch.setattr(writer_mod, "calc_sidereal_lon",
+                        _swiss_from_spans({"saturn": [(T0 + 10 * DAY, T0 + 200 * DAY)]}))
     monkeypatch.setattr(writer_mod, "_verify_live_inputs", lambda ctx, chart_id: None)   # own test below
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-window", db_conn=grain,
                       config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON}, dry_run=False)
@@ -285,11 +299,13 @@ def test_p2_record_is_admitted_with_its_direction_and_the_window_is_unqualified_
 
 
 def test_p2_with_a_bound_vedha_source_stores_both_channels_in_the_real_schema(p2_grain):
+    """The SOLVER's numbers (the dynamic switch lifted — the writer never does); the schema stores them."""
     conn, cls = p2_grain
     ws_store = WindowStore(conn)
     recs = ws_store.read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P2",
                                rule_version=VERSION)
-    drafts, _ = ws.draft_windows(cls, recs, ws.registry_factor_rows, vedha=lambda r, t: 0.5)
+    drafts, _ = ws.draft_windows(cls, recs, ws.registry_factor_rows, vedha=lambda r, t: 0.5,
+                                 allow_dynamic=True)
     with conn.transaction():
         conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         ws_store.replace_grain_windows(chart_id=CHART_ID, generation=GEN, event_class=cls,
@@ -384,10 +400,11 @@ def test_verifier_checks_the_p2_channels_from_the_cited_sets(p2_grain):
     conn, cls = p2_grain
     recs = WindowStore(conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls,
                                         path_id="P2", rule_version=VERSION)
-    drafts = ws.draft_windows(cls, recs, ws.registry_factor_rows, vedha=lambda r, t: 0.5)[0]
+    drafts = ws.draft_windows(cls, recs, ws.registry_factor_rows, vedha=lambda r, t: 0.5,
+                              allow_dynamic=True)[0]
     _write(conn, cls, "P2", drafts)
-    # the sweep ran with a bound vedha source; tell the verifier the same fact
-    out = _verify(conn, cls, "P2", vedha_bound=True)
+    # the solver ran (switch lifted) with a bound vedha source; tell the verifier the same facts
+    out = _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True)
     assert out["windows"] == 1 and out["unverified_dynamic"] == 1    # vedha value is a function: NOT reproduced
     assert out["status"] == "UNVERIFIED_DYNAMIC"
 
@@ -541,7 +558,8 @@ def _p2_dynamic_world(p2_grain):
     conn, cls = p2_grain
     recs = WindowStore(conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P2",
                                         rule_version=VERSION)
-    drafts = ws.draft_windows(cls, recs, ws.registry_factor_rows, vedha=lambda r, t: 0.5)[0]
+    drafts = ws.draft_windows(cls, recs, ws.registry_factor_rows, vedha=lambda r, t: 0.5,
+                              allow_dynamic=True)[0]
     return conn, cls, drafts
 
 
@@ -553,12 +571,13 @@ def test_a_fabricated_evidence_for_of_123_on_a_one_root_dynamic_window_is_refuse
     conn, cls, drafts = _p2_dynamic_world(p2_grain)
     _write(conn, cls, "P2", [dataclasses.replace(drafts[0], evidence_for=123.0)])
     with pytest.raises(RuntimeError, match="evidence_for 123.0 is outside"):
-        _verify(conn, cls, "P2", vedha_bound=True)
-    _write(conn, cls, "P2", [dataclasses.replace(drafts[0], score=0.9, evidence_for=0.5)])
-    with pytest.raises(RuntimeError, match="score 0.9 exceeds evidence_for"):
-        _verify(conn, cls, "P2", vedha_bound=True)
+        _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True)
     _write(conn, cls, "P2", [dataclasses.replace(drafts[0], evidence_against=3.0)])
     with pytest.raises(RuntimeError, match="evidence_against 3.0 is outside"):
+        _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True)
+    # under the SWITCH (what the writer runs) any number on such a window is refused outright
+    with pytest.raises(RuntimeError, match="partial subtotal was stored"):
+        _write(conn, cls, "P2", [dataclasses.replace(drafts[0], evidence_for=123.0)])
         _verify(conn, cls, "P2", vedha_bound=True)
 
 
@@ -566,10 +585,51 @@ def test_a_genuine_dynamic_window_is_reported_unverified_and_cannot_satisfy_the_
     from services.gochara_kernel import window_verifier as wv
     conn, cls, drafts = _p2_dynamic_world(p2_grain)
     _write(conn, cls, "P2", drafts)
-    out = _verify(conn, cls, "P2", vedha_bound=True)
+    out = _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True)
     assert out["status"] == "UNVERIFIED_DYNAMIC" and out["unverified_dynamic"] == 1
     assert out["fully_reproduced"] == 0 and len(out["unverified_windows"]) == 1
     assert wv.satisfies_gate(out) is False
+
+
+def test_the_verifier_checks_the_stored_outcome_valence_against_the_evidence(grain):
+    """R8-4: the outcome valence is a governed field — a window whose valence contradicts its evidence (or whose
+    NULL result carries anything but `unqualified`) is refused."""
+    drafts = _drafts(grain, CLS, PATH, _declared_rows)
+    assert drafts[0].outcome_valence_for_native == "favourable"                 # marriage is a gain class
+    _write(grain, CLS, PATH, [dataclasses.replace(drafts[0], outcome_valence_for_native="adverse")])
+    with pytest.raises(RuntimeError, match="outcome valence 'adverse' != 'favourable'"):
+        _verify(grain, CLS, PATH, _declared_rows)
+    null_drafts = _drafts(grain, CLS, PATH, ws.registry_factor_rows)
+    _write(grain, CLS, PATH, [dataclasses.replace(null_drafts[0], outcome_valence_for_native="favourable")])
+    with pytest.raises(RuntimeError, match="outcome valence 'favourable' != 'unqualified'"):
+        _verify(grain, CLS, PATH)
+
+
+def test_an_all_against_unqualified_p2_window_is_stored_and_verified_under_the_one_policy(p2_grain):
+    """The review's demonstrated builder/verifier disagreement: an all-against P2 Saturn house-8 window at the 1.0.0
+    registry (vedha unbound ⇒ the member is unqualified) is written by the builder AND accepted by the verifier —
+    the for objective is identically 0 (peak at the start, evidence_for 0.0); score and evidence_against are NULL."""
+    conn, cls = p2_grain
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        conn.execute("UPDATE public.ka_gochara_relationship_record SET house_from_frame = 8"
+                     " WHERE path_id = 'P2'")                    # Saturn in the 8th: ADVERSE for a gain class
+    drafts = ws.draft_windows(cls, WindowStore(conn).read_grain(
+        chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P2", rule_version=VERSION),
+        ws.registry_factor_rows)[0]
+    (d,) = drafts
+    assert (d.evidence_for, d.objective_value, d.score, d.evidence_against) == (0.0, 0.0, None, None)
+    assert d.peak_instant == d.interval[0] and d.outcome_valence_for_native == "unqualified"
+    _write(conn, cls, "P2", drafts)
+    out = _verify(conn, cls, "P2")
+    assert out["status"] == "VERIFIED" and out["fully_reproduced"] == 1 and out["numeric_reproduced"] == 1
+    (row,) = out["windows_detail"]
+    assert row["objective_value"] == 0.0 and row["unresolved"] == {"vedha_overlay_not_bound": 1}
+    assert row["affected_channels"] == ["evidence_against_occurrence"]
+    # the same window with a fabricated score is refused (the live member is unqualified: its product is unknown)
+    _write(conn, cls, "P2", [dataclasses.replace(d, score=0.0)])
+    with pytest.raises(RuntimeError, match="score 0.0 != re-derived None"):
+        _verify(conn, cls, "P2")
 
 
 def test_a_fully_reproduced_world_satisfies_the_gate_and_an_unqualified_one_is_fully_verified(grain):
@@ -590,9 +650,13 @@ def test_the_gate_helper_never_passes_a_report_that_is_not_verified():
     assert wv.satisfies_gate({"status": "VERIFIED", "unverified_windows": []}) is True
 
 
-def test_the_writer_never_reports_an_unconditional_semantic_pass_for_a_dynamic_window(p2_grain, monkeypatch):
+def test_the_writer_stores_a_dynamic_window_as_named_null_and_the_verifier_reproduces_exactly_that(p2_grain, monkeypatch):
+    """With a vedha source bound the member is function-valued; the writer runs under the dynamic SWITCH, so the
+    stored window is entirely NULL (named reason), and the independent verifier reproduces those NULLs — a
+    VERIFIED window (an exact reproduction of 'no numeric result'), never an UNVERIFIED_DYNAMIC one."""
     conn, cls = p2_grain
-    monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
+    monkeypatch.setattr(writer_mod, "calc_sidereal_lon", _swiss_from_spans(
+        {"saturn": [(T0 + 20 * DAY, T0 + 120 * DAY)]}, inside=15.0, outside=195.0))      # Saturn in Aries
     monkeypatch.setattr(writer_mod, "_verify_live_inputs", lambda ctx, chart_id: None)
     monkeypatch.setattr(writer_mod, "VEDHA_SOURCE", lambda rec, t: 0.5)
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-dyn", db_conn=conn,
@@ -600,8 +664,14 @@ def test_the_writer_never_reports_an_unconditional_semantic_pass_for_a_dynamic_w
     with conn.transaction():
         res = writer_mod.GocharaV5Writer().run_substep(
             ctx, SubStep(key=f"window:{cls}:P2", label="w"))
-    assert "UNVERIFIED" in res.notes and "does NOT satisfy a verification gate" in res.notes
-    assert "reproduced all" not in res.notes and "passed" not in res.notes
+    (row,) = _window_rows(conn)
+    assert (row[2], row[3], row[4], row[5], row[6]) == (None, None, None, None, "unqualified")
+    assert "UNVERIFIED" not in res.notes and "reproduced all 1 window(s) exactly" in res.notes
+    from services.gochara_kernel import window_verifier as wv
+    out = _verify(conn, cls, "P2", vedha_bound=True)
+    assert out["status"] == "VERIFIED" and wv.satisfies_gate(out)
+    (d,) = out["windows_detail"]
+    assert d["unqualified_reason"] == "dynamic_objective_solver_guarantee_not_available"
 
 
 class _GeomConn:

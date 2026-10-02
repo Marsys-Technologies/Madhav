@@ -964,3 +964,29 @@ Steward M20261002T032818-3cf4 (scope: the all-NULL `5.0` candidate; numeric acti
 * **Runtime artifact identity.** `ephemeris.runtime = {swisseph_sha256}` (sha256 of the loaded extension file) is bound beside the version string and the 16-instant probe; present whenever the build supplies it
   (production always) and absent only for inputs that predate it — B's frozen literals are unchanged. **This adds a key B's fixture does not yet contain: asking B to extend the frozen cases.**
 * 13 mutations, all killed. tests/l3: only the 3 pre-existing wp10_cutover failures.
+
+### Design v1.24 (2026-10-02) — Codex round 8, R8-4 (verification: comprehensive, durable, gate-enforced) + the coupled R8-6 policy parts
+
+* **One frozen qualification policy** (`window_qualification/1`, documented in `draft_windows`; the independent verifier re-implements the same table from its own code): (1) an UNQUALIFIED member whose channel
+  is `for` or unknown ⇒ peak, score, evidence_for, evidence_against all NULL; (2) else a QUALIFIED function-valued member ⇒ the same NULLs under the named switch `dynamic_objective_solver_guarantee_not_available`
+  (`allow_dynamic` lifts it for the solver's own tests; the writer never passes it — tested); (3) else the for-channel objective is determined — a population with no for-channel member (against-only) has the identically-zero
+  objective, whose earliest maximum is the component start — and `peak`, `evidence_for` are stored; (4) `score` = the max LIVE record product at the peak over ALL live members of any channel (P4: the max-min value), NULL when a
+  live member at the peak is unqualified; (5) `evidence_against` NULL iff the path cannot evaluate it or a live unqualified against/unknown member could feed it. **The demonstrated disagreement** (an all-against P2 Saturn house-8
+  window at 1.0.0: builder all-NULL via an empty-qualified artifact, verifier "qualified but NULL") is resolved by this table — builder and verifier store/expect `peak = start, evidence_for = 0.0, score = NULL, evidence_against = NULL`
+  (a PG test runs the review's case). The blanket `score <= evidence_for` assertion is gone (incompatible with the adopted score). With the switch no window is `UNVERIFIED_DYNAMIC`: a function-valued window is an exact reproduction of "no numeric result".
+* **Verified fields.** `verify_window_semantics` reproduces interval membership, peak, score, evidence_for/against, **outcome valence** (Stream B's `valence.compute_valence` CALLED with the verifier's own derived arguments), severity,
+  null_states and the `windows_detail` below; VERIFIED requires every window reproduced exactly. **Every expected window:** `window_gate.expected_windows` derives the expected set (union of admitted scored supports; P4 intersection) in
+  Python; the database recomputes it separately (`ka_gochara_eval_window_expected_digest`); a stored set that omits or invents a window is refused before a result exists.
+* **Durable, generation-bound, gate-consumed — migration 1240 (authored, unapplied):** `ka_gochara_eval_window_verification` (one row per grain/verifier: status, policy_version, expected/stored/reproduced/unverified counts,
+  expected + stored interval digests, **stored-content digest** (staleness), fields_verified, the generation's snapshot `input_digest`, and `windows_detail`); `ka_gochara_window_verification_violations` (missing / not VERIFIED /
+  policy unknown / count mismatch / stale / expected-set mismatch / wrong input identity, for every INCLUDED P1–P4 pin) and `ka_gochara_candidate_gate_violations` (1206/1232 completeness ∪ window violations — no 1206/1232 function is
+  redefined; calling it from the seal path is the sealer's). Write guard = the generic chart write guard (`no_update`), sealed generations frozen, sealed rule only, TRUNCATE refused; CHECKs make `VERIFIED` total (nothing unverified,
+  every stored window reproduced, expected digest = stored digest) and the provenance mandatory (`jsonb_array_length(windows_detail) = windows_stored`). **Production caller:** the writer's window phase persists the result (naming the case
+  where 1240 is absent — "gate cannot pass"), `satisfies_gate` is now CALLED by `record_verification`, and `verify:<class>` raises `CandidateGateRefused` for a class that cannot pass.
+* **Objective + qualification provenance** persisted by RECONSTRUCTION (mandatory, in `windows_detail`: objective name/value, structured reasons, affected channels — verifier-derived), no change to 1156.
+* **Member support against INDEPENDENT geometry.** `verify_member_geometry` probes the EPHEMERIS (the writer's Swiss longitude probe) 1 s inside and just outside each end of every member contact span: a sign for residence, the dṛṣṭi source
+  signs for aspect-to-span, an orb band around each ray level for point conjunction/aspect — own orb + angle tables (asserted equal to the kernel's, imports none of it); a horizon-truncated end is probed inside only. The window phase
+  runs it after `verify_member_support`; a span the sky does not support fails the build. (This surfaced fixtures whose constant Swiss stand-in contradicted their seeded geometry — fixed to be consistent.)
+* **Included-P2 inventory derivation** (`inventory_verifier._p2_obligation_bytes`: own polarity + cited favourable-house + adverse-plan tables, asserted equal to the rule modules'): planner == verifier for all 26 classes; the stored
+  digest of a P1+P2+P3+P4 plan is reproduced. No included path is "unverifiable" any more, so `verify:<class>` now reaches the aspect-span sampling check and the window gate (two writer tests updated to say so honestly).
+* ~45 mutations, all killed except none outstanding. The 17 `test_wp10_cutover` ERRORS/failures this run are the shared `wp6` DB (baseline-failing, not this change).

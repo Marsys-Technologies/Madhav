@@ -556,6 +556,13 @@ class WindowDraft:
     objective_value: float | None = None   # that function's value at the peak — distinct from `score`
 
 
+#: R8-4/R8-6: until a solver with a stated global-maximum guarantee exists for function-valued factors
+#: (a point kernel with a ratified orb, a dṛṣṭi source, a vedha overlay), EVERY window with a qualified
+#: function-valued member is unqualified — peak, score and evidence NULL — under this named reason. It is a
+#: switch, not a limit: `draft_windows(allow_dynamic=True)` exists for the solver's own tests and is never
+#: passed by the writer.
+DYNAMIC_SWITCH_REASON = "dynamic_objective_solver_guarantee_not_available"
+
 OBJECTIVE_P4 = "max_min_agent_activity"          # S:321-323, O-RP-3
 OBJECTIVE_EVIDENCE = "evidence_for_per_root_sum"  # Σ over roots of the per-root max, for-channel
 
@@ -649,7 +656,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                   factor_rows_for: Callable[[str, str], list[dict]], *,
                   drishti: Callable[[str, int, tuple], float] | None = None,
                   vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
-                  compute_valence: Callable | None = None) -> tuple[list[WindowDraft], dict]:
+                  compute_valence: Callable | None = None,
+                  allow_dynamic: bool = False) -> tuple[list[WindowDraft], dict]:
     """The grain's windows (one path-version) and an exclusion ledger — every record accounted.
 
     Window construction (Codex round 6, R3): ONE window per MAXIMAL CONNECTED COMPONENT of the
@@ -663,10 +671,21 @@ def draft_windows(event_class: str, records: list[SweepRecord],
     per-root max for-channel value. `score` = the max live for-channel product at the peak (P4: the
     max-min value itself); evidence per channel at the peak, never netted.
 
-    Qualification (R1): an unresolved applicable factor on any member propagates — its channel is NULL
-    (an unknown channel affects both); an unqualified objective leaves `peak_instant`, `score` and
-    the dependent evidence NULL with the reason kept. Admission and admitted support are unchanged;
-    known partial subtotals are never stored as if complete."""
+    QUALIFICATION POLICY (frozen, `window_qualification/1`; the independent verifier implements the same table
+    from its own code). Members = admitted scored records overlapping the component; each has a channel
+    (for / against / unknown) and is qualified or not:
+      1. an UNQUALIFIED member whose channel is `for` or unknown ⇒ the objective is unqualified: peak, score,
+         evidence_for and evidence_against are NULL (reason = the first unresolved reason, sorted);
+      2. else, a QUALIFIED FUNCTION-VALUED member ⇒ unqualified under `dynamic_objective_solver_guarantee_not_
+         available` (the named switch; `allow_dynamic` lifts it for the solver's own tests only);
+      3. else the objective Σ-over-roots-of-the-per-root-max FOR-channel value is determined — a population with
+         no for-channel member (against-only) has the identically-zero objective, whose earliest maximum is the
+         component start — and `peak`, `evidence_for` are stored;
+      4. `score` = the max LIVE record product at the peak over ALL live members of any channel (P4: the
+         max-min value); NULL when a live member at the peak is unqualified (its product is unknown);
+      5. `evidence_against` is the per-instant against reduction at the peak: NULL iff the path cannot
+         evaluate it, or a live unqualified against/unknown-channel member could feed it.
+    Admission and admitted support are unchanged; known partial subtotals are never stored as complete."""
     from services.gochara_rules import valence as _valence_mod
     valence_fn = compute_valence or _valence_mod.compute_valence
 
@@ -752,14 +771,25 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             continue
 
         qualified = [p for p in in_win if p.qualified]
+        if not allow_dynamic and any(p.constant is None for p in qualified):
+            n_dyn = sum(1 for p in qualified if p.constant is None)
+            unresolved[DYNAMIC_SWITCH_REASON] = n_dyn
+            base["unresolved"] = unresolved
+            val = valence_fn(event_class, 0.0, 0.0, DYNAMIC_SWITCH_REASON)
+            drafts.append(WindowDraft(
+                peak_instant=None, score=None, evidence_for=None, evidence_against=None,
+                outcome_valence_for_native=val.outcome_valence_for_native,
+                unqualified_reason=DYNAMIC_SWITCH_REASON, **base))
+            continue
         cands: list[tuple[float, datetime]] = []
         unknown_pieces = 0
         for a, b, live in _pieces(lo, hi, qualified):
-            if not live:
-                continue
             if path_id == "P4":
                 if {p.rec.agent for p in live} != {"jupiter", "saturn"}:
                     continue               # outside the joint support within this piece: not a candidate
+            elif not live:
+                cands.append((0.0, a))     # no for-channel contributor: the objective is identically 0 here
+                continue
             # membership comes from the CONTACT GEOMETRY across the whole component, not only at the
             # chosen peak (R7 [8]): at every piece start, and just inside its end, a live member's
             # geometry must not place the target outside its stored support; an undeterminable
@@ -811,9 +841,10 @@ def draft_windows(event_class: str, records: list[SweepRecord],
         if path_id == "P4":
             score = best
         else:
-            for_live = [p.value_at(peak) for p in qualified
-                        if p.channel == CHANNEL_FOR and _contains(p.rec.supports, peak)]
-            score = max([v for v in for_live if v is not None], default=0.0)
+            # the max LIVE record product at the peak over ALL live members (any channel); a live unqualified
+            # member's product is unknown, so the maximum is not established
+            live_prods = [p.value_at(peak) if p.qualified else None for p in live_at_peak]
+            score = None if any(v is None for v in live_prods) else max(live_prods, default=0.0)
         ev_against = red[CHANNEL_AGAINST] if against_evaluated else None
         if ev_against is not None:
             val = valence_fn(event_class, ev_for, ev_against, None)
@@ -845,7 +876,7 @@ __all__ = [
     "CHANNEL_AGAINST", "CHANNEL_FOR", "DIRECTIONAL_PATHS", "FOR_ONLY_PATHS", "Outcome",
     "RecordProgram", "SWEEP_PATHS", "SweepRecord", "SweepRefusal", "WindowDraft",
     "activity_kernel", "against_channel_state", "build_program", "draft_windows",
-    "CATEGORICAL_PATHS", "GRAHA_TITLE", "KIND_TARGET_FORM", "categorical_factor", "graha_title",
+    "CATEGORICAL_PATHS", "DYNAMIC_SWITCH_REASON", "GRAHA_TITLE", "KIND_TARGET_FORM", "categorical_factor", "graha_title",
     "validate_geometry", "p2_direction", "record_channel", "vedha_attenuation",
     "evaluate_factors", "graduated_drishti", "intersect_components", "maximise_earliest",
     "reduce_at", "registry_factor_rows", "union_components",

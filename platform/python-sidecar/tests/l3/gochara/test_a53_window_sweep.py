@@ -137,6 +137,9 @@ def _p4(supports_j, supports_s, **kw):
 
 
 def _draft(records, rows_for=_rows_1_0_0, cls="marriage", **kw):
+    # the tests of the SOLVER (function-valued members) lift the named switch explicitly; the policy tests
+    # at the bottom of this file run with it ON (the default — what the writer uses)
+    kw.setdefault("allow_dynamic", True)
     return ws.draft_windows(cls, records, rows_for, **kw)
 
 
@@ -492,11 +495,13 @@ def test_p2_with_a_bound_vedha_source_evaluates_both_channels_never_netted():
     assert g.evidence_for == 0.5 and g.evidence_against == 0.5   # channels swap for a gain class
 
 
-def test_p2_window_whose_members_are_all_against_scores_an_evaluated_zero_peaking_at_its_start():
+def test_p2_window_whose_members_are_all_against_peaks_at_its_start_with_a_zero_objective_and_the_live_product():
+    """Against-only: the for-channel objective is identically 0 (earliest maximum = the component start);
+    `score` is the max live record product over ALL live members (R8-6) — here the against record's 1.0."""
     vedha = lambda rec, t: 1.0
     (w,), _ = _draft([_p2("a", "saturn", 8, supports=((3, 9),))], _p2_rows, cls="marriage", vedha=vedha)
-    assert (w.score, w.evidence_for, w.evidence_against) == (0.0, 0.0, 1.0)
-    assert w.peak_instant == _d(3)
+    assert (w.score, w.evidence_for, w.evidence_against) == (1.0, 0.0, 1.0)
+    assert w.peak_instant == _d(3) and w.objective_value == 0.0
 
 
 def test_p2_vedha_state_undeterminable_everywhere_is_unqualified_not_zero():
@@ -722,14 +727,16 @@ def test_p2_unqualified_against_member_leaves_only_the_against_channel_null():
     (w3,), _ = _draft([adv, fav], _p2_rows, cls="bereavement",
                       vedha=lambda rec, t: 0.5 if rec.record_id == "adv" else None)
     # adverse class: adv=for (qualified, 0.5), fav=against (unqualified) → against NULL, peak stands
-    assert w3.peak_instant == _d(0) and w3.evidence_for == 0.5 and w3.score == 0.5
+    # the peak and the for evidence stand; the score is the max live product — unknown while an unqualified
+    # member is live at the peak — so it is NULL, like the against channel
+    assert w3.peak_instant == _d(0) and w3.evidence_for == 0.5 and w3.score is None
     assert w3.evidence_against is None and w3.outcome_valence_for_native == "unqualified"
 
 
 def test_a_qualified_window_has_nothing_hidden_and_zero_is_a_real_zero():
     recs = [_p2("a", "saturn", 8, supports=((0, 10),))]               # an all-against window
     (w,), _ = _draft(recs, _p2_rows, cls="marriage", vedha=lambda r, t: 1.0)
-    assert (w.score, w.evidence_for, w.evidence_against) == (0.0, 0.0, 1.0)     # a genuine numeric zero
+    assert (w.score, w.evidence_for, w.evidence_against) == (1.0, 0.0, 1.0)     # a genuine numeric zero (for)
 
 
 def test_p1_unqualified_record_of_unknown_channel_nulls_both_channels():
@@ -1082,3 +1089,78 @@ def test_the_verifier_peak_tie_is_the_frozen_tolerance_not_the_storage_tolerance
     # 5e-7 apart: above the 1e-9 peak tie (a genuine later maximum), below the 1e-6 storage tolerance
     assert wv.earliest_max([(1.0, later), (1.0 - 5e-7, earlier)]) == (1.0, later)
     assert wv.earliest_max([(1.0, later), (1.0 - 5e-10, earlier)]) == (1.0, earlier)
+
+
+# ═══ R8-4/R8-6: the frozen qualification policy `window_qualification/1` ═══════════════════════════════
+
+def test_policy_against_only_with_an_unqualified_member_stores_the_zero_objective_and_nulls_the_rest():
+    """The review's demonstrated builder/verifier disagreement: an all-against P2 Saturn house-8 window at registry
+    1.0.0 (vedha unbound ⇒ the member is unqualified). Its for-channel objective is identically 0 — qualified,
+    peak at the start — while `score` and `evidence_against` (which need the unknown member's value) are NULL."""
+    rec = _p2("a", "saturn", 8, supports=((3, 9),))
+    (w,), _ = _draft([rec], _p2_rows, cls="marriage", allow_dynamic=False)
+    assert (w.peak_instant, w.evidence_for, w.objective_value) == (_d(3), 0.0, 0.0)
+    assert (w.score, w.evidence_against) == (None, None)
+    assert w.outcome_valence_for_native == "unqualified" and w.unqualified_reason is None
+    assert w.unresolved == {"vedha_overlay_not_bound": 1}
+
+
+def test_policy_matrix_for_only_against_only_mixed_and_unknown_channel_populations():
+    q = lambda rid, agent, house, root, **kw: _p2(rid, agent, house, root=root, supports=((0, 10),), **kw)
+    gain = "marriage"                                      # for = favourable houses, against = adverse
+    bound = lambda rec, t: 0.5                              # vedha bound for every member
+    none_bound = lambda rec, t: 0.5 if rec.record_id != "u" else None
+    fav, adv = ("jupiter", 5), ("saturn", 8)
+    # for-only, all qualified
+    (w,), _ = _draft([q("f", *fav, "R1")], _p2_rows, cls=gain, vedha=bound)
+    assert (w.peak_instant, w.evidence_for, w.evidence_against, w.score) == (_d(0), 0.5, 0.0, 0.5)
+    # against-only, all qualified
+    (w,), _ = _draft([q("a", *adv, "R1")], _p2_rows, cls=gain, vedha=bound)
+    assert (w.peak_instant, w.evidence_for, w.evidence_against, w.score) == (_d(0), 0.0, 0.5, 0.5)
+    # mixed, all qualified: never netted
+    (w,), _ = _draft([q("f", *fav, "R1"), q("a", *adv, "R2")], _p2_rows, cls=gain, vedha=bound)
+    assert (w.evidence_for, w.evidence_against, w.score) == (0.5, 0.5, 0.5)
+    # mixed, the AGAINST member unqualified: the for channel stands; against and score NULL
+    (w,), _ = _draft([q("f", *fav, "R1"), q("u", *adv, "R2")], _p2_rows, cls=gain, vedha=none_bound)
+    assert (w.peak_instant, w.evidence_for, w.evidence_against, w.score) == (_d(0), 0.5, None, None)
+    # mixed, the FOR member unqualified: the objective is unqualified — everything NULL
+    (w,), _ = _draft([q("u", *fav, "R1"), q("a", *adv, "R2")], _p2_rows, cls=gain, vedha=none_bound)
+    assert (w.peak_instant, w.evidence_for, w.evidence_against, w.score) == (None, None, None, None)
+    # an unqualified member whose CHANNEL is unknown affects both: everything NULL
+    unknown = _rec("x", path="P1", supports=((0, 10),))
+    (w,), _ = ws.draft_windows(gain, [unknown], ws.registry_factor_rows)
+    assert (w.peak_instant, w.evidence_for, w.evidence_against, w.score) == (None, None, None, None)
+
+
+def test_policy_an_unqualified_against_member_not_live_at_the_peak_does_not_null_the_score():
+    """Member `f` (for, qualified) lives day 0..6; `u` (against, unqualified) lives day 5..10 — one connected
+    window. The peak is day 0, where only `f` is live, so the score is its product."""
+    q = lambda rid, agent, house, root, a, b: _p2(rid, agent, house, root=root, supports=((a, b),))
+    vedha = lambda rec, t: 0.75 if rec.record_id != "u" else None
+    fav = q("f", "jupiter", 5, "R1", 0, 6)
+    adv = q("u", "saturn", 8, "R2", 5, 10)
+    (w,), _ = _draft([fav, adv], _p2_rows, cls="marriage", vedha=vedha)
+    assert (w.peak_instant, w.score, w.evidence_for) == (_d(0), 0.75, 0.75)
+
+
+def test_the_dynamic_switch_nulls_every_window_with_a_function_valued_member_by_name():
+    rows = lambda p, v: _rows_declared(p, v, orb=5.0)
+    rec = _rec("a", relation="conjunction", kind="house_lord", root="R1", supports=((0, 30),),
+               longitude_at=lambda t: 180.0 + (t - _d(0)).total_seconds() / 86400.0 - 15.0,
+               target="point:180.0")
+    (on,), _ = _draft([rec], rows, allow_dynamic=True)
+    assert on.score is not None and on.unqualified_reason is None                  # the solver exists ...
+    (off,), _ = _draft([rec], rows, allow_dynamic=False)                           # ... the writer never uses it
+    assert (off.peak_instant, off.score, off.evidence_for, off.evidence_against) == (None, None, None, None)
+    assert off.unqualified_reason == ws.DYNAMIC_SWITCH_REASON == "dynamic_objective_solver_guarantee_not_available"
+    assert off.unresolved == {ws.DYNAMIC_SWITCH_REASON: 1} and off.outcome_valence_for_native == "unqualified"
+    # a constant (membership-step) window is unaffected by the switch
+    (const,), _ = _draft([_rec("c", supports=((0, 10),))], _rows_declared, allow_dynamic=False)
+    assert const.score == 1.0 and const.unqualified_reason is None
+
+
+def test_the_writer_never_lifts_the_dynamic_switch():
+    import inspect
+
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+    assert "allow_dynamic" not in inspect.getsource(writer_mod)

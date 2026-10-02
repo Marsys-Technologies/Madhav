@@ -78,6 +78,26 @@ _UNKNOWN_H = frozenset({"achievement_recognition", "business_launch",
                         "property_acquisition", "psychological_arc", "spiritual_turn"})
 _H_DEPENDENT = ("p1", "p3", "p4")
 
+# P2 (spec §2.2; Phaladīpikā XXVI.1–8): the verifier's OWN tables — the class polarity (protocol §2) and the cited
+# favourable houses from the janma-rāśi (Rāhu and Ketu take the Sun's set by the śl.2 equivalence clause); asserted
+# equal to the rule modules' in a test so drift is visible, never imported.
+_POLARITY = {
+    "achievement_recognition": "gain", "bereavement": "adverse", "birth_anchor": "anchor",
+    "business_launch": "gain", "career_advancement": "gain", "career_change": "gain", "career_entry": "gain",
+    "career_setback": "adverse", "childbirth": "gain", "chronic_onset": "adverse",
+    "education_milestone": "gain", "exam_outcome": "gain", "financial_deception": "adverse",
+    "foreign_settlement": "gain", "illness_acute": "adverse", "major_gain": "gain", "major_loss": "adverse",
+    "marriage": "gain", "parental_event": "adverse", "property_acquisition": "gain",
+    "psychological_arc": "non-adverse", "relocation": "gain", "romantic_start": "gain", "separation": "adverse",
+    "spiritual_turn": "non-adverse", "surgery": "adverse", "travel_event": "gain"}
+_FAVOURABLE = {"sun": (3, 6, 10, 11), "moon": (1, 3, 6, 7, 10, 11), "mars": (3, 6, 11),
+               "mercury": (2, 4, 6, 8, 10, 11), "jupiter": (2, 5, 7, 9, 11),
+               "venus": (1, 2, 3, 4, 5, 8, 9, 11, 12), "saturn": (3, 6, 11),
+               "rahu": (3, 6, 10, 11), "ketu": (3, 6, 10, 11)}
+# the adverse-class plan: scored Sun/Mars/Jupiter in 12/8/1 and Saturn in the 8th, plus the Sade-Sati phase
+# rows (Saturn in 12/1/2 — testimony, still SEARCHED: an obligation does not depend on the role)
+_ADVERSE = {"sun": (12, 8, 1), "mars": (12, 8, 1), "jupiter": (12, 8, 1), "saturn": (8, 12, 1, 2)}
+
 # P1 (spec §2.2; Phaladīpikā XX.34-38): each of the seven grahas' TRANSIT content names its
 # own, exaltation and debilitation signs; Sun and Jupiter additionally ride EVERY graha's
 # exaltation sign. Nodes: no cited transit residence. The verifier's own classical table.
@@ -184,6 +204,24 @@ def _p1_obligation_bytes(event_class: str, rule_version: str) -> list[str]:
                              person)) for role in _ROLE_LEVEL for sg in signs})
 
 
+def _p2_obligation_bytes(event_class: str, chart: Mapping[str, Any], rule_version: str) -> list[str]:
+    """P2 (Moon frame): per the class polarity, the agent × house residences counted from the janma-rāśi —
+    gain: the cited favourable houses of every STORED agent; adverse: the pinned plan; anchor/non-adverse: none.
+    Frame `moon`, person `native` (P2 licenses the native's fortune only); the Moon is an on-demand tier, never
+    a stored transit agent."""
+    polarity = _POLARITY[event_class]
+    table = _FAVOURABLE if polarity == "gain" else _ADVERSE if polarity == "adverse" else {}
+    moon_sign = _sign_index(chart["natal"]["moon"])
+    out = set()
+    for agent, houses in table.items():
+        if agent in _EPHEMERAL_TIER_AGENTS:
+            continue
+        for h in houses:
+            out.add("|".join((event_class, "p2", rule_version.lower(), agent, "residence", "signature_house",
+                              f"span:{(moon_sign + h - 1) % 12 + 1}", "moon", "native")))
+    return sorted(out)
+
+
 def _p3_obligation_bytes(event_class: str, chart: Mapping[str, Any],
                          path: str, rule_version: str) -> list[str]:
     """Every (agent, relation, role, target) the spec's P3 predicate names, for `path`
@@ -238,10 +276,11 @@ def derive_path_pin(event_class: str, chart: Mapping[str, Any], path_id: str,
         return {"path": p, "version": rule_version.lower(), "disposition": "excluded",
                 "reason": e["reason"], "ruling": e.get("ruling_ref") or "",
                 "basis": e["basis"], "obligations": []}
-    if p not in ("p1", "p3", "p4"):
+    if p not in ("p1", "p2", "p3", "p4"):
         raise Unverifiable(f"{event_class}/{p}: no independent derivation of this path's "
                            "obligations exists in the verifier yet — refusing to vouch")
     obs = (_p1_obligation_bytes(event_class, rule_version) if p == "p1"
+           else _p2_obligation_bytes(event_class, chart, rule_version) if p == "p2"
            else _p3_obligation_bytes(event_class, chart, p, rule_version))
     if obs:
         return {"path": p, "version": rule_version.lower(), "disposition": "included",
@@ -365,7 +404,7 @@ def rederive_inventory_digest(
         (chart_id, generation, event_class)).fetchone()
     if snap is None or hdr is None:
         raise Unverifiable("no snapshot / inventory header to verify against")
-    chart = read_chart(conn, snap[1]) if event_class in _CLASS else {"lagna": 0.0, "natal": {}}
+    chart = read_chart(conn, snap[1])           # every class: P2 needs the natal Moon even where H is unknown
     pins = derive_class_pins(event_class, chart, sealed_paths, selected_versions=selected_versions,
                              path_exclusions=path_exclusions, h_unknown_exclusion=h_unknown_exclusion)
     pre = inventory_preimage(convention_id=snap[0], horizon=(hdr[0], hdr[1]),

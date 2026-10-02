@@ -123,14 +123,18 @@ def test_the_seal_check_then_reports_only_what_is_genuinely_unfinished(run):
     assert "verification_missing_or_mismatch" in found      # not verified yet
 
 
-def test_the_verifier_refuses_a_class_with_a_path_it_cannot_derive_and_the_note_says_so(run):
-    step, _ = run
+def test_the_verifier_derives_every_included_path_so_a_class_without_its_contacts_fails_the_build(run):
+    """R8-4: P2 is now derivable, so no included path is "unverifiable" any more — the independent inventory + ledger
+    derivations pass, and the NEXT independent check (aspect-to-span occurrences re-derived by sampling) refuses a
+    class whose contacts were never materialised: the build fails rather than write a verification row."""
+    step, conn = run
     for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP,
               writer_mod.SNAPSHOT_SUBSTEP, "inventory:marriage"):
         step(k)
-    res = step("verify:marriage")
-    assert res.rows_inserted == 0 and "UNVERIFIED" in res.notes
-    assert "P2" in res.notes or "p2" in res.notes
+    with pytest.raises(RuntimeError, match="the two readings DISAGREE"):
+        step("verify:marriage")
+    assert conn.execute("SELECT count(*) FROM public.ka_gochara_search_inventory_verification"
+                        ).fetchone()[0] == 0
 
 
 def test_an_h_unknown_class_plans_under_the_standing_ruling(run):

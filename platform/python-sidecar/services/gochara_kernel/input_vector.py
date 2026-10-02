@@ -57,7 +57,7 @@ IMPLEMENTATION_MODULES = {
         "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "flat_selector", "frames",
         "kernel_factor", "nature", "p6", "permission", "predicates", "records", "registry", "score", "strength",
         "valence", "vedha", "vedha_derive")),
-    "window": tuple(_K + m for m in ("window_store", "window_sweep", "window_verifier")),
+    "window": tuple(_K + m for m in ("window_gate", "window_store", "window_sweep", "window_verifier")),
 }
 
 # The L0 authorities a path READS, and which loader reads them (R8-1). `bg_transit_rules` is consumed ONLY

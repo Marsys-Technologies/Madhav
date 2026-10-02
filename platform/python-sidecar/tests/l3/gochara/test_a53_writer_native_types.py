@@ -63,8 +63,11 @@ def test_the_am5_chain_runs_with_a_uuid_chart_and_a_dict_row_connection(native):
     inv = step("inventory:marriage")
     assert "obligations" in inv.notes
     assert step("coverage:marriage").rows_inserted == 1
-    ver = step("verify:marriage")
-    assert ver is not None
+    # R8-4: P2 is now derivable, so the independent inventory + ledger derivations run on the dict-row connection and
+    # the NEXT independent check (aspect-to-span occurrences by sampling) refuses a class whose contacts were never
+    # materialised — the verify kind reached its last row-shape seam and failed honestly
+    with pytest.raises(RuntimeError, match="the two readings DISAGREE"):
+        step("verify:marriage")
     n = conn.execute(
         "SELECT count(*) AS n FROM public.ka_gochara_search_inventory WHERE generation = %s",
         (GEN,)).fetchone()["n"]
@@ -84,7 +87,10 @@ def test_the_rules_convention_and_record_substeps_run_with_native_types(native):
     step("coverage:marriage")
     rec = step("record:marriage:P3")
     assert rec is not None and rec.asset_id == writer_mod.ASSET_ID
-    assert step("verify:marriage") is not None
+    from services.gochara_kernel.window_gate import CandidateGateRefused
+    with pytest.raises(CandidateGateRefused, match="window_verification_missing"):
+        step("verify:marriage")             # R8-4: every inventory/ledger/sampling check ran on dict rows; the
+                                            # window half of the candidate gate then refuses: no window results
 
 
 def test_plan_substeps_and_run_with_native_types_and_dry_run_writes_nothing(native):

@@ -260,7 +260,8 @@ def _populate_am5_database(conn):
             cur.execute("INSERT INTO public.bg_transit_rules (rule_type, graha, primary_house, vedha_house,"
                         " phala, classical_citation) VALUES (%s, %s, %s, %s, 'x', %s)",
                         (rule_type, graha, house, vedha, citation))
-        for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql"]:
+        for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql",
+                                        "1240_gochara_window_verification_gate.sql"]:
             cur.execute((MIGRATIONS / fname).read_text())
             cur.execute("INSERT INTO public._migrations_applied(filename) VALUES (%s)",
                         (fname,))
@@ -424,18 +425,32 @@ def test_the_independent_verifier_reproduces_the_builders_and_the_dbs_digest(am5
         assert out["digest"] == db_digest, cls
 
 
-def test_the_verifier_refuses_what_it_cannot_derive_and_writes_no_row(am5):
+def test_the_verifier_derives_every_included_p1_to_p4_pin_including_p2_and_matches_the_stored_digest(am5):
+    """R8-4: the included-P2 inventory derivation exists — the independent verifier reproduces the stored digest
+    of a plan that includes P1, P2, P3 and P4 (P5 held)."""
     from services.gochara_kernel import inventory_verifier as ver
     store, sky, _ = _boot(am5, "5.7")
     plan = _plan()
-    _write(am5, store, sky, "5.7", plan)          # includes P1 and P2
-    with pytest.raises(ver.Unverifiable, match="P[12]|p[12]"):
+    assert {p.path_id for p in plan.pins if p.disposition == "included"} == {"P1", "P2", "P3", "P4"}
+    _write(am5, store, sky, "5.7", plan)
+    res = ver.rederive_inventory_digest(
+        am5, chart_id=CHART_ID, generation="5.7", event_class="marriage", sealed_paths=SEALED,
+        path_exclusions={"p5": {"reason": "tier_withheld_by_ruling", "basis": "ruling:M20261001T121451-1a8d",
+                                "ruling_ref": "M20261001T121451-1a8d"}})
+    assert res["digest"] == store.finalised_class_facts(CHART_ID, "5.7", "marriage")["inventory_digest"]
+
+
+def test_the_verifier_refuses_what_it_cannot_derive_and_writes_no_row(am5):
+    from services.gochara_kernel import inventory_verifier as ver
+    store, sky, _ = _boot(am5, "5.8")
+    plan = inv.plan_class_inventory(event_class="marriage", chart=CHART, horizon=(H0, H1), sealed_paths=SEALED,
+                                    capability=FULL, dasha_rows=DASHA, path_exclusions={})   # P5 INCLUDED
+    assert "P5" in {p.path_id for p in plan.pins if p.disposition == "included"}
+    _write(am5, store, sky, "5.8", plan)
+    with pytest.raises(ver.Unverifiable, match="p5"):
         ver.rederive_inventory_digest(
-            am5, chart_id=CHART_ID, generation="5.7", event_class="marriage",
-            sealed_paths=SEALED,
-            path_exclusions={"p5": {"reason": "tier_withheld_by_ruling",
-                                    "basis": "ruling:M20261001T121451-1a8d",
-                                    "ruling_ref": "M20261001T121451-1a8d"}})
+            am5, chart_id=CHART_ID, generation="5.8", event_class="marriage", sealed_paths=SEALED,
+            path_exclusions={})
     assert am5.execute("SELECT count(*) FROM public.ka_gochara_search_inventory_verification"
                        ).fetchone()[0] == 0
 

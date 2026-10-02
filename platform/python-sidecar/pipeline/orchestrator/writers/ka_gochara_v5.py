@@ -68,6 +68,7 @@ from services.gochara_kernel import input_vector as gk_input_vector
 from services.gochara_kernel import input_vector_verifier as gk_input_vector_verifier
 from services.gochara_kernel import window_sweep as gk_window_sweep
 from services.gochara_kernel.record_verifier import verify_p1_house_descriptor, verify_p1_support
+from services.gochara_kernel import window_gate as gk_window_gate
 from services.gochara_kernel import window_verifier as gk_window_verifier
 from services.gochara_kernel.window_verifier import verify_window_semantics
 from services.gochara_kernel.window_store import WindowStore
@@ -573,12 +574,20 @@ class GocharaV5Writer(WriterBase):
         gk_verifier.write_verification(
             ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
             rederived_digest=res["digest"])
+        # R8-4: the candidate gate's window half — every included P1–P4 grain of this class must carry a
+        # VERIFIED, current, input-bound verification result. The build refuses a class that cannot pass it
+        # rather than leave a candidate no sealer could accept (UNVERIFIED_DYNAMIC / missing both fail).
+        if gk_window_gate.verification_available(ctx.db_conn):
+            gk_window_gate.require_candidate_gate(ctx.db_conn, chart_id, GENERATION, event_class)
+            gate_note = "; window verification gate passed"
+        else:
+            gate_note = "; window verification gate NOT evaluated (migration 1240 is not applied)"
         return WriterResult(asset_id=self.asset_id, rows_inserted=1,
                             notes=f"verify {event_class}: inventory + ledger digests "
                                   "independently reproduced; "
                                   f"{spans['objects_checked']} aspect-to-span object(s) / "
                                   f"{spans['occurrences']} occurrence(s) re-derived by sampling "
-                                  "and matched; verification row written")
+                                  f"and matched; verification row written{gate_note}")
 
     def _run_record_phase(self, ctx: ContextSpec, step: SubStep,
                           chart_id: str) -> WriterResult:
@@ -736,10 +745,17 @@ class GocharaV5Writer(WriterBase):
         # R5: the declaration the sweep evaluates is the PERSISTED one, read back (each soft factor at
         # its own membership version, flat applicability decoded and checked) — not a global constant.
         bound_rows = RuleRegistryStore(ctx.db_conn).bound_factor_rows
-        versions = [r[0] for r in ctx.db_conn.execute(
+        # …plus the class's SELECTED version even with no records: a grain with zero windows is still VERIFIED
+        # (zero expected), and the candidate gate demands a result for every included grain
+        versions = sorted({r[0] for r in ctx.db_conn.execute(
             "SELECT DISTINCT rule_version FROM public.ka_gochara_relationship_record"
             " WHERE chart_id = %s AND generation = %s AND event_class = %s AND path_id = %s"
-            " ORDER BY 1", (chart_id, GENERATION, event_class, path_id)).fetchall()]
+            " ORDER BY 1", (chart_id, GENERATION, event_class, path_id)).fetchall()}
+            | {gk_rule_registry.selected_path_version(event_class, path_id)})
+        available = gk_window_gate.verification_available(ctx.db_conn)
+        input_digest = (InventoryStore(ctx.db_conn).snapshot_input_digest(chart_id, GENERATION)
+                        if available else None)
+        persist = available and input_digest is not None
         windows = memberships = 0
         excluded: dict = {}
         reasons: dict = {}
@@ -758,11 +774,20 @@ class GocharaV5Writer(WriterBase):
             gk_window_verifier.verify_member_support(
                 ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version)
+            # R8-4: ...and the contact spans themselves against the EPHEMERAL geometry (Swiss probes just inside and
+            # just outside each end), not the builder-written contact row
+            gk_window_verifier.verify_member_geometry(
+                ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
+                path_id=path_id, rule_version=version, position_at=position_at)
             report = verify_window_semantics(
                 ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version,
                 factor_rows=bound_rows(path_id, version),
                 drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=VEDHA_SOURCE is not None)
+            if persist:      # the generation-bound result the candidate gate consumes (R8-4; migration 1240)
+                gk_window_gate.record_verification(
+                    ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
+                    path_id=path_id, rule_version=version, report=report, input_digest=input_digest)
             unverified += report["unverified_dynamic"]
             reproduced += report["fully_reproduced"]
             windows += counts["windows"]
@@ -784,7 +809,12 @@ class GocharaV5Writer(WriterBase):
                 "members — checked against universal bounds only; this result does NOT satisfy a "
                 "verification gate)" if unverified
                 else f"reproduced all {reproduced} window(s) exactly")
-        return WriterResult(asset_id=self.asset_id, rows_inserted=windows + memberships, notes=head + tail)
+        stored_note = ("; verification result persisted (the candidate gate consumes it)" if persist else
+                       "; verification result NOT persisted — "
+                       + ("migration 1240 is not applied" if not available else
+                          "no search-input snapshot to bind it to") + " (the candidate gate cannot pass)")
+        return WriterResult(asset_id=self.asset_id, rows_inserted=windows + memberships,
+                            notes=head + tail + stored_note)
 
     @staticmethod
     def _take_chart_lock(ctx: ContextSpec, chart_id: str) -> None:

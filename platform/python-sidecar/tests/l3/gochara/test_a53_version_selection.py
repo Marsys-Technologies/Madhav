@@ -282,3 +282,34 @@ def test_the_writers_verify_step_refuses_a_stored_selection_that_drifted_from_th
     import inspect
     src = inspect.getsource(writer_mod.GocharaV5Writer)
     assert "stored_selection" in src and "selection drifted" in src
+
+
+# ═══ R8-4: the independent P2 inventory derivation ═══════════════════════════════════════════════════════
+
+def test_the_verifiers_p2_tables_equal_the_rule_modules_and_it_imports_neither():
+    from services.gochara_rules import favourable_houses as fh
+    from services.gochara_rules.registry import CLASS_BY_NAME
+    assert ver._POLARITY == {k: v["polarity"] for k, v in CLASS_BY_NAME.items()}
+    assert {g: tuple(sorted(h["houses"])) for g, h in {k.lower(): v for k, v in
+                                                       fh.FAVOURABLE_HOUSES_FROM_MOON.items()}.items()} == ver._FAVOURABLE
+
+
+@pytest.mark.parametrize("cls", sorted(ver._POLARITY))
+def test_p2_obligations_the_planner_and_the_verifier_agree_for_every_class(cls):
+    if cls == "birth_anchor":
+        pytest.skip("excluded from enumeration entirely (O-CF-N6)")
+    plan = inv.plan_class_inventory(event_class=cls, chart=CHART, horizon=(H0, H1), sealed_paths=[("P2", "1.0.0")],
+                                    capability=FULL, path_exclusions={})
+    pin = ver.derive_path_pin(cls, VCHART, "P2", "1.0.0", path_exclusions={}, h_unknown_exclusion=V_H)
+    (mine,) = plan.pins
+    assert _view(mine) == _view(pin), cls
+    polarity = ver._POLARITY[cls]
+    assert (mine.disposition == "included") == (polarity in ("gain", "adverse"))     # anchor / non-adverse: empty
+
+
+def test_a_p2_obligation_set_that_the_verifier_does_not_derive_is_caught_by_the_digest():
+    plan = _plan([("P2", "1.0.0")], {"P2": "1.0.0"})
+    pin = ver.derive_path_pin("marriage", VCHART, "P2", "1.0.0", path_exclusions={}, h_unknown_exclusion=V_H)
+    assert len(pin["obligations"]) == len(plan.obligations) > 0
+    tampered = dict(pin, obligations=pin["obligations"][:-1])
+    assert _view(tampered) != _view(plan.pins[0])

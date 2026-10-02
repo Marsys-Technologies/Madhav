@@ -1,0 +1,338 @@
+"""A5.3 — the generation-bound window verification RESULT and the candidate gate (Codex round 8, R8-4; migration 1240).
+
+A candidate is gate-ready only when every INCLUDED P1–P4 grain of the generation's inventory has a VERIFIED, current,
+input-bound verification result that matches the database's own recomputation of the expected window set. Missing,
+UNVERIFIED_DYNAMIC, stale, count-mismatched, expected-set-mismatched and wrong-input results each fail it — in the
+database function (`ka_gochara_window_verification_violations`), in `window_gate.candidate_gate`, and at the writer's
+`verify:<class>` step, which refuses a class that cannot pass.
+
+Everything runs on the real applied schema (1081 + 1152–1157 + 1206 + 1240) with the L1 tables stubbed.
+"""
+from __future__ import annotations
+
+import dataclasses
+import json
+from datetime import datetime, timezone
+
+import pytest
+
+from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+from services.gochara_kernel import evaluator as ev
+from services.gochara_kernel import record_store as rs
+from services.gochara_kernel import window_gate as wg
+from services.gochara_kernel import window_verifier as wv
+from services.gochara_kernel.dasha_read import make_period_rows_for
+from services.gochara_kernel.substrate import SkyEventStore
+
+from .test_a53_inventory import CHART, CHART_ID, DASHA, FULL, H0, H1, P5_EXCL
+from .test_a53_p1_support import GEN, _lagna_house, _t, world  # noqa: F401  (fresh AM-5 DB incl. 1240)
+
+CLS = "marriage"
+UTC = timezone.utc
+SPANS: dict = {}             # {body: [(a, b)]} the seeded residence geometry (Libra) the Swiss stand-in agrees with
+
+
+@pytest.fixture(autouse=True)
+def _consistent_sky(world, monkeypatch):
+    """The window phase now verifies each contact span against the ephemeris itself (R8-4): the stand-in must place a
+    body in Libra exactly while the seeded crossings say it is there."""
+    SPANS.clear()
+
+    def calc(body, jd, ephe):
+        t = datetime.fromtimestamp((jd - 2440587.5) * 86400.0, tz=UTC)
+        return (195.0 if any(a <= t < b for a, b in SPANS.get(body.lower(), ())) else 15.0), 2
+    monkeypatch.setattr(writer_mod, "calc_sidereal_lon", calc)
+
+
+def _libra_edges(path):
+    return [e for e in ev.enumerate_edges(CLS, path, CHART)
+            if e.transit and e.relation == "residence" and e.obj.canonical_target == "span:7"]
+
+
+def _materialise(w, path, agents_in_sign):
+    """Materialise `path`'s Libra-residence record(s); `agents_in_sign` = {agent: (in_day_a, in_day_b)} datetimes."""
+    edges = [e for e in _libra_edges(path) if e.agent in agents_in_sign]
+    rows_for, _ = make_period_rows_for(w.conn, CHART_ID)
+    store = rs.RecordStore(w.conn)
+    sky = SkyEventStore(w.conn).register_convention()
+
+    def position_at(body, t):
+        lo_hi = agents_in_sign.get(body)
+        return 195.0 if lo_hi and lo_hi[0] <= t < lo_hi[1] else 15.0
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        return rs.materialise_record_grain(
+            store, chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id=path, edges=edges,
+            horizon=(H0, H1), position_at=position_at, house_for=_lagna_house, sky_convention_id=sky,
+            source_fact_ids=["fact-1"], chart=CHART, dasha_rows_for=rows_for)
+
+
+def _boot_p3(w):
+    """A booted generation with ONE admitted P3 record (Saturn in Libra, Jan 10 – Feb 20) and a window for every
+    windowed path of the class (P1 and P2 hold no records; P4 needs Jupiter too — zero windows)."""
+    w.set_periods([(2, _t(1, 1), _t(2, 1))])
+    w.boot()
+    w.seed("saturn", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    SPANS["saturn"] = [(_t(1, 10), _t(2, 20))]
+    counts = _materialise(w, "P3", {"saturn": (_t(1, 10), _t(2, 20))})
+    assert counts["records"] == 1
+    return counts
+
+
+def _windows(w, paths=("P1", "P2", "P3", "P4")):
+    return {p: w.step(f"window:{CLS}:{p}") for p in paths}
+
+
+def _violations(w):
+    return {(v["path_id"], v["violation"]) for v in wg.candidate_gate(w.conn, CHART_ID, GEN, CLS)}
+
+
+def _db_violations(w):
+    return {(r[1], r[3]) for r in w.conn.execute(
+        "SELECT * FROM public.ka_gochara_window_verification_violations(%s::uuid, %s)", (CHART_ID, GEN)).fetchall()
+        if r[0] == CLS}
+
+
+def _rows(w):
+    return w.conn.execute(
+        "SELECT path_id, status, windows_expected, windows_stored, windows_reproduced, windows_unverified,"
+        " policy_version FROM public.ka_gochara_eval_window_verification ORDER BY path_id").fetchall()
+
+
+# ── the writer persists a result per included grain and the gate passes ─────────────────────────────────
+
+def test_the_window_phase_persists_a_verified_result_for_every_included_grain_and_the_gate_passes(world):
+    w = world
+    _boot_p3(w)
+    out = _windows(w)
+    assert all("verification result persisted" in r.notes for r in out.values()), [r.notes for r in out.values()]
+    assert _rows(w) == [("P1", "VERIFIED", 0, 0, 0, 0, "window_qualification/1"),
+                        ("P2", "VERIFIED", 0, 0, 0, 0, "window_qualification/1"),
+                        ("P3", "VERIFIED", 1, 1, 1, 0, "window_qualification/1"),
+                        ("P4", "VERIFIED", 0, 0, 0, 0, "window_qualification/1")]
+    assert _violations(w) == set() and _db_violations(w) == set()
+    wg.require_candidate_gate(w.conn, CHART_ID, GEN, CLS)                       # does not raise
+
+
+def test_the_result_carries_the_lossless_verifier_derived_qualification_provenance(world):
+    w = world
+    _boot_p3(w)
+    _windows(w, ("P3",))
+    (detail, fields) = w.conn.execute(
+        "SELECT windows_detail, fields_verified FROM public.ka_gochara_eval_window_verification"
+        " WHERE path_id = 'P3'").fetchone()
+    (d,) = detail
+    # at the 1.0.0 registry the P3 activity_kernel declares no applicability ⇒ the member is unqualified ⇒ the
+    # window is NULL — and the verifier records WHY, in structured form, derived from the members + factor rows
+    assert d["objective"] == "evidence_for_per_root_sum" and d["members"] == 1 and d["objective_value"] is None
+    assert d["unqualified_reason"] == "applicability_undeclared"
+    assert d["unresolved"] == {"applicability_undeclared": 1} and d["affected_channels"] == ["evidence_for_occurrence"]
+    assert set(fields) == set(wv.GOVERNED_FIELDS) and "outcome_valence_for_native" in fields
+
+
+def test_a_missing_result_fails_the_gate_in_both_the_database_and_the_python_gate(world):
+    w = world
+    _boot_p3(w)
+    _windows(w)
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification WHERE path_id = 'P3'")
+    want = {("P3", "window_verification_missing")}
+    assert _violations(w) == want and _db_violations(w) == want
+    with pytest.raises(wg.CandidateGateRefused, match="window_verification_missing"):
+        wg.require_candidate_gate(w.conn, CHART_ID, GEN, CLS)
+
+
+def test_a_grain_with_no_verification_at_all_is_missing_for_every_included_pin(world):
+    w = world
+    _boot_p3(w)
+    assert {p for p, v in _violations(w)} == {"P1", "P2", "P3", "P4"} and {v for _p, v in _violations(w)} == {
+        "window_verification_missing"}
+
+
+def test_unverified_dynamic_and_failed_results_cannot_satisfy_the_gate(world):
+    w = world
+    _boot_p3(w)
+    _windows(w)
+    base = wv.verify_window_semantics(
+        w.conn, chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P3", rule_version="1.0.0",
+        factor_rows=writer_mod.RuleRegistryStore(w.conn).bound_factor_rows("P3", "1.0.0"))
+    digest = w.conn.execute("SELECT input_digest FROM public.ka_gochara_search_input_snapshot").fetchone()[0]
+    grain = dict(chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P3", rule_version="1.0.0")
+    for status, extra in (("UNVERIFIED_DYNAMIC", dict(unverified_dynamic=1, fully_reproduced=0)),
+                          ("FAILED", dict(fully_reproduced=0))):
+        with w.conn.transaction():
+            w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            wg.record_verification(w.conn, report={**base, "status": status, **extra}, input_digest=digest, **grain)
+        assert ("P3", "window_verification_not_verified") in _violations(w)
+        assert ("P3", "window_verification_not_verified") in _db_violations(w)
+    assert wv.satisfies_gate({**base, "status": "UNVERIFIED_DYNAMIC", "unverified_windows": ["w"]}) is False
+
+
+def test_a_window_changed_after_verification_is_stale_and_one_deleted_breaks_the_expected_set(world):
+    w = world
+    _boot_p3(w)
+    _windows(w)
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        w.conn.execute("UPDATE public.ka_gochara_eval_window SET score = 0.123 WHERE path_id = 'P3'")
+    assert ("P3", "window_verification_stale") in _violations(w) and _db_violations(w) == _violations(w)
+    # restore, then delete the window itself: an EXPECTED window is now omitted
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        w.conn.execute("DELETE FROM public.ka_gochara_eval_window WHERE path_id = 'P3'")
+    got = _violations(w)
+    assert {("P3", "window_verification_count_mismatch"), ("P3", "window_verification_stale"),
+            ("P3", "window_verification_expected_set_mismatch")} <= got and _db_violations(w) == got
+
+
+def test_a_result_bound_to_another_input_identity_or_an_unknown_policy_is_refused(world):
+    w = world
+    _boot_p3(w)
+    _windows(w)
+    base = wv.verify_window_semantics(
+        w.conn, chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P3", rule_version="1.0.0",
+        factor_rows=writer_mod.RuleRegistryStore(w.conn).bound_factor_rows("P3", "1.0.0"))
+    grain = dict(chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P3", rule_version="1.0.0")
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        wg.record_verification(w.conn, report=base, input_digest="f" * 64, **grain)
+    assert ("P3", "window_verification_input_mismatch") in _violations(w)
+    digest = w.conn.execute("SELECT input_digest FROM public.ka_gochara_search_input_snapshot").fetchone()[0]
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        wg.record_verification(w.conn, report={**base, "policy_version": "window_qualification/0"},
+                               input_digest=digest, **grain)
+    assert ("P3", "window_verification_policy_unknown") in _violations(w)
+    assert ("P3", "window_verification_policy_unknown") in _db_violations(w)
+
+
+def test_the_stored_windows_must_be_the_independently_expected_ones_or_nothing_is_persisted(world):
+    """A window OMITTED from, or INVENTED in, the stored set is refused before any result row exists."""
+    w = world
+    _boot_p3(w)
+    _windows(w, ("P3",))
+    base = wv.verify_window_semantics(
+        w.conn, chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P3", rule_version="1.0.0",
+        factor_rows=writer_mod.RuleRegistryStore(w.conn).bound_factor_rows("P3", "1.0.0"))
+    grain = dict(chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P3", rule_version="1.0.0")
+    digest = w.conn.execute("SELECT input_digest FROM public.ka_gochara_search_input_snapshot").fetchone()[0]
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification")
+        w.conn.execute("DELETE FROM public.ka_gochara_eval_window WHERE path_id = 'P3'")     # OMIT the window
+    with pytest.raises(RuntimeError, match="omitted"):
+        with w.conn.transaction():
+            wg.record_verification(w.conn, report=dict(base, windows_detail=[]), input_digest=digest, **grain)
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 0
+
+
+def test_the_python_expected_set_equals_the_databases_recomputation_for_p3_and_p4(world):
+    w = world
+    w.set_periods([(2, _t(1, 1), _t(2, 1))])
+    w.boot()
+    w.seed("saturn", [(180.0, _t(1, 25)), (210.0, _t(3, 10))])
+    w.seed("jupiter", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    SPANS["saturn"], SPANS["jupiter"] = [(_t(1, 25), _t(3, 10))], [(_t(1, 10), _t(2, 20))]
+    _materialise(w, "P3", {"saturn": (_t(1, 25), _t(3, 10))})
+    _materialise(w, "P4", {"jupiter": (_t(1, 10), _t(2, 20)), "saturn": (_t(1, 25), _t(3, 10))})
+    _windows(w)
+    for path, n in (("P3", 1), ("P4", 1)):
+        grain = dict(chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id=path, rule_version="1.0.0")
+        py = wg.expected_windows(w.conn, **grain)
+        sql = w.conn.execute(
+            "SELECT public.ka_gochara_eval_window_expected_digest(%s::uuid,%s,%s,%s,%s)",
+            (CHART_ID, GEN, CLS, path, "1.0.0")).fetchone()[0]
+        assert len(py) == n and wg.intervals_digest(py) == sql, path
+        assert wg.intervals_digest(wg.stored_windows(w.conn, **grain)) == w.conn.execute(
+            "SELECT public.ka_gochara_eval_window_stored_digest(%s::uuid,%s,%s,%s,%s)",
+            (CHART_ID, GEN, CLS, path, "1.0.0")).fetchone()[0]
+    # P4's window is the INTERSECTION: [Jan 25, Feb 20), not the union
+    (lo, hi), = wg.expected_windows(w.conn, chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P4",
+                                    rule_version="1.0.0")
+    assert (lo, hi) == (_t(1, 25), _t(2, 20))
+    assert _violations(w) == set()
+
+
+# ── the table's own contract ────────────────────────────────────────────────────────────────────────────
+
+def test_the_table_refuses_an_incoherent_verified_row_and_any_update(world):
+    import psycopg
+    w = world
+    _boot_p3(w)
+    _windows(w, ("P3",))
+    cols = ("chart_id, generation, event_class, path_id, rule_version, verifier_id, verifier_version, status,"
+            " policy_version, windows_expected, windows_stored, windows_reproduced, windows_unverified,"
+            " expected_windows_digest, stored_windows_digest, windows_content_digest, fields_verified,"
+            " input_digest, windows_detail")
+    h = "a" * 64
+    ok = [CHART_ID, GEN, CLS, "P3", "1.0.0", "other", "1", "VERIFIED", "p", 1, 1, 1, 0, h, h, h, ["interval"], h,
+          json.dumps([{}])]
+    ins = f"INSERT INTO public.ka_gochara_eval_window_verification ({cols}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)"
+    for label, mutate in (
+            ("VERIFIED with an unverified window", lambda r: r.__setitem__(12, 1)),
+            ("VERIFIED reproducing fewer than stored", lambda r: r.__setitem__(11, 0)),
+            ("VERIFIED with expected != stored", lambda r: r.__setitem__(9, 2)),
+            ("VERIFIED with different interval digests", lambda r: r.__setitem__(14, "b" * 64)),
+            ("provenance count != stored windows", lambda r: r.__setitem__(18, json.dumps([]))),
+            ("unknown status", lambda r: r.__setitem__(7, "PASS")),
+            ("malformed digest", lambda r: r.__setitem__(13, "xyz")),
+            ("UNVERIFIED_DYNAMIC with nothing unverified", lambda r: (r.__setitem__(7, "UNVERIFIED_DYNAMIC")))):
+        row = list(ok)
+        mutate(row)
+        with pytest.raises(psycopg.errors.CheckViolation):
+            with w.conn.transaction():
+                w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+                w.conn.execute(ins, row)
+    with pytest.raises(psycopg.errors.Error):                      # rows are immutable: a changed result is DELETE+INSERT
+        with w.conn.transaction():
+            w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            w.conn.execute("UPDATE public.ka_gochara_eval_window_verification SET status = 'FAILED'")
+    with pytest.raises(psycopg.errors.Error):
+        w.conn.execute("TRUNCATE public.ka_gochara_eval_window_verification")
+
+
+def test_the_writers_verify_step_refuses_a_class_that_cannot_pass_the_window_gate(world, monkeypatch):
+    """The production caller of the gate: `verify:<class>` raises rather than leave a candidate no sealer could accept."""
+    w = world
+    _boot_p3(w)
+    _windows(w)
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        w.conn.execute("DELETE FROM public.ka_gochara_eval_window_verification WHERE path_id = 'P3'")
+    monkeypatch.setattr(writer_mod.gk_verifier, "verify_aspect_span_contacts",
+                        lambda *a, **k: {"objects_checked": 0, "occurrences": 0})
+    with pytest.raises(wg.CandidateGateRefused, match="window_verification_missing"):
+        w.step(f"verify:{CLS}")
+    # with the result restored the same step completes and says the gate passed
+    _windows(w, ("P3",))
+    res = w.step(f"verify:{CLS}")
+    assert "window verification gate passed" in res.notes
+
+
+def test_without_1240_the_writer_says_so_and_does_not_pretend_the_gate_passed(world):
+    w = world
+    _boot_p3(w)
+    with w.conn.transaction():
+        w.conn.execute("DROP TABLE public.ka_gochara_eval_window_verification CASCADE")
+    res = w.step(f"window:{CLS}:P3")
+    assert "verification result NOT persisted — migration 1240 is not applied" in res.notes
+    assert wg.verification_available(w.conn) is False
+
+
+def test_a_not_admitted_record_forms_no_expected_window_in_either_derivation(world):
+    """The expected set is derived from ADMITTED scored records only — in the verifier (Python) and in the database."""
+    w = world
+    _boot_p3(w)
+    _windows(w, ("P3",))
+    assert _violations(w) - {("P1", "window_verification_missing"), ("P2", "window_verification_missing"),
+                             ("P4", "window_verification_missing")} == set()
+    with w.conn.transaction():
+        w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        w.conn.execute("UPDATE public.ka_gochara_record_prerequisite SET result = 'false'")
+        w.conn.execute("UPDATE public.ka_gochara_relationship_record SET admission_state = 'not_admitted'")
+    w.step(f"window:{CLS}:P3")                                  # the record no longer admits: no window
+    grain = dict(chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id="P3", rule_version="1.0.0")
+    assert wg.expected_windows(w.conn, **grain) == [] and wg.stored_windows(w.conn, **grain) == []
+    assert not {v for p, v in _db_violations(w) if p == "P3"}
+    assert not {v for p, v in _violations(w) if p == "P3"}
