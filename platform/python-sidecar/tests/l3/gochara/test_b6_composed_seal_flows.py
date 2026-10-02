@@ -1463,11 +1463,11 @@ def test_cross_pr_round_trip_the_real_brief_stdout_through_the_real_extractor_ch
     sa = "gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
     args = ["--chart", CHART_ID, "--generation", GEN, "--brief", "--sealing-commit", SEALING_COMMIT]
     execution = {"metadata": {"name": EXECUTION_NAME}, "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": sa, "maxRetries": 0, "containers": [{
-        "image": f"asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline@{img}", "args": args,
+        "image": f"asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline@{img}", "command": ["python", "-m", "pipeline.orchestrator.verification_job"], "args": args,
         "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SEALING_COMMIT}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": img},
                 {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url", "key": "latest"}}}]}]}}},
         "status": {"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": 1}}
-    verified = xc.check(execution, execution_name=EXECUTION_NAME, image_digest=img, service_account=sa, runner_commit=SEALING_COMMIT, args=args, secret_name="gochara-verifier-db-url")
+    verified = xc.check(execution, execution_name=EXECUTION_NAME, image_repo="asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline", image_digest=img, service_account=sa, runner_commit=SEALING_COMMIT, args=args, secret_name="gochara-verifier-db-url")
     xc.bind_producer(verified, comp["producer"], execution_name=EXECUTION_NAME, sealing_commit=SEALING_COMMIT)       # the brief's OWN producer line == the executed resource
     envelope_file.write_text(_json.dumps(xc.build_envelope(verified, run_id=str(run_id), attempt=str(attempt), sealing_commit=SEALING_COMMIT, brief_digest=digest, brief_id=brief_id,
                                                            producer_execution_id=comp["producer"]["execution_id"])))
