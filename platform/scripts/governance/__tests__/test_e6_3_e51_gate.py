@@ -174,3 +174,14 @@ def test_differential_the_readers_parser_never_accepts_what_e5_1s_own_validator_
         ours_stricter += (t and not m)
     assert bad == [], f"the reader's parser accepts what E5.1 refuses: {bad[:5]}"
     assert ours_stricter > 0          # the reader's own extra rules (registry, layer, gate) do refuse more: the run is not vacuous
+
+
+@pytest.mark.parametrize("val", [[], {}, [1], {"a": 1}])
+def test_an_unhashable_layer_is_a_clean_refusal_not_a_crash(tmp_path, val):
+    wld = World(tmp_path)
+    wld.commit()
+    facts = T._e63_registry_facts(str(wld.repo), wld.last)
+    rows = [json.loads(ln) for ln in GOLDEN.read_text().splitlines()]
+    rows[1]["layer"] = val
+    with pytest.raises(T.ElevatedInputError):
+        T._e63_parse_certs(_rechain(rows), facts)
