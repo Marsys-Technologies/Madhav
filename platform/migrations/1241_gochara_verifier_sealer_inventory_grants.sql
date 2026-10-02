@@ -26,8 +26,11 @@
 -- flows (a restricted-builder build; the verifier's window verifications then inventory verification, twice; the sealer's first seal; a
 -- generation sealed between 1206 and 1240; builder/sealer contention) were run adding one grant per `permission denied` until they converged, and
 -- then EACH grant was individually removed and the first-seal and re-verification flows re-run: a grant that does not make a flow fail is NOT
--- here (that is how nine apparent candidates were dropped: e.g. the verifier's DELETE on the inventory-verification table — a re-run REPLACES
--- without it — and the seal-side functions the trigger reaches as the table owner).
+-- here. Of the 53 candidates the earlier role suites and the derivation produced, 18 are left out: 13 are ALREADY held through 1240 / 1220
+-- (the sealer's SELECT on the seal, publication, record, window, membership, snapshot and pin tables and EXECUTE on lock_chart, lock_global_shared,
+-- sha256_hex, canonical_json; the verifier's EXECUTE on lock_chart and generation_is_sealed), and 5 are needed by NO flow (the verifier's DELETE on
+-- the inventory-verification table — a re-run REPLACES without it; the sealer's SELECT on the polarity declaration and EXECUTE on
+-- av_entry, replay_violations and inventories_digest — the seal trigger reaches them as the table owner).
 --
 -- THE GRANTS
 -- ══════════
