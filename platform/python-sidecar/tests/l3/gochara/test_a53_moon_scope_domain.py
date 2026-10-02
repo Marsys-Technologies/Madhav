@@ -334,7 +334,8 @@ def test_positive_and_no_window_responses_both_carry_the_bound_scope(moon_run):
                                windows=[{"interval": "x"}])
     none = sr.coverage_response(conn, chart_id=CHART_ID, generation=GEN, event_class="marriage", windows=[])
     for r in (pos, none):
-        assert r["stored_scope"] == "stored_non_moon" and r["completeness"] == "complete_within_scope"
+        # R8-5: the scope is carried; completeness is NOT claimed from it (this manifest is an unpublished candidate)
+        assert r["stored_scope"] == "stored_non_moon" and r["completeness"] == "not_published"
         assert "Moon" in r["scope_statement"] and r["on_demand_answered"] == []
     assert pos["window_count"] == 1 and none["window_count"] == 0
 

@@ -808,3 +808,45 @@ def test_a_new_build_without_the_library_identity_is_refused_not_serialized():
     assert iv.VECTOR_SCHEMA == "ka_gochara_input_vector/2"
     with pytest.raises(iv.InputDrift, match="schema"):
         iv.verify_live(None, {"schema": "ka_gochara_input_vector/1"})              # a /1 vector is refused by schema
+
+
+# ═══ the public ephemeris component (steward M20261002T043431-8a08; Stream B S1-REQ-EPHEMERIS) ═══════════════
+
+def test_ephemeris_component_is_one_public_function_and_the_vector_uses_it(db, ephe):
+    from services.gochara_kernel.substrate import SUBSTRATE_BODIES
+    comp = iv.ephemeris_component(ephe, SUBSTRATE_BODIES, 2451545.0, 2470000.0, files_probe=_dir_probe,
+                                  series_probe=lambda e: "ab" * 32)
+    assert set(comp) == iv.EPHEMERIS_KEYS == {"backend", "swe_version", "library_sha256", "platform", "files",
+                                              "probe_digest"}
+    assert comp["backend"] == "swieph" and comp["probe_digest"] == "ab" * 32
+    assert comp["library_sha256"] == iv.library_artifact_sha() and comp["platform"] == iv.platform_identity()
+    assert set(comp["files"]) == {"sepl_18.se1", "semo_18.se1", "seas_18.se1"}
+    # the assembled vector carries EXACTLY this component for the same inputs (no second definition)
+    from services.gochara_kernel.substrate import SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START
+    jd = lambda d: d.timestamp() / 86400.0 + 2440587.5                       # noqa: E731
+    v = iv.build_input_vector(db, sky_convention_id=_sky(db), ephe_path=ephe, path_refs=REFS, rulings=RULINGS,
+                              files_probe=_dir_probe, series_probe=lambda e: "ab" * 32)
+    assert v["ephemeris"] == iv.ephemeris_component(
+        ephe, SUBSTRATE_BODIES, jd(SUBSTRATE_DOMAIN_START), jd(SUBSTRATE_DOMAIN_END),
+        files_probe=_dir_probe, series_probe=lambda e: "ab" * 32)
+
+
+def test_ephemeris_component_refuses_a_missing_path_no_opened_file_and_a_moshier_fallback():
+    for kw, match in (
+            (dict(ephe_path=None), "no ephe_path"),
+            (dict(ephe_path="/nonexistent", files_probe=lambda *a: {}), "no .se1 file was opened"),
+            (dict(ephe_path="/nonexistent", files_probe=lambda *a: (_ for _ in ()).throw(
+                iv.InputDrift("ephemeris: Sun at jd 1.0 was not served from the .se1 files (retflag 4)"))),
+             "not served from the .se1 files")):
+        with pytest.raises(iv.InputDrift, match=match):
+            iv.ephemeris_component(kw.pop("ephe_path"), ("Sun",), 1.0, 2.0, series_probe=lambda e: "ab" * 32, **kw)
+
+
+def test_assemble_vector_validates_a_pre_shaped_ephemeris_component_against_the_closed_key_set():
+    good = {**_BASE}
+    for k in ("swe_version", "opened_files", "probe_digest", "library_sha256", "platform"):
+        good.pop(k)
+    comp = iv.assemble_vector(_BASE)["ephemeris"]
+    assert iv.assemble_vector({**good, "ephemeris": comp})["ephemeris"] == comp
+    with pytest.raises(iv.InputDrift, match="ephemeris component keys"):
+        iv.assemble_vector({**good, "ephemeris": {k: v for k, v in comp.items() if k != "platform"}})

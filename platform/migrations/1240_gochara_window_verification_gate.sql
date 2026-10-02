@@ -504,6 +504,10 @@ BEGIN
       public.ka_gochara_canonical_json(jsonb), public.ka_gochara_sha256_hex(text),
       public.ka_gochara_f4_token(real)
       TO gochara_verifier;
+    RAISE NOTICE 'migration 1240: verifier grants issued to role gochara_verifier';
+  ELSE
+    -- a grants block that granted to nobody must be VISIBLE (steward M20261002T042833-a966)
+    RAISE NOTICE 'migration 1240: role gochara_verifier NOT FOUND — NO verifier grants were issued; no verification row can be written until it is provisioned and its grants applied (the candidate gate stays CLOSED)';
   END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_sealer') THEN
     GRANT SELECT ON public.ka_gochara_eval_window_verification TO gochara_sealer;
@@ -523,6 +527,9 @@ BEGIN
       public.ka_gochara_canonical_json(jsonb), public.ka_gochara_sha256_hex(text),
       public.ka_gochara_lock_chart(uuid), public.ka_gochara_lock_global_shared()
       TO gochara_sealer;
+    RAISE NOTICE 'migration 1240: sealer grants issued to role gochara_sealer';
+  ELSE
+    RAISE NOTICE 'migration 1240: role gochara_sealer NOT FOUND — NO sealer grants were issued; the seal trigger runs as whichever role seals and refuses a first seal until verification rows exist';
   END IF;
 END;
 $$;

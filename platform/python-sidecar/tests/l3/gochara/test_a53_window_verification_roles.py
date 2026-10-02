@@ -319,3 +319,53 @@ def test_a_verification_row_is_refused_while_the_inventory_is_not_finalised(rwor
                 " stored_windows_digest, windows_content_digest, fields_verified, input_digest)"
                 " VALUES (%s,%s,%s,'P3','1.0.0','v','1','VERIFIED','p',1,1,1,0,%s,%s,%s,ARRAY['interval'],%s)",
                 (CHART_ID, GEN, CLS, h, h, h, h))
+
+
+def test_the_grants_block_prints_which_principals_it_found_and_which_it_did_not(rworld):
+    """A grants block that granted to nobody must be VISIBLE (steward M20261002T042833-a966): re-run the migration's
+    own grants DO-block with the sealer renamed away and read the notices."""
+    import re
+    sql = (__import__("pathlib").Path(__file__).resolve().parents[4] / "migrations"
+           / "1240_gochara_window_verification_gate.sql").read_text()
+    block = re.search(r"(DO \$\$\nBEGIN\n  IF EXISTS \(SELECT 1 FROM pg_roles WHERE rolname = 'gochara_verifier'\).*?\n\$\$;)",
+                      sql, re.S).group(1)
+    notices: list[str] = []
+    rworld.conn.add_notice_handler(lambda d: notices.append(d.message_primary))
+    rworld.conn.execute(block)
+    assert any("verifier grants issued to role gochara_verifier" in n for n in notices)
+    assert any("sealer grants issued to role gochara_sealer" in n for n in notices)
+    notices.clear()
+    rworld.conn.execute("ALTER ROLE gochara_sealer RENAME TO gochara_sealer_away")
+    try:
+        rworld.conn.execute(block)
+    finally:
+        rworld.conn.execute("ALTER ROLE gochara_sealer_away RENAME TO gochara_sealer")
+    assert any("role gochara_sealer NOT FOUND — NO sealer grants were issued" in n for n in notices), notices
+    assert any("verifier grants issued" in n for n in notices)
+    notices.clear()
+    rworld.conn.execute("ALTER ROLE gochara_verifier RENAME TO gochara_verifier_away")
+    try:
+        rworld.conn.execute(block)
+    finally:
+        rworld.conn.execute("ALTER ROLE gochara_verifier_away RENAME TO gochara_verifier")
+    assert any("role gochara_verifier NOT FOUND — NO verifier grants were issued" in n for n in notices), notices
+
+
+def test_when_the_session_role_cannot_write_the_result_the_substeps_record_the_pending_state(rworld, monkeypatch):
+    """verification_pending_verifier_principal: never an error, never a builder-written row; the gate stays closed."""
+    w = rworld
+    _boot_p3(w)
+    monkeypatch.setattr(wg, "can_write_verification", lambda conn: False)
+    out = _windows(w)
+    assert all("verification_pending_verifier_principal" in r.notes and "candidate gate stays closed" in r.notes
+               for r in out.values()), [r.notes for r in out.values()]
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 0
+    monkeypatch.setattr(writer_mod.gk_verifier, "verify_aspect_span_contacts",
+                        lambda *a, **k: {"objects_checked": 0, "occurrences": 0})
+    res = w.step(f"verify:{CLS}")
+    assert "verification_pending_verifier_principal" in res.notes and "gate CLOSED" in res.notes
+    import psycopg
+    from services.gochara_kernel.window_gate import CandidateGateRefused
+    monkeypatch.undo()
+    with pytest.raises(CandidateGateRefused, match="window_verification_missing"):
+        wg.require_candidate_gate(w.conn, CHART_ID, GEN, CLS)             # the gate itself is closed, by name

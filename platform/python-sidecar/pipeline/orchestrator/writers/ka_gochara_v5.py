@@ -582,9 +582,10 @@ class GocharaV5Writer(WriterBase):
         elif not gk_window_gate.can_write_verification(ctx.db_conn):
             # no verifier principal is provisioned: no result CAN exist, so the seal trigger will refuse the
             # candidate; say so rather than fail every class — the roles decision is the named blocker
-            open_violations = gk_window_gate.candidate_gate(ctx.db_conn, chart_id, GENERATION, event_class)
-            gate_note = (f"; window verification gate CLOSED ({len(open_violations)} violation(s): the running role "
-                         "cannot write verification results — a verifier principal must be provisioned)")
+            # (the builder holds no privilege on the verification table or the gate functions, so it does not READ
+            # the gate either: the state is explicit and the seal trigger is the authority)
+            gate_note = ("; window verification gate CLOSED — verification_pending_verifier_principal "
+                         "(a verifier principal must be provisioned; the candidate cannot be sealed until then)")
         else:
             gk_window_gate.require_candidate_gate(ctx.db_conn, chart_id, GENERATION, event_class)
             gate_note = "; window verification gate passed"
@@ -821,8 +822,9 @@ class GocharaV5Writer(WriterBase):
         stored_note = ("; verification result persisted (the candidate gate consumes it)" if persist else
                        "; verification result NOT persisted — "
                        + ("migration 1240 is not applied" if not available else
-                          "the running role holds no INSERT on the verification table (no verifier principal is "
-                          "provisioned)" if not privileged else
+                          "verification_pending_verifier_principal — the running role holds no INSERT on the "
+                          "verification table (no verifier principal is provisioned; a builder never writes it)"
+                          if not privileged else
                           "no search-input snapshot to bind it to") + " (the candidate gate stays closed)")
         return WriterResult(asset_id=self.asset_id, rows_inserted=windows + memberships,
                             notes=head + tail + stored_note)

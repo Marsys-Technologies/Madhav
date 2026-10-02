@@ -163,10 +163,19 @@ def registry_digest(conn, path_refs: Iterable[tuple[str, str]], *, census_overri
     return registry_digest_of(registry_payload(conn, path_refs, census_override=census_override))
 
 
+#: the stored ephemeris component's closed key set (AM-16 schema /2)
+EPHEMERIS_KEYS = frozenset({"backend", "swe_version", "library_sha256", "platform", "files", "probe_digest"})
+
+
 def _ephemeris_component(inp: dict) -> dict:
     """AM-16 schema /2 (Stream B's frozen vectors v2): beside the version string and the opened-file digests the
     component binds the LOADED swisseph artifact (`library_sha256`) and the platform — float behaviour is a function
     of the library build and the CPU/libm. Both are REQUIRED: a build that cannot name them is refused upstream."""
+    if "ephemeris" in inp:               # already the stored form (`ephemeris_component`) — validated, not rebuilt
+        comp = dict(inp["ephemeris"])
+        if set(comp) != EPHEMERIS_KEYS:
+            raise InputDrift(f"ephemeris component keys {sorted(comp)} != {sorted(EPHEMERIS_KEYS)}")
+        return {**comp, "files": dict(sorted(comp["files"].items()))}
     return {"backend": "swieph", "swe_version": inp["swe_version"], "library_sha256": inp["library_sha256"],
             "platform": inp["platform"], "files": dict(sorted(inp["opened_files"].items())),
             "probe_digest": inp["probe_digest"]}
@@ -295,6 +304,21 @@ def ephemeris_identity(ephe_path: str | None, *, bodies: Iterable[str], jd_lo: f
             "library_sha256": library_artifact_sha(), "platform": platform_identity()}
 
 
+def ephemeris_component(ephe_path: str | None, bodies: Iterable[str], jd_lo: float, jd_hi: float, *,
+                        files_probe=None, series_probe=None) -> dict:
+    """The STORED form of the vector's ephemeris component — `{backend, swe_version, library_sha256, platform,
+    files{name: sha256 of the files actually opened}, probe_digest}` — as ONE public function (steward
+    M20261002T043431-8a08; Stream B's S1-REQ-EPHEMERIS: a '4.1' manifest must record the same component and refuse on a
+    Moshier fallback). It REFUSES (InputDrift) without an ephemeris path, when no file was opened, or when a probe was
+    not served from the `.se1` files (a Moshier fallback). `build_input_vector` gets its fields from `ephemeris_identity`
+    and shapes them with the SAME private shaper, so the two cannot diverge."""
+    eph = ephemeris_identity(ephe_path, bodies=tuple(bodies), jd_lo=jd_lo, jd_hi=jd_hi,
+                             files_probe=files_probe, series_probe=series_probe)
+    return _ephemeris_component({"swe_version": eph["swe_version"], "opened_files": eph["files"],
+                                 "probe_digest": eph["probe_digest"], "library_sha256": eph["library_sha256"],
+                                 "platform": eph["platform"]})
+
+
 def library_artifact_sha() -> str:
     """sha256 of the swisseph artifact the import machinery resolves (`importlib.util.find_spec('swisseph').origin` —
     the compiled extension), bound beside the version string: two builds can share a version."""
@@ -407,8 +431,8 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
     lo = min(x for x in (SUBSTRATE_DOMAIN_START, horizon[0] if horizon else None) if x is not None)
     hi = max(x for x in (SUBSTRATE_DOMAIN_END, horizon[1] if horizon else None) if x is not None)
     jd = lambda d: d.timestamp() / 86400.0 + 2440587.5
-    eph = ephemeris_identity(ephe_path, bodies=tuple(bodies or SUBSTRATE_BODIES), jd_lo=jd(lo), jd_hi=jd(hi),
-                             files_probe=files_probe, series_probe=series_probe)
+    eph = ephemeris_component(ephe_path, tuple(bodies or SUBSTRATE_BODIES), jd(lo), jd(hi),
+                              files_probe=files_probe, series_probe=series_probe)
     sky = sky_convention_identity(conn, sky_convention_id)
     sky_row = conn.execute(
         "SELECT to_jsonb(t) - %s::text[] FROM public.ka_gochara_sky_convention t WHERE t.convention_id = %s",
@@ -416,9 +440,7 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
     sky_vector = sky_row[0] if not isinstance(sky_row, dict) else next(iter(sky_row.values()))
     return assemble_vector({
         "stored_scope": STORED_SCOPE, "sky_id": sky_convention_id, "sky_vector": sky_vector,
-        "registry": payload, "node": node_identity(), "swe_version": eph["swe_version"],
-        "opened_files": eph["files"], "probe_digest": eph["probe_digest"],
-        "library_sha256": eph["library_sha256"], "platform": eph["platform"],
+        "registry": payload, "node": node_identity(), "ephemeris": eph,
         "l0_digests": l0_identities(conn, l0_consumed),
         "admission_orb": {"orb_table": ORB_TABLE, "point_orb_source": POINT_ORB_SOURCE},
         "activity_orb": activity_orb_states(conn, refs, census_override=census_override),
@@ -482,7 +504,8 @@ def verify_live(conn, stored: dict, **kw) -> None:
 
 
 __all__ = ["EXCLUDED_AUDIT_FIELDS", "IMPLEMENTATION_MODULES", "InputDrift", "REGISTRY_DIGEST_SCHEMA",
-           "L0_CONSUMED", "VECTOR_SCHEMA", "activity_orb_states", "l0_identities", "library_artifact_sha",
+           "EPHEMERIS_KEYS", "L0_CONSUMED", "VECTOR_SCHEMA", "activity_orb_states", "ephemeris_component", "l0_identities",
+           "library_artifact_sha",
            "platform_identity",
            "probe_opened_files", "sky_convention_identity", "admission_orb_digest", "build_input_vector",
            "STORED_SCOPE", "assemble_vector", "canonical_json", "diff_vectors", "ephemeris_identity", "implementation_digests",
