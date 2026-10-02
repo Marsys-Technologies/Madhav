@@ -11,9 +11,11 @@ CREATE/TRUNCATE a minimal `chart_facts` table carrying the production column typ
 columns the query touches: chart_id uuid, build_id uuid, computed_at timestamptz). All rows are
 SYNTHETIC (made-up chart ids and signs); no birth data.
 
-Locally the tests SKIP when the variable is unset. Under GITHUB_ACTIONS=true they never skip:
-a missing variable or an unreachable database FAILS (ci.yml provisions the database and sets the
-variable in the "TI-l1-panchanga-moon-sign-001" step of the DB-service job).
+Marked `integration`, so the generic sidecar job (`-m "not integration"`, no DSN) deselects it.
+Locally an explicit run SKIPs when the variable is unset. Under GITHUB_ACTIONS=true an explicit run
+never skips: a missing variable or an unreachable database FAILS (ci.yml provisions the database and
+sets the variable in the "TI-l1-panchanga-moon-sign-001" step of the DB-service job, which runs this
+file with no -m filter).
 
 Run:  GA4_MOON_SIGN_TEST_DATABASE_URL='postgresql:///pms_test?host=/private/tmp/claude-504/pms' \
       python -m pytest tests/test_ga4_chandra_bala_birth_sign_pg.py
@@ -33,6 +35,9 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 URL = os.environ.get("GA4_MOON_SIGN_TEST_DATABASE_URL", "")
 IN_CI = os.environ.get("GITHUB_ACTIONS") == "true"
+# `integration`: the generic sidecar job runs `pytest tests/ -m "not integration"` with no DSN and
+# deselects this module; ci.yml's dedicated step runs the file with NO -m filter and the variable set.
+pytestmark = pytest.mark.integration
 
 SIDECAR = pathlib.Path(__file__).parent.parent
 CHART = "00000000-0000-4000-8000-0000000000aa"
