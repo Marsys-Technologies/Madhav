@@ -1,6 +1,6 @@
 # Catalogue release correction — source verification
 
-Status: source review passed; protected integration and production requalification pending.
+Status: source review and corrected production catalogue qualification passed; final synchronization/close evidence in PRODUCTION_ACCEPTANCE.md.
 
 The first release was merged and deployed, but authenticated acceptance found two
 API catalogue-refresh HTTP 500 responses. Traffic was restored to the previously
@@ -46,7 +46,7 @@ intentionally stripped child environment, without copying host secrets. Both the
 specialist and parent fresh complete TypeScript checks then passed; the parent's
 fresh four-file correction recheck passed all 30 tests.
 
-## Deployment gates still open
+## Deployment-gate snapshot before rollout (historical)
 
 - Protected PR/build/merge-group/main gates.
 - Paired private bridge activation with exact-file preconditions and backup.
@@ -59,3 +59,9 @@ fresh four-file correction recheck passed all 30 tests.
 No paid API generation was used for these release/correction checks. This does not
 state a token total for the entire historical conversation or successful Pariprasna
 execution. Existing unrelated account/setup issues are not marked repaired here.
+
+Protected integration and corrective deployment subsequently passed at main
+`55a666f8943bcda313f1e9bc52f3ea3d47916c96`. Authenticated UI checks and the independent
+15-minute catalogue qualification passed. `PRODUCTION_ACCEPTANCE.md` records the
+actual live gates, successor-main deployment state and remaining boundaries;
+this source-review record does not assert full Pariprasna turn or billing proof.

@@ -1,7 +1,7 @@
 ---
 artifact: AI_CONSOLE_CATALOG_REFRESH_PLAN
 version: 1.0
-status: SOURCE_VERIFIED_RELEASE_PENDING
+status: PRODUCTION_CATALOGUE_SCOPE_VERIFIED
 produced_on: 2026-10-02
 authority: Continuing native AI Console feature request
 ---
@@ -44,6 +44,21 @@ authentication, grant isolation, credential/epoch fencing, TTL/cooldown, preserv
 on failed refresh, model removal, dynamically advertised effort, scoped UI refresh,
 and full repository quality gates. Independent code/security/migration review follows.
 Production release remains a separate exact-revision milestone after these pass.
+
+## Corrected production milestone — 3 October 2026
+
+PR #2985 and automatic deployment `37071001730` released exact runtime main
+`55a666f8943bcda313f1e9bc52f3ea3d47916c96`, with the paired private bridge and
+unchanged applied migration 1301. Authenticated catalogue refresh, provider-locked
+and mixed unsaved CLI model/effort controls, explicit AGY installation validation
+and the independent 15-minute watch passed. The first PR #2977 rollout failed
+live acceptance and was rolled back; it is not retroactively called successful.
+
+`PRODUCTION_ACCEPTANCE.md` is the scoped live receipt and records the unrelated
+successor-main deployment in progress, existing account/setup issues, transient
+UI-hint residual and separate failing full Pariprasna behaviour smoke. No paid API
+test, saved role/default change, universal model access or whole-pipeline health
+is inferred from this catalogue milestone.
 
 Integration-only accommodation: current main's migration-1255 static test lacked
 TypeScript guards for two array lookups. Added explicit undefined guards after

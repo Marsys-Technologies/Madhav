@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.92
+version: 6.93
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,12 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.93 (2026-10-03, AI-CONSOLE-CATALOG-CORRECTION-20261003): records the
+    first rollout's failed live acceptance/verified rollback and the corrected
+    catalogue-scope production qualification at runtime main 55a666f8943b.
+    Model/effort refresh and unsaved CLI role controls plus AGY validation passed;
+    full Pariprasna smoke and unrelated successor-main synchronization remain
+    separately qualified, not inferred from catalogue readiness.
   - v6.92 (2026-10-02, AI-CONSOLE-CATALOG-REFRESH-20261002): records source-only
     catalogue refresh implementation and verification; protected integration,
     production migration/bridge release and live verification remain pending.
@@ -6149,13 +6155,19 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> **AI CONSOLE CATALOGUE REFRESH — SOURCE VERIFIED, RELEASE PENDING (2026-10-02).**
-> Isolated branch `codex/ai-console-catalog-refresh` adds metadata-only API/CLI
-> refresh icons, stale-on-entry refresh, installed-version discovery, model-specific
-> efforts and safe cached-choice preservation. Migration 1301 is disposable-DB tested,
-> not production-applied. No paid API inference or production mutation in this work.
-> Source evidence and remaining release requirements:
-> `briefs/ai_console_catalog_refresh/VERIFICATION_NOTE.md`.
+> **AI CONSOLE CATALOGUE REFRESH — CORRECTED PRODUCTION SCOPE VERIFIED (2026-10-03).**
+> PR #2985 released runtime main `55a666f8943bcda313f1e9bc52f3ea3d47916c96` through
+> protected CI/deployment. The paired private bridge matches reviewed source and
+> migration 1301 is applied and immutable. Authenticated OpenAI/Gemini/OpenRouter
+> refresh, Codex/Claude provider-locked and mixed unsaved role/effort controls, and
+> explicit AGY 1.2.15 subscription validation passed. Independent 22:28–22:43 UTC
+> observation: all 32 AI Console requests 200, zero server 5xx/ERROR. The first
+> PR #2977 rollout failed acceptance and was rolled back, not declared successful.
+> This is NOT full Pariprasna health or paid-API cost proof; the separate real-turn
+> smoke failed. Main advanced through unrelated PR #2982 to `b4c4b89fd7d4` while
+> qualifying; its automatic deployment `37073733578` is tracked separately.
+> No saved key, role or default changed. Scoped live receipt and remaining boundaries:
+> `briefs/ai_console_catalog_refresh/PRODUCTION_ACCEPTANCE.md`.
 > Other campaigns and their production state are unchanged.
 
 > ⛔ **NIRMĀṆA ELEVATION CAMPAIGN — SUPERSEDED (2026-09-28, native decision).** Off; will not
@@ -9729,10 +9741,13 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: AI-CONSOLE-CATALOG-REFRESH-20261002
-  predecessor_session: MADHAV-AI-CLI-VM-BRIDGE-20260929
+  last_session_id: AI-CONSOLE-CATALOG-CORRECTION-20261003
+  last_session_closed_at: "2026-10-02T22:52:57Z"
+  last_session_agent: Codex
+  last_session_cowork_thread_name: "Madhav — AI Console catalogue release correction"
+  predecessor_session: AI-CONSOLE-CATALOG-RELEASE-20261003
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "AI Console catalogue refresh source verified: 15,095 tests passed, 975 skipped, 2 todo; TypeScript 0 errors; ESLint 0 errors with 595 warnings; disposable database 35 passed, 2 skipped. Independent migration and integrated reviews repaired reported blockers. Two LOW live chart-schema drift checks remain unqualified because the unrelated local database did not provide authentication. Protected integration, paired private-VM bridge rollout, migration 1301 application and live verification remain pending. No paid API inference or production mutation in this source work."
+  last_session_drift_verdict: "AI Console corrected catalogue scope production-verified at runtime 55a666f: 15,099 tests passed, 975 skipped, 2 todo; TypeScript/lint zero errors, 595 existing warnings; 22 guarded disposable-DB tests passed. Independent review and 15-minute live watch passed; all 32 AI Console requests returned 200, no 5xx/ERROR. Applied migration 1301 immutable, exact private bridge pair live, authenticated model/effort controls and AGY subscription validation passed. First rollout failed and was rolled back. Two LOW unrelated local chart-schema checks remain unqualified; minor AGY stale refresh hint booked. Main advanced through unrelated b4c4b89 and its deployment is tracked separately; separate full Pariprasna smoke failed. No saved roles/default/keys changed and no paid API generation test was run."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
