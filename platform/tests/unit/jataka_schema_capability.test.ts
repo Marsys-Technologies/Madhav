@@ -62,6 +62,7 @@ const GOCHARA_CONTRACT_MIGRATIONS = [
   '1204_gochara_av_qualifier_object_role.sql',
   '1206_gochara_search_inventory_completeness.sql',
   '1232_gochara_search_moon_scope_domain.sql',
+  '1233_gochara_p1_period_anchor.sql',
 ]
 
 describe('Protected public-schema temporary capability', () => {

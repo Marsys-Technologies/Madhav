@@ -67,7 +67,7 @@ on:
         required: false
         default: false
       gochara_contracts_schema_migration:
-        description: 'Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157, 1204, 1206, 1232 (Pravāha A5.1 + B6.0 v1.5 amendment AM-7 + AM-5 search-completeness storage)'
+        description: 'Explicitly authorize the temporary protected schema window for exact Gochara contract migrations 1153-1157, 1204, 1206, 1232, 1233 (Pravāha A5.1 + B6.0 v1.5 amendment AM-7 + AM-5 search-completeness storage)'
         type: boolean
         required: false
         default: false
@@ -1091,6 +1091,9 @@ jobs:
             # SAME window (Codex round 6 R2). Adds one interval state, two functions and replaces the
             # 1206 completeness function with exactly two edits; nothing else is touched.
             migrations+=(1232_gochara_search_moon_scope_domain.sql)
+            # Pravāha B6.0 AM-21 part 2 P1 period anchor on the relationship record — 1233, after 1232, SAME window
+            # (Codex round 8). Two nullable columns + three CHECKs on a 1155 table; refuses to apply over existing P1 rows.
+            migrations+=(1233_gochara_p1_period_anchor.sql)
           fi
           if [ "$APPLY_AI_METERING_SCHEMA_MIGRATION" = "true" ]; then
             migrations+=(1202_ai_metering_ledger.sql)
