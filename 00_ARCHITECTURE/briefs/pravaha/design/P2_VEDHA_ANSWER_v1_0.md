@@ -31,7 +31,7 @@ effect). Not adverse residence (12/8/1): the corpus attaches vedha to *favourabl
 **Vipareeta:** **no served citation found.** The verbatim PG322–323 slokas contain no vipareeta clause; L0's notes carry exceptions (Sun↔Saturn,
 Moon↔Mercury) but no vipareeta; two corpus searches returned nothing. S §5/O-VI-4 specify the carve-out mechanics without a source. **MINE:**
 until cited, `cancelled_vipareeta` is **not produced** (state stays `active`); recording it as a native decision / human corpus read.
-**Rāhu/Ketu pairs:** 9 L0 rows are marked **UNSOURCED** by L0 itself ("no house-transit vedha doctrine for Rahu/Ketu … in the served corpus") —
+**Rāhu/Ketu pairs:** 6 L0 rows (Rāhu 3, Ketu 3) are marked **UNSOURCED** by L0 itself ("no house-transit vedha doctrine for Rahu/Ketu … in the served corpus") —
 **must not be used** as primary-transit vedha.
 
 ## Q1: the overlay source
@@ -46,7 +46,7 @@ until cited, `cancelled_vipareeta` is **not produced** (state stays `active`); r
   intersection**: [primary graha resident in house h from janma-rāśi] ∩ [an obstructor resident in vedha house v]. Both are residence spans of
   grahas, already substrate in the same generation, at solved-instant precision, **one substrate, one generation, no cross-generation staleness**
   (the snapshot's `input_digest` already covers it). The pairs table **is in L0** with citations: `bg_transit_rules` (above), 42 vedha rows
-  incl. exception notes — use the 33 cited rows (7 grahas), not the 9 node rows.
+  incl. exception notes — use the 36 cited rows (7 grahas), not the 6 node rows.
 * **Oracle:** O-VI-1…5 exist but are fixtures over already-built `vedha_interval` rows; **no oracle derives them from residence spans**
   (**MINE:** add O-VI-6 — two literal residence spans + the Sun↔Saturn / Moon↔Mercury exception cases → exact half-open vedha interval).
 * **Two scope limits (b) cannot hide (→ AM-18):** (i) **The Moon is never a stored agent** (M-3/AM-14) yet the corpus lists "planets other than

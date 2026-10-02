@@ -1313,8 +1313,8 @@ a plateau): `score` = max over the window's admitted records of the within-path 
 
 **Status: proposal for the A5.5 gate; rulings on the marked points are the steward's/native's.**
 1. **Source (MINE: option b).** `ka_gochara_v5` derives vedha intervals itself as the half-open **intersection of stored residence spans**
-   — primary graha in house h from janma-rāśi ∩ an obstructor in vedha house v — using the L0 pairs table `bg_transit_rules` (the 33 cited rows of
-   the seven classical grahas; the 9 Rāhu/Ketu rows are L0-flagged UNSOURCED and are **not** used). It does not read `kala_vedha_gochara`
+   — primary graha in house h from janma-rāśi ∩ an obstructor in vedha house v — using the L0 pairs table `bg_transit_rules` (the 36 cited rows of
+   the seven classical grahas; the 6 Rāhu/Ketu rows are L0-flagged UNSOURCED and are **not** used). It does not read `kala_vedha_gochara`
    (date grain; separate generation; would need `vedha_upstream_fingerprint` in the AM-16 vector).
 2. **Value mapping (cited).** Phaladīpikā XXVI.3–8 (`phaladeepika:PG322:C1`, `PG323:C1`): an occupied vedha place **nullifies** the good result of
    a favourable-house transit. `vedha_attenuation`: active ⇒ **0.0** (the record's for-channel value), no active obstruction ⇒ **1.0**; a
