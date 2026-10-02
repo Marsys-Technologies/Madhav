@@ -170,8 +170,20 @@ jobs:
           EXECUTION: ${{ steps.execute.outputs.execution }}
         run: |
           set -euo pipefail
-          gcloud logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$VERIFICATION_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$EXECUTION\"" \
-            --project madhav-astrology --bucket=_Default --location=global --view=gochara_verification_job --order=asc --freshness=3h --format=json > execution_logs.json
+          # Fable F-R16-4a: `--freshness` is documented to work only with DESC ordering — with `--order=asc` it is silently NOT applied. The read is bounded EXPLICITLY instead: the execution's own
+          # `status.startTime` minus a 5-minute margin (the execution_name label already selects the one execution; the timestamp bound keeps the read small and is checked, not assumed).
+          gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GCP_REGION" --format=json > execution.json
+          START="$(python3 - <<'PYEOF'
+          import json, sys
+          from datetime import datetime, timedelta, timezone
+          st = json.load(open("execution.json")).get("status", {}).get("startTime")
+          if not st:
+              sys.exit("execution.json carries no status.startTime — cannot bound the log read")
+          print((datetime.fromisoformat(st.replace("Z", "+00:00")) - timedelta(minutes=5)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+          PYEOF
+          )"
+          gcloud logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$VERIFICATION_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$EXECUTION\" AND timestamp>=\"$START\"" \
+            --project madhav-astrology --bucket=_Default --location=global --view=gochara_verification_job --order=asc --format=json > execution_logs.json
           python3 platform/scripts/gochara_seal_brief_extract.py --logs-file execution_logs.json --out-brief brief.json --out-compact brief.compact.json
 
       - name: Check the brief (digest recomputed, persisted receipt, gate clean, policy, revision) and bind it to the executed resource

@@ -18,7 +18,7 @@ RETRIES PRESENCE (Fable F-R15-3). The Cloud Run reference lists `maxRetries` und
 that is the documentation's statement, not an observation of `gcloud` output (the first real describe is the proof). This contract therefore NEVER treats an absent value as zero: `validate_task` accepts an optional `v2_retries` — the value read from the v2 REST representation
 (`jobs.get` → `template.template.maxRetries`; `executions.get` → `template.maxRetries`) via `retries_from_v2` — and the effective value is the v1 value if present, else the v2 value; if both are present they must agree; if NEITHER carries it the task is REFUSED (a real absence is the API default of 3).
 
-`timeoutSeconds` (int64) arrives as a decimal STRING in the v1 representation: it is normalised by `parse_int64` (never compared raw); resource limits by `parse_quantity` (value, not spelling); `forbidden_annotations` forbids the secrets-mapping annotation. It returns a list of problems (empty = conforms). The JSON shape is the documented Cloud Run TaskSpec; a mismatch of SHAPE is a refusal, never a pass."""
+`timeoutSeconds` (int64) arrives as a decimal STRING in the v1 representation: it is normalised by `parse_int64` (never compared raw; the non-negative int64 domain); resource limits by `parse_quantity` (value, not spelling); `forbidden_annotations` forbids the secrets-mapping annotation. It returns a list of problems (empty = conforms). The JSON shape is the documented Cloud Run TaskSpec; a mismatch of SHAPE is a refusal, never a pass."""
 from __future__ import annotations
 
 import re
@@ -33,19 +33,22 @@ TASK_FIELDS = {"containers", "serviceAccountName", "maxRetries", "timeoutSeconds
 
 
 UNSET = object()
+INVALID = object()          # a v2 `maxRetries` that is PRESENT but not a valid value — distinct from absence (R16-5)
+INT64_MAX = 2**63 - 1
 SECRET_KEY = "latest"
 SECRETS_ANNOTATION = "run.googleapis.com/secrets"
 
 
 def parse_int64(v):
     """The documented Cloud Run int64 representation: JSON `int64` fields arrive as DECIMAL STRINGS (e.g. `timeoutSeconds: "7200"`, SDK-serialised), int32 fields as numbers. Accepts an
-    int or a canonical decimal string (`0` or `[1-9][0-9]*`); REFUSES (None) a boolean, a fraction, a non-finite float, a signed/padded/malformed string, or anything else. Never guesses."""
+    int or a canonical decimal string (`0` or `[1-9][0-9]*`) in the NON-NEGATIVE signed-int64 domain [0, 2**63 − 1] (every field this contract reads is a count, a size or a duration — never negative);
+    REFUSES (None) a boolean, a fraction, a non-finite float, a signed/padded/malformed string, a negative or out-of-range value, or anything else. Never guesses."""
     if isinstance(v, bool):
         return None
     if isinstance(v, int):
-        return v
+        return v if 0 <= v <= INT64_MAX else None
     if isinstance(v, str) and re.fullmatch(r"0|[1-9][0-9]*", v):
-        return int(v)
+        return int(v) if int(v) <= INT64_MAX else None
     return None
 
 
@@ -85,15 +88,27 @@ def forbidden_annotations(*docs) -> list[str]:
 
 def retries_from_v2(doc, kind: str):
     """`maxRetries` read from the v2 REST representation: a job (`projects.locations.jobs.get`) carries it at `template.template.maxRetries`, an execution
-    (`projects.locations.jobs.executions.get`) at `template.maxRetries`. Returns the integer, or None when the field is ABSENT (never defaulted)."""
+    (`projects.locations.jobs.executions.get`) at `template.maxRetries`. Returns the integer; None when the field is ABSENT (never defaulted); `INVALID` when it is PRESENT but not a valid
+    value (a boolean, a string that is not a canonical integer, a negative or out-of-range number) or the document/template it must sit in is not an object — an invalid-present value REFUSES, it is never read as absence (R16-5)."""
+    if doc is None:
+        return None                    # not supplied
     if not isinstance(doc, dict):
-        return None
+        return INVALID
     t = doc.get("template")
-    if kind == "job" and isinstance(t, dict):
-        t = t.get("template")
-    if not isinstance(t, dict):
+    if t is None:
         return None
-    return parse_int64(t.get("maxRetries")) if t.get("maxRetries") is not None else None
+    if not isinstance(t, dict):
+        return INVALID
+    if kind == "job":
+        t = t.get("template")
+        if t is None:
+            return None
+        if not isinstance(t, dict):
+            return INVALID
+    if t.get("maxRetries") is None:
+        return None
+    v = parse_int64(t.get("maxRetries"))
+    return INVALID if v is None else v
 
 
 def validate_task(task, *, image_repo: str, image_digest: str, service_account: str, runner_commit: str, secret_name: str, expected_args: list,
@@ -122,6 +137,9 @@ def validate_task(task, *, image_repo: str, image_digest: str, service_account: 
     retries = parse_int64(task.get("maxRetries")) if task.get("maxRetries") is not None else None
     if task.get("maxRetries") is not None and retries is None:
         bad.append(f"maxRetries {task.get('maxRetries')!r} is not a canonical integer")
+    if v2_retries is INVALID:
+        bad.append("the v2 representation carries maxRetries but it is not a valid non-negative integer (an invalid-present value is refused, never read as absence)")
+        v2_retries = None
     if v2_retries is not UNSET and retries is not None and v2_retries is not None and retries != v2_retries:
         bad.append(f"maxRetries disagrees between the v1 ({retries!r}) and v2 ({v2_retries!r}) representations")
     effective = retries if retries is not None else (None if v2_retries is UNSET else v2_retries)

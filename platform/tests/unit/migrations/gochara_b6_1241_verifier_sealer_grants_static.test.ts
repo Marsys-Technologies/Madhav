@@ -58,6 +58,14 @@ describe('migration 1241 — static contract', () => {
     expect(S.tables.filter(([t]) => t === 'kala_gochara_windows')).toEqual([['kala_gochara_windows', 'SELECT', ['chart_id', 'generation'], '1241']])
   })
 
+  it('R15-6 (v7): the sealer may SELECT, and ONLY SELECT, the five registry relations its in-transaction registry re-derivation reads (seal_registry_drift) — nothing wider, v7 adds nothing to the verifier', () => {
+    const registry = ['ka_gochara_rule_path', 'ka_gochara_rule_path_prerequisite', 'ka_gochara_rule_path_soft_factor', 'ka_gochara_predicate', 'ka_gochara_factor', 'ka_gochara_rule_path_seal']
+    for (const t of registry) expect(S.tables.filter(([x]: any) => x === t)).toEqual([[t, 'SELECT', null, '1241']])
+    expect(S.tables.filter(([, p]: any) => p === 'SELECT')).toHaveLength(S.tables.length - 3)         // everything but the three writes is a SELECT
+    expect(S.functions.map(([f]: any) => f).filter((f: string) => /predicate|factor|rule_path/.test(f))).toEqual([])   // no registry function granted
+    for (const t of registry.slice(0, 5)) for (const row of V.tables.filter(([x]: any) => x === t)) expect(row.slice(1, 3)).toEqual(['SELECT', null])   // whatever the verifier already held there stays SELECT-only; v7's edit is in the SEALER block
+  })
+
   it('R11-3: both principals read the migration ledger ONLY at column level (filename, sha256, applied_at); the verifier holds nothing on the receipt; the sealer reads it for the receipt-missing check', () => {
     const ledger = (role: any) => role.tables.filter(([t]: any) => t === '_migrations_applied')
     expect(ledger(S)).toEqual([['_migrations_applied', 'SELECT', ['filename', 'sha256', 'applied_at'], '1241']])

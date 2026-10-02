@@ -134,9 +134,26 @@ def test_the_secret_selector_must_be_exactly_name_and_latest(ref):
     assert any("reference to the secret" in b for b in bad), bad
 
 
+@pytest.mark.parametrize("bad", [False, True, "garbage", "07", "-1", -1, 2**63, "9223372036854775808", 1.5, [], {}])
+def test_an_invalid_present_v2_retries_value_refuses_even_when_v1_is_a_valid_zero(bad):
+    kw = dict(image_repo=REPO, image_digest=DIG, service_account=SA, runner_commit=SHA, secret_name="gochara-verifier-db-url", cloudsql_instance=INST, timeout_seconds=7200, memory="8Gi", cpu="2")
+    assert vjc.retries_from_v2({"template": {"template": {"maxRetries": bad}}}, "job") is vjc.INVALID
+    assert any("not a valid non-negative integer" in b for b in rb.check(job(), v2_job={"template": {"template": {"maxRetries": bad}}}, **kw))
+
+
+def test_absent_is_not_invalid_and_a_non_object_v2_document_is_invalid():
+    assert vjc.retries_from_v2({}, "job") is None and vjc.retries_from_v2({"template": {"template": {}}}, "job") is None
+    assert vjc.retries_from_v2([], "job") is vjc.INVALID and vjc.retries_from_v2({"template": 3}, "job") is vjc.INVALID
+
+
+def test_the_int64_domain_is_non_negative_and_bounded():
+    assert vjc.parse_int64("9223372036854775807") == 2**63 - 1 and vjc.parse_int64(0) == 0
+    assert all(vjc.parse_int64(v) is None for v in (-1, "-1", 2**63, "9223372036854775808", True, "00", 1.0))
+
+
 # R14-3: the verification-job contract is ONE file carried by BOTH #2975 (executed-resource check) and #2976 (definition readback). If the two copies ever diverge, one of these two tests fails
 # (the pinned digest is the same constant in both PRs; change it in both when the contract is deliberately changed).
-CONTRACT_SHA256 = "2919bf044f63e4aee7deaec0f9cea6d8686ce81827edaabb0bf41f5ca444788a"
+CONTRACT_SHA256 = "caf6fe767682c9699c12bfe9d91753ecc50400500eb267e7999639ac7d51311f"
 
 
 def test_the_shared_verification_job_contract_is_the_file_both_prs_carry():

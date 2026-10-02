@@ -100,6 +100,34 @@ function isCanonicalGoogleServiceAgentGrant(
   return expectedByRole[binding.role] === member
 }
 
+/**
+ * R16-1: ONE resource canonicaliser. IAM returns this project as `projects/<id>` OR `projects/<number>`; every comparison of "is this the project?"
+ * (policy collection, the declared exceptions, the verifier-control check, the shared secret-accessor and builder-impersonation checks) goes through
+ * this function, so a correctly declared owner / service agent / exception can never pass one check and fail another solely on the representation.
+ * Any other resource is returned as given.
+ */
+export function canonicalResource(resource: string | undefined, projectNumber = ''): string {
+  const raw = resource ?? ''
+  return projectNumber !== '' && raw === `projects/${projectNumber}` ? `projects/${project}` : raw
+}
+export function isThisProject(resource: string | undefined, projectNumber = ''): boolean {
+  return canonicalResource(resource, projectNumber) === `projects/${project}`
+}
+/** The operator-declared exceptions (`resource|role|member` separated by `;`), each resource canonicalised like the policies it is compared to; a malformed triple refuses. */
+export function parseDeclaredExceptions(declared: string, projectNumber = ''): Set<string> {
+  const out = new Set<string>()
+  for (const raw of declared.split(';')) {
+    const entry = raw.trim()
+    if (!entry) continue
+    const parts = entry.split('|')
+    if (parts.length !== 3 || parts.some((p) => p.trim() === '')) {
+      throw new Error(`DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS entry is not exactly resource|role|member: ${entry}`)
+    }
+    out.add(`${canonicalResource(parts[0].trim(), projectNumber)}|${parts[1].trim()}|${parts[2].trim()}`)
+  }
+  return out
+}
+
 export function iamSearchScopes(ancestors: ResourceAncestor[]): string[] {
   const scopes = new Set<string>([`projects/${project}`])
   for (const ancestor of ancestors) {
@@ -307,16 +335,11 @@ function assertAnnotationsSurface(value: unknown): void {
   }
   for (const [key, annotation] of Object.entries(value as Record<string, unknown>)) {
     if (key === 'run.googleapis.com/secrets') {
-      if (typeof annotation !== 'string') throw new Error('Cloud Run secrets annotation is not valid JSON.')
-      let references: unknown
-      try { references = JSON.parse(annotation) }
-      catch { throw new Error('Cloud Run secrets annotation is not valid JSON.') }
-      if (!references || typeof references !== 'object' || Array.isArray(references)
-          || Object.values(references as Record<string, unknown>).some((reference) =>
-            typeof reference !== 'string'
-            || !/^(?:projects\/(?:[A-Za-z0-9-]+|\d+)\/secrets\/)?[A-Za-z0-9_-]+(?::|\/versions\/)[A-Za-z0-9_-]+$/.test(reference))) {
-        throw new Error('Cloud Run secrets annotation is not an exact Secret Manager reference map.')
-      }
+      // R16-1: the documented format is a COMMA-SEPARATED `alias:projects/<project>/secrets/<name>` list — the SAME parser the secret-resolution path uses
+      // (malformed, empty and conflicting-alias entries refuse; a valid annotated ordinary resource passes this surface check).
+      if (typeof annotation !== 'string') throw new Error('Cloud Run secrets annotation is not a string.')
+      try { parseSecretsAnnotation(annotation, secretProjectNumber) }
+      catch (error) { throw new Error(`Cloud Run secrets annotation is not the documented alias:projects/<project>/secrets/<name> list: ${error instanceof Error ? error.message : String(error)}`) }
       continue
     }
     if (typeof annotation !== 'string') {
@@ -529,12 +552,10 @@ export function assertVerifierInheritedControl(
   projectNumber = '',
   declaredExceptions = process.env.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS ?? '',
 ): void {
-  const exceptions = new Set(declaredExceptions.split(';').map((entry) => entry.trim()).filter(Boolean))
+  const exceptions = parseDeclaredExceptions(declaredExceptions, projectNumber)
   const violations: string[] = []
   for (const hit of effective) {
-    // normalise this project's ID/NUMBER representations (`projects/<number>` ≡ `projects/<id>`) BEFORE any exception comparison; any other resource is compared as given
-    const rawResource = hit.resource ?? 'unknown resource'
-    const resource = projectNumber !== '' && rawResource === `projects/${projectNumber}` ? `projects/${project}` : rawResource
+    const resource = canonicalResource(hit.resource ?? 'unknown resource', projectNumber)
     for (const binding of hit.policy?.bindings ?? []) {
       if (!grantsServiceAccountControl(binding.role, resolved)) continue
       for (const member of binding.members ?? []) {
@@ -606,11 +627,12 @@ export function assertEffectiveIsolation(
   projectNumber = '',
   mode: SecretIsolationMode = 'strict',
 ): void {
+  if (projectNumber !== '') setSecretResolutionProjectNumber(projectNumber)      // ONE project identity for the literal-surface annotation parse and the secret resolution
   for (const hit of effective) {
     const accessors = (hit.policy?.bindings ?? [])
       .filter((binding) => grantsPermission(binding.role, SECRET_ACCESS_PERMISSION, resolved))
       .flatMap((binding) => (binding.members ?? [])
-        .filter((member) => !(hit.resource === `projects/${project}`
+        .filter((member) => !(isThisProject(hit.resource, projectNumber)
           && isDeclaredControlPlaneAdminGrant(binding, member, controlPlaneAdminPrincipal))))
     if (accessors.length && !/\/secrets\/[^/]+$/.test(hit.resource ?? '')) {
       throw new Error(`Inherited or aggregate Secret Manager accessor binding remains on ${hit.resource ?? 'unknown resource'}.`)
@@ -626,7 +648,7 @@ export function assertEffectiveIsolation(
       const encodedSuffix = `/serviceAccounts/${encodeURIComponent(BUILDER_SERVICE_ACCOUNT)}`
       return !resource.endsWith(suffix) && !resource.endsWith(encodedSuffix)
     })
-    .filter(({ resource, member, binding }) => !(resource === `projects/${project}`
+    .filter(({ resource, member, binding }) => !(isThisProject(resource, projectNumber)
       && (isDeclaredControlPlaneAdminGrant(binding, member, controlPlaneAdminPrincipal)
         || isCanonicalGoogleServiceAgentGrant(binding, member, projectNumber))))
   if (inheritedImpersonators.length > 0) {
@@ -749,7 +771,7 @@ export function runDataPlaneSecretIsolationPreflight(): void {
   const topicPolicy = gcloud<IamPolicy>(['pubsub', 'topics', 'get-iam-policy', 'cockpit-events', '--project', project])
   const ancestors = gcloud<ResourceAncestor[]>(['projects', 'get-ancestors', project])
   const effective = ancestors.map((ancestor): EffectivePolicy => {
-    if (ancestor.type === 'project') return { resource: `projects/${ancestor.id}`, policy: ancestor.id === project
+    if (ancestor.type === 'project') return { resource: canonicalResource(`projects/${ancestor.id}`, projectNumber), policy: ancestor.id === project
       ? projectPolicy : gcloud<IamPolicy>(['projects','get-iam-policy',ancestor.id!]) }
     if (ancestor.type === 'folder') return { resource: `folders/${ancestor.id}`, policy: gcloud<IamPolicy>(['resource-manager','folders','get-iam-policy',ancestor.id!]) }
     if (ancestor.type === 'organization') return { resource: `organizations/${ancestor.id}`, policy: gcloud<IamPolicy>(['organizations','get-iam-policy',ancestor.id!]) }
