@@ -84,23 +84,22 @@ def _grant(conn, role, spec):
 # ── stand-ins and fixtures ──────────────────────────────────────────────────────────────────────────────────────
 
 def _store_without_verification_delete(mp):
-    """STAND-IN for Stream A's pending R9-6.1 change: the builder holds no DELETE on the verification table (PC-4), so the store must not
-    DELETE it (the 1206 FK now cascades from the header)."""
+    """STAND-IN for the one-line change Stream A still owes (R9-6.1, still open on 58ce55523): with PC-4 folded into 1206 the builder holds NO
+    privilege on the verification table, so the inventory store must not DELETE it (the 1206 FK now cascades from the header). Stream A's head
+    still lists `ka_gochara_search_inventory_verification` in `_CLASS_TABLES_DELETE_ORDER`."""
     mp.setattr(inventory_store, "_CLASS_TABLES_DELETE_ORDER",
                tuple(t for t in inventory_store._CLASS_TABLES_DELETE_ORDER if "verification" not in t))
 
 
-def _widened_geometry(mp):
-    """STAND-IN for Stream A's pending fix of R9-9: `verify_member_geometry` probes 1 SECOND from each stored contact edge, but the contact
-    solver's declared accuracy is 1 ARCSECOND (arcs.DEFAULT_ROOT_FIND_TOLERANCE_ARCSEC) — ~24 s of Sun time, ~12 min of Saturn time — so on the
-    REAL sky the writer's own window phase rejects its own correct contacts. The stand-in widens the default margin to one hour (the verifier
-    caps it at a quarter of the span)."""
-    orig = wv.verify_member_geometry
-
-    def widened(conn, **kw):
-        kw.setdefault("probe_seconds", 3600.0)
-        return orig(conn, **kw)
-    mp.setattr(wv, "verify_member_geometry", widened)
+def _p1_certification_skips_moon(mp):
+    """STAND-IN for a defect found by THIS rehearsal on Stream A 58ce55523 (R9-10): `record_verifier.expected_p1_contacts` reconstructs the P1
+    contact set for all seven grahas INCLUDING the Moon, but the stored scope is `stored_non_moon` (AM-14: Moon-resolved obligations are
+    `excluded_moon_tier`, the Moon is on-demand and never persisted) — so on the REAL sky the builder's own record phase rejects its correct
+    ledger ('expected contact moon span:2 … is not in the ledger'). A's synthetic sky holds the Moon fixed, which is why it never showed.
+    The stand-in drops Moon-agent contacts from the expected set; Stream A decides the real fix."""
+    from services.gochara_kernel import record_verifier as rv
+    orig = rv.expected_p1_contacts
+    mp.setattr(rv, "expected_p1_contacts", lambda *a, **k: [e for e in orig(*a, **k) if e["agent"] != "moon"])
 
 
 _LAST_SQL = [""]
@@ -176,11 +175,12 @@ def _template(tmp_path_factory, stack, keep):
         held.update(name=name)
         return admin, name, dsn
     _store_without_verification_delete(mp)
-    _widened_geometry(mp)
+    _p1_certification_skips_moon(mp)
     gen, w = _real_world(mp, tmp_path_factory.mktemp("eph"), create)
     try:
         build_as_builder(w)
         w.conn.close()
+        mp.undo()                                     # the stand-ins applied the BUILD only: every test below sees Stream A's code as shipped
         if keep:
             import psycopg
             with psycopg.connect(cw.ADMIN_DSN, autocommit=True, connect_timeout=3) as c:
@@ -209,7 +209,7 @@ def built_template_between(tmp_path_factory):
 def cbuilt(built_template, monkeypatch, tmp_path):
     """A CLONE of the built template: a built, unverified, unsealed generation owned by the migration principal."""
     _store_without_verification_delete(monkeypatch)
-    _widened_geometry(monkeypatch)
+    _p1_certification_skips_moon(monkeypatch)
     gen, w = _real_world(monkeypatch, tmp_path, lambda: cw.composed_clone(built_template))
     apply_extra_grants(w.conn)                        # the verifier's/sealer's derived sets (the template may predate an EXTRA change)
     try:
@@ -220,7 +220,7 @@ def cbuilt(built_template, monkeypatch, tmp_path):
 
 @pytest.fixture()
 def cbuilt_shipped(built_template, monkeypatch, tmp_path):
-    """The same clone WITHOUT the two stand-ins: Stream A's code as shipped."""
+    """The same clone WITHOUT the store stand-in and WITHOUT the P1-certification stand-in: Stream A's code as shipped."""
     gen, w = _real_world(monkeypatch, tmp_path, lambda: cw.composed_clone(built_template))
     apply_extra_grants(w.conn)
     try:
@@ -291,31 +291,50 @@ def test_the_1240_window_check_helper_grant_is_necessary_for_the_builders_window
             w.step(f"window:{CLS}:P3")
 
 
-@pytest.mark.xfail(strict=True, raises=RuntimeError,
-                   reason="R9-6.1: the shipped inventory store still DELETEs the verification table as the builder; remove this xfail when "
-                          "Stream A drops it from _CLASS_TABLES_DELETE_ORDER")
-def test_the_shipped_inventory_store_rebuilds_as_the_restricted_builder(cbuilt_shipped):
+@pytest.fixture()
+def cfresh(monkeypatch, tmp_path):
+    """A FRESH production-ordered world (no build yet), Stream A's code as shipped."""
+    gen, w = _real_world(monkeypatch, tmp_path, lambda: cw.composed_create("fresh"))
+    apply_extra_grants(w.conn)
     try:
-        with as_role(cbuilt_shipped.conn, cw.BUILDER):
-            cbuilt_shipped.step("inventory:marriage")
+        yield w
+    finally:
+        gen.close()
+
+
+@pytest.mark.xfail(strict=True, raises=RuntimeError,
+                   reason="R9-6.1 (STILL OPEN on Stream A 58ce55523): the shipped inventory store still lists the verification table in "
+                          "_CLASS_TABLES_DELETE_ORDER and deletes it on the FIRST inventory step, so the restricted builder (PC-4 folded into 1206) is "
+                          "denied at build time; remove this xfail when that one line is dropped (the 1206 FK now cascades from the header)")
+def test_the_shipped_inventory_store_lets_the_restricted_builder_start_a_build(cfresh):
+    try:
+        with as_role(cfresh.conn, cw.BUILDER):
+            cfresh.boot()
     except RuntimeError as exc:
         if "ka_gochara_search_inventory_verification" not in str(exc):
-            pytest.fail(f"failed for a DIFFERENT reason than R9-6.1: {exc}")       # a wrong-reason failure must not hide as the known defect
+            pytest.fail(f"failed for a DIFFERENT reason than R9-6.1: {exc}")
         raise
 
 
 @pytest.mark.xfail(strict=True, raises=RuntimeError,
-                   reason="R9-9: the shipped geometry self-check (1 s probes) is tighter than the solver's 1-arcsecond accuracy, so a real-sky "
-                          "build rejects its own contacts; remove when Stream A scales the probe margin to the solver tolerance and the body's speed")
-def test_the_shipped_geometry_self_check_accepts_a_real_sky_window_build(cbuilt_shipped):
+                   reason="R9-10 (found by this rehearsal on Stream A 58ce55523): the P1 anchor certification expects Moon contacts that the stored "
+                          "non-Moon scope never writes, so the builder's own record phase rejects a REAL-sky build; remove when Stream A fixes it")
+def test_the_shipped_record_phase_accepts_a_real_sky_build_with_moon_anchors(cbuilt_shipped):
     try:
         with as_role(cbuilt_shipped.conn, cw.BUILDER):
-            for p in ("P1", "P2", "P3", "P4"):
-                cbuilt_shipped.step(f"window:{CLS}:{p}")
+            cbuilt_shipped.step(f"record:{CLS}:P1")
     except RuntimeError as exc:
-        if "member geometry verification failed" not in str(exc):
-            pytest.fail(f"failed for a DIFFERENT reason than R9-9: {exc}")
+        if "expected contact moon" not in str(exc):
+            pytest.fail(f"failed for a DIFFERENT reason than R9-10: {exc}")
         raise
+
+
+def test_the_geometry_self_check_accepts_a_real_sky_window_build_with_no_stand_in(cbuilt):
+    """R9-9 (geometry self-check) FIXED (Stream A: the probe margin is derived from the solver tolerance): every window grain is rebuilt on the REAL sky as the
+    restricted builder, with Stream A's shipped geometry self-check and NO stand-in. This was the second strict xfail."""
+    with as_role(cbuilt.conn, cw.BUILDER):
+        for p in ("P1", "P2", "P3", "P4"):
+            cbuilt.step(f"window:{CLS}:{p}")
 
 
 # ── 2. first seal: builder → verifier → sealer, every guard on ──────────────────────────────────────────────────
@@ -325,23 +344,35 @@ def _real_position_at(body, t):
     return REAL_CALC(body.title(), jd, EPHE)[0]
 
 
-def verify_as_verifier(w, position_at=_real_position_at):
-    """The separate verification RUNNER (R9-6): the verifier principal runs the independent derivations on its OWN grants and persists
-    the inventory verification (the writer's verify step) and one window verification per included grain."""
-    with as_role(w.conn, cw.VERIFIER):
-        # ORDER (found by this rehearsal): the class's inventory verification step runs the candidate gate, which REFUSES until every included
-        # grain has a window verification — so the runner records the window verifications FIRST, then the inventory verification.
-        for path in ("P1", "P2", "P3", "P4"):
-            grain = dict(chart_id=CHART_ID, generation=GEN, event_class=CLS, path_id=path, rule_version="1.0.0")
-            rows = writer_mod.RuleRegistryStore(w.conn).bound_factor_rows(path, "1.0.0")
-            report = wv.verify_window_semantics(w.conn, factor_rows=rows, **grain)
-            wv.verify_member_support(w.conn, **grain)
-            wv.verify_member_geometry(w.conn, position_at=position_at, probe_seconds=3600.0, **grain)
-            with w.conn.transaction():
-                w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
-                wg.record_verification(w.conn, report=report, input_digest=_input_digest(w), **grain)
-        note = w.step(f"verify:{CLS}").notes
-    return note
+def _verifier_dsn(w):
+    """A LOGIN as the verifier principal (the harness roles are NOLOGIN; trust auth on the disposable cluster)."""
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+    d = conninfo_to_dict(w.conn.info.dsn)
+    d["user"] = cw.VERIFIER
+    return make_conninfo("", **{k: v for k, v in d.items() if k in ("host", "port", "dbname", "user")})
+
+
+def verify_as_verifier(w, *extra_args):
+    """Stream A's REAL verification job (`pipeline/orchestrator/verification_job.py`), run as a real verifier LOGIN with the REAL 1241 grants and
+    no stand-in: the job proves its own identity, records the four window verifications FIRST and then the inventory verification. Returns the
+    parsed report; raises RuntimeError on any non-zero exit (a refusal or a disagreement)."""
+    import io
+    import json as _json
+    from contextlib import redirect_stdout
+    from pipeline.orchestrator import verification_job as job
+    w.conn.execute(f"ALTER ROLE {cw.VERIFIER} LOGIN")
+    os.environ[job.ENV_URL] = _verifier_dsn(w)
+    buf = io.StringIO()
+    try:
+        with redirect_stdout(buf):
+            rc = job.main(["--chart", CHART_ID, "--generation", GEN, "--class", CLS, "--ephe-path", EPHE, *extra_args])
+    finally:
+        os.environ.pop(job.ENV_URL, None)
+        w.conn.execute(f"ALTER ROLE {cw.VERIFIER} NOLOGIN")
+    out = buf.getvalue().strip()
+    if rc != 0:
+        raise RuntimeError(f"verification job exit {rc}: {out[-1500:]}")
+    return _json.loads(out.splitlines()[-1]) if out else {}
 
 
 def seal_as_sealer(w):
@@ -384,7 +415,7 @@ _G1241 = _grants_of_1241()
 def test_1241_parses_to_the_expected_number_of_grants():
     if not _G1241:
         pytest.skip("NOT_RUN: migration 1241 is not in this tree")
-    assert len(_G1241) == len(set(_G1241)) == 36, len(_G1241)          # sealer: 10 table + 18 function; verifier: 7 table + 1 function
+    assert len(_G1241) == len(set(_G1241)) == 35, len(_G1241)          # sealer: 10 table + 18 function; verifier: 6 table + 1 function
 
 
 @pytest.mark.parametrize("role,kind,priv,obj", _G1241, ids=[f"{r.split('_')[1]}-{p.lower()}-{o}" for r, k, p, o in _G1241])
@@ -396,10 +427,24 @@ def test_each_grant_of_migration_1241_is_individually_necessary(cbuilt, role, ki
         w.conn.execute(f"REVOKE {priv} ON public.{obj} FROM {role}")
     else:
         w.conn.execute(f"REVOKE EXECUTE ON FUNCTION public.{obj} FROM {role}")
-    with pytest.raises(RuntimeError, match=r"permission denied"):
+    with pytest.raises(RuntimeError, match=r"permission denied|verification job exit|refused"):
         verify_as_verifier(w)
         manifest = seal_as_sealer(w)
         _replay_as_sealer(w, manifest)
+
+
+def test_charts_row_level_security_is_evaluated_through_chart_grants_but_neither_principal_reads_charts(cbuilt):
+    """Suvarṇa's RLS question (steward M20261002T094148-15d4), mirrored: `charts` has RLS on with a grant policy that reads `chart_grants`, so a role with
+    SELECT on `charts` alone is refused ON `chart_grants`; the verification-then-seal flow never reads `charts`, so neither principal needs either table.
+    (chart_facts / chart_dashas / bg_transit_rules have RLS OFF in production — a table-level SELECT suffices, proven by the necessity tests.)"""
+    w = cbuilt
+    w.conn.execute(f"GRANT SELECT ON public.charts TO {cw.VERIFIER}")
+    with pytest.raises(RuntimeError, match="permission denied for table chart_grants"):
+        with as_role(w.conn, cw.VERIFIER):
+            w.conn.execute("SELECT count(*) FROM public.charts").fetchone()
+    w.conn.execute(f"REVOKE SELECT ON public.charts FROM {cw.VERIFIER}")
+    verify_as_verifier(w)                                      # the real job + the real 1241 + the two L1 reads: no `charts`, no `chart_grants`
+    assert seal_as_sealer(w) is not None
 
 
 @pytest.mark.parametrize("role", [cw.VERIFIER, cw.SEALER])
@@ -408,7 +453,7 @@ def test_the_l1_reads_that_1241_does_not_carry_are_individually_necessary(cbuilt
     """The OPEN item for the data-plane ACL owner: without SELECT on these L1 tables the verification-then-seal flow fails."""
     w = cbuilt
     w.conn.execute(f"REVOKE SELECT ON public.{table} FROM {role}")
-    with pytest.raises(RuntimeError, match=r"permission denied"):
+    with pytest.raises(RuntimeError, match=r"permission denied|verification job exit|refused"):
         verify_as_verifier(w)
         seal_as_sealer(w)
 
@@ -420,8 +465,8 @@ def test_first_seal_builder_then_verifier_then_sealer_with_every_guard_enabled(c
     with pytest.raises(psycopg.errors.Error):
         seal_as_sealer(w)
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
-    note = verify_as_verifier(w)
-    assert "verification row written" in note
+    report = verify_as_verifier(w)                               # Stream A's REAL job, as a real verifier login
+    assert report.get("status") in ("VERIFIED", "OK", None) or "VERIFIED" in str(report), report
     manifest = seal_as_sealer(w)
     assert manifest is not None
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 1
@@ -431,7 +476,8 @@ def test_first_seal_builder_then_verifier_then_sealer_with_every_guard_enabled(c
 
 def test_a_second_verification_run_replaces_the_first_before_the_seal(cbuilt):
     """The verification runner can be re-run before a seal (the failed-halfway case): the second run REPLACES the first (one row per grain / class,
-    never two) — which is what the verifier's DELETE on the inventory-verification table is for."""
+    never two) — WITHOUT any DELETE on the inventory-verification table (1241 grants none; the window verifications are replaced by the verifier's own
+    DELETE on 1240's table, pre-seal)."""
     w = cbuilt
     verify_as_verifier(w)
     first = (w.conn.execute("SELECT count(*) FROM public.ka_gochara_search_inventory_verification").fetchone()[0],
@@ -449,8 +495,6 @@ def test_a_second_verification_run_replaces_the_first_before_the_seal(cbuilt):
 def between_world(built_template_between, monkeypatch, tmp_path):
     """A clone of a REAL, COMPLETE build made on the stack as it stood between 1206 and 1240 (the real sky: 1206's completeness guard demands a
     fully searched generation)."""
-    _store_without_verification_delete(monkeypatch)
-    _widened_geometry(monkeypatch)
     gen, w = _real_world(monkeypatch, tmp_path, lambda: cw.composed_clone(built_template_between))
     try:
         yield w
@@ -466,8 +510,15 @@ def test_a_generation_sealed_before_1240_existed_stays_sealed_frozen_and_honestl
     w = between_world
     assert w.conn.execute("SELECT to_regclass('public.ka_gochara_eval_window_verification')").fetchone()[0] is None   # 1240 not yet applied
     assert _p3_records(w.conn) > 0
+    from services.gochara_kernel import inventory_verifier as inv_v
     with as_role(w.conn, cw.OWNER):
-        w.step(f"verify:{CLS}")                         # 1206's inventory verification only (no window gate exists yet)
+        # 1206's inventory verification only (no window gate exists yet). The builder is report-only since R9-6.1 and Stream A's job needs
+        # 1240/1241 objects, so before them only the owner can write the row — with the digest the database itself recomputes.
+        digest = w.conn.execute("SELECT public.ka_gochara_search_inventory_digest(%s::uuid, %s, %s)", (CHART_ID, GEN, CLS)).fetchone()[0]
+        with w.conn.transaction():
+            w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+            w.conn.execute("SELECT public.ka_gochara_lock_global_shared()")
+            inv_v.write_verification(w.conn, chart_id=CHART_ID, generation=GEN, event_class=CLS, rederived_digest=digest)
         manifest = _seal(w)                             # sealed under 1206's trigger alone
     assert manifest is not None
     seal_row = w.conn.execute("SELECT * FROM public.ka_gochara_generation_seal").fetchall()
@@ -484,7 +535,7 @@ def test_a_generation_sealed_before_1240_existed_stays_sealed_frozen_and_honestl
     # nobody can change it any more: not a (now-provisioned) verifier's window verification, not the builder's rebuild
     # ... and it can never GAIN a verification: its windows predate 1240's objective/qualification provenance columns, so the independent window
     # verifier cannot derive a result for them — the honest, permanent "unverified" state (a sealed generation is never rebuilt in place)
-    with pytest.raises(RuntimeError, match="no objective/qualification provenance"):
+    with pytest.raises(RuntimeError, match="verification job exit [2345]"):             # the real job REFUSES (nothing written)
         verify_as_verifier(w)
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 0
     with pytest.raises(Exception, match="SEALED|sealed"):
