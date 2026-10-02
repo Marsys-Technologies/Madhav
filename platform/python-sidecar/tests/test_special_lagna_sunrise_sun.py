@@ -135,27 +135,101 @@ def _compute(dt, lat, lon, tz, aya="lahiri"):
                                      lat=lat, lon=lon, tz=tz)
 
 
-def test_drik_hora_lagna_is_restored_after_use_and_after_failure(monkeypatch):
+def test_no_pyjhora_attribute_is_ever_reassigned_by_the_adapter():
+    """Varnada is a local copy, NOT a swap of ``drik.hora_lagna``: the adapter source contains no
+    assignment to any attribute of a PyJHora module (static check)."""
+    import ast
+    import inspect
+    from pyjhora_adapter import special_lagnas as sl
+
+    tree = ast.parse(inspect.getsource(sl))
+    for node in ast.walk(tree):
+        targets = []
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, (ast.AugAssign, ast.AnnAssign)):
+            targets = [node.target]
+        for t in targets:
+            assert not (isinstance(t, ast.Attribute) and isinstance(t.value, ast.Name)
+                        and t.value.id in {"drik", "charts", "_charts", "utils", "const"}), ast.dump(t)
+        assert not (isinstance(node, ast.Call) and getattr(node.func, "id", "") in {"setattr", "delattr"})
+
+
+def test_drik_hora_lagna_is_identity_unchanged_on_every_exit_path(monkeypatch):
+    """(a) normal exit, (b) an Exception inside Varnada, (c) BaseExceptions (KeyboardInterrupt,
+    GeneratorExit) propagating out of Varnada: ``drik.hora_lagna`` is the SAME object throughout."""
     from jhora.panchanga import drik
-    from jhora.horoscope.chart import charts
+    from pyjhora_adapter import special_lagnas as sl
 
     original = drik.hora_lagna
     _compute(*CASES[0])
     assert drik.hora_lagna is original
 
-    def boom(*a, **k):
-        raise RuntimeError("varnada failed")
+    def boom(exc):
+        def f(*a, **k):
+            assert drik.hora_lagna is original  # also unchanged from INSIDE the Varnada call
+            raise exc
+        return f
 
-    monkeypatch.setattr(charts, "varnada_lagna", boom)
-    out = _compute(*CASES[0])
-    assert "error" in out["varnada_lagna"]
+    monkeypatch.setattr(sl, "_varnada_lagna_bv_raman", boom(RuntimeError("varnada failed")))
+    assert "error" in _compute(*CASES[0])["varnada_lagna"]
+    assert drik.hora_lagna is original
+
+    for exc in (KeyboardInterrupt(), GeneratorExit(), SystemExit(1)):
+        monkeypatch.setattr(sl, "_varnada_lagna_bv_raman", boom(exc))
+        with pytest.raises(type(exc)):
+            _compute(*CASES[0])
+        assert drik.hora_lagna is original
+
+
+def test_concurrent_caller_of_drik_hora_lagna_sees_the_original_during_compute(monkeypatch):
+    """While one thread is inside ``compute_special_lagnas`` (parked in its Varnada step), a second
+    thread calling ``drik.hora_lagna`` directly gets the ORIGINAL function and its upstream result."""
+    import threading
+    from jhora.panchanga import drik
+    from jhora import utils
+    from pyjhora_adapter import special_lagnas as sl
+
+    dt, lat, lon, tz = CASES[0]
+    d = drik.Date(int(dt[:4]), int(dt[5:7]), int(dt[8:10]))
+    tob = (11, 0, 0)
+    place = drik.Place("subject", lat, lon, tz)
+    jd = utils.julian_day_number(d, tob)
+    original = drik.hora_lagna
+    drik.set_ayanamsa_mode("LAHIRI")
+    upstream_result = original(jd, place)
+
+    entered, release = threading.Event(), threading.Event()
+    real = sl._varnada_lagna_bv_raman
+
+    def parked(*a, **k):
+        entered.set()
+        assert release.wait(timeout=30)
+        return real(*a, **k)
+
+    monkeypatch.setattr(sl, "_varnada_lagna_bv_raman", parked)
+    worker = threading.Thread(target=lambda: sl.compute_special_lagnas(
+        jd, d, tob, "lahiri", lat=lat, lon=lon, tz=tz))
+    worker.start()
+    try:
+        assert entered.wait(timeout=30)
+        assert drik.hora_lagna is original  # observed from a second thread mid-compute
+        seen = {}
+        reader = threading.Thread(target=lambda: seen.setdefault("v", drik.hora_lagna(jd, place)))
+        reader.start()
+        reader.join(timeout=30)
+        # the raw upstream function is untouched: it still returns the upstream (offset) value
+        assert seen["v"] == upstream_result
+    finally:
+        release.set()
+        worker.join(timeout=60)
     assert drik.hora_lagna is original
 
 
-def test_varnada_uses_the_corrected_hora_lagna_sign():
-    """Find a birth instant where the corrected Hora Lagna SIGN differs from upstream's (the sign
-    boundary falls inside the old +tz offset) AND that moves Varnada, then assert the adapter's
-    Varnada follows the corrected Hora Lagna."""
+def test_varnada_parity_with_upstream_where_hora_signs_agree_and_follows_corrected_hora_otherwise():
+    """The local Varnada copy equals upstream ``charts.varnada_lagna`` (method 1, house 1) at every
+    sampled instant where upstream's Hora sign equals the corrected one, and follows the CORRECTED
+    Hora sign where they differ (and the difference moves Varnada)."""
     from jhora.panchanga import drik
     from jhora.horoscope.chart import charts
     from jhora import utils
@@ -164,28 +238,20 @@ def test_varnada_uses_the_corrected_hora_lagna_sign():
     lat, lon, tz = 23.26, 77.41, 5.5
     place = drik.Place("subject", lat, lon, tz)
     drik.set_ayanamsa_mode("LAHIRI")
-    found = None
-    # The old offset (~0.23 deg of Hora Lagna = ~28 s of birth time) sits at each sign boundary, so a
-    # 10-second grid over 08:00-20:00 lands inside one; scan days until Varnada actually moves.
+    agree = moved = 0
     for day in range(1, 29):
         d = drik.Date(2011, 2, day)
-        for second in range(8 * 3600, 20 * 3600, 10):
+        for second in range(8 * 3600, 20 * 3600, 90):
             tob = (second // 3600, (second % 3600) // 60, second % 60)
             jd = utils.julian_day_number(d, tob)
+            ours = sl._varnada_lagna_bv_raman(d, tob, place)
+            theirs = charts.varnada_lagna(d, tob, place, house_index=1, varnada_method=1)
             if sl.hora_lagna(jd, place)[0] == drik.hora_lagna(jd, place)[0]:
-                continue
-            with sl._corrected_hora_lagna_for_varnada():
-                fixed, _ = charts.varnada_lagna(d, tob, place, house_index=1, varnada_method=1)
-            stale, _ = charts.varnada_lagna(d, tob, place, house_index=1, varnada_method=1)
-            if fixed != stale:
-                found = (d, tob, jd, fixed)
-                break
-        if found:
-            break
-    assert found, "no boundary case moved Varnada on the grid"
-    d, tob, jd, fixed = found
-    out = sl.compute_special_lagnas(jd, d, tob, "lahiri", lat=lat, lon=lon, tz=tz)
-    assert out["varnada_lagna"]["sign_id"] - 1 == fixed
+                assert ours == theirs, (d, tob)
+                agree += 1
+            elif ours[0] != theirs[0]:
+                moved += 1
+    assert agree > 5000 and moved > 0, (agree, moved)
 
 
 def test_writer_rows_carry_corrected_value_and_honest_provenance():

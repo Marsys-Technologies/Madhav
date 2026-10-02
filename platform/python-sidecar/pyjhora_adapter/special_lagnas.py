@@ -24,8 +24,7 @@ implementations rather than in-house approximations").
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any
 
 from panchang_engine.swiss_state import serialized_swiss_state
 
@@ -117,17 +116,37 @@ ghati_lagna = _rate_lagna(_GHATI_RATE_DEG_PER_MIN)
 vighati_lagna = _rate_lagna(_VIGHATI_RATE_DEG_PER_MIN)
 
 
-@contextmanager
-def _corrected_hora_lagna_for_varnada() -> Iterator[None]:
-    """BV Raman Varnada Lagna derives its Hora Lagna SIGN from ``drik.hora_lagna`` internally.
-    Swap in the corrected function for that one call and always restore it. Callers hold the
-    process-wide Swiss-state lock (``compute_special_lagnas`` is ``@serialized_swiss_state``)."""
-    original = drik.hora_lagna
-    drik.hora_lagna = hora_lagna
-    try:
-        yield
-    finally:
-        drik.hora_lagna = original
+@serialized_swiss_state
+def _varnada_lagna_bv_raman(dob, tob, place):
+    """BV Raman Varnada Lagna of the Lagna itself (``varnada_method=1``, ``house_index=1``).
+
+    A line-for-line copy of PyJHora 4.8.6 ``charts._varnada_lagna_bv_raman`` for those arguments,
+    except that its Hora Lagna SIGN comes from this module's corrected ``hora_lagna`` instead of
+    ``drik.hora_lagna`` (which carries the Sun-at-sunrise offset). It is a copy, NOT a swap of
+    ``drik.hora_lagna``: no PyJHora attribute is ever reassigned, so no other caller in the process
+    can observe a changed function. ``test_special_lagna_sunrise_sun`` pins parity with upstream
+    wherever the two Hora signs agree. Returns ``(varnada_sign_index_0_11, lagna_degree_in_sign)``.
+    """
+    from jhora import const, utils
+    from jhora.horoscope.chart import charts
+
+    jd_at_dob = utils.julian_day_number(dob, tob)
+    planet_positions = charts.divisional_chart(jd_at_dob, place)
+    lagna = planet_positions[0][1][0] % 12
+    asc_long = planet_positions[0][1][1]
+    lagna_is_odd = lagna in const.odd_signs
+    count1 = (utils.count_rasis(0, lagna, direction=1) if lagna_is_odd
+              else utils.count_rasis(11, lagna, direction=-1))
+    hora_sign, _ = hora_lagna(jd_at_dob, place)
+    hora_sign = hora_sign % 12
+    hora_is_odd = hora_sign in const.odd_signs
+    count2 = (utils.count_rasis(0, hora_sign, direction=1) if hora_is_odd
+              else utils.count_rasis(11, hora_sign, direction=-1))
+    count = ((count1 + count2) % 12 if hora_is_odd == lagna_is_odd
+             else (max(count1, count2) - min(count1, count2)) % 12)
+    varnada = (utils.count_rasis(1, count, direction=1) if lagna_is_odd
+               else utils.count_rasis(12, count, direction=-1))
+    return varnada - 1, asc_long
 
 
 @serialized_swiss_state
@@ -176,9 +195,7 @@ def compute_special_lagnas(
     # Varnada Lagna needs (dob, tob, place) not jd (charts.py:1749) — BV Raman
     # method (varnada_method=1), house_index=1 (Varnada of the Lagna itself).
     try:
-        from jhora.horoscope.chart import charts as _charts
-        with _corrected_hora_lagna_for_varnada():
-            sign_idx, deg = _charts.varnada_lagna(dob, tob, place, house_index=1, varnada_method=1)
+        sign_idx, deg = _varnada_lagna_bv_raman(dob, tob, place)
         out["varnada_lagna"] = _to_dict(sign_idx, deg)
     except Exception as exc:  # noqa: BLE001
         out["varnada_lagna"] = {"error": f"varnada_lagna failed: {exc!r}"}
