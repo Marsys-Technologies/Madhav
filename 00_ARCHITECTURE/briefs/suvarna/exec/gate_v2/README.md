@@ -109,7 +109,12 @@ with es.outcome_guard(evidence_dir, __file__, plan_hash, fp) as o:
 
 ## Tests
 
+The pytest files live in `platform/scripts/governance/__tests__/` (`gate_v2_helpers.py`, `test_gate_v2_prerun_gate.py`, `test_gate_v2_run_gated.py`, `test_gate_v2_executor_standards.py`),
+so the existing CI step "Governance Tool Tests (pytest)" (`python -m pytest platform/scripts/governance/__tests__`) runs them with no workflow change. They execute the gate files
+from this folder by repo-relative path (single source of truth). They use no network, no database, no credential and no macOS-only command or homebrew path: PATH shims for gh and psql
+and python3/bash symlinks are written to a temp dir at test time; `/bin/bash` and python3 only.
+
 ```bash
-python3 -m pytest 00_ARCHITECTURE/briefs/suvarna/exec/gate_v2/tests -q      # no network, no database, no credential: PATH shims for gh/psql, a fake pgenv file, real bash
-python3 00_ARCHITECTURE/briefs/suvarna/exec/gate_v2/tests/mutation_proof.py # neuters each rule in a copy and shows its tests go red (19 mutations)
+python3 -m pytest platform/scripts/governance/__tests__/test_gate_v2_*.py -q
+python3 00_ARCHITECTURE/briefs/suvarna/exec/gate_v2/tests/mutation_proof.py   # script (not collected by CI): neuters each rule in a copy and shows its tests go red (19 mutations)
 ```

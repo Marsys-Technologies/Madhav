@@ -1,4 +1,4 @@
-"""Shared fixtures: PATH shims for gh and psql, a fake pgenv file, a minimal environment. No network, no database, no credential.
+"""GATE_V2 test helpers and fixtures (import the fixtures `world` and `staged` from here): PATH shims for gh and psql, a fake pgenv file, a minimal environment. No network, no database, no credential.
 
 The shim `gh` emulates `gh run list ... --limit N [--status S] --json ...` from files in FAKE_DIR (it honours --limit by
 truncating, so a gate that asks for a short history really misses a deep run). The shim `psql` prints
@@ -13,7 +13,9 @@ import sys
 
 import pytest
 
-GATE_DIR = pathlib.Path(__file__).resolve().parent.parent
+# single source of truth for the gate files: exec/gate_v2/ (repo-relative); only the tests live here, under the CI-collected folder
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[4]
+GATE_DIR = REPO_ROOT / "00_ARCHITECTURE" / "briefs" / "suvarna" / "exec" / "gate_v2"
 GATE = GATE_DIR / "prerun_gate.py"
 
 GH_SHIM = '''#!%(py)s
@@ -68,6 +70,10 @@ class World:
         (self.bin / "psql").write_text(PSQL_SHIM)
         for n in ("gh", "psql"):
             (self.bin / n).chmod(0o755)
+        self.tools = tmp / "tools"                                           # python3 + bash by absolute symlink: no homebrew, no macOS paths
+        self.tools.mkdir()
+        (self.tools / "python3").symlink_to(sys.executable)
+        (self.tools / "bash").symlink_to("/bin/bash")
         self.pgenv = tmp / "pgenv.sh"
         self.pgenv.write_text(PGENV_OK)
         self.gh(history=runs(3))
@@ -111,7 +117,7 @@ class World:
     # --- environments
     def env(self, **extra):
         """minimal env, test harness bypass on (GATE_V2_UNDER_TEST=1) with the fake pgenv; no inherited PG*/test variables"""
-        e = {"PATH": os.pathsep.join([str(self.bin), os.path.dirname(sys.executable), "/usr/bin", "/bin"]), "HOME": str(self.home),
+        e = {"PATH": os.pathsep.join([str(self.bin), str(self.tools), "/usr/bin", "/bin"]), "HOME": str(self.home),
              "FAKE_DIR": str(self.dir), "GATE_V2_UNDER_TEST": "1", "GATE_V2_PGENV": str(self.pgenv), "GATE_V2_TIMEOUT_S": "60"}
         e.update(extra)
         return {k: v for k, v in e.items() if v is not None}
@@ -129,7 +135,13 @@ def run_gate(env, gate=GATE):
     return subprocess.run([sys.executable, str(gate)], capture_output=True, text=True, env=env, timeout=120)
 
 
-def make_staged(tmp_path):
+@pytest.fixture()
+def world(tmp_path):
+    return World(tmp_path)
+
+
+@pytest.fixture()
+def staged(tmp_path):
     """run_gated.sh + gate + standards copied next to a STUB target, so a real executor can never start in a test"""
     d = tmp_path / "stage"
     d.mkdir()

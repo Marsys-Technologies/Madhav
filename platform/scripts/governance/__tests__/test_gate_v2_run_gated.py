@@ -5,7 +5,7 @@ import subprocess
 
 import pytest
 
-from gate_v2_helpers import runs
+from gate_v2_helpers import runs, staged, world  # noqa: F401
 
 ARGS = ["--note", "it's a \"quoted\" arg", "two  words", "*", "$HOME", "`id`", "", "-n", "a;b", "--k=v w"]
 OK_LINE = "GATE_V2 deploy_runs_not_completed=0 build_runs_in_flight=0 role=suvarna_reader OK"
@@ -13,7 +13,7 @@ OK_LINE = "GATE_V2 deploy_runs_not_completed=0 build_runs_in_flight=0 role=suvar
 
 def run_gated(staged, env, args=ARGS, target=None):
     target = target or str(staged / "stub_target.py")
-    return subprocess.run(["bash", str(staged / "run_gated.sh"), target] + list(args), capture_output=True, text=True, env=env, timeout=120)
+    return subprocess.run(["/bin/bash", str(staged / "run_gated.sh"), target] + list(args), capture_output=True, text=True, env=env, timeout=120)
 
 
 def test_success_execs_the_target_with_args_intact_and_stdout_is_only_the_targets(staged, world):
@@ -78,13 +78,13 @@ def test_the_test_flag_bypasses_only_the_env_refusal(staged, world, tmp_path):
 
 
 def test_no_target_is_a_usage_error(staged, world):
-    r = subprocess.run(["bash", str(staged / "run_gated.sh")], capture_output=True, text=True, env=world.env())
+    r = subprocess.run(["/bin/bash", str(staged / "run_gated.sh")], capture_output=True, text=True, env=world.env())
     assert r.returncode == 64 and "usage" in r.stderr
 
 
 def test_a_missing_binary_stops_the_wrapper_before_the_gate_runs(staged, world):
     (world.bin / "gh").unlink()
-    env = world.env(PATH=os.pathsep.join([str(world.bin), os.path.dirname(os.sys.executable), "/usr/bin", "/bin"]))
+    env = world.env(PATH=os.pathsep.join([str(world.bin), str(world.tools)]))      # no runner-provided gh anywhere on PATH
     r = run_gated(staged, env)
     assert r.returncode == 94 and "missing_binary: gh" in r.stderr and not (staged / "ran.json").exists()
 

@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from gate_v2_helpers import GATE, GATE_DIR, run_gate, runs
+from gate_v2_helpers import GATE, GATE_DIR, run_gate, runs, staged, world  # noqa: F401
 
 OK_LINE = "GATE_V2 deploy_runs_not_completed=0 build_runs_in_flight=0 role=suvarna_reader OK"
 
@@ -173,21 +173,17 @@ def test_the_timeout_is_60_seconds_and_cannot_be_raised_even_in_test(world):
 
 @pytest.mark.parametrize("missing", ["gh", "psql", "bash"])
 def test_missing_binary_fails_closed(world, missing):
+    # PATH holds ONLY the shim dir (+ the python/bash symlink dir for the two that exist): no runner-provided gh/psql can leak in
+    path = [str(world.bin)]
+    env = world.env(PATH=os.pathsep.join(path))
     if missing == "bash":
-        env = world.env(PATH=str(world.bin))                                 # no bash on PATH at all
+        pass                                                                  # no bash on PATH at all
     else:
         (world.bin / missing).unlink()
-        env = world.env(PATH=os.pathsep.join([str(world.bin), "/usr/bin", "/bin"]))   # no gh/psql elsewhere on this PATH
-        if shutil_which(missing, env["PATH"]):
-            pytest.skip("a real %s is on the stripped PATH" % missing)
+        env["GATE_V2_BASH"] = "/bin/bash"                                     # bash is available, only gh/psql is missing
     r = run_gate(env)
     assert r.returncode == 94 and "missing binary: %s" % missing in r.stderr and r.stdout == ""
     assert "GATE_V2 FAIL" in lines(r)[-1]
-
-
-def shutil_which(name, path):
-    import shutil
-    return shutil.which(name, path=path)
 
 
 def test_an_override_binary_path_that_does_not_exist_fails_closed_without_falling_back(world):

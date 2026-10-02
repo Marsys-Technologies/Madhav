@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mutation proof: neuter one rule at a time in a COPY of the gate folder and show that its tests go RED.
+"""Mutation proof: neuter one rule at a time in a COPY of the gate folder (inside a temp mini-repo that also holds the CI-collected tests) and show that its tests go RED.
 
   python3 tests/mutation_proof.py
 
@@ -14,7 +14,11 @@ import subprocess
 import sys
 import tempfile
 
-SRC = pathlib.Path(__file__).resolve().parent.parent
+SRC = pathlib.Path(__file__).resolve().parent.parent                      # .../exec/gate_v2 (single source of truth for the gate files)
+REPO = SRC.parents[4]
+REL_GATE = SRC.relative_to(REPO)                                         # 00_ARCHITECTURE/briefs/suvarna/exec/gate_v2
+REL_TESTS = pathlib.Path("platform/scripts/governance/__tests__")        # where CI collects the pytest files
+TEST_FILES = ["gate_v2_helpers.py", "test_gate_v2_prerun_gate.py", "test_gate_v2_run_gated.py", "test_gate_v2_executor_standards.py"]
 
 MUTATIONS = [
     # (name, file, old, new, pytest -k expression)
@@ -62,23 +66,28 @@ MUTATIONS = [
 ]
 
 
-def run(workdir, expr):
-    return subprocess.run([sys.executable, "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", str(workdir / "tests"), "-k", expr],
-                          capture_output=True, text=True, cwd=workdir)
+def run(root, expr):
+    tests = [str(root / REL_TESTS / f) for f in TEST_FILES if f.startswith("test_")]
+    return subprocess.run([sys.executable, "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", *tests, "-k", expr],
+                          capture_output=True, text=True, cwd=root)
 
 
 def main():
     bad = 0
     for name, fname, old, new, expr in MUTATIONS:
         with tempfile.TemporaryDirectory(prefix="mut_") as t:
-            w = pathlib.Path(t) / "gate_v2"
+            root = pathlib.Path(t)                                              # a mini repo: same repo-relative layout as the real one
+            w = root / REL_GATE
             shutil.copytree(SRC, w, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
-            green = run(w, expr)
+            (root / REL_TESTS).mkdir(parents=True)
+            for tf in TEST_FILES:
+                shutil.copy(REPO / REL_TESTS / tf, root / REL_TESTS / tf)
+            green = run(root, expr)
             f = w / fname
             text = f.read_text()
             assert text.count(old) == 1, "mutation target not found exactly once: %r" % old
             f.write_text(text.replace(old, new))
-            red = run(w, expr)
+            red = run(root, expr)
             ok = green.returncode == 0 and red.returncode != 0
             tail = [l for l in red.stdout.splitlines() if l.startswith(("FAILED", "ERROR"))][:2]
             print("%-84s baseline=%s mutant=%s  %s" % (name, "green" if green.returncode == 0 else "RED(!)",

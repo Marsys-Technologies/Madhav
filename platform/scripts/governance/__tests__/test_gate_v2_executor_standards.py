@@ -9,7 +9,7 @@ import time
 
 import pytest
 
-from gate_v2_helpers import GATE_DIR
+from gate_v2_helpers import GATE_DIR, staged, world  # noqa: F401
 
 sys.path.insert(0, str(GATE_DIR))
 import executor_standards as es  # noqa: E402
