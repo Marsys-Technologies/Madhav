@@ -925,11 +925,27 @@ def divisional_table_rls_active(conn: Any) -> bool:
     return bool(row and row[0])
 
 
+def divisional_table_blind_to_us(conn: Any) -> bool:
+    """True when an empty chart_divisionals read cannot be trusted: row-level security applies to the
+    current role AND no divisional row at all is visible to it. Mirrors registry clause (f) of the
+    ga_condition integrity SQL: `NOT row_security_active(...) OR EXISTS (SELECT 1 FROM
+    chart_divisionals LIMIT 1)` is the legitimate (can-see) case; this is its negation. Under RLS
+    with other rows visible the role demonstrably can read the table, so an empty read for one
+    (chart, ayanamsha, graha) is a real empty."""
+    if not divisional_table_rls_active(conn):
+        return False
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        cur.execute("SELECT EXISTS (SELECT 1 FROM chart_divisionals LIMIT 1)")
+        row = cur.fetchone()
+    return not bool(row and row[0])
+
+
 def assert_fallback_legitimate(
     conn: Any, chart_id: str, ayanamsha_id: str, graha: str, varga_spread: Optional[dict] = None,
 ) -> None:
     """Raise `VargaFallbackWithDivisionalsError` unless using the D1 fallback for this graha is
-    legitimate: the chart has NO visible divisional rows AND the table is not RLS-blind to us.
+    legitimate: the chart has NO visible divisional rows AND the table is not RLS-blind to us (RLS
+    active and no divisional row visible at all; see `divisional_table_blind_to_us`).
 
     Called ONLY when `compute_condition_score_v1` reports `varga_fallback_used` (i.e. a score is
     being computed on D1 alone), so it measures the claim "a fallback is being used"."""
@@ -942,11 +958,11 @@ def assert_fallback_legitimate(
             f"derived. The composite must read divisional dignity, not fall back to D1 "
             f"(X2 / I-29; the F-C8 class: a stored dignity label the composite could not score)."
         )
-    if divisional_table_rls_active(conn):
+    if divisional_table_blind_to_us(conn):
         raise VargaFallbackWithDivisionalsError(
             f"ga_condition D1 fallback refused for chart={chart_id} ayanamsha={ayanamsha_id} "
             f"graha={graha}: chart_divisionals reads empty but row-level security is ACTIVE for "
-            f"this role, so the empty read cannot prove the chart has no divisionals "
+            f"this role and no divisional row is visible to it, so the empty read cannot prove the chart has no divisionals "
             f"(2026-09-18 chart_divisionals RLS incident class)."
         )
 

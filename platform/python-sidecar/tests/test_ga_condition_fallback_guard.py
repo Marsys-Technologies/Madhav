@@ -48,6 +48,8 @@ class _FakeCursor:
             self._rows = [(self._c.divisional_rows,)]
         elif "ROW_SECURITY_ACTIVE" in up:
             self._rows = [(self._c.rls_active,)]
+        elif up.startswith("SELECT EXISTS") and "FROM CHART_DIVISIONALS" in up:
+            self._rows = [(self._c.table_visible_rows,)]
         elif up.startswith("INSERT INTO GA_CONDITION_COMPOSITE"):
             self._c.inserted.append(params)
             self._rows = []
@@ -62,9 +64,12 @@ class _FakeCursor:
 
 
 class _FakeConn:
-    def __init__(self, divisional_rows=0, rls_active=False, raise_on_divisional_count=False):
+    def __init__(self, divisional_rows=0, rls_active=False, raise_on_divisional_count=False,
+                 table_visible_rows=False):
         self.divisional_rows = divisional_rows
         self.rls_active = rls_active
+        # does ANY chart_divisionals row show up for this role (the registry clause (f) EXISTS probe)
+        self.table_visible_rows = table_visible_rows
         self.raise_on_divisional_count = raise_on_divisional_count
         self.calls: list = []
         self.inserted: list = []
@@ -105,6 +110,34 @@ def test_guard_refuses_an_empty_read_it_cannot_trust_rls_active():
     with pytest.raises(w.VargaFallbackWithDivisionalsError) as ei:
         w.assert_fallback_legitimate(conn, CHART, AYA, "Saturn", None)
     assert "row-level security is ACTIVE" in str(ei.value)
+    assert "no divisional row is visible" in str(ei.value)
+
+
+def test_guard_passes_under_rls_when_other_divisional_rows_are_visible():
+    """Registry clause (f): `NOT row_security_active OR EXISTS (a visible divisional row)` is the
+    can-see case. RLS on, but the role reads other rows of the table: the empty read for this graha
+    is a real empty, so the (legitimate) fallback is allowed."""
+    conn = _FakeConn(divisional_rows=0, rls_active=True, table_visible_rows=True)
+    assert w.assert_fallback_legitimate(conn, CHART, AYA, "Saturn", None) is None
+    assert any("SELECT EXISTS" in s and "LIMIT 1" in s for s, _ in conn.calls)   # the probe really ran
+
+
+def test_guard_still_raises_on_divisionals_even_when_rls_is_active_and_visible():
+    conn = _FakeConn(divisional_rows=3, rls_active=True, table_visible_rows=True)
+    with pytest.raises(w.VargaFallbackWithDivisionalsError):
+        w.assert_fallback_legitimate(conn, CHART, AYA, "Saturn", None)
+
+
+def test_blind_to_us_is_exactly_the_negation_of_clause_f():
+    cases = [  # (rls_active, any_row_visible, blind)
+        (False, False, False),   # no RLS: an empty table is genuinely empty
+        (False, True,  False),
+        (True,  True,  False),   # RLS but rows visible: the role can see the table
+        (True,  False, True),    # RLS and nothing visible: the empty read proves nothing
+    ]
+    for rls, visible, blind in cases:
+        conn = _FakeConn(rls_active=rls, table_visible_rows=visible)
+        assert w.divisional_table_blind_to_us(conn) is blind, (rls, visible)
 
 
 def test_guard_fails_closed_when_the_divisional_read_itself_fails():
