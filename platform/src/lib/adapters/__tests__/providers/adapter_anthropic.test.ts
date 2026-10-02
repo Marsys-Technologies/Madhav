@@ -76,6 +76,13 @@ function makeReq(overrides: Partial<QueryRequest> = {}): QueryRequest {
 beforeEach(() => { mockStreamText.mockReset() })
 
 describe('adapterAnthropic — cache_control', () => {
+  test('sends configured effort alongside cache control', () => {
+    mockStreamText.mockReturnValue(fakeResult([makeFinishPart()]))
+    adapterAnthropic.stream(makeReq({ effort: 'low' }), makeMeta())
+    expect(mockStreamText.mock.calls[0][0].providerOptions.anthropic).toMatchObject({
+      effort: 'low', cacheControl: { type: 'ephemeral' },
+    })
+  })
   test('explicit_headers cache strategy passes cacheControl in providerOptions', () => {
     mockStreamText.mockReturnValue(fakeResult([makeFinishPart()]))
     adapterAnthropic.stream(makeReq(), makeMeta())

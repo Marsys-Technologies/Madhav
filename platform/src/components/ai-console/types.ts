@@ -7,7 +7,8 @@ export type ProviderChoice = { kind: 'provider_model'; connectionId: string; mod
 export type ConfigurationChoice = { kind: 'custom_configuration'; configurationId: string }
 export type CliChoice = { kind: 'local_cli'; cliId: CliId; modelId: string | null }
 export type AiChoice = ProviderChoice | ConfigurationChoice | CliChoice
-export type RoleTarget = ProviderChoice | CliChoice
+export type AiEffort = 'low' | 'medium' | 'high'
+export type RoleTarget = (ProviderChoice | CliChoice) & { effort?: AiEffort | null }
 export type ConfigurationKind = 'provider_preset' | 'cli_preset' | 'custom_api' | 'custom_cli' | 'legacy_mixed'
 
 export interface ProviderConnectionDto {

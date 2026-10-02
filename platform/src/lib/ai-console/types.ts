@@ -11,6 +11,8 @@ export const CliIdSchema = z.enum(CLI_IDS)
 export type AiRole = z.infer<typeof AiRoleSchema>
 export type ProviderId = z.infer<typeof ProviderIdSchema>
 export type CliId = z.infer<typeof CliIdSchema>
+export const AiEffortSchema = z.enum(['low', 'medium', 'high'])
+export type AiEffort = z.infer<typeof AiEffortSchema>
 
 const IdentifierSchema = z.string().min(1).regex(/\S/)
 export const ProviderModelChoiceSchema = z.object({
@@ -40,8 +42,12 @@ export const ConversationAiSelectionSchema = z.discriminatedUnion('kind', [
 ])
 export type ConversationAiSelection = z.infer<typeof ConversationAiSelectionSchema>
 
-// Configurations cannot recursively reference another configuration.
-export const RoleTargetSchema = z.discriminatedUnion('kind', [ProviderModelChoiceSchema, LocalCliChoiceSchema])
+// Configurations cannot recursively reference another configuration. An omitted
+// effort preserves the model's default for role setups saved before effort existed.
+export const RoleTargetSchema = z.discriminatedUnion('kind', [
+  ProviderModelChoiceSchema.extend({ effort: AiEffortSchema.nullable().optional() }).strict(),
+  LocalCliChoiceSchema.extend({ effort: AiEffortSchema.nullable().optional() }).strict(),
+])
 export type RoleTarget = z.infer<typeof RoleTargetSchema>
 export const RoleAssignmentsSchema = z.object({
   synthesizer: RoleTargetSchema,
@@ -89,8 +95,8 @@ export type ProviderModel = z.infer<typeof ProviderModelSchema>
 export const AiSourceSchema = z.enum(['pariprashna', 'mcp', 'backend'])
 export type AiSource = z.infer<typeof AiSourceSchema>
 export const ResolvedRoleTargetSchema = z.discriminatedUnion('kind', [
-  ProviderModelChoiceSchema.extend({ providerId: ProviderIdSchema }).strict(),
-  LocalCliChoiceSchema,
+  ProviderModelChoiceSchema.extend({ providerId: ProviderIdSchema, effort: AiEffortSchema.nullable().optional() }).strict(),
+  LocalCliChoiceSchema.extend({ effort: AiEffortSchema.nullable().optional() }).strict(),
 ]).readonly()
 export type ResolvedRoleTarget = z.infer<typeof ResolvedRoleTargetSchema>
 
