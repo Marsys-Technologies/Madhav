@@ -76,10 +76,13 @@ LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 # C16 (pravaha/c16-windows-builder-grant-record — the builder's
 # kala_gochara_windows ACL, C15's finding); 1238 = Pravāha C18
 # (pravaha/c18-windows-v2-builder-grant-record — the builder's
-# kala_gochara_windows_v2 ACL, C16's flag). If any prefix
+# kala_gochara_windows_v2 ACL, C16's flag); 1239 = Pravāha C19
+# (pravaha/c19-overlay-builder-grant-record — the builder's ACLs on
+# kala_gochara_v2_build_state / kala_moorti_nirnaya / kala_vedha_gochara,
+# C18's report-only gap list). If any prefix
 # is absent from BOTH migration roots the fixture raises — a grant the repo
 # does not carry is never re-typed here.
-GRANT_MIGRATION_PREFIXES = ("1211", "1216", "1217", "1220", "1225", "1231", "1237", "1238")
+GRANT_MIGRATION_PREFIXES = ("1211", "1216", "1217", "1220", "1225", "1231", "1237", "1238", "1239")
 
 
 class RefusedError(RuntimeError):

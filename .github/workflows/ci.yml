@@ -482,6 +482,27 @@ jobs:
           M1238_WINDOWS_V2_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1238_windows_v2_grant_test
         run: npx vitest run tests/integration/gochara_windows_v2_builder_grant_record.db.test.ts --reporter=verbose
 
+      - name: C19/1239 — provision the overlay-tables grant-record test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE m1239_overlay_grant_test;"
+
+      - name: C19/1239 — overlay builder grant-record fails-before/succeeds-after against real Postgres
+        # The C18-gap-list proof for migration 1239 (which RECORDS the existing
+        # production ACLs): a role with EXACTLY data_plane_builder's pre-1239
+        # grants (USAGE on schema public, nothing on kala_gochara_v2_build_state
+        # / kala_moorti_nirnaya / kala_vedha_gochara) hits 'permission denied'
+        # on SELECT/INSERT before the migration, and succeeds after the REAL
+        # 1239 file is applied — plus idempotency, exact-ACL scope (arwd +
+        # sequence USAGE/SELECT on the two BIGSERIAL sequences, nothing wider)
+        # and role-absent guard controls (§N.8). Table DDL from the REAL
+        # 525/526/541 files (supabase/migrations); asset_registry stubbed (as
+        # in the 1237/1238 suites).
+        env:
+          M1239_OVERLAY_GRANT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/m1239_overlay_grant_test
+        run: npx vitest run tests/integration/gochara_overlay_builder_grant_record.db.test.ts --reporter=verbose
+
       - name: A2.5/1216 — provision the gochara contract grants test DB
         env:
           PGPASSWORD: postgres
@@ -564,6 +585,21 @@ jobs:
           pip install -r python-sidecar/requirements-ci.txt --quiet
           cd python-sidecar
           python -m pytest tests/l3/test_builder_role_v4_41_candidate.py -q --tb=short
+
+      - name: C19 — overlay writers' SQL layer AS data_plane_builder against real Postgres
+        # Pravāha C19 (steward M20261002T062943-356e): the ka_moorti_nirnaya
+        # and ka_vedha_gochara overlay writers will be rebuilt in production at
+        # node-series step 3. This suite drives their exact delete-then-insert
+        # SQL and the ka_gochara writer's build-state upsert (the production
+        # functions/SQL, never re-implemented) through an authenticated
+        # builder connection on the shared fixture's production power
+        # structure, proving migration 1239's recorded ACLs are sufficient.
+        env:
+          C7_BUILDER_ROLE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/c7_builder_role_test
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          cd python-sidecar
+          python -m pytest tests/l3/test_builder_role_overlay_writers.py -q --tb=short
 
       - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
         env:
