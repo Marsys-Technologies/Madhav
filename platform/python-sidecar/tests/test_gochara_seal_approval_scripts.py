@@ -451,8 +451,8 @@ def execution(name="exec-1", **over):
     return ex
 
 
-def xcheck(ex=None, **over):
-    kw = dict(execution_name="exec-1", image_repo=REPO, image_digest=IMG, service_account=SA, runner_commit=SHA, args=ARGS, secret_name="gochara-verifier-db-url")
+def xcheck(ex=None, v2_execution=None, **over):
+    kw = dict(v2_execution=v2_execution, execution_name="exec-1", image_repo=REPO, image_digest=IMG, service_account=SA, runner_commit=SHA, args=ARGS, secret_name="gochara-verifier-db-url")
     kw.update(over)
     return xc.check(execution() if ex is None else ex, **kw)
 
@@ -543,6 +543,39 @@ def test_the_retained_envelope_must_be_for_this_run_attempt_commit_and_brief(mut
     env = xc.build_envelope(xcheck(), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id=7, producer_execution_id=PEID)
     with pytest.raises(xc.Refused, match=needle):
         xc.check_envelope(mut(env), run_id=RUN, attempt=ATT, sealing_commit=SHA, brief_digest=D, brief_id="7")
+
+
+def _v2_execution(retries=0):
+    """The v2 REST `executions.get` representation: the task template is at `template`, and `maxRetries` is a union (oneof) member — present when set, even when 0."""
+    t = {"containers": [{"image": "x"}]}
+    if retries is not None:
+        t["maxRetries"] = retries
+    return {"name": "projects/p/locations/l/jobs/j/executions/exec-1", "template": t}
+
+
+def test_maxretries_is_read_from_the_presence_bearing_v2_representation_and_absence_is_never_zero():
+    """F-R15-3: v1 omits the field -> the v2 value decides (a real 0 is accepted); absent in BOTH -> refused; present and different -> refused; never 'absent = 0'."""
+    absent_v1 = _del((*T, "maxRetries"))
+    assert xcheck(absent_v1, v2_execution=_v2_execution(0))["execution"] == "exec-1"            # v1 omitted a proto3 zero; v2 carries it
+    with pytest.raises(xc.Refused, match="maxRetries"):
+        xcheck(absent_v1, v2_execution=_v2_execution(None))                                    # absent in BOTH ⇒ the API default of 3
+    with pytest.raises(xc.Refused, match="maxRetries"):
+        xcheck(absent_v1, v2_execution=_v2_execution(3))
+    with pytest.raises(xc.Refused, match="disagrees"):
+        xcheck(execution(), v2_execution=_v2_execution(3))                                      # v1 says 0, v2 says 3
+    assert xcheck(execution(), v2_execution=_v2_execution(0))["execution"] == "exec-1"
+    assert xcheck(execution(), v2_execution=_v2_execution(None))["execution"] == "exec-1"       # v1 carries it; v2 absent is not a contradiction
+    with pytest.raises(xc.Refused, match="maxRetries"):
+        xcheck(absent_v1)                                                                      # no v2 supplied: strict v1 rule stands
+
+
+def test_retries_from_v2_reads_jobs_and_executions_and_never_defaults():
+    import gochara_verification_job_contract as vjc
+    assert vjc.retries_from_v2({"template": {"template": {"maxRetries": 0}}}, "job") == 0
+    assert vjc.retries_from_v2({"template": {"maxRetries": 0}}, "execution") == 0
+    assert vjc.retries_from_v2({"template": {"template": {}}}, "job") is None
+    assert vjc.retries_from_v2({"template": {"maxRetries": True}}, "execution") is None
+    assert vjc.retries_from_v2(None, "job") is None
 
 
 PROD = {"commit": SHA, "execution_id": PEID, "image_digest": IMG}
@@ -693,7 +726,7 @@ def test_the_seal_jobs_non_zero_status_fails_the_run_unchanged(world, rc, needle
 
 # R14-3: the verification-job contract is ONE file carried by BOTH #2975 (executed-resource check) and #2976 (definition readback). If the two copies ever diverge, one of these two tests fails
 # (the pinned digest is the same constant in both PRs; change it in both when the contract is deliberately changed).
-CONTRACT_SHA256 = "5c9c062adcbe2101eb066024c107eb3605f9d542319cdb7414ca44feb4ec104a"
+CONTRACT_SHA256 = "3cd8ece1dcb0427b1436996b9c1aec6f7eb6509c951bb903398f7474b6a726fd"
 
 
 def test_the_shared_verification_job_contract_is_the_file_both_prs_carry():

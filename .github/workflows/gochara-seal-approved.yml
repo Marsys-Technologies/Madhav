@@ -114,7 +114,9 @@ jobs:
           [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::no image digest for commit ${GITHUB_SHA}"; exit 1; }
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
           gcloud run jobs describe "$VERIFICATION_JOB" --project madhav-astrology --region "$GCP_REGION" --format=json > job.json
-          python3 platform/scripts/gochara_seal_execution_check.py job-image --job-file job.json --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$DIGEST" --service-account "$VERIFIER_SERVICE_ACCOUNT" --runner-commit "$GITHUB_SHA" --secret-name "$VERIFIER_SECRET"
+          # maxRetries is read from the v2 REST representation, where it is a presence-bearing union member (F-R15-3); an absent value in BOTH representations is a refusal
+          curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GCP_REGION}/jobs/${VERIFICATION_JOB}" > job.v2.json
+          python3 platform/scripts/gochara_seal_execution_check.py job-image --v2-job-file job.v2.json --job-file job.json --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$DIGEST" --service-account "$VERIFIER_SERVICE_ACCOUNT" --runner-commit "$GITHUB_SHA" --secret-name "$VERIFIER_SECRET"
 
       - name: Start the verification job in --brief mode (verifier identity) and record the execution id at once
         id: execute
@@ -183,8 +185,9 @@ jobs:
           set -euo pipefail
           DIGEST="$(python3 platform/scripts/gochara_seal_brief_check.py --brief-file brief.json --compact-file brief.compact.json --chart-id "$CHART_ID" --generation "$GENERATION" --sealing-commit "$GITHUB_SHA")"
           gcloud run jobs executions describe "$EXECUTION" --project madhav-astrology --region "$GCP_REGION" --format=json > execution.json
+          curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GCP_REGION}/jobs/${VERIFICATION_JOB}/executions/${EXECUTION}" > execution.v2.json
           ARGS_JSON="$(python3 -c 'import json,sys; print(json.dumps(["--chart",sys.argv[1],"--generation",sys.argv[2],"--brief","--sealing-commit",sys.argv[3]]))' "$CHART_ID" "$GENERATION" "$GITHUB_SHA")"
-          python3 platform/scripts/gochara_seal_execution_check.py build-envelope --execution-file execution.json --compact-file brief.compact.json --execution-name "$EXECUTION" \
+          python3 platform/scripts/gochara_seal_execution_check.py build-envelope --v2-execution-file execution.v2.json --execution-file execution.json --compact-file brief.compact.json --execution-name "$EXECUTION" \
             --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$IMAGE_DIGEST" --service-account "$VERIFIER_SERVICE_ACCOUNT" --secret-name "$VERIFIER_SECRET" --args-json "$ARGS_JSON" --run-id "$GITHUB_RUN_ID" \
             --attempt "$GITHUB_RUN_ATTEMPT" --sealing-commit "$GITHUB_SHA" --brief-digest "$DIGEST" --out brief.envelope.json
           BRIEF_ID="$(python3 -c 'import json; print(json.load(open("brief.compact.json"))["persisted"]["brief_id"])')"

@@ -153,4 +153,12 @@ describe('gochara-seal-approved.yml', () => {
     for (const needle of ['requirements-ci.txt', 'import psycopg, swisseph', 'seal_job', 'verification_job', 'seal_flow', 'seal_brief']) expect(run).toContain(needle)
     expect(smoke).toBeLessThan(steps.findIndex((st) => String(st.id ?? '') === 'execute'))
   })
+  it('F-R15-3: reads maxRetries of the job AND of the execution from the v2 REST representation as well as v1', () => {
+    const steps = brief.steps as any[]
+    const image = steps.find((st) => st.id === 'image'), check = steps.find((st) => st.id === 'check')
+    expect(String(image.run)).toContain('/jobs/${VERIFICATION_JOB}"')
+    expect(String(image.run)).toContain('--v2-job-file job.v2.json')
+    expect(String(check.run)).toContain('/executions/${EXECUTION}"')
+    expect(String(check.run)).toContain('--v2-execution-file execution.v2.json')
+  })
 })
