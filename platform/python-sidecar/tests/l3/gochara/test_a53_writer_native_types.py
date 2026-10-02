@@ -21,7 +21,7 @@ GEN = writer_mod.GENERATION
 
 
 @pytest.fixture()
-def native(monkeypatch):
+def native(monkeypatch, tmp_path):
     import psycopg
     from psycopg.rows import dict_row
     admin, name, dsn = create_am5_database("am5n")
@@ -29,10 +29,12 @@ def native(monkeypatch):
     monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
     RuleRegistryStore(conn).seed()
     w = writer_mod.GocharaV5Writer()
+    from .test_a53_am5_writer import make_ephe
+    ephe = make_ephe(tmp_path)
 
     def step(key):
         ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-native", db_conn=conn,
-                          config={"chart_id": uuid.UUID(CHART_ID), "horizon": (H0, H1)},
+                          config={"chart_id": uuid.UUID(CHART_ID), "horizon": (H0, H1), "ephe_path": ephe},
                           dry_run=False)
         with conn.transaction():
             return w.run_substep(ctx, SubStep(key=key, label=key))

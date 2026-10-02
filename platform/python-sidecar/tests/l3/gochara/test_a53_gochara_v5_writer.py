@@ -123,6 +123,9 @@ def _fake_store(monkeypatch):
     _FakeRuleStore.instances = []
     monkeypatch.setattr(writer_mod, "SkyEventStore", _FakeStore)
     monkeypatch.setattr(writer_mod, "RuleRegistryStore", _FakeRuleStore)
+    # these tests drive substeps against FAKE stores; the live-input check (R6) needs a real manifest +
+    # registry and is exercised against the real schema in test_a53_input_vector / the writer chain tests
+    monkeypatch.setattr(writer_mod, "_verify_live_inputs", lambda ctx, chart_id: None)
     yield
 
 

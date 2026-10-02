@@ -184,6 +184,7 @@ def test_a_not_admitted_record_never_forms_a_window(grain):
 
 def test_the_writer_window_substep_runs_on_the_runners_native_types(grain, monkeypatch):
     monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
+    monkeypatch.setattr(writer_mod, "_verify_live_inputs", lambda ctx, chart_id: None)   # own test below
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-window", db_conn=grain,
                       config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON}, dry_run=False)
     w = writer_mod.GocharaV5Writer()
@@ -292,7 +293,8 @@ def test_p2_with_a_bound_vedha_source_stores_both_channels_in_the_real_schema(p2
     assert row[2] == T0 + 20 * DAY and row[6] == "favourable"
 
 
-def test_a_window_grain_outside_the_planned_paths_is_refused_by_name(grain):
+def test_a_window_grain_outside_the_planned_paths_is_refused_by_name(grain, monkeypatch):
+    monkeypatch.setattr(writer_mod, "_verify_live_inputs", lambda ctx, chart_id: None)
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-x", db_conn=grain,
                       config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON}, dry_run=False)
     with grain.transaction():

@@ -64,6 +64,8 @@ from services.gochara_kernel.record_store import (RecordStore,
                                                   materialise_record_grain,
                                                   write_class_coverage)
 from services.gochara_kernel import inventory as gk_inventory
+from services.gochara_kernel import input_vector as gk_input_vector
+from services.gochara_kernel import input_vector_verifier as gk_input_vector_verifier
 from services.gochara_kernel import window_sweep as gk_window_sweep
 from services.gochara_kernel.window_verifier import verify_window_semantics
 from services.gochara_kernel.window_store import WindowStore
@@ -71,7 +73,8 @@ from services.gochara_kernel import inventory_verifier as gk_verifier
 from services.gochara_kernel import ledger as gk_ledger
 from services.gochara_kernel.dasha_read import load_pinned_vimshottari
 from services.gochara_kernel.inventory_store import InventoryStore
-from services.gochara_kernel.rule_registry import BOUND_PATHS, RuleRegistryStore
+from services.gochara_kernel.rule_registry import (BOUND_PATH_REFS as BOUND_PATH_REFS_FOR_VECTOR,
+                                                   BOUND_PATHS, RuleRegistryStore)
 from services.gochara_kernel.substrate import (SUBSTRATE_BODIES,
                                                SUBSTRATE_DOMAIN_END,
                                                SUBSTRATE_DOMAIN_START,
@@ -144,6 +147,37 @@ _JD_UNIX_EPOCH = 2440587.5
 # arbitrary chart. The skeleton hard-refuses any other chart BEFORE any
 # planning or execution — fail-closed, never a silent no-op.
 PINNED_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
+
+
+def _applicable_rulings() -> list[dict]:
+    """The rulings this build applies (AM-16: they are part of the identity): the two standing
+    exclusion rulings, every bound path's own `ruling_ref`, and the Moon-agent exclusion (AM-14)."""
+    from services.gochara_kernel import rule_registry as _rr
+    path_excl, h_unknown = gk_inventory.standing_exclusions()
+    out = [{"id": e.ruling_ref, "reason": e.reason, "basis": e.basis}
+           for e in (*path_excl.values(), h_unknown)]
+    out += [{"id": r["ruling_ref"], "path": f"{r['path_id']}@{r['rule_version']}"}
+            for r in _rr.path_rows() if r["ruling_ref"]]
+    out.append({"id": "AM-14", "rule": "moon_agent_excluded_from_stored_tier"})
+    return out
+
+
+def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
+    """R6: a substep must consume the inputs its manifest was bound to. The vector is recomputed from
+    what is consumed NOW (registry rows, ephemeris files, orb policy, rulings, implementation) and
+    compared; any drift is refused by component, never continued."""
+    stored = InventoryStore(ctx.db_conn).manifest_vector(chart_id, GENERATION)
+    if stored is None:
+        raise RuntimeError(f"{ASSET_ID}: no candidate manifest vector for generation {GENERATION} — "
+                           "the manifest substep runs first")
+    gk_input_vector.verify_live(
+        ctx.db_conn, stored,
+        sky_convention_id=SkyEventStore(ctx.db_conn).register_convention(),
+        ephe_path=ctx.config.get("ephe_path"), path_refs=BOUND_PATH_REFS_FOR_VECTOR,
+        rulings=_applicable_rulings())
+    # ... and the registry component is re-derived the independent way (Postgres canonical JSON)
+    gk_input_vector_verifier.verify_registry_digest(
+        ctx.db_conn, BOUND_PATH_REFS_FOR_VECTOR, stored["registry"]["digest"])
 
 
 class ChartRefusal(Exception):
@@ -314,10 +348,14 @@ class GocharaV5Writer(WriterBase):
                                 notes=f"convention {cid[:24]}… registered (idempotent)")
         if (step.key in (MANIFEST_SUBSTEP, SNAPSHOT_SUBSTEP)
                 or step.key.startswith((INVENTORY_SUBSTEP_PREFIX, VERIFY_SUBSTEP_PREFIX))):
+            if step.key != MANIFEST_SUBSTEP:
+                _verify_live_inputs(ctx, chart_id)
             return self._run_inventory_phase(ctx, step, chart_id)
         if step.key.startswith((COVERAGE_SUBSTEP_PREFIX, RECORD_SUBSTEP_PREFIX)):
+            _verify_live_inputs(ctx, chart_id)
             return self._run_record_phase(ctx, step, chart_id)
         if step.key.startswith(WINDOW_SUBSTEP_PREFIX):
+            _verify_live_inputs(ctx, chart_id)
             return self._run_window_phase(ctx, step, chart_id)
         body = step.key[len(BODY_SUBSTEP_PREFIX):]
         if body not in SUBSTRATE_BODIES:
@@ -350,14 +388,13 @@ class GocharaV5Writer(WriterBase):
             sky_cid = SkyEventStore(ctx.db_conn).register_convention()
             kala_cid = rstore.ensure_kala_convention()
             rstore.ensure_bridge(kala_cid, sky_cid)
-            sealed = inv_store.sealed_rule_paths()
-            import hashlib
-            import json as _j
-            vector = {
-                "rule_registry": hashlib.sha256(
-                    _j.dumps(sealed, sort_keys=True).encode()).hexdigest(),
-                "sky_convention": sky_cid,
-            }
+            vector = gk_input_vector.build_input_vector(
+                ctx.db_conn, sky_convention_id=sky_cid, ephe_path=ephe_path,
+                path_refs=BOUND_PATH_REFS_FOR_VECTOR, rulings=_applicable_rulings())
+            # the registry component is derived a SECOND way (Postgres' own canonical JSON + sha256)
+            # and the two must agree before the identity is bound
+            gk_input_vector_verifier.verify_registry_digest(
+                ctx.db_conn, BOUND_PATH_REFS_FOR_VECTOR, vector["registry"]["digest"])
             jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
             _lon, retflag = calc_sidereal_lon("Sun", jd, ephe_path)
             if not (retflag & 2):
@@ -368,8 +405,10 @@ class GocharaV5Writer(WriterBase):
                 f"[{horizon[0].isoformat()},{horizon[1].isoformat()})",
                 writer_asset_id=ASSET_ID)
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
-                                notes=f"candidate manifest {mid[:8]}… (vector: registry digest "
-                                      "+ sky convention)")
+                                notes=f"candidate manifest {mid[:8]}… (input vector {gk_input_vector.VECTOR_SCHEMA}: "
+                                      f"registry digest {vector['registry']['digest'][:12]}…, "
+                                      f"{len(vector['ephemeris']['files'])} ephemeris files, node "
+                                      "series, both orb policies, rulings, implementation)")
 
         if step.key == SNAPSHOT_SUBSTEP:
             context = fetch_chart_context(ctx.db_conn, chart_id)

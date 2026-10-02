@@ -652,3 +652,35 @@ Steward M20261002T005809-4f92 adopts Codex's closing text (`ASTRA_REVIEW_A5_5_SP
   piecewise function (step for extents, linear for points) — Codex asks that it identify the piecewise form;
   (ii) `graduated_drishti@1.1.0` and the 1.1.0 `drishti.py` ref (`FACTOR_REF` is still `1.0.0` in #2894): the evaluator must
   name the version it implements. The binder is ready for both; it will not bind 1.1.0 before acceptance.
+
+### Design v1.12 (2026-10-02) — Codex round 6, R6 (AM-16: the input vector is the identity of what was consumed)
+
+The manifest's `input_generation_vector` enters the snapshot's `input_digest` (1206), so it must distinguish every
+result-bearing change. `input_vector.py` builds it with a **versioned key schema** (`ka_gochara_input_vector/1`) and a
+canonical serialization; it binds:
+
+| component | content |
+|---|---|
+| `registry` | digest over the SELECTED path, predicate and factor payloads (all columns but the enumerated audit fields `created_at`/`sealed_at`), the ORDERED prerequisite memberships, the soft-factor memberships, the applicability declarations (they ride the factors' flat `operand_selector`), and the accounted sealed-version CENSUS (every sealed `(path, version)`, bound or not) — plus the census itself |
+| `sky_convention` | the kala/sky convention id |
+| `node`, `ephemeris` | the node model/source/zodiac/ayanāṃśa AND the identity of the node series actually consumed: the Swiss library version and the sha256 of every `.se1` in the ephemeris path (a "mean" label does not distinguish two series). No path ⇒ refused, never recorded as unknown |
+| `orb_policy` | BOTH policies: the contact/ADMISSION orb table digest (it fixes supports) and the ACTIVITY orb restated per `activity_kernel` row version (`undeclared` / `unratified` / the number) |
+| `rulings_digest` | the standing rulings, every bound path's `ruling_ref`, and AM-14 |
+| `implementation` | source digests of the geometry, evaluation and window-construction module closures |
+
+Inputs already bound transitively by the snapshot (L1 facts, daśā, AV declarations) are not duplicated.
+
+- **Two derivations that share nothing.** The builder canonicalises typed rows in Python; `input_vector_verifier.py` derives the
+  registry digest entirely inside Postgres (1206's `ka_gochara_canonical_json` + `ka_gochara_sha256_hex` over `to_jsonb`).
+  They must agree byte-for-byte; the manifest refuses to bind an identity they disagree on.
+- **Every later substep verifies the inputs it consumes** (`_verify_live_inputs`): the vector is recomputed from what is consumed
+  NOW and compared by component; drift is refused by name (`InputDrift`), a missing manifest is refused. A changed input is a
+  NEW generation, never a silent continuation.
+- **Historical replay** (`verify_replay`) checks the ORIGINAL bound inputs — the digest over the original references and the
+  ORIGINAL census (every recorded seal must still exist) — never a fingerprint of today's catalogue; versions sealed since do
+  not move a past build's identity.
+- **Frozen cases** (real schema): membership-only (P1's prerequisite order swapped, identical row payloads), node-series-only (one
+  `.se1` differs ⇒ exactly `ephemeris.files.semo_18.se1`), node-convention-only, admission-orb-only, rulings-only,
+  window-algorithm-only (`implementation.window`), a successor version sealed after the build. 12 mutations, all killed.
+- **For Stream B to confirm**: the key schema above is mine (Codex's closing text names the components, not the keys); and the
+  implementation closure lists are mine — say if a module belongs in or out of a stage.

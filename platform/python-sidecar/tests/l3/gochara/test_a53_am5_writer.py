@@ -32,16 +32,29 @@ def am5():
         drop_am5_database(admin, name)
 
 
+def make_ephe(path) -> str:
+    """The ephemeris directory the input vector hashes (every .se1 it consumes). The pinned real
+    files when present (a record grain really samples them); otherwise a stand-in directory."""
+    from .conftest import EPHE_PATH, _PROBLEMS
+    if not _PROBLEMS:
+        return EPHE_PATH
+    for name in ("sepl_18.se1", "semo_18.se1", "seas_18.se1"):
+        (path / name).write_bytes(name.encode() * 32)
+    return str(path)
+
+
 @pytest.fixture()
-def run(am5, monkeypatch):
+def run(am5, monkeypatch, tmp_path):
     """One substep = one transaction, like the orchestrator; Swiss probe faked."""
+    ephe = make_ephe(tmp_path)
     monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
     RuleRegistryStore(am5).seed()
     w = writer_mod.GocharaV5Writer()
 
     def step(key):
         ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-1", db_conn=am5,
-                          config={"chart_id": CHART_ID, "horizon": (H0, H1)}, dry_run=False)
+                          config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe},
+                          dry_run=False)
         with am5.transaction():
             return w.run_substep(ctx, SubStep(key=key, label=key))
     return step, am5
@@ -151,3 +164,77 @@ def test_a_rebuild_replaces_the_whole_chain_including_the_snapshot(run):
         step(k)                                  # the second build: no raise, no accretion
     assert conn.execute("SELECT count(*) FROM public.ka_gochara_search_obligation"
                         " WHERE generation = %s", (GEN,)).fetchone()[0] == before
+
+
+# ── R6: the writer binds the input vector and every later substep verifies it ─────────────────────────
+
+def _manifest_vector(conn):
+    from services.gochara_kernel.inventory_store import InventoryStore
+    return InventoryStore(conn).manifest_vector(CHART_ID, GEN)
+
+
+def test_the_manifest_binds_the_versioned_input_vector_derived_two_ways(run):
+    step, conn = run
+    step(writer_mod.CONVENTION_SUBSTEP)
+    assert "input vector ka_gochara_input_vector/1" in step(writer_mod.MANIFEST_SUBSTEP).notes
+    v = _manifest_vector(conn)
+    from services.gochara_kernel import input_vector as iv
+    from services.gochara_kernel import input_vector_verifier as ivv
+    assert v["schema"] == iv.VECTOR_SCHEMA
+    assert v["registry"]["digest"] == ivv.sql_registry_digest(conn, writer_mod.BOUND_PATH_REFS_FOR_VECTOR)
+    assert set(v) >= {"registry", "node", "ephemeris", "orb_policy", "rulings_digest", "implementation"}
+    # the snapshot's identity commits to the vector (1206: input_generation_vector is in input_digest)
+    step(writer_mod.SNAPSHOT_SUBSTEP)
+
+
+def test_a_substep_after_the_manifest_refuses_a_registry_that_moved(run, monkeypatch):
+    step, conn = run
+    step(writer_mod.CONVENTION_SUBSTEP)
+    step(writer_mod.MANIFEST_SUBSTEP)
+    from services.gochara_kernel import rule_registry as rr
+    from services.gochara_rules import registry as rules_registry
+    paths = dict(rules_registry.RULE_PATHS)
+    paths[("P3", "1.3.0")] = dict(paths[("P3", "1.0.0")], rule_version="1.3.0")
+    monkeypatch.setattr(rules_registry, "RULE_PATHS", paths)
+    monkeypatch.setattr(rr, "BOUND_PATH_REFS", rr.BOUND_PATH_REFS + (("P3", "1.3.0"),))
+    rr.RuleRegistryStore(conn).seed()                   # a new sealed version appears AFTER the manifest
+    from services.gochara_kernel.input_vector import InputDrift
+    with pytest.raises(InputDrift, match="registry"):
+        step(writer_mod.SNAPSHOT_SUBSTEP)
+
+
+def test_a_substep_after_the_manifest_refuses_changed_rulings(run, monkeypatch):
+    step, conn = run
+    step(writer_mod.CONVENTION_SUBSTEP)
+    step(writer_mod.MANIFEST_SUBSTEP)
+    monkeypatch.setattr(writer_mod, "_applicable_rulings", lambda: [{"id": "A-DIFFERENT-RULING"}])
+    from services.gochara_kernel.input_vector import InputDrift
+    with pytest.raises(InputDrift, match="rulings_digest"):
+        step(writer_mod.SNAPSHOT_SUBSTEP)
+
+
+def test_a_substep_with_no_manifest_is_refused_not_continued(run):
+    step, conn = run
+    step(writer_mod.CONVENTION_SUBSTEP)
+    with pytest.raises(RuntimeError, match="no candidate manifest vector"):
+        step(writer_mod.SNAPSHOT_SUBSTEP)
+
+
+def test_the_applicable_rulings_name_the_standing_and_the_path_rulings():
+    ids = {r["id"] for r in writer_mod._applicable_rulings()}
+    assert {"ST-P5-HOLD-20261001", "ST-H-UNKNOWN-20261002", "AM-14", "D-P4"} <= ids
+
+
+def test_a_disagreeing_second_derivation_fails_the_manifest_and_every_later_substep(run, monkeypatch):
+    step, conn = run
+    step(writer_mod.CONVENTION_SUBSTEP)
+    from services.gochara_kernel import input_vector_verifier as ivv
+    with monkeypatch.context() as m:
+        m.setattr(ivv, "sql_registry_digest", lambda *a, **k: "0" * 64)
+        with pytest.raises(RuntimeError, match="DISAGREES"):
+            step(writer_mod.MANIFEST_SUBSTEP)                 # the identity is never bound unverified
+    step(writer_mod.MANIFEST_SUBSTEP)
+    with monkeypatch.context() as m:
+        m.setattr(ivv, "sql_registry_digest", lambda *a, **k: "0" * 64)
+        with pytest.raises(RuntimeError, match="DISAGREES"):
+            step(writer_mod.SNAPSHOT_SUBSTEP)
