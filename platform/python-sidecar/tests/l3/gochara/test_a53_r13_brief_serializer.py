@@ -141,7 +141,15 @@ def test_the_brief_bytes_must_hash_to_the_digest_they_carry():
 # ── disclosure wording follows the manifest's policy (Stream B request) ─────────────────────────────────────────────
 
 def test_the_disclosure_names_the_manifest_policy_and_claims_all_null_only_under_it():
-    assert sb._policy_disclosure("all_null_candidate/1").startswith("all_null_candidate/1 — no numerical result exists")
+    said = sb._policy_disclosure("all_null_candidate/1")
+    assert said == sb.ALL_NULL_DISCLOSURE and "no numerical result exists" not in said
+    assert said == ("The result policy `all_null_candidate/1` forbids any numerical result or qualified valence in every record, window and "
+                    "window-membership link of this generation, and the gate refuses legacy projection rows for it (`record_result_not_policy`, "
+                    "`legacy_projection_rows_present`); this is a property the gate enforces at seal, not a property of the database's contents "
+                    "at every moment.")                                                           # VERBATIM packet §R13b (F-R14-1)
+    import pathlib
+    gate = (pathlib.Path(__file__).resolve().parents[4] / "migrations" / "1240_gochara_window_verification_gate.sql").read_text()
+    assert "'record_result_not_policy'" in gate and "'legacy_projection_rows_present'" in gate     # the two refusal names the sentence cites
     other = sb._policy_disclosure("window_qualification/1")
     assert other.startswith("window_qualification/1") and "no numerical result" not in other and "no all-NULL claim" in other
 

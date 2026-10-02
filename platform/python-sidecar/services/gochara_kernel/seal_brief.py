@@ -289,15 +289,20 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
 
 
 ALL_NULL_POLICY = "all_null_candidate/1"
+#: VERBATIM the packet's §R13b sentence (F-R14-1; steward ruling) — it is inside the digest preimage, so it must be exactly the sentence the
+#: packet, §R12a and the runbook promise. It makes NO claim about the database's contents at every moment: the gate enforces it at seal.
+ALL_NULL_DISCLOSURE = (
+    "The result policy `all_null_candidate/1` forbids any numerical result or qualified valence in every record, window and window-membership "
+    "link of this generation, and the gate refuses legacy projection rows for it (`record_result_not_policy`, `legacy_projection_rows_present`); "
+    "this is a property the gate enforces at seal, not a property of the database's contents at every moment.")
 
 
 def _policy_disclosure(policy: str) -> str:
     """The disclosure's wording follows the MANIFEST's policy name — it never asserts the all-NULL claim for a manifest that selects
-    another policy (F-R13 / Stream B): `no numerical result exists` is said only under `all_null_candidate/1`, where the window CHECKs and
-    the generation-wide gate (including the legacy-row arm) enforce it."""
+    another policy (F-R13 / Stream B): the all-NULL sentence is said only under `all_null_candidate/1`, and even there only as what the gate
+    ENFORCES AT SEAL (F-R14-1) — never as a claim about the database's contents at every moment."""
     if policy == ALL_NULL_POLICY:
-        return (f"{policy} — no numerical result exists in this generation: the policy forbids one (window all-NULL arms) and the "
-                "legacy projection relations hold none (enforced by the gate, not assumed)")
+        return ALL_NULL_DISCLOSURE
     return f"{policy} — this brief makes no all-NULL claim; the result policy above governs what this generation may contain"
 
 

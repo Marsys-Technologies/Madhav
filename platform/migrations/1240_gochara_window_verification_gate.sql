@@ -664,8 +664,9 @@ BEGIN
       'ka_gochara_eval_window_record', 'ka_gochara_search_path_pin', 'ka_gochara_search_inventory',
       'ka_gochara_search_input_snapshot', 'ka_gochara_search_obligation', 'ka_gochara_search_interval',
       'ka_gochara_eval_window_verification', 'ka_gochara_search_inventory_verification'] LOOP
-    -- (R13-2 cost review) a hash PER ROW, aggregated in hash order: the aggregate holds 64 bytes a row instead of the row's whole JSON text,
-    -- so no field-size limit can be reached however many rows a table holds, and no collation decides the order
+    -- (R13-2 cost review) a hash PER ROW, aggregated in hash order: the aggregate holds 65 bytes a row instead of the row's whole JSON text
+    -- and no collation decides the order. This REDUCES the field-size risk (the 1 GB value limit is reached at ~15 million rows of one table
+    -- and generation, independent of row width) — it does not remove it
     EXECUTE format('SELECT count(*), coalesce(encode(sha256(convert_to(string_agg(h, E''\n'' ORDER BY h COLLATE "C"), ''UTF8'')), ''hex''), '''') '
                    'FROM (SELECT encode(sha256(convert_to((to_jsonb(x) - ''created_at'')::text, ''UTF8'')), ''hex'') AS h '
                    'FROM public.%I x WHERE x.chart_id = $1 AND x.generation = $2) s', t)
@@ -739,6 +740,12 @@ BEGIN
   -- holds the chart, and once the generation is sealed the status test below refuses it.
   PERFORM public.ka_gochara_lock_chart(NEW.chart_id);
   PERFORM public.ka_gochara_lock_global_shared();
+  -- (R14-2) a SEALED generation takes no brief — decided by the seal row itself, never by the manifest's status (a status can be edited; the
+  -- seal is permanent)
+  IF EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal sl WHERE sl.chart_id = NEW.chart_id AND sl.generation = NEW.generation) THEN
+    RAISE EXCEPTION 'ka_gochara_seal_brief refused (brief_without_candidate): generation % of chart % is SEALED — a sealed generation takes no brief',
+      NEW.generation, NEW.chart_id USING ERRCODE = 'check_violation';
+  END IF;
   SELECT p.manifest_id, p.status INTO m, st FROM public.kala_gochara_publication p
   WHERE p.chart_id = NEW.chart_id AND p.generation = NEW.generation;
   IF m IS NULL OR st IS DISTINCT FROM 'candidate' THEN
@@ -910,22 +917,42 @@ CREATE TRIGGER ka_gochara_seal_approval_no_truncate
   BEFORE TRUNCATE ON public.ka_gochara_seal_approval
   FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_seal_approval_immutable();
 
--- ── 4c. every write that touches the claimed boundary serializes on the chart lock IN THE DATABASE (R13-2) ──────────────────
+-- ── 4c. every write that touches the claimed boundary serializes on the chart lock IN THE DATABASE (R13-2, R14-1, R14-2) ───────
 -- The seal's checks (the state digest at COMMIT, the brief, the gate) are reads: a read is no lock against a concurrent writer, and a
 -- DEFERRED check can be run early (`SET CONSTRAINTS ALL IMMEDIATE`) — a write committed after it would change the state the receipt
--- attests with no further check. So every table the sealed boundary depends on makes its WRITERS take the chart seal lock themselves
--- (chart EXCLUSIVE first — the established order), and refuse once the generation is sealed:
---   * the twelve output / search-input / verification tables and the brief table already did (their own write guards, 1155/1206/1240);
+-- attests with no further check; and a write that is merely never refused AFTER the seal changes what the seal attests afterwards.
+-- So every relation the sealed boundary depends on makes its WRITERS take the chart seal lock themselves (chart EXCLUSIVE first — the
+-- established order) and refuse once the generation is sealed:
+--   * the relations whose own write guards (1155 / 1206 / 1240) already take the lock and refuse sealed INSERT/UPDATE/DELETE: the output,
+--     search-input and verification tables and the brief table — EXCEPT (R14-1) the two deliberate sealed-time exceptions the older guards
+--     keep: ka_gochara_contact (1153's guard checks sealing on DELETE only; INSERT and enrichment UPDATE proceed) and the relationship
+--     record's 'precision_sync' UPDATE (1155:453-455). Both change DIGESTED fields after seal, so they get the guard below as well;
 --   * kala_gochara_coverage (BUILD partitions only — the on-demand Moon partitions are written after publication by design),
---     kala_gochara_publication (identity columns; a sealed manifest may still be superseded / rolled back), and the LEGACY projection
+--     kala_gochara_publication (identity columns frozen; the sealed LIFECYCLE is a whitelist — R14-2) and the LEGACY projection
 --     relations kala_gochara_contacts / kala_gochara_windows (for a governed generation) get the guard below.
--- A concurrent writer therefore BLOCKS until the sealing transaction commits (or rolls back), and then is refused by the sealed-state test —
--- so the state attested at COMMIT is the state the generation keeps. Only generations of major >= 5 are touched: legacy writers of
--- every other generation neither take the lock nor need EXECUTE on any function (the governed test is an inline regex, the same text as
--- ka_gochara_generation_governed — a static test pins the two together).
+-- A concurrent writer therefore BLOCKS until the sealing transaction commits (or rolls back) and is then refused by the sealed-state test —
+-- so the state attested at COMMIT is the state the generation keeps. Only generations of major >= 5 are touched: writers of every other
+-- generation neither take this lock nor are refused. The governed test is an INLINE regex (the same text as ka_gochara_generation_governed
+-- — a static test pins the two together), so a legacy-generation write calls NO function; a GOVERNED row's write does call
+-- ka_gochara_lock_chart (EXECUTE held by the builder, sealer and verifier) and reads the seal table directly (SELECT; the sealer holds no
+-- EXECUTE on ka_gochara_generation_is_sealed).
+--
+-- HISTORICAL SCOPE (R14-1, mode 'regime'): the contact and precision refusals apply to a sealed generation whose MANIFEST carries a
+-- `result_policy` — the vector schema of this regime (1240). A generation sealed before it (a manifest without the key) keeps the older
+-- behaviour (enrichment UPDATE, precision_sync): nothing in production is sealed, so this is a stated boundary, not a live population.
+--
+-- CONCURRENCY NOTE (R14-3 review): for UPDATE/DELETE on kala_gochara_coverage, kala_gochara_contacts / _windows and ka_gochara_contact /
+-- ka_gochara_relationship_record, PostgreSQL locks the target TUPLE before a BEFORE ROW trigger runs, i.e. before the chart lock is
+-- requested; two sessions that interleave tuple and chart locks can deadlock and PostgreSQL aborts ONE participant — the operator retries
+-- the whole transaction. (The statement-level locks of 1153 / the publication statement lock below take the chart lock first where they
+-- exist.) The publication statement trigger scans ALL governed-generation rows of kala_gochara_publication — a table of a handful of
+-- rows — and calls ka_gochara_lock_chart for each chart found; a governed row of a NON-canonical chart would make that lock refuse
+-- (D-SCOPE, 1153) and with it EVERY UPDATE/DELETE statement on the table: the pre-window check is that no such row exists.
 CREATE OR REPLACE FUNCTION public.ka_gochara_boundary_write_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
-DECLARE side text; rec jsonb; ch uuid; gen text; kind text;
+DECLARE
+  mode text := coalesce(TG_ARGV[0], '');
+  side text; rec jsonb; ch uuid; gen text; kind text; sealed boolean; old_status text; new_status text;
 BEGIN
   FOREACH side IN ARRAY (CASE TG_OP WHEN 'INSERT' THEN ARRAY['new'] WHEN 'DELETE' THEN ARRAY['old'] ELSE ARRAY['old', 'new'] END) LOOP
     rec := CASE side WHEN 'old' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
@@ -933,13 +960,26 @@ BEGIN
     CONTINUE WHEN gen IS NULL OR gen !~ '^([5-9]|[1-9][0-9]+)\.[0-9]+$';
     CONTINUE WHEN TG_TABLE_NAME = 'kala_gochara_coverage' AND coalesce(kind, '') NOT IN ('body_target', 'event_class');
     PERFORM public.ka_gochara_lock_chart(ch);
-    -- (the seal table is read directly: the sealer — who writes the publication row — holds SELECT on it but no EXECUTE on ka_gochara_generation_is_sealed)
-    IF EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal sl WHERE sl.chart_id = ch AND sl.generation = gen) THEN
+    sealed := EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal sl WHERE sl.chart_id = ch AND sl.generation = gen);
+    IF sealed AND mode = 'regime' THEN
+      -- historical scope: only a generation whose manifest carries the result policy was sealed under this regime
+      sealed := EXISTS (SELECT 1 FROM public.kala_gochara_publication p
+                        WHERE p.chart_id = ch AND p.generation = gen AND p.input_generation_vector ? 'result_policy');
+    END IF;
+    IF sealed THEN
       IF TG_TABLE_NAME = 'kala_gochara_publication' AND TG_OP = 'UPDATE'
          AND (to_jsonb(NEW) - 'status' - 'superseded_at') = (to_jsonb(OLD) - 'status' - 'superseded_at') THEN
-        CONTINUE;                       -- a sealed generation's manifest may be superseded / rolled back; its identity never changes
+        -- R14-2: the sealed LIFECYCLE is a WHITELIST. A published manifest may be superseded or withdrawn (rolled_back); nothing may return it
+        -- to 'candidate' (that would re-open it to a new brief), and nothing else changes. A no-op UPDATE is harmless.
+        old_status := to_jsonb(OLD) ->> 'status'; new_status := to_jsonb(NEW) ->> 'status';
+        IF (old_status = new_status AND (to_jsonb(NEW) ->> 'superseded_at') IS NOT DISTINCT FROM (to_jsonb(OLD) ->> 'superseded_at'))
+           OR (old_status = 'published' AND new_status IN ('superseded', 'rolled_back')) THEN
+          CONTINUE;
+        END IF;
+        RAISE EXCEPTION 'kala_gochara_publication refused (sealed lifecycle, R14-2): the sealed generation (chart %, generation %) may go published -> superseded or published -> rolled_back (withdrawal, attested rows retained) and nothing else; % -> % is not permitted',
+          ch, gen, old_status, new_status USING ERRCODE = 'check_violation';
       END IF;
-      RAISE EXCEPTION '% refused (sealed boundary, R13-2): (chart %, generation %) is SEALED — % of a row that belongs to the sealed candidate boundary is not permitted',
+      RAISE EXCEPTION '% refused (sealed boundary, R13-2/R14-1): (chart %, generation %) is SEALED — % of a row that belongs to the sealed candidate boundary is not permitted',
         TG_TABLE_NAME, ch, gen, TG_OP USING ERRCODE = 'check_violation';
     END IF;
   END LOOP;
@@ -948,9 +988,9 @@ END;
 $$;
 
 -- The sealer holds the chart lock and then WRITES the publication row; a builder UPDATE/DELETE of that row would hold its tuple (a BEFORE
--- ROW trigger locks the tuple first) while waiting for the chart lock — a deadlock with the sealer. So, as every other chart-scoped table
--- does (ka_gochara_chart_statement_lock), the publication takes the chart lock at STATEMENT level, before any row lock; the table holds
--- a handful of rows, so the scan for governed charts is cheap.
+-- ROW trigger locks the tuple first) while waiting for the chart lock — a deadlock with the sealer. So the publication takes the chart
+-- lock at STATEMENT level, before any row lock. Unlike ka_gochara_chart_statement_lock (every chart in its table), this one locks the
+-- charts that have a GOVERNED-generation row — see the concurrency note above.
 CREATE OR REPLACE FUNCTION public.ka_gochara_publication_statement_lock()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 DECLARE c uuid;
@@ -963,6 +1003,22 @@ BEGIN
 END;
 $$;
 
+-- TRUNCATE (F-R14-4): the four boundary relations refuse it while they hold any GOVERNED-generation row (TRUNCATE is owner-only in this
+-- deployment; no Gochara principal holds it). A table holding only legacy generations may still be truncated — the refusal is the
+-- boundary's, not the legacy tables'. Statement-level; reads the protected table as its owner.
+CREATE OR REPLACE FUNCTION public.ka_gochara_boundary_truncate_guard()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+DECLARE held boolean;
+BEGIN
+  EXECUTE format('SELECT EXISTS (SELECT 1 FROM public.%I WHERE generation ~ %L)', TG_TABLE_NAME, '^([5-9]|[1-9][0-9]+)\.[0-9]+$') INTO held;
+  IF held THEN
+    RAISE EXCEPTION '% refused (sealed boundary, F-R14-4): TRUNCATE while governed-generation rows exist is not permitted', TG_TABLE_NAME
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
 DO $$
 DECLARE t text;
 BEGIN
@@ -971,6 +1027,9 @@ BEGIN
       EXECUTE format('DROP TRIGGER IF EXISTS ka_gochara_boundary_1_write_guard ON public.%I', t);
       EXECUTE format('CREATE TRIGGER ka_gochara_boundary_1_write_guard BEFORE INSERT OR UPDATE OR DELETE ON public.%I '
                      'FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_boundary_write_guard()', t);
+      EXECUTE format('DROP TRIGGER IF EXISTS ka_gochara_boundary_2_no_truncate ON public.%I', t);
+      EXECUTE format('CREATE TRIGGER ka_gochara_boundary_2_no_truncate BEFORE TRUNCATE ON public.%I '
+                     'FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_boundary_truncate_guard()', t);
     END IF;
   END LOOP;
   IF to_regclass('public.kala_gochara_publication') IS NOT NULL THEN
@@ -978,7 +1037,30 @@ BEGIN
     CREATE TRIGGER ka_gochara_boundary_0_statement_lock BEFORE UPDATE OR DELETE ON public.kala_gochara_publication
       FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_publication_statement_lock();
   END IF;
+  -- R14-1: the two sealed-time exceptions of the older guards (1153 contact INSERT/enrichment; 1155 precision_sync), mode 'regime'
+  DROP TRIGGER IF EXISTS ka_gochara_boundary_1_write_guard ON public.ka_gochara_contact;
+  CREATE TRIGGER ka_gochara_boundary_1_write_guard BEFORE INSERT OR UPDATE OR DELETE ON public.ka_gochara_contact
+    FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_boundary_write_guard('regime');
+  DROP TRIGGER IF EXISTS ka_gochara_boundary_1_write_guard ON public.ka_gochara_relationship_record;
+  CREATE TRIGGER ka_gochara_boundary_1_write_guard BEFORE UPDATE ON public.ka_gochara_relationship_record
+    FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_boundary_write_guard('regime');
 END $$;
+
+-- Which of the four LATE-CREATABLE boundary relations exist and are guarded — read live (the runbook's pre-window inventory calls it):
+-- a relation created after this migration ran shows exists = true, guarded = false. What exists in production is UNKNOWN to this migration.
+CREATE OR REPLACE FUNCTION public.ka_gochara_boundary_guard_inventory()
+RETURNS TABLE (relation text, relation_exists boolean, write_guarded boolean, truncate_guarded boolean)
+LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
+  SELECT x.t, to_regclass('public.' || x.t) IS NOT NULL,
+         EXISTS (SELECT 1 FROM pg_trigger g WHERE g.tgrelid = to_regclass('public.' || x.t) AND NOT g.tgisinternal
+                 AND g.tgname = 'ka_gochara_boundary_1_write_guard'),
+         EXISTS (SELECT 1 FROM pg_trigger g WHERE g.tgrelid = to_regclass('public.' || x.t) AND NOT g.tgisinternal
+                 AND g.tgname = 'ka_gochara_boundary_2_no_truncate')
+  FROM (VALUES ('kala_gochara_coverage'), ('kala_gochara_publication'), ('kala_gochara_contacts'), ('kala_gochara_windows')) AS x(t)
+  ORDER BY 1;
+$$;
+COMMENT ON FUNCTION public.ka_gochara_boundary_guard_inventory() IS
+  'A5.3 R14: for each of the four late-creatable boundary relations — does it exist, is its write guard installed, is its TRUNCATE guard installed. Live read; a relation created after 1240 ran appears with relation_exists = true and write_guarded = false.';
 
 -- ── 5. the write guard (the 1206 trio) ────────────────────────────────────────
 
@@ -1203,6 +1285,24 @@ BEGIN
   IF missing IS NOT NULL THEN
     RAISE EXCEPTION 'migration 1240 post-apply check failed: the sealed-boundary write guard (R13-2) is missing on: %', missing;
   END IF;
+  SELECT string_agg(x.t, ', ') INTO missing
+  FROM (VALUES ('kala_gochara_coverage'), ('kala_gochara_publication'), ('kala_gochara_contacts'), ('kala_gochara_windows')) AS x(t)
+  WHERE to_regclass('public.' || x.t) IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM pg_trigger g WHERE g.tgrelid = ('public.' || x.t)::regclass AND NOT g.tgisinternal
+                    AND g.tgname = 'ka_gochara_boundary_2_no_truncate');
+  IF missing IS NOT NULL THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the TRUNCATE guard (F-R14-4) is missing on: %', missing;
+  END IF;
+  SELECT string_agg(x.rel, ', ') INTO missing
+  FROM (VALUES ('ka_gochara_contact'), ('ka_gochara_relationship_record')) AS x(rel)
+  WHERE NOT EXISTS (SELECT 1 FROM pg_trigger g WHERE g.tgrelid = ('public.' || x.rel)::regclass AND NOT g.tgisinternal
+                    AND g.tgname = 'ka_gochara_boundary_1_write_guard');
+  IF missing IS NOT NULL THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the sealed contact / precision guard (R14-1) is missing on: %', missing;
+  END IF;
+  -- RECORD which of the four late-creatable relations were guarded when 1240 ran (the live function ka_gochara_boundary_guard_inventory()
+  -- re-reads it at any time; what exists in production is not known to this migration)
+  RAISE NOTICE 'migration 1240: boundary guard inventory — %', (SELECT string_agg(i.relation || '[exists=' || i.relation_exists || ',write_guarded=' || i.write_guarded || ',truncate_guarded=' || i.truncate_guarded || ']', '; ') FROM public.ka_gochara_boundary_guard_inventory() i);
   SELECT string_agg(x.sig, ', ') INTO missing
   FROM (VALUES
     ('public.ka_gochara_f4_token(real)'),
@@ -1221,6 +1321,8 @@ BEGIN
     ('public.ka_gochara_brief_state_digest(uuid,text)'),
     ('public.ka_gochara_boundary_write_guard()'),
     ('public.ka_gochara_publication_statement_lock()'),
+    ('public.ka_gochara_boundary_truncate_guard()'),
+    ('public.ka_gochara_boundary_guard_inventory()'),
     ('public.ka_gochara_seal_brief_problem(uuid,text,uuid,text)')) AS x(sig)
   WHERE to_regprocedure(x.sig) IS NULL;
   IF missing IS NOT NULL THEN
