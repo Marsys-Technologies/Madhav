@@ -9,6 +9,7 @@
     "ka_gochara_resonance",
     "ka_gochara_sweep",
     "ka_gochara_v3_century_materialize",
+    "ka_gochara_v4_41_candidate",
     "ka_moorti_nirnaya",
     "ka_vedha_gochara"
   ],
@@ -46,6 +47,7 @@
     "ka_gochara_resonance",
     "ka_gochara_sweep",
     "ka_gochara_v3_century_materialize",
+    "ka_gochara_v4_41_candidate",
     "ka_jivana_parva",
     "ka_kala_darshana",
     "ka_kalasutra",
@@ -71,13 +73,18 @@
     "ka_moorti_nirnaya": "Strategist required addition: Pravaha's gochara family writer (platform/python-sidecar/pipeline/orchestrator/writers/ka_moorti_nirnaya.py:23, services/ka_moorti_nirnaya); no name pattern covers it. ka_kota_chakra is deliberately NOT in the set (that reader is ours by agreement).",
     "bg_gochara_arcs": "Strategist ruling: writer imports Pravaha's services.w2g (platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py:49,54); also matched by E5.3's bg_gochara_ name pattern.",
     "bg_gochara_citation_resolution": "Strategist ruling: L0 asset, rebuilt one at a time in coordination with Pravaha; matched by E5.3's bg_gochara_ name pattern.",
-    "ka_gochara_sweep": "Strategist ruling: matched by E5.3's ka_gochara name pattern; INACTIVE in the registry seed (retired Gochara sweep writer) and kept in the refusal set; see _notes.inactive."
+    "ka_gochara_sweep": "Strategist ruling: matched by E5.3's ka_gochara name pattern; INACTIVE in the registry seed (retired Gochara sweep writer) and kept in the refusal set; see _notes.inactive.",
+    "ka_gochara_v4_41_candidate": "Pravaha's v4.41 candidate asset (Pravaha #2799): matched by the family name pattern; rebuilt only by Pravaha."
   },
   "_notes": {
     "inactive": [
       {
         "asset": "ka_gochara_sweep",
         "reason": "is_active false in the registry seed: retired Gochara sweep (generation=v1 rows are protected); kept in the refusal set because E5.3's ka_gochara name pattern already refuses it"
+      },
+      {
+        "asset": "ka_gochara_v4_41_candidate",
+        "reason": "is_active false in the registry seed (an engineering-proof candidate, never flipped); kept in the refusal set because E5.3's ka_gochara name pattern already refuses it and Pravaha alone rebuilds it"
       }
     ],
     "seed": "Every member is an active asset in platform/scripts/seed/asset_registry_seed.ts at origin/main; if a member is later retired it may stay in the refusal set but must be listed in _notes.inactive with its reason.",
