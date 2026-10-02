@@ -4334,9 +4334,14 @@ def _dynamic_from(txt: str, spans: list[tuple[int, str]]) -> bool:
 #       not a call argument and not a const holder (the real envelope: `return { content: { ..., provenance: { tables: [...] } } }`);
 #   (2) STRICT PROSE: a string that is the whole value of the key `source` / `source_table` / `label` / `note` / `reason` / `description` / `message` /
 #       `title`, is strict prose (`_strict_prose`) and sits in an object literal that is not a call argument;
-#   (3) the `service_probe` envelope of a SERVICE-kind asset is a REACH (kind `probe`), at any depth below the marker object; a data-kind asset's
-#       envelope is not in the list either, so it is a reach too;
+#   (3) the `service_probe` envelope of a SERVICE-kind asset is a REACH (kind `probe`), at any depth below the marker object; for a DATA-kind asset the
+#       envelope's own keys (`asset_id`, `endpoint_identity`, `source_ref`) are not in the list, so they are a reach too -- but a `provenance.tables`
+#       element that happens to sit inside a probe envelope is still context (1), a LABEL, for a data-kind asset (the verdict is by the structural context);
 #   (4) an import / require path, a type / interface / enum / class name; a COMMENT is not a label, it BLOCKS (R51; handled in capability_scan).
+# KNOWN RESIDUALS of the allow-list (documented, deliberately not widened): (a) a regex literal holding a bracket or a quote can skew the bracket scan
+# (`_ts_desynced` guards the quote case only); (b) strict prose is pure alphabetic words, so a statement made only of words (`table t_x union all table
+# facts`) is refused by name (`table` / `union` are never prose here) but any other all-words SQL dialect form is not enumerated; (c) a function that
+# RETURNS provenance.tables whose value then flows to a same-module generic reader is outside the allow-list's premise (the envelope is response metadata).
 # SELECT = SQL in the literal (or its +/, neighbours); AMBIGUOUS = every other occurrence. A module is a reach unless EVERY occurrence is a LABEL (and
 # it carries no strict served select): only an exact "scanned, no select, no unrecognised form" reads N/A.
 LABEL, SELECT_REF, AMBIGUOUS_REF = "label", "select", "ambiguous"
@@ -4356,7 +4361,10 @@ _SQL_STRONG = re.compile(r"\bSELECT\b|\bJOIN\b|\bINSERT\s+INTO\b|\bDELETE\s+FROM
 _SQL_UPPER = re.compile(r"\b(?:FROM|INTO|UPDATE|TABLE|SET|WHERE|RETURNING|TRUNCATE|UNION|COPY)\b")
 _LIT_GAP = re.compile(r"[\s+,]*(?:\.concat\s*\(\s*)?")
 _KEY_AT_END = re.compile(r"(?:^|[{,]|\n)\s*(?:([A-Za-z_$][\w$]*)|'([A-Za-z_]\w*)'|\"([A-Za-z_]\w*)\")\s*\??:\s*$")
-_IMPORT_PATH_BEFORE = re.compile(r"(?:^|[\s;}])(?:from|import)\s*$|\b(?:import|require)\s*\(\s*$")
+# an import / require path: `import x from '...'`, `export * from '...'`, side-effect `import '...'` (quote ' or ", never a tagged template), or a call
+# `import(...)` / `require(...)` that is not a METHOD (`loader.import('t')`, `this.require('t')`)
+_FROM_IMPORT_BEFORE = re.compile(r"(?:^|[\s;}])(?:from|import)\s*$")
+_CALL_IMPORT_BEFORE = re.compile(r"(?<![.\w$])(?:import|require)\s*\(\s*$")
 _TYPE_NAME_BEFORE = re.compile(r"\b(?:type|interface|enum|class)\s+$")
 _PROSE_WORD = re.compile(r"[A-Za-z]+[.,;:!?]*")
 
@@ -4381,8 +4389,11 @@ def _literal_chain(mod: dict, i: int, radius: int = 2) -> str:
 def _strict_prose(c: str, tok: str) -> bool:
     """A literal is prose only if it has five or more whitespace-separated words besides the name, EVERY one purely alphabetic with at most
     trailing sentence punctuation (`. , ; : ! ?`) -- no `_`, digit, `( ) = * ' " ` , -`, no identifier-like run -- and the name stands as its own
-    word (optionally in `( )` or with trailing punctuation). A snake_case run, a comma list, `a as b` or a JSON array string is never prose."""
+    word (optionally in `( )` or with trailing punctuation). A snake_case run, a comma list, `a as b` or a JSON array string is never prose, and
+    neither is a literal holding the word `table` or `union` (`table t_x union all table u` is valid SQL made only of alphabetic words)."""
     words = c.split()
+    if any(w.strip(".,;:!?").lower() in ("table", "union") for w in words):
+        return False                                               # `table t_x union all table u` is valid SQL made of alphabetic words
     name = re.compile(r"\(?" + re.escape(tok) + r"[.,;:!?)]*")
     others = [w for w in words if not name.fullmatch(w)]
     if len(others) == len(words) or len(others) < 5:
@@ -4421,6 +4432,12 @@ def _paren_is_call(blank: str, k: int) -> bool:
     if j < 0:
         return False
     ch = blank[j]                                                  # `=> (` and `= (` end in a non-word char: a grouping paren
+    if ch == ">":
+        return not (j > 0 and blank[j - 1] == "=")                 # `query<Row>(` / `new Q<R>(` (a generic close) is a call; `=> (` is not
+    if ch == "." and j > 0 and blank[j - 1] == "?":
+        return True                                                # `query?.(`
+    if ch == "!":
+        return True                                                # `query!(`
     if ch.isalnum() or ch in "_$":
         w = re.search(r"[A-Za-z_$][\w$]*$", blank[max(0, j - 40):j + 1])
         return not (w and w.group(0) in _NOT_A_CALL_WORDS)
@@ -4536,7 +4553,8 @@ def _literal_ref_kind(mod: dict, i: int, off: int, tok: str) -> str:
         return AMBIGUOUS_REF                                      # glued to an interpolation: a name built at run time
     if not after.strip() and re.match(r"\s*(?:\+|\.concat\b)", txt[start + len(c) + 1:start + len(c) + 12]):
         return AMBIGUOUS_REF                                      # the tail of a concatenated name
-    if _IMPORT_PATH_BEFORE.search(cm[max(0, start - 1 - 120):start - 1]):
+    pre = cm[max(0, start - 1 - 120):start - 1]
+    if _CALL_IMPORT_BEFORE.search(pre) or (txt[start - 1] in "'\"" and _FROM_IMPORT_BEFORE.search(pre)):
         return LABEL                                              # (4) an import / require path
     if c.strip() == tok and _is_provenance_element(mod, i):
         return LABEL                                              # (1) the provenance envelope
@@ -4900,14 +4918,16 @@ def capability_scan(caps_dirs, tables: list[str], shared=(), columns: dict | Non
     A name is a label ONLY in: (1) an element of `provenance: { tables | source_tables: [...] }` in an envelope that is a property / return value of
     an object literal (not a call argument, not a const holder); (2) a strict-prose string (>= 5 purely alphabetic words besides the name) that is the
     whole value of `source`/`source_table`/`label`/`note`/`reason`/`description`/`message`/`title` in an object that is not a call argument; (3) --
-    (a `service_probe` envelope is a REACH); (4) an import / require path, a type / interface / enum / class name. EVERYTHING ELSE (a bare name in a
+    (a `service_probe` envelope is a REACH for a service-kind asset; for a data-kind asset its own keys are a reach, while a `provenance.tables` element
+    inside it is still context (1)); (4) an import / require path, a type / interface / enum / class name. EVERYTHING ELSE (a bare name in a
     list or map, a label key's value, an identifier-looking word, a path, a URL, an alias, a name in a call, an interpolation or a concatenation) is a
     reach: there is no consumption tracking and no shape heuristic. The rest of the scan (attribution, contract and tier, `served`, `shared_only`,
     `comment_only`, the outside probe) is unchanged, so no PASS / PARTIAL / FAIL moves. COMMENTS: ONE rule (R51, strategist option ii): a comment
     that names the asset ANYWHERE in a module blocks the N/A, including a module whose code only labels it (`label_comment`).
     SERVICE ASSETS. `service` (measure() passes the asset's registry kind == 'service'): an occurrence inside a `service_probe` envelope, at any
     depth below the marker object, is a PROBE (a reach, named as such) so a service asset named only by its probe envelope stays NO_DETECTOR. The
-    envelope is not in the allow-list for a data asset either (also a reach), so `service` changes the evidence NAME, not the verdict. Whether
+    envelope's own keys are not in the allow-list for a data asset either (also a reach), so `service` changes the evidence NAME there, not the verdict;
+    only a `provenance.tables` element inside an envelope differs (a LABEL for a data asset, a PROBE for a service asset). Whether
     Dens.served applies to services at all is a separate later declared rule.
     N/A MEANS "NOT SERVED DIRECTLY", NOT "UNUSED". `platform/python-sidecar/services/ka_vedha_gochara/writer.py` (a Python L3 writer) does read
     `FROM bg_phaladeepika_latta`; the rule says no SERVED module selects from it, which is true.

@@ -18,6 +18,12 @@ Python L3 writer) DOES read `FROM bg_phaladeepika_latta`; the rule says no SERVE
 "not served directly", NOT "unused". bg_cohort stays NO_DETECTOR (a comment in the same module names it); a later per-asset declared cause, not a
 scanner inference from prose. bg_ephemeris_engine / bg_panchanga (registry kind `service`) stay NO_DETECTOR.
 
+KNOWN RESIDUALS (documented, not widened): (a) regex literals holding a bracket / quote can skew the bracket scan; (b) strict prose refuses the
+words `table` and `union` by name (`table t_x union all table u` is valid SQL made of alphabetic words) but other all-words SQL forms are not
+enumerated; (c) a function RETURNING provenance.tables whose value flows to a same-module generic reader is outside the allow-list's premise.
+A data-kind `service_probe` envelope: its own keys (`asset_id` / `endpoint_identity` / `source_ref`) are a reach; a `provenance.tables` element that
+happens to sit inside it is still a LABEL for a data-kind asset (a PROBE for a service-kind asset).
+
 Every test drives the real `capability_scan` / `_grade_dens` over a small synthetic tree, plus the real tree for the pinned N/A set.
 
 Run:
@@ -77,8 +83,8 @@ LABELS = {
     "label-prose": "export const c = { label: '" + PROSE + "' }\n",
     "source-prose": "export const c = { source: '" + PROSE + "' }\n",
     "source_table-prose": "export const c = { source_table: '" + PROSE + "' }\n",
-    "prose-with-the-name-in-parentheses": "export const c = { note: 'Rows come from the table (t_x), nothing else matters here.' }\n",
-    "prose-with-trailing-punctuation": "export const c = { note: 'Rows come from the table t_x; nothing else matters here!' }\n",
+    "prose-with-the-name-in-parentheses": "export const c = { note: 'Rows come from the store (t_x), nothing else matters here.' }\n",
+    "prose-with-trailing-punctuation": "export const c = { note: 'Rows come from the store t_x; nothing else matters here!' }\n",
     "prose-in-a-const-holder-object": "const REF = { description: '" + PROSE + "' }\nexport const ok = 1\n",
     "import-from-path": "import { thing } from './t_x'\nexport const ok = thing\n",
     "import-bare-from": "import thing from 'bg_x'\nexport const ok = thing\n",
@@ -718,8 +724,6 @@ def test_every_sql_signal_unit_marks_the_literal_a_select(src):
 @pytest.mark.parametrize("src", [
     "export const c = { note: 'a note on returning t_x rows quickly to the caller' }",
     "export const c = { note: 'we truncate the list shown for t_x in the view' }",
-    "export const c = { note: 'the union of t_x and its siblings is shown here' }",
-    "export const c = { note: 'a table of t_x rows, set aside, updated' }",
     "export const c = { note: 'a where clause on t_x is not used here' }",
     "export const c = { note: 'the selected rows and updated notes for t_x joined view subselect' }",
     "export const c = { note: 'lower copy t_x for the reader of this page now' }",
@@ -751,6 +755,97 @@ def test_a_label_in_one_token_and_an_ambiguous_form_of_another_token_is_one_reac
 def test_a_comment_naming_the_table_while_the_code_labels_the_asset_id_blocks_here(tree):
     d, cap = _verdict(tree, "// reads t_x\n" + PROV % "'bg_x'")
     assert d["v"] == NO_DET and cap["label_comment"] == ["tool.ts"], (d, cap)
+
+
+# ───────────────────────── third review: L1 (a served select beside a provenance label), L2 (generic / optional calls), L3 (import methods), L5 ─────────────────────────
+
+def test_a_provenance_label_beside_a_served_select_in_the_same_declaration_is_served_not_na(tree):
+    """`if not sels and not _module_reaches(kinds)`: a module whose only occurrence of the asset is a provenance label is NOT label-only when the SAME
+    declaration holds a strict served select of a table the asset shares (attribution by the asset id): it is served (FAIL), never the N/A."""
+    tree.write(tree.layers, "tool.ts",
+               "export const cap = {\n  id: 'x',\n  run: () => {\n    query(`SELECT id FROM t_shared`)\n"
+               "    return { provenance: { tables: ['bg_x'] } }\n  },\n}\n")
+    cap = dr._scan(tree, ["t_shared", "bg_x"], shared={"t_shared"})
+    d = ac._grade_dens(cap, "t_shared")
+    assert d["v"] == ac.FAIL and cap["served"] == 1 and cap["modules"] == ["tool.ts"] and not cap["label_only"], (d, cap)
+    assert ac._ref_kinds(tree.layers.joinpath("tool.ts").read_text(encoding="utf-8"), "bg_x") == ["label"]      # the occurrence itself IS a label
+
+
+P = "{ reason: 'read t_x rows from the store for every chart' }"
+
+
+@pytest.mark.parametrize("src, want", [
+    (f"query({P})", "ambiguous"),
+    (f"query<Row>({P})", "ambiguous"),
+    (f"query<Row, Other>({P})", "ambiguous"),
+    (f"query?.({P})", "ambiguous"),
+    (f"query!({P})", "ambiguous"),
+    (f"new Q<R>({P})", "ambiguous"),
+    (f"new Q({P})", "ambiguous"),
+    (f"query<Row>(a, {P})", "ambiguous"),
+    (f"query?.(a, {P})", "ambiguous"),
+    (f"new Q<R>(a, {P})", "ambiguous"),
+    (f"const f = () => ({P})", "label"),
+    (f"const f = (a) => ({P})", "label"),
+    (f"const f = async () => ({P})", "label"),
+    (f"const f = () => ({P}).x", "label"),
+    (f"const f = (x: Array<number>) => ({P})", "label"),
+    (f"const a = [...({P})]", "label"),
+    (f"return ({P})", "label"),
+    (f"const c = ({P})", "label"),
+    (f"const c = x ? ({P}) : null", "label"),
+])
+def test_generic_optional_non_null_and_new_calls_are_calls_an_arrow_is_not(src, want):
+    assert _kinds(src) == [want], (src, _kinds(src))
+
+
+@pytest.mark.parametrize("src, want", [
+    ("import x from 't_x'", "label"),
+    ("import { a } from \"t_x\"", "label"),
+    ("export * from 't_x'", "label"),
+    ("import 't_x'", "label"),
+    ("const m = require('t_x')", "label"),
+    ("const m = await import('t_x')", "label"),
+    ("const m = await import(`./t_x`)", "label"),
+    ("loader.import('t_x')", "ambiguous"),
+    ("x.require('t_x')", "ambiguous"),
+    ("this.import('t_x')", "ambiguous"),
+    ("a?.import('t_x')", "ambiguous"),
+    ("myimport('t_x')", "ambiguous"),
+    ("$require('t_x')", "ambiguous"),
+    ("_import('t_x')", "ambiguous"),
+    ("from`t_x`", "ambiguous"),
+    ("import`t_x`", "ambiguous"),
+    ("sql from`t_x`", "ambiguous"),
+    ("afrom 't_x'", "ambiguous"),
+    ("a.from 't_x'", "ambiguous"),
+    ("$import 't_x'", "ambiguous"),
+])
+def test_import_paths_are_label_methods_and_tagged_templates_are_not(src, want):
+    assert _kinds(src) == [want], (src, _kinds(src))
+
+
+@pytest.mark.parametrize("c, want", [
+    ("one two three four five t_x", True),
+    ("one two table three four five t_x", False),
+    ("one two Table three four five t_x", False),
+    ("one two table, three four five t_x", False),
+    ("one two union three four five t_x", False),
+    ("one two UNION three four five t_x", False),
+    ("table t_x union all table facts", False),
+    ("one two tables three four five t_x", True),
+    ("one two tabled unions three four five t_x", True),
+])
+def test_strict_prose_refuses_the_words_table_and_union(c, want):
+    assert ac._strict_prose(c, "t_x") is want, c
+
+
+def test_a_provenance_tables_element_inside_a_probe_envelope_is_a_label_for_data_and_a_probe_for_a_service():
+    src = "export const f = () => ({ kind: 'service_probe', provenance: { tables: ['t_x'] } })"
+    assert _kinds(src, service=False) == ["label"]
+    assert _kinds(src, service=True) == ["probe"]
+    keys = "export const f = () => ({ kind: 'service_probe', asset_id: 't_x' })"
+    assert _kinds(keys, service=False) == ["ambiguous"] and _kinds(keys, service=True) == ["probe"]
 
 
 # ───────────────────────── service-kind assets: a service_probe envelope is a reach, at any depth ─────────────────────────
