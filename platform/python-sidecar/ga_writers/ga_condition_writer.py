@@ -9,7 +9,9 @@ Natural key: (chart_id, ayanamsha_id, graha)
 Rows per chart: 9 grahas × 5 ayanamshas = 45
 
 Idempotency: L1 pattern — DELETE (chart_id, ayanamsha_id) then INSERT.
-FORENSIC guard: Sun in Capricorn must NOT be exalted/own/moolatrikona.
+No chart-specific assertion: this writer runs for every chart. The canonical chart's Sun (enemy sign,
+not exalted/own/moolatrikona) and Saturn (exalted in Libra) are pinned by the real-compute-path goldens
+(tests/test_ga_medical_sun_golden.py, tests/test_ga_medical_saturn_golden.py), not by a build halt.
 
 Band table (I-28): `condition_score` is bucketed into bands (0.4 / 0.7) by ONE table, defined in
 `ga_writers/ga_condition_bands.py`, re-exported here, read by ga_medical and ga_vastu.
@@ -54,8 +56,6 @@ from pyjhora_adapter.version import ENGINE_VERSION
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-
-CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 # All 9 classical Jyotish grahas (same order as ga_positions)
 ALL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
@@ -1582,8 +1582,7 @@ def build_ga_condition_substep(
          is REFUSED -- the build raises -- when the chart has divisional rows: X2 / I-29)
       4. Compute all condition fields for each graha
       5. Detect graha yuddha pairs
-      6. FORENSIC assertion for canonical chart
-      7. Delete-then-insert (idempotent replace)
+      6. Delete-then-insert (idempotent replace)
 
     Returns:
         Number of rows inserted.
@@ -1617,7 +1616,6 @@ def build_ga_condition_substep(
 
     # ── Build one row per graha ────────────────────────────────────────────────
     insert_rows: list[dict] = []
-    forensic_rows: dict[str, dict] = {}   # graha → computed row for FORENSIC check
 
     for graha in ALL_GRAHAS:
         pos = position_map.get(graha)
@@ -1775,33 +1773,9 @@ def build_ga_condition_substep(
             "computed_at":              computed_at,
         }
         insert_rows.append(row)
-        forensic_rows[graha] = row
 
     if not insert_rows:
         return 0
-
-    # ── FORENSIC assertions for canonical chart ────────────────────────────────
-    if chart_id == CANONICAL_CHART_ID:
-        sun_row = forensic_rows.get("Sun")
-        if sun_row is not None:
-            sun_dignity = sun_row.get("dignity_d1")
-            assert sun_dignity not in ("exalted", "moolatrikona", "own"), (
-                f"FORENSIC FAIL: Sun in Capricorn cannot be in dignity (exalted/moolatrikona/own), "
-                f"got dignity_d1='{sun_dignity}'. "
-                f"Sun's exaltation=Aries, own=Leo, moolatrikona=Leo. "
-                f"Capricorn is owned by Saturn; Sun–Saturn are enemies."
-            )
-            logger.info(
-                "[ga_condition_writer] FORENSIC PASS: Sun dignity_d1='%s' (correctly NOT exalted/own/moolatrikona) "
-                "for ayanamsha=%s",
-                sun_dignity, ayanamsha_id,
-            )
-
-        # FORENSIC: Saturn=Libra → exalted (BPHS Ch.3)
-        saturn_rows = [r for r in insert_rows if r.get("graha") == "Saturn"]
-        if saturn_rows:
-            assert saturn_rows[0].get("dignity_d1") == "exalted", \
-                f"FORENSIC FAIL: Saturn=Libra must be exalted, got {saturn_rows[0].get('dignity_d1')}"
 
     # ── Idempotent replace: DELETE then INSERT ─────────────────────────────────
     with conn.cursor() as cur:

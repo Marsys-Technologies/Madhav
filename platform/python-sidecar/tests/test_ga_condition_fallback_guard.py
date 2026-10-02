@@ -174,7 +174,6 @@ def _wire_minimal_build(monkeypatch, *, spread):
     monkeypatch.setattr(w, "_load_dasha_periods", lambda *a, **k: (None, None))
     monkeypatch.setattr(w, "_build_per_varga_avastha_rows", lambda *a, **k: [])
     monkeypatch.setattr(w, "_build_d1_avastha_rows", lambda *a, **k: [])
-    monkeypatch.setattr(w, "CANONICAL_CHART_ID", "not-this-chart")  # no FORENSIC asserts in the fake
 
 
 def test_build_raises_and_writes_nothing_when_fallback_would_be_used_on_a_chart_with_divisionals(monkeypatch):

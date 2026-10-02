@@ -70,6 +70,7 @@ def test_sun_in_capricorn_is_enemy_sign_not_debilitated_by_the_real_dignity_rule
     r = _compute(ayanamsha)
     assert r["dignity_d1"] == "enemy_sign"                       # computed, not pinned
     assert r["dignity_d1"] != "debilitated"
+    assert r["dignity_d1"] not in ("exalted", "moolatrikona", "own")   # the removed writer assert, now pinned here
     assert cw._DEBILITATION["Sun"] == "Libra"                    # Sun debilitates in Libra, not Capricorn
     assert r["dignity_score"] == cw.DIGNITY_SCORES["enemy_sign"] == 0.3
     assert r["avastha_deeptaadi"] == "dina"
