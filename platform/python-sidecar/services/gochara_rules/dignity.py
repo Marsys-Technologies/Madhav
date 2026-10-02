@@ -55,13 +55,17 @@ DIGNITY_ORDER = ("exaltation", "mulatrikona", "own", "extreme_friend",
 
 
 def dignity_of(graha: str, sign: str, deg_in_sign: float | None = None,
-               compound_relation: str | None = None) -> str:
+               compound_relation: str | None = None,
+               naisargika: dict[str, dict[str, frozenset[str]]] | None = None) -> str:
     """The doctrine-ordered dignity category of `graha` in `sign`.
 
     `compound_relation` (pañcādha maitrī of the graha with the sign's lord)
     supplies the extreme_friend/friend/enemy/extreme_enemy distinction; when
     absent the NAISARGIKA relation alone is used (friend/enemy/neutral) —
     the extreme tiers are not derivable without the tatkālika operand.
+    `naisargika` is the loaded L0 table (naisargika_maitri_from_rows on
+    bg_graha_naisargika_friendship rows); when neither operand is supplied
+    the sign-lord tiers are 'unqualified', never an assumed relation.
     Moon's mūlatrikoṇa span is unverified_ocr: a degree-dependent MT query on
     the Moon returns 'unqualified', never a guessed span.
     """
@@ -104,5 +108,7 @@ def dignity_of(graha: str, sign: str, deg_in_sign: float | None = None,
                                  "enemy", "extreme_enemy"):
             return compound_relation
         return "unqualified"
-    rel = naisargika_relation(graha, SIGN_LORDS.get(sign, ""))
+    if naisargika is None:
+        return "unqualified"
+    rel = naisargika_relation(graha, SIGN_LORDS.get(sign, ""), naisargika)
     return rel if rel is not None else "unqualified"
