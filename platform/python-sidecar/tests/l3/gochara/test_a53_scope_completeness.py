@@ -319,3 +319,17 @@ def test_a_numeric_p2_window_carries_the_cited_vedha_moon_obstruction_scope():
     for path, value in (("P2", None), ("P3", 0.5), ("P4", 0.5)):          # unqualified P2 / other paths: none
         assert sr._window_qualification(Conn(path, value), CHART_ID, GEN, [{"window_id": "w"}])[0][
             "vedha_moon_obstruction_scope"] is None
+
+
+def test_the_response_carries_the_named_limits_and_the_boundary_tolerance_statement(world):
+    """R9-3 / R9-9: the guarantee's assumption and the derived boundary tolerance are stated IN coverage, not only in the
+    brief — a completeness claim never travels without its limits."""
+    w = world
+    _complete_world(w)
+    r = sr.coverage_response(w.conn, chart_id=CHART_ID, generation=GEN, event_class=CLS, windows=[], horizon=(H0, H1))
+    names = {l["name"]: l for l in r["named_limits"]}
+    assert names["contact_geometry_guarantee"]["assumption"] == "smooth_motion_speed_bounded"
+    assert "shorter than 60 s are not excluded" in names["contact_geometry_guarantee"]["statement"]
+    assert "accuracy/|speed|" in names["boundary_tolerance"]["statement"] and "station" in names["boundary_tolerance"]["statement"]
+    refused = sr.coverage_response(w.conn, chart_id=CHART_ID, generation="9.9", event_class=CLS, windows=[])
+    assert refused["completeness"] == "refused" and "named_limits" not in refused           # nothing to qualify: no claim made

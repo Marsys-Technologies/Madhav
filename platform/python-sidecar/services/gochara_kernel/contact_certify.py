@@ -19,10 +19,15 @@ This module is the VERIFIER's: its orb and aspect tables are its own (`window_ve
 `_ASPECT_ANGLES`), nothing is imported from the builder's geometry."""
 from __future__ import annotations
 
+from . import boundary_match as bm
 from . import contact_reconstruct as cr
 
-_TOL_SECONDS = 2.0
 _TRANSIT = ("residence", "aspect", "conjunction")
+#: stated in coverage and in every result (steward R9-9): the tolerance is derived, never a constant in seconds
+BOUNDARY_TOLERANCE_STATEMENT = (
+    "a reconstructed boundary equals a stored one within accuracy/|speed| + 1 s, where accuracy is the stored contact's "
+    "own stated angular accuracy (the solver's 1 arcsecond when none) and speed the body's speed at that instant; at a "
+    "station (|speed| < 1e-3 deg/day) the comparison is in angle, |dlon| <= accuracy + the reconstruction's location error")
 
 
 def _merge(intervals):
@@ -76,21 +81,27 @@ def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_clas
     concrete = sorted((a, r, t) for a, r, t in obligations
                       if not a.startswith("period_lord:") and r in _TRANSIT and a != "moon")
     ledger: dict[tuple, list[tuple]] = {}
-    for body, rel, target, t_in, t_out in (tuple(x.values()) if isinstance(x, dict) else tuple(x) for x in conn.execute(
-            "SELECT c.body, c.relation_kind, o.canonical_target, c.t_in, c.t_out FROM public.ka_gochara_contact c"
+    for body, rel, target, t_in, t_out, dl in (tuple(x.values()) if isinstance(x, dict) else tuple(x) for x in conn.execute(
+            "SELECT c.body, c.relation_kind, o.canonical_target, c.t_in, c.t_out, c.delta_lambda"
+            " FROM public.ka_gochara_contact c"
             " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = c.physical_object_id"
             " WHERE c.chart_id = %s AND c.generation = %s", (chart_id, generation)).fetchall()):
-        ledger.setdefault((body, rel, target), []).append((max(t_in, lo), hi if t_out is None else min(t_out, hi)))
-
-    def same(x, y):
-        return (abs((x[0] - y[0]).total_seconds()) <= _TOL_SECONDS
-                and abs((x[1] - y[1]).total_seconds()) <= _TOL_SECONDS)
+        ledger.setdefault((body, rel, target), []).append(
+            (max(t_in, lo), hi if t_out is None else min(t_out, hi), bm.accuracy_degrees(dl)))
     problems: list[str] = []
     expected_total = 0
     for agent, relation, target in concrete:
         want = expected_intervals(position_at, agent, relation, target, lo, hi)
         have = sorted(ledger.get((agent, relation, target), []))
         expected_total += len(want)
+
+        def same(w, h, _a=agent):
+            # the tolerance is DERIVED (R9-9): the stored contact's own stated angular accuracy and the body's speed at
+            # that instant; at a station the comparison is made in angle — never a constant in seconds
+            return bm.intervals_agree(position_at, _a, (h[0], h[1]), w, h[2], lo, hi)
+        positional = len(want) == len(have) and all(same(w, h) for w, h in zip(want, have))
+        if positional:
+            continue
         for w in want:
             if not any(same(w, h) for h in have):
                 problems.append(f"{agent} {relation} {target}: expected contact [{w[0].isoformat()}, {w[1].isoformat()}) "
@@ -99,10 +110,14 @@ def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_clas
             if not any(same(w, h) for w in want):
                 problems.append(f"{agent} {relation} {target}: ledger contact [{h[0].isoformat()}, {h[1].isoformat()}) "
                                 "is not a reconstructed interval (invented, or its support differs)")
+        if not problems or all(not p.startswith(f"{agent} {relation} {target}") for p in problems):
+            problems.append(f"{agent} {relation} {target}: {len(have)} ledger contact(s) vs {len(want)} reconstructed — "
+                            "the two sequences do not pair up boundary for boundary")
     if problems:
         raise RuntimeError(f"contact geometry certification failed {event_class}: " + "; ".join(problems))
     return {"obligations_certified": len(concrete), "contacts_expected": expected_total,
-            "guarantee_assumption": cr.GUARANTEE_ASSUMPTION, "named_limit": cr.NAMED_LIMIT}
+            "guarantee_assumption": cr.GUARANTEE_ASSUMPTION, "named_limit": cr.NAMED_LIMIT,
+            "boundary_tolerance": BOUNDARY_TOLERANCE_STATEMENT}
 
 
-__all__ = ["certify_contact_geometry", "expected_intervals"]
+__all__ = ["BOUNDARY_TOLERANCE_STATEMENT", "certify_contact_geometry", "expected_intervals"]

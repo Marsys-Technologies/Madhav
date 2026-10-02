@@ -132,9 +132,6 @@ def verify_p1_house_descriptor(conn, *, chart_id: str, generation: str, event_cl
 
 _GRAHAS7 = ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn")
 _LEVELS = ("md", "ad", "pd")
-#: instants within this many seconds are the same contact boundary (the reconstruction locates crossings to 1 s; the
-#: builder's solver to ~1e-4 s; both clip at the horizon)
-_BOUNDARY_TOL_SECONDS = 2.0
 
 
 def expected_p1_anchors(agent: str, sign_index: int) -> set[tuple[str, str]]:
@@ -216,7 +213,7 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
     testimony = _testimony_lords(natal["natal"], natal["lagna"], event_class)
 
     stored = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
-        "SELECT c.contact_id::text, c.body, o.canonical_target, c.t_in, c.t_out"
+        "SELECT c.contact_id::text, c.body, o.canonical_target, c.t_in, c.t_out, c.delta_lambda"
         " FROM public.ka_gochara_contact c JOIN public.ka_gochara_physical_object o"
         "   ON o.physical_object_id = c.physical_object_id"
         " WHERE c.chart_id = %s AND c.generation = %s AND c.relation_kind = 'residence'"
@@ -229,8 +226,7 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
             "   AND contact_id IS NOT NULL", (chart_id, generation, event_class)).fetchall()):
         by_contact.setdefault(cid, set()).add((lord, level))
 
-    def near(a, b):
-        return abs((a - b).total_seconds()) <= _BOUNDARY_TOL_SECONDS
+    from . import boundary_match as bm
 
     def clipped(t_in, t_out):
         return max(t_in, lo), (hi if t_out is None else min(t_out, hi))
@@ -241,10 +237,11 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
     for e in expected:
         want = {a for a in e["anchors"] if a[0] not in testimony}
         hit = None
-        for cid, body, target, t_in, t_out in stored:
+        for cid, body, target, t_in, t_out, dl in stored:
             if body == e["agent"] and target == e["target"]:
                 a, b = clipped(t_in, t_out)
-                if near(a, e["t_in"]) and near(b, e["t_out"]):
+                # the tolerance is DERIVED (R9-9): the contact's own stated accuracy and the body's speed there
+                if bm.intervals_agree(position_at, body, (a, b), (e["t_in"], e["t_out"]), bm.accuracy_degrees(dl), lo, hi):
                     hit = cid
                     break
         label = f"{e['agent']} {e['target']} [{e['t_in'].isoformat()}, {e['t_out'].isoformat()})"

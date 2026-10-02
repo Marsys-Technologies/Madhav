@@ -209,7 +209,9 @@ def test_horizon_must_be_whole_second_utc():
 
 BUILDER_GRANT_MIGRATIONS = ("1216_gochara_contract_builder_grants.sql",
                             "1220_gochara_contract_builder_function_execute.sql",
-                            "1234_gochara_eval_window_builder_grants.sql")
+                            "1234_gochara_eval_window_builder_grants.sql",
+                            # Stream B's record replace/finalise grants (draft PR #2940) — replaced my stand-in fixture
+                            "1242_gochara_builder_record_replace_finalise_grants.sql")
 
 
 def create_am5_database(tag="am5", faithful=False):
@@ -291,9 +293,6 @@ def _populate_am5_database(conn, faithful=False):
             cur.execute((MIGRATIONS / fname).read_text())
             cur.execute("INSERT INTO public._migrations_applied(filename) VALUES (%s)",
                         (fname,))
-        if faithful:
-            # PENDING the migration Stream B owns (R9-4 report): the record-table replace/finalise privileges
-            cur.execute((Path(__file__).parent / "fixtures" / "pending_builder_record_grants.sql").read_text())
         cur.execute("INSERT INTO public.charts(id) VALUES (%s)", (CHART_ID,))
         subj = {"LAGNA": CHART["lagna_deg"], "SUN": CHART["natal"]["Sun"],
                 "MOON": CHART["natal"]["Moon"], "MAR": CHART["natal"]["Mars"],

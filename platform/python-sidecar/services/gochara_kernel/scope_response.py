@@ -193,6 +193,18 @@ def _window_qualification(conn: Any, chart_id: str, generation: str, windows: Se
     return out
 
 
+def named_limits() -> list[dict]:
+    """The limits every completeness claim carries — NAMED, never silence (Codex round 9, R9-3/R9-9): what the contact
+    certification guarantees and its assumption, and how a reconstructed boundary is compared with a stored one."""
+    from . import contact_certify, contact_reconstruct
+    return [
+        {"name": "contact_geometry_guarantee", "assumption": contact_reconstruct.GUARANTEE_ASSUMPTION,
+         "statement": contact_reconstruct.NAMED_LIMIT},
+        {"name": "boundary_tolerance", "assumption": "solver_angular_accuracy_derived_tolerance",
+         "statement": contact_certify.BOUNDARY_TOLERANCE_STATEMENT},
+    ]
+
+
 def coverage_response(conn: Any, *, chart_id: str, generation: str, event_class: str,
                       windows: Sequence[Any], horizon: tuple[datetime, datetime] | None = None) -> dict:
     """The response for one (chart, generation, class[, requested horizon]): windows (possibly none) with their
@@ -214,9 +226,10 @@ def coverage_response(conn: Any, *, chart_id: str, generation: str, event_class:
     state, reasons, basis = _completeness(conn, chart_id, generation, event_class, horizon, manifest)
     out.update(stored_scope=scope, scope_statement=SCOPE_STATEMENT[scope], completeness=state,
                completeness_reasons=reasons, completeness_basis=basis,
+               named_limits=named_limits(),
                window_qualification=_window_qualification(conn, chart_id, generation, windows))
     return out
 
 
 __all__ = ["COMPLETE", "NON_COMPLETE_STATES", "SCOPE_STATEMENT", "ScopeMissing", "VEDHA_MOON_SCOPE",
-           "bound_stored_scope", "coverage_response", "on_demand_partitions"]
+           "bound_stored_scope", "coverage_response", "named_limits", "on_demand_partitions"]
