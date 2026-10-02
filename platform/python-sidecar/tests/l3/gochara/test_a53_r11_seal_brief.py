@@ -248,6 +248,10 @@ def test_the_approved_seal_runs_as_the_real_sealer_role_with_only_the_named_read
     approved = _brief_as_verifier(w, sealing_commit="s")["sha256"]
     w.conn.execute("GRANT SELECT ON public.chart_facts, public.chart_dashas TO gochara_sealer")           # L1 ACL stand-in
     w.conn.execute("GRANT SELECT (filename, sha256, applied_at) ON public._migrations_applied TO gochara_sealer")
+    # R15-6 (i): the seal-time re-derivation of the live registry digest needs exactly SELECT on these five tables (1241 v7 delta; the sixth,
+    # ka_gochara_rule_path_seal, is already granted by v6) — derived by running the flow and adding one grant per `permission denied`
+    w.conn.execute("GRANT SELECT ON public.ka_gochara_rule_path, public.ka_gochara_rule_path_prerequisite,"
+                   " public.ka_gochara_rule_path_soft_factor, public.ka_gochara_predicate, public.ka_gochara_factor TO gochara_sealer")
     with w.conn.transaction():
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         w.conn.execute("SET LOCAL ROLE gochara_sealer")
@@ -278,6 +282,10 @@ def _raw_seal_as_sealer(w):
 
 def _sealer_stand_ins(w):
     w.conn.execute("GRANT SELECT ON public.chart_facts, public.chart_dashas TO gochara_sealer")
+    # STAND-IN for Stream B's 1241 v7 (R15-6 i): the sealer re-derives the live registry digest — SELECT only on five registry tables
+    # (ka_gochara_rule_path_seal is already granted by 1241 v6)
+    w.conn.execute("GRANT SELECT ON public.ka_gochara_rule_path, public.ka_gochara_rule_path_prerequisite,"
+                   " public.ka_gochara_rule_path_soft_factor, public.ka_gochara_predicate, public.ka_gochara_factor TO gochara_sealer")
     w.conn.execute("GRANT SELECT (filename, sha256, applied_at) ON public._migrations_applied TO gochara_sealer")
 
 

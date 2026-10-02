@@ -35,6 +35,7 @@ from services.gochara_kernel import seal_brief
 from services.gochara_kernel import seal_flow as sf
 
 ENV_URL = "GOCHARA_SEALER_DB_URL"
+CONNECT_TIMEOUT_SECONDS = 30
 
 
 def _int_env(name: str):
@@ -67,7 +68,9 @@ def main(argv=None) -> int:
         if run_id is None or run_attempt is None:
             raise sf.SealRefused("run_identity_absent", "GITHUB_RUN_ID / GITHUB_RUN_ATTEMPT are not set to integers")
         import psycopg
-        conn = psycopg.connect(url, autocommit=True)
+        # LIVENESS (R15): bounded connect, and TCP keepalives / user timeout so a silently dead network ends the session instead of blocking forever
+        conn = psycopg.connect(url, autocommit=True, connect_timeout=CONNECT_TIMEOUT_SECONDS, keepalives=1, keepalives_idle=30,
+                               keepalives_interval=10, keepalives_count=3, tcp_user_timeout=60_000)
     except sf.SealRefused as exc:
         print(json.dumps({"status": "REFUSED", "code": exc.code, "detail": exc.detail}))
         return exc.exit_code

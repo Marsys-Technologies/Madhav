@@ -940,6 +940,8 @@ CREATE TRIGGER ka_gochara_seal_approval_no_truncate
 -- HISTORICAL SCOPE (R14-1, mode 'regime'): the contact and precision refusals apply to a sealed generation whose MANIFEST carries a
 -- `result_policy` — the vector schema of this regime (1240). A generation sealed before it (a manifest without the key) keeps the older
 -- behaviour (enrichment UPDATE, precision_sync): nothing in production is sealed, so this is a stated boundary, not a live population.
+-- Since F-R15-2 the FIRST seal of a governed generation is itself refused unless its manifest carries `result_policy`
+-- (`seal_manifest_without_result_policy`), so no seal can be created outside the regime after this migration.
 --
 -- CONCURRENCY NOTE (R14-3 review): for UPDATE/DELETE on kala_gochara_coverage, kala_gochara_contacts / _windows and ka_gochara_contact /
 -- ka_gochara_relationship_record, PostgreSQL locks the target TUPLE before a BEFORE ROW trigger runs, i.e. before the chart lock is
@@ -967,8 +969,11 @@ BEGIN
                         WHERE p.chart_id = ch AND p.generation = gen AND p.input_generation_vector ? 'result_policy');
     END IF;
     IF sealed THEN
+      -- (F-R15-1) the identity columns are compared by their TEXT form — the very rendering the state digest hashes
+      -- (`input_generation_vector::text`, `ephemeris_backend::text`, ...). jsonb equality is SEMANTIC (5 = 5.0), so a numeric rewritten
+      -- 5 -> 5.0 inside a sealed manifest would pass a jsonb comparison while moving the attested digest; as text it is a change.
       IF TG_TABLE_NAME = 'kala_gochara_publication' AND TG_OP = 'UPDATE'
-         AND (to_jsonb(NEW) - 'status' - 'superseded_at') = (to_jsonb(OLD) - 'status' - 'superseded_at') THEN
+         AND (to_jsonb(NEW) - 'status' - 'superseded_at')::text = (to_jsonb(OLD) - 'status' - 'superseded_at')::text THEN
         -- R14-2: the sealed LIFECYCLE is a WHITELIST. A published manifest may be superseded or withdrawn (rolled_back); nothing may return it
         -- to 'candidate' (that would re-open it to a new brief), and nothing else changes. A no-op UPDATE is harmless.
         old_status := to_jsonb(OLD) ->> 'status'; new_status := to_jsonb(NEW) ->> 'status';
@@ -1010,6 +1015,14 @@ CREATE OR REPLACE FUNCTION public.ka_gochara_boundary_truncate_guard()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 DECLARE held boolean;
 BEGIN
+  -- (R15-4) the existence test below is a plain SELECT: under REPEATABLE READ / SERIALIZABLE it reads an OLD snapshot, while TRUNCATE removes the
+  -- table's contents regardless of snapshots (it is not MVCC-safe) — a governed row committed after the snapshot would be missed. At READ
+  -- COMMITTED the AccessExclusive lock this TRUNCATE already holds serializes against any INSERT (a later INSERT waits; an earlier one is seen).
+  -- So the conditional guard REFUSES to decide outside READ COMMITTED.
+  IF current_setting('transaction_isolation') <> 'read committed' THEN
+    RAISE EXCEPTION '% refused (boundary_truncate_requires_read_committed, R15-4): the conditional TRUNCATE guard is sound only at READ COMMITTED, this transaction is %',
+      TG_TABLE_NAME, current_setting('transaction_isolation') USING ERRCODE = 'check_violation';
+  END IF;
   EXECUTE format('SELECT EXISTS (SELECT 1 FROM public.%I WHERE generation ~ %L)', TG_TABLE_NAME, '^([5-9]|[1-9][0-9]+)\.[0-9]+$') INTO held;
   IF held THEN
     RAISE EXCEPTION '% refused (sealed boundary, F-R14-4): TRUNCATE while governed-generation rows exist is not permitted', TG_TABLE_NAME
@@ -1130,6 +1143,14 @@ BEGIN
       RAISE EXCEPTION 'ka_gochara_generation_seal replay refused (window verification integrity): %', msg;
     END IF;
     RETURN NEW;
+  END IF;
+  -- (F-R15-2) the regime scope of the sealed-state guards keys on the manifest's `result_policy`; nothing may therefore be sealed for the
+  -- FIRST time without one — a manifest outside the regime would otherwise be sealable by raw SQL and stay outside the guards
+  IF NOT EXISTS (SELECT 1 FROM public.kala_gochara_publication p
+                 WHERE p.chart_id = NEW.chart_id AND p.generation = NEW.generation AND p.manifest_id = NEW.manifest_id
+                   AND p.input_generation_vector ? 'result_policy') THEN
+    RAISE EXCEPTION 'ka_gochara_generation_seal refused (seal_manifest_without_result_policy): the manifest % of (chart %, generation %) carries no result_policy in its input vector — a governed generation is sealed for the first time only under a named result policy',
+      NEW.manifest_id, NEW.chart_id, NEW.generation USING ERRCODE = 'check_violation';
   END IF;
   SELECT count(*), string_agg(v.event_class || '/' || v.path_id || '@' || v.rule_version || ':' || v.violation || ':' || v.detail,
                               E'\n  ' ORDER BY v.event_class, v.path_id, v.violation)

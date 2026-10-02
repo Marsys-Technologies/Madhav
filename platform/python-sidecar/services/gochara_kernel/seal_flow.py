@@ -41,6 +41,11 @@ def _seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest
     if wg.implementation_digest() != payload["code"]["manifest_pinned_implementation_digest"]:
         raise seal_brief.ApprovalMismatch("sealer_code_not_pinned: the implementation digest of the code running this seal is not the digest the "
                                           "manifest pins — the sealing job must run the pinned code")
+    # (1a') R15-6 (i): the LIVE registry content and census must still be what the manifest vector bound (the SQL seal checks only path accounting)
+    drift = seal_brief.registry_problem(conn, chart_id, generation)
+    if drift:
+        raise seal_brief.ApprovalMismatch(f"seal_registry_drift: the live rule registry is not the registry this candidate was built and verified "
+                                          f"against — {drift}; a changed registry needs a fresh build, verification, brief and approval")
     # (1b) F-R12-4: the approved digest must be the CURRENT brief the VERIFIER persisted for this candidate (the receipt's commit-time
     # trigger enforces the same; refusing here costs nothing and says why before anything is published)
     why = seal_brief.persisted_brief_problem(conn, chart_id, generation, payload["manifest"]["manifest_id"], approved_digest,
@@ -227,7 +232,8 @@ def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id
         with conn.transaction():
             # bounded waits (steward ruling): a held lock or a runaway statement ends in a NAMED refusal; the transaction rolls back, so
             # nothing stays published
-            seal_brief.set_local_timeouts(conn, statement=seal_brief.SEAL_STATEMENT_TIMEOUT, lock=seal_brief.SEAL_LOCK_TIMEOUT)
+            seal_brief.set_local_timeouts(conn, statement=seal_brief.SEAL_STATEMENT_TIMEOUT, lock=seal_brief.SEAL_LOCK_TIMEOUT,
+                                          idle_in_transaction=seal_brief.SEAL_IDLE_IN_TRANSACTION_TIMEOUT)
             vj.take_locks(conn, chart_id)
             policy = manifest_policy(conn, chart_id, generation)
             if policy != required_policy:

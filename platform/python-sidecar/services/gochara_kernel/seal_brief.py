@@ -279,6 +279,9 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
                  "manifest_pinned_implementation_digest": pinned, "sealing_commit": sealing_commit},
         "ledger": _ledger_evidence(conn),
         "disclosures": {"policy": _policy_disclosure(manifest_policy(conn, chart_id, generation)),
+                        "ephemeris_binding": EPHEMERIS_BINDING_DISCLOSURE,
+                        "natal_inputs": natal_disclosure(natal_input_tiers(conn, chart_id, generation)),
+                        "natal_input_tiers": natal_input_tiers(conn, chart_id, generation),
                         "named_limits": __import__("services.gochara_kernel.scope_response", fromlist=["x"]).named_limits(),
                         "attestation_binding": "composition: inputs/2 per grain + DB-guarded path pins + the 1206 inventory "
                                                "verification row + the generation-wide output identity above",
@@ -289,6 +292,43 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
 
 
 ALL_NULL_POLICY = "all_null_candidate/1"
+#: R15-6 (ii): what binds the ephemeris, said plainly — the sealing job cannot re-derive it
+EPHEMERIS_BINDING_DISCLOSURE = (
+    "The ephemeris identity (the .se1 files opened, the Swiss library and platform, the probe digest) is bound in the manifest's input vector and "
+    "re-verified by the verifier job before this brief; the sealing job holds no ephemeris corpus and does NOT re-derive it at seal. It stays bound "
+    "through the verifier's producer image digest recorded with this brief (`producer.image_digest`), and the interval from final verification to "
+    "seal commit is covered by a written freeze and identity-readback procedure outside the database, not by a seal-time check.")
+NATAL_SUBJECTS = ("LAGNA", "SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
+#: VERBATIM (steward ruling, F-R15-4) — printed ONLY when the consumed natal rows are exactly the ten subjects and every one is at tier `single`
+NATAL_SINGLE_TIER_DISCLOSURE = (
+    "The ten natal longitudes this generation consumes (LAGNA, SUN, MOON, MAR, MER, JUP, VEN, SAT, RAH_MEAN, KET_MEAN; chart_facts "
+    "graha_position longitude_sidereal, lahiri) are read at the tier they carry, which is `single` (one derivation, no independent second "
+    "pass); they are bound by content digest, not verified by this generation.")
+
+
+def natal_input_tiers(conn, chart_id: str, generation: str) -> dict[str, list[str]]:
+    """{subject: sorted distinct verification_pass_status} of the L1 rows the generation's search-input snapshot CONSUMED — read, never assumed."""
+    out: dict[str, set[str]] = {}
+    for subject, tier in _rows(
+            conn, "SELECT f.fact_subject, f.verification_pass_status FROM public.chart_facts f"
+                  " JOIN public.ka_gochara_search_input_snapshot s ON s.chart_id = f.chart_id AND f.fact_id = ANY (s.consumed_fact_ids)"
+                  " WHERE s.chart_id = %s AND s.generation = %s", (chart_id, generation)):
+        out.setdefault(str(subject), set()).add(str(tier))
+    return {k: sorted(v) for k, v in sorted(out.items())}
+
+
+def natal_disclosure(tiers: dict[str, list[str]]) -> str:
+    """The single-tier sentence, but only while it is TRUE of the rows actually consumed; otherwise the OBSERVED tiers are printed instead, so
+    the disclosure cannot go stale (F-R15-4)."""
+    from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+    if set(tiers) == set(NATAL_SUBJECTS) and all(t == [UNVERIFIED_DEFAULT] for t in tiers.values()):
+        return NATAL_SINGLE_TIER_DISCLOSURE
+    seen = "; ".join(f"{k}={'/'.join(v)}" for k, v in tiers.items()) or "no consumed natal row was found"
+    return ("The natal longitudes this generation consumes (chart_facts graha_position longitude_sidereal, lahiri) are read at the tiers they "
+            f"carry — observed: {seen} — and are NOT all at the single tier the standard disclosure states; they are bound by content digest, "
+            "not verified by this generation.")
+
+
 #: VERBATIM the packet's §R13b sentence (F-R14-1; steward ruling) — it is inside the digest preimage, so it must be exactly the sentence the
 #: packet, §R12a and the runbook promise. It makes NO claim about the database's contents at every moment: the gate enforces it at seal.
 ALL_NULL_DISCLOSURE = (
@@ -419,17 +459,47 @@ def persisted_brief_problem(conn, chart_id: str, generation: str, manifest_id: s
 
 
 #: bounded waits (steward ruling M20261002T175331): a stuck lock or a runaway statement must end in a NAMED refusal with nothing written, never
-#: hang. Applied transaction-locally (`set_config(..., true)`), so they end with the transaction. Measured worst case (26 classes x 50) is ~35 s.
+#: hang. Applied transaction-locally (`set_config(..., true)`), so they end with the transaction. The 15-minute statement bound is ~25x an
+#: ESTIMATE of the worst case (26 classes x 50 synthetic, ~35 s extrapolated from measured read costs) — not a measured seal at real volumes.
 SEAL_STATEMENT_TIMEOUT = "15min"
 SEAL_LOCK_TIMEOUT = "2min"
 BRIEF_LOCK_TIMEOUT = "2min"
 
 
-def set_local_timeouts(conn, *, statement: str | None = None, lock: str | None = None) -> None:
-    """Transaction-local `statement_timeout` / `lock_timeout` (call inside the transaction, before the first lock is taken)."""
-    for name, value in (("statement_timeout", statement), ("lock_timeout", lock)):
+SEAL_IDLE_IN_TRANSACTION_TIMEOUT = "10min"   # (R15) the server ends a sealing session that holds locks while doing nothing
+
+
+def set_local_timeouts(conn, *, statement: str | None = None, lock: str | None = None, idle_in_transaction: str | None = None) -> None:
+    """Transaction-local `statement_timeout` / `lock_timeout` / `idle_in_transaction_session_timeout` (call inside the transaction, before the
+    first lock is taken)."""
+    for name, value in (("statement_timeout", statement), ("lock_timeout", lock),
+                        ("idle_in_transaction_session_timeout", idle_in_transaction)):
         if value is not None:
             conn.execute("SELECT set_config(%s, %s, true)", (name, value))
+
+
+def registry_problem(conn, chart_id: str, generation: str) -> str | None:
+    """R15-6 (i): re-derive the REGISTRY digest and census from the LIVE registry tables and compare them with the manifest vector's. None when
+    they agree; else the named difference. Reads `ka_gochara_rule_path`, `_rule_path_prerequisite`, `_rule_path_soft_factor`,
+    `ka_gochara_predicate`, `ka_gochara_factor` and `ka_gochara_rule_path_seal` (SELECT only) with the SAME function the build used, under the
+    seal locks the caller holds."""
+    import json
+    from decimal import Decimal
+    from . import input_vector as iv
+    from . import rule_registry as rr
+    row = _rows(conn, "SELECT input_generation_vector::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s",
+                (chart_id, generation))
+    if not row:
+        return "no manifest"
+    stored = json.loads(row[0][0], parse_float=Decimal).get("registry") or {}
+    payload = iv.registry_payload(conn, rr.bound_path_refs())
+    live = {"digest": iv.registry_digest_of(payload), "census": sorted([list(c) for c in payload["census"]])}
+    out = []
+    if live["digest"] != stored.get("digest"):
+        out.append(f"registry digest: manifest {stored.get('digest')}, live {live['digest']}")
+    if live["census"] != sorted(stored.get("census") or []):
+        out.append("registry census (the sealed (path, version) set) differs from the manifest's")
+    return "; ".join(out) or None
 
 
 def vj_lock(conn, chart_id: str) -> None:
