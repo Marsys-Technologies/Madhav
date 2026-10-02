@@ -30,7 +30,7 @@ sys.path.insert(0, str(HERE))
 import asset_census as ac  # noqa: E402
 import nikasha_certify as nc  # noqa: E402
 from test_e5_1_certify import (  # noqa: E402,F401  (fixtures + helpers of the E5.1 suite)
-    ENV, FP, FP2, RUN, W1, WH, env, kw, ledger, lines, refused, session_repo, write_census_file,
+    ENV, FP, FP2, RUN, W1, W2, WH, env, kw, ledger, lines, refused, session_repo, write_census_file,
 )
 
 LDGR = "Ldgr.source_presence"
@@ -98,12 +98,15 @@ def test_an_unsourced_or_refuted_pass_is_refused_and_nothing_is_written(ledger, 
 
 
 @pytest.mark.parametrize("state", ["unsourced", "refuted"])
-@pytest.mark.parametrize("verdict", ["NO_DETECTOR", "PARTIAL", "FAIL"])
+@pytest.mark.parametrize("verdict", ["NO_DETECTOR", "PARTIAL"])
 def test_the_same_states_are_recordable_on_a_non_pass_verdict_without_a_caveat(ledger, crit, state, verdict):
-    if crit == D1 and verdict != "NO_DETECTOR":
-        pytest.skip("Carr.D1 reads NO_DETECTOR/PARTIAL (S2); FAIL is not a D1 outcome")
     rec = write(ledger, crit, state, verdict).record
     assert rec["verdict"] == verdict and rec["citation_state"] == state and rec["citation_state_caveat"] is False
+
+
+def test_a_failing_ldgr_cell_keeps_its_state_too(ledger):
+    rec = write(ledger, LDGR, "refuted", "FAIL").record
+    assert rec["verdict"] == "FAIL" and rec["citation_state"] == "refuted" and rec["citation_state_caveat"] is False
 
 
 def test_a_pass_whose_census_cell_carries_no_state_is_stored_null_with_the_caveat(ledger, crit):
@@ -211,8 +214,8 @@ def test_a_state_appearing_where_there_was_none_is_a_new_generation(ledger, crit
 
 
 def test_the_state_is_part_of_the_identity_the_change_detector_compares(ledger, crit):
-    a = nc.build_record(**req(ledger, crit, "sourced"))
-    b = nc.build_record(**req(ledger, crit, "sourced_ocr_unverified"))
+    a = nc.build_record(**{k: v for k, v in req(ledger, crit, "sourced").items() if k != "ledger_path"})
+    b = nc.build_record(**{k: v for k, v in req(ledger, crit, "sourced_ocr_unverified").items() if k != "ledger_path"})
     assert nc._identity(a) != nc._identity(b)
     assert nc._identity(a) == nc._identity(dict(a, citation_state_caveat=True))   # the caveat is derived, not independent
 
@@ -398,10 +401,10 @@ def test_ok_records_of_every_kind_read_back(ledger):
     write(ledger, LDGR, ..., asset="bg_third")
     nc.write_certification(**kw(ledger, criterion="Build.contract"))
     by_key = nc.read_ledger(ledger)
-    assert sorted((k.split("|")[0], v[0]["citation_state"], v[0]["citation_state_caveat"])
-                  for k, v in by_key.items()) == sorted([
-        ("bg_ontology", "sourced", False), ("bg_other", "sourced_ocr_unverified", True), ("bg_third", None, True),
-        ("bg_ontology", None, False)])
+    got = sorted((k.split("|")[0], str(v[0]["citation_state"]), v[0]["citation_state_caveat"], k.split("|")[2])
+                 for k, v in by_key.items())
+    assert got == sorted([("bg_ontology", "sourced", False, LDGR), ("bg_other", "sourced_ocr_unverified", True, LDGR),
+                          ("bg_third", "None", True, LDGR), ("bg_ontology", "None", False, "Build.contract")])
 
 
 # ───────────────────────── CLI ─────────────────────────
@@ -411,7 +414,7 @@ def test_the_cli_citation_state_flag_is_a_cross_check_only(ledger, tmp_path, cap
                            rec=dict(target_columns=CITE_COLS))
     base = ["--ledger", str(ledger), "--asset", "bg_ontology", "--layer", "L0", "--criterion", LDGR, "--census", str(cf),
             "--verified-by", "t", "--semantic-fingerprint", FP, "--writer-repo", str(ENV.repo), "--writer-file", W1,
-            "--measured", "m"]
+            "--writer-file", W2, "--measured", "m"]
     assert nc.main(base + ["--citation-state", "sourced_ocr_unverified"]) == 0
     assert lines(ledger)[1]["citation_state"] == "sourced_ocr_unverified" and lines(ledger)[1]["citation_state_caveat"] is True
     before = ledger.read_bytes()

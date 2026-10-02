@@ -1471,9 +1471,10 @@ def test_unserialisable_facts_on_an_addition_and_a_nan_evidence_are_refusals(led
 
 EXPECTED_CURRENCY = {"verdict", "criterion_version", "registry_revision", "registry_fingerprint",
                      "detector", "writer_hashes", "writer_hashes_verified", "writer_hashes_reason", "upstream_cert_ids",
-                     "semantic_fingerprint", "na", "basis", "inconclusive", "transitive_only"}
+                     "semantic_fingerprint", "na", "basis", "inconclusive", "transitive_only", "citation_state"}
 PROVENANCE_ONLY = {"evidence", "job_image_tag", "verified_by", "verified_on", "cross_checked", "prev_sha256", "seq", "cert_id",
-                   "cert_key", "generation", "asset", "layer", "kind", "gate", "criterion", "record_version"}
+                   "cert_key", "generation", "asset", "layer", "kind", "gate", "criterion", "record_version",
+                   "citation_state_caveat"}                    # derived from citation_state + verdict + criterion: not independent
 
 
 def test_the_currency_fields_are_exactly_the_documented_set_and_provenance_is_excluded():
@@ -2390,7 +2391,7 @@ def test_verify_reads_an_applicability_na_with_no_cell_and_refuses_a_non_na_over
     cert_in_repo(fresh_repo, **na_kw(None))
     commit_all(fresh_repo)
     assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["status"] == "PASS"
-    doctor(fresh_repo, verdict="PASS")
+    doctor(fresh_repo, verdict="PASS", citation_state_caveat=True)       # a PASS on Ldgr.source_presence with no state: caveat
     with pytest.raises(nc.CertificationRefused) as ei:
         nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
     assert ei.value.code == "census_verdict_mismatch" and "no cell" in str(ei.value)
