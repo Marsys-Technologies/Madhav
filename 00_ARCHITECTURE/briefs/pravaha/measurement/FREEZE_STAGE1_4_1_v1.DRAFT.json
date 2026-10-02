@@ -1,0 +1,134 @@
+{
+ "artifact": "FREEZE_STAGE1",
+ "run_id": "4_1_v1",
+ "generation": "4.1",
+ "status": "<<DRAFT — set to FROZEN only when every placeholder is filled and this file is committed BEFORE any extract is generated>>",
+ "note": "DRAFT TEMPLATE (FREEZE_STAGE1_4_1_v1.DRAFT.json). Becomes FREEZE_STAGE1_4_1_v1.json at freeze. The verifier (services/gochara_eval/freeze.py) REFUSES every run while any double-angle-bracket placeholder remains.",
+ "amendments_draft": {
+  "version": "<<AMENDMENTS_DRAFT_VERSION_AT_FREEZE (v0.21 today)>>"
+ },
+ "addendum": {
+  "artifact": "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING",
+  "version": "1.3"
+ },
+ "registries_selected": {
+  "event_registry": "v2_3 (47 held-out: 32 timing-usable + 15 year-grain; exact 5, interval 4)",
+  "governed_registry_rows": "n/a — '4.1' is a legacy-kernel generation read from kala_gochara_windows, not a governed '5.x' build (no activity_kernel/graduated_drishti/vedha rows are consumed)"
+ },
+ "orb_state": "<<CONFIRM: n/a for '4.1' (orbs as built by the legacy kernel); ND-ORB-ADMISSION / ND-ORB-SCALE bind governed '5.x' only>>",
+ "conventions": {
+  "si_mapping": "'4.1': si := signed_intensity of kala_gochara_windows (the column the pinned '3.0' extract used; NUMERIC NOT NULL, so zero unknown competitors are possible and the run asserts unknown_si_rows = 0, else it is disclosed). The addendum's si := evidence_for mapping is for governed '5.x' eval-window rows, which have no evidence_for column in kala_gochara_windows.",
+  "utc_to_ist": "dates converted to IST civil dates via (ts at time zone 'Asia/Kolkata')::date, applied in the extract SQL (services/gochara_eval/dump_extract.py SQL_DUMP)",
+  "merge_implementation": "services/gochara_eval/candidate.py merge_candidates — protocol §4.2: overlapping/abutting same-class windows (we+1 day >= next ws) merged; representative = max si, ties (|Δ|<=1e-9) -> earliest peak; a group with any unknown member has an unqualified representative",
+  "stored_value_precision": "si read as NUMERIC and converted to IEEE double via Decimal->float; JSON serialised with Python's shortest round-trip repr; dates ISO yyyy-mm-dd",
+  "tie_tolerance": 1e-09,
+  "tie_grouping": "adjacent-gap (a chain of values each < 1e-9 from its neighbour is one group) for BOTH ranking and the §8.3 plateau test — SI addendum v1.3 §4. NOTE: services/gochara_eval/metrics.py event_hit anchors ranking ties on the target value; the two differ only when >= 3 values chain within tolerance (disclosed; pinned in tests/l3/gochara_eval/test_candidate.py).",
+  "candidate_set": "protocol §4.6: merged windows of the event's class overlapping the calendar years its scored span touches, clipped to the observation mask [1998-01-01, 2026-04-17]; ONE set for N, hit and rank",
+  "horizon": {
+   "scored": "1998-01-01 -> 2026-04-17 inclusive (H = 10,334 d)",
+   "extract_assertion": "no '4.1' window outside 1998-01-01 <= window < 2026-04-18 (end-exclusive); the dump stops (INPUT_REJECTED) on violation"
+  },
+  "ephemeris_and_inputs_of_the_generation": "not re-derived here — the '4.1' rows are consumed as stored; Suvarna's L1 rebuild + the AM-10 dasha re-pin are preconditions recorded in the run log, not inputs of this freeze"
+ },
+ "code": {
+  "adapter_commit": "<<ADAPTER_COMMIT_AT_MERGE: 40-hex merge commit of the PR carrying services/gochara_eval/candidate.py>>",
+  "scorer_commit": "<<SCORER_COMMIT_AT_MERGE: 40-hex commit of candidate.py/unknowns.py scoring (same PR)>>",
+  "files": {
+   "<<REPLACE_WITH>>": "<<output of: python3 -m services.gochara_eval.freeze  (run on the merged commit, from platform/python-sidecar)>>"
+  }
+ },
+ "extract_generation_command": "python3 -m services.gochara_eval.dump_extract --generation 4.1 --stage1 ../../00_ARCHITECTURE/briefs/pravaha/measurement/FREEZE_STAGE1_4_1_v1.json --pinned-at <<PINNED_AT_DATE>> --out ../../00_ARCHITECTURE/briefs/pravaha/measurement/baseline_4_1_extract_v1_0.json",
+ "extract_generation_args": {
+  "generation": "4.1",
+  "stage1": "../../00_ARCHITECTURE/briefs/pravaha/measurement/FREEZE_STAGE1_4_1_v1.json",
+  "pinned_at": "<<PINNED_AT_DATE>>",
+  "out": "../../00_ARCHITECTURE/briefs/pravaha/measurement/baseline_4_1_extract_v1_0.json"
+ },
+ "extract_environment": "run from platform/python-sidecar on the merged commit; read-only role; GOCHARA_EVAL_READONLY_DSN (or --libpq-env); one SELECT in a READ ONLY transaction after the horizon assertion (0)",
+ "cohort": {
+  "held_out": 47,
+  "timing_usable": 32,
+  "year_grain": 15,
+  "exact_cohort": 5,
+  "interval_grain": 4,
+  "dev_tier": "never scored (§9.4)",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+ },
+ "controls": {
+  "file": "random_controls_v1_3.json",
+  "seed": 482012,
+  "experiment": "rolling spans at each event's own span length, 20 draws/event, any-shared-day overlap, unweighted",
+  "rule": "re-drawn from the registry + the candidate's merged windows and required to reproduce the file (controls.py)"
+ },
+ "thresholds": {
+  "t_cover": ">= 32/47, every miss named",
+  "t_time": "capped (182 d) median <= 45 d over the 5 exact events; misses counted at the cap, uncapped hits disclosed; an unqualified peak gives the range [0,182] and cannot pass",
+  "t_rank": "median rank percentile <= 25 with >= 17 of 32 timing-usable eligible, else rank-unproven (blocks flip); VOID on era-fingerprint >= 50 %; eligibility reduced (never floor relaxed) by non-invariant plateau verdicts",
+  "t_fp_adverse": "per adverse class: admitted day-fraction <= min(1, 3*n_c*90/H) (n_c=0 -> allowance of n_c=1)",
+  "t_fp_gain": "every non-adverse non-birth_anchor class with rows: 0.5 % - 40 % of horizon days",
+  "t_honesty": "computation-coverage manifest REQUIRED for '4.1' (>= 50 % per class); absent => UNVERIFIABLE and not flip-eligible",
+  "random_controls": "REPRODUCED"
+ },
+ "tolerances_and_conversions": {
+  "tie_tolerance": 1e-09,
+  "percentile": "100*(avg_rank-1)/N, N = ALL admitted candidates incl. unknown",
+  "timezone": "IST civil dates (UTC+05:30)",
+  "enumeration_budget": 400000,
+  "budget_exceeded": "endpoint reported unqualified with the full [0,100] range; never guessed"
+ },
+ "requalification_before_extract": {
+  "command": "python3 -m services.gochara_eval.candidate_score --baseline-dry-run --registry ../../00_ARCHITECTURE/briefs/pravaha/measurement/event_registry_v2_3.json --extract ../../00_ARCHITECTURE/briefs/pravaha/measurement/baseline_3_0_extract_v1_0.json --controls ../../00_ARCHITECTURE/briefs/pravaha/measurement/random_controls_v1_3.json --declared-pin 70ba61421915db2ec3fcf3d1a23bc0ad80d43055b0d0bcc656e5a89079ef84ff --output <scratch>",
+  "expect": "T-cover 32/47 (same 15 misses); T-time 182 d (2 misses; uncapped 686/998/333); T-rank VOID 0/32; T-FP 8/9 adverse FAIL + 17/17 gain FAIL; controls 638/940 — every figure of rerun_result_v2_3.json; re-run on the FROZEN code immediately before extract generation, STOP if any differs (the adapter, not '4.1', is then the suspect)"
+ },
+ "rerun_policy": "The scorer is deterministic: a same-input rerun must reproduce the result file byte for byte (checked once, recorded). INPUT_REJECTED / controls rejection / source-reconciliation halt write the partial result and stop — that is a report, not a failure of procedure, and is not retried by editing inputs. After any candidate result has been inspected NO frozen item may change; a change is a protocol violation and is disclosed as one (addendum §5). A discovered defect in the adapter/scorer is reported and fixed in a new, separately-dated freeze, never patched into this run.",
+ "inputs": {
+  "event_registry_v2_3": {
+   "path": "event_registry_v2_3.json",
+   "sha256": "23633a244c97275f9005983e61f2243919d626088e560101f240dce3b176edee"
+  },
+  "random_controls_v1_3": {
+   "path": "random_controls_v1_3.json",
+   "sha256": "eea40fe8ba743a15291c8ec885b1f9dc0c5591a03ebf8bfb70cbefe414f6cb94"
+  },
+  "baseline_3_0_extract_v1_0": {
+   "path": "baseline_3_0_extract_v1_0.json",
+   "sha256": "70ba61421915db2ec3fcf3d1a23bc0ad80d43055b0d0bcc656e5a89079ef84ff"
+  },
+  "rerun_3_0_v2_3_scorer": {
+   "path": "rerun_3_0_v2_3_scorer.py",
+   "sha256": "4456efa548d8551faa66c54d09c4cc0721fed19104a10e3ce6c282b59a846e71"
+  },
+  "rerun_result_v2_3 (recorded 3.0 numbers)": {
+   "path": "rerun_result_v2_3.json",
+   "sha256": "8322e915bc7f13bf36f2a84ff27892902b6fd0303cb54c598abe9ec0622a3984"
+  },
+  "rerun_per_event_v2_3 (recorded 3.0 per-event)": {
+   "path": "rerun_per_event_v2_3.json",
+   "sha256": "9984627e2aada36f1c65ca311f2f8391739ad559dd053062569698dee5b74345"
+  },
+  "evaluation_protocol_v2_3": {
+   "path": "EVALUATION_PROTOCOL_v2_3.md",
+   "sha256": "a8353dc48563e08710f1fc6815ace2f15b7e9db5eec5d4ebea1e6dde1120514e"
+  },
+  "si_addendum_v1_3": {
+   "path": "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_3.md",
+   "sha256": "864d06cb911fefb76902e8d45511a2e096c08fbcfa109639980db455ce5a1017"
+  },
+  "unknown_competitor_bounds_model": {
+   "path": "unknown_competitor_bounds_model.py",
+   "sha256": "83b5ea6ecbe4683421bba31e18f29349ec2bdbf1aa18023ce1cd84abc18e7377"
+  },
+  "specs_v1_4": {
+   "path": "../design/GOCHARA_DESIGN_SPECS_v1_4.md",
+   "sha256": "d5097ca18a721d8005cab593f3c3865227d22ff1435b8adc9973275d3f786a47"
+  },
+  "oracles_v1_4": {
+   "path": "../design/GOCHARA_TEST_ORACLES_v1_4.json",
+   "sha256": "19951b06ce672ac4cff82d74fb6c7bb7babe4315582ec1c142a0a7871752c277"
+  },
+  "amendments_draft": {
+   "path": "../design/GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT.md",
+   "sha256": "<<RECOMPUTE_AT_FREEZE: sha256 of the amendments draft as then current (v0.21 today = 2a4b438d8cc78c0063c7a635245c91ad27e643d32480044e1e42fc3241de5455)>>"
+  }
+ }
+}
