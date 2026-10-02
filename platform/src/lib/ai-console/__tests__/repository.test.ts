@@ -302,7 +302,7 @@ describe('owned AI configuration repository', () => {
     expect(calls().some(c => c.sql.includes('ON CONFLICT(connection_id,model_id) DO UPDATE'))).toBe(true)
     const modelWrite = calls().find(c => c.sql.startsWith('INSERT INTO ai_connection_models'))!
     expect(modelWrite.sql).toContain('supports_tools,supports_structured_output')
-    expect(modelWrite.params.slice(-2)).toEqual([false, true])
+    expect(modelWrite.params.slice(-3)).toEqual([false, true, null])
     expect(calls().some(c => c.sql.startsWith('DELETE'))).toBe(false)
   })
   it('preserves confirmed validity on transient validation failure', async () => {

@@ -11,7 +11,9 @@ export const CliIdSchema = z.enum(CLI_IDS)
 export type AiRole = z.infer<typeof AiRoleSchema>
 export type ProviderId = z.infer<typeof ProviderIdSchema>
 export type CliId = z.infer<typeof CliIdSchema>
-export const AiEffortSchema = z.enum(['low', 'medium', 'high'])
+// CLI catalogues advertise model-specific effort names. Syntax is bounded here;
+// authorization below the route checks membership in the exact model's catalogue.
+export const AiEffortSchema = z.string().max(32).regex(/^[a-z][a-z0-9_]*$/)
 export type AiEffort = z.infer<typeof AiEffortSchema>
 
 const IdentifierSchema = z.string().min(1).regex(/\S/)
@@ -83,6 +85,8 @@ export const ProviderModelSchema = z.object({
   supportsTools: z.boolean(),
   supportsStructuredOutput: z.boolean(),
   available: z.boolean(),
+  supportedEfforts: z.array(AiEffortSchema).max(16).optional(),
+  effortSource: z.enum(['provider', 'policy']).optional(),
   userSelected: z.boolean().optional(),
   plainTestedAt: z.string().nullable().optional(),
   lastProbeAt: z.string().nullable().optional(),

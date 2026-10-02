@@ -23,7 +23,7 @@ export interface CliValidationResult {
 const PROBE = 'Reply with exactly OK.'
 
 export async function validateCli(userId: string, cliId: unknown, signal?: AbortSignal,
-  dependencies: { runner?: CliRunner; registry?: ValidationRegistry } = {}): Promise<CliValidationResult> {
+  dependencies: { runner?: CliRunner; registry?: ValidationRegistry; metadataOnly?: boolean } = {}): Promise<CliValidationResult> {
   const id = CliIdSchema.parse(cliId)
   await assertCliValidationAuthorized(userId, id)
   const definition = (dependencies.registry ?? CLI_REGISTRY)[id]
@@ -62,15 +62,18 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
     }
 
     let version: string | null = null
-    let installationIdentity: Awaited<ReturnType<CliRunner['inspectInstallation']>>
+    let installationIdentity: Awaited<ReturnType<CliRunner['inspectInstallation']>> | undefined
     try {
       installationIdentity = await runner.inspectInstallation(id)
       const versionResult = await runner.runVersionValidation(userId, id, signal)
       version = parseSupportedVersion(definition, versionResult.stdout)
       if (!version) {
+        const detectedVersion = versionResult.stdout.match(/\b\d+\.\d+\.\d+\b/)?.[0]
         await publish({ state: 'needs_attention', detectedProduct: definition.productName,
+          ...(detectedVersion ? { detectedVersion } : {}),
           errorCode: 'AI_EXECUTION_FAILED' })
         return { cliId: id, productName: definition.productName, state: 'needs_attention', modelCount: 0,
+          ...(detectedVersion ? { detectedVersion } : {}),
           errorCode: 'AI_EXECUTION_FAILED' }
       }
     } catch (error) {
@@ -78,11 +81,21 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
       if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
       const safe = normalizeAiError(error, { source: 'cli' })
       if (safe.code === 'AI_CLI_NOT_GRANTED') throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+      if (dependencies.metadataOnly && attempt.previous.state === 'reachable'
+        && installationIdentity && attempt.previous.entrypointSha256 === installationIdentity.entrypoint.sha256
+        && attempt.previous.detectedVersion && safe.code !== 'AI_CLI_NOT_INSTALLED') {
+        await publish({ state: 'reachable', detectedProduct: definition.productName,
+          detectedVersion: attempt.previous.detectedVersion,
+          entrypointSha256: installationIdentity.entrypoint.sha256 })
+        return { cliId: id, productName: definition.productName, state: 'reachable',
+          detectedVersion: attempt.previous.detectedVersion, modelCount: 0, errorCode: safe.code }
+      }
       const state = safe.code === 'AI_CLI_NOT_INSTALLED' ? 'not_installed' as const : 'unreachable' as const
       await publish({ state, errorCode: cliErrorCode(safe.code) })
       return { cliId: id, productName: definition.productName, state, modelCount: 0, errorCode: safe.code }
     }
 
+    if (!installationIdentity || !version) throw new AiConsoleError('AI_CLI_UNREACHABLE')
     let discoveredModels: Awaited<ReturnType<CliRunner['runModelCatalogValidation']>> = []
     try {
       if (definition.modelCatalog) {
@@ -96,6 +109,18 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
       if (signal?.aborted) throw new AiConsoleError('AI_EXECUTION_FAILED')
       const safe = normalizeAiError(error, { source: 'cli' })
       if (safe.code === 'AI_CLI_NOT_GRANTED') throw new AiConsoleError('AI_CLI_NOT_GRANTED')
+      if (dependencies.metadataOnly && attempt.previous.state === 'reachable'
+        && attempt.previous.detectedVersion === version
+        && (attempt.previous.entrypointSha256 === installationIdentity.entrypoint.sha256
+          || attempt.previous.entrypointSha256 == null)
+        && safe.code !== 'AI_CLI_AUTH_UNAVAILABLE') {
+        await publish({ state: 'reachable', detectedProduct: definition.productName,
+          detectedVersion: version,
+          ...(attempt.previous.entrypointSha256 == null ? {}
+            : { entrypointSha256: installationIdentity.entrypoint.sha256 }) })
+        return { cliId: id, productName: definition.productName, state: 'reachable',
+          detectedVersion: version, modelCount: 0, errorCode: safe.code }
+      }
       await publish({ state: 'auth_unavailable', detectedProduct: definition.productName,
         detectedVersion: version, errorCode: 'AI_CLI_AUTH_UNAVAILABLE' })
       return { cliId: id, productName: definition.productName, state: 'auth_unavailable',
@@ -103,20 +128,49 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
     }
 
     try {
-      const probe = await runner.runProbeValidation(userId, id, PROBE, signal)
-      const parsed = validateMachineOutput(definition.execution.outputFormat, probe.stdout)
-      if (parsed.text.trim().toUpperCase() !== 'OK') throw new AiConsoleError('AI_EXECUTION_FAILED')
+      const unchangedValidatedInstallation = attempt.previous.state === 'reachable'
+        && attempt.previous.detectedVersion === version
+        && attempt.previous.entrypointSha256 === installationIdentity.entrypoint.sha256
+      // Pre-refresh installations have no persisted hash. Preserve their previously
+      // tested availability on the same version, without fabricating execution proof.
+      // The execution revalidation path still inspects and tests the actual binary.
+      const legacyValidatedInstallation = attempt.previous.state === 'reachable'
+        && attempt.previous.detectedVersion === version
+        && attempt.previous.entrypointSha256 == null
+      if (dependencies.metadataOnly && !unchangedValidatedInstallation && !legacyValidatedInstallation) {
+        const models = discoveredModels.map(discovered => ({ ...catalogModelForStorage(discovered),
+          isCatalogDiscovered: true, compatibleRoles: [...definition.compatibleRoles],
+          supportsTools: definition.supportsTools, supportsStructuredOutput: definition.supportsStructuredOutput,
+          isBuiltinDefault: false }))
+        await publish({ state: 'needs_attention', detectedProduct: definition.productName,
+          detectedVersion: version, entrypointSha256: installationIdentity.entrypoint.sha256,
+          errorCode: 'AI_CLI_UNREACHABLE', models })
+        return { cliId: id, productName: definition.productName, state: 'needs_attention',
+          detectedVersion: version, modelCount: models.length }
+      }
+      if (!dependencies.metadataOnly) {
+        const probe = await runner.runProbeValidation(userId, id, PROBE, signal)
+        const parsed = validateMachineOutput(definition.execution.outputFormat, probe.stdout)
+        if (parsed.text.trim().toUpperCase() !== 'OK') throw new AiConsoleError('AI_EXECUTION_FAILED')
+      }
       const model = { modelId: CLI_BUILTIN_MODEL_DB_ID, displayName: 'Built-in default',
         compatibleRoles: [...definition.compatibleRoles], supportsTools: definition.supportsTools,
         supportsStructuredOutput: definition.supportsStructuredOutput, isBuiltinDefault: true }
-      const models = [model, ...discoveredModels.map(discovered => ({ ...discovered,
+      const models = [model, ...discoveredModels.map(discovered => ({ ...catalogModelForStorage(discovered),
+        isCatalogDiscovered: true,
         compatibleRoles: [...definition.compatibleRoles], supportsTools: definition.supportsTools,
         supportsStructuredOutput: definition.supportsStructuredOutput, isBuiltinDefault: false }))]
       const completedEpoch = await publish({ state: 'reachable', detectedProduct: definition.productName,
-        detectedVersion: version, entrypointSha256: installationIdentity.entrypoint.sha256, models })
+        detectedVersion: version, models,
+        ...(dependencies.metadataOnly && legacyValidatedInstallation ? {}
+          : { entrypointSha256: installationIdentity.entrypoint.sha256 }) })
+      if (dependencies.metadataOnly && legacyValidatedInstallation) {
+        return { cliId: id, productName: definition.productName, state: 'reachable',
+          detectedVersion: version, modelCount: models.length }
+      }
       try { await runner.confirmValidation(id, installationIdentity, version,
-        [null, ...discoveredModels.map(discovered => discovered.modelId),
-          ...await listConfirmedManualCliModels(id, version, installationIdentity.entrypoint.sha256)]) }
+        [...new Set([null, ...discoveredModels.map(discovered => discovered.modelId),
+          ...await listConfirmedManualCliModels(id, version, installationIdentity.entrypoint.sha256)])]) }
       catch {
         await publish({ state: 'needs_attention', detectedProduct: definition.productName,
           detectedVersion: version, errorCode: 'AI_CLI_UNREACHABLE' }, completedEpoch)
@@ -143,6 +197,12 @@ export async function validateCli(userId: string, cliId: unknown, signal?: Abort
     }
     throw error
   }
+}
+
+function catalogModelForStorage(model: Awaited<ReturnType<CliRunner['runModelCatalogValidation']>>[number]) {
+  return { modelId: model.modelId, displayName: model.displayName,
+    ...(model.supportedEfforts === undefined ? {} : { supportedEfforts: model.supportedEfforts }),
+    ...(model.defaultEffort === undefined ? {} : { defaultEffort: model.defaultEffort }) }
 }
 
 /** Test an explicit Codex/Claude model through the subscription CLI before adding it to host choices. */
