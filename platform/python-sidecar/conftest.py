@@ -34,6 +34,35 @@ import os
 import pytest
 
 
+def pytest_configure(config):
+    """Register the sidecar's two execution-class markers (C23, 2026-10-02).
+
+    slow_real_ephemeris: the test drives the real engine over large JD sweeps
+    (200-1000 samples) with real Swiss ephemeris positions per planet per JD
+    (every position call re-runs swe.set_ephe_path under the serialized Swiss
+    lock — pipeline/transit_search.py:249-251,337), so a single test can take
+    tens of seconds to minutes. CI runs these in a SEPARATE required step with
+    a stated time budget (Governance Gates job); the fast step deselects the
+    marker. Mark individual tests, or a whole file when the file is dominated
+    by such tests.
+
+    benchmark: the test asserts timing ratios (speedup / scaling) and is
+    load-sensitive by construction, so it can never be a gate. CI runs these
+    in a third, continue-on-error step named 'non-gating benchmark'; both
+    required steps deselect the marker.
+    """
+    config.addinivalue_line(
+        "markers",
+        "slow_real_ephemeris: real-engine JD-sweep test (minutes); runs in CI's "
+        "separate required slow step with a stated time budget, never in the fast step",
+    )
+    config.addinivalue_line(
+        "markers",
+        "benchmark: timing-ratio test, load-sensitive by construction; runs only in "
+        "CI's non-gating benchmark step (continue-on-error), never a gate",
+    )
+
+
 def _configure_swiss_corpus_for_tests() -> None:
     """Point SE_EPHE_PATH at a local Swiss .se1 corpus when one exists.
 
