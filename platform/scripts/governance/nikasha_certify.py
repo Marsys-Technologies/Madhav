@@ -109,6 +109,13 @@ READABLE_RECORD_VERSIONS = (1, 2)
 # cell by Carr.D1 (S2), and read FROM THAT CELL by this writer for the criteria below; null for every other criterion.
 CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
 CITATION_CRITERIA = ("Carr.D1", "Ldgr.source_presence")
+# LEGACY LENIENT WRITE PATH (SS ruling (b), N-74): today the census emits no citation_state on an Ldgr.source_presence cell,
+# so an Ldgr PASS with a null state may still be WRITTEN (stored null + caveat true). Removed in the S3 PR (pin 12), when
+# the census emits citation_state on Ldgr from the asset's declared source column and declared state: set this to False
+# there and the writer refuses an Ldgr PASS with a null state (`citation_state_missing`), exactly as for Carr.D1.
+# READING an old record with a null state + caveat stays valid forever; this constant gates only new writes.
+LDGR_NULL_STATE_WRITE_ALLOWED = True
+CITATION_STRICT = ("Carr.D1",)                       # a PASS/PARTIAL needs a state (sourced / sourced_ocr_unverified); Ldgr is lenient
 CITATION_PASS_REFUSED = ("unsourced", "refuted")     # the census caps these at NO_DETECTOR: a PASS carrying one is inconsistent
 VERDICTS = ("PASS", "FAIL", "PARTIAL", "NO_DETECTOR", "ERRORED", "N/A")
 KINDS = ("gate", "addition")
@@ -305,7 +312,11 @@ def _check_citation_fields(r: dict, n: int) -> None:
     if rv == 1:
         if "citation_state" in r or "citation_state_caveat" in r:
             _refuse("bad_ledger", f"line {n}: a record_version 1 record carries a citation_state field (a v2 field)")
-        r["citation_state"], r["citation_state_caveat"] = None, False
+        # read as "not declared": null state; the caveat by the SAME rule as a v2 record with a null state (a PASS on a
+        # citation criterion cannot claim `sourced`), so v1 and v2 read alike
+        r["citation_state"] = None
+        r["citation_state_caveat"] = (r.get("kind") == "gate" and r.get("criterion") in CITATION_CRITERIA
+                                      and r.get("verdict") == "PASS")
         return
     if "citation_state" not in r or "citation_state_caveat" not in r:
         _refuse("bad_ledger", f"line {n}: a record_version 2 record must carry citation_state and citation_state_caveat")
@@ -317,6 +328,13 @@ def _check_citation_fields(r: dict, n: int) -> None:
         _refuse("bad_ledger", f"line {n}: citation_state {cs!r} on a record that is not a {CITATION_CRITERIA} gate")
     if r.get("verdict") == "PASS" and cs in CITATION_PASS_REFUSED:
         _refuse("bad_ledger", f"line {n}: a PASS with citation_state {cs!r} (the census caps that at NO_DETECTOR)")
+    if cs is not None and isinstance(r.get("na"), dict) and r["na"].get("basis") == "applicability_facts":
+        _refuse("bad_ledger", f"line {n}: citation_state {cs!r} on an applicability N/A (no census cell, so none to read)")
+    if citation_gate and r.get("criterion") in CITATION_STRICT and r.get("verdict") in ("PASS", "PARTIAL"):
+        if cs is None:
+            _refuse("bad_ledger", f"line {n}: a {r.get('criterion')} {r.get('verdict')} with no citation_state")
+        if cs in CITATION_PASS_REFUSED:
+            _refuse("bad_ledger", f"line {n}: a {r.get('criterion')} {r.get('verdict')} with citation_state {cs!r}")
     want = citation_gate and r.get("verdict") == "PASS" and cs != "sourced"
     if not isinstance(caveat, bool) or caveat != want:
         _refuse("bad_ledger", f"line {n}: citation_state_caveat is {caveat!r}, expected {want!r} for this verdict and "
@@ -961,6 +979,19 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
     if verdict == "PASS" and cstate in CITATION_PASS_REFUSED:
         _refuse("citation_state_pass_refused", f"{criterion} reads PASS with citation_state {cstate!r}, which the census "
                                                "caps at NO_DETECTOR: an inconsistent claim")
+    if kind == "gate" and criterion in CITATION_STRICT and verdict in ("PASS", "PARTIAL"):
+        # Carr.D1's own rollup (S2 `d1_evidence_problem`) demotes a PASS/PARTIAL whose state is not sourced /
+        # sourced_ocr_unverified to NO_DETECTOR: a certificate may not claim what the census would not honour
+        if cstate is None:
+            _refuse("citation_state_missing", f"{criterion} reads {verdict} but the census cell carries no "
+                                              "citation_state: its rollup would read NO_DETECTOR")
+        if cstate in CITATION_PASS_REFUSED:
+            _refuse("citation_state_partial_refused", f"{criterion} reads {verdict} with citation_state {cstate!r}, "
+                                                      "which its rollup caps at NO_DETECTOR")
+    if (kind == "gate" and criterion == "Ldgr.source_presence" and verdict == "PASS" and cstate is None
+            and not LDGR_NULL_STATE_WRITE_ALLOWED):
+        _refuse("citation_state_missing", f"{criterion} reads PASS but the census cell carries no citation_state: the "
+                                          "legacy null-state write path is closed (the census emits it since S3)")
     caveat = kind == "gate" and criterion in CITATION_CRITERIA and verdict == "PASS" and cstate != "sourced"
 
     # R3: N/A is computed, never typed
@@ -1213,39 +1244,62 @@ def write_certification(*, ledger_path=None, init: bool = False, **fields) -> Ce
 
 # ─────────────────────────── CI verification and the explicit torn-tail repair ───────────────────────────
 
+def _V(why: str):
+    return ("census_verdict_mismatch", why)
+
+
+def _citation_vs_cell(rec: dict, cell):
+    """`(code, reason)` when a record_version 2 record's citation_state / caveat disagree with the census cell (or, with no
+    cell, are not null); None when they agree or the record is v1 / not a citation gate."""
+    if rec.get("record_version", 1) != 2 or rec.get("kind") != "gate":
+        return None
+    cs = cell.get("citation_state") if isinstance(cell, dict) else None
+    if rec.get("criterion") not in CITATION_CRITERIA:
+        cs = None
+    if rec.get("citation_state") != cs:
+        return ("census_citation_mismatch", f"the record's citation_state {rec.get('citation_state')!r} is not the "
+                                            f"census cell's {cs!r}")
+    want = rec.get("criterion") in CITATION_CRITERIA and rec.get("verdict") == "PASS" and cs != "sourced"
+    if rec.get("citation_state_caveat") != want:
+        return ("census_citation_mismatch", f"the record's citation_state_caveat {rec.get('citation_state_caveat')!r} is "
+                                            f"inconsistent with its verdict {rec.get('verdict')!r} and state {cs!r}")
+    return None
+
+
 def _record_vs_cell(rec: dict, blob: bytes):
-    """None when the record agrees with the census CELL held in `blob`, else the reason it does not: verdict, basis,
-    measured N/A cause, registry stamp, tool_commit and run id."""
+    """None when the record agrees with the census CELL held in `blob`, else `(code, reason)`: verdict, basis, measured
+    N/A cause, registry stamp, tool_commit and run id (`census_verdict_mismatch`), and for a citation criterion of a
+    record_version 2 record its citation_state and caveat (`census_citation_mismatch`)."""
     try:
         obj = strict_json_loads(blob.decode("utf-8"))
         if not isinstance(obj, dict):
-            return "the census is not a JSON object"
+            return _V("the census is not a JSON object")
         head = _select_layer(obj, rec.get("layer"))
         record, cell = _census_record_and_cell(head, rec.get("asset"), rec.get("criterion"))
     except (CertificationRefused, UnicodeDecodeError, ValueError) as e:
-        return f"the cited census cannot be read for this asset/criterion ({e})"
+        return _V(f"the cited census cannot be read for this asset/criterion ({e})")
     ev = rec.get("evidence") if isinstance(rec.get("evidence"), dict) else {}
     if head.get("layer") != rec.get("layer"):
-        return f"the census layer object is {head.get('layer')!r}, the record's layer is {rec.get('layer')!r}"
+        return _V(f"the census layer object is {head.get('layer')!r}, the record's layer is {rec.get('layer')!r}")
     if head.get("generated") != ev.get("census_run_id"):
-        return f"run id {ev.get('census_run_id')!r} is not the census's generated {head.get('generated')!r}"
+        return _V(f"run id {ev.get('census_run_id')!r} is not the census's generated {head.get('generated')!r}")
     if head.get("registry_revision") != rec.get("registry_revision") or head.get("registry_fingerprint") != rec.get(
             "registry_fingerprint"):
-        return "the record's registry revision/fingerprint is not the census stamp"
+        return _V("the record's registry revision/fingerprint is not the census stamp")
     if head.get("tool_commit") != ev.get("census_tool_commit"):
-        return "the record's census_tool_commit is not the census's tool_commit"
+        return _V("the record's census_tool_commit is not the census's tool_commit")
     na = rec.get("na") if isinstance(rec.get("na"), dict) else None
     if cell is None:
         if rec.get("verdict") != "N/A" or na is None or na.get("basis") != "applicability_facts":
-            return f"the census holds no cell for it but the record says {rec.get('verdict')!r}"
-        return None
+            return _V(f"the census holds no cell for it but the record says {rec.get('verdict')!r}")
+        return _citation_vs_cell(rec, None)
     if rec.get("verdict") != cell.get("v"):
-        return f"the record says {rec.get('verdict')!r}, the census cell says {cell.get('v')!r}"
+        return _V(f"the record says {rec.get('verdict')!r}, the census cell says {cell.get('v')!r}")
     if rec.get("basis") != cell.get("basis"):
-        return f"the record's basis {rec.get('basis')!r} is not the cell's {cell.get('basis')!r}"
+        return _V(f"the record's basis {rec.get('basis')!r} is not the cell's {cell.get('basis')!r}")
     if cell.get("v") == "N/A" and (na is None or na.get("cause") != cell.get("cause")):
-        return "the record's N/A cause is not the cell's"
-    return None
+        return _V("the record's N/A cause is not the cell's")
+    return _citation_vs_cell(rec, cell)
 
 
 def verify_ledger_census_hashes(repo, ref, ledger_relpath=None) -> dict:
@@ -1297,9 +1351,9 @@ def verify_ledger_census_hashes(repo, ref, ledger_relpath=None) -> dict:
                 failures.append((rec["cert_id"], "census_hash_mismatch",
                                  f"{f} at {ref} hashes to {_sha(blobs[f])[:12]}.., the cert recorded {h[:12]}.."))
             else:
-                why = _record_vs_cell(rec, blobs[f])
-                if why is not None:
-                    failures.append((rec["cert_id"], "census_verdict_mismatch", why))
+                bad = _record_vs_cell(rec, blobs[f])
+                if bad is not None:
+                    failures.append((rec["cert_id"], bad[0], bad[1]))
     if failures:
         detail = "; ".join(f"{c}: {code}: {m}" for c, code, m in failures[:10])
         _refuse(failures[0][1], f"{len(failures)} of {checked} gate record(s) fail census verification at {ref}: {detail}")

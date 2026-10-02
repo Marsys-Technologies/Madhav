@@ -30,7 +30,8 @@ sys.path.insert(0, str(HERE))
 import asset_census as ac  # noqa: E402
 import nikasha_certify as nc  # noqa: E402
 from test_e5_1_certify import (  # noqa: E402,F401  (fixtures + helpers of the E5.1 suite)
-    ENV, FP, FP2, RUN, W1, W2, WH, env, kw, ledger, lines, refused, session_repo, write_census_file,
+    ENV, FP, FP2, RUN, W1, W2, WH, commit_all, cert_in_repo, doctor, env, fresh_repo, kw, ledger, lines, refused,
+    session_repo, write_census_file,
 )
 
 LDGR = "Ldgr.source_presence"
@@ -98,10 +99,15 @@ def test_an_unsourced_or_refuted_pass_is_refused_and_nothing_is_written(ledger, 
 
 
 @pytest.mark.parametrize("state", ["unsourced", "refuted"])
-@pytest.mark.parametrize("verdict", ["NO_DETECTOR", "PARTIAL"])
-def test_the_same_states_are_recordable_on_a_non_pass_verdict_without_a_caveat(ledger, crit, state, verdict):
-    rec = write(ledger, crit, state, verdict).record
-    assert rec["verdict"] == verdict and rec["citation_state"] == state and rec["citation_state_caveat"] is False
+def test_the_same_states_are_recordable_on_no_detector_without_a_caveat(ledger, crit, state):
+    rec = write(ledger, crit, state, "NO_DETECTOR").record
+    assert rec["verdict"] == "NO_DETECTOR" and rec["citation_state"] == state and rec["citation_state_caveat"] is False
+
+
+@pytest.mark.parametrize("state", ["unsourced", "refuted"])
+def test_ldgr_partial_keeps_an_unsourced_or_refuted_state_but_carr_d1_partial_refuses_it(ledger, state):
+    rec = write(ledger, LDGR, state, "PARTIAL").record                              # Ldgr: lenient, no caveat (not a PASS)
+    assert rec["verdict"] == "PARTIAL" and rec["citation_state"] == state and rec["citation_state_caveat"] is False
 
 
 def test_a_failing_ldgr_cell_keeps_its_state_too(ledger):
@@ -109,9 +115,83 @@ def test_a_failing_ldgr_cell_keeps_its_state_too(ledger):
     assert rec["verdict"] == "FAIL" and rec["citation_state"] == "refuted" and rec["citation_state_caveat"] is False
 
 
-def test_a_pass_whose_census_cell_carries_no_state_is_stored_null_with_the_caveat(ledger, crit):
-    rec = write(ledger, crit, ...).record
+def test_an_ldgr_pass_whose_census_cell_carries_no_state_is_stored_null_with_the_caveat_while_the_legacy_path_is_open(ledger):
+    assert nc.LDGR_NULL_STATE_WRITE_ALLOWED is True                                  # today: the census does not emit it yet
+    rec = write(ledger, LDGR, ...).record
     assert rec["verdict"] == "PASS" and rec["citation_state"] is None and rec["citation_state_caveat"] is True
+
+
+@pytest.mark.parametrize("verdict", ["PASS", "PARTIAL"])
+def test_a_carr_d1_pass_or_partial_with_no_state_in_the_cell_is_refused(ledger, monkeypatch, verdict):
+    reg = dict(ac.CRITERION_REGISTRY)
+    reg[D1] = dict(reg[D1], detector="asset_census.py:carriage_d1")
+    monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
+    before = ledger.read_bytes()
+    with pytest.raises(nc.CertificationRefused) as ei:
+        write(ledger, D1, ..., verdict)
+    assert ei.value.code == "citation_state_missing" and ledger.read_bytes() == before
+
+
+@pytest.mark.parametrize("state", ["unsourced", "refuted"])
+def test_a_carr_d1_partial_with_an_unsourced_or_refuted_state_is_refused(ledger, monkeypatch, state):
+    reg = dict(ac.CRITERION_REGISTRY)
+    reg[D1] = dict(reg[D1], detector="asset_census.py:carriage_d1")
+    monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
+    before = ledger.read_bytes()
+    with pytest.raises(nc.CertificationRefused) as ei:
+        write(ledger, D1, state, "PARTIAL")
+    assert ei.value.code == "citation_state_partial_refused" and ledger.read_bytes() == before
+
+
+@pytest.mark.parametrize("state", ["sourced", "sourced_ocr_unverified"])
+def test_a_carr_d1_partial_with_a_sourced_state_is_recordable_without_a_caveat(ledger, monkeypatch, state):
+    reg = dict(ac.CRITERION_REGISTRY)
+    reg[D1] = dict(reg[D1], detector="asset_census.py:carriage_d1")
+    monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
+    rec = write(ledger, D1, state, "PARTIAL").record
+    assert rec["verdict"] == "PARTIAL" and rec["citation_state"] == state and rec["citation_state_caveat"] is False
+
+
+# ───────────────────────── the legacy lenient Ldgr write path (SS ruling (b)) ─────────────────────────
+
+def test_the_legacy_ldgr_path_is_a_single_module_constant_and_closing_it_refuses_a_null_state_ldgr_pass(ledger, monkeypatch):
+    monkeypatch.setattr(nc, "LDGR_NULL_STATE_WRITE_ALLOWED", False)
+    before = ledger.read_bytes()
+    with pytest.raises(nc.CertificationRefused) as ei:
+        write(ledger, LDGR, ...)
+    assert ei.value.code == "citation_state_missing" and ledger.read_bytes() == before
+    # a state in the cell still writes, a non-PASS still writes, other criteria are untouched
+    assert write(ledger, LDGR, "sourced").record["citation_state_caveat"] is False
+    assert write(ledger, LDGR, "sourced_ocr_unverified", asset="bg_other").record["citation_state_caveat"] is True
+    assert write(ledger, LDGR, ..., "NO_DETECTOR", asset="bg_third").record["citation_state"] is None
+    assert nc.write_certification(**kw(ledger, criterion="Build.contract")).record["citation_state"] is None
+
+
+def test_records_written_while_the_legacy_path_was_open_stay_readable_after_it_closes(ledger, monkeypatch):
+    legacy = write(ledger, LDGR, ...).record                                         # null state + caveat true
+    monkeypatch.setattr(nc, "LDGR_NULL_STATE_WRITE_ALLOWED", False)
+    r = nc.read_ledger(ledger)["bg_ontology|gate|Ldgr.source_presence"][0]            # reading is not gated by the constant
+    assert r["citation_state"] is None and r["citation_state_caveat"] is True and r["cert_id"] == legacy["cert_id"]
+    assert write(ledger, LDGR, "sourced").record["generation"] == 2                   # and a new state supersedes it
+    assert [x["citation_state"] for x in nc.parse_records(ledger.read_bytes())] == [None, "sourced"]
+
+
+def test_the_reader_accepts_a_null_state_ldgr_pass_whatever_the_constant_says(ledger, monkeypatch):
+    write(ledger, LDGR, ...)
+    for value in (True, False):
+        monkeypatch.setattr(nc, "LDGR_NULL_STATE_WRITE_ALLOWED", value)
+        assert nc.read_ledger(ledger)["bg_ontology|gate|Ldgr.source_presence"][0]["citation_state_caveat"] is True
+
+
+def test_the_constant_does_not_loosen_carr_d1(ledger, monkeypatch):
+    reg = dict(ac.CRITERION_REGISTRY)
+    reg[D1] = dict(reg[D1], detector="asset_census.py:carriage_d1")
+    monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
+    for value in (True, False):
+        monkeypatch.setattr(nc, "LDGR_NULL_STATE_WRITE_ALLOWED", value)
+        with pytest.raises(nc.CertificationRefused) as ei:
+            write(ledger, D1, ...)
+        assert ei.value.code == "citation_state_missing"
 
 
 @pytest.mark.parametrize("bad", ["maybe", "", "SOURCED", "Sourced", 5, True, ["sourced"], {"s": 1}])
@@ -207,9 +287,9 @@ def test_an_unchanged_state_appends_nothing_and_a_changed_one_is_a_new_generatio
     assert [x["citation_state"] for x in lines(ledger)[1:]] == ["sourced", "sourced_ocr_unverified", "sourced"]
 
 
-def test_a_state_appearing_where_there_was_none_is_a_new_generation(ledger, crit):
-    write(ledger, crit, ...)
-    r = write(ledger, crit, "sourced")
+def test_a_state_appearing_where_there_was_none_is_a_new_generation(ledger):
+    write(ledger, LDGR, ...)
+    r = write(ledger, LDGR, "sourced")
     assert r.status == "appended" and r.record["generation"] == 2
 
 
@@ -254,9 +334,11 @@ def test_a_v1_ledger_reads_under_the_new_code_with_citation_state_null(ledger):
     write_v1(ledger, criterion=LDGR, rec=dict(target_columns=CITE_COLS))
     by_key = nc.read_ledger(ledger)                                              # the whole chain verifies
     assert len(by_key) == 3
-    for recs in by_key.values():
+    for key, recs in by_key.items():
         r = recs[0]
-        assert r["record_version"] == 1 and r["citation_state"] is None and r["citation_state_caveat"] is False
+        assert r["record_version"] == 1 and r["citation_state"] is None
+        # the caveat is read by the SAME rule as a v2 null-state record: a PASS on a citation criterion cannot claim sourced
+        assert r["citation_state_caveat"] is (key.endswith("|Ldgr.source_presence"))
     assert len(nc.read_records(ledger)) == 3 and len(nc.parse_records(ledger.read_bytes())) == 3
     assert nc.chain_head(ledger.read_bytes())[0] == 3
 
@@ -433,3 +515,170 @@ def test_the_cli_citation_state_flag_is_a_cross_check_only(ledger, tmp_path, cap
     assert nc.main(base + ["--citation-state", "sourced"]) == 2                  # a differing flag is refused
     assert "citation_state_conflict" in capsys.readouterr().err and ledger.read_bytes() == before
     assert nc.main(base) == 0                                                    # no flag: the cell alone decides (unchanged)
+
+
+# ───────────────────────── v1 and v2 read alike ─────────────────────────
+
+def test_a_v1_pass_on_a_citation_criterion_reads_the_same_caveat_as_a_v2_null_state_pass(ledger, monkeypatch):
+    reg = dict(ac.CRITERION_REGISTRY)
+    reg[D1] = dict(reg[D1], detector="asset_census.py:carriage_d1")
+    monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
+    write_v1(ledger, criterion=LDGR, rec=dict(target_columns=CITE_COLS))
+    write_v1(ledger, criterion=D1, asset="bg_other", rec=dict(target_columns=CITE_COLS))
+    write(ledger, LDGR, ..., asset="bg_third")                                      # v2, null state
+    by_key = nc.read_ledger(ledger)
+    v1_ldgr = by_key["bg_ontology|gate|Ldgr.source_presence"][0]
+    v2_ldgr = by_key["bg_third|gate|Ldgr.source_presence"][0]
+    assert v1_ldgr["record_version"] == 1 and v2_ldgr["record_version"] == 2
+    assert (v1_ldgr["citation_state"], v1_ldgr["citation_state_caveat"]) == (v2_ldgr["citation_state"],
+                                                                              v2_ldgr["citation_state_caveat"]) == (None, True)
+    # a v1 Carr.D1 PASS (impossible to write today) still READS, as null + caveat: reading never refuses a v1 record
+    v1_d1 = by_key["bg_other|gate|Carr.D1"][0]
+    assert v1_d1["citation_state"] is None and v1_d1["citation_state_caveat"] is True
+
+
+def test_a_v1_non_pass_and_a_non_citation_v1_record_read_with_no_caveat(ledger):
+    write_v1(ledger, criterion=LDGR, verdict="NO_DETECTOR", rec=dict(target_columns=CITE_COLS))
+    write_v1(ledger, criterion="Build.contract", asset="bg_other")
+    by_key = nc.read_ledger(ledger)
+    assert all(v[0]["citation_state"] is None and v[0]["citation_state_caveat"] is False for v in by_key.values())
+
+
+# ───────────────────────── the reader and the new rules ─────────────────────────
+
+def test_the_reader_refuses_a_state_on_an_applicability_na(ledger, monkeypatch):
+    rid = f"{LDGR}#columns_any"
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {rid: "N-22.test"})
+    nc.write_certification(**kw(ledger, criterion=LDGR, verdict="N/A", na_rule_id=rid, cell=...,
+                                rec=dict(target_columns=["id", "name"]), semantic_fingerprint=None, writer_files=...))
+    assert nc.read_ledger(ledger)                                                   # control: as written, it reads
+    rewrite(ledger, 1, citation_state="sourced", citation_state_caveat=False)
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.read_ledger(ledger)
+    assert ei.value.code == "bad_ledger" and "applicability" in ei.value.message
+
+
+def test_a_measured_cause_na_may_carry_the_cells_state_and_reads_fine(ledger, monkeypatch):
+    rid = f"{LDGR}#measured:no-prose"
+    monkeypatch.setattr(ac, "NA_CAUSES", dict(ac.NA_CAUSES, **{LDGR: ("no-prose",)}))
+    monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {rid: "N-22.nr"})
+    rec = nc.write_certification(**kw(
+        ledger, criterion=LDGR, verdict="N/A", na_rule_id=rid, cell=dict(v="N/A", cause="no-prose", citation_state="sourced"),
+        rec=dict(target_columns=CITE_COLS), semantic_fingerprint=FP2)).record
+    assert rec["citation_state"] == "sourced" and nc.read_ledger(ledger)
+
+
+@pytest.mark.parametrize("verdict,state", [("PASS", None), ("PARTIAL", None), ("PARTIAL", "unsourced"), ("PARTIAL", "refuted")])
+def test_the_reader_holds_a_carr_d1_pass_or_partial_to_the_writers_rule(ledger, monkeypatch, verdict, state):
+    reg = dict(ac.CRITERION_REGISTRY)
+    reg[D1] = dict(reg[D1], detector="asset_census.py:carriage_d1")
+    monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
+    write(ledger, D1, "sourced", verdict)
+    assert nc.read_ledger(ledger)                                                   # control
+    rewrite(ledger, 1, citation_state=state, citation_state_caveat=(verdict == "PASS" and state is None))
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.read_ledger(ledger)
+    assert ei.value.code == "bad_ledger"
+
+
+# ───────────────────────── CI verification compares citation_state to the census cell ─────────────────────────
+
+def ldgr_in_repo(repo, state="sourced_ocr_unverified", **over):
+    cert_in_repo(repo, criterion=LDGR, cell=dict(citation_state=state), rec=dict(target_columns=CITE_COLS), **over)
+    commit_all(repo)
+
+
+def test_verify_passes_a_record_whose_state_and_caveat_match_the_cell(fresh_repo):
+    ldgr_in_repo(fresh_repo)
+    assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["status"] == "PASS"
+    assert nc.read_ledger(fresh_repo / nc.LEDGER_RELPATH)["bg_ontology|gate|Ldgr.source_presence"][0][
+        "citation_state_caveat"] is True
+
+
+def test_verify_catches_a_forged_sourced_state_over_an_ocr_unverified_cell(fresh_repo):
+    ldgr_in_repo(fresh_repo)
+    doctor(fresh_repo, citation_state="sourced", citation_state_caveat=False)        # internally consistent: the READER accepts it
+    nc.read_ledger(fresh_repo / nc.LEDGER_RELPATH)
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
+    assert ei.value.code == "census_citation_mismatch" and "citation_state" in str(ei.value)
+
+
+@pytest.mark.parametrize("cell_state,forged", [("sourced", None), ("sourced_ocr_unverified", "sourced"), (None, "sourced"),
+                                               ("sourced", "sourced_ocr_unverified")])
+def test_verify_catches_every_state_that_differs_from_the_cell(fresh_repo, cell_state, forged):
+    if cell_state is None:
+        cert_in_repo(fresh_repo, criterion=LDGR, rec=dict(target_columns=CITE_COLS))
+        commit_all(fresh_repo)
+    else:
+        ldgr_in_repo(fresh_repo, cell_state)
+    assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["status"] == "PASS"
+    doctor(fresh_repo, citation_state=forged, citation_state_caveat=(forged != "sourced"))
+    with pytest.raises(nc.CertificationRefused) as ei:
+        nc.verify_ledger_census_hashes(fresh_repo, "HEAD")
+    assert ei.value.code == "census_citation_mismatch"
+
+
+def test_verify_catches_a_caveat_inconsistent_with_the_verdict_even_when_the_reader_is_bypassed(fresh_repo):
+    # the reader refuses an inconsistent caveat; verify must too (defence in depth: it compares what the cell implies)
+    ldgr_in_repo(fresh_repo, "sourced")
+    assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["status"] == "PASS"
+    cell_vs = nc._citation_vs_cell(dict(kind="gate", record_version=2, criterion=LDGR, verdict="PASS",
+                                        citation_state="sourced", citation_state_caveat=True), dict(citation_state="sourced"))
+    assert cell_vs[0] == "census_citation_mismatch" and "caveat" in cell_vs[1]
+
+
+def test_verify_does_not_apply_the_citation_comparison_to_a_v1_record(fresh_repo):
+    old = frozen_v1()
+    old.write_certification(**kw(fresh_repo / nc.LEDGER_RELPATH, init=True, writer_repo=fresh_repo, criterion=LDGR,
+                                 cell=dict(citation_state="sourced"), rec=dict(target_columns=CITE_COLS)))
+    commit_all(fresh_repo)
+    assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["status"] == "PASS"   # the v1 record predates the field
+
+
+def test_verify_a_record_on_a_non_citation_criterion_must_carry_no_state(fresh_repo):
+    cert_in_repo(fresh_repo)
+    commit_all(fresh_repo)
+    assert nc.verify_ledger_census_hashes(fresh_repo, "HEAD")["status"] == "PASS"
+    assert nc._citation_vs_cell(dict(kind="gate", record_version=2, criterion="Build.registered", verdict="PASS",
+                                     citation_state="sourced", citation_state_caveat=False),
+                                dict(citation_state="sourced"))[0] == "census_citation_mismatch"
+
+
+# ───────────────────────── CLI: the flag is a cross-check, both ways, on both criteria ─────────────────────────
+
+def cli_base(ledger, crit_, cell, tmp=None):
+    cf = write_census_file({crit_: dict(v="PASS", measured="m", **cell)}, rec=dict(target_columns=CITE_COLS))
+    return ["--ledger", str(ledger), "--asset", "bg_ontology", "--layer", "L0", "--criterion", crit_, "--census", str(cf),
+            "--verified-by", "t", "--semantic-fingerprint", FP, "--writer-repo", str(ENV.repo), "--writer-file", W1,
+            "--writer-file", W2, "--measured", "m"]
+
+
+def test_cli_carr_d1_flag_accept_refuse_and_missing(ledger, monkeypatch, capsys):
+    reg = dict(ac.CRITERION_REGISTRY)
+    reg[D1] = dict(reg[D1], detector="asset_census.py:carriage_d1")
+    monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
+    base = cli_base(ledger, D1, dict(citation_state="sourced"))
+    assert nc.main(base + ["--citation-state", "sourced"]) == 0
+    assert lines(ledger)[1]["citation_state"] == "sourced" and lines(ledger)[1]["citation_state_caveat"] is False
+    before = ledger.read_bytes()
+    assert nc.main(base + ["--citation-state", "refuted"]) == 2
+    assert "citation_state_conflict" in capsys.readouterr().err and ledger.read_bytes() == before
+    assert nc.main(base + ["--citation-state", "bogus"]) == 2
+    assert "bad_citation_state" in capsys.readouterr().err
+    # a cell with no state: Carr.D1 refuses outright (S2's rollup would read NO_DETECTOR)
+    assert nc.main(cli_base(ledger, D1, {})) == 2
+    assert "citation_state_missing" in capsys.readouterr().err and ledger.read_bytes() == before
+
+
+def test_cli_flag_cannot_supply_a_state_the_cell_lacks_and_is_refused_on_other_criteria(ledger, capsys):
+    before = ledger.read_bytes()
+    assert nc.main(cli_base(ledger, LDGR, {}) + ["--citation-state", "sourced"]) == 2
+    assert "citation_state_conflict" in capsys.readouterr().err and ledger.read_bytes() == before
+    assert nc.main(cli_base(ledger, LDGR, {}) + []) == 0                              # no flag: the null-state legacy write
+    assert lines(ledger)[1]["citation_state"] is None and lines(ledger)[1]["citation_state_caveat"] is True
+    cf = write_census_file({"Build.registered": dict(v="PASS", measured="m")})
+    args = ["--ledger", str(ledger), "--asset", "bg_ontology", "--layer", "L0", "--criterion", "Build.registered",
+            "--census", str(cf), "--verified-by", "t", "--semantic-fingerprint", FP, "--writer-repo", str(ENV.repo),
+            "--writer-file", W1, "--writer-file", W2, "--measured", "m", "--citation-state", "sourced"]
+    assert nc.main(args) == 2 and "citation_state_not_applicable" in capsys.readouterr().err
