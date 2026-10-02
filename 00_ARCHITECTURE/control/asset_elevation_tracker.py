@@ -386,7 +386,7 @@ def main():
 # output invalidates nothing downstream); a
 # PASS (or measured N/A) carries a semantic fingerprint (comparing it with the live rows is E5.5's job, delivered as an
 # invalidation line); a gate record's criterion_version equals the registry revision at `ref`.
-import ast as _ast, dataclasses as _dc, datetime as _dt, hashlib as _hashlib, re as _re, unicodedata as _unicodedata
+import ast as _ast, copy as _copy, dataclasses as _dc, datetime as _dt, hashlib as _hashlib, re as _re, unicodedata as _unicodedata
 
 E63_CONTROL_DIR = "00_ARCHITECTURE/control"
 E63_CERTS_PATH = E63_CONTROL_DIR + "/asset_certs.jsonl"
@@ -434,11 +434,7 @@ E63_CLOSED_GAP_STATES = frozenset({"CLOSED", "WITHDRAWN"})
 E63_DISPOSITIONS = frozenset({"keep", "integrate", "enrich", "qualify", "consolidate", "historical", "retire",
                               "unresolved"})
 E63_TERMINAL_DISPOSITIONS = frozenset({"retire", "consolidate"})
-E63_RECORD_VERSIONS = (1, 2)          # E5.1 record_version: 2 adds `citation_state` (N-74); v1 reads as null
-E63_CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
-E63_CITATION_BLOCKING = ("unsourced", "refuted")             # the census caps these at NO_DETECTOR: a PASS line carrying one raises
-E63_CITATION_CRITERIA = ("Carr.D1", "Ldgr.source_presence")   # the cells whose citation state is reported per criterion
-E63_CITATION_STRICT = ("Carr.D1",)    # a PASS/PARTIAL here needs a usable state (E5.1 CITATION_STRICT); Ldgr is lenient
+E63_CITATION_BLOCKING = ("unsourced", "refuted")             # the census caps these at NO_DETECTOR (E5.1 CITATION_PASS_REFUSED; guarded)
 E63_BASIS_DECLARATION = "declaration"        # the one recognised `basis` (asset_census._check_contribution)
 # Layer-wide gap rows attach to no asset (the real ledger holds five, e.g. Build.diagnosability): the one pseudo-asset
 # id allowed in the gap ledger besides `_schema`. They never block an asset (no asset carries that id).
@@ -934,70 +930,6 @@ def _e63_is_event_line(r):
     return not (r.get("kind") in E63_CERT_KINDS or (isinstance(r.get("verdict"), str) and r["verdict"] in E63_VERDICTS))
 
 
-def _e63_check_citation_fields(r, where, verdict, kind, crit):
-    """E5.1's `_check_citation_fields`, mirrored (parity-tested against the real reader and against recorded verdicts): an
-    absent record_version reads as 1; v1 may not carry the v2 fields and reads as a null state with the caveat by the same
-    rule as v2 (a v1 citation-gate PASS is caveated, never hidden); a v2 record carries BOTH fields, a state only on a gate
-    certificate of a citation criterion, never `unsourced`/`refuted` on a PASS (the census caps those at NO_DETECTOR: such a
-    line raises rather than counting), never on an applicability N/A, a STRICT criterion (Carr.D1) PASS/PARTIAL always has a
-    usable state (null, unsourced and refuted raise: E5.1's `citation_state_missing`), and the caveat is exactly "a gate PASS
-    on a citation criterion whose state is not `sourced`" (a null-state Ldgr.source_presence PASS has caveat true and COUNTS)."""
-    rv = r.get("record_version", 1)
-    if not _e63_int(rv) or rv not in E63_RECORD_VERSIONS:
-        _e63_fail("malformed", f"{where}: record_version {rv!r} is not one this reader knows {E63_RECORD_VERSIONS}")
-    if rv == 1:
-        if "citation_state" in r or "citation_state_caveat" in r:
-            _e63_fail("malformed", f"{where}: a record_version 1 record may not carry citation_state (v1 reads as null)")
-        # read as "not declared": a null state, and the caveat by the SAME rule as a v2 record with a null state (a PASS on a
-        # citation criterion cannot claim `sourced`), so an asset certified on a v1 citation PASS is shown caveated, never
-        # hidden (N-74). The dict only; the bytes are untouched.
-        r["citation_state"] = None
-        r["citation_state_caveat"] = kind == "gate" and crit in E63_CITATION_CRITERIA and verdict == "PASS"
-        return
-    if "citation_state" not in r or "citation_state_caveat" not in r:
-        _e63_fail("malformed", f"{where}: a record_version 2 record must carry citation_state and citation_state_caveat")
-    cs, cc = r["citation_state"], r["citation_state_caveat"]
-    if cs is not None and (not isinstance(cs, str) or cs not in E63_CITATION_STATES):
-        _e63_fail("malformed", f"{where}: citation_state {cs!r} is outside {E63_CITATION_STATES} (or null)")
-    citation_gate = kind == "gate" and crit in E63_CITATION_CRITERIA
-    if cs is not None and not citation_gate:
-        _e63_fail("malformed", f"{where}: citation_state {cs!r} on a record that is not a {E63_CITATION_CRITERIA} gate")
-    if verdict == "PASS" and cs in E63_CITATION_BLOCKING:
-        _e63_fail("malformed", f"{where}: a PASS with citation_state {cs!r} (the census caps that at NO_DETECTOR)")
-    if cs is not None and isinstance(r.get("na"), dict) and r["na"].get("basis") == "applicability_facts":
-        _e63_fail("malformed", f"{where}: citation_state {cs!r} on an applicability N/A (no census cell, so none to read)")
-    if citation_gate and crit in E63_CITATION_STRICT and verdict in ("PASS", "PARTIAL"):
-        if cs is None:
-            _e63_fail("malformed", f"{where}: a {crit} {verdict} with no citation_state")
-        if cs in E63_CITATION_BLOCKING:
-            _e63_fail("malformed", f"{where}: a {crit} {verdict} with citation_state {cs!r}")
-    if not isinstance(cc, bool) or cc != (citation_gate and verdict == "PASS" and cs != "sourced"):
-        _e63_fail("malformed", f"{where}: citation_state_caveat {cc!r} contradicts verdict {verdict!r} / citation_state {cs!r}")
-
-
-def _e63_check_declarations_fields(r, where, kind):
-    """E5.1's `_check_declarations_fields` (the declarations binding added to record_version 2): v1 may not carry the fields;
-    a v2 record written before them reads as null/null (unbound); a present sha is null or 64 lower-case hex, a version is
-    null or non-blank text and needs a sha, and an addition carries neither."""
-    rv = r.get("record_version", 1)
-    sha, ver = r.get("declarations_sha256"), r.get("declarations_version")
-    if rv == 1 and ("declarations_sha256" in r or "declarations_version" in r):
-        _e63_fail("malformed", f"{where}: a record_version 1 record carries a declarations field (added after v1)")
-    if sha is not None and not (isinstance(sha, str) and _E63_SHA256.fullmatch(sha)):
-        _e63_fail("malformed", f"{where}: declarations_sha256 {sha!r} is not null or 64 lower-case hex")
-    if ver is not None and (not isinstance(ver, str) or not ver.strip()):
-        _e63_fail("malformed", f"{where}: declarations_version {ver!r} is not null or non-blank text")
-    if ver is not None and sha is None:
-        _e63_fail("malformed", f"{where}: a declarations_version with no declarations_sha256")
-    if kind != "gate" and (sha is not None or ver is not None):
-        _e63_fail("malformed", f"{where}: a declarations binding on a record that is not a gate certificate")
-    if rv != 1 and kind == "gate" and "declarations_sha256" in r and sha is None:
-        # only an ABSENT key is legacy: the writer never writes a null sha on a gate, so a present null is a forgery
-        _e63_fail("malformed", f"{where}: declarations_sha256 is present but null on a v2 gate record (only an absent key "
-                               "reads as legacy)")
-    r["declarations_sha256"], r["declarations_version"] = sha, ver
-
-
 def _e63_check_cert(r, n, facts):
     where = f"{E63_CERTS_PATH} line {n}"
     asset, kind, crit, verdict = r.get("asset"), r.get("kind"), r.get("criterion"), r.get("verdict")
@@ -1033,8 +965,6 @@ def _e63_check_cert(r, n, facts):
         _e63_fail("malformed", f"{where}: semantic_fingerprint must be 64 lower-case hex or null")
     if r.get("na") is not None and not isinstance(r.get("na"), dict):
         _e63_fail("malformed", f"{where}: na must be an object or null")
-    _e63_check_citation_fields(r, where, verdict, kind, crit)
-    _e63_check_declarations_fields(r, where, kind)
     if kind == "gate":
         if r.get("cross_checked") is not True:
             _e63_fail("malformed", f"{where}: a gate record must carry cross_checked: true (the writer reads its verdict "
@@ -1083,28 +1013,31 @@ import json, sys
 sys.path.insert(0, ".")
 import nikasha_certify as nc
 data = sys.stdin.buffer.read()
-const = {k: list(getattr(nc, k)) for k in ("CITATION_CRITERIA", "CITATION_STRICT", "CITATION_STATES", "CITATION_PASS_REFUSED",
-                                           "READABLE_RECORD_VERSIONS")}
+const = {k: list(getattr(nc, k)) for k in ("CITATION_PASS_REFUSED",)}
 const["DECLARATIONS_RELPATH"] = nc.DECLARATIONS_RELPATH
 try:
-    nc.parse_records(data)
-    print(json.dumps({"ok": True, "constants": const}))
+    records = nc.parse_records(data)
+    print(json.dumps({"ok": True, "constants": const, "records": records}))
 except nc.CertificationRefused as e:
     print(json.dumps({"ok": False, "code": e.code, "message": e.message, "constants": const}))
 '''
 
+# In-process memo of E5.1's verdict, keyed by EVERYTHING the verdict depends on (see _e63_e51_validate). A hit replays the very
+# verdict (accepted records, or the refusal) that the validator produced for exactly these bytes and this validator text.
+_E63_E51_CACHE = {}
+_E63_E51_CACHE_MAX = 16
 
-def _e63_e51_validate(repo, sha, data):
-    """E5.1's OWN validator, loaded from the same ref: nikasha_certify.py and asset_census.py at `ref` are written to a temporary
-    directory and `nikasha_certify.parse_records(data)` is run on the ledger bytes in a subprocess (no network, nothing written to
-    the repository). A ledger E5.1 refuses is refused here, so this reader can never accept what the writer's validator
-    refuses, whatever either side's copy of a rule says. The validator's constants (citation criteria / strict set / states,
-    readable versions, declarations path) must equal the ones this reader applies: a mismatch raises, forcing a deliberate edit
-    on one side. A ref without the validator raises (fail closed)."""
+
+def _e63_e51_key(sha, data, nc_src, census_src):
+    return (sha, _e63_sha(data), _e63_sha(nc_src), _e63_sha(census_src), _e63_sha(_E63_E51_DRIVER.encode("utf-8")))
+
+
+def _e63_e51_run(sha, data, nc_src, census_src):
+    """Run E5.1's validator (the ref's own nikasha_certify.py + asset_census.py, written to a temporary directory) in a
+    subprocess on the ledger bytes. -> the validator's answer: {"ok", "constants", "records" | "code"/"message"}. Anything but
+    an answer (cannot run, no output) raises and is never cached."""
     import shutil
     import tempfile
-    nc_src = _e63_show(repo, sha, E63_E51_PATH)
-    census_src = _e63_show(repo, sha, E63_CENSUS_PATH)
     d = tempfile.mkdtemp(prefix="e63_e51_")
     try:
         with open(os.path.join(d, "nikasha_certify.py"), "wb") as f:
@@ -1120,46 +1053,68 @@ def _e63_e51_validate(repo, sha, data):
         shutil.rmtree(d, ignore_errors=True)
     try:
         out = json.loads(r.stdout.decode("utf-8").strip().splitlines()[-1])
-        const = out["constants"]
-    except (ValueError, IndexError, KeyError, UnicodeDecodeError):
+        out["constants"]
+        out["ok"]
+    except (ValueError, IndexError, KeyError, TypeError, UnicodeDecodeError):
         _e63_fail("registry_unreadable", f"E5.1's validator at {sha[:12]} did not answer ({r.stderr.decode('utf-8', 'replace')[-200:]})")
-    mine = {"CITATION_CRITERIA": list(E63_CITATION_CRITERIA), "CITATION_STRICT": list(E63_CITATION_STRICT),
-            "CITATION_STATES": list(E63_CITATION_STATES), "CITATION_PASS_REFUSED": list(E63_CITATION_BLOCKING),
-            "READABLE_RECORD_VERSIONS": list(E63_RECORD_VERSIONS), "DECLARATIONS_RELPATH": E63_DECLARATIONS_PATH}
+    if out["ok"] is True and not isinstance(out.get("records"), list):
+        _e63_fail("registry_unreadable", f"E5.1's validator at {sha[:12]} accepted the ledger but returned no records")
+    return out
+
+
+def _e63_e51_validate(repo, sha, data):
+    """E5.1's OWN validator, loaded from the same ref, is the single definition of what a certificate ledger is: the chain,
+    seq, generations, record_version, citation_state / caveat and the declarations binding are read ONLY there (this reader
+    holds no copy of those rules). -> the validator's records (every certificate and event line in file order, citation and
+    declarations fields normalised as E5.1 reads them); a ledger E5.1 refuses raises here (`malformed`). A ref without the
+    validator, or a validator that cannot run or does not answer, raises (fail closed). The validator's constants this reader
+    still relies on (CITATION_PASS_REFUSED, DECLARATIONS_RELPATH) must equal the reader's own: a mismatch raises.
+
+    CACHE (per process). The verdict is a pure function of (the validator's text, the ledger bytes), so it is memoised under
+    (ref sha, sha256(ledger bytes), sha256(nikasha_certify.py at the ref), sha256(asset_census.py at the ref), sha256(driver)).
+    The validator files and the ledger are READ and HASHED on every call (a ref without them raises before any lookup); a
+    changed ledger byte, a changed validator file or another ref is a different key, so it re-runs the validator. A refusal is
+    cached AS a refusal (replayed as the same ElevatedInputError), never as an acceptance; a run that gave no answer is not
+    cached. Records are returned as a deep copy, and the constants check runs on every call, hit or miss."""
+    nc_src = _e63_show(repo, sha, E63_E51_PATH)
+    census_src = _e63_show(repo, sha, E63_CENSUS_PATH)
+    key = _e63_e51_key(sha, data, nc_src, census_src)
+    out = _E63_E51_CACHE.get(key)
+    if out is None:
+        out = _e63_e51_run(sha, data, nc_src, census_src)
+        while len(_E63_E51_CACHE) >= _E63_E51_CACHE_MAX:
+            _E63_E51_CACHE.pop(next(iter(_E63_E51_CACHE)))
+        _E63_E51_CACHE[key] = out
+    const = out["constants"]
+    mine = {"CITATION_PASS_REFUSED": list(E63_CITATION_BLOCKING), "DECLARATIONS_RELPATH": E63_DECLARATIONS_PATH}
     if const != mine:
         diff = sorted(k for k in mine if mine[k] != const.get(k))
         _e63_fail("registry_unreadable", f"E5.1 at {sha[:12]} and this reader disagree on {diff}: a rule one side changed "
                                          "(edit the E63_* constants deliberately to match)")
     if not out["ok"]:
         _e63_fail("malformed", f"{E63_CERTS_PATH}: E5.1's own reader refuses this ledger ({out['code']}): {out['message']}")
+    return _copy.deepcopy(out["records"])
 
 
-def _e63_parse_certs(data, facts):
-    """-> _Ledger. Strict: E5.1's chain (seq 1..N, prev_sha256), certificate-or-event for every line, per-key
-    generations 1..n, E5.5's event shapes and a truthful watermark; anything else raises."""
-    rows = _e63_lines(data, E63_CERTS_PATH)
+def _e63_parse_certs(records, facts):
+    """-> _Ledger, from the records E5.1's validator accepted (chain, seq, generations, citation and declarations fields are
+    already settled there). Added here: the generic certificate field checks against the registry, E5.5's event shapes and
+    a truthful watermark; anything else raises."""
     led = _Ledger(by_key={}, pos={}, invalidated={}, last_covers=None, unevaluated=0)
-    prev, nrec, certs, gens, cert_by_id = _e63_sha(rows[0][1]), 0, [], {}, {}
-    for n, raw, r in rows[1:]:
-        where = f"{E63_CERTS_PATH} line {n}"
-        if r.get("asset") == "_schema":
-            _e63_fail("malformed", f"{where}: a second `_schema` row")
+    certs, cert_by_id = [], {}
+    for r in records:
+        n = r["seq"]
+        where = f"{E63_CERTS_PATH} record {n}"
         is_cert = "type" not in r and _e63_is_cert_line(r)       # a line that names a `type` is an event or invalid
         if not is_cert and not _e63_is_event_line(r):
             _e63_fail("malformed", f"{where}: not a record this reader can trust (a certificate needs cert_key/"
                                    "generation/cert_id/verdict; any other line needs a `type` in "
                                    f"{E63_EVENT_TYPES} and no certificate field)")
-        _e63_chain_check(r, where, nrec, prev)
-        prev, nrec = _e63_sha(raw), nrec + 1
         if is_cert:
-            key, gen = r["cert_key"], r["generation"]
-            if gens.get(key, 0) + 1 != gen:
-                _e63_fail("malformed", f"{where}: {key} generation {gen} follows generation {gens.get(key, 0)}")
-            gens[key] = gen
             _e63_check_cert(r, n, facts)
             led.pos[r["cert_id"]] = r["seq"]
             cert_by_id[r["cert_id"]] = r
-            led.by_key.setdefault(key, []).append(r)
+            led.by_key.setdefault(r["cert_key"], []).append(r)
             certs.append(r)
         elif r["type"] == "invalidation":
             _e63_check_invalidation(r, n, cert_by_id, facts)
@@ -1499,9 +1454,8 @@ def _e63_load(ref, repo):
     sha = _e63_resolve_ref(ref, repo)
     facts = _e63_registry_facts(repo, sha)
     registry = _e63_registry_assets(repo, sha)
-    cert_bytes = _e63_show(repo, sha, E63_CERTS_PATH)
-    _e63_e51_validate(repo, sha, cert_bytes)          # E5.1's validator, from the same ref, has the first word
-    led = _e63_parse_certs(cert_bytes, facts)
+    records = _e63_e51_validate(repo, sha, _e63_show(repo, sha, E63_CERTS_PATH))     # E5.1's validator, same ref, has the word
+    led = _e63_parse_certs(records, facts)
     if led.last_covers is None:
         _e63_fail("watermark_missing", "the certificate ledger carries no watermark line: E5.5 has never evaluated it")
     if led.unevaluated:

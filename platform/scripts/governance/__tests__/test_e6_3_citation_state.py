@@ -18,7 +18,7 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _e6_3_fixtures import CERTS, World, cert, chained, disp, load_tracker, mini_patch  # noqa: E402
+from _e6_3_fixtures import CERTS, World, cert, chained, disp, load_tracker, mini_patch, parse_via_validator  # noqa: E402
 
 T = load_tracker()
 GOLDEN = pathlib.Path(__file__).resolve().parent / "fixtures" / "e6_3_golden" / "ledger_v2.jsonl"
@@ -93,7 +93,7 @@ def test_v1_records_read_as_null_state_and_a_v1_citation_pass_is_caveated_but_v1
         w.certs[i] = cert(c["asset"], c["criterion"], c["verdict"], kind=c["kind"], na=c["na"], v1=True)
     w.commit()
     facts = T._e63_registry_facts(str(w.repo), w.last)
-    led = T._e63_parse_certs(T._e63_show(str(w.repo), w.last, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
+    led = parse_via_validator(T, w.repo, w.last, T._e63_show(str(w.repo), w.last, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
     a = led.by_key
     assert a["ga_alpha|gate|Ldgr.src"][0]["citation_state"] is None and a["ga_alpha|gate|Ldgr.src"][0]["citation_state_caveat"] is True
     assert a["ga_alpha|gate|Idem.pat"][0]["citation_state_caveat"] is False
@@ -105,13 +105,13 @@ def test_a_v1_record_is_read_as_exactly_state_none_and_the_citation_gate_rule_ca
     w.certs[w.certs.index(w.find("ga_alpha", "Ldgr.src"))] = cert("ga_alpha", "Ldgr.src", v1=True)
     w.commit()
     facts = T._e63_registry_facts(str(w.repo), w.last)
-    led = T._e63_parse_certs(T._e63_show(str(w.repo), w.last, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
+    led = parse_via_validator(T, w.repo, w.last, T._e63_show(str(w.repo), w.last, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
     rec = led.by_key["ga_alpha|gate|Ldgr.src"][0]
     assert rec["record_version"] == 1 and rec["citation_state"] is None and rec["citation_state_caveat"] is True
     other = led.by_key["ga_alpha|gate|Idem.pat"][0]                                   # a non-citation v1 PASS
     w.certs[w.certs.index(w.find("ga_alpha", "Idem.pat"))] = cert("ga_alpha", "Idem.pat", v1=True)
     w.commit()
-    led = T._e63_parse_certs(T._e63_show(str(w.repo), w.last, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
+    led = parse_via_validator(T, w.repo, w.last, T._e63_show(str(w.repo), w.last, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
     assert led.by_key["ga_alpha|gate|Idem.pat"][0]["citation_state_caveat"] is False
 
 
@@ -260,10 +260,12 @@ def test_elevated_assets_stays_the_key_set_of_the_report(w):
 
 
 def test_the_citation_constants_are_n74s():
-    assert T.E63_RECORD_VERSIONS == (1, 2)
-    assert T.E63_CITATION_STATES == ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
     assert T.E63_CITATION_BLOCKING == ("unsourced", "refuted")
 
 
 def test_the_real_citation_criteria_are_carr_d1_and_ldgr_source_presence():
-    assert load_tracker().E63_CITATION_CRITERIA == ("Carr.D1", "Ldgr.source_presence")
+    """E5.1's own constant (the single definition; the reader holds no copy)."""
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+    import nikasha_certify as nc
+    assert nc.CITATION_CRITERIA == ("Carr.D1", "Ldgr.source_presence")
+    assert not hasattr(load_tracker(), "E63_CITATION_CRITERIA")

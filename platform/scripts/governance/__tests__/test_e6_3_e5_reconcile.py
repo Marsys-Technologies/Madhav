@@ -22,7 +22,7 @@ import tempfile
 import pytest
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _e6_3_fixtures import (CERTS, MINI_FLOOR, mini_patch, World, chained, cert, disp, load_tracker, sha,  # noqa: E402
+from _e6_3_fixtures import (parse_via_validator, CERTS, MINI_FLOOR, mini_patch, World, chained, cert, disp, load_tracker, sha,  # noqa: E402
                             writer_path)
 
 T = load_tracker()
@@ -179,7 +179,7 @@ def mine(tmp_path, data: bytes):
     w.commit()
     facts = T._e63_registry_facts(str(w.repo), w.last)
     try:
-        led = T._e63_parse_certs(data, facts)
+        led = parse_via_validator(T, w.repo, w.last, data, facts)
     except T.ElevatedInputError:
         return False, None, None
     return True, sorted(led.by_key), led.unevaluated
@@ -251,7 +251,7 @@ def test_parity_current_certificates_and_watermark_match_e5_5(probe_dir, tmp_pat
     w.raw[CERTS] = data
     w.commit()
     facts = T._e63_registry_facts(str(w.repo), w.last)
-    led = T._e63_parse_certs(data, facts)
+    led = parse_via_validator(T, w.repo, w.last, data, facts)
     after = led.unevaluated
     state = T.LedgerState(str(w.repo), w.last, facts, led.by_key, led.invalidated, led.pos)
     cur = sorted(k for k, recs in led.by_key.items()

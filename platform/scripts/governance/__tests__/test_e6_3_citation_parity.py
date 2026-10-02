@@ -20,7 +20,7 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(__file__))
 from _e6_3_citation_variants import MINI_STRICT, VARIANTS, VERDICTS_FILE, run_e5_1, sha  # noqa: E402
-from _e6_3_fixtures import World, load_tracker, mini_patch  # noqa: E402
+from _e6_3_fixtures import ACTIVE, World, load_tracker, mini_patch, parse_via_validator  # noqa: E402
 
 T = load_tracker()
 GOV = pathlib.Path(__file__).resolve().parents[1]
@@ -41,14 +41,14 @@ RECORDED = json.loads(VERDICTS_FILE.read_text(encoding="utf-8"))
 @pytest.fixture
 def mine(tmp_path, monkeypatch):
     mini_patch(monkeypatch, T)
-    monkeypatch.setattr(T, "E63_CITATION_STRICT", MINI_STRICT)
+    monkeypatch.setattr(ACTIVE, "strict", MINI_STRICT)       # the committed validator is E5.1's with the mini strict set
     w = World(tmp_path)
     w.commit()
     facts = T._e63_registry_facts(str(w.repo), w.last)
 
     def parse(data):
         try:
-            led = T._e63_parse_certs(data, facts)
+            led = parse_via_validator(T, w.repo, w.last, data, facts)
         except T.ElevatedInputError:
             return {"verdict": "REFUSED"}
         return {"verdict": "OK", "states": {r["cert_id"]: [r["citation_state"], r["citation_state_caveat"], r["declarations_sha256"], r["declarations_version"]]
@@ -92,26 +92,3 @@ def test_the_v1_citation_gate_pass_is_caveated_true_by_both(mine):
         assert states[f"ga_alpha|gate|{crit}@1"] == [None, True, None, None], name
         assert RECORDED["variants"][name]["states"][f"ga_alpha|gate|{crit}@1"] == [None, True, None, None]
     assert mine(VARIANTS["v1_non_citation_pass"])["states"]["ga_alpha|gate|Idem.pat@1"] == [None, False, None, None]
-
-
-def test_real_carr_d1_is_strict_a_pass_or_partial_with_no_usable_state_is_refused():
-    """The mini registry has no Carr.D1, so call the check directly with the REAL constants (no patching)."""
-    fresh = load_tracker()
-    base = dict(record_version=2, citation_state_caveat=False, na=None)
-    check = fresh._e63_check_citation_fields
-    for verdict in ("PASS", "PARTIAL"):
-        for state in (None, "unsourced", "refuted"):
-            with pytest.raises(fresh.ElevatedInputError):
-                check(dict(base, citation_state=state), "t", verdict, "gate", "Carr.D1")
-    check(dict(base, citation_state="sourced"), "t", "PARTIAL", "gate", "Carr.D1")
-    check(dict(base, citation_state="sourced"), "t", "PASS", "gate", "Carr.D1")
-    check(dict(base, citation_state="sourced_ocr_unverified", citation_state_caveat=True), "t", "PASS", "gate", "Carr.D1")
-    check(dict(base, citation_state=None), "t", "NO_DETECTOR", "gate", "Carr.D1")            # not strict below PARTIAL
-    check(dict(base, citation_state=None, citation_state_caveat=True), "t", "PASS", "gate", "Ldgr.source_presence")   # Ldgr is lenient
-
-
-def test_a_v1_record_on_the_real_carr_d1_reads_as_null_with_the_caveat():
-    fresh = load_tracker()
-    r = dict(record_version=1)
-    fresh._e63_check_citation_fields(r, "t", "PASS", "gate", "Carr.D1")
-    assert r["citation_state"] is None and r["citation_state_caveat"] is True

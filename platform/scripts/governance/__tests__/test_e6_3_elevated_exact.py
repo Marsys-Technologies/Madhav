@@ -13,7 +13,7 @@ import sys
 import pytest
 
 sys.path.insert(0, __import__("os").path.dirname(__file__))
-from _e6_3_fixtures import (MINI_CENSUS, MINI_FLOOR, mini_patch, NA_NULL, World, cert, disp, gap, inval,  # noqa: E402
+from _e6_3_fixtures import (parse_via_validator, MINI_CENSUS, MINI_FLOOR, mini_patch, NA_NULL, World, cert, disp, gap, inval,  # noqa: E402
                             load_tracker)
 
 T = load_tracker()
@@ -349,7 +349,7 @@ def test_stale_an_earlier_generation_is_not_current_once_a_newer_one_exists(w):
     w.certs.append(cert("ga_alpha", "Idem.pat", gen=2))
     sha = w.commit()
     facts = T._e63_registry_facts(str(w.repo), sha)
-    led = T._e63_parse_certs(T._e63_show(str(w.repo), sha, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
+    led = parse_via_validator(T, w.repo, sha, T._e63_show(str(w.repo), sha, "00_ARCHITECTURE/control/asset_certs.jsonl"), facts)
     by_key = led.by_key
     state = T.LedgerState(str(w.repo), sha, facts, by_key, {}, led.pos)
     ok1, why1 = T.certificate_currency(by_key["ga_alpha|gate|Idem.pat"][0], state)

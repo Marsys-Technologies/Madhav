@@ -93,6 +93,8 @@ MINI_PINNED = {"Ldgr": ("Ldgr.src",), "Idem": ("Idem.alt", "Idem.pat"), "Null": 
                "Build": ("Build.any", "Build.target")}
 
 
+REAL_STRICT = ("Carr.D1",)
+MINI_STRICT = ("Idem.alt",)                    # stands in for E5.1's CITATION_STRICT ("Carr.D1",)
 MINI_CITATION = ("Ldgr.src", "Idem.alt")      # stands in for Carr.D1 / Ldgr.source_presence, which the mini registry lacks
 
 
@@ -100,32 +102,36 @@ class _Active:
     """The citation criteria the fixtures write records for AND commit into E5.1's validator copy (one source, so the
     committed validator and the records agree). mini_patch / real_citation_patch set it together with the reader's constant."""
     citation = MINI_CITATION
+    strict = REAL_STRICT
 
 
 ACTIVE = _Active()
 
 
-def nikasha_text(criteria=None):
-    """The REAL nikasha_certify.py of this checkout, with ONLY its CITATION_CRITERIA constant set to `criteria` (the mini
+def nikasha_text(criteria=None, strict=None):
+    """The REAL nikasha_certify.py of this checkout, with ONLY its CITATION_CRITERIA and CITATION_STRICT constants set (the mini
     registry has no Carr.D1 / Ldgr.source_presence). Everything else is E5.1's own code: it is the validator the reader runs."""
     src = (REPO / NIKASHA).read_text(encoding="utf-8")
-    line = 'CITATION_CRITERIA = ("Carr.D1", "Ldgr.source_presence")'
-    assert src.count(line) == 1, "E5.1's CITATION_CRITERIA line moved: update the fixtures"
-    return src.replace(line, f"CITATION_CRITERIA = {tuple(criteria or ACTIVE.citation)!r}")
+    for name, old, new in (("CITATION_CRITERIA", '("Carr.D1", "Ldgr.source_presence")', criteria or ACTIVE.citation),
+                           ("CITATION_STRICT", '("Carr.D1",)', strict or ACTIVE.strict)):
+        line = f"{name} = {old}"
+        assert src.count(line) == 1, f"E5.1's {name} line moved: update the fixtures"
+        src = src.replace(line, f"{name} = {tuple(new)!r}")
+    return src
 
 
 def mini_patch(monkeypatch, tracker):
     """Pin the floor AND the criterion ids the mini registry satisfies (the real ones name the real registry)."""
     monkeypatch.setattr(tracker, "E63_REQUIRED_FLOOR", MINI_FLOOR)
     monkeypatch.setattr(tracker, "E63_REQUIRED_CRITERIA", MINI_PINNED)
-    monkeypatch.setattr(tracker, "E63_CITATION_CRITERIA", MINI_CITATION)
     monkeypatch.setattr(ACTIVE, "citation", MINI_CITATION)
+    monkeypatch.setattr(ACTIVE, "strict", REAL_STRICT)
 
 
 def real_citation_patch(monkeypatch, tracker):
     """The REAL citation criteria (Carr.D1, Ldgr.source_presence): for tests that run against the real registry."""
-    monkeypatch.setattr(tracker, "E63_CITATION_CRITERIA", REAL_CITATION)
     monkeypatch.setattr(ACTIVE, "citation", REAL_CITATION)
+    monkeypatch.setattr(ACTIVE, "strict", REAL_STRICT)
 
 
 def sha(b: bytes) -> str:
@@ -374,3 +380,9 @@ class World:
 
 def clone(world_certs):
     return copy.deepcopy(world_certs)
+
+
+def parse_via_validator(tracker, repo, sha, data, facts):
+    """The reader's ledger state for certificate-ledger `data` as `elevated_report` builds it: E5.1's validator (committed at `sha`)
+    first, then the reader's own checks on the records it accepted. Raises ElevatedInputError on either side's refusal."""
+    return tracker._e63_parse_certs(tracker._e63_e51_validate(str(repo), sha, data), facts)
