@@ -37,9 +37,11 @@
 -- the window, verification, inventory or seal tables (1234, 1206 §7, 1240, 1241 own those).
 --
 -- ROUTE / WINDOW: a ROUTINE migration (the owner grants on existing objects; no object is created in schema public), so it is NOT in
--- PROTECTED_PUBLIC_SCHEMA_MIGRATIONS and is applied by the ordinary deploy BEFORE the protected window (it is numbered below 1240, so the
--- window's `--only` run refuses to start until it is applied — rehearsal-plan ledger precondition: routine files 1230, 1234, 1236, 1242).
--- Idempotent: GRANT of an already-held privilege is a no-op. ROLLBACK: REVOKE the same grants.
+-- PROTECTED_PUBLIC_SCHEMA_MIGRATIONS. It is numbered ABOVE 1240, so it is NOT an unapplied predecessor of the protected window (`migrate.ts
+-- --only` refuses only unselected, unapplied files numbered BELOW the highest selected one): the window's ledger precondition stays 1234 and
+-- 1236. It is needed before the first RESTRICTED build (the builder cannot replace or finalise record rows without it) and may be applied by
+-- the routine route before or after the window — either order works. It touches only tables 1153/1155 created (already applied in
+-- production). Idempotent: GRANT of an already-held privilege is a no-op. ROLLBACK: REVOKE the same grants.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 DO $$
