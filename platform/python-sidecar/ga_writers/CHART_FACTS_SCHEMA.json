@@ -6281,7 +6281,7 @@
     "argala_natal_matrix": {
       "ayanamsha_dependent": true,
       "target_table": "chart_facts",
-      "subject_note": "Target sign as 'SIGN_{N}' (1-based). 12 subjects × 4 argala positions = 144 atomic rows per (chart, ayanamsha).",
+      "subject_note": "Target sign as 'SIGN_{N}' (1-based). 12 subjects × 4 argala positions = 144 atomic rows per (chart, ayanamsha). An argala-offset cell whose source sign holds no graha is NULL with fact_value_text 'no_occupant' (SS N-61, AR-3); sign matrix is forward-only (no node reversal).",
       "atomicity": "CRITICAL: each row is atomic (one value_num per row, no JSONB blob). 12×12 = 144 rows per ayanamsha, NOT 1 blob.",
       "allowed_keys": {
         "from_sign_<M>_offset_<K>": {
@@ -6292,13 +6292,46 @@
             1.0
           ],
           "precision": 4,
-          "verification_min": "two_pass_verified"
+          "verification_min": "single"
         }
       },
       "row_count_invariant": 144,
       "since_engine_version": "pyjhora/1.0.0",
       "writer": "ga_structural_writer",
       "render_template": "{target_sign} receives argala from {source_sign} (pos {offset}): score {score:.2f} ({ayanamsha})."
+    },
+    "argala_graha_natal": {
+      "ayanamsha_dependent": true,
+      "target_table": "chart_facts",
+      "applies_to_subjects": [
+        "D1_SUN",
+        "D1_MOON",
+        "D1_MAR",
+        "D1_MER",
+        "D1_JUP",
+        "D1_VEN",
+        "D1_SAT",
+        "D1_RAH_MEAN",
+        "D1_KET_MEAN"
+      ],
+      "subject_note": "Target graha as 'D1_<code>' (D1 only). One row per (target graha, source graha) where the source stands in an argala sign of the target; no row for an empty argala sign.",
+      "atomicity": "One row per (target graha, source graha) pair at an argala offset (2, 4, 5, 11 counted from the target; counted in reverse when the target is Rahu or Ketu). fact_value_jsonb carries the paired obstruction offset, obstruction_present, argala_count, obstructor_count, count_relation, vipareeta_condition, outcome_reason and both named outcomes.",
+      "allowed_keys": {
+        "from_<S>_offset_<K>": {
+          "value_type": "text_enum",
+          "enum": [
+            "unobstructed",
+            "argala_prevails",
+            "undetermined"
+          ],
+          "unit": "graha_count",
+          "verification_min": "single",
+          "note": "fact_value_text = outcome_by_count (canonical). BPHS states the test as disjunctive (the argala prevails if stronger OR more numerous), so by count only 'more causers' is certain: unobstructed (no obstructor), argala_prevails (more causers than obstructors), else undetermined (the strength comparison is null); 'obstructed' is not emitted. fact_value_num = argala_count. count_relation, vipareeta_condition, outcome_reason and outcome_any_obstructor (obstructed / unobstructed, the named variant) are in fact_value_jsonb."
+        }
+      },
+      "since_engine_version": "pyjhora/1.0.0",
+      "writer": "ga_structural_writer",
+      "render_template": "{target} receives argala from {source} (offset {offset}, {direction} count): {argala_count} causing, {obstructor_count} obstructing: {outcome_by_count} ({ayanamsha})."
     },
     "ashtakavarga_anubindu": {
       "ayanamsha_dependent": true,
@@ -7693,7 +7726,7 @@
     "virodha_argala_natal_matrix": {
       "ayanamsha_dependent": true,
       "target_table": "chart_facts",
-      "subject_note": "Target sign as 'SIGN_{N}'. 12 subjects × 4 virodha positions = 144 atomic rows per (chart, ayanamsha).",
+      "subject_note": "Target sign as 'SIGN_{N}'. 12 subjects × 4 virodha positions = 144 atomic rows per (chart, ayanamsha). Sign-level and forward-only (SS N-61); unpaired; the pairing, counts and outcome are in argala_graha_natal.",
       "atomicity": "CRITICAL: atomic (value_num per row). 144 rows per ayanamsha.",
       "allowed_keys": {
         "from_sign_<M>_offset_<K>": {
@@ -7704,7 +7737,7 @@
             1.0
           ],
           "precision": 4,
-          "verification_min": "two_pass_verified"
+          "verification_min": "single"
         }
       },
       "row_count_invariant": 144,
