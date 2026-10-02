@@ -1,6 +1,6 @@
 ---
 artifact: NATIVE_OPEN_DECISIONS
-version: "1.7"
+version: "1.8"
 status: LIVING — the one place the native's open decisions for the Gochara build are listed (steward M20261002T004621-2b84)
 date: 2026-10-02
 author: Stream B (Śāstra)
@@ -54,5 +54,7 @@ transit **from the ascendant**; none counts from the planet's own birth sign. **
 result. You are asked only to confirm or object; nothing waits on you. Details: `design/P1_FRAME_ANSWER_v1_0.md`.
 
 **AM-19 — how should the running-period planet's transit be scored?** Seven small questions (which sign-quality vocabulary; how big each quality counts; whether friendly/neutral signs are good, bad or neither; combustion; what happens when a good and a bad trigger hold together; the retrograde clause; what makes a period lord "auspicious") are laid out in plain language, with the passages we can read and what the two strength tables say, in `decisions/AM19_P1_VALUE_MAPPING_DECISION_PACKET_v1_0.md`. The cheapest honest answer to each is "don't score it"; until you rule, these windows stay "unqualified".
+
+**ND-P1-PD-LEVEL — does the finest running-period level (pratyantar) count as a reading, or only as a note?** The books we can read (Phaladīpikā XX.34–38) speak of the main period and the sub-period lords only; the finest level is the engine specification's own extension and **no passage we can read supports it**. The steward has ruled, for the first all-blank build, that finest-level readings are **kept and shown as authorised testimony — labelled "no source for this level" — and never counted** in any score, ranking or gate (`decisions/ST-P1-PD-TESTIMONY-20261002.md`). You may overrule: count them (name a source or accept them as an uncited practice, labelled), or drop them. Until you decide they stay testimony only.
 
 **ND-ROLES — who holds the "verified" stamp and the "published" seal?** Today neither exists as a separate key, and the builder is even allowed to write the verification stamp itself, so the stamp would prove nothing. This **blocks the first candidate build**: it must be built and held without database-level independence until you decide. Four options (separate credentials with no role switching — recommended; the pipeline switching role inside its own session; one job holding two logins; keep today's arrangement and disclose it), what each needs built and what each costs, the governance rules each must respect (one would be reverted by an existing deploy gate), and what happens to the builder's current permission to write the verification stamp, are in `decisions/ND_ROLES_DECISION_PACKET_v1_0.md`.

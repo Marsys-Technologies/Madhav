@@ -3,14 +3,14 @@
  "run_id": "4_1_v1",
  "generation": "4.1",
  "status": "<<DRAFT — set to FROZEN only when every placeholder is filled and this file is committed BEFORE any extract is generated>>",
- "note": "DRAFT TEMPLATE (FREEZE_STAGE1_4_1_v1.DRAFT.json). Becomes FREEZE_STAGE1_4_1_v1.json at freeze. The verifier (services/gochara_eval/freeze.py) REFUSES every run while any double-angle-bracket placeholder remains.",
+ "note": "DRAFT TEMPLATE (FREEZE_STAGE1_4_1_v1.DRAFT.json), typed schema of services/gochara_eval/freeze.py (Codex R9-8): every mandatory field typed and non-empty; `inputs` keyed by the 12 fixed identifiers; `ephemeris_requirement.manifest_readback` must be the REAL object printed by `dump_extract --read-manifest-orb` (its `ephemeris` component is re-derived by the verifier and must cover the consumed bodies INCLUDING the Moon over the horizon). Becomes FREEZE_STAGE1_4_1_v1.json at freeze. The verifier REFUSES every run while any double-angle-bracket placeholder remains, and the freeze is BOUND to the run (registry, controls, extract name, generation predicate, held-out count, budget, and the extract command's arguments).",
  "amendments_draft": {
-  "version": "<<AMENDMENTS_DRAFT_VERSION_AT_FREEZE (v0.21 today)>>"
+  "version": "<<AMENDMENTS_DRAFT_VERSION_AT_FREEZE (v0.23 today)>>"
  },
  "addendum": {
   "artifact": "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING",
-  "version": "1.4",
-  "note": "v1.4 = v1.3 + §1a (the '4.1' si mapping); supersedes v1.3"
+  "version": "1.5",
+  "note": "v1.5 = v1.4 + the proven-enumeration operational §4 (Codex R9-7); §1a ('4.1' si := raw_intensity) is v1.4's; supersedes v1.4"
  },
  "registries_selected": {
   "event_registry": "v2_3 (47 held-out: 32 timing-usable + 15 year-grain; exact 5, interval 4)",
@@ -21,7 +21,7 @@
   "manifest_location": "kala_gochara_publication.input_generation_vector (one row per chart x generation), keys `orb_max_deg` and `orb_ruling`",
   "writer_declares": "ka_gochara_v4_41_candidate.py ORB_DEG = 5.0 -> vector['orb_max_deg']; vector['orb_ruling'] = 'M-1 fallback no-box x 5.0 deg (unratified)'  (the writer's source comment calls it 'M-1 ratified candidate-1 enumeration orb'; the manifest string says 'unratified' — the MANIFEST string is what this freeze quotes; discrepancy disclosed)",
   "readback_command": "python3 -m services.gochara_eval.dump_extract --generation 4.1 --read-manifest-orb  (read-only; reads no window row)",
-  "manifest_readback": "<<READ_AT_FREEZE: output of readback_command — orb_max_deg, orb_ruling, manifest_status>>",
+  "manifest_readback": "<<READ_AT_FREEZE: same object as ephemeris_requirement.manifest_readback (one read-back, one value)>>",
   "companion_manifest_flags": "same vector, per Stream A: activity_shape='linear_no_box', moon_channel='separate', nodal_drishti='removed' (N-14), sade_sati_mode='testimony' (N-15), kakshya_bindu_interim=True (N-22), overlay_stamps=True (N-17), vedha_exceptions='m8_rows', delta_report=None, vedha/moorti upstream freshness + fingerprints. The '4.1' vector is NOT the '5.0' input vector (no ka_gochara_input_vector schema, no orb_policy/ephemeris components): an ephemeris/implementation identity for '4.1' is a GAP, not carried by the manifest."
  },
  "conventions": {
@@ -49,7 +49,7 @@
  "extract_generation_args": {
   "generation": "4.1",
   "stage1": "../../00_ARCHITECTURE/briefs/pravaha/measurement/FREEZE_STAGE1_4_1_v1.json",
-  "pinned_at": "<<PINNED_AT_DATE>>",
+  "pinned_at": "<<PINNED_AT_DATE (ISO YYYY-MM-DD)>>",
   "out": "../../00_ARCHITECTURE/briefs/pravaha/measurement/baseline_4_1_extract_v1_0.json"
  },
  "extract_environment": "run from platform/python-sidecar on the merged commit; read-only role; GOCHARA_EVAL_READONLY_DSN (or --libpq-env); READ ONLY transaction: sign reconciliation (0 / 0), horizon assertion (0), then ONE ordered SELECT",
@@ -82,7 +82,7 @@
   "percentile": "100*(avg_rank-1)/N, N = ALL admitted candidates incl. unknown",
   "timezone": "IST civil dates (UTC+05:30)",
   "enumeration_budget": 400000,
-  "budget_exceeded": "endpoint reported unqualified with the full [0,100] range; never guessed"
+  "budget_exceeded": "endpoint reported UNQUALIFIED with the full [0,100] range; never a partial range or a guess (SI addendum v1.5 §4 item 4)"
  },
  "requalification_before_extract": {
   "command": "python3 -m services.gochara_eval.candidate_score --baseline-dry-run --registry ../../00_ARCHITECTURE/briefs/pravaha/measurement/event_registry_v2_3.json --extract ../../00_ARCHITECTURE/briefs/pravaha/measurement/baseline_3_0_extract_v1_0.json --controls ../../00_ARCHITECTURE/briefs/pravaha/measurement/random_controls_v1_3.json --declared-pin 70ba61421915db2ec3fcf3d1a23bc0ad80d43055b0d0bcc656e5a89079ef84ff --output <scratch>",
@@ -90,53 +90,53 @@
  },
  "rerun_policy": "The scorer is deterministic: a same-input rerun must reproduce the result file byte for byte (checked once, recorded). INPUT_REJECTED / controls rejection / source-reconciliation halt write the partial result and stop — that is a report, not a failure of procedure, and is not retried by editing inputs. After any candidate result has been inspected NO frozen item may change; a change is a protocol violation and is disclosed as one (addendum §5). A discovered defect in the adapter/scorer is reported and fixed in a new, separately-dated freeze, never patched into this run.",
  "inputs": {
-  "event_registry_v2_3": {
+  "event_registry": {
    "path": "event_registry_v2_3.json",
    "sha256": "23633a244c97275f9005983e61f2243919d626088e560101f240dce3b176edee"
   },
-  "random_controls_v1_3": {
+  "random_controls": {
    "path": "random_controls_v1_3.json",
    "sha256": "eea40fe8ba743a15291c8ec885b1f9dc0c5591a03ebf8bfb70cbefe414f6cb94"
   },
-  "baseline_3_0_extract_v1_0": {
+  "baseline_3_0_extract": {
    "path": "baseline_3_0_extract_v1_0.json",
    "sha256": "70ba61421915db2ec3fcf3d1a23bc0ad80d43055b0d0bcc656e5a89079ef84ff"
   },
-  "rerun_3_0_v2_3_scorer": {
+  "scorer_3_0": {
    "path": "rerun_3_0_v2_3_scorer.py",
    "sha256": "4456efa548d8551faa66c54d09c4cc0721fed19104a10e3ce6c282b59a846e71"
   },
-  "rerun_result_v2_3 (recorded 3.0 numbers)": {
+  "recorded_result_3_0": {
    "path": "rerun_result_v2_3.json",
    "sha256": "8322e915bc7f13bf36f2a84ff27892902b6fd0303cb54c598abe9ec0622a3984"
   },
-  "rerun_per_event_v2_3 (recorded 3.0 per-event)": {
+  "recorded_per_event_3_0": {
    "path": "rerun_per_event_v2_3.json",
    "sha256": "9984627e2aada36f1c65ca311f2f8391739ad559dd053062569698dee5b74345"
   },
-  "evaluation_protocol_v2_3": {
+  "evaluation_protocol": {
    "path": "EVALUATION_PROTOCOL_v2_3.md",
    "sha256": "a8353dc48563e08710f1fc6815ace2f15b7e9db5eec5d4ebea1e6dde1120514e"
   },
-  "unknown_competitor_bounds_model": {
-   "path": "unknown_competitor_bounds_model.py",
-   "sha256": "83b5ea6ecbe4683421bba31e18f29349ec2bdbf1aa18023ce1cd84abc18e7377"
+  "si_addendum": {
+   "path": "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_5.md",
+   "sha256": "f9e3fb5685fe81b8c2c3a4761bea2b4d020798458b1259b22e216fbb8ae953bb"
   },
-  "specs_v1_4": {
+  "bounds_model": {
+   "path": "unknown_competitor_bounds_model.py",
+   "sha256": "063bbe8766f557a756a286f06ec2bfe030ae6059d005f5923b27e0a11fed0f96"
+  },
+  "design_specs": {
    "path": "../design/GOCHARA_DESIGN_SPECS_v1_4.md",
    "sha256": "d5097ca18a721d8005cab593f3c3865227d22ff1435b8adc9973275d3f786a47"
   },
-  "oracles_v1_4": {
+  "test_oracles": {
    "path": "../design/GOCHARA_TEST_ORACLES_v1_4.json",
    "sha256": "19951b06ce672ac4cff82d74fb6c7bb7babe4315582ec1c142a0a7871752c277"
   },
   "amendments_draft": {
    "path": "../design/GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT.md",
-   "sha256": "<<RECOMPUTE_AT_FREEZE: sha256 of the amendments draft as then current (v0.21 today = 2a4b438d8cc78c0063c7a635245c91ad27e643d32480044e1e42fc3241de5455)>>"
-  },
-  "si_addendum_v1_4": {
-   "path": "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_4.md",
-   "sha256": "08f0de3416ebd70ce380821b3697895d72f2f5f75162880a36d0589dd9495593"
+   "sha256": "<<RECOMPUTE_AT_FREEZE: sha256 of the amendments draft as then current (v0.23 today)>>"
   }
  },
  "coverage_manifest": "UNVERIFIABLE (determined; supplied to the scorer as None).",
@@ -167,6 +167,22 @@
    "this identifies the TRANSIT kernel's ephemeris; the natal L1 facts the chain consumes carry their own provenance (Suvarna's L1 rebuild record) and are not covered by this component"
   ],
   "verification": "read-only read-back at freeze: python3 -m services.gochara_eval.dump_extract --generation 4.1 --read-manifest-orb  -> `ephemeris` + `ephemeris_problems`; the freeze verifier REFUSES unless ephemeris_problems == [] (checks: AM-16 key set exactly; backend 'swieph'; swe_version; library_sha256/probe_digest are sha256; platform; files non-empty, each a Swiss .se1 name with a sha256 — a Moshier-served build opens none).",
-  "manifest_readback": "<<READ_AT_FREEZE: the full object printed by the verification command>>"
+  "manifest_readback": "<<READ_AT_FREEZE: the REAL object printed by `dump_extract --generation 4.1 --read-manifest-orb`: {orb_max_deg, orb_ruling, manifest_status, ephemeris: {backend, swe_version, library_sha256, platform, files, probe_digest}, ephemeris_problems: []} — pasted as an OBJECT (not a string); the verifier re-derives ephemeris_problems itself>>",
+  "consumed_bodies": [
+   "Sun",
+   "Moon",
+   "Mercury",
+   "Venus",
+   "Mars",
+   "Jupiter",
+   "Saturn",
+   "Rahu",
+   "Ketu"
+  ],
+  "horizon": {
+   "start": "1998-01-01",
+   "end": "2026-04-18"
+  },
+  "consumed_bodies_note": "the eight persisted bodies AND the Moon (the windows projection and class context read it: on-demand, never persisted, but consumed) — freeze.py REQUIRED_CONSUMED_BODIES; the opened-file census must then contain sepl_NN (all bodies but the Moon) AND semo_NN (the Moon) for every 600-year block the horizon touches."
  }
 }

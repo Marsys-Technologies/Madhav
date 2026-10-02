@@ -1,13 +1,16 @@
-"""AM-16 reference MODEL v4 (Stream B) — reconciled with Stream A's implementation (pravaha/a53-am5-inventory @3677cccae,
+"""AM-16 reference MODEL v5 (Stream B; vector schema /3 — result_policy, steward M20261002T062742-971a) — reconciled with Stream A's implementation (pravaha/a53-am5-inventory @3677cccae,
 services/gochara_kernel/input_vector.py). Not production code. It states the NORMATIVE key schema and canonical
 serialization and holds the frozen cases. Stdlib only.
 
-  python am16_vectors_model.py                      # run the frozen cases: recompute and compare to design/am16_vectors_frozen_v2.json (LITERAL preimages + sha256)
+  python am16_vectors_model.py                      # run the frozen cases: recompute and compare to design/am16_vectors_frozen_v3.json (LITERAL preimages + sha256)
   python am16_vectors_model.py --freeze             # (re)write the frozen file — an explicit, reviewable act, never done by the check
   python am16_vectors_model.py --cross-check FILE   # FILE = Stream A's input_vector.py: its pure functions must agree byte-for-byte
 
-NORMATIVE SCHEMA  (`vector_schema` = "ka_gochara_input_vector/2"; a nested object, so a refusal NAMES the component that moved)
-  schema            "ka_gochara_input_vector/2"
+NORMATIVE SCHEMA  (`vector_schema` = "ka_gochara_input_vector/3"; a nested object, so a refusal NAMES the component that moved)
+  schema            "ka_gochara_input_vector/3"
+  result_policy     "all_null_candidate/1" | "window_qualification/1" — what a stored window's numerical result fields MAY be, selected by the manifest [added v5, /3]:
+                    under all_null_candidate/1 every numerical result field (incl. objective_value) is NULL, peak absent, valence unqualified, while geometry/supports/memberships/counts stay populated;
+                    the candidate gate refuses a window whose stored result contradicts the manifest's policy. Required key: a /2 vector (no key) is refused by the schema check.
   stored_scope      "stored_non_moon"  — the serving scope of the stored generation (AM-14); the mandatory response constructors read it back from the bound manifest  [added v3]
   sky_convention    id AND content digest of the convention vector (a label alone is not an identity)           [amended vs A]
   registry          {digest, census}   digest = sha256(canonical_json(payload)); payload = {schema:"ka_gochara_registry_digest/1",
@@ -39,7 +42,7 @@ There is no aggregate `identity` field: the manifest stores the whole vector and
 """
 import copy, hashlib, json, sys
 
-VECTOR_SCHEMA = "ka_gochara_input_vector/2"      # bumped from /1: the key set gained ephemeris.library_sha256 and ephemeris.platform (Codex R8-1)
+VECTOR_SCHEMA = "ka_gochara_input_vector/3"      # /2 -> /3: one new REQUIRED key `result_policy` (steward M20261002T062742-971a); /1 -> /2 was ephemeris.library_sha256 + platform (Codex R8-1)
 REGISTRY_DIGEST_SCHEMA = "ka_gochara_registry_digest/1"
 AUDIT_FIELDS = ("created_at", "sealed_at")
 
@@ -71,6 +74,7 @@ def vector(inp: dict) -> dict:
     return {
         "schema": VECTOR_SCHEMA,
         "stored_scope": inp["stored_scope"],
+        "result_policy": inp["result_policy"],
         "sky_convention": {"id": inp["sky_id"], "content_digest": sha(canonical_json(inp["sky_vector"]))},
         "registry": {"digest": registry_digest(inp["registry"]), "census": sorted([list(c) for c in inp["registry"]["census"]])},
         "node": inp["node"],
@@ -108,7 +112,7 @@ BASE = {
         "census": [["P3", "1.0.0"], ["P3", "1.1.0"]],
     },
     "node": {"model": "mean", "source": "swiss_mean_node_flg_sidereal", "zodiac": "sidereal", "ayanamsha": "lahiri"},
-    "swe_version": "2.10.03", "stored_scope": "stored_non_moon", "probe_digest": "6ea09e40aad66687" + "0" * 48,
+    "swe_version": "2.10.03", "stored_scope": "stored_non_moon", "result_policy": "all_null_candidate/1", "probe_digest": "6ea09e40aad66687" + "0" * 48,
     "library_sha256": "5ee1ab0c" + "e" * 56, "platform": "Linux-x86_64",
     "opened_files": {"sepl_18.se1": "a" * 64, "semo_18.se1": "b" * 64},        # the files the kernel opened for this horizon
     "l0_rows": {"bg_transit_rules": [{"graha": "sun", "house": 4, "rule_type": "vedha", "obstructor_house": 10}]},
@@ -131,6 +135,7 @@ CASES = {
     "library_artifact_only":  ("a different swisseph artifact with the SAME version string", True, "ephemeris.library_sha256"),
     "platform_only":          ("the same artifact on a different architecture", True, "ephemeris.platform"),
     "stored_scope_only":      ("the serving scope token differs", True, "stored_scope"),
+    "result_policy_only":     ("the manifest selects the other result policy", True, "result_policy"),
     "probe_digest_only":      ("the fixed-probe series digest differs (library/numerics drift the file hashes would miss)", True, "ephemeris.probe_digest"),
     "audit_field_only":       ("created_at differs", False, None),
     "unopened_file_only":     ("an ephemeris file is present in the directory but NOT opened for this horizon", False, None),
@@ -151,13 +156,14 @@ def mutate(case):
     elif case == "library_artifact_only": d["library_sha256"] = "7" * 64
     elif case == "platform_only": d["platform"] = "Darwin-arm64"
     elif case == "stored_scope_only": d["stored_scope"] = "stored_all"
+    elif case == "result_policy_only": d["result_policy"] = "window_qualification/1"
     elif case == "probe_digest_only": d["probe_digest"] = "1" * 64
     elif case == "audit_field_only": r["paths"][0]["created_at"] = "t1"
     elif case == "unopened_file_only": pass                 # the unopened file is not an input to the vector at all
     return d
 
 
-FROZEN = __import__("os").path.join(__import__("os").path.dirname(__import__("os").path.abspath(__file__)), "am16_vectors_frozen_v2.json")
+FROZEN = __import__("os").path.join(__import__("os").path.dirname(__import__("os").path.abspath(__file__)), "am16_vectors_frozen_v3.json")
 
 
 def run():

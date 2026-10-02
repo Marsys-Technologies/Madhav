@@ -1,10 +1,10 @@
 ---
 artifact: STAGE1_FREEZE_PREP_4_1
-version: "1.3"
+version: "1.4"
 status: PREPARED — Stage-1 code is a draft PR (#2923, HOLD until Codex has reviewed it as packet v1_10 §G, step (d) only); the freeze record is a DRAFT with named placeholders; NO '4.1' or '5.0' output was generated or read
 date: 2026-10-02
 author: Stream B (Śāstra), B6.0 — steward M (STAGE-1 FREEZE for the '4.1' candidate measurement)
-amended: 2026-10-02 (v1.3 — S1-REQ-EPHEMERIS named Stage-1 requirement (steward M20261002T042929-e773): manifest read-back now checks the AM-16 ephemeris component, the freeze verifier refuses unless it is clean; v1.2 — Stream A coverage relay M20261002T042919-8f9e: T-honesty DETERMINED UNVERIFIABLE, coverage disclosure block, `--read-coverage-summary`; a date-parameter defect in the dump SQL found and fixed by a new real-PostgreSQL test; v1.1 — steward answers M20261002T042015-7bff: si := raw_intensity (SI addendum v1.4 §1a), orb_state text + manifest read-back, T-honesty pre-declared UNVERIFIABLE, 3.0 byte-order erratum, packet §G)
+amended: 2026-10-02 (v1.4 — Codex round 9: the freeze draft is rewritten to the TYPED schema of `freeze.py` (R9-8) — inputs keyed by the 12 fixed identifiers, numeric cohort/seed/budget, `consumed_bodies` incl. the Moon + horizon, a real manifest read-back OBJECT required; pre-registration is SI addendum **v1.5** (proven unknown-competitor enumeration, R9-7; v1.4 untouched); the bounds-model hash updated (v2 model); v1.3 — S1-REQ-EPHEMERIS named Stage-1 requirement (steward M20261002T042929-e773): manifest read-back now checks the AM-16 ephemeris component, the freeze verifier refuses unless it is clean; v1.2 — Stream A coverage relay M20261002T042919-8f9e: T-honesty DETERMINED UNVERIFIABLE, coverage disclosure block, `--read-coverage-summary`; a date-parameter defect in the dump SQL found and fixed by a new real-PostgreSQL test; v1.1 — steward answers M20261002T042015-7bff: si := raw_intensity (SI addendum v1.4 §1a), orb_state text + manifest read-back, T-honesty pre-declared UNVERIFIABLE, 3.0 byte-order erratum, packet §G)
 governs: "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_3.md §5 (two-stage freeze); supersedes the command section of SCORING_RUN_4_1_PLAN_v1_0.md §3 for a measurement run (that plan's extract spec, thresholds and horizon assertion stay)"
 ---
 
@@ -17,7 +17,7 @@ governs: "EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_3.md §5 (two-stage fr
 | freeze verifier (Stage 1 + Stage 2 refusal) | `freeze.py`, `candidate_score.py` | same PR |
 | exact extract-generation command | `dump_extract.py` | same PR; refuses without a verified freeze; refuses governed `5.x` |
 | freeze record | `FREEZE_STAGE1_4_1_v1.DRAFT.json` | all pre-extract input hashes filled **and verified**; placeholders only for what cannot exist yet (22 items listed by the verifier) |
-| si pre-registration | `EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_4.md` §1a | v1.3 + one section; v1.3 untouched |
+| si pre-registration | `EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_5.md` (§1a '4.1' mapping from v1.4; §4 proven enumeration, new in v1.5) | v1.4 + the operational §4; v1.4 and v1.3 untouched |
 
 ## 2. The extract-generation command (exact)
 ```sh
@@ -51,3 +51,7 @@ Run three ways, all from the final code:
 4. Preconditions of the generation itself (not of this freeze): Suvarṇa's L1 rebuild + the AM-10 daśā re-pin landed; publication row for `4.1`.
 5. Generate the extract with the §2 command → write `FREEZE_STAGE2_4_1_v1.json` (`run_id`, `stage1_sha256`, `extracts.<file>.sha256`) → **commit before opening the extract**.
 6. `candidate_score --stage1 … --stage2 … --extract … --controls … --output …` (refuses without both stages and a matching hash).
+
+
+## v1.4 note — what the draft still lacks (checked by running `freeze.stage1_problems` on it)
+After the R9-8 rewrite the verifier's ONLY remaining findings on the draft are the freeze-time reads, each a named placeholder: `status`, the amendments-draft version and sha256, the two code commits and the nine `code.files` hashes (from the merged commit), `pinned_at`, the coverage read-back, and the manifest read-back object (one read, used for both `orb_state` and `ephemeris_requirement`). Every typed field (cohort integers, controls seed, tolerances, budget, thresholds, conventions) and all eleven non-draft input hashes verify on disk.
