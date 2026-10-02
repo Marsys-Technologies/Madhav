@@ -90,7 +90,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-SCHEMA = "suvarna.e5_9.transitive_footprint/2"
+SCHEMA = "suvarna.e5_9.transitive_footprint/3"   # /3: has_blockers is bool | "unknown" in the dispatcher report (_footprint_report)
 DEFAULT_SCHEMA = "public"
 
 CASCADE = "CASCADE"
@@ -674,7 +674,8 @@ def impact_statement_footprint_section(footprint: Mapping[str, Any]) -> list[str
     """Human-readable lines an impact statement embeds. Unknown and incomplete readings are stated loudly."""
     fp = footprint
     c = fp["counts"]
-    complete = fp["fk_closure_status"] == "COMPLETE"
+    # a PARTIAL footprint scope (footprint_scope, set by _footprint_report) is never a clean "0 found"
+    complete = fp["fk_closure_status"] == "COMPLETE" and fp.get("footprint_scope", "complete") != "partial"
     n_edges = c["edges_considered"]
     lines = [
         "Transitive write/delete footprint (pg_constraint closure, E5.9)",
@@ -702,7 +703,7 @@ def impact_statement_footprint_section(footprint: Mapping[str, Any]) -> list[str
         elif complete:
             lines.append(f"  {title} (0): {zero_text} (computed over {n_edges} catalog FK edge(s))")
         else:
-            lines.append(f"  {title} (0 found in the edges supplied; not a clean reading while INCOMPLETE)")
+            lines.append(f"  {title} (0 found in the edges supplied; not a clean reading while INCOMPLETE or PARTIAL)")
 
     inh = lambda e: "  [via partition-inherited FK]" if e["inherited_edge_in_path"] else ""  # noqa: E731
     section("CASCADE deletes", fp["delete_cascades"],
@@ -1565,15 +1566,504 @@ def insert_run(connect, *, chart_id: str, manifest: Mapping[str, Any], digest: s
         conn.close()
 
 
-def _footprint_report(conn, rows_now: Sequence[Mapping[str, Any]]) -> dict:
-    """E5.9 footprint of the wave's write tables (registry target_table); the loaders run SELECTs only."""
+# ---------------------------------------------------------------------------------------------
+# Footprint scope: which writes the registry target_table does NOT show (static, read-only, indicative)
+# ---------------------------------------------------------------------------------------------
+# asset_registry carries ONE target_table per asset, but a writer may write several tables, and a writer may declare none.
+# The write set _footprint_report feeds transitive_footprint is therefore only what the registry shows. This scan reads the
+# writer SOURCE TEXT (ast.parse only: nothing is imported or executed, no database) and finds INSERT INTO / DELETE FROM /
+# UPDATE .. SET / TRUNCATE / COPY .. FROM targets in its string literals (docstrings excluded). Forms it resolves: a
+# literal name, a module/class string constant ({TABLE}), a table passed as a literal argument to a parametric helper
+# (ga_writers/_idempotency.clear_table_for_chart), and the tables a known idempotency helper (replace_prior_*) writes. A
+# thin adapter that lists `source_paths = [...]` is followed one level into those files. Anything else -- a table named
+# by a runtime value, a writer that shows no write statement at all (it delegates, or it is read-only: the two are not
+# distinguishable here), an unreadable or unparseable file, a missing writer file -- goes to assets_not_scanned. The scan is
+# INDICATIVE: it can both over-report (a table named in a string that is not run) and under-report (SQL loaded from a file,
+# a delegate in another module), which is why any non-empty list makes the footprint scope "partial", never "complete".
+
+WRITERS_REL = "platform/python-sidecar/pipeline/orchestrator/writers"
+WRITE_SCAN_HELPER_MODULES = ("platform/python-sidecar/ga_writers/_idempotency.py",
+                             "platform/python-sidecar/bodha_writers/_idempotency.py")
+FOOTPRINT_SCAN_LABEL = "indicative_static_scan"
+_ASSET_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+
+_PH_OPEN, _PH_CLOSE = "\x01", "\x02"
+_NAME_PART = r'(?:"?[A-Za-z_][\w$]*"?|\x01[^\x02]*\x02)'
+# the lookahead refuses a name that continues ("public.{T}_x", "{A}{B}"): a partly-resolvable name is not guessed
+_TBL = rf"{_NAME_PART}(?:\.{_NAME_PART})?(?![\w$\".\x01])"
+_WRITE_VERBS = (
+    ("INSERT", re.compile(rf"\bINSERT\s+INTO\s+(?:ONLY\s+)?(?P<t>{_TBL})", re.IGNORECASE)),
+    ("DELETE", re.compile(rf"\bDELETE\s+FROM\s+(?:ONLY\s+)?(?P<t>{_TBL})", re.IGNORECASE)),
+    ("UPDATE", re.compile(rf"\bUPDATE\s+(?:ONLY\s+)?(?P<t>{_TBL})\s+(?:(?:AS\s+)?[A-Za-z_]\w*\s+)?SET\b", re.IGNORECASE)),
+    ("TRUNCATE", re.compile(rf"\bTRUNCATE\s+(?:TABLE\s+)?(?:ONLY\s+)?(?P<t>{_TBL})", re.IGNORECASE)),
+    ("COPY", re.compile(rf"\bCOPY\s+(?P<t>{_TBL})\s*(?:\([^)]*\)\s*)?FROM\b", re.IGNORECASE)),
+)
+# A verb whose target is not a recognisable name ("INSERT INTO %s", "DELETE FROM {}") cannot be resolved: not scanned.
+_VERB_ANY = re.compile(r"\b(?:INSERT\s+INTO|DELETE\s+FROM|TRUNCATE(?:\s+TABLE)?)\s+(?P<rest>\S+)", re.IGNORECASE)
+_SQL_WORDS = {"select", "set", "values", "only", "table", "from", "where", "default", "using"}
+
+# Write forms this scan does NOT analyse. Seeing one in a (non-docstring) string literal means the writer touches tables the
+# scan cannot name, so the writer goes to assets_not_scanned instead of reading as a clean single-table writer.
+_TRIPWIRES = (
+    ("MERGE INTO", re.compile(r"\bMERGE\s+INTO\b", re.IGNORECASE)),
+    ("REFRESH MATERIALIZED VIEW", re.compile(r"\bREFRESH\s+MATERIALIZED\s+VIEW\b", re.IGNORECASE)),
+    ("CREATE TABLE", re.compile(r"\bCREATE\s+(?:(?:GLOBAL\s+|LOCAL\s+)?(?:TEMP|TEMPORARY)\s+|UNLOGGED\s+)?TABLE\b", re.IGNORECASE)),
+    ("SELECT ... INTO", re.compile(r"\bSELECT\b(?:(?!\b(?:INSERT|FROM|UPDATE|DELETE)\b)[\s\S])*?\bINTO\b", re.IGNORECASE)),
+    ("ALTER TABLE", re.compile(r"\bALTER\s+TABLE\b", re.IGNORECASE)),
+    ("DROP TABLE", re.compile(r"\bDROP\s+TABLE\b", re.IGNORECASE)),
+)
+_SQL_COMPOSITION_ATTRS = {"SQL", "Identifier", "Composed", "Literal", "Placeholder"}
+_EXECUTE_ATTRS = {"execute", "executemany", "executescript", "copy", "copy_expert"}
+_FILE_READ_ATTRS = {"read", "read_text", "read_bytes", "readlines"}
+_SQL_FILE_LITERAL = re.compile(r"\A\s*[\w./~-]+\.sql\s*\Z")
+
+# What the scan cannot see by construction (printed with the impact statement; a `complete` scope is a statement about the
+# scan, not about production).
+WRITE_SCAN_LIMITATIONS = (
+    "stored functions / procedures that write (SELECT fn(...), CALL proc(...)) are not resolved to the tables they write",
+    "a writer that imports another module and calls it to write is only followed through its declared source_paths and the "
+    "known idempotency helpers; a writer that also writes tables itself and delegates the rest reads as scanned",
+    "triggers, rules, RLS and ON DELETE/UPDATE cascades are not writes the scan sees (the FK closure covers cascades)",
+    "SQL built from runtime values, composed with psycopg sql.SQL/Identifier, or read from a file is reported as not scanned",
+)
+
+
+def _norm_written_table(raw: str) -> str:
+    """'public.x' / x / "x" / public."x" -> 'public.x'. Same normalisation as the registry side."""
+    return _norm_table(raw.replace('"', "").strip().lower())
+
+
+def _is_str(node: ast.AST) -> bool:
+    return isinstance(node, ast.Constant) and isinstance(node.value, str)
+
+
+def _render_sql_node(node: ast.AST) -> str | None:
+    """The text of a string-building expression with every non-literal part as a \\x01expr\\x02 placeholder; None if the
+    node is not string-building at all (a plain str constant is handled by the caller)."""
+    if _is_str(node):
+        return node.value
+    if isinstance(node, ast.JoinedStr):
+        out = []
+        for v in node.values:
+            if _is_str(v):
+                out.append(v.value)
+            elif isinstance(v, ast.FormattedValue):
+                out.append(f"{_PH_OPEN}{ast.unparse(v.value)}{_PH_CLOSE}")
+        return "".join(out)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left, right = _render_sql_node(node.left), _render_sql_node(node.right)
+        if left is None and right is None:
+            return None
+        return (left if left is not None else f"{_PH_OPEN}{ast.unparse(node.left)}{_PH_CLOSE}") + \
+               (right if right is not None else f"{_PH_OPEN}{ast.unparse(node.right)}{_PH_CLOSE}")
+    return None
+
+
+def _string_const_value(node: ast.AST) -> str | None:
+    return node.value if _is_str(node) else None
+
+
+def _reads_a_file(node: ast.AST) -> bool:
+    """True if the expression contains open(...) or a .read()/.read_text()/.read_bytes()/.readlines() call."""
+    for n in ast.walk(node):
+        if isinstance(n, ast.Call):
+            f = n.func
+            if (isinstance(f, ast.Name) and f.id == "open") or (isinstance(f, ast.Attribute) and f.attr in _FILE_READ_ATTRS):
+                return True
+    return False
+
+
+class _WriteScan:
+    """What one parsed module shows: resolved write tables, unresolved reasons, parametric functions, helper calls."""
+
+    def __init__(self, tree: ast.Module, const_tree: ast.Module | None = None) -> None:
+        self.tables: set[str] = set()
+        self.unresolved: list[str] = []
+        self.consts: dict[str, set[str]] = {}
+        self.defined: set[str] = set()
+        self.param_funcs: dict[str, list[tuple[str, int]]] = {}   # function -> [(param name, positional index)]
+        self.calls: list[ast.Call] = []
+        self._collect_constants(const_tree if const_tree is not None else tree)
+        self._walk(tree, [])
+        self._tripwire_calls(tree)
+
+    def _bind(self, name: str, value: str | None) -> None:
+        self.consts.setdefault(name, set()).add(value if value is not None else "\x00non-literal")
+
+    def _bind_target(self, target: ast.AST, value: str | None = None) -> None:
+        """Record every name a binding target introduces. A plain `NAME = "literal"` keeps its literal; every other form
+        (tuple unpacking, attribute assignment, loop variable, ...) binds the name to an UNKNOWN value."""
+        if isinstance(target, ast.Name):
+            self._bind(target.id, value)
+        elif isinstance(target, ast.Attribute):
+            self._bind(target.attr, None)
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            for e in target.elts:
+                self._bind_target(e, None)
+        elif isinstance(target, ast.Starred):
+            self._bind_target(target.value, None)
+
+    def _collect_constants(self, tree: ast.Module) -> None:
+        """name -> the set of values it is bound to ANYWHERE in the module (scope-blind on purpose: a name is a usable
+        constant only if every binding of it is the same string literal). Any other binding of the name -- loop target,
+        with/except/match target, comprehension target, augmented or walrus assignment, function parameter, import alias,
+        global/nonlocal, def/class name, del, tuple unpacking, attribute assignment -- makes it unresolved."""
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                lit = _string_const_value(node.value)
+                for t in node.targets:
+                    self._bind_target(t, lit)
+            elif isinstance(node, ast.AnnAssign):
+                if node.value is not None:
+                    self._bind_target(node.target, _string_const_value(node.value) if isinstance(node.target, ast.Name) else None)
+            elif isinstance(node, ast.AugAssign):
+                self._bind_target(node.target, None)
+            elif isinstance(node, ast.NamedExpr):
+                self._bind_target(node.target, None)
+            elif isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)):
+                self._bind_target(node.target, None)
+            elif isinstance(node, (ast.With, ast.AsyncWith)):
+                for item in node.items:
+                    if item.optional_vars is not None:
+                        self._bind_target(item.optional_vars, None)
+            elif isinstance(node, ast.ExceptHandler):
+                if node.name:
+                    self._bind(node.name, None)
+            elif isinstance(node, ast.arg):
+                self._bind(node.arg, None)
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                for al in node.names:
+                    self._bind((al.asname or al.name.split(".")[0]), None)
+            elif isinstance(node, (ast.Global, ast.Nonlocal)):
+                for n in node.names:
+                    self._bind(n, None)
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                self._bind(node.name, None)
+            elif isinstance(node, ast.Delete):
+                for t in node.targets:
+                    self._bind_target(t, None)
+            elif isinstance(node, ast.MatchAs) and node.name:
+                self._bind(node.name, None)
+            elif isinstance(node, ast.MatchStar) and node.name:
+                self._bind(node.name, None)
+            elif isinstance(node, ast.MatchMapping) and node.rest:
+                self._bind(node.rest, None)
+            elif hasattr(ast, "TypeAlias") and isinstance(node, ast.TypeAlias):
+                self._bind_target(node.name, None)
+
+    def _resolve_const(self, expr: str) -> str | None:
+        """'TABLE' / 'self.TABLE' / 'Cls.TABLE' -> its single string value, else None."""
+        name = expr.strip().split(".")[-1] if re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?", expr.strip()) else None
+        vals = self.consts.get(name or "")
+        if vals and len(vals) == 1:
+            (only,) = vals
+            return None if only == "\x00non-literal" else only
+        return None
+
+    def _walk(self, node: ast.AST, fn_stack: list[ast.AST]) -> None:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            self.defined.add(node.name)
+            fn_stack = fn_stack + [node]
+        if isinstance(node, ast.Call):
+            self.calls.append(node)
+        if isinstance(node, ast.Expr) and _is_str(node.value):
+            return                                              # docstring / bare prose string: not SQL
+        if isinstance(node, (ast.Constant, ast.JoinedStr, ast.BinOp)):
+            text = _render_sql_node(node)
+            if text is not None:
+                self._scan_text(text, fn_stack)
+                if isinstance(node, (ast.JoinedStr, ast.BinOp)):
+                    return                                      # its pieces are already part of `text`
+        for child in ast.iter_child_nodes(node):
+            self._walk(child, fn_stack)
+
+    def _tripwire_calls(self, tree: ast.Module) -> None:
+        """Forms that name tables only at runtime or outside this file: psycopg sql composition, SQL read from a file."""
+        file_sql_names: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) and _reads_a_file(node.value):
+                for t in node.targets:
+                    if isinstance(t, ast.Name):
+                        file_sql_names.add(t.id)
+            elif isinstance(node, ast.Constant) and isinstance(node.value, str) and _SQL_FILE_LITERAL.match(node.value):
+                self.unresolved.append(f"write_form_not_analysed: sql file reference {node.value.strip()[:60]!r}")
+        for call in self.calls:
+            f = call.func
+            if (isinstance(f, ast.Attribute) and f.attr in _SQL_COMPOSITION_ATTRS and isinstance(f.value, ast.Name)
+                    and f.value.id == "sql") or (isinstance(f, ast.Name) and f.id in {"Identifier", "SQL", "Composed"}):
+                self.unresolved.append("write_form_not_analysed: sql.SQL / sql.Identifier composition")
+            if isinstance(f, ast.Attribute) and f.attr in _EXECUTE_ATTRS and call.args:
+                first = call.args[0]
+                if _reads_a_file(first) or (isinstance(first, ast.Name) and first.id in file_sql_names):
+                    self.unresolved.append("write_form_not_analysed: SQL read from a file feeds execute()")
+
+    def _scan_text(self, text: str, fn_stack: list[ast.AST]) -> None:
+        for label, rx in _TRIPWIRES:
+            if rx.search(text):
+                self.unresolved.append(f"write_form_not_analysed: {label}")
+        matched_spans = []
+        for verb, rx in _WRITE_VERBS:
+            for m in rx.finditer(text):
+                matched_spans.append(m.span("t"))
+                self._add_target(m.group("t"), verb, fn_stack)
+        for m in _VERB_ANY.finditer(text):
+            if not any(a <= m.start("rest") < b for a, b in matched_spans) and m.group("rest").lower().strip('"') not in _SQL_WORDS:
+                self.unresolved.append(f"unparseable_write_target: {m.group(0)[:60]!r}")
+
+    def _add_target(self, token: str, verb: str, fn_stack: list[ast.AST]) -> None:
+        if token.lower().strip('"') in _SQL_WORDS:
+            return
+        parts = re.findall(rf"{_NAME_PART}", token)
+        resolved = []
+        for part in parts:
+            if part.startswith(_PH_OPEN):
+                expr = part[1:-1]
+                value = self._resolve_const(expr)
+                if value is None:
+                    fn = fn_stack[-1] if fn_stack else None
+                    params = [a.arg for a in fn.args.args] if fn is not None else []
+                    if fn is not None and expr in params and len(parts) == 1:
+                        self.param_funcs.setdefault(fn.name, []).append((expr, params.index(expr)))
+                        return
+                    self.unresolved.append(f"unresolved_table_expression: {expr}")
+                    return
+                resolved.append(value)
+            else:
+                resolved.append(part.strip('"'))
+        name = ".".join(resolved)
+        if not re.fullmatch(r"[A-Za-z_][\w$]*(?:\.[A-Za-z_][\w$]*)?", name):
+            self.unresolved.append(f"unresolved_table_expression: {token[:60]!r}")
+            return
+        self.tables.add(_norm_written_table(name))
+
+    def resolve_param_calls(self, helper_params: Mapping[str, Sequence[tuple[str, int]]] | None = None) -> None:
+        """Fill the tables of parametric functions from their call sites; a parametric function nothing calls is unresolved."""
+        merged: dict[str, list[tuple[str, int]]] = {k: list(v) for k, v in (helper_params or {}).items()}
+        for k, v in self.param_funcs.items():
+            merged.setdefault(k, []).extend(v)
+        called: set[str] = set()
+        for call in self.calls:
+            fname = call.func.id if isinstance(call.func, ast.Name) else call.func.attr if isinstance(call.func, ast.Attribute) else None
+            if fname not in merged:
+                continue
+            called.add(fname)
+            for pname, idx in merged[fname]:
+                arg = call.args[idx] if idx < len(call.args) else next((k.value for k in call.keywords if k.arg == pname), None)
+                value = None
+                if arg is not None:
+                    value = _string_const_value(arg) or (self._resolve_const(ast.unparse(arg)) if isinstance(arg, (ast.Name, ast.Attribute)) else None)
+                if value is None or not re.fullmatch(r"[A-Za-z_][\w$]*(?:\.[A-Za-z_][\w$]*)?", value):
+                    self.unresolved.append(f"unresolved_table_argument: {fname}({pname}=...)")
+                else:
+                    self.tables.add(_norm_written_table(value))
+        for k in self.param_funcs:
+            if k not in called:
+                self.unresolved.append(f"parametric_table_helper_never_called_with_a_literal: {k}")
+
+
+def _parse_python(path: Path) -> ast.Module | None:
+    try:
+        return ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, SyntaxError, UnicodeDecodeError, ValueError, RecursionError, MemoryError):
+        return None
+
+
+def helper_write_effects(repo: Path) -> dict[str, dict]:
+    """For each function in the idempotency helper modules: the tables it writes, its table-parameter positions, or why
+    it cannot be resolved. A name defined in two helper modules with different effects is marked unresolved."""
+    out: dict[str, dict] = {}
+    for rel in WRITE_SCAN_HELPER_MODULES:
+        tree = _parse_python(repo / rel)
+        if tree is None:
+            continue
+        for fn in tree.body:
+            if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            try:
+                sc = _WriteScan(ast.Module(body=[fn], type_ignores=[]), const_tree=tree)
+            except RecursionError:
+                out[fn.name] = {"tables": set(), "params": [], "unresolved": f"helper_too_deeply_nested: {fn.name}"}
+                continue
+            entry = {"tables": set(sc.tables), "params": list(sc.param_funcs.get(fn.name, [])),
+                     "unresolved": sc.unresolved[0] if sc.unresolved else None}
+            if not (entry["tables"] or entry["params"] or entry["unresolved"]):
+                continue
+            if fn.name in out and out[fn.name] != entry:
+                entry = {"tables": set(), "params": [], "unresolved": f"helper_defined_twice_with_different_effects: {fn.name}"}
+            out[fn.name] = entry
+    return out
+
+
+def _source_paths_literal(tree: ast.Module) -> tuple[list[str], str | None]:
+    """The string items of a `source_paths = [...]` (or tuple) assignment; nothing else is evaluated. The second value is a
+    reason when an assignment is not a plain list/tuple of string literals (the delegate cannot be followed)."""
+    paths: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            if any(isinstance(t, ast.Name) and t.id == "source_paths" for t in targets):
+                v = node.value
+                if not isinstance(v, (ast.List, ast.Tuple)) or not all(_is_str(e) for e in v.elts):
+                    return paths, "source_paths_not_a_literal_list_of_strings"
+                paths += [e.value for e in v.elts]
+    return paths, None
+
+
+def scan_writer_tables(asset_id: str, repo: str | Path, helpers: Mapping[str, dict] | None = None) -> dict:
+    """Static, read-only scan of one writer. Returns {"tables": [...], "files": [...]} or {"not_scanned": reason}."""
+    repo = Path(repo).resolve()
+    if not _ASSET_ID_RE.match(asset_id):
+        return {"not_scanned": "asset_id_is_not_a_plain_identifier"}
+    writer = repo / WRITERS_REL / f"{asset_id}.py"
+    if not writer.is_file():
+        return {"not_scanned": "writer_file_not_found"}
+    tree = _parse_python(writer)
+    if tree is None:
+        return {"not_scanned": "writer_file_unparseable"}
+    files = [writer]
+    source_paths, bad = _source_paths_literal(tree)
+    if bad:
+        return {"not_scanned": bad}
+    for rel in source_paths:
+        if not rel.endswith(".py"):
+            return {"not_scanned": f"source_path_not_python: {rel}"}
+        cand = (repo / rel).resolve()
+        try:
+            cand.relative_to(repo)
+        except ValueError:
+            return {"not_scanned": f"source_path_outside_repo: {rel}"}
+        if cand != writer.resolve():
+            files.append(cand)
+    helpers = helper_write_effects(repo) if helpers is None else helpers
+    tables: set[str] = set()
+    scanned: list[str] = []
+    for f in files:
+        t = tree if f == writer else _parse_python(f)
+        if t is None:
+            return {"not_scanned": f"source_file_unreadable_or_unparseable: {f.name}"}
+        try:
+            sc = _WriteScan(t)
+            sc.resolve_param_calls({k: v["params"] for k, v in helpers.items() if v["params"]})
+        except RecursionError:
+            return {"not_scanned": f"source_file_too_deeply_nested: {f.name}"}
+        for call in sc.calls:
+            fname = call.func.id if isinstance(call.func, ast.Name) else call.func.attr if isinstance(call.func, ast.Attribute) else None
+            if fname in helpers and fname not in sc.defined:
+                sc.tables |= helpers[fname]["tables"]
+                if helpers[fname]["unresolved"]:
+                    sc.unresolved.append(f"helper_write_unresolved: {fname}: {helpers[fname]['unresolved']}")
+        if sc.unresolved:
+            return {"not_scanned": sc.unresolved[0]}
+        tables |= sc.tables
+        scanned.append(str(f.relative_to(repo)) if f.resolve().is_relative_to(repo) else str(f))
+    if not tables:
+        return {"not_scanned": "no_write_statement_found (delegates to another module, or read-only: not distinguishable)"}
+    return {"tables": sorted(tables), "files": scanned}
+
+
+def footprint_scope(rows_now: Sequence[Mapping[str, Any]], writes: Sequence[str], repo: str | Path) -> dict:
+    """assets_without_target_table / assets_whose_writer_writes_other_tables / assets_not_scanned, and the scope they imply.
+
+    An empty row set is never "complete": nothing was examined."""
+    write_set = {_norm_table(w) for w in writes}
+    helpers = helper_write_effects(Path(repo))
+    without, others, not_scanned = [], [], []
+    for r in sorted({x["asset_id"]: x for x in rows_now}.values(), key=lambda x: x["asset_id"]):
+        asset_id = r["asset_id"]
+        own = _norm_table(r["target_table"]) if r.get("target_table") else None
+        if own is None:
+            without.append(asset_id)
+        try:
+            res = scan_writer_tables(asset_id, repo, helpers)
+        except Exception as exc:  # noqa: BLE001 -- a scan that cannot run is "not scanned", never a crash and never clean
+            res = {"not_scanned": f"scan_error: {type(exc).__name__}"}
+        if "not_scanned" in res:
+            not_scanned.append({"asset_id": asset_id, "reason": res["not_scanned"]})
+            continue
+        extra = sorted(t for t in res["tables"] if t != own)
+        uncovered = sorted(t for t in extra if t not in write_set)
+        if uncovered:
+            others.append({"asset_id": asset_id, "registry_target_table": own, "extra_tables": uncovered,
+                           "extra_tables_already_in_write_set": sorted(set(extra) - set(uncovered)),
+                           "source": FOOTPRINT_SCAN_LABEL, "files": res["files"]})
+    reasons = [name for name, hit in (("no_assets_in_set", not rows_now),
+                                      ("assets_without_target_table", without),
+                                      ("writer_writes_other_tables", others),
+                                      ("writer_not_scanned", not_scanned)) if hit]
+    return {"footprint_scope": "partial" if reasons else "complete",
+            "partial_reasons": reasons,
+            "assets_without_target_table": without,
+            "assets_whose_writer_writes_other_tables": others,
+            "assets_not_scanned": not_scanned,
+            "writer_scan": FOOTPRINT_SCAN_LABEL}
+
+
+def impact_statement_scope_lines(scope: Mapping[str, Any]) -> list[str]:
+    """The footprint scope and the three lists, for the impact statement. A partial scope is stated, never implied; a
+    complete one is labelled as complete only per the static scan."""
+    partial = scope["footprint_scope"] == "partial"
+    label = "PARTIAL" if partial else "COMPLETE_PER_STATIC_SCAN"
+    lines = [f"  Footprint scope: {label} (writer scan is {scope.get('writer_scan', FOOTPRINT_SCAN_LABEL)}; "
+             "the registry shows one target_table per asset)"]
+    if partial:
+        lines.append("  ! PARTIAL: the write set above is only what asset_registry.target_table shows and the FK closure "
+                     "can see -- has_blockers is UNKNOWN, not false; the items below are NOT in the footprint. "
+                     f"Reasons: {', '.join(scope.get('partial_reasons', [])) or 'unspecified'}.")
+    else:
+        lines.append("  (indicative: every writer was statically scanned and showed no table beyond its registry target; "
+                     "the scan cannot see stored functions, runtime-built SQL or delegates -- see the limitations below)")
+    closure = scope.get("fk_closure_status")
+    if closure is not None and closure != "COMPLETE":
+        lines.append(f"  ! FK closure is {closure}: the catalog could not confirm the FK edges of the write set.")
+    if scope["assets_without_target_table"]:
+        lines.append(f"  Assets without a target_table ({len(scope['assets_without_target_table'])}): "
+                     + ", ".join(scope["assets_without_target_table"]))
+    others = scope["assets_whose_writer_writes_other_tables"]
+    if others:
+        lines.append(f"  Assets whose writer writes other tables, indicative ({len(others)}):")
+        lines += [f"    - {o['asset_id']}: {', '.join(o['extra_tables'])}" for o in others]
+    ns = scope["assets_not_scanned"]
+    if ns:
+        lines.append(f"  Assets not scanned ({len(ns)}):")
+        lines += [f"    - {o['asset_id']}: {o['reason']}" for o in ns]
+    lines.append("  Limitations of the writer scan:")
+    lines += [f"    - {x}" for x in WRITE_SCAN_LIMITATIONS]
+    return lines
+
+
+def _footprint_report(conn, rows_now: Sequence[Mapping[str, Any]], *, repo: str | Path = REPO_ROOT) -> dict:
+    """E5.9 footprint of the wave's write tables (registry target_table); the loaders run SELECTs only.
+
+    footprint_scope is "complete" only when every asset has a target_table AND its writer was scanned AND showed no table
+    beyond it AND the FK closure over the write set is COMPLETE; otherwise "partial", and has_blockers is reported as
+    "unknown" (never false) with the value computed over the known part kept as has_blockers_known_subset."""
     edges = fk_edges_from_catalog(conn)
     tables = tables_from_catalog(conn)
     writes = sorted({r["target_table"] for r in rows_now if r.get("target_table")})
+    scope = footprint_scope(rows_now, writes, repo)
     if not writes:
-        return {"status": "NO_TARGET_TABLES", "detail": "no asset in the set declares a target_table"}
-    fp = transitive_footprint(writes, edges, known_tables=tables)
-    return {"footprint": fp, "impact_lines": impact_statement_footprint_section(fp)}
+        scope["fk_closure_status"] = "NOT_COMPUTED"
+        return {"status": "NO_TARGET_TABLES", "detail": "no asset in the set declares a target_table",
+                "has_blockers": "unknown", "has_blockers_known_subset": None, "fk_closure_status": "NOT_COMPUTED",
+                **scope, "impact_lines": impact_statement_scope_lines(scope)}
+    fp = dict(transitive_footprint(writes, edges, known_tables=tables))
+    scope["fk_closure_status"] = fp["fk_closure_status"]
+    if fp["fk_closure_status"] != "COMPLETE":
+        scope["footprint_scope"] = "partial"
+        scope["partial_reasons"] = [*scope["partial_reasons"], "fk_closure_incomplete"]
+        scope["fk_closure_incomplete_reasons"] = list(fp["incomplete_reasons"])
+    partial = scope["footprint_scope"] == "partial"
+    known_subset = fp["has_blockers"]
+    fp.update(scope)
+    if partial:
+        fp["has_blockers_known_subset"] = fp["has_blockers"]
+        fp["has_blockers"] = "unknown"
+        fp["has_immediate_blockers_known_subset"] = fp["has_immediate_blockers"]
+        fp["has_immediate_blockers"] = "unknown"
+    lines = impact_statement_footprint_section(fp)
+    lines += impact_statement_scope_lines(scope)
+    return {"footprint": fp, "impact_lines": lines, "has_blockers": fp["has_blockers"],
+            "has_blockers_known_subset": known_subset, **scope}
 
 
 def read_rows(connect, assets: Sequence[str]) -> list[dict]:
