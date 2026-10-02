@@ -60,8 +60,9 @@
 --     computed from the UNROUNDED orb (ga_structural_writer.py, _build_aspect_rows: orb_strength = round(max(0.0, 1.0 - orb /
 --     deeptamsa_sum), 4)). A quotient within 5e-5 of a 4 dp rounding boundary lands one unit (0.0001) apart: e.g. orb 13.4585
 --     with deeptamsa_sum 22.0 stores 0.3882, the check expects 0.3883. Corrected to a tolerance of 0.0001 (one unit in the 4th
---     decimal; the worst-case disagreement of the two roundings is 16/3 * 1e-5 = 5.333e-5 < 1e-4); yamaya (1.0) and manaau (0.1)
---     stay exact.
+--     decimal; the worst-case disagreement of the two roundings is 16/3 * 1e-5 = 5.333e-5 < 1e-4, the exhaustive-search worst case);
+--     yamaya (1.0) and manaau (0.1) stay exact. NOTE: the comment embedded in the executed (bb) text below gives the looser analytic
+--     bound 5e-5 + 5e-5/14 (also < 1e-4); it is part of the executed text and is left as written so the target md5 holds.
 --   * (c9) karakatva composite_strength domain: the check listed seven values, but the writer computes (karaka_strength +
 --     house_strength) / 2 with karaka_strength in {1, 0.875, 0.5, 0.25} and house_strength in {1, 0.75, 0.5} (12 combinations =
 --     9 distinct values, plus the 0.5 no-karaka fallback, already in the set). It omitted 0.6875 (own sign, house not kendra /
@@ -130,6 +131,10 @@
 -- ORDERING HAZARD (independent review): after (a29), a ga_structural rebuild by the OLD writer image (which still
 -- writes 1.0 on empty cells) fails the post-write integrity check. 1221 therefore NEVER applies before the ga_structural
 -- writer deploy; it applies after it, immediately before the S-L1 launch.
+-- (uu2) PRECONDITION: the corrected (uu2) reads the ga_positions Moon-sign fact and the Chandra Bala rows #2969's ga_panchanga writes,
+-- so #2969's ga_panchanga image must be live AND the canonical ga_panchanga rebuilt BEFORE the ga_structural post-write gate. If
+-- ga_panchanga rebuilds on the OLD writer, the 9 canonical surya_siddhanta rows stay red; and because (uu2) is table-wide, a
+-- ga_structural build for ANY chart fails its gate until then.
 --
 -- WHAT IT DOES: (i) adds ONE conjunct, (a29) [SS N-61, AR-3; CLAUDE.md N.8], to ga_structural's
 -- integrity_check_sql: for every argala-offset cell of argala_natal_matrix, NULL with fact_value_text
