@@ -1,6 +1,6 @@
 ---
 artifact: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT
-version: 0.9
+version: 0.10
 status: v0.5 ACCEPTED at pre-gate 2026-10-02 (Codex v1.4, ACCEPT_WITH_AMENDMENTS, no P1 blocking; reviewed commit 5626290c6); v0.6 adds AM-10 and the F-2 exclusion-evidence binding (not yet reviewed); follow-ups F-1..F-6 owed at the A5.5 gate (table at §"A5.5-gate follow-ups"); still a draft amendment list, not a spec version
 date: 2026-10-02
 author: stream-B (spec lane; docs only — no code, no migration file)
@@ -1248,17 +1248,63 @@ reads that fact.
 
 ---
 
-## AM-13 — CANDIDATE (not yet a pin): factor applicability by object kind; `activity_kernel@1.1` and `graduated_drishti` scope — NEW (v0.9)
+## AM-13 — RULED (steward M20261002T001617-8321): factor applicability by object kind; `activity_kernel@1.1`; `graduated_drishti` scope
 
-**Status: proposal; from WINDOW_SWEEP_ANSWER_v1_0 items (3)/(4); no registry change made.** Defect in the frozen text: §2.1 says a
-missing factor operand takes its `null_state` ("never silently 1"), the registry declares `activity_kernel` (operand: angular |Δλ| to a
-point, no orb parameter) on P3/P4/P5 although their contacts include **span residence and aspect-on-span** records that have no |Δλ| —
-read literally, every such record is `unqualified`. Proposed: a versioned factor row `activity_kernel@1.1` declaring **applicability by
-object kind** — point/star objects: the angular kernel with the **orb as a row parameter** (4.x used 5.0° "unratified"; needs a ruling);
-span objects: a **membership step (1.0 inside, 0 outside)**, declared with its numeric function, `uncalibrated_default` — plus
-`graduated_drishti` declared **applicable to aspect records only**. "Not applicable" is then a declared state, not a missing operand and
-not a silent 1. New P3/P4/P5 rule_versions follow (older versions → `superseded_by_version`). Needs the steward/native; A must not
-hard-code it meanwhile.
+**Defect in the frozen text.** §2.1 says a missing factor operand takes its `null_state` ("never silently 1"). The registry
+declares `activity_kernel` (operand: angular |Δλ| to a point; **no orb parameter**) on P3/P4/P5, although their contacts include
+**span residence and aspect-on-span** records that have no |Δλ|; P2 — pure span residence — declares no kernel at all. Read literally,
+every P3/P4/P5 span record is `unqualified`.
+
+**Rule (ruled).** A versioned factor row **`activity_kernel@1.1`** declares **applicability by object kind**, in its
+`operand_selector` (JSONB; `ka_gochara_named_operands_ok` already admits a token-array value, so **no schema change**):
+* **span objects** (`span:<sign>`): a **membership step — 1.0 inside the span, 0.0 outside**, `unitless`, `uncalibrated_default`
+  (a span has no centre or orb in any cited source; an angular-to-centre/boundary gradient would be an invented effect, §N.7 item 6);
+* **point / star objects:** the angular kernel `1 − |Δλ|/orb` (§7.2 inv 3), with the **orb a row parameter**.
+
+`graduated_drishti` is declared applicable to **aspect records only** (offset operand); residence/conjunction records have no offset —
+"not applicable" is a declared state of the row, not a missing operand and not a silent 1. New P3/P4/P5 rule_versions reference the
+new factor; the older versions become `superseded_by_version` in each class inventory (1206 v1.2).
+
+**ORB — what is and is not ratified (line cites).** The spec ratifies the **shape**, not a number: §7.2 inv 3 (`activity = 1 − |Δλ|/orb`,
+D-RQ2) and `GOCHARA_PLAN_V3_AMENDMENT_v1_0.md:32` (M-1: "linear-no-box shape ruled; … **5.0° candidate 1 / 1.0° candidate 2**" — candidates).
+Other numbers exist but none is a ratified activity-kernel orb: `services/gochara_kernel/convention.py:80–93` (WP1 §7 `ORB_TABLE`, e.g.
+`orb_conj_slow` 1.0°, `orb_conj_moon` 3.0°) — its own header marks every numeric orb `uncited_extension=true` and it governs **contact
+enumeration** (episodes emitted at `orb_max_deg`), not the kernel's scale; O-RP-3 "the pinned 5° admission orb" is an **oracle fixture pin**
+for P4 admission; the 4.x manifest vector records `orb_ruling: "M-1 fallback no-box × 5.0° (unratified)"`. **Therefore the point-kernel orb
+is a named NATIVE DECISION (ND-ORB, open) and until it is made the point/star branch stays `unqualified` with reason `orb_not_ratified` —
+the unratified 5.0° is not carried forward.** The span branch needs no orb and is unaffected.
+
+**Vehicle.** The catalogue is persisted at run time by Stream A's `rule_binding` step from `services/gochara_rules/registry.py`
+(insert-if-absent; `rule_registry.py` docstring) — **not by a migration**; so the change is a registry code PR plus A's binding of the new
+version, with no DDL. (Steward asked for a migration in the 1230–1249 block; none is needed — reported on the tracker.)
+
+---
+
+## AM-14 — RULED (steward 2026-10-02, Stream A's conformance finding): Moon-agent edges are excluded from the stored obligation enumeration
+
+AM-4 already says a build never stores Moon contacts or records; AM-5's obligation set had still enumerated the Moon as a P3 agent, which made
+every class unsealable (`missing_inputs`). **Rule:** the stored inventory lists **no Moon-agent obligation**; the `moon_on_demand` coverage
+record is the **separate** account of the on-demand tier; a class's completeness claim is explicitly scoped **"excluding the on-demand Moon
+tier"**, and serving must present that scope. **Effect on 1206 / the model: none required** — fewer obligations, the same checks (1206 has no
+Moon reference; checked). Proven by a live test (a generation with a `moon_on_demand` partition beside its inventory, no Moon-agent
+obligation row, seals normally — #2867 head fc10a91fe).
+
+## AM-15 — RULED: P1 daśā-lord house anchor
+The natal relation of the period lord to the class's signature-house set H is counted **inclusive from the lagna** (§0 inclusive counting;
+P3 table is "lagna frame"). Previously silent beyond "natal sign positions".
+
+## AM-16 — RULED: contents of the `'5.0'` manifest `input_generation_vector`
+Registry fingerprints (`ka_gochara_rule_path` / `_factor` / `_predicate` rows + the rule-path seal digest), `bg_transit_rules`,
+`bg_transit_av_gates`, the **kernel/orb version** (with ND-ORB's state), and the **node convention**. It is checked for equality against the
+snapshot (1206) — the snapshot covers L1 facts, dasha, AV declarations and the sky convention; the vector carries what the snapshot does not.
+
+## AM-17 — RULED: stored window fields
+One window per (class × path-version); the cross-path `max` is a **serve/measure-time** reduction, not a stored value. Window interval = the
+**connected union of its admitted records' supports** (§2.3 inv 3; no `min_lambda`). At the peak instant t\* (**earliest** instant of the max on
+a plateau): `score` = max over the window's admitted records of the within-path factor product in the for-channel, **∈ [0,1], NULL = unqualified**
+(1156 `kgew_score_unit_interval_ck`); `evidence_for` / `evidence_against` = §2.1's per-channel Σ over roots (finite ≥ 0, never netted);
+`severity` = **NULL** (no spec rule defines it; never 0); `outcome_valence_for_native` via `valence.compute_valence`. The ranking adapter's
+`si := evidence_for` is a **measurement pre-registration**, not a spec item — see `measurement/EVALUATION_PROTOCOL_v2_3_ADDENDUM_SI_MAPPING_v1_0.md`.
 
 ---
 
@@ -1278,7 +1324,11 @@ hard-code it meanwhile.
 | AM-10 | §4.0 daśā read-contract re-pin rule (conditional on L1-rebuild close; no new pin value) | §4.0 | no (one code PR at re-pin) | steward declares rebuild landed |
 | AM-11 | Prerequisite-evaluation implementation pins (a)–(d) + P1 obligation-agent role token (e) | §2.2 / §10.1 | no | no |
 | PC-1…4 | Named pre-conditions (sealer replay EXECUTE; F-3/F-6 remainder; protected-deployment rehearsal; distinct verifier principal) | see the PRE-CONDITIONS section | — | gate steps, not merges |
-| AM-13 | CANDIDATE: factor applicability by object kind (`activity_kernel@1.1`: span ⇒ membership step, orb as row parameter; drishti = aspect records only) | factor catalogue | no (data rows, new rule_versions) | steward/native |
+| AM-13 | RULED: factor applicability by object kind (`activity_kernel@1.1`: span ⇒ membership step, point/star ⇒ angular with orb a row parameter; drishti = aspect records only); orb = open native decision ND-ORB | factor catalogue | no (registry code + A's binding; no DDL) | ND-ORB |
+| AM-14 | RULED: Moon-agent edges excluded from the stored obligation enumeration; completeness scoped "excluding the on-demand Moon tier" | §AM-5 / AM-4 | no (1206 unchanged; live test added) | no |
+| AM-15 | RULED: P1 anchor counted inclusive from the lagna | §2.2 P1 | no | no |
+| AM-16 | RULED: `'5.0'` manifest vector contents | §10 / AM-5 | no | no |
+| AM-17 | RULED: stored window fields (score ∈ [0,1]/NULL, evidence Σ-over-roots, severity NULL, union interval, earliest peak) | §2.1 / §3 | no | no |
 | AM-12 | CANDIDATE: `sad_bala_sufficient` as a soft factor of a new P1 rule_version (older P1 → `superseded_by_version`) | factor catalogue / rule_path | no (data rows, new rule_version) | A5.5 gate + L1 owner (Sun rūpa finding) |
 
 ## A5.5-gate NAMED PRE-CONDITIONS (v0.9 — steward M20261001T233255-6740 / M20261001T234743-1ae5; from Codex's review of migration 1206 v1.2: ACCEPT_WITH_AMENDMENTS, no merge-blocking item)
