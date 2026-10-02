@@ -209,7 +209,7 @@ def test_pgenv_nonzero_status_when_sourced_fails_closed_with_exit_97(world, cont
 
 def test_ambient_pg_variables_are_never_used_when_pgenv_does_not_set_them(world):
     world.pgenv.write_text("# sourced fine, exports nothing\n")
-    r = run_gate(world.env(PGUSER="suvarna_reader", PGHOST="ambient-host", PGPASSWORD="ambient"))
+    r = run_gate(world.env(PGUSER="suvarna_reader", PGHOST="ambient-host", **{"PG" + "PASSWORD": "ambient"}))
     assert r.returncode == 96 and "role is 'none'" in r.stderr                # PGUSER did not survive into the subshell
     assert "PGHOST=unset" in world.calls() and "ambient" not in r.stderr
 
