@@ -196,6 +196,7 @@ this is RELEASED or expired.*
 
 | number | campaign | file | status |
 |---|---|---|---|
+| 1301 | AI CONSOLE / Codex | 1301_ai_console_catalog_refresh.sql | CLAIMED — additive metadata freshness and effort capabilities, independently reviewed and disposable-DB tested; protected source PR pending, not production-applied |
 | 1202 | OBSERVATORY / Codex | 1202_ai_metering_ledger.sql | CLAIMED — native-authorized Observatory metering release, pending protected PR and exact-set migration window |
 | 553–555 | SAMPŪRTI | Wave-0 migrations | MERGED to main (#1138) |
 | 556 | UTKARṢA | 556_gochara_generation_schema.sql | CLAIMED (gochara3/w03, unmerged) |
