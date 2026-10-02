@@ -4,6 +4,13 @@ import { execFileSync } from 'node:child_process'
 const project = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
 export const BUILDER_SERVICE_ACCOUNT = `data-plane-builder-runtime@${project}.iam.gserviceaccount.com`
 export const BUILDER_SECRET = 'data-plane-builder-db-url'
+// Gochara verification job: its own identity + its own secret + one named job (Option A, ND-ROLES).
+// The sealer has NO GCP identity and NO Secret Manager secret: its DSN lives only in the
+// `gochara-seal` GitHub environment, so any gochara/sealer name here is a violation, not a pair.
+export const VERIFIER_SERVICE_ACCOUNT = `gochara-verifier-runtime@${project}.iam.gserviceaccount.com`
+export const VERIFIER_SECRET = 'gochara-verifier-db-url'
+export const VERIFIER_JOB = 'gochara-verification-job'
+const SEALER_REFERENCE = /gochara[-_]sealer|GOCHARA_SEALER/i
 
 interface IamBinding { role: string; members?: string[]; condition?: unknown }
 interface IamPolicy { bindings?: IamBinding[] }
@@ -403,6 +410,69 @@ export function assertSecretIsolation(
   }
 }
 
+export interface VerifierState {
+  /** Emails of every service account whose name mentions gochara (all must be the verifier's). */
+  serviceAccountEmails: string[]
+  /** Short names of every Secret Manager secret whose name mentions gochara or sealer. */
+  secretNames: string[]
+  serviceAccount?: ServiceAccount
+  serviceAccountPolicy?: IamPolicy
+  secretPolicy?: IamPolicy
+  /** Count of user-managed keys; undefined = not measured, which fails (no key may exist). */
+  userManagedKeys?: number
+}
+
+/**
+ * Gate for the Gochara verification pair. Absent resources pass (act 3 -> act 4 are staged), but
+ * whatever exists must be exact and anything gochara-named that is not the pair fails.
+ * Project-wide secret access for ANY principal is already refused by assertSecretIsolation.
+ */
+export function assertVerifierIsolation(
+  projectPolicy: IamPolicy,
+  state: VerifierState,
+  resolved: RolePermissions = {},
+  expectedDeployer = process.env.DATA_PLANE_DEPLOY_PRINCIPAL,
+): void {
+  const unknownAccounts = state.serviceAccountEmails.filter((email) => email !== VERIFIER_SERVICE_ACCOUNT)
+  if (unknownAccounts.length > 0) {
+    throw new Error(`Unknown gochara service account(s) ${unknownAccounts.sort().join(', ')}; only ${VERIFIER_SERVICE_ACCOUNT} is permitted.`)
+  }
+  const unknownSecrets = state.secretNames.filter((name) => name !== VERIFIER_SECRET)
+  if (unknownSecrets.length > 0) {
+    throw new Error(`Unknown gochara/sealer secret(s) ${unknownSecrets.sort().join(', ')}; the sealer credential lives only in the gochara-seal environment.`)
+  }
+  const hasAccount = state.serviceAccountEmails.length === 1
+  const hasSecret = state.secretNames.length === 1
+  if (hasSecret && !hasAccount) throw new Error('Verifier secret exists without its dedicated service account.')
+  if (!hasAccount) return
+  const member = `serviceAccount:${VERIFIER_SERVICE_ACCOUNT}`
+  if (state.serviceAccount?.disabled === true) throw new Error('Dedicated verifier service account is disabled.')
+  if (state.userManagedKeys !== 0) throw new Error('Dedicated verifier service account must have no user-managed keys.')
+  const projectBindings = (projectPolicy.bindings ?? []).filter((binding) => (binding.members ?? []).includes(member))
+  if (projectBindings.some((binding) => binding.condition !== undefined)
+      || projectBindings.length !== 1 || projectBindings[0].role !== 'roles/cloudsql.client') {
+    throw new Error('Dedicated verifier must have exactly project role roles/cloudsql.client.')
+  }
+  const impersonators = (state.serviceAccountPolicy?.bindings ?? [])
+    .filter((binding) => grantsImpersonation(binding.role, resolved))
+  if (impersonators.some((binding) => binding.condition !== undefined)) {
+    throw new Error('Verifier service-account impersonation policy is not the exact deployment-only allowlist.')
+  }
+  const impersonatorMembers = impersonators.flatMap((binding) => (binding.members ?? []).map((m) => `${binding.role}:${m}`))
+  if (impersonatorMembers.length > 1
+      || (impersonatorMembers.length === 1 && (!expectedDeployer || impersonatorMembers[0] !== `roles/iam.serviceAccountUser:${expectedDeployer}`))) {
+    throw new Error('Verifier service-account impersonation policy is not the exact deployment-only allowlist.')
+  }
+  if (!hasSecret) return
+  const accessorBindings = (state.secretPolicy?.bindings ?? [])
+    .filter((binding) => grantsPermission(binding.role, SECRET_ACCESS_PERMISSION, resolved))
+  const grants = accessorBindings.flatMap((binding) => binding.members ?? [])
+  if (accessorBindings.some((binding) => binding.condition !== undefined)
+      || grants.length !== 1 || grants[0] !== member) {
+    throw new Error(`Verifier secret must grant accessor to exactly ${member} and no other principal.`)
+  }
+}
+
 export function assertEffectiveIsolation(
   effective: EffectivePolicy[],
   builderServiceAccountPolicy: IamPolicy,
@@ -480,6 +550,18 @@ export function assertEffectiveIsolation(
         && (surface.kind !== 'job' || surface.name !== 'brahma-build-pipeline-job')) {
       throw new Error(`Builder identity is used outside the one named build job (${surface.kind}/${surface.name}).`)
     }
+    if (SEALER_REFERENCE.test(serialized)) {
+      throw new Error(`Sealer credential or identity is referenced on Cloud Run ${surface.kind}/${surface.name}; it lives only in the gochara-seal environment.`)
+    }
+    const usesVerifierSecret = inventory.secrets.includes(VERIFIER_SECRET)
+    const usesVerifierIdentity = inventory.serviceAccount === VERIFIER_SERVICE_ACCOUNT
+    const isVerifierJob = surface.kind === 'job' && surface.name === VERIFIER_JOB
+    if ((usesVerifierSecret || usesVerifierIdentity) && !isVerifierJob) {
+      throw new Error(`Verifier credential or identity is used outside the one named verification job (${surface.kind}/${surface.name}).`)
+    }
+    if (isVerifierJob && !(usesVerifierIdentity && inventory.secrets.length === 1 && inventory.secrets[0] === VERIFIER_SECRET)) {
+      throw new Error('Named verification job lacks the exact verifier identity and secret binding.')
+    }
     if (isBuildJob && mode === 'strict' && !exactTargetBinding) {
       throw new Error('Named build job lacks the exact builder identity and secret binding.')
     }
@@ -502,6 +584,25 @@ export function requiresRuntimeSecretGrant(surface: CloudRunSurface): boolean {
   const active = conditions.find((condition) => condition && typeof condition === 'object'
     && !Array.isArray(condition) && (condition as Record<string, unknown>).type === 'Active')
   return !(active && (active as Record<string, unknown>).status === 'False')
+}
+
+function loadVerifierState(): VerifierState {
+  const serviceAccountEmails = gcloud<{ email?: string }[]>(['iam', 'service-accounts', 'list', '--project', project])
+    .map((entry) => entry.email ?? '')
+    .filter((email) => /gochara|sealer/i.test(email))
+  const secretNames = gcloud<{ name?: string }[]>(['secrets', 'list', '--project', project])
+    .map((entry) => (entry.name ?? '').split('/').pop() ?? '')
+    .filter((name) => /gochara|sealer/i.test(name))
+  const state: VerifierState = { serviceAccountEmails, secretNames }
+  if (serviceAccountEmails.includes(VERIFIER_SERVICE_ACCOUNT)) {
+    state.serviceAccount = gcloud<ServiceAccount>(['iam', 'service-accounts', 'describe', VERIFIER_SERVICE_ACCOUNT, '--project', project])
+    state.serviceAccountPolicy = gcloud<IamPolicy>(['iam', 'service-accounts', 'get-iam-policy', VERIFIER_SERVICE_ACCOUNT, '--project', project])
+    state.userManagedKeys = gcloud<unknown[]>(['iam', 'service-accounts', 'keys', 'list', '--iam-account', VERIFIER_SERVICE_ACCOUNT, '--managed-by', 'user', '--project', project]).length
+  }
+  if (secretNames.includes(VERIFIER_SECRET)) {
+    state.secretPolicy = gcloud<IamPolicy>(['secrets', 'get-iam-policy', VERIFIER_SECRET, '--project', project])
+  }
+  return state
 }
 
 export function runDataPlaneSecretIsolationPreflight(): void {
@@ -529,8 +630,10 @@ export function runDataPlaneSecretIsolationPreflight(): void {
     if (ancestor.type === 'organization') return { resource: `organizations/${ancestor.id}`, policy: gcloud<IamPolicy>(['organizations','get-iam-policy',ancestor.id!]) }
     throw new Error('Could not load a complete ancestor IAM policy.')
   })
+  const verifier = loadVerifierState()
   const roleNames = new Set<string>()
-  for (const policy of [projectPolicy,secretPolicy,serviceAccountPolicy,topicPolicy,...effective.map((hit) => hit.policy ?? {})]) {
+  for (const policy of [projectPolicy,secretPolicy,serviceAccountPolicy,topicPolicy,
+    verifier.serviceAccountPolicy ?? {}, verifier.secretPolicy ?? {}, ...effective.map((hit) => hit.policy ?? {})]) {
     for (const binding of policy.bindings ?? []) roleNames.add(binding.role)
   }
   const resolved: RolePermissions = {}
@@ -538,6 +641,7 @@ export function runDataPlaneSecretIsolationPreflight(): void {
     resolved[role] = gcloud<{ includedPermissions?: string[] }>(roleDescribeArgs(role)).includedPermissions ?? []
   }
   assertSecretIsolation(projectPolicy, secretPolicy, serviceAccount, topicPolicy, resolved, controlPlaneAdminPrincipal)
+  assertVerifierIsolation(projectPolicy, verifier, resolved)
 
   const surfaces: CloudRunSurface[] = []
   for (const entry of gcloud<CloudRunEntry[]>(['run', 'services', 'list', '--project', project, '--platform', 'managed'])) {
