@@ -136,3 +136,32 @@ def test_the_brief_bytes_must_hash_to_the_digest_they_carry():
     assert sb.brief_bytes(good) == sb.canonical_json(payload).encode()
     with pytest.raises(sb.BriefRefused, match="brief_bytes_digest_mismatch"):
         sb.brief_bytes({"payload": payload, "sha256": "0" * 64})
+
+
+# ── disclosure wording follows the manifest's policy (Stream B request) ─────────────────────────────────────────────
+
+def test_the_disclosure_names_the_manifest_policy_and_claims_all_null_only_under_it():
+    assert sb._policy_disclosure("all_null_candidate/1").startswith("all_null_candidate/1 — no numerical result exists")
+    other = sb._policy_disclosure("window_qualification/1")
+    assert other.startswith("window_qualification/1") and "no numerical result" not in other and "no all-NULL claim" in other
+
+
+# ── the GOLDEN stdout of the real job (for Stream B's extractor tests) ───────────────────────────────────────────────
+
+GOLDEN = Path(__file__).parent / "fixtures" / "golden_brief_stdout_1class.txt"
+
+
+def test_the_golden_stdout_is_chunk_lines_then_a_compact_line_that_reassemble_to_the_digest():
+    """`fixtures/golden_brief_stdout_1class.txt` is the REAL stdout of `verification_job --brief --brief-chunk-bytes 8192` for the 1-class
+    faithful world (regenerate: GOCHARA_WRITE_GOLDEN_BRIEF=<path> pytest tests/l3/gochara/test_a53_r11_seal_brief.py -k entry_points)."""
+    lines = GOLDEN.read_text().splitlines()
+    chunk_lines, compact = lines[:-1], json.loads(lines[-1])
+    assert len(chunk_lines) >= 3 and all(set(json.loads(x)) == {"brief_chunk", "of", "sha256", "b64"} for x in chunk_lines)
+    assert set(compact) == {"status", "sha256", "persisted", "brief_bytes", "brief_file", "brief_chunks"}
+    assert compact["status"] == "BRIEFED" and compact["brief_file"] is None and compact["brief_chunks"] is True
+    raw = sb.reassemble_chunks(chunk_lines)
+    assert len(raw) == compact["brief_bytes"] and hashlib.sha256(raw).hexdigest() == compact["sha256"]
+    brief = json.loads(raw)
+    assert sb.payload_digest(json.loads(raw, parse_float=Decimal)) == compact["sha256"]
+    assert compact["persisted"]["manifest_id"] == brief["manifest"]["manifest_id"] and compact["persisted"]["brief_id"] > 0
+    assert re.fullmatch(r"[0-9a-f]{64}", compact["persisted"]["state_digest"])

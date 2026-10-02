@@ -275,8 +275,7 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
                                                 key=lambda r: (r["commit"], r["implementation_digest"])),
                  "manifest_pinned_implementation_digest": pinned, "sealing_commit": sealing_commit},
         "ledger": _ledger_evidence(conn),
-        "disclosures": {"policy": "all_null_candidate/1 — no numerical result exists in this generation (the legacy projection "
-                                  "relations hold none: enforced, not assumed)",
+        "disclosures": {"policy": _policy_disclosure(manifest_policy(conn, chart_id, generation)),
                         "named_limits": __import__("services.gochara_kernel.scope_response", fromlist=["x"]).named_limits(),
                         "attestation_binding": "composition: inputs/2 per grain + DB-guarded path pins + the 1206 inventory "
                                                "verification row + the generation-wide output identity above",
@@ -284,6 +283,19 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
                                              "manifest; the authoritative gate is the seal's, on the published row"},
         "seal_is_not_a_flip": SEAL_IS_NOT_A_FLIP,
     }
+
+
+ALL_NULL_POLICY = "all_null_candidate/1"
+
+
+def _policy_disclosure(policy: str) -> str:
+    """The disclosure's wording follows the MANIFEST's policy name — it never asserts the all-NULL claim for a manifest that selects
+    another policy (F-R13 / Stream B): `no numerical result exists` is said only under `all_null_candidate/1`, where the window CHECKs and
+    the generation-wide gate (including the legacy-row arm) enforce it."""
+    if policy == ALL_NULL_POLICY:
+        return (f"{policy} — no numerical result exists in this generation: the policy forbids one (window all-NULL arms) and the "
+                "legacy projection relations hold none (enforced by the gate, not assumed)")
+    return f"{policy} — this brief makes no all-NULL claim; the result policy above governs what this generation may contain"
 
 
 def _current_and_complete(payload: dict) -> list[str]:
@@ -347,6 +359,20 @@ def persisted_brief_problem(conn, chart_id: str, generation: str, manifest_id: s
     row = conn.execute("SELECT public.ka_gochara_seal_brief_problem(%s::uuid, %s, %s::uuid, %s)",
                        (chart_id, generation, manifest_id, digest)).fetchone()
     return next(iter(row.values())) if isinstance(row, dict) else row[0]
+
+
+#: bounded waits (steward ruling M20261002T175331): a stuck lock or a runaway statement must end in a NAMED refusal with nothing written, never
+#: hang. Applied transaction-locally (`set_config(..., true)`), so they end with the transaction. Measured worst case (26 classes x 50) is ~35 s.
+SEAL_STATEMENT_TIMEOUT = "15min"
+SEAL_LOCK_TIMEOUT = "2min"
+BRIEF_LOCK_TIMEOUT = "2min"
+
+
+def set_local_timeouts(conn, *, statement: str | None = None, lock: str | None = None) -> None:
+    """Transaction-local `statement_timeout` / `lock_timeout` (call inside the transaction, before the first lock is taken)."""
+    for name, value in (("statement_timeout", statement), ("lock_timeout", lock)):
+        if value is not None:
+            conn.execute("SELECT set_config(%s, %s, true)", (name, value))
 
 
 def vj_lock(conn, chart_id: str) -> None:

@@ -10,6 +10,8 @@ header). The sealing transaction recomputes it under the seal locks and refuses 
 from __future__ import annotations
 
 import hashlib
+import os
+from pathlib import Path
 import json
 
 import pytest
@@ -66,6 +68,7 @@ def test_a_verified_candidate_yields_a_complete_deterministic_payload_read_with_
     assert p["code"]["sealing_commit"] == "c1" and p["code"]["verification_runners"]
     assert [m["migration"] for m in p["ledger"]] == list(sb.LEDGER_MIGRATIONS)
     assert p["seal_is_not_a_flip"] and p["disclosures"]["named_limits"]
+    assert p["disclosures"]["policy"].startswith(p["result_policy"] + " — ")           # the wording follows the MANIFEST's policy name
     assert sb.payload_digest(_brief_as_verifier(w, sealing_commit="c2")["payload"]) != one["sha256"]   # the commit is in it
 
 
@@ -171,7 +174,7 @@ def test_the_entry_points_brief_mode_ends_in_a_compact_line_carries_the_brief_by
         w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")
         out_file = tmp_path / "brief.json"
         assert entry.main(["--chart", CHART_ID, "--brief", "--sealing-commit", "cli-sha", "--brief-out", str(out_file),
-                           "--brief-chunks", "--brief-chunk-bytes", "4096"]) == vj.EXIT_OK
+                           "--brief-chunk-bytes", "4096"]) == vj.EXIT_OK
         lines = capsys.readouterr().out.strip().splitlines()
         compact, chunk_lines = json.loads(lines[-1]), lines[:-1]            # the LAST line is the compact result, whatever the size
         assert set(compact) == {"status", "sha256", "persisted", "brief_bytes", "brief_file", "brief_chunks"}
@@ -180,10 +183,15 @@ def test_the_entry_points_brief_mode_ends_in_a_compact_line_carries_the_brief_by
         raw = out_file.read_bytes()
         assert len(raw) == compact["brief_bytes"] and hashlib.sha256(raw).hexdigest() == compact["sha256"]      # the file IS the digest's preimage
         assert len(chunk_lines) > 1 and sb.reassemble_chunks(chunk_lines) == raw                              # …and so are the chunks
+        assert compact["brief_chunks"] is True and len(chunk_lines) == -(-len(raw) // 4096)
         brief = json.loads(raw)
         assert brief["schema"] == "seal_approval_payload/1" and brief["code"]["sealing_commit"] == "cli-sha"
         assert compact["sha256"] == sb.payload_digest(sb.build_payload(w.conn, CHART_ID, GEN, sealing_commit="cli-sha"))
         assert compact["persisted"]["brief_id"] == w.conn.execute("SELECT max(brief_id) FROM public.ka_gochara_seal_brief").fetchone()[0]
+        golden = os.environ.get("GOCHARA_WRITE_GOLDEN_BRIEF")                  # (opt-in: regenerate the fixture Stream B's extractor tests use)
+        if golden:                                                             # the REAL stdout, no --brief-out, chunks of 8 KiB (3 for 1 class)
+            assert entry.main(["--chart", CHART_ID, "--brief", "--sealing-commit", "cli-sha", "--brief-chunk-bytes", "8192"]) == vj.EXIT_OK
+            Path(golden).write_text(capsys.readouterr().out)
     finally:
         w.conn.execute("ALTER ROLE gochara_verifier NOLOGIN PASSWORD NULL")
 

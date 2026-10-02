@@ -189,15 +189,26 @@ def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id
         raise SealRefused("connection_not_autocommit", "the sealing job owns its transaction: it needs an autocommit connection")
     if enforce_identity:
         check_sealer_identity(conn)
-    with conn.transaction():
-        vj.take_locks(conn, chart_id)
-        policy = manifest_policy(conn, chart_id, generation)
-        if policy != required_policy:
-            raise SealRefused("wrong_policy", f"the manifest selects {policy!r}; this milestone's sealing job requires "
-                              f"{required_policy!r}")
-        return seal_with_approval(conn, chart_id=chart_id, generation=generation, approved_digest=approval["brief_digest"],
-                                  approver_login=approval["approver_login"], run_id=run_id, run_attempt=run_attempt,
-                                  approval_note=approval["approved_by_note"], sealing_commit=sealing_commit)
+    import psycopg
+    try:
+        with conn.transaction():
+            # bounded waits (steward ruling): a held lock or a runaway statement ends in a NAMED refusal; the transaction rolls back, so
+            # nothing stays published
+            seal_brief.set_local_timeouts(conn, statement=seal_brief.SEAL_STATEMENT_TIMEOUT, lock=seal_brief.SEAL_LOCK_TIMEOUT)
+            vj.take_locks(conn, chart_id)
+            policy = manifest_policy(conn, chart_id, generation)
+            if policy != required_policy:
+                raise SealRefused("wrong_policy", f"the manifest selects {policy!r}; this milestone's sealing job requires "
+                                  f"{required_policy!r}")
+            return seal_with_approval(conn, chart_id=chart_id, generation=generation, approved_digest=approval["brief_digest"],
+                                      approver_login=approval["approver_login"], run_id=run_id, run_attempt=run_attempt,
+                                      approval_note=approval["approved_by_note"], sealing_commit=sealing_commit)
+    except psycopg.errors.LockNotAvailable as exc:
+        raise SealRefused("seal_lock_timeout", f"a seal lock was not available within {seal_brief.SEAL_LOCK_TIMEOUT} — another build, "
+                          f"verification or seal holds it; nothing was published ({exc})") from exc
+    except psycopg.errors.QueryCanceled as exc:
+        raise SealRefused("seal_statement_timeout", f"a statement exceeded {seal_brief.SEAL_STATEMENT_TIMEOUT} (or was cancelled); the "
+                          f"sealing transaction was rolled back, nothing was published ({exc})") from exc
 
 
 __all__ = ["APPROVAL_SCHEMA", "REQUIRED_POLICY", "SEALER_WRITE_ALLOWED", "SealRefused", "check_sealer_identity", "execute_seal",
