@@ -62,20 +62,9 @@ def pg():
 
 
 def _declared_rows(path, version):
-    """The real factor rows + the applicability block the 1.1.0 row declares (spans ⇒ step)."""
-    rows = []
-    for row in ws.registry_factor_rows(path, version):
-        row = dict(row)
-        if row["factor_id"] == "activity_kernel":
-            row["applicability"] = {
-                "span": {"object_kinds": ["sign_span", "house_span", "star"], "function": "step",
-                         "inside": 1.0, "outside": 0.0},
-                "angular": {"object_kinds": ["degree_point", "derived_point", "saham", "house_lord"],
-                            "function": "linear", "orb_deg": None}}
-        elif row["factor_id"] == "graduated_drishti":
-            row["applicability"] = {"relations": ["aspect"]}
-        rows.append(row)
-    return rows
+    """The ACTUAL 1.1.0 catalogue rows (Stream B's #2897/#2907 — flat selector as source of truth, decoded
+    applicability from the shared codec), not a hand-written nested block."""
+    return [dict(r) for r in ws.registry_factor_rows(path, "1.1.0")]
 
 
 @pytest.fixture()

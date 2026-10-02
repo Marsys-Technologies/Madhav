@@ -96,16 +96,19 @@ class SweepRecord:
     operator_role: str
     admission_state: str
     supports: tuple                    # ((lo, hi), ...) aware UTC datetimes, half-open
-    # Point-kernel / drishti operand sources, supplied by the store ONLY when it has them. A
-    # callable returning None means "not determinable at t" (a named missing operand).
-    delta_lambda_at: Callable[[datetime], float | None] | None = None
+    # Operand sources, supplied by the store ONLY when it has them. A callable returning None means "not
+    # determinable at t" (a named missing operand). `longitude_at` is the transiting body's sidereal
+    # longitude; the kernel's MEMBERSHIP and angular distance are computed from it by Stream B's
+    # `kernel_factor` (validated geometry — never a caller flag); `aspect_rays` are the directed dṛṣṭi
+    # angles an ASPECT record is evaluated along (empty for residence/conjunction).
+    longitude_at: Callable[[datetime], float | None] | None = None
+    aspect_rays: tuple = ()
     aspect_offset_at: Callable[[datetime], int | None] | None = None
     house_from_frame: int | None = None        # the record's own §1.2 inv 5 house (P2: from janma-rāśi)
     # R4: the record's physical object's canonical target (validated against `object_kind` BEFORE any
     # factor is evaluated) and, when the store has a position probe, whether the contact geometry
     # actually places the target inside/under the body's ray at t (None = not determinable).
     canonical_target: str | None = None
-    inside_at: Callable[[datetime], bool | None] | None = None
     # R7 [7]: instants INSIDE the support at which an operand's STATE changes (a dṛṣṭi source sign
     # ingress, a vedha interval edge): the objective is solved piecewise between them. And the instants
     # at which a smooth kernel is exactly maximal (a point contact's exact instant).
@@ -168,6 +171,9 @@ class Outcome:
     kind: str                           # 'na' | 'const' | 'fn' | 'missing'
     value: float | None = None
     fn: Callable[[datetime], float | None] | None = None
+    # a membership CONSTANT is still CHECKED against the contact geometry at every piece: True = the
+    # geometry confirms the support, False = it contradicts it, None = undeterminable
+    check: Callable[[datetime], bool | None] | None = None
     null_state: str | None = None
     reason: str | None = None
     factor: str | None = None
@@ -184,54 +190,65 @@ def _missing(row: dict, reason: str) -> Outcome:
     return Outcome("missing", null_state=row["null_state"], reason=reason, factor=row["factor_id"])
 
 
+def _kernel_value_at(rec: SweepRecord, ref: tuple, t: datetime) -> float | None:
+    """The activity kernel at `t`, from Stream B's validated `kernel_factor` (CALLED, never copied):
+    membership of the body's longitude — carried along each directed dṛṣṭi ray of an aspect record — in
+    the target's extent, or the seam-safe angular distance to a point. The best ray wins (any one ray
+    on the target is the contact). None = undeterminable."""
+    from services.gochara_rules import kernel_factor as _kf
+    lon = rec.longitude_at(t)
+    if lon is None:
+        return None
+    best = None
+    for ang in (rec.aspect_rays or (None,)):
+        r = _kf.activity_kernel(rec.object_kind, rec.canonical_target, factor_ref=ref,
+                                body_longitude_deg=float(lon) % 360.0, aspect_angle_deg=ang)
+        if r["value"] is not None:
+            best = r["value"] if best is None else max(best, r["value"])
+    return best
+
+
 def activity_kernel(row: dict, rec: SweepRecord) -> Outcome:
-    """Reads the ROW. `applicability` absent ⇒ the operand is not evaluable (unqualified)."""
+    """Routed through the validated row/geometry contract (Codex round 7 [8]): the factor row addressed by
+    ITS membership reference declares applicability, the physical target is validated against the object
+    kind, a numeric orb is admissible only when the row ratifies it with a decision reference, and
+    membership is COMPUTED from the contact geometry. A row without `applicability` (the 1.0.0 row) leaves
+    the operand unevaluable (unqualified)."""
+    from services.gochara_rules import kernel_factor as _kf
     ap = row.get("applicability")
     if not ap:
         return _missing(row, "applicability_undeclared")
-    span, angular = ap.get("span") or {}, ap.get("angular") or {}
-    if rec.object_kind in (span.get("object_kinds") or ()):
-        # Membership is a declared step (1 inside); the record's support is the claim, and the CONTACT
-        # GEOMETRY must confirm it. A span record whose geometry cannot be consulted is not affirmatively
-        # a member: missing geometry is a named missing operand, never silently "inside" (R7 [8]).
-        if rec.inside_at is None:
-            return _missing(row, "geometry_operand_missing")
-        return Outcome("const", value=_check_unit(span.get("inside"), "activity_kernel span.inside"),
-                       factor=row["factor_id"])
-    if rec.object_kind in (angular.get("object_kinds") or ()):
-        orb = angular.get("orb_deg")
-        if orb is None:
-            return _missing(row, "orb_not_ratified")
-        # Ratification is NEVER inferred from a number being present (Codex round 7 [8]): a numeric orb is
-        # admissible only when the row AFFIRMATIVELY declares `orb_state == "ratified"`; any other (or no)
-        # state — "unratified", "ND-ORB open", free text — is a contradiction that refuses, never scores.
-        state = angular.get("orb_state")
-        if state != "ratified":
-            raise SweepRefusal(
-                f"activity_kernel angular.orb_deg {orb!r} is present but the row's orb_state is {state!r} "
-                f"(orb_status {angular.get('orb_status')!r}) — a numeric orb does not ratify itself")
-        if not (isinstance(orb, (int, float)) and not isinstance(orb, bool) and orb > 0
-                and math.isfinite(orb)):
-            raise SweepRefusal(f"activity_kernel angular.orb_deg {orb!r} is not a positive finite number")
-        if not angular.get("orb_decision_ref"):
-            raise SweepRefusal("activity_kernel angular.orb_deg is set but the row names no orb_decision_ref "
-                               "— a ratified orb is bound to the decision that ratified it, never a bare number")
-        if rec.delta_lambda_at is None:
-            return _missing(row, "delta_lambda_operand_missing")
-        dl = rec.delta_lambda_at
+    ref = (row["factor_id"], row["rule_version"])
+    try:
+        parsed = _kf.parse_target(rec.object_kind, rec.canonical_target, ap)
+    except _kf.TargetKindMismatch as exc:
+        raise SweepRefusal(f"record {rec.record_id}: {exc}") from exc
+    if parsed is None:
+        return _missing(row, "object_kind_not_covered_by_applicability")
+    if rec.longitude_at is None:        # missing geometry is a named missing operand, never "inside"
+        return _missing(row, "geometry_operand_missing")
+    try:                                 # a configured-but-invalid row fails closed HERE, never scores
+        probe = _kf.activity_kernel(rec.object_kind, rec.canonical_target, factor_ref=ref,
+                                    body_longitude_deg=0.0, aspect_angle_deg=None)
+    except _kf.KernelFactorConfigError as exc:
+        raise SweepRefusal(f"activity_kernel row {ref}: {exc}") from exc
+    if parsed[0] in ("span", "star"):
+        step = ap["span"]
+        inside_v = _check_unit(step.get("inside"), "activity_kernel span.inside")
+        outside_v = step.get("outside")
 
-        def _fn(t: datetime, _dl=dl, _orb=float(orb)):
-            d = _dl(t)
-            if d is None:
-                return None
-            return max(0.0, 1.0 - abs(float(d)) / _orb)
-
-        return Outcome("fn", fn=_fn, null_state=row["null_state"], factor=row["factor_id"])
-    return _missing(row, "object_kind_not_covered_by_applicability")
+        def _check(t, _ref=ref, _in=inside_v, _out=outside_v):
+            v = _kernel_value_at(rec, _ref, t)
+            return None if v is None else (True if v == _in else (False if v == _out else None))
+        return Outcome("const", value=inside_v, factor=row["factor_id"], check=_check)
+    if probe["reason"] == "orb_not_ratified":
+        return _missing(row, "orb_not_ratified")
+    return Outcome("fn", fn=lambda t, _ref=ref: _kernel_value_at(rec, _ref, t),
+                   null_state=row["null_state"], factor=row["factor_id"])
 
 
 def graduated_drishti(row: dict, rec: SweepRecord,
-                      drishti: Callable[[str, int], float] | None) -> Outcome:
+                      drishti: Callable[[str, int, tuple], float] | None) -> Outcome:
     """Aspect records only. The table is Stream B's (`services/gochara_rules/drishti.py`) and is
     CALLED through `drishti`, never copied; until it is supplied the operand is a named missing
     input."""
@@ -245,12 +262,13 @@ def graduated_drishti(row: dict, rec: SweepRecord,
     if rec.aspect_offset_at is None:
         return _missing(row, "aspect_offset_operand_missing")
     off_at = rec.aspect_offset_at
+    ref = (row["factor_id"], row["rule_version"])      # the membership's OWN factor ref, passed to the source
 
-    def _fn(t: datetime, _o=off_at, _a=rec.agent):
+    def _fn(t: datetime, _o=off_at, _a=rec.agent, _ref=ref):
         off = _o(t)
         if off is None:
             return None
-        v = drishti(_a, off)               # None = an operand the source cannot classify (unqualified)
+        v = drishti(_a, off, _ref)         # None = an operand the source cannot classify (unqualified)
         return None if v is None else _check_unit(v, "graduated_drishti")
 
     return Outcome("fn", fn=_fn, null_state=row["null_state"], factor=row["factor_id"])
@@ -279,7 +297,7 @@ def categorical_factor(row: dict) -> Outcome:
 
 
 def evaluate_factors(rec: SweepRecord, factor_rows: list[dict], *,
-                     drishti: Callable[[str, int], float] | None = None,
+                     drishti: Callable[[str, int, tuple], float] | None = None,
                      vedha: Callable[[SweepRecord, datetime], float | None] | None = None) -> list[Outcome]:
     """One outcome per declared soft factor. A factor the sweep has no evaluator for REFUSES (a
     later increment's path must not be silently scored without it)."""
@@ -311,6 +329,11 @@ class RecordProgram:
     reasons: list                       # [(factor_id, reason)] of every missing operand
     outcomes: list = field(default_factory=list)
     channel: str = CHANNEL_FOR
+
+    @property
+    def checks(self) -> list:
+        """The geometry checks of this record's membership constants (run at every piece)."""
+        return [o.check for o in self.outcomes if o.kind == "const" and o.check is not None]
 
     def value_at(self, t: datetime) -> float | None:
         """The within-path product at t; None if any live operand is undeterminable at t."""
@@ -388,7 +411,7 @@ def against_channel_state(factor_rows: list[dict]) -> str:
 
 
 def build_program(rec: SweepRecord, factor_rows: list[dict], *,
-                  drishti: Callable[[str, int], float] | None = None,
+                  drishti: Callable[[str, int, tuple], float] | None = None,
                   vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
                   channel: str = CHANNEL_FOR) -> RecordProgram:
     validate_geometry(rec)
@@ -624,7 +647,7 @@ def _objective_fn(path_id: str, live: list[RecordProgram], event_class: str):
 
 def draft_windows(event_class: str, records: list[SweepRecord],
                   factor_rows_for: Callable[[str, str], list[dict]], *,
-                  drishti: Callable[[str, int], float] | None = None,
+                  drishti: Callable[[str, int, tuple], float] | None = None,
                   vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
                   compute_valence: Callable | None = None) -> tuple[list[WindowDraft], dict]:
     """The grain's windows (one path-version) and an exclusion ledger — every record accounted.
@@ -743,16 +766,15 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             # geometry makes the piece unknown (never affirmative membership)
             geometry_unknown = False
             for p in live:
-                if p.rec.inside_at is None:
-                    continue
-                for instant in (a, b - timedelta(microseconds=1)):
-                    g = p.rec.inside_at(instant)
-                    if g is False:
-                        raise SweepRefusal(
-                            f"record {p.rec.record_id}: its stored support contains {instant.isoformat()} "
-                            "but the contact geometry places the target outside — support/geometry disagree")
-                    if g is None:
-                        geometry_unknown = True
+                for check in p.checks:
+                    for instant in (a, b - timedelta(microseconds=1)):
+                        g = check(instant)
+                        if g is False:
+                            raise SweepRefusal(
+                                f"record {p.rec.record_id}: its stored support contains {instant.isoformat()} "
+                                "but the contact geometry places the target outside — support/geometry disagree")
+                        if g is None:
+                            geometry_unknown = True
             if geometry_unknown:
                 unknown_pieces += 1
                 continue

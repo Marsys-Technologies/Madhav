@@ -1,119 +1,79 @@
-"""A5.3 — version-aware rule binding (Codex round 6, R5).
+"""A5.3 — version-aware rule binding, on Stream B's ACTUAL 1.1.0 rows (Codex round 6 R5 / round 7 [4]).
 
-The binder selects EXPLICIT composite references; each prerequisite and soft factor keeps its OWN
-version; an AM-13-shaped `applicability` declaration is encoded into 1154's FLAT `operand_selector`
-(no nesting, no JSON null, a closed key schema), read back, decoded and compared; and what the sweep
-consumes is the persisted declaration read back — never a global version constant.
+ONE codec: `services.gochara_rules.flat_selector` (Stream B's). The binder has no codec of its own; it
+persists the catalogue row's flat `operand_selector` VERBATIM, reads it back flat-to-flat, and requires
+`decode(flat) == the declared applicability`. The successor rows are the real #2897/#2901/#2907 rows
+(P2/P3/P4/P5@1.1.0, activity_kernel / graduated_drishti / vedha_attenuation @1.1.0) — nothing synthetic —
+bound beside the 1.0.0 rows by the same deliberate edit of the explicit reference tuples that would bind
+them in production (the production default stays @1.0.0 until they are accepted).
 
-The 1.1.0 rows themselves are Stream B's (#2897, not on main): the tests build a synthetic successor
-version from the REAL 1.0.0 rows plus the applicability shape that PR declares, and run the real binder
-and the real 1154 schema over it. A skip-guarded test binds the real rows the moment they exist.
+Each member keeps its OWN version; the selected path reference is passed through enumeration, inventory,
+record materialisation and prerequisite results — never the global RULE_VERSION.
 """
 from __future__ import annotations
 
 import copy
-import re
 from datetime import datetime, timezone
 
 import pytest
 
+from services.gochara_kernel import evaluator as ev
+from services.gochara_kernel import inventory as inv
+from services.gochara_kernel import inventory_verifier as ivr
+from services.gochara_kernel import record_store as rs
 from services.gochara_kernel import rule_registry as rr
 from services.gochara_kernel import window_sweep as ws
+from services.gochara_rules import flat_selector as fs
 from services.gochara_rules import registry as rules_registry
 
+from ._bound_1_1_0 import SUCCESSOR_FACTORS, SUCCESSOR_PATHS, bind_successors
+from .test_a53_record_store import (CHART, CHART_ID, HORIZON, _coverage_kwargs,  # noqa: F401
+                                    _grain_kwargs, _house_from_lagna, _probe, _seed_saturn_crossings,
+                                    _sky_convention_id)
 from .test_a53_window_sweep_pg import pg  # noqa: F401  (fresh DB per test, 1081 + 1152–1157 applied)
 
-APPLICABILITY = {
-    "span": {"object_kinds": ["sign_span", "house_span", "star"], "function": "step",
-             "inside": 1.0, "outside": 0.0},
-    "angular": {"object_kinds": ["degree_point", "derived_point", "saham", "house_lord"],
-                "function": "linear", "formula": "1 - |Δλ|/orb", "orb_deg": None,
-                "orb_status": "ND-ORB open: not ratified (draft AM-13)"},
-}
-TOKEN = re.compile(r"^[a-z][a-z0-9_]*([.:/][a-z0-9_]+)*$")
-KEY = re.compile(r"^[a-z][a-z0-9_]*$")
+REAL = {ref: rules_registry.FACTORS[ref] for ref in SUCCESSOR_FACTORS}
 
 
-def _mirror_named_operands_ok(sel: dict) -> bool:
-    """A static mirror of ka_gochara_named_operands_ok (1154:221-240): the REAL function runs in the PG
-    tests below; this keeps the unit tier honest about the same rule."""
-    if not isinstance(sel, dict) or not sel:
-        return False
-    for k, v in sel.items():
-        if not KEY.match(k):
-            return False
-        if isinstance(v, bool):
-            return False
-        if isinstance(v, str):
-            ok = bool(TOKEN.match(v))
-        elif isinstance(v, (int, float)):
-            ok = True
-        elif isinstance(v, list):
-            ok = len(v) >= 1 and all(isinstance(x, str) and TOKEN.match(x) for x in v)
-        else:
-            ok = False
-        if not ok:
-            return False
-    return True
+# ── ONE codec ────────────────────────────────────────────────────────────────────────────────────────
+
+def test_the_binder_has_no_codec_of_its_own_it_calls_stream_bs():
+    assert rr._flat is fs
+    for gone in ("encode_applicability", "decode_applicability", "canonical_applicability"):
+        assert not hasattr(rr, gone), f"{gone}: a second codec must not exist"
+    assert rr._DECODE == {"activity_kernel": fs.decode_kernel, "graduated_drishti": fs.decode_drishti,
+                          "vedha_attenuation": fs.decode_vedha}
 
 
-# ── the flat applicability encoding ──────────────────────────────────────────────────────────────────
-
-def test_the_flat_encoding_is_admissible_lossless_and_omits_an_unavailable_orb():
-    flat = rr.encode_applicability(APPLICABILITY)
-    assert _mirror_named_operands_ok({"operand": "geometry:delta_lambda_to_exact", **flat})
-    assert "angular_orb_deg" not in flat and flat["angular_orb_state"] == "unratified"   # omitted, never null
-    assert None not in flat.values()
-    assert rr.decode_applicability(flat) == rr.canonical_applicability(APPLICABILITY)
-    assert rr.decode_applicability(flat)["angular"]["orb_deg"] is None
-    assert rr.decode_applicability(flat)["span"] == APPLICABILITY["span"]
+@pytest.mark.parametrize("ref", SUCCESSOR_FACTORS)
+def test_the_real_rows_persist_their_flat_selector_verbatim_and_decode_to_the_declaration(ref):
+    row = REAL[ref]
+    persisted = rr.factor_operand_selector(ref[0], row)
+    assert persisted == row["operand_selector"]                     # verbatim — the flat form is the truth
+    assert rr.decode_factor_selector(ref[0], persisted) == row["applicability"]
+    assert None not in persisted.values()                           # no JSON null, ever
+    assert fs.decode_kernel(persisted) == row["applicability"] if ref[0] == "activity_kernel" else True
 
 
-def test_a_ratified_orb_is_carried_as_a_number_with_an_explicit_state():
-    app = copy.deepcopy(APPLICABILITY)
-    app["angular"]["orb_deg"] = 5.0
-    app["angular"]["orb_decision_ref"] = "ruling:nd_orb_test"
-    flat = rr.encode_applicability(app)
-    assert flat["angular_orb_state"] == "ratified" and flat["angular_orb_deg"] == 5.0
-    assert flat["angular_orb_decision_ref"] == "ruling:nd_orb_test"
-    assert rr.decode_applicability(flat)["angular"]["orb_deg"] == 5.0
-    assert rr.decode_applicability(flat)["angular"]["orb_decision_ref"] == "ruling:nd_orb_test"
-    assert _mirror_named_operands_ok(flat)
+def test_the_unchanged_1_0_0_rows_keep_their_plain_operand_token_and_declare_no_applicability():
+    for fid in ("activity_kernel", "graduated_drishti", "vedha_attenuation"):
+        src = rules_registry.FACTORS[(fid, "1.0.0")]
+        sel = rr.factor_operand_selector(fid, src)
+        assert set(sel) == {"operand"} and rr.decode_factor_selector(fid, sel) is None
 
 
-def test_a_ratified_orb_without_its_decision_ref_or_with_a_non_token_ref_is_refused():
-    base = copy.deepcopy(APPLICABILITY)
-    base["angular"]["orb_deg"] = 5.0
-    with pytest.raises(rr.RegistryDivergenceError, match="orb_decision_ref"):
-        rr.encode_applicability(base)                                   # a bare number never gets in
-    for bad in ("ruling:ND-ORB", "ND ORB", "Ruling:x"):
-        with pytest.raises(rr.RegistryDivergenceError, match="selector token"):
-            rr.encode_applicability(dict(base, angular=dict(base["angular"], orb_decision_ref=bad)))
-    unratified = copy.deepcopy(APPLICABILITY)
-    unratified["angular"]["orb_decision_ref"] = "ruling:nd_orb_test"
-    with pytest.raises(rr.RegistryDivergenceError, match="incoherent"):
-        rr.encode_applicability(unratified)                             # a ref with no orb
-
-
-def test_relations_applicability_encodes_as_a_token_array():
-    flat = rr.encode_applicability({"relations": ["aspect"]})
-    assert flat == {"relations": ["aspect"]} and rr.decode_applicability(flat) == {"relations": ["aspect"]}
-
-
-def test_an_unknown_key_or_formula_is_refused_never_guessed():
-    for bad in ({"span": {"object_kinds": ["sign_span"], "function": "step", "inside": 1, "outside": 0,
-                          "extra": 1}},
-                {"mystery": 1},
-                {"angular": {"object_kinds": ["saham"], "function": "linear", "formula": "sin(x)",
-                             "orb_deg": None}}):
-        with pytest.raises(rr.RegistryDivergenceError):
-            rr.encode_applicability(bad)
-
-
-def test_a_state_token_that_is_neither_ratified_nor_unratified_is_refused_on_decode():
-    with pytest.raises(rr.RegistryDivergenceError):
-        rr.decode_applicability({"angular_kinds": ["saham"], "angular_function": "linear",
-                                 "angular_orb_state": "maybe"})
+def test_a_flat_selector_the_shared_codec_refuses_is_refused_by_the_binder():
+    base = copy.deepcopy(REAL[("activity_kernel", "1.1.0")])
+    bad_key = dict(base, operand_selector={**base["operand_selector"], "mystery": 1})
+    with pytest.raises(rr.RegistryDivergenceError, match="refused"):
+        rr.factor_operand_selector("activity_kernel", bad_key)
+    # a numeric orb is admissible ONLY with orb_state=ratified AND a decision-ref token (the codec's rule)
+    bare_orb = dict(base, operand_selector={**base["operand_selector"], "orb_deg": 5.0})
+    with pytest.raises(rr.RegistryDivergenceError, match="refused"):
+        rr.factor_operand_selector("activity_kernel", bare_orb)
+    unknown_state = dict(base, operand_selector={**base["operand_selector"], "orb_state": "maybe"})
+    with pytest.raises(rr.RegistryDivergenceError, match="refused"):
+        rr.factor_operand_selector("activity_kernel", unknown_state)
 
 
 # ── explicit composite references, each member at its OWN version ────────────────────────────────────
@@ -127,52 +87,46 @@ def test_no_row_is_selected_by_the_global_version_constant(monkeypatch):
     assert before == after
 
 
-def test_the_bound_references_are_explicit_composites():
+def test_the_default_binding_stays_at_1_0_0_until_the_successors_are_accepted():
     assert rr.BOUND_PATH_REFS == tuple((p, "1.0.0") for p in ("P1", "P2", "P3", "P4", "P5"))
     assert all(isinstance(r, tuple) and len(r) == 2 for r in
                rr.BOUND_PATH_REFS + rr.BOUND_FACTOR_REFS + rr.BOUND_PREDICATE_REFS)
+    assert not set(SUCCESSOR_PATHS) & set(rr.BOUND_PATH_REFS)
+    assert not set(SUCCESSOR_FACTORS) & set(rr.BOUND_FACTOR_REFS)
 
 
-@pytest.fixture()
-def successor(monkeypatch):
-    """A synthetic AM-13-shaped successor: activity_kernel@1.1.0 (REAL 1.0.0 row + applicability) and
-    P3@1.2.0 — a path version DIFFERENT from its factors' (1.1.0) and its prerequisites' (1.0.0), so a
-    binder that took the path's version for its members cannot pass."""
-    factors = dict(rules_registry.FACTORS)
-    paths = dict(rules_registry.RULE_PATHS)
-    kernel = dict(factors[("activity_kernel", "1.0.0")], rule_version="1.1.0",
-                  applicability=copy.deepcopy(APPLICABILITY))
-    drishti = dict(factors[("graduated_drishti", "1.0.0")], rule_version="1.1.0",
-                   applicability={"relations": ["aspect"]})
-    factors[("activity_kernel", "1.1.0")] = kernel
-    factors[("graduated_drishti", "1.1.0")] = drishti
-    p3 = dict(paths[("P3", "1.0.0")], rule_version="1.2.0",
-              soft_factors=[("activity_kernel", "1.1.0"), ("graduated_drishti", "1.1.0")])
-    paths[("P3", "1.2.0")] = p3
-    monkeypatch.setattr(rules_registry, "FACTORS", factors)
-    monkeypatch.setattr(rules_registry, "RULE_PATHS", paths)
-    monkeypatch.setattr(rr, "BOUND_FACTOR_REFS", rr.BOUND_FACTOR_REFS + (("activity_kernel", "1.1.0"),
-                                                                       ("graduated_drishti", "1.1.0")))
-    monkeypatch.setattr(rr, "BOUND_PATH_REFS", rr.BOUND_PATH_REFS + (("P3", "1.2.0"),))
-    return p3
+def test_the_bound_version_of_a_path_is_read_at_call_time_never_captured(monkeypatch):
+    assert rr.bound_path_version("P3") == "1.0.0"
+    monkeypatch.setattr(rr, "BOUND_PATH_REFS", tuple(("P3", "1.1.0") if p == "P3" else (p, v)
+                                                     for p, v in rr.BOUND_PATH_REFS))
+    assert rr.bound_path_version("P3") == "1.1.0" and ("P3", "1.1.0") in rr.bound_path_refs()
+    with pytest.raises(KeyError):
+        rr.bound_path_version("P9")
 
 
-def test_a_successor_binds_beside_the_old_version_each_member_at_its_own_version(successor):
+def test_the_real_successors_bind_beside_the_old_versions_each_member_at_its_own_version(monkeypatch):
+    bind_successors(monkeypatch)
     rr._membership_consistent()
-    rows = {(r["path_id"], r["rule_version"]) for r in rr.path_rows()}
-    assert {("P3", "1.0.0"), ("P3", "1.2.0")} <= rows
+    paths = {(r["path_id"], r["rule_version"]) for r in rr.path_rows()}
+    assert set(SUCCESSOR_PATHS) | {("P3", "1.0.0")} <= paths
     soft = {(r["path_id"], r["rule_version"], r["factor_id"], r["factor_rule_version"])
             for r in rr.soft_factor_rows()}
     assert ("P3", "1.0.0", "activity_kernel", "1.0.0") in soft          # the old version is untouched
-    assert ("P3", "1.2.0", "activity_kernel", "1.1.0") in soft          # path 1.2.0, member 1.1.0
+    assert ("P3", "1.1.0", "activity_kernel", "1.1.0") in soft
+    assert ("P3", "1.1.0", "graduated_drishti", "1.1.0") in soft
+    assert ("P2", "1.1.0", "vedha_attenuation", "1.1.0") in soft
     pre = {(r["path_id"], r["rule_version"], r["predicate_id"], r["predicate_rule_version"])
            for r in rr.prerequisite_rows()}
-    assert ("P3", "1.2.0", "p3_contact_house_or_lord", "1.0.0") in pre   # the prerequisite keeps ITS version
+    # the prerequisite keeps ITS OWN version: path 1.1.0, predicate 1.0.0
+    assert ("P3", "1.1.0", "p3_contact_house_or_lord", "1.0.0") in pre
+    assert ("P4", "1.1.0", "p4_double_transit", "1.0.0") in pre
     sel = {(r["factor_id"], r["rule_version"]): r["operand_selector"] for r in rr.factor_rows()}
-    assert "span_kinds" in sel[("activity_kernel", "1.1.0")] and "span_kinds" not in sel[("activity_kernel", "1.0.0")]
+    assert sel[("activity_kernel", "1.1.0")] == REAL[("activity_kernel", "1.1.0")]["operand_selector"]
+    assert set(sel[("activity_kernel", "1.0.0")]) == {"operand"}
 
 
-def test_a_path_reference_to_an_unbound_member_version_is_refused_before_any_sql(successor, monkeypatch):
+def test_a_path_reference_to_an_unbound_member_version_is_refused_before_any_sql(monkeypatch):
+    bind_successors(monkeypatch)
     monkeypatch.setattr(rr, "BOUND_FACTOR_REFS", tuple(r for r in rr.BOUND_FACTOR_REFS
                                                        if r != ("activity_kernel", "1.1.0")))
     with pytest.raises(ValueError, match="soft factor"):
@@ -223,26 +177,32 @@ def test_an_insert_that_reads_back_differently_is_a_divergence_not_a_success():
         store._bind("ka_gochara_predicate", ("predicate_id", "rule_version"), row)
 
 
-# ── on the REAL 1154 schema ──────────────────────────────────────────────────────────────────────────
+# ── on the REAL 1154 schema, with the ACTUAL rows ────────────────────────────────────────────────────
 
-def test_the_real_schema_admits_the_flat_encoding_and_the_binder_reads_it_back(pg, successor):
+def test_the_real_schema_admits_the_actual_flat_rows_and_the_binder_reads_them_back(pg, monkeypatch):
+    bind_successors(monkeypatch)
     store = rr.RuleRegistryStore(pg)
     counts = store.seed()
-    assert counts["paths"] == 6 and counts["seals"] == 6                  # P1..P5 @1.0.0 + P3 @1.2.0
-    rows = store.bound_factor_rows("P3", "1.2.0")
+    assert counts["paths"] == 9 and counts["seals"] == 9                # P1..P5 @1.0.0 + P2..P5 @1.1.0
+    rows = store.bound_factor_rows("P3", "1.1.0")
     by_id = {r["factor_id"]: r for r in rows}
     assert set(by_id) == {"activity_kernel", "graduated_drishti"}
-    assert by_id["activity_kernel"]["rule_version"] == "1.1.0"
-    assert by_id["activity_kernel"]["applicability"]["span"]["inside"] == 1.0
+    for fid, r in by_id.items():
+        real = REAL[(fid, "1.1.0")]
+        assert r["rule_version"] == "1.1.0"
+        assert r["operand_selector"] == real["operand_selector"]        # flat-to-flat, as persisted
+        assert r["applicability"] == real["applicability"]              # decode(flat) == the declaration
     assert by_id["activity_kernel"]["applicability"]["angular"]["orb_deg"] is None
-    assert by_id["graduated_drishti"]["applicability"] == {"relations": ["aspect"]}
+    assert by_id["activity_kernel"]["applicability"]["span"]["inside"] == 1
     old = {r["factor_id"]: r for r in store.bound_factor_rows("P3", "1.0.0")}
     assert all(r["rule_version"] == "1.0.0" and "applicability" not in r for r in old.values())
-    # the prose `direction` the against-channel rule reads is the catalogue's at the SAME exact
-    # reference (the DB's own direction is the binary CHECK vocabulary)
     assert {r["direction"] for r in rows + list(old.values())} == {"higher = stronger"}
     assert ws.against_channel_state(rows) == "none_declared"
     assert store.seed()["reused"] > 0                                    # idempotent
+    # the vedha successor binds through P2@1.1.0 too (its flat selector is the catalogue's)
+    (vedha,) = store.bound_factor_rows("P2", "1.1.0")
+    assert vedha["operand_selector"] == REAL[("vedha_attenuation", "1.1.0")]["operand_selector"]
+    assert vedha["applicability"] == REAL[("vedha_attenuation", "1.1.0")]["applicability"]
 
 
 def test_the_real_schema_refuses_a_nested_or_null_applicability(pg):
@@ -257,35 +217,149 @@ def test_the_real_schema_refuses_a_nested_or_null_applicability(pg):
                                       "applicability": {"span": {"inside": 1}}}),))     # nested
     with pytest.raises(psycopg.errors.CheckViolation):
         pg.execute(base, (json.dumps({"operand": "geometry:delta_lambda_to_exact",
-                                      "angular_orb_deg": None}),))                       # JSON null
+                                      "orb_deg": None}),))                               # JSON null
 
 
-def test_the_sweep_lights_up_from_the_persisted_declaration_alone(pg, successor):
+def test_the_sweep_lights_up_from_the_persisted_declaration_alone(pg, monkeypatch):
+    bind_successors(monkeypatch)
     store = rr.RuleRegistryStore(pg)
     store.seed()
     rec = lambda **kw: ws.SweepRecord(
         record_id="a", root_id="r", path_id="P3", rule_version=kw.pop("version"), relation="residence",
         object_kind="sign_span", agent="saturn", operator_role="scored", admission_state="admitted",
         supports=((datetime(2010, 1, 1, tzinfo=timezone.utc), datetime(2010, 1, 11, tzinfo=timezone.utc)),),
-        canonical_target="span:7", inside_at=lambda t: True)
-    for version, expect in (("1.0.0", None), ("1.2.0", 1.0)):
+        canonical_target="span:7", longitude_at=lambda t: 190.0)
+    for version, expect in (("1.0.0", None), ("1.1.0", 1.0)):
         (w,), _ = ws.draft_windows("marriage", [rec(version=version)],
                                    lambda p, v: store.bound_factor_rows(p, v))
         assert w.score == expect, (version, w)
 
 
-def test_a_decoder_that_loses_the_declaration_is_caught_on_read_back(pg, successor, monkeypatch):
+def test_a_decoder_that_loses_the_declaration_is_caught_on_read_back(pg, monkeypatch):
+    bind_successors(monkeypatch)
     store = rr.RuleRegistryStore(pg)
     store.seed()
-    monkeypatch.setattr(rr, "decode_applicability", lambda flat: {})
+    monkeypatch.setattr(rr, "_DECODE", {**rr._DECODE, "activity_kernel": lambda flat: {}})
     with pytest.raises(rr.RegistryDivergenceError, match="decoded applicability"):
-        store.bound_factor_rows("P3", "1.2.0")
+        store.bound_factor_rows("P3", "1.1.0")
 
 
-@pytest.mark.skipif(("activity_kernel", "1.1.0") not in rules_registry.FACTORS,
-                    reason="activity_kernel@1.1.0 (AM-13, PR #2897) not on main yet")
-def test_the_real_1_1_0_rows_flatten_and_round_trip():
-    row = rules_registry.FACTORS[("activity_kernel", "1.1.0")]
-    flat = rr.encode_applicability(row["applicability"])
-    assert _mirror_named_operands_ok(flat)
-    assert rr.decode_applicability(flat) == rr.canonical_applicability(row["applicability"])
+def test_a_persisted_selector_that_differs_from_the_declaration_is_caught_on_read_back(pg, monkeypatch):
+    bind_successors(monkeypatch)
+    store = rr.RuleRegistryStore(pg)
+    store.seed()
+    drifted = copy.deepcopy(rules_registry.FACTORS)
+    ref = ("activity_kernel", "1.1.0")
+    drifted[ref] = dict(drifted[ref], operand_selector={**drifted[ref]["operand_selector"],
+                                                        "span_inside": 0})
+    monkeypatch.setattr(rules_registry, "FACTORS", drifted)
+    with pytest.raises(rr.RegistryDivergenceError, match="diverges"):
+        store.bound_factor_rows("P3", "1.1.0")
+
+
+# ── the selected path reference reaches enumeration, inventory and records (Codex round 7 [4]) ───────
+
+def test_enumeration_carries_the_selected_path_version_for_every_path_and_class():
+    for path in ("P1", "P2", "P3", "P4", "P5"):
+        for version in ("1.0.0", "1.1.0") if path != "P1" else ("1.0.0",):
+            edges = ev.enumerate_edges("marriage", path, CHART, rule_version=version)
+            assert edges, (path, version)
+            assert {e.rule_version for e in edges} == {version}, (path, version)
+            assert {e.path_id for e in edges} == {path}
+            citations = {e.source_text for e in edges if e.source_text is not None}
+            assert citations <= {rules_registry.RULE_PATHS[(path, version)].get("source_text"), None,
+                                 *(e.source_text for e in edges if e.operator_role == "testimony")}
+
+
+def test_a_path_enumerated_at_a_version_missing_from_the_catalogue_refuses_loudly():
+    with pytest.raises(KeyError):
+        ev.enumerate_edges("marriage", "P3", CHART, rule_version="7.7.7")
+
+
+def test_inventory_pins_and_obligation_ids_follow_the_selected_version_and_the_verifier_agrees():
+    from .test_a53_inventory import CHART as INV_CHART
+    from .test_a53_inventory import FULL, H0, H1, P5_EXCL
+    sealed = [("P3", "1.1.0"), ("P4", "1.1.0")]
+    plan = inv.plan_class_inventory(event_class="marriage", chart=INV_CHART, horizon=(H0, H1),
+                                    sealed_paths=sealed, capability=FULL, dasha_rows=None,
+                                    path_exclusions={"P5": P5_EXCL})
+    assert {p.rule_version for p in plan.pins} == {"1.1.0"}
+    assert plan.obligations and all(o.rule_version == "1.1.0" for o in plan.obligations)
+    for o in plan.obligations:
+        assert o.canonical_bytes.split("|")[2] == "1.1.0"
+    # the verifier derives the same obligation bytes independently from the spec, at the SAME version
+    vchart = {"lagna": INV_CHART["lagna_deg"],
+              "natal": {k.lower(): v for k, v in INV_CHART["natal"].items()}}
+    for pid, ver in sealed:
+        pin = ivr.derive_path_pin("marriage", vchart, pid, ver, path_exclusions={},
+                                  h_unknown_exclusion=None)
+        mine = sorted(o.canonical_bytes for o in plan.obligations if o.path_id == pid)
+        assert pin["obligations"] == mine and all(b.split("|")[2] == "1.1.0" for b in mine)
+
+
+def _pg_grain_at(pg, monkeypatch, version):
+    bind_successors(monkeypatch)
+    rr.RuleRegistryStore(pg).seed()
+    with pg.transaction():
+        pg.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        sky_cid = _sky_convention_id(pg)
+        _seed_saturn_crossings(pg, sky_cid)
+    store = rs.RecordStore(pg)
+    kala_cid = store.ensure_kala_convention()
+    edges = ev.enumerate_edges("marriage", "P3", CHART, rule_version=version)
+    libra = [e for e in edges if e.transit and e.relation == "residence" and e.agent == "saturn"
+             and e.obj.canonical_target == "span:7"]
+    assert len(libra) == 1
+    with pg.transaction():
+        pg.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        rs.write_class_coverage(store, **{**_coverage_kwargs(store, kala_cid, sky_cid), "class_edges": edges})
+    with pg.transaction():
+        pg.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        counts = rs.materialise_record_grain(
+            store, **{**_grain_kwargs(store, sky_cid), "edges": libra, "chart": CHART,
+                      "rule_version": version})
+    return counts, store
+
+
+@pytest.mark.parametrize("version", ["1.0.0", "1.1.0"])
+def test_records_and_prerequisite_results_are_written_at_each_members_own_version(pg, monkeypatch, version):
+    counts, _store = _pg_grain_at(pg, monkeypatch, version)
+    assert counts["records"] == 1
+    (rec_version,) = pg.execute(
+        "SELECT DISTINCT rule_version FROM public.ka_gochara_relationship_record WHERE path_id = 'P3'"
+    ).fetchone()
+    assert rec_version == version
+    rows = pg.execute(
+        "SELECT p.predicate_id, p.predicate_rule_version, p.result"
+        " FROM public.ka_gochara_record_prerequisite p ORDER BY p.ordinal").fetchall()
+    assert rows, "the record's prerequisite membership must be persisted"
+    for pid, pred_version, result in rows:
+        assert pred_version == "1.0.0", (pid, pred_version)             # the PREDICATE's own version
+        assert result is not None, f"{pid}: the result was never written (wrong predicate version?)"
+    assert counts["prereq_evaluated"] == len(rows)
+
+
+def test_a_grain_whose_edges_disagree_with_the_selected_version_refuses(pg, monkeypatch):
+    bind_successors(monkeypatch)
+    rr.RuleRegistryStore(pg).seed()
+    store = rs.RecordStore(pg)
+    old_edge = ev.enumerate_edges("marriage", "P3", CHART, rule_version="1.0.0")[0]
+    with pytest.raises(ValueError, match="selected"):
+        rs.materialise_record_grain(
+            store, chart_id=CHART_ID, generation="5.0", event_class="marriage", path_id="P3",
+            edges=[old_edge], horizon=HORIZON, position_at=_probe([(10, 200)]),
+            house_for=_house_from_lagna(CHART["lagna_deg"]), sky_convention_id="x",
+            source_fact_ids=["fact-1"], rule_version="1.1.0")
+
+
+def test_the_writer_selects_each_paths_version_from_the_binding_not_a_global(monkeypatch):
+    import inspect
+
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+    src = inspect.getsource(writer_mod)
+    assert "RULE_VERSION" not in src.replace("gk_rule_registry", "")
+    bind_successors(monkeypatch)
+    assert dict(writer_mod.gk_rule_registry.bound_path_refs()).get("P3") in {"1.0.0", "1.1.0"}
+    monkeypatch.setattr(rr, "BOUND_PATH_REFS", tuple(("P3", "1.1.0") if p == "P3" and v == "1.0.0" else (p, v)
+                                                     for p, v in rr.BOUND_PATH_REFS))
+    assert writer_mod.gk_rule_registry.bound_path_version("P3") == "1.1.0"

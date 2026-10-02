@@ -844,3 +844,32 @@ byte-for-byte for all 13 cases + the registry preimage; the ephemeris carries B'
 fixed probe set), equal to B's independent probe implementation; `stored_scope` and the audit/unopened-file cases agree with the model
 (`am16_vectors_model.py` and `--cross-check` both OK). The writer module itself (`ka_gochara_v5`) is now in the evaluation stage list, with
 `substrate`/`inventory`/`permission`/`frames` already listed; the closure coverage test stays.
+
+### Design v1.19 (2026-10-02) — Codex round 7, [4] (ONE codec; the selected path reference reaches every consumer), against Stream B's pinned base ed03d3c6c
+
+**One codec.** `rule_registry.py`'s private applicability codec is deleted; Stream B's `services/gochara_rules/flat_selector.py` is the only one.
+A factor's catalogue `operand_selector` (the flat form IS the source of truth) is persisted **verbatim**, checked with `flat_problems` /
+`kernel_flat_problems` (unknown key, a numeric orb without `orb_state=ratified` + `orb_decision_ref`, an unknown state → refused before any SQL),
+read back **flat-to-flat**, and `decode(flat) == the declared applicability` is required of the persisted row (a decoder that loses the declaration, and a
+persisted selector that drifted from the declaration, are both caught on read-back). `input_vector.activity_orb_states` reads B's `orb_state` /
+`orb_deg` / `orb_decision_ref` (the vector now says `unratified_nd_orb_open`, as in B's frozen vectors); `flat_selector` and `kernel_factor` are in the
+evaluation-stage import closure (AST-checked).
+
+**The selected path reference is passed, not a global.** Every enumerator takes `rule_version` (default `RULE_VERSION` only for legacy callers); the
+production consumers read the binding at call time (`rule_registry.bound_path_version(pid)` / `bound_path_refs()` — never a tuple captured at import):
+the writer's coverage and record substeps, `inventory.plan_class_inventory` (each sealed `(path, version)` enumerates at ITS version, P1 included),
+`materialise_record_grain(rule_version=…)` (edges that disagree with the grain's selected version refuse; the delete-then-insert and the prerequisite
+membership read use it, with no `"1.0.0"` / global fallback), and the **independent verifier's** obligation derivation (`inventory_verifier` no longer
+hard-codes `1.0.0` in the obligation bytes). **`record_store` now passes `_pv`** — the prerequisite's OWN version — to `set_prerequisite_result`
+(it passed the path's version, which only worked while both were 1.0.0: for P3@1.1.0 the UPDATE matched no row).
+
+**Drishti.** The sweep calls the source as `drishti(agent, offset, factor_ref)` with the membership's own `(factor_id, rule_version)`; the writer's
+`_drishti_source` passes it as `graduated_drishti(..., factor_ref=ref)` and **verifies the returned `factor`** equals the ref asked for (a source
+answering for another row is a `SweepRefusal`, never re-labelled).
+
+**Tests are on the ACTUAL rows** (`tests/l3/gochara/_bound_1_1_0.py` binds P2–P5@1.1.0 and the three @1.1.0 factors beside the 1.0.0 ones — the production
+default stays 1.0.0 until acceptance): binding (each member at its own version; predicate @1.0.0 under path @1.1.0), the real 1154 schema, SQL read-back
+flat-to-flat + decode, inventory pins/obligation ids + the verifier's independent bytes at 1.1.0, the record grain and its prerequisite results at 1.1.0,
+the sweep lighting up from the persisted declaration alone. Mutation checks (10): all killed except one equivalent mutant (P4's provenance lookup at
+the global version — P4@1.0.0 and P4@1.1.0 carry identical provenance, and a missing version already fails in `_path_citation`).
+`test_wp10_cutover.py::{step07,step08,clear_windows}` fail identically on the untouched baseline (verified with the change set stashed) — not this change.

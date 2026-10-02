@@ -54,8 +54,9 @@ IMPLEMENTATION_MODULES = {
         "inventory", "inventory_store", "inventory_verifier", "ledger", "lifecycle", "native_conn",
         "record_verifier", "scope_response",
         "rule_registry")) + ("pipeline.orchestrator.writers.ka_gochara_v5",) + tuple(_R + m for m in (
-        "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "frames", "nature", "p6",
-        "permission", "predicates", "records", "registry", "score", "strength", "valence", "vedha")),
+        "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "flat_selector", "frames",
+        "kernel_factor", "nature", "p6", "permission", "predicates", "records", "registry", "score", "strength",
+        "valence", "vedha")),
     "window": tuple(_K + m for m in ("window_store", "window_sweep", "window_verifier")),
 }
 
@@ -305,11 +306,11 @@ def activity_orb_states(conn, path_refs) -> dict:
     for f in registry_payload(conn, path_refs)["factors"]:
         if f["factor_id"] == "activity_kernel":
             sel = f["operand_selector"]
-            if sel.get("angular_orb_state") == "ratified":
-                out[f["rule_version"]] = {"orb_deg": sel["angular_orb_deg"],
-                                          "orb_decision_ref": sel.get("angular_orb_decision_ref", "<none>")}
+            if sel.get("orb_state") == "ratified":
+                out[f["rule_version"]] = {"orb_deg": sel["orb_deg"],
+                                          "orb_decision_ref": sel.get("orb_decision_ref", "<none>")}
             else:
-                out[f["rule_version"]] = sel.get("angular_orb_state", "undeclared")
+                out[f["rule_version"]] = sel.get("orb_state", "undeclared")
     return out
 
 

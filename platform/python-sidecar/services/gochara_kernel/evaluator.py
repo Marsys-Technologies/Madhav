@@ -159,8 +159,8 @@ def _point_target(lam: float) -> str:
     return targets.point_target(lam)
 
 
-def _path_citation(path_id: str) -> tuple[str | None, str | None]:
-    src = rules_registry.RULE_PATHS[(path_id, RULE_VERSION)]
+def _path_citation(path_id: str, rule_version: str) -> tuple[str | None, str | None]:
+    src = rules_registry.RULE_PATHS[(path_id, rule_version)]
     text = src.get("source_text")
     page = src.get("source_page")
     if page is None and path_id == "P3":
@@ -181,7 +181,8 @@ def _class_frame(event_class: str) -> tuple[str, str | None]:
 
 
 def enumerate_p3_edges(event_class: str, chart: dict,
-                       convention_id: str | None = None) -> list[RecordEdge]:
+                       convention_id: str | None = None, *,
+                       rule_version: str = RULE_VERSION, citation_path: str = "P3") -> list[RecordEdge]:
     """P3 (S-03): per agent, residence + aspect edges on each h ∈ H, and
     conjunction + aspect edges on each ℓ ∈ L(H)'s natal point; plus the
     māraka-of-house TESTIMONY rows (D-PADMIT). H unknown ⇒ [] (the class's
@@ -195,7 +196,7 @@ def enumerate_p3_edges(event_class: str, chart: dict,
     L = signature_lords(event_class, chart) or frozenset()
     frame_kind, frame_arg = _class_frame(event_class)
     person = _CLASS_AFFECTED_PERSON.get(event_class, "native")
-    text, page = _path_citation("P3")
+    text, page = _path_citation(citation_path, rule_version)
     edges: list[RecordEdge] = []
     natal = chart["natal"]
     for agent, agent_lc in _AGENTS:
@@ -211,7 +212,7 @@ def enumerate_p3_edges(event_class: str, chart: dict,
                         body=agent_lc, relation_kind=relation,
                         canonical_target=_span_target(h), convention_id=cid),
                     object_kind="house_span", object_role="signature_house",
-                    path_id="P3", rule_version=RULE_VERSION,
+                    path_id="P3", rule_version=rule_version,
                     provenance="verse_cited", operator_role="scored",
                     ruling_ref=None, source_text=text, source_page=page,
                     transit=True))
@@ -230,18 +231,19 @@ def enumerate_p3_edges(event_class: str, chart: dict,
                         body=agent_lc, relation_kind=relation,
                         canonical_target=_point_target(lam), convention_id=cid),
                     object_kind="degree_point", object_role="lord",
-                    path_id="P3", rule_version=RULE_VERSION,
+                    path_id="P3", rule_version=rule_version,
                     provenance="verse_cited", operator_role="scored",
                     ruling_ref=None, source_text=text, source_page=page,
                     transit=True))
     edges.extend(_maraka_rows(event_class, chart, cid, frame_kind, frame_arg,
-                              person))
+                              person, rule_version, citation_path))
     return edges
 
 
 def _maraka_rows(event_class: str, chart: dict, cid: str,
                  frame_kind: str, frame_arg: str | None,
-                 person: str) -> list[RecordEdge]:
+                 person: str, rule_version: str,
+                 citation_path: str) -> list[RecordEdge]:
     """P3 māraka-of-house testimony rows (D-PADMIT): the lords of the class's
     māraka houses, natal-fact rows (relation ownership, role maraka_of_house,
     testimony — never scored)."""
@@ -258,7 +260,7 @@ def _maraka_rows(event_class: str, chart: dict, cid: str,
         from services.gochara_rules.registry import house_span_sign
         houses = {house_span_sign(h, Frame("lagna"), chart)
                   for h in row.get("maraka_lords_of", set())}
-    text, page = _path_citation("P3")
+    text, page = _path_citation(citation_path, rule_version)
     out = []
     for sign in sorted(houses):
         lord = SIGN_LORDS[sign]
@@ -270,7 +272,7 @@ def _maraka_rows(event_class: str, chart: dict, cid: str,
                 body=lord.lower(), relation_kind="residence",
                 canonical_target=_span_target(sign), convention_id=cid),
             object_kind="house_span", object_role="maraka_of_house",
-            path_id="P3", rule_version=RULE_VERSION,
+            path_id="P3", rule_version=rule_version,
             provenance="uncited_extension", operator_role="testimony",
             ruling_ref="D-PADMIT", source_text=text, source_page=page,
             transit=False))
@@ -278,7 +280,8 @@ def _maraka_rows(event_class: str, chart: dict, cid: str,
 
 
 def enumerate_p4_edges(event_class: str, chart: dict,
-                       convention_id: str | None = None) -> list[RecordEdge]:
+                       convention_id: str | None = None, *,
+                       rule_version: str = RULE_VERSION) -> list[RecordEdge]:
     """P4 (R3-S02): the P3 house/lord contact edges restricted to agents
     Jupiter and Saturn, carried as P4's OWN records. One rule — union within an
     agent, AND across agents (admission is evaluated over occurrences, not
@@ -291,17 +294,21 @@ def enumerate_p4_edges(event_class: str, chart: dict,
     with path_id 'P4' and P4's own provenance/ruling/citation (D-P4,
     uncited_extension) — keeping P3's path_id on a P4 grain's records is a
     COMMIT-time F5 failure on the real DB (membership ≠ the record's path)."""
-    p4 = rules_registry.RULE_PATHS[("P4", RULE_VERSION)]
-    text, page = _path_citation("P4")
-    return [replace(e, path_id="P4", provenance=p4["provenance"],
+    p4 = rules_registry.RULE_PATHS[("P4", rule_version)]
+    text, page = _path_citation("P4", rule_version)
+    return [replace(e, path_id="P4", rule_version=rule_version,
+                    provenance=p4["provenance"],
                     ruling_ref=p4["ruling_ref"], source_text=text,
                     source_page=page)
-            for e in enumerate_p3_edges(event_class, chart, convention_id)
+            for e in enumerate_p3_edges(event_class, chart, convention_id,
+                                        rule_version=rule_version,
+                                        citation_path="P4")
             if e.agent in ("jupiter", "saturn") and e.operator_role == "scored"]
 
 
 def enumerate_p2_edges(event_class: str, chart: dict,
-                       convention_id: str | None = None) -> list[RecordEdge]:
+                       convention_id: str | None = None, *,
+                       rule_version: str = RULE_VERSION) -> list[RecordEdge]:
     """P2 (Moon-frame gochara-phala): the PINNED edge set, per O-RP-5a/5b,
     the RQ-5 phase split, and the corpus-cited favourable-house table:
 
@@ -329,7 +336,7 @@ def enumerate_p2_edges(event_class: str, chart: dict,
     if event_class == "birth_anchor":
         raise ValueError("birth_anchor is excluded from enumeration entirely (O-CF-N6)")
     polarity = CLASS_BY_NAME[event_class]["polarity"]
-    text, page = _path_citation("P2")
+    text, page = _path_citation("P2", rule_version)
     moon_frame = Frame("moon")
     if polarity == "gain":
         edges: list[RecordEdge] = []
@@ -346,7 +353,7 @@ def enumerate_p2_edges(event_class: str, chart: dict,
                         body=agent_lc, relation_kind="residence",
                         canonical_target=_span_target(sign), convention_id=cid),
                     object_kind="house_span", object_role="signature_house",
-                    path_id="P2", rule_version=RULE_VERSION,
+                    path_id="P2", rule_version=rule_version,
                     provenance="verse_cited", operator_role="scored",
                     ruling_ref=None,
                     source_text=text, source_page=locator,
@@ -372,7 +379,7 @@ def enumerate_p2_edges(event_class: str, chart: dict,
                 body=agent_lc, relation_kind="residence",
                 canonical_target=_span_target(sign), convention_id=cid),
             object_kind="house_span", object_role="signature_house",
-            path_id="P2", rule_version=RULE_VERSION,
+            path_id="P2", rule_version=rule_version,
             provenance=("uncited_extension" if testimony else "verse_cited"),
             operator_role=("testimony" if testimony else "scored"),
             ruling_ref=("D-PADMIT" if testimony else None),
@@ -382,7 +389,8 @@ def enumerate_p2_edges(event_class: str, chart: dict,
 
 
 def enumerate_p1_edges(event_class: str, chart: dict,
-                       convention_id: str | None = None) -> list[RecordEdge]:
+                       convention_id: str | None = None, *,
+                       rule_version: str = RULE_VERSION) -> list[RecordEdge]:
     """P1 (daśā-lord path, Phaladīpikā XX.34-38 PG249-250):
 
       * NATAL-FACT rows per class (H known): ownership (the lord of each
@@ -411,7 +419,7 @@ def enumerate_p1_edges(event_class: str, chart: dict,
     if event_class == "birth_anchor":
         raise ValueError("birth_anchor is excluded from enumeration entirely (O-CF-N6)")
     H = signature_houses(event_class, chart)
-    text, page = _path_citation("P1")
+    text, page = _path_citation("P1", rule_version)
     person = _CLASS_AFFECTED_PERSON.get(event_class, "native")
     natal = chart["natal"]
     edges: list[RecordEdge] = []
@@ -430,7 +438,7 @@ def enumerate_p1_edges(event_class: str, chart: dict,
                 body=lord.lower(), relation_kind="residence",
                 canonical_target=_span_target(h), convention_id=cid),
             object_kind="house_span", object_role="signature_house",
-            path_id="P1", rule_version=RULE_VERSION,
+            path_id="P1", rule_version=rule_version,
             provenance="verse_cited", operator_role="scored",
             ruling_ref=None, source_text=text, source_page=page,
             transit=False))
@@ -445,7 +453,7 @@ def enumerate_p1_edges(event_class: str, chart: dict,
                     body=graha.lower(), relation_kind="residence",
                     canonical_target=_span_target(h), convention_id=cid),
                 object_kind="house_span", object_role="signature_house",
-                path_id="P1", rule_version=RULE_VERSION,
+                path_id="P1", rule_version=rule_version,
                 provenance="verse_cited", operator_role="scored",
                 ruling_ref=None, source_text=text, source_page=page,
                 transit=False))
@@ -465,7 +473,7 @@ def enumerate_p1_edges(event_class: str, chart: dict,
                 body=dispositor.lower(), relation_kind="residence",
                 canonical_target=_span_target(sign), convention_id=cid),
             object_kind="house_span", object_role="dispositor",
-            path_id="P1", rule_version=RULE_VERSION,
+            path_id="P1", rule_version=rule_version,
             provenance="uncited_extension", operator_role="testimony",
             ruling_ref="D-PADMIT", source_text=text, source_page=page,
             transit=False))
@@ -487,7 +495,7 @@ def enumerate_p1_edges(event_class: str, chart: dict,
                     body=graha.lower(), relation_kind="residence",
                     canonical_target=_span_target(sign), convention_id=cid),
                 object_kind="house_span", object_role="period_lord",
-                path_id="P1", rule_version=RULE_VERSION,
+                path_id="P1", rule_version=rule_version,
                 provenance="verse_cited", operator_role="scored",
                 ruling_ref=None, source_text=text, source_page=page,
                 transit=True))
@@ -495,7 +503,8 @@ def enumerate_p1_edges(event_class: str, chart: dict,
 
 
 def enumerate_p5_edges(event_class: str, chart: dict,
-                       convention_id: str | None = None) -> list[RecordEdge]:
+                       convention_id: str | None = None, *,
+                       rule_version: str = RULE_VERSION) -> list[RecordEdge]:
     """P5 (aṣṭakavarga qualifier, S-05; BPHS ch.66 vv.13-15, ch.70;
     Phaladīpikā XXIII-XXIV): one SCORED residence edge per (graha, sign) —
     9 grahas × 12 signs, lagna frame, the native's chart only. The edge is
@@ -515,7 +524,7 @@ def enumerate_p5_edges(event_class: str, chart: dict,
     cid = convention_id or convention_id_for()
     if event_class == "birth_anchor":
         raise ValueError("birth_anchor is excluded from enumeration entirely (O-CF-N6)")
-    text, page = _path_citation("P5")
+    text, page = _path_citation("P5", rule_version)
     edges: list[RecordEdge] = []
     for agent_title, agent_lc in _AGENTS:
         for sign in SIGNS:
@@ -527,7 +536,7 @@ def enumerate_p5_edges(event_class: str, chart: dict,
                     body=agent_lc, relation_kind="residence",
                     canonical_target=_span_target(sign), convention_id=cid),
                 object_kind="house_span", object_role="av_qualifier",
-                path_id="P5", rule_version=RULE_VERSION,
+                path_id="P5", rule_version=rule_version,
                 provenance="verse_cited", operator_role="scored",
                 ruling_ref=None,
                 source_text=text, source_page=page,
@@ -549,38 +558,42 @@ def _in_stored_tier(edge: RecordEdge) -> bool:
 
 
 def _enumerate_all(event_class: str, path_id: str, chart: dict,
-                   convention_id: str | None) -> list[RecordEdge]:
+                   convention_id: str | None, rule_version: str) -> list[RecordEdge]:
     if path_id == "P1":
-        return enumerate_p1_edges(event_class, chart, convention_id)
+        return enumerate_p1_edges(event_class, chart, convention_id, rule_version=rule_version)
     if path_id == "P2":
-        return enumerate_p2_edges(event_class, chart, convention_id)
+        return enumerate_p2_edges(event_class, chart, convention_id, rule_version=rule_version)
     if path_id == "P3":
-        return enumerate_p3_edges(event_class, chart, convention_id)
+        return enumerate_p3_edges(event_class, chart, convention_id, rule_version=rule_version)
     if path_id == "P4":
-        return enumerate_p4_edges(event_class, chart, convention_id)
+        return enumerate_p4_edges(event_class, chart, convention_id, rule_version=rule_version)
     if path_id == "P5":
-        return enumerate_p5_edges(event_class, chart, convention_id)
+        return enumerate_p5_edges(event_class, chart, convention_id, rule_version=rule_version)
     raise ValueError(f"unknown path {path_id!r}")
 
 
 def enumerate_edges(event_class: str, path_id: str, chart: dict,
-                    convention_id: str | None = None) -> list[RecordEdge]:
+                    convention_id: str | None = None, *,
+                    rule_version: str = RULE_VERSION) -> list[RecordEdge]:
     """The grain's STORED edge set (Moon-agent transit edges excluded by rule — see
     `EPHEMERAL_TIER_AGENTS`). Unimplemented paths refuse LOUDLY — a grain is never silently
     empty (unknown is a state, never an omission)."""
     if event_class not in CLASS_BY_NAME:
         raise ValueError(f"unknown event class {event_class!r}")
-    return [e for e in _enumerate_all(event_class, path_id, chart, convention_id)
+    return [e for e in _enumerate_all(event_class, path_id, chart, convention_id,
+                          rule_version)
             if _in_stored_tier(e)]
 
 
 def ephemeral_tier_edges(event_class: str, path_id: str, chart: dict,
-                         convention_id: str | None = None) -> list[RecordEdge]:
+                         convention_id: str | None = None, *,
+                         rule_version: str = RULE_VERSION) -> list[RecordEdge]:
     """The edges the rule EXCLUDED from the stored enumeration — counted and named by the
     coverage/notes (the `moon_on_demand` tier's own coverage is the separate account of them)."""
     if event_class not in CLASS_BY_NAME:
         raise ValueError(f"unknown event class {event_class!r}")
-    return [e for e in _enumerate_all(event_class, path_id, chart, convention_id)
+    return [e for e in _enumerate_all(event_class, path_id, chart, convention_id,
+                          rule_version)
             if not _in_stored_tier(e)]
 
 

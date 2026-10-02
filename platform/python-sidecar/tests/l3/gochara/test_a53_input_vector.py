@@ -108,22 +108,24 @@ def test_the_two_derivations_still_agree_when_a_successor_with_applicability_is_
     assert iv.registry_digest(db, refs) == ivv.sql_registry_digest(db, refs)
 
 
-def _bind_successor(conn, monkeypatch, soft=None, ratified=None):
-    factors, paths = dict(rules_registry.FACTORS), dict(rules_registry.RULE_PATHS)
-    app = {"span": {"object_kinds": ["sign_span", "house_span", "star"], "function": "step",
-                    "inside": 1.0, "outside": 0.0},
-           "angular": {"object_kinds": ["degree_point", "derived_point", "saham", "house_lord"],
-                       "function": "linear", "formula": "1 - |Δλ|/orb", "orb_deg": None}}
+def _bind_successor(conn, monkeypatch, ratified=None):
+    """Bind Stream B's ACTUAL 1.1.0 rows (#2897/#2901/#2907) beside the 1.0.0 ones and seed them. `ratified`
+    = (decision_ref, orb_deg) re-declares the activity_kernel@1.1.0 row's flat selector as ND-ORB-ratified,
+    built through the shared codec's own invariant (`kernel_flat_problems`) — the catalogue has no ratified
+    orb yet, so this is the one row not taken verbatim."""
+    from services.gochara_rules import flat_selector as fs
+
+    from ._bound_1_1_0 import bind_successors
     if ratified:
-        app["angular"].update(orb_decision_ref=ratified[0], orb_deg=ratified[1])
-    factors[("activity_kernel", "1.1.0")] = dict(factors[("activity_kernel", "1.0.0")],
-                                                 rule_version="1.1.0", applicability=app)
-    paths[("P3", "1.2.0")] = dict(paths[("P3", "1.0.0")], rule_version="1.2.0",
-                                  soft_factors=soft or [("activity_kernel", "1.1.0")])
-    monkeypatch.setattr(rules_registry, "FACTORS", factors)
-    monkeypatch.setattr(rules_registry, "RULE_PATHS", paths)
-    monkeypatch.setattr(rr, "BOUND_FACTOR_REFS", rr.BOUND_FACTOR_REFS + (("activity_kernel", "1.1.0"),))
-    monkeypatch.setattr(rr, "BOUND_PATH_REFS", rr.BOUND_PATH_REFS + (("P3", "1.2.0"),))
+        factors = dict(rules_registry.FACTORS)
+        flat = {**factors[("activity_kernel", "1.1.0")]["operand_selector"],
+                "orb_state": fs.ORB_RATIFIED, "orb_decision_ref": ratified[0], "orb_deg": ratified[1]}
+        assert fs.kernel_flat_problems(flat) == []
+        factors[("activity_kernel", "1.1.0")] = dict(factors[("activity_kernel", "1.1.0")],
+                                                     operand_selector=flat,
+                                                     applicability=fs.decode_kernel(flat))
+        monkeypatch.setattr(rules_registry, "FACTORS", factors)
+    bind_successors(monkeypatch)
     rr.RuleRegistryStore(conn).seed()
 
 
@@ -199,7 +201,7 @@ def test_the_admission_orb_policy_and_the_rulings_are_bound(db, ephe, monkeypatc
 def test_the_activity_orb_state_is_restated_in_the_vector(db, ephe, monkeypatch):
     _bind_successor(db, monkeypatch)
     v = _vector(db, ephe, refs=list(rr.BOUND_PATH_REFS))
-    assert v["orb_policy"]["activity"] == {"1.0.0": "undeclared", "1.1.0": "unratified"}
+    assert v["orb_policy"]["activity"] == {"1.0.0": "undeclared", "1.1.0": "unratified_nd_orb_open"}
 
 
 @pytest.fixture()

@@ -31,12 +31,12 @@ def test_the_rule_is_the_enumerators_and_the_excluded_edges_are_counted_and_name
     assert excluded and all(e.transit and e.agent == "moon" for e in excluded)
     stored = ev.enumerate_edges("marriage", "P3", CHART)
     # the two partition the unfiltered enumeration exactly
-    assert len(stored) + len(excluded) == len(ev._enumerate_all("marriage", "P3", CHART, None))
+    assert len(stored) + len(excluded) == len(ev._enumerate_all("marriage", "P3", CHART, None, ev.RULE_VERSION))
 
 
 def test_natal_moon_facts_are_unaffected_by_the_rule():
     """Only TRANSIT edges are ephemeral; a natal fact about the Moon is a stored L1 fact."""
-    natal_all = [e for e in ev._enumerate_all("marriage", "P3", CHART, None) if not e.transit]
+    natal_all = [e for e in ev._enumerate_all("marriage", "P3", CHART, None, ev.RULE_VERSION) if not e.transit]
     natal_stored = [e for e in ev.enumerate_edges("marriage", "P3", CHART) if not e.transit]
     assert natal_stored == natal_all
 

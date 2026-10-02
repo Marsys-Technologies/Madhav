@@ -168,7 +168,7 @@ def _frame_person(event_class: str) -> tuple[str, str]:
     return ("bhavat_bhavam:9", "father") if event_class == "bereavement" else ("lagna", "native")
 
 
-def _p1_obligation_bytes(event_class: str) -> list[str]:
+def _p1_obligation_bytes(event_class: str, rule_version: str) -> list[str]:
     """P1 under AM-11 pin (e): the period-role agent is the ROLE token; the qualified
     geometry is the TRANSIT residence on the signs P1's content names (natal-fact rows are
     not admission-bearing — pin b — so they are not obligations)."""
@@ -179,13 +179,13 @@ def _p1_obligation_bytes(event_class: str) -> list[str]:
         signs.add(_DEBIL[g])
     signs.update(_EXALT.values())          # Sun and Jupiter: every graha's exaltation sign
     _frame, person = _frame_person(event_class)
-    return sorted({"|".join((event_class, "p1", "1.0.0", f"period_lord:{role}", "residence",
+    return sorted({"|".join((event_class, "p1", rule_version.lower(), f"period_lord:{role}", "residence",
                              "period_lord", f"span:{_SIGNS.index(sg) + 1}", "dasha_lord",
                              person)) for role in _ROLE_LEVEL for sg in signs})
 
 
 def _p3_obligation_bytes(event_class: str, chart: Mapping[str, Any],
-                         path: str) -> list[str]:
+                         path: str, rule_version: str) -> list[str]:
     """Every (agent, relation, role, target) the spec's P3 predicate names, for `path`
     ('p3' or 'p4'; P4 = P3's Jupiter/Saturn scored obligations as P4's own)."""
     h_signs, lords, lagna_sign, anchor_sign = _h_and_lords(event_class, chart)
@@ -195,7 +195,7 @@ def _p3_obligation_bytes(event_class: str, chart: Mapping[str, Any],
     out = []
 
     def ob(agent, relation, role, target):
-        out.append("|".join((event_class, path, "1.0.0", agent, relation, role, target,
+        out.append("|".join((event_class, path, rule_version.lower(), agent, relation, role, target,
                              frame, person)))
 
     for agent in agents:
@@ -241,8 +241,8 @@ def derive_path_pin(event_class: str, chart: Mapping[str, Any], path_id: str,
     if p not in ("p1", "p3", "p4"):
         raise Unverifiable(f"{event_class}/{p}: no independent derivation of this path's "
                            "obligations exists in the verifier yet — refusing to vouch")
-    obs = (_p1_obligation_bytes(event_class) if p == "p1"
-           else _p3_obligation_bytes(event_class, chart, p))
+    obs = (_p1_obligation_bytes(event_class, rule_version) if p == "p1"
+           else _p3_obligation_bytes(event_class, chart, p, rule_version))
     if obs:
         return {"path": p, "version": rule_version.lower(), "disposition": "included",
                 "reason": "", "ruling": "", "basis": "", "obligations": obs}

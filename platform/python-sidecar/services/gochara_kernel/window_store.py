@@ -40,24 +40,6 @@ def _wrap180(x: float) -> float:
     return (x + 180.0) % 360.0 - 180.0
 
 
-def _point_delta_provider(rec_relation: str, agent: str, target: str,
-                          position_at: Callable[[str, datetime], float]):
-    """|Δλ| from the exact contact for a point object: the body's longitude vs the target point,
-    through the aspect angle that applies (0 for a conjunction; the agent's own dṛṣṭi angles for an
-    aspect — the nearest one is the one the contact is on, the angles being ≥ 30° apart)."""
-    lam = float(target[len("point:"):])
-    name = graha_title(agent)
-    angles = (0.0,) if rec_relation == "conjunction" else drishti_angles(name)
-    if not angles:
-        return None
-
-    def delta(t: datetime) -> float:
-        lon = position_at(name, t)
-        return min(abs(_wrap180(lon + a - lam)) for a in angles)
-
-    return delta
-
-
 def _aspect_offset_provider(target: str, agent: str, position_at: Callable[[str, datetime], float]):
     """Inclusive whole-sign house offset of the target from the aspecting graha's sign at t."""
     if target.startswith("span:"):
@@ -76,26 +58,6 @@ def _aspect_offset_provider(target: str, agent: str, position_at: Callable[[str,
     return offset
 
 
-def _inside_provider(rel: str, agent: str, target: str,
-                     position_at: Callable[[str, datetime], float]):
-    """Does the body's geometry at t actually put the target under it? Residence on a span: the body
-    is IN that sign. Aspect on a span: one of its directed dṛṣṭi rays (λ + angle) lands in the sign.
-    (Point and star targets are measured by Δλ / not probed here: None = not determinable.)"""
-    if not target.startswith("span:"):
-        return None
-    name = graha_title(agent)
-    sign = targets.span_sign_index(target) - 1
-    angles = (0.0,) if rel == "residence" else (drishti_angles(name) if rel == "aspect" else None)
-    if not angles:
-        return None
-
-    def inside(t: datetime) -> bool:
-        lon = position_at(name, t)
-        return any(int(((lon + a) % 360.0) // _SIGN_DEG) == sign for a in angles)
-
-    return inside
-
-
 class WindowStore:
     def __init__(self, conn):
         self.conn = conn
@@ -110,9 +72,11 @@ class WindowStore:
             "SELECT r.record_id::text, COALESCE(r.contact_id, r.object_id)::text, r.path_id,"
             " r.rule_version, r.relation, r.object_kind, r.agent, r.operator_role,"
             " r.admission_state, o.canonical_target, r.house_from_frame,"
-            " lower(s.x), upper(s.x), lower_inc(s.x), upper_inc(s.x)"
+            " lower(s.x), upper(s.x), lower_inc(s.x), upper_inc(s.x), c.t_exact, c.convention_id"
             " FROM public.ka_gochara_relationship_record r"
             " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id"
+            " LEFT JOIN public.ka_gochara_contact c ON (c.chart_id, c.generation, c.contact_id)"
+            "                                      = (r.chart_id, r.generation, r.contact_id)"
             " LEFT JOIN LATERAL unnest(r.temporal_support_intervals) AS s(x) ON true"
             " WHERE r.chart_id = %s AND r.generation = %s AND r.event_class = %s"
             " AND r.path_id = %s AND r.rule_version = %s"
@@ -120,11 +84,11 @@ class WindowStore:
             (chart_id, generation, event_class, path_id, rule_version)).fetchall()
         grouped: dict[str, dict] = {}
         for (rid, root, pid, ver, rel, kind, agent, role, adm, target, house,
-             lo, hi, lo_inc, hi_inc) in rows:
+             lo, hi, lo_inc, hi_inc, t_exact, conv) in rows:
             g = grouped.setdefault(rid, {
                 "root": root, "pid": pid, "ver": ver, "rel": rel, "kind": kind, "agent": agent,
                 "role": role, "adm": adm, "target": target, "house": house,
-                "supports": []})
+                "t_exact": t_exact, "conv": conv, "supports": []})
             if lo is not None:
                 if not (lo_inc and not hi_inc):
                     raise RuntimeError(
@@ -132,21 +96,33 @@ class WindowStore:
                         "the sweep refuses to guess")
                 g["supports"].append((lo.astimezone(timezone.utc), hi.astimezone(timezone.utc)))
         out: list[SweepRecord] = []
+        crossings: dict[tuple, list[datetime]] = {}
         for rid, g in grouped.items():
-            delta = offset = inside = None
-            if position_at is not None and g["rel"] in ("conjunction", "aspect") \
-                    and g["target"].startswith("point:"):
-                delta = _point_delta_provider(g["rel"], g["agent"], g["target"], position_at)
+            lon = offset = rays = hints = bounds = None
+            if position_at is not None and g["rel"] in ("residence", "aspect", "conjunction"):
+                name = graha_title(g["agent"])
+                lon = (lambda t, _n=name: position_at(_n, t))
+                rays = drishti_angles(name) if g["rel"] == "aspect" else ()
             if position_at is not None and g["rel"] == "aspect":
                 offset = _aspect_offset_provider(g["target"], g["agent"], position_at)
-            if position_at is not None and g["rel"] in ("residence", "aspect"):
-                inside = _inside_provider(g["rel"], g["agent"], g["target"], position_at)
+                # the dṛṣṭi offset (a house-offset STEP function) changes only where the body changes
+                # sign: the exact ingress instants inside the support are the state boundaries
+                key = (g["agent"], g["conv"])
+                if key not in crossings:
+                    crossings[key] = sorted(c.t for c in self._records.fetch_crossings(g["agent"], g["conv"])) \
+                        if g["conv"] else []
+                bounds = (lambda lo, hi, _c=crossings[key]: [c for c in _c if lo < c < hi])
+            if g["t_exact"] is not None and g["rel"] in ("conjunction", "aspect") \
+                    and g["target"].startswith("point:"):
+                te = g["t_exact"].astimezone(timezone.utc)
+                hints = (lambda lo, hi, _te=te: [_te] if lo <= _te < hi else [])
             out.append(SweepRecord(
                 record_id=rid, root_id=g["root"], path_id=g["pid"], rule_version=g["ver"],
                 relation=g["rel"], object_kind=g["kind"], agent=g["agent"],
                 operator_role=g["role"], admission_state=g["adm"],
-                supports=tuple(g["supports"]), delta_lambda_at=delta, aspect_offset_at=offset,
-                house_from_frame=g["house"], canonical_target=g["target"], inside_at=inside))
+                supports=tuple(g["supports"]), longitude_at=lon, aspect_rays=rays or (),
+                aspect_offset_at=offset, house_from_frame=g["house"], canonical_target=g["target"],
+                state_boundaries=bounds, peak_hints=hints))
         return out
 
     # ── write ───────────────────────────────────────────────────────────────

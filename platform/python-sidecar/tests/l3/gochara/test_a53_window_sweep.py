@@ -30,35 +30,94 @@ _DEFAULT_TARGET = {"sign_span": "span:7", "house_span": "span:7", "star": "star:
                    "saham": "point:100.0", "house_lord": "point:100.0"}
 
 
+_POINT_KINDS = ("degree_point", "derived_point", "saham", "house_lord")
+_SPAN_KINDS = ("sign_span", "house_span")
+_POINT_LON = 100.0                                   # the default point target's longitude
+_SPAN_IN, _SPAN_OUT = 195.0, 15.0                    # Libra (span:7) / not Libra, for a residence record
+
+
 def _rec(rid, *, root=None, path="P3", version="1.0.0", relation="residence", kind="sign_span",
-         agent="jupiter", role="scored", admission="admitted", supports=((0, 10),), target=None, **kw):
+         agent="jupiter", role="scored", admission="admitted", supports=((0, 10),), target=None,
+         delta_lambda_at=None, inside_at=None, **kw):
+    """A SweepRecord. The GEOMETRY the sweep now consumes is the body's longitude (and, for an aspect, its
+    directed ray): `delta_lambda_at` / `inside_at` are the readable ways a test states it — a point's
+    angular offset from its target, or whether the body is in the span's sign — and are translated here.
+    Nothing about the kernel is re-implemented: Stream B's `kernel_factor` computes from the longitude."""
+    ray = 180.0 if relation == "aspect" else None
+    if "longitude_at" not in kw:
+        if kind in _POINT_KINDS and delta_lambda_at is not None:
+            base = (_POINT_LON - (ray or 0.0)) % 360.0
+            kw["longitude_at"] = lambda t, _b=base, _f=delta_lambda_at: (
+                None if _f(t) is None else (_b + _f(t)) % 360.0)
+        elif kind in _SPAN_KINDS:
+            base_in = (_SPAN_IN - (ray or 0.0)) % 360.0
+            base_out = (_SPAN_OUT - (ray or 0.0)) % 360.0
+
+            def _lon(t, _f=inside_at, _i=base_in, _o=base_out):
+                if _f is None:
+                    return _i
+                v = _f(t)
+                return None if v is None else (_i if v else _o)
+            kw["longitude_at"] = _lon
+    if relation == "aspect" and "aspect_rays" not in kw:
+        kw["aspect_rays"] = (180.0,)
     return SweepRecord(
         record_id=rid, root_id=root or f"root-{rid}", path_id=path, rule_version=version,
         relation=relation, object_kind=kind, agent=agent, operator_role=role,
         admission_state=admission,
         supports=tuple((_d(a), _d(b)) for a, b in supports),
-        canonical_target=target if target is not None else _DEFAULT_TARGET.get(kind),
-        **({"inside_at": (lambda t: True)} if kind in ("sign_span", "house_span") and "inside_at" not in kw
-           else {}), **kw)
+        canonical_target=target if target is not None else _DEFAULT_TARGET.get(kind), **kw)
+
+
+def _kernel_row(orb=None, decision_ref="ruling:nd_orb_test"):
+    """An activity_kernel row BUILT THROUGH STREAM B's CODEC (flat is the source of truth; the nested
+    applicability is decoded from it) and registered under a synthetic version so `kernel_factor`, which
+    looks the row up by its reference, evaluates it exactly like a catalogue row."""
+    from services.gochara_rules import flat_selector as fs
+    nested = {"span": {"object_kinds": ["sign_span", "house_span", "star"], "inside": 1, "outside": 0},
+              "angular": {"object_kinds": list(_POINT_KINDS), "orb_deg": orb,
+                          "orb_status": "ratified" if orb is not None else fs.ORB_UNRATIFIED,
+                          **({"orb_decision_ref": decision_ref} if orb is not None else {})},
+              "aspect_geometry": "directed_aspect_ray"}
+    flat = fs.encode_kernel(nested)
+    version = "9.0.0" if orb is None else f"9.1.{int(orb * 1000)}"
+    row = {"factor_id": "activity_kernel", "rule_version": version, "null_state": "unqualified",
+           "direction": "higher = stronger", "function": "piecewise_step_linear", "range": [0.0, 1.0],
+           "units": "unitless", "calibration_status": "uncalibrated_default",
+           "operand_selector": flat, "applicability": fs.decode_kernel(flat), "effect": "synthetic"}
+    reg.FACTORS[(row["factor_id"], version)] = row
+    return row
+
+
+def _drishti_row():
+    from services.gochara_rules import flat_selector as fs
+    flat = fs.encode_drishti({"relations": ["aspect"]})
+    row = {"factor_id": "graduated_drishti", "rule_version": "9.0.0", "null_state": "unqualified",
+           "direction": "higher = stronger", "function": "step", "range": [0.0, 1.0], "units": "unitless",
+           "calibration_status": "uncalibrated_default", "operand_selector": flat,
+           "applicability": fs.decode_drishti(flat), "effect": "synthetic"}
+    reg.FACTORS[(row["factor_id"], row["rule_version"])] = row
+    return row
+
+
+@pytest.fixture(autouse=True)
+def _restore_factor_registry():
+    """The synthetic rows registered above never outlive their test."""
+    saved = dict(reg.FACTORS)
+    yield
+    reg.FACTORS.clear()
+    reg.FACTORS.update(saved)
 
 
 def _with_applicability(rows, *, orb=None):
-    """The REAL factor rows plus the applicability block the 1.1.0 row declares (AM-13): spans →
-    membership step; points → angular with the row's own orb (None = ND-ORB open)."""
+    """The REAL path rows with their activity_kernel / graduated_drishti swapped for rows that declare
+    applicability (the AM-13 shape, built through the one codec)."""
     out = []
     for row in rows:
-        row = dict(row)
         if row["factor_id"] == "activity_kernel":
-            row["applicability"] = {
-                "span": {"object_kinds": ["sign_span", "house_span", "star"], "function": "step",
-                         "inside": 1.0, "outside": 0.0},
-                "angular": {"object_kinds": ["degree_point", "derived_point", "saham", "house_lord"],
-                            "function": "linear", "orb_deg": orb,
-                            **({"orb_decision_ref": "ruling:nd_orb_test", "orb_state": "ratified"}
-                               if orb is not None else {})},
-            }
+            row = _kernel_row(orb)
         elif row["factor_id"] == "graduated_drishti":
-            row["applicability"] = {"relations": ["aspect"]}
+            row = _drishti_row()
         out.append(row)
     return out
 
@@ -210,20 +269,20 @@ def test_declared_residence_is_not_an_aspect_so_drishti_is_not_applicable_never_
 def test_drishti_is_called_through_the_supplied_source_for_aspect_records_only():
     calls = []
 
-    def source(agent, offset):          # stands for Stream B's drishti.graduated_drishti
-        calls.append((agent, offset))
+    def source(agent, offset, ref):          # stands for Stream B's drishti.graduated_drishti
+        calls.append((agent, offset, tuple(ref)))
         return {7: 1.0, 5: 0.5}[offset]
 
     rec = _rec("a", relation="aspect", agent="jupiter", supports=((0, 10),),
                aspect_offset_at=lambda t: 5)
     (w,), _ = _draft([rec], _rows_declared, drishti=source)
-    assert w.score == 0.5 and calls and set(calls) == {("jupiter", 5)}
+    assert w.score == 0.5 and calls and set(calls) == {("jupiter", 5, ("graduated_drishti", "9.0.0"))}
     assert w.peak_instant == _d(0)
 
 
 def test_drishti_offset_undeterminable_makes_that_record_unqualified():
     rec = _rec("a", relation="aspect", supports=((0, 10),), aspect_offset_at=lambda t: None)
-    (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o: 1.0)
+    (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o, r: 1.0)
     assert w.score is None
 
 
@@ -234,10 +293,10 @@ def test_point_record_orb_not_ratified_is_unqualified_and_a_caller_orb_is_not_ac
     assert w.score is None and w.unresolved == {"orb_not_ratified": 1}
 
 
-def test_point_record_without_a_delta_lambda_source_is_a_named_missing_operand():
+def test_point_record_without_a_longitude_source_is_a_named_missing_operand():
     rec = _rec("a", relation="conjunction", kind="house_lord", supports=((0, 10),))
     (w,), _ = _draft([rec], lambda p, v: _rows_declared(p, v, orb=5.0))
-    assert w.unresolved == {"delta_lambda_operand_missing": 1}
+    assert w.unresolved == {"geometry_operand_missing": 1}
 
 
 def test_object_kind_outside_the_declared_applicability_is_unqualified_never_1():
@@ -340,8 +399,11 @@ def test_real_1_1_0_rows_light_the_sweep_up_with_no_code_change():
 # ── the against channel is derived from the registry row, never from a path name ──────────────────
 
 def _row(factor_id, direction):
-    return {"factor_id": factor_id, "rule_version": "1.0.0", "null_state": "unqualified",
-            "direction": direction, "applicability": {"span": {"object_kinds": ["sign_span"], "inside": 1.0}}}
+    """A real-shaped row (built through the one codec, registered so `kernel_factor` can evaluate it) whose
+    prose `direction` — the only thing the against-channel rule reads — is the given one."""
+    row = dict(_kernel_row() if factor_id == "activity_kernel" else _drishti_row())
+    row["direction"] = direction
+    return row
 
 
 def test_a_row_that_declares_only_magnitude_has_an_evaluated_empty_against_sum_for_any_path_name():
@@ -359,7 +421,7 @@ def test_a_synthetic_path_that_declares_an_against_operand_leaves_the_against_su
     assert w.evidence_against == 0.0
     # ...whereas the SAME record under a row set that declares the operand cannot claim an empty sum:
     rec = _rec("a", relation="aspect", supports=((0, 10),), aspect_offset_at=lambda t: 7)
-    (w2,), _ = _draft([rec], lambda p, v: rows, drishti=lambda a, o: 1.0)
+    (w2,), _ = _draft([rec], lambda p, v: rows, drishti=lambda a, o, r: 1.0)
     assert w2.score == 1.0 and w2.evidence_for == 1.0
     assert w2.evidence_against is None                    # declared, not evaluated here ⇒ NULL
     assert w2.outcome_valence_for_native == "unqualified"  # contested-vs-plain cannot be stated
@@ -460,27 +522,56 @@ def test_a_drishti_step_inside_one_aspect_record_peaks_at_the_offset_change():
     table = {5: 0.5, 7: 1.0}
     rec = _rec("a", relation="aspect", supports=((0, 100),),
                aspect_offset_at=lambda t: 5 if (t - _d(0)).total_seconds() / 86400.0 < 41.7 else 7)
-    (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o: table[o])
+    (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o, r: table[o])
     assert w.score == 1.0
     assert abs((w.peak_instant - _d(41.7)).total_seconds()) < 2.0
 
 
 def test_a_drishti_source_returning_none_makes_that_instant_undeterminable():
     rec = _rec("a", relation="aspect", supports=((0, 10),), aspect_offset_at=lambda t: 6)
-    (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o: None)   # e.g. 'no_aspect_at_this_offset'
+    (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o, r: None)   # e.g. 'no_aspect_at_this_offset'
     assert w.score is None and w.unresolved == {"operand_undeterminable_over_support": 1}
     assert w.qualified_members == 0
 
 
 # ── the writer's real drishti source (Stream B's cited table, called) ────────────────────────────────
 
+def _real_rows(path="P3", version="1.1.0"):
+    """The ACTUAL catalogue rows (Stream B's #2897/#2907), not synthetic ones."""
+    return [dict(r) for r in ws.registry_factor_rows(path, version)]
+
+
 def test_the_writers_drishti_source_is_streamb_graduated_drishti_not_a_copy():
     from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
     from services.gochara_rules import drishti
-    for agent in ("saturn", "sun", "mars", "jupiter", "rahu"):
-        for off in range(0, 14):
-            assert writer_mod.DRISHTI_SOURCE(agent, off) == drishti.graduated_drishti(
-                agent.title(), off)["value"]
+    for ref in (("graduated_drishti", "1.0.0"), ("graduated_drishti", "1.1.0")):
+        for agent in ("saturn", "sun", "mars", "jupiter", "rahu"):
+            for off in range(0, 14):
+                assert writer_mod.DRISHTI_SOURCE(agent, off, ref) == drishti.graduated_drishti(
+                    agent.title(), off, factor_ref=ref)["value"]
+
+
+def test_the_writers_drishti_source_passes_the_membership_ref_and_verifies_the_returned_one(monkeypatch):
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
+    from services.gochara_rules import drishti
+    seen = []
+    real = drishti.graduated_drishti
+
+    def spy(agent, offset, *, factor_ref):
+        seen.append(tuple(factor_ref))
+        return real(agent, offset, factor_ref=factor_ref)
+
+    monkeypatch.setattr(drishti, "graduated_drishti", spy)
+    writer_mod.DRISHTI_SOURCE("saturn", 3, ("graduated_drishti", "1.1.0"))
+    assert seen == [("graduated_drishti", "1.1.0")]               # the membership's ref, not a default
+
+    def mislabelled(agent, offset, *, factor_ref):
+        out = real(agent, offset, factor_ref=factor_ref)
+        return {**out, "factor": ("graduated_drishti", "1.0.0")}  # a source answering for another row
+
+    monkeypatch.setattr(drishti, "graduated_drishti", mislabelled)
+    with pytest.raises(SweepRefusal, match="answered for"):
+        writer_mod.DRISHTI_SOURCE("saturn", 3, ("graduated_drishti", "1.1.0"))
 
 
 def test_an_aspect_record_scores_through_the_real_table():
@@ -491,7 +582,7 @@ def test_an_aspect_record_scores_through_the_real_table():
     (b,), _ = _draft([quarter], _rows_declared, drishti=writer_mod.DRISHTI_SOURCE)
     assert (a.score, b.score) == (1.0, 0.25)                    # Saturn's special 3rd; the Sun's ordinary 3rd
     # N-14: a node casts no dṛṣṭi — the source says so (value None) ...
-    assert writer_mod.DRISHTI_SOURCE("rahu", 7) is None
+    assert writer_mod.DRISHTI_SOURCE("rahu", 7, ("graduated_drishti", "1.1.0")) is None
     # ... and a node-cast ASPECT RECORD is refused outright before any factor is evaluated (R4)
     node = _rec("n", relation="aspect", agent="rahu", supports=((0, 10),), aspect_offset_at=lambda t: 7)
     with pytest.raises(SweepRefusal, match="N-14"):
@@ -695,7 +786,9 @@ def test_every_kind_requires_its_own_target_form_and_a_missing_or_malformed_targ
         with pytest.raises(SweepRefusal):
             _draft([_rec("a", kind=kind, target=other)], _rows_declared)
         ok = {"span:": "span:3", "star:": "star:9", "point:": "point:12.5"}[form]
-        assert _draft([_rec("a", kind=kind, target=ok)], _rows_declared)[0]   # accepted
+        lon = {"span:3": 75.0, "star:9": 110.0, "point:12.5": 12.5}[ok]      # a body IN the extent / ON the point
+        good = _rec("a", kind=kind, target=ok, longitude_at=lambda t, _l=lon: _l)
+        assert _draft([good], _rows_declared)[0]                              # accepted (a window exists)
     with pytest.raises(SweepRefusal):
         _draft([_rec("a", kind="sign_span", target="span:13")], _rows_declared)     # not a canonical token
     with pytest.raises(SweepRefusal):
@@ -716,11 +809,28 @@ def test_the_lowercase_token_adapter_is_closed():
             ws.graha_title(bad)
 
 
+def _bad_orb_rows(orb, *, status="ratified", ref="ruling:nd_orb_test"):
+    """Rows that BYPASS the codec's refusal (a configuration defect that reached the registry): the sweep
+    must still fail closed through `kernel_factor`, never score."""
+    rows = _rows_declared("P3", "1.0.0", orb=5.0)
+    for r in rows:
+        if r["factor_id"] == "activity_kernel":
+            r["applicability"]["angular"]["orb_deg"] = orb
+            r["applicability"]["angular"]["orb_status"] = status
+            if ref is None:
+                r["applicability"]["angular"].pop("orb_decision_ref", None)
+            else:
+                r["applicability"]["angular"]["orb_decision_ref"] = ref
+            r["operand_selector"] = dict(r["operand_selector"], orb_deg=orb if isinstance(orb, (int, float)) else 5)
+    return rows
+
+
 @pytest.mark.parametrize("orb", [0, -1, float("nan"), float("inf"), -0.0, True, "5"])
 def test_an_invalid_orb_configuration_fails_closed_never_scores(orb):
     rec = _rec("a", relation="conjunction", kind="house_lord", delta_lambda_at=lambda t: 0.5)
+    rows = _bad_orb_rows(orb)
     with pytest.raises(SweepRefusal):
-        _draft([rec], lambda p, v: _rows_declared(p, v, orb=orb))
+        _draft([rec], lambda p, v: rows)
 
 
 def test_a_declared_membership_step_outside_zero_is_not_a_second_admission_filter():
@@ -732,23 +842,29 @@ def test_a_declared_membership_step_outside_zero_is_not_a_second_admission_filte
 
 # ── the directed aspect ray, seam-safe (store-side providers) ───────────────────────────────────────
 
-def test_point_delta_is_directed_and_seam_safe():
-    from services.gochara_kernel.window_store import _point_delta_provider
-    probe = lambda lon: (lambda body, t: lon)
+def _kv(rec, orb=5.0, t=None):
+    """The activity kernel the SWEEP computes for `rec` at `t` — through Stream B's kernel_factor."""
+    row = _kernel_row(orb)
+    return ws._kernel_value_at(rec, (row["factor_id"], row["rule_version"]), t or _d(0))
+
+
+def test_point_distance_is_directed_and_seam_safe_through_the_validated_kernel():
+    def point(lon, relation="conjunction", agent="saturn", target="point:0.2"):
+        return _rec("a", relation=relation, kind="house_lord", agent=agent, target=target,
+                    longitude_at=lambda t, _l=lon: _l,
+                    aspect_rays=(60.0, 180.0, 270.0) if relation == "aspect" and agent == "saturn" else (
+                        (180.0,) if relation == "aspect" else ()))
     # a conjunction across the 0°/360° seam: 359.9° vs a target at 0.2° is 0.3° away, not 359.7°
-    d = _point_delta_provider("conjunction", "saturn", "point:0.2", probe(359.9))
-    assert d(_d(0)) == pytest.approx(0.3, abs=1e-9)
+    assert _kv(point(359.9)) == pytest.approx(1.0 - 0.3 / 5.0, abs=1e-9)
     # Saturn's 3rd ray (λ+60°): at 299.9° it lands on 359.9°, 0.3° from the target at 0.2°
-    d = _point_delta_provider("aspect", "saturn", "point:0.2", probe(299.9))
-    assert d(_d(0)) == pytest.approx(0.3, abs=1e-9)
-    # the ray is DIRECTED: the same longitude is NOT aspecting a target 60° BEHIND it
-    d = _point_delta_provider("aspect", "sun", "point:239.9", probe(299.9))   # Sun casts only 180°
-    assert d(_d(0)) == pytest.approx(120.0, abs=1e-9)     # 299.9+180 = 119.9, 120° from 239.9
-    # the nearest of the agent's OWN angles is the one used (Mars: 90 / 180 / 210)
-    d = _point_delta_provider("aspect", "mars", "point:210.2", probe(120.0))   # 120+90 = 210 → 0.2 away
-    assert d(_d(0)) == pytest.approx(0.2, abs=1e-9)
-    # a node casts nothing: no provider
-    assert _point_delta_provider("aspect", "rahu", "point:10.0", probe(0.0)) is None
+    assert _kv(point(299.9, "aspect")) == pytest.approx(1.0 - 0.3 / 5.0, abs=1e-9)
+    # the ray is DIRECTED: the Sun casts only 180°, so 299.9° aspects 119.9°, not a target 60° behind
+    sun = point(299.9, "aspect", agent="sun", target="point:239.9")
+    assert _kv(sun) == 0.0                                          # 120° away: far outside the 5° orb
+    # the nearest of the agent's OWN rays wins (Mars: 90 / 180 / 210): 120 + 90 = 210 → 0.2 away
+    mars = _rec("a", relation="aspect", kind="house_lord", agent="mars", target="point:210.2",
+                longitude_at=lambda t: 120.0, aspect_rays=(90.0, 180.0, 210.0))
+    assert _kv(mars) == pytest.approx(1.0 - 0.2 / 5.0, abs=1e-9)
 
 
 def test_aspect_offset_is_inclusive_whole_sign():
@@ -759,15 +875,16 @@ def test_aspect_offset_is_inclusive_whole_sign():
     assert _aspect_offset_provider("span:1", "saturn", lambda body, t: 15.0)(_d(0)) == 1   # same sign = 1
 
 
-def test_inside_provider_checks_residence_and_the_directed_ray_against_the_target_sign():
-    from services.gochara_kernel.window_store import _inside_provider
-    res = _inside_provider("residence", "saturn", "span:7", lambda body, t: 195.0)   # Libra
-    assert res(_d(0)) is True
-    assert _inside_provider("residence", "saturn", "span:7", lambda body, t: 15.0)(_d(0)) is False
-    ray = _inside_provider("aspect", "saturn", "span:7", lambda body, t: 135.0)      # 135+60 = 195 → Libra
-    assert ray(_d(0)) is True
-    assert _inside_provider("aspect", "rahu", "span:7", lambda body, t: 135.0) is None   # N-14
-    assert _inside_provider("residence", "saturn", "point:195.0", lambda body, t: 195.0) is None
+def test_extent_membership_is_computed_from_the_geometry_residence_and_the_directed_ray():
+    libra = dict(kind="sign_span", target="span:7")
+    res_in = _rec("a", **libra, longitude_at=lambda t: 195.0)
+    res_out = _rec("a", **libra, longitude_at=lambda t: 15.0)
+    assert _kv(res_in) == 1.0 and _kv(res_out) == 0.0              # inside ⇒ 1, outside ⇒ 0 (a computed value)
+    ray = _rec("a", **libra, relation="aspect", agent="saturn", longitude_at=lambda t: 135.0,
+               aspect_rays=(60.0, 180.0, 270.0))                    # 135 + 60 = 195 → Libra
+    assert _kv(ray) == 1.0
+    star_boundary = _rec("a", kind="star", target="star:4", longitude_at=lambda t: 40.0)   # 3 × 13°20′: exact
+    assert _kv(star_boundary) == 1.0                                # the exact fourth-nakṣatra boundary is INSIDE star:4
 
 
 def test_a_support_the_contact_geometry_contradicts_is_refused_across_the_component_not_only_at_the_peak():
@@ -789,35 +906,33 @@ def test_an_undeterminable_geometry_is_unknown_never_affirmative_membership():
 
 
 def test_a_span_record_whose_geometry_cannot_be_consulted_is_a_named_missing_operand_not_inside():
-    rec = _rec("a", supports=((0, 10),), inside_at=None)
-    # (the helper defaults inside_at for span kinds; pass it explicitly as None via the dataclass)
+    rec = _rec("a", supports=((0, 10),))
     import dataclasses
-    rec = dataclasses.replace(rec, inside_at=None)
+    rec = dataclasses.replace(rec, longitude_at=None)
     (w,), _ = _draft([rec], _rows_declared)
     assert w.score is None and w.unresolved == {"geometry_operand_missing": 1}
 
 
 def test_a_numeric_orb_never_ratifies_itself_whatever_the_row_calls_its_state():
     """The review's reproduction: a real 1.1.0 row modified to carry orb 5 while its orb_status still says
-    unratified returned 1.0 from the sweep. Ratification is NEVER inferred from a number being present."""
-    for status in ("unratified_nd_orb_open", "ND-ORB open: not ratified (draft AM-13)", "unratified"):
-        rows = _rows_declared("P3", "1.0.0", orb=5.0)
-        for r in rows:
-            if r["factor_id"] == "activity_kernel":
-                r["applicability"]["angular"]["orb_status"] = status
-                r["applicability"]["angular"]["orb_state"] = status      # whatever it calls itself, not "ratified"
+    unratified returned 1.0 from the sweep. Ratification is NEVER inferred from a number being present —
+    the sweep routes through Stream B's validated kernel, which refuses it."""
+    for status in ("unratified_nd_orb_open", "ND-ORB open: not ratified (draft AM-13)", "unratified", ""):
+        rows = _bad_orb_rows(5.0, status=status)
         rec = _rec("a", relation="conjunction", kind="house_lord", delta_lambda_at=lambda t: 0.0)
-        with pytest.raises(SweepRefusal, match="does not ratify itself"):
+        with pytest.raises(SweepRefusal, match="orb is present without a ratified status"):
             _draft([rec], lambda p, v, rr=rows: rr)
     # a ratified state WITH its decision ref scores
     rows = _rows_declared("P3", "1.0.0", orb=5.0)
-    for r in rows:
-        if r["factor_id"] == "activity_kernel":
-            r["applicability"]["angular"]["orb_state"] = "ratified"
-    rec = _rec("a", relation="conjunction", kind="house_lord", delta_lambda_at=lambda t: 0.0,
-               peak_hints=lambda lo, hi: [_d(1)])
+    rec = _rec("a", relation="conjunction", kind="house_lord", delta_lambda_at=lambda t: 0.0)
     assert _draft([rec], lambda p, v: rows)[0][0].score == pytest.approx(1.0)
 
+
+def test_a_numeric_orb_without_its_decision_ref_never_reaches_the_formula():
+    rows = _bad_orb_rows(5.0, ref=None)
+    rec = _rec("a", relation="conjunction", kind="house_lord", delta_lambda_at=lambda t: 0.1)
+    with pytest.raises(SweepRefusal, match="orb is present without a ratified status and a decision reference"):
+        _draft([rec], lambda p, v: rows)
 
 
 # ═══ Stream B's qualification-aware reduction (score.path_channel_scores, #2905) is the one called ═════
@@ -869,14 +984,7 @@ def test_evidence_is_taken_at_the_peak_instant_not_at_the_window_start():
     assert abs(w.evidence_for - at_start) > 0.05
 
 
-def test_a_numeric_orb_without_its_decision_ref_never_reaches_the_formula():
-    rows = _rows_declared("P3", "1.0.0", orb=5.0)
-    for r in rows:
-        if r["factor_id"] == "activity_kernel":
-            del r["applicability"]["angular"]["orb_decision_ref"]
-    rec = _rec("a", relation="conjunction", kind="house_lord", delta_lambda_at=lambda t: 0.1)
-    with pytest.raises(SweepRefusal, match="orb_decision_ref"):
-        _draft([rec], lambda p, v: rows)
+
 
 
 # ═══ Codex round 7, [1] and [7] — qualification over the WHOLE component; global maximum by pieces ═════

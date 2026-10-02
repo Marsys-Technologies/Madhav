@@ -1050,6 +1050,7 @@ def materialise_record_grain(
     refine: bool = True,
     dasha_rows_for: Callable[[str], list[dict]] | None = None,
     chart: dict | None = None,
+    rule_version: str | None = None,
 ) -> dict[str, int]:
     """Materialise one `record:<event_class>:<path_id>` grain: contacts,
     then records, bound to the class's ALREADY-WRITTEN coverage partition
@@ -1127,9 +1128,14 @@ def materialise_record_grain(
         return "restricted", period_running_support(support, rows)
 
     coverage_key = event_class
+    # The grain's version is the SELECTED path reference; the enumerated edges must carry exactly it.
+    selected_version = rule_version or (edges[0].rule_version if edges else RULE_VERSION)
+    for _e in edges:
+        if _e.rule_version != selected_version:
+            raise ValueError(f"edge rule_version {_e.rule_version!r} != grain's selected "
+                             f"{selected_version!r} (path {path_id})")
     if prerequisites is None:
-        rule_version = edges[0].rule_version if edges else "1.0.0"
-        prerequisites = store.fetch_path_prerequisites(path_id, rule_version)
+        prerequisites = store.fetch_path_prerequisites(path_id, selected_version)
 
     # Point solves (3/N): full-domain roots + ordinals, then the horizon
     # intersection — solved BEFORE any write, per edge.
@@ -1232,7 +1238,7 @@ def materialise_record_grain(
     store.delete_record_grain(
         chart_id=chart_id, generation=generation, event_class=event_class,
         path_id=path_id,
-        rule_version=edges[0].rule_version if edges else RULE_VERSION)
+        rule_version=selected_version)
     counts = {"contacts": 0, "records": 0, "natal_records": 0,
               "truncated_contacts": 0, "prereq_evaluated": 0,
               "skipped_natal_p1": skipped_natal_p1,
@@ -1454,7 +1460,7 @@ def materialise_record_grain(
                 continue
             store.set_prerequisite_result(
                 record_id=rec["record_id"], ordinal=ordinal, predicate_id=pid,
-                predicate_version=rec["edge"].rule_version, result=fn(rec))
+                predicate_version=_pv, result=fn(rec))
             counts["prereq_evaluated"] += 1
     return counts
 

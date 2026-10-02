@@ -226,13 +226,15 @@ def _interval_state(o: Obligation, cap: SearchCapability) -> str:
 
 
 def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
-             cap: SearchCapability, dasha_rows: Sequence[DashaRow] | None):
+             cap: SearchCapability, dasha_rows: Sequence[DashaRow] | None,
+             rule_version: str):
     """P1 under the AM-11 role-token form: the obligation agent is
     `period_lord:md|ad|pd`; each searched interval is cut at the PINNED daśā rows'
     boundaries (half-open, §4.0) and names the agent it resolved to. The qualified
     geometry is P1's enumerated TRANSIT edges (its natal-fact rows are not
     admission-bearing records — pin b — so they are not obligations)."""
-    edges = [e for e in enumerate_edges(event_class, "P1", chart) if e.transit]
+    edges = [e for e in enumerate_edges(event_class, "P1", chart, rule_version=rule_version)
+             if e.transit]
     shapes = sorted({(e.relation, e.object_role, e.obj.canonical_target,
                       (e.frame_kind if e.frame_arg is None
                        else f"{e.frame_kind}:{e.frame_arg}"), e.affected_person,
@@ -336,7 +338,8 @@ def plan_class_inventory(
                                 basis=h_unknown_exclusion.basis))
             continue
         if path_id == "P1":
-            ob_plan, iv_plan = _plan_p1(event_class, chart, lo, hi, capability, dasha_rows)
+            ob_plan, iv_plan = _plan_p1(event_class, chart, lo, hi, capability, dasha_rows,
+                                    rule_version)
             if ob_plan:
                 pins.append(PinPlan(path_id, rule_version, "included", ob_plan))
                 intervals.extend(iv_plan)
@@ -345,7 +348,7 @@ def plan_class_inventory(
                     path_id, rule_version, "computed_empty",
                     basis="spec:GOCHARA_DESIGN_SPECS@1.4#2.2-p1-empty-qualified-set"))
             continue
-        edges = enumerate_edges(event_class, path_id, chart)
+        edges = enumerate_edges(event_class, path_id, chart, rule_version=rule_version)
         seen: dict[str, Obligation] = {}
         for edge in edges:
             ob = obligation_of_edge(edge)

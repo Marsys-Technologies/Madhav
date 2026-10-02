@@ -75,8 +75,8 @@ from services.gochara_kernel import inventory_verifier as gk_verifier
 from services.gochara_kernel import ledger as gk_ledger
 from services.gochara_kernel.dasha_read import load_pinned_vimshottari
 from services.gochara_kernel.inventory_store import InventoryStore
-from services.gochara_kernel.rule_registry import (BOUND_PATH_REFS as BOUND_PATH_REFS_FOR_VECTOR,
-                                                   BOUND_PATHS, RuleRegistryStore)
+from services.gochara_kernel import rule_registry as gk_rule_registry
+from services.gochara_kernel.rule_registry import BOUND_PATHS, RuleRegistryStore
 from services.gochara_kernel.substrate import (SUBSTRATE_BODIES,
                                                SUBSTRATE_DOMAIN_END,
                                                SUBSTRATE_DOMAIN_START,
@@ -93,12 +93,19 @@ COVERAGE_SUBSTEP_PREFIX = "coverage:"
 RECORD_SUBSTEP_PREFIX = "record:"
 # design v1.5: the window sweep — `window:<class>:<path>` after the class's record grains.
 WINDOW_SUBSTEP_PREFIX = "window:"
-def _drishti_source(agent: str, offset: int):
-    """Stream B's `gochara_rules.drishti.graduated_drishti` (cited table; CALLED, never copied).
-    Its `value` is None for an operand it cannot classify (a node, a non-aspect offset) — the sweep
-    reads that as an undeterminable instant (unqualified), never a default."""
+def _drishti_source(agent: str, offset: int, factor_ref: tuple):
+    """Stream B's `gochara_rules.drishti.graduated_drishti` (cited table; CALLED, never copied), called
+    with the MEMBERSHIP's own factor ref (a 1.1.0 path calls the 1.1.0 row). The returned `factor` is
+    verified against the ref asked for — a source answering for a different row is a refusal, never
+    re-labelled. Its `value` is None for an operand it cannot classify (a node, a non-aspect offset) —
+    the sweep reads that as an undeterminable instant (unqualified), never a default."""
     from services.gochara_rules import drishti as rules_drishti
-    return rules_drishti.graduated_drishti(gk_window_sweep.graha_title(agent), offset)["value"]
+    ref = tuple(factor_ref)
+    out = rules_drishti.graduated_drishti(gk_window_sweep.graha_title(agent), offset, factor_ref=ref)
+    if tuple(out.get("factor") or ()) != ref:
+        raise gk_window_sweep.SweepRefusal(
+            f"graduated_drishti answered for {out.get('factor')!r}, asked for {ref!r}")
+    return out["value"]
 
 
 # The two operand SOURCES the sweep calls but this writer does not own. None = a named missing input
@@ -175,11 +182,11 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     gk_input_vector.verify_live(
         ctx.db_conn, stored,
         sky_convention_id=SkyEventStore(ctx.db_conn).register_convention(),
-        ephe_path=ctx.config.get("ephe_path"), path_refs=BOUND_PATH_REFS_FOR_VECTOR,
+        ephe_path=ctx.config.get("ephe_path"), path_refs=gk_rule_registry.bound_path_refs(),
         rulings=_applicable_rulings())
     # ... and the registry component is re-derived the independent way (Postgres canonical JSON)
     gk_input_vector_verifier.verify_registry_digest(
-        ctx.db_conn, BOUND_PATH_REFS_FOR_VECTOR, stored["registry"]["digest"])
+        ctx.db_conn, gk_rule_registry.bound_path_refs(), stored["registry"]["digest"])
 
 
 class ChartRefusal(Exception):
@@ -392,11 +399,11 @@ class GocharaV5Writer(WriterBase):
             rstore.ensure_bridge(kala_cid, sky_cid)
             vector = gk_input_vector.build_input_vector(
                 ctx.db_conn, sky_convention_id=sky_cid, ephe_path=ephe_path,
-                path_refs=BOUND_PATH_REFS_FOR_VECTOR, rulings=_applicable_rulings())
+                path_refs=gk_rule_registry.bound_path_refs(), rulings=_applicable_rulings())
             # the registry component is derived a SECOND way (Postgres' own canonical JSON + sha256)
             # and the two must agree before the identity is bound
             gk_input_vector_verifier.verify_registry_digest(
-                ctx.db_conn, BOUND_PATH_REFS_FOR_VECTOR, vector["registry"]["digest"])
+                ctx.db_conn, gk_rule_registry.bound_path_refs(), vector["registry"]["digest"])
             jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
             _lon, retflag = calc_sidereal_lon("Sun", jd, ephe_path)
             if not (retflag & 2):
@@ -574,10 +581,14 @@ class GocharaV5Writer(WriterBase):
             class_edges = [
                 edge
                 for pid in RECORD_PATHS
-                for edge in gk_evaluator.enumerate_edges(event_class, pid, chart)
+                for edge in gk_evaluator.enumerate_edges(
+                    event_class, pid, chart,
+                    rule_version=gk_rule_registry.bound_path_version(pid))
             ]
             ephemeral_excluded = sum(
-                len(gk_evaluator.ephemeral_tier_edges(event_class, pid, chart))
+                len(gk_evaluator.ephemeral_tier_edges(
+                    event_class, pid, chart,
+                    rule_version=gk_rule_registry.bound_path_version(pid)))
                 for pid in RECORD_PATHS)
             kala_cid = store.ensure_kala_convention()
             # AM-5: the partition is the guard-facing SUMMARY of the stored inventory —
@@ -607,7 +618,9 @@ class GocharaV5Writer(WriterBase):
         if event_class not in SCORED_CLASSES or path_id not in RECORD_PATHS:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"unknown record grain {step.key!r}")
-        edges = gk_evaluator.enumerate_edges(event_class, path_id, chart)
+        path_version = gk_rule_registry.bound_path_version(path_id)
+        edges = gk_evaluator.enumerate_edges(event_class, path_id, chart,
+                                             rule_version=path_version)
         # P1's period_running_at reads L1 chart_dashas under the §4.0 pin; the
         # read is lazy (only P1 grains with a period_running_at prerequisite
         # ever trigger it) and its build is recorded in the notes below.
@@ -620,7 +633,8 @@ class GocharaV5Writer(WriterBase):
             sky_convention_id=sky_cid,
             source_fact_ids=context["source_fact_ids"],
             arc_index_for=arc_index_for, ephe_path=ephe_path,
-            dasha_rows_for=dasha_rows_for, chart=chart)
+            dasha_rows_for=dasha_rows_for, chart=chart,
+            rule_version=path_version)
         inserted = counts["contacts"] + counts["records"] + counts["natal_records"]
         if path_id == "P1":
             # R7 [3]: the restriction to the running periods is re-derived independently (SQL, from the

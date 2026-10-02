@@ -82,6 +82,20 @@ NATAL_RELATIONS = (
 BOUND_PATH_REFS = (("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0"))
 BOUND_PATHS = tuple(pid for pid, _v in BOUND_PATH_REFS)
 
+
+def bound_path_refs() -> tuple[tuple[str, str], ...]:
+    """The CURRENT binding, read at call time (a consumer never captures the tuple at import)."""
+    return tuple(BOUND_PATH_REFS)
+
+
+def bound_path_version(path_id: str) -> str:
+    """The version THIS binding selects for `path_id` — the one every enumerator, inventory pin and
+    record of that path must carry (never the global RULE_VERSION)."""
+    for pid, version in bound_path_refs():
+        if pid == path_id:
+            return version
+    raise KeyError(f"path {path_id!r} is not bound")
+
 _PATH_FRAME = {
     "P1": ("dasha_lord", None),
     "P2": ("moon", None),
@@ -223,103 +237,41 @@ def predicate_rows() -> list[dict]:
     ]
 
 
-# ── R5: the flat applicability encoding ──────────────────────────────────────
-# 1154's `operand_selector` admits only a FLAT object — keys `^[a-z][a-z0-9_]*$`, values a selector
-# token, a number, or a non-empty array of tokens (no nesting, no JSON null; 1154:221-240). A factor
-# row's nested `applicability` (AM-13) is encoded LOSSLESSLY into it with a CLOSED key schema, read
-# back, decoded and compared. An unavailable numeric orb is OMITTED (never null) and the unratified
-# state is an explicit token; the free-text fields (`formula`, `orb_status`) become tokens or are dropped
-# — an unknown formula or key is REFUSED, never guessed.
-import re as _re
+# ── R5: ONE codec (Codex round 7 [4]) ────────────────────────────────────────
+# `services.gochara_rules.flat_selector` is the single codec for a factor's applicability declaration (Stream
+# B's; closed key schema, orb ratification invariant, 1154's flat-object shape). This module has NO codec of
+# its own: the catalogue row's `operand_selector` (the flat form IS the source of truth) is persisted
+# VERBATIM, checked with `flat_problems` / `kernel_flat_problems`, read back flat-to-flat, and the decoded
+# nested `applicability` evaluators read must equal the declaration.
+from services.gochara_rules import flat_selector as _flat
 
-_SELECTOR_TOKEN = _re.compile(r"^[a-z][a-z0-9_]*([.:/][a-z0-9_]+)*$")     # ka_gochara_selector_token_ok
-_FORMULAS = {"1 - |Δλ|/orb": "one_minus_abs_delta_over_orb"}
-_FORMULA_TEXT = {v: k for k, v in _FORMULAS.items()}
-
-
-def encode_applicability(app: dict) -> dict:
-    unknown = set(app) - {"span", "angular", "relations"}
-    if unknown:
-        raise RegistryDivergenceError(f"applicability: unknown key(s) {sorted(unknown)} — refusing to guess")
-    flat: dict = {}
-    span = app.get("span")
-    if span is not None:
-        if set(span) - {"object_kinds", "function", "inside", "outside"}:
-            raise RegistryDivergenceError(f"applicability.span: unknown key(s) {sorted(set(span))}")
-        flat["span_kinds"] = list(span["object_kinds"])
-        flat["span_function"] = span["function"]
-        flat["span_inside"] = span["inside"]
-        flat["span_outside"] = span["outside"]
-    ang = app.get("angular")
-    if ang is not None:
-        if set(ang) - {"object_kinds", "function", "formula", "orb_deg", "orb_status", "orb_decision_ref", "orb_state"}:
-            raise RegistryDivergenceError(f"applicability.angular: unknown key(s) {sorted(set(ang))}")
-        flat["angular_kinds"] = list(ang["object_kinds"])
-        flat["angular_function"] = ang["function"]
-        formula = ang.get("formula")
-        if formula is not None:
-            if formula not in _FORMULAS:
-                raise RegistryDivergenceError(f"applicability.angular.formula {formula!r} has no token")
-            flat["angular_form"] = _FORMULAS[formula]
-        if ang.get("orb_deg") is None:
-            if ang.get("orb_decision_ref") is not None:
-                raise RegistryDivergenceError("applicability.angular: a decision ref without an orb is incoherent")
-            flat["angular_orb_state"] = "unratified"           # explicit; the numeric orb is omitted
-        else:
-            # a numeric orb is admissible ONLY with the decision that ratified it (Codex R4: a ratified
-            # decision binding) — an orb without its ref fails closed here, never reaches the evaluator
-            if not ang.get("orb_decision_ref"):
-                raise RegistryDivergenceError("applicability.angular: a ratified orb must name its "
-                                              "orb_decision_ref (ND-ORB ruling)")
-            if not _SELECTOR_TOKEN.match(str(ang["orb_decision_ref"])):
-                raise RegistryDivergenceError(
-                    f"applicability.angular.orb_decision_ref {ang['orb_decision_ref']!r} is not a selector "
-                    "token (^[a-z][a-z0-9_]*([.:/][a-z0-9_]+)*$ — 1154 admits no other form)")
-            flat["angular_orb_state"] = "ratified"
-            flat["angular_orb_deg"] = ang["orb_deg"]
-            flat["angular_orb_decision_ref"] = ang["orb_decision_ref"]
-    if app.get("relations") is not None:
-        flat["relations"] = list(app["relations"])
-    return flat
-
-
-def decode_applicability(flat: dict) -> dict:
-    """The inverse of the encoding, over exactly the keys it writes (a stored selector carries
-    `operand` too; that key is not applicability and is ignored here)."""
-    app: dict = {}
-    if "span_kinds" in flat:
-        app["span"] = {"object_kinds": list(flat["span_kinds"]), "function": flat["span_function"],
-                       "inside": flat["span_inside"], "outside": flat["span_outside"]}
-    if "angular_kinds" in flat:
-        ang = {"object_kinds": list(flat["angular_kinds"]), "function": flat["angular_function"]}
-        if "angular_form" in flat:
-            ang["formula"] = _FORMULA_TEXT[flat["angular_form"]]
-        state = flat.get("angular_orb_state")
-        if state == "ratified":
-            ang["orb_deg"] = flat["angular_orb_deg"]
-            ang["orb_decision_ref"] = flat["angular_orb_decision_ref"]
-            ang["orb_state"] = "ratified"
-        elif state == "unratified":
-            ang["orb_deg"] = None
-            ang["orb_state"] = "unratified"
-        else:
-            raise RegistryDivergenceError(f"angular_orb_state {state!r} is neither ratified nor unratified")
-        app["angular"] = ang
-    if "relations" in flat:
-        app["relations"] = list(flat["relations"])
-    return app
-
-
-def canonical_applicability(app: dict) -> dict:
-    """The catalogue's declaration reduced to what the flat encoding carries (free text dropped)."""
-    return decode_applicability(encode_applicability(app))
+_DECODE = {"activity_kernel": _flat.decode_kernel, "graduated_drishti": _flat.decode_drishti,
+           "vedha_attenuation": _flat.decode_vedha}
 
 
 def factor_operand_selector(fid: str, src: dict) -> dict:
-    sel = {"operand": _FACTOR_OPERAND_TOKEN[fid]}
-    if src.get("applicability"):
-        sel.update(encode_applicability(src["applicability"]))
-    return sel
+    """The flat selector to persist: the catalogue row's own (verbatim) when it declares one, else the
+    plain operand token of the unchanged 1.0.0 rows."""
+    sel = src.get("operand_selector")
+    if sel is None:
+        return {"operand": _FACTOR_OPERAND_TOKEN[fid]}
+    problems = _flat.flat_problems(sel)
+    if fid == "activity_kernel":
+        problems = _flat.kernel_flat_problems(sel)
+    if problems:
+        raise RegistryDivergenceError(f"factor {fid}: operand_selector refused: " + "; ".join(problems))
+    return dict(sel)
+
+
+def decode_factor_selector(fid: str, selector: dict) -> dict | None:
+    """The nested `applicability` a persisted flat selector DECODES to (None for a factor that declares
+    none) — through the one codec."""
+    if fid not in _DECODE or set(selector) <= {"operand"}:
+        return None
+    try:
+        return _DECODE[fid](selector)
+    except (KeyError, ValueError) as exc:
+        raise RegistryDivergenceError(f"factor {fid}: persisted selector does not decode: {exc}") from exc
 
 
 def factor_rows() -> list[dict]:
@@ -544,15 +496,13 @@ class RuleRegistryStore:
                     or function != want["function"] or direction != want["direction"]):
                 raise RegistryDivergenceError(f"persisted factor {ref} diverges from the declaration")
             src = rules_registry.FACTORS[ref]
-            decoded = decode_applicability(selector)
-            persisted_flat = {k: v for k, v in selector.items() if k != "operand"}
-            # the decoded declaration must RE-ENCODE to exactly what is stored (a decoder that loses
-            # or invents anything cannot round-trip) and equal the catalogue's declaration
-            if (encode_applicability(decoded) if decoded else {}) != persisted_flat or decoded != (
-                    canonical_applicability(src["applicability"]) if src.get("applicability") else {}):
+            decoded = decode_factor_selector(factor_id, selector)
+            declared_app = src.get("applicability")
+            if (decoded or None) != (declared_app or None):
                 raise RegistryDivergenceError(f"factor {ref}: decoded applicability != the declaration")
             item = {"factor_id": factor_id, "rule_version": factor_version, "null_state": null_state,
                     "function": function, "direction": src["direction"]}
+            item["operand_selector"] = selector                    # verbatim, as persisted
             if decoded:
                 item["applicability"] = decoded
             out.append(item)
@@ -589,10 +539,10 @@ __all__ = [
     "BOUND_FACTOR_REFS",
     "BOUND_PATHS",
     "BOUND_PATH_REFS",
+    "bound_path_refs",
+    "bound_path_version",
     "BOUND_PREDICATE_REFS",
-    "canonical_applicability",
-    "decode_applicability",
-    "encode_applicability",
+    "decode_factor_selector",
     "factor_operand_selector",
     "PREDICATES",
     "RULE_VERSION",

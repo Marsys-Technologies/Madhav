@@ -188,7 +188,7 @@ def test_the_manifest_binds_the_versioned_input_vector_derived_two_ways(run):
     from services.gochara_kernel import input_vector as iv
     from services.gochara_kernel import input_vector_verifier as ivv
     assert v["schema"] == iv.VECTOR_SCHEMA
-    assert v["registry"]["digest"] == ivv.sql_registry_digest(conn, writer_mod.BOUND_PATH_REFS_FOR_VECTOR)
+    assert v["registry"]["digest"] == ivv.sql_registry_digest(conn, writer_mod.gk_rule_registry.bound_path_refs())
     assert set(v) >= {"registry", "node", "ephemeris", "orb_policy", "rulings_digest", "implementation"}
     # the snapshot's identity commits to the vector (1206: input_generation_vector is in input_digest)
     step(writer_mod.SNAPSHOT_SUBSTEP)
