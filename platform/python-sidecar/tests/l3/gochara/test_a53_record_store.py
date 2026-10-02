@@ -310,6 +310,7 @@ MIGRATION_CHAIN = [
     "1155_gochara_relationship_record.sql",
     "1156_gochara_eval_window.sql",
     "1157_gochara_av_polarity_declaration.sql",
+    "1233_gochara_p1_period_anchor.sql",      # Stream B's P1 anchor columns (AM-21 part 2); ALTERs a 1155 table
 ]
 
 
@@ -718,7 +719,12 @@ def _p1_libra_edge(agent: str) -> ev.RecordEdge:
     edges = [e for e in ev.enumerate_edges("marriage", "P1", CHART)
              if e.transit and e.relation == "residence" and e.agent == agent
              and e.obj.canonical_target == "span:7"]
-    assert len(edges) == 1
+    # AM-21 part 2: one edge per (anchor lord, level) reading — the agent's OWN AD reading when it has one, else the
+    # single XX.38 reading (Jupiter in Libra = Saturn's exaltation sign)
+    own = [e for e in edges if (e.period_anchor_lord, e.period_anchor_level) == (agent, "ad")]
+    if own:
+        return own[0]
+    assert len(edges) == 1, [(e.period_anchor_lord, e.period_anchor_level) for e in edges]
     return edges[0]
 
 
@@ -737,7 +743,7 @@ def _p1_kwargs(store, edges, rows_by_agent):
                 house_for=_house_from_lagna(CHART["lagna_deg"]),
                 sky_convention_id=SKY_CID, source_fact_ids=["fact-1"],
                 prerequisites=P1_PREREQS, chart=CHART,
-                dasha_rows_for=lambda agent: rows_by_agent.get(agent, []))
+                dasha_rows_for=lambda agent, level=None: rows_by_agent.get(agent, []))
 
 
 def _results(store, predicate):
@@ -746,14 +752,15 @@ def _results(store, predicate):
 
 
 def test_p1_period_running_at_true_false_unknown():
-    edges = [_p1_libra_edge(a) for a in ("saturn", "jupiter", "venus")]
+    # each edge's domain is its ANCHOR lord's own AD rows (AM-21 part 2): the Sun in Libra is its own debilitation sign
+    edges = [_p1_libra_edge(a) for a in ("saturn", "sun", "venus")]
     crossings = {a: [_crossing(10, 180.0), _crossing(200, 210.0)]
-                 for a in ("saturn", "jupiter", "venus")}
+                 for a in ("saturn", "sun", "venus")}
     store = FakeStore(crossings)
     counts = rs.materialise_record_grain(store, **_p1_kwargs(
         store, edges,
         {"saturn": [{"start_iso": T0, "end_iso": T0 + 300 * DAY}],      # running at the ingress
-         "jupiter": [{"start_iso": T0 + 500 * DAY, "end_iso": T0 + 600 * DAY}],  # not running
+         "sun": [{"start_iso": T0 + 500 * DAY, "end_iso": T0 + 600 * DAY}],      # not running
          "venus": []}))                                                 # no L1 rows → unknown
     assert counts["records"] == 3 and counts["prereq_evaluated"] == 9   # 3 predicates × 3
     calls = [kw for k, kw in store.calls if k == "set_prerequisite_result"]
@@ -927,7 +934,7 @@ def _pg_p1_run(conn, dasha_rows, agent="venus"):
             path_id="P1", edges=[edge], horizon=HORIZON, position_at=probe,
             house_for=_house_from_lagna(CHART["lagna_deg"]),
             sky_convention_id=sky_cid, source_fact_ids=["fact-1"], chart=CHART,
-            dasha_rows_for=lambda a: dasha_rows.get(a, []))
+            dasha_rows_for=lambda a, level=None: dasha_rows.get(a, []))
     rows = conn.execute(
         "SELECT r.admission_state, p.predicate_id, p.result"
         " FROM public.ka_gochara_relationship_record r"
@@ -1370,12 +1377,12 @@ def test_p1_natal_bhava_relationship_scored_none_and_unknown():
 def test_p1_testimony_licence_lords_are_not_minted_and_the_count_names_them():
     """A lord whose only natal relation is a testimony kind (non-node dispositorship —
     no clause, no ruling_ref: D3) cannot be written (kgrr_ruling_ck): not minted,
-    counted, never silently dropped. Jupiter natal in Taurus ⇒ its dispositor Venus owns
+    counted, never silently dropped. Saturn (the anchor lord) natal in Taurus ⇒ its dispositor Venus owns
     Libra ∈ H."""
-    chart = {**CHART, "natal": {**CHART["natal"], "Jupiter": 45.0}}
-    jup = _p1_libra_edge("jupiter")
-    store = FakeStore({"jupiter": [_crossing(10, 180.0), _crossing(200, 210.0)]})
-    kw = _p1_kwargs(store, [jup], {})
+    chart = {**CHART, "natal": {**CHART["natal"], "Saturn": 45.0}}
+    sat = _p1_libra_edge("saturn")                      # anchor (saturn, ad): the licence is the ANCHOR lord's
+    store = FakeStore({"saturn": [_crossing(10, 180.0), _crossing(200, 210.0)]})
+    kw = _p1_kwargs(store, [sat], {})
     kw["chart"] = chart
     counts = rs.materialise_record_grain(store, **kw)
     assert counts["records"] == 0 and counts["contacts"] == 0

@@ -802,6 +802,11 @@ class RecordStore:
         # `sha256:`-tagged hex string over the same bytes — a different TYPE; it must never
         # be stored or compared (the DB column is UUID).
         _require_minted_record_uuid(record_id)
+        anchored = self.p1_anchor_columns_available()
+        if edge.period_anchor_lord is not None and not anchored:
+            raise RuntimeError(
+                f"P1 record {record_id}: its period anchor ({edge.period_anchor_lord}, {edge.period_anchor_level}) "
+                "has no column to live in — the applied schema lacks migration 1233; refusing to mint a mis-keyed record")
         params = (
             str(record_id), chart_id, generation, contact_id, edge.event_class,
             edge.affected_person, edge.frame_kind, edge.frame_arg, edge.agent,
@@ -828,11 +833,12 @@ class RecordStore:
             " source_text, source_page, source_fact_ids, provenance,"
             " operator_role, ruling_ref, admission_state, house_from_frame,"
             " evidence_for_occurrence, evidence_against_occurrence,"
-            " outcome_valence_for_native, severity)"
+            " outcome_valence_for_native, severity"
+            + (", period_anchor_lord, period_anchor_level" if anchored else "") + ")"
             " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
-            " %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            " %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s" + (",%s,%s" if anchored else "") + ")"
             " ON CONFLICT (record_id) DO NOTHING",
-            params,
+            params + ((edge.period_anchor_lord, edge.period_anchor_level) if anchored else ()),
         )
         row = self.conn.execute(
             "SELECT chart_id::text, generation, event_class, path_id, rule_version"
@@ -1117,25 +1123,32 @@ def materialise_record_grain(
                 _licence_cache[agent] = {"relation": "unknown", "licence": "none"}
         return _licence_cache[agent]
 
+    def _anchor(edge: RecordEdge) -> str:
+        """The lord whose natal relation / licence / running periods a P1 record is judged by: its ANCHOR (AM-21
+        part 2) — not necessarily the transiting agent (Phaladīpikā XX.38)."""
+        return edge.period_anchor_lord or edge.agent
+
     def _unwritable(agent: str) -> bool:
         """A TESTIMONY-licence period lord (non-node dispositorship/association) has no
         ruling_ref to satisfy kgrr_ruling_ck (D3): its transit records are not minted —
         named in the counts, never silently dropped."""
         rel = _p1_relation(agent) if path_id == "P1" else None
         return bool(rel and rel["licence"] == "testimony")
-    _period_rows_cache: dict[str, list[dict] | None] = {}
+    _period_rows_cache: dict[tuple, list[dict] | None] = {}
 
-    def _p1_running_support(agent: str, support: tuple[datetime, datetime]):
-        """(state, intervals) of a P1 transit record's support restricted to the periods the agent
-        RUNS (R3). No L1 daśā reader / no rows for the agent ⇒ ('unrestricted', None): the contact
-        span is stored as is and the prerequisite is an explicit `unknown` — a support that could not
-        be restricted is never presented as restricted."""
+    def _p1_running_support(edge: RecordEdge, support: tuple[datetime, datetime]):
+        """(state, intervals) of a P1 transit record's support restricted to D(anchor, level) — the running
+        intervals of the pinned rows at the record's ANCHOR LEVEL whose lord is its ANCHOR (AM-21 part 2; not the
+        transiting agent's periods, not every level). No L1 daśā reader / no rows for that (lord, level) ⇒
+        ('unrestricted', None): the contact span is stored as is and the prerequisite is an explicit `unknown` — a
+        support that could not be restricted is never presented as restricted."""
         if path_id != "P1" or dasha_rows_for is None:
             return "unrestricted", None
-        if agent not in _period_rows_cache:
-            raw = dasha_rows_for(agent)
-            _period_rows_cache[agent] = [_dasharow(r) for r in raw] if raw else None
-        rows = _period_rows_cache[agent]
+        key = (_anchor(edge), edge.period_anchor_level)
+        if key not in _period_rows_cache:
+            raw = dasha_rows_for(*key) if edge.period_anchor_level else dasha_rows_for(key[0])
+            _period_rows_cache[key] = [_dasharow(r) for r in raw] if raw else None
+        rows = _period_rows_cache[key]
         if not rows:
             return "unrestricted", None
         return "restricted", period_running_support(support, rows)
@@ -1211,7 +1224,7 @@ def materialise_record_grain(
             house = house_for(e, span.sign)
             if house is None:
                 continue
-            if _unwritable(e.agent):
+            if _unwritable(_anchor(e)):
                 unwritable_testimony += 1
                 continue
             work.append((e, m, house))
@@ -1231,7 +1244,7 @@ def materialise_record_grain(
             house = house_for(e, sign)
             if house is None:
                 continue
-            if _unwritable(e.agent):
+            if _unwritable(_anchor(e)):
                 unwritable_testimony += 1
                 continue
             key = e.natural_key(
@@ -1264,6 +1277,7 @@ def materialise_record_grain(
     # interval. Natal rows carry neither — atemporal claims.
     evaluated: list[dict] = []
     supports_by_agent: dict[str, list[tuple[datetime, datetime]]] = {}
+    written_contacts: set[str] = set()
     searched_agents: set[str] = set()
     if position_at is not None:
         searched_agents |= {e.agent for e in residence_edges + aspect_span_edges}
@@ -1277,8 +1291,10 @@ def materialise_record_grain(
             contact=m["contact"], span=span, poid=edge.obj,
             convention_id=sky_convention_id, crossing=crossing,
             horizon_end=h_end)
-        counts["contacts"] += 1
-        counts["truncated_contacts"] += 1 if span.t_exact is None else 0
+        if str(m["contact"].contact_id) not in written_contacts:      # role aliases share ONE contact (AM-21 part 2)
+            written_contacts.add(str(m["contact"].contact_id))
+            counts["contacts"] += 1
+            counts["truncated_contacts"] += 1 if span.t_exact is None else 0
         # kgrr_transit_natal_ck: a TRANSIT record always restates a precision object (N7); a
         # truncated contact restates 'clipped_truncated' with null deltas (1155 precision_ok)
         precision = ({
@@ -1288,7 +1304,7 @@ def materialise_record_grain(
         } if span.t_exact is not None else {
             "solver_method": "clipped_truncated", "delta_lambda": None, "delta_t": None})
         raw_support = (span.t_in, span.t_out or h_end)
-        rs_state, running = _p1_running_support(edge.agent, raw_support)
+        rs_state, running = _p1_running_support(edge, raw_support)
         pieces = running if rs_state == "restricted" else [raw_support]
         support_intervals = [f"[{a.isoformat()},{b.isoformat()})" for a, b in pieces]
         store.insert_record(
@@ -1325,7 +1341,7 @@ def materialise_record_grain(
         } if occ.t_exact is not None else {
             "solver_method": "clipped_truncated", "delta_lambda": None, "delta_t": None})
         raw_support = (occ.t_in, occ.t_out)
-        rs_state, running = _p1_running_support(edge.agent, raw_support)
+        rs_state, running = _p1_running_support(edge, raw_support)
         pieces = running if rs_state == "restricted" else [raw_support]
         support_intervals = [f"[{a.isoformat()},{b.isoformat()})" for a, b in pieces]
         store.insert_record(
@@ -1396,7 +1412,7 @@ def materialise_record_grain(
         return rule_predicates.FALSE
 
     def _natal_bhava_relationship(rec):
-        rel = _p1_relation(rec["edge"].agent)
+        rel = _p1_relation(_anchor(rec["edge"]))
         if rel is None or rel["relation"] == "unknown":
             return "unknown"           # H unknown / lord's natal position unreadable
         # scored AND testimony kinds store 'true' (AM-11 pin a): the record's ROLE, not

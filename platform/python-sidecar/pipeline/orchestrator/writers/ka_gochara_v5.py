@@ -67,7 +67,8 @@ from services.gochara_kernel import inventory as gk_inventory
 from services.gochara_kernel import input_vector as gk_input_vector
 from services.gochara_kernel import input_vector_verifier as gk_input_vector_verifier
 from services.gochara_kernel import window_sweep as gk_window_sweep
-from services.gochara_kernel.record_verifier import verify_p1_house_descriptor, verify_p1_support
+from services.gochara_kernel.record_verifier import (verify_p1_anchors, verify_p1_house_descriptor,
+                                                    verify_p1_support)
 from services.gochara_kernel import window_gate as gk_window_gate
 from services.gochara_kernel import window_verifier as gk_window_verifier
 from services.gochara_kernel.window_verifier import verify_window_semantics
@@ -258,7 +259,7 @@ def _house_resolver(context: dict, *, p1_minting: bool = False):
 #: existing column can carry it). Records minted without it are mis-keyed for the XX.38 forms, so P1 minting is
 #: OFF unless the APPLIED schema has both columns AND this writer implements writing them.
 P1_MINTING_GATE = "p1_minting_requires_period_anchor_columns"
-P1_ANCHOR_MINTING_IMPLEMENTED = False       # flips with the 1233 implementation (oracle O-PP-5)
+P1_ANCHOR_MINTING_IMPLEMENTED = True        # AM-21 part 2: anchored enumeration, identity, supports, verification (O-PP-5)
 
 
 def p1_minting_closed_reason(conn) -> str | None:
@@ -705,6 +706,8 @@ class GocharaV5Writer(WriterBase):
             # snapshot-bound daśā rows) and must equal what was stored
             verify_p1_support(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                               event_class=event_class)
+            # AM-21 part 2: the ANCHOR set of every contact is re-derived from the verifier's own table
+            verify_p1_anchors(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class)
             # AM-20 (revised): the stored house descriptor is the count from the lagna
             verify_p1_house_descriptor(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                                        event_class=event_class)

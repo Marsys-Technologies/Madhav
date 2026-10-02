@@ -79,6 +79,9 @@ from services.gochara_rules.registry import (
 )
 from services.gochara_rules.frames import SIGN_LORDS, Frame
 
+#: The period LEVELS a P1 anchor can carry (the role tokens `period_lord:md|ad|pd`).
+P1_LEVELS = ("md", "ad", "pd")
+
 #: Paths whose enumeration machinery has landed in this increment.
 IMPLEMENTED_PATHS = ("P1", "P2", "P3", "P4", "P5")
 
@@ -115,6 +118,12 @@ class RecordEdge:
     source_page: str | None
     transit: bool                   # True ⇒ per-occurrence, contact_id bound
                                     # at materialisation; False ⇒ natal fact
+    # AM-21 part 2 (migration 1233): a P1 TRANSIT record's period ANCHOR — the lord whose running periods (at this
+    # LEVEL) license it and whose sign-quality is judged; NOT necessarily the agent (Phaladīpikā XX.38). Set on P1
+    # transit edges only. Part of the record's natural key (P1 only — every other path's identity bytes are
+    # unchanged), because no existing column can carry it (`dasha_lord` has no frame arg; the frame is the lagna).
+    period_anchor_lord: str | None = None
+    period_anchor_level: str | None = None
 
     def natural_key(self, *, chart_id: str, generation: str,
                     contact_id: str | None,
@@ -138,6 +147,9 @@ class RecordEdge:
             "source_text": source_text,
         }
         assert set(key) == set(NATURAL_KEY_FIELDS)
+        if self.period_anchor_lord is not None:       # S §1.1 key + the P1 anchor (AM-21 part 2)
+            key["period_anchor_lord"] = self.period_anchor_lord
+            key["period_anchor_level"] = self.period_anchor_level
         return key
 
 
@@ -478,27 +490,44 @@ def enumerate_p1_edges(event_class: str, chart: dict,
             ruling_ref="D-PADMIT", source_text=text, source_page=page,
             transit=False))
 
-    # Transit residence edges on the signs P1's content names.
-    for graha, _ in ((g, None) for g in (
-            "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")):
-        signs = {s for s, lord in SIGN_LORDS.items() if lord == graha}
-        signs.add(EXALTATION[graha]["sign"])
-        signs.add(DEBILITY[graha]["sign"])
-        if graha in ("Sun", "Jupiter"):
-            signs |= {EXALTATION[g]["sign"] for g in EXALTATION}
-        for sign in sorted(signs):
-            edges.append(RecordEdge(
-                event_class=event_class, affected_person=person,
-                frame_kind="dasha_lord", frame_arg=None,
-                agent=graha.lower(), relation="residence",
-                obj=PhysicalObjectId(
-                    body=graha.lower(), relation_kind="residence",
-                    canonical_target=_span_target(sign), convention_id=cid),
-                object_kind="house_span", object_role="period_lord",
-                path_id="P1", rule_version=rule_version,
-                provenance="verse_cited", operator_role="scored",
-                ruling_ref=None, source_text=text, source_page=page,
-                transit=True))
+    # Transit residence edges, ONE PER ANCHOR (AM-21 part 2). A record is licensed by the running periods of its
+    # ANCHOR lord at its anchor LEVEL, and the anchor is not always the agent:
+    #   XX.34–35 / XX.37 — a graha's OWN transit through its own / exaltation / depression sign: anchor = the agent,
+    #     at MD (Dasa, XX.34–35), AD (Bhukti, XX.37) and PD (the specification's flagged extension, no verse);
+    #   XX.38 — the Sun or Jupiter entering ANOTHER graha's exaltation sign (favourable) and the Sun entering
+    #     another graha's depression sign (adverse): anchor = that bhukti lord, at AD. (The "inimical sign" branch
+    #     needs the maitrī table and is a named limitation of the first candidate.)
+    # One physical contact therefore yields several records (role aliases sharing one contact_id): the Sun in Libra
+    # is the Sun's own debilitation sign (anchor Sun) AND Saturn's exaltation sign (anchor Saturn).
+    grahas = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
+    forms: set[tuple[str, int, str, str]] = set()          # (agent, sign, anchor, level)
+    for graha in grahas:
+        own = {s_ for s_, lord in SIGN_LORDS.items() if lord == graha}
+        own.add(EXALTATION[graha]["sign"])
+        own.add(DEBILITY[graha]["sign"])
+        for sign in own:
+            for level in P1_LEVELS:
+                forms.add((graha, sign, graha, level))
+    for agent in ("Sun", "Jupiter"):
+        for lord in grahas:
+            if lord != agent:
+                forms.add((agent, EXALTATION[lord]["sign"], lord, "ad"))
+    for lord in grahas:
+        if lord != "Sun":
+            forms.add(("Sun", DEBILITY[lord]["sign"], lord, "ad"))
+    for agent, sign, anchor, level in sorted(forms, key=lambda f: (f[0], f[1], f[2], P1_LEVELS.index(f[3]))):
+        edges.append(RecordEdge(
+            event_class=event_class, affected_person=person,
+            frame_kind="dasha_lord", frame_arg=None,
+            agent=agent.lower(), relation="residence",
+            obj=PhysicalObjectId(
+                body=agent.lower(), relation_kind="residence",
+                canonical_target=_span_target(sign), convention_id=cid),
+            object_kind="house_span", object_role="period_lord",
+            path_id="P1", rule_version=rule_version,
+            provenance="verse_cited", operator_role="scored",
+            ruling_ref=None, source_text=text, source_page=page,
+            transit=True, period_anchor_lord=anchor.lower(), period_anchor_level=level))
     return edges
 
 

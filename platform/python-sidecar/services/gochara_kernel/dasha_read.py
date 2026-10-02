@@ -22,6 +22,8 @@ from typing import Callable
 from services.gochara_grammar import dasha_data as DD
 
 PINNED_SYSTEM = "vimshottari"
+#: the period LEVEL tokens a P1 anchor carries → the chart_dashas `level_n` (§4.0: 1 MD, 2 AD, 3 PD)
+LEVEL_N = {"md": 1, "ad": 2, "pd": 3}
 
 
 def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict]) -> dict:
@@ -97,17 +99,21 @@ def make_period_rows_for(
     state: dict = {"rows": None}
     contract: dict = {"build_id": None, "read": False}
 
-    def rows_for(agent: str) -> list[dict]:
+    def rows_for(agent: str, level: str | int | None = None) -> list[dict]:
+        """The lord's rows at ONE level (`'md'|'ad'|'pd'` or 1–3) — AM-21: a P1 record is licensed by the periods of its
+        ANCHOR lord at its anchor LEVEL — or, with `level=None`, at every level (the legacy union)."""
         if state["rows"] is None:
             rows, c = load_pinned_vimshottari(conn, chart_id)
             state["rows"] = rows
             contract.update(c)
             contract["read"] = True
         want = str(agent).lower()
+        want_level = LEVEL_N[level] if isinstance(level, str) else level
         return [
             {"start_iso": r["start_iso"], "end_iso": r["end_iso"]}
             for r in state["rows"]
             if str(r.get("lord_graha", "")).lower() == want
+            and (want_level is None or r.get("level_n") == want_level)
         ]
 
     return rows_for, contract

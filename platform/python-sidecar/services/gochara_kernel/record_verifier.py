@@ -6,8 +6,12 @@ verifier derives the same thing a different way — entirely in Postgres, from t
 (`consumed_dasha_row_ids`, levels 1–3, the agent's lord) with multirange arithmetic — and compares it with
 what was stored, and the stored `period_running_at` result with what that support implies:
 
-  agent with running rows : stored support  == contact ∩ ⋃(running periods);  result == true iff non-empty
-  agent with NO rows      : stored support  == the contact span (unrestricted);  result == 'unknown'
+  anchor with running rows : stored support == contact ∩ D(anchor lord, anchor level); result == true iff non-empty
+  anchor with NO rows      : stored support == the contact span (unrestricted);        result == 'unknown'
+
+where D(X, ℓ) = the union of the half-open `[start, end)` intervals of the snapshot-bound level-ℓ rows whose lord is X
+and the ANCHOR (X, ℓ) is the record's own `period_anchor_lord` / `period_anchor_level` (AM-21 part 2) — NOT the transiting
+agent's periods and not every level. For Phaladīpikā XX.38 (the Sun/Jupiter entering a bhukti lord's sign) the two differ.
 
 It imports nothing from the builder. A support that is wider than the permission (admitting a period
 gap), narrower (discarding a valid later portion) or on the wrong pieces fails the build.
@@ -19,13 +23,15 @@ WITH snap AS (
   SELECT s.consumed_dasha_row_ids AS ids FROM public.ka_gochara_search_input_snapshot s
   WHERE s.chart_id = %(chart)s AND s.generation = %(gen)s),
 runs AS (
-  SELECT lower(d.lord_graha) AS agent,
+  SELECT lower(d.lord_graha) AS lord, d.level_n,
          range_agg(tstzrange(d.start_iso, d.end_iso, '[)')) AS m
   FROM public.chart_dashas d, snap
   WHERE d.chart_id = %(chart)s AND d.dasha_row_id = ANY (snap.ids) AND d.level_n IN (1, 2, 3)
-  GROUP BY 1),
+  GROUP BY 1, 2),
 rec AS (
-  SELECT r.record_id, r.agent, r.temporal_support_state AS state,
+  SELECT r.record_id, r.period_anchor_lord AS lord,
+         CASE r.period_anchor_level WHEN 'md' THEN 1 WHEN 'ad' THEN 2 WHEN 'pd' THEN 3 END AS level_n,
+         r.temporal_support_state AS state,
          COALESCE((SELECT range_agg(x) FROM unnest(r.temporal_support_intervals) x), '{}'::tstzmultirange) AS stored,
          tstzrange(c.t_in, COALESCE(c.t_out, upper(cov.completed_horizon)), '[)')::tstzmultirange AS contact,
          (SELECT p.result FROM public.ka_gochara_record_prerequisite p
@@ -43,11 +49,28 @@ SELECT rec.record_id::text, rec.stored::text,
        rec.stored = (CASE WHEN runs.m IS NULL THEN rec.contact ELSE rec.contact * runs.m END) AS equal,
        isempty(CASE WHEN runs.m IS NULL THEN rec.contact ELSE rec.contact * runs.m END) AS expected_empty,
        rec.result, runs.m IS NOT NULL AS has_rows
-FROM rec LEFT JOIN runs ON runs.agent = rec.agent
+FROM rec LEFT JOIN runs ON (runs.lord, runs.level_n) = (rec.lord, rec.level_n)
 """
 
 
+def _scalar(row) -> int:
+    return 0 if row is None else (next(iter(row.values())) if isinstance(row, dict) else row[0])
+
+
+def _anchor_columns(conn) -> bool:
+    return _scalar(conn.execute(
+        "SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_relationship_record'::regclass"
+        " AND attname IN ('period_anchor_lord', 'period_anchor_level') AND NOT attisdropped").fetchone()) == 2
+
+
 def verify_p1_support(conn, *, chart_id: str, generation: str, event_class: str) -> dict:
+    if not _anchor_columns(conn):                      # no 1233: no P1 record can exist (minting is gated)
+        n = conn.execute("SELECT count(*) FROM public.ka_gochara_relationship_record WHERE path_id = 'P1'"
+                         " AND chart_id = %s AND generation = %s AND event_class = %s",
+                         (chart_id, generation, event_class)).fetchone()
+        if _scalar(n):
+            raise RuntimeError("P1 records exist on a schema without the period-anchor columns (1233)")
+        return {"records": 0, "restricted": 0}
     rows = conn.execute(_SQL, {"chart": chart_id, "gen": generation, "cls": event_class}).fetchall()
     problems: list[str] = []
     restricted = 0
@@ -105,4 +128,81 @@ def verify_p1_house_descriptor(conn, *, chart_id: str, generation: str, event_cl
     return {"records": len(rows)}
 
 
-__all__ = ["verify_p1_support", "verify_p1_house_descriptor"]
+# ── AM-21 part 2: the ANCHOR set of every P1 contact, re-derived from the verifier's OWN tables ──────────────
+
+_ANCHOR_SQL = """
+SELECT r.contact_id::text, r.agent, o.canonical_target, r.period_anchor_lord, r.period_anchor_level
+FROM public.ka_gochara_relationship_record r
+JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id
+WHERE r.chart_id = %(chart)s AND r.generation = %(gen)s AND r.event_class = %(cls)s
+  AND r.path_id = 'P1' AND r.contact_id IS NOT NULL
+ORDER BY 1, 4, 5
+"""
+_GRAHAS7 = ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn")
+_LEVELS = ("md", "ad", "pd")
+
+
+def expected_p1_anchors(agent: str, sign_index: int) -> set[tuple[str, str]]:
+    """Every (anchor lord, level) a P1 transit of `agent` through the sign (0 = Aries) must be read under —
+    the verifier's own table (nothing imported from the builder or the rule modules):
+      XX.34–35 / XX.37: the agent's OWN transit through its own / exaltation / depression sign — anchor = the agent,
+          at MD, AD and PD (the PD level is the specification's flagged extension);
+      XX.38: the Sun or Jupiter entering ANOTHER graha's exaltation sign, and the Sun entering another graha's
+          depression sign — anchor = that bhukti lord, at AD."""
+    from .inventory_verifier import _DEBIL, _EXALT, _OWN, _SIGNS
+    sign = _SIGNS[sign_index]
+    out: set[tuple[str, str]] = set()
+    if sign in _OWN.get(agent, ()) or sign in (_EXALT.get(agent), _DEBIL.get(agent)):
+        out |= {(agent, lv) for lv in _LEVELS}
+    if agent in ("sun", "jupiter"):
+        out |= {(g, "ad") for g in _GRAHAS7 if g != agent and _EXALT.get(g) == sign}
+    if agent == "sun":
+        out |= {(g, "ad") for g in _GRAHAS7 if g != "sun" and _DEBIL.get(g) == sign}
+    return out
+
+
+def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str) -> dict:
+    """For every stored P1 transit CONTACT, the set of (anchor lord, level) its records carry equals the set the
+    verifier derives for (agent, sign) — minus the anchor lords whose period-lord relation is `testimony` (D3: not
+    minted, no ruling_ref), judged by Stream B's `permission.period_lord_relation` over the snapshot's L1 natal
+    positions. An omitted reading (one record anchored on the agent only — the Sun in Libra without Saturn's), an
+    invented one, and a wrong level each fail."""
+    from .inventory_verifier import Unverifiable, read_chart
+    if not _anchor_columns(conn):
+        return {"contacts": 0}                       # the support verifier refuses if P1 records exist here
+    rows = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
+        _ANCHOR_SQL, {"chart": chart_id, "gen": generation, "cls": event_class}).fetchall()]
+    if not rows:
+        return {"contacts": 0}
+    snap = conn.execute(
+        "SELECT consumed_fact_ids FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+        (chart_id, generation)).fetchone()
+    if snap is None:
+        raise Unverifiable("no snapshot to read the natal positions from")
+    natal = read_chart(conn, snap[0] if not isinstance(snap, dict) else next(iter(snap.values())))
+    from services.gochara_rules import permission
+    chart = {"lagna_deg": natal["lagna"], "natal": {k.title(): v for k, v in natal["natal"].items()}}
+    testimony = set()
+    for g in _GRAHAS7:
+        try:
+            if permission.period_lord_relation(g.title(), event_class, chart)["licence"] == "testimony":
+                testimony.add(g)
+        except KeyError:
+            pass
+    by_contact: dict[str, dict] = {}
+    for cid, agent, target, lord, level in rows:
+        slot = by_contact.setdefault(cid, {"agent": agent, "target": target, "stored": set()})
+        slot["stored"].add((lord, level))
+    problems: list[str] = []
+    for cid, slot in sorted(by_contact.items()):
+        want = {a for a in expected_p1_anchors(slot["agent"], int(slot["target"].split(":", 1)[1]) - 1)
+                if a[0] not in testimony}
+        if slot["stored"] != want:
+            problems.append(f"contact {cid} ({slot['agent']} {slot['target']}): anchors stored "
+                            f"{sorted(slot['stored'])} != derived {sorted(want)}")
+    if problems:
+        raise RuntimeError(f"P1 anchor verification failed {event_class}: " + "; ".join(problems))
+    return {"contacts": len(by_contact)}
+
+
+__all__ = ["expected_p1_anchors", "verify_p1_anchors", "verify_p1_support", "verify_p1_house_descriptor"]

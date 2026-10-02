@@ -79,6 +79,16 @@ def _world(monkeypatch, tmp_path, faithful):
                 " VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,NULL,'Venus',%s,%s,%s,'two_pass_verified')",
                 (str(uuid.UUID(int=900 + i)), CHART_ID, lvl, a, b, base_build()))
 
+    def set_lord_periods(rows):
+        """rows = [(lord, level, start, end)]: replace ALL level-2/3 rows by exactly these (any lord)."""
+        conn.execute("DELETE FROM public.chart_dashas WHERE level_n IN (2, 3)")
+        for i, (lord, lvl, a, b) in enumerate(rows):
+            conn.execute(
+                "INSERT INTO public.chart_dashas(dasha_row_id, chart_id, ayanamsha_id, system_id, level_n,"
+                " parent_row_id, lord_graha, start_iso, end_iso, build_id, verification_pass_status)"
+                " VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,NULL,%s,%s,%s,%s,'two_pass_verified')",
+                (str(uuid.UUID(int=900 + i)), CHART_ID, lvl, lord.title(), a, b, base_build()))
+
     def boot():
         for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP,
                   "inventory:marriage", "coverage:marriage"):
@@ -105,11 +115,15 @@ def _world(monkeypatch, tmp_path, faithful):
                                        precision_regime="swiss_bisect_tol_1e-9d", coverage={"truncated": False})
             return sky
 
-    def grain(agent, in_sign, house_for=_lagna_house):
-        """Materialise the P1 `agent` Libra-residence grain; `in_sign(t)` says when the body is IN Libra."""
-        edge = next(e for e in ev.enumerate_edges("marriage", "P1", CHART)
-                    if e.transit and e.relation == "residence" and e.agent == agent
-                    and e.obj.canonical_target == "span:7")
+    def grain(agent, in_sign, house_for=_lagna_house, anchor=None, anchors=None):
+        """Materialise the P1 `agent` Libra-residence grain read under `anchor` = (lord, level) — default: the
+        agent's own AD; `in_sign(t)` says when the body is IN Libra."""
+        wanted = list(anchors) if anchors else [anchor or (agent, "ad")]      # ONE call: the grain is rebuilt whole
+        edges = [e for e in ev.enumerate_edges("marriage", "P1", CHART)
+                 if e.transit and e.relation == "residence" and e.agent == agent
+                 and e.obj.canonical_target == "span:7"
+                 and (e.period_anchor_lord, e.period_anchor_level) in wanted]
+        assert len(edges) == len(wanted)
         rows_for, _ = make_period_rows_for(conn, CHART_ID)
         store = rs.RecordStore(conn)
         sky = SkyEventStore(conn).register_convention()
@@ -117,7 +131,7 @@ def _world(monkeypatch, tmp_path, faithful):
             conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
             return rs.materialise_record_grain(
                 store, chart_id=CHART_ID, generation=GEN, event_class="marriage", path_id="P1",
-                edges=[edge], horizon=(H0, H1),
+                edges=edges, horizon=(H0, H1),
                 position_at=lambda body, t: 195.0 if in_sign(t) else 15.0, house_for=house_for,
                 sky_convention_id=sky, source_fact_ids=["fact-1"], prerequisites=P1_PREREQS,
                 chart=CHART, dasha_rows_for=rows_for)
@@ -126,6 +140,7 @@ def _world(monkeypatch, tmp_path, faithful):
         pass
     wd = W()
     wd.conn, wd.step, wd.set_periods, wd.boot, wd.seed, wd.grain = conn, step, set_periods, boot, seed_crossings, grain
+    wd.set_lord_periods = set_lord_periods
     try:
         yield wd
     finally:
@@ -164,7 +179,7 @@ def test_a_period_ending_inside_a_contact_restricts_the_support_to_the_period(wo
 
 def test_licensed_pieces_separated_by_a_gap_stay_disjoint_never_bridged(world):
     w = world
-    w.set_periods([(2, _t(1, 1), _t(1, 12)), (3, _t(1, 18), _t(2, 1))])
+    w.set_periods([(2, _t(1, 1), _t(1, 12)), (2, _t(1, 18), _t(2, 1))])
     w.boot()
     w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
     w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
@@ -220,7 +235,7 @@ def test_an_agent_with_no_daśā_rows_is_unrestricted_with_an_explicit_unknown(w
 
 def test_the_verifier_refuses_a_support_that_admits_a_period_gap_or_discards_a_valid_portion(world):
     w = world
-    w.set_periods([(2, _t(1, 1), _t(1, 12)), (3, _t(1, 18), _t(2, 1))])
+    w.set_periods([(2, _t(1, 1), _t(1, 12)), (2, _t(1, 18), _t(2, 1))])
     w.boot()
     w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
     w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
@@ -249,6 +264,9 @@ class _RowsConn:
 
             def fetchall(s):
                 return s.rows
+
+            def fetchone(s):                                  # the schema probe: the 1233 anchor columns exist
+                return (2,)
         return R(self.rows)
 
 

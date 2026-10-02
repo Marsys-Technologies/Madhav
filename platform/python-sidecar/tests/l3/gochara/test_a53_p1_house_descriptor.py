@@ -42,7 +42,7 @@ def test_the_dasha_lord_house_is_the_inclusive_count_from_the_lagna():
     house_for = writer_mod._house_resolver(CONTEXT, p1_minting=True)
     lagna_idx = int(CHART["lagna_deg"] // 30)
     edges = _p1_transit_edges()
-    assert len(edges) == 31
+    assert len(edges) == 84                     # one per (contact, anchor lord, level) reading (AM-21 part 2)
     for e in edges:
         sign_no = int(e.obj.canonical_target.split(":")[1])
         assert house_for(e, SIGNS[sign_no - 1].lower()) == (sign_no - 1 - lagna_idx) % 12 + 1    # independent
@@ -184,8 +184,17 @@ def _p1_record_count(conn):
                         ).fetchone()[0]
 
 
+def _strip_1233(conn):
+    """Return this disposable database to the PRE-1233 schema (the real migration's own rollback recipe)."""
+    for c in ("kgrr_period_anchor_pair_ck", "kgrr_period_anchor_vocab_ck", "kgrr_period_anchor_path_ck"):
+        conn.execute(f"ALTER TABLE public.ka_gochara_relationship_record DROP CONSTRAINT {c}")
+    for col in ("period_anchor_lord", "period_anchor_level"):
+        conn.execute(f"ALTER TABLE public.ka_gochara_relationship_record DROP COLUMN {col}")
+
+
 def test_on_the_schema_without_1233_p1_is_not_minted_and_the_switch_is_named(world):
     w = world
+    _strip_1233(w.conn)
     _venus_libra(w)
     assert writer_mod.P1_MINTING_GATE == "p1_minting_requires_period_anchor_columns"
     assert writer_mod.p1_minting_closed_reason(w.conn) == writer_mod.P1_MINTING_GATE
@@ -196,20 +205,11 @@ def test_on_the_schema_without_1233_p1_is_not_minted_and_the_switch_is_named(wor
     assert "NOT minted" not in w.step("record:marriage:P3").notes
 
 
-def test_the_gate_reads_the_applied_schema_and_a_writer_without_anchor_support_stays_closed(world, monkeypatch):
-    """The columns are added to this DISPOSABLE database as a stand-in for 1233's DDL ONLY to exercise the
-    switch (the real migration, its natural key and the anchored minting are the next step): present columns do
-    NOT open the gate until the writer implements writing them — otherwise 1233 landing would silently turn on
-    mis-keyed minting."""
+def test_with_the_real_1233_applied_the_gate_is_open_and_anchored_p1_is_minted(world):
     w = world
     _venus_libra(w)
-    for col in ("period_anchor_lord", "period_anchor_level"):
-        w.conn.execute(f"ALTER TABLE public.ka_gochara_relationship_record ADD COLUMN {col} text")
     assert writer_mod.RecordStore(w.conn).p1_anchor_columns_available() is True
-    assert writer_mod.p1_minting_closed_reason(w.conn) == "p1_anchor_minting_not_implemented"
-    assert "p1_anchor_minting_not_implemented" in w.step("record:marriage:P1").notes
-    assert _p1_record_count(w.conn) == 0
-    monkeypatch.setattr(writer_mod, "P1_ANCHOR_MINTING_IMPLEMENTED", True)
+    assert writer_mod.P1_ANCHOR_MINTING_IMPLEMENTED is True
     assert writer_mod.p1_minting_closed_reason(w.conn) is None
     res = w.step("record:marriage:P1")
     assert res.rows_inserted > 0 and "NOT minted" not in res.notes, res.notes
@@ -218,8 +218,19 @@ def test_the_gate_reads_the_applied_schema_and_a_writer_without_anchor_support_s
     verify_p1_house_descriptor(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage")
 
 
+def test_a_writer_without_anchor_support_stays_closed_even_when_the_columns_exist(world, monkeypatch):
+    """Present columns do NOT open the gate until the writer implements writing them."""
+    w = world
+    _venus_libra(w)
+    monkeypatch.setattr(writer_mod, "P1_ANCHOR_MINTING_IMPLEMENTED", False)
+    assert writer_mod.p1_minting_closed_reason(w.conn) == "p1_anchor_minting_not_implemented"
+    assert "p1_anchor_minting_not_implemented" in w.step("record:marriage:P1").notes
+    assert _p1_record_count(w.conn) == 0
+
+
 def test_one_anchor_column_is_not_enough(world):
     w = world
+    _strip_1233(w.conn)
     w.conn.execute("ALTER TABLE public.ka_gochara_relationship_record ADD COLUMN period_anchor_lord text")
     assert writer_mod.RecordStore(w.conn).p1_anchor_columns_available() is False
     assert writer_mod.p1_minting_closed_reason(w.conn) == writer_mod.P1_MINTING_GATE
