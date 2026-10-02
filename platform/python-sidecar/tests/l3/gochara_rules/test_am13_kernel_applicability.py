@@ -20,7 +20,9 @@ def _db_object_kinds():
     return set(re.findall(r"'([a-z_]+)'", m.group(1)))
 
 
-def test_span_is_a_membership_step_not_unqualified():
+def test_extent_targets_including_star_take_the_membership_step():
+    assert set(SPAN_OBJECT_KINDS) == {"sign_span", "house_span", "star"}      # star:<n> = a 13°20′ span
+    assert "star" not in ANGULAR_OBJECT_KINDS
     for kind in SPAN_OBJECT_KINDS:
         assert activity_kernel(kind, inside=True)["value"] == 1.0
         assert activity_kernel(kind, inside=False)["value"] == 0.0
@@ -28,7 +30,7 @@ def test_span_is_a_membership_step_not_unqualified():
     assert r["value"] is None and r["reason"] == "span_membership_operand_missing"
 
 
-def test_point_and_star_stay_unqualified_until_the_orb_is_a_recorded_decision():
+def test_point_stays_unqualified_until_the_orb_is_a_recorded_decision():
     for kind in ANGULAR_OBJECT_KINDS:
         r = activity_kernel(kind, delta_lambda_deg=0.0)
         assert r["value"] is None and r["reason"] == "orb_not_ratified", kind
@@ -45,7 +47,7 @@ def test_once_an_orb_is_decided_the_angular_kernel_is_linear(monkeypatch):
     monkeypatch.setitem(FACTORS, kernel_factor.FACTOR_REF, row)
     assert activity_kernel("degree_point", delta_lambda_deg=0.0)["value"] == 1.0
     assert activity_kernel("degree_point", delta_lambda_deg=1.0)["value"] == 0.5
-    assert activity_kernel("star", delta_lambda_deg=-1.0)["value"] == 0.5
+    assert activity_kernel("derived_point", delta_lambda_deg=-1.0)["value"] == 0.5
     assert activity_kernel("saham", delta_lambda_deg=3.0)["value"] == 0.0          # outside the orb: computed 0, not null
     assert activity_kernel("degree_point", delta_lambda_deg=None)["reason"] == "delta_lambda_operand_missing"
     assert activity_kernel("degree_point", delta_lambda_deg=float("nan"))["value"] is None

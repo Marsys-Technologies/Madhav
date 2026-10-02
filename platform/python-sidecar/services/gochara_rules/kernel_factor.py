@@ -4,8 +4,9 @@ A pure function of the record's object kind and operands. The factor row
 (`registry.FACTORS[("activity_kernel", "1.1.0")]`) is the single source of the
 applicability declaration and the orb; nothing is copied here (CLAUDE.md §N.7 item 3).
 
-  span objects (sign_span, house_span)  -> membership step: 1.0 inside, 0.0 outside.
-  point/star objects (degree_point, star, derived_point, saham, house_lord)
+  objects WITH EXTENT (sign_span, house_span, star = a 13°20′ nakṣatra span)
+                                        -> membership step: 1.0 inside, 0.0 outside.
+  true POINT objects (degree_point, derived_point, saham, house_lord)
                                         -> angular `1 − |Δλ|/orb`, but ONLY once the
      orb is a recorded decision: the row carries orb_deg=None (ND-ORB is open) and
      the supplied orb is NOT accepted as a substitute — the unratified 5.0° is not

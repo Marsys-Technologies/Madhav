@@ -398,15 +398,18 @@ _factor("graduated_drishti",
 # state of the row, never a silent 1. `applicability` is the declaration; A's rule_binding
 # carries it in operand_selector (token arrays are admitted by ka_gochara_named_operands_ok:
 # no DDL). The ORB is NOT ratified anywhere in the spec/registry (draft AM-13 line cites;
-# open native decision ND-ORB): `orb_deg` is None and the point/star branch is
+# open native decision ND-ORB): `orb_deg` is None and the point branch is
 # `unqualified` (reason orb_not_ratified) until it is decided — the unratified 5.0° is not
 # carried forward.
 KERNEL_VERSION = "1.1.0"
-SPAN_OBJECT_KINDS = ("sign_span", "house_span")                          # 1155 kgrr_object_kind_ck
-ANGULAR_OBJECT_KINDS = ("degree_point", "star", "derived_point", "saham", "house_lord")
+# Classification is by GEOMETRY, not by name (steward M20261002T002620-6575): any target with EXTENT
+# (a sign, a house, a 13°20′ nakṣatra = `star:<n>`) takes the membership step; only a true POINT
+# target (a longitude) takes the angular kernel. varga_position is not classified (unqualified).
+SPAN_OBJECT_KINDS = ("sign_span", "house_span", "star")                  # 1155 kgrr_object_kind_ck
+ANGULAR_OBJECT_KINDS = ("degree_point", "derived_point", "saham", "house_lord")
 _factor("activity_kernel",
         rule_version=KERNEL_VERSION,
-        operand="object kind + (span: inside-the-span membership | point/star: "
+        operand="object kind + (span/star: inside-the-extent membership | point: "
                 "angular distance |Δλ| to exact contact)",
         function="linear", range=[0.0, 1.0], units="unitless",
         direction="higher = stronger", null_state="unqualified",
@@ -417,7 +420,8 @@ _factor("activity_kernel",
                         "formula": "1 - |Δλ|/orb", "orb_deg": None,
                         "orb_status": "ND-ORB open: not ratified (draft AM-13)"},
         },
-        effect="span objects: membership step (1 inside, 0 outside); point/star objects: "
+        effect="objects with extent (sign/house span, star = 13°20′ nakṣatra): membership step "
+               "(1 inside, 0 outside); true point objects: "
                "activity = 1 − |Δλ|/orb (§7.2 inv 3) — qualified only once the orb is a "
                "recorded native decision, else unqualified (orb_not_ratified); object "
                "kinds in neither group are unqualified, never 1")
