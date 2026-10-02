@@ -346,9 +346,37 @@ def verify_as_verifier(w, *extra_args, dsn=None, all_classes=False):
 SEALING_COMMIT = "5ea1" + "0" * 36
 
 
+IMAGE_DIGEST = "sha256:" + "1" * 64
+EXECUTION_NAME = "composed-exec-1"
+
+
+@contextmanager
+def _producer_env(sealing_commit, execution=EXECUTION_NAME):
+    """What the Cloud Run job definition and Cloud Run itself put in the verification job's environment (ST-WIRE-2): the producing commit, the immutable image digest and the execution
+    name. The verifier REFUSES to brief without them (`producer_identity_absent`). In the rig they are set for the duration of one in-process job run."""
+    keys = {"GOCHARA_RUNNER_COMMIT": sealing_commit, "GOCHARA_RUNNER_IMAGE_DIGEST": IMAGE_DIGEST, "CLOUD_RUN_EXECUTION": execution}
+    old = {k: os.environ.get(k) for k in keys}
+    os.environ.update(keys)
+    try:
+        yield
+    finally:
+        for k, v in old.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
+def _brief_ref(conn, digest):
+    """(brief_id, execution_id) of the latest brief the verifier persisted with this digest; for a digest nothing persisted (a fabricated one) a placeholder pair — the database refuses it by name."""
+    row = conn.execute("SELECT brief_id, execution_id FROM public.ka_gochara_seal_brief WHERE brief_digest = %s ORDER BY brief_id DESC LIMIT 1", (digest,)).fetchone()
+    return tuple(row.values()) if isinstance(row, dict) else (tuple(row) if row else (1, "fabricated"))
+
+
 def brief_stdout_as_verifier(w, sealing_commit=SEALING_COMMIT, *extra):
     """The verifier job's `--brief` STDOUT (always chunked since Stream A a289b38eb), byte for byte (what Cloud Run would log: the chunk lines, then the compact `BRIEFED` line): raises RuntimeError if it refuses."""
-    rc, out = _run_job(w, ["--chart", CHART_ID, "--generation", GEN, "--brief", "--sealing-commit", sealing_commit, *extra])
+    with _producer_env(sealing_commit):
+        rc, out = _run_job(w, ["--chart", CHART_ID, "--generation", GEN, "--brief", "--sealing-commit", sealing_commit, *extra])
     if rc != 0:
         raise RuntimeError(f"brief exit {rc}: {out[:1500]}")
     return out
@@ -362,7 +390,8 @@ def brief_as_verifier(w, sealing_commit=SEALING_COMMIT):
     import tempfile
     with tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, "brief.json")
-        rc, out = _run_job(w, ["--chart", CHART_ID, "--generation", GEN, "--brief", "--brief-out", path, "--sealing-commit", sealing_commit])
+        with _producer_env(sealing_commit):
+            rc, out = _run_job(w, ["--chart", CHART_ID, "--generation", GEN, "--brief", "--brief-out", path, "--sealing-commit", sealing_commit])
         if rc != 0:
             raise RuntimeError(f"brief exit {rc}: {out[:1500]}")
         compact = _json.loads(out.splitlines()[-1])
@@ -388,7 +417,9 @@ def approved_seal_as_sealer(w, digest, sealing_commit=SEALING_COMMIT, approver="
     recompute, brief-persistence check, publish, authoritative seal, receipt (the database attests `sealed_by` / `approved_at`)."""
     import psycopg as pg
     from services.gochara_kernel import seal_flow
-    approval = {"schema": "seal_approval/1", "brief_digest": digest, "run_id": run_id, "run_attempt": run_attempt, "approver_login": approver, "approved_by_note": note}
+    bid, eid = _brief_ref(w.conn, digest)
+    approval = {"schema": "seal_approval/2", "brief_digest": digest, "brief_id": bid, "producer_execution_id": eid, "run_id": run_id, "run_attempt": run_attempt, "approver_login": approver,
+                "approved_by_note": note}
     w.conn.execute(f"ALTER ROLE {cw.SEALER} LOGIN")
     conn = pg.connect(_sealer_dsn(w), autocommit=True, connect_timeout=3)
     try:
@@ -703,9 +734,10 @@ def _write_test_receipt(conn, manifest):
     """The seal is only committable with an approval receipt (1240's deferred constraint trigger, R11-3 enforced): the race tests below exercise LOCKING, so their raw
     seals write one in the same transaction (as the sealer)."""
     digest = conn.execute("SELECT brief_digest FROM public.ka_gochara_seal_brief WHERE chart_id = %s AND generation = %s ORDER BY brief_id DESC LIMIT 1", (CHART_ID, GEN)).fetchone()[0]
-    conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login, approved_by_note, run_id, run_attempt,"
-                 " workflow_commit) VALUES (%s::uuid, %s, %s::uuid, %s, 'race-test', 'ruling:locking-test; actor:race-test', 1, 1, 'test-commit') ON CONFLICT (chart_id, generation) DO NOTHING",
-                 (CHART_ID, GEN, manifest, digest))
+    bid, eid = _brief_ref(conn, digest)
+    conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id, approver_login, approved_by_note, run_id,"
+                 " run_attempt, workflow_commit) VALUES (%s::uuid, %s, %s::uuid, %s, %s, %s, 'race-test', 'ruling:locking-test; actor:race-test', 1, 1, 'test-commit')"
+                 " ON CONFLICT (chart_id, generation) DO NOTHING", (CHART_ID, GEN, manifest, digest, bid, eid))
 
 
 def _seal_on(conn):
@@ -1147,8 +1179,8 @@ def test_attack_a_raw_seal_by_the_real_sealer_without_a_receipt_is_refused_at_co
                 w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
                 gk_ledger.publish(w.conn, CHART_ID, GEN)
                 w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
-                w.conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login, approved_by_note, run_id,"
-                               " run_attempt, workflow_commit) VALUES (%s::uuid, %s, gen_random_uuid(), repeat('b', 64), 'x', 'wrong manifest', 1, 1, 'c')", (CHART_ID, GEN))
+                w.conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id, approver_login, approved_by_note,"
+                               " run_id, run_attempt, workflow_commit) VALUES (%s::uuid, %s, gen_random_uuid(), repeat('b', 64), 1, 'x', 'x', 'wrong manifest', 1, 1, 'c')", (CHART_ID, GEN))
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
     # the approved path still works, and its replay needs no new receipt
     b = brief_as_verifier(w)
@@ -1221,8 +1253,10 @@ def _sealer_raw(w, statements):
 
 def _raw_receipt(conn, digest, **extra):
     manifest = conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
-    conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login, approved_by_note, run_id, run_attempt, workflow_commit)"
-                 " VALUES (%s::uuid, %s, %s::uuid, %s, 'raw-sealer', 'ruling:raw; actor:raw-sealer', 1, 1, %s)", (CHART_ID, GEN, manifest, digest, SEALING_COMMIT))
+    bid, eid = _brief_ref(conn, digest)
+    conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id, approver_login, approved_by_note, run_id,"
+                 " run_attempt, workflow_commit) VALUES (%s::uuid, %s, %s::uuid, %s, %s, %s, 'raw-sealer', 'ruling:raw; actor:raw-sealer', 1, 1, %s)",
+                 (CHART_ID, GEN, manifest, digest, bid, eid, SEALING_COMMIT))
 
 
 def test_attack_f_r12_4_the_real_sealer_commits_a_first_seal_with_a_fabricated_digest_and_is_refused_by_name(cbuilt):
@@ -1278,9 +1312,10 @@ def test_the_database_attests_the_receipts_sealer_and_time_whatever_the_insert_n
         conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         gk_ledger.publish(conn, CHART_ID, GEN)
         manifest = conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
-        conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, approver_login, approved_by_note, run_id, run_attempt, workflow_commit,"
-                     " sealed_by, approved_at) VALUES (%s::uuid, %s, %s::uuid, %s, 'raw', 'ruling:raw; actor:raw', 1, 1, %s, 'somebody-else', '2000-01-01T00:00:00Z')",
-                     (CHART_ID, GEN, manifest, b["sha256"], SEALING_COMMIT))
+        bid, eid = _brief_ref(conn, b["sha256"])
+        conn.execute("INSERT INTO public.ka_gochara_seal_approval (chart_id, generation, manifest_id, brief_digest, brief_id, producer_execution_id, approver_login, approved_by_note, run_id,"
+                     " run_attempt, workflow_commit, sealed_by, approved_at) VALUES (%s::uuid, %s, %s::uuid, %s, %s, %s, 'raw', 'ruling:raw; actor:raw', 1, 1, %s, 'somebody-else',"
+                     " '2000-01-01T00:00:00Z')", (CHART_ID, GEN, manifest, b["sha256"], bid, eid, SEALING_COMMIT))
     _sealer_raw(w, forge)
     row = w.conn.execute("SELECT sealed_by, approved_at > now() - interval '1 hour' FROM public.ka_gochara_seal_approval").fetchone()
     assert row == (cw.SEALER, True), row
@@ -1330,7 +1365,8 @@ def test_the_sealing_job_refuses_a_login_that_is_not_the_bare_sealer(cbuilt):
     w = cbuilt
     verify_as_verifier(w)
     b = brief_as_verifier(w)
-    approval = {"schema": "seal_approval/1", "brief_digest": b["sha256"], "run_id": 1, "run_attempt": 1, "approver_login": "x", "approved_by_note": NOTE}
+    bid, eid = _brief_ref(w.conn, b["sha256"])
+    approval = {"schema": "seal_approval/2", "brief_digest": b["sha256"], "brief_id": bid, "producer_execution_id": eid, "run_id": 1, "run_attempt": 1, "approver_login": "x", "approved_by_note": NOTE}
 
     def attempt(conn):
         return seal_flow.execute_seal(conn, chart_id=CHART_ID, generation=GEN, approval=approval, run_id=1, run_attempt=1, sealing_commit=SEALING_COMMIT, triggering_actor="steward-as-owner")
@@ -1392,10 +1428,21 @@ def test_cross_pr_round_trip_the_real_brief_stdout_through_the_real_extractor_ch
     out = brief_stdout_as_verifier(w, SEALING_COMMIT, "--brief-chunk-bytes", "4096")        # small slices: the multi-chunk path is the one that matters
     lines = out.splitlines()
     compact = _json.loads(lines[-1])
-    assert compact["status"] == "BRIEFED" and compact["brief_chunks"] is True and set(compact) == {"brief_bytes", "brief_chunks", "brief_file", "persisted", "sha256", "status"}
+    assert compact["status"] == "BRIEFED" and compact["brief_chunks"] is True and compact["contract_version"] == "seal_brief_transport/1"
+    assert set(compact) == {"brief_bytes", "brief_chunks", "brief_file", "contract_version", "persisted", "producer", "sha256", "status"}
+    assert compact["producer"] == {"commit": SEALING_COMMIT, "image_digest": IMAGE_DIGEST, "execution_id": EXECUTION_NAME}     # what the job's own environment carried
     assert sum(1 for l in lines if l.startswith('{"b64"')) > 1
     # the REAL Cloud Run representation: a JSON object printed on stdout is parsed into the entry's ROOT jsonPayload (R13-1); arrival order is not relied on
-    logs = [{"textPayload": "starting"}, *[{"jsonPayload": _json.loads(l), "labels": {"run.googleapis.com/execution_name": "exec-1"}} for l in reversed(lines)], {"textPayload": "done"}]
+    def struct(v):
+        """Cloud Run's protobuf Struct: key order is lost and EVERY number is a double (3 -> 3.0)."""
+        if isinstance(v, bool) or v is None or isinstance(v, str):
+            return v
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, dict):
+            return {k: struct(v[k]) for k in sorted(v, reverse=True)}
+        return [struct(x) for x in v]
+    logs = [{"textPayload": "starting"}, *[{"jsonPayload": struct(_json.loads(l)), "labels": {"run.googleapis.com/execution_name": EXECUTION_NAME}} for l in reversed(lines)], {"textPayload": "done"}]
     raw, comp = bx.extract(logs)                                                           # the REAL extractor
     digest = bc.check(raw, comp, chart_id=CHART_ID, generation=GEN, sealing_commit=SEALING_COMMIT)    # the REAL check
     assert digest == compact["sha256"] == _hl.sha256(raw).hexdigest()
@@ -1408,16 +1455,18 @@ def test_cross_pr_round_trip_the_real_brief_stdout_through_the_real_extractor_ch
     brief_id = comp["persisted"]["brief_id"]
     # STAND-IN (the one place this rig does not run the real thing): the Cloud Run execution resource. The envelope is built through the REAL `gochara_seal_execution_check` from an execution
     # description in the documented shape; the first real execution is the proof of that shape.
-    img = "sha256:" + "a" * 64
+    img = IMAGE_DIGEST
     sa = "gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
     args = ["--chart", CHART_ID, "--generation", GEN, "--brief", "--sealing-commit", SEALING_COMMIT]
-    execution = {"metadata": {"name": "exec-1"}, "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": sa, "maxRetries": 0, "containers": [{
+    execution = {"metadata": {"name": EXECUTION_NAME}, "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": sa, "maxRetries": 0, "containers": [{
         "image": f"asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline@{img}", "args": args,
-        "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SEALING_COMMIT},
+        "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SEALING_COMMIT}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": img},
                 {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url", "key": "latest"}}}]}]}}},
         "status": {"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": 1}}
-    verified = xc.check(execution, execution_name="exec-1", image_digest=img, service_account=sa, runner_commit=SEALING_COMMIT, args=args, secret_name="gochara-verifier-db-url")
-    envelope_file.write_text(_json.dumps(xc.build_envelope(verified, run_id=str(run_id), attempt=str(attempt), sealing_commit=SEALING_COMMIT, brief_digest=digest, brief_id=brief_id)))
+    verified = xc.check(execution, execution_name=EXECUTION_NAME, image_digest=img, service_account=sa, runner_commit=SEALING_COMMIT, args=args, secret_name="gochara-verifier-db-url")
+    xc.bind_producer(verified, comp["producer"], execution_name=EXECUTION_NAME, sealing_commit=SEALING_COMMIT)       # the brief's OWN producer line == the executed resource
+    envelope_file.write_text(_json.dumps(xc.build_envelope(verified, run_id=str(run_id), attempt=str(attempt), sealing_commit=SEALING_COMMIT, brief_digest=digest, brief_id=brief_id,
+                                                           producer_execution_id=comp["producer"]["execution_id"])))
     approvals.write_text(_json.dumps([{"state": "approved", "user": {"login": "steward-as-owner"}, "environments": [{"name": "gochara-seal"}],
                                       "comment": f"brief-digest: {digest}  run: {run_id}  attempt: {attempt}  brief-id: {brief_id}"}]))
     orch = os.path.join(scripts, "gochara-seal-approved.sh")
@@ -1434,6 +1483,8 @@ def test_cross_pr_round_trip_the_real_brief_stdout_through_the_real_extractor_ch
     assert len(_receipt(w.conn)) == 1
     row = w.conn.execute("SELECT brief_digest, run_id, run_attempt, approved_by_note, sealed_by FROM public.ka_gochara_seal_approval").fetchone()
     assert tuple(row) == (digest, run_id, attempt, "ruling:NATIVE_DIRECT_RULINGS_20261002#2; actor:steward-as-owner", cw.SEALER), row
+    ids = w.conn.execute("SELECT brief_id, producer_execution_id FROM public.ka_gochara_seal_approval").fetchone()
+    assert tuple(ids) == (brief_id, EXECUTION_NAME), ids                                      # the receipt names the SPECIFIC persisted brief and execution (ST-WIRE-2)
     # R13-4: the reconcile step, run AS THE REAL SEALER LOGIN, reads what is actually true after the seal
     w.conn.execute(f"ALTER ROLE {cw.SEALER} LOGIN")
     try:
@@ -1473,9 +1524,10 @@ def test_brief_size_report_per_class_and_projected_to_the_real_class_count(cbuil
     assert total > 0 and grains >= 1 and fixed > 0
 
 
-def test_stream_as_golden_stdout_goes_through_the_sealing_scripts_unchanged():
-    """The golden `--brief --brief-chunks` stdout Stream A committed (the REAL output of their suite): B's REAL extractor reassembles it, and B's REAL check accepts it for the chart,
-    generation and sealing commit the payload itself names — with the digest the compact line declares (so a change to either side's format breaks THIS test, not the first dispatch)."""
+def test_stream_as_golden_log_entries_go_through_the_sealing_scripts_unchanged():
+    """Stream A's golden LOG ENTRIES (`golden_brief_log_entries_1class.json`: the documented Cloud Logging LogEntry shape, root `jsonPayload`) and golden stdout. CAVEAT (kept in the packet): the
+    fixture is BUILT FROM THE DOCUMENTATION, NOT CAPTURED from a real execution — the first real execution (runbook act 6b) is diffed against it. B's REAL extractor reassembles it; B's REAL
+    check accepts everything about it except the sealing commit (the fixture's placeholder `cli-sha` is not a revision), which must be the ONE refusal."""
     import hashlib
     import json as _json
     import sys as _sys
@@ -1486,40 +1538,55 @@ def test_stream_as_golden_stdout_goes_through_the_sealing_scripts_unchanged():
         import gochara_seal_brief_extract as bx
     finally:
         _sys.path.remove(scripts)
-    golden = os.path.join(os.path.dirname(__file__), "fixtures", "golden_brief_stdout_1class.txt")
-    with open(golden, encoding="utf-8") as f:
-        entries = [{"textPayload": l} for l in f.read().splitlines()]
-    raw, compact = bx.extract(entries)
-    p = _json.loads(raw)
+    here = os.path.dirname(__file__)
+    with open(os.path.join(here, "fixtures", "golden_brief_log_entries_1class.json"), encoding="utf-8") as f:
+        from_entries = _json.load(f)
+    raw, compact = bx.extract(from_entries)
+    with open(os.path.join(here, "fixtures", "golden_brief_stdout_1class.txt"), encoding="utf-8") as f:
+        raw2, compact2 = bx.extract([{"textPayload": l} for l in f.read().splitlines()])
+    assert (raw, compact) == (raw2, compact2)                                                  # the two goldens agree
     assert hashlib.sha256(raw).hexdigest() == compact["sha256"] and len(raw) == compact["brief_bytes"]
-    # the fixture's sealing commit is the placeholder 'cli-sha' (not a revision): every OTHER check must pass and the commit binding must be the one to refuse; with a real
-    # 40-hex revision in the payload (the round-trip test above) it passes — ask Stream A to regenerate the fixture with a 40-hex commit to make this a full positive check
+    assert compact["contract_version"] == "seal_brief_transport/1" and set(compact["producer"]) == {"commit", "execution_id", "image_digest"}
+    p = _json.loads(raw)
     with pytest.raises(bc.Refused, match="not this workflow's reviewed revision"):
         bc.check(raw, compact, chart_id=p["chart_id"], generation=p["generation"], sealing_commit="a" * 40)
 
 
-def test_the_reconcile_reads_not_sealed_before_the_seal_as_the_real_sealer_login(cbuilt):
-    """R13-4: before anything is sealed the sealer login (SELECT on the publication, seal and receipt tables only) reads a candidate with no seal and no receipt — NOT_SEALED — through
-    the real script's own reader; a failed or cancelled run is then reconciled by READING this, never by inferring it."""
-    import sys as _sys
-    scripts = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "scripts"))
-    _sys.path.insert(0, scripts)
-    try:
-        import gochara_seal_reconcile as rc_
-    finally:
-        _sys.path.remove(scripts)
+def test_the_sealing_job_refuses_owner_membership_and_column_grants_on_the_verification_and_brief_tables(cbuilt):
+    """Codex R13-5 (the adopted sealer self-check omitted two prohibited capabilities): (a) a sealer that is a MEMBER of a role that OWNS the Gochara tables — NOINHERIT membership included —
+    and (b) a sealer holding only a COLUMN-level write on a VERIFICATION table or on the brief table are each refused with `identity_not_sealer`, nothing published, no receipt."""
     import psycopg as pg
+    from services.gochara_kernel import seal_flow
     w = cbuilt
     verify_as_verifier(w)
-    brief_as_verifier(w)
-    w.conn.execute(f"ALTER ROLE {cw.SEALER} LOGIN")
-    try:
-        c = pg.connect(_sealer_dsn(w), autocommit=True, connect_timeout=3)
+    b = brief_as_verifier(w)
+    bid, eid = _brief_ref(w.conn, b["sha256"])
+    approval = {"schema": "seal_approval/2", "brief_digest": b["sha256"], "brief_id": bid, "producer_execution_id": eid, "run_id": 1, "run_attempt": 1, "approver_login": "x", "approved_by_note": NOTE}
+
+    def attempt():
+        w.conn.execute(f"ALTER ROLE {cw.SEALER} LOGIN")
         try:
-            pub, seals, recs = rc_.read_state(c, CHART_ID, GEN)
+            c = pg.connect(_sealer_dsn(w), autocommit=True, connect_timeout=3)
+            try:
+                with pytest.raises(seal_flow.SealRefused, match="identity_not_sealer"):
+                    seal_flow.execute_seal(c, chart_id=CHART_ID, generation=GEN, approval=approval, run_id=1, run_attempt=1, sealing_commit=SEALING_COMMIT, triggering_actor="steward-as-owner")
+            finally:
+                c.close()
         finally:
-            c.close()
+            w.conn.execute(f"ALTER ROLE {cw.SEALER} NOLOGIN")
+    # (a) membership of the table-owning role (the sealer is NOINHERIT: only pg_has_role(..., 'MEMBER') sees it)
+    w.conn.execute(f"GRANT {cw.OWNER} TO {cw.SEALER}")
+    try:
+        attempt()
     finally:
-        w.conn.execute(f"ALTER ROLE {cw.SEALER} NOLOGIN")
-    assert (pub, seals, recs) == ("candidate", 0, [])
-    assert rc_.classify(pub, seals, recs, digest="0" * 64, run_id=1, attempt=1)[0] == "NOT_SEALED"
+        w.conn.execute(f"REVOKE {cw.OWNER} FROM {cw.SEALER}")
+    # (b) a column-only write on each of: a verification table (window), the other verification table (inventory), the brief table
+    for table, col, priv in (("ka_gochara_eval_window_verification", "chart_id", "INSERT"), ("ka_gochara_search_inventory_verification", "chart_id", "UPDATE"),
+                             ("ka_gochara_seal_brief", "state_digest", "UPDATE")):
+        w.conn.execute(f"GRANT {priv} ({col}) ON public.{table} TO {cw.SEALER}")
+        try:
+            attempt()
+        finally:
+            w.conn.execute(f"REVOKE {priv} ({col}) ON public.{table} FROM {cw.SEALER}")
+    assert w.conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s", (CHART_ID, GEN)).fetchone()[0] == "candidate"
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0 and _receipt(w.conn) == []
