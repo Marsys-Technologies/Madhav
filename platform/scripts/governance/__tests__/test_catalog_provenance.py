@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import sys
 
 import pytest
@@ -956,7 +957,10 @@ def test_check_fails_when_all_no_detector_scus_get_a_fake_route_evidence_only_pr
             ]
             entry["no_detector"] = None
             faked.append(scu_id)
-    assert len(faked) == 75  # the exact count the gate review's own attack used
+    # Derived from the committed artifact (its own generator-written summary), not a pinned number:
+    # a regeneration moves the count (75 -> 71 on 2026-10-02) without changing what this attack proves.
+    assert faked and len(faked) == payload["summary"]["scus_no_detector"]
+    assert len(faked) == sum(payload["summary"]["no_detector_reason_counts"].values())
 
     artifact_path = tmp_path / "producer_provenance.derived.json"
     artifact_path.write_text(json.dumps(payload))
@@ -1293,7 +1297,7 @@ def test_check_fails_when_all_no_detector_scus_get_a_fake_source_query_producer(
 ):
     """B2 (B_REVIEW4): a fabricated `derived_from_source_query` producer
     (`table: no_such_table_xyz`, `source_ref: nope.ts:1-2` — shape-valid but
-    uncatalogued) on all 75 NO_DETECTOR SCUs used to pass 182/182. Binding
+    uncatalogued) on every NO_DETECTOR SCU used to pass 182/182. Binding
     each producer's `source_ref` to a `kind: source_query` requirement's own
     `source_ref` on the SAME SCU (checkable from the snapshot alone, no DB)
     closes this. Table EXISTENCE remains a stated, DB-bound limit (E).
@@ -1314,7 +1318,8 @@ def test_check_fails_when_all_no_detector_scus_get_a_fake_source_query_producer(
             ]
             entry["no_detector"] = None
             faked.append(scu_id)
-    assert len(faked) == 75
+    assert faked and len(faked) == payload["summary"]["scus_no_detector"]
+    assert len(faked) == sum(payload["summary"]["no_detector_reason_counts"].values())
 
     artifact_path = tmp_path / "producer_provenance.derived.json"
     artifact_path.write_text(json.dumps(payload))
@@ -1333,8 +1338,7 @@ def test_check_fails_when_all_no_detector_scus_get_a_fake_source_query_producer(
 
 
 def test_all_committed_source_query_producers_are_snapshot_bound():
-    """B2 (d): confirms the count the gate review found — all 294
-    `derived_from_source_query` producers in the real committed artifact have
+    """B2 (d): confirms that all `derived_from_source_query` producers in the real committed artifact have
     a `source_ref` equal to a `kind: source_query` requirement's own
     `source_ref` on the SAME SCU in the snapshot. This is what makes the
     unmodified artifact still pass under the new B2 binding check."""
@@ -1351,7 +1355,11 @@ def test_all_committed_source_query_producers_are_snapshot_bound():
                 if p.get("source_ref") not in refs_by_scu.get(scu_id, set()):
                     unbound.append((scu_id, p.get("asset_id")))
     assert unbound == []
-    assert bound_count == 294
+    # Count derived from the committed file by a second path (raw text, not the parsed payload walk above);
+    # the exact number moves with every regeneration (294 -> 290 on 2026-10-02).
+    raw = cp.DERIVED_OUTPUT_PATH.read_text(encoding="utf-8")
+    assert bound_count > 0
+    assert bound_count == len(re.findall(r'"disposition":\s*"derived_from_source_query"', raw))
 
 
 def test_check_fails_when_a_fake_producer_is_appended_beside_a_real_one(
