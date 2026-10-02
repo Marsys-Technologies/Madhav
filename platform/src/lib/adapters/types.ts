@@ -2,6 +2,7 @@ import type { JSONSchema7 } from 'json-schema'
 import type { LanguageModelV3 } from '@ai-sdk/provider'
 import type { CallType, ModelStack, Provider } from '@/lib/models/registry'
 import type { ProviderId } from '@/lib/ai-console/types'
+import type { AiEffort } from '@/lib/ai-console/types'
 
 export type { JSONSchema7 as JSONSchema }
 
@@ -52,6 +53,8 @@ export interface QueryRequest {
   maxOutputTokens?: number
   temperature?: number
   reasoning?: 'auto' | 'enable' | 'disable'
+  /** Saved AI Console role override; absent means the model/provider default. */
+  effort?: AiEffort
   timeoutMs?: number
 
   traceId?: string

@@ -13,12 +13,18 @@ Runs only against an explicitly named local disposable database. APPROVE criteri
   - Second-run inserts 0 rows (content_sha256 idempotency via chunk_id ON CONFLICT)
 """
 import os
+import sys
 import uuid
+from pathlib import Path
 from urllib.parse import urlparse
 
 import pytest
 import psycopg
 import psycopg.rows
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tests" / "l3"))
+
+from _disposable_db_guard import validate_disposable_dsn  # noqa: E402
 
 from pipeline.orchestrator.writers.bg_texts import TextsWriter
 from pipeline.orchestrator.writers import ContextSpec
@@ -31,12 +37,10 @@ def db_conn():
     url = os.environ.get("NIRMANA_BG_TEXTS_MUTATION_TEST_DATABASE_URL")
     if not url:
         pytest.skip("NIRMANA_BG_TEXTS_MUTATION_TEST_DATABASE_URL not set")
-    parsed = urlparse(url)
-    if parsed.hostname not in {"localhost", "127.0.0.1"} or parsed.path != "/nirmana_bg_texts_writer_test":
-        raise RuntimeError(
-            "NIRMANA_BG_TEXTS_MUTATION_TEST_DATABASE_URL must point to the exact "
-            "local nirmana_bg_texts_writer_test database"
-        )
+    # C25: host discipline via the ONE shared guard (tests/l3/_disposable_db_guard.py)
+    # — every host/hostaddr entry loopback (multi-host, keyword/value and query-string
+    # forms), no libpq environment overrides — plus this suite's exact-dbname rule.
+    validate_disposable_dsn(url, "nirmana_bg_texts_writer_test")
     conn = psycopg.connect(url, row_factory=psycopg.rows.dict_row)
     yield conn
     conn.rollback()

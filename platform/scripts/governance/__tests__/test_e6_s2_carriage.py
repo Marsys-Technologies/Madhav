@@ -1191,9 +1191,9 @@ def test_validator_doc_level_field_list_must_match():
         ac.validate_declarations(doc)
 
 
-def test_the_committed_file_is_1_7_0_declares_no_carriage_check_and_lists_the_fields():
+def test_the_committed_file_is_1_8_0_declares_no_carriage_check_and_lists_the_fields():
     raw = json.loads(ac.DECLARATIONS_PATH.read_text(encoding="utf-8"))
-    assert raw["version"] == "1.7.0" and raw["carriage_declaration_fields"] == list(ac.CARRIAGE_DECL_FIELDS)
+    assert raw["version"] == "1.8.0" and raw["carriage_declaration_fields"] == list(ac.CARRIAGE_DECL_FIELDS)
     assert [a for a, e in raw["assets"].items() if any(k in (e.get("carriage") or {}) for k in ac.CARRIAGE_DECL_FIELDS)] == []
     ac.load_asset_declarations()
 

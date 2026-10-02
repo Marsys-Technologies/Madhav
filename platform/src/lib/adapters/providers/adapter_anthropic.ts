@@ -10,10 +10,12 @@ export const adapterAnthropic: Adapter = {
   providerId: 'anthropic',
 
   prepareRequest(req: QueryRequest, meta: ModelMeta, injectedModel): StreamTextOptions {
-    const providerOptions =
-      meta.quirks.cache_strategy === 'explicit_headers'
-        ? { anthropic: { cacheControl: { type: 'ephemeral' as const } } }
-        : undefined
+    const anthropicOptions = {
+      ...(meta.quirks.cache_strategy === 'explicit_headers'
+        ? { cacheControl: { type: 'ephemeral' as const } } : {}),
+      ...(req.effort ? { effort: req.effort } : {}),
+    }
+    const providerOptions = Object.keys(anthropicOptions).length ? { anthropic: anthropicOptions } : undefined
 
     const tools =
       req.tools?.length
