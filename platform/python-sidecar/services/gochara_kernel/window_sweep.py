@@ -55,7 +55,15 @@ CHANNEL_AGAINST = "evidence_against_occurrence"
 # has no window sweep yet (P1 is a later increment) and refuses loudly.
 FOR_ONLY_PATHS = frozenset({"P3", "P4"})
 DIRECTIONAL_PATHS = frozenset({"P2"})
-SWEEP_PATHS = FOR_ONLY_PATHS | DIRECTIONAL_PATHS
+# P1's four soft factors (dignity / combustion / agent_nature / maitrī) are CATEGORICAL or step rows
+# that declare no [0,1] value mapping (dignity carries a virūpa ordering anchor "with no magnitude
+# claim"). Its windows are formed (connected union of admitted supports) and stored UNQUALIFIED with
+# the named reason `value_mapping_undeclared` until a row declares one; channel assignment through
+# agent_nature is not implemented, and refuses if a record is ever qualified before it is.
+CATEGORICAL_PATHS = frozenset({"P1"})
+SWEEP_PATHS = FOR_ONLY_PATHS | DIRECTIONAL_PATHS | CATEGORICAL_PATHS
+CATEGORICAL_FACTORS = frozenset({"dignity_of_transit_sign", "combustion", "agent_nature",
+                                 "maitri_compound"})
 
 # A factor row's `direction` that says only "which way is stronger" assigns no channel; one that
 # names a channel/valence declares an against-channel operand; anything else is ambiguous.
@@ -187,6 +195,17 @@ def vedha_attenuation(row: dict, rec: SweepRecord,
                    factor=row["factor_id"])
 
 
+def categorical_factor(row: dict) -> Outcome:
+    """A categorical/step factor with no declared value mapping cannot yield a number in [0,1]:
+    the operand is a named missing input (`value_mapping_undeclared`), never a default. A row that
+    DOES declare a `value_mapping` has a shape this sweep cannot interpret yet — refused by name."""
+    if row.get("value_mapping"):
+        raise SweepRefusal(
+            f"factor {row['factor_id']!r} declares a value_mapping; the sweep has no reader for it yet "
+            "— refused, never ignored")
+    return _missing(row, "value_mapping_undeclared")
+
+
 def evaluate_factors(rec: SweepRecord, factor_rows: list[dict], *,
                      drishti: Callable[[str, int], float] | None = None,
                      vedha: Callable[[SweepRecord, datetime], float | None] | None = None) -> list[Outcome]:
@@ -201,10 +220,12 @@ def evaluate_factors(rec: SweepRecord, factor_rows: list[dict], *,
             out.append(graduated_drishti(row, rec, drishti))
         elif fid == "vedha_attenuation":
             out.append(vedha_attenuation(row, rec, vedha))
+        elif fid in CATEGORICAL_FACTORS:
+            out.append(categorical_factor(row))
         else:
             raise SweepRefusal(
                 f"path {rec.path_id}: factor {fid!r} has no sweep evaluator yet "
-                "(P1 is a later increment) — refused, never skipped")
+                "— refused, never skipped")
     return out
 
 
@@ -267,6 +288,10 @@ def p2_direction(agent: str, house: int | None) -> str:
 
 
 def record_channel(event_class: str, rec: SweepRecord) -> str:
+    if rec.path_id in CATEGORICAL_PATHS:
+        raise SweepRefusal(
+            f"{rec.path_id}: channel assignment through agent_nature/dignity is not implemented — "
+            "a qualified P1 record cannot be placed in a channel yet")
     if rec.path_id in FOR_ONLY_PATHS:
         return CHANNEL_FOR
     if rec.path_id in DIRECTIONAL_PATHS:
@@ -446,8 +471,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
     # ambiguous row leaves it NULL — derived from the row, never from the path's name.
     directional = path_id in DIRECTIONAL_PATHS
     against_evaluated = directional or against_channel_state(factor_rows) == "none_declared"
-    programs = {r.record_id: build_program(r, factor_rows, drishti=drishti, vedha=vedha,
-                                           channel=record_channel(event_class, r))
+    programs = {r.record_id: build_program(r, factor_rows, drishti=drishti, vedha=vedha)
                 for r in members}
     # Per-support-piece maxima, solved ONCE. A record whose operand is undeterminable over its
     # whole support is unqualified — never a 0.0 (§2.1: a missing operand takes its null_state).
@@ -469,6 +493,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             prog.null_states.add(UNQUALIFIED)
             prog.reasons.append(("operand", "operand_undeterminable_over_support"))
         pieces[rid] = got_pieces
+        if prog.qualified:      # a channel is only needed (and only defined) for a qualified record
+            prog.channel = record_channel(event_class, prog.rec)
 
     components = union_components(p for r in members for p in r.supports)
     drafts: list[WindowDraft] = []
@@ -549,7 +575,7 @@ __all__ = [
     "CHANNEL_AGAINST", "CHANNEL_FOR", "DIRECTIONAL_PATHS", "FOR_ONLY_PATHS", "Outcome",
     "RecordProgram", "SWEEP_PATHS", "SweepRecord", "SweepRefusal", "WindowDraft",
     "activity_kernel", "against_channel_state", "build_program", "draft_windows",
-    "p2_direction", "record_channel", "vedha_attenuation",
+    "CATEGORICAL_PATHS", "categorical_factor", "p2_direction", "record_channel", "vedha_attenuation",
     "evaluate_factors", "graduated_drishti", "maximise_earliest", "registry_factor_rows",
     "union_components",
 ]

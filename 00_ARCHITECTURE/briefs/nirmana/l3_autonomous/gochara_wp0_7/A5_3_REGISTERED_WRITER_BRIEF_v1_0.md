@@ -553,3 +553,15 @@ objects — when ND-ORB is ruled (`orb_not_ratified`). It is the honest outcome,
 - **Steps are exact**: `maximise_earliest` bisects the transition between the last lower sample and the first maximal one,
   so a dṛṣṭi step inside one aspect record (the body leaving one source sign) peaks at its exact breakpoint (< 2 s),
   not at the next grid point.
+
+### Design v1.8 (2026-10-02) — the P1 window sweep (windows formed, factors honestly unqualified)
+
+P1's four soft factors — `dignity_of_transit_sign`, `combustion`, `agent_nature`, `maitri_compound` — are categorical or
+step rows that declare **no [0,1] value mapping** (dignity's virūpa ordering anchor is "ordering anchor ONLY … no
+magnitude claim"; agent_nature/maitrī assign channel/valence, not a magnitude). So the P1 sweep forms the windows (the
+connected union of the admitted period-lord contacts' supports) and stores them **unqualified** with the named reason
+`value_mapping_undeclared`; a row that later declares a `value_mapping` is REFUSED by name (the sweep has no reader for an
+undeclared shape — never ignored). Channel assignment through `agent_nature` is not implemented and refuses if a P1 record
+is ever qualified before it is. The independent verifier derives the same reason from the same rows with its own code (a
+cross-check test compares builder and verifier on every factor state of every swept path). All four of P1–P4 now have a
+`window:<class>:<path>` grain; P5 stays held; P6 is day-tier only.

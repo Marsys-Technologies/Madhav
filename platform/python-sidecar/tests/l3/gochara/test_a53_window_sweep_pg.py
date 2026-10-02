@@ -296,7 +296,7 @@ def test_a_window_grain_outside_the_planned_paths_is_refused_by_name(grain):
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-x", db_conn=grain,
                       config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON}, dry_run=False)
     with grain.transaction():
-        res = writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=f"window:{CLS}:P1", label="w"))
+        res = writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=f"window:{CLS}:P5", label="w"))
     assert res.rows_inserted == 0 and "unknown window grain" in res.notes
 
 

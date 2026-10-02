@@ -123,8 +123,8 @@ GENERATION = "5.0"
 # brief §interval_sweep + the batch list). The hold is a plan-level absence,
 # never a silent skip: the substep labels say so.
 RECORD_PATHS = tuple(p for p in BOUND_PATHS if p != "P5")
-# Window grains: the paths the sweep has an evaluator for (P2/P3/P4; P1 is a later increment). A
-# path absent here is a plan-level absence — never a silent skip inside a grain.
+# Window grains: the paths the sweep has an evaluator for (P1–P4; P5 is held). A path absent here
+# is a plan-level absence — never a silent skip inside a grain.
 WINDOW_PATHS = tuple(p for p in RECORD_PATHS if p in gk_window_sweep.SWEEP_PATHS)
 # birth_anchor is excluded from enumeration entirely (O-CF-N6: zero rows) — it is NOT a
 # scored class (27 − 1 = 26); the evaluator refuses it by design, so planning it would

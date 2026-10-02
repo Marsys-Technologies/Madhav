@@ -46,6 +46,10 @@ def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool):
         return ("fn",) if drishti_bound else ("unq", "graduated_drishti_source_not_landed")
     if fid == "vedha_attenuation":
         return ("fn",) if vedha_bound else ("unq", "vedha_overlay_not_bound")
+    if fid in ("dignity_of_transit_sign", "combustion", "agent_nature", "maitri_compound"):
+        if row.get("value_mapping"):
+            raise RuntimeError(f"window verifier: {fid} declares a value_mapping it cannot derive from")
+        return ("unq", "value_mapping_undeclared")
     raise RuntimeError(f"window verifier: factor {fid!r} has no verifier derivation")
 
 
@@ -74,7 +78,7 @@ def _channel(event_class: str, path_id: str, rec: dict) -> str:
         if fav == adv:
             raise RuntimeError(f"window verifier: P2 {name} house {house} has no decidable direction")
         return channel_for("favourable" if fav else "adverse", event_class)
-    raise RuntimeError(f"window verifier: path {path_id} has no derivation")
+    raise RuntimeError(f"window verifier: path {path_id} has no channel derivation")
 
 
 def _against_evaluated(path_id: str, factor_rows: list[dict]) -> bool:

@@ -108,11 +108,11 @@ def test_a_grain_is_one_path_version():
 
 def test_paths_without_a_sweep_refuse_loudly():
     with pytest.raises(SweepRefusal):
-        _draft([_rec("a", path="P2")])
+        _draft([_rec("a", path="P5")])
 
 
 def test_a_factor_with_no_evaluator_refuses_never_skips():
-    rows = _rows_declared("P3", "1.0.0") + [{"factor_id": "dignity_of_transit_sign", "null_state": "unqualified"}]
+    rows = _rows_declared("P3", "1.0.0") + [{"factor_id": "yoga_strength", "null_state": "unqualified"}]
     with pytest.raises(SweepRefusal):
         _draft([_rec("a")], lambda p, v: rows)
 
@@ -481,3 +481,45 @@ def test_an_aspect_record_scores_through_the_real_table():
     node = _rec("n", relation="aspect", agent="rahu", supports=((0, 10),), aspect_offset_at=lambda t: 7)
     (c,), _ = _draft([node], _rows_declared, drishti=writer_mod.DRISHTI_SOURCE)
     assert c.score is None                                       # N-14: a node casts no dṛṣṭi
+
+
+# ── P1: windows are formed; the categorical factors declare no value mapping ─────────────────────────
+
+def test_p1_window_is_formed_and_stored_unqualified_with_the_named_reason():
+    rows = ws.registry_factor_rows("P1", "1.0.0")
+    assert {r["factor_id"] for r in rows} == {"dignity_of_transit_sign", "combustion", "agent_nature",
+                                              "maitri_compound"}
+    recs = [_rec("a", path="P1", relation="aspect", kind="house_span", supports=((0, 30),)),
+            _rec("b", path="P1", root="rb", supports=((20, 50),))]
+    (w,), _ = _draft(recs, ws.registry_factor_rows)
+    assert w.interval == (_d(0), _d(50))
+    assert (w.score, w.evidence_for, w.evidence_against, w.peak_instant) == (None, None, None, None)
+    assert w.unresolved == {"value_mapping_undeclared": 2} and w.outcome_valence_for_native == "unqualified"
+
+
+def test_p1_row_that_declares_a_value_mapping_is_refused_not_ignored():
+    rows = [dict(r, value_mapping={"benefic": 1.0}) if r["factor_id"] == "agent_nature" else r
+            for r in ws.registry_factor_rows("P1", "1.0.0")]
+    with pytest.raises(SweepRefusal):
+        _draft([_rec("a", path="P1")], lambda p, v: rows)
+
+
+def test_p1_channel_assignment_is_not_implemented_and_says_so():
+    with pytest.raises(SweepRefusal):
+        ws.record_channel("marriage", _rec("a", path="P1"))
+
+
+def test_builder_and_verifier_agree_on_every_factor_state_of_every_swept_path_today():
+    """The verifier re-derives qualification from the same rows with its own code; for every swept
+    path and a record of every relation they must name the SAME missing operand."""
+    from services.gochara_kernel import window_verifier as wv
+    for path in ("P1", "P2", "P3", "P4"):
+        rows = ws.registry_factor_rows(path, "1.0.0")
+        for relation in ("residence", "aspect", "conjunction"):
+            rec = _rec("a", path=path, relation=relation, supports=((0, 10),))
+            prog = ws.build_program(rec, rows)
+            built = sorted({r for _f, r in prog.reasons})
+            derived = wv._record_state(rows, {"kind": rec.object_kind, "relation": relation}, False, False)
+            assert (built == []) == (derived[0] != "unq"), (path, relation)
+            if built:
+                assert built == derived[1], (path, relation, built, derived)
