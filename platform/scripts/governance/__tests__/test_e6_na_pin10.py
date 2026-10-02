@@ -107,6 +107,12 @@ def test_S4_measure_emits_na_for_a_clean_no_dependency_asset_and_leaves_a_depend
     assert ms["y"]["Build.dep_liveness"]["v"] != NA and "cause" not in ms["y"]["Build.dep_liveness"]    # a non-empty list: graded as before
 
 
+def test_S4_measure_says_nothing_to_match_for_a_no_writer_asset(monkeypatch, tmp_path):
+    ms = na_causes._m(monkeypatch, tmp_path, {"x": na_causes._reg_row("x")}, hist={"y": na_causes._h_unstarted()})
+    rec = ms["x"]["Build.dep_liveness"]
+    assert rec["v"] == NA and "nothing to match" in rec["measured"] and "found no undeclared read" not in rec["measured"]
+
+
 def test_S4_measure_withholds_the_na_when_the_asset_reads_an_undeclared_table(monkeypatch, tmp_path):
     reg = {"x": na_causes._reg_row("x")}
     na_causes._stub_layer(monkeypatch, tmp_path, reg)
