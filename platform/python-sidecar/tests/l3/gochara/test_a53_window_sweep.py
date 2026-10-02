@@ -61,6 +61,10 @@ def _rec(rid, *, root=None, path="P3", version="1.0.0", relation="residence", ki
             kw["longitude_at"] = _lon
     if relation == "aspect" and "aspect_rays" not in kw:
         kw["aspect_rays"] = (180.0,)
+    # R8-6: a state-valued operand needs COMPLETE state boundaries or the record is unqualified. These fixtures state
+    # them complete (an empty list = "no operand change inside the support") unless a test says otherwise.
+    kw.setdefault("state_boundaries", lambda lo, hi: [])
+    kw.setdefault("state_boundaries_complete", True)
     return SweepRecord(
         record_id=rid, root_id=root or f"root-{rid}", path_id=path, rule_version=version,
         relation=relation, object_kind=kind, agent=agent, operator_role=role,
@@ -336,9 +340,10 @@ def test_maximise_earliest_o_sm_4_parabola_interior_peak():
 
     best, at = ws.maximise_earliest(f, lo, hi)
     assert best == pytest.approx(0.25, abs=1e-9)
-    # the EARLIEST instant within the frozen 1e-9 tie tolerance of the maximum: a smooth parabola's flat
-    # top is ~sqrt(1e-9·range²) wide (here ≈ 27 s of 10 days) — an endpoint (value 0) is nowhere near
-    assert abs((at - _d(5)).total_seconds()) < 60 and at > _d(4.99)
+    # R8-6: the tie tolerance is applied only BETWEEN distinct extrema, so a smooth hump's peak is its TRUE peak
+    # (to the solver's 1 ms tolerance) — never an earlier scan point ~27 s down the shoulder that merely sits
+    # within 1e-9 of it (that shift is gone)
+    assert abs((at - _d(5)).total_seconds()) < 0.01
 
 
 def test_maximise_earliest_plateau_returns_the_earliest_instant():

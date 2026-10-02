@@ -304,6 +304,12 @@ def test_p2_with_a_bound_vedha_source_stores_both_channels_in_the_real_schema(p2
     ws_store = WindowStore(conn)
     recs = ws_store.read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P2",
                                rule_version=VERSION)
+    # a bound vedha source is a STATE-valued operand: with no stated boundaries the record is unqualified (R8-6) ...
+    (unq,), _ = ws.draft_windows(cls, recs, ws.registry_factor_rows, vedha=lambda r, t: 0.5, allow_dynamic=True)
+    assert unq.peak_instant is None and unq.unqualified_reason == ws.STATE_BOUNDARIES_REASON
+    # ... the constant source here has no state change at all: its boundaries are stated complete and empty
+    import dataclasses
+    recs = [dataclasses.replace(r, state_boundaries=lambda lo, hi: [], state_boundaries_complete=True) for r in recs]
     drafts, _ = ws.draft_windows(cls, recs, ws.registry_factor_rows, vedha=lambda r, t: 0.5,
                                  allow_dynamic=True)
     with conn.transaction():
@@ -403,10 +409,13 @@ def test_verifier_checks_the_p2_channels_from_the_cited_sets(p2_grain):
     drafts = ws.draft_windows(cls, recs, ws.registry_factor_rows, vedha=lambda r, t: 0.5,
                               allow_dynamic=True)[0]
     _write(conn, cls, "P2", drafts)
-    # the solver ran (switch lifted) with a bound vedha source; tell the verifier the same facts
+    # the solver ran (switch lifted) with a bound vedha source — but NO source of vedha overlay edges exists, so the
+    # record is unqualified (`state_boundaries_incomplete`, R8-6) and the window is NULL: builder and verifier derive
+    # the same thing independently, so it is fully VERIFIED — no numeric vedha window can claim verification
+    assert drafts[0].peak_instant is None and drafts[0].unqualified_reason == ws.STATE_BOUNDARIES_REASON
     out = _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True)
-    assert out["windows"] == 1 and out["unverified_dynamic"] == 1    # vedha value is a function: NOT reproduced
-    assert out["status"] == "UNVERIFIED_DYNAMIC"
+    assert out["windows"] == 1 and out["unverified_dynamic"] == 0
+    assert out["status"] == "VERIFIED"
 
 
 # ── P4 on the real schema: the window is the INTERSECTION; members extend past it ─────────────────────
@@ -554,7 +563,14 @@ def test_the_affected_channels_and_reasons_are_reconstructable_from_the_stored_r
 
 # ═══ Codex round 7 [5]: no unconditional pass — UNVERIFIED is a real state; universal bounds; source geometry ═══
 
-def _p2_dynamic_world(p2_grain):
+def _p2_dynamic_world(p2_grain, monkeypatch):
+    """A function-valued (vedha) P2 window the SOLVER numbers. The R8-6 boundary rule would make a vedha record
+    unqualified (no vedha-edge source exists); these tests are about the window ARITHMETIC and the unverified-dynamic
+    gate, which are independent of it, so BOTH sides' state-valued-factor sets are emptied here (the boundary rule has
+    its own tests in test_a53_r86_sweep.py)."""
+    from services.gochara_kernel import window_verifier as wv
+    monkeypatch.setattr(ws, "STATE_VALUED_FACTORS", frozenset())
+    monkeypatch.setattr(wv, "_STATE_VALUED", ())
     conn, cls = p2_grain
     recs = WindowStore(conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P2",
                                         rule_version=VERSION)
@@ -563,12 +579,12 @@ def _p2_dynamic_world(p2_grain):
     return conn, cls, drafts
 
 
-def test_a_fabricated_evidence_for_of_123_on_a_one_root_dynamic_window_is_refused(p2_grain):
+def test_a_fabricated_evidence_for_of_123_on_a_one_root_dynamic_window_is_refused(p2_grain, monkeypatch):
     """The review's reproduction: a one-root P2 window with evidence_for=123.0 used to be accepted as
     {numeric_reproduced: 0, structural_only: 1}. Even without reproducing the number, ONE root feeding a
     channel bounds its evidence by 1 (every per-root value is ≤ 1)."""
     import dataclasses
-    conn, cls, drafts = _p2_dynamic_world(p2_grain)
+    conn, cls, drafts = _p2_dynamic_world(p2_grain, monkeypatch)
     _write(conn, cls, "P2", [dataclasses.replace(drafts[0], evidence_for=123.0)])
     with pytest.raises(RuntimeError, match="evidence_for 123.0 is outside"):
         _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True)
@@ -581,9 +597,9 @@ def test_a_fabricated_evidence_for_of_123_on_a_one_root_dynamic_window_is_refuse
         _verify(conn, cls, "P2", vedha_bound=True)
 
 
-def test_a_genuine_dynamic_window_is_reported_unverified_and_cannot_satisfy_the_gate(p2_grain):
+def test_a_genuine_dynamic_window_is_reported_unverified_and_cannot_satisfy_the_gate(p2_grain, monkeypatch):
     from services.gochara_kernel import window_verifier as wv
-    conn, cls, drafts = _p2_dynamic_world(p2_grain)
+    conn, cls, drafts = _p2_dynamic_world(p2_grain, monkeypatch)
     _write(conn, cls, "P2", drafts)
     out = _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True)
     assert out["status"] == "UNVERIFIED_DYNAMIC" and out["unverified_dynamic"] == 1
@@ -671,7 +687,8 @@ def test_the_writer_stores_a_dynamic_window_as_named_null_and_the_verifier_repro
     out = _verify(conn, cls, "P2", vedha_bound=True)
     assert out["status"] == "VERIFIED" and wv.satisfies_gate(out)
     (d,) = out["windows_detail"]
-    assert d["unqualified_reason"] == "dynamic_objective_solver_guarantee_not_available"
+    # R8-6: with no source of vedha overlay edges the member is unqualified before the dynamic switch is reached
+    assert d["unqualified_reason"] == "state_boundaries_incomplete"
 
 
 class _GeomConn:
@@ -723,3 +740,12 @@ def test_a_wrong_but_in_bounds_evidence_sum_is_caught_by_the_exact_check_not_onl
     _write(conn, cls, "P4", [dataclasses.replace(good, evidence_for=1.0)])
     with pytest.raises(RuntimeError, match="evidence_for 1.0 != re-derived 2.0"):
         _verify(conn, cls, "P4", _declared_rows)
+
+
+def test_the_store_asserts_boundary_completeness_only_where_it_has_a_boundary_source(p2_grain):
+    """R8-6: a residence record has no state-boundary source (only a dṛṣṭi record's sign ingresses are one), so the
+    store never asserts completeness for it — read back from the real schema, not stubbed."""
+    conn, cls = p2_grain
+    (rec,) = WindowStore(conn).read_grain(chart_id=CHART_ID, generation=GEN, event_class=cls, path_id="P2",
+                                          rule_version=VERSION)
+    assert rec.state_boundaries is None and rec.state_boundaries_complete is False

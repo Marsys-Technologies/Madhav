@@ -113,6 +113,11 @@ class SweepRecord:
     # ingress, a vedha interval edge): the objective is solved piecewise between them. And the instants
     # at which a smooth kernel is exactly maximal (a point contact's exact instant).
     state_boundaries: Callable[[datetime, datetime], list[datetime]] | None = None
+    # R8-6: the store asserts the boundary list is COMPLETE over the support (every operand state change inside it is
+    # listed). A record with a state-valued operand (dṛṣṭi source sign, vedha overlay) whose boundaries are absent or
+    # not asserted complete is UNQUALIFIED (`state_boundaries_incomplete`): an unlisted change could hide an interior
+    # gap that a piece would bridge, or an island that would score 0.
+    state_boundaries_complete: bool = False
     peak_hints: Callable[[datetime, datetime], list[datetime]] | None = None
 
 
@@ -410,6 +415,12 @@ def against_channel_state(factor_rows: list[dict]) -> str:
     return state
 
 
+#: factors whose operand is a STATE (a step function of the sky: the dṛṣṭi source's sign, the vedha overlay interval)
+#: — the objective is solved piecewise between its change instants, which therefore must be known completely
+STATE_VALUED_FACTORS = frozenset({"graduated_drishti", "vedha_attenuation"})
+STATE_BOUNDARIES_REASON = "state_boundaries_incomplete"
+
+
 def build_program(rec: SweepRecord, factor_rows: list[dict], *,
                   drishti: Callable[[str, int, tuple], float] | None = None,
                   vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
@@ -425,6 +436,11 @@ def build_program(rec: SweepRecord, factor_rows: list[dict], *,
             reasons.append((o.factor, o.reason))
             if o.null_state == UNQUALIFIED:
                 qualified = False
+    if qualified and any(o.kind == "fn" and o.factor in STATE_VALUED_FACTORS for o in outcomes) \
+            and not (rec.state_boundaries is not None and rec.state_boundaries_complete):
+        null_states.add(UNQUALIFIED)
+        reasons.append(("state_boundaries", STATE_BOUNDARIES_REASON))
+        qualified = False
     return RecordProgram(rec=rec, qualified=qualified, null_states=null_states,
                          reasons=reasons, outcomes=outcomes, channel=channel)
 
@@ -438,11 +454,16 @@ def maximise_earliest(f: Callable[[datetime], float | None], lo: datetime, hi: d
     anywhere it was evaluated. The caller partitions at exact operand-state boundaries first, so within
     `[lo, hi)` every function is smooth/unimodal or constant; the method then establishes the maximum
     from candidates that include (a) the piece start, (b) every exact `hint` inside it (a smooth
-    kernel's exact maximum — never found by luck), (c) a dense uniform scan, refined by bracketed
-    golden-section around the best few scan points (an interior maximum is found even when both
-    endpoints are lower, §7.2 inv 2 / O-SM-4), and (d) for a plateau or step the EARLIEST instant
-    reaching the maximum, bisected down to `tol_seconds`. An unknown value ANYWHERE makes the whole
-    piece unknown (R7 [1]: an unknown portion cannot be dropped from the determination)."""
+    kernel's exact maximum — never found by luck), and (c) a dense uniform scan.
+
+    EXTREMA, not points (Codex round 8, R8-6): the scan is reduced to its DISTINCT local extrema — a run of
+    exactly equal scan values is ONE plateau, a run higher than both neighbouring runs is one candidate — and each
+    candidate is resolved on its OWN: an interior hump by bracketed golden-section to `tol_seconds` (its true peak,
+    never an earlier scan point that merely sits within a tolerance of it), a plateau/step by bisecting its start to
+    the earliest instant that reaches the plateau value EXACTLY. The frozen 1e-9 tie tolerance (`_TIE`) is applied
+    ONLY BETWEEN these distinct extrema: among candidates whose resolved values are within it of the best, the
+    earliest instant wins. It never moves a peak within one smooth hump (that was the 27-second shift).
+    An unknown value ANYWHERE makes the whole piece unknown (R7 [1]: an unknown portion cannot be dropped)."""
     span = (hi - lo).total_seconds()
     if span <= 0:
         raise SweepRefusal("empty support piece")
@@ -451,56 +472,71 @@ def maximise_earliest(f: Callable[[datetime], float | None], lo: datetime, hi: d
     vals = [f(p) for p in pts]
     if any(v is None for v in vals):
         return None
-    best = max(vals)
-    i0 = min(i for i, v in enumerate(vals) if v >= best - _TIE)
-    best_t, best_v = pts[i0], vals[i0]
-    # golden-section refinement around the best few distinct scan maxima (interior peaks)
-    order = sorted(range(len(pts)), key=lambda i: -vals[i])[:3]
+    n = len(pts)
+    # runs of scan values equal to FLOAT NOISE (`_EPS` = 1e-12, three orders below the tie tolerance and nothing like it:
+    # a sum of linear kernels is a flat plateau whose computed values differ in the last bit) → (first index, last index)
+    runs: list[tuple[int, int]] = []
+    start = 0
+    for i in range(1, n + 1):
+        if i == n or abs(vals[i] - vals[start]) > _EPS:
+            runs.append((start, i - 1))
+            start = i
     phi = (math.sqrt(5) - 1) / 2
-    for i in order:
-        a = pts[max(i - 1, 0)]
-        b = pts[i + 1] if i + 1 < len(pts) else hi - timedelta(microseconds=1)
-        c = b - timedelta(seconds=(b - a).total_seconds() * phi)
-        d = a + timedelta(seconds=(b - a).total_seconds() * phi)
+    resolved: list[tuple[float, datetime]] = []
+    for k, (a, b) in enumerate(runs):
+        v = max(vals[a:b + 1])
+        if (k > 0 and v <= max(vals[runs[k - 1][0]:runs[k - 1][1] + 1])) or \
+                (k + 1 < len(runs) and v <= max(vals[runs[k + 1][0]:runs[k + 1][1] + 1])):
+            continue                                    # not a local extremum of the scan
+        best_v, best_t = v, pts[vals.index(v, a, b + 1)]
+        # (1) an interior hump: bracketed golden-section around the run, to `tol_seconds`
+        left = pts[max(a - 1, 0)]
+        right = pts[b + 1] if b + 1 < n else hi - timedelta(microseconds=1)
+        x, y = left, right
+        c = y - timedelta(seconds=(y - x).total_seconds() * phi)
+        d = x + timedelta(seconds=(y - x).total_seconds() * phi)
         fc, fd = f(c), f(d)
         if fc is None or fd is None:
             return None
-        while (b - a).total_seconds() > tol_seconds:
+        while (y - x).total_seconds() > tol_seconds:
             if fc >= fd:
-                b, d, fd = d, c, fc
-                c = b - timedelta(seconds=(b - a).total_seconds() * phi)
+                y, d, fd = d, c, fc
+                c = y - timedelta(seconds=(y - x).total_seconds() * phi)
                 fc = f(c)
             else:
-                a, c, fc = c, d, fd
-                d = a + timedelta(seconds=(b - a).total_seconds() * phi)
+                x, c, fc = c, d, fd
+                d = x + timedelta(seconds=(y - x).total_seconds() * phi)
                 fd = f(d)
             if fc is None or fd is None:
                 return None
-        mid = a + (b - a) / 2
+        mid = x + (y - x) / 2
         fm = f(mid)
         if fm is None:
             return None
-        if fm > best_v + _TIE and lo <= mid < hi:
-            best_t, best_v = mid, fm
-    best = best_v
-    if best_t not in pts:                               # an interior (refined) maximum
-        return best, best_t
-    i = pts.index(best_t)
-    if i == 0:
-        return best, pts[0]
-    # plateau / step: bisect the last lower → first maximal transition to the EARLIEST instant reaching
-    # `best` (pts[i-1] is below it by construction: `i0` was the earliest scan point within the tie)
-    left, right = pts[i - 1], best_t
-    while (right - left).total_seconds() > tol_seconds:
-        m = left + (right - left) / 2
-        fm2 = f(m)
-        if fm2 is None:
-            return None
-        if fm2 >= best - _TIE:
-            right = m
-        else:
-            left = m
-    return best, right
+        if fm > best_v + _EPS and lo <= mid < hi:        # a genuine interior maximum above every scan point of the run
+            resolved.append((fm, mid))
+            continue
+        # (2) a plateau / step / exact hint / piece start: the EARLIEST instant that reaches the run's value. A run of
+        # several scan points is a plateau (reached to float noise); a single point (an exact hint, the piece start) is
+        # reached EXACTLY — a value merely CLOSE to it belongs to the hump's shoulder, not to the peak.
+        floor_v = best_v - _EPS if b > a else best_v
+        if a > 0:
+            l, r = pts[a - 1], pts[a]
+            while (r - l).total_seconds() > tol_seconds:
+                m = l + (r - l) / 2
+                fm2 = f(m)
+                if fm2 is None:
+                    return None
+                if fm2 >= floor_v:
+                    r = m
+                else:
+                    l = m
+            best_t = r
+        elif b > a:
+            best_t = pts[a]
+        resolved.append((best_v, best_t))
+    top = max(v for v, _ in resolved)
+    return top, min(t for v, t in resolved if v >= top - _TIE)
 
 
 # ── window formation ─────────────────────────────────────────────────────────
@@ -642,10 +678,11 @@ def reduce_at(progs: list[RecordProgram], t: datetime, event_class: str) -> dict
 def _agent_activity(live: list[RecordProgram], agent: str, t: datetime) -> float | None:
     """act_g(t) = max over agent g's live admitted records of the within-path product (the reduction
     P4's frozen max-min objective is taken over; max, not Σ: one strong contact suffices — union
-    semantics, and it stays in [0,1])."""
-    vals = [v for p in live if p.rec.agent == agent
-            for v in [p.value_at(t)] if v is not None]
-    return max(vals) if vals else None
+    semantics, and it stays in [0,1]). None when ANY of the agent's live records is unknown at `t`."""
+    vals = [p.value_at(t) for p in live if p.rec.agent == agent]
+    if not vals or any(v is None for v in vals):
+        return None          # R8-6: an unknown record is never dropped before the max — the true maximum may be ITS value
+    return max(vals)
 
 
 def _objective_fn(path_id: str, live: list[RecordProgram], event_class: str):
@@ -882,7 +919,7 @@ def utc(t: datetime) -> datetime:
 
 
 __all__ = [
-    "CHANNEL_AGAINST", "CHANNEL_FOR", "DIRECTIONAL_PATHS", "FOR_ONLY_PATHS", "Outcome",
+    "CHANNEL_AGAINST", "CHANNEL_FOR", "DIRECTIONAL_PATHS", "STATE_BOUNDARIES_REASON", "STATE_VALUED_FACTORS", "FOR_ONLY_PATHS", "Outcome",
     "RecordProgram", "SWEEP_PATHS", "SweepRecord", "SweepRefusal", "WindowDraft",
     "activity_kernel", "against_channel_state", "build_program", "draft_windows",
     "CATEGORICAL_PATHS", "DYNAMIC_SWITCH_REASON", "GRAHA_TITLE", "KIND_TARGET_FORM", "categorical_factor", "graha_title",

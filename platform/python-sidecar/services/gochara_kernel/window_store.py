@@ -97,6 +97,12 @@ class WindowStore:
                 g["supports"].append((lo.astimezone(timezone.utc), hi.astimezone(timezone.utc)))
         out: list[SweepRecord] = []
         crossings: dict[tuple, list[datetime]] = {}
+        # R8-6: the ingress boundaries are complete over a support only when the class's coverage partition
+        # completed that stretch (an incompletely searched stretch may hide an unlisted sign change)
+        cov = self.conn.execute(
+            "SELECT completed_horizon FROM public.kala_gochara_coverage WHERE chart_id = %s AND generation = %s"
+            " AND partition_kind = 'event_class' AND partition_key = %s", (chart_id, generation, event_class)).fetchone()
+        completed = None if cov is None else (cov[0] if not isinstance(cov, dict) else next(iter(cov.values())))
         for rid, g in grouped.items():
             lon = offset = rays = hints = bounds = None
             if position_at is not None and g["rel"] in ("residence", "aspect", "conjunction"):
@@ -122,7 +128,9 @@ class WindowStore:
                 operator_role=g["role"], admission_state=g["adm"],
                 supports=tuple(g["supports"]), longitude_at=lon, aspect_rays=rays or (),
                 aspect_offset_at=offset, house_from_frame=g["house"], canonical_target=g["target"],
-                state_boundaries=bounds, peak_hints=hints))
+                state_boundaries=bounds, peak_hints=hints,
+                state_boundaries_complete=bounds is not None and completed is not None and bool(g["supports"])
+                and all(completed.lower <= a and b <= completed.upper for a, b in g["supports"])))
         return out
 
     # ── write ───────────────────────────────────────────────────────────────

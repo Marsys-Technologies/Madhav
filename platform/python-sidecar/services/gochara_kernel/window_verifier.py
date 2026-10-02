@@ -57,10 +57,36 @@ def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool):
     raise RuntimeError(f"window verifier: factor {fid!r} has no verifier derivation")
 
 
+#: R8-6: a record with a STATE-valued operand (a dṛṣṭi source, a vedha overlay) is solved piecewise between the
+#: instants the operand's state changes, so those instants must be known COMPLETELY — otherwise it is unqualified.
+#: The verifier's own statement of what the substrate can supply: a dṛṣṭi record's changes are the body's sign
+#: ingresses, complete only where the class's coverage partition completed the whole support; NO source of vedha
+#: overlay edges exists, so any record carrying a vedha factor is incomplete. (The builder's SweepRecord asserts the
+#: same through `state_boundaries_complete`; these are two derivations.)
+_STATE_VALUED = ("graduated_drishti", "vedha_attenuation")
+STATE_BOUNDARIES_REASON = "state_boundaries_incomplete"
+
+
+def _completed_horizon(conn, grain):
+    row = conn.execute(
+        "SELECT completed_horizon FROM public.kala_gochara_coverage WHERE chart_id = %s AND generation = %s"
+        " AND partition_kind = 'event_class' AND partition_key = %s", (grain[0], grain[1], grain[2])).fetchone()
+    return None if row is None else (next(iter(row.values())) if isinstance(row, dict) else row[0])
+
+
+def _boundaries_complete(relation, supports, completed) -> bool:
+    if relation != "aspect" or completed is None or not supports:
+        return False
+    return all(completed.lower <= a and b <= completed.upper for a, b in supports)
+
+
 def _record_state(factor_rows, rec, drishti_bound, vedha_bound):
     states = [_row_state(r, rec, drishti_bound, vedha_bound) for r in factor_rows]
     if any(s[0] == "unq" for s in states):
         return ("unq", sorted({s[1] for s in states if s[0] == "unq"}))
+    state_valued_fn = any(s[0] == "fn" and r["factor_id"] in _STATE_VALUED for s, r in zip(states, factor_rows))
+    if state_valued_fn and not rec.get("boundaries_complete"):
+        return ("unq", [STATE_BOUNDARIES_REASON])
     if any(s[0] == "fn" for s in states):
         return ("fn", None)
     value = 1.0
@@ -160,6 +186,10 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             rid, {"root": root, "relation": rel, "kind": kind, "agent": agent, "house": house,
                   "supports": []})
         rec["supports"].append((lo, hi))
+    completed = _completed_horizon(conn, grain)
+    for recs_ in by_window.values():
+        for rec_ in recs_.values():
+            rec_["boundaries_complete"] = _boundaries_complete(rec_["relation"], rec_["supports"], completed)
     against_ok = _against_evaluated(path_id, factor_rows)
     problems: list[str] = []
     numeric = 0
@@ -549,14 +579,19 @@ def reconstruct_qualification(conn, *, chart_id: str, generation: str, event_cla
     unqualified member feeds it (a channel-less one feeds both)."""
     grain = (chart_id, generation, event_class, path_id, rule_version)
     rows = conn.execute(
-        "SELECT m.window_id::text, r.record_id::text, r.relation, r.object_kind, r.agent, r.house_from_frame"
+        "SELECT m.window_id::text, r.record_id::text, r.relation, r.object_kind, r.agent, r.house_from_frame,"
+        " (SELECT array_agg(ARRAY[lower(x)::text, upper(x)::text]) FROM unnest(r.temporal_support_intervals) x)"
         " FROM public.ka_gochara_eval_window_record m"
         " JOIN public.ka_gochara_relationship_record r ON r.record_id = m.record_id"
         " WHERE m.chart_id = %s AND m.generation = %s AND m.event_class = %s AND m.path_id = %s"
         " AND m.rule_version = %s ORDER BY 1, 2", grain).fetchall()
+    completed = _completed_horizon(conn, grain)
     out: dict[str, dict] = {}
-    for wid, rid, rel, kind, agent, house in rows:
-        rec = {"relation": rel, "kind": kind, "agent": agent, "house": house}
+    for wid, rid, rel, kind, agent, house, sup in rows:
+        from datetime import datetime as _dt
+        supports = [(_dt.fromisoformat(a), _dt.fromisoformat(b)) for a, b in (sup or [])]
+        rec = {"relation": rel, "kind": kind, "agent": agent, "house": house,
+               "boundaries_complete": _boundaries_complete(rel, supports, completed)}
         slot = out.setdefault(wid, {"affected_channels": set(), "reasons": {}})
         state = _record_state(factor_rows, rec, drishti_bound, vedha_bound)
         if state[0] != "unq":
