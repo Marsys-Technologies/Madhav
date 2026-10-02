@@ -31,7 +31,7 @@ NOTE = f"ruling:owner-2#2; actor:{ACTOR}"          # the MECHANICAL note the wor
 
 
 def _approval(digest, **over):
-    a = {"schema": "seal_approval/2", "brief_digest": digest, "brief_id": BRIEF_IDS.get(digest, 1), "execution_id": EXECUTION,
+    a = {"schema": "seal_approval/2", "brief_digest": digest, "brief_id": BRIEF_IDS.get(digest, 1), "producer_execution_id": EXECUTION,
          "run_id": RUN, "run_attempt": ATTEMPT,
          "approver_login": "owner-login", "approved_by_note": NOTE}
     a.update(over)

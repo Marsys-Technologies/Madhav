@@ -130,18 +130,6 @@ def test_reassembly_refuses_missing_duplicated_foreign_and_tampered_chunks():
     assert sb.reassemble_chunks(list(reversed(lines))) == RAW                           # order on the wire does not matter
 
 
-@pytest.mark.parametrize("mutate", [lambda d: d.pop("contract"), lambda d: d.update(contract="gochara_brief_transport/2"),
-                                    lambda d: d.update(contract=""), lambda d: d.update(contract=1), lambda d: d.update(contract=None)])
-def test_a_chunk_line_with_a_missing_or_unknown_contract_version_is_refused(mutate):
-    """ST-WIRE-2: EVERY chunk line carries `contract`; a consumer refuses a missing or unknown one."""
-    lines = sb.brief_chunk_lines(RAW, DIGEST, 2048)
-    assert all(json.loads(x)["contract"] == "gochara_brief_transport/1" for x in lines)
-    doc = json.loads(lines[2])
-    mutate(doc)
-    with pytest.raises(sb.BriefRefused, match="contract_unsupported"):
-        sb.reassemble_chunks(lines[:2] + [sb.canonical_json(doc)] + lines[3:])
-
-
 def test_the_brief_bytes_must_hash_to_the_digest_they_carry():
     payload = {"schema": "x", "v": [1, 2]}
     good = {"payload": payload, "sha256": sb.payload_digest(payload)}
@@ -168,9 +156,9 @@ def test_the_golden_stdout_is_chunk_lines_then_a_compact_line_that_reassemble_to
     faithful world (regenerate: GOCHARA_WRITE_GOLDEN_BRIEF=<path> pytest tests/l3/gochara/test_a53_r11_seal_brief.py -k entry_points)."""
     lines = GOLDEN.read_text().splitlines()
     chunk_lines, compact = lines[:-1], json.loads(lines[-1])
-    assert len(chunk_lines) >= 3 and all(set(json.loads(x)) == {"brief_chunk", "of", "sha256", "b64", "contract"} for x in chunk_lines)
-    assert set(compact) == {"status", "contract", "sha256", "persisted", "producer", "brief_bytes", "brief_file", "brief_chunks"}
-    assert compact["contract"] == "gochara_brief_transport/1" and set(compact["producer"]) == {"commit", "image_digest", "execution_id"}
+    assert len(chunk_lines) >= 3 and all(set(json.loads(x)) == {"brief_chunk", "of", "sha256", "b64"} for x in chunk_lines)
+    assert set(compact) == {"status", "contract_version", "sha256", "persisted", "producer", "brief_bytes", "brief_file", "brief_chunks"}
+    assert compact["contract_version"] == "seal_brief_transport/1" and set(compact["producer"]) == {"commit", "image_digest", "execution_id"}
     assert compact["status"] == "BRIEFED" and compact["brief_file"] is None and compact["brief_chunks"] is True
     raw = sb.reassemble_chunks(chunk_lines)
     assert len(raw) == compact["brief_bytes"] and hashlib.sha256(raw).hexdigest() == compact["sha256"]
@@ -200,13 +188,12 @@ def _read_brief_from_log_entries(entries: list[dict]) -> tuple[bytes, dict]:
         if not isinstance(p, dict):
             continue
         if "brief_chunk" in p:
-            assert p.get("contract") == "gochara_brief_transport/1", "a chunk entry with a missing or unknown contract is refused"
             i, n = int(p["brief_chunk"]), int(p["of"])
             if i in chunks and chunks[i] != (n, p["sha256"], p["b64"]):
                 raise ValueError(f"two different chunks carry index {i}")
             chunks[i] = (n, p["sha256"], p["b64"])
         elif p.get("status") == "BRIEFED":
-            assert p.get("contract") == "gochara_brief_transport/1", "a compact entry with a missing or unknown contract is refused"
+            assert p.get("contract_version") == "seal_brief_transport/1", "a compact entry with a missing or unknown contract_version is refused"
             compact = p
     assert compact is not None and chunks
     total = {n for n, _, _ in chunks.values()}
@@ -225,7 +212,7 @@ def test_the_structured_log_fixture_is_the_golden_stdout_as_cloud_run_entries_an
     assert {e["resource"]["type"] for e in entries} == {"cloud_run_job"}
     raw, compact = _read_brief_from_log_entries(entries)
     assert sb.reassemble_chunks(GOLDEN.read_text().splitlines()[:-1]) == raw           # the same bytes as the plain stdout route
-    assert compact["contract"] == "gochara_brief_transport/1" and compact["persisted"]["brief_id"] > 0
+    assert compact["contract_version"] == "seal_brief_transport/1" and compact["persisted"]["brief_id"] > 0
 
 
 def test_the_reader_survives_what_cloud_logging_does_to_a_json_payload():

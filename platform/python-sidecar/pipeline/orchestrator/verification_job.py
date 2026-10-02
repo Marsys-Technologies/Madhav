@@ -125,7 +125,7 @@ def main(argv=None) -> int:
             # ONE path, always exercised (steward ruling): the full brief as index/total chunk lines, then the compact result as the LAST line
             for line in seal_brief.brief_chunk_lines(raw, out["sha256"], args.brief_chunk_bytes):
                 print(line)
-            print(seal_brief.canonical_json({"status": "BRIEFED", "contract": seal_brief.TRANSPORT_CONTRACT,
+            print(seal_brief.canonical_json({"status": "BRIEFED", "contract_version": seal_brief.TRANSPORT_CONTRACT,
                                              "sha256": out["sha256"], "persisted": persisted, "producer": producer,
                                              "brief_bytes": len(raw), "brief_file": brief_file, "brief_chunks": True}))
             return vj.EXIT_OK
