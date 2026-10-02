@@ -1712,6 +1712,10 @@ jobs:
             'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
             | sha256sum -c -)
           export SE_EPHE_PATH="$se1_dir"
+          # C22: the l3/gochara Swiss tests (e.g. test_a25_moon_file_backend_probe.py)
+          # read the corpus directory from SE_EPHE_PATH; the REQUIRE flag turns an
+          # absent corpus into a hard failure instead of a silent skip (§N.8).
+          export GOCHARA_SE1_REQUIRE=1
           cd platform/python-sidecar
           # Nirmana F0: this checked-in artefact is the web planner's source of
           # sidecar-owned writer hashes. Any Python writer change must regenerate
