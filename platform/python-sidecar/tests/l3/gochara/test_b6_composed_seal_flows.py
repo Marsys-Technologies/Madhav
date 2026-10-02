@@ -139,7 +139,9 @@ def _real_world(mp, tmp_path, create):
 
 def _db_exists(name):
     import psycopg
+    cw.guard.assert_disposable_dsn(cw.ADMIN_DSN)
     with psycopg.connect(cw.ADMIN_DSN, autocommit=True, connect_timeout=3) as c:
+        cw.guard.assert_connected_to(c)
         return c.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone() is not None
 
 
@@ -162,7 +164,9 @@ def _template(tmp_path_factory, stack, keep):
         w.conn.close()
         if keep:
             import psycopg
+            cw.guard.assert_disposable_dsn(cw.ADMIN_DSN)
             with psycopg.connect(cw.ADMIN_DSN, autocommit=True, connect_timeout=3) as c:
+                cw.guard.assert_connected_to(c)
                 c.execute(f'ALTER DATABASE "{held["name"]}" RENAME TO "{keep}"')
             held["name"] = keep
         yield held["name"]

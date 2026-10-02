@@ -19,6 +19,7 @@ import uuid
 
 import pytest
 
+from . import _disposable_guard as guard
 from .test_a53_inventory import (CHART_ID, DASHA, DASHA_PARENT, DB_PREFIX, L0_VEDHA_ROWS, PINNED_BUILD, CHART,
                                  drop_am5_database)
 from .test_a53_record_store import ADMIN_DSN, MIGRATIONS
@@ -50,14 +51,14 @@ def composed_create(tag="comp", stack=None):
     missing = [f for f in (FULL_STACK if stack is None else stack) + [M1241] if not (MIGRATIONS / f).exists()]
     if missing:
         pytest.skip(f"NOT_RUN: integration exhibit — the migration tree lacks {missing} (they ship in the stacked draft PRs; see the PR description)")
+    guard.assert_disposable_dsn(ADMIN_DSN)                           # BEFORE connecting: one explicit loopback host, no overrides (steward eb38)
     try:
         admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
     except Exception as exc:  # noqa: BLE001
         if os.environ.get("GOCHARA_A53_REQUIRE_DB") == "1":
             pytest.fail(f"GOCHARA_A53_REQUIRE_DB=1 but the disposable database server is unreachable ({exc})")
         pytest.skip(f"NOT_RUN: disposable database server unreachable ({exc})")
-    host = psycopg.conninfo.conninfo_to_dict(ADMIN_DSN).get("host", "")
-    assert host in ("localhost", "127.0.0.1", ""), f"refusing a non-local server ({host})"
+    guard.assert_connected_to(admin)                                 # ...and the address actually reached, before anything destructive
     for r in (OWNER, BUILDER, VERIFIER, SEALER):
         admin.execute(f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='{r}') THEN CREATE ROLE {r} NOLOGIN; END IF; END $$")
     name = f"{DB_PREFIX}{tag}_{uuid.uuid4().hex[:8]}"
@@ -65,6 +66,7 @@ def composed_create(tag="comp", stack=None):
     dsn = make_conninfo(ADMIN_DSN, dbname=name)
     try:
         conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+        guard.assert_connected_to(conn, expected_db=name)            # the database THIS run created — before the destructive statement
         conn.execute(f"DROP SCHEMA public CASCADE; CREATE SCHEMA public AUTHORIZATION {OWNER}")
         conn.execute(f"GRANT USAGE ON SCHEMA public TO {BUILDER}, {VERIFIER}, {SEALER}")
         conn.execute(f"ALTER DEFAULT PRIVILEGES FOR ROLE {OWNER} REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC")
@@ -81,7 +83,9 @@ def composed_clone(template_name):
     no open connection. Roles are cluster-level, so the clone carries the same principals; object ACLs ride the catalog copy."""
     psycopg = pytest.importorskip("psycopg")
     from psycopg.conninfo import make_conninfo
+    guard.assert_disposable_dsn(ADMIN_DSN)
     admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+    guard.assert_connected_to(admin)
     name = f"{DB_PREFIX}clone_{uuid.uuid4().hex[:8]}"
     admin.execute(f'CREATE DATABASE "{name}" TEMPLATE "{template_name}"')
     return admin, name, make_conninfo(ADMIN_DSN, dbname=name)
