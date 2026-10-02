@@ -40,6 +40,10 @@
 --              the SEALER already holds those two reads. 1240 grants nothing on any R11/R12 object — every one of them is proven necessary by the whole approved flow as the real roles.
 --   (F-R12-4, v6) the receipt must name a brief the VERIFIER persisted: the verifier gets SELECT + INSERT on the append-only `ka_gochara_seal_brief` and EXECUTE on `ka_gochara_brief_state_digest`;
 --              the sealer gets SELECT on it and EXECUTE on `ka_gochara_brief_state_digest` and `ka_gochara_seal_brief_problem` (the early check and the commit-time trigger call them with invoker rights).
+--   (R15-6, v7) the seal re-derives the live registry digest and census INSIDE the sealing transaction (`seal_registry_drift`): the SEALER gets SELECT, and ONLY SELECT, on the five registry
+--              relations it reads there — `ka_gochara_rule_path`, `_rule_path_prerequisite`, `_rule_path_soft_factor`, `ka_gochara_predicate`, `ka_gochara_factor` (`ka_gochara_rule_path_seal` was already granted).
+--              Derived by Stream A by running the real flow as the real sealer and adding one grant per `permission denied`; nothing wider (no write, no function). The sealer's count of
+--              table SELECTs below is therefore +5 over v6.
 --   SEALER   — INSERT on the seal table; UPDATE on kala_gochara_publication ONLY on the four columns ledger.publish actually sets (status, published_at,
 --              content_digest, row_counts — R10-7 iii; narrowed from table-wide); SELECT on the legacy windows relation ONLY on (chart_id, generation)
 --              (R10-7 ii: `ledger.publish` counts the legacy projection's rows when the relation exists, so the production-shaped schema needs this read
@@ -152,6 +156,11 @@ DECLARE
       ["kala_gochara_coverage","SELECT",null,"1241"],
       ["kala_gochara_contacts","SELECT",null,"1241"],
       ["ka_gochara_rule_path_seal","SELECT",null,"1241"],
+      ["ka_gochara_rule_path","SELECT",null,"1241"],
+      ["ka_gochara_rule_path_prerequisite","SELECT",null,"1241"],
+      ["ka_gochara_rule_path_soft_factor","SELECT",null,"1241"],
+      ["ka_gochara_predicate","SELECT",null,"1241"],
+      ["ka_gochara_factor","SELECT",null,"1241"],
       ["ka_gochara_convention_bridge","SELECT",null,"1241"],
       ["ka_gochara_search_inventory","SELECT",null,"1241"],
       ["ka_gochara_search_obligation","SELECT",null,"1241"],

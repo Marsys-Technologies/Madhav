@@ -57,6 +57,7 @@ describe('gochara-verification-job-deploy.yml', () => {
     expect(pre).toBeGreaterThan(steps.indexOf(deploy))
     expect(steps[pre].env.DATA_PLANE_SECRET_ISOLATION_MODE).toBe('strict')
     expect(steps[pre].env.GOOGLE_CLOUD_PROJECT).toBe('madhav-astrology')
+    expect(steps[pre].env.DATA_PLANE_VERIFIER_PHASE).toBe('deployable')   // R15-1: the phase is declared, never inferred
   })
   it('R13-3: shares ONE concurrency group with the sealing workflow', () => {
     expect(wf.concurrency.group).toBe('gochara-verification-and-sealing')
