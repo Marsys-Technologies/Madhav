@@ -491,6 +491,12 @@ def test_L2_a_hand_built_complete_block_without_a_matching_declaration_stays_cap
     d["assets"][ASSET] = {"kind": "data"}                                                               # the asset is declared but declares no null_convention
     assert satisfied(world(tmp_path / "e", ms, decl=json.dumps(d) + "\n")) == [False, False]
     assert satisfied(world(tmp_path / "f", ms, decl="not json\n")) == [False, False]
+    good = decl_text_for(ms)
+    dup = good.rstrip().rstrip("}") + ', "assets": {}}\n'                                                 # a duplicate `assets` key: only a strict reader refuses it
+    assert satisfied(world(tmp_path / "g", ms, decl=dup)) == [False, False]
+    dup_same = good.rstrip()[:-1] + ', "version": "1.0.0"}\n'                                           # a duplicate key with the SAME value: json.loads accepts it, a strict reader does not
+    assert json.loads(dup_same)["assets"][ASSET]["null_convention"]
+    assert satisfied(world(tmp_path / "h", ms, decl=dup_same)) == [False, False]
 
 
 def _two_asset_world(tmp_path, ms_a, ms_b):

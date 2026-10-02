@@ -383,7 +383,7 @@ def test_the_fetch_refuses_a_malformed_identifier_or_a_control_character_before_
     got = _capture(monkeypatch, "{}")
     for table, cols in (("t;DROP", ["a"]), ("t", ['a"b']), ("t", ["a b"]), ("", ["a"]), ("t", [""])):
         with pytest.raises(ac.Unknown):
-            ac.null_convention_fetch(table, cols, {}, dict(table=table, nullable=[], constants=[]), "")
+            ac.null_convention_fetch(table, cols, {c: "text" for c in cols}, dict(table=table, nullable=[], constants=[]), "")
     spec = SPEC(nullable=[dict(NULLABLE("exactly"), scope=dict(key_column="graha", null_for=["Ma\x00rs"], mode="only"))])
     with pytest.raises(ac.Unknown):
         ac.null_convention_fetch("t", LATTA_COLS, LATTA_TYPES, spec, "")
