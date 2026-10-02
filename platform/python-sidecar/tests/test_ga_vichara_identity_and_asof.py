@@ -26,6 +26,7 @@ import json
 import os
 import subprocess
 import sys
+from urllib.parse import urlparse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -406,6 +407,90 @@ CREATE TABLE asset_output_digest_specs (asset_id TEXT NOT NULL, spec_sha256 TEXT
 """
 
 
+# ── disposable-database guard (SS data rule N-46; modelled on tests/l3/_builder_role.py) ───
+# The digest test DROPs and CREATEs chart_vichara / asset_output_digest_specs, so it must be
+# physically unable to run against anything but the throwaway database CI provisions for it.
+
+EXPECTED_DB_NAME = "vichara_digest_test"
+LOOPBACK = {"localhost", "127.0.0.1", "::1"}
+
+
+class RefusedError(RuntimeError):
+    """The disposable-identity guard refused the connection target."""
+
+
+def require_disposable(dsn: str | None) -> str:
+    """Refuse unless `dsn` is a postgresql:// URL to a LOOPBACK host and a database named EXACTLY
+    EXPECTED_DB_NAME, with no query-string override (libpq lets ?host= / ?dbname= / ?service= win).
+    Returns the database name. Called before ANY connection."""
+    if not dsn or not isinstance(dsn, str):
+        raise RefusedError("REFUSED: no DSN given")
+    parsed = urlparse(dsn)
+    if parsed.scheme not in ("postgresql", "postgres"):
+        raise RefusedError(f"REFUSED: DSN scheme {parsed.scheme!r} is not a postgresql:// URL")
+    if parsed.query:
+        raise RefusedError("REFUSED: DSN carries a query string (libpq parameter overrides are not allowed)")
+    if (parsed.hostname or "") not in LOOPBACK:
+        raise RefusedError(f"REFUSED: DSN host {parsed.hostname!r} is not loopback")
+    name = (parsed.path or "").lstrip("/")
+    if name != EXPECTED_DB_NAME:
+        raise RefusedError(
+            f"REFUSED: database {name!r} is not the disposable {EXPECTED_DB_NAME!r} — this suite drops and "
+            "creates chart_vichara / asset_output_digest_specs")
+    return name
+
+
+def test_guard_accepts_only_the_exact_loopback_throwaway_dsn():
+    ok = "postgresql://postgres:postgres@localhost:5432/vichara_digest_test"
+    assert require_disposable(ok) == "vichara_digest_test"
+    assert require_disposable("postgres://u@127.0.0.1:55433/vichara_digest_test") == "vichara_digest_test"
+    assert require_disposable("postgresql://u@[::1]:5432/vichara_digest_test") == "vichara_digest_test"
+
+
+@pytest.mark.parametrize("dsn", [
+    "postgresql://u:p@db.example.com:5432/vichara_digest_test",          # non-loopback host
+    "postgresql://u:p@10.0.0.5:5432/vichara_digest_test",
+    "postgresql://u:p@localhost.example.com:5432/vichara_digest_test",
+    "postgresql://u:p@localhost:5432/madhav",                              # wrong database names
+    "postgresql://u:p@localhost:5432/postgres",
+    "postgresql://u:p@localhost:5432/chart_vichara",
+    "postgresql://u:p@localhost:5432/vichara_digest_test2",
+    "postgresql://u:p@localhost:5432/VICHARA_DIGEST_TEST",
+    "postgresql://u:p@localhost:5432/",                                     # empty path
+    "postgresql://u:p@localhost:5432",
+    "postgresql://u:p@localhost:5432/vichara_digest_test?host=prod.example.com",   # libpq override
+    "postgresql://u:p@localhost:5432/vichara_digest_test?dbname=madhav",
+    "postgresql:///vichara_digest_test",                                    # no host (unix socket / PGHOST)
+    "host=localhost dbname=vichara_digest_test user=postgres",              # key/value form is not accepted
+    "mysql://u:p@localhost:5432/vichara_digest_test",
+    "", None,
+])
+def test_guard_refuses_everything_else_by_name(dsn):
+    with pytest.raises(RefusedError, match="REFUSED"):
+        require_disposable(dsn)
+
+
+def test_every_connecting_path_calls_the_guard_first(monkeypatch):
+    """No DB is needed: a mis-set DSN must be refused BEFORE psycopg.connect is ever reached."""
+    import psycopg
+    calls = []
+    monkeypatch.setattr(psycopg, "connect", lambda *a, **k: calls.append(a) or (_ for _ in ()).throw(AssertionError("connected")))
+    monkeypatch.setattr(sys.modules[__name__], "DSN", "postgresql://u:p@db.example.com:5432/madhav")
+    with pytest.raises(RefusedError):
+        _pg_digest([])
+    for in_ci in ("true", "false"):
+        monkeypatch.setenv("GITHUB_ACTIONS", in_ci)
+        try:
+            _require_pg()
+        except pytest.fail.Exception as exc:
+            assert "REFUSED" in str(exc)                          # refused by name, never skipped
+        except pytest.skip.Exception:
+            pytest.fail("a mis-set DSN was skipped instead of refused by name")
+        else:
+            pytest.fail("a mis-set DSN was accepted")
+    assert calls == []                                          # nothing connected
+
+
 def _pg_digest(rows) -> str:
     import re
     import psycopg
@@ -414,8 +499,15 @@ def _pg_digest(rows) -> str:
     m = re.search(r"VALUES\s*\(\s*'ga_vichara'\s*,\s*'([a-f0-9]{64})'\s*,\s*'(\{.*?\})'::jsonb\s*\)",
                   MIG_920.read_text(), flags=re.DOTALL)
     assert m, "migration 920 spec row not found"
+    require_disposable(DSN)                                      # BEFORE any connection that mutates
     with psycopg.connect(DSN, row_factory=dict_row, autocommit=False) as conn:
         with conn.cursor() as cur:
+            cur.execute("SELECT current_database() AS db, to_regclass('public.chart_vichara') AS cv, "
+                        "to_regclass('public.asset_output_digest_specs') AS sp")
+            got = cur.fetchone()
+            if got["db"] != EXPECTED_DB_NAME or got["cv"] is not None or got["sp"] is not None:
+                raise RefusedError(f"REFUSED: connected database {got['db']!r} is not a pristine {EXPECTED_DB_NAME!r} "
+                                   f"(chart_vichara/asset_output_digest_specs already exist: {got['cv']}/{got['sp']})")
             cur.execute(_DDL)
             cur.execute("INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec) VALUES ('ga_vichara', %s, %s::jsonb)",
                         (m.group(1), m.group(2)))
@@ -435,6 +527,10 @@ def _require_pg() -> None:
         if in_ci:
             pytest.fail(f"{msg}: under GITHUB_ACTIONS=true this suite REQUIRES a database (never a silent skip)")
         pytest.skip(f"NOT_RUN: {msg}")
+    try:
+        require_disposable(DSN)
+    except RefusedError as exc:
+        pytest.fail(str(exc))                                    # a mis-set DSN is never a skip
     try:
         import psycopg
         with psycopg.connect(DSN, connect_timeout=10):
