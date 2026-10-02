@@ -7,7 +7,7 @@ set -Eeuo pipefail
 set +x
 umask 077
 
-: "${BRIEF_FILE:?}" "${APPROVALS_FILE:?}" "${CHART_ID:?}" "${GENERATION:?}" "${EXPECTED_SEALING_COMMIT:?}" "${GITHUB_RUN_ID:?}" "${GITHUB_RUN_ATTEMPT:?}" "${TRIGGERING_ACTOR:?}"
+: "${BRIEF_FILE:?}" "${BRIEF_COMPACT_FILE:?}" "${APPROVALS_FILE:?}" "${CHART_ID:?}" "${GENERATION:?}" "${EXPECTED_SEALING_COMMIT:?}" "${GITHUB_RUN_ID:?}" "${GITHUB_RUN_ATTEMPT:?}" "${TRIGGERING_ACTOR:?}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 SEAL_JOB_CMD="${SEAL_JOB_CMD:-$PYTHON_BIN -m pipeline.orchestrator.seal_job}"
@@ -17,7 +17,7 @@ ENVIRONMENT_NAME="${ENVIRONMENT_NAME:-gochara-seal}"
 # the sealing revision this job runs from IS the reviewed revision the brief was produced for
 [ "${GITHUB_SHA:-$EXPECTED_SEALING_COMMIT}" = "$EXPECTED_SEALING_COMMIT" ] || { echo "REFUSED: this job runs from ${GITHUB_SHA}, not the reviewed sealing revision $EXPECTED_SEALING_COMMIT" >&2; exit 2; }
 
-BRIEF_DIGEST="$("$PYTHON_BIN" "$HERE/gochara_seal_brief_check.py" --brief-file "$BRIEF_FILE" --chart-id "$CHART_ID" --generation "$GENERATION" --sealing-commit "$EXPECTED_SEALING_COMMIT")" \
+BRIEF_DIGEST="$("$PYTHON_BIN" "$HERE/gochara_seal_brief_check.py" --brief-file "$BRIEF_FILE" --compact-file "$BRIEF_COMPACT_FILE" --chart-id "$CHART_ID" --generation "$GENERATION" --sealing-commit "$EXPECTED_SEALING_COMMIT")" \
   || { echo "REFUSED: the retained brief did not verify — nothing was sealed" >&2; exit 2; }
 if [ -n "${EXPECTED_BRIEF_DIGEST:-}" ] && [ "$BRIEF_DIGEST" != "$EXPECTED_BRIEF_DIGEST" ]; then
   echo "REFUSED: the retained brief's digest $BRIEF_DIGEST is not the digest the brief job published ($EXPECTED_BRIEF_DIGEST)" >&2; exit 2
