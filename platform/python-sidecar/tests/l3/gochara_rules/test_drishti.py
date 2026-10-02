@@ -74,6 +74,31 @@ def test_registry_effect_text_states_the_same_fractions():
 
 
 
+# ── version binding + canonical input adaptation (Codex R4/R5) ─────────────────────────────────
+def test_the_result_carries_the_factor_ref_of_the_caller_version():
+    assert graduated_drishti("Mars", 4)["factor"] == drishti.FACTOR_REF               # default 1.0.0
+    for ref in [k for k in FACTORS if k[0] == "graduated_drishti"]:                   # every registered version, incl. 1.1.0 once #2897 lands
+        r = graduated_drishti("Mars", 4, factor_ref=ref)
+        assert r["factor"] == ref and r["value"] == 1.0
+        assert graduated_drishti("Pluto", 4, factor_ref=ref)["factor"] == ref          # the null result is labelled too
+    with pytest.raises(ValueError):
+        graduated_drishti("Mars", 4, factor_ref=("activity_kernel", "1.0.0"))
+    with pytest.raises(ValueError):
+        graduated_drishti("Mars", 4, factor_ref=("graduated_drishti", "9.9.9"))
+
+
+def test_persisted_lowercase_tokens_go_through_a_closed_adapter():
+    for token, name in (("sun", "Sun"), ("moon", "Moon"), ("mars", "Mars"), ("mercury", "Mercury"), ("jupiter", "Jupiter"),
+                        ("venus", "Venus"), ("saturn", "Saturn")):
+        assert drishti.normalize_agent(token) == name and drishti.normalize_agent(name) == name
+        assert graduated_drishti(token, 7)["value"] == 1.0
+    assert graduated_drishti("mars", 4)["value"] == 1.0 and graduated_drishti("rahu", 7)["reason"] == "node_casts_no_drishti"
+    for bad in ("MARS", "mArs", " mars", "pluto", "", None, 3, "sat"):
+        assert drishti.normalize_agent(bad) is None or bad in drishti._CASTERS, bad
+        if bad not in drishti._CASTERS:
+            assert graduated_drishti(bad, 7)["reason"] == "agent_unrecognised"
+
+
 # ── golden grid: every graha x every offset, literal expectations (steward ruling 2026-10-02) ──
 _Q, _H, _T, _F = 0.25, 0.5, 0.75, 1.0
 # offsets 1..12; None = no aspect at that offset
