@@ -115,3 +115,16 @@ def test_the_writer_refuses_pass_and_partial_on_unsourced_or_refuted_for_both_ci
     with pytest.raises(nc.CertificationRefused) as ei:
         nc._check_citation_fields(dict(rec), 5)                                              # and the reader refuses the same record
     assert ei.value.code == "bad_ledger"
+
+
+@pytest.mark.parametrize("verdict", ["PASS", "PARTIAL"])
+def test_a_hand_built_declared_ldgr_cell_without_a_citation_state_is_refused_for_pass_and_partial(ledger, verdict):
+    before = ledger.read_bytes()
+    refused(ledger, "citation_state_missing", **{k: v for k, v in kw(ledger, criterion=LDGR, verdict=verdict, cell=dict(v=verdict, declared=True),
+                                                                      rec=dict(target_columns=["id", "citation"])).items() if k != "ledger_path"})
+    assert ledger.read_bytes() == before
+
+
+def test_an_undeclared_ldgr_partial_with_no_state_is_still_certifiable_as_a_legacy_record(ledger):
+    rec = nc.write_certification(**kw(ledger, criterion=LDGR, verdict="PARTIAL", cell=dict(v="PARTIAL"), rec=dict(target_columns=["id", "source_citation"]))).record
+    assert rec["verdict"] == "PARTIAL" and rec["citation_state"] is None

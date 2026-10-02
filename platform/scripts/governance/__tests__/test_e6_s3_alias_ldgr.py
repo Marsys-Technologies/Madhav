@@ -30,6 +30,9 @@ NA, NO_DET, PASS, FAIL, PARTIAL, ERRORED = ac.NA, ac.NO_DET, ac.PASS, ac.FAIL, a
 EV = "platform/scripts/governance/asset_census.py:1"          # an existing repo file: a checkable evidence pointer
 LDGR, ALIAS = "Ldgr.source_presence", "Vocab.alias"
 
+LIKE_COLS = ["synonyms", "aliases", "alias", "alt_names", "alternate_names", "other_names", "also_known_as", "Synonyms", "SYNONYMS", "Aliases", "synonym", "alias_names",
+             "alias_set", "synonyms_json", "graha_synonyms", "aka", "AKA", "nicknames", "name_variants", "Alt_Name"]
+PHALA_COLS = ["graha", "direction", "count_from_graha", "effect_description", "source_citation", "verse_ref", "table_version", "created_at"]
 VA_NA = dict(na="no_alias_class", why="the asset stores computed degrees only; no vocabulary carries synonyms", evidence=EV)
 VA_M = {"class": "planet", "vocab_column": "graha", "alias_column": "synonyms", "why": "graha names are the planet vocabulary", "evidence": EV}
 VA_M_NOALIAS = {k: v for k, v in VA_M.items() if k != "alias_column"}
@@ -616,17 +619,19 @@ def test_one_row_lacking_a_source_is_partial_and_names_it():
 
 def _lit(v):
     """An E'' literal with every non-alphanumeric character as a \\uXXXX escape: exact bytes whatever the client does with them."""
-    return "NULL" if v is None else "E'" + "".join(c if c.isalnum() and c.isascii() else f"\\u{ord(c):04x}" for c in v) + "'"
+    return "NULL" if v is None else "E'" + "".join(c if c.isalnum() and c.isascii() else (f"\\u{ord(c):04x}" if ord(c) <= 0xFFFF else f"\\U{ord(c):08x}") for c in v) + "'"
 
 
 LACKING_TEXT = ["", " ", "   ", "\t", "\n", "\r", "\r\n", "\u00a0", "\u200b", "\u200b\u200b", "\ufeff", "\u2028", "\u3000", "\u2003", "-", "--", "\u2014", "\u2013", "\u2012",
                 "\u2212", ".", "..", "...", "\u2026", "?", "??", "{}", "[]", '""', "''", "()", "n.a.", "N.A.", "N/A", "N/A.", "n/a", "NA", "nil", "Nil.", "not available",
                 "Not Available.", "no source", "No Source", "not traced", "Not Traced", "not traced yet", "  not   traced  ", "\tnot traced\n", "- not traced -", "pending",
                 "Pending...", "TBD", "TBD.", "tbd", "TBA", "todo", "nan", "NaN", "none", "None.", "(none)", "null", "NULL", "unknown", "Unknown", "unsourced", "untraced",
-                "source unidentified", "missing", "0", "false", "\u0001", "\u0007\u001f", "\u007f", "@", "+-+", "\u0001 \u0002", "\u200bnot traced\u200b", "\u00a0n/a\u00a0"]
+                "source unidentified", "missing", "0", "false", "not\u00a0traced", "not\u00a0\u00a0traced", "n\u00ad/a", "\u00ad", "\u00ad\u00ad", "no\u00adne", "\uff2e\uff2f\uff2e\uff25", "\uff4e\uff0f\uff41", "\uff34\uff22\uff24", "\u2800", "\u2800\u2800", "\u3164", "\u115f\u1160",
+                "\u034f", "\u061c", "\U000e0001\U000e0041", "\U000e007f", "\u0964", "\u0964\u0964", "\u0965", "\u200bn/a\u200b", "\ufffc", "\u0001", "\u0007\u001f", "\u007f", "@", "+-+", "\u0001 \u0002", "\u200bnot traced\u200b", "\u00a0n/a\u00a0"]
 SOURCED_TEXT = ["Phaladipika 26.42", "BPHS 3.12", "PG338-339", "Sloka 42", "Surya Siddhanta 1.1", "a", "x.1", "Brihat Parashara Hora Shastra",
                 "\u092c\u0943\u0939\u0924\u094d\u092a\u093e\u0930\u093e\u0936\u0930 3.12", "\u092c\u0943\u0939\u0924\u094d", "not traced in the printed edition; see BPHS 3.12",
-                "1.1", "none other than Parashara (BPHS 1.1)", "BPHS 3.12 (pending verification)"]
+                "1.1", "none other than Parashara (BPHS 1.1)", "BPHS 3.12 (pending verification)",
+                "\u0967\u0968\u0969", "\u0905\u0927\u094d\u092f\u093e\u092f", "Adh.XXVI PG338-339 Sloka 42-44", "\u0905\u0927\u094d\u092f\u093e\u092f \u0968\u096c\u0964", "\u092c\u0943\u0939\u0924\u094d\u0964 \u0967\u0964\u0967"]
 
 
 def _utf8(pg):
@@ -657,16 +662,30 @@ def test_REAL_SQL_varchar_and_the_text_array_elements_are_inspected(monkeypatch,
     got = _lacking_ks(monkeypatch, disposable_pg, ["BPHS 1.1", " ", "not traced", "N/A."], "varchar(40)", "text")
     assert got == [2, 3, 4]
     arrs = [("ARRAY['BPHS 1.1']",), ("ARRAY['']",), ("ARRAY['not traced']",), ("ARRAY['BPHS 1.1','']",), ("ARRAY[]::text[]",), ("NULL",),
-            ("ARRAY[NULL]::text[]",), ("ARRAY['BPHS 1.1','not traced']",), ("ARRAY['BPHS 1.1','BPHS 1.2']",), ("ARRAY[E'\\u200b']",), ("ARRAY['n.a.']",)]
-    assert _lacking_ks(monkeypatch, disposable_pg, arrs, "text[]", "array") == [2, 3, 4, 5, 6, 7, 8, 10, 11]
+            ("ARRAY[NULL]::text[]",), ("ARRAY['BPHS 1.1','not traced']",), ("ARRAY['BPHS 1.1','BPHS 1.2']",), ("ARRAY[E'\\u200b']",), ("ARRAY['n.a.']",),
+            ("ARRAY[E'\\u00ad']",), ("ARRAY['BPHS 1.1',E'n\\u00ad/a']",), ("ARRAY[E'\\uff2e\\uff2f\\uff2e\\uff25']",), ("ARRAY['BPHS',E'\\u2800']",), ("ARRAY[E'\\u0967\\u0968']",),
+            ("ARRAY[E'\\u0905\\u0927\\u094d\\u092f\\u093e\\u092f',E'Adh.XXVI']",)]
+    assert _lacking_ks(monkeypatch, disposable_pg, arrs, "text[]", "array") == [2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]
 
 
-def test_REAL_SQL_json_and_jsonb_values_scalars_arrays_and_objects_are_inspected(monkeypatch, disposable_pg):
-    js = [("'\"BPHS 1.1\"'",), ("'\"\"'",), ("'\"not traced\"'",), ("'[\"BPHS 1.1\"]'",), ("'[\"\"]'",), ("'[\"BPHS\",\"  \"]'",), ("'[]'",), ("'{}'",), ("'null'",), ("'5'",),
-          ("'true'",), ("'{\"src\":\"BPHS\"}'",), ("'[[\"a\"]]'",), ("NULL",), ("'[\"BPHS\",\"N/A\"]'",), ("'[{\"src\":\"x\"}]'",), ("'[{}]'",), ("'[\"a\",1]'",)]
-    want = [2, 3, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 17, 18]
+JSON_CASES = [
+    ('"BPHS 1.1"', False), ('""', True), ('"not traced"', True), ('["BPHS 1.1"]', False), ('[""]', True), ('["BPHS","  "]', True), ("[]", True), ("{}", True),
+    ("null", True), ("5", True), ("true", True), ('{"src":"BPHS"}', False), ('[["a"]]', False), (None, True), ('["BPHS","N/A"]', True), ('[{"src":"x"}]', False),
+    ("[{}]", True), ('["a",1]', True),
+    # MED-1: an object / array is a source only if some STRING LEAF passes the text test
+    ('{"source":"not traced"}', True), ('{"source":""}', True), ('{"a":null}', True), ('{"a":{}}', True), ('[{"src":"n/a"}]', True),
+    ('{"a":{"b":{"c":"BPHS 1.1"}}}', False), ('{"a":{"b":{"c":"n/a"}}}', True), ('{"a":["not traced","BPHS 1.1"]}', False), ('{"n":5,"b":true}', True),
+    ('[{"src":"BPHS"},{"src":"TBD"}]', True), ('[["not traced"]]', True), ('{"s":"\\u00ad"}', True), ('[{"src":"\\uff2e\\uff2f\\uff2e\\uff25"}]', True),
+    ('{"src":"\\u0967\\u0968\\u0969"}', False), ('{"src":"  "}', True), ('{"a":[{"b":""},{"c":"\\u200b"}]}', True), ('{"a":[{"b":""},{"c":"Sloka 42"}]}', False),
+    ('{"src":"not\\u00a0traced"}', True), ('[{"a":{}},{"b":"BPHS"}]', True), ('{"src":["",""]}', True), ('{"src":[]}', True), ('{"src":{"x":[null,false,0]}}', True)]
+
+
+def test_REAL_SQL_json_and_jsonb_values_scalars_arrays_objects_and_nested_leaves_are_inspected(monkeypatch, disposable_pg):
+    rows = [(f"'{v}'" if v is not None else "NULL",) for v, _ in JSON_CASES]
+    want = [i for i, (_, lack) in enumerate(JSON_CASES, 1) if lack]
     for ddl in ("jsonb", "json"):
-        assert _lacking_ks(monkeypatch, disposable_pg, js, ddl, "json") == want, ddl
+        got = _lacking_ks(monkeypatch, disposable_pg, rows, ddl, "json")
+        assert got == want, (ddl, [JSON_CASES[k - 1][0] for k in sorted(set(got) ^ set(want))])
 
 
 def test_REAL_SQL_the_column_type_decides_what_can_carry_a_source(monkeypatch, disposable_pg):
@@ -696,6 +715,31 @@ def test_REAL_SQL_the_whole_declared_ldgr_check_with_the_leaks_and_the_sample_ca
     assert ac.ldgr_source_declared_check("x", LS_M(col="c"), "s_t", ["k", "c"], [["k"]])[LDGR]["v"] == FAIL
 
 
+def test_regression_the_nbsp_internal_collapse_the_soft_hyphen_and_the_fullwidth_forms_are_in_the_probe_list():
+    for must in ("not\u00a0traced", "n\u00ad/a", "\uff2e\uff2f\uff2e\uff25", "\uff4e\uff0f\uff41", "\u2800", "\u3164", "\u115f\u1160", "\u034f", "\u061c", "\U000e0001\U000e0041", "\u0964"):
+        assert must in LACKING_TEXT, must
+    for must in ("\u0967\u0968\u0969", "\u0905\u0927\u094d\u092f\u093e\u092f", "Adh.XXVI PG338-339 Sloka 42-44"):
+        assert must in SOURCED_TEXT, must
+
+
+@pytest.mark.parametrize("cols, like", [(LIKE_COLS, LIKE_COLS), (PHALA_COLS, []), (["id", "name", "analysis", "valias", "aka_x"], ["valias"]), ([], []), (None, [])])
+def test_the_alias_like_column_check_is_case_insensitive_and_token_based_and_leaves_a_phaladeepika_shaped_table_alone(cols, like):
+    assert sorted(ac.alias_like_columns(cols)) == sorted(like)
+
+
+@pytest.mark.parametrize("like", LIKE_COLS)
+def test_every_alias_like_spelling_blocks_na_and_identity_only_and_a_phaladeepika_table_does_not(monkeypatch, like):
+    assert ac.vocab_alias_declared_check("bg_x", VA_NA, "t", ["id", like])[ALIAS]["v"] == NO_DET
+    ident = dict(VA_M_NOALIAS, identity_only=True, identity_only_why="the asset stores the canonical display names only")
+    monkeypatch.setattr(ac, "alias_fetch_forms", lambda c: pytest.fail("not read"))
+    assert ac.vocab_alias_declared_check("bg_x", ident, "t", ["graha", like])[ALIAS]["v"] == NO_DET
+    monkeypatch.undo()
+    assert ac.vocab_alias_declared_check("bg_x", VA_NA, "t", PHALA_COLS)[ALIAS]["v"] == NA
+    monkeypatch.setattr(ac, "alias_fetch_forms", lambda c: FORMS)
+    monkeypatch.setattr(ac, "alias_fetch_values", lambda t, v, a=None: _pairs(("Sun", None, 1)))
+    assert ac.vocab_alias_declared_check("bg_x", ident, "t", PHALA_COLS)[ALIAS]["v"] == PASS
+
+
 # ───────────────────────── M4: Vocab.alias without an alias column is identity only ─────────────────────────
 
 def test_an_alias_declaration_without_an_alias_column_reads_partial_unless_identity_only_is_declared():
@@ -722,7 +766,7 @@ def test_bg_phaladeepika_latta_shaped_asset_reaches_pass_only_through_the_explic
     assert rec["v"] == PASS and "identity_only declared" in rec["measured"]
 
 
-@pytest.mark.parametrize("like", ac.ALIAS_LIKE_COLUMNS)
+@pytest.mark.parametrize("like", LIKE_COLS)
 def test_a_measured_declaration_without_an_alias_column_is_refused_beside_an_alias_like_column(monkeypatch, like):
     monkeypatch.setattr(ac, "alias_fetch_forms", lambda c: pytest.fail("not read"))
     for va in (VA_M_NOALIAS, dict(VA_M_NOALIAS, identity_only=True, identity_only_why="the asset stores the canonical display names only")):
@@ -730,7 +774,7 @@ def test_a_measured_declaration_without_an_alias_column_is_refused_beside_an_ali
         assert rec["v"] == NO_DET and rec["declaration_disagreements"][0]["field"] == "vocab_alias.alias_column" and like in rec["measured"]
 
 
-@pytest.mark.parametrize("like", ac.ALIAS_LIKE_COLUMNS)
+@pytest.mark.parametrize("like", LIKE_COLS)
 def test_no_alias_class_is_refused_beside_any_alias_like_column(like):
     rec = ac.vocab_alias_declared_check("bg_x", VA_NA, "t", ["id", like])[ALIAS]
     assert rec["v"] == NO_DET and "cause" not in rec
@@ -796,7 +840,7 @@ def test_the_why_length_cap_is_exactly_1200_and_the_alias_like_list_is_pinned():
     ok = " ".join(["word"] * 240)
     assert len(ok) <= 1200
     ac.validate_declarations(_doc(dict(ldgr_source=dict(LS_M(), why=ok))))
-    assert ac.ALIAS_LIKE_COLUMNS == ("synonyms", "aliases", "alias", "alt_names", "alternate_names", "other_names", "also_known_as")
+    assert ac.ALIAS_LIKE_TOKENS == ("synonym", "alias", "alt_name", "alternate_name", "other_name", "also_known", "nickname", "name_variant") and ac.ALIAS_LIKE_EXACT == ("aka",)
 
 
 def test_the_s2_carriage_validator_is_unchanged_by_the_s3_text_rules():

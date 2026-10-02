@@ -1094,6 +1094,10 @@ def build_record(*, asset, layer, criterion, evidence, verified_by, verdict=None
         # the same cap in both detectors and the rollup: a certificate may not claim what the census would not honour
         _refuse("citation_state_partial_refused", f"{criterion} reads {verdict} with citation_state {cstate!r}, "
                                                   "which its census record and rollup cap at NO_DETECTOR")
+    if (kind == "gate" and criterion == "Ldgr.source_presence" and verdict in ("PASS", "PARTIAL") and cstate is None
+            and meas is not None and meas.get("declared") is True):
+        # one rule with the rollup (_check_contribution): a DECLARED Ldgr record always carries its declared state; one without it was not produced by the census
+        _refuse("citation_state_missing", f"{criterion} reads {verdict} on a declared cell that carries no citation_state: the rollup would not honour it")
     if (kind == "gate" and criterion == "Ldgr.source_presence" and verdict == "PASS" and cstate is None
             and not LDGR_NULL_STATE_WRITE_ALLOWED):
         _refuse("citation_state_missing", f"{criterion} reads PASS but the census cell carries no citation_state: the "

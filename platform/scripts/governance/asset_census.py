@@ -763,7 +763,14 @@ ONTOLOGY_TABLE = "brahma_ontology"                # bg_ontology's target table
 VOCAB_ALIAS_DECL_FIELDS = ("na", "class", "vocab_column", "alias_column", "identity_only", "identity_only_why", "why", "evidence")
 LDGR_SOURCE_DECL_FIELDS = ("na", "source_column", "citation_state", "why", "evidence")
 # columns that carry (or look like they carry) an asset's own alias set: a measured `vocab_alias` that declares no alias_column beside one is contradicted
-ALIAS_LIKE_COLUMNS = (ALIAS_COLUMN, "aliases", "alias", "alt_names", "alternate_names", "other_names", "also_known_as")
+ALIAS_LIKE_TOKENS = ("synonym", "alias", "alt_name", "alternate_name", "other_name", "also_known", "nickname", "name_variant")
+ALIAS_LIKE_EXACT = ("aka",)
+
+
+def alias_like_columns(cols) -> list:
+    """The columns of `cols` that carry (or look like they carry) an asset's own alias set: a case-insensitive match on any of ALIAS_LIKE_TOKENS or exactly `aka`.
+    A measured `vocab_alias` that declares no alias_column beside one is contradicted, and `no_alias_class` may not be declared beside one (N-73 (4))."""
+    return [c for c in (cols or ()) if isinstance(c, str) and (c.casefold() in ALIAS_LIKE_EXACT or any(t in c.casefold() for t in ALIAS_LIKE_TOKENS))]
 _DECL_IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
 # S3 declaration quality (adversarial review M5): a reason / evidence text that cannot be a real one is refused for the new keys only (S2's carriage validator is unchanged)
 _S3_PLACEHOLDER_WORDS = frozenset({"tbd", "todo", "tba", "fixme", "xxx", "placeholder", "unknown", "none", "null", "na", "n/a", "n.a", "nil", "lorem", "ipsum", "etc", "pending"})
@@ -1616,7 +1623,7 @@ def vocab_alias_declared_check(aid: str, va, table, cols, keys=None) -> dict:
             if va["na"] != NO_ALIAS_CLASS:
                 raise KeyError("na")
             ev = va["evidence"]
-            like = [c for c in ALIAS_LIKE_COLUMNS if known and c in cols]
+            like = alias_like_columns(cols) if known else []
             if like:
                 return {"Vocab.alias": dict(v=NO_DET, declared=True,
                                             declaration_disagreements=[dict(field="vocab_alias.na", declared=NO_ALIAS_CLASS, measured=f"the table carries alias-like column(s) {like}")],
@@ -1642,7 +1649,7 @@ def vocab_alias_declared_check(aid: str, va, table, cols, keys=None) -> dict:
     if absent:
         return {"Vocab.alias": dict(v=FAIL, declared=True, measured=f"declared column(s) {', '.join(absent)} are not columns of {table}: the declaration names a "
                                                                     "vocabulary the table does not carry")}
-    like = [c for c in ALIAS_LIKE_COLUMNS if c in cols]
+    like = alias_like_columns(cols)
     if not spec["alias_column"] and like:
         return {"Vocab.alias": dict(v=NO_DET, declared=True,
                                     declaration_disagreements=[dict(field="vocab_alias.alias_column", declared=None, measured=f"the table carries alias-like column(s) {like}")],
@@ -1663,23 +1670,31 @@ def vocab_alias_declared_check(aid: str, va, table, cols, keys=None) -> dict:
 LDGR_PLACEHOLDERS = ("", "not traced", "not traced yet", "untraced", "unsourced", "not sourced", "no source", "no sources", "no citation", "no reference",
                      "source unidentified", "source not identified", "unidentified", "unknown", "n/a", "n.a", "na", "nil", "none", "null", "nan", "not available",
                      "not applicable", "not found", "not given", "pending", "tbd", "tba", "todo", "to do", "to be added", "to be determined", "missing", "false", "0")
-_LDGR_JUNK = (r"[[:space:][:punct:]\u00a0\u00a1\u00ab\u00b7\u00bb\u00bf\u1680\u180e\u2000-\u206f\u2212\u2e00-\u2e7f\u3000-\u303f\ufe00-\ufe6f\ufeff\uff01-\uff0f\uff1a-\uff20]")
+# INVISIBLE characters are removed everywhere in the value (soft hyphen, combining grapheme joiner, Arabic letter mark, Hangul/Braille/Hangul-filler blanks, Mongolian
+# and zero-width/format/bidi controls, variation selectors, BOM, interlinear/tag characters): they print as nothing, so 'n<SHY>/a' is 'n/a'. JUNK is stripped from the
+# ends (whitespace, punctuation, dashes, quotes, dandas). Both are explicit sets (the database may be UTF8 with a C collation, where [[:alnum:]] / [[:punct:]] know ASCII only).
+_LDGR_INVISIBLE = (r"[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180b-\u180f\u200b-\u200f\u202a-\u202e\u2060-\u206f\u2800\u3164\ufe00-\ufe0f\ufeff\uffa0\ufff9-\ufffd"
+                   r"\U000e0000-\U000e007f\U000e0100-\U000e01ef]")
+_LDGR_JUNK = (r"[[:space:][:punct:]\u00a0\u00a1\u00ab\u00b7\u00bb\u00bf\u0964\u0965\u1680\u2000-\u206f\u2212\u2e00-\u2e7f\u3000-\u303f\ufe00-\ufe6f\ufeff\uff01-\uff0f\uff1a-\uff20]")
 _LDGR_SPACE = r"[[:space:]\u00a0\u1680\u2000-\u200b\u2028\u2029\u202f\u205f\u3000\ufeff]"
 LDGR_TEXT_TYPES = ("text", "character varying", "character", "bpchar", "citext")
 
 
 def _ldgr_lacking_text(x: str) -> str:
-    """The SQL predicate 'the text expression `x` states no source' (NULL, pure junk, or a placeholder after normalisation)."""
-    norm = f"lower(regexp_replace(regexp_replace({x}, '^{_LDGR_JUNK}+|{_LDGR_JUNK}+$', '', 'g'), '{_LDGR_SPACE}+', ' ', 'g'))"
+    """The SQL predicate 'the text expression `x` states no source': NULL, or after NFKC normalisation (fullwidth 'ＮＯＮＥ' -> 'NONE'; needs a UTF8 database, a
+    non-UTF8 one raises and the check reads ERRORED), removal of INVISIBLE characters, stripping of JUNK at the ends, whitespace collapse and case folding, an empty
+    value or one of LDGR_PLACEHOLDERS; or the fallback: no alphanumeric character at all in an all-ASCII value (control characters, stray symbols). A value with a
+    non-ASCII character outside the explicit sets (a Devanagari citation) is a source whatever the database locale classifies as alnum."""
+    n0 = f"regexp_replace(normalize({x}, NFKC), '{_LDGR_INVISIBLE}+', '', 'g')"
+    norm = f"lower(regexp_replace(regexp_replace({n0}, '^{_LDGR_JUNK}+|{_LDGR_JUNK}+$', '', 'g'), '{_LDGR_SPACE}+', ' ', 'g'))"
     lst = ",".join("'" + w + "'" for w in LDGR_PLACEHOLDERS)
-    # CLOSED placeholder list, plus the fallback: no alphanumeric character at all in an all-ASCII value (control characters, stray symbols); a value with any
-    # non-ASCII character that is not in _LDGR_JUNK (a Devanagari citation) is a source whatever the database locale classifies as alnum
-    return f"({x} IS NULL OR {norm} IN ({lst}) OR ({x} !~ '[[:alnum:]]' AND {x} !~ '[^\\x01-\\x7f]'))"
+    return f"({x} IS NULL OR {norm} IN ({lst}) OR ({n0} !~ '[[:alnum:]]' AND {n0} !~ '[^\\x01-\\x7f]'))"
 
 
 def _ldgr_lacking(col: str, kind: str) -> str:
-    """The SQL predicate 'this row's source column states no source' for a text / text[] / json(b) column (an array or JSON array is lacking when empty or
-    when ANY element is; a JSON scalar must be a non-lacking string, a JSON object a non-empty one; numbers, booleans and nested arrays are not citations)."""
+    """The SQL predicate 'this row's source column states no source' for a text / text[] / json(b) column. An array, or a JSON array, is lacking when empty or when ANY
+    element is. A JSON string is tested as text; a JSON object or array (also nested inside one) is lacking unless at least one STRING LEAF (any depth) passes the same text
+    test, so {"source":"not traced"}, {"a":null}, {"a":{}} and [{"src":"n/a"}] lack a source; numbers, booleans and nulls are never sources."""
     c = f'"{col}"'
     if kind == "text":
         return _ldgr_lacking_text(c)
@@ -1687,8 +1702,10 @@ def _ldgr_lacking(col: str, kind: str) -> str:
         return f"({c} IS NULL OR cardinality({c}) = 0 OR EXISTS (SELECT 1 FROM unnest({c}) AS e(x) WHERE {_ldgr_lacking_text('e.x')}))"
 
     def elem(e):
+        leaf = (f"NOT EXISTS (SELECT 1 FROM jsonb_path_query({e}, 'strict $.**') AS l(x) WHERE jsonb_typeof(l.x) = 'string' "
+                f"AND NOT {_ldgr_lacking_text('(l.x #>> ' + chr(39) + '{}' + chr(39) + ')')})")
         return (f"(CASE jsonb_typeof({e}) WHEN 'string' THEN {_ldgr_lacking_text('(' + e + ' #>> ' + chr(39) + '{}' + chr(39) + ')')} "
-                f"WHEN 'object' THEN {e} = '{{}}'::jsonb ELSE true END)")
+                f"WHEN 'object' THEN {leaf} WHEN 'array' THEN {leaf} ELSE true END)")
     return (f"({c} IS NULL OR (CASE jsonb_typeof({c}::jsonb) WHEN 'array' THEN (jsonb_array_length({c}::jsonb) = 0 OR EXISTS "
             f"(SELECT 1 FROM jsonb_array_elements({c}::jsonb) AS je(x) WHERE {elem('je.x')})) ELSE {elem(c + '::jsonb')} END))")
 
