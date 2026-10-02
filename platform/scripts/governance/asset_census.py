@@ -33,9 +33,10 @@ WHAT IT MEASURES, per asset, against the tier-4 template's nine gates:
                         output is `universe_undeclared`, which is itself the first gap
   Cost.baseline         rows_written / rows_per_second / last_built_at
 
-WHAT IT DOES NOT MEASURE, and says so rather than guessing: carriage detectors (D1/D2/D3 are per-asset
-semantics) and width universes that are not declared anywhere. Those come out as `NOT_GENERIC` — a prompt
-for the brief author, never a pass. Reachability at field level (`Reach.fields`, R23) is MEASURED — width
+WHAT IT DOES NOT MEASURE, and says so rather than guessing: carriage detectors (Carr.D1/D2/D3 are registered
+at detector NONE — per-asset semantics — and nothing measures them; the generic `Carr.detector` meta-check was
+retired at REGISTRY_REVISION 8) and width universes that are not declared anywhere. The width case comes out
+as `NOT_GENERIC` — a prompt for the brief author, never a pass. Reachability at field level (`Reach.fields`, R23) is MEASURED — width
 and depth over every capability module's SQL — but REPORTED, not graded: it stays `NOT_GENERIC`, so it
 never opens or closes a gap.
 
@@ -72,6 +73,7 @@ import ast
 import bisect
 import collections
 import datetime as dt
+import hashlib
 import json
 import os
 import re
@@ -137,12 +139,14 @@ ERRORED = "ERRORED"
 # READING itself as a closed set (D4 finding #5: "no declarative criterion list exists ... a
 # NO_DETECTOR row for a declared, unbound criterion is the honest form, not a forbidden one").
 #
-# A specific proof is a distinct criterion from its generic placeholder (D4: `Carr.D1` ≠
-# `Carr.detector`; `Completeness.depth.dasha_link` ≠ `Complete.depth`; `Earn.service_state` ≠
-# `Earn.build_record`) and is never merged by family alias at runtime — the four family aliases
+# A specific proof is a distinct criterion from its generic placeholder (D4: `Completeness.depth.dasha_link` ≠
+# `Complete.depth`; `Earn.service_state` ≠ `Earn.build_record`; and, until REGISTRY_REVISION 8, `Carr.D1` ≠
+# `Carr.detector`) and is never merged by family alias at runtime — the four family aliases
 # named in R79/D4 (`Vocab.rule1.alias`→`Vocab.alias`, `Dens.density_contract`→`Dens.served`,
 # `Carr.D1|D2|D3`→`Carr.detector`, `Completeness.*`→`Complete.*`) are one-time crosswalk entries
 # consumed only by the R81 migration script, and are NOT registered here as runtime equivalences.
+# (`Carr.detector` itself is RETIRED at revision 8 — see RETIRED_CRITERIA below; the R81 crosswalk entry stays
+# as the historical record it is, and the migration script does not read this registry.)
 #
 # E6.1 (Track E brief §8) adds three EXPLICIT applicability keys to every entry (None where a key
 # does not restrict; an entry without one is a test failure, never a default):
@@ -184,26 +188,63 @@ CRITERION_REGISTRY: dict[str, dict] = {
     "Vocab.alias":           dict(gate="Vocab", check="alias",            applicability="the table declares an alias-bearing class census", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=(ALIAS_COLUMN,), asset_kinds=None, revision=1),
     "Ldgr.source_presence":  dict(gate="Ldgr",  check="source_presence",  applicability="the target table carries a recognised citation column (R60: singular classical_citation included)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=CITATION_COLUMNS, asset_kinds=None, revision=2),
     "Dens.served":           dict(gate="Dens",  check="served",           applicability="reaches a served capability module; PASS (structural) needs ONE capability entry (the object literal that declares density_contract) whose own served read of the asset's table selects a tier column; a sibling entry, a sub-select, an INSERT...SELECT or a UNION branch does not count", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=4),  # E6.1(d): was file-level 'declares density_contract anywhere' (rev 1)
-    "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A candidate, cause no-prose, undecided)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),  # E6 (c): the declaration and the table's columns agree
+    "Narr.agree":            dict(gate="Narr",  check="agree",            applicability="prose_fields declared non-empty (null = undeclared: NO_DETECTOR; [] = declared no prose: measured N/A, cause no-prose, released by the declared rule Narr.agree#measured:no-prose, N-65)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),  # E6 (c): the declaration and the table's columns agree
     "Narr.checkable":        dict(gate="Narr",  check="checkable",        applicability="prose_fields declared non-empty; zero checkable rows is INCONCLUSIVE, never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Narr.fidelity_test":    dict(gate="Narr",  check="fidelity_test",    applicability="prose_fields declared non-empty; structural test discovery (N.7 item 5); never PASS", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Narr.lint":             dict(gate="Narr",  check="lint",             applicability="prose_fields declared non-empty; the fact-category-pin and raw-token narration lints over the writer scope", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Null.schema_default":   dict(gate="Null",  check="schema_default",   applicability="prose_fields declared non-empty; a non-NULL DEFAULT on a declared prose column; never PASS alone", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Null.blank_rows":       dict(gate="Null",  check="blank_rows",       applicability="prose_fields declared non-empty; blank or placeholder rows standing in for NULL; never PASS alone", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
-    "Carr.detector":         dict(gate="Carr",  check="detector",         applicability="always (the generic 'some carriage detector exists' reading)", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Reach.fields":          dict(gate="Reach", check="fields",           applicability="a served capability module selects specific columns", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     # ── registered, hand-observed only (detector NONE — D4 finding #5's honest, visible form) ──
     # These are the specific criteria R81's migration re-keys the 11 T5_LEDGER_DRIFT.md §A pairs
     # onto, each strictly MORE SPECIFIC than the generic auto-measured placeholder it sits beside
-    # (Carr.D1/D2/D3 vs Carr.detector; Completeness.depth.dasha_link vs Complete.depth;
-    # Earn.service_state vs Earn.build_record) — registered so a hand row has somewhere to point,
+    # (Completeness.depth.dasha_link vs Complete.depth; Earn.service_state vs Earn.build_record;
+    # Carr.D1/D2/D3 had the generic Carr.detector until it was retired at revision 8 — Carr is now exactly
+    # these three) — registered so a hand row has somewhere to point,
     # never auto-measured because no in-repo detector exists for the specific claim yet.
-    "Carr.D1":                       dict(gate="Carr", check="D1", applicability="the asset restates a value from a cited source (source correspondence)", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
+    "Carr.D1":                       dict(gate="Carr", check="D1", applicability="the asset DECLARES D1 (it transcribes cited classical content, N-73) with a spec: every row is matched against the declared passage of the English translation (carriage_d1.py); an asset with no declaration reads not measured", detector="asset_census.py:measure()", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=2),  # E6 S2: was detector NONE (rev 1)
     "Carr.D2":                       dict(gate="Carr", check="D2", applicability="the asset carries two independent witnesses of the same fact", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Carr.D3":                       dict(gate="Carr", check="D3", applicability="the asset computes a value that a second method could re-derive", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),
     "Completeness.depth.dasha_link": dict(gate="Completeness", check="depth.dasha_link", applicability="the table declares a dasha_system_id column", detector="NONE", layers=ALL_LAYERS, columns_any=("dasha_system_id",), asset_kinds=None, revision=1),
     "Earn.service_state":            dict(gate="Earn", check="service_state", applicability="asset_kind='service' (no target_table; asset_throughput's rows_written signal cannot distinguish healthy-and-idle from broken)", detector="NONE", layers=ALL_LAYERS, columns_any=None, asset_kinds=("service",), revision=1),
 }
+
+# E6 item (i), REGISTRY_REVISION 8: criteria that WERE registered and have been retired by a ruling. A retired criterion
+# is NOT in CRITERION_REGISTRY: it is not measured, not graded, feeds no gate cell, cannot hold an N/A rule, and
+# `registered_criterion`/`lookup_criterion` return None for it. This table exists for exactly two purposes, both
+# narrow and explicit:
+#   (1) a SAVED census (measured before the retirement) that still carries the criterion rolls up without it
+#       (`rollup_asset` ignores it; `rollup_excluded` reports it, never silently drops it); and
+#   (2) `emit_gaps` CLOSES any OPEN/IN_PROGRESS ledger row of a retired criterion with the recorded reason — the
+#       census can never close it by measurement (it no longer measures it), so without this the row would stay
+#       OPEN forever. There was no earlier mechanism for a removed criterion: `superseded_by` (R80) folds one
+#       identity into another and WITHDRAWN is a human decision; neither is a retirement by ruling.
+# `retired_in_revision` is the REGISTRY_REVISION that removed it. The table decides no cell, so it is not part of
+# registry_fingerprint().
+# LEDGER `_schema` CLAUSE (for SS to add to the ledger's `_schema` row; that row is byte-checked by tests and is NOT
+# edited here): "A CLOSED row written by emit_gaps for a retired criterion carries `closed_by`: \"retirement\" and
+# `retired_criterion`: <criterion>; CLOSED then means the criterion was retired by ruling, not that a detector passed.
+# Only the deterministic id `<asset>-<criterion>` is closed; `kind: opportunity` rows are never closed by a retirement."
+RETIRED_CRITERIA: dict[str, dict] = {
+    "Carr.detector": dict(
+        retired_in_revision=8,
+        decision="SS ruling A2 (2026-09-30/10-01), N-22 applicability proposal v1.2.3, E6 work-list item (i)",
+        reason=("a meta-check that read NO_DETECTOR on all 127 assets and duplicated what Carr.D1, Carr.D2 and Carr.D3 "
+                "(detector NONE) already say; Carr is exactly those three checks"),
+    ),
+}
+
+
+def _check_retired_disjoint(registry: dict, retired: dict) -> None:
+    """A criterion is registered OR retired, never both: a retired id re-registered would be measured and closed in
+    the same run. Raises RuntimeError naming every offender; called at import time."""
+    both = sorted(set(registry) & set(retired))
+    if both:
+        raise RuntimeError(f"criteria present in both CRITERION_REGISTRY and RETIRED_CRITERIA: {both!r} — "
+                           "a retired criterion must be removed from the registry (or un-retired by a new revision)")
+
+
+_check_retired_disjoint(CRITERION_REGISTRY, RETIRED_CRITERIA)
 
 
 def registered_criterion(crit: str) -> dict | None:
@@ -228,10 +269,10 @@ def gap_id_for(asset_id: str, crit: str, scope: str | None = None) -> str:
 def lookup_criterion(asset: str, scope: str | None, crit: str) -> tuple[str, dict] | None:
     """R79 (re-scoped per D4): deterministic lookup on (asset, scope, registered criterion) — no
     substance-key aliasing, no family merge. Returns (gap_id, registry_entry) or None when `crit`
-    is not registered. Two criteria that happen to describe related substance (e.g. `Carr.D1` and
-    `Carr.detector`) are two distinct lookups here, by design (D4 review finding #2: "a specific
-    proof is a distinct criterion from its generic placeholder ... and is never merged by family
-    alias")."""
+    is not registered (a RETIRED criterion is not registered: it returns None). Two criteria that happen to
+    describe related substance (e.g. `Complete.depth` and `Completeness.depth.dasha_link`) are two distinct
+    lookups here, by design (D4 review finding #2: "a specific proof is a distinct criterion from its
+    generic placeholder ... and is never merged by family alias")."""
     entry = registered_criterion(crit)
     if entry is None:
         return None
@@ -249,9 +290,43 @@ ROLLUP_ORDER = ("FAIL", "ERRORED", "NO_DETECTOR", "PARTIAL", "PASS")
 # never typed). Rule ids are "<criterion>#columns_any", "<criterion>#asset_kinds" (a supplied fact disproves the
 # pattern) and "<criterion>#measured:<cause>" (the census itself measured N/A, and the inspector named the CAUSE:
 # N-22 ruling principle 2). The uncaused "<criterion>#measured" form is RETIRED: one id per criterion released
-# every measured N/A of that criterion, whatever condition produced it. EMPTY on purpose: per-gate applicability
-# rules are N-22 (Strategic Suvarna), not yet approved. Until a rule id is declared here, an N/A reads NO_DETECTOR.
-NA_RULE_DECISIONS: dict[str, str] = {}
+# every measured N/A of that criterion, whatever condition produced it. Until a rule id is declared here, an N/A reads
+# NO_DETECTOR. REGISTRY_REVISION 9 declared the three approved, already-emitting rules (SS N-65, from the N-22 / N-22a ruling
+# table, proposal v1.2.3), REVISION 10 adds the two N-72 rules (dep_liveness S4, Earn.service_state not-a-service): nothing else
+# may be added without its own ruling, revision bump and pin.
+# Each value is the decision text the rule cites. Source of record for N-22, N-22a, N-65 and N-72: /Users/Dev/suvarna/run/DECISIONS.jsonl. NOT declared (held by ruling): Null rules (N-22 row 33), Earn.build_record rows,
+# Carr no-carriage, rolling_horizon, and the kind-keyed rules (user_data, write-nothing-by-design, ga_prashna cause).
+NA_RULE_DECISIONS: dict[str, str] = {
+    # R01, N-22 row 20 APPROVED (principles 2, 3): never run is Build.exercised's / Build.registered's finding
+    "Build.history#measured:never-run":
+        "N-22/N-22a row 20 (APPROVED, principles 2-3); N-65 (R01)",
+    # R02, N-22 row 19 AMENDED (principle 4: after the Dens scanner repair, E6.1 item d): bg_gochara_arcs,
+    # bg_kota_chakra_rings, bg_kp_sublord_division on the repaired scan
+    "Dens.served#measured:no-served-surface":
+        "N-22/N-22a row 19 (AMENDED, principles 1, 3, 4); N-65 (R02). Dens 'served' means the served TS surface; "
+        "python-side readers of these three L0 tables do not make them served.",
+    # R03, N-22 row 17 AMENDED (principle 8): the assets that declare prose_fields [] (bg_doshas, bg_ontology, bg_yogas,
+    # bo_laksana_rerank; SS: bg_yogas and bg_ontology final); the reverse leg still FAILs a narration column
+    # S4, N-22 row 23 re-proposed (the general form was refused for want of a reads-match detector; Build.dag's reads-match
+    # clause, E6 (h), is that detector and gates the emission): the asset's declared dependency list is empty AND Build.dag PASS
+    "Build.dep_liveness#measured:no-declared-dependencies":
+        "N-22/N-22a row 23 (re-proposed: reads-match detector landed in revision 6, principle 3); N-72 (S4)",
+    # Earn.service_state, N-22 row 9 AMENDED (principles 2, 3, 5): keyed on the DECLARED kind (not `service`); services and
+    # undeclared kinds keep reading NO_DETECTOR
+    "Earn.service_state#measured:not-a-service":
+        "N-22/N-22a row 9 (AMENDED, principles 2, 3, 5); N-72 (not-a-service keyed on the declared kind)",
+    # S2 (SS N-72 S2, N-73): the two checks that are NOT an asset's declared carriage check read N/A by a DECLARATION-keyed cause
+    # (the validator fixed the declared check from the asset's nature; never the caller-chosen `not-chosen`, refused at N-22 row 15).
+    # Inert until an asset declares a carriage check. `ratified_judgment` is a registered cause with NO rule declared (L0 Q13: it
+    # becomes a rule only by a separate SS approval).
+    "Carr.D1#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+    "Carr.D2#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+    "Carr.D3#measured:not-the-declared-carriage": "N-72 (S2, declaration-keyed); N-73 (2); N-22/N-22a row 15 (not-chosen stays refused)",
+    "Narr.agree#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
+    "Narr.checkable#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
+    "Narr.fidelity_test#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
+    "Narr.lint#measured:no-prose": "N-22/N-22a row 17 (AMENDED, principles 1, 3, 8); N-65 (R03)",
+}
 
 # The causes the inspector may emit on a measured N/A, per criterion. A slug names the CODE CONDITION that produced
 # the N/A (what `measure()` or a helper actually tested), never a semantic the code does not establish; the table
@@ -265,7 +340,10 @@ NA_CAUSES: dict[str, tuple[str, ...]] = {
     "Build.completion": ("no-writer-no-count-sql", "service-no-target-table-no-count-sql"),
     "Count.floor": ("target-floor-zero",),
     "Dens.served": ("no-served-surface",),
-    "Carr.D1": ("no-carriage",), "Carr.D2": ("no-carriage",), "Carr.D3": ("no-carriage",),
+    "Carr.D1": ("no-carriage", "not-the-declared-carriage", "ratified_judgment"),
+    "Carr.D2": ("no-carriage", "not-the-declared-carriage", "ratified_judgment"),
+    "Carr.D3": ("no-carriage", "not-the-declared-carriage", "ratified_judgment"),
+    "Earn.service_state": ("not-a-service",),
     "Build.exercised": ("never-run-no-writer", "never-executed-no-writer"),
     "Build.history": ("never-run",),
     "Build.dep_liveness": ("no-declared-dependencies",),
@@ -309,7 +387,7 @@ def validate_na_rule_decisions() -> None:
 
 # Registry revision: hand-bumped integer; registry_fingerprint() is the content hash a pin test binds to it, so the
 # revision cannot silently lag the content. Every gate cell carries both.
-REGISTRY_REVISION = 7     # 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
+REGISTRY_REVISION = 11     # 11 (provisional): S2 declared carriage (SS N-72 S2, N-73): Carr.D1 gets a detector (revision 2: the generic D1 engine for an asset that DECLARES D1 with a spec; undeclared assets read as before), NA_CAUSES gains Carr.D1/D2/D3:not-the-declared-carriage and :ratified_judgment, and Carr.D{1,2,3}#measured:not-the-declared-carriage are declared (inert until an asset declares a carriage check); asset_declarations.json 1.7.0; no real asset declares one yet, so no census cell changes. 10: NA_RULE_DECISIONS declares Build.dep_liveness#measured:no-declared-dependencies (S4, N-22 row 23 re-proposed; emitted only when the asset's declared dependency list is empty AND its Build.dag reads-match is PASS, else NO_DETECTOR) and Earn.service_state#measured:not-a-service (N-22 row 9; emitted only for a DECLARED non-service kind that the registry does not contradict); NA_CAUSES gains Earn.service_state:not-a-service; the registry criteria are unchanged (SS N-72; source of record /Users/Dev/suvarna/run/DECISIONS.jsonl). 9: NA_RULE_DECISIONS declares R01 Build.history#measured:never-run, R02 Dens.served#measured:no-served-surface and R03 Narr.{agree,checkable,fidelity_test,lint}#measured:no-prose (SS N-65, N-22/N-22a rows 20/19/17): +7 gate cells NO_DETECTOR to N/A on the saved censuses (Dens 3, Narr 4), no other cell moves; rollup_excluded now applies the same cause+rule check as the rollup (an undeclared N/A reads NO_DETECTOR there too); `never-run` is emitted only when the build history is present for the census scope (else NO_DETECTOR); an empty `written` scan reads NO_DETECTOR for a `prose_fields: []` asset; the registry criteria are unchanged. 8: Carr.detector RETIRED (E6 item i, SS A2): removed from the registry (32 to 31 entries; Carr is exactly D1-D3), measure() stops emitting it, RETIRED_CRITERIA records it and emit_gaps closes its OPEN rows (scoped runs close only in-scope assets' rows); no verdict moves. 7: E6 item (f): NA_CAUSES gains Carr.D1/D2/D3:no-carriage (N-22 principle 7, provisional until J1; SS strict definition: no DAG dependents AND no served-surface reach). The criterion registry is unchanged; the fingerprint moves because NA_CAUSES is fingerprinted content. No rule declared (NA_RULE_DECISIONS stays empty) and no asset declares terminal_by_construction, so no census cell changes. 6: E6 items (g)+(h): Build.target rev 2 (a declared service with no target_table, declared `service` by BOTH the registry and the declarations file, reads PASS by declaration, T4:274); Build.dag rev 2 (THREE clauses, each stated in the verdict text: every depends_on id is an active registry asset in ANY layer, the asset is on no dependency cycle, and reads-match — the writer's SQL reads against the declared edges, T4:275, aligned with pipeline/orchestrator/dag_edge_guard.py (SS 2026-10-01: L0 bedrock reads are exempt as `bedrock_exempt`, PROVISIONAL pending the J1 review; chart_facts is satisfied by any producer in the declared transitive closure); an undeclared read is a FAIL naming the missing edge, or a back-read when the edge would close a cycle; an incomplete parse is PARTIAL/NO_DETECTOR); Idem.pattern rev 2 (relative imports resolve against the importing package: ONE resolver for Idem.pattern and the reads scan — verdicts identical on the 127 saved writers, three notes changed: ka_dasha_kala, ka_gochara, ka_muhurta_seva). 5: E6 packet (c): Narr.agree/checkable/fidelity_test/lint and Null.schema_default/blank_rows registered; NA_CAUSES gains no-prose / no-prose-declared. 4: Dens.served rev 4 (contract AND a tier column in the served select; structural; cause no-served-surface). 3: NA_CAUSES gains Earn.build_record:no-registered-writer (E6 review fix 2). 2: N/A rule ids are cause-keyed (<criterion>#measured:<cause>); NA_CAUSES joins the content
 
 
 def registry_fingerprint() -> str:
@@ -411,9 +489,18 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
                             decision=NA_RULE_DECISIONS[rid], reason="measured N/A under a declared rule")
             return dict(criterion=crit, v=NO_DET, state="MEASURED", rule_id=rid, cause=cause,
                         reason="measured N/A but N/A rule undecided (N-22): an undeclared N/A is not N/A")
-        if v == PASS and e["detector"] == "NONE":
+        if crit == "Carr.D1" and v in (PASS, PARTIAL):
+            # S2 (adversarial review MED 4): a D1 verdict is honoured ONLY with its evidence: the verified chunk ledger and the digest of
+            # the cut span, a citation_state that is not unsourced/refuted, and (PASS) every row matched with the declared row count.
+            bad = d1_evidence_problem(meas)
+            if bad:
+                return dict(criterion=crit, v=NO_DET, state="MEASURED",
+                            reason=f"D1 {v} without verified passage evidence ({bad}): not honoured")
+        if v in (PASS, PARTIAL) and e["detector"] == "NONE":
+            # E6 item i review: a check with no detector earns no graded verdict above FAIL — PARTIAL is clamped like
+            # PASS (with Carr.detector gone, a measured PARTIAL on D1-D3 would otherwise have made Carr PARTIAL).
             return dict(criterion=crit, v=NO_DET, state="MEASURED",
-                        reason="detector NONE never reaches PASS")
+                        reason=f"detector NONE never reaches {v}")
         # E6 packet (c): the rollup does not trust a record's own verdict where the claim cannot be established
         # (INCONCLUSIVE is a state: nothing was measured), and the two capped checks cannot read PASS (SS: Null "never
         # PASS alone"; Narr.fidelity_test structural only)
@@ -436,7 +523,9 @@ def _check_contribution(crit: str, layer: str, meas: dict | None, facts: dict | 
             return dict(criterion=crit, v=v, state="MEASURED",
                         reason="measured; transitive_only: every missing edge is already reachable through a declared "
                                "dependency (ordering holds, the edge is undeclared)", **(dict(inconclusive=True) if infl else {}))
-        return dict(criterion=crit, v=v, state="MEASURED", reason="measured", **(dict(inconclusive=True) if infl else {}))
+        return dict(criterion=crit, v=v, state="MEASURED", reason="measured", **(dict(inconclusive=True) if infl else {}),
+                    # a D1 verdict says WHICH citation state it stands on (a sourced_ocr_unverified PASS is marked as such on the cell)
+                    **({"citation_state": meas["citation_state"]} if crit == "Carr.D1" and meas.get("citation_state") else {}))
     st = ap["state"]
     if st == "OUT_OF_LAYER":
         return None
@@ -454,11 +543,13 @@ def rollup_asset(layer: str, measurements: dict, facts: dict | None = None) -> d
     `measurements` dict; `facts` optionally supplies `columns` and `asset_kind`. A registered criterion
     with no measurement still counts (NO_DETECTOR) unless it is out of layer or an N/A rule declared in
     NA_RULE_DECISIONS disproves it — absence is never N/A. Raises KeyError for a layer or measured
-    criterion not registered, ValueError for a measurement outside its declared layers or verdict set."""
+    criterion not registered, ValueError for a measurement outside its declared layers or verdict set.
+    A measurement of a RETIRED criterion (a census saved before the retirement) is ignored here — it is graded
+    nowhere and moves no cell (E6 item i; rollup_excluded reports it)."""
     if layer not in LAYERS:
         raise KeyError(f"unknown layer {layer!r}")
     for crit in measurements:
-        if crit not in CRITERION_REGISTRY:
+        if crit not in CRITERION_REGISTRY and crit not in RETIRED_CRITERIA:
             raise KeyError(f"measured criterion {crit!r} is not in CRITERION_REGISTRY")
     validate_na_rule_decisions()
     fp = registry_fingerprint()
@@ -481,9 +572,16 @@ def rollup_asset(layer: str, measurements: dict, facts: dict | None = None) -> d
 
 def rollup_excluded(layer: str, measurements: dict) -> dict:
     """Measured criteria whose gate is not one of the nine cell gates: reported here, never silently
-    dropped (their owner decision is a campaign question, not a rollup choice)."""
-    return {c: mv["v"] for c, mv in measurements.items()
-            if c in CRITERION_REGISTRY and CRITERION_REGISTRY[c]["gate"] not in CELL_GATES}
+    dropped (their owner decision is a campaign question, not a rollup choice). A measured RETIRED criterion
+    (a census saved before its retirement) is reported here too, with its verdict as saved: it is not graded,
+    and it is not dropped either.
+
+    N/A obeys the SAME release rule as the cells (`_na_released`: a registered cause AND its declared rule id, N-22
+    principle 2): a measured N/A that no declared rule releases is reported as NO_DETECTOR, never as N/A. Every other
+    verdict is reported as measured."""
+    return {c: (NO_DET if mv["v"] == NA and not _na_released(c, mv) else mv["v"]) for c, mv in measurements.items()
+            if c in RETIRED_CRITERIA
+            or (c in CRITERION_REGISTRY and CRITERION_REGISTRY[c]["gate"] not in CELL_GATES)}
 
 
 def rollup_census(census_layer: dict, facts_by_asset: dict | None = None) -> dict:
@@ -525,6 +623,117 @@ DECLARED_KINDS = ("data", "service", "view", "static", "rider", "probe", "user_d
 # ever be wrong-or-redundant; it already was wrong for bg_gochara_arcs, whose real reader ka_gochara has no registry
 # depends_on edge (a registry defect, recorded in the evidence file, not a declaration). Nothing overrides the radius.
 CARRIAGE_FIELDS = ("served_surface",)
+# E6 S2 (SS N-72 S2, N-73): the `carriage` object also holds the asset's DECLARED CARRIAGE CHECK (declaration-keyed, reviewed):
+# ONE of D1/D2/D3 applies, chosen by the asset's NATURE, never by the caller of a rule: transcription of cited classical content
+# -> D1 (match to a cited source; N-73 (2)), computation -> D3 (re-derivation), derivation from another asset's stored facts ->
+# D2. The validator REFUSES a mismatch. The other two checks read N/A by the cause `not-the-declared-carriage`. A ratified
+# judgment seed (L0 Q13) declares nature `ratified_judgment` with a `ruling` id and no `applies`: all three read N/A by
+# `ratified_judgment`. An asset with no such declaration reads exactly as before.
+CARRIAGE_DECL_FIELDS = ("applies", "nature", "why", "evidence", "spec", "citation_state", "ruling")
+CARRIAGE_NATURE_CHECK = {"transcription": "D1", "computation": "D3", "derivation": "D2"}
+RATIFIED_JUDGMENT = "ratified_judgment"
+CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
+_RULING_ID = re.compile(r"N-[0-9]{1,6}[A-Za-z0-9._-]{0,24}")
+_CARR_D1_MOD: list = []
+
+
+def _carriage_d1():
+    """The generic D1 engine (carriage_d1.py, a pure sibling module), loaded by file path once."""
+    if not _CARR_D1_MOD:
+        import importlib.util
+        p = Path(__file__).resolve().parent / "carriage_d1.py"
+        spec = importlib.util.spec_from_file_location("carriage_d1_for_census", p)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules.setdefault("carriage_d1_for_census", mod)
+        spec.loader.exec_module(mod)
+        _CARR_D1_MOD.append(mod)
+    return _CARR_D1_MOD[0]
+
+
+def _evidence_pointer_ok(ev) -> bool:
+    """A declared evidence pointer is `unverified:<where>` or a repo-relative FILE (optionally `:line`) that exists. The resolved
+    path must stay inside the repository: a symlink (or `..`) that leads out of it is not evidence."""
+    if not (isinstance(ev, str) and ev.strip()):
+        return False
+    if ev.startswith("unverified:"):
+        return bool(ev[len("unverified:"):].strip())
+    rel = re.sub(r":[0-9]+$", "", ev)
+    if rel.startswith("/") or ".." in rel.split("/"):
+        return False
+    try:
+        root = ROOT.resolve()
+        p = (ROOT / rel).resolve()
+        return p.is_file() and (p == root or root in p.parents)
+    except (OSError, ValueError):
+        return False
+
+
+def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
+    """Raises DeclarationsError when the asset's declared carriage CHECK is malformed or contradicts N-73's nature rule."""
+    nature = car.get("nature")
+    allowed = list(CARRIAGE_NATURE_CHECK) + [RATIFIED_JUDGMENT]
+    if nature not in allowed:
+        raise DeclarationsError(f"{where}.carriage.nature must be one of {allowed}, got {nature!r}")
+    for f in ("why", "evidence"):
+        v = car.get(f)
+        if not (isinstance(v, str) and v.strip() and "\n" not in v and len(v) <= 1200):
+            raise DeclarationsError(f"{where}.carriage.{f} must be a non-blank single-line string (a reason / a pointer file:line or document)")
+    if not _evidence_pointer_ok(car["evidence"]):
+        raise DeclarationsError(f"{where}.carriage.evidence {car['evidence']!r} is not an existing repo-relative file (optionally with :line); a "
+                                f"pointer that cannot be checked must say so: 'unverified:<where it is recorded>'")
+    if isinstance(e.get("terminal_by_construction"), str) and e["terminal_by_construction"].strip():
+        raise DeclarationsError(f"{where}: a declared carriage check and terminal_by_construction contradict each other (an asset that "
+                                f"declares a carriage check carries something from a source; declare one or the other)")
+    if nature == RATIFIED_JUDGMENT:
+        if car.get("applies") is not None or car.get("spec") is not None:
+            raise DeclarationsError(f"{where}.carriage: nature ratified_judgment declares no check (`applies`/`spec` must be absent)")
+        if not (isinstance(car.get("ruling"), str) and _RULING_ID.fullmatch(car["ruling"])):
+            raise DeclarationsError(f"{where}.carriage.ruling must be the ruling id (N-<number>) that ratified the judgment")
+        if car.get("citation_state") is not None:
+            raise DeclarationsError(f"{where}.carriage: citation_state is for a transcription, not a ratified judgment")
+        return
+    want = CARRIAGE_NATURE_CHECK[nature]
+    if car.get("applies") != want:
+        raise DeclarationsError(f"{where}.carriage: nature {nature!r} requires applies {want!r} (N-73: transcription -> D1 match to a "
+                                f"cited source; computation -> D3 re-derivation; derivation from another asset's stored facts -> D2), "
+                                f"got {car.get('applies')!r}")
+    if car.get("ruling") is not None:
+        raise DeclarationsError(f"{where}.carriage.ruling is only for nature ratified_judgment")
+    cs = car.get("citation_state")
+    if nature == "transcription":
+        if cs not in CITATION_STATES:
+            raise DeclarationsError(f"{where}.carriage.citation_state must be one of {list(CITATION_STATES)} for a transcription, got {cs!r}")
+    elif cs is not None:
+        raise DeclarationsError(f"{where}.carriage.citation_state is only declared for nature transcription")
+    spec = car.get("spec")
+    if spec is not None:
+        if want != "D1":
+            raise DeclarationsError(f"{where}.carriage.spec is only defined for applies D1")
+        try:
+            _carriage_d1().validate_spec(spec, f"{where}.carriage")
+        except ValueError as exc:
+            raise DeclarationsError(str(exc)) from exc
+        if not _evidence_pointer_ok(spec["effect_clauses_evidence"]):
+            raise DeclarationsError(f"{where}.carriage.spec.effect_clauses_evidence {spec['effect_clauses_evidence']!r} is not an existing "
+                                    "repo-relative file (optionally :line) or 'unverified:<where>'")
+        for ef in spec.get("extra_fields", []):
+            if ef.get("kind") == "passage_text" and not _evidence_pointer_ok(ef["condition_evidence"]):
+                raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].condition_evidence {ef['condition_evidence']!r} is "
+                                        "not an existing repo-relative file (optionally :line) or 'unverified:<where>' (existence only)")
+            hatches = []
+            if ef.get("kind") == "passage_text":
+                for d in [ef["condition"], *ef.get("by_claimant", {}).values()]:
+                    hatches += ([d["ocr_lost_stop"]] if "ocr_lost_stop" in d else []) + list(d.get("ocr_stops", []))
+            for h in hatches:
+                if not _evidence_pointer_ok(h["evidence"]):
+                    raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}] escape hatch {h['text']!r}: evidence "
+                                            f"{h['evidence']!r} is not an existing repo-relative file (optionally :line) or "
+                                            "'unverified:<where>' (existence only)")
+            for rp in ef.get("repairs", []) if ef.get("kind") == "passage_text" else []:
+                if not _evidence_pointer_ok(rp["evidence"]):
+                    raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].repairs[{rp['from']!r}].evidence "
+                                            f"{rp['evidence']!r} is not an existing repo-relative file (optionally :line) or "
+                                            "'unverified:<where>' (existence only)")
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
@@ -631,6 +840,8 @@ def validate_declarations(doc, registry_ids=None) -> dict:
     assets = doc.get("assets")
     if not isinstance(assets, dict):
         raise DeclarationsError("`assets` must be an object mapping asset_id to a declaration")
+    if "carriage_declaration_fields" in doc and doc["carriage_declaration_fields"] != list(CARRIAGE_DECL_FIELDS):
+        raise DeclarationsError(f"`carriage_declaration_fields` must be exactly {list(CARRIAGE_DECL_FIELDS)}")
     known = _registry_id_set(registry_ids)
     for aid, e in assets.items():
         where = f"assets[{aid!r}]"
@@ -650,12 +861,14 @@ def validate_declarations(doc, registry_ids=None) -> dict:
         if car is not None:
             if not isinstance(car, dict):
                 raise DeclarationsError(f"{where}.carriage must be an object or null")
-            bad = sorted(set(car) - set(CARRIAGE_FIELDS))
+            bad = sorted(set(car) - set(CARRIAGE_FIELDS) - set(CARRIAGE_DECL_FIELDS))
             if bad:
                 raise DeclarationsError(f"{where}.carriage: unknown field(s) {bad}")
             for f, v in car.items():
-                if v is not None and not isinstance(v, bool):
+                if f in CARRIAGE_FIELDS and v is not None and not isinstance(v, bool):
                     raise DeclarationsError(f"{where}.carriage.{f} must be true, false or null, got {v!r}")
+            if any(car.get(f) is not None for f in CARRIAGE_DECL_FIELDS):
+                validate_carriage_declaration(where, car, e)
         pf = e.get("prose_fields")
         if pf is not None:
             # null = undeclared; [] = declared "this writer composes no prose" (a positive claim); both need evidence
@@ -989,6 +1202,92 @@ def grade_carr_no_carriage(record_facts) -> dict:
                f"Dens.served N/A (scanned, no reference); {sv}; the declared pointer is the evidence (a candidate, not a "
                "rule: released only by a declared rule, which must stay undeclared until an inverse-readers detector exists)",
                "no-carriage")
+
+
+_D1_SQL_ID = re.compile(r"[a-z0-9][a-z0-9_]*")
+_D1_SQL_IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def d1_fetch_chunks(chunk_ids) -> dict:
+    """{chunk_id: {chunk_id, text_id, content_en, content_sa, content_sha256}} for the declared passages: ONE read-only SELECT of
+    classical_text_chunks by chunk id (the ids are the validated declaration's, matched against a strict pattern before they reach
+    SQL). A chunk that does not exist is simply absent from the result (the D1 engine reports it as missing). Raises Unknown on a
+    failed read."""
+    ids = list(chunk_ids)
+    if not ids or not all(isinstance(i, str) and _D1_SQL_ID.fullmatch(i) for i in ids):
+        raise Unknown(f"d1_fetch_chunks: malformed chunk id list {ids!r}")
+    lst = ",".join(f"'{i}'" for i in ids)
+    blob = scalar("SELECT coalesce(json_agg(json_build_object('chunk_id',chunk_id,'text_id',text_id,'content_en',content_en,"
+                  "'content_sa',content_sa,'content_sha256',content_sha256) ORDER BY chunk_id)::text,'[]') "
+                  f"FROM classical_text_chunks WHERE chunk_id IN ({lst})")
+    try:
+        got = json.loads(blob or "[]")
+    except json.JSONDecodeError as exc:
+        raise Unknown(f"d1_fetch_chunks: unparseable chunk read: {exc}") from exc
+    return {c["chunk_id"]: c for c in got if isinstance(c, dict) and c.get("chunk_id")}
+
+
+_UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+
+def d1_fetch_rows(table: str, columns, chart_id: str | None = None) -> list:
+    """The asset's own table rows restricted to the DECLARED columns, in a total order (ORDER BY every column): the SECOND
+    read-only SELECT D1 makes (listed in the detector's stated reads), needed to compare EVERY row with the passage. When the
+    table carries `chart_id` the caller passes the census chart and the read is chart-scoped (`WHERE chart_id = '<uuid>'`).
+    Identifiers and the chart id are matched against strict patterns before they reach SQL. The rows come back as ONE line
+    (`jsonb_agg(...)::text`; `json_agg` over record rows puts ', <newline> ' between elements and `scalar()` returns only the
+    first output line: a 2+ row table read ERRORED live). Raises Unknown on a failed read."""
+    cols = list(dict.fromkeys(columns))
+    if not (isinstance(table, str) and _D1_SQL_IDENT.fullmatch(table) and cols and all(_D1_SQL_IDENT.fullmatch(c) for c in cols)):
+        raise Unknown(f"d1_fetch_rows: malformed identifier(s) {table!r} / {cols!r}")
+    if chart_id is not None and not (isinstance(chart_id, str) and _UUID.fullmatch(chart_id)):
+        raise Unknown(f"d1_fetch_rows: malformed chart id {chart_id!r}")
+    sel = ",".join(f'"{c}"' for c in cols)
+    order = ",".join(f't."{c}"' for c in cols)
+    where = f" WHERE \"chart_id\" = '{chart_id}'" if chart_id else ""
+    blob = scalar(f"SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY {order})::text,'[]') FROM (SELECT {sel} FROM \"{table}\"{where}) t")
+    try:
+        return json.loads(blob or "[]")
+    except json.JSONDecodeError as exc:
+        raise Unknown(f"d1_fetch_rows: unparseable read of {table}: {exc}") from exc
+
+
+def carriage_declared_checks(aid: str, car, target_table, chart_scoped: bool = False) -> dict:
+    """measure()'s Carr.D1/D2/D3 records for an asset that DECLARES its carriage check (SS N-72 S2): {} unless `car.nature` is
+    declared (an undeclared asset emits nothing here, so its cell reads exactly as before).
+
+    ratified_judgment: all three N/A, cause `ratified_judgment`. Otherwise the declared check (`applies`) is MEASURED (D1 by the
+    generic engine in carriage_d1.py with a spec; D2/D3 have no detector yet: NO_DETECTOR, named) and the other two read N/A,
+    cause `not-the-declared-carriage`, released only by the declared rule (never by a caller's choice)."""
+    if not isinstance(car, dict) or car.get("nature") is None:
+        return {}
+    why = car.get("why") or ""
+    if car["nature"] == RATIFIED_JUDGMENT:
+        return {c: _na(f"ratified judgment seed (ruling {car.get('ruling')}): {why}", "ratified_judgment") for c in CARR_D_CHECKS}
+    applies = car["applies"]
+    own = f"Carr.{applies}"
+    out = {c: _na(f"the asset's declared carriage check is {applies} (nature {car['nature']}; reviewed, evidence: {car.get('evidence')}); "
+                  f"{c.split('.')[1]} is not it", "not-the-declared-carriage") for c in CARR_D_CHECKS if c != own}
+    if applies != "D1":
+        out[own] = dict(v=NO_DET, measured=f"NO_DETECTOR — the declared carriage check is {applies} (nature {car['nature']}), and no {applies} "
+                                           "detector is built yet: nothing measures it", declared_carriage=dict(applies=applies, nature=car["nature"]))
+        return out
+    spec = car.get("spec")
+    if not isinstance(spec, dict):
+        out[own] = dict(v=NO_DET, measured="NO_DETECTOR — D1 is declared but without a `spec` (the declared passage, rows and matching "
+                                           "fields): there is nothing to match against")
+        return out
+    d1 = _carriage_d1()
+    if spec.get("table") != target_table:     # the table guard runs BEFORE any SELECT (nothing is read for an asset the spec is not about)
+        out[own] = d1.d1_measure(spec, car.get("citation_state"), {}, None, target_table)
+        return out
+    try:
+        chunks = d1_fetch_chunks(spec["chunk_ids"])
+        rows = d1_fetch_rows(spec["table"], d1.spec_columns(spec), CHART_ID if chart_scoped else None)
+        out[own] = d1.d1_measure(spec, car.get("citation_state"), chunks, rows, target_table)
+    except Unknown as exc:                                  # R41: this check's failure degrades only this check
+        out[own] = dict(v=ERRORED, measured=f"check errored: {exc}", citation_state=car.get("citation_state"))
+    return out
 
 
 def carr_checks(record_facts) -> dict:
@@ -1651,18 +1950,21 @@ def prose_checks(aid: str, decl, ctx: dict) -> dict:
     """The six Narr/Null records for one asset, from its declaration entry (`prose_fields`, `evidence`) and `ctx`:
     table, columns, types, defaults, counts (None = not read), paths (writer scope files), tests, vocabulary, written
     (None = the writer's writes could not be read). null prose_fields = undeclared: every check NO_DETECTOR, never
-    'no prose'. [] = positive declaration: measured N/A candidates (causes no-prose / no-prose-declared; no rule is
-    declared, so the rollup reads them NO_DETECTOR) unless a write hits a column the file treats as narration (agree
-    FAIL, the rest NO_DETECTOR) or the writes are unreadable (NO_DETECTOR)."""
+    'no prose'. [] = positive declaration: measured N/A candidates (causes no-prose / no-prose-declared). The rollup
+    releases the four Narr ones only because the Narr.*#measured:no-prose rules are declared (SS N-65, REGISTRY_REVISION 9);
+    the two Null ones have no rule (N-22 row 33) and read NO_DETECTOR. Unless a write hits a column the file treats as
+    narration (agree FAIL, the rest NO_DETECTOR) or the writes are unreadable or EMPTY (NO_DETECTOR: a scan that saw no
+    write at all is not evidence of "no narration write")."""
     allc = NARR_CHECKS + NULL_CHECKS
     pf = decl.get("prose_fields") if isinstance(decl, dict) else None
     if pf is None:
         return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — prose_fields is undeclared for {aid}: never read as 'no prose'")
                 for c in allc}
     if not pf:
-        if ctx.get("written") is None:
+        if not ctx.get("written"):       # None (unreadable) OR {} (the scan saw no write at all): neither proves "no narration write"
             return {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares prose_fields [] but its writes could not be "
-                                               "read, so the declaration cannot be checked") for c in allc}
+                                               "read (or the scan saw no write to its tables), so the declaration cannot be checked")
+                    for c in allc}
         hits = prose_reverse_leg(ctx["written"], ctx.get("vocabulary") or set())
         if hits:
             out = {c: dict(v=NO_DET, measured=f"NO_DETECTOR — {aid} declares prose_fields [] but Narr.agree failed") for c in allc}
@@ -1778,19 +2080,55 @@ class CheckTimeout(Unknown):
     timed-out layer-wide read still aborts the layer, fail-closed, naming the read)."""
 
 
-def psql(sql: str, sep: str = "\x1f", timeout: int | None = None) -> list[list[str]]:
+class ReadError(Unknown):
+    """E1.8: psql answered, but its text does not parse into the rectangular rows a `-tA` result always is
+    (a ragged row, an unterminated output, undecodable bytes). A read that cannot be parsed exactly is not
+    measured: it degrades like every other failed query (an `Unknown`), and is never padded, trimmed or guessed."""
+
+
+def parse_psql_output(out: str, sep: str = "\x1f", width: int | None = None) -> list[list[str]]:
+    """The rows of `psql -tA -F <sep>` output, exactly. `-tA` prints each row as its fields joined by `sep` and
+    terminated by ONE newline, so exactly that one terminator is removed and nothing else: `str.strip()` also
+    removes U+001C..U+001F (the field separator is whitespace to Python) and so ate the trailing separator of a
+    last row whose last field was empty — one field fewer, `ValueError` in a fixed-width unpack, or a silently
+    shortened row — and the leading separator of a first row whose first field was empty, shifting every field.
+    A row of only empty fields is a row (a single-column result's empty value is `[""]`), not a blank line.
+    Every row must have the same field count (`width` when given): a row that does not is a `ReadError` —
+    typically a value carrying a newline, which this line-oriented transport cannot represent."""
+    if out == "":
+        return []
+    if not out.endswith("\n"):
+        raise ReadError("psql output is not newline-terminated (truncated?) — not parsed")
+    rows = [ln.split(sep) for ln in out[:-1].split("\n")]
+    want = width if width is not None else len(rows[0])
+    for i, r in enumerate(rows):
+        if len(r) != want:
+            seen = f"{r[:3]!r}"[:200]
+            raise ReadError(f"psql row {i + 1} of {len(rows)} has {len(r)} field(s), expected {want} "
+                            f"({'declared' if width is not None else 'the first row'}): {seen} — a value "
+                            "containing a newline cannot be read line by line")
+    return rows
+
+
+def psql(sql: str, sep: str = "\x1f", timeout: int | None = None, width: int | None = None) -> list[list[str]]:
     env = dict(os.environ)
     env.setdefault("PGCONNECT_TIMEOUT", "10")
     limit = timeout if timeout is not None else PSQL_TIMEOUT_SECONDS
     try:
+        # bytes, decoded here: `text=True` would translate a lone CR (or CRLF) inside a value into a newline
         p = subprocess.run(["psql", "-tAX", "-F", sep, "-v", "ON_ERROR_STOP=1", "-c", sql],
-                           capture_output=True, text=True, env=env, timeout=limit)
+                           capture_output=True, env=env, timeout=limit)
     except subprocess.TimeoutExpired as exc:
         raise CheckTimeout(f"client-side timeout after {limit}s (psql killed): "
                            f"{' '.join(sql.split())[:120]}") from exc
     if p.returncode != 0:
-        raise Unknown((p.stderr.strip().splitlines() or ["psql failed"])[0])
-    return [ln.split(sep) for ln in p.stdout.strip().split("\n") if ln.strip()]
+        err = p.stderr.decode("utf-8", errors="replace")
+        raise Unknown((err.strip().splitlines() or ["psql failed"])[0])
+    try:
+        out = p.stdout.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ReadError(f"psql output is not valid UTF-8: {exc}") from exc
+    return parse_psql_output(out, sep, width)
 
 
 def scalar(sql: str) -> str | None:
@@ -3811,16 +4149,22 @@ def catalog(tables: list[str]) -> dict:
     # a failed read leaves them None (unknown), it never aborts the layer.
     types: dict | None = {}
     defaults: dict | None = {}
+    types_error: str | None = None
     try:
-        for tn, cn, dt_, dflt in psql("SELECT table_name, column_name, data_type, coalesce(replace(column_default, E'\\n', ' '), '') "
-                                      f"FROM information_schema.columns WHERE table_schema='public' AND table_name IN ({lit}) "
-                                      "ORDER BY table_name, ordinal_position"):
+        for row in psql("SELECT table_name, column_name, data_type, coalesce(replace(column_default, E'\\n', ' '), '') "
+                        f"FROM information_schema.columns WHERE table_schema='public' AND table_name IN ({lit}) "
+                        "ORDER BY table_name, ordinal_position"):
+            if len(row) != 4:      # E1.8: a malformed row is a failed read with its reason, never a crashing unpack
+                raise ReadError(f"columns/types/defaults read: a row has {len(row)} field(s), expected 4: {row[:3]!r}")
+            tn, cn, dt_, dflt = row
             types.setdefault(tn, {})[cn] = dt_
             if dflt:
                 defaults.setdefault(tn, {})[cn] = dflt
-    except Unknown:
+    except Unknown as exc:
         types = defaults = None
-    return dict(exists=exists | views, cols=cols, keys=keys, views=views, types=types, defaults=defaults)
+        types_error = str(exc)
+    return dict(exists=exists | views, cols=cols, keys=keys, views=views, types=types, defaults=defaults,
+                types_error=types_error)
 
 
 def build_history(prefix: str, ids=None) -> dict:
@@ -4972,11 +5316,16 @@ def _reads_clause(aid: str, r: dict, files: list[str], owners_fn, g) -> tuple[st
         return ERRORED, f"check errored: {exc}", {}
     anc = {d: _ancestors(g, d) for d in deps} if g is not None else {}
     closure = set(deps).union(*anc.values()) if g is not None else None
-    findings, covered, exempt, soft = [], 0, [], []
+    findings, covered, exempt, soft, co_skipped = [], 0, [], [], []
     for t, locs in sorted(scan["reads"].items()):
         prod = [a for a in owners.get(t, []) if a != aid]
-        if not prod or aid in owners.get(t, []) or t in own or any(p in scan["co_registered"] for p in prod):
-            continue                  # nobody produces it / its own table / produced by another asset of the SAME writer class
+        if not prod or aid in owners.get(t, []) or t in own:
+            continue                  # nobody produces it / its own table
+        if any(p in scan["co_registered"] for p in prod):
+            # produced by another asset of the SAME writer class (bg_transit_engine / bg_transit_rules: one class registered
+            # twice): one writer, not a dependency. Skipped as a finding, but RECORDED (never silently dropped).
+            co_skipped.append(dict(asset=aid, table=t, producers=sorted(prod), kind="co_registered_skipped"))
+            continue
         if any(p in deps for p in prod):
             covered += 1
             continue
@@ -5026,15 +5375,19 @@ def _reads_clause(aid: str, r: dict, files: list[str], owners_fn, g) -> tuple[st
                 s += "; bedrock-named table with a non-L0 owner: not exempt (stricter than dag_edge_guard, which exempts by name alone)" \
                     if fd.get("bedrock_name_non_l0_owner") else ""
                 parts.append(s + ")")
-        extra_ev = {k: v for k, v in (("bedrock_exempt", exempt), ("soft_satisfied", soft)) if v}
+        extra_ev = {k: v for k, v in (("bedrock_exempt", exempt), ("soft_satisfied", soft), ("co_registered_skipped", co_skipped)) if v}
         miss = [fd for fd in findings if fd["kind"] == "missing_edge"]
         # transitive_only is claimed only when no back-read is present for the asset: a back-read must stay visible in the
         # rollup reason (a mix of a back-read and all-transitive missing edges is NOT "transitive only")
         only_t = bool(miss) and len(miss) == len(findings) and all(fd["transitive_via"] for fd in miss)
         return FAIL, "FAIL — " + "; ".join(parts), dict(missing_edges=findings, transitive_only=only_t, **extra_ev)
-    extra_ev = {k: v for k, v in (("bedrock_exempt", exempt), ("soft_satisfied", soft)) if v}
+    extra_ev = {k: v for k, v in (("bedrock_exempt", exempt), ("soft_satisfied", soft), ("co_registered_skipped", co_skipped)) if v}
     satisfied = covered + len(exempt) + len(soft)
     note = ""
+    if co_skipped:
+        note += (f"; {len(co_skipped)} read(s) of table(s) produced by an asset registered on the SAME writer class "
+                 f"({', '.join(c['table'] + ' <- ' + '/'.join(c['producers']) for c in co_skipped)}) were not compared with the declared "
+                 "edges: one class registered for several assets is one writer, not a dependency")
     if exempt:
         note += (f"; {len(exempt)} read(s) of bedrock-named table(s) owned only by L0 assets ({', '.join(e['table'] for e in exempt)}) "
                  "need no declared edge (dag_edge_guard exemption list; stricter than the guard, which exempts by table name alone; "
@@ -5097,6 +5450,82 @@ def _declared_kind(declarations, asset_id: str):
     e = (declarations or {}).get(asset_id)
     k = e.get("kind") if isinstance(e, dict) else None
     return k if isinstance(k, str) and k in DECLARED_KINDS else None
+
+
+def _grade_dep_liveness_none(dag, scanned: bool = True) -> dict:
+    """Build.dep_liveness for an asset with an EMPTY declared dependency list (SS N-72, S4; N-22 row 23 re-proposed).
+
+    N/A (cause no-declared-dependencies) ONLY when the reads-match detector is demonstrably present AND clean: this asset's
+    own Build.dag record reads PASS (exists, cycle and reads-match: the writer's SQL reads no other asset's table without a
+    declared edge, and the scan was COMPLETE) AND it recorded NO `bedrock_exempt` read. An asset that reads another L0 asset's
+    table under the ruled bedrock exemption consumes that asset's rows, so "nothing to be live" would be false: the
+    CONSERVATIVE reading withholds the N/A (NO_DETECTOR). Anything else (the dag check missing, FAIL on an undeclared read
+    or a cycle, PARTIAL/NO_DETECTOR/ERRORED because the scan was incomplete or unavailable) is NO_DETECTOR, never N/A: with
+    no declared dependency "nothing to be live" is a claim only a clean reads-match scan can make (CLAUDE.md N.8; the F5
+    pattern of `never-run`). `scanned` is False for an asset with no writer code: no scan ran, so the text says "nothing to
+    match" and never claims a detector found anything."""
+    v = (dag or {}).get("v")
+    ex = (dag or {}).get("bedrock_exempt") or ()
+    if v == PASS and not (dag or {}).get("missing_edges") and not ex:
+        co = (dag or {}).get("co_registered_skipped") or ()
+        if scanned:
+            text = "no declared dependencies, and the reads-match detector (Build.dag) found no undeclared read of another asset's table"
+        else:
+            text = ("no declared dependencies, and no writer (no build code to scan): there is nothing to match; the reads-match "
+                    "detector did not run")
+        if co:
+            text += (f" ({len(co)} read(s) of table(s) produced by an asset registered on the same writer class were not compared: "
+                     f"{', '.join(c['table'] for c in co)})")
+        return _na(text, "no-declared-dependencies")
+    if v == PASS and ex:
+        return dict(v=NO_DET, measured="NO_DETECTOR — no declared dependencies, but the asset reads another L0 asset's table under the "
+                                       "ruled bedrock exemption (" + ", ".join(sorted({str(e.get("table")) for e in ex}))
+                                       + "): it consumes that asset's rows, so 'nothing to be live' is not claimed")
+    why = "Build.dag was not measured" if v is None else f"Build.dag reads {v}"
+    return dict(v=NO_DET, measured=f"NO_DETECTOR — no declared dependencies, but the reads-match detector did not establish "
+                                   f"that the asset reads nothing undeclared ({why}), so 'nothing to be live' is not claimed")
+
+
+def d1_evidence_problem(meas) -> str:
+    """"" when a Carr.D1 measurement carries the evidence a D1 PASS/PARTIAL needs, else what is missing (a bare {v: PASS} is not a D1
+    result: it has no verified passage behind it). The digest recomputation is over the record's OWN contents (the recorded passage and
+    chunk ledger): it catches an accidental edit or a truncated record, it is NOT a forgery barrier (a record forged consistently
+    passes it; the measurement itself is what reads the database)."""
+    ev = meas.get("d1") if isinstance(meas, dict) else None
+    if not isinstance(ev, dict):
+        return "no `d1` evidence"
+    if not (isinstance(ev.get("passage_sha256"), str) and re.fullmatch(r"[0-9a-f]{64}", ev["passage_sha256"])):
+        return "no passage_sha256 (the cut span was not read)"
+    ch = ev.get("chunks")
+    if not (isinstance(ch, list) and ch and all(isinstance(c, dict) and c.get("verified") is True for c in ch)):
+        return "no verified chunk ledger"
+    d1m = _carriage_d1()
+    if not isinstance(ev.get("passage"), str) or d1m.span_digest(ev["passage"]) != ev["passage_sha256"]:
+        return "passage_sha256 does not equal the sha256 of the recorded passage (recomputed)"
+    try:
+        if d1m.chunks_digest(ch) != ev.get("chunks_sha256"):
+            return "chunks_sha256 does not equal the digest of the recorded chunk ledger (recomputed)"
+    except (KeyError, TypeError):
+        return "the chunk ledger is malformed (the chunks digest cannot be recomputed)"
+    if meas.get("citation_state") not in ("sourced", "sourced_ocr_unverified"):
+        return f"citation_state {meas.get('citation_state')!r} is not sourced / sourced_ocr_unverified"
+    if not (isinstance(ev.get("rows_total"), int) and ev["rows_total"] >= 1):
+        return "no rows were matched"
+    if meas.get("v") == PASS and not (ev.get("unmatched") == [] and ev.get("rows_matched") == ev["rows_total"]
+                                       and ev.get("row_count_ok") is True):
+        return "PASS but not every row matched under the declared row count"
+    return ""
+
+
+def _service_state_na(declared_kind, registry_kind):
+    """Earn.service_state N/A candidate, keyed on the DECLARED kind (SS N-72; N-22 row 9 AMENDED): N/A, cause `not-a-service`,
+    only when the asset-declarations file declares a kind that is not `service` AND the registry (`asset_kind`) does not
+    say `service` either. An undeclared/null kind, a declared service, or a registry service is never N/A: the census does
+    not guess a kind, and the services' own detector is a later design (they keep reading NO_DETECTOR)."""
+    if declared_kind is None or declared_kind == "service" or registry_kind == "service":
+        return None
+    return _na(f"declared kind {declared_kind!r} is not `service`; Earn.service_state is the service-state check "
+               "(a service's rows_written cannot tell healthy-and-idle from broken)", "not-a-service")
 
 
 def _measure_target(r: dict, owners, declared_kind) -> dict:
@@ -5241,6 +5670,15 @@ def _run_carriage_detector(aid: str) -> dict:
     """P3/R57 item (d): a per-asset carriage detector registered at <CTRL>/detectors/<asset>_D<1|2|3>.py
     IS the detector — run it and adopt its verdict instead of the blanket NO_DETECTOR.
 
+    META-CHECK SEMANTICS, to rework when the D detectors land: the loop below takes the FIRST of D1, D2, D3 found for
+    the asset and returns one verdict for the whole gate — that was the retired `Carr.detector` reading. Per-check
+    detectors must feed Carr.D1, Carr.D2 and Carr.D3 individually (one script, one check, one verdict each).
+
+    UNWIRED since REGISTRY_REVISION 8 (E6 item i): its only caller fed the retired `Carr.detector` criterion, and
+    measure() no longer calls it — a detector file on disk changes no verdict, by design (a per-asset script named
+    `_D1` belongs to the `Carr.D1` check, not to a whole-gate meta-check; binding it there is the detector work
+    that lifts D1-D3 off detector NONE, not this retirement). Kept, with its F8 hardening and tests, for that work.
+
     F8 (A_REVIEW.md): the port adopted the last stdout line's `verdict` without checking the
     process's return code or the verdict's vocabulary, so a detector that crashed AFTER printing
     `{"verdict": "PASS", …}` — or printed a verdict outside the closed set — was adopted as its
@@ -5341,6 +5779,12 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
         except Unknown as exc:
             errored = {c: dict(v=ERRORED, measured=f"check errored: {exc}") for c in ("Narr.checkable", "Null.blank_rows")}
     out = prose_checks(aid, decl, ctx)
+    if cat.get("types_error"):
+        # E1.8: the column types/defaults read failed (a malformed psql row, or any other Unknown): the verdicts that
+        # needed them already degrade to "not read"; say WHY on those cells instead of leaving the reason in `cat`
+        for crit in ("Narr.agree", "Null.schema_default"):
+            if crit in out and out[crit].get("v") in (NO_DET, PARTIAL):
+                out[crit] = dict(out[crit], measured=f"{out[crit]['measured']} [column types/defaults read failed: {cat['types_error']}]")
     out.update(errored)
     return out
 
@@ -5474,6 +5918,100 @@ def _write_atomic(path, text: str) -> None:
         except OSError:
             pass
         raise
+
+
+_GIT_SHA = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")      # sha1 or sha256 object format; abbreviated/garbage is never adopted
+
+
+def _git_env() -> dict:
+    """The environment the provenance git calls run under: every GIT_* variable dropped (GIT_DIR / GIT_WORK_TREE /
+    GIT_INDEX_FILE ... override the cwd and would make git answer for a different repository than the one this tool file
+    lives in) and optional locks off (a read-only status must not write the index)."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env["GIT_OPTIONAL_LOCKS"] = "0"
+    return env
+
+
+def _git_provenance(tool_file) -> dict:
+    """`tool_commit`, `tool_dirty` (and, when no commit can be certified, `tool_commit_unavailable`) for the checkout
+    `tool_file` lives in. Strict: a checkout whose tool code differs from HEAD cannot be certified from, so
+    `tool_commit` is HEAD only when (1) git answers from a scrubbed environment, (2) the repository toplevel contains
+    `tool_file` and git TRACKS it (a non-git copy nested inside another repo must not report the outer repo's HEAD) and
+    (3) no tracked file under the governance directory or the repo module the census loads at runtime is modified.
+    Otherwise `tool_commit` is null with a reason (`tool_dirty` true = modified tracked files, null = unknown)."""
+    tool_file = Path(tool_file).resolve()
+    here = tool_file.parent
+    runtime = [here]
+    if len(tool_file.parents) > 2:
+        runtime.append(tool_file.parents[2] / "python-sidecar" / "pipeline" / "orchestrator" / "dag_edge_guard.py")
+    env = _git_env()
+
+    def git(*args):
+        return subprocess.run(["git", *args], capture_output=True, text=True, timeout=10, env=env, cwd=str(here), shell=False)
+
+    def unknown(why):
+        return dict(tool_commit=None, tool_dirty=None, tool_commit_unavailable=why)
+
+    try:
+        p = git("rev-parse", "--show-toplevel", "HEAD")
+        lines = p.stdout.strip().splitlines()
+        if p.returncode != 0 or len(lines) != 2 or not _GIT_SHA.fullmatch(lines[1].strip()):
+            why = (p.stderr or "").strip().splitlines()[-1:] or ["no output"]
+            return unknown(f"not a git checkout (git rev-parse HEAD exit {p.returncode}): {why[0][:160]}")
+        top, sha = Path(lines[0]).resolve(), lines[1].strip()
+        if not tool_file.is_relative_to(top):
+            return unknown(f"git toplevel {top} does not contain the tool file {tool_file}")
+        if git("ls-files", "--error-unmatch", "--", str(tool_file)).returncode != 0:
+            return unknown(f"the tool file {tool_file.name} is not tracked by the enclosing git repository {top}")
+        st = git("status", "--porcelain", "--untracked-files=no", "--", *[str(x) for x in runtime])
+        if st.returncode != 0:
+            return unknown(f"git status could not run (exit {st.returncode}): "
+                           f"{((st.stderr or '').strip().splitlines() or ['no output'])[-1][:160]}")
+    except (OSError, subprocess.SubprocessError) as exc:      # no git binary, unreadable dir, timeout
+        return unknown(f"git could not run: {type(exc).__name__}")
+    n = len([ln for ln in st.stdout.splitlines() if ln.strip()])
+    if n:
+        return dict(tool_commit=None, tool_dirty=True, tool_commit_unavailable=f"dirty checkout: {n} modified files")
+    return dict(tool_commit=sha, tool_dirty=False)
+
+
+def _declarations_provenance() -> dict:
+    """`declarations_sha256` (sha256 of the BYTES of asset_declarations.json as read by this call) and `declarations_version` (the
+    file's `version`), so a certificate cannot cite a census taken before a declaration existed or changed (the registry fingerprint
+    does not cover this file). An unreadable file stamps both null with the reason `declarations_unavailable`; a readable file that
+    is not JSON / carries no string `version` keeps the sha of its bytes, stamps the version null and says why. Never a guess."""
+    try:
+        raw = DECLARATIONS_PATH.read_bytes()
+    except OSError as exc:
+        return dict(declarations_sha256=None, declarations_version=None,
+                    declarations_unavailable=f"{DECLARATIONS_PATH.name} could not be read: {type(exc).__name__}")
+    sha = hashlib.sha256(raw).hexdigest()
+    try:
+        ver = json.loads(raw.decode("utf-8")).get("version")
+    except (UnicodeDecodeError, ValueError, AttributeError):
+        ver = None
+    if not (isinstance(ver, str) and ver.strip()):
+        return dict(declarations_sha256=sha, declarations_version=None,
+                    declarations_unavailable=f"{DECLARATIONS_PATH.name} has no readable string `version` (its bytes are stamped)")
+    return dict(declarations_sha256=sha, declarations_version=ver)
+
+
+def census_stamp() -> dict:
+    """Strategist ruling N-44 A: the provenance a layer census carries in its head, so a certificate can never be written
+    from a census measured under a different registry revision or a different tool. Keys: `registry_revision`
+    (REGISTRY_REVISION), `registry_fingerprint` (registry_fingerprint()), `tool_commit` (HEAD of the checkout this module
+    runs from, only when that checkout is clean and verifiably the one this file lives in), `tool_dirty` (bool, or null when
+    unknown) and, only when `tool_commit` is null, `tool_commit_unavailable` (the reason). Verdict-neutral by construction:
+    read-only, touches no measurement, and the rollup reads only a layer's `layer` and `assets`, never its other head keys.
+    A null tool_commit is never guessed; consumers (E5.1) refuse it.
+
+    E1.8 declarations stamp: also `declarations_sha256` / `declarations_version` (see `_declarations_provenance`), and
+    `declarations_unavailable` only when either is null. They are NOT fingerprinted content (REGISTRY_REVISION is unchanged and no
+    cell moves). Interplay with `tool_commit`: asset_declarations.json lives in the governance directory, so a MODIFIED tracked
+    declarations file already makes `tool_commit` null + `tool_dirty` true; the sha is always of the bytes actually read, so it also
+    distinguishes two CLEAN commits whose declarations differ, and a consumer compares it to the file at the ref it certifies."""
+    return dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(),
+                **_git_provenance(__file__), **_declarations_provenance())
 
 
 def census_scope(obj) -> dict | None:
@@ -5775,6 +6313,10 @@ def measure(layer_key: str, assets=None) -> dict:
             None if attempts is None else attempts.get(aid, {}), t, rec_scope.split(";")[0], CHART_ID,
             instrument_present, r["has_writer"], era)
 
+        _ss = _service_state_na(_declared_kind(declarations, aid), r.get("asset_kind"))
+        if _ss is not None:
+            m["Earn.service_state"] = _ss
+
         cf = _grade_count_floor(r, live, count_errors.get(aid), ctables)
         if cf is not None:
             m["Count.floor"] = cf
@@ -5927,7 +6469,16 @@ def measure(layer_key: str, assets=None) -> dict:
                                      "(no build_run_assets row)")
             else:
                 m["Build.exercised"] = _na("never run, and it has no writer — consistent", "never-run-no-writer")
-            m["Build.history"] = _na("never run; check 7 owns this", "never-run")
+            if hist["per"]:
+                m["Build.history"] = _na("never run; check 7 owns this", "never-run")
+            else:
+                # SS N-65 / F5: `never-run` is released as N/A, so it may be emitted only when the build-history source is
+                # demonstrably PRESENT: some other asset of this census has build_run_assets rows. With no row for ANY asset
+                # of the scope (wiped, unreadable or never populated) "this asset never ran" cannot be told from "there is
+                # no history": NO_DETECTOR, never N/A (and so it closes no ledger row).
+                m["Build.history"] = dict(
+                    v=NO_DET, measured="NO_DETECTOR — build history is absent for the whole census scope (no build_run_assets "
+                                       "row for any asset), so `never run` cannot be told from a missing or unreadable history")
         elif not h.get("executed", 0):
             # C1 (W2-1_REVIEW §2 A8): rows exist but none was ever STARTED (queued leftovers, aborted or
             # BLOCKED before start) — the orchestrator never executed this asset. Not a PASS; the
@@ -5949,11 +6500,13 @@ def measure(layer_key: str, assets=None) -> dict:
             m["Build.history"] = _grade_build_history(h)
 
         m["Build.dep_liveness"] = (_grade_dep_liveness(r["depends_on"], deprec, CHART_ID) if r["depends_on"]
-                                   else _na("no declared dependencies", "no-declared-dependencies"))
+                                   else _grade_dep_liveness_none(m.get("Build.dag"), scanned=bool(files)))
 
         m["Complete.width"] = dict(v=NOT_GENERIC, measured="no declared universe for this asset — declaring one is the first width gap")
-        m["Carr.detector"] = _run_carriage_detector(aid)
         # E6 item (f): Carr.D1-D3 `no-carriage` candidates, only for an asset that DECLARES terminal_by_construction
+        m.update(carriage_declared_checks(aid, ((declarations or {}).get(aid) or {}).get("carriage") if isinstance(declarations, dict) else None,
+                                          r["target_table"],
+                                          chart_scoped="chart_id" in (_target_columns_fact(r["target_table"], cat) or ())))
         m.update(carr_checks(dict(declared_facts(declarations, aid), blocking_radius=radius.get(aid),
                                   measured_served=m["Dens.served"]["v"])))
         if "Reach.fields" not in m:
@@ -6061,7 +6614,7 @@ def _emit_scope(census: dict, assets) -> frozenset | None:
     return scope
 
 
-def emit_gaps(census: dict, assets=None) -> tuple[int, int, int, int]:
+def emit_gaps_summary(census: dict, assets=None) -> dict:
     """Append-only ledger with deterministic ids (`<asset>-<criterion>`), closing by measurement.
 
     D4 ruling (R57 amended), each an acceptance case with its own test in
@@ -6090,6 +6643,19 @@ def emit_gaps(census: dict, assets=None) -> tuple[int, int, int, int]:
     - hand `change`/`owner`/`gate` are CARRIED FORWARD from the prior row onto every transition
       row (CLOSED or RE-OPENED); only a gap_id's very first OPEN row uses the census's own
       defaults, because there is no prior hand annotation yet to carry.
+    - RETIRED criteria (E6 item i; `RETIRED_CRITERIA`): a criterion removed from the registry is never measured, so
+      no measurement can close its rows. Every row whose gap_id is EXACTLY the deterministic `<asset>-<criterion>`
+      (asset = the row's own `asset`; the row's `criterion` field is not consulted, so a row that lacks it is still
+      found and a hand row such as `bg_a-G05` that merely names the criterion is never touched), whose `kind` is
+      `gap` (or absent) and whose latest state is OPEN or IN_PROGRESS gets one appended CLOSED row. That row's
+      `what` records the retirement, its registry revision, the deciding ruling and the reason, it carries
+      `closed_by: "retirement"` and `retired_criterion` (so it is distinguishable from a closure by measurement),
+      and hand `change`/`owner`/`gate` are carried forward. It is CLOSED, not WITHDRAWN: WITHDRAWN is a human
+      rejection. A live row of any other kind (`opportunity`) is NOT closed — a retirement does not realise an
+      opportunity — and is counted in the summary's `retired_opportunity_rows_left`. Closure applies to every
+      asset in the ledger whatever layer this run measured — EXCEPT in a SCOPED run (see SCOPE below), which closes
+      only the rows of in-scope assets and neither closes nor counts any other asset's row; it counts in `closed`, is
+      idempotent, and never touches a CLOSED, WITHDRAWN or superseded id. A retired criterion never opens a gap, even if a stray measurement names it.
     Rows whose gap_id is not a deterministic `<asset>-<criterion>` id (hand-written rows with no
     detector binding, R58) are never touched by this function at all — no census criterion will
     ever produce that gap_id, so `latest` simply never matches them.
@@ -6103,7 +6669,8 @@ def emit_gaps(census: dict, assets=None) -> tuple[int, int, int, int]:
 
     SCOPE (E1.9). A census carrying `scope` (a scoped measure()), and/or `assets=[...]`, restricts the emit to those
     assets: no row of any other asset is read for a decision, appended, closed, withdrawn or reopened, and the file
-    is only ever APPENDED to, so every pre-existing row stays byte-identical and in order. The scope is checked
+    is only ever APPENDED to, so every pre-existing row stays byte-identical and in order (this includes the
+    retired-criterion closure above: an out-of-scope asset's OPEN row of a retired criterion is left OPEN). The scope is checked
     before the ledger is opened: a census whose assets contradict its own scope label, an `assets` entry the census
     never measured, an empty list or a malformed label raises ScopeError and writes nothing.
     """
@@ -6130,12 +6697,40 @@ def emit_gaps(census: dict, assets=None) -> tuple[int, int, int, int]:
                     if r.get("superseded_by"):
                         ever_superseded.add(r["gap_id"])
     ts = dt.datetime.now().astimezone().isoformat(timespec="seconds")
-    added = skipped = closed = reopened = 0
+    added = skipped = closed = reopened = retired_opps_left = 0
     with path.open("a", encoding="utf-8") as f:
+        # E6 item i: close the OPEN rows of retired criteria (see the docstring); in ledger order, before this run's
+        # measurements, and only for gap_ids no measurement below can touch (a retired crit is skipped there).
+        for gid, prior in list(latest.items()):
+            asset_of = prior.get("asset")
+            if scope is not None and asset_of not in scope:
+                continue  # E1.9 F1: a scoped run never closes (or counts) another asset's row, retired criterion or not
+            crit = next((c for c in RETIRED_CRITERIA if isinstance(asset_of, str) and gid == f"{asset_of}-{c}"), None)
+            if crit is None or gid in ever_superseded:
+                continue
+            ret = RETIRED_CRITERIA[crit]
+            if str(prior.get("state", "OPEN")).upper() not in LIVE_GAP_STATES:
+                continue
+            if str(prior.get("kind", "gap")).lower() != "gap":
+                retired_opps_left += 1      # an opportunity is not realised by a retirement: left as is, reported
+                continue
+            f.write(json.dumps(dict(
+                asset=asset_of, gap_id=gid, kind="gap", criterion=crit,
+                what=(f"CLOSED by retirement of criterion {crit} (registry revision {ret['retired_in_revision']}; "
+                      f"{ret['decision']}): {ret['reason']} / required: nothing — the criterion is no longer part "
+                      f"of the {crit.split('.')[0]} gate"),
+                change=prior.get("change", ""), detector=f"asset_census.py RETIRED_CRITERIA ({crit})",
+                owner=prior.get("owner", "asset_census"),
+                gate=prior.get("gate", "this asset's certification"), state="CLOSED", ts=ts,
+                closed_by="retirement", retired_criterion=crit),
+                ensure_ascii=False) + "\n")
+            closed += 1
         for a in census["assets"]:
             if scope is not None and a["asset_id"] not in scope:
                 continue  # E1.9: an asset outside the scope is never decided about, never written
             for crit, res in a["measurements"].items():
+                if crit in RETIRED_CRITERIA:
+                    continue  # a retired criterion never opens, re-opens or closes by measurement
                 v = res["v"]
                 if v not in FAILING and v not in CLOSABLE:
                     continue  # NOT_GENERIC / UNKNOWN / errored / anything future: never a transition
@@ -6195,7 +6790,14 @@ def emit_gaps(census: dict, assets=None) -> tuple[int, int, int, int]:
                             owner=owner, gate=gate, state="CLOSED", ts=ts, **sev), ensure_ascii=False) + "\n")
                         closed += 1
                     # else: no prior, or prior already CLOSED/terminal — nothing to do (idempotent)
-    return added, skipped, closed, reopened
+    return dict(added=added, skipped=skipped, closed=closed, reopened=reopened,
+                retired_opportunity_rows_left=retired_opps_left)
+
+
+def emit_gaps(census: dict, assets=None) -> tuple[int, int, int, int]:
+    """`emit_gaps_summary` as the historical (added, skipped, closed, reopened) tuple; see its docstring."""
+    r = emit_gaps_summary(census, assets)
+    return r["added"], r["skipped"], r["closed"], r["reopened"]
 
 
 def main() -> int:
@@ -6236,6 +6838,7 @@ def main() -> int:
               "another --out", file=sys.stderr)
         return EXIT_SCOPE
 
+    stamp = census_stamp()      # once per run: every layer head carries the same revision/fingerprint/tool provenance
     out, worst = {}, 0
     for k in keys:
         try:
@@ -6249,6 +6852,7 @@ def main() -> int:
             print("  R41 isolates per-asset checks only; a failed layer-wide read leaves this whole layer "
                   f"unmeasured{' and stops every layer after it (no census file written)' if len(keys) > 1 else ''}.")
             return 4
+        c.update(stamp)              # N-44 A: registry revision + fingerprint + tool commit in every layer head
         out[k] = c
         if by_layer is not None:
             print(f"{k} SCOPED RUN — partial census, not a layer census: {c['n_assets']} of "
@@ -6285,9 +6889,12 @@ def main() -> int:
             print(f"    FAIL {crit}: {len(n)} — {', '.join(n[:6])}{'…' if len(n) > 6 else ''}")
         worst = max(worst, 2 if fails else (3 if (parts or errored) else 0))
         if a.emit_gaps:
-            added, skipped, closed, reopened = emit_gaps(c)
-            print(f"  ledger: {added} row(s) appended, {skipped} already present, "
-                  f"{closed} closed by measurement, {reopened} re-opened")
+            g = emit_gaps_summary(c)
+            print(f"  ledger: {g['added']} row(s) appended, {g['skipped']} already present, "
+                  f"{g['closed']} closed (by measurement, or by a criterion's retirement), {g['reopened']} re-opened")
+            if g["retired_opportunity_rows_left"]:
+                print(f"  ledger: {g['retired_opportunity_rows_left']} retired-criterion opportunity row(s) left as is "
+                      "(a retirement does not realise an opportunity)")
 
     rollup_error = None
     if a.rollup:

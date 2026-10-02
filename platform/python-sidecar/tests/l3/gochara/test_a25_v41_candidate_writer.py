@@ -168,6 +168,15 @@ def fresh_gate(monkeypatch):
                             "house_vedha": _FreshReport(),
                             "moorti": _FreshReport()})
     monkeypatch.setattr(fr, "gate_allows_overlays", lambda reports: True)
+    # C17: the manifest substep's recorded ephemeris claim is OBSERVED via
+    # the helper's Sun + TRUE_NODE probe (panchang_engine.swiss_backend.
+    # backend_name, fail-closed). This suite is hermetic by design ("no live
+    # DB, no ephemeris"), so the PROBE is stubbed to swieph — the writer's
+    # own call (backend_name over the pinned horizon's JDs, raising on
+    # anything but swieph) still runs real. The C17 refusal test below
+    # re-stubs the probe to 'moseph'.
+    from panchang_engine import swiss_backend as sb_mod
+    monkeypatch.setattr(sb_mod, "_observed_backend_name", lambda swe: "swieph")
 
 
 # ── (1) registration + identity ──────────────────────────────────────────────
@@ -331,6 +340,64 @@ def test_manifest_substep_refuses_a_published_41(fresh_gate):
     with pytest.raises(_pub_refusal_classes()):
         writer_mod.GocharaV41CandidateWriter().run_substep(
             _ctx(conn), SubStep(key="manifest"))
+
+
+# ── (c17) the recorded ephemeris backend is OBSERVED, not hardcoded ──────────
+
+
+def test_manifest_records_the_probed_backend(fresh_gate, monkeypatch):
+    """C17: the convention + manifest ephemeris claims carry what the helper's
+    probe OBSERVED (stubbed to swieph here — the writer's backend_name call
+    runs real), with the probe's flag set read from the library, not the old
+    hardcoded {"ephemeris_backend": "swieph", "retflag": 258} literal."""
+    import swisseph as swe
+    from panchang_engine import swiss_backend as sb_mod
+
+    seen = {}
+    def probe(swe_mod):
+        seen["ran"] = True
+        return "swieph"
+    monkeypatch.setattr(sb_mod, "_observed_backend_name", probe)
+
+    conn = FakeConn(manifest_status=None)
+    result = writer_mod.GocharaV41CandidateWriter().run_substep(
+        _ctx(conn), SubStep(key="manifest"))
+    assert seen.get("ran") is True, "the helper's probe must have run"
+
+    expected_retflag = int(swe.FLG_SWIEPH | swe.FLG_SPEED)
+    conv = conn.sql_of("INSERT INTO kala_gochara_convention")
+    assert conv, "register_convention must have run"
+    params = conv[0][1]
+    # (cid, zodiac, ayanamsha, sidereal_method, node_model, node_source,
+    #  epoch_convention, time_scale, house_system, ephemeris_mode,
+    #  ephemeris_backend, probe_retflag, se1_checksums, method_version)
+    assert params[10] == "swieph"           # ephemeris_backend — observed
+    assert params[11] == expected_retflag   # probe_retflag — the probe's flags
+
+    pub = conn.sql_of("INSERT INTO kala_gochara_publication")
+    assert pub, "publish_candidate must have inserted the manifest"
+    import json as _json
+    ephem = _json.loads(next(p for p in pub[0][1]
+                             if isinstance(p, str) and "backend" in p))
+    assert ephem == {"backend": "swieph", "retflag": expected_retflag}
+    assert "ephemeris_backend=swieph (probed)" in result.notes
+
+
+def test_manifest_substep_refuses_when_probe_reports_moseph(fresh_gate, monkeypatch):
+    """C17: a simulated Moshier state (the helper's probe reports moseph)
+    makes backend_name raise BEFORE register_convention — the substep
+    refuses and writes NOTHING (no convention, no manifest, no DML at all)."""
+    from panchang_engine import swiss_backend as sb_mod
+    monkeypatch.setattr(sb_mod, "_observed_backend_name", lambda swe: "moseph")
+
+    conn = FakeConn(manifest_status=None)
+    with pytest.raises(sb_mod.SwissBackendError):
+        writer_mod.GocharaV41CandidateWriter().run_substep(
+            _ctx(conn), SubStep(key="manifest"))
+    assert not conn.sql_of("INSERT INTO kala_gochara_convention")
+    assert not conn.sql_of("INSERT INTO kala_gochara_publication")
+    assert not conn.sql_of("UPDATE kala_gochara_publication")
+    assert conn.commits == 0 and conn.rollbacks == 0
 
 
 def test_writer_never_flips_or_touches_authority():

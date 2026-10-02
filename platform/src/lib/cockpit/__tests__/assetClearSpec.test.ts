@@ -117,42 +117,28 @@ describe('EXPLICIT_CLEAR_OPS — multi-table writer completeness', () => {
     // Because the explicit spec is null, that derived DELETE is never executed.
   })
 
-  it("ka_gochara deletes coverage → contacts → windows, generation-scoped, no JOIN (WP7 C-1 / F-24)", () => {
-    // F-24: ka_gochara's re-pinned count_sql reaches ONLY kala_gochara_windows —
-    // without this entry a chart-owner Clear would orphan every kala_gochara_contacts /
-    // kala_gochara_coverage row. Three WHERE-scoped DELETEs in dependency order, pinned
-    // to generation '4.0' so v1 / '3.0' / g3_* rows are unreachable here.
+  it("ka_gochara clears the registered writer's own rows: windows_v2 '2.0' then its build-state, chart + generation scoped, no JOIN (migration 1230)", () => {
+    // The registry row counts kala_gochara_windows_v2 at generation '2.0' (what writers/ka_gochara.py
+    // writes). The Clear must remove exactly that surface AND the writer's delta-aware bookkeeping —
+    // a windows-only Clear would leave class_fingerprint rows that make a rebuild a no-op.
     const ops = EXPLICIT_CLEAR_OPS['ka_gochara']
     expect(ops, 'ka_gochara must have an explicit clear spec').toBeTruthy()
-    expect(ops).toHaveLength(3)
+    expect(ops).toHaveLength(2)
     const deletedTables = ops!.map(op => op.sql.match(/DELETE FROM (\w+)/i)?.[1])
-    expect(deletedTables).toEqual([
-      'kala_gochara_coverage',
-      'kala_gochara_contacts',
-      'kala_gochara_windows',
-    ])
+    expect(deletedTables).toEqual(['kala_gochara_windows_v2', 'kala_gochara_v2_build_state'])
     for (const op of ops!) {
-      expect(op.sql).toMatch(/WHERE chart_id = \$1 AND generation = '4\.0'/)
+      expect(op.sql).toMatch(/WHERE chart_id = \$1 AND generation = '2\.0'/)
       expect(op.sql).not.toMatch(/\bJOIN\b/i)
+      expect(op.guard, 'no refusal guard: no \'4.0\' authority is reachable from this Clear').toBeUndefined()
     }
   })
 
-  it("ka_gochara carries the authoritative-generation refusal guard on its first op (WP7 C-1 Option A)", () => {
-    const ops = EXPLICIT_CLEAR_OPS['ka_gochara']!
-    const guard = ops[0].guard
-    expect(guard, 'first op must carry the refusal guard').toBeTruthy()
-    expect(guard!.sql).toMatch(/FROM kala_gochara_authority/)
-    expect(guard!.sql).toMatch(/chart_id = \$1/)
-    expect(guard!.sql).toMatch(/authoritative_generation = '4\.0'/)
-    expect(guard!.refuse_message).toMatch(/authoritative generation/)
-    // Only the first op carries the guard — it refuses the whole asset.
-    expect(ops[1].guard).toBeUndefined()
-    expect(ops[2].guard).toBeUndefined()
-    // Release-authority cascade: authority reset + manifest 'cleared'.
-    expect(guard!.cascade).toEqual([
-      'DELETE FROM kala_gochara_authority WHERE chart_id = $1',
-      "UPDATE kala_gochara_publication SET status = 'cleared' WHERE chart_id = $1 AND generation = '4.0'",
-    ])
+  it("ka_gochara's Clear reaches no '4.x' ledger, no protected window generation and no authority/publication row", () => {
+    const sql = EXPLICIT_CLEAR_OPS['ka_gochara']!.map(op => op.sql).join('\n')
+    expect(sql).not.toMatch(/kala_gochara_(contacts|coverage|authority|publication)\b/)
+    expect(sql).not.toMatch(/kala_gochara_windows\b(?!_v2)/)      // the protected v1 / '3.0' relation
+    expect(sql).not.toMatch(/generation = '(4\.\d|3\.0|v1)'/)
+    expect(sql).not.toMatch(/g3_/)                                  // the century asset's generations
   })
 })
 

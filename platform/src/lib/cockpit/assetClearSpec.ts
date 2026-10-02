@@ -261,34 +261,27 @@ export const EXPLICIT_CLEAR_OPS: Record<string, ClearOp[] | null> = {
   // LEL rows are only ever mutated by the intake API, never by the asset build path.
   lel_events: null,
 
-  // ── L3 Kāla Gochara — contact ledger + coverage + windows (F-24) ─────────
-  // ka_gochara's re-pinned count_sql reaches ONLY kala_gochara_windows; without
-  // this entry a chart-owner Clear would orphan every kala_gochara_contacts /
-  // kala_gochara_coverage row (§N.3 violation; integrity conjunct (i)). Three
-  // generation-scoped DELETEs in dependency order, each WHERE chart_id=$1 AND
-  // generation='4.0'. No JOIN (§6.4). Clears the '4.0' candidate/publication
-  // generation ONLY — v1 / '3.0' / g3_* rows are unreachable here, and the
-  // (table, generation) guard from runbook step 3 is the second lock.
-  // REFUSAL: if '4.0' is this chart's authoritative_generation, a non-release
-  // principal is refused before any statement runs (guard on the first op);
-  // the release authority proceeds and the guard's cascade resets authority
-  // and marks the manifest 'cleared', inside the same per-asset SAVEPOINT.
-  // (WP7 packet C-1, Option A. The generation literal mirrors the registry
-  // re-pin of count_sql; when a '4.1' publication re-pins count_sql, this entry
-  // re-pins in the same migration — plan §6.3.)
+  // ── L3 Kāla Gochara — the registered writer's own output (migration 1230) ──────
+  // ka_gochara's registry row counts, checks and clears exactly what its REGISTERED
+  // WRITER writes: kala_gochara_windows_v2 at generation '2.0' (writers/ka_gochara.py
+  // TABLE / GENERATION_V2) and that writer's delta-aware bookkeeping,
+  // kala_gochara_v2_build_state at the same generation. The bookkeeping MUST go with the
+  // windows: the writer skips a class whose stored class_fingerprint is unchanged
+  // ("delta-aware invalidation skip, no recompute, no rewrite"), so a Clear that removed
+  // only the windows would leave a rebuild that writes nothing.
+  // Scope is exactly (chart_id, generation '2.0'): the century asset's g3_* rows in the
+  // same windows_v2 relation, the protected v1 / '3.0' rows in kala_gochara_windows and
+  // the '4.0' / '4.1' / '5.0' ledgers (other assets, other generations) are unreachable
+  // here. No JOIN (§6.4).
+  //
+  // This replaces WP7 packet C-1's entry, which cleared the '4.0' ledger (coverage →
+  // contacts → windows) behind an authoritative-generation refusal guard: it was tied to
+  // migration 1091's '4.0' re-pin of count_sql, which migration 1230 reverts (1091's pin
+  // returns together with the writer switch at D-FLIP — and so does that entry). A '4.0'
+  // authority can no longer be reached from a ka_gochara Clear, so the guard has nothing
+  // left to refuse.
   ka_gochara: [
-    {
-      sql: "DELETE FROM kala_gochara_coverage WHERE chart_id = $1 AND generation = '4.0'",
-      guard: {
-        sql: "SELECT 1 FROM kala_gochara_authority WHERE chart_id = $1 AND authoritative_generation = '4.0'",
-        refuse_message: "Refused: '4.0' is this chart's authoritative generation. Only the release authority may clear it (cascades authority reset + manifest 'cleared').",
-        cascade: [
-          'DELETE FROM kala_gochara_authority WHERE chart_id = $1',
-          "UPDATE kala_gochara_publication SET status = 'cleared' WHERE chart_id = $1 AND generation = '4.0'",
-        ],
-      },
-    },
-    { sql: "DELETE FROM kala_gochara_contacts WHERE chart_id = $1 AND generation = '4.0'" },
-    { sql: "DELETE FROM kala_gochara_windows   WHERE chart_id = $1 AND generation = '4.0'" },
+    { sql: "DELETE FROM kala_gochara_windows_v2 WHERE chart_id = $1 AND generation = '2.0'" },
+    { sql: "DELETE FROM kala_gochara_v2_build_state WHERE chart_id = $1 AND generation = '2.0'" },
   ],
 }

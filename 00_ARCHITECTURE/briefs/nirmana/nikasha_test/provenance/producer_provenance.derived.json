@@ -1,19 +1,26 @@
 {
-  "generated_at": "2026-09-27T07:23:08.324159+00:00",
+  "generated_at": "2026-10-02T09:53:35.237921+00:00",
   "generator": "platform/scripts/governance/catalog_provenance.py",
-  "hand_repoint_note": "hand repoint of 1 of 294 producers (bg_ghatana, scu.catalog.query_prospective_ledger: query_prospective_ledger.ts 169-226 -> 197-211) after main's snapshot moved; full regeneration via catalog_provenance.py --derive is owed when read-only DB access exists",
-  "snapshot_content_hash": "sha256:944183d7b8abfcc14b48eb01bbc1d2bc83ee54e6a6ced4f600fa7fd43f3e7ee7",
+  "snapshot_content_hash": "sha256:bff49e66b133a837aab85a209679b0a0f8c476b2a13734765fe7d064dc0d417b",
   "snapshot_scu_count": 182,
   "summary": {
     "total_scus": 182,
-    "scus_with_producers": 107,
-    "scus_no_detector": 75,
+    "scus_with_producers": 111,
+    "scus_no_detector": 71,
     "no_detector_reason_counts": {
-      "no_contract": 28,
+      "derived_kind_no_source_query": 11,
       "relation_unowned_by_registry": 28,
-      "no_relation_in_range": 11,
-      "source_ref_out_of_range": 7,
-      "derived_kind_no_source_query": 1
+      "no_relation_in_range": 16,
+      "no_contract": 4,
+      "unrecognized_requirement_kind": 7,
+      "source_ref_out_of_range": 4,
+      "source_ref_unresolvable_shape": 1
+    },
+    "producers_by_disposition": {
+      "derived_from_service_probe": 9,
+      "derived_from_source_query": 290,
+      "reviewed_output": 14,
+      "route_evidence_only": 1
     }
   },
   "scus": {
@@ -33,19 +40,25 @@
       ]
     },
     "scu.catalog.assess_career": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "derived"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain)"
     },
     "scu.catalog.assess_health": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "derived"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain)"
     },
     "scu.catalog.assess_marriage": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "derived"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain)"
     },
     "scu.catalog.asset_registry_all": {
       "requirement_kinds": [
@@ -131,9 +144,11 @@
       "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.channel_mcp_wiring": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "snapshot_resource"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 unrecognized_requirement_kind: unrecognized requirement kind 'snapshot_resource'"
     },
     "scu.catalog.chart_facts_query": {
       "requirement_kinds": [
@@ -211,9 +226,11 @@
       "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
     },
     "scu.catalog.compose_large_n": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "derived"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/synthesis/surface_gateway.ts)"
     },
     "scu.catalog.concept_locate": {
       "requirement_kinds": [
@@ -405,20 +422,134 @@
       "requirement_kinds": [
         "source_query"
       ],
-      "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range: platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts has 86 lines, ref 55-91; no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "producers": [
+        {
+          "asset_id": "ga_sensitive",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_sade_sati",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_panchanga",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_positions",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_ayurdaya",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_sensitive_degree",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_nakshatra",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts:55-91 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        }
+      ]
     },
     "scu.catalog.get_av_transit_gating": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "source_query"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 source_ref_unresolvable_shape: source_ref did not resolve to any <file>:<a>-<b> segment ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#handleSavBavGating | platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts#AV_BINDU_SIGN_CATEGORY')"
     },
     "scu.catalog.get_avasthas": {
       "requirement_kinds": [
         "source_query"
       ],
-      "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range: platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts has 91 lines, ref 71-100; no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "producers": [
+        {
+          "asset_id": "ga_sensitive",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_sade_sati",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_panchanga",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_positions",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_ayurdaya",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_sensitive_degree",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_nakshatra",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts:71-100 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        }
+      ]
     },
     "scu.catalog.get_ayurdaya": {
       "requirement_kinds": [
@@ -428,7 +559,7 @@
         {
           "asset_id": "ga_ayurdaya",
           "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-95 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:112-130 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:270-310 | platform/python-sidecar/ga_writers/_idempotency.py:54-78",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-95 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:112-131 | platform/supabase/migrations/204_chart_facts.sql:10-29 | platform/python-sidecar/ga_writers/ga_ayurdaya_writer.py:270-310 | platform/python-sidecar/ga_writers/_idempotency.py:54-78",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false
@@ -697,8 +828,64 @@
       "requirement_kinds": [
         "source_query"
       ],
-      "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 source_ref_out_of_range: platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts has 104 lines, ref 78-108; no relation name found in the remaining resolved handler-kind segment(s) ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
+      "producers": [
+        {
+          "asset_id": "ga_sensitive",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_sade_sati",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_panchanga",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_positions",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_ayurdaya",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_sensitive_degree",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        },
+        {
+          "asset_id": "ga_nakshatra",
+          "table": "chart_facts",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:78-108 | platform/supabase/migrations/204_chart_facts.sql:10-29",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": true
+        }
+      ]
     },
     "scu.catalog.get_dispositors": {
       "requirement_kinds": [
@@ -876,64 +1063,8 @@
       "requirement_kinds": [
         "source_query"
       ],
-      "producers": [
-        {
-          "asset_id": "ga_sensitive",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "ga_sade_sati",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "ga_panchanga",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "ga_positions",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "ga_ayurdaya",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "ga_sensitive_degree",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "ga_nakshatra",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        }
-      ]
+      "producers": [],
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts:122-141 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.get_medical_indications": {
       "requirement_kinds": [
@@ -1033,63 +1164,10 @@
           "disposition": "reviewed_output",
           "via_helper": null,
           "shared": false
-        },
-        {
-          "asset_id": "ga_sensitive",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "ga_sade_sati",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "ga_panchanga",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "ga_positions",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "ga_ayurdaya",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "ga_sensitive_degree",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "ga_nakshatra",
-          "table": "chart_facts",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
         }
+      ],
+      "notes": [
+        "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:163-190 | platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts:218-228 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
       ]
     },
     "scu.catalog.get_prashna_lagna": {
@@ -1289,9 +1367,11 @@
       ]
     },
     "scu.catalog.get_strength": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "source_query"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts#STRENGTH_CATEGORIES | platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:150-170')"
     },
     "scu.catalog.get_structural": {
       "requirement_kinds": [
@@ -1599,14 +1679,18 @@
       ]
     },
     "scu.catalog.graha_portrait": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "derived"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts)"
     },
     "scu.catalog.intent_classify": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "snapshot_resource"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 unrecognized_requirement_kind: unrecognized requirement kind 'snapshot_resource'"
     },
     "scu.catalog.judgment_query": {
       "requirement_kinds": [
@@ -1616,9 +1700,19 @@
       "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in any handler-kind segment (excluded ['migration']-kind segment(s) per C-3) ('platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler | platform/src/lib/retrieval/registry/layers/reading_checklist.ts#getOperativeVargaConstants | platform/migrations/435_ga_vichara.sql:83-115 | platform/supabase/migrations/204_chart_facts.sql:10-29')"
     },
     "scu.catalog.lel_intake_checklist": {
-      "requirement_kinds": [],
-      "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "requirement_kinds": [
+        "source_query"
+      ],
+      "producers": [
+        {
+          "asset_id": "bg_ghatana",
+          "table": "brahma_event_ontology",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts:246-302 | platform/supabase/migrations/456_brahma_event_ontology_dr13_shapes.sql | platform/supabase/migrations/423_ba_lel_r2_2_step1_chart_scope.sql:19 | platform/migrations/457_lel_schema_v2_event_shapes.sql",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": false
+        }
+      ]
     },
     "scu.catalog.list_classical_texts": {
       "requirement_kinds": [
@@ -1674,29 +1768,39 @@
       ]
     },
     "scu.catalog.list_sutravali_rules_by_text": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "source_query"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:616-643 | platform/python-sidecar/routers/sutravali.py:181-203 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts')"
     },
     "scu.catalog.maro_mcp_surface": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "snapshot_resource"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 unrecognized_requirement_kind: unrecognized requirement kind 'snapshot_resource'"
     },
     "scu.catalog.maro_orchestrate": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "snapshot_resource"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 unrecognized_requirement_kind: unrecognized requirement kind 'snapshot_resource'"
     },
     "scu.catalog.maro_profiles": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "snapshot_resource"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 unrecognized_requirement_kind: unrecognized requirement kind 'snapshot_resource'"
     },
     "scu.catalog.pact_query": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "derived"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/layers/register_d10_pact.ts)"
     },
     "scu.catalog.query_activation_waveform": {
       "requirement_kinds": [
@@ -1791,32 +1895,8 @@
       "requirement_kinds": [
         "source_query"
       ],
-      "producers": [
-        {
-          "asset_id": "mi_pramana",
-          "table": "mimamsa_calibration",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": false
-        },
-        {
-          "asset_id": "mi_gunanaka",
-          "table": "mimamsa_multipliers",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": false
-        },
-        {
-          "asset_id": "mi_pariksha",
-          "table": "mimamsa_qa_eval",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": false
-        }
-      ]
+      "producers": [],
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:152-197')"
     },
     "scu.catalog.query_cdlm_summary": {
       "requirement_kinds": [
@@ -2395,8 +2475,16 @@
       "requirement_kinds": [
         "source_query"
       ],
-      "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1921-1936 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20')"
+      "producers": [
+        {
+          "asset_id": "bg_remedies",
+          "table": "brahma_remedy_corpus",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1921-1936 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123 | platform/supabase/migrations/177_l0_phase_alpha_existing_table_schema.sql:17-20",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": false
+        }
+      ]
     },
     "scu.catalog.query_medical_mappings": {
       "requirement_kinds": [
@@ -2516,9 +2604,11 @@
       ]
     },
     "scu.catalog.query_planet": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "derived"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts)"
     },
     "scu.catalog.query_planet_position": {
       "requirement_kinds": [
@@ -3107,14 +3197,6 @@
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
-        },
-        {
-          "asset_id": "ga_dashas",
-          "table": "chart_dashas",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:155-161 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:433-530 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts:632-649 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145 | platform/src/lib/retrieval/provenance/freshness_notes.ts:83-101",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": false
         }
       ]
     },
@@ -3149,9 +3231,12 @@
       ]
     },
     "scu.catalog.query_spine_bundle": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "derived",
+        "source_query"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/spine/compute_spine_bundle.ts:79-124 | platform/src/lib/retrieval/spine/materialize.ts:137-167); NO_DETECTOR \u2014 relation_unowned_by_registry: relation name(s) ['asset_throughput', 'bodha_spine_bundles'] matched no row in asset_registry.target_table ('platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts:98-123 | platform/src/lib/retrieval/spine/materialize.ts:75-83 | platform/src/lib/retrieval/spine/materialize.ts:137-167 | platform/src/lib/retrieval/spine/constants.ts#SPINE_SOURCE_ASSET_IDS | platform/supabase/migrations/463_bodha_spine_bundles.sql:36-50')"
     },
     "scu.catalog.query_sudarshana_varsha": {
       "requirement_kinds": [
@@ -3169,21 +3254,33 @@
       ]
     },
     "scu.catalog.query_sutravali_rules": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "source_query"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:368-394 | platform/python-sidecar/routers/sutravali.py:87-124 | platform/src/lib/retrieval/registry/layers/__tests__/register_d7_channel.sutravali_contracts.test.ts')"
     },
     "scu.catalog.query_sutravali_rules_for_planet": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "source_query"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:400-473 | platform/python-sidecar/routers/sutravali.py#query_rules_for_planet | platform/python-sidecar/tests/test_sutravali_query_rules_for_planet.py')"
     },
     "scu.catalog.query_tantric_remedies": {
       "requirement_kinds": [
         "source_query"
       ],
-      "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123')"
+      "producers": [
+        {
+          "asset_id": "bg_remedies",
+          "table": "brahma_remedy_corpus",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1763-1776 | platform/migrations/ws2_l0_remedy_corpus.sql:16-33 | platform/supabase/migrations/081_l0fr_schema.sql:113-123",
+          "disposition": "derived_from_source_query",
+          "via_helper": null,
+          "shared": false
+        }
+      ]
     },
     "scu.catalog.query_temporal_view": {
       "requirement_kinds": [
@@ -3382,14 +3479,6 @@
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": true
-        },
-        {
-          "asset_id": "ga_dashas",
-          "table": "chart_dashas",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:70-105 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:130-137 | platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts:300-360 | platform/src/lib/retrieval/ranking/l1_context_fetcher.ts:85-145",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": false
         }
       ]
     },
@@ -3521,24 +3610,33 @@
       ]
     },
     "scu.catalog.route": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "snapshot_resource"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 unrecognized_requirement_kind: unrecognized requirement kind 'snapshot_resource'"
     },
     "scu.catalog.synergy_cross_layer": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "derived"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/synergy/orchestrator.ts#runWholeChartRead)"
     },
     "scu.catalog.synergy_pipeline": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "derived",
+        "snapshot_resource"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/synergy/orchestrator.ts#runWholeChartRead:runTemporalStep (queryClass=holistic)); NO_DETECTOR \u2014 unrecognized_requirement_kind: unrecognized requirement kind 'snapshot_resource'"
     },
     "scu.catalog.tool_search": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "snapshot_resource"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 unrecognized_requirement_kind: unrecognized requirement kind 'snapshot_resource'"
     },
     "scu.catalog.traverse_chart_graph": {
       "requirement_kinds": [
@@ -3560,72 +3658,19 @@
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false
-        },
-        {
-          "asset_id": "bo_laksana_rerank",
-          "table": "bodha_msr_signals",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "bo_special_lagna",
-          "table": "bodha_msr_signals",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "bo_sudarshana",
-          "table": "bodha_msr_signals",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "bo_arudha",
-          "table": "bodha_msr_signals",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "bo_laksana",
-          "table": "bodha_msr_signals",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "bo_nakshatra_semantic",
-          "table": "bodha_msr_signals",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
-        },
-        {
-          "asset_id": "bo_vargottama_dhana",
-          "table": "bodha_msr_signals",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:396-403 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:541-586 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:808-856 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:894-949 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1001-1050 | platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts:1153-1172",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": true
         }
       ]
     },
     "scu.catalog.yoga_activation_by_dasha": {
-      "requirement_kinds": [],
+      "requirement_kinds": [
+        "source_query"
+      ],
       "producers": [],
-      "no_detector": "NO_DETECTOR \u2014 no_contract: no availability_contracts requirement and no reviewed_output claim"
+      "no_detector": "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1906-1963 | platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:2024-2039')"
     },
     "scu.finance.prosperity_assessment": {
       "requirement_kinds": [
+        "derived",
         "producer_output",
         "producer_output",
         "derived"
@@ -3649,6 +3694,7 @@
         }
       ],
       "notes": [
+        "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain)",
         "NO_DETECTOR \u2014 derived_kind_no_source_query: no source_query requirement (kind: derived; platform/src/lib/retrieval/registry/knowledge/editorial.ts:51-58)"
       ]
     },
@@ -3776,23 +3822,10 @@
           "disposition": "reviewed_output",
           "via_helper": null,
           "shared": false
-        },
-        {
-          "asset_id": "bo_laksana",
-          "table": "bodha_msr_signals",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1906-1963 | platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:2024-2039",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": false
-        },
-        {
-          "asset_id": "ka_kalasutra",
-          "table": "kala_activation",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1906-1963 | platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:2024-2039",
-          "disposition": "derived_from_source_query",
-          "via_helper": null,
-          "shared": false
         }
+      ],
+      "notes": [
+        "NO_DETECTOR \u2014 no_relation_in_range: resolved source range(s) contain no relation name in asset_registry.target_table \u222a information_schema.tables ('platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:1906-1963 | platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:2024-2039')"
       ]
     }
   },
@@ -3827,17 +3860,9 @@
       "reviewed_assets": [
         "ga_positions"
       ],
-      "derived_assets": [
-        "ga_ayurdaya",
-        "ga_nakshatra",
-        "ga_panchanga",
-        "ga_positions",
-        "ga_sade_sati",
-        "ga_sensitive",
-        "ga_sensitive_degree"
-      ],
-      "agreement": true,
-      "detail": "derivation matches or is a superset of the reviewed claim"
+      "derived_assets": [],
+      "agreement": false,
+      "detail": "derivation did not reproduce the reviewed asset(s)"
     },
     "scu.catalog.query_chart_gestalt": {
       "reviewed_assets": [
@@ -3912,10 +3937,7 @@
       "reviewed_assets": [
         "ga_yoga"
       ],
-      "derived_assets": [
-        "bo_laksana",
-        "ka_kalasutra"
-      ],
+      "derived_assets": [],
       "agreement": false,
       "detail": "derivation did not reproduce the reviewed asset(s)"
     }

@@ -75,7 +75,8 @@ class _Sentinel:
 
 def _ctx(conn):
     return ContextSpec(asset_id='ga_dashas', build_id='build-XYZ', db_conn=conn,
-                       config={'chart_id': 'chart-C'})
+                       config={'chart_id': 'chart-C',
+                               'birth_params': {'datetime_iso': '1984-02-05T10:43:00+05:30'}})
 
 
 # ── A. write_dasha_scope_cap_sentinels() itself ─────────────────────────────────
