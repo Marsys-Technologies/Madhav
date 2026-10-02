@@ -122,17 +122,36 @@ class _FakeConn:
         return self._row
 
 
-@pytest.mark.parametrize("addr", [None, "127.0.0.1/32", "::1/128", "172.18.0.2/32", "10.0.0.5/8", "192.168.1.10/24"])
-def test_post_connect_accepts_unix_loopback_and_private(addr):
+GHA = {"GITHUB_ACTIONS": "true"}
+NOT_GHA: dict = {}
+
+
+@pytest.mark.parametrize("addr", [None, "127.0.0.1/32", "::1/128"])
+@pytest.mark.parametrize("env", [GHA, NOT_GHA])
+def test_post_connect_accepts_unix_and_loopback_everywhere(addr, env):
+    assert_disposable_connection(_FakeConn(DB, addr), DB, env=env)
+
+
+@pytest.mark.parametrize("addr", ["172.18.0.2/32", "10.0.0.5/8", "192.168.1.10/24", "169.254.1.1/16"])
+def test_post_connect_accepts_private_only_in_github_actions(addr):
     # 172.18.0.2 is the GitHub Actions service-container bridge address — the
-    # legitimate CI shape; only a PUBLIC address proves a wrong landing.
-    assert_disposable_connection(_FakeConn(DB, addr), DB)
-
-
-@pytest.mark.parametrize("addr", ["8.8.8.8/32", "1.1.1.1/32", "2606:4700:4700::1111/128"])
-def test_post_connect_refuses_a_public_server_address(addr):
+    # legitimate CI shape, accepted only there.
+    assert_disposable_connection(_FakeConn(DB, addr), DB, env=GHA)
     with pytest.raises(RefusedError):
-        assert_disposable_connection(_FakeConn(DB, addr), DB)
+        assert_disposable_connection(_FakeConn(DB, addr), DB, env=NOT_GHA)
+    with pytest.raises(RefusedError):
+        assert_disposable_connection(
+            _FakeConn(DB, addr), DB, env={"GITHUB_ACTIONS": "false"})
+    with pytest.raises(RefusedError):
+        assert_disposable_connection(
+            _FakeConn(DB, addr), DB, env={"GITHUB_ACTIONS": "1"})
+
+
+@pytest.mark.parametrize("env", [GHA, NOT_GHA])
+@pytest.mark.parametrize("addr", ["8.8.8.8/32", "1.1.1.1/32", "2606:4700:4700::1111/128"])
+def test_post_connect_refuses_a_public_server_address_everywhere(addr, env):
+    with pytest.raises(RefusedError):
+        assert_disposable_connection(_FakeConn(DB, addr), DB, env=env)
 
 
 def test_post_connect_refuses_the_wrong_database():
