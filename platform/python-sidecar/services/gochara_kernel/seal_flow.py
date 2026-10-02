@@ -32,6 +32,12 @@ def _seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest
     run_id, run_attempt = int(run_id), int(run_attempt)
     # (1) locks → recompute → compare: refuse BEFORE anything is published
     payload = seal_brief.recompute_under_locks(conn, chart_id, generation, approved_digest, sealing_commit=sealing_commit)
+    # (1b) F-R12-4: the approved digest must be the CURRENT brief the VERIFIER persisted for this candidate (the receipt's commit-time
+    # trigger enforces the same; refusing here costs nothing and says why before anything is published)
+    why = seal_brief.persisted_brief_problem(conn, chart_id, generation, payload["manifest"]["manifest_id"], approved_digest)
+    if why:
+        raise seal_brief.ApprovalMismatch(f"{why}: the approved digest is not the current brief persisted by the verifier for this "
+                                          "candidate — re-run the verifier's --brief and approve that")
     # (2) publish, then the authoritative SQL seal (its triggers run the combined gate on the published row)
     gk_ledger.publish(conn, chart_id, generation)
     # (2b) re-check the candidate boundary AFTER publication, still under the seal locks: nothing may have changed between the
@@ -69,8 +75,11 @@ REQUIRED_POLICY = "all_null_candidate/1"
 APPROVAL_SCHEMA = "seal_approval/1"
 #: process exit codes of `pipeline/orchestrator/seal_job.py`
 EXIT_SEALED, EXIT_REFUSED, EXIT_MISMATCH, EXIT_IDENTITY, EXIT_ERROR = 0, 2, 3, 4, 5
-_HEX64 = re.compile(r"^[0-9a-f]{64}$")
-_COMMIT = re.compile(r"^[0-9a-f]{7,64}$")
+_HEX64 = re.compile(r"^[0-9a-f]{64}\Z")
+#: the MECHANICAL approval note the workflow writes: the owner ruling id and the run's `github.triggering_actor` — never free text. A blank, a
+#: sentence, or a note naming someone other than the running workflow's own triggering actor is refused.
+NOTE_FORMAT = re.compile(r"^ruling:(?P<ruling>[A-Za-z0-9][A-Za-z0-9._#/-]{0,63}); actor:(?P<actor>[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\[bot\])?)\Z")
+_COMMIT = re.compile(r"^[0-9a-f]{7,64}\Z")
 #: the ONLY write privileges the sealer principal may hold (the seal, the publication flip, the receipt)
 SEALER_WRITE_ALLOWED = frozenset({
     "INSERT on ka_gochara_generation_seal", "INSERT on ka_gochara_seal_approval",
@@ -106,7 +115,26 @@ def parse_approval(text: str | None) -> dict:
     for k, v in (("approver_login", login), ("approved_by_note", note)):
         if not isinstance(v, str) or not v.strip():
             raise SealRefused("approval_malformed", f"{k} is blank")
+    if not NOTE_FORMAT.match(note):
+        raise SealRefused("approval_note_not_mechanical", "approved_by_note must be exactly 'ruling:<ruling id>; actor:<github "
+                          "triggering actor>' as the workflow writes it — a free-typed note is refused")
     return a
+
+
+def check_approval_note(note: str, triggering_actor: str | None) -> dict:
+    """The note's `actor` must be the RUNNING workflow's own `github.triggering_actor` (its environment, like the run id): the note is
+    taken from the approval file as the workflow wrote it, and a note naming anyone else — or run where the workflow names no actor — is
+    refused. Returns `{ruling, actor}`."""
+    m = NOTE_FORMAT.match(note or "")
+    if not m:
+        raise SealRefused("approval_note_not_mechanical", "approved_by_note is not 'ruling:<ruling id>; actor:<github triggering actor>'")
+    if not isinstance(triggering_actor, str) or not triggering_actor.strip():
+        raise SealRefused("triggering_actor_absent", "GITHUB_TRIGGERING_ACTOR is not set: the approval note cannot be checked against "
+                          "the run that is sealing")
+    if m.group("actor").lower() != triggering_actor.strip().lower():
+        raise SealRefused("approval_note_actor_mismatch", f"the note names actor {m.group('actor')!r}, this run's triggering actor is "
+                          f"{triggering_actor.strip()!r}")
+    return {"ruling": m.group("ruling"), "actor": m.group("actor")}
 
 
 def _one(row):
@@ -140,12 +168,13 @@ def check_sealer_identity(conn) -> dict:
 
 
 def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id: int, run_attempt: int, sealing_commit: str,
-                 required_policy: str = REQUIRED_POLICY, enforce_identity: bool = True) -> dict[str, Any]:
+                 triggering_actor: str | None, required_policy: str = REQUIRED_POLICY, enforce_identity: bool = True) -> dict[str, Any]:
     """The sealing job's whole act, owning ONE explicit transaction on an AUTOCOMMIT connection: inputs and approval validated (nothing
     touched), the connection proven to be the sealer, then — inside the transaction — the seal locks, the policy requirement, the
     approval RECOMPUTE (refused on any mismatch BEFORE publishing), publication, the authoritative seal, the receipt, the post-publication
     boundary re-check. A failure anywhere — the receipt included — rolls publication back too. `run_id` / `run_attempt` /
-    `sealing_commit` are what the RUNNING workflow says it is (its environment); the approval must have been given for exactly them."""
+    `sealing_commit` / `triggering_actor` are what the RUNNING workflow says it is (its environment); the approval must have been given for
+    exactly them, and its note must be the mechanical `ruling:<id>; actor:<triggering actor>`."""
     from . import verification_job as vj
     from .result_policy import manifest_policy
     if not isinstance(run_id, int) or run_id < 1 or not isinstance(run_attempt, int) or run_attempt < 1:
@@ -155,6 +184,7 @@ def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id
     if (approval["run_id"], approval["run_attempt"]) != (run_id, run_attempt):
         raise SealRefused("approval_not_for_this_run", f"the approval was given for run {approval['run_id']} attempt "
                           f"{approval['run_attempt']}, this is run {run_id} attempt {run_attempt}")
+    check_approval_note(approval["approved_by_note"], triggering_actor)
     if not getattr(conn, "autocommit", False):
         raise SealRefused("connection_not_autocommit", "the sealing job owns its transaction: it needs an autocommit connection")
     if enforce_identity:
@@ -171,4 +201,4 @@ def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id
 
 
 __all__ = ["APPROVAL_SCHEMA", "REQUIRED_POLICY", "SEALER_WRITE_ALLOWED", "SealRefused", "check_sealer_identity", "execute_seal",
-           "parse_approval", "seal_with_approval"]
+           "check_approval_note", "parse_approval", "seal_with_approval"]

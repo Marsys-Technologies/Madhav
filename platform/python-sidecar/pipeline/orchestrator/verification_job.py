@@ -90,11 +90,12 @@ def main(argv=None) -> int:
             try:
                 with conn.transaction():
                     out = seal_brief.brief(conn, args.chart, args.generation, sealing_commit=args.sealing_commit)
+                    persisted = seal_brief.persist_brief(conn, out)      # F-R12-4: the receipt must name a brief persisted HERE
             except seal_brief.BriefRefused as exc:
                 print(json.dumps({"status": "REFUSED", "code": exc.code, "detail": exc.detail,
                                   "violations": exc.violations}, default=str))
                 return vj.EXIT_DISAGREE
-            print(json.dumps({"brief": out["payload"], "sha256": out["sha256"]}, default=str, sort_keys=True))
+            print(json.dumps({"brief": out["payload"], "sha256": out["sha256"], "persisted": persisted}, default=str, sort_keys=True))
             return vj.EXIT_OK
         report = vj.run(conn, chart_id=args.chart, generation=args.generation, classes=args.classes,
                         report_only=args.report_only, **_build_kwargs(conn, args.ephe_path))

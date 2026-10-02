@@ -36,7 +36,9 @@ def _verified(w):
 def _brief_as_verifier(w, **kw):
     with login(w, "gochara_verifier") as conn:
         with conn.transaction():
-            return sb.brief(conn, CHART_ID, GEN, **kw)
+            out = sb.brief(conn, CHART_ID, GEN, **kw)
+            out["persisted"] = sb.persist_brief(conn, out)          # F-R12-4: what the CLI's --brief does
+            return out
 
 
 def test_no_brief_is_produced_for_an_unverified_candidate_and_the_reasons_are_named(built):

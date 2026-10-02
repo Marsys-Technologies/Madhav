@@ -27,7 +27,7 @@ SCHEMA = "seal_approval_payload/1"
 SEAL_IS_NOT_A_FLIP = "A seal is not a flip: sealing a generation publishes it for replay and serves nothing."
 #: the migrations whose ledger evidence the payload carries (filename prefix)
 LEDGER_MIGRATIONS = ("1204", "1206", "1232", "1233", "1240", "1241")
-_DIGEST = re.compile(r"^[0-9a-f]{64}$")
+_DIGEST = re.compile(r"^[0-9a-f]{64}\Z")
 
 #: the generation-scoped output tables the identity digest covers, with a stable per-table ordering
 OUTPUT_TABLES = (
@@ -235,6 +235,33 @@ def brief(conn, chart_id: str, generation: str, *, sealing_commit: str | None = 
     if problems:
         raise BriefRefused("candidate_not_approvable", "; ".join(problems), problems)
     return {"payload": payload, "sha256": payload_digest(payload)}
+
+
+def persist_brief(conn, result: dict) -> dict:
+    """F-R12-4: persist the brief the VERIFIER just produced (`brief()`'s result) in `ka_gochara_seal_brief`, inside the same transaction
+    that holds the seal locks. The database attests the manifest, the state digest, the session login and the time (whatever this INSERT
+    carries for them is overwritten); the receipt a seal writes must name this digest. Returns `{brief_id, manifest_id, state_digest}`."""
+    from . import window_gate as wg
+    payload = result["payload"]
+    row = conn.execute(
+        "INSERT INTO public.ka_gochara_seal_brief (chart_id, generation, manifest_id, brief_digest, state_digest, runner_identity)"
+        " VALUES (%s::uuid, %s, %s::uuid, %s, repeat('0', 64), %s::jsonb) RETURNING brief_id, manifest_id::text, state_digest",
+        (payload["chart_id"], payload["generation"], payload["manifest"]["manifest_id"], result["sha256"],
+         _canon({k: wg.runner_identity()[k] for k in ("commit", "implementation_digest")}))).fetchone()
+    brief_id, manifest_id, state = tuple(row.values()) if isinstance(row, dict) else tuple(row)
+    if manifest_id != payload["manifest"]["manifest_id"]:
+        raise BriefRefused("manifest_changed", f"the database attested manifest {manifest_id}, the brief was built for "
+                           f"{payload['manifest']['manifest_id']}")
+    return {"brief_id": brief_id, "manifest_id": manifest_id, "state_digest": state}
+
+
+def persisted_brief_problem(conn, chart_id: str, generation: str, manifest_id: str, digest: str) -> str | None:
+    """None when `digest` is the CURRENT verifier-persisted brief of the generation for this manifest and the generation's state is the
+    one it was produced for; otherwise the named reason (`receipt_brief_not_persisted` / `_superseded` / `_state_changed`). The same
+    database function the receipt's commit-time trigger calls."""
+    row = conn.execute("SELECT public.ka_gochara_seal_brief_problem(%s::uuid, %s, %s::uuid, %s)",
+                       (chart_id, generation, manifest_id, digest)).fetchone()
+    return next(iter(row.values())) if isinstance(row, dict) else row[0]
 
 
 def vj_lock(conn, chart_id: str) -> None:

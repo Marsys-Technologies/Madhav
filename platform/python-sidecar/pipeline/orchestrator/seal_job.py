@@ -11,8 +11,11 @@ post-publication boundary re-check; a failure anywhere rolls publication back to
 INTERFACE (agreed with Stream B through the steward):
   --approval-file   JSON written by the workflow from the GitHub approval of THIS run (schema `seal_approval/1`):
                     {"schema": "seal_approval/1", "brief_digest": <sha256>, "run_id": <int>, "run_attempt": <int>,
-                     "approver_login": <str>, "approved_by_note": <str>}
+                     "approver_login": <str>, "approved_by_note": "ruling:<owner ruling id>; actor:<github.triggering_actor>"}
+                    The note is MECHANICAL — exactly that format, written by the workflow, never free text; its actor must be this run's
+                    GITHUB_TRIGGERING_ACTOR (a blank, a sentence, or another person's name is refused).
   environment       GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT — the approval must have been given for exactly this run and attempt;
+                    GITHUB_TRIGGERING_ACTOR — the actor the note must name;
                     GOCHARA_SEALING_COMMIT — the sealing revision (DEPLOY_SHA); it is part of the briefed payload, so a different
                     revision than the one briefed is a different digest and is refused.
 Prints one JSON object on stdout. Exit codes: 0 sealed · 2 refused (nothing written) · 3 the approval does not match the candidate
@@ -62,7 +65,8 @@ def main(argv=None) -> int:
         return exc.exit_code
     try:
         out = sf.execute_seal(conn, chart_id=args.chart, generation=args.generation, approval=approval, run_id=run_id,
-                              run_attempt=run_attempt, sealing_commit=os.environ.get("GOCHARA_SEALING_COMMIT", ""))
+                              run_attempt=run_attempt, sealing_commit=os.environ.get("GOCHARA_SEALING_COMMIT", ""),
+                              triggering_actor=os.environ.get("GITHUB_TRIGGERING_ACTOR"))
         print(json.dumps({"status": "SEALED", "manifest_id": out["manifest_id"], "brief_digest": out["brief_digest"],
                           "run_id": run_id, "run_attempt": run_attempt}, sort_keys=True))
         return sf.EXIT_SEALED

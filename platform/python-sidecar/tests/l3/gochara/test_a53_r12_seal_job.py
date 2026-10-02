@@ -22,15 +22,17 @@ from .test_a53_r10_complete_records import (CLS, _bypass, _run, built, login, rw
 from .test_a53_r11_seal_brief import _brief_as_verifier, _sealer_stand_ins, _verified  # noqa: F401
 from .test_a53_verification_job import PASSWORD
 from .test_a53_window_verification_gate import SPANS, _boot_p3  # noqa: F401
-from .test_a53_window_verification_roles import _consistent_sky, _seal  # noqa: F401
+from .test_a53_window_verification_roles import _consistent_sky, _persist_test_brief, _seal  # noqa: F401
 
 COMMIT = "0123456789abcdef0123456789abcdef01234567"
 RUN, ATTEMPT = 424242, 2
+ACTOR = "release-owner"
+NOTE = f"ruling:owner-2#2; actor:{ACTOR}"          # the MECHANICAL note the workflow writes (F-R12 / steward: never free text)
 
 
 def _approval(digest, **over):
     a = {"schema": "seal_approval/1", "brief_digest": digest, "run_id": RUN, "run_attempt": ATTEMPT,
-         "approver_login": "owner-login", "approved_by_note": "steward under owner ruling #2"}
+         "approver_login": "owner-login", "approved_by_note": NOTE}
     a.update(over)
     return a
 
@@ -46,6 +48,7 @@ def sealable(built, monkeypatch, tmp_path):
     monkeypatch.setenv("GITHUB_RUN_ID", str(RUN))
     monkeypatch.setenv("GITHUB_RUN_ATTEMPT", str(ATTEMPT))
     monkeypatch.setenv("GOCHARA_SEALING_COMMIT", COMMIT)
+    monkeypatch.setenv("GITHUB_TRIGGERING_ACTOR", ACTOR)
     w.digest, w.tmp = digest, tmp_path
     yield w
     w.conn.execute("ALTER ROLE gochara_sealer NOLOGIN PASSWORD NULL")
@@ -74,7 +77,7 @@ def test_the_job_seals_as_the_real_sealer_and_writes_the_receipt_of_this_run(sea
     assert code == sf.EXIT_SEALED and out["status"] == "SEALED" and out["brief_digest"] == w.digest, out
     r = w.conn.execute("SELECT brief_digest, approver_login, approved_by_note, run_id, run_attempt, workflow_commit,"
                        " manifest_id::text FROM public.ka_gochara_seal_approval").fetchone()
-    assert r[:6] == (w.digest, "owner-login", "steward under owner ruling #2", RUN, ATTEMPT, COMMIT) and r[6] == out["manifest_id"]
+    assert r[:6] == (w.digest, "owner-login", NOTE, RUN, ATTEMPT, COMMIT) and r[6] == out["manifest_id"]
     assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "published"
 
 
@@ -102,12 +105,45 @@ def test_an_absent_or_malformed_approval_is_refused_and_nothing_is_written(seala
 
 
 @pytest.mark.parametrize("over", [
-    {"brief_digest": "abc"}, {"brief_digest": "A" * 64}, {"run_id": "424242"}, {"run_id": 0}, {"run_attempt": True},
+    {"brief_digest": "abc"}, {"brief_digest": "A" * 64}, {"brief_digest": "a" * 64 + "\n"}, {"run_id": "424242"}, {"run_id": 0}, {"run_attempt": True},
     {"approver_login": " "}, {"approved_by_note": ""}])
 def test_a_malformed_field_is_refused(sealable, capsys, over):
     code, out = _run_job(sealable, capsys, _approval(sealable.digest, **over))
     assert code == sf.EXIT_REFUSED and out["code"] == "approval_malformed", out
     _nothing_written(sealable)
+
+
+@pytest.mark.parametrize("note", [
+    "steward under owner ruling #2", "approved", "ruling:owner-2", f"ruling:; actor:{ACTOR}", f"ruling:owner-2; actor:{ACTOR} extra",
+    f"ruling:owner 2; actor:{ACTOR}", f"actor:{ACTOR}; ruling:owner-2", f"ruling:owner-2;actor:{ACTOR}", f" ruling:owner-2; actor:{ACTOR}",
+    f"ruling:owner-2; actor:{ACTOR}\n"])
+def test_a_free_typed_approval_note_is_refused_and_nothing_is_written(sealable, capsys, note):
+    code, out = _run_job(sealable, capsys, _approval(sealable.digest, approved_by_note=note))
+    assert code == sf.EXIT_REFUSED and out["code"] == "approval_note_not_mechanical", out
+    _nothing_written(sealable)
+
+
+def test_a_note_naming_someone_other_than_the_runs_triggering_actor_is_refused(sealable, capsys):
+    code, out = _run_job(sealable, capsys, _approval(sealable.digest, approved_by_note="ruling:owner-2; actor:someone-else"))
+    assert code == sf.EXIT_REFUSED and out["code"] == "approval_note_actor_mismatch", out
+    _nothing_written(sealable)
+
+
+@pytest.mark.parametrize("actor", [None, "", "  "])
+def test_a_run_that_names_no_triggering_actor_cannot_seal(sealable, monkeypatch, capsys, actor):
+    if actor is None:
+        monkeypatch.delenv("GITHUB_TRIGGERING_ACTOR")
+    else:
+        monkeypatch.setenv("GITHUB_TRIGGERING_ACTOR", actor)
+    code, out = _run_job(sealable, capsys, _approval(sealable.digest))
+    assert code == sf.EXIT_REFUSED and out["code"] == "triggering_actor_absent", out
+    _nothing_written(sealable)
+
+
+def test_the_actor_comparison_ignores_case_and_accepts_a_bot_login(sealable, monkeypatch, capsys):
+    monkeypatch.setenv("GITHUB_TRIGGERING_ACTOR", "Release-Bot[bot]")
+    code, out = _run_job(sealable, capsys, _approval(sealable.digest, approved_by_note="ruling:owner-2; actor:release-bot[bot]"))
+    assert code == sf.EXIT_SEALED, out
 
 
 @pytest.mark.parametrize("over", [{"run_id": RUN + 1}, {"run_attempt": ATTEMPT + 1}])
@@ -124,7 +160,7 @@ def test_the_run_identity_must_come_from_the_environment(sealable, monkeypatch, 
     _nothing_written(sealable)
 
 
-@pytest.mark.parametrize("commit", ["", "not-a-commit", "ZZZ"])
+@pytest.mark.parametrize("commit", ["", "not-a-commit", "ZZZ", COMMIT + "\n"])
 def test_an_absent_or_malformed_sealing_commit_is_refused(sealable, monkeypatch, capsys, commit):
     monkeypatch.setenv("GOCHARA_SEALING_COMMIT", commit)
     code, out = _run_job(sealable, capsys, _approval(sealable.digest))
@@ -165,7 +201,7 @@ def test_the_job_requires_the_all_null_policy_explicitly(built):
         with psycopg.connect(make_conninfo(w.dsn, user="gochara_sealer", password=PASSWORD), autocommit=True) as conn:
             with pytest.raises(sf.SealRefused) as exc:
                 sf.execute_seal(conn, chart_id=CHART_ID, generation=GEN, approval=_approval(d), run_id=RUN, run_attempt=ATTEMPT,
-                                sealing_commit=COMMIT, required_policy="window_qualification/1")
+                                sealing_commit=COMMIT, triggering_actor=ACTOR, required_policy="window_qualification/1")
         assert exc.value.code == "wrong_policy"
     finally:
         w.conn.execute("ALTER ROLE gochara_sealer NOLOGIN PASSWORD NULL")
@@ -194,7 +230,7 @@ def test_only_the_sealer_login_may_run_the_job(sealable, monkeypatch, capsys):
     try:
         with pytest.raises(sf.SealRefused, match="connection_not_autocommit"):
             sf.execute_seal(conn, chart_id=CHART_ID, generation=GEN, approval=_approval(w.digest), run_id=RUN,
-                            run_attempt=ATTEMPT, sealing_commit=COMMIT)
+                            run_attempt=ATTEMPT, sealing_commit=COMMIT, triggering_actor=ACTOR)
     finally:
         conn.close()
 
@@ -246,6 +282,7 @@ def test_forged_attribution_values_in_the_insert_are_overwritten(built):
     with w.conn.transaction():
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
         from services.gochara_kernel import ledger as gk_ledger
+        _persist_test_brief(w.conn)
         gk_ledger.publish(w.conn, CHART_ID, GEN)
         mid = w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
         w.conn.execute(
@@ -263,6 +300,7 @@ def test_a_receipt_cannot_be_attached_to_a_seal_written_before_this_transaction(
     import psycopg
     w = built
     _verified(w)
+    _persist_test_brief(w.conn)                                               # (a brief exists: only the first-seal rule can refuse)
     w.conn.execute("ALTER TABLE public.ka_gochara_generation_seal DISABLE TRIGGER ka_gochara_generation_seal_zz_receipt_required")
     _seal(w, receipt=False)                                                   # sealed, no receipt (the pre-1240 shape)
     w.conn.execute("ALTER TABLE public.ka_gochara_generation_seal ENABLE TRIGGER ka_gochara_generation_seal_zz_receipt_required")
@@ -284,6 +322,7 @@ def test_a_receipt_naming_another_manifest_is_refused_even_with_the_first_seal(b
         with w.conn.transaction():
             w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
             from services.gochara_kernel import ledger as gk_ledger
+            _persist_test_brief(w.conn)
             gk_ledger.publish(w.conn, CHART_ID, GEN)
             w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN))
             w.conn.execute(
