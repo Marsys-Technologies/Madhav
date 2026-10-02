@@ -109,6 +109,7 @@ def pairs_from_rows(rows) -> VedhaPairs:
             r = dict(zip(_COLUMNS, r))
         norm.append(r)
     out = VedhaPairs()
+    seen: set[tuple[str, int]] = set()
     classical_n: dict[str, int] = {}
     node_n: dict[str, int] = {}
     for r in norm:
@@ -119,6 +120,10 @@ def pairs_from_rows(rows) -> VedhaPairs:
             raise VedhaPairsError(f"vedha rows apply to rule_type 'favourable' only, got {r.get('rule_type')!r}")
         if not all(isinstance(h, int) and not isinstance(h, bool) and 1 <= h <= 12 for h in (ph, vh)) or ph == vh:
             raise VedhaPairsError(f"house domain violated for {graha}: primary {ph!r}, vedha {vh!r}")
+        key = (graha, int(ph))
+        if key in seen:                                     # unique keys over ALL rows — node rows included (round 8 R8-7)
+            raise VedhaPairsError(f"duplicate vedha row for {key}")
+        seen.add(key)
         if graha in NODES:
             if not cite.upper().startswith(_UNSOURCED):
                 raise VedhaPairsError(f"{graha} {ph}: a node vedha row is cited — ND-NODE-VEDHA must be ruled first")
@@ -128,9 +133,6 @@ def pairs_from_rows(rows) -> VedhaPairs:
             raise VedhaPairsError(f"unknown graha {r['graha']!r} in a vedha row")
         if not _CITATION.match(cite):
             raise VedhaPairsError(f"unsupported or missing citation for {graha} {ph}: {cite[:70]!r} (Phaladīpikā XXVI.3–8 only)")
-        key = (graha, int(ph))
-        if key in out:
-            raise VedhaPairsError(f"duplicate vedha row for {key}")
         out[key] = int(vh)
         classical_n[graha] = classical_n.get(graha, 0) + 1
     if classical_n != EXPECTED_CLASSICAL_CENSUS or node_n != EXPECTED_NODE_ROWS:
@@ -322,6 +324,43 @@ def vedha_factor_results(derived: dict, *, factor_ref: tuple[str, str]) -> list[
     if not derived["applicable"]:
         return [vedha_not_applicable(factor_ref)]
     return [{**vedha_factor_value(seg, factor_ref=factor_ref), "t_in": seg["t_in"], "t_out": seg["t_out"]} for seg in derived["segments"]]
+
+
+def vedha_callback_result(derived: dict, *, factor_ref: tuple[str, str]) -> dict:
+    """THE structured, version-bound result a vedha callback returns to the sweep / writer (Codex round 8 R8-7):
+      factor      the exact factor reference the caller ASKED for (validated here against the registry row) — echoed back so the
+                  caller can verify the reference it receives is the one it requested;
+      applicable  False ⇒ one declared not-applicable result, no segments;
+      results     one structured factor result per segment (state, value, reason(s), qualification, scope, obstructors,
+                  unknown_obstructors, t_in/t_out), partitioning the primary span;
+      boundaries  every segment boundary instant (the sweep's `state_boundaries`: a short interior vedha island is only
+                  found when these are supplied);
+      scopes      the machine-readable scopes present (`excluding_on_demand_moon_obstruction`) — to be persisted and served.
+    A float-only callback cannot carry any of this."""
+    _check_ref(factor_ref)
+    results = vedha_factor_results(derived, factor_ref=factor_ref)
+    stamps = {r[k] for r in results for k in ("t_in", "t_out") if k in r}
+    return {"factor": factor_ref, "applicable": derived["applicable"], "results": results,
+            "boundaries": sorted(stamps, key=_t), "scopes": sorted({r["scope"] for r in results if r.get("scope")})}
+
+
+def check_callback_result(result: dict, requested_ref: tuple[str, str]) -> dict:
+    """The caller's side of the contract: the returned reference (top level AND on every result) must equal the one requested,
+    segments must be ordered and abutting, and every non-applicable result must be the single declared one. Returns `result`."""
+    if tuple(result.get("factor", ())) != tuple(requested_ref):
+        raise ValueError(f"vedha callback returned factor {result.get('factor')!r}, asked for {requested_ref!r}")
+    res = result["results"]
+    for r in res:
+        if tuple(r["factor"]) != tuple(requested_ref):
+            raise ValueError(f"a vedha result carries factor {r['factor']!r}, asked for {requested_ref!r}")
+    if not result["applicable"]:
+        if len(res) != 1 or res[0].get("state") != "not_applicable":
+            raise ValueError("a not-applicable vedha result must be exactly one declared not_applicable entry")
+        return result
+    for a, b in zip(res, res[1:]):
+        if a["t_out"] != b["t_in"]:
+            raise ValueError(f"vedha segments do not abut: {a['t_out']} != {b['t_in']}")
+    return result
 
 
 def _check_ref(factor_ref) -> None:

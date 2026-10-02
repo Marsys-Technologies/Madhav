@@ -7,6 +7,7 @@ tests are where a shape change shows.
 """
 from __future__ import annotations
 
+from ._disposable_db_guard import UnsafeAdminDSN, guarded_admin_connect  # noqa: E402
 import os
 import json
 import uuid
@@ -222,7 +223,9 @@ def create_am5_database(tag="am5", faithful=False):
     psycopg = pytest.importorskip("psycopg")
     from psycopg.conninfo import make_conninfo
     try:
-        admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+        admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+    except UnsafeAdminDSN:
+        raise                    # a hostile admin DSN is a configuration ERROR, never a skip
     except Exception as exc:  # noqa: BLE001
         if os.environ.get("GOCHARA_A53_REQUIRE_DB") == "1":      # CI: an unreachable server is a FAILURE, never a skip
             pytest.fail(f"GOCHARA_A53_REQUIRE_DB=1 but the disposable database server is unreachable ({exc})")
@@ -287,6 +290,10 @@ def _populate_am5_database(conn, faithful=False):
             cur.execute("INSERT INTO public.bg_transit_rules (rule_type, graha, primary_house, vedha_house,"
                         " phala, classical_citation) VALUES (%s, %s, %s, %s, 'x', %s)",
                         (rule_type, graha, house, vedha, citation))
+        if faithful:
+            # production-shaped: the LEGACY projection relation exists (1241's post-check names it; the gate's legacy-rows arm reads it)
+            cur.execute("CREATE TABLE public.kala_gochara_windows (id bigserial PRIMARY KEY, chart_id uuid NOT NULL,"
+                        " event_class text, generation text NOT NULL, intensity numeric)")
         # the faithful mirror applies the REAL builder-grant migrations too (R9-4): the restricted builder holds exactly
         # what production gives it (1216 tables, 1220 functions, 1234 window tables/functions) — and, once 1240 adds a
         # CHECK helper, only what 1240 itself grants it

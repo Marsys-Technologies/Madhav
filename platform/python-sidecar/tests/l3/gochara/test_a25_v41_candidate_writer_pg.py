@@ -40,6 +40,7 @@ fallback to any other DSN, per the WP10 convention.
 """
 from __future__ import annotations
 
+from ._disposable_db_guard import UnsafeAdminDSN, guarded_admin_connect  # noqa: E402
 import os
 import sys
 import uuid
@@ -238,7 +239,9 @@ def disposable_dsn():
     created for the test, dropped afterwards. Skips (NOT_RUN) unless the
     cluster IS the pinned disposable one."""
     try:
-        admin = psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+        admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
+    except UnsafeAdminDSN:
+        raise                    # a hostile admin DSN is a configuration ERROR, never a skip
     except Exception as exc:  # noqa: BLE001
         pytest.skip(f"NOT_RUN: disposable cluster unreachable ({exc})")
     actual = admin.execute(
@@ -258,7 +261,7 @@ def disposable_dsn():
     dsn = psycopg.conninfo.make_conninfo(**parts)
     admin.close()
     yield dsn
-    admin = psycopg.connect(ADMIN_DSN, autocommit=True)
+    admin = guarded_admin_connect(ADMIN_DSN, autocommit=True)
     admin.execute(f'DROP DATABASE IF EXISTS "{dbname}" WITH (FORCE)')
     admin.close()
 

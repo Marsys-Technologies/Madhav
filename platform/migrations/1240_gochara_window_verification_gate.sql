@@ -369,6 +369,23 @@ $$;
 
 -- ── 4. the gates ──────────────────────────────────────────────────────────────
 
+-- R12-1: the LEGACY projection relations (`kala_gochara_contacts`, `kala_gochara_windows`) are not part of the '5.0' candidate: its writer
+-- writes none, publication consumes the first's content and the second's count, and a numeric legacy row would falsify the all-NULL
+-- disclosure. For a governed generation NONE may exist. Dynamic and table-existence-guarded (a relation that does not exist holds no
+-- rows); invoker rights (the caller needs SELECT on the columns it reads — chart_id, generation).
+CREATE OR REPLACE FUNCTION public.ka_gochara_legacy_projection_rows(p_chart uuid, p_generation text)
+RETURNS TABLE (relation text, n bigint) LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public AS $$
+DECLARE t text; c bigint;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['kala_gochara_contacts', 'kala_gochara_windows'] LOOP
+    IF to_regclass('public.' || t) IS NOT NULL THEN
+      EXECUTE format('SELECT count(*) FROM public.%I WHERE chart_id = $1 AND generation = $2', t) INTO c USING p_chart, p_generation;
+      IF c > 0 THEN relation := t; n := c; RETURN NEXT; END IF;
+    END IF;
+  END LOOP;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.ka_gochara_window_verification_violations(p_chart uuid, p_generation text)
 RETURNS TABLE (event_class text, path_id text, rule_version text, violation text, detail text)
 LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
@@ -437,6 +454,10 @@ LANGUAGE sql STABLE SET search_path = pg_catalog, public AS $$
          OR w.evidence_against IS NOT NULL OR w.severity IS NOT NULL OR w.objective_value IS NOT NULL
          OR w.outcome_valence_for_native IS DISTINCT FROM 'unqualified')
   GROUP BY w.event_class, w.path_id, w.rule_version
+  UNION ALL
+  SELECT '*'::text, NULL::text, NULL::text, 'legacy_projection_rows_present'::text,
+         (l.n || ' row(s) in ' || l.relation || ' for this generation — none may exist (the all-NULL candidate''s writer writes none; a numeric legacy row would falsify the all-NULL disclosure)')::text
+  FROM public.ka_gochara_legacy_projection_rows(p_chart, p_generation) l
   UNION ALL
   -- R11-1: the generation's PERMITTED OUTPUT GRAINS are exactly the grains its inventory INCLUDES on a windowed path (P1–P4,
   -- the `expected` CTE). A relationship record, a window or a membership link in ANY other (class, path, version) — a
@@ -669,6 +690,41 @@ BEGIN
   RAISE EXCEPTION 'ka_gochara_seal_approval is append-only: % refused', TG_OP;
 END;
 $$;
+-- RECEIPT ATTRIBUTION (Codex round 12): `sealed_by` and `approved_at` are not caller-supplied facts. A BEFORE INSERT trigger SETS them —
+-- whatever the sealer's INSERT carried — to the SESSION login (`session_user`, not a role switched to inside the session) and the
+-- transaction's timestamp, so they are database-attested.
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_approval_attest()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  NEW.sealed_by := session_user;
+  NEW.approved_at := now();
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER ka_gochara_seal_approval_attest
+  BEFORE INSERT ON public.ka_gochara_seal_approval
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_attest();
+
+-- …and a receipt is valid only for the FIRST SEAL OF THIS TRANSACTION with the SAME manifest: at COMMIT the seal row for (chart, generation)
+-- must exist, name the receipt's manifest, and have been written in this very transaction (`sealed_at` is the transaction timestamp).
+-- So a receipt cannot be attached to a generation sealed before 1240 (or before this transaction), nor to another manifest.
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_approval_requires_first_seal()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.ka_gochara_generation_seal s
+                 WHERE s.chart_id = NEW.chart_id AND s.generation = NEW.generation AND s.manifest_id = NEW.manifest_id
+                   AND s.sealed_at = transaction_timestamp()) THEN
+    RAISE EXCEPTION 'ka_gochara_seal_approval refused at commit (receipt_without_first_seal): the receipt for (chart %, generation %, manifest %) has no seal row of the same manifest written in this transaction — a receipt exists only for the first seal it is written with',
+      NEW.chart_id, NEW.generation, NEW.manifest_id USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+CREATE CONSTRAINT TRIGGER ka_gochara_seal_approval_zz_first_seal
+  AFTER INSERT ON public.ka_gochara_seal_approval
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_requires_first_seal();
+
 CREATE TRIGGER ka_gochara_seal_approval_no_change
   BEFORE UPDATE OR DELETE ON public.ka_gochara_seal_approval
   FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_immutable();
@@ -873,9 +929,10 @@ BEGIN
   END IF;
   SELECT count(*) INTO n FROM pg_trigger t
   WHERE t.tgrelid = 'public.ka_gochara_seal_approval'::regclass AND NOT t.tgisinternal
-    AND t.tgname IN ('ka_gochara_seal_approval_no_change', 'ka_gochara_seal_approval_no_truncate');
-  IF n <> 2 THEN
-    RAISE EXCEPTION 'migration 1240 post-apply check failed: the seal-approval receipt table lacks its append-only triggers';
+    AND t.tgname IN ('ka_gochara_seal_approval_no_change', 'ka_gochara_seal_approval_no_truncate',
+                     'ka_gochara_seal_approval_attest', 'ka_gochara_seal_approval_zz_first_seal');
+  IF n <> 4 THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the seal-approval receipt table lacks its append-only / attestation / first-seal triggers';
   END IF;
   SELECT count(*) INTO n FROM pg_trigger t
   WHERE t.tgrelid = 'public.ka_gochara_generation_seal'::regclass AND NOT t.tgisinternal
@@ -896,7 +953,8 @@ BEGIN
     ('public.ka_gochara_window_verification_write_guard()'),
     ('public.ka_gochara_generation_seal_window_guard()'),
     ('public.ka_gochara_window_qualification_ok(jsonb)'),
-    ('public.ka_gochara_seal_receipt_missing(uuid,text)')) AS x(sig)
+    ('public.ka_gochara_seal_receipt_missing(uuid,text)'),
+    ('public.ka_gochara_legacy_projection_rows(uuid,text)')) AS x(sig)
   WHERE to_regprocedure(x.sig) IS NULL;
   IF missing IS NOT NULL THEN
     RAISE EXCEPTION 'migration 1240 post-apply check failed: missing functions: %', missing;

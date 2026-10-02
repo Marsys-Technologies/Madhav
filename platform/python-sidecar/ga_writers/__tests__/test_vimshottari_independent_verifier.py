@@ -544,6 +544,10 @@ def _live_conn():
     return psycopg.connect(url)
 
 
+# `integration` is the repo's live-DB marker: the CI sidecar step runs `-m "not integration"`, so under
+# CI this test is DESELECTED (visible in the deselected count), never a silent skip.  The skipif is
+# kept for local runs without a database.
+@pytest.mark.integration
 @pytest.mark.skipif(_live_conn() is None, reason="DATABASE_URL not set — no live DB to smoke-test against")
 def test_smoke_canonical_chart_lahiri_full_agreement():
     """The canonical native chart, lahiri_chitrapaksha (the pipeline default

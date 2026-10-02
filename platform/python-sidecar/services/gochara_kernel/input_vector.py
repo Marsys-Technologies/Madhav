@@ -65,8 +65,8 @@ IMPLEMENTATION_MODULES = {
         "valence", "vedha", "vedha_derive")),
     # R10-4: the VERIFICATION JOB (the library and the operator entry point) is part of the governed implementation identity —
     # the pinned job is part of the trusted system (AM-24 item 4), so a different job is a different manifest vector
-    "window": tuple(_K + m for m in ("result_policy", "seal_brief", "seal_flow", "verification_job", "window_gate", "window_store", "window_sweep",
-                                     "window_verifier")) + ("pipeline.orchestrator.verification_job",),
+    "window": tuple(_K + m for m in ("result_policy", "candidate_boundary", "seal_brief", "seal_flow", "verification_job", "window_gate", "window_store", "window_sweep",
+                                     "window_verifier")) + ("pipeline.orchestrator.verification_job", "pipeline.orchestrator.seal_job"),
 }
 
 # The L0 authorities a path READS, and which loader reads them (R8-1). `bg_transit_rules` is consumed ONLY

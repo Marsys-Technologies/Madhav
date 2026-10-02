@@ -24,3 +24,21 @@ DO $$ BEGIN
     GRANT EXECUTE ON FUNCTION public.ka_gochara_seal_receipt_missing(uuid, text) TO gochara_sealer;
   END IF;
 END $$;
+
+-- STAND-IN for Stream B's 1241 (R12-1): the brief and the generation-wide job check read the LEGACY projection relations for the
+-- generation (none may exist) and the publication digest reads kala_gochara_contacts; the sealer already holds both in 1241.
+GRANT SELECT ON public.kala_gochara_contacts TO gochara_verifier;
+DO $$ BEGIN
+  IF to_regclass('public.kala_gochara_windows') IS NOT NULL THEN
+    GRANT SELECT (chart_id, generation) ON public.kala_gochara_windows TO gochara_verifier;
+  END IF;
+END $$;
+
+-- STAND-IN for Stream B's 1241 (R12-1): EXECUTE on the new legacy-rows gate helper for both principals (1240 creates it and grants nothing;
+-- 1241's closed ACL spec refuses a grant it does not list).
+GRANT EXECUTE ON FUNCTION public.ka_gochara_legacy_projection_rows(uuid, text) TO gochara_verifier;
+DO $$ BEGIN
+  IF to_regrole('gochara_sealer') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.ka_gochara_legacy_projection_rows(uuid, text) TO gochara_sealer;
+  END IF;
+END $$;

@@ -32,7 +32,10 @@ _DIGEST = re.compile(r"^[0-9a-f]{64}$")
 #: the generation-scoped output tables the identity digest covers, with a stable per-table ordering
 OUTPUT_TABLES = (
     "ka_gochara_relationship_record", "ka_gochara_record_prerequisite", "ka_gochara_contact", "ka_gochara_eval_window",
-    "ka_gochara_eval_window_record", "ka_gochara_search_path_pin", "ka_gochara_search_inventory")
+    "ka_gochara_eval_window_record", "ka_gochara_search_path_pin", "ka_gochara_search_inventory",
+    # F-R12-2 (independent review): the inventory's own inputs are bound ROW BY ROW as well, not only through the inventory/ledger
+    # digests — the search-input snapshot, the committed obligations and the interval ledger
+    "ka_gochara_search_input_snapshot", "ka_gochara_search_obligation", "ka_gochara_search_interval")
 _VERIFICATION_TABLES = ("ka_gochara_eval_window_verification", "ka_gochara_search_inventory_verification")
 
 
@@ -98,20 +101,54 @@ def _ledger_evidence(conn) -> list[dict]:
     return out
 
 
-def build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str | None = None) -> dict:
+#: the session settings that change how timestamps, intervals, ranges and floats RENDER as text — pinned for every computation of the
+#: payload / publication digest so a verifier session and a sealer session in different settings still agree (F-R12-6)
+PINNED_SETTINGS = (("TimeZone", "UTC"), ("DateStyle", "ISO, YMD"), ("IntervalStyle", "iso_8601"), ("extra_float_digits", "1"))
+
+
+from contextlib import contextmanager
+
+
+@contextmanager
+def pinned_session(conn):
+    """Pin the text-rendering session settings for the duration of the block (transaction-local), and RESTORE the caller's values at
+    exit — so the digest cannot depend on the session that computes it, and the caller's session is left as it was."""
+    with conn.transaction():
+        prev = {k: _rows(conn, "SELECT current_setting(%s)", (k,))[0][0] for k, _ in PINNED_SETTINGS}
+        for k, v in PINNED_SETTINGS:
+            conn.execute("SELECT set_config(%s, %s, true)", (k, v))
+        yield                      # (an exception rolls the savepoint back, which reverts the transaction-local settings by itself)
+        for k, v in prev.items():
+            conn.execute("SELECT set_config(%s, %s, true)", (k, v))
+
+
+def build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str | None = None,
+                  as_candidate: bool = False) -> dict:
+    """See `_build_payload`; computed inside `pinned_session` (F-R12-6)."""
+    with pinned_session(conn):
+        return _build_payload(conn, chart_id, generation, sealing_commit=sealing_commit, as_candidate=as_candidate)
+
+
+def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str | None = None,
+                   as_candidate: bool = False) -> dict:
     """The canonical COMPLETE approval payload (`seal_approval_payload/1`). Pure reads. The caller decides whether a violation
-    is fatal (`brief` refuses; the sealer's recompute compares digests)."""
+    is fatal (`brief` refuses; the sealer's recompute compares digests). `as_candidate=True` is for the post-PUBLICATION re-check
+    inside the sealing transaction: the manifest's own publication fields (status, the digest/counts publication fills in) are
+    normalised, so the result is comparable with the pre-publication payload — everything else must be byte-identical."""
+    from . import candidate_boundary as cb
     from . import verification_job as vj
     from . import window_gate as wg
     from .result_policy import manifest_policy
-    pub = _rows(conn, "SELECT manifest_id::text, status, horizon::text, convention_id, input_generation_vector::text"
-                      " FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", (chart_id, generation))
+    pub = _rows(conn, "SELECT manifest_id::text, status, horizon::text, convention_id, input_generation_vector::text,"
+                      " writer_asset_id, ephemeris_backend::text FROM public.kala_gochara_publication"
+                      " WHERE chart_id = %s AND generation = %s", (chart_id, generation))
     if not pub:
         raise BriefRefused("no_candidate_manifest", f"generation {generation} has no manifest")
-    manifest_id, status, horizon, convention, vector_text = pub[0]
+    manifest_id, status, horizon, convention, vector_text, writer_asset, backend_text = pub[0]
     import json
     from decimal import Decimal
     vector = json.loads(vector_text, parse_float=Decimal)
+    backend = json.loads(backend_text, parse_float=Decimal)
     violations = vj.candidate_gate_on_candidate_manifest(conn, chart_id, generation)
     classes = []
     for cls, inv_digest, led_digest in _rows(conn, "SELECT event_class, inventory_digest, ledger_digest FROM"
@@ -131,7 +168,9 @@ def build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str |
     pinned = hashlib.sha256(_canon(vector["implementation"]).encode("utf-8")).hexdigest()
     return {
         "schema": SCHEMA, "chart_id": chart_id, "generation": generation,
-        "manifest": {"manifest_id": manifest_id, "status": status, "horizon": horizon, "convention_id": convention,
+        "manifest": {"manifest_id": manifest_id, "status": "candidate" if as_candidate else status, "horizon": horizon,
+                     "convention_id": convention, "writer_asset_id": writer_asset,
+                     "ephemeris_backend": backend,
                      "input_generation_vector_digest": hashlib.sha256(_canon(vector).encode("utf-8")).hexdigest()},
         "result_policy": manifest_policy(conn, chart_id, generation),
         "candidate_gate": {"source": "candidate_adapter/1 over ka_gochara_candidate_gate_violations",
@@ -140,11 +179,19 @@ def build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str |
         "classes": classes,
         "attestations": _attestations(conn, chart_id, generation),
         "generation_output_identity": generation_output_identity(conn, chart_id, generation),
+        # R12-1: the rest of the CANDIDATE BOUNDARY (candidate_boundary.py): build coverage, the legacy projection relations (none may
+        # exist), the exact digest publication will store, and the explicit covered / not-covered statement
+        "coverage_identity": cb.coverage_identity(conn, chart_id, generation),
+        "legacy_projection": {**cb.legacy_projection_counts(conn, chart_id, generation),
+                              "policy": "none may exist for a governed generation"},
+        "publication_content_digest": cb.publication_content_digest(conn, chart_id, generation),
+        "boundary": cb.boundary_statement(),
         "code": {"verification_runners": sorted([{"commit": c, "implementation_digest": d} for c, d in runners],
                                                 key=lambda r: (r["commit"], r["implementation_digest"])),
                  "manifest_pinned_implementation_digest": pinned, "sealing_commit": sealing_commit},
         "ledger": _ledger_evidence(conn),
-        "disclosures": {"policy": "all_null_candidate/1 — no numerical result exists in this generation",
+        "disclosures": {"policy": "all_null_candidate/1 — no numerical result exists in this generation (the legacy projection "
+                                  "relations hold none: enforced, not assumed)",
                         "named_limits": __import__("services.gochara_kernel.scope_response", fromlist=["x"]).named_limits(),
                         "attestation_binding": "composition: inputs/2 per grain + DB-guarded path pins + the 1206 inventory "
                                                "verification row + the generation-wide output identity above",
@@ -170,6 +217,9 @@ def _current_and_complete(payload: dict) -> list[str]:
                 problems.append(f"{c['event_class']}/{g['path_id']}: runner is not the manifest's pinned code")
     if not payload["attestations"]["ka_gochara_search_inventory_verification"]:
         problems.append("no inventory verification row persisted")
+    for table, n in payload["legacy_projection"].items():
+        if table != "policy" and n:
+            problems.append(f"{n} legacy {table} row(s) exist for this generation — none may (the '5.0' writer writes none)")
     if payload["manifest"]["status"] != "candidate":
         problems.append(f"the manifest is {payload['manifest']['status']!r}, not a candidate")
     return problems
