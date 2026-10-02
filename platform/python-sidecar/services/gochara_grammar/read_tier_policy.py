@@ -1,6 +1,6 @@
 """Reader policy for L1 rows by verification tier (honest-tier readers, A58).
 
-WHY. A reader that pins `verification_pass_status = 'two_pass_verified'` treats
+WHY. A reader whose tier predicate is an equality on the two-pass-verified tier treats
 "verified" as the price of admission. When a base-layer rebuild relabels a
 system's rows to the tier they honestly earn (`classical_match`, `single`, ...)
 such a reader comes back EMPTY and the consumer silently reports the system as
