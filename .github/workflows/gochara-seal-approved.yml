@@ -30,6 +30,8 @@
 # DEPENDENCIES before any dispatch: Stream A's pipeline/orchestrator/seal_job.py; the verification job defined by #2976 at THIS SAME commit (same-commit rule); acts 12/13/14 (the workflow
 # identity reads ONLY that job's logs through a log view, may execute that one job with overrides, and holds the Cloud SQL client right); the sealer DSN (GOCHARA_SEALER_DB_URL in
 # `gochara-seal`) must use the runner's loopback proxy tail (@127.0.0.1:5432/<db>).
+# WIRE (ST-WIRE-2): the compact line carries contract_version seal_brief_transport/1 and producer {commit, image_digest, execution_id}; the approval file is seal_approval/2 with the REQUIRED brief_id and
+# producer_execution_id; the verification job's definition carries GOCHARA_RUNNER_IMAGE_DIGEST (set by #2976 from the digest it resolves) or the verifier refuses to brief (producer_identity_absent).
 name: Gochara approved seal (reviewed; draft HOLD)
 
 on:
@@ -186,7 +188,7 @@ jobs:
             echo "## Seal brief — read this BEFORE approving"
             echo
             echo "- chart \`$CHART_ID\`, generation \`$GENERATION\`, sealing revision \`$GITHUB_SHA\`"
-            echo "- executed resource: execution \`$EXECUTION\`, image \`$IMAGE_DIGEST\`, verifier service account, runner commit = the sealing revision"
+            echo "- executed resource: execution \`$EXECUTION\`, image \`$IMAGE_DIGEST\`, verifier service account, runner commit = the sealing revision; the brief's own producer line (commit, image digest, execution id) is bound to it"
             echo "- candidate gate: **clean (0 violations)**; policy **all_null_candidate/1**; every grain **VERIFIED**"
             echo "- persisted brief id: **$BRIEF_ID**; **brief digest: \`$DIGEST\`**"
             echo

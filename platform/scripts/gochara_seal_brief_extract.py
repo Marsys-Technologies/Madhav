@@ -2,14 +2,22 @@
 """Pull the verifier job's `--brief` output out of its Cloud Run execution logs (R12-2: the brief is produced under the VERIFIER's identity, in the Cloud Run job — this
 workflow's identity must never hold the verifier's credential, so the logs are the transport).
 
-Stream A's `--brief` output (always chunked since head a289b38eb) (F-R13-2; the brief is ~255 KB at 26 classes, beyond a log entry): N chunk lines, then ONE compact result line, one JSON object each —
+Stream A's `--brief` output (ST-TRANSPORT-FREEZE-1; contract `seal_brief_transport/1`, ST-WIRE-2) — N chunk lines, then ONE compact result line, one JSON object each:
     {"b64": <base64 of the i-th slice>, "brief_chunk": i, "of": N, "sha256": <digest of the WHOLE brief bytes>}
-    {"brief_bytes": <int>, "brief_chunks": true, "brief_file": null, "persisted": {brief_id, manifest_id, state_digest}, "sha256": <digest>, "status": "BRIEFED"}
-The brief is the CANONICAL JSON of the approval payload; its sha256 IS the brief digest. This script reassembles it from the execution's `gcloud logging read … --format=json`
-export (an array of log entries) and writes TWO files: the brief bytes (`--out-brief`) and the compact line (`--out-compact`). It refuses: no compact line, more than one distinct
-compact line, a compact line that is not `status: BRIEFED` (a `REFUSED`/`ERROR` result is reported by name), a missing chunk index, two DIFFERENT chunks with one index (an identical
-repeat — at-least-once delivery — is collapsed), chunks that disagree on `of` or `sha256`, an undecodable slice, a reassembly whose sha256 or length differs from what the compact line
-declares, and chunks that the compact line does not announce. Arrival order is never relied on. It only moves bytes: every CONTENT check is `gochara_seal_brief_check.py`'s.
+    {"brief_bytes", "brief_chunks": true, "brief_file", "contract_version": "seal_brief_transport/1", "persisted": {brief_id, manifest_id, state_digest},
+     "producer": {commit, execution_id, image_digest}, "sha256", "status": "BRIEFED"}
+The brief is the CANONICAL JSON of the approval payload; its sha256 IS the brief digest.
+
+LOG-ENTRY FACTS this script is built for (Stream A; the golden fixture is built from the documentation, NOT captured from a real execution — the first real execution is diffed against it, runbook
+act 6b): Cloud Run parses a JSON object printed on stdout into the entry's ROOT `jsonPayload`, a protobuf Struct — so KEY ORDER IS LOST and EVERY NUMBER ARRIVES AS A DOUBLE (3 -> 3.0). Therefore
+nothing here ever compares printed TEXT, and every integer field (`brief_chunk`, `of`, `brief_bytes`, `persisted.brief_id`) is read through a STRICT integral-double conversion (3.0 -> 3, 3.5 or a
+boolean is refused). Delivery is at-least-once and UNORDERED. `textPayload` and `jsonPayload.message` (a string holding the object) are accepted as FALLBACKS under the same validation.
+
+It reassembles the brief from the execution's `gcloud logging read … --format=json` export (an array of log entries) and writes TWO files: the brief bytes (`--out-brief`) and the compact line
+(`--out-compact`, integers normalised). It refuses: no compact line, more than one DISTINCT compact line (a byte-identical repeat is TOLERATED and collapsed — at-least-once delivery cannot change
+hash-checked bytes), a compact line that is not `status: BRIEFED` (a `REFUSED`/`ERROR` result is reported by name), an unknown or MISSING `contract_version`, a malformed `producer`, a missing chunk
+index, two DIFFERENT chunks with one index (an identical repeat is collapsed), chunks that disagree on `of` or `sha256`, an undecodable slice, a reassembly whose sha256 or length differs from what the
+compact line declares. Log labels and resource fields are never consulted (they are not producer attestation). It only moves bytes: every CONTENT check is `gochara_seal_brief_check.py`'s.
 Exit 0 ok / 2 refused."""
 from __future__ import annotations
 
@@ -22,7 +30,10 @@ import re
 import sys
 
 _HEX = re.compile(r"[0-9a-f]{64}")
-_COMPACT_KEYS = {"brief_bytes", "brief_chunks", "brief_file", "persisted", "sha256", "status"}
+CONTRACT = "seal_brief_transport/1"
+_COMPACT_KEYS = {"brief_bytes", "brief_chunks", "brief_file", "contract_version", "persisted", "producer", "sha256", "status"}
+_PRODUCER_KEYS = {"commit", "execution_id", "image_digest"}
+_IMAGE = re.compile(r"sha256:[0-9a-f]{64}")
 _CHUNK_KEYS = {"b64", "brief_chunk", "of", "sha256"}
 CHUNK_RAW_BYTES = 48 * 1024
 
@@ -54,6 +65,31 @@ def _is_int(v):
     return isinstance(v, int) and not isinstance(v, bool)
 
 
+def _strict_int(v, what):
+    """int, or an INTEGRAL double (the protobuf Struct form: 3.0 -> 3); anything else — 3.5, a boolean, a string, NaN — is refused."""
+    if isinstance(v, bool):
+        raise ValueError(f"{what} is a boolean")
+    if isinstance(v, int):
+        return v
+    if isinstance(v, float) and v == v and v not in (float("inf"), float("-inf")) and v == int(v):
+        return int(v)
+    raise ValueError(f"{what} is not an integer ({v!r})")
+
+
+def _normalise_compact(doc: dict) -> dict:
+    """Validate the compact line's shape and read its integer fields through the strict integral-double conversion (the Struct form)."""
+    if set(doc) != _COMPACT_KEYS:
+        raise ValueError(f"the compact result line is malformed (keys {sorted(_COMPACT_KEYS)}; got {sorted(doc)})")
+    if doc.get("contract_version") != CONTRACT:
+        raise ValueError(f"the compact line's contract_version is {doc.get('contract_version')!r}, not {CONTRACT!r}: an unknown or missing transport contract is refused")
+    per, prod = doc.get("persisted"), doc.get("producer")
+    if not isinstance(per, dict) or set(per) != {"brief_id", "manifest_id", "state_digest"}:
+        raise ValueError("the compact line's `persisted` is not {brief_id, manifest_id, state_digest}")
+    if not isinstance(prod, dict) or set(prod) != _PRODUCER_KEYS or not all(isinstance(prod[k], str) and prod[k].strip() for k in _PRODUCER_KEYS) or not _IMAGE.fullmatch(prod["image_digest"]):
+        raise ValueError("the compact line's `producer` is not {commit, execution_id, image_digest: sha256:<64-hex>}: a brief of unknown producer is refused")
+    return {**doc, "brief_bytes": _strict_int(doc["brief_bytes"], "brief_bytes"), "persisted": {**per, "brief_id": _strict_int(per["brief_id"], "persisted.brief_id")}}
+
+
 def extract(entries) -> tuple[bytes, dict]:
     """(brief bytes, compact result) from the execution's log entries."""
     if not isinstance(entries, list):
@@ -65,14 +101,16 @@ def extract(entries) -> tuple[bytes, dict]:
         if doc is None:
             continue
         if "brief_chunk" in doc:
-            if set(doc) != _CHUNK_KEYS or not _is_int(doc["brief_chunk"]) or not _is_int(doc["of"]) or not isinstance(doc["sha256"], str) or not isinstance(doc["b64"], str):
+            if set(doc) != _CHUNK_KEYS or not isinstance(doc["sha256"], str) or not isinstance(doc["b64"], str):
                 raise ValueError("a brief chunk is malformed (keys b64/brief_chunk/of/sha256 with the right types)")
+            doc = {**doc, "brief_chunk": _strict_int(doc["brief_chunk"], "a chunk index"), "of": _strict_int(doc["of"], "a chunk total")}
             if doc["brief_chunk"] in chunks and chunks[doc["brief_chunk"]] != doc:
                 raise ValueError(f"two different chunks carry index {doc['brief_chunk']}")
             chunks[doc["brief_chunk"]] = doc
         elif doc.get("status") in ("REFUSED", "ERROR"):
             raise ValueError(f"the verification job did not produce a brief: status {doc.get('status')!r}, code {doc.get('code')!r}: {str(doc.get('detail'))[:300]}")
         elif doc.get("status") == "BRIEFED":
+            doc = _normalise_compact(doc)
             if doc not in compacts:
                 compacts.append(doc)
     if not compacts:
@@ -80,8 +118,8 @@ def extract(entries) -> tuple[bytes, dict]:
     if len(compacts) > 1:
         raise ValueError("more than one distinct `BRIEFED` result line in the execution's logs")
     c = compacts[0]
-    if set(c) != _COMPACT_KEYS or not _is_int(c["brief_bytes"]) or c["brief_bytes"] < 1 or not isinstance(c["sha256"], str) or not _HEX.fullmatch(c["sha256"]) or not isinstance(c["persisted"], dict):
-        raise ValueError("the compact result line is malformed (keys brief_bytes/brief_chunks/brief_file/persisted/sha256/status)")
+    if c["brief_bytes"] < 1 or not isinstance(c["sha256"], str) or not _HEX.fullmatch(c["sha256"]):
+        raise ValueError("the compact result line is malformed (brief_bytes < 1 or the digest is not a sha256)")
     if c["brief_chunks"] is not True:
         raise ValueError("the compact line does not announce chunks (`brief_chunks` is not true): the brief is not in the logs")
     if not chunks:
