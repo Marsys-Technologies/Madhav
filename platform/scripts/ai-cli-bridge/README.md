@@ -35,3 +35,16 @@ The UI refreshes stale catalogs on entry (15-minute successful freshness window)
 and offers a per-card refresh icon. Server-side leases and a one-minute cooldown
 bound concurrent/manual refreshes. A failed refresh retains the previous catalog
 and saved role assignments, while showing the failure and last successful refresh.
+
+### Inspected Antigravity versions
+
+The app registry, private bridge and smoke script admit exactly `1.2.12`, `1.2.13`
+and `1.2.15`; no version range is trusted. Native VM `1.2.15` was checked on
+3 October 2026 under the existing service user with a stripped-key environment:
+fourteen tab-separated model choices and one bounded Flash-low headless stream
+request returned `SUCCESS` and exactly `OK`. Authentication used the native
+consumer Google OAuth record, not a saved direct API key. The CLI reported
+13,330 input tokens and one output token; the input includes its native context.
+This is native subscription-protocol evidence, not a production web-pipeline or
+API-billing reconciliation claim. No binary install, upgrade, login, role/default
+change or live bridge mutation was part of that check.
