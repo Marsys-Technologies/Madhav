@@ -1375,6 +1375,31 @@ def test_committed_artifact_summary_agrees_with_its_entries():
     assert sum(summary["no_detector_reason_counts"].values()) == summary["scus_no_detector"]
 
 
+# PIN: producers by disposition in the committed artifact. This moves at EVERY regeneration, on purpose: the
+# diff of these numbers is what shows a reviewer that producers vanished (294 -> 290 source-query on 2026-10-02,
+# from stale line anchors and source refactors). Update it in the same PR as the regenerated artifact, and
+# explain any drop in the PR body.
+PINNED_PRODUCERS_BY_DISPOSITION = {
+    "derived_from_service_probe": 9,
+    "derived_from_source_query": 290,
+    "reviewed_output": 14,
+    "route_evidence_only": 1,
+}
+
+
+def test_committed_artifact_producer_counts_are_pinned_and_agree_with_its_entries():
+    payload = _load_real_committed_artifact()
+    counted = {}
+    for entry in payload["scus"].values():
+        for p in entry.get("producers", []):
+            counted[p["disposition"]] = counted.get(p["disposition"], 0) + 1
+    # the summary the generator wrote must equal the entries (a hand-edit of either is caught) ...
+    assert payload["summary"]["producers_by_disposition"] == dict(sorted(counted.items()))
+    # ... and the entries must equal the pin (a silent deletion of producers is caught, and a regeneration
+    # forces a visible change to the numbers above)
+    assert counted == PINNED_PRODUCERS_BY_DISPOSITION
+
+
 def test_check_fails_when_a_fake_producer_is_appended_beside_a_real_one(
     tmp_path, monkeypatch, capsys
 ):

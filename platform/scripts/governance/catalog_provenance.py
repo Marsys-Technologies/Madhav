@@ -37,6 +37,15 @@ Honest tiers (CLAUDE.md §N.7/§N.8; wave1 prompt §2.6):
 No writer, orchestrator, sealed-tier, editorial.ts, or asset_registry write happens
 here. DB access is read-only (see `connect_db`); this script issues SELECT only.
 
+BACKLOG B-PP (binding rule, strategist 2026-10-02): no census gate cell reads this artifact today, and
+`--check` never compares `snapshot_content_hash` (it validates producer binding and SCU-set equality only,
+so an artifact several snapshots old passes). The first cell that takes evidence from
+producer_provenance.derived.json MUST ship in the same PR with: (1) a sha256 per cited source file recorded in
+the artifact next to `snapshot_content_hash`; (2) a staleness read that compares both to the tree and marks the
+affected SCUs stale; (3) the INCONCLUSIVE mapping (NO_DETECTOR + inconclusive: true, the engine's existing
+"evidence not current" state) so a stale binding can never read PASS; all under that PR's REGISTRY_REVISION pin.
+Deliberately NOT a repo-wide CI gate (other workstreams edit cited files and cannot regenerate without DB access).
+
 Run:
   source /Users/Dev/madhav-l3/dbenv.sh; export PGPORT=5433
   python3 platform/scripts/governance/catalog_provenance.py --derive --closure --reader-scan
@@ -1231,6 +1240,14 @@ def write_derived_json(
             key = classify_no_detector_reason(sp.no_detector)
             reason_counts[key] = reason_counts.get(key, 0) + 1
 
+    # Producers by disposition, counted from the entries themselves. A pin on these in
+    # test_catalog_provenance.py moves visibly at each regeneration, so a reviewer sees a drop
+    # (the guard against producers silently disappearing from the committed artifact).
+    producers_by_disposition: Dict[str, int] = {}
+    for sp in provenance.values():
+        for pr in sp.producers:
+            producers_by_disposition[pr.disposition] = producers_by_disposition.get(pr.disposition, 0) + 1
+
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "generator": "platform/scripts/governance/catalog_provenance.py",
@@ -1241,6 +1258,7 @@ def write_derived_json(
             "scus_with_producers": named,
             "scus_no_detector": no_detector,
             "no_detector_reason_counts": reason_counts,
+            "producers_by_disposition": dict(sorted(producers_by_disposition.items())),
         },
         "scus": {scu_id: sp.to_json() for scu_id, sp in provenance.items()},
         "calibration": calibration,

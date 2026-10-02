@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-02T08:49:08.654491+00:00",
+  "generated_at": "2026-10-02T09:53:35.237921+00:00",
   "generator": "platform/scripts/governance/catalog_provenance.py",
   "snapshot_content_hash": "sha256:bff49e66b133a837aab85a209679b0a0f8c476b2a13734765fe7d064dc0d417b",
   "snapshot_scu_count": 182,
@@ -15,6 +15,12 @@
       "unrecognized_requirement_kind": 7,
       "source_ref_out_of_range": 4,
       "source_ref_unresolvable_shape": 1
+    },
+    "producers_by_disposition": {
+      "derived_from_service_probe": 9,
+      "derived_from_source_query": 290,
+      "reviewed_output": 14,
+      "route_evidence_only": 1
     }
   },
   "scus": {
