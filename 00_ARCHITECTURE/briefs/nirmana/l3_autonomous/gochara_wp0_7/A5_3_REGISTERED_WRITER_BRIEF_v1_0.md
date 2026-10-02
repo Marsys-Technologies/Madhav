@@ -684,3 +684,15 @@ Inputs already bound transitively by the snapshot (L1 facts, daśā, AV declarat
   window-algorithm-only (`implementation.window`), a successor version sealed after the build. 12 mutations, all killed.
 - **For Stream B to confirm**: the key schema above is mine (Codex's closing text names the components, not the keys); and the
   implementation closure lists are mine — say if a module belongs in or out of a stage.
+
+### Design v1.13 (2026-10-02) — the sweep calls Stream B's qualification-aware reduction (#2905)
+
+`window_sweep.reduce_at` now CALLS `score.path_channel_scores` (per root max, Σ over roots, channel-preserving;
+**qualification propagates — an affected channel is None, `known_partial_subtotals` are lower bounds and are
+never stored**) instead of carrying its own reduction. The non-P4 peak objective is that function's for-channel result at
+each instant; evidence at the peak is the same call over the members live at the peak. Consequences: (i) a member whose
+operand is undeterminable AT an instant makes that instant's channel None (it used to be skipped silently); (ii) the
+against channel is the per-instant reduction at the peak — an unqualified against-channel member not live at the peak
+does not null it, one that is live does (the verifier follows). The window-level rule is unchanged: a for-channel
+unqualified member anywhere in the window makes the objective, and so the peak, unqualified. 80 sweep tests; 17 mutations
+killed (one equivalent: the verifier's P4 numeric path only reproduces constant members).

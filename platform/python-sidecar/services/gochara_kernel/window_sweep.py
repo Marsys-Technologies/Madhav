@@ -529,16 +529,26 @@ def _pieces(lo: datetime, hi: datetime, progs: list[RecordProgram]):
             for a, b in zip(ordered, ordered[1:])]
 
 
-def _evidence_at(progs: list[RecordProgram], t: datetime, channel: str) -> float:
-    """Σ over roots of the per-root max of the channel's member values live at t (never netted)."""
-    per_root: dict[str, float] = {}
+def reduce_at(progs: list[RecordProgram], t: datetime, event_class: str) -> dict:
+    """The per-channel root reduction at instant `t` — Stream B's `score.path_channel_scores` CALLED
+    (never copied): per root the max over its aliases, Σ over roots, channel-preserving, and — the
+    Codex round 6 R1 repair — QUALIFICATION PROPAGATES: a channel any live record could not evaluate
+    is None, never a complete-looking subtotal (`known_partial_subtotals` are lower bounds and are not
+    stored). `progs` are the members live at `t`; an unqualified member, or one whose operand is
+    undeterminable at `t`, carries its channel (None = unknown ⇒ both)."""
+    from services.gochara_rules import score as _score
+    evals: dict[str, dict] = {}
     for p in progs:
-        if p.channel != channel or not _contains(p.rec.supports, t):
-            continue
-        v = p.value_at(t)
-        if v is not None:
-            per_root[p.rec.root_id] = max(per_root.get(p.rec.root_id, 0.0), v)
-    return sum(per_root.values())
+        v = p.value_at(t) if p.qualified else None
+        if p.qualified and v is not None:
+            evals[p.rec.record_id] = {c: (v if c == p.channel else 0.0) for c in _score.CHANNELS}
+        else:
+            ev = {"unqualified": True,
+                  "unqualified_reasons": [r for _f, r in p.reasons] or ["operand_undeterminable_at_instant"]}
+            if p.channel in _score.CHANNELS:
+                ev["unqualified_channel"] = p.channel
+            evals[p.rec.record_id] = ev
+    return _score.path_channel_scores([p.rec for p in progs], event_class, evals)
 
 
 def _agent_activity(live: list[RecordProgram], agent: str, t: datetime) -> float | None:
@@ -550,22 +560,14 @@ def _agent_activity(live: list[RecordProgram], agent: str, t: datetime) -> float
     return max(vals) if vals else None
 
 
-def _objective_fn(path_id: str, live: list[RecordProgram]):
+def _objective_fn(path_id: str, live: list[RecordProgram], event_class: str):
     if path_id == "P4":
         def f(t, _l=live):
             j, s = _agent_activity(_l, "jupiter", t), _agent_activity(_l, "saturn", t)
             return None if j is None or s is None else min(j, s)
     else:
         def f(t, _l=live):
-            per_root: dict[str, float] = {}
-            for p in _l:
-                if p.channel != CHANNEL_FOR:
-                    continue
-                v = p.value_at(t)
-                if v is None:
-                    return None
-                per_root[p.rec.root_id] = max(per_root.get(p.rec.root_id, 0.0), v)
-            return sum(per_root.values())
+            return reduce_at(_l, t, event_class)[CHANNEL_FOR]     # None = the objective is unqualified at t
     return f
 
 
@@ -683,7 +685,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             if path_id == "P4":
                 if {p.rec.agent for p in live} != {"jupiter", "saturn"}:
                     continue               # outside the joint support within this piece: not a candidate
-            f = _objective_fn(path_id, live)
+            f = _objective_fn(path_id, live, event_class)
             if all(p.constant is not None for p in live):
                 v = f(a)
                 if v is not None:
@@ -708,18 +710,21 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                 raise SweepRefusal(
                     f"record {p.rec.record_id}: its stored support contains the peak {peak.isoformat()} "
                     "but the contact geometry places the target outside — support/geometry disagree")
-        ev_for = _evidence_at(qualified, peak, CHANNEL_FOR)
+        live_at_peak = [p for p in in_win if _contains(p.rec.supports, peak)]
+        red = reduce_at(live_at_peak, peak, event_class)
+        ev_for = red[CHANNEL_FOR]
+        if ev_for is None:                     # cannot happen when the objective qualified; refuse, don't guess
+            raise SweepRefusal("for-channel evidence unqualified at a peak chosen on a qualified objective")
         if path_id == "P4":
             score = best
         else:
             for_live = [p.value_at(peak) for p in qualified
                         if p.channel == CHANNEL_FOR and _contains(p.rec.supports, peak)]
             score = max([v for v in for_live if v is not None], default=0.0)
-        if against_evaluated and not against_unq:
-            ev_against = _evidence_at(qualified, peak, CHANNEL_AGAINST)
+        ev_against = red[CHANNEL_AGAINST] if against_evaluated else None
+        if ev_against is not None:
             val = valence_fn(event_class, ev_for, ev_against, None)
         else:
-            ev_against = None
             val = valence_fn(event_class, ev_for, 0.0,
                              "evidence_against_channel_not_evaluated" if not against_unq
                              else "evidence_against_channel_unqualified")
@@ -750,5 +755,5 @@ __all__ = [
     "CATEGORICAL_PATHS", "GRAHA_TITLE", "KIND_TARGET_FORM", "categorical_factor", "graha_title",
     "validate_geometry", "p2_direction", "record_channel", "vedha_attenuation",
     "evaluate_factors", "graduated_drishti", "intersect_components", "maximise_earliest",
-    "registry_factor_rows", "union_components",
+    "reduce_at", "registry_factor_rows", "union_components",
 ]

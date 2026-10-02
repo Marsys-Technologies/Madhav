@@ -463,6 +463,7 @@ def test_a_drishti_source_returning_none_makes_that_instant_undeterminable():
     rec = _rec("a", relation="aspect", supports=((0, 10),), aspect_offset_at=lambda t: 6)
     (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o: None)   # e.g. 'no_aspect_at_this_offset'
     assert w.score is None and w.unresolved == {"operand_undeterminable_over_support": 1}
+    assert w.qualified_members == 0
 
 
 # ── the writer's real drishti source (Stream B's cited table, called) ────────────────────────────────
@@ -771,3 +772,52 @@ def test_a_support_the_contact_geometry_contradicts_at_the_peak_is_refused():
     assert _draft([ok], _rows_declared)[0][0].score == 1.0
     unknown = _rec("a", supports=((0, 10),), inside_at=lambda t: None)       # not determinable ≠ outside
     assert _draft([unknown], _rows_declared)[0][0].score == 1.0
+
+
+# ═══ Stream B's qualification-aware reduction (score.path_channel_scores, #2905) is the one called ═════
+
+def test_the_reduction_is_streambs_and_returns_none_for_an_affected_channel_never_a_subtotal():
+    from services.gochara_rules import score
+    rows = _rows_declared("P3", "1.0.0")
+    ok = ws.build_program(_rec("ok", root="R1"), rows)
+    bad = ws.build_program(_rec("bad", root="R2", kind="varga_position"), rows)
+    ok.channel = bad.channel = ws.CHANNEL_FOR
+    res = ws.reduce_at([ok, bad], _d(1), "marriage")
+    assert res[ws.CHANNEL_FOR] is None and res[ws.CHANNEL_AGAINST] == 0.0
+    assert res["qualification"] == "partially_unqualified"
+    assert res["known_partial_subtotals"] == {ws.CHANNEL_FOR: 1.0}        # a lower bound — never stored
+    assert set(res) >= set(score.CHANNELS)
+    all_ok = ws.reduce_at([ok], _d(1), "marriage")
+    assert all_ok[ws.CHANNEL_FOR] == 1.0 and all_ok["qualification"] == "qualified"
+
+
+def test_an_unqualified_against_member_not_live_at_the_peak_does_not_null_the_against_evidence():
+    adv = _p2("adv", "saturn", 8, root="R1", supports=((0, 5),))          # adverse residence: FOR a bereavement
+    fav = _p2("fav", "jupiter", 5, root="R2", supports=((5, 10),))        # favourable: AGAINST — unqualified
+    vedha = lambda rec, t: 0.5 if rec.record_id == "adv" else None
+    (w,), _ = _draft([adv, fav], _p2_rows, cls="bereavement", vedha=vedha)
+    assert w.peak_instant == _d(0) and w.evidence_for == 0.5
+    assert w.evidence_against == 0.0          # nothing against is live at the peak: an evaluated empty sum
+    live = _p2("fav2", "jupiter", 5, root="R2", supports=((0, 10),))      # now live AT the peak
+    (w2,), _ = _draft([adv, live], _p2_rows, cls="bereavement", vedha=vedha)
+    assert w2.evidence_for == 0.5 and w2.evidence_against is None
+
+
+def test_evidence_is_taken_at_the_peak_instant_not_at_the_window_start():
+    """A peaks at day 8 (value 1); B is live all window long but far from its own contact, so its value
+    at day 8 is 0.2 — evidence_for at the PEAK is 1.2, whereas at the window start it would be
+    A(0)+B(0) ≈ 0.47 + 0.0 — different numbers only because the kernel varies with time."""
+    rows = lambda p, v: _rows_declared(p, v, orb=5.0)
+    day = lambda t: (t - _d(0)).total_seconds() / 86400.0
+    a = _rec("A", relation="conjunction", kind="house_lord", root="R1", supports=((0, 30),),
+             delta_lambda_at=lambda t: abs(day(t) - 8.0) * (5.0 / 15.0))
+    b = _rec("B", relation="conjunction", kind="house_lord", root="R2", supports=((0, 30),),
+             delta_lambda_at=lambda t: abs(day(t) - 20.0) * (5.0 / 15.0))
+    (w,), _ = _draft([a, b], rows)
+    # E(t) = A(t) + B(t) is maximised where the two V's trade off: the sum peaks at one of the contacts
+    assert w.peak_instant is not None
+    peak_day = day(w.peak_instant)
+    want = max(0.0, 1.0 - abs(peak_day - 8.0) / 15.0) + max(0.0, 1.0 - abs(peak_day - 20.0) / 15.0)
+    assert w.evidence_for == pytest.approx(want, abs=1e-6)
+    at_start = max(0.0, 1.0 - 8.0 / 15.0) + max(0.0, 1.0 - 20.0 / 15.0)
+    assert abs(w.evidence_for - at_start) > 0.05

@@ -172,10 +172,9 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             continue
         if not (0.0 <= score <= 1.0 + _TOL):
             problems.append(f"{tag}: score {score} outside [0,1]")
-        want_against_null = (not against_ok) or bool(against_unq)
-        if (ev_against is None) != want_against_null:
-            problems.append(f"{tag}: evidence_against NULL-ness {ev_against is None} contradicts the "
-                            f"registry row / member qualification (expected NULL={want_against_null})")
+        if not against_ok and ev_against is not None:
+            problems.append(f"{tag}: evidence_against is stored but the registry row declares no way to "
+                            "evaluate that channel (expected NULL)")
         if has_fn:
             continue                                   # structural only — not claimed as reproduced
         numeric += 1
@@ -202,6 +201,14 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         best = max(v for v, _ in cands)
         want_peak = min(t for v, t in cands if v >= best - _TOL)
         live_at_peak = [rid for rid in _live(recs, want_peak) if rid in qualified]
+        # the against channel is the per-instant reduction AT THE PEAK: NULL iff the row cannot evaluate
+        # it, or a LIVE unqualified member could feed it (a channel-less one feeds both)
+        live_unq_against = [rid for rid in _live(recs, want_peak) if rid in unq_ids
+                            and chans[rid] in ("evidence_against_occurrence", None)]
+        want_against_null = (not against_ok) or bool(live_unq_against)
+        if (ev_against is None) != want_against_null:
+            problems.append(f"{tag}: evidence_against NULL-ness {ev_against is None} contradicts the "
+                            f"registry row / the members live at the peak (expected NULL={want_against_null})")
         sums = {"evidence_for_occurrence": {}, "evidence_against_occurrence": {}}
         for rid in live_at_peak:
             slot = sums[chans[rid]]
