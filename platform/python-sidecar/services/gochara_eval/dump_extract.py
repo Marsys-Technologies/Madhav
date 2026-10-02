@@ -76,6 +76,12 @@ SQL_AV_DONOR_IDENTITY = """SELECT a.ayanamsha_id, COUNT(c.fact_id) AS n,
  GROUP BY a.ayanamsha_id ORDER BY a.ayanamsha_id"""
 
 
+SQL_DASHA_TIERS = """SELECT system_id, level_n, verification_pass_status, COUNT(*) FROM chart_dashas
+ WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha'
+   AND system_id IN ('vimshottari','yogini','ashtottari','chara_karaka','naisargika','mudda','kalachakra','narayana')
+ GROUP BY 1, 2, 3 ORDER BY 1, 2, 3"""
+
+
 SQL_COVERAGE_SUMMARY = """SELECT partition_kind, COUNT(*) AS partitions,
        COUNT(*) FILTER (WHERE requested_horizon = completed_horizon) AS full_horizon,
        COUNT(*) FILTER (WHERE unsearched_reason IS NOT NULL) AS unsearched,
@@ -156,6 +162,16 @@ def read_av_donor_identity(conn) -> dict:
             "per_ayanamsha": {r[0]: {"row_count": int(r[1]), "digest": (r[2] if int(r[1]) > 0 else None)} for r in rows}}
 
 
+def read_dasha_tiers(conn) -> list[dict]:
+    """The OBSERVED per-(system, level) verification tiers and row counts of the eight DR-14 daśā systems for the chart (frozen as
+    `dasha_plurality_tier_policy.observed_tiers`; the '4.1' run must observe the same — DR-15(d))."""
+    conn.read_only = True
+    with conn.cursor() as cur:
+        cur.execute(SQL_DASHA_TIERS, (CHART_ID,))
+        rows = cur.fetchall()
+    return [{"system": r[0], "level": int(r[1]), "tier": r[2], "count": int(r[3])} for r in rows]
+
+
 def _connect(args, conn_factory):
     if conn_factory is None:
         dsn = "" if args.libpq_env else os.environ.get(DSN_ENV)
@@ -202,13 +218,15 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
                     help="print the candidate's coverage-ledger summary (disclosure only; reads no window row) and exit")
     ap.add_argument("--read-av-donor-rows", action="store_true",
                     help="print the presence + content identity of the L1 ashtakavarga_bindu_contributor rows per ayanamsha (frozen input `av_donor_rows`) and exit")
+    ap.add_argument("--read-dasha-tiers", action="store_true",
+                    help="print the observed per-(system, level) daśā tiers and counts (frozen `dasha_plurality_tier_policy.observed_tiers`) and exit")
     ap.add_argument("--requalify-3-0", metavar="PINNED_SHA256",
                     help="re-dump the '3.0' BASELINE (no freeze) and compare to this pinned sha256")
     ap.add_argument("--compare-to", help="with --requalify-3-0: the pinned extract file; its ROW MULTISET is compared as well "
                                          "(the pinned file's row order within (event_class, ws) ties was database-defined)")
     args = ap.parse_args(argv)
 
-    if args.read_manifest_orb or args.read_coverage_summary or args.read_av_donor_rows:
+    if args.read_manifest_orb or args.read_coverage_summary or args.read_av_donor_rows or args.read_dasha_tiers:
         if args.generation not in CANDIDATE_GENERATIONS:
             print(f"REFUSED: no manifest/coverage read for generation {args.generation!r}", file=sys.stderr)
             return 2
@@ -222,6 +240,8 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
                 print(json.dumps(read_coverage_summary(conn, args.generation)))
             if args.read_av_donor_rows:
                 print(json.dumps(read_av_donor_identity(conn)))
+            if args.read_dasha_tiers:
+                print(json.dumps(read_dasha_tiers(conn)))
         finally:
             conn.rollback()
             conn.close()
@@ -272,6 +292,12 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
             if live_av["per_ayanamsha"] != frozen_av:
                 print("FREEZE REFUSED: the live ashtakavarga_bindu_contributor rows differ from the frozen `av_donor_rows` "
                       f"(live {live_av['per_ayanamsha']}, frozen {frozen_av}) — a different candidate", file=sys.stderr)
+                return 2
+            live_t = sorted((r["system"], r["level"], r["tier"], r["count"]) for r in read_dasha_tiers(conn))
+            frozen_t = sorted((r["system"], r["level"], r["tier"], r["count"]) for r in frozen["dasha_plurality_tier_policy"]["observed_tiers"])
+            if live_t != frozen_t:
+                print("FREEZE REFUSED: the live daśā tiers/counts differ from the frozen `observed_tiers` — a different measurement (DR-15(d)): stop, report",
+                      file=sys.stderr)
                 return 2
         rows = dump_rows(conn, args.generation, horizon_check)
     finally:

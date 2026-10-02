@@ -38,6 +38,23 @@ INPUT_FILES = {                                            # identifier -> file 
 OUT = "baseline_4_1_extract_v1_0.json"
 
 
+OBSERVED_TIERS = [{"system": "vimshottari", "level": lv, "tier": "two_pass_verified", "count": n} for lv, n in ((1, 13), (2, 104), (3, 923), (4, 8165))] + [
+    {"system": "mudda", "level": 1, "tier": "classical_match", "count": 48}, {"system": "mudda", "level": 2, "tier": "single", "count": 432},
+    {"system": "narayana", "level": 1, "tier": "classical_match", "count": 21}, {"system": "narayana", "level": 2, "tier": "single", "count": 245},
+    {"system": "yogini", "level": 1, "tier": "classical_match", "count": 35}, {"system": "yogini", "level": 2, "tier": "single", "count": 273},
+    {"system": "ashtottari", "level": 1, "tier": "classical_match", "count": 13}, {"system": "chara_karaka", "level": 1, "tier": "classical_match", "count": 21},
+    {"system": "naisargika", "level": 1, "tier": "classical_match", "count": 8}, {"system": "kalachakra", "level": 1, "tier": "single", "count": 9}]
+
+
+def make_dasha_block():
+    return {"option": "a", "accepted_set": {"vimshottari": [1, 2, 3, 4], "mudda": [1], "narayana": [1]},
+            "unavailable": {s_: "stored below the accepted tier for this (system, level)" for s_ in ("chara_karaka", "yogini", "ashtottari", "naisargika", "kalachakra")},
+            "denominator": 1.0, "ceiling": 0.66, "label": "partial - 5 of 8 dasha systems unavailable (named); ceiling 0.66; diagnostic only",
+            "policy": {"pr": 2954, "commit": COMMIT, "module": "services/gochara_grammar/read_tier_policy.py",
+                       "module_sha256": sha256_file(SIDECAR / "services/gochara_grammar/read_tier_policy.py")},
+            "observed_tiers": [dict(r) for r in OBSERVED_TIERS]}
+
+
 def make_stage1(tmp_path, generation="4.1", cohort=None):
     """A SUBSTANTIVE, valid Stage-1 freeze: every mandatory field typed and non-empty, every mandatory input present on disk."""
     inputs = {}
@@ -73,6 +90,7 @@ def make_stage1(tmp_path, generation="4.1", cohort=None):
            "av_donor_rows": {"behaviour": "donor_resolved", "comparability": "a run made before these rows exist is a DIFFERENT candidate; never compared as one",
                              "per_ayanamsha": {"lahiri_chitrapaksha": {"row_count": 672, "digest": SHA},
                                                "raman": {"row_count": 672, "digest": SHA[::-1]}}},
+           "dasha_plurality_tier_policy": make_dasha_block(),
            "coverage_manifest": "UNVERIFIABLE (determined)", "rerun_policy": "deterministic; no change after inspection",
            "inputs": inputs}
     return doc, write_json(tmp_path / "FREEZE_STAGE1_t.json", doc)
@@ -82,7 +100,8 @@ def conn_for(doc):
     """A fake read-only connection whose live manifest and live donor-row identity equal the frozen ones."""
     rb = doc["ephemeris_requirement"]["manifest_readback"]
     av = [(a, e["row_count"], e["digest"]) for a, e in doc["av_donor_rows"]["per_ayanamsha"].items()]
-    return FakeConn(ROWS, manifest=[(rb["manifest_status"], rb["orb_max_deg"], rb["orb_ruling"], rb["ephemeris"])], av=av)
+    tiers = [(r["system"], r["level"], r["tier"], r["count"]) for r in doc["dasha_plurality_tier_policy"]["observed_tiers"]]
+    return FakeConn(ROWS, manifest=[(rb["manifest_status"], rb["orb_max_deg"], rb["orb_ruling"], rb["ephemeris"])], av=av, tiers=tiers)
 
 
 class TestStage1:
@@ -258,6 +277,8 @@ class FakeCursor:
             return None
         return (self.conn.outside,)
     def fetchall(self):
+        if "chart_dashas" in self.last:
+            return self.conn.tiers
         if "ashtakavarga_bindu_contributor" in self.last:
             return self.conn.av
         if "kala_gochara_coverage" in self.last:
@@ -266,9 +287,9 @@ class FakeCursor:
 
 
 class FakeConn:
-    def __init__(self, rows, outside=0, sign=(0, 0), manifest=None, coverage=None, av=None):
+    def __init__(self, rows, outside=0, sign=(0, 0), manifest=None, coverage=None, av=None, tiers=None):
         self.rows, self.outside, self.executed, self.read_only, self.closed = rows, outside, [], False, False
-        self.sign, self.manifest, self.coverage, self.av = sign, manifest or [], coverage or [], av or []
+        self.sign, self.manifest, self.coverage, self.av, self.tiers = sign, manifest or [], coverage or [], av or [], tiers or []
     def cursor(self): return FakeCursor(self)
     def rollback(self): pass
     def close(self): self.closed = True
@@ -312,6 +333,62 @@ class TestAvDonorRows:
     def test_the_read_back_reports_count_and_digest_per_ayanamsha(self):
         out = dx.read_av_donor_identity(FakeConn(ROWS, av=[("lahiri_chitrapaksha", 672, SHA), ("raman", 0, None)]))
         assert out["per_ayanamsha"] == {"lahiri_chitrapaksha": {"row_count": 672, "digest": SHA}, "raman": {"row_count": 0, "digest": None}}
+
+
+class TestDashaPlurality:
+    """The ruled daśā-plurality policy is a FROZEN INPUT, pinned by (system, level) NAME: the accepted set, the five unavailable systems, denominator 1.0 / ceiling
+    0.66 / 'partial', the policy module's identity and the observed tiers — and the policy module itself re-derives the voting set from those tiers."""
+
+    def test_the_freeze_without_the_block_is_refused(self, tmp_path):
+        doc, _ = make_stage1(tmp_path)
+        d = copy.deepcopy(doc); del d["dasha_plurality_tier_policy"]
+        assert any("dasha_plurality_tier_policy is missing" in p for p in stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND))
+
+    @pytest.mark.parametrize("mut,needle", [
+        (lambda b: b.update(option="b"), "is not 'a'"),
+        (lambda b: b["accepted_set"].update(yogini=[1]), "!= the ruled set"),
+        (lambda b: b["accepted_set"].pop("narayana"), "!= the ruled set"),
+        (lambda b: b["unavailable"].pop("kalachakra"), "must name exactly"),
+        (lambda b: b["unavailable"].update(yogini=""), "must name exactly"),
+        (lambda b: b.update(denominator=0.66), "denominator"),
+        (lambda b: b.update(ceiling=1.0), "ceiling"),
+        (lambda b: b.update(label="complete"), "'partial'"),
+        (lambda b: b["policy"].update(pr=1), "needs pr 2954"),
+        (lambda b: b["policy"].update(module_sha256="ab" * 32), "differs from the frozen one"),
+        (lambda b: b.update(observed_tiers=[]), "observed_tiers must be"),
+        (lambda b: b["observed_tiers"].append({"system": "x", "level": 1, "tier": "single", "count": 0}), "observed_tiers must be")])
+    def test_each_defect_is_named(self, tmp_path, mut, needle):
+        doc, _ = make_stage1(tmp_path)
+        d = copy.deepcopy(doc); mut(d["dasha_plurality_tier_policy"])
+        assert any(needle in p for p in stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND)), stage1_problems(d, tmp_path, dx.CANONICAL_COMMAND)
+
+    def test_the_policy_module_re_derives_the_voting_set_from_the_observed_tiers(self, tmp_path):
+        """Before AND after the base-layer relabel (Mudda/Narayana L1: two_pass_verified -> classical_match) the SAME three systems vote; a tier set that would change
+        the voting set (e.g. Yogini level 1 at two_pass_verified is still strict-accepted only if so labelled) is refused as inconsistent with the frozen set."""
+        doc, _ = make_stage1(tmp_path)
+        before = copy.deepcopy(doc)
+        for r in before["dasha_plurality_tier_policy"]["observed_tiers"]:
+            if r["system"] in ("mudda", "narayana") and r["level"] == 1:
+                r["tier"] = "two_pass_verified"
+        assert stage1_problems(before, tmp_path, dx.CANONICAL_COMMAND) == []
+        changed = copy.deepcopy(doc)
+        for r in changed["dasha_plurality_tier_policy"]["observed_tiers"]:
+            if r["system"] == "yogini" and r["level"] == 1:
+                r["tier"] = "two_pass_verified"                 # Yogini level 1 would now vote: a different measurement
+        assert any("yields" in p and "not the frozen voting set" in p for p in stage1_problems(changed, tmp_path, dx.CANONICAL_COMMAND))
+
+    def test_the_read_back_lists_tiers_and_counts(self):
+        out = dx.read_dasha_tiers(FakeConn(ROWS, tiers=[("mudda", 1, "classical_match", 48), ("mudda", 2, "single", 432)]))
+        assert out == [{"system": "mudda", "level": 1, "tier": "classical_match", "count": 48}, {"system": "mudda", "level": 2, "tier": "single", "count": 432}]
+
+    def test_tiers_that_moved_since_the_freeze_are_refused_before_any_window_row_is_read(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.chdir(tmp_path)
+        doc, p = make_stage1(tmp_path)
+        c = conn_for(doc)
+        c.tiers = [t for t in c.tiers if t[0] != "kalachakra"]
+        rc = dx.main(["--generation", "4.1", "--stage1", str(p), "--pinned-at", "2026-10-05", "--out", OUT], conn_factory=lambda: c)
+        assert rc == 2 and "daśā tiers/counts differ from the frozen" in capsys.readouterr().err
+        assert not (tmp_path / OUT).exists() and all("kala_gochara_windows" not in sql for sql, _ in c.executed)
 
 
 class TestEphemerisComponent:

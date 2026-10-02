@@ -26,6 +26,8 @@ CREATE TABLE kala_gochara_windows (chart_id uuid, generation text, event_class t
 CREATE TABLE kala_gochara_publication (chart_id uuid, generation text, status text, input_generation_vector jsonb);
 CREATE TABLE chart_facts (fact_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid, ayanamsha_id text, fact_category text, fact_subject text,
   fact_key text, fact_value_num double precision);
+CREATE TABLE chart_dashas (dasha_row_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid, ayanamsha_id text, system_id text, level_n int,
+  verification_pass_status text);
 CREATE TABLE kala_gochara_coverage (chart_id uuid, generation text, partition_kind text, partition_key text,
   requested_horizon tstzrange, completed_horizon tstzrange, targets_requested int, targets_resolved int,
   targets_unresolved int, unsearched_reason text);
@@ -113,3 +115,15 @@ def test_av_donor_identity_runs_the_real_sql_counts_and_digests_per_ayanamsha(co
     assert first["raman"] == {"row_count": 0, "digest": None}
     conn.execute("UPDATE chart_facts SET fact_value_num = 1.0 WHERE fact_subject = 'SUN-CONTRIBUTOR_MAR-SIGN_1'")
     assert dx.read_av_donor_identity(conn)["per_ayanamsha"]["lahiri_chitrapaksha"]["digest"] != first["lahiri_chitrapaksha"]["digest"]
+
+
+def test_dasha_tiers_runs_the_real_sql_per_system_level_and_tier(conn):
+    """Only the eight DR-14 systems, only the candidate's ayanamsha, grouped by (system, level, tier) with counts (vimshottari_kp and other ayanamshas excluded)."""
+    rows = ([("vimshottari", 1, "two_pass_verified")] * 3 + [("mudda", 1, "classical_match")] * 2 + [("mudda", 2, "single")] * 5 + [("vimshottari_kp", 2, "single")])
+    for sysid, lv, tier in rows:
+        conn.execute("INSERT INTO chart_dashas(chart_id, ayanamsha_id, system_id, level_n, verification_pass_status) VALUES (%s,'lahiri_chitrapaksha',%s,%s,%s)",
+                     (dx.CHART_ID, sysid, lv, tier))
+    conn.execute("INSERT INTO chart_dashas(chart_id, ayanamsha_id, system_id, level_n, verification_pass_status) VALUES (%s,'raman','vimshottari',1,'single')", (dx.CHART_ID,))
+    assert dx.read_dasha_tiers(conn) == [{"system": "mudda", "level": 1, "tier": "classical_match", "count": 2},
+                                         {"system": "mudda", "level": 2, "tier": "single", "count": 5},
+                                         {"system": "vimshottari", "level": 1, "tier": "two_pass_verified", "count": 3}]

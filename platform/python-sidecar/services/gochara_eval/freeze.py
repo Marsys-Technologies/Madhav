@@ -44,6 +44,11 @@ COHORT_INT_KEYS = ("held_out", "timing_usable", "year_grain", "exact_cohort", "i
 #: which behaviour of the '4.1' chain the frozen run uses: P5c donor-resolved (the L1 rows exist) or the gochara_v3 sign-grain interim (they do not)
 AV_DONOR_BEHAVIOURS = ("donor_resolved", "sign_grain_interim")
 AV_DONOR_AYANAMSHA = "lahiri_chitrapaksha"
+#: the ruled '4.1' daśā-plurality policy (NR 'NRS-DASHA-PLURALITY-20261002', option (a) KEEP), pinned by (system, level) NAME — never by tier string, because the
+#: base-layer relabel moves Mudda/Nārāyaṇa level 1 from two_pass_verified to classical_match without changing the rows that vote
+DASHA_ACCEPTED_SET = {"vimshottari": [1, 2, 3, 4], "mudda": [1], "narayana": [1]}
+DASHA_UNAVAILABLE = ("chara_karaka", "yogini", "ashtottari", "naisargika", "kalachakra")
+DASHA_POLICY_MODULE = "services/gochara_grammar/read_tier_policy.py"
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 SHA64 = re.compile(r"^[0-9a-f]{64}$")
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -173,6 +178,59 @@ def _str_fields(d: dict, keys, probs: list[str], where: str) -> None:
             probs.append(f"{where}.{k} is missing or empty")
 
 
+def _dasha_plurality_problems(blk, sidecar_root: Path) -> list[str]:
+    """The daśā-plurality tier policy is a FROZEN INPUT: option (a), the accepted set pinned by (system, level) NAME, the five unavailable systems with reasons,
+    denominator 1.0 / ceiling 0.66 / 'partial' label, the policy module's identity, and the OBSERVED per-(system, level) tiers and counts at freeze time —
+    from which the policy module itself RE-DERIVES the voting set (it must equal the frozen set)."""
+    p: list[str] = []
+    if not isinstance(blk, dict) or not blk:
+        return ["dasha_plurality_tier_policy is missing, not an object, or empty"]
+    if blk.get("option") != "a":
+        p.append(f"dasha_plurality_tier_policy.option {blk.get('option')!r} is not 'a' (KEEP — the ruled policy; (b)/(c)/(d) are not frozen for '4.1')")
+    if blk.get("accepted_set") != DASHA_ACCEPTED_SET:
+        p.append(f"dasha_plurality_tier_policy.accepted_set {blk.get('accepted_set')!r} != the ruled set {DASHA_ACCEPTED_SET!r} (pinned by name)")
+    un = blk.get("unavailable")
+    if not (isinstance(un, dict) and set(un) == set(DASHA_UNAVAILABLE) and all(_ne_str(v) for v in un.values())):
+        p.append(f"dasha_plurality_tier_policy.unavailable must name exactly {list(DASHA_UNAVAILABLE)} each with a reason")
+    for k, want in (("denominator", 1.0), ("ceiling", 0.66)):
+        v = blk.get(k)
+        if not (isinstance(v, (int, float)) and not isinstance(v, bool) and abs(float(v) - want) < 1e-9):
+            p.append(f"dasha_plurality_tier_policy.{k} {v!r} != {want}")
+    if "partial" not in str(blk.get("label", "")).lower():
+        p.append("dasha_plurality_tier_policy.label must say the permission is 'partial' (and name the unavailable systems)")
+    pol = blk.get("policy")
+    mod = sidecar_root / DASHA_POLICY_MODULE
+    if not (isinstance(pol, dict) and pol.get("pr") == 2954 and COMMIT_RE.match(str(pol.get("commit", ""))) and pol.get("module") == DASHA_POLICY_MODULE
+            and SHA64.match(str(pol.get("module_sha256", "")))):
+        p.append("dasha_plurality_tier_policy.policy needs pr 2954, a 40-hex commit, the module path and its sha256")
+    elif not mod.is_file():
+        p.append(f"the policy module {DASHA_POLICY_MODULE} is not on disk")
+    elif sha256_file(mod) != pol["module_sha256"]:
+        p.append(f"the policy module's sha256 differs from the frozen one (running {sha256_file(mod)})")
+    obs = blk.get("observed_tiers")
+    ok_obs = isinstance(obs, list) and obs and all(
+        isinstance(r, dict) and _ne_str(r.get("system")) and isinstance(r.get("level"), int) and _ne_str(r.get("tier"))
+        and isinstance(r.get("count"), int) and not isinstance(r.get("count"), bool) and r["count"] > 0 for r in obs)
+    if not ok_obs:
+        p.append("dasha_plurality_tier_policy.observed_tiers must be a non-empty list of {system, level, tier, count>0} read at freeze time")
+        return p
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("_frozen_read_tier_policy", mod)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        voters: dict[str, set] = {}
+        for r in obs:
+            if m.row_tier_accepted(r["system"], r["level"], r["tier"]):
+                voters.setdefault(r["system"], set()).add(r["level"])
+        derived = {k: sorted(v) for k, v in sorted(voters.items())}
+        if derived != {k: sorted(v) for k, v in sorted(DASHA_ACCEPTED_SET.items())}:
+            p.append(f"the policy module applied to the observed tiers yields {derived}, not the frozen voting set {DASHA_ACCEPTED_SET}")
+    except Exception as exc:  # noqa: BLE001
+        p.append(f"the policy module could not be applied to the observed tiers: {exc}")
+    return p
+
+
 def stage1_problems(doc: dict, inputs_root: Path, canonical_command: str,
                     sidecar_root: Path = SIDECAR_ROOT) -> list[str]:
     probs: list[str] = []
@@ -274,6 +332,7 @@ def stage1_problems(doc: dict, inputs_root: Path, canonical_command: str,
         if behaviour == "sign_grain_interim" and lahiri["row_count"] > 0:
             probs.append("av_donor_rows.behaviour is 'sign_grain_interim' but donor rows EXIST (the run would be donor-resolved)")
     _str_fields(av, ("comparability",), probs, "av_donor_rows")
+    probs += _dasha_plurality_problems(doc.get("dasha_plurality_tier_policy"), sidecar_root)
     ostate = _dict(doc, "orb_state", probs)
     _str_fields(ostate, ("text", "manifest_location"), probs, "orb_state")
 
