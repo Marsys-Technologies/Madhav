@@ -1,6 +1,6 @@
 """
-Migrations 1226 (six pre-S-L1 `asset_registry.depends_on` edges) and 1224 (chart_grants SELECT
-schema-of-record).
+Migration 1226 (six pre-S-L1 `asset_registry.depends_on` edges). The 1224 (chart_grants) tests live in
+test_migration_1224_chart_grants.py.
 
 Two tiers:
   * STATIC (always runs, DB-free): file shape, the six edges, seed parity, header ordering rule.
@@ -14,9 +14,6 @@ What the LIVE tier proves for 1226: the six edges land (existing order preserved
 no other column and no other row changes; a second run rewrites nothing (xmin unchanged); a direct or an
 indirect cycle RAISES and rolls back; a missing / inactive / partial asset set RAISES; an empty registry
 is a no-op; a NULL depends_on is treated as empty.
-For 1224: on a database lacking the grant it issues exactly one privilege (SELECT, one role, one table;
-relacl diff is exactly that), is a no-op when already granted (relacl byte-identical), leaves other roles'
-grants alone, and RAISES on a missing table / missing role / a pre-existing broader privilege.
 It does NOT prove production state (that is read from production structure after deploy; Trap 103).
 """
 from __future__ import annotations
@@ -34,7 +31,6 @@ import pytest
 
 _REPO = Path(__file__).resolve().parents[3]
 _M1226 = _REPO / "platform" / "migrations" / "1226_asset_registry_six_pre_s_l1_edges.sql"
-_M1224 = _REPO / "platform" / "migrations" / "1224_chart_grants_select_schema_of_record.sql"
 _SEED = _REPO / "platform" / "scripts" / "seed" / "asset_registry_seed.ts"
 
 SIX_EDGES = [
@@ -103,12 +99,11 @@ def test_1226_is_exactly_the_six_edges():
     assert len(set(edges)) == 6 and not any(a == b for a, b in edges)
 
 
-@pytest.mark.parametrize("path", [_M1226, _M1224], ids=["1226", "1224"])
-def test_migration_does_not_own_the_transaction_and_has_no_destructive_sql(path):
-    code = _code(path)
+def test_migration_does_not_own_the_transaction_and_has_no_destructive_sql():
+    code = _code(_M1226)
     assert not re.search(r"\b(BEGIN|COMMIT|ROLLBACK)\b\s*;", code), "migrate.ts owns the transaction"
     assert "SET LOCAL lock_timeout = '5s';" in code
-    # statement-start match: privilege names inside string literals (1224 lists TRUNCATE) are not statements
+    # statement-start match
     assert not re.search(r"^\s*(DROP|TRUNCATE|DELETE\s+FROM|REVOKE|ALTER)\b", code, re.I | re.M)
 
 
@@ -119,17 +114,10 @@ def test_1226_writes_only_depends_on_and_discloses_ordering_and_consequences():
     for needle in ("ORDERING RULE", "BEFORE S-L1", "NO DATA ROW CHANGES", "compute_upstream_hash",
                    "plan_adaptation_required", "assertManifestMatchesRegistryIdentity", "Trap 103",
                    "PRODUCTION STRUCTURE", "WITH RECURSIVE", "planned/running/paused",
-                   "nirmana_registry_receipt_invalidation", "asset_freshness"):
+                   "nirmana_registry_receipt_invalidation", "asset_freshness",
+                   "APPLY TIMING RULE", "MERGE = APPLY", "S-L1 window", "MIGRATION_1226_EDGES_INTENT_v1_0.md",
+                   "No other run may be dispatching or running"):
         assert needle in sql, f"1226 header/body no longer states: {needle}"
-
-
-def test_1224_header_states_guarded_noop_and_exactly_one_privilege():
-    sql = _M1224.read_text()
-    code = _code(_M1224)
-    for needle in ("GUARDED NO-OP", "already holds", "SELECT only", "Trap 103", "FRESH-FROM-MIGRATIONS"):
-        assert needle.lower() in sql.lower(), needle
-    assert code.count("GRANT SELECT ON TABLE public.chart_grants TO data_plane_builder;") == 1
-    assert len(re.findall(r"\bGRANT\b", code)) == 1
 
 
 def test_seed_carries_the_six_edges_and_graph_stays_acyclic():
@@ -193,9 +181,6 @@ def pg_cluster():
     subprocess.run([str(binp / "pg_ctl"), "-D", str(data), "-o", opts, "-w", "-l", str(root / "log"), "start"],
                    check=True, capture_output=True)
     try:
-        with psycopg.connect(host="127.0.0.1", port=port, user="postgres", dbname="postgres", autocommit=True) as c:
-            c.execute("CREATE ROLE data_plane_builder NOLOGIN")
-            c.execute("CREATE ROLE other_reader NOLOGIN")
         yield {"port": port, "psycopg": psycopg}
     finally:
         subprocess.run([str(binp / "pg_ctl"), "-D", str(data), "-m", "immediate", "stop"], capture_output=True)
@@ -438,100 +423,3 @@ def test_1226_cycle_guard_has_teeth_it_is_the_guard_not_the_fixture(db):
     with pytest.raises(Exception) as ei:
         _apply(db, _M1226)
     assert "cycle" in str(ei.value)
-
-
-# ── 1224 ─────────────────────────────────────────────────────────────────────
-
-def _relacl(connect):
-    return _q(connect, "SELECT relacl::text FROM pg_class WHERE oid = 'public.chart_grants'::regclass")[0][0]
-
-
-def _grants_snapshot(connect):
-    return sorted(_q(connect, """
-        SELECT COALESCE(r.rolname,'PUBLIC'), a.privilege_type
-          FROM pg_class c CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) a
-          LEFT JOIN pg_roles r ON r.oid = a.grantee
-         WHERE c.oid = 'public.chart_grants'::regclass"""))
-
-
-def _make_chart_grants(connect, grant_other: bool = True):
-    with connect() as c:
-        c.execute("CREATE TABLE public.chart_grants (chart_id uuid, principal_id uuid, permission text)")
-        if grant_other:
-            c.execute("GRANT SELECT ON public.chart_grants TO other_reader")
-        c.commit()
-
-
-def _builder_privs(connect):
-    return {p: _q(connect, "SELECT has_table_privilege('data_plane_builder','public.chart_grants',%s)", (p,))[0][0]
-            for p in ("SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER")}
-
-
-def test_1224_grants_exactly_select_to_the_builder_on_a_db_lacking_it(db):
-    _make_chart_grants(db)
-    before = _grants_snapshot(db)
-    assert _builder_privs(db)["SELECT"] is False
-    _apply(db, _M1224)
-    privs = _builder_privs(db)
-    assert privs == {"SELECT": True, "INSERT": False, "UPDATE": False, "DELETE": False, "TRUNCATE": False,
-                     "REFERENCES": False, "TRIGGER": False}
-    after = _grants_snapshot(db)
-    assert sorted(set(after) - set(before)) == [("data_plane_builder", "SELECT")]
-    assert not (set(before) - set(after)), "a pre-existing grant disappeared"
-    # the builder can really read it, as the builder
-    with db() as c:
-        c.execute("SET LOCAL ROLE data_plane_builder")
-        assert c.execute("SELECT count(*) FROM public.chart_grants").fetchone()[0] == 0
-
-
-def test_1224_is_a_byte_identical_noop_when_already_granted(db):
-    _make_chart_grants(db)
-    _exec(db, "GRANT SELECT ON public.chart_grants TO data_plane_builder")
-    acl = _relacl(db)
-    notices: list[str] = []
-    conn = db()
-    conn.add_notice_handler(lambda d: notices.append(d.message_primary))
-    try:
-        conn.execute(_M1224.read_text())
-        conn.commit()
-    finally:
-        conn.close()
-    assert _relacl(db) == acl
-    assert any("already holds SELECT" in n and "no-op" in n for n in notices), notices
-
-
-def test_1224_second_run_is_idempotent(db):
-    _make_chart_grants(db)
-    _apply(db, _M1224)
-    acl = _relacl(db)
-    _apply(db, _M1224)
-    assert _relacl(db) == acl
-
-
-@pytest.mark.parametrize("extra", ["INSERT", "UPDATE", "DELETE", "TRUNCATE"])
-def test_1224_refuses_when_the_builder_already_holds_a_broader_privilege(db, extra):
-    _make_chart_grants(db)
-    _exec(db, f"GRANT {extra} ON public.chart_grants TO data_plane_builder")
-    with pytest.raises(Exception) as ei:
-        _apply(db, _M1224)
-    assert "more than SELECT" in str(ei.value) and extra in str(ei.value), str(ei.value)
-
-
-def test_1224_refuses_when_the_table_is_missing(db):
-    with pytest.raises(Exception) as ei:
-        _apply(db, _M1224)
-    assert "chart_grants does not exist" in str(ei.value)
-
-
-def test_1224_refuses_when_the_role_is_missing(db, pg_cluster):
-    _make_chart_grants(db)
-    psycopg, port = pg_cluster["psycopg"], pg_cluster["port"]
-    admin = lambda sql: psycopg.connect(host="127.0.0.1", port=port, user="postgres", dbname="postgres",
-                                        autocommit=True).execute(sql)
-    admin("ALTER ROLE data_plane_builder RENAME TO dpb_parked")
-    try:
-        with pytest.raises(Exception) as ei:
-            _apply(db, _M1224)
-        assert "role data_plane_builder does not exist" in str(ei.value)
-    finally:
-        admin("ALTER ROLE dpb_parked RENAME TO data_plane_builder")
