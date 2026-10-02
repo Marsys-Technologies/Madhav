@@ -7,7 +7,7 @@ against that copy in a subprocess (it loads the tool named by FLIP_DETECTOR_TOOL
   * the unmutated control run is green (so red can only come from the mutation), and
   * the mutated run is red AND the tests named in `must_fail` are among the failures.
 
-No database, no network: the subprocess runs the same offline tests. Run alone: pytest test_flip_detector_mutations.py -q
+No database, no network: the subprocess runs the same offline tests. Each mutated run executes only the tests named for it (the control runs everything). Run alone: pytest test_flip_detector_mutations.py -q
 """
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ MUTATIONS = [
      'if rep.get("ALERT_anchor_changed"):\n        return V_ALERT', "if False:\n        return V_ALERT",
      ["test_anchor_change_is_alert_and_wins_over_failures"]),
     ("not_checked_registry_emptied",
-     "standing_not_checked=STANDING_NOT_CHECKED):", "standing_not_checked=()):",
+     "standing_not_checked=STANDING_NOT_CHECKED,", "standing_not_checked=(),",
      ["test_2_both_uncheckable_tier_changes_are_listed_on_every_compare", "test_2_not_checked_is_a_distinct_verdict_never_a_pass"]),
     ("not_checked_exits_zero",
      "return EXIT_PASS if allow_not_checked else EXIT_NOT_CHECKED", "return EXIT_PASS",
@@ -124,16 +124,109 @@ MUTATIONS = [
     ("f2_not_checked_type_unchecked",
      ' or not isinstance(rep["not_checked"], list)', "",
      ["test_malformed_report_is_a_clean_failure_not_a_keyerror"]),
+    # ---- second independent review (R-T2) + SS rulings
+    ("f1_not_compared_row_removed",
+     '        if not on:\n            not_checked.append({"id": f"{tname}.not_compared"', '        if False:\n            not_checked.append({"id": f"{tname}.not_compared"',
+     ["test_f1_no_dashas_makes_a_real_dasha_change_not_checked_and_never_green", "test_f1_no_daily_makes_a_real_panchanga_change_not_checked"]),
+    ("f1_green_ok_line_for_a_skipped_class",
+     'if not na.get(k, ("", True))[1]:', "if False:",
+     ["test_f1_no_dashas_makes_a_real_dasha_change_not_checked_and_never_green"]),
+    ("f1_skipped_sections_not_recorded",
+     '"skipped_sections": skipped,', '"skipped_sections": [],',
+     ["test_f1_cli_records_flags_and_skipped_sections_in_meta"]),
+    ("ss_dasha_skip_with_require_lanes_not_refused",
+     "if a.compare and (a.no_dashas or a.no_daily) and a.require_lanes and not a.i_know_dashas_are_not_compared:", "if False:",
+     ["test_ss_skipping_with_require_lanes_is_refused_unless_acknowledged"]),
+    ("m20_against_disables_dashas",
+     "have[tname] = not why", "have[tname] = False",
+     ["test_f4_against_with_both_sections_compares_dashas"]),
+    ("f3_dasha_shift_expected_count_accepted",
+     '            if "expected_count" in e:\n                errs.append', '            if False:\n                errs.append',
+     ["test_f3_f16_expected_count_misuse_is_rejected"]),
+    ("f16_boolean_count_accepted",
+     "isinstance(v, int) and not isinstance(v, bool) and v >= 0", "isinstance(v, int) and v >= 0",
+     ["test_f3_f16_expected_count_misuse_is_rejected"]),
+    ("f16_min_above_max_accepted",
+     ' and not ("min" in ec and "max" in ec and ec["min"] > ec["max"]))', ")",
+     ["test_f3_f16_expected_count_misuse_is_rejected"]),
+    ("f9_tier_not_in_the_sort_key",
+     ', (v[2] if len(v) > 2 else "") or ""))', "))",
+     ["test_f9_equal_rows_differing_only_in_tier_pair_in_a_fixed_order"]),
+    ("f5_iso_prefix_only_match",
+     r'ISO = re.compile(r"^\d{4}-\d\d-\d\d[T ]\d\d:\d\d(:\d\d(\.\d+)?)?(Z|[+-]\d\d(:?\d\d)?)?$")', r'ISO = re.compile(r"^\d{4}-\d\d-\d\d[T ]\d\d:\d\d")',
+     ["test_f5_kind_of_requires_a_full_iso_timestamp", "test_f5_a_text_fact_that_starts_like_a_timestamp_is_a_class_change"]),
+    ("f6_baseline_overwrite_allowed",
+     'if os.path.exists(out) or os.path.exists(out + ".sha256"):', "if False:",
+     ["test_f6_snapshot_never_overwrites_a_baseline"]),
+    ("f6_sidecar_never_verified",
+     "if not want or want[0].lower() != got:", "if False:",
+     ["test_f6_compare_verifies_the_sha256_sidecar"]),
+    ("f7_not_one_repeatable_read_transaction",
+     'script = ["BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY"]', 'script = ["BEGIN"]',
+     ["test_f7_read_state_is_one_repeatable_read_read_only_transaction"]),
+    ("f7_no_subprocess_timeout",
+     "env=_read_env(), timeout=_timeout_sec())", "env=_read_env())",
+     ["test_f7_timeout_and_persistent_failure_have_a_defined_exit_and_a_report"]),
+    ("f8_pgoptions_not_set",
+     'env["PGOPTIONS"] = (env.get("PGOPTIONS", "") + " " + RO_PGOPTIONS).strip()', "pass",
+     ["test_f7_read_state_is_one_repeatable_read_read_only_transaction", "test_f8_operator_pgoptions_are_kept_and_read_only_is_added"]),
+    ("f8_read_only_session_not_proven",
+     'if got["ro"] != [["on"]]:', "if False:",
+     ["test_f8_a_session_that_is_not_read_only_reads_nothing"]),
+    ("f8_phantom_chart_allowed",
+     'if t.replace("-", "").startswith(PHANTOM_PREFIX):', "if False:",
+     ["test_f8_phantom_chart_id_is_refused_whatever_the_shape"]),
+    ("f7_dsn_not_scrubbed",
+     r't = re.sub(r"(?i)(postgres(?:ql)?://)\S+", r"\1***", t)', "pass",
+     ["test_f7_error_text_is_cut_to_200_chars_and_never_shows_a_dsn_or_password"]),
+    ("f7_password_not_scrubbed",
+     r't = re.sub(r"(?i)\b(password|passwd|pwd|pgpassword|secret|token)\b(\s*[=:]\s*)\S+", r"\1\2***", t)', "pass",
+     ["test_f7_error_text_is_cut_to_200_chars_and_never_shows_a_dsn_or_password"]),
+    ("f7_error_text_not_truncated",
+     "return t[:200]", "return t",
+     ["test_f7_error_text_is_cut_to_200_chars_and_never_shows_a_dsn_or_password"]),
+    ("f7_incomplete_read_accepted",
+     "if order != want:", "if False:",
+     ["test_f7_a_reader_that_prints_only_the_last_result_set_is_an_incomplete_read"]),
+    ("f18_column_count_unchecked",
+     "if len(r) != ncols:", "if False:",
+     ["test_f18_a_row_with_the_wrong_column_count_is_a_read_error"]),
+    ("f21_empty_native_reads_as_alert",
+     'if chart_id == NATIVE and cur["chart_facts"]:', "if chart_id == NATIVE:",
+     ["test_f21_an_empty_current_native_is_an_empty_read_not_an_alert"]),
+    ("m15_dasha_threshold_lowered",
+     "moved = [x for x in v if abs(x) > 2.0]", "moved = [x for x in v if abs(x) > 0.5]",
+     ["test_f4_dasha_shift_threshold_is_two_seconds"]),
+    ("m18_never_passing_line_dropped",
+     'L.append("NOT CHECKED items are never counted as passing" + (', 'L.append("" + (',
+     ["test_f4_the_never_counted_as_passing_line_is_printed"]),
+    ("m10_missing_anchor_row_reads_ok",
+     "ok = bool(vals) and all(v == want for v in vals)", "ok = all(v == want for v in vals)",
+     ["test_f4_an_anchor_row_missing_from_the_current_state_is_an_alert"]),
+    ("m6_read_state_chart_filter_dropped",
+     "from chart_facts where chart_id='{chart_id}' order by ayanamsha_id", "from chart_facts where true order by ayanamsha_id",
+     ["test_f4_read_state_filters_by_chart_and_reads_only_that_chart"]),
+    ("f10_registry_row_renamed",
+     '{"id": "ga_medical", "table": "ga_medical"', '{"id": "ga_medical_x", "table": "ga_medical"',
+     ["test_f10_standing_registry_names_every_known_unobserved_scope", "test_2_both_uncheckable_tier_changes_are_listed_on_every_compare"]),
+    ("f15_snapshot_tool_version_hardcoded",
+     '"tool_version": TOOL_VERSION, "chart_id": chart_id, "taken_at_utc": now', '"tool_version": "1.1", "chart_id": chart_id, "taken_at_utc": now',
+     ["test_f15_snapshot_meta_carries_the_tool_version"]),
+    ("f7_command_tags_treated_as_data",
+     'if lines and lines[0] == "BEGIN":', "if False:",
+     ["test_f7_psql_runs_quiet_and_command_tags_are_never_data"]),
 ]
 
 
-def _run_tests(tool_path, tmp_path):
+def _run_tests(tool_path, tmp_path, selection=None):
+    """selection: test names (or name[param] ids) to run; None runs the whole file. A name that does not exist makes pytest exit 4, so a stale name fails loudly."""
     env = dict(os.environ)
     env["FLIP_DETECTOR_TOOL_UNDER_TEST"] = str(tool_path)
     env.pop("FLIP_DETECTOR_REGEN_GOLDEN", None)
     for k in [k for k in env if k.startswith("PG")] + ["DATABASE_URL", "FLIP_READER"]:
         env.pop(k, None)
-    r = subprocess.run([sys.executable, "-m", "pytest", str(TESTS), "-q", "--no-header", "-rf", "-p", "no:cacheprovider"],
+    targets = [f"{TESTS}::{n}" for n in selection] if selection else [str(TESTS)]
+    r = subprocess.run([sys.executable, "-m", "pytest", *targets, "-q", "--no-header", "-rf", "-p", "no:cacheprovider"],
                        capture_output=True, text=True, env=env, cwd=str(tmp_path), timeout=240)
     failed = re.findall(r"^FAILED \S+?::(\S+)", r.stdout, re.M)
     return r.returncode, failed, r.stdout[-1500:]
@@ -150,6 +243,6 @@ def test_mutation_is_caught(tmp_path, name, old, new, must_fail):
     assert src.count(old) == 1, f"mutation anchor for {name} matches {src.count(old)} places (must be exactly 1): {old!r}"
     mutated = tmp_path / "flip_detector.py"
     mutated.write_text(src.replace(old, new))
-    code, failed, tail = _run_tests(mutated, tmp_path)
+    code, failed, tail = _run_tests(mutated, tmp_path, must_fail)  # only the named tests: each mutation costs one pytest start-up, not the whole file
     assert code == 1, f"mutation {name} left the test-suite green (or broke it differently): rc={code}\n{tail}"
     assert any(any(m in f for f in failed) for m in must_fail), f"mutation {name}: expected one of {must_fail} to fail, got {failed}"

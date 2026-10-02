@@ -1,5 +1,5 @@
 {
- "both_surprise_entries_optional": {
+ "all_unobservable_entries_optional": {
   "absent": [],
   "by_table_category_change_lane": [
    [
@@ -76,6 +76,38 @@
     []
    ],
    [
+    "ga_yoga_firings.strength",
+    []
+   ],
+   [
+    "bodha_msr_signals",
+    []
+   ],
+   [
+    "bodha_rm_resonances",
+    []
+   ],
+   [
+    "ga_condition_composite",
+    []
+   ],
+   [
+    "ga_medical",
+    []
+   ],
+   [
+    "ga_vastu_*",
+    []
+   ],
+   [
+    "ga_prashna_*",
+    []
+   ],
+   [
+    "prashna_charts",
+    []
+   ],
+   [
     "tiers[1]",
     [
      "tiers"
@@ -85,211 +117,15 @@
   "verdict": "NOT_CHECKED",
   "warnings": [
    "OPTIONAL_ABSENT gandanta[1] (chart_facts:graha_gandanta): optional entry observed no change",
-   "OPTIONAL_ABSENT sun_required_rupa[1] (chart_facts:graha_in_house_composite_strength): optional entry observed no change"
+   "OPTIONAL_ABSENT sun_required_rupa[1] (chart_facts:graha_shadbala_total): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[2] (chart_facts:graha_in_house_composite_strength): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[3] (chart_facts:graha_in_house_composite_strength): optional entry observed no change"
   ]
  },
- "composite_entry_marked_optional": {
-  "absent": [
-   "DECLARED BUT ABSENT gandanta[1] (chart_facts:graha_gandanta): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)"
-  ],
-  "by_table_category_change_lane": [
-   [
-    [
-     "chart_facts",
-     "graha_gandanta",
-     "occurrence_count",
-     "gandanta"
-    ],
-    50
-   ],
-   [
-    [
-     "chart_facts",
-     "argala_natal_matrix",
-     "value",
-     "argala"
-    ],
-    5
-   ],
-   [
-    [
-     "chart_facts",
-     "graha_shadbala_cheshta",
-     "tier",
-     "tiers"
-    ],
-    5
-   ],
-   [
-    [
-     "chart_facts",
-     "graha_shadbala_total",
-     "tier",
-     "tiers"
-    ],
-    5
-   ],
-   [
-    [
-     "chart_facts",
-     "graha_shadbala_total",
-     "value",
-     "sun_required_rupa"
-    ],
-    1
-   ]
-  ],
-  "changes_total": 66,
-  "exit_allow_not_checked": 2,
-  "exit_default": 2,
-  "failure_counts": {
-   "DASHA_SHIFT_UNDECLARED": 0,
-   "DECLARED_BUT_ABSENT": 1,
-   "EMPTY_READ": 0,
-   "EXPECTATION_MISMATCH": 0,
-   "HOOK_ERROR": 0,
-   "KIND_MISMATCH": 0,
-   "UNDECLARED_CHANGE": 0
-  },
-  "not_checked": [
-   [
-    "chart_dashas.tier",
-    [
-     "tiers"
-    ]
-   ],
-   [
-    "l1_tajik_varsha_year_lords.tier",
-    []
-   ],
-   [
-    "chart_vichara",
-    []
-   ],
-   [
-    "tiers[1]",
-    [
-     "tiers"
-    ]
-   ]
-  ],
-  "verdict": "FAIL",
-  "warnings": [
-   "OPTIONAL_ABSENT sun_required_rupa[1] (chart_facts:graha_in_house_composite_strength): optional entry observed no change"
-  ]
- },
- "noisy_with_optional": {
-  "absent": [
-   "DECLARED BUT ABSENT gandanta[1] (chart_facts:graha_gandanta): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)"
-  ],
-  "by_table_category_change_lane": [
-   [
-    [
-     "chart_facts",
-     "graha_gandanta",
-     "occurrence_count",
-     "gandanta"
-    ],
-    50
-   ],
-   [
-    [
-     "chart_facts",
-     "argala_natal_matrix",
-     "value",
-     "argala"
-    ],
-    5
-   ],
-   [
-    [
-     "chart_facts",
-     "graha_shadbala_cheshta",
-     "tier",
-     "tiers"
-    ],
-    5
-   ],
-   [
-    [
-     "chart_facts",
-     "graha_shadbala_cheshta",
-     "value",
-     "UNATTRIBUTED"
-    ],
-    5
-   ],
-   [
-    [
-     "chart_facts",
-     "graha_shadbala_total",
-     "tier",
-     "tiers"
-    ],
-    5
-   ],
-   [
-    [
-     "chart_facts",
-     "graha_position",
-     "value",
-     "UNATTRIBUTED"
-    ],
-    1
-   ],
-   [
-    [
-     "chart_facts",
-     "graha_shadbala_total",
-     "value",
-     "sun_required_rupa"
-    ],
-    1
-   ]
-  ],
-  "changes_total": 72,
-  "exit_allow_not_checked": 2,
-  "exit_default": 2,
-  "failure_counts": {
-   "DASHA_SHIFT_UNDECLARED": 1,
-   "DECLARED_BUT_ABSENT": 1,
-   "EMPTY_READ": 0,
-   "EXPECTATION_MISMATCH": 0,
-   "HOOK_ERROR": 0,
-   "KIND_MISMATCH": 5,
-   "UNDECLARED_CHANGE": 1
-  },
-  "not_checked": [
-   [
-    "chart_dashas.tier",
-    [
-     "tiers"
-    ]
-   ],
-   [
-    "l1_tajik_varsha_year_lords.tier",
-    []
-   ],
-   [
-    "chart_vichara",
-    []
-   ],
-   [
-    "tiers[1]",
-    [
-     "tiers"
-    ]
-   ]
-  ],
-  "verdict": "FAIL",
-  "warnings": [
-   "OPTIONAL_ABSENT sun_required_rupa[1] (chart_facts:graha_in_house_composite_strength): optional entry observed no change"
-  ]
- },
- "verbatim_real_hooks": {
+ "composite_entries_optional": {
   "absent": [
    "DECLARED BUT ABSENT gandanta[1] (chart_facts:graha_gandanta): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)",
-   "DECLARED BUT ABSENT sun_required_rupa[1] (chart_facts:graha_in_house_composite_strength): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)"
+   "DECLARED BUT ABSENT sun_required_rupa[1] (chart_facts:graha_shadbala_total): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)"
   ],
   "by_table_category_change_lane": [
    [
@@ -363,6 +199,306 @@
    ],
    [
     "chart_vichara",
+    []
+   ],
+   [
+    "ga_yoga_firings.strength",
+    []
+   ],
+   [
+    "bodha_msr_signals",
+    []
+   ],
+   [
+    "bodha_rm_resonances",
+    []
+   ],
+   [
+    "ga_condition_composite",
+    []
+   ],
+   [
+    "ga_medical",
+    []
+   ],
+   [
+    "ga_vastu_*",
+    []
+   ],
+   [
+    "ga_prashna_*",
+    []
+   ],
+   [
+    "prashna_charts",
+    []
+   ],
+   [
+    "tiers[1]",
+    [
+     "tiers"
+    ]
+   ]
+  ],
+  "verdict": "FAIL",
+  "warnings": [
+   "OPTIONAL_ABSENT sun_required_rupa[2] (chart_facts:graha_in_house_composite_strength): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[3] (chart_facts:graha_in_house_composite_strength): optional entry observed no change"
+  ]
+ },
+ "noisy_with_optional": {
+  "absent": [
+   "DECLARED BUT ABSENT gandanta[1] (chart_facts:graha_gandanta): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)",
+   "DECLARED BUT ABSENT sun_required_rupa[1] (chart_facts:graha_shadbala_total): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)"
+  ],
+  "by_table_category_change_lane": [
+   [
+    [
+     "chart_facts",
+     "graha_gandanta",
+     "occurrence_count",
+     "gandanta"
+    ],
+    50
+   ],
+   [
+    [
+     "chart_facts",
+     "argala_natal_matrix",
+     "value",
+     "argala"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_cheshta",
+     "tier",
+     "tiers"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_cheshta",
+     "value",
+     "UNATTRIBUTED"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_total",
+     "tier",
+     "tiers"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_position",
+     "value",
+     "UNATTRIBUTED"
+    ],
+    1
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_total",
+     "value",
+     "sun_required_rupa"
+    ],
+    1
+   ]
+  ],
+  "changes_total": 72,
+  "exit_allow_not_checked": 2,
+  "exit_default": 2,
+  "failure_counts": {
+   "DASHA_SHIFT_UNDECLARED": 1,
+   "DECLARED_BUT_ABSENT": 2,
+   "EMPTY_READ": 0,
+   "EXPECTATION_MISMATCH": 0,
+   "HOOK_ERROR": 0,
+   "KIND_MISMATCH": 5,
+   "UNDECLARED_CHANGE": 1
+  },
+  "not_checked": [
+   [
+    "chart_dashas.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "l1_tajik_varsha_year_lords.tier",
+    []
+   ],
+   [
+    "chart_vichara",
+    []
+   ],
+   [
+    "ga_yoga_firings.strength",
+    []
+   ],
+   [
+    "bodha_msr_signals",
+    []
+   ],
+   [
+    "bodha_rm_resonances",
+    []
+   ],
+   [
+    "ga_condition_composite",
+    []
+   ],
+   [
+    "ga_medical",
+    []
+   ],
+   [
+    "ga_vastu_*",
+    []
+   ],
+   [
+    "ga_prashna_*",
+    []
+   ],
+   [
+    "prashna_charts",
+    []
+   ],
+   [
+    "tiers[1]",
+    [
+     "tiers"
+    ]
+   ]
+  ],
+  "verdict": "FAIL",
+  "warnings": [
+   "OPTIONAL_ABSENT sun_required_rupa[2] (chart_facts:graha_in_house_composite_strength): optional entry observed no change",
+   "OPTIONAL_ABSENT sun_required_rupa[3] (chart_facts:graha_in_house_composite_strength): optional entry observed no change"
+  ]
+ },
+ "verbatim_real_hooks": {
+  "absent": [
+   "DECLARED BUT ABSENT gandanta[1] (chart_facts:graha_gandanta): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)",
+   "DECLARED BUT ABSENT sun_required_rupa[1] (chart_facts:graha_shadbala_total): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)",
+   "DECLARED BUT ABSENT sun_required_rupa[2] (chart_facts:graha_in_house_composite_strength): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)",
+   "DECLARED BUT ABSENT sun_required_rupa[3] (chart_facts:graha_in_house_composite_strength): the hook declares this change and nothing changed (mark the entry \"optional\": true if absence is acceptable)"
+  ],
+  "by_table_category_change_lane": [
+   [
+    [
+     "chart_facts",
+     "graha_gandanta",
+     "occurrence_count",
+     "gandanta"
+    ],
+    50
+   ],
+   [
+    [
+     "chart_facts",
+     "argala_natal_matrix",
+     "value",
+     "argala"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_cheshta",
+     "tier",
+     "tiers"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_total",
+     "tier",
+     "tiers"
+    ],
+    5
+   ],
+   [
+    [
+     "chart_facts",
+     "graha_shadbala_total",
+     "value",
+     "sun_required_rupa"
+    ],
+    1
+   ]
+  ],
+  "changes_total": 66,
+  "exit_allow_not_checked": 2,
+  "exit_default": 2,
+  "failure_counts": {
+   "DASHA_SHIFT_UNDECLARED": 0,
+   "DECLARED_BUT_ABSENT": 4,
+   "EMPTY_READ": 0,
+   "EXPECTATION_MISMATCH": 0,
+   "HOOK_ERROR": 0,
+   "KIND_MISMATCH": 0,
+   "UNDECLARED_CHANGE": 0
+  },
+  "not_checked": [
+   [
+    "chart_dashas.tier",
+    [
+     "tiers"
+    ]
+   ],
+   [
+    "l1_tajik_varsha_year_lords.tier",
+    []
+   ],
+   [
+    "chart_vichara",
+    []
+   ],
+   [
+    "ga_yoga_firings.strength",
+    []
+   ],
+   [
+    "bodha_msr_signals",
+    []
+   ],
+   [
+    "bodha_rm_resonances",
+    []
+   ],
+   [
+    "ga_condition_composite",
+    []
+   ],
+   [
+    "ga_medical",
+    []
+   ],
+   [
+    "ga_vastu_*",
+    []
+   ],
+   [
+    "ga_prashna_*",
+    []
+   ],
+   [
+    "prashna_charts",
     []
    ],
    [

@@ -1,11 +1,12 @@
 ---
 artifact: FLIP_DETECTOR_README
-version: 2.2
+version: 2.3
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna
 decision: SS N-64 (S-L1 acceptance criterion); verdict-deciding tool, one independent review required before the S-L1 integration PR relies on it
 scope: tooling and tests only. The detector is read-only and never writes to the database.
 changelog:
+  - "2.3 (2026-10-02): second independent review (R-T2) and SS rulings. A table that was not compared (flag or missing snapshot section) is a conditional NOT CHECKED row, flags and skipped sections are recorded in meta, no green ok line for it. --no-dashas / --no-daily with --require-lanes is REFUSED (exit 6) without --i-know-dashas-are-not-compared; the W7 command is written in full below. Reads are ONE REPEATABLE READ READ ONLY transaction; PGOPTIONS read-only and a proven read-only session; timeout; READ_ERROR exit 5 with a report; error text scrubbed. --snapshot never overwrites; the .sha256 is verified on compare. Sort includes the tier. Standing NOT CHECKED registry extended. Full ISO timestamp match. expected_count rejected on dasha_shift; exact must not be a boolean; min <= max. Phantom chart id refused. hooks_real are byte copies of the hook directory with a live comparison and a documented refresh. Empty current native is EMPTY_READ, not ALERT."
   - "2.2 (2026-10-02): delta-review fixes. A timestamp-valued fact that becomes NULL or non-timestamp text is a value change. malformed-report check pinned for a non-list not_checked. README: direction limit of the continuous/integral classification, and a correction note for the sun_required_rupa hook."
   - "2.1 (2026-10-02): fixes from the independent review of PR 2945. A continuous number that becomes NULL/text, and continuous keys that appear or disappear, are now changes (were invisible). New failure class EMPTY_READ (zero rows in a compared table in either state). Chart ids are validated as UUIDs and normalised once. Empty fact_keys / ayanamsha_ids / charts lists, an empty --hooks-dir and an empty --require-lanes are rejected. A single-SELECT guard (no statement chaining). A malformed or truncated report is FAIL (exit 2), never a KeyError. W7 hand-check list added."
   - "2.0 (2026-10-02): moved to platform/scripts/governance with CI-collected tests and mutation proof. New: DECLARED_BUT_ABSENT and KIND_MISMATCH failure classes, optional hook entries, NOT_CHECKED verdict + exit 4 + --allow-not-checked, standing NOT CHECKED registry (chart_dashas tier, l1_tajik_varsha_year_lords tier), 'pr' now required in a hook, missing/empty hooks dir is an error, offline --against compare, --out for --validate-hooks, deterministic JSON. Detector logic for class/tier/dasha diffing and anchors is unchanged from v1.1 (PR 2859)."
@@ -49,9 +50,21 @@ The detector prints, on every compare, one `NOT CHECKED` line per item below and
 
 | id | what it cannot check |
 |---|---|
-| `chart_dashas.tier` | `chart_dashas.verification_pass_status` (mudda and narayana tier changes). The detector compares dasha row sets and start shifts, never the tier column |
+| `chart_dashas.tier` | `chart_dashas.verification_pass_status` (mudda and narayana tier changes). The detector never compares the tier column (when `chart_dashas` is compared at all it compares row sets and start shifts) |
 | `l1_tajik_varsha_year_lords.tier` | `l1_tajik_varsha_year_lords.verification_pass_status`. The table is not one of the four tables the detector reads |
 | `chart_vichara` | `chart_vichara` (ga_vichara: row counts, dedupe, sorted `constituent_fact_ids`, leverage as-of). The table is not one of the four tables the detector reads, so **an empty flip report says nothing about ga_vichara**. W7 runs `00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/evidence/ga_vichara_writer_ACCEPTANCE.sql`; every row must read `ok = t` |
+
+| `ga_yoga_firings.strength`, `bodha_msr_signals` (shadbala_norm), `bodha_rm_resonances`, `ga_condition_composite`, `ga_medical`, `ga_vastu_*`, `ga_prashna_*`, `prashna_charts` | tables the detector never reads (the first three are the downstream tables the `sun_required_rupa` lane changes). One line each, hand read-back in "Other tables the detector never reads" below |
+
+**Conditional rows, present only when the check did not run** (a check that did not run is never silent and never a green line):
+
+| id | when |
+|---|---|
+| `chart_dashas.not_compared` | `--no-dashas`, or the snapshot (or the `--against` snapshot) has no `dashas` section. A real dasha change would read as "no change" |
+| `panchanga_daily.not_compared` | `--no-daily`, or a snapshot has no `daily` section |
+| `snapshot.sha256` / `against.sha256` | the snapshot has no `.sha256` sidecar: its integrity is unverified (a sidecar that does not match is a `HOOK_ERROR` failure, exit 2) |
+
+For a skipped table the summary prints `n/a  DASHA_SHIFT_UNDECLARED: NOT EVALUATED` (never `ok ... : 0`), the JSON has `compared: {chart_dashas: false, ...}` and `meta.flags` / `meta.skipped_sections` record the flags and the skipped sections, so saved evidence of a skipped run cannot be mistaken for a full compare.
 
 Also reported as NOT CHECKED (per hook entry, `declared_by_lanes` names the lane): any entry on `l1_tajik_varsha_year_lords`, any `chart_dashas` entry whose only change type is `tier`, and any `chart_dashas` / `panchanga_daily` entry when that table was not compared in the run (`--no-dashas`, `--no-daily`). Such an entry is never reported as DECLARED_BUT_ABSENT.
 
@@ -84,7 +97,7 @@ GROUP BY ayanamsha_id, verification_pass_status
 ORDER BY ayanamsha_id, verification_pass_status;
 ```
 
-What the `tiers` lane hook says to expect on the canonical chart (from its description; confirm against the hook that is actually merged): mudda 240 and narayana 105 level-1 rows `two_pass_verified` to `classical_match`; `l1_tajik_varsha_year_lords` 240 rows `two_pass_verified` to `classical_match`. If `builds` is above 1 for any line the table holds more than one build generation: stop and ask before reading the counts.
+What the `tiers` lane hook says to expect on the canonical chart (from its description; confirm against the hook that is actually merged): mudda 240 and narayana 105 level-1 rows `two_pass_verified` to `classical_match`; `l1_tajik_varsha_year_lords` 240 rows `two_pass_verified` to `single` (the `tiers` hook at 1a8405f16: "the three varsha checks are not a classical-table match"), not `classical_match`. If `builds` is above 1 for any line the table holds more than one build generation: stop and ask before reading the counts.
 
 ## Exit codes
 
@@ -94,23 +107,41 @@ What the `tiers` lane hook says to expect on the canonical chart (from its descr
 | 2 | verdict FAIL. `--validate-hooks`: any hook error or missing required lane |
 | 3 | verdict ALERT (FORENSIC anchor changed). Wins over 2 and 4 |
 | 4 | verdict NOT_CHECKED and `--allow-not-checked` not passed |
+| 5 | READ_ERROR: the read failed or cannot be trusted (psql failure after retries, a timeout, an incomplete or mis-split result, a session that is not read-only). A report with `verdict: READ_ERROR` is written (`--out`); `--snapshot` exits 5 and writes nothing. The message is at most 200 characters with DSNs and passwords removed |
+| 6 | REFUSED: `--no-dashas` / `--no-daily` together with `--require-lanes` without `--i-know-dashas-are-not-compared`; or `--snapshot` onto an existing file (a baseline is never overwritten; choose another `--out`) |
 
 `--allow-not-checked` only converts exit 4 into 0. It never softens 2 or 3.
 
 ## Usage
 
 ```
-# database access is read-only: FLIP_READER = executable taking the SQL string as argv[1], printing tab-separated rows without a header
-# (a psql wrapper that sources the reader credentials). Unset: psql from PATH with the PG* environment. Only SELECT is ever sent.
+# Database access is read-only. FLIP_READER = an executable taking one SQL SCRIPT as argv[1], running it in ONE psql session (every result set
+# printed) and printing tab-separated rows without a header (a psql wrapper that sources the reader credentials). Unset: psql from PATH with the
+# PG* environment (the script goes on stdin, `psql -f -`). All tables are read in one `BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY ... COMMIT`
+# transaction (a concurrent build cannot tear the read); PGOPTIONS gets `-c default_transaction_read_only=on` (yours are kept); nothing is read
+# unless the session reports transaction_read_only = on. FLIP_TIMEOUT_SEC (default 120) bounds each attempt.
 export FLIP_READER=/path/to/reader_wrapper.sh
-export FLIP_SNAPSHOT_DIR=/Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/snapshots     # default store
+export FLIP_SNAPSHOT_DIR=/Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/snapshots     # default store; a baseline is never overwritten
 
 python3 platform/scripts/governance/flip_detector.py --snapshot native
-python3 platform/scripts/governance/flip_detector.py --validate-hooks --require-lanes argala,gandanta,fa2_ga_vargas,tiers,band_table,daridra,ephemeris,formula_pins
-python3 platform/scripts/governance/flip_detector.py --compare <snapshot.json.gz> --require-lanes argala,gandanta,... --out report.json
-python3 platform/scripts/governance/flip_detector.py --compare <snapshot.json.gz> --against <other_snapshot.json.gz>   # offline: no database
-python3 platform/scripts/governance/flip_detector.py --compare <snapshot.json.gz> --allow-not-checked                  # after the hand read-back
+python3 platform/scripts/governance/flip_detector.py --validate-hooks --require-lanes <lanes>
+python3 platform/scripts/governance/flip_detector.py --compare <snapshot.json.gz> --against <other_snapshot.json.gz> --hooks-dir <dir>   # offline: no database
 ```
+
+### The W7 command (S-L1 window), written in full
+
+Dashas and daily are compared; **no `--no-dashas` / `--no-daily`**. The hook directory is the integration's (`00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks`, the default). The lane list below is the set of lane hooks that exist today (11); the window's authoritative required list is SS's, and `fa2_ga_vargas`, `daridra`, `ephemeris` and `formula_pins` are added to it when their hooks land (a required lane without a valid hook is a `HOOK_ERROR`).
+
+```
+python3 platform/scripts/governance/flip_detector.py \
+  --compare <PRE_REBUILD_SNAPSHOT.json.gz> \
+  --hooks-dir 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks \
+  --require-lanes argala,band_table,ga_condition_fallback,gandanta,karaka_dasha_roles,karaka_roles,karaka_web_order,special_lagna_offset,special_lagna_offset_other_charts,sun_required_rupa,tiers \
+  --out <REPORT.json>
+# after the W7 hand read-backs are done and recorded, the same command plus:  --allow-not-checked
+```
+
+`--no-dashas` or `--no-daily` together with `--require-lanes` exits 6 unless `--i-know-dashas-are-not-compared` is also given; even then the report carries `chart_dashas.not_compared` / `panchanga_daily.not_compared` NOT CHECKED rows and the flags in `meta`.
 
 `--hooks-dir` defaults to `00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks` (repo root relative). Every top-level `*.json` in the directory is a lane hook; sub-folders (for example `evidence/`) are never read.
 
@@ -195,9 +226,43 @@ GROUP BY fact_category
 ORDER BY fact_category;
 ```
 
-## Correction to a hook note (sun_required_rupa)
+## Other tables the detector never reads
 
-The `sun_required_rupa` hook's first entry says the predicted class-level count for `required_rupa` is 0 because "both values are continuous". That is wrong for the canonical case: the old value is the integral `5` (5.0), so `required_rupa` 5 to 6.5 (SUN, ayanamsha INVARIANT) **is** detected, as one `value` change per chart (the golden test pins it). Only `ratio` (1.694 to 1.3031, and so on) is continuous and unreported. If a snapshot ever stored the old value non-integrally, the entry would read DECLARED_BUT_ABSENT. The hook file lives in its own lane PR and is not edited here; the `hooks_real` fixture is a byte copy of it and keeps the wrong note on purpose.
+Each is a standing NOT CHECKED line. The W7 hand read-back is a per-table row count before and after for the chart compared (tables with a `chart_id` column), plus the lane's own column checks named in its hook (for example `ga_yoga_firings.strength`, `bodha_msr_signals.shadbala_norm` for the `sun_required_rupa` lane). Columns of these tables are not known to this tool, so the SQL is a count only:
+
+```sql
+SELECT 'ga_yoga_firings' AS t, count(*) AS n FROM ga_yoga_firings WHERE chart_id = '<CHART_UUID>'
+UNION ALL SELECT 'bodha_msr_signals', count(*) FROM bodha_msr_signals WHERE chart_id = '<CHART_UUID>'
+UNION ALL SELECT 'bodha_rm_resonances', count(*) FROM bodha_rm_resonances WHERE chart_id = '<CHART_UUID>'
+ORDER BY 1;
+```
+
+Repeat the same shape for `ga_condition_composite`, `ga_medical`, the `ga_vastu_*` and `ga_prashna_*` tables and `prashna_charts` (confirm the table and the chart column name in the schema first; a table without a `chart_id` column needs its own filter).
+
+## Refreshing hooks_real
+
+`__tests__/fixtures/flip_detector/hooks_real/` holds **byte copies** of the hook files; `test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory` compares them live with the hook directory and fails on any missing, extra or changed file. Copies at these lane heads (2026-10-02): `karaka_roles.json` PR 2878 at 710b47ee1; `sun_required_rupa.json` PR 2893 at 150a273a8; `tiers.json` PR 2941 at 1a8405f16; `gandanta.json` PR 2892 at f2b7a1d3e; `special_lagna_offset.json` and `special_lagna_offset_other_charts.json` PR 2971 at 872724cbf; `argala.json` (seed) from the PR 2859 branch; `band_table.json` and `ga_condition_fallback.json` from `TI-l1-band-x2-001`; `karaka_dasha_roles.json` from `TI-l1-dashas-karaka-001`; `karaka_web_order.json` from `TI-l1-karaka-web-order-001`.
+
+At the merge of the S-L1 integration, from the repo root with the integration's tree checked out (or `FLIP_INTEGRATION_HOOKS_DIR` set to its `s_l1_attribution_hooks/` directory):
+
+```
+HOOKS=00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks          # or the path in FLIP_INTEGRATION_HOOKS_DIR
+FX=platform/scripts/governance/__tests__/fixtures/flip_detector/hooks_real
+rm -f "$FX"/*.json && cp "$HOOKS"/*.json "$FX"/                           # top-level *.json only; evidence/ is never copied
+python3 platform/scripts/governance/flip_detector.py --validate-hooks --hooks-dir "$FX"
+FLIP_DETECTOR_REGEN_GOLDEN=1 python3 -m pytest platform/scripts/governance/__tests__/test_flip_detector.py -q   # regenerates golden_flip_detector_expected.json
+git diff -- platform/scripts/governance/__tests__/fixtures   # READ the golden diff: it must be explained by the hook changes
+python3 -m pytest platform/scripts/governance/__tests__/test_flip_detector.py -q                                   # must pass without the env var
+```
+
+Then update `REAL_LANES` / `GOLDEN_LANES` in the test file if the lane set changed, and the shas above. Once the repo's own hook directory exists in the tree the comparison never skips (in CI or locally); it skips only while that directory is absent. `FLIP_INTEGRATION_HOOKS_DIR` set to a path that does not exist fails the test.
+
+## Documented limits (not fixed)
+
+* **Pairing by sorted occurrence.** Keys with more than one occurrence pair in sorted (value, number, tier) order; a swap of values between occurrences, or an individual flip masked by the pairing, is invisible (W7 hand-check items 1 and 2).
+* **Hand-edited snapshots.** A snapshot is trusted for its shape beyond the checks above (types of numbers and levels as written by `--snapshot`); a hand-edited snapshot with other JSON types can crash or mis-pair. Do not edit snapshots; the `.sha256` sidecar exists to catch it.
+* **`chart_divisionals` text versus sign.** The comparison value is `fact_value_text` when present, else `sign`. The ga_vargas writer sets both (`ga_vargas_writer.py`, rows built around lines 994 and 1072), so a change in `sign` alone with an unchanged `fact_value_text` is invisible. Whether every other writer fills both has not been verified.
+* **Continuous to integral** is invisible (see the direction limit above).
 
 ## What the detector cannot check
 

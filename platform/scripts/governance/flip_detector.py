@@ -8,7 +8,7 @@ platform/scripts/governance/__tests__/test_flip_detector.py (with mutation proof
         Capture the current production class-level state of one chart (chart_facts incl. verification tier, chart_divisionals,
         chart_dashas) plus the global panchanga_daily table into one gzip JSON: the pre-rebuild baseline. Prints path + sha256.
   --compare <SNAPSHOT.json.gz> [--against OTHER_SNAPSHOT.json.gz] [--out REPORT.json] [--hooks-dir DIR] [--require-lanes a,b,c]
-                               [--no-dashas] [--no-daily] [--allow-not-checked]
+                               [--no-dashas] [--no-daily] [--allow-not-checked] [--i-know-dashas-are-not-compared]
         Compare the snapshot with production (read-only), or with OTHER_SNAPSHOT (offline, no database), and attribute every
         difference to a lane hook file (all top-level *.json in --hooks-dir).
         Verdict classes (the JSON field "verdict"; never PASS while anything below FAIL / ALERT / NOT_CHECKED exists):
@@ -28,11 +28,19 @@ platform/scripts/governance/__tests__/test_flip_detector.py (with mutation proof
             2  verdict FAIL: STOP THE WAVE, GO TO SS
             3  verdict ALERT: a FORENSIC anchor changed (wins over 2 and 4)
             4  verdict NOT_CHECKED and --allow-not-checked was not passed
+            5  READ_ERROR: the read failed or cannot be trusted (psql failure after retries, timeout, incomplete or mis-split result,
+               session not read-only). A report with verdict READ_ERROR is still written. Also for --snapshot.
+            6  REFUSED: --no-dashas / --no-daily together with --require-lanes without --i-know-dashas-are-not-compared; or --snapshot
+               onto an existing file (a baseline is never overwritten)
   --validate-hooks [--hooks-dir DIR] [--require-lanes a,b,c] [--out REPORT.json]     lint the hook files only (no database access); exit 0 or 2
 
-Database access (read-only): set FLIP_READER to an executable that takes one SQL string as argv[1] and prints tab-separated rows, no header
-(a psql wrapper that sources your reader credentials is the usual choice). If unset, `psql` from PATH is used with the libpq PG* environment.
-Only statements beginning with SELECT are ever sent. Credentials are never read or printed by this script.
+Database access (read-only): set FLIP_READER to an executable that takes one SQL SCRIPT as argv[1], runs it in one psql session (every result
+set printed) and prints tab-separated rows, no header (a psql wrapper that sources your reader credentials is the usual choice). If unset,
+`psql` from PATH is used with the libpq PG* environment. The tables are read in ONE `BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY`
+transaction (a concurrent build cannot tear the read); only SELECT statements are ever placed in it; PGOPTIONS gets
+`-c default_transaction_read_only=on` (the operator's own options are kept) and nothing is read unless the session reports
+transaction_read_only = on. Timeout per attempt: $FLIP_TIMEOUT_SEC (default 120 s). Error text is cut to 200 characters with DSNs and
+passwords removed. Credentials are never read or printed by this script.
 Snapshot store: --out, else $FLIP_SNAPSHOT_DIR, else /Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/snapshots.
 
 Hook schema, matching rules, NOT CHECKED semantics and the W7 hand read-back SQL: see FLIP_DETECTOR_README.md next to this file.
@@ -43,11 +51,13 @@ from datetime import datetime, timezone
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 DEFAULT_HOOKS_DIR = os.path.join(REPO_ROOT, "00_ARCHITECTURE", "briefs", "suvarna", "exec", "s_l1_attribution_hooks")
-TOOL_VERSION = "2.0"
+TOOL_VERSION = "2.3"
 DEFAULT_SNAPSHOT_DIR = "/Users/Dev/suvarna-evidence/TrackI/ephemeris_flip/snapshots"
 CHARTS = {"native": "482012f1-710e-4a25-994a-93821f5871aa", "abhinandan": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "kiran": "cb73cd3d-9eba-4220-9902-0de91566e980"}
 NATIVE = CHARTS["native"]
-ISO = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}")
+# A FULL ISO timestamp (date, time, optional seconds / fraction / zone). A text fact that merely starts like one is not a timestamp.
+ISO = re.compile(r"^\d{4}-\d\d-\d\d[T ]\d\d:\d\d(:\d\d(\.\d+)?)?(Z|[+-]\d\d(:?\d\d)?)?$")
+PHANTOM_PREFIX = "362f9f17"  # the dead phantom chart id (CLAUDE.md section B): refused whatever UUID shape it arrives in
 CLASS_NUM_KEYS = {"pada", "house_d1", "sign_num", "sign_id", "number", "number_in_lunar_month", "nakshatra_id", "nakshatra_num", "amsa_number",
                   "chalit_house_sripati", "whole_sign_house", "nakshatra_pada", "tithi_id", "vara_id", "yoga_id", "karana_id", "house_num"}
 NOT_CLASS_INT = {"longitude_sidereal", "degree_in_sign", "longitude", "longitude_deg"}
@@ -80,36 +90,138 @@ FAILURE_CLASSES = (F_UNDECLARED, F_KIND, F_ABSENT, F_EXPECT, F_DASHA, F_HOOK, F_
 REPORT_REQUIRED_KEYS = ("failures", "failure_counts", "not_checked", "chart_id")
 W_OPTIONAL_ABSENT = "OPTIONAL_ABSENT"
 EXIT_PASS, EXIT_FAIL, EXIT_ALERT, EXIT_NOT_CHECKED = 0, 2, 3, 4
+EXIT_READ_ERROR = 5  # the read itself failed or cannot be trusted (psql failure, timeout, incomplete or malformed read, session not read-only)
+EXIT_REFUSED = 6     # the invocation was refused (a dasha/daily skip together with --require-lanes without --i-know-dashas-are-not-compared; a baseline overwrite)
+RO_PGOPTIONS = "-c default_transaction_read_only=on"
 
 # The tier changes this detector cannot machine-check. They are printed on EVERY compare as NOT CHECKED: the detector never reads
 # chart_dashas.verification_pass_status nor l1_tajik_varsha_year_lords, so it can neither confirm nor refute a hook about them.
+_OTHER = "W7 hand read-back: 'Other tables the detector never reads' in FLIP_DETECTOR_README.md"
 STANDING_NOT_CHECKED = (
     {"id": "chart_dashas.tier", "table": "chart_dashas", "what": "chart_dashas verification_pass_status (mudda and narayana tier)",
-     "reason": "the detector compares dasha row sets and start shifts, never the dasha tier column", "readback": "W7 hand read-back: chart_dashas tier SQL in FLIP_DETECTOR_README.md"},
+     "reason": "the detector never compares the dasha tier column (when chart_dashas is compared at all, only row sets and start shifts)", "readback": "W7 hand read-back: chart_dashas tier SQL in FLIP_DETECTOR_README.md"},
     {"id": "l1_tajik_varsha_year_lords.tier", "table": "l1_tajik_varsha_year_lords", "what": "l1_tajik_varsha_year_lords verification_pass_status",
      "reason": "the table is not one of the four tables the detector reads", "readback": "W7 hand read-back: l1_tajik_varsha_year_lords tier SQL in FLIP_DETECTOR_README.md"},
     {"id": "chart_vichara", "table": "chart_vichara", "what": "chart_vichara (ga_vichara rows: counts, dedupe, sorted constituent_fact_ids, leverage as-of)",
      "reason": "the table is not one of the four tables the detector reads: an empty flip report says nothing about ga_vichara",
-     "readback": "W7: run 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/evidence/ga_vichara_writer_ACCEPTANCE.sql; every row must read ok = t"},
+     "readback": "W7: run evidence/ga_vichara_writer_ACCEPTANCE.sql (it exists only on PR 2970's branch until the S-L1 integration brings it into s_l1_attribution_hooks/evidence/); every row must read ok = t"},
+    {"id": "ga_yoga_firings.strength", "table": "ga_yoga_firings", "what": "ga_yoga_firings strength (constituent_bala_v1)", "reason": "table not read by the detector", "readback": _OTHER},
+    {"id": "bodha_msr_signals", "table": "bodha_msr_signals", "what": "bodha_msr_signals (shadbala_norm)", "reason": "table not read by the detector", "readback": _OTHER},
+    {"id": "bodha_rm_resonances", "table": "bodha_rm_resonances", "what": "bodha_rm_resonances", "reason": "table not read by the detector", "readback": _OTHER},
+    {"id": "ga_condition_composite", "table": "ga_condition_composite", "what": "ga_condition_composite", "reason": "table not read by the detector", "readback": _OTHER},
+    {"id": "ga_medical", "table": "ga_medical", "what": "ga_medical", "reason": "table not read by the detector", "readback": _OTHER},
+    {"id": "ga_vastu_*", "table": "ga_vastu_*", "what": "ga_vastu_* tables", "reason": "tables not read by the detector", "readback": _OTHER},
+    {"id": "ga_prashna_*", "table": "ga_prashna_*", "what": "ga_prashna_* tables", "reason": "tables not read by the detector", "readback": _OTHER},
+    {"id": "prashna_charts", "table": "prashna_charts", "what": "prashna_charts", "reason": "table not read by the detector", "readback": _OTHER},
 )
 
 
 # ------------------------------------------------------------------ read-only reader
-def q(sql, retries=4):
+class ReadError(Exception):
+    """The read failed or cannot be trusted. The CLI maps it to exit 5 (READ_ERROR) with a report; the message is already scrubbed."""
+
+
+def _scrub(text):
+    """At most 200 characters of a process error, with anything that looks like a DSN or a password removed first."""
+    t = str(text or "").strip()
+    t = re.sub(r"(?i)(postgres(?:ql)?://)\S+", r"\1***", t)
+    t = re.sub(r"(?i)\b(password|passwd|pwd|pgpassword|secret|token)\b(\s*[=:]\s*)\S+", r"\1\2***", t)
+    return t[:200]
+
+
+def _read_env():
+    env = dict(os.environ)
+    env["PGOPTIONS"] = (env.get("PGOPTIONS", "") + " " + RO_PGOPTIONS).strip()  # the operator's own options are kept
+    return env
+
+
+def _timeout_sec():
+    try:
+        return float(os.environ.get("FLIP_TIMEOUT_SEC", "120"))
+    except ValueError:
+        return 120.0
+
+
+def _select_only(sql):
     if not re.match(r"^\s*select\b", sql, re.I) or ";" in sql.strip().rstrip(";"):
         raise RuntimeError("flip_detector is read-only: only a single SELECT statement is allowed")
+
+
+def _exec(text, script):
+    """Run one SQL string (script=False: -c) or one SQL script (script=True: psql reads it on stdin, so every result set is printed)."""
     reader = os.environ.get("FLIP_READER")
+    if reader:
+        cmd, inp = [reader, text], None
+    elif script:
+        cmd, inp = ["psql", "-X", "-q", "-A", "-t", "-F", "\t", "-v", "ON_ERROR_STOP=1", "-f", "-"], text
+    else:
+        cmd, inp = ["psql", "-X", "-A", "-F", "\t", "-t", "-c", text], None
+    return subprocess.run(cmd, input=inp, capture_output=True, text=True, env=_read_env(), timeout=_timeout_sec())
+
+
+def _run(text, script, retries):
+    last = ""
     for i in range(retries):
-        if reader:
-            r = subprocess.run([reader, sql], capture_output=True, text=True)
+        try:
+            r = _exec(text, script)
+            if r.returncode == 0:
+                return r.stdout
+            last = _scrub(r.stderr) or f"exit status {r.returncode}"
+        except subprocess.TimeoutExpired:
+            last = f"timed out after {_timeout_sec():g} s"
+        except OSError as ex:
+            last = _scrub(f"cannot start the reader: {ex}")
+        if i < retries - 1:
+            time.sleep(5 * (i + 1))  # transient connection loss / statement timeout on the shared reader
+    raise ReadError(f"read failed after {retries} attempts: {last}")
+
+
+def q(sql, retries=4):
+    """One SELECT, tab-separated rows. Read-only is requested through PGOPTIONS on every call."""
+    _select_only(sql)
+    return [ln.split("\t") for ln in _run(sql, False, retries).splitlines() if ln != ""]
+
+
+SENTINEL = re.compile(r"^@@END:([a-z_]+)@@$")
+
+
+def q_txn(named, retries=4):
+    """ONE repeatable-read, read-only transaction in ONE psql session: BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; every SELECT; COMMIT.
+    All tables are therefore read from one snapshot (a concurrent build cannot tear it). `named` is [(name, select)]; each result set is
+    followed by an @@END:name@@ marker row, and a missing marker (a wrapper that returned only the last result) is a ReadError.
+    Returns {name: [row, ...]} with rows split on tabs."""
+    script = ["BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY"]
+    for name, sql in named:
+        _select_only(sql)
+        script += [sql.strip().rstrip(";"), f"select '@@END:{name}@@'"]
+    script.append("COMMIT")
+    out = _run(";\n".join(script) + ";\n", True, retries)
+    got, buf, order = {}, [], []
+    lines = out.splitlines()
+    if lines and lines[0] == "BEGIN":      # psql command tags (printed unless -q; a wrapper may print them): never data
+        lines = lines[1:]
+    if lines and lines[-1] == "COMMIT":
+        lines = lines[:-1]
+    for ln in lines:
+        m = SENTINEL.match(ln)
+        if m:
+            got[m.group(1)] = buf
+            order.append(m.group(1))
+            buf = []
         else:
-            r = subprocess.run(["psql", "-X", "-A", "-F", "\t", "-t", "-c", sql], capture_output=True, text=True)
-        if r.returncode == 0:
-            break
-        if i == retries - 1:
-            raise RuntimeError(r.stderr.strip()[:500])
-        time.sleep(5 * (i + 1))  # transient connection loss / statement timeout on the shared reader
-    return [ln.split("\t") for ln in r.stdout.splitlines() if ln != ""]
+            buf.append(ln.split("\t"))
+    want = [n for n, _ in named]
+    if order != want:
+        raise ReadError(f"incomplete read: expected result sets {want}, got {order} (the reader must print every result set of a script)")
+    return got
+
+
+def _rows(got, name, ncols):
+    rows = got[name]
+    for r in rows:
+        if len(r) != ncols:
+            raise ReadError(f"{name}: a row has {len(r)} columns, expected {ncols} (a tab or newline inside a text value mis-splits rows); the read cannot be trusted")
+    return rows
 
 
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -119,6 +231,8 @@ def normalize_chart_id(c):
     """The ONE place a chart id is normalised (trim, braces, lower case) and validated as a UUID; anything else raises ValueError.
     Everything that interpolates a chart id into SQL, compares it with NATIVE or matches a hook 'charts' prefix goes through here."""
     t = str(c).strip().strip("{}").strip().lower()
+    if t.replace("-", "").startswith(PHANTOM_PREFIX):
+        raise ValueError("refused: the dead phantom chart id 362f9f17 is never read or compared")
     if not UUID_RE.match(t):
         raise ValueError(f"not a chart UUID: {str(c)[:60]!r}")
     return t
@@ -182,6 +296,8 @@ def validate_hook(h, fname):
                 errs.append(f"{w}: dasha_shift needs shift_range_sec [lo, hi] (seconds, current minus snapshot)")
             if not (isinstance(e.get("systems"), list) and e.get("systems")):
                 errs.append(f"{w}: dasha_shift needs a non-empty 'systems' list (exact system_id)")
+            if "expected_count" in e:
+                errs.append(f"{w}: 'expected_count' is not supported on a dasha_shift entry (it would be ignored); use 'optional' or leave the entry without a count")
         else:
             if e.get("kind") not in (None, "change"):
                 errs.append(f"{w}: 'kind' must be 'change' (default) or 'dasha_shift'")
@@ -200,11 +316,14 @@ def validate_hook(h, fname):
             errs.append(f"{w}: chart_dashas row-set entries may only declare change_types within {DASHA_CHANGE_TYPES} (the detector never produces other kinds there)")
         ec = e.get("expected_count")
         if ec is not None:
-            ok = isinstance(ec, dict) and set(ec) <= {"exact", "min", "max"} and ec and all(isinstance(v, int) and v >= 0 for v in ec.values()) and not ("exact" in ec and len(ec) > 1)
+            ok = (isinstance(ec, dict) and set(ec) <= {"exact", "min", "max"} and ec and all(isinstance(v, int) and not isinstance(v, bool) and v >= 0 for v in ec.values())
+                  and not ("exact" in ec and len(ec) > 1) and not ("min" in ec and "max" in ec and ec["min"] > ec["max"]))
             if not ok:
-                errs.append(f"{w}: 'expected_count' must be {{\"exact\": n}} or {{\"min\": a, \"max\": b}} (non-negative integers)")
+                errs.append(f"{w}: 'expected_count' must be {{\"exact\": n}} or {{\"min\": a, \"max\": b}} (non-negative integers, not booleans; min must not exceed max)")
     if "charts" in h and not (isinstance(h["charts"], list) and h["charts"] and all(isinstance(c, str) and re.match(r"^[0-9a-fA-F-]{8,}$", c) for c in h["charts"])):
         errs.append(f"{fname}: 'charts' must be a NON-EMPTY list of hex chart-id prefixes (>= 8 chars); omit the field to apply to every chart")
+    elif any(isinstance(c, str) and c.replace("-", "").lower().startswith(PHANTOM_PREFIX) for c in h.get("charts", [])):
+        errs.append(f"{fname}: 'charts' names the dead phantom chart id {PHANTOM_PREFIX} (refused)")
     return errs
 
 
@@ -330,25 +449,31 @@ def expectation_report(hooks, counts, chart_id, have_dash=True, have_daily=True,
 
 
 # ------------------------------------------------------------------ read production
-def read_state(chart_id, dashas=True, daily=True):
+def read_state(chart_id, dashas=True, daily=True, info=None):
+    """Read one chart (and the global panchanga_daily) in ONE repeatable-read read-only transaction. The session must report
+    transaction_read_only = on (requested through PGOPTIONS, proven by the first statement) or nothing is read."""
     chart_id = normalize_chart_id(chart_id)  # the only interpolated operator-controlled value: a UUID or nothing
-    st = {"chart_facts": []}
-    for (ay,) in q(f"select distinct ayanamsha_id from chart_facts where chart_id='{chart_id}' order by 1"):
-        ay = ay.replace("'", "''")
-        st["chart_facts"] += q(f"""select ayanamsha_id, fact_category, fact_subject, fact_key, coalesce(fact_value_text,''), coalesce(fact_value_num::text,''),
-                 coalesce(verification_pass_status,'') from chart_facts where chart_id='{chart_id}' and ayanamsha_id='{ay}'""")
-    st["divisionals"] = q(f"""select ayanamsha_id, varga, graha, fact_category, fact_key, coalesce(fact_value_text,''), coalesce(fact_value_num::text,''), coalesce(sign,'')
-                 from chart_divisionals where chart_id='{chart_id}'""")
+    named = [("ro", "select current_setting('transaction_read_only')"), ("usr", "select current_user"),
+             ("facts", f"""select ayanamsha_id, fact_category, fact_subject, fact_key, coalesce(fact_value_text,''), coalesce(fact_value_num::text,''),
+                 coalesce(verification_pass_status,'') from chart_facts where chart_id='{chart_id}' order by ayanamsha_id, fact_category, fact_subject, fact_key"""),
+             ("divs", f"""select ayanamsha_id, varga, graha, fact_category, fact_key, coalesce(fact_value_text,''), coalesce(fact_value_num::text,''), coalesce(sign,'')
+                 from chart_divisionals where chart_id='{chart_id}'""")]
     if dashas:
-        rows = []
-        for ay, sy in q(f"select distinct ayanamsha_id, system_id from chart_dashas where chart_id='{chart_id}' order by 1,2"):
-            ay, sy = ay.replace("'", "''"), sy.replace("'", "''")
-            rows += q(f"""select ayanamsha_id, system_id, level_n, lord_graha, coalesce(kp_sublevel,''), coalesce(kp_sub_lord,''), coalesce(kp_sub_sub_lord,''),
+        named.append(("dashas", f"""select ayanamsha_id, system_id, level_n, lord_graha, coalesce(kp_sublevel,''), coalesce(kp_sub_lord,''), coalesce(kp_sub_sub_lord,''),
                  start_iso::text, end_iso::text, dasha_row_id::text, coalesce(parent_row_id::text,'') from chart_dashas
-                 where chart_id='{chart_id}' and ayanamsha_id='{ay}' and system_id='{sy}'""")
-        st["dashas"] = dasha_label_rows(rows)
+                 where chart_id='{chart_id}'"""))
     if daily:
-        st["daily"] = q("select " + ",".join(f"{c}::text" for c in DAILY_COLS) + " from panchanga_daily order by date")
+        named.append(("daily", "select " + ",".join(f"{c}::text" for c in DAILY_COLS) + " from panchanga_daily order by date"))
+    got = q_txn(named)
+    if got["ro"] != [["on"]]:
+        raise ReadError(f"database session is not read-only (transaction_read_only={got['ro']!r}); refusing to read")
+    if info is not None:
+        info["db_user"] = got["usr"][0][0] if got["usr"] and got["usr"][0] else ""
+    st = {"chart_facts": _rows(got, "facts", 7), "divisionals": _rows(got, "divs", 8)}
+    if dashas:
+        st["dashas"] = dasha_label_rows(_rows(got, "dashas", 11))
+    if daily:
+        st["daily"] = _rows(got, "daily", len(DAILY_COLS))
     return st
 
 
@@ -368,19 +493,31 @@ def dasha_label_rows(rows):
 
 
 def cmd_snapshot(a):
+    """Never overwrites: a baseline is evidence. An existing file (or .sha256) at the target is refused (exit 6); pick another --out."""
     chart_id = resolve(a.snapshot)
-    st = read_state(chart_id, not a.no_dashas, not a.no_daily)
+    info = {}
+    try:
+        st = read_state(chart_id, not a.no_dashas, not a.no_daily, info)
+    except ReadError as ex:
+        print(f"READ ERROR: {ex}", file=sys.stderr)
+        return EXIT_READ_ERROR
     now = datetime.now(timezone.utc).isoformat()
-    st["meta"] = {"tool": "flip_detector.py", "tool_version": "1.1", "chart_id": chart_id, "taken_at_utc": now, "db_user": q("select current_user")[0][0], "read_only": True,
+    st["meta"] = {"tool": "flip_detector.py", "tool_version": TOOL_VERSION, "chart_id": chart_id, "taken_at_utc": now, "db_user": info.get("db_user", ""), "read_only": True,
+                  "single_transaction": "REPEATABLE READ READ ONLY", "no_dashas": bool(a.no_dashas), "no_daily": bool(a.no_daily),
                   "counts": {k: len(v) for k, v in st.items() if isinstance(v, list)}}
     d = os.environ.get("FLIP_SNAPSHOT_DIR", DEFAULT_SNAPSHOT_DIR)
-    out = a.out or os.path.join(d, f"pre_rebuild_{chart_id[:8]}_{now[:10]}.json.gz")
+    out = a.out or os.path.join(d, f"pre_rebuild_{chart_id[:8]}_{now[:10]}_{now[11:19].replace(':', '')}.json.gz")
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
-    with gzip.open(out, "wt") as f:
+    if os.path.exists(out) or os.path.exists(out + ".sha256"):
+        print(f"REFUSED: {out} (or its .sha256) already exists; a baseline is never overwritten. Choose another --out or move the old file.", file=sys.stderr)
+        return EXIT_REFUSED
+    with gzip.open(out, "xt") as f:
         json.dump(st, f)
     h = hashlib.sha256(open(out, "rb").read()).hexdigest()
-    open(out + ".sha256", "w").write(f"{h}  {os.path.basename(out)}\n")
+    with open(out + ".sha256", "x") as f:
+        f.write(f"{h}  {os.path.basename(out)}\n")
     print(f"snapshot: {out}\nsha256:   {h}\ncounts:   {st['meta']['counts']}\ntaken:    {now} as {st['meta']['db_user']}")
+    return 0
 
 
 # ------------------------------------------------------------------ classification and diff
@@ -405,7 +542,8 @@ def occ_map(rows, keyfn, valfn):
     for r in rows:
         m[keyfn(r)].append(valfn(r))
     for k in m:
-        m[k].sort(key=lambda v: (v[0] or "", float(v[1]) if v[1] not in ("", None) else float("-inf")))
+        # the tier is part of the sort key: two rows equal in value but different in tier must pair in a fixed order, whatever order the database returned
+        m[k].sort(key=lambda v: (v[0] or "", float(v[1]) if v[1] not in ("", None) else float("-inf"), (v[2] if len(v) > 2 else "") or ""))
     return m
 
 
@@ -579,13 +717,18 @@ def decide_verdict(rep):
     return V_PASS
 
 
-def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, hook_errors=(), standing_not_checked=STANDING_NOT_CHECKED):
+def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, hook_errors=(), standing_not_checked=STANDING_NOT_CHECKED,
+                   not_compared=None, extra_not_checked=()):
     """Pure function (no I/O): the whole comparison. Returns the report dict (JSON-serializable, deterministic ordering).
     `standing_not_checked` is the registry of scopes the detector never compares; production always uses STANDING_NOT_CHECKED.
     EMPTY_READ rule: every table compared (chart_facts, chart_divisionals always; chart_dashas / panchanga_daily when compared) must hold
     at least one row in BOTH states. A real chart always has rows in each; zero rows means the read returned nothing (for example a
-    row-level-security block for the reader), and empty-versus-empty would otherwise read as 'nothing changed'."""
+    row-level-security block for the reader), and empty-versus-empty would otherwise read as 'nothing changed'.
+    A table that was NOT compared in this run (have_dash / have_daily False: a flag, or a section missing from a snapshot) is never silent:
+    it adds a conditional NOT CHECKED row ('<table>.not_compared') carrying the reason in `not_compared` ({table: reason}), and the summary
+    prints n/a (never a green ok) for the classes it would have evaluated. `extra_not_checked` is a list of ready NOT CHECKED rows."""
     chart_id = normalize_chart_id(chart_id)
+    not_compared = dict(not_compared or {})
     empty = []
     for label, key, on in (("chart_facts", "chart_facts", True), ("chart_divisionals", "divisionals", True), ("chart_dashas", "dashas", have_dash),
                            ("panchanga_daily", "daily", have_daily)):
@@ -624,7 +767,15 @@ def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, 
                    for n in standing_not_checked]
     not_checked += [{"id": f"{u['lane']}[{u['entry']}]", "table": u["table"], "what": "hook entry the detector cannot observe in this run", "reason": u["reason"],
                      "readback": "hand read-back", "declared_by_lanes": [u["lane"]], "status": "NOT CHECKED"} for u in entry_unchecked]
+    for tname, on, what in (("chart_dashas", have_dash, "chart_dashas row sets and start shifts (a real dasha change would read as no change)"),
+                            ("panchanga_daily", have_daily, "panchanga_daily rows and columns (a real panchanga change would read as no change)")):
+        if not on:
+            not_checked.append({"id": f"{tname}.not_compared", "table": tname, "what": what, "reason": not_compared.get(tname, f"{tname} not compared in this run"),
+                                "readback": "re-run the compare WITHOUT --no-dashas / --no-daily on snapshots that carry the section",
+                                "declared_by_lanes": _declared_by(hooks, chart_id, tname, False), "status": "NOT CHECKED"})
+    not_checked += [dict(x, status="NOT CHECKED") for x in extra_not_checked]
     rep = {"tool_version": TOOL_VERSION, "chart_id": chart_id, "changes_total": len(changes), "unattributed": len(unattrib),
+           "compared": {"chart_facts": True, "chart_divisionals": True, "chart_dashas": bool(have_dash), "panchanga_daily": bool(have_daily)},
            "unattributed_examples": unattrib[:50],
            "by_table_category_change_lane": [[list(k), v] for k, v in sorted(by.items(), key=lambda kv: (-kv[1], kv[0]))],
            "continuous": {"chart_facts": cont1, "chart_divisionals": cont2}, "dashas": dinfo,
@@ -634,8 +785,11 @@ def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, 
            "failures": {F_UNDECLARED: [_brief(c) for c in undeclared[:50]], F_KIND: [_brief(c) for c in kind_mm[:50]], F_ABSENT: absent,
                         F_EXPECT: exp_bad, F_DASHA: shift_unattrib, F_HOOK: list(hook_errors), F_EMPTY: empty},
            "warnings": warn, "not_checked": not_checked, "changes": changes}
-    if chart_id == NATIVE:
+    if chart_id == NATIVE and cur["chart_facts"]:
         rep["anchors"], rep["ALERT_anchor_changed"] = anchors_check(cur["chart_facts"])
+    elif chart_id == NATIVE:
+        # an empty current chart_facts is an EMPTY_READ failure (exit 2), not an anchor ALERT: nothing was read to compare with the anchors
+        rep["anchors"], rep["ALERT_anchor_changed"] = [], False
     else:
         rep["ALERT_anchor_changed"] = False
     rep["verdict"] = decide_verdict(rep)
@@ -682,9 +836,17 @@ def render_summary(rep, allow_not_checked=False):
             L.append(f"FAIL {k}: {n}")
             for x in rep["failures"][k][:20]:
                 L.append(f"    {x if isinstance(x, str) else json.dumps(x, sort_keys=True)}")
+    comp = rep.get("compared") or {}
+    na = {F_DASHA: ("chart_dashas", comp.get("chart_dashas", True))}
     for k, n in rep["failure_counts"].items():
         if not n:
-            L.append(f"ok   {k}: 0")
+            if not na.get(k, ("", True))[1]:
+                L.append(f"n/a  {k}: NOT EVALUATED ({na[k][0]} was not compared in this run)")
+            else:
+                L.append(f"ok   {k}: 0")
+    for tname in ("chart_dashas", "panchanga_daily"):
+        if comp and not comp.get(tname, True):
+            L.append(f"n/a  {tname}: NOT COMPARED in this run (see the NOT CHECKED line)")
     for w in rep["warnings"]:
         L.append(f"WARNING {w}")
     for n in rep["not_checked"]:
@@ -698,7 +860,7 @@ def render_summary(rep, allow_not_checked=False):
         c = rep["continuous"][tname]
         L.append(f"continuous ({tname}): compared {c['compared']} changed {c['changed']} (to NULL/text {c['to_non_numeric']}) keys appeared {c['keys_appeared']} "
                  f"disappeared {c['keys_disappeared']} timestamp->non-timestamp {c['time_to_non_time']} max |delta| {c['max_abs_delta']:.6g}")
-    if rep["dashas"]:
+    if rep.get("dashas"):
         L.append("dasha shifts: " + json.dumps({k: (x.get("rows_shifted"), x.get("mode_shift_sec"), x.get("lanes")) for k, x in sorted(rep["dashas"].items()) if x.get("rows_shifted")}, sort_keys=True))
     if rep["chart_id"] == NATIVE and not rep["ALERT_anchor_changed"]:
         L.append("anchors: 7 of 7 OK")
@@ -709,6 +871,23 @@ def _csv(x):
     return [y for y in (x or "").split(",") if y]
 
 
+def verify_sidecar(path):
+    """-> ('ok' | 'absent' | 'mismatch', detail). The .sha256 written by --snapshot must match the file bytes (the baseline is evidence)."""
+    sc = path + ".sha256"
+    if not os.path.exists(sc):
+        return "absent", f"{os.path.basename(path)}.sha256 not found: the snapshot's integrity is unverified"
+    want = open(sc).read().split()[:1]
+    got = hashlib.sha256(open(path, "rb").read()).hexdigest()
+    if not want or want[0].lower() != got:
+        return "mismatch", f"{os.path.basename(path)}: sha256 {got[:16]}... does not match its .sha256 sidecar ({(want[0][:16] + '...') if want else 'empty'}): the snapshot was altered or corrupted"
+    return "ok", ""
+
+
+def _write_json(path, obj):
+    with open(path, "w") as f:
+        json.dump(obj, f, indent=1, sort_keys=True)
+
+
 def cmd_compare(a):
     snap = json.load(gzip.open(a.compare, "rt"))
     try:
@@ -717,6 +896,18 @@ def cmd_compare(a):
         print(f"ERROR: snapshot chart id is not a valid UUID: {ex}", file=sys.stderr)
         return EXIT_FAIL
     hooks, herrs = load_hooks(a.hooks_dir if a.hooks_dir is not None else DEFAULT_HOOKS_DIR, _csv(a.require_lanes))
+    extra, sha_state = [], {}
+    for label, path in (("snapshot", a.compare), ("against", a.against)):
+        if not path:
+            continue
+        st_, detail = verify_sidecar(path)
+        sha_state[label] = st_
+        if st_ == "mismatch":
+            herrs = list(herrs) + [f"SNAPSHOT INTEGRITY: {detail}"]
+        elif st_ == "absent":
+            extra.append({"id": f"{label}.sha256", "table": "snapshot", "what": f"integrity of the {label} file", "reason": detail,
+                          "readback": "verify the file against the sha256 recorded when it was taken", "declared_by_lanes": []})
+    not_compared = {}
     if a.against:
         cur = json.load(gzip.open(a.against, "rt"))
         try:
@@ -726,22 +917,42 @@ def cmd_compare(a):
         if other != chart_id:
             print(f"ERROR: --against snapshot is for chart {cur['meta'].get('chart_id')}, not {chart_id}", file=sys.stderr)
             return EXIT_FAIL
-        have_dash = "dashas" in snap and "dashas" in cur and not a.no_dashas
-        have_daily = "daily" in snap and "daily" in cur and not a.no_daily
+        sections = {"chart_dashas": ("dashas", a.no_dashas, "--no-dashas"), "panchanga_daily": ("daily", a.no_daily, "--no-daily")}
+        have = {}
+        for tname, (key, flag, flagname) in sections.items():
+            why = flagname if flag else ("the snapshot lacks the section" if key not in snap else ("the --against snapshot lacks the section" if key not in cur else ""))
+            have[tname] = not why
+            if why:
+                not_compared[tname] = f"{tname} not compared in this run: {why}"
+        have_dash, have_daily = have["chart_dashas"], have["panchanga_daily"]
     else:
+        cur = None
         have_dash = "dashas" in snap and not a.no_dashas
         have_daily = "daily" in snap and not a.no_daily
-        cur = read_state(chart_id, have_dash, have_daily)
-    rep = compare_states(snap, cur, hooks, chart_id, have_dash, have_daily, hook_errors=herrs)
+        for tname, key, flag, flagname, on in (("chart_dashas", "dashas", a.no_dashas, "--no-dashas", have_dash), ("panchanga_daily", "daily", a.no_daily, "--no-daily", have_daily)):
+            if not on:
+                not_compared[tname] = f"{tname} not compared in this run: " + (flagname if flag else "the snapshot lacks the section")
+    out = a.out or a.compare.replace(".json.gz", "") + f"_COMPARE_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}.json"
+    if cur is None:
+        try:
+            cur = read_state(chart_id, have_dash, have_daily)
+        except ReadError as ex:
+            rep = {"verdict": "READ_ERROR", "exit_code": EXIT_READ_ERROR, "chart_id": chart_id, "error": str(ex), "meta": {"snapshot": a.compare, "compared_at_utc": datetime.now(timezone.utc).isoformat()}}
+            _write_json(out, rep)
+            print(f"VERDICT: READ_ERROR   exit {EXIT_READ_ERROR}   {ex}\nreport: {out} | exit {EXIT_READ_ERROR}")
+            return EXIT_READ_ERROR
+    rep = compare_states(snap, cur, hooks, chart_id, have_dash, have_daily, hook_errors=herrs, not_compared=not_compared, extra_not_checked=extra)
+    skipped = sorted(not_compared)
     rep["meta"] = {"snapshot": a.compare, "against": a.against, "snapshot_meta": snap["meta"], "compared_at_utc": datetime.now(timezone.utc).isoformat(),
-                   "hook_lanes_loaded": [h["lane"] for h in hooks], "allow_not_checked": bool(a.allow_not_checked)}
+                   "hook_lanes_loaded": [h["lane"] for h in hooks], "allow_not_checked": bool(a.allow_not_checked),
+                   "flags": {"no_dashas": bool(a.no_dashas), "no_daily": bool(a.no_daily), "allow_not_checked": bool(a.allow_not_checked),
+                             "i_know_dashas_are_not_compared": bool(a.i_know_dashas_are_not_compared), "require_lanes": _csv(a.require_lanes)},
+                   "skipped_sections": skipped, "snapshot_sha256": sha_state}
     code = exit_code(rep, a.allow_not_checked)
     rep["exit_code"] = code
     for ln in render_summary(rep, a.allow_not_checked):
         print(ln)
-    out = a.out or a.compare.replace(".json.gz", "") + f"_COMPARE_{rep['meta']['compared_at_utc'][:19].replace(':', '')}.json"
-    with open(out, "w") as f:
-        json.dump(rep, f, indent=1, sort_keys=True)
+    _write_json(out, rep)
     print("report:", out, "| exit", code)
     return code
 
@@ -776,6 +987,8 @@ def main(argv=None):
     ap.add_argument("--no-dashas", action="store_true")
     ap.add_argument("--no-daily", action="store_true")
     ap.add_argument("--allow-not-checked", action="store_true", help="exit 0 on verdict NOT_CHECKED (the NOT CHECKED items are still printed and recorded)")
+    ap.add_argument("--i-know-dashas-are-not-compared", action="store_true",
+                    help="required to combine --no-dashas / --no-daily with --require-lanes (the S-L1 window must compare dashas and daily)")
     a = ap.parse_args(argv)
     if sum(map(bool, (a.snapshot, a.compare, a.validate_hooks))) != 1:
         ap.error("exactly one of --snapshot / --compare / --validate-hooks")
@@ -785,13 +998,16 @@ def main(argv=None):
         ap.error("--hooks-dir must not be empty (omit it to use the default S-L1 hooks folder)")
     if a.require_lanes is not None and not _csv(a.require_lanes):
         ap.error("--require-lanes must name at least one lane (omit it to require none)")
+    if a.compare and (a.no_dashas or a.no_daily) and a.require_lanes and not a.i_know_dashas_are_not_compared:
+        print("REFUSED: --no-dashas / --no-daily together with --require-lanes skips a check the S-L1 lanes need. Compare WITHOUT those flags, or add "
+              "--i-know-dashas-are-not-compared (the report then carries NOT CHECKED rows for the skipped tables).", file=sys.stderr)
+        return EXIT_REFUSED
     if a.snapshot:
         try:
             resolve(a.snapshot)
         except ValueError as ex:
             ap.error(f"--snapshot: {ex} (use native, abhinandan, kiran or a chart UUID)")
-        cmd_snapshot(a)
-        return 0
+        return cmd_snapshot(a)
     return cmd_compare(a) if a.compare else cmd_validate(a)
 
 

@@ -17,10 +17,12 @@ from __future__ import annotations
 
 import copy
 import gzip
+import hashlib
 import importlib.util
 import json
 import os
 import pathlib
+import re
 import random
 import shutil
 import sys
@@ -389,7 +391,8 @@ def test_1d_verdict_cannot_be_hidden_by_a_stale_verdict_field(tmp_path):
 def test_2_both_uncheckable_tier_changes_are_listed_on_every_compare(tmp_path):
     rep = run(base_state(), base_state(), [])
     ids = [n["id"] for n in rep["not_checked"]]
-    assert ids == ["chart_dashas.tier", "l1_tajik_varsha_year_lords.tier", "chart_vichara"]
+    assert ids == ["chart_dashas.tier", "l1_tajik_varsha_year_lords.tier", "chart_vichara", "ga_yoga_firings.strength", "bodha_msr_signals", "bodha_rm_resonances",
+                   "ga_condition_composite", "ga_medical", "ga_vastu_*", "ga_prashna_*", "prashna_charts"]
     assert all(n["status"] == "NOT CHECKED" and n["readback"] for n in rep["not_checked"])
 
 
@@ -446,7 +449,7 @@ def test_2_cli_exit_codes_and_printed_output(tmp_path, capsys):
     text = capsys.readouterr().out
     assert code == 4 and "NOT CHECKED chart_dashas.tier" in text and "NOT CHECKED l1_tajik_varsha_year_lords.tier" in text and "NOT CHECKED chart_vichara" in text
     rep = json.loads(out.read_text())
-    assert rep["verdict"] == "NOT_CHECKED" and rep["exit_code"] == 4 and len(rep["not_checked"]) == 3
+    assert rep["verdict"] == "NOT_CHECKED" and rep["exit_code"] == 4 and {"chart_dashas.tier", "l1_tajik_varsha_year_lords.tier"} <= {n["id"] for n in rep["not_checked"]}
     code = F.main(["--compare", str(before), "--against", str(after), "--hooks-dir", str(d), "--out", str(out), "--allow-not-checked"])
     text = capsys.readouterr().out
     assert code == 0 and "NOT CHECKED chart_dashas.tier" in text and json.loads(out.read_text())["verdict"] == "NOT_CHECKED"
@@ -488,12 +491,14 @@ def test_2_cli_report_is_deterministic_and_input_order_independent(tmp_path, cap
 
 
 # ----------------------------------------------------------------------------------------------- (3) hook validation
-def snapshot_file(tmp_path, name, state, chart=NATIVE):
+def snapshot_file(tmp_path, name, state, chart=NATIVE, sha=True):
     st = copy.deepcopy(state)
     st["meta"] = {"tool": "flip_detector.py", "chart_id": chart, "taken_at_utc": "2026-10-02T00:00:00+00:00"}
     p = tmp_path / name
     with gzip.open(p, "wt") as f:
         json.dump(st, f)
+    if sha:
+        (tmp_path / (name + ".sha256")).write_text(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {name}\n")
     return p
 
 
@@ -600,7 +605,8 @@ def test_3_default_hooks_dir_is_the_slhooks_folder():
 
 
 # ----------------------------------------------------------------------------------------------- real hook files
-REAL_LANES = ["argala", "band_table", "ga_condition_fallback", "gandanta", "karaka_dasha_roles", "karaka_roles", "karaka_web_order", "sun_required_rupa", "tiers"]
+REAL_LANES = ["argala", "band_table", "ga_condition_fallback", "gandanta", "karaka_dasha_roles", "karaka_roles", "karaka_web_order", "special_lagna_offset",
+              "special_lagna_offset_other_charts", "sun_required_rupa", "tiers"]
 
 
 def test_real_hook_files_validate(capsys):
@@ -677,14 +683,19 @@ def summarize(rep):
             "absent": rep["failures"]["DECLARED_BUT_ABSENT"], "exit_default": F.exit_code(rep), "exit_allow_not_checked": F.exit_code(rep, True)}
 
 
+def optional_entries(*idx):
+    return lambda h: [h["may_change"][i].update(optional=True) for i in idx]
+
+
 def golden_cases(tmp_path):
+    """The shipped sun_required_rupa entries 1..3 (ratio and the composite-strength keys are continuous) and gandanta[1] (a 'surprise bucket')
+    can never observe a change on this data; the variants show what a lane author's fix (marking them optional) does to the verdict."""
     verbatim = real_hooks(tmp_path, GOLDEN_LANES)
-    optional = real_hooks(tmp_path, GOLDEN_LANES, patch={"sun_required_rupa": lambda h: h["may_change"][1].update(optional=True)})
-    both_optional = real_hooks(tmp_path, GOLDEN_LANES, patch={"sun_required_rupa": lambda h: h["may_change"][1].update(optional=True),
-                                                               "gandanta": lambda h: h["may_change"][1].update(optional=True)})
+    optional = real_hooks(tmp_path, GOLDEN_LANES, patch={"sun_required_rupa": optional_entries(2, 3)})
+    both_optional = real_hooks(tmp_path, GOLDEN_LANES, patch={"sun_required_rupa": optional_entries(1, 2, 3), "gandanta": optional_entries(1)})
     out = {"verbatim_real_hooks": summarize(run(golden_before(), golden_after(), verbatim)),
-           "composite_entry_marked_optional": summarize(run(golden_before(), golden_after(), optional)),
-           "both_surprise_entries_optional": summarize(run(golden_before(), golden_after(), both_optional))}
+           "composite_entries_optional": summarize(run(golden_before(), golden_after(), optional)),
+           "all_unobservable_entries_optional": summarize(run(golden_before(), golden_after(), both_optional))}
 
     def noisy(s):
         change_mar_pada(s)                                                                  # undeclared (no lane declares graha_position)
@@ -708,14 +719,14 @@ def test_golden_semantics_read_by_a_human(tmp_path):
     """The golden file is not trusted blindly: restate its meaning independently of the pinned numbers."""
     cases = golden_cases(tmp_path)
     v = cases["verbatim_real_hooks"]
-    # the composite-strength entry of the real sun_required_rupa hook can never observe a change (its keys are continuous): a failure
-    assert v["verdict"] == "FAIL" and v["failure_counts"]["DECLARED_BUT_ABSENT"] == 2 and len(v["absent"]) == 2
-    assert any("sun_required_rupa[1]" in a for a in v["absent"]) and any("gandanta[1]" in a for a in v["absent"])
-    o = cases["composite_entry_marked_optional"]
-    assert o["failure_counts"]["DECLARED_BUT_ABSENT"] == 1 and any("gandanta[1]" in a for a in o["absent"])
-    c = cases["both_surprise_entries_optional"]
+    # sun_required_rupa[1..3] (continuous keys) and gandanta[1] can never observe a change on this data: failures until the lane marks them optional
+    assert v["verdict"] == "FAIL" and v["failure_counts"]["DECLARED_BUT_ABSENT"] == 4 and len(v["absent"]) == 4
+    assert [a.split(" (")[0].replace("DECLARED BUT ABSENT ", "") for a in v["absent"]] == ["gandanta[1]", "sun_required_rupa[1]", "sun_required_rupa[2]", "sun_required_rupa[3]"]
+    o = cases["composite_entries_optional"]
+    assert o["failure_counts"]["DECLARED_BUT_ABSENT"] == 2 and any("gandanta[1]" in a for a in o["absent"])
+    c = cases["all_unobservable_entries_optional"]
     assert c["verdict"] == "NOT_CHECKED" and c["exit_default"] == 4 and c["exit_allow_not_checked"] == 0 and c["absent"] == []
-    assert sum(c["failure_counts"].values()) == 0 and len(c["warnings"]) == 2
+    assert sum(c["failure_counts"].values()) == 0 and len(c["warnings"]) == 4
     n = cases["noisy_with_optional"]
     assert n["verdict"] == "FAIL" and n["failure_counts"]["UNDECLARED_CHANGE"] == 1
     assert n["failure_counts"]["KIND_MISMATCH"] == 5 and n["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 1
@@ -727,8 +738,7 @@ def test_golden_semantics_read_by_a_human(tmp_path):
 
 
 def test_golden_clean_run_attributes_every_gandanta_row(tmp_path):
-    hooks = real_hooks(tmp_path, GOLDEN_LANES, patch={"sun_required_rupa": lambda h: h["may_change"][1].update(optional=True),
-                                                       "gandanta": lambda h: h["may_change"][1].update(optional=True)})
+    hooks = real_hooks(tmp_path, GOLDEN_LANES, patch={"sun_required_rupa": optional_entries(1, 2, 3), "gandanta": optional_entries(1)})
     rep = run(golden_before(), golden_after(), hooks)
     assert [c["lanes"] for c in rep["changes"] if c["category"] == "graha_gandanta"] == [["gandanta"]] * 50
     assert all(c["lanes"] for c in rep["changes"])
@@ -741,7 +751,9 @@ def test_real_hooks_with_no_changes_list_exactly_the_entries_a_lane_author_must_
     rep = run(base_state(), base_state(), hooks, standing_not_checked=NO_STANDING)
     absent = sorted(a.split(" (")[0].replace("DECLARED BUT ABSENT ", "") for a in rep["failures"]["DECLARED_BUT_ABSENT"])
     assert absent == ["argala[0]", "gandanta[1]", "karaka_dasha_roles[0]", "karaka_roles[0]", "karaka_roles[1]", "karaka_web_order[0]",
-                      "sun_required_rupa[0]", "sun_required_rupa[1]", "tiers[0]"]
+                      "sun_required_rupa[1]", "sun_required_rupa[2]", "sun_required_rupa[3]", "tiers[0]"]
+    # entries with an explicit count (gandanta[0] exact 50, sun_required_rupa[0] exact 1) fail by EXPECTATION_MISMATCH, never as absent
+    assert sorted(m.split(" (")[0].replace("EXPECTATION MISMATCH ", "") for m in rep["failures"]["EXPECTATION_MISMATCH"]) == ["gandanta[0]", "sun_required_rupa[0]"]
     # the unobservable chart_dashas tier entry of tiers.json is NOT CHECKED, and the tiers chart_facts entry is checkable and absent
     nc = [n["id"] for n in rep["not_checked"]]
     assert "tiers[1]" in nc and "tiers[1]" not in absent
@@ -890,7 +902,8 @@ def test_med2_tables_not_compared_are_not_required_to_have_rows():
     snap, cur = base_state(), base_state()
     snap["dashas"], cur["dashas"], snap["daily"], cur["daily"] = [], [], [], []
     rep = run(snap, cur, [], chart=OTHER, have_dash=False, have_daily=False, standing_not_checked=NO_STANDING)
-    assert rep["verdict"] == "PASS"
+    assert counts(rep) == {}  # no EMPTY_READ for tables that were not compared; but they are NOT CHECKED, never a pass
+    assert rep["verdict"] == "NOT_CHECKED" and [n["id"] for n in rep["not_checked"]] == ["chart_dashas.not_compared", "panchanga_daily.not_compared"]
 
 
 def test_med2_cli_empty_snapshots_exit_2_even_with_allow_not_checked(tmp_path, capsys):
@@ -977,18 +990,6 @@ def test_low6_empty_hooks_dir_or_lanes_is_refused(args):
     assert ei.value.code == 2
 
 
-# --- LOW-7: the fixtures must stay byte-equal to the real hooks once those are in the tree
-def test_low7_fixtures_match_the_real_hook_directory_when_it_exists():
-    real = pathlib.Path(F.DEFAULT_HOOKS_DIR)
-    if not real.is_dir():
-        pytest.skip(f"real hook directory not in this tree yet: {real} (the S-L1 hook files land with their lane PRs); re-run when it exists")
-    present = [f for f in sorted(REAL_HOOKS.glob("*.json")) if (real / f.name).exists()]
-    if not present:
-        pytest.skip(f"{real} exists but holds none of the {len(list(REAL_HOOKS.glob('*.json')))} fixture lanes yet")
-    for f in present:
-        assert (real / f.name).read_bytes() == f.read_bytes(), f"fixture hooks_real/{f.name} drifted from the real hook; refresh the fixture and the golden file"
-
-
 # --- survivors: narrowing fields of an entry
 def test_hook_ayanamsha_narrowing_is_honoured(tmp_path):
     raman_only = hook("posn", [entry(["graha_position"], ["value"], ayanamsha_ids=["raman"])])
@@ -1065,3 +1066,486 @@ def test_direction_limit_integral_to_continuous_is_seen_but_continuous_to_integr
     reverse = run(val("6.5"), val("5"), [], standing_not_checked=NO_STANDING)  # the snapshot side is continuous: invisible, documented in the README
     assert reverse["changes_total"] == 0 and reverse["continuous"]["chart_facts"]["changed"] == 1
     assert "Direction limit" in (GOV_DIR / "FLIP_DETECTOR_README.md").read_text()
+
+
+# =============================================================================================== second independent review (R-T2) + SS rulings
+FAKE_PSQL = r"""#!__PY__
+import sys, os, json, re, time
+args = sys.argv[1:]
+script = sys.stdin.read() if "-f" in args else (args[args.index("-c") + 1] if "-c" in args else args[0])
+d = os.environ["FAKE_DIR"]
+with open(d + "/calls.log", "a") as lg:
+    lg.write(json.dumps({"pgoptions": os.environ.get("PGOPTIONS", ""), "script": script}) + chr(10))
+mode = os.environ.get("FAKE_MODE", "")
+if mode == "fail":
+    sys.stderr.write(os.environ.get("FAKE_STDERR", "boom")); sys.exit(2)
+if mode == "sleep":
+    time.sleep(5)
+st = json.load(open(d + "/state.json"))["charts"]
+stmts = [x.strip() for x in script.split(";" + chr(10)) if x.strip()]
+out = []
+def rows_for(table, sql):
+    m = re.search(r"chart_id='([^']*)'", sql)
+    ids = [m.group(1)] if (m and os.environ.get("FAKE_NOFILTER") != "1") else list(st)
+    res = []
+    for cid in ids:
+        c = st.get(cid, {})
+        if table == "chart_facts": res += c.get("chart_facts", [])
+        elif table == "chart_divisionals": res += c.get("divisionals", [])
+        elif table == "chart_dashas":
+            res += [[r[0], r[1], r[2], r[3].split("/")[-1], "", "", "", r[4], r[5], "id%d" % i, ""] for i, r in enumerate(c.get("dashas", []))]
+        elif table == "panchanga_daily": res += c.get("daily", [])
+    return res
+for sql in stmts:
+    flat = re.sub(r"\s+", " ", sql)
+    if flat.upper().startswith("BEGIN") or flat.upper() == "COMMIT":
+        continue
+    m = re.match(r"^select '(@@END:[a-z_]+@@)'$", flat)
+    if m:
+        out.append([[m.group(1)]]); continue
+    if "current_setting('transaction_read_only')" in flat:
+        on = "default_transaction_read_only=on" in os.environ.get("PGOPTIONS", "") and mode != "rw"
+        out.append([["on" if on else "off"]]); continue
+    if flat.startswith("select current_user"):
+        out.append([["fake_reader"]]); continue
+    tbl = re.search(r"from (chart_facts|chart_divisionals|chart_dashas|panchanga_daily)", flat).group(1)
+    r = rows_for(tbl, flat)
+    if mode == "tabbed" and tbl == "chart_facts" and r:
+        r = [list(r[0]) + ["extra"]] + r[1:]
+    out.append(r)
+if mode == "last_only":
+    out = out[-1:]
+tags = mode == "tags" or "-q" not in args
+if tags:
+    print("BEGIN")
+for rs in out:
+    for r in rs:
+        print("\t".join(str(x) for x in r))
+if tags:
+    print("COMMIT")
+"""
+
+
+def fake_db(tmp_path, monkeypatch, charts=None, mode="", env=None):
+    """A fake psql on PATH (no database): serves per-chart rows, records every call. Returns the call-log reader."""
+    d = tmp_path / "fakedb"
+    d.mkdir(exist_ok=True)
+    bindir = d / "bin"
+    bindir.mkdir(exist_ok=True)
+    stub = bindir / "psql"
+    stub.write_text(FAKE_PSQL.replace("__PY__", sys.executable))
+    stub.chmod(0o755)
+    (d / "state.json").write_text(json.dumps({"charts": charts if charts is not None else {NATIVE: base_state()}}))
+    monkeypatch.setattr(F, "q", ORIG_Q)
+    monkeypatch.setattr(F.time, "sleep", lambda *_: None)
+    monkeypatch.setenv("PATH", f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}")
+    monkeypatch.delenv("FLIP_READER", raising=False)
+    monkeypatch.setenv("FAKE_DIR", str(d))
+    monkeypatch.setenv("FAKE_MODE", mode)
+    for k, v in (env or {}).items():
+        monkeypatch.setenv(k, v)
+
+    def calls():
+        p = d / "calls.log"
+        return [json.loads(ln) for ln in p.read_text().splitlines()] if p.exists() else []
+    return calls
+
+
+# --- F7 / F8 / F18: one repeatable-read read-only transaction, read-only session proven, timeout, defined exit
+def test_f7_read_state_is_one_repeatable_read_read_only_transaction(tmp_path, monkeypatch):
+    calls = fake_db(tmp_path, monkeypatch)
+    st = F.read_state(NATIVE)
+    assert st["chart_facts"] == base_state()["chart_facts"] and st["dashas"] == base_state()["dashas"] and st["daily"] == base_state()["daily"]
+    c = calls()
+    assert len(c) == 1, "all tables must be read in ONE psql session"
+    stmts = [x.strip() for x in c[0]["script"].split(";\n") if x.strip()]
+    assert stmts[0] == "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY" and stmts[-1] == "COMMIT"
+    inner = [re.sub(r"\s+", " ", x) for x in stmts[1:-1]]
+    assert inner and all(x.lower().startswith("select") for x in inner)
+    assert sum(1 for x in inner if "from chart_facts" in x) == 1 and sum(1 for x in inner if "from chart_dashas" in x) == 1
+    assert "default_transaction_read_only=on" in c[0]["pgoptions"]
+
+
+def test_f8_operator_pgoptions_are_kept_and_read_only_is_added(tmp_path, monkeypatch):
+    calls = fake_db(tmp_path, monkeypatch, env={"PGOPTIONS": "-c statement_timeout=5000"})
+    F.read_state(NATIVE)
+    assert calls()[0]["pgoptions"] == "-c statement_timeout=5000 -c default_transaction_read_only=on"
+
+
+def test_f8_a_session_that_is_not_read_only_reads_nothing(tmp_path, monkeypatch):
+    fake_db(tmp_path, monkeypatch, mode="rw")
+    with pytest.raises(F.ReadError, match="not read-only"):
+        F.read_state(NATIVE)
+
+
+def test_f7_timeout_and_persistent_failure_have_a_defined_exit_and_a_report(tmp_path, monkeypatch, capsys):
+    snap = snapshot_file(tmp_path, "s.json.gz", base_state())
+    d = write_hooks(tmp_path, ARGALA_OPT)
+    fake_db(tmp_path, monkeypatch, mode="sleep", env={"FLIP_TIMEOUT_SEC": "0.3"})
+    out = tmp_path / "r.json"
+    code = F.main(["--compare", str(snap), "--hooks-dir", str(d), "--out", str(out), "--allow-not-checked"])
+    assert code == 5 and F.EXIT_READ_ERROR == 5
+    rep = json.loads(out.read_text())
+    assert rep["verdict"] == "READ_ERROR" and rep["exit_code"] == 5 and "timed out" in rep["error"]
+    assert "READ_ERROR" in capsys.readouterr().out
+
+
+def test_f7_error_text_is_cut_to_200_chars_and_never_shows_a_dsn_or_password(tmp_path, monkeypatch, capsys):
+    secret = 'psql: error: connection to "postgres://suvarna_reader:Sup3rSecretPw@db.example:5432/x" failed: password=Sup3rSecretPw ' + "x" * 400
+    fake_db(tmp_path, monkeypatch, mode="fail", env={"FAKE_STDERR": secret})
+    with pytest.raises(F.ReadError) as ei:
+        F.read_state(NATIVE)
+    msg = str(ei.value)
+    assert "Sup3rSecretPw" not in msg and "postgres://suvarna_reader" not in msg
+    assert len(msg.split(": ", 1)[1]) <= 200 + len("read failed after 4 attempts: ")
+    assert F.main(["--snapshot", "native", "--out", str(tmp_path / "x.json.gz")]) == 5
+    assert "Sup3rSecretPw" not in capsys.readouterr().err
+
+
+def test_f7_a_reader_that_prints_only_the_last_result_set_is_an_incomplete_read(tmp_path, monkeypatch):
+    fake_db(tmp_path, monkeypatch, mode="last_only")
+    with pytest.raises(F.ReadError, match="incomplete read"):
+        F.read_state(NATIVE)
+
+
+def test_f18_a_row_with_the_wrong_column_count_is_a_read_error(tmp_path, monkeypatch):
+    fake_db(tmp_path, monkeypatch, mode="tabbed")
+    with pytest.raises(F.ReadError, match="columns"):
+        F.read_state(NATIVE)
+
+
+def test_f4_read_state_filters_by_chart_and_reads_only_that_chart(tmp_path, monkeypatch):
+    other = mutate(base_state(), lambda s: s["chart_facts"].append(["lahiri_chitrapaksha", "graha_position", "KETU", "pada", "", "4", "single"]))
+    fake_db(tmp_path, monkeypatch, charts={NATIVE: base_state(), OTHER: other})
+    assert F.read_state(NATIVE)["chart_facts"] == base_state()["chart_facts"]
+    assert F.read_state(OTHER)["chart_facts"] == other["chart_facts"]
+    assert len(F.read_state(NATIVE, dashas=False, daily=False)) == 2  # only facts + divisionals when the others are skipped
+
+
+def test_f4_read_state_with_no_dashas_sends_no_dasha_statement(tmp_path, monkeypatch):
+    calls = fake_db(tmp_path, monkeypatch)
+    F.read_state(NATIVE, dashas=False, daily=False)
+    assert "chart_dashas" not in calls()[0]["script"] and "panchanga_daily" not in calls()[0]["script"]
+
+
+def test_f8_phantom_chart_id_is_refused_whatever_the_shape(tmp_path):
+    for bad in ("362f9f17-0000-0000-0000-000000000000", "362F9F17-aaaa-bbbb-cccc-dddddddddddd", "{362f9f17-1111-2222-3333-444444444444}", "362f9f17", "362f9f170000000000000000000000"):
+        with pytest.raises(ValueError, match="phantom"):
+            F.normalize_chart_id(bad)
+        with pytest.raises(ValueError):
+            F.read_state(bad)
+        with pytest.raises(ValueError):
+            F.resolve(bad)
+    snap = snapshot_file(tmp_path, "p.json.gz", base_state(), chart="362f9f17-1111-2222-3333-444444444444")
+    assert F.main(["--compare", str(snap), "--against", str(snap), "--hooks-dir", str(write_hooks(tmp_path, ARGALA_OPT)), "--out", str(tmp_path / "o.json")]) == 2
+    bad_hook = hook("phantom", [entry(["a"])], charts=["362f9f17"])
+    write_hooks(tmp_path, bad_hook, name="ph")
+    assert F.load_hooks(str(tmp_path / "ph"))[1]
+
+
+def test_f15_snapshot_meta_carries_the_tool_version(tmp_path, monkeypatch, capsys):
+    fake_db(tmp_path, monkeypatch)
+    out = tmp_path / "snap.json.gz"
+    assert F.main(["--snapshot", "native", "--out", str(out)]) == 0
+    capsys.readouterr()
+    meta = json.load(gzip.open(out, "rt"))["meta"]
+    assert meta["tool_version"] == F.TOOL_VERSION and meta["single_transaction"] == "REPEATABLE READ READ ONLY" and meta["db_user"] == "fake_reader"
+
+
+# --- F6: never overwrite a baseline; verify the sidecar on compare
+def test_f6_snapshot_never_overwrites_a_baseline(tmp_path, monkeypatch, capsys):
+    fake_db(tmp_path, monkeypatch)
+    out = tmp_path / "base.json.gz"
+    assert F.main(["--snapshot", "native", "--out", str(out)]) == 0
+    first = out.read_bytes()
+    first_sha = (tmp_path / "base.json.gz.sha256").read_text()
+    changed = mutate(base_state(), change_argala)
+    (tmp_path / "fakedb" / "state.json").write_text(json.dumps({"charts": {NATIVE: changed}}))
+    assert F.main(["--snapshot", "native", "--out", str(out)]) == 6 and F.EXIT_REFUSED == 6
+    assert out.read_bytes() == first and (tmp_path / "base.json.gz.sha256").read_text() == first_sha
+    assert "never overwritten" in capsys.readouterr().err
+    out.with_name("base.json.gz.sha256").unlink()
+    assert F.main(["--snapshot", "native", "--out", str(out)]) == 6  # the file alone is enough to refuse
+
+
+def test_f6_compare_verifies_the_sha256_sidecar(tmp_path, capsys):
+    d = write_hooks(tmp_path, ARGALA_OPT)
+    good = snapshot_file(tmp_path, "g.json.gz", base_state())
+    other = snapshot_file(tmp_path, "o.json.gz", base_state())
+    out = tmp_path / "r.json"
+    assert F.main(["--compare", str(good), "--against", str(other), "--hooks-dir", str(d), "--out", str(out), "--allow-not-checked"]) == 0
+    assert json.loads(out.read_text())["meta"]["snapshot_sha256"] == {"snapshot": "ok", "against": "ok"}
+    # alter the baseline (a different valid snapshot under the same name, keeping the sidecar written for the original): the digest no longer matches
+    tampered = snapshot_file(tmp_path, "t.json.gz", mutate(base_state(), change_argala), sha=False)
+    (tmp_path / "t.json.gz.sha256").write_text((tmp_path / "g.json.gz.sha256").read_text().replace("g.json.gz", "t.json.gz"))
+    code = F.main(["--compare", str(tampered), "--against", str(other), "--hooks-dir", str(d), "--out", str(out), "--allow-not-checked"])
+    rep = json.loads(out.read_text())
+    assert code == 2 and rep["verdict"] == "FAIL" and any("SNAPSHOT INTEGRITY" in m for m in rep["failures"]["HOOK_ERROR"])
+
+
+def test_f6_a_snapshot_without_a_sidecar_is_not_checked_not_verified(tmp_path, capsys):
+    d = write_hooks(tmp_path, ARGALA_OPT)
+    a = snapshot_file(tmp_path, "a.json.gz", base_state(), sha=False)
+    b = snapshot_file(tmp_path, "b.json.gz", base_state())
+    out = tmp_path / "r.json"
+    assert F.main(["--compare", str(a), "--against", str(b), "--hooks-dir", str(d), "--out", str(out)]) == 4
+    rep = json.loads(out.read_text())
+    assert "snapshot.sha256" in [n["id"] for n in rep["not_checked"]] and rep["meta"]["snapshot_sha256"]["snapshot"] == "absent"
+    assert "NOT CHECKED snapshot.sha256" in capsys.readouterr().out
+
+
+# --- F1 (MED): a check that did not run prints NOT CHECKED, never a green ok
+def dasha_changed_pair():
+    return base_state(), mutate(base_state(), shift_vimshottari)
+
+
+def test_f1_no_dashas_makes_a_real_dasha_change_not_checked_and_never_green(tmp_path):
+    snap, cur = dasha_changed_pair()
+    rep = run(snap, cur, [], have_dash=False, standing_not_checked=NO_STANDING)
+    assert rep["verdict"] == "NOT_CHECKED" and rep["changes_total"] == 0 and F.exit_code(rep) == 4
+    row = [n for n in rep["not_checked"] if n["id"] == "chart_dashas.not_compared"]
+    assert len(row) == 1 and "NOT CHECKED" == row[0]["status"]
+    lines = F.render_summary(rep)
+    assert not any(ln.startswith("ok   DASHA_SHIFT_UNDECLARED") for ln in lines)
+    assert any(ln.startswith("n/a  DASHA_SHIFT_UNDECLARED: NOT EVALUATED") for ln in lines)
+    assert any(ln.startswith("NOT CHECKED chart_dashas.not_compared") for ln in lines)
+    assert rep["compared"] == {"chart_facts": True, "chart_divisionals": True, "chart_dashas": False, "panchanga_daily": True}
+    # the same pair, compared, is a failure: the skip really hid it
+    assert run(snap, cur, [], standing_not_checked=NO_STANDING)["verdict"] == "FAIL"
+    full = F.render_summary(run(base_state(), base_state(), [], standing_not_checked=NO_STANDING))
+    assert any(ln.startswith("ok   DASHA_SHIFT_UNDECLARED: 0") for ln in full)
+
+
+def test_f1_no_daily_makes_a_real_panchanga_change_not_checked(tmp_path):
+    cur = mutate(base_state(), lambda s: s["daily"][0].__setitem__(9, "Shashthi"))
+    rep = run(base_state(), cur, [], have_daily=False, standing_not_checked=NO_STANDING)
+    assert rep["verdict"] == "NOT_CHECKED" and rep["changes_total"] == 0
+    assert [n["id"] for n in rep["not_checked"]] == ["panchanga_daily.not_compared"]
+    assert any(ln.startswith("n/a  panchanga_daily: NOT COMPARED") for ln in F.render_summary(rep))
+    assert run(base_state(), cur, [], standing_not_checked=NO_STANDING)["verdict"] == "FAIL"
+
+
+def test_f1_cli_records_flags_and_skipped_sections_in_meta(tmp_path, capsys):
+    d = write_hooks(tmp_path, ARGALA_OPT)
+    snap = snapshot_file(tmp_path, "s.json.gz", base_state())
+    cur = snapshot_file(tmp_path, "c.json.gz", mutate(base_state(), shift_vimshottari))
+    out = tmp_path / "r.json"
+    assert F.main(["--compare", str(snap), "--against", str(cur), "--hooks-dir", str(d), "--out", str(out), "--no-dashas", "--allow-not-checked"]) == 0
+    meta = json.loads(out.read_text())["meta"]
+    assert meta["flags"]["no_dashas"] is True and meta["flags"]["no_daily"] is False and meta["skipped_sections"] == ["chart_dashas"]
+    assert "--no-dashas" in [n for n in json.loads(out.read_text())["not_checked"] if n["id"] == "chart_dashas.not_compared"][0]["reason"]
+    # without the flag the same files fail on the dasha shift: the saved evidence of the two runs can be told apart
+    out2 = tmp_path / "r2.json"
+    assert F.main(["--compare", str(snap), "--against", str(cur), "--hooks-dir", str(d), "--out", str(out2), "--allow-not-checked"]) == 2
+    meta2 = json.loads(out2.read_text())["meta"]
+    assert meta2["flags"]["no_dashas"] is False and meta2["skipped_sections"] == []
+    capsys.readouterr()
+
+
+@pytest.mark.parametrize("missing,which", [("dashas", "snapshot"), ("dashas", "against"), ("daily", "snapshot"), ("daily", "against")])
+def test_f1_a_section_missing_from_a_snapshot_is_not_checked(tmp_path, capsys, missing, which):
+    d = write_hooks(tmp_path, ARGALA_OPT)
+    full = base_state()
+    lacking = {k: v for k, v in base_state().items() if k != missing}
+    a = snapshot_file(tmp_path, "a.json.gz", lacking if which == "snapshot" else full)
+    b = snapshot_file(tmp_path, "b.json.gz", lacking if which == "against" else full)
+    out = tmp_path / "r.json"
+    assert F.main(["--compare", str(a), "--against", str(b), "--hooks-dir", str(d), "--out", str(out), "--allow-not-checked"]) == 0
+    rep = json.loads(out.read_text())
+    table = "chart_dashas" if missing == "dashas" else "panchanga_daily"
+    row = [n for n in rep["not_checked"] if n["id"] == f"{table}.not_compared"]
+    assert row and "lacks the section" in row[0]["reason"] and rep["meta"]["skipped_sections"] == [table]
+    capsys.readouterr()
+
+
+def test_f4_against_with_both_sections_compares_dashas(tmp_path, capsys):
+    """M20: --against must not switch the dasha comparison off by itself."""
+    d = write_hooks(tmp_path, ARGALA_OPT)
+    a = snapshot_file(tmp_path, "a.json.gz", base_state())
+    b = snapshot_file(tmp_path, "b.json.gz", mutate(base_state(), shift_vimshottari))
+    out = tmp_path / "r.json"
+    assert F.main(["--compare", str(a), "--against", str(b), "--hooks-dir", str(d), "--out", str(out)]) == 2
+    rep = json.loads(out.read_text())
+    assert rep["compared"]["chart_dashas"] is True and rep["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 1
+    capsys.readouterr()
+
+
+# --- SS ruling: the window must not skip dashas by habit
+def window_files(tmp_path):
+    d = write_hooks(tmp_path, ARGALA_OPT)
+    return d, snapshot_file(tmp_path, "s.json.gz", base_state()), snapshot_file(tmp_path, "c.json.gz", base_state())
+
+
+@pytest.mark.parametrize("skip", ["--no-dashas", "--no-daily"])
+def test_ss_skipping_with_require_lanes_is_refused_unless_acknowledged(tmp_path, capsys, skip):
+    d, a, b = window_files(tmp_path)
+    out = tmp_path / "r.json"
+    base = ["--compare", str(a), "--against", str(b), "--hooks-dir", str(d), "--out", str(out), "--allow-not-checked"]
+    assert F.main(base + [skip, "--require-lanes", "argala"]) == 6
+    assert not out.exists() and "REFUSED" in capsys.readouterr().err
+    assert F.main(base + [skip, "--require-lanes", "argala", "--i-know-dashas-are-not-compared"]) == 0
+    rep = json.loads(out.read_text())
+    assert rep["meta"]["flags"]["i_know_dashas_are_not_compared"] is True and rep["meta"]["skipped_sections"]
+    out.unlink()
+    assert F.main(base + [skip]) == 0 and out.exists()                             # a skip without --require-lanes is not the S-L1 window
+    out.unlink()
+    assert F.main(base + ["--require-lanes", "argala"]) == 0                       # require-lanes without a skip is the window: allowed
+    assert F.main(base + ["--require-lanes", "argala", "--no-dashas", "--no-daily"]) == 6   # both flags, still refused
+    capsys.readouterr()
+
+
+def test_ss_the_acknowledgement_flag_alone_changes_nothing(tmp_path, capsys):
+    d, a, b = window_files(tmp_path)
+    out = tmp_path / "r.json"
+    assert F.main(["--compare", str(a), "--against", str(b), "--hooks-dir", str(d), "--out", str(out), "--i-know-dashas-are-not-compared", "--allow-not-checked"]) == 0
+    assert json.loads(out.read_text())["compared"]["chart_dashas"] is True
+    capsys.readouterr()
+
+
+# --- F3 / F16: validator
+@pytest.mark.parametrize("name,bad", [
+    ("shift_count", hook("shift_count", [{"table": "chart_dashas", "kind": "dasha_shift", "systems": ["vimshottari"], "shift_range_sec": [1, 5], "expected_count": {"exact": 100}}])),
+    ("shift_count_min0", hook("shift_count_min0", [{"table": "chart_dashas", "kind": "dasha_shift", "systems": ["vimshottari"], "shift_range_sec": [1, 5], "expected_count": {"min": 0}}])),
+    ("exact_true", hook("exact_true", [entry(["a"], expected_count={"exact": True})])),
+    ("min_gt_max", hook("min_gt_max", [entry(["a"], expected_count={"min": 5, "max": 2})])),
+    ("max_false", hook("max_false", [entry(["a"], expected_count={"max": False})]))])
+def test_f3_f16_expected_count_misuse_is_rejected(tmp_path, name, bad):
+    write_hooks(tmp_path, bad)
+    hooks, errs = F.load_hooks(str(tmp_path / "hooks"))
+    assert errs and not hooks and any("expected_count" in e for e in errs), name
+
+
+def test_f16_valid_expected_counts_still_pass(tmp_path):
+    write_hooks(tmp_path, hook("ok", [entry(["a"], expected_count={"exact": 0}), entry(["b"], expected_count={"min": 2, "max": 2}), entry(["c"], expected_count={"min": 1})]))
+    assert F.load_hooks(str(tmp_path / "hooks"))[1] == []
+
+
+# --- F9: row order from the database must not matter, including the tier
+def test_f9_equal_rows_differing_only_in_tier_pair_in_a_fixed_order():
+    def two(order):
+        return mutate(base_state(), lambda s: s["chart_facts"].extend(
+            [["lahiri_chitrapaksha", "esoteric_point_yogi", "YOGI", "name", "Pushya", "", t] for t in order]))
+    rep = run(two(["single", "classical_match"]), two(["classical_match", "single"]), [], standing_not_checked=NO_STANDING)
+    assert rep["changes_total"] == 0 and rep["verdict"] == "PASS"
+    assert run(two(["single", "single"]), two(["single", "classical_match"]), [])["failure_counts"]["UNDECLARED_CHANGE"] == 1
+
+
+# --- F5: only a FULL ISO timestamp is a timestamp
+@pytest.mark.parametrize("text,kind", [("2026-01-01T00:00:00+00:00", "time"), ("2026-01-01 00:00:00+00", "time"), ("2026-01-01T00:00:00Z", "time"), ("2026-01-01T00:00", "time"),
+                                       ("2026-01-01T00:00:00.123456+05:30", "time"), ("2026-01-01T00:00 is the muhurta", "class_text"),
+                                       ("2026-01-01T00:00:00+00:00 until dusk", "class_text"), ("2026-01-01", "class_text"), ("Shukla Tritiya", "class_text")])
+def test_f5_kind_of_requires_a_full_iso_timestamp(text, kind):
+    assert F.kind_of(text, "", "k") == kind
+
+
+def test_f5_a_text_fact_that_starts_like_a_timestamp_is_a_class_change():
+    def with_text(t):
+        return mutate(base_state(), lambda s: s["chart_facts"].append(["INVARIANT", "muhurta_label", "M", "note", t, "", "single"]))
+    rep = run(with_text("2026-01-01T00:00 auspicious"), with_text("2026-01-01T00:00 inauspicious"), [])
+    assert rep["failure_counts"]["UNDECLARED_CHANGE"] == 1
+
+
+# --- F4: M10 / M15 / M18
+def test_f4_an_anchor_row_missing_from_the_current_state_is_an_alert():
+    cur = mutate(base_state(), lambda s: s.__setitem__("chart_facts", [r for r in s["chart_facts"] if not (r[1] == "graha_position" and r[2] == "SUN" and r[0] == "raman")]))
+    rep = run(base_state(), cur, [])
+    assert rep["verdict"] == "ALERT" and F.exit_code(rep, allow_not_checked=True) == 3
+    assert any(not a["ok"] and a["ayanamsha"] == "raman" and a["values"] == [] for a in rep["anchors"])
+
+
+def test_f21_an_empty_current_native_is_an_empty_read_not_an_alert():
+    cur = mutate(base_state(), lambda s: s.__setitem__("chart_facts", []))
+    rep = run(base_state(), cur, [])
+    assert rep["verdict"] == "FAIL" and F.exit_code(rep) == 2 and rep["failure_counts"]["EMPTY_READ"] == 1
+    assert rep["ALERT_anchor_changed"] is False and rep["anchors"] == []
+
+
+def test_f4_dasha_shift_threshold_is_two_seconds():
+    for sec, bad in ((0, False), (1, False), (2, False), (3, True), (-3, True), (6993, True)):
+        rep = run(base_state(), mutate(base_state(), lambda s: shift_vimshottari(s, sec)), [], standing_not_checked=NO_STANDING)
+        assert (rep["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 1) is bad, sec
+
+
+def test_f4_the_never_counted_as_passing_line_is_printed():
+    rep = run(base_state(), base_state(), [])
+    assert "NOT CHECKED items are never counted as passing" in F.render_summary(rep)
+    assert "NOT CHECKED items are never counted as passing; exit 0 only because --allow-not-checked was passed" in F.render_summary(rep, True)
+    clean = run(base_state(), base_state(), [], standing_not_checked=NO_STANDING)
+    assert not any("never counted as passing" in ln for ln in F.render_summary(clean))
+
+
+# --- F10: the standing registry
+def test_f10_standing_registry_names_every_known_unobserved_scope():
+    ids = [n["id"] for n in F.STANDING_NOT_CHECKED]
+    for want in ("chart_dashas.tier", "l1_tajik_varsha_year_lords.tier", "chart_vichara", "ga_yoga_firings.strength", "bodha_msr_signals", "bodha_rm_resonances",
+                 "ga_condition_composite", "ga_medical", "ga_vastu_*", "ga_prashna_*", "prashna_charts"):
+        assert want in ids
+    assert len(ids) == len(set(ids))
+    assert all(n["readback"] and n["reason"] and n["what"] for n in F.STANDING_NOT_CHECKED)
+    vich = [n for n in F.STANDING_NOT_CHECKED if n["id"] == "chart_vichara"][0]
+    assert "PR 2970" in vich["readback"]  # the SQL file exists only on that branch until the integration brings it
+    assert "compares dasha row sets" not in [n for n in F.STANDING_NOT_CHECKED if n["id"] == "chart_dashas.tier"][0]["reason"]
+
+
+# --- F12 (SS ruling): hooks_real are BYTE COPIES of the integration's hook directory, checked live
+def hook_dir_differences(src, fixtures):
+    """[] when the two directories hold the same top-level *.json hook files byte for byte."""
+    a = {f.name: f.read_bytes() for f in pathlib.Path(src).glob("*.json")}
+    b = {f.name: f.read_bytes() for f in pathlib.Path(fixtures).glob("*.json")}
+    diff = [f"only in the real hook directory: {n}" for n in sorted(set(a) - set(b))] + [f"only in hooks_real fixtures: {n}" for n in sorted(set(b) - set(a))]
+    diff += [f"bytes differ: {n}" for n in sorted(set(a) & set(b)) if a[n] != b[n]]
+    return diff
+
+
+def test_f12_the_comparison_helper_detects_missing_extra_and_changed_files(tmp_path):
+    src, fx = tmp_path / "src", tmp_path / "fx"
+    src.mkdir(), fx.mkdir()
+    (src / "a.json").write_text("1"), (fx / "a.json").write_text("1")
+    assert hook_dir_differences(src, fx) == []
+    (src / "b.json").write_text("2")
+    assert hook_dir_differences(src, fx) == ["only in the real hook directory: b.json"]
+    (fx / "b.json").write_text("3"), (fx / "c.json").write_text("4")
+    assert hook_dir_differences(src, fx) == ["only in hooks_real fixtures: c.json", "bytes differ: b.json"]
+    (src / "evidence").mkdir(), (src / "evidence" / "x.json").write_text("n")  # sub-folders are never hooks
+    assert hook_dir_differences(src, fx) == ["only in hooks_real fixtures: c.json", "bytes differ: b.json"]
+
+
+def test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory():
+    """LIVE when the directory exists. FLIP_INTEGRATION_HOOKS_DIR (explicit path) must exist; otherwise the repo's own s_l1_attribution_hooks/ is used.
+    Skipped ONLY when that repo directory is not in the tree yet (nothing to compare). Once it exists this never skips, in CI or locally.
+    Refresh procedure: FLIP_DETECTOR_README.md section 'Refreshing hooks_real'."""
+    env = os.environ.get("FLIP_INTEGRATION_HOOKS_DIR")
+    real = pathlib.Path(env) if env else pathlib.Path(F.DEFAULT_HOOKS_DIR)
+    if env:
+        assert real.is_dir(), f"FLIP_INTEGRATION_HOOKS_DIR={env} does not exist"
+    elif not real.is_dir():
+        pytest.skip(f"the integration hook directory is not in this tree yet: {real}; set FLIP_INTEGRATION_HOOKS_DIR to compare against another checkout")
+    diffs = hook_dir_differences(real, REAL_HOOKS)
+    assert not diffs, "hooks_real drifted from the hook directory (refresh per README 'Refreshing hooks_real', then regenerate the golden file):\n" + "\n".join(diffs)
+
+
+def test_f12_readme_documents_the_refresh_procedure_and_the_copy_shas():
+    text = (GOV_DIR / "FLIP_DETECTOR_README.md").read_text()
+    assert "Refreshing hooks_real" in text and "FLIP_INTEGRATION_HOOKS_DIR" in text and "FLIP_DETECTOR_REGEN_GOLDEN=1" in text
+    for sha in ("710b47ee1", "150a273a8", "1a8405f16", "f2b7a1d3e", "872724cbf"):
+        assert sha in text, sha
+
+
+def test_ss_the_readme_w7_command_is_complete_and_its_lanes_validate(capsys):
+    text = (GOV_DIR / "FLIP_DETECTOR_README.md").read_text()
+    block = text.split("### The W7 command (S-L1 window), written in full", 1)[1].split("```", 2)[1]
+    assert "--no-dashas" not in block and "--no-daily" not in block
+    assert "--hooks-dir 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks" in block and "--compare" in block
+    lanes = re.search(r"--require-lanes (\S+)", block).group(1)
+    assert F.main(["--validate-hooks", "--hooks-dir", str(REAL_HOOKS), "--require-lanes", lanes]) == 0
+    assert sorted(lanes.split(",")) == sorted(REAL_LANES)
+    capsys.readouterr()
+
+
+def test_f7_psql_runs_quiet_and_command_tags_are_never_data(tmp_path, monkeypatch):
+    """Found against a real PG15: psql prints BEGIN / COMMIT tags unless -q. The tool passes -q (the fake prints tags without it) and also tolerates a
+    wrapper that prints them regardless (mode 'tags')."""
+    fake_db(tmp_path, monkeypatch)
+    assert F.read_state(NATIVE)["chart_facts"] == base_state()["chart_facts"]  # would raise on a stray BEGIN row if -q were missing
+    fake_db(tmp_path, monkeypatch, mode="tags")
+    assert F.read_state(NATIVE)["chart_facts"] == base_state()["chart_facts"]

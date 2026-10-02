@@ -1,0 +1,27 @@
+{
+  "lane": "special_lagna_offset_other_charts",
+  "ruling": "special-lagna Sun-at-sunrise offset (non-canonical charts)",
+  "pr": "#2971",
+  "description": "Same fix as special_lagna_offset.json for the charts compared besides the canonical one. The offset equals the Sun's motion over the chart's timezone offset in hours (about 0.04 deg per hour, sign of the offset follows the timezone), so on a chart born near a sign, nakshatra or pada edge the corrected longitude can cross it. The class effect was computed offline for the canonical chart ONLY (zero changes there); for these charts no offline simulation exists, so the class keys are declared optional with no count. Row counts must not change.",
+  "charts": ["1c826d5a", "cb73cd3d"],
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["special_lagna"],
+      "fact_keys": ["sign", "sign_lord", "house_d1", "nakshatra", "nakshatra_lord", "pada"],
+      "change_types": ["value"],
+      "optional": true,
+      "expected_direction": "BHAVA/HORA/GHATI/VIGHATI points within the offset (<= 0.6 deg for any timezone) of a boundary may change; VARNADA may change only if a Hora Lagna sign changes; INDU/SREE never.",
+      "note": "not simulated offline for these charts: review each reported change against the chart's own longitudes before accepting."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["special_lagna"],
+      "fact_keys": ["longitude_sidereal", "sign", "sign_lord", "house_d1", "nakshatra", "nakshatra_lord", "pada"],
+      "change_types": ["appeared", "disappeared", "occurrence_count"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "none: 245 special_lagna rows per chart before and after.",
+      "note": "row counts unchanged."
+    }
+  ]
+}
