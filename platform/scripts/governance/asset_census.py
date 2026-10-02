@@ -73,6 +73,7 @@ import ast
 import bisect
 import collections
 import datetime as dt
+import hashlib
 import json
 import os
 import re
@@ -5974,6 +5975,27 @@ def _git_provenance(tool_file) -> dict:
     return dict(tool_commit=sha, tool_dirty=False)
 
 
+def _declarations_provenance() -> dict:
+    """`declarations_sha256` (sha256 of the BYTES of asset_declarations.json as read by this call) and `declarations_version` (the
+    file's `version`), so a certificate cannot cite a census taken before a declaration existed or changed (the registry fingerprint
+    does not cover this file). An unreadable file stamps both null with the reason `declarations_unavailable`; a readable file that
+    is not JSON / carries no string `version` keeps the sha of its bytes, stamps the version null and says why. Never a guess."""
+    try:
+        raw = DECLARATIONS_PATH.read_bytes()
+    except OSError as exc:
+        return dict(declarations_sha256=None, declarations_version=None,
+                    declarations_unavailable=f"{DECLARATIONS_PATH.name} could not be read: {type(exc).__name__}")
+    sha = hashlib.sha256(raw).hexdigest()
+    try:
+        ver = json.loads(raw.decode("utf-8")).get("version")
+    except (UnicodeDecodeError, ValueError, AttributeError):
+        ver = None
+    if not (isinstance(ver, str) and ver.strip()):
+        return dict(declarations_sha256=sha, declarations_version=None,
+                    declarations_unavailable=f"{DECLARATIONS_PATH.name} has no readable string `version` (its bytes are stamped)")
+    return dict(declarations_sha256=sha, declarations_version=ver)
+
+
 def census_stamp() -> dict:
     """Strategist ruling N-44 A: the provenance a layer census carries in its head, so a certificate can never be written
     from a census measured under a different registry revision or a different tool. Keys: `registry_revision`
@@ -5981,9 +6003,15 @@ def census_stamp() -> dict:
     runs from, only when that checkout is clean and verifiably the one this file lives in), `tool_dirty` (bool, or null when
     unknown) and, only when `tool_commit` is null, `tool_commit_unavailable` (the reason). Verdict-neutral by construction:
     read-only, touches no measurement, and the rollup reads only a layer's `layer` and `assets`, never its other head keys.
-    A null tool_commit is never guessed; consumers (E5.1) refuse it."""
+    A null tool_commit is never guessed; consumers (E5.1) refuse it.
+
+    E1.8 declarations stamp: also `declarations_sha256` / `declarations_version` (see `_declarations_provenance`), and
+    `declarations_unavailable` only when either is null. They are NOT fingerprinted content (REGISTRY_REVISION is unchanged and no
+    cell moves). Interplay with `tool_commit`: asset_declarations.json lives in the governance directory, so a MODIFIED tracked
+    declarations file already makes `tool_commit` null + `tool_dirty` true; the sha is always of the bytes actually read, so it also
+    distinguishes two CLEAN commits whose declarations differ, and a consumer compares it to the file at the ref it certifies."""
     return dict(registry_revision=REGISTRY_REVISION, registry_fingerprint=registry_fingerprint(),
-                **_git_provenance(__file__))
+                **_git_provenance(__file__), **_declarations_provenance())
 
 
 def census_scope(obj) -> dict | None:
