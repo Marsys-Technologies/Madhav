@@ -60,6 +60,62 @@ needs_pg = (lambda fn: fn) if _IN_CI else pytest.mark.skipif(
     not DSN, reason="NOT_RUN: set C7_BUILDER_ROLE_TEST_DATABASE_URL to the disposable Postgres"
 )
 
+# ── local DSN safety (in addition to BR.require_disposable, which we must not edit) ───────────────
+# BR.require_disposable reads urlparse(dsn).hostname, which sees only the FIRST host of a multi-host
+# URI: `postgresql://u:p@localhost:5432,db.prod.example.com:5432/c7_builder_role_test` passes it
+# and libpq would fail over to the second host. This fixture drops schema public and alters cluster
+# roles, so the whole libpq target (hosts, hostaddrs, dbname, env overrides) is validated here first.
+# A refused DSN FAILS in every environment (never skips, in CI or locally).
+
+_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+_EXPECTED_DB = BR.EXPECTED_DB_NAME
+_QUERY_TARGET_KEYS = frozenset({"host", "hostaddr", "dbname", "service"})
+
+
+def _is_loopback_or_socket(entry: str) -> bool:
+    return entry in _LOOPBACK_HOSTS or entry.startswith("/")
+
+
+def refuse_unsafe_dsn(dsn: str, env: "dict[str, str] | None" = None) -> None:
+    """Raise ValueError unless every libpq target in `dsn` (and the environment) is a loopback
+    host or unix socket and the database is exactly the disposable one."""
+    from urllib.parse import parse_qsl, urlparse
+
+    from psycopg.conninfo import conninfo_to_dict
+
+    env = os.environ if env is None else env
+    parsed = urlparse(dsn)
+    if "," in (parsed.netloc or ""):
+        raise ValueError("REFUSED: ',' in the DSN authority (multi-host failover list)")
+    if parsed.scheme in ("postgresql", "postgres"):
+        overrides = {k.lower() for k, _ in parse_qsl(parsed.query)} & _QUERY_TARGET_KEYS
+        if overrides:
+            raise ValueError(f"REFUSED: query-string target override(s) {sorted(overrides)}")
+    info = conninfo_to_dict(dsn)
+    for key in ("host", "hostaddr"):
+        if "," in info.get(key, ""):
+            raise ValueError(f"REFUSED: ',' in {key} (multi-host failover list)")
+    entries = [e for key in ("host", "hostaddr") for e in info.get(key, "").split(",") if e]
+    if not info.get("host") and not info.get("hostaddr"):
+        raise ValueError("REFUSED: the DSN names no host (the target would come from the environment)")
+    bad = [e for e in entries if not _is_loopback_or_socket(e)]
+    if bad:
+        raise ValueError(f"REFUSED: non-loopback host/hostaddr {bad}")
+    if info.get("dbname") != _EXPECTED_DB:
+        raise ValueError(f"REFUSED: dbname {info.get('dbname')!r} is not {_EXPECTED_DB!r}")
+    # Environment overrides libpq would honour: PGHOSTADDR redirects the connection even when the
+    # DSN names a host; PGHOST/PGDATABASE would redirect a DSN that omits them; PGSERVICE can fill
+    # any unset parameter from a service file we cannot see.
+    for var in ("PGHOST", "PGHOSTADDR"):
+        env_bad = [e for e in env.get(var, "").split(",") if e and not _is_loopback_or_socket(e)]
+        if env_bad:
+            raise ValueError(f"REFUSED: environment {var} names non-loopback {env_bad}")
+    if env.get("PGDATABASE") and env["PGDATABASE"] != _EXPECTED_DB:
+        raise ValueError(f"REFUSED: environment PGDATABASE {env['PGDATABASE']!r} is not {_EXPECTED_DB!r}")
+    if env.get("PGSERVICE"):
+        raise ValueError("REFUSED: environment PGSERVICE is set (a service file could redirect the target)")
+
+
 MV = "mv_chart_sade_sati_lifetime_summary"
 CHART = "11111111-1111-4111-8111-111111111111"
 BUILD = "22222222-2222-4222-8222-222222222222"
@@ -74,6 +130,10 @@ def world():
             "C7_BUILDER_ROLE_TEST_DATABASE_URL is unset under GITHUB_ACTIONS: this suite must run "
             "against the disposable Postgres in CI, never skip"
         )
+    try:
+        refuse_unsafe_dsn(DSN)
+    except ValueError as exc:
+        pytest.fail(str(exc))  # a refused DSN fails in every environment, never skips
     BR.require_disposable(DSN)
     admin = psycopg.connect(DSN, autocommit=True, connect_timeout=5)
     try:
@@ -322,3 +382,72 @@ def test_contract_test_doubles_stay_ignored(monkeypatch):
     W = _light_writer(lambda ctx: WriterResult(asset_id="ga_positions", rows_inserted=5))
     assert W().run(_ctx(Double())).rows_inserted == 5
     assert rec.completed == ["ga_positions"]
+
+
+# ── no database needed: the DSN refusal ──────────────────────────────────────────────────────────
+
+GOOD = "postgresql://postgres:postgres@localhost:5432/c7_builder_role_test"
+
+
+@pytest.mark.parametrize("dsn", [
+    GOOD,
+    "postgresql://postgres@127.0.0.1:55442/c7_builder_role_test",
+    "postgresql://postgres@[::1]:5432/c7_builder_role_test",
+    "host=/tmp/pg_socket_dir dbname=c7_builder_role_test",
+    "host=localhost dbname=c7_builder_role_test user=postgres",
+])
+def test_dsn_guard_accepts_loopback_and_socket_targets(dsn):
+    refuse_unsafe_dsn(dsn, env={})
+
+
+@pytest.mark.parametrize(("dsn", "why"), [
+    ("postgresql://u:p@localhost:5432,db.prod.example.com:5432/c7_builder_role_test", "','"),
+    ("postgresql://u@localhost,db.prod.example.com/c7_builder_role_test", "','"),
+    ("postgresql://u@localhost:5432,10.0.0.5:5432/c7_builder_role_test", "','"),
+    ("postgresql://u@localhost,10.0.0.5/c7_builder_role_test", "','"),
+    ("host=localhost,10.0.0.5 dbname=c7_builder_role_test", "','"),
+    ("hostaddr=127.0.0.1,10.0.0.5 host=localhost dbname=c7_builder_role_test", "','"),
+    ("postgresql://u@localhost/c7_builder_role_test?host=db.prod.example.com", "query-string"),
+    ("postgresql://u@localhost/c7_builder_role_test?hostaddr=10.1.1.1", "query-string"),
+    ("postgresql:///c7_builder_role_test?host=/tmp/pg_socket_dir", "query-string"),
+    ("postgresql://u@localhost/c7_builder_role_test?dbname=postgres", "query-string"),
+    ("postgresql://u@localhost/c7_builder_role_test?service=prod", "query-string"),
+    ("postgresql://u@db.prod.example.com:5432/c7_builder_role_test", "non-loopback"),
+    ("postgresql://u@10.0.0.5/c7_builder_role_test", "non-loopback"),
+    ("host=localhost hostaddr=10.0.0.5 dbname=c7_builder_role_test", "non-loopback"),
+    ("postgresql://u@localhost:5432/postgres", "dbname"),
+    ("postgresql://u@localhost:5432/", "dbname"),
+    ("postgresql://u@localhost:5432/c7_builder_role_test_other", "dbname"),
+    ("postgresql:///c7_builder_role_test", "names no host"),
+])
+def test_dsn_guard_refuses_unsafe_targets(dsn, why):
+    with pytest.raises(ValueError, match="REFUSED") as ei:
+        refuse_unsafe_dsn(dsn, env={})
+    assert why in str(ei.value)
+
+
+@pytest.mark.parametrize(("env", "why"), [
+    ({"PGHOSTADDR": "10.0.0.5"}, "PGHOSTADDR"),
+    ({"PGHOSTADDR": "127.0.0.1,10.0.0.5"}, "PGHOSTADDR"),
+    ({"PGHOST": "db.prod.example.com"}, "PGHOST"),
+    ({"PGHOST": "localhost,db.prod.example.com"}, "PGHOST"),
+    ({"PGDATABASE": "postgres"}, "PGDATABASE"),
+    ({"PGSERVICE": "prod"}, "PGSERVICE"),
+])
+def test_dsn_guard_refuses_environment_overrides(env, why):
+    with pytest.raises(ValueError, match="REFUSED") as ei:
+        refuse_unsafe_dsn(GOOD, env=env)
+    assert why in str(ei.value)
+
+
+def test_dsn_guard_allows_loopback_environment():
+    refuse_unsafe_dsn(GOOD, env={"PGHOST": "localhost", "PGHOSTADDR": "127.0.0.1",
+                                 "PGDATABASE": "c7_builder_role_test"})
+
+
+def test_shared_fixture_guard_alone_would_have_passed_the_multihost_dsn():
+    """Why the local refusal exists: BR.require_disposable (not ours to edit) accepts the first host."""
+    multi = "postgresql://u:p@localhost:5432,db.prod.example.com:5432/c7_builder_role_test"
+    assert BR.require_disposable(multi) == "c7_builder_role_test"
+    with pytest.raises(ValueError, match="REFUSED"):
+        refuse_unsafe_dsn(multi, env={})
