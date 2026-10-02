@@ -96,7 +96,8 @@ def test_c1_a_typed_NA_with_no_na_block_is_not_satisfied(w):
 
 
 def test_c1_an_NA_of_another_criterion_does_not_borrow_a_rule(w):
-    w.find("ga_alpha", "Idem.alt").update(verdict="N/A", na=dict(NA_NULL))      # rule belongs to Null.x
+    w.find("ga_alpha", "Idem.alt").update(verdict="N/A", na=dict(NA_NULL), citation_state=None,      # rule belongs to Null.x
+                                                     citation_state_caveat=False)       # (an N/A carries no state)
     assert got(w) == ALL - {"ga_alpha"}
 
 
