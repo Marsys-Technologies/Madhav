@@ -340,9 +340,11 @@ def main():
 #                     evidence.census_run_id, writer_hashes{path: sha256}, writer_hashes_reason, upstream_cert_ids,
 #                     semantic_fingerprint, cert_key "<asset>|<kind>|<criterion>", generation (1..n per key). The
 #                     current record of a cert_key is its highest generation.
-#                     record_version 1 or 2 (anything else raises). v2 adds citation_state (sourced|sourced_ocr_unverified|
-#                     unsourced|refuted|null) and citation_state_caveat (bool, must agree with the state); a v1 record may not
-#                     carry them (v1 reads as null). A PASS whose state is unsourced/refuted does not count (N-74).
+#                     record_version 1 or 2 (absent = 1; anything else raises). v2 (the real writer's output for EVERY record)
+#                     carries citation_state (sourced|sourced_ocr_unverified|unsourced|refuted|null; a state only on a citation
+#                     gate) and citation_state_caveat (exactly: a citation-gate PASS whose state is not `sourced`, so a null-state
+#                     Ldgr.source_presence PASS has caveat true and counts); a v1 record may not carry them (v1 reads as null,
+#                     caveat false: the choice E5.1's reader makes). unsourced/refuted PASS lines raise (N-74).
 #   invalidation      E5.5: asset, layer, invalidates "<cert_id>" (a certificate on an EARLIER line), reason
 #                     [{code,...}], walk >= 1. A repeated invalidation of one certificate is tolerated; the first wins.
 #   watermark         E5.5: asset "_ledger", covers_seq (the seq of the last record the evaluation covered, below the
@@ -431,7 +433,7 @@ E63_DISPOSITIONS = frozenset({"keep", "integrate", "enrich", "qualify", "consoli
 E63_TERMINAL_DISPOSITIONS = frozenset({"retire", "consolidate"})
 E63_RECORD_VERSIONS = (1, 2)          # E5.1 record_version: 2 adds `citation_state` (N-74); v1 reads as null
 E63_CITATION_STATES = ("sourced", "sourced_ocr_unverified", "unsourced", "refuted")
-E63_CITATION_BLOCKING = ("unsourced", "refuted")             # a PASS in one of these states does not count
+E63_CITATION_BLOCKING = ("unsourced", "refuted")             # the census caps these at NO_DETECTOR: a PASS line carrying one raises
 E63_CITATION_CRITERIA = ("Carr.D1", "Ldgr.source_presence")   # the cells whose citation state is reported per criterion
 E63_BASIS_DECLARATION = "declaration"        # the one recognised `basis` (asset_census._check_contribution)
 # Layer-wide gap rows attach to no asset (the real ledger holds five, e.g. Build.diagnosability): the one pseudo-asset
@@ -928,6 +930,35 @@ def _e63_is_event_line(r):
     return not (r.get("kind") in E63_CERT_KINDS or (isinstance(r.get("verdict"), str) and r["verdict"] in E63_VERDICTS))
 
 
+def _e63_check_citation_fields(r, where, verdict, kind, crit):
+    """E5.1's `_check_citation_fields`, mirrored (parity-tested): an absent record_version reads as 1; v1 may not carry the
+    v2 fields and reads as citation_state null / caveat false; a v2 record carries BOTH fields, a state only on a gate
+    certificate of a citation criterion, never `unsourced`/`refuted` on a PASS (the census caps those at NO_DETECTOR, so
+    such a line is not elevation-grade at all: it raises rather than counting), and the caveat is exactly "a gate PASS
+    on a citation criterion whose state is not `sourced`" (so a null-state Ldgr.source_presence PASS carries caveat true
+    and still COUNTS)."""
+    rv = r.get("record_version", 1)
+    if not _e63_int(rv) or rv not in E63_RECORD_VERSIONS:
+        _e63_fail("malformed", f"{where}: record_version {rv!r} is not one this reader knows {E63_RECORD_VERSIONS}")
+    if rv == 1:
+        if "citation_state" in r or "citation_state_caveat" in r:
+            _e63_fail("malformed", f"{where}: a record_version 1 record may not carry citation_state (v1 reads as null)")
+        r["citation_state"], r["citation_state_caveat"] = None, False       # the dict only; the bytes are untouched
+        return
+    if "citation_state" not in r or "citation_state_caveat" not in r:
+        _e63_fail("malformed", f"{where}: a record_version 2 record must carry citation_state and citation_state_caveat")
+    cs, cc = r["citation_state"], r["citation_state_caveat"]
+    if cs is not None and (not isinstance(cs, str) or cs not in E63_CITATION_STATES):
+        _e63_fail("malformed", f"{where}: citation_state {cs!r} is outside {E63_CITATION_STATES} (or null)")
+    citation_gate = kind == "gate" and crit in E63_CITATION_CRITERIA
+    if cs is not None and not citation_gate:
+        _e63_fail("malformed", f"{where}: citation_state {cs!r} on a record that is not a {E63_CITATION_CRITERIA} gate")
+    if verdict == "PASS" and cs in E63_CITATION_BLOCKING:
+        _e63_fail("malformed", f"{where}: a PASS with citation_state {cs!r} (the census caps that at NO_DETECTOR)")
+    if not isinstance(cc, bool) or cc != (citation_gate and verdict == "PASS" and cs != "sourced"):
+        _e63_fail("malformed", f"{where}: citation_state_caveat {cc!r} contradicts verdict {verdict!r} / citation_state {cs!r}")
+
+
 def _e63_check_cert(r, n, facts):
     where = f"{E63_CERTS_PATH} line {n}"
     asset, kind, crit, verdict = r.get("asset"), r.get("kind"), r.get("criterion"), r.get("verdict")
@@ -963,18 +994,7 @@ def _e63_check_cert(r, n, facts):
         _e63_fail("malformed", f"{where}: semantic_fingerprint must be 64 lower-case hex or null")
     if r.get("na") is not None and not isinstance(r.get("na"), dict):
         _e63_fail("malformed", f"{where}: na must be an object or null")
-    rv = r.get("record_version")
-    if not _e63_int(rv) or rv not in E63_RECORD_VERSIONS:
-        _e63_fail("malformed", f"{where}: record_version {rv!r} is not one this reader knows {E63_RECORD_VERSIONS}")
-    cs, cc = r.get("citation_state"), r.get("citation_state_caveat")
-    if rv == 1 and ("citation_state" in r or "citation_state_caveat" in r):
-        _e63_fail("malformed", f"{where}: a record_version 1 record may not carry citation_state (v1 reads as null)")
-    if cs is not None and cs not in E63_CITATION_STATES:
-        _e63_fail("malformed", f"{where}: citation_state {cs!r} is outside {E63_CITATION_STATES} (or null)")
-    if cc is not None and not isinstance(cc, bool):
-        _e63_fail("malformed", f"{where}: citation_state_caveat must be a boolean")
-    if cc is not None and cc != (verdict == "PASS" and crit in E63_CITATION_CRITERIA and cs not in (None, "sourced")):
-        _e63_fail("malformed", f"{where}: citation_state_caveat contradicts citation_state {cs!r} on {crit}")
+    _e63_check_citation_fields(r, where, verdict, kind, crit)
     if kind == "gate":
         if r.get("cross_checked") is not True:
             _e63_fail("malformed", f"{where}: a gate record must carry cross_checked: true (the writer reads its verdict "
@@ -1276,8 +1296,6 @@ def _e63_satisfies(rec, state, addition):
                 or state.kinds.get(rec["asset"]) not in kinds):
             return False             # an unrecognised basis, or `declaration` where the registry does not define it
     if v == "PASS":
-        if rec.get("citation_state") in E63_CITATION_BLOCKING:
-            return False            # an unsourced or refuted citation is no PASS (N-74); reported by citation_blocked_cells
         if _e63_is_none(rec["detector"]) or (
                 not addition and _e63_is_none(state.facts.criteria.get(crit, {}).get("detector", ""))):
             return False            # detector NONE never reaches PASS (the record's own, or the registry's)
@@ -1323,17 +1341,14 @@ def _e63_asset_report(asset, state, disp, gaps):
             else:
                 if rec.get("basis") == E63_BASIS_DECLARATION:
                     declared += 1
-                cs = rec.get("citation_state")
-                if cs is not None:
-                    if c in E63_CITATION_CRITERIA:
-                        cit_states[c] = cs
-                    caveat = caveat or cs != "sourced"
+                if rec.get("citation_state") is not None and c in E63_CITATION_CRITERIA:
+                    cit_states[c] = rec["citation_state"]
+                caveat = caveat or rec["citation_state_caveat"] is True
     for a in d["additions"]:                                                                 # (2)
         rec = (state.by_key.get(f"{asset}|addition|{a}") or [None])[-1]
         if rec is None or not _e63_satisfies(rec, state, addition=True):
             return None
-        if rec.get("citation_state") not in (None, "sourced"):
-            caveat = True
+        caveat = caveat or rec["citation_state_caveat"] is True
     if any(_e63_gap_blocks(g, d["additions"], state.facts.info_families) for g in gaps.get(asset, ())):   # (3)
         return None
     return dict(basis="measured", declaration_based_pass_cells=declared, ruled_na_cells=ruled,
@@ -1385,11 +1400,13 @@ def elevated_report(ref: str, repo: str) -> dict:
     retirement" separately.
 
     CITATION STATE (N-74). E5.1 record_version 2 carries `citation_state` (sourced | sourced_ocr_unverified | unsourced |
-    refuted; null when not declared or not applicable; v1 records read as null). `citation_states` maps the asset's
-    Carr.D1 / Ldgr.source_presence PASS cells to their state; `citation_caveat` is true when ANY of its PASS cells (core
-    gates or additions) has a state other than `sourced`, so a dashboard can show "ELEVATED on OCR-only citations" on its
-    own. A PASS whose state is `unsourced` or `refuted` does NOT count (the asset is not elevated; see
-    `citation_blocked_cells`); `sourced_ocr_unverified` counts and sets the caveat.
+    refuted; null when not declared or not applicable; v1 records read as null, caveat false). `citation_states` maps
+    the asset's Carr.D1 / Ldgr.source_presence PASS cells that carry a non-null state to it; `citation_caveat` is true when
+    ANY of its PASS cells carries the writer's `citation_state_caveat` (a citation-criterion PASS whose state is not
+    `sourced`: that includes `sourced_ocr_unverified` AND a null-state Ldgr.source_presence PASS, which still counts), so
+    a dashboard can show "ELEVATED on OCR-only or undeclared citations" on its own. A cell whose state is `unsourced` or
+    `refuted` is never a PASS (the census caps it at NO_DETECTOR; a PASS line carrying one raises as a bad ledger);
+    `citation_blocked_cells` lists such current cells.
 
     Reads only `git -C repo show <ref>:<path>`; never the working tree or a database; no side effects. Raises
     ElevatedInputError (WatermarkOlderThanLedger when E5.5's watermark does not cover every certificate) on any
@@ -1405,16 +1422,17 @@ def elevated_report(ref: str, repo: str) -> dict:
 
 
 def citation_blocked_cells(ref: str, repo: str) -> list:
-    """The PASS certificates that do NOT count because their citation state is `unsourced` or `refuted` (N-74):
-    [{asset, criterion, cert_id, citation_state}] for the latest, current generation of each. This is how the
-    withheld ELEVATED is reported (the asset is simply absent from `elevated_report`). Same inputs, same raises."""
+    """The current certificates whose citation state is `unsourced` or `refuted` (N-74): [{asset, criterion, cert_id,
+    verdict, citation_state}]. The census caps such a cell at NO_DETECTOR (E5.1 refuses a PASS carrying one), so this is
+    how a withheld ELEVATED is explained: the asset is simply absent from `elevated_report`, and this says why. Same
+    inputs, same raises."""
     state, _disp, _gaps, _pop = _e63_load(ref, repo)
     out = []
     for key in sorted(state.by_key):
         rec = state.by_key[key][-1]
-        if (rec["verdict"] == "PASS" and rec.get("citation_state") in E63_CITATION_BLOCKING and is_current(rec, state)):
+        if rec.get("citation_state") in E63_CITATION_BLOCKING and is_current(rec, state):
             out.append(dict(asset=rec["asset"], criterion=rec["criterion"], cert_id=rec["cert_id"],
-                            citation_state=rec["citation_state"]))
+                            verdict=rec["verdict"], citation_state=rec["citation_state"]))
     return out
 
 

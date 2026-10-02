@@ -15,3 +15,12 @@ over the E6.3 mini registry (`_e6_3_fixtures.MINI_CENSUS`), for two L1 assets `g
 E5.1 and E5.5 were still being finished at that time: regenerate with `python3 make_golden.py <out dir>` when they land and
 re-run `test_e6_3_e5_reconcile.py` (its parity tests run the sibling modules' own verifiers on the same bytes).
 The writer file bodies the records hash are `# writer of <asset>, v1\n` (see `test_e6_3_e5_reconcile.py`).
+
+## ledger_v2.jsonl (N-74 citation_state, record_version 2)
+
+Produced ONCE by `make_golden_v2.py` with the REAL E5.1 citation-state writer (`nikasha_certify.write_certification`, branch
+`suvarna/engine-E5.1-citation-state`, worktree at generation time) and the real E5.5 `invalidate()` (one clean walk), over the mini
+registry, with the writer's `CITATION_CRITERIA` patched to the mini registry's `Ldgr.src` / `Idem.alt`. Four assets: `ga_alpha`
+sourced; `ga_beta` Ldgr.src `sourced_ocr_unverified` (caveat true); `ga_gamma` Ldgr.src PASS with a NULL state (caveat true, still
+a PASS); `ga_delta` Idem.alt NO_DETECTOR / `unsourced` (the census caps it). Every record is `record_version` 2 with
+`citation_state` (null except on the citation gates) and `citation_state_caveat`. Regenerate when the writer's shape changes.

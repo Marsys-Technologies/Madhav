@@ -1,30 +1,33 @@
 """E6.3 / N-74: `citation_state` reaches the ELEVATED output as a field.
 
-E5.1 record_version 2 carries `citation_state` (sourced | sourced_ocr_unverified | unsourced | refuted | null) and
-`citation_state_caveat`; v1 records read as null. FIXTURES: v1 records come from the real E5.1 writer (the golden ledgers in
-fixtures/e6_3_golden, written by nikasha_certify.write_certification, are v1: see test_e6_3_e5_reconcile.py, which must
-keep passing); v2 lines here are HAND-WRITTEN by the fixtures (cert(..., citation_state=...)) and chained by the shared
-chain rule, because the v2 writer (branch suvarna/engine-E5.1-citation-state) is not merged yet.
-The mini registry has no Carr.D1 / Ldgr.source_presence, so the reported citation criteria are patched to Ldgr.src / Idem.alt.
+FIXTURE PROVENANCE. The real v2 writer (branch suvarna/engine-E5.1-citation-state) produced fixtures/e6_3_golden/ledger_v2.jsonl
+(see its README); the hand-written lines here follow exactly what that writer produces for EVERY record: record_version 2,
+citation_state (null except on a citation gate), citation_state_caveat (true exactly for a citation-gate PASS whose state is not
+`sourced`, so a NULL-state Ldgr.source_presence PASS carries caveat true and still counts). v1 records (the real v1 writer's
+golden ledgers, and cert(..., v1=True)) read as state null, caveat false: the choice E5.1's reader makes (ASSUMED here; E5.1's
+builder is settling the v1-vs-v2 caveat reading). The mini registry has no Carr.D1 / Ldgr.source_presence: the reported citation
+criteria are patched (mini_patch) to Ldgr.src / Idem.alt.
 """
 from __future__ import annotations
 
+import json
 import os
+import pathlib
 import sys
 
 import pytest
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _e6_3_fixtures import World, cert, disp, load_tracker, mini_patch  # noqa: E402
+from _e6_3_fixtures import CERTS, World, cert, chained, disp, load_tracker, mini_patch  # noqa: E402
 
 T = load_tracker()
+GOLDEN = pathlib.Path(__file__).resolve().parent / "fixtures" / "e6_3_golden" / "ledger_v2.jsonl"
 ALL = {"ga_alpha", "bg_beta", "ka_gamma"}
 
 
 @pytest.fixture(autouse=True)
 def _mini(monkeypatch):
     mini_patch(monkeypatch, T)
-    monkeypatch.setattr(T, "E63_CITATION_CRITERIA", ("Ldgr.src", "Idem.alt"))
 
 
 @pytest.fixture
@@ -32,11 +35,9 @@ def w(tmp_path):
     return World(tmp_path).default()
 
 
-def put(w, asset, crit, state, kind="gate", verdict="PASS"):
-    """Replace the (v1) certificate of asset/crit by a v2 one carrying `state`."""
+def put(w, asset, crit, state, kind="gate", verdict="PASS", **over):
     old = w.find(asset, crit, kind)
-    i = w.certs.index(old)
-    w.certs[i] = cert(asset, crit, verdict, kind=kind, citation_state=state)
+    w.certs[w.certs.index(old)] = cert(asset, crit, verdict, kind=kind, citation_state=state, **over)
 
 
 def report(w):
@@ -51,76 +52,177 @@ def raises(w):
     return e.value
 
 
-def test_v1_records_read_as_null_state_and_no_caveat(w):
-    rep = report(w)
-    for a in ("ga_alpha", "bg_beta", "ka_gamma"):
-        assert rep[a]["citation_states"] == {} and rep[a]["citation_caveat"] is False
+# ---- the real writer's bytes ----------------------------------------------------------------------------------------
 
+def golden_world(tmp_path):
+    w = World(tmp_path)
+    for a in ("ga_alpha", "ga_beta", "ga_gamma", "ga_delta"):
+        w.disps.append(disp(a, "keep"))
+    w.raw[CERTS] = GOLDEN.read_bytes()
+    w.commit()
+    return w
+
+
+def test_golden_v2_ledger_written_by_the_real_writer_is_read_end_to_end(tmp_path):
+    w = golden_world(tmp_path)
+    rep = T.elevated_report(w.last, str(w.repo))
+    assert set(rep) == {"ga_alpha", "ga_beta", "ga_gamma"} == w.elevated(T)               # ga_delta: Idem.alt unsourced
+    assert rep["ga_alpha"]["citation_states"] == {"Idem.alt": "sourced", "Ldgr.src": "sourced"}
+    assert rep["ga_alpha"]["citation_caveat"] is False
+    assert rep["ga_beta"]["citation_states"] == {"Idem.alt": "sourced", "Ldgr.src": "sourced_ocr_unverified"}
+    assert rep["ga_beta"]["citation_caveat"] is True
+    # a NULL-state Ldgr PASS carries caveat true, COUNTS, and is not listed as a state
+    assert rep["ga_gamma"]["citation_states"] == {"Idem.alt": "sourced"} and rep["ga_gamma"]["citation_caveat"] is True
+    assert T.citation_blocked_cells(w.last, str(w.repo)) == [dict(
+        asset="ga_delta", criterion="Idem.alt", cert_id="ga_delta|gate|Idem.alt@1", verdict="NO_DETECTOR",
+        citation_state="unsourced")]
+
+
+def test_golden_v2_every_record_carries_version_2_state_and_caveat():
+    rows = [json.loads(ln) for ln in GOLDEN.read_text().splitlines()[1:] if json.loads(ln).get("kind") in ("gate", "addition")]
+    assert rows and all(r["record_version"] == 2 and "citation_state" in r and "citation_state_caveat" in r for r in rows)
+    assert {r["citation_state"] for r in rows if r["criterion"] not in ("Ldgr.src", "Idem.alt")} == {None}
+
+
+# ---- v1 and v2 -------------------------------------------------------------------------------------------------------
+
+def test_v1_records_read_as_null_state_and_no_caveat(w):
+    for i, c in enumerate(w.certs):
+        w.certs[i] = cert(c["asset"], c["criterion"], c["verdict"], kind=c["kind"], na=c["na"], v1=True)
+    rep = report(w)
+    assert set(rep) == ALL
+    for a in ALL:
+        assert rep[a]["citation_states"] == {} and rep[a]["citation_caveat"] is False
+    assert all(r["record_version"] == 1 and "citation_state" not in r for r in w.certs)
+
+
+def test_both_record_versions_are_accepted_in_one_ledger(w):
+    w.certs[w.certs.index(w.find("ga_alpha", "Idem.pat"))] = cert("ga_alpha", "Idem.pat", v1=True)
+    assert {c["record_version"] for c in w.certs} == {1, 2}
+    w.commit()
+    assert w.elevated(T) == ALL
+
+
+def test_a_record_with_no_record_version_reads_as_v1_like_e5_1(w):
+    rec = w.find("ga_alpha", "Idem.pat")
+    for k in ("record_version", "citation_state", "citation_state_caveat"):
+        del rec[k]
+    assert report(w)["ga_alpha"]["citation_caveat"] is False
+
+
+@pytest.mark.parametrize("rv", [0, 3, 99, True, "2", None, 2.0])
+def test_an_unknown_record_version_raises(w, rv):
+    w.find("ga_alpha", "Idem.pat")["record_version"] = rv
+    raises(w)
+
+
+def test_a_v1_record_that_carries_a_v2_field_raises(w):
+    rec = w.find("ga_alpha", "Idem.pat")
+    rec["record_version"] = 1
+    raises(w)                                                    # still carries citation_state/_caveat
+    del rec["citation_state"]
+    raises(w)                                                    # still carries the caveat
+    del rec["citation_state_caveat"]
+    w.commit()
+    assert w.elevated(T) == ALL
+
+
+@pytest.mark.parametrize("missing", ["citation_state", "citation_state_caveat"])
+def test_a_v2_record_must_carry_both_fields(w, missing):
+    del w.find("ga_alpha", "Idem.pat")[missing]
+    raises(w)
+
+
+# ---- states and caveat -----------------------------------------------------------------------------------------------
 
 def test_a_sourced_state_is_reported_and_sets_no_caveat(w):
-    put(w, "ga_alpha", "Ldgr.src", "sourced")
     rep = report(w)
-    assert rep["ga_alpha"]["citation_states"] == {"Ldgr.src": "sourced"} and rep["ga_alpha"]["citation_caveat"] is False
+    assert rep["ga_alpha"]["citation_states"] == {"Idem.alt": "sourced", "Ldgr.src": "sourced"}
+    assert rep["ga_alpha"]["citation_caveat"] is False
 
 
 def test_an_ocr_unverified_state_counts_but_sets_the_caveat(w):
     put(w, "ga_alpha", "Ldgr.src", "sourced_ocr_unverified")
-    put(w, "ga_alpha", "Idem.alt", "sourced")
     rep = report(w)
-    assert "ga_alpha" in rep
-    assert rep["ga_alpha"]["citation_states"] == {"Idem.alt": "sourced", "Ldgr.src": "sourced_ocr_unverified"}
+    assert "ga_alpha" in rep and rep["ga_alpha"]["citation_states"]["Ldgr.src"] == "sourced_ocr_unverified"
     assert rep["ga_alpha"]["citation_caveat"] is True and rep["bg_beta"]["citation_caveat"] is False
 
 
-def test_the_caveat_looks_at_any_pass_cell_not_only_the_two_citation_criteria(w):
-    put(w, "ga_alpha", "Idem.pat", "sourced_ocr_unverified")
+def test_a_null_state_on_a_citation_pass_counts_and_sets_the_caveat_without_raising(w):
+    put(w, "ga_alpha", "Ldgr.src", None)
+    assert w.find("ga_alpha", "Ldgr.src")["citation_state_caveat"] is True       # what the real writer writes
     rep = report(w)
-    assert rep["ga_alpha"]["citation_caveat"] is True and rep["ga_alpha"]["citation_states"] == {}
+    assert "ga_alpha" in rep and rep["ga_alpha"]["citation_caveat"] is True
+    assert "Ldgr.src" not in rep["ga_alpha"]["citation_states"]
 
 
-def test_an_ocr_state_on_a_declared_addition_sets_the_caveat(w):
-    put(w, "bg_beta", "D-GROUNDING", "sourced_ocr_unverified", kind="addition")
-    assert report(w)["bg_beta"]["citation_caveat"] is True
+def test_a_null_state_caveat_must_be_true_on_a_citation_pass(w):
+    put(w, "ga_alpha", "Ldgr.src", None, citation_state_caveat=False)
+    raises(w)
+
+
+def test_a_citation_criterion_that_is_not_a_pass_has_no_caveat(w):
+    put(w, "ga_alpha", "Ldgr.src", None, verdict="FAIL")
+    assert w.find("ga_alpha", "Ldgr.src")["citation_state_caveat"] is False
+    w.commit()
+    assert "ga_alpha" not in w.elevated(T)
+    w.find("ga_alpha", "Ldgr.src")["citation_state_caveat"] = True
+    raises(w)
 
 
 @pytest.mark.parametrize("state", ["unsourced", "refuted"])
-@pytest.mark.parametrize("crit,kind", [("Ldgr.src", "gate"), ("Idem.alt", "gate"), ("Idem.pat", "gate"), ("D-GROUNDING", "addition")])
-def test_a_pass_that_is_unsourced_or_refuted_does_not_count_and_is_reported_as_blocked(w, state, crit, kind):
+def test_a_pass_line_carrying_an_unsourced_or_refuted_state_raises_it_is_not_elevation_grade(w, state):
+    put(w, "ga_alpha", "Ldgr.src", state)
+    raises(w)
+
+
+@pytest.mark.parametrize("state", ["unsourced", "refuted"])
+def test_an_unsourced_or_refuted_cell_withholds_the_asset_and_is_listed_as_blocked(w, state):
+    put(w, "ga_alpha", "Idem.alt", state, verdict="NO_DETECTOR")
+    w.commit()
+    assert "ga_alpha" not in w.elevated(T) and (ALL - {"ga_alpha"}) <= w.elevated(T)
+    assert T.citation_blocked_cells(w.last, str(w.repo)) == [dict(
+        asset="ga_alpha", criterion="Idem.alt", cert_id="ga_alpha|gate|Idem.alt@1", verdict="NO_DETECTOR", citation_state=state)]
+
+
+def test_a_stale_blocked_cell_is_not_listed(w):
+    put(w, "ga_alpha", "Idem.alt", "unsourced", verdict="NO_DETECTOR")
+    w.writer_versions["ga_alpha"] = 2
+    w.commit()
+    assert T.citation_blocked_cells(w.last, str(w.repo)) == []
+
+
+def test_a_later_sourced_pass_generation_clears_the_block(w):
+    put(w, "ga_alpha", "Idem.alt", "unsourced", verdict="NO_DETECTOR")
+    w.certs.append(cert("ga_alpha", "Idem.alt", gen=2, citation_state="sourced"))
+    w.commit()
+    assert "ga_alpha" in w.elevated(T) and T.citation_blocked_cells(w.last, str(w.repo)) == []
+
+
+@pytest.mark.parametrize("crit,kind", [("Idem.pat", "gate"), ("Build.any", "gate"), ("D-GROUNDING", "addition")])
+def test_a_state_on_anything_but_a_citation_gate_raises(w, crit, kind):
     asset = "bg_beta" if kind == "addition" else "ga_alpha"
-    put(w, asset, crit, state, kind=kind)
-    w.commit()
-    assert asset not in w.elevated(T) and asset not in T.elevated_report(w.last, str(w.repo))
-    blocked = T.citation_blocked_cells(w.last, str(w.repo))
-    assert blocked == [dict(asset=asset, criterion=crit, cert_id=f"{asset}|{kind}|{crit}@1", citation_state=state)]
-    # the others are untouched
-    assert (ALL - {asset}) <= w.elevated(T)
+    rec = w.find(asset, crit, kind)
+    rec["citation_state"] = "sourced"
+    raises(w)
 
 
-def test_a_null_state_on_a_v2_record_is_neutral(w):
-    put(w, "ga_alpha", "Ldgr.src", None)
-    rep = report(w)
-    assert "ga_alpha" in rep and rep["ga_alpha"]["citation_states"] == {} and rep["ga_alpha"]["citation_caveat"] is False
+@pytest.mark.parametrize("state", ["Sourced", "ocr", "", "unknown", 7, True, ["sourced"]])
+def test_an_unknown_citation_state_value_raises(w, state):
+    w.find("ga_alpha", "Ldgr.src")["citation_state"] = state
+    raises(w)
 
 
-def test_a_non_pass_record_with_an_unsourced_state_is_not_a_blocked_pass(w):
-    w.certs.append(cert("ga_alpha", "Ldgr.src", "FAIL", gen=2, citation_state="unsourced"))
-    w.commit()
-    assert "ga_alpha" not in w.elevated(T)                      # the FAIL already withholds it
-    assert T.citation_blocked_cells(w.last, str(w.repo)) == []
+@pytest.mark.parametrize("crit,caveat", [("Ldgr.src", True), ("Idem.pat", True), ("Ldgr.src", "yes"), ("Ldgr.src", 1),
+                                         ("Ldgr.src", 0), ("Idem.pat", None)])
+def test_a_caveat_that_contradicts_the_record_or_is_not_a_boolean_raises(w, crit, caveat):
+    w.find("ga_alpha", crit)["citation_state_caveat"] = caveat           # Ldgr.src is `sourced`: caveat must be false
+    raises(w)
 
 
-def test_a_stale_unsourced_pass_is_not_listed_as_blocked(w):
-    put(w, "ga_alpha", "Ldgr.src", "unsourced")
-    w.writer_versions["ga_alpha"] = 2                            # the certificate is stale anyway
-    w.commit()
-    assert T.citation_blocked_cells(w.last, str(w.repo)) == []
-
-
-def test_a_later_sourced_generation_clears_the_block(w):
-    put(w, "ga_alpha", "Ldgr.src", "unsourced")
-    w.certs.append(cert("ga_alpha", "Ldgr.src", gen=2, citation_state="sourced"))
-    rep = report(w)
-    assert "ga_alpha" in rep and rep["ga_alpha"]["citation_states"] == {"Ldgr.src": "sourced"}
+def test_the_caveat_covers_any_pass_cell_through_the_writers_flag(w):
+    put(w, "bg_beta", "Idem.alt", None)                                  # a null-state PASS on a citation gate of bg_beta
+    assert report(w)["bg_beta"]["citation_caveat"] is True
 
 
 def test_a_terminal_asset_reports_no_citation_state(w):
@@ -130,53 +232,9 @@ def test_a_terminal_asset_reports_no_citation_state(w):
 
 def test_elevated_assets_stays_the_key_set_of_the_report(w):
     put(w, "ga_alpha", "Ldgr.src", "sourced_ocr_unverified")
-    put(w, "bg_beta", "Ldgr.src", "refuted")
+    put(w, "bg_beta", "Idem.alt", "refuted", verdict="NO_DETECTOR")
     w.commit()
     assert w.elevated(T) == set(T.elevated_report(w.last, str(w.repo))) == {"ga_alpha", "ka_gamma"}
-
-
-# ---- the reader tolerates v1 and v2 and refuses what it does not know -------------------------------------------------
-
-def test_both_record_versions_are_accepted_in_one_ledger(w):
-    put(w, "ga_alpha", "Ldgr.src", "sourced")
-    assert {w.find("ga_alpha", "Ldgr.src")["record_version"], w.find("bg_beta", "Ldgr.src")["record_version"]} == {1, 2}
-    w.commit()
-    assert w.elevated(T) == ALL
-
-
-@pytest.mark.parametrize("rv", [0, 3, 99, True, "2", None, 2.0])
-def test_an_unknown_record_version_raises(w, rv):
-    w.find("ga_alpha", "Idem.pat")["record_version"] = rv
-    raises(w)
-
-
-def test_a_record_without_a_record_version_raises(w):
-    del w.find("ga_alpha", "Idem.pat")["record_version"]
-    raises(w)
-
-
-def test_a_v1_record_that_carries_a_citation_state_raises(w):
-    w.find("ga_alpha", "Idem.pat")["citation_state"] = "unsourced"
-    raises(w)
-    w2 = w
-    del w2.find("ga_alpha", "Idem.pat")["citation_state"]
-    w2.find("ga_alpha", "Idem.pat")["citation_state_caveat"] = False
-    raises(w2)
-
-
-@pytest.mark.parametrize("state", ["Sourced", "ocr", "", "unknown", 7, True, ["sourced"]])
-def test_an_unknown_citation_state_value_raises(w, state):
-    put(w, "ga_alpha", "Ldgr.src", None)
-    w.find("ga_alpha", "Ldgr.src")["citation_state"] = state
-    w.find("ga_alpha", "Ldgr.src").pop("citation_state_caveat", None)
-    raises(w)
-
-
-@pytest.mark.parametrize("caveat,state", [(True, "sourced"), (False, "sourced_ocr_unverified"), (True, None), ("yes", "sourced"), (1, "sourced"), (1, "sourced_ocr_unverified"), (0, "sourced")])
-def test_a_caveat_that_contradicts_the_state_or_is_not_a_boolean_raises(w, caveat, state):
-    put(w, "ga_alpha", "Ldgr.src", state)
-    w.find("ga_alpha", "Ldgr.src")["citation_state_caveat"] = caveat
-    raises(w)
 
 
 def test_the_citation_constants_are_n74s():
@@ -185,7 +243,5 @@ def test_the_citation_constants_are_n74s():
     assert T.E63_CITATION_BLOCKING == ("unsourced", "refuted")
 
 
-def test_the_real_citation_criteria_are_carr_d1_and_ldgr_source_presence(monkeypatch):
-    import importlib
-    fresh = load_tracker()
-    assert fresh.E63_CITATION_CRITERIA == ("Carr.D1", "Ldgr.source_presence")
+def test_the_real_citation_criteria_are_carr_d1_and_ldgr_source_presence():
+    assert load_tracker().E63_CITATION_CRITERIA == ("Carr.D1", "Ldgr.source_presence")

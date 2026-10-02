@@ -128,7 +128,7 @@ def test_the_pins_are_a_subset_of_the_real_core_gate_ids_and_every_unpinned_id_i
     today = {g: set(c for c, e in ac.CRITERION_REGISTRY.items() if e["gate"] == g) for g in ac.CELL_GATES}
     for g, ids in REAL_PINS.items():
         assert set(ids) <= today[g], g
-        assert set(today[g]) - set(ids) == set(ALLOWED_EXTRAS.get(g, ())), g
+        assert set(today[g]) - set(ids) <= set(ALLOWED_EXTRAS.get(g, ())), g          # Carr.detector is retired on main now
     assert all(set(e["layers"]) == set(T.E63_PINNED_LAYERS) for e in ac.CRITERION_REGISTRY.values() if e["gate"] in ac.CELL_GATES)
     assert REAL_PINS["Carr"] == ("Carr.D1", "Carr.D2", "Carr.D3") and REAL_FLOOR["Carr"] == 3
 
@@ -152,7 +152,11 @@ def test_a_registry_that_still_has_carr_detector_just_requires_one_more_criterio
     ac = _real_ac()
     import pathlib
     src = (pathlib.Path(ac.__file__)).read_text(encoding="utf-8")
-    w = World(tmp_path, census=src).default()
+    marker = '    "Carr.D1":'
+    assert src.index(marker) < src.index("NA_CAUSES")
+    extra = ('    "Carr.detector": dict(gate="Carr", check="detector", applicability="x", detector="asset_census.py:measure()", '
+             'layers=ALL_LAYERS, columns_any=None, asset_kinds=None, revision=1),\n')
+    w = World(tmp_path, census=src.replace(marker, extra + marker, 1)).default()
     w.commit()
     facts = T._e63_registry_facts(str(w.repo), w.last)
     assert "Carr.detector" in facts.required("L1")["Carr"] and len(facts.required("L1")["Carr"]) == 4

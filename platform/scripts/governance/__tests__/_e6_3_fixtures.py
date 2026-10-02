@@ -88,10 +88,14 @@ MINI_PINNED = {"Ldgr": ("Ldgr.src",), "Idem": ("Idem.alt", "Idem.pat"), "Null": 
                "Build": ("Build.any", "Build.target")}
 
 
+MINI_CITATION = ("Ldgr.src", "Idem.alt")      # stands in for Carr.D1 / Ldgr.source_presence, which the mini registry lacks
+
+
 def mini_patch(monkeypatch, tracker):
     """Pin the floor AND the criterion ids the mini registry satisfies (the real ones name the real registry)."""
     monkeypatch.setattr(tracker, "E63_REQUIRED_FLOOR", MINI_FLOOR)
     monkeypatch.setattr(tracker, "E63_REQUIRED_CRITERIA", MINI_PINNED)
+    monkeypatch.setattr(tracker, "E63_CITATION_CRITERIA", MINI_CITATION)
 
 
 def sha(b: bytes) -> str:
@@ -107,7 +111,7 @@ def writer_body(asset: str, version: int = 1) -> bytes:
 
 
 def cert(asset, crit, verdict="PASS", *, kind="gate", gen=1, upstream=(), na=None, detector="census", fp=FP,
-         layer=None, revision=None, writer=True, citation_state=..., **over):
+         layer=None, revision=None, writer=True, citation_state=..., v1=False, **over):
     """One certificate record in E5.1's shape (seq / prev_sha256 are added when the ledger is rendered)."""
     layer = layer or LAYER_OF[asset[:2]]
     mini_rev = {"Ldgr.src": 1, "Idem.pat": 2, "Idem.alt": 1, "Null.x": 1, "Build.reg": 1, "Build.any": 1, "Build.target": 1}.get(crit, 1)
@@ -124,13 +128,19 @@ def cert(asset, crit, verdict="PASS", *, kind="gate", gen=1, upstream=(), na=Non
                upstream_cert_ids=list(upstream), semantic_fingerprint=fp if verdict in ("PASS", "N/A") else None,
                cert_key=key, generation=gen, cert_id=f"{key}@{gen}", verified_by="census-run",
                verified_on=RUN_ID, record_version=1)
-    if citation_state is not ...:                      # absent = a v1 record; None = a v2 record that declares no state
-        rec["citation_state"] = citation_state
-        if crit in ("Carr.D1", "Ldgr.source_presence") and verdict == "PASS":
-            rec["citation_state_caveat"] = citation_state not in (None, "sourced")
     rec.update(over)
-    if "citation_state" in rec and "record_version" not in over:
-        rec["record_version"] = 2                       # E5.1 v2: carries citation_state (N-74); v1 has no such field
+    if v1:
+        rec["record_version"] = 1                      # E5.1 v1: no citation fields at all
+        rec.pop("citation_state", None)
+        rec.pop("citation_state_caveat", None)
+    elif "citation_state" not in rec:
+        # what the REAL v2 writer produces for every record: record_version 2, citation_state (null unless a citation gate),
+        # citation_state_caveat true exactly for a citation-gate PASS whose state is not `sourced` (a null state counts)
+        citation_gate = kind == "gate" and crit in MINI_CITATION
+        state = None if citation_state is ... else citation_state
+        rec["record_version"] = 2
+        rec["citation_state"] = state
+        rec.setdefault("citation_state_caveat", bool(citation_gate and verdict == "PASS" and state != "sourced"))
     return rec
 
 
@@ -140,7 +150,10 @@ NA_NULL = dict(rule_id="Null.x#columns_any", decision_id="N-22a", basis="applica
 
 def gate_certs(asset, layer_has_build=True, **kw):
     """Every criterion the MINI registry requires of `asset`'s layer, all satisfied (Null.x as a computed N/A)."""
-    out = [cert(asset, "Ldgr.src", **kw), cert(asset, "Idem.pat", **kw), cert(asset, "Idem.alt", **kw),
+    kw = dict(kw)
+    cs = kw.pop("citation_state", "sourced")         # the citation criteria carry a state; default worlds are `sourced`
+    out = [cert(asset, "Ldgr.src", citation_state=cs, **kw), cert(asset, "Idem.pat", **kw),
+           cert(asset, "Idem.alt", citation_state=cs, **kw),
            cert(asset, "Null.x", "N/A", na=dict(NA_NULL), **kw), cert(asset, "Build.any", **kw),
            cert(asset, "Build.target", **kw)]
     if layer_has_build:
