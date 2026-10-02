@@ -719,6 +719,15 @@ def validate_carriage_declaration(where: str, car: dict, e: dict) -> None:
             if ef.get("kind") == "passage_text" and not _evidence_pointer_ok(ef["condition_evidence"]):
                 raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].condition_evidence {ef['condition_evidence']!r} is "
                                         "not an existing repo-relative file (optionally :line) or 'unverified:<where>' (existence only)")
+            hatches = []
+            if ef.get("kind") == "passage_text":
+                for d in [ef["condition"], *ef.get("by_claimant", {}).values()]:
+                    hatches += ([d["ocr_lost_stop"]] if "ocr_lost_stop" in d else []) + list(d.get("ocr_stops", []))
+            for h in hatches:
+                if not _evidence_pointer_ok(h["evidence"]):
+                    raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}] escape hatch {h['text']!r}: evidence "
+                                            f"{h['evidence']!r} is not an existing repo-relative file (optionally :line) or "
+                                            "'unverified:<where>' (existence only)")
             for rp in ef.get("repairs", []) if ef.get("kind") == "passage_text" else []:
                 if not _evidence_pointer_ok(rp["evidence"]):
                     raise DeclarationsError(f"{where}.carriage.spec.extra_fields[{ef['column']}].repairs[{rp['from']!r}].evidence "

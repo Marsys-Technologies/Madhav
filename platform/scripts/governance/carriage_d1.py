@@ -148,11 +148,16 @@ def cut_span(joined: str, span: dict):
 #              ({text, start, end}, per claimant if it differs, with `condition_evidence`); the declared text must equal ONE WHOLE
 #              passage sentence and the stored value's words, after the declared OCR repairs, must equal the declared text: a prefix, a
 #              suffix, extra passage text, a dropped opener, negation or reordering all break it. WHOLE SENTENCE (enforced by code):
-#              `start` occurs once, begins with a capital and follows the passage start or a stop+space (or the declared `start_after`
-#              text where the OCR lost the stop); `end` is a stop after it; the cut holds exactly ONE stop-before-space-or-end (its
-#              terminal one) apart from stops declared literally in `ocr_stops`. A per-claimant condition must share the shared
-#              condition's start. Repairs are {from, to, evidence}: plain text, <= 8, <= 40 characters a side, from/to similar (an OCR
-#              garble, not a substitution), and an applied repair's `to` must be a run of the sentence (it never imports text).
+#              the `start` begins with a declared sentence opener (`sentence_openers`, a subset of If/When/Where/Whenever/While/Should),
+#              occurs once and follows the passage start or a stop+space; where the OCR LOST that stop the spec declares an
+#              `ocr_lost_stop` {text = the last <= 5 words before the start, evidence, observed_garble}; `end` is a stop after it; the cut
+#              holds exactly ONE stop-before-space-or-end (its terminal one), apart from <= 2 declared `ocr_stops` {text, evidence,
+#              observed_garble} whose following passage text starts with a lower-case letter or digit (a real sentence end is
+#              followed by a capital); the cut is <= 1.5 x the declared text. A per-claimant condition must share the shared start
+#              and lost-stop text. Repairs are {from, to, evidence}: plain text, <= 8, <= 40 characters a side, WORD FOR WORD (equal
+#              word counts, each word pair and the whole >= 60% alike), so a repair neither adds nor drops a word; an applied
+#              repair's `to` must be a run of the sentence. NOT DETECTABLE: a repair that turns one real word into another real word
+#              (even of opposite sense: "sick" -> "sickness", "anguishes" -> "anguish"): every repair is a claim the strategist reads.
 #   Normalisation (stated): NFKC + lower-case; words are runs of letters/digits/combining marks of any script; ONLY punctuation,
 #   symbols and whitespace are ignored. Benign variants accepted: case, spacing, punctuation of the stored effect/condition.
 #   A declared effect may omit frame words that the clause carries (the frame words are tolerated around the effect INSIDE the clause);
@@ -162,6 +167,12 @@ _COUNT_REACH = 90
 MAX_REPAIRS = 8
 REPAIR_MAX = 40
 REPAIR_MIN_SIMILARITY = 0.6
+REPAIR_MAX_DIFF = 0.4                   # a repair differs from its target in at most 40% of the characters
+ALLOWED_OPENERS = ("If", "When", "Where", "Whenever", "While", "Should")
+MAX_OCR_STOPS = 2
+LOST_STOP_MAX_WORDS = 5
+CUT_GROWTH = 1.5                        # the cut may not exceed 1.5 x the declared condition text
+HATCH_NOTE_MAX = 200
 
 
 def _ordinal(n: int) -> str:
@@ -268,50 +279,77 @@ def _effect_matches(eff: str, claimant: str, sec: str, spec: dict):
 def _condition_decl(ef: dict, claimant) -> dict:
     """The declared {text, start, end, ...} for this claimant: the per-claimant entry when the spec declares one, else the shared one.
     A per-claimant entry is only a declared SUB-CLAUSE of the shared sentence: it must carry the shared condition's `start` and
-    `start_after`, else it is refused ({}), so a claimant cannot be pointed at some other passage sentence."""
+    `ocr_lost_stop` text, else it is refused ({}), so a claimant cannot be pointed at some other passage sentence."""
     shared = ef.get("condition") or {}
     key = claimant.strip().lower() if isinstance(claimant, str) else None
     for k, v in (ef.get("by_claimant") or {}).items():
         if k.strip().lower() == key:
-            same = isinstance(v, dict) and v.get("start") == shared.get("start") and v.get("start_after") == shared.get("start_after")
+            same = isinstance(v, dict) and v.get("start") == shared.get("start") and _lost_text(v) == _lost_text(shared)
             return v if same else {}
     return shared
+
+
+def _lost_text(decl: dict):
+    lost = decl.get("ocr_lost_stop")
+    return lost.get("text") if isinstance(lost, dict) else None
+
+
+def _hatch_ok(h) -> bool:
+    """A declared escape hatch: {text, evidence, observed_garble}, all non-blank strings (the note <= 200 chars, the text <= 40)."""
+    return (isinstance(h, dict) and set(h) == {"text", "evidence", "observed_garble"}
+            and all(isinstance(h[k], str) and h[k].strip() for k in h) and len(h["text"]) <= REPAIR_MAX
+            and len(h["observed_garble"]) <= HATCH_NOTE_MAX)
 
 
 _STOP_AT_BREAK = re.compile(r"[.;?!](?=\s|\Z)")
 
 
-def _cut_sentence(seg: str, decl: dict):
+def _cut_sentence(seg: str, decl: dict, openers=None):
     """The tokens of ONE WHOLE passage sentence named by the declaration, or None. The sentence runs from the declared `start` marker
     to the declared `end` marker, INCLUSIVE, and is accepted only when:
-      * `start` occurs exactly once in the passage and begins with a capital;
+      * `start` occurs exactly once in the passage and begins with a declared sentence opener (`openers`, a subset of
+        ALLOWED_OPENERS): a mid-sentence fragment is not a start;
       * `start` is a TRUE sentence start: the passage start, or a stop (. ; ? !) and whitespace before it. A capital after a lower-case
-        word is NOT a sentence start. Where the OCR dropped the full stop, the spec DECLARES the literal passage text that ends the
-        previous sentence (`start_after`) and the start must follow exactly that;
-      * `end` is a stop and occurs after `start`, and the cut holds EXACTLY ONE stop-followed-by-space-or-end: its terminal one. A stop
-        that the OCR scattered inside the sentence is declared literally in `ocr_stops` (each must occur in the cut and end with a
-        stop); every other internal stop (a second sentence, OCR junk after a stop) rejects the cut."""
-    start, end = decl.get("start"), decl.get("end")
-    if not (isinstance(start, str) and isinstance(end, str) and start and end and start[0].isupper() and end[-1] in ".;?!"):
+        word is NOT a sentence start. Where the OCR LOST that stop, the spec declares `ocr_lost_stop` {text, evidence, observed_garble}:
+        `text` is the last <= 5 words immediately before the start;
+      * `end` is a stop and occurs after `start`, and the cut holds EXACTLY ONE stop-followed-by-space-or-end: its terminal one. At
+        most 2 stops the OCR scattered inside the sentence are declared in `ocr_stops` ({text ending in a stop, evidence,
+        observed_garble}); each must occur in the cut, never at its end, and be followed by a lower-case letter or a digit;
+      * the cut is at most 1.5 x the declared condition text."""
+    start, end, text = decl.get("start"), decl.get("end"), decl.get("text")
+    if not (isinstance(start, str) and isinstance(end, str) and isinstance(text, str) and start and end and start[0].isupper()
+            and end[-1] in ".;?!"):
+        return None
+    first = re.match(r"[A-Za-z]+", start)
+    if not (first and isinstance(openers, (list, tuple)) and first.group(0) in openers and first.group(0) in ALLOWED_OPENERS):
         return None
     if seg.count(start) != 1:
         return None
     i = seg.find(start)
     before = seg[:i]
-    after = decl.get("start_after")
+    lost = decl.get("ocr_lost_stop")
     if not (re.search(r"(?:\A|[.;?!]\s+)\Z", before)
-            or (isinstance(after, str) and after.strip()
-                and re.search(r"(?:\A|\s)" + re.escape(after.strip()) + r"\s+\Z", before))):
+            or (_hatch_ok(lost) and 1 <= len(lost["text"].split()) <= LOST_STOP_MAX_WORDS
+                and re.search(r"(?:\A|\s)" + re.escape(lost["text"].strip()) + r"\s+\Z", before))):
         return None
     j = seg.find(end, i)
     if j < 0:
         return None
     cut = seg[i:j + len(end)]
+    if len(cut) > CUT_GROWTH * len(text):
+        return None
     scrub = cut
-    for s in decl.get("ocr_stops") or []:
-        if not (isinstance(s, str) and s and s[-1] in ".;?!" and s in cut):
+    stops = decl.get("ocr_stops") or []
+    if not (isinstance(stops, list) and len(stops) <= MAX_OCR_STOPS):
+        return None
+    for h in stops:
+        if not (_hatch_ok(h) and h["text"][-1] in ".;?!" and h["text"] in cut):
             return None
-        scrub = scrub.replace(s, s[:-1])
+        for m in re.finditer(re.escape(h["text"]), cut):
+            rest = cut[m.end():].lstrip()
+            if not (rest and (rest[0].islower() or rest[0].isdigit())):
+                return None
+        scrub = scrub.replace(h["text"], h["text"][:-1])
     if len(_STOP_AT_BREAK.findall(scrub)) != 1:
         return None
     return _toks(cut)
@@ -324,6 +362,8 @@ def _apply_repairs(val: str, repairs: list, sentence: list):
     for rp in repairs or []:
         if rp["from"] in val:
             to = _toks(rp["to"])
+            if len(rp["from"].split()) != len(rp["to"].split()):          # word for word: a repair neither adds nor drops a word
+                return None
             if not to or not any(sentence[k:k + len(to)] == to for k in range(len(sentence) - len(to) + 1)):
                 return None
             val = val.replace(rp["from"], rp["to"])
@@ -342,7 +382,7 @@ def _extra_ok(row: dict, ef: dict, seg: str, claimant=None) -> bool:
     if kind == "equals":
         return v == ef["value"]
     decl = _condition_decl(ef, claimant)
-    sentence = _cut_sentence(seg, decl)
+    sentence = _cut_sentence(seg, decl, ef.get("sentence_openers"))
     if sentence is None or not isinstance(decl.get("text"), str):
         return False
     val = _apply_repairs(v, ef.get("repairs"), sentence)
@@ -404,8 +444,13 @@ MATCHING_RULE_TEXT = {
         "declared frame words around the effect (the declared effect may itself drop frame words: the stored effect must equal the "
         "DECLARED effect, not the frame-padded clause; a NULL effect needs NO anchor of the claimant in the effect section); every "
         "declared extra column equals its declared value, or (passage_text) its words after the declared OCR repairs EQUAL the declared "
-        "condition, which must equal ONE WHOLE passage sentence (a true sentence start, one terminal stop, OCR-scattered stops declared "
-        "literally; per-claimant conditions share the start; repairs are bounded, similar, plain-text and may not import text); "
+        "condition, which must equal ONE WHOLE passage sentence: it starts with a declared opener (If/When/Where/Whenever/While/Should) "
+        "at a true sentence start (the passage start, or after a stop; a stop the OCR lost is declared as `ocr_lost_stop`: the last "
+        "<= 5 words before the start), holds exactly one terminal stop apart from <= 2 declared `ocr_stops` (each followed by a "
+        "lower-case letter or digit) and is <= 1.5 x the declared text; per-claimant conditions share the start; each escape hatch "
+        "carries evidence and an observed_garble note; repairs are <= 8 plain-text WORD-FOR-WORD maps (equal word counts, each pair "
+        ">= 60% alike) whose `to` is a run of the sentence (a real word turned into another real word is NOT detectable: a repair is "
+        "a claim the reader checks against the passage); "
         "words are compared after NFKC and lower-casing, ignoring only punctuation and whitespace (non-ASCII letters and combining "
         "marks are NOT ignored or folded); the table holds exactly the declared number of rows and no claimant twice (claimants compared trimmed and case-insensitively)",
 }
@@ -485,21 +530,29 @@ def validate_spec(spec, where: str) -> dict:
             if set(ef) != {"column", "kind", "value"} or not (isinstance(ef["value"], str) and ef["value"].strip()):
                 raise SpecError(f"{where}.spec.extra_fields[{ef['column']}]: equals needs exactly {{column, kind, value}}")
         else:
-            if not set(ef) <= {"column", "kind", "anchors", "repairs", "condition", "by_claimant", "condition_evidence"}:
+            if not set(ef) <= {"column", "kind", "anchors", "repairs", "condition", "by_claimant", "condition_evidence",
+                                  "sentence_openers"}:
                 raise SpecError(f"{where}.spec.extra_fields[{ef['column']}]: passage_text takes only column, kind, condition, "
-                                "condition_evidence, by_claimant, anchors, repairs")
+                                "condition_evidence, sentence_openers, by_claimant, anchors, repairs")
             if "anchors" in ef and not (isinstance(ef["anchors"], list) and ef["anchors"]
                                         and all(isinstance(a, str) and a.strip() for a in ef["anchors"])):
                 raise SpecError(f"{where}.spec.extra_fields[{ef['column']}].anchors must be a non-empty list of non-blank strings")
-            _decl_ok = lambda d: (isinstance(d, dict) and {"text", "start", "end"} <= set(d) <= {"text", "start", "end", "start_after", "ocr_stops"}
-                                  and all(isinstance(d[x], str) and d[x].strip() and len(d[x]) <= MARKER_MAX * 4
-                                          for x in ("text", "start", "end", "start_after") if x in d)
-                                  and ("ocr_stops" not in d or (isinstance(d["ocr_stops"], list) and len(d["ocr_stops"]) <= 4
-                                                                and all(isinstance(s, str) and s and s[-1] in ".;?!" and len(s) <= 40
-                                                                        for s in d["ocr_stops"]))))
+            so = ef.get("sentence_openers")
+            if not (isinstance(so, list) and so and len(set(so)) == len(so) and all(x in ALLOWED_OPENERS for x in so)):
+                raise SpecError(f"{where}.spec.extra_fields[{ef['column']}].sentence_openers is REQUIRED: a non-empty list from "
+                                f"{list(ALLOWED_OPENERS)} (the first word of the condition start must be one of them)")
+            _decl_ok = lambda d: (isinstance(d, dict) and {"text", "start", "end"} <= set(d) <= {"text", "start", "end", "ocr_lost_stop", "ocr_stops"}
+                                  and all(isinstance(d[x], str) and d[x].strip() and len(d[x]) <= MARKER_MAX * 4 for x in ("text", "start", "end"))
+                                  and re.match(r"[A-Za-z]+", d["start"]) is not None and re.match(r"[A-Za-z]+", d["start"]).group(0) in so
+                                  and ("ocr_lost_stop" not in d or (_hatch_ok(d["ocr_lost_stop"])
+                                                                    and 1 <= len(d["ocr_lost_stop"]["text"].split()) <= LOST_STOP_MAX_WORDS))
+                                  and ("ocr_stops" not in d or (isinstance(d["ocr_stops"], list) and len(d["ocr_stops"]) <= MAX_OCR_STOPS
+                                                                and all(_hatch_ok(s) and s["text"][-1] in ".;?!" for s in d["ocr_stops"]))))
             if not _decl_ok(ef.get("condition")):
                 raise SpecError(f"{where}.spec.extra_fields[{ef['column']}]: passage_text REQUIRES a declared `condition` "
-                                "{text, start, end[, start_after, ocr_stops]}: the whole passage sentence the stored value must equal")
+                                "{text, start, end[, ocr_lost_stop, ocr_stops]}: the whole passage sentence the stored value must equal "
+                                f"(start opens with one of {so}; <= {MAX_OCR_STOPS} ocr_stops and an optional ocr_lost_stop, each "
+                                "{text, evidence, observed_garble})")
             bc = ef.get("by_claimant", {})
             if not (isinstance(bc, dict) and all(isinstance(k, str) and k.strip() and _decl_ok(v) for k, v in bc.items())
                     and len({k.strip().lower() for k in bc}) == len(bc)):
@@ -507,9 +560,9 @@ def validate_spec(spec, where: str) -> dict:
             if len(bc) > er:
                 raise SpecError(f"{where}.spec.extra_fields[{ef['column']}].by_claimant names {len(bc)} claimants but the table holds {er}")
             for k, v in bc.items():
-                if v["start"] != ef["condition"]["start"] or v.get("start_after") != ef["condition"].get("start_after"):
+                if v["start"] != ef["condition"]["start"] or _lost_text(v) != _lost_text(ef["condition"]):
                     raise SpecError(f"{where}.spec.extra_fields[{ef['column']}].by_claimant[{k}] must share the shared condition's start and "
-                                    "start_after: it may only declare a sub-clause of the SAME sentence")
+                                    "ocr_lost_stop text: it may only declare a sub-clause of the SAME sentence")
             if not (isinstance(ef.get("condition_evidence"), str) and ef["condition_evidence"].strip()):
                 raise SpecError(f"{where}.spec.extra_fields[{ef['column']}].condition_evidence must name the document the condition was read from")
             rp = ef.get("repairs", [])
@@ -521,9 +574,13 @@ def validate_spec(spec, where: str) -> dict:
                         and len(x["from"]) <= REPAIR_MAX and len(x["to"]) <= REPAIR_MAX):
                     raise SpecError(f"{where}.spec.extra_fields[{ef['column']}].repairs entries are {{from, to, evidence}} (non-blank, "
                                     f"from/to <= {REPAIR_MAX} characters, evidence required)")
-                if difflib.SequenceMatcher(None, "".join(_toks(x["from"])), "".join(_toks(x["to"]))).ratio() < REPAIR_MIN_SIMILARITY:
+                fw, tw = x["from"].split(), x["to"].split()
+                alike = lambda a, b: difflib.SequenceMatcher(None, "".join(_toks(a)), "".join(_toks(b))).ratio()
+                if len(fw) != len(tw) or alike(x["from"], x["to"]) < 1 - REPAIR_MAX_DIFF or any(alike(a, b) < REPAIR_MIN_SIMILARITY
+                                                                                                 for a, b in zip(fw, tw)):
                     raise SpecError(f"{where}.spec.extra_fields[{ef['column']}].repairs {x['from']!r} -> {x['to']!r}: an OCR repair maps a "
-                                    f"form to its garble (similarity >= {REPAIR_MIN_SIMILARITY}), it does not substitute other text")
+                                    f"garbled word to its clean form WORD FOR WORD (equal word counts, each pair and the whole >= "
+                                    f"{1 - REPAIR_MAX_DIFF:.0%} alike): it cannot add, drop or substitute words")
     return spec
 
 
@@ -600,7 +657,7 @@ def d1_measure(spec: dict, citation_state, chunks_by_id: dict, rows, table) -> d
         try:
             res = fn(r if isinstance(r, dict) else {}, seg, spec)
             failed = [k for k, v in res.items() if v not in (True, "NULL-ok")]
-        except Exception as exc:               # a matcher fault is a named miss on this row, never an exception out of the measurement
+        except SpecError as exc:               # a spec fault met at match time is a named miss on this row; any other exception is a real bug and propagates
             res, failed = dict(error=f"{type(exc).__name__}"), [f"error:{type(exc).__name__}"]
         if keys[i] in dup:
             failed.append("duplicate")

@@ -30,7 +30,9 @@ CHUNKS = {c["chunk_id"]: c for c in FX["classical_text_chunks"]}
 ROWS = FX["bg_phaladeepika_latta"]
 IDS = ["phaladeepika_pg0338_c01", "phaladeepika_pg0339_c01"]
 COND = dict(text="If, when thus counting, the tJanmunukshatra. natal star) happens to come as the Latta star, there will be sickness and anguish.",
-            start="If, when thus counting", end="sickness and anguish.", start_after="or rear Lattaa", ocr_stops=["tJanmunukshatra."])
+            start="If, when thus counting", end="sickness and anguish.",
+            ocr_lost_stop={"text": "or rear Lattaa", "evidence": EVID, "observed_garble": "the OCR dropped the full stop after 'rear Lattaa'"},
+            ocr_stops=[{"text": "tJanmunukshatra.", "evidence": EVID, "observed_garble": "the OCR turned 'Janma-nakshatra (' into 'tJanmunukshatra. '"}])
 SPEC = dict(matcher=d1.MATCHER, table="bg_phaladeepika_latta", chunk_ids=IDS, span=dict(start="Sloka 42-44"),
             fields=dict(claimant="graha", count="count_from_graha", direction="direction", effect="effect_description"),
             direction_words={"forward": "forward", "backward": "rear"}, anchor_stems=["Latt", "Latin"], effect_marker="Shkos",
@@ -49,7 +51,7 @@ SPEC = dict(matcher=d1.MATCHER, table="bg_phaladeepika_latta", chunk_ids=IDS, sp
             expected_rows=8,
             extra_fields=[dict(column="affliction_condition", kind="passage_text",
                                anchors=["when thus counting", "natal star", "Latta star", "sickness and anguish"],
-                               condition=COND, condition_evidence=EVID,
+                               condition=COND, condition_evidence=EVID, sentence_openers=["If"],
                                repairs=[{"from": "Janma-nakshatra", "to": "tJanmunukshatra", "evidence": EVID}]),
                           dict(column="verse_ref", kind="equals", value="Adh.XXVI PG338-339 Sloka 42-44")])
 STORED_HASHES = {"phaladeepika_pg0338_c01": "028354a7b1cf72de839bfe87ce2caa8dac5ac86bc09e45247b7131cb01cb5b60",
@@ -644,20 +646,7 @@ def test_d1_a_condition_that_starts_mid_sentence_at_a_lower_case_word_is_not_a_w
     assert r["v"] == "PARTIAL" and [u["failed"] for u in r["d1"]["unmatched"] if u["row"] == "Sun"] == [["affliction_condition"]]
 
 
-def test_d1_cut_sentence_needs_a_unique_clause_initial_capital_start_and_an_end_after_it():
-    cut = d1._cut_sentence
-    seg = "ABC The first one ends. then the second goes on. Then The first one ends."
-    ok = dict(text="x", start="Then The first one", end="ends.")
-    assert cut(seg, ok) == d1._toks("Then The first one ends.")
-    assert cut("ABC The one here. tail", dict(start="The one", end="here.")) is None                 # preceded by an upper-case token: not clause-initial
-    assert cut("a The one here. b The one here.", dict(start="The one", end="here.")) is None        # the start occurs twice
-    assert cut("a b stop. If one two stop.", dict(start="If one", end="stop.")) == d1._toks("If one two stop.")  # the end is searched AFTER the start
-    assert cut("The one here.", dict(start="The one", end="here.")) == d1._toks("The one here.")      # at the head of the passage
-    assert cut("a the one here.", dict(start="the one", end="here.")) is None                        # not a capital opener
-    assert cut("a The one here", dict(start="The one", end="here")) is None                          # the end is not a stop
-
-
-# ───────────────── delta check of fixes 8/9: the whole-sentence and repair guarantees are enforced by code ─────────────────
+# ───────────────── delta checks: the whole-sentence and repair guarantees are enforced by code ─────────────────
 
 RP = [{"from": "Janma-nakshatra", "to": "tJanmunukshatra", "evidence": EVID}]
 
@@ -672,128 +661,202 @@ def _span(start, end):
     return seg[i:seg.find(end, i) + len(end)]
 
 
+def _H(text, **kw):
+    """An escape-hatch declaration: its own evidence and an observed_garble note."""
+    return dict({"text": text, "evidence": EVID, "observed_garble": "observed in the passage page image / OCR text"}, **kw)
+
+
+OPEN = ["If", "When"]
+
+
+def test_d1_cut_sentence_needs_a_unique_opener_start_at_a_true_sentence_start_and_an_end_after_it():
+    cut = d1._cut_sentence
+    d = dict(text="If one two stop.", start="If one", end="stop.")
+    assert cut("ABC. If one two stop.", d, OPEN) == d1._toks("If one two stop.")
+    assert cut("If one two stop.", d, OPEN) == d1._toks("If one two stop.")                           # at the head of the passage
+    assert cut("a b stop. If one two stop.", d, OPEN) == d1._toks("If one two stop.")                 # the end is searched AFTER the start
+    assert cut("ABC If one two stop.", d, OPEN) is None                                              # capital after a word, no stop: not a sentence start
+    assert cut("a If one two stop. b If one two stop.", d, OPEN) is None                             # the start occurs twice
+    assert cut("a. If one two stop", dict(d, end="two stop"), OPEN) is None                          # the end is not a stop
+    assert cut("a. if one two stop.", dict(d, start="if one"), OPEN) is None                         # not a capital
+    assert cut("a. If one two stop.", d, None) is None                                               # no declared openers
+    assert cut("a. If one two stop.", d, []) is None
+    assert cut("a. If one two stop.", d, ["When"]) is None                                           # the start's opener is not a declared one
+    assert cut("a. Then one two stop.", dict(text="Then one two stop.", start="Then one", end="stop."), ["Then"]) is None   # not an ALLOWED opener
+    assert cut("a.If one two stop.", d, OPEN) is None                                                # a stop with no space is not a sentence start
+
+
+def test_d1_the_cut_may_not_exceed_one_and_a_half_times_the_declared_text():
+    cut = d1._cut_sentence
+    seg = "x. If one two three four five six seven eight nine ten stop."
+    assert cut(seg, dict(text="If one two three four five six seven eight nine ten stop.", start="If one", end="stop."), OPEN) is not None
+    assert cut(seg, dict(text="If one two three four five six seven eight", start="If one", end="stop."), OPEN) is not None   # 41 * 1.5 = 61.5 >= 55
+    assert cut(seg, dict(text="If one two three four five six seven", start="If one", end="stop."), OPEN) is None             # a declared text far shorter than the cut
+
+
 @pytest.mark.parametrize("end", ["Ketu.", "occur There will be quarrel in the Latta of Venus.", "Moon's Latta."])
-def test_d1_a_declared_span_of_several_sentences_is_not_one_sentence(end):
-    text = _span(COND["start"], end)                                                              # the true sentence + OCR junk + the effect sentences
-    cond = dict(COND, text=text, end=end, ocr_stops=["tJanmunukshatra.", "anguish."])           # even with the first internal stops declared
-    r = _sun_cond(text, _cond_spec(**{k: cond[k] for k in ("text", "end", "ocr_stops")}))
+def test_d1_a_declared_span_of_several_sentences_is_not_one_sentence_even_with_two_ocr_stops_declared(end):
+    text = _span(COND["start"], end)
+    stops = [_H("tJanmunukshatra."), _H("anguish.")]
+    r = _sun_cond(text, _cond_spec(text=text, end=end, ocr_stops=stops))
     assert r["v"] == "PARTIAL" and len(r["d1"]["unmatched"]) == 8
+
+
+def test_d1_three_declared_ocr_stops_are_refused_and_the_c1_attack_fails():
+    text = _span(COND["start"], "Ketu.")
+    stops = [_H("tJanmunukshatra."), _H("anguish."), _H("4r>.")]                                     # c1: the 293-character multi-sentence cut as ONE sentence
+    spec = _cond_spec(text=text, end="Ketu.", ocr_stops=stops)
+    with pytest.raises(d1.SpecError, match="condition"):
+        d1.validate_spec(spec, "x")
+    assert d1._cut_sentence(_passage(), dict(COND, text=text, end="Ketu.", ocr_stops=stops), OPEN) is None      # and the engine refuses it alone
+    r = _sun_cond(text, spec)
+    assert r["v"] == "PARTIAL"
+
+
+def test_d1_an_ocr_stop_must_be_followed_by_a_lower_case_letter_or_a_digit_and_not_end_the_cut():
+    cut = d1._cut_sentence
+    d = dict(text="If a b. c d e.", start="If a", end="e.")
+    assert cut("x. If a b. c d e.", dict(d, ocr_stops=[_H("b.")]), OPEN) == d1._toks("If a b. c d e.")
+    assert cut("x. If a b. 3 d e.", dict(d, text="If a b. 3 d e.", ocr_stops=[_H("b.")]), OPEN) == d1._toks("If a b. 3 d e.")   # a digit is fine
+    assert cut("x. If a b. C d e.", dict(d, text="If a b. C d e.", ocr_stops=[_H("b.")]), OPEN) is None          # a capital: a real sentence end
+    assert cut("x. If a b. -d e.", dict(d, text="If a b. -d e.", ocr_stops=[_H("b.")]), OPEN) is None            # junk punctuation is not a continuation
+    assert cut("x. If a b c.", dict(text="If a b c.", start="If a", end="c.", ocr_stops=[_H("c.")]), OPEN) is None  # a declared stop at the END of the cut
+    assert cut("x. If a b. c d e.", dict(d, ocr_stops=[_H("zz.")]), OPEN) is None                              # not in the cut
+    assert cut("x. If a b. c d e.", dict(d, ocr_stops=[_H("b")]), OPEN) is None                                # does not end in a stop
+    assert cut("x. If a b. c d e.", dict(d), OPEN) is None                                                      # an undeclared internal stop
+    two = dict(text="If a b. c d. e f.", start="If a", end="f.")
+    assert cut("x. If a b. c d. e f.", dict(two, ocr_stops=[_H("b."), _H("d.")]), OPEN) == d1._toks("If a b. c d. e f.")
+    assert cut("x. If a b. c d. e f.", dict(two, ocr_stops=[_H("b."), _H("d."), _H("zz.")]), OPEN) is None       # three: over the cap
+    for bad in (dict(text="b."), dict(text="b.", evidence=EVID), dict(text="b.", observed_garble="g"), dict(text="b.", evidence=" ", observed_garble="g"),
+                dict(text="b.", evidence=EVID, observed_garble="g", extra=1)):
+        assert cut("x. If a b. c d e.", dict(d, ocr_stops=[bad]), OPEN) is None                              # every hatch carries evidence AND a note
+    assert cut("x. If a b. c d e.", dict(d, ocr_stops="b."), OPEN) is None
 
 
 def test_d1_the_true_sentence_needs_its_ocr_stop_declared_or_it_is_two_sentences():
-    r = _measure(spec=_cond_spec(ocr_stops=[]))                                                   # "tJanmunukshatra." is an internal stop nobody declared
+    r = _measure(spec=_cond_spec(ocr_stops=[]))
     assert r["v"] == "PARTIAL" and len(r["d1"]["unmatched"]) == 8
-    r = _measure(spec=_cond_spec(ocr_stops=["tJanmunukshatra.", "natal star)."]))                 # a declared stop that is not in the cut is refused
+    r = _measure(spec=_cond_spec(ocr_stops=[_H("tJanmunukshatra."), _H("natal star).")]))               # the second is not in the cut
     assert r["v"] == "PARTIAL"
-    r = _measure(spec=_cond_spec(ocr_stops=["tJanmunukshatra"]))                                  # a declared stop must END with a stop
+    r = _measure(spec=_cond_spec(ocr_stops=[_H("tJanmunukshatra")]))
     assert r["v"] == "PARTIAL"
+    r = _measure(spec=_cond_spec(ocr_stops=[dict(_H("tJanmunukshatra."), evidence=None)]))
+    assert r["v"] == "PARTIAL"
+    assert _measure()["v"] == "PASS"
 
 
-def test_d1_a_capital_after_a_lower_case_word_is_not_a_sentence_start_unless_the_ocr_dropped_stop_is_declared():
+def test_d1_an_ocr_lost_stop_is_a_short_evidenced_lead_in_that_immediately_precedes_the_start():
     cut = d1._cut_sentence
-    d = dict(start="The one", end="here.")
-    assert cut("x y The one here.", d) is None                                                    # lower-case word then a capital: NOT a sentence start
-    assert cut("x y The one here.", dict(d, start_after="x y")) == d1._toks("The one here.")      # declared: the OCR dropped the stop after "x y"
-    assert cut("x y z The one here.", dict(d, start_after="x y")) is None                         # the declared lead-in must be what precedes the start
-    assert cut("x y The one here.", dict(d, start_after="  ")) is None
-    assert cut("xx y The one here.", dict(d, start_after="x y")) is None
-    assert cut("xx. The one here.", d) == d1._toks("The one here.")                               # a stop and space before it is a sentence start
-    assert cut("xx.The one here.", d) is None
-    r = _measure(spec=_cond_spec(start_after="Lattaa"))
-    assert r["v"] == "PASS"                                                                       # the real passage: "Lattaa If, when ..." (the stop was lost)
-    r = _measure(spec=_cond_spec(start_after="the Moon are called"))
+    d = dict(text="If one two stop.", start="If one", end="stop.")
+    assert cut("x y If one two stop.", dict(d, ocr_lost_stop=_H("x y")), OPEN) == d1._toks("If one two stop.")
+    assert cut("a b c d e If one two stop.", dict(d, ocr_lost_stop=_H("a b c d e")), OPEN) == d1._toks("If one two stop.")   # 5 words is the cap
+    assert cut("z a b c d e If one two stop.", dict(d, ocr_lost_stop=_H("z a b c d e")), OPEN) is None      # 6 words
+    assert cut("x y z If one two stop.", dict(d, ocr_lost_stop=_H("x y")), OPEN) is None                    # the declared text must be what precedes
+    assert cut("xx y If one two stop.", dict(d, ocr_lost_stop=_H("x y")), OPEN) is None                    # on a word boundary
+    assert cut("x y If one two stop.", dict(d, ocr_lost_stop=_H("  ")), OPEN) is None
+    assert cut("x y If one two stop.", dict(d, ocr_lost_stop={"text": "x y"}), OPEN) is None               # evidence and note are required
+    assert cut("x y If one two stop.", dict(d, ocr_lost_stop=dict(_H("x y"), evidence="")), OPEN) is None
+    assert cut("x y If one two stop.", dict(d, ocr_lost_stop="x y"), OPEN) is None
+    assert cut("x y If one two stop.", d, OPEN) is None                                                      # nothing declared: not a sentence start
+    assert _measure()["v"] == "PASS"                                                                       # the real passage: "or rear Lattaa If, when ..."
+    r = _measure(spec=_cond_spec(ocr_lost_stop=_H("the Moon are called")))
     assert r["v"] == "PARTIAL"
-    r = _measure(spec={**SPEC, "extra_fields": [{k: v for k, v in dict(SPEC["extra_fields"][0], condition={k: v for k, v in COND.items() if k != "start_after"}).items()}, SPEC["extra_fields"][1]]})
-    assert r["v"] == "PARTIAL" and len(r["d1"]["unmatched"]) == 8                                 # with no declared lead-in the real start is not a sentence start
+    no_lost = {k: v for k, v in COND.items() if k != "ocr_lost_stop"}
+    r = _measure(spec={**SPEC, "extra_fields": [dict(SPEC["extra_fields"][0], condition=no_lost), SPEC["extra_fields"][1]]})
+    assert r["v"] == "PARTIAL" and len(r["d1"]["unmatched"]) == 8
 
 
-def test_d1_a_mid_sentence_fragment_is_not_a_condition_even_when_it_ends_at_the_stop():
-    text = _span("Latta star, there will", "anguish.")
-    r = _sun_cond(text, _cond_spec(text=text, start="Latta star, there will", end="anguish.", start_after="as the"))
-    assert r["v"] == "PARTIAL"                                                                    # preceded by a lower-case word, no stop
-    r = _sun_cond(text, _cond_spec(text=text, start="Latta star, there will", end="anguish."))
-    assert r["v"] == "PARTIAL"
+@pytest.mark.parametrize("start, end, lost", [
+    ("Latta star, there will", "anguish.", "come as the"),                                           # c1/c2 A: a mid-sentence fragment
+    ("Latta star, there will", "anguish.", None),
+    ("Misery will result", "Ketu.", "every business"),                                               # c2 I
+    ("During the Sun", "Ketu.", "3 it^n Shkos 4 l^ 4r>. -"),                                         # c1 H
+    ("During the Sun", "Ketu.", "4 l^ 4r>. -"),
+    ("when thus counting", "anguish.", "If,"),
+    ("natal star) happens", "anguish.", "tJanmunukshatra."),
+])
+def test_d1_a_fragment_does_not_become_a_sentence_through_a_lead_in(start, end, lost):
+    text = _span(start, end)
+    decl = dict(text=text, start=start, end=end)
+    if lost:
+        decl["ocr_lost_stop"] = _H(lost)
+    assert d1._cut_sentence(_passage(), decl, OPEN) is None                                          # no opener: refused whatever the lead-in
+    r = _sun_cond(text, dict(SPEC, extra_fields=[dict(SPEC["extra_fields"][0], condition=decl, by_claimant={}), SPEC["extra_fields"][1]]))
+    assert r["v"] == "PARTIAL" and len(r["d1"]["unmatched"]) == 8
+    with pytest.raises(d1.SpecError, match="condition"):
+        d1.validate_spec(dict(SPEC, extra_fields=[dict(SPEC["extra_fields"][0], condition=decl), SPEC["extra_fields"][1]]), "x")
+
+
+def test_d1_sentence_openers_are_declared_from_a_short_allowed_set_and_the_start_must_begin_with_one():
+    ef0 = SPEC["extra_fields"][0]
+    for bad in (None, [], ["Then"], ["If", "If"], ["if"], "If", ["If", "Because"]):
+        spec = dict(SPEC, extra_fields=[dict(ef0, sentence_openers=bad), SPEC["extra_fields"][1]])
+        with pytest.raises(d1.SpecError, match="sentence_openers"):
+            d1.validate_spec(spec, "x")
+    no_so = {k: v for k, v in ef0.items() if k != "sentence_openers"}
+    with pytest.raises(d1.SpecError, match="sentence_openers"):
+        d1.validate_spec(dict(SPEC, extra_fields=[no_so, SPEC["extra_fields"][1]]), "x")
+    assert _measure(spec=dict(SPEC, extra_fields=[no_so, SPEC["extra_fields"][1]]))["v"] == "PARTIAL"     # the engine never passes without declared openers
+    for ok in (["If"], ["If", "When", "Where", "Whenever", "While", "Should"]):
+        d1.validate_spec(dict(SPEC, extra_fields=[dict(ef0, sentence_openers=ok), SPEC["extra_fields"][1]]), "x")
+    with pytest.raises(d1.SpecError, match="condition"):                                                  # a start whose first word is not a declared opener
+        d1.validate_spec(dict(SPEC, extra_fields=[dict(ef0, sentence_openers=["When"]), SPEC["extra_fields"][1]]), "x")
+    assert _measure(spec=dict(SPEC, extra_fields=[dict(ef0, sentence_openers=["When"]), SPEC["extra_fields"][1]]))["v"] == "PARTIAL"
 
 
 def test_d1_cut_sentence_rejects_any_internal_stop_but_not_a_stop_inside_a_number_or_declared():
     cut = d1._cut_sentence
-    assert cut("A b c. D e f.", dict(start="A b", end="f.")) is None
-    assert cut("A b c; d e f.", dict(start="A b", end="f.")) is None
-    assert cut("A b c? d e f.", dict(start="A b", end="f.")) is None
-    assert cut("A b c! d e f.", dict(start="A b", end="f.")) is None
-    assert cut("A b c. d e f.", dict(start="A b", end="f.")) is None                              # a stop followed by a LOWER-CASE word is still a stop
-    assert cut("A b c. d e f.", dict(start="A b", end="f.", ocr_stops=["c."])) == d1._toks("A b c d e f.")
-    assert cut("A b 3.5 c d e f.", dict(start="A b", end="f.")) == d1._toks("A b 3.5 c d e f.")
-    assert cut("A b c d e f. g.", dict(start="A b", end="f.")) == d1._toks("A b c d e f.")        # text AFTER the terminal stop is not part of the sentence
+    base = dict(start="If a", end="f.")
+    for body in ("If a b c. D e f.", "If a b c; d e f.", "If a b c? d e f.", "If a b c! d e f.", "If a b c. d e f."):
+        assert cut(body, dict(base, text=body), OPEN) is None
+    body = "If a 3.5 c d e f."
+    assert cut(body, dict(base, text=body), OPEN) == d1._toks(body)
+    body = "If a b c d e f. g."
+    assert cut(body, dict(base, text="If a b c d e f."), OPEN) == d1._toks("If a b c d e f.")            # text AFTER the terminal stop is not part
 
 
-def test_d1_a_per_claimant_condition_must_share_the_shared_start_in_the_engine_and_the_spec():
+def test_d1_a_per_claimant_condition_must_share_the_shared_start_and_lost_stop_in_the_engine_and_the_spec():
     rahu = dict(text=_span("Misery will result", "Ketu."), start="Misery will result", end="Ketu.")
     ef = dict(SPEC["extra_fields"][0], by_claimant={"Sun": rahu})
-    spec = dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]])
+    with pytest.raises(d1.SpecError, match="condition|share"):
+        d1.validate_spec(dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]]), "x")
+    other = dict(COND, ocr_lost_stop=_H("elsewhere"))
     with pytest.raises(d1.SpecError, match="share"):
-        d1.validate_spec(spec, "x")
-    rows = copy.deepcopy(ROWS)
-    [r.update(affliction_condition=rahu["text"]) for r in rows if r["graha"] == "Sun"]
-    r = _measure(rows=rows, spec=spec)                                                            # the engine, given an unvalidated spec, refuses it too
-    assert [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", ["affliction_condition"])]
-    other_after = dict(COND, start_after="elsewhere")
-    with pytest.raises(d1.SpecError, match="share"):
-        d1.validate_spec(dict(SPEC, extra_fields=[dict(SPEC["extra_fields"][0], by_claimant={"Sun": other_after}), SPEC["extra_fields"][1]]), "x")
+        d1.validate_spec(dict(SPEC, extra_fields=[dict(SPEC["extra_fields"][0], by_claimant={"Sun": other}), SPEC["extra_fields"][1]]), "x")
+    d1.validate_spec(dict(SPEC, extra_fields=[dict(SPEC["extra_fields"][0], by_claimant={"Sun": dict(COND)}), SPEC["extra_fields"][1]]), "x")
 
 
-def test_d1_the_engine_itself_refuses_a_per_claimant_condition_with_its_own_valid_sentence_start():
-    """A per-claimant entry that is, by itself, a perfectly valid whole sentence of the passage is still refused unless it carries the
-    shared start and start_after (the engine is handed an UNVALIDATED spec here: it must not rely on validate_spec)."""
-    head = dict(text=_span("Sloka 42-44", "forward Lattas."), start="Sloka 42-44", end="forward Lattas.")
-    assert d1._cut_sentence(_passage(), head) == d1._toks(head["text"])                           # a valid whole sentence on its own
-    ef = dict(SPEC["extra_fields"][0], by_claimant={"Sun": head})
-    r = _sun_cond(head["text"], dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]]))
-    assert [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", ["affliction_condition"])]
-    late = dict(COND, start_after="Lattaa")                                                       # same start, a DIFFERENT (still valid) lead-in
-    assert d1._cut_sentence(_passage(), late) == d1._toks(COND["text"])
-    ef = dict(SPEC["extra_fields"][0], by_claimant={"Sun": late})
-    r = _sun_cond(TRUE_COND, dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]]))
-    assert [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", ["affliction_condition"])]
+def _with_tail(tail):
+    ch = copy.deepcopy(CHUNKS)
+    last = IDS[-1]
+    ch[last] = _rehash(dict(ch[last], content_en=ch[last]["content_en"] + tail))
+    return ch
 
 
-def test_d1_a_repair_may_not_merge_or_split_words_its_to_must_be_whole_words_of_the_sentence():
-    ef = {k: v for k, v in SPEC["extra_fields"][0].items() if k != "anchors"}                      # (the optional anchors would catch it too)
-    ef["repairs"] = RP + [{"from": "ang ", "to": "ang", "evidence": EVID}]
-    spec = dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]])
-    d1.validate_spec(spec, "x")                                                                    # fine for the spec check: similar, short, evidenced
-    assert _sun_cond(TRUE_COND.replace("anguish", "ang uish"), spec)["v"] == "PARTIAL"            # "ang"+"uish" is not a word of the sentence
-
-
-def test_d1_a_repair_is_plain_text_a_trailing_backslash_is_just_punctuation_never_a_regex_error():
-    ef = dict(SPEC["extra_fields"][0], repairs=RP + [{"from": "sickness", "to": "sickness\\", "evidence": EVID}])
-    r = _sun_cond(TRUE_COND, dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]]))              # unvalidated; the template would raise under re.sub
-    assert r["v"] == "PASS"
-
-
-def test_d1_ocr_stops_are_a_short_list_of_stop_ending_literals():
-    ef = dict(SPEC["extra_fields"][0])
-    for bad in (["a."] * 5, ["tJanmunukshatra"], [""], "tJanmunukshatra.", [1]):
-        with pytest.raises(d1.SpecError, match="condition"):
-            d1.validate_spec(dict(SPEC, extra_fields=[dict(ef, condition=dict(COND, ocr_stops=bad)), SPEC["extra_fields"][1]]), "x")
-    d1.validate_spec(dict(SPEC, extra_fields=[dict(ef, condition=dict(COND, ocr_stops=["a.", "b.", "c.", "d."])), SPEC["extra_fields"][1]]), "x")
-
-
-def test_d1_the_engine_refuses_a_per_claimant_condition_with_another_start_even_when_the_lead_in_is_the_same():
-    """Shared and per-claimant declarations both carry NO start_after, so only the START distinguishes them (an engine guard of its own)."""
-    head = dict(text=_span("Sloka 42-44", "forward Lattas."), start="Sloka 42-44", end="forward Lattas.")
-    second = dict(text=_span("The 5th star reckoned", "Mercury;"), start="The 5th star reckoned", end="Mercury;", ocr_stops=["Adh."])
-    assert d1._cut_sentence(_passage(), second) == d1._toks(second["text"])
-    ef = dict(SPEC["extra_fields"][0], condition=head, by_claimant={"Sun": second})
-    ef.pop("anchors")
+def test_d1_the_engine_refuses_a_per_claimant_condition_that_is_another_valid_sentence_of_the_passage():
+    """The passage gets a second valid If-sentence at its end. A per-claimant entry pointing at it is a perfectly good whole sentence by
+    itself, so only the engine's own start comparison (not validate_spec, which the engine is not handed) refuses it."""
+    tail = " If a b c d e f g h, there will be much grief and woe."
+    ch = _with_tail(tail)
+    other = dict(text="If a b c d e f g h, there will be much grief and woe.", start="If a b c d", end="woe.")
+    seg = _measure(chunks=ch)["d1"]["passage"]
+    assert d1._cut_sentence(seg, other, OPEN) == d1._toks(other["text"])                                  # valid on its own
+    ef = dict(SPEC["extra_fields"][0], by_claimant={"Sun": other})
     spec = dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]])
     rows = copy.deepcopy(ROWS)
     for r in rows:
-        r["affliction_condition"] = second["text"] if r["graha"] == "Sun" else head["text"]
-    r = _measure(rows=rows, spec=spec)
+        if r["graha"] == "Sun":
+            r["affliction_condition"] = other["text"]
+    r = _measure(rows=rows, chunks=ch, spec=spec)
     assert [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", ["affliction_condition"])]
-    ok = dict(ef, by_claimant={"Sun": dict(head)})
-    assert _measure(rows=[dict(r, affliction_condition=head["text"]) for r in rows], spec=dict(SPEC, extra_fields=[ok, SPEC["extra_fields"][1]]))["v"] == "PASS"
+    r = _measure(rows=rows, chunks=ch, spec=dict(SPEC, extra_fields=[dict(ef, by_claimant={"Sun": dict(COND)}), SPEC["extra_fields"][1]]))
+    assert [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", ["affliction_condition"])]    # the stored value is not Sun's declared sentence
+    # the lost-stop text is compared too: the same start, a different (still valid) lead-in
+    late = dict(COND, ocr_lost_stop=_H("rear Lattaa"))
+    assert d1._cut_sentence(_passage(), late, OPEN) == d1._toks(COND["text"])
+    ef = dict(SPEC["extra_fields"][0], by_claimant={"Sun": late})
+    r = _sun_cond(TRUE_COND, dict(SPEC, extra_fields=[ef, SPEC["extra_fields"][1]]))
+    assert [(u["row"], u["failed"]) for u in r["d1"]["unmatched"]] == [("Sun", ["affliction_condition"])]
 
 
 def test_d1_by_claimant_cannot_name_more_claimants_than_the_table_has_rows():
@@ -811,16 +874,31 @@ def test_d1_by_claimant_cannot_name_more_claimants_than_the_table_has_rows():
     ([{"from": "Janma-nakshatra", "to": "tJanmunukshatra", "evidence": " "}], "evidence"),
     ([{"from": "Janma-nakshatra" * 3, "to": "tJanmunukshatra", "evidence": EVID}], "40"),          # from too long
     ([{"from": "Janma-nakshatra", "to": "tJanmunukshatra" * 3, "evidence": EVID}], "40"),          # to too long
-    ([{"from": "PLUS ARBITRARY TRAILING CLAIM", "to": ".", "evidence": EVID}], "similarity"),      # deletes text
-    ([{"from": "Totally wrong", "to": "sickness and anguish", "evidence": EVID}], "similarity"),   # substitutes text
-    ([{"from": "Janma-nakshatra", "to": "\\d", "evidence": EVID}], "similarity"),
+    ([{"from": "PLUS ARBITRARY TRAILING CLAIM", "to": ".", "evidence": EVID}], "WORD FOR WORD"),   # deletes text
+    ([{"from": "Totally wrong", "to": "sickness and anguish", "evidence": EVID}], "WORD FOR WORD"),   # substitutes text
+    ([{"from": "Janma-nakshatra", "to": "\\d", "evidence": EVID}], "WORD FOR WORD"),
+    ([{"from": "no sickness", "to": "sickness", "evidence": EVID}], "WORD FOR WORD"),              # c2 M: negation dropped
+    ([{"from": "anguish Misery", "to": "anguish", "evidence": EVID}], "WORD FOR WORD"),            # c2 Q: tail words dropped
+    ([{"from": "anguish. ruin", "to": "anguish.", "evidence": EVID}], "WORD FOR WORD"),            # c2 P
+    ([{"from": "happens not", "to": "happens", "evidence": EVID}], "WORD FOR WORD"),
+    ([{"from": "sickness no", "to": "sickness xo", "evidence": EVID}], "WORD FOR WORD"),           # one word pair < 60% alike though the whole is >= 60%
+    ([{"from": "ab cdef", "to": "zy cdez", "evidence": EVID}], "WORD FOR WORD"),                   # the whole is under 60% alike
     ([{"from": "Janma-nakshatra", "to": "tJanmunukshatra", "evidence": EVID, "x": 1}], "evidence"),
     (["Janma-nakshatra"], "evidence"),
 ])
-def test_d1_repairs_are_bounded_similar_evidenced_plain_text(repairs, why):
+def test_d1_repairs_are_bounded_word_for_word_evidenced_plain_text(repairs, why):
     with pytest.raises(d1.SpecError, match=why):
         d1.validate_spec(dict(SPEC, extra_fields=[dict(SPEC["extra_fields"][0], repairs=repairs), SPEC["extra_fields"][1]]), "x")
     d1.validate_spec(dict(SPEC, extra_fields=[dict(SPEC["extra_fields"][0], repairs=RP * 8), SPEC["extra_fields"][1]]), "x")     # 8 is allowed
+
+
+def test_d1_the_stated_limit_a_real_word_for_a_similar_real_word_repair_is_not_detectable_and_the_pr_says_so():
+    """c2 K/L: 'anguishes' -> 'anguish', 'sick' -> 'sickness' are 1:1 and >= 60% alike, so the spec check accepts them; the declaration is a
+    claim the strategist reads beside the passage. (A negation, a dropped tail or an added word is NOT of this kind: see above.)"""
+    for frm, to in (("anguishes", "anguish"), ("sick", "sickness")):
+        d1.validate_spec(dict(SPEC, extra_fields=[dict(SPEC["extra_fields"][0], repairs=[{"from": frm, "to": to, "evidence": EVID}]),
+                                                    SPEC["extra_fields"][1]]), "x")
+    assert "NOT DETECTABLE" in open(d1.__file__, encoding="utf-8").read()
 
 
 def test_d1_a_repair_cannot_launder_text_even_if_it_slips_past_the_spec_check():
@@ -837,14 +915,25 @@ def test_d1_a_repair_cannot_launder_text_even_if_it_slips_past_the_spec_check():
     imp = TRUE_COND.replace("anguish", "Misery")
     assert run(imp, RP + [{"from": "Misery", "to": "Misery will", "evidence": EVID}])["v"] == "PARTIAL"     # `to` must be a run of THE SENTENCE
     assert run(TRUE_COND.replace("Janma-nakshatra", "janma-nakshatra"), RP)["v"] == "PARTIAL"            # plain, case-sensitive text (stated)
+    neg = TRUE_COND.replace("be sickness", "be no sickness")                                           # the engine itself enforces word-for-word
+    assert run(neg, RP + [{"from": "no sickness", "to": "sickness", "evidence": EVID}])["v"] == "PARTIAL"
+    tail = TRUE_COND[:-1] + " Misery."
+    assert run(tail, RP + [{"from": "anguish Misery", "to": "anguish", "evidence": EVID}])["v"] == "PARTIAL"
+    assert run(TRUE_COND.replace("anguish", "anguishes"), RP + [{"from": "anguishes", "to": "anguish", "evidence": EVID}])["v"] == "PASS"   # the stated limit
 
 
-def test_d1_a_matcher_fault_is_a_named_miss_on_the_row_never_an_exception(monkeypatch):
-    def boom(row, seg, spec):
-        raise RuntimeError("x")
-    monkeypatch.setitem(d1.MATCHERS, d1.MATCHER, boom)
+def test_d1_a_spec_fault_met_at_match_time_is_a_named_row_miss_but_a_real_bug_propagates(monkeypatch):
+    def faulty(row, seg, spec):
+        raise d1.SpecError("x")
+    monkeypatch.setitem(d1.MATCHERS, d1.MATCHER, faulty)
     r = _measure()
-    assert r["v"] == "PARTIAL" and all(u["failed"] == ["error:RuntimeError"] for u in r["d1"]["unmatched"]) and len(r["d1"]["unmatched"]) == 8
+    assert r["v"] == "PARTIAL" and all(u["failed"] == ["error:SpecError"] for u in r["d1"]["unmatched"]) and len(r["d1"]["unmatched"]) == 8
+
+    def bug(row, seg, spec):
+        raise RuntimeError("a real bug")
+    monkeypatch.setitem(d1.MATCHERS, d1.MATCHER, bug)
+    with pytest.raises(RuntimeError, match="real bug"):
+        _measure()
 
 
 def test_the_repair_evidence_must_exist_too(monkeypatch):
@@ -853,6 +942,25 @@ def test_the_repair_evidence_must_exist_too(monkeypatch):
     _bad(car, "repairs")
     car["spec"]["extra_fields"][0]["repairs"][0]["evidence"] = "unverified:the OCR page"
     ac.validate_declarations(_doc(car))
+
+
+@pytest.mark.parametrize("where", ["lost", "stop", "by_claimant_stop"])
+def test_every_escape_hatch_evidence_must_exist_too(where):
+    car = copy.deepcopy(CAR_D1)
+    ef = car["spec"]["extra_fields"][0]
+    bad = "00_ARCHITECTURE/briefs/does_not_exist.md"
+    if where == "lost":
+        ef["condition"]["ocr_lost_stop"]["evidence"] = bad
+    elif where == "stop":
+        ef["condition"]["ocr_stops"][0]["evidence"] = bad
+    else:
+        ef["by_claimant"] = {"Sun": copy.deepcopy(ef["condition"])}
+        ef["by_claimant"]["Sun"]["ocr_stops"][0]["evidence"] = bad
+    _bad(car, "escape hatch")
+    ac.validate_declarations(_doc(copy.deepcopy(CAR_D1)))
+    if where == "lost":
+        ef["condition"]["ocr_lost_stop"]["evidence"] = "unverified:the OCR page"
+        ac.validate_declarations(_doc(car))
 
 
 def test_d1_evidence_problem_states_it_is_an_accidental_edit_check_not_a_forgery_barrier():
