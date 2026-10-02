@@ -410,7 +410,7 @@ describe('DP-SD-018 GCP credential isolation', () => {
     expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{ env: [{
       name: 'DB_PASS', valueFrom: { secretKeyRef: { name: 'builder-db-pass', key: 'latest' } },
     }] }], volumes: [{ name: 'credentials', secret: { secretName: 'volume-secret' } }] } }, metadata: { annotations: {
-      'run.googleapis.com/secrets': JSON.stringify({ builder: 'builder-db-pass:latest' }),
+      'run.googleapis.com/secrets': 'builder:projects/some-project/secrets/builder-db-pass',      // the DOCUMENTED comma-separated alias:projects/<p>/secrets/<name> form (R15-3/R16-1) — the JSON map was never the real format
     } } } })).not.toThrow()
     expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{ env: [{
       name: 'CLIENT_SECRET', valueFrom: { secretKeyRef: { name: 'client-secret', literal: 'opaque' } },

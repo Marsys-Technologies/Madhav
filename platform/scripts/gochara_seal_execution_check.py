@@ -175,10 +175,12 @@ def main(argv=None) -> int:
             with open(a.job_file, encoding="utf-8") as f:
                 job = json.load(f)
             v2 = vjc.UNSET
+            v2_doc = None
             if a.v2_job_file:
                 with open(a.v2_job_file, encoding="utf-8") as f:
-                    v2 = vjc.retries_from_v2(json.load(f), "job")
-            bad = vjc.forbidden_annotations(job) + vjc.validate_task(_task_spec(job), image_repo=a.image_repo, image_digest=a.image_digest, service_account=a.service_account, runner_commit=a.runner_commit,
+                    v2_doc = json.load(f)
+                v2 = vjc.retries_from_v2(v2_doc, "job")
+            bad = vjc.forbidden_annotations(job, v2_doc) + vjc.validate_task(_task_spec(job), image_repo=a.image_repo, image_digest=a.image_digest, service_account=a.service_account, runner_commit=a.runner_commit,
                                     secret_name=a.secret_name, expected_args=[], timeout_seconds=JOB_TIMEOUT_SECONDS, memory=JOB_MEMORY, cpu=JOB_CPU, v2_retries=v2)
             if bad:
                 raise Refused("the verification job's DEFINITION does not conform to the contract (re-dispatch #2976 at this commit — same-commit rule): " + "; ".join(bad))
