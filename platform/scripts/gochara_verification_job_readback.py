@@ -20,7 +20,6 @@ import json
 import re
 import sys
 
-ENTRYPOINT = ["python", "-m", "pipeline.orchestrator.verification_job"]
 _DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 _SHA = re.compile(r"[0-9a-f]{40}")
 
@@ -53,46 +52,20 @@ def _shape(job: dict):
 
 def check(job, *, image_repo: str, image_digest: str, service_account: str, runner_commit: str, secret_name: str, cloudsql_instance: str,
           timeout_seconds: int, memory: str, cpu: str) -> list[str]:
+    """The task template is judged by the SAME strict contract as the executed resource (`gochara_verification_job_contract.validate_task`, shared byte for byte with #2975's executed-resource
+    check — R14-3); only the JOB-LEVEL facts (Cloud SQL instance, task count) are checked here."""
+    import gochara_verification_job_contract as vjc
     if not isinstance(job, dict):
         raise Refused("the job description is not a JSON object")
     if not _DIGEST.fullmatch(image_digest or "") or not _SHA.fullmatch(runner_commit or ""):
         raise Refused("the expected image digest / runner commit are malformed")
     ets, task, ann = _shape(job)
-    bad = []
-    cs = task.get("containers") or []
-    if len(cs) != 1:
-        raise Refused(f"the job has {len(cs)} containers, not exactly one")
-    c = cs[0]
-    if c.get("image") != f"{image_repo}@{image_digest}":
-        bad.append(f"image is {c.get('image')!r}, not {image_repo}@{image_digest}")
-    if task.get("serviceAccountName") != service_account:
-        bad.append(f"service account is {task.get('serviceAccountName')!r}")
-    if list(c.get("command") or []) != ENTRYPOINT:
-        bad.append(f"command is {c.get('command')!r}")
-    if list(c.get("args") or []):
-        bad.append(f"args are {c.get('args')!r}, expected none")
-    env = {e.get("name"): e for e in (c.get("env") or []) if isinstance(e, dict)}
-    if set(env) != {"GOCHARA_RUNNER_COMMIT", "GOCHARA_RUNNER_IMAGE_DIGEST", "GOCHARA_VERIFIER_DB_URL"}:
-        bad.append(f"environment variables are {sorted(env)}, expected exactly GOCHARA_RUNNER_COMMIT, GOCHARA_RUNNER_IMAGE_DIGEST and GOCHARA_VERIFIER_DB_URL")
-    else:
-        if env["GOCHARA_RUNNER_COMMIT"].get("value") != runner_commit:
-            bad.append("GOCHARA_RUNNER_COMMIT is not the deployed commit")
-        if env["GOCHARA_RUNNER_IMAGE_DIGEST"].get("value") != image_digest:
-            bad.append("GOCHARA_RUNNER_IMAGE_DIGEST is not the immutable digest deployed")
-        ref = _dig(env["GOCHARA_VERIFIER_DB_URL"], "valueFrom", "secretKeyRef")
-        if not isinstance(ref, dict) or ref.get("name") != secret_name or "value" in env["GOCHARA_VERIFIER_DB_URL"]:
-            bad.append(f"GOCHARA_VERIFIER_DB_URL is not a reference to the secret {secret_name}")
+    bad = vjc.validate_task(task, image_repo=image_repo, image_digest=image_digest, service_account=service_account, runner_commit=runner_commit, secret_name=secret_name,
+                            expected_args=[], timeout_seconds=timeout_seconds, memory=memory, cpu=cpu)
     if ann.get("run.googleapis.com/cloudsql-instances") != cloudsql_instance:
         bad.append(f"Cloud SQL instances annotation is {ann.get('run.googleapis.com/cloudsql-instances')!r}, expected exactly {cloudsql_instance!r}")
     if int(ets.get("taskCount") if ets.get("taskCount") is not None else 1) != 1:
         bad.append("taskCount is not 1")
-    if int(task.get("maxRetries") if task.get("maxRetries") is not None else 3) != 0:
-        bad.append("maxRetries is not 0 (the API default is 3)")
-    if int(task.get("timeoutSeconds") or 0) != timeout_seconds:
-        bad.append(f"timeoutSeconds is {task.get('timeoutSeconds')!r}, expected {timeout_seconds}")
-    lim = _dig(c, "resources", "limits") or {}
-    if str(lim.get("memory")) != memory or str(lim.get("cpu")) != cpu:
-        bad.append(f"resource limits are {lim!r}, expected memory {memory} cpu {cpu}")
     return bad
 
 
