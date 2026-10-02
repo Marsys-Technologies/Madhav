@@ -63,7 +63,7 @@ MUTATIONS = [
      ["test_2_summary_prints_both_not_checked_lines_even_when_allowed", "test_2_cli_exit_codes_and_printed_output"]),
     ("dasha_tier_entry_treated_as_observable",
      'if e.get("kind") != "dasha_shift" and set(e.get("change_types") or ()) == {"tier"}:', "if False:",
-     ["test_2_declared_by_names_the_lane_that_declares_the_unverifiable_tier", "test_real_hooks_with_no_changes_list_exactly_the_entries_a_lane_author_must_fix"]),
+     ["test_2_declared_by_names_the_lane_that_declares_the_unverifiable_tier", "test_every_integration_hook_states_its_absence_rule"]),
     ("require_lanes_check_removed",
      "        if lane and lane not in present:", "        if False:",
      ["test_3_missing_required_lane_fails", "test_real_hook_files_validate"]),
@@ -94,7 +94,7 @@ MUTATIONS = [
      'if kinds == {"time"}:', 'if kinds <= {"continuous", "time"}:',
      ["test_med1_whole_continuous_category_disappearing_is_five_changes", "test_med1_continuous_key_appearing_is_a_change_and_can_be_declared_or_missing"]),
     ("med2_empty_read_guard_removed",
-     "if not st.get(key):", "if False:",
+     "if on and not st.get(key)]", "if False]",
      ["test_med2_everything_empty_on_a_non_native_chart_is_not_clean", "test_med2_cli_empty_snapshots_exit_2_even_with_allow_not_checked"]),
     ("low3_chart_uuid_validation_removed",
      "if not UUID_RE.match(t):", "if False:",
@@ -156,7 +156,8 @@ MUTATIONS = [
      r'ISO = re.compile(r"^\d{4}-\d\d-\d\d[T ]\d\d:\d\d(:\d\d(\.\d+)?)?(Z|[+-]\d\d(:?\d\d)?)?$")', r'ISO = re.compile(r"^\d{4}-\d\d-\d\d[T ]\d\d:\d\d")',
      ["test_f5_kind_of_requires_a_full_iso_timestamp", "test_f5_a_text_fact_that_starts_like_a_timestamp_is_a_class_change"]),
     ("f6_baseline_overwrite_allowed",
-     'if os.path.exists(out) or os.path.exists(out + ".sha256"):', "if False:",
+     # two points: the existence pre-check AND the never-overwrite link (os.link refuses an existing target), so overwriting really becomes possible
+     ['if os.path.exists(out) or os.path.exists(out + ".sha256"):', "        os.link(tmp, out)\n        try:"], ["if False:", "        os.replace(tmp, out)\n        try:"],
      ["test_f6_snapshot_never_overwrites_a_baseline"]),
     ("f6_sidecar_never_verified",
      "if not want or want[0].lower() != got:", "if False:",
@@ -215,6 +216,15 @@ MUTATIONS = [
     ("f7_command_tags_treated_as_data",
      'if lines and lines[0] == "BEGIN":', "if False:",
      ["test_f7_psql_runs_quiet_and_command_tags_are_never_data"]),
+    ("ss_empty_snapshot_accepted",
+     "    if empties:\n        # the baseline is the evidence", "    if False:\n        # the baseline is the evidence",
+     ["test_ss_a_snapshot_of_an_empty_read_is_refused_and_writes_nothing"]),
+    ("ss_snapshot_temp_files_left_behind",
+     "    finally:\n        for t in (tmp, tmp_sha):", "    finally:\n        for t in ():",
+     ["test_ss_snapshot_write_is_atomic_and_leaves_no_temporary_file"]),
+    ("ss_half_baseline_left_when_the_sidecar_cannot_be_linked",
+     "            os.unlink(out)\n            raise", "            raise",
+     ["test_ss_snapshot_write_is_atomic_and_leaves_no_temporary_file"]),
 ]
 
 
@@ -240,9 +250,12 @@ def test_control_unmutated_tool_is_green(tmp_path):
 @pytest.mark.parametrize("name,old,new,must_fail", MUTATIONS, ids=[m[0] for m in MUTATIONS])
 def test_mutation_is_caught(tmp_path, name, old, new, must_fail):
     src = TOOL.read_text()
-    assert src.count(old) == 1, f"mutation anchor for {name} matches {src.count(old)} places (must be exactly 1): {old!r}"
+    pairs = list(zip(old, new)) if isinstance(old, list) else [(old, new)]
+    for o, n in pairs:
+        assert src.count(o) == 1, f"mutation anchor for {name} matches {src.count(o)} places (must be exactly 1): {o!r}"
+        src = src.replace(o, n)
     mutated = tmp_path / "flip_detector.py"
-    mutated.write_text(src.replace(old, new))
+    mutated.write_text(src)
     code, failed, tail = _run_tests(mutated, tmp_path, must_fail)  # only the named tests: each mutation costs one pytest start-up, not the whole file
     assert code == 1, f"mutation {name} left the test-suite green (or broke it differently): rc={code}\n{tail}"
     assert any(any(m in f for f in failed) for m in must_fail), f"mutation {name}: expected one of {must_fail} to fail, got {failed}"

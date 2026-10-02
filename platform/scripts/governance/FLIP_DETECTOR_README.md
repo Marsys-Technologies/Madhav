@@ -1,11 +1,12 @@
 ---
 artifact: FLIP_DETECTOR_README
-version: 2.3
+version: 2.4
 status: DRAFT-FOR-REVIEW
 produced_by: exec-suvarna
 decision: SS N-64 (S-L1 acceptance criterion); verdict-deciding tool, one independent review required before the S-L1 integration PR relies on it
 scope: tooling and tests only. The detector is read-only and never writes to the database.
 changelog:
+  - "2.4 (2026-10-03): hooks_real refreshed as byte copies of the S-L1 integration's 22 hook files (c3213fc98) + the pending F-A2 hook; live byte-equality test with an explicit PENDING list; a snapshot of an empty read is refused (exit 5) and nothing is written (atomic write); operator steps and known limits (post-window hardening list) from review R-T3."
   - "2.3 (2026-10-02): second independent review (R-T2) and SS rulings. A table that was not compared (flag or missing snapshot section) is a conditional NOT CHECKED row, flags and skipped sections are recorded in meta, no green ok line for it. --no-dashas / --no-daily with --require-lanes is REFUSED (exit 6) without --i-know-dashas-are-not-compared; the W7 command is written in full below. Reads are ONE REPEATABLE READ READ ONLY transaction; PGOPTIONS read-only and a proven read-only session; timeout; READ_ERROR exit 5 with a report; error text scrubbed. --snapshot never overwrites; the .sha256 is verified on compare. Sort includes the tier. Standing NOT CHECKED registry extended. Full ISO timestamp match. expected_count rejected on dasha_shift; exact must not be a boolean; min <= max. Phantom chart id refused. hooks_real are byte copies of the hook directory with a live comparison and a documented refresh. Empty current native is EMPTY_READ, not ALERT."
   - "2.2 (2026-10-02): delta-review fixes. A timestamp-valued fact that becomes NULL or non-timestamp text is a value change. malformed-report check pinned for a non-list not_checked. README: direction limit of the continuous/integral classification, and a correction note for the sun_required_rupa hook."
   - "2.1 (2026-10-02): fixes from the independent review of PR 2945. A continuous number that becomes NULL/text, and continuous keys that appear or disappear, are now changes (were invisible). New failure class EMPTY_READ (zero rows in a compared table in either state). Chart ids are validated as UUIDs and normalised once. Empty fact_keys / ayanamsha_ids / charts lists, an empty --hooks-dir and an empty --require-lanes are rejected. A single-SELECT guard (no statement chaining). A malformed or truncated report is FAIL (exit 2), never a KeyError. W7 hand-check list added."
@@ -53,7 +54,6 @@ The detector prints, on every compare, one `NOT CHECKED` line per item below and
 | `chart_dashas.tier` | `chart_dashas.verification_pass_status` (tier changes for mudda, narayana, yogini, ashtottari, chara_karaka, naisargika and vimshottari). The detector never compares the tier column (when `chart_dashas` is compared at all it compares row sets and start shifts) |
 | `l1_tajik_varsha_year_lords.tier` | `l1_tajik_varsha_year_lords.verification_pass_status`. The table is not one of the four tables the detector reads |
 | `chart_vichara` | `chart_vichara` (ga_vichara: row counts, dedupe, sorted `constituent_fact_ids`, leverage as-of). The table is not one of the four tables the detector reads, so **an empty flip report says nothing about ga_vichara**. W7 runs `00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/evidence/ga_vichara_writer_ACCEPTANCE.sql`; every row must read `ok = t` |
-
 | `ga_yoga_firings.strength`, `bodha_msr_signals` (shadbala_norm), `bodha_rm_resonances`, `ga_condition_composite`, `ga_medical`, `ga_vastu_*`, `ga_prashna_*`, `prashna_charts` | tables the detector never reads (the first three are the downstream tables the `sun_required_rupa` lane changes). One line each, hand read-back in "Other tables the detector never reads" below |
 
 **Conditional rows, present only when the check did not run** (a check that did not run is never silent and never a green line):
@@ -64,7 +64,7 @@ The detector prints, on every compare, one `NOT CHECKED` line per item below and
 | `panchanga_daily.not_compared` | `--no-daily`, or a snapshot has no `daily` section |
 | `snapshot.sha256` / `against.sha256` | the snapshot has no `.sha256` sidecar: its integrity is unverified (a sidecar that does not match is a `HOOK_ERROR` failure, exit 2) |
 
-For a skipped table the summary prints `n/a  DASHA_SHIFT_UNDECLARED: NOT EVALUATED` (never `ok ... : 0`), the JSON has `compared: {chart_dashas: false, ...}` and `meta.flags` / `meta.skipped_sections` record the flags and the skipped sections, so saved evidence of a skipped run cannot be mistaken for a full compare.
+For a skipped table the summary prints `n/a  DASHA_SHIFT_UNDECLARED: NOT EVALUATED` (never `ok ... : 0`). **Read this plainly:** with dashas or daily skipped, the other class lines (`ok   UNDECLARED_CHANGE: 0`, `DECLARED_BUT_ABSENT`, `EXPECTATION_MISMATCH`, `EMPTY_READ`) still print as `ok`, because they are computed over the tables that WERE compared and say nothing about the skipped one; only `DASHA_SHIFT_UNDECLARED` prints n/a. What marks the run is the `NOT CHECKED chart_dashas.not_compared` / `panchanga_daily.not_compared` line and `VERDICT: NOT_CHECKED` that follow. The JSON has `compared: {chart_dashas: false, ...}` and `meta.flags` / `meta.skipped_sections` record the flags and the skipped sections, so saved evidence of a skipped run cannot be mistaken for a full compare.
 
 Also reported as NOT CHECKED (per hook entry, `declared_by_lanes` names the lane): any entry on `l1_tajik_varsha_year_lords`, any `chart_dashas` entry whose only change type is `tier`, and any `chart_dashas` / `panchanga_daily` entry when that table was not compared in the run (`--no-dashas`, `--no-daily`). Such an entry is never reported as DECLARED_BUT_ABSENT.
 
@@ -118,10 +118,12 @@ ORDER BY ayanamsha_id, verification_pass_status;
 | 2 | verdict FAIL. `--validate-hooks`: any hook error or missing required lane |
 | 3 | verdict ALERT (FORENSIC anchor changed). Wins over 2 and 4 |
 | 4 | verdict NOT_CHECKED and `--allow-not-checked` not passed |
-| 5 | READ_ERROR: the read failed or cannot be trusted (psql failure after retries, a timeout, an incomplete or mis-split result, a session that is not read-only). A report with `verdict: READ_ERROR` is written (`--out`); `--snapshot` exits 5 and writes nothing. The message is at most 200 characters with DSNs and passwords removed |
+| 5 | READ_ERROR: the read failed or cannot be trusted (psql failure after retries, a timeout, an incomplete or mis-split result, a session that is not read-only). A report with `verdict: READ_ERROR` is written (`--out`); `--snapshot` exits 5 and writes nothing, including when the read returned **zero rows** in a table that must have rows (`chart_facts`, `chart_divisionals`, and `chart_dashas` / `panchanga_daily` when read): no snapshot, no `.sha256`, no temporary file. The error detail after the fixed "read failed after N attempts: " prefix is cut to 200 characters with DSNs and passwords removed |
 | 6 | REFUSED: `--no-dashas` / `--no-daily` together with `--require-lanes` without `--i-know-dashas-are-not-compared`; or `--snapshot` onto an existing file (a baseline is never overwritten; choose another `--out`) |
 
 `--allow-not-checked` only converts exit 4 into 0. It never softens 2 or 3.
+
+Two exits are not produced on purpose and are not in the table: **exit 1** is an uncaught Python traceback (for example a missing or corrupt snapshot file given to `--compare`; treat it as a failure) and **exit 2** is also what argparse returns for a usage error (an unknown flag, a missing argument, an empty `--hooks-dir`, a bad `--snapshot` target). The exit-6 rule for `--no-dashas` / `--no-daily` applies only with `--require-lanes` (the W7 command always passes it).
 
 ## Usage
 
@@ -141,16 +143,25 @@ python3 platform/scripts/governance/flip_detector.py --compare <snapshot.json.gz
 
 ### The W7 command (S-L1 window), written in full
 
-Dashas and daily are compared; **no `--no-dashas` / `--no-daily`**. The hook directory is the integration's (`00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks`, the default). The lane list below is the set of lane hooks that exist today (11); the window's authoritative required list is SS's, and `fa2_ga_vargas`, `daridra`, `ephemeris` and `formula_pins` are added to it when their hooks land (a required lane without a valid hook is a `HOOK_ERROR`).
+Operator steps, in this order:
+
+1. **Set `FLIP_TIMEOUT_SEC` explicitly** for the production reader (for example `export FLIP_TIMEOUT_SEC=300`). The default is 120 s per attempt; it read about 650k rows in 5 s locally, but the production network read is unmeasured.
+2. **Connect directly** to the database, not through a pooler: PgBouncer and similar poolers reject the `PGOPTIONS` the tool sets (`-c default_transaction_read_only=on`) and may not hold one repeatable-read transaction. Avoid reader wrappers too: on a timeout only the direct child is killed, and a wrapper's psql grandchild can survive and keep the transaction open.
+3. **Take the W0 baseline** (`--snapshot native`), then **check its row counts** (`chart_facts`, `chart_divisionals`, `chart_dashas`, `panchanga_daily`: the `counts:` line it prints, and per chart) **against the expected before-counts in `HOOKS_W7_HAND_READBACK_v1_0.md` and against the reader's own COUNT queries, before W1 is merged**: once W1 applies, the "before" state is gone and a bad baseline cannot be re-taken. A snapshot of an empty read is now refused (exit 5, nothing written), but a partial or wrong-chart read is saved with a `.sha256` and is never overwritten: **a bad baseline is sticky; re-take it under a new name** (`--out`).
+4. Run the command below after the rebuild, then the W7 hand read-backs, then the same command with `--allow-not-checked`.
+
+Dashas and daily are compared; **no `--no-dashas` / `--no-daily`**. The hook directory is the integration's (`00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks`, the default). The lane list is the 22 hook files the integration carries (`TI-s-l1-integration-001` at c3213fc98).
 
 ```
 python3 platform/scripts/governance/flip_detector.py \
   --compare <PRE_REBUILD_SNAPSHOT.json.gz> \
   --hooks-dir 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks \
-  --require-lanes argala,band_table,ga_condition_fallback,gandanta,karaka_dasha_roles,karaka_roles,karaka_web_order,special_lagna_offset,special_lagna_offset_other_charts,sun_required_rupa,tiers \
+  --require-lanes argala,argala_other_charts,ashtakavarga_bindu_contributor,band_table,chandra_bala_birth_moon_sign,dasha_scope_cap,ga_condition_fallback,ga_strength_invariant_rows,ga_structural_chart_geometry,ga_vargas_invariant_sentinels,gandanta,karaka_dasha_roles,karaka_roles,karaka_web_order,karaka_web_order_other_charts,sade_sati_placeholder_null,special_lagna_offset,special_lagna_offset_other_charts,sun_required_rupa,tiers,tiers_other_charts,yamakantaka \
   --out <REPORT.json>
 # after the W7 hand read-backs are done and recorded, the same command plus:  --allow-not-checked
 ```
+
+**`fa2_ga_vargas` is required only once PR 2858 lands.** Its hook file (`fa2_ga_vargas.json`) does not exist in the repo's hook directory until then, and naming it in `--require-lanes` before that is a `HOOK_ERROR`. The command above is therefore valid in both states. When #2858 has landed, append `,fa2_ga_vargas` (23 names). `hooks_real` already carries the F-A2 hook (a copy of the F-A2 patch file, sha256 `406437e05eba54afbbeed4ffae126e67d1a7472b807517399e244d89517337f5`) so the CI test for the lane list passes in both states; see "Refreshing hooks_real".
 
 `--no-dashas` or `--no-daily` together with `--require-lanes` exits 6 unless `--i-know-dashas-are-not-compared` is also given; even then the report carries `chart_dashas.not_compared` / `panchanga_daily.not_compared` NOT CHECKED rows and the flags in `meta`.
 
@@ -252,21 +263,25 @@ Repeat the same shape for `ga_condition_composite`, `ga_medical`, the `ga_vastu_
 
 ## Refreshing hooks_real
 
-`__tests__/fixtures/flip_detector/hooks_real/` holds **byte copies** of the hook files; `test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory` compares them live with the hook directory and fails on any missing, extra or changed file. Copies at these lane heads (2026-10-02): `karaka_roles.json` PR 2878 at 710b47ee1; `sun_required_rupa.json` PR 2893 at 150a273a8; `tiers.json` PR 2941 at 59c6efd46 (the lane's current `tiers.json`: it has the entries for the widened `chart_dashas` categories, `l1_tajik_varsha_year_lords` and the two counted `chart_facts` entries); `gandanta.json` PR 2892 at f2b7a1d3e; `special_lagna_offset.json` and `special_lagna_offset_other_charts.json` PR 2971 at 872724cbf; `argala.json` (seed) from the PR 2859 branch; `band_table.json` and `ga_condition_fallback.json` from `TI-l1-band-x2-001`; `karaka_dasha_roles.json` from `TI-l1-dashas-karaka-001`; `karaka_web_order.json` from `TI-l1-karaka-web-order-001`.
+`__tests__/fixtures/flip_detector/hooks_real/` holds **byte copies** of the integration's hook files: the 22 top-level `*.json` of `00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/` on branch `suvarna/land/TI-s-l1-integration-001` at **c3213fc98** (each verified against its git blob sha), plus **`fa2_ga_vargas.json`**, a copy of the F-A2 patch file (PR 2858; sha256 `406437e05eba54afbbeed4ffae126e67d1a7472b807517399e244d89517337f5`) that PR will add to the same directory.
 
-At the merge of the S-L1 integration, from the repo root with the integration's tree checked out (or `FLIP_INTEGRATION_HOOKS_DIR` set to its `s_l1_attribution_hooks/` directory):
+`test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory` compares them live with the repo's hook directory (or `FLIP_INTEGRATION_HOOKS_DIR`) and fails on any drift, missing or extra file, **except** the names in the short explicit `PENDING_HOOKS` list at the top of the test file (initially `fa2_ga_vargas.json`): a pending file may be ABSENT from the repo directory (until #2858 lands) and must be byte-equal when present; pending never excuses a present file that differs, and a pending file present in the directory but missing from `hooks_real` is drift. When #2858 lands, empty `PENDING_HOOKS` (and make the lane list 23 names in the command above).
+
+Refresh procedure, from the repo root with the integration's tree checked out (or `FLIP_INTEGRATION_HOOKS_DIR` set to its `s_l1_attribution_hooks/` directory); to refresh from the integration branch without checking it out, use `git show <sha>:<path>` per file instead of `cp`:
 
 ```
 HOOKS=00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks          # or the path in FLIP_INTEGRATION_HOOKS_DIR
 FX=platform/scripts/governance/__tests__/fixtures/flip_detector/hooks_real
+cp "$FX"/fa2_ga_vargas.json /tmp/fa2_ga_vargas.json                        # keep the pending F-A2 copy while #2858 is open
 rm -f "$FX"/*.json && cp "$HOOKS"/*.json "$FX"/                           # top-level *.json only; evidence/ is never copied
+[ -f "$FX"/fa2_ga_vargas.json ] || cp /tmp/fa2_ga_vargas.json "$FX"/      # only while fa2_ga_vargas is still pending
 python3 platform/scripts/governance/flip_detector.py --validate-hooks --hooks-dir "$FX"
 FLIP_DETECTOR_REGEN_GOLDEN=1 python3 -m pytest platform/scripts/governance/__tests__/test_flip_detector.py -q   # regenerates golden_flip_detector_expected.json
 git diff -- platform/scripts/governance/__tests__/fixtures   # READ the golden diff: it must be explained by the hook changes
 python3 -m pytest platform/scripts/governance/__tests__/test_flip_detector.py -q                                   # must pass without the env var
 ```
 
-Then update `REAL_LANES` / `GOLDEN_LANES` in the test file if the lane set changed, and the shas above. Once the repo's own hook directory exists in the tree the comparison never skips (in CI or locally); it skips only while that directory is absent. `FLIP_INTEGRATION_HOOKS_DIR` set to a path that does not exist fails the test.
+Then update `GOLDEN_LANES` in the test file if its lanes changed. Once the repo's own hook directory exists in the tree the comparison never skips (in CI or locally); it skips only while that directory is absent. `FLIP_INTEGRATION_HOOKS_DIR` set to a path that does not exist fails the test.
 
 ## Documented limits (not fixed)
 
@@ -274,6 +289,18 @@ Then update `REAL_LANES` / `GOLDEN_LANES` in the test file if the lane set chang
 * **Hand-edited snapshots.** A snapshot is trusted for its shape beyond the checks above (types of numbers and levels as written by `--snapshot`); a hand-edited snapshot with other JSON types can crash or mis-pair. Do not edit snapshots; the `.sha256` sidecar exists to catch it.
 * **`chart_divisionals` text versus sign.** The comparison value is `fact_value_text` when present, else `sign`. The ga_vargas writer sets both (`ga_vargas_writer.py`, rows built around lines 994 and 1072), so a change in `sign` alone with an unchanged `fact_value_text` is invisible. Whether every other writer fills both has not been verified.
 * **Continuous to integral** is invisible (see the direction limit above).
+
+## Known limits (post-window hardening list)
+
+Found by the independent reviews, not fixed before the window; each is named so it is not lost:
+
+* **`_scrub` gaps.** The error scrub removes DSNs and `password=`-style pairs only; other shapes of secret in a psql error are not recognised (the detail is also cut to 200 characters, which limits but does not remove the risk).
+* **Grandchild kill on timeout.** A timeout kills only the direct child process; a reader wrapper's psql grandchild can survive and keep the transaction open. Use psql directly (no wrapper).
+* **Retry sleeps on permanent errors.** Retries sleep 5, 10 and 15 s even for errors that cannot recover (bad credentials, missing table): worst case about 8.5 minutes with no output when each attempt also times out at 120 s.
+* **Poolers.** `PGOPTIONS` is rejected by poolers such as PgBouncer; connect directly.
+* **Production read time is unmeasured** (about 650k rows read in 5 s locally); set `FLIP_TIMEOUT_SEC` explicitly.
+* **Five surviving mutants / test-coverage gaps N1, N7, N11, N15, N16** from review R-T3: behaviours the suite does not yet pin.
+* **Exit codes.** A missing or corrupt snapshot file given to `--compare` ends in a Python traceback (exit 1), not a defined code.
 
 ## What the detector cannot check
 

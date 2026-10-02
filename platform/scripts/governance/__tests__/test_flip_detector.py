@@ -605,8 +605,9 @@ def test_3_default_hooks_dir_is_the_slhooks_folder():
 
 
 # ----------------------------------------------------------------------------------------------- real hook files
-REAL_LANES = ["argala", "band_table", "ga_condition_fallback", "gandanta", "karaka_dasha_roles", "karaka_roles", "karaka_web_order", "special_lagna_offset",
-              "special_lagna_offset_other_charts", "sun_required_rupa", "tiers"]
+REAL_LANES = sorted(f.stem for f in REAL_HOOKS.glob("*.json"))  # the integration's 22 hook files + fa2_ga_vargas (pending, see PENDING_HOOKS)
+PENDING_HOOKS = ("fa2_ga_vargas.json",)  # F-A2 (PR 2858) adds this file to the hook directory later: allowed absent from the repo directory, byte-equal when present
+INTEGRATION_LANES = [n for n in REAL_LANES if n + ".json" not in PENDING_HOOKS]
 
 
 def test_real_hook_files_validate(capsys):
@@ -691,19 +692,22 @@ def summarize(rep):
             "absent": rep["failures"]["DECLARED_BUT_ABSENT"], "exit_default": F.exit_code(rep), "exit_allow_not_checked": F.exit_code(rep, True)}
 
 
-def optional_entries(*idx):
-    return lambda h: [h["may_change"][i].update(optional=True) for i in idx]
+def strip_counts(h):
+    """Attribution-only variant of a real hook: every entry optional and without expected_count, so the golden shows WHICH lane each change goes to
+    independently of the lane's production row counts (which synthetic data cannot honour)."""
+    for e in h["may_change"]:
+        e.pop("expected_count", None)
+        e["optional"] = True
 
 
 def golden_cases(tmp_path):
-    """The shipped sun_required_rupa entries 1..3 (ratio and the composite-strength keys are continuous) and gandanta[1] (a 'surprise bucket')
-    can never observe a change on this data; the variants show what a lane author's fix (marking them optional) does to the verdict."""
     verbatim = real_hooks(tmp_path, GOLDEN_LANES)
-    optional = real_hooks(tmp_path, GOLDEN_LANES, patch={"sun_required_rupa": optional_entries(2, 3)})
-    both_optional = real_hooks(tmp_path, GOLDEN_LANES, patch={"sun_required_rupa": optional_entries(1, 2, 3), "gandanta": optional_entries(1)})
-    out = {"verbatim_real_hooks": summarize(run(golden_before(), golden_after(), verbatim)),
-           "composite_entries_optional": summarize(run(golden_before(), golden_after(), optional)),
-           "all_unobservable_entries_optional": summarize(run(golden_before(), golden_after(), both_optional))}
+    stripped = real_hooks(tmp_path, GOLDEN_LANES, patch={lane: strip_counts for lane in GOLDEN_LANES})
+    all_hooks, errs = F.load_hooks(str(REAL_HOOKS), REAL_LANES)
+    assert not errs
+    out = {"all_23_hooks_unchanged_native_chart": summarize(run(base_state(), base_state(), all_hooks)),
+           "four_lanes_verbatim_synthetic_changes": summarize(run(golden_before(), golden_after(), verbatim)),
+           "four_lanes_counts_stripped": summarize(run(golden_before(), golden_after(), stripped))}
 
     def noisy(s):
         change_mar_pada(s)                                                                  # undeclared (no lane declares graha_position)
@@ -711,7 +715,7 @@ def golden_cases(tmp_path):
             if r[1] == "graha_shadbala_cheshta":
                 r[5] = "41"                                                                 # tiers declares tier only: kind mismatch (5)
         shift_vimshottari(s)                                                                # no ephemeris hook loaded: undeclared dasha shift
-    out["noisy_with_optional"] = summarize(run(golden_before(), mutate(golden_after(), noisy), optional))
+    out["noisy_counts_stripped"] = summarize(run(golden_before(), mutate(golden_after(), noisy), stripped))
     return out
 
 
@@ -726,45 +730,46 @@ def test_golden_real_hooks_flip_report(tmp_path):
 def test_golden_semantics_read_by_a_human(tmp_path):
     """The golden file is not trusted blindly: restate its meaning independently of the pinned numbers."""
     cases = golden_cases(tmp_path)
-    v = cases["verbatim_real_hooks"]
-    # sun_required_rupa[1..3] (continuous keys) and gandanta[1] can never observe a change on this data: failures until the lane marks them optional
-    assert v["verdict"] == "FAIL" and v["failure_counts"]["DECLARED_BUT_ABSENT"] == 4 and len(v["absent"]) == 4
-    assert [a.split(" (")[0].replace("DECLARED BUT ABSENT ", "") for a in v["absent"]] == ["gandanta[1]", "sun_required_rupa[1]", "sun_required_rupa[2]", "sun_required_rupa[3]"]
-    o = cases["composite_entries_optional"]
-    assert o["failure_counts"]["DECLARED_BUT_ABSENT"] == 2 and any("gandanta[1]" in a for a in o["absent"])
-    c = cases["all_unobservable_entries_optional"]
+    u = cases["all_23_hooks_unchanged_native_chart"]
+    # every shipped integration hook is explicit about absence (count or optional): an unchanged chart is judged by the counts, never as 'absent'
+    assert u["absent"] == [] and u["verdict"] == "FAIL" and u["failure_counts"]["EXPECTATION_MISMATCH"] > 0
+    assert sum(v for k, v in u["failure_counts"].items() if k != "EXPECTATION_MISMATCH") == 0
+    v = cases["four_lanes_verbatim_synthetic_changes"]
+    assert v["verdict"] == "FAIL" and v["failure_counts"]["EXPECTATION_MISMATCH"] > 0   # synthetic data cannot honour production row counts
+    c = cases["four_lanes_counts_stripped"]
     assert c["verdict"] == "NOT_CHECKED" and c["exit_default"] == 4 and c["exit_allow_not_checked"] == 0 and c["absent"] == []
-    assert sum(c["failure_counts"].values()) == 0 and len(c["warnings"]) == 4
-    n = cases["noisy_with_optional"]
+    assert sum(c["failure_counts"].values()) == 0 and c["changes_total"] == 611
+    by = {tuple(k[:3]) + (k[3],): n for k, n in c["by_table_category_change_lane"]}
+    assert by[("chart_facts", "special_lagna", "tier", "tiers")] == 245 and by[("chart_facts", "kp_cuspal_significators", "tier", "tiers")] == 300
+    assert by[("chart_facts", "graha_gandanta", "occurrence_count", "gandanta")] == 50 and by[("chart_facts", "argala_natal_matrix", "value", "argala")] == 5
+    n = cases["noisy_counts_stripped"]
     assert n["verdict"] == "FAIL" and n["failure_counts"]["UNDECLARED_CHANGE"] == 1
     assert n["failure_counts"]["KIND_MISMATCH"] == 5 and n["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 1
-    for c in cases.values():
-        assert [x[0] for x in c["not_checked"]][:2] == ["chart_dashas.tier", "l1_tajik_varsha_year_lords.tier"]
-        if c["verdict"] == "FAIL":
-            assert c["exit_default"] == 2 and c["exit_allow_not_checked"] == 2  # failures are never softened by the flag
-    assert dict(o["not_checked"])["chart_dashas.tier"] == ["tiers"]
+    for case in cases.values():
+        assert [x[0] for x in case["not_checked"]][:2] == ["chart_dashas.tier", "l1_tajik_varsha_year_lords.tier"]
+        if case["verdict"] == "FAIL":
+            assert case["exit_default"] == 2 and case["exit_allow_not_checked"] == 2  # failures are never softened by the flag
+    assert dict(c["not_checked"])["chart_dashas.tier"] == ["tiers"] and dict(c["not_checked"])["l1_tajik_varsha_year_lords.tier"] == ["tiers"]
 
 
-def test_golden_clean_run_attributes_every_gandanta_row(tmp_path):
-    hooks = real_hooks(tmp_path, GOLDEN_LANES, patch={"sun_required_rupa": optional_entries(1, 2, 3), "gandanta": optional_entries(1)})
+def test_golden_clean_run_attributes_every_change(tmp_path):
+    hooks = real_hooks(tmp_path, GOLDEN_LANES, patch={lane: strip_counts for lane in GOLDEN_LANES})
     rep = run(golden_before(), golden_after(), hooks)
     assert [c["lanes"] for c in rep["changes"] if c["category"] == "graha_gandanta"] == [["gandanta"]] * 50
     assert all(c["lanes"] for c in rep["changes"])
 
 
-def test_real_hooks_with_no_changes_list_exactly_the_entries_a_lane_author_must_fix(tmp_path):
-    """Every shipped hook against an unchanged chart: which entries are DECLARED_BUT_ABSENT (no expected_count, not optional)?"""
+def test_every_integration_hook_states_its_absence_rule(tmp_path):
+    """Every entry of every shipped hook either declares an expected_count, is optional, is a dasha_shift (judged by shifted rows), or is an entry the detector
+    cannot observe: none would read DECLARED_BUT_ABSENT on an unchanged chart (the review finding that drove the lane authors' fixes)."""
     hooks, errs = F.load_hooks(str(REAL_HOOKS), REAL_LANES)
     assert not errs
-    rep = run(base_state(), base_state(), hooks, standing_not_checked=NO_STANDING)
-    absent = sorted(a.split(" (")[0].replace("DECLARED BUT ABSENT ", "") for a in rep["failures"]["DECLARED_BUT_ABSENT"])
-    assert absent == ["argala[0]", "gandanta[1]", "karaka_dasha_roles[0]", "karaka_roles[0]", "karaka_roles[1]", "karaka_web_order[0]",
-                      "sun_required_rupa[1]", "sun_required_rupa[2]", "sun_required_rupa[3]", "tiers[0]"]
-    # entries with an explicit count (gandanta[0] exact 50, sun_required_rupa[0] exact 1, tiers[3] exact 245, tiers[4] exact 300) fail by EXPECTATION_MISMATCH, never as absent
-    assert sorted(m.split(" (")[0].replace("EXPECTATION MISMATCH ", "") for m in rep["failures"]["EXPECTATION_MISMATCH"]) == ["gandanta[0]", "sun_required_rupa[0]", "tiers[3]", "tiers[4]"]
-    # the unobservable chart_dashas tier entry of tiers.json is NOT CHECKED, and the tiers chart_facts entry is checkable and absent
-    nc = [n["id"] for n in rep["not_checked"]]
-    assert "tiers[1]" in nc and "tiers[1]" not in absent
+    for chart in (NATIVE, OTHER, "cb73cd3d-9eba-4220-9902-0de91566e980"):
+        rep = run(base_state(), base_state(), hooks, chart=chart, standing_not_checked=NO_STANDING)
+        assert rep["failures"]["DECLARED_BUT_ABSENT"] == [], (chart, rep["failures"]["DECLARED_BUT_ABSENT"])
+    nat = run(base_state(), base_state(), hooks, standing_not_checked=NO_STANDING)
+    assert any(m.startswith("EXPECTATION MISMATCH tiers[3]") for m in nat["failures"]["EXPECTATION_MISMATCH"])  # exact 245 special_lagna tier changes, none happened here
+    assert "tiers[1]" in [n["id"] for n in nat["not_checked"]]  # the chart_dashas tier-only entry is NOT CHECKED, never absent
 
 
 # ----------------------------------------------------------------------------------------------- unchanged safety properties
@@ -1497,11 +1502,13 @@ def test_f10_standing_registry_names_every_known_unobserved_scope():
 
 
 # --- F12 (SS ruling): hooks_real are BYTE COPIES of the integration's hook directory, checked live
-def hook_dir_differences(src, fixtures):
-    """[] when the two directories hold the same top-level *.json hook files byte for byte."""
+def hook_dir_differences(src, fixtures, pending=()):
+    """[] when the two directories hold the same top-level *.json hook files byte for byte, except that the names in `pending` may be ABSENT from `src`
+    (a lane PR that has not landed yet). A pending file that IS present in `src` must still be byte-equal and present in the fixtures: pending never hides drift."""
     a = {f.name: f.read_bytes() for f in pathlib.Path(src).glob("*.json")}
     b = {f.name: f.read_bytes() for f in pathlib.Path(fixtures).glob("*.json")}
-    diff = [f"only in the real hook directory: {n}" for n in sorted(set(a) - set(b))] + [f"only in hooks_real fixtures: {n}" for n in sorted(set(b) - set(a))]
+    diff = [f"only in the real hook directory: {n}" for n in sorted(set(a) - set(b))]
+    diff += [f"only in hooks_real fixtures: {n}" for n in sorted(set(b) - set(a)) if n not in pending]
     diff += [f"bytes differ: {n}" for n in sorted(set(a) & set(b)) if a[n] != b[n]]
     return diff
 
@@ -1519,9 +1526,35 @@ def test_f12_the_comparison_helper_detects_missing_extra_and_changed_files(tmp_p
     assert hook_dir_differences(src, fx) == ["only in hooks_real fixtures: c.json", "bytes differ: b.json"]
 
 
+def test_f12_pending_files_may_be_absent_but_never_hide_drift(tmp_path):
+    src, fx = tmp_path / "src", tmp_path / "fx"
+    src.mkdir(), fx.mkdir()
+    (src / "a.json").write_text("1"), (fx / "a.json").write_text("1"), (fx / "p.json").write_text("P")
+    assert hook_dir_differences(src, fx, ("p.json",)) == []                                   # pending: absent from the repo directory, carried by hooks_real
+    assert hook_dir_differences(src, fx) == ["only in hooks_real fixtures: p.json"]            # the same state without the pending list is drift
+    (src / "p.json").write_text("P")
+    assert hook_dir_differences(src, fx, ("p.json",)) == []                                    # landed and byte-equal: fine
+    (src / "p.json").write_text("P2")
+    assert hook_dir_differences(src, fx, ("p.json",)) == ["bytes differ: p.json"]              # landed but different: drift, pending does not excuse it
+    (src / "p.json").write_text("P")
+    (fx / "p.json").unlink()
+    assert hook_dir_differences(src, fx, ("p.json",)) == ["only in the real hook directory: p.json"]   # landed but hooks_real lacks it: drift
+    (src / "p.json").unlink()
+    (fx / "q.json").write_text("Q")
+    assert hook_dir_differences(src, fx, ("p.json",)) == ["only in hooks_real fixtures: q.json"]       # a non-pending extra is drift
+    (src / "r.json").write_text("R")
+    assert hook_dir_differences(src, fx, ("p.json",)) == ["only in the real hook directory: r.json", "only in hooks_real fixtures: q.json"]
+
+
+def test_f12_the_pending_list_is_short_and_explicit():
+    assert PENDING_HOOKS == ("fa2_ga_vargas.json",)
+    assert (REAL_HOOKS / "fa2_ga_vargas.json").exists() and len(list(REAL_HOOKS.glob("*.json"))) == 23
+
+
 def test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory():
     """LIVE when the directory exists. FLIP_INTEGRATION_HOOKS_DIR (explicit path) must exist; otherwise the repo's own s_l1_attribution_hooks/ is used.
     Skipped ONLY when that repo directory is not in the tree yet (nothing to compare). Once it exists this never skips, in CI or locally.
+    PENDING_HOOKS (fa2_ga_vargas.json) may be absent from that directory until PR 2858 lands, and must be byte-equal once present.
     Refresh procedure: FLIP_DETECTOR_README.md section 'Refreshing hooks_real'."""
     env = os.environ.get("FLIP_INTEGRATION_HOOKS_DIR")
     real = pathlib.Path(env) if env else pathlib.Path(F.DEFAULT_HOOKS_DIR)
@@ -1529,15 +1562,15 @@ def test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory():
         assert real.is_dir(), f"FLIP_INTEGRATION_HOOKS_DIR={env} does not exist"
     elif not real.is_dir():
         pytest.skip(f"the integration hook directory is not in this tree yet: {real}; set FLIP_INTEGRATION_HOOKS_DIR to compare against another checkout")
-    diffs = hook_dir_differences(real, REAL_HOOKS)
+    diffs = hook_dir_differences(real, REAL_HOOKS, PENDING_HOOKS)
     assert not diffs, "hooks_real drifted from the hook directory (refresh per README 'Refreshing hooks_real', then regenerate the golden file):\n" + "\n".join(diffs)
 
 
 def test_f12_readme_documents_the_refresh_procedure_and_the_copy_shas():
     text = (GOV_DIR / "FLIP_DETECTOR_README.md").read_text()
     assert "Refreshing hooks_real" in text and "FLIP_INTEGRATION_HOOKS_DIR" in text and "FLIP_DETECTOR_REGEN_GOLDEN=1" in text
-    for sha in ("710b47ee1", "150a273a8", "59c6efd46", "f2b7a1d3e", "872724cbf"):
-        assert sha in text, sha
+    assert "c3213fc98" in text and "406437e05eba" in text and "TI-s-l1-integration-001" in text
+    assert "fa2_ga_vargas" in text and "PENDING_HOOKS" in text and "2858" in text
 
 
 def test_ss_the_readme_w7_command_is_complete_and_its_lanes_validate(capsys):
@@ -1546,8 +1579,11 @@ def test_ss_the_readme_w7_command_is_complete_and_its_lanes_validate(capsys):
     assert "--no-dashas" not in block and "--no-daily" not in block
     assert "--hooks-dir 00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks" in block and "--compare" in block
     lanes = re.search(r"--require-lanes (\S+)", block).group(1)
+    assert len(lanes.split(",")) == 22 and sorted(lanes.split(",")) == sorted(INTEGRATION_LANES)
     assert F.main(["--validate-hooks", "--hooks-dir", str(REAL_HOOKS), "--require-lanes", lanes]) == 0
-    assert sorted(lanes.split(",")) == sorted(REAL_LANES)
+    assert F.main(["--validate-hooks", "--hooks-dir", str(REAL_HOOKS), "--require-lanes", lanes + ",fa2_ga_vargas"]) == 0   # the 23-name list once #2858 lands
+    after = text.split("### The W7 command (S-L1 window), written in full", 1)[1]
+    assert "only once PR 2858 lands" in after and "fa2_ga_vargas" in after
     capsys.readouterr()
 
 
@@ -1569,3 +1605,56 @@ def test_ss_the_readme_states_the_final_dasha_tier_literals():
     for sysid in ("mudda", "narayana", "yogini", "ashtottari", "chara_karaka", "naisargika", "vimshottari"):
         assert f"'{sysid}'" in text.split("`chart_dashas` (level 1 of every system", 1)[1].split("```", 2)[1]
     assert "narayana 105 level-1 rows" not in text and "two_pass_verified` to `classical_match`; `l1_tajik" not in text
+
+
+# --- SS ruling (LOW-2 in code): a baseline of an empty read is refused, and nothing is written
+@pytest.mark.parametrize("blank", ["chart_facts", "divisionals", "dashas", "daily"])
+def test_ss_a_snapshot_of_an_empty_read_is_refused_and_writes_nothing(tmp_path, monkeypatch, capsys, blank):
+    state = base_state()
+    state[blank] = []
+    fake_db(tmp_path, monkeypatch, charts={NATIVE: state})
+    outdir = tmp_path / "snaps"
+    outdir.mkdir()
+    assert F.main(["--snapshot", "native", "--out", str(outdir / "base.json.gz")]) == 5
+    assert list(outdir.iterdir()) == [], "no snapshot, no .sha256, no temporary file"
+    err = capsys.readouterr().err
+    assert "EMPTY READ" in err and "no snapshot was written" in err
+    # the default store behaves the same
+    monkeypatch.setenv("FLIP_SNAPSHOT_DIR", str(outdir))
+    assert F.main(["--snapshot", "native"]) == 5 and list(outdir.iterdir()) == []
+
+
+def test_ss_an_empty_table_that_is_not_read_does_not_block_a_snapshot(tmp_path, monkeypatch, capsys):
+    state = base_state()
+    state["dashas"], state["daily"] = [], []
+    fake_db(tmp_path, monkeypatch, charts={NATIVE: state})
+    out = tmp_path / "ok.json.gz"
+    assert F.main(["--snapshot", "native", "--out", str(out), "--no-dashas", "--no-daily"]) == 0
+    assert sorted(p.name for p in tmp_path.iterdir() if p.name.startswith("ok")) == ["ok.json.gz", "ok.json.gz.sha256"]
+    capsys.readouterr()
+
+
+def test_ss_snapshot_write_is_atomic_and_leaves_no_temporary_file(tmp_path, monkeypatch, capsys):
+    fake_db(tmp_path, monkeypatch)
+    outdir = tmp_path / "snaps"
+    outdir.mkdir()
+    assert F.main(["--snapshot", "native", "--out", str(outdir / "a.json.gz")]) == 0
+    assert sorted(p.name for p in outdir.iterdir()) == ["a.json.gz", "a.json.gz.sha256"]
+    real_link = os.link
+
+    def failing_link(src, dst, *a, **k):
+        if str(dst).endswith(".sha256"):
+            raise OSError("disk full")
+        return real_link(src, dst, *a, **k)
+    monkeypatch.setattr(F.os, "link", failing_link)
+    with pytest.raises(OSError):
+        F.main(["--snapshot", "native", "--out", str(outdir / "b.json.gz")])
+    assert sorted(p.name for p in outdir.iterdir()) == ["a.json.gz", "a.json.gz.sha256"], "a failed write leaves neither half a baseline nor temporary files"
+    capsys.readouterr()
+
+
+def test_ss_the_readme_states_the_operator_steps_and_known_limits():
+    text = (GOV_DIR / "FLIP_DETECTOR_README.md").read_text()
+    for needle in ("FLIP_TIMEOUT_SEC", "connect directly", "PgBouncer", "W0 baseline", "HOOKS_W7_HAND_READBACK_v1_0.md", "before W1 is merged", "re-take it under a new name",
+                   "Known limits (post-window hardening list)", "grandchild", "N1, N7, N11, N15, N16", "traceback", "applies only with `--require-lanes`"):
+        assert needle in text, needle

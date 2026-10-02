@@ -29,7 +29,8 @@ platform/scripts/governance/__tests__/test_flip_detector.py (with mutation proof
             3  verdict ALERT: a FORENSIC anchor changed (wins over 2 and 4)
             4  verdict NOT_CHECKED and --allow-not-checked was not passed
             5  READ_ERROR: the read failed or cannot be trusted (psql failure after retries, timeout, incomplete or mis-split result,
-               session not read-only). A report with verdict READ_ERROR is still written. Also for --snapshot.
+               session not read-only). A report with verdict READ_ERROR is still written. Also for --snapshot, including a snapshot whose
+               read returned zero rows in a table that must have rows (nothing is written: no snapshot, no .sha256, no temporary file).
             6  REFUSED: --no-dashas / --no-daily together with --require-lanes without --i-know-dashas-are-not-compared; or --snapshot
                onto an existing file (a baseline is never overwritten)
   --validate-hooks [--hooks-dir DIR] [--require-lanes a,b,c] [--out REPORT.json]     lint the hook files only (no database access); exit 0 or 2
@@ -501,6 +502,12 @@ def cmd_snapshot(a):
     except ReadError as ex:
         print(f"READ ERROR: {ex}", file=sys.stderr)
         return EXIT_READ_ERROR
+    empties = empty_tables(st, not a.no_dashas, not a.no_daily)
+    if empties:
+        # the baseline is the evidence the whole flip report rests on: a snapshot of an empty read would be saved with a .sha256 and could not be overwritten
+        print(f"READ ERROR: EMPTY READ: {', '.join(empties)} returned zero rows for chart {chart_id}; no snapshot was written "
+              "(check the reader's grants / row-level security and the chart id)", file=sys.stderr)
+        return EXIT_READ_ERROR
     now = datetime.now(timezone.utc).isoformat()
     st["meta"] = {"tool": "flip_detector.py", "tool_version": TOOL_VERSION, "chart_id": chart_id, "taken_at_utc": now, "db_user": info.get("db_user", ""), "read_only": True,
                   "single_transaction": "REPEATABLE READ READ ONLY", "no_dashas": bool(a.no_dashas), "no_daily": bool(a.no_daily),
@@ -511,11 +518,27 @@ def cmd_snapshot(a):
     if os.path.exists(out) or os.path.exists(out + ".sha256"):
         print(f"REFUSED: {out} (or its .sha256) already exists; a baseline is never overwritten. Choose another --out or move the old file.", file=sys.stderr)
         return EXIT_REFUSED
-    with gzip.open(out, "xt") as f:
-        json.dump(st, f)
-    h = hashlib.sha256(open(out, "rb").read()).hexdigest()
-    with open(out + ".sha256", "x") as f:
-        f.write(f"{h}  {os.path.basename(out)}\n")
+    # atomic: both files are written under temporary names and linked into place only after everything succeeded (link fails if the target exists: never overwrites)
+    tmp, tmp_sha = f"{out}.tmp{os.getpid()}", f"{out}.sha256.tmp{os.getpid()}"
+    try:
+        with gzip.open(tmp, "wt") as f:
+            json.dump(st, f)
+        h = hashlib.sha256(open(tmp, "rb").read()).hexdigest()
+        with open(tmp_sha, "w") as f:
+            f.write(f"{h}  {os.path.basename(out)}\n")
+        os.link(tmp, out)
+        try:
+            os.link(tmp_sha, out + ".sha256")
+        except OSError:
+            os.unlink(out)
+            raise
+    except FileExistsError:
+        print(f"REFUSED: {out} (or its .sha256) appeared meanwhile; a baseline is never overwritten.", file=sys.stderr)
+        return EXIT_REFUSED
+    finally:
+        for t in (tmp, tmp_sha):
+            if os.path.exists(t):
+                os.unlink(t)
     print(f"snapshot: {out}\nsha256:   {h}\ncounts:   {st['meta']['counts']}\ntaken:    {now} as {st['meta']['db_user']}")
     return 0
 
@@ -717,6 +740,13 @@ def decide_verdict(rep):
     return V_PASS
 
 
+def empty_tables(st, have_dash, have_daily):
+    """Tables that must hold rows but hold none in this state: chart_facts and chart_divisionals always; chart_dashas / panchanga_daily when they are
+    read. Used by compare_states (EMPTY_READ failure) and by --snapshot (a baseline of an empty read is refused)."""
+    return [label for label, key, on in (("chart_facts", "chart_facts", True), ("chart_divisionals", "divisionals", True), ("chart_dashas", "dashas", have_dash),
+                                         ("panchanga_daily", "daily", have_daily)) if on and not st.get(key)]
+
+
 def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, hook_errors=(), standing_not_checked=STANDING_NOT_CHECKED,
                    not_compared=None, extra_not_checked=()):
     """Pure function (no I/O): the whole comparison. Returns the report dict (JSON-serializable, deterministic ordering).
@@ -730,12 +760,9 @@ def compare_states(snap, cur, hooks, chart_id, have_dash=True, have_daily=True, 
     chart_id = normalize_chart_id(chart_id)
     not_compared = dict(not_compared or {})
     empty = []
-    for label, key, on in (("chart_facts", "chart_facts", True), ("chart_divisionals", "divisionals", True), ("chart_dashas", "dashas", have_dash),
-                           ("panchanga_daily", "daily", have_daily)):
-        if on:
-            for side, st in (("snapshot", snap), ("current", cur)):
-                if not st.get(key):
-                    empty.append(f"EMPTY READ: {label} has zero rows in the {side} state (a real chart has rows: the read returned nothing; check reader grants / row-level security)")
+    for side, st in (("snapshot", snap), ("current", cur)):
+        for label in empty_tables(st, have_dash, have_daily):
+            empty.append(f"EMPTY READ: {label} has zero rows in the {side} state (a real chart has rows: the read returned nothing; check reader grants / row-level security)")
     fk = lambda r: (r[0], r[1], r[2], r[3])
     fv = lambda r: (r[4], r[5], r[6])
     changes, cont1 = diff_table("chart_facts", occ_map(snap["chart_facts"], fk, fv), occ_map(cur["chart_facts"], fk, fv), (1, 3))

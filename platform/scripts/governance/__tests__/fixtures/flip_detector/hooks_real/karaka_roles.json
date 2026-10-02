@@ -2,22 +2,67 @@
   "lane": "karaka_roles",
   "ruling": "karaka roles (SS N-69)",
   "pr": "branch suvarna/land/TI-l1-karaka-roles-001",
-  "description": "Jaimini chara-karaka role labels. ga_sensitive: the kn_rao_rahu_included (8-karaka) school's ranks 5-8 are relabelled PITRIKARAKA / PUTRAKARAKA / GNATIKARAKA / DARAKARAKA (was PUTRAKARAKA / GNATIKARAKA / DARAKARAKA / STRIKARAKA); the STRIKARAKA subject disappears and is replaced by a strikaraka_alias fact_key on the DARAKARAKA subject (kn_rao school only; emitted at verification_pass_status 'single' = UNVERIFIED_DEFAULT, because the alias is a pure label on DARAKARAKA.assigned_graha and nothing double-checks it; every other karaka row keeps its existing tier). The parashari 7-scheme labels are unchanged. NO numeric value moves for any graha: the sort, ranks, longitudes, degrees, signs and houses are untouched, only which role name sits on which rank. ga_vargas: karaka_per_varga now READS ga_sensitive's kn_rao assignments instead of re-deriving them (subjects PK/GK/DK/SK become PiK/PK/GK/DK; Rahu's rank follows ga_sensitive's reckoning). ga_structural: karaka_web_per_varga role strings (value_jsonb role_a/role_b, citation_human) follow the stored labels.",
+  "description": "Jaimini chara-karaka role labels. ga_sensitive: the kn_rao_rahu_included (8-karaka) school's ranks 5-8 are relabelled PITRIKARAKA / PUTRAKARAKA / GNATIKARAKA / DARAKARAKA (was PUTRAKARAKA / GNATIKARAKA / DARAKARAKA / STRIKARAKA); the STRIKARAKA subject disappears and is replaced by a strikaraka_alias fact_key on the DARAKARAKA subject (kn_rao school only). The parashari 7-scheme labels are unchanged. NO numeric value moves for any graha: the sort, ranks, longitudes, degrees, signs and houses are untouched, only which role name sits on which rank. ga_vargas: karaka_per_varga now READS ga_sensitive's kn_rao assignments instead of re-deriving them (subjects PK/GK/DK/SK become PiK/PK/GK/DK; Rahu's rank follows ga_sensitive's reckoning). ga_structural: karaka_web_per_varga role strings (value_jsonb role_a/role_b, citation_human) follow the stored labels.",
   "may_change": [
     {
       "table": "chart_facts",
       "categories": ["karaka_chara_position"],
-      "fact_keys": ["assigned_graha", "sign", "karaka_rank", "house_d1", "karaka_school", "strikaraka_alias"],
-      "change_types": ["value", "appeared", "disappeared"],
-      "expected_direction": "kn_rao ranks 5-8 only, on every chart x ayanamsha: PITRIKARAKA subject appears (all keys incl. karaka_school); STRIKARAKA subject disappears (all keys); PUTRAKARAKA / GNATIKARAKA / DARAKARAKA take the next rank's graha (assigned_graha, sign, karaka_rank, house_d1 values change); strikaraka_alias appears once per ayanamsha on DARAKARAKA, tier 'single' (not two_pass_verified). Parashari rows and the graha at every rank are unchanged. longitude_sidereal and degree_in_sign are not listed: they are continuous, which the detector reports only as continuous statistics (the per-subject continuous values do shift with the relabel, e.g. DARAKARAKA kn_rao longitude goes from Jupiter's to Mercury's, but no graha's own position moves). Offline simulation on the canonical Lahiri degrees (old origin/main builder vs this branch's builder through flip_detector.compare_states): 23 class changes (12 value, 6 appeared, 5 disappeared), 0 unattributed.",
-      "note": "No expected_count: it depends on how many of ranks 5-8 change graha per chart, and the detector pairs the two schools' same-key occurrences by sorted value. Natural key is (ayanamsha, category, subject, key) with formula_id excluded."
+      "fact_keys": [
+        "assigned_graha",
+        "sign",
+        "karaka_rank",
+        "house_d1",
+        "karaka_school",
+        "longitude_sidereal",
+        "degree_in_sign"
+      ],
+      "change_types": ["appeared"],
+      "expected_count": {"exact": 35},
+      "expected_direction": "kn_rao_rahu_included school only, every chart x ayanamsha: the PITRIKARAKA subject appears with its 7 keys (assigned_graha, sign, karaka_rank, house_d1, karaka_school, plus the two continuous keys longitude_sidereal and degree_in_sign): 7 keys x 5 ayanamshas = 35. The strikaraka_alias key is the next entry.",
+      "note": "source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (appeared 35 on exactly these keys, 7 per ayanamsha) and the lane's own offline simulation (6 appeared class keys per ayanamsha including the alias). Structural and chart independent. CORRECTION to the earlier text of this hook: a continuous key that APPEARS or DISAPPEARS is a detector change (v2.1+); the two continuous keys were not listed and the rehearsal reported them as 20 KIND_MISMATCH (appeared and disappeared, 5 ayanamshas x 2 keys x 2)."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["karaka_chara_position"],
+      "fact_keys": ["strikaraka_alias"],
+      "change_types": ["appeared"],
+      "expected_count": {"exact": 5},
+      "expected_direction": "the strikaraka_alias key appears once per ayanamsha on the DARAKARAKA subject (kn_rao school only): 5 per chart.",
+      "note": "source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (karaka_chara_position strikaraka_alias +5); #2878/#2886. Code-driven, one per ayanamsha, chart independent. The tier of the alias rows (UNVERIFIED_DEFAULT) closes the author's open decision D1."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["karaka_chara_position"],
+      "fact_keys": [
+        "assigned_graha",
+        "sign",
+        "karaka_rank",
+        "house_d1",
+        "karaka_school",
+        "longitude_sidereal",
+        "degree_in_sign"
+      ],
+      "change_types": ["disappeared"],
+      "expected_count": {"exact": 35},
+      "expected_direction": "kn_rao school only: the STRIKARAKA subject disappears with its 7 keys (5 class keys + longitude_sidereal and degree_in_sign): 7 x 5 = 35.",
+      "note": "source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (disappeared 35). Structural and chart independent. The canonical stored population of these 35 rows is also why the tiers lane's evidence figure (19,905 canonical tier changes) is 35 above the detector's tier count (19,870): the evidence counts the STRIKARAKA rows as tier transitions, the detector sees them disappear."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["karaka_chara_position"],
+      "fact_keys": ["assigned_graha", "sign", "karaka_rank", "house_d1", "karaka_school"],
+      "change_types": ["value"],
+      "expected_count": {"min": 30, "max": 60},
+      "expected_direction": "the three relabelled kn_rao subjects (PUTRAKARAKA, GNATIKARAKA, DARAKARAKA) take the next rank's graha: assigned_graha and karaka_rank change on every one of the 3 per ayanamsha (6 per ayanamsha, never fewer), sign and house_d1 change only where the neighbouring grahas differ in sign / house (up to 6 more): 6 to 12 per ayanamsha, 30 to 60 per chart.",
+      "note": "source: lane evidence (canonical Lahiri, offline simulation through compare_states: 12 value changes = the upper end) and rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (54 on the synthetic chart: assigned_graha 3 + karaka_rank 3 per ayanamsha, sign 2-3, house_d1 2-3). Geometry dependent between the structural bounds, so a range, not an exact count."
     },
     {
       "table": "chart_facts",
       "categories": ["karaka_web_per_varga"],
-      "change_types": ["value", "appeared", "disappeared"],
-      "expected_direction": "none from the relabel itself: the kn_rao planet set (8 grahas) and each pair's conjunction/aspect result are label independent, and role_a/role_b live in value_jsonb / citation_human, which the detector does not compare. Listed because ga_structural._build_karaka_web_rows reads the assigned_graha rows with no ORDER BY and tests aspect only from the earlier planet to the later one, so a rebuild can flip aspect rows with row order, independent of this lane (pre-existing; see KARAKA_ROLES_LANE_INTENT_v1_0.md section 7).",
-      "note": "No expected_count: a pure relabel predicts 0, but the pre-existing row-order dependence means 0 is not guaranteed."
+      "change_types": ["value", "disappeared"],
+      "expected_count": {"exact": 0},
+      "expected_direction": "none from the relabel itself: the kn_rao planet set (8 grahas) and each pair's conjunction/aspect result are label independent. APPEARED rows in this category belong to the karaka_web_order lane (that lane's own entry counts them; this entry does not declare 'appeared').",
+      "note": "source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (karaka_web_per_varga: 1,139 appeared, 0 value, 0 disappeared). Cross-lane caveat, stated plainly: a value change or a disappearance here may legitimately come from a lane that moves varga signs (F-A2 does not; the ephemeris lane might), and would then read EXPECTATION_MISMATCH on this entry as well as on the other lane's; read the report before treating it as a defect of this lane."
     },
     {
       "table": "chart_divisionals",
@@ -26,7 +71,7 @@
       "change_types": ["value", "appeared", "disappeared"],
       "expected_direction": "no detector-visible change. The detector keys chart_divisionals rows by (ayanamsha, varga, graha, category, fact_key) and the graha column is the assigned graha, so a subject rename (PK/GK/DK/SK to PiK/PK/GK/DK) and a rank/role change do not alter any compared field; the 8-graha set (7 classical + Rahu) is the same before and after.",
       "expected_count": {"exact": 0},
-      "note": "A nonzero count here would mean ga_vargas's assigned-graha set changed, which this lane does not intend."
+      "note": "A nonzero count here would mean ga_vargas's assigned-graha set changed, which this lane does not intend. source: rehearsal-synthetic (19-lane rehearsal, flip_detector v2.3 compare against the origin/main baseline build on the same synthetic chart; HOOKS_COMPLETENESS_v1_0.md, Source evidence) (chart_divisionals karaka_per_varga: no change; 3,600 rows before and after)."
     }
   ]
 }
