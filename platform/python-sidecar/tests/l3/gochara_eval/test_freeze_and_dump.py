@@ -133,13 +133,19 @@ class FakeCursor:
     def __enter__(self): return self
     def __exit__(self, *a): return False
     def execute(self, sql, params=()): self.conn.executed.append((sql, params)); self.last = sql
-    def fetchone(self): return (self.conn.outside,)
-    def fetchall(self): return self.conn.rows
+    def fetchone(self):
+        if "sign_mismatch" in self.last:
+            return self.conn.sign
+        if "input_generation_vector" in self.last:
+            return None
+        return (self.conn.outside,)
+    def fetchall(self): return self.conn.manifest if "input_generation_vector" in self.last else self.conn.rows
 
 
 class FakeConn:
-    def __init__(self, rows, outside=0):
+    def __init__(self, rows, outside=0, sign=(0, 0), manifest=None):
         self.rows, self.outside, self.executed, self.read_only, self.closed = rows, outside, [], False, False
+        self.sign, self.manifest = sign, manifest or []
     def cursor(self): return FakeCursor(self)
     def rollback(self): pass
     def close(self): self.closed = True
@@ -168,6 +174,23 @@ class TestDump:
         a, b = dx.render("4.1", "2026-10-05", rows), dx.render("4.1", "2026-10-05", rows)
         assert a == b and not a.endswith(b"\n") and a.startswith(b'{\n "artifact": "baseline_4_1_extract"')
         assert json.loads(a)["row_count"] == 2 and json.loads(a)["predicate"].endswith("generation='4.1'")
+
+    def test_si_is_the_unsigned_raw_intensity_and_the_two_columns_must_reconcile(self):
+        assert "raw_intensity AS si" in dx.SQL_DUMP and "signed_intensity AS si" not in dx.SQL_DUMP
+        with pytest.raises(RuntimeError, match=r"2 rows with \|signed_intensity\| != raw_intensity"):
+            dx.dump_rows(FakeConn(ROWS, sign=(2, 0)), "4.1", horizon_check=True)
+        with pytest.raises(RuntimeError, match="1 rows with raw_intensity < 0"):
+            dx.dump_rows(FakeConn(ROWS, sign=(0, 1)), "3.0", horizon_check=False)      # the check runs for the baseline too
+
+    def test_manifest_orb_read_touches_no_window_row(self, capsys):
+        conn = FakeConn(ROWS, manifest=[("candidate", 5.0, "M-1 fallback no-box x 5.0 deg (unratified)")])
+        rc = dx.main(["--generation", "4.1", "--read-manifest-orb"], conn_factory=lambda: conn)
+        out = json.loads(capsys.readouterr().out)
+        assert rc == 0 and out["orb_max_deg"] == 5.0 and out["orb_ruling"].endswith("(unratified)")
+        assert all("kala_gochara_windows" not in sql for sql, _ in conn.executed)
+        assert dx.main(["--generation", "5.0", "--read-manifest-orb"], conn_factory=lambda: conn) == 2
+        with pytest.raises(RuntimeError, match="exactly one manifest"):
+            dx.read_manifest_orb(FakeConn(ROWS, manifest=[]), "4.1")
 
     def test_horizon_violation_stops(self):
         with pytest.raises(RuntimeError, match="outside the scored horizon"):
