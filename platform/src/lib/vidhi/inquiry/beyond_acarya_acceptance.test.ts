@@ -94,6 +94,13 @@ const historicalV13 = {
   report_hash: 'sha256:c0322d170afc3c8138f7ada1173476956b58b709a55f9c042a2f1899f24ad862',
   artifact_hash: 'sha256:c8bccc68ea7ea9c8a574c8a88d35b294cf2c9570a6330f1e91704b6725f41ed7',
 } as const
+// The Suvarna tool-text wave 1 successor of v13. Immutable since the Pravāha ka_gochara
+// registry-revert (migration 1230, v15) superseded it.
+const historicalV14 = {
+  capability_content_hash: 'sha256:89eeb133f93d2976f4b1656393af620d1c6070d9f8bfa8ce2e9c7d86e9e8bc17',
+  report_hash: 'sha256:0899b303104a534f2222d5845bd1cb1ac1061a0b25b736307bdbcaa0c63e8a88',
+  artifact_hash: 'sha256:d61bc95fa74dff4da2bfd050e936f6388aa94a657589c1bc7053eb65fd705133',
+} as const
 
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
@@ -155,7 +162,13 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // moved source_catalog_fingerprint/semantic_review_fingerprint/content_hash and, with them,
     // report_hash; producer_contract_fingerprint is unchanged and the metric assertions above are
     // unchanged. Only this pinned hash was re-pinned.
-    expect(report.report_hash).toBe('sha256:0899b303104a534f2222d5845bd1cb1ac1061a0b25b736307bdbcaa0c63e8a88')
+    // Pravāha ka_gochara registry revert (v15): migration 1230 reverts the ka_gochara registry
+    // row to the pre-1091 registered-writer surface (kala_gochara_windows_v2 / generation '2.0'),
+    // moving producer_contract_fingerprint (e5211) and, with it, capability_content_hash and
+    // report_hash; source_catalog/semantic_review fingerprints coincide with v14's and no SCU,
+    // edge, proof kind or availability disposition changed (the metric assertions above are
+    // unchanged). Only this pinned hash was re-pinned.
+    expect(report.report_hash).toBe('sha256:f35696cc07f5df555e07dbb33b096e46501896048b8be45456a895f75b03f558')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -519,9 +532,31 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v14 source-successor artifact to the current executable report without claiming live acceptance (Suvarna tool-text wave 1)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v14 source-successor artifact immutable after the Pravāha ka_gochara registry-revert advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v14.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV14.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v14',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v13.json',
+        capability_content_hash: historicalV13.capability_content_hash,
+        report_hash: historicalV13.report_hash,
+      },
+      capability_content_hash: historicalV14.capability_content_hash,
+      report_hash: historicalV14.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+      evaluated_source_revision: '1a973a22b936c3db96ee2cf65cfe825689a44f9a',
+    })
+  })
+
+  it('pins the v15 source-successor artifact to the current executable report without claiming live acceptance (Pravāha ka_gochara registry revert)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v15.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -529,12 +564,12 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v14',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v15',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v13.json',
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v14.json',
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV13.capability_content_hash,
-        report_hash: historicalV13.report_hash,
+        capability_content_hash: historicalV14.capability_content_hash,
+        report_hash: historicalV14.report_hash,
       },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
@@ -577,9 +612,11 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // Suvarna tool-text wave 1 (PR #2876): description corrections; the snapshot is regenerated
-      // (source_catalog/semantic_review fingerprints and content_hash moved; producer_contract unchanged).
-      evaluated_source_revision: '1a973a22b936c3db96ee2cf65cfe825689a44f9a',
+      // Pravāha A5.7 (PR #2889): migration 1230 reverts the ka_gochara registry row to the
+      // pre-1091 registered-writer surface (kala_gochara_windows_v2 / generation '2.0'); the
+      // snapshot is regenerated on the merged tree (producer_contract_fingerprint moved to e5211;
+      // source_catalog/semantic_review fingerprints coincide with v14's).
+      evaluated_source_revision: '2560ca184d2527b351cdb86fdba4bd878feb5d92',
     })
   })
 })
