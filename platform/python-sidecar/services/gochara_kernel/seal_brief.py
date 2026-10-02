@@ -56,14 +56,15 @@ class NotCanonicallyEncodable(TypeError):
     """A value of a type the strict canonical serializer has no explicit rule for (F-R13-6)."""
 
 
-def canonical_json(v, _path: str = "$") -> str:
+def canonical_json(v, _path: str = "$", *, ascii_only: bool = False) -> str:
     """The STRICT canonical JSON of the approval payload and everything displayed with it (F-R13-6): sorted keys (code point), no
     whitespace, UTF-8 unescaped — and EVERY type is encoded by an explicit rule or REFUSED, so a digest (or a displayed brief) can never
     depend on `str()` of something unforeseen. Rules: None/bool/int/str as JSON; Decimal (finite only) as a plain-notation JSON number;
     UUID as its lowercase hyphenated string; an aware datetime as UTC ISO-8601 with microseconds and `Z` (a naive one is refused); a
     date as ISO-8601; dict (string keys only) and list/tuple recursively. float, bytes, set, NaN/Infinity, naive datetimes, non-string
     keys and anything else raise `NotCanonicallyEncodable` naming the path. For the types the payload actually carries the output is
-    byte-identical to `window_gate._canon` (the form every existing digest was computed in)."""
+    byte-identical to `window_gate._canon` (the form every existing digest was computed in). `ascii_only=True` escapes every non-ASCII
+    character (`\\uXXXX`, as `json.dumps` does by default) — the DISPLAY form of the brief line, so that characters equal bytes."""
     import datetime as _dt
     import uuid as _uuid
     from decimal import Decimal
@@ -78,9 +79,9 @@ def canonical_json(v, _path: str = "$") -> str:
             raise NotCanonicallyEncodable(f"{_path}: a non-finite Decimal ({v}) has no canonical JSON")
         return format(v, "f")
     if isinstance(v, str):
-        return json.dumps(v, ensure_ascii=False)
+        return json.dumps(v, ensure_ascii=ascii_only)
     if isinstance(v, _uuid.UUID):
-        return json.dumps(str(v), ensure_ascii=False)
+        return json.dumps(str(v), ensure_ascii=ascii_only)
     if isinstance(v, _dt.datetime):
         if v.tzinfo is None or v.utcoffset() is None:
             raise NotCanonicallyEncodable(f"{_path}: a naive datetime has no canonical JSON (an instant needs a zone)")
@@ -91,9 +92,9 @@ def canonical_json(v, _path: str = "$") -> str:
         bad = [k for k in v if not isinstance(k, str)]
         if bad:
             raise NotCanonicallyEncodable(f"{_path}: object keys must be strings, got {type(bad[0]).__name__}")
-        return "{" + ",".join(json.dumps(k, ensure_ascii=False) + ":" + canonical_json(v[k], f"{_path}.{k}") for k in sorted(v)) + "}"
+        return "{" + ",".join(json.dumps(k, ensure_ascii=ascii_only) + ":" + canonical_json(v[k], f"{_path}.{k}", ascii_only=ascii_only) for k in sorted(v)) + "}"
     if isinstance(v, (list, tuple)):
-        return "[" + ",".join(canonical_json(x, f"{_path}[{i}]") for i, x in enumerate(v)) + "]"
+        return "[" + ",".join(canonical_json(x, f"{_path}[{i}]", ascii_only=ascii_only) for i, x in enumerate(v)) + "]"
     raise NotCanonicallyEncodable(f"{_path}: {type(v).__name__} has no canonical JSON rule (floats, bytes, sets and unknown types are refused)")
 
 
@@ -104,45 +105,40 @@ def payload_digest(payload: dict) -> str:
     return hashlib.sha256(_canon(payload).encode("utf-8")).hexdigest()
 
 
-# ── transport of the DISPLAY brief (F-R13-2) ─────────────────────────────────────────────────────────────────────
-# The full brief grows with the number of event classes (~9.5 KB per class + ~8 KB fixed; ~255 KB at 26 classes — at the size of a CI log
-# entry limit), so the job's stdout is a COMPACT line and the brief travels another way. In every route the bytes are the canonical JSON of
-# the payload, so `sha256(bytes) == the persisted brief digest` is directly checkable by the reader.
-CHUNK_RAW_BYTES = 48 * 1024
+# ── transport of the DISPLAY brief (F-R13-2; the contract agreed with Stream B, steward M20261002T174919) ───────────
+# The brief line T = {"brief": <payload>, "persisted": {brief_id, manifest_id, state_digest}, "sha256": <digest>} — sorted keys, compact,
+# ASCII (characters = bytes). If T fits `BRIEF_SINGLE_LINE_MAX` it is printed unchanged; otherwise it is printed as N lines of
+# {"brief_chunk": {"data", "index", "sha256": sha256(T), "total"}} with `CHUNK_CHARS`-char slices (Stream B's extractor reassembles and
+# verifies; their `chunk_brief` is the parity oracle). The full brief grows with the event-class count (~10 KB per class + ~8 KB fixed).
+BRIEF_SINGLE_LINE_MAX = 200_000
+CHUNK_CHARS = 60_000
 
 
-def brief_bytes(result: dict) -> bytes:
-    """The canonical bytes of the brief — refusing (BriefRefused) if they do not hash to the digest the result carries."""
-    raw = _canon(result["payload"]).encode("utf-8")
-    if hashlib.sha256(raw).hexdigest() != result["sha256"]:
-        raise BriefRefused("brief_bytes_digest_mismatch", "the brief's canonical bytes do not hash to its digest")
-    return raw
+def brief_line(result: dict, persisted: dict) -> str:
+    """T — built by the strict serializer, and REFUSED unless parsing it back (decimals kept exact) re-derives the payload digest it
+    carries: what is displayed can never differ from what was digested (F-R13-6)."""
+    from decimal import Decimal
+    text = canonical_json({"brief": result["payload"], "persisted": persisted, "sha256": result["sha256"]}, ascii_only=True)
+    if not text.isascii():
+        raise BriefRefused("brief_line_not_ascii", "the brief line is not ASCII")
+    back = json.loads(text, parse_float=Decimal)
+    if payload_digest(back["brief"]) != result["sha256"]:
+        raise BriefRefused("brief_line_digest_mismatch", "the brief line does not re-derive the digest it carries")
+    return text
 
 
-def brief_chunk_lines(raw: bytes, digest: str, chunk_bytes: int = CHUNK_RAW_BYTES) -> list[str]:
-    """The chunked-lines transport: `{"brief_chunk": i, "of": n, "sha256": <whole-brief digest>, "b64": <base64 of the i-th slice>}`, one
-    canonical-JSON line each; concatenating the decoded slices in index order gives the brief bytes."""
-    import base64
-    if chunk_bytes < 1:
-        raise ValueError("chunk_bytes must be positive")
-    parts = [raw[i:i + chunk_bytes] for i in range(0, len(raw), chunk_bytes)] or [b""]
-    return [_canon({"brief_chunk": i, "of": len(parts), "sha256": digest, "b64": base64.b64encode(p).decode("ascii")})
-            for i, p in enumerate(parts)]
-
-
-def reassemble_chunks(lines: list[str]) -> bytes:
-    """The reader's side of the chunked transport: refuses a missing/duplicated/foreign chunk and a whole that does not hash to the digest."""
-    import base64
-    docs = [json.loads(x) for x in lines]
-    if not docs:
-        raise BriefRefused("no_chunks", "no brief chunk lines")
-    total, digest = docs[0]["of"], docs[0]["sha256"]
-    if sorted(d["brief_chunk"] for d in docs) != list(range(total)) or any(d["of"] != total or d["sha256"] != digest for d in docs):
-        raise BriefRefused("chunks_incomplete", "the brief chunks are missing, duplicated or from different briefs")
-    raw = b"".join(base64.b64decode(d["b64"]) for d in sorted(docs, key=lambda d: d["brief_chunk"]))
-    if hashlib.sha256(raw).hexdigest() != digest:
-        raise BriefRefused("chunks_digest_mismatch", "the reassembled brief does not hash to its digest")
-    return raw
+def emit_lines(text: str, *, single_max: int | None = None, size: int | None = None) -> list[str]:
+    """The stdout lines that carry T: `[T]` when `len(T) <= single_max`, else the chunk lines (sorted keys, compact separators)."""
+    single_max = BRIEF_SINGLE_LINE_MAX if single_max is None else single_max
+    size = CHUNK_CHARS if size is None else size
+    if not text or size < 1:
+        raise ValueError("nothing to emit")
+    if len(text) <= single_max:
+        return [text]
+    whole = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    pieces = [text[i:i + size] for i in range(0, len(text), size)]
+    return [json.dumps({"brief_chunk": {"data": piece, "index": i, "sha256": whole, "total": len(pieces)}}, sort_keys=True,
+                       separators=(",", ":")) for i, piece in enumerate(pieces)]
 
 
 def _rows(conn, sql, params=()) -> list[tuple]:
@@ -275,8 +271,7 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
                                                 key=lambda r: (r["commit"], r["implementation_digest"])),
                  "manifest_pinned_implementation_digest": pinned, "sealing_commit": sealing_commit},
         "ledger": _ledger_evidence(conn),
-        "disclosures": {"policy": "all_null_candidate/1 — no numerical result exists in this generation (the legacy projection "
-                                  "relations hold none: enforced, not assumed)",
+        "disclosures": {"policy": _policy_disclosure(manifest_policy(conn, chart_id, generation)),
                         "named_limits": __import__("services.gochara_kernel.scope_response", fromlist=["x"]).named_limits(),
                         "attestation_binding": "composition: inputs/2 per grain + DB-guarded path pins + the 1206 inventory "
                                                "verification row + the generation-wide output identity above",
@@ -284,6 +279,19 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
                                              "manifest; the authoritative gate is the seal's, on the published row"},
         "seal_is_not_a_flip": SEAL_IS_NOT_A_FLIP,
     }
+
+
+ALL_NULL_POLICY = "all_null_candidate/1"
+
+
+def _policy_disclosure(policy: str) -> str:
+    """The disclosure's wording follows the MANIFEST's policy name — it never asserts the all-NULL claim for a manifest that selects
+    another policy (F-R13 / Stream B): `no numerical result exists` is said only under `all_null_candidate/1`, where the window CHECKs and
+    the generation-wide gate (including the legacy-row arm) enforce it."""
+    if policy == ALL_NULL_POLICY:
+        return (f"{policy} — no numerical result exists in this generation: the policy forbids one (window all-NULL arms) and the "
+                "legacy projection relations hold none (enforced by the gate, not assumed)")
+    return f"{policy} — this brief makes no all-NULL claim; the result policy above governs what this generation may contain"
 
 
 def _current_and_complete(payload: dict) -> list[str]:

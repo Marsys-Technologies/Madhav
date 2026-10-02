@@ -82,57 +82,102 @@ def test_the_display_and_the_digest_share_one_serializer_and_the_brief_path_has_
     assert sb.payload_digest(payload) == hashlib.sha256(sb.canonical_json(payload).encode()).hexdigest()
 
 
-# ── F-R13-2: the chunked transport ──────────────────────────────────────────────────────────────────────────────
+# ── F-R13-2: the transport contract agreed with Stream B ───────────────────────────────────────────────────────────
 
-RAW = sb.canonical_json({"schema": "seal_approval_payload/1", "rows": [f"row {i} ṣaḍbala — " * 20 for i in range(300)]}).encode("utf-8")
-DIGEST = hashlib.sha256(RAW).hexdigest()
+import importlib.util
 
-
-@pytest.mark.parametrize("size", [7, 1000, 4096, len(RAW) - 1, len(RAW), len(RAW) + 5, sb.CHUNK_RAW_BYTES])
-def test_the_chunks_reassemble_to_the_exact_bytes_whatever_the_chunk_size(size):
-    lines = sb.brief_chunk_lines(RAW, DIGEST, size)
-    assert sb.reassemble_chunks(lines) == RAW
-    assert all(len(x) < size * 4 // 3 + 200 for x in lines)                              # a chunk line is bounded by the chunk size
+_REF_PATH = Path(__file__).parent / "fixtures" / "b6_gochara_seal_brief_extract_reference.py"
+_spec = importlib.util.spec_from_file_location("b6_extract_reference", _REF_PATH)
+REF = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(REF)
 
 
-def test_one_byte_chunks_and_an_empty_brief_round_trip():
-    tiny = b'{"a":"b"}'
-    assert sb.reassemble_chunks(sb.brief_chunk_lines(tiny, hashlib.sha256(tiny).hexdigest(), 1)) == tiny
-    assert sb.reassemble_chunks(sb.brief_chunk_lines(b"", hashlib.sha256(b"").hexdigest())) == b""
-    with pytest.raises(ValueError):
-        sb.brief_chunk_lines(tiny, "0" * 64, 0)
+def test_the_display_form_is_ascii_and_equals_json_dumps_with_sorted_keys():
+    doc = {"b": ["ṣaḍbala — é𝔘", 1, None], "a": {"z": True, "y": "q\"\n"}}
+    assert sb.canonical_json(doc, ascii_only=True) == json.dumps(doc, sort_keys=True, separators=(",", ":"))
+    assert sb.canonical_json(doc, ascii_only=True).isascii() and json.loads(sb.canonical_json(doc, ascii_only=True)) == doc
+    assert not sb.canonical_json(doc).isascii()                                      # (the digest form stays unescaped)
 
 
-def test_every_chunk_line_is_small_and_one_json_object_so_a_log_entry_limit_cannot_truncate_the_brief():
-    big = sb.canonical_json({"rows": ["x" * 1000 for _ in range(400)]}).encode()        # ~400 KB, beyond a 256 KB log entry
-    lines = sb.brief_chunk_lines(big, hashlib.sha256(big).hexdigest())
-    assert len(lines) >= 8 and max(len(x) for x in lines) < 70 * 1024
-    assert sb.reassemble_chunks(lines) == big
-    assert all(json.loads(x)["of"] == len(lines) for x in lines)
+def _result(payload):
+    return {"payload": payload, "sha256": sb.payload_digest(payload)}
 
 
-def test_reassembly_refuses_missing_duplicated_foreign_and_tampered_chunks():
-    lines = sb.brief_chunk_lines(RAW, DIGEST, 2048)
-    assert len(lines) > 3
-    with pytest.raises(sb.BriefRefused, match="chunks_incomplete"):
-        sb.reassemble_chunks(lines[:-1])
-    with pytest.raises(sb.BriefRefused, match="chunks_incomplete"):
-        sb.reassemble_chunks(lines + [lines[0]])
-    other = sb.brief_chunk_lines(b'{"a":1}', hashlib.sha256(b'{"a":1}').hexdigest(), 2048)
-    with pytest.raises(sb.BriefRefused, match="chunks_incomplete"):
-        sb.reassemble_chunks(lines[:-1] + other)
-    forged = json.loads(lines[1])
-    forged["b64"] = base64.b64encode(b"tampered").decode()
-    with pytest.raises(sb.BriefRefused, match="chunks_digest_mismatch"):
-        sb.reassemble_chunks([lines[0], sb.canonical_json(forged)] + lines[2:])
-    with pytest.raises(sb.BriefRefused, match="no_chunks"):
-        sb.reassemble_chunks([])
-    assert sb.reassemble_chunks(list(reversed(lines))) == RAW                           # order on the wire does not matter
+PERSISTED = {"brief_id": 3, "manifest_id": "11111111-2222-4333-8444-555555555555", "state_digest": "ab" * 32}
 
 
-def test_the_brief_bytes_must_hash_to_the_digest_they_carry():
-    payload = {"schema": "x", "v": [1, 2]}
-    good = {"payload": payload, "sha256": sb.payload_digest(payload)}
-    assert sb.brief_bytes(good) == sb.canonical_json(payload).encode()
-    with pytest.raises(sb.BriefRefused, match="brief_bytes_digest_mismatch"):
-        sb.brief_bytes({"payload": payload, "sha256": "0" * 64})
+def test_the_brief_line_has_exactly_the_agreed_shape_is_ascii_and_keeps_decimals_exact():
+    payload = {"manifest": {"manifest_id": PERSISTED["manifest_id"], "backend": {"orb": Decimal("3.50"), "n": 7}}, "txt": "ṣaḍbala — é"}
+    line = sb.brief_line(_result(payload), PERSISTED)
+    assert line.startswith('{"brief":') and line.isascii() and "\n" not in line.replace("\\n", "")
+    doc = json.loads(line, parse_float=Decimal)
+    assert list(doc) == ["brief", "persisted", "sha256"] and doc["persisted"] == PERSISTED         # sorted: brief, persisted, sha256
+    assert '"orb":3.50' in line                                                      # not 3.5, not a quoted string
+    assert sb.payload_digest(doc["brief"]) == doc["sha256"] == sb.payload_digest(payload)           # the round trip F-R13-6 asks for
+
+
+def test_the_brief_line_refuses_what_it_cannot_round_trip():
+    with pytest.raises(sb.NotCanonicallyEncodable):
+        sb.brief_line(_result({"a": 1}) | {"payload": {"a": 1.5}}, PERSISTED)         # a float anywhere in the payload
+    with pytest.raises(sb.BriefRefused, match="brief_line_digest_mismatch"):
+        sb.brief_line({"payload": {"a": 1}, "sha256": "0" * 64}, PERSISTED)
+
+
+def _line_of(n):
+    """A brief-line-shaped ASCII text of exactly n characters."""
+    head = '{"brief":{"pad":"'
+    tail = '"},"persisted":{},"sha256":"x"}'
+    return head + "p" * (n - len(head) - len(tail)) + tail
+
+
+def test_a_line_up_to_200000_characters_is_printed_unchanged_and_longer_ones_are_chunked():
+    just_under, exactly, just_over = _line_of(199_999), _line_of(200_000), _line_of(200_001)
+    assert sb.emit_lines(just_under) == [just_under] and sb.emit_lines(exactly) == [exactly]
+    lines = sb.emit_lines(just_over)
+    assert len(lines) == 4 and all(len(x) < 60_200 for x in lines)                          # 200,001 chars -> 60,000-char slices
+    assert [json.loads(x)["brief_chunk"]["index"] for x in lines] == [0, 1, 2, 3]
+    assert {json.loads(x)["brief_chunk"]["total"] for x in lines} == {4}
+
+
+@pytest.mark.parametrize("text", [_line_of(200_001), _line_of(600_000), _line_of(180_000), _line_of(200_000),
+                                  # a multi-byte character straddling a slice boundary (60,000 chars / 120,000 chars)
+                                  '{"brief":"' + "é" * 59_990 + "—" + "𝔘" * 30_000 + "ṣ" * 120_000 + 'x"}'])
+def test_the_emit_is_identical_to_stream_bs_reference_chunk_brief_and_their_extractor_reassembles_it(text):
+    lines = sb.emit_lines(text)
+    if len(text) > sb.BRIEF_SINGLE_LINE_MAX:
+        assert lines == REF.chunk_brief(text)                                       # byte-for-byte the reference's lines
+    else:
+        assert lines == [text]
+    entries = [{"textPayload": x} for x in reversed(lines)]                          # arrival order is never relied on
+    assert REF.extract(entries) == text
+
+
+def test_a_real_sized_brief_line_travels_through_the_reference_extractor_and_still_rederives_its_digest():
+    payload = {"schema": "seal_approval_payload/1", "classes": [{"event_class": f"c{i}", "pad": "ṣaḍbala — é" * 700} for i in range(26)]}
+    line = sb.brief_line(_result(payload), PERSISTED)
+    assert len(line) > sb.BRIEF_SINGLE_LINE_MAX                                          # forces the chunked route
+    lines = sb.emit_lines(line)
+    assert len(lines) > 1 and all(x.isascii() for x in lines)
+    text = REF.extract([{"textPayload": x} for x in lines])
+    assert text == line
+    doc = json.loads(text, parse_float=Decimal)
+    assert sb.payload_digest(doc["brief"]) == doc["sha256"]
+
+
+def test_the_vendored_reference_has_not_drifted_from_the_platform_script_once_it_is_on_this_branch():
+    script = ROOT.parent / "scripts" / "gochara_seal_brief_extract.py"
+    if not script.exists():
+        pytest.skip("platform/scripts/gochara_seal_brief_extract.py (PR #2975) is not on this branch yet")
+    spec = importlib.util.spec_from_file_location("b6_extract_live", script)
+    live = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(live)
+    text = _line_of(250_000)
+    assert live.chunk_brief(text) == REF.chunk_brief(text) == sb.emit_lines(text) and live.CHUNK_CHARS == sb.CHUNK_CHARS
+
+
+# ── disclosure wording follows the manifest's policy (Stream B request) ─────────────────────────────────────────────
+
+def test_the_disclosure_names_the_manifest_policy_and_claims_all_null_only_under_it():
+    assert sb._policy_disclosure("all_null_candidate/1").startswith("all_null_candidate/1 — no numerical result exists")
+    other = sb._policy_disclosure("window_qualification/1")
+    assert other.startswith("window_qualification/1") and "no numerical result" not in other and "no all-NULL claim" in other
