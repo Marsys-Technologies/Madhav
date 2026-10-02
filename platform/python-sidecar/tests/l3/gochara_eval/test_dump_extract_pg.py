@@ -10,11 +10,12 @@ import datetime as dt
 import json
 import os
 import uuid
-from urllib.parse import urlparse
 
 import pytest
 
 from services.gochara_eval import dump_extract as dx
+
+from . import _disposable_guard as guard
 
 ADMIN = os.environ.get("GOCHARA_EVAL_TEST_ADMIN_DSN")
 pytestmark = pytest.mark.skipif(not ADMIN, reason="GOCHARA_EVAL_TEST_ADMIN_DSN not set")
@@ -38,13 +39,14 @@ H = "[1998-01-01T00:00:00+00:00,2026-04-18T00:00:00+00:00)"
 @pytest.fixture(scope="module")
 def conn():
     import psycopg
-    host = urlparse(ADMIN).hostname
-    assert host in ("127.0.0.1", "localhost"), "refusing a non-local server"
+    guard.assert_disposable_dsn(ADMIN)                             # steward eb38: libpq's own parse, one explicit loopback host, no env overrides
     name = "ge_test_" + uuid.uuid4().hex[:10]
     admin = psycopg.connect(ADMIN, autocommit=True)
+    guard.assert_connected_to(admin)
     admin.execute(f'CREATE DATABASE "{name}"')
     try:
         c = psycopg.connect(ADMIN.rsplit("/", 1)[0] + "/" + name, autocommit=True)
+        guard.assert_connected_to(c, expected_db=name)
         c.execute(SCHEMA)
         yield c
         c.close()
@@ -154,13 +156,14 @@ def test_dasha_tiers_runs_the_real_sql_per_system_level_and_tier(conn):
 def fresh():
     """A second, function-scoped database (the same schema) so the CLI tests do not depend on rows other tests inserted."""
     import psycopg
-    host = urlparse(ADMIN).hostname
-    assert host in ("127.0.0.1", "localhost"), "refusing a non-local server"
+    guard.assert_disposable_dsn(ADMIN)
     name = "ge_cli_" + uuid.uuid4().hex[:10]
     admin = psycopg.connect(ADMIN, autocommit=True)
+    guard.assert_connected_to(admin)
     admin.execute(f'CREATE DATABASE "{name}"')
     try:
         c = psycopg.connect(ADMIN.rsplit("/", 1)[0] + "/" + name, autocommit=True)
+        guard.assert_connected_to(c, expected_db=name)
         c.execute(SCHEMA)
         yield c, ADMIN.rsplit("/", 1)[0] + "/" + name
         c.close()
