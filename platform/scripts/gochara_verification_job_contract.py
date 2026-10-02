@@ -14,6 +14,10 @@ about who ran it, so BOTH are judged by the same function against the same contr
   identity         == exactly the verifier's runtime service account
   one container    == no sidecar, no init container
 
+RETRIES PRESENCE (Fable F-R15-3). The Cloud Run reference lists `maxRetries` under the union field `retries` in BOTH the v1 `TaskSpec` and the v2 `TaskTemplate` (default 3 when unset). A union (oneof) member carries PRESENCE, so an explicitly set 0 is serialized — but
+that is the documentation's statement, not an observation of `gcloud` output (the first real describe is the proof). This contract therefore NEVER treats an absent value as zero: `validate_task` accepts an optional `v2_retries` — the value read from the v2 REST representation
+(`jobs.get` → `template.template.maxRetries`; `executions.get` → `template.maxRetries`) via `retries_from_v2` — and the effective value is the v1 value if present, else the v2 value; if both are present they must agree; if NEITHER carries it the task is REFUSED (a real absence is the API default of 3).
+
 It returns a list of problems (empty = conforms). The JSON shape is the documented Cloud Run TaskSpec; a mismatch of SHAPE is a refusal, never a pass."""
 from __future__ import annotations
 
@@ -26,8 +30,25 @@ CONTAINER_FIELDS = {"name", "image", "command", "args", "env", "resources"}
 TASK_FIELDS = {"containers", "serviceAccountName", "maxRetries", "timeoutSeconds", "executionEnvironment", "volumes"}
 
 
+UNSET = object()
+
+
+def retries_from_v2(doc, kind: str):
+    """`maxRetries` read from the v2 REST representation: a job (`projects.locations.jobs.get`) carries it at `template.template.maxRetries`, an execution
+    (`projects.locations.jobs.executions.get`) at `template.maxRetries`. Returns the integer, or None when the field is ABSENT (never defaulted)."""
+    if not isinstance(doc, dict):
+        return None
+    t = doc.get("template")
+    if kind == "job" and isinstance(t, dict):
+        t = t.get("template")
+    if not isinstance(t, dict):
+        return None
+    v = t.get("maxRetries")
+    return v if (isinstance(v, int) and not isinstance(v, bool)) else None
+
+
 def validate_task(task, *, image_repo: str, image_digest: str, service_account: str, runner_commit: str, secret_name: str, expected_args: list,
-                  timeout_seconds: int | None = None, memory: str | None = None, cpu: str | None = None) -> list[str]:
+                  timeout_seconds: int | None = None, memory: str | None = None, cpu: str | None = None, v2_retries=UNSET) -> list[str]:
     bad: list[str] = []
     if not isinstance(task, dict):
         return ["the task template is not an object"]
@@ -50,8 +71,11 @@ def validate_task(task, *, image_repo: str, image_digest: str, service_account: 
     if list(c.get("args") or []) != list(expected_args):
         bad.append(f"args are {c.get('args')!r}, expected {list(expected_args)!r}")
     retries = task.get("maxRetries")
-    if retries is None or isinstance(retries, bool) or retries != 0:
-        bad.append(f"maxRetries is {retries!r}, expected a PRESENT 0 (an absent value is the API default of 3)")
+    if v2_retries is not UNSET and retries is not None and v2_retries is not None and retries != v2_retries:
+        bad.append(f"maxRetries disagrees between the v1 ({retries!r}) and v2 ({v2_retries!r}) representations")
+    effective = retries if retries is not None else (None if v2_retries is UNSET else v2_retries)
+    if effective is None or isinstance(effective, bool) or effective != 0:
+        bad.append(f"maxRetries is {effective!r} (v1: {retries!r}), expected a PRESENT 0 in a presence-bearing representation (an absent value is the API default of 3)")
     env = c.get("env")
     if not isinstance(env, list) or not all(isinstance(e, dict) for e in env):
         bad.append("env is not a list of objects")

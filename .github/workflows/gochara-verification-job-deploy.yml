@@ -111,7 +111,9 @@ jobs:
         run: |
           set -euo pipefail
           gcloud run jobs describe "$VERIFICATION_JOB" --project madhav-astrology --region "$GCP_REGION" --format=json > job.json
-          python3 platform/scripts/gochara_verification_job_readback.py --job-file job.json --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$IMAGE_DIGEST" \
+          # maxRetries is read from the v2 REST representation, where it is a presence-bearing union member (F-R15-3); an absent value in BOTH representations is a refusal
+          curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GCP_REGION}/jobs/${VERIFICATION_JOB}" > job.v2.json
+          python3 platform/scripts/gochara_verification_job_readback.py --v2-job-file job.v2.json --job-file job.json --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$IMAGE_DIGEST" \
             --service-account "$VERIFIER_SERVICE_ACCOUNT" --runner-commit "$GITHUB_SHA" --secret-name "$VERIFIER_SECRET" --cloudsql-instance "$CLOUDSQL_INSTANCE" \
             --timeout-seconds 7200 --memory 8Gi --cpu 2
 

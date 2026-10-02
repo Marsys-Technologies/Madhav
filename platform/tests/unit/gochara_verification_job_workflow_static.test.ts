@@ -62,4 +62,10 @@ describe('gochara-verification-job-deploy.yml', () => {
     expect(wf.concurrency.group).toBe('gochara-verification-and-sealing')
     expect(wf.concurrency['cancel-in-progress']).toBe(false)
   })
+  it('F-R15-3: reads maxRetries from the v2 REST representation (a presence-bearing union member) in addition to the v1 describe', () => {
+    const steps = job.steps as any[]
+    const rb = steps.find((st) => String(st.run ?? '').includes('gochara_verification_job_readback.py'))
+    expect(String(rb.run)).toContain('https://run.googleapis.com/v2/projects/madhav-astrology/locations/')
+    expect(String(rb.run)).toContain('--v2-job-file job.v2.json')
+  })
 })
