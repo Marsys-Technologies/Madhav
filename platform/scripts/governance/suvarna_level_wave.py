@@ -1297,6 +1297,32 @@ def force_refusals(assets: Sequence[str], family: Mapping[str, Any]) -> list[dic
     return out
 
 
+RUNNER_REL = "platform/python-sidecar/pipeline/orchestrator/runner.py"
+ASSET_RUNNER_REL = "platform/python-sidecar/pipeline/orchestrator/asset_runner.py"
+# What a deployed image must contain for NIRMANA_FORCE_EXECUTE to do anything (O-wave WP-2): the runner reads the variable,
+# and the asset runner's delta-skip gate is conditioned on `not force`.
+_FORCE_MARKERS = ((RUNNER_REL, re.compile(r"NIRMANA_FORCE_EXECUTE"), "reads NIRMANA_FORCE_EXECUTE"),
+                  (ASSET_RUNNER_REL, re.compile(r"has_cowriters is not None and not force"),
+                   "gates the delta-skip on `not force`"))
+
+
+def check_image_supports_force(repo: str, job_sha: str, *, git=_git) -> None:
+    """`--force-execute` is only meaningful if the DEPLOYED job image honours it. An image built before the O-wave WP-2 commit
+    accepts the gcloud override and silently delta-skips. Read the runner sources at the pinned job sha and refuse
+    (FORCE_NOT_SUPPORTED_BY_IMAGE) unless both markers are present; an unreadable file refuses too."""
+    problems = []
+    for rel, pat, what in _FORCE_MARKERS:
+        cp = git(str(repo), ["show", f"{job_sha}:{rel}"])
+        if cp.returncode != 0:
+            problems.append(f"{rel} at {job_sha} is unreadable ({(cp.stderr or '').strip()[:120]})")
+        elif not pat.search(cp.stdout or ""):
+            problems.append(f"{rel} at {job_sha} does not contain code that {what}")
+    if problems:
+        raise LevelWaveRefusal([{"code": "FORCE_NOT_SUPPORTED_BY_IMAGE", "job_sha": job_sha, "problems": problems,
+                                 "detail": "the deployed job image does not honour NIRMANA_FORCE_EXECUTE (it would accept the "
+                                           "override and delta-skip): " + "; ".join(problems)}])
+
+
 # ---------------------------------------------------------------------------------------------
 # Plan (read phase) and dispatch (insert phase)
 # ---------------------------------------------------------------------------------------------
@@ -1834,6 +1860,40 @@ def read_wall_time_report(connect, run_id: str, waves: Sequence[Sequence[str]] |
     return asset_wall_time_report(rows, waves)
 
 
+def forced_effect(connect, run_id: str) -> dict:
+    """Did a forced run actually force? Read the run's state and each asset's disposition once: `build` means the writer ran,
+    `skip_no_delta` means the delta-skip was NOT bypassed. forced_effective is True / False, or None when the run has not ended
+    or the reading is incomplete (never a guess). A False carries a warning."""
+    conn = connect()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT state, last_error FROM build_runs WHERE id=%s", (run_id,))
+        run = cur.fetchone()
+        cur.execute(RUN_ASSETS_SQL, (run_id,))
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.rollback()
+    finally:
+        conn.close()
+    state = run["state"] if run else "missing"
+    dispositions = {r["asset_id"]: r.get("disposition") for r in rows}
+    out: dict[str, Any] = {"run_id": run_id, "run_state": state, "dispositions": dispositions, "forced_effective": None,
+                           "warning": None}
+    if state not in TERMINAL_RUN_STATES:
+        out["note"] = f"run is {state!r}: the disposition is not verified (it can still change)"
+    elif not rows:
+        out["note"] = "no build_run_assets rows: not verified"
+    elif any(d == "skip_no_delta" for d in dispositions.values()):
+        skipped = sorted(a for a, d in dispositions.items() if d == "skip_no_delta")
+        out["forced_effective"] = False
+        out["warning"] = (f"FORCE DID NOT TAKE EFFECT: {skipped} ended skip_no_delta although --force-execute was set "
+                          "(the deployed image or job env did not honour NIRMANA_FORCE_EXECUTE)")
+    elif all(d == "build" for d in dispositions.values()):
+        out["forced_effective"] = True
+    else:
+        out["note"] = f"dispositions {sorted(set(map(str, dispositions.values())))} are not all 'build': not verified"
+    return out
+
+
 # ---------------------------------------------------------------------------------------------
 # Command line
 # ---------------------------------------------------------------------------------------------
@@ -1851,7 +1911,8 @@ HELP_EPILOG = (
     "a split family, an unreadable or stale family file, a non-per_chart asset, an active run on the chart, stale hook files.\n\n"
     "--force-execute (OFF by default) dispatches with NIRMANA_FORCE_EXECUTE=1: it bypasses the runner's delta-skip for EVERY "
     "asset of the run, so it is allowed for ONE asset only, never a family asset, and needs --commit with its own force-bound "
-    "--confirm token (a dry run previews the token).\n\n"
+    "--confirm token (a dry run previews the token). The deployed image must contain the force read or it is refused "
+    "(FORCE_NOT_SUPPORTED_BY_IMAGE); single-run does not verify the effect unless --verify-forced.\n\n"
     "Output is JSON lines, flushed per event; the last line is the summary. Exit codes: 0 ok / dry run done; 1 DATABASE_URL "
     "missing; 2 bad input; 3 dispatch failed after commit (see the warning in the summary); 4 a gate refused; 5 wave-by-wave "
     "campaign stopped; 6 unexpected exception or database error (the summary lists every run committed so far; a COMMIT "
@@ -1890,6 +1951,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--force-execute", action="store_true", help="OFF by default. Dispatch with NIRMANA_FORCE_EXECUTE=1 (gcloud "
                    "--update-env-vars): bypasses the runner's delta-skip for EVERY asset of the run, so a single asset only, "
                    "never a family asset; needs --commit and its own force-bound --confirm token (a dry run previews it)")
+    p.add_argument("--verify-forced", action="store_true", help="single-run with --force-execute: after dispatch wait for the run "
+                   "to end and report forced_effective (build vs skip_no_delta), warning if it skipped; wave-by-wave always verifies")
     p.add_argument("--declared-skips", default="", help="comma list of assets whose no-delta skip (disposition skip_no_delta) counts as success")
     p.add_argument("--repo", default=str(REPO_ROOT))
     p.add_argument("--family-ref", default="origin/main")
@@ -2034,6 +2097,11 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
     refusals = family_ref_refusals(ref_status, committing=args.commit) + family_refusals(assets, family, committing=args.commit)
     if args.force_execute:
         refusals += force_refusals(assets, family)
+        declared = {x for x in (args.declared_skips or "").split(",") if x}
+        if declared & set(assets):
+            refusals.append({"code": "FORCE_WITH_DECLARED_SKIP", "assets": sorted(declared & set(assets)),
+                             "detail": "--force-execute with --declared-skips naming the same asset is contradictory: a forced run "
+                                       "that ends skip_no_delta means force failed, never success"})
     if refusals:
         raise LevelWaveRefusal(refusals)
     if args.commit and not args.mode:
@@ -2061,6 +2129,8 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
         binding = {"inventory_sha": None, "deployed_job_sha": resolve_commit(args.repo, args.deployed_job_sha, git=git),
                    "binding": "unverified_file_source"}
     pinned = binding["deployed_job_sha"]
+    if args.force_execute:
+        check_image_supports_force(args.repo, pinned, git=git)     # the image must honour the flag, or force is a no-op
     if args.job_sha_file:
         recheck_job_sha(args.repo, pinned_job_sha=pinned, job_sha_file=args.job_sha_file, git=git)
     force = bool(args.force_execute)
@@ -2144,6 +2214,21 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
             return EXIT_DISPATCH_FAILED
         if args.commit:
             summary["execution_name"] = receipt.get("execution_name")
+        if args.commit and force:
+            if args.verify_forced:
+                end = wait_for_terminal_run(connect, receipt["run_id"], poll_seconds=args.poll_seconds,
+                                            timeout_seconds=args.wave_timeout_seconds, sleep=sleep, monotonic=monotonic)
+                eff = forced_effect(connect, receipt["run_id"])
+                eff["wait"] = end["state"]
+                summary["forced_effect"] = eff
+                summary["forced_effective"] = eff["forced_effective"]
+                emit("forced_effect", **eff)
+                if eff["warning"]:
+                    summary["warning"] = eff["warning"]
+            else:
+                summary["forced_effective"] = "not_verified"
+                summary["forced_note"] = ("single-run reads nothing back: the disposition (build vs skip_no_delta) is NOT verified; "
+                                          "use --verify-forced or read build_run_assets.disposition for this run")
         _emit(out, "summary", **summary)
         return 0
 
@@ -2173,6 +2258,9 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, hook, commi
         declared_skips=[x for x in (args.declared_skips or "").split(",") if x])
     summary["wave_by_wave"] = result
     summary["committed"] = bool(committed)
+    if force:
+        # every wave asset reached disposition 'build' (a skip_no_delta stops the campaign), or the campaign did not finish
+        summary["forced_effective"] = True if result["status"] == "ALL_WAVES_COMPLETED" else "not_verified"
     _emit(out, "summary", **summary)
     if result["status"] == "ALL_WAVES_COMPLETED":
         return 0

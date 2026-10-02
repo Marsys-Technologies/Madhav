@@ -146,6 +146,20 @@ needs `--commit` and the force-bound confirm token (`<N>ASSETS_<digest12>_FORCE_
 token, so neither confirms the other); a dry run with the flag previews the force token and dispatches nothing. `force_execute`
 is in the dry-run summary and every receipt and event.
 
+### Force: image check, and what is verified afterwards
+
+* At launch (dry run included) the pinned job sha's `runner.py` must read `NIRMANA_FORCE_EXECUTE` and its `asset_runner.py` must
+  gate the delta-skip on `not force`; otherwise `FORCE_NOT_SUPPORTED_BY_IMAGE`. An image built before the O-wave WP-2 commit
+  (ef9ee729e) accepts the gcloud override and silently delta-skips; `force_execute: true` in a receipt records the operator's
+  INTENT, not that force took effect.
+* single-run reads nothing back: the disposition (`build` vs `skip_no_delta`) is NOT verified afterwards unless you pass
+  `--verify-forced`, which waits for the run to end and reports `forced_effective: true|false` from `build_run_assets`
+  (a warning when a forced run ended `skip_no_delta`). wave-by-wave verifies every wave: a `skip_no_delta` stops the campaign.
+* `--force-execute` together with `--declared-skips` naming the same asset is refused (`FORCE_WITH_DECLARED_SKIP`): a forced run
+  that skipped means force failed, never success.
+* Operator check: a `NIRMANA_FORCE_EXECUTE` already set on the Cloud Run job itself would force EVERY run of that job. Before a
+  campaign, `gcloud run jobs describe <job>` must show no such variable in its env.
+
 ## Out-of-set intermediates
 
 The dry-run summary lists `out_of_set_intermediates_at_risk`: outside assets E that a requested asset depends on and that

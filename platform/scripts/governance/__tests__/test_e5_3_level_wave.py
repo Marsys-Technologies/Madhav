@@ -169,15 +169,25 @@ class FakeDB:
         return [e[0] for e in self.log]
 
 
+RUNNER_WITH_FORCE = 'force = os.environ.get("NIRMANA_FORCE_EXECUTE", "").strip().lower() in ("1", "true", "yes")\n'
+ASSET_RUNNER_WITH_FORCE = "    if declared_deps is not None and has_cowriters is not None and not force:\n        return _skip()\n"
+RUNNER_WITHOUT_FORCE = "def execute_run(run_id):\n    pass\n"                      # an image built before O-wave WP-2
+ASSET_RUNNER_WITHOUT_FORCE = "    if declared_deps is not None and has_cowriters is not None:\n        return _skip()\n"
+
+
 class FakeGit:
     """Answers the four git calls load_family_info / load_deployed_writer_digests make."""
 
     def __init__(self, *, family_text=None, family_listed=True, ref_ok=True, deployed=None, show_fails=False,
-                 rev_map=None, remote_sha=None, remote_fails=False, remote_stdout=None):
+                 rev_map=None, remote_sha=None, remote_fails=False, remote_stdout=None,
+                 runner_text=None, asset_runner_text=None, runner_show_fails=False):
         self.family_text, self.family_listed, self.ref_ok = family_text, family_listed, ref_ok
         self.deployed, self.show_fails = deployed, show_fails
         self.rev_map, self.remote_sha, self.remote_fails = dict(rev_map or {}), remote_sha, remote_fails
         self.remote_stdout = remote_stdout
+        self.runner_text = RUNNER_WITH_FORCE if runner_text is None else runner_text
+        self.asset_runner_text = ASSET_RUNNER_WITH_FORCE if asset_runner_text is None else asset_runner_text
+        self.runner_show_fails = runner_show_fails
         self.calls = []
 
     def __call__(self, repo, args):
@@ -199,6 +209,10 @@ class FakeGit:
             spec = args[1]
             if spec.endswith(slw.FAMILY_FILE_REL):
                 return cp(128, "", "boom") if self.show_fails else cp(0, self.family_text)
+            if spec.endswith(slw.RUNNER_REL) or spec.endswith(slw.ASSET_RUNNER_REL):
+                if self.runner_show_fails:
+                    return cp(128, "", "no such path at that sha")
+                return cp(0, self.runner_text if spec.endswith(slw.RUNNER_REL) else self.asset_runner_text)
             if spec.endswith(slw.WRITER_DIGESTS_REL):
                 return cp(0, json.dumps({"writers": self.deployed})) if self.deployed is not None else cp(128, "", "no such sha")
         raise AssertionError(f"unexpected git call {args}")
@@ -2132,3 +2146,155 @@ def test_help_and_readme_document_force_and_the_delta_skip():
             "(asset_runner.py ~1141-1160)") in readme
     assert "force bypasses it for every asset of that run" in readme.lower() and "--update-env-vars=NIRMANA_FORCE_EXECUTE=1" in readme
     assert "gcloud 576.0.0" in readme and "FORCE_MULTI_ASSET" in readme and "FORCE_FAMILY_ASSET" in readme
+
+
+# ═════════════════════════ force: the image must honour it; what is verified afterwards ═════════════════════════
+
+@pytest.mark.parametrize("kw,needle", [
+    (dict(runner_text=RUNNER_WITHOUT_FORCE), "runner.py"),
+    (dict(asset_runner_text=ASSET_RUNNER_WITHOUT_FORCE), "asset_runner.py"),
+    (dict(runner_text="", asset_runner_text=""), "runner.py"),
+    (dict(runner_show_fails=True), "unreadable"),
+])
+def test_force_is_refused_when_the_pinned_image_does_not_honour_it(tmp_path, kw, needle):
+    repo = make_repo(tmp_path, SMALL_DIGESTS)
+    git = FakeGit(family_text=family_doc(), deployed=SMALL_DIGESTS, **kw)
+    db = FakeDB([SMALL], READY)
+    for extra in ([], ["--commit", "--confirm", "x", "--verify-forced"]):
+        code, out = run(args_for(repo, "a_one", "--force-execute", *extra, mode="single-run" if extra else None), db, git,
+                        dispatch=lambda r: pytest.fail("dispatched"))
+        assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "FORCE_NOT_SUPPORTED_BY_IMAGE"
+        assert needle in " ".join(out["refusals"][0]["problems"]) and out["refusals"][0]["job_sha"] == sha_of("deadbeef")
+    assert db.log == [] and "commit" not in db.kinds()
+
+
+def test_the_image_check_reads_the_runner_sources_at_the_pinned_job_sha(env):
+    repo, git = env
+    run(args_for(repo, "a_one", "--force-execute"), FakeDB([SMALL], READY), git)
+    shows = [c[1] for c in git.calls if c[0] == "show" and "orchestrator" in c[1]]
+    assert f"{sha_of('deadbeef')}:{slw.RUNNER_REL}" in shows and f"{sha_of('deadbeef')}:{slw.ASSET_RUNNER_REL}" in shows
+
+
+def test_the_image_check_is_not_run_without_force(env):
+    repo, git = env
+    run(args_for(repo, "a_one"), FakeDB([SMALL], READY), git)
+    assert not [c for c in git.calls if c[0] == "show" and "orchestrator" in c[1]]
+    git2 = FakeGit(family_text=family_doc(), deployed=SMALL_DIGESTS, runner_text=RUNNER_WITHOUT_FORCE)
+    code, _ = run(args_for(repo, "a_one"), FakeDB([SMALL], READY), git2)
+    assert code == 0                                       # an old image is fine for a normal rebuild
+
+
+def test_the_real_repo_runner_sources_satisfy_the_markers():
+    for rel in (slw.RUNNER_REL, slw.ASSET_RUNNER_REL):
+        text = (REPO / rel).read_text()
+        pat = next(p for r, p, _ in slw._FORCE_MARKERS if r == rel)
+        assert pat.search(text), rel                        # drift guard: the markers still exist in the runner today
+
+
+def test_single_run_force_says_the_effect_is_not_verified_by_default(env, monkeypatch):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one", "--force-execute"), FakeDB([SMALL], READY), git)
+    monkeypatch.setattr(slw, "dispatch_run_with_timeout", lambda **kw: "executions/x")
+    code, out = run(args_for(repo, "a_one", "--force-execute", "--commit", "--confirm", dry["confirm_token_single_run"], mode="single-run"),
+                    FakeDB([SMALL], READY), git)
+    assert code == 0 and out["forced_effective"] == "not_verified" and "NOT verified" in out["forced_note"]
+
+
+def _forced_db(dispositions, run_state="completed"):
+    db = FakeDB([SMALL], READY, run_states={})
+    real = db.respond
+
+    def respond(sql, params):
+        if "FROM build_run_assets bra" in sql:
+            return [{"asset_id": a, "position": i, "state": "complete", "disposition": d, "error": None, "throughput_state": "lit",
+                     "started_at": T0, "ended_at": T0 + timedelta(seconds=5)} for i, (a, d) in enumerate(dispositions.items())]
+        if "SELECT state, last_error FROM build_runs WHERE id" in sql:
+            return [{"state": run_state, "last_error": None}]
+        return real(sql, params)
+    db.respond = respond
+    return db
+
+
+@pytest.mark.parametrize("disp,run_state,expect", [
+    ({"a_one": "build"}, "completed", True), ({"a_one": "skip_no_delta"}, "completed", False),
+    ({"a_one": "build"}, "running", None), ({"a_one": "withheld_protected"}, "completed", None), ({}, "completed", None),
+])
+def test_forced_effect_reads_build_versus_skip_no_delta_from_the_run(disp, run_state, expect):
+    eff = slw.forced_effect(_forced_db(disp, run_state).connect, "r1")
+    assert eff["forced_effective"] is expect
+    assert bool(eff["warning"]) is (expect is False) and ("FORCE DID NOT TAKE EFFECT" in (eff["warning"] or "")) is (expect is False)
+    if expect is None:
+        assert eff["note"]
+
+
+def test_forced_effect_only_runs_selects():
+    db = _forced_db({"a_one": "build"})
+    slw.forced_effect(db.connect, "r1")
+    assert all(e[1].lstrip().startswith("SELECT") for e in db.statements()) and "commit" not in db.kinds()
+
+
+@pytest.mark.parametrize("disp,eff,warns", [("build", True, False), ("skip_no_delta", False, True)])
+def test_verify_forced_reports_the_effect_and_warns_when_a_forced_run_skipped(env, monkeypatch, disp, eff, warns):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one", "--force-execute"), FakeDB([SMALL], READY), git)
+    monkeypatch.setattr(slw, "dispatch_run_with_timeout", lambda **kw: "executions/x")
+    db = _forced_db({"a_one": disp})
+    code, lines_, _ = run_all(args_for(repo, "a_one", "--force-execute", "--verify-forced", "--commit", "--confirm",
+                                       dry["confirm_token_single_run"], mode="single-run"), db, git, sleep=lambda s: None)
+    last = lines_[-1]
+    assert code == 0 and last["forced_effective"] is eff and bool(last.get("warning")) is warns
+    assert any(l["event"] == "forced_effect" and l["forced_effective"] is eff for l in lines_)
+    if warns:
+        assert "FORCE DID NOT TAKE EFFECT" in last["warning"]
+
+
+def test_force_with_declared_skips_for_the_same_asset_is_refused(env):
+    repo, git = env
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one", "--force-execute", "--declared-skips", "a_one"), db, git)
+    assert code == slw.REFUSAL_EXIT_CODE and out["refusals"][0]["code"] == "FORCE_WITH_DECLARED_SKIP" and db.log == []
+    code, out = run(args_for(repo, "a_one", "--force-execute", "--declared-skips", "other_asset"), FakeDB([SMALL], READY), git)
+    assert code == 0                                                       # naming some other asset is harmless
+
+
+def test_wave_by_wave_force_that_skipped_stops_the_campaign_and_reports_not_verified(env, tmp_path, monkeypatch):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one", "--force-execute", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
+    monkeypatch.setattr(slw, "dispatch_run_with_timeout", lambda **kw: "executions/x")
+    db = _forced_db({"a_one": "skip_no_delta"})
+    code, out = run(args_for(repo, "a_one", "--force-execute", "--commit", "--confirm", dry["confirm_token_single_run"],
+                             "--pause-dir", str(tmp_path / "p"), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"), db, git,
+                    hook=lambda *a: True, sleep=lambda s: None)
+    assert code == slw.EXIT_CAMPAIGN_STOPPED and out["wave_by_wave"]["status"] == "STOPPED_ASSETS_NOT_COMPLETE"
+    assert out["forced_effective"] == "not_verified"
+
+
+def test_wave_by_wave_force_that_built_reports_effective(env, tmp_path, monkeypatch):
+    repo, git = env
+    _, dry = run(args_for(repo, "a_one", "--force-execute", mode="wave-by-wave"), FakeDB([SMALL], READY), git)
+    monkeypatch.setattr(slw, "dispatch_run_with_timeout", lambda **kw: "executions/x")
+    code, out = run(args_for(repo, "a_one", "--force-execute", "--commit", "--confirm", dry["confirm_token_single_run"],
+                             "--pause-dir", str(tmp_path / "p"), "--job-sha-file", jobfile(tmp_path), mode="wave-by-wave"),
+                    FakeDB([SMALL], READY), git, hook=lambda *a: True, sleep=lambda s: None)
+    assert code == 0 and out["forced_effective"] is True
+
+
+def test_force_dry_run_with_the_family_file_absent_works_on_name_patterns_and_a_commit_is_refused(tmp_path):
+    repo = make_repo(tmp_path, SMALL_DIGESTS)
+    git = FakeGit(family_listed=False, deployed=SMALL_DIGESTS)
+    code, out = run(args_for(repo, "a_one", "--force-execute"), FakeDB([SMALL], READY), git)
+    assert code == 0 and out["family_enforcement"] == "name_patterns_only" and out["force_execute"] is True
+    code, out = run(args_for(make_repo(tmp_path / "g", {"ka_gochara": _hexdigest("ka_gochara")}), "ka_gochara", "--force-execute"),
+                    FakeDB([[row("ka_gochara")]], READY), FakeGit(family_listed=False, deployed={"ka_gochara": _hexdigest("ka_gochara")}))
+    assert code == slw.REFUSAL_EXIT_CODE and "FORCE_FAMILY_ASSET" in [r["code"] for r in out["refusals"]]
+    db = FakeDB([SMALL], READY)
+    code, out = run(args_for(repo, "a_one", "--force-execute", "--commit", "--confirm", "x", mode="single-run"), db, git)
+    assert code == slw.REFUSAL_EXIT_CODE and "FAMILY_FILE_MISSING" in [r["code"] for r in out["refusals"]] and db.log == []
+
+
+def test_readme_documents_the_image_check_the_unverified_single_run_and_the_job_level_env():
+    flat = " ".join((HERE.parent / "README_level_wave.md").read_text().split())
+    for needle in ("FORCE_NOT_SUPPORTED_BY_IMAGE", "ef9ee729e", "records the operator's INTENT", "is NOT verified afterwards",
+                   "--verify-forced", "forced_effective", "gcloud run jobs describe", "would force EVERY run of that job",
+                   "FORCE_WITH_DECLARED_SKIP"):
+        assert needle in flat, needle
