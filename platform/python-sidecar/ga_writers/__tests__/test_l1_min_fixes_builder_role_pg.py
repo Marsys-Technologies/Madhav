@@ -61,10 +61,12 @@ needs_pg = (lambda fn: fn) if _IN_CI else pytest.mark.skipif(
 )
 
 # ── local DSN safety (in addition to BR.require_disposable, which we must not edit) ───────────────
-# BR.require_disposable reads urlparse(dsn).hostname, which sees only the FIRST host of a multi-host
-# URI: `postgresql://u:p@localhost:5432,db.prod.example.com:5432/c7_builder_role_test` passes it
-# and libpq would fail over to the second host. This fixture drops schema public and alters cluster
-# roles, so the whole libpq target (hosts, hostaddrs, dbname, env overrides) is validated here first.
+# When this lane was written BR.require_disposable read urlparse(dsn).hostname, which sees only the
+# FIRST host of a multi-host URI (`postgresql://u:p@localhost:5432,db.prod.example.com:5432/c7_builder_role_test`
+# passed it and libpq would fail over to the second host). Main's C24/C25 (#2978, #2980) has since moved
+# the checks into the shared guard tests/l3/_disposable_db_guard.py, which now refuses that DSN too; this
+# local validation is kept as a second, independent layer. This fixture drops schema public and alters
+# cluster roles, so the whole libpq target (hosts, hostaddrs, dbname, env overrides) is validated here first.
 # A refused DSN FAILS in every environment (never skips, in CI or locally).
 
 _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
@@ -445,9 +447,13 @@ def test_dsn_guard_allows_loopback_environment():
                                  "PGDATABASE": "c7_builder_role_test"})
 
 
-def test_shared_fixture_guard_alone_would_have_passed_the_multihost_dsn():
-    """Why the local refusal exists: BR.require_disposable (not ours to edit) accepts the first host."""
+def test_shared_fixture_guard_and_local_guard_both_refuse_the_multihost_dsn():
+    """Both layers refuse a multi-host DSN. Integration merge interaction (S-L1): at the time this lane
+    was written BR.require_disposable accepted the first host (the local refusal existed for that reason);
+    main's C24/C25 shared guard (tests/l3/_disposable_db_guard.py) now refuses it as well, so the shared
+    fixture guard is asserted to REFUSE and the local one is kept as the independent second layer."""
     multi = "postgresql://u:p@localhost:5432,db.prod.example.com:5432/c7_builder_role_test"
-    assert BR.require_disposable(multi) == "c7_builder_role_test"
+    with pytest.raises(RuntimeError, match="REFUSED"):
+        BR.require_disposable(multi)
     with pytest.raises(ValueError, match="REFUSED"):
         refuse_unsafe_dsn(multi, env={})
