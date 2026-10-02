@@ -1,0 +1,9 @@
+{
+ "implementation_digest": "cf8afd15efc3693220530d7a1e91e2363a8dda2830a3390ecd115f15e42e0f4f",
+ "schema": "gochara_implementation_registry/1",
+ "stages": {
+  "evaluation": "f422707eacc9b5edda4ce6d9e62961ac7929a1adc705d67e572c98d695a451a9",
+  "geometry": "535e05b08ff1af57e2951d1a7f2c017707d55c315608832df8c1cafdbcdbc52a",
+  "window": "41c91530b3bf304f4a8c01690a59324a2990d642d6fd5a7fc69da3fc0ce54f4b"
+ }
+}

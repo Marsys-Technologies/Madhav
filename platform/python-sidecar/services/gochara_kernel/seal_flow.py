@@ -35,6 +35,12 @@ def _seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest
     run_id, run_attempt = int(run_id), int(run_attempt)
     # (1) locks → recompute → compare: refuse BEFORE anything is published
     payload = seal_brief.recompute_under_locks(conn, chart_id, generation, approved_digest, sealing_commit=sealing_commit)
+    # (1a) the code running THIS seal is the code the manifest pins (the verification runners are already required to be): the sealing side is
+    # part of the trusted system (AM-24 item 4), so a sealer of different code is refused before anything is published
+    from . import window_gate as wg
+    if wg.implementation_digest() != payload["code"]["manifest_pinned_implementation_digest"]:
+        raise seal_brief.ApprovalMismatch("sealer_code_not_pinned: the implementation digest of the code running this seal is not the digest the "
+                                          "manifest pins — the sealing job must run the pinned code")
     # (1b) F-R12-4: the approved digest must be the CURRENT brief the VERIFIER persisted for this candidate (the receipt's commit-time
     # trigger enforces the same; refusing here costs nothing and says why before anything is published)
     why = seal_brief.persisted_brief_problem(conn, chart_id, generation, payload["manifest"]["manifest_id"], approved_digest,
@@ -104,8 +110,8 @@ class SealRefused(RuntimeError):
 
 def parse_approval(text: str | None) -> dict:
     """The approval record the workflow writes from the GitHub approval of THIS run (schema `seal_approval/1`):
-    {schema, brief_digest, brief_id, producer_execution_id, run_id, run_attempt, approver_login, approved_by_note}. `brief_id` and
-    `producer_execution_id` are the SPECIFIC persisted brief and the verifier execution the approval is for (R13-3: taken from the compact
+    {schema, brief_digest, brief_id, execution_id, run_id, run_attempt, approver_login, approved_by_note}. `brief_id` and
+    `execution_id` (ST-WIRE-2) are the SPECIFIC persisted brief and the verifier execution the approval is for (R13-3: taken from the compact
     line of THIS workflow run's brief job — or, for an explicit reuse, from the earlier run's still-current brief). Absent / malformed ⇒ refused."""
     if not text or not text.strip():
         raise SealRefused("approval_absent", "no approval record was supplied")
@@ -121,8 +127,8 @@ def parse_approval(text: str | None) -> dict:
     for k in ("run_id", "run_attempt", "brief_id"):
         if not isinstance(a.get(k), int) or isinstance(a.get(k), bool) or a[k] < 1:
             raise SealRefused("approval_malformed", f"{k} is not a positive integer")
-    if not isinstance(a.get("producer_execution_id"), str) or not a["producer_execution_id"].strip():
-        raise SealRefused("approval_malformed", "producer_execution_id is blank")
+    if not isinstance(a.get("execution_id"), str) or not a["execution_id"].strip():
+        raise SealRefused("approval_malformed", "execution_id is blank")
     for k, v in (("approver_login", login), ("approved_by_note", note)):
         if not isinstance(v, str) or not v.strip():
             raise SealRefused("approval_malformed", f"{k} is blank")
@@ -150,6 +156,18 @@ def check_approval_note(note: str, triggering_actor: str | None) -> dict:
 
 def _one(row):
     return None if row is None else (next(iter(row.values())) if isinstance(row, dict) else row[0])
+
+
+def check_own_checkout() -> dict:
+    """ST-WIRE-2 item 3: the sealing job's OWN-CHECKOUT self-check, run before any database contact — the digest of the implementation modules this
+    process is running must equal the digest REGISTERED for the sealing commit (`implementation_digest.lock.json`, committed with the code). A
+    checkout that was edited after review, or a lock that was not regenerated, is refused (named, exit 4)."""
+    from . import implementation_registry as reg
+    why = reg.problem()
+    if why is not None:
+        code = "own_checkout_digest_unregistered" if why == "no_registered_digest" else "own_checkout_digest_mismatch"
+        raise SealRefused(code, f"the code this job is running is not the code registered for the sealing commit — {why}", exit_code=EXIT_IDENTITY)
+    return {"implementation_digest": reg.registered()["implementation_digest"]}
 
 
 def check_sealer_identity(conn) -> dict:
@@ -216,7 +234,7 @@ def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id
             return seal_with_approval(conn, chart_id=chart_id, generation=generation, approved_digest=approval["brief_digest"],
                                       approver_login=approval["approver_login"], run_id=run_id, run_attempt=run_attempt,
                                       approval_note=approval["approved_by_note"], sealing_commit=sealing_commit,
-                                      brief_id=approval["brief_id"], producer_execution_id=approval["producer_execution_id"])
+                                      brief_id=approval["brief_id"], producer_execution_id=approval["execution_id"])
     except psycopg.errors.LockNotAvailable as exc:
         raise SealRefused("seal_lock_timeout", f"a seal lock was not available within {seal_brief.SEAL_LOCK_TIMEOUT} — another build, "
                           f"verification or seal holds it; nothing was published ({exc})") from exc

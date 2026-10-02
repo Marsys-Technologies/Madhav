@@ -109,6 +109,9 @@ def payload_digest(payload: dict) -> str:
 # entry limit), so the job's stdout is a COMPACT line and the brief travels another way. In every route the bytes are the canonical JSON of
 # the payload, so `sha256(bytes) == the persisted brief digest` is directly checkable by the reader.
 CHUNK_RAW_BYTES = 48 * 1024
+#: the version of the stdout contract; EVERY chunk line and the compact line carries it as `contract` (ST-WIRE-2); a consumer refuses a missing
+#: or unknown one
+TRANSPORT_CONTRACT = "gochara_brief_transport/1"
 
 
 def brief_bytes(result: dict) -> bytes:
@@ -120,22 +123,28 @@ def brief_bytes(result: dict) -> bytes:
 
 
 def brief_chunk_lines(raw: bytes, digest: str, chunk_bytes: int = CHUNK_RAW_BYTES) -> list[str]:
-    """The chunked-lines transport: `{"brief_chunk": i, "of": n, "sha256": <whole-brief digest>, "b64": <base64 of the i-th slice>}`, one
-    canonical-JSON line each; concatenating the decoded slices in index order gives the brief bytes."""
+    """The chunked-lines transport: `{"b64": <base64 of the i-th slice>, "brief_chunk": i, "contract": "gochara_brief_transport/1", "of": n,
+    "sha256": <whole-brief digest>}`, one canonical-JSON line each (ST-WIRE-2: EVERY line carries the contract version); concatenating the
+    decoded slices in index order gives the brief bytes."""
     import base64
     if chunk_bytes < 1:
         raise ValueError("chunk_bytes must be positive")
     parts = [raw[i:i + chunk_bytes] for i in range(0, len(raw), chunk_bytes)] or [b""]
-    return [_canon({"brief_chunk": i, "of": len(parts), "sha256": digest, "b64": base64.b64encode(p).decode("ascii")})
+    return [_canon({"brief_chunk": i, "of": len(parts), "sha256": digest, "b64": base64.b64encode(p).decode("ascii"),
+                    "contract": TRANSPORT_CONTRACT})
             for i, p in enumerate(parts)]
 
 
 def reassemble_chunks(lines: list[str]) -> bytes:
-    """The reader's side of the chunked transport: refuses a missing/duplicated/foreign chunk and a whole that does not hash to the digest."""
+    """The reader's side of the chunked transport: refuses a line whose contract version is missing or unknown, a missing/duplicated/foreign
+    chunk and a whole that does not hash to the digest."""
     import base64
     docs = [json.loads(x) for x in lines]
     if not docs:
         raise BriefRefused("no_chunks", "no brief chunk lines")
+    bad = [d.get("contract") for d in docs if d.get("contract") != TRANSPORT_CONTRACT]
+    if bad:
+        raise BriefRefused("contract_unsupported", f"a chunk line carries contract {bad[0]!r}, this reader speaks {TRANSPORT_CONTRACT!r}")
     total, digest = docs[0]["of"], docs[0]["sha256"]
     if sorted(d["brief_chunk"] for d in docs) != list(range(total)) or any(d["of"] != total or d["sha256"] != digest for d in docs):
         raise BriefRefused("chunks_incomplete", "the brief chunks are missing, duplicated or from different briefs")
@@ -334,8 +343,6 @@ def brief(conn, chart_id: str, generation: str, *, sealing_commit: str | None = 
     return {"payload": payload, "sha256": payload_digest(payload)}
 
 
-#: the version of the stdout contract (chunk lines + compact line); in every compact line (R13-1)
-TRANSPORT_CONTRACT = "seal_brief_transport/1"
 ENV_IMAGE_DIGEST = "GOCHARA_RUNNER_IMAGE_DIGEST"      # set by the job DEFINITION to the immutable image digest (sha256:<64 hex>)
 ENV_EXECUTION = "CLOUD_RUN_EXECUTION"                   # set by Cloud Run itself for every job execution
 _IMAGE_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}\Z")

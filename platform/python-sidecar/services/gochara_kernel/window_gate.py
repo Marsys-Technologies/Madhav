@@ -248,6 +248,15 @@ def _git_head() -> str | None:
         return None
 
 
+def implementation_digest(modules: dict | None = None) -> str:
+    """The digest of the implementation modules THIS process imported — `sha256(canonical {stage: stage digest})` over the manifest vector's own
+    module map (`input_vector.IMPLEMENTATION_MODULES`) and the SAME hashing function the vector pins. One definition: the runner identity, the
+    registered lock and the sealer's own-checkout self-check all call it."""
+    from . import input_vector as iv
+    from . import input_vector_verifier as ivv
+    return hashlib.sha256(_canon(ivv.module_digests(modules or iv.IMPLEMENTATION_MODULES)).encode("utf-8")).hexdigest()
+
+
 def runner_identity(modules: dict | None = None, *, login: str | None = None, session: str | None = None) -> dict:
     """R10-4 / AM-24 item 4: the identity of the code that is RUNNING this verification — its commit (the deploy's
     `GOCHARA_RUNNER_COMMIT`, else the repository HEAD it is running from), the digest of the implementation modules it

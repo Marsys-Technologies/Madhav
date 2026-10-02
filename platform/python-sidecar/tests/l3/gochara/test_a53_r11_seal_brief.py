@@ -202,8 +202,9 @@ def test_the_entry_points_brief_mode_ends_in_a_compact_line_carries_the_brief_by
                            "--brief-chunk-bytes", "4096"]) == vj.EXIT_OK
         lines = capsys.readouterr().out.strip().splitlines()
         compact, chunk_lines = json.loads(lines[-1]), lines[:-1]            # the LAST line is the compact result, whatever the size
-        assert set(compact) == {"status", "contract_version", "sha256", "persisted", "producer", "brief_bytes", "brief_file", "brief_chunks"}
-        assert compact["contract_version"] == sb.TRANSPORT_CONTRACT == "seal_brief_transport/1"
+        assert set(compact) == {"status", "contract", "sha256", "persisted", "producer", "brief_bytes", "brief_file", "brief_chunks"}
+        assert compact["contract"] == sb.TRANSPORT_CONTRACT == "gochara_brief_transport/1"
+        assert all(json.loads(x)["contract"] == "gochara_brief_transport/1" for x in chunk_lines)         # EVERY chunk line carries it (ST-WIRE-2)
         assert compact["producer"] == {"commit": "cli-sha", "image_digest": IMAGE,
                                        "execution_id": "projects/p/locations/l/jobs/gochara-verifier/executions/exec-9"}
         assert compact["status"] == "BRIEFED" and compact["persisted"]["brief_id"] and compact["brief_file"] == str(out_file)
@@ -219,7 +220,20 @@ def test_the_entry_points_brief_mode_ends_in_a_compact_line_carries_the_brief_by
         golden = os.environ.get("GOCHARA_WRITE_GOLDEN_BRIEF")                  # (opt-in: regenerate the fixture Stream B's extractor tests use)
         if golden:                                                             # the REAL stdout, no --brief-out, chunks of 8 KiB (3 for 1 class)
             assert entry.main(["--chart", CHART_ID, "--brief", "--sealing-commit", "cli-sha", "--brief-chunk-bytes", "8192"]) == vj.EXIT_OK
-            Path(golden).write_text(capsys.readouterr().out)
+            stdout = capsys.readouterr().out
+            Path(golden).write_text(stdout)
+            # …and the same lines as the Cloud Run LOG ENTRIES they become (root jsonPayload; shape from Google's LogEntry docs, not a capture)
+            entries = []
+            for i, line in enumerate(stdout.splitlines()):
+                ts = f"2026-10-03T09:15:{i:02d}.{(i * 137) % 1000:03d}Z"
+                entries.append({
+                    "insertId": hashlib.sha256(line.encode()).hexdigest()[:20], "jsonPayload": json.loads(line),
+                    "labels": {"instanceId": "00bf4bf02d" + "0" * 20, "run.googleapis.com/execution_name": "gochara-verifier-x7k2p",
+                               "run.googleapis.com/task_attempt": "0", "run.googleapis.com/task_index": "0"},
+                    "logName": "projects/example-project/logs/run.googleapis.com%2Fstdout", "receiveTimestamp": ts,
+                    "resource": {"labels": {"job_name": "gochara-verifier", "location": "asia-south1", "project_id": "example-project"},
+                                 "type": "cloud_run_job"}, "timestamp": ts})
+            (Path(golden).parent / "golden_brief_log_entries_1class.json").write_text(json.dumps(entries, indent=1, sort_keys=True) + "\n")
     finally:
         w.conn.execute("ALTER ROLE gochara_verifier NOLOGIN PASSWORD NULL")
 
