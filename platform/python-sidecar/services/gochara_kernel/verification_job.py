@@ -39,6 +39,8 @@ BUILDER_TABLES = (
     "kala_gochara_coverage", "kala_gochara_publication")
 #: the two verification tables the verifier writes (and the only ones)
 VERIFICATION_TABLES = ("ka_gochara_search_inventory_verification", "ka_gochara_eval_window_verification")
+#: …plus the one table the verifier's `--brief` mode appends to (F-R12-4). The SEALER holds no write on it (its write surface keeps it).
+VERIFIER_WRITE_TABLES = VERIFICATION_TABLES + ("ka_gochara_seal_brief",)
 _WRITE = ("INSERT", "UPDATE", "DELETE", "TRUNCATE")
 #: the L1 tables the independent re-derivations READ (their ACLs belong to the data-plane owner, not to 1241)
 L1_READ_TABLES = ("chart_facts", "chart_dashas")
@@ -66,7 +68,7 @@ def _builder_owner_roles(conn) -> list[str]:
         " c.relname LIKE 'kala\\_gochara\\_%')").fetchall()]
 
 
-def _write_surface(conn, role: str) -> list[str]:
+def _write_surface(conn, role: str, exempt: tuple = VERIFICATION_TABLES) -> list[str]:
     """Every WRITE privilege `role` effectively holds on the builder write surface — table level (INSERT/UPDATE/DELETE/
     TRUNCATE) AND column level (INSERT/UPDATE on any single column: 1242 grants columns, which `has_table_privilege` does not
     see). The surface is every Gochara table except the two verification tables the verifier itself writes."""
@@ -74,7 +76,7 @@ def _write_surface(conn, role: str) -> list[str]:
     tables = [(_one(r) if not isinstance(r, tuple) else r[0]) for r in conn.execute(
         "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
         " WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND (c.relname LIKE 'ka\\_gochara\\_%%' OR"
-        " c.relname LIKE 'kala\\_gochara\\_%%') AND c.relname <> ALL(%s) ORDER BY 1", (list(VERIFICATION_TABLES),)).fetchall()]
+        " c.relname LIKE 'kala\\_gochara\\_%%') AND c.relname <> ALL(%s) ORDER BY 1", (list(exempt),)).fetchall()]
     for t in tables:
         for priv in _WRITE:
             if _one(conn.execute("SELECT has_table_privilege(%s, %s, %s)", (role, f"public.{t}", priv)).fetchone()):
@@ -120,7 +122,7 @@ def check_identity(conn) -> dict:
         raise VerificationRefused(
             "identity_not_separate", f"session_user {session} differs from current_user {user}: an elevated session (SET ROLE / "
             "impersonation) — the job proves the identity it was LOGGED IN as and never uses SET ROLE", exit_code=EXIT_PRIVILEGE)
-    held = _write_surface(conn, user)
+    held = _write_surface(conn, user, VERIFIER_WRITE_TABLES)
     if held:
         raise VerificationRefused("identity_not_separate", f"{user} holds write privileges on the builder write surface: {held}",
                                   exit_code=EXIT_PRIVILEGE)
@@ -226,7 +228,7 @@ def check_preconditions(conn, *, chart_id: str, generation: str, classes=None, e
 
 
 __all__ = ["BUILDER_TABLES", "EXIT_DISAGREE", "EXIT_ERROR", "EXIT_OK", "EXIT_PRIVILEGE", "EXIT_REFUSED", "GENERATION",
-           "VERIFICATION_TABLES", "VerificationRefused", "check_identity", "check_preconditions"]
+           "VERIFICATION_TABLES", "VERIFIER_WRITE_TABLES", "VerificationRefused", "check_identity", "check_preconditions"]
 
 
 class VerificationDisagrees(RuntimeError):

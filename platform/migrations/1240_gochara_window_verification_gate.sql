@@ -643,6 +643,129 @@ COMMENT ON FUNCTION public.ka_gochara_candidate_gate_violations(uuid, text) IS
   'A5.3 R8-4: the ONE check a candidate must pass — the search-completeness violations (1206/1232) plus the window '
   'verification violations. No 1206/1232 function is redefined.';
 
+-- ── 4a. the VERIFIER-PERSISTED seal brief (F-R12-4) ────────────────────────────────────────────────────────
+-- The receipt's digest was only a 64-hex string the sealer supplied: nothing tied it to a brief the separate VERIFIER actually produced
+-- for THIS candidate. The verifier's `--brief` now persists each brief it produces here (append-only; the verifier INSERTs, the sealer
+-- only SELECTs — the grants are 1241's), and the receipt's deferred trigger requires `receipt.brief_digest` to equal the CURRENT
+-- persisted brief for the same (chart, generation, manifest) — "current" = the LATEST row (highest brief_id) for the generation, and its
+-- DB-attested `state_digest` must still equal the generation's state at COMMIT, so a re-verification or any change to the candidate makes
+-- an older brief unusable. The state digest is computed by ONE function, in the database (`ka_gochara_brief_state_digest`) — the job
+-- calls it too; there is no Python twin to drift. The brief digest itself (the sha256 of the full payload, which carries the migration
+-- ledger, the runner identity and the disclosures the database cannot recompute) is the verifier's attestation of what it showed.
+CREATE OR REPLACE FUNCTION public.ka_gochara_brief_state_digest(p_chart uuid, p_generation text)
+RETURNS text LANGUAGE plpgsql STABLE
+SET search_path = pg_catalog, public SET TimeZone = 'UTC' SET DateStyle = 'ISO, YMD' SET IntervalStyle = 'iso_8601' SET extra_float_digits = 1
+AS $$
+DECLARE t text; acc text := ''; n bigint; h text; pub record; legacy bigint;
+BEGIN
+  -- every row (every column but created_at) of the output, the search inputs and BOTH verification tables, one canonical line per row
+  FOREACH t IN ARRAY ARRAY[
+      'ka_gochara_relationship_record', 'ka_gochara_record_prerequisite', 'ka_gochara_contact', 'ka_gochara_eval_window',
+      'ka_gochara_eval_window_record', 'ka_gochara_search_path_pin', 'ka_gochara_search_inventory',
+      'ka_gochara_search_input_snapshot', 'ka_gochara_search_obligation', 'ka_gochara_search_interval',
+      'ka_gochara_eval_window_verification', 'ka_gochara_search_inventory_verification'] LOOP
+    EXECUTE format('SELECT count(*), coalesce(encode(sha256(convert_to(string_agg(j::text, E''\n'' ORDER BY j::text COLLATE "C"), ''UTF8'')), ''hex''), '''') '
+                   'FROM (SELECT to_jsonb(x) - ''created_at'' AS j FROM public.%I x WHERE x.chart_id = $1 AND x.generation = $2) s', t)
+      INTO n, h USING p_chart, p_generation;
+    acc := acc || t || ':' || n || ':' || h || E'\n';
+  END LOOP;
+  -- the BUILD coverage partitions (the on-demand Moon kinds are not part of a governed generation's build identity)
+  SELECT count(*), coalesce(encode(sha256(convert_to(string_agg(j::text, E'\n' ORDER BY j::text COLLATE "C"), 'UTF8')), 'hex'), '')
+    INTO n, h
+  FROM (SELECT to_jsonb(c) - 'created_at' AS j FROM public.kala_gochara_coverage c
+        WHERE c.chart_id = p_chart AND c.generation = p_generation AND c.partition_kind IN ('body_target', 'event_class')) s;
+  acc := acc || 'coverage:' || n || ':' || h || E'\n';
+  -- the manifest's IDENTITY (never its publication fields: status / digest / counts — publication fills those in)
+  SELECT p.manifest_id::text AS manifest_id, p.horizon::text AS horizon, p.convention_id AS convention_id,
+         p.input_generation_vector::text AS vector, p.writer_asset_id AS writer, p.ephemeris_backend::text AS backend INTO pub
+  FROM public.kala_gochara_publication p WHERE p.chart_id = p_chart AND p.generation = p_generation;
+  acc := acc || 'manifest:' || coalesce(pub.manifest_id, '') || ':' || coalesce(pub.horizon, '') || ':' || coalesce(pub.convention_id::text, '')
+         || ':' || coalesce(pub.vector, '') || ':' || coalesce(pub.writer, '') || ':' || coalesce(pub.backend, '') || E'\n';
+  SELECT coalesce(sum(l.n), 0) INTO legacy FROM public.ka_gochara_legacy_projection_rows(p_chart, p_generation) l;
+  acc := acc || 'legacy:' || legacy || E'\n';
+  RETURN encode(sha256(convert_to(acc, 'UTF8')), 'hex');
+END;
+$$;
+COMMENT ON FUNCTION public.ka_gochara_brief_state_digest(uuid, text) IS
+  'A5.3 F-R12-4: the generation''s STATE as a brief sees it — a sha256 over every output / search-input / verification row, the build '
+  'coverage, the manifest identity and the legacy-row count. One implementation, used by the brief''s attestation trigger and by the '
+  'receipt''s commit-time check.';
+
+CREATE TABLE public.ka_gochara_seal_brief (
+  brief_id        bigint      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  chart_id        uuid        NOT NULL,
+  generation      text        NOT NULL,
+  manifest_id     uuid        NOT NULL,
+  brief_digest    text        NOT NULL,
+  state_digest    text        NOT NULL,
+  runner_identity jsonb       NOT NULL,
+  produced_by     text        NOT NULL DEFAULT session_user,
+  produced_at     timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT kgsb_digest_ck CHECK (brief_digest ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT kgsb_state_ck CHECK (state_digest ~ '^[0-9a-f]{64}$'),
+  CONSTRAINT kgsb_runner_ck CHECK (jsonb_typeof(runner_identity) = 'object' AND runner_identity ? 'commit' AND runner_identity ? 'implementation_digest')
+);
+CREATE INDEX kgsb_latest_ix ON public.ka_gochara_seal_brief (chart_id, generation, brief_id DESC);
+COMMENT ON TABLE public.ka_gochara_seal_brief IS
+  'A5.3 F-R12-4: every seal brief the VERIFIER produced — digest, runner identity and the DB-attested state digest of the candidate it '
+  'was produced for. Append-only. The verifier inserts; the sealer only reads (the grants are 1241''s).';
+
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_brief_immutable()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  RAISE EXCEPTION 'ka_gochara_seal_brief is append-only: % refused', TG_OP;
+END;
+$$;
+-- ATTESTATION: whatever the caller wrote for manifest_id / state_digest / produced_by / produced_at, the database sets them — to the
+-- generation's CANDIDATE manifest and its state RIGHT NOW (the brief transaction holds the seal locks), the session login and the
+-- transaction timestamp. A brief exists only for a candidate.
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_brief_attest()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+DECLARE m uuid; st text;
+BEGIN
+  SELECT p.manifest_id, p.status INTO m, st FROM public.kala_gochara_publication p
+  WHERE p.chart_id = NEW.chart_id AND p.generation = NEW.generation;
+  IF m IS NULL OR st IS DISTINCT FROM 'candidate' THEN
+    RAISE EXCEPTION 'ka_gochara_seal_brief refused (brief_without_candidate): generation % of chart % has no candidate manifest (status %)',
+      NEW.generation, NEW.chart_id, coalesce(st, 'none') USING ERRCODE = 'check_violation';
+  END IF;
+  NEW.manifest_id := m;
+  NEW.state_digest := public.ka_gochara_brief_state_digest(NEW.chart_id, NEW.generation);
+  NEW.produced_by := session_user;
+  NEW.produced_at := now();
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER ka_gochara_seal_brief_attest
+  BEFORE INSERT ON public.ka_gochara_seal_brief
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_brief_attest();
+CREATE TRIGGER ka_gochara_seal_brief_no_change
+  BEFORE UPDATE OR DELETE ON public.ka_gochara_seal_brief
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_brief_immutable();
+CREATE TRIGGER ka_gochara_seal_brief_no_truncate
+  BEFORE TRUNCATE ON public.ka_gochara_seal_brief
+  FOR EACH STATEMENT EXECUTE FUNCTION public.ka_gochara_seal_brief_immutable();
+
+-- the sealer's EARLY look (and the receipt trigger's check): NULL when the digest is the CURRENT persisted brief of the generation for
+-- this manifest and its state is still the generation's state; otherwise the NAMED reason
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_brief_problem(p_chart uuid, p_generation text, p_manifest uuid, p_digest text)
+RETURNS text LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public AS $$
+DECLARE l record;
+BEGIN
+  SELECT b.brief_digest, b.manifest_id, b.state_digest INTO l FROM public.ka_gochara_seal_brief b
+  WHERE b.chart_id = p_chart AND b.generation = p_generation ORDER BY b.brief_id DESC LIMIT 1;
+  IF NOT FOUND OR NOT EXISTS (SELECT 1 FROM public.ka_gochara_seal_brief b WHERE b.chart_id = p_chart AND b.generation = p_generation
+                              AND b.manifest_id = p_manifest AND b.brief_digest = p_digest) THEN
+    RETURN 'receipt_brief_not_persisted';
+  ELSIF l.brief_digest IS DISTINCT FROM p_digest OR l.manifest_id IS DISTINCT FROM p_manifest THEN
+    RETURN 'receipt_brief_superseded';
+  ELSIF l.state_digest IS DISTINCT FROM public.ka_gochara_brief_state_digest(p_chart, p_generation) THEN
+    RETURN 'receipt_brief_state_changed';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
 -- ── 4b. the seal APPROVAL RECEIPT (R11-3) ──────────────────────────────────────────────────────────────────
 -- A durable record, linked to the seal row, of WHAT was approved and by whom: the brief digest (the sha256 of the canonical
 -- complete approval payload the sealing transaction recomputed under the seal locks and found equal), the approver login and the
@@ -724,6 +847,26 @@ CREATE CONSTRAINT TRIGGER ka_gochara_seal_approval_zz_first_seal
   AFTER INSERT ON public.ka_gochara_seal_approval
   DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_requires_first_seal();
+
+-- …and (F-R12-4) the receipt's digest must be a brief the VERIFIER persisted: at COMMIT it must equal the CURRENT persisted brief of the
+-- generation for this manifest, whose state digest must still be the generation's state — a fabricated digest, a brief for another
+-- manifest, a superseded brief and a brief of a candidate that has since changed (even by a re-verification) are each refused by name.
+CREATE OR REPLACE FUNCTION public.ka_gochara_seal_approval_requires_persisted_brief()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+DECLARE why text;
+BEGIN
+  why := public.ka_gochara_seal_brief_problem(NEW.chart_id, NEW.generation, NEW.manifest_id, NEW.brief_digest);
+  IF why IS NOT NULL THEN
+    RAISE EXCEPTION 'ka_gochara_seal_approval refused at commit (%): the receipt''s brief digest % is not the current verifier-persisted brief of (chart %, generation %, manifest %)',
+      why, NEW.brief_digest, NEW.chart_id, NEW.generation, NEW.manifest_id USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NULL;
+END;
+$$;
+CREATE CONSTRAINT TRIGGER ka_gochara_seal_approval_zz_persisted_brief
+  AFTER INSERT ON public.ka_gochara_seal_approval
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_seal_approval_requires_persisted_brief();
 
 CREATE TRIGGER ka_gochara_seal_approval_no_change
   BEFORE UPDATE OR DELETE ON public.ka_gochara_seal_approval
@@ -930,9 +1073,16 @@ BEGIN
   SELECT count(*) INTO n FROM pg_trigger t
   WHERE t.tgrelid = 'public.ka_gochara_seal_approval'::regclass AND NOT t.tgisinternal
     AND t.tgname IN ('ka_gochara_seal_approval_no_change', 'ka_gochara_seal_approval_no_truncate',
-                     'ka_gochara_seal_approval_attest', 'ka_gochara_seal_approval_zz_first_seal');
-  IF n <> 4 THEN
-    RAISE EXCEPTION 'migration 1240 post-apply check failed: the seal-approval receipt table lacks its append-only / attestation / first-seal triggers';
+                     'ka_gochara_seal_approval_attest', 'ka_gochara_seal_approval_zz_first_seal',
+                     'ka_gochara_seal_approval_zz_persisted_brief');
+  IF n <> 5 THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the seal-approval receipt table lacks its append-only / attestation / first-seal / persisted-brief triggers';
+  END IF;
+  SELECT count(*) INTO n FROM pg_trigger t
+  WHERE t.tgrelid = 'public.ka_gochara_seal_brief'::regclass AND NOT t.tgisinternal
+    AND t.tgname IN ('ka_gochara_seal_brief_attest', 'ka_gochara_seal_brief_no_change', 'ka_gochara_seal_brief_no_truncate');
+  IF n <> 3 THEN
+    RAISE EXCEPTION 'migration 1240 post-apply check failed: the seal-brief table lacks its attestation / append-only triggers';
   END IF;
   SELECT count(*) INTO n FROM pg_trigger t
   WHERE t.tgrelid = 'public.ka_gochara_generation_seal'::regclass AND NOT t.tgisinternal
@@ -954,7 +1104,9 @@ BEGIN
     ('public.ka_gochara_generation_seal_window_guard()'),
     ('public.ka_gochara_window_qualification_ok(jsonb)'),
     ('public.ka_gochara_seal_receipt_missing(uuid,text)'),
-    ('public.ka_gochara_legacy_projection_rows(uuid,text)')) AS x(sig)
+    ('public.ka_gochara_legacy_projection_rows(uuid,text)'),
+    ('public.ka_gochara_brief_state_digest(uuid,text)'),
+    ('public.ka_gochara_seal_brief_problem(uuid,text,uuid,text)')) AS x(sig)
   WHERE to_regprocedure(x.sig) IS NULL;
   IF missing IS NOT NULL THEN
     RAISE EXCEPTION 'migration 1240 post-apply check failed: missing functions: %', missing;
@@ -978,7 +1130,7 @@ BEGIN
       CROSS JOIN (VALUES ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE')) AS p(priv)
       WHERE ns.nspname = 'public' AND c.relkind IN ('r', 'p')
         AND (c.relname LIKE 'ka\_gochara\_%' OR c.relname LIKE 'kala\_gochara\_%')
-        AND c.relname NOT IN ('ka_gochara_search_inventory_verification', 'ka_gochara_eval_window_verification')
+        AND c.relname NOT IN ('ka_gochara_search_inventory_verification', 'ka_gochara_eval_window_verification', 'ka_gochara_seal_brief')
         AND has_table_privilege('gochara_verifier', c.oid, p.priv)
       UNION ALL
       SELECT p.priv || '(' || a.attname || ') on ' || c.relname
@@ -987,7 +1139,7 @@ BEGIN
       CROSS JOIN (VALUES ('INSERT'), ('UPDATE')) AS p(priv)
       WHERE ns.nspname = 'public' AND c.relkind IN ('r', 'p')
         AND (c.relname LIKE 'ka\_gochara\_%' OR c.relname LIKE 'kala\_gochara\_%')
-        AND c.relname NOT IN ('ka_gochara_search_inventory_verification', 'ka_gochara_eval_window_verification')
+        AND c.relname NOT IN ('ka_gochara_search_inventory_verification', 'ka_gochara_eval_window_verification', 'ka_gochara_seal_brief')
         AND has_column_privilege('gochara_verifier', c.oid, a.attnum, p.priv)
         AND NOT has_table_privilege('gochara_verifier', c.oid, p.priv)
     ) h;

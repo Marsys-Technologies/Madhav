@@ -83,12 +83,24 @@ def _record(w, path="P3", **over):
                                rule_version="1.0.0", report=report, input_digest=_input_digest(w))
 
 
+def _persist_test_brief(conn, digest="a" * 64):
+    """F-R12-4: the receipt must name a brief the VERIFIER persisted. A test that writes a receipt by hand persists one first (as the
+    superuser; the database attests its manifest and state), unless the generation is already published (a REPLAY)."""
+    if conn.execute("SELECT status FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s",
+                    (CHART_ID, GEN)).fetchone()[0] == "candidate":
+        conn.execute("INSERT INTO public.ka_gochara_seal_brief (chart_id, generation, manifest_id, brief_digest, state_digest,"
+                     " runner_identity) VALUES (%s::uuid, %s, gen_random_uuid(), %s, repeat('0', 64),"
+                     " '{\"commit\": \"t\", \"implementation_digest\": \"t\"}'::jsonb)", (CHART_ID, GEN, digest))
+
+
 def _seal(w, receipt=True):
     """Publish + seal in one transaction (the governed path); returns the manifest id or raises. R11-3: the seal is only
     committable with its approval receipt (1240's deferred constraint trigger), so the helper writes one in the same
     transaction (idempotent for a REPLAY, where the seal row — and its receipt — already exist)."""
     with w.conn.transaction():
         w.conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        if receipt:
+            _persist_test_brief(w.conn)
         gk_ledger.publish(w.conn, CHART_ID, GEN)
         manifest = w.conn.execute("SELECT public.ka_gochara_seal_generation(%s::uuid, %s)", (CHART_ID, GEN)).fetchone()[0]
         if receipt:
