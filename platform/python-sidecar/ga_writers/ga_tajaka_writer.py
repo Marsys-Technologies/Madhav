@@ -44,7 +44,7 @@ from pyjhora_adapter._jhora import drik, utils
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.positions import compute_positions
 
-from brahmagyan.verification_tiers import CLASSICAL_MATCH, DIVERGENT_FLAGGED
+from brahmagyan.verification_tiers import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT
 from ga_writers._idempotency import replace_prior_tajik_varsha
 from ga_writers._telemetry import update_asset_throughput  # legacy CLI path only; orchestrator never calls this
 from ga_writers.data_plane_contracts import stable_uuid
@@ -486,16 +486,18 @@ def _read_trirashipathi(conn: Any, chart_id: str, canonical_aya: str) -> str | N
 # ── Core per-varsha computation ───────────────────────────────────────────────
 
 def _varsha_verification(muntha_ok: bool, year_lord_ok: bool, sr_ok: bool) -> str:
-    """Tier for a varsha row from its three checks (Q03 / SS N-62).
+    """Tier for a varsha row from its three checks (Q03 / SS N-62 + SS ruling, S-L1 follow-up).
 
-    `classical_match`, NOT `two_pass_verified` (audit AUDIT_L1_TIERS_PER_EMITTER_v1_0.md §3): the
-    three checks are not an independent re-derivation of the year lord. `muntha_ok` repeats the
-    same +1-per-year sign arithmetic the primary used, `year_lord_ok` only tests that two
-    winners are non-empty, and `sr_ok` is the solar-return root-finder's own residual. They catch
-    a broken loop, an empty winner or an unconverged root-find (all of which divert to
-    `divergent_flagged`), which is a real but relay-grade check.
+    `single` (UNVERIFIED_DEFAULT) when the checks pass, NOT `two_pass_verified` and NOT
+    `classical_match` (audit AUDIT_L1_TIERS_PER_EMITTER_v1_0.md §3; SS ruling): `classical_match`
+    means a match against a canonical classical reference table (brahmagyan.verification_vocab) and
+    none of the three checks is one. `muntha_ok` repeats the same +1-per-year sign arithmetic the
+    primary used (the same formula twice), `year_lord_ok` only tests that two winners are non-empty,
+    and `sr_ok` is the solar-return root-finder's own residual. They catch a broken loop, an empty
+    winner or an unconverged root-find (all of which divert to `divergent_flagged`, and the build
+    halts on that), which is a real guard but earns no tier above `single`.
     """
-    return CLASSICAL_MATCH if (muntha_ok and year_lord_ok and sr_ok) else DIVERGENT_FLAGGED
+    return UNVERIFIED_DEFAULT if (muntha_ok and year_lord_ok and sr_ok) else DIVERGENT_FLAGGED
 
 
 def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
@@ -866,14 +868,18 @@ def build_ga_tajaka(chart_id: str,
         "per_ayanamsha_counts": per_aya_counts,
         "forensic_pass": forensic_pass,
         "forensic_checks": forensic_checks,
-        "two_pass_verified": len(divergent) == 0,
+        # SS ruling (S-L1 tier-honesty follow-up, CLAUDE.md §N.8): no row carries `two_pass_verified`
+        # any more and nothing here is a second derivation, so this flag has no detector behind it:
+        # null, not `len(divergent) == 0` (which was True on every return -- a divergence raises
+        # above). `divergent_flagged` below is a real count (it is what the halt reads).
+        "two_pass_verified": None,
         "divergent_flagged": len(divergent),
         # F-E17 (cycle 106): compute_varsha() exists but has zero callers -- correcting this
         # claim rather than repeating it. Only the precomputed window (varsha 1..48) is stored;
         # get_tajik.ts's own empty_reason honestly discloses the rest as genuinely not computed.
         "storage_strategy": "windowed (varsha 1..48 precomputed; outside the window is not stored, not computed on-demand)",
     }
-    logger.info("[ga_tajaka_writer] PASS rows=%d forensic=%s two_pass=%s",
+    logger.info("[ga_tajaka_writer] PASS rows=%d forensic=%s two_pass=%s (no second derivation; rows are `single`)",
                 inserted, forensic_pass, summary["two_pass_verified"])
     return summary
 

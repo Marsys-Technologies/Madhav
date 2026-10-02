@@ -671,6 +671,10 @@ def _verify_shadbala(shadbala: dict[str, dict[str, float]], tolerance: float = 0
     across 6 keys) but does NOT constitute an independent recomputation from a
     second code path. The primary guards here are the non-negativity (for
     magnitude sub-balas) and non-zero total checks.
+
+    Returns `single` (UNVERIFIED_DEFAULT) on pass: these are halt-on-failure bounds guards over
+    PyJHora's own output, not a match against a classical reference table and not a second
+    derivation, so they earn no tier above `single`. Raises TwoPassVerificationError on failure.
     """
     _MAGNITUDE_KEYS = ["sthana", "dig", "kala", "cheshta", "naisargika"]
     _SIGNED_KEYS = ["drik"]
@@ -725,14 +729,16 @@ def _verify_shadbala(shadbala: dict[str, dict[str, float]], tolerance: float = 0
     # correct classical computation. Per M-1, the shadbala engine itself is
     # a toy heuristic (never calls PyJHora). Returning "two_pass_verified"
     # here claimed an independent classical cross-check that never ran.
-    # Q03 / SS N-62: the invariants above ARE a real check (they halt the build on a negative
-    # magnitude sub-bala, a non-finite drik, a non-positive total or a sub-sum/total mismatch)
-    # but they are bounds/consistency guards over PyJHora's own output, not an independent
-    # re-derivation -> `classical_match`, never `two_pass_verified`. The tier is returned only
-    # AFTER every check has run and passed, and the caller applies it ONLY to the rows these
-    # checks examine (graha_shadbala_{sthana,dig,kala,cheshta,drik,total} of the seven classical
-    # grahas); every other ga_strength category stays `single` (audit §6).
-    return CLASSICAL_MATCH
+    # Q03 / SS N-62 + SS ruling (S-L1 tier-honesty follow-up): the invariants above DO
+    # halt the build on a negative magnitude sub-bala, a non-finite drik, a non-positive total or
+    # a sub-sum/total mismatch, but they are bounds/consistency guards over PyJHora's own output,
+    # and the sum check is self-referential (the docstring above says so: `total` is defined as
+    # that sum). Nothing here is matched against a canonical classical reference table (what
+    # `classical_match` means in brahmagyan.verification_vocab) and no second derivation ran, so
+    # the earned tier is `single` (CLAUDE.md §N.8: a signal without a detector for its specific
+    # claim is not green). The tier is returned only AFTER every check has run and passed; the
+    # build still halts (TwoPassVerificationError) on any failure.
+    return UNVERIFIED_DEFAULT
 
 
 def _verify_ashtakavarga(

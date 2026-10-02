@@ -1961,7 +1961,12 @@ def build_ga_sade_sati(
         "build_id": build_id,
         "ayanamshas": {},
         "total_chart_facts_rows": 0,
-        "two_pass_verified": True,
+        # SS ruling (S-L1 tier-honesty follow-up, CLAUDE.md §N.8): this was initialised to True
+        # before any check ran. `two_pass_verify_cycles` is a bounds/ordering invariant (it earns
+        # `classical_match` on the rows it examines, never `two_pass_verified`), so there is no
+        # two-pass result to report: None ("not measured"). `divergent_flagged` is a real
+        # detector result (set True just before the build raises) and starts False honestly.
+        "two_pass_verified": None,
         "divergent_flagged": False,
         "upstream_check": {},
     }

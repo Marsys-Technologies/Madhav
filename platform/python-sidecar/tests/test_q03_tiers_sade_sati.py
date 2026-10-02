@@ -130,3 +130,38 @@ def test_marker_is_per_cycle_and_reset_on_recheck():
     good["duration_days"] = 900.0  # a re-check of a now-bad cycle must clear a stale marker
     W.two_pass_verify_cycles([good])
     assert W.CYCLE_INVARIANTS_CHECKED_KEY not in good
+
+
+# ── summary telemetry flag (CLAUDE.md §N.8): was initialised True before any check ran ───────────
+
+
+def _run_build(monkeypatch, verifier=None):
+    moon = {a: "Aquarius" for a in W.CANONICAL_AYANAMSHAS}
+    monkeypatch.setattr(W, "_write_halt_log", lambda *a, **k: None)
+    monkeypatch.setattr(W, "_verify_upstream_rows", lambda conn, cid: {"ga3": True})
+    monkeypatch.setattr(W, "_read_moon_sign_per_ayanamsha", lambda conn, cid: moon)
+    monkeypatch.setattr(W, "_read_moon_pada_per_ayanamsha", lambda conn, cid: {})
+    monkeypatch.setattr(W, "_detect_saturn_sign_changes", lambda a, b: list(_SIGN_CHANGES))
+    monkeypatch.setattr(W, "_detect_saturn_retrogrades", lambda a, b: [])
+    monkeypatch.setattr(W, "_build_static_natal_facts", lambda *a, **k: dict(_NATAL))
+    monkeypatch.setattr(W, "_lookup_dasha_lord_at", lambda *a, **k: None)
+    monkeypatch.setattr(W, "_lookup_tara_bala_for_saturn_at", lambda *a, **k: None)
+    monkeypatch.setattr(W, "_lookup_argala_for_sign", lambda *a, **k: [])
+    monkeypatch.setattr(W, "_emit_dhaiya_rows", lambda *a, **k: [])
+    monkeypatch.setattr(W, "_insert_rows", lambda conn, rows: len(rows))
+    monkeypatch.setattr(W, "_refresh_mv", lambda conn: None)
+    if verifier is not None:
+        monkeypatch.setattr(W, "two_pass_verify_cycles", verifier)
+    return W.build_ga_sade_sati("chart-q03-not-canonical", "b", conn=object())
+
+
+def test_build_summary_two_pass_flag_is_null_even_after_the_real_check_passes(monkeypatch):
+    summary = _run_build(monkeypatch)
+    assert summary["total_chart_facts_rows"] > 0  # the real two_pass_verify_cycles ran and passed
+    assert summary["two_pass_verified"] is None  # bounds invariant: earns classical_match, not this flag
+    assert summary["divergent_flagged"] is False  # a real detector result: it would be True before the raise
+
+
+def test_build_halts_on_a_divergence_instead_of_returning_a_true_flag(monkeypatch):
+    with pytest.raises(RuntimeError, match="TWO-PASS DIVERGENCE"):
+        _run_build(monkeypatch, verifier=lambda cycles: ["forced divergence"])

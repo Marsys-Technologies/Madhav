@@ -5,10 +5,15 @@ Spec: AUDIT_L1_TIERS_PER_EMITTER_v1_0.md v1.1 §6 / §7 item 8 / §5, plus the l
 that the `floored_sarva_mismatch` string (not a vocabulary member) becomes the vocabulary member
 `floored` with the reason carried in provenance.
 
-  * `_verify_shadbala` / `_verify_ashtakavarga` return `classical_match` ONLY after their checks
-    ran and passed (they raise TwoPassVerificationError on a violation).
-  * That tier lands ONLY on the rows the checks examine: graha_shadbala_{sthana,dig,kala,cheshta,
-    drik,total} of the seven classical grahas, and ashtakavarga_bindu / ashtakavarga_bindu_sign.
+  * `_verify_ashtakavarga` returns `classical_match` ONLY after its checks ran and passed (it
+    raises TwoPassVerificationError on a violation); that tier lands ONLY on the rows it examines
+    (ashtakavarga_bindu / ashtakavarga_bindu_sign).
+  * `_verify_shadbala` returns `single` (SS ruling, S-L1 tier-honesty follow-up): its checks are
+    halt-on-failure bounds guards plus a self-referential sum==total check over PyJHora's own
+    output -- no classical reference table match, no second derivation -- so the shadbala rows it
+    examines (graha_shadbala_{sthana,dig,kala,cheshta,drik,total} of the seven classical grahas)
+    earn nothing above `single`. The builder still applies whatever tier the verifier returns
+    only to those rows (no broadcast), so a future real comparison would flow through unchanged.
   * Every other category is `single` (no broadcast); per-varga ashtakavarga is
     `documented_approximation`; a per-varga SARVA mismatch is `floored` with the reason in the
     row's provenance.
@@ -93,8 +98,12 @@ def _by_cat(rows):
 # ── the verifiers return the tier only after the checks ran ───────────────────
 
 
-def test_verifiers_return_classical_match_on_real_engine_output(engine):
-    assert W._verify_shadbala(engine["shadbala"]) == T.CLASSICAL_MATCH
+def test_verifiers_return_their_earned_tier_on_real_engine_output(engine):
+    # shadbala: bounds + self-referential sum check -> `single` (never classical_match / two_pass)
+    sb_tier = W._verify_shadbala(engine["shadbala"])
+    assert sb_tier == T.SINGLE
+    assert sb_tier not in {T.CLASSICAL_MATCH, T.TWO_PASS_VERIFIED}
+    # ashtakavarga: the 337 total + SARVA == sum-of-seven consistency check -> `classical_match`
     assert W._verify_ashtakavarga(engine["bav"]) == T.CLASSICAL_MATCH
 
 
@@ -151,7 +160,29 @@ def test_verify_ashtakavarga_halts_when_sarva_is_not_the_sum_of_the_seven(engine
 # ── TS-STR-1 / TS-STR-3: the tier lands only on the examined rows ─────────────
 
 
-def test_shadbala_rows_tier_only_on_examined_categories(engine):
+def test_shadbala_rows_built_with_the_verifier_tier_are_single_not_classical_match(engine):
+    """The real verifier's tier (`single`) flows onto the examined shadbala rows: no non-nodal
+    shadbala row is classical_match / two_pass_verified (the 210 canonical rows demoted by the SS
+    ruling)."""
+    rows = _shadbala_rows(engine, W._verify_shadbala(engine["shadbala"]))
+    for r in rows:
+        st, cat, subj = r["verification_pass_status"], r["fact_category"], r["fact_subject"]
+        nodal = subj in _NODES
+        if nodal and r["fact_key"] == "rupa" and cat in {
+                "graha_shadbala_dig", "graha_shadbala_kala", "graha_shadbala_cheshta",
+                "graha_shadbala_naisargika"}:
+            assert st == T.NOT_DEFINED_FOR_NODES
+        else:
+            assert st == T.SINGLE, (cat, r["fact_key"], subj, st)
+    assert not {T.CLASSICAL_MATCH, T.TWO_PASS_VERIFIED} & {r["verification_pass_status"] for r in rows}
+    examined = [r for r in rows if r["fact_category"] in _SHADBALA_EXAMINED
+                and r["fact_key"] == "rupa" and r["fact_subject"] not in _NODES]
+    assert len(examined) == 42  # 7 grahas x 6 examined sub-balas -> 210 canonical rows over 5 ayanamshas
+
+
+def test_builder_applies_a_verifier_tier_only_to_the_examined_shadbala_rows(engine):
+    """The no-broadcast property is independent of which tier the verifier earns: handed a tier,
+    the builder puts it only on the rows `_verify_shadbala` reads."""
     rows = _shadbala_rows(engine, T.CLASSICAL_MATCH)
     for r in rows:
         st, cat, subj = r["verification_pass_status"], r["fact_category"], r["fact_subject"]
@@ -194,6 +225,19 @@ def test_stubbed_shadbala_verifier_drops_the_examined_rows_to_single(engine):
     assert T.CLASSICAL_MATCH not in {r["verification_pass_status"] for r in rows}
 
 
+def test_mutant_shadbala_verifier_returning_classical_match_is_caught(engine, monkeypatch):
+    """MUTANT (the pre-ruling behaviour): a `_verify_shadbala` that returns classical_match would
+    put classical_match back on the 42 examined rows. This asserts the mutant is visible to the
+    two assertions the real tests make (tier == single; no classical_match on shadbala rows), so
+    those tests FAIL on it."""
+    monkeypatch.setattr(W, "_verify_shadbala", lambda sb, tolerance=0.02: T.CLASSICAL_MATCH)
+    tier = W._verify_shadbala(engine["shadbala"])
+    assert tier != T.SINGLE
+    rows = _shadbala_rows(engine, tier)
+    cm = [r for r in rows if r["verification_pass_status"] == T.CLASSICAL_MATCH]
+    assert len(cm) == 42
+
+
 def test_av_rows_tier_only_on_raw_bindu_categories(engine):
     rows = _av_rows(engine, T.CLASSICAL_MATCH)
     by = _by_cat(rows)
@@ -233,14 +277,19 @@ def test_broadcast_mutant_is_caught(engine):
 
 def test_audit_section6_totals_reproduced_offline(engine):
     n_ay = 5  # per-ayanamsha structure is identical across the 5 canonical ayanamshas
-    sb = _shadbala_rows(engine, T.CLASSICAL_MATCH)
-    av = _av_rows(engine, T.CLASSICAL_MATCH)
+    sb = _shadbala_rows(engine, W._verify_shadbala(engine["shadbala"]))
+    av = _av_rows(engine, W._verify_ashtakavarga(engine["bav"]))
     cm = [r for r in sb + av if r["verification_pass_status"] == T.CLASSICAL_MATCH]
-    # shadbala/raw-bindu examined rows: 1,170 in the audit
-    assert len(cm) * n_ay == 1170
+    # audit v1.1 counted 1,170 classical_match rows (210 shadbala + 960 raw bindu); the SS ruling
+    # demotes the 210 shadbala rows to `single`, leaving the 960 raw-bindu rows only
+    assert len(cm) * n_ay == 960
     sb_cm = [r for r in sb if r["verification_pass_status"] == T.CLASSICAL_MATCH]
     av_cm = [r for r in av if r["verification_pass_status"] == T.CLASSICAL_MATCH]
-    assert len(sb_cm) * n_ay == 210 and len(av_cm) * n_ay == 960
+    assert len(sb_cm) * n_ay == 0 and len(av_cm) * n_ay == 960
+    sb_single_examined = [r for r in sb if r["fact_category"] in _SHADBALA_EXAMINED
+                          and r["fact_key"] == "rupa" and r["fact_subject"] not in _NODES]
+    assert len(sb_single_examined) * n_ay == 210
+    assert {r["verification_pass_status"] for r in sb_single_examined} == {T.SINGLE}
     # single rows the audit enumerates (§6): ratio 35, nodal 30, ishta/kashta 70, vimsopaka 140,
     # AV non-bindu (shodhana 840, kakshya 120, pinda 160 = 1,120)
     singles = collections.Counter()
@@ -310,8 +359,8 @@ def test_every_status_ga_strength_can_emit_is_accepted_by_the_live_chart_facts_c
     assert {"floored", "classical_match", "single", "documented_approximation",
             "computed_extension", "not_defined_for_nodes"} <= allowed
     emitted: set[str] = set()
-    emitted |= {r["verification_pass_status"] for r in _shadbala_rows(engine, T.CLASSICAL_MATCH)}
-    emitted |= {r["verification_pass_status"] for r in _av_rows(engine, T.CLASSICAL_MATCH)}
+    emitted |= {r["verification_pass_status"] for r in _shadbala_rows(engine, W._verify_shadbala(engine["shadbala"]))}
+    emitted |= {r["verification_pass_status"] for r in _av_rows(engine, W._verify_ashtakavarga(engine["bav"]))}
     emitted |= {r["verification_pass_status"] for r in W._build_bhava_bala_rows(
         engine["bhava"], CID, BID, AY, NOW, ENG, T.UNVERIFIED_DEFAULT)}
     for ok in (True, False):
@@ -381,7 +430,7 @@ def test_build_wiring_applies_each_verifier_tier_to_its_own_examined_rows(monkey
     for cat in _SHADBALA_EXAMINED:
         non_node = [r for r in rows if r["fact_category"] == cat and r["fact_subject"] not in _NODES
                     and r["fact_key"] == "rupa"]
-        assert {r["verification_pass_status"] for r in non_node} == {T.CLASSICAL_MATCH}, cat
+        assert {r["verification_pass_status"] for r in non_node} == {T.SINGLE}, cat
     for cat in _AV_EXAMINED:
         assert set(by[cat]) == {T.CLASSICAL_MATCH}
     assert T.TWO_PASS_VERIFIED not in {r["verification_pass_status"] for r in rows}
