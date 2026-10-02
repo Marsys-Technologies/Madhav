@@ -314,6 +314,8 @@ def rederive_ledger_digest(
     check that the cuts and resolved agents are the RIGHT ones — this is that check (a
     process residual named in AM-11 pin e). `capability` = {position_probe, arc_index, aspect_span_solver} as
     the verifier was independently told."""
+    # the consumed population must BE the §4.0 population before any row of it is trusted (R7 [2])
+    validate_consumed_dasha_population(conn, chart_id=chart_id, generation=generation)
     snap = conn.execute(
         "SELECT consumed_dasha_row_ids, input_digest FROM"
         " public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
@@ -509,3 +511,98 @@ def verify_aspect_span_contacts(
         checked += 1
         runs_total += len(derived)
     return {"objects_checked": checked, "occurrences": runs_total}
+
+
+# ── the consumed daśā POPULATION, validated against the §4.0 read contract (Codex round 7 [2]) ──────────
+#
+# Hashing rows does not make them authoritative: a Moon row of an inadmissible build or system, once
+# consumed, would be "accounted" by every derivation that reads the supplied ids. So the verifier checks
+# the CONSUMED set itself against the contract it is TOLD (its own constants, not the builder's):
+#   * every consumed row is of this chart, ayanāṃśa, system and tier, levels 1–3, and — for the canonical
+#     chart — the FROZEN pinned build (any other chart: one build, shared by every consumed row);
+#   * no consumed row lies wholly outside the horizon (an EXTRA), and no pinned-build row overlapping the
+#     horizon is missing (an OMITTED);
+#   * no two pinned rows conflict on the same (level, parent, start) with different contract fields.
+
+_C_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
+_C_BUILD = "1f89fd4c-7d1e-4f3a-b3ae-e7ff839a6feb"
+_C_AYANAMSHA, _C_SYSTEM, _C_TIER = "lahiri_chitrapaksha", "vimshottari", "two_pass_verified"
+_C_LEVELS = (1, 2, 3)
+
+
+def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequence[Mapping[str, Any]], *,
+                           chart_id: str, horizon: tuple, consumed_ids: Sequence[str]) -> list[str]:
+    """Pure: the violations (empty = the population is the §4.0 population). `consumed` are the rows the
+    snapshot's ids resolve to for this chart; `pinned` the rows the contract selects (ayanāṃśa, system,
+    tier, build, levels) — both with level_n, start_iso, end_iso, lord_graha, build_id, system_id,
+    ayanamsha_id, verification_pass_status, parent_row_id, dasha_row_id."""
+    lo, hi = horizon
+    out: list[str] = []
+    found = {str(r["dasha_row_id"]) for r in consumed}
+    for rid in consumed_ids:
+        if str(rid) not in found:
+            out.append(f"consumed id {rid} resolves to no row of this chart")
+    builds = {str(r["build_id"]) for r in consumed}
+    for r in consumed:
+        rid = r["dasha_row_id"]
+        if r["ayanamsha_id"] != _C_AYANAMSHA or r["system_id"] != _C_SYSTEM:
+            out.append(f"row {rid}: ayanāṃśa/system {r['ayanamsha_id']}/{r['system_id']} is not "
+                       f"{_C_AYANAMSHA}/{_C_SYSTEM}")
+        if r["verification_pass_status"] != _C_TIER:
+            out.append(f"row {rid}: tier {r['verification_pass_status']!r} is not {_C_TIER}")
+        if int(r["level_n"]) not in _C_LEVELS:
+            out.append(f"row {rid}: level {r['level_n']} is not MD/AD/PD")
+        if not (r["start_iso"] < hi and r["end_iso"] > lo):
+            out.append(f"row {rid}: lies wholly outside the horizon (an extra row)")
+    if str(chart_id) == _C_CHART:
+        wrong = sorted(b for b in builds if b != _C_BUILD)
+        if wrong:
+            out.append(f"canonical chart: consumed build(s) {wrong} are not the frozen {_C_BUILD}")
+    elif len(builds) > 1:
+        out.append(f"several builds {sorted(builds)} consumed — an unpinned read")
+    want = {str(r["dasha_row_id"]) for r in pinned if r["start_iso"] < hi and r["end_iso"] > lo}
+    for rid in sorted(want - found):
+        out.append(f"pinned row {rid} overlaps the horizon but was NOT consumed (omitted)")
+    seen: dict[tuple, Mapping[str, Any]] = {}
+    for r in pinned:
+        key = (r["level_n"], str(r["parent_row_id"]), r["start_iso"])
+        prev = seen.setdefault(key, r)
+        if prev is not r and (prev["end_iso"], prev["lord_graha"]) != (r["end_iso"], r["lord_graha"]):
+            out.append(f"conflicting pinned rows at {key}")
+    return out
+
+
+def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: str) -> dict:
+    snap = conn.execute(
+        "SELECT consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot"
+        " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    if snap is None:
+        raise Unverifiable("no search-input snapshot to validate the consumed daśā population against")
+    ids = [str(x) for x in snap[0]]
+    horizon = conn.execute(
+        "SELECT min(lower(horizon)), max(upper(horizon)) FROM public.ka_gochara_search_inventory"
+        " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    if horizon is None or horizon[0] is None:
+        raise Unverifiable("no inventory horizon to validate the consumed daśā population against")
+    cols = ("dasha_row_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id, system_id,"
+            " ayanamsha_id, verification_pass_status")
+
+    def rows(sql, params):
+        names = [c.strip() for c in cols.split(",")]
+        return [dict(zip(names, r)) for r in conn.execute(sql, params).fetchall()]
+    consumed = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s"
+                    " AND dasha_row_id = ANY(%s::uuid[])", (chart_id, ids))
+    build = _C_BUILD if str(chart_id) == _C_CHART else None
+    pinned = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s"
+                  " AND system_id = %s AND verification_pass_status = %s AND level_n = ANY(%s)"
+                  " AND (%s::uuid IS NULL OR build_id = %s::uuid)",
+                  (chart_id, _C_AYANAMSHA, _C_SYSTEM, _C_TIER, list(_C_LEVELS), build, build))
+    problems = check_dasha_population(consumed, pinned, chart_id=chart_id,
+                                      horizon=(horizon[0], horizon[1]), consumed_ids=ids)
+    if problems:
+        raise RuntimeError("consumed daśā population violates the §4.0 read contract: " + "; ".join(problems))
+    return {"consumed": len(consumed), "pinned_overlapping": sum(
+        1 for r in pinned if r["start_iso"] < horizon[1] and r["end_iso"] > horizon[0])}
+
+
+__all__ += ["check_dasha_population", "validate_consumed_dasha_population"]

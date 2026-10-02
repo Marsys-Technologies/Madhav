@@ -242,3 +242,140 @@ def test_with_1232_a_builder_that_does_not_account_the_domain_is_caught(moon_run
     _chain(step)
     names = {v for _, v in _violations(conn)}
     assert {"missing_inputs_present", "moon_domain_missing"} <= names    # the unperformed search is not hidden
+
+
+# ═══ Codex round 7 [2]: the consumed daśā population, and the mandatory scope response ══════════════════
+
+from services.gochara_kernel import inventory_verifier as ver                    # noqa: E402
+from services.gochara_kernel import scope_response as sr                         # noqa: E402
+
+UTCZ = base.UTC
+
+
+def _row(i, level, lord, a, b, *, build=base.PINNED_BUILD, system="vimshottari",
+         ayan="lahiri_chitrapaksha", tier="two_pass_verified", parent=None):
+    return {"dasha_row_id": str(uuid.UUID(int=i)), "level_n": level, "parent_row_id": parent,
+            "lord_graha": lord, "start_iso": a, "end_iso": b, "build_id": build, "system_id": system,
+            "ayanamsha_id": ayan, "verification_pass_status": tier}
+
+
+A, B = base._dt(2024, 6, 1), base._dt(2026, 6, 1)
+POP = [_row(1, 1, "Jupiter", A, B), _row(2, 2, "Moon", base._dt(2024, 12, 1), base._dt(2025, 2, 1)),
+       _row(3, 2, "Saturn", base._dt(2025, 2, 1), base._dt(2025, 4, 1))]
+
+
+def _check(consumed, pinned=POP, ids=None, chart=CHART_ID, horizon=(H0, H1)):
+    return ver.check_dasha_population(consumed, pinned, chart_id=chart, horizon=horizon,
+                                      consumed_ids=ids or [r["dasha_row_id"] for r in consumed])
+
+
+def test_the_pinned_population_passes():
+    assert _check(POP) == []
+
+
+def test_a_wrong_build_moon_row_is_refused_not_made_authoritative_by_hashing_it():
+    evil = _row(9, 2, "Moon", base._dt(2025, 1, 1), base._dt(2025, 3, 1), build="00000000-0000-4000-8000-000000000bad")
+    out = _check(POP + [evil])
+    assert any("frozen" in p for p in out)
+
+
+def test_a_wrong_system_or_ayanamsha_or_tier_moon_row_is_refused():
+    for kw, needle in (({"system": "yogini"}, "ayanāṃśa/system"), ({"ayan": "raman"}, "ayanāṃśa/system"),
+                       ({"tier": "single_pass"}, "tier")):
+        evil = _row(9, 2, "Moon", base._dt(2025, 1, 1), base._dt(2025, 3, 1), **kw)
+        assert any(needle in p for p in _check(POP + [evil])), kw
+
+
+def test_an_extra_row_outside_the_horizon_and_an_omitted_pinned_row_are_refused():
+    outside = _row(8, 2, "Moon", base._dt(2023, 1, 1), base._dt(2023, 6, 1))
+    assert any("extra" in p for p in _check(POP + [outside], pinned=POP + [outside]))
+    assert any("omitted" in p for p in _check(POP[:2], pinned=POP))                 # row 3 not consumed
+
+
+def test_a_consumed_id_that_resolves_to_no_row_and_a_non_madhav_level_are_refused():
+    assert any("resolves to no row" in p for p in _check(POP, ids=[r["dasha_row_id"] for r in POP] + [str(uuid.UUID(int=77))]))
+    lvl4 = _row(9, 4, "Moon", base._dt(2025, 1, 1), base._dt(2025, 1, 5))
+    assert any("not MD/AD/PD" in p for p in _check(POP + [lvl4]))
+
+
+def test_conflicting_pinned_rows_and_several_builds_on_a_non_canonical_chart_are_refused():
+    twin = _row(10, 2, "Moon", base._dt(2024, 12, 1), base._dt(2025, 1, 15))        # same (level, parent, start)
+    assert any("conflicting" in p for p in _check(POP, pinned=POP + [twin]))
+    other_chart = "11111111-1111-4111-8111-111111111111"
+    mixed = [dict(POP[0]), dict(POP[1], build_id="b2")]
+    assert any("several builds" in p for p in _check(mixed, pinned=mixed, chart=other_chart))
+
+
+def test_the_real_chain_validates_the_population_it_consumed(moon_run):
+    step, conn, has_1232 = moon_run
+    _chain(step)
+    out = ver.validate_consumed_dasha_population(conn, chart_id=CHART_ID, generation=GEN)
+    assert out["consumed"] >= 1
+
+
+def test_a_snapshot_over_a_wrong_build_moon_row_fails_the_verifiers_ledger_derivation(moon_run):
+    """The adversary at the SQL level: after the build, a wrong-build Moon row appears in the pinned
+    population's place (the build of a consumed row is changed). The verifier must refuse to derive."""
+    step, conn, has_1232 = moon_run
+    _chain(step)
+    conn.execute("UPDATE public.chart_dashas SET build_id = '00000000-0000-4000-8000-000000000bad'"
+                 " WHERE dasha_row_id = %s", (str(uuid.UUID(int=2)),))
+    with pytest.raises(RuntimeError, match="violates the §4.0 read contract"):
+        ver.rederive_ledger_digest(conn, chart_id=CHART_ID, generation=GEN, event_class="marriage",
+                                   obligations=[], capability={"position_probe": True, "arc_index": True})
+
+
+# ── the mandatory response constructor ───────────────────────────────────────────────────────────────
+
+def test_positive_and_no_window_responses_both_carry_the_bound_scope(moon_run):
+    step, conn, has_1232 = moon_run
+    _chain(step)
+    pos = sr.coverage_response(conn, chart_id=CHART_ID, generation=GEN, event_class="marriage",
+                               windows=[{"interval": "x"}])
+    none = sr.coverage_response(conn, chart_id=CHART_ID, generation=GEN, event_class="marriage", windows=[])
+    for r in (pos, none):
+        assert r["stored_scope"] == "stored_non_moon" and r["completeness"] == "complete_within_scope"
+        assert "Moon" in r["scope_statement"] and r["on_demand_answered"] == []
+    assert pos["window_count"] == 1 and none["window_count"] == 0
+
+
+def test_the_scope_is_unchanged_after_an_on_demand_query_and_the_answer_is_listed(moon_run):
+    step, conn, has_1232 = moon_run
+    _chain(step)
+    before = sr.coverage_response(conn, chart_id=CHART_ID, generation=GEN, event_class="marriage", windows=[])
+    kala = conn.execute("SELECT convention_id FROM public.kala_gochara_coverage WHERE generation = %s"
+                        " AND partition_kind = 'event_class' LIMIT 1", (GEN,)).fetchone()[0]
+    from services.gochara_kernel.record_store import RecordStore
+    with conn.transaction():
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        RecordStore(conn).write_moon_coverage(
+            chart_id=CHART_ID, generation=GEN, partition_key="moon:interval:2025-01-05/2025-01-06",
+            convention_id=kala, horizon=(base._dt(2025, 1, 5), base._dt(2025, 1, 6)), resolution=1.0,
+            relations_searched=["residence"], targets_requested=1, targets_resolved=1,
+            state_counts={"resolved": 1, "unavailable": 0, "unqualified": 0}, unavailable_inputs={},
+            unsearched_reason=None, build_id="b-od")
+    after = sr.coverage_response(conn, chart_id=CHART_ID, generation=GEN, event_class="marriage", windows=[])
+    assert before["stored_scope"] == after["stored_scope"] == "stored_non_moon"
+    assert after["on_demand_answered"] == ["moon:interval:2025-01-05/2025-01-06"] and before["on_demand_answered"] == []
+
+
+def test_a_manifest_without_the_scope_refuses_an_unqualified_completeness_claim(moon_run, monkeypatch):
+    step, conn, has_1232 = moon_run
+    real = iv.build_input_vector
+    monkeypatch.setattr(iv, "build_input_vector", lambda *a, **k: {x: y for x, y in real(*a, **k).items()
+                                                                  if x != "stored_scope"})
+    monkeypatch.setattr(writer_mod.gk_input_vector, "build_input_vector", iv.build_input_vector)
+    step(writer_mod.CONVENTION_SUBSTEP)
+    step(writer_mod.MANIFEST_SUBSTEP)
+    for windows in ([{"interval": "x"}], []):
+        r = sr.coverage_response(conn, chart_id=CHART_ID, generation=GEN, event_class="marriage", windows=windows)
+        assert r["completeness"] == "refused" and r["refusal"] == "stored_scope_missing"
+        assert r["stored_scope"] is None and "scope_statement" not in r
+    with pytest.raises(sr.ScopeMissing):
+        sr.bound_stored_scope(conn, CHART_ID, GEN)
+
+
+def test_a_generation_with_no_manifest_and_an_unknown_scope_are_refused(moon_run):
+    step, conn, has_1232 = moon_run
+    assert sr.coverage_response(conn, chart_id=CHART_ID, generation="9.9", event_class="marriage",
+                                windows=[])["completeness"] == "refused"

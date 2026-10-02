@@ -67,6 +67,7 @@ from services.gochara_kernel import inventory as gk_inventory
 from services.gochara_kernel import input_vector as gk_input_vector
 from services.gochara_kernel import input_vector_verifier as gk_input_vector_verifier
 from services.gochara_kernel import window_sweep as gk_window_sweep
+from services.gochara_kernel.record_verifier import verify_p1_support
 from services.gochara_kernel.window_verifier import verify_window_semantics
 from services.gochara_kernel.window_store import WindowStore
 from services.gochara_kernel import inventory_verifier as gk_verifier
@@ -620,6 +621,11 @@ class GocharaV5Writer(WriterBase):
             arc_index_for=arc_index_for, ephe_path=ephe_path,
             dasha_rows_for=dasha_rows_for, chart=chart)
         inserted = counts["contacts"] + counts["records"] + counts["natal_records"]
+        if path_id == "P1":
+            # R7 [3]: the restriction to the running periods is re-derived independently (SQL, from the
+            # snapshot-bound daśā rows) and must equal what was stored
+            verify_p1_support(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
+                              event_class=event_class)
         return WriterResult(
             asset_id=self.asset_id, rows_inserted=inserted,
             notes=(f"{event_class}/{path_id}: {counts['records']} transit "

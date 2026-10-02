@@ -784,3 +784,32 @@ both, separately named). **Stored score ruling applied and made explicit in code
 distinct from `score` — P4 stores the max-min value at the peak; every other path stores the max live record product at the peak
 (unequal-agent P4 and two-root cases are tests). Note the consequence of the 1e-9 rule on a smooth flat top: the earliest instant
 within 1e-9 of a parabola's maximum is ~27 s before it (kinked kernels — the real ones — are exact).
+
+### Design v1.17 (2026-10-02) — Codex round 7, [3] (P1 support, independently verified) and [2] (AM-14 population + scope response)
+
+**[3] P1 support.** Already restricted at write time (v1.14: contact span ∩ the running periods, cut by CALLING `period_running_at`,
+disjoint pieces kept, `computed_empty` when never running). What round 7 asked for and is new: **the verifier derives the restriction
+from the pinned periods** — `record_verifier.verify_p1_support` (no builder import; Postgres multirange arithmetic over the
+snapshot-bound `consumed_dasha_row_ids`, levels 1–3, the agent's lord) requires, per P1 transit record, `stored support = contact ∩ ⋃ running
+periods` and the stored `period_running_at` to be `true` iff that is non-empty (`unknown` + the unrestricted contact when the agent has no
+rows). It runs at the end of every `record:<class>:P1` grain, and fails the build on a support that admits a period gap, discards a valid later
+portion, or sits on the wrong pieces. Cases (all on the real schema): a period ending inside a contact; licensed pieces separated by a gap
+(disjoint, never bridged); a contact that never meets a running period; an ingress before the horizon (clipped, then restricted); retrograde
+re-crossings (separate contacts, each restricted on its own); an agent with no daśā rows. **Finding (not new, now explicit):** the writer's
+house resolver returns None for the `dasha_lord` frame (the record's own frame arithmetic is unresolved — AM-15 does not replace it), so the
+writer currently mints NO P1 transit record at all; the verifier is exercised through the grain directly. P1 therefore produces no window today,
+which is consistent with "no qualified P1 window" but means P1's coverage claim rests on the inventory, not on records. Needs a ruling: the
+anchor of a P1 transit record's `house_from_frame`.
+
+**[2] AM-14.** (i) Both derivations (planner and independent ledger verifier) emit `excluded_moon_tier` for Moon-resolved period portions
+when the applied schema accounts it (unchanged from v1.14 — gated on the applied schema). (ii) **The consumed daśā POPULATION is validated against
+the §4.0 read contract by the verifier, independently** (`check_dasha_population`; its own constants, imports nothing from the builder): every
+consumed row is of this chart, `lahiri_chitrapaksha`, `vimshottari`, `two_pass_verified`, levels 1–3, and — canonical chart — the frozen pinned build
+(any other chart: one build); no consumed row wholly outside the horizon (extra), no pinned row overlapping it missing (omitted), no conflicting
+pinned rows, no consumed id resolving to no row. A **wrong-build / wrong-system / wrong-tier Moon-row adversary** is refused, as is a consumed row
+whose build changes after the build; `rederive_ledger_digest` calls the validation before trusting any row. (iii) `stored_scope = stored_non_moon`
+is a top-level key of the candidate vector (v1.14). (iv) **The mandatory positive AND no-window response constructor**:
+`scope_response.coverage_response` reads the scope back from the BOUND manifest vector of the generation, returns it with the windows (or none),
+lists any `moon_on_demand` answers beside it (the scope does not change after an on-demand query), and **refuses** — `completeness = "refused"`,
+`stored_scope_missing`, no scope statement — when the manifest states no scope, no manifest exists, or the scope is unknown. Serving must call it
+(Stream C / the retrieval layer); the writer side is done and tested on the real schema.

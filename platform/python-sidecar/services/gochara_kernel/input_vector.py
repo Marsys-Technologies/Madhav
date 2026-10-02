@@ -52,6 +52,7 @@ IMPLEMENTATION_MODULES = {
     "evaluation": tuple(_K + m for m in (
         "chart_context", "coverage", "dasha_read", "evaluator", "input_vector", "input_vector_verifier",
         "inventory", "inventory_store", "inventory_verifier", "ledger", "lifecycle", "native_conn",
+        "record_verifier", "scope_response",
         "rule_registry")) + tuple(_R + m for m in (
         "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "frames", "nature", "p6",
         "permission", "predicates", "records", "registry", "score", "strength", "valence", "vedha")),
