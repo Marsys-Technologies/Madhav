@@ -1,0 +1,769 @@
+"""test_flip_detector.py -- offline tests for platform/scripts/governance/flip_detector.py (the S-L1 flip report and hook validator).
+
+flip_detector is a VERDICT-DECIDING tool: it produces the W7 flip report and validates the lane attribution hooks, so every verdict
+class and every exit code is pinned here, and test_flip_detector_mutations.py proves these tests go red when each check is disabled.
+
+No database, no network, no credentials: every state is an in-memory fixture (or a gzip snapshot written to a tmp dir), and `q()`, the
+only function that can reach a database, is replaced by a tripwire for every test except the read-only-guard test.
+
+Covered (SS requirements):
+  (1a) UNDECLARED change -> FAIL            (1b) DECLARED-BUT-ABSENT -> FAIL / OPTIONAL_ABSENT warning when "optional": true
+  (1c) KIND the hook did not declare -> FAIL (1d) the verdict is never PASS while any failure exists
+  (2)  chart_dashas tier + l1_tajik_varsha_year_lords are printed as NOT CHECKED (never passing, never silent, exit 4 unless allowed)
+  (3)  --validate-hooks / --require-lanes
+  golden: realistic fixture built from real lane hook files (hooks_real/), pinned in golden_flip_detector_expected.json
+"""
+from __future__ import annotations
+
+import copy
+import gzip
+import importlib.util
+import json
+import os
+import pathlib
+import random
+import shutil
+import sys
+from datetime import timedelta
+
+import pytest
+
+HERE = pathlib.Path(__file__).resolve().parent
+GOV_DIR = HERE.parent
+FIX = HERE / "fixtures" / "flip_detector"
+REAL_HOOKS = FIX / "hooks_real"
+OLD_SCHEMA_HOOKS = FIX / "hooks_old_schema"
+GOLDEN = FIX / "golden_flip_detector_expected.json"
+
+# test_flip_detector_mutations.py re-runs this file against a mutated copy of the tool by pointing this variable at it.
+_TOOL = pathlib.Path(os.environ.get("FLIP_DETECTOR_TOOL_UNDER_TEST") or (GOV_DIR / "flip_detector.py"))
+_spec = importlib.util.spec_from_file_location("flip_detector_under_test", _TOOL)
+F = importlib.util.module_from_spec(_spec)
+sys.modules["flip_detector_under_test"] = F
+_spec.loader.exec_module(F)
+
+ORIG_Q = F.q
+NATIVE = F.NATIVE
+OTHER = "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+
+
+@pytest.fixture(autouse=True)
+def _no_database(monkeypatch):
+    def tripwire(sql, retries=4):
+        raise AssertionError("flip_detector test reached the database layer: " + sql[:80])
+    monkeypatch.setattr(F, "q", tripwire)
+
+
+# ----------------------------------------------------------------------------------------------- fixtures
+def base_state():
+    facts = []
+    for ay in F.AYANS:
+        facts += [[ay, "graha_position", "SUN", "sign", "Capricorn", "", "single"], [ay, "graha_position", "MOON", "nakshatra", "Purva Bhadrapada", "", "single"],
+                  [ay, "graha_position", "LAGNA", "sign", "Aries", "", "single"], [ay, "graha_position", "MAR", "pada", "", "2", "single"],
+                  [ay, "graha_position", "MOON", "longitude_sidereal", "", "327.055230133129", "single"],
+                  [ay, "graha_gandanta", "MOON", "is_gandanta", "false", "", "single"], [ay, "argala_natal_matrix", "A1", "net", "", "1", "single"],
+                  [ay, "graha_shadbala_total", "SUN", "total", "", "412.5", "two_pass_verified"]]
+    for cat, subj, key, val in (("panchanga_tithi", "TITHI_BIRTH", "name", "Shukla Tritiya"), ("panchanga_vara", "VARA_BIRTH", "name", "Ravivara"),
+                                ("panchanga_yoga", "YOGA_BIRTH", "name", "Shiva"), ("panchanga_karana", "KARANA_BIRTH", "name", "Garaja")):
+        facts.append(["INVARIANT", cat, subj, key, val, "", "single"])
+    dash = [["lahiri_chitrapaksha", "vimshottari", 1, "/Jupiter", "1975-08-18T21:50:23+00:00", "1991-08-18T21:50:23+00:00"],
+            ["lahiri_chitrapaksha", "vimshottari", 1, "/Saturn", "1991-08-18T21:50:23+00:00", "2010-08-18T15:50:23+00:00"],
+            ["lahiri_chitrapaksha", "yogini", 1, "/Pingala", "1950-01-01T00:00:00+00:00", "1951-02-04T23:13:00+00:00"]]
+    return {"chart_facts": facts, "divisionals": [["lahiri_chitrapaksha", "D9", "Sun", "varga_position", "sign", "Leo", "", "Leo"]],
+            "dashas": dash, "daily": [["2026-07-09", "5", "shukla", "5", "9", "Ashlesha", "3", "6", "7", "Panchami", "Guruvara", "Priti", "Taitila"]]}
+
+
+def mutate(state, fn):
+    s = copy.deepcopy(state)
+    fn(s)
+    return s
+
+
+def hook(lane, entries, **kw):
+    h = {"lane": lane, "ruling": lane, "pr": "#1", "description": "test hook", "may_change": entries}
+    h.update(kw)
+    return h
+
+
+def entry(categories, change_types=None, table="chart_facts", **kw):
+    e = {"table": table, "categories": list(categories)}
+    if change_types is not None:
+        e["change_types"] = list(change_types)
+    e.update(kw)
+    return e
+
+
+ARGALA = hook("argala", [entry(["argala_natal_matrix"])])
+TIERS = hook("tiers", [entry(["graha_shadbala_total"], ["tier"])])
+ARGALA_OPT = hook("argala", [entry(["argala_natal_matrix"], optional=True)])  # a hook that is not the subject of the test
+POS_TIER_OPT = hook("posn", [entry(["graha_position"], ["tier"], optional=True)])  # declares graha_position, but only its tier
+
+
+def write_hooks(tmp_path, *hooks_, name="hooks"):
+    d = tmp_path / name
+    d.mkdir(exist_ok=True)
+    for h in hooks_:
+        (d / f"{h['lane']}.json").write_text(json.dumps(h))
+    return d
+
+
+def loaded(tmp_path, *hooks_):
+    hs, errs = F.load_hooks(str(write_hooks(tmp_path, *hooks_)))
+    assert not errs, errs
+    return hs
+
+
+def run(snap, cur, hooks_, chart=NATIVE, **kw):
+    return F.compare_states(snap, cur, hooks_, chart, **kw)
+
+
+def change_argala(s, val="2"):
+    for r in s["chart_facts"]:
+        if r[1] == "argala_natal_matrix":
+            r[5] = val
+
+
+def change_tier(s, to="classical_match"):
+    for r in s["chart_facts"]:
+        if r[1] == "graha_shadbala_total":
+            r[6] = to
+
+
+def change_pada_all(s):
+    """MAR pada 2 -> 3 on all five ayanamshas: a class_num VALUE change (a continuous value such as a shadbala total is never a class change)."""
+    for r in s["chart_facts"]:
+        if r[1] == "graha_position" and r[2] == "MAR":
+            r[5] = "3"
+
+
+def change_mar_pada(s):
+    for r in s["chart_facts"]:
+        if r[1] == "graha_position" and r[2] == "MAR" and r[0] == "lahiri_chitrapaksha":
+            r[5] = "3"
+
+
+def shift_vimshottari(s, sec=6993):
+    for r in s["dashas"]:
+        if r[1] == "vimshottari":
+            for i in (4, 5):
+                r[i] = (F.ts_parse(r[i]) + timedelta(seconds=sec)).isoformat()
+
+
+def counts(rep):
+    return {k: v for k, v in rep["failure_counts"].items() if v}
+
+
+NO_STANDING = ()  # production always uses F.STANDING_NOT_CHECKED; tests inject () only to reach the PASS class
+
+
+# ----------------------------------------------------------------------------------------------- baseline behaviour
+def test_identical_with_no_hooks_is_not_checked_not_pass():
+    rep = run(base_state(), base_state(), [])
+    assert rep["changes_total"] == 0 and not counts(rep) and not rep["ALERT_anchor_changed"]
+    assert rep["verdict"] == "NOT_CHECKED" and F.exit_code(rep) == 4  # never a silent clean pass
+    assert F.exit_code(rep, allow_not_checked=True) == 0
+
+
+def test_pass_class_is_reachable_only_when_nothing_is_not_checked():
+    rep = run(base_state(), base_state(), [], standing_not_checked=NO_STANDING)
+    assert rep["verdict"] == "PASS" and F.exit_code(rep) == 0 and rep["not_checked"] == []
+
+
+def test_attributed_change_names_the_lane(tmp_path):
+    hooks = loaded(tmp_path, ARGALA)
+    rep = run(base_state(), mutate(base_state(), change_argala), hooks, standing_not_checked=NO_STANDING)
+    assert rep["verdict"] == "PASS" and rep["changes_total"] == 5 and rep["unattributed"] == 0
+    assert all(c["lanes"] == ["argala"] for c in rep["changes"])
+
+
+def test_continuous_and_timestamp_changes_are_not_class_changes():
+    def f(s):
+        for r in s["chart_facts"]:
+            if r[3] == "longitude_sidereal":
+                r[5] = "327.055415"
+    rep = run(base_state(), mutate(base_state(), f), [], standing_not_checked=NO_STANDING)
+    assert rep["verdict"] == "PASS" and rep["changes_total"] == 0 and rep["continuous"]["chart_facts"]["changed"] == 5
+
+
+def test_chart_scope_of_a_hook(tmp_path):
+    h = copy.deepcopy(ARGALA)
+    h["charts"] = [OTHER[:8]]
+    hooks = loaded(tmp_path, h)
+    cur = mutate(base_state(), change_argala)
+    on_native = run(base_state(), cur, hooks, chart=NATIVE)
+    assert on_native["verdict"] == "FAIL" and counts(on_native) == {"UNDECLARED_CHANGE": 5}
+    on_other = run(base_state(), cur, hooks, chart=OTHER)
+    assert counts(on_other) == {} and on_other["unattributed"] == 0
+
+
+def test_anchor_change_is_alert_and_wins_over_failures():
+    def f(s):
+        for r in s["chart_facts"]:
+            if r[0] == "lahiri_chitrapaksha" and r[1] == "graha_position" and r[2] == "LAGNA":
+                r[4] = "Taurus"
+    rep = run(base_state(), mutate(base_state(), f), [])
+    assert rep["verdict"] == "ALERT" and F.exit_code(rep) == 3 and F.exit_code(rep, allow_not_checked=True) == 3
+    assert rep["failure_counts"]["UNDECLARED_CHANGE"] == 1
+    other = run(base_state(), mutate(base_state(), f), [], chart=OTHER)  # anchors are native-only
+    assert other["verdict"] == "FAIL" and not other["ALERT_anchor_changed"]
+
+
+# ----------------------------------------------------------------------------------------------- (1a) undeclared
+def test_1a_undeclared_fact_change_fails(tmp_path):
+    hooks = loaded(tmp_path, ARGALA_OPT)
+    rep = run(base_state(), mutate(base_state(), change_mar_pada), hooks)
+    assert rep["verdict"] == "FAIL" and F.exit_code(rep) == 2
+    assert counts(rep) == {"UNDECLARED_CHANGE": 1}
+    assert rep["failures"]["UNDECLARED_CHANGE"][0]["category"] == "graha_position"
+
+
+def test_1a_undeclared_change_with_no_hooks_at_all_fails():
+    rep = run(base_state(), mutate(base_state(), change_argala), [])
+    assert rep["verdict"] == "FAIL" and counts(rep) == {"UNDECLARED_CHANGE": 5}
+
+
+def test_1a_undeclared_daily_column_and_row_fail(tmp_path):
+    def col(s):
+        s["daily"][0][9] = "Shashthi"
+    rep = run(base_state(), mutate(base_state(), col), [])
+    assert counts(rep) == {"UNDECLARED_CHANGE": 1} and rep["failures"]["UNDECLARED_CHANGE"][0]["category"] == "tithi_name"
+    col_only = hook("panchanga", [entry(["tithi_name"], ["value"], table="panchanga_daily", optional=True)])
+    ok = run(base_state(), mutate(base_state(), col), loaded(tmp_path, col_only))
+    assert counts(ok) == {} and ok["unattributed"] == 0
+
+    def row(s):
+        s["daily"].append(["2026-07-10"] + s["daily"][0][1:])
+    rep = run(base_state(), mutate(base_state(), row), loaded(tmp_path, col_only))  # a whole new date is category 'row', not declared
+    assert counts(rep) == {"UNDECLARED_CHANGE": 1} and rep["failures"]["UNDECLARED_CHANGE"][0]["category"] == "row"
+    with_row = hook("panchanga", [entry(["row"], ["appeared", "disappeared"], table="panchanga_daily")])
+    assert counts(run(base_state(), mutate(base_state(), row), loaded(tmp_path, with_row))) == {}
+
+
+def test_1a_undeclared_dasha_rowset_and_shift_fail(tmp_path):
+    def drop(s):
+        s["dashas"] = [r for r in s["dashas"] if r[3] != "/Saturn"]
+    rep = run(base_state(), mutate(base_state(), drop), [])
+    assert counts(rep) == {"UNDECLARED_CHANGE": 1} and [c["change"] for c in rep["changes"]] == ["disappeared"]
+    rep = run(mutate(base_state(), drop), base_state(), [])
+    assert counts(rep) == {"UNDECLARED_CHANGE": 1} and [c["change"] for c in rep["changes"]] == ["appeared"]
+    rep = run(base_state(), mutate(base_state(), shift_vimshottari), [])
+    assert counts(rep) == {"DASHA_SHIFT_UNDECLARED": 1} and rep["verdict"] == "FAIL"
+
+
+def test_1a_declaring_one_category_does_not_cover_another(tmp_path):
+    def both(s):
+        change_argala(s)
+        change_mar_pada(s)
+    rep = run(base_state(), mutate(base_state(), both), loaded(tmp_path, ARGALA))
+    assert counts(rep) == {"UNDECLARED_CHANGE": 1}  # argala (5 rows) attributed, the MAR pada change is not
+
+
+# ----------------------------------------------------------------------------------------------- (1b) declared but absent
+def test_1b_declared_but_absent_fails(tmp_path):
+    rep = run(base_state(), base_state(), loaded(tmp_path, ARGALA))
+    assert rep["verdict"] == "FAIL" and F.exit_code(rep, allow_not_checked=True) == 2
+    assert counts(rep) == {"DECLARED_BUT_ABSENT": 1}
+    assert "argala[0]" in rep["failures"]["DECLARED_BUT_ABSENT"][0]
+
+
+def test_1b_optional_entry_absent_is_a_named_warning_not_a_failure(tmp_path):
+    h = hook("argala", [entry(["argala_natal_matrix"], optional=True)])
+    rep = run(base_state(), base_state(), loaded(tmp_path, h), standing_not_checked=NO_STANDING)
+    assert rep["verdict"] == "PASS" and counts(rep) == {}
+    assert len(rep["warnings"]) == 1 and rep["warnings"][0].startswith("OPTIONAL_ABSENT argala[0]")
+    assert any(ln.startswith("WARNING OPTIONAL_ABSENT") for ln in F.render_summary(rep))
+
+
+def test_1b_one_absent_entry_among_satisfied_ones_still_fails(tmp_path):
+    h = hook("argala", [entry(["argala_natal_matrix"]), entry(["net_argala_per_varga"])])
+    rep = run(base_state(), mutate(base_state(), change_argala), loaded(tmp_path, h))
+    assert counts(rep) == {"DECLARED_BUT_ABSENT": 1} and "argala[1]" in rep["failures"]["DECLARED_BUT_ABSENT"][0]
+
+
+def test_1b_expected_count_governs_the_entry(tmp_path):
+    zero = hook("argala", [entry(["argala_natal_matrix"], expected_count={"exact": 0})])
+    rep = run(base_state(), base_state(), loaded(tmp_path, zero), standing_not_checked=NO_STANDING)
+    assert rep["verdict"] == "PASS" and counts(rep) == {}  # an explicit zero expectation is met, not 'absent'
+    exact = hook("argala", [entry(["argala_natal_matrix"], expected_count={"exact": 3})])
+    rep = run(base_state(), mutate(base_state(), change_argala), loaded(tmp_path, exact))
+    assert counts(rep) == {"EXPECTATION_MISMATCH": 1} and rep["verdict"] == "FAIL"
+    rng = hook("argala", [entry(["argala_natal_matrix"], expected_count={"min": 4, "max": 6})])
+    assert counts(run(base_state(), mutate(base_state(), change_argala), loaded(tmp_path, rng), standing_not_checked=NO_STANDING)) == {}
+    want_some = hook("argala", [entry(["argala_natal_matrix"], expected_count={"min": 1})])
+    assert counts(run(base_state(), base_state(), loaded(tmp_path, want_some))) == {"EXPECTATION_MISMATCH": 1}
+
+
+def test_1b_dasha_shift_entry_absent_fails_and_present_passes(tmp_path):
+    eph = hook("ephemeris", [{"table": "chart_dashas", "kind": "dasha_shift", "systems": ["vimshottari"], "shift_range_sec": [6990, 6996]}])
+    absent = run(base_state(), base_state(), loaded(tmp_path, eph))
+    assert counts(absent) == {"DECLARED_BUT_ABSENT": 1}
+    seen = run(base_state(), mutate(base_state(), shift_vimshottari), loaded(tmp_path, eph), standing_not_checked=NO_STANDING)
+    assert seen["verdict"] == "PASS" and seen["dashas"]["lahiri_chitrapaksha|vimshottari"]["lanes"] == ["ephemeris"]
+    narrow = copy.deepcopy(eph)
+    narrow["may_change"][0]["shift_range_sec"] = [100, 200]
+    wrong = run(base_state(), mutate(base_state(), shift_vimshottari), loaded(tmp_path, narrow))
+    assert counts(wrong) == {"DECLARED_BUT_ABSENT": 1, "DASHA_SHIFT_UNDECLARED": 1}
+
+
+def test_1b_hook_for_another_chart_is_not_declared_but_absent(tmp_path):
+    h = copy.deepcopy(ARGALA)
+    h["charts"] = [OTHER[:8]]
+    rep = run(base_state(), base_state(), loaded(tmp_path, h), chart=NATIVE, standing_not_checked=NO_STANDING)
+    assert counts(rep) == {} and rep["verdict"] == "PASS"
+
+
+# ----------------------------------------------------------------------------------------------- (1c) kind not declared
+def test_1c_value_change_under_a_tier_only_hook_is_a_kind_mismatch(tmp_path):
+    rep = run(base_state(), mutate(base_state(), change_pada_all), loaded(tmp_path, POS_TIER_OPT))
+    assert rep["verdict"] == "FAIL" and F.exit_code(rep) == 2
+    # one value change per ayanamsha: five kind mismatches, none merely 'undeclared'
+    assert counts(rep) == {"KIND_MISMATCH": 5}
+
+
+def test_1c_kind_mismatch_reports_declared_kinds(tmp_path):
+    rep = run(base_state(), mutate(base_state(), change_pada_all), loaded(tmp_path, POS_TIER_OPT))
+    ex = rep["failures"]["KIND_MISMATCH"][0]
+    assert ex["declared_kinds_by_lane"] == {"posn": ["tier"]} and ex["change"] == "value"
+    # the tier change itself IS declared: only the value change is the problem
+    ok = run(base_state(), mutate(base_state(), change_tier), loaded(tmp_path, TIERS), standing_not_checked=NO_STANDING)
+    assert ok["verdict"] == "PASS" and all(c["lanes"] == ["tiers"] for c in ok["changes"])
+
+
+def test_1c_tier_change_under_a_value_only_hook_is_a_kind_mismatch(tmp_path):
+    h = hook("values", [entry(["graha_shadbala_total"], ["value"])])
+    rep = run(base_state(), mutate(base_state(), change_tier), loaded(tmp_path, h))
+    assert rep["verdict"] == "FAIL"
+    assert counts(rep) == {"KIND_MISMATCH": 5, "DECLARED_BUT_ABSENT": 1}  # the hook's own declared value change never happened
+    assert rep["failures"]["KIND_MISMATCH"][0]["declared_kinds_by_lane"] == {"values": ["value"]}
+
+
+def test_1c_kind_mismatch_is_distinct_from_undeclared_and_both_count(tmp_path):
+    def both(s):
+        change_pada_all(s)
+        change_argala(s)
+    rep = run(base_state(), mutate(base_state(), both), loaded(tmp_path, POS_TIER_OPT))
+    assert counts(rep) == {"UNDECLARED_CHANGE": 5, "KIND_MISMATCH": 5}
+
+
+def test_1c_a_second_lane_declaring_the_kind_attributes_it(tmp_path):
+    values = hook("values", [entry(["graha_position"], ["value"])])
+    tier_lane = hook("posn", [entry(["graha_position"], ["tier"])])  # not optional: its own tier change never happens
+    rep = run(base_state(), mutate(base_state(), change_pada_all), loaded(tmp_path, tier_lane, values), standing_not_checked=NO_STANDING)
+    assert counts(rep) == {"DECLARED_BUT_ABSENT": 1}
+    assert all(c["lanes"] == ["values"] for c in rep["changes"])
+
+
+# ----------------------------------------------------------------------------------------------- (1d) never a false pass
+FAILURE_SCENARIOS = {
+    "undeclared": (lambda tmp: ([], mutate(base_state(), change_mar_pada))),
+    "absent": (lambda tmp: (loaded(tmp, ARGALA), base_state())),
+    "kind": (lambda tmp: (loaded(tmp, POS_TIER_OPT), mutate(base_state(), change_pada_all))),
+    "expectation": (lambda tmp: (loaded(tmp, hook("argala", [entry(["argala_natal_matrix"], expected_count={"exact": 99})])), mutate(base_state(), change_argala))),
+    "dasha_shift": (lambda tmp: ([], mutate(base_state(), shift_vimshottari))),
+}
+
+
+@pytest.mark.parametrize("name", sorted(FAILURE_SCENARIOS))
+def test_1d_no_failure_scenario_is_ever_a_pass(tmp_path, name):
+    hooks, cur = FAILURE_SCENARIOS[name](tmp_path)
+    for standing in (F.STANDING_NOT_CHECKED, NO_STANDING):
+        rep = run(base_state(), cur, hooks, standing_not_checked=standing)
+        assert rep["verdict"] == "FAIL", (name, rep["failure_counts"])
+        assert F.exit_code(rep) == 2 and F.exit_code(rep, allow_not_checked=True) == 2
+        assert any(rep["failures"][k] for k in rep["failures"])
+        assert any(ln.startswith("VERDICT: FAIL") for ln in F.render_summary(rep))
+
+
+def test_1d_hook_error_is_a_failure(tmp_path):
+    rep = run(base_state(), base_state(), [], hook_errors=["bad.json: not valid JSON"], standing_not_checked=NO_STANDING)
+    assert rep["verdict"] == "FAIL" and counts(rep) == {"HOOK_ERROR": 1} and F.exit_code(rep, allow_not_checked=True) == 2
+
+
+def test_1d_verdict_cannot_be_hidden_by_a_stale_verdict_field(tmp_path):
+    rep = run(base_state(), mutate(base_state(), change_mar_pada), [])
+    rep["verdict"] = "PASS"  # tamper: decide_verdict / exit_code recompute from the failure lists
+    assert F.decide_verdict(rep) == "FAIL" and F.exit_code(rep, allow_not_checked=True) == 2
+
+
+# ----------------------------------------------------------------------------------------------- (2) NOT CHECKED
+def test_2_both_uncheckable_tier_changes_are_listed_on_every_compare(tmp_path):
+    rep = run(base_state(), base_state(), [])
+    ids = [n["id"] for n in rep["not_checked"]]
+    assert ids == ["chart_dashas.tier", "l1_tajik_varsha_year_lords.tier"]
+    assert all(n["status"] == "NOT CHECKED" and n["readback"] for n in rep["not_checked"])
+
+
+def test_2_not_checked_is_a_distinct_verdict_never_a_pass(tmp_path):
+    h = hook("argala", [entry(["argala_natal_matrix"], optional=True)])
+    rep = run(base_state(), base_state(), loaded(tmp_path, h))
+    assert rep["verdict"] == "NOT_CHECKED" and rep["verdict"] not in ("PASS", "FAIL", "ALERT")
+    assert F.exit_code(rep) == 4
+    assert F.exit_code(rep, allow_not_checked=True) == 0
+
+
+def test_2_summary_prints_both_not_checked_lines_even_when_allowed(tmp_path):
+    rep = run(base_state(), base_state(), [])
+    for allow in (False, True):
+        lines = F.render_summary(rep, allow)
+        assert any(ln.startswith("NOT CHECKED chart_dashas.tier") for ln in lines)
+        assert any(ln.startswith("NOT CHECKED l1_tajik_varsha_year_lords.tier") for ln in lines)
+        assert lines[0].startswith("VERDICT: NOT_CHECKED")
+    assert F.render_summary(rep, True)[0].endswith("chart %s" % NATIVE) and "exit 0" in F.render_summary(rep, True)[0]
+    assert any("only because --allow-not-checked" in ln for ln in F.render_summary(rep, True))
+
+
+def test_2_declared_by_names_the_lane_that_declares_the_unverifiable_tier(tmp_path):
+    tiers = hook("tiers", [entry(["graha_shadbala_total"], ["tier"]), entry(["mudda", "narayana"], ["tier"], table="chart_dashas"),
+                           entry(["l1_tajik_varsha_year_lords"], ["tier"], table="l1_tajik_varsha_year_lords")])
+    hooks = loaded(tmp_path, tiers)
+    rep = run(base_state(), mutate(base_state(), change_tier), hooks)
+    by = {n["id"]: n["declared_by_lanes"] for n in rep["not_checked"]}
+    assert by["chart_dashas.tier"] == ["tiers"] and by["l1_tajik_varsha_year_lords.tier"] == ["tiers"]
+    # the unobservable entries are NOT CHECKED, not declared-but-absent failures; the checkable entry was satisfied
+    assert counts(rep) == {} and rep["verdict"] == "NOT_CHECKED"
+    entry_level = [n for n in rep["not_checked"] if n["id"].startswith("tiers[")]
+    assert sorted(n["id"] for n in entry_level) == ["tiers[1]", "tiers[2]"]
+
+
+def test_2_not_checked_never_hides_a_failure(tmp_path):
+    rep = run(base_state(), mutate(base_state(), change_mar_pada), [])
+    assert rep["not_checked"] and rep["verdict"] == "FAIL" and F.exit_code(rep, allow_not_checked=True) == 2
+
+
+def test_2_dasha_entries_are_not_checked_when_dashas_are_not_compared(tmp_path):
+    h = hook("eph", [{"table": "chart_dashas", "kind": "dasha_shift", "systems": ["vimshottari"], "shift_range_sec": [6990, 6996]},
+                     entry(["vimshottari"], ["appeared", "disappeared"], table="chart_dashas")])
+    rep = run(base_state(), base_state(), loaded(tmp_path, h), have_dash=False)
+    assert counts(rep) == {} and rep["verdict"] == "NOT_CHECKED"
+    assert sorted(n["id"] for n in rep["not_checked"] if n["id"].startswith("eph[")) == ["eph[0]", "eph[1]"]
+
+
+def test_2_cli_exit_codes_and_printed_output(tmp_path, capsys):
+    d = write_hooks(tmp_path, hook("argala", [entry(["argala_natal_matrix"])]))
+    before, after = snapshot_file(tmp_path, "b.json.gz", base_state()), snapshot_file(tmp_path, "a.json.gz", mutate(base_state(), change_argala))
+    out = tmp_path / "r.json"
+    code = F.main(["--compare", str(before), "--against", str(after), "--hooks-dir", str(d), "--out", str(out)])
+    text = capsys.readouterr().out
+    assert code == 4 and "NOT CHECKED chart_dashas.tier" in text and "NOT CHECKED l1_tajik_varsha_year_lords.tier" in text
+    rep = json.loads(out.read_text())
+    assert rep["verdict"] == "NOT_CHECKED" and rep["exit_code"] == 4 and len(rep["not_checked"]) == 2
+    code = F.main(["--compare", str(before), "--against", str(after), "--hooks-dir", str(d), "--out", str(out), "--allow-not-checked"])
+    text = capsys.readouterr().out
+    assert code == 0 and "NOT CHECKED chart_dashas.tier" in text and json.loads(out.read_text())["verdict"] == "NOT_CHECKED"
+    # a failure beats the allow flag
+    bad = snapshot_file(tmp_path, "bad.json.gz", mutate(base_state(), change_mar_pada))
+    code = F.main(["--compare", str(before), "--against", str(bad), "--hooks-dir", str(d), "--out", str(out), "--allow-not-checked"])
+    capsys.readouterr()
+    assert code == 2 and json.loads(out.read_text())["verdict"] == "FAIL"
+
+
+def test_2_cli_report_is_deterministic_and_input_order_independent(tmp_path, capsys):
+    d = write_hooks(tmp_path, ARGALA, TIERS)
+
+    def one(tag, snap_rows, cur_rows):
+        b = snapshot_file(tmp_path, f"b{tag}.json.gz", snap_rows)
+        a = snapshot_file(tmp_path, f"a{tag}.json.gz", cur_rows)
+        out = tmp_path / f"r{tag}.json"
+        F.main(["--compare", str(b), "--against", str(a), "--hooks-dir", str(d), "--out", str(out)])
+        capsys.readouterr()
+        rep = json.loads(out.read_text())
+        rep.pop("meta")
+        return json.dumps(rep, sort_keys=True)
+
+    def scramble(state):
+        s = copy.deepcopy(state)
+        rnd = random.Random(7)
+        for k in ("chart_facts", "divisionals", "dashas"):
+            rnd.shuffle(s[k])
+        return s
+
+    def both(s):
+        change_argala(s)
+        change_mar_pada(s)
+        change_pada_all(s)
+    cur = mutate(base_state(), both)
+    r1, r2 = one("1", base_state(), cur), one("2", scramble(base_state()), scramble(cur))
+    assert r1 == r2
+    assert r1 == one("3", base_state(), cur)
+
+
+# ----------------------------------------------------------------------------------------------- (3) hook validation
+def snapshot_file(tmp_path, name, state, chart=NATIVE):
+    st = copy.deepcopy(state)
+    st["meta"] = {"tool": "flip_detector.py", "chart_id": chart, "taken_at_utc": "2026-10-02T00:00:00+00:00"}
+    p = tmp_path / name
+    with gzip.open(p, "wt") as f:
+        json.dump(st, f)
+    return p
+
+
+def validate(tmp_path, *args):
+    return F.main(["--validate-hooks", "--hooks-dir", str(tmp_path / "hooks"), *args])
+
+
+GOOD = hook("argala", [entry(["argala_natal_matrix"])])
+
+
+def test_3_valid_directory_passes_and_writes_json(tmp_path, capsys):
+    write_hooks(tmp_path, GOOD, TIERS)
+    out = tmp_path / "v.json"
+    assert validate(tmp_path, "--require-lanes", "argala,tiers", "--out", str(out)) == 0
+    rep = json.loads(out.read_text())
+    assert rep["verdict"] == "PASS" and rep["valid_lanes"] == ["argala", "tiers"] and rep["errors"] == []
+    assert "valid hook lanes: ['argala', 'tiers']" in capsys.readouterr().out
+
+
+def test_3_missing_required_lane_fails(tmp_path, capsys):
+    write_hooks(tmp_path, GOOD)
+    assert validate(tmp_path, "--require-lanes", "argala,daridra") == 2
+    assert "MISSING HOOK: lane 'daridra'" in capsys.readouterr().out
+    assert validate(tmp_path, "--require-lanes", "argala") == 0
+    hooks, errs = F.load_hooks(str(tmp_path / "hooks"), required=["argala", "daridra", "tiers"])
+    assert len(errs) == 2 and all("MISSING HOOK" in e for e in errs)
+
+
+def test_3_a_required_lane_with_an_invalid_hook_counts_as_missing(tmp_path):
+    bad = hook("daridra", [])
+    write_hooks(tmp_path, GOOD, bad)
+    hooks, errs = F.load_hooks(str(tmp_path / "hooks"), required=["daridra"])
+    assert any("MISSING HOOK" in e for e in errs) and any("may_change" in e for e in errs)
+
+
+def test_3_malformed_json_fails(tmp_path, capsys):
+    write_hooks(tmp_path, GOOD)
+    (tmp_path / "hooks" / "broken.json").write_text("{not json")
+    assert validate(tmp_path) == 2
+    assert "broken.json: not valid JSON" in capsys.readouterr().out
+
+
+MALFORMED = {
+    "empty_may_change": hook("empty_may_change", []),
+    "no_category": hook("no_category", [{"table": "chart_facts", "categories": []}]),
+    "no_categories_key": hook("no_categories_key", [{"table": "chart_facts"}]),
+    "regex_category": hook("regex_category", [entry(["argala.*"])]),
+    "bad_table": hook("bad_table", [entry(["a"], table="charts")]),
+    "bad_change_type": hook("bad_change_type", [entry(["a"], ["changed"])]),
+    "dasha_value_kind": hook("dasha_value_kind", [entry(["vimshottari"], ["value"], table="chart_dashas")]),
+    "bad_count": hook("bad_count", [entry(["a"], expected_count={"exact": 1, "max": 2})]),
+    "optional_not_bool": hook("optional_not_bool", [entry(["a"], optional="yes")]),
+    "unknown_entry_field": hook("unknown_entry_field", [entry(["a"], guess="x")]),
+    "bad_shift": hook("bad_shift", [{"table": "chart_dashas", "kind": "dasha_shift", "systems": ["vimshottari"], "shift_range_sec": [5, 1]}]),
+    "shift_wrong_table": hook("shift_wrong_table", [{"table": "chart_facts", "kind": "dasha_shift", "systems": ["vimshottari"], "shift_range_sec": [1, 5]}]),
+}
+
+
+@pytest.mark.parametrize("name", sorted(MALFORMED))
+def test_3_malformed_hook_is_rejected(tmp_path, name):
+    write_hooks(tmp_path, MALFORMED[name])
+    hooks, errs = F.load_hooks(str(tmp_path / "hooks"))
+    assert errs and not hooks, name
+    assert validate(tmp_path) == 2
+
+
+@pytest.mark.parametrize("field", ["ruling", "description", "pr", "may_change"])
+def test_3_each_required_top_level_field_is_required(tmp_path, field):
+    h = copy.deepcopy(GOOD)
+    del h[field]
+    write_hooks(tmp_path, h)
+    hooks, errs = F.load_hooks(str(tmp_path / "hooks"))
+    assert errs and not hooks and any(field in e for e in errs)
+
+
+def test_3_blank_description_and_lane_stem_mismatch_and_unknown_field(tmp_path):
+    for label, mut in (("blank", lambda h: h.update(description="  ")), ("stem", lambda h: h.update(lane="other")), ("unknown", lambda h: h.update(extra=1)),
+                       ("charts", lambda h: h.update(charts=["abc"]))):
+        h = copy.deepcopy(GOOD)
+        mut(h)
+        d = tmp_path / f"d_{label}"
+        d.mkdir()
+        (d / "argala.json").write_text(json.dumps(h))
+        hooks, errs = F.load_hooks(str(d))
+        assert errs and not hooks, label
+
+
+def test_3_missing_empty_and_nested_directories(tmp_path):
+    hooks, errs = F.load_hooks(str(tmp_path / "nope"))
+    assert errs and "HOOKS DIR NOT FOUND" in errs[0]
+    (tmp_path / "empty").mkdir()
+    hooks, errs = F.load_hooks(str(tmp_path / "empty"))
+    assert errs and "NO HOOK FILES" in errs[0]
+    d = write_hooks(tmp_path, GOOD)
+    (d / "evidence").mkdir()
+    (d / "evidence" / "junk.json").write_text("{not json")  # sub-folders are evidence, never hooks
+    (d / "README.md").write_text("x")
+    hooks, errs = F.load_hooks(str(d))
+    assert not errs and [h["lane"] for h in hooks] == ["argala"]
+
+
+def test_3_default_hooks_dir_is_the_slhooks_folder():
+    assert F.DEFAULT_HOOKS_DIR.endswith(os.path.join("00_ARCHITECTURE", "briefs", "suvarna", "exec", "s_l1_attribution_hooks"))
+
+
+# ----------------------------------------------------------------------------------------------- real hook files
+REAL_LANES = ["argala", "band_table", "ga_condition_fallback", "gandanta", "karaka_dasha_roles", "karaka_roles", "karaka_web_order", "sun_required_rupa", "tiers"]
+
+
+def test_real_hook_files_validate(capsys):
+    assert F.main(["--validate-hooks", "--hooks-dir", str(REAL_HOOKS), "--require-lanes", ",".join(REAL_LANES)]) == 0
+    assert F.main(["--validate-hooks", "--hooks-dir", str(REAL_HOOKS), "--require-lanes", "daridra"]) == 2
+    assert "MISSING HOOK: lane 'daridra'" in capsys.readouterr().out
+
+
+def test_old_schema_hook_files_are_rejected(capsys):
+    """argala.json on branch TI-argala-l1-001 and fa2_ga_vargas.json (TI-l1-fa2-key-001) predate the validator's schema (no may_change)."""
+    hooks, errs = F.load_hooks(str(OLD_SCHEMA_HOOKS))
+    assert not hooks
+    assert any("argala.json" in e and "may_change" in e for e in errs)
+    assert any("fa2_ga_vargas.json" in e and "may_change" in e for e in errs)
+    assert F.main(["--validate-hooks", "--hooks-dir", str(OLD_SCHEMA_HOOKS)]) == 2
+    capsys.readouterr()
+
+
+# ----------------------------------------------------------------------------------------------- golden on real hooks
+def real_hooks(tmp_path, lanes, patch=None):
+    d = tmp_path / "golden_hooks"
+    d.mkdir(exist_ok=True)
+    for lane in lanes:
+        h = json.loads((REAL_HOOKS / f"{lane}.json").read_text())
+        if patch and lane in patch:
+            patch[lane](h)
+        (d / f"{lane}.json").write_text(json.dumps(h))
+    hooks, errs = F.load_hooks(str(d), lanes)
+    assert not errs, errs
+    return hooks
+
+
+GOLDEN_LANES = ["argala", "gandanta", "sun_required_rupa", "tiers"]
+
+
+def golden_before():
+    s = base_state()
+    for ay in F.AYANS:
+        for subj in ("SUN", "MOON", "MARS", "MERCURY", "JUPITER", "VENUS", "SATURN", "RAHU", "KETU", "LAGNA"):
+            s["chart_facts"].append([ay, "graha_gandanta", subj, "is_gandanta", "false", "", "single"])
+        s["chart_facts"].append([ay, "graha_shadbala_total", "SUN", "ratio", "", "1.694", "two_pass_verified"])
+        s["chart_facts"].append([ay, "graha_shadbala_cheshta", "SUN", "cheshta", "", "40", "two_pass_verified"])
+        s["chart_facts"].append([ay, "graha_in_house_composite_strength", "SUN_IN_HOUSE_1", "bphs_weighted", "", "0.81", "single"])
+    s["chart_facts"].append(["INVARIANT", "graha_shadbala_total", "SUN", "required_rupa", "", "5", "classical_match"])
+    s["dashas"].append(["lahiri_chitrapaksha", "mudda", 1, "/Sun", "1984-02-05T10:43:00+00:00", "1985-02-05T10:43:00+00:00"])
+    return s
+
+
+def golden_after():
+    s = golden_before()
+    extra = []
+    for r in s["chart_facts"]:
+        if r[1] == "graha_gandanta" and r[3] == "is_gandanta":
+            extra.append(list(r[:4]) + ["false", "", "single"])  # strict_0_48 twin: the key now has two occurrences (50 keys)
+    s["chart_facts"] += extra
+    change_argala(s, "3")                                                                   # argala lane: 5 value changes
+    for r in s["chart_facts"]:
+        if r[1] == "graha_shadbala_total" and r[3] == "required_rupa":
+            r[5] = "6.5"                                                                    # sun_required_rupa: 5 -> 6.5, ayanamsha INVARIANT
+        if r[1] == "graha_shadbala_total" and r[3] == "ratio":
+            r[5] = "1.3031"                                                                 # continuous: not a class change
+        if r[1] == "graha_shadbala_cheshta":
+            r[6] = "single"                                                                 # tiers lane: 5 tier changes
+        if r[1] == "graha_shadbala_total" and r[3] == "total":
+            r[6] = "classical_match"                                                        # tiers lane: 5 tier changes
+        if r[3] == "longitude_sidereal":
+            r[5] = "327.055415"                                                             # continuous: ignored
+    return s
+
+
+def summarize(rep):
+    return {"verdict": rep["verdict"], "failure_counts": rep["failure_counts"], "warnings": rep["warnings"], "not_checked": [[n["id"], n["declared_by_lanes"]] for n in rep["not_checked"]],
+            "changes_total": rep["changes_total"], "by_table_category_change_lane": rep["by_table_category_change_lane"],
+            "absent": rep["failures"]["DECLARED_BUT_ABSENT"], "exit_default": F.exit_code(rep), "exit_allow_not_checked": F.exit_code(rep, True)}
+
+
+def golden_cases(tmp_path):
+    verbatim = real_hooks(tmp_path, GOLDEN_LANES)
+    optional = real_hooks(tmp_path, GOLDEN_LANES, patch={"sun_required_rupa": lambda h: h["may_change"][1].update(optional=True)})
+    both_optional = real_hooks(tmp_path, GOLDEN_LANES, patch={"sun_required_rupa": lambda h: h["may_change"][1].update(optional=True),
+                                                               "gandanta": lambda h: h["may_change"][1].update(optional=True)})
+    out = {"verbatim_real_hooks": summarize(run(golden_before(), golden_after(), verbatim)),
+           "composite_entry_marked_optional": summarize(run(golden_before(), golden_after(), optional)),
+           "both_surprise_entries_optional": summarize(run(golden_before(), golden_after(), both_optional))}
+
+    def noisy(s):
+        change_mar_pada(s)                                                                  # undeclared (no lane declares graha_position)
+        for r in s["chart_facts"]:
+            if r[1] == "graha_shadbala_cheshta":
+                r[5] = "41"                                                                 # tiers declares tier only: kind mismatch (5)
+        shift_vimshottari(s)                                                                # no ephemeris hook loaded: undeclared dasha shift
+    out["noisy_with_optional"] = summarize(run(golden_before(), mutate(golden_after(), noisy), optional))
+    return out
+
+
+def test_golden_real_hooks_flip_report(tmp_path):
+    got = golden_cases(tmp_path)
+    if os.environ.get("FLIP_DETECTOR_REGEN_GOLDEN") == "1":
+        GOLDEN.write_text(json.dumps(got, indent=1, sort_keys=True) + "\n")
+    want = json.loads(GOLDEN.read_text())
+    assert json.loads(json.dumps(got, sort_keys=True)) == want
+
+
+def test_golden_semantics_read_by_a_human(tmp_path):
+    """The golden file is not trusted blindly: restate its meaning independently of the pinned numbers."""
+    cases = golden_cases(tmp_path)
+    v = cases["verbatim_real_hooks"]
+    # the composite-strength entry of the real sun_required_rupa hook can never observe a change (its keys are continuous): a failure
+    assert v["verdict"] == "FAIL" and v["failure_counts"]["DECLARED_BUT_ABSENT"] == 2 and len(v["absent"]) == 2
+    assert any("sun_required_rupa[1]" in a for a in v["absent"]) and any("gandanta[1]" in a for a in v["absent"])
+    o = cases["composite_entry_marked_optional"]
+    assert o["failure_counts"]["DECLARED_BUT_ABSENT"] == 1 and any("gandanta[1]" in a for a in o["absent"])
+    c = cases["both_surprise_entries_optional"]
+    assert c["verdict"] == "NOT_CHECKED" and c["exit_default"] == 4 and c["exit_allow_not_checked"] == 0 and c["absent"] == []
+    assert sum(c["failure_counts"].values()) == 0 and len(c["warnings"]) == 2
+    n = cases["noisy_with_optional"]
+    assert n["verdict"] == "FAIL" and n["failure_counts"]["UNDECLARED_CHANGE"] == 1
+    assert n["failure_counts"]["KIND_MISMATCH"] == 5 and n["failure_counts"]["DASHA_SHIFT_UNDECLARED"] == 1
+    for c in cases.values():
+        assert [x[0] for x in c["not_checked"]][:2] == ["chart_dashas.tier", "l1_tajik_varsha_year_lords.tier"]
+        if c["verdict"] == "FAIL":
+            assert c["exit_default"] == 2 and c["exit_allow_not_checked"] == 2  # failures are never softened by the flag
+    assert dict(o["not_checked"])["chart_dashas.tier"] == ["tiers"]
+
+
+def test_golden_clean_run_attributes_every_gandanta_row(tmp_path):
+    hooks = real_hooks(tmp_path, GOLDEN_LANES, patch={"sun_required_rupa": lambda h: h["may_change"][1].update(optional=True),
+                                                       "gandanta": lambda h: h["may_change"][1].update(optional=True)})
+    rep = run(golden_before(), golden_after(), hooks)
+    assert [c["lanes"] for c in rep["changes"] if c["category"] == "graha_gandanta"] == [["gandanta"]] * 50
+    assert all(c["lanes"] for c in rep["changes"])
+
+
+def test_real_hooks_with_no_changes_list_exactly_the_entries_a_lane_author_must_fix(tmp_path):
+    """Every shipped hook against an unchanged chart: which entries are DECLARED_BUT_ABSENT (no expected_count, not optional)?"""
+    hooks, errs = F.load_hooks(str(REAL_HOOKS), REAL_LANES)
+    assert not errs
+    rep = run(base_state(), base_state(), hooks, standing_not_checked=NO_STANDING)
+    absent = sorted(a.split(" (")[0].replace("DECLARED BUT ABSENT ", "") for a in rep["failures"]["DECLARED_BUT_ABSENT"])
+    assert absent == ["argala[0]", "gandanta[1]", "karaka_dasha_roles[0]", "karaka_roles[0]", "karaka_roles[1]", "karaka_web_order[0]",
+                      "sun_required_rupa[0]", "sun_required_rupa[1]", "tiers[0]"]
+    # the unobservable chart_dashas tier entry of tiers.json is NOT CHECKED, and the tiers chart_facts entry is checkable and absent
+    nc = [n["id"] for n in rep["not_checked"]]
+    assert "tiers[1]" in nc and "tiers[1]" not in absent
+
+
+# ----------------------------------------------------------------------------------------------- unchanged safety properties
+@pytest.mark.parametrize("bad", ["update chart_facts set x=1", "delete from chart_facts", "insert into x values (1)", "drop table x", "with a as (select 1) delete from x"])
+def test_read_only_guard(bad):
+    with pytest.raises(RuntimeError, match="read-only"):
+        ORIG_Q(bad)
+
+
+def test_compare_against_other_chart_snapshot_is_refused(tmp_path, capsys):
+    d = write_hooks(tmp_path, ARGALA)
+    a = snapshot_file(tmp_path, "a.json.gz", base_state(), chart=NATIVE)
+    b = snapshot_file(tmp_path, "b.json.gz", base_state(), chart=OTHER)
+    assert F.main(["--compare", str(a), "--against", str(b), "--hooks-dir", str(d), "--out", str(tmp_path / "x.json")]) == 2
+    assert "not" in capsys.readouterr().err
+
+
+def test_mode_exclusivity():
+    with pytest.raises(SystemExit):
+        F.main(["--validate-hooks", "--compare", "x"])
+    with pytest.raises(SystemExit):
+        F.main(["--against", "x", "--validate-hooks"])

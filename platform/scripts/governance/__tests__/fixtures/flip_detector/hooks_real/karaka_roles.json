@@ -1,0 +1,32 @@
+{
+  "lane": "karaka_roles",
+  "ruling": "karaka roles (SS N-69)",
+  "pr": "branch suvarna/land/TI-l1-karaka-roles-001",
+  "description": "Jaimini chara-karaka role labels. ga_sensitive: the kn_rao_rahu_included (8-karaka) school's ranks 5-8 are relabelled PITRIKARAKA / PUTRAKARAKA / GNATIKARAKA / DARAKARAKA (was PUTRAKARAKA / GNATIKARAKA / DARAKARAKA / STRIKARAKA); the STRIKARAKA subject disappears and is replaced by a strikaraka_alias fact_key on the DARAKARAKA subject (kn_rao school only). The parashari 7-scheme labels are unchanged. NO numeric value moves for any graha: the sort, ranks, longitudes, degrees, signs and houses are untouched, only which role name sits on which rank. ga_vargas: karaka_per_varga now READS ga_sensitive's kn_rao assignments instead of re-deriving them (subjects PK/GK/DK/SK become PiK/PK/GK/DK; Rahu's rank follows ga_sensitive's reckoning). ga_structural: karaka_web_per_varga role strings (value_jsonb role_a/role_b, citation_human) follow the stored labels.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["karaka_chara_position"],
+      "fact_keys": ["assigned_graha", "sign", "karaka_rank", "house_d1", "karaka_school", "strikaraka_alias"],
+      "change_types": ["value", "appeared", "disappeared"],
+      "expected_direction": "kn_rao ranks 5-8 only, on every chart x ayanamsha: PITRIKARAKA subject appears (all keys incl. karaka_school); STRIKARAKA subject disappears (all keys); PUTRAKARAKA / GNATIKARAKA / DARAKARAKA take the next rank's graha (assigned_graha, sign, karaka_rank, house_d1 values change); strikaraka_alias appears once per ayanamsha on DARAKARAKA. Parashari rows and the graha at every rank are unchanged. longitude_sidereal and degree_in_sign are not listed: they are continuous, which the detector reports only as continuous statistics (the per-subject continuous values do shift with the relabel, e.g. DARAKARAKA kn_rao longitude goes from Jupiter's to Mercury's, but no graha's own position moves). Offline simulation on the canonical Lahiri degrees (old origin/main builder vs this branch's builder through flip_detector.compare_states): 23 class changes (12 value, 6 appeared, 5 disappeared), 0 unattributed.",
+      "note": "No expected_count: it depends on how many of ranks 5-8 change graha per chart, and the detector pairs the two schools' same-key occurrences by sorted value. Natural key is (ayanamsha, category, subject, key) with formula_id excluded."
+    },
+    {
+      "table": "chart_facts",
+      "categories": ["karaka_web_per_varga"],
+      "change_types": ["value", "appeared", "disappeared"],
+      "expected_direction": "none from the relabel itself: the kn_rao planet set (8 grahas) and each pair's conjunction/aspect result are label independent, and role_a/role_b live in value_jsonb / citation_human, which the detector does not compare. Listed because ga_structural._build_karaka_web_rows reads the assigned_graha rows with no ORDER BY and tests aspect only from the earlier planet to the later one, so a rebuild can flip aspect rows with row order, independent of this lane (pre-existing; see KARAKA_ROLES_LANE_INTENT_v1_0.md section 7).",
+      "note": "No expected_count: a pure relabel predicts 0, but the pre-existing row-order dependence means 0 is not guaranteed."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": ["karaka_per_varga"],
+      "fact_keys": ["assigned_graha", "sign", "dignity"],
+      "change_types": ["value", "appeared", "disappeared"],
+      "expected_direction": "no detector-visible change. The detector keys chart_divisionals rows by (ayanamsha, varga, graha, category, fact_key) and the graha column is the assigned graha, so a subject rename (PK/GK/DK/SK to PiK/PK/GK/DK) and a rank/role change do not alter any compared field; the 8-graha set (7 classical + Rahu) is the same before and after.",
+      "expected_count": {"exact": 0},
+      "note": "A nonzero count here would mean ga_vargas's assigned-graha set changed, which this lane does not intend."
+    }
+  ]
+}
