@@ -479,12 +479,21 @@ CREATE TRIGGER ka_gochara_generation_seal_zz_window_verified
   FOR EACH ROW EXECUTE FUNCTION public.ka_gochara_generation_seal_window_guard();
 
 -- ── 7. privileges (role-existence-guarded; explicit; table-level; no SECURITY DEFINER) ─────────────────
--- The builder gets NOTHING on the verification table. The VERIFIER writes it (INSERT; pre-seal DELETE — enforced by the
+-- The builder gets NOTHING on the verification table, and exactly ONE function: EXECUTE on the window CHECK helper
+-- `ka_gochara_window_qualification_ok(jsonb)`, which this migration's own `kgew_qualification_shape_ck` CALLS on every
+-- window INSERT — production revokes PUBLIC EXECUTE, and a table INSERT grant does not carry the function privilege, so
+-- without it the restricted builder cannot insert a window at all (Codex round 9, R9-4). The VERIFIER writes it (INSERT; pre-seal DELETE — enforced by the
 -- write guard) and reads what it verifies; the SEALER reads it and runs the gate (the seal trigger fires as the sealing
 -- role). EXECUTE lists were derived by running the real flows as these roles under a PUBLIC-EXECUTE-revoked schema and
 -- adding one grant per `permission denied` until the suite converged (the live tests are the detector).
 DO $$
 BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'data_plane_builder') THEN
+    GRANT EXECUTE ON FUNCTION public.ka_gochara_window_qualification_ok(jsonb) TO data_plane_builder;
+    RAISE NOTICE 'migration 1240: builder EXECUTE on ka_gochara_window_qualification_ok issued to role data_plane_builder (and nothing on the verification table)';
+  ELSE
+    RAISE NOTICE 'migration 1240: role data_plane_builder NOT FOUND — NO builder grant was issued; once it exists it needs EXECUTE on ka_gochara_window_qualification_ok(jsonb) or it cannot insert a window';
+  END IF;
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_verifier') THEN
     GRANT SELECT, INSERT, DELETE ON public.ka_gochara_eval_window_verification TO gochara_verifier;
     GRANT SELECT ON

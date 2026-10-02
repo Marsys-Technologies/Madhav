@@ -121,18 +121,28 @@ def test_1240_never_replaces_a_function_an_applied_migration_defines():
         assert not (mine & theirs), (fname.name, mine & theirs)
 
 
-def test_1240_grants_are_table_level_explicit_and_never_to_the_builder_or_public():
+def test_1240_grants_are_table_level_explicit_and_the_builder_gets_exactly_one_helper_execute():
     body = _statements(SQL)
-    grants = re.findall(r"GRANT\s+.*?;", body, re.S | re.I)
+    grants = re.findall(r"^\s*(GRANT\s+.*?;)", body, re.S | re.I | re.M)       # statements, not words inside a NOTICE
     assert grants
+    builder = [g for g in grants if "data_plane_builder" in g]
+    # R9-4: the builder holds NOTHING on the verification table and exactly ONE function — the window CHECK helper
+    assert len(builder) == 1, builder
+    assert re.fullmatch(r"GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.ka_gochara_window_qualification_ok\(jsonb\)"
+                        r"\s+TO\s+data_plane_builder;", " ".join(builder[0].split()), re.I), builder[0]
     for g in grants:
         assert not re.search(r"GRANT\s+\w+\s*\(", g), f"column-level grant: {g[:60]}"
-        assert "data_plane_builder" not in g and not re.search(r"\bTO\s+PUBLIC\b", g, re.I), g[:80]
-        assert re.search(r"\bTO\s+(gochara_verifier|gochara_sealer)\b", g), g[:80]
+        assert not re.search(r"\bTO\s+PUBLIC\b", g, re.I), g[:80]
+        assert re.search(r"\bTO\s+(gochara_verifier|gochara_sealer|data_plane_builder)\b", g), g[:80]
+        if "data_plane_builder" not in g:
+            assert re.search(r"\bTO\s+(gochara_verifier|gochara_sealer)\b", g), g[:80]
     # every grant block is guarded by role existence (the production roles are not provisioned yet)
+    assert body.count("IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'data_plane_builder')") == 1
     assert body.count("IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_verifier')") == 1
     assert body.count("IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'gochara_sealer')") == 1
     assert "REVOKE" not in body.upper() and "GRANT ALL" not in body.upper()
+    # the helper the grant names is the one the window CHECK calls
+    assert "CHECK (public.ka_gochara_window_qualification_ok(qualification) IS TRUE)" in body
 
 
 def test_1240_does_not_touch_applied_objects_beyond_the_three_window_columns():

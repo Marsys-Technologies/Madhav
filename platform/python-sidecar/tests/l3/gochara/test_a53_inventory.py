@@ -207,6 +207,11 @@ def test_horizon_must_be_whole_second_utc():
 
 # ── store (real 1206) ────────────────────────────────────────────────────────
 
+BUILDER_GRANT_MIGRATIONS = ("1216_gochara_contract_builder_grants.sql",
+                            "1220_gochara_contract_builder_function_execute.sql",
+                            "1234_gochara_eval_window_builder_grants.sql")
+
+
 def create_am5_database(tag="am5", faithful=False):
     """A throwaway database with the real chain + 1206 applied and the L1 tables stubbed.
     Returns (admin_conn, name, dsn); the caller drops it (refusing non-prefixed names)."""
@@ -237,7 +242,7 @@ def create_am5_database(tag="am5", faithful=False):
         conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
         if faithful:
             conn.execute("ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC")
-        _populate_am5_database(conn)
+        _populate_am5_database(conn, faithful=faithful)
         conn.close()
     except BaseException:
         drop_am5_database(admin, name)
@@ -251,7 +256,7 @@ def drop_am5_database(admin, name):
     admin.close()
 
 
-def _populate_am5_database(conn):
+def _populate_am5_database(conn, faithful=False):
     with conn.cursor() as cur:
         cur.execute("CREATE TABLE public.charts (id uuid PRIMARY KEY)")
         cur.execute("CREATE TABLE public._migrations_applied"
@@ -277,11 +282,18 @@ def _populate_am5_database(conn):
             cur.execute("INSERT INTO public.bg_transit_rules (rule_type, graha, primary_house, vedha_house,"
                         " phala, classical_citation) VALUES (%s, %s, %s, %s, 'x', %s)",
                         (rule_type, graha, house, vedha, citation))
+        # the faithful mirror applies the REAL builder-grant migrations too (R9-4): the restricted builder holds exactly
+        # what production gives it (1216 tables, 1220 functions, 1234 window tables/functions) — and, once 1240 adds a
+        # CHECK helper, only what 1240 itself grants it
         for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql",
-                                        "1240_gochara_window_verification_gate.sql"]:
+                                        "1240_gochara_window_verification_gate.sql"] + (
+                                            list(BUILDER_GRANT_MIGRATIONS) if faithful else []):
             cur.execute((MIGRATIONS / fname).read_text())
             cur.execute("INSERT INTO public._migrations_applied(filename) VALUES (%s)",
                         (fname,))
+        if faithful:
+            # PENDING the migration Stream B owns (R9-4 report): the record-table replace/finalise privileges
+            cur.execute((Path(__file__).parent / "fixtures" / "pending_builder_record_grants.sql").read_text())
         cur.execute("INSERT INTO public.charts(id) VALUES (%s)", (CHART_ID,))
         subj = {"LAGNA": CHART["lagna_deg"], "SUN": CHART["natal"]["Sun"],
                 "MOON": CHART["natal"]["Moon"], "MAR": CHART["natal"]["Mars"],
