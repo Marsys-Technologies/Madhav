@@ -103,6 +103,16 @@ Permanent CI lint (ŚUDDHA-VĀCA C.7) flagging any `chart_facts` selection reduc
 `--self-test` runs the bundled `fact_category_pin_fixtures/`; default scans the live repo tree
 against `fact_category_pin_allowlist.json`. Wired into `ci.yml` (static, no network).
 
+### `check_node_series_pin.py` ← **NODE-SERIES step 0 (SS N-68/N-69)**
+Reader-pin lint with a RATCHET for `ephemeris_daily`: every SQL read (`FROM|JOIN ephemeris_daily`, python/ts/sql, incl. a
+file-level table constant) that can return Rahu/Ketu rows must carry `NODE_SERIES_PREDICATE`, an explicit `node_mode`
+predicate, a `node-agnostic: <reason>` comment (reason must not name Rahu/Ketu), or provably exclude the nodes (`LIMIT 0`, literal
+non-node `body` filter). Today's unpinned readers are frozen in `node_series_pin_baseline.json` (it can only shrink: a new
+unpinned reader fails, a fixed reader must leave the baseline and may never return, the total must equal
+`RATCHET_CEILING_TOTAL`; `--against <ref>` also blocks growth versus a git ref). `--self-test` runs the bundled
+`node_series_pin_fixtures/`. **CI wiring without a workflow edit:** `__tests__/test_node_series_pin_lint.py` runs the self-test, the
+real-repo scan against the baseline and a mutation proof inside the existing "Governance Tool Tests (pytest)" step.
+
 ### `check_reconciliation_cadence.py` ← **PARIŚODHANA Phase C2**
 The standing reconciliation cadence recommended by `POST_REMEDIATION_CONSUMPTION_REGISTER_v1_0.md`'s
 "ships-but-register-never-flips" standing note: cross-references `cr_status.ts`'s
