@@ -137,6 +137,9 @@ EXPECTED_OPERATION_OWNERS = {
     ("pyjhora_adapter/houses.py", "compute_bhava_chalit"),
     ("pyjhora_adapter/houses.py", "compute_midheaven"),
     ("pyjhora_adapter/panchanga.py", "compute_panchanga"),
+    # TI thread-fix lane: the one reviewed per-thread mode+path idiom (mode set inside the
+    # swiss_state_scope() it holds for the whole `with` body).
+    ("pyjhora_adapter/_swiss_thread_scope.py", "with_sidereal_mode"),
     ("pyjhora_adapter/positions.py", "_set_ayanamsha"),
     ("pyjhora_adapter/positions.py", "compute_positions"),
     ("pyjhora_adapter/sensitive_points.py", "compute_sensitive_points"),
