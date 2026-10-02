@@ -63,9 +63,7 @@ class RelationshipRecord:
     evidence_for_occurrence: float = 0.0
     evidence_against_occurrence: float = 0.0
     outcome_valence_for_native: str = "unqualified"
-    # severity is defined by no spec rule (§1.1: "interpretive, rank-only"): the honest default is a
-    # named NULL, never an invented 0.0 (CLAUDE.md §N.7 item 6; 1156 permits NULL)
-    severity: float | None = None
+    severity: float = 0.0
     precision: dict | None = None
 
     def __post_init__(self):

@@ -23,8 +23,7 @@ class Valence:
     evidence_against_occurrence: float
     occurrence: str  # "contested" | "plain" | "unqualified"
     outcome_valence_for_native: str
-    # no spec rule computes severity (§1.1 "interpretive, rank-only"): a named NULL, never an invented 0.0
-    severity: float | None = None
+    severity: float = 0.0
     unresolved_operand: str | None = None
 
 

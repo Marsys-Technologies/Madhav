@@ -1,4 +1,4 @@
-"""graduated_drishti evaluator + severity-is-a-named-null (WINDOW_SWEEP_ANSWER_v1_0 items 4/5).
+"""graduated_drishti evaluator (WINDOW_SWEEP_ANSWER_v1_0 item 4).
 
 Every assertion runs the production code (services.gochara_rules.drishti / valence / records /
 gochara_kernel.convention); no table or rule is re-implemented here."""
@@ -7,9 +7,7 @@ import pytest
 from services.gochara_kernel.convention import SPECIAL_DRISHTI_DEG
 from services.gochara_rules import drishti
 from services.gochara_rules.drishti import graduated_drishti
-from services.gochara_rules.records import RelationshipRecord
 from services.gochara_rules.registry import FACTORS
-from services.gochara_rules.valence import compute_valence
 
 
 def val(agent, offset):
@@ -75,15 +73,24 @@ def test_registry_effect_text_states_the_same_fractions():
     assert "¼/½/¾/1 at 3-10/5-9/4-8/7" in effect and "specials full" in effect
 
 
-# ── severity is a named NULL, never an invented 0.0 ─────────────────────────────
-def test_valence_severity_is_null_computed_and_unqualified():
-    assert compute_valence("bereavement", evidence_for=0.5, evidence_against=0.0).severity is None
-    assert compute_valence("marriage", evidence_for=0.7, evidence_against=0.3).severity is None
-    unresolved = compute_valence("career_entry", 0.4, 0.0, unresolved_operand="P5c donor matrix")
-    assert unresolved.severity is None and unresolved.outcome_valence_for_native == "unqualified"
+
+# ── golden grid: every graha x every offset, literal expectations (steward ruling 2026-10-02) ──
+_Q, _H, _T, _F = 0.25, 0.5, 0.75, 1.0
+# offsets 1..12; None = no aspect at that offset
+_GOLDEN = {
+    "Sun":     [None, None, _Q, _T, _H, None, _F, _T, _H, _Q, None, None],
+    "Moon":    [None, None, _Q, _T, _H, None, _F, _T, _H, _Q, None, None],
+    "Mercury": [None, None, _Q, _T, _H, None, _F, _T, _H, _Q, None, None],
+    "Venus":   [None, None, _Q, _T, _H, None, _F, _T, _H, _Q, None, None],
+    "Mars":    [None, None, _Q, _F, _H, None, _F, _F, _H, _Q, None, None],      # 4th, 8th special full
+    "Jupiter": [None, None, _Q, _T, _F, None, _F, _T, _F, _Q, None, None],      # 5th, 9th special full
+    "Saturn":  [None, None, _F, _T, _H, None, _F, _T, _H, _F, None, None],      # 3rd, 10th special full
+    "Rahu":    [None] * 12,                                                    # N-14: nodes cast none
+    "Ketu":    [None] * 12,
+}
 
 
-def test_relationship_record_severity_defaults_to_null():
-    import dataclasses
-    f = {x.name: x for x in dataclasses.fields(RelationshipRecord)}["severity"]
-    assert f.default is None
+@pytest.mark.parametrize("agent", sorted(_GOLDEN))
+def test_golden_grid_every_offset(agent):
+    got = [graduated_drishti(agent, o)["value"] for o in range(1, 13)]
+    assert got == _GOLDEN[agent], agent

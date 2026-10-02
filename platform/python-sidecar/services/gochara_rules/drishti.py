@@ -16,8 +16,12 @@ Strength table — served corpus, read verbatim 2026-10-02:
     fourth and eighth houses from himself; the others a three-fourths aspect
     there; the other planets only a half aspect on the fifth and ninth.
     (The served chunk is truncated mid-sentence; used only as corroboration.)
-  * The spec/oracles cite BPHS1:16496-16502 (O-CF-DRISHTI); that passage was
-    NOT re-read when this module was written.
+  * Jataka Parijata sloka 30 (jataka_parijata:PG99:C1): the same graduation
+    (quarter 3/10, half 5/9, three-quarters 4/8, full 7th); its special-aspect
+    sentences are OCR-garbled in the served chunk — corroboration only.
+  * The spec/oracles also cite BPHS1:16496-16502 (O-CF-DRISHTI). That passage
+    is NOT retrievable from the served corpus by verse search (two attempts,
+    2026-10-02), so it is not cited here; a human re-read is still owed.
 Specials are FULL (1.0): Mars 4/8, Jupiter 5/9, Saturn 3/10 — the same
 angles services/gochara_kernel/convention.SPECIAL_DRISHTI_DEG carries
 (a test cross-checks them; the kernel owns the ANGLES, this module owns the
