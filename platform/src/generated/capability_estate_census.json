@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "7017caaa56a28c11b10f5e4f6f33b4766e8326a07c37d8fcaa1d22200b2c5348",
+  "content_sha256": "3ce5d71ce91ea275ae0b47e25eca444e13a58b983f8b77b70585e50b7db1745e",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -50,9 +50,9 @@
         "service": 8
       },
       "non_writer_identities": 6,
-      "retired": 3,
-      "total": 131,
-      "writer_identities": 125
+      "retired": 2,
+      "total": 130,
+      "writer_identities": 124
     },
     "producer_output_contracts": {
       "by_disposition": {
@@ -81,9 +81,9 @@
     "reviewed_output_digest_coverage": {
       "active_asset_denominator": 128,
       "active_assets_without_any_reviewed_spec": 8,
-      "asset_denominator": 131,
+      "asset_denominator": 130,
       "assets_with_any_reviewed_spec": 120,
-      "assets_without_any_reviewed_spec": 11,
+      "assets_without_any_reviewed_spec": 10,
       "basis": "distinct static INSERT identities plus ordered append/retire source replay across both governed migration trees; no database was queried",
       "current_source_intended_active_spec_rows": 119,
       "current_source_intended_spec_rows": 119
@@ -10814,8 +10814,7 @@
       ],
       "retired_asset_ids": [
         "ka_gochara_sweep",
-        "ka_gochara_v4_41_candidate",
-        "ka_gochara_v5"
+        "ka_gochara_v4_41_candidate"
       ],
       "writer_identity_ids": [
         "bg_class_lifetime_counts",
@@ -10903,7 +10902,6 @@
         "ka_gochara_resonance",
         "ka_gochara_v3_century_materialize",
         "ka_gochara_v4_41_candidate",
-        "ka_gochara_v5",
         "ka_graha_sancara",
         "ka_jivana_parva",
         "ka_kala_darshana",
@@ -14020,7 +14018,6 @@
         "ka_gochara_sweep",
         "ka_gochara_v3_century_materialize",
         "ka_gochara_v4_41_candidate",
-        "ka_gochara_v5",
         "ka_graha_sancara",
         "ka_tulana",
         "lel_events",
@@ -20969,7 +20966,7 @@
       ]
     }
   },
-  "generated_at": "2026-10-02T00:00:00.000Z",
+  "generated_at": "2026-10-02T06:30:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21368,7 +21365,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "f05698268213b33dc33fad54be1b04e81e1d485f5bb7aa2b4e26479d8c14f415"
+        "sha256": "4ccda99b103617a5da34f941cdc23459ce0e64e075f1e020fa72ef054e9430a9"
       },
       {
         "id": "public_registrar_source_set",
@@ -21674,7 +21671,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "0fc5c06fb234fe991e3da0b7a2f18d3b0245aefee28b2a72eb73be7ce0eaaa77"
+            "sha256": "1c9700d31145e14f0b4c96415228a825b74e9b9d2f0e9e0979cedf82fcaa31c3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -21894,7 +21891,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts",
-            "sha256": "74099778c03c637440271eedc77d54d3ab43949fb12d53e30cde53671b546752"
+            "sha256": "8451abdf4f836b8c2eb72b78f34ff3aca335b5f237ac185f210117b91b4cadc3"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts",
@@ -22338,7 +22335,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
-            "sha256": "dbdce19df1dfebdb809a77dae8174ffa6291154a89ae8f3029d31ac6eb195938"
+            "sha256": "6b3d7032ff7d54760d9da4dc0fe9e2ca69073c0f3c7c204e7b8cd5939a67a250"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts",
@@ -22406,7 +22403,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "88e21a601c801b05afc6454a7dc5a637e44e5bf18ccc195a8ab42edeaac72378"
+        "sha256": "bfe33a51a9baa3d6dd8477dbad287a3eb76cb79ad5f02950aeb52f6c8e2ceda8"
       },
       {
         "id": "service_effect_contracts",
@@ -22426,10 +22423,10 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "5871063a8e56428c83fde525b7e5daff5d8b5a5583517c73efa2b93cc01dd291"
+        "sha256": "6c5ba498b274efff201ae5e8b2c95cfac8d52b6feeec9380c927162bb0a8948d"
       }
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "0eed9548d72ff80332039e9e58b9511a004939b4"
+  "source_revision": "261f2aafd7f9b77ba2cedd3e4b0f9056de0d96d9"
 }
