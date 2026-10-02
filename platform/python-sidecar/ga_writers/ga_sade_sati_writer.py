@@ -1018,7 +1018,7 @@ def _emit_cycle_rows(
             "concurrent_naisargika_age_bracket",
             "concurrent_mudda_lord",
         ]:
-            dasha_val = natal_facts.get(f"{dasha_key}_at_{phase_name.lower()}", "PENDING_GA7_LOOKUP")
+            dasha_val = natal_facts.get(f"{dasha_key}_at_{phase_name.lower()}")  # None: GA7 had no covering period
             # NAR-GA fix (P2 :974): citation_human previously narrated the raw
             # snake_case dasha_key verbatim ("concurrent_vimshottari_maha_lord
             # during ..."), a mislabel/drift against the sibling
@@ -1027,10 +1027,10 @@ def _emit_cycle_rows(
             # fact_key (the DB column) is correctly left as the machine key.
             rows.append(
                 R(cat_ph, subj, dasha_key,
-                  value_text=str(dasha_val),
+                  value_text=None if dasha_val is None else str(dasha_val),
                   citation_human=(
                       f"{CONCURRENT_DASHA_LABELS[dasha_key]} during {cy_id} "
-                      f"{phase_name}: {dasha_val} ({ayanamsha_id})."
+                      f"{phase_name}: {_ga7_shown(dasha_key, dasha_val)} ({ayanamsha_id})."
                   ),
                   verification=_verif_for_text(dasha_val))
             )
@@ -1285,11 +1285,11 @@ def _emit_cycle_rows(
         ("mudda_lord", "Mudda (annual) dasha lord at cycle start"),
     ]:
         dk, desc = dasha_key
-        val = natal_facts.get(f"concurrent_{dk}_at_cycle_start", "PENDING_GA7_LOOKUP")
+        val = natal_facts.get(f"concurrent_{dk}_at_cycle_start")  # None: GA7 had no covering period
         rows.append(
             R(cat_do, cy_id, f"concurrent_{dk}",
-              value_text=str(val),
-              citation_human=f"{desc} for {cy_id}: {val} ({ayanamsha_id}).",
+              value_text=None if val is None else str(val),
+              citation_human=f"{desc} for {cy_id}: {_ga7_shown(f'concurrent_{dk}', val)} ({ayanamsha_id}).",
               verification=_verif_for_text(val))
         )
 
@@ -1878,6 +1878,31 @@ def _update_asset_throughput(chart_id: str, build_id: str, row_count: int) -> No
 
 
 # ── Materialized view refresh ─────────────────────────────────────────────────
+
+# ── GA7 concurrent-dasha value that GA7 could not supply ─────────────────────
+# (Defined here, not beside CONCURRENT_DASHA_LABELS, so no line-pinned site above it moves.)
+#
+# The writer used to store the literal string "PENDING_GA7_LOOKUP" as fact_value_text when the
+# real chart_dashas lookup returned nothing: a placeholder presented as a value (130 production
+# rows, every one concurrent_mudda_lord, where the mudda dasha table's horizon ends before the
+# Sade Sati phase date). An honest null beats an invented value (CLAUDE.md §N.7 item 6):
+# fact_value_text is NULL and the citation sentence carries the named reason. System and level
+# come from DASHA_LOOKUP_SPECS, the same table the lookup itself uses.
+GA7_NO_PERIOD_REASON = "no_ga7_period_covers_date"
+
+
+def _ga7_shown(concurrent_key: str, value: str | None) -> str:
+    """The value as narrated in citation_human: the real lord/sign, or the named reason."""
+    if value is not None:
+        return value
+    system_id, level_n = next(
+        (sys_id, lvl) for dk, sys_id, lvl in DASHA_LOOKUP_SPECS if f"concurrent_{dk}" == concurrent_key
+    )
+    return (
+        f"not available ({GA7_NO_PERIOD_REASON}: chart_dashas has no {system_id} "
+        f"level-{level_n} period covering this date)"
+    )
+
 
 SADE_SATI_MV = "mv_chart_sade_sati_lifetime_summary"
 
