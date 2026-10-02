@@ -6,7 +6,7 @@ branch: suvarna/land/TI-l1-panchanga-moon-sign-001
 basis: origin/main 8cf05f507
 changelog:
   - 1.0 — defect, fix, expected stored change (flip-detector hook entry), residual findings.
-  - 1.1 — (exact database name pinned) real-PG suite wording (runs in CI, fails never skips), disposable-DB guard, SQL derivations of the same formula and the (uu2) consequence (R2b).
+  - 1.1 — (exact database name pinned, multi-host/env guard, post-connect check) real-PG suite wording (runs in CI, fails never skips), disposable-DB guard, SQL derivations of the same formula and the (uu2) consequence (R2b).
 ---
 
 # chandra_bala_natal_baseline: birth Moon sign was derived from the nakshatra id
@@ -133,12 +133,17 @@ marked `integration`, so the generic sidecar job deselects it; it RUNS in the de
 DB-service job (`ga4_moon_sign_test`, no `-m` filter) and FAILS, never skips, under `GITHUB_ACTIONS=true`
 when `GA4_MOON_SIGN_TEST_DATABASE_URL` is missing or the database is unreachable; it skips only on a
 local run with the variable unset. Verified on a disposable PG 15 with production column types chart_id uuid, build_id uuid, computed_at timestamptz; synthetic rows only):
-18 tests passed. Safety: the fixture TRUNCATEs `chart_facts`, so it refuses (`REFUSED`) any DSN that is
-not loopback/unix-socket, any database not named EXACTLY `ga4_moon_sign_test` (a `<x>_test` pattern would
-let a staging copy be wiped), and any existing `chart_facts` carrying columns beyond the test's own minimal
-table; DB-free unit tests prove each refusal (including `pms_test`, `ga4_moon_sign_test_backup`,
-`madhav_prod_test`, `postgres`, remote hosts) and mutants of each rule go red; on a real PG the refused
-databases kept their rows. Five ayanamshas (Aquarius x4, Pisces for surya_siddhanta_classical) read exactly,
+19 tests passed. Safety: the fixture TRUNCATEs `chart_facts`, so it refuses (`REFUSED`) before connecting unless libpq's own
+parse (`conninfo_to_dict`, not `urlparse().hostname`, which sees only the first host of a multi-host DSN)
+shows every host/hostaddr entry is loopback or a unix socket, no comma/multi-host, no query-string override
+other than a socket `host`, no `service`, the database EXACTLY `ga4_moon_sign_test` (a `<x>_test` pattern
+would let a staging copy be wiped), and no PGHOST/PGHOSTADDR/PGSERVICE/PGDATABASE environment value that
+would redirect it; after connecting it requires `current_database()` to equal `ga4_moon_sign_test` and any
+TCP `inet_server_addr()` to be loopback; and it refuses an existing `chart_facts` carrying columns beyond
+the test's own minimal table. DB-free unit tests cover multi-host DSNs (with and without ports, a 10.x
+second host, reversed order, all-loopback), query overrides, key/value DSNs, environment overrides and the
+post-connect function; mutants of each rule go red (the netloc-comma check is redundant with the per-host
+check, so removing it alone stays green); on a real PG the refused targets kept their rows. Five ayanamshas (Aquarius x4, Pisces for surya_siddhanta_classical) read exactly,
 with decoys excluded (other graha, other key, other category, other chart, non-canonical ayanamsha);
 dict-row and tuple-row connections agree. Two build generations of the same key: the LATEST
 `computed_at` (the newest build) wins, because the newer build's fact supersedes the older one; an

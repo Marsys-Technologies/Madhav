@@ -68,22 +68,71 @@ class RefusedError(RuntimeError):
     """The disposable-database guard refused the connection target."""
 
 
-def require_disposable(dsn: str) -> str:
-    """Refuse unless `dsn` targets a LOCAL (loopback host or unix-socket) database named EXACTLY
-    `ga4_moon_sign_test`. This module TRUNCATEs `chart_facts`; a mis-set variable, or a staging
-    copy that merely ends in `_test`, must never be reachable. Returns the name."""
-    parsed = urlparse(dsn)
-    host = parsed.hostname or (parse_qs(parsed.query).get("host") or [""])[0]
-    local = host in _LOOPBACK or host.startswith("/") or host == ""
-    if not local:
-        raise RefusedError(f"REFUSED: DSN host {host!r} is not loopback / a unix socket")
-    name = (parsed.path or "").lstrip("/")
+def _is_local(entry: str) -> bool:
+    return entry == "" or entry in _LOOPBACK or entry.startswith("127.") or entry.startswith("/")
+
+
+def require_disposable(dsn: str, environ: "dict[str, str] | None" = None) -> str:
+    """Refuse unless EVERY connection target of `dsn` is local (loopback host or unix socket) and
+    the database is EXACTLY `ga4_moon_sign_test`. This module TRUNCATEs `chart_facts`; a mis-set
+    variable, a staging copy that merely ends in `_test`, a multi-host DSN that libpq would fail
+    over to a remote second host, a `?hostaddr=`/`?dbname=` override, or a PGHOST/PGHOSTADDR/
+    PGSERVICE/PGDATABASE environment override must never be reachable.
+
+    Validation is on libpq's OWN parse (`conninfo_to_dict`), never on `urlparse().hostname`
+    (which sees only the first host). Returns the database name."""
+    from psycopg.conninfo import conninfo_to_dict
+
+    env = os.environ if environ is None else environ
+    try:
+        parsed = urlparse(dsn)
+        d = conninfo_to_dict(dsn)
+    except Exception as exc:  # unparseable: refuse rather than guess
+        raise RefusedError(f"REFUSED: DSN is not parseable ({type(exc).__name__})") from exc
+    if "," in parsed.netloc:
+        raise RefusedError("REFUSED: multi-host DSN (',' in the host list): libpq would fail over")
+    if "://" in dsn:
+        extra = set(parse_qs(parsed.query)) - {"host"}
+        if extra:
+            raise RefusedError(f"REFUSED: DSN query-string overrides {sorted(extra)} are not allowed")
+    if d.get("service") or env.get("PGSERVICE"):
+        raise RefusedError("REFUSED: a PGSERVICE / service= entry can redirect the target")
+    # libpq falls back to the environment for whatever the DSN leaves unset; hostaddr from either
+    # source wins over host.
+    host = d.get("host") if d.get("host") is not None else env.get("PGHOST", "")
+    hostaddr = d.get("hostaddr") if d.get("hostaddr") is not None else env.get("PGHOSTADDR", "")
+    for label, value in (("host", host), ("hostaddr", hostaddr)):
+        if "," in value:
+            raise RefusedError(f"REFUSED: multi-valued {label} {value!r}: libpq would fail over")
+        if not _is_local(value):
+            raise RefusedError(f"REFUSED: {label} {value!r} is not loopback / a unix socket")
+    name = d.get("dbname", "")
     if name != EXPECTED_DB_NAME:
         raise RefusedError(
             f"REFUSED: database {name!r} is not the disposable {EXPECTED_DB_NAME!r}; "
             "this module TRUNCATEs chart_facts"
         )
+    if env.get("PGDATABASE") not in (None, "", EXPECTED_DB_NAME):
+        raise RefusedError(f"REFUSED: PGDATABASE={env['PGDATABASE']!r} environment override")
     return name
+
+
+def require_connected_to_disposable(current_database: str, server_addr: "str | None") -> None:
+    """Post-connect check on what the server actually is: `current_database()` must be exactly
+    `ga4_moon_sign_test` and, for a TCP connection, `inet_server_addr()` must be loopback
+    (NULL for a unix socket)."""
+    if current_database != EXPECTED_DB_NAME:
+        raise RefusedError(
+            f"REFUSED: connected to database {current_database!r}, not {EXPECTED_DB_NAME!r}"
+        )
+    if server_addr is not None and not _is_local(str(server_addr).split("/")[0]):
+        raise RefusedError(f"REFUSED: connected to non-loopback server address {server_addr!r}")
+
+
+def assert_connected_to_disposable(conn) -> None:
+    row = conn.execute("SELECT current_database(), inet_server_addr()::text").fetchone()
+    vals = list(row.values()) if isinstance(row, dict) else list(row)
+    require_connected_to_disposable(vals[0], vals[1])
 
 
 def require_minimal_table(existing_columns: set[str]) -> None:
@@ -109,8 +158,15 @@ def _connect(row_factory=None):
     if not URL:
         _no_database()
     import psycopg
+    require_disposable(URL)
     kw = {"row_factory": row_factory} if row_factory else {}
-    return psycopg.connect(URL, **kw)
+    c = psycopg.connect(URL, **kw)
+    try:
+        assert_connected_to_disposable(c)
+    except BaseException:
+        c.close()
+        raise
+    return c
 
 
 @pytest.fixture()
@@ -118,7 +174,6 @@ def conn():
     from psycopg.rows import dict_row
     if not URL:
         _no_database()
-    require_disposable(URL)
     c = _connect(dict_row)
     require_minimal_table({r["column_name"] for r in c.execute(
         "SELECT column_name FROM information_schema.columns "
@@ -271,3 +326,17 @@ def test_unrecognised_stored_sign_raises(conn, bad):
     with pytest.raises(RuntimeError, match="lahiri_chitrapaksha"):
         _emit_chandra_bala_baseline(CHART, "b", "t", "lahiri_chitrapaksha", got["lahiri_chitrapaksha"])
 
+
+
+def test_post_connect_check_accepts_the_disposable_and_refuses_another_database(conn):
+    assert_connected_to_disposable(conn)  # the fixture's own connection
+    import psycopg
+    other = URL.replace("/" + EXPECTED_DB_NAME, "/postgres")  # a real, different database
+    assert other != URL
+    c = psycopg.connect(other)
+    try:
+        assert c.execute("SELECT current_database()").fetchone()[0] == "postgres"
+        with pytest.raises(RefusedError, match="connected to database 'postgres'"):
+            assert_connected_to_disposable(c)
+    finally:
+        c.close()

@@ -245,36 +245,125 @@ def test_no_nakshatra_id_to_sign_formula_in_ga_writers():
 
 # ── (5) the real-Postgres module's disposable-database guard (DB-free unit tests) ─
 
+OK_DB = "ga4_moon_sign_test"
+
+
 @pytest.mark.parametrize("dsn", [
-    "postgresql://postgres:postgres@localhost:5432/ga4_moon_sign_test",
-    "postgresql://u@/ga4_moon_sign_test?host=/private/tmp/claude-504/pms",
-    "postgresql://u@127.0.0.1/ga4_moon_sign_test",
+    f"postgresql://postgres:postgres@localhost:5432/{OK_DB}",
+    f"postgresql://u@/{OK_DB}?host=/private/tmp/claude-504/pms",
+    f"postgresql://u@127.0.0.1/{OK_DB}",
+    f"postgresql://u@[::1]:5432/{OK_DB}",
+    f"host=localhost dbname={OK_DB} user=u",
+    f"host=/var/run/postgresql dbname={OK_DB}",
+    f"dbname={OK_DB}",  # no host at all: libpq default unix socket
 ])
 def test_guard_accepts_only_the_exact_local_database(dsn):
     from tests.test_ga4_chandra_bala_birth_sign_pg import require_disposable
-    assert require_disposable(dsn) == "ga4_moon_sign_test"
+    assert require_disposable(dsn, {}) == OK_DB
 
 
-@pytest.mark.parametrize("dsn", [
+REFUSED_DSNS = [
+    # other names
     "postgresql://u:p@localhost:5432/pms_test",
     "postgresql://u:p@localhost:5432/some_other_test",
-    "postgresql://u:p@localhost:5432/ga4_moon_sign_test_backup",
-    "postgresql://u:p@localhost:5432/staging_ga4_moon_sign_test",
+    f"postgresql://u:p@localhost:5432/{OK_DB}_backup",
+    f"postgresql://u:p@localhost:5432/staging_{OK_DB}",
     "postgresql://u:p@localhost:5432/GA4_MOON_SIGN_TEST",
     "postgresql://u:p@localhost:5432/madhav_prod_test",
     "postgresql://u:p@localhost:5432/postgres",
     "postgresql://u:p@localhost:5432/amjis",
     "postgresql://u:p@localhost:5432/chart_facts",
     "postgresql://u:p@localhost:5432/",
-    "postgresql://u:p@db.internal.example.com:5432/ga4_moon_sign_test",
-    "postgresql://u:p@10.0.0.5/ga4_moon_sign_test",
+    # remote single hosts
+    f"postgresql://u:p@db.internal.example.com:5432/{OK_DB}",
+    f"postgresql://u:p@10.0.0.5/{OK_DB}",
     "postgresql://u@/amjis?host=/cloudsql/proj:region:inst",
-    "postgresql://u@/ga4_moon_sign_test?host=db.example.com",
-])
-def test_guard_refuses_every_other_name_and_remote_hosts(dsn):
+    f"postgresql://u@/{OK_DB}?host=db.example.com",
+    # multi-host: libpq fails over to the later host (urlparse().hostname sees only the first)
+    f"postgresql://u:p@localhost:5432,db.prod.example.com:5432/{OK_DB}",
+    f"postgresql://u:p@localhost,db.prod.example.com/{OK_DB}",
+    f"postgresql://u:p@localhost,10.0.0.5/{OK_DB}",
+    f"postgresql://u:p@localhost:5432,10.0.0.5:5432/{OK_DB}",
+    f"postgresql://u:p@10.0.0.5,localhost/{OK_DB}",
+    f"postgresql://u:p@localhost,127.0.0.1/{OK_DB}",  # even all-loopback multi-host is refused
+    f"postgresql://u@/{OK_DB}?host=/a,db.example.com",
+    f"host=localhost,db.prod.example.com dbname={OK_DB}",
+    f"host=localhost,10.0.0.5 port=5432,5432 dbname={OK_DB}",
+    # query-string / keyword overrides
+    f"postgresql://u@localhost/{OK_DB}?hostaddr=10.0.0.5",
+    f"postgresql://u@localhost/{OK_DB}?dbname=amjis",
+    f"postgresql://u@localhost/{OK_DB}?service=prod",
+    f"postgresql://u@localhost/{OK_DB}?sslmode=require",
+    f"host=localhost hostaddr=10.0.0.5 dbname={OK_DB}",
+    f"host=localhost service=prod dbname={OK_DB}",
+    f"host=db.prod.example.com dbname={OK_DB}",
+    "host=localhost dbname=amjis",
+    # unparseable
+    "postgresql://u@[localhost/ga4_moon_sign_test",
+]
+
+
+@pytest.mark.parametrize("dsn", REFUSED_DSNS)
+def test_guard_refuses_every_other_target(dsn):
     from tests.test_ga4_chandra_bala_birth_sign_pg import RefusedError, require_disposable
     with pytest.raises(RefusedError, match="REFUSED"):
-        require_disposable(dsn)
+        require_disposable(dsn, {})
+
+
+@pytest.mark.parametrize("dsn, env", [
+    # the DSN leaves the host unset, so libpq takes PGHOST / PGHOSTADDR from the environment
+    (f"dbname={OK_DB}", {"PGHOST": "db.prod.example.com"}),
+    (f"dbname={OK_DB}", {"PGHOST": "localhost,db.prod.example.com"}),
+    (f"dbname={OK_DB}", {"PGHOST": "10.0.0.5"}),
+    (f"postgresql:///{OK_DB}", {"PGHOST": "db.prod.example.com"}),
+    # PGHOSTADDR wins over host even when the DSN names a local host
+    (f"dbname={OK_DB}", {"PGHOSTADDR": "10.0.0.5"}),
+    (f"host=localhost dbname={OK_DB}", {"PGHOSTADDR": "10.0.0.5"}),
+    (f"postgresql://u@localhost/{OK_DB}", {"PGHOSTADDR": "10.0.0.5"}),
+    (f"host=localhost dbname={OK_DB}", {"PGHOSTADDR": "10.0.0.5,127.0.0.1"}),
+    # service files can redirect everything; a database override changes the target
+    (f"dbname={OK_DB}", {"PGSERVICE": "prod"}),
+    (f"host=localhost dbname={OK_DB}", {"PGSERVICE": "prod"}),
+    (f"host=localhost dbname={OK_DB}", {"PGDATABASE": "amjis"}),
+])
+def test_guard_refuses_environment_overrides(dsn, env):
+    from tests.test_ga4_chandra_bala_birth_sign_pg import RefusedError, require_disposable
+    with pytest.raises(RefusedError, match="REFUSED"):
+        require_disposable(dsn, env)
+
+
+def test_guard_ignores_a_remote_PGHOST_that_libpq_itself_ignores():
+    """libpq ignores PGHOST when the DSN names a host, so the target is still local."""
+    from tests.test_ga4_chandra_bala_birth_sign_pg import require_disposable
+    assert require_disposable(f"host=localhost dbname={OK_DB}", {"PGHOST": "db.prod.example.com"}) == OK_DB
+
+
+def test_guard_allows_loopback_environment_values():
+    from tests.test_ga4_chandra_bala_birth_sign_pg import require_disposable
+    assert require_disposable(f"dbname={OK_DB}", {"PGHOST": "localhost", "PGDATABASE": OK_DB}) == OK_DB
+    assert require_disposable(f"dbname={OK_DB}", {"PGHOSTADDR": "127.0.0.1"}) == OK_DB
+
+
+def test_guard_reads_the_process_environment_by_default(monkeypatch):
+    from tests.test_ga4_chandra_bala_birth_sign_pg import RefusedError, require_disposable
+    monkeypatch.setenv("PGHOSTADDR", "10.0.0.5")
+    with pytest.raises(RefusedError, match="hostaddr"):
+        require_disposable(f"host=localhost dbname={OK_DB}")
+
+
+@pytest.mark.parametrize("db, addr, ok", [
+    (OK_DB, None, True), (OK_DB, "127.0.0.1", True), (OK_DB, "::1", True),
+    (OK_DB, "127.0.0.1/32", True),
+    (OK_DB, "10.0.0.5", False), (OK_DB, "10.0.0.5/32", False),
+    ("postgres", None, False), ("amjis", "127.0.0.1", False), ("ga4_moon_sign_test_backup", None, False),
+])
+def test_post_connect_check_pure(db, addr, ok):
+    from tests.test_ga4_chandra_bala_birth_sign_pg import RefusedError, require_connected_to_disposable
+    if ok:
+        require_connected_to_disposable(db, addr)
+    else:
+        with pytest.raises(RefusedError, match="REFUSED"):
+            require_connected_to_disposable(db, addr)
 
 
 def test_guard_refuses_to_truncate_a_chart_facts_that_looks_real():
