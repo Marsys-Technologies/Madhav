@@ -98,7 +98,7 @@ RO_PGOPTIONS = "-c default_transaction_read_only=on"
 # chart_dashas.verification_pass_status nor l1_tajik_varsha_year_lords, so it can neither confirm nor refute a hook about them.
 _OTHER = "W7 hand read-back: 'Other tables the detector never reads' in FLIP_DETECTOR_README.md"
 STANDING_NOT_CHECKED = (
-    {"id": "chart_dashas.tier", "table": "chart_dashas", "what": "chart_dashas verification_pass_status (mudda and narayana tier)",
+    {"id": "chart_dashas.tier", "table": "chart_dashas", "what": "chart_dashas verification_pass_status (mudda, narayana, yogini, ashtottari, chara_karaka, naisargika, vimshottari tier)",
      "reason": "the detector never compares the dasha tier column (when chart_dashas is compared at all, only row sets and start shifts)", "readback": "W7 hand read-back: chart_dashas tier SQL in FLIP_DETECTOR_README.md"},
     {"id": "l1_tajik_varsha_year_lords.tier", "table": "l1_tajik_varsha_year_lords", "what": "l1_tajik_varsha_year_lords verification_pass_status",
      "reason": "the table is not one of the four tables the detector reads", "readback": "W7 hand read-back: l1_tajik_varsha_year_lords tier SQL in FLIP_DETECTOR_README.md"},

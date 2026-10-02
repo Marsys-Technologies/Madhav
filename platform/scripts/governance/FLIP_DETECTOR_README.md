@@ -50,7 +50,7 @@ The detector prints, on every compare, one `NOT CHECKED` line per item below and
 
 | id | what it cannot check |
 |---|---|
-| `chart_dashas.tier` | `chart_dashas.verification_pass_status` (mudda and narayana tier changes). The detector never compares the tier column (when `chart_dashas` is compared at all it compares row sets and start shifts) |
+| `chart_dashas.tier` | `chart_dashas.verification_pass_status` (tier changes for mudda, narayana, yogini, ashtottari, chara_karaka, naisargika and vimshottari). The detector never compares the tier column (when `chart_dashas` is compared at all it compares row sets and start shifts) |
 | `l1_tajik_varsha_year_lords.tier` | `l1_tajik_varsha_year_lords.verification_pass_status`. The table is not one of the four tables the detector reads |
 | `chart_vichara` | `chart_vichara` (ga_vichara: row counts, dedupe, sorted `constituent_fact_ids`, leverage as-of). The table is not one of the four tables the detector reads, so **an empty flip report says nothing about ga_vichara**. W7 runs `00_ARCHITECTURE/briefs/suvarna/exec/s_l1_attribution_hooks/evidence/ga_vichara_writer_ACCEPTANCE.sql`; every row must read `ok = t` |
 
@@ -68,23 +68,26 @@ For a skipped table the summary prints `n/a  DASHA_SHIFT_UNDECLARED: NOT EVALUAT
 
 Also reported as NOT CHECKED (per hook entry, `declared_by_lanes` names the lane): any entry on `l1_tajik_varsha_year_lords`, any `chart_dashas` entry whose only change type is `tier`, and any `chart_dashas` / `panchanga_daily` entry when that table was not compared in the run (`--no-dashas`, `--no-daily`). Such an entry is never reported as DECLARED_BUT_ABSENT.
 
-`declared_by_lanes` for the two standing items lists the lanes whose hooks have an entry on that table. A lane that mentions the table only in its `description` text (as `tiers.json` does for the Tajik table) shows an empty list: add an entry with `"table": "l1_tajik_varsha_year_lords"` to the hook to link it.
+`declared_by_lanes` for the standing items lists the lanes whose hooks have an entry on that table (the `tiers` hook at 59c6efd46 has entries on `chart_dashas` and on `l1_tajik_varsha_year_lords`). A lane that mentions a table only in its `description` text shows an empty list: add an entry with that `table` to the hook to link it.
 
 ### W7 hand read-back for the two NOT CHECKED tier changes
 
 Run each query before the rebuild (save the output) and again after, for the chart compared, as a **read-only** reader (a SELECT-only role such as `suvarna_reader`, in a subshell that sources its own credentials; never write). Replace `<CHART_UUID>` (native: `482012f1-710e-4a25-994a-93821f5871aa`). The before/after outputs are compared by eye: the `tier` column is the only thing expected to move, and the `n` per (ayanamsha, system) must not change.
 
-`chart_dashas` (mudda and narayana), counts per tier value:
+`chart_dashas` (level 1 of every system the tier rule touches, plus non-KP vimshottari), counts per tier value:
 
 ```sql
-SELECT ayanamsha_id, system_id, verification_pass_status AS tier,
+SELECT ayanamsha_id, system_id, level_n, verification_pass_status AS tier,
        count(*) AS n, count(DISTINCT build_id) AS builds
 FROM chart_dashas
 WHERE chart_id = '<CHART_UUID>'
-  AND system_id IN ('mudda', 'narayana')
-GROUP BY ayanamsha_id, system_id, verification_pass_status
-ORDER BY ayanamsha_id, system_id, verification_pass_status;
+  AND system_id IN ('mudda', 'narayana', 'yogini', 'ashtottari', 'chara_karaka', 'naisargika', 'vimshottari')
+  AND level_n = 1
+GROUP BY ayanamsha_id, system_id, level_n, verification_pass_status
+ORDER BY ayanamsha_id, system_id, level_n, verification_pass_status;
 ```
+
+Drop the `level_n = 1` line to see every level (the rule is stated for level 1). `vimshottari_kp` is a different `system_id` and is not in this query.
 
 `l1_tajik_varsha_year_lords`, counts per tier value:
 
@@ -97,7 +100,15 @@ GROUP BY ayanamsha_id, verification_pass_status
 ORDER BY ayanamsha_id, verification_pass_status;
 ```
 
-What the `tiers` lane hook says to expect on the canonical chart (from its description; confirm against the hook that is actually merged): mudda 240 and narayana 105 level-1 rows `two_pass_verified` to `classical_match`; `l1_tajik_varsha_year_lords` 240 rows `two_pass_verified` to `single` (the `tiers` hook at 1a8405f16: "the three varsha checks are not a classical-table match"), not `classical_match`. If `builds` is above 1 for any line the table holds more than one build generation: stop and ask before reading the counts.
+**Expected tiers after the rebuild (SS final literals; the per-emitter transition table is `tiers_evidence_v1_3.json` in the tier-honesty lane, PR 2941 at 59c6efd46, `evidence/tiers_evidence_v1_3.json` once the integration brings it in):**
+
+| system, level 1 | tier after |
+|---|---|
+| `mudda` | `classical_match` |
+| `narayana`, `yogini`, `ashtottari`, `chara_karaka`, `naisargika` | `single` |
+| `vimshottari` (non-KP) | `two_pass_verified` |
+
+`l1_tajik_varsha_year_lords`: the canonical chart's 240 rows go `two_pass_verified` to `single` (the hook: "the three varsha checks are not a classical-table match"), not `classical_match`. Counts per system are the lane evidence's; confirm them against the hook that is actually merged. If `builds` is above 1 for any line the table holds more than one build generation: stop and ask before reading the counts.
 
 ## Exit codes
 
@@ -241,7 +252,7 @@ Repeat the same shape for `ga_condition_composite`, `ga_medical`, the `ga_vastu_
 
 ## Refreshing hooks_real
 
-`__tests__/fixtures/flip_detector/hooks_real/` holds **byte copies** of the hook files; `test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory` compares them live with the hook directory and fails on any missing, extra or changed file. Copies at these lane heads (2026-10-02): `karaka_roles.json` PR 2878 at 710b47ee1; `sun_required_rupa.json` PR 2893 at 150a273a8; `tiers.json` PR 2941 at 1a8405f16; `gandanta.json` PR 2892 at f2b7a1d3e; `special_lagna_offset.json` and `special_lagna_offset_other_charts.json` PR 2971 at 872724cbf; `argala.json` (seed) from the PR 2859 branch; `band_table.json` and `ga_condition_fallback.json` from `TI-l1-band-x2-001`; `karaka_dasha_roles.json` from `TI-l1-dashas-karaka-001`; `karaka_web_order.json` from `TI-l1-karaka-web-order-001`.
+`__tests__/fixtures/flip_detector/hooks_real/` holds **byte copies** of the hook files; `test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory` compares them live with the hook directory and fails on any missing, extra or changed file. Copies at these lane heads (2026-10-02): `karaka_roles.json` PR 2878 at 710b47ee1; `sun_required_rupa.json` PR 2893 at 150a273a8; `tiers.json` PR 2941 at 59c6efd46 (the lane's current `tiers.json`: it has the entries for the widened `chart_dashas` categories, `l1_tajik_varsha_year_lords` and the two counted `chart_facts` entries); `gandanta.json` PR 2892 at f2b7a1d3e; `special_lagna_offset.json` and `special_lagna_offset_other_charts.json` PR 2971 at 872724cbf; `argala.json` (seed) from the PR 2859 branch; `band_table.json` and `ga_condition_fallback.json` from `TI-l1-band-x2-001`; `karaka_dasha_roles.json` from `TI-l1-dashas-karaka-001`; `karaka_web_order.json` from `TI-l1-karaka-web-order-001`.
 
 At the merge of the S-L1 integration, from the repo root with the integration's tree checked out (or `FLIP_INTEGRATION_HOOKS_DIR` set to its `s_l1_attribution_hooks/` directory):
 

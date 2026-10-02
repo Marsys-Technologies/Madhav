@@ -651,6 +651,12 @@ def golden_before():
         s["chart_facts"].append([ay, "graha_shadbala_cheshta", "SUN", "cheshta", "", "40", "two_pass_verified"])
         s["chart_facts"].append([ay, "graha_in_house_composite_strength", "SUN_IN_HOUSE_1", "bphs_weighted", "", "0.81", "single"])
     s["chart_facts"].append(["INVARIANT", "graha_shadbala_total", "SUN", "required_rupa", "", "5", "classical_match"])
+    for ay in F.AYANS:
+        for n in range(49):                                                                  # special_lagna: 49 subjects x 5 ayanamshas = 245 rows (tiers[3] expects exactly 245)
+            s["chart_facts"].append([ay, "special_lagna", f"SL{n:02d}", "sign", "Aries", "", "two_pass_verified"])
+        for cusp in range(12):                                                               # kp_cuspal_significators: 12 cusps x 5 keys x 5 ayanamshas = 300 rows (tiers[4])
+            for key in ("sign_lord", "star_lord", "sub_lord", "sub_sub_lord", "cusp_degree_text"):
+                s["chart_facts"].append([ay, "kp_cuspal_significators", f"CUSP{cusp + 1}", key, "Sun", "", "two_pass_verified"])
     s["dashas"].append(["lahiri_chitrapaksha", "mudda", 1, "/Sun", "1984-02-05T10:43:00+00:00", "1985-02-05T10:43:00+00:00"])
     return s
 
@@ -672,6 +678,8 @@ def golden_after():
             r[6] = "single"                                                                 # tiers lane: 5 tier changes
         if r[1] == "graha_shadbala_total" and r[3] == "total":
             r[6] = "classical_match"                                                        # tiers lane: 5 tier changes
+        if r[1] in ("special_lagna", "kp_cuspal_significators"):
+            r[6] = "single"                                                                 # tiers lane: 245 + 300 tier changes (exact counts in tiers[3], tiers[4])
         if r[3] == "longitude_sidereal":
             r[5] = "327.055415"                                                             # continuous: ignored
     return s
@@ -752,8 +760,8 @@ def test_real_hooks_with_no_changes_list_exactly_the_entries_a_lane_author_must_
     absent = sorted(a.split(" (")[0].replace("DECLARED BUT ABSENT ", "") for a in rep["failures"]["DECLARED_BUT_ABSENT"])
     assert absent == ["argala[0]", "gandanta[1]", "karaka_dasha_roles[0]", "karaka_roles[0]", "karaka_roles[1]", "karaka_web_order[0]",
                       "sun_required_rupa[1]", "sun_required_rupa[2]", "sun_required_rupa[3]", "tiers[0]"]
-    # entries with an explicit count (gandanta[0] exact 50, sun_required_rupa[0] exact 1) fail by EXPECTATION_MISMATCH, never as absent
-    assert sorted(m.split(" (")[0].replace("EXPECTATION MISMATCH ", "") for m in rep["failures"]["EXPECTATION_MISMATCH"]) == ["gandanta[0]", "sun_required_rupa[0]"]
+    # entries with an explicit count (gandanta[0] exact 50, sun_required_rupa[0] exact 1, tiers[3] exact 245, tiers[4] exact 300) fail by EXPECTATION_MISMATCH, never as absent
+    assert sorted(m.split(" (")[0].replace("EXPECTATION MISMATCH ", "") for m in rep["failures"]["EXPECTATION_MISMATCH"]) == ["gandanta[0]", "sun_required_rupa[0]", "tiers[3]", "tiers[4]"]
     # the unobservable chart_dashas tier entry of tiers.json is NOT CHECKED, and the tiers chart_facts entry is checkable and absent
     nc = [n["id"] for n in rep["not_checked"]]
     assert "tiers[1]" in nc and "tiers[1]" not in absent
@@ -1528,7 +1536,7 @@ def test_f12_hooks_real_are_byte_copies_of_the_integration_hook_directory():
 def test_f12_readme_documents_the_refresh_procedure_and_the_copy_shas():
     text = (GOV_DIR / "FLIP_DETECTOR_README.md").read_text()
     assert "Refreshing hooks_real" in text and "FLIP_INTEGRATION_HOOKS_DIR" in text and "FLIP_DETECTOR_REGEN_GOLDEN=1" in text
-    for sha in ("710b47ee1", "150a273a8", "1a8405f16", "f2b7a1d3e", "872724cbf"):
+    for sha in ("710b47ee1", "150a273a8", "59c6efd46", "f2b7a1d3e", "872724cbf"):
         assert sha in text, sha
 
 
@@ -1550,3 +1558,14 @@ def test_f7_psql_runs_quiet_and_command_tags_are_never_data(tmp_path, monkeypatc
     assert F.read_state(NATIVE)["chart_facts"] == base_state()["chart_facts"]  # would raise on a stray BEGIN row if -q were missing
     fake_db(tmp_path, monkeypatch, mode="tags")
     assert F.read_state(NATIVE)["chart_facts"] == base_state()["chart_facts"]
+
+
+def test_ss_the_readme_states_the_final_dasha_tier_literals():
+    text = (GOV_DIR / "FLIP_DETECTOR_README.md").read_text()
+    assert "| `mudda` | `classical_match` |" in text
+    assert "| `narayana`, `yogini`, `ashtottari`, `chara_karaka`, `naisargika` | `single` |" in text
+    assert "| `vimshottari` (non-KP) | `two_pass_verified` |" in text
+    assert "tiers_evidence_v1_3" in text
+    for sysid in ("mudda", "narayana", "yogini", "ashtottari", "chara_karaka", "naisargika", "vimshottari"):
+        assert f"'{sysid}'" in text.split("`chart_dashas` (level 1 of every system", 1)[1].split("```", 2)[1]
+    assert "narayana 105 level-1 rows" not in text and "two_pass_verified` to `classical_match`; `l1_tajik" not in text
