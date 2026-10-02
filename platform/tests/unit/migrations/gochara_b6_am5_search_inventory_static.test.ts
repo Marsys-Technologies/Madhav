@@ -162,6 +162,18 @@ describe('B6.0 F-1 migration 1206 (AM-5 search completeness) — static contract
     }
   })
 
+  it('PC-4: the verification FK cascades from the inventory header (a rebuild invalidates a stale verification)', () => {
+    expect(exec).toMatch(/kgsv_header_fk FOREIGN KEY \(chart_id, generation, event_class\)\s+REFERENCES public\.ka_gochara_search_inventory \(chart_id, generation, event_class\) ON DELETE CASCADE/)
+  })
+
+  it('PC-4: the builder is granted NOTHING on the inventory verification table (the verifier principal writes it)', () => {
+    const tableGrants = [...exec.matchAll(/GRANT SELECT, INSERT, DELETE ON([^;]+);/g)].map(m => m[1]!)
+    expect(tableGrants).toHaveLength(1)
+    expect(tableGrants[0]).not.toContain('ka_gochara_search_inventory_verification')
+    for (const t of SIX_TABLES.filter(x => x !== 'ka_gochara_search_inventory_verification')) expect(tableGrants[0]).toContain(t)
+    expect(exec).not.toMatch(/ka_gochara_search_inventory_verification[^;]*TO data_plane_builder/)
+  })
+
   it('R6: the builder gets EXPLICIT, signature-qualified EXECUTE on exactly 17 functions — never PUBLIC, never a seal-side function', () => {
     const grants = [...exec.matchAll(/GRANT EXECUTE ON FUNCTION([^;]+);/g)].map(m => m[1]!)
     expect(grants).toHaveLength(2)
