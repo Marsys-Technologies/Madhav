@@ -27,7 +27,7 @@ What it proves (§N.8 — each assertion measures the claim it names):
      executemany(_INSERT_SQL, …)) lands as an authenticated
      data_plane_builder connection, and the rows read back.
   3. FORBIDDEN — CREATE TABLE in schema public as the builder is refused.
-  4. IDEMPOTENT — the seven real grant migrations apply a second time as a
+  4. IDEMPOTENT — the eight real grant migrations apply a second time as a
      no-op and the insert path still works.
 
 FINDING, NOW CLOSED: until migration 1231 (PR #2906) no migration in this repo
@@ -39,7 +39,9 @@ now records the verified production ACL, so the fixture applies it as the
 sixth real grant migration and the mirror is gone. Migration 1237 (Pravāha
 C16) likewise records the builder's production kala_gochara_windows ACL
 (C15's finding) — the fixture builds that table from the real 460 file
-(below) so the seventh grant migration applies verbatim here too.
+(below) so the seventh grant migration applies verbatim here too. Migration
+1238 (Pravāha C18) does the same for kala_gochara_windows_v2 (C16's flag) —
+the fixture builds that table from the real 542 file (below) for the eighth.
 
 Requires a THROWAWAY database; skipped unless C7_BUILDER_ROLE_TEST_DATABASE_URL
 is set:
@@ -90,10 +92,13 @@ DERIVED_GRANT_TARGETS = {
     # 1237's grant target (C16): built from the real 460 file so the grant
     # migration applies verbatim (its BIGSERIAL creates the id sequence).
     "kala_gochara_windows": "460_kala_gochara_windows.sql",
+    # 1238's grant target (C18): built from the real 542 file (under
+    # supabase/migrations) so the grant migration applies verbatim.
+    "kala_gochara_windows_v2": "542_kala_gochara_windows_v2.sql",
 }
 
 def _build_schema_as_owner(conn) -> dict:
-    """The whole surface the seven grant migrations touch plus the resonance
+    """The whole surface the eight grant migrations touch plus the resonance
     writer's schema — every object created AS amjis_app, from the real files."""
     applied: dict = {"rehearsal": None, "derived_grant_targets": {}, "contract_ddl": []}
     with BR.as_owner(conn):
@@ -180,7 +185,7 @@ def test_control_mirror_is_deployment_faithful(builder_world):
         "AND has_function_privilege('public', p.oid, 'EXECUTE')"
     ).fetchone()[0]
     assert public_exec == 0
-    # And the fixture applied all seven real grant migrations.
+    # And the fixture applied all eight real grant migrations.
     assert [Path(p).name for p in BR.grant_migration_files()] == builder_world["applied"]["grant_migrations"]
 
 
