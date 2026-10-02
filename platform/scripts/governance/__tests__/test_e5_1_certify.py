@@ -275,12 +275,12 @@ def test_verified_by_is_required_and_verified_on_is_stamped_tz_aware(ledger):
 # ───────────────────────── R1: detector NONE ─────────────────────────
 
 def test_r1_pass_on_a_detector_none_criterion_is_refused(ledger):
-    assert ac.CRITERION_REGISTRY["Carr.D1"]["detector"] == "NONE"
-    refused(ledger, "detector_none", criterion="Carr.D1")
+    assert ac.CRITERION_REGISTRY["Carr.D2"]["detector"] == "NONE"
+    refused(ledger, "detector_none", criterion="Carr.D2")
 
 
 def test_r1_a_census_cell_reading_pass_on_a_detector_none_criterion_is_refused_too(ledger):
-    refused(ledger, "detector_none", criterion="Carr.D1", verdict=None, cell=dict(v="PASS"))
+    refused(ledger, "detector_none", criterion="Carr.D2", verdict=None, cell=dict(v="PASS"))
 
 
 @pytest.mark.parametrize("verdict", ["FAIL", "PARTIAL", "ERRORED", "N/A"])
@@ -308,7 +308,7 @@ def test_r1_registry_entry_turning_none_makes_a_pass_refused(ledger, monkeypatch
 
 
 def test_r1_a_caller_supplied_detector_cannot_override_the_registry(ledger):
-    refused(ledger, "detector_mismatch", criterion="Carr.D1", detector="my_detector.py")
+    refused(ledger, "detector_mismatch", criterion="Carr.D2", detector="my_detector.py")
     refused(ledger, "detector_mismatch", detector="something_else")
     assert nc.write_certification(**kw(ledger, detector="asset_census.py:measure()")).status == "appended"
 
@@ -1551,7 +1551,7 @@ def test_registry_revision_change_is_a_changed_measurement(ledger, monkeypatch):
 
 def test_a_refused_request_after_a_good_one_still_writes_nothing(ledger):
     nc.write_certification(**kw(ledger))
-    refused(ledger, "detector_none", criterion="Carr.D1")
+    refused(ledger, "detector_none", criterion="Carr.D2")
     refused(ledger, "no_census_run_id", evidence={})
     refused(ledger, "census_required", census_path=None)
     assert len(lines(ledger)) == 2
@@ -1698,7 +1698,7 @@ def test_the_schema_row_and_the_append_are_byte_stable(tmp_path):
 def test_r9_a_refused_request_does_not_create_the_ledger_even_with_init(tmp_path):
     p = tmp_path / "new.jsonl"
     with pytest.raises(nc.CertificationRefused):
-        nc.write_certification(**kw(p, init=True, criterion="Carr.D1"))
+        nc.write_certification(**kw(p, init=True, criterion="Carr.D2"))
     assert not p.exists()
     refused(p, "census_required", init=True, census_path=None)
     assert not p.exists()
@@ -1719,7 +1719,7 @@ def test_zero_byte_ledger_without_init_is_refused_and_a_refused_init_never_remov
     p.write_bytes(b"")
     refused(p, "bad_ledger")
     refused(p, "upstream_unknown", init=True, upstream_cert_ids=["bg_x|gate|Build.registered@1"])
-    refused(p, "detector_none", init=True, criterion="Carr.D1")
+    refused(p, "detector_none", init=True, criterion="Carr.D2")
     assert p.exists() and p.read_bytes() == b""                              # untouched, NOT unlinked
 
 
@@ -2569,7 +2569,7 @@ def test_cli_appends_then_reports_unchanged_and_exits_zero(ledger):
 def test_cli_refusal_exits_2_names_the_code_and_writes_nothing(ledger):
     before = ledger.read_bytes()
     args = cli_args(ledger)
-    args[args.index("Build.registered")] = "Carr.D1"
+    args[args.index("Build.registered")] = "Carr.D2"
     p = cli(args)
     assert p.returncode == 2 and "detector_none" in p.stderr
     assert ledger.read_bytes() == before

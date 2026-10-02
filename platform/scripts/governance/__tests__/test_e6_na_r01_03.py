@@ -29,7 +29,8 @@ N65_IDS = frozenset({
     *(f"{c}#measured:no-prose" for c in NARR),
 })
 PIN10_IDS = frozenset({"Build.dep_liveness#measured:no-declared-dependencies", "Earn.service_state#measured:not-a-service"})   # SS N-72
-DECLARED_IDS = N65_IDS | PIN10_IDS          # the exact production table since REGISTRY_REVISION 10
+S2_IDS = frozenset(f"Carr.D{i}#measured:not-the-declared-carriage" for i in (1, 2, 3))              # SS N-72 S2, N-73
+DECLARED_IDS = N65_IDS | PIN10_IDS | S2_IDS     # the exact production table since REGISTRY_REVISION 11
 R01_ASSETS = ("bg_gochara_citation_resolution", "bg_nakshatra_medical", "bg_sarvatobhadra_grid", "bg_sign_medical",
               "bg_transit_engine", "lel_events")
 R02_ASSETS = ("bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division")
@@ -47,7 +48,7 @@ def test_exactly_the_approved_rules_are_declared_and_they_validate():
     assert set(ac.NA_RULE_DECISIONS) == DECLARED_IDS
     ac.validate_na_rule_decisions()
     for rid, why in ac.NA_RULE_DECISIONS.items():
-        assert re.fullmatch(r"[A-Za-z]+\.[a-z_]+#measured:[a-z0-9-]+", rid), rid          # cause-keyed, nothing else
+        assert re.fullmatch(r"[A-Za-z]+\.[A-Za-z0-9_]+#measured:[a-z0-9-]+", rid), rid          # cause-keyed, nothing else
         crit, _, cause = rid.partition("#measured:")
         assert cause in ac.NA_CAUSES[crit], rid
         assert "N-22" in why, (rid, why)                                                      # every rule cites its decisions
@@ -56,7 +57,8 @@ def test_exactly_the_approved_rules_are_declared_and_they_validate():
 
 def test_no_rule_beyond_the_ruling_is_declared():
     ids = set(ac.NA_RULE_DECISIONS)
-    assert not [i for i in ids if i.startswith(("Null.", "Carr.", "Count.", "Complete.", "Vocab.", "Ldgr.", "Idem."))]
+    assert not [i for i in ids if i.startswith(("Null.", "Count.", "Complete.", "Vocab.", "Ldgr.", "Idem."))]
+    assert not [i for i in ids if i.startswith("Carr.") and i not in S2_IDS]            # no no-carriage / not-chosen / ratified_judgment rule
     assert not [i for i in ids if i.startswith("Earn.") and i != "Earn.service_state#measured:not-a-service"]    # Earn.build_record stays held
     assert not [i for i in ids if i.startswith("Build.") and i not in ("Build.history#measured:never-run",
                                                                       "Build.dep_liveness#measured:no-declared-dependencies")]

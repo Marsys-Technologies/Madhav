@@ -64,11 +64,15 @@ def _restore_pre_retirement(monkeypatch):
     """Rebuild the revision-7 inspector around the real rollup code: the criterion back in the registry, nothing retired."""
     reg = dict(ac.CRITERION_REGISTRY)
     reg["Carr.detector"] = dict(OLD_CARR_DETECTOR)
+    reg["Carr.D1"] = dict(reg["Carr.D1"], detector="NONE", revision=1,           # revision 11 gave Carr.D1 a detector
+                          applicability="the asset restates a value from a cited source (source correspondence)")
     monkeypatch.setattr(ac, "CRITERION_REGISTRY", reg)
     monkeypatch.setattr(ac, "RETIRED_CRITERIA", {}, raising=False)
     reg["Narr.agree"] = dict(reg["Narr.agree"], applicability=NARR_AGREE_REV7)    # its text said "undecided" until revision 9
     causes = dict(ac.NA_CAUSES)
     causes.pop("Earn.service_state", None)                 # revision 10 added `not-a-service`; revision 7 had no cause there
+    for c in D_CHECKS:                                      # revision 11 added the two declaration-keyed Carr causes
+        causes[c] = ("no-carriage",)
     monkeypatch.setattr(ac, "NA_CAUSES", causes)
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {})      # revision 7 declared no rule (revision 9 declares three: they are fingerprinted)
 
@@ -77,7 +81,7 @@ def _no_carriage_causes(monkeypatch):
     """E6 item (f) (merged, REGISTRY_REVISION 7) registers the cause `no-carriage` for D1-D3; here only the RULE
     declarations are emulated (NA_RULE_DECISIONS is {} in the repo until SS approves them). The cause itself is asserted,
     not re-injected, so a change to NA_CAUSES cannot hide behind this helper."""
-    assert all(ac.NA_CAUSES.get(c) == ("no-carriage",) for c in D_CHECKS)
+    assert all("no-carriage" in ac.NA_CAUSES.get(c, ()) for c in D_CHECKS)
     monkeypatch.setattr(ac, "NA_RULE_DECISIONS", {f"{c}#measured:no-carriage": "N-22 (emulated declaration)" for c in D_CHECKS})
 
 
@@ -201,7 +205,9 @@ def test_P2_a_measured_pass_on_d1_d3_still_reads_no_detector():
         ms = dict(ms, **{c: dict(v="PASS", measured="hypothetical PASS (proof only)") for c in D_CHECKS})
         cell = ac.rollup_asset(L, ms)["Carr"]
         assert cell["v"] == "NO_DETECTOR", a
-        assert all("detector NONE never reaches PASS" in c["reason"] for c in cell["checks"])
+        # D2 and D3 are detector NONE (D1 got a detector in revision 11 and a measured D1 PASS is honoured)
+        assert all("detector NONE never reaches PASS" in c["reason"] for c in cell["checks"] if c["criterion"] != "Carr.D1")
+        assert all(c["v"] == "NO_DETECTOR" for c in cell["checks"])      # and a bare D1 PASS (no verified evidence) is not honoured either
 
 
 def test_P3_ceiling_reads_na_on_exactly_the_six_after_the_retirement_and_not_before(monkeypatch):
@@ -483,9 +489,9 @@ def test_clamp_a_measured_partial_on_all_of_d1_d3_still_reads_no_detector():
     """Detector NONE never earns a graded verdict above FAIL: PASS and PARTIAL both clamp to NO_DETECTOR (chosen
     behaviour; before the clamp was extended PARTIAL on D1-D3 would have given Carr PARTIAL, which the retired
     Carr.detector had hidden by reading NO_DETECTOR)."""
-    cell = ac.rollup_asset("L2", {c: dict(v="PARTIAL", measured="x") for c in D_CHECKS})["Carr"]
+    cell = ac.rollup_asset("L2", {c: dict(v="PARTIAL", measured="x") for c in ("Carr.D2", "Carr.D3")})["Carr"]
     assert cell["v"] == "NO_DETECTOR"
-    assert all("detector NONE never reaches PARTIAL" in c["reason"] for c in cell["checks"])
+    assert all("detector NONE never reaches PARTIAL" in c["reason"] for c in cell["checks"] if c["criterion"] != "Carr.D1")
 
 
 def test_clamp_a_measured_fail_on_a_detector_none_check_is_still_a_fail():
