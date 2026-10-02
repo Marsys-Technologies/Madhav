@@ -77,8 +77,8 @@ describe('getConditionCompositeCapability', () => {
     expect(getConditionCompositeCapability.input_schema).toHaveProperty('varga_fallback_used')
   })
 
-  it('varga_fallback_used filter is param-bound (true and "false" both accepted); junk is ignored, not guessed', async () => {
-    for (const [arg, expected] of [[true, true], ['false', false], ['yes', null]] as const) {
+  it('varga_fallback_used filter is param-bound (true and "false" both accepted); absent means no filter', async () => {
+    for (const [arg, expected] of [[true, true], ['false', false], [undefined, null], ['', null]] as const) {
       mockQuery.mockReset()
       mockQuery
         .mockResolvedValueOnce({ rows: [] })
@@ -95,6 +95,16 @@ describe('getConditionCompositeCapability', () => {
     }
   })
 
+  it('an invalid varga_fallback_used value is an explicit error, never read as "no filter"', async () => {
+    for (const bad of ['yes', 1, 0, 'TRUE-ish', {}]) {
+      mockQuery.mockReset()
+      const result = await getConditionCompositeCapability.handler({ chart_id: CHART_ID, varga_fallback_used: bad }, undefined)
+      expect(result.is_error).toBe(true)
+      expect(String((result.content as Record<string, unknown>)['error'])).toContain('varga_fallback_used must be true or false')
+      expect(mockQuery).not.toHaveBeenCalled()   // no query runs with a filter the caller did not mean
+    }
+  })
+
   it('counts D1-fallback rows in the page and over the full filtered set, separately, with a note', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [
@@ -102,7 +112,7 @@ describe('getConditionCompositeCapability', () => {
         { graha: 'Moon', condition_score: 0.61,  varga_fallback_used: false },
         { graha: 'Mars', condition_score: null,  varga_fallback_used: null },
       ] })
-      .mockResolvedValueOnce({ rows: [{ total: '135', d1_fallback_total: '90', divisional_total: '45' }] })
+      .mockResolvedValueOnce({ rows: [{ total: '135', d1_fallback_total: '90' }] })
     const result = await getConditionCompositeCapability.handler({ chart_id: CHART_ID }, undefined)
     const content = result.content as Record<string, unknown>
     expect(content['d1_fallback_rows_in_page']).toBe(1)
@@ -116,7 +126,7 @@ describe('getConditionCompositeCapability', () => {
   it('no D1-fallback rows: count is 0 and no note is shown', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ graha: 'Sun', condition_score: 0.3, varga_fallback_used: false }] })
-      .mockResolvedValueOnce({ rows: [{ total: '45', d1_fallback_total: '0', divisional_total: '45' }] })
+      .mockResolvedValueOnce({ rows: [{ total: '45', d1_fallback_total: '0'  }] })
     const result = await getConditionCompositeCapability.handler({ chart_id: CHART_ID }, undefined)
     const content = result.content as Record<string, unknown>
     expect(content['d1_fallback_rows_in_page']).toBe(0)

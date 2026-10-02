@@ -33,10 +33,16 @@ const MAX_LIMIT = 50
 const VARGA_FALLBACK_SQL =
   "CASE condition_score_breakdown->>'varga_fallback_used' WHEN 'true' THEN true WHEN 'false' THEN false END"
 
-function parseBoolFilter(v: unknown): boolean | null {
-  if (v === true || v === 'true') return true
-  if (v === false || v === 'false') return false
-  return null
+// Absent (undefined / null / '') means "no filter" (null). A value that is present but not a
+// recognisable boolean is an explicit error, never silently read as "no filter": 'yes' returning
+// every row would present an unfiltered set as if the caller's filter had been honoured.
+type BoolFilter = { ok: true; value: boolean | null } | { ok: false; error: string }
+
+function parseBoolFilter(name: string, v: unknown): BoolFilter {
+  if (v === undefined || v === null || v === '') return { ok: true, value: null }
+  if (v === true || v === 'true') return { ok: true, value: true }
+  if (v === false || v === 'false') return { ok: true, value: false }
+  return { ok: false, error: `${name} must be true or false (got ${JSON.stringify(v)})` }
 }
 
 export const getConditionCompositeCapability: CapabilityDescriptor = {
@@ -97,7 +103,9 @@ export const getConditionCompositeCapability: CapabilityDescriptor = {
 
     const graha        = args['graha'] ? String(args['graha']) : null
     const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
-    const varga_fallback_used = parseBoolFilter(args['varga_fallback_used'])
+    const fallbackFilter = parseBoolFilter('varga_fallback_used', args['varga_fallback_used'])
+    if (!fallbackFilter.ok) return { content: { error: fallbackFilter.error }, is_error: true }
+    const varga_fallback_used = fallbackFilter.value
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
     const filters: string[] = ['chart_id = $1']
@@ -126,10 +134,9 @@ export const getConditionCompositeCapability: CapabilityDescriptor = {
     try {
       const [rowsRes, countRes] = await Promise.all([
         query(sql, [...params, limit]),
-        query<{ total: string; d1_fallback_total?: string; divisional_total?: string }>(
+        query<{ total: string; d1_fallback_total?: string }>(
           `SELECT COUNT(*)::text AS total,
-                  COUNT(*) FILTER (WHERE ${VARGA_FALLBACK_SQL} IS TRUE)::text  AS d1_fallback_total,
-                  COUNT(*) FILTER (WHERE ${VARGA_FALLBACK_SQL} IS FALSE)::text AS divisional_total
+                  COUNT(*) FILTER (WHERE ${VARGA_FALLBACK_SQL} IS TRUE)::text AS d1_fallback_total
            FROM ga_condition_composite WHERE ${where}`,
           params,
         ),
