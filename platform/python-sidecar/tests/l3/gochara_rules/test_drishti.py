@@ -75,9 +75,12 @@ def test_registry_effect_text_states_the_same_fractions():
 
 
 # ── version binding + canonical input adaptation (Codex R4/R5) ─────────────────────────────────
-def test_the_result_carries_the_factor_ref_of_the_caller_version():
+def test_the_result_carries_the_factor_ref_of_the_caller_version(monkeypatch):
+    import copy
     assert graduated_drishti("Mars", 4)["factor"] == drishti.FACTOR_REF               # default 1.0.0
-    for ref in [k for k in FACTORS if k[0] == "graduated_drishti"]:                   # every registered version, incl. 1.1.0 once #2897 lands
+    # a second registered version (as #2897 adds): stand-in copy so the binding is exercised on main too
+    monkeypatch.setitem(FACTORS, ("graduated_drishti", "1.1.0"), {**copy.deepcopy(FACTORS[drishti.FACTOR_REF]), "rule_version": "1.1.0"})
+    for ref in [k for k in FACTORS if k[0] == "graduated_drishti"]:                   # every registered version
         r = graduated_drishti("Mars", 4, factor_ref=ref)
         assert r["factor"] == ref and r["value"] == 1.0
         assert graduated_drishti("Pluto", 4, factor_ref=ref)["factor"] == ref          # the null result is labelled too
