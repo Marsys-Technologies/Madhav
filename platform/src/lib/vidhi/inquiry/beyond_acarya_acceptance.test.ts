@@ -87,8 +87,8 @@ const historicalV12 = {
   report_hash: 'sha256:fe396729f26232dcfd950da18619c79283d46c6408e767ca8428d4a387fc9cde',
   artifact_hash: 'sha256:cb9895cf6847a0e5f73669d28d4d57b783e35417bc72b9cb3a5045d4022edcf6',
 } as const
-// The Suvarna Track I-4 census-flip successor of v12. Immutable since the Pravāha A5.7
-// ka_gochara registry-revert (migration 1230) snapshot regen (v14) superseded it.
+// The Suvarna Track I-4 census-flip successor of v12. Immutable since the Suvarna tool-text wave 1
+// regeneration (v14) superseded it.
 const historicalV13 = {
   capability_content_hash: 'sha256:6c1aefca7601a9b7204471e0a3ccc03fe8ffa31819e5800b0d5e36fe83e156a8',
   report_hash: 'sha256:c0322d170afc3c8138f7ada1173476956b58b709a55f9c042a2f1899f24ad862',
@@ -149,13 +149,13 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // blocked contract. This moved capability_content_hash/producer_contract_fingerprint and, with
     // them, report_hash; no SCU, edge, proof kind or availability disposition changed (the metric
     // assertions above are unchanged). Only this pinned hash was re-pinned.
-    // Pravāha A5.7 ka_gochara registry revert (v14): migration 1230 reverts the ka_gochara
-    // registry row to the pre-1091 registered-writer surface (kala_gochara_windows_v2 /
-    // generation '2.0'), moving capability_content_hash/producer_contract_fingerprint and, with
-    // them, report_hash; no SCU, edge, proof kind or availability disposition changed (the metric
-    // assertions above are unchanged). Only this pinned hash was re-pinned. (Re-verified on the
-    // main-merged tree 2026-10-02 after a stale tsx cache was found replaying main's catalog.)
-    expect(report.report_hash).toBe('sha256:fac8feed351a211bd218a856bffdf9e6fa5214ced8acb7161531f9cc70a3059f')
+    // Suvarna tool-text wave 1 (v14): seven tool-text commits (get_argala virodha offsets,
+    // get_ayurdaya source_refs anchor, the 7-/8-karaka scheme statements, register_d9_judgment
+    // formation-gap sentence, chart-overview scheme note) changed capability descriptions, which
+    // moved source_catalog_fingerprint/semantic_review_fingerprint/content_hash and, with them,
+    // report_hash; producer_contract_fingerprint is unchanged and the metric assertions above are
+    // unchanged. Only this pinned hash was re-pinned.
+    expect(report.report_hash).toBe('sha256:0899b303104a534f2222d5845bd1cb1ac1061a0b25b736307bdbcaa0c63e8a88')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -497,7 +497,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('keeps the v13 source-successor artifact immutable after the Pravāha A5.7 ka_gochara registry-revert advance', () => {
+  it('keeps the v13 source-successor artifact immutable after the Suvarna tool-text wave 1 advance', () => {
     const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v13.json',
       import.meta.url,
@@ -519,7 +519,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v14 source-successor artifact to the current executable report without claiming live acceptance (Pravāha A5.7 ka_gochara registry revert)', () => {
+  it('pins the v14 source-successor artifact to the current executable report without claiming live acceptance (Suvarna tool-text wave 1)', () => {
     const artifact = JSON.parse(readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v14.json',
       import.meta.url,
@@ -577,11 +577,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      // Pravāha A5.7 (PR #2889): migration 1230 reverts the ka_gochara registry row to the
-      // pre-1091 registered-writer surface (kala_gochara_windows_v2 / generation '2.0'); the
-      // snapshot is regenerated on the main-merged tree with a cleared tsx module cache
-      // (steward M20261002T014731-66ad).
-      evaluated_source_revision: '07b1a091834c394beda06b68a917621854a0f0ab',
+      // Suvarna tool-text wave 1 (PR #2876): description corrections; the snapshot is regenerated
+      // (source_catalog/semantic_review fingerprints and content_hash moved; producer_contract unchanged).
+      evaluated_source_revision: '1a973a22b936c3db96ee2cf65cfe825689a44f9a',
     })
   })
 })
