@@ -295,6 +295,33 @@ def _p3_obligation_bytes(event_class: str, chart: Mapping[str, Any],
     return sorted(set(out))
 
 
+# ── P1 prerequisite (2): the verifier's OWN period-lord relation (R11-2) ───────────────────────────────────
+
+def period_lord_relation(lord: str, event_class: str, chart: Mapping[str, Any]) -> dict[str, str]:
+    """The natal bhāva relationship of a period lord to the event class (spec §2.2 relation-kind table; Phaladīpikā
+    XX.34–38), derived HERE from this verifier's own class table and sign lordships — it shares NO code with the builder's
+    `gochara_rules.permission.period_lord_relation` (a defect there must not make builder and verifier agree; an import test
+    holds the line). Returns {relation, licence} with licence ∈ {scored, testimony, none}:
+
+      * H unknown for the class ⇒ relation `unknown`, licence `none`;
+      * the lord OCCUPIES a signature house, or (a non-node) OWNS one ⇒ scored;
+      * its DISPOSITOR (the lord of its natal sign) occupies a signature house, or (a non-node dispositor) owns one ⇒
+        testimony (annotates, never licenses); otherwise `none`."""
+    if event_class in _UNKNOWN_H or event_class not in _CLASS:
+        return {"relation": "unknown", "licence": "none"}
+    h_signs = set(_h_and_lords(event_class, chart)[0])
+    natal = chart["natal"]
+    if lord in natal and _sign_index(natal[lord]) in h_signs:
+        return {"relation": "occupancy", "licence": "scored"}
+    owned = {_SIGN_LORD[_SIGNS[i]] for i in h_signs}
+    if lord not in _NODES and lord in owned:
+        return {"relation": "ownership", "licence": "scored"}
+    disp = _SIGN_LORD[_SIGNS[_sign_index(natal[lord])]]
+    if (disp in natal and _sign_index(natal[disp]) in h_signs) or (disp not in _NODES and disp in owned):
+        return {"relation": "dispositorship", "licence": "testimony"}
+    return {"relation": "none", "licence": "none"}
+
+
 # ── pins and the digest preimage (1206 / draft §AM-5 item 3) ─────────────────
 
 def derive_path_pin(event_class: str, chart: Mapping[str, Any], path_id: str,
@@ -549,7 +576,7 @@ def write_verification(conn: Any, *, chart_id: str, generation: str, event_class
                            "changed inventory replaces the chain (verification included)")
 
 
-__all__ = ["Unverifiable", "SCOPE_EXCLUDED_AGENTS", "excluded_agents_of_scope", "bound_excluded_agents", "VERIFIER_ID", "VERIFIER_VERSION", "derive_path_pin",
+__all__ = ["period_lord_relation", "Unverifiable", "SCOPE_EXCLUDED_AGENTS", "excluded_agents_of_scope", "bound_excluded_agents", "VERIFIER_ID", "VERIFIER_VERSION", "derive_path_pin",
            "inventory_preimage", "read_chart", "rederive_inventory_digest",
            "rederive_ledger_digest",
            "write_verification"]

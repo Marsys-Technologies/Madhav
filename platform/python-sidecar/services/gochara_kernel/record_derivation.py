@@ -295,37 +295,55 @@ def verify_path_records(conn, *, chart_id: str, generation: str, event_class: st
 
 def verify_p1_results(conn, *, chart_id: str, generation: str, event_class: str, rule_version: str, chart: Mapping[str, Any],
                       policy: str | None) -> dict:
-    """The P1 predicates the support verifier does not cover, the operator role / provenance / ruling, the admission and the
-    result policy — per stored P1 record. (The record SET is certified by `verify_p1_anchors`; the support and the
-    `period_running_at` result by `verify_p1_support`.)"""
-    from services.gochara_rules import permission
+    """R11-2: every stored P1 record against an independent derivation of ALL its semantic fields. The record SET with its exact
+    CARDINALITY (per contact, the multiset of (anchor lord, level)) is certified by `verify_p1_anchors`; the support and the
+    `period_running_at` result by `verify_p1_support`; here, per record: agent, relation, target and contact identity (the
+    record states exactly its contact's body / relation / object), affected PERSON, object ROLE and KIND, frame, anchor,
+    EXACTLY the declared prerequisites (no missing, no extra, no duplicate row), every prerequisite's truth, the admission
+    they imply, and the operator role / provenance / ruling — against values this verifier derives with its OWN period-lord
+    relation (`inventory_verifier.period_lord_relation`: no `gochara_rules.permission` code, an import test holds the line)."""
+    from .inventory_verifier import Unverifiable, _frame_person, period_lord_relation
     declared = declared_predicates(conn, "P1", rule_version)
     stored = stored_path_records(conn, chart_id=chart_id, generation=generation, event_class=event_class,
                                  path_id="P1", rule_version=rule_version)
-    anchors = {r[0]: (r[1], r[2]) for r in _rows(conn.execute(
-        "SELECT record_id::text, period_anchor_lord, period_anchor_level FROM public.ka_gochara_relationship_record"
-        " WHERE chart_id = %s AND generation = %s AND event_class = %s AND path_id = 'P1' AND rule_version = %s",
-        (chart_id, generation, event_class, rule_version)))}
+    meta = {r[0]: r[1:] for r in _rows(conn.execute(
+        "SELECT r.record_id::text, r.period_anchor_lord, r.period_anchor_level, r.object_kind,"
+        " (SELECT count(*) FROM public.ka_gochara_record_prerequisite p WHERE p.record_id = r.record_id)"
+        " FROM public.ka_gochara_relationship_record r WHERE r.chart_id = %s AND r.generation = %s AND r.event_class = %s"
+        " AND r.path_id = 'P1' AND r.rule_version = %s", (chart_id, generation, event_class, rule_version)))}
     problems = result_policy_problems(stored, policy)
-    pc = {"lagna_deg": chart["lagna"], "natal": {k.title(): v for k, v in chart["natal"].items()}}
-    contact_ids = {c["id"] for c in stored_contacts(conn, chart_id, generation)}
+    contacts = {c["id"]: c for c in stored_contacts(conn, chart_id, generation)}
+    frame, person = _frame_person(event_class)
     for r in stored:
-        lord, level = anchors.get(r["id"], (None, None))
-        try:
-            rel = permission.period_lord_relation(str(lord).title(), event_class, pc)
-        except KeyError:
-            rel = {"relation": "unknown", "licence": "none"}
+        lord, level, kind, n_prereq = meta.get(r["id"], (None, None, None, 0))
+        c = contacts.get(r["contact"])
+        if c is None:
+            problems.append(f"record {r['id']}: its contact {r['contact']} is not a stored contact")
+        elif (r["agent"], r["relation"], r["target"]) != (c["body"], c["relation"], c["target"]):
+            problems.append(f"record {r['id']}: states ({r['agent']}, {r['relation']}, {r['target']}) but its contact is "
+                            f"({c['body']}, {c['relation']}, {c['target']})")
+        elif r["relation"] != "residence":
+            problems.append(f"record {r['id']}: P1 records are transit RESIDENCE readings, not {r['relation']!r}")
+        for field, got, want in (("affected person", r["person"], person), ("object role", r["role"], "period_lord"),
+                                 ("object kind", kind, "house_span"), ("frame", r["frame"], "dasha_lord")):
+            if got != want:
+                problems.append(f"record {r['id']}: {field} {got!r}, derived {want!r}")
+        if lord is None or level not in ("md", "ad", "pd"):
+            problems.append(f"record {r['id']}: anchor ({lord!r}, {level!r}) is not an anchor")
+        rel = period_lord_relation(str(lord), event_class, chart)
         want = {"natal_bhava_relationship": ("unknown" if rel["relation"] == "unknown"
                                              else ("true" if rel["licence"] in ("scored", "testimony") else "false")),
-                "transit_relation": "true" if r["contact"] in contact_ids else "false"}
+                "transit_relation": "true" if c is not None else "false"}
         got = r["results"]
+        if n_prereq != len(declared) or sorted(got) != sorted(declared):
+            problems.append(f"record {r['id']}: prerequisite rows {n_prereq} / predicates {sorted(got)} are not exactly the "
+                            f"declared {sorted(declared)}")
         for pid in declared:
             if pid == "period_running_at":
                 continue                                            # verify_p1_support's (derived from the daśā rows)
             if pid not in want:
-                from .inventory_verifier import Unverifiable
                 raise Unverifiable(f"P1: declared prerequisite {pid!r} has no independent derivation in the verifier")
-            elif got.get(pid) != want[pid]:
+            if got.get(pid) != want[pid]:
                 problems.append(f"record {r['id']}: {pid} stored {got.get(pid)!r}, derived {want[pid]!r}")
         results = [got.get(p, "unknown") if p == "period_running_at" else want.get(p, "unknown") for p in declared]
         if r["admission"] != admission_of(results):

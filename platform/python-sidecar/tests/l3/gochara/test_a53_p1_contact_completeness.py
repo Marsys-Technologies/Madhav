@@ -92,7 +92,7 @@ def test_a_contact_carrying_only_two_of_its_readings_fails(world):
     w.conn.execute("DELETE FROM public.ka_gochara_relationship_record WHERE (period_anchor_lord, period_anchor_level)"
                    " NOT IN (('sun','ad'), ('saturn','ad'))")          # keep the two readings the fixture materialised
     # the fixture materialised (Sun AD) + (Saturn AD) only: the Sun's own MD/PD readings of the SAME contact are missing
-    with pytest.raises(RuntimeError, match="anchors stored"):
+    with pytest.raises(RuntimeError, match="anchored records stored"):
         _anchors(w)
 
 
@@ -121,7 +121,7 @@ def test_a_contact_with_every_anchored_record_omitted_is_caught(world):
     _fully_anchored(w)
     w.conn.execute("DELETE FROM public.ka_gochara_relationship_record WHERE path_id = 'P1'")
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_contact").fetchone()[0] >= 1
-    with pytest.raises(RuntimeError, match=r"anchors stored \[\] != derived"):
+    with pytest.raises(RuntimeError, match=r"anchored records stored \[\] != derived"):
         _anchors(w)
 
 

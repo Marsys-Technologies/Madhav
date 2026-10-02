@@ -157,16 +157,11 @@ def expected_p1_anchors(agent: str, sign_index: int) -> set[tuple[str, str]]:
 
 
 def _testimony_lords(natal: dict, lagna: float, event_class: str) -> set[str]:
-    from services.gochara_rules import permission
-    chart = {"lagna_deg": lagna, "natal": {k.title(): v for k, v in natal.items()}}
-    out = set()
-    for g in _GRAHAS7:
-        try:
-            if permission.period_lord_relation(g.title(), event_class, chart)["licence"] == "testimony":
-                out.add(g)
-        except KeyError:
-            pass
-    return out
+    """The period lords whose natal relation to the class is `testimony` — from THIS verifier's own relation
+    (`inventory_verifier.period_lord_relation`, R11-2): no shared code with the builder's `permission` module."""
+    from .inventory_verifier import period_lord_relation
+    chart = {"lagna": lagna, "natal": natal}
+    return {g for g in _GRAHAS7 if period_lord_relation(g, event_class, chart)["licence"] == "testimony"}
 
 
 def expected_p1_contacts(position_at, lo, hi, *, excluded_agents) -> list[dict]:
@@ -228,7 +223,8 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
         "   ON o.physical_object_id = c.physical_object_id"
         " WHERE c.chart_id = %s AND c.generation = %s AND c.relation_kind = 'residence'"
         "   AND o.canonical_target LIKE 'span:%%'", (chart_id, generation)).fetchall()]
-    by_contact: dict[str, set] = {}
+    from collections import Counter
+    by_contact: dict[str, Counter] = {}
     role_problems: list[str] = []
     for cid, lord, level, role, prov, ruling in (tuple(r.values()) if isinstance(r, dict) else tuple(r)
                                                  for r in conn.execute(
@@ -236,7 +232,7 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
             " FROM public.ka_gochara_relationship_record"
             " WHERE chart_id = %s AND generation = %s AND event_class = %s AND path_id = 'P1'"
             "   AND contact_id IS NOT NULL", (chart_id, generation, event_class)).fetchall()):
-        by_contact.setdefault(cid, set()).add((lord, level))
+        by_contact.setdefault(cid, Counter())[(lord, level)] += 1       # R11-2: a MULTISET — a duplicate record counts
         # R9-5: the PD level is explicitly authorised TESTIMONY (own literals); MD and AD are the verse's scored readings
         want = (("testimony", "uncited_extension", PD_RULING) if level == "pd" else ("scored", "verse_cited", None))
         if (role, prov, ruling) != want:
@@ -252,7 +248,7 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
     problems: list[str] = []
     matched: set[str] = set()
     for e in expected:
-        want = {a for a in e["anchors"] if a[0] not in testimony}
+        want = Counter({a: 1 for a in e["anchors"] if a[0] not in testimony})
         hit = None
         for cid, body, target, t_in, t_out, dl in stored:
             if body == e["agent"] and target == e["target"]:
@@ -266,9 +262,10 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
             problems.append(f"expected contact {label} is not in the ledger (omitted, or its support differs)")
             continue
         matched.add(hit)
-        have = by_contact.get(hit, set())
+        have = by_contact.get(hit, Counter())
         if have != want:
-            problems.append(f"contact {label}: anchors stored {sorted(have)} != derived {sorted(want)}")
+            problems.append(f"contact {label}: anchored records stored {sorted(have.elements())} != derived "
+                            f"{sorted(want.elements())} (exact cardinality; a duplicate or missing record fails)")
     for cid in sorted(set(by_contact) - matched):          # P1 records on a contact the ephemeris does not reconstruct
         problems.append(f"contact {cid} carries P1 records but is not a reconstructed in-sign interval")
     problems.extend(role_problems)
