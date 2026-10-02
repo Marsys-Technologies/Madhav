@@ -54,6 +54,34 @@ PHASE3_HOOKS = {
 }
 
 
+# The EXACT set of hook lanes (HOOKS_W7_HAND_READBACK Part 1): deleting or adding a hook file must fail a test, not just shrink
+# the parametrised suites (107 tests = these 22 lanes x the generic per-hook proofs + the static / scenario tests).
+EXPECTED_HOOK_STEMS = frozenset({
+    "argala",
+    "argala_other_charts",
+    "ashtakavarga_bindu_contributor",
+    "band_table",
+    "chandra_bala_birth_moon_sign",
+    "dasha_scope_cap",
+    "ga_condition_fallback",
+    "ga_strength_invariant_rows",
+    "ga_structural_chart_geometry",
+    "ga_vargas_invariant_sentinels",
+    "gandanta",
+    "karaka_dasha_roles",
+    "karaka_roles",
+    "karaka_web_order",
+    "karaka_web_order_other_charts",
+    "sade_sati_placeholder_null",
+    "special_lagna_offset",
+    "special_lagna_offset_other_charts",
+    "sun_required_rupa",
+    "tiers",
+    "tiers_other_charts",
+    "yamakantaka",
+})
+
+
 def _load_detector():
     if not DETECTOR.exists():
         return None
@@ -230,6 +258,9 @@ def _failures(rep):
 def test_hook_directory_shape():
     hooks = _load_hooks()
     assert hooks, "the hook directory has no top-level *.json"
+    assert {p.stem for p in _hook_files()} == EXPECTED_HOOK_STEMS, (
+        sorted(EXPECTED_HOOK_STEMS - {p.stem for p in _hook_files()}), sorted({p.stem for p in _hook_files()} - EXPECTED_HOOK_STEMS))
+    assert len(_hook_files()) == 22
     for stem, h in hooks.items():
         assert h.get("lane") == stem, f"{stem}.json: lane must equal the file stem"
         for i, e in enumerate(h["may_change"]):
@@ -609,6 +640,41 @@ PINNED_RANGE = {
     ("ga_structural_chart_geometry", 3): (0, 15),
     ("ga_structural_chart_geometry", 4): (0, 85),
 }
+
+
+# EVERY entry of EVERY hook, in order (None = the entry declares no count): a count, a bound or an entry added, dropped or
+# re-ordered in any hook fails here, including the entries the PINNED_EXACT / PINNED_RANGE tables above do not name.
+PINNED_ENTRY_COUNTS = {
+    'argala': [{'exact': 156}, {'exact': 3444}, {'exact': 0}, {'exact': 0}, {'exact': 0}],
+    'argala_other_charts': [{'min': 1, 'max': 360}, {'min': 1, 'max': 7200}, {'exact': 0}, {'exact': 0}, {'exact': 0}],
+    'ashtakavarga_bindu_contributor': [{'exact': 3360}],
+    'band_table': [{'exact': 0}],
+    'chandra_bala_birth_moon_sign': [{'exact': 9}, {'exact': 0}, {'exact': 0}],
+    'dasha_scope_cap': [{'exact': 1}],
+    'ga_condition_fallback': [{'exact': 0}],
+    'ga_strength_invariant_rows': [{'exact': 0}],
+    'ga_structural_chart_geometry': [{'min': 0, 'max': 45}, {'min': 0, 'max': 30}, {'min': 0, 'max': 315}, {'min': 0, 'max': 15}, {'min': 0, 'max': 85}],
+    'ga_vargas_invariant_sentinels': [{'exact': 1}],
+    'gandanta': [{'exact': 50}, {'exact': 0}, {'min': 0, 'max': 15}],
+    'karaka_dasha_roles': [{'exact': 0}],
+    'karaka_roles': [{'exact': 35}, {'exact': 5}, {'exact': 35}, {'min': 30, 'max': 60}, {'exact': 0}, {'exact': 0}],
+    'karaka_web_order': [{'min': 950, 'max': 1300}],
+    'karaka_web_order_other_charts': [{'min': 1}],
+    'sade_sati_placeholder_null': [{'exact': 30}, {'exact': 10}],
+    'special_lagna_offset': [{'exact': 0}, {'exact': 0}],
+    'special_lagna_offset_other_charts': [{'min': 0, 'max': 120}, {'exact': 0}],
+    'sun_required_rupa': [{'exact': 1}, {'exact': 0}, {'exact': 120}, {'exact': 120}, {'exact': 240}, {'exact': 0}, {'exact': 0}],
+    'tiers': [{'exact': 19870}, None, None, {'exact': 245}, {'exact': 300}],
+    'tiers_other_charts': [{'min': 16900, 'max': 22750}, {'exact': 480}, {'exact': 40}, None, None, {'exact': 245}, {'exact': 300}],
+    'yamakantaka': [{'exact': 35}],
+}
+
+
+def test_every_entry_count_of_every_hook_is_pinned():
+    hooks = _load_hooks()
+    assert set(PINNED_ENTRY_COUNTS) == set(hooks) == set(EXPECTED_HOOK_STEMS)
+    for lane, counts in PINNED_ENTRY_COUNTS.items():
+        assert [e.get("expected_count") for e in hooks[lane]["may_change"]] == counts, lane
 
 
 def test_pinned_counts_match_the_lane_evidence():
