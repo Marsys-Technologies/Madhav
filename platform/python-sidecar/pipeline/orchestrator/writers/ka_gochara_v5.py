@@ -64,6 +64,8 @@ from services.gochara_kernel.record_store import (RecordStore,
                                                   materialise_record_grain,
                                                   write_class_coverage)
 from services.gochara_kernel import inventory as gk_inventory
+from services.gochara_kernel import window_sweep as gk_window_sweep
+from services.gochara_kernel.window_store import WindowStore
 from services.gochara_kernel import inventory_verifier as gk_verifier
 from services.gochara_kernel import ledger as gk_ledger
 from services.gochara_kernel.dasha_read import load_pinned_vimshottari
@@ -83,6 +85,8 @@ CONVENTION_SUBSTEP = "convention"
 BODY_SUBSTEP_PREFIX = "body:"
 COVERAGE_SUBSTEP_PREFIX = "coverage:"
 RECORD_SUBSTEP_PREFIX = "record:"
+# design v1.5: the window sweep — `window:<class>:<path>` after the class's record grains.
+WINDOW_SUBSTEP_PREFIX = "window:"
 # AM-5 (v1.5 amendments; migration 1206): the search-completeness chain.
 MANIFEST_SUBSTEP = "manifest"
 SNAPSHOT_SUBSTEP = "snapshot"
@@ -105,6 +109,10 @@ GENERATION = "5.0"
 # brief §interval_sweep + the batch list). The hold is a plan-level absence,
 # never a silent skip: the substep labels say so.
 RECORD_PATHS = tuple(p for p in BOUND_PATHS if p != "P5")
+# Window grains: the paths the sweep has an evaluator for (P3/P4 first; P2, then P1, are later
+# increments). A path absent here is a plan-level absence, named in the substep labels of the
+# paths that DO run — never a silent skip inside a grain.
+WINDOW_PATHS = tuple(p for p in RECORD_PATHS if p in gk_window_sweep.PATH_CHANNEL)
 # birth_anchor is excluded from enumeration entirely (O-CF-N6: zero rows) — it is NOT a
 # scored class (27 − 1 = 26); the evaluator refuses it by design, so planning it would
 # crash the build at its first substep.
@@ -232,6 +240,12 @@ class GocharaV5Writer(WriterBase):
                               "(residence + point solves + natal facts)")
                 for pid in RECORD_PATHS
             )
+            steps.extend(
+                SubStep(key=f"{WINDOW_SUBSTEP_PREFIX}{event_class}:{pid}",
+                        label=f"window sweep {event_class}/{pid} (connected union of admitted "
+                              "supports; score/evidence at the peak; unqualified stays NULL)")
+                for pid in WINDOW_PATHS
+            )
             steps.append(SubStep(
                 key=f"{VERIFY_SUBSTEP_PREFIX}{event_class}",
                 label=f"independent inventory verification: {event_class}"))
@@ -256,7 +270,8 @@ class GocharaV5Writer(WriterBase):
                 and not step.key.startswith(VERIFY_SUBSTEP_PREFIX)
                 and not step.key.startswith(BODY_SUBSTEP_PREFIX)
                 and not step.key.startswith(COVERAGE_SUBSTEP_PREFIX)
-                and not step.key.startswith(RECORD_SUBSTEP_PREFIX)):
+                and not step.key.startswith(RECORD_SUBSTEP_PREFIX)
+                and not step.key.startswith(WINDOW_SUBSTEP_PREFIX)):
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"unknown substep {step.key!r}")
         if ctx.dry_run:
@@ -289,6 +304,8 @@ class GocharaV5Writer(WriterBase):
             return self._run_inventory_phase(ctx, step, chart_id)
         if step.key.startswith((COVERAGE_SUBSTEP_PREFIX, RECORD_SUBSTEP_PREFIX)):
             return self._run_record_phase(ctx, step, chart_id)
+        if step.key.startswith(WINDOW_SUBSTEP_PREFIX):
+            return self._run_window_phase(ctx, step, chart_id)
         body = step.key[len(BODY_SUBSTEP_PREFIX):]
         if body not in SUBSTRATE_BODIES:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
@@ -565,6 +582,58 @@ class GocharaV5Writer(WriterBase):
                    f"{dasha_contract['build_id'] if dasha_contract['read'] else 'not_read'}"))
 
     # ------------------------------------------------------------------
+
+    def _run_window_phase(self, ctx: ContextSpec, step: SubStep, chart_id: str) -> WriterResult:
+        """`window:<class>:<path>` (chart lock already held — substrate order, N13): the grain's
+        stored records → connected-union windows (`window_sweep`) → delete-then-insert
+        (`window_store`) → an independent SQL recomputation of the union. Reads the factor rows
+        the records' own `rule_version` is sealed against; writes nothing it cannot derive —
+        unqualified windows keep NULL score/evidence/peak and a named reason."""
+        event_class, path_id = step.key[len(WINDOW_SUBSTEP_PREFIX):].split(":", 1)
+        if event_class not in SCORED_CLASSES or path_id not in WINDOW_PATHS:
+            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
+                                notes=f"unknown window grain {step.key!r}")
+        ephe_path = ctx.config.get("ephe_path")
+
+        def position_at(body: str, t: datetime) -> float:
+            jd = t.timestamp() / 86400.0 + _JD_UNIX_EPOCH
+            lon, retflag = calc_sidereal_lon(body.title(), jd, ephe_path)
+            if not (retflag & 2):
+                raise RuntimeError(
+                    f"position probe {body} @ {t.isoformat()}: retflag {retflag} lacks the "
+                    "Swiss bit (F-14 — a Moshier fallback is a named failure, never a silent probe)")
+            return lon
+
+        store = WindowStore(ctx.db_conn)
+        versions = [r[0] for r in ctx.db_conn.execute(
+            "SELECT DISTINCT rule_version FROM public.ka_gochara_relationship_record"
+            " WHERE chart_id = %s AND generation = %s AND event_class = %s AND path_id = %s"
+            " ORDER BY 1", (chart_id, GENERATION, event_class, path_id)).fetchall()]
+        windows = memberships = 0
+        excluded: dict = {}
+        unqualified = 0
+        for version in versions:        # the path→version map comes from the records, not a constant
+            records = store.read_grain(
+                chart_id=chart_id, generation=GENERATION, event_class=event_class,
+                path_id=path_id, rule_version=version, position_at=position_at)
+            drafts, ex = gk_window_sweep.draft_windows(
+                event_class, records, gk_window_sweep.registry_factor_rows)
+            counts = store.replace_grain_windows(
+                chart_id=chart_id, generation=GENERATION, event_class=event_class,
+                path_id=path_id, rule_version=version, drafts=drafts)
+            store.verify_grain(chart_id=chart_id, generation=GENERATION, event_class=event_class,
+                               path_id=path_id, rule_version=version)
+            windows += counts["windows"]
+            memberships += counts["memberships"]
+            unqualified += sum(1 for d in drafts if d.score is None)
+            for k, v in ex.items():
+                excluded[k] = excluded.get(k, 0) + v
+        return WriterResult(
+            asset_id=self.asset_id, rows_inserted=windows + memberships,
+            notes=(f"{event_class}/{path_id}: {windows} window(s) ({unqualified} unqualified — "
+                   f"score/evidence/peak NULL, severity NULL by ruling), {memberships} "
+                   f"membership row(s); excluded records {excluded}; independent SQL union "
+                   "check passed"))
 
     @staticmethod
     def _take_chart_lock(ctx: ContextSpec, chart_id: str) -> None:

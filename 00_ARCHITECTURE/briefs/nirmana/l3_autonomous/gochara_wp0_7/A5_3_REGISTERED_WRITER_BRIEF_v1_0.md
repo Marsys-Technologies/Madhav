@@ -456,3 +456,57 @@ version) — membership rows are immutable and the N16 seal check re-validates t
    evaluator, and what `severity` is for a window whose path scores are `unqualified` (named null, not 0).
 Also still open from earlier (unchanged): the P1 `dasha_lord` house anchor, the manifest
 `input_generation_vector` content for `'5.0'`, the P2/P5 verifier derivation, and the writer capability flags.
+
+### Design v1.6 (2026-10-02) — the window sweep for P3/P4, on the steward's rulings (M20261002T001617-5a34 / -dd2f)
+
+Landed (`window_sweep.py` pure · `window_store.py` · writer substeps `window:<class>:<P3|P4>` planned after
+the class's record grains, before `verify:<class>`):
+
+- **Stored per window** (one path-version × class): `interval` = the connected union of the admitted
+  records' half-open supports (abutting `[a,b)`,`[b,c)` are one set; no threshold, no clipping);
+  `peak_instant` = earliest instant of the max; `score` = max member within-path product (for-channel),
+  NULL when no member is qualified; `evidence_for/_against` = per-channel Σ over roots of the per-root max
+  at the peak, never netted, NULL when unqualified; `outcome_valence_for_native` =
+  `valence.compute_valence` at the peak; `severity` = NULL (named null) always; `null_states_used` = the
+  null states actually applied.
+- **Kernel read from the factor row** (ruling 3): `activity_kernel` evaluates the row's own
+  `applicability` (`span` kinds ⇒ membership step with the row's `inside` value; `angular` kinds ⇒ `1 − |Δλ|/orb_deg`
+  with the ROW's orb). No `applicability` ⇒ every record's operand is unqualified (`applicability_undeclared`)
+  — today's 1.0.0 row, and exactly what is stored. A null `orb_deg` ⇒ `unqualified (orb_not_ratified)`.
+  Both registry states are tested (a row declaring applicability lights the SAME records up with no code
+  change; a skip-guarded test runs against the real `activity_kernel@1.1.0` the moment #2897 is on main).
+- **Path → version from the records**, not a constant: the substep reads each grain's distinct
+  `rule_version` from its records and the factor rows from that version. Nothing here binds 1.1.0 —
+  binding (A's `rule_binding`) waits for #2897 to be Codex-accepted.
+- **graduated_drishti**: aspect records only (declared by the row's `applicability.relations`); the source is
+  CALLED through an injected `drishti(agent, offset)` — Stream B's `services/gochara_rules/drishti.py` once
+  it lands (#2894), never a copy. Until then an aspect record's operand is the named missing input
+  `graduated_drishti_source_not_landed`. The aspect house-offset operand is derived from the body's sign at t.
+- **Interior extrema** (§7.2 inv 2, O-SM-4): bracketed scan + golden-section refinement per support piece
+  (parabola test: endpoints 0, interior max found); plateau ⇒ earliest instant; cross-member ties within 1e-6
+  (the maximiser's own 1 s resolution) resolve to the earlier instant.
+- **Independent check**: after every grain write, Postgres `range_agg` over the stored admitted scored
+  records' supports is compared with the stored windows, and the membership set with the admitted records
+  — shares no code with `union_components`.
+- **Mutation-checked**: latest peak (3 fail), abutting-not-merged (4), sum-all-records-not-per-root (1),
+  unqualified-admission-as-member (1), testimony-weighs (1), not-applicable-as-missing (12),
+  missing-as-1 (8), zero tie tolerance (1), endpoint-only maximisation (2), severity 0 (4).
+
+Judgement calls (each flagged to the steward; none is a doctrine ruling):
+ 1. Window membership = `admitted` ∧ `operator_role='scored'` records with a computed support. A
+    `not_admitted` record is pruned by a false necessary predicate; an admission-`unqualified` record (an
+    unknown prerequisite) is not an *admitted* record, so it forms no window — it stays in the record table
+    and the coverage counts; testimony never weighs (§1.2 inv 2).
+ 2. P3/P4 records all land in the FOR channel (no against-direction operand exists in either path), so
+    `evidence_against` is the evaluated 0.0 of an empty sum on a qualified window and NULL on an unqualified one.
+ 3. A mixed window (some members qualified, some not) scores from its qualified members, per
+    `path_channel_scores`, and discloses the rest through `null_states_used`.
+
+Still open: P2 (vedha overlay rows) and P1 (dignity/nature/combustion/maitrī at the peak instant) sweeps — the
+sweep refuses those paths by name; P5 stays held; `graduated_drishti` source; the 1.1.0 binding; ND-ORB
+(point-kernel operands stay unqualified until ruled); `day_on_demand`.
+
+**Activation checklist (one routine migration in 1230–1249, at activation):** `ka_gochara_v5` registry row —
+`depends_on`, `has_substeps = true`, and a `count_sql` that counts what the writer actually writes
+(`ka_gochara_eval_window` for the chart, not `kala_gochara_windows`), plus the stale skeleton
+`english_description`.

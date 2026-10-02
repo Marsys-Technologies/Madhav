@@ -194,21 +194,25 @@ def test_plan_is_rules_then_convention_then_eight_bodies_moon_excluded():
 
 def test_plan_then_interleaves_class_inventory_coverage_records_and_verification():
     """Per class: the AM-5 inventory FIRST (the partition is aligned to it), then the
-    coverage partition, the P1–P4 record grains (P5 held — D7), then the independent
-    verification. manifest → snapshot precede every class; birth_anchor is not planned."""
+    coverage partition, the P1–P4 record grains (P5 held — D7), the window grains of the paths
+    the sweep has an evaluator for (P3/P4), then the independent verification.
+    manifest → snapshot precede every class; birth_anchor is not planned."""
     w = writer_mod.GocharaV5Writer()
     keys = [s.key for s in w.plan_substeps(_ctx())]
     assert keys[10:12] == ["manifest", "snapshot"]
     rest = keys[12:]
     classes = writer_mod.SCORED_CLASSES
     assert len(classes) == 26 and "birth_anchor" not in classes
-    per = 1 + 1 + len(writer_mod.RECORD_PATHS) + 1
+    assert writer_mod.WINDOW_PATHS == ("P3", "P4")
+    per = 1 + 1 + len(writer_mod.RECORD_PATHS) + len(writer_mod.WINDOW_PATHS) + 1
     assert len(rest) == len(classes) * per
     for i, event_class in enumerate(classes):
         block = rest[i * per:(i + 1) * per]
         assert block[0] == f"inventory:{event_class}"
         assert block[1] == f"coverage:{event_class}"
-        assert block[2:-1] == [f"record:{event_class}:{pid}" for pid in ("P1", "P2", "P3", "P4")]
+        assert block[2:6] == [f"record:{event_class}:{pid}" for pid in ("P1", "P2", "P3", "P4")]
+        # a window grain is planned only AFTER the records it reads
+        assert block[6:-1] == [f"window:{event_class}:{pid}" for pid in ("P3", "P4")]
         assert block[-1] == f"verify:{event_class}"
     assert not any(":P5" in k for k in keys)
 
