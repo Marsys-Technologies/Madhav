@@ -50,10 +50,40 @@ _SIGN_LORD = {"aries": "mars", "taurus": "venus", "gemini": "mercury", "cancer":
               "pisces": "jupiter"}
 _GRAHAS = ("sun", "moon", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu")
 _NODES = ("rahu", "ketu")      # agents and targets, but they cast no dṛṣṭi (N-14)
-#: AM-4 (pin 6; steward ruling M20261002T000907-c058 (a)): the Moon is an EPHEMERAL tier — a build
-#: stores no Moon-agent TRANSIT contact or record, so the stored enumeration never lists the Moon as
-#: a transit agent. (Derived here independently of the builder's own rule; natal facts are unaffected.)
-_EPHEMERAL_TIER_AGENTS = ("moon",)
+# AM-4 / AM-14 / R9-10: which bodies the stored tier never holds as a TRANSITING agent is read from the
+# generation's MANIFEST scope and passed down to every derivation that enumerates bodies (the expected
+# obligation set here, the expected P1 contact set in record_verifier) — there is no hard-coded exclusion at
+# the point of use. This table is the verifier's OWN (nothing imported from the builder): scope → the bodies
+# the stored tier never holds as a transiting agent. It says nothing about natal targets, the Moon frame, or
+# anchor lords — the Moon in those roles stays. An unknown scope is not guessed: the verifier refuses.
+SCOPE_EXCLUDED_AGENTS: dict[str, tuple[str, ...]] = {
+    "stored_non_moon": ("moon",),
+}
+
+
+def excluded_agents_of_scope(scope: str) -> tuple[str, ...]:
+    if scope not in SCOPE_EXCLUDED_AGENTS:
+        raise Unverifiable(f"stored_scope {scope!r} is not a scope this verifier knows — it cannot say which "
+                           "transiting bodies the stored tier is expected to hold")
+    return SCOPE_EXCLUDED_AGENTS[scope]
+
+
+def bound_excluded_agents(conn: Any, chart_id: str, generation: str) -> tuple[str, ...]:
+    """The excluded transiting agents of the generation's BOUND manifest vector (`stored_scope`)."""
+    import json
+    row = conn.execute("SELECT input_generation_vector FROM public.kala_gochara_publication"
+                       " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    if row is None:
+        raise Unverifiable(f"generation {generation} has no bound manifest to take the expected bodies from")
+    vector = row["input_generation_vector"] if isinstance(row, dict) else row[0]
+    vector = vector if isinstance(vector, dict) else json.loads(vector)
+    scope = vector.get("stored_scope")
+    if not scope:
+        raise Unverifiable(f"the manifest vector of generation {generation} states no stored_scope — the "
+                           "expected bodies cannot be taken from it")
+    return excluded_agents_of_scope(scope)
+
+
 _FACT_SUBJECT = {"SUN": "sun", "MOON": "moon", "MAR": "mars", "MER": "mercury",
                  "JUP": "jupiter", "VEN": "venus", "SAT": "saturn",
                  "RAH_MEAN": "rahu", "KET_MEAN": "ketu"}
@@ -215,7 +245,8 @@ def _p1_obligation_bytes(event_class: str, rule_version: str) -> list[str]:
     return sorted(role_token | delivery)
 
 
-def _p2_obligation_bytes(event_class: str, chart: Mapping[str, Any], rule_version: str) -> list[str]:
+def _p2_obligation_bytes(event_class: str, chart: Mapping[str, Any], rule_version: str, *,
+                         excluded_agents: Sequence[str]) -> list[str]:
     """P2 (Moon frame): per the class polarity, the agent × house residences counted from the janma-rāśi —
     gain: the cited favourable houses of every STORED agent; adverse: the pinned plan; anchor/non-adverse: none.
     Frame `moon`, person `native` (P2 licenses the native's fortune only); the Moon is an on-demand tier, never
@@ -225,7 +256,7 @@ def _p2_obligation_bytes(event_class: str, chart: Mapping[str, Any], rule_versio
     moon_sign = _sign_index(chart["natal"]["moon"])
     out = set()
     for agent, houses in table.items():
-        if agent in _EPHEMERAL_TIER_AGENTS:
+        if agent in excluded_agents:
             continue
         for h in houses:
             out.add("|".join((event_class, "p2", rule_version.lower(), agent, "residence", "signature_house",
@@ -234,12 +265,12 @@ def _p2_obligation_bytes(event_class: str, chart: Mapping[str, Any], rule_versio
 
 
 def _p3_obligation_bytes(event_class: str, chart: Mapping[str, Any],
-                         path: str, rule_version: str) -> list[str]:
+                         path: str, rule_version: str, *, excluded_agents: Sequence[str]) -> list[str]:
     """Every (agent, relation, role, target) the spec's P3 predicate names, for `path`
     ('p3' or 'p4'; P4 = P3's Jupiter/Saturn scored obligations as P4's own)."""
     h_signs, lords, lagna_sign, anchor_sign = _h_and_lords(event_class, chart)
     frame, person = _frame_person(event_class)
-    agents = (tuple(g for g in _GRAHAS if g not in _EPHEMERAL_TIER_AGENTS)
+    agents = (tuple(g for g in _GRAHAS if g not in excluded_agents)
               if path == "p3" else ("jupiter", "saturn"))
     out = []
 
@@ -267,7 +298,7 @@ def _p3_obligation_bytes(event_class: str, chart: Mapping[str, Any],
 # ── pins and the digest preimage (1206 / draft §AM-5 item 3) ─────────────────
 
 def derive_path_pin(event_class: str, chart: Mapping[str, Any], path_id: str,
-                    rule_version: str, *,
+                    rule_version: str, *, excluded_agents: Sequence[str],
                     path_exclusions: Mapping[str, Mapping[str, str | None]],
                     h_unknown_exclusion: Mapping[str, str | None] | None) -> dict[str, Any]:
     """One pin as the verifier derives it. `path_exclusions` / `h_unknown_exclusion`
@@ -291,8 +322,8 @@ def derive_path_pin(event_class: str, chart: Mapping[str, Any], path_id: str,
         raise Unverifiable(f"{event_class}/{p}: no independent derivation of this path's "
                            "obligations exists in the verifier yet — refusing to vouch")
     obs = (_p1_obligation_bytes(event_class, rule_version) if p == "p1"
-           else _p2_obligation_bytes(event_class, chart, rule_version) if p == "p2"
-           else _p3_obligation_bytes(event_class, chart, p, rule_version))
+           else _p2_obligation_bytes(event_class, chart, rule_version, excluded_agents=excluded_agents) if p == "p2"
+           else _p3_obligation_bytes(event_class, chart, p, rule_version, excluded_agents=excluded_agents))
     if obs:
         return {"path": p, "version": rule_version.lower(), "disposition": "included",
                 "reason": "", "ruling": "", "basis": "", "obligations": obs}
@@ -337,6 +368,7 @@ def _exclusion_of(path: str, version: str, path_exclusions: Mapping) -> Mapping 
 
 
 def derive_class_pins(event_class: str, chart: Mapping[str, Any], sealed_paths: Sequence[tuple[str, str]], *,
+                      excluded_agents: Sequence[str],
                       selected_versions: Mapping[str, str] | None,
                       path_exclusions: Mapping[Any, Mapping[str, str | None]],
                       h_unknown_exclusion: Mapping[str, str | None] | None) -> list[dict[str, Any]]:
@@ -352,7 +384,8 @@ def derive_class_pins(event_class: str, chart: Mapping[str, Any], sealed_paths: 
     out: list[dict[str, Any]] = []
     for path in sorted(by_path):
         versions = sorted(by_path[path])
-        pins = {v: derive_path_pin(event_class, chart, path, v, path_exclusions=path_exclusions,
+        pins = {v: derive_path_pin(event_class, chart, path, v, excluded_agents=excluded_agents,
+                                   path_exclusions=path_exclusions,
                                    h_unknown_exclusion=h_unknown_exclusion) for v in versions}
         if path in selected:
             if selected[path] not in versions:
@@ -416,7 +449,9 @@ def rederive_inventory_digest(
     if snap is None or hdr is None:
         raise Unverifiable("no snapshot / inventory header to verify against")
     chart = read_chart(conn, snap[1])           # every class: P2 needs the natal Moon even where H is unknown
-    pins = derive_class_pins(event_class, chart, sealed_paths, selected_versions=selected_versions,
+    pins = derive_class_pins(event_class, chart, sealed_paths,
+                             excluded_agents=bound_excluded_agents(conn, chart_id, generation),   # R9-10: the manifest's scope
+                             selected_versions=selected_versions,
                              path_exclusions=path_exclusions, h_unknown_exclusion=h_unknown_exclusion)
     pre = inventory_preimage(convention_id=snap[0], horizon=(hdr[0], hdr[1]),
                              input_digest=snap[2], pins=pins)
@@ -514,7 +549,7 @@ def write_verification(conn: Any, *, chart_id: str, generation: str, event_class
                            "changed inventory replaces the chain (verification included)")
 
 
-__all__ = ["Unverifiable", "VERIFIER_ID", "VERIFIER_VERSION", "derive_path_pin",
+__all__ = ["Unverifiable", "SCOPE_EXCLUDED_AGENTS", "excluded_agents_of_scope", "bound_excluded_agents", "VERIFIER_ID", "VERIFIER_VERSION", "derive_path_pin",
            "inventory_preimage", "read_chart", "rederive_inventory_digest",
            "rederive_ledger_digest",
            "write_verification"]

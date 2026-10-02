@@ -56,7 +56,7 @@ def _view(pin):
 def _both(sealed, selected, cls="marriage", planner_excl=None, verifier_excl=None, **kw):
     """The planner's pins and the independent verifier's, in the same shape — they must be equal."""
     plan = _plan(sealed, selected, cls=cls, path_exclusions=planner_excl or {}, **kw)
-    vpins = ver.derive_class_pins(cls, VCHART, sealed, selected_versions=selected,
+    vpins = ver.derive_class_pins(cls, VCHART, sealed, excluded_agents=("moon",), selected_versions=selected,
                                   path_exclusions=verifier_excl if verifier_excl is not None else {},
                                   h_unknown_exclusion=V_H)
     return plan, vpins
@@ -165,13 +165,13 @@ def test_the_verifier_derives_the_planners_dispositions_independently(name, seal
 
 def test_the_verifier_refuses_what_it_cannot_derive_rather_than_picking_a_version():
     with pytest.raises(ver.Unverifiable, match="neither selected"):
-        ver.derive_class_pins("marriage", VCHART, P3_BOTH, selected_versions={"p3": "1.0.0"},
+        ver.derive_class_pins("marriage", VCHART, P3_BOTH, excluded_agents=("moon",), selected_versions={"p3": "1.0.0"},
                               path_exclusions={}, h_unknown_exclusion=V_H)
     with pytest.raises(ver.Unverifiable, match="no selection"):
-        ver.derive_class_pins("marriage", VCHART, P3_BOTH, selected_versions=None,
+        ver.derive_class_pins("marriage", VCHART, P3_BOTH, excluded_agents=("moon",), selected_versions=None,
                               path_exclusions={}, h_unknown_exclusion=V_H)
     with pytest.raises(ver.Unverifiable, match="not sealed"):
-        ver.derive_class_pins("marriage", VCHART, P3_BOTH, selected_versions={"p3": "9.9.9"},
+        ver.derive_class_pins("marriage", VCHART, P3_BOTH, excluded_agents=("moon",), selected_versions={"p3": "9.9.9"},
                               path_exclusions={}, h_unknown_exclusion=V_H)
 
 
@@ -300,7 +300,7 @@ def test_p2_obligations_the_planner_and_the_verifier_agree_for_every_class(cls):
         pytest.skip("excluded from enumeration entirely (O-CF-N6)")
     plan = inv.plan_class_inventory(event_class=cls, chart=CHART, horizon=(H0, H1), sealed_paths=[("P2", "1.0.0")],
                                     capability=FULL, path_exclusions={})
-    pin = ver.derive_path_pin(cls, VCHART, "P2", "1.0.0", path_exclusions={}, h_unknown_exclusion=V_H)
+    pin = ver.derive_path_pin(cls, VCHART, "P2", "1.0.0", excluded_agents=("moon",), path_exclusions={}, h_unknown_exclusion=V_H)
     (mine,) = plan.pins
     assert _view(mine) == _view(pin), cls
     polarity = ver._POLARITY[cls]
@@ -309,7 +309,7 @@ def test_p2_obligations_the_planner_and_the_verifier_agree_for_every_class(cls):
 
 def test_a_p2_obligation_set_that_the_verifier_does_not_derive_is_caught_by_the_digest():
     plan = _plan([("P2", "1.0.0")], {"P2": "1.0.0"})
-    pin = ver.derive_path_pin("marriage", VCHART, "P2", "1.0.0", path_exclusions={}, h_unknown_exclusion=V_H)
+    pin = ver.derive_path_pin("marriage", VCHART, "P2", "1.0.0", excluded_agents=("moon",), path_exclusions={}, h_unknown_exclusion=V_H)
     assert len(pin["obligations"]) == len(plan.obligations) > 0
     tampered = dict(pin, obligations=pin["obligations"][:-1])
     assert _view(tampered) != _view(plan.pins[0])
