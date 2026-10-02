@@ -403,3 +403,13 @@ def test_the_oracle_catches_mutants_of_the_interval_algebra(monkeypatch, name, a
     assert not _disagrees_somewhere()
     monkeypatch.setattr(VD, attr, replacement)
     assert _disagrees_somewhere(), name
+
+
+def test_every_reason_the_derivation_can_emit_is_declared_on_the_registry_row():
+    declared = set(FACTORS[VREF]["applicability"]["unqualified_reasons"])
+    emitted = set()
+    for primary, house, span_, res in _scenarios():
+        for seg in run(res, primary, house, span_)["segments"]:
+            emitted |= set(seg["reasons"])
+    assert {"obstructor_residence_unknown", "node_obstruction_undecided", "node_residence_unknown"} <= emitted
+    assert emitted <= declared, emitted - declared

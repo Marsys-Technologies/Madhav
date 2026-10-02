@@ -852,7 +852,7 @@ _VEDHA_FLAT = {
     "applicable_records": "favourable_residence_cited_pairs_only",
     "map_active": 0, "map_inactive": 1,
     "active_qualification": "vedha_active",
-    "unqualified_reasons": ["node_obstruction_undecided"],
+    "unqualified_reasons": ["obstructor_residence_unknown", "node_obstruction_undecided", "node_residence_unknown"],
     "inactive_scope": "excluding_on_demand_moon_obstruction",
     "scope_exempt_primaries": ["mercury"],            # Phaladīpikā XXVI.6: the Moon never obstructs Mercury
     "vipareeta_state": "not_produced_no_served_citation",
@@ -864,11 +864,14 @@ _factor("vedha_attenuation",
         function="step", range=[0.0, 1.0], units="unitless",
         direction="higher = stronger", null_state="unqualified",
         operand_selector=_VEDHA_FLAT, applicability=decode_vedha(_VEDHA_FLAT),
-        effect="active obstruction nullifies the favourable result: 0.0 on the FOR-channel (window stays "
-               "admitted, record carries qualification vedha_active); no active obstruction: 1.0 with the "
-               "scope 'excluding_on_demand_moon_obstruction' (Mercury excepted); Rāhu/Ketu in the vedha "
-               "house with no cited obstructor: unqualified (node_obstruction_undecided); adverse-residence "
-               "and uncited (graha, house) records: declared not-applicable; nothing graded")
+        effect="the cited binary factor is applied to the favourable-residence record's contribution, which is THEN "
+               "assigned to the event class's channel: active obstruction nullifies it (0.0; admission and "
+               "admitted support are never changed — the record carries qualification vedha_active); "
+               "ESTABLISHED inactivity: 1.0 with the scope 'excluding_on_demand_moon_obstruction' (Mercury "
+               "excepted); an obstructor residence not established over the span (obstructor_residence_unknown), "
+               "Rāhu/Ketu in the vedha house with no cited obstructor (node_obstruction_undecided) or a node "
+               "residence gap (node_residence_unknown): unqualified; adverse-residence and uncited (graha, house) "
+               "records: declared not-applicable; nothing graded")
 SUPERSEDED_FACTORS[composite_ref("vedha_attenuation", RULE_VERSION)] = {
     "superseded_by": composite_ref("vedha_attenuation", KERNEL_VERSION),
     "reason": "1.0.0 promised a rule-row attenuation field that never existed and no value mapping; the "

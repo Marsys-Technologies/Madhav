@@ -64,11 +64,51 @@ def encode_kernel(nested: dict) -> dict:
     }
     if an["orb_deg"] is not None:                      # ratified ⇒ both present; unratified ⇒ OMITTED, never null
         flat["orb_deg"] = an["orb_deg"]
-        flat["orb_decision_ref"] = an["orb_decision_ref"]
+        if an.get("orb_decision_ref") is not None:
+            flat["orb_decision_ref"] = an["orb_decision_ref"]
+    problems = kernel_flat_problems(flat)              # a number without ratified status + decision ref never encodes
+    if problems:
+        raise ValueError("activity_kernel selector refused: " + "; ".join(problems))
     return flat
 
 
+KERNEL_FLAT_KEYS = ("operand", "span_kinds", "span_form", "span_inside", "span_outside", "point_kinds", "point_form",
+                    "orb_state", "aspect_geometry", "uncovered_state")            # + orb_deg and orb_decision_ref ONLY when ratified
+
+
+def kernel_flat_problems(flat: dict) -> list[str]:
+    """The orb-ratification invariant of a flat activity_kernel selector (steward M20261002T020529-6f18 (b); Codex R5):
+    a numeric orb is admissible ONLY together with `orb_state = ratified` and an `orb_decision_ref` token, and an unratified
+    row carries neither. Presence of a number never implies ratification."""
+    out = flat_problems(flat)
+    if out:
+        return out
+    missing = [k for k in KERNEL_FLAT_KEYS if k not in flat]
+    if missing:
+        out.append(f"missing keys {missing}")
+    extra = sorted(set(flat) - set(KERNEL_FLAT_KEYS) - {"orb_deg", "orb_decision_ref"})
+    if extra:
+        out.append(f"unknown keys {extra}")
+    state = flat.get("orb_state")
+    if state == ORB_UNRATIFIED:
+        for k in ("orb_deg", "orb_decision_ref"):
+            if k in flat:
+                out.append(f"{k} present while orb_state is {ORB_UNRATIFIED}")
+    elif state == ORB_RATIFIED:
+        orb = flat.get("orb_deg")
+        if isinstance(orb, bool) or not isinstance(orb, (int, float)) or not math.isfinite(orb) or orb <= 0:
+            out.append("ratified requires a finite, strictly positive orb_deg")
+        if not isinstance(flat.get("orb_decision_ref"), str):
+            out.append("ratified requires an orb_decision_ref token")
+    else:
+        out.append(f"orb_state {state!r} is neither {ORB_UNRATIFIED} nor {ORB_RATIFIED}")
+    return out
+
+
 def decode_kernel(flat: dict) -> dict:
+    problems = kernel_flat_problems(flat)
+    if problems:
+        raise ValueError("activity_kernel selector refused: " + "; ".join(problems))
     nested = {
         "span": {"object_kinds": list(flat["span_kinds"]), "function": "step",
                  "inside": float(flat["span_inside"]), "outside": float(flat["span_outside"])},
