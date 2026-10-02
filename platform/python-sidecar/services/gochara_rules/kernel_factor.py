@@ -24,10 +24,30 @@ from __future__ import annotations
 
 import math
 import re
+from fractions import Fraction
 
 from .registry import FACTORS
 
-NAKSHATRA_ARC = 360.0 / 27.0
+NAKSHATRA_ARC = 360.0 / 27.0                       # informational only — membership never divides by this float
+
+# EXACT extent membership (Codex round 7 [8]). A float quotient `lon // (360/27)` puts exact boundaries (e.g. 40.0° = 3 × 13°20′)
+# in the preceding nakṣatra. A longitude is converted to its EXACT rational value (every finite float is a rational) and compared
+# in integer ARCSECONDS: 360° = 1_296_000″; a nakṣatra is 48_000″ (13°20′) and a sign 108_000″ (30°) — both integral, so the
+# 27 + 12 boundaries are exact integers and no rounding is ever involved.
+ARCSEC_PER_DEGREE = 3600
+NAKSHATRA_ARCSEC = 48_000
+SIGN_ARCSEC = 108_000
+FULL_CIRCLE_ARCSEC = 1_296_000
+
+
+def extent_index(longitude_deg: float, aspect_angle_deg: float | None, arc_arcsec: int) -> int:
+    """1-based sign / nakṣatra index of `longitude_deg` (+ the directed aspect angle), exact at every boundary, the seam
+    and every adjacent representable value. The lower bound is inclusive, the upper exclusive (half-open)."""
+    x = Fraction(longitude_deg)
+    if aspect_angle_deg is not None:
+        x += Fraction(aspect_angle_deg)
+    arcsec = (x * ARCSEC_PER_DEGREE) % FULL_CIRCLE_ARCSEC          # exact modulo on rationals: [0, 1_296_000)
+    return int(arcsec // arc_arcsec) + 1                           # exact floor on rationals
 
 
 class TargetKindMismatch(ValueError):
@@ -87,17 +107,18 @@ def activity_kernel(object_kind: str, canonical_target: str, *, factor_ref: tupl
         return _result(factor_ref, None, "object_kind_not_covered_by_applicability", None)
     if not _finite_lon(body_longitude_deg):
         return _result(factor_ref, None, "body_longitude_missing_or_invalid", parsed[0])
-    eff = float(body_longitude_deg)
     if aspect_angle_deg is not None:                              # the directed aspect ray
         if isinstance(aspect_angle_deg, bool) or not isinstance(aspect_angle_deg, (int, float)) or not math.isfinite(aspect_angle_deg):
             return _result(factor_ref, None, "aspect_angle_invalid", parsed[0])
-        eff = (eff + float(aspect_angle_deg)) % 360.0
     kind, target = parsed
     if kind in ("span", "star"):
-        arc = 30.0 if kind == "span" else NAKSHATRA_ARC
-        inside = int(eff // arc) + 1 == target
+        arc = SIGN_ARCSEC if kind == "span" else NAKSHATRA_ARCSEC
+        inside = extent_index(body_longitude_deg, aspect_angle_deg, arc) == target
         step = ap["span"]
         return _result(factor_ref, step["inside"] if inside else step["outside"], None, kind)
+    eff = float(body_longitude_deg)
+    if aspect_angle_deg is not None:
+        eff = (eff + float(aspect_angle_deg)) % 360.0
     # point
     ang = ap["angular"]
     orb = ang["orb_deg"]

@@ -212,3 +212,70 @@ def test_every_soft_factor_reference_resolves_and_each_path_names_its_exact_vers
         for ref in RULE_PATHS[composite_ref(pid, KERNEL_VERSION)]["soft_factors"]:
             if ref[0] in ("activity_kernel", "graduated_drishti"):
                 assert ref[1] == KERNEL_VERSION
+
+
+# ── Codex round 7 [8] — exact nakṣatra / sign membership at every boundary ──────────────────────────
+def _oracle_index(x: float, arc_arcsec: int) -> int:
+    """Independent INTEGER-ONLY oracle: x as num/den (every finite float is exactly that), arcseconds compared
+    by cross-multiplication — no Fraction, no float division, no shared code with kernel_factor."""
+    num, den = x.as_integer_ratio()
+    arcsec_num = (num * 3600) % (1_296_000 * den)                  # in units of 1/den arcsecond, within [0, 360°)
+    return arcsec_num // (arc_arcsec * den) + 1
+
+
+def _inside(kind, target, lon, **kw):
+    return activity_kernel(kind, target, factor_ref=REF, body_longitude_deg=lon, **kw)["value"] == 1.0
+
+
+def test_codex_reproduction_star4_at_exactly_forty_degrees():
+    # 3 × 13°20′ = 40° exactly: the lower bound of star:4 is inclusive — star:4, never star:3
+    assert _inside("star", "star:4", 40.0) is True
+    assert _inside("star", "star:3", 40.0) is False
+
+
+def test_all_27_nakshatra_boundaries_seam_and_adjacent_representable_values():
+    seen_boundary_inside = 0
+    for n in range(1, 28):
+        b = (n - 1) * 40.0 / 3.0                                    # nominal float of the lower boundary (13°20′ = 40/3)
+        for x in (b, math.nextafter(b, 360.0), math.nextafter(b, -1.0)):
+            if not (0.0 <= x < 360.0):
+                continue
+            want = _oracle_index(x, 48_000)
+            for star in range(1, 28):
+                assert _inside("star", f"star:{star}", x) == (star == want), (n, x, star, want)
+        if n in (1, 4, 7, 10, 13, 16, 19, 22, 25):                  # boundaries 40·k exactly representable: must be INSIDE star n
+            assert _inside("star", f"star:{n}", (n - 1) * 40.0 / 3.0) is True
+            seen_boundary_inside += 1
+    assert seen_boundary_inside == 9
+    # the seam: 0.0 is star 1, the largest float below 360 is star 27
+    assert _inside("star", "star:1", 0.0) and _inside("star", "star:27", math.nextafter(360.0, 0.0))
+    assert not _inside("star", "star:27", 0.0) and not _inside("star", "star:1", math.nextafter(360.0, 0.0))
+
+
+def test_all_12_sign_boundaries_exact():
+    for n in range(1, 13):
+        b = (n - 1) * 30.0
+        for x in (b, math.nextafter(b, 360.0), math.nextafter(b, -1.0)):
+            if not (0.0 <= x < 360.0):
+                continue
+            want = _oracle_index(x, 108_000)
+            for sign in range(1, 13):
+                assert _inside("sign_span", f"span:{sign}", x) == (sign == want), (n, x, sign, want)
+        assert _inside("sign_span", f"span:{n}", b) is True        # a sign's lower bound is inclusive, its upper exclusive
+
+
+def test_aspect_ray_membership_is_exact_across_a_boundary_and_the_seam():
+    # 10° + 30° = 40° exactly → star:4 along the ray; 330° + 40° wraps to 10° (seam) without float drift
+    assert _inside("star", "star:4", 10.0, aspect_angle_deg=30.0) is True
+    assert _inside("star", "star:1", 330.0, aspect_angle_deg=40.0) is True
+    assert _inside("sign_span", "span:1", 330.0, aspect_angle_deg=30.0) is True      # 360 → 0: span 1, not span 12
+    assert _inside("sign_span", "span:12", 330.0, aspect_angle_deg=29.999999999999) is True
+
+
+def test_extent_index_matches_the_independent_oracle_on_a_dense_grid():
+    for k in range(0, 3601):
+        x = k * 0.1
+        if x >= 360.0:
+            break
+        assert K.extent_index(x, None, 48_000) == _oracle_index(x, 48_000)
+        assert K.extent_index(x, None, 108_000) == _oracle_index(x, 108_000)
