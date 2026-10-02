@@ -358,6 +358,14 @@ class _RuntimeConn:
         return _RuntimeCursor(self.statements)
 
 
+# @records_swiss_backend (panchang_engine.swiss_backend._chart_lifetime_jds) refuses to run a
+# per-chart writer whose context carries no birth_params['datetime_iso'] (the real orchestrator
+# sets it at pipeline/orchestrator/birth_params.py).  These boundary tests drive the decorated
+# writer's run(), so their test-double context must carry one.  SYNTHETIC instant, deliberately
+# not any real chart's birth data; it only needs to sit inside the pinned .se1 corpus window.
+_SYNTHETIC_BIRTH_PARAMS = {"datetime_iso": "2000-01-01T12:00:00"}
+
+
 def test_runtime_boundary_opens_then_completes_a_generation(monkeypatch):
     from ga_writers import ga_positions_writer
 
@@ -372,7 +380,10 @@ def test_runtime_boundary_opens_then_completes_a_generation(monkeypatch):
         asset_id="ga_positions",
         build_id="11111111-1111-4111-8111-111111111111",
         db_conn=conn,
-        config={"chart_id": "22222222-2222-4222-8222-222222222222"},
+        config={
+            "chart_id": "22222222-2222-4222-8222-222222222222",
+            "birth_params": _SYNTHETIC_BIRTH_PARAMS,
+        },
     )
     result = list_writers()["ga_positions"]().run(ctx)
     sql = [statement for statement, _ in conn.statements]
@@ -498,7 +509,10 @@ def test_runtime_boundary_does_not_complete_a_failed_writer(monkeypatch):
         asset_id="ga_positions",
         build_id="11111111-1111-4111-8111-111111111111",
         db_conn=conn,
-        config={"chart_id": "22222222-2222-4222-8222-222222222222"},
+        config={
+            "chart_id": "22222222-2222-4222-8222-222222222222",
+            "birth_params": _SYNTHETIC_BIRTH_PARAMS,
+        },
     )
     with pytest.raises(RuntimeError, match="numerical failure"):
         list_writers()["ga_positions"]().run(ctx)

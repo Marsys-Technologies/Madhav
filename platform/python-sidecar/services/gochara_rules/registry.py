@@ -355,7 +355,7 @@ def _factor(factor_id: str, **kw) -> None:
         "calibration_status": "uncalibrated_default",
         **kw,
     }
-    FACTORS[composite_ref(factor_id, RULE_VERSION)] = row
+    FACTORS[composite_ref(factor_id, row["rule_version"])] = row
 
 
 _factor("dignity_of_transit_sign",
@@ -391,6 +391,66 @@ _factor("graduated_drishti",
         function="step", range=[0.0, 1.0], units="unitless",
         direction="higher = stronger", null_state="unqualified",
         effect="¼/½/¾/1 at 3-10/5-9/4-8/7; specials full (BPHS1:16496-16502)")
+# ── AM-13 (RULED, steward M20261002T001617-8321): applicability by object kind ──
+# A NEW version of each factor — the 1.0.0 rows above stay byte-for-byte as authored
+# (a sealed version is never edited). §2.1 says a missing operand takes its null_state
+# ("never silently 1"); a span has no |Δλ| to be missing — "not applicable" is a DECLARED
+# state of the row, never a silent 1. `applicability` is the declaration; A's rule_binding
+# carries it in operand_selector (token arrays are admitted by ka_gochara_named_operands_ok:
+# no DDL). The ORB is NOT ratified anywhere in the spec/registry (draft AM-13 line cites;
+# open native decision ND-ORB): `orb_deg` is None and the point branch is
+# `unqualified` (reason orb_not_ratified) until it is decided — the unratified 5.0° is not
+# carried forward.
+KERNEL_VERSION = "1.1.0"
+# Classification is by GEOMETRY, not by name (steward M20261002T002620-6575): any target with EXTENT
+# (a sign, a house, a 13°20′ nakṣatra = `star:<n>`) takes the membership step; only a true POINT
+# target (a longitude) takes the angular kernel. varga_position is not classified (unqualified).
+SPAN_OBJECT_KINDS = ("sign_span", "house_span", "star")                  # 1155 kgrr_object_kind_ck
+ANGULAR_OBJECT_KINDS = ("degree_point", "derived_point", "saham", "house_lord")
+from .flat_selector import (  # noqa: E402  (declared at the point of use: the AM-13 block below)
+    ORB_UNRATIFIED, decode_drishti, decode_kernel, encode_drishti, encode_kernel, flat_problems,
+)
+
+# The FLAT form is the source of truth (Codex R5): `ka_gochara_factor.operand_selector` admits only a flat
+# object of tokens / numbers / token arrays (1154:221–240), so the declaration is written flat, the nested
+# `applicability` evaluators read is DERIVED from it by `decode_*`, and a test proves
+# encode(decode(flat)) == flat. An unavailable orb is OMITTED (no JSON null); ND-ORB is the `orb_state` token.
+_KERNEL_FLAT = {
+    "operand": "geometry:object_kind_dispatch",
+    "span_kinds": list(SPAN_OBJECT_KINDS), "span_form": "membership_step", "span_inside": 1, "span_outside": 0,
+    "point_kinds": list(ANGULAR_OBJECT_KINDS), "point_form": "one_minus_abs_delta_lambda_over_orb",
+    "orb_state": ORB_UNRATIFIED,
+    "aspect_geometry": "directed_aspect_ray",
+    "uncovered_state": "unqualified",
+}
+_DRISHTI_FLAT = {
+    "operand": "geometry:aspect_house_offset", "applicable_relations": ["aspect"],
+    "not_applicable_state": "declared_omit", "node_cast_aspects": "none",
+}
+for _f in (_KERNEL_FLAT, _DRISHTI_FLAT):
+    assert not flat_problems(_f), flat_problems(_f)
+_factor("activity_kernel",
+        rule_version=KERNEL_VERSION,
+        operand="object kind + (extent: inside-the-extent membership of the validated contact geometry | "
+                "point: seam-safe angular distance |Δλ| along the directed aspect ray, if any)",
+        # a PIECEWISE function: membership step on extent targets, 1 − |Δλ|/orb on point targets
+        function="piecewise_step_linear", range=[0.0, 1.0], units="unitless",
+        direction="higher = stronger", null_state="unqualified",
+        operand_selector=_KERNEL_FLAT, applicability=decode_kernel(_KERNEL_FLAT),
+        effect="objects with extent (sign/house span, star = 13°20′ nakṣatra): membership step "
+               "(1 inside, 0 outside — never a second admission filter); true point objects: "
+               "activity = 1 − |Δλ|/orb (§7.2 inv 3), qualified only once the orb is a finite, strictly "
+               "positive, RATIFIED decision (ND-ORB open: until then unqualified, reason orb_not_ratified); "
+               "object kinds in neither group are unqualified, never 1")
+_factor("graduated_drishti",
+        rule_version=KERNEL_VERSION,
+        operand="aspect house-offset (aspect records only)",
+        function="step", range=[0.0, 1.0], units="unitless",
+        direction="higher = stronger", null_state="unqualified",
+        operand_selector=_DRISHTI_FLAT, applicability=decode_drishti(_DRISHTI_FLAT),
+        effect="¼/½/¾/1 at 3-10/5-9/4-8/7; specials full per frozen O-CF-DRISHTI (ordinary graduation "
+               "corroborated by brihat_jataka:PG65:C1); applicable to aspect records only — "
+               "residence/conjunction have no offset (declared not-applicable, never 1)")
 _factor("vedha_attenuation",
         operand="vedha interval state at t",
         function="step", range=[0.0, 1.0], units="unitless",
@@ -605,6 +665,17 @@ _factor("sad_bala_sufficient",
 # not the detector). Its successor is a NEW row; the binder (kala rule_binding)
 # binds the successor and never the retired name.
 SUPERSEDED_FACTORS: dict[tuple[str, str], dict] = {
+    composite_ref("activity_kernel", RULE_VERSION): {
+        "superseded_by": composite_ref("activity_kernel", KERNEL_VERSION),
+        "reason": "1.0.0 declares only an angular |Δλ| operand with no orb and no "
+                  "applicability: every span-object record is unqualified (AM-13)",
+        "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-13",
+    },
+    composite_ref("graduated_drishti", RULE_VERSION): {
+        "superseded_by": composite_ref("graduated_drishti", KERNEL_VERSION),
+        "reason": "1.0.0 does not declare that the factor applies to aspect records only (AM-13)",
+        "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-13",
+    },
     composite_ref("sad_bala_summary", RULE_VERSION): {
         "superseded_by": composite_ref("sad_bala_sufficient", RULE_VERSION),
         "reason": "units 'rupas' violate kgf_units_ck and the declared range "
@@ -623,7 +694,7 @@ def _path(path_id: str, **kw) -> None:
     row = {"path_id": path_id, "rule_version": RULE_VERSION, **kw}
     if row["provenance"] == "uncited_extension" and not row.get("ruling_ref"):
         raise ValueError(f"{path_id}: uncited_extension requires ruling_ref (§0)")
-    RULE_PATHS[composite_ref(path_id, RULE_VERSION)] = row
+    RULE_PATHS[composite_ref(path_id, row["rule_version"])] = row
 
 
 _path(
@@ -742,3 +813,79 @@ _path(
          "absent as a generic rule (predicate count 0) — context-bound "
          "8th-from-Moon rules only",
 )
+
+
+# ── AM-13: P3/P4/P5 rule_version 1.1.0 — same rows, soft-factor refs moved to the ───
+# applicability-declaring factor versions. Predicates are unchanged (1.0.0 refs stay).
+# The 1.0.0 path rows are NOT edited; they are recorded as superseded below. In a class
+# inventory the older version is excluded as `superseded_by_version` (1206 v1.2).
+SUPERSEDED_PATHS: dict[tuple[str, str], dict] = {}
+_SOFT_FACTOR_MOVES = {
+    composite_ref("activity_kernel", RULE_VERSION): composite_ref("activity_kernel", KERNEL_VERSION),
+    composite_ref("graduated_drishti", RULE_VERSION): composite_ref("graduated_drishti", KERNEL_VERSION),
+}
+for _pid in ("P3", "P4", "P5"):
+    _old = RULE_PATHS[composite_ref(_pid, RULE_VERSION)]
+    _new = {**_old, "rule_version": KERNEL_VERSION,
+            "soft_factors": [_SOFT_FACTOR_MOVES.get(ref, ref) for ref in _old["soft_factors"]]}
+    RULE_PATHS[composite_ref(_pid, KERNEL_VERSION)] = _new
+    SUPERSEDED_PATHS[composite_ref(_pid, RULE_VERSION)] = {
+        "superseded_by": composite_ref(_pid, KERNEL_VERSION),
+        "reason": "soft factors moved to activity_kernel@1.1.0 / graduated_drishti@1.1.0 "
+                  "(applicability by object kind, AM-13)",
+        "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-13",
+    }
+del _pid, _old, _new
+
+
+# ── AM-18 (RULED, steward M20261002T004621-2b84): vedha_attenuation@1.1.0 + P2@1.1.0 ──
+# The 1.0.0 vedha_attenuation row carried "a rule-row data field" that never existed. The
+# served corpus (Phaladīpikā XXVI.3–8, phaladeepika:PG322:C1 / PG323:C1) says an occupied
+# vedha place NULLIFIES the good result of a favourable-house transit and grades nothing, so
+# the cited mapping is a STEP: active obstruction -> 0.0, none -> 1.0 (not a calibration).
+# The window stays admitted (the record carries qualification `vedha_active`).
+from .flat_selector import decode_vedha  # noqa: E402
+
+# FLAT is the source of truth (Codex R5): `operand_selector` admits only tokens / numbers / token arrays (1154:221–240).
+_VEDHA_FLAT = {
+    "operand": "state:vedha_interval_derived_from_residence",
+    "applicable_records": "favourable_residence_cited_pairs_only",
+    "map_active": 0, "map_inactive": 1,
+    "active_qualification": "vedha_active",
+    "unqualified_reasons": ["obstructor_residence_unknown", "node_obstruction_undecided", "node_residence_unknown"],
+    "inactive_scope": "excluding_on_demand_moon_obstruction",
+    "scope_exempt_primaries": ["mercury"],            # Phaladīpikā XXVI.6: the Moon never obstructs Mercury
+    "vipareeta_state": "not_produced_no_served_citation",
+}
+assert not flat_problems(_VEDHA_FLAT), flat_problems(_VEDHA_FLAT)
+_factor("vedha_attenuation",
+        rule_version=KERNEL_VERSION,
+        operand="vedha state at t, derived from stored residence spans (vedha_derive.derive_vedha)",
+        function="step", range=[0.0, 1.0], units="unitless",
+        direction="higher = stronger", null_state="unqualified",
+        operand_selector=_VEDHA_FLAT, applicability=decode_vedha(_VEDHA_FLAT),
+        effect="the cited binary factor is applied to the favourable-residence record's contribution, which is THEN "
+               "assigned to the event class's channel: active obstruction nullifies it (0.0; admission and "
+               "admitted support are never changed — the record carries qualification vedha_active); "
+               "ESTABLISHED inactivity: 1.0 with the scope 'excluding_on_demand_moon_obstruction' (Mercury "
+               "excepted); an obstructor residence not established over the span (obstructor_residence_unknown), "
+               "Rāhu/Ketu in the vedha house with no cited obstructor (node_obstruction_undecided) or a node "
+               "residence gap (node_residence_unknown): unqualified; adverse-residence and uncited (graha, house) "
+               "records: declared not-applicable; nothing graded")
+SUPERSEDED_FACTORS[composite_ref("vedha_attenuation", RULE_VERSION)] = {
+    "superseded_by": composite_ref("vedha_attenuation", KERNEL_VERSION),
+    "reason": "1.0.0 promised a rule-row attenuation field that never existed and no value mapping; the "
+              "served corpus supports a nullification step only (AM-18)",
+    "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-18; design/P2_VEDHA_ANSWER_v1_0.md",
+}
+_p2_old = RULE_PATHS[composite_ref("P2", RULE_VERSION)]
+RULE_PATHS[composite_ref("P2", KERNEL_VERSION)] = {
+    **_p2_old, "rule_version": KERNEL_VERSION,
+    "soft_factors": [composite_ref("vedha_attenuation", KERNEL_VERSION)],
+}
+SUPERSEDED_PATHS[composite_ref("P2", RULE_VERSION)] = {
+    "superseded_by": composite_ref("P2", KERNEL_VERSION),
+    "reason": "soft factor moved to vedha_attenuation@1.1.0 (cited nullification step, AM-18)",
+    "source": "GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-18",
+}
+del _p2_old
