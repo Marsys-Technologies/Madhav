@@ -400,3 +400,45 @@ def test_an_event_of_a_type_nobody_reads_is_refused_when_handed_to_the_parser(tm
 def test_the_readers_event_classification_copy_is_gone():
     for name in ("_e63_is_cert_line", "_e63_is_event_line", "E63_EVENT_FORBIDDEN", "E63_EVENT_TYPES"):
         assert not hasattr(T, name), name
+
+
+# ---- the validator subprocess itself: cannot run / answers without records -------------------------------------------------------
+
+def _stub_validator(monkeypatch, behaviour):
+    """Replace ONLY the validator subprocess (python -c <driver>); every git call still runs for real."""
+    import subprocess
+    real = subprocess.run
+
+    def run(args, *a, **k):
+        if isinstance(args, list) and len(args) == 3 and args[0] == sys.executable and args[1] == "-c":
+            return behaviour()
+        return real(args, *a, **k)
+    monkeypatch.setattr(subprocess, "run", run)
+
+
+@pytest.mark.parametrize("exc", [OSError("no exec"), __import__("subprocess").TimeoutExpired("python", 1)])
+def test_a_validator_that_cannot_be_started_or_times_out_raises_and_is_not_cached(w, runs, monkeypatch, exc):
+    w.commit()
+
+    def boom():
+        raise exc
+    _stub_validator(monkeypatch, boom)
+    for _ in range(2):
+        with pytest.raises(T.ElevatedInputError) as e:
+            w.elevated(T)
+        assert e.value.code == "registry_unreadable" and "could not be run" in str(e.value)
+    assert len(runs) == 2 and not T._E63_E51_CACHE
+
+
+def test_an_acceptance_that_carries_no_records_is_not_believed(w, runs, monkeypatch):
+    w.commit()
+    ok = {"ok": True, "constants": {"CITATION_PASS_REFUSED": list(T.E63_CITATION_BLOCKING),
+                                    "DECLARATIONS_RELPATH": T.E63_DECLARATIONS_PATH}}
+
+    class R:
+        stdout = json.dumps(ok).encode()
+        stderr = b""
+    _stub_validator(monkeypatch, lambda: R())
+    with pytest.raises(T.ElevatedInputError, match="returned no records") as e:
+        w.elevated(T)
+    assert e.value.code == "registry_unreadable" and not T._E63_E51_CACHE
