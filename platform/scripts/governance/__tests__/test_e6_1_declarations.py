@@ -2036,12 +2036,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-    878,
+    884,
     "f\"{graha_name} required shad"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-    913,
+    919,
     "f\"{graha_name} shadbala rati"
    ]
   ],
@@ -2116,7 +2116,7 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_tajaka_writer.py",
-    633,
+    635,
     "citation_human = ("
    ]
   ],
@@ -2323,7 +2323,7 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
             ("bo_karanajala", _WR + "bo_karanajala.py", 708, "sign_num"),
             ("bo_upaya", _WR + "bo_upaya.py", 1798, "len(resonances)"),
             ("bo_yantra_mechanism", _WR + "bo_yantra_mechanism.py", 571, "verdict.valence"),
-            ("ga_strength", _GW + "ga_strength_writer.py", 913, "ratio"),
+            ("ga_strength", _GW + "ga_strength_writer.py", 919, "ratio"),
             ("ga_panchanga", _GW + "ga_panchanga_writer.py", 371, "tithi_num"),
             ("ga_structural", _GW + "ga_structural_writer.py", 4665, "effective_dignity_score")):
         sites = [x for x in nw.citation_sites(_ctree(path)) if x[0] == ln and x[2] == "composed"]
@@ -2332,7 +2332,7 @@ def test_citation_composed_values_are_really_stated_in_the_declared_assets():
                for e, _ in nw.fstring_interpolations(x)}
         assert expr in got, (asset, ln, sorted(got))
     # numbers shaped into the text by a format spec (ga_structural :4665, ga_strength :913)
-    for path, ln in ((_GW + "ga_structural_writer.py", 4665), (_GW + "ga_strength_writer.py", 913)):
+    for path, ln in ((_GW + "ga_structural_writer.py", 4665), (_GW + "ga_strength_writer.py", 919)):
         site = next(x for x in nw.citation_sites(_ctree(path)) if x[0] == ln)
         specs = [sp for x in ast.walk(ast.parse(site[3], mode="eval")) if isinstance(x, ast.JoinedStr)
                  for _, sp in nw.fstring_interpolations(x)]
